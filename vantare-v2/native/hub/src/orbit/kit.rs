@@ -638,6 +638,130 @@ fn circuit_ink(name: Option<&str>, neutral: bool, cx: &gpui::App) -> Div {
     )
 }
 
+pub fn palette_card(
+    index: usize,
+    palette: super::theme::Palette,
+    active: bool,
+    cx: &gpui::App,
+) -> gpui::Stateful<Div> {
+    use super::skin::Skin;
+    let orb = |skin: Skin| {
+        div()
+            .size(px(26.0))
+            .flex_none()
+            .rounded_full()
+            .border_1()
+            .border_color(super::tint(0x00ff_ffff, 0.14))
+            .bg(linear_gradient(
+                135.0,
+                linear_color_stop(rgb(skin.accent), 0.0),
+                linear_color_stop(rgb(skin.base), 1.0),
+            ))
+    };
+    super::neo_card(cx)
+        .id(("settings-palette-card", index))
+        .role(gpui::Role::Button)
+        .aria_label(palette.label())
+        .aria_selected(active)
+        .tab_stop(false)
+        .flex_col()
+        .items_center()
+        .justify_center()
+        .gap(px(10.0))
+        .px(px(10.0))
+        .py(px(8.0))
+        .child(super::text(palette.label(), 13.0, 500, super::ink(cx), cx))
+        .child(
+            div()
+                .flex()
+                .gap(px(6.0))
+                .child(orb(Skin::resolve(palette, super::theme::Scheme::Light)))
+                .child(orb(Skin::resolve(palette, super::theme::Scheme::Dark))),
+        )
+        .when(active, |card| card.shadow(super::selection_ring(cx)))
+        .aria_description("Tema persistido en los ajustes locales de apariencia")
+}
+
+/// Grupo numerado R9.2: título horizontal fuera de la superficie.
+pub fn settings_group(number: usize, title: &str, body: impl IntoElement, cx: &gpui::App) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .min_w_0()
+        .min_h_0()
+        .gap(px(8.0))
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(10.0))
+                .child(meta(
+                    &format!("{number:02}"),
+                    11.0,
+                    skin(cx).accent_bright,
+                    cx,
+                ))
+                .child(caps(title, 15.0, skin(cx).text2, cx))
+                .child(div().flex_1().h(px(1.0)).bg(super::alpha(skin(cx).line2))),
+        )
+        .child(body)
+}
+
+/// Tarjeta de esquema R10.1; Sistema combina ambas miniaturas.
+pub fn scheme_card(
+    index: usize,
+    scheme: super::theme::Scheme,
+    active: bool,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    let label = match scheme {
+        super::theme::Scheme::System => "Sistema",
+        super::theme::Scheme::Light => "Claro",
+        super::theme::Scheme::Dark => "Oscuro",
+    };
+    let preview = |light: bool| {
+        let theme = super::skin::Skin::resolve(
+            skin_palette(cx),
+            if light {
+                super::theme::Scheme::Light
+            } else {
+                super::theme::Scheme::Dark
+            },
+        );
+        div()
+            .flex_1()
+            .h(px(38.0))
+            .p(px(6.0))
+            .bg(rgb(theme.base))
+            .child(div().h(px(5.0)).w_full().bg(rgb(theme.l3)))
+            .child(div().mt(px(5.0)).h(px(12.0)).w_full().bg(rgb(theme.accent)))
+    };
+    super::button(("settings-scheme", index), label, cx)
+        .flex_1()
+        .min_w_0()
+        .h_auto()
+        .flex_col()
+        .p(px(8.0))
+        .gap(px(6.0))
+        .aria_selected(active)
+        .child(
+            div()
+                .flex()
+                .w_full()
+                .overflow_hidden()
+                .rounded(px(skin(cx).radius.sm))
+                .child(preview(scheme != super::theme::Scheme::Dark))
+                .when(scheme == super::theme::Scheme::System, |row| {
+                    row.child(preview(false))
+                }),
+        )
+        .when(active, |card| card.shadow(super::selection_ring(cx)))
+}
+
+fn skin_palette(cx: &gpui::App) -> super::theme::Palette {
+    cx.global::<super::theme::Theme>().palette
+}
+
 #[cfg(test)]
 mod resource_tests {
     #[test]

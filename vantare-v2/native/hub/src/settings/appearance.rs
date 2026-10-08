@@ -161,6 +161,16 @@ impl Hub {
 }
 
 impl Hub {
+    pub(super) fn settings_scheme(
+        &mut self,
+        scheme: theme::Scheme,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let mut settings = self.settings.appearance.settings;
+        settings.scheme = scheme;
+        self.settings_appearance_apply(settings, window, cx);
+    }
     pub(super) fn settings_palette(
         &mut self,
         index: usize,

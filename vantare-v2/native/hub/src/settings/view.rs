@@ -83,14 +83,14 @@ fn stack() -> Div {
         .w_full()
         .min_w_0()
         .min_h_0()
-        .gap(px(21.0))
+        .gap(px(12.0))
 }
 fn columns(compact: bool) -> Div {
     div()
         .flex()
         .w_full()
         .min_w_0()
-        .gap(px(21.0))
+        .gap(px(12.0))
         .items_start()
         .when(compact, |element| element.flex_col().items_stretch())
 }
@@ -115,8 +115,8 @@ fn section_row_hint(
     cx: &gpui::App,
 ) -> Div {
     div()
-        .min_h(px(54.0))
-        .py(px(6.0))
+        .min_h(px(cx.global::<orbit::Adapt>().setting_height()))
+        .py(px(3.0))
         .flex()
         .items_center()
         .justify_between()
@@ -131,88 +131,45 @@ fn section_row_hint(
                 .flex_col()
                 .gap(px(2.5))
                 .child(section_text(label, 13.5, 650, orbit::ink(cx), 20.25, cx))
-                .child(section_text(
-                    help,
-                    hint_size,
-                    400,
-                    orbit::ink_3(cx),
-                    if hint_size < 12.0 {
-                        17.25
-                    } else {
-                        hint_size * 1.4
-                    },
-                    cx,
-                )),
+                .when(cx.global::<orbit::Adapt>().show_optional(), |row| {
+                    row.child(section_text(
+                        help,
+                        hint_size,
+                        400,
+                        orbit::ink_3(cx),
+                        if hint_size < 12.0 {
+                            17.25
+                        } else {
+                            hint_size * 1.4
+                        },
+                        cx,
+                    ))
+                }),
         )
         .child(control)
-}
-fn section_palette_row(label: &str, help: &str, palettes: Div, cx: &gpui::App) -> Div {
-    div()
-        .w_full()
-        .min_h(px(54.0))
-        .py(px(6.0))
-        .flex()
-        .flex_col()
-        .border_b_1()
-        .border_color(rgba(orbit::line_row(cx)))
-        .child(
-            div()
-                .flex()
-                .flex_col()
-                .gap(px(2.5))
-                .child(section_text(label, 13.5, 650, orbit::ink(cx), 20.25, cx))
-                .child(section_text(help, 12.0, 400, orbit::ink_3(cx), 16.8, cx)),
-        )
-        .child(palettes.mt(px(12.0)))
 }
 fn section_body() -> Div {
     div().flex().flex_col()
 }
 fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -> Div {
-    orbit::neo_card(cx)
-        .flex_shrink_0()
-        .gap(px(12.0))
-        .child(
-            orbit::neo_header(
-                title.to_owned(),
-                match title {
-                    "Interfaz" | "Tema" => "v-palette",
-                    "Overlays" => "v-studio",
-                    "Canal" | "Notas de versión" | "Envíos pendientes" => "v-download",
-                    "Nivel de rendimiento" | "Qué cambia en cada nivel" => "v-gauge",
-                    "En el Hub" | "En pista · Próximamente" | "Consentimiento de contribución" => {
-                        "v-keys"
-                    }
-                    "Últimos eventos" | "Historial de borrado remoto" => "clock",
-                    "Sistema"
-                    | "Datos y registros"
-                    | "Informe de diagnóstico local"
-                    | "Contenido del informe" => "v-monitor",
-                    _ => "v-shield",
-                },
-                cx,
-            )
-            .flex_wrap()
-            .when_some(meta, |head, value| {
-                let meta = text(value, 12.0, 500, orbit::ink_3(cx), cx);
-                head.child(div().flex_1()).child(meta.flex_none()).when(
-                    title == "Últimos eventos" && value == "8 en esta sesión",
-                    |head| {
-                        head.child(
-                            orbit::small_button("settings-demo-copy-events", "Copiar", cx)
-                                .tab_stop(false),
-                        )
-                    },
-                )
-            }),
-        )
-        .child(orbit::scroll_fade(
-            body.id(format!("settings-body-{title}"))
-                .flex_grow(1.0)
-                .min_h_0()
-                .overflow_y_scroll(),
-            cx.global::<orbit::design::Tokens>().colors.neo_bottom,
-        ))
+    let number = match title {
+        "Inicio" | "Temas" | "En el Hub" | "Canal" => 2,
+        "Avisos" | "Interfaz" | "En Studio" | "Notas de versión" => 3,
+        "Widgets" | "Movimiento" => 4,
+        _ => 1,
+    };
+    orbit::settings_group(
+        number,
+        title,
+        orbit::neo_card(cx)
+            .p(px(12.0))
+            .min_h_0()
+            .when_some(meta, |card, meta| {
+                card.child(orbit::meta(meta, 10.0, orbit::skin(cx).text3, cx))
+            })
+            .child(body.min_h_0()),
+        cx,
+    )
 }
 fn section_note(content: &str, cx: &gpui::App) -> Div {
     div()
@@ -230,51 +187,10 @@ fn section_note(content: &str, cx: &gpui::App) -> Div {
 }
 
 fn reference_choice(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
-    div()
-        .id(id)
-        .role(gpui::Role::Button)
-        .aria_label(label)
-        .tab_stop(false)
-        .aria_description("Próximamente")
-        .w(px(168.0))
-        .h(px(39.0))
-        .px(px(13.0))
-        .flex_none()
-        .flex()
-        .items_center()
-        .justify_between()
-        .rounded(px(12.0))
-        .border_1()
-        .border_color(rgba(orbit::line(cx)))
-        .bg(rgba(crate::orbit::legacy_rgba(0xf5f3_f207, cx)))
-        .child(text(label, 14.0, 500, orbit::ink_2(cx), cx))
-        .child(orbit::icon("down", 14.0, orbit::ink_3(cx)))
+    orbit::pending_select(id, label, label, 210.0, "Próximamente", cx)
 }
 fn reference_primary(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
-    div()
-        .self_start()
-        .id(id)
-        .role(gpui::Role::Button)
-        .aria_label(label)
-        .tab_stop(false)
-        .aria_description("Próximamente")
-        .flex_none()
-        .h(px(39.0))
-        .px(px(14.0))
-        .rounded_full()
-        .border_1()
-        .border_color(rgba(0x0000_0000))
-        .bg(rgb(orbit::primary_bg(cx)))
-        .flex()
-        .items_center()
-        .justify_center()
-        .child(text(
-            label,
-            12.0,
-            600,
-            cx.global::<crate::orbit::theme::Theme>().primary_ink,
-            cx,
-        ))
+    orbit::carmine_button(id, label, cx)
 }
 fn privacy_bullet(content: &str, cx: &gpui::App) -> Div {
     div()
@@ -290,49 +206,6 @@ fn privacy_bullet(content: &str, cx: &gpui::App) -> Div {
         )
 }
 /// Tarjeta de tema R10.1: nombre y dos orbes (claro y oscuro) con acento y fondo.
-fn palette_card(
-    index: usize,
-    palette: orbit::theme::Palette,
-    active: bool,
-    cx: &gpui::App,
-) -> gpui::Stateful<Div> {
-    use orbit::skin::Skin;
-    let orb = |skin: Skin| {
-        div()
-            .size(px(26.0))
-            .flex_none()
-            .rounded_full()
-            .border_1()
-            .border_color(orbit::tint(0x00ff_ffff, 0.14))
-            .bg(linear_gradient(
-                135.0,
-                linear_color_stop(rgb(skin.accent), 0.0),
-                linear_color_stop(rgb(skin.base), 1.0),
-            ))
-    };
-    orbit::neo_card(cx)
-        .id(("settings-palette-card", index))
-        .role(gpui::Role::Button)
-        .aria_label(palette.label())
-        .aria_selected(active)
-        .tab_stop(false)
-        .flex_row()
-        .items_center()
-        .justify_between()
-        .gap(px(10.0))
-        .px(px(14.0))
-        .py(px(10.0))
-        .child(text(palette.label(), 14.0, 500, orbit::ink(cx), cx))
-        .child(
-            div()
-                .flex()
-                .gap(px(6.0))
-                .child(orb(Skin::resolve(palette, orbit::theme::Scheme::Light)))
-                .child(orb(Skin::resolve(palette, orbit::theme::Scheme::Dark))),
-        )
-        .when(active, |card| card.shadow(orbit::selection_ring(cx)))
-        .aria_description("Tema persistido en los ajustes locales de apariencia")
-}
 fn disabled_toggle(
     id: &'static str,
     label: &str,
@@ -806,12 +679,11 @@ impl Hub {
         }
         let content = stack()
             .h_full()
-            .min_h_0()
-            .gap(px(16.0))
+            .gap(px(cx.global::<orbit::Adapt>().gap()))
             .when_some(self.settings.status.clone(), |view, status| {
                 view.child(orbit::callout(status, cx))
             })
-            .child(orbit::scroll_fade(
+            .child(
                 match self.settings.page {
                     Page::Application => self.settings_application(true, window, cx),
                     Page::Appearance => self.settings_appearance(cx),
@@ -822,12 +694,8 @@ impl Hub {
                     Page::Diagnostics => self.settings_diagnostics(true, cx),
                 }
                 .h_full()
-                .min_h_0()
-                .id("settings-page-scroll")
-                .overflow_y_scroll()
-                .track_scroll(&self.settings.panel_scroll),
-                orbit::canvas(cx),
-            ));
+                .min_h_0(),
+            );
         div()
             .id("settings-panel")
             .flex_1()
@@ -908,254 +776,113 @@ impl Hub {
                     .child(text("+", 16.0, 700, orbit::ink(cx), cx)),
             )
     }
-    fn settings_application(&self, compact: bool, window: &Window, cx: &Context<Self>) -> Div {
-        let limit = vantare_ui::window_zoom_limit(window).max(90.0);
-        let selected = f32::from(self.settings.appearance.zoom_percent);
-        let zoom = div()
-            .flex()
-            .flex_col()
-            .items_end()
-            .gap(px(4.0))
-            .child(self.settings_zoom(cx))
-            .when(selected > limit + 0.01, |view| {
-                view.child(text(
-                    format!("Limitado a {limit:.1} % por el tamaño de la ventana"),
-                    11.0,
-                    400,
-                    orbit::ink_muted(cx),
-                    cx,
-                ))
-            });
-        let interface = section_surface(
-            "Interfaz",
-            None,
-            section_body()
-                .child(section_row(
-                    "Tamaño de la interfaz",
-                    "90, 100, 110 o 125 %. Atajos: Ctrl +, Ctrl − y Ctrl 0.",
-                    zoom,
-                    cx,
-                ))
-                .child(section_row(
-                    "Idioma",
-                    "Idioma de la interfaz del hub.",
-                    reference_choice(
-                        "settings-hub-language",
-                        &self.settings.hub_language.read(cx).state.options[0].label,
-                        cx,
-                    ),
-                    cx,
-                ))
-                .child(
-                    section_row(
-                        "Densidad",
-                        "Altura de filas, espaciado y radios.",
+    fn settings_application(&self, _compact: bool, _window: &Window, cx: &Context<Self>) -> Div {
+        let pending = |label| orbit::pill(label, Tone::Neutral, cx);
+        stack()
+            .h_full()
+            .gap(px(cx.global::<orbit::Adapt>().gap()))
+            .child(section_surface(
+                "Interfaz",
+                None,
+                section_body()
+                    .child(section_row(
+                        "Idioma",
+                        "Idioma del Hub · Próximamente",
                         reference_choice(
-                            "settings-density",
-                            &self.settings.density.read(cx).state.options[1].label,
+                            "settings-hub-language",
+                            &self.settings.hub_language.read(cx).state.options[0].label,
                             cx,
                         ),
                         cx,
-                    )
-                    .border_b_0(),
-                ),
-            cx,
-        )
-        .flex_1();
-        let system = Self::settings_system(cx);
-        let open_language = self
-            .capture
-            .as_ref()
-            .is_some_and(|capture| capture.name == "ajustes-idioma-desplegado");
-        let mut view = columns(compact)
-            .child(interface.when(compact, gpui::Styled::flex_none))
-            .child(system.when(compact, gpui::Styled::flex_none));
-        let overlays = section_surface(
-            "Overlays",
-            None,
-            section_body()
-                .child(section_row(
-                    "Idioma de widgets",
-                    "Se guarda con el diseño de Overlay Studio.",
-                    self.settings.language.clone(),
-                    cx,
-                ))
-                .child(section_row(
-                    "Unidades de widgets",
-                    "Unidades del diseño activo.",
-                    self.settings.units.clone(),
-                    cx,
-                )),
-            cx,
-        );
-        let channel = self.settings_general_channel(cx);
-        view = stack().gap(px(16.0)).child(view).child(overlays).child(
-            section_surface("Canal", None, channel, cx)
-                .flex_grow(1.0)
-                .min_h_0(),
-        );
-        if open_language {
-            // El banco incluye un estado con el selector abierto. Las opciones
-            // se dibujan como vista de referencia inerte porque el Hub
-            // todavía no guarda el idioma de interfaz.
-            view = view.relative().child(
-                div()
-                    .absolute()
-                    .size_full()
-                    .child(Self::settings_language_menu(cx)),
-            );
-        }
-        view
-    }
-    fn settings_general_channel(&self, cx: &Context<Self>) -> Div {
-        let mut channel = section_body().child(section_row(
-            "Canal de actualizaciones",
-            "Revisa la versión instalada y las novedades.",
-            orbit::small_button("settings-general-updates", "Actualizaciones", cx)
-                .on_click(cx.listener(|hub, _, _, cx| hub.select_settings_page(Page::Updates, cx))),
-            cx,
-        ));
-        match &self.settings.privacy {
-            Ok(store) => {
-                channel = channel.child(section_row(
-                    "Compartir datos de uso",
-                    "Consentimiento de uso anónimo; puedes cambiarlo en Privacidad.",
-                    orbit::toggle(
-                        "settings-general-usage",
-                        "Compartir datos de uso",
-                        store.value.usage,
-                        true,
-                        cx,
-                    )
-                    .track_focus(&self.settings.privacy_focus[1])
-                    .on_click(cx.listener(|hub, _, _, cx| hub.settings_privacy_toggle(true, cx)))
-                    .on_key_down(cx.listener(
-                        |hub, event: &gpui::KeyDownEvent, _, cx| {
-                            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                                hub.settings_privacy_toggle(true, cx);
-                                cx.stop_propagation();
-                            }
-                        },
-                    )),
-                    cx,
-                ));
-            }
-            Err(error) => channel = channel.child(orbit::callout(error.clone(), cx)),
-        }
-        channel
-    }
-
-    fn settings_language_menu(cx: &gpui::App) -> Div {
-        let mut menu = div()
-            .absolute()
-            .top(px(205.0))
-            .left(px(301.0))
-            .w(px(168.0))
-            .h(px(160.0))
-            .overflow_hidden()
-            .p(px(6.0))
-            .rounded(px(12.0))
-            .border_1()
-            .border_color(rgba(orbit::line_strong(cx)))
-            .bg(rgb(orbit::surface_2(cx)))
-            .shadow(vec![gpui::BoxShadow {
-                color: rgba(0x0000_0099).into(),
-                offset: gpui::point(px(0.0), px(24.0)),
-                blur_radius: px(70.0),
-                spread_radius: px(0.0),
-                inset: false,
-            }]);
-        for (index, language) in ["Español", "English", "Português", "Italiano"]
-            .into_iter()
-            .enumerate()
-        {
-            menu = menu.child(
-                div()
-                    .h(px(38.0))
-                    .px(px(10.0))
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .rounded(px(8.0))
-                    .when(index == 0, |item| item.bg(rgba(orbit::line_row(cx))))
-                    .child(text(
-                        language,
-                        orbit::BODY,
-                        if index == 0 { 650 } else { 400 },
-                        if index == 0 {
-                            orbit::ink(cx)
-                        } else {
-                            orbit::ink_2(cx)
-                        },
+                    ))
+                    .child(section_row(
+                        "Tamaño de la interfaz",
+                        "Ctrl +, Ctrl − y Ctrl 0",
+                        self.settings_zoom(cx),
                         cx,
                     ))
-                    .when(index == 0, |item| {
-                        item.child(text("✓", orbit::SECONDARY, 650, orbit::coral(cx), cx))
+                    .when(cx.global::<orbit::Adapt>().show_optional(), |body| {
+                        body.child(section_row(
+                            "Densidad",
+                            &format!(
+                                "{} · Próximamente",
+                                self.settings.density.read(cx).state.options[1].label
+                            ),
+                            pending("Próximamente"),
+                            cx,
+                        ))
                     }),
-            );
-        }
-        menu.child(
-            div()
-                .absolute()
-                .right(px(2.0))
-                .top(px(4.0))
-                .w(px(6.0))
-                .h(px(148.0))
-                .rounded_full()
-                .bg(rgba(crate::orbit::legacy_rgba(0xffff_ff24, cx))),
-        )
+                cx,
+            ))
+            .child(section_surface(
+                "Inicio",
+                None,
+                section_body()
+                    .child(section_row(
+                        "Abrir al iniciar Windows",
+                        "Se abre al iniciar sesión en Windows",
+                        pending("Próximamente"),
+                        cx,
+                    ))
+                    .child(section_row(
+                        "Empezar minimizado",
+                        "Arranque sin abrir la ventana",
+                        pending("Próximamente"),
+                        cx,
+                    )),
+                cx,
+            ))
+            .child(section_surface(
+                "Avisos",
+                None,
+                section_body()
+                    .child(section_row(
+                        "Avisos de actualización",
+                        "Cuando hay una versión nueva",
+                        pending("Próximamente"),
+                        cx,
+                    ))
+                    .child(section_row(
+                        "Avisos del Launcher",
+                        "Al terminar de abrir tus aplicaciones",
+                        pending("Próximamente"),
+                        cx,
+                    ))
+                    .when(cx.global::<orbit::Adapt>().show_optional(), |body| {
+                        body.child(section_row(
+                            "Notificaciones de Windows",
+                            "Avisos con el Hub minimizado",
+                            pending("Próximamente"),
+                            cx,
+                        ))
+                    }),
+                cx,
+            ))
+            .child(section_surface(
+                "Widgets",
+                None,
+                section_body()
+                    .child(section_row(
+                        "Idioma de los widgets",
+                        "Se guarda con el diseño de Studio",
+                        self.settings.language.clone(),
+                        cx,
+                    ))
+                    .child(section_row(
+                        "Unidades de los widgets",
+                        "Combustible, temperatura y velocidad",
+                        self.settings.units.clone(),
+                        cx,
+                    )),
+                cx,
+            ))
     }
-    fn settings_system(cx: &gpui::App) -> Div {
-        section_surface(
-            "Sistema",
-            None,
-            section_body()
-                .child(section_row(
-                    "Inicio con Windows",
-                    "Abrir Vantare al iniciar sesión estará disponible próximamente.",
-                    orbit::pill("Próximamente", Tone::Neutral, cx),
-                 cx))
-                .child(section_row(
-                    "Empezar minimizado",
-                    "Arranca en la bandeja, sin abrir la ventana.",
-                    orbit::pill("Próximamente", Tone::Neutral, cx),
-                 cx))
-                .child(section_row(
-                    "Avisos de actualización",
-                    "Aviso cuando hay una versión nueva.",
-                    orbit::pill("Próximamente", Tone::Neutral, cx),
-                 cx))
-                .child(section_row(
-                    "Avisos del Launcher",
-                    "Aviso cuando terminan de abrirse tus aplicaciones.",
-                    orbit::pill("Próximamente", Tone::Neutral, cx),
-                 cx))
-                .child(section_row(
-                    "Notificaciones del sistema",
-                    "Los avisos de escritorio estarán disponibles próximamente.",
-                    orbit::pill("Próximamente", Tone::Neutral, cx),
-                 cx))
-                .child(
-                    section_row(
-                        "Probar notificación",
-                        "Envía un aviso ahora sin cambiar tus preferencias.",
-                        orbit::pill("Próximamente", Tone::Neutral, cx),
-                     cx)
-                    .border_b_0(),
-                )
-                .child(section_note(
-                    "El inicio con Windows, la bandeja y las preferencias de avisos llegarán pronto.",
-                 cx)),
-         cx)
-        .flex_1()
-    }
-    #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     fn settings_appearance(&self, cx: &mut Context<Self>) -> Div {
         let settings = self.settings.appearance.settings;
         let mut palettes = div().w_full().grid().grid_cols(3).gap(px(10.0));
         for (index, palette) in orbit::theme::Palette::ALL.into_iter().enumerate() {
             palettes = palettes.child(
-                palette_card(index, palette, palette == settings.palette, cx)
+                orbit::palette_card(index, palette, palette == settings.palette, cx)
                     .track_focus(&self.settings.appearance_focus[index])
                     .tab_index(0)
                     .cursor_pointer()
@@ -1172,79 +899,84 @@ impl Hub {
                     )),
             );
         }
+        let mut schemes = div().flex().w_full().gap(px(10.0));
+        for (index, scheme) in [
+            orbit::theme::Scheme::System,
+            orbit::theme::Scheme::Light,
+            orbit::theme::Scheme::Dark,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            schemes = schemes.child(
+                orbit::scheme_card(index, scheme, settings.scheme == scheme, cx)
+                    .track_focus(&self.settings.appearance_focus[9 + index])
+                    .tab_index(0)
+                    .on_click(cx.listener(move |hub, _, window, cx| {
+                        hub.settings_scheme(scheme, window, cx);
+                    }))
+                    .on_key_down(cx.listener(
+                        move |hub, event: &gpui::KeyDownEvent, window, cx| {
+                            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                                hub.settings_scheme(scheme, window, cx);
+                                cx.stop_propagation();
+                            }
+                        },
+                    )),
+            );
+        }
         let contrast = self.settings_slider(0, cx);
         let opacity = self.settings_slider(1, cx);
-        div()
-            .w_full()
-
+        stack()
+            .h_full()
+            .gap(px(cx.global::<orbit::Adapt>().gap()))
+            .child(orbit::settings_group(1, "Esquema de color", schemes, cx))
+            .child(orbit::settings_group(2, "Temas", palettes, cx))
             .child(section_surface(
-                "Tema",
+                "Interfaz",
                 None,
                 section_body()
-                    .child(section_palette_row(
-                    "Paleta de colores",
-                    "Cambia los colores de la interfaz sin alterar su diseño.",
-                    palettes,
-                 cx))
-                .child(section_row(
-                    "Contraste",
-                    "Ajusta la legibilidad del texto secundario y los bordes.",
-                    contrast,
-                 cx))
-                .child(section_row(
-                    "Opacidad de las superficies",
-                    "Controla cuánto dejan ver el fondo los paneles y la cabecera.",
-                    opacity,
-                 cx))
-                .child(section_row(
-                    "Fuente de interfaz",
-                    "Se aplica a menús, controles y textos de la aplicación.",
-                    self.settings.font.clone(),
-                 cx))
-                .child(
-                    section_row(
-                        "Fuente monoespaciada",
-                        "Se aplica a cifras y textos técnicos de la interfaz.",
-                        self.settings.mono.clone(),
-                     cx)
-                    .border_b_0(),
-                )
-                .child(
-                    div()
-                        .w_full()
-                        .px(px(15.0))
-                        .py(px(12.0))
-                        .flex()
-                        .flex_col()
-                        .gap(px(5.0))
-                        .rounded(px(10.0))
-                        .border_1()
-                        .border_color(rgba(orbit::line(cx)))
-                        .bg(rgb(orbit::surface_1(cx)))
-                        .child(text(
-                            "Vista previa de la interfaz y sus cifras",
-                            16.0,
-                            400,
-                            orbit::ink(cx),
-                         cx))
-                        .child(
-                            div()
-                                .font_family(crate::orbit::mono_family(cx))
-                                .child(
-                                    text("01:23.456 · LMU / Vantare", 16.0, 400, orbit::ink_2(cx), cx)
-                                        .font_family(crate::orbit::mono_family(cx)),
-                                ),
-                        ),
-                )
-                .child(section_row(
-                    "Reducir animaciones",
-                    "Preferencia local de esta app; la del sistema se respeta siempre.",
-                    disabled_toggle("settings-motion", "Reducir animaciones", false, cx),
-                 cx).border_b_0())
-                .child(section_note(
-                    "La apariencia de los widgets del overlay se configura por separado en Overlay Studio.",
-                 cx)),
-             cx).flex_1().min_h_0())
+                    .child(section_row(
+                        "Contraste",
+                        "Legibilidad del texto secundario y los bordes",
+                        contrast,
+                        cx,
+                    ))
+                    .child(section_row(
+                        "Opacidad de las superficies",
+                        "Solidez de los menús y paneles",
+                        opacity,
+                        cx,
+                    ))
+                    .child(section_row(
+                        "Fuente de interfaz",
+                        "Menús, controles y textos",
+                        self.settings.font.clone(),
+                        cx,
+                    ))
+                    .when(cx.global::<orbit::Adapt>().show_optional(), |body| {
+                        body.child(section_row(
+                            "Fuente monoespaciada",
+                            "Cifras y textos técnicos",
+                            self.settings.mono.clone(),
+                            cx,
+                        ))
+                    }),
+                cx,
+            ))
+            .when(cx.global::<orbit::Adapt>().show_notes(), |page| {
+                page.child(section_surface(
+                    "Movimiento",
+                    None,
+                    section_body().child(section_row(
+                        "Reducir animaciones",
+                        "Transiciones y latidos",
+                        orbit::pill("Próximamente", Tone::Neutral, cx),
+                        cx,
+                    )),
+                    cx,
+                ))
+            })
     }
     fn settings_slider(&self, index: usize, cx: &mut Context<Self>) -> gpui::Stateful<Div> {
         let settings = self.settings.appearance.settings;
@@ -1633,7 +1365,7 @@ impl Hub {
     }
 
     fn settings_update_channels(channel: Option<&str>, demo: bool, cx: &gpui::App) -> Div {
-        let mut channels = div().flex().w_full().gap(px(21.0));
+        let mut channels = div().flex().w_full().gap(px(12.0));
         for (index, (name, description)) in [
             ("Estable", "Versiones probadas para todo el mundo."),
             (
@@ -2078,7 +1810,7 @@ impl Hub {
                 ("Datos locales", "—", "medición no disponible"),
             ]
         };
-        let mut stats = div().grid().grid_cols(4).w_full().gap(px(21.0));
+        let mut stats = div().grid().grid_cols(4).w_full().gap(px(12.0));
         for (label, value, help) in tiles {
             stats = stats.child(
                 div()

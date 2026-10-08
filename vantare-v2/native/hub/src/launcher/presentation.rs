@@ -1036,6 +1036,7 @@ impl Launcher {
             });
             div()
                 .flex()
+                .flex_wrap()
                 .gap_2()
                 .when(failed, |row| {
                     row.child(

@@ -5887,3 +5887,11 @@ roadmap-final-*; error IPC de carga1280×720 visible, sin inventar publicación.
 Clippy-Dwarnings PASS; límites del titular inspeccionados en PNG, no atribuidos
 al dump UIA (el backend no expone ese texto como control medible).
 Barra b9433fdb; E3 4193684c. Lista poblada/error a ampliar en matriz final.
+E1/E2 Launcher: Tab→Avanzado→JSON→guardar/reabrir verificado en root propio;
+Escape y Cancelar conservan bytes guardados. Cadena productiva sobre dos archivos
+QA inválidos: confirmar confianza→fallo→continuar→reintentar→cancelar, sin procesos
+personales. Se corrigió fila de reintentos: flex_wrap evita cortar la segunda acción.
+Bounds reales de ambas acciones1920×1080 y1280×720 PASS, PNG inspeccionados.
+Clippy-Dwarnings PASS. Capturas launcher-real/advanced/reopen/discard/retry/wrap.
+Los primeros1280 del harness no reducían el mínimo QA1920; se repitieron con
+mínimo1280 y tamaño cliente comprobado, sin contar el intento como prueba.

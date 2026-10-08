@@ -9,10 +9,31 @@ No se añaden crates. Instalador sin firma: SmartScreen puede pedir «Más infor
 ## Instalar y desinstalar
 
 Doble clic en **VantareSetup.exe**. Instala sin administrador en
-`%LOCALAPPDATA%/Programs/Vantare Native Beta`, crea «Vantare Native Beta» y
+`%LOCALAPPDATA%/Programs/Vantare`, crea «Vantare» y
 «Desinstalar» en el menú Inicio y ofrece abrir el Hub al terminar.
 No crea acceso en el escritorio. «Aplicaciones instaladas» de Windows también
-permite desinstalar. La identidad de registro es `VantareNativeBeta`.
+permite desinstalar. Se conserva la clave técnica `VantareNativeBeta`: cambiarla
+rompería la sincronización de versión y rollback del bootstrap ya instalado.
+El nombre visible en NSIS, Inicio, Windows y la ventana del Hub es **Vantare**.
+Una instalación anterior conserva su `InstallLocation`, incluida la carpeta
+`Vantare Native Beta`; moverla obligaría a migrar datos y referencias sin aportar
+valor al usuario. Setup también adopta datos de esa ruta tras desinstalar.
+
+La actualización desde el Hub antiguo funciona sin reemplazar su bootstrap:
+el Hub nuevo ejecuta `Register` del `candidate.ps1` de su generación verificada
+antes de publicar `hub-ready`. Esa operación cambia DisplayName, mantiene la
+misma clave y raíz, crea los dos accesos nuevos y retira solo accesos antiguos
+que apuntan a esa instalación. Puede repetirse sin duplicados. Un fallo impide
+confirmar el arranque y deja actuar al rollback existente. El tag técnico,
+asset, canal y firma del feed siguen iguales para clientes anteriores.
+
+Inicio y Aplicaciones instaladas usan `uninstall-vantare.ps1`, copia durable
+del script del paquete: llama a la desinstalación beta instalada, conserva los
+datos y retira accesos, registro y bootstrap. Así también puede desinstalarse
+una beta renombrada solo por feed, cuyo Uninstall.exe antiguo desconoce la nueva
+carpeta. La copia permanece disponible si se interrumpe la desinstalación.
+El nuevo Uninstall.exe NSIS también retira los accesos nuevos; la migración
+ya retiró los antiguos propios y preservó cualquier acceso ajeno.
 Wails usa «Vantare Simracing Suite», otra carpeta y sus propios accesos.
 No se leen ni importan datos Wails durante la instalación.
 
@@ -38,12 +59,12 @@ copias distintas, se rechaza sin elegir datos arbitrariamente.
 QA aislada: compilar NSIS con `/DTEST_INSTALLER` y ejecutar
 `VantareSetup.exe /S /D=E:\tmp\1492\installed` (el argumento `/D` va al final).
 Esta build exige ruta explícita y usa registro `VantareNativeBetaQA1492` y
-accesos «Vantare Native Beta QA1492», separados de la instalación de Isaac.
+accesos «Vantare QA1492», separados de la instalación de Isaac.
 Solo este instalador escribe `registration-identity.txt` en la raíz y lo retira
 al desinstalar; el bootstrap lee esa identidad validada para sincronizar el
 registro tras confirmar o restaurar. Sin ese archivo usa `VantareNativeBeta`.
 No distribuir esta build. `installer-tests.ps1` prueba los dos Setup construidos
-sin abrir ventanas; `beta-tests.ps1` requiere verificador y semilla de TEST
+sin abrir ventanas (primer Setup anterior, segundo nuevo); `beta-tests.ps1` requiere verificador y semilla de TEST
 para probar el feed firmado, nunca la clave privada productiva.
 
 El acceso de Inicio abre un host PowerShell de 64 bits oculto. NSIS usa
@@ -96,8 +117,9 @@ nuevo termina o no confirma en 45 s, se restaura la generación anterior con
 `Rollback`; en timeout se cierra únicamente el Hub nuevo que creó el supervisor.
 La confirmación prueba apertura, no login remoto, juego ni sesión prolongada.
 Las generaciones se conservan; no hay purga automática ni migración de esquema.
-El bootstrap schema 1 queda fijo durante Update; cambiar scripts instalados
-requiere reinstalación/revisión. SHA-256 prueba integridad sobre GitHub HTTPS;
+El bootstrap schema 1 queda fijo durante Update; el registro visible se
+sincroniza mediante el script verificado que ya viaja en cada generación.
+Los demás cambios de bootstrap requieren reinstalación/revisión. SHA-256 prueba integridad sobre GitHub HTTPS;
 el manifiesto del feed exige firma Ed25519; no se ofrece Authenticode.
 
 Los datos beta viven en la generación (`data/`); el Hub y sus hijos heredan

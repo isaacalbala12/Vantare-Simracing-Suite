@@ -60,15 +60,52 @@ try {
     $null = New-Item -Path $testKey
     Set-ItemProperty -LiteralPath $testKey -Name InstallLocation -Value $evidence
     Set-ItemProperty -LiteralPath $testKey -Name DisplayVersion -Value 'unchanged'
+    Set-ItemProperty -LiteralPath $testKey -Name DisplayName -Value 'Vantare Native Beta'
     [IO.File]::WriteAllText($identityFile, $testIdentity)
-    Sync-BetaRegistration $root $oldVersion
+    Sync-NativeRegistration $root $oldVersion
     Assert-Beta ((Get-ItemProperty -LiteralPath $testKey).DisplayVersion -ceq 'unchanged') 'identidad externa no cambia registro de otra raíz'
+    Assert-Beta ((Get-ItemProperty -LiteralPath $testKey).DisplayName -ceq 'Vantare Native Beta') 'otra raíz conserva nombre visible'
     Set-ItemProperty -LiteralPath $testKey -Name InstallLocation -Value $root
-    Sync-BetaRegistration $root $oldVersion
+    Sync-NativeRegistration $root $oldVersion
     Assert-Beta ((Get-ItemProperty -LiteralPath $testKey).DisplayVersion -ceq $oldVersion) 'registro usa identidad externa de su raíz'
+    Assert-Beta ((Get-ItemProperty -LiteralPath $testKey).DisplayName -ceq 'Vantare') 'misma identidad técnica migra nombre visible sin duplicados'
+    Set-ItemProperty -LiteralPath $testKey -Name DisplayVersion -Value '1.2.3'
+    Sync-BetaRegistration $root $oldVersion
+    Assert-Beta ((Get-ItemProperty -LiteralPath $testKey).DisplayVersion -ceq $oldVersion -and
+        (Get-ItemProperty -LiteralPath $testKey).DisplayName -ceq 'Vantare') 'sincronización de rollback corrige versión sin depender de migrar accesos'
+    $folder = 'Vantare test ' + [guid]::NewGuid().ToString('N')
+    $legacyFolder = 'Vantare legacy ' + [guid]::NewGuid().ToString('N')
+    Set-ItemProperty -LiteralPath $testKey -Name ShortcutFolder -Value $folder
+    Set-ItemProperty -LiteralPath $testKey -Name LegacyShortcutFolder -Value $legacyFolder
+    $programs = [Environment]::GetFolderPath('Programs')
+    $legacyLink = Join-Path $programs "$legacyFolder/Vantare Native Beta.lnk"
+    [IO.Directory]::CreateDirectory((Join-Path $programs $legacyFolder)) | Out-Null
+    $shell = New-Object -ComObject WScript.Shell
+    $link = $shell.CreateShortcut($legacyLink)
+    $link.TargetPath = 'powershell.exe'
+    $link.Arguments = '-File "' + (Join-Path $root 'beta.ps1') + '" -Root "' + $root + '"'
+    $link.Save()
+    $foreignLink = Join-Path $programs "$legacyFolder/Desinstalar.lnk"
+    $link = $shell.CreateShortcut($foreignLink)
+    $link.TargetPath = Join-Path $evidence 'Uninstall.exe'
+    $link.Save()
+    Sync-NativeRegistration $root $oldVersion
+    Assert-Beta (-not (Test-Path -LiteralPath $legacyLink)) 'migración retira acceso beta de su instalación'
+    Assert-Beta (Test-Path -LiteralPath $foreignLink) 'migración conserva acceso de otra instalación'
+    $newLink = Join-Path $programs "$folder/Vantare.lnk"
+    Assert-Beta (($shell.CreateShortcut($newLink)).Arguments.Contains('-Root "' + $root + '"')) 'nuevo acceso conserva raíz y bootstrap'
+    Sync-NativeRegistration $root $oldVersion
+    Assert-Beta (@(Get-ChildItem -LiteralPath (Join-Path $programs $folder)).Count -eq 2) 'migración repetida no duplica accesos'
     [IO.File]::WriteAllText($identityFile, '../invalid')
-    Reject-Beta { Sync-BetaRegistration $root $oldVersion } 'identidad externa inválida rechazada'
+    Reject-Beta { Sync-NativeRegistration $root $oldVersion } 'identidad externa inválida rechazada'
 } finally {
+    if ($null -ne (Get-Variable folder -ErrorAction SilentlyContinue)) {
+        foreach ($name in @($folder, $legacyFolder)) {
+            $path = Join-Path ([Environment]::GetFolderPath('Programs')) $name
+            foreach ($file in @(Get-ChildItem -LiteralPath $path -ErrorAction SilentlyContinue)) { Remove-Item -LiteralPath $file.FullName }
+            if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
+        }
+    }
     Remove-Item -LiteralPath $testKey -ErrorAction SilentlyContinue
     Remove-Item -LiteralPath $identityFile -ErrorAction SilentlyContinue
 }
@@ -240,4 +277,36 @@ Assert-Beta (Apply-BetaUpdate $feedRoot) 'feed y Setup comparten activación'
 Assert-Beta (Test-Path (Join-Path $feedRoot 'boot-pending.json')) 'feed exige confirmación durable'
 Assert-Beta (-not (Apply-BetaUpdate $feedRoot)) 'Apply repetido no crea generación'
 Assert-Beta (-not (Stage-BetaUpdate $feedRoot $feed)) 'misma versión no se ofrece de nuevo'
+# Desinstalación del nombre nuevo también funciona sin renovar NSIS por feed.
+$uninstallRoot = Join-Path $evidence ('renamed-uninstall-' + [guid]::NewGuid().ToString('N'))
+Install-Beta $uninstallRoot $next $nextHash
+$uninstallIdentity = 'VantareUninstallTest' + [guid]::NewGuid().ToString('N')
+$uninstallKey = "HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/$uninstallIdentity"
+$uninstallFolder = 'Vantare uninstall ' + [guid]::NewGuid().ToString('N')
+$null = New-Item -Path $uninstallKey
+Set-ItemProperty -LiteralPath $uninstallKey -Name InstallLocation -Value $uninstallRoot
+Set-ItemProperty -LiteralPath $uninstallKey -Name ShortcutFolder -Value $uninstallFolder
+Set-ItemProperty -LiteralPath $uninstallKey -Name LegacyShortcutFolder -Value ($uninstallFolder + ' old')
+[IO.File]::WriteAllText((Join-Path $uninstallRoot 'registration-identity.txt'), $uninstallIdentity)
+$preserved = Join-Path $uninstallRoot "generations/$((Read-NativeState $uninstallRoot).active.generation)/data/profile.json"
+[IO.File]::WriteAllText($preserved, '{"profile":"uninstall fixture"}')
+$preservedHash = Get-NativeHash $preserved
+Sync-NativeRegistration $uninstallRoot $newVersion
+$uninstallScript = Join-Path $uninstallRoot 'uninstall-vantare.ps1'
+Assert-Beta ((Get-ItemProperty -LiteralPath $uninstallKey).UninstallString.Contains($uninstallScript)) 'Aplicaciones instaladas usa desinstalador durable del nombre nuevo'
+$session = [IO.File]::Open((Join-Path $uninstallRoot 'beta-session.lock'), 'Open', 'ReadWrite', 'None')
+try {
+    $info = [Diagnostics.ProcessStartInfo]::new()
+    $info.FileName = 'powershell.exe'
+    $info.Arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $uninstallScript + '" -Operation UninstallInstalled -Root "' + $uninstallRoot + '"'
+    $info.UseShellExecute = $false; $info.CreateNoWindow = $true; $info.RedirectStandardError = $true
+    $process = [Diagnostics.Process]::Start($info)
+    try { $null = $process.StandardError.ReadToEnd(); $process.WaitForExit(); $exitCode = $process.ExitCode } finally { $process.Dispose() }
+    Assert-Beta ($exitCode -ne 0 -and (Test-Path -LiteralPath $uninstallKey)) 'desinstalación ocupada conserva registro y accesos'
+} finally { $session.Dispose() }
+& powershell -NoProfile -ExecutionPolicy Bypass -File $uninstallScript -Operation UninstallInstalled -Root $uninstallRoot
+Assert-Beta ($LASTEXITCODE -eq 0 -and -not (Test-Path -LiteralPath $uninstallKey)) 'desinstalación del nombre nuevo retira identidad única'
+Assert-Beta (-not (Test-Path -LiteralPath (Join-Path ([Environment]::GetFolderPath('Programs')) $uninstallFolder))) 'desinstalación del nombre nuevo retira carpeta Inicio'
+Assert-Beta ((Get-NativeHash $preserved) -ceq $preservedHash) 'desinstalación del nombre nuevo conserva datos exactos'
+Assert-Beta (-not (Test-Path -LiteralPath $uninstallScript)) 'desinstalación completa retira su copia durable'
 Write-Output "$script:Passed comprobaciones PASS. Evidencia: $root"

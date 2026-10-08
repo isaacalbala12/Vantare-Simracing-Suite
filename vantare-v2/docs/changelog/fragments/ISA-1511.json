@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1511",
+  "type": "change",
+  "summary": "La aplicación nativa se presenta como Vantare en el instalador, el menú Inicio, Aplicaciones instaladas y su ventana.",
+  "technicalNotes": [
+    "Las instalaciones nuevas usan Programs/Vantare. Las anteriores conservan su carpeta, datos, perfiles, layouts y cuenta.",
+    "La clave técnica de Windows y el feed beta se mantienen para conservar las actualizaciones y el rollback de instalaciones anteriores.",
+    "El nuevo Hub sincroniza el nombre desde su generación verificada, también al actualizar con el bootstrap anterior. Inicio y Windows usan una desinstalación que retira los accesos nuevos y conserva los datos."
+  ],
+  "testing": [
+    "Instalar el nuevo Setup encima de una beta: comprobar un único acceso Vantare y una única entrada en Aplicaciones instaladas, con los datos anteriores.",
+    "Actualizar desde el Hub anterior y reiniciar: comprobar el nombre Vantare, la misma carpeta de datos y la versión actualizada.",
+    "Desinstalar desde Inicio o Aplicaciones instaladas y reinstalar: comprobar que se recuperan los datos conservados."
+  ],
+  "knownLimitations": [
+    "La carpeta de una instalación anterior puede seguir llamándose Vantare Native Beta para preservar sus referencias.",
+    "La entrega se valida con instaladores QA aislados; requiere revisión e integración autorizadas antes de distribuirse."
+  ]
+}

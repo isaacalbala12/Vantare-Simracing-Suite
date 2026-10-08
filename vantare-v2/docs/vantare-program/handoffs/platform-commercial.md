@@ -1,5 +1,51 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1511 — nombre visible Vantare (2026-10-08)
+
+Entrega técnica verificada en `C:/tmp/vw3-1511/vantare-v2`, rama
+`vantareapp/isa-1511-nombre-vantare`, base candidata `a8f9bdc3`.
+Código `731af462624a482bdbdb2c62a5ac5b910a298bc4`, push verificado; PR draft
+[#1518](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1518)
+contra `vantareapp/isa-1470-candidato-beta` (base remota `a8f9bdc3`). CI recién
+iniciada (ratchet, native-linux y GitGuardian); no se afirma verde. Entrega
+para revisión del orquestador, sin integración ni publicación.
+NSIS/Inicio/DisplayName/ventana pasan a Vantare; la carpeta nueva por defecto
+es `Programs/Vantare`. Se conserva clave `VantareNativeBeta`, canal/tag/asset
+beta y la raíz de instalaciones anteriores: compatibilidad con el updater y
+su rollback, sin mover datos ni duplicar registros. El Hub sincroniza mediante
+`candidate.ps1` de su generación verificada, antes de hub-ready, aunque el
+bootstrap instalado sea antiguo. Inicio/Windows usan desinstalación durable
+para retirar accesos nuevos también en instalaciones migradas solo por feed.
+No cambia compra/login #1506, servicios remotos, claves ni publicación.
+
+PASS por cola: fmt/check/Clippy, Nextest 1216/1216 (6 skips heredados),
+lifecycle 18/18 y Hub Release propio. PS5.1 desde Bash: packaging 175, beta 99
+(+configuración 10), Setup NSIS 50, feed 9, desinstalación 2, guardas 2,
+MSIX/sintaxis 12 sin paquete Store real; sintaxis PS, changelog y diff PASS.
+Setup anterior 0.0.960 y nuevo 0.0.961 prueban cambio de nombre, datos exactos,
+rollback/versiones, rechazo 2/3/4, instalación limpia, reparación y reinstalación.
+Hub real confirma tras Setup y reparación (PIDs 22680/32720). Feed firmado con
+clave TEST y bootstrap antiguo: fallo real restaura generación/registro;
+reaplicación confirma Hub PID 6228, renombra y conserva hashes de ambos scripts
+raíz. Desinstalación registrada conserva datos y retira accesos también por feed.
+Tres capturas 1440×900/DPI100 inspeccionadas; ninguna instalación real modificada:
+huella de scripts/estado/registro de Isaac idéntica y sin registro/accesos/Hub QA.
+
+Evidencia, scripts y hashes: `C:/tmp/1511-nombre-evidence/`; Setup/paquetes
+QA en `E:/tmp/1511/0.0.960` y `0.0.961`. Se reutilizan nueve exe de #1492 y
+se recompila Hub Release: local, unsigned/source_dirty=true, no candidata del
+SHA completo. Plantilla NSIS productiva compila con nombre Vantare, sin ejecutarla.
+Se conservan fallos corregidos del harness: LASTEXITCODE no definido, portable
+no preparado y título consultado antes de mostrar el Hub oculto; además un
+turno de pantalla ocupado, respetado antes de abrir ventanas. Suites finales PASS.
+No prueba login real, feed publicado, LMU/OBS, Windows limpio, Mac ni DPI125.
+No gates Go/frontend ni telemetría larga: no cambian legado/runtime/domain/IPC
+ni testdata. Falta revisión independiente y build completa sobre la integración
+limpia antes de distribuir; siguiente paso: revisar la PR draft contra candidata.
+`docs/roadmap/plan.md` ausente también en origin/nightly consultado; no se recrea.
+Seguimiento GitHub por encargo, por encima de la regla Notion antigua de esta base.
+Sin merge, promoción, release ni acción de producción.
+
 ## #1492 — Setup encima y adopción de datos (2026-10-08)
 
 Ronda 2 sobre `072ca621`: códigos de bloqueo tipados en `Exception.Data`

@@ -229,7 +229,7 @@ impl Theme {
         self.white = c.text;
         self.primary_bg = c.text;
         self.primary_ink = c.on_primary;
-        self.carmine = c.accent;
+        self.carmine = c.accent_bright;
         self.coral = c.accent_bright;
         self.carmine_dark = c.accent_dark;
         self.accent_rgb = c.accent;

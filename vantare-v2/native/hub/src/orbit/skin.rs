@@ -128,6 +128,31 @@ impl Skin {
         if scheme == Scheme::Light {
             skin.map(light);
         }
+        // AA se comprueba sobre las superficies de texto, no sobre el color de marca.
+        for color in [
+            &mut skin.text1,
+            &mut skin.text2,
+            &mut skin.text3,
+            &mut skin.cap,
+            &mut skin.accent_bright,
+        ] {
+            *color = readable(*color, &[skin.l1, skin.l3]);
+        }
+        skin.on_primary = 0xff_ffff;
+        skin.button.from = readable(skin.button.from, &[skin.on_primary]);
+        skin.button.to = readable(skin.button.to, &[skin.on_primary]);
+        skin.button_pressed = readable(skin.button_pressed, &[skin.on_primary]);
+        skin.button_hover.from = readable(skin.button_hover.from, &[skin.on_primary]);
+        skin.button_hover.to = readable(skin.button_hover.to, &[skin.on_primary]);
+        if palette == Palette::Vantare {
+            skin.accent = 0xd8_0000;
+            skin.accent_fill = 0xd8_0000;
+            skin.button = ramp(0xdc_0a0a, 0xc4_0000);
+            if scheme == Scheme::Light {
+                // Rojo de texto oscuro: el rojo de marca queda reservado al relleno.
+                skin.accent_bright = readable(0x8a_0000, &[skin.l1, skin.l3]);
+            }
+        }
         skin
     }
 
@@ -139,7 +164,7 @@ impl Skin {
                 to: 0x12_080b,
                 end: 0.58,
             },
-            wash: alpha(0xff_525c, 0x1a),
+            wash: alpha(0xd8_0000, 0x1a),
             wash_h: 520.0,
             base: 0x17_0a0e,
             sidebar: ramp(0x1c_0a0f, 0x0f_0608),
@@ -159,13 +184,13 @@ impl Skin {
             text1: 0xfa_f7f7,
             text2: 0xde_cfd2,
             text3: 0xb9_9fa4,
-            cap: 0x8f_7278,
-            on_primary: 0x17_110f,
-            accent: 0xe1_4a54,
-            accent_bright: 0xff_7a82,
-            accent_fill: 0xb5_2b35,
-            wine: 0x6e_1019,
-            accent_tint: alpha(0xe1_4a54, 0x26),
+            cap: 0xaa_8f94,
+            on_primary: 0xff_ffff,
+            accent: 0xd8_0000,
+            accent_bright: 0xff_6b6b,
+            accent_fill: 0xd8_0000,
+            wine: 0x8a_0000,
+            accent_tint: alpha(0xd8_0000, 0x26),
             ok: 0x22_c55e,
             ok_tint: 0x1f_3426,
             warn: 0xf5_9e0b,
@@ -181,41 +206,41 @@ impl Skin {
                 panel: 10.0,
             },
             hero: Ramp {
-                from: 0x8e_1d2b,
+                from: 0x8a_0000,
                 to: 0x2a_0c13,
                 end: 0.62,
             },
             hero_wash: Ramp {
                 from: alpha(0xff_6e76, 0x52),
-                to: alpha(0xff_525c, 0),
+                to: alpha(0xd8_0000, 0),
                 end: 0.46,
             },
             hero_light: alpha(0xff_aaaf, 0x47),
-            hero_ring: alpha(0xff_525c, 0x61),
+            hero_ring: alpha(0xd8_0000, 0x61),
             now: Ramp {
-                from: 0x6e_1824,
+                from: 0x6e_0000,
                 to: 0x22_090f,
                 end: 0.62,
             },
             now_wash: Ramp {
                 from: alpha(0xff_6e76, 0x47),
-                to: alpha(0xff_525c, 0),
+                to: alpha(0xd8_0000, 0),
                 end: 0.46,
             },
             now_light: alpha(0xff_aaaf, 0x3d),
-            now_ring: alpha(0xff_525c, 0x52),
+            now_ring: alpha(0xd8_0000, 0x52),
             nav_active: ramp(0x4a_1b25, 0x36_131b),
             nav_light: alpha(0xff_bec3, 0x1f),
-            nav_ring: alpha(0xff_525c, 0x47),
-            selection: alpha(0xff_525c, 0xcc),
-            button: ramp(0xe5_434f, 0xc5_2f3b),
-            button_hover: ramp(0xec_535e, 0xcf_3844),
-            button_pressed: 0xb9_2a35,
-            brand: ramp(0xff_525c, 0xb9_000d),
-            live: ramp(0xff_7a82, 0xd1_1f2e),
-            live_halo: alpha(0xe1_4a54, 0x33),
-            progress: ramp(0x8e_1823, 0xff_525c),
-            progress_glow: alpha(0xff_525c, 0x80),
+            nav_ring: alpha(0xd8_0000, 0x47),
+            selection: alpha(0xd8_0000, 0xcc),
+            button: ramp(0xdc_0a0a, 0xc4_0000),
+            button_hover: ramp(0xdc_0a0a, 0xd0_0000),
+            button_pressed: 0xb9_0000,
+            brand: ramp(0xd8_0000, 0xb9_0000),
+            live: ramp(0xd8_0000, 0xd8_0000),
+            live_halo: alpha(0xd8_0000, 0x33),
+            progress: ramp(0x8a_0000, 0xd8_0000),
+            progress_glow: alpha(0xd8_0000, 0x80),
         }
     }
 
@@ -271,6 +296,13 @@ impl Skin {
             nav_light: alpha(0xff_ffff, 0x14),
             nav_ring: alpha(0xff_ffff, 0x0f),
             selection: alpha(0xe1_4a54, 0xa6),
+            accent: 0xe1_4a54,
+            accent_bright: 0xff_7a82,
+            accent_fill: 0xb5_2b35,
+            wine: 0x6e_1019,
+            on_primary: 0xff_ffff,
+            button: ramp(0xc5_2f3b, 0xb9_2a35),
+            button_hover: ramp(0xc5_2f3b, 0xb9_2a35),
             ..Self::vantare()
         }
     }
@@ -343,6 +375,46 @@ impl Skin {
         self.hero_wash = ramp_rgba(self.hero_wash);
         self.now_wash = ramp_rgba(self.now_wash);
     }
+}
+
+/// Contraste WCAG sRGB, compartido por la resolución y sus regresiones.
+pub(super) fn contrast(foreground: u32, background: u32) -> f64 {
+    let luminance = |color: u32| {
+        let [_, r, g, b] = color.to_be_bytes();
+        let channel = |value: u8| {
+            let value = f64::from(value) / 255.0;
+            if value <= 0.04045 {
+                value / 12.92
+            } else {
+                ((value + 0.055) / 1.055).powf(2.4)
+            }
+        };
+        0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b)
+    };
+    let a = luminance(foreground);
+    let b = luminance(background);
+    (a.max(b) + 0.05) / (a.min(b) + 0.05)
+}
+
+/// Conserva el token si pasa AA; de lo contrario ajusta solo su luminosidad.
+fn readable(color: u32, backgrounds: &[u32]) -> u32 {
+    let target = if contrast(0xff_ffff, backgrounds[0]) >= contrast(0, backgrounds[0]) {
+        255
+    } else {
+        0
+    };
+    let [_, r, g, b] = color.to_be_bytes();
+    for step in 0..=255_u32 {
+        let mix = |value: u8| (u32::from(value) * (255 - step) + target * step) / 255;
+        let candidate = (mix(r) << 16) | (mix(g) << 8) | mix(b);
+        if backgrounds
+            .iter()
+            .all(|background| contrast(candidate, *background) >= 4.5)
+        {
+            return candidate;
+        }
+    }
+    color
 }
 
 /// Acento y fondo oscuros de cada tema (theme.rs), como `P` en la maqueta.
@@ -471,13 +543,48 @@ mod tests {
     use super::*;
 
     #[test]
+    fn every_theme_passes_aa_for_normal_text_and_primary_buttons() {
+        for palette in Palette::ALL {
+            for scheme in [Scheme::Dark, Scheme::Light] {
+                let skin = Skin::resolve(palette, scheme);
+                for foreground in [
+                    skin.text1,
+                    skin.text2,
+                    skin.text3,
+                    skin.cap,
+                    skin.accent_bright,
+                ] {
+                    for background in [skin.l1, skin.l3] {
+                        assert!(
+                            contrast(foreground, background) >= 4.5,
+                            "{palette:?}/{scheme:?}: {foreground:06x} sobre {background:06x}"
+                        );
+                    }
+                }
+                for background in [
+                    skin.button.from,
+                    skin.button.to,
+                    skin.button_hover.from,
+                    skin.button_hover.to,
+                    skin.button_pressed,
+                ] {
+                    assert!(
+                        contrast(skin.on_primary, background) >= 4.5,
+                        "{palette:?}/{scheme:?}: botón {background:06x}"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
     fn vantare_dark_uses_the_exact_r9_and_r10_tokens() {
         let s = Skin::resolve(Palette::Vantare, Scheme::Dark);
         assert_eq!(
             (s.window.from, s.window.to, s.window.end),
             (0x3a_111b, 0x12_080b, 0.58)
         );
-        assert_eq!((s.wash, s.wash_h), (0xff52_5c1a, 520.0));
+        assert_eq!((s.wash, s.wash_h), (0xd800_001a, 520.0));
         assert_eq!(
             (s.sidebar.from, s.sidebar.to, s.sidebar_line),
             (0x1c_0a0f, 0x0f_0608, 0xff78_821f)
@@ -493,7 +600,7 @@ mod tests {
         );
         assert_eq!(
             [s.text1, s.text2, s.text3, s.cap],
-            [0xfa_f7f7, 0xde_cfd2, 0xb9_9fa4, 0x8f_7278]
+            [0xfa_f7f7, 0xde_cfd2, 0xb9_9fa4, 0xaa_8f94]
         );
         let r = s.radius;
         assert_eq!(
@@ -502,16 +609,16 @@ mod tests {
         );
         assert_eq!(
             (s.hero.from, s.hero.to, s.hero.end, s.hero_wash.from),
-            (0x8e_1d2b, 0x2a_0c13, 0.62, 0xff6e_7652)
+            (0x8a_0000, 0x2a_0c13, 0.62, 0xff6e_7652)
         );
-        assert_eq!((s.now.from, s.now.to), (0x6e_1824, 0x22_090f));
+        assert_eq!((s.now.from, s.now.to), (0x6e_0000, 0x22_090f));
         assert_eq!(
             (s.nav_active.from, s.nav_active.to, s.nav_ring),
-            (0x4a_1b25, 0x36_131b, 0xff52_5c47)
+            (0x4a_1b25, 0x36_131b, 0xd800_0047)
         );
-        assert_eq!(s.selection, 0xff52_5ccc);
-        assert_eq!((s.button.from, s.button.to), (0xe5_434f, 0xc5_2f3b));
-        assert_eq!(s.accent, 0xe1_4a54);
+        assert_eq!(s.selection, 0xd800_00cc);
+        assert_eq!((s.button.from, s.button.to), (0xdc_0a0a, 0xc4_0000));
+        assert_eq!(s.accent, 0xd8_0000);
     }
 
     #[test]
@@ -533,7 +640,13 @@ mod tests {
         );
         assert_eq!(
             [s.text1, s.text2, s.text3, s.cap, s.on_primary],
-            [0xfa_f7f7, 0xd6_cfd0, 0xb0_a7a9, 0x87_7d80, 0x17_110f]
+            [
+                0xfa_f7f7,
+                0xd6_cfd0,
+                0xb0_a7a9,
+                readable(0x87_7d80, &[s.l1, s.l3]),
+                0xff_ffff
+            ]
         );
         let r = s.radius;
         assert_eq!(

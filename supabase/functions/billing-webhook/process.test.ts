@@ -7,7 +7,11 @@ import {
   loadPolarProductMap,
   resolveCheckoutKeyByProductId,
 } from "../_shared/mapping.ts";
-import { VALID_POLAR_PRODUCT_MAP_JSON } from "../_shared/test-fixtures.ts";
+import {
+  SANDBOX_IDS,
+  VALID_POLAR_PRODUCT_MAP_JSON,
+  withProAnnualAndNewMonthlyPrice,
+} from "../_shared/test-fixtures.ts";
 import {
   minimizePolarWebhookEvent,
   parsePolarWebhookEvent,
@@ -156,6 +160,13 @@ function loadTestMap() {
   return loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
     environment: "sandbox",
   });
+}
+
+function loadProAnnualTestMap() {
+  return loadPolarProductMap(
+    withProAnnualAndNewMonthlyPrice(VALID_POLAR_PRODUCT_MAP_JSON),
+    { environment: "sandbox" },
+  );
 }
 
 function loadProductionTestMap() {
@@ -2270,4 +2281,124 @@ Deno.test("processPolarWebhookEvent: terminal subscription revokes recovery but 
     ),
     true,
   );
+});
+
+// ISA-1499: the yearly Pro product walks the same lifecycle as the monthly one
+// (alta, renovación, cancelación al final del periodo y revocación) and must
+// end with identical grants; only the period length differs.
+async function runProLifecycle(productId: string, periodDays: number) {
+  const mock = createMockSupabase();
+  const deps = processDeps(mock, loadProAnnualTestMap);
+  const day = 24 * 60 * 60 * 1000;
+  const start = Date.parse("2026-07-09T12:00:00.000Z");
+  const firstEnd = new Date(start + periodDays * day).toISOString();
+  const renewedEnd = new Date(start + 2 * periodDays * day).toISOString();
+  const base = {
+    id: `sub-${productId}`,
+    product_id: productId,
+    external_customer_id: USER_ID,
+  };
+  const grants = () =>
+    [...deps.projection.grants.values()].map((grant) => ({ ...grant }));
+  const steps: unknown[] = [];
+
+  steps.push(
+    await processPolarWebhookEvent(
+      {
+        type: "subscription.active",
+        data: {
+          ...base,
+          status: "active",
+          modified_at: "2026-07-09T12:00:00.000Z",
+          current_period_end: firstEnd,
+        },
+      },
+      `evt-${productId}-active`,
+      deps,
+    ),
+    grants(),
+  );
+  steps.push(
+    await processPolarWebhookEvent(
+      {
+        type: "subscription.updated",
+        data: {
+          ...base,
+          status: "active",
+          modified_at: "2026-07-09T12:10:00.000Z",
+          current_period_end: renewedEnd,
+        },
+      },
+      `evt-${productId}-renewal`,
+      deps,
+    ),
+    grants(),
+  );
+  steps.push(
+    await processPolarWebhookEvent(
+      {
+        type: "subscription.canceled",
+        data: {
+          ...base,
+          status: "active",
+          cancel_at_period_end: true,
+          modified_at: "2026-07-09T12:20:00.000Z",
+          current_period_end: renewedEnd,
+        },
+      },
+      `evt-${productId}-cancel`,
+      deps,
+    ),
+    grants(),
+  );
+  steps.push(
+    await processPolarWebhookEvent(
+      {
+        type: "subscription.revoked",
+        data: {
+          ...base,
+          status: "revoked",
+          modified_at: "2026-07-09T12:30:00.000Z",
+          current_period_end: renewedEnd,
+        },
+      },
+      `evt-${productId}-revoked`,
+      deps,
+    ),
+    grants(),
+  );
+  return { steps, firstEnd, renewedEnd };
+}
+
+Deno.test("processPolarWebhookEvent: Pro annual alta, renovación y cancelación conceden Pro", async () => {
+  const { steps, firstEnd, renewedEnd } = await runProLifecycle(
+    SANDBOX_IDS.proAnnualProduct,
+    365,
+  );
+  const pro = (status: string, validUntil: string | null) => [{
+    capability: "vantare.plan.pro",
+    status,
+    validUntil,
+  }];
+  assertEquals(steps[0], {
+    status: "processed",
+    action: "updated_monthly_bundle",
+  });
+  assertEquals(steps[1], pro("active", firstEnd));
+  assertEquals(steps[3], pro("active", renewedEnd));
+  assertEquals(steps[5], pro("active", renewedEnd));
+  assertEquals(steps[6], {
+    status: "processed",
+    action: "revoked_monthly_revoked",
+  });
+  assertEquals(
+    (steps[7] as { status: string }[]).map((grant) => grant.status),
+    ["revoked"],
+  );
+});
+
+Deno.test("processPolarWebhookEvent: Pro annual and monthly produce identical grants", async () => {
+  const annual = await runProLifecycle(SANDBOX_IDS.proAnnualProduct, 30);
+  const monthly = await runProLifecycle(SANDBOX_IDS.proProduct, 30);
+  assertEquals(annual.steps, monthly.steps);
 });

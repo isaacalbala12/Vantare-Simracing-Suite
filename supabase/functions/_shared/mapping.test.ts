@@ -7,7 +7,9 @@ import {
 } from "./mapping.ts";
 import {
   SANDBOX_ENVIRONMENT,
+  SANDBOX_IDS,
   VALID_POLAR_PRODUCT_MAP_JSON,
+  withProAnnualAndNewMonthlyPrice,
 } from "./test-fixtures.ts";
 
 function load(raw = VALID_POLAR_PRODUCT_MAP_JSON, trialConfirmed = false) {
@@ -193,4 +195,67 @@ Deno.test("mapping v2: resolves exact product and price ids", () => {
   );
   assertEquals(unknown.ok, false);
   if (!unknown.ok) assertEquals(unknown.code, "mapping_price_id_unknown");
+});
+
+Deno.test("mapping v2: Pro annual grants exactly the Pro monthly capabilities", () => {
+  const loaded = load(
+    withProAnnualAndNewMonthlyPrice(VALID_POLAR_PRODUCT_MAP_JSON),
+  );
+  if (!loaded.ok) throw new Error(loaded.message);
+  const monthly = resolveCheckoutKeyByProductId(
+    loaded.map,
+    SANDBOX_IDS.proProduct,
+  );
+  const annual = resolveCheckoutKeyByProductId(
+    loaded.map,
+    SANDBOX_IDS.proAnnualProduct,
+  );
+  if (!monthly.ok || !annual.ok) throw new Error("Pro keys must resolve");
+  assertEquals(annual.key, "pro_annual");
+  assertEquals(annual.config.billing_type, "subscription");
+  assertEquals(annual.config.capabilities, monthly.config.capabilities);
+  assertEquals(annual.config.channels, monthly.config.channels);
+  assertEquals(resolveCheckoutKey(loaded.map, "pro_annual").ok, true);
+});
+
+Deno.test("mapping v2: old and new Pro monthly prices resolve to pro_monthly", () => {
+  const loaded = load(
+    withProAnnualAndNewMonthlyPrice(VALID_POLAR_PRODUCT_MAP_JSON),
+  );
+  if (!loaded.ok) throw new Error(loaded.message);
+  for (const priceId of [SANDBOX_IDS.proPrice, SANDBOX_IDS.proMonthlyPriceV2]) {
+    const resolved = resolveCheckoutKeyByPriceId(loaded.map, priceId);
+    assertEquals(resolved.ok && resolved.key, "pro_monthly");
+  }
+  const annual = resolveCheckoutKeyByPriceId(
+    loaded.map,
+    SANDBOX_IDS.proAnnualPrice,
+  );
+  assertEquals(annual.ok && annual.key, "pro_annual");
+});
+
+Deno.test("mapping v2: Pro annual cannot widen capabilities or enable a trial", () => {
+  for (
+    const change of [
+      (config: Record<string, unknown>) => {
+        config.capabilities = ["vantare.plan.pro", "vantare.channel.nightly"];
+      },
+      (config: Record<string, unknown>) => {
+        config.trial = {
+          enabled: true,
+          interval: "day",
+          interval_count: 7,
+          provider_anti_abuse_confirmed: true,
+        };
+      },
+    ]
+  ) {
+    const raw = JSON.parse(
+      withProAnnualAndNewMonthlyPrice(VALID_POLAR_PRODUCT_MAP_JSON),
+    );
+    change(raw.checkout_keys.pro_annual);
+    const result = load(JSON.stringify(raw), true);
+    assertEquals(result.ok, false);
+    if (!result.ok) assertEquals(result.code, "mapping_invalid_key_meta");
+  }
 });

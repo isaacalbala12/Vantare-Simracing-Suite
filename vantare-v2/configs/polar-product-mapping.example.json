@@ -29,14 +29,28 @@
       "channels": ["stable"],
       "launch_scope_version": null,
       "trial": { "enabled": false }
+    },
+    "pro_annual": {
+      "polar_product_id": "00000000-0000-0000-0000-000000000007",
+      "polar_price_ids": ["00000000-0000-0000-0000-000000000008"],
+      "plan_sku": "pro_annual",
+      "billing_type": "subscription",
+      "lifetime": false,
+      "active": true,
+      "capabilities": ["vantare.plan.pro"],
+      "channels": ["stable"],
+      "launch_scope_version": null,
+      "trial": { "enabled": false }
     }
   },
   "product_id_to_checkout_key": {
     "00000000-0000-0000-0000-000000000001": "launch_lifetime",
-    "00000000-0000-0000-0000-000000000003": "pro_monthly"
+    "00000000-0000-0000-0000-000000000003": "pro_monthly",
+    "00000000-0000-0000-0000-000000000007": "pro_annual"
   },
   "price_id_to_checkout_key": {
     "00000000-0000-0000-0000-000000000002": "launch_lifetime",
-    "00000000-0000-0000-0000-000000000004": "pro_monthly"
+    "00000000-0000-0000-0000-000000000004": "pro_monthly",
+    "00000000-0000-0000-0000-000000000008": "pro_annual"
   }
 }

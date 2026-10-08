@@ -21,6 +21,7 @@ Entrada contrastada con el código de nightly del 2026-09-14. [Notion](https://a
 | Aceptación comercial | [Matriz sandbox](bil-09-lifecycle-matrix.md) |
 | Métricas, errores y diagnóstico | [Observabilidad](bil-10-observability-runbook.md) |
 | Tester, Nightly Tester, Owner o retiro legacy | [Acceso operativo](bil-10c-operational-access-runbook.md) |
+| Cambio de precios Pro (mensual/anual) y vuelta atrás | [Precios Pro](bil-11-polar-precios-pro-runbook.md) |
 
 Los estados «no desplegado», resultados y recuentos BIL pertenecen a sus cortes originales; releer tarea, SHA y evidencia de despliegue antes de operar. Los comandos Deno/SQL se ejecutan desde la raíz Git; `go run ./cmd/vantare-admin` desde `vantare-v2/`. Las matrices PostgreSQL requieren el entorno Docker/PowerShell declarado por su runner. Dry-run no significa offline: puede leer servicios remotos y necesita el entorno administrativo autorizado.
 

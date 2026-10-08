@@ -460,6 +460,24 @@ Las barras se deslizan al cambiar de vuelta. Escenas `fuel-vantare.scene.json` y
 adaptadores aún no publican energía virtual, consumo de la vuelta, repostaje ni
 stint: en pista real esas partes se omiten o salen «—».
 
+## Delta Vantare (#1497)
+
+Mismo sistema y kit, sistema por defecto (`designSystem`); Eficiencia sigue
+disponible. Proyección pura en `domain::delta_vantare`: el delta lo resuelve el
+núcleo para cada referencia (`reference`: mejor vuelta `delta_best_s`, vuelta
+óptima `Player::delta_optimal_s` y líder de la clase `Player::delta_leader_s`);
+no se reconstruye en la proyección. Añade el tiempo de la referencia, la vuelta
+predicha (la nativa con la mejor vuelta), los estados en pausa (boxes, vuelta de
+salida, FCY), vuelta invalidada (`Player::lap_invalid`), sin referencia, y los
+sectores de la vuelta en curso (morado mejor de la sesión, verde mejor propio,
+amarillo más lento; el sector en curso se rellena). Formatos en `size`: píldora
+(la del Studio), barra 380 y ampliado 520 con selector de referencia y sectores.
+La barra de ±1 s se desliza hacia el valor nuevo y la vuelta récord personal
+destella en morado. Escenas `delta-vantare.scene.json` y
+`delta-vantare-carrera.scene.json` con los datos del catálogo (no telemetría).
+Los adaptadores aún no publican los deltas frente a óptima y líder ni la vuelta
+invalidada: en pista real esas referencias salen «sin referencia».
+
 ### Harness anterior y mediciones históricas
 
 `vantare-workshop` abre la misma ventana por monitor con uno o varios widgets

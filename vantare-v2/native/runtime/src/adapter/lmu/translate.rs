@@ -473,6 +473,10 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool, telemetry_stale: bool) -> 
         // Energía virtual, servicio de la parada y stint aún no se leen de LMU (#1497).
         pit_service: PitService::default(),
         stint: Stint::default(),
+        // Deltas frente a óptima y líder y vuelta invalidada: aún no (#1497).
+        delta_optimal_s: Quality::Unavailable,
+        delta_leader_s: Quality::Unavailable,
+        lap_invalid: Quality::Unavailable,
     }
 }
 

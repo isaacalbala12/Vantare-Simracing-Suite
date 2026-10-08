@@ -81,6 +81,38 @@ pub(crate) struct Style {
     pub relative: RelativeStyle,
     pub brand: BrandStyle,
     pub fuel: FuelStyle,
+    pub delta: DeltaStyle,
+}
+
+/// Geometría y colores propios de Delta Vantare.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct DeltaStyle {
+    pub pill_width: f32,
+    pub pill_height: f32,
+    pub pill_label: f32,
+    pub pill_value: f32,
+    pub width_bar: f32,
+    pub width_expanded: f32,
+    pub big: f32,
+    pub big_height: f32,
+    pub message_height: f32,
+    pub bar: f32,
+    pub tick: f32,
+    pub tick_labels: f32,
+    /// Segundos que llenan media barra.
+    pub range_s: f32,
+    pub sector_bar: f32,
+    pub sector_height: f32,
+    pub segment_height: f32,
+    pub ease_ms: f32,
+    pub fill_gain: Color,
+    pub fill_loss: Color,
+    /// Opacidad del extremo interior del degradado de la barra.
+    pub fill_from: f32,
+    pub track: Color,
+    pub center: Color,
+    pub grey: Color,
 }
 
 /// Geometría y colores propios de Fuel y stint Vantare.

@@ -241,6 +241,9 @@ pub(crate) mod tests {
             "pit_tyres",
             "stint_laps",
             "stint_elapsed_s",
+            "delta_optimal_s",
+            "delta_leader_s",
+            "lap_invalid",
         ] {
             assert!(player.remove(field).is_some(), "{field}");
         }
@@ -258,6 +261,8 @@ pub(crate) mod tests {
         assert_eq!(me.fuel.lap_projection_l, Quality::Unavailable);
         assert_eq!(me.pit_service, PitService::default());
         assert_eq!(me.stint, Stint::default());
+        assert_eq!(me.delta_optimal_s, Quality::Unavailable);
+        assert_eq!(me.lap_invalid, Quality::Unavailable);
         assert_eq!(car.tyre_compound, Quality::Unavailable);
         assert!(car.best_sectors_s.is_empty() && car.current_sectors_s.is_empty());
         // Sin dato no se escriben: las fotos existentes conservan sus bytes.
@@ -383,6 +388,9 @@ pub(crate) mod tests {
                 laps: Quality::Reliable(13),
                 elapsed_s: Quality::Stale(2712.0),
             },
+            delta_optimal_s: Quality::Estimated(0.388),
+            delta_leader_s: Quality::Reliable(-0.05),
+            lap_invalid: Quality::Reliable(true),
             damage: Damage {
                 aero: Quality::Reliable(0.9),
                 body: Quality::Estimated(0.8),

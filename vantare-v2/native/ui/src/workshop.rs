@@ -385,6 +385,13 @@ fn system_defaults(kind: Kind, system: crate::standings::DesignSystem) -> Settin
                 ..Default::default()
             })
         }
+        (Kind::Delta, DesignSystem::Vantare) => Settings::Delta(crate::delta::Settings {
+            brand_visible: Some(true),
+            ..Default::default()
+        }),
+        (Kind::Delta, DesignSystem::Eficiencia) => {
+            Settings::Delta(crate::delta::Settings::eficiencia())
+        }
         (Kind::FuelStrategy, DesignSystem::Eficiencia) => {
             Settings::FuelStrategy(crate::fuel_strategy::Settings::eficiencia())
         }
@@ -1004,6 +1011,7 @@ impl Workshop {
                         Settings::Standings(settings) => &mut settings.brand_visible,
                         Settings::Relative(settings) => &mut settings.brand_visible,
                         Settings::FuelStrategy(settings) => &mut settings.brand_visible,
+                        Settings::Delta(settings) => &mut settings.brand_visible,
                         _ => return Err("este widget no tiene marca".into()),
                     };
                     *brand = Some(value == "true");
@@ -1060,6 +1068,11 @@ impl Workshop {
                             if old.design_system != new.design_system =>
                         {
                             system_defaults(Kind::FuelStrategy, new.design_system)
+                        }
+                        (Settings::Delta(old), Settings::Delta(new))
+                            if old.design_system != new.design_system =>
+                        {
+                            system_defaults(Kind::Delta, new.design_system)
                         }
                         (_, next) => next,
                     };
@@ -1373,8 +1386,8 @@ mod tests {
                 );
             }
         }
-        // 43 demostraciones React + seis escenas Vantare r10b (#1497).
-        assert_eq!(count, 49);
+        // 43 demostraciones React + ocho escenas Vantare r10b (#1497).
+        assert_eq!(count, 51);
         let default = Scene::new(&initial).expect("Standings default");
         assert_eq!(
             default.snapshots[0].state.cars[0].last_lap_s.current(),

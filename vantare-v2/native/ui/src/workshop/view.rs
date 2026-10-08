@@ -14,6 +14,7 @@ impl Workshop {
             Settings::Standings(s) => s.brand_visible,
             Settings::Relative(s) => s.brand_visible,
             Settings::FuelStrategy(s) => s.brand_visible,
+            Settings::Delta(s) => s.brand_visible,
             _ => None,
         };
         [
@@ -411,12 +412,13 @@ impl Render for Workshop {
             Settings::Standings(s) => s.design_system == crate::standings::DesignSystem::Vantare,
             Settings::Relative(s) => s.design_system == crate::standings::DesignSystem::Vantare,
             Settings::FuelStrategy(s) => s.design_system == crate::standings::DesignSystem::Vantare,
+            Settings::Delta(s) => s.design_system == crate::standings::DesignSystem::Vantare,
             _ => false,
         };
         let relative = self.kind == Kind::Relative;
         let system = if matches!(
             self.kind,
-            Kind::Standings | Kind::Relative | Kind::FuelStrategy
+            Kind::Standings | Kind::Relative | Kind::FuelStrategy | Kind::Delta
         ) {
             Self::segments(
                 Control::Setting("designSystem"),
@@ -526,6 +528,33 @@ impl Render for Workshop {
                         ("compact", "Compacto"),
                         ("standard", "Estándar"),
                         ("expanded", "Ampliado"),
+                    ],
+                    cx,
+                )))
+                .children(self.vantare_look(cx));
+        } else if vantare && self.kind == Kind::Delta {
+            let (size, reference) = match &self.settings {
+                Settings::Delta(s) => (s.size.clone(), s.reference.clone()),
+                _ => (String::new(), String::new()),
+            };
+            panel = panel
+                .child(group("Formato").child(Self::segments(
+                    Control::Setting("size"),
+                    &size,
+                    &[
+                        ("pill", "Píldora"),
+                        ("bar", "Barra"),
+                        ("expanded", "Ampliado"),
+                    ],
+                    cx,
+                )))
+                .child(group("Referencia").child(Self::segments(
+                    Control::Setting("reference"),
+                    &reference,
+                    &[
+                        ("best", "Mejor"),
+                        ("optimal", "Óptima"),
+                        ("leader", "Líder"),
                     ],
                     cx,
                 )))

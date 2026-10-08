@@ -275,6 +275,13 @@ pub struct Player {
     pub pit_loss_s: Quality<f64>,
     pub pit_service: PitService,
     pub stint: Stint,
+    /// Diferencia con la vuelta óptima (suma de los mejores sectores propios)
+    /// en este punto de la vuelta; negativo = más rápido. #1497.
+    pub delta_optimal_s: Quality<f64>,
+    /// Diferencia con la mejor vuelta del líder de la clase. #1497.
+    pub delta_leader_s: Quality<f64>,
+    /// La vuelta en curso no cuenta (límites de pista). #1497.
+    pub lap_invalid: Quality<bool>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -534,7 +541,13 @@ fn degrade_player(player: &mut Player) {
         pit_loss_s,
         pit_service,
         stint,
+        delta_optimal_s,
+        delta_leader_s,
+        lap_invalid,
     } = player;
+    make_stale(delta_optimal_s);
+    make_stale(delta_leader_s);
+    make_stale(lap_invalid);
     let Telemetry {
         throttle,
         brake,

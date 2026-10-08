@@ -239,7 +239,12 @@ fn sanitize_player(player: &mut Player) {
         pit_loss_s,
         pit_service,
         stint,
+        delta_optimal_s,
+        delta_leader_s,
+        lap_invalid: _, // bool: no requiere saneamiento numérico.
     } = player;
+    finite(delta_optimal_s);
+    finite(delta_leader_s);
     let Telemetry {
         throttle,
         brake,

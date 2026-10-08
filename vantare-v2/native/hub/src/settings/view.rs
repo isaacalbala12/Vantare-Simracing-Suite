@@ -508,56 +508,37 @@ impl Hub {
         }))
     }
     pub(in crate::shell) fn settings_header(&self, cx: &gpui::App) -> Div {
-        div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .gap(px(16.0))
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(4.0))
-                    .child(orbit::text(
-                        self.settings.page.title(),
-                        28.0,
-                        700,
-                        orbit::ink(cx),
-                        cx,
-                    ))
-                    .child(text(
-                        self.settings.page.description(),
+        orbit::neo_page_header(
+            self.settings.page.title(),
+            self.settings.page.description(),
+            cx,
+        )
+        .child(
+            div()
+                .w(px(300.0))
+                .flex_none()
+                .relative()
+                .child(self.settings.query.clone())
+                .when(self.settings.query.read(cx).value.is_empty(), |search| {
+                    search.child(div().absolute().left(px(13.0)).top(px(10.0)).child(text(
+                        "Buscar un ajuste…",
                         13.0,
                         400,
-                        orbit::ink_2(cx),
+                        orbit::ink_3(cx),
                         cx,
-                    )),
-            )
-            .child(
-                div()
-                    .w(px(300.0))
-                    .flex_none()
-                    .relative()
-                    .child(self.settings.query.clone())
-                    .when(self.settings.query.read(cx).value.is_empty(), |search| {
-                        search.child(div().absolute().left(px(13.0)).top(px(10.0)).child(text(
-                            "Buscar un ajuste…",
-                            13.0,
-                            400,
-                            orbit::ink_3(cx),
-                            cx,
-                        )))
-                    }),
-            )
+                    )))
+                }),
+        )
     }
 
     pub(in crate::shell) fn settings_tabs(&self, cx: &mut Context<Self>) -> gpui::Stateful<Div> {
         let query = self.settings.query.read(cx).value.as_str();
         let mut tabs = div()
             .id("settings-tabs")
+            .h_full()
             .flex()
             .items_center()
-            .gap(px(6.0))
+            .gap(px(20.0))
             .min_w_0()
             .overflow_x_scroll();
         for (index, page) in Page::ALL.into_iter().enumerate() {
@@ -565,39 +546,37 @@ impl Hub {
                 continue;
             }
             tabs = tabs.child(
-                orbit::ghost_button(("settings-tab", index), page.label(), cx)
-                    .flex_none()
-                    .aria_selected(page == self.settings.page)
-                    .aria_description(page.subtitle())
-                    .h(px(48.0))
-                    .text_size(px(11.0))
-                    .rounded_none()
-                    .px(px(4.0))
-                    .border_b_2()
-                    .border_color(if page == self.settings.page {
-                        rgb(orbit::carmine(cx)).into()
-                    } else {
-                        gpui::transparent_black()
-                    })
-                    .track_focus(&self.settings.nav_focus[index])
-                    .on_click(cx.listener(move |hub, _, window, cx| {
-                        hub.settings.nav_focus[index].focus(window, cx);
-                        hub.select_settings_page(page, cx);
-                    }))
-                    .on_key_down(cx.listener(move |hub, event: &gpui::KeyDownEvent, _, cx| {
+                orbit::topbar_tab(
+                    ("settings-tab", index),
+                    page.label(),
+                    page == self.settings.page,
+                    cx,
+                )
+                .aria_description(page.subtitle())
+                .track_focus(&self.settings.nav_focus[index])
+                .on_click(cx.listener(move |hub, _, window, cx| {
+                    hub.settings.nav_focus[index].focus(window, cx);
+                    hub.select_settings_page(page, cx);
+                }))
+                .on_key_down(cx.listener(
+                    move |hub, event: &gpui::KeyDownEvent, _, cx| {
                         if matches!(event.keystroke.key.as_str(), "enter" | "space") {
                             hub.select_settings_page(page, cx);
                             cx.stop_propagation();
                         }
-                    })),
+                    },
+                )),
             );
         }
         tabs
     }
 
     #[allow(clippy::too_many_lines)] // Composición del carril de las siete páginas, sin lógica de negocio.
-    fn settings_rail(&self, cx: &mut Context<Self>) -> Div {
-        let mut rail = stack().min_h_full().gap(px(16.0));
+    pub(in crate::shell) fn settings_rail(
+        &self,
+        cx: &mut Context<Self>,
+    ) -> Vec<orbit::RailSection> {
+        let mut rail = Vec::new();
         let (title, icon, note) = match self.settings.page {
             Page::Appearance => (
                 "Estilo de los overlays",
@@ -635,10 +614,11 @@ impl Hub {
                 "El consumo de CPU y memoria se mostrará cuando haya una medición disponible.",
             ),
         };
-        rail = rail.child(
-            orbit::neo_card(cx)
-                .flex_shrink(0.0)
-                .child(orbit::neo_header(title, icon, cx))
+        rail.push(orbit::RailSection::new(
+            title,
+            icon,
+            stack()
+                .gap(px(12.0))
                 .child(text(note, 13.0, 400, orbit::ink_2(cx), cx))
                 .when(self.settings.page == Page::Appearance, |card| {
                     card.child(
@@ -649,7 +629,7 @@ impl Hub {
                             ),
                     )
                 }),
-        );
+        ));
         let sections: &[(&str, &str, &str)] = match self.settings.page {
             Page::Performance => &[
                 (
@@ -713,108 +693,97 @@ impl Hub {
             ],
             Page::Appearance | Page::Application => &[],
         };
-        for (index, (title, icon, note)) in sections.iter().enumerate() {
-            rail = rail.child(
-                orbit::neo_card(cx)
-                    .flex_shrink(0.0)
-                    .when(index + 1 == sections.len(), |card| {
-                        card.flex_grow(1.0).min_h_0()
-                    })
-                    .child(orbit::neo_header(*title, icon, cx))
-                    .child(text(*note, 13.0, 400, orbit::ink_2(cx), cx)),
-            );
+        for (title, icon, note) in sections {
+            rail.push(orbit::RailSection::new(
+                *title,
+                icon,
+                text(*note, 13.0, 400, orbit::ink_2(cx), cx),
+            ));
         }
         if self.settings.page == Page::Appearance {
-            rail = rail.child(
+            rail.push(orbit::RailSection::new(
+                "Vista previa",
+                "v-palette",
                 orbit::neo_card(cx)
                     .flex_shrink(0.0)
-                    .flex_grow(1.0)
-                    .min_h_0()
-                    .child(orbit::neo_header("Vista previa", "v-palette", cx))
+                    .child(orbit::neo_header("Vantare", "v-home", cx))
+                    .child(text(
+                        cx.global::<orbit::theme::Theme>().palette.label(),
+                        20.0,
+                        700,
+                        orbit::ink(cx),
+                        cx,
+                    ))
+                    .child(text(
+                        "Así se ven las tarjetas, los textos y los controles con tu tema.",
+                        13.0,
+                        400,
+                        orbit::ink_2(cx),
+                        cx,
+                    ))
+                    .child(orbit::pill("Tema actual", Tone::Accent, cx).self_start())
                     .child(
-                        orbit::neo_card(cx)
-                            .flex_shrink(0.0)
-                            .child(orbit::neo_header("Vantare", "v-home", cx))
-                            .child(text(
-                                cx.global::<orbit::theme::Theme>().palette.label(),
-                                20.0,
-                                700,
-                                orbit::ink(cx),
-                                cx,
-                            ))
-                            .child(text(
-                                "Así se ven las tarjetas, los textos y los controles con tu tema.",
-                                13.0,
-                                400,
-                                orbit::ink_2(cx),
-                                cx,
-                            ))
-                            .child(orbit::pill("Tema actual", Tone::Accent, cx).self_start())
-                            .child(
-                                orbit::carmine_button("theme-preview-button", "Botón primario", cx)
-                                    .self_start()
-                                    .tab_stop(false)
-                                    .cursor_default(),
-                            )
-                            .child(orbit::progress(0.65, cx)),
-                    ),
-            );
+                        orbit::carmine_button("theme-preview-button", "Botón primario", cx)
+                            .self_start()
+                            .tab_stop(false)
+                            .cursor_default(),
+                    )
+                    .child(orbit::progress(0.65, cx)),
+            ));
         }
         if self.settings.page == Page::Application {
-            rail = rail
-                .child(
-                    orbit::neo_card(cx)
-                        .flex_shrink(0.0)
-                        .child(orbit::neo_header("Versión", "v-download", cx))
-                        .child(text(crate::version_label(), 22.0, 700, orbit::ink(cx), cx))
-                        .child(
-                            orbit::small_button("settings-open-updates", "Actualizaciones", cx)
-                                .self_start()
-                                .on_click(cx.listener(|hub, _, _, cx| {
-                                    hub.select_settings_page(Page::Updates, cx);
-                                })),
-                        ),
-                )
-                .child(
-                    orbit::neo_card(cx)
-                        .flex_shrink(0.0)
-                        .child(orbit::neo_header("Diagnóstico", "v-monitor", cx))
-                        .child(self.settings_button(
-                            "settings-rail-prepare",
-                            "Preparar informe",
-                            Action::PrepareDiagnostic,
-                            cx,
-                        ))
-                        .child(self.settings_button(
-                            "settings-rail-copy",
-                            "Copiar informe",
-                            Action::CopyDiagnostic,
-                            cx,
-                        )),
-                )
-                .child(
-                    orbit::neo_card(cx)
-                        .flex_shrink(0.0)
-                        .flex_grow(1.0)
-                        .min_h_0()
-                        .child(orbit::neo_header("Atajos del Hub", "v-keys", cx))
-                        .children(
-                            [
-                                ("Lanzar perfil", "Ctrl L"),
-                                ("Buscar", "Ctrl K"),
-                                ("Contraer barra", "Ctrl B"),
-                            ]
-                            .map(|(label, key)| {
-                                div()
-                                    .flex()
-                                    .justify_between()
-                                    .items_center()
-                                    .min_h(px(42.0))
-                                    .child(text(label, 13.0, 400, orbit::ink_2(cx), cx))
-                                    .child(orbit::keycap(key, cx))
-                            }),
-                        ),
-                );
+            rail.push(orbit::RailSection::new(
+                "Versión",
+                "v-download",
+                stack()
+                    .gap(px(12.0))
+                    .child(text(crate::version_label(), 22.0, 700, orbit::ink(cx), cx))
+                    .child(
+                        orbit::small_button("settings-open-updates", "Actualizaciones", cx)
+                            .self_start()
+                            .on_click(cx.listener(|hub, _, _, cx| {
+                                hub.select_settings_page(Page::Updates, cx);
+                            })),
+                    ),
+            ));
+            rail.push(orbit::RailSection::new(
+                "Diagnóstico",
+                "v-monitor",
+                stack()
+                    .gap(px(8.0))
+                    .child(self.settings_button(
+                        "settings-rail-prepare",
+                        "Preparar informe",
+                        Action::PrepareDiagnostic,
+                        cx,
+                    ))
+                    .child(self.settings_button(
+                        "settings-rail-copy",
+                        "Copiar informe",
+                        Action::CopyDiagnostic,
+                        cx,
+                    )),
+            ));
+            rail.push(orbit::RailSection::new(
+                "Atajos del Hub",
+                "v-keys",
+                stack().children(
+                    [
+                        ("Lanzar perfil", "Ctrl L"),
+                        ("Buscar", "Ctrl K"),
+                        ("Contraer barra", "Ctrl B"),
+                    ]
+                    .map(|(label, key)| {
+                        div()
+                            .flex()
+                            .justify_between()
+                            .items_center()
+                            .min_h(px(42.0))
+                            .child(text(label, 13.0, 400, orbit::ink_2(cx), cx))
+                            .child(orbit::keycap(key, cx))
+                    }),
+                ),
+            ));
         }
         rail
     }
@@ -859,38 +828,20 @@ impl Hub {
                 .track_scroll(&self.settings.panel_scroll),
                 orbit::canvas(cx),
             ));
-        let rail = self.settings_rail(cx);
         div()
             .id("settings-panel")
             .flex_1()
             .min_h_0()
             .w_full()
             .flex()
-            .gap(px(16.0))
             .child(
                 div()
                     .id("settings-main-scroll")
                     .flex_1()
-                    .flex_basis(gpui::relative(2.0 / 3.0))
                     .min_w_0()
                     .h_full()
                     .overflow_hidden()
                     .child(content),
-            )
-            .child(
-                orbit::scroll_fade(
-                    div()
-                        .id("settings-rail-scroll")
-                        .flex_1()
-                        .flex_basis(gpui::relative(1.0 / 3.0))
-                        .min_w_0()
-                        .h_full()
-                        .overflow_y_scroll()
-                        .child(rail),
-                    orbit::canvas(cx),
-                )
-                .flex_basis(gpui::relative(1.0 / 3.0))
-                .h_full(),
             )
     }
     fn settings_zoom(&self, cx: &Context<Self>) -> gpui::Stateful<Div> {

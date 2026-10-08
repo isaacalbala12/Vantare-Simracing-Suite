@@ -13,11 +13,13 @@ pub use dates::activity_time;
 pub mod design;
 mod neo;
 pub use neo::*;
+pub mod adapt;
 mod input;
 mod layer;
 pub mod skin;
-pub mod adapt;
 pub use adapt::Adapt;
+mod kit;
+pub use kit::*;
 mod specimen;
 mod state;
 pub mod theme;
@@ -402,7 +404,7 @@ pub fn rail_button(
         .tooltip(move |_, cx| cx.new(|_| Tooltip(tip.clone())).into())
 }
 
-struct Tooltip(String);
+pub(crate) struct Tooltip(pub(crate) String);
 impl gpui::Render for Tooltip {
     fn render(&mut self, _: &mut gpui::Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
         div()
@@ -632,52 +634,6 @@ pub fn column_with_collapse(
                 .child(mono_text(version.to_owned(), 11.0, ink_4(cx), cx))
                 .child(collapse),
         )
-}
-
-/// Entrada de navegación con subtítulo; la activa lleva la selección carmín.
-pub fn nav_item(
-    id: &'static str,
-    label: &str,
-    subtitle: &str,
-    active: bool,
-    cx: &gpui::App,
-) -> Stateful<Div> {
-    div()
-        .id(id)
-        .role(gpui::Role::Button)
-        .aria_label(label.to_owned())
-        .tab_index(0)
-        .mx(px(12.0))
-        .px(px(12.0))
-        .py(px(8.0))
-        .rounded(px(RADIUS_CONTROL))
-        .cursor_pointer()
-        .when(active, |item| {
-            item.bg(linear_gradient(
-                90.0,
-                linear_color_stop(tint(carmine(cx), 0.11), 0.0),
-                linear_color_stop(tint(carmine(cx), 0.02), 1.0),
-            ))
-        })
-        .when(!active, |item| {
-            item.hover(|s| s.bg(rgba(crate::orbit::legacy_rgba(0xffff_ff08, cx))))
-        })
-        .focus_visible(|s| s.border_1().border_color(rgba(line_strong(cx))))
-        .when(active && is_mono(cx), |row| {
-            row.bg(rgb(surface_3(cx)))
-                .border_1()
-                .border_color(selection_border(cx))
-        })
-        .child(text(
-            label.to_owned(),
-            13.5,
-            600,
-            if active { ink(cx) } else { ink_2(cx) },
-            cx,
-        ))
-        .when(!subtitle.is_empty(), |item| {
-            item.child(text(subtitle.to_owned(), 11.5, 400, ink_3(cx), cx))
-        })
 }
 
 /// Barra superior: ruta `EYEBROW / Título` a la izquierda y acción a la derecha.

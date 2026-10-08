@@ -100,6 +100,8 @@ struct RawOptions {
     capture_output: Option<PathBuf>,
     capture_appearance: Option<AppearanceSettings>,
     capture_size: Option<(u32, u32)>,
+    capture_collapsed: bool,
+    capture_zoom: Option<u16>,
     demo_requested: bool,
 }
 
@@ -120,6 +122,8 @@ impl RawOptions {
             capture_output: None,
             capture_appearance: None,
             capture_size: None,
+            capture_collapsed: false,
+            capture_zoom: None,
             demo_requested: false,
         };
         let mut args = args.iter();
@@ -144,6 +148,15 @@ impl RawOptions {
                     parsed.capture_size = Some(capture_size(
                         args.next().ok_or("falta tamaño de captura WxH")?,
                     )?);
+                }
+                "--collapsed" if !parsed.capture_collapsed => parsed.capture_collapsed = true,
+                "--zoom" if parsed.capture_zoom.is_none() => {
+                    let zoom = args
+                        .next()
+                        .and_then(|value| value.parse::<u16>().ok())
+                        .filter(|zoom| matches!(zoom, 90 | 100 | 110 | 125))
+                        .ok_or("--zoom admite 90, 100, 110 o 125")?;
+                    parsed.capture_zoom = Some(zoom);
                 }
                 "--workshop" if parsed.section == Section::Home => {
                     parsed.section = Section::Workshop;
@@ -220,6 +233,8 @@ impl RawOptions {
             capture_output,
             capture_appearance,
             capture_size,
+            capture_collapsed,
+            capture_zoom,
             demo_requested,
         } = self;
         if capture_name.is_some() != capture_output.is_some() {
@@ -231,10 +246,17 @@ impl RawOptions {
         if capture_size.is_some() && capture_name.is_none() {
             return Err("--size requiere --capture".into());
         }
-        let capture = capture_name
+        if (capture_collapsed || capture_zoom.is_some()) && capture_name.is_none() {
+            return Err("--collapsed y --zoom requieren --capture".into());
+        }
+        let mut capture = capture_name
             .as_deref()
             .map(vantare_hub::demo::CaptureState::parse)
             .transpose()?;
+        if capture_collapsed && let Some(capture) = capture.as_mut() {
+            capture.sidebar = Some(false);
+            capture.column_open = false;
+        }
         if capture.is_some()
             && (explicit_section
                 || controlled
@@ -292,6 +314,7 @@ impl RawOptions {
             capture_output,
             capture_appearance,
             capture_size,
+            capture_zoom,
         })
     }
 }
@@ -333,7 +356,7 @@ fn main() -> ExitCode {
             eprintln!(
                 "{error}
 uso: vantare-hub [--demo] [--workshop|--studio|--strategy|--analysis|--launcher|--engineer] [opciones locales]
-     vantare-hub --capture PANTALLA --out PNG [--demo] [--size WxH] [--appearance PALETA-dark|PALETA-light]
+     vantare-hub --capture PANTALLA --out PNG [--demo] [--size WxH] [--zoom 125] [--collapsed] [--appearance PALETA-dark|PALETA-light]
      paletas: vantare, classic, deepseek, rose, grove, ocean, ember, iris, mono"
             );
             return ExitCode::from(2);

@@ -163,18 +163,20 @@ pub(super) fn profile_choice(
 }
 impl Hub {
     #[allow(clippy::too_many_lines)] // Composición lineal del layout C; las piezas se comparten en Orbit.
-    pub(super) fn foundation_home(&self, window: &Window, cx: &mut Context<Self>) -> Div {
+    /// Inicio: el centro es la página; «Estado» y «Plantillas» forman la barra derecha (R10.2).
+    pub(super) fn foundation_home(
+        &self,
+        window: &Window,
+        cx: &mut Context<Self>,
+    ) -> (Div, Vec<orbit::RailSection>) {
+        let adapt = *cx.global::<orbit::Adapt>();
         let tokens = cx.global::<orbit::design::Tokens>();
-        let gap = tokens.geometry.gap;
+        let gap = adapt.gap();
         let title_size = tokens.fonts.title_size;
         let hero_gradient = tokens.gradients.hero;
-        let available = f32::from(window.viewport_size().width)
-            - self.sidebar_width(cx)
-            - 2.0 * tokens.geometry.gutter;
-        let center_width = (available - gap) * 2.0 / 3.0;
-        let context_width = (available - gap) / 3.0;
+        let center_width = adapt.center_width() - 2.0 * adapt.padding().1;
         let overlay_width = (center_width - gap) / 2.0 - 40.0;
-        let template_width = (context_width - gap) / 2.0 - 20.0;
+        let template_width = (adapt.rail_width() - 32.0 - gap) / 2.0 - 20.0;
         let compact = f32::from(window.viewport_size().width) < 1700.0;
         let name = self.demo.as_ref().map_or("piloto", |demo| {
             demo.user
@@ -436,7 +438,13 @@ impl Hub {
             .child(self.home_previews.thumbnail(
                 0,
                 overlay_width,
-                if compact { 150.0 } else { 260.0 },
+                if !adapt.show_optional() {
+                    96.0
+                } else if compact {
+                    150.0
+                } else {
+                    260.0
+                },
                 cx,
             ))
             .child(orbit::text("Standings", 22.0, 600, orbit::ink(cx), cx))
@@ -451,40 +459,45 @@ impl Hub {
                 orbit::ink_3(cx),
                 cx,
             ))
-            .child(
-                div().flex().flex_wrap().gap(px(6.0)).children(
-                    if compact {
-                        ["Standings", "Relative", "+2"].as_slice()
-                    } else {
-                        ["Standings", "Relative", "Fuel", "Delta"].as_slice()
-                    }
-                    .iter()
-                    .map(|label| orbit::pill(label, orbit::Tone::Neutral, cx)),
-                ),
-            )
-            .child(
-                div().flex().gap(px(24.0)).children(
-                    [
-                        ("—", if compact { "Hz" } else { "Hz de telemetría" }),
-                        (
-                            "—",
-                            if compact {
-                                "Widgets"
-                            } else {
-                                "Widgets en pista"
-                            },
-                        ),
-                        ("—", "CPU"),
-                    ]
-                    .map(|(value, label)| {
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .child(orbit::text(value, 24.0, 600, orbit::ink(cx), cx))
-                            .child(orbit::text(label, 12.0, 400, orbit::ink_3(cx), cx))
-                    }),
-                ),
-            )
+            // Alto B/XS (R9.5): fuera chips y cifras para que la tarjeta no se corte.
+            .when(adapt.show_optional(), |card| {
+                card.child(
+                    div().flex().flex_wrap().gap(px(6.0)).children(
+                        if compact {
+                            ["Standings", "Relative", "+2"].as_slice()
+                        } else {
+                            ["Standings", "Relative", "Fuel", "Delta"].as_slice()
+                        }
+                        .iter()
+                        .map(|label| orbit::pill(label, orbit::Tone::Neutral, cx)),
+                    ),
+                )
+            })
+            .when(adapt.show_optional(), |card| {
+                card.child(
+                    div().flex().gap(px(24.0)).children(
+                        [
+                            ("—", if compact { "Hz" } else { "Hz de telemetría" }),
+                            (
+                                "—",
+                                if compact {
+                                    "Widgets"
+                                } else {
+                                    "Widgets en pista"
+                                },
+                            ),
+                            ("—", "CPU"),
+                        ]
+                        .map(|(value, label)| {
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .child(orbit::text(value, 24.0, 600, orbit::ink(cx), cx))
+                                .child(orbit::text(label, 12.0, 400, orbit::ink_3(cx), cx))
+                        }),
+                    ),
+                )
+            })
             .child(
                 div()
                     .flex()
@@ -594,11 +607,10 @@ impl Hub {
                     .child(overlay)
                     .child(activity),
             );
-        let state = orbit::neo_card(cx)
-            .min_h(px(if compact { 260.0 } else { 300.0 }))
+        let state = div()
             .flex_none()
-            .gap(px(0.0))
-            .child(orbit::neo_header("Estado", "pulse", cx))
+            .flex()
+            .flex_col()
             .child(
                 div()
                     .flex()
@@ -691,18 +703,9 @@ impl Hub {
                     )
                     .child(orbit::pill("Beta", orbit::Tone::Neutral, cx)),
             );
-        let mut templates = div()
-            .flex_1()
-            .min_h_0()
-            .flex()
-            .flex_col()
-            .gap(px(gap))
-            .child(orbit::neo_header(
-                "Plantillas para tu próxima sesión",
-                "v-studio",
-                cx,
-            ));
-        for row in 0..2 {
+        let mut templates = div().flex_1().min_h_0().flex().flex_col().gap(px(gap));
+        // Alto B/XS: solo la primera fila de plantillas (`.op-b`).
+        for row in 0..if adapt.show_optional() { 2 } else { 1 } {
             templates = templates.child(div().flex_1().min_h_0().flex().gap(px(gap)).children(
                 (row * 2..row * 2 + 2).map(|index| {
                     let title = [
@@ -733,17 +736,7 @@ impl Hub {
                 }),
             ));
         }
-        let context = div()
-            .flex_basis(gpui::relative(1.0 / 3.0))
-            .flex_grow(1.0)
-            .min_w_0()
-            .min_h_0()
-            .flex()
-            .flex_col()
-            .gap(px(gap))
-            .child(state)
-            .child(templates);
-        div()
+        let page = div()
             .size_full()
             .min_h_0()
             .min_w_0()
@@ -751,14 +744,18 @@ impl Hub {
             .flex_col()
             .gap(px(gap))
             .child(composer)
-            .child(
-                div()
-                    .flex_1()
-                    .min_h_0()
-                    .flex()
-                    .gap(px(gap))
-                    .child(center)
-                    .child(context),
-            )
+            .child(center);
+        let templates_title = if adapt.show_secondary() {
+            "Plantillas para tu próxima sesión"
+        } else {
+            "Plantillas"
+        };
+        (
+            page,
+            vec![
+                orbit::RailSection::new("Estado", "pulse", state),
+                orbit::RailSection::new(templates_title, "v-studio", templates).grow(),
+            ],
+        )
     }
 }

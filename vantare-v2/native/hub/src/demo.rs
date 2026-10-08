@@ -370,6 +370,8 @@ pub struct CaptureState {
     pub section: Section,
     pub palette_query: Option<String>,
     pub column_open: bool,
+    /// Barra izquierda forzada en la captura (`--collapsed`); `None` = automática.
+    pub sidebar: Option<bool>,
     pub notifications_open: bool,
     pub launcher_new_profile: bool,
     pub settings_page: Option<CaptureSettingsPage>,
@@ -610,6 +612,7 @@ impl CaptureState {
             section,
             palette_query,
             column_open: name != "shell-columna-colapsada",
+            sidebar: None,
             notifications_open: matches!(
                 name,
                 "shell-notificaciones-abiertas" | "notificaciones-panel" | "notificaciones-vacio"

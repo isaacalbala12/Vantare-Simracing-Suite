@@ -9,6 +9,7 @@ use std::time::{Duration, Instant};
 
 use gpui::{
     App, Context, Entity, FocusHandle, IntoElement, Render, Window, WindowOptions, div, prelude::*,
+    px,
 };
 use vantare_ipc::Subscriber;
 
@@ -50,6 +51,7 @@ pub struct Options {
     pub capture_output: Option<PathBuf>,
     pub capture_appearance: Option<orbit::theme::AppearanceSettings>,
     pub capture_size: Option<(u32, u32)>,
+    pub capture_zoom: Option<u16>,
 }
 
 struct Hub {
@@ -387,7 +389,7 @@ impl Hub {
             Section::Notifications => self.notifications.clone().into_any_element(),
             Section::Settings => self.settings(window, cx).into_any_element(),
             Section::Testing => self.testing.clone().into_any_element(),
-            Section::Home => self.foundation_home(window, cx).into_any_element(),
+            Section::Home => self.foundation_home(window, cx).0.into_any_element(),
             Section::Account => self
                 .remote
                 .update(cx, |remote, cx| remote.account(window, cx))
@@ -403,53 +405,72 @@ impl Hub {
         }
     }
 
-    fn render_content(&self, window: &Window, cx: &mut Context<Self>) -> gpui::AnyElement {
-        div()
-            .when(
-                matches!(
-                    self.section,
-                    Section::Home
-                        | Section::Strategy
-                        | Section::Engineer
-                        | Section::Roadmap
-                        | Section::Notifications
-                        | Section::Studio
-                        | Section::Launcher
-                        | Section::Settings
-                        | Section::Account
-                        | Section::Licenses
+    fn render_content(
+        &mut self,
+        window: &Window,
+        page: Option<gpui::AnyElement>,
+        cx: &mut Context<Self>,
+    ) -> gpui::AnyElement {
+        let adapt = *cx.global::<orbit::Adapt>();
+        let (top, side, bottom) = adapt.padding();
+        // Páginas que se reparten el alto sin scroll propio (R9.5).
+        let fills = matches!(
+            self.section,
+            Section::Home
+                | Section::Strategy
+                | Section::Engineer
+                | Section::Roadmap
+                | Section::Notifications
+                | Section::Studio
+                | Section::Launcher
+                | Section::Settings
+                | Section::Account
+                | Section::Licenses
+                | Section::Testing
+                | Section::Calendar
+        );
+        let header = match self.section {
+            Section::Settings => Some(self.settings_header(cx)),
+            Section::Studio => Some(
+                div().pt(px(top)).child(
+                    self.studio
+                        .update(cx, |studio, cx| studio.topbar_actions(cx)),
                 ),
-                |content| content.h_full().min_h_0().min_w_0(),
-            )
+            ),
+            Section::Testing if self.shell.access.beta_lock(self.section).is_none() => {
+                Some(self.testing.update(cx, |_, cx| Testing::page_header(cx)))
+            }
+            Section::Calendar if self.shell.access.beta_lock(self.section).is_none() => {
+                Some(self.calendar.update(cx, |_, cx| Calendar::page_header(cx)))
+            }
+            _ => None,
+        };
+        div()
+            .when(fills, |content| content.h_full().min_h_0().min_w_0())
             .flex_1()
             .flex()
             .flex_col()
             .when(self.section != Section::Launcher, |content| {
-                content.gap(gpui::px(24.0)).p(gpui::px(
-                    cx.global::<orbit::design::Tokens>().geometry.gutter,
-                ))
+                content
+                    .gap(px(adapt.gap()))
+                    .pt(px(top))
+                    .px(px(side))
+                    .pb(px(bottom))
             })
             .when(self.section == Section::Studio, |content| {
-                content.pt(gpui::px(0.0))
+                content.pt(px(0.0))
             })
-            .when(
-                matches!(self.section, Section::Testing | Section::Calendar),
-                |content| {
-                    content.pr(gpui::px(
-                        cx.global::<orbit::design::Tokens>().geometry.gutter / 2.0,
-                    ))
-                },
-            )
-            .when(self.section == Section::Settings, |content| {
-                content.gap(gpui::px(16.0)).child(self.settings_header(cx))
-            })
+            .when_some(header, gpui::ParentElement::child)
             .when_some(self.status.clone(), |content, status| {
                 content.child(orbit::callout(status, cx))
             })
             .when_some(self.shell.navigation_notice.clone(), |content, notice| {
                 content.child(orbit::callout(notice, cx))
             })
-            .child(self.section_view(window, cx))
+            .child(match page {
+                Some(page) => page,
+                None => self.section_view(window, cx),
+            })
             .into_any_element()
     }
 
@@ -485,11 +506,7 @@ impl Hub {
     }
 
     /// Controles propios de la sección para la ranura de la barra superior.
-    fn section_actions(
-        &mut self,
-        window: &Window,
-        cx: &mut Context<Self>,
-    ) -> Option<gpui::AnyElement> {
+    fn section_actions(&mut self, cx: &mut Context<Self>) -> Option<gpui::AnyElement> {
         if matches!(self.section, Section::Strategy | Section::Engineer) {
             return None;
         }
@@ -499,13 +516,7 @@ impl Hub {
                 if !self.launcher.read(cx).managing() {
                     return None;
                 }
-                let available_width = f32::from(window.viewport_size().width)
-                    - orbit::RAIL_W
-                    - if self.shell.column_open {
-                        orbit::COLUMN_W
-                    } else {
-                        0.0
-                    };
+                let available_width = cx.global::<orbit::Adapt>().center_width();
                 Some(self.launcher.update(cx, |launcher, cx| {
                     launcher
                         .topbar_actions(available_width, cx)
@@ -523,47 +534,145 @@ impl Hub {
         }
     }
 
-    /// Columna contextual de la sección activa; Strategy la oculta si su vista no la usa.
-    fn section_column(
+    /// Secciones de la barra derecha acoplada (R10.2) de la página activa. Las
+    /// columnas heredadas entran como una sección sin cabecera hasta su ronda.
+    fn rail_sections(
         &mut self,
         window: &mut Window,
         strategy_context_visible: bool,
+        home: Vec<orbit::RailSection>,
         cx: &mut Context<Self>,
-    ) -> gpui::AnyElement {
+    ) -> Vec<orbit::RailSection> {
+        let icon = navigation::icon(self.section);
+        let legacy = |body: gpui::AnyElement| {
+            vec![orbit::RailSection::new("", icon, body).headless().grow()]
+        };
         if matches!(self.section, Section::Testing | Section::Calendar)
             && self.shell.access.beta_lock(self.section).is_some()
         {
-            return div().into_any_element();
+            return Vec::new();
         }
-        if self.section == Section::Testing {
-            self.testing
-                .update(cx, |testing, cx| testing.context_column(cx))
-                .into_any_element()
-        } else if self.section == Section::Calendar {
-            self.calendar
-                .update(cx, |calendar, cx| calendar.context_column(cx))
-                .into_any_element()
-        } else if self.section == Section::Studio {
-            self.studio.read(cx).context_column().into_any_element()
-        } else if matches!(
-            self.section,
-            Section::Settings | Section::Account | Section::Licenses | Section::Launcher
-        ) {
-            div().into_any_element()
-        } else if self.section == Section::Analysis {
-            self.analysis_context_column(window, cx).into_any_element()
-        } else if strategy_context_visible {
-            self.strategy_context_column(cx).into_any_element()
-        } else if self.section == Section::Strategy {
-            div().into_any_element()
-        } else {
-            self.context_column(window, cx).into_any_element()
+        match self.section {
+            Section::Home => home,
+            Section::Settings => self.settings_rail(cx),
+            Section::Testing => legacy(
+                self.testing
+                    .update(cx, |testing, cx| testing.context_column(cx))
+                    .into_any_element(),
+            ),
+            Section::Calendar => legacy(
+                self.calendar
+                    .update(cx, |calendar, cx| calendar.context_column(cx))
+                    .into_any_element(),
+            ),
+            Section::Studio if self.studio.read(cx).inspector_visible() => {
+                legacy(self.studio.read(cx).context_column().into_any_element())
+            }
+            Section::Analysis => {
+                legacy(self.analysis_context_column(window, cx).into_any_element())
+            }
+            Section::Strategy if strategy_context_visible => {
+                legacy(self.strategy_context_column(cx).into_any_element())
+            }
+            Section::Notifications => legacy(self.context_column(window, cx).into_any_element()),
+            _ => Vec::new(),
         }
+    }
+
+    /// Barra derecha: secciones con cabecera y separador; recogida, franja de 56 con iconos.
+    fn right_bar(&self, sections: Vec<orbit::RailSection>, cx: &mut Context<Self>) -> gpui::Div {
+        let adapt = *cx.global::<orbit::Adapt>();
+        let skin = orbit::skin(cx).clone();
+        let frame = div()
+            .h_full()
+            .min_h_0()
+            .flex_none()
+            .flex()
+            .flex_col()
+            .bg(orbit::ramp(skin.sidebar, 180.0))
+            .border_l_1()
+            .border_color(orbit::alpha(skin.sidebar_line));
+        if !adapt.rail_open {
+            let mut strip = frame
+                .w(px(orbit::adapt::RAIL_STRIP_W))
+                .items_center()
+                .gap(px(6.0))
+                .py(px(8.0))
+                .child(
+                    orbit::icon_button("rail-open", "v-side", "Abrir panel derecho", 40.0, cx)
+                        .on_click(cx.listener(|hub, _, _, cx| {
+                            hub.shell.column_open = true;
+                            cx.notify();
+                        })),
+                )
+                .child(
+                    div()
+                        .w(px(24.0))
+                        .h(px(1.0))
+                        .my(px(4.0))
+                        .bg(orbit::alpha(skin.line2)),
+                );
+            for (index, section) in sections.iter().enumerate() {
+                let label = if section.title.is_empty() {
+                    navigation::title(self.section).to_owned()
+                } else {
+                    section.title.to_string()
+                };
+                strip = strip.child(
+                    orbit::icon_button(("rail-strip", index), section.icon, &label, 40.0, cx)
+                        .on_click(cx.listener(|hub, _, _, cx| {
+                            hub.shell.column_open = true;
+                            cx.notify();
+                        })),
+                );
+            }
+            return strip;
+        }
+        let (_, _, bottom) = adapt.padding();
+        let count = sections.len();
+        let mut bar = frame
+            .id("right-bar")
+            .w(px(adapt.rail_width()))
+            .pt(px(6.0))
+            .pb(px(bottom))
+            .overflow_hidden();
+        for (index, section) in sections.into_iter().enumerate() {
+            let last = index + 1 == count;
+            let mut block = div()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .when(!last, |block| {
+                    block
+                        .flex_none()
+                        .border_b_1()
+                        .border_color(orbit::alpha(skin.line1))
+                })
+                .when(last || section.grow, |block| {
+                    block.flex_1().min_h_0().overflow_hidden()
+                });
+            if !section.headless {
+                block = block.child(div().pt(px(14.0)).px(px(18.0)).pb(px(12.0)).child(
+                    orbit::section_header(&section.title, section.icon, section.action, cx),
+                ));
+            }
+            block = block.child(
+                div()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .when(!section.headless, |body| body.px(px(16.0)).pb(px(12.0)))
+                    .when(last || section.grow, |body| body.flex_1().min_h_0())
+                    .child(section.body),
+            );
+            bar = bar.child(block);
+        }
+        div().h_full().flex_none().child(bar)
     }
 }
 
 impl Render for Hub {
-    #[allow(clippy::too_many_lines)] // Compone el marco común y la visibilidad del editor Strategy en una sola raíz.
+    #[allow(clippy::too_many_lines)] // Compone el marco común en una sola raíz.
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if self.capture.is_none() && self.remote.read(cx).requires_access() {
             return self
@@ -571,12 +680,21 @@ impl Render for Hub {
                 .update(cx, |remote, cx| remote.access_screen(&self.focus, cx))
                 .into_any_element();
         }
+        let viewport = window.viewport_size();
+        let adapt = orbit::Adapt::new(
+            f32::from(viewport.width),
+            f32::from(viewport.height),
+            self.shell.sidebar_pref,
+            self.shell.column_open,
+        );
+        cx.set_global(adapt);
         self.refresh_query(cx);
         if presentation(self.section) == Presentation::Fullscreen {
             return self.render_fullscreen(window, cx);
         }
-        let rail = self.rail(window, cx);
-        let section_actions = self.section_actions(window, cx);
+        let skin = orbit::skin(cx).clone();
+        let rail = self.rail(cx);
+        let section_actions = self.section_actions(cx);
         let topbar = self.topbar(window, section_actions, cx);
         if self
             .capture
@@ -590,19 +708,40 @@ impl Render for Hub {
         }
         let strategy_context_visible =
             self.section == Section::Strategy && self.strategy.read(cx).context_sidebar_visible();
-        let column = self.section_column(window, strategy_context_visible, cx);
-        let context_width =
-            (f32::from(window.viewport_size().width) - self.sidebar_width(cx)) / 3.0;
-        let column = div()
-            .w(gpui::px(context_width))
-            .h_full()
-            .flex_none()
-            .overflow_hidden()
-            .child(column);
-        let topbar = topbar.when(f32::from(window.viewport_size().width) <= 1360.0, |bar| {
-            bar.flex_wrap().h_auto().min_h(gpui::px(orbit::TOPBAR_H))
-        });
-        let content = self.render_content(window, cx);
+        let (page, home) = if self.section == Section::Home {
+            let (page, rail) = self.foundation_home(window, cx);
+            (Some(page.into_any_element()), rail)
+        } else {
+            (None, Vec::new())
+        };
+        let sections = self.rail_sections(window, strategy_context_visible, home, cx);
+        let content = self.render_content(window, page, cx);
+        let right = (!sections.is_empty()).then(|| self.right_bar(sections, cx));
+        let below = adapt.rail_below();
+        let body = div()
+            .id("hub-body")
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .when(below, |body| body.flex_col().overflow_y_scroll())
+            .child(
+                div()
+                    .id("hub-content")
+                    .min_w_0()
+                    .flex_1()
+                    .min_h_0()
+                    .flex()
+                    .flex_col()
+                    .when(below, |content| content.flex_none())
+                    .child(content),
+            )
+            .when_some(right, |body, right| {
+                body.child(if below {
+                    right.w_full().h(px(adapt.height * 0.6))
+                } else {
+                    right
+                })
+            });
         let main = div()
             .relative()
             .flex_1()
@@ -610,88 +749,22 @@ impl Render for Hub {
             .flex_col()
             .min_w_0()
             .min_h_0()
-            .child(topbar)
-            .when(
-                matches!(self.section, Section::Testing | Section::Calendar)
-                    && self.shell.access.beta_lock(self.section).is_none(),
-                |main| {
-                    let header = if self.section == Section::Testing {
-                        self.testing.update(cx, |_, cx| Testing::page_header(cx))
-                    } else {
-                        self.calendar.update(cx, |_, cx| Calendar::page_header(cx))
-                    };
-                    main.child(
-                        div()
-                            .flex_none()
-                            .px(gpui::px(
-                                cx.global::<orbit::design::Tokens>().geometry.gutter,
-                            ))
-                            .pt(gpui::px(24.0))
-                            .child(header),
-                    )
-                },
-            )
-            .when(self.section == Section::Studio, |main| {
-                main.child(
-                    div()
-                        .px(gpui::px(32.0))
-                        .pt(gpui::px(32.0))
-                        .pb(gpui::px(24.0))
-                        .flex_none()
-                        .child(
-                            self.studio
-                                .update(cx, |studio, cx| studio.topbar_actions(cx)),
-                        ),
-                )
-            })
             .child(
+                // Lavado superior del área (R9.1): capa de 2 paradas detrás del contenido.
                 div()
-                    .flex_1()
-                    .min_h_0()
-                    .flex()
-                    .child(
-                        div()
-                            .id("hub-content")
-                            .min_w_0()
-                            .flex_1()
-                            .min_h_0()
-                            .when(
-                                !matches!(
-                                    self.section,
-                                    Section::Home
-                                        | Section::Strategy
-                                        | Section::Engineer
-                                        | Section::Roadmap
-                                        | Section::Notifications
-                                        | Section::Studio
-                                        | Section::Launcher
-                                        | Section::Settings
-                                        | Section::Account
-                                        | Section::Licenses
-                                ),
-                                gpui::StatefulInteractiveElement::overflow_y_scroll,
-                            )
-                            .child(content),
-                    )
-                    .when(
-                        self.shell.column_open
-                            && !matches!(
-                                self.section,
-                                Section::Home
-                                    | Section::Roadmap
-                                    | Section::Launcher
-                                    | Section::Settings
-                                    | Section::Account
-                                    | Section::Licenses
-                                    | Section::Strategy
-                                    | Section::Engineer
-                            )
-                            && (self.section != Section::Studio
-                                || self.studio.read(cx).inspector_visible())
-                            && (self.section != Section::Strategy || strategy_context_visible),
-                        |body| body.child(column),
-                    ),
-            );
+                    .absolute()
+                    .top_0()
+                    .left_0()
+                    .right_0()
+                    .h(px(skin.wash_h))
+                    .bg(gpui::linear_gradient(
+                        180.0,
+                        gpui::linear_color_stop(orbit::alpha(skin.wash), 0.0),
+                        gpui::linear_color_stop(orbit::alpha(skin.wash & 0xffff_ff00), 1.0),
+                    )),
+            )
+            .child(topbar)
+            .child(body);
         let background = if self.section == Section::Strategy
             && self.shell.access.beta_lock(self.section).is_none()
         {
@@ -710,7 +783,7 @@ impl Render for Hub {
             .size_full()
             .relative()
             .flex()
-            .bg(gpui::rgb(orbit::canvas(cx)))
+            .bg(orbit::ramp(skin.window, 155.0))
             .text_color(gpui::rgb(orbit::ink(cx)))
             .font_family(crate::orbit::sans_override("Inter W400", cx))
             .font_features(orbit::tabular_numbers())
@@ -1133,6 +1206,9 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
     if let Some(settings) = options.capture.as_ref().and(options.capture_appearance) {
         appearance.settings = settings;
     }
+    if let Some(zoom) = options.capture.as_ref().and(options.capture_zoom) {
+        appearance.zoom_percent = zoom;
+    }
     let notifications = match options.demo.as_ref() {
         Some(demo) => crate::notifications::Center::demo(demo, demo.fixed_now()?)?,
         None => crate::notifications::Center::default(),
@@ -1210,7 +1286,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                     gpui::WindowKind::Normal
                 },
                 titlebar: Some(gpui::TitlebarOptions {
-                    appears_transparent: options.capture.is_some(),
+                    appears_transparent: true,
                     title: Some("Vantare Hub".into()),
                     ..Default::default()
                 }),

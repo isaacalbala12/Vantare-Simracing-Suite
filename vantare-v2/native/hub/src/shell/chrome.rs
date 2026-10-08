@@ -12,8 +12,10 @@ use gpui::{
 
 pub(super) struct State {
     pub access: Access,
+    /// Barra derecha abierta (R9.6): global, se conserva entre páginas.
     pub column_open: bool,
-    pub sidebar_open: bool,
+    /// Elección explícita de la barra izquierda (`Ctrl B`); `None` = automática (R9.5).
+    pub sidebar_pref: Option<bool>,
     pub palette_open: bool,
     pub navigation_notice: Option<String>,
     notification_subscription: Option<gpui::Subscription>,
@@ -49,7 +51,7 @@ impl State {
         let rail_focus = rail_sections.iter().map(|_| cx.focus_handle()).collect();
         Self {
             access,
-            sidebar_open: true,
+            sidebar_pref: capture.and_then(|capture| capture.sidebar),
             column_open: capture.is_none_or(|capture| capture.column_open),
             palette_open: capture.is_some_and(|capture| capture.palette_query.is_some()),
             navigation_notice: None,
@@ -190,8 +192,20 @@ impl Hub {
         if self.shell_zoom_key(event, window, cx) {
             return;
         }
+        if key.modifiers.control && key.modifiers.alt && key.key.eq_ignore_ascii_case("b") {
+            self.shell.column_open = !self.shell.column_open;
+            cx.notify();
+            cx.stop_propagation();
+            return;
+        }
         if key.modifiers.control && key.key.eq_ignore_ascii_case("b") {
-            self.shell.sidebar_open = !self.shell.sidebar_open;
+            self.toggle_sidebar(cx);
+            cx.stop_propagation();
+            return;
+        }
+        if key.modifiers.control && key.modifiers.shift && key.key.eq_ignore_ascii_case("n") {
+            self.notifications
+                .update(cx, |center, cx| center.toggle_popover(window, cx));
             cx.notify();
             cx.stop_propagation();
             return;
@@ -298,8 +312,8 @@ impl Hub {
         false
     }
 
-    pub(super) fn rail(&self, window: &Window, cx: &mut Context<Self>) -> gpui::Div {
-        self.redesign_rail(f32::from(window.viewport_size().height) < 900.0, cx)
+    pub(super) fn rail(&self, cx: &mut Context<Self>) -> gpui::Div {
+        self.redesign_rail(cx)
     }
     pub(super) fn avatar_initial(&self) -> String {
         self.demo.as_ref().map_or_else(
@@ -736,142 +750,213 @@ impl Hub {
         });
     }
 
-    fn notification_bell(&mut self, cx: &mut Context<Self>) -> gpui::Div {
+    fn notification_bell(&mut self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         if self.shell.notification_subscription.is_none() {
             self.shell.notification_subscription =
                 Some(cx.observe(&self.notifications, |_, _, cx| cx.notify()));
         }
-        div().flex().items_center().gap(px(orbit::MENU_PAD)).child(
-            orbit::rail_button(
-                "notifications",
-                "i-campana",
-                "Notificaciones",
-                false,
-                None,
-                cx,
-            )
-            .size(px(28.0))
-            .bg(rgba(0x0000_0000))
-            .when(self.notifications.read(cx).popover_open(cx), |bell| {
-                bell.bg(rgba(crate::orbit::legacy_rgba(0xffff_ff0a, cx)))
-            })
-            .when(self.notifications.read(cx).unread() > 0, |bell| {
-                bell.child(
-                    div()
-                        .absolute()
-                        .top(gpui::px(-4.0))
-                        .right(gpui::px(-4.0))
-                        .min_w(gpui::px(18.0))
-                        .h(gpui::px(18.0))
-                        .px(gpui::px(3.0))
-                        .rounded_full()
-                        .border_2()
-                        .border_color(rgb(orbit::canvas(cx)))
-                        .bg(orbit::gradient(
-                            cx.global::<orbit::design::Tokens>().gradients.button,
-                            135.0,
-                        ))
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .child(orbit::text(
-                            self.notifications.read(cx).unread().to_string(),
-                            10.0,
-                            600,
-                            0x00ff_ffff,
-                            cx,
-                        )),
-                )
-            })
-            .child({
-                let notifications = self.notifications.clone();
-                // Mismo seguimiento de ancla que el dropdown Orbit.
-                gpui::canvas(
-                    move |bounds, _, cx| {
-                        Self::update_bell_anchor(&notifications, bounds, cx);
-                    },
-                    |_, (), _, _| {},
-                )
-                .absolute()
-                .inset_0()
-                .size(px(28.0))
-            })
-            .aria_expanded(self.notifications.read(cx).popover_open(cx))
-            .aria_label(format!(
-                "Notificaciones · {} sin leer",
-                self.notifications.read(cx).unread()
-            ))
-            .capture_any_mouse_down(cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
-                if event.button == gpui::MouseButton::Left {
-                    let open = this.notifications.read(cx).popover_open(cx);
-                    this.notifications
-                        .update(cx, |center, _| center.bell_was_open = open);
-                }
-            }))
-            .on_click(cx.listener(|this, event, window, cx| {
-                this.notifications
-                    .update(cx, |center, cx| center.click_bell(event, window, cx));
-                cx.notify();
-            })),
+        let skin = orbit::skin(cx).clone();
+        let open = self.notifications.read(cx).popover_open(cx);
+        let unread = self.notifications.read(cx).unread();
+        orbit::icon_button(
+            "notifications",
+            "v-bell",
+            "Notificaciones (Ctrl Mayús N)",
+            34.0,
+            cx,
         )
+        .when(open, |bell| bell.bg(orbit::alpha(skin.active)))
+        .when(unread > 0, |bell| {
+            bell.child(
+                div()
+                    .absolute()
+                    .top(px(2.0))
+                    .right(px(1.0))
+                    .min_w(px(16.0))
+                    .h(px(16.0))
+                    .px(px(4.0))
+                    .rounded_full()
+                    .bg(orbit::ramp(skin.button, 180.0))
+                    .shadow(vec![orbit::kit_shadow(
+                        (skin.base << 8) | 0xff,
+                        0.0,
+                        0.0,
+                        2.0,
+                        false,
+                    )])
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .text_size(px(10.0))
+                    .line_height(px(16.0))
+                    .font_weight(gpui::FontWeight(700.0))
+                    .text_color(rgb(0x00ff_ffff))
+                    .child(unread.to_string()),
+            )
+        })
+        .child({
+            let notifications = self.notifications.clone();
+            // Mismo seguimiento de ancla que el dropdown Orbit.
+            gpui::canvas(
+                move |bounds, _, cx| {
+                    Self::update_bell_anchor(&notifications, bounds, cx);
+                },
+                |_, (), _, _| {},
+            )
+            .absolute()
+            .inset_0()
+            .size(px(34.0))
+        })
+        .aria_expanded(open)
+        .aria_keyshortcuts("Control+Shift+N")
+        .aria_label(format!("Notificaciones · {unread} sin leer"))
+        .capture_any_mouse_down(cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
+            if event.button == gpui::MouseButton::Left {
+                let open = this.notifications.read(cx).popover_open(cx);
+                this.notifications
+                    .update(cx, |center, _| center.bell_was_open = open);
+            }
+        }))
+        .on_click(cx.listener(|this, event, window, cx| {
+            this.notifications
+                .update(cx, |center, cx| center.click_bell(event, window, cx));
+            cx.notify();
+        }))
     }
 
-    /// `section_actions` pertenece a la sección; la campana y la versión son comunes.
+    /// Controles de ventana 46×36 (marco propio): el sistema resuelve cada zona.
+    fn window_controls(window: &Window, cx: &gpui::App) -> gpui::Div {
+        let skin = orbit::skin(cx).clone();
+        let control = |id: &'static str, icon: &'static str, label: &'static str, area| {
+            let hover = if id == "window-close" {
+                0xe811_20ff
+            } else {
+                skin.hover
+            };
+            div()
+                .id(id)
+                .role(gpui::Role::Button)
+                .aria_label(label)
+                .w(px(46.0))
+                .h(px(36.0))
+                .flex()
+                .items_center()
+                .justify_center()
+                .occlude()
+                .window_control_area(area)
+                .hover(move |s| s.bg(orbit::alpha(hover)))
+                .child(orbit::icon(icon, 14.0, skin.text3))
+        };
+        div()
+            .absolute()
+            .top_0()
+            .right_0()
+            .flex()
+            .child(control(
+                "window-min",
+                "min",
+                "Minimizar",
+                gpui::WindowControlArea::Min,
+            ))
+            .child(control(
+                "window-max",
+                "max",
+                if window.is_maximized() {
+                    "Restaurar"
+                } else {
+                    "Maximizar"
+                },
+                gpui::WindowControlArea::Max,
+            ))
+            .child(control(
+                "window-close",
+                "x",
+                "Cerrar",
+                gpui::WindowControlArea::Close,
+            ))
+    }
+
+    /// Barra superior R10.10: título, pestañas de vista, estado de LMU, barra derecha y campana.
     pub(super) fn topbar(
         &mut self,
         window: &Window,
         section_actions: Option<gpui::AnyElement>,
         cx: &mut Context<Self>,
     ) -> gpui::Div {
-        let narrow = f32::from(window.viewport_size().width) <= orbit::COLUMN_BREAKPOINT;
+        let skin = orbit::skin(cx).clone();
         let breadcrumb = if matches!(self.section, Section::Account | Section::Licenses) {
             Section::Account
         } else {
             self.section
         };
-        let action = {
-            let bell = self.notification_bell(cx);
-            div()
-                .flex()
-                .items_center()
-                .gap(px(10.0))
-                .child(orbit::pill(
-                    if self.previous_source == Some(true) {
-                        "LMU conectado"
-                    } else {
-                        "Esperando simulador"
-                    },
-                    if self.previous_source == Some(true) {
-                        orbit::Tone::Success
-                    } else {
-                        orbit::Tone::Neutral
-                    },
-                    cx,
-                ))
-                .child(bell)
-                .child(orbit::pill(
-                    crate::version_label(),
-                    orbit::Tone::Neutral,
-                    cx,
-                ))
-                .into_any_element()
-        };
-        orbit::topbar_with_actions(
-            if matches!(
-                self.section,
-                Section::Settings | Section::Strategy | Section::Engineer
-            ) {
-                ""
+        let connected = self.previous_source == Some(true);
+        let lmu = orbit::pill(
+            if connected {
+                "LMU conectado"
             } else {
-                navigation::trail(breadcrumb)
+                "Esperando simulador"
             },
-            navigation::title(breadcrumb),
-            section_actions,
-            action,
-            self.section == Section::Studio && f32::from(window.viewport_size().width) <= 1360.0,
+            if connected {
+                orbit::Tone::Success
+            } else {
+                orbit::Tone::Neutral
+            },
+            cx,
+        );
+        let rail_open = self.shell.column_open;
+        let rail_toggle = orbit::icon_button(
+            "rail-toggle",
+            "v-side",
+            if rail_open {
+                "Contraer panel derecho (Ctrl Alt B)"
+            } else {
+                "Abrir panel derecho (Ctrl Alt B)"
+            },
+            34.0,
             cx,
         )
-        .px(px(if narrow { 16.0 } else { orbit::TOPBAR_GUTTER }))
+        .aria_expanded(rail_open)
+        .aria_keyshortcuts("Control+Alt+B")
+        .when(!rail_open, |button| button.bg(orbit::alpha(skin.active)))
+        .on_click(cx.listener(|hub, _, _, cx| {
+            hub.shell.column_open = !hub.shell.column_open;
+            cx.notify();
+        }));
+        let bell = self.notification_bell(cx);
+        div()
+            .h(px(52.0))
+            .flex_none()
+            .relative()
+            .flex()
+            .items_center()
+            .gap(px(14.0))
+            .pl(px(28.0))
+            .pr(px(150.0))
+            .border_b_1()
+            .border_color(orbit::alpha(skin.sidebar_line))
+            .window_control_area(gpui::WindowControlArea::Drag)
+            .child(div().flex_none().child(orbit::caps(
+                navigation::title(breadcrumb),
+                16.0,
+                skin.text1,
+                cx,
+            )))
+            .when_some(section_actions, |bar, actions| {
+                bar.child(
+                    div()
+                        .h_full()
+                        .min_w_0()
+                        .ml(px(12.0))
+                        .flex()
+                        .items_center()
+                        .child(actions),
+                )
+            })
+            .child(div().flex_1())
+            .child(div().flex().items_center().child(lmu))
+            .child(rail_toggle)
+            .child(bell)
+            .child(Self::window_controls(window, cx))
     }
 
     fn palette_rows(

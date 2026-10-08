@@ -590,6 +590,22 @@ impl Launcher {
             .count();
         Some((ready, profile.steps.len()))
     }
+    /// Cadena legible del perfil («LMU → OBS → Spotify») para la barra lateral.
+    pub fn profile_route(&self, profile: &Profile) -> String {
+        profile
+            .steps
+            .iter()
+            .map(|step| {
+                self.store
+                    .document
+                    .apps
+                    .iter()
+                    .find(|app| app.id == step.app_id)
+                    .map_or(step.app_id.as_str(), |app| app.name.as_str())
+            })
+            .collect::<Vec<_>>()
+            .join(" → ")
+    }
     pub fn saved_profiles(&self) -> &[Profile] {
         &self.store.document.profiles
     }

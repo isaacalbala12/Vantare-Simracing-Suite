@@ -52,35 +52,58 @@ pub fn neo_accent_card(cx: &gpui::App) -> Div {
         linear_color_stop(rgb(colors.neo_bottom), 1.0),
     ))
 }
-/// Título y subtítulo de las pantallas beta, con la tipografía pública del tema.
+/// Cabecera de página R10.5: título Rajdhani en una línea que ocupa el espacio libre y
+/// descripción en una línea recortada con «…». Las acciones se añaden con `.child`.
 pub fn neo_page_header(title: &str, description: &str, cx: &gpui::App) -> Div {
-    let fonts = &cx.global::<design::Tokens>().fonts;
-    let size = fonts.title_size / 2.0;
+    let adapt = *cx.global::<super::Adapt>();
+    let skin = super::skin(cx);
+    let (size, line) = match adapt.density {
+        super::adapt::Density::A => (32.0, 36.0),
+        super::adapt::Density::M => (28.0, 32.0),
+        super::adapt::Density::B | super::adapt::Density::Xs => (24.0, 28.0),
+    };
     div()
+        .flex_none()
         .flex()
-        .flex_col()
-        .gap(px(4.0))
+        .items_center()
+        .gap(px(12.0))
         .min_w_0()
         .child(
-            super::text(title.to_owned(), size, 700, super::ink(cx), cx)
-                .font_family(fonts.display.clone())
-                .line_height(px(size * 1.2)),
-        )
-        .child(
-            super::text(
-                description.to_owned(),
-                fonts.body_size,
-                400,
-                super::ink_2(cx),
-                cx,
-            )
-            .line_height(px(fonts.body_size * 1.4)),
+            div()
+                .flex_1()
+                .min_w(px(200.0))
+                .flex()
+                .flex_col()
+                .gap(px(2.0))
+                .child(
+                    div()
+                        .text_size(px(size))
+                        .line_height(px(line))
+                        .font_family(cx.global::<design::Tokens>().fonts.display.clone())
+                        .font_weight(gpui::FontWeight(600.0))
+                        .text_color(rgb(skin.text1))
+                        .whitespace_nowrap()
+                        .overflow_hidden()
+                        .text_ellipsis()
+                        .child(title.to_owned()),
+                )
+                .when(adapt.show_optional() && !description.is_empty(), |block| {
+                    block.child(
+                        div()
+                            .text_size(px(14.0))
+                            .line_height(px(20.0))
+                            .text_color(rgb(skin.text3))
+                            .whitespace_nowrap()
+                            .overflow_hidden()
+                            .text_ellipsis()
+                            .child(description.to_owned()),
+                    )
+                }),
         )
 }
 /// Carril de layout C alineado con la primera tarjeta bajo la cabecera beta.
 pub fn neo_context_column(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
     let tokens = cx.global::<design::Tokens>();
-    let header = tokens.fonts.title_size / 2.0 * 1.2 + tokens.fonts.body_size * 1.4 + 4.0;
     div()
         .id(id)
         .h_full()
@@ -88,11 +111,7 @@ pub fn neo_context_column(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
         .flex()
         .flex_col()
         .gap(px(tokens.geometry.gap))
-        .p(px(tokens.geometry.gutter))
-        .pl(px(
-            (tokens.geometry.gap - tokens.geometry.gutter / 2.0).max(0.0)
-        ))
-        .pt(px(tokens.geometry.gutter + header + tokens.geometry.gap))
+        .p(px(16.0))
         .overflow_y_scroll()
 }
 /// Variante compacta de la cabecera compartida de Orbit.

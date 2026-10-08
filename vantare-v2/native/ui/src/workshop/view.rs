@@ -208,6 +208,10 @@ impl Workshop {
                     .id(format!("options-{label}"))
                     .max_h(px(180.0))
                     .overflow_y_scroll()
+                    // La rueda desplaza solo la lista: GPUI no corta el evento y
+                    // el panel de detrás se movía a la vez. La lista ya se ha
+                    // desplazado (su oyente va antes en la fase de burbuja).
+                    .on_scroll_wheel(|_, _, cx| cx.stop_propagation())
                     .bg(rgb(0x232325))
                     .children(options.into_iter().map(|(id, label)| {
                         button(format!("option-{label}-{id}"), &label, id == selected).on_click(

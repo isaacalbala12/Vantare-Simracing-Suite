@@ -1,5 +1,5 @@
 //! Estilo del sistema de diseño Vantare (#1497): colores, tipografía, estilos
-//! Neo/Carmín/Limpio, acentos, clases y movimiento compartidos por todos los
+//! Neo/Neutro, acentos, clases y movimiento compartidos por todos los
 //! widgets, más la geometría de cada uno. Vive en `styles/vantare.json`:
 //! compilado en producto y editable en vivo en Workshop.
 
@@ -285,8 +285,7 @@ pub(crate) struct Accents {
 #[serde(deny_unknown_fields)]
 pub(crate) struct Variants {
     pub neo: Variant,
-    pub carmin: Variant,
-    pub limpio: Variant,
+    pub neutro: Variant,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -296,7 +295,7 @@ pub(crate) struct Variant {
     pub top: Color,
     pub bottom: Color,
     pub border: Color,
-    /// Opacidad del borde en el color del acento (Carmín); 0 usa `border`.
+    /// Opacidad del borde en el color del acento; 0 usa `border`.
     pub border_accent: f32,
     pub radius: f32,
     pub padding_x: f32,
@@ -304,7 +303,7 @@ pub(crate) struct Variant {
     pub shadow_y: f32,
     pub shadow_blur: f32,
     pub shadow_alpha: f32,
-    /// Cabecera en Rajdhani (Carmín) en lugar de Inter.
+    /// Cabecera en Rajdhani en lugar de Inter.
     pub header_display: bool,
     pub header_size: f32,
     pub header_tracking: f32,
@@ -317,7 +316,7 @@ pub(crate) struct Variant {
     pub player_to: f32,
     pub player_vertical: bool,
     pub player_radius: f32,
-    /// Fila propia en blanco a esta opacidad (Limpio) en lugar del acento.
+    /// Fila propia en blanco a esta opacidad en lugar del acento; 0 usa el degradado.
     pub player_white: f32,
     pub square_dots: bool,
 }

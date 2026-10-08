@@ -194,8 +194,7 @@ impl Options {
     fn variant<'a>(&self, style: &'a Style) -> &'a Variant {
         match self.look {
             Look::Neo => &style.styles.neo,
-            Look::Carmin => &style.styles.carmin,
-            Look::Limpio => &style.styles.limpio,
+            Look::Neutro => &style.styles.neutro,
         }
     }
 

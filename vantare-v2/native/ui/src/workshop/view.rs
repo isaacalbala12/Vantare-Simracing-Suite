@@ -610,7 +610,7 @@ impl Render for Workshop {
                         .child(Self::segments(
                             Control::Setting("style"),
                             &current("style"),
-                            &[("neo", "Neo"), ("carmin", "Carmín"), ("limpio", "Limpio")],
+                            &[("neo", "Neo"), ("neutro", "Neutro")],
                             cx,
                         ))
                         .child(div().mt(px(6.0)).child(Self::segments(

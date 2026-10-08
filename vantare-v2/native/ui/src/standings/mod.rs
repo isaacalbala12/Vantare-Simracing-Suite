@@ -74,8 +74,8 @@ pub enum DesignSystem {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Look {
-    Carmin,
-    Limpio,
+    /// Neo con fondos en escala de grises, sin subtono rojo.
+    Neutro,
     #[default]
     #[serde(other)]
     Neo,
@@ -749,7 +749,7 @@ mod tests {
             .expect("valores desconocidos");
         assert_eq!(
             (unknown.design_system, unknown.style),
-            (DesignSystem::Vantare, Look::Carmin)
+            (DesignSystem::Vantare, Look::Neo)
         );
         assert!(
             Widget::new(&Settings::eficiencia(), prefs)

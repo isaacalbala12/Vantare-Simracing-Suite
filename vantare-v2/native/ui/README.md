@@ -409,7 +409,7 @@ multiclase con franjas. Usa `columns` y `rowCount` de Settings: columnas
 elegibles (±, dorsal, coche, compuesto, paradas/BOX, sectores, última, mejor,
 intervalo, gap) en el orden del catálogo y ancho calculado desde las activas.
 `vantare_template` da las plantillas compacto 340, estándar 520 (el del
-Studio) y ampliado 900. Estilos Neo, Carmín y Limpio y cuatro acentos.
+Studio) y ampliado 900. Estilos Neo y Neutro (fondos en gris, sin subtono rojo) y cuatro acentos.
 Valores visuales y duraciones de animación en `styles/vantare.json`, el estilo
 único del sistema (compilado en producto, en vivo en Workshop). El kit común
 vive en `ui/src/vantare/`: estilo, primitivas de pintado, movimiento y edición

@@ -11,7 +11,7 @@ use gpui::{
 };
 use vantare_domain::format::Language;
 
-/// Blanco de la fila propia en Limpio.
+/// Blanco de la fila propia cuando el estilo la pinta plana (`player_white`).
 pub(crate) const WHITE: Color = Color(0xffffff, 1.0);
 
 /// Píldora de boxes: igual en español e inglés, como el catálogo.
@@ -184,7 +184,7 @@ impl Kit<'_> {
         let g = &self.style.geometry;
         let x0 = v.padding_x - g.player_bleed;
         let background = if v.player_white > 0.0 {
-            // Limpio: plano; el blanco propio y los destellos con la misma opacidad base.
+            // Fila plana (`player_white`): el blanco propio y los destellos con la misma opacidad base.
             let base = if color == WHITE { v.player_white } else { 0.3 };
             color.alpha(base * scale).into()
         } else {

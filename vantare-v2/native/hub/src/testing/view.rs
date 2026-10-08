@@ -549,7 +549,7 @@ impl Testing {
                     .min_h_0()
                     .overflow_y_scroll()
                     .child(self.remote.update(cx, |remote, cx| {
-                        remote.editor.render(adapt.center_width() < 1050.0, cx)
+                        remote.testing(adapt.center_width() < 1050.0, cx)
                     })),
             );
         } else {

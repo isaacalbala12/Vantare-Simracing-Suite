@@ -5898,3 +5898,6 @@ mínimo1280 y tamaño cliente comprobado, sin contar el intento como prueba.
 ### ISA-1496 · Segunda vuelta: ancho efectivo del inspector
 - La interacción nativa mostró controles de 168 px dentro de una columna de 140 px: Filas alcanzaba x=1932 en cliente de 1920. La columna reserva ahora 168 px y 196 para Opacidad con su porcentaje; no se modifica el tamaño mínimo del kit.
 - Build QA y Clippy `-D warnings` PASS. UI Automation del binario recompilado: Filas x=1736, ancho=168, extremo=1904; Opacidad x=1708, ancho=176, ambos dentro del panel. Capturas/recorridos en `C:/tmp/ui-r10/calidad-2-evidence`; matriz completa y gates finales aún en curso.
+### ISA-1496 · Segunda vuelta: espera en el consumidor real del redactor
+- La inspección del PNG descartó la primera prueba de busy: el redactor R5 llamaba directamente a `editor.render` y no consumía `Remote::testing`. Ahora llama a ese método compartido con el ancho compacto de su columna; el aviso de espera queda encima del formulario productivo.
+- Clippy `-D warnings` y build QA PASS. `testing-busy-final.png` del binario recompilado muestra «Procesando el informe… Conservamos tu borrador.» durante una respuesta IPC local demorada seis segundos. No se atribuye el aviso a las capturas anteriores. Repetición del recorrido completo y gates finales en curso.

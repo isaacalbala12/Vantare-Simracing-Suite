@@ -1141,7 +1141,7 @@ impl Remote {
         self.request(command, cx);
     }
 
-    pub fn testing(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
+    pub fn testing(&self, compact: bool, cx: &mut Context<Self>) -> gpui::Div {
         div()
             .flex()
             .flex_col()
@@ -1153,10 +1153,7 @@ impl Remote {
                     cx,
                 ))
             })
-            .child(
-                self.editor
-                    .render(f32::from(window.viewport_size().width) <= 1360.0, cx),
-            )
+            .child(self.editor.render(compact, cx))
     }
 
     /// R6: todas las vistas leen la misma publicación real y su estado de caché.

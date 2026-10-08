@@ -107,7 +107,13 @@ pub(super) fn agenda(
                                     .whitespace_nowrap(),
                             )
                             .child(beta::tier_pill(&row.series.tier, cx))
-                            .child(beta::follow_button(calendar, row.series, cx)),
+                            .child(
+                                div()
+                                    .flex()
+                                    .gap(px(4.0))
+                                    .child(beta::follow_button(calendar, row.series, cx))
+                                    .child(beta::reminder_button(calendar, row.series, cx)),
+                            ),
                     );
                 for cell in row.cells {
                     let mut day = div()
@@ -181,7 +187,16 @@ pub(super) fn posters(
         .gap(px(12.0));
     match beta::next_rows(calendar, now) {
         Ok(rows) => {
-            let width = ((cx.global::<orbit::Adapt>().center_width() - 100.0) / 3.0).max(190.0);
+            let width = poster_width(*cx.global::<orbit::Adapt>());
+            if rows.is_empty() {
+                cards = cards.child(orbit::text(
+                    "No hay carreras para estos filtros",
+                    14.0,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                ));
+            }
             for row in rows {
                 cards = cards.child(
                     orbit::neo_card(cx)
@@ -217,6 +232,16 @@ pub(super) fn posters(
                             orbit::ink_3(cx),
                             cx,
                         ))
+                        .child(orbit::text(
+                            row.series.race_duration_min.map_or_else(
+                                || "Carrera · —".into(),
+                                |minutes| format!("Carrera · {minutes} min"),
+                            ),
+                            12.0,
+                            500,
+                            orbit::ink_2(cx),
+                            cx,
+                        ))
                         .child(
                             div().flex().flex_wrap().gap(px(4.0)).children(
                                 beta::classes(row.series)
@@ -242,4 +267,35 @@ pub(super) fn posters(
         .when_some(calendar.error.clone(), |page, error| {
             page.child(orbit::callout(error, cx))
         })
+}
+
+fn poster_width(adapt: orbit::Adapt) -> f32 {
+    let available = adapt.center_width() - 2.0 * adapt.padding().1;
+    let columns = if available >= 1050.0 { 3.0 } else { 2.0 };
+    ((available - (columns - 1.0) * 12.0) / columns).max(0.0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn poster_columns_fit_seven_sizes_with_both_rail_states() {
+        for (width, height) in [
+            (1920.0, 1080.0),
+            (1800.0, 1000.0),
+            (1600.0, 900.0),
+            (1536.0, 864.0),
+            (1440.0, 900.0),
+            (1366.0, 768.0),
+            (1280.0, 720.0),
+        ] {
+            for open in [false, true] {
+                let adapt = orbit::Adapt::new(width, height, None, open);
+                let available = adapt.center_width() - 2.0 * adapt.padding().1;
+                let columns = if available >= 1050.0 { 3.0 } else { 2.0 };
+                assert!(poster_width(adapt) >= 230.0);
+                assert!(poster_width(adapt) * columns + (columns - 1.0) * 12.0 <= available + 0.01);
+            }
+        }
+    }
 }

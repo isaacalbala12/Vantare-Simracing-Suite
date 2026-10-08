@@ -490,8 +490,7 @@ impl Calendar {
                 if self.following.series_ids.contains(&series.id) {
                     match self.schedule.starts(series, now, now + Duration::days(7)) {
                         Ok(times) => {
-                            starts
-                                .extend(times.into_iter().map(|time| (time, series.id.clone())));
+                            starts.extend(times.into_iter().map(|time| (time, series.id.clone())));
                         }
                         Err(cause) => error = Some(cause),
                     }

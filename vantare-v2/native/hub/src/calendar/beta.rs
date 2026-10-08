@@ -116,6 +116,15 @@ fn countdown(at: DateTime<Utc>, now: DateTime<Utc>) -> String {
         format!("{minutes} min")
     }
 }
+fn next_hour_rows(
+    calendar: &Calendar,
+    now: DateTime<Utc>,
+) -> Result<Vec<views::Start<'_>>, String> {
+    Ok(next_rows(calendar, now)?
+        .into_iter()
+        .filter(|row| row.at < now + Duration::hours(1))
+        .collect())
+}
 pub(super) fn follow_button(
     calendar: &Calendar,
     series: &Series,
@@ -123,9 +132,15 @@ pub(super) fn follow_button(
 ) -> Stateful<Div> {
     let followed = calendar.following.series_ids.contains(&series.id);
     let id = series.id.clone();
-    orbit::button(
+    orbit::icon_button(
         gpui::SharedString::from(format!("calendar-follow-{id}")),
-        if followed { "★" } else { "☆" },
+        "star",
+        if followed {
+            "Quitar favorita"
+        } else {
+            "Marcar favorita"
+        },
+        32.0,
         cx,
     )
     .aria_label(if followed {
@@ -256,7 +271,11 @@ pub(super) fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
 fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> Div {
     let (followed, error) = calendar.upcoming(now);
     let next = followed.first().and_then(|(at, id)| {
-        calendar.schedule.series.iter().find(|series| &series.id == id)
+        calendar
+            .schedule
+            .series
+            .iter()
+            .find(|series| &series.id == id)
             .map(|series| views::Start { series, at: *at })
     });
     let mut hero = orbit::neo_accent_card(cx)
@@ -441,7 +460,7 @@ fn race_row(
         .child(orbit::text(
             row.series
                 .race_duration_min
-                .map_or_else(|| "–".into(), |minutes| format!("{minutes} min")),
+                .map_or_else(|| "—".into(), |minutes| format!("{minutes} min")),
             12.0,
             500,
             orbit::ink_2(cx),
@@ -475,12 +494,9 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .flex_1()
         .min_h_0()
         .overflow_y_scroll();
-    match next_rows(calendar, now) {
+    match next_hour_rows(calendar, now) {
         Ok(rows) if !rows.is_empty() => {
-            for row in rows
-                .into_iter()
-                .filter(|row| row.at < now + Duration::hours(1))
-            {
+            for row in rows {
                 races = races.child(race_row(calendar, &row, now, cx));
             }
         }
@@ -499,7 +515,7 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
                     .child(
                         orbit::text(
                             if current {
-                                "No hay carreras para estos filtros"
+                                "No hay salidas en la próxima hora para estos filtros"
                             } else {
                                 "Aún no hay horario publicado para esta semana"
                             },

@@ -342,6 +342,51 @@ struct PlayerDto {
         skip_serializing_if = "QualityDto::absent"
     )]
     pit_loss_s: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    fuel_energy: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    fuel_energy_per_lap: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    fuel_lap_projection_l: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    pit_refuel_target_l: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    pit_refuel_added_l: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    pit_service_remaining_s: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    pit_tyres: QualityDto<u8>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    stint_laps: QualityDto<u32>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    stint_elapsed_s: QualityDto<f64>,
     #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     damage_aero: QualityDto<f64>,
     #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
@@ -506,6 +551,15 @@ fn player(p: &d::Player) -> PlayerDto {
         pit_limiter_active: q(&p.pit_limiter_active, copied),
         pit_stop_stopped: q(&p.pit_stop_stopped, copied),
         pit_loss_s: q(&p.pit_loss_s, copied),
+        fuel_energy: q(&p.fuel.energy, copied),
+        fuel_energy_per_lap: q(&p.fuel.energy_per_lap, copied),
+        fuel_lap_projection_l: q(&p.fuel.lap_projection_l, copied),
+        pit_refuel_target_l: q(&p.pit_service.refuel_target_l, copied),
+        pit_refuel_added_l: q(&p.pit_service.refuel_added_l, copied),
+        pit_service_remaining_s: q(&p.pit_service.remaining_s, copied),
+        pit_tyres: q(&p.pit_service.tyres, copied),
+        stint_laps: q(&p.stint.laps, copied),
+        stint_elapsed_s: q(&p.stint.elapsed_s, copied),
         damage_aero: q(&p.damage.aero, copied),
         damage_body: q(&p.damage.body, copied),
         damage_suspension: q(&p.damage.suspension, copied),
@@ -747,6 +801,19 @@ fn uplayer(p: PlayerDto) -> d::Player {
             per_lap_l: uq(p.fuel_per_lap_l, id),
             laps_left: uq(p.fuel_laps_left, id),
             history,
+            energy: uq(p.fuel_energy, id),
+            energy_per_lap: uq(p.fuel_energy_per_lap, id),
+            lap_projection_l: uq(p.fuel_lap_projection_l, id),
+        },
+        pit_service: d::PitService {
+            refuel_target_l: uq(p.pit_refuel_target_l, id),
+            refuel_added_l: uq(p.pit_refuel_added_l, id),
+            remaining_s: uq(p.pit_service_remaining_s, id),
+            tyres: uq(p.pit_tyres, id),
+        },
+        stint: d::Stint {
+            laps: uq(p.stint_laps, id),
+            elapsed_s: uq(p.stint_elapsed_s, id),
         },
         delta_best_s: uq(p.delta_best_s, id),
         pit_limiter_active: uq(p.pit_limiter_active, id),
@@ -960,9 +1027,11 @@ impl SnapshotDto {
                 .filter(|old| old.car == player.car);
             fields!(player, old, requested_mask, delivered_mask;
                 Pedals => [throttle, brake], Clutch => [clutch], Steering => [steering],
-                Powertrain => [gear, speed_mps, engine_speed_rad_s], FuelLevel => [fuel_level_l, fuel_capacity_l],
-                FuelEstimate => [fuel_per_lap_l, fuel_laps_left, fuel_history], Delta => [delta_best_s],
-                PitStatus => [pit_limiter_active, pit_stop_stopped, pit_loss_s],
+                Powertrain => [gear, speed_mps, engine_speed_rad_s], FuelLevel => [fuel_level_l, fuel_capacity_l, fuel_energy],
+                FuelEstimate => [fuel_per_lap_l, fuel_laps_left, fuel_history, fuel_energy_per_lap, fuel_lap_projection_l],
+                Delta => [delta_best_s],
+                PitStatus => [pit_limiter_active, pit_stop_stopped, pit_loss_s, pit_refuel_target_l,
+                    pit_refuel_added_l, pit_service_remaining_s, pit_tyres, stint_laps, stint_elapsed_s],
                 Damage => [damage_aero, damage_body, damage_suspension, damage_tyre_wear]);
         }
         Ok(())

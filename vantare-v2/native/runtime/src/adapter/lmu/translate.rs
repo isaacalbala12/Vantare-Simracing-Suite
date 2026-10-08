@@ -8,8 +8,8 @@ use std::time::Duration;
 
 use vantare_domain::{
     Capabilities, Capability, Car, CarId, Class, ClassId, Damage, Driver, DriverId, Flag, FlagKind,
-    FlagScope, Fuel, Gap, Observation, Origin, Player, Quality, Session, SessionId, SessionKind,
-    Source, SourceKind, State, Telemetry, Weather,
+    FlagScope, Fuel, Gap, Observation, Origin, PitService, Player, Quality, Session, SessionId,
+    SessionKind, Source, SourceKind, State, Stint, Telemetry, Weather,
 };
 
 use super::frame::{self, Frame, Inputs, Kind, Rejection, Vehicle};
@@ -470,6 +470,9 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool, telemetry_stale: bool) -> 
         ),
         // LMU no publica la pérdida estimada de una parada (#1497).
         pit_loss_s: Quality::Unavailable,
+        // Energía virtual, servicio de la parada y stint aún no se leen de LMU (#1497).
+        pit_service: PitService::default(),
+        stint: Stint::default(),
     }
 }
 

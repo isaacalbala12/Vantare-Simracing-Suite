@@ -156,6 +156,7 @@ impl Overlay {
         match &mut self.widget {
             Widget::Standings(widget) => widget.set_vantare_style(style),
             Widget::Relative(widget) => widget.set_vantare_style(style),
+            Widget::FuelStrategy(widget) => widget.set_vantare_style(style),
             _ => return,
         }
         cx.notify();
@@ -175,6 +176,7 @@ impl Overlay {
         match &mut self.widget {
             Widget::Standings(widget) => widget.settle(),
             Widget::Relative(widget) => widget.settle(),
+            Widget::FuelStrategy(widget) => widget.settle(),
             _ => {}
         }
     }

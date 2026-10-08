@@ -2,6 +2,56 @@
 use super::*;
 
 impl Workshop {
+    /// Grupos Aspecto (estilo y acento) y Marca de los widgets Vantare.
+    fn vantare_look(&self, cx: &mut Context<Self>) -> [gpui::Div; 2] {
+        let current = |key: &str| {
+            serde_json::to_value(&self.settings)
+                .ok()
+                .and_then(|v| v[key].as_str().map(str::to_owned))
+                .unwrap_or_default()
+        };
+        let brand = match &self.settings {
+            Settings::Standings(s) => s.brand_visible,
+            Settings::Relative(s) => s.brand_visible,
+            Settings::FuelStrategy(s) => s.brand_visible,
+            _ => None,
+        };
+        [
+            group("Aspecto")
+                .child(Self::segments(
+                    Control::Setting("style"),
+                    &current("style"),
+                    &[("neo", "Neo"), ("neutro", "Neutro")],
+                    cx,
+                ))
+                .child(div().mt(px(6.0)).child(Self::segments(
+                    Control::Setting("accent"),
+                    &current("accent"),
+                    &[
+                        ("red", "Rojo"),
+                        ("amber", "Ámbar"),
+                        ("green", "Verde"),
+                        ("white", "Blanco"),
+                    ],
+                    cx,
+                ))),
+            group("Marca")
+                .child(Self::segments(
+                    Control::Brand,
+                    if brand == Some(true) { "true" } else { "false" },
+                    &[("true", "Con marca"), ("false", "Sin marca")],
+                    cx,
+                ))
+                .child(
+                    div()
+                        .mt(px(6.0))
+                        .text_size(px(10.0))
+                        .text_color(rgb(0x95959c))
+                        .child("En la app lo decidirá la licencia; aquí se prueba a mano."),
+                ),
+        ]
+    }
+
     fn segments(
         control: Control,
         selected: &str,
@@ -190,6 +240,7 @@ fn widget_label(kind: Kind) -> &'static str {
         Kind::Standings => "Standings",
         Kind::Relative => "Relative",
         Kind::Delta => "Delta",
+        Kind::FuelStrategy => "Fuel y stint",
         Kind::Pedals => "Pedals",
         Kind::PedalsTelemetry => "Pedales avanzados",
         Kind::FastestLap => "Vuelta rápida",
@@ -355,10 +406,14 @@ impl Render for Workshop {
         let vantare = match &self.settings {
             Settings::Standings(s) => s.design_system == crate::standings::DesignSystem::Vantare,
             Settings::Relative(s) => s.design_system == crate::standings::DesignSystem::Vantare,
+            Settings::FuelStrategy(s) => s.design_system == crate::standings::DesignSystem::Vantare,
             _ => false,
         };
         let relative = self.kind == Kind::Relative;
-        let system = if matches!(self.kind, Kind::Standings | Kind::Relative) {
+        let system = if matches!(
+            self.kind,
+            Kind::Standings | Kind::Relative | Kind::FuelStrategy
+        ) {
             Self::segments(
                 Control::Setting("designSystem"),
                 if vantare { "vantare" } else { "eficiencia" },
@@ -454,7 +509,24 @@ impl Render for Workshop {
                 ],
                 cx,
             )));
-        if vantare {
+        if vantare && self.kind == Kind::FuelStrategy {
+            let size = match &self.settings {
+                Settings::FuelStrategy(s) => s.size.clone(),
+                _ => String::new(),
+            };
+            panel = panel
+                .child(group("Tamaño").child(Self::segments(
+                    Control::Setting("size"),
+                    &size,
+                    &[
+                        ("compact", "Compacto"),
+                        ("standard", "Estándar"),
+                        ("expanded", "Ampliado"),
+                    ],
+                    cx,
+                )))
+                .children(self.vantare_look(cx));
+        } else if vantare {
             let current = |key: &str| {
                 serde_json::to_value(&self.settings)
                     .ok()
@@ -605,46 +677,7 @@ impl Render for Workshop {
                             cx,
                         )),
                 )
-                .child(
-                    group("Aspecto")
-                        .child(Self::segments(
-                            Control::Setting("style"),
-                            &current("style"),
-                            &[("neo", "Neo"), ("neutro", "Neutro")],
-                            cx,
-                        ))
-                        .child(div().mt(px(6.0)).child(Self::segments(
-                            Control::Setting("accent"),
-                            &current("accent"),
-                            &[
-                                ("red", "Rojo"),
-                                ("amber", "Ámbar"),
-                                ("green", "Verde"),
-                                ("white", "Blanco"),
-                            ],
-                            cx,
-                        ))),
-                )
-                .child(
-                    group("Marca")
-                        .child(Self::segments(
-                            Control::Brand,
-                            match &self.settings {
-                                Settings::Standings(s) if s.brand_visible == Some(true) => "true",
-                                Settings::Relative(s) if s.brand_visible == Some(true) => "true",
-                                _ => "false",
-                            },
-                            &[("true", "Con marca"), ("false", "Sin marca")],
-                            cx,
-                        ))
-                        .child(
-                            div()
-                                .mt(px(6.0))
-                                .text_size(px(10.0))
-                                .text_color(rgb(0x95959c))
-                                .child("En la app lo decidirá la licencia; aquí se prueba a mano."),
-                        ),
-                );
+                .children(self.vantare_look(cx));
         } else if self.kind == Kind::Standings {
             panel = panel
                 .child(group("Marca").child(Self::segments(

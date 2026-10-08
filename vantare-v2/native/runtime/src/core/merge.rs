@@ -4,8 +4,8 @@
 use std::collections::HashSet;
 
 use vantare_domain::{
-    Car, CarId, Damage, Fuel, Gap, Observation, Player, Pose, Quality, Session, SessionId,
-    Snapshot, SourceState, State, Telemetry, Weather, degrade,
+    Car, CarId, Damage, Fuel, Gap, Observation, PitService, Player, Pose, Quality, Session,
+    SessionId, Snapshot, SourceState, State, Telemetry, Weather, degrade,
 };
 
 use super::derive::derive;
@@ -237,6 +237,8 @@ fn sanitize_player(player: &mut Player) {
         pit_limiter_active: _, // bool: no requiere saneamiento numérico.
         pit_stop_stopped: _,
         pit_loss_s,
+        pit_service,
+        stint,
     } = player;
     let Telemetry {
         throttle,
@@ -257,10 +259,27 @@ fn sanitize_player(player: &mut Player) {
         per_lap_l,
         laps_left,
         history,
+        energy,
+        energy_per_lap,
+        lap_projection_l,
     } = fuel;
     for signal in [level_l, capacity_l, per_lap_l, laps_left] {
         finite(signal);
     }
+    fraction(energy);
+    fraction(energy_per_lap);
+    keep_if(lap_projection_l, |v| v.is_finite() && *v >= 0.0);
+    let PitService {
+        refuel_target_l,
+        refuel_added_l,
+        remaining_s,
+        tyres,
+    } = pit_service;
+    for signal in [refuel_target_l, refuel_added_l, remaining_s] {
+        keep_if(signal, |v| v.is_finite() && *v >= 0.0);
+    }
+    keep_if(tyres, |v| *v <= 4);
+    keep_if(&mut stint.elapsed_s, |v| v.is_finite() && *v >= 0.0);
     for entry in history {
         if entry.is_some_and(|(_, litres)| !litres.is_finite() || litres <= 0.0) {
             *entry = None;

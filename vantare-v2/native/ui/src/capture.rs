@@ -383,7 +383,7 @@ pub fn run_sequence(kind: Kind, snapshots: &[Snapshot], path: PathBuf) -> ExitCo
             return;
         };
         view.update(cx, |v, cx| {
-            // Las referencias de paridad de Standings y Relative son del sistema
+            // Las referencias de paridad de Standings, Relative y Fuel son del sistema
             // Eficiencia; Vantare (#1497) es el predeterminado del producto.
             let reference = match kind {
                 Kind::Standings => Some(crate::Settings::Standings(
@@ -391,6 +391,9 @@ pub fn run_sequence(kind: Kind, snapshots: &[Snapshot], path: PathBuf) -> ExitCo
                 )),
                 Kind::Relative => Some(crate::Settings::Relative(
                     crate::relative::Settings::eficiencia(),
+                )),
+                Kind::FuelStrategy => Some(crate::Settings::FuelStrategy(
+                    crate::fuel_strategy::Settings::eficiencia(),
                 )),
                 _ => None,
             };

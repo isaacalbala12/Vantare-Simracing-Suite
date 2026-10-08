@@ -214,6 +214,32 @@ pub struct Fuel {
     /// y no cambiar las proyecciones. El DTO publica solo las plazas ocupadas.
     /// Son medidas históricas: el silencio no cambia sus litros.
     pub history: [Option<(u32, f64)>; 10],
+    /// Energía virtual restante, fracción 0–1 (Hypercar en LMU). #1497.
+    pub energy: Quality<f64>,
+    /// Energía virtual media por vuelta, fracción 0–1.
+    pub energy_per_lap: Quality<f64>,
+    /// Litros que gastará la vuelta en curso al ritmo actual (cae en FCY).
+    pub lap_projection_l: Quality<f64>,
+}
+
+/// Parada en curso del jugador: repostaje y neumáticos. #1497.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct PitService {
+    /// Litros que la parada va a cargar en total.
+    pub refuel_target_l: Quality<f64>,
+    /// Litros cargados hasta ahora en esta parada.
+    pub refuel_added_l: Quality<f64>,
+    /// Segundos que faltan para terminar el servicio.
+    pub remaining_s: Quality<f64>,
+    /// Neumáticos que se cambian (0–4).
+    pub tyres: Quality<u8>,
+}
+
+/// Stint actual del jugador (desde la última salida de boxes). #1497.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Stint {
+    pub laps: Quality<u32>,
+    pub elapsed_s: Quality<f64>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -247,6 +273,8 @@ pub struct Player {
     /// Tiempo que se pierde en una parada (entrada, servicio típico y salida),
     /// en segundos. Normalmente `Estimated`.
     pub pit_loss_s: Quality<f64>,
+    pub pit_service: PitService,
+    pub stint: Stint,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -504,6 +532,8 @@ fn degrade_player(player: &mut Player) {
         pit_limiter_active,
         pit_stop_stopped,
         pit_loss_s,
+        pit_service,
+        stint,
     } = player;
     let Telemetry {
         throttle,
@@ -527,7 +557,26 @@ fn degrade_player(player: &mut Player) {
         per_lap_l,
         laps_left,
         history: _,
+        energy,
+        energy_per_lap,
+        lap_projection_l,
     } = fuel;
+    make_stale(energy);
+    make_stale(energy_per_lap);
+    make_stale(lap_projection_l);
+    let PitService {
+        refuel_target_l,
+        refuel_added_l,
+        remaining_s,
+        tyres,
+    } = pit_service;
+    make_stale(refuel_target_l);
+    make_stale(refuel_added_l);
+    make_stale(remaining_s);
+    make_stale(tyres);
+    let Stint { laps, elapsed_s } = stint;
+    make_stale(laps);
+    make_stale(elapsed_s);
     make_stale(level_l);
     make_stale(capacity_l);
     make_stale(per_lap_l);

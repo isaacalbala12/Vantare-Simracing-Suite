@@ -18,6 +18,7 @@ pub mod fastest_lap;
 mod flag;
 pub mod format;
 pub mod fuel_strategy;
+pub mod fuel_vantare;
 pub mod head_to_head;
 pub mod input_telemetry;
 mod model;
@@ -38,9 +39,10 @@ pub use adapter::{Adapter, AdapterError, Observation};
 pub use capability::{Capabilities, Capability};
 pub use flag::{Flag, FlagKind, FlagScope};
 pub use model::{
-    Car, CarId, Class, ClassId, Damage, Driver, DriverId, DriverRating, Fuel, Gap, Origin, Player,
-    Pose, Session, SessionId, SessionKind, SessionState, Snapshot, Source, SourceKind, SourceState,
-    State, Telemetry, TyreCompound, UNKNOWN_SIMULATOR, Weather, degrade,
+    Car, CarId, Class, ClassId, Damage, Driver, DriverId, DriverRating, Fuel, Gap, Origin,
+    PitService, Player, Pose, Session, SessionId, SessionKind, SessionState, Snapshot, Source,
+    SourceKind, SourceState, State, Stint, Telemetry, TyreCompound, UNKNOWN_SIMULATOR, Weather,
+    degrade,
 };
 pub use quality::Quality;
 pub mod text;

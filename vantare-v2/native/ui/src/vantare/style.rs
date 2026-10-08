@@ -80,6 +80,53 @@ pub(crate) struct Style {
     pub motion: MotionStyle,
     pub relative: RelativeStyle,
     pub brand: BrandStyle,
+    pub fuel: FuelStyle,
+}
+
+/// Geometría y colores propios de Fuel y stint Vantare.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct FuelStyle {
+    pub width_compact: f32,
+    pub width_standard: f32,
+    pub width_expanded: f32,
+    /// Etiqueta de las filas (Inter).
+    pub row_label: f32,
+    pub gauge_title: f32,
+    pub gauge_value: f32,
+    /// Valor del medidor secundario (combustible bajo la energía).
+    pub gauge_value_small: f32,
+    pub gauge_suffix: f32,
+    pub gauge_bar: f32,
+    pub gauge_height: f32,
+    pub big: f32,
+    pub big_secondary: f32,
+    pub big_height: f32,
+    pub bar: f32,
+    pub tile_height: f32,
+    pub tile_label: f32,
+    pub tile_value: f32,
+    pub tile_margin: f32,
+    pub tile_radius: f32,
+    pub sub_height: f32,
+    pub spark_height: f32,
+    pub spark_stroke: f32,
+    pub spark_dot: f32,
+    pub window_height: f32,
+    pub window_labels: f32,
+    pub low_pulse_ms: f32,
+    pub low_fill: Color,
+    pub low_text: Color,
+    pub low_border: Color,
+    pub fuel_bar: Color,
+    pub track: Color,
+    pub refuel: Color,
+    pub average_line: Color,
+    pub tile_fill: Color,
+    pub tile_line: Color,
+    /// Opacidad del relleno de la ventana de parada en el acento.
+    pub window_fill: f32,
+    pub now: Color,
 }
 
 /// Marca Vantare de la cabecera (#1504): símbolo rojo y nombre en Rajdhani.

@@ -379,6 +379,15 @@ fn system_defaults(kind: Kind, system: crate::standings::DesignSystem) -> Settin
             brand_visible: Some(true),
             ..Default::default()
         }),
+        (Kind::FuelStrategy, DesignSystem::Vantare) => {
+            Settings::FuelStrategy(crate::fuel_strategy::Settings {
+                brand_visible: Some(true),
+                ..Default::default()
+            })
+        }
+        (Kind::FuelStrategy, DesignSystem::Eficiencia) => {
+            Settings::FuelStrategy(crate::fuel_strategy::Settings::eficiencia())
+        }
         (Kind::Relative, DesignSystem::Eficiencia) => {
             Settings::Relative(crate::relative::Settings {
                 columns: Some(default_columns(Kind::Relative)),
@@ -994,6 +1003,7 @@ impl Workshop {
                     let brand = match &mut self.settings {
                         Settings::Standings(settings) => &mut settings.brand_visible,
                         Settings::Relative(settings) => &mut settings.brand_visible,
+                        Settings::FuelStrategy(settings) => &mut settings.brand_visible,
                         _ => return Err("este widget no tiene marca".into()),
                     };
                     *brand = Some(value == "true");
@@ -1045,6 +1055,11 @@ impl Workshop {
                             if old.design_system != new.design_system =>
                         {
                             system_defaults(Kind::Relative, new.design_system)
+                        }
+                        (Settings::FuelStrategy(old), Settings::FuelStrategy(new))
+                            if old.design_system != new.design_system =>
+                        {
+                            system_defaults(Kind::FuelStrategy, new.design_system)
                         }
                         (_, next) => next,
                     };
@@ -1358,8 +1373,8 @@ mod tests {
                 );
             }
         }
-        // 43 demostraciones React + cuatro escenas Vantare r10b (#1497).
-        assert_eq!(count, 47);
+        // 43 demostraciones React + seis escenas Vantare r10b (#1497).
+        assert_eq!(count, 49);
         let default = Scene::new(&initial).expect("Standings default");
         assert_eq!(
             default.snapshots[0].state.cars[0].last_lap_s.current(),

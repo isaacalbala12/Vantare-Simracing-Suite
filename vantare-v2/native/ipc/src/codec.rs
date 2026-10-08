@@ -156,9 +156,9 @@ pub(crate) mod tests {
 
     use vantare_domain::{
         Capabilities, Capability, Car, CarId, Class, ClassId, Damage, Driver, DriverId,
-        DriverRating, Flag, FlagKind, FlagScope, Fuel, Gap, Origin, Player, Pose, Quality, Session,
-        SessionId, SessionKind, SessionState, Source, SourceKind, State, Telemetry, TyreCompound,
-        Weather,
+        DriverRating, Flag, FlagKind, FlagScope, Fuel, Gap, Origin, PitService, Player, Pose,
+        Quality, Session, SessionId, SessionKind, SessionState, Source, SourceKind, State, Stint,
+        Telemetry, TyreCompound, Weather,
     };
 
     use super::*;
@@ -230,7 +230,20 @@ pub(crate) mod tests {
             assert!(car.remove(field).is_some(), "{field}");
         }
         let player = value["state"]["player"].as_object_mut().expect("jugador");
-        assert!(player.remove("pit_loss_s").is_some(), "pit_loss_s");
+        for field in [
+            "pit_loss_s",
+            "fuel_energy",
+            "fuel_energy_per_lap",
+            "fuel_lap_projection_l",
+            "pit_refuel_target_l",
+            "pit_refuel_added_l",
+            "pit_service_remaining_s",
+            "pit_tyres",
+            "stint_laps",
+            "stint_elapsed_s",
+        ] {
+            assert!(player.remove(field).is_some(), "{field}");
+        }
         let old = crate::snapshot_from_json(&value.to_string()).expect("foto sin señales nuevas");
         let car = &old.state.cars[0];
         assert!(car.vehicle.is_empty());
@@ -239,16 +252,20 @@ pub(crate) mod tests {
         assert_eq!(car.driver_rating, Quality::Unavailable);
         assert_eq!(car.safety_rating, Quality::Unavailable);
         assert_eq!(car.relative_trend_s_per_lap, Quality::Unavailable);
-        assert_eq!(
-            old.state.player.as_ref().expect("jugador").pit_loss_s,
-            Quality::Unavailable
-        );
+        let me = old.state.player.as_ref().expect("jugador");
+        assert_eq!(me.pit_loss_s, Quality::Unavailable);
+        assert_eq!(me.fuel.energy, Quality::Unavailable);
+        assert_eq!(me.fuel.lap_projection_l, Quality::Unavailable);
+        assert_eq!(me.pit_service, PitService::default());
+        assert_eq!(me.stint, Stint::default());
         assert_eq!(car.tyre_compound, Quality::Unavailable);
         assert!(car.best_sectors_s.is_empty() && car.current_sectors_s.is_empty());
         // Sin dato no se escriben: las fotos existentes conservan sus bytes.
         let written = serde_json::to_value(SnapshotDto::from(&old)).expect("DTO");
         let car = written["state"]["cars"][0].as_object().expect("coche");
         assert!(!car.contains_key("grid_position") && !car.contains_key("tyre_compound"));
+        let player = written["state"]["player"].as_object().expect("jugador");
+        assert!(!player.contains_key("fuel_energy") && !player.contains_key("stint_laps"));
         for compound in [
             TyreCompound::Soft,
             TyreCompound::Medium,
@@ -317,47 +334,65 @@ pub(crate) mod tests {
                     },
                 ]),
                 cars: vec![rich_car(1), rich_car(2)],
-                player: Some(Player {
-                    car: CarId(2),
-                    telemetry: Telemetry {
-                        throttle: Quality::Reliable(0.75),
-                        steering: Quality::Reliable(-0.25),
-                        gear: Quality::Reliable(-1),
-                        ..Telemetry::default()
-                    },
-                    fuel: Fuel {
-                        level_l: Quality::Reliable(42.5),
-                        per_lap_l: Quality::Estimated(3.1),
-                        history: [
-                            Some((1, 3.0)),
-                            Some((2, 3.2)),
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                            None,
-                        ],
-                        ..Fuel::default()
-                    },
-                    delta_best_s: Quality::Reliable(-0.125),
-                    pit_limiter_active: Quality::Reliable(false),
-                    pit_stop_stopped: Quality::Unavailable,
-                    pit_loss_s: Quality::Estimated(27.4),
-                    damage: Damage {
-                        aero: Quality::Reliable(0.9),
-                        body: Quality::Estimated(0.8),
-                        suspension: Quality::Stale(0.7),
-                        tyre_wear: [
-                            Quality::Reliable(1.0),
-                            Quality::Estimated(0.75),
-                            Quality::Stale(0.5),
-                            Quality::Reliable(0.25),
-                        ],
-                    },
-                }),
+                player: Some(rich_player()),
+            },
+        }
+    }
+
+    /// Jugador con todas las señales, de `rich_snapshot`.
+    fn rich_player() -> Player {
+        Player {
+            car: CarId(2),
+            telemetry: Telemetry {
+                throttle: Quality::Reliable(0.75),
+                steering: Quality::Reliable(-0.25),
+                gear: Quality::Reliable(-1),
+                ..Telemetry::default()
+            },
+            fuel: Fuel {
+                level_l: Quality::Reliable(42.5),
+                per_lap_l: Quality::Estimated(3.1),
+                history: [
+                    Some((1, 3.0)),
+                    Some((2, 3.2)),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ],
+                energy: Quality::Reliable(0.614),
+                energy_per_lap: Quality::Estimated(0.0482),
+                lap_projection_l: Quality::Stale(1.41),
+                ..Fuel::default()
+            },
+            delta_best_s: Quality::Reliable(-0.125),
+            pit_limiter_active: Quality::Reliable(false),
+            pit_stop_stopped: Quality::Unavailable,
+            pit_loss_s: Quality::Estimated(27.4),
+            pit_service: PitService {
+                refuel_target_l: Quality::Reliable(58.0),
+                refuel_added_l: Quality::Reliable(34.1),
+                remaining_s: Quality::Estimated(9.8),
+                tyres: Quality::Reliable(4),
+            },
+            stint: Stint {
+                laps: Quality::Reliable(13),
+                elapsed_s: Quality::Stale(2712.0),
+            },
+            damage: Damage {
+                aero: Quality::Reliable(0.9),
+                body: Quality::Estimated(0.8),
+                suspension: Quality::Stale(0.7),
+                tyre_wear: [
+                    Quality::Reliable(1.0),
+                    Quality::Estimated(0.75),
+                    Quality::Stale(0.5),
+                    Quality::Reliable(0.25),
+                ],
             },
         }
     }

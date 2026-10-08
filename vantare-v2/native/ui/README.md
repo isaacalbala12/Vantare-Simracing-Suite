@@ -443,6 +443,23 @@ en movimiento. Escenas `relative-vantare.scene.json` y
 Los adaptadores aún no publican nivel, SR, tendencia ni pérdida en boxes: en
 pista real salen «—» u omitidos.
 
+## Fuel y stint Vantare (#1497)
+
+Mismo sistema y kit, sistema por defecto (`designSystem`); Eficiencia sigue
+disponible. Proyección pura en `domain::fuel_vantare`: combustible y, si la
+fuente la publica, energía virtual (`Fuel::energy`, `energy_per_lap`); el recurso
+que se acaba antes decide las vueltas que quedan y la vuelta de parada (por
+debajo de 1.5 vueltas, «esta vuelta»; si llega a meta, «sobran»). Además: ventana
+de parada sobre el total de vueltas, litros y paradas para terminar, ahorro en
+FCY (`Fuel::lap_projection_l`), repostaje en curso (`Player::pit_service`) y stint
+(`Player::stint`). Tamaños en `size`: compacto 230, estándar 300 (el del Studio) y
+ampliado 460 con medidores, mosaico, gráfica de consumo y ventana. Avisos de
+combustible bajo (franja y borde que late), boxes, FCY, amarilla y última vuelta.
+Las barras se deslizan al cambiar de vuelta. Escenas `fuel-vantare.scene.json` y
+`fuel-vantare-carrera.scene.json` con los datos del catálogo (no telemetría). Los
+adaptadores aún no publican energía virtual, consumo de la vuelta, repostaje ni
+stint: en pista real esas partes se omiten o salen «—».
+
 ### Harness anterior y mediciones históricas
 
 `vantare-workshop` abre la misma ventana por monitor con uno o varios widgets

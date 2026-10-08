@@ -13,6 +13,8 @@ use vantare_domain::CarId;
 pub(crate) enum Flash {
     Gain,
     Loss,
+    /// Toma el liderato de la clase.
+    Lead,
     Best,
     Pit,
 }
@@ -33,6 +35,7 @@ pub(crate) struct Sample {
     pub position: u32,
     pub fastest: bool,
     pub in_pits: bool,
+    pub leader: bool,
 }
 
 /// Estado de una fila en un instante: desplazamiento sobre su sitio,
@@ -64,6 +67,7 @@ struct Track {
     position: u32,
     fastest: bool,
     in_pits: bool,
+    leader: bool,
 }
 
 impl Track {
@@ -112,6 +116,8 @@ impl Motion {
                     // Boxes manda: entrar suele costar puestos y es lo que hay que ver.
                     let flash = if sample.in_pits && !old.in_pits {
                         Some((Flash::Pit, now))
+                    } else if sample.leader && !old.leader {
+                        Some((Flash::Lead, now))
                     } else if sample.position < old.position {
                         Some((Flash::Gain, now))
                     } else if sample.position > old.position {
@@ -131,6 +137,7 @@ impl Motion {
                         position: sample.position,
                         fastest: sample.fastest,
                         in_pits: sample.in_pits,
+                        leader: sample.leader,
                     }
                 }
                 _ => Track {
@@ -142,6 +149,7 @@ impl Motion {
                     position: sample.position,
                     fastest: sample.fastest,
                     in_pits: sample.in_pits,
+                    leader: sample.leader,
                 },
             };
             next.insert(sample.id, track);
@@ -212,6 +220,7 @@ mod tests {
             position,
             fastest: false,
             in_pits: false,
+            leader: position == 1,
         }
     }
 
@@ -228,7 +237,7 @@ mod tests {
         motion.update(&[sample(2, 0.0, 1), sample(1, 24.0, 2)], TIMING, t0);
         let gain = motion.pose(CarId(2), TIMING, t0);
         assert_eq!(gain.offset, 24.0, "parte de su sitio anterior");
-        assert_eq!(gain.flash, Some((Flash::Gain, 1.0)));
+        assert_eq!(gain.flash, Some((Flash::Lead, 1.0)), "pasa a liderar");
         assert_eq!(
             motion.pose(CarId(1), TIMING, t0).flash.map(|f| f.0),
             Some(Flash::Loss)
@@ -289,7 +298,7 @@ mod tests {
         motion.update(&[sample(1, 0.0, 1), sample(2, 24.0, 2)], TIMING, t0);
         assert_eq!(
             motion.pose(CarId(1), TIMING, t0).flash.map(|f| f.0),
-            Some(Flash::Gain)
+            Some(Flash::Lead)
         );
     }
 

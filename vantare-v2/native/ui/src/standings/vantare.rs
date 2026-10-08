@@ -96,14 +96,15 @@ pub(crate) struct Style {
     pub motion: MotionStyle,
 }
 
-/// Duraciones del movimiento en ms y opacidad máxima del destello.
+/// Duraciones del movimiento en ms e intensidad del destello.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct MotionStyle {
     pub reorder_ms: f32,
     pub fade_ms: f32,
     pub flash_ms: f32,
-    pub flash_alpha: f32,
+    /// Intensidad del destello respecto a la fila propia (1 = igual).
+    pub flash_boost: f32,
 }
 
 impl MotionStyle {
@@ -227,6 +228,10 @@ pub(crate) struct Colors {
     pub final_fill: Color,
     pub final_text: Color,
     pub shadow: Color,
+    /// Líder de la clase: posición, «Líder» y destello al tomar el mando.
+    pub leader: Color,
+    pub flash_gain: Color,
+    pub flash_loss: Color,
 }
 
 /// Colores de una clase; `match` es un fragmento del nombre en minúsculas y
@@ -434,6 +439,11 @@ fn waiting(board: Option<&Board>) -> bool {
     board.is_none_or(|b| matches!(b.source_state, SourceState::Waiting | SourceState::Lost))
 }
 
+/// Líder de su clase (la proyección rotula su gap como «Líder»).
+fn is_leader(row: &Row) -> bool {
+    matches!(row.gap.as_str(), "Líder" | "Leader")
+}
+
 /// Clase mostrada: la del jugador o, sin jugador, la primera (la del líder).
 fn shown_group(board: &Board) -> Option<usize> {
     board
@@ -564,6 +574,7 @@ impl State {
                     position: row.position.parse().unwrap_or(u32::MAX),
                     fastest: row.best_mark == Mark::Fastest,
                     in_pits: row.pit == Pit::InPits,
+                    leader: is_leader(row),
                 })
             })
             .collect()
@@ -625,6 +636,9 @@ impl State {
 // ---------------------------------------------------------------------------
 // Pintado
 // ---------------------------------------------------------------------------
+
+/// Blanco de la fila propia en Limpio.
+const WHITE: Color = Color(0xffffff, 1.0);
 
 /// Píldora de boxes: igual en español e inglés, como el catálogo.
 const BOX: &str = "BOX";
@@ -1081,32 +1095,47 @@ impl Painter<'_> {
             .motion
             .pose(row.id, self.style.motion.timing(), self.now);
         let y = y + pose.offset;
-        with_opacity(pose.alpha, || {
-            if let Some((flash, strength)) = pose.flash {
-                let c = &self.style.colors;
-                let color = match flash {
-                    Flash::Gain => c.gain,
-                    Flash::Loss => c.loss,
-                    Flash::Best => c.purple,
-                    Flash::Pit => c.box_fill,
-                };
-                let g = &self.style.geometry;
-                let pad = self.variant.padding_x - g.player_bleed;
-                round_rect(
-                    window,
-                    pad,
-                    y,
-                    self.plan.width - 2.0 * pad,
-                    g.row_height,
-                    self.variant.player_radius,
-                    color.alpha(self.style.motion.flash_alpha * strength),
-                );
-            }
-            self.row(window, cx, y, gi, ri);
-        });
+        with_opacity(pose.alpha, || self.row(window, cx, y, gi, ri, pose.flash));
     }
 
-    fn row(&self, window: &mut Window, cx: &mut App, y: f32, gi: usize, ri: usize) {
+    /// Fondo de fila con el perfil de la fila propia (degradado o plano).
+    fn highlight(&self, window: &mut Window, y: f32, color: Color, scale: f32) {
+        if scale <= 0.0 {
+            return;
+        }
+        let v = self.variant;
+        let g = &self.style.geometry;
+        let x0 = v.padding_x - g.player_bleed;
+        let background = if v.player_white > 0.0 {
+            // Limpio: plano; el blanco propio y los destellos con la misma opacidad base.
+            let base = if color == WHITE { v.player_white } else { 0.3 };
+            color.alpha(base * scale).into()
+        } else {
+            linear_gradient(
+                if v.player_vertical { 180.0 } else { 90.0 },
+                linear_color_stop(color.alpha(v.player_from * scale), 0.0),
+                linear_color_stop(color.alpha(v.player_to * scale), 1.0),
+            )
+        };
+        window.paint_quad(quad(
+            rect(x0, y, self.plan.width - 2.0 * x0, g.row_height),
+            Corners::all(px(v.player_radius)),
+            background,
+            Edges::all(px(0.0)),
+            transparent(),
+            BorderStyle::default(),
+        ));
+    }
+
+    fn row(
+        &self,
+        window: &mut Window,
+        cx: &mut App,
+        y: f32,
+        gi: usize,
+        ri: usize,
+        flash: Option<(Flash, f32)>,
+    ) {
         let Some(board) = self.board else { return };
         let Some(group) = board.groups.get(gi) else {
             return;
@@ -1119,32 +1148,33 @@ impl Painter<'_> {
         let c = &self.style.colors;
         let v = self.variant;
         let h = g.row_height;
-        let (pad, w) = (v.padding_x, self.plan.width);
         let me = row.is_player && board.player_present;
+        // El destello sustituye a la fila propia y se funde de vuelta en ella.
+        let strength = flash.map_or(0.0, |(_, s)| s);
         if me {
-            let (x0, width) = (pad - g.player_bleed, w - 2.0 * (pad - g.player_bleed));
-            let background = if v.player_white > 0.0 {
-                gpui::white().opacity(v.player_white).into()
+            let own = if v.player_white > 0.0 {
+                WHITE
             } else {
-                linear_gradient(
-                    if v.player_vertical { 180.0 } else { 90.0 },
-                    linear_color_stop(self.accent.alpha(v.player_from), 0.0),
-                    linear_color_stop(self.accent.alpha(v.player_to), 1.0),
-                )
+                self.accent
             };
-            window.paint_quad(quad(
-                rect(x0, y, width, h),
-                Corners::all(px(v.player_radius)),
-                background,
-                Edges::all(px(0.0)),
-                transparent(),
-                BorderStyle::default(),
-            ));
+            self.highlight(window, y, own, 1.0 - strength);
         }
+        if let Some((kind, strength)) = flash {
+            let color = match kind {
+                Flash::Gain => c.flash_gain,
+                Flash::Loss => c.flash_loss,
+                Flash::Lead => c.leader,
+                Flash::Best => c.purple,
+                Flash::Pit => c.box_fill,
+            };
+            self.highlight(window, y, color, strength * self.style.motion.flash_boost);
+        }
+        let leader = is_leader(row);
         let class = self.style.class(&group.class);
         let cols = self.layout_columns();
-        // Posición.
-        let ink = self.ink(Face::Display, f.position, 0.0, c.muted.hsla());
+        // Posición: el líder en amarillo.
+        let position_color = if leader { c.leader } else { c.muted };
+        let ink = self.ink(Face::Display, f.position, 0.0, position_color.hsla());
         self.label(
             window,
             cx,
@@ -1180,6 +1210,8 @@ impl Painter<'_> {
             matches!(board.banner, Some(Banner::FullCourseYellow)) || (me && board.player_in_pits);
         let gap_color = if frozen {
             c.frozen
+        } else if leader && !self.options.interval {
+            c.leader
         } else if me {
             c.text
         } else {
@@ -1891,7 +1923,13 @@ mod tests {
                 }
             }
         }
-        for expected in [Flash::Gain, Flash::Loss, Flash::Best, Flash::Pit] {
+        for expected in [
+            Flash::Gain,
+            Flash::Loss,
+            Flash::Lead,
+            Flash::Best,
+            Flash::Pit,
+        ] {
             assert!(flashes.contains(&expected), "{expected:?} en {flashes:?}");
         }
         let later = std::time::Instant::now() + timing.flash + timing.reorder;

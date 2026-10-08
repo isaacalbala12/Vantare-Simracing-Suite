@@ -97,7 +97,10 @@
     "yellow_line": "#f59e0b80",
     "final_fill": "#f2eeee",
     "final_text": "#161314",
-    "shadow": "#00000073"
+    "shadow": "#00000073",
+    "leader": "#f5c518",
+    "flash_gain": "#22c55e",
+    "flash_loss": "#e14a54"
   },
   "classes": [
     {
@@ -212,6 +215,6 @@
     "reorder_ms": 320.0,
     "fade_ms": 220.0,
     "flash_ms": 1400.0,
-    "flash_alpha": 0.22
+    "flash_boost": 1.0
   }
 }

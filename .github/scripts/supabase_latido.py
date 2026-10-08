@@ -1,6 +1,7 @@
 """Read one public health row; never log credentials, response bodies or URLs."""
 
 import argparse
+import http.client
 import json
 import os
 import sys
@@ -48,7 +49,7 @@ def probe():
     except urllib.error.HTTPError as error:
         print(f"Latido FAIL: HTTP {error.code}.")
         return 1
-    except (OSError, ValueError):
+    except (OSError, ValueError, http.client.HTTPException):
         print("Latido FAIL: error de red, configuración o JSON.")
         return 1
     print("Latido OK: lectura de PostgreSQL verificada.")
@@ -82,7 +83,7 @@ def notify_failure():
             if response.status not in (200, 204):
                 print("Aviso FAIL: respuesta HTTP inesperada.")
                 return 1
-    except (OSError, ValueError):
+    except (OSError, ValueError, http.client.HTTPException):
         print("Aviso FAIL: entrega a Discord fallida; revisar Actions.")
         return 1
     print("Aviso de fallo enviado a Discord.")

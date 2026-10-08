@@ -20,7 +20,8 @@ Siguiente acción: revisión del orquestador e Isaac; sin merge, promoción ni r
 Issue [#1508](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1508),
 decisión de Isaac §6j y brief `C:/tmp/lanzamiento/brief-1508-latido.md`.
 Worktree `C:/tmp/vw3-1508`, rama `vantareapp/isa-1508-supabase-latido`, base
-`origin/nightly@5dc5ad1e`. Entrega aislada para PR draft a Nightly; sin promoción.
+`origin/nightly@5dc5ad1e`. [PR draft #1512](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1512)
+a Nightly, rama publicada; sin promoción. Issue en proyecto Vantare.
 
 Workflow diario 07:23 UTC/dispatch y script Python estándar: GET PostgREST con
 anon, timeout de 20 s, respuesta de salud estricta, fallo rojo y aviso opcional
@@ -31,7 +32,11 @@ toca cuenta, checkout ni #1506. Logs y mensajes excluyen cuerpos y credenciales.
 
 Evidencia local: 11/11 pruebas mock PASS, YAML/triggers/aislamiento de secretos
 PASS y `git diff --check` PASS. PostgreSQL/psql/Docker no están instalados en
-este entorno; prueba SQL integrada en CI, resultado remoto por verificar.
+este entorno. [CI del código inicial `9becaa2b`](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/37822775505):
+mock-tests y sql-tests PASS (PostgreSQL 16 real desechable, doble aplicación,
+RLS, anon sin escritura, rollback doble y reapply); latido real SKIPPED en PR.
+Revisión final amplía la sanitización a errores de protocolo HTTP y añade sus
+casos al test existente; 11/11 PASS local. CI del HEAD final por verificar.
 No se ejecutan gates Rust/Go/frontend porque no se modifica producto ni sus
 contratos. [Runbook](../../supabase-latido-runbook.md) fija activación, lectura
 manual temporal y rollback por Isaac. Cron y dispatch necesitan el workflow

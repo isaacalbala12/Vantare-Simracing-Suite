@@ -1,4 +1,5 @@
 import contextlib
+import http.client
 import io
 import json
 import os
@@ -73,7 +74,8 @@ class LatidoTests(unittest.TestCase):
                 self.assertEqual(self.run_sanitized(latido.probe), 1)
 
     def test_timeout_and_dns_failure_are_sanitized(self):
-        for error in (TimeoutError("private-response"), urllib.error.URLError("private-response")):
+        for error in (TimeoutError("private-response"), urllib.error.URLError("private-response"),
+                      http.client.BadStatusLine("private-response"), http.client.IncompleteRead(b"private-response")):
             with self.subTest(error=type(error)):
                 self.opener.open.side_effect = error
                 self.assertEqual(self.run_sanitized(latido.probe), 1)

@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 use std::time::{SystemTime, UNIX_EPOCH};
 
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 const LIMIT: usize = 64 * 1024;
 pub const VERSION_ERROR: &str =
     "versiones IPC incompatibles: reinicia núcleo, Hub y overlays de la misma build";
@@ -29,6 +29,7 @@ pub struct Policy {
     pub checked_at_ms: u64,
     pub valid_until_ms: Option<u64>,
     pub overlays_advanced: bool,
+    pub catalog: CatalogAccess,
     pub engineer: bool,
     pub strategy: bool,
     pub analysis: bool,
@@ -37,6 +38,31 @@ pub struct Policy {
     pub tester: bool,
     pub live: bool,
     pub error: Option<String>,
+}
+
+/// Corte comercial publicado, independiente del canal y del número de la build.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CatalogAccess {
+    #[default]
+    Free,
+    LaunchV1,
+    Pro,
+}
+impl CatalogAccess {
+    pub fn allows_widget(self, id: &str) -> bool {
+        match self {
+            Self::Free => matches!(id, "standings" | "pedals"),
+            Self::LaunchV1 => matches!(id, "standings" | "relative" | "delta" | "pedals"),
+            Self::Pro => true,
+        }
+    }
+
+    /// Las capacidades de módulo siguen siendo necesarias. Esta restricción
+    /// solo acota la edición; no publica ni concede módulos por sí sola.
+    pub fn allows_module(self, key: &str) -> bool {
+        self != Self::LaunchV1 || key == "vantare.module.calendar"
+    }
 }
 impl Policy {
     pub fn current_at(&self, now_ms: u64) -> bool {
@@ -299,6 +325,19 @@ impl Drop for Feed {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn a_new_widget_is_outside_the_perpetual_catalog_and_missing_scope_fails_closed() {
+        assert!(!CatalogAccess::LaunchV1.allows_widget("future-widget"));
+        assert!(!CatalogAccess::Free.allows_widget("future-widget"));
+        assert!(CatalogAccess::Pro.allows_widget("future-widget"));
+        let policy = serde_json::to_value(Policy::default()).expect("policy");
+        let mut missing = policy.clone();
+        missing.as_object_mut().expect("objeto").remove("catalog");
+        assert!(serde_json::from_value::<Policy>(missing).is_err());
+        let mut unknown = policy;
+        unknown["catalog"] = serde_json::json!("unverified-edition");
+        assert!(serde_json::from_value::<Policy>(unknown).is_err());
+    }
     #[test]
     fn old_version_clock_rollback_stale_or_expired_policy_denies() {
         let mut p = Policy {

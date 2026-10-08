@@ -21,6 +21,30 @@ const PREVIEW_PADDING: f32 = 22.0;
 const ZOOM_STEPS: [Option<u16>; 6] = [None, Some(50), Some(75), Some(100), Some(125), Some(150)];
 const AUTO_SAVED: &str = "Guardado";
 
+fn widget_lock(
+    access: Option<crate::shell::navigation::Access>,
+    kind: Kind,
+) -> Option<&'static str> {
+    let access = access?; // Workshop y capturas aisladas no conceden derechos al producto.
+    if !access.verified || access.blocked {
+        Some("Acceso sin verificar")
+    } else if !access.catalog.allows_widget(kind.name()) {
+        Some("Incluida en Pro")
+    } else {
+        None
+    }
+}
+
+fn catalog_options(access: Option<crate::shell::navigation::Access>) -> Vec<OptionItem> {
+    Kind::ALL
+        .iter()
+        .map(|&kind| match widget_lock(access, kind) {
+            Some(reason) => OptionItem::locked(kind.label(), reason),
+            None => OptionItem::new(kind.label()),
+        })
+        .collect()
+}
+
 fn fitted_scale(width: f32, height: f32) -> Option<f32> {
     if !width.is_finite() || !height.is_finite() {
         return None;
@@ -326,6 +350,7 @@ fn studio_demo_capture() -> bool {
             .any(|pair| pair[0] == "--capture" && pair[1] == "studio-base")
 }
 pub struct Studio {
+    access: Option<crate::shell::navigation::Access>,
     editor: Editor,
     sidebar: Entity<StudioSidebar>,
     frames: Vec<(String, Entity<CanvasFrame>)>,
@@ -414,6 +439,7 @@ struct Started(Point<Pixels>);
 /// Mover invalida solo esta entidad; Overlay conserva su renderer y su foto durante el gesto.
 struct CanvasFrame {
     item: Instance,
+    lock: Option<&'static str>,
     renderer: Entity<Overlay>,
     preview_scale: f32,
     content_scale: f32,
@@ -447,7 +473,22 @@ impl Render for CanvasFrame {
                     cx.emit(Started(event.position));
                 }),
             )
-            .child(self.renderer.clone())
+            .when(self.lock.is_none(), |frame| {
+                frame.child(self.renderer.clone())
+            })
+            .when_some(self.lock, |frame, reason| {
+                frame
+                    .bg(rgb(orbit::surface_2(cx)))
+                    .border_1()
+                    .border_color(gpui::rgba(orbit::line(cx)))
+                    .flex()
+                    .flex_col()
+                    .items_center()
+                    .justify_center()
+                    .gap(px(6.0))
+                    .child(orbit::icon("v-lock", 18.0, orbit::ink_3(cx)))
+                    .child(text(reason, 12.0, 500, orbit::ink_2(cx), cx))
+            })
             .when(self.selected, |frame| {
                 frame.child(
                     text(
@@ -596,6 +637,7 @@ impl Studio {
         #[cfg(not(feature = "parity-capture"))]
         let demo_profile = None;
         let mut studio = Self {
+            access: None,
             editor: prepared.editor,
             sidebar,
             frames: vec![],
@@ -618,6 +660,30 @@ impl Studio {
         };
         studio.rebuild(cx);
         studio
+    }
+    pub(crate) fn set_access(
+        &mut self,
+        access: crate::shell::navigation::Access,
+        cx: &mut Context<Self>,
+    ) {
+        if self.access == Some(access) {
+            return;
+        }
+        self.access = Some(access);
+        for (_, frame) in &self.frames {
+            frame.update(cx, |frame, cx| {
+                frame.lock = widget_lock(Some(access), frame.item.settings.kind());
+                cx.notify();
+            });
+        }
+        if let Some(catalog) = &self.catalog {
+            catalog.update(cx, |catalog, cx| {
+                catalog.state =
+                    orbit::ChoiceState::new(catalog_options(Some(access)), catalog.state.selected);
+                cx.notify();
+            });
+        }
+        cx.notify();
     }
     fn reset_fields(&mut self) {
         self.inspector_selection = None;
@@ -645,6 +711,7 @@ impl Studio {
             });
             let frame = cx.new(|_| CanvasFrame {
                 item: item.clone(),
+                lock: widget_lock(self.access, item.settings.kind()),
                 renderer,
                 preview_scale: self.preview_scale(),
                 content_scale,
@@ -711,6 +778,9 @@ impl Studio {
             return;
         }
         for (_, frame) in &self.frames {
+            if frame.read(cx).lock.is_some() {
+                continue;
+            }
             frame
                 .read(cx)
                 .renderer
@@ -830,10 +900,7 @@ impl Studio {
                 Choice::new(
                     "Tipo de widget",
                     ChoiceKind::Dropdown,
-                    Kind::ALL
-                        .iter()
-                        .map(|kind| OptionItem::new(kind.label()))
-                        .collect(),
+                    catalog_options(self.access),
                     Some(0),
                     window,
                     cx,
@@ -1053,13 +1120,14 @@ impl Studio {
         let id = item.id.clone();
         let visibility_id = id.clone();
         let selected = self.editor.selected.as_ref() == Some(&item.id);
+        let lock = widget_lock(self.access, item.settings.kind());
         div()
             .id(("studio-instance", index))
             .role(gpui::Role::Button)
             .aria_label(item.settings.kind().label())
             .tab_index(0)
             .h(px(42.0))
-            .w(px(146.0))
+            .w(px(if lock.is_some() { 210.0 } else { 146.0 }))
             .flex_none()
             .border_1()
             .border_color(gpui::rgba(orbit::line(cx)))
@@ -1073,14 +1141,28 @@ impl Studio {
                     .border_color(rgb(orbit::carmine(cx)))
             })
             .hover(|row| row.bg(rgb(orbit::surface_2(cx))))
-            .child(orbit::icon("v-studio", 20.0, orbit::ink_2(cx)))
-            .child(div().flex_1().min_w_0().child(text(
-                item.settings.kind().label(),
-                13.0,
-                650,
-                orbit::ink(cx),
-                cx,
-            )))
+            .child(orbit::icon(
+                if lock.is_some() { "v-lock" } else { "v-studio" },
+                20.0,
+                orbit::ink_2(cx),
+            ))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .child(text(
+                        item.settings.kind().label(),
+                        13.0,
+                        650,
+                        orbit::ink(cx),
+                        cx,
+                    ))
+                    .when_some(lock, |body, reason| {
+                        body.child(text(reason, 11.0, 400, orbit::ink_3(cx), cx))
+                    }),
+            )
             .child(
                 div()
                     .id(("studio-visibility", index))
@@ -1135,6 +1217,11 @@ impl Studio {
                             .and_then(|index| Kind::ALL.get(index))
                             .copied();
                         if let Some(kind) = kind {
+                            if let Some(reason) = widget_lock(this.access, kind) {
+                                this.status = Err(reason.into());
+                                cx.notify();
+                                return;
+                            }
                             this.catalog_open = false;
                             this.reset_fields();
                             this.edit(|editor| editor.add(kind), cx);
@@ -1687,6 +1774,52 @@ impl Render for Studio {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn launch_catalog_shows_disabled_pro_entries_and_preserves_free_widgets() {
+        use crate::shell::navigation::Access;
+        use vantare_ipc::control::CatalogAccess;
+        for catalog in [
+            CatalogAccess::Free,
+            CatalogAccess::LaunchV1,
+            CatalogAccess::Pro,
+        ] {
+            let access = Access {
+                verified: true,
+                catalog,
+                ..Access::default()
+            };
+            let options = catalog_options(Some(access));
+            assert_eq!(options.len(), Kind::ALL.len());
+            for (&kind, option) in Kind::ALL.iter().zip(&options) {
+                assert_eq!(option.enabled, catalog.allows_widget(kind.name()));
+                assert_eq!(option.lock_reason, widget_lock(Some(access), kind));
+                if !option.enabled {
+                    assert_eq!(option.lock_reason, Some("Incluida en Pro"));
+                }
+            }
+            let mut choice = orbit::ChoiceState::new(options, Some(0));
+            let radar = Kind::ALL
+                .iter()
+                .position(|kind| *kind == Kind::Radar)
+                .expect("Radar");
+            if catalog != CatalogAccess::Pro {
+                assert!(!choice.choose(radar), "el ratón no selecciona lo bloqueado");
+                choice.open();
+                choice.active = Some(radar);
+                assert!(
+                    !choice.key("enter", false),
+                    "el teclado no selecciona lo bloqueado"
+                );
+                assert_eq!(choice.selected, Some(0));
+            }
+        }
+        assert!(
+            catalog_options(Some(Access::default()))
+                .iter()
+                .all(|option| !option.enabled)
+        );
+        assert!(catalog_options(None).iter().all(|option| option.enabled));
+    }
     #[test]
     fn examples_cover_all_widgets_and_live_never_uses_a_sample() {
         let examples = example_snapshots().expect("muestras incrustadas válidas");

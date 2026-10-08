@@ -296,11 +296,17 @@ impl Owner {
         let operational = rights
             .iter()
             .any(|right| right.starts_with("vantare.operational."));
-        let module = |key: &str| valid && (operational || rights.iter().any(|right| right == key));
+        let catalog = vantare_services::license::catalog::access(&rights);
+        let module = |key: &str| {
+            valid
+                && catalog.allows_module(key)
+                && (operational || rights.iter().any(|right| right == key))
+        };
         self.policy.revision = self.policy.revision.checked_add(1).ok_or(Error::Protocol)?;
         self.policy.checked_at_ms =
             u64::try_from(now.timestamp_millis()).map_err(|_| Error::Clock)?;
         self.policy.overlays_advanced = valid;
+        self.policy.catalog = catalog;
         self.policy.engineer = module("vantare.module.engineer");
         self.policy.strategy = module("vantare.module.strategy");
         self.policy.analysis = module("vantare.module.analysis");
@@ -324,15 +330,20 @@ impl Owner {
                 None
             }
         });
-        let module_rights: Vec<_> = rights
+        let decision_rights: Vec<_> = rights
             .into_iter()
             .filter(|key| {
-                key.starts_with("vantare.module.") || key.starts_with("vantare.operational.")
+                key.starts_with("vantare.module.")
+                    || key.starts_with("vantare.operational.")
+                    || matches!(
+                        key.as_str(),
+                        "vantare.plan.pro" | "vantare.edition.launch_v1"
+                    )
             })
             .collect();
         self.policy.valid_until_ms = self
             .authority
-            .next_deadline(&module_rights)
+            .next_deadline(&decision_rights)
             .into_iter()
             .chain(self.authority.credential_deadline())
             .min()

@@ -6,6 +6,7 @@ use crate::Section;
 #[allow(clippy::struct_excessive_bools)]
 pub struct Access {
     pub verified: bool,
+    pub catalog: vantare_ipc::control::CatalogAccess,
     pub engineer: bool,
     pub strategy: bool,
     pub analysis: bool,
@@ -29,6 +30,7 @@ impl Access {
         }
         Self {
             verified: policy.overlays_advanced,
+            catalog: policy.catalog,
             engineer: policy.engineer,
             strategy: policy.strategy,
             analysis: policy.analysis,
@@ -62,6 +64,9 @@ impl Access {
     }
     pub fn beta_lock(self, section: Section) -> Option<&'static str> {
         if matches!(section, Section::Strategy | Section::Engineer) {
+            if self.verified && self.catalog == vantare_ipc::control::CatalogAccess::LaunchV1 {
+                return Some("Incluida en Pro");
+            }
             return Some("Próximamente");
         }
         if !self.beta_visible(section) {
@@ -102,7 +107,13 @@ impl Access {
             Section::Calendar => self.calendar,
             _ => true,
         };
-        if allowed { None } else { Some("Próximamente") }
+        if allowed {
+            None
+        } else if self.catalog == vantare_ipc::control::CatalogAccess::LaunchV1 {
+            Some("Incluida en Pro")
+        } else {
+            Some("Próximamente")
+        }
     }
 }
 
@@ -318,6 +329,34 @@ pub fn context(section: Section) -> &'static [Section] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn launch_policy_projects_locks_into_navigation_and_commands() {
+        use vantare_ipc::control::{CatalogAccess, Policy};
+        let policy = Policy {
+            version: vantare_ipc::control::VERSION,
+            revision: 1,
+            checked_at_ms: 1000,
+            overlays_advanced: true,
+            catalog: CatalogAccess::LaunchV1,
+            ..Policy::default()
+        };
+        let access = Access::from_policy(&policy, 1000);
+        for section in [Section::Engineer, Section::Strategy] {
+            assert_eq!(access.beta_lock(section), Some("Incluida en Pro"));
+            let item = beta_commands(access, "")
+                .into_iter()
+                .find(|item| item.command == Command::Navigate(section))
+                .expect("visible bloqueado");
+            assert_eq!(item.locked, Some("Incluida en Pro"));
+            let mut current = Section::Home;
+            assert!(access.navigate(&mut current, section).is_err());
+            assert_eq!(current, Section::Home);
+        }
+        assert_eq!(
+            Access::from_policy(&policy, 3000).catalog,
+            CatalogAccess::Free
+        );
+    }
     #[test]
     fn beta_modules_control_visibility_locks_and_direct_navigation() {
         for (verified, engineer, strategy, analysis, calendar) in [

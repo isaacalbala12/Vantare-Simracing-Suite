@@ -90,7 +90,8 @@ pub struct Fcy {
 /// Parada en curso.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Service {
-    pub target_l: f64,
+    /// Litros que va a cargar la parada; sin él solo se ven los cargados.
+    pub target_l: Option<f64>,
     pub added_l: Option<f64>,
     pub remaining_s: Option<f64>,
     pub tyres: Option<u8>,
@@ -275,13 +276,16 @@ fn fcy(fuel: &Tank, player: &Player) -> Option<Fcy> {
     })
 }
 
-/// Solo con objetivo de repostaje: sin él no hay servicio que mostrar.
+/// Repostaje en curso: con el objetivo o, al menos, los litros cargados.
 fn service(fuel: &Tank, player: &Player, car: &Car) -> Option<Service> {
-    let target = positive(&player.pit_service.refuel_target_l)?;
+    let target = positive(&player.pit_service.refuel_target_l);
     let added = value(&player.pit_service.refuel_added_l);
-    let exit_l = fuel
-        .level
-        .map(|level| level + (target - added.unwrap_or(0.0)).max(0.0));
+    if target.is_none() && added.is_none() {
+        return None;
+    }
+    let exit_l = target
+        .zip(fuel.level)
+        .map(|(target, level)| level + (target - added.unwrap_or(0.0)).max(0.0));
     Some(Service {
         target_l: target,
         added_l: added,
@@ -505,7 +509,11 @@ mod tests {
         assert_eq!(service.tyres, Some(4));
         assert_eq!(service.compound, Some(TyreCompound::Medium));
         assert!((service.exit_l.expect("salida") - (42.6 + 58.0 - 34.1)).abs() < 1e-9);
-        // Sin objetivo de repostaje no se inventa el servicio.
+        // Sin objetivo: solo los litros cargados, sin salida calculada.
+        player(&mut s).pit_service.refuel_target_l = Quality::Unavailable;
+        let service = project(&s).service.expect("cargando");
+        assert_eq!((service.target_l, service.exit_l), (None, None));
+        // Sin nada de la parada no se inventa el servicio.
         player(&mut s).pit_service = PitService::default();
         assert!(project(&s).service.is_none());
     }

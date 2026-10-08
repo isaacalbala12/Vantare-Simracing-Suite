@@ -440,8 +440,9 @@ arrastre y ◀ ▶ en Workshop. Animaciones: filas que se deslizan, destello ver
 adelantar y rojo al ser adelantado, pulso del tráfico rápido y puntos de la tira
 en movimiento. Escenas `relative-vantare.scene.json` y
 `relative-vantare-carrera.scene.json` con los datos del catálogo (no telemetría).
-Los adaptadores aún no publican nivel, SR, tendencia ni pérdida en boxes: en
-pista real salen «—» u omitidos.
+La tendencia la deriva el núcleo al cruzar meta mientras LMU no la publique;
+LMU no ofrece nivel ni SR en local (ADR-0001) y la pérdida en boxes espera a su
+REST: en pista real salen «—» u omitidos.
 
 ## Fuel y stint Vantare (#1497)
 
@@ -456,9 +457,11 @@ FCY (`Fuel::lap_projection_l`), repostaje en curso (`Player::pit_service`) y sti
 ampliado 460 con medidores, mosaico, gráfica de consumo y ventana. Avisos de
 combustible bajo (franja y borde que late), boxes, FCY, amarilla y última vuelta.
 Las barras se deslizan al cambiar de vuelta. Escenas `fuel-vantare.scene.json` y
-`fuel-vantare-carrera.scene.json` con los datos del catálogo (no telemetría). Los
-adaptadores aún no publican energía virtual, consumo de la vuelta, repostaje ni
-stint: en pista real esas partes se omiten o salen «—».
+`fuel-vantare-carrera.scene.json` con los datos del catálogo (no telemetría). Mientras
+LMU no los lea el adaptador (debería darlos), el núcleo deriva el stint (desde
+la salida de boxes o el inicio de la sesión), el consumo previsto de la vuelta y
+los litros cargados en la parada. La energía virtual y el objetivo del
+repostaje esperan a leerse de la REST de LMU: hasta entonces se omiten.
 
 ## Delta Vantare (#1497)
 

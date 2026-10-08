@@ -9,7 +9,7 @@ use vantare_domain::{
 };
 
 use super::derive::derive;
-use super::{delta, fuel};
+use super::{delta, fuel, stint, trend};
 
 /// Observación que el núcleo no admite: no se publica y la revisión no avanza.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -91,6 +91,8 @@ pub(super) struct Trackers {
     identity: Option<(SessionId, CarId)>,
     fuel: fuel::Tracker,
     delta: delta::Tracker,
+    stint: stint::Tracker,
+    trend: trend::Tracker,
 }
 
 impl Trackers {
@@ -104,23 +106,32 @@ impl Trackers {
                 // Sesión o coche del jugador nuevos: nada es comparable.
                 self.fuel.reset();
                 self.delta.reset();
+                self.stint.reset();
+                self.trend.reset();
             }
             self.identity = Some(identity);
         }
-        let State { cars, player, .. } = state;
+        let State {
+            cars,
+            player,
+            session,
+            ..
+        } = state;
         let Some(player) = player.as_mut() else {
             self.fuel.invalidate();
             self.delta.invalidate();
             return;
         };
+        self.trend.derive(cars, player.car);
         let Some(car) = cars.iter().find(|car| car.id == player.car) else {
             self.fuel.invalidate();
             self.delta.invalidate();
             return;
         };
         self.fuel.derive(player, car);
-        self.delta.derive(player, car, state.session.track_length_m);
+        self.delta.derive(player, car, session.track_length_m);
         delta::references(player, car, cars);
+        self.stint.derive(player, car, session);
     }
 }
 

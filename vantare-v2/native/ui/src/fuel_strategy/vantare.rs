@@ -384,15 +384,16 @@ fn compact(board: &Board, w: &Words) -> Line {
             left: service
                 .added_l
                 .map_or_else(|| PLACEHOLDER.into(), |l| format!("{l:.1}")),
-            left_label: format!("/ {:.1} L", service.target_l),
+            left_label: service.target_l.map_or_else(
+                || w.pick("L cargados", "L added").into(),
+                |t| format!("/ {t:.1} L"),
+            ),
             right: service
                 .remaining_s
                 .map_or_else(|| PLACEHOLDER.into(), |s| format!("{s:.1} s")),
             right_label: w.pick("faltan", "left").into(),
             tone: Tone::Plain,
-            fraction: service
-                .added_l
-                .map(|added| (added / service.target_l).clamp(0.0, 1.0) as f32),
+            fraction: refuel_fraction(&service),
             fill: Fill::Refuel,
         };
     }
@@ -530,13 +531,19 @@ fn refuel_gauge(service: &vantare_domain::fuel_vantare::Service, w: &Words) -> L
         value: service
             .added_l
             .map_or_else(|| PLACEHOLDER.into(), |l| format!("{l:.1}")),
-        suffix: format!(" / {:.1} L", service.target_l),
+        suffix: service
+            .target_l
+            .map_or_else(|| " L".into(), |t| format!(" / {t:.1} L")),
         small: false,
-        fraction: service
-            .added_l
-            .map(|added| (added / service.target_l).clamp(0.0, 1.0) as f32),
+        fraction: refuel_fraction(service),
         fill: Fill::Refuel,
     }
+}
+
+/// Barra de repostaje: solo con objetivo.
+fn refuel_fraction(service: &vantare_domain::fuel_vantare::Service) -> Option<f32> {
+    let (added, target) = (service.added_l?, service.target_l?);
+    Some((added / target).clamp(0.0, 1.0) as f32)
 }
 
 /// Con energía virtual: el otro recurso abajo y cuál limita.

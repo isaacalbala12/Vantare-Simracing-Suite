@@ -1151,13 +1151,22 @@ impl Painter<'_> {
         let me = row.is_player && board.player_present;
         // El destello sustituye a la fila propia y se funde de vuelta en ella.
         let strength = flash.map_or(0.0, |(_, s)| s);
-        if me {
-            let own = if v.player_white > 0.0 {
+        // Fondo fijo: el líder en amarillo (también si es el jugador); la fila
+        // propia en el acento.
+        let leader = is_leader(row);
+        let base = if leader {
+            Some(c.leader)
+        } else if me {
+            Some(if v.player_white > 0.0 {
                 WHITE
             } else {
                 self.accent
-            };
-            self.highlight(window, y, own, 1.0 - strength);
+            })
+        } else {
+            None
+        };
+        if let Some(color) = base {
+            self.highlight(window, y, color, 1.0 - strength);
         }
         if let Some((kind, strength)) = flash {
             let color = match kind {
@@ -1169,7 +1178,6 @@ impl Painter<'_> {
             };
             self.highlight(window, y, color, strength * self.style.motion.flash_boost);
         }
-        let leader = is_leader(row);
         let class = self.style.class(&group.class);
         let cols = self.layout_columns();
         // Posición: el líder en amarillo.

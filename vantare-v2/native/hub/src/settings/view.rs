@@ -305,44 +305,6 @@ fn appearance_slider(
                 ),
         )
 }
-fn performance_choice(
-    index: usize,
-    title: &str,
-    rate: &str,
-    description: &str,
-    cx: &gpui::App,
-) -> Div {
-    let meter = (0..5).fold(div().w_full().flex().gap(px(4.0)), |bars, step| {
-        bars.child(
-            div()
-                .flex_1()
-                .h(px(5.0))
-                .rounded(px(2.0))
-                .bg(rgb(if step < 5 - index {
-                    orbit::ink_4(cx)
-                } else {
-                    orbit::surface_3(cx)
-                })),
-        )
-    });
-    orbit::neo_card(cx)
-        .p(px(15.0))
-        .h(px(167.0))
-        .gap(px(7.0))
-        .child(text(title, 15.0, 700, orbit::ink(cx), cx))
-        .child(meter)
-        .child(text(rate, 11.0, 600, orbit::ink_3(cx), cx))
-        .child(text(description, 12.0, 400, orbit::ink_3(cx), cx).line_height(px(18.0)))
-}
-fn performance_mode(title: &str, description: &str, cx: &gpui::App) -> Div {
-    orbit::neo_card(cx)
-        .flex_1()
-        .p(px(15.0))
-        .min_h(px(100.0))
-        .gap(px(7.0))
-        .child(text(title, 15.0, 700, orbit::ink(cx), cx))
-        .child(text(description, 12.0, 400, orbit::ink_3(cx), cx))
-}
 impl Hub {
     fn settings_button(
         &self,
@@ -687,7 +649,7 @@ impl Hub {
                 match self.settings.page {
                     Page::Application => self.settings_application(true, window, cx),
                     Page::Appearance => self.settings_appearance(cx),
-                    Page::Performance => Self::settings_performance(true, cx),
+                    Page::Performance => self.settings_performance(true, cx),
                     Page::Updates => self.settings_updates(cx),
                     Page::Hotkeys => Self::settings_hotkeys(cx),
                     Page::Privacy => self.settings_privacy(cx),
@@ -1052,113 +1014,49 @@ impl Hub {
                 }),
             )
     }
-    fn settings_performance(compact: bool, cx: &gpui::App) -> Div {
-        let choices = [
-            (
-                "Máximo",
-                "Frecuencia del monitor",
-                "Sin recortes. Todo a la tasa de tu monitor. Para PCs sobrados.",
-            ),
-            (
-                "Alto",
-                "60 fps",
-                "Frescura máxima. Sin animaciones de adorno.",
-            ),
-            (
-                "Equilibrado",
-                "40 fps",
-                "Recorta lo que el ojo no distingue. Recomendado.",
-            ),
-            (
-                "Ahorro",
-                "30 fps",
-                "Solo datos, sin efectos. Para portátiles y gráficas integradas.",
-            ),
-            (
-                "Mínimo",
-                "20 fps",
-                "Vantare casi invisible para el sistema. Para VR, streaming en el mismo PC o PCs apurados.",
-            ),
-        ];
-        let mut levels = div().grid().grid_cols(3).w_full().min_w_0().gap(px(12.0));
-        for (index, (name, rate, description)) in choices.into_iter().enumerate() {
+    fn settings_performance(&self, _compact: bool, cx: &mut Context<Self>) -> Div {
+        let mut levels = div().grid().grid_cols(3).w_full().min_w_0().gap(px(10.0));
+        for (index, name) in [
+            "Automático",
+            "Máximo",
+            "Alto",
+            "Equilibrado",
+            "Ahorro",
+            "Mínimo",
+        ]
+        .into_iter()
+        .enumerate()
+        {
             levels = levels.child(
-                performance_choice(index, name, rate, description, cx)
-                    .when(compact, |element| element.h_auto().min_h(px(167.0))),
+                orbit::neo_card(cx)
+                    .p(px(12.0))
+                    .gap(px(8.0))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .child(orbit::caps(name, 16.0, orbit::ink(cx), cx))
+                            .child(orbit::meta(
+                                &if index == 0 {
+                                    "AUTO".into()
+                                } else {
+                                    index.to_string()
+                                },
+                                11.0,
+                                orbit::skin(cx).accent_bright,
+                                cx,
+                            )),
+                    )
+                    .child(orbit::pill("Próximamente", Tone::Neutral, cx).self_start()),
             );
         }
-        levels = levels.child(orbit::neo_card(cx).p(px(15.0)).gap(px(10.0))
-            .child(orbit::neo_header("Cómo elegir", "v-gauge", cx))
-            .child(text("Una frecuencia menor reduce el trabajo de los overlays. Podrás elegir según tu equipo y tu carrera.", 12.0, 400, orbit::ink_3(cx), cx))
-            .child(orbit::pill("Próximamente", Tone::Neutral, cx).self_start()));
-        let custom_auto = div()
-            .flex()
-            .w_full()
-            .min_w_0()
-            .gap(px(12.0))
-            .child(
-                performance_mode(
-                    "Personalizado",
-                    "Podrás ajustar la frecuencia de actualización de cada widget.",
-                    cx,
-                )
-                .when(compact, |element| element.h_auto().min_h(px(100.0))),
-            )
-            .child(
-                performance_mode(
-                    "Automático",
-                    "El ajuste automático estará disponible más adelante.",
-                    cx,
-                )
-                .when(compact, |element| element.h_auto().min_h(px(100.0))),
-            );
-        stack().h_full().child(section_surface(
-            "Nivel de rendimiento",
-            None,
-            section_body()
-                .gap(px(12.0))
-                .child(custom_auto)
-                .child(levels)
-                .child(text(
-                    "Niveles de referencia. Elegir un nivel y ajustar el consumo automáticamente estará disponible próximamente.",
-                    orbit::SECONDARY,
-                    400,
-                    orbit::ink_3(cx),
-                 cx).mt(px(4.0)).line_height(px(18.0))),
-         cx)).child(Self::settings_performance_table(cx).flex_grow(1.0).min_h(px(240.0)))
-    }
-    fn settings_performance_table(cx: &gpui::App) -> Div {
-        let mut rows = div().flex().flex_col().gap(px(8.0));
-        for (label, values) in [
-            (
-                "Nivel",
-                ["Máximo", "Alto", "Equilibrado", "Ahorro", "Mínimo"],
-            ),
-            (
-                "Cadencia objetivo",
-                ["Monitor", "60 fps", "40 fps", "30 fps", "20 fps"],
-            ),
-        ] {
-            rows = rows.child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(6.0))
-                    .min_h(px(38.0))
-                    .border_b_1()
-                    .border_color(rgba(orbit::line(cx)))
-                    .child(text(label, 12.0, 500, orbit::ink_2(cx), cx).w(px(120.0)))
-                    .children(
-                        values.map(|value| text(value, 11.0, 400, orbit::ink_3(cx), cx).flex_1()),
-                    ),
-            );
-        }
-        section_surface(
-            "Qué cambia en cada nivel",
-            Some("Valores de referencia"),
-            rows,
-            cx,
-        )
+        stack().h_full().child(section_surface("Nivel de rendimiento", Some("La selección nativa aún no está disponible"), levels, cx))
+            .child(orbit::neo_card(cx).p(px(12.0)).gap(px(10.0))
+                .child(orbit::caps("Personalizado", 16.0, orbit::ink(cx), cx))
+                .child(text("La frecuencia por widget pertenece al inspector de Studio. Estará disponible próximamente.", 13.0, 400, orbit::ink_2(cx), cx))
+                .child(orbit::small_button("settings-custom-studio", "Abrir Studio", cx).self_start()
+                    .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)))))
     }
 
     fn settings_updates(&self, cx: &mut Context<Self>) -> Div {
@@ -1447,96 +1345,23 @@ impl Hub {
         channels
     }
     fn settings_hotkeys(cx: &gpui::App) -> Div {
-        let hub_keys = section_body().children(
-            [
-                ("Lanzar perfil favorito", "Ctrl L"),
-                ("Buscar en Vantare", "Ctrl K"),
-                ("Contraer barra lateral", "Ctrl B"),
-            ]
-            .map(|(label, key)| {
-                section_row(
-                    label,
-                    "Con la ventana del Hub activa",
-                    orbit::keycap(key, cx),
-                    cx,
-                )
-            }),
-        );
-        let mut body = section_body();
-        for (index, (label, help, keys)) in [
-            (
-                "Mostrar u ocultar overlay",
-                "Muestra u oculta el overlay activo.",
-                ["Ctrl", "Mayús", "V"],
-            ),
-            (
-                "Siguiente perfil",
-                "Cambia al siguiente perfil guardado.",
-                ["Ctrl", "Mayús", "→"],
-            ),
-            (
-                "Perfil anterior",
-                "Cambia al perfil anterior.",
-                ["Ctrl", "Mayús", "←"],
-            ),
-            (
-                "Cambiar referencia Delta",
-                "Rota la referencia del widget Delta.",
-                ["Ctrl", "Mayús", "D"],
-            ),
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            let keycaps = orbit::keycaps(keys, cx);
-            body = body.child(
-                section_row_hint(label, help, keycaps, 11.5, cx)
-                    .id(("settings-hotkey", index))
-                    .px(px(8.0))
-                    .py(px(8.0))
-                    .min_h(px(56.5))
-                    .when(index == 3, gpui::Stateful::<Div>::border_b_0),
-            );
-        }
-        stack().h_full().mt(px(7.0)).child(section_surface("En el Hub", None, hub_keys, cx))
-            .child(
-                div()
-                    .flex()
-                    .w_full()
-                    .items_start()
-                    .justify_between()
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .max_w(px(520.0))
-                            .flex()
-                            .flex_col()
-                            .gap(px(7.0))
-                            .child(eyebrow("Atajos globales", cx).line_height(px(13.2)))
-                            .child(text(
-                                "Combinaciones de referencia. El registro y la reasignación global todavía no están disponibles en el Hub.",
-                                orbit::BODY,
-                                400,
-                                orbit::ink_2(cx),
-                             cx).line_height(px(20.9))),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(10.0))
-                            .relative()
-                            .top(px(-7.0))
-                            .child(orbit::pill("Cambiar atajos · Próximamente", Tone::Neutral, cx)),
-                    ),
+        let keys = |items: &[(&str, &str)], help: &str| {
+            section_body().children(
+                items
+                    .iter()
+                    .map(|(label, key)| section_row(label, help, orbit::keycap(key, cx), cx)),
             )
-            .child(
-                section_surface("En pista · Próximamente", Some("4 combinaciones de referencia"), body, cx).flex_1().min_h_0(),
-            )
-            .child(section_note(
-                "Los atajos en pista estarán disponibles más adelante. Por ahora, usa los atajos del Hub con su ventana activa.",
-             cx))
+        };
+        stack().h_full()
+            .child(section_surface("Globales con el juego", Some("Próximamente"),
+                section_body().child(text("Las acciones en pista aún no tienen un registro global nativo. No hay combinaciones activas ni edición de atajos aquí.", 13.0, 400, orbit::ink_2(cx), cx)), cx))
+            .child(section_surface("En el Hub", None, keys(&[
+                ("Lanzar perfil favorito", "Ctrl L"), ("Buscar en Vantare", "Ctrl K"),
+                ("Contraer barra izquierda", "Ctrl B"), ("Contraer barra derecha", "Ctrl Alt B"),
+            ], "Con la ventana del Hub activa"), cx))
+            .child(section_surface("En Studio", None, keys(&[
+                ("Deshacer", "Ctrl Z"), ("Rehacer", "Ctrl Mayús Z / Ctrl Y"),
+            ], "Con el lienzo de Studio activo"), cx))
     }
     fn settings_privacy_consent(cx: &gpui::App) -> Div {
         let shared_bullets = div()

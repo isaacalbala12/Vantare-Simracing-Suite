@@ -15,6 +15,47 @@ pub fn kit_shadow(color: u32, y: f32, blur: f32, spread: f32, inset: bool) -> gp
         inset,
     }
 }
+/// Selector pendiente: muestra el valor real sin ofrecer opciones inexistentes.
+pub fn pending_select(
+    id: &'static str,
+    label: &str,
+    value: &str,
+    width: f32,
+    reason: &str,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    let skin = skin(cx);
+    div()
+        .id(id)
+        .role(gpui::Role::ComboBox)
+        .aria_label(label.to_owned())
+        .aria_value(value.to_owned())
+        .aria_description(reason.to_owned())
+        .tab_stop(false)
+        .cursor_default()
+        .w(px(width))
+        .h(px(36.0))
+        .flex_none()
+        .px(px(12.0))
+        .flex()
+        .items_center()
+        .gap(px(8.0))
+        .rounded(px(skin.radius.md))
+        .border_1()
+        .border_color(super::alpha(skin.line1))
+        .bg(rgb(skin.l2))
+        .child(
+            super::text(value.to_owned(), 13.0, 500, skin.text2, cx)
+                .flex_1()
+                .min_w_0()
+                .whitespace_nowrap()
+                .overflow_hidden()
+                .text_ellipsis(),
+        )
+        .child(icon("i-chevron", 12.0, skin.text3).with_transformation(
+            gpui::Transformation::rotate(gpui::radians(std::f32::consts::FRAC_PI_2)),
+        ))
+}
 /// Degradado de dos paradas de un token, con su posición final.
 pub fn ramp(ramp: Ramp, angle: f32) -> gpui::Background {
     linear_gradient(

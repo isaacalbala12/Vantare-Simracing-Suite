@@ -5628,3 +5628,19 @@ repetición local RUSTC_WRAPPER vacío PASS sin cambiar config/repo/tests. Logs 
 Warning heredado de build parity-capture analysis/view.rs (cx) conservado;
 Clippy normal PASS. Solo entrega y commit locales para review del orquestador.
 Sin rama remota/PR verificado, sin CI remota, push, merge, promoción ni release.
+
+### #1496 — UI r10, ronda 3 Studio (2026-10-08, implementación aislada)
+
+Worktree Git C:/tmp/vw3-ui-r1; producto vantare-v2; rama
+vantareapp/isa-1496-ui-r3-studio; base R2 66ba1d45afd01266053065e2e17164c92bad3687.
+Brief autorizado C:/tmp/ui-r10/brief-r3-studio.md prevalece sobre referencias
+históricas Notion y el cuerpo R0 de GitHub1496. Sin delegación ni otras ramas.
+Hito 1: barra de widget con kit compartido, botón principal44 y selector local
+sin opciones inventadas. Lienzo16:9 centrado, máximo que cabe, sin tarjeta
+exterior ni límite100% al ajustar; zoom manual conserva scroll espacial.
+Renderer Overlay productivo, documento y motor de drag intactos. Check PASS
+basal y tras el hito; fmt/diff-check PASS. Pantalla ocupada: ninguna ventana
+ni captura. Tamaño libre/estilo/acento global/Hz por instancia no existen en
+el documento nativo; se preparan como pendientes, sin schema ni renderer nuevo.
+Siguiente: barra inferior, tira/escenas, inspector, anclaje y cruceta, gates.
+Sin push/PR/merge/promoción/release; evidencia C:/tmp/ui-r10/r3-evidence/.

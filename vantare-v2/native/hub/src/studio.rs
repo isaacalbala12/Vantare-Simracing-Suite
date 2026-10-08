@@ -17,7 +17,7 @@ use vantare_domain::{Snapshot, format::Preferences};
 use vantare_ui::{Kind, Overlay, Settings, layout::Instance};
 
 const STUDIO_PREVIEW_SCALE: f32 = 700.0 / 1920.0;
-const PREVIEW_PADDING: f32 = 22.0;
+const PREVIEW_PADDING: f32 = 12.0;
 const ZOOM_STEPS: [Option<u16>; 6] = [None, Some(50), Some(75), Some(100), Some(125), Some(150)];
 const AUTO_SAVED: &str = "Guardado";
 
@@ -25,9 +25,8 @@ fn fitted_scale(width: f32, height: f32) -> Option<f32> {
     if !width.is_finite() || !height.is_finite() {
         return None;
     }
-    let scale = ((width - PREVIEW_PADDING * 2.0) / 1920.0)
-        .min((height - PREVIEW_PADDING * 2.0) / 1080.0)
-        .min(1.0);
+    let scale =
+        ((width - PREVIEW_PADDING * 2.0) / 1920.0).min((height - PREVIEW_PADDING * 2.0) / 1080.0);
     (scale > 0.0).then_some(scale)
 }
 
@@ -146,40 +145,6 @@ fn visibility_icon(visible: bool) -> impl IntoElement {
         },
     )
     .size(px(15.0))
-}
-
-fn disabled_topbar_select(
-    id: &'static str,
-    label: &'static str,
-    value: &str,
-    width: f32,
-    cx: &gpui::App,
-) -> impl IntoElement {
-    div()
-        .id(id)
-        .role(gpui::Role::ComboBox)
-        .aria_label(label)
-        .aria_value(value.to_owned())
-        .aria_description("Solo está disponible el diseño guardado en este equipo.")
-        .tab_stop(false)
-        .cursor_default()
-        .w(px(width))
-        .h(px(39.0))
-        .flex_none()
-        .px(px(13.0))
-        .flex()
-        .items_center()
-        .justify_between()
-        .rounded(px(12.0))
-        .border_1()
-        .border_color(gpui::rgba(orbit::line(cx)))
-        .bg(rgb(orbit::column_bg(cx)))
-        .child(text(value.to_owned(), 13.5, 600, orbit::ink_2(cx), cx))
-        .child(
-            orbit::icon("i-chevron", 12.0, orbit::ink_3(cx)).with_transformation(
-                gpui::Transformation::rotate(gpui::radians(std::f32::consts::FRAC_PI_2)),
-            ),
-        )
 }
 
 fn example_snapshots() -> Result<Vec<(Kind, Snapshot)>, String> {
@@ -491,31 +456,24 @@ impl Studio {
         div()
             .flex()
             .items_center()
-            .gap(px(10.0))
-            .flex_wrap()
+            .gap(px(8.0))
+            .min_w_0()
+            .flex_none()
             .min_h(px(44.0))
-            .child(disabled_topbar_select(
+            .child(orbit::pending_select(
                 "studio-profile",
                 "Layout activo",
                 profile,
-                180.0,
+                if cx.global::<orbit::Adapt>().center_width() < 1000.0 {
+                    140.0
+                } else {
+                    180.0
+                },
+                "Solo está disponible el diseño guardado en este equipo.",
                 cx,
             ))
             .child(self.toolbar_preview_mode(cx))
             .child(div().flex_1())
-            .child(
-                orbit::ghost_button("studio-inspector", "", cx)
-                    .aria_label("Mostrar u ocultar inspector")
-                    .child(orbit::icon("v-sliders", 18.0, orbit::ink_2(cx)))
-                    .when(self.inspector_open, |button| {
-                        button.bg(rgb(orbit::surface_3(cx)))
-                    })
-                    .aria_selected(self.inspector_open)
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.inspector_open = !this.inspector_open;
-                        cx.notify();
-                    })),
-            )
             .child(
                 div()
                     .id("studio-save-status")
@@ -538,7 +496,7 @@ impl Studio {
                 "Próximamente. Usa captura de ventana en OBS",
             ))
             .child(orbit::disabled(
-                orbit::play_button("studio-show-track", "Mostrar en pista", 40.0, false, cx),
+                orbit::play_button("studio-show-track", "Mostrar en pista", 44.0, false, cx),
                 "Próximamente",
             ))
     }
@@ -1164,7 +1122,7 @@ impl Studio {
             .items_center()
             .gap(px(4.0))
             .p(px(4.0))
-            .rounded_full()
+            .rounded(px(orbit::skin(cx).radius.md))
             .bg(rgb(orbit::surface_2(cx)));
         for (id, label, example) in [
             ("studio-example", "Ejemplo", true),
@@ -1536,20 +1494,13 @@ impl Studio {
         let mut stage = div()
             .relative()
             .w(px(1920.0 * self.preview_scale()))
-            .h(px((1080.0 * self.preview_scale()).ceil() + 1.0))
+            .h(px(1080.0 * self.preview_scale()))
             .m_auto()
             .flex_none()
             .overflow_hidden()
-            .rounded(px(16.0))
+            .rounded(px(orbit::skin(cx).radius.md))
             .border_1()
             .border_color(gpui::rgba(orbit::line_strong(cx)))
-            .shadow(vec![gpui::BoxShadow {
-                color: gpui::rgba(0x0000_008c).into(),
-                offset: gpui::point(px(0.0), px(39.0)),
-                blur_radius: px(117.0),
-                spread_radius: px(0.0),
-                inset: false,
-            }])
             .bg(linear_gradient(
                 140.0,
                 linear_color_stop(rgb(orbit::stage(cx).top), 0.0),
@@ -1654,11 +1605,11 @@ impl Studio {
             .min_h_0()
             .flex()
             .flex_col()
-            .gap(px(14.0))
+            .gap(px(cx.global::<orbit::Adapt>().gap()))
             .child(
-                orbit::neo_card(cx)
-                    .p(px(0.0))
-                    .gap(px(0.0))
+                div()
+                    .flex()
+                    .flex_col()
                     .flex_1()
                     .min_h_0()
                     .child(canvas)
@@ -1682,7 +1633,6 @@ impl Render for Studio {
             .flex()
             .flex_col()
             .overflow_hidden()
-            .bg(rgb(orbit::canvas(cx)))
             .on_mouse_move(cx.listener(|this, event, _, cx| this.move_drag(event, cx)))
             .on_mouse_up(
                 MouseButton::Left,
@@ -1787,7 +1737,7 @@ mod tests {
             assert_eq!(overlay.wanted_size(), (338.0, 424.0));
             assert!((1560.0 + overlay.wanted_size().0) * scale <= 1920.0 * scale);
         }
-        assert_eq!(fitted_scale(744.0, 731.0), Some(STUDIO_PREVIEW_SCALE));
+        assert_eq!(fitted_scale(744.0, 731.0), Some(720.0 / 1920.0));
         for (width, height) in [
             (0.0, 10.0),
             (44.0, 44.0),

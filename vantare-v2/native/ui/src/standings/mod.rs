@@ -38,10 +38,8 @@ use vantare_domain::{Snapshot, format::Preferences, standings};
 #[allow(clippy::struct_excessive_bools)] // Opciones productivas independientes, no estados excluyentes.
 pub struct Settings {
     pub design_system: DesignSystem,
-    pub size: Size,
     pub style: Look,
     pub accent: Accent,
-    pub gap_mode: GapMode,
     pub row_count: usize,
     pub columns: Option<Vec<options::ColumnSetting>>,
     pub class_scope: String,
@@ -73,17 +71,6 @@ pub enum DesignSystem {
     Vantare,
 }
 
-/// Tamaño Vantare: compacto 340, estándar 520 (el del Studio) o ampliado 900.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Size {
-    Compact,
-    Expanded,
-    #[default]
-    #[serde(other)]
-    Standard,
-}
-
 /// Estilo Vantare del catálogo r10b.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -107,24 +94,78 @@ pub enum Accent {
     Red,
 }
 
-/// Columna de diferencia: al líder de clase o al coche de delante (intervalo).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum GapMode {
-    Interval,
-    #[default]
-    #[serde(other)]
-    Leader,
+/// Plantillas Vantare del catálogo r10b: todas las columnas elegibles en su
+/// orden, activas según el tamaño. `compact` (340 px), `standard` (520, el del
+/// Studio) y `expanded` (900). Eficiencia ignora las métricas que no conoce.
+#[must_use]
+pub fn vantare_template(name: &str) -> Vec<options::ColumnSetting> {
+    let (driver, on): (&str, &[&str]) = match name {
+        "compact" => ("sm", &["position", "driverNumber", "driverName", "gap"]),
+        "expanded" => (
+            "lg",
+            &[
+                "position",
+                "positionsGained",
+                "driverNumber",
+                "driverName",
+                "vehicle",
+                "tireCompound",
+                "pit",
+                "sectors",
+                "lastLap",
+                "bestLap",
+                "gap",
+            ],
+        ),
+        _ => (
+            "md",
+            &[
+                "position",
+                "positionsGained",
+                "driverNumber",
+                "driverName",
+                "vehicle",
+                "pit",
+                "sectors",
+                "gap",
+            ],
+        ),
+    };
+    [
+        "position",
+        "positionsGained",
+        "driverNumber",
+        "driverName",
+        "vehicle",
+        "tireCompound",
+        "pit",
+        "sectors",
+        "lastLap",
+        "bestLap",
+        "interval",
+        "gap",
+    ]
+    .iter()
+    .map(|metric| options::ColumnSetting {
+        id: (*metric).into(),
+        metric_id: (*metric).into(),
+        enabled: on.contains(metric),
+        width_preset: if *metric == "driverName" {
+            driver.into()
+        } else {
+            "auto".into()
+        },
+        ..options::ColumnSetting::default()
+    })
+    .collect()
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
             design_system: DesignSystem::Vantare,
-            size: Size::Standard,
             style: Look::Neo,
             accent: Accent::Red,
-            gap_mode: GapMode::Leader,
             row_count: 20,
             columns: None,
             class_scope: "player-class".into(),
@@ -668,12 +709,11 @@ mod tests {
         let demand = Settings::default().demand();
         assert!(demand.contains(vantare_ipc::Signal::Sectors));
         assert!(demand.contains(vantare_ipc::Signal::Weather));
-        let unknown: Settings =
-            serde_json::from_str(r#"{"designSystem":"otro","size":"enorme","style":"carmin"}"#)
-                .expect("valores desconocidos");
+        let unknown: Settings = serde_json::from_str(r#"{"designSystem":"otro","style":"carmin"}"#)
+            .expect("valores desconocidos");
         assert_eq!(
-            (unknown.design_system, unknown.size, unknown.style),
-            (DesignSystem::Vantare, Size::Standard, Look::Carmin)
+            (unknown.design_system, unknown.style),
+            (DesignSystem::Vantare, Look::Carmin)
         );
         assert!(
             Widget::new(&Settings::eficiencia(), prefs)

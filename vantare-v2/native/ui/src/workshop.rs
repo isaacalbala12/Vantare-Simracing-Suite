@@ -247,6 +247,8 @@ enum Control {
     Footer(&'static str),
     Preset,
     Setting(&'static str),
+    /// Plantilla de columnas Vantare (compact, standard, expanded).
+    Template(&'static str),
 }
 
 struct Playback {
@@ -338,17 +340,29 @@ struct Workshop {
     panel_hidden: bool,
 }
 
-fn default_settings(kind: Kind) -> Settings {
-    if kind == Kind::Standings {
-        Settings::Standings(crate::standings::Settings {
+/// Ajustes de partida de Standings en Workshop para cada sistema de diseño.
+fn standings_defaults(system: crate::standings::DesignSystem) -> Settings {
+    Settings::Standings(match system {
+        crate::standings::DesignSystem::Vantare => crate::standings::Settings {
+            row_count: 8,
+            columns: Some(crate::standings::vantare_template("standard")),
+            ..Default::default()
+        },
+        crate::standings::DesignSystem::Eficiencia => crate::standings::Settings {
             row_count: 10,
-            columns: Some(default_columns(kind)),
+            columns: Some(default_columns(Kind::Standings)),
             player_window: true,
             window_around: 4,
             class_scope: "all-classes".into(),
             brand_visible: Some(true),
-            ..Default::default()
-        })
+            ..crate::standings::Settings::eficiencia()
+        },
+    })
+}
+
+fn default_settings(kind: Kind) -> Settings {
+    if kind == Kind::Standings {
+        standings_defaults(crate::standings::DesignSystem::default())
     } else if kind == Kind::Relative {
         Settings::Relative(crate::relative::Settings {
             columns: Some(default_columns(kind)),
@@ -801,6 +815,18 @@ impl Workshop {
                         }
                     }
                 }
+                Control::Template(name) => {
+                    let Settings::Standings(settings) = &mut self.settings else {
+                        return Err("solo Standings tiene plantillas Vantare".into());
+                    };
+                    let mut columns = crate::standings::vantare_template(name);
+                    for column in &mut columns {
+                        if column.metric_id == "driverName" {
+                            column.format.mode.clone_from(&self.name_mode);
+                        }
+                    }
+                    settings.columns = Some(columns);
+                }
                 Control::Footer(slot) => {
                     let slots = match &mut self.settings {
                         Settings::Standings(settings) => {
@@ -834,9 +860,18 @@ impl Workshop {
                     } else {
                         serde_json::json!(value)
                     };
-                    self.settings = serde_json::from_value::<Settings>(settings)
+                    let next = serde_json::from_value::<Settings>(settings)
                         .map_err(|e| e.to_string())?
                         .normalized();
+                    // Cambiar de sistema parte de los ajustes por defecto de ese sistema.
+                    self.settings = match (&self.settings, next) {
+                        (Settings::Standings(old), Settings::Standings(new))
+                            if old.design_system != new.design_system =>
+                        {
+                            standings_defaults(new.design_system)
+                        }
+                        (_, next) => next,
+                    };
                 }
             }
             Ok(())

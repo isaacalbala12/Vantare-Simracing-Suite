@@ -456,42 +456,118 @@ impl Render for Workshop {
                     .and_then(|v| v[key].as_str().map(str::to_owned))
                     .unwrap_or_default()
             };
-            panel = panel.child(
-                group("Vantare")
-                    .child(Self::segments(
-                        Control::Setting("size"),
-                        &current("size"),
-                        &[
-                            ("compact", "Compacto"),
-                            ("standard", "Estándar"),
-                            ("expanded", "Ampliado"),
-                        ],
-                        cx,
-                    ))
-                    .child(div().mt(px(6.0)).child(Self::segments(
-                        Control::Setting("style"),
-                        &current("style"),
-                        &[("neo", "Neo"), ("carmin", "Carmín"), ("limpio", "Limpio")],
-                        cx,
-                    )))
-                    .child(div().mt(px(6.0)).child(Self::segments(
-                        Control::Setting("accent"),
-                        &current("accent"),
-                        &[
-                            ("red", "Rojo"),
-                            ("amber", "Ámbar"),
-                            ("green", "Verde"),
-                            ("white", "Blanco"),
-                        ],
-                        cx,
-                    )))
-                    .child(div().mt(px(6.0)).child(Self::segments(
-                        Control::Setting("gapMode"),
-                        &current("gapMode"),
-                        &[("leader", "Gap al líder"), ("interval", "Intervalo")],
-                        cx,
-                    ))),
-            );
+            let columns = if let Settings::Standings(settings) = &self.settings {
+                settings
+                    .columns
+                    .clone()
+                    .unwrap_or_else(|| crate::standings::vantare_template("standard"))
+            } else {
+                Vec::new()
+            };
+            let multiclass = current("classificationMode") == "multiclass";
+            let mut modes = group("Modo").child(Self::segments(
+                Control::Setting("classificationMode"),
+                if multiclass { "multiclass" } else { "normal" },
+                &[("normal", "Estándar"), ("multiclass", "Multiclase")],
+                cx,
+            ));
+            if !multiclass {
+                modes = modes.child(div().mt(px(6.0)).child(Self::segments(
+                    Control::Setting("classScope"),
+                    &current("classScope"),
+                    &[("player-class", "Mi clase"), ("all-classes", "Todas")],
+                    cx,
+                )));
+            }
+            panel = panel
+                .child(modes)
+                .child(
+                    group("Plantilla de columnas").child(
+                        div().flex().gap(px(4.0)).children(
+                            [
+                                ("compact", "Compacto"),
+                                ("standard", "Estándar"),
+                                ("expanded", "Ampliado"),
+                            ]
+                            .into_iter()
+                            .map(|(id, label)| {
+                                button(format!("template-{id}"), label, false)
+                                    .flex_1()
+                                    .px(px(3.0))
+                                    .text_size(px(10.0))
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.select(Control::Template(id), "", cx);
+                                    }))
+                            }),
+                        ),
+                    ),
+                )
+                .child(
+                    group("Columnas").children(
+                        [
+                            ("positionsGained", "Posiciones ganadas ±"),
+                            ("driverNumber", "Dorsal"),
+                            ("vehicle", "Coche"),
+                            ("tireCompound", "Compuesto"),
+                            ("pit", "Paradas / BOX"),
+                            ("sectors", "Sectores"),
+                            ("lastLap", "Última vuelta"),
+                            ("bestLap", "Mejor vuelta"),
+                            ("interval", "Intervalo"),
+                            ("gap", "Gap al líder"),
+                        ]
+                        .into_iter()
+                        .map(|(id, label)| {
+                            let enabled = columns.iter().any(|c| c.metric_id == id && c.enabled);
+                            button(
+                                format!("column-{id}"),
+                                &format!("{label}   {}", if enabled { "●" } else { "○" }),
+                                enabled,
+                            )
+                            .mt(px(4.0))
+                            .on_click(cx.listener(
+                                move |this, _, _, cx| {
+                                    this.select(Control::Module(id), "", cx);
+                                },
+                            ))
+                        }),
+                    ),
+                )
+                .child(
+                    group("Filas y nombre")
+                        .child(self.setting("rowCount", "Filas", numbers(1..=30), cx))
+                        .child(self.picker(
+                            Control::Name,
+                            "Nombre",
+                            &self.name_mode,
+                            options(&[
+                                ("full", "Completo"),
+                                ("initial", "N. Apellido"),
+                                ("surname", "Apellido"),
+                            ]),
+                            cx,
+                        )),
+                )
+                .child(
+                    group("Aspecto")
+                        .child(Self::segments(
+                            Control::Setting("style"),
+                            &current("style"),
+                            &[("neo", "Neo"), ("carmin", "Carmín"), ("limpio", "Limpio")],
+                            cx,
+                        ))
+                        .child(div().mt(px(6.0)).child(Self::segments(
+                            Control::Setting("accent"),
+                            &current("accent"),
+                            &[
+                                ("red", "Rojo"),
+                                ("amber", "Ámbar"),
+                                ("green", "Verde"),
+                                ("white", "Blanco"),
+                            ],
+                            cx,
+                        ))),
+                );
         } else if self.kind == Kind::Standings {
             panel = panel
                 .child(group("Marca").child(Self::segments(

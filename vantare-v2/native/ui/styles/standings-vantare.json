@@ -1,9 +1,4 @@
 {
-  "widths": {
-    "compact": 340.0,
-    "standard": 520.0,
-    "expanded": 900.0
-  },
   "geometry": {
     "column_header_height": 18.0,
     "row_height": 24.0,
@@ -31,13 +26,18 @@
     "col_pit": 34.0,
     "col_lap": 76.0,
     "col_gap": 62.0,
-    "col_gap_expanded": 70.0,
     "wait_height": 66.0,
     "skeleton_bar": 8.0,
     "pulse": 8.0,
-    "standard_rows": 8.0,
-    "compact_rows": 8.0,
-    "expanded_rows": 30.0
+    "driver_xs": 120.0,
+    "driver_sm": 155.0,
+    "driver_md": 205.0,
+    "driver_lg": 387.0,
+    "separator_height": 22.0,
+    "separator_gap_top": 6.0,
+    "separator_gap_bottom": 2.0,
+    "narrow_width": 400.0,
+    "wide_width": 700.0
   },
   "fonts": {
     "body": 13.0,
@@ -62,7 +62,8 @@
     "display_family": "Rajdhani SemiBold",
     "mono_family": "Space Mono",
     "display_baseline": 1.0,
-    "mono_baseline": 0.0
+    "mono_baseline": 0.0,
+    "separator": 11.0
   },
   "colors": {
     "text": "#ece6e7",
@@ -100,7 +101,8 @@
     "shadow": "#00000073",
     "leader": "#f5c518",
     "flash_gain": "#22c55e",
-    "flash_loss": "#e14a54"
+    "flash_loss": "#e14a54",
+    "separator_band": "#ffffff08"
   },
   "classes": [
     {

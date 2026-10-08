@@ -403,9 +403,13 @@ vista, la recarga lo mantiene a la vista y devuelve el foco a la app activa.
 
 Sistema de diseño principal (`designSystem: "vantare"`, por defecto); Eficiencia
 sigue disponible con `"eficiencia"`. Contrato visual: catálogo
-`vantare-widgets-r10b.html`. Muestra la clase del jugador (o la del líder sin
-jugador), en compacto 340, estándar 520 (el del Studio) o ampliado 900, con
-estilos Neo, Carmín y Limpio, cuatro acentos y gap al líder o intervalo.
+`vantare-widgets-r10b.html`. En modo estándar muestra la clase del jugador (o la del líder sin
+jugador) o, con `classificationMode`/`classScope`, todas las clases o
+multiclase con franjas. Usa `columns` y `rowCount` de Settings: columnas
+elegibles (±, dorsal, coche, compuesto, paradas/BOX, sectores, última, mejor,
+intervalo, gap) en el orden del catálogo y ancho calculado desde las activas.
+`vantare_template` da las plantillas compacto 340, estándar 520 (el del
+Studio) y ampliado 900. Estilos Neo, Carmín y Limpio y cuatro acentos.
 Valores visuales y duraciones de animación en `styles/standings-vantare.json`
 (compilados en producto, en vivo en Workshop). Animaciones: deslizamiento al
 cambiar de posición, fundido de filas nuevas y destellos al ganar o perder

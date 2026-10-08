@@ -14,16 +14,23 @@ Runbook: `docs/billing/clerk-production-runbook.md`, instancia/DNS Cloudflare,
 cliente público PKCE, variables de servidor, Third-Party Auth para sesión web,
 plantilla externa sin valores y prueba manual de login/corte/rollback.
 PASS: configuración PS5.1 21; validadores Deno 78; Rust check/Clippy
-`-D warnings`, Nextest 1220/1220 (6 skips previos, 1 slow PASS). Lifecycle y
-fmt final por cola pendientes. Intento de beta-tests no ejecutado por faltar
-paquetes QA/firmador; no se fabrica evidencia productiva.
+`-D warnings`, Nextest 1220/1220 (6 skips previos, 1 slow PASS), lifecycle
+18/18. Compilaciones y gates por cola/-j2. `cargo fmt --all -- --check` PASS
+directo, sin compilación; su espera duplicada en cola se retiró únicamente
+tras comprobar proceso propio sin hijos (no un fallo de formato). Intento de
+beta-tests no ejecutado por faltar paquetes QA/firmador; no se fabrica evidencia
+productiva. Logs, archivos y detalle en `C:/tmp/1507-clerk-evidence/`; informe
+de hasta doce líneas en `C:/tmp/lanzamiento/informe-1507.md`.
 No se accede a `.env*`, credenciales, instalación real ni paneles de producción.
 Preguntas: checkout/variable final de web #1506 y vinculación de identidades
 Development existentes. Recomendación: alta nueva Production para QA y decidir
 vinculaciones antes de distribuir. Login real pendiente de preparación de Isaac.
 `docs/roadmap/plan.md` ausente también en `origin/nightly`; no se recrea.
 Seguimiento GitHub por encargo explícito, que prevalece sobre instrucciones
-históricas de Notion. PR draft prevista a la candidata, sin merge/promoción/release.
+históricas de Notion. Código `b5684da5` subido; entrega técnica en revisión en
+[PR draft #1516](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1516)
+contra `vantareapp/isa-1470-candidato-beta`. CI observada en curso sobre ese
+SHA; no se anuncia CI verde. Sin merge, promoción, release o cutover productivo.
 
 ## #1492 — Setup encima y adopción de datos (2026-10-08)
 

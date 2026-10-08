@@ -75,19 +75,9 @@ foreach ($bin in $bins) {
     } finally { $reader.Dispose() }
     Copy-Item -LiteralPath $source -Destination (Join-Path $payload "bin/$bin.exe")
 }
-# Reutiliza el icono existente; no añade branding de producto ni recursos GPUI.
-Add-Type -AssemblyName System.Drawing
-$image = [Drawing.Image]::FromFile((Join-Path $native '../build/appicon.png'))
-try {
-    foreach ($asset in @(@('StoreLogo', 50), @('Square44x44Logo', 44), @('Square150x150Logo', 150))) {
-        $bitmap = [Drawing.Bitmap]::new([int]$asset[1], [int]$asset[1])
-        $graphics = [Drawing.Graphics]::FromImage($bitmap)
-        try {
-            $graphics.DrawImage($image, 0, 0, [int]$asset[1], [int]$asset[1])
-            $bitmap.Save((Join-Path $payload "Assets/$($asset[0]).png"), [Drawing.Imaging.ImageFormat]::Png)
-        } finally { $graphics.Dispose(); $bitmap.Dispose() }
-    }
-} finally { $image.Dispose() }
+# Activos aprobados y versionados (#1504); incluye qualifiers targetsize/altform.
+# No redimensionar aquí: perdería las variantes ópticas de 16/24 px.
+Copy-Item -Path (Join-Path $PSScriptRoot 'Assets/*.png') -Destination (Join-Path $payload 'Assets')
 Copy-Item -LiteralPath (Join-Path $native 'ui/assets/fonts/OFL-Inter.txt') -Destination (Join-Path $payload 'licenses/OFL-Inter.txt')
 [xml]$manifest = [IO.File]::ReadAllText((Join-Path $PSScriptRoot 'AppxManifest.xml'))
 $manifest.Package.Identity.Name = $IdentityName

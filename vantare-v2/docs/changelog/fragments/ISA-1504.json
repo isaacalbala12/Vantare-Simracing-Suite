@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1504",
+  "type": "change",
+  "summary": "Icono Windows legible en tamaños pequeños y reglas de marca con rojo oficial.",
+  "technicalNotes": [
+    "ICO con siete frames: plano a 16/24/32 px, patas gruesas a 16/24 y degradado existente a partir de 48.",
+    "Activos MSIX versionados con targetsize y variantes sin placa; regeneración Python/Pillow reproducible.",
+    "BRAND y DESIGN documentan #D80000, escala roja, contrastes e históricos; wordmark pendiente, sin cambios."
+  ],
+  "testing": [
+    "Revisar icono a 16, 24 y 32 px sobre barras clara y oscura; hoja C:/tmp/ui-r10/iconos-1504.png.",
+    "Regenerar con scripts/generate-brand-icons.py --check y comprobar scripts/test-brand-icons.py."
+  ],
+  "knownLimitations": [
+    "No se ha instalado ni firmado un MSIX ni abierto la app; entrega local pendiente de integración.",
+    "El color de la marca en GPUI sigue el token del tema; su migración pertenece al corte UI."
+  ]
+}

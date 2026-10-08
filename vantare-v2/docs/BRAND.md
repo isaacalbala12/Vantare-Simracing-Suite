@@ -5,6 +5,14 @@
 > Para el design system técnico (tokens, componentes, estados) ver [`DESIGN.md`](./DESIGN.md).
 > Para el style guide HTML navegable, abrir `docs/styleguide.html`.
 
+## Identidad vigente aprobada · #1504 (2026-10-08)
+
+El rojo oficial único es **#D80000**, tono central del logo. Para texto y enlaces sobre oscuro se usa **#FF6B6B**; el botón principal va de **#DC0A0A a #C40000** con texto blanco. La escala, los contrastes y las reglas exactas del icono están en [DESIGN.md](DESIGN.md#marca-aprobada--1504).
+
+El símbolo plano y las variantes pequeñas están aprobados. **El wordmark no está aprobado**: conservar el existente, sin crear variantes. El naranja #FF6B35, «AI Engineer», «100 % FPS» (también escrito «100% FPS») y las tablas italianas de abajo se conservan como **históricos**, no como instrucciones para copy nuevo. Esto no decide ni retira idiomas del producto: el [contrato de producto](vantare-program/product-contract.md) aún incluye italiano y requiere reconciliación por Isaac.
+
+Fuentes versionadas: [build/brand](../build/brand/). El avatar circular contiene solo el símbolo, sin texto. No derivar promesas de rendimiento ni disponibilidad del material histórico.
+
 ---
 
 ## 1. Resumen de marca
@@ -87,7 +95,7 @@
 
 ## 5. Vocabulario de marca
 
-### Palabras que SÍ usamos
+### Vocabulario anterior (histórico: «AI Engineer» e italiano no son guía vigente)
 
 | Español | Inglés | Italiano | Contexto |
 |---|---|---|---|
@@ -131,7 +139,7 @@ Para los valores y reglas técnicas exactas, ver [`DESIGN.md`](./DESIGN.md) y el
 
 Estética que evoca el motorsport profesional: limpio, técnico, rápido, preciso. Sin ser intimidante.
 
-### Paleta (resumen)
+### Paleta anterior (histórica; sustituida por #1504)
 
 | Token | Nombre | Rol de marca |
 |---|---|---|
@@ -160,7 +168,7 @@ Estética que evoca el motorsport profesional: limpio, técnico, rápido, precis
 ### Estilo visual
 
 - **Fotografía**: Capturas de la app con overlays sobre gameplay real. Datos limpios, sin clutter. La información es el héroe.
-- **Iconos**: Línea fina, minimalistas. Estilo "dashboard técnico". Sin gradientes, sin sombras excesivas.
+- **Iconos de interfaz**: Línea fina, minimalistas. El símbolo de marca tiene reglas propias de tamaño y degradado en la sección vigente #1504.
 - **Animaciones**: Rápidas, precisas. Sin rebotes. Transiciones 150-200ms.
 
 ---
@@ -182,7 +190,7 @@ Estética que evoca el motorsport profesional: limpio, técnico, rápido, precis
 
 ---
 
-## 8. Producto (línea de marca)
+## 8. Producto (línea de marca histórica; «100% FPS» no es una promesa vigente)
 
 | Producto | Mensaje | Estado |
 |---|---|---|
@@ -199,7 +207,7 @@ Estética que evoca el motorsport profesional: limpio, técnico, rápido, precis
 
 ---
 
-## 9. Multilingüismo
+## 9. Multilingüismo histórico (incluye italiano; pendiente de reconciliar con producto)
 
 - **Idioma principal**: Español.
 - **Idiomas obligatorios**: Español, Inglés, Italiano.
@@ -220,7 +228,7 @@ Estética que evoca el motorsport profesional: limpio, técnico, rápido, precis
 
 ## 10. Diferenciación
 
-### Vantare vs RaceLabs
+### Vantare vs RaceLabs (comparación histórica, incluye «AI Engineer»)
 
 | | RaceLabs | Vantare |
 |---|---|---|
@@ -248,7 +256,7 @@ Antes de publicar cualquier contenido de marca:
 - [ ] ¿Suena a Vantare? (No a RaceLabs, no a startup genérica, no a corporate memo)
 - [ ] ¿El beneficio está claro? (¿Qué gana el usuario?)
 - [ ] ¿Es honesto? (No prometemos lo que no tenemos)
-- [ ] ¿Es multilingüe cuando debe serlo? (¿Existe en es/en/it?)
+- [ ] ¿Es multilingüe cuando debe serlo? (¿Sigue el contrato de idiomas vigente?)
 - [ ] ¿La voz es la correcta para el canal? (Twitter vs README vs Discord)
 - [ ] ¿La dirección visual sigue BRAND/DESIGN?
 - [ ] ¿Se menciona la suite, no solo el producto individual?

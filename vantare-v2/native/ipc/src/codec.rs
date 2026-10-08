@@ -157,7 +157,7 @@ pub(crate) mod tests {
     use vantare_domain::{
         Capabilities, Capability, Car, CarId, Class, ClassId, Damage, Driver, DriverId, Flag,
         FlagKind, FlagScope, Fuel, Gap, Origin, Player, Pose, Quality, Session, SessionId,
-        SessionKind, SessionState, Source, SourceKind, State, Telemetry, Weather,
+        SessionKind, SessionState, Source, SourceKind, State, Telemetry, TyreCompound, Weather,
     };
 
     use super::*;
@@ -166,6 +166,7 @@ pub(crate) mod tests {
         Car {
             id: CarId(id),
             number: format!("{id}"),
+            vehicle: "Ferrari 499P".into(),
             driver: Driver {
                 id: DriverId(id + 100),
                 name: "Ñandú \"Rápido\"".into(),
@@ -198,6 +199,49 @@ pub(crate) mod tests {
             }),
             velocity_mps: Quality::Reliable([-12.5, 40.0]),
             pending_penalties: Quality::Estimated(2),
+            grid_position: Quality::Reliable(id + 2),
+            pit_stops: Quality::Estimated(1),
+            tyre_compound: Quality::Stale(TyreCompound::Wet),
+            best_sectors_s: vec![Quality::Reliable(29.75), Quality::Unavailable],
+            current_sectors_s: vec![Quality::Estimated(30.25)],
+        }
+    }
+
+    #[test]
+    fn signals_1497_are_optional_on_the_wire_and_keep_each_quality() {
+        // Una foto anterior a #1497 no los lleva: se leen como no disponibles.
+        let mut value = serde_json::to_value(SnapshotDto::from(&rich_snapshot(1, 1))).expect("DTO");
+        let car = value["state"]["cars"][0].as_object_mut().expect("coche");
+        for field in [
+            "vehicle",
+            "grid_position",
+            "pit_stops",
+            "tyre_compound",
+            "best_sectors_s",
+            "current_sectors_s",
+        ] {
+            assert!(car.remove(field).is_some(), "{field}");
+        }
+        let old = crate::snapshot_from_json(&value.to_string()).expect("foto sin señales nuevas");
+        let car = &old.state.cars[0];
+        assert!(car.vehicle.is_empty());
+        assert_eq!(car.grid_position, Quality::Unavailable);
+        assert_eq!(car.pit_stops, Quality::Unavailable);
+        assert_eq!(car.tyre_compound, Quality::Unavailable);
+        assert!(car.best_sectors_s.is_empty() && car.current_sectors_s.is_empty());
+        // Sin dato no se escriben: las fotos existentes conservan sus bytes.
+        let written = serde_json::to_value(SnapshotDto::from(&old)).expect("DTO");
+        let car = written["state"]["cars"][0].as_object().expect("coche");
+        assert!(!car.contains_key("grid_position") && !car.contains_key("tyre_compound"));
+        for compound in [
+            TyreCompound::Soft,
+            TyreCompound::Medium,
+            TyreCompound::Hard,
+            TyreCompound::Wet,
+        ] {
+            let mut original = rich_snapshot(1, 1);
+            original.state.cars[0].tyre_compound = Quality::Reliable(compound);
+            assert_eq!(round_trip(&original), original);
         }
     }
 

@@ -29,7 +29,7 @@ pub struct Preferences {
 
 /// Parte entera de un número finito y no negativo.
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-fn whole(value: f64) -> u64 {
+pub(crate) fn whole(value: f64) -> u64 {
     value as u64
 }
 
@@ -40,7 +40,7 @@ fn whole(value: f64) -> u64 {
     clippy::cast_possible_wrap,
     clippy::float_cmp
 )] // la igualdad exacta es la regla
-fn to_fixed(value: f64, decimals: usize) -> String {
+pub(crate) fn to_fixed(value: f64, decimals: usize) -> String {
     let scale = 10f64.powi(decimals as i32);
     let scaled = value.abs() * scale;
     // An exact decimal tie must also be representable in binary: the

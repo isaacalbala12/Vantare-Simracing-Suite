@@ -104,6 +104,8 @@ pub struct Car {
     pub id: CarId,
     /// Número de carrera tal como se muestra ("7", "07", "A3").
     pub number: String,
+    /// Modelo del coche tal como lo nombra la fuente ("Ferrari 499P"); vacío si no lo publica.
+    pub vehicle: String,
     pub driver: Driver,
     /// `None` si el simulador no informa de clases.
     pub class: Option<Class>,
@@ -146,6 +148,25 @@ pub struct Car {
     /// ser un límite inferior si la fuente solo expone una sanción activa.
     /// La del jugador se consulta mediante `State::player_car`, sin duplicarla.
     pub pending_penalties: Quality<u32>,
+    /// Posición de salida, desde 1. Las posiciones ganadas se derivan de ella.
+    pub grid_position: Quality<u32>,
+    /// Paradas en boxes completadas en la sesión.
+    pub pit_stops: Quality<u32>,
+    /// Compuesto de neumático montado.
+    pub tyre_compound: Quality<TyreCompound>,
+    /// Mejores sectores personales de la sesión; tantos como tenga el circuito.
+    pub best_sectors_s: Vec<Quality<f64>>,
+    /// Sectores ya completados de la vuelta en curso, en orden.
+    pub current_sectors_s: Vec<Quality<f64>>,
+}
+
+/// Compuesto de neumático, normalizado entre simuladores.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TyreCompound {
+    Soft,
+    Medium,
+    Hard,
+    Wet,
 }
 
 /// Telemetría del coche del jugador.
@@ -392,6 +413,7 @@ fn degrade_car(car: &mut Car) {
     let Car {
         id: _,
         number: _,
+        vehicle: _,
         driver: _,
         class: _,
         position,
@@ -414,6 +436,11 @@ fn degrade_car(car: &mut Car) {
         pose,
         velocity_mps,
         pending_penalties,
+        grid_position,
+        pit_stops,
+        tyre_compound,
+        best_sectors_s,
+        current_sectors_s,
     } = car;
     make_stale(position);
     make_stale(class_position);
@@ -435,6 +462,11 @@ fn degrade_car(car: &mut Car) {
     make_stale(pose);
     make_stale(velocity_mps);
     make_stale(pending_penalties);
+    make_stale(grid_position);
+    make_stale(pit_stops);
+    make_stale(tyre_compound);
+    best_sectors_s.iter_mut().for_each(make_stale);
+    current_sectors_s.iter_mut().for_each(make_stale);
 }
 
 fn degrade_player(player: &mut Player) {

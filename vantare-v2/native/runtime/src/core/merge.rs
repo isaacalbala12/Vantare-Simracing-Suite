@@ -165,6 +165,7 @@ fn sanitize(state: &mut State) {
         let Car {
             id: _,
             number: _,
+            vehicle: _,
             driver: _,
             class: _,
             position: _,
@@ -187,11 +188,18 @@ fn sanitize(state: &mut State) {
             pose,
             velocity_mps,
             pending_penalties: _, // u32: no hay NaN ni contador negativo.
+            grid_position: _,
+            pit_stops: _,
+            tyre_compound: _,
+            best_sectors_s,
+            current_sectors_s,
         } = car;
         finite(last_lap_s);
         finite(best_lap_s);
         keep_if(estimated_lap_s, |v| v.is_finite() && *v > 0.0);
         last_sectors_s.iter_mut().for_each(finite);
+        best_sectors_s.iter_mut().for_each(finite);
+        current_sectors_s.iter_mut().for_each(finite);
         for gap in [gap_leader, gap_ahead, gap_class_leader, gap_class_ahead] {
             keep_if(gap, finite_gap);
         }

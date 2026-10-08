@@ -184,6 +184,8 @@ struct CarDto {
     id: u32,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     number: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    vehicle: String,
     #[serde(default, skip_serializing_if = "zero")]
     driver_id: u32,
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -230,6 +232,37 @@ struct CarDto {
     velocity_mps: QualityDto<[f64; 2]>,
     #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     pending_penalties: QualityDto<u32>,
+    // Señales de #1497, ausentes en fotos anteriores: si faltan valen
+    // Unavailable y no se escriben mientras no haya dato (las fotos existentes
+    // conservan sus bytes).
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    grid_position: QualityDto<u32>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    pit_stops: QualityDto<u32>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    tyre_compound: QualityDto<TyreCompoundDto>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    best_sectors_s: Vec<QualityDto<f64>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    current_sectors_s: Vec<QualityDto<f64>>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum TyreCompoundDto {
+    Soft,
+    Medium,
+    Hard,
+    Wet,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -374,6 +407,7 @@ fn car(c: &d::Car) -> CarDto {
     CarDto {
         id: c.id.0,
         number: c.number.clone(),
+        vehicle: c.vehicle.clone(),
         driver_id: c.driver.id.0,
         driver_name: c.driver.name.clone(),
         class: c.class.as_ref().map(|k| (k.id.0, k.name.clone())),
@@ -401,6 +435,16 @@ fn car(c: &d::Car) -> CarDto {
         }),
         velocity_mps: q(&c.velocity_mps, copied),
         pending_penalties: q(&c.pending_penalties, copied),
+        grid_position: q(&c.grid_position, copied),
+        pit_stops: q(&c.pit_stops, copied),
+        tyre_compound: q(&c.tyre_compound, |t| match t {
+            d::TyreCompound::Soft => TyreCompoundDto::Soft,
+            d::TyreCompound::Medium => TyreCompoundDto::Medium,
+            d::TyreCompound::Hard => TyreCompoundDto::Hard,
+            d::TyreCompound::Wet => TyreCompoundDto::Wet,
+        }),
+        best_sectors_s: c.best_sectors_s.iter().map(|s| q(s, copied)).collect(),
+        current_sectors_s: c.current_sectors_s.iter().map(|s| q(s, copied)).collect(),
     }
 }
 
@@ -588,6 +632,7 @@ fn ucar(c: CarDto) -> d::Car {
     d::Car {
         id: d::CarId(c.id),
         number: c.number,
+        vehicle: c.vehicle,
         driver: d::Driver {
             id: d::DriverId(c.driver_id),
             name: c.driver_name,
@@ -620,6 +665,16 @@ fn ucar(c: CarDto) -> d::Car {
         }),
         velocity_mps: uq(c.velocity_mps, id),
         pending_penalties: uq(c.pending_penalties, id),
+        grid_position: uq(c.grid_position, id),
+        pit_stops: uq(c.pit_stops, id),
+        tyre_compound: uq(c.tyre_compound, |t| match t {
+            TyreCompoundDto::Soft => d::TyreCompound::Soft,
+            TyreCompoundDto::Medium => d::TyreCompound::Medium,
+            TyreCompoundDto::Hard => d::TyreCompound::Hard,
+            TyreCompoundDto::Wet => d::TyreCompound::Wet,
+        }),
+        best_sectors_s: c.best_sectors_s.into_iter().map(|s| uq(s, id)).collect(),
+        current_sectors_s: c.current_sectors_s.into_iter().map(|s| uq(s, id)).collect(),
     }
 }
 
@@ -721,6 +776,12 @@ impl TryFrom<SnapshotDto> for d::Snapshot {
 impl<T> QualityDto<T> {
     fn not_requested(&self) -> bool {
         matches!(self, Self::NotRequested)
+    }
+    fn unavailable() -> Self {
+        Self::Unavailable
+    }
+    fn absent(&self) -> bool {
+        matches!(self, Self::NotRequested | Self::Unavailable)
     }
 }
 fn unrequested_tyres(values: &[QualityDto<f64>; 4]) -> bool {
@@ -836,12 +897,14 @@ impl SnapshotDto {
         for car in &mut self.state.cars {
             let old = previous.and_then(|old| old.state.cars.iter().find(|old| old.id == car.id));
             fields!(car, old, requested_mask, delivered_mask;
-                Cars => [number, driver_id, driver_name, class],
-                Positions => [position, class_position], LapCount => [laps],
-                LapTimes => [last_lap_s, best_lap_s, estimated_lap_s], Sectors => [last_sectors_s, current_sector],
+                Cars => [number, vehicle, driver_id, driver_name, class],
+                Positions => [position, class_position, grid_position], LapCount => [laps],
+                LapTimes => [last_lap_s, best_lap_s, estimated_lap_s],
+                Sectors => [last_sectors_s, current_sector, best_sectors_s, current_sectors_s],
                 Gaps => [gap_leader, gap_ahead], ClassGaps => [gap_class_leader, gap_class_ahead],
                 Relative => [relative_s, relative_laps], LapProgress => [lap_distance_m, lap_elapsed_s],
-                PitStatus => [in_pits], Spatial => [pose], Velocity => [velocity_mps], Penalties => [pending_penalties]);
+                PitStatus => [in_pits, pit_stops, tyre_compound], Spatial => [pose], Velocity => [velocity_mps],
+                Penalties => [pending_penalties]);
         }
         if let Some(player) = &mut self.state.player {
             let old = previous

@@ -29,6 +29,7 @@ pub mod racing_flags;
 pub mod radar;
 pub mod relative;
 pub mod standings;
+pub mod standings_vantare;
 pub mod track_map;
 pub mod track_weather;
 
@@ -38,7 +39,7 @@ pub use flag::{Flag, FlagKind, FlagScope};
 pub use model::{
     Car, CarId, Class, ClassId, Damage, Driver, DriverId, Fuel, Gap, Origin, Player, Pose, Session,
     SessionId, SessionKind, SessionState, Snapshot, Source, SourceKind, SourceState, State,
-    Telemetry, UNKNOWN_SIMULATOR, Weather, degrade,
+    Telemetry, TyreCompound, UNKNOWN_SIMULATOR, Weather, degrade,
 };
 pub use quality::Quality;
 pub mod text;

@@ -132,6 +132,19 @@ func ProjectObservationV1(snapshot envelope.Snapshot[derive.FinalState], manifes
 	return ObservationSnapshotV1{Metadata: metadata, ObservationV1: observation}, nil
 }
 
+// AdaptSnapshotV1 converts a validated IPC projection to Engineer's existing
+// in-process contract without reconstructing canonical state in Go.
+func AdaptSnapshotV1(snapshot SnapshotV1, run Identity, manifest Manifest) (ObservationSnapshotV1, error) {
+	if !(Context{Epoch: uint64(snapshot.Metadata.Epoch), Identity: run}).Complete() {
+		return ObservationSnapshotV1{}, ErrProjectionPayloadConflict
+	}
+	observation, err := adaptProjectedV1(snapshot.Metadata, run, snapshot.PayloadV1, manifest)
+	if err != nil {
+		return ObservationSnapshotV1{}, err
+	}
+	return ObservationSnapshotV1{Metadata: snapshot.Metadata, ObservationV1: observation}, nil
+}
+
 func adaptProjectedV1(metadata projection.Metadata, run Identity, payload PayloadV1, manifest Manifest) (ObservationV1, error) {
 	policy := projection.VersionPolicy{Current: CurrentVersion, MinimumSupported: MinimumSupportedVersion}
 	if err := policy.Validate(metadata.ProjectionVersion); err != nil {

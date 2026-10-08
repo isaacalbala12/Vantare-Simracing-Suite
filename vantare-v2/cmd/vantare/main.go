@@ -28,6 +28,7 @@ import (
 	"github.com/vantare/overlays/v2/frontend"
 	"github.com/vantare/overlays/v2/internal/app"
 	"github.com/vantare/overlays/v2/internal/app/launcher"
+	performancepolicy "github.com/vantare/overlays/v2/internal/app/performance"
 	performancesensor "github.com/vantare/overlays/v2/internal/app/performance/sensor"
 	"github.com/vantare/overlays/v2/internal/app/telemetrytransport"
 	"github.com/vantare/overlays/v2/internal/applog"
@@ -84,6 +85,19 @@ const (
 	telemetrySourceStatusEvent        = "telemetry-core:source-status"
 	telemetrySourceStatusRequestEvent = "telemetry-core:source-status:get"
 )
+
+// liveTelemetryRuntime is the product boundary shared by the Go runtime and
+// the explicit Rust candidate. The composition root selects exactly one owner.
+type liveTelemetryRuntime interface {
+	Start(context.Context) error
+	Stop(context.Context) error
+	SourceStatus() driver.SourceStatus
+	SetPerformancePolicy(performancepolicy.Policy)
+	PerformancePolicy() performancepolicy.Policy
+	EmitPerformanceLevel()
+	StrategyHub() *telemetrytransport.Hub
+	OverlayV2Publishers() *telemetrytransport.PublisherRegistry
+}
 
 // Public Supabase configuration and license verification keys are injected by
 // the generated supabase_build.go source so values never become Task cache file
@@ -571,11 +585,18 @@ const (
 
 type overlayPullHTTPService struct {
 	target    overlayPullTarget
-	transport *telemetrytransport.OverlayPullTransport
+	transport overlayPullTransport
 	cleanup   sync.Once
 	mu        sync.Mutex
 	closed    bool
 	socket    *overlaySocket
+}
+
+type overlayPullTransport interface {
+	Pull(string, telemetrytransport.OverlayPullRequest) (telemetrytransport.OverlayPullResponse, bool, error)
+	Close(string, string)
+	CloseSender(string)
+	CloseAll()
 }
 
 type wailsOverlayPullTarget struct {
@@ -617,7 +638,7 @@ func (target *wailsOverlayPullTarget) WatchClose(window string, callback func())
 
 func newOverlayPullHTTPService(
 	target overlayPullTarget,
-	transport *telemetrytransport.OverlayPullTransport,
+	transport overlayPullTransport,
 ) *overlayPullHTTPService {
 	return &overlayPullHTTPService{target: target, transport: transport}
 }
@@ -730,7 +751,9 @@ func (service *overlayPullHTTPService) shutdown() {
 func registerTelemetryStatusReplayHandlers(
 	events telemetryStatusReplayEvents,
 	emitter telemetrytransport.EventEmitter,
-	telemetryRuntime *app.TelemetryCoreRuntime,
+	telemetryRuntime interface {
+		StrategyHub() *telemetrytransport.Hub
+	},
 ) func() {
 	if events == nil || emitter == nil || telemetryRuntime == nil {
 		return func() {}
@@ -1480,6 +1503,7 @@ func main() {
 	}
 
 	live := flag.Bool("live", true, "use LMU shared memory (-live=false keeps telemetry disconnected)")
+	rustTelemetryCandidate := flag.String("telemetry-rust-candidate", "", "diagnostic override for the packaged Rust telemetry helper")
 	strategyPublicTransport := flag.Bool("strategy-public-transport", false, "temporarily expose Strategy telemetry over Wails/SSE")
 	legacyEngineerSpotter := flag.Bool("engineer-legacy-spotter", false, "rollback to the legacy Engineer Spotter projection instead of radio.v1")
 	legacyEngineerFamilies := flag.Bool("engineer-legacy-families", false, "rollback to the five legacy Engineer family monitors instead of radio.v1")
@@ -1585,7 +1609,7 @@ func main() {
 	var diagnosticsBridge *app.DiagnosticsBridge
 	var testingCenterReportDraftBridge *app.TestingCenterReportDraftBridge
 	var testingCenterDiagnosticBridge *app.TestingCenterDiagnosticBridge
-	var telemetryCoreRuntime *app.TelemetryCoreRuntime
+	var telemetryCoreRuntime liveTelemetryRuntime
 	var performanceRuntime *app.PerformanceRuntime
 	telemetryStatusReplayCleanup := func() {}
 	overlayPullCleanup := func() {}
@@ -2327,7 +2351,7 @@ func main() {
 	engBridge.Start()
 
 	effectivePerformance := settingsSvc.EffectivePerformancePolicy(studioProfileSvc.PerformanceProfile())
-	telemetryCoreRuntime, err = app.NewTelemetryCoreRuntime(app.TelemetryCoreRuntimeConfig{
+	telemetryCoreRuntime, err = selectTelemetryRuntime(*rustTelemetryCandidate, app.TelemetryCoreRuntimeConfig{
 		OverlaySections:         os.Getenv("VANTARE_OVERLAY_SECTIONS") == "1",
 		Enabled:                 *live,
 		Emitter:                 emitter,
@@ -2338,6 +2362,8 @@ func main() {
 	if err != nil {
 		log.Printf("telemetry core init error: %v", err)
 		telemetryCoreRuntime = nil
+		cleanupApp()
+		return
 	}
 	if telemetryCoreRuntime != nil && performanceSensorEnabled() {
 		performanceRuntime = app.NewPerformanceRuntime(
@@ -2452,7 +2478,16 @@ func main() {
 			if telemetryCoreRuntime == nil {
 				return nil
 			}
+			if _, rust := telemetryCoreRuntime.(*app.RustTelemetryCandidateRuntime); rust {
+				return nil
+			}
 			return telemetryCoreRuntime.OverlayV2Publishers()
+		}(),
+		OverlayPull: func() telemetrytransport.OverlayPullSource {
+			if rust, active := telemetryCoreRuntime.(*app.RustTelemetryCandidateRuntime); active {
+				return rust
+			}
+			return nil
 		}(),
 		// Sanitized widget policy for the OBS browser source: the effective
 		// decision only, never the license. Studio/Desktop use the native
@@ -2817,11 +2852,15 @@ func main() {
 	// un pull dirigido para no difundir frames al Hub ni adelantar al WebView.
 	telemetryStatusReplayCleanup = registerTelemetryStatusReplayHandlers(wailsApp.Event, emitter, telemetryCoreRuntime)
 	if telemetryCoreRuntime != nil {
+		var pullTransport overlayPullTransport
+		if rust, active := telemetryCoreRuntime.(*app.RustTelemetryCandidateRuntime); active {
+			pullTransport = rust
+		} else {
+			pullTransport = telemetrytransport.NewOverlayPullTransport(telemetryCoreRuntime.OverlayV2Publishers())
+		}
 		overlayPullService := newOverlayPullHTTPService(
 			newWailsOverlayPullTarget(wailsApp),
-			telemetrytransport.NewOverlayPullTransport(
-				telemetryCoreRuntime.OverlayV2Publishers(),
-			),
+			pullTransport,
 		)
 		if os.Getenv("VANTARE_OVERLAY_SOCKET_PULL") != "0" {
 			if err := overlayPullService.startSocket(); err != nil {

@@ -211,6 +211,7 @@ type ServerConfig struct {
 	StrategyProjection      *telemetrytransport.Hub
 	StrategyPublicTransport bool
 	OverlayV2Publishers     *telemetrytransport.PublisherRegistry
+	OverlayPull             telemetrytransport.OverlayPullSource
 	// WidgetPolicy wires the sanitized native authority snapshot for the
 	// OBS browser source. Nil leaves the route unregistered. A concrete
 	// *license.Service satisfies the interface; the compile-time assertion
@@ -249,7 +250,12 @@ func New(cfg ServerConfig) *Server {
 			telemetrytransport.SSEHandler(cfg.StrategyProjection),
 		)
 	}
-	if cfg.OverlayV2Publishers != nil {
+	if cfg.OverlayPull != nil {
+		mux.Handle(
+			"GET "+telemetrytransport.PublisherProjectionRoute(telemetrytransport.ProductOverlayV2),
+			telemetrytransport.OverlayPullSSEHandler(cfg.OverlayPull),
+		)
+	} else if cfg.OverlayV2Publishers != nil {
 		mux.Handle(
 			"GET "+telemetrytransport.PublisherProjectionRoute(telemetrytransport.ProductOverlayV2),
 			telemetrytransport.PublisherSSEHandler(cfg.OverlayV2Publishers, telemetrytransport.ProductOverlayV2),

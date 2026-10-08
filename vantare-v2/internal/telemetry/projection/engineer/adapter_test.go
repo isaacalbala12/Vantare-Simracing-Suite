@@ -56,6 +56,35 @@ func TestProjectObservationV1GoldenPreservesCapabilityAndFieldSemantics(t *testi
 	assertAdapterGolden(t, describeObservation(got.ObservationV1), "engineer_observation_v1.golden.txt")
 }
 
+func TestAdaptSnapshotV1MatchesExistingEngineerObservation(t *testing.T) {
+	t.Parallel()
+	manifest := mustManifest(t,
+		Capability{ID: CapabilitySession, State: CapabilitySupported},
+		Capability{ID: CapabilityStandings, State: CapabilitySupported},
+		Capability{ID: CapabilityControls, State: CapabilitySupported},
+		Capability{ID: CapabilityPit, State: CapabilityUnsupported},
+	)
+	input := engineerInput(t)
+	want, err := ProjectObservationV1(input, manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	projected, err := ProjectV1(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := AdaptSnapshotV1(SnapshotV1{Metadata: projected.Metadata, PayloadV1: projected.PayloadV1}, identityFromHeader(engineerHeader()), manifest)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Metadata != want.Metadata || describeObservation(got.ObservationV1) != describeObservation(want.ObservationV1) {
+		t.Fatal("IPC adapter changed the existing Engineer observation")
+	}
+	if _, err := AdaptSnapshotV1(SnapshotV1{Metadata: projected.Metadata, PayloadV1: projected.PayloadV1}, Identity{}, manifest); !errors.Is(err, ErrProjectionPayloadConflict) {
+		t.Fatalf("missing identity error = %v", err)
+	}
+}
+
 func TestAdaptProjectedV1TreatsUnknownSupportedUnsupportedAndDegradedSafely(t *testing.T) {
 	t.Parallel()
 

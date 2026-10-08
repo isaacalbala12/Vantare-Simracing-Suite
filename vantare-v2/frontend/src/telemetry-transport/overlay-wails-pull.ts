@@ -1,5 +1,6 @@
 import {createSocketPullPost} from "./overlay-socket-pull";
 import {OverlayFrameV2ContractError, parseOverlayPullJSON} from "./overlay-frame-v2-store";
+import {OverlayTransportUnavailableError} from "./overlay-transport-error";
 
 export const OVERLAY_PULL_REQUEST_ROUTE = "/_vantare/overlay-telemetry/pull";
 export const OVERLAY_PULL_CLOSE_ROUTE = "/_vantare/overlay-telemetry/close";
@@ -154,7 +155,8 @@ export function createOverlayWailsPullClient(
           (error) => {
             if (active && sessionID === requestSessionID && acknowledged === requestAck) {
               awaiting = false;
-              if (error instanceof OverlayFrameV2ContractError && error.path === "sections.base") {
+              if (error instanceof OverlayTransportUnavailableError ||
+                error instanceof OverlayFrameV2ContractError && error.path === "sections.base") {
                 // A missing base cannot be repaired by replaying that delta.
                 // A fresh generation forces a full bootstrap, without ACKing it.
                 sessionID = createSessionID();
@@ -318,6 +320,7 @@ export function createBrowserOverlayWailsPullClient(
           signal: controller.signal,
         });
         if (!response.ok) {
+          if (response.status === 503) throw new OverlayTransportUnavailableError();
           throw new Error(`overlay telemetry pull HTTP ${response.status}`);
         }
         if (response.status === 204) return undefined;

@@ -85,6 +85,7 @@ func TestStandingWireAcceptsLegacyAndRejectsUnknownQuality(t *testing.T) {
 	for _, raw := range []string{
 		`{"gap":{"q":"stale","v":1.23},"bestLap":{"q":"missing"},"lastLap":{"q":"invalid","v":98.25}}`,
 		`{"quality":{"q":"fresh"},"gap":{"q":"stale","v":1.23},"bestLap":{"q":"missing"},"lastLap":{"q":"invalid","v":98.25}}`,
+		`{"qual\u0069ty":{"q":"fresh"},"gap":{"q":"stale","v":1.23},"bestLap":{"q":"missing"},"lastLap":{"q":"invalid","v":98.25}}`,
 		`{"q":{"q":"f","g":"s","b":"m","l":"i"},"gap":1.23,"bestLap":0,"lastLap":98.25}`,
 	} {
 		var row StandingRowV2
@@ -114,6 +115,7 @@ func TestStandingWireAcceptsLegacyAndRejectsUnknownQuality(t *testing.T) {
 		`{"gap":0,"bestLap":0,"lastLap":0}`,
 		`{"q":{"q":"f","g":"s"},"gap":{"q":"fresh"},"bestLap":0,"lastLap":0}`,
 		`{"q":{"q":"f"},"quality":{"q":"fresh"},"gap":0,"bestLap":0,"lastLap":0}`,
+		`{"q":{"q":"f"},"qual\u0069ty":{"q":"fresh"},"gap":0,"bestLap":0,"lastLap":0}`,
 	} {
 		var row StandingRowV2
 		if err := json.Unmarshal([]byte(raw), &row); err == nil {
@@ -122,8 +124,34 @@ func TestStandingWireAcceptsLegacyAndRejectsUnknownQuality(t *testing.T) {
 	}
 }
 
+func TestStandingLegacyNormalizationOnlyExaminesOuterKeys(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		raw  string
+		want bool
+	}{
+		{"compact with nested quality names", `{"q":{"q":"f","classGap":"s","interval":"m"},"gap":0,"bestLap":0,"lastLap":0}`, false},
+		{"escaped string value", `{"vehicleId":"a\\\"b","q":{"q":"f"},"gap":0,"bestLap":0,"lastLap":0}`, false},
+		{"literal outer legacy name", `{"quality":{"q":"f"},"gap":0,"bestLap":0,"lastLap":0}`, true},
+		{"escaped outer legacy name", `{"qual\u0069ty":{"q":"f"},"gap":0,"bestLap":0,"lastLap":0}`, true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := standingNeedsLegacyNormalization([]byte(test.raw)); got != test.want {
+				t.Fatalf("normalization=%t, want %t", got, test.want)
+			}
+			var row StandingRowV2
+			if err := json.Unmarshal([]byte(test.raw), &row); err != nil {
+				t.Fatal(err)
+			}
+			if row.Quality.Q != QualityFresh {
+				t.Fatalf("quality=%q", row.Quality.Q)
+			}
+		})
+	}
+}
+
 func TestRelativeWireRejectsUnknownAuthority(t *testing.T) {
-	for _, raw := range []string{`{"authority":"unknown"}`, `{"authority":""}`, `{"authority":null}`} {
+	for _, raw := range []string{`{"authority":"unknown"}`, `{"authority":""}`, `{"authority":null}`, `{"auth\u006frity":null}`} {
 		var row RelativeRowV2
 		if err := json.Unmarshal([]byte(raw), &row); err == nil {
 			t.Fatalf("accepted malformed authority %s", raw)

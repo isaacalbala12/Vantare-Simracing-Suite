@@ -2,9 +2,11 @@ package telemetrytransport
 
 import (
 	"context"
+	"crypto/rand"
 	"fmt"
 	"net"
 	"net/http"
+	"time"
 )
 
 func ProjectionRoute(product ProductID) string {
@@ -151,6 +153,73 @@ func PublisherSSEHandler(registry *PublisherRegistry, product PublisherProduct) 
 				return
 			}
 			flusher.Flush()
+		}
+	})
+}
+
+// OverlayPullSource is the already selected Overlay delivery owner. The SSE
+// adapter retains only its own ACK cursor and sends Rust-selected event bytes.
+type OverlayPullSource interface {
+	Pull(string, OverlayPullRequest) (OverlayPullResponse, bool, error)
+	Close(string, string)
+}
+
+func OverlayPullSSEHandler(source OverlayPullSource) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if source == nil {
+			http.Error(w, "overlay telemetry unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		if request.URL.Path != PublisherProjectionRoute(ProductOverlayV2) {
+			http.NotFound(w, request)
+			return
+		}
+		if !isLoopback(request.RemoteAddr) {
+			http.Error(w, "loopback only", http.StatusForbidden)
+			return
+		}
+		flusher, ok := w.(http.Flusher)
+		if !ok {
+			http.Error(w, ErrUnsupportedProtocol.Error(), http.StatusInternalServerError)
+			return
+		}
+		sender, session := "obs:"+rand.Text(), rand.Text()
+		defer source.Close(sender, session)
+		ack := uint64(0)
+		first, deliver, err := source.Pull(sender, OverlayPullRequest{SessionID: session})
+		if err != nil {
+			http.Error(w, "overlay telemetry unavailable", http.StatusServiceUnavailable)
+			return
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Connection", "keep-alive")
+		w.Header().Set("X-Accel-Buffering", "no")
+		for {
+			if deliver {
+				for _, event := range first.Events {
+					if _, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Name, event.Data); err != nil {
+						return
+					}
+				}
+				flusher.Flush()
+				ack = first.Delivery
+			}
+			delay := 100 * time.Millisecond
+			if deliver {
+				delay = 16 * time.Millisecond
+			}
+			timer := time.NewTimer(delay)
+			select {
+			case <-request.Context().Done():
+				timer.Stop()
+				return
+			case <-timer.C:
+			}
+			first, deliver, err = source.Pull(sender, OverlayPullRequest{SessionID: session, Ack: ack})
+			if err != nil {
+				return
+			}
 		}
 	})
 }

@@ -154,7 +154,7 @@ pub fn project(snapshot: &Snapshot, ahead: usize, behind: usize, same_class: boo
         },
     );
 
-    let strip = player.map_or_else(Vec::new, |me| strip(&state.cars, me.id));
+    let strip = player.map_or_else(Vec::new, |me| strip(&state.cars, me, same_class));
 
     let traffic_cars: Vec<&Car> = state.cars.iter().filter(|c| traffic_car(c)).collect();
     let traffic = traffic_cars.first().map(|car| Traffic {
@@ -207,9 +207,13 @@ pub fn project(snapshot: &Snapshot, ahead: usize, behind: usize, same_class: boo
     }
 }
 
-/// Coches a menos de `STRIP_S` del jugador, con el signo de la tabla.
-fn strip(cars: &[Car], me: CarId) -> Vec<Dot> {
+/// Coches a menos de `STRIP_S` del jugador, con el signo de la tabla y el
+/// mismo filtro de clase que la tabla.
+fn strip(cars: &[Car], me: &Car, same_class: bool) -> Vec<Dot> {
+    let my_class = me.class.as_ref().map(|c| c.id);
+    let me = me.id;
     cars.iter()
+        .filter(|car| !same_class || car.class.as_ref().map(|c| c.id) == my_class)
         .filter_map(|car| {
             let offset = if car.id == me {
                 0.0
@@ -460,6 +464,20 @@ mod tests {
         assert!(row.fast_traffic);
         assert_eq!(row.laps, Some(2));
         assert_eq!(board.strip.len(), 3, "los tres dentro de ±10 s");
+    }
+
+    #[test]
+    fn same_class_filters_the_strip_like_the_table_but_keeps_traffic() {
+        let me = car(1, GT, 0.0, 235.0);
+        let rival = car(2, GT, 2.0, 236.0);
+        let hyper = car(5, HY, -1.8, 207.0);
+        let board = project(&snapshot(vec![me, rival, hyper]), 3, 3, true);
+        assert_eq!(board.strip.len(), 2, "solo LMGT3 en la tira");
+        assert_eq!(board.slots.iter().flatten().count(), 2);
+        assert!(
+            board.traffic.is_some(),
+            "el tráfico más rápido sigue avisando"
+        );
     }
 
     #[test]

@@ -321,6 +321,7 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
     items.push((y, Item::Header));
     y += variant.header_height + variant.header_gap;
     let top;
+    let bottom;
     match shown {
         None => {
             top = y;
@@ -328,6 +329,7 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
                 items.push((y, Item::Skeleton(index, index == options.ahead)));
                 y += g.row_height;
             }
+            bottom = y;
             y += g.footer_gap;
             items.push((y, Item::Footer(Footer::Waiting)));
             y += 1.0 + g.footer_gap + g.footer_height;
@@ -338,10 +340,12 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
                 y += style.relative.strip_height + style.relative.strip_gap;
             }
             top = y;
-            for index in 0..board.slots.len() {
+            // Solo los huecos con coche: el panel se ajusta a los que hay.
+            for (index, _) in board.slots.iter().enumerate().filter(|(_, s)| s.is_some()) {
                 items.push((y, Item::Slot(index)));
                 y += g.row_height;
             }
+            bottom = y;
             let mut footers = Vec::new();
             if board.player_in_pits && board.pit_exit.is_some() {
                 footers.push(Footer::Pits);
@@ -359,7 +363,7 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
             }
         }
     }
-    let rows = (top, top + options.slots() as f32 * g.row_height);
+    let rows = (top, bottom.max(top + g.row_height));
     Plan {
         width,
         height: y + variant.padding_y,

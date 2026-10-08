@@ -1,5 +1,42 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1506 — revisión Polar; implementación detenida (2026-10-08)
+
+Seguimiento de esta tarea en [GitHub #1506](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1506),
+según instrucción explícita de Isaac. Base #1500 `9e041ab8` sobre Nightly
+`988662e6`; worktree `C:/tmp/vantare-isa1506`, rama
+`vantareapp/isa-1506-polar-atribucion`. [Revisión y runbook](../../billing/bil-12-polar-atribucion-review.md).
+
+B es la opción recomendada: página de compra en el repositorio separado
+`vantare-simracing-suite-web`, login Clerk y billing-checkout. No se implementó:
+la base de checkout usa Supabase Auth/getUser, mientras el candidato nativo
+`a8f9bdc3` usa OAuth Clerk y resolución de cuenta propia. Se activó la condición
+de parada de Isaac por contradicción con el supuesto de la issue. No se importó
+otra arquitectura ni se modificaron la app, la web de #1502 o el trabajo #1499.
+
+Hallazgos principales: desconocidos sin identidad quedan en cuarentena durable
+sin licencia; parser Refund exige payment_id ausente del objeto oficial Polar;
+refund de Pro no retira su grant. Isaac confirmó retirada de Pro al emitir refund
+(cancelar inmediatamente a la vez o revocar por webhook) y retirada de Launch
+al volver a conectar (credencial offline perpetua). La revisión distingue esas
+reglas de la cancelación normal, que conserva el periodo pagado.
+
+Sesión CLI oficial sandbox confirmada tras el aviso del orquestador, organización
+`71f1b902-c29a-421b-aeb7-7861d8bbc08d`: mensual 500 céntimos, Launch 3000,
+sin anual, sin trial predeterminado, 0 links, 5 órdenes pagadas históricas,
+1 suscripción activa y 0 refunds. No son pruebas nuevas de compra/licencia.
+No se alteró catálogo ni suscripciones. Matriz completa pendiente por identidad,
+catálogo #1499 y configuración del backend sandbox. Variables ausentes en la
+sesión del worker no prueban ausencia en el servidor. No se leyeron secretos/.env.
+
+Deno: 398/398 PASS con config y permisos de lectura explícitos; no se debilitaron
+tests. pgTAP sin ejecutar por ausencia de Docker; no builds/visuales porque la
+entrega es documental. Siguiente acción: review del bloqueo de identidad/base,
+configurar proyecto Supabase sandbox, coordinar #1499, corregir refunds y ejecutar
+la matriz real con credencial nativa y reconexión Launch. PR draft apilado sobre
+#1500; HEAD/URL y CI reales quedan registrados en #1506. Sin merge, promoción,
+release, deploy, cobros ni operaciones Polar producción.
+
 ## VAN-763 / ISA-1377 — roadmap gráfico (2026-09-25)
 
 [Tarea Notion VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59),

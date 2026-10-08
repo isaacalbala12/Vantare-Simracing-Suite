@@ -6,6 +6,10 @@ pub struct Icons;
 
 const ASSETS: &[(&str, &[u8])] = &[
     (
+        "brand/wordmark.svg",
+        include_bytes!("../../../../build/brand/wordmark/vantare-wordmark-blanco.svg"),
+    ),
+    (
         "icons/alert.svg",
         include_bytes!("../../assets/pit/alert.svg"),
     ),
@@ -309,6 +313,13 @@ mod tests {
             assert!(Icons.load(&path).expect("asset").is_some());
         }
         assert!(Icons.load("../secret.svg").expect("asset").is_none());
-        assert_eq!(Icons.list("icons/").expect("list").len(), ASSETS.len());
+        assert!(
+            Icons
+                .load("brand/wordmark.svg")
+                .expect("wordmark")
+                .is_some()
+        );
+        assert_eq!(Icons.list("brand/").expect("brand list").len(), 1);
+        assert_eq!(Icons.list("icons/").expect("list").len(), ASSETS.len() - 1);
     }
 }

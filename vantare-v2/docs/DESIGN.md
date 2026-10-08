@@ -15,6 +15,29 @@ Fuentes productivas:
 
 Los HTML y tokens de `docs/design/` son referencias de diseño. Para cambiar lo que muestra la app, editar la fuente productiva correspondiente y verificarla; no asumir sincronización automática entre ambas copias.
 
+
+## Wordmark oficial C2 · Compacta (#1504)
+
+Isaac eligió C2 el 2026-10-08. El nombre usa los trazos SVG aprobados de
+[build/brand/wordmark](../build/brand/wordmark/README.md), sin fuentes de texto.
+La Λ es el símbolo aislado para la barra contraída y espacios pequeños.
+Hay versiones color, blanco y negro; los lockups combinan Λ y nombre,
+con color para fondo claro/oscuro y versiones a una tinta.
+
+Conservar proporciones, geometría y espaciado. Altura mínima del wordmark:
+16 px en pantalla o 4 mm impreso; recomendada en el Hub: 24 px (182,85 px de ancho).
+Símbolo aislado: mínimo 16 px. Zona de respeto: media altura del wordmark
+alrededor; en lockups, media altura de la Λ. Usar blanco sobre oscuro y negro
+o casi negro sobre claro. Sustituye el logo con Rajdhani, sin alterar las
+familias tipográficas de la interfaz.
+
+El Hub nativo embebe el SVG directamente desde `build/brand/wordmark` en
+`shell/assets.rs`; `orbit/kit.rs` lo tiñe con `skin.text1` según el tema,
+también en DeepSeek. No duplicar el SVG en assets nativos ni componerlo con texto.
+La barra abierta de 272 px usa 24 px de alto, con BETA debajo para conservar
+el espacio del botón de contraer y la zona de respeto horizontal. La contraída
+solo muestra la Λ. Ctrl+B conserva su comportamiento.
+
 ## Overlays: autoría directa
 
 Usar la [guía Workshop](overlays-studio/overlay-workshop-authoring-guide.md). [WidgetVisualHost](../frontend/src/overlay/core/WidgetVisualHost.tsx) es la frontera común para Studio, Desktop, OBS y Workshop. El [catálogo oficial](../frontend/src/overlay/design-systems/official-designs.ts) y los [manifests y tokens](../frontend/src/overlay/design-systems/) indican sistemas, diseños y compatibilidad existentes.

@@ -301,24 +301,15 @@ pub fn topbar_tab(
         })
 }
 
-/// Logotipo «VANTARE» (Rajdhani 23, tracking 2): no cambia con el tema.
+/// Wordmark oficial C2: trazos embebidos, teñidos por el tema.
 pub fn wordmark(cx: &gpui::App) -> Div {
-    let font: SharedString = cx
-        .global::<super::design::Tokens>()
-        .fonts
-        .display
-        .clone()
-        .into();
-    div()
-        .flex()
-        .flex_none()
-        .gap(px(2.0))
-        .text_size(px(23.0))
-        .line_height(px(23.0))
-        .font_family(font)
-        .font_weight(gpui::FontWeight(600.0))
-        .text_color(rgb(skin(cx).text1))
-        .children("VANTARE".chars().map(|c| div().child(c.to_string())))
+    div().flex_none().child(
+        gpui::svg()
+            .path("brand/wordmark.svg")
+            .w(px(24.0 * 5235.3 / 687.2))
+            .h(px(24.0))
+            .text_color(rgb(skin(cx).text1)),
+    )
 }
 
 /// Punto «vivo» (7 px): degradado 135° y halo.

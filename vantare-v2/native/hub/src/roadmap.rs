@@ -103,12 +103,26 @@ fn current(publication: Option<&Publication>, adapt: orbit::Adapt, cx: &gpui::Ap
         .child(orbit::eyebrow("En qué estamos", cx));
     if let Some(item) = publication.and_then(|publication| items(publication, "now").next()) {
         hero = hero
-            .child(orbit::caps(
-                &item.title.es,
-                if compact { 26.0 } else { 34.0 },
-                orbit::ink(cx),
-                cx,
-            ))
+            .child(
+                orbit::text(
+                    item.title.es.to_uppercase(),
+                    if compact { 26.0 } else { 34.0 },
+                    600,
+                    orbit::ink(cx),
+                    cx,
+                )
+                .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
+                .w_full()
+                .min_w_0()
+                .line_clamp(2)
+                .id("roadmap-current-title")
+                .role(gpui::Role::Label)
+                .aria_label(item.title.es.clone())
+                .tooltip({
+                    let title = item.title.es.clone();
+                    move |_, cx| cx.new(|_| orbit::Tooltip(title.clone())).into()
+                }),
+            )
             .when(!compact, |hero| hero.child(note(item.body.es.clone(), cx)));
     } else {
         hero = hero.child(note("Aún no hay hitos actuales publicados", cx));

@@ -5879,3 +5879,11 @@ Regresión runtime QA: clics Carteles→Tiempos con aria_selected comprobado,
 contraer carril y abrir notificaciones PASS; capturas header-mouse-* inspeccionadas.
 Clippy-Dwarnings PASS. La prueba es por HWND/input nativo, no un test del estilo.
 E3 traza 4193684c; E2 consentimiento af5b69be. Gates/matriz final continúan.
+E1/E2 Roadmap: fixture Publication local poblada (24 hitos, títulos/cuerpos largos)
+reprodujo desborde del titular y error oculto como caché. Titular Rajdhani con
+wrap/límite2 líneas y tooltip completo; status conserva el mensaje del servicio.
+Regresión runtime: Circuito/Tablero/Temporada seleccionadas con ratón y capturas
+roadmap-final-*; error IPC de carga1280×720 visible, sin inventar publicación.
+Clippy-Dwarnings PASS; límites del titular inspeccionados en PNG, no atribuidos
+al dump UIA (el backend no expone ese texto como control medible).
+Barra b9433fdb; E3 4193684c. Lista poblada/error a ampliar en matriz final.

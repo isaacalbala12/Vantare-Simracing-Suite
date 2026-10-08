@@ -1168,8 +1168,6 @@ impl Remote {
     pub(crate) fn roadmap_status(&self) -> &str {
         if self.working() {
             "Cargando roadmap…"
-        } else if self.stale {
-            "Publicación guardada en este equipo"
         } else {
             &self.roadmap_message
         }

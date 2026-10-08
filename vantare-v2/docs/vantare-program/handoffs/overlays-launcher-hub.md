@@ -5644,3 +5644,8 @@ ni captura. Tamaño libre/estilo/acento global/Hz por instancia no existen en
 el documento nativo; se preparan como pendientes, sin schema ni renderer nuevo.
 Siguiente: barra inferior, tira/escenas, inspector, anclaje y cruceta, gates.
 Sin push/PR/merge/promoción/release; evidencia C:/tmp/ui-r10/r3-evidence/.
+Hito 2: barra inferior con zoom y x/y/ancho/alto reales del renderer; Hz sin
+medición muestra —. Tira horizontal con selección/visibilidad documental.
+Carrera activa las muestras existentes (todas Race); demás escenas pendientes,
+vuelta leída de la foto actual, sin slider ni reproducción ficticia. Check/fmt
+PASS. Continúa pantalla ocupada, sin capturas. Siguiente: inspector acoplado.

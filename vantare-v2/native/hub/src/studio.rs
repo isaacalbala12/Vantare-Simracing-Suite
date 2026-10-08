@@ -992,7 +992,7 @@ impl Studio {
     }
     fn widget_list(&self, cx: &mut Context<Self>) -> gpui::Div {
         let query = self.search.read(cx).value.to_lowercase();
-        let mut list = div().flex().flex_wrap().gap(px(6.0));
+        let mut list = div().flex().gap(px(8.0));
         let mut matches = 0;
         for (index, item) in self.editor.layout().instances.iter().enumerate() {
             if format!("{} {}", item.id, item.settings.kind().label())
@@ -1032,29 +1032,42 @@ impl Studio {
             .role(gpui::Role::Button)
             .aria_label(item.settings.kind().label())
             .tab_index(0)
-            .h(px(42.0))
-            .w(px(146.0))
+            .h(px(48.0))
+            .w(px(160.0))
             .flex_none()
             .border_1()
             .border_color(gpui::rgba(orbit::line(cx)))
             .px(px(8.0))
-            .rounded(px(12.0))
+            .rounded(px(orbit::skin(cx).radius.md))
             .flex()
             .items_center()
             .gap(px(6.0))
             .when(selected, |row| {
-                row.bg(rgb(orbit::surface_3(cx)))
-                    .border_color(rgb(orbit::carmine(cx)))
+                orbit::nav_active(row, cx).shadow(orbit::selection_ring(cx))
             })
             .hover(|row| row.bg(rgb(orbit::surface_2(cx))))
             .child(orbit::icon("v-studio", 20.0, orbit::ink_2(cx)))
-            .child(div().flex_1().min_w_0().child(text(
-                item.settings.kind().label(),
-                13.0,
-                650,
-                orbit::ink(cx),
-                cx,
-            )))
+            .aria_selected(selected)
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .child(
+                        text(item.settings.kind().label(), 12.0, 600, orbit::ink(cx), cx)
+                            .whitespace_nowrap()
+                            .overflow_hidden()
+                            .text_ellipsis(),
+                    )
+                    .child(text(
+                        if item.visible { "Visible" } else { "Oculto" },
+                        10.0,
+                        400,
+                        orbit::ink_3(cx),
+                        cx,
+                    )),
+            )
             .child(
                 div()
                     .id(("studio-visibility", index))
@@ -1519,44 +1532,121 @@ impl Studio {
         )
     }
 
+    fn selected_size(&self, cx: &gpui::App) -> Option<(f32, f32)> {
+        let item = self.editor.selected()?;
+        self.frames
+            .iter()
+            .find(|(id, _)| *id == item.id)
+            .map(|(_, frame)| {
+                let frame = frame.read(cx);
+                let (width, height) = frame.renderer.read(cx).wanted_size();
+                (width * frame.content_scale, height * frame.content_scale)
+            })
+    }
     fn preview_footer(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let selection = self.editor.selected().map_or_else(
-            || "Sin selección".into(),
-            |item| {
-                format!(
-                    "{} · x {:.0} · y {:.0}",
-                    item.settings.kind().label(),
-                    item.x,
-                    item.y
-                )
-            },
-        );
+        let selection = match (self.editor.selected(), self.selected_size(cx)) {
+            (Some(item), Some((width, height))) => format!(
+                "x {:.0} · y {:.0} · {:.0} × {:.0}",
+                item.x, item.y, width, height
+            ),
+            _ => "Sin selección".into(),
+        };
         div()
             .min_h(px(39.0))
             .flex_none()
-            .px(px(16.0))
             .flex()
             .items_center()
-            .gap(px(12.0))
-            .child(text("Lienzo 1920 × 1080", 11.0, 500, orbit::ink_3(cx), cx))
-            .child(text(selection, 11.0, 500, orbit::ink_3(cx), cx))
-            .child(div().flex_1())
+            .gap(px(8.0))
             .child(Self::toolbar_zoom_out_control(cx))
             .child(self.toolbar_zoom_label(cx))
             .child(Self::toolbar_zoom_in_control(cx))
+            .child(
+                orbit::mono_text(selection, 11.0, orbit::ink_2(cx), cx)
+                    .min_w_0()
+                    .whitespace_nowrap()
+                    .overflow_hidden()
+                    .text_ellipsis(),
+            )
+            .child(div().flex_1())
+            .child(text("Telemetría · — Hz", 11.0, 500, orbit::ink_3(cx), cx))
+    }
+    fn scenario_controls(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let kind = self
+            .editor
+            .selected()
+            .map_or(Kind::Standings, |item| item.settings.kind());
+        let snapshot = self.preview_snapshot(kind);
+        let lap = snapshot
+            .state
+            .player_car()
+            .and_then(|car| car.laps.current());
+        let total = snapshot.state.session.laps_total.current();
+        let laps = match (lap, total) {
+            (Some(lap), Some(total)) => format!("Vuelta {lap} de {total}"),
+            (Some(lap), None) => format!("Vuelta {lap}"),
+            _ => "Vuelta —".into(),
+        };
+        let mut row = div()
+            .flex()
+            .items_center()
+            .gap(px(6.0))
+            .min_w_0()
+            .child(text("Probar con", 11.0, 500, orbit::ink_3(cx), cx));
+        for (index, label) in ["Salida", "Carrera", "Boxes", "Lluvia", "Noche"]
+            .into_iter()
+            .enumerate()
+        {
+            let control = orbit::ghost_button(("studio-scenario", index), label, cx)
+                .h(px(30.0))
+                .px(px(8.0))
+                .flex_none();
+            row = if label == "Carrera" {
+                row.child(
+                    control
+                        .aria_selected(self.example)
+                        .when(self.example, |button| orbit::nav_active(button, cx))
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.cancel_drag(cx);
+                            this.example = true;
+                            this.rebuild(cx);
+                        })),
+                )
+            } else {
+                row.child(orbit::disabled(
+                    control,
+                    "Próximamente: no hay una escena de ejemplo para esta condición.",
+                ))
+            };
+        }
+        row.child(div().flex_1()).child(
+            orbit::mono_text(laps, 10.0, orbit::ink_3(cx), cx)
+                .whitespace_nowrap()
+                .min_w_0()
+                .overflow_hidden()
+                .text_ellipsis(),
+        )
     }
     fn widget_strip(&self, cx: &mut Context<Self>) -> gpui::Div {
-        orbit::neo_card(cx).p(px(10.0)).gap(px(8.0)).flex_none()
-            .child(div().flex().gap(px(8.0)).min_w_0()
-                .child(div().id("studio-widget-strip").flex_1().min_w_0().overflow_x_scroll().child(self.widget_list(cx)))
-                .child(self.widget_actions(cx)))
-            .child(div().flex().items_center().gap(px(8.0)).flex_wrap()
-                .child(text("Probar con · Próximamente", 12.0, 400, orbit::ink_3(cx), cx))
-                .child(div().flex().p(px(4.0)).gap(px(4.0)).rounded_full().bg(rgb(orbit::surface_2(cx)))
-                    .children(["Salida", "Carrera", "Boxes", "Lluvia", "Noche"].into_iter().enumerate().map(|(index, label)|
-                        orbit::disabled(orbit::ghost_button(("studio-scenario", index), label, cx),
-                            "Próximamente: escenarios de prueba; Ejemplo y En vivo controlan la fuente del lienzo"))))
-                )
+        orbit::neo_card(cx)
+            .p(px(10.0))
+            .gap(px(8.0))
+            .flex_none()
+            .child(
+                div()
+                    .flex()
+                    .gap(px(8.0))
+                    .min_w_0()
+                    .child(
+                        div()
+                            .id("studio-widget-strip")
+                            .flex_1()
+                            .min_w_0()
+                            .overflow_x_scroll()
+                            .child(self.widget_list(cx)),
+                    )
+                    .child(self.widget_actions(cx)),
+            )
+            .child(self.scenario_controls(cx))
     }
 
     fn editor_workspace(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui::Div {

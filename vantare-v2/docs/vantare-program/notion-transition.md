@@ -1,3 +1,5 @@
+> Histórico desde #1503 (2026-10-08): sustituido por GitHub Issues y GitHub Project Vantare; no ejecutar sus instrucciones.
+
 # Notion primero: seguimiento y compatibilidad técnica
 
 Seguimiento operativo: **NOTION PRIMERO — obligatorio desde 2026-09-14**.

@@ -1,3 +1,5 @@
+> Auditoría histórica del tracker anterior; no es un contrato operativo desde #1503.
+
 # Revisión documental de Notion primero — VAN-724
 
 Revisión vigente: 2026-09-14. Tarea [VAN-724](https://app.notion.com/p/3dbe51695c658138b19fe81c730d89a2), puente CI #1213. Decisión: [notion-transition.md](notion-transition.md).

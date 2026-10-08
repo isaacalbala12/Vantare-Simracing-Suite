@@ -1,5 +1,20 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1503 — instrucciones de agentes y tracker (2026-10-08)
+
+Issue [#1503](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1503),
+base `origin/nightly@988662e6`, rama `vantareapp/isa-1503-agents-tracker`.
+Los dos AGENTS y sus lecturas obligatorias usan GitHub Issues y Project Vantare.
+Las referencias de trackers anteriores en las entradas fechadas son históricas.
+No se recrea `plan.md`: nightly retiró el digest y su workflow; el contenido
+público se lee con `visual_roadmap_current`, conforme a la migración
+`supabase/migrations/20260924000000_visual_roadmap.sql` y `docs/roadmap-maintenance.md`.
+`docs/ROADMAP.md` en la raíz es un plan histórico V1, no la fuente de publicación.
+Entrega documental: grep revisado, secciones de Studio/orquestación/Rust intactas
+y `git diff --check` PASS; sin builds porque no cambia código. Push y PR draft
+a nightly para revisión; el informe y comentario de la issue registran SHA/PR/CI.
+Siguiente acción: revisión del orquestador e Isaac; sin merge, promoción ni release.
+
 ## VAN-763 / ISA-1377 — roadmap gráfico (2026-09-25)
 
 [Tarea Notion VAN-763](https://app.notion.com/p/3e5e51695c6581debbcbfef649a86d59),
@@ -107,11 +122,10 @@ Evidencia, hash del exe y límites: [informe ISA-1305](../../analysis/isa-1305-w
 Revisión independiente `3afeb0c0`: ACCEPT. CI identificó `go-mod-tidy` como único hallazgo nuevo; normalizado el grafo, segunda comprobación sin diff. PR [#1309](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1309); controles del candidato final pendientes.
 Roadmap: `milestones:wails-v3-beta24`. Siguiente acción: PR, CI del candidato exacto y squash autorizado a Nightly; registrar allí el SHA remoto verificado. Sin testers/master/release. El spike macOS/Streams VAN-734 permanece separado.
 
-> **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
-> Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
-> bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
-> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
-> sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
+> **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
+> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
+> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
+> estados de trackers anteriores son evidencia histórica, no instrucciones.
 
 ## VAN-733 — Quality Linux y dependencias nativas de Wails (2026-09-20)
 

@@ -6,13 +6,14 @@ import {
   readStandardWebhookHeaders,
   type StandardWebhookHeaders,
   validateWebhookHeaderPresence,
-  verifyStandardWebhook,
   WEBHOOK_HEADER_ID,
   WEBHOOK_HEADER_SIGNATURE,
   WEBHOOK_HEADER_TIMESTAMP,
+  WebhookConfigError,
   WebhookVerificationError,
 } from "../_shared/webhook-verify.ts";
 import { parsePolarWebhookEvent, processPolarWebhookEvent } from "./process.ts";
+import { verifyPolarWebhook } from "./signature.ts";
 import {
   computeWebhookPayloadHash,
   sanitizeWebhookErrorCode,
@@ -212,11 +213,18 @@ export async function handleWebhookRequest(
   }
 
   const headers = readStandardWebhookHeaders(req);
-  const verifyWebhook = deps.verifyWebhook ?? verifyStandardWebhook;
+  const verifyWebhook = deps.verifyWebhook ?? verifyPolarWebhook;
 
   try {
     await verifyWebhook(rawBody, headers, secret);
   } catch (error) {
+    if (error instanceof WebhookConfigError) {
+      return errorResponse(
+        "webhook_not_configured",
+        "Webhook not configured",
+        503,
+      );
+    }
     if (error instanceof WebhookVerificationError) {
       await observe("signature_invalid", "warning", {
         providerEventId: headers.id,

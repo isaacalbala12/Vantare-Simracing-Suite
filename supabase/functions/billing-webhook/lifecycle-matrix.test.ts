@@ -212,7 +212,7 @@ Deno.test("BIL-09 lifecycle matrix: catalog, customer state and benefits converg
   );
 });
 
-Deno.test("BIL-09 lifecycle matrix: reverse-order refunds converge and only total refund revokes", async () => {
+Deno.test("BIL-09 lifecycle matrix: reverse-order refunds converge; partial issued refund already revokes its source", async () => {
   const ledger = new MemoryOrderRefundLedger();
   const orders: OrderLedgerInput[] = [
     order("order-independent", "2026-08-02T10:01:00.000Z"),
@@ -256,7 +256,7 @@ Deno.test("BIL-09 lifecycle matrix: reverse-order refunds converge and only tota
     ledger.grants.get(
       "sandbox:order-refunded:vantare.edition.launch_v1",
     ),
-    "active",
+    "revoked",
   );
 
   const total = await reconcileOrderRefundLedger({

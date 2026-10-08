@@ -24,6 +24,9 @@ verify_jwt = false
 [functions.clerk-webhook]
 verify_jwt = false
 
+[functions.billing-reconcile]
+verify_jwt = false
+
 [auth.third_party.clerk]
 enabled = true
 domain = "env(CLERK_DOMAIN)"

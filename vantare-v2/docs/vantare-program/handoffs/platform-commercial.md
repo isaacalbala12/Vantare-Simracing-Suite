@@ -3,25 +3,40 @@
 ## ISA-1514 — implementación Clerk en curso
 
 Seguimiento GitHub #1514; base aprobada #1517 `49946438`. Worktree
-`C:/tmp/vantare-isa1514-impl`, rama `vantareapp/isa-1514-identidad-impl`.
-Isaac autoriza solución completa sin fechas/cohorte, desde cero sin backfill.
-Refund failed/canceled restaura; disputa suspende y restaura si gana el cliente;
+`C:/tmp/vantare-isa1514-impl`, rama `vantareapp/isa-1514-identidad-impl`. Isaac
+autoriza solución completa sin fechas/cohorte, desde cero sin backfill. Refund
+failed/canceled restaura; disputa suspende y restaura si gana el cliente;
 recuperación automática, trial siete días, Launch offline y un equipo activo.
 
 Fase 1 escrita: TPA, wrapper de sesión, mapping UUID, RLS/FKs, webhook Svix y
-tombstones. Deno 411/411 PASS; pgTAP preparado sin Docker/psql, no ejecutado.
-Sin deploy. [Plan vigente](../../billing/bil-13-clerk-identidad-plan.md),
-[estado/runbook](../../billing/bil-13-clerk-implementacion.md), ADR 0100 autorizado.
-La matriz sandbox y las fases 2–5 siguen pendientes; no-Go comercial.
-CLI Polar confirma sandbox Vantare `71f1b902-c29a-421b-aeb7-7861d8bbc08d`;
-falta proyecto/variables backend. Config pública refiere proyecto Supabase,
+tombstones. Backend fase 2 escrito: binding durable checkout/env/cuenta,
+attribution sin email/metadata, refund sin payment_id y de Pro, restricciones
+por fuente, disputas por API y worker reconciliación con cursor/lease/replay.
+Credencial web usa vista efectiva; native-license del candidato aún debe migrar.
+Deno **420/420 PASS**; 47 pgTAP assertions preparadas sin Docker/psql, no
+ejecutadas. Sin deploy. GitGuardian señaló la nueva fixture de firma: material
+efímero generado en runtime (1 test PASS) sustituye la constante. Se consolidan
+los dos commits propios de fase 2 para retirar la fixture de la historia del PR;
+referencia local preservada y force-with-lease exacto. CI final pendiente.
+[Plan vigente](../../billing/bil-13-clerk-identidad-plan.md),
+[estado/runbook](../../billing/bil-13-clerk-implementacion.md), ADR 0100
+autorizado. Fase 2 parcial sin programador activado; matriz sandbox y fases 3–5
+pendientes. No-Go comercial. Scheduler pg_cron/pg_net/Vault no previsto en ADR:
+se pide autorización según regla de dependencia; no añadido/activado. CLI Polar
+confirma sandbox Vantare `71f1b902-c29a-421b-aeb7-7861d8bbc08d`; falta
+proyecto/variables backend. Catálogo read-only: Launch 30 EUR; mensual 5 EUR sin
+trial, Annual ausente; no modificado. Config pública refiere proyecto Supabase,
 pero no prueba producción; publishable keys públicas ausentes en el proceso.
 
 Pendiente de aclaración: el encargo nativo pide sesión Clerk, mientras el ADR y
-la app usan OAuth/PKCE; no convertir OAuth en JWT de sesión. Siguiente: cerrar
-cobros/reconciliación y decidir esa frontera antes del commit nativo. No desplegar
-el corte aislado sobre clientes del bridge HS256. La minimización del webhook
-no declara purga RGPD completa de datos fiscales/evidencias.
+la app usan OAuth/PKCE; no convertir OAuth en JWT de sesión. Implementación
+detenida hasta decidir frontera y scheduler; después clientes/cierre
+Auth/matriz. Siguiente backend: completar recuperación de checkout uncertain (el
+handler heredado aún remite a soporte antes de haber entregado URL), programar
+worker y ejecutar SQL. El worker escrito recupera pagos solo con prueba durable
+existente; no inventa propiedad de un pago externo. No desplegar el corte
+aislado sobre clientes del bridge HS256. La minimización del webhook no declara
+purga RGPD completa de datos fiscales/evidencias.
 
 Sin secretos/.env, subagentes, producción, merge, promoción, release ni ventas.
 SHA/PR/CI final en GitHub #1514. Roadmap plan.md/digest ausentes en esta base;

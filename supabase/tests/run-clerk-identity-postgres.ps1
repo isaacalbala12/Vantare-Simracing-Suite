@@ -45,10 +45,17 @@ alter default privileges in schema public grant select, insert, update, delete o
     docker exec $container psql -v ON_ERROR_STOP=1 -U postgres -f "/tmp/$($migration.Name)" | Out-Null
     if ($LASTEXITCODE -ne 0) { throw "Migration failed: $($migration.Name)" }
   }
-  docker cp (Join-Path $PSScriptRoot 'clerk_identity_cutover_test.sql') "${container}:/tmp/test.sql"
-  $tap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -f /tmp/test.sql | Out-String
-  if ($LASTEXITCODE -ne 0 -or $tap -match '(?m)^not ok' -or $tap -notmatch '1\.\.23') { throw "Clerk pgTAP failed:`n$tap" }
-  Write-Output $tap
+  foreach ($test in @(
+    @{ File = 'clerk_identity_cutover_test.sql'; Count = 23 },
+    @{ File = 'billing_identity_refunds_test.sql'; Count = 24 }
+  )) {
+    docker cp (Join-Path $PSScriptRoot $test.File) "${container}:/tmp/test.sql"
+    $tap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -f /tmp/test.sql | Out-String
+    if ($LASTEXITCODE -ne 0 -or $tap -match '(?m)^not ok' -or $tap -notmatch "1\.\.$($test.Count)") {
+      throw "pgTAP failed ($($test.File)):`n$tap"
+    }
+    Write-Output $tap
+  }
 } finally {
   docker rm -f $container 2>$null | Out-Null
   if (Test-Path -LiteralPath $bootstrap) { Remove-Item -LiteralPath $bootstrap }

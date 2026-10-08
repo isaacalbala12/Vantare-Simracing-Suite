@@ -142,11 +142,13 @@ export async function verifyStandardWebhook(
 /** Test helper — signs a webhook payload with Standard Webhooks v1 (HMAC). */
 export async function signStandardWebhookForTest(
   rawBody: string,
-  secret: string,
+  secret: string | Uint8Array<ArrayBuffer>,
   id: string,
   timestamp: string,
 ): Promise<string> {
-  const keyBytes = decodeSigningSecret(secret);
+  const keyBytes = typeof secret === "string"
+    ? decodeSigningSecret(secret)
+    : secret;
   const cryptoKey = await crypto.subtle.importKey(
     "raw",
     keyBytes,

@@ -156,6 +156,55 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
   };
 }
 
+Deno.test("identity requires durable server checkout, refuses email/metadata/UUID alone and ownership mismatch", async () => {
+  const binding = {
+    environment: "sandbox",
+    provider_checkout_id: "checkout-owned",
+    user_id: USER_ID,
+  };
+  const mock = createMockSupabase({
+    billing_checkout_bindings: [binding],
+    billing_customers: [
+      {
+        environment: "sandbox",
+        provider: "polar",
+        provider_customer_id: "customer-other",
+        user_id: PRODUCTION_USER_ID,
+      },
+    ],
+  });
+  for (
+    const data of [
+      { external_customer_id: USER_ID },
+      {
+        customer: { email: "verified@example.invalid" },
+        metadata: { user_id: USER_ID },
+      },
+      { checkout_id: "checkout-unregistered", external_customer_id: USER_ID },
+      {
+        checkout_id: "checkout-owned",
+        external_customer_id: PRODUCTION_USER_ID,
+      },
+      { checkout_id: "checkout-owned", customer_id: "customer-other" },
+    ]
+  ) assertEquals(await resolveUserId(mock.client, data, "sandbox"), null);
+  assertEquals(
+    await resolveUserId(mock.client, {
+      checkout_id: "checkout-owned",
+      external_customer_id: USER_ID,
+    }, "sandbox"),
+    USER_ID,
+  );
+  assertEquals(
+    await resolveUserId(
+      mock.client,
+      { checkout_id: "checkout-owned" },
+      "production",
+    ),
+    null,
+  );
+});
+
 function loadTestMap() {
   return loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
     environment: "sandbox",
@@ -248,6 +297,22 @@ function processDeps(
     projection,
     lifecycle,
     orderRefundLedger,
+    // Commercial lifecycle fixtures assume a server-verified identity; the
+    // independent resolveUserId tests exercise durable attribution itself.
+    resolveIdentity: (
+      _client: SupabaseClient,
+      data: Record<string, unknown>,
+      environment: "sandbox" | "production",
+    ) => {
+      const customer =
+        typeof data.customer === "object" && data.customer !== null
+          ? data.customer as Record<string, unknown>
+          : {};
+      const external = data.external_customer_id ?? customer.external_id;
+      return typeof external === "string"
+        ? Promise.resolve(external)
+        : resolveUserId(_client, data, environment);
+    },
   };
 }
 
@@ -726,7 +791,7 @@ Deno.test("processPolarWebhookEvent: only an attributed succeeded refund revokes
   );
 });
 
-Deno.test("processPolarWebhookEvent: multiple partial refunds keep access until their attributed sum is total", async () => {
+Deno.test("processPolarWebhookEvent: partial refund retires the affected source immediately", async () => {
   const mock = createMockSupabase();
   const deps = processDeps(mock);
   await processPolarWebhookEvent(
@@ -749,11 +814,11 @@ Deno.test("processPolarWebhookEvent: multiple partial refunds keep access until 
   );
   assertEquals(partial, {
     status: "processed",
-    action: "recorded_partial_refund",
+    action: "revoked_lifetime_order",
   });
   assertEquals(
     [...deps.orderRefundLedger.grants.values()].every((grant) =>
-      grant === "active"
+      grant === "revoked"
     ),
     true,
   );
@@ -778,7 +843,7 @@ Deno.test("processPolarWebhookEvent: multiple partial refunds keep access until 
   });
 });
 
-Deno.test("processPolarWebhookEvent: subscription order refunds never enter the one-time ledger", async () => {
+Deno.test("processPolarWebhookEvent: Pro refund blocks its subscription without issuing perpetual Pro", async () => {
   const mock = createMockSupabase();
   const deps = processDeps(mock);
   await processPolarWebhookEvent(
@@ -811,10 +876,10 @@ Deno.test("processPolarWebhookEvent: subscription order refunds never enter the 
     deps,
   );
   assertEquals(order, {
-    status: "ignored",
-    reason: "order_not_lifetime_product",
+    status: "processed",
+    action: "recorded_subscription_order",
   });
-  assertEquals(deps.orderRefundLedger.orders.size, 0);
+  assertEquals(deps.orderRefundLedger.orders.size, 1);
   assertEquals([...deps.projection.grants.values()][0].status, "active");
 
   const refund = await processPolarWebhookEvent(
@@ -829,13 +894,20 @@ Deno.test("processPolarWebhookEvent: subscription order refunds never enter the 
     deps,
   );
   assertEquals(refund, {
-    status: "quarantined",
-    reason: "order_refund_ledger_missing_order",
+    status: "processed",
+    action: "blocked_subscription_refund",
   });
+  assertEquals(
+    deps.orderRefundLedger.grants.get(
+      "sandbox:sub-refund-safe:vantare.plan.pro",
+    ),
+    "revoked",
+  );
+  // Base lifecycle remains intact; effective access excludes the refund block.
   assertEquals([...deps.projection.grants.values()][0].status, "active");
 });
 
-Deno.test("processPolarWebhookEvent: refund without payment identity is quarantined", async () => {
+Deno.test("processPolarWebhookEvent: official Refund without payment_id retires Launch", async () => {
   const mock = createMockSupabase();
   const deps = processDeps(mock);
   await processPolarWebhookEvent(
@@ -855,12 +927,12 @@ Deno.test("processPolarWebhookEvent: refund without payment identity is quaranti
     deps,
   );
   assertEquals(result, {
-    status: "quarantined",
-    reason: "missing_payment_id",
+    status: "processed",
+    action: "revoked_lifetime_order",
   });
   assertEquals(
     [...deps.orderRefundLedger.grants.values()].every((grant) =>
-      grant === "active"
+      grant === "revoked"
     ),
     true,
   );

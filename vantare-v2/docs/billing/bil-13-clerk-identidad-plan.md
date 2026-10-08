@@ -27,6 +27,15 @@ comportamiento anterior, no requisitos de compatibilidad.
 
 ## Fases y aceptación
 
+Entrega de implementación #1523: fase 1 escrita, backend de fase 2 escrito; Deno
+420 PASS. SQL no ejecutado (sin Docker/psql). Cliente nativo y compra web,
+retiro legacy y matriz real no entregados. Scheduler requiere aceptación de
+pg_cron/pg_net/Vault o identificación del existente; ninguna extensión añadida.
+El catálogo sandbox sigue a 5 EUR mensual, sin Annual ni trial; no modificado.
+Estado de fase 2 parcial hasta completar programación, clientes y evidencia SQL/
+sandbox. Las condiciones de parada de dependencias/frontera nativa están
+activas.
+
 1. Identidad backend: TPA oficial Clerk, bootstrap explícito UUID, RLS sin altas
    implícitas, FKs a profiles, webhooks firmados, tombstones y pruebas SQL/Deno.
 2. Cobros: sesión verificada antes de checkout y persistencia del vínculo antes

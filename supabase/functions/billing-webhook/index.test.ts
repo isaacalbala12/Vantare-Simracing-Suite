@@ -1,6 +1,7 @@
 import { assertEquals } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { signStandardWebhookForTest } from "../_shared/webhook-verify.ts";
+import { polarSigningKey } from "./signature.ts";
 import {
   handleWebhookRequest,
   MAX_WEBHOOK_BODY_BYTES,
@@ -34,7 +35,12 @@ async function signedWebhookRequest(
     : options.secret;
   const signature = options.signature ??
     (secret
-      ? await signStandardWebhookForTest(rawBody, secret, eventId, timestamp)
+      ? await signStandardWebhookForTest(
+        rawBody,
+        polarSigningKey(secret, "standard"),
+        eventId,
+        timestamp,
+      )
       : "v1,invalid");
 
   return new Request("http://localhost/billing-webhook", {

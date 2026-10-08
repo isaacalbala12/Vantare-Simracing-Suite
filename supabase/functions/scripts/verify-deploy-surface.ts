@@ -1,5 +1,6 @@
 const productionFunctions = new Set([
   "clerk-webhook",
+  "billing-reconcile",
   "billing-checkout",
   "billing-portal",
   "billing-webhook",

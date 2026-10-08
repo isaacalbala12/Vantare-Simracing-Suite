@@ -433,24 +433,9 @@ impl Testing {
                 }));
             rows = rows.child(row);
             if expanded {
-                rows = rows
-                    .child(orbit::text(
-                        format!(
-                            "Qué esperabas: {}\nQué ocurrió: {}\nContexto: {}",
-                            fields.expected_text, fields.observed_text, fields.context_text
-                        ),
-                        13.0,
-                        400,
-                        orbit::ink_2(cx),
-                        cx,
-                    ))
-                    .child(orbit::text(
-                        "Conversación · Próximamente",
-                        12.0,
-                        400,
-                        orbit::ink_3(cx),
-                        cx,
-                    ));
+                rows = rows.child(orbit::text("El texto privado no se conserva en esta lista. El recibo confirma el envío; no consulta cambios posteriores.", 13.0, 400, orbit::ink_2(cx), cx))
+                    .child(orbit::text("Conversación · Próximamente", 12.0, 400, orbit::ink_3(cx), cx))
+                    .child(orbit::disabled(orbit::button("testing-also-happens", "A mí también me pasa · Próximamente", cx), "El servicio nativo aún no permite apoyar otro informe."));
             }
         }
         orbit::neo_card(cx)
@@ -551,9 +536,9 @@ impl Render for Testing {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let tab = self.tabs.read(cx).state.selected.unwrap_or(0);
         let content = match tab {
-            1 => self.pending_view("Cuestionarios", "Aún no hay cuestionarios disponibles. Próximamente podrás responder preguntas cortas del equipo.", cx),
+            1 => self.questionnaires(cx),
             2 => self.reports(cx),
-            3 => self.pending_view("Comunidad", "Niveles y reconocimiento · Próximamente", cx),
+            3 => self.community(cx),
             _ => self.summary(cx),
         };
         div()
@@ -744,5 +729,72 @@ impl Testing {
                 .child(self.pending_view("Pendiente para ti", "Las solicitudes de respuesta y validación estarán disponibles próximamente.", cx).flex_1())
                 .child(self.pending_view("Gracias a los probadores", "El reconocimiento de contribuciones estará disponible próximamente.", cx).flex_1()))
             .child(self.reports_panel(cx))
+    }
+}
+
+impl Testing {
+    fn questionnaires(&self, cx: &gpui::App) -> gpui::Div {
+        let adapt = *cx.global::<orbit::Adapt>();
+        let mut page = div()
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .gap(px(adapt.gap()))
+            .child(self.pending_view(
+                "Cuestionarios",
+                "Próximamente · Aún no hay cuestionarios disponibles para responder.",
+                cx,
+            ));
+        let mut formats = orbit::neo_card(cx)
+            .flex_1()
+            .min_h_0()
+            .child(orbit::neo_header("Cómo podrás responder", "v-testing", cx));
+        for (label, description) in super::model::QUESTION_FORMATS {
+            formats = formats.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(12.0))
+                    .py(px(8.0))
+                    .child(
+                        orbit::text(label, 13.0, 600, orbit::ink(cx), cx)
+                            .flex_1()
+                            .min_w_0(),
+                    )
+                    .when(adapt.show_optional(), |row| {
+                        row.child(orbit::text(description, 12.0, 400, orbit::ink_3(cx), cx))
+                    }),
+            );
+        }
+        page = page.child(formats);
+        page.child(orbit::text("Respuesta y guardado automático · Próximamente. No hay respuestas guardadas ni resultados disponibles.", 12.0, 400, orbit::ink_3(cx), cx))
+    }
+    fn community(&self, cx: &gpui::App) -> gpui::Div {
+        let adapt = *cx.global::<orbit::Adapt>();
+        let mut page = div()
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .gap(px(adapt.gap()))
+            .child(self.pending_view(
+                "Ayúdanos a mejorar Vantare",
+                "Comunidad · Próximamente. El acceso actual sigue reservado a testers y owner.",
+                cx,
+            ));
+        if adapt.show_optional() {
+            page = page.child(orbit::neo_card(cx)
+                .child(orbit::neo_header("Niveles de participación", "pulse", cx))
+                .child(orbit::text("Visitante → Probador → Probador verificado → Colaborador", 14.0, 600, orbit::ink(cx), cx))
+                .child(orbit::text("Propuesta pendiente: los criterios y su relación con los canales aún no están definidos. No tienes un nivel asignado por esta pantalla.", 12.0, 400, orbit::ink_3(cx), cx)));
+        }
+        page.child(div().flex().min_w_0().gap(px(adapt.gap()))
+            .child(self.pending_view("Cómo unirse", "El alta sin invitación estará disponible próximamente.", cx).flex_1())
+            .child(self.pending_view("Reconocimiento", "Insignias y menciones públicas · Próximamente", cx).flex_1()))
+            .child(orbit::neo_card(cx).flex_1().min_h_0()
+                .child(orbit::neo_header("Qué compartes", "v-testing", cx))
+                .child(orbit::text("Revisas y apruebas el contenido de cada informe antes de enviarlo. Las capturas son opcionales. El borrador privado y el diagnóstico local no se adjuntan automáticamente.", 13.0, 400, orbit::ink_2(cx), cx))
+                .when(adapt.show_optional(), |card| card.child(orbit::text("Cómo apareces en la comunidad y en las notas de versión · Próximamente", 12.0, 400, orbit::ink_3(cx), cx))))
     }
 }

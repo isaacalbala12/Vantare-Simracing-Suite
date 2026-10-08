@@ -97,9 +97,114 @@ pub fn remote_url(text: &str) -> Result<Url> {
     Ok(url)
 }
 
+/// Account Portal tiene un origen distinto de FAPI. Producción lo fija
+/// explícitamente; solo desarrollo conserva la derivación histórica.
+pub fn account_portal_origin(issuer: Option<&str>, portal: Option<&str>) -> Option<Url> {
+    fn origin(text: &str) -> Option<Url> {
+        let url = remote_url(text).ok()?;
+        let host = url.domain()?;
+        if url.path() != "/"
+            || url.port().is_some()
+            || !host.contains('.')
+            || host.len() > 253
+            || !host.split('.').all(|label| {
+                !label.is_empty()
+                    && label.len() <= 63
+                    && !label.starts_with('-')
+                    && !label.ends_with('-')
+                    && label
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || b == b'-')
+            })
+        {
+            return None;
+        }
+        Some(url)
+    }
+
+    if let Some(portal) = portal {
+        return origin(portal); // Configuración inválida no cae a otra instancia.
+    }
+    let issuer = origin(issuer?)?;
+    let instance = issuer.domain()?.strip_suffix(".clerk.accounts.dev")?;
+    if instance.is_empty() || instance.contains('.') {
+        return None;
+    }
+    origin(&format!("https://{instance}.accounts.dev"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn account_portal_supports_production_and_preserves_development() {
+        for issuer in [
+            "https://clerk.vantare.app",
+            "https://fixture.clerk.accounts.dev",
+        ] {
+            let config = OAuthBuild::from_build_values(
+                Some(issuer),
+                Some("public-native"),
+                Some("http://127.0.0.1:47813/callback"),
+            )
+            .expect("OAuth con dominio DNS");
+            assert_eq!(config.issuer.origin().ascii_serialization(), issuer);
+        }
+        let dev = Some("https://fixture.clerk.accounts.dev/");
+        assert_eq!(
+            account_portal_origin(dev, None)
+                .expect("desarrollo")
+                .as_str(),
+            "https://fixture.accounts.dev/"
+        );
+        for issuer in [None, dev, Some("https://clerk.vantare.app")] {
+            assert_eq!(
+                account_portal_origin(issuer, Some("https://accounts.vantare.app/"))
+                    .expect("portal explícito")
+                    .as_str(),
+                "https://accounts.vantare.app/"
+            );
+        }
+        assert!(account_portal_origin(Some("https://clerk.vantare.app"), None).is_none());
+    }
+
+    #[test]
+    fn account_portal_rejects_unsafe_origins_without_development_fallback() {
+        let dev = Some("https://fixture.clerk.accounts.dev");
+        for invalid in [
+            "",
+            "http://accounts.vantare.app",
+            "javascript:alert(1)",
+            "https://user:password@accounts.vantare.app",
+            "https://accounts.vantare.app/path",
+            "https://accounts.vantare.app?key=x",
+            "https://accounts.vantare.app#x",
+            "https://accounts.vantare.app:8443",
+            "https://127.0.0.1",
+            "https://[::1]",
+            "https://localhost",
+            "https://bad..app",
+            "https://-bad.app",
+            "https://bad-.app",
+            "https://bad_name.app",
+        ] {
+            assert!(
+                account_portal_origin(dev, Some(invalid)).is_none(),
+                "{invalid}"
+            );
+            assert!(
+                account_portal_origin(Some(invalid), None).is_none(),
+                "{invalid}"
+            );
+        }
+        for invalid in [
+            "https://clerk.accounts.dev",
+            "https://a.b.clerk.accounts.dev",
+        ] {
+            assert!(account_portal_origin(Some(invalid), None).is_none());
+        }
+    }
 
     #[test]
     fn data_bridge_requires_complete_configuration_and_exact_edge_exception() {

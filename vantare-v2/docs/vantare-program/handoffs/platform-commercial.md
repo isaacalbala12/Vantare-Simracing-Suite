@@ -1,5 +1,63 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1507 — Clerk Production nativo (2026-10-08)
+
+Continuación CLI autorizada por Isaac: cliente OAuth público Production creado
+con Clerk CLI 3.4.1; client ID `n5cqSYkpsTiEw6jk`, PKCE obligatorio, scopes
+openid/profile/offline_access, loopback `http://127.0.0.1/callback` (build puerto 0).
+Plantilla pública `native/packaging/build-config-production.template` añadida.
+PR #1523 `907989d6` inspeccionado: no cambia access.rs ni código nativo.
+Third-party auth, session token y webhooks reservados a #1514; servidor y
+prueba de login son dependencias. Orígenes raíz/www/accounts aplicados y
+allowlist de subdominios solo www/accounts; redirect loopback en cliente OAuth.
+Portal confirmado accounts.vantare.app para alta/reset; Paths web conservados.
+DNS/TLS/mail pendientes: cinco CNAME exactos enumerados en runbook, ninguno
+creado. Wrangler 4.149.0 no tiene comando ni scope DNS Write; sesión zone:read.
+No se extraen tokens para otra vía. Isaac debe añadirlos DNS only y desplegar
+certificados; Google también requiere credenciales propias. Login real no
+ejecutable todavía, ni build Production aceptada. Usuario de prueba existente
+elegido por Isaac, raíz QA aislada y servidor coordinado con #1514 pendientes.
+No usuarios ni secretos versionados. Esta autorización reemplaza la exclusión
+administrativa de la entrega original; no autoriza merge/promoción/release.
+Readback oficial 20:39 UTC PASS: cliente/PKCE/scopes/redirect, instancia,
+orígenes/allowlist, issuer/portal. DNS/TLS/mail not_started, dominio incomplete;
+cinco CNAME ausentes también en resolver local. PS5.1 configuración 21 PASS,
+plantilla 8 variables/solo client ID público PASS y diff-check PASS. Sin cambios
+Rust/Go/frontend/Deno: sus gates/build no se repiten. CI original 02f86218:
+native-linux FAIL por imports vantare_runtime::rights en Engineer/recovery;
+no reparado en este alcance. Informe CLI ≤10 líneas y evidencia pública externa
+en C:/tmp/lanzamiento/informe-1507-cli.md y C:/tmp/1507-clerk-cli/.
+
+Worktree `C:/tmp/vw3-1507/vantare-v2`, rama
+`vantareapp/isa-1507-clerk-produccion`, base candidata `a8f9bdc3`.
+Hub admite `VANTARE_CLERK_ACCOUNT_PORTAL_URL` como origen HTTPS DNS explícito
+para alta/reset; Development conserva la derivación si falta. Configuración
+inválida falla cerrada. No hay dependencias nuevas ni cambios en el checkout #1506.
+Issuer OAuth propio y validadores de servidor ya eran independientes del dominio;
+regresiones comprueban portal, configuración, cache discovery y descarte de
+sesión al cambiar issuer/client. OAuth no se transforma en JWT Supabase.
+Runbook: `docs/billing/clerk-production-runbook.md`, instancia/DNS Cloudflare,
+cliente público PKCE, variables de servidor, Third-Party Auth para sesión web,
+plantilla externa sin valores y prueba manual de login/corte/rollback.
+PASS: configuración PS5.1 21; validadores Deno 78; Rust check/Clippy
+`-D warnings`, Nextest 1220/1220 (6 skips previos, 1 slow PASS), lifecycle
+18/18. Compilaciones y gates por cola/-j2. `cargo fmt --all -- --check` PASS
+directo, sin compilación; su espera duplicada en cola se retiró únicamente
+tras comprobar proceso propio sin hijos (no un fallo de formato). Intento de
+beta-tests no ejecutado por faltar paquetes QA/firmador; no se fabrica evidencia
+productiva. Logs, archivos y detalle en `C:/tmp/1507-clerk-evidence/`; informe
+de hasta doce líneas en `C:/tmp/lanzamiento/informe-1507.md`.
+No se accede a `.env*`, credenciales, instalación real ni paneles de producción.
+Preguntas: checkout/variable final de web #1506 y vinculación de identidades
+Development existentes. Recomendación: alta nueva Production para QA y decidir
+vinculaciones antes de distribuir. Login real pendiente de preparación de Isaac.
+`docs/roadmap/plan.md` ausente también en `origin/nightly`; no se recrea.
+Seguimiento GitHub por encargo explícito, que prevalece sobre instrucciones
+históricas de Notion. Código `b5684da5` subido; entrega técnica en revisión en
+[PR draft #1516](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1516)
+contra `vantareapp/isa-1470-candidato-beta`. CI observada en curso sobre ese
+SHA; no se anuncia CI verde. Sin merge, promoción, release o cutover productivo.
+
 ## #1492 — Setup encima y adopción de datos (2026-10-08)
 
 Ronda 2 sobre `072ca621`: códigos de bloqueo tipados en `Exception.Data`

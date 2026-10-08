@@ -1,9 +1,9 @@
 # ADR 0100 — Identidad Clerk, comercio Polar y datos Supabase
 
-Fecha: 2026-10-08. Estado: **propuesto**. Issue:
+Fecha: 2026-10-08. Estado: **aceptado para implementación**. Issue:
 [#1514](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1514).
-Isaac ha aprobado la dirección de proveedores; implementación y detalles de
-migración pendientes de revisión. Este ADR no acepta una venta ni un deploy.
+Isaac ha autorizado la implementación completa, sin cortes comerciales por fecha
+ni backfill. Este ADR no autoriza una venta ni un deploy.
 
 ## Contexto
 
@@ -14,7 +14,7 @@ proveer derechos. #909 separa identidad externa de cuenta UUID y BIL-08 firma
 esta última para un dispositivo. Supabase se mantiene como backend, Polar MoR
 como autoridad comercial y Vantare como autoridad de grants/capabilities.
 
-## Decisión propuesta
+## Decisión aceptada
 
 1. Clerk es la única fuente nueva de identidad: sesión web con integración
    oficial Supabase TPA, OAuth nativo verificado con API oficial existente. Un
@@ -35,15 +35,38 @@ como autoridad comercial y Vantare como autoridad de grants/capabilities.
    conserva credencial perpetua offline; revocaciones surten efecto al
    reconectar. Ningún cambio de proveedor de identidad modifica sujeto/clave de
    BIL-08.
-6. Production de Clerk antes de ventas; no mover Development preservando `sub`
-   por suposición. Enlace de cuentas valiosas con prueba fuerte y auditoría.
-   Webhooks de usuario firmados/idempotentes y tombstone protegen borrado,
-   reordenamiento y reprovisión tardía; no sincronizan permisos monetarios.
-7. Primer corte comercial puede limitarse a Launch desde app con OAuth Clerk y
-   pipeline billing existente. Es provisional y requiere gate end-to-end y
-   aceptación de Isaac; TPA/web/Pro y cierre global legacy siguen después. No
-   ampliar el bridge HS256 de datos como mecanismo de compra. Retirarlo después
-   de verificar todos sus consumidores, sin un conversor JWT nuevo.
+6. Instancia de producción verificada antes de ventas. Sin usuarios/pagos que
+   migrar: sin backfill ni compatibilidad Supabase Auth. Webhooks firmados,
+   idempotencia y tombstones protegen borrado y reprovisión tardía.
+7. Solución completa: Pro mensual/anual, trial siete días, Launch, web y cliente
+   nativo; sin cohorte, corte exclusivo Launch ni calendario comercial.
+   Reembolso failed/canceled restaura la fuente; disputa suspende y restaura si
+   gana el cliente. Recuperación automática con reintentos y reconciliación.
+
+## Aclaraciones aceptadas de Isaac
+
+- La app conserva `verifyNativeOAuth`, OAuth/PKCE y el cliente del candidato.
+  Checkout, portal y credencial nativa verifican OAuth con Clerk y resuelven el
+  mismo mapping UUID que TPA web. No hay intercambio OAuth a sesión web.
+- Se conserva el puente de datos existente del candidato, con máximo cinco
+  minutos. Su firma añade issuer/subject Clerk verificados y un marcador cerrado;
+  RLS exige ese mapping, issuer de datos registrado y UUID coincidente. Un JWT de
+  login Supabase, incluso para un UUID conocido, no autoriza datos. Esto no amplía
+  duración ni convierte OAuth en una sesión Clerk.
+- Scheduler autorizado: `pg_cron`, `pg_net` y Vault oficiales de Supabase. Cron
+  invoca cada minuto un dispatcher privado; Vault contiene URL y secreto dedicado
+  del worker, sin service_role en cron. Permanece desactivado hasta configurar
+  sandbox. Cursor/lease y presupuesto de 45 s limitan cada invocación; no se
+  promete un SLA hasta medir el ciclo completo real.
+- La prueba Pro dura siete días en mensual y anual, con la misma verificación
+  de antiabuso. No habilitar el flag hasta probar la configuración real.
+- El intento incierto no se borra al caducar: Polar permite recuperar el checkout
+  por cuenta UUID y marcador del intento persistido por servidor. No se recrea
+  ciegamente. Una fila histórica sin prueba de correlación permanece cerrada.
+- Sandbox confirmado: Supabase `lbaxvpzexoferfvfkplz`, Clerk development y Polar
+  sandbox. Está pausado; restore rechazado por permisos. Producción Supabase/Polar
+  prohibida. Clerk production permite solo configuración con comandos registrados;
+  comprobar claims no necesitó cambios.
 
 ## Alternativas descartadas
 
@@ -73,9 +96,8 @@ existen cuentas Clerk-only ni restaurar snapshot sobre pagos nuevos.
 Plan aprobado por Isaac; inventario remoto agregado; tests auth/issuer/claim,
 concurrencia/upgrade/restore, segregación cuentas, borrado y rollback; matriz
 real nuevo checkout→pago→grant→credencial nativa y retirada/offline/reconexión.
-El 12-oct 09:00 decide Go/No-Go para 10:00; 19-oct es alternativa. Store
-requiere clasificación/certificación independientes. Código y despliegue son
-fases posteriores, no alcanzadas por este ADR.
+Sin fechas de apertura. Los tests locales no sustituyen la matriz real completa
+sandbox. Store requiere clasificación/certificación independientes. Isaac confirmó OAuth/PKCE nativo; ambos clientes deben demostrar el mismo UUID interno.
 
 Detalle: [plan BIL-13](../billing/bil-13-clerk-identidad-plan.md),
 [inventario](../billing/bil-13-supabase-auth-inventario.md). Referencias

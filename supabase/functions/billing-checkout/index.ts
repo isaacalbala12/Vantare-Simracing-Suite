@@ -152,7 +152,7 @@ export async function handleCheckoutRequest(
   if (claim.kind === "uncertain") {
     return errorResponse(
       "checkout_state_uncertain",
-      "The previous checkout result is uncertain; retry later with support",
+      "The previous checkout is being recovered automatically; retry this same attempt",
       409,
     );
   }
@@ -174,6 +174,7 @@ export async function handleCheckoutRequest(
   try {
     const session = await (deps.createCheckout ?? createPolarCheckoutSession)(
       {
+        attemptId,
         productId: resolved.config.polar_product_id,
         userId: auth.userId,
         email: auth.email,

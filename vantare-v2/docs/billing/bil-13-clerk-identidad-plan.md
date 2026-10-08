@@ -1,3 +1,102 @@
+# BIL-13 — implementación de identidad Clerk
+
+Estado: implementación autorizada por Isaac; PR de implementación apilado sobre
+#1517. Solo se autoriza configuración de Clerk production; Supabase/Polar production, merge, promoción y ventas siguen fuera de alcance.
+Seguimiento: GitHub #1514. Este plan sustituye los cortes provisionales del plan
+anterior; el inventario BIL-13 y el informe BIL-12 siguen siendo evidencia del
+comportamiento anterior, no requisitos de compatibilidad.
+
+## Decisiones vigentes
+
+- Solución completa, sin fecha comercial, cohorte ni corte exclusivo Launch.
+- Instalación desde cero: sin backfill, usuarios sombra ni compatibilidad con
+  Supabase Auth para identidades existentes.
+- Clerk identifica; Polar cobra; Supabase conserva datos/backend. UUID interno
+  estable y mapping cerrado `(issuer, sub)`. Nunca unir compras por email.
+- Pro 5,99 EUR/mes o 59,90 EUR/año; prueba Pro de siete días. Launch 30 EUR. Pro
+  Plus 9,99 EUR posteriormente, fuera de la activación de este corte.
+- Reembolso emitido retira el derecho afectado. Failed/canceled lo restaura,
+  siempre que no exista otro bloqueo o expiración de esa fuente.
+- Contracargo suspende durante la disputa; se restaura si gana el cliente.
+- Cancelación conserva el periodo pagado. Una licencia, un equipo activo.
+- Launch perpetua offline; los módulos nuevos en testers permanecen bloqueados.
+  La retirada de una credencial perpetua se aplica al reconectar.
+- Recuperación automática en el menor tiempo posible: inbox durable, reintentos,
+  reconciliación de órdenes, refunds/disputas y atribución comprobable. La caída
+  entre Polar y Supabase no se resuelve invitando a pagar otra vez.
+
+## Fases y aceptación
+
+Entrega #1523: fases 1–2 escritas, incluidos scheduler y recuperación de checkout
+incierto; clientes de fase 3 escritos en ramas aisladas del candidato y de #1502.
+Backend principal: 466 Deno PASS; candidato: 518 PASS, un test PostgREST omitido.
+Fase 4: retirada de autoridad Auth en servidor escrita, login legacy rechazado;
+providers/emails hospedados y retirada de fuentes Wails/Electron pendientes de
+integración/aceptación de los clientes. No se borran consumidores históricos a
+ciegas. pgTAP (62 assertions) y matriz real pendientes de sandbox operativo.
+Catálogo sandbox configurado: mensual 5,99 EUR, anual 59,90 EUR, ambos con trial
+siete días; Launch 30 EUR sin cambios. Última ejecución: cero escrituras.
+Supabase Testing confirmado pero pausado; link/deploy rechazan INACTIVE y el
+conector no autoriza restore. No-Go comercial hasta SQL/matriz real.
+
+1. Identidad backend: TPA oficial Clerk, bootstrap explícito UUID, RLS sin altas
+   implícitas, FKs a profiles, webhooks firmados, tombstones y pruebas SQL/Deno.
+2. Cobros: sesión verificada antes de checkout y persistencia del vínculo antes
+   de devolver URL; `external_customer_id` UUID. Ledger de Launch y Pro,
+   retirada/restauración por fuente, disputa, trial y recuperación automática.
+3. Clientes: compra web con sesión Clerk, sin tocar el diseño de #1502. Cambios
+   nativos en commits separados contra el candidato #1470 para integración por
+   el chat «Vantare | Rework a Rust». Ambos clientes resuelven el mismo UUID.
+4. Retirada: login/providers/emails/triggers/código Auth sin consumidores,
+   conservando historia SQL e infraestructura auth.jwt/roles/TPA. Nunca borrar
+   schema auth. No purgar datos reales ni modificar producción en esta tarea.
+5. Validación: matriz completa sandbox Polar + Supabase + credencial/candados
+   reales. Los fixtures no sustituyen compras ni pruebas físicas. Sin sandbox o
+   variables, dejar comandos exactos y completar el trabajo independiente.
+
+## Frontera nativa confirmada
+
+Isaac confirma OAuth/PKCE de Clerk y `verifyNativeOAuth` del candidato. La sesión
+web usa TPA; OAuth nativo se verifica por API y resuelve el mismo UUID interno.
+Checkout/portal reutilizan los handlers comerciales; ambos emisores leen
+la misma vista de grants efectivos. El puente de datos existente conserva cinco
+minutos y exige claims firmados de procedencia Clerk y mapping coincidente; no
+es una sesión web ni acepta antiguos JWT de login Supabase.
+
+## Configuración y evidencia
+
+La integración oficial está en `supabase/config.toml`, con dominio público
+`CLERK_DOMAIN` parametrizado. TPA en el proyecto hospedado requiere su propio
+registro en Dashboard. El RPC además exige issuer habilitado, rol authenticated,
+sid de sesión y azp permitido. El sub sigue siendo text, no el UUID.
+
+La migración nueva retira referencias activas a auth.uid y FKs Auth, conservando
+las migraciones históricas. No copia ni enlaza cuentas antiguas. El alta es
+idempotente bajo bloqueo por issuer/sub; el webhook no guarda su cuerpo con PII.
+El borrado quita PII del perfil, dispositivo/validaciones, contacto del cliente
+y revoca derechos. El tombstone impide reprovisión. Los registros fiscales y las
+evidencias de soporte requieren una política de retención y purga propia; no
+confundir esta minimización con borrado universal de todos los datos históricos.
+
+Runbook y estado de validación:
+[implementación y sandbox](bil-13-clerk-implementacion.md).
+
+Rollback: cerrar nuevas compras y usar una build compatible con el UUID interno;
+conservar inbox, ledger y mapping. No reinstalar FKs a Auth ni restaurar un
+snapshot sobre pagos nuevos. No desplegar esta fase aislada sobre clientes que
+todavía dependan del puente de datos nativo.
+
+`docs/roadmap/plan.md` y `.github/scripts/roadmap_digest.py` no existen en esta
+base, tal como documentó #1517. No recrear el roadmap histórico ni publicar una
+vista distinta. El estado del corte se mantiene en este plan y en el único
+handoff platform-commercial, con GitHub como tracker autorizado.
+
+## Plan anterior archivado
+
+Todo el contenido siguiente se conserva como contexto histórico. Sus fechas,
+cohortes, backfill, revisión manual y preguntas quedaron sustituidos por las
+decisiones y fases anteriores; no constituye el plan ejecutable.
+
 # ISA-1514 — Clerk + Polar + Supabase: revisión y plan
 
 Fecha: 2026-10-08. **Propuesta para revisar; no migración implementada.**

@@ -1,4 +1,11 @@
 const productionFunctions = new Set([
+  "native-account-authorize",
+  "native-license",
+  "native-billing-checkout",
+  "native-billing-portal",
+  "clerk-webhook",
+  "billing-reconcile",
+  "billing-status",
   "billing-checkout",
   "billing-portal",
   "billing-webhook",
@@ -18,7 +25,12 @@ const recognizedFunctions = new Set([
   ...testingPilotFunctions,
   ...testingAutomationFunctions,
 ]);
-const infrastructure = new Set(["_deprecated", "_shared", "scripts"]);
+const infrastructure = new Set([
+  "_deprecated",
+  "_shared",
+  "scripts",
+  "node_modules",
+]);
 
 export function invalidDeployableDirectories(
   entries: Deno.DirEntry[],

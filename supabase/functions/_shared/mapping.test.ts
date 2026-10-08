@@ -234,7 +234,7 @@ Deno.test("mapping v2: old and new Pro monthly prices resolve to pro_monthly", (
   assertEquals(annual.ok && annual.key, "pro_annual");
 });
 
-Deno.test("mapping v2: Pro annual cannot widen capabilities or enable a trial", () => {
+Deno.test("mapping v2: Pro annual cannot widen capabilities or enable a trial other than seven days", () => {
   for (
     const change of [
       (config: Record<string, unknown>) => {
@@ -244,7 +244,7 @@ Deno.test("mapping v2: Pro annual cannot widen capabilities or enable a trial", 
         config.trial = {
           enabled: true,
           interval: "day",
-          interval_count: 7,
+          interval_count: 14,
           provider_anti_abuse_confirmed: true,
         };
       },
@@ -258,4 +258,55 @@ Deno.test("mapping v2: Pro annual cannot widen capabilities or enable a trial", 
     assertEquals(result.ok, false);
     if (!result.ok) assertEquals(result.code, "mapping_invalid_key_meta");
   }
+});
+
+Deno.test("mapping v2: annual seven-day Pro trial requires the same provider proof even without monthly trial", () => {
+  const raw = JSON.parse(
+    withProAnnualAndNewMonthlyPrice(VALID_POLAR_PRODUCT_MAP_JSON),
+  );
+  raw.checkout_keys.pro_annual.trial = {
+    enabled: true,
+    interval: "day",
+    interval_count: 7,
+    provider_anti_abuse_confirmed: true,
+  };
+  const denied = load(JSON.stringify(raw), false);
+  assertEquals(denied.ok, false);
+  if (!denied.ok) assertEquals(denied.code, "mapping_trial_unverified");
+  const allowed = load(JSON.stringify(raw), true);
+  assertEquals(allowed.ok, true);
+  if (allowed.ok) {
+    assertEquals(allowed.map.checkout_keys.pro_annual?.trial.enabled, true);
+  }
+});
+
+Deno.test("mapping v2: live sandbox catalogue configuration requires provider proof and denies production", async () => {
+  const { default: catalog } = await import(
+    "../scripts/polar-product-map.sandbox.json",
+    { with: { type: "json" } }
+  );
+  assertEquals(
+    loadPolarProductMap(JSON.stringify(catalog), {
+      environment: "sandbox",
+      trialAntiAbuseConfirmed: false,
+    }).ok,
+    false,
+  );
+  const loaded = loadPolarProductMap(JSON.stringify(catalog), {
+    environment: "sandbox",
+    trialAntiAbuseConfirmed: true,
+  });
+  assertEquals(loaded.ok, true);
+  if (!loaded.ok) return;
+  for (const key of ["launch_lifetime", "pro_monthly", "pro_annual"] as const) {
+    assertEquals(resolveCheckoutKey(loaded.map, key).ok, true);
+  }
+  assertEquals(Object.keys(loaded.map.checkout_keys).length, 3);
+  assertEquals(
+    loadPolarProductMap(JSON.stringify(catalog), {
+      environment: "production",
+      trialAntiAbuseConfirmed: true,
+    }).ok,
+    false,
+  );
 });

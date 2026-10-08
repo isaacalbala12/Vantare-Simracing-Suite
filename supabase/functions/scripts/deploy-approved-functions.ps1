@@ -7,7 +7,7 @@ param(
 $ErrorActionPreference = "Stop"
 $supabaseRoot = Resolve-Path (Join-Path $PSScriptRoot "..\..")
 $guard = Join-Path $PSScriptRoot "verify-deploy-surface.ps1"
-$approved = @("billing-checkout", "billing-portal", "billing-webhook", "license-credential")
+$approved = @("native-account-authorize", "native-license", "native-billing-checkout", "native-billing-portal", "clerk-webhook", "billing-reconcile", "billing-status", "billing-checkout", "billing-portal", "billing-webhook", "license-credential")
 
 & $guard
 if ($LASTEXITCODE -ne 0) {
@@ -21,7 +21,7 @@ if (-not (Get-Command supabase -ErrorAction SilentlyContinue)) {
 Push-Location $supabaseRoot
 try {
   foreach ($functionName in $approved) {
-    supabase functions deploy $functionName --project-ref $ProjectRef
+    supabase functions deploy $functionName --project-ref $ProjectRef --use-api
     if ($LASTEXITCODE -ne 0) {
       throw "Supabase deploy failed for $functionName"
     }

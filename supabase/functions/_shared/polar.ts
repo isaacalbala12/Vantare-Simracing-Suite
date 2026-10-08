@@ -6,6 +6,7 @@ import type {
 } from "./mapping.ts";
 
 export type CreateCheckoutParams = {
+  attemptId?: string;
   productId: string;
   userId: string;
   email: string | null;
@@ -309,13 +310,17 @@ export async function createPolarCheckoutSession(
   const runtimeEnvironment = requirePolarEnvironment(params.environment);
   const baseUrl = apiBase(runtimeEnvironment, deps);
   const { successUrl, cancelUrl } = checkoutUrls(deps);
+  const purchaseReturn = new URL(successUrl);
+  purchaseReturn.searchParams.set("product", params.productKey);
+  purchaseReturn.searchParams.set("returned", "1");
   const payload: Record<string, unknown> = {
     products: [params.productId],
     external_customer_id: params.userId,
-    success_url: successUrl,
+    success_url: purchaseReturn.toString(),
     return_url: cancelUrl,
     allow_trial: params.trial.enabled,
     metadata: {
+      ...(params.attemptId ? { vantare_attempt_id: params.attemptId } : {}),
       user_id: params.userId,
       product_key: params.productKey,
       plan_sku: params.planSku,

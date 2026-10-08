@@ -11,6 +11,7 @@ export type OrderLedgerInput = {
   userId: string;
   productId: string;
   checkoutId: string | null;
+  subscriptionId?: string | null;
   status: PolarOrderStatus;
   paid: true;
   netAmount: number;
@@ -24,7 +25,7 @@ export type RefundLedgerInput = {
   environment: BillingEnvironment;
   refundId: string;
   orderId: string;
-  paymentId: string;
+  paymentId: string | null;
   status: PolarRefundStatus;
   amount: number;
   currency: string;
@@ -73,9 +74,13 @@ function decision(
   refunds: Iterable<RefundLedgerInput>,
 ): OrderAccessDecision {
   let succeededRefundAmount = 0;
+  let blocked = false;
   let projectionModifiedAt = order.modifiedAt;
   for (const refund of refunds) {
     if (refund.status === "succeeded") succeededRefundAmount += refund.amount;
+    if (refund.status === "pending" || refund.status === "succeeded") {
+      blocked = true;
+    }
     if (Date.parse(refund.modifiedAt) > Date.parse(projectionModifiedAt)) {
       projectionModifiedAt = refund.modifiedAt;
     }
@@ -83,9 +88,7 @@ function decision(
   return {
     order: structuredClone(order),
     succeededRefundAmount,
-    accessState: succeededRefundAmount >= order.netAmount
-      ? "revoked"
-      : "active",
+    accessState: blocked ? "revoked" : "active",
     projectionModifiedAt,
   };
 }
@@ -109,6 +112,12 @@ export class MemoryOrderRefundLedger implements OrderRefundLedger {
         current.currency !== input.currency ||
         current.netAmount !== input.netAmount)
     ) return Promise.resolve("invalid_attribution");
+    if (
+      current &&
+      (current.subscriptionId ?? null) !== (input.subscriptionId ?? null)
+    ) {
+      return Promise.resolve("invalid_attribution");
+    }
     const succeeded = this.succeededTotal(input.environment, input.orderId);
     if (succeeded > input.netAmount) {
       return Promise.resolve("refund_total_exceeds_order");
@@ -137,7 +146,8 @@ export class MemoryOrderRefundLedger implements OrderRefundLedger {
     if (
       current &&
       (current.orderId !== input.orderId ||
-        current.paymentId !== input.paymentId ||
+        (current.paymentId !== null && input.paymentId !== null &&
+          current.paymentId !== input.paymentId) ||
         current.currency !== input.currency ||
         current.amount !== input.amount)
     ) return Promise.resolve("invalid_attribution");
@@ -178,7 +188,9 @@ export class MemoryOrderRefundLedger implements OrderRefundLedger {
     if (!current) throw new Error("missing_order");
     for (const capability of capabilities) {
       this.grants.set(
-        `${environment}:${orderId}:${capability}`,
+        `${environment}:${
+          current.order.subscriptionId ?? orderId
+        }:${capability}`,
         current.accessState,
       );
     }
@@ -232,6 +244,7 @@ export class SupabaseOrderRefundLedger implements OrderRefundLedger {
         p_net_amount: input.netAmount,
         p_currency: input.currency,
         p_reported_refunded_amount: input.reportedRefundedAmount,
+        p_subscription_id: input.subscriptionId ?? null,
         p_modified_at: input.modifiedAt,
         p_snapshot_hash: input.snapshotHash,
       },
@@ -274,7 +287,7 @@ export class SupabaseOrderRefundLedger implements OrderRefundLedger {
     const { data: row, error } = await this.supabase
       .from("billing_orders")
       .select(
-        "user_id,provider_product_id,provider_checkout_id,status,paid,net_amount,currency,reported_refunded_amount,remote_modified_at,snapshot_hash",
+        "user_id,provider_product_id,provider_checkout_id,provider_subscription_id,status,paid,net_amount,currency,reported_refunded_amount,remote_modified_at,snapshot_hash",
       )
       .eq("provider", "polar")
       .eq("environment", environment)
@@ -297,6 +310,7 @@ export class SupabaseOrderRefundLedger implements OrderRefundLedger {
       userId: row.user_id,
       productId: row.provider_product_id,
       checkoutId: row.provider_checkout_id,
+      subscriptionId: row.provider_subscription_id,
       status: row.status,
       paid: true,
       netAmount: row.net_amount,

@@ -5,19 +5,53 @@
 project_id = "ombjshwzqgeisazijduq"
 
 [functions.billing-checkout]
-verify_jwt = true
+# Handler authenticates through Clerk TPA/PostgREST; legacy gateway validates
+# Supabase-issued JWTs, which are no longer accepted as account identity.
+verify_jwt = false
 
 [functions.billing-portal]
-verify_jwt = true
+verify_jwt = false
 
 [functions.billing-webhook]
 verify_jwt = false
 
 [functions.testing-center-feedback]
-verify_jwt = true
+verify_jwt = false
+
+[functions.license-credential]
+verify_jwt = false
+
+[functions.clerk-webhook]
+verify_jwt = false
+
+[functions.billing-reconcile]
+verify_jwt = false
+
+[auth.third_party.clerk]
+enabled = true
+domain = "env(CLERK_DOMAIN)"
 
 [functions.testing-center-linear-worker]
 verify_jwt = false
 
 [functions.testing-center-linear-webhook]
+verify_jwt = false
+
+[functions.native-license]
+verify_jwt = false
+[functions.native-billing-checkout]
+verify_jwt = false
+[functions.native-billing-portal]
+verify_jwt = false
+
+[functions.native-account-authorize]
+verify_jwt = false
+
+[auth]
+enable_signup = false
+enable_anonymous_sign_ins = false
+[auth.email]
+enable_signup = false
+
+[functions.billing-status]
 verify_jwt = false

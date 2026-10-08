@@ -34,6 +34,8 @@ type Product = {
   recurring_interval?: string | null;
   is_archived?: boolean;
   prices?: Price[];
+  trial_interval?: string | null;
+  trial_interval_count?: number | null;
 };
 export type Http = (
   method: "GET" | "POST" | "PATCH",
@@ -76,9 +78,13 @@ async function ensurePrice(
   cents: number,
 ): Promise<{ priceId: string; wrote: boolean }> {
   const current = matchingPrice(product, cents);
-  if (current) return { priceId: current.id, wrote: false };
+  const trialMatches = product.trial_interval === "day" &&
+    product.trial_interval_count === 7;
+  if (current && trialMatches) return { priceId: current.id, wrote: false };
   const updated = await http("PATCH", `/products/${product.id}`, {
-    prices: [fixedPrice(cents)],
+    prices: current ? [{ id: current.id }] : [fixedPrice(cents)],
+    trial_interval: "day",
+    trial_interval_count: 7,
   }) as Product;
   const fresh = matchingPrice(updated, cents);
   if (!fresh) throw new Error(`product ${product.id} did not keep the price`);
@@ -98,7 +104,11 @@ export async function syncProPrices(
   if (monthly.recurring_interval !== "month" || monthly.is_archived) {
     throw new Error("Pro monthly product must be an active monthly product");
   }
-  const monthlyPrice = await ensurePrice(http, monthly, PRO_MONTHLY_CENTS);
+  const monthlyPrice = await ensurePrice(
+    http,
+    monthly,
+    PRO_MONTHLY_CENTS,
+  );
   if (monthlyPrice.wrote) writes++;
 
   const query = new URLSearchParams({
@@ -121,6 +131,8 @@ export async function syncProPrices(
       name: "Vantare Pro (anual)",
       recurring_interval: "year",
       recurring_interval_count: 1,
+      trial_interval: "day",
+      trial_interval_count: 7,
       prices: [fixedPrice(PRO_ANNUAL_CENTS)],
       metadata: { [ANNUAL_METADATA_KEY]: "pro_annual" },
     }) as Product;
@@ -172,6 +184,36 @@ export function dryRunHttp(log: (line: string) => void): Http {
   };
 }
 
+export function officialCliHttp(): Http {
+  return async (method, path, body) => {
+    const process = new Deno.Command("pwsh", {
+      args: [
+        "-NoProfile",
+        "-File",
+        new URL("polar-catalog-cli.ps1", import.meta.url).pathname.replace(
+          /^\/([A-Za-z]:)/,
+          "$1",
+        ),
+        "-Method",
+        method,
+        "-Path",
+        path,
+      ],
+      stdin: "piped",
+      stdout: "piped",
+      stderr: "piped",
+    }).spawn();
+    const writer = process.stdin.getWriter();
+    await writer.write(
+      new TextEncoder().encode(body ? JSON.stringify(body) : ""),
+    );
+    await writer.close();
+    const result = await process.output();
+    if (!result.success) throw new Error("Official Polar sandbox CLI failed");
+    return JSON.parse(new TextDecoder().decode(result.stdout));
+  };
+}
+
 function liveHttp(base: string, token: string): Http {
   return async (method, path, body) => {
     const response = await fetch(`${base}${path}`, {
@@ -186,7 +228,7 @@ function liveHttp(base: string, token: string): Http {
     const text = await response.text();
     if (!response.ok) {
       // Polar error bodies carry no secrets; the token never reaches stdout.
-      throw new Error(`${method} ${path} -> ${response.status}: ${text}`);
+      throw new Error(`${method} ${path} -> ${response.status}`);
     }
     return JSON.parse(text);
   };
@@ -226,6 +268,10 @@ if (import.meta.main) {
   if (dryRun) {
     console.log(`DRY-RUN environment=${environment} base=${base}`);
     http = dryRunHttp(console.log);
+  } else if (
+    Deno.args.includes("--official-cli") && environment === "sandbox"
+  ) {
+    http = officialCliHttp();
   } else {
     const token = Deno.env.get("POLAR_ACCESS_TOKEN");
     if (!token) {

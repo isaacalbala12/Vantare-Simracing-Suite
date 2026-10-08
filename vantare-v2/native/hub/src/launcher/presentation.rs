@@ -371,6 +371,22 @@ fn profile_mark(name: &str, featured: bool, size: f32, cx: &gpui::App) -> gpui::
 }
 
 impl Launcher {
+    /// Baldosas del kit; los nombres y el orden pertenecen al documento Launcher.
+    pub(crate) fn profile_app_tiles(&self, profile: &Profile, cx: &gpui::App) -> gpui::Div {
+        div()
+            .flex()
+            .gap(px(6.0))
+            .children(profile.steps.iter().map(|step| {
+                let name = self
+                    .store
+                    .document
+                    .apps
+                    .iter()
+                    .find(|app| app.id == step.app_id)
+                    .map_or(step.app_id.as_str(), |app| app.name.as_str());
+                orbit::app_tile(&step.app_id, name, cx)
+            }))
+    }
     pub fn profile_app_chips(&self, profile: &Profile, cx: &gpui::App) -> gpui::Div {
         div()
             .flex()

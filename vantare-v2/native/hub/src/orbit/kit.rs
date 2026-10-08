@@ -336,3 +336,127 @@ pub fn header_link(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) 
         .cursor_pointer()
         .child(meta(label, 11.0, skin(cx).text3, cx))
 }
+
+/// Superficie del hero R9.1, compartida por Inicio y escaparates.
+pub fn hero_surface(cx: &gpui::App) -> Div {
+    let skin = skin(cx);
+    super::neo_card(cx)
+        .relative()
+        .overflow_hidden()
+        .bg(ramp(skin.hero, 118.0))
+        .border_color(super::alpha(skin.hero_ring))
+        .shadow(vec![kit_shadow(skin.hero_light, 1.0, 0.0, 0.0, true)])
+}
+/// Cadena de aplicaciones en baldosas (§4). Colores de marca independientes del tema.
+pub fn app_tile(id: &str, name: &str, cx: &gpui::App) -> Div {
+    let (label, colors) = match id {
+        "lmu" => ("LMU", [0x2454a5, 0x163572]),
+        "crewchief" => ("CC", [0xd47721, 0x9c4f0b]),
+        "simhub" => ("SH", [0x703bb2, 0x482276]),
+        "obs" => ("OBS", [0x333942, 0x1e2229]),
+        "spotify" => ("SP", [0x248449, 0x185b32]),
+        "discord" => ("DC", [0x6873f5, 0x2e3699]),
+        "custom:vantare" => ("V", [0xda3849, 0x961c2c]),
+        _ => (name, [0x3a3a40, 0x252529]),
+    };
+    div()
+        .flex_1()
+        .min_w_0()
+        .h(px(28.0))
+        .rounded(px(4.0))
+        .flex()
+        .items_center()
+        .justify_center()
+        .overflow_hidden()
+        .bg(super::gradient(colors, 135.0))
+        .child(
+            super::text(label.to_owned(), 10.0, 600, 0xffffff, cx)
+                .whitespace_nowrap()
+                .text_ellipsis()
+                .overflow_hidden(),
+        )
+}
+/// Esqueleto estático: no crea contenido ni simula porcentajes de carga.
+pub fn skeleton(width: f32, height: f32, cx: &gpui::App) -> Div {
+    div()
+        .w(gpui::relative(width))
+        .h(px(height))
+        .flex_none()
+        .rounded(px(skin(cx).radius.sm))
+        .bg(rgb(skin(cx).l3))
+}
+/// Trazado real del recurso R9.3. Le Mans horizontal es decoración de reposo;
+/// jamás dibuja posición de coche/meta sin un contrato de posición de sesión.
+pub fn circuit(cx: &gpui::App) -> Div {
+    let tracks: std::collections::BTreeMap<String, [String; 2]> =
+        serde_json::from_str(include_str!("../../assets/tracks/tracks.json"))
+            .expect("recurso de circuitos validado por tests");
+    let track = &tracks["lemans_h"];
+    let viewbox: Vec<f32> = track[0]
+        .split_whitespace()
+        .filter_map(|n| n.parse().ok())
+        .collect();
+    let points: Vec<f32> = track[1]
+        .trim_start_matches('M')
+        .trim_end_matches('Z')
+        .split_whitespace()
+        .filter_map(|n| n.parse().ok())
+        .collect();
+    gpui::div().child(
+        gpui::canvas(
+            |_, _, _| (),
+            move |bounds, (), window, _| {
+                let scale = (f32::from(bounds.size.width) / viewbox[2])
+                    .min(f32::from(bounds.size.height) / viewbox[3]);
+                let origin = gpui::point(
+                    bounds.origin.x + (bounds.size.width - px(viewbox[2] * scale)) / 2.0,
+                    bounds.origin.y + (bounds.size.height - px(viewbox[3] * scale)) / 2.0,
+                );
+                for (stroke, color) in [(10.0, 0xff66701a), (2.5, 0xffe2e540)] {
+                    let mut path = gpui::PathBuilder::stroke(px(stroke));
+                    for (index, point) in points.chunks_exact(2).enumerate() {
+                        let point =
+                            origin + gpui::point(px(point[0] * scale), px(point[1] * scale));
+                        if index == 0 {
+                            path.move_to(point);
+                        } else {
+                            path.line_to(point);
+                        }
+                    }
+                    path.close();
+                    if let Ok(path) = path.build() {
+                        window.paint_path(path, gpui::rgba(color));
+                    }
+                }
+            },
+        )
+        .size_full(),
+    )
+}
+
+#[cfg(test)]
+mod resource_tests {
+    #[test]
+    fn all_real_circuits_have_valid_closed_coordinates() {
+        let tracks: std::collections::BTreeMap<String, [String; 2]> =
+            serde_json::from_str(include_str!("../../assets/tracks/tracks.json")).expect("JSON");
+        assert!(tracks.len() >= 11 && tracks.contains_key("lemans_h"));
+        for track in tracks.values() {
+            let box_values: Vec<f32> = track[0]
+                .split_whitespace()
+                .map(|s| s.parse().expect("viewbox"))
+                .collect();
+            assert_eq!(box_values.len(), 4);
+            assert!(box_values[2] > 0.0 && box_values[3] > 0.0);
+            assert!(track[1].starts_with('M') && track[1].ends_with('Z'));
+            let values: Vec<f32> = track[1]
+                .trim_start_matches('M')
+                .trim_end_matches('Z')
+                .split_whitespace()
+                .map(|s| s.parse().expect("coordenada"))
+                .collect();
+            assert!(values.len() > 4 && values.len().is_multiple_of(2));
+            assert!(values.iter().all(|v| v.is_finite()));
+        }
+    }
+}

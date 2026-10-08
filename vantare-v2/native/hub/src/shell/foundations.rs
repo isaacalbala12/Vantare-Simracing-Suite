@@ -170,14 +170,12 @@ impl Hub {
         cx: &mut Context<Self>,
     ) -> (Div, Vec<orbit::RailSection>) {
         let adapt = *cx.global::<orbit::Adapt>();
-        let tokens = cx.global::<orbit::design::Tokens>();
         let gap = adapt.gap();
-        let title_size = tokens.fonts.title_size;
-        let hero_gradient = tokens.gradients.hero;
         let center_width = adapt.center_width() - 2.0 * adapt.padding().1;
         let overlay_width = (center_width - gap) / 2.0 - 40.0;
         let template_width = (adapt.rail_width() - 32.0 - gap) / 2.0 - 20.0;
-        let compact = f32::from(window.viewport_size().width) < 1700.0;
+        let compact = adapt.center_width() < 1100.0;
+        let short = adapt.density != orbit::adapt::Density::A;
         let name = self.demo.as_ref().map_or("piloto", |demo| {
             demo.user
                 .full_name
@@ -215,20 +213,15 @@ impl Hub {
             || format!("Lanzar {profile_name}"),
             |(ready, total)| format!("Lanzando… {ready}/{total}"),
         );
-        let launch = orbit::play_button(
-            "home-launch",
-            &launch_label,
-            if compact { 44.0 } else { 58.0 },
-            true,
-            cx,
-        )
-        .tab_stop(profile.is_some() && launching.is_none())
-        .when(profile.is_none() || launching.is_some(), |button| {
-            orbit::disabled(button, "Perfil no disponible o lanzamiento en curso")
-        })
-        .on_click(cx.listener(|hub, _, _, cx| hub.launch_favorite(cx)));
+        let launch =
+            orbit::play_button("home-launch", &launch_label, adapt.hero_button(), true, cx)
+                .tab_stop(profile.is_some() && launching.is_none())
+                .when(profile.is_none() || launching.is_some(), |button| {
+                    orbit::disabled(button, "Perfil no disponible o lanzamiento en curso")
+                })
+                .on_click(cx.listener(|hub, _, _, cx| hub.launch_favorite(cx)));
         let studio = orbit::button("home-studio", "Abrir Studio", cx)
-            .rounded_full()
+            .h(px(36.0))
             .bg(gpui::transparent_black())
             .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)));
         let selected = self
@@ -239,13 +232,12 @@ impl Hub {
             .and_then(|index| self.launcher.read(cx).saved_profiles().get(index))
             .map(|profile| profile.id.clone());
         let enabled = launching.is_none() && selected.is_some();
-        let quick_launch = orbit::carmine_button("home-quick-launch", "", cx)
-            .size(px(40.0))
-            .rounded_full()
+        let quick_launch = orbit::play_button("home-quick-launch", "", 36.0, false, cx)
+            .size(px(36.0))
+            .rounded(px(8.0))
             .p(px(0.0))
             .aria_label("Lanzar perfil seleccionado")
             .tab_stop(enabled)
-            .child(orbit::icon("play", 16.0, orbit::ink(cx)))
             .when(!enabled, |button| {
                 orbit::disabled(button, "Selecciona un perfil disponible")
             })
@@ -290,9 +282,9 @@ impl Hub {
             .on_click(cx.listener(|hub, _, window, cx| hub.toggle_palette(window, cx)));
         let composer = div()
             .w_full()
-            .h(px(60.0))
+            .h(px(if short { 52.0 } else { 60.0 }))
             .flex_none()
-            .rounded_full()
+            .rounded(px(orbit::skin(cx).radius.panel))
             .border_1()
             .border_color(gpui::rgba(orbit::line(cx)))
             .bg(rgb(orbit::surface_2(cx)))
@@ -311,30 +303,19 @@ impl Hub {
         let fraction =
             last_progress.map_or(0.0, |(ready, total)| ready as f32 / total.max(1) as f32);
         let favorite = orbit::neo_card(cx)
-            .h_full()
             .justify_between()
-            .w(gpui::relative(0.36))
+            .w(px(if adapt.show_secondary() { 360.0 } else { 300.0 }))
             .flex_none()
-            .bg(orbit::tint(orbit::canvas(cx), 0.35))
+            .bg(orbit::tint(orbit::canvas(cx), 0.72))
             .p(px(if compact { 16.0 } else { 20.0 }))
             .gap(px(if compact { 4.0 } else { 8.0 }))
-            .child(orbit::text(
-                "Perfil favorito",
-                12.0,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ))
-            .child(orbit::text(
-                profile_name.to_owned(),
-                if compact { 20.0 } else { 24.0 },
-                600,
-                orbit::ink(cx),
-                cx,
-            ))
+            .child(orbit::meta("Perfil favorito", 10.0, orbit::ink_3(cx), cx))
+            .child(orbit::text(profile_name.to_owned(), 24.0, 600, orbit::ink(cx), cx)
+                .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
+                .whitespace_nowrap().text_ellipsis().overflow_hidden())
             .child(orbit::text(profile_steps, 12.0, 400, orbit::ink_2(cx), cx))
             .when_some(profile.as_ref(), |card, profile| {
-                card.child(self.launcher.read(cx).profile_app_chips(profile, cx))
+                card.child(self.launcher.read(cx).profile_app_tiles(profile, cx))
             })
             .child(orbit::progress(fraction, cx))
             .child(orbit::text(
@@ -367,53 +348,72 @@ impl Hub {
                     cx,
                 ))
             });
-        let hero = orbit::neo_card(cx)
-            .relative()
-            .child(
-                orbit::icon("track", 420.0, orbit::coral(cx))
-                    .h(px(264.0))
-                    .absolute()
-                    .right(px(if compact { 160.0 } else { 330.0 }))
-                    .top(px(-4.0))
-                    .opacity(0.10),
-            )
-            .min_h(px(if compact { 260.0 } else { 300.0 }))
+        let now = self
+            .demo
+            .as_ref()
+            .and_then(|demo| demo.fixed_now().ok())
+            .unwrap_or_else(chrono::Utc::now)
+            .with_timezone(&chrono::Local);
+        let salute = match chrono::Timelike::hour(&now) {
+            0..12 => "Buenos días",
+            12..20 => "Buenas tardes",
+            _ => "Buenas noches",
+        };
+        let hero = orbit::hero_surface(cx)
+            .h(px(match adapt.density { orbit::adapt::Density::A => 300.0, orbit::adapt::Density::M => 236.0, _ => 200.0 }))
             .flex_none()
             .flex_row()
             .items_center()
-            .px(px(40.0))
-            .py(px(32.0))
-            .bg(orbit::gradient(hero_gradient, 120.0))
+            .gap(px(24.0))
+            .px(px(if compact { 24.0 } else { 40.0 }))
+            .py(px(if short { 22.0 } else { 32.0 }))
+            .child(
+                orbit::circuit(cx)
+                    .absolute()
+                    .right(px(0.0))
+                    .top(px(0.0))
+                    .w(gpui::relative(0.58))
+                    .h_full(),
+            )
             .child(
                 div()
+                    .relative()
                     .flex_1()
-                    .min_h(px(if compact { 196.0 } else { 236.0 }))
+                    .h_full()
                     .min_w_0()
                     .flex()
                     .flex_col()
-                    .gap(px(12.0))
-                    .child(orbit::text(status, 13.0, 400, orbit::ink_2(cx), cx))
+                    .gap(px(if short { 8.0 } else { 12.0 }))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(8.0))
+                            .child(orbit::live_dot(cx))
+                            .child(orbit::meta(
+                                &format!("{} · {status}", now.format("%a %-d %b")),
+                                10.0,
+                                orbit::ink_2(cx),
+                                cx,
+                            )),
+                    )
                     .child(
                         orbit::text(
-                            format!("Buenas tardes, {name}"),
-                            if compact {
-                                title_size * 0.75
-                            } else {
-                                title_size
-                            },
+                            format!("{salute}, {name}"),
+                            if compact { 38.0 } else { 54.0 },
                             600,
                             orbit::ink(cx),
                             cx,
                         )
                         .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
-                        .line_height(px(if compact {
-                            title_size * 0.75
-                        } else {
-                            title_size
-                        })),
+                        .line_height(px(if compact { 40.0 } else { 56.0 })),
                     )
                     .child(orbit::text(
-                        "Tu cabina para la próxima sesión.",
+                        if connected {
+                            "Telemetría conectada. Prepara tu próxima sesión."
+                        } else {
+                            "Tu cabina está lista. Esperando simulador."
+                        },
                         14.0,
                         400,
                         orbit::ink_2(cx),
@@ -423,14 +423,14 @@ impl Hub {
                     .child(
                         div()
                             .flex()
+                            .items_center()
                             .flex_none()
-                            .flex_wrap()
                             .gap(px(8.0))
                             .child(launch)
                             .child(studio),
                     ),
             )
-            .child(favorite);
+            .when(center_width >= 1000.0, |hero| hero.child(favorite.relative()));
         let overlay = orbit::neo_card(cx)
             .flex_1()
             .gap(px(8.0))

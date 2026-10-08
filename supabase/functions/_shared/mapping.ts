@@ -1,6 +1,7 @@
 export const CHECKOUT_KEYS = [
   "launch_lifetime",
   "pro_monthly",
+  "pro_annual",
   "pro_plus_monthly",
 ] as const;
 
@@ -108,6 +109,15 @@ const EXPECTED_KEY_META: Record<
   },
   pro_monthly: {
     plan_sku: "pro_monthly",
+    billing_type: "subscription",
+    lifetime: false,
+    capabilities: ["vantare.plan.pro"],
+    channels: ["stable"],
+    launch_scope_version: null,
+  },
+  // Same Pro grant as pro_monthly; Polar needs a separate yearly product.
+  pro_annual: {
+    plan_sku: "pro_annual",
     billing_type: "subscription",
     lifetime: false,
     capabilities: ["vantare.plan.pro"],
@@ -243,7 +253,7 @@ function parseConfig(
       `checkout_keys.${key} does not match the approved commercial contract`,
     );
   }
-  if (key !== "pro_monthly" && trial.enabled) {
+  if (key !== "pro_monthly" && key !== "pro_annual" && trial.enabled) {
     return fail(
       "mapping_invalid_key_meta",
       `checkout_keys.${key} cannot enable the Pro trial`,
@@ -339,9 +349,10 @@ export function loadPolarProductMap(
       );
     }
   }
-  const pro = checkoutKeys.pro_monthly;
+  const proTrialEnabled = [checkoutKeys.pro_monthly, checkoutKeys.pro_annual]
+    .some((pro) => pro?.trial.enabled);
   if (
-    pro?.trial.enabled &&
+    proTrialEnabled &&
     !(options.trialAntiAbuseConfirmed ??
       Deno.env.get("POLAR_TRIAL_ANTI_ABUSE_CONFIRMED") === "true")
   ) {

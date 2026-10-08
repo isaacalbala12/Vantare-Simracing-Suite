@@ -27,9 +27,14 @@ Polar, sin credenciales/puerto. Al abrir compra, licencia se renueva cada cinco
 segundos durante diez minutos; redirect no concede licencia.
 
 Checks: workspace nextest 1218 PASS, 6 omitidos por perfil existente; clippy
--D warnings PASS, fmt PASS; build config 13 PASS. Deno candidato 516 PASS,
+-D warnings PASS, fmt PASS; build config 13 PASS. Deno candidato 518 PASS,
 1 ignored por PostgREST local ausente. Captura cuenta-base intentada pero falló
 antes de Cuenta: sidebar.rs:286 del candidato usa Role::GenericContainer y GPUI
 lanza panic. Backtrace en C:/tmp/isa1514-r3-native-capture-backtrace.log.
 Es un hallazgo de #1501; captura no aceptada. Sin login/pago físico real hasta
 restaurar/configurar sandbox. No merge, instalación real, release ni promoción.
+
+Integrar también el commit de catálogo/trial anual posterior al de compra.
+POLAR_PRODUCT_MAP tiene plantilla pública en supabase/functions/scripts/
+polar-product-map.sandbox.json; POLAR_TRIAL_ANTI_ABUSE_CONFIRMED sigue cerrado
+hasta comprobar antiabuso real. No ampliar los siete días ni capabilities Pro.

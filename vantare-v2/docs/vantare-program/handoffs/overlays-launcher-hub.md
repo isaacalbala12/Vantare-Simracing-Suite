@@ -5649,3 +5649,8 @@ medición muestra —. Tira horizontal con selección/visibilidad documental.
 Carrera activa las muestras existentes (todas Race); demás escenas pendientes,
 vuelta leída de la foto actual, sin slider ni reproducción ficticia. Check/fmt
 PASS. Continúa pantalla ocupada, sin capturas. Siguiente: inspector acoplado.
+Hito 3: inspector usa secciones Orbit sin cajas, cabecera de selección y OBS
+fijo; controles tipados existentes preservados y filas adaptadas al ancho320.
+La contracción se delega al estado global del panel derecho (Ctrl Alt B), sin
+segunda preferencia local. Estilo y URL OBS pendientes; color solo donde lo
+soporta RacingFlags. Check/fmt/diff-check PASS; pantalla sigue ocupada.

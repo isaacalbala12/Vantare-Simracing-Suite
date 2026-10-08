@@ -560,9 +560,7 @@ impl Hub {
                     .update(cx, |calendar, cx| calendar.context_column(cx))
                     .into_any_element(),
             ),
-            Section::Studio if self.studio.read(cx).inspector_visible() => {
-                legacy(self.studio.read(cx).context_column().into_any_element())
-            }
+            Section::Studio => legacy(self.studio.read(cx).context_column().into_any_element()),
             Section::Analysis => {
                 legacy(self.analysis_context_column(window, cx).into_any_element())
             }

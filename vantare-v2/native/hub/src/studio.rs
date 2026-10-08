@@ -310,7 +310,6 @@ pub struct Studio {
     color: Option<Entity<orbit::Input>>,
     inspector_selection: Option<String>,
     fields: Vec<(Tab, &'static str, gpui::AnyView, bool)>,
-    inspector_open: bool,
     demo_profile: Option<crate::demo::DemoProfile>,
     fit_scale: f32,
     zoom_step: usize,
@@ -328,10 +327,8 @@ impl Render for StudioSidebar {
                 .min_h_0()
                 .flex()
                 .flex_col()
-                .p(px(32.0))
-                .pt(px(0.0))
-                .pl(px(0.0))
-                .gap(px(12.0))
+                .min_w_0()
+                .gap(px(0.0))
                 .on_key_down(cx.listener(|this, event, _, cx| this.handle_key(event, cx)))
                 .child(orbit::scroll_fade(
                     div()
@@ -340,14 +337,9 @@ impl Render for StudioSidebar {
                         .min_h_0()
                         .overflow_y_scroll()
                         .child(studio.inspector(cx)),
-                    orbit::canvas(cx),
+                    orbit::skin(cx).sidebar.to,
                 ))
-                .child(
-                    orbit::neo_card(cx)
-                        .flex_none()
-                        .p(px(16.0))
-                        .child(Studio::obs_settings(cx)),
-                )
+                .child(orbit::inspector_section("OBS", "v-rec", cx).child(Studio::obs_settings(cx)))
         }) {
             Ok(column) => column,
             Err(_) => orbit::empty_state("Studio no disponible", "El editor se ha cerrado.", cx),
@@ -500,9 +492,6 @@ impl Studio {
                 "Próximamente",
             ))
     }
-    pub(crate) fn inspector_visible(&self) -> bool {
-        self.inspector_open
-    }
     pub(crate) fn context_column(&self) -> Entity<StudioSidebar> {
         self.sidebar.clone()
     }
@@ -585,7 +574,6 @@ impl Studio {
             color: None,
             inspector_selection: None,
             fields: vec![],
-            inspector_open: true,
             demo_profile,
             fit_scale: STUDIO_PREVIEW_SCALE,
             zoom_step: 0,
@@ -1323,6 +1311,16 @@ impl Studio {
                 ));
             }
             Tab::Content | Tab::Appearance => {
+                if tab == Tab::Appearance {
+                    panel = panel.child(orbit::pending_select(
+                        "studio-style",
+                        "Estilo del widget",
+                        "Estilo · Próximamente",
+                        180.0,
+                        "Neo, Carmín y Limpio no están disponibles para este documento.",
+                        cx,
+                    ));
+                }
                 panel = self.color_settings(tab, panel, cx);
                 panel = Self::column_settings(item, tab, panel, cx);
 
@@ -1352,53 +1350,55 @@ impl Studio {
     }
     #[allow(clippy::too_many_lines)] // Compone las cuatro tarjetas con los controles existentes.
     fn inspector(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let mut panel = div().flex().flex_col().gap(px(12.0));
+        let mut panel = div().min_w_0().flex().flex_col();
         if let Some(item) = self.editor.selected() {
+            panel = panel.child(
+                div()
+                    .flex_none()
+                    .min_w_0()
+                    .flex()
+                    .items_center()
+                    .gap(px(10.0))
+                    .p(px(16.0))
+                    .border_b_1()
+                    .border_color(orbit::alpha(orbit::skin(cx).line1))
+                    .child(orbit::icon("v-studio", 28.0, orbit::carmine(cx)))
+                    .child(
+                        text(item.settings.kind().label(), 18.0, 600, orbit::ink(cx), cx)
+                            .flex_1()
+                            .min_w_0()
+                            .whitespace_nowrap()
+                            .overflow_hidden()
+                            .text_ellipsis(),
+                    )
+                    .child(
+                        orbit::icon_button(
+                            "studio-clear-selection",
+                            "x",
+                            "Deseleccionar widget",
+                            28.0,
+                            cx,
+                        )
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.cancel_drag(cx);
+                            this.editor.selected = None;
+                            this.reset_fields();
+                            this.rebuild(cx);
+                        })),
+                    ),
+            );
             for tab in Tab::ALL {
                 let title = tab.label();
-                let mut card = orbit::neo_card(cx)
-                    .flex_none()
-                    .p(px(16.0))
-                    .gap(px(8.0))
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .gap(px(8.0))
-                            .child(orbit::neo_header(
-                                title,
-                                match tab {
-                                    Tab::Layout => "v-studio",
-                                    Tab::Content => "v-testing",
-                                    Tab::Behavior => "v-gauge",
-                                    Tab::Appearance => "v-palette",
-                                },
-                                cx,
-                            ))
-                            .when(tab == Tab::Layout, |header| {
-                                let size = self.frames.iter().find(|(id, _)| *id == item.id).map(
-                                    |(_, frame)| frame.read(cx).renderer.read(cx).wanted_size(),
-                                );
-                                header.when_some(size, |header, (width, height)| {
-                                    header.child(orbit::mono_text(
-                                        format!("{width:.0} × {height:.0}"),
-                                        11.0,
-                                        orbit::ink_3(cx),
-                                        cx,
-                                    ))
-                                })
-                            }),
-                    );
-                if tab == Tab::Content {
-                    card = card.child(text(
-                        item.settings.kind().label(),
-                        22.0,
-                        600,
-                        orbit::ink(cx),
-                        cx,
-                    ));
-                }
+                let mut card = orbit::inspector_section(
+                    title,
+                    match tab {
+                        Tab::Layout => "v-studio",
+                        Tab::Content => "v-testing",
+                        Tab::Behavior => "v-gauge",
+                        Tab::Appearance => "v-palette",
+                    },
+                    cx,
+                );
                 let mut body = div().flex().flex_col().gap(px(10.0));
                 for (field_tab, label, control, show_label) in &self.fields {
                     if *field_tab == tab {
@@ -1421,13 +1421,7 @@ impl Studio {
                                             .min_w_0()
                                             .when(!*show_label, gpui::Styled::flex_1)
                                             .when(*show_label, |control| {
-                                                control
-                                                    .w(px(if *label == "Opacidad" {
-                                                        224.0
-                                                    } else {
-                                                        168.0
-                                                    }))
-                                                    .flex_none()
+                                                control.w(px(140.0)).flex_none()
                                             })
                                             .child(control.clone())
                                             .when(*label == "Opacidad", |control| {
@@ -1476,7 +1470,7 @@ impl Studio {
                 panel = panel.child(card);
             }
         } else {
-            panel = panel.child(orbit::neo_card(cx).child(orbit::empty_state(
+            panel = panel.child(div().p(px(16.0)).child(orbit::empty_state(
                 "Inspector",
                 "Selecciona un widget para editar sus propiedades.",
                 cx,
@@ -1489,7 +1483,6 @@ impl Studio {
             .flex()
             .flex_col()
             .gap(px(8.0))
-            .child(orbit::neo_header("OBS", "v-rec", cx))
             .child(text(
                 "Captura la ventana del overlay en OBS Studio.",
                 12.0,
@@ -1497,10 +1490,13 @@ impl Studio {
                 orbit::ink_2(cx),
                 cx,
             ))
-            .child(
-                orbit::pill("Fuente Navegador · Próximamente", orbit::Tone::Neutral, cx)
-                    .self_start(),
-            )
+            .child(text(
+                "URL de OBS · Próximamente",
+                11.0,
+                500,
+                orbit::ink_3(cx),
+                cx,
+            ))
     }
 
     fn preview_stage(&self, cx: &mut Context<Self>) -> gpui::Div {

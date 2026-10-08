@@ -56,6 +56,19 @@ pub fn pending_select(
             gpui::Transformation::rotate(gpui::radians(std::f32::consts::FRAC_PI_2)),
         ))
 }
+/// Sección del inspector acoplado R10.2: separador, sin tarjeta adicional.
+pub fn inspector_section(title: &str, icon_name: &'static str, cx: &gpui::App) -> Div {
+    div()
+        .flex_none()
+        .min_w_0()
+        .flex()
+        .flex_col()
+        .p(px(16.0))
+        .gap(px(10.0))
+        .border_b_1()
+        .border_color(super::alpha(skin(cx).line1))
+        .child(section_header(title, icon_name, None, cx))
+}
 /// Degradado de dos paradas de un token, con su posición final.
 pub fn ramp(ramp: Ramp, angle: f32) -> gpui::Background {
     linear_gradient(

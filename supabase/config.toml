@@ -33,3 +33,8 @@ verify_jwt = false
 
 [functions.testing-center-linear-webhook]
 verify_jwt = false
+
+[functions.native-billing-checkout]
+verify_jwt = false
+[functions.native-billing-portal]
+verify_jwt = false

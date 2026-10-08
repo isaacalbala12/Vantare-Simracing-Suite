@@ -3,7 +3,7 @@ const productionFunctions = new Set([
   "billing-portal",
   "billing-webhook",
   "license-credential",
-  "native-license",
+  "native-billing-checkout", "native-billing-portal", "native-license",
   "native-account-authorize",
   "native-admin",
 ]);

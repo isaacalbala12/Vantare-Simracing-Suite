@@ -1,7 +1,7 @@
 //! Tres vistas R10.10 sobre el horario vigente; sin datos de carreras inventados.
 use super::{Calendar, CalendarView, beta, views};
 use crate::orbit;
-use chrono::{DateTime, Datelike, Duration, Local, Utc};
+use chrono::{DateTime, Datelike, Duration, Local, Timelike, Utc};
 use gpui::{Context, Div, Stateful, div, prelude::*, px};
 
 pub(super) fn views_control(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
@@ -14,6 +14,9 @@ pub(super) fn views_control(calendar: &Calendar, cx: &mut Context<Calendar>) -> 
         .map(|(view, label, id)| {
             orbit::topbar_tab(id, label, calendar.view == view, cx).on_click(cx.listener(
                 move |this, _, _, cx| {
+                    if this.view != view && view == CalendarView::Agenda {
+                        this.agenda_scroll = None;
+                    }
                     this.view = view;
                     cx.notify();
                 },
@@ -76,7 +79,7 @@ fn agenda_grid(
     calendar: &Calendar,
     now: DateTime<Utc>,
     cx: &mut Context<Calendar>,
-) -> Result<Div, String> {
+) -> Result<(Div, gpui::Stateful<Div>), String> {
     let today = now.with_timezone(&Local).date_naive();
     let monday = views::week_anchor(today)?;
     let mut days = Vec::new();
@@ -109,10 +112,19 @@ fn agenda_grid(
             .min_w_0(),
         );
     }
-    let mut grid = div().flex().flex_col().gap(px(4.0)).child(header);
+    let mut grid = div()
+        .id("calendar-week-list")
+        .flex_1()
+        .min_h_0()
+        .overflow_y_scroll()
+        .track_scroll(calendar.agenda_scroll.as_ref().expect("agenda abierta"))
+        .flex()
+        .flex_col()
+        .gap(px(4.0));
     for hour in 0..24 {
         let mut line = div()
             .flex()
+            .flex_none()
             .gap(px(4.0))
             .min_h(px(calendar.adapt.row_height()))
             .child(
@@ -145,17 +157,23 @@ fn agenda_grid(
         }
         grid = grid.child(line);
     }
-    Ok(grid)
+    Ok((header.flex_none(), grid))
 }
 
 pub(super) fn agenda(
-    calendar: &Calendar,
+    calendar: &mut Calendar,
     now: DateTime<Utc>,
     cx: &mut Context<Calendar>,
 ) -> Stateful<Div> {
-    let grid = match agenda_grid(calendar, now, cx) {
-        Ok(grid) => grid,
-        Err(error) => orbit::callout(error, cx),
+    if calendar.agenda_scroll.is_none() {
+        let scroll = gpui::ScrollHandle::new();
+        scroll
+            .scroll_to_top_of_item(usize::try_from(now.with_timezone(&Local).hour()).unwrap_or(0));
+        calendar.agenda_scroll = Some(scroll);
+    }
+    let (header, grid) = match agenda_grid(calendar, now, cx) {
+        Ok((header, grid)) => (header, grid.into_any_element()),
+        Err(error) => (div(), orbit::callout(error, cx).into_any_element()),
     };
     page("calendar-agenda", calendar.adapt)
         .child(
@@ -169,14 +187,8 @@ pub(super) fn agenda(
                     cx,
                 ))
                 .child(beta::filters(calendar, cx))
-                .child(
-                    div()
-                        .id("calendar-week-list")
-                        .flex_1()
-                        .min_h_0()
-                        .overflow_y_scroll()
-                        .child(grid),
-                ),
+                .child(header)
+                .child(grid),
         )
         .when_some(calendar.error.clone(), |page, error| {
             page.child(orbit::callout(error, cx))

@@ -5838,3 +5838,10 @@ D3 heredado corregido: búsqueda/filtros siempre montados, Limpiar restaura
 Todos y consulta vacía con foco en búsqueda. Cero eventos y cero coincidencias
 usan mensajes distintos. Regresión del recorrido filtrar→vacío→limpiar PASS;
 Nextest seleccionado4/4, runtime UI pendiente en tanda final. D1/D2 5f85c7cd.
+V1 Agenda: cabecera semanal fuera del scroll interior; apertura/reapertura
+prioriza la hora local actual con ScrollHandle real, sin eliminar ocurrencias
+ni reordenar días. Se conserva la posición al redimensionar/actualizar el reloj.
+Nextest calendario22/22 PASS (recurrencias/DST/seguimiento/conflictos/cache).
+Clippy workspace-Dwarnings PASS tras simplificar el estado a Option<ScrollHandle>.
+Pendiente inspección de densidad y navegación al principio/final del día.
+D3 c59e02a2, D1/D2 5f85c7cd; siguiente tanda QA/E1–E3 aislada.

@@ -435,8 +435,10 @@ fn default_path(kind: Kind) -> PathBuf {
     Path::new(FIXTURES).join("lmu47.snapshot.json")
 }
 
-fn preview_size(kind: Kind, size: (f32, f32)) -> (f32, f32) {
-    if kind == Kind::Relative {
+/// Tamaño de la vista previa: el Relative Eficiencia heredado se muestra con su
+/// ancho fijo de 470 px; el resto (Vantare incluido) con su tamaño real.
+fn preview_size(eficiencia_relative: bool, size: (f32, f32)) -> (f32, f32) {
+    if eficiencia_relative {
         (
             crate::relative::SIZE.0,
             size.1 * crate::relative::SIZE.0 / size.0,
@@ -447,6 +449,12 @@ fn preview_size(kind: Kind, size: (f32, f32)) -> (f32, f32) {
 }
 
 impl Workshop {
+    /// El widget es el Relative Eficiencia heredado (vista previa a 470 px).
+    fn eficiencia_relative(&self) -> bool {
+        matches!(&self.settings, Settings::Relative(s)
+            if s.design_system == crate::standings::DesignSystem::Eficiencia)
+    }
+
     fn edit_number(&mut self, key: &str, cx: &mut Context<Self>) -> bool {
         let Some((control, text)) = &mut self.numeric else {
             return false;
@@ -615,7 +623,7 @@ impl Workshop {
         let scale = self.scale * self.fit;
         let dimensions = self.dimensions;
         let study = self.study.clone();
-        let kind = self.kind;
+        let legacy = self.eficiencia_relative();
         let make = |cx: &mut Context<Overlay>| {
             let mut overlay = Overlay::configured(&settings, prefs);
             overlay.workshop_layout();
@@ -623,7 +631,7 @@ impl Workshop {
             overlay.vantare_style(vantare.clone(), cx);
             overlay.standings_study(&study);
             let size = overlay.wanted_size();
-            let natural = preview_size(kind, size);
+            let natural = preview_size(legacy, size);
             let target = dimensions.unwrap_or(natural);
             if let Err(error) =
                 overlay.set_preview_axes(scale * target.0 / size.0, scale * target.1 / size.1)
@@ -659,7 +667,9 @@ impl Workshop {
     /// Escala real de la vista previa en cada eje (px de pantalla por px del widget).
     fn widget_scale(&self, cx: &App) -> (f32, f32) {
         let size = self.overlay.read(cx).wanted_size();
-        let target = self.dimensions.unwrap_or(preview_size(self.kind, size));
+        let target = self
+            .dimensions
+            .unwrap_or(preview_size(self.eficiencia_relative(), size));
         let scale = self.scale * self.fit;
         (scale * target.0 / size.0, scale * target.1 / size.1)
     }
@@ -757,11 +767,15 @@ impl Workshop {
 
     /// Reaplica la escala de vista previa sin recrear los widgets.
     fn apply_preview(&self, cx: &mut App) {
-        let (scale, dimensions, kind) = (self.scale * self.fit, self.dimensions, self.kind);
+        let (scale, dimensions, legacy) = (
+            self.scale * self.fit,
+            self.dimensions,
+            self.eficiencia_relative(),
+        );
         for view in std::iter::once(&self.overlay).chain(self.comparison.as_ref()) {
             view.update(cx, |overlay, cx| {
                 let size = overlay.wanted_size();
-                let target = dimensions.unwrap_or(preview_size(kind, size));
+                let target = dimensions.unwrap_or(preview_size(legacy, size));
                 if overlay
                     .set_preview_axes(scale * target.0 / size.0, scale * target.1 / size.1)
                     .is_ok()
@@ -897,7 +911,10 @@ impl Workshop {
                 }
                 Control::Location => self.in_pits = Some(value == "pits"),
                 Control::Width | Control::Height => {
-                    let wanted = preview_size(self.kind, self.overlay.read(cx).wanted_size());
+                    let wanted = preview_size(
+                        self.eficiencia_relative(),
+                        self.overlay.read(cx).wanted_size(),
+                    );
                     let mut size = self.dimensions.unwrap_or(wanted);
                     let number = value.parse::<f32>().map_err(|e| format!("tamaño: {e}"))?;
                     if control == Control::Width {
@@ -1256,7 +1273,7 @@ mod tests {
         let mut overlay = Overlay::configured(&settings, Preferences::default());
         let production = overlay.wanted_size();
         overlay.workshop_layout();
-        let preview = preview_size(Kind::Relative, overlay.wanted_size());
+        let preview = preview_size(true, overlay.wanted_size());
         assert_eq!(preview.0, 470.0);
         assert!((preview.1 - 277.0).abs() < 0.01);
         assert_eq!(production, crate::relative::SIZE);

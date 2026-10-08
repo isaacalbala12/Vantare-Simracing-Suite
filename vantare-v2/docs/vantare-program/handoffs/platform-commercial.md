@@ -1700,3 +1700,12 @@ No se configura producción desde este worker. `docs/roadmap/plan.md` falta en
 base y `origin/nightly`: decidir cómo reconciliar el contrato de actualización
 en el mismo PR, sin crear un roadmap paralelo.
 Runbook para Isaac: `C:/tmp/lanzamiento/1515-runbook-isaac.md`.
+
+Entrega de implementación: `a1d137e2ee8cd761adb8192674bc249bd8979ebf`, push
+verificado en `origin/vantareapp/isa-1515-consentimiento-fallos`. PR draft
+[1519](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1519)
+abierta contra `vantareapp/isa-1470-candidato-beta` y vinculada al hilo T3.
+CI remota en curso al comprobar la entrega; no se afirma CI verde ni integración.
+Informe final del worker: `C:/tmp/lanzamiento/informe-1515.md` (HEAD final y
+estado remoto). Siguiente: revisar PR/CI, validar la pantalla al liberarse y
+confirmar/publicar la política antes de autorizar una integración/promoción.

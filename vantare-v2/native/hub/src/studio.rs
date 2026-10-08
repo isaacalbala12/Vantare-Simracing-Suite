@@ -340,7 +340,7 @@ fn studio_demo_capture() -> bool {
             pair[0] == "--capture"
                 && matches!(
                     pair[1].as_str(),
-                    name if name.starts_with("studio-") || matches!(name, "inicio-base" | "inicio-error" | "inicio-opacidad" | "inicio-nombre-largo")
+                    name if name.starts_with("studio-") || matches!(name, "inicio-base" | "inicio-error" | "inicio-opacidad" | "inicio-nombre-largo" | "inicio-sidebar" | "inicio-sidebar-sin-carril" | "inicio-sin-carril")
                 )
         })
 }

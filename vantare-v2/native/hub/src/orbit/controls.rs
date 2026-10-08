@@ -149,13 +149,20 @@ impl Choice {
             .when(option.enabled, |s| {
                 s.cursor_pointer().hover(|s| s.bg(rgba(line_row(cx))))
             })
-            .child(text(
-                option.label.clone(),
-                BODY,
-                if selected { 650 } else { 500 },
-                ink_2(cx),
-                cx,
-            ))
+            .child(
+                text(
+                    option.label.clone(),
+                    BODY,
+                    if selected { 650 } else { 500 },
+                    ink_2(cx),
+                    cx,
+                )
+                .flex_1()
+                .min_w_0()
+                .whitespace_nowrap()
+                .text_ellipsis()
+                .overflow_hidden(),
+            )
             .when(selected, |s| {
                 s.child(text("✓", SECONDARY, 650, coral(cx), cx))
             })
@@ -209,6 +216,7 @@ impl Choice {
             .and_then(|i| self.state.options.get(i))
             .map_or("Seleccionar…", |o| o.label.as_str());
         let trigger = field("choice-trigger", cx)
+            .aria_label(format!("{}: {value}", self.label))
             .relative()
             .w(px(FIELD_W))
             .when_some(self.compact_width, |field, width| {
@@ -222,20 +230,27 @@ impl Choice {
             .when(self.reference_trigger, |field| {
                 field.bg(tint(ink(cx), 7.0 / 255.0))
             })
-            .child(self.trigger_label(
-                value.to_owned(),
-                if self.compact_width.is_some() {
-                    12.0
-                } else if self.reference_trigger {
-                    14.0
-                } else {
-                    BODY
-                },
-                500,
-                ink_2(cx),
-                cx,
-            ))
-            .child(super::icon("down", 14.0, ink_3(cx)))
+            .child(
+                self.trigger_label(
+                    value.to_owned(),
+                    if self.compact_width.is_some() {
+                        12.0
+                    } else if self.reference_trigger {
+                        14.0
+                    } else {
+                        BODY
+                    },
+                    500,
+                    ink_2(cx),
+                    cx,
+                )
+                .flex_1()
+                .min_w_0()
+                .whitespace_nowrap()
+                .text_ellipsis()
+                .overflow_hidden(),
+            )
+            .child(super::icon("down", 14.0, ink_3(cx)).flex_none())
             .on_click(cx.listener(|this, _, window, cx| {
                 if !this.state.enabled {
                     return;

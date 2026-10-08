@@ -297,7 +297,45 @@ pub struct DemoVersions {
 impl DemoData {
     /// Las referencias solo tienen perfil en Inicio y no tienen historial local.
     pub fn apply_capture(&mut self, capture: &CaptureState) -> Result<(), String> {
-        self.profile.present = capture.name == "inicio-base";
+        self.profile.present = capture.home_session();
+        if matches!(capture.name.as_str(), "inicio-vacio" | "inicio-cargando") {
+            self.launcher.profiles.clear();
+        }
+        self.notifications.clear();
+        if matches!(
+            capture.name.as_str(),
+            "notificaciones-panel" | "notificaciones-vacio"
+        ) {
+            self.captured_at = "2026-10-05T16:30:00Z".into();
+        }
+        if capture.home_session()
+            || matches!(
+                capture.name.as_str(),
+                "inicio-base"
+                    | "launcher-reposo"
+                    | "launcher-lanzando"
+                    | "launcher-aplicaciones"
+                    | "launcher-historial"
+                    | "launcher-editor"
+                    | "launcher-listo"
+                    | "launcher-cancelado"
+                    | "launcher-nombres-largos"
+            )
+        {
+            self.launcher = serde_json::from_str(if capture.home_session() {
+                include_str!("../reference/fixtures/home-r7-launcher.json")
+            } else {
+                include_str!("../reference/fixtures/launcher-r7.json")
+            })
+            .map_err(|error| format!("fixture visual Inicio: {error}"))?;
+            if self.launcher.profiles.iter().any(|profile| {
+                profile
+                    .last_ready_steps
+                    .is_some_and(|ready| ready > profile.steps.len())
+            }) {
+                return Err("fixture Inicio: progreso fuera de los pasos".into());
+            }
+        }
         if matches!(
             capture.name.as_str(),
             "inicio-nombre-largo" | "launcher-nombres-largos"
@@ -310,41 +348,6 @@ impl DemoData {
                 app.display_name =
                     "Aplicación de QA con nombre y ruta extensos para comprobar el formulario"
                         .into();
-            }
-        }
-        if matches!(capture.name.as_str(), "inicio-vacio" | "inicio-cargando") {
-            self.launcher.profiles.clear();
-        }
-        self.notifications.clear();
-        if matches!(
-            capture.name.as_str(),
-            "notificaciones-panel" | "notificaciones-vacio"
-        ) {
-            self.captured_at = "2026-10-05T16:30:00Z".into();
-        }
-        if matches!(
-            capture.name.as_str(),
-            "inicio-base"
-                | "launcher-reposo"
-                | "launcher-lanzando"
-                | "launcher-aplicaciones"
-                | "launcher-historial"
-                | "launcher-editor"
-                | "launcher-listo"
-                | "launcher-cancelado"
-        ) {
-            self.launcher = serde_json::from_str(if capture.name == "inicio-base" {
-                include_str!("../reference/fixtures/home-r7-launcher.json")
-            } else {
-                include_str!("../reference/fixtures/launcher-r7.json")
-            })
-            .map_err(|error| format!("fixture visual Inicio: {error}"))?;
-            if self.launcher.profiles.iter().any(|profile| {
-                profile
-                    .last_ready_steps
-                    .is_some_and(|ready| ready > profile.steps.len())
-            }) {
-                return Err("fixture Inicio: progreso fuera de los pasos".into());
             }
         }
         Ok(())
@@ -580,6 +583,18 @@ impl CaptureState {
         } else {
             &[]
         }
+    }
+
+    pub fn home_session(&self) -> bool {
+        matches!(
+            self.name.as_str(),
+            "inicio-base"
+                | "inicio-sidebar"
+                | "inicio-sidebar-sin-carril"
+                | "inicio-sin-carril"
+                | "inicio-opacidad"
+                | "inicio-nombre-largo"
+        )
     }
 
     #[allow(clippy::too_many_lines)] // Catálogo cerrado de escenas QA y sus estados de presentación.
@@ -967,6 +982,33 @@ mod tests {
         assert_eq!(home.launcher.profiles[0].name, "Carrera LMU");
         assert_eq!(home.launcher.profiles[0].last_ready_steps, Some(4));
         crate::launcher::Store::demo(std::path::PathBuf::from("C:/QA/launcher.json"), &home)?;
+        Ok(())
+    }
+
+    #[test]
+    fn quality_home_scenes_use_the_same_session_fixture() -> Result<(), String> {
+        for name in [
+            "inicio-sidebar",
+            "inicio-sidebar-sin-carril",
+            "inicio-sin-carril",
+            "inicio-opacidad",
+            "inicio-nombre-largo",
+        ] {
+            let capture = CaptureState::parse(name)?;
+            assert!(capture.home_session());
+            let mut demo = DemoData::load()?;
+            demo.apply_capture(&capture)?;
+            assert!(demo.overlay_profile().is_some());
+            assert_eq!(demo.launcher.profiles.len(), 3);
+            crate::launcher::Store::demo(
+                std::path::PathBuf::from("C:/QA/home-quality.json"),
+                &demo,
+            )?;
+            assert_eq!(
+                demo.user.full_name.starts_with("PilotoConNombre"),
+                name == "inicio-nombre-largo"
+            );
+        }
         Ok(())
     }
 

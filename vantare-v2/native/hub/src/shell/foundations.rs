@@ -580,6 +580,11 @@ impl Hub {
             12..20 => "Buenas tardes",
             _ => "Buenas noches",
         };
+        let greeting = if empty {
+            "Bienvenido a Vantare".to_owned()
+        } else {
+            format!("{salute}, {name}")
+        };
         orbit::hero_surface(cx)
             .h(px(hero_height(adapt)))
             .flex_none()
@@ -632,11 +637,7 @@ impl Hub {
                     )
                     .child(
                         orbit::text(
-                            if empty {
-                                "Bienvenido a Vantare".to_owned()
-                            } else {
-                                format!("{salute}, {name}")
-                            },
+                            greeting.clone(),
                             if !adapt.show_optional() {
                                 38.0
                             } else if short {
@@ -650,6 +651,15 @@ impl Hub {
                             orbit::ink(cx),
                             cx,
                         )
+                        .id("home-greeting")
+                        .w_full()
+                        .min_w_0()
+                        .flex_none()
+                        .whitespace_nowrap()
+                        .text_ellipsis()
+                        .overflow_hidden()
+                        .aria_label(greeting.clone())
+                        .tooltip(move |_, cx| cx.new(|_| orbit::Tooltip(greeting.clone())).into())
                         .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
                         .line_height(px(if !adapt.show_optional() {
                             40.0
@@ -723,6 +733,7 @@ impl Hub {
                 "inicio-vacio" => HomeState::Empty,
                 "inicio-cargando" => HomeState::Loading,
                 "inicio-error" => HomeState::AccessError,
+                _ if capture.home_session() => HomeState::Session,
                 _ => state,
             };
         }

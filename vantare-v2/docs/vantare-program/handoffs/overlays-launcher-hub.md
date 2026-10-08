@@ -29,6 +29,14 @@ Escenas QA aisladas: sidebar forzada/error largo/carril, vacío/sin selección/
 oculto/manual/En vivo y preview con opacidad/nombres largos. Test del host real.
 Clippy workspace PASS; pendientes gates completos, capturas y medidas nativas.
 
+QA de calidad: las nuevas variantes Inicio reutilizan la sesión/layout de base;
+el selector común y el saludo recortan nombres largos, con texto completo
+accesible y tooltip del saludo. Capturas reales antes/después en 1280 revisadas;
+barra Studio con error largo/sidebar abierta mantiene todas sus acciones.
+Microbenchmark release: parseo 3,895 us frente a consulta 0,053 us; clones
+4/18 widgets 1,098/2,632 us. No se amplía la invalidación de previews.
+Nextest workspace 1266 PASS, lifecycle18 PASS, prueba PASS. Nuevos casos QA
+cubiertos por Hub332 PASS; revalidación de los últimos textos y matriz en curso.
 ## #1496 / #1504 — UI R4 Ajustes y Cuenta, entrega local (2026-10-08)
 
 Worktree C:/tmp/vw3-ui-r1/vantare-v2, rama

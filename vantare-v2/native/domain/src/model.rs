@@ -158,6 +158,22 @@ pub struct Car {
     pub best_sectors_s: Vec<Quality<f64>>,
     /// Sectores ya completados de la vuelta en curso, en orden.
     pub current_sectors_s: Vec<Quality<f64>>,
+    /// Nivel del piloto en el simulador (LMU: Bronce, Plata, Oro, Platino).
+    pub driver_rating: Quality<DriverRating>,
+    /// Safety Rating del piloto, 0–100.
+    pub safety_rating: Quality<f64>,
+    /// Cambio por vuelta del valor absoluto de `relative_s`: negativo = se
+    /// acerca al jugador, positivo = se aleja. Normalmente `Estimated`.
+    pub relative_trend_s_per_lap: Quality<f64>,
+}
+
+/// Nivel del piloto, de menor a mayor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DriverRating {
+    Bronze,
+    Silver,
+    Gold,
+    Platinum,
 }
 
 /// Compuesto de neumático, normalizado entre simuladores.
@@ -228,6 +244,9 @@ pub struct Player {
     pub pit_limiter_active: Quality<bool>,
     /// Detenido en la parada según la fuente; no acredita reparación ni servicio cumplido.
     pub pit_stop_stopped: Quality<bool>,
+    /// Tiempo que se pierde en una parada (entrada, servicio típico y salida),
+    /// en segundos. Normalmente `Estimated`.
+    pub pit_loss_s: Quality<f64>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -441,6 +460,9 @@ fn degrade_car(car: &mut Car) {
         tyre_compound,
         best_sectors_s,
         current_sectors_s,
+        driver_rating,
+        safety_rating,
+        relative_trend_s_per_lap,
     } = car;
     make_stale(position);
     make_stale(class_position);
@@ -467,6 +489,9 @@ fn degrade_car(car: &mut Car) {
     make_stale(tyre_compound);
     best_sectors_s.iter_mut().for_each(make_stale);
     current_sectors_s.iter_mut().for_each(make_stale);
+    make_stale(driver_rating);
+    make_stale(safety_rating);
+    make_stale(relative_trend_s_per_lap);
 }
 
 fn degrade_player(player: &mut Player) {
@@ -478,6 +503,7 @@ fn degrade_player(player: &mut Player) {
         delta_best_s,
         pit_limiter_active,
         pit_stop_stopped,
+        pit_loss_s,
     } = player;
     let Telemetry {
         throttle,
@@ -509,6 +535,7 @@ fn degrade_player(player: &mut Player) {
     make_stale(delta_best_s);
     make_stale(pit_limiter_active);
     make_stale(pit_stop_stopped);
+    make_stale(pit_loss_s);
     let Damage {
         aero,
         body,

@@ -468,6 +468,8 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool, telemetry_stale: bool) -> 
                 .filter(|delta| *delta != 0.0 || vehicle.best_lap_s.is_some()),
             telemetry_stale,
         ),
+        // LMU no publica la pérdida estimada de una parada (#1497).
+        pit_loss_s: Quality::Unavailable,
     }
 }
 

@@ -155,9 +155,10 @@ pub(crate) mod tests {
     use std::time::Duration;
 
     use vantare_domain::{
-        Capabilities, Capability, Car, CarId, Class, ClassId, Damage, Driver, DriverId, Flag,
-        FlagKind, FlagScope, Fuel, Gap, Origin, Player, Pose, Quality, Session, SessionId,
-        SessionKind, SessionState, Source, SourceKind, State, Telemetry, TyreCompound, Weather,
+        Capabilities, Capability, Car, CarId, Class, ClassId, Damage, Driver, DriverId,
+        DriverRating, Flag, FlagKind, FlagScope, Fuel, Gap, Origin, Player, Pose, Quality, Session,
+        SessionId, SessionKind, SessionState, Source, SourceKind, State, Telemetry, TyreCompound,
+        Weather,
     };
 
     use super::*;
@@ -204,6 +205,9 @@ pub(crate) mod tests {
             tyre_compound: Quality::Stale(TyreCompound::Wet),
             best_sectors_s: vec![Quality::Reliable(29.75), Quality::Unavailable],
             current_sectors_s: vec![Quality::Estimated(30.25)],
+            driver_rating: Quality::Reliable(DriverRating::Gold),
+            safety_rating: Quality::Reliable(88.0),
+            relative_trend_s_per_lap: Quality::Estimated(-0.6),
         }
     }
 
@@ -219,14 +223,26 @@ pub(crate) mod tests {
             "tyre_compound",
             "best_sectors_s",
             "current_sectors_s",
+            "driver_rating",
+            "safety_rating",
+            "relative_trend_s_per_lap",
         ] {
             assert!(car.remove(field).is_some(), "{field}");
         }
+        let player = value["state"]["player"].as_object_mut().expect("jugador");
+        assert!(player.remove("pit_loss_s").is_some(), "pit_loss_s");
         let old = crate::snapshot_from_json(&value.to_string()).expect("foto sin señales nuevas");
         let car = &old.state.cars[0];
         assert!(car.vehicle.is_empty());
         assert_eq!(car.grid_position, Quality::Unavailable);
         assert_eq!(car.pit_stops, Quality::Unavailable);
+        assert_eq!(car.driver_rating, Quality::Unavailable);
+        assert_eq!(car.safety_rating, Quality::Unavailable);
+        assert_eq!(car.relative_trend_s_per_lap, Quality::Unavailable);
+        assert_eq!(
+            old.state.player.as_ref().expect("jugador").pit_loss_s,
+            Quality::Unavailable
+        );
         assert_eq!(car.tyre_compound, Quality::Unavailable);
         assert!(car.best_sectors_s.is_empty() && car.current_sectors_s.is_empty());
         // Sin dato no se escriben: las fotos existentes conservan sus bytes.
@@ -329,6 +345,7 @@ pub(crate) mod tests {
                     delta_best_s: Quality::Reliable(-0.125),
                     pit_limiter_active: Quality::Reliable(false),
                     pit_stop_stopped: Quality::Unavailable,
+                    pit_loss_s: Quality::Estimated(27.4),
                     damage: Damage {
                         aero: Quality::Reliable(0.9),
                         body: Quality::Estimated(0.8),

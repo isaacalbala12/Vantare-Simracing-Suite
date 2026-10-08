@@ -193,6 +193,9 @@ fn sanitize(state: &mut State) {
             tyre_compound: _,
             best_sectors_s,
             current_sectors_s,
+            driver_rating: _,
+            safety_rating,
+            relative_trend_s_per_lap,
         } = car;
         finite(last_lap_s);
         finite(best_lap_s);
@@ -200,6 +203,10 @@ fn sanitize(state: &mut State) {
         last_sectors_s.iter_mut().for_each(finite);
         best_sectors_s.iter_mut().for_each(finite);
         current_sectors_s.iter_mut().for_each(finite);
+        keep_if(safety_rating, |v| {
+            v.is_finite() && (0.0..=100.0).contains(v)
+        });
+        finite(relative_trend_s_per_lap);
         for gap in [gap_leader, gap_ahead, gap_class_leader, gap_class_ahead] {
             keep_if(gap, finite_gap);
         }
@@ -229,6 +236,7 @@ fn sanitize_player(player: &mut Player) {
         delta_best_s,
         pit_limiter_active: _, // bool: no requiere saneamiento numérico.
         pit_stop_stopped: _,
+        pit_loss_s,
     } = player;
     let Telemetry {
         throttle,
@@ -259,6 +267,7 @@ fn sanitize_player(player: &mut Player) {
         }
     }
     finite(delta_best_s);
+    keep_if(pit_loss_s, |v| v.is_finite() && *v >= 0.0);
     let Damage {
         aero,
         body,

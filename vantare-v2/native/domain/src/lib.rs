@@ -28,6 +28,7 @@ mod quality;
 pub mod racing_flags;
 pub mod radar;
 pub mod relative;
+pub mod relative_vantare;
 pub mod standings;
 pub mod standings_vantare;
 pub mod track_map;
@@ -37,9 +38,9 @@ pub use adapter::{Adapter, AdapterError, Observation};
 pub use capability::{Capabilities, Capability};
 pub use flag::{Flag, FlagKind, FlagScope};
 pub use model::{
-    Car, CarId, Class, ClassId, Damage, Driver, DriverId, Fuel, Gap, Origin, Player, Pose, Session,
-    SessionId, SessionKind, SessionState, Snapshot, Source, SourceKind, SourceState, State,
-    Telemetry, TyreCompound, UNKNOWN_SIMULATOR, Weather, degrade,
+    Car, CarId, Class, ClassId, Damage, Driver, DriverId, DriverRating, Fuel, Gap, Origin, Player,
+    Pose, Session, SessionId, SessionKind, SessionState, Snapshot, Source, SourceKind, SourceState,
+    State, Telemetry, TyreCompound, UNKNOWN_SIMULATOR, Weather, degrade,
 };
 pub use quality::Quality;
 pub mod text;

@@ -1,5 +1,30 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1507 — Clerk Production nativo (2026-10-08)
+
+Worktree `C:/tmp/vw3-1507/vantare-v2`, rama
+`vantareapp/isa-1507-clerk-produccion`, base candidata `a8f9bdc3`.
+Hub admite `VANTARE_CLERK_ACCOUNT_PORTAL_URL` como origen HTTPS DNS explícito
+para alta/reset; Development conserva la derivación si falta. Configuración
+inválida falla cerrada. No hay dependencias nuevas ni cambios en el checkout #1506.
+Issuer OAuth propio y validadores de servidor ya eran independientes del dominio;
+regresiones comprueban portal, configuración, cache discovery y descarte de
+sesión al cambiar issuer/client. OAuth no se transforma en JWT Supabase.
+Runbook: `docs/billing/clerk-production-runbook.md`, instancia/DNS Cloudflare,
+cliente público PKCE, variables de servidor, Third-Party Auth para sesión web,
+plantilla externa sin valores y prueba manual de login/corte/rollback.
+PASS: configuración PS5.1 21; validadores Deno 78; Rust check/Clippy
+`-D warnings`, Nextest 1220/1220 (6 skips previos, 1 slow PASS). Lifecycle y
+fmt final por cola pendientes. Intento de beta-tests no ejecutado por faltar
+paquetes QA/firmador; no se fabrica evidencia productiva.
+No se accede a `.env*`, credenciales, instalación real ni paneles de producción.
+Preguntas: checkout/variable final de web #1506 y vinculación de identidades
+Development existentes. Recomendación: alta nueva Production para QA y decidir
+vinculaciones antes de distribuir. Login real pendiente de preparación de Isaac.
+`docs/roadmap/plan.md` ausente también en `origin/nightly`; no se recrea.
+Seguimiento GitHub por encargo explícito, que prevalece sobre instrucciones
+históricas de Notion. PR draft prevista a la candidata, sin merge/promoción/release.
+
 ## #1492 — Setup encima y adopción de datos (2026-10-08)
 
 Ronda 2 sobre `072ca621`: códigos de bloqueo tipados en `Exception.Data`

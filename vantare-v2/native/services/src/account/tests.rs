@@ -220,6 +220,56 @@ fn discovery_refuses_cross_origin_token_endpoint() {
 }
 
 #[test]
+fn production_oauth_cache_is_bound_to_issuer_client_and_redirect() {
+    let issuer = Url::parse("https://clerk.vantare.app/").expect("issuer");
+    let redirect = Url::parse("http://127.0.0.1:47813/callback").expect("loopback");
+    let mut oauth = OAuth {
+        issuer: issuer.clone(),
+        client_id: "public-production-client".into(),
+        redirect: redirect.clone(),
+        authorization: issuer.join("oauth/authorize").expect("endpoint"),
+        token: issuer.join("oauth/token").expect("endpoint"),
+        userinfo: issuer.join("oauth/userinfo").expect("endpoint"),
+    };
+    assert!(oauth.matches(&issuer, "public-production-client", &redirect));
+    let dev = Url::parse("https://fixture.clerk.accounts.dev/").expect("dev");
+    assert!(!oauth.matches(&dev, "public-production-client", &redirect));
+    assert!(!oauth.matches(&issuer, "other-client", &redirect));
+    assert!(!oauth.matches(
+        &issuer,
+        "public-production-client",
+        &Url::parse("http://127.0.0.1:47814/callback").expect("other redirect")
+    ));
+    oauth.token = dev.join("oauth/token").expect("dev token");
+    assert!(!oauth.matches(&issuer, "public-production-client", &redirect));
+}
+
+#[test]
+fn development_session_cannot_be_restored_as_production_identity() {
+    for change_client in [false, true] {
+        let issuer = Url::parse("https://fixture.clerk.accounts.dev/").expect("dev");
+        let (root, store) = crate::test_store("production-switch");
+        let account = super::fixture(&issuer, &store);
+        let mut prod = account.oauth.clone();
+        if change_client {
+            prod.client_id = "public-production-client".into();
+        } else {
+            prod.issuer = Url::parse("https://clerk.vantare.app/").expect("prod");
+        }
+        drop(account);
+        let restored = Account::restore(prod, &store).expect("new environment");
+        assert!(restored.identity().is_none());
+        assert!(matches!(
+            restored.authorized(1, |_| Ok(())),
+            Err(Error::Authentication)
+        ));
+        drop(restored);
+        drop(store);
+        crate::cleanup_store(&root, "production-switch", &["account"]);
+    }
+}
+
+#[test]
 fn failed_refresh_is_not_retried_and_changed_subject_cannot_replace_account() {
     let server = Server::start(vec![(429,"{}".into()),(200,serde_json::json!({"access_token":crate::random_id().expect("entropy"),"refresh_token":crate::random_id().expect("entropy"),"expires_in":60,"token_type":"Bearer"}).to_string()),(200,"{\"sub\":\"different_user\"}".into())]);
     let (root, store) = crate::test_store("refresh-test");

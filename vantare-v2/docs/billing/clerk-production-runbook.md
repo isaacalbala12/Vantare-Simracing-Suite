@@ -5,6 +5,38 @@ Código sobre candidato beta `a8f9bdc3`; decisión de Isaac, §6j de
 instancia creada, DNS aplicado, despliegue, build productiva ni login real**.
 El flujo de compra con login pertenece a #1506 y no se modifica aquí.
 
+## Preparación CLI autorizada — 08-oct-2026
+
+Isaac autorizó esta continuación mediante `npx -y clerk@3.4.1`, con su sesión
+existente. No se crea otra instancia ni se consultan/modifican usuarios.
+Aplicación `Vantare One`, `app_3IWU2X4AuYRQJgZZuBF0cOGO2Ir`; Production
+`ins_3KCjsAhL9oCANH5ZBWt8fqmTvKm`, issuer `https://clerk.vantare.app`.
+
+Cliente creado con `api /oauth_applications -X POST --file <json-publico> --yes`
+y destino explícito `--app <app> --instance <production>`: **Vantare Native
+Production**, ID `oa_3KQZKuDiky0vCJNCt0BW2yzPsQR`, client ID público
+`n5cqSYkpsTiEw6jk`, `public=true`, `pkce_required=true`, scopes
+`openid profile offline_access`, redirect `http://127.0.0.1/callback`.
+La build debe usar `http://127.0.0.1:0/callback` para puerto dinámico.
+La respuesta se filtra a campos públicos; ningún client secret se conserva.
+PKCE global ya estaba activo y no se cambia.
+
+Plantilla versionada: `native/packaging/build-config-production.template`, solo
+nombres y client ID público. Completar una copia externa después de verificar
+DNS/TLS y el servidor; nunca añadir secretos de servidor. `CLERK_SECRET_KEY`,
+`CLERK_NATIVE_CLIENT_ID` y `CLERK_ISSUER` son nombres de configuración del
+servidor que debe coordinar #1514; el client ID debe coincidir con el anterior.
+
+Coordinación comprobada: `gh pr view 1523` y diff completo, HEAD `907989d6`.
+No cambia `native/hub/src/services/access.rs` ni otro archivo nativo. Third-party
+auth Supabase, token de sesión y webhooks pertenecen exclusivamente a #1514.
+OAuth nativo sigue siendo un bearer distinto del token de sesión: no se convierte
+en JWT Supabase. No importar ni duplicar esa implementación en #1516.
+
+Los apartados históricos siguientes describen la preparación completa; la
+instancia ya existe y **no se debe repetir su creación**. Estado DNS/portal,
+validación administrativa y login real se documentan al completar sus pasos.
+
 ## 1. Instancia y DNS — Isaac
 
 1. Clerk Dashboard → Development → Create production instance. Clonar ajustes

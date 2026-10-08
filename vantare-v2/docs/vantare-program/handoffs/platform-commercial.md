@@ -2,6 +2,16 @@
 
 ## #1507 — Clerk Production nativo (2026-10-08)
 
+Continuación CLI autorizada por Isaac: cliente OAuth público Production creado
+con Clerk CLI 3.4.1; client ID `n5cqSYkpsTiEw6jk`, PKCE obligatorio, scopes
+openid/profile/offline_access, loopback `http://127.0.0.1/callback` (build puerto 0).
+Plantilla pública `native/packaging/build-config-production.template` añadida.
+PR #1523 `907989d6` inspeccionado: no cambia access.rs ni código nativo.
+Third-party auth, session token y webhooks reservados a #1514; servidor,
+DNS/TLS y prueba de login son dependencias, todavía sin evidencia de cierre.
+No usuarios ni secretos versionados. Esta autorización reemplaza la exclusión
+administrativa de la entrega original; no autoriza merge/promoción/release.
+
 Worktree `C:/tmp/vw3-1507/vantare-v2`, rama
 `vantareapp/isa-1507-clerk-produccion`, base candidata `a8f9bdc3`.
 Hub admite `VANTARE_CLERK_ACCOUNT_PORTAL_URL` como origen HTTPS DNS explícito

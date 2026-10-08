@@ -2,6 +2,7 @@ import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0
 import type { BillingEnvironment } from "../_shared/mapping.ts";
 import { computeWebhookPayloadHash } from "../billing-webhook/inbox.ts";
 import { applyPolarDisputeSnapshot } from "../billing-webhook/disputes.ts";
+import { recoverCheckout } from "./checkouts.ts";
 import {
   minimizePolarWebhookEvent,
   type PolarWebhookEvent,
@@ -11,6 +12,7 @@ import {
 } from "../billing-webhook/process.ts";
 
 export const RESOURCES = [
+  "checkouts",
   "orders",
   "subscriptions",
   "refunds",
@@ -37,7 +39,7 @@ export function reconciliationEvent(
   resource: Resource,
   data: Record<string, unknown>,
 ): PolarWebhookEvent | null {
-  if (resource === "disputes") return null;
+  if (resource === "disputes" || resource === "checkouts") return null;
   if (resource === "orders" && data.paid !== true) return null;
   const type = resource === "orders"
     ? (data.status === "refunded" ? "order.refunded" : "order.paid")
@@ -56,6 +58,10 @@ export async function reconcilePage(args: {
 }): Promise<{ next: Cursor; quarantined: number; observed: number }> {
   let quarantined = 0;
   for (const item of args.page.items) {
+    if (args.cursor.resource === "checkouts") {
+      await recoverCheckout(args.supabase, args.environment, item);
+      continue;
+    }
     if (args.cursor.resource === "disputes") {
       if (
         await applyPolarDisputeSnapshot(

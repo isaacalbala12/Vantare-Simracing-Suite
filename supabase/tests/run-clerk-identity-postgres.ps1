@@ -6,7 +6,7 @@ $container = 'vantare-clerk-test-' + [Guid]::NewGuid().ToString('N').Substring(0
 $password = [Guid]::NewGuid().ToString('N')
 $bootstrap = Join-Path $env:TEMP "$container-bootstrap.sql"
 try {
-  docker run --rm -d --name $container -e "POSTGRES_PASSWORD=$password" $Image | Out-Null
+  docker run --rm -d --name $container -e "POSTGRES_PASSWORD=$password" $Image -c shared_preload_libraries=pg_cron -c cron.database_name=postgres | Out-Null
   if ($LASTEXITCODE -ne 0) { throw 'Could not start disposable PostgreSQL' }
   $ready = $false
   for ($attempt = 0; $attempt -lt 120; $attempt++) {
@@ -47,7 +47,9 @@ alter default privileges in schema public grant select, insert, update, delete o
   }
   foreach ($test in @(
     @{ File = 'clerk_identity_cutover_test.sql'; Count = 23 },
-    @{ File = 'billing_identity_refunds_test.sql'; Count = 24 }
+    @{ File = 'billing_identity_refunds_test.sql'; Count = 24 },
+    @{ File = 'billing_scheduler_recovery_test.sql'; Count = 11 },
+    @{ File = 'clerk_native_data_boundary_test.sql'; Count = 4 }
   )) {
     docker cp (Join-Path $PSScriptRoot $test.File) "${container}:/tmp/test.sql"
     $tap = docker exec $container psql -X -At -v ON_ERROR_STOP=1 -U postgres -f /tmp/test.sql | Out-String

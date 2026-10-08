@@ -1,46 +1,46 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
-## ISA-1514 — implementación Clerk en curso
+## ISA-1514 — backend y clientes escritos; sandbox pausado
 
-Seguimiento GitHub #1514; base aprobada #1517 `49946438`. Worktree
-`C:/tmp/vantare-isa1514-impl`, rama `vantareapp/isa-1514-identidad-impl`. Isaac
-autoriza solución completa sin fechas/cohorte, desde cero sin backfill. Refund
-failed/canceled restaura; disputa suspende y restaura si gana el cliente;
-recuperación automática, trial siete días, Launch offline y un equipo activo.
+GitHub #1514, PR draft #1523 sobre plan #1517 49946438. Principal
+C:/tmp/vantare-isa1514-impl, rama vantareapp/isa-1514-identidad-impl.
+Decisiones: OAuth/PKCE nativo conservado (verifyNativeOAuth), mismo UUID que TPA
+web; pg_cron/pg_net/Vault autorizados. Scheduler cada minuto privado/desactivado,
+secreto dedicado, cursor/lease/checkpoints. Checkout incierto conserva intento y
+se recupera por cuenta API/marcador servidor, sin repetir cobro ni adivinar email.
+Emisores web/nativo usan grants efectivos. Puente de datos cinco minutos exige
+claims Clerk firmados y mapping; JWT de login Supabase legacy sin autoridad.
 
-Fase 1 escrita: TPA, wrapper de sesión, mapping UUID, RLS/FKs, webhook Svix y
-tombstones. Backend fase 2 escrito: binding durable checkout/env/cuenta,
-attribution sin email/metadata, refund sin payment_id y de Pro, restricciones
-por fuente, disputas por API y worker reconciliación con cursor/lease/replay.
-Credencial web usa vista efectiva; native-license del candidato aún debe migrar.
-Deno **420/420 PASS**; 47 pgTAP assertions preparadas sin Docker/psql, no
-ejecutadas. Sin deploy. GitGuardian señaló la nueva fixture de firma: material
-efímero generado en runtime (1 test PASS) sustituye la constante. Se consolidan
-los dos commits propios de fase 2 para retirar la fixture de la historia del PR;
-referencia local preservada y force-with-lease exacto. CI final pendiente.
-[Plan vigente](../../billing/bil-13-clerk-identidad-plan.md),
-[estado/runbook](../../billing/bil-13-clerk-implementacion.md), ADR 0100
-autorizado. Fase 2 parcial sin programador activado; matriz sandbox y fases 3–5
-pendientes. No-Go comercial. Scheduler pg_cron/pg_net/Vault no previsto en ADR:
-se pide autorización según regla de dependencia; no añadido/activado. CLI Polar
-confirma sandbox Vantare `71f1b902-c29a-421b-aeb7-7861d8bbc08d`; falta
-proyecto/variables backend. Catálogo read-only: Launch 30 EUR; mensual 5 EUR sin
-trial, Annual ausente; no modificado. Config pública refiere proyecto Supabase,
-pero no prueba producción; publishable keys públicas ausentes en el proceso.
+Fases 1–2 y clientes fase 3 escritos; fase 4 parcial (retirada de autoridad en
+servidor hecha; providers hospedados y fuentes Wails/Electron tras aceptar/integrar
+clientes); fase 5 real pendiente. 464 Deno principal PASS; candidato 516 PASS,
+1 ignored (sin PostgREST). Rust 1218 PASS, 6 omitidos por perfil; clippy/fmt PASS;
+13 build-config PASS. Web 12 PASS/build PASS; capturas 1280×800/390×844 sin
+configuración y sin overflow. Captura nativa bloqueada por panic heredado
+sidebar.rs:286, Role::GenericContainer; no evidencia visual nativa aceptada.
+pgTAP 62 assertions no ejecutadas: sin Docker/psql, Linux SSH no responde.
 
-Pendiente de aclaración: el encargo nativo pide sesión Clerk, mientras el ADR y
-la app usan OAuth/PKCE; no convertir OAuth en JWT de sesión. Implementación
-detenida hasta decidir frontera y scheduler; después clientes/cierre
-Auth/matriz. Siguiente backend: completar recuperación de checkout uncertain (el
-handler heredado aún remite a soporte antes de haber entregado URL), programar
-worker y ejecutar SQL. El worker escrito recupera pagos solo con prueba durable
-existente; no inventa propiedad de un pago externo. No desplegar el corte
-aislado sobre clientes del bridge HS256. La minimización del webhook no declara
-purga RGPD completa de datos fiscales/evidencias.
+Integrar por «Vantare | Rework a Rust»: rama native vantareapp/isa-1514-identidad-native
+sobre candidato a8f9bdc3, commit OAuth 0e3436fc y compra beca9206; IPC v4 exige
+servicios/Hub juntos. Web repo vantare-simracing-suite-web, rama
+vantareapp/isa-1514-compra-clerk (ab7c2e6) sobre #1502 378185d3. SHAs/compare links en #1523.
+Bases comprobadas antes de editar y de entregar. No tocar ramas paralelas.
 
-Sin secretos/.env, subagentes, producción, merge, promoción, release ni ventas.
-SHA/PR/CI final en GitHub #1514. Roadmap plan.md/digest ausentes en esta base;
-no recreados ni publicada una vista de roadmap distinta.
+Sandbox Supabase lbaxvpzexoferfvfkplz confirmado, INACTIVE. Link y deploy API
+rechazados; conector restore sin permisos. Isaac debe restaurarlo desde panel.
+Clerk development enabled-lionfish-1336.clerk.accounts.dev. Comprobación CLI
+role=authenticated en development/production: No changes detected, sin escrituras.
+Producción Supabase olhwhfaczmrmooeaoqqf y Polar prohibidas, no tocadas.
+Polar sandbox Vantare: mensual 5,99 y anual 59,90 EUR, ambos trial siete días;
+Launch 30 EUR intacto, tres productos. Último sync writes=0. Matriz compra/refund/
+disputa/caída/credencial real pendiente de backend y variables sandbox.
+
+[Plan](../../billing/bil-13-clerk-identidad-plan.md),
+[runbook y matriz](../../billing/bil-13-clerk-implementacion.md), ADR0100 actualizados.
+Sin secretos/.env, subagentes, merge, promoción, release ni ventas. No-Go comercial.
+Roadmap plan.md/digest ausentes en base, no recreados. Próximo: restore sandbox,
+variables privadas/públicas del runbook, migraciones/TPA/11 funciones, pgTAP y
+matriz real. Rollback cierra compras y conserva inbox/grants/mapping.
 
 ## ISA-1506 — revisión Polar; implementación detenida (2026-10-08)
 

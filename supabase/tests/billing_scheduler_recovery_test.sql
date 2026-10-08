@@ -1,0 +1,16 @@
+begin;
+select plan(11);
+select is((select enabled from private.billing_scheduler),false,'scheduler starts disabled');
+select is(private.dispatch_billing_reconciliation(),null::bigint,'disabled scheduler dispatches nothing');
+select is((select count(*) from cron.job where jobname='vantare-billing-reconcile'),1::bigint,'exactly one minute job');
+select is((select command from cron.job where jobname='vantare-billing-reconcile'),'select private.dispatch_billing_reconciliation();','cron stores only function name');
+select ok(not has_function_privilege('authenticated','private.dispatch_billing_reconciliation()','execute'),'clients cannot dispatch');
+select ok(not has_function_privilege('authenticated','public.recover_billing_checkout_attempt(uuid,uuid,text,text,text,text,text,timestamptz,timestamptz)','execute'),'clients cannot bind');
+insert into public.profiles(id) values('00000000-0000-4000-8000-000000000010');
+select is((select outcome from public.claim_billing_checkout_attempt('00000000-0000-4000-8000-000000000010','00000000-0000-4000-8000-000000000020','pro_monthly','sandbox','v1')),'claimed','attempt persisted');
+select is(public.recover_billing_checkout_attempt('00000000-0000-4000-8000-000000000010','00000000-0000-4000-8000-000000000020','production','pro_monthly','v1','checkout-one','https://polar.sh/checkout/one',now(),now()+interval '30 minutes'),false,'wrong environment cannot recover');
+select is(public.recover_billing_checkout_attempt('00000000-0000-4000-8000-000000000010','00000000-0000-4000-8000-000000000020','sandbox','pro_monthly','v1','checkout-one','https://sandbox.polar.sh/checkout/one',now(),now()+interval '30 minutes'),true,'API checkout recovers');
+select is((select count(*) from public.billing_checkout_bindings where provider_checkout_id='checkout-one'),1::bigint,'binding retained');
+select is((select outcome from public.claim_billing_checkout_attempt('00000000-0000-4000-8000-000000000010','00000000-0000-4000-8000-000000000020','pro_monthly','sandbox','v1')),'reused','retry returns same URL without second charge');
+select * from finish();
+rollback;

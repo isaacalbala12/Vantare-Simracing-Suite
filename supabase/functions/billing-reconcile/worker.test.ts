@@ -30,7 +30,7 @@ Deno.test("reconciler traverses every page then orders/subscriptions/refunds/dis
     page: 1,
   });
   assertEquals(advanceCursor({ resource: "disputes", page: 1 }, 1), {
-    resource: "orders",
+    resource: "checkouts",
     page: 1,
   });
   assertThrows(() => advanceCursor({ resource: "orders", page: 2 }, 1));

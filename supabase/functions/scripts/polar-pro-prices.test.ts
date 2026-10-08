@@ -14,6 +14,8 @@ type FakeProduct = {
   is_archived: boolean;
   metadata: Record<string, string>;
   prices: FakePrice[];
+  trial_interval?: string;
+  trial_interval_count?: number;
 };
 
 /** Minimal in-memory Polar: PATCH archives omitted prices, as Polar does. */
@@ -57,6 +59,8 @@ function fakePolar(interval = "month") {
         recurring_interval: b.recurring_interval,
         is_archived: false,
         metadata: b.metadata,
+        trial_interval: b.trial_interval,
+        trial_interval_count: b.trial_interval_count,
         prices: newPrices(b),
       };
       products.set(product.id, product);
@@ -65,6 +69,10 @@ function fakePolar(interval = "month") {
     const product = products.get(path.split("/")[2]);
     if (!product) return Promise.reject(new Error("404"));
     if (method === "PATCH") {
+      if (b.trial_interval) {
+        product.trial_interval = b.trial_interval;
+        product.trial_interval_count = b.trial_interval_count;
+      }
       for (const price of product.prices) price.is_archived = true;
       product.prices.push(...newPrices(b));
     }
@@ -86,7 +94,11 @@ Deno.test("polar-pro-prices: first run sets 5,99/mes and creates 59,90/año, sec
     [[499, true], [599, false]],
   );
   const annual = polar.products.get(first.pro_annual.product_id)!;
+  assertEquals(monthly.trial_interval, "day");
+  assertEquals(monthly.trial_interval_count, 7);
   assertEquals(annual.recurring_interval, "year");
+  assertEquals(annual.trial_interval, "day");
+  assertEquals(annual.trial_interval_count, 7);
   assertEquals(annual.prices[0].price_amount, 5990);
   assertEquals(annual.prices[0].tax_behavior, "inclusive");
 

@@ -36,3 +36,22 @@ verify_jwt = false
 
 [functions.testing-center-linear-webhook]
 verify_jwt = false
+
+[functions.native-license]
+verify_jwt = false
+[functions.native-billing-checkout]
+verify_jwt = false
+[functions.native-billing-portal]
+verify_jwt = false
+
+[functions.native-account-authorize]
+verify_jwt = false
+
+[auth]
+enable_signup = false
+enable_anonymous_sign_ins = false
+[auth.email]
+enable_signup = false
+
+[functions.billing-status]
+verify_jwt = false

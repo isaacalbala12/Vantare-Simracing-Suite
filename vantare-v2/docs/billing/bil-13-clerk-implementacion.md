@@ -1,9 +1,8 @@
 # BIL-13 — implementación y validación
 
-Estado: fase 1 escrita; backend de fase 2 escrito, sin programador activado.
-Suite Deno **420 PASS / 0 FAIL**; SQL sin ejecutar. Fases 3–5 pendientes.
-Implementación detenida en la frontera de clientes y dependencias del scheduler,
-según las stop conditions de Isaac. No desplegado. No-Go comercial.
+Estado actual: fases 1–2 y clientes fase 3 escritos; fase 4 parcial; fase 5 real
+pendiente. Backend 464 PASS, SQL sin ejecutar. No desplegado. No-Go comercial.
+Los apartados r1 siguientes conservan evidencia histórica; ronda actual abajo.
 
 Worktree `C:/tmp/vantare-isa1514-impl`, rama
 `vantareapp/isa-1514-identidad-impl`, base
@@ -76,149 +75,161 @@ con la corrección desde el principio. Historia anterior conservada en referenci
 local; push con lease exacto. Solo se inspeccionaron metadatos/ruta de la alerta,
 sin abrir valores. CI final debe consultarse por SHA en #1523; no heredar verde.
 
-El scheduler requiere decidir una dependencia no prevista en ADR: pg_cron,
-pg_net y Vault, oficiales de Supabase, o identificar el scheduler existente. No
-añadidos ni activados. La ruta del worker no se considera recuperación
-automática operativa hasta programarla y comprobar el SLA real en sandbox. Ver
-[guía oficial](https://supabase.com/docs/guides/functions/schedule-functions).
-Native-license del candidato aún consulta grants sin estos filtros; el commit de
-cliente debe cambiar también ese consumidor antes de desplegar el corte. La
-creación de checkout uncertain heredada conserva cierre seguro sin emitir una
-URL no vinculada, pero aún remite a soporte: falta reemplazar esa recuperación
-anterior al pago por reconciliación automática del intento. No se declara fase 2
-completa. No recrear ciegamente un checkout de resultado incierto.
+Scheduler autorizado e implementado con pg_cron/pg_net/Vault, inicialmente
+inactivo, cada minuto. Secreto dedicado BILLING_RECONCILE_SECRET, nunca
+service_role en cron. Checkouts se reconcilian por external_customer_id API,
+marcador de intento persistido, entorno/producto/catálogo y ventana de creación.
+Intentos inciertos nunca se borran al caducar ni se recrean ciegamente. Filas
+históricas sin prueba de correlación quedan cerradas.
+
+Native-license y emisor web comparten billing_effective_access_grants. Rutas
+nativas verifican OAuth/PKCE del candidato y cuenta Clerk no bloqueada; resuelven
+el mismo UUID que TPA. Puente de datos existente conserva cinco minutos, añade
+claims firmados Clerk y exige mapping/issuer/UUID. JWT de login Supabase sin
+marcador carece de autoridad. No hay intercambio OAuth a sesión web.
 
 Comandos locales desde la raíz del worktree:
 
 ```powershell
-deno test --node-modules-dir=auto --allow-env --allow-read=.github,supabase/functions/scripts,supabase/functions/billing-webhook/testdata,vantare-v2/build,vantare-v2/cmd/vantare/main.go,vantare-v2/tools/generate_supabase_config.ps1 --config supabase/functions/deno.json supabase/functions
+deno test --node-modules-dir=auto --allow-env --allow-read=.github,supabase/functions/scripts,supabase/functions/billing-webhook/testdata,supabase/functions/native-account-authorize/testdata,vantare-v2/build,vantare-v2/cmd/vantare/main.go,vantare-v2/tools/generate_supabase_config.ps1 --config supabase/functions/deno.json supabase/functions
 pwsh -File supabase/tests/run-clerk-identity-postgres.ps1
 ```
 
-## Instancias y sandbox
+## Ronda actual: clientes, retirada y evidencia
 
-La CLI oficial 2.0.2 confirma sesión **sandbox**, organización Vantare
-`71f1b902-c29a-421b-aeb7-7861d8bbc08d`. Esto no demuestra compras
-nuevas/licencias. No están presentes en este proceso SANDBOX_PROJECT_REF,
-CLERK_ISSUER, CLERK_DOMAIN, POLAR_ACCESS_TOKEN, SUPABASE_URL,
-SUPABASE_SERVICE_ROLE_KEY ni CLERK_WEBHOOK_SIGNING_SECRET. Solo se comprobó
-presencia, no valores secretos. Las tres variables públicas
-CLERK_PUBLISHABLE_KEY, VITE_CLERK_PUBLISHABLE_KEY y
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY tampoco están presentes.
+Fases 1–2 escritas; fase 3 escrita en ramas aisladas; fase 4 parcial; fase 5 real
+pendiente. Backend principal: **464 Deno PASS / 0 FAIL**, tipos incluidos.
+Candidato: **516 PASS / 0 FAIL / 1 ignored** (PostgREST local sin DB). Guards
+TS/PowerShell PASS; Deno check de handlers nuevos PASS. Web **12 tests PASS**,
+build y node --check PASS. Capturas reales 1280×800 y 390×844: compra cerrada sin
+configuración y sin overflow. No prueba login/pago real.
 
-Existe una referencia pública al proyecto `ombjshwzqgeisazijduq` en config; no
-confirma su instancia/configuración de producción. Falta confirmar el dominio
-Clerk de producción y prefijo pk_live, y el proyecto Supabase de producción. No
-se leyó .env ni se consultaron instancias productivas.
+Rust: fmt/clippy -D warnings y 13 checks de configuración pública PASS. Suite
+workspace **1218 PASS**, 6 omitidos por perfil. Captura nativa no aceptada:
+panic heredado en sidebar.rs:286, Role::GenericContainer, antes de Cuenta. DuckDB oficial, cola de compilación y -j 2.
+Primer run falló por junction C:/ruta real E: en test IPC; repetido con target
+absoluto. Test propio corregido soltando Store antes de limpiar DPAPI.
+SQL: **62 assertions no ejecutadas** (23 identidad, 24 billing, 11 recovery/
+scheduler, 4 frontera nativa). Windows sin Docker/psql; SSH a isaac@192.168.1.57
+remoto linux agotó plazo dos veces. Proyecto sandbox pausado.
 
-Consulta read-only del catálogo sandbox con CLI oficial: Launch
-fd15a961-ed86-4cbc-9ffa-f8c16716b22f a 3000 céntimos EUR; Pro mensual
-41cffd72-bd41-4904-a0e4-9083243d26d7 a **500**, sin trial. No hay producto anual
-en las dos filas obtenidas. Ningún producto/precio modificado y ningún pago
-simulado ejecutado: faltan backend y cliente para observar entrega.
+Integración para «Vantare | Rework a Rust» (bases comprobadas antes de editar):
 
-| Caso                                              | Evidencia end-to-end de esta implementación |
-| ------------------------------------------------- | ------------------------------------------- |
-| Pro mensual / anual / trial / Launch → licencia   | Pendiente: backend sandbox y cliente        |
-| Refund → retirada; failed/canceled → restauración | Local PASS; sandbox pendiente               |
-| Disputa → suspensión/restauración                 | Local parsing PASS; SQL/sandbox pendiente   |
-| Cancelación → fin del periodo                     | Pendiente sandbox                           |
-| Huérfano → recuperado                             | Local PASS; sandbox pendiente               |
-| Caída → reconciliación                            | Local PASS; SQL/scheduler/sandbox pendiente |
+- Rama vantareapp/isa-1514-identidad-native, base candidato a8f9bdc3. Commit
+  OAuth 0e3436fc y commit de compra beca9206 separado. Archivos supabase native-billing-*,
+  native-account-authorize, emisor nativo; Rust services billing/protocol/app,
+  Hub services/view, packaging build-config/config-tests. IPC v4: integrar
+  servicios y Hub juntos. Compra conserva intento por cuenta/producto/entorno,
+  valida host Polar y renueva licencia cada 5 s durante 10 min al volver.
+- Repo web isaacalbala12/vantare-simracing-suite-web, base #1502 378185d3; rama
+  vantareapp/isa-1514-compra-clerk, commit ab7c2e6. purchase.html, purchase*.mjs/css, Worker con
+  configuración pública allowlist, checkout-config y tests. SDK oficial Clerk,
+  token fresco por llamada, sin JWT persistido, productKey/attemptId al servidor;
+  billing-status confirma derechos al volver, redirect no concede licencia.
+  Polling limitado a diez minutos. No cambio del diseño de #1502.
 
-## Configuración que debe realizar Isaac
+Aplicar migraciones/issuer/orígenes antes de desplegar las 11 funciones
+comerciales, después integrar clientes con el mismo sandbox. Sin merge aquí.
+SHAs exactos y compare links en #1523. Roadmap plan.md/digest ausentes en base
+(#1517), no recreados. Actualizado el único handoff platform-commercial.
 
-No ejecutar producción hasta completar fases 2–5 y aceptar el SHA exacto. No hay
-un comando válido para activar la integración TPA hospedada desde `config.toml`:
-se registra en los dos dashboards oficiales.
+Fase 4 hecha en servidor: FKs/triggers/join Auth retirados por r1, getUser
+sustituido, grants/RLS/credenciales usan Clerk, signup/anon local deshabilitado,
+validate-license deprecated fuera del deploy. Pendiente: providers/login/email,
+hooks/SMTP/templates hospedados y fuentes Wails/Electron signup/reset/password/
+refresh tras integrar/aceptar clientes y verificar cero consumidores. No declarar
+retirada física completa; conservar auth.jwt/roles/schema/historia. Sin backfill.
 
-1. Clerk: seleccionar la instancia **sandbox**; Integrations → Supabase →
-   activar integración; token con `role: authenticated`. Webhooks: endpoint
-   `$SUPABASE_URL/functions/v1/clerk-webhook`, eventos user.created,
-   user.updated, user.deleted. Configurar dominio y origen de compra públicos.
-2. Supabase sandbox: Authentication → Third Party Auth → Clerk, dominio
-   `$CLERK_DOMAIN`. Configurar issuer y azp con SQL parametrizado:
+## Sandbox confirmado y bloqueo operativo
+
+Supabase lbaxvpzexoferfvfkplz «Vantare Testing» confirmado por Isaac. **INACTIVE**:
+link exige Restore project desde panel; conector restore rechaza permisos; deploy
+API devuelve 404 INACTIVE. Ninguna migración/función aplicada. Producción
+olhwhfaczmrmooeaoqqf prohibida y no tocada.
+
+Clerk app app_3IWU2X4AuYRQJgZZuBF0cOGO2Ir. Development
+ins_3IWU2coRM80qPPQKHmwnSn5oaPJ, dominio público
+enabled-lionfish-1336.clerk.accounts.dev. Production
+ins_3KCjsAhL9oCANH5ZBWt8fqmTvKm, clerk.vantare.app confirmado por Isaac.
+Configuración production autorizada; las comprobaciones siguientes dieron
+**No changes detected** (role ya authenticated), sin usuarios ni escrituras:
 
 ```powershell
-supabase link --project-ref $env:SANDBOX_PROJECT_REF
-supabase db push
-@'
-insert into private.clerk_issuers(issuer,authorized_parties,enabled)
-values (:'clerk_issuer',array[:'purchase_origin'],true)
-on conflict(issuer) do update set authorized_parties=excluded.authorized_parties,enabled=true;
-'@ | psql $env:SUPABASE_DB_URL -v ON_ERROR_STOP=1 -v clerk_issuer="$env:CLERK_ISSUER" -v purchase_origin="$env:CLERK_PURCHASE_ORIGIN"
-supabase secrets set --project-ref $env:SANDBOX_PROJECT_REF CLERK_ISSUER="$env:CLERK_ISSUER" CLERK_WEBHOOK_SIGNING_SECRET="$env:CLERK_WEBHOOK_SIGNING_SECRET"
+npx -y clerk@3.4.1 config patch --app app_3IWU2X4AuYRQJgZZuBF0cOGO2Ir --instance ins_3IWU2coRM80qPPQKHmwnSn5oaPJ --json '{"session":{"claims":{"role":"authenticated"}}}' --dry-run
+npx -y clerk@3.4.1 config patch --app app_3IWU2X4AuYRQJgZZuBF0cOGO2Ir --instance ins_3KCjsAhL9oCANH5ZBWt8fqmTvKm --json '{"session":{"claims":{"role":"authenticated"}}}' --dry-run
+```
+
+No config/env pull ni lectura de secretos. CLI Clerk webhooks solo ofrece relay
+local y verificación; endpoint Svix persistente requiere panel.
+
+Polar CLI oficial 2.0.2, Vantare sandbox 71f1b902-c29a-421b-aeb7-7861d8bbc08d:
+
+| Producto | Product ID | Price ID | EUR | Trial |
+| --- | --- | --- | --- | --- |
+| Pro mensual | 41cffd72-bd41-4904-a0e4-9083243d26d7 | e6674b3a-5d30-434d-88b4-827167f462c3 | 5,99/mes | 7 días |
+| Pro anual | 0ffa6373-57ae-44a3-9ec3-5661d37fb689 | af881ab0-a4ab-4fee-96a2-12a1602343eb | 59,90/año | 7 días |
+| Launch | fd15a961-ed86-4cbc-9ffa-f8c16716b22f | a6a594ea-8275-4922-b1ac-e48ca64003da | 30,00 | No |
+
+Dos escrituras iniciales, un PATCH trial anual; última ejecución writes=0.
+Launch intacto, tres productos activos. Evidencia C:/tmp/isa1514-r3-catalog*.log.
+
+| Caso | Local | Evidencia real sandbox |
+| --- | --- | --- |
+| Catálogo mensual/anual/trial/Launch | 3 tests PASS | CLI precios/trials, sync writes=0 |
+| Compra web/nativa, UUID común, credencial | Auth/emisor PASS | Pendiente backend/configuración |
+| Refund retira; failed/canceled restaura | Deno PASS | Pendiente |
+| Disputa suspende/restaura | Parsing PASS | Pendiente SQL/API real |
+| Cancelación/expiración trial | Grants PASS | Pendiente |
+| Un equipo; Launch offline/reconexión | Emisor/candidato PASS | Pendiente prueba física |
+| Caída/huérfano/intento incierto | Deno PASS, SQL preparado | Pendiente scheduler operativo |
+
+## Comandos sandbox pendientes (solo nombres de variables)
+
+Restaurar Testing desde panel. Cargar variables privadamente, sin .env ni valores
+en chat/logs. Registrar Clerk development en Supabase Third Party Auth. Endpoint
+Svix SUPABASE_URL/functions/v1/clerk-webhook, user.created/updated/deleted; guardar
+CLERK_WEBHOOK_SIGNING_SECRET. OAuth nativo y redirect loopback:
+CLERK_NATIVE_CLIENT_ID. Webhook Polar sandbox firmado a billing-webhook.
+SANDBOX_PROJECT_REF y SUPABASE_DB_URL deben señalar exclusivamente Testing.
+CLERK_DOMAIN debe estar en el proceso CLI para validar config.toml.
+
+```powershell
+supabase link --project-ref $env:SANDBOX_PROJECT_REF --yes
+supabase db push --linked --include-all --yes
+supabase secrets set --project-ref $env:SANDBOX_PROJECT_REF CLERK_ISSUER="$env:CLERK_ISSUER" CLERK_SECRET_KEY="$env:CLERK_SECRET_KEY" CLERK_NATIVE_CLIENT_ID="$env:CLERK_NATIVE_CLIENT_ID" CLERK_WEBHOOK_SIGNING_SECRET="$env:CLERK_WEBHOOK_SIGNING_SECRET" POLAR_ENVIRONMENT=sandbox POLAR_ACCESS_TOKEN="$env:POLAR_ACCESS_TOKEN" POLAR_PRODUCT_MAP="$env:POLAR_PRODUCT_MAP" POLAR_WEBHOOK_SECRET="$env:POLAR_WEBHOOK_SECRET" POLAR_WEBHOOK_SIGNATURE_SCHEME=standard CHECKOUT_SUCCESS_URL="$env:CHECKOUT_SUCCESS_URL" CHECKOUT_CANCEL_URL="$env:CHECKOUT_CANCEL_URL" OFFLINE_LICENSE_ED25519_PRIVATE_KEY="$env:OFFLINE_LICENSE_ED25519_PRIVATE_KEY" OFFLINE_LICENSE_KEY_ID="$env:OFFLINE_LICENSE_KEY_ID" BILLING_RECONCILE_SECRET="$env:BILLING_RECONCILE_SECRET" NATIVE_DATA_JWT_SECRET="$env:NATIVE_DATA_JWT_SECRET" CORS_ALLOWED_ORIGINS="$env:CORS_ALLOWED_ORIGINS"
 pwsh -File supabase/functions/scripts/deploy-approved-functions.ps1 -ProjectRef $env:SANDBOX_PROJECT_REF
-npx -y @polar-sh/cli@2.0.2 auth login --sandbox
 ```
 
-Cargar las variables de forma segura fuera de este chat; nunca entregar
-secretos. El SQL de issuer va **después** de db push; el corte permanece cerrado
-hasta registrarlo. SUPABASE_DB_URL debe apuntar solo a sandbox. Todavía no
-desplegar sobre el candidato nativo: necesita completar fase 3 antes de retirar
-su puente.
+SQL parametrizado, ejecutar después de migraciones mediante psql con
+-v ON_ERROR_STOP=1 y sin echo/debug. Variables: clerk_issuer=CLERK_ISSUER,
+purchase_origin=CLERK_PURCHASE_ORIGIN, native_data_issuer=NATIVE_DATA_ISSUER,
+project_url=SUPABASE_URL, reconcile_secret=BILLING_RECONCILE_SECRET:
 
-## Producción: comandos para Isaac, no ejecutados ni listos para activación
-
-Primero completar clientes, retirada legacy, SQL y matriz real, y aceptar el
-SHA. Clerk no ofrece aquí un comando CLI de TPA: en instancia Production,
-Integrations→Supabase habilitada, dominio CLERK_DOMAIN, origen
-CLERK_PURCHASE_ORIGIN y webhook firmado user.created/updated/deleted. Confirmar
-solo el prefijo pk_live de CLERK_PUBLISHABLE_KEY y el dominio, sin compartir la
-key. Supabase: registrar ese dominio en Third Party Auth; conservar auth.jwt/
-roles. No borrar el schema Auth. Login/providers/emails se retiran en fase 4.
-
-```powershell
-supabase link --project-ref $env:PRODUCTION_PROJECT_REF
-supabase db push
-@'
-insert into private.clerk_issuers(issuer,authorized_parties,enabled)
-values (:'clerk_issuer',array[:'purchase_origin'],true)
-on conflict(issuer) do update set authorized_parties=excluded.authorized_parties,enabled=true;
-'@ | psql $env:SUPABASE_DB_URL -v ON_ERROR_STOP=1 -v clerk_issuer="$env:CLERK_ISSUER" -v purchase_origin="$env:CLERK_PURCHASE_ORIGIN"
-supabase secrets set --project-ref $env:PRODUCTION_PROJECT_REF CLERK_ISSUER="$env:CLERK_ISSUER" CLERK_WEBHOOK_SIGNING_SECRET="$env:CLERK_WEBHOOK_SIGNING_SECRET" POLAR_ENVIRONMENT=production POLAR_PRODUCT_MAP="$env:POLAR_PRODUCT_MAP" POLAR_ACCESS_TOKEN="$env:POLAR_ACCESS_TOKEN" POLAR_WEBHOOK_SECRET="$env:POLAR_WEBHOOK_SECRET" POLAR_WEBHOOK_SIGNATURE_SCHEME=standard CHECKOUT_SUCCESS_URL="$env:CHECKOUT_SUCCESS_URL" CHECKOUT_CANCEL_URL="$env:CHECKOUT_CANCEL_URL" OFFLINE_LICENSE_ED25519_PRIVATE_KEY="$env:OFFLINE_LICENSE_ED25519_PRIVATE_KEY" OFFLINE_LICENSE_KEY_ID="$env:OFFLINE_LICENSE_KEY_ID"
-pwsh -File supabase/functions/scripts/deploy-approved-functions.ps1 -ProjectRef $env:PRODUCTION_PROJECT_REF
+```sql
+insert into private.clerk_issuers(issuer,authorized_parties,enabled,native_data_issuer)
+values (:'clerk_issuer',array[:'purchase_origin'],true,:'native_data_issuer')
+on conflict(issuer) do update set authorized_parties=excluded.authorized_parties,enabled=true,native_data_issuer=excluded.native_data_issuer;
+select vault.create_secret(:'project_url','billing_project_url');
+select vault.create_secret(:'reconcile_secret','billing_reconcile_secret');
+update private.billing_scheduler set enabled=true where singleton;
 ```
 
-SUPABASE_DB_URL debe corresponder al proyecto elegido. Los valores se cargan
-privadamente por Isaac; aquí solo se documentan nombres. No volcar auth whoami
-ni respuestas completas de webhook endpoint: pueden contener material privado.
+NATIVE_DATA_JWT_SECRET debe corresponder a firma admitida por PostgREST sandbox;
+no usar clave arbitraria. CHECKOUT_SUCCESS_URL apunta a purchase.html (servidor
+agrega product/returned). POLAR_PRODUCT_MAP conserva catálogo/version/IDs arriba.
+CORS_ALLOWED_ORIGINS incluye CLERK_PURCHASE_ORIGIN. Vault se crea una vez; si
+existe, actualizar por nombre sin leer decrypted_secret. Observar cursor/request_id,
+no net.http_request_queue (contiene cabeceras privadas). Retirar providers Auth
+hospedados y ejecutar pgTAP/matriz después de restaurar.
 
-CLI Polar oficial, comandos para el catálogo si esos productos no existen:
+Web Worker: CLERK_DOMAIN, CLERK_PUBLISHABLE_KEY (pk_test), SUPABASE_URL,
+SUPABASE_ANON_KEY pública, POLAR_ENVIRONMENT=sandbox.
+Nativo: VANTARE_SUPABASE_URL, VANTARE_SUPABASE_ANON_KEY, VANTARE_CLERK_ISSUER,
+VANTARE_CLERK_CLIENT_ID, VANTARE_CLERK_REDIRECT, VANTARE_ACCOUNT_BRIDGE_URL,
+VANTARE_LICENSE_PUBLIC_KEYS, VANTARE_BILLING_ENVIRONMENT, VANTARE_BUILD_CHANNEL,
+VANTARE_VERSION.
 
-```powershell
-npx -y @polar-sh/cli@2.0.2 auth login --production
-npx -y @polar-sh/cli@2.0.2 products create --org $env:POLAR_ORGANIZATION_ID --name "Vantare Pro Monthly" --visibility private --recurring-interval month --recurring-interval-count 1 --trial-interval day --trial-interval-count 7 --prices '[{"amount_type":"fixed","price_amount":599,"price_currency":"eur"}]'
-npx -y @polar-sh/cli@2.0.2 products create --org $env:POLAR_ORGANIZATION_ID --name "Vantare Pro Annual" --visibility private --recurring-interval year --recurring-interval-count 1 --prices '[{"amount_type":"fixed","price_amount":5990,"price_currency":"eur"}]'
-npx -y @polar-sh/cli@2.0.2 products create --org $env:POLAR_ORGANIZATION_ID --name "Vantare Launch Edition" --visibility private --prices '[{"amount_type":"fixed","price_amount":3000,"price_currency":"eur"}]'
-```
-
-No recrear productos existentes ni habilitar Pro Plus. POLAR_PRODUCT_MAP debe
-usar IDs reales y ambos mapas inversos; trial mensual de siete días, Annual sin
-segundo trial. POLAR_TRIAL_ANTI_ABUSE_CONFIRMED=true solo tras verificar la
-política antiabuso Polar en sandbox. Webhooks en Dashboard Polar con formato
-raw, API 2026-10, URL SUPABASE_URL/functions/v1/billing-webhook, eventos
-order.paid, order.refunded, refund.created/updated y lifecycle de subscription.
-Guardar POLAR_WEBHOOK_SECRET privadamente. Disputas se consultan por API, no
-inventar un evento dispute inexistente en esta versión CLI. Permisos token:
-lectura de orders/subscriptions/refunds/disputes y creación de checkout/portal
-necesaria para los handlers existentes. Activación de scheduler y comandos de
-retiro Auth pendientes de sus decisiones/verificación; este bloque no es un
-despliegue completo listo para cobrar.
-
-Prueba manual posterior en sandbox: sesión Clerk de cuenta A→POST
-billing-checkout para cada productKey→completar Polar→observar ledger y
-entitlement→pedir license-credential con fingerprint→verificar candados. Cuenta
-B debe rechazar posesión del mismo checkout. Emitir/fallar/cancelar refund en
-sandbox, simular disputa por fixtures firmados/API controlada, perder webhook e
-interrumpir DB y comprobar recuperación con scheduler. Medir latencia y
-conservar IDs/SHA/logs sanitizados; no llamar evidencia de sandbox a los
-fixtures Deno actuales.
-
-## Límites
-
-La retirada del login/providers/emails legacy, los clientes y la matriz
-monetaria no están entregados. Retención fiscal/soporte y purga de otros
-contenidos RGPD siguen pendientes; no se declara borrado universal. Sin
-dependencia nueva, producción, pagos reales, secretos, merge, promoción, release
-ni subagentes.
+Matriz: cuenta nueva sandbox, IDs comerciales/UUID/dispositivo/grants/credencial
+sin JWT/email/secretos, medir replay/ciclo scheduler y límites reales de trial/
+cancelación. Fixtures no sustituyen compras. Rollback cierra compra y preserva
+inbox/grants/mapping; build compatible, sin snapshots sobre pagos nuevos.

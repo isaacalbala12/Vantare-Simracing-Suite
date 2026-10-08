@@ -1,7 +1,7 @@
 # BIL-13 — implementación de identidad Clerk
 
 Estado: implementación autorizada por Isaac; PR de implementación apilado sobre
-#1517. La autorización no incluye producción, merge, promoción ni ventas.
+#1517. Solo se autoriza configuración de Clerk production; Supabase/Polar production, merge, promoción y ventas siguen fuera de alcance.
 Seguimiento: GitHub #1514. Este plan sustituye los cortes provisionales del plan
 anterior; el inventario BIL-13 y el informe BIL-12 siguen siendo evidencia del
 comportamiento anterior, no requisitos de compatibilidad.
@@ -27,14 +27,17 @@ comportamiento anterior, no requisitos de compatibilidad.
 
 ## Fases y aceptación
 
-Entrega de implementación #1523: fase 1 escrita, backend de fase 2 escrito; Deno
-420 PASS. SQL no ejecutado (sin Docker/psql). Cliente nativo y compra web,
-retiro legacy y matriz real no entregados. Scheduler requiere aceptación de
-pg_cron/pg_net/Vault o identificación del existente; ninguna extensión añadida.
-El catálogo sandbox sigue a 5 EUR mensual, sin Annual ni trial; no modificado.
-Estado de fase 2 parcial hasta completar programación, clientes y evidencia SQL/
-sandbox. Las condiciones de parada de dependencias/frontera nativa están
-activas.
+Entrega #1523: fases 1–2 escritas, incluidos scheduler y recuperación de checkout
+incierto; clientes de fase 3 escritos en ramas aisladas del candidato y de #1502.
+Backend principal: 464 Deno PASS; candidato: 516 PASS, un test PostgREST omitido.
+Fase 4: retirada de autoridad Auth en servidor escrita, login legacy rechazado;
+providers/emails hospedados y retirada de fuentes Wails/Electron pendientes de
+integración/aceptación de los clientes. No se borran consumidores históricos a
+ciegas. pgTAP (62 assertions) y matriz real pendientes de sandbox operativo.
+Catálogo sandbox configurado: mensual 5,99 EUR, anual 59,90 EUR, ambos con trial
+siete días; Launch 30 EUR sin cambios. Última ejecución: cero escrituras.
+Supabase Testing confirmado pero pausado; link/deploy rechazan INACTIVE y el
+conector no autoriza restore. No-Go comercial hasta SQL/matriz real.
 
 1. Identidad backend: TPA oficial Clerk, bootstrap explícito UUID, RLS sin altas
    implícitas, FKs a profiles, webhooks firmados, tombstones y pruebas SQL/Deno.
@@ -51,14 +54,14 @@ activas.
    reales. Los fixtures no sustituyen compras ni pruebas físicas. Sin sandbox o
    variables, dejar comandos exactos y completar el trabajo independiente.
 
-## Frontera nativa pendiente de aclaración
+## Frontera nativa confirmada
 
-El ADR 0100 conserva OAuth/PKCE nativo verificado por Clerk. El nuevo encargo
-pide obtener una sesión Clerk en la app. OAuth y sesión no son intercambiables:
-no existe un intercambio OAuth→session documentado por Clerk. No inventar un JWT
-de sesión ni ampliar el bridge HS256. Confirmar si se conserva OAuth nativo con
-sesión web para compra, o se aprueba sustituir el login nativo por sesión web
-antes de ejecutar ese cambio. Esta cuestión no bloquea el backend web.
+Isaac confirma OAuth/PKCE de Clerk y `verifyNativeOAuth` del candidato. La sesión
+web usa TPA; OAuth nativo se verifica por API y resuelve el mismo UUID interno.
+Checkout/portal reutilizan los handlers comerciales; ambos emisores leen
+la misma vista de grants efectivos. El puente de datos existente conserva cinco
+minutos y exige claims firmados de procedencia Clerk y mapping coincidente; no
+es una sesión web ni acepta antiguos JWT de login Supabase.
 
 ## Configuración y evidencia
 

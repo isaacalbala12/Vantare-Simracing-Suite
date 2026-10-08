@@ -21,7 +21,7 @@ export async function handleReconciliation(req: Request): Promise<Response> {
   if (
     !serviceKeyMatches(
       req.headers.get("apikey") ?? "",
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+      Deno.env.get("BILLING_RECONCILE_SECRET") ?? "",
     )
   ) {
     return errorResponse("forbidden", "Server caller required", 403);
@@ -84,7 +84,9 @@ export async function handleReconciliation(req: Request): Promise<Response> {
           Accept: "application/json",
         },
         redirect: "error",
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(
+          Math.min(15000, Math.max(1, 45000 - (Date.now() - started))),
+        ),
       });
       if (!response.ok) throw new Error("polar_reconciliation_unavailable");
       const body = await response.json();
@@ -125,7 +127,7 @@ export async function handleReconciliation(req: Request): Promise<Response> {
       observed += result.observed;
       quarantined += result.quarantined;
       cursor = result.next;
-      if (cursor.resource === "orders" && cursor.page === 1) break;
+      if (cursor.resource === "checkouts" && cursor.page === 1) break;
     }
     const { data: released, error: releaseError } = await admin.rpc(
       "release_billing_reconciliation",

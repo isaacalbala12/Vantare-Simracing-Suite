@@ -116,7 +116,7 @@ remoto linux agotó plazo dos veces. Proyecto sandbox pausado.
 Integración para «Vantare | Rework a Rust» (bases comprobadas antes de editar):
 
 - Rama vantareapp/isa-1514-identidad-native, base candidato a8f9bdc3. Commit
-  OAuth 0e3436fc y commit de compra beca9206 separado. Archivos supabase native-billing-*,
+  OAuth 0e3436fc y commit de compra beca9206 separado; catálogo/trial aacd1e4d. Archivos supabase native-billing-*,
   native-account-authorize, emisor nativo; Rust services billing/protocol/app,
   Hub services/view, packaging build-config/config-tests. IPC v4: integrar
   servicios y Hub juntos. Compra conserva intento por cuenta/producto/entorno,

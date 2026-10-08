@@ -21,7 +21,7 @@ sidebar.rs:286, Role::GenericContainer; no evidencia visual nativa aceptada.
 pgTAP 62 assertions no ejecutadas: sin Docker/psql, Linux SSH no responde.
 
 Integrar por «Vantare | Rework a Rust»: rama native vantareapp/isa-1514-identidad-native
-sobre candidato a8f9bdc3, commit OAuth 0e3436fc y compra beca9206; IPC v4 exige
+sobre candidato a8f9bdc3, commit OAuth 0e3436fc, compra beca9206 y catálogo aacd1e4d; IPC v4 exige
 servicios/Hub juntos. Web repo vantare-simracing-suite-web, rama
 vantareapp/isa-1514-compra-clerk (ab7c2e6) sobre #1502 378185d3. SHAs/compare links en #1523.
 Bases comprobadas antes de editar y de entregar. No tocar ramas paralelas.

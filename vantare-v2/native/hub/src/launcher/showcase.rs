@@ -304,9 +304,9 @@ fn carousel_offset(
 
 fn hero_height(adapt: orbit::Adapt) -> f32 {
     match adapt.density {
-        orbit::Density::A => 400.0,
-        orbit::Density::M => 360.0,
-        orbit::Density::B | orbit::Density::Xs => 318.0,
+        orbit::adapt::Density::A => 400.0,
+        orbit::adapt::Density::M => 360.0,
+        orbit::adapt::Density::B | orbit::adapt::Density::Xs => 318.0,
     }
 }
 fn poster_height(adapt: orbit::Adapt, profiles: usize) -> f32 {
@@ -1242,7 +1242,20 @@ impl Launcher {
     ) -> Div {
         let running = self.launch_progress().is_some();
         let mut grid = div().flex().flex_wrap().gap(px(8.0));
-        for (index, app) in self.store.document.apps.iter().take(5).enumerate() {
+        for (index, app) in self
+            .store
+            .document
+            .apps
+            .iter()
+            .take(
+                if cx.global::<orbit::Adapt>().density == orbit::adapt::Density::Xs {
+                    2
+                } else {
+                    5
+                },
+            )
+            .enumerate()
+        {
             let edit = app.clone();
             let step = profile.and_then(|profile| {
                 profile
@@ -1257,7 +1270,7 @@ impl Launcher {
                         .step_event(profile, index)
                         .is_some_and(|event| event.status == super::super::chain::Status::Ready)
                     {
-                        ("Abierta", Tone::Success)
+                        ("Listo", Tone::Success)
                     } else {
                         self.step_state(profile, index)
                     }
@@ -1277,7 +1290,7 @@ impl Launcher {
                     .when(running && step.is_none(), |card| card.opacity(0.45))
                     .w(gpui::relative(0.31))
                     .min_w_0()
-                    .h(px(if compact { 96.0 } else { 112.0 }))
+                    .h(px(if compact { 88.0 } else { 104.0 }))
                     .px(px(4.0))
                     .flex_col()
                     .justify_center()
@@ -1317,40 +1330,15 @@ impl Launcher {
             button("showcase-add-app", "+ Añadir app", cx)
                 .rounded(px(18.0))
                 .w(gpui::relative(0.31))
-                .h(px(if compact { 96.0 } else { 112.0 }))
+                .h(px(if compact { 88.0 } else { 104.0 }))
                 .on_click(cx.listener(|this, _, window, cx| this.app_editor(None, window, cx))),
         );
-        orbit::neo_card(cx)
-            .flex_none()
-            .p(px(12.0))
-            .gap(px(8.0))
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(orbit::neo_header("Tus aplicaciones", "gamepad", cx))
-                    .child(
-                        orbit::ghost_button("showcase-all-apps", "Ver todas", cx)
-                            .h(px(24.0))
-                            .on_click(cx.listener(|this, _, _, cx| {
-                                this.page = LauncherPage::Manage;
-                                cx.notify();
-                            })),
-                    ),
-            )
-            .child(
-                div()
-                    .id("showcase-app-scroll")
-                    .flex_none()
-                    .child(grid)
-                    .children(
-                        self.discovered
-                            .warnings
-                            .iter()
-                            .map(|warning| orbit::callout(warning.clone(), cx)),
-                    ),
-            )
+        div().child(grid).children(
+            self.discovered
+                .warnings
+                .iter()
+                .map(|warning| orbit::callout(warning.clone(), cx)),
+        )
     }
 
     fn showcase_options(
@@ -1360,28 +1348,22 @@ impl Launcher {
         short: bool,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
-        let card = orbit::neo_card(cx)
+        let adapt = *cx.global::<orbit::Adapt>();
+        let visible = adapt.rail_rows().unwrap_or(5);
+        let card = div()
             .id("showcase-options")
-            .flex_1()
-            .min_h_0()
-            .min_h(px(if short {
-                150.0
-            } else if compact {
-                262.0
+            .flex_none()
+            .h(px(if visible == 5 {
+                180.0
+            } else if visible == 3 {
+                108.0
             } else {
-                294.0
+                72.0
             }))
-            .p(px(if compact { 12.0 } else { 20.0 }))
-            .gap(px(6.0))
-            .child(orbit::neo_header(
-                if self.launch_progress().is_some() {
-                    "Opciones avanzadas · próxima vez"
-                } else {
-                    "Opciones avanzadas"
-                },
-                "v-sliders",
-                cx,
-            ));
+            .flex()
+            .flex_col()
+            .min_h_0();
+        let _ = (short, compact);
         let mut rows = div()
             .id("showcase-options-scroll")
             .flex()
@@ -1405,7 +1387,7 @@ impl Launcher {
                 rows = rows.child(
                     div()
                         .w_full()
-                        .h(px(if compact { 32.0 } else { 36.0 }))
+                        .h(px(30.0))
                         .flex_none()
                         .flex()
                         .items_center()
@@ -1423,27 +1405,16 @@ impl Launcher {
             rows,
             cx.global::<orbit::design::Tokens>().colors.neo_bottom,
         ))
-        .when(short, |card| {
-            card.child(
-                orbit::text(
-                    "↕ Desplaza para ver las 5 opciones",
-                    11.0,
-                    400,
-                    orbit::ink_3(cx),
-                    cx,
-                )
-                .flex_none(),
-            )
-        })
     }
+
     pub(super) fn showcase_history(&self, compact: bool, cx: &mut Context<Self>) -> Div {
-        let mut card = orbit::neo_card(cx)
+        let mut card = div()
+            .flex()
+            .flex_col()
             .flex_1()
             .min_h_0()
             .gap(px(12.0))
-            .min_h(px(80.0))
-            .p(px(16.0))
-            .child(orbit::neo_header("Últimas veces", "clock", cx));
+            .min_h(px(80.0));
         let mut rows = div().flex().flex_col().gap(px(8.0));
         let mut profiles: Vec<_> = self
             .store
@@ -1453,7 +1424,23 @@ impl Launcher {
             .filter(|profile| profile.last_launched_at.is_some())
             .collect();
         profiles.sort_by(|a, b| b.last_launched_at.cmp(&a.last_launched_at));
-        for profile in profiles {
+        if profiles.is_empty() {
+            rows = rows.child(orbit::text(
+                "Todavía no has lanzado un perfil.",
+                13.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ));
+        }
+        let limit = if self.page == LauncherPage::History {
+            usize::MAX
+        } else {
+            cx.global::<orbit::Adapt>()
+                .rail_rows()
+                .unwrap_or(usize::MAX)
+        };
+        for profile in profiles.into_iter().take(limit) {
             let result = self
                 .last_profile
                 .as_ref()
@@ -1524,6 +1511,53 @@ impl Launcher {
             cx.global::<orbit::design::Tokens>().colors.neo_bottom,
         ));
         card
+    }
+
+    pub(crate) fn rail_sections(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Vec<orbit::RailSection> {
+        self.sync_showcase_controls(window, cx);
+        let adapt = *cx.global::<orbit::Adapt>();
+        let profile = self.showcase_profile();
+        let apps = self.showcase_apps(profile, !adapt.show_notes(), cx);
+        let options = if let Some(profile) = profile {
+            div().child(self.showcase_options(profile, !adapt.show_notes(), !adapt.show_optional(), cx))
+        } else { div().child(orbit::text("Crea un perfil para configurar su comportamiento.", 13.0, 400, orbit::ink_3(cx), cx)) };
+        let history = self.showcase_history(true, cx);
+        let all_apps = orbit::ghost_button("rail-all-apps", "Ver todas", cx).on_click(cx.listener(
+            |this, _, _, cx| {
+                this.page = LauncherPage::Manage;
+                cx.notify();
+            },
+        ));
+        let all_history = orbit::ghost_button("rail-all-history", "Ver todo", cx).on_click(
+            cx.listener(|this, _, _, cx| {
+                this.page = LauncherPage::History;
+                cx.notify();
+            }),
+        );
+        let mut sections = vec![
+            orbit::RailSection::new("Tus aplicaciones", "gamepad", apps).action(all_apps),
+            orbit::RailSection::new(
+                if self.launch_progress().is_some() {
+                    "Opciones · próxima vez"
+                } else {
+                    "Opciones avanzadas"
+                },
+                "v-sliders",
+                options,
+            ),
+        ];
+        if self.page != LauncherPage::History {
+            sections.push(
+                orbit::RailSection::new("Últimas veces", "clock", history)
+                    .grow()
+                    .action(all_history),
+            );
+        }
+        sections
     }
 
     #[allow(clippy::too_many_lines)] // Composición declarativa de tarjeta; la lógica del motor permanece separada.

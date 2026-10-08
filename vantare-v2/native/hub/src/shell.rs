@@ -554,6 +554,9 @@ impl Hub {
         }
         match self.section {
             Section::Home => home,
+            Section::Launcher => self
+                .launcher
+                .update(cx, |launcher, cx| launcher.rail_sections(window, cx)),
             Section::Settings => self.settings_rail(cx),
             Section::Testing => legacy(
                 self.testing

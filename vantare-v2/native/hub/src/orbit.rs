@@ -16,6 +16,8 @@ pub use neo::*;
 mod input;
 mod layer;
 pub mod skin;
+pub mod adapt;
+pub use adapt::Adapt;
 mod specimen;
 mod state;
 pub mod theme;

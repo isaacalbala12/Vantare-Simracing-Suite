@@ -4,7 +4,10 @@ use gpui::{
     Context, Div, EventEmitter, FocusHandle, IntoElement, Render, Stateful, Window, anchored,
     deferred, div, px, rgb, rgba,
 };
+/// Select/input §4 (32, radio sm): l2 hundido con contorno; foco con anillo del acento.
 pub fn field(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
+    let skin = skin(cx);
+    let hover = skin.line3;
     div()
         .id(id)
         .h(px(CONTROL_H))
@@ -12,15 +15,16 @@ pub fn field(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
         .px(px(FIELD_PAD))
         .flex()
         .items_center()
-        .rounded(px(RADIUS_CONTROL))
+        .rounded(px(skin.radius.sm))
         .border_1()
-        .border_color(rgba(line(cx)))
-        .bg(tint(ink(cx), 0.028))
+        .border_color(alpha(skin.line2))
+        .bg(rgb(skin.l2))
+        .shadow(vec![kit_shadow(0x0000_0059, 1.0, 2.0, 0.0, true)])
         .font_family(sans_family(500, cx))
         .text_size(px(FIELD_TEXT))
-        .text_color(rgb(ink_2(cx)))
-        .hover(|s| s.border_color(rgba(line_strong(cx))))
-        .focus_visible(|s| s.border_2().border_color(rgb(coral(cx))))
+        .text_color(rgb(skin.text2))
+        .hover(move |s| s.border_color(alpha(hover)))
+        .focus_visible(|s| s.border_2().border_color(tint(skin.accent, 0.4)))
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ChoiceKind {
@@ -312,15 +316,15 @@ impl Choice {
             .when(tabs, |s| {
                 s.gap(px(SEGMENT_PAD))
                     .border_b_1()
-                    .border_color(rgba(line(cx)))
+                    .border_color(alpha(skin(cx).line1))
             })
+            // Segmentado §4: l2 hundido; la opción activa se eleva.
             .when(!tabs, |s| {
                 s.gap(px(SEGMENT_GAP))
-                    .p(px(SEGMENT_PAD))
-                    .rounded(px(RADIUS_CONTROL))
-                    .bg(tint(ink(cx), 0.02))
-                    .border_1()
-                    .border_color(rgba(line_row(cx)))
+                    .p(px(3.0))
+                    .rounded(px(skin(cx).radius.sm))
+                    .bg(rgb(skin(cx).l2))
+                    .shadow(vec![kit_shadow(0x0000_0059, 1.0, 2.0, 0.0, true)])
             });
         for (index, option) in self.state.options.iter().enumerate() {
             let selected = self.state.selected == Some(index);
@@ -341,9 +345,13 @@ impl Choice {
                             .rounded(px(RADIUS_CHIP))
                     })
                     .when(selected && !tabs, |s| {
-                        s.bg(tint(carmine(cx), 0.16))
-                            .border_1()
-                            .border_color(tint(red(cx), 0.22))
+                        s.bg(rgb(skin(cx).el)).shadow(vec![kit_shadow(
+                            skin(cx).neo_light,
+                            1.0,
+                            0.0,
+                            0.0,
+                            true,
+                        )])
                     })
                     .when(selected && tabs, |s| {
                         s.child(
@@ -354,7 +362,7 @@ impl Choice {
                                 .bottom_0()
                                 .h(px(FOCUS_WIDTH))
                                 .rounded(px(FOCUS_WIDTH))
-                                .bg(rgb(red(cx))),
+                                .bg(ramp(skin(cx).brand, 90.0)),
                         )
                     })
                     .when(selected && is_mono(cx), |c| {
@@ -556,36 +564,73 @@ pub fn chip(label: &str, tone: Tone, cx: &gpui::App) -> Div {
         .child(text(label, CHIP_TEXT, 700, color, cx));
     mono_status(control, tone, cx)
 }
+impl Tone {
+    /// Color de texto y tinte de fondo R9.1 (ok/aviso/error/acento) o contorno neutro.
+    fn swatch(self, cx: &gpui::App) -> (u32, Option<u32>) {
+        let skin = skin(cx);
+        match self {
+            Self::Success => (skin.ok, Some((skin.ok_tint << 8) | 0xff)),
+            Self::Warning | Self::Gold => (skin.warn, Some((skin.warn_tint << 8) | 0xff)),
+            Self::Danger => (skin.err, Some((skin.err_tint << 8) | 0xff)),
+            Self::Accent => (skin.accent_bright, Some(skin.accent_tint)),
+            _ => (skin.text2, None),
+        }
+    }
+}
+/// Pill §4 (28, r4): estado con su tinte; neutra con contorno line.2.
 pub fn pill(label: &str, tone: Tone, cx: &gpui::App) -> Div {
+    let (color, fill) = tone.swatch(cx);
+    let skin = skin(cx);
     let control = div()
         .self_start()
         .flex_none()
-        .h(px(PILL_H))
-        .px(px(FIELD_PAD))
-        .rounded(px(RADIUS_CONTROL))
-        .border_1()
-        .border_color(rgba(line_pill(cx)))
-        .bg(tint(white(cx), 0.022))
+        .h(px(28.0))
+        .px(px(10.0))
+        .rounded(px(skin.radius.xs))
         .flex()
         .items_center()
-        .gap(px(PILL_GAP))
-        .child(status_dot(tone, PILL_DOT, cx))
-        .child(text(
-            label.to_owned(),
-            PILL_TEXT,
-            500,
-            if is_mono(cx) && tone == Tone::Danger {
-                cx.global::<theme::Theme>().primary_ink
-            } else {
-                match tone {
-                    Tone::Success => ink_2(cx),
-                    Tone::Neutral => ink_muted(cx),
-                    _ => tone.color(cx),
-                }
-            },
-            cx,
-        ));
+        .gap(px(6.0))
+        .when_some(fill, |pill, fill| pill.bg(alpha(fill)))
+        .when(fill.is_none(), |pill| {
+            pill.border_1().border_color(alpha(skin.line2))
+        })
+        .when(is_mono(cx), |pill| {
+            pill.child(status_dot(tone, PILL_DOT, cx))
+        })
+        .child(text(label.to_owned(), 12.0, 500, color, cx).whitespace_nowrap());
     mono_status(control, tone, cx)
+}
+/// Etiqueta de estado R9.2 (`pill.sm`): rectangular, 20 px, Inter 600 10.5 MAYÚSCULAS.
+pub fn tag(label: &str, tone: Tone, cx: &gpui::App) -> Div {
+    let (color, fill) = tone.swatch(cx);
+    let skin = skin(cx);
+    div()
+        .flex_none()
+        .h(px(20.0))
+        .px(px(7.0))
+        .rounded(px(skin.radius.xs))
+        .flex()
+        .items_center()
+        .when_some(fill, |tag, fill| tag.bg(alpha(fill)))
+        .when(fill.is_none(), |tag| {
+            tag.border_1().border_color(alpha(skin.line2))
+        })
+        .child(
+            div()
+                .flex()
+                .gap(px(0.7))
+                .text_size(px(10.5))
+                .line_height(px(12.0))
+                .font_weight(gpui::FontWeight(600.0))
+                .font_family(sans_family(600, cx))
+                .text_color(rgb(color))
+                .children(
+                    label
+                        .to_uppercase()
+                        .chars()
+                        .map(|c| div().child(c.to_string())),
+                ),
+        )
 }
 pub fn badge(count: usize, tone: Tone, cx: &gpui::App) -> Div {
     chip(&count.to_string(), tone, cx)

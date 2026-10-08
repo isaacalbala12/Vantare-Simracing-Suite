@@ -1,5 +1,5 @@
 //! Primitivas de los cimientos; sin estado de negocio ni persistencia.
-use super::{button, controls, design, icon, ink_3, line, surface_2, surface_3, tint};
+use super::{button, controls, design, icon, ink_3, line, surface_2, tint};
 use gpui::{
     Div, SharedString, Stateful, div, linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba,
 };
@@ -12,6 +12,7 @@ pub fn gradient(colors: [u32; 2], angle: f32) -> gpui::Background {
 }
 pub fn neo_card(cx: &gpui::App) -> Div {
     let tokens = cx.global::<design::Tokens>();
+    let skin = super::skin(cx);
     div()
         .min_w_0()
         .min_h_0()
@@ -19,25 +20,16 @@ pub fn neo_card(cx: &gpui::App) -> Div {
         .flex_col()
         .gap(px(tokens.geometry.gap))
         .p(px(20.0))
-        .rounded(px(tokens.geometry.radius))
+        .rounded(px(skin.radius.lg))
         .border_1()
-        .border_color(rgba(tokens.colors.line))
-        .bg(gradient(
-            [tokens.colors.neo_top, tokens.colors.neo_bottom],
-            180.0,
-        ))
+        .border_color(super::alpha(skin.line1))
+        .bg(super::ramp(skin.neo, 180.0))
         .shadow(vec![
+            super::kit_shadow(skin.neo_light, 1.0, 0.0, 0.0, true),
             gpui::BoxShadow {
-                color: tint(tokens.colors.text, tokens.shadow.light_alpha),
-                offset: gpui::point(px(0.0), px(1.0)),
-                blur_radius: px(0.0),
-                spread_radius: px(0.0),
-                inset: true,
-            },
-            gpui::BoxShadow {
-                color: tint(0, tokens.shadow.alpha),
-                offset: gpui::point(px(0.0), px(tokens.shadow.y)),
-                blur_radius: px(tokens.shadow.blur),
+                color: tint(0, skin.neo_shadow.0),
+                offset: gpui::point(px(0.0), px(skin.neo_shadow.2)),
+                blur_radius: px(skin.neo_shadow.1),
                 spread_radius: px(0.0),
                 inset: false,
             },
@@ -114,48 +106,41 @@ pub fn neo_context_column(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
         .p(px(16.0))
         .overflow_y_scroll()
 }
-/// Variante compacta de la cabecera compartida de Orbit.
+/// Cabecera compacta de tarjeta neo: icono + rótulo R9.2.
 pub fn neo_header(title: impl Into<SharedString>, icon_name: &'static str, cx: &gpui::App) -> Div {
-    super::card_header(title, cx)
-        .min_h(px(24.0))
-        .p(px(0.0))
-        .border_b_0()
-        .min_w_0()
-        .relative()
-        .pl(px(28.0))
-        .justify_start()
-        .child(
-            icon(icon_name, 16.0, ink_3(cx))
-                .absolute()
-                .left_0()
-                .top(px(3.0)),
-        )
+    let title: SharedString = title.into();
+    super::section_header(&title, icon_name, None, cx)
 }
 pub fn keycap(label: impl Into<SharedString>, cx: &gpui::App) -> Div {
     super::keycaps([label], cx)
 }
+/// Barra de progreso §4: pista l3 de 6 px y relleno con brillo.
 pub fn progress(fraction: f32, cx: &gpui::App) -> Div {
     let fraction = if fraction.is_finite() {
         fraction.clamp(0.0, 1.0)
     } else {
         0.0
     };
+    let skin = super::skin(cx);
     div()
         .w_full()
         .h(px(6.0))
         .flex_none()
-        .rounded_full()
-        .bg(rgb(surface_3(cx)))
-        .overflow_hidden()
+        .rounded(px(3.0))
+        .bg(rgb(skin.l3))
         .child(
             div()
                 .w(gpui::relative(fraction))
                 .h_full()
-                .rounded_full()
-                .bg(gradient(
-                    cx.global::<design::Tokens>().gradients.progress,
-                    90.0,
-                )),
+                .rounded(px(3.0))
+                .bg(super::ramp(skin.progress, 90.0))
+                .shadow(vec![super::kit_shadow(
+                    skin.progress_glow,
+                    0.0,
+                    8.0,
+                    0.0,
+                    false,
+                )]),
         )
 }
 /// Resumen estático sobre la misma fila del kit; no crea otra autoridad visual.
@@ -196,23 +181,19 @@ pub fn action_row(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -
         .hover(|style| style.bg(rgb(surface_2(cx))))
         .focus_visible(|style| style.border_1().border_color(rgb(super::carmine(cx))))
 }
-/// Marca de reproducción compartida por barra, hero y buscador.
+/// Marca de reproducción compartida por hero y buscador.
 pub fn play_circle(size: f32, cx: &gpui::App) -> Div {
     div()
         .size(px(size))
         .flex_none()
-        .rounded_full()
-        .border_1()
-        .border_color(tint(super::ink(cx), 0.22))
-        .bg(gradient(
-            cx.global::<design::Tokens>().gradients.button,
-            180.0,
-        ))
+        .rounded(px(super::skin(cx).radius.md))
+        .bg(super::ramp(super::skin(cx).button, 180.0))
         .flex()
         .items_center()
         .justify_center()
-        .child(icon("play", size * 0.4, super::ink(cx)))
+        .child(icon("play", size * 0.4, 0x00ff_ffff))
 }
+/// Botón principal R10.8 de 36/44/52: ▶ suelto, texto Inter y atajo tras una línea de 1 px.
 pub fn play_button(
     id: &'static str,
     label: &str,
@@ -220,20 +201,33 @@ pub fn play_button(
     key: bool,
     cx: &gpui::App,
 ) -> Stateful<Div> {
-    let circle = if height >= 52.0 { 32.0 } else { 26.0 };
-    super::carmine_button(id, label, cx)
-        .relative()
+    let (size, glyph, pad) = if height >= 50.0 {
+        (16.0, 14.0, 20.0)
+    } else if height >= 40.0 {
+        (15.0, 12.0, 16.0)
+    } else {
+        (14.0, 12.0, 12.0)
+    };
+    super::carmine_button(id, "", cx)
         .h(px(height))
-        .rounded_full()
-        .pl(px(circle + 24.0))
-        .gap(px(8.0))
-        .child(
-            play_circle(circle, cx)
-                .absolute()
-                .left(px(12.0))
-                .top(px((height - circle) / 2.0)),
-        )
-        .when(key, |button| button.child(keycap("Ctrl L", cx)))
+        .px(px(pad))
+        .gap(px(if height >= 50.0 { 12.0 } else { 10.0 }))
+        .aria_label(label.to_owned())
+        .child(icon("play", glyph, 0x00ff_ffff))
+        .child(super::text(label.to_owned(), size, 600, 0x00ff_ffff, cx))
+        .when(key, |button| {
+            button.child(
+                div()
+                    .ml(px(4.0))
+                    .pl(px(12.0))
+                    .h(px(20.0))
+                    .flex()
+                    .items_center()
+                    .border_l_1()
+                    .border_color(super::tint(0x00ff_ffff, 0.28))
+                    .child(super::mono_text("Ctrl L", 12.0, 0x00c8_c8c8, cx)),
+            )
+        })
 }
 /// Acción fantasma sobre el mismo botón y sus estados de foco/hover.
 pub fn ghost_button(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> Stateful<Div> {
@@ -329,4 +323,89 @@ pub fn display(content: impl Into<SharedString>, size: f32, color: u32, cx: &gpu
 /// Cifras tabulares (`tnum`) para todo el Hub.
 pub fn tabular_numbers() -> gpui::FontFeatures {
     gpui::FontFeatures(std::sync::Arc::new(vec![("tnum".into(), 1)]))
+}
+
+/// Título de grupo R9.2: número Space Mono del acento + rótulo + línea que se desvanece.
+pub fn group_title(number: usize, title: &str, cx: &gpui::App) -> Div {
+    let skin = super::skin(cx);
+    div()
+        .flex_none()
+        .flex()
+        .items_center()
+        .gap(px(10.0))
+        .child(super::mono_text(
+            format!("{number:02}"),
+            11.0,
+            skin.accent_bright,
+            cx,
+        ))
+        .child(caps(title, 13.0, skin.text2, cx))
+        .child(div().flex_1().h(px(1.0)).bg(linear_gradient(
+            90.0,
+            linear_color_stop(super::alpha(skin.line2), 0.0),
+            linear_color_stop(super::alpha(skin.line2 & 0xffff_ff00), 1.0),
+        )))
+}
+/// Fila de lista (`srow`): icono en caja l3→l2, título, subtítulo y valor a la derecha.
+pub fn list_item(
+    icon_name: &'static str,
+    title: impl Into<SharedString>,
+    subtitle: impl Into<SharedString>,
+    cx: &gpui::App,
+) -> Div {
+    let skin = super::skin(cx);
+    let height = cx.global::<super::Adapt>().row_height();
+    div()
+        .h(px(height))
+        .flex_none()
+        .flex()
+        .items_center()
+        .gap(px(12.0))
+        .min_w_0()
+        .child(
+            div()
+                .size(px(32.0))
+                .flex_none()
+                .rounded(px(skin.radius.sm))
+                .bg(super::ramp(
+                    super::skin::Ramp {
+                        from: skin.l3,
+                        to: skin.l2,
+                        end: 1.0,
+                    },
+                    180.0,
+                ))
+                .shadow(vec![super::kit_shadow(skin.neo_light, 1.0, 0.0, 0.0, true)])
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(icon(icon_name, 18.0, skin.accent_bright)),
+        )
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .child(
+                    div()
+                        .text_size(px(14.0))
+                        .line_height(px(18.0))
+                        .font_weight(gpui::FontWeight(500.0))
+                        .text_color(rgb(skin.text1))
+                        .whitespace_nowrap()
+                        .overflow_hidden()
+                        .text_ellipsis()
+                        .child(title.into()),
+                )
+                .child(
+                    div()
+                        .text_size(px(12.0))
+                        .text_color(rgb(skin.text3))
+                        .whitespace_nowrap()
+                        .overflow_hidden()
+                        .text_ellipsis()
+                        .child(subtitle.into()),
+                ),
+        )
 }

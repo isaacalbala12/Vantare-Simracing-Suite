@@ -407,14 +407,14 @@ pub fn rail_button(
 pub(crate) struct Tooltip(pub(crate) String);
 impl gpui::Render for Tooltip {
     fn render(&mut self, _: &mut gpui::Window, cx: &mut gpui::Context<Self>) -> impl IntoElement {
+        let skin = skin(cx);
         div()
-            .px_3()
-            .py_2()
-            .rounded(px(RADIUS_CONTROL))
-            .bg(rgb(surface_3(cx)))
-            .border_1()
-            .border_color(rgba(line_strong(cx)))
-            .child(text(self.0.clone(), 12.0, 500, ink(cx), cx))
+            .px(px(8.0))
+            .py(px(4.0))
+            .rounded(px(skin.radius.sm))
+            .bg(rgb(skin.el))
+            .shadow(vec![kit::kit_shadow(skin.line2, 0.0, 0.0, 1.0, false)])
+            .child(text(self.0.clone(), 12.0, 500, skin.text1, cx))
     }
 }
 
@@ -536,17 +536,6 @@ pub fn primary_label(cx: &gpui::App) -> u32 {
         theme.primary_ink
     }
 }
-fn accent_label(cx: &gpui::App) -> u32 {
-    let theme = cx.global::<theme::Theme>();
-    if is_mono(cx) {
-        theme.primary_ink
-    } else if theme.scheme == theme::Scheme::Light {
-        0x00ff_ffff
-    } else {
-        theme.ink
-    }
-}
-
 pub fn mono_override<'a>(original: &'static str, cx: &'a gpui::App) -> &'a str {
     if cx.global::<theme::Theme>().mono_font == theme::MonoFont::Cascadia {
         original
@@ -732,9 +721,10 @@ pub fn panel(cx: &gpui::App) -> Div {
         .bg(rgba(legacy_rgba(PANEL_BG, cx)))
 }
 
-/// Cabecera de tarjeta: título a la izquierda; lo que se añada con `.child`
-/// queda a la derecha.
+/// Cabecera de tarjeta R9.2: rótulo Rajdhani en MAYÚSCULAS; lo que se añada
+/// con `.child` queda a la derecha.
 pub fn card_header(title: impl Into<SharedString>, cx: &gpui::App) -> Div {
+    let title: SharedString = title.into();
     div()
         .flex_none()
         .min_h(px(CARD_HEADER_H))
@@ -745,12 +735,8 @@ pub fn card_header(title: impl Into<SharedString>, cx: &gpui::App) -> Div {
         .justify_between()
         .gap(px(12.0))
         .border_b_1()
-        .border_color(rgba(line_row(cx)))
-        .child(
-            text(title, CARD_TITLE, 700, ink(cx), cx)
-                .font_weight(face_weight(700, cx))
-                .line_height(px(18.0)),
-        )
+        .border_color(alpha(skin(cx).line1))
+        .child(caps(&title, 15.0, skin(cx).text1, cx))
 }
 
 /// Cuerpo con relleno para colocar filas dentro de una [`card`].
@@ -784,7 +770,7 @@ pub fn setting_row(label: &str, help: &str, control: impl IntoElement, cx: &gpui
         .child(control)
 }
 
-/// Interruptor Orbit (38 × 22) en carmín cuando está activo.
+/// Interruptor §4 (36×22): pista l3 hundida; activo con el degradado del botón principal.
 pub fn toggle(
     id: &'static str,
     label: &str,
@@ -792,62 +778,63 @@ pub fn toggle(
     enabled: bool,
     cx: &gpui::App,
 ) -> Stateful<Div> {
+    let skin = skin(cx);
     div()
         .id(id)
         .role(gpui::Role::Switch)
         .aria_label(label.to_owned())
         .tab_index(0)
-        .w(px(44.0))
-        .h(px(24.0))
+        .w(px(36.0))
+        .h(px(22.0))
         .flex_none()
         .rounded_full()
         .p(px(3.0))
         .flex()
-        .when(on, |t| t.justify_end().bg(rgb(carmine(cx))))
-        .when(!on, |t| t.bg(rgb(surface_3(cx))))
+        .when(on, |t| t.justify_end().bg(kit::ramp(skin.button, 180.0)))
+        .when(!on, |t| {
+            t.bg(rgb(skin.l3))
+                .shadow(vec![kit::kit_shadow(0x0000_0066, 1.0, 2.0, 0.0, true)])
+        })
         .when(enabled, Styled::cursor_pointer)
         .when(!enabled, |t| t.opacity(0.4))
-        .focus_visible(|s| s.border_1().border_color(rgba(line_strong(cx))))
-        .child(div().size(px(18.0)).rounded_full().bg(rgb(if on {
-            if is_mono(cx) || cx.global::<theme::Theme>().scheme == theme::Scheme::Light {
-                cx.global::<theme::Theme>().primary_ink
-            } else {
-                ink(cx)
-            }
+        .focus_visible(|s| s.border_1().border_color(alpha(skin.selection)))
+        .child(div().size(px(16.0)).rounded_full().bg(rgb(if on {
+            0x00ff_ffff
         } else {
-            ink_muted(cx)
+            skin.text3
         })))
 }
 
-/// Botón pill compartido; el secundario es transparente con contorno.
+/// Base de botón R9.2/§4: 36 de alto, radio md, contorno line.3.
 fn button_base(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> Stateful<Div> {
+    let skin = skin(cx);
     div()
         .id(id)
         .role(gpui::Role::Button)
         .aria_label(label.to_owned())
         .tab_index(0)
-        .h(px(cx
-            .try_global::<design::Tokens>()
-            .map_or(CONTROL_H, |tokens| {
-                tokens.geometry.control_height
-            })))
+        .h(px(36.0))
         .px(px(16.0))
         .flex_none()
         .flex()
         .items_center()
         .justify_center()
-        .rounded_full()
+        .gap(px(8.0))
+        .rounded(px(skin.radius.md))
         .bg(gpui::transparent_black())
         .border_1()
-        .border_color(rgba(line_strong(cx)))
+        .border_color(alpha(skin.line3))
         .cursor_pointer()
 }
 
+/// Botón secundario: transparente con contorno; hover con velo.
 pub fn button(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> Stateful<Div> {
+    let skin = skin(cx);
+    let hover = skin.hover;
     button_base(id, label, cx)
-        .hover(|s| s.bg(rgb(surface_3(cx))))
-        .focus_visible(|s| s.border_color(rgb(carmine(cx))))
-        .child(text(label.to_owned(), 13.0, 600, ink(cx), cx))
+        .hover(move |s| s.bg(alpha(hover)))
+        .focus_visible(|s| s.border_color(alpha(skin.selection)))
+        .child(text(label.to_owned(), 14.0, 500, skin.text1, cx))
 }
 
 /// Botón compacto de fila (Ajustes, Cuenta): discreto en reposo, responde a hover y foco.
@@ -888,60 +875,63 @@ pub fn disabled(control: Stateful<Div>, reason: &str) -> Stateful<Div> {
         .aria_description(reason.to_owned())
 }
 
-/// Combinación de teclas («Ctrl + K»): el único estilo de tecla del Hub.
+/// Combinación de teclas («Ctrl + K»): el único estilo de tecla del Hub (`kbd`).
 pub fn keycaps<S: Into<SharedString>>(keys: impl IntoIterator<Item = S>, cx: &gpui::App) -> Div {
-    let mut row = div().flex().flex_none().items_center().gap(px(6.0));
+    let skin = skin(cx);
+    let mut row = div().flex().flex_none().items_center().gap(px(4.0));
     for (index, key) in keys.into_iter().enumerate() {
         if index > 0 {
-            row = row.child(text("+", KEYCAP_TEXT, 500, ink_muted(cx), cx));
+            row = row.child(text("+", 11.0, 500, skin.cap, cx));
         }
         row = row.child(
             div()
-                .min_w(px(KEYCAP_MIN_W))
-                .h(px(KEYCAP_H))
-                .px(px(6.5))
+                .h(px(18.0))
+                .px(px(5.0))
                 .flex()
                 .items_center()
                 .justify_center()
-                .rounded(px(KEYCAP_RADIUS))
+                .rounded(px(3.0))
+                .bg(tint(0x00ff_ffff, 0.03))
                 .border_1()
-                .border_color(rgba(line_strong(cx)))
-                .bg(rgba(legacy_rgba(0xffff_ff06, cx)))
-                .child(mono_text(key, KEYCAP_TEXT, ink_2(cx), cx)),
+                .border_color(alpha(skin.line2))
+                .child(mono_text(key, 11.0, skin.text3, cx)),
         );
     }
     row
 }
 
-/// Botón principal (claro sobre oscuro, `--orbit-primary-*`).
+/// Botón blanco (`btn.pri`): text.1 de fondo y texto oscuro.
 pub fn primary_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<Div> {
+    let skin = skin(cx);
     button_base(id, label, cx)
         .self_start()
-        .bg(rgb(primary_bg(cx)))
-        .border_color(rgb(primary_bg(cx)))
-        .hover(|s| s.bg(rgb(ink(cx))))
-        .focus_visible(|s| s.border_color(rgb(carmine(cx))))
-        .child(text(label.to_owned(), 13.0, 600, primary_label(cx), cx))
-        .text_color(rgb(cx.global::<theme::Theme>().primary_ink))
+        .bg(rgb(skin.text1))
+        .border_color(rgb(skin.text1))
+        .hover(|s| s.bg(rgb(0x00ff_ffff)))
+        .focus_visible(|s| s.border_color(alpha(skin.selection)))
+        .child(text(label.to_owned(), 14.0, 500, skin.on_primary, cx))
 }
 
-/// Acción principal de acceso; conserva foco y semántica del botón Orbit.
+/// Botón principal R10.8: relleno del acento, brillo superior de 1 px, sin halo.
 pub fn carmine_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<Div> {
+    let skin = skin(cx);
+    let hover = skin.button_hover;
+    let pressed = skin.button_pressed;
     button_base(id, label, cx)
         .self_start()
-        .bg(linear_gradient(
-            135.0,
-            linear_color_stop(rgb(carmine(cx)), 0.0),
-            linear_color_stop(rgb(carmine_dark(cx)), 1.0),
-        ))
-        .when_some(cx.try_global::<design::Tokens>(), |button, tokens| {
-            button.bg(gradient(tokens.gradients.button, 180.0))
+        .rounded(px(10.0))
+        .border_0()
+        .bg(kit::ramp(skin.button, 180.0))
+        .shadow(vec![
+            kit::kit_shadow(0xffff_ff38, 1.0, 0.0, 0.0, true),
+            kit::kit_shadow(0x0000_0059, 1.0, 2.0, 0.0, false),
+        ])
+        .hover(move |s| s.bg(kit::ramp(hover, 180.0)))
+        .active(move |s| s.bg(rgb(pressed)))
+        .focus_visible(|s| s.border_2().border_color(rgb(skin.text1)))
+        .when(!label.is_empty(), |button| {
+            button.child(text(label.to_owned(), 15.0, 600, 0x00ff_ffff, cx))
         })
-        .border_color(rgb(carmine(cx)))
-        .hover(|style| style.bg(rgb(carmine(cx))))
-        .focus_visible(|style| style.border_2().border_color(rgb(ink(cx))))
-        .when(is_mono(cx), |button| button.bg(rgb(primary_bg(cx))))
-        .child(text(label.to_owned(), 13.0, 600, accent_label(cx), cx))
 }
 
 /// Valor seleccionable con el aspecto de un `select` Orbit.

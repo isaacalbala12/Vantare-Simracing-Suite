@@ -559,8 +559,7 @@ impl Strategy {
             .cursor_pointer()
             .when(selected_new, |row| {
                 row.bg(rgb(orbit::surface_2(cx)))
-                    .border_l_2()
-                    .border_color(rgb(orbit::carmine(cx)))
+                    .shadow(orbit::selection_ring(cx))
             })
             .child(orbit::text(
                 "Nueva estrategia",

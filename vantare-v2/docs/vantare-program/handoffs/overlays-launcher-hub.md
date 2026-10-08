@@ -1,5 +1,10 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+> **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
+> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
+> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
+> estados de trackers anteriores son evidencia histórica, no instrucciones.
+
 ## 2026-09-28 · ISA-1406 · Navegación Orbit sin salto
 
 El harness de la shell reprodujo en Inicio → Ajustes un primer fotograma con

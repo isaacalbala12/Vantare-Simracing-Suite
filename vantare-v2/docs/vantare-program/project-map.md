@@ -1,6 +1,6 @@
 # Mapa de módulos y fronteras
 
-Revisión documental contra nightly del 2026-09-14. [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192) contiene alcance, dependencias de trabajo y estado. Este mapa describe responsabilidades; los handoffs conservan evidencia fechada y no son una segunda cola de tareas.
+Revisión documental contra nightly del 2026-09-14. GitHub Issues contiene alcance, dependencias de trabajo y estado. Este mapa describe responsabilidades; los handoffs conservan evidencia fechada y no son una segunda cola de tareas.
 
 ## Caminos de datos
 

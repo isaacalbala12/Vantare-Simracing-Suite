@@ -151,11 +151,11 @@ pub fn summary_row(
 ) -> Stateful<Div> {
     let title = title.into();
     let subtitle = subtitle.into();
-    controls::list_row(title.clone(), &title, &subtitle, false, true, cx)
-        .role(gpui::Role::GenericContainer)
-        .tab_stop(false)
-        .cursor_default()
-        .hover(|style| style.bg(gpui::transparent_black()))
+    // Es contenido, no un botón desactivado: sin foco ni acciones heredadas.
+    controls::list_row_content(&title, &subtitle, cx)
+        .id(title.clone())
+        .role(gpui::Role::Group)
+        .aria_label(title)
         .relative()
         .pl(px(42.0))
         .min_h(px(54.0))

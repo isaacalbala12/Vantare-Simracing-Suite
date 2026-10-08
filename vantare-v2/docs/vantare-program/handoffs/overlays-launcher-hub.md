@@ -5822,3 +5822,15 @@ en calidad-1-evidence/reanudacion/VERIFICACION.md. Instalación real intacta.
 Siguiente: revisión del orquestador/Isaac; latencia de entrada pendiente.
 Solo commits/merges locales autorizados y seguimiento GitHub; sin push/PR/
 CI remota/promoción/release. No se afirma aceptación ≥9 ni publicación.
+
+### #1496 — calidad vuelta 2 (2026-10-08, rama aislada)
+Base 80c0d910 en C:/tmp/vw3-ui-calidad; brief/revisión externos autorizan
+D1–D3, V1 y evidencia E1–E3 del conjunto R0–R6. Sin delegación/push/PR.
+Grupo compartido D1/D2: primary_button conserva pareja AA normal/hover,
+feedback por borde; Layer Popover aplica cristal a ambos stops del fondo,
+Choice conserva el mismo alfa y modal opaco queda explícito en la ayuda.
+Regresión efectiva nueve paletas × claro/oscuro × cristal50/100 con
+persistencia; Nextest seleccionado2/2 y Clippy workspace-Dwarnings PASS.
+Evidencia C:/tmp/ui-r10/calidad-2-evidence/logs/shared-*.log.
+Pendiente capturas/interacciones, D3/V1, layout físico e input→Present;
+no se atribuye nota ≥9, fluidez, live ni promoción a estos tests.

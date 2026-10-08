@@ -900,16 +900,18 @@ pub fn keycaps<S: Into<SharedString>>(keys: impl IntoIterator<Item = S>, cx: &gp
     row
 }
 
-/// Botón blanco (`btn.pri`): text.1 de fondo y texto oscuro.
+/// Botón neutro (`btn.pri`): pareja semántica legible en ambos esquemas.
 pub fn primary_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<Div> {
     let skin = skin(cx);
+    let (background, foreground) = skin.primary_button_colors();
+    let hover_border = skin.selection;
     button_base(id, label, cx)
         .self_start()
-        .bg(rgb(skin.text1))
-        .border_color(rgb(skin.text1))
-        .hover(|s| s.bg(rgb(0x00ff_ffff)))
+        .bg(rgb(background))
+        .border_color(rgb(background))
+        .hover(move |s| s.bg(rgb(background)).border_color(alpha(hover_border)))
         .focus_visible(|s| s.border_color(alpha(skin.selection)))
-        .child(text(label.to_owned(), 14.0, 500, skin.on_primary, cx))
+        .child(text(label.to_owned(), 14.0, 500, foreground, cx))
 }
 
 /// Botón principal R10.8: relleno del acento, brillo superior de 1 px, sin halo.

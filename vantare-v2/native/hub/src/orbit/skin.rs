@@ -101,6 +101,12 @@ const fn alpha(rgb: u32, a: u8) -> u32 {
 }
 
 impl Skin {
+    /// Pareja efectiva del botón neutro, también en hover. El feedback cambia
+    /// el borde, sin sustituir el fondo por un blanco incompatible en Claro.
+    pub fn primary_button_colors(&self) -> (u32, u32) {
+        (self.text1, self.on_primary)
+    }
+
     pub fn resolve(palette: Palette, scheme: Scheme) -> Self {
         let mut skin = match palette {
             Palette::Classic => Self::classic(),
@@ -593,9 +599,10 @@ mod tests {
                         );
                     }
                 }
+                let (background, foreground) = skin.primary_button_colors();
                 assert!(
-                    contrast(skin.on_primary, skin.text1) >= 4.5,
-                    "{palette:?}/{scheme:?}: botón blanco"
+                    contrast(foreground, background) >= 4.5,
+                    "{palette:?}/{scheme:?}: botón neutro normal y hover"
                 );
                 for background in [
                     skin.button.from,

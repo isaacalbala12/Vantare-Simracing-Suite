@@ -24,6 +24,16 @@ pub struct Layer {
     popover_size: Option<(f32, f32)>,
 }
 impl EventEmitter<Dismissed> for Layer {}
+/// Solo los popovers comparten el ajuste de cristal con Choice. Los diálogos
+/// modales conservan su superficie opaca para separar una decisión del fondo.
+fn panel_ramp(theme: &super::theme::Theme, modal: bool) -> super::skin::Ramp {
+    let opacity = if modal { 255 } else { theme.panel_bg & 255 };
+    super::skin::Ramp {
+        from: (theme.skin.neo.from << 8) | opacity,
+        to: (theme.skin.neo.to << 8) | opacity,
+        end: theme.skin.neo.end,
+    }
+}
 impl Layer {
     /// `targets`: controles habilitados en orden de Tab; actualizar si cambia el contenido.
     pub fn new(
@@ -146,7 +156,10 @@ impl Render for Layer {
             .overflow_y_scroll()
             .rounded(px(super::skin(cx).radius.lg))
             // Panel flotante §3: relleno 180° y luz superior; sin desenfoque exterior.
-            .bg(super::ramp(super::skin(cx).neo, 180.0))
+            .bg(super::ramp_alpha(
+                panel_ramp(cx.global::<super::theme::Theme>(), modal),
+                180.0,
+            ))
             .shadow(vec![super::kit_shadow(
                 super::skin(cx).neo_light,
                 1.0,
@@ -179,6 +192,44 @@ impl Render for Layer {
                 deferred(anchored().position(position).snap_to_window().child(panel))
                     .with_priority(MENU_Z)
                     .into_any_element()
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::orbit::theme::{AppearanceSettings, Palette, Scheme, resolve_hub};
+
+    #[test]
+    fn saved_glass_changes_choice_and_notification_backgrounds_without_fading_children() {
+        for palette in Palette::ALL {
+            for scheme in [Scheme::Light, Scheme::Dark] {
+                for glass_opacity in [50, 100] {
+                    let settings = AppearanceSettings {
+                        palette,
+                        scheme,
+                        glass_opacity,
+                        ..Default::default()
+                    };
+                    let saved =
+                        serde_json::from_str(&serde_json::to_string(&settings).unwrap()).unwrap();
+                    let theme = resolve_hub(saved, gpui::WindowAppearance::Dark);
+                    let popover = panel_ramp(&theme, false);
+                    let expected = u32::from(glass_opacity) * 255 / 100;
+                    assert_eq!(
+                        super::super::controls::choice_background(&theme) & 255,
+                        expected
+                    );
+                    assert_eq!((popover.from & 255, popover.to & 255), (expected, expected));
+                    assert_eq!(
+                        (popover.from >> 8, popover.to >> 8),
+                        (theme.skin.neo.from, theme.skin.neo.to)
+                    );
+                    let modal = panel_ramp(&theme, true);
+                    assert_eq!((modal.from & 255, modal.to & 255), (255, 255));
+                }
             }
         }
     }

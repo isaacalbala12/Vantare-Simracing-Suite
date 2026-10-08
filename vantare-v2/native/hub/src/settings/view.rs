@@ -855,7 +855,7 @@ impl Hub {
                     ))
                     .child(section_row(
                         "Opacidad del cristal",
-                        "Menús flotantes; tarjetas y barras opacas",
+                        "Menús y avisos flotantes; tarjetas, barras y diálogos opacos",
                         opacity,
                         self.shell.adapt,
                         cx,

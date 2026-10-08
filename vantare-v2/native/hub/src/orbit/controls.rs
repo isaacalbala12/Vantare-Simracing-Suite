@@ -4,6 +4,9 @@ use gpui::{
     Context, Div, EventEmitter, FocusHandle, IntoElement, Render, Stateful, Window, anchored,
     deferred, div, px, rgb, rgba,
 };
+pub(super) fn choice_background(theme: &theme::Theme) -> u32 {
+    theme.panel_bg
+}
 /// Select/input §4 (32, radio sm): l2 hundido con contorno; foco con anillo del acento.
 pub fn field(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
     let skin = skin(cx);
@@ -274,7 +277,7 @@ impl Choice {
                 .rounded(px(RADIUS_CONTROL))
                 .border_1()
                 .border_color(rgba(line_strong(cx)))
-                .bg(rgba(cx.global::<theme::Theme>().panel_bg))
+                .bg(rgba(choice_background(cx.global::<theme::Theme>())))
                 .on_mouse_down_out(cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
                     // El botón alterna en click; cerrarlo aquí lo volvería a abrir.
                     if !this

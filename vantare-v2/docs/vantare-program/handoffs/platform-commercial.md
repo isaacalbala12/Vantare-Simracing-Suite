@@ -1684,3 +1684,15 @@ curso; primer intento oculto falló por HWND no visible, repetido correctamente
 por ruta nativa prevista. Logs/manifiesto: calidad-1-evidence/reanudacion.
 Latencia de entrada sigue pendiente (PresentMon msSinceInput=0); no se
 certifica fluidez, DPI físico, LMU live, OBS, login ni Mac. Solo local.
+
+Cierre de la tanda de calidad (código70e15d11): 144/144 PNG en 1920×1080 y
+1280×720, Vantare/DeepSeek, hashes y dimensiones comprobados. Doce hojas
+y originales de casos principales inspeccionados; sin regresión de conflictos
+observada en la muestra. Ventanas y helpers QA cerrados; mutex libre.
+Tres aliases históricos Workshop/Telemetría/Licencias muestran Inicio/cargando
+y no acreditan esos módulos; R0–R6 sí cubiertos. No paridad exacta ni latencia.
+Informe≤15 líneas C:/tmp/ui-r10/informe-calidad-1.md; logs/diff/manifiestos/manual
+en calidad-1-evidence/reanudacion/VERIFICACION.md. Instalación real intacta.
+Siguiente: revisión del orquestador/Isaac; latencia de entrada pendiente.
+Solo commits/merges locales autorizados y seguimiento GitHub; sin push/PR/
+CI remota/promoción/release. No se afirma aceptación ≥9 ni publicación.

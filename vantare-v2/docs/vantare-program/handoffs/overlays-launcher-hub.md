@@ -5496,3 +5496,40 @@ Siguiente: revisión del orquestador y smoke autenticado antes de aceptar/integr
 Solo commit local; sin push/PR/CI remota/merge/promoción/release ni acciones externas
 fuera del seguimiento GitHub autorizado. Go/TS no ejecutados: solo cambia Rust/UI.
 Roadmap plan.md ausente en esta base; no se crea otra fuente ni se cambia alcance público.
+
+### #1468 — H2H sectores, opción 1 (continuación 2026-10-08)
+
+Worker C:/tmp/vw3-1468-h2h/vantare-v2, rama vantareapp/isa-1468-h2h-sectores,
+base aa8ba9e18e057426e65d1595c17727080e8a08b7. Se conservan los tres cambios
+Rust del intento interrumpido por disco lleno. Handoff vacío recuperado íntegro
+de HEAD antes de añadir esta entrada; no se elimina documentación histórica.
+Opción 1 aprobada: 388×158, rivales 48 px y jugador 62 px, tipografía Inter 14.
+Rivales conservan nombre/clase/rótulo/gap y añaden S1/S2/S3 de última vuelta y MEJ.
+Solo tiempos Reliable positivos finitos; ausencia o calidad no fiable → —.
+Demanda LapTimes/Sectors 250 ms bajo showSectors; Positions/Relative 33 ms.
+Studio usa wanted_size compartido; regresión de Editor::add comprueba tamaño
+388×158 y colocación dentro del canvas. Sin adquisición/DTO/dependencias nuevas.
+Hashes ACC/LMU47 intactos, máximo tres sectores en ambos corpus. Gates finales PASS:
+fmt + módulos explícitos, check, Clippy -D warnings, Nextest 1236/1236 (6 skips),
+lifecycle 18/18, build Prueba/parity-capture. Evidencia C:/tmp/1468-h2h-evidence.
+Toda compilación por C:/tmp/fase2/compilar.ps1, -j 2, target propio de este worktree
+(restaurado a C: con espacio disponible). No se reutilizan gates del intento previo.
+plan.md ausente en base y origin/nightly; no se recrea. Usuario/brief fijan GitHub
+como tracker frente a instrucciones históricas Notion del checkout.
+Sin push/PR/merge/promoción/release. No certifica conducción live, OBS, Mac ni DPI.
+Capturas ACC/LMU47 MIRADAS: sectores ACC 37.860/41.505/38.987 y MEJ 1:58.352;
+LMU47 sectores —, MEJ 4:40.566. Textos originales conservados, sin recortes.
+Studio: catálogo real Añadir widget → Cara a cara; inspector 388×158, x20/y20,
+marco dentro del canvas. Escena Ejemplo QA aislada; hay superposición inicial
+con widgets existentes en esa zona. No certifica autoordenación ni drag/resize.
+Primer Studio --demo/--studio mostró Comprobando sesión: PNG conservado como
+diagnóstico, repetido con --capture studio-base y controles reales. Harness
+PowerShell temporal externo mantuvo abierta esa escena; no cambió binario ni acceso
+productivo. Cambio de Objetivo a Detrás inspeccionado; proceso QA cerrado.
+Standings 0/292160 px, umbral 0/delta 0 contra candidata union2; imágenes/diff MIRADOS.
+Alfa capture-alpha.ps1 108/108 opacas a 1920/1440/1280; nueve hojas MIRADAS.
+Falló una compilación Nextest lexical-core vía sccache sin diagnóstico adicional;
+repetición local RUSTC_WRAPPER vacío PASS sin cambiar config/repo/tests. Logs intactos.
+Warning heredado de build parity-capture analysis/view.rs (cx) conservado;
+Clippy normal PASS. Solo entrega y commit locales para review del orquestador.
+Sin rama remota/PR verificado, sin CI remota, push, merge, promoción ni release.

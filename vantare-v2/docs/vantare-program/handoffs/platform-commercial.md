@@ -4,7 +4,11 @@
 
 Entrega técnica verificada en `C:/tmp/vw3-1511/vantare-v2`, rama
 `vantareapp/isa-1511-nombre-vantare`, base candidata `a8f9bdc3`.
-Pendiente de PR draft y revisión del orquestador; sin integración ni publicación.
+Código `731af462624a482bdbdb2c62a5ac5b910a298bc4`, push verificado; PR draft
+[#1518](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1518)
+contra `vantareapp/isa-1470-candidato-beta` (base remota `a8f9bdc3`). CI recién
+iniciada (ratchet, native-linux y GitGuardian); no se afirma verde. Entrega
+para revisión del orquestador, sin integración ni publicación.
 NSIS/Inicio/DisplayName/ventana pasan a Vantare; la carpeta nueva por defecto
 es `Programs/Vantare`. Se conserva clave `VantareNativeBeta`, canal/tag/asset
 beta y la raíz de instalaciones anteriores: compatibilidad con el updater y

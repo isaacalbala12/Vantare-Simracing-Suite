@@ -1,7 +1,7 @@
 //! Pantalla beta: catálogo UTC y seguimiento locales; avisos sin servicio se anuncian pendientes.
 use super::{Calendar, Series, views};
 use crate::orbit;
-use chrono::{DateTime, Datelike, Duration, Local, Timelike, Utc};
+use chrono::{DateTime, Datelike, Duration, Local, Utc};
 use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb, rgba};
 use std::collections::BTreeSet;
 
@@ -16,7 +16,7 @@ pub(super) fn classes(series: &Series) -> Vec<&str> {
             .collect()
     }
 }
-fn class_color(class: &str, cx: &gpui::App) -> u32 {
+pub(super) fn class_color(class: &str, cx: &gpui::App) -> u32 {
     match class {
         "Hypercar" => 0x00e1_4a54,
         "LMP2" => 0x004c_8df6,
@@ -96,9 +96,14 @@ pub(super) fn next_rows(
         .filter(|series| includes(calendar, series))
     {
         // Una salida por serie. Las semanales también se ven fuera de la próxima hora.
+        let horizon = if series.recurrence.kind == "interval" {
+            Duration::minutes(series.recurrence.interval_minutes)
+        } else {
+            Duration::days(7)
+        };
         if let Some(at) = calendar
             .schedule
-            .starts(series, now, now + Duration::days(7))?
+            .starts(series, now, now + horizon)?
             .into_iter()
             .next()
         {
@@ -107,6 +112,12 @@ pub(super) fn next_rows(
     }
     rows.sort_by(|a, b| a.at.cmp(&b.at).then_with(|| a.series.id.cmp(&b.series.id)));
     Ok(rows)
+}
+fn start_label(at: DateTime<Utc>) -> String {
+    let local = at.with_timezone(&Local);
+    let weekday = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+        [local.weekday().num_days_from_monday() as usize];
+    format!("{weekday} {}", local.format("%H:%M · UTC%:z"))
 }
 fn countdown(at: DateTime<Utc>, now: DateTime<Utc>) -> String {
     let minutes = (at - now).num_seconds().max(0).saturating_add(59) / 60;
@@ -326,17 +337,7 @@ fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> 
                                     ),
                             )
                             .child(orbit::text(
-                                {
-                                    let at = next.at.with_timezone(&Local);
-                                    format!(
-                                        "{} {:02}:{:02} · {}",
-                                        ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
-                                            [at.weekday().num_days_from_monday() as usize],
-                                        at.hour(),
-                                        at.minute(),
-                                        at.format("%Z")
-                                    )
-                                },
+                                start_label(next.at),
                                 12.0,
                                 400,
                                 orbit::ink_3(cx),
@@ -577,11 +578,15 @@ fn week_card(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
         let mut days = div().flex().gap(px(6.0));
         for day in 0_u8..7 {
             let date = monday + Duration::days(i64::from(day));
-            let starts = views::midnight(date, &Local).and_then(|from| {
-                views::midnight(date + Duration::days(1), &Local).and_then(|to| {
-                    views::starts(&calendar.schedule, views::Filter::default(), from, to)
+            let starts = if matches!(calendar.schedule.is_current(now), Ok(true)) {
+                views::midnight(date, &Local).and_then(|from| {
+                    views::midnight(date + Duration::days(1), &Local).and_then(|to| {
+                        views::starts(&calendar.schedule, views::Filter::default(), from, to)
+                    })
                 })
-            });
+            } else {
+                Ok(Vec::new())
+            };
             days = days.child(
                 div()
                     .flex_1()
@@ -682,7 +687,14 @@ pub(super) fn rail_sections(
             orbit::ink_3(cx),
             cx,
         ));
-    let mut follows = div().flex().flex_col().min_h_0().gap(px(8.0));
+    let mut follows = div()
+        .id("calendar-reminders")
+        .flex_1()
+        .overflow_y_scroll()
+        .flex()
+        .flex_col()
+        .min_h_0()
+        .gap(px(8.0));
     for series in calendar
         .schedule
         .series
@@ -716,6 +728,79 @@ pub(super) fn rail_sections(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn next_hour_is_half_open_and_ignores_later_races() {
+        let dir = std::env::temp_dir().join("vantare-r6-next-hour-fixture");
+        let mut calendar = Calendar::load(&dir).expect("calendario");
+        calendar.schedule.series.truncate(1);
+        calendar.schedule.series[0].recurrence.kind = "interval".into();
+        calendar.schedule.series[0].recurrence.interval_minutes = 60;
+        calendar.schedule.series[0].start_offset_minute = 0;
+        let now = calendar.schedule.window().expect("vigencia").0;
+        let rows = next_hour_rows(&calendar, now).expect("hora");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].at, now);
+        let posters = next_rows(&calendar, now).expect("carteles");
+        let agenda = views::day_rows(
+            &calendar.schedule,
+            views::Filter::default(),
+            now.date_naive(),
+            now,
+            &Utc,
+        )
+        .expect("agenda");
+        assert_eq!(posters[0].series.id, rows[0].series.id);
+        assert_eq!(posters[0].at, rows[0].at);
+        assert!(
+            agenda
+                .iter()
+                .flat_map(|hour| &hour.events)
+                .any(|event| event.series.id == rows[0].series.id && event.at == rows[0].at)
+        );
+        calendar.schedule.series[0].recurrence.interval_minutes = 1;
+        calendar.schedule.valid_until = (now + Duration::days(8)).to_rfc3339();
+        assert_eq!(
+            next_rows(&calendar, now)
+                .expect("una sola salida sin expandir 10080 ocurrencias")
+                .len(),
+            1
+        );
+        calendar.schedule.series[0].recurrence.interval_minutes = 120;
+        let after = now + Duration::seconds(1);
+        assert!(
+            !next_rows(&calendar, after)
+                .expect("salida posterior")
+                .is_empty()
+        );
+        assert!(
+            next_hour_rows(&calendar, after)
+                .expect("hora vacía")
+                .is_empty()
+        );
+        let expired = now + Duration::days(100);
+        assert!(
+            next_rows(&calendar, expired)
+                .expect("carteles caducados")
+                .is_empty()
+        );
+        assert!(
+            next_hour_rows(&calendar, expired)
+                .expect("tiempos caducados")
+                .is_empty()
+        );
+        assert!(
+            views::day_rows(
+                &calendar.schedule,
+                views::Filter::default(),
+                expired.date_naive(),
+                expired,
+                &Utc
+            )
+            .expect("agenda caducada")
+            .iter()
+            .all(|hour| hour.events.is_empty())
+        );
+    }
     #[test]
     fn filters_and_countdown_use_catalog_and_real_clock() {
         let dir = std::env::temp_dir().join("vantare-1470-calendar-filters");

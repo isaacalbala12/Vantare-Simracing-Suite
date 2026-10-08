@@ -17,6 +17,15 @@ pub(crate) struct State {
 }
 impl State {
     pub(crate) fn load() -> Self {
+        #[cfg(feature = "parity-capture")]
+        if std::env::args().any(|argument| argument == "--capture") {
+            let view = match std::env::var("VANTARE_CAPTURE_ROADMAP_VIEW").as_deref() {
+                Ok("b") => View::Board,
+                Ok("c") => View::Season,
+                _ => View::Circuit,
+            };
+            return Self { view };
+        }
         Self {
             view: View::default(),
         }
@@ -241,10 +250,26 @@ mod tests {
     #[test]
     fn published_lanes_preserve_content_and_done_stays_out_of_board() {
         let publication = publication();
-        let board: Vec<_> = ["now", "next", "later"].into_iter().flat_map(|section| items(&publication, section)).map(|item| item.id.as_str()).collect();
+        let board: Vec<_> = ["now", "next", "later"]
+            .into_iter()
+            .flat_map(|section| items(&publication, section))
+            .map(|item| item.id.as_str())
+            .collect();
         assert_eq!(board, vec!["now", "next"]);
-        assert_eq!(items(&publication, "done").map(|item| item.id.as_str()).collect::<Vec<_>>(), vec!["done"]);
-        assert_eq!(items(&publication, "now").next().expect("publicado").body.es, "Publicación del servicio");
+        assert_eq!(
+            items(&publication, "done")
+                .map(|item| item.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["done"]
+        );
+        assert_eq!(
+            items(&publication, "now")
+                .next()
+                .expect("publicado")
+                .body
+                .es,
+            "Publicación del servicio"
+        );
     }
     #[test]
     fn empty_publication_remains_empty_without_local_fallback() {

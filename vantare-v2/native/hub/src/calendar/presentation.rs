@@ -33,125 +33,130 @@ fn page(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
         .gap(px(cx.global::<orbit::Adapt>().gap()))
 }
 
+fn agenda_event(
+    calendar: &Calendar,
+    event: &views::Start<'_>,
+    cx: &mut Context<Calendar>,
+) -> Stateful<Div> {
+    let id = event.series.id.clone();
+    let favorite = calendar.following.series_ids.contains(&id);
+    let color = beta::classes(event.series)
+        .first()
+        .map_or(orbit::ink_3(cx), |class| beta::class_color(class, cx));
+    div()
+        .id(format!("calendar-slot-{id}-{}", event.at.timestamp()))
+        .min_w_0()
+        .role(gpui::Role::Button)
+        .tab_index(0)
+        .aria_label(format!("{} · marcar favorita", event.series.name))
+        .aria_selected(favorite)
+        .p(px(4.0))
+        .rounded(px(orbit::skin(cx).radius.sm))
+        .bg(orbit::tint(color, if favorite { 0.18 } else { 0.08 }))
+        .child(orbit::text(
+            event.at.with_timezone(&Local).format("%H:%M").to_string(),
+            10.0,
+            500,
+            color,
+            cx,
+        ))
+        .child(
+            orbit::text(event.series.name.clone(), 11.0, 600, orbit::ink(cx), cx)
+                .whitespace_nowrap()
+                .overflow_hidden()
+                .text_ellipsis(),
+        )
+        .on_click(cx.listener(move |this, _, _, cx| {
+            this.error = this.follow(id.clone()).err();
+            cx.notify();
+        }))
+}
+
+fn agenda_grid(
+    calendar: &Calendar,
+    now: DateTime<Utc>,
+    cx: &mut Context<Calendar>,
+) -> Result<Div, String> {
+    let today = now.with_timezone(&Local).date_naive();
+    let monday = views::week_anchor(today)?;
+    let mut days = Vec::new();
+    let mut header = div()
+        .flex()
+        .gap(px(4.0))
+        .child(div().w(px(48.0)).flex_none());
+    for (index, name) in ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+        .into_iter()
+        .enumerate()
+    {
+        let date =
+            monday + Duration::days(i64::try_from(index).map_err(|error| error.to_string())?);
+        days.push(views::day_rows(
+            &calendar.schedule,
+            views::Filter::default(),
+            date,
+            now,
+            &Local,
+        )?);
+        header = header.child(
+            orbit::text(
+                format!("{name} {}", date.day()),
+                10.0,
+                500,
+                orbit::ink_3(cx),
+                cx,
+            )
+            .flex_1()
+            .min_w_0(),
+        );
+    }
+    let mut grid = div().flex().flex_col().gap(px(4.0)).child(header);
+    for hour in 0..24 {
+        let mut line = div()
+            .flex()
+            .gap(px(4.0))
+            .min_h(px(cx.global::<orbit::Adapt>().row_height()))
+            .child(
+                orbit::text(format!("{hour:02}:00"), 10.0, 500, orbit::ink_3(cx), cx)
+                    .w(px(48.0))
+                    .flex_none(),
+            );
+        for day in &days {
+            let cell = &day[hour];
+            let mut column = div()
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .gap(px(3.0))
+                .p(px(3.0))
+                .border_b_1()
+                .border_color(orbit::alpha(orbit::skin(cx).line1))
+                .when(cell.now, |cell| {
+                    cell.bg(orbit::tint(orbit::carmine(cx), 0.08))
+                });
+            for event in cell
+                .events
+                .iter()
+                .filter(|event| beta::includes(calendar, event.series))
+            {
+                column = column.child(agenda_event(calendar, event, cx));
+            }
+            line = line.child(column);
+        }
+        grid = grid.child(line);
+    }
+    Ok(grid)
+}
+
 pub(super) fn agenda(
     calendar: &Calendar,
     now: DateTime<Utc>,
     cx: &mut Context<Calendar>,
 ) -> Stateful<Div> {
-    let today = now.with_timezone(&Local).date_naive();
-    let rows = views::week_anchor(today).and_then(|monday| {
-        views::week_rows(
-            &calendar.schedule,
-            views::Filter {
-                tier: calendar.tier_filter.as_deref(),
-                ..Default::default()
-            },
-            monday,
-            now,
-            &Local,
-        )
-    });
-    let mut grid = div()
-        .id("calendar-week-list")
-        .flex_1()
-        .min_h_0()
-        .overflow_y_scroll()
-        .flex()
-        .flex_col();
-    match rows {
-        Ok(rows) => {
-            let mut header = div()
-                .flex()
-                .gap(px(4.0))
-                .py(px(8.0))
-                .child(div().w(px(150.0)).flex_none());
-            for day in 0..7 {
-                let date =
-                    views::week_anchor(today).expect("semana ya validada") + Duration::days(day);
-                header = header.child(
-                    orbit::text(
-                        format!(
-                            "{} {}",
-                            ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"][day as usize],
-                            date.day()
-                        ),
-                        10.0,
-                        500,
-                        orbit::ink_3(cx),
-                        cx,
-                    )
-                    .flex_1()
-                    .min_w_0(),
-                );
-            }
-            grid = grid.child(header);
-            for row in rows
-                .into_iter()
-                .filter(|row| beta::includes(calendar, row.series))
-            {
-                let mut line = div()
-                    .flex()
-                    .gap(px(4.0))
-                    .py(px(8.0))
-                    .border_b_1()
-                    .border_color(orbit::alpha(orbit::skin(cx).line1))
-                    .child(
-                        div()
-                            .w(px(150.0))
-                            .flex_none()
-                            .min_w_0()
-                            .child(
-                                orbit::text(row.series.name.clone(), 12.0, 600, orbit::ink(cx), cx)
-                                    .text_ellipsis()
-                                    .overflow_hidden()
-                                    .whitespace_nowrap(),
-                            )
-                            .child(beta::tier_pill(&row.series.tier, cx))
-                            .child(
-                                div()
-                                    .flex()
-                                    .gap(px(4.0))
-                                    .child(beta::follow_button(calendar, row.series, cx))
-                                    .child(beta::reminder_button(calendar, row.series, cx)),
-                            ),
-                    );
-                for cell in row.cells {
-                    let mut day = div()
-                        .flex_1()
-                        .min_w_0()
-                        .flex()
-                        .flex_col()
-                        .gap(px(4.0))
-                        .p(px(4.0))
-                        .rounded(px(orbit::skin(cx).radius.sm))
-                        .when(cell.today, |day| {
-                            day.bg(orbit::tint(orbit::carmine(cx), 0.08))
-                        });
-                    for time in cell.slots {
-                        day = day.child(orbit::text(
-                            time.with_timezone(&Local).format("%H:%M").to_string(),
-                            11.0,
-                            500,
-                            orbit::ink_2(cx),
-                            cx,
-                        ));
-                    }
-                    if cell.more > 0 {
-                        day = day.child(orbit::text(
-                            format!("+{}", cell.more),
-                            10.0,
-                            400,
-                            orbit::ink_3(cx),
-                            cx,
-                        ));
-                    }
-                    line = line.child(day);
-                }
-                grid = grid.child(line);
-            }
-        }
-        Err(error) => grid = grid.child(orbit::callout(error, cx)),
-    }
+    let grid = match agenda_grid(calendar, now, cx) {
+        Ok(grid) => grid,
+        Err(error) => orbit::callout(error, cx),
+    };
     page("calendar-agenda", cx)
         .child(
             orbit::neo_card(cx)
@@ -164,11 +169,110 @@ pub(super) fn agenda(
                     cx,
                 ))
                 .child(beta::filters(calendar, cx))
-                .child(grid),
+                .child(
+                    div()
+                        .id("calendar-week-list")
+                        .flex_1()
+                        .min_h_0()
+                        .overflow_y_scroll()
+                        .child(grid),
+                ),
         )
         .when_some(calendar.error.clone(), |page, error| {
             page.child(orbit::callout(error, cx))
         })
+}
+
+fn poster_card(calendar: &Calendar, row: &views::Start<'_>, cx: &mut Context<Calendar>) -> Div {
+    let compact = cx.global::<orbit::Adapt>().center_width() < 950.0;
+    let local = row.at.with_timezone(&Local);
+    orbit::neo_card(cx)
+        .flex_none()
+        .min_w_0()
+        .flex_row()
+        .items_center()
+        .gap(px(if compact { 12.0 } else { 20.0 }))
+        .child(
+            div()
+                .w(px(if compact { 80.0 } else { 110.0 }))
+                .flex_none()
+                .flex()
+                .flex_col()
+                .gap(px(6.0))
+                .child(orbit::caps(
+                    &local.format("%H:%M").to_string(),
+                    if compact { 24.0 } else { 30.0 },
+                    orbit::ink(cx),
+                    cx,
+                ))
+                .child(orbit::text(
+                    local.format("%d/%m").to_string(),
+                    11.0,
+                    500,
+                    orbit::ink_3(cx),
+                    cx,
+                )),
+        )
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .gap(px(6.0))
+                .child(
+                    div()
+                        .flex()
+                        .flex_wrap()
+                        .gap(px(4.0))
+                        .child(beta::tier_pill(&row.series.tier, cx))
+                        .children(
+                            beta::classes(row.series)
+                                .into_iter()
+                                .map(|class| beta::class_chip(class, cx)),
+                        ),
+                )
+                .child(
+                    orbit::text(row.series.name.clone(), 17.0, 600, orbit::ink(cx), cx)
+                        .whitespace_nowrap()
+                        .overflow_hidden()
+                        .text_ellipsis(),
+                )
+                .child(orbit::text(
+                    row.series.track.clone(),
+                    12.0,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                ))
+                .child(orbit::text(
+                    row.series.race_duration_min.map_or_else(
+                        || "Carrera · —".into(),
+                        |minutes| format!("Carrera · {minutes} min"),
+                    ),
+                    11.0,
+                    500,
+                    orbit::ink_3(cx),
+                    cx,
+                )),
+        )
+        .when(!compact, |card| {
+            card.child(
+                div()
+                    .w(px(130.0))
+                    .h(px(70.0))
+                    .flex_none()
+                    .child(orbit::circuit(Some(&row.series.track), cx).size_full()),
+            )
+        })
+        .child(
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(6.0))
+                .child(beta::follow_button(calendar, row.series, cx))
+                .child(beta::reminder_button(calendar, row.series, cx)),
+        )
 }
 
 pub(super) fn posters(
@@ -182,12 +286,10 @@ pub(super) fn posters(
         .min_h_0()
         .overflow_y_scroll()
         .flex()
-        .flex_wrap()
-        .content_start()
+        .flex_col()
         .gap(px(12.0));
     match beta::next_rows(calendar, now) {
         Ok(rows) => {
-            let width = poster_width(*cx.global::<orbit::Adapt>());
             if rows.is_empty() {
                 cards = cards.child(orbit::text(
                     "No hay carreras para estos filtros",
@@ -198,65 +300,7 @@ pub(super) fn posters(
                 ));
             }
             for row in rows {
-                cards = cards.child(
-                    orbit::neo_card(cx)
-                        .w(px(width))
-                        .min_w_0()
-                        .flex_none()
-                        .child(
-                            div()
-                                .h(px(70.0))
-                                .child(orbit::circuit(Some(&row.series.track), cx).size_full()),
-                        )
-                        .child(beta::tier_pill(&row.series.tier, cx))
-                        .child(
-                            orbit::caps(&row.series.name, 20.0, orbit::ink(cx), cx)
-                                .text_ellipsis()
-                                .overflow_hidden()
-                                .whitespace_nowrap(),
-                        )
-                        .child(orbit::text(
-                            row.series.track.clone(),
-                            12.0,
-                            400,
-                            orbit::ink_3(cx),
-                            cx,
-                        ))
-                        .child(orbit::text(
-                            row.at
-                                .with_timezone(&Local)
-                                .format("%a %d · %H:%M")
-                                .to_string(),
-                            11.0,
-                            500,
-                            orbit::ink_3(cx),
-                            cx,
-                        ))
-                        .child(orbit::text(
-                            row.series.race_duration_min.map_or_else(
-                                || "Carrera · —".into(),
-                                |minutes| format!("Carrera · {minutes} min"),
-                            ),
-                            12.0,
-                            500,
-                            orbit::ink_2(cx),
-                            cx,
-                        ))
-                        .child(
-                            div().flex().flex_wrap().gap(px(4.0)).children(
-                                beta::classes(row.series)
-                                    .into_iter()
-                                    .map(|class| beta::class_chip(class, cx)),
-                            ),
-                        )
-                        .child(
-                            div()
-                                .flex()
-                                .gap(px(8.0))
-                                .child(beta::follow_button(calendar, row.series, cx))
-                                .child(beta::reminder_button(calendar, row.series, cx)),
-                        ),
-                );
+                cards = cards.child(poster_card(calendar, &row, cx));
             }
         }
         Err(error) => cards = cards.child(orbit::callout(error, cx)),
@@ -267,35 +311,4 @@ pub(super) fn posters(
         .when_some(calendar.error.clone(), |page, error| {
             page.child(orbit::callout(error, cx))
         })
-}
-
-fn poster_width(adapt: orbit::Adapt) -> f32 {
-    let available = adapt.center_width() - 2.0 * adapt.padding().1;
-    let columns = if available >= 1050.0 { 3.0 } else { 2.0 };
-    ((available - (columns - 1.0) * 12.0) / columns).max(0.0)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn poster_columns_fit_seven_sizes_with_both_rail_states() {
-        for (width, height) in [
-            (1920.0, 1080.0),
-            (1800.0, 1000.0),
-            (1600.0, 900.0),
-            (1536.0, 864.0),
-            (1440.0, 900.0),
-            (1366.0, 768.0),
-            (1280.0, 720.0),
-        ] {
-            for open in [false, true] {
-                let adapt = orbit::Adapt::new(width, height, None, open);
-                let available = adapt.center_width() - 2.0 * adapt.padding().1;
-                let columns = if available >= 1050.0 { 3.0 } else { 2.0 };
-                assert!(poster_width(adapt) >= 230.0);
-                assert!(poster_width(adapt) * columns + (columns - 1.0) * 12.0 <= available + 0.01);
-            }
-        }
-    }
 }

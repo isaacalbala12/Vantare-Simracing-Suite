@@ -1616,3 +1616,55 @@ la base ni en `origin/nightly` consultado; no se crea un roadmap paralelo.
 Entrega local para revisión del orquestador; sin push, PR, CI remota, integración, promoción ni release. Siguiente: revisión y validación con un horario
 que Isaac publique. Se mantiene el cierre de services durante Live y el
 heartbeat/permisos existentes; no se amplía su vigencia durante llamadas de red.
+
+## #1496 — UI r10 R6: Calendario y Roadmap (2026-10-08)
+
+Trabajo local autorizado por brief-r6-calendario-roadmap.md; issue abierta.
+Rama vantareapp/isa-1496-ui-r6-calendario-roadmap; base exacta a5a01084 (R3).
+Sin push, PR, CI remota, merge, promoción ni release.
+docs/roadmap/plan.md no existe en esta base; no se crea una fuente paralela.
+
+Calendario: Agenda/Carteles/Tiempos en pestañas superiores; horario real,
+estrella y campana como preferencia persistente. Favoritas conservan el JSON
+anterior con seriesIds; campanas en calendar-reminders.json separado.
+Ambos archivos usan escritura atómica y comprobación de conflicto.
+Campana y autolanzamiento indican Próximamente: no entregan avisos ni lanzan.
+Hero de siguiente favorita independiente de filtros; próxima hora [now,now+1h)
+con una fila por serie. Recurrencias acotadas sin perder intervalos largos.
+Horario caducado/no publicado permanece vacío. Carril compartido
+Esta semana/Horario/Tus recordatorios; kit/tokens intactos.
+
+Roadmap: Circuito/Tablero/Temporada leen solo la Publication de services;
+Entregado queda en el carril. No usa el recurso editorial local como fallback.
+El contrato publicado solo contiene id/section/title/body; fases, áreas,
+porcentajes, fechas/versiones/canales por hito y later no existen en él.
+Se indican Próximamente sin inferir datos. No cambia schema, servicios remotos,
+IPC, dependencias ni publicación Supabase. Integrar los hunks puntuales de
+shell.rs y el bloque de accesores de services/view.rs junto a R4/R5.
+
+Checks por cola con target propio: fmt/check y Clippy -D warnings pasan;
+Nextest workspace 1258/1258 (6 skips heredados), lifecycle 18 casos PASS.
+Tras corregir Carteles a tarjetas horizontales: Nextest Hub 322/322, 0 skips;
+check/Clippy workspace, build prueba y QA parity-capture PASS; fmt --check PASS.
+Regresiones de favoritos/campana/formato anterior/conflicto, vacío/caducidad,
+proyecciones por vista, límites horario/recurrencia y copia sin inscripciones.
+Se retiró solo el test de grid añadido aquí al sustituirlo por la lista;
+ningún test heredado debilitado. QA conserva warning ajeno analysis/view.rs:989.
+
+Matriz visual completa e inspeccionada: 144 GPUI + 144 referencias, 3 temas,
+ambos carriles, 4 tamaños, 6 vistas; 36 hojas comparadas. Las 24 de Carteles
+se repitieron tras corregir su composición; las anteriores quedan archivadas.
+Fuente final Carteles/binario a4b7e0de; otras 120 imágenes ed2b9505, sin cambios
+en esas vistas. captures.json y VERIFICACION.md trazan ambos snapshots.
+Agenda sigue más densa que el mockup por conservar todas las salidas reales;
+Tiempos es más sencillo; Roadmap no tiene los campos ricos del ejemplo.
+No se declara paridad literal. Calendario QA usa horario oficial archivado;
+Roadmap QA muestra carga sin publicación utilizable. No es prueba live.
+
+Se respetó el marcador de pantalla y el mutex; ventanas aisladas cerradas.
+No hay prueba de login/calendario publicado live, LMU/OBS/macOS/DPI físico,
+ni entrega de avisos. Interacción y aceptación final pendientes de Isaac.
+Evidencia: C:/tmp/ui-r10/r6-evidence/VERIFICACION.md; informe-r6.md y logs.
+Siguiente: revisión del orquestador e integración autorizada de hunks compartidos.
+Preguntas: servicio futuro de avisos/autolanzamiento y contrato editorial rico;
+actualización del cuerpo R0 de #1496/plan canónico ausente.

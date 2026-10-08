@@ -1,4 +1,8 @@
-use super::{Action, Hub, Page, text_rendering::Paragraph, updates::LocalUpdate};
+use super::{
+    Action, Hub, Page,
+    text_rendering::{Grayscale, Paragraph},
+    updates::LocalUpdate,
+};
 use crate::{Section, orbit};
 use gpui::{
     Context, Div, IntoElement, Window, div, linear_color_stop, linear_gradient, prelude::*, px,
@@ -81,15 +85,6 @@ fn stack() -> Div {
         .min_h_0()
         .gap(px(12.0))
 }
-fn columns(compact: bool) -> Div {
-    div()
-        .flex()
-        .w_full()
-        .min_w_0()
-        .gap(px(12.0))
-        .items_start()
-        .when(compact, |element| element.flex_col().items_stretch())
-}
 fn section_text(
     content: &str,
     size: f32,
@@ -149,11 +144,20 @@ fn section_body() -> Div {
 }
 fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -> Div {
     let number = match title {
-        "Inicio" | "Temas" | "En el Hub" | "Canal" => 2,
-        "Avisos" | "Interfaz" | "En Studio" | "Notas de versión" => 3,
+        "Inicio" | "Temas" | "En el Hub" | "Canal" | "Diagnóstico local" => 2,
+        "Avisos" | "En Studio" | "Notas de versión" | "Registro observado" => 3,
         "Widgets" | "Movimiento" => 4,
         _ => 1,
     };
+    section_numbered(number, title, meta, body, cx)
+}
+fn section_numbered(
+    number: usize,
+    title: &str,
+    meta: Option<&str>,
+    body: Div,
+    cx: &gpui::App,
+) -> Div {
     orbit::settings_group(
         number,
         title,
@@ -164,15 +168,20 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -
                 card.child(orbit::meta(meta, 10.0, orbit::skin(cx).text3, cx))
             })
             .flex_1()
-            .child(body.min_h_0().flex_grow(1.0).id(format!("settings-body-{title}")).when(
-                matches!(
-                    title,
-                    "Notas de versión" | "Registro observado" | "Informe de diagnóstico local"
-                ),
-                |body| {
-                    body.overflow_y_scroll()
-                },
-            )),
+            .child(
+                body.min_h_0()
+                    .flex_grow(1.0)
+                    .id(format!("settings-body-{title}"))
+                    .when(
+                        matches!(
+                            title,
+                            "Notas de versión"
+                                | "Registro observado"
+                                | "Informe de diagnóstico local"
+                        ),
+                        gpui::StatefulInteractiveElement::overflow_y_scroll,
+                    ),
+            ),
         cx,
     )
 }
@@ -197,85 +206,7 @@ fn reference_choice(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stat
 fn reference_primary(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
     orbit::carmine_button(id, label, cx)
 }
-fn privacy_bullet(content: &str, cx: &gpui::App) -> Div {
-    div()
-        .flex()
-        .items_start()
-        .gap(px(8.0))
-        .child(orbit::text("•", 14.0, 400, orbit::ink_3(cx), cx).flex_none())
-        .child(
-            div()
-                .flex_1()
-                .min_w_0()
-                .child(paragraph(content, 14.0, 400, orbit::ink_2(cx), cx)),
-        )
-}
 /// Tarjeta de tema R10.1: nombre y dos orbes (claro y oscuro) con acento y fondo.
-fn appearance_slider(
-    value: f32,
-    min: f32,
-    max: f32,
-    label: &'static str,
-    cx: &gpui::App,
-) -> gpui::Stateful<Div> {
-    let fraction = ((value - min) / (max - min)).clamp(0.0, 1.0);
-    let fill = 128.0 * fraction;
-    div()
-        .id(if label == "Contraste" {
-            "settings-contrast-slider"
-        } else {
-            "settings-glass-slider"
-        })
-        .role(gpui::Role::Slider)
-        .aria_label(label)
-        .w(px(185.0))
-        .flex()
-        .flex_none()
-        .items_center()
-        .gap(px(12.0))
-        .child(div().w(px(45.0)).flex_none().text_right().child(text(
-            format!("{value:.0}%"),
-            16.0,
-            400,
-            orbit::ink_2(cx),
-            cx,
-        )))
-        .child(
-            div()
-                .relative()
-                .w(px(128.0))
-                .h(px(20.0))
-                .child(
-                    div()
-                        .absolute()
-                        .left_0()
-                        .top(px(7.0))
-                        .w(px(128.0))
-                        .h(px(6.0))
-                        .rounded(px(3.0))
-                        .bg(rgb(orbit::primary_bg(cx))),
-                )
-                .child(
-                    div()
-                        .absolute()
-                        .left_0()
-                        .top(px(7.0))
-                        .w(px(fill))
-                        .h(px(6.0))
-                        .rounded(px(3.0))
-                        .bg(rgb(orbit::carmine(cx))),
-                )
-                .child(
-                    div()
-                        .absolute()
-                        .left(px(fill - 8.0))
-                        .top(px(2.0))
-                        .size(px(14.0))
-                        .rounded_full()
-                        .bg(rgb(orbit::carmine(cx))),
-                ),
-        )
-}
 impl Hub {
     fn settings_button(
         &self,
@@ -586,7 +517,7 @@ impl Hub {
                             .items_center()
                             .min_h(px(42.0))
                             .child(text(label, 13.0, 400, orbit::ink_2(cx), cx))
-                            .child(orbit::keycap(*key, cx))
+                            .child(orbit::keycap(key, cx))
                     }),
                 ),
             ));
@@ -633,7 +564,7 @@ impl Hub {
                 match self.settings.page {
                     Page::Application => self.settings_application(true, window, cx),
                     Page::Appearance => self.settings_appearance(cx),
-                    Page::Performance => self.settings_performance(true, cx),
+                    Page::Performance => Self::settings_performance(true, cx),
                     Page::Updates => self.settings_updates(cx),
                     Page::Hotkeys => Self::settings_hotkeys(cx),
                     Page::Privacy => self.settings_privacy(cx),
@@ -732,7 +663,7 @@ impl Hub {
                 None,
                 section_body()
                     .child(section_row(
-                        "Idioma",
+                        "Idioma · Próximamente",
                         "Idioma del Hub · Próximamente",
                         reference_choice(
                             "settings-hub-language",
@@ -878,7 +809,8 @@ impl Hub {
             .gap(px(cx.global::<orbit::Adapt>().gap()))
             .child(orbit::settings_group(1, "Esquema de color", schemes, cx))
             .child(orbit::settings_group(2, "Temas", palettes, cx))
-            .child(section_surface(
+            .child(section_numbered(
+                3,
                 "Interfaz",
                 None,
                 section_body()
@@ -932,7 +864,7 @@ impl Hub {
             (settings.glass_opacity, 50.0, 100.0, "Opacidad del cristal")
         };
         let entity = cx.entity();
-        appearance_slider(f32::from(value), min, max, label, cx)
+        orbit::appearance_slider(f32::from(value), min, max, label, cx)
             .relative()
             .track_focus(&self.settings.appearance_focus[12 + index])
             .tab_index(0)
@@ -998,7 +930,7 @@ impl Hub {
                 }),
             )
     }
-    fn settings_performance(&self, _compact: bool, cx: &mut Context<Self>) -> Div {
+    fn settings_performance(_compact: bool, cx: &mut Context<Self>) -> Div {
         let mut levels = div().grid().grid_cols(3).w_full().min_w_0().gap(px(10.0));
         for (index, name) in [
             "Automático",
@@ -1101,7 +1033,7 @@ impl Hub {
             } else {
                 Self::settings_update_channels(channel, self.demo.is_some(), cx)
             })
-            .child(news.flex_1().min_h_0())
+            .child(div().flex_1().min_h_0().child(Grayscale(news.h_full().into_any_element())))
     }
     fn settings_beta_notice(status: super::updates::BetaStatus, cx: &mut Context<Self>) -> Div {
         let ready = status.ready_for(crate::version_label());
@@ -1346,133 +1278,15 @@ impl Hub {
                 ("Deshacer", "Ctrl Z"), ("Rehacer", "Ctrl Mayús Z / Ctrl Y"),
             ], "Con el lienzo de Studio activo"), cx))
     }
-    fn settings_privacy_consent(cx: &gpui::App) -> Div {
-        let shared_bullets = div()
-            .flex()
-            .flex_col()
-            .gap(px(8.0))
-            .child(privacy_bullet(
-                "Consumo, tandas, paradas y estrategias observadas, sin datos de carrera originales.",
-                cx,
-            ))
-            .child(privacy_bullet(
-                "Tipo de carrera y semana, sin fecha ni hora exactas.",
-                cx,
-            ))
-            .child(privacy_bullet(
-                "Una referencia para gestionar tus aportes y borrarlos si lo solicitas.",
-                cx,
-            ));
-        let never_bullets = div()
-            .flex()
-            .flex_col()
-            .gap(px(8.0))
-            .child(privacy_bullet(
-                "Telemetría cruda ni archivos de sesión.",
-                cx,
-            ))
-            .child(privacy_bullet(
-                "Nombres, SteamID, correo ni rutas del equipo.",
-                cx,
-            ))
-            .child(privacy_bullet(
-                "Voz, audio, estrategias editables ni perfiles completos.",
-                cx,
-            ));
-        let shared = div()
-            .flex_1()
-            .min_w_0()
-            .flex()
-            .flex_col()
-            .gap(px(8.0))
-            .child(text("Se comparte", 14.0, 600, orbit::ink(cx), cx))
-            .child(shared_bullets);
-        let never = div()
-            .flex_1()
-            .min_w_0()
-            .flex()
-            .flex_col()
-            .gap(px(8.0))
-            .child(text("Nunca se comparte", 14.0, 600, orbit::ink(cx), cx))
-            .child(never_bullets);
-        section_surface(
-            "Consentimiento de contribución",
-            None,
-            section_body()
-                .gap(px(12.0))
-                .child(text(
-                    "Próximamente podrás compartir resúmenes de carrera para mejorar las recomendaciones de estrategia. Podrás revisar qué se comparte.",
-                    14.0,
-                    400,
-                    orbit::ink_2(cx),
-                 cx).line_height(px(24.0)).mt(px(0.0)))
-                .child(columns(false).gap(px(20.0))
-                    .child(shared)
-                    .child(never))
-                .child(section_note(
-                    "Tus aportes usarán una referencia que permita borrarlos, sin mostrar tu identidad a otros usuarios.",
-                 cx))
-                .child(orbit::pill("Próximamente · ahora no se envía nada", Tone::Neutral, cx).self_start()),
-         cx)
-    }
-    fn settings_privacy_queue(&self, cx: &gpui::App) -> Div {
-        section_surface(
-            "Envíos pendientes",
-            Some(if self.demo.is_some() {
-                "0 sin enviar · 0 enviados"
-            } else {
-                "no disponible"
-            }),
-            section_body()
-                .child(section_note(
-                    if self.demo.is_some() {
-                        "Todavía no hay informes preparados."
-                    } else {
-                        "El envío de resúmenes de carrera estará disponible próximamente."
-                    },
-                    cx,
-                ))
-                .child(div().mt(px(2.0)).flex().items_start().child(orbit::pill(
-                    "Próximamente",
-                    Tone::Neutral,
-                    cx,
-                ))),
-            cx,
-        )
-    }
-    fn settings_privacy_history(&self, cx: &gpui::App) -> Div {
-        section_surface(
-            "Historial de borrado remoto",
-            None,
-            section_body()
-                .child(section_note(
-                    if self.demo.is_some() { "No hay solicitudes de borrado remoto registradas." } else { "El historial de solicitudes de borrado estará disponible próximamente." },
-                 cx))
-                .child(section_note(
-                    "El borrado elimina tus aportes y sus copias. Los resultados conjuntos ya publicados no pueden retirarse por separado.",
-                 cx)),
-         cx)
-    }
     fn settings_privacy(&self, cx: &mut Context<Self>) -> Div {
-        div()
-            .flex()
-            .flex_col()
-            .w_full()
-            .min_w_0()
-            .gap(px(14.0))
-            .child(self.settings_privacy_diagnostics(cx).when(
-                self.shell.access.lock(Section::Strategy).is_some(),
-                |card| card.flex_grow(1.0).min_h_0(),
-            ))
-            // La contribución solo envía paquetes de Strategy: sin Strategy (beta) sobra.
-            .when(
-                self.shell.access.lock(Section::Strategy).is_none(),
-                |page| {
-                    page.child(Self::settings_privacy_consent(cx))
-                        .child(self.settings_privacy_queue(cx))
-                        .child(self.settings_privacy_history(cx).flex_grow(1.0).min_h_0())
-                },
-            )
+        stack()
+            .child(self.settings_privacy_diagnostics(cx).flex_none())
+            .when(self.shell.access.lock(Section::Strategy).is_none(), |page| {
+                page.child(section_numbered(2, "Contribución de estrategia", None,
+                    section_body().gap(px(12.0))
+                        .child(paragraph("Compartir resúmenes de carrera, consultar los envíos y solicitar su borrado estará disponible próximamente.", 14.0, 400, orbit::ink_2(cx), cx))
+                        .child(orbit::pill("Próximamente", Tone::Neutral, cx).self_start()), cx).flex_none())
+            })
     }
     fn settings_privacy_diagnostics(&self, cx: &mut Context<Self>) -> Div {
         let mut body = section_body();

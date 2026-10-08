@@ -1252,6 +1252,23 @@ mod tests {
     use crate::orbit;
 
     #[test]
+    fn production_design_keeps_text_accent_separate_from_brand_fill() {
+        for palette in Palette::ALL {
+            for scheme in [Scheme::Dark, Scheme::Light] {
+                let mut theme = Theme::resolve(palette, scheme, 100, 80);
+                let tokens = design_tokens(&theme.skin);
+                theme.apply_design(&tokens);
+                assert_eq!(theme.accent_rgb, theme.skin.accent);
+                assert!(super::super::skin::contrast(theme.primary_ink, theme.primary_bg) >= 4.5);
+                for background in [theme.skin.l1, theme.skin.l3] {
+                    assert!(super::super::skin::contrast(theme.carmine, background) >= 4.5);
+                    assert!(super::super::skin::contrast(theme.ink_muted, background) >= 4.5);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn vantare_dark_matches_orbit_constants_field_by_field() {
         let theme = Theme::resolve(Palette::Vantare, Scheme::Dark, 100, 80);
         assert_eq!(theme.coral, orbit::CORAL);

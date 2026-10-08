@@ -138,16 +138,20 @@ impl Skin {
         ] {
             *color = readable(*color, &[skin.l1, skin.l3]);
         }
-        skin.on_primary = 0xff_ffff;
-        skin.button.from = readable(skin.button.from, &[skin.on_primary]);
-        skin.button.to = readable(skin.button.to, &[skin.on_primary]);
-        skin.button_pressed = readable(skin.button_pressed, &[skin.on_primary]);
-        skin.button_hover.from = readable(skin.button_hover.from, &[skin.on_primary]);
-        skin.button_hover.to = readable(skin.button_hover.to, &[skin.on_primary]);
+        skin.on_primary = readable(skin.on_primary, &[skin.text1]);
+        skin.button.from = readable(skin.button.from, &[0xff_ffff]);
+        skin.button.to = readable(skin.button.to, &[0xff_ffff]);
+        skin.button_pressed = readable(skin.button_pressed, &[0xff_ffff]);
+        skin.button_hover.from = readable(skin.button_hover.from, &[0xff_ffff]);
+        skin.button_hover.to = readable(skin.button_hover.to, &[0xff_ffff]);
         if palette == Palette::Vantare {
             skin.accent = 0xd8_0000;
             skin.accent_fill = 0xd8_0000;
             skin.button = ramp(0xdc_0a0a, 0xc4_0000);
+            skin.live = ramp(0xd8_0000, 0xd8_0000);
+            skin.progress = ramp(0x8a_0000, 0xd8_0000);
+            skin.brand = ramp(0xd8_0000, 0xb9_0000);
+            skin.selection = alpha(0xd8_0000, 0xcc);
             if scheme == Scheme::Light {
                 // Rojo de texto oscuro: el rojo de marca queda reservado al relleno.
                 skin.accent_bright = readable(0x8a_0000, &[skin.l1, skin.l3]);
@@ -185,7 +189,7 @@ impl Skin {
             text2: 0xde_cfd2,
             text3: 0xb9_9fa4,
             cap: 0xaa_8f94,
-            on_primary: 0xff_ffff,
+            on_primary: 0x17_110f,
             accent: 0xd8_0000,
             accent_bright: 0xff_6b6b,
             accent_fill: 0xd8_0000,
@@ -300,9 +304,16 @@ impl Skin {
             accent_bright: 0xff_7a82,
             accent_fill: 0xb5_2b35,
             wine: 0x6e_1019,
-            on_primary: 0xff_ffff,
+            on_primary: 0x17_110f,
             button: ramp(0xc5_2f3b, 0xb9_2a35),
             button_hover: ramp(0xc5_2f3b, 0xb9_2a35),
+            button_pressed: 0xb9_2a35,
+            accent_tint: alpha(0xe1_4a54, 0x26),
+            brand: ramp(0xff_525c, 0xb9_000d),
+            live: ramp(0xff_7a82, 0xd1_1f2e),
+            live_halo: alpha(0xe1_4a54, 0x33),
+            progress: ramp(0x8e_1823, 0xff_525c),
+            progress_glow: alpha(0xff_525c, 0x80),
             ..Self::vantare()
         }
     }
@@ -543,6 +554,27 @@ mod tests {
     use super::*;
 
     #[test]
+    fn vantare_brand_fill_is_the_same_in_light_and_dark() {
+        for scheme in [Scheme::Dark, Scheme::Light] {
+            let skin = Skin::resolve(Palette::Vantare, scheme);
+            assert_eq!(
+                [
+                    skin.accent,
+                    skin.accent_fill,
+                    skin.live.from,
+                    skin.live.to,
+                    skin.progress.to,
+                    skin.brand.from,
+                    skin.selection >> 8
+                ],
+                [0xd8_0000; 7]
+            );
+            assert_ne!(skin.accent_bright, skin.accent);
+            assert_eq!((skin.button.from, skin.button.to), (0xdc_0a0a, 0xc4_0000));
+        }
+    }
+
+    #[test]
     fn every_theme_passes_aa_for_normal_text_and_primary_buttons() {
         for palette in Palette::ALL {
             for scheme in [Scheme::Dark, Scheme::Light] {
@@ -561,6 +593,10 @@ mod tests {
                         );
                     }
                 }
+                assert!(
+                    contrast(skin.on_primary, skin.text1) >= 4.5,
+                    "{palette:?}/{scheme:?}: botón blanco"
+                );
                 for background in [
                     skin.button.from,
                     skin.button.to,
@@ -569,7 +605,7 @@ mod tests {
                     skin.button_pressed,
                 ] {
                     assert!(
-                        contrast(skin.on_primary, background) >= 4.5,
+                        contrast(0xff_ffff, background) >= 4.5,
                         "{palette:?}/{scheme:?}: botón {background:06x}"
                     );
                 }
@@ -645,7 +681,7 @@ mod tests {
                 0xd6_cfd0,
                 0xb0_a7a9,
                 readable(0x87_7d80, &[s.l1, s.l3]),
-                0xff_ffff
+                0x17_110f
             ]
         );
         let r = s.radius;

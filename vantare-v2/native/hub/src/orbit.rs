@@ -790,7 +790,7 @@ pub fn toggle(
         .rounded_full()
         .p(px(3.0))
         .flex()
-        .when(on, |t| t.justify_end().bg(kit::ramp(skin.button, 180.0)))
+        .when(on, |t| t.justify_end().bg(rgb(skin.accent)))
         .when(!on, |t| {
             t.bg(rgb(skin.l3))
                 .shadow(vec![kit::kit_shadow(0x0000_0066, 1.0, 2.0, 0.0, true)])

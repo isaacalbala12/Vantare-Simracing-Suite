@@ -308,6 +308,28 @@ mod tests {
         std::fs::remove_dir_all(dir).expect("limpiar");
     }
     #[test]
+    fn every_theme_and_scheme_survives_save_and_restart() {
+        let dir = directory("r10-themes");
+        let path = dir.join("appearance.json");
+        let mut store = Store::load(path.clone()).expect("defaults");
+        for palette in theme::Palette::ALL {
+            for scheme in [Scheme::System, Scheme::Light, Scheme::Dark] {
+                let settings = AppearanceSettings {
+                    palette,
+                    scheme,
+                    ..AppearanceSettings::default()
+                };
+                store.save(settings).expect("guardar");
+                assert_eq!(
+                    Store::load(path.clone()).expect("reabrir").settings,
+                    settings
+                );
+            }
+        }
+        std::fs::remove_dir_all(dir).expect("limpiar QA");
+    }
+
+    #[test]
     fn rejects_invalid_or_oversized_data_and_clamps_numeric_preferences() {
         let dir = directory("bounds");
         std::fs::create_dir_all(&dir).expect("directorio");

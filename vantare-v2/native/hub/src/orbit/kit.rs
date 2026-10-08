@@ -647,7 +647,11 @@ pub fn palette_card(
     use super::skin::Skin;
     let orb = |skin: Skin| {
         div()
-            .size(px(26.0))
+            .size(px(if cx.global::<super::Adapt>().show_optional() {
+                26.0
+            } else {
+                18.0
+            }))
             .flex_none()
             .rounded_full()
             .border_1()
@@ -667,9 +671,9 @@ pub fn palette_card(
         .flex_col()
         .items_center()
         .justify_center()
-        .gap(px(10.0))
+        .gap(px(6.0))
         .px(px(10.0))
-        .py(px(8.0))
+        .py(px(6.0))
         .child(super::text(palette.label(), 13.0, 500, super::ink(cx), cx))
         .child(
             div()
@@ -730,7 +734,11 @@ pub fn scheme_card(
         );
         div()
             .flex_1()
-            .h(px(38.0))
+            .h(px(if cx.global::<super::Adapt>().show_optional() {
+                38.0
+            } else {
+                28.0
+            }))
             .p(px(6.0))
             .bg(rgb(theme.base))
             .child(div().h(px(5.0)).w_full().bg(rgb(theme.l3)))
@@ -760,6 +768,79 @@ pub fn scheme_card(
 
 fn skin_palette(cx: &gpui::App) -> super::theme::Palette {
     cx.global::<super::theme::Theme>().palette
+}
+
+pub fn appearance_slider(
+    value: f32,
+    min: f32,
+    max: f32,
+    label: &'static str,
+    cx: &gpui::App,
+) -> gpui::Stateful<Div> {
+    let fraction = ((value - min) / (max - min)).clamp(0.0, 1.0);
+    let fill = 128.0 * fraction;
+    div()
+        .id(if label == "Contraste" {
+            "settings-contrast-slider"
+        } else {
+            "settings-glass-slider"
+        })
+        .role(gpui::Role::Slider)
+        .aria_label(label)
+        .w(px(185.0))
+        .flex()
+        .flex_none()
+        .items_center()
+        .gap(px(12.0))
+        .child(
+            div()
+                .w(px(45.0))
+                .flex_none()
+                .text_right()
+                .whitespace_nowrap()
+                .child(super::text(
+                    format!("{value:.0}%"),
+                    16.0,
+                    400,
+                    super::ink_2(cx),
+                    cx,
+                )),
+        )
+        .child(
+            div()
+                .relative()
+                .w(px(128.0))
+                .h(px(20.0))
+                .child(
+                    div()
+                        .absolute()
+                        .left_0()
+                        .top(px(7.0))
+                        .w(px(128.0))
+                        .h(px(6.0))
+                        .rounded(px(3.0))
+                        .bg(rgb(super::primary_bg(cx))),
+                )
+                .child(
+                    div()
+                        .absolute()
+                        .left_0()
+                        .top(px(7.0))
+                        .w(px(fill))
+                        .h(px(6.0))
+                        .rounded(px(3.0))
+                        .bg(rgb(super::skin(cx).accent)),
+                )
+                .child(
+                    div()
+                        .absolute()
+                        .left(px(fill - 8.0))
+                        .top(px(2.0))
+                        .size(px(14.0))
+                        .rounded_full()
+                        .bg(rgb(super::skin(cx).accent)),
+                ),
+        )
 }
 
 #[cfg(test)]

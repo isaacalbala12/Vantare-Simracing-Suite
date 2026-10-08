@@ -1,5 +1,40 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## #1496 / #1504 — UI R4 Ajustes y Cuenta, entrega local (2026-10-08)
+
+Worktree C:/tmp/vw3-ui-r1/vantare-v2, rama
+vantareapp/isa-1496-ui-r4-ajustes, base R3 a5a01084. Cinco hitos locales:
+rojo/AA (#1504), General/Apariencia, Rendimiento/Atajos,
+Actualizaciones/Privacidad/Diagnóstico y Cuenta/adaptación/tests (#1496).
+Kit Orbit común, nueve temas, esquema persistido con conflictos y focos
+independientes. Cuenta usa panel derecho acoplado y retráctil de la shell.
+No se modifican protocolos, permisos, servicios remotos ni dependencias.
+
+Rendimiento no tiene política nativa ni cadencias guardables: Próximamente;
+Personalizado abre Studio. Atajos globales sin combinaciones inventadas.
+Consentimientos, diagnóstico sanitizado, beta/reinicio y acciones de cuenta
+conservan sus contratos. Novedades son los manifiestos empaquetados.
+
+Pantalla ocupada durante implementación y gates: cero ventanas/capturas entonces.
+Al quedar libre: tanda aislada de Inicio, siete pestañas y Cuenta en 1280/1920,
+Vantare/Clásico/DeepSeek, con sus referencias HTML e inspección visual.
+Se corrigieron overflow XS en Privacidad/Cuenta y porcentaje partido; sin
+mediciones ni acciones inventadas. No se declara paridad exacta ni DPI físico,
+login/LMU/OBS/Mac. Error de Cuenta tiene tests; escena visual nativa pendiente.
+Gates por cola PASS: fmt/check/Clippy -D warnings, Nextest1260/1260
+(6 skips heredados; ACC622.870s), lifecycle18 y build prueba beta-dev-clerk.
+Tras último pulido visual: fmt/Clippy PASS, Hub325/325 PASS y prueba PASS.
+Suite completa anterior al pulido de vistas; Hub repetido cubre el código
+modificado. QA parity-capture compila, con warning heredado en analysis/view.rs.
+Código validado/build final: 62e35535; cierre documental en el mismo hito.
+SHA y logs en C:/tmp/ui-r10/r4-evidence/VERIFICACION.md;
+informe C:/tmp/ui-r10/informe-r4.md. Caché conservada.
+Roadmap plan.md ausente en la base y origin/nightly: no recreado.
+El brief amplía R0 a R4 aunque el cuerpo de #1496 sigue describiendo R0;
+prevalece el encargo explícito de Isaac sobre las referencias históricas
+Notion de este checkout. Preguntas de alcance/contratos en el informe.
+Pendiente revisión de Isaac; sin push/PR/CI remoto/merge/promoción/release.
+
 ## #1496 — UI R2 Launcher: entrega local para revisión (2026-10-08)
 
 Worktree `C:/tmp/vw3-ui-r1/vantare-v2`, rama

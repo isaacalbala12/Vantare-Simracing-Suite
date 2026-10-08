@@ -1,3 +1,46 @@
+# Ajustes y Cuenta — UI R4 (#1496 / #1504)
+
+Siete pestañas en la topbar. General usa Interfaz, Inicio, Avisos y Widgets;
+Apariencia ofrece Sistema/Claro/Oscuro y nueve temas con orbes claro/oscuro.
+El esquema, tema, contraste, opacidad y fuentes conservan el guardado atómico
+con detección de conflictos. Cada control tiene foco independiente; los
+selectores de esquema usan teclado y ratón. No se registra ninguna preferencia
+nueva fuera del Store existente.
+
+Las páginas usan el kit Orbit R10, grupos numerados y densidad Adapt por alto;
+no tienen scroll propio. Las notas de versión, errores observados y módulos
+se desplazan dentro de sus tarjetas. Cuenta usa la barra derecha común,
+retráctil, con Estado, Dispositivos, Avisos por email y Tus datos.
+
+Rendimiento solo presenta niveles pendientes: no hay política configurable en
+el núcleo ni cadencia por widget persistida. Personalizado abre Studio, donde
+ese contrato sigue pendiente. Atajos muestra Ctrl L/K/B, Ctrl Alt B y
+Deshacer/Rehacer de Studio; no inventa combinaciones globales en pista.
+
+Actualizaciones conserva metadatos, novedades empaquetadas y acciones reales
+de beta. Privacidad conserva sus dos consentimientos locales; Diagnóstico
+prepara y copia el informe sanitizado en segundo plano y muestra solo errores
+observados. Cuenta conserva inicio/cierre de sesión, permisos y restablecer
+el dispositivo. No aparecen claves copiables ni recuentos remotos inventados.
+
+El rojo de relleno Vantare es #D80000; texto activo oscuro #FF6B6B,
+caption #AA8F94 y botón #DC0A0A → #C40000 con texto blanco. Clásico y DeepSeek
+conservan identidad, con correcciones de contraste. Tests WCAG de las nueve
+paletas en claro/oscuro comprueban AA en superficies l1/l3, botón rojo y blanco;
+el test de producción comprueba también el mapeo a Theme/design::Tokens.
+
+Verificación manual: con datos QA propios, recorrer siete pestañas y Cuenta,
+seleccionar los tres esquemas y nueve temas con ratón/teclado y reabrir.
+Cambiar externamente appearance.json debe bloquear un guardado sin reemplazar
+el archivo externo. Cambiar idioma/unidades de widgets y reabrir el layout;
+alternar consentimientos, preparar/filtrar/copiar diagnóstico local. No activar
+reinicio/restablecimiento en la instalación real como parte del QA visual.
+
+Evidencia: C:/tmp/ui-r10/r4-evidence/VERIFICACION.md. Si existe
+C:/tmp/fase2/pantalla-ocupada, no abrir ventanas ni hacer capturas. La entrega
+local sin capturas no acredita paridad visual, DPI físico, login ni LMU/OBS/Mac.
+Los apartados siguientes conservan antecedentes históricos.
+
 # Ajustes del Hub — ISA-1470
 
 ## Rediseño beta (fase 2)

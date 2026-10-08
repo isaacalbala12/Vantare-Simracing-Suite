@@ -58,20 +58,13 @@ fn account_note(content: &str, cx: &gpui::App) -> gpui::Div {
         .child(text(content, 12.0, 400, orbit::ink_3(cx), cx).line_height(px(18.0)))
 }
 
-fn account_surface(title: &str, meta: &str, body: gpui::Div, cx: &gpui::App) -> gpui::Div {
-    orbit::neo_card(cx)
-        .child(
-            orbit::neo_header(
-                title.to_owned(),
-                if title == "Dispositivos" {
-                    "v-monitor"
-                } else {
-                    "pulse"
-                },
-                cx,
-            )
-            .child(text(meta, 12.0, 500, orbit::ink_3(cx), cx)),
-        )
+fn account_surface(_title: &str, meta: &str, body: gpui::Div, cx: &gpui::App) -> gpui::Div {
+    div()
+        .flex()
+        .flex_col()
+        .min_w_0()
+        .gap(px(8.0))
+        .child(orbit::meta(meta, 10.0, orbit::ink_3(cx), cx))
         .child(body)
 }
 
@@ -89,7 +82,7 @@ fn account_value(label: &str, value: &str, active: bool, cx: &gpui::App) -> gpui
         .border_color(rgba(orbit::line_row(cx)))
         .child(
             div()
-                .w(px(150.0))
+                .w(px(112.0))
                 .flex_none()
                 .child(text(label, 12.5, 500, orbit::ink_3(cx), cx)),
         )
@@ -847,13 +840,13 @@ impl Remote {
             .flex_1()
             .flex_basis(gpui::relative(1.3 / 2.3))
             .min_w_0()
-            .min_h(px(124.0))
+            .min_h(px(100.0))
             .px(px(22.0))
-            .py(px(20.0))
+            .py(px(16.0))
             .flex()
             .items_center()
             .gap(px(16.0))
-            .rounded(px(orbit::RADIUS))
+            .rounded(px(orbit::skin(cx).radius.lg))
             .border_1()
             .border_color(rgba(orbit::line(cx)))
             .bg(orbit::gradient(
@@ -899,7 +892,7 @@ impl Remote {
                     .flex()
                     .flex_col()
                     .gap(px(2.0))
-                    .child(text(
+                    .child(orbit::caps(
                         if let Some(demo) = demo {
                             &demo.user.full_name
                         } else if signed_in {
@@ -907,8 +900,7 @@ impl Remote {
                         } else {
                             "Sin sesión"
                         },
-                        18.0,
-                        700,
+                        26.0,
                         orbit::ink(cx),
                         cx,
                     ))
@@ -993,31 +985,14 @@ impl Remote {
                     signed_in || demo,
                     cx,
                 ))
-                .child(account_value(
-                    "Último acceso",
-                    if demo {
-                        "30/9/2026, 16:00:32"
-                    } else {
-                        "No disponible"
-                    },
-                    false,
-                    cx,
-                ))
+                .child(account_value("Último acceso", "—", false, cx))
                 .child(account_value(
                     "Durante la beta",
                     "Acceso gratuito para testers",
                     false,
                     cx,
                 ))
-                .child(
-                    account_value(
-                        "Canal",
-                        if demo { "Testers" } else { "No disponible" },
-                        false,
-                        cx,
-                    )
-                    .border_b_0(),
-                ),
+                .child(account_value("Canal", crate::product::CHANNEL, false, cx).border_b_0()),
             cx,
         )
         .flex_1()
@@ -1081,9 +1056,8 @@ impl Remote {
             account_body()
                 .items_start().gap(px(10.0))
                 .child(device)
-                .child(account_note(
-                    "Restablecer libera la activación de este equipo (una vez cada 24 h). La lista de otros dispositivos no está disponible aquí.",
-                 cx))
+                .when(cx.global::<orbit::Adapt>().show_notes(), |body| body.child(account_note(
+                    "Restablecer libera la activación de este equipo (una vez cada 24 h). La lista de otros dispositivos no está disponible aquí.", cx)))
                 .child(
                     // Con el límite alcanzado, liberar el activo es la salida: se
                     // reutiliza el botón principal de Orbit, sin texto nuevo.
@@ -1103,103 +1077,47 @@ impl Remote {
          cx)
         .flex_1()
     }
-    fn account_page(&self, _window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
-        let center = div()
-            .flex()
-            .flex_col()
-            .gap(px(16.0))
-            .w_full()
-            .h_full()
-            .min_h_0()
-            .child(
-                self.account_identity(cx)
-                    .flex_none()
-                    .w_full()
-                    .min_h(px(124.0)),
-            )
-            .child(
-                orbit::neo_card(cx)
-                    .child(orbit::neo_header("Licencias · Acceso beta", "key", cx))
-                    .child(text(
-                        account_plan_label(
-                            self.account_access().verified && !self.account_access().blocked,
-                        ),
-                        24.0,
-                        700,
-                        orbit::ink(cx),
-                        cx,
-                    ))
-                    .child(text(
-                        "Acceso gratuito durante la beta para testers.",
-                        13.0,
-                        400,
-                        orbit::ink_2(cx),
-                        cx,
-                    )),
-            )
-            .child(self.account_plan(cx).flex_grow(1.0).min_h_0())
-            .when(account_demo().is_none(), |page| {
-                page.child(orbit::callout(self.message.clone(), cx))
-            });
-        let rail = div()
-            .flex()
-            .flex_col()
-            .gap(px(16.0))
-            .w_full()
-            .h_full()
-            .min_h_0()
-            .child(self.account_session(cx).flex_none())
-            .child(self.account_devices(cx).flex_none())
-            .child(
-                orbit::neo_card(cx)
-                    .flex_1()
-                    .min_h_0()
-                    .child(orbit::neo_header("Tus datos", "v-shield", cx))
-                    .child(text(
-                        "Tus perfiles, overlays y ajustes se guardan en este equipo.",
-                        13.0,
-                        400,
-                        orbit::ink_2(cx),
-                        cx,
-                    ))
-                    .child(text(
-                        "Exportar tus datos o eliminar tu cuenta estará disponible próximamente.",
-                        12.0,
-                        400,
-                        orbit::ink_3(cx),
-                        cx,
-                    )),
-            );
-        div()
-            .flex_1()
-            .min_h_0()
-            .w_full()
-            .flex()
-            .gap(px(16.0))
-            .child(
-                div()
-                    .id("account-main-scroll")
-                    .flex_1()
-                    .flex_basis(gpui::relative(2.0 / 3.0))
-                    .min_w_0()
-                    .h_full()
-                    .overflow_y_scroll()
-                    .child(center),
-            )
-            .child(
-                div()
-                    .id("account-rail-scroll")
-                    .flex_1()
-                    .flex_basis(gpui::relative(1.0 / 3.0))
-                    .min_w_0()
-                    .h_full()
-                    .overflow_y_scroll()
-                    .child(rail),
-            )
+    pub fn account(&self, _window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
+        div().flex_1().min_h_0().w_full().flex().flex_col().gap(px(cx.global::<orbit::Adapt>().gap()))
+            .when(account_demo().is_none() && !self.message.is_empty(), |page| page.child(orbit::callout(self.message.clone(), cx)))
+            .child(self.account_identity(cx).flex_none().w_full())
+            .child(orbit::neo_card(cx).p(px(16.0))
+                .child(orbit::neo_header("Acceso beta", "key", cx))
+                .child(orbit::caps(account_plan_label(self.account_access().verified && !self.account_access().blocked), 24.0, orbit::ink(cx), cx))
+                .child(text("Acceso gratuito durante la beta para testers. La sesión valida tu acceso; no muestra ni copia claves privadas.", 13.0, 400, orbit::ink_2(cx), cx)))
+            .child(self.account_plan(cx).flex_1().min_h_0())
+            .when(cx.global::<orbit::Adapt>().show_notes(), |page| page.child(orbit::neo_card(cx).p(px(12.0))
+                .child(orbit::neo_header("Tu aporte", "v-testing", cx))
+                .child(text("Los informes y cuestionarios de la beta viven en Testing Center.", 13.0, 400, orbit::ink_2(cx), cx))))
     }
 
-    pub fn account(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
-        self.account_page(window, cx)
+    pub fn account_rail(&self, cx: &mut Context<Self>) -> Vec<orbit::RailSection> {
+        vec![
+            orbit::RailSection::new("Estado de la cuenta", "key", self.account_session(cx)),
+            orbit::RailSection::new("Dispositivos", "v-monitor", self.account_devices(cx)),
+            orbit::RailSection::new(
+                "Avisos por email",
+                "v-bell",
+                text(
+                    "Preferencias de email · Próximamente",
+                    13.0,
+                    400,
+                    orbit::ink_2(cx),
+                    cx,
+                ),
+            ),
+            orbit::RailSection::new(
+                "Tus datos",
+                "v-shield",
+                text(
+                    "Perfiles y ajustes locales. Exportación y borrado de cuenta · Próximamente",
+                    13.0,
+                    400,
+                    orbit::ink_2(cx),
+                    cx,
+                ),
+            ),
+        ]
     }
 
     pub fn report_action(&mut self, command: Command, cx: &mut Context<Self>) {
@@ -1330,7 +1248,7 @@ impl Remote {
     }
 
     pub fn licenses(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
-        self.account_page(window, cx)
+        self.account(window, cx)
     }
 }
 

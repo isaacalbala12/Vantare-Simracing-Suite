@@ -550,6 +550,7 @@ impl Hub {
                 .launcher
                 .update(cx, |launcher, cx| launcher.rail_sections(window, cx)),
             Section::Settings => self.settings_rail(cx),
+            Section::Account => self.remote.update(cx, |remote, cx| remote.account_rail(cx)),
             Section::Testing => legacy(
                 self.testing
                     .update(cx, |testing, cx| testing.context_column(cx))

@@ -1218,6 +1218,28 @@ impl Remote {
             .render(f32::from(window.viewport_size().width) <= 1360.0, cx)
     }
 
+    /// R6: todas las vistas leen la misma publicación real y su estado de caché.
+    pub(crate) fn roadmap_publication(
+        &self,
+    ) -> Option<&super::protocol::roadmap_document::Publication> {
+        self.publication.as_ref()
+    }
+    pub(crate) fn roadmap_status(&self) -> &str {
+        if self.working() {
+            "Cargando roadmap…"
+        } else if self.stale {
+            "Publicación guardada en este equipo"
+        } else {
+            &self.roadmap_message
+        }
+    }
+    pub(crate) fn ensure_roadmap(&mut self, cx: &mut Context<Self>) {
+        if !self.roadmap_requested && !self.busy() {
+            self.roadmap_requested = true;
+            self.request(Command::RoadmapCached, cx);
+        }
+    }
+
     #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     pub fn published_roadmap(&mut self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         if !self.roadmap_requested && !self.busy() {

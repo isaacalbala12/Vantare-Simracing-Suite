@@ -512,17 +512,9 @@ impl Hub {
         }
 
         match self.section {
-            Section::Launcher => {
-                if !self.launcher.read(cx).managing() {
-                    return None;
-                }
-                let available_width = cx.global::<orbit::Adapt>().center_width();
-                Some(self.launcher.update(cx, |launcher, cx| {
-                    launcher
-                        .topbar_actions(available_width, cx)
-                        .into_any_element()
-                }))
-            }
+            Section::Launcher => Some(self.launcher.update(cx, |launcher, cx| {
+                launcher.topbar_tabs(cx).into_any_element()
+            })),
             Section::Settings => Some(self.settings_tabs(cx).into_any_element()),
             Section::Testing => Some(self.testing.read(cx).topbar_controls().into_any_element()),
             Section::Calendar => Some(

@@ -58,6 +58,7 @@ enum LauncherPage {
     Showcase,
     Manage,
     History,
+    Editor,
 }
 
 pub struct Launcher {

@@ -1715,23 +1715,15 @@ impl Render for Launcher {
         if self.page == LauncherPage::Showcase {
             return self.showcase(window, cx).into_any_element();
         }
+        if self.page == LauncherPage::Editor {
+            return self.editor_page(cx).into_any_element();
+        }
         if self.page == LauncherPage::History {
-            return div()
-                .size_full()
-                .flex()
-                .flex_col()
-                .p(px(24.0))
-                .gap(px(16.0))
-                .child(
-                    button("launcher-history-back", "Volver al Launcher", cx)
-                        .self_start()
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.page = LauncherPage::Showcase;
-                            cx.notify();
-                        })),
-                )
-                .child(self.showcase_history(false, cx))
-                .into_any_element();
+            let adapt = *cx.global::<orbit::Adapt>();
+            let (top, side, bottom) = adapt.padding();
+            return div().size_full().min_h_0().flex().flex_col().pt(px(top)).px(px(side)).pb(px(bottom)).gap(px(adapt.gap()))
+                .child(orbit::neo_page_header("Historial", "Último lanzamiento registrado de cada perfil; sin historial de intentos persistido.", cx))
+                .child(self.showcase_history(false, cx)).into_any_element();
         }
         let compact = f32::from(window.viewport_size().width) <= 1360.0;
         let detected = self
@@ -1771,7 +1763,16 @@ impl Render for Launcher {
             .pb(px(20.0))
             .gap(px(21.0))
             .when(compact, |element| element.h_auto().flex_none())
-            .child(self.launcher_heading(&detection_label, detection_ran, compact, cx))
+            .child(orbit::neo_page_header(
+                "Aplicaciones",
+                "Gestiona las rutas y aplicaciones de tus perfiles.",
+                cx,
+            ))
+            .child(
+                self.launcher_heading(&detection_label, detection_ran, compact, cx)
+                    .h(px(50.0)),
+            )
+            .child(self.topbar_actions(cx.global::<orbit::Adapt>().center_width(), cx))
             .child(self.stats(compact, cx))
             .when_some(self.error.clone(), |page, error| {
                 page.child(error_panel(error, cx))
@@ -1783,25 +1784,7 @@ impl Render for Launcher {
         for warning in &self.discovered.warnings {
             page = page.child(orbit::callout(warning.clone(), cx));
         }
-        div()
-            .size_full()
-            .flex()
-            .child(
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .child(
-                        button("launcher-back", "← Perfiles", cx).on_click(cx.listener(
-                            |this, _, _, cx| {
-                                this.page = LauncherPage::Showcase;
-                                cx.notify();
-                            },
-                        )),
-                    )
-                    .child(page),
-            )
-            .child(self.context_column(window, cx))
-            .into_any_element()
+        page.into_any_element()
     }
 }
 

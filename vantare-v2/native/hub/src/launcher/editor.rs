@@ -614,6 +614,9 @@ impl Launcher {
         self.profile_draft = None;
         self.pending_app_removal = None;
         self.pending_profile_removal = None;
+        if self.page == LauncherPage::Editor {
+            self.page = LauncherPage::Showcase;
+        }
         cx.notify();
     }
 
@@ -792,7 +795,11 @@ impl Launcher {
             steps,
         });
         self.app_draft = None;
-        self.open_form(window, cx);
+        self.page = LauncherPage::Editor;
+        if let Some(draft) = &self.profile_draft {
+            draft.name.read(cx).focus_handle().focus(window, cx);
+        }
+        cx.notify();
     }
 
     pub(super) fn new_profile(
@@ -910,7 +917,7 @@ impl Launcher {
         cx.notify();
     }
 
-    fn profile_form(&self, cx: &mut Context<Self>) -> gpui::Div {
+    pub(super) fn profile_form(&self, cx: &mut Context<Self>) -> gpui::Div {
         let Some(draft) = &self.profile_draft else {
             return div();
         };
@@ -922,14 +929,91 @@ impl Launcher {
                 form.child(super::presentation::error_panel(error, cx))
             })
             .child(editor_field("Nombre", draft.name.clone(), cx))
+            .child(
+                div()
+                    .flex()
+                    .gap(px(12.0))
+                    .child(editor_field(
+                        "Color",
+                        orbit::disabled(
+                            orbit::button("profile-color-soon", "Próximamente", cx),
+                            "El perfil aún no guarda un color",
+                        ),
+                        cx,
+                    ))
+                    .child(editor_field(
+                        "Circuito",
+                        orbit::disabled(
+                            orbit::button("profile-track-soon", "Próximamente", cx),
+                            "El perfil aún no guarda un circuito",
+                        ),
+                        cx,
+                    ))
+                    .mt(px(14.0)),
+            )
             .child(editor_field("Descripción", draft.description.clone(), cx).mt(px(14.0)))
             .child(editor_field("Notas", draft.notes.clone(), cx).mt(px(14.0)))
             .child(self.profile_steps_section(draft, advanced, cx))
             .child(Self::profile_hotkey_row(draft, cx))
             .child(Self::profile_autostart_row(draft, cx))
-            .when(advanced, |form| {
-                form.child(self.profile_advanced_section(draft, cx))
-            })
+            .child(self.profile_advanced_section(draft, cx))
+    }
+
+    pub(super) fn editor_page(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let adapt = *cx.global::<orbit::Adapt>();
+        let (top, side, bottom) = adapt.padding();
+        div()
+            .size_full()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .px(px(side))
+            .pt(px(top))
+            .pb(px(bottom))
+            .gap(px(adapt.gap()))
+            .child(
+                div()
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .gap(px(12.0))
+                    .child(
+                        orbit::neo_page_header(
+                            "Editar perfil",
+                            "Los cambios se aplican al guardar.",
+                            cx,
+                        )
+                        .flex_1(),
+                    )
+                    .child(form_button(
+                        orbit::button("profile-page-cancel", "Cancelar", cx),
+                        &self.form_actions[1],
+                        Self::close_form,
+                        cx,
+                    ))
+                    .child(form_button(
+                        orbit::play_button("profile-page-save", "Guardar", 36.0, false, cx),
+                        &self.form_actions[2],
+                        Self::commit_form,
+                        cx,
+                    )),
+            )
+            .child(
+                orbit::neo_card(cx).flex_1().min_h_0().child(
+                    div()
+                        .id("profile-page-fields")
+                        .flex_1()
+                        .min_h_0()
+                        .overflow_y_scroll()
+                        .child(self.profile_form(cx)),
+                ),
+            )
+            .capture_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, window, cx| {
+                if event.keystroke.key == "escape" {
+                    this.close_form(window, cx);
+                    cx.stop_propagation();
+                }
+            }))
     }
 
     fn profile_steps_section(

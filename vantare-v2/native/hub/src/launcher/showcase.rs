@@ -401,8 +401,27 @@ impl Launcher {
             }
         }
     }
-    pub(crate) fn managing(&self) -> bool {
-        self.page == LauncherPage::Manage
+    pub(crate) fn topbar_tabs(&self, cx: &mut Context<Self>) -> Div {
+        let mut tabs = div().h_full().flex().items_center().gap(px(20.0));
+        for (id, label, page) in [
+            ("launcher-tab-profiles", "Perfiles", LauncherPage::Showcase),
+            ("launcher-tab-apps", "Aplicaciones", LauncherPage::Manage),
+            ("launcher-tab-history", "Historial", LauncherPage::History),
+        ] {
+            tabs = tabs.child(
+                orbit::topbar_tab(id, label, self.page == page, cx).on_click(cx.listener(
+                    move |this, _, window, cx| {
+                        this.close_form(window, cx);
+                        this.page = page;
+                        cx.notify();
+                    },
+                )),
+            );
+        }
+        if self.page == LauncherPage::Editor {
+            tabs = tabs.child(orbit::topbar_tab("launcher-tab-editor", "Perfil", true, cx));
+        }
+        tabs
     }
     pub(crate) fn prepare_capture(&mut self, running: bool) {
         self.capture = Capture::Resting;
@@ -1519,12 +1538,84 @@ impl Launcher {
         cx: &mut Context<Self>,
     ) -> Vec<orbit::RailSection> {
         self.sync_showcase_controls(window, cx);
+        if let Some(draft) = &self.profile_draft {
+            if self.page == LauncherPage::Editor {
+                let preview = orbit::neo_card(cx)
+                    .p(px(12.0))
+                    .child(orbit::circuit(None, cx).h(px(100.0)))
+                    .child(orbit::display(
+                        draft.name.read(cx).value.clone(),
+                        24.0,
+                        orbit::ink(cx),
+                        cx,
+                    ))
+                    .child(orbit::text(
+                        draft.description.read(cx).value.clone(),
+                        13.0,
+                        400,
+                        orbit::ink_2(cx),
+                        cx,
+                    ))
+                    .children(draft.steps.iter().filter_map(|step| {
+                        step.app
+                            .read(cx)
+                            .state
+                            .selected
+                            .and_then(|index| draft.app_ids.get(index))
+                            .and_then(|id| {
+                                self.store.document.apps.iter().find(|app| &app.id == id)
+                            })
+                            .map(|app| {
+                                div()
+                                    .flex()
+                                    .gap(px(8.0))
+                                    .items_center()
+                                    .child(app_icon(app, 28.0, cx))
+                                    .child(orbit::text(
+                                        app.name.clone(),
+                                        13.0,
+                                        500,
+                                        orbit::ink(cx),
+                                        cx,
+                                    ))
+                            })
+                    }));
+                return vec![
+                    orbit::RailSection::new("Vista previa", "v-launch", preview),
+                    orbit::RailSection::new(
+                        "Comportamiento",
+                        "v-sliders",
+                        orbit::text(
+                            "Las opciones de la cadena están en el editor. Se aplican al guardar.",
+                            13.0,
+                            400,
+                            orbit::ink_2(cx),
+                            cx,
+                        ),
+                    )
+                    .grow(),
+                ];
+            }
+        }
         let adapt = *cx.global::<orbit::Adapt>();
         let profile = self.showcase_profile();
         let apps = self.showcase_apps(profile, !adapt.show_notes(), cx);
         let options = if let Some(profile) = profile {
-            div().child(self.showcase_options(profile, !adapt.show_notes(), !adapt.show_optional(), cx))
-        } else { div().child(orbit::text("Crea un perfil para configurar su comportamiento.", 13.0, 400, orbit::ink_3(cx), cx)) };
+            div().child(self.showcase_options(
+                profile,
+                !adapt.show_notes(),
+                !adapt.show_optional(),
+                cx,
+            ))
+        } else {
+            div().child(orbit::text(
+                "Crea un perfil para configurar su comportamiento.",
+                13.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ))
+        };
         let history = self.showcase_history(true, cx);
         let all_apps = orbit::ghost_button("rail-all-apps", "Ver todas", cx).on_click(cx.listener(
             |this, _, _, cx| {

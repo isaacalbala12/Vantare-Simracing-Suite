@@ -19,6 +19,14 @@ ejecutable todavía, ni build Production aceptada. Usuario de prueba existente
 elegido por Isaac, raíz QA aislada y servidor coordinado con #1514 pendientes.
 No usuarios ni secretos versionados. Esta autorización reemplaza la exclusión
 administrativa de la entrega original; no autoriza merge/promoción/release.
+Readback oficial 20:39 UTC PASS: cliente/PKCE/scopes/redirect, instancia,
+orígenes/allowlist, issuer/portal. DNS/TLS/mail not_started, dominio incomplete;
+cinco CNAME ausentes también en resolver local. PS5.1 configuración 21 PASS,
+plantilla 8 variables/solo client ID público PASS y diff-check PASS. Sin cambios
+Rust/Go/frontend/Deno: sus gates/build no se repiten. CI original 02f86218:
+native-linux FAIL por imports vantare_runtime::rights en Engineer/recovery;
+no reparado en este alcance. Informe CLI ≤10 líneas y evidencia pública externa
+en C:/tmp/lanzamiento/informe-1507-cli.md y C:/tmp/1507-clerk-cli/.
 
 Worktree `C:/tmp/vw3-1507/vantare-v2`, rama
 `vantareapp/isa-1507-clerk-produccion`, base candidata `a8f9bdc3`.

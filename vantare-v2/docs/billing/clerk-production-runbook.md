@@ -1,8 +1,8 @@
 # Clerk de producción — app nativa (#1507)
 
 Código sobre candidato beta `a8f9bdc3`; decisión de Isaac, §6j de
-`DECISIONES-VANTARE.md` (08-oct-2026). Procedimiento para Isaac: **no acredita
-instancia creada, DNS aplicado, despliegue, build productiva ni login real**.
+`DECISIONES-VANTARE.md` (08-oct-2026). La configuración CLI comprobada consta
+abajo; **no acredita DNS aplicado, certificados, build productiva ni login real**.
 El flujo de compra con login pertenece a #1506 y no se modifica aquí.
 
 ## Preparación CLI autorizada — 08-oct-2026
@@ -88,9 +88,9 @@ worker original queda reemplazada solo por esta autorización de configuración.
 
 ## 1. Instancia y DNS — Isaac
 
-1. Clerk Dashboard → Development → Create production instance. Clonar ajustes
-   deseados; revisar nuevamente Paths, integraciones y conexiones sociales,
-   que no se copian. Conservar la instancia Development.
+1. Seleccionar la instancia Production existente indicada arriba; no crear ni
+   clonar otra. Revisar Paths, integraciones y conexiones sociales de Production.
+   Conservar la instancia Development.
 2. Configurar dominio propio. Ejemplos, **no valores comprobados**: issuer/FAPI
    `https://clerk.vantare.app` y Portal `https://accounts.vantare.app`. Usar los
    orígenes reales que muestre Production en Clerk.
@@ -112,8 +112,9 @@ Edge exacto ya autorizado.
 
 ## 2. OAuth nativo — Isaac
 
-1. Production → OAuth applications → crear cliente de la app nativa. Activar
-   **Public** y **Require PKCE (S256)**. No distribuir client secret.
+1. Production → OAuth applications → seleccionar **Vantare Native Production**
+   creado por CLI. **Public** y **Require PKCE (S256)** ya verificados.
+   No crear un duplicado ni distribuir client secret.
 2. Permitir authorization code y refresh, scopes
    `openid profile offline_access` (los solicitados por `Account`).
 3. Callback IPv4 loopback. Para puerto fijo: registrar y compilar el mismo
@@ -249,6 +250,20 @@ confirmar ambos con #1506/Isaac antes de distribuir; usar alta nueva Production
 para la prueba aislada. Código preparado no equivale a corte productivo validado.
 
 ## Fuentes verificadas (08-oct-2026)
+
+Validación de esta continuación, 20:39 UTC: cliente/instancia, PKCE, scopes,
+redirect, orígenes, allowlist y dominios releídos con CLI oficial: PASS.
+Cinco CNAME ausentes en resolver local; estado Clerk final DNS/TLS/mail
+`not_started`, dominio `incomplete`. Sin discovery HTTPS ni pantallas de
+portal comprobables. PowerShell 5.1 `native/packaging/config-tests.ps1`: 21 PASS;
+plantilla: 8 nombres únicos, solo client ID público rellenado; diff-check PASS.
+Evidencia sanitizada externa `C:/tmp/1507-clerk-cli/verified-public.json` y
+`verify-production.ps1`; informe `C:/tmp/lanzamiento/informe-1507-cli.md`.
+No se repiten Rust/Go/frontend/Deno/build porque este corte solo añade plantilla
+y documentación/configuración remota, sin cambios de código. El CI de la entrega
+original `02f86218` falló native-linux por imports `vantare_runtime::rights`
+en Engineer/recovery; no se corrige fuera de alcance. CI del HEAD nuevo se
+declara por sus resultados reales, sin dar aquel fallo por resuelto.
 
 - [Clerk: producción/DNS](https://clerk.com/docs/guides/development/deployment/production).
 - [Clerk: OAuth público, PKCE y formatos](https://clerk.com/docs/guides/configure/auth-strategies/oauth/how-clerk-implements-oauth).

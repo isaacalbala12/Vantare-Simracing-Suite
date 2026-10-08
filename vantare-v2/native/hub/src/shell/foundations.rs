@@ -10,9 +10,8 @@ struct Preview {
 }
 pub(super) struct Previews {
     templates: Vec<Preview>,
-    primary: std::cell::RefCell<Option<(Settings, Preview)>>,
+    primary: std::cell::RefCell<Option<(vantare_ui::layout::Layout, Vec<Preview>)>>,
     snapshot: std::cell::RefCell<Snapshot>,
-    preferences: Preferences,
 }
 /// Fixtures existentes, separadas de la ruta IPC del producto.
 pub(super) fn capture_photos() -> Result<[Snapshot; 5], String> {
@@ -66,13 +65,20 @@ impl Previews {
                 }
             })
             .collect();
-        Self { templates: previews, primary: std::cell::RefCell::new(None),
-            snapshot: std::cell::RefCell::new(snapshot.clone()), preferences: prefs }
+        Self {
+            templates: previews,
+            primary: std::cell::RefCell::new(None),
+            snapshot: std::cell::RefCell::new(snapshot.clone()),
+        }
     }
     pub fn ingest(&self, snapshot: &Snapshot, cx: &mut gpui::App) {
         self.snapshot.replace(snapshot.clone());
-        if let Some((_, preview)) = self.primary.borrow().as_ref() {
-            preview.view.update(cx, |overlay, cx| overlay.ingest(snapshot, cx));
+        if let Some((_, previews)) = self.primary.borrow().as_ref() {
+            for preview in previews {
+                preview
+                    .view
+                    .update(cx, |overlay, cx| overlay.ingest(snapshot, cx));
+            }
         }
         for preview in &self.templates {
             preview
@@ -83,17 +89,95 @@ impl Previews {
     fn thumbnail(&self, index: usize, width: f32, height: f32, cx: &mut gpui::App) -> Div {
         Self::render_thumbnail(&self.templates[index], width, height, cx)
     }
-    fn layout_thumbnail(&self, settings: &Settings, width: f32, height: f32, cx: &mut gpui::App) -> Div {
+    /// Misma configuración y renderer que Studio/Desktop; solo ajusta la escala de la vista previa.
+    fn layout_thumbnail(
+        &self,
+        layout: &vantare_ui::layout::Layout,
+        width: f32,
+        height: f32,
+        cx: &mut gpui::App,
+    ) -> Div {
         let mut primary = self.primary.borrow_mut();
-        if primary.as_ref().is_none_or(|(previous, _)| previous != settings) {
-            let mut overlay = Overlay::configured(settings, self.preferences);
-            let view = cx.new(|cx| {
-                overlay.ingest(&self.snapshot.borrow(), cx);
-                overlay
-            });
-            *primary = Some((settings.clone(), Preview { view, scale: std::cell::Cell::new(1.0) }));
+        if primary
+            .as_ref()
+            .is_none_or(|(previous, _)| previous != layout)
+        {
+            let views = layout
+                .instances
+                .iter()
+                .filter(|item| item.visible)
+                .map(|item| {
+                    let mut overlay = Overlay::configured(&item.settings, layout.preferences);
+                    let view = cx.new(|cx| {
+                        overlay.ingest(&self.snapshot.borrow(), cx);
+                        overlay
+                    });
+                    Preview {
+                        view,
+                        scale: std::cell::Cell::new(1.0),
+                    }
+                })
+                .collect();
+            *primary = Some((layout.clone(), views));
         }
-        Self::render_thumbnail(&primary.as_ref().expect("vista inicializada").1, width, height, cx)
+        let previews = &primary.as_ref().expect("vista inicializada").1;
+        let items: Vec<_> = layout
+            .instances
+            .iter()
+            .filter(|item| item.visible)
+            .collect();
+        let left = items
+            .iter()
+            .map(|item| item.x)
+            .fold(f32::INFINITY, f32::min);
+        let top = items
+            .iter()
+            .map(|item| item.y)
+            .fold(f32::INFINITY, f32::min);
+        let (right, bottom) =
+            items
+                .iter()
+                .zip(previews)
+                .fold((left, top), |(right, bottom), (item, preview)| {
+                    let (w, h) = preview.view.read(cx).wanted_size();
+                    (right.max(item.x + w), bottom.max(item.y + h))
+                });
+        let scale = ((width - 16.0) / (right - left).max(1.0))
+            .min((height - 16.0) / (bottom - top).max(1.0))
+            .clamp(0.01, 1.0);
+        let mut stage = div()
+            .relative()
+            .w(px((right - left) * scale))
+            .h(px((bottom - top) * scale))
+            .flex_none();
+        for (item, preview) in items.iter().zip(previews) {
+            if (preview.scale.replace(scale) - scale).abs() > f32::EPSILON {
+                preview.view.update(cx, |overlay, cx| {
+                    if let Err(error) = overlay.set_preview_scale(scale) {
+                        eprintln!("miniatura: {error}");
+                    }
+                    cx.notify();
+                });
+            }
+            stage = stage.child(
+                div()
+                    .absolute()
+                    .left(px((item.x - left) * scale))
+                    .top(px((item.y - top) * scale))
+                    .child(preview.view.clone()),
+            );
+        }
+        div()
+            .w_full()
+            .h(px(height))
+            .min_h_0()
+            .overflow_hidden()
+            .rounded(px(8.0))
+            .bg(orbit::gradient([0x0020_2530, 0x0010_1115], 180.0))
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(stage)
     }
     fn render_thumbnail(preview: &Preview, width: f32, height: f32, cx: &mut gpui::App) -> Div {
         let (widget_width, widget_height) = preview.view.read(cx).wanted_size();
@@ -187,10 +271,49 @@ pub(super) fn profile_choice(
 }
 /// Estados globales derivados, sin perfiles ni actividad de ejemplo.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-enum HomeState { Session, Empty, Loading, AccessError }
+enum HomeState {
+    Session,
+    Empty,
+    Loading,
+    AccessError,
+}
 fn home_state(pending: bool, error: bool, profiles: usize) -> HomeState {
-    if error { HomeState::AccessError } else if pending { HomeState::Loading }
-    else if profiles == 0 { HomeState::Empty } else { HomeState::Session }
+    if error {
+        HomeState::AccessError
+    } else if pending {
+        HomeState::Loading
+    } else if profiles == 0 {
+        HomeState::Empty
+    } else {
+        HomeState::Session
+    }
+}
+
+fn hero_height(adapt: orbit::Adapt) -> f32 {
+    match adapt.density {
+        orbit::adapt::Density::A => 300.0,
+        orbit::adapt::Density::M => 236.0,
+        _ => 200.0,
+    }
+}
+fn lower_height(adapt: orbit::Adapt, error: bool) -> f32 {
+    let (top, _, bottom) = adapt.padding();
+    adapt.height
+        - 52.0
+        - top
+        - bottom
+        - if adapt.show_notes() { 60.0 } else { 52.0 }
+        - 2.0 * adapt.gap()
+        - hero_height(adapt)
+        - if error { 60.0 + adapt.gap() } else { 0.0 }
+}
+fn visible_settings(layout: &vantare_ui::layout::Layout) -> Vec<&Settings> {
+    layout
+        .instances
+        .iter()
+        .filter(|item| item.visible)
+        .map(|item| &item.settings)
+        .collect()
 }
 
 impl Hub {
@@ -205,36 +328,58 @@ impl Hub {
         let gap = adapt.gap();
         let center_width = adapt.center_width() - 2.0 * adapt.padding().1;
         let overlay_width = (center_width - gap) / 2.0 - 32.0;
-        let layout = self.studio.read(cx).home_layout();
-        let visible: Vec<_> = layout.instances.iter().filter(|item| item.visible).collect();
-        let widget_labels: Vec<_> = visible.iter().map(|item| item.settings.kind().name()).collect();
-        let main_settings = visible.first().map(|item| item.settings.clone());
+        let layout = self.studio.read(cx).home_layout().clone();
+        let visible = visible_settings(&layout);
+        let widget_labels: Vec<_> = visible
+            .iter()
+            .map(|settings| settings.kind().label())
+            .collect();
+        let main_settings = visible.first().map(|settings| (*settings).clone());
         let widget_count = widget_labels.len();
-        let hero_height = match adapt.density { orbit::adapt::Density::A => 300.0, orbit::adapt::Density::M => 236.0, _ => 200.0 };
-        let (top, _, bottom) = adapt.padding();
-        let lower_height = adapt.height - 52.0 - top - bottom - if adapt.show_notes() { 60.0 } else { 52.0 } - 2.0 * gap - hero_height;
-        let preview_height = (lower_height - if adapt.show_optional() { 260.0 } else { 158.0 }).max(90.0);
         let template_width = (adapt.rail_width() - 32.0 - gap) / 2.0 - 20.0;
         let (pending, access_error) = self.remote.read(cx).home_access();
-        let mut state = home_state(pending, access_error.is_some() || self.shell.access.blocked,
-            self.launcher.read(cx).saved_profiles().len());
+        let mut state = home_state(
+            pending,
+            access_error.is_some() || self.shell.access.blocked,
+            self.launcher.read(cx).saved_profiles().len(),
+        );
         // Variantes solo del banco de captura; no alteran servicios ni permisos.
         if let Some(capture) = &self.capture {
             state = match capture.name.as_str() {
+                "inicio-base" => HomeState::Session,
+                "inicio-vacio" => HomeState::Empty,
                 "inicio-cargando" => HomeState::Loading,
                 "inicio-error" => HomeState::AccessError,
                 _ => state,
             };
         }
         if state == HomeState::Loading {
-            let skeletons = || orbit::neo_card(cx).flex_1().gap(px(18.0))
-                .child(orbit::skeleton(0.4, 16.0, cx)).child(orbit::skeleton(0.8, 36.0, cx))
-                .child(orbit::skeleton(1.0, 64.0, cx));
-            return (div().size_full().flex().flex_col().gap(px(gap))
-                .child(orbit::skeleton(1.0, 52.0, cx)).child(skeletons()).child(skeletons()),
-                vec![orbit::RailSection::new("Estado", "pulse", skeletons()),
-                    orbit::RailSection::new("Plantillas", "v-studio", skeletons()).grow()]);
+            let skeletons = || {
+                orbit::neo_card(cx)
+                    .flex_1()
+                    .gap(px(18.0))
+                    .child(orbit::skeleton(0.4, 16.0, cx))
+                    .child(orbit::skeleton(0.8, 36.0, cx))
+                    .child(orbit::skeleton(1.0, 64.0, cx))
+            };
+            return (
+                div()
+                    .size_full()
+                    .flex()
+                    .flex_col()
+                    .gap(px(gap))
+                    .child(orbit::skeleton(1.0, 52.0, cx))
+                    .child(skeletons())
+                    .child(skeletons()),
+                vec![
+                    orbit::RailSection::new("Estado", "pulse", skeletons()),
+                    orbit::RailSection::new("Plantillas", "v-studio", skeletons()).grow(),
+                ],
+            );
         }
+        let preview_height = (lower_height(adapt, state == HomeState::AccessError)
+            - if adapt.show_optional() { 260.0 } else { 158.0 })
+        .max(90.0);
         let compact = adapt.center_width() < 1100.0;
         let short = adapt.density != orbit::adapt::Density::A;
         let name = self.demo.as_ref().map_or("piloto", |demo| {
@@ -275,18 +420,31 @@ impl Hub {
             |(ready, total)| format!("Lanzando… {ready}/{total}"),
         );
         let empty = state == HomeState::Empty;
-        let launch =
-            orbit::play_button("home-launch", if empty { "Crear mi primer perfil" } else { &launch_label }, adapt.hero_button(), !empty, cx)
-                .tab_stop(empty || profile.is_some() && launching.is_none())
-                .when(!empty && (profile.is_none() || launching.is_some()), |button| {
-                    orbit::disabled(button, "Perfil no disponible o lanzamiento en curso")
-                })
-                .on_click(cx.listener(move |hub, _, window, cx| {
-                    if empty {
-                        hub.navigate(Section::Launcher, cx);
-                        hub.launcher.update(cx, |launcher, cx| launcher.create_home_profile(window, cx));
-                    } else { hub.launch_favorite(cx); }
-                }));
+        let launch = orbit::play_button(
+            "home-launch",
+            if empty {
+                "Crear mi primer perfil"
+            } else {
+                &launch_label
+            },
+            adapt.hero_button(),
+            !empty,
+            cx,
+        )
+        .tab_stop(empty || profile.is_some() && launching.is_none())
+        .when(
+            !empty && (profile.is_none() || launching.is_some()),
+            |button| orbit::disabled(button, "Perfil no disponible o lanzamiento en curso"),
+        )
+        .on_click(cx.listener(move |hub, _, window, cx| {
+            if empty {
+                hub.navigate(Section::Launcher, cx);
+                hub.launcher
+                    .update(cx, |launcher, cx| launcher.create_home_profile(window, cx));
+            } else {
+                hub.launch_favorite(cx);
+            }
+        }));
         let studio = orbit::button("home-studio", "Abrir Studio", cx)
             .h(px(36.0))
             .bg(gpui::transparent_black())
@@ -339,7 +497,7 @@ impl Hub {
             )
             .when(!compact, |button| {
                 button.child(orbit::text(
-                    "«abre el editor con Standings»",
+                    "«Studio» · «Launcher»",
                     14.0,
                     400,
                     orbit::ink_3(cx),
@@ -374,12 +532,16 @@ impl Hub {
             .w(px(if adapt.show_secondary() { 360.0 } else { 300.0 }))
             .flex_none()
             .bg(orbit::tint(orbit::canvas(cx), 0.72))
-            .p(px(if compact { 16.0 } else { 20.0 }))
-            .gap(px(if compact { 4.0 } else { 8.0 }))
+            .p(px(if compact || short { 16.0 } else { 20.0 }))
+            .gap(px(if compact || short { 4.0 } else { 8.0 }))
             .child(orbit::meta("Perfil favorito", 10.0, orbit::ink_3(cx), cx))
-            .child(orbit::text(profile_name.to_owned(), 24.0, 600, orbit::ink(cx), cx)
-                .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
-                .whitespace_nowrap().text_ellipsis().overflow_hidden())
+            .child(
+                orbit::text(profile_name.to_owned(), 24.0, 600, orbit::ink(cx), cx)
+                    .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
+                    .whitespace_nowrap()
+                    .text_ellipsis()
+                    .overflow_hidden(),
+            )
             .child(orbit::text(profile_steps, 12.0, 400, orbit::ink_2(cx), cx))
             .when_some(profile.as_ref(), |card, profile| {
                 card.child(self.launcher.read(cx).profile_app_tiles(profile, cx))
@@ -406,15 +568,18 @@ impl Hub {
                 orbit::ink_3(cx),
                 cx,
             ))
-            .when_some(last_progress, |card, (ready, total)| {
-                card.child(orbit::text(
-                    format!("{ready}/{total} pasos listos"),
-                    12.0,
-                    500,
-                    orbit::green(cx),
-                    cx,
-                ))
-            });
+            .when_some(
+                last_progress.filter(|_| adapt.show_notes()),
+                |card, (ready, total)| {
+                    card.child(orbit::text(
+                        format!("{ready}/{total} pasos listos"),
+                        12.0,
+                        500,
+                        orbit::green(cx),
+                        cx,
+                    ))
+                },
+            );
         let now = self
             .demo
             .as_ref()
@@ -427,7 +592,7 @@ impl Hub {
             _ => "Buenas noches",
         };
         let hero = orbit::hero_surface(cx)
-            .h(px(match adapt.density { orbit::adapt::Density::A => 300.0, orbit::adapt::Density::M => 236.0, _ => 200.0 }))
+            .h(px(hero_height(adapt)))
             .flex_none()
             .flex_row()
             .items_center()
@@ -435,7 +600,7 @@ impl Hub {
             .px(px(if compact { 24.0 } else { 40.0 }))
             .py(px(if short { 22.0 } else { 32.0 }))
             .child(
-                orbit::circuit(cx)
+                orbit::circuit(self.studio.read(cx).home_track().filter(|_| connected), cx)
                     .absolute()
                     .right(px(0.0))
                     .top(px(0.0))
@@ -456,9 +621,21 @@ impl Hub {
                             .flex()
                             .items_center()
                             .gap(px(8.0))
-                            .child(orbit::live_dot(cx))
+                            .child(if connected {
+                                orbit::live_dot(cx)
+                            } else {
+                                orbit::status_dot(orbit::Tone::Neutral, 8.0, cx)
+                            })
                             .child(orbit::meta(
-                                &format!("{} · {status}", now.format("%a %-d %b")),
+                                &format!(
+                                    "{} · {status}{}",
+                                    now.format("%d/%m"),
+                                    self.studio
+                                        .read(cx)
+                                        .home_track()
+                                        .filter(|_| connected && adapt.show_secondary())
+                                        .map_or(String::new(), |track| format!(" · {track}"))
+                                ),
                                 10.0,
                                 orbit::ink_2(cx),
                                 cx,
@@ -466,26 +643,50 @@ impl Hub {
                     )
                     .child(
                         orbit::text(
-                            if empty { "Bienvenido a Vantare".to_owned() } else { format!("{salute}, {name}") },
-                            if compact { 38.0 } else { 54.0 },
+                            if empty {
+                                "Bienvenido a Vantare".to_owned()
+                            } else {
+                                format!("{salute}, {name}")
+                            },
+                            if !adapt.show_optional() {
+                                38.0
+                            } else if short {
+                                46.0
+                            } else if compact {
+                                44.0
+                            } else {
+                                54.0
+                            },
                             600,
                             orbit::ink(cx),
                             cx,
                         )
                         .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
-                        .line_height(px(if compact { 40.0 } else { 56.0 })),
-                    )
-                    .child(orbit::text(
-                        if connected {
-                            "Telemetría conectada. Prepara tu próxima sesión."
+                        .line_height(px(if !adapt.show_optional() {
+                            40.0
+                        } else if short {
+                            48.0
+                        } else if compact {
+                            46.0
                         } else {
-                            "Tu cabina está lista. Esperando simulador."
-                        },
-                        14.0,
-                        400,
-                        orbit::ink_2(cx),
-                        cx,
-                    ))
+                            56.0
+                        })),
+                    )
+                    .when(adapt.show_optional(), |hero| {
+                        hero.child(orbit::text(
+                            if empty {
+                                "Crea un perfil para abrir tus aplicaciones en orden."
+                            } else if connected {
+                                "Telemetría conectada. Prepara tu próxima sesión."
+                            } else {
+                                "Tu cabina está lista. Esperando simulador."
+                            },
+                            14.0,
+                            400,
+                            orbit::ink_2(cx),
+                            cx,
+                        ))
+                    })
                     .child(div().flex_1())
                     .child(
                         div()
@@ -497,51 +698,163 @@ impl Hub {
                             .child(studio),
                     ),
             )
-            .when(center_width >= 1000.0, |hero| hero.child(favorite.relative()));
-        let preview = main_settings.as_ref().map(|settings| {
-            self.home_previews.layout_thumbnail(settings, overlay_width, preview_height, cx)
+            .when(adapt.width > 1600.0 && adapt.show_optional(), |hero| {
+                hero.child(favorite.relative())
+            });
+        let preview = main_settings.as_ref().map(|_| {
+            self.home_previews
+                .layout_thumbnail(&layout, overlay_width, preview_height, cx)
         });
         let overlay = orbit::neo_card(cx)
-            .flex_1().min_h_0().p(px(16.0)).gap(px(8.0))
+            .flex_1()
+            .min_h_0()
+            .p(px(16.0))
+            .gap(px(8.0))
             .child(orbit::neo_header("Overlay en pista", "v-studio", cx))
-            .when_some(preview, |card, preview| card.child(preview.flex_1().min_h_0()))
-            .when(main_settings.is_none(), |card| card.child(
-                div().flex_1().min_h_0().flex().items_center().justify_center()
-                    .child(orbit::text("Ningún widget visible en tu layout", 14.0, 400, orbit::ink_3(cx), cx))))
-            .child(div().flex().items_center().gap(px(8.0))
-                .child(orbit::text("Layout local", 22.0, 600, orbit::ink(cx), cx).flex_1())
-                .child(orbit::pill("Vista previa", orbit::Tone::Neutral, cx)))
-            .child(orbit::text(if connected { "Telemetría conectada · ejecución en pista sin verificar" }
-                else { "Esperando simulador" }, 12.0, 400, orbit::ink_3(cx), cx))
-            .when(adapt.show_optional(), |card| card.child(
-                div().flex().gap(px(6.0)).children(widget_labels.iter().take(3)
-                    .map(|label| orbit::pill(label, orbit::Tone::Neutral, cx)))
-                    .when(widget_count > 3, |chips| chips.child(orbit::pill(
-                        format!("+{}", widget_count - 3), orbit::Tone::Neutral, cx)))))
-            .when(adapt.show_optional(), |card| card.child(
-                div().flex().gap(px(16.0)).children(
-                    [("—".to_owned(), "Hz"), (widget_count.to_string(), "Widgets visibles"), ("—".to_owned(), "CPU")]
-                        .map(|(value, label)| div().flex_1().min_w_0()
-                            .child(orbit::text(value, 24.0, 600, orbit::ink(cx), cx))
-                            .child(orbit::text(label, 11.0, 400, orbit::ink_3(cx), cx))))))
-            .child(div().flex().flex_none().gap(px(8.0))
-                .child(orbit::primary_button("home-edit-overlay", "Editar overlay", cx)
-                    .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx))))
-                .child(orbit::disabled(orbit::button("home-stop-overlay", "Detener", cx),
-                    "El servicio no expone el control de overlays desde Inicio")));
+            .when_some(preview, |card, preview| {
+                card.child(preview.flex_1().min_h_0())
+            })
+            .when(main_settings.is_none(), |card| {
+                card.child(
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(orbit::text(
+                            "Ningún widget visible en tu layout",
+                            14.0,
+                            400,
+                            orbit::ink_3(cx),
+                            cx,
+                        )),
+                )
+            })
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(orbit::text("Layout local", 22.0, 600, orbit::ink(cx), cx).flex_1())
+                    .child(orbit::pill("Vista previa", orbit::Tone::Neutral, cx)),
+            )
+            .child(orbit::text(
+                if connected {
+                    "Telemetría conectada"
+                } else {
+                    "Esperando simulador"
+                },
+                12.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ))
+            .when(adapt.show_optional(), |card| {
+                card.child(
+                    div()
+                        .flex()
+                        .gap(px(6.0))
+                        .children(
+                            widget_labels
+                                .iter()
+                                .take(3)
+                                .map(|label| orbit::pill(label, orbit::Tone::Neutral, cx)),
+                        )
+                        .when(widget_count > 3, |chips| {
+                            chips.child(orbit::pill(
+                                &format!("+{}", widget_count - 3),
+                                orbit::Tone::Neutral,
+                                cx,
+                            ))
+                        }),
+                )
+            })
+            .when(adapt.show_optional(), |card| {
+                card.child(
+                    div().flex().gap(px(16.0)).children(
+                        [
+                            ("—".to_owned(), "Hz"),
+                            (widget_count.to_string(), "Widgets visibles"),
+                            ("—".to_owned(), "CPU"),
+                        ]
+                        .map(|(value, label)| {
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .child(orbit::text(value, 24.0, 600, orbit::ink(cx), cx))
+                                .child(orbit::text(label, 11.0, 400, orbit::ink_3(cx), cx))
+                        }),
+                    ),
+                )
+            })
+            .child(
+                div()
+                    .flex()
+                    .flex_none()
+                    .gap(px(8.0))
+                    .child(
+                        orbit::primary_button("home-edit-overlay", "Editar overlay", cx).on_click(
+                            cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)),
+                        ),
+                    )
+                    .child(orbit::disabled(
+                        orbit::button("home-stop-overlay", "Detener", cx),
+                        "Control de overlays desde Inicio: próximamente",
+                    )),
+            );
 
-        let recent = self.notifications.read(cx).home_activity();
+        let mut recent = self.notifications.read(cx).home_activity();
+        recent.extend(
+            self.launcher
+                .read(cx)
+                .saved_profiles()
+                .iter()
+                .filter_map(|profile| {
+                    let at =
+                        chrono::DateTime::parse_from_rfc3339(profile.last_launched_at.as_deref()?)
+                            .ok()?;
+                    Some((
+                        format!("{} · último lanzamiento", profile.name),
+                        at.timestamp_millis(),
+                        "Launcher",
+                        orbit::Tone::Accent,
+                    ))
+                }),
+        );
+        recent.sort_by_key(|(_, at, _, _)| std::cmp::Reverse(*at));
+        recent.truncate(8);
         let activity_rows = div()
             .id("home-activity-list")
             .flex_1()
             .min_h_0()
             .overflow_y_scroll()
             .children(recent.iter().map(|(title, at, kind, tone)| {
-                div().flex().items_center().gap(px(8.0)).border_b_1()
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .border_b_1()
                     .border_color(rgba(orbit::line_row(cx)))
-                    .child(orbit::summary_row(title.clone(), at.clone(), "clock", cx)
-                        .border_0().flex_1().min_w_0())
-                    .child(orbit::pill(*kind, *tone, cx))
+                    .child(
+                        orbit::summary_row(
+                            title.clone(),
+                            chrono::DateTime::from_timestamp_millis(*at).map_or_else(
+                                || "Sin fecha".into(),
+                                |date| {
+                                    date.with_timezone(&chrono::Local)
+                                        .format("%d/%m · %H:%M")
+                                        .to_string()
+                                },
+                            ),
+                            "clock",
+                            cx,
+                        )
+                        .border_0()
+                        .flex_1()
+                        .min_w_0(),
+                    )
+                    .child(orbit::pill(kind, *tone, cx))
             }));
         let activity = orbit::neo_card(cx)
             .flex_1()
@@ -559,13 +872,39 @@ impl Hub {
                         ),
                     ),
             )
-            .when(!recent.is_empty(), |card| card.child(orbit::scroll_fade(activity_rows,
-                cx.global::<orbit::design::Tokens>().colors.neo_bottom)))
-            .when(recent.is_empty(), |card| card.child(
-                div().flex_1().min_h_0().flex().flex_col().items_center().justify_center().gap(px(12.0))
-                    .child(orbit::icon("clock", 32.0, orbit::ink_3(cx)))
-                    .child(orbit::text("Todavía no hay actividad", 16.0, 600, orbit::ink(cx), cx).text_center())
-                    .child(orbit::text("Tus avisos y lanzamientos aparecerán aquí.", 13.0, 400, orbit::ink_3(cx), cx).text_center())));
+            .when(!recent.is_empty(), |card| {
+                card.child(orbit::scroll_fade(
+                    activity_rows,
+                    cx.global::<orbit::design::Tokens>().colors.neo_bottom,
+                ))
+            })
+            .when(recent.is_empty(), |card| {
+                card.child(
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .flex()
+                        .flex_col()
+                        .items_center()
+                        .justify_center()
+                        .gap(px(12.0))
+                        .child(orbit::icon("clock", 32.0, orbit::ink_3(cx)))
+                        .child(
+                            orbit::text("Todavía no hay actividad", 16.0, 600, orbit::ink(cx), cx)
+                                .text_center(),
+                        )
+                        .child(
+                            orbit::text(
+                                "Tus avisos y lanzamientos aparecerán aquí.",
+                                13.0,
+                                400,
+                                orbit::ink_3(cx),
+                                cx,
+                            )
+                            .text_center(),
+                        ),
+                )
+            });
         let center = div()
             .id("home-center")
             .flex_grow(1.0)
@@ -585,7 +924,7 @@ impl Hub {
                     .child(overlay)
                     .child(activity),
             );
-        let state = div()
+        let status_body = div()
             .flex_none()
             .flex()
             .flex_col()
@@ -599,7 +938,7 @@ impl Hub {
                     .child(
                         orbit::summary_row("Le Mans Ultimate", status, "v-helmet", cx)
                             .border_b_0()
-                            .min_h(px(48.0))
+                            .min_h(px(adapt.row_height()))
                             .flex_1()
                             .min_w_0(),
                     )
@@ -628,7 +967,7 @@ impl Hub {
                             cx,
                         )
                         .border_b_0()
-                        .min_h(px(48.0))
+                        .min_h(px(adapt.row_height()))
                         .flex_1()
                         .min_w_0(),
                     )
@@ -658,7 +997,7 @@ impl Hub {
                                 cx,
                             )
                             .border_b_0()
-                            .min_h(px(48.0))
+                            .min_h(px(adapt.row_height()))
                             .flex_1()
                             .min_w_0(),
                         )
@@ -673,11 +1012,16 @@ impl Hub {
                     .border_b_1()
                     .border_color(gpui::rgba(orbit::line(cx)))
                     .child(
-                        orbit::summary_row("Beta para testers", env!("CARGO_PKG_VERSION"), "key", cx)
-                            .border_b_0()
-                            .min_h(px(48.0))
-                            .flex_1()
-                            .min_w_0(),
+                        orbit::summary_row(
+                            "Beta para testers",
+                            option_env!("VANTARE_VERSION").unwrap_or(env!("CARGO_PKG_VERSION")),
+                            "key",
+                            cx,
+                        )
+                        .border_b_0()
+                        .min_h(px(adapt.row_height()))
+                        .flex_1()
+                        .min_w_0(),
                     )
                     .child(orbit::pill("Beta", orbit::Tone::Neutral, cx)),
             );
@@ -715,10 +1059,31 @@ impl Hub {
             ));
         }
         let banner = (state == HomeState::AccessError).then(|| {
-            orbit::neo_card(cx).flex_none().flex_row().items_center().p(px(10.0)).gap(px(12.0))
-                .child(orbit::text("No se pudo verificar el acceso. Tus perfiles locales siguen disponibles.", 12.0, 400, orbit::ink_2(cx), cx).flex_1().min_w_0())
-                .child(orbit::button("home-access-retry", "Reintentar", cx).flex_none()
-                    .on_click(cx.listener(|hub, _, _, cx| hub.remote.update(cx, |remote, cx| remote.retry_home_access(cx)))))
+            orbit::neo_card(cx)
+                .flex_none()
+                .flex_row()
+                .items_center()
+                .p(px(10.0))
+                .gap(px(12.0))
+                .child(
+                    orbit::text(
+                        "No se pudo verificar el acceso. Tus perfiles locales siguen disponibles.",
+                        12.0,
+                        400,
+                        orbit::ink_2(cx),
+                        cx,
+                    )
+                    .flex_1()
+                    .min_w_0(),
+                )
+                .child(
+                    orbit::button("home-access-retry", "Reintentar", cx)
+                        .flex_none()
+                        .on_click(cx.listener(|hub, _, _, cx| {
+                            hub.remote
+                                .update(cx, crate::services::view::Remote::retry_home_access);
+                        })),
+                )
         });
         let page = div()
             .size_full()
@@ -727,7 +1092,7 @@ impl Hub {
             .flex()
             .flex_col()
             .gap(px(gap))
-            .when_some(banner, |page, banner| page.child(banner))
+            .when_some(banner, gpui::ParentElement::child)
             .child(composer)
             .child(center);
         let templates_title = if adapt.show_secondary() {
@@ -738,9 +1103,76 @@ impl Hub {
         (
             page,
             vec![
-                orbit::RailSection::new("Estado", "pulse", state),
+                orbit::RailSection::new("Estado", "pulse", status_body),
                 orbit::RailSection::new(templates_title, "v-studio", templates).grow(),
             ],
         )
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn states_follow_service_facts_and_error_precedes_loading() {
+        for (pending, error, profiles, expected) in [
+            (false, false, 1, HomeState::Session),
+            (false, false, 0, HomeState::Empty),
+            (true, false, 0, HomeState::Loading),
+            (true, false, 2, HomeState::Loading),
+            (false, true, 0, HomeState::AccessError),
+            (true, true, 2, HomeState::AccessError),
+        ] {
+            assert_eq!(home_state(pending, error, profiles), expected);
+        }
+    }
+    #[test]
+    fn unavailable_layout_never_supplies_mockup_widgets() {
+        let mut layout = vantare_ui::layout::Layout::default();
+        assert!(visible_settings(&layout).is_empty());
+        layout.instances.push(vantare_ui::layout::Instance {
+            id: "real-pedals".into(),
+            x: 0.0,
+            y: 0.0,
+            visible: true,
+            opacity: 1.0,
+            settings: Settings::default_for(Kind::Pedals),
+        });
+        layout.instances.push(vantare_ui::layout::Instance {
+            id: "hidden-standings".into(),
+            x: 0.0,
+            y: 0.0,
+            visible: false,
+            opacity: 1.0,
+            settings: Settings::default_for(Kind::Standings),
+        });
+        let settings = visible_settings(&layout);
+        assert_eq!(settings.len(), 1);
+        assert_eq!(settings[0].kind(), Kind::Pedals);
+    }
+    #[test]
+    fn seven_sizes_leave_complete_lower_cards_in_both_rail_states() {
+        for (width, height) in [
+            (1280.0, 720.0),
+            (1366.0, 768.0),
+            (1440.0, 900.0),
+            (1512.0, 900.0),
+            (1920.0, 1080.0),
+            (1680.0, 1050.0),
+            (2048.0, 1152.0),
+        ] {
+            for open in [false, true] {
+                let adapt = orbit::Adapt::new(width, height, None, open);
+                let (top, _, bottom) = adapt.padding();
+                for error in [false, true] {
+                    let lower = lower_height(adapt, error);
+                    assert!(
+                        lower >= 298.0,
+                        "{width}x{height} rail={open} error={error}: {lower}"
+                    );
+                    assert!(top + bottom + 52.0 + hero_height(adapt) + lower < height);
+                }
+            }
+        }
     }
 }

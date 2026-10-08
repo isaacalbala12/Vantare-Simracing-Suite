@@ -406,23 +406,36 @@ fn time(occurred_at: i64) -> String {
 }
 impl Notifications {
     /// Últimos avisos reales; comparte traducción y filtro de audiencia con el centro.
-    pub(crate) fn home_activity(&self) -> Vec<(String, String, &'static str, orbit::Tone)> {
-        let mut records: Vec<_> = self.center.records.iter()
-            .filter(|record| self.tester || record.source != Source::Beta).collect();
+    pub(crate) fn home_activity(&self) -> Vec<(String, i64, &'static str, orbit::Tone)> {
+        let mut records: Vec<_> = self
+            .center
+            .records
+            .iter()
+            .filter(|record| self.tester || record.source != Source::Beta)
+            .collect();
         records.sort_by_key(|record| std::cmp::Reverse(record.occurred_at));
-        records.into_iter().take(8).map(|record| {
-            let (label, tone) = match record.severity {
-                Severity::Error => ("Error", orbit::Tone::Danger),
-                Severity::Warning => ("Aviso", orbit::Tone::Warning),
-                Severity::Info => match record.source {
-                    Source::Launcher => ("Launcher", orbit::Tone::Success),
-                    Source::Beta => ("Beta", orbit::Tone::Accent),
-                    Source::Updater => ("Actualización", orbit::Tone::Accent),
-                    Source::System => ("Sistema", orbit::Tone::Neutral),
-                },
-            };
-            (message(&record.title_key, &record.params), time(record.occurred_at), label, tone)
-        }).collect()
+        records
+            .into_iter()
+            .take(8)
+            .map(|record| {
+                let (label, tone) = match record.severity {
+                    Severity::Error => ("Error", orbit::Tone::Danger),
+                    Severity::Warning => ("Aviso", orbit::Tone::Warning),
+                    Severity::Info => match record.source {
+                        Source::Launcher => ("Launcher", orbit::Tone::Success),
+                        Source::Beta => ("Beta", orbit::Tone::Accent),
+                        Source::Updater => ("Actualización", orbit::Tone::Accent),
+                        Source::System => ("Sistema", orbit::Tone::Neutral),
+                    },
+                };
+                (
+                    message(&record.title_key, &record.params),
+                    record.occurred_at,
+                    label,
+                    tone,
+                )
+            })
+            .collect()
     }
     pub(crate) fn from_center(center: Center) -> Self {
         Self {
@@ -1219,5 +1232,26 @@ mod tests {
         record.action = None;
         center.publish(record, 0, false).expect("truncar");
         assert_eq!(center.records[0].concrete_cause.len(), 240);
+    }
+}
+
+#[cfg(test)]
+mod home_tests {
+    use super::*;
+    #[test]
+    fn home_is_empty_without_events_and_beta_requires_tester() {
+        let mut notifications = Notifications::default();
+        assert!(notifications.home_activity().is_empty());
+        let mut record = Record::local_error("hub.launcher", "fallo real".into());
+        record.source = Source::Beta;
+        record.occurred_at = 123;
+        notifications.center.records.push(record);
+        assert!(notifications.home_activity().is_empty());
+        notifications.tester = true;
+        let rows = notifications.home_activity();
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].0, "Error local del Hub");
+        assert_eq!(rows[0].1, 123);
+        assert_eq!(rows[0].2, "Error");
     }
 }

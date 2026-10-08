@@ -321,9 +321,13 @@ impl Prepared {
 fn studio_demo_capture() -> bool {
     let args: Vec<_> = std::env::args().collect();
     args.iter().any(|arg| arg == "--demo")
-        && args
-            .windows(2)
-            .any(|pair| pair[0] == "--capture" && pair[1] == "studio-base")
+        && args.windows(2).any(|pair| {
+            pair[0] == "--capture"
+                && matches!(
+                    pair[1].as_str(),
+                    "studio-base" | "inicio-base" | "inicio-error"
+                )
+        })
 }
 pub struct Studio {
     editor: Editor,
@@ -549,7 +553,12 @@ impl Studio {
         self.editor.layout()
     }
     pub(crate) fn home_track(&self) -> Option<&str> {
-        self.snapshot.state.session.track_name.current().map(String::as_str)
+        self.snapshot
+            .state
+            .session
+            .track_name
+            .current()
+            .map(String::as_str)
     }
     pub fn preferences(&self) -> Preferences {
         self.editor.layout().preferences

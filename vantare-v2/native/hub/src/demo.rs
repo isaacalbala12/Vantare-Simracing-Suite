@@ -585,7 +585,7 @@ impl CaptureState {
             "studio-base" => Section::Studio,
             "workshop-base" | "workshop-detalle" => Section::Workshop,
             name if name.starts_with("ajustes-") => Section::Settings,
-            name if name.starts_with("shell-") || name == "inicio-base" => Section::Home,
+            name if name.starts_with("shell-") || name.starts_with("inicio-") => Section::Home,
             _ => return Err(format!("pantalla Wails sin sección nativa: {name}")),
         };
         let palette_query = match name {
@@ -631,6 +631,26 @@ impl CaptureState {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn home_capture_states_are_explicit_and_empty_scenes_have_no_profiles() {
+        for name in [
+            "inicio-base",
+            "inicio-vacio",
+            "inicio-cargando",
+            "inicio-error",
+        ] {
+            let capture = CaptureState::parse(name).expect("estado Inicio");
+            assert_eq!(capture.section, Section::Home);
+            let mut demo = DemoData::load().expect("datos QA");
+            demo.apply_capture(&capture).expect("aplicar estado");
+            assert_eq!(
+                demo.launcher.profiles.is_empty(),
+                matches!(name, "inicio-vacio" | "inicio-cargando")
+            );
+        }
+        assert!(CaptureState::parse("inicio-inventado").is_err());
+    }
 
     #[test]
     fn notification_capture_clock_is_scoped_to_its_two_explicit_scenes() {

@@ -1,5 +1,51 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## #1496 — UI R1 Inicio: entrega local para revisión (2026-10-08)
+
+Worktree `C:/tmp/vw3-ui-r1/vantare-v2`, rama
+`vantareapp/isa-1496-ui-r1-inicio`, rebased sobre la corrección R0
+`1cb32aac`. Cuatro hitos en español (#1496); código verificado `4f0c7d68`,
+seguido solo de este cierre documental en el cuarto hito. El intento previo
+interrumpido se conservó y revisó. No se tocaron los cinco archivos protegidos
+del orquestador; `docs/roadmap/plan.md` no existe en esta base y no se recreó.
+
+Inicio usa el kit/tokens R0: composer/paleta y selector con Launcher real;
+hero/favorito, circuito del recurso R9.3, baldosas por pasos guardados;
+preview de todas las instancias visibles del layout con los mismos `Overlay`
+productivos de Studio/Desktop; actividad de notificaciones y último lanzamiento;
+Estado/Plantillas y sesión/vacío/cargando/error con Reintentar.
+Ausencias honestas: «Esperando simulador», «Layout local»/«Vista previa»,
+Hz/CPU «—», Detener deshabilitado. Las plantillas abren Studio; no existe
+contrato de presets, estado/stop/metrics del Desktop ni nombre de usuario remoto
+para prometer más. Saludo sin identidad: «piloto»; QA usa la fixture Isaac.
+
+Gates finales por cola, -j2 y target aislado: fmt/check/Clippy -D warnings PASS;
+Nextest1251/1251 PASS (6 skips previos, golden ACC418.328s), lifecycle18 PASS
+(Engineer5 + Launcher13); prueba con build-config beta-dev-clerk PASS.
+QA parity-capture PASS; warning preexistente solo QA en analysis/view.rs:989,
+fuera del alcance. Fallos intermedios preservados y corregidos sin relajar gates.
+Sccache desactivado por Windows10055. Sin Go/frontend ni dependencias nuevas.
+
+33 pares GPUI/mockup: 24 obligatorios en tres temas/cuatro tamaños/dos carriles,
+6 adicionales de adaptación y 3 estados; todos salida0. Tres capturas XS
+adicionales: 1152×648 al90%=1280×720 lógicos, abierto/recogido/error; inspeccionadas
+sin controles cortados. 36/36 PNG opacos, seis hojas principales, dos adicionales
+y estados inspeccionados personalmente. DeepSeek ya toma el color del tema en
+el circuito. Datos de QA no acreditan LMU live, login, OBS, Mac, rendimiento ni
+DPI físico125: 2560×1440 usa zoom de interfaz125 en monitor DPI100.
+El backend heredado limita contenido a1280×800 y reduce escala en720/768;
+el contrato puro cubre siete tamaños, sin modificar ese backend.
+
+Evidencia `C:/tmp/ui-r10/r1-evidence/VERIFICACION.md`; informe de hasta15 líneas
+`C:/tmp/ui-r10/informe-r1.md`. Binarios QA y productivos conservados en
+`r1-evidence/bin/`. Limpieza solicitada de target/gates (11.04GiB) bloqueada
+por revisión automática: «blocked by policy»; caché intacta, detalle cleanup.json.
+Preguntas de revisión: Vista previa/Detener/metrics, presets reales, límite de
+zoom y ampliar el expediente #1496 que aún describe R0. Isaac debe revisar
+R1 antes de integración. Rama remota/PR/CI ausentes; sin push, merge,
+promoción ni release. Solo actualización del handoff y comentario de evidencia
+en #1496, sin cerrar la issue ni cambiar el canal.
+
 ## #1468 — Input/Fuel entrega local; H2H pendiente (2026-10-07)
 
 Worktree `C:/tmp/vw3-1468-datos/vantare-v2`, rama

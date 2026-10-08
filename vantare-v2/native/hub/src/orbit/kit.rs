@@ -346,18 +346,55 @@ pub fn hero_surface(cx: &gpui::App) -> Div {
         .bg(ramp(skin.hero, 118.0))
         .border_color(super::alpha(skin.hero_ring))
         .shadow(vec![kit_shadow(skin.hero_light, 1.0, 0.0, 0.0, true)])
+        .child(
+            div()
+                .absolute()
+                .inset_0()
+                .bg(ramp_alpha(skin.hero_wash, 160.0)),
+        )
+        .child(
+            div().absolute().inset_0().child(
+                gpui::canvas(
+                    |_, _, _| (),
+                    |bounds, (), window, _| {
+                        let width = f32::from(bounds.size.width);
+                        let height = f32::from(bounds.size.height);
+                        let mut path = gpui::PathBuilder::stroke(px(1.0));
+                        let mut x = -height;
+                        while x < width {
+                            path.move_to(
+                                bounds.origin
+                                    + gpui::point(px(x.max(0.0)), px(height - (-x).max(0.0))),
+                            );
+                            path.line_to(
+                                bounds.origin
+                                    + gpui::point(
+                                        px((x + height).min(width)),
+                                        px((x + height - width).max(0.0)),
+                                    ),
+                            );
+                            x += 12.0;
+                        }
+                        if let Ok(path) = path.build() {
+                            window.paint_path(path, gpui::rgba(0xffff_ff12));
+                        }
+                    },
+                )
+                .size_full(),
+            ),
+        )
 }
 /// Cadena de aplicaciones en baldosas (§4). Colores de marca independientes del tema.
 pub fn app_tile(id: &str, name: &str, cx: &gpui::App) -> Div {
     let (label, colors) = match id {
-        "lmu" => ("LMU", [0x2454a5, 0x163572]),
-        "crewchief" => ("CC", [0xd47721, 0x9c4f0b]),
-        "simhub" => ("SH", [0x703bb2, 0x482276]),
-        "obs" => ("OBS", [0x333942, 0x1e2229]),
-        "spotify" => ("SP", [0x248449, 0x185b32]),
-        "discord" => ("DC", [0x6873f5, 0x2e3699]),
-        "custom:vantare" => ("V", [0xda3849, 0x961c2c]),
-        _ => (name, [0x3a3a40, 0x252529]),
+        "lmu" => ("LMU", [0x002f_6ad8, 0x0012_2e6a]),
+        "crewchief" => ("CC", [0x00e9_852a, 0x008f_450b]),
+        "simhub" => ("SH", [0x008a_4ce0, 0x0040_207a]),
+        "obs" => ("OBS", [0x005a_5d64, 0x0026_272b]),
+        "spotify" => ("SP", [0x0022_c35d, 0x000e_6b30]),
+        "discord" => ("DC", [0x0068_73f5, 0x002e_3699]),
+        "custom:vantare" => ("V", [0x00e3_434e, 0x008e_1823]),
+        _ => (name, [0x003a_3a40, 0x0025_2529]),
     };
     div()
         .flex_1()
@@ -370,7 +407,7 @@ pub fn app_tile(id: &str, name: &str, cx: &gpui::App) -> Div {
         .overflow_hidden()
         .bg(super::gradient(colors, 135.0))
         .child(
-            super::text(label.to_owned(), 10.0, 600, 0xffffff, cx)
+            super::text(label.to_owned(), 10.0, 600, 0x00ff_ffff, cx)
                 .whitespace_nowrap()
                 .text_ellipsis()
                 .overflow_hidden(),
@@ -385,23 +422,68 @@ pub fn skeleton(width: f32, height: f32, cx: &gpui::App) -> Div {
         .rounded(px(skin(cx).radius.sm))
         .bg(rgb(skin(cx).l3))
 }
+fn circuit_key(name: Option<&str>) -> Option<&'static str> {
+    let Some(name) = name else {
+        return Some("lemans_h");
+    };
+    let name = name.to_lowercase();
+    [
+        ("le mans", "lemans_h"),
+        ("sarthe", "lemans_h"),
+        ("lemans", "lemans_h"),
+        ("spa", "spa_h"),
+        ("monza", "monza_h"),
+        ("bahrain", "bahrain"),
+        ("bahréin", "bahrain"),
+        ("imola", "imola"),
+        ("portim", "portimao"),
+        ("interlagos", "interlagos"),
+        ("cota", "cota"),
+        ("americas", "cota"),
+        ("losail", "losail"),
+        ("lusail", "losail"),
+        ("paul ricard", "paulricard"),
+        ("barcelona", "barcelona"),
+        ("catalunya", "barcelona"),
+    ]
+    .into_iter()
+    .find_map(|(alias, key)| {
+        let matches = if matches!(alias, "spa" | "cota") {
+            name.split(|c: char| !c.is_alphanumeric())
+                .any(|part| part == alias)
+        } else {
+            name.contains(alias)
+        };
+        matches.then_some(key)
+    })
+}
 /// Trazado real del recurso R9.3. Le Mans horizontal es decoración de reposo;
 /// jamás dibuja posición de coche/meta sin un contrato de posición de sesión.
-pub fn circuit(cx: &gpui::App) -> Div {
-    let tracks: std::collections::BTreeMap<String, [String; 2]> =
+pub fn circuit(name: Option<&str>, cx: &gpui::App) -> Div {
+    static TRACKS: std::sync::OnceLock<std::collections::BTreeMap<String, [String; 2]>> =
+        std::sync::OnceLock::new();
+    let Some(key) = circuit_key(name) else {
+        return div();
+    };
+    let tracks = TRACKS.get_or_init(|| {
         serde_json::from_str(include_str!("../../assets/tracks/tracks.json"))
-            .expect("recurso de circuitos validado por tests");
-    let track = &tracks["lemans_h"];
+            .expect("recurso de circuitos validado por tests")
+    });
+    let track = &tracks[key];
     let viewbox: Vec<f32> = track[0]
         .split_whitespace()
-        .filter_map(|n| n.parse().ok())
+        .map(|n| n.parse().expect("viewbox validado"))
         .collect();
     let points: Vec<f32> = track[1]
         .trim_start_matches('M')
         .trim_end_matches('Z')
         .split_whitespace()
-        .filter_map(|n| n.parse().ok())
+        .map(|n| n.parse().expect("punto validado"))
         .collect();
+    let strokes = [
+        (10.0, skin(cx).accent << 8 | 0x1a),
+        (2.5, skin(cx).accent_bright << 8 | 0x40),
+    ];
     gpui::div().child(
         gpui::canvas(
             |_, _, _| (),
@@ -412,7 +494,7 @@ pub fn circuit(cx: &gpui::App) -> Div {
                     bounds.origin.x + (bounds.size.width - px(viewbox[2] * scale)) / 2.0,
                     bounds.origin.y + (bounds.size.height - px(viewbox[3] * scale)) / 2.0,
                 );
-                for (stroke, color) in [(10.0, 0xff66701a), (2.5, 0xffe2e540)] {
+                for (stroke, color) in strokes {
                     let mut path = gpui::PathBuilder::stroke(px(stroke));
                     for (index, point) in points.chunks_exact(2).enumerate() {
                         let point =
@@ -436,6 +518,21 @@ pub fn circuit(cx: &gpui::App) -> Div {
 
 #[cfg(test)]
 mod resource_tests {
+    #[test]
+    fn session_track_uses_real_outline_and_unknown_never_becomes_le_mans() {
+        assert_eq!(super::circuit_key(None), Some("lemans_h"));
+        assert_eq!(super::circuit_key(Some("Spa-Francorchamps")), Some("spa_h"));
+        assert_eq!(
+            super::circuit_key(Some("Autodromo Nazionale Monza")),
+            Some("monza_h")
+        );
+        assert_eq!(super::circuit_key(Some("Circuito desconocido")), None);
+        assert_eq!(
+            super::circuit_key(Some("Barcelona (Spain)")),
+            Some("barcelona")
+        );
+        assert_eq!(super::circuit_key(Some("Spain")), None);
+    }
     #[test]
     fn all_real_circuits_have_valid_closed_coordinates() {
         let tracks: std::collections::BTreeMap<String, [String; 2]> =

@@ -210,14 +210,23 @@ pub fn play_button(
     };
     super::carmine_button(id, "", cx)
         .h(px(height))
+        .min_w_0()
+        .flex_shrink(1.0)
         .px(px(pad))
         .gap(px(if height >= 50.0 { 12.0 } else { 10.0 }))
         .aria_label(label.to_owned())
-        .child(icon("play", glyph, 0x00ff_ffff))
-        .child(super::text(label.to_owned(), size, 600, 0x00ff_ffff, cx))
+        .child(icon("play", glyph, 0x00ff_ffff).flex_none())
+        .child(
+            super::text(label.to_owned(), size, 600, 0x00ff_ffff, cx)
+                .min_w_0()
+                .whitespace_nowrap()
+                .text_ellipsis()
+                .overflow_hidden(),
+        )
         .when(key, |button| {
             button.child(
                 div()
+                    .flex_none()
                     .ml(px(4.0))
                     .pl(px(12.0))
                     .h(px(20.0))

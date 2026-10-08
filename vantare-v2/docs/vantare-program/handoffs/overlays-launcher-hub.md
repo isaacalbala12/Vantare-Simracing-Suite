@@ -5895,3 +5895,6 @@ Bounds reales de ambas acciones1920×1080 y1280×720 PASS, PNG inspeccionados.
 Clippy-Dwarnings PASS. Capturas launcher-real/advanced/reopen/discard/retry/wrap.
 Los primeros1280 del harness no reducían el mínimo QA1920; se repitieron con
 mínimo1280 y tamaño cliente comprobado, sin contar el intento como prueba.
+### ISA-1496 · Segunda vuelta: ancho efectivo del inspector
+- La interacción nativa mostró controles de 168 px dentro de una columna de 140 px: Filas alcanzaba x=1932 en cliente de 1920. La columna reserva ahora 168 px y 196 para Opacidad con su porcentaje; no se modifica el tamaño mínimo del kit.
+- Build QA y Clippy `-D warnings` PASS. UI Automation del binario recompilado: Filas x=1736, ancho=168, extremo=1904; Opacidad x=1708, ancho=176, ambos dentro del panel. Capturas/recorridos en `C:/tmp/ui-r10/calidad-2-evidence`; matriz completa y gates finales aún en curso.

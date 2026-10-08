@@ -1663,7 +1663,15 @@ impl Studio {
                                             .min_w_0()
                                             .when(!*show_label, gpui::Styled::flex_1)
                                             .when(*show_label, |control| {
-                                                control.w(px(140.0)).flex_none()
+                                                // NumberControl necesita 168 px; la opacidad
+                                                // también reserva sitio para el sufijo «%».
+                                                control
+                                                    .w(px(if *label == "Opacidad" {
+                                                        196.0
+                                                    } else {
+                                                        168.0
+                                                    }))
+                                                    .flex_none()
                                             })
                                             .child(control.clone())
                                             .when(*label == "Opacidad", |control| {

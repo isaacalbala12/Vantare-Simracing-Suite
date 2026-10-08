@@ -394,7 +394,7 @@ Desde `native/`: `bash ui/workshop-dev.sh --widget standings --escena ui/fixture
 Estilos y escenas se recargan dentro del proceso. Al guardar Rust en `ui/src` o
 `domain/src` recompila con `-j 2` y sustituye la ventana: la nueva se abre antes
 de cerrar la vieja y recupera escena, fase y ajustes guardados; si no compila,
-sigue la anterior. Workshop se abre en la mitad derecha del monitor principal sin
+sigue la anterior. Workshop se abre ocupando el monitor principal sin
 robar el foco; con Stage Manager queda en la tira hasta elegirlo. Si estaba a la
 vista, la recarga lo mantiene a la vista y devuelve el foco a la app activa.
 `VANTARE_WORKSHOP_ACTIVATE=1` lo trae al frente (capturas de evidencia).

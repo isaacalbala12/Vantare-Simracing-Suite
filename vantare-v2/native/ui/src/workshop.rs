@@ -1041,15 +1041,10 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
             *failure.borrow_mut() = Some("no se pudieron registrar las fuentes".into());
             return;
         }
-        // Mitad derecha del monitor principal: T3/editor a la izquierda, Workshop a la derecha.
-        let window_bounds = cx.primary_display().map(|display| {
-            let screen = display.bounds();
-            let half = screen.size.width / 2.0;
-            gpui::WindowBounds::Windowed(gpui::Bounds::new(
-                gpui::point(screen.origin.x + half, screen.origin.y),
-                gpui::size(half, screen.size.height),
-            ))
-        });
+        // Ocupa todo el monitor principal (macOS la ajusta bajo la barra de menús).
+        let window_bounds = cx
+            .primary_display()
+            .map(|display| gpui::WindowBounds::Windowed(display.bounds()));
         let options = WindowOptions {
             titlebar: Some(gpui::TitlebarOptions {
                 title: Some("Vantare — Workshop en vivo".into()),

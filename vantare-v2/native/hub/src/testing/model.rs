@@ -148,23 +148,6 @@ pub(super) fn with_report_kind(context: &str, suggestion: bool) -> String {
         }
     )
 }
-#[cfg(test)]
-mod kind_tests {
-    use super::with_report_kind;
-    #[test]
-    fn changing_kind_preserves_context_without_stacking_markers() {
-        assert_eq!(with_report_kind("", false), "Tipo: Algo falla\n");
-        let initial = "Sesión real\nPasos y datos";
-        let suggestion = with_report_kind(initial, true);
-        assert_eq!(suggestion, "Tipo: Sugerencia\nSesión real\nPasos y datos");
-        assert_eq!(with_report_kind(&suggestion, true), suggestion);
-        assert_eq!(
-            with_report_kind(&suggestion, false),
-            "Tipo: Algo falla\nSesión real\nPasos y datos"
-        );
-    }
-}
-
 /// Vistas R10.9; sin contadores de cuestionarios inventados.
 pub(super) const VIEWS: [&str; 4] = ["Resumen", "Cuestionarios", "Informes", "Comunidad"];
 
@@ -184,3 +167,20 @@ pub(super) const QUESTION_FORMATS: [(&str, &str); 5] = [
     ("Texto corto", "Contar tu experiencia"),
     ("Captura opcional", "Adjuntar una imagen si ayuda"),
 ];
+
+#[cfg(test)]
+mod kind_tests {
+    use super::with_report_kind;
+    #[test]
+    fn changing_kind_preserves_context_without_stacking_markers() {
+        assert_eq!(with_report_kind("", false), "Tipo: Algo falla\n");
+        let initial = "Sesión real\nPasos y datos";
+        let suggestion = with_report_kind(initial, true);
+        assert_eq!(suggestion, "Tipo: Sugerencia\nSesión real\nPasos y datos");
+        assert_eq!(with_report_kind(&suggestion, true), suggestion);
+        assert_eq!(
+            with_report_kind(&suggestion, false),
+            "Tipo: Algo falla\nSesión real\nPasos y datos"
+        );
+    }
+}

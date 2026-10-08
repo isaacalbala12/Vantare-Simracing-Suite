@@ -427,7 +427,6 @@ impl Hub {
                 | Section::Account
                 | Section::Licenses
                 | Section::Testing
-                | Section::Testing
                 | Section::Calendar
         );
         let header = match self.section {
@@ -551,11 +550,9 @@ impl Hub {
                 .launcher
                 .update(cx, |launcher, cx| launcher.rail_sections(window, cx)),
             Section::Settings => self.settings_rail(cx),
-            Section::Testing => legacy(
-                self.testing
-                    .update(cx, |testing, cx| testing.context_column(cx))
-                    .into_any_element(),
-            ),
+            Section::Testing => self
+                .testing
+                .update(cx, |testing, cx| testing.rail_sections(cx)),
             Section::Calendar => legacy(
                 self.calendar
                     .update(cx, |calendar, cx| calendar.context_column(cx))

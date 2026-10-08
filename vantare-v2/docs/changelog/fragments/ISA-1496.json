@@ -2,24 +2,27 @@
   "schemaVersion": 1,
   "issue": "ISA-1496",
   "type": "change",
-  "summary": "Launcher presenta el perfil favorito, su cadena y las vistas de aplicaciones, historial y edición con la nueva interfaz del Hub. Studio añade un lienzo 16:9 centrado y un inspector con anclaje y cruceta.",
+  "summary": "Launcher presenta el perfil favorito, su cadena y las vistas de aplicaciones, historial y edición con la nueva interfaz del Hub. Studio añade un lienzo 16:9 centrado y un inspector con anclaje y cruceta. Testing Center incorpora Resumen, Cuestionarios, Informes y Comunidad con recibos reales y estados pendientes.",
   "technicalNotes": [
     "La tarjeta conserva su tamaño durante el lanzamiento y muestra progreso, reintentos, resultado y cancelación del motor existente.",
     "Las pestañas y el panel derecho usan el kit común. Los cambios del perfil son un borrador hasta Guardar.",
     "Studio conserva el renderer y el documento nativos; la tira y el inspector usan el kit común del Hub.",
-    "La cruceta mueve 1 px o 8 px con Mayús; anclar y centrar guardan la posición y admiten deshacer."
+    "La cruceta mueve 1 px o 8 px con Mayús; anclar y centrar guardan la posición y admiten deshacer.",
+    "Testing Center conserva el redactor, la revisión y el consentimiento del envío; la lista muestra ID, fecha, módulo y estado del recibo de esta sesión sin retener el texto privado."
   ],
   "testing": [
     "Revisar Launcher en los tres temas, con ambos paneles, seleccionar un póster, ordenar pasos y guardar o cancelar el perfil.",
     "Con una aplicación local propia, probar la cadena, cancelar una espera y comprobar el resultado sin cerrar procesos ajenos.",
     "En Studio, seleccionar un widget, anclar en las nueve zonas, mover con y sin Mayús, centrar, deshacer y reabrir el layout.",
-    "Cambiar Ejemplo/En vivo, visibilidad y opacidad; revisar zoom Ajustar y panel derecho abierto/recogido."
+    "Cambiar Ejemplo/En vivo, visibilidad y opacidad; revisar zoom Ajustar y panel derecho abierto/recogido.",
+    "Como tester u owner, recorrer las cuatro pestañas, alternar Nuevo informe/Ver mis informes, revisar los recibos con clic o teclado, y abrir Borradores y diagnóstico. Comprobar los tres temas y el panel abierto/recogido en los tamaños de soporte."
   ],
   "knownLimitations": [
     "Color y circuito del perfil aparecen como Próximamente porque el documento actual no los guarda.",
     "Historial muestra el último lanzamiento por perfil; no se inventan intentos, duración ni estado continuo de procesos.",
     "Entrega local pendiente de revisión y promoción; sin release ni validación LMU/OBS/Mac o DPI físico 125 %.",
     "Escala libre, estilos, frecuencia por widget, OBS y Mostrar en pista siguen pendientes de sus contratos nativos.",
-    "Capturas y fluidez de Studio pendientes si la pantalla compartida está ocupada; los tests no prueban paridad visual."
+    "Capturas y fluidez de Studio pendientes si la pantalla compartida está ocupada; los tests no prueban paridad visual.",
+    "Cuestionarios y su guardado automático, niveles, insignias, conversación, apoyo y seguimiento posterior son Próximamente; no se muestran datos del mockup. Redactor y lista alternan para reservar espacio."
   ]
 }

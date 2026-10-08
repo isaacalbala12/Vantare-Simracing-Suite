@@ -440,3 +440,38 @@ fn diagnostic_inventory_only_reports_binaries_distributed_in_its_channel() {
         );
     }
 }
+
+#[test]
+fn receipt_does_not_invent_progress_or_a_nightly_version() {
+    use super::model::receipt_status;
+    assert_eq!(receipt_status("submitted"), "Recibido");
+    for state in [
+        "",
+        "reproduced",
+        "fixing",
+        "fixed",
+        "nightly.14",
+        "unrecognized",
+    ] {
+        assert_eq!(receipt_status(state), "Estado no disponible");
+    }
+}
+
+#[test]
+fn testing_capture_entrypoint_accepts_the_four_views_and_rejects_unknown_screens() {
+    use crate::{Section, demo::CaptureState};
+    for name in [
+        "testing-center-resumen",
+        "testing-center-cuestionarios",
+        "testing-center-informe",
+        "testing-center-comunidad",
+    ] {
+        assert_eq!(
+            CaptureState::parse(name)
+                .expect("vista Testing válida")
+                .section,
+            Section::Testing
+        );
+    }
+    assert!(CaptureState::parse("testing-center-inventado").is_err());
+}

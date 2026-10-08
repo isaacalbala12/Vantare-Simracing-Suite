@@ -1,5 +1,37 @@
 # Handoff vivo — Overlay Studio, Launcher y Hub
 
+## #1525 — panic de accesibilidad del candidato beta (2026-10-08)
+
+Worktree `C:/tmp/vw3-1525/vantare-v2`, rama
+`vantareapp/isa-1525-panic-sidebar`, base exacta `a8f9bdc3`.
+Reproducido en debug con `RUST_BACKTRACE=1`, datos y pipe propios:
+`GenericContainer is filtered out of the a11y tree and has no effect`;
+traza GPUI `div.rs:1305` → Hub `shell/sidebar.rs:286`.
+Avatar puramente visual dentro del botón Cuenta; `summary_row` construye
+contenido estático como `Group`, sin heredar foco ni selección de un botón.
+Auditoría de todos los `.role(...)`/`tab_stop` del Hub: dos conversiones
+inválidas a `GenericContainer`; corregidas ambas. Dos regresiones de
+accesibilidad sobre constructores productivos: RED antes, PASS después;
+sin dependencias nuevas ni ventanas en los tests.
+UI #1496 consultada solo con Git en `4a2584f1`: avatar ya estático,
+`orbit/neo.rs::summary_row` conserva el panic. Commit compartido `4aa5254e`:
+`git cherry-pick 4aa5254e` cuando lo incorpore su worker propietario;
+`git apply --check` PASS sobre copias exactas de esa revisión, sin escribir
+en su worktree. El avatar del candidato se corrige en `a7d55dfc`.
+fmt/Clippy workspace/all-targets `-D warnings` PASS; Nextest 1217/1217
+PASS (6 skips configurados); lifecycle 5 + 13 PASS. Todo por la cola indicada.
+Cuatro capturas físicas 1440×900/DPI100 opacas e inspeccionadas: barra
+expandida/contraída, foco de Tab y respuesta al click de Cuenta. Demo con
+acceso sin verificar: el click de Cuenta muestra ese aviso; no acredita
+login, lector de pantalla real, LMU, OBS, macOS ni otros DPI. Procesos propios
+cerrados exit0; comprobada ausencia de `pantalla-ocupada` antes de abrir.
+Build debug/parity-capture de reproducción conserva el warning previo de
+`analysis/view.rs:989`; no se modifica ni oculta ese código.
+Rama remota publicada; [PR draft #1526](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1526)
+contra `vantareapp/isa-1470-candidato-beta`; CI remota pendiente de cierre.
+Evidencia externa `C:/tmp/lanzamiento/evidencia-1525/`; `plan.md` ausente
+en esta base, sin crear roadmap paralelo. Sin merge, promoción ni release.
+
 ## #1468 — Input/Fuel entrega local; H2H pendiente (2026-10-07)
 
 Worktree `C:/tmp/vw3-1468-datos/vantare-v2`, rama

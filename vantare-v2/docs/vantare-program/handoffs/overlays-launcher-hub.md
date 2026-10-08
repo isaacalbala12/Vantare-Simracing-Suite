@@ -5654,3 +5654,8 @@ fijo; controles tipados existentes preservados y filas adaptadas al ancho320.
 La contracción se delega al estado global del panel derecho (Ctrl Alt B), sin
 segunda preferencia local. Estilo y URL OBS pendientes; color solo donde lo
 soporta RacingFlags. Check/fmt/diff-check PASS; pantalla sigue ocupada.
+Hito 4: anclaje3×3 y cruceta documental (1px/Mayús8px/centro), sin números en
+el inspector ni anchor persistido nuevo. Tests cubren nueve posiciones,
+movimientos, límites, recarga y undo. Tamaño −/+ deshabilitado; Rendimiento
+como sección pendiente: no se promete nivel4Hz ni frecuencia no soportada.
+Check y fmt PASS; pendiente suite/gates finales y QA si queda libre la pantalla.

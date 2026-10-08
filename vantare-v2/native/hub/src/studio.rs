@@ -824,26 +824,6 @@ impl Studio {
             None
         };
         self.instance_number(
-            "X",
-            Tab::Layout,
-            f64::from(item.x),
-            -100_000.0,
-            100_000.0,
-            1.0,
-            |item, v| item.x = v as f32,
-            cx,
-        );
-        self.instance_number(
-            "Y",
-            Tab::Layout,
-            f64::from(item.y),
-            -100_000.0,
-            100_000.0,
-            1.0,
-            |item, v| item.y = v as f32,
-            cx,
-        );
-        self.instance_number(
             "Opacidad",
             Tab::Appearance,
             f64::from(item.opacity) * 100.0,
@@ -1274,6 +1254,160 @@ impl Studio {
         }
         panel
     }
+    fn position_anchor(&mut self, column: u8, row: u8, cx: &mut Context<Self>) {
+        if let Some(position) = self
+            .selected_size(cx)
+            .and_then(|size| inspector::anchored_position(size, column, row))
+        {
+            self.reset_fields();
+            self.edit(
+                |editor| {
+                    editor.edit_selected(|item| {
+                        item.x = position.0;
+                        item.y = position.1;
+                    })
+                },
+                cx,
+            );
+        }
+    }
+    fn position_nudge(&mut self, direction: (i8, i8), shift: bool, cx: &mut Context<Self>) {
+        self.reset_fields();
+        self.edit(
+            |editor| {
+                editor.edit_selected(|item| {
+                    let next = inspector::nudged_position((item.x, item.y), direction, shift);
+                    item.x = next.0;
+                    item.y = next.1;
+                })
+            },
+            cx,
+        );
+    }
+    fn position_controls(&self, item: &Instance, cx: &mut Context<Self>) -> gpui::Div {
+        let size = self.selected_size(cx);
+        let mut anchors = div()
+            .flex()
+            .flex_col()
+            .gap(px(4.0))
+            .p(px(6.0))
+            .rounded(px(orbit::skin(cx).radius.md))
+            .bg(rgb(orbit::surface_2(cx)));
+        for row in 0..3u8 {
+            let mut line = div().flex().gap(px(4.0));
+            for column in 0..3u8 {
+                let position =
+                    size.and_then(|size| inspector::anchored_position(size, column, row));
+                let active = position
+                    .is_some_and(|(x, y)| (item.x - x).abs() < 0.01 && (item.y - y).abs() < 0.01);
+                let label = format!(
+                    "Anclar {} {}",
+                    ["arriba", "centro", "abajo"][usize::from(row)],
+                    ["izquierda", "centro", "derecha"][usize::from(column)]
+                );
+                line = line.child(
+                    orbit::position_cell(
+                        ("studio-anchor", usize::from(row) * 3 + usize::from(column)),
+                        "",
+                        22.0,
+                        16.0,
+                        active,
+                        cx,
+                    )
+                    .aria_label(label)
+                    .on_click(
+                        cx.listener(move |this, _, _, cx| this.position_anchor(column, row, cx)),
+                    ),
+                );
+            }
+            anchors = anchors.child(line);
+        }
+        let mut dpad = div().flex().flex_col().gap(px(3.0));
+        let cells = [
+            [None, Some(("▲", "Mover arriba", (0, -1))), None],
+            [
+                Some(("◀", "Mover izquierda", (-1, 0))),
+                Some(("•", "Centrar widget", (0, 0))),
+                Some(("▶", "Mover derecha", (1, 0))),
+            ],
+            [None, Some(("▼", "Mover abajo", (0, 1))), None],
+        ];
+        for (row, cells) in cells.into_iter().enumerate() {
+            let mut line = div().flex().gap(px(3.0));
+            for (column, cell) in cells.into_iter().enumerate() {
+                line = match cell {
+                    None => line.child(div().size(px(26.0))),
+                    Some((glyph, label, direction)) => line.child(
+                        orbit::position_cell(
+                            ("studio-nudge", row * 3 + column),
+                            glyph,
+                            26.0,
+                            26.0,
+                            false,
+                            cx,
+                        )
+                        .aria_label(label)
+                        .on_click(cx.listener(
+                            move |this, event: &gpui::ClickEvent, _, cx| {
+                                if direction == (0, 0) {
+                                    this.position_anchor(1, 1, cx);
+                                } else {
+                                    this.position_nudge(direction, event.modifiers().shift, cx);
+                                }
+                            },
+                        )),
+                    ),
+                };
+            }
+            dpad = dpad.child(line);
+        }
+        div()
+            .min_w_0()
+            .flex()
+            .flex_col()
+            .gap(px(10.0))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(18.0))
+                    .child(anchors)
+                    .child(dpad),
+            )
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(8.0))
+                    .child(text("Tamaño", 11.0, 500, orbit::ink_3(cx), cx))
+                    .child(orbit::disabled(
+                        orbit::position_cell("studio-size-minus", "−", 28.0, 28.0, false, cx),
+                        "Próximamente: el documento no admite escala libre.",
+                    ))
+                    .child(orbit::mono_text("Contenido", 11.0, orbit::ink_2(cx), cx))
+                    .child(orbit::disabled(
+                        orbit::position_cell("studio-size-plus", "+", 28.0, 28.0, false, cx),
+                        "Próximamente: el documento no admite escala libre.",
+                    )),
+            )
+            .child(text(
+                "Flechas: 1 px · Mayús: 8 px · • centra",
+                11.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ))
+    }
+    fn performance_settings(cx: &gpui::App) -> gpui::Div {
+        orbit::inspector_section("Rendimiento", "v-gauge", cx).child(orbit::pending_select(
+            "studio-cadence",
+            "Frecuencia del widget",
+            "Actualización · Próximamente",
+            250.0,
+            "El documento actual no admite nivel ni frecuencia fija por widget.",
+            cx,
+        ))
+    }
     fn tab_settings(
         &self,
         item: &Instance,
@@ -1284,14 +1418,7 @@ impl Studio {
         match tab {
             Tab::Layout => {
                 panel = panel
-                    .child(orbit::list_row(
-                        "resize-pending",
-                        "Tamaño del contenido",
-                        "El tamaño lo determina el contenido del widget.",
-                        false,
-                        false,
-                        cx,
-                    ))
+                    .child(self.position_controls(item, cx))
                     .child(
                         button("front", "Traer al frente", cx)
                             .on_click(cx.listener(|this, _, _, cx| this.edit(Editor::front, cx))),
@@ -1348,7 +1475,7 @@ impl Studio {
         }
         panel
     }
-    #[allow(clippy::too_many_lines)] // Compone las cuatro tarjetas con los controles existentes.
+    #[allow(clippy::too_many_lines)] // Compone las secciones del inspector con los controles existentes.
     fn inspector(&self, cx: &mut Context<Self>) -> gpui::Div {
         let mut panel = div().min_w_0().flex().flex_col();
         if let Some(item) = self.editor.selected() {
@@ -1388,6 +1515,9 @@ impl Studio {
                     ),
             );
             for tab in Tab::ALL {
+                if tab == Tab::Layout {
+                    panel = panel.child(Self::performance_settings(cx));
+                }
                 let title = tab.label();
                 let mut card = orbit::inspector_section(
                     title,

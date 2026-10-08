@@ -2,6 +2,31 @@
 use crate::orbit::NumberRange;
 use vantare_ui::Settings;
 
+/// Acciones de posición sobre el lienzo lógico. No añade anclajes al documento.
+pub fn anchored_position(size: (f32, f32), column: u8, row: u8) -> Option<(f32, f32)> {
+    if column > 2
+        || row > 2
+        || !size.0.is_finite()
+        || !size.1.is_finite()
+        || size.0 <= 0.0
+        || size.1 <= 0.0
+    {
+        return None;
+    }
+    Some((
+        (1920.0 - size.0) * f32::from(column) / 2.0,
+        (1080.0 - size.1) * f32::from(row) / 2.0,
+    ))
+}
+
+pub fn nudged_position(position: (f32, f32), direction: (i8, i8), shift: bool) -> (f32, f32) {
+    let step = if shift { 8.0 } else { 1.0 };
+    (
+        (position.0 + f32::from(direction.0) * step).clamp(-100_000.0, 100_000.0),
+        (position.1 + f32::from(direction.1) * step).clamp(-100_000.0, 100_000.0),
+    )
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Tab {
     Layout,
@@ -492,6 +517,90 @@ pub fn valid_color(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn anchors_align_all_nine_zones_and_reject_invalid_sizes() {
+        for row in 0..3 {
+            for column in 0..3 {
+                assert_eq!(
+                    anchored_position((400.0, 200.0), column, row),
+                    Some((f32::from(column) * 760.0, f32::from(row) * 440.0))
+                );
+            }
+        }
+        for size in [
+            (0.0, 100.0),
+            (100.0, -1.0),
+            (f32::NAN, 1.0),
+            (1.0, f32::INFINITY),
+        ] {
+            assert_eq!(anchored_position(size, 1, 1), None);
+        }
+        assert_eq!(anchored_position((400.0, 200.0), 3, 0), None);
+        assert_eq!(anchored_position((400.0, 200.0), 0, 3), None);
+    }
+    #[test]
+    fn anchors_nudges_and_center_persist_reload_and_undo() {
+        use crate::document::{Editor, tests::File};
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
+        editor.add(vantare_ui::Kind::Radar).expect("radar");
+        let original = editor.layout().clone();
+        for row in 0..3 {
+            for column in 0..3 {
+                let next = anchored_position((400.0, 200.0), column, row).expect("zona");
+                editor
+                    .edit_selected(|item| {
+                        item.x = next.0;
+                        item.y = next.1;
+                    })
+                    .expect("anclar");
+                let reloaded = Editor::open(file.path.clone()).expect("recarga");
+                assert_eq!(reloaded.layout(), editor.layout());
+                assert_eq!(
+                    (
+                        reloaded.layout().instances[0].x,
+                        reloaded.layout().instances[0].y
+                    ),
+                    next
+                );
+                editor.undo().expect("deshacer");
+                assert_eq!(editor.layout(), &original);
+            }
+        }
+        for direction in [(0, -1), (-1, 0), (1, 0), (0, 1)] {
+            for shift in [false, true] {
+                let next = nudged_position((20.0, 20.0), direction, shift);
+                let step = if shift { 8.0 } else { 1.0 };
+                assert_eq!(
+                    next,
+                    (
+                        20.0 + f32::from(direction.0) * step,
+                        20.0 + f32::from(direction.1) * step
+                    )
+                );
+                editor
+                    .edit_selected(|item| {
+                        item.x = next.0;
+                        item.y = next.1;
+                    })
+                    .expect("mover");
+                assert_eq!(
+                    Editor::open(file.path.clone()).expect("recarga").layout(),
+                    editor.layout()
+                );
+                editor.undo().expect("deshacer");
+                assert_eq!(editor.layout(), &original);
+            }
+        }
+        assert_eq!(
+            anchored_position((400.0, 200.0), 1, 1),
+            Some((760.0, 440.0))
+        );
+        assert_eq!(
+            nudged_position((100_000.0, -100_000.0), (1, -1), true),
+            (100_000.0, -100_000.0)
+        );
+    }
     use vantare_ui::Kind;
     #[test]
     fn offered_controls_change_typed_settings_and_survive_normalization() {

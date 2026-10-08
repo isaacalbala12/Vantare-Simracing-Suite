@@ -69,6 +69,26 @@ pub fn inspector_section(title: &str, icon_name: &'static str, cx: &gpui::App) -
         .border_color(super::alpha(skin(cx).line1))
         .child(section_header(title, icon_name, None, cx))
 }
+/// Celda de rejilla/cruceta R10.10; el consumidor conecta la acción documental.
+pub fn position_cell(
+    id: impl Into<gpui::ElementId>,
+    label: &str,
+    width: f32,
+    height: f32,
+    selected: bool,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    super::button(id, label, cx)
+        .w(px(width))
+        .h(px(height))
+        .min_w_0()
+        .p(px(0.0))
+        .flex_none()
+        .justify_center()
+        .rounded(px(skin(cx).radius.sm))
+        .aria_selected(selected)
+        .when(selected, |button| button.bg(rgb(skin(cx).accent)))
+}
 /// Degradado de dos paradas de un token, con su posición final.
 pub fn ramp(ramp: Ramp, angle: f32) -> gpui::Background {
     linear_gradient(

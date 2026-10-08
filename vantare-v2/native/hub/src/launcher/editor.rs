@@ -443,7 +443,7 @@ pub(super) fn form_button(
     cx: &Context<Launcher>,
 ) -> gpui::Stateful<gpui::Div> {
     button
-        .track_focus(focus)
+        .track_focus(&focus.clone().tab_stop(true))
         .on_click(cx.listener(move |this, _, window, cx| action(this, window, cx)))
         .on_key_down(
             cx.listener(move |this, event: &gpui::KeyDownEvent, window, cx| {
@@ -1083,7 +1083,7 @@ impl Launcher {
                             .id("launcher-editor-mode")
                             .role(gpui::Role::Button)
                             .aria_label(if advanced { "Básico" } else { "Avanzado" })
-                            .track_focus(&tabs.read(cx).focus_handle())
+                            .track_focus(&tabs.read(cx).focus_handle().tab_stop(true))
                             .tab_index(0)
                             .tab_stop(true)
                             .rounded(px(4.0))

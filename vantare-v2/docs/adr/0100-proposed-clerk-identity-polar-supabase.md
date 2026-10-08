@@ -58,6 +58,8 @@ como autoridad comercial y Vantare como autoridad de grants/capabilities.
   del worker, sin service_role en cron. Permanece desactivado hasta configurar
   sandbox. Cursor/lease y presupuesto de 45 s limitan cada invocación; no se
   promete un SLA hasta medir el ciclo completo real.
+- La prueba Pro dura siete días en mensual y anual, con la misma verificación
+  de antiabuso. No habilitar el flag hasta probar la configuración real.
 - El intento incierto no se borra al caducar: Polar permite recuperar el checkout
   por cuenta UUID y marcador del intento persistido por servidor. No se recrea
   ciegamente. Una fila histórica sin prueba de correlación permanece cerrada.

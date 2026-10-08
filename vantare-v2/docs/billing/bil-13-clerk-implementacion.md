@@ -1,12 +1,12 @@
 # BIL-13 — implementación y validación
 
 Estado actual: fases 1–2 y clientes fase 3 escritos; fase 4 parcial; fase 5 real
-pendiente. Backend 464 PASS, SQL sin ejecutar. No desplegado. No-Go comercial.
+pendiente. Backend 466 PASS, SQL sin ejecutar. No desplegado. No-Go comercial.
 Los apartados r1 siguientes conservan evidencia histórica; ronda actual abajo.
 
 Worktree `C:/tmp/vantare-isa1514-impl`, rama
 `vantareapp/isa-1514-identidad-impl`, base
-`4994643871b64829ff907de55252d8a5599eb90f` (#1517). PR draft contra
+`4994663871b64829ff907de55252d8a5599eb90f` (#1517). PR draft contra
 `vantareapp/isa-1514-identidad-clerk`. HEAD y enlace final en GitHub #1514.
 
 ## Fase 1
@@ -98,8 +98,8 @@ pwsh -File supabase/tests/run-clerk-identity-postgres.ps1
 ## Ronda actual: clientes, retirada y evidencia
 
 Fases 1–2 escritas; fase 3 escrita en ramas aisladas; fase 4 parcial; fase 5 real
-pendiente. Backend principal: **464 Deno PASS / 0 FAIL**, tipos incluidos.
-Candidato: **516 PASS / 0 FAIL / 1 ignored** (PostgREST local sin DB). Guards
+pendiente. Backend principal: **466 Deno PASS / 0 FAIL**, tipos incluidos.
+Candidato: **518 PASS / 0 FAIL / 1 ignored** (PostgREST local sin DB). Guards
 TS/PowerShell PASS; Deno check de handlers nuevos PASS. Web **12 tests PASS**,
 build y node --check PASS. Capturas reales 1280×800 y 390×844: compra cerrada sin
 configuración y sin overflow. No prueba login/pago real.
@@ -233,3 +233,13 @@ Matriz: cuenta nueva sandbox, IDs comerciales/UUID/dispositivo/grants/credencial
 sin JWT/email/secretos, medir replay/ciclo scheduler y límites reales de trial/
 cancelación. Fixtures no sustituyen compras. Rollback cierra compra y preserva
 inbox/grants/mapping; build compatible, sin snapshots sobre pagos nuevos.
+
+El mapa público listo para cargar es supabase/functions/scripts/polar-product-map.sandbox.json.
+No contiene secretos. POLAR_TRIAL_ANTI_ABUSE_CONFIRMED permanece cerrado hasta
+comprobar antiabuso real en Polar sandbox; el mapa y los tests no sustituyen esa
+prueba. Después de comprobarlo, cargar POLAR_PRODUCT_MAP y el flag mediante CLI:
+
+```powershell
+$env:POLAR_PRODUCT_MAP = Get-Content supabase/functions/scripts/polar-product-map.sandbox.json -Raw
+supabase secrets set --project-ref $env:SANDBOX_PROJECT_REF POLAR_PRODUCT_MAP="$env:POLAR_PRODUCT_MAP" POLAR_TRIAL_ANTI_ABUSE_CONFIRMED="$env:POLAR_TRIAL_ANTI_ABUSE_CONFIRMED"
+```

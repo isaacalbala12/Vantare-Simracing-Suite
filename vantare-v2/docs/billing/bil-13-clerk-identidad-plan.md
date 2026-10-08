@@ -29,7 +29,7 @@ comportamiento anterior, no requisitos de compatibilidad.
 
 Entrega #1523: fases 1–2 escritas, incluidos scheduler y recuperación de checkout
 incierto; clientes de fase 3 escritos en ramas aisladas del candidato y de #1502.
-Backend principal: 464 Deno PASS; candidato: 516 PASS, un test PostgREST omitido.
+Backend principal: 466 Deno PASS; candidato: 518 PASS, un test PostgREST omitido.
 Fase 4: retirada de autoridad Auth en servidor escrita, login legacy rechazado;
 providers/emails hospedados y retirada de fuentes Wails/Electron pendientes de
 integración/aceptación de los clientes. No se borran consumidores históricos a

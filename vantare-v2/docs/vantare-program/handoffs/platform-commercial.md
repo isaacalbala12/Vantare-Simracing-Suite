@@ -1693,8 +1693,10 @@ revisión visual cuando la pantalla quede libre y revisión del orquestador.
 Commit/push y PR draft contra el candidato autorizados por el brief; sin merge,
 promoción, release, despliegue ni modificación de instalación real.
 
-Preguntas para Isaac/orquestador: publicar y confirmar la URL canónica de la
-política (enlace previsto `https://vantare.app/privacidad`); comprobar retención,
+Isaac confirma la URL canónica `https://vantare.app/privacidad`: la pregunta
+y Ajustes › Privacidad comparten ese enlace y su manejo de teclado. El Hub
+aún no distingue idioma de interfaz (el selector está inactivo); el idioma
+de widgets no cambia la URL. Pendientes: publicación de la política y retención,
 DPA y descarte de IP en PostHog conforme a las marcas VERIFICAR de la política.
 No se configura producción desde este worker. `docs/roadmap/plan.md` falta en
 base y `origin/nightly`: decidir cómo reconciliar el contrato de actualización
@@ -1708,4 +1710,12 @@ abierta contra `vantareapp/isa-1470-candidato-beta` y vinculada al hilo T3.
 CI remota en curso al comprobar la entrega; no se afirma CI verde ni integración.
 Informe final del worker: `C:/tmp/lanzamiento/informe-1515.md` (HEAD final y
 estado remoto). Siguiente: revisar PR/CI, validar la pantalla al liberarse y
-confirmar/publicar la política antes de autorizar una integración/promoción.
+publicar la política antes de autorizar una integración/promoción.
+
+Seguimiento autorizado de #1515: URL confirmada y enlace compartido en ambas
+vistas, disponible también si hay error de preferencias. Foco propio en Ajustes,
+clic y Enter/Espacio; no se cambia el permiso ni el flujo de compra/cuenta.
+Formato y Clippy del workspace PASS; Nextest de `shell::settings::` 16/16 PASS
+(287 fuera del filtro). Logs `C:/tmp/lanzamiento/1515-url-*.log`. Sin nueva prueba
+visual ni acciones de producción. La misma rama y PR draft #1519 reciben este
+seguimiento; HEAD/push final se registra en el informe del worker y GitHub #1515.

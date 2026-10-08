@@ -2079,6 +2079,11 @@ impl Hub {
                 }
             }
         }
+        body = body.child(super::privacy::policy_link(
+            "settings-privacy-policy",
+            &self.settings.privacy_policy_focus,
+            cx,
+        ));
         section_surface("Diagnóstico y uso", None, body, cx)
     }
     fn settings_events(&self, cx: &mut Context<Self>) -> Div {

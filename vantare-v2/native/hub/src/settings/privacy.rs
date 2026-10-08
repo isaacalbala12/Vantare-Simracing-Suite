@@ -1,8 +1,23 @@
 //! Usa el mismo guardado atómico y detección de conflictos que los demás ajustes.
 use crate::orbit;
-use gpui::{Context, Div, Stateful, Window, div, prelude::*, px, rgb};
+use gpui::{Context, Div, FocusHandle, Stateful, Window, div, prelude::*, px, rgb};
 use std::path::{Path, PathBuf};
 use vantare_services::diagnostics::{PRIVACY_FILE, Privacy};
+
+// El Hub aún muestra la interfaz en español; el idioma de widgets es independiente.
+const PRIVACY_POLICY_URL: &str = "https://vantare.app/privacidad";
+
+pub(super) fn policy_link(id: &'static str, focus: &FocusHandle, cx: &gpui::App) -> Stateful<Div> {
+    orbit::button(id, "Política de privacidad", cx)
+        .track_focus(focus)
+        .on_click(|_, _, cx| cx.open_url(PRIVACY_POLICY_URL))
+        .on_key_down(|event, _, cx| {
+            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                cx.open_url(PRIVACY_POLICY_URL);
+                cx.stop_propagation();
+            }
+        })
+}
 
 pub(super) struct Store {
     pub value: Privacy,
@@ -103,15 +118,7 @@ impl super::Hub {
                     )),
             );
         }
-        let policy = orbit::button("crash-consent-policy", "Política de privacidad", cx)
-            .track_focus(&targets[2])
-            .on_click(|_, _, cx| cx.open_url("https://vantare.app/privacidad"))
-            .on_key_down(|event, _, cx| {
-                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                    cx.open_url("https://vantare.app/privacidad");
-                    cx.stop_propagation();
-                }
-            });
+        let policy = policy_link("crash-consent-policy", &targets[2], cx);
         let body = orbit::card_body().gap(px(16.0))
             .child(orbit::text("¿Quieres enviar informes de fallos para ayudarnos a corregir errores?", 16.0, 600, orbit::ink(cx), cx))
             .child(orbit::text("Solo si aceptas, Vantare enviará a PostHog (Unión Europea) la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal.", 13.0, 400, orbit::ink_2(cx), cx))

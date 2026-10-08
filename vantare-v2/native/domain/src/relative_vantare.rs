@@ -39,8 +39,9 @@ pub struct Board {
     pub slower_class: Option<String>,
     pub traffic: Option<Traffic>,
     pub pit_exit: Option<PitExit>,
-    /// Piloto, coche y dorsal de todos los coches: el ancho del nombre se
-    /// ajusta a la sesión, no a los vecinos del momento.
+    /// Piloto, coche y dorsal de los coches que pueden verse (todos o los de
+    /// la clase propia): el ancho del nombre se ajusta a la sesión, no a los
+    /// vecinos del momento.
     pub names: Vec<(String, String, String)>,
 }
 
@@ -189,10 +190,12 @@ pub fn project(snapshot: &Snapshot, ahead: usize, behind: usize, same_class: boo
         slower_class,
         traffic,
         pit_exit,
+        // Solo los coches que pueden aparecer con el filtro de clase.
         names: if live {
             state
                 .cars
                 .iter()
+                .filter(|car| !same_class || car.class.as_ref().map(|c| c.id.0) == player_class)
                 .map(|car| {
                     (
                         car.driver.name.clone(),
@@ -478,6 +481,7 @@ mod tests {
             board.traffic.is_some(),
             "el tráfico más rápido sigue avisando"
         );
+        assert_eq!(board.names.len(), 2, "el ancho del nombre solo mira LMGT3");
     }
 
     #[test]

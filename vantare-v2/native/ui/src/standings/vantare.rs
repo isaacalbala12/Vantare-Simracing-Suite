@@ -290,7 +290,7 @@ fn driver_width(board: Option<&Board>, options: &Options, style: &Style) -> f32 
     if widest <= 0.0 {
         return max;
     }
-    (widest + 8.0).clamp(style.geometry.driver_xs, max)
+    (widest + 4.0).clamp(style.geometry.driver_xs, max)
 }
 
 // ---------------------------------------------------------------------------

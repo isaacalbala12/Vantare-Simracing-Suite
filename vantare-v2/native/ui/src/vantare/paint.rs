@@ -50,22 +50,40 @@ pub(crate) fn round_rect(
     }
 }
 
-/// Ancho aproximado de un texto Inter (em por carácter): los layouts son puros
-/// y no miden con la ventana; `text::fit` recorta al pintar si se queda corto.
+/// Ancho de un texto Inter 400 sin medir con la ventana: los layouts son puros.
+/// Usa los avances reales de la fuente (sin kerning); `text::fit` recorta al
+/// pintar si alguna vez se queda corto.
 pub(crate) fn estimate(text: &str, size: f32) -> f32 {
     text.chars()
-        .map(|c| match c {
-            ' ' => 0.28,
-            '.' | ',' | '·' | '\'' | 'i' | 'l' | 'I' | 'j' | '|' => 0.3,
-            'f' | 't' | 'r' => 0.4,
-            'm' | 'w' | 'M' | 'W' => 0.86,
-            c if c.is_ascii_digit() => 0.62,
-            c if c.is_uppercase() => 0.7,
-            _ => 0.57,
+        .map(|c| {
+            let milli = match c as u32 {
+                code @ 0x20..=0xff => LATIN1[(code - 0x20) as usize],
+                0x2014 => 1000,
+                0x2026 => 864,
+                0x2212 => 662,
+                _ => 600,
+            };
+            f32::from(milli) / 1000.0
         })
         .sum::<f32>()
         * size
 }
+
+/// Avance de Inter 400 en milésimas de em para U+0020..=U+00FF (generado de Inter-400.ttf).
+const LATIN1: [u16; 224] = [
+    281, 288, 466, 633, 642, 982, 644, 300, 365, 365, 501, 662, 288, 460, 288, 360, 631, 407, 610,
+    618, 646, 593, 620, 566, 619, 620, 288, 302, 662, 662, 662, 511, 966, 690, 654, 730, 722, 601,
+    590, 746, 743, 269, 571, 672, 565, 903, 753, 765, 639, 765, 644, 642, 646, 744, 690, 985, 682,
+    679, 629, 365, 360, 365, 471, 456, 323, 562, 612, 571, 612, 583, 370, 613, 591, 242, 242, 549,
+    242, 876, 591, 600, 612, 612, 376, 528, 327, 591, 562, 818, 546, 562, 552, 426, 333, 426, 662,
+    656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656,
+    656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 656, 281, 288, 571, 611, 725,
+    550, 270, 568, 591, 914, 454, 583, 662, 656, 666, 478, 456, 662, 442, 446, 323, 586, 603, 288,
+    268, 304, 482, 583, 802, 847, 882, 511, 690, 690, 690, 690, 690, 690, 994, 730, 601, 601, 601,
+    601, 269, 269, 269, 269, 735, 753, 765, 765, 765, 765, 765, 662, 765, 744, 744, 744, 744, 679,
+    636, 616, 562, 562, 562, 562, 562, 562, 917, 571, 583, 583, 583, 583, 242, 242, 242, 242, 583,
+    591, 600, 600, 600, 600, 600, 662, 600, 591, 591, 591, 591, 562, 612, 562,
+];
 
 /// Contexto de pintado de un widget Vantare: estilo, variante, acento,
 /// idioma y ancho del panel.

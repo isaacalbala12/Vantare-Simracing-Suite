@@ -106,9 +106,10 @@ no hay prueba, caso abierto o reembolso autorizado, nunca grant por semejanza.
   Refund oficial no garantiza, y Pro mantiene grant tras refund: bloqueos
   BIL-12. Pro requiere revocación inmediata coordinada o proyección por refund,
   no cancelación al fin del periodo. Launch mantiene offline perpetuo hasta
-  reconectar y sustituir su credencial. La política ante refund parcial/pending
-  y fallo posterior se propone en la pregunta 4; no asumir que el ledger actual
-  (solo total succeeded) expresa la decisión nueva.
+  reconectar y sustituir su credencial. Aplicar la retirada al emitir, también
+  si el refund es parcial o inicialmente pending; no introducir una excepción
+  que Isaac no aprobó. La recuperación tras failed/canceled se consulta en la
+  pregunta 4; el ledger actual (solo total succeeded) no cumple la decisión.
 - **Contracargo:** suspender el derecho afectado mientras la disputa dure;
   cierre favorable lo restaura solo si la concesión sigue válida, cierre
   desfavorable la retira. Nunca restaurar por un evento antiguo. No se encontró
@@ -501,10 +502,10 @@ concluye que haga falta contratar un plan concreto.
 3. ¿Hay usuarios/pagos con valor que debamos conservar? Ejecutar counts; decidir
    cómo verificar su posesión cuando Development no puede trasladarse
    directamente.
-4. ¿«Retirar al emitir refund» abarca también parciales y pending? Propuesta:
-   suspender grant afectado al emitir, finalizar retirada al succeeded; failed/
-   canceled restaura solo sin otra revocación. Confirmar alcance Launch/Pro y
-   soporte de la fuente de disputa antes de activar venta.
+4. Si un refund ya emitido termina failed/canceled, ¿cómo autorizamos restaurar
+   el derecho? La retirada al emitir se mantiene, incluidos parcial/pending;
+   propuesta de recuperación: revisión de soporte y prueba del resultado, sin
+   restauración automática por evento antiguo ni otra revocación activa.
 5. ¿Qué umbral de entrega y resolución aceptas ante pago confirmado + caída
    posterior (propuesta para discutir: alarma inmediata, cierre de nuevas
    compras, resolución asistida sin segundo pago)? No existe garantía

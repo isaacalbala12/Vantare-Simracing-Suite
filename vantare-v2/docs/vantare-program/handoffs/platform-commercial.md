@@ -18,7 +18,8 @@ Conservar UUID interno + mapping `(issuer, Clerk sub text)`, sin cambiar claves
 de negocio a text; checkout servidor usa ese UUID como external_customer_id.
 No vincular por email; cuarentena/replay auditado para huérfanos. Refund retira,
 disputa suspende, Launch perpetua offline/revocación tras reconexión, trial Pro
-siete días. Matiz de refund parcial/pending y umbral de entrega requieren decisión.
+siete días. Retirada al emitir refund, incluidos parcial/pending; recuperación
+tras failed/canceled y umbral de entrega requieren decisión.
 
 Isaac corrigió calendario: intentar cobrar **12-oct 10:00 Europe/Madrid**, gate
 **09:00**; si falla, venta **19-oct**. Mínimo propuesto: Launch desde app con

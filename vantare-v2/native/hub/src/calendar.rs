@@ -195,14 +195,18 @@ impl Schedule {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Following {
     series_ids: Vec<String>,
+    #[serde(skip)]
+    reminder_ids: Vec<String>,
 }
 pub struct Calendar {
+    adapt: orbit::Adapt,
     schedule: Schedule,
     remote: Option<gpui::Entity<crate::services::view::Remote>>,
     refreshing: bool,
     first_open_requested: bool,
     path: PathBuf,
     following: Following,
+    reminder_saved: Option<Vec<u8>>,
     saved: Option<Vec<u8>>,
     demo_now: Option<DateTime<Utc>>,
     view: CalendarView,
@@ -215,23 +219,21 @@ pub struct Calendar {
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum CalendarView {
+    Times,
     #[default]
-    Upcoming,
-    Day,
-    Week,
-    Month,
-    Timeline,
+    Agenda,
+    Posters,
 }
 
 impl CalendarView {
     #[cfg(feature = "parity-capture")]
     fn from_capture_name(name: &str) -> Option<Self> {
         match name {
-            "calendario-base" | "calendario-beta-archivo" => Some(Self::Upcoming),
-            "calendario-dia" => Some(Self::Day),
-            "calendario-semana" => Some(Self::Week),
-            "calendario-mes" => Some(Self::Month),
-            "calendario-timeline" => Some(Self::Timeline),
+            "calendario-base" | "calendario-beta-archivo" => Some(Self::Times),
+            "calendario-dia" => Some(Self::Agenda),
+            "calendario-semana" => Some(Self::Agenda),
+            "calendario-mes" => Some(Self::Posters),
+            "calendario-timeline" => Some(Self::Times),
             _ => None,
         }
     }
@@ -239,6 +241,15 @@ impl CalendarView {
 
 #[cfg(feature = "parity-capture")]
 fn capture_view() -> CalendarView {
+    // Selector exclusivamente QA: el reloj archivado puede cubrir las tres vistas.
+    if let Ok(view) = std::env::var("VANTARE_CAPTURE_CALENDAR_VIEW") {
+        match view.as_str() {
+            "a" => return CalendarView::Agenda,
+            "b" => return CalendarView::Posters,
+            "c" => return CalendarView::Times,
+            _ => {}
+        }
+    }
     let args: Vec<_> = std::env::args().collect();
     for pair in args.windows(2) {
         if pair[0] == "--capture"
@@ -247,7 +258,7 @@ fn capture_view() -> CalendarView {
             return view;
         }
     }
-    CalendarView::Upcoming
+    CalendarView::Times
 }
 
 #[cfg(feature = "parity-capture")]
@@ -268,6 +279,13 @@ mod beta;
 mod presentation;
 
 impl Calendar {
+    pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
+        if self.adapt != adapt {
+            self.adapt = adapt;
+            cx.notify();
+        }
+    }
+
     pub fn load(data_dir: &Path) -> Result<Self, String> {
         let schedule = Schedule::parse(SEED.as_bytes())?;
         let path = data_dir.join("calendar-following.json");
@@ -276,18 +294,34 @@ impl Calendar {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
             Err(error) => return Err(format!("seguimiento: {error}")),
         };
-        let following: Following = saved
+        let mut following: Following = saved
             .as_deref()
             .map(serde_json::from_slice)
             .transpose()
             .map_err(|error| format!("seguimiento inválido: {error}"))?
             .unwrap_or_default();
+        let reminder_path = data_dir.join("calendar-reminders.json");
+        let reminder_saved = match std::fs::metadata(&reminder_path) {
+            Ok(_) => Some(files::read(&reminder_path, 64 * 1024)?),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+            Err(error) => return Err(format!("recordatorios: {error}")),
+        };
+        following.reminder_ids = reminder_saved
+            .as_deref()
+            .map(serde_json::from_slice::<Vec<String>>)
+            .transpose()
+            .map_err(|error| format!("recordatorios inválidos: {error}"))?
+            .unwrap_or_default();
         let mut ids = HashSet::new();
-        if following.series_ids.len() > 256
-            || following
-                .series_ids
-                .iter()
-                .any(|id| id.trim().is_empty() || !ids.insert(id))
+        if [&following.series_ids, &following.reminder_ids]
+            .iter()
+            .any(|list| {
+                ids.clear();
+                list.len() > 256
+                    || list
+                        .iter()
+                        .any(|id| id.trim().is_empty() || !ids.insert(id))
+            })
         {
             return Err("seguimiento inválido: límite o identidad vacía/duplicada".into());
         }
@@ -302,12 +336,14 @@ impl Calendar {
         }
         .into();
         Ok(Self {
+            adapt: orbit::Adapt::default(),
             schedule,
             remote: None,
             refreshing: false,
             first_open_requested: false,
             path,
             following,
+            reminder_saved,
             saved,
             demo_now: None,
             view: CalendarView::default(),
@@ -361,11 +397,35 @@ impl Calendar {
             }
             next.push(id);
         }
-        let following = Following { series_ids: next };
+        let following = Following {
+            series_ids: next,
+            reminder_ids: self.following.reminder_ids.clone(),
+        };
         let data = serde_json::to_vec_pretty(&following).map_err(|error| error.to_string())?;
         files::save(&self.path, &data, self.saved.as_deref())?;
         self.following = following;
         self.saved = Some(data);
+        Ok(())
+    }
+    /// Preferencia local; no promete una notificación sin servicio de avisos.
+    fn toggle_reminder(&mut self, id: String) -> Result<(), String> {
+        let mut next = self.following.reminder_ids.clone();
+        if next.contains(&id) {
+            next.retain(|item| item != &id);
+        } else {
+            if next.len() == 256 {
+                return Err("máximo 256 recordatorios".into());
+            }
+            next.push(id);
+        }
+        let data = serde_json::to_vec_pretty(&next).map_err(|error| error.to_string())?;
+        files::save(
+            &self.path.with_file_name("calendar-reminders.json"),
+            &data,
+            self.reminder_saved.as_deref(),
+        )?;
+        self.following.reminder_ids = next;
+        self.reminder_saved = Some(data);
         Ok(())
     }
     pub(crate) fn attach_remote(&mut self, remote: gpui::Entity<crate::services::view::Remote>) {
@@ -460,10 +520,14 @@ impl Calendar {
         if matches!(self.schedule.is_current(now), Ok(true)) {
             for series in &self.schedule.series {
                 if self.following.series_ids.contains(&series.id) {
-                    match self.schedule.starts(series, now, now + Duration::days(1)) {
+                    let horizon = if series.recurrence.kind == "interval" {
+                        Duration::days(1).max(Duration::minutes(series.recurrence.interval_minutes))
+                    } else {
+                        Duration::days(7)
+                    };
+                    match self.schedule.starts(series, now, now + horizon) {
                         Ok(times) => {
-                            starts
-                                .extend(times.into_iter().map(|time| (time, series.name.clone())));
+                            starts.extend(times.into_iter().map(|time| (time, series.id.clone())));
                         }
                         Err(cause) => error = Some(cause),
                     }
@@ -498,12 +562,12 @@ impl Calendar {
     pub(crate) fn topbar_controls(&self, cx: &mut Context<Self>) -> gpui::Div {
         presentation::views_control(self, cx)
     }
-    pub(crate) fn context_column(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
-        beta::context_column(self, cx)
+    pub(crate) fn rail_sections(&self, cx: &mut Context<Self>) -> Vec<orbit::RailSection> {
+        beta::rail_sections(self, cx)
     }
 }
 impl Render for Calendar {
-    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if !self.first_open_requested
             && self.demo_now.is_none()
             && !matches!(self.schedule.is_current(Utc::now()), Ok(true))
@@ -531,60 +595,115 @@ impl Render for Calendar {
             })
             .detach();
         }
-        let height = (f32::from(window.viewport_size().height)
-            - cx.global::<crate::orbit::design::Tokens>().geometry.topbar
-            - 2.0 * cx.global::<crate::orbit::design::Tokens>().geometry.gutter
-            - 76.0)
-            .max(0.0);
-        if self.view == CalendarView::Upcoming
-            || !matches!(
-                self.schedule
-                    .is_current(self.demo_now.unwrap_or_else(Utc::now)),
-                Ok(true)
-            )
-        {
-            beta::render(self, cx)
-                .h(gpui::px(height))
-                .into_any_element()
-        } else {
-            presentation::render(self, cx)
-                .min_h(gpui::px(height))
-                .into_any_element()
-        }
+        beta::render(self, cx).flex_1().min_h_0().into_any_element()
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[test]
+    fn favorites_and_pending_reminders_survive_restart_and_conflicts() {
+        let dir = std::env::temp_dir().join(format!("vantare-calendar-r6-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("directorio aislado");
+        // Archivo del formato anterior: la migración no pierde favoritas.
+        std::fs::write(
+            dir.join("calendar-following.json"),
+            br#"{"seriesIds":["retained"]}"#,
+        )
+        .expect("formato anterior");
+        let mut calendar = Calendar::load(&dir).expect("cargar");
+        assert!(calendar.following.reminder_ids.is_empty());
+        let id = calendar.schedule.series[0].id.clone();
+        calendar
+            .toggle_reminder(id.clone())
+            .expect("guardar preferencia");
+        calendar
+            .follow(id.clone())
+            .expect("guardar favorita sin perder campana");
+        let favorite_document: serde_json::Value = serde_json::from_slice(
+            &std::fs::read(dir.join("calendar-following.json")).expect("favoritas"),
+        )
+        .expect("JSON");
+        assert_eq!(
+            favorite_document
+                .as_object()
+                .expect("formato anterior")
+                .len(),
+            1
+        );
+        assert!(favorite_document.get("seriesIds").is_some());
+        assert!(dir.join("calendar-reminders.json").exists());
+        let mut restored = Calendar::load(&dir).expect("reiniciar");
+        assert_eq!(
+            restored.following.series_ids,
+            vec!["retained".to_owned(), id.clone()]
+        );
+        assert_eq!(restored.following.reminder_ids, vec![id.clone()]);
+        calendar
+            .toggle_reminder(id.clone())
+            .expect("otra escritura válida");
+        assert!(restored.toggle_reminder(id.clone()).is_err());
+        assert_eq!(restored.following.reminder_ids, vec![id.clone()]);
+        let mut final_state = Calendar::load(&dir).expect("releer conflicto");
+        assert!(final_state.following.reminder_ids.is_empty());
+        final_state.follow(id).expect("quitar favorita");
+        assert_eq!(
+            Calendar::load(&dir)
+                .expect("reinicio final")
+                .following
+                .series_ids,
+            vec!["retained"]
+        );
+        std::fs::remove_dir_all(dir).expect("limpiar solo fixture propia");
+    }
+
+    #[test]
+    fn calendar_copy_has_no_registration_actions() {
+        let copy = [
+            include_str!("calendar/beta.rs"),
+            include_str!("calendar/presentation.rs"),
+        ]
+        .join("\n")
+        .to_lowercase();
+        for forbidden in ["apuntarme", "apuntado", "tu split", "inscripción"] {
+            assert!(
+                !copy.contains(forbidden),
+                "acción ajena al horario: {forbidden}"
+            );
+        }
+    }
+
     #[cfg(feature = "parity-capture")]
     #[test]
-    fn capture_names_select_the_five_calendar_views() {
+    fn capture_names_select_the_three_calendar_views() {
         for (name, expected) in [
-            ("calendario-base", CalendarView::Upcoming),
-            ("calendario-dia", CalendarView::Day),
-            ("calendario-semana", CalendarView::Week),
-            ("calendario-mes", CalendarView::Month),
-            ("calendario-timeline", CalendarView::Timeline),
+            ("calendario-base", CalendarView::Times),
+            ("calendario-dia", CalendarView::Agenda),
+            ("calendario-semana", CalendarView::Agenda),
+            ("calendario-mes", CalendarView::Posters),
+            ("calendario-timeline", CalendarView::Times),
         ] {
             assert_eq!(CalendarView::from_capture_name(name), Some(expected));
         }
         assert_eq!(CalendarView::from_capture_name("inicio-base"), None);
-        assert_eq!(CalendarView::default(), CalendarView::Upcoming);
+        assert_eq!(CalendarView::default(), CalendarView::Agenda);
     }
 
     #[test]
     fn upcoming_only_includes_followed_current_series_in_order_and_is_bounded() {
         let mut calendar = Calendar {
+            adapt: orbit::Adapt::default(),
             schedule: Schedule::parse(SEED.as_bytes()).expect("catálogo real empaquetado"),
             remote: None,
             refreshing: false,
             first_open_requested: false,
             path: PathBuf::new(),
             following: Following::default(),
+            reminder_saved: None,
             saved: None,
             demo_now: None,
-            view: CalendarView::Upcoming,
+            view: CalendarView::Times,
             class_filter: None,
             tier_filter: None,
             clock_started: false,
@@ -600,7 +719,7 @@ mod tests {
             days: vec![],
             times_utc: vec![],
         };
-        let name = series.name.clone();
+        let identity = series.id.clone();
         calendar.following.series_ids.push(series.id.clone());
         let (starts, error) = calendar.upcoming(now);
         assert!(error.is_none());
@@ -612,9 +731,11 @@ mod tests {
         assert!(
             starts
                 .iter()
-                .all(|(time, series)| *time >= now && *series == name)
+                .all(|(time, series)| *time >= now && *series == identity)
         );
         assert!(starts.windows(2).all(|pair| pair[0].0 < pair[1].0));
+        calendar.schedule.series[0].recurrence.interval_minutes = 2880;
+        assert!(!calendar.upcoming(now).0.is_empty());
         let expired = timestamp("2026-09-30T12:00:00Z").expect("caducado");
         assert!(calendar.upcoming(expired).0.is_empty());
     }

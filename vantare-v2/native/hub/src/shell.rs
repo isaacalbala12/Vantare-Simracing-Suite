@@ -524,6 +524,11 @@ impl Hub {
                     .update(cx, |calendar, cx| calendar.topbar_controls(cx))
                     .into_any_element(),
             ),
+            Section::Roadmap => Some(
+                self.remote
+                    .update(cx, |remote, cx| remote.roadmap_tabs(cx))
+                    .into_any_element(),
+            ),
             _ => None,
         }
     }
@@ -556,11 +561,10 @@ impl Hub {
             Section::Testing => self
                 .testing
                 .update(cx, |testing, cx| testing.rail_sections(cx)),
-            Section::Calendar => legacy(
-                self.calendar
-                    .update(cx, |calendar, cx| calendar.context_column(cx))
-                    .into_any_element(),
-            ),
+            Section::Calendar => self
+                .calendar
+                .update(cx, |calendar, cx| calendar.rail_sections(cx)),
+            Section::Roadmap => self.remote.update(cx, |remote, cx| remote.roadmap_rail(cx)),
             Section::Studio => legacy(self.studio.read(cx).context_column().into_any_element()),
             Section::Analysis => {
                 legacy(self.analysis_context_column(window, cx).into_any_element())
@@ -683,6 +687,8 @@ impl Render for Hub {
         );
         self.shell.adapt = adapt;
         self.studio.update(cx, |view, cx| view.set_adapt(adapt, cx));
+        self.calendar
+            .update(cx, |view, cx| view.set_adapt(adapt, cx));
         self.testing
             .update(cx, |view, cx| view.set_adapt(adapt, cx));
         self.launcher

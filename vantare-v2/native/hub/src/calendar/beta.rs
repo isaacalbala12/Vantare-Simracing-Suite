@@ -1,11 +1,11 @@
 //! Pantalla beta: catálogo UTC y seguimiento locales; avisos sin servicio se anuncian pendientes.
 use super::{Calendar, Series, views};
 use crate::orbit;
-use chrono::{DateTime, Datelike, Duration, Local, Timelike, Utc};
+use chrono::{DateTime, Datelike, Duration, Local, Utc};
 use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb, rgba};
 use std::collections::BTreeSet;
 
-fn classes(series: &Series) -> Vec<&str> {
+pub(super) fn classes(series: &Series) -> Vec<&str> {
     if series.classes.is_empty() {
         vec![series.vehicle_class.as_str()]
     } else {
@@ -16,7 +16,7 @@ fn classes(series: &Series) -> Vec<&str> {
             .collect()
     }
 }
-fn class_color(class: &str, cx: &gpui::App) -> u32 {
+pub(super) fn class_color(class: &str, cx: &gpui::App) -> u32 {
     match class {
         "Hypercar" => 0x00e1_4a54,
         "LMP2" => 0x004c_8df6,
@@ -26,7 +26,7 @@ fn class_color(class: &str, cx: &gpui::App) -> u32 {
         _ => orbit::ink_3(cx),
     }
 }
-fn class_chip(class: &str, cx: &gpui::App) -> Div {
+pub(super) fn class_chip(class: &str, cx: &gpui::App) -> Div {
     div()
         .flex()
         .items_center()
@@ -58,7 +58,7 @@ fn tier_style(tier: &str, cx: &gpui::App) -> (&'static str, u32, u32) {
         _ => ("Sin nivel", orbit::surface_3(cx), orbit::ink_3(cx)),
     }
 }
-fn tier_pill(tier: &str, cx: &gpui::App) -> Div {
+pub(super) fn tier_pill(tier: &str, cx: &gpui::App) -> Div {
     let (label, background, foreground) = tier_style(tier, cx);
     div()
         .px(px(6.0))
@@ -71,7 +71,7 @@ fn tier_pill(tier: &str, cx: &gpui::App) -> Div {
         })
         .child(orbit::text(label, 11.0, 600, foreground, cx))
 }
-fn includes(calendar: &Calendar, series: &Series) -> bool {
+pub(super) fn includes(calendar: &Calendar, series: &Series) -> bool {
     calendar
         .tier_filter
         .as_ref()
@@ -81,7 +81,10 @@ fn includes(calendar: &Calendar, series: &Series) -> bool {
             .as_ref()
             .is_none_or(|class| classes(series).contains(&class.as_str()))
 }
-fn next_rows(calendar: &Calendar, now: DateTime<Utc>) -> Result<Vec<views::Start<'_>>, String> {
+pub(super) fn next_rows(
+    calendar: &Calendar,
+    now: DateTime<Utc>,
+) -> Result<Vec<views::Start<'_>>, String> {
     if !calendar.schedule.is_current(now)? {
         return Ok(vec![]);
     }
@@ -93,9 +96,14 @@ fn next_rows(calendar: &Calendar, now: DateTime<Utc>) -> Result<Vec<views::Start
         .filter(|series| includes(calendar, series))
     {
         // Una salida por serie. Las semanales también se ven fuera de la próxima hora.
+        let horizon = if series.recurrence.kind == "interval" {
+            Duration::minutes(series.recurrence.interval_minutes)
+        } else {
+            Duration::days(7)
+        };
         if let Some(at) = calendar
             .schedule
-            .starts(series, now, now + Duration::days(7))?
+            .starts(series, now, now + horizon)?
             .into_iter()
             .next()
         {
@@ -105,6 +113,12 @@ fn next_rows(calendar: &Calendar, now: DateTime<Utc>) -> Result<Vec<views::Start
     rows.sort_by(|a, b| a.at.cmp(&b.at).then_with(|| a.series.id.cmp(&b.series.id)));
     Ok(rows)
 }
+fn start_label(at: DateTime<Utc>) -> String {
+    let local = at.with_timezone(&Local);
+    let weekday = ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
+        [local.weekday().num_days_from_monday() as usize];
+    format!("{weekday} {}", local.format("%H:%M · UTC%:z"))
+}
 fn countdown(at: DateTime<Utc>, now: DateTime<Utc>) -> String {
     let minutes = (at - now).num_seconds().max(0).saturating_add(59) / 60;
     if minutes >= 60 {
@@ -113,18 +127,39 @@ fn countdown(at: DateTime<Utc>, now: DateTime<Utc>) -> String {
         format!("{minutes} min")
     }
 }
-fn follow_button(
+fn next_hour_rows(
+    calendar: &Calendar,
+    now: DateTime<Utc>,
+) -> Result<Vec<views::Start<'_>>, String> {
+    Ok(next_rows(calendar, now)?
+        .into_iter()
+        .filter(|row| row.at < now + Duration::hours(1))
+        .collect())
+}
+pub(super) fn follow_button(
     calendar: &Calendar,
     series: &Series,
     cx: &mut Context<Calendar>,
 ) -> Stateful<Div> {
     let followed = calendar.following.series_ids.contains(&series.id);
     let id = series.id.clone();
-    orbit::button(
+    orbit::icon_button(
         gpui::SharedString::from(format!("calendar-follow-{id}")),
-        if followed { "Siguiendo" } else { "Seguir" },
+        "star",
+        if followed {
+            "Quitar favorita"
+        } else {
+            "Marcar favorita"
+        },
+        32.0,
         cx,
     )
+    .aria_label(if followed {
+        "Quitar favorita"
+    } else {
+        "Marcar favorita"
+    })
+    .aria_selected(followed)
     .when(followed, |button| {
         button.bg(orbit::tint(orbit::carmine(cx), 0.12))
     })
@@ -133,7 +168,30 @@ fn follow_button(
         cx.notify();
     }))
 }
-fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
+pub(super) fn reminder_button(
+    calendar: &Calendar,
+    series: &Series,
+    cx: &mut Context<Calendar>,
+) -> Stateful<Div> {
+    let selected = calendar.following.reminder_ids.contains(&series.id);
+    let id = series.id.clone();
+    orbit::icon_button(
+        format!("calendar-reminder-{id}"),
+        "v-bell",
+        "Aviso · Próximamente (guardar preferencia)",
+        32.0,
+        cx,
+    )
+    .aria_selected(selected)
+    .when(selected, |button| {
+        button.bg(orbit::tint(orbit::carmine(cx), 0.12))
+    })
+    .on_click(cx.listener(move |this, _, _, cx| {
+        this.error = this.toggle_reminder(id.clone()).err();
+        cx.notify();
+    }))
+}
+pub(super) fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
     let available: BTreeSet<_> = calendar
         .schedule
         .series
@@ -222,10 +280,14 @@ fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
         .child(levels)
 }
 fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> Div {
-    let rows = next_rows(calendar, now);
-    let next = rows.as_ref().ok().and_then(|rows| {
-        rows.iter()
-            .find(|row| calendar.following.series_ids.contains(&row.series.id))
+    let (followed, error) = calendar.upcoming(now);
+    let next = followed.first().and_then(|(at, id)| {
+        calendar
+            .schedule
+            .series
+            .iter()
+            .find(|series| &series.id == id)
+            .map(|series| views::Start { series, at: *at })
     });
     let mut hero = orbit::neo_accent_card(cx)
         .flex_none()
@@ -275,17 +337,7 @@ fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> 
                                     ),
                             )
                             .child(orbit::text(
-                                {
-                                    let at = next.at.with_timezone(&Local);
-                                    format!(
-                                        "{} {:02}:{:02} · {}",
-                                        ["lun", "mar", "mié", "jue", "vie", "sáb", "dom"]
-                                            [at.weekday().num_days_from_monday() as usize],
-                                        at.hour(),
-                                        at.minute(),
-                                        at.format("%Z")
-                                    )
-                                },
+                                start_label(next.at),
                                 12.0,
                                 400,
                                 orbit::ink_3(cx),
@@ -308,13 +360,14 @@ fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> 
             );
     } else {
         hero = hero.child(orbit::text(
-            "Sigue una serie para ver su próxima carrera.",
+            "Marca una favorita para ver su próxima carrera.",
             22.0,
             600,
             orbit::ink(cx),
             cx,
         ));
     }
+    hero = hero.when_some(error, |hero, error| hero.child(orbit::callout(error, cx)));
     hero.child(orbit::text(
         "Avisos y lanzamiento de perfil antes de la carrera · Próximamente",
         12.0,
@@ -390,7 +443,11 @@ fn race_row(
         )
         .child(
             div()
-                .w(px(180.0))
+                .w(px(if calendar.adapt.center_width() < 950.0 {
+                    100.0
+                } else {
+                    180.0
+                }))
                 .flex_none()
                 .flex()
                 .flex_wrap()
@@ -404,20 +461,28 @@ fn race_row(
         .child(orbit::text(
             row.series
                 .race_duration_min
-                .map_or_else(|| "–".into(), |minutes| format!("{minutes} min")),
+                .map_or_else(|| "—".into(), |minutes| format!("{minutes} min")),
             12.0,
             500,
             orbit::ink_2(cx),
             cx,
         ))
         .child(follow_button(calendar, row.series, cx))
+        .child(reminder_button(calendar, row.series, cx))
 }
 pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Stateful<Div> {
     let now = calendar.demo_now.unwrap_or_else(Utc::now);
+    if matches!(calendar.schedule.is_current(now), Ok(true)) {
+        match calendar.view {
+            super::CalendarView::Agenda => return super::presentation::agenda(calendar, now, cx),
+            super::CalendarView::Posters => return super::presentation::posters(calendar, now, cx),
+            super::CalendarView::Times => {}
+        }
+    }
     let mut table = orbit::neo_card(cx)
         .flex_1()
         .child(orbit::neo_header(
-            "Próximas carreras · una salida por serie",
+            "Próxima hora · una fila por serie",
             "v-calendar",
             cx,
         ))
@@ -430,7 +495,7 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .flex_1()
         .min_h_0()
         .overflow_y_scroll();
-    match next_rows(calendar, now) {
+    match next_hour_rows(calendar, now) {
         Ok(rows) if !rows.is_empty() => {
             for row in rows {
                 races = races.child(race_row(calendar, &row, now, cx));
@@ -441,7 +506,7 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
             races = races.flex().flex_col().child(
                 div()
                     .flex_1()
-                    .min_h(px(260.0))
+                    .min_h(px(100.0))
                     .flex()
                     .flex_col()
                     .items_center()
@@ -451,7 +516,7 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
                     .child(
                         orbit::text(
                             if current {
-                                "No hay carreras para estos filtros"
+                                "No hay salidas en la próxima hora para estos filtros"
                             } else {
                                 "Aún no hay horario publicado para esta semana"
                             },
@@ -499,7 +564,7 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         .min_w_0()
         .flex()
         .flex_col()
-        .gap(px(16.0))
+        .gap(px(calendar.adapt.gap()))
         .child(hero(calendar, now, cx))
         .child(table)
         .when_some(calendar.error.clone(), |page, error| {
@@ -508,16 +573,20 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
 }
 fn week_card(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
     let today = now.with_timezone(&Local).date_naive();
-    let mut week = orbit::neo_card(cx).child(orbit::neo_header("Esta semana", "clock", cx));
+    let mut week = div().flex().flex_col().gap(px(8.0));
     if let Ok(monday) = views::week_anchor(today) {
         let mut days = div().flex().gap(px(6.0));
         for day in 0_u8..7 {
             let date = monday + Duration::days(i64::from(day));
-            let starts = views::midnight(date, &Local).and_then(|from| {
-                views::midnight(date + Duration::days(1), &Local).and_then(|to| {
-                    views::starts(&calendar.schedule, views::Filter::default(), from, to)
+            let starts = if matches!(calendar.schedule.is_current(now), Ok(true)) {
+                views::midnight(date, &Local).and_then(|from| {
+                    views::midnight(date + Duration::days(1), &Local).and_then(|to| {
+                        views::starts(&calendar.schedule, views::Filter::default(), from, to)
+                    })
                 })
-            });
+            } else {
+                Ok(Vec::new())
+            };
             days = days.child(
                 div()
                     .flex_1()
@@ -555,12 +624,17 @@ fn week_card(calendar: &Calendar, now: DateTime<Utc>, cx: &gpui::App) -> Div {
     }
     week
 }
-pub(super) fn context_column(calendar: &Calendar, cx: &mut Context<Calendar>) -> Stateful<Div> {
+pub(super) fn rail_sections(
+    calendar: &Calendar,
+    cx: &mut Context<Calendar>,
+) -> Vec<orbit::RailSection> {
     let now = calendar.demo_now.unwrap_or_else(Utc::now);
     let week = week_card(calendar, now, cx);
     let current = matches!(calendar.schedule.is_current(now), Ok(true));
-    let timing = orbit::neo_card(cx)
-        .child(orbit::neo_header("Horario", "refresh", cx))
+    let timing = div()
+        .flex()
+        .flex_col()
+        .gap(px(8.0))
         .child(orbit::text(
             if current {
                 "Horario vigente"
@@ -613,15 +687,19 @@ pub(super) fn context_column(calendar: &Calendar, cx: &mut Context<Calendar>) ->
             orbit::ink_3(cx),
             cx,
         ));
-    let mut follows =
-        orbit::neo_card(cx)
-            .flex_1()
-            .child(orbit::neo_header("Series que sigues", "v-bell", cx));
+    let mut follows = div()
+        .id("calendar-reminders")
+        .flex_1()
+        .overflow_y_scroll()
+        .flex()
+        .flex_col()
+        .min_h_0()
+        .gap(px(8.0));
     for series in calendar
         .schedule
         .series
         .iter()
-        .filter(|series| current && calendar.following.series_ids.contains(&series.id))
+        .filter(|series| current && calendar.following.reminder_ids.contains(&series.id))
     {
         follows = follows.child(
             div()
@@ -636,20 +714,93 @@ pub(super) fn context_column(calendar: &Calendar, cx: &mut Context<Calendar>) ->
                     orbit::ink(cx),
                     cx,
                 ))
-                .child(follow_button(calendar, series, cx)),
+                .child(reminder_button(calendar, series, cx)),
         );
     }
-    follows = follows.child(orbit::text("Tus recordatorios · Próximamente. Seguir una serie guarda tu selección; aún no envía avisos ni abre aplicaciones.", 13.0, 400, orbit::ink_3(cx), cx));
-    orbit::neo_context_column("calendar-context", cx)
-        .pt(px(cx.global::<orbit::design::Tokens>().geometry.gutter))
-        .child(week)
-        .child(timing)
-        .child(follows)
+    follows = follows.child(orbit::text("Avisos · Próximamente. La campana guarda tu preferencia; aún no envía notificaciones. Lanzar perfil antes de la salida · Próximamente.", 12.0, 400, orbit::ink_3(cx), cx));
+    vec![
+        orbit::RailSection::new("Esta semana", "v-calendar", week),
+        orbit::RailSection::new("Horario", "clock", timing),
+        orbit::RailSection::new("Tus recordatorios", "v-bell", follows).grow(),
+    ]
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn next_hour_is_half_open_and_ignores_later_races() {
+        let dir = std::env::temp_dir().join("vantare-r6-next-hour-fixture");
+        let mut calendar = Calendar::load(&dir).expect("calendario");
+        calendar.schedule.series.truncate(1);
+        calendar.schedule.series[0].recurrence.kind = "interval".into();
+        calendar.schedule.series[0].recurrence.interval_minutes = 60;
+        calendar.schedule.series[0].start_offset_minute = 0;
+        let now = calendar.schedule.window().expect("vigencia").0;
+        let rows = next_hour_rows(&calendar, now).expect("hora");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].at, now);
+        let posters = next_rows(&calendar, now).expect("carteles");
+        let agenda = views::day_rows(
+            &calendar.schedule,
+            views::Filter::default(),
+            now.date_naive(),
+            now,
+            &Utc,
+        )
+        .expect("agenda");
+        assert_eq!(posters[0].series.id, rows[0].series.id);
+        assert_eq!(posters[0].at, rows[0].at);
+        assert!(
+            agenda
+                .iter()
+                .flat_map(|hour| &hour.events)
+                .any(|event| event.series.id == rows[0].series.id && event.at == rows[0].at)
+        );
+        calendar.schedule.series[0].recurrence.interval_minutes = 1;
+        calendar.schedule.valid_until = (now + Duration::days(8)).to_rfc3339();
+        assert_eq!(
+            next_rows(&calendar, now)
+                .expect("una sola salida sin expandir 10080 ocurrencias")
+                .len(),
+            1
+        );
+        calendar.schedule.series[0].recurrence.interval_minutes = 120;
+        let after = now + Duration::seconds(1);
+        assert!(
+            !next_rows(&calendar, after)
+                .expect("salida posterior")
+                .is_empty()
+        );
+        assert!(
+            next_hour_rows(&calendar, after)
+                .expect("hora vacía")
+                .is_empty()
+        );
+        let expired = now + Duration::days(100);
+        assert!(
+            next_rows(&calendar, expired)
+                .expect("carteles caducados")
+                .is_empty()
+        );
+        assert!(
+            next_hour_rows(&calendar, expired)
+                .expect("tiempos caducados")
+                .is_empty()
+        );
+        assert!(
+            views::day_rows(
+                &calendar.schedule,
+                views::Filter::default(),
+                expired.date_naive(),
+                expired,
+                &Utc
+            )
+            .expect("agenda caducada")
+            .iter()
+            .all(|hour| hour.events.is_empty())
+        );
+    }
     #[test]
     fn filters_and_countdown_use_catalog_and_real_clock() {
         let dir = std::env::temp_dir().join("vantare-1470-calendar-filters");

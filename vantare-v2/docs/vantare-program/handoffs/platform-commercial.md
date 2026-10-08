@@ -1,5 +1,48 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## ISA-1514 — revisión de identidad y plan de venta (2026-10-08)
+
+Seguimiento en [GitHub #1514](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1514)
+por instrucción explícita de Isaac. Dirección autorizada: Clerk identidad,
+Polar MoR/cobros, Supabase datos/backend; Supabase Auth deja de identificar.
+Esta entrega es solo documental; la implementación requiere aprobar el plan.
+Worktree `C:/tmp/vantare-isa1514`, rama `vantareapp/isa-1514-identidad-clerk`,
+base #1513/#1506 `cb5b24b8c8e1f204a874fe5759e009b3507430e7`.
+PR draft contra `vantareapp/isa-1506-polar-atribucion`; SHA/URL/checks finales
+se registran en #1514. Candidato nativo leído `a8f9bdc3`; no importado.
+
+[Inventario](../../billing/bil-13-supabase-auth-inventario.md),
+[plan](../../billing/bil-13-clerk-identidad-plan.md) y
+[ADR 0100 propuesta](../../adr/0100-proposed-clerk-identity-polar-supabase.md).
+Conservar UUID interno + mapping `(issuer, Clerk sub text)`, sin cambiar claves
+de negocio a text; checkout servidor usa ese UUID como external_customer_id.
+No vincular por email; cuarentena/replay auditado para huérfanos. Refund retira,
+disputa suspende, Launch perpetua offline/revocación tras reconexión, trial Pro
+siete días. Matiz de refund parcial/pending y umbral de entrega requieren decisión.
+
+Isaac corrigió calendario: intentar cobrar **12-oct 10:00 Europe/Madrid**, gate
+**09:00**; si falla, venta **19-oct**. Mínimo propuesto: Launch desde app con
+Clerk producción y OAuth verificado, oferta/cohorte limitada, compra web/Pro
+cerradas hasta probarlas. No elimina gates de refund/disputa/entrega/rollback.
+19-oct completa web TPA, Pro, migración activa de Auth y objetivo Microsoft Store;
+certificación no garantizada. Fallback lunes: beta gratis/lista de espera con
+calidad/privacy y checkout cerrado servidor, sin trial que vaya a cobrar.
+
+Bloqueos: Auth/getUser de billing, FK checkout attempts→Auth, Refund/Pro y
+disputa sin handler, portal nativo limitado a development, mezcla de schema
+base/nativo. Desconocidos: totales/config/deploy producción y Store. Docs
+oficiales verifican TPA y deprecación template; Development→Production no tiene
+traslado directo de usuarios. No tratar fixtures/sandbox histórico como clientes.
+Coste Clerk/TP-MAU/Store se revisa por Isaac; cualquier gasto queda detenido.
+`plan.md` y digest están retirados en esta base; divergencia con instrucciones
+aportadas documentada, sin recrear roadmap ni publicar estado remoto.
+
+Siguiente acción: Isaac revisa ADR/alcance mínimo y aporta solo counts/config
+pública; aprobar fases antes de implementar en nuevas issues/worktrees.
+Verificación documental de formato/diff/localizadores y remoto registrada al
+entregar. Sin tests de runtime por diff solo docs; sin secretos/.env,
+subagentes, producción/deploy, cobros/refunds, merge, promoción ni release.
+
 ## ISA-1506 — revisión Polar; implementación detenida (2026-10-08)
 
 Seguimiento de esta tarea en [GitHub #1506](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1506),

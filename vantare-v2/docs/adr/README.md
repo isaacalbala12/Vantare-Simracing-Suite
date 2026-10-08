@@ -2,6 +2,8 @@
 
 Leer el estado, las enmiendas y el ámbito de cada decisión. Un ADR propuesto no demuestra implementación y uno aceptado no demuestra publicación. Hay números históricos repetidos: citar siempre el nombre y enlace completo, especialmente los tres ADR 0005.
 
+- [ADR 0100 (propuesto): Identidad Clerk, comercio Polar y datos Supabase](0100-proposed-clerk-identity-polar-supabase.md).
+
 - [ADR-0001: Close LMU pilot rating (Elo / safety / license) data source](0001-close-lmu-pilot-ratings.md).
 - [ADR-0002: Stack y workflow optimizados para desarrollo con agentes](0002-llm-first-stack.md).
 - [ADR 0003: Reconstrucción paralela de Overlay Studio V3](0003-overlay-studio-v3-rebuild.md).

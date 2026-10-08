@@ -544,6 +544,13 @@ impl Studio {
     pub(crate) fn context_column(&self) -> Entity<StudioSidebar> {
         self.sidebar.clone()
     }
+    /// Documento productivo para el resumen de Inicio; no implica ejecución en Desktop.
+    pub(crate) fn home_layout(&self) -> &vantare_ui::layout::Layout {
+        self.editor.layout()
+    }
+    pub(crate) fn home_track(&self) -> Option<&str> {
+        self.snapshot.state.session.track_name.current().map(String::as_str)
+    }
     pub fn preferences(&self) -> Preferences {
         self.editor.layout().preferences
     }

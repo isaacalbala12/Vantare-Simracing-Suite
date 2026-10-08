@@ -8,7 +8,12 @@ struct Preview {
     view: Entity<Overlay>,
     scale: std::cell::Cell<f32>,
 }
-pub(super) struct Previews(Vec<Preview>);
+pub(super) struct Previews {
+    templates: Vec<Preview>,
+    primary: std::cell::RefCell<Option<(Settings, Preview)>>,
+    snapshot: std::cell::RefCell<Snapshot>,
+    preferences: Preferences,
+}
 /// Fixtures existentes, separadas de la ruta IPC del producto.
 pub(super) fn capture_photos() -> Result<[Snapshot; 5], String> {
     let load = |name: &str| {
@@ -61,17 +66,36 @@ impl Previews {
                 }
             })
             .collect();
-        Self(previews)
+        Self { templates: previews, primary: std::cell::RefCell::new(None),
+            snapshot: std::cell::RefCell::new(snapshot.clone()), preferences: prefs }
     }
     pub fn ingest(&self, snapshot: &Snapshot, cx: &mut gpui::App) {
-        for preview in &self.0 {
+        self.snapshot.replace(snapshot.clone());
+        if let Some((_, preview)) = self.primary.borrow().as_ref() {
+            preview.view.update(cx, |overlay, cx| overlay.ingest(snapshot, cx));
+        }
+        for preview in &self.templates {
             preview
                 .view
                 .update(cx, |preview, cx| preview.ingest(snapshot, cx));
         }
     }
     fn thumbnail(&self, index: usize, width: f32, height: f32, cx: &mut gpui::App) -> Div {
-        let preview = &self.0[index];
+        Self::render_thumbnail(&self.templates[index], width, height, cx)
+    }
+    fn layout_thumbnail(&self, settings: &Settings, width: f32, height: f32, cx: &mut gpui::App) -> Div {
+        let mut primary = self.primary.borrow_mut();
+        if primary.as_ref().is_none_or(|(previous, _)| previous != settings) {
+            let mut overlay = Overlay::configured(settings, self.preferences);
+            let view = cx.new(|cx| {
+                overlay.ingest(&self.snapshot.borrow(), cx);
+                overlay
+            });
+            *primary = Some((settings.clone(), Preview { view, scale: std::cell::Cell::new(1.0) }));
+        }
+        Self::render_thumbnail(&primary.as_ref().expect("vista inicializada").1, width, height, cx)
+    }
+    fn render_thumbnail(preview: &Preview, width: f32, height: f32, cx: &mut gpui::App) -> Div {
         let (widget_width, widget_height) = preview.view.read(cx).wanted_size();
         let scale = ((width - 16.0).max(1.0) / widget_width)
             .min((height - 16.0).max(1.0) / widget_height)
@@ -166,13 +190,22 @@ impl Hub {
     /// Inicio: el centro es la pÃ¡gina; Â«EstadoÂ» y Â«PlantillasÂ» forman la barra derecha (R10.2).
     pub(super) fn foundation_home(
         &self,
-        window: &Window,
+        _window: &Window,
         cx: &mut Context<Self>,
     ) -> (Div, Vec<orbit::RailSection>) {
         let adapt = *cx.global::<orbit::Adapt>();
         let gap = adapt.gap();
         let center_width = adapt.center_width() - 2.0 * adapt.padding().1;
-        let overlay_width = (center_width - gap) / 2.0 - 40.0;
+        let overlay_width = (center_width - gap) / 2.0 - 32.0;
+        let layout = self.studio.read(cx).home_layout();
+        let visible: Vec<_> = layout.instances.iter().filter(|item| item.visible).collect();
+        let widget_labels: Vec<_> = visible.iter().map(|item| item.settings.kind().name()).collect();
+        let main_settings = visible.first().map(|item| item.settings.clone());
+        let widget_count = widget_labels.len();
+        let hero_height = match adapt.density { orbit::adapt::Density::A => 300.0, orbit::adapt::Density::M => 236.0, _ => 200.0 };
+        let (top, _, bottom) = adapt.padding();
+        let lower_height = adapt.height - 52.0 - top - bottom - if adapt.show_notes() { 60.0 } else { 52.0 } - 2.0 * gap - hero_height;
+        let preview_height = (lower_height - if adapt.show_optional() { 260.0 } else { 158.0 }).max(90.0);
         let template_width = (adapt.rail_width() - 32.0 - gap) / 2.0 - 20.0;
         let compact = adapt.center_width() < 1100.0;
         let short = adapt.density != orbit::adapt::Density::A;
@@ -431,125 +464,51 @@ impl Hub {
                     ),
             )
             .when(center_width >= 1000.0, |hero| hero.child(favorite.relative()));
+        let preview = main_settings.as_ref().map(|settings| {
+            self.home_previews.layout_thumbnail(settings, overlay_width, preview_height, cx)
+        });
         let overlay = orbit::neo_card(cx)
-            .flex_1()
-            .gap(px(8.0))
+            .flex_1().min_h_0().p(px(16.0)).gap(px(8.0))
             .child(orbit::neo_header("Overlay en pista", "v-studio", cx))
-            .child(self.home_previews.thumbnail(
-                0,
-                overlay_width,
-                if !adapt.show_optional() {
-                    96.0
-                } else if compact {
-                    150.0
-                } else {
-                    260.0
-                },
-                cx,
-            ))
-            .child(orbit::text("Standings", 22.0, 600, orbit::ink(cx), cx))
-            .child(orbit::text(
-                if connected {
-                    "TelemetrÃ­a en vivo"
-                } else {
-                    "Vista previa Â· esperando simulador"
-                },
-                12.0,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ))
-            // Alto B/XS (R9.5): fuera chips y cifras para que la tarjeta no se corte.
-            .when(adapt.show_optional(), |card| {
-                card.child(
-                    div().flex().flex_wrap().gap(px(6.0)).children(
-                        if compact {
-                            ["Standings", "Relative", "+2"].as_slice()
-                        } else {
-                            ["Standings", "Relative", "Fuel", "Delta"].as_slice()
-                        }
-                        .iter()
-                        .map(|label| orbit::pill(label, orbit::Tone::Neutral, cx)),
-                    ),
-                )
-            })
-            .when(adapt.show_optional(), |card| {
-                card.child(
-                    div().flex().gap(px(24.0)).children(
-                        [
-                            ("â€”", if compact { "Hz" } else { "Hz de telemetrÃ­a" }),
-                            (
-                                "â€”",
-                                if compact {
-                                    "Widgets"
-                                } else {
-                                    "Widgets en pista"
-                                },
-                            ),
-                            ("â€”", "CPU"),
-                        ]
-                        .map(|(value, label)| {
-                            div()
-                                .flex_1()
-                                .min_w_0()
-                                .child(orbit::text(value, 24.0, 600, orbit::ink(cx), cx))
-                                .child(orbit::text(label, 12.0, 400, orbit::ink_3(cx), cx))
-                        }),
-                    ),
-                )
-            })
-            .child(
-                div()
-                    .flex()
-                    .flex_wrap()
-                    .gap(px(8.0))
-                    .child(
-                        orbit::primary_button("home-edit-overlay", "Editar overlay", cx).on_click(
-                            cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)),
-                        ),
-                    )
-                    .child(orbit::disabled(
-                        orbit::button("home-stop-overlay", "Detener", cx),
-                        "El control del overlay desde Inicio estarÃ¡ disponible prÃ³ximamente",
-                    )),
-            );
+            .when_some(preview, |card, preview| card.child(preview.flex_1().min_h_0()))
+            .when(main_settings.is_none(), |card| card.child(
+                div().flex_1().min_h_0().flex().items_center().justify_center()
+                    .child(orbit::text("Ningún widget visible en tu layout", 14.0, 400, orbit::ink_3(cx), cx))))
+            .child(div().flex().items_center().gap(px(8.0))
+                .child(orbit::text("Layout local", 22.0, 600, orbit::ink(cx), cx).flex_1())
+                .child(orbit::pill("Vista previa", orbit::Tone::Neutral, cx)))
+            .child(orbit::text(if connected { "Telemetría conectada · ejecución en pista sin verificar" }
+                else { "Esperando simulador" }, 12.0, 400, orbit::ink_3(cx), cx))
+            .when(adapt.show_optional(), |card| card.child(
+                div().flex().gap(px(6.0)).children(widget_labels.iter().take(3)
+                    .map(|label| orbit::pill(label, orbit::Tone::Neutral, cx)))
+                    .when(widget_count > 3, |chips| chips.child(orbit::pill(
+                        format!("+{}", widget_count - 3), orbit::Tone::Neutral, cx)))))
+            .when(adapt.show_optional(), |card| card.child(
+                div().flex().gap(px(16.0)).children(
+                    [("—".to_owned(), "Hz"), (widget_count.to_string(), "Widgets visibles"), ("—".to_owned(), "CPU")]
+                        .map(|(value, label)| div().flex_1().min_w_0()
+                            .child(orbit::text(value, 24.0, 600, orbit::ink(cx), cx))
+                            .child(orbit::text(label, 11.0, 400, orbit::ink_3(cx), cx))))))
+            .child(div().flex().flex_none().gap(px(8.0))
+                .child(orbit::primary_button("home-edit-overlay", "Editar overlay", cx)
+                    .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx))))
+                .child(orbit::disabled(orbit::button("home-stop-overlay", "Detener", cx),
+                    "El servicio no expone el control de overlays desde Inicio")));
 
-        let now = chrono::Local::now().fixed_offset();
+        let recent = self.notifications.read(cx).home_activity();
         let activity_rows = div()
             .id("home-activity-list")
             .flex_1()
             .min_h_0()
             .overflow_y_scroll()
-            .children(
-                self.launcher
-                    .read(cx)
-                    .saved_profiles()
-                    .iter()
-                    .filter(|profile| profile.last_launched_at.is_some())
-                    .take(8)
-                    .filter_map(|profile| {
-                        profile.last_launched_at.as_ref().map(|at| {
-                            div()
-                                .flex()
-                                .items_center()
-                                .gap(px(8.0))
-                                .border_b_1()
-                                .border_color(rgba(orbit::line_row(cx)))
-                                .child(
-                                    orbit::summary_row(
-                                        format!("{} lanzado", profile.name),
-                                        orbit::activity_time(at, now),
-                                        "v-launch",
-                                        cx,
-                                    )
-                                    .border_0()
-                                    .flex_1()
-                                    .min_w_0(),
-                                )
-                                .child(orbit::pill("Lanzado", orbit::Tone::Neutral, cx))
-                        })
-                    }),
-            );
+            .children(recent.iter().map(|(title, at, kind, tone)| {
+                div().flex().items_center().gap(px(8.0)).border_b_1()
+                    .border_color(rgba(orbit::line_row(cx)))
+                    .child(orbit::summary_row(title.clone(), at.clone(), "clock", cx)
+                        .border_0().flex_1().min_w_0())
+                    .child(orbit::pill(*kind, *tone, cx))
+            }));
         let activity = orbit::neo_card(cx)
             .flex_1()
             .min_w_0()
@@ -561,36 +520,24 @@ impl Hub {
                     .justify_between()
                     .child(orbit::neo_header("Actividad", "clock", cx).flex_1())
                     .child(
-                        orbit::ghost_button("home-activity", "Ver todo", cx).on_click(
+                        orbit::header_link("home-activity", "VER TODO", cx).on_click(
                             cx.listener(|hub, _, _, cx| hub.navigate(Section::Notifications, cx)),
                         ),
                     ),
             )
-            .when(
-                self.launcher.read(cx).saved_profiles().iter().any(|p| p.last_launched_at.is_some()),
-                |card| card.child(orbit::scroll_fade(activity_rows, cx.global::<orbit::design::Tokens>().colors.neo_bottom)),
-            )
-            .when(
-                !self
-                    .launcher
-                    .read(cx)
-                    .saved_profiles()
-                    .iter()
-                    .any(|p| p.last_launched_at.is_some()),
-                |card| {
-                    card.child(div().flex_1().min_h_0().flex().flex_col().items_center().justify_center().gap(px(16.0))
-                        .child(orbit::icon("clock", 40.0, orbit::ink_3(cx)))
-                        .child(orbit::text("Tu actividad empieza con un lanzamiento", 16.0, 600, orbit::ink(cx), cx).text_center())
-                        .child(orbit::text("Lanza un perfil desde Launcher. Su Ãºltimo lanzamiento aparecerÃ¡ aquÃ­.", 14.0, 400, orbit::ink_3(cx), cx).max_w(px(320.0)).text_center()))
-                },
-            );
+            .when(!recent.is_empty(), |card| card.child(orbit::scroll_fade(activity_rows,
+                cx.global::<orbit::design::Tokens>().colors.neo_bottom)))
+            .when(recent.is_empty(), |card| card.child(
+                div().flex_1().min_h_0().flex().flex_col().items_center().justify_center().gap(px(12.0))
+                    .child(orbit::icon("clock", 32.0, orbit::ink_3(cx)))
+                    .child(orbit::text("Todavía no hay actividad", 16.0, 600, orbit::ink(cx), cx).text_center())
+                    .child(orbit::text("Tus avisos y lanzamientos aparecerán aquí.", 13.0, 400, orbit::ink_3(cx), cx).text_center())));
         let center = div()
             .id("home-center")
             .flex_grow(1.0)
             .flex_basis(gpui::relative(2.0 / 3.0))
             .min_w_0()
             .min_h_0()
-            .overflow_y_scroll()
             .flex()
             .flex_col()
             .gap(px(gap))
@@ -599,9 +546,6 @@ impl Hub {
                 div()
                     .flex_1()
                     .min_h_0()
-                    .when(f32::from(window.viewport_size().height) <= 900.0, |row| {
-                        row.min_h(px(440.0))
-                    })
                     .flex()
                     .gap(px(gap))
                     .child(overlay)

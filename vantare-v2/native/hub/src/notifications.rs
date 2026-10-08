@@ -405,6 +405,25 @@ fn time(occurred_at: i64) -> String {
         .unwrap_or_default()
 }
 impl Notifications {
+    /// Últimos avisos reales; comparte traducción y filtro de audiencia con el centro.
+    pub(crate) fn home_activity(&self) -> Vec<(String, String, &'static str, orbit::Tone)> {
+        let mut records: Vec<_> = self.center.records.iter()
+            .filter(|record| self.tester || record.source != Source::Beta).collect();
+        records.sort_by_key(|record| std::cmp::Reverse(record.occurred_at));
+        records.into_iter().take(8).map(|record| {
+            let (label, tone) = match record.severity {
+                Severity::Error => ("Error", orbit::Tone::Danger),
+                Severity::Warning => ("Aviso", orbit::Tone::Warning),
+                Severity::Info => match record.source {
+                    Source::Launcher => ("Launcher", orbit::Tone::Success),
+                    Source::Beta => ("Beta", orbit::Tone::Accent),
+                    Source::Updater => ("Actualización", orbit::Tone::Accent),
+                    Source::System => ("Sistema", orbit::Tone::Neutral),
+                },
+            };
+            (message(&record.title_key, &record.params), time(record.occurred_at), label, tone)
+        }).collect()
+    }
     pub(crate) fn from_center(center: Center) -> Self {
         Self {
             center,

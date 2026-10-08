@@ -691,8 +691,9 @@ impl Painter<'_> {
         );
         let lap = board.map_or("", |b| b.lap.as_str());
         let mut x = pad;
-        if lap.is_empty() {
-            self.label(
+        // Final del texto izquierdo: el derecho no puede pisarlo.
+        let left_end = if lap.is_empty() {
+            x + self.label(
                 window,
                 cx,
                 &session.to_uppercase(),
@@ -702,15 +703,15 @@ impl Painter<'_> {
                 h,
                 face,
                 &ink,
-            );
+            )
         } else if self.narrow() {
             let text = format!("{session} · {} {lap}", if self.es() { "V" } else { "L" });
-            self.label(window, cx, &text.to_uppercase(), x, None, y, h, face, &ink);
+            x + self.label(window, cx, &text.to_uppercase(), x, None, y, h, face, &ink)
         } else {
             let lead = format!("{session} · {} ", if self.es() { "Vuelta" } else { "Lap" });
             x += self.label(window, cx, &lead.to_uppercase(), x, None, y, h, face, &ink);
-            self.label(window, cx, lap, x, None, y, h, face, &em);
-        }
+            x + self.label(window, cx, lap, x, None, y, h, face, &em)
+        };
         let mut edge = w - pad;
         if self.options.brand {
             edge -= self.brand(window, cx, edge, y, h) + self.style.brand.margin;
@@ -733,13 +734,37 @@ impl Painter<'_> {
                     if self.es() { "restante" } else { "left" }
                 ));
             }
-            parts.extend(
-                classes
-                    .iter()
-                    .filter(|s| !s.is_empty())
-                    .map(|s| (*s).to_owned()),
-            );
-            let right = parts.join(" · ").to_uppercase();
+            let named: Vec<&str> = classes.iter().copied().filter(|s| !s.is_empty()).collect();
+            let mut unique: Vec<&str> = Vec::new();
+            for class in &named {
+                if !unique.contains(class) {
+                    unique.push(class);
+                }
+            }
+            // Dos clases con la misma abreviatura no se distinguen: se cuentan.
+            let ambiguous = unique.len() < named.len();
+            let room = edge - left_end - self.style.geometry.cell_gap;
+            let listed = [parts.clone(), unique.iter().map(|s| (*s).to_owned()).collect()]
+                .concat()
+                .join(" · ")
+                .to_uppercase();
+            // Si las clases no caben, se cuentan; si ni así, solo lo que quepa.
+            let counted = || {
+                let mut parts = parts.clone();
+                parts.push(format!(
+                    "{} {}",
+                    named.len(),
+                    if self.es() { "clases" } else { "classes" }
+                ));
+                parts.join(" · ").to_uppercase()
+            };
+            let right = if !ambiguous && text::width(window, &listed, &ink) <= room {
+                listed
+            } else if named.len() > 1 && text::width(window, &counted(), &ink) <= room {
+                counted()
+            } else {
+                text::fit(window, &listed, &ink, room.max(0.0))
+            };
             self.label(window, cx, &right, 0.0, Some(edge), y, h, face, &ink);
         }
         if v.header_rule > 0.0 {

@@ -729,9 +729,13 @@ fn window_lines(board: &Board, w: &Words, out: &mut Vec<Line>) {
 
 fn stint_footer(board: &Board, w: &Words, out: &mut Vec<Line>) {
     let mut left = Vec::new();
-    if let Some(number) = board.stint.number {
-        left.push(format!("Stint {number}"));
-    }
+    // Sin número de paradas (ACC) el pie sigue diciendo de qué es el dato.
+    left.push(
+        board
+            .stint
+            .number
+            .map_or_else(|| "Stint".to_owned(), |number| format!("Stint {number}")),
+    );
     if let Some(laps) = board.stint.laps {
         left.push(format!("{laps} {}", w.pick("v", "laps")));
     }
@@ -753,7 +757,7 @@ fn stint_footer(board: &Board, w: &Words, out: &mut Vec<Line>) {
         (None, Plan::Finish(_)) => Some(w.pick("Llegas a meta", "You reach the finish").into()),
         _ => None,
     };
-    if left.is_empty() && right.is_none() {
+    if left.len() == 1 && board.stint.number.is_none() && right.is_none() {
         return;
     }
     out.push(Line::Footer {

@@ -296,6 +296,9 @@ registra los checks omitidos y el motivo.
 
 ## Testing
 
+- En `native/`, el gate `test` no reproduce las grabaciones reales de telemetria
+  (~9 min). Si el cambio toca `native/runtime`, `native/domain`, `native/ipc` o
+  `testdata/`, pasa tambien `native/gates.ps1 -Gate telemetria` (#1498).
 - Todo cambio de comportamiento necesita test o explicacion de por que no.
 - Bugs corregidos necesitan test de regresion cuando sea viable.
 - Antes de refactorizar comportamiento existente, crea o identifica tests que lo protejan.

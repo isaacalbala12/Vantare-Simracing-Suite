@@ -257,7 +257,9 @@ Con varios workers en paralelo el disco se llena y los corta (ISA-1494).
 - La cola activa `sccache` (`RUSTC_WRAPPER`) si esta instalado: las
   dependencias ya compiladas en otro worktree se reutilizan. Ahorra tiempo,
   no disco: cada `target/` sigue guardando su copia. Instalalo una vez con
-  `scoop install sccache`.
+  `scoop install sccache`. Si una compilacion falla sin diagnostico del
+  compilador, repitela con `$env:VANTARE_SCCACHE='0'` y anota el caso en la
+  evidencia; no lo trates como fallo del codigo.
 - Al entregar el trabajo de un worktree, o si lleva dias sin usarse, borra su
   `native/target/`; es cache y se regenera. Para podar sin borrarlo todo:
   `cargo sweep --time 3` (artefactos sin usar en 3 dias).

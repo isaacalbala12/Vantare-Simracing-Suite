@@ -5,7 +5,8 @@
 # RAM libre suficiente ($env:VANTARE_CARGO_MIN_GB, por defecto 5). Si no hay hueco, espera.
 # Usa mutex con nombre por hueco: si un worker muere, Windows libera su hueco solo.
 # Con sccache instalado, las dependencias compiladas en otro worktree se reutilizan.
-if (-not $env:RUSTC_WRAPPER -and (Get-Command sccache -ErrorAction SilentlyContinue)) { $env:RUSTC_WRAPPER = 'sccache' }
+# VANTARE_SCCACHE=0 lo desactiva para repetir un fallo sospechoso sin caché.
+if ($env:VANTARE_SCCACHE -ne '0' -and -not $env:RUSTC_WRAPPER -and (Get-Command sccache -ErrorAction SilentlyContinue)) { $env:RUSTC_WRAPPER = 'sccache' }
 $slots = [int]($env:VANTARE_CARGO_SLOTS ?? 4)
 $minGb = [double]($env:VANTARE_CARGO_MIN_GB ?? 5)
 $held = $null

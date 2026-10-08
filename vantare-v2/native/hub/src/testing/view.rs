@@ -705,7 +705,7 @@ impl Testing {
                 .child(orbit::button("testing-retry-report", "Revisar envío pendiente", cx).on_click(
                     cx.listener(|this, _, _, cx| {
                         this.remote.update(cx, |remote, cx| {
-                            remote.editor.clear_approval();
+                            remote.editor.clear_approval(cx);
                             remote.report_action(Command::ReportRetryPrepare, cx);
                         });
                     }),

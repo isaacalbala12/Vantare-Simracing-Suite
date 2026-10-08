@@ -5855,3 +5855,9 @@ en curso conservando el borrador. Clippy normal-Dwarnings y Nextest22/22 PASS.
 Tanda QA en curso (logs/capturas/requests.jsonl en calidad-2-evidence); no se
 presentan los intentos fallidos del harness por timeout corto como fallos de app.
 V1 4a2584f1; siguiente: cerrar interacciones, bounds y traza QPC release.
+E2 reintento: el recorrido real detectó casilla marcada tras consumir el permiso
+(sin segundo envío admitido). clear_approval sincroniza permiso y casilla;
+preview nueva, error, captura, reintento, envío y recibo invalidan la marca.
+Clippy-Dwarnings y Nextest Testing22/22 PASS; regresión UI final en curso.
+No cambia protocolo, consentimiento persistido ni autorización del servicio.
+Banco/espera ca238d0f; artefactos de intentos QA conservados y diferenciados.

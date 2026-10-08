@@ -609,7 +609,7 @@ impl Remote {
                                         this.roadmap_message = message;
                                         this.stale = true;
                                     } else if matches!(this.active,Area::Report) {
-                                        this.editor.error=failed;
+                                        this.editor.clear_approval(cx); this.editor.error=failed;
                                         this.editor.message=message;
                                         this.editor.preview=None;
                                     } else {
@@ -654,7 +654,7 @@ impl Remote {
                                 Reply::Closed => this.message = "Servicios cerrado".into(),
                                 Reply::Draft { draft,message }=> this.report_draft(draft,message,cx),
                                 Reply::ReportPreview { preview }=>{
-                                    if this.report_revision==Some(this.editor.revision) { this.editor.error=false; this.editor.screenshots.clone_from(&preview.screenshots); this.editor.preview=Some(preview); this.editor.message="Revise cuenta, canal y contenido; el envío exige su consentimiento".into(); }
+                                    if this.report_revision==Some(this.editor.revision) { this.editor.clear_approval(cx); this.editor.error=false; this.editor.screenshots.clone_from(&preview.screenshots); this.editor.preview=Some(preview); this.editor.message="Revise cuenta, canal y contenido; el envío exige su consentimiento".into(); }
                                     else { this.editor.message="Texto cambiado; vuelva a revisar el envío".into(); }
                                 },
                                 Reply::ReportReceipt { receipt,draft_state }=> this.report_receipt(&receipt,draft_state,cx),
@@ -724,6 +724,7 @@ impl Remote {
             self.editor = crate::testing::Editor::new(crate::testing::empty_fields(), cx);
         }
         self.editor.preview = None;
+        self.editor.clear_approval(cx);
         let draft_message = match draft_state {
             DraftState::Cleared => "",
             DraftState::Preserved => " · borrador posterior conservado",

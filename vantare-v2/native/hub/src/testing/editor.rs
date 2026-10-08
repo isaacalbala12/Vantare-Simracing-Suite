@@ -33,8 +33,12 @@ impl Editor {
         orbit::text(label.to_owned(), 12.0, 600, orbit::ink_2(cx), cx)
     }
 
-    pub(super) fn clear_approval(&mut self) {
+    pub(crate) fn clear_approval(&mut self, cx: &mut Context<Remote>) {
         self.approved = None;
+        self.consent.update(cx, |consent, cx| {
+            consent.checked = false;
+            cx.notify();
+        });
     }
 
     pub fn new(fields: Fields, cx: &mut Context<Remote>) -> Self {
@@ -398,7 +402,7 @@ impl Editor {
                 orbit::button("report-preview", "Previsualizar envío", cx).on_click(cx.listener(
                     |this, _, _, cx| {
                         this.editor.show_errors = true;
-                        this.editor.approved = None;
+                        this.editor.clear_approval(cx);
                         this.report_action(Command::ReportPrepare, cx);
                     },
                 )),
@@ -454,7 +458,7 @@ impl Editor {
                 {
                     let preview_id = preview.id.clone();
                     // El consentimiento se consume inmediatamente para evitar reusar el clic.
-                    this.editor.approved = None;
+                    this.editor.clear_approval(cx);
                     this.report_action(Command::ReportSend { preview_id }, cx);
                     cx.notify();
                 }
@@ -535,7 +539,7 @@ impl Editor {
                         cx,
                     )
                     .on_click(cx.listener(move |this, _, _, cx| {
-                        this.editor.clear_approval();
+                        this.editor.clear_approval(cx);
                         let fields = this.editor.fields(cx);
                         this.report_action(
                             Command::ReportRemoveScreenshot {
@@ -554,7 +558,7 @@ impl Editor {
                 orbit::button("report-capture", "Capturar pantalla", cx)
                     .self_start()
                     .on_click(cx.listener(|this, _, _, cx| {
-                        this.editor.clear_approval();
+                        this.editor.clear_approval(cx);
                         let fields = this.editor.fields(cx);
                         this.report_action(Command::ReportCapture { fields }, cx);
                     })),

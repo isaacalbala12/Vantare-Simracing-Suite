@@ -69,6 +69,11 @@ pub(crate) fn estimate(text: &str, size: f32) -> f32 {
         * size
 }
 
+/// Ancho de un texto Space Mono: todos los glifos avanzan 612 milésimas de em.
+pub(crate) fn estimate_mono(text: &str, size: f32) -> f32 {
+    text.chars().count() as f32 * 0.612 * size
+}
+
 /// Avance de Inter 400 en milésimas de em para U+0020..=U+00FF (generado de Inter-400.ttf).
 const LATIN1: [u16; 224] = [
     281, 288, 466, 633, 642, 982, 644, 300, 365, 365, 501, 662, 288, 460, 288, 360, 631, 407, 610,

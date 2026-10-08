@@ -11,7 +11,7 @@ use crate::efficiency::text;
 use crate::standings::{Accent, Look};
 use crate::vantare::columns::ColumnBoxes;
 use crate::vantare::motion::{Flash, Motion, Sample};
-use crate::vantare::paint::{BOX, Face, Kit, WHITE, estimate, round_rect};
+use crate::vantare::paint::{BOX, Face, Kit, WHITE, estimate, estimate_mono, round_rect};
 use crate::vantare::style::{Color, Style, Variant, with_opacity};
 use gpui::{App, BorderStyle, Corners, Edges, px, quad};
 use std::sync::Arc;
@@ -184,7 +184,7 @@ impl Options {
     }
 
     /// Columnas colocadas de izquierda a derecha y ancho total del panel.
-    fn layout(&self, style: &Style, driver: f32, order: &[Kind]) -> (Vec<Placed>, f32) {
+    fn layout(&self, style: &Style, driver: f32, gap_width: f32, order: &[Kind]) -> (Vec<Placed>, f32) {
         let g = &style.geometry;
         let r = &style.relative;
         let gap = g.cell_gap;
@@ -199,7 +199,7 @@ impl Options {
                 Kind::Rating => r.col_rating,
                 Kind::Safety => r.col_safety,
                 Kind::Trend => r.col_trend,
-                Kind::Gap => r.col_gap,
+                Kind::Gap => gap_width,
             };
             x += gap;
             placed.push(Placed { kind, x, width });
@@ -269,6 +269,21 @@ fn driver_width(board: Option<&Board>, options: &Options, style: &Style) -> f32 
     (widest + 4.0).clamp(style.geometry.driver_xs.min(max), max)
 }
 
+/// Gap ajustado al valor más ancho de las filas visibles (`+10.0` ocupa más
+/// que `-3.8`), sin pasar del ancho del estilo.
+fn gap_width(board: Option<&Board>, style: &Style) -> f32 {
+    let max = style.relative.col_gap;
+    let widest = board
+        .into_iter()
+        .flat_map(|b| b.slots.iter().flatten())
+        .map(|row| estimate_mono(&row.gap, style.fonts.mono))
+        .fold(0.0_f32, f32::max);
+    if widest <= 0.0 {
+        return max;
+    }
+    (widest + 2.0).min(max)
+}
+
 // ---------------------------------------------------------------------------
 // Layout (puro)
 // ---------------------------------------------------------------------------
@@ -330,7 +345,12 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
             }
         })
         .collect();
-    let (columns, width) = options.layout(style, driver_width(shown, options, style), &order);
+    let (columns, width) = options.layout(
+        style,
+        driver_width(shown, options, style),
+        gap_width(shown, style),
+        &order,
+    );
     let mut items = Vec::new();
     let mut y = variant.padding_y;
     if shown.is_some_and(|b| b.banner.is_some()) {
@@ -1217,7 +1237,12 @@ mod tests {
         let style = Style::compiled();
         for (name, width) in [("compact", 280.0), ("standard", 420.0), ("expanded", 600.0)] {
             let options = options(name);
-            let (_, w) = options.layout(&style, options.driver_max(&style), &options.cols.order);
+            let (_, w) = options.layout(
+                &style,
+                options.driver_max(&style),
+                style.relative.col_gap,
+                &options.cols.order,
+            );
             assert_eq!(w, width, "{name}");
         }
         assert!(options("expanded").cols.strip && !options("standard").cols.strip);
@@ -1279,6 +1304,35 @@ mod tests {
             !state.plan.columns.iter().any(|c| c.kind == Kind::Trend),
             "sin tendencia en FCY"
         );
+    }
+
+    #[test]
+    fn gap_column_fits_the_widest_visible_gap() {
+        let photos = frames(include_str!("../../fixtures/relative-vantare.scene.json"));
+        let mut state = State::new(options("expanded"));
+        state.ingest(state.project(&photos[0]));
+        let gap = |state: &State| {
+            state
+                .plan
+                .columns
+                .iter()
+                .find(|c| c.kind == Kind::Gap)
+                .expect("gap")
+                .width
+        };
+        let mut board = state.board.clone().expect("tablero");
+        for row in board.slots.iter_mut().flatten() {
+            row.gap = "+3.8".into();
+        }
+        let mut far = board.clone();
+        if let Some(row) = far.slots.iter_mut().flatten().next() {
+            row.gap = "+10.0".into();
+        }
+        state.ingest(far);
+        let wide = gap(&state);
+        state.ingest(board);
+        assert!(gap(&state) < wide, "sin decenas la columna se estrecha");
+        assert!(gap(&state) >= estimate_mono("+3.8", state.style.fonts.mono));
     }
 
     #[test]

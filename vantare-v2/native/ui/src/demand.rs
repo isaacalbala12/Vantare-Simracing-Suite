@@ -127,8 +127,14 @@ mod tests {
             );
             let mut snapshot = vantare_ipc::snapshot_from_json(&scene).expect("foto completa");
             let name = format!(
-                "vantare-demand-projection-{}-{}-{index}",
+                "vantare-demand-projection-{}-{}-{}-{index}",
                 std::process::id(),
+                // Los dos tests corren a la vez: cada uno con su socket.
+                if real_scene.is_some() {
+                    "real"
+                } else {
+                    "default"
+                },
                 kind.name()
             );
             let mut publisher = vantare_ipc::Publisher::new(&name, |_| true).expect("pipe");

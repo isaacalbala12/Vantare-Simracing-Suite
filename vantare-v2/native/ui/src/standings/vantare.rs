@@ -382,38 +382,95 @@ pub(crate) enum Preset {
     Lg,
 }
 
-/// Columnas activas, en el orden fijo del catálogo r10b.
+/// Columna colocable. P va siempre primera y no está aquí; el coche es un
+/// complemento del piloto, no una columna propia.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[allow(clippy::struct_excessive_bools)] // Una casilla por columna elegible.
+pub(crate) enum Kind {
+    Gained,
+    /// Punto de clase y chip de dorsal.
+    Number,
+    /// Piloto (con el punto de clase si no hay columna de dorsal).
+    Driver,
+    Compound,
+    Pit,
+    Sectors,
+    Last,
+    Best,
+    Interval,
+    Gap,
+}
+
+impl Kind {
+    fn from_metric(metric: &str) -> Option<Self> {
+        Some(match metric {
+            "positionsGained" => Self::Gained,
+            "driverNumber" | "carNumber" => Self::Number,
+            "driverName" => Self::Driver,
+            "tireCompound" => Self::Compound,
+            "pit" => Self::Pit,
+            "sectors" => Self::Sectors,
+            "lastLap" => Self::Last,
+            "bestLap" => Self::Best,
+            "interval" => Self::Interval,
+            "gap" => Self::Gap,
+            _ => return None,
+        })
+    }
+
+    pub(crate) fn metric(self) -> &'static str {
+        match self {
+            Self::Gained => "positionsGained",
+            Self::Number => "driverNumber",
+            Self::Driver => "driverName",
+            Self::Compound => "tireCompound",
+            Self::Pit => "pit",
+            Self::Sectors => "sectors",
+            Self::Last => "lastLap",
+            Self::Best => "bestLap",
+            Self::Interval => "interval",
+            Self::Gap => "gap",
+        }
+    }
+
+    /// Los tiempos y diferencias se alinean a la derecha de su columna.
+    fn right_aligned(self) -> bool {
+        matches!(self, Self::Last | Self::Best | Self::Interval | Self::Gap)
+    }
+}
+
+/// Columnas activas en el orden de `columns`, más los complementos.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Cols {
-    pub gained: bool,
-    pub number: bool,
+    pub order: Vec<Kind>,
     pub vehicle: bool,
-    pub compound: bool,
-    pub pit: bool,
-    pub sectors: bool,
-    pub last: bool,
-    pub best: bool,
-    pub interval: bool,
-    pub gap: bool,
     pub driver: Preset,
 }
 
 impl Cols {
     fn from_settings(columns: &[super::options::ColumnSetting]) -> Self {
-        let on = |id: &str| columns.iter().any(|c| c.enabled && c.metric_id == id);
+        let mut order: Vec<Kind> = Vec::new();
+        for column in columns {
+            if let Some(kind) = Kind::from_metric(&column.metric_id)
+                && (column.enabled || kind == Kind::Driver)
+                && !order.contains(&kind)
+            {
+                order.push(kind);
+            }
+        }
+        // El piloto siempre se ve; si falta, va tras el dorsal o al principio.
+        if !order.contains(&Kind::Driver) {
+            let at = order
+                .iter()
+                .position(|k| *k == Kind::Number)
+                .map_or(0, |i| i + 1);
+            order.insert(at, Kind::Driver);
+        }
         let driver = columns.iter().find(|c| c.metric_id == "driverName");
         Self {
-            gained: on("positionsGained"),
-            number: on("driverNumber") || on("carNumber"),
-            vehicle: on("vehicle"),
-            compound: on("tireCompound"),
-            pit: on("pit"),
-            sectors: on("sectors"),
-            last: on("lastLap"),
-            best: on("bestLap"),
-            interval: on("interval"),
-            gap: on("gap"),
+            order,
+            vehicle: columns
+                .iter()
+                .any(|c| c.enabled && c.metric_id == "vehicle"),
             driver: match driver.map(|c| c.width_preset.as_str()) {
                 Some("xs") => Preset::Xs,
                 Some("sm") => Preset::Sm,
@@ -422,6 +479,18 @@ impl Cols {
             },
         }
     }
+
+    fn has(&self, kind: Kind) -> bool {
+        self.order.contains(&kind)
+    }
+}
+
+/// Una columna colocada: métrica, borde izquierdo y ancho (px del widget).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct Placed {
+    pub kind: Kind,
+    pub x: f32,
+    pub width: f32,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -480,7 +549,8 @@ impl Options {
         }
     }
 
-    fn driver_width(&self, style: &Style) -> f32 {
+    /// Ancho máximo del piloto según su preset.
+    fn driver_max(&self, style: &Style) -> f32 {
         let g = &style.geometry;
         match self.cols.driver {
             Preset::Xs => g.driver_xs,
@@ -490,32 +560,95 @@ impl Options {
         }
     }
 
-    /// Ancho del panel: márgenes, columnas activas y piloto.
-    fn width(&self, style: &Style) -> f32 {
+    /// Columnas colocadas de izquierda a derecha y ancho total del panel.
+    fn layout(&self, style: &Style, driver: f32) -> (Vec<Placed>, f32) {
         let g = &style.geometry;
-        let c = self.cols;
         let gap = g.cell_gap;
-        let sectors = 3.0 * g.sector_width + 2.0 * g.sector_gap;
-        let mut width = 2.0 * self.variant(style).padding_x + g.col_position;
-        for (on, column) in [
-            (c.gained, g.col_gained),
-            (true, g.class_dot),
-            (c.number, g.number_min_width),
-            (true, self.driver_width(style)),
-            (c.compound, g.compound_size),
-            (c.pit, g.col_pit),
-            (c.sectors, sectors),
-            (c.last, g.col_lap),
-            (c.best, g.col_lap),
-            (c.interval, g.col_gap),
-            (c.gap, g.col_gap),
-        ] {
-            if on {
-                width += gap + column;
-            }
+        let pad = self.variant(style).padding_x;
+        let dot = g.class_dot + gap;
+        let number = self.cols.has(Kind::Number);
+        let mut x = pad + g.col_position;
+        let mut placed = Vec::with_capacity(self.cols.order.len());
+        for &kind in &self.cols.order {
+            let width = match kind {
+                Kind::Gained => g.col_gained,
+                Kind::Number => dot + g.number_min_width,
+                Kind::Driver => driver + if number { 0.0 } else { dot },
+                Kind::Compound => g.compound_size,
+                Kind::Pit => g.col_pit,
+                Kind::Sectors => 3.0 * g.sector_width + 2.0 * g.sector_gap,
+                Kind::Last | Kind::Best => g.col_lap,
+                Kind::Interval | Kind::Gap => g.col_gap,
+            };
+            x += gap;
+            placed.push(Placed { kind, x, width });
+            x += width;
         }
-        width
+        (placed, x + pad)
     }
+
+    #[cfg(test)]
+    fn width(&self, style: &Style) -> f32 {
+        self.layout(style, self.driver_max(style)).1
+    }
+}
+
+/// Ancho aproximado de un texto Inter (em por carácter): el layout es puro y
+/// no mide con la ventana; `text::fit` recorta al pintar si se queda corto.
+fn estimate(text: &str, size: f32) -> f32 {
+    text.chars()
+        .map(|c| match c {
+            ' ' => 0.28,
+            '.' | ',' | '·' | '\'' | 'i' | 'l' | 'I' | 'j' | '|' => 0.3,
+            'f' | 't' | 'r' => 0.4,
+            'm' | 'w' | 'M' | 'W' => 0.86,
+            c if c.is_ascii_digit() => 0.62,
+            c if c.is_uppercase() => 0.7,
+            _ => 0.57,
+        })
+        .sum::<f32>()
+        * size
+}
+
+/// Complemento del coche junto al piloto: completo con el piloto ancho; si no,
+/// la marca.
+fn vehicle_detail(row: &Row, cols: &Cols) -> String {
+    match (cols.vehicle, cols.driver) {
+        (false, _) => String::new(),
+        _ if row.vehicle.is_empty() => String::new(),
+        (true, Preset::Lg) => format!(" · {}", row.vehicle),
+        (true, _) => row
+            .vehicle
+            .split_whitespace()
+            .next()
+            .map_or_else(String::new, |short| format!(" · {short}")),
+    }
+}
+
+fn driver_text(row: &Row, options: &Options) -> String {
+    if row.driver.is_empty() {
+        PLACEHOLDER.to_owned()
+    } else {
+        vantare_domain::standings::driver_name(&row.driver, &options.name_mode, options.name_max)
+    }
+}
+
+/// Piloto ajustado al nombre más largo de toda la sesión (estable aunque
+/// cambien las filas visibles), sin pasar del preset.
+fn driver_width(board: Option<&Board>, options: &Options, style: &Style) -> f32 {
+    let max = options.driver_max(style);
+    let widest = board
+        .into_iter()
+        .flat_map(|b| b.groups.iter().flat_map(|g| &g.rows))
+        .map(|row| {
+            estimate(&driver_text(row, options), style.fonts.body)
+                + estimate(&vehicle_detail(row, &options.cols), style.fonts.small)
+        })
+        .fold(0.0_f32, f32::max);
+    if widest <= 0.0 {
+        return max;
+    }
+    (widest + 8.0).clamp(style.geometry.driver_xs, max)
 }
 
 // ---------------------------------------------------------------------------
@@ -546,6 +679,7 @@ struct Plan {
     width: f32,
     height: f32,
     items: Vec<(f32, Item)>,
+    columns: Vec<Placed>,
 }
 
 fn waiting(board: Option<&Board>) -> bool {
@@ -606,6 +740,8 @@ fn rows(board: &Board, options: &Options) -> Vec<(usize, usize)> {
 fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
     let variant = options.variant(style);
     let g = &style.geometry;
+    let shown = board.filter(|b| !waiting(Some(b)));
+    let (columns, width) = options.layout(style, driver_width(shown, options, style));
     let mut items = Vec::new();
     let mut y = variant.padding_y;
     if board.is_some_and(|b| b.banner.is_some()) {
@@ -618,11 +754,7 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
         None => {
             items.push((y, Item::Wait));
             y += g.wait_height;
-            let count = if options.width(style) < g.narrow_width {
-                4
-            } else {
-                5
-            };
+            let count = if width < g.narrow_width { 4 } else { 5 };
             for index in 0..count {
                 items.push((y, Item::Skeleton(index)));
                 y += g.row_height;
@@ -657,9 +789,10 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
         }
     }
     Plan {
-        width: options.width(style),
+        width,
         height: y + variant.padding_y,
         items,
+        columns,
     }
 }
 
@@ -714,6 +847,16 @@ impl State {
 
     pub(crate) fn settle(&mut self) {
         self.motion.settle();
+    }
+
+    /// Columnas colocadas `(métrica, x, ancho)` en px del widget, para editar
+    /// el orden arrastrando sobre la vista previa.
+    pub(crate) fn columns(&self) -> Vec<(&'static str, f32, f32)> {
+        self.plan
+            .columns
+            .iter()
+            .map(|c| (c.kind.metric(), c.x, c.width))
+            .collect()
     }
 
     pub(crate) fn wake(&self, now: std::time::Instant) -> crate::app::Wake {
@@ -1096,7 +1239,7 @@ impl Painter<'_> {
         }
     }
 
-    /// Cabecera de columnas: mismas columnas que pinta cada tamaño.
+    /// Cabecera de columnas, en el mismo orden y sitio que las filas.
     fn columns(&self, window: &mut Window, cx: &mut App, y: f32) {
         let g = &self.style.geometry;
         let f = &self.style.fonts;
@@ -1107,8 +1250,8 @@ impl Painter<'_> {
             f.column_tracking,
             self.style.colors.column.hsla(),
         );
-        let cols = self.layout_columns();
         let es = self.es();
+        let pad = self.variant.padding_x;
         let put = |window: &mut Window, cx: &mut App, value: &str, x: f32, right: Option<f32>| {
             self.label(
                 window,
@@ -1122,52 +1265,37 @@ impl Painter<'_> {
                 &ink,
             );
         };
-        put(window, cx, "P", 0.0, Some(cols.position_right));
-        if let Some(x) = cols.gained {
-            put(window, cx, "±", x, None);
-        }
-        let o = &self.options.cols;
-        let mut name = cols.dot + g.class_dot + g.cell_gap;
-        if o.number {
-            put(
-                window,
-                cx,
-                if es { "Dorsal" } else { "No." },
-                cols.dot,
-                None,
-            );
-            name += g.number_min_width + g.cell_gap;
-        }
-        let driver = match (o.vehicle, es) {
-            (false, true) => "Piloto",
-            (false, false) => "Driver",
-            (true, true) => "Piloto · coche",
-            (true, false) => "Driver · car",
-        };
-        put(window, cx, driver, name, None);
-        if let Some(x) = cols.compound {
-            put(window, cx, "N", x, None);
-        }
-        if let Some(x) = cols.pit {
-            put(window, cx, if es { "Par." } else { "Stops" }, x, None);
-        }
-        if let Some(x) = cols.sectors {
-            put(window, cx, "Sect.", x, None);
-        }
-        for (right, es_label, en_label) in [
-            (cols.last_right, "Última", "Last"),
-            (cols.best_right, "Mejor", "Best"),
-            (cols.interval_right, "Int.", "Int."),
-            (cols.gap_right, "Gap", "Gap"),
-        ] {
-            if let Some(right) = right {
-                put(
-                    window,
-                    cx,
-                    if es { es_label } else { en_label },
-                    0.0,
-                    Some(right),
-                );
+        put(window, cx, "P", 0.0, Some(pad + g.col_position));
+        let number = self.options.cols.has(Kind::Number);
+        for column in &self.plan.columns {
+            let label = match (column.kind, es) {
+                (Kind::Gained, _) => "±",
+                (Kind::Number, true) => "Dorsal",
+                (Kind::Number, false) => "No.",
+                (Kind::Driver, true) if self.options.cols.vehicle => "Piloto · coche",
+                (Kind::Driver, false) if self.options.cols.vehicle => "Driver · car",
+                (Kind::Driver, true) => "Piloto",
+                (Kind::Driver, false) => "Driver",
+                (Kind::Compound, _) => "N",
+                (Kind::Pit, true) => "Par.",
+                (Kind::Pit, false) => "Stops",
+                (Kind::Sectors, _) => "Sect.",
+                (Kind::Last, true) => "Última",
+                (Kind::Last, false) => "Last",
+                (Kind::Best, true) => "Mejor",
+                (Kind::Best, false) => "Best",
+                (Kind::Interval, _) => "Int.",
+                (Kind::Gap, _) => "Gap",
+            };
+            let x = if column.kind == Kind::Driver && !number {
+                column.x + g.class_dot + g.cell_gap
+            } else {
+                column.x
+            };
+            if column.kind.right_aligned() {
+                put(window, cx, label, 0.0, Some(column.x + column.width));
+            } else {
+                put(window, cx, label, x, None);
             }
         }
     }
@@ -1177,48 +1305,22 @@ impl Painter<'_> {
         self.plan.width < self.style.geometry.narrow_width
     }
 
-    /// Posición de cada columna activa: de derecha a izquierda las fijas y,
-    /// a la izquierda, posición, ± y clase/dorsal; el piloto ocupa el resto.
-    fn layout_columns(&self) -> Columns {
+    fn class_dot(&self, window: &mut Window, x: f32, y: f32, class: &ClassColors) {
         let g = &self.style.geometry;
-        let o = &self.options.cols;
-        let gap = g.cell_gap;
-        let pad = self.variant.padding_x;
-        let mut edge = self.plan.width - pad + gap;
-        let mut right = |on: bool, width: f32| {
-            on.then(|| {
-                edge -= gap;
-                let right = edge;
-                edge -= width;
-                right
-            })
-        };
-        let gap_right = right(o.gap, g.col_gap);
-        let interval_right = right(o.interval, g.col_gap);
-        let best_right = right(o.best, g.col_lap);
-        let last_right = right(o.last, g.col_lap);
-        let sectors = right(o.sectors, self.sectors_width()).map(|r| r - self.sectors_width());
-        let pit = right(o.pit, g.col_pit).map(|r| r - g.col_pit);
-        let compound = right(o.compound, g.compound_size).map(|r| r - g.compound_size);
-        let gained = o.gained.then_some(pad + g.col_position + gap);
-        Columns {
-            position_right: pad + g.col_position,
-            gained,
-            dot: gained.map_or(pad + g.col_position + gap, |x| x + g.col_gained + gap),
-            compound,
-            pit,
-            sectors,
-            last_right,
-            best_right,
-            interval_right,
-            gap_right,
-            name_right: edge - gap,
-        }
-    }
-
-    fn sectors_width(&self) -> f32 {
-        let g = &self.style.geometry;
-        3.0 * g.sector_width + 2.0 * g.sector_gap
+        let dot = g.class_dot;
+        round_rect(
+            window,
+            x,
+            y + (g.row_height - dot) / 2.0,
+            dot,
+            dot,
+            if self.variant.square_dots {
+                1.0
+            } else {
+                dot / 2.0
+            },
+            class.dot.hsla(),
+        );
     }
 
     fn separator(&self, window: &mut Window, cx: &mut App, y: f32, group: usize) {
@@ -1363,7 +1465,6 @@ impl Painter<'_> {
             self.highlight(window, y, color, strength * self.style.motion.flash_boost);
         }
         let class = self.style.class(&group.class);
-        let cols = self.layout_columns();
         // Posición: el líder en amarillo.
         let position_color = if leader { c.leader } else { c.muted };
         let ink = self.ink(Face::Display, f.position, 0.0, position_color.hsla());
@@ -1372,103 +1473,75 @@ impl Painter<'_> {
             cx,
             &row.position,
             0.0,
-            Some(cols.position_right),
+            Some(v.padding_x + g.col_position),
             y,
             h,
             Face::Display,
             &ink,
         );
-        if let Some(x) = cols.gained {
-            self.gained(window, cx, row, x, y);
-        }
-        // Punto de clase y dorsal.
-        let dot = g.class_dot;
-        let mut x = cols.dot;
-        round_rect(
-            window,
-            x,
-            y + (h - dot) / 2.0,
-            dot,
-            dot,
-            if v.square_dots { 1.0 } else { dot / 2.0 },
-            class.dot.hsla(),
-        );
-        x += dot + g.cell_gap;
-        if self.options.cols.number {
-            self.number(window, cx, row, class, x, y);
-            x += self.number_width(window, row) + g.cell_gap;
-        }
-        // Gap al líder de clase e intervalo al de delante.
         let frozen =
             matches!(board.banner, Some(Banner::FullCourseYellow)) || (me && board.player_in_pits);
-        for (right, text, is_gap) in [
-            (cols.gap_right, &row.gap, true),
-            (cols.interval_right, &row.interval, false),
-        ] {
-            let Some(right) = right else { continue };
-            let color = if frozen {
-                c.frozen
-            } else if leader && is_gap {
-                c.leader
-            } else if me {
-                c.text
-            } else {
-                c.value
-            };
-            let ink = self.ink(Face::Mono, f.mono, 0.0, color.hsla());
-            self.label(window, cx, text, 0.0, Some(right), y, h, Face::Mono, &ink);
-        }
-        if let Some(cx0) = cols.compound {
-            self.compound(window, cx, row, cx0, y);
-        }
-        let mut name_right = cols.name_right;
-        match cols.pit {
-            Some(px0) => self.pit(window, cx, row, px0, y, true),
-            // Sin columna de paradas, la píldora BOX va junto al nombre.
-            None if row.pit == Pit::InPits => {
-                let width = self.pill_width(window, BOX);
-                self.pit(window, cx, row, name_right - width, y, false);
-                name_right -= width + g.cell_gap;
+        let has_pit = self.options.cols.has(Kind::Pit);
+        let number = self.options.cols.has(Kind::Number);
+        for column in &self.plan.columns {
+            let (x, right) = (column.x, column.x + column.width);
+            match column.kind {
+                Kind::Gained => self.gained(window, cx, row, x, y),
+                Kind::Number => {
+                    self.class_dot(window, x, y, class);
+                    self.number(window, cx, row, class, x + g.class_dot + g.cell_gap, y);
+                }
+                Kind::Driver => {
+                    let mut start = x;
+                    if !number {
+                        self.class_dot(window, x, y, class);
+                        start += g.class_dot + g.cell_gap;
+                    }
+                    let mut name_right = right;
+                    // Sin columna de paradas, la píldora BOX va junto al nombre.
+                    if !has_pit && row.pit == Pit::InPits {
+                        let width = self.pill_width(window, BOX);
+                        self.pit(window, cx, row, name_right - width, y, false);
+                        name_right -= width + g.cell_gap;
+                    }
+                    self.name(window, cx, row, start, name_right, y);
+                }
+                Kind::Compound => self.compound(window, cx, row, x, y),
+                Kind::Pit => self.pit(window, cx, row, x, y, true),
+                Kind::Sectors => self.sectors(window, cx, row, x, y),
+                Kind::Last | Kind::Best => {
+                    let (text, color) = if column.kind == Kind::Last {
+                        (&row.last_lap, c.value)
+                    } else {
+                        (
+                            &row.best_lap,
+                            match row.best_mark {
+                                Mark::Fastest => c.purple,
+                                Mark::Personal => c.best_personal,
+                                _ => c.value,
+                            },
+                        )
+                    };
+                    let ink = self.ink(Face::Mono, f.mono, 0.0, color.hsla());
+                    self.label(window, cx, text, 0.0, Some(right), y, h, Face::Mono, &ink);
+                }
+                Kind::Interval | Kind::Gap => {
+                    let is_gap = column.kind == Kind::Gap;
+                    let color = if frozen {
+                        c.frozen
+                    } else if leader && is_gap {
+                        c.leader
+                    } else if me {
+                        c.text
+                    } else {
+                        c.value
+                    };
+                    let text = if is_gap { &row.gap } else { &row.interval };
+                    let ink = self.ink(Face::Mono, f.mono, 0.0, color.hsla());
+                    self.label(window, cx, text, 0.0, Some(right), y, h, Face::Mono, &ink);
+                }
             }
-            None => {}
         }
-        if let Some(sx) = cols.sectors {
-            self.sectors(window, cx, row, sx, y);
-        }
-        if let Some(right) = cols.last_right {
-            let value = self.ink(Face::Mono, f.mono, 0.0, c.value.hsla());
-            self.label(
-                window,
-                cx,
-                &row.last_lap,
-                0.0,
-                Some(right),
-                y,
-                h,
-                Face::Mono,
-                &value,
-            );
-        }
-        if let Some(right) = cols.best_right {
-            let best = match row.best_mark {
-                Mark::Fastest => c.purple,
-                Mark::Personal => c.best_personal,
-                _ => c.value,
-            };
-            let ink = self.ink(Face::Mono, f.mono, 0.0, best.hsla());
-            self.label(
-                window,
-                cx,
-                &row.best_lap,
-                0.0,
-                Some(right),
-                y,
-                h,
-                Face::Mono,
-                &ink,
-            );
-        }
-        self.name(window, cx, row, x, name_right, y);
     }
 
     fn gained(&self, window: &mut Window, cx: &mut App, row: &Row, x: f32, y: f32) {
@@ -1556,28 +1629,10 @@ impl Painter<'_> {
         let h = self.style.geometry.row_height;
         let available = (right - x).max(0.0);
         let driver_ink = self.ink(Face::Body, f.body, 0.0, c.text.hsla());
-        let driver = if row.driver.is_empty() {
-            PLACEHOLDER.to_owned()
-        } else {
-            vantare_domain::standings::driver_name(
-                &row.driver,
-                &self.options.name_mode,
-                self.options.name_max,
-            )
-        };
+        let driver = driver_text(row, self.options);
         let driver = text::fit(window, &driver, &driver_ink, available);
         let used = self.label(window, cx, &driver, x, None, y, h, Face::Body, &driver_ink);
-        // Coche: completo con el piloto ancho; si no, la marca.
-        let detail = match (self.options.cols.vehicle, self.options.cols.driver) {
-            (false, _) => String::new(),
-            _ if row.vehicle.is_empty() => String::new(),
-            (true, Preset::Lg) => format!(" · {}", row.vehicle),
-            (true, _) => row
-                .vehicle
-                .split_whitespace()
-                .next()
-                .map_or_else(String::new, |short| format!(" · {short}")),
-        };
+        let detail = vehicle_detail(row, &self.options.cols);
         if detail.is_empty() {
             return;
         }
@@ -2002,21 +2057,6 @@ impl Painter<'_> {
     }
 }
 
-struct Columns {
-    position_right: f32,
-    gained: Option<f32>,
-    dot: f32,
-    compound: Option<f32>,
-    pit: Option<f32>,
-    sectors: Option<f32>,
-    last_right: Option<f32>,
-    best_right: Option<f32>,
-    interval_right: Option<f32>,
-    gap_right: Option<f32>,
-    /// Borde derecho disponible para el nombre.
-    name_right: f32,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -2108,7 +2148,7 @@ mod tests {
         assert_eq!(width(&options("standard")), 520.0);
         assert_eq!(width(&options("expanded")), 900.0);
         let mut narrower = options("standard");
-        narrower.cols.sectors = false;
+        narrower.cols.order.retain(|kind| *kind != Kind::Sectors);
         assert!(
             width(&narrower) < 520.0,
             "quitar una columna estrecha el panel"

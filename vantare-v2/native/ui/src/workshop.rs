@@ -173,6 +173,13 @@ fn scenes(initial: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(paths)
 }
 
+/// Destino de una columna Vantare arrastrada.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DropTarget {
+    Before(&'static str),
+    End,
+}
+
 /// Estilo editable en vivo: el último JSON válido se conserva ante errores.
 struct LiveStyle<T> {
     path: PathBuf,
@@ -249,6 +256,8 @@ enum Control {
     Setting(&'static str),
     /// Plantilla de columnas Vantare (compact, standard, expanded).
     Template(&'static str),
+    /// Desplaza una columna Vantare un puesto (−1 izquierda, +1 derecha).
+    MoveColumn(&'static str, i32),
 }
 
 struct Playback {
@@ -338,6 +347,10 @@ struct Workshop {
     fit: f32,
     /// Panel lateral oculto para dar todo el ancho al escenario.
     panel_hidden: bool,
+    /// Rectángulo de la vista previa del widget en la ventana.
+    widget_bounds: Option<gpui::Bounds<gpui::Pixels>>,
+    /// Columna Vantare que se está arrastrando: métrica y x (px del widget).
+    column_drag: Option<(&'static str, f32)>,
 }
 
 /// Ajustes de partida de Standings en Workshop para cada sistema de diseño.
@@ -630,6 +643,66 @@ impl Workshop {
         }
     }
 
+    /// x de la ventana → x del widget (px lógicos del widget).
+    fn widget_x(&self, x: gpui::Pixels) -> Option<f32> {
+        let bounds = self.widget_bounds?;
+        Some(f32::from(x - bounds.left()) / (self.scale * self.fit))
+    }
+
+    /// Empieza a arrastrar la columna bajo el puntero (no la posición).
+    fn start_column_drag(&mut self, x: gpui::Pixels, cx: &mut Context<Self>) {
+        let (Some(x), Some(columns)) = (self.widget_x(x), self.overlay.read(cx).vantare_columns())
+        else {
+            return;
+        };
+        self.column_drag = columns
+            .iter()
+            .find(|(_, left, width)| x >= *left && x <= left + width)
+            .map(|(metric, ..)| (*metric, x));
+        cx.notify();
+    }
+
+    fn drag_column(&mut self, x: gpui::Pixels, cx: &mut Context<Self>) {
+        if let (Some((metric, _)), Some(x)) = (self.column_drag, self.widget_x(x)) {
+            self.column_drag = Some((metric, x));
+            cx.notify();
+        }
+    }
+
+    /// Dónde caería la columna arrastrada.
+    fn drop_target(&self, cx: &App) -> Option<DropTarget> {
+        let (metric, x) = self.column_drag?;
+        let columns = self.overlay.read(cx).vantare_columns()?;
+        Some(
+            columns
+                .iter()
+                .filter(|(m, ..)| *m != metric)
+                .find(|(_, left, width)| x < left + width / 2.0)
+                .map_or(DropTarget::End, |(m, ..)| DropTarget::Before(m)),
+        )
+    }
+
+    fn finish_column_drag(&mut self, cx: &mut Context<Self>) {
+        let target = self.drop_target(cx);
+        let Some((metric, _)) = self.column_drag.take() else {
+            return;
+        };
+        if let (Some(target), Settings::Standings(settings)) = (target, &mut self.settings) {
+            let columns = settings
+                .columns
+                .get_or_insert_with(|| crate::standings::vantare_template("standard"));
+            let before = match target {
+                DropTarget::Before(before) => Some(before),
+                DropTarget::End => None,
+            };
+            if crate::standings::move_column(columns, metric, before) {
+                self.replay(cx);
+                self.persist();
+            }
+        }
+        cx.notify();
+    }
+
     /// Reaplica la escala de vista previa sin recrear los widgets.
     fn apply_preview(&self, cx: &mut App) {
         let (scale, dimensions, kind) = (self.scale * self.fit, self.dimensions, self.kind);
@@ -827,6 +900,15 @@ impl Workshop {
                     }
                     settings.columns = Some(columns);
                 }
+                Control::MoveColumn(metric, step) => {
+                    let Settings::Standings(settings) = &mut self.settings else {
+                        return Err("solo Standings ordena columnas Vantare".into());
+                    };
+                    let columns = settings
+                        .columns
+                        .get_or_insert_with(|| crate::standings::vantare_template("standard"));
+                    crate::standings::shift_column(columns, metric, step);
+                }
                 Control::Footer(slot) => {
                     let slots = match &mut self.settings {
                         Settings::Standings(settings) => {
@@ -1004,6 +1086,8 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                     dragging: false,
                     fit: 1.0,
                     panel_hidden: false,
+                    widget_bounds: None,
+                    column_drag: None,
                     overlay,
                     state_file,
                     state_error,

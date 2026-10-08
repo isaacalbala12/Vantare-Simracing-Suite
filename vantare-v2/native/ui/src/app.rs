@@ -159,6 +159,14 @@ impl Overlay {
         }
     }
 
+    /// Workshop: columnas Vantare colocadas `(métrica, x, ancho)` del widget.
+    pub(crate) fn vantare_columns(&self) -> Option<Vec<(&'static str, f32, f32)>> {
+        match &self.widget {
+            Widget::Standings(widget) => widget.vantare_columns(),
+            _ => None,
+        }
+    }
+
     /// Workshop: da por terminadas las animaciones de las fotos ya ingeridas.
     pub(crate) fn settle(&mut self) {
         if let Widget::Standings(widget) = &mut self.widget {

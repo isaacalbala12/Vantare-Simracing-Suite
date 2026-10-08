@@ -503,35 +503,63 @@ impl Render for Workshop {
                     ),
                 )
                 .child(
-                    group("Columnas").children(
-                        [
-                            ("positionsGained", "Posiciones ganadas ±"),
-                            ("driverNumber", "Dorsal"),
-                            ("vehicle", "Coche"),
-                            ("tireCompound", "Compuesto"),
-                            ("pit", "Paradas / BOX"),
-                            ("sectors", "Sectores"),
-                            ("lastLap", "Última vuelta"),
-                            ("bestLap", "Mejor vuelta"),
-                            ("interval", "Intervalo"),
-                            ("gap", "Gap al líder"),
-                        ]
-                        .into_iter()
-                        .map(|(id, label)| {
-                            let enabled = columns.iter().any(|c| c.metric_id == id && c.enabled);
-                            button(
-                                format!("column-{id}"),
-                                &format!("{label}   {}", if enabled { "●" } else { "○" }),
-                                enabled,
-                            )
-                            .mt(px(4.0))
-                            .on_click(cx.listener(
-                                move |this, _, _, cx| {
-                                    this.select(Control::Module(id), "", cx);
-                                },
-                            ))
-                        }),
-                    ),
+                    group("Columnas")
+                        .child(
+                            div()
+                                .text_size(px(10.0))
+                                .text_color(rgb(0x919197))
+                                .child("Arrastra una columna en el widget o usa ◀ ▶."),
+                        )
+                        .children(columns.iter().filter_map(|column| {
+                            let (id, label): (&'static str, &str) = match column.metric_id.as_str()
+                            {
+                                "positionsGained" => ("positionsGained", "Posiciones ganadas ±"),
+                                "driverNumber" => ("driverNumber", "Dorsal"),
+                                "driverName" => ("driverName", "Piloto"),
+                                "vehicle" => ("vehicle", "Coche (junto al piloto)"),
+                                "tireCompound" => ("tireCompound", "Compuesto"),
+                                "pit" => ("pit", "Paradas / BOX"),
+                                "sectors" => ("sectors", "Sectores"),
+                                "lastLap" => ("lastLap", "Última vuelta"),
+                                "bestLap" => ("bestLap", "Mejor vuelta"),
+                                "interval" => ("interval", "Intervalo"),
+                                "gap" => ("gap", "Gap al líder"),
+                                _ => return None,
+                            };
+                            let driver = id == "driverName";
+                            let enabled = column.enabled || driver;
+                            let mut line = div().mt(px(4.0)).flex().gap(px(4.0)).child(
+                                button(
+                                    format!("column-{id}"),
+                                    &if driver {
+                                        format!("{label}   ●")
+                                    } else {
+                                        format!("{label}   {}", if enabled { "●" } else { "○" })
+                                    },
+                                    enabled,
+                                )
+                                .flex_1()
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
+                                        if !driver {
+                                            this.select(Control::Module(id), "", cx);
+                                        }
+                                    },
+                                )),
+                            );
+                            if enabled && id != "vehicle" {
+                                for (step, arrow) in [(-1, "◀"), (1, "▶")] {
+                                    line = line.child(
+                                        button(format!("move-{id}-{step}"), arrow, false)
+                                            .px(px(6.0))
+                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                this.select(Control::MoveColumn(id, step), "", cx);
+                                            })),
+                                    );
+                                }
+                            }
+                            Some(line)
+                        })),
                 )
                 .child(
                     group("Filas y nombre")
@@ -1000,10 +1028,86 @@ impl Render for Workshop {
                 view.into_any_element()
             }
         };
-        let widget = div()
+        let entity = cx.entity();
+        let mut widget = div()
+            .id("widget-preview")
+            .relative()
             .w(px(dimensions.0 * scale))
             .h(px(dimensions.1 * scale))
-            .child(content(self.overlay.clone()));
+            .child(content(self.overlay.clone()))
+            .child(
+                gpui::canvas(
+                    move |bounds, _, cx| {
+                        entity.update(cx, |this, _| this.widget_bounds = Some(bounds));
+                    },
+                    |_, (), _, _| {},
+                )
+                .absolute()
+                .top_0()
+                .left_0()
+                .size_full(),
+            );
+        // Vantare: arrastrar una columna a izquierda o derecha cambia su orden.
+        if let Some(columns) = self.overlay.read(cx).vantare_columns() {
+            widget = widget
+                .cursor(gpui::CursorStyle::OpenHand)
+                .on_mouse_down(
+                    gpui::MouseButton::Left,
+                    cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
+                        this.start_column_drag(event.position.x, cx);
+                    }),
+                )
+                .on_mouse_move(cx.listener(|this, event: &gpui::MouseMoveEvent, _, cx| {
+                    this.drag_column(event.position.x, cx);
+                }))
+                .on_mouse_up(
+                    gpui::MouseButton::Left,
+                    cx.listener(|this, _, _, cx| this.finish_column_drag(cx)),
+                )
+                .on_mouse_up_out(
+                    gpui::MouseButton::Left,
+                    cx.listener(|this, _, _, cx| this.finish_column_drag(cx)),
+                );
+            if let Some((metric, x)) = self.column_drag {
+                let gap = 10.0;
+                if let Some((_, _, width)) = columns.iter().find(|(m, ..)| *m == metric) {
+                    widget = widget.child(
+                        div()
+                            .absolute()
+                            .top_0()
+                            .bottom_0()
+                            .left(px((x - width / 2.0) * scale))
+                            .w(px(width * scale))
+                            .rounded(px(4.0))
+                            .bg(gpui::rgba(0xffffff1f))
+                            .border_1()
+                            .border_color(gpui::rgba(0xffffff59)),
+                    );
+                }
+                let guide = match self.drop_target(cx) {
+                    Some(DropTarget::Before(before)) => columns
+                        .iter()
+                        .find(|(m, ..)| *m == before)
+                        .map(|(_, left, _)| left - gap / 2.0),
+                    _ => columns
+                        .iter()
+                        .filter(|(m, ..)| *m != metric)
+                        .map(|(_, left, width)| left + width + gap / 2.0)
+                        .reduce(f32::max),
+                };
+                if let Some(guide) = guide {
+                    widget = widget.child(
+                        div()
+                            .absolute()
+                            .top_0()
+                            .bottom_0()
+                            .left(px(guide * scale - 1.0))
+                            .w(px(2.0))
+                            .bg(rgb(0xe14a54)),
+                    );
+                }
+            }
+        }
         let mut previews = div()
             .w_full()
             .flex_1()

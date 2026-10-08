@@ -94,6 +94,80 @@ pub enum Accent {
     Red,
 }
 
+/// Métricas que ocupan un hueco propio y se pueden reordenar (P es fija).
+const MOVABLE: &[&str] = &[
+    "positionsGained",
+    "driverNumber",
+    "carNumber",
+    "driverName",
+    "tireCompound",
+    "pit",
+    "sectors",
+    "lastLap",
+    "bestLap",
+    "interval",
+    "gap",
+];
+
+fn movable(column: &options::ColumnSetting) -> bool {
+    MOVABLE.contains(&column.metric_id.as_str())
+        && (column.enabled || column.metric_id == "driverName")
+}
+
+/// Mueve `metric` justo delante de `before`, o tras la última columna visible
+/// si `before` es `None`. Las columnas ocultas conservan su sitio relativo.
+/// Devuelve si cambió el orden. Compartido por Workshop y Studio.
+pub fn move_column(
+    columns: &mut Vec<options::ColumnSetting>,
+    metric: &str,
+    before: Option<&str>,
+) -> bool {
+    if before == Some(metric) {
+        return false;
+    }
+    let Some(from) = columns
+        .iter()
+        .position(|c| c.metric_id == metric && movable(c))
+    else {
+        return false;
+    };
+    let previous = columns.clone();
+    let column = columns.remove(from);
+    let at = if let Some(target) = before {
+        let Some(index) = columns.iter().position(|c| c.metric_id == target) else {
+            *columns = previous;
+            return false;
+        };
+        index
+    } else {
+        columns
+            .iter()
+            .rposition(movable)
+            .map_or(columns.len(), |i| i + 1)
+    };
+    columns.insert(at, column);
+    *columns != previous
+}
+
+/// Desplaza `metric` un puesto (`step` −1 izquierda, +1 derecha) entre las
+/// columnas visibles. Devuelve si cambió el orden.
+pub fn shift_column(columns: &mut Vec<options::ColumnSetting>, metric: &str, step: i32) -> bool {
+    let visible: Vec<String> = columns
+        .iter()
+        .filter(|c| movable(c))
+        .map(|c| c.metric_id.clone())
+        .collect();
+    let Some(index) = visible.iter().position(|m| m == metric) else {
+        return false;
+    };
+    match step {
+        -1 if index > 0 => move_column(columns, metric, Some(&visible[index - 1])),
+        1 if index + 2 < visible.len() => move_column(columns, metric, Some(&visible[index + 2])),
+        1 if index + 1 < visible.len() => move_column(columns, metric, None),
+        _ => false,
+    }
+}
+
 /// Plantillas Vantare del catálogo r10b: todas las columnas elegibles en su
 /// orden, activas según el tamaño. `compact` (340 px), `standard` (520, el del
 /// Studio) y `expanded` (900). Eficiencia ignora las métricas que no conoce.
@@ -545,6 +619,11 @@ impl Widget {
         }
     }
 
+    /// Columnas Vantare colocadas `(métrica, x, ancho)`; `None` en Eficiencia.
+    pub(crate) fn vantare_columns(&self) -> Option<Vec<(&'static str, f32, f32)>> {
+        self.vantare.as_ref().map(vantare::State::columns)
+    }
+
     /// Estilo Vantare de Workshop en vivo; producto usa el compilado.
     pub(crate) fn set_vantare_style(&mut self, style: std::sync::Arc<vantare::Style>) {
         if let Some(state) = &mut self.vantare {
@@ -720,6 +799,55 @@ mod tests {
                 .vantare
                 .is_none()
         );
+    }
+
+    #[test]
+    fn columns_move_between_visible_ones_and_keep_hidden_ones_and_position() {
+        let order = |columns: &[options::ColumnSetting]| -> Vec<String> {
+            columns
+                .iter()
+                .filter(|c| (c.enabled || c.metric_id == "driverName") && c.metric_id != "vehicle")
+                .map(|c| c.metric_id.clone())
+                .collect()
+        };
+        let mut columns = vantare_template("standard");
+        let before = columns.clone();
+        assert!(move_column(&mut columns, "gap", Some("driverName")));
+        assert_eq!(
+            order(&columns),
+            [
+                "position",
+                "positionsGained",
+                "driverNumber",
+                "gap",
+                "driverName",
+                "pit",
+                "sectors"
+            ]
+        );
+        assert_eq!(columns.len(), before.len(), "no se pierde ni duplica nada");
+        assert!(!move_column(&mut columns, "position", None), "P es fija");
+        assert!(!move_column(&mut columns, "gap", Some("gap")));
+        assert!(!move_column(&mut columns, "gap", Some("noExiste")));
+        assert!(shift_column(&mut columns, "gap", 1));
+        assert_eq!(order(&columns)[3..5], ["driverName", "gap"]);
+        assert!(shift_column(&mut columns, "pit", -1));
+        assert!(
+            !shift_column(&mut columns, "positionsGained", -1),
+            "ya es la primera"
+        );
+        let last = order(&columns).last().cloned().expect("columnas");
+        assert!(!shift_column(&mut columns, &last, 1), "ya es la última");
+        assert!(move_column(&mut columns, "positionsGained", None));
+        assert_eq!(
+            order(&columns).last().map(String::as_str),
+            Some("positionsGained")
+        );
+        let options = vantare::Options::from_settings(&Settings {
+            columns: Some(columns),
+            ..Settings::default()
+        });
+        assert_eq!(options.cols.order.last(), Some(&vantare::Kind::Gained));
     }
 
     #[test]

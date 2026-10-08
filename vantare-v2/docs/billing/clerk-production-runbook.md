@@ -33,9 +33,58 @@ auth Supabase, token de sesión y webhooks pertenecen exclusivamente a #1514.
 OAuth nativo sigue siendo un bearer distinto del token de sesión: no se convierte
 en JWT Supabase. No importar ni duplicar esa implementación en #1516.
 
-Los apartados históricos siguientes describen la preparación completa; la
-instancia ya existe y **no se debe repetir su creación**. Estado DNS/portal,
-validación administrativa y login real se documentan al completar sus pasos.
+Orígenes aplicados con `api /instance -X PATCH --file <json-publico> --yes`
+y releídos: `https://vantare.app`, `https://www.vantare.app`,
+`https://accounts.vantare.app`. Allowlist de subdominios activada solo para
+`www.vantare.app` y `accounts.vantare.app` (el dominio raíz es el principal).
+No comodines, orígenes locales ni esquemas inventados: GPUI usa navegador del
+sistema y HTTP nativo, no un renderer web. El loopback pertenece a los
+`redirect_uris` del cliente OAuth; `/redirect_urls` de SSO móvil está vacío y
+no es necesario para este flujo. No modificar `authorizedParties` ni claims
+de sesión del backend de #1514 desde este paso.
+
+Dominio releído por `api /platform/applications/<app>/domains/vantare.app
+--platform`: FAPI `https://clerk.vantare.app`, portal
+`https://accounts.vantare.app`. Alta nativa:
+`https://accounts.vantare.app/sign-up`; reset nativo:
+`https://accounts.vantare.app/sign-in?__clerk_reset_password=true`.
+Estas son las URL que genera el Hub con el portal de build; DNS/TLS impide
+verificar sus pantallas. Los Paths web existentes `/acceso/` y
+`/acceso/?modo=registro` se conservan; no sustituir el acceso web de #1506.
+Alta pública, email verificado y contraseña obligatoria (mínimo 8) ya estaban
+activos. No se alteran usuarios, política de contraseña ni proveedores sociales.
+
+`deploy status` y `api /platform/applications/<app>/domains/vantare.app/status
+--platform` detectan DNS, TLS y mail pendientes. Se lanzó comprobación explícita
+con `.../dns_check --platform -X POST --yes`; no acredita registros creados.
+Clerk exige estos **cinco CNAME, todos DNS only (`proxied=false`)**:
+
+| Nombre | Destino exacto solicitado por Production | Acción en esta entrega |
+|---|---|---|
+| `clerk.vantare.app` | `frontend-api.clerk.services` | Pendiente, no creado |
+| `accounts.vantare.app` | `accounts.clerk.services` | Pendiente, no creado |
+| `clkmail.vantare.app` | `mail.io5mnlv19xt7.clerk.services` | Pendiente, no creado |
+| `clk._domainkey.vantare.app` | `dkim1.io5mnlv19xt7.clerk.services` | Pendiente, no creado |
+| `clk2._domainkey.vantare.app` | `dkim2.io5mnlv19xt7.clerk.services` | Pendiente, no creado |
+
+Bloqueo comprobado: `npx wrangler --help`, `whoami` y
+`login --scopes-list` (4.149.0): no comando DNS, sesión con `zone:read`, sin
+DNS Write entre sus permisos ni scopes de login. No extraer token ni leer su
+archivo de credenciales para construir otra vía. Isaac debe añadir estos
+registros en Cloudflare o proporcionar un mecanismo oficial autorizado con DNS
+Write; después verificar DNS y desplegar certificados en Clerk. Google también
+figura pendiente de credenciales propias: no se habilita ni se elimina.
+
+Sin DNS/TLS, servidor coordinado con #1514 y build productiva no se puede
+probar login aislado. Siguiente paso de Isaac: DNS/certificados y credenciales
+sociales si se van a ofrecer, completar #1514, copiar/completar la plantilla
+fuera del repo, compilar Hub/services juntos y usar una cuenta de prueba
+existente elegida por Isaac en una raíz aislada. Alta/reset/refresh/logout y
+licencia/RLS requieren ese recorrido; no equivalen a la lectura administrativa.
+
+Los apartados siguientes describen la preparación completa; la instancia ya
+existe y **no se debe repetir su creación**. La exclusión administrativa del
+worker original queda reemplazada solo por esta autorización de configuración.
 
 ## 1. Instancia y DNS — Isaac
 
@@ -109,14 +158,17 @@ cambiar issuer/client obliga a iniciar sesión de nuevo, sin migración automát
    conceder por email ni reasignar UUID/compras con scripts improvisados. Una
    vinculación de cuentas existentes requiere revisión y autorización propia.
 
-No desplegar ni configurar producción desde este worker. La clave privada de
+Third-party auth, session token y webhooks los configura #1514; no desplegar ni
+duplicar esos cambios desde este worker. La clave privada de
 licencia y la del puente de datos siguen en servidor; el cambio de issuer no
 requiere meterlas en el cliente.
 
 ## 4. Plantilla de build-config productivo
 
-Crear **fuera del repo** `C:/tmp/beta/build-config/beta-prod-clerk.env`. Plantilla
-sin valores, no ejecutable hasta completarla con datos públicos de Production:
+Copiar `native/packaging/build-config-production.template` **fuera del repo**
+como `C:/tmp/beta/build-config/beta-prod-clerk.env`. Plantilla no ejecutable
+hasta completarla con datos públicos de Production; conserva el client ID
+público verificado en la sección CLI. Los nombres son:
 
 ```dotenv
 VANTARE_SUPABASE_URL=
@@ -154,8 +206,9 @@ Release/firma/publicación son pasos separados tras aceptación. Seguir
 Instancia, DNS, servidor y build ya configurados, pantalla libre y raíz QA
 aislada; no usar los datos/DPAPI de la instalación real:
 
-1. Crear cuenta desde la app: Portal Production, alta y email verificado.
-   Volver a la app para iniciar OAuth; alta en Portal no completa ese callback.
+1. Isaac selecciona su cuenta de prueba existente de Production. El worker
+   no crea/modifica usuarios. Comprobar el enlace de alta sin enviar el formulario
+   y volver a la app para iniciar OAuth; el portal no completa ese callback.
 2. Probar email/contraseña, Google y Discord: consentimiento, callback loopback,
    sesión confirmada y renovación de licencia válidos.
 3. Recuperar contraseña por email desde el enlace de la app. Cancelar/reintentar

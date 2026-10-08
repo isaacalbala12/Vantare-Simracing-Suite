@@ -332,6 +332,10 @@ struct Workshop {
     numeric: Option<(Control, String)>,
     slider_bounds: Option<gpui::Bounds<gpui::Pixels>>,
     dragging: bool,
+    /// Escala que encaja el widget en el escenario visible (≤ 1).
+    fit: f32,
+    /// Panel lateral oculto para dar todo el ancho al escenario.
+    panel_hidden: bool,
 }
 
 fn default_settings(kind: Kind) -> Settings {
@@ -495,7 +499,10 @@ impl Workshop {
 
     fn snapshot(&self, index: usize) -> Snapshot {
         let mut snapshot = self.scene.snapshots[index].clone();
-        if let Settings::Standings(settings) = &self.settings {
+        // «Pilotos totales» es un control de Eficiencia; Vantare elige sus filas.
+        if let Settings::Standings(settings) = &self.settings
+            && settings.design_system == crate::standings::DesignSystem::Eficiencia
+        {
             snapshot.state.cars.retain(|car| {
                 car.position
                     .current()
@@ -575,7 +582,7 @@ impl Workshop {
         }
         let style = std::sync::Arc::new(style);
         let vantare = self.vantare_style.value.clone();
-        let scale = self.scale;
+        let scale = self.scale * self.fit;
         let dimensions = self.dimensions;
         let study = self.study.clone();
         let kind = self.kind;
@@ -601,6 +608,23 @@ impl Workshop {
         self.overlay = cx.new(make);
         if self.comparison.is_some() {
             self.comparison = Some(cx.new(make));
+        }
+    }
+
+    /// Reaplica la escala de vista previa sin recrear los widgets.
+    fn apply_preview(&self, cx: &mut App) {
+        let (scale, dimensions, kind) = (self.scale * self.fit, self.dimensions, self.kind);
+        for view in std::iter::once(&self.overlay).chain(self.comparison.as_ref()) {
+            view.update(cx, |overlay, cx| {
+                let size = overlay.wanted_size();
+                let target = dimensions.unwrap_or(preview_size(kind, size));
+                if overlay
+                    .set_preview_axes(scale * target.0 / size.0, scale * target.1 / size.1)
+                    .is_ok()
+                {
+                    cx.notify();
+                }
+            });
         }
     }
 
@@ -879,11 +903,22 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
             *failure.borrow_mut() = Some("no se pudieron registrar las fuentes".into());
             return;
         }
+        // Mitad derecha del monitor principal: T3/editor a la izquierda, Workshop a la derecha.
+        let window_bounds = cx.primary_display().map(|display| {
+            let screen = display.bounds();
+            let half = screen.size.width / 2.0;
+            gpui::WindowBounds::Windowed(gpui::Bounds::new(
+                gpui::point(screen.origin.x + half, screen.origin.y),
+                gpui::size(half, screen.size.height),
+            ))
+        });
         let options = WindowOptions {
             titlebar: Some(gpui::TitlebarOptions {
                 title: Some("Vantare — Workshop en vivo".into()),
                 ..Default::default()
             }),
+            window_bounds,
+            focus: false,
             ..Default::default()
         };
         let opened = cx.open_window(options, |window, cx| {
@@ -927,6 +962,8 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                     numeric: None,
                     slider_bounds: None,
                     dragging: false,
+                    fit: 1.0,
+                    panel_hidden: false,
                     overlay,
                     state_file,
                     state_error,
@@ -1001,7 +1038,7 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
             }
         })
         .detach();
-        cx.activate(true);
+        // Sin activar la app: se abre detrás para no robar el foco al editor.
     });
     match result.borrow_mut().take() {
         Some(error) => Err(error),

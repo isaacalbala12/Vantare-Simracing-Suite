@@ -404,8 +404,8 @@ fn waiting(board: Option<&Board>) -> bool {
     board.is_none_or(|b| matches!(b.source_state, SourceState::Waiting | SourceState::Lost))
 }
 
-/// Filas visibles `(grupo, fila)`. Ampliado muestra todo por clases; los otros
-/// tamaños, las primeras de la general y, si el jugador queda fuera, su entorno.
+/// Filas visibles `(grupo, fila)`, agrupadas por clase en todos los tamaños.
+/// Si el jugador queda fuera del límite, las tres últimas son su entorno.
 fn rows(board: &Board, size: Size, style: &Style) -> Vec<(usize, usize)> {
     let all: Vec<(usize, usize)> = board
         .groups
@@ -419,17 +419,7 @@ fn rows(board: &Board, size: Size, style: &Style) -> Vec<(usize, usize)> {
         Size::Expanded => style.geometry.expanded_rows,
     }
     .max(1.0) as usize;
-    if size == Size::Expanded {
-        return all.into_iter().take(limit).collect();
-    }
-    // Fuera de ampliado el orden es el de la general, no por clase.
-    let mut ordered = all;
-    ordered.sort_by_key(|&(g, r)| {
-        board.groups[g].rows[r]
-            .position
-            .parse::<u32>()
-            .unwrap_or(u32::MAX)
-    });
+    let ordered = all;
     let player = ordered
         .iter()
         .position(|&(g, r)| board.groups[g].rows[r].is_player);
@@ -466,13 +456,11 @@ fn plan(board: Option<&Board>, options: Options, style: &Style) -> Plan {
             }
         }
         Some(board) => {
-            if options.size == Size::Expanded {
-                items.push((y, Item::Columns));
-                y += g.column_header_height;
-            }
+            items.push((y, Item::Columns));
+            y += g.column_header_height;
             let mut group = None;
             for (gi, ri) in rows(board, options.size, style) {
-                if options.size == Size::Expanded && group != Some(gi) {
+                if group != Some(gi) {
                     group = Some(gi);
                     y += g.separator_gap_top;
                     items.push((y, Item::Separator(gi)));
@@ -487,9 +475,7 @@ fn plan(board: Option<&Board>, options: Options, style: &Style) -> Plan {
             } else if board.player_in_pits {
                 footers.push(Footer::Pits);
             }
-            if options.size == Size::Expanded {
-                footers.push(Footer::Session);
-            }
+            footers.push(Footer::Session);
             for footer in footers {
                 y += g.footer_gap;
                 items.push((y, Item::Footer(footer)));
@@ -815,7 +801,18 @@ impl Painter<'_> {
         };
         let em = self.ink(face, v.header_size, v.header_tracking, em_color);
         let board = self.board.filter(|b| !waiting(Some(b)));
-        let session = board.map_or_else(|| PLACEHOLDER.to_owned(), |b| b.session.clone());
+        // Sin sesión se rotula el widget, no un guion suelto.
+        let session = board.map_or_else(
+            || {
+                if self.es() {
+                    "Clasificación"
+                } else {
+                    "Standings"
+                }
+                .to_owned()
+            },
+            |b| b.session.clone(),
+        );
         let lap = board.map_or("", |b| b.lap.as_str());
         let mut x = pad;
         if lap.is_empty() {
@@ -885,7 +882,7 @@ impl Painter<'_> {
         }
     }
 
-    /// Bordes izquierdos de las columnas fijas de una fila ampliada.
+    /// Cabecera de columnas: mismas columnas que pinta cada tamaño.
     fn columns(&self, window: &mut Window, cx: &mut App, y: f32) {
         let g = &self.style.geometry;
         let f = &self.style.fonts;
@@ -896,7 +893,7 @@ impl Painter<'_> {
             f.column_tracking,
             self.style.colors.column.hsla(),
         );
-        let cols = self.expanded_columns();
+        let cols = self.layout_columns();
         let es = self.es();
         let put = |window: &mut Window, cx: &mut App, value: &str, x: f32, right: Option<f32>| {
             self.label(
@@ -912,7 +909,9 @@ impl Painter<'_> {
             );
         };
         put(window, cx, "P", 0.0, Some(cols.position_right));
-        put(window, cx, "±", cols.gained, None);
+        if let Some(x) = cols.gained {
+            put(window, cx, "±", x, None);
+        }
         put(
             window,
             cx,
@@ -920,64 +919,85 @@ impl Painter<'_> {
             cols.dot,
             None,
         );
-        put(
-            window,
-            cx,
-            if es {
-                "Piloto · coche"
-            } else {
-                "Driver · car"
-            },
-            cols.dot + g.class_dot + g.cell_gap + g.number_min_width + g.cell_gap,
-            None,
-        );
-        put(window, cx, "N", cols.compound, None);
-        put(
-            window,
-            cx,
-            if es { "Par." } else { "Stops" },
-            cols.pit,
-            None,
-        );
-        put(window, cx, "Sect.", cols.sectors, None);
-        put(
-            window,
-            cx,
-            if es { "Última" } else { "Last" },
-            0.0,
-            Some(cols.last_right),
-        );
-        put(
-            window,
-            cx,
-            if es { "Mejor" } else { "Best" },
-            0.0,
-            Some(cols.best_right),
-        );
-        put(window, cx, "Gap", 0.0, Some(cols.gap_right));
+        let driver = match (self.options.size, es) {
+            (Size::Compact, true) => "Piloto",
+            (Size::Compact, false) => "Driver",
+            (_, true) => "Piloto · coche",
+            (_, false) => "Driver · car",
+        };
+        let name = cols.dot + g.class_dot + g.cell_gap + g.number_min_width + g.cell_gap;
+        put(window, cx, driver, name, None);
+        if let Some(x) = cols.compound {
+            put(window, cx, "N", x, None);
+        }
+        if let Some(x) = cols.pit {
+            put(window, cx, if es { "Par." } else { "Stops" }, x, None);
+        }
+        if let Some(x) = cols.sectors {
+            put(window, cx, "Sect.", x, None);
+        }
+        if let Some(right) = cols.last_right {
+            put(
+                window,
+                cx,
+                if es { "Última" } else { "Last" },
+                0.0,
+                Some(right),
+            );
+        }
+        if let Some(right) = cols.best_right {
+            put(
+                window,
+                cx,
+                if es { "Mejor" } else { "Best" },
+                0.0,
+                Some(right),
+            );
+        }
+        let gap = if self.options.interval { "Int." } else { "Gap" };
+        put(window, cx, gap, 0.0, Some(cols.gap_right));
     }
 
-    fn expanded_columns(&self) -> Columns {
+    /// Columnas de cada tamaño. Ampliado lo muestra todo; estándar conserva
+    /// ±, dorsal, paradas y sectores; compacto, dorsal, piloto y gap.
+    fn layout_columns(&self) -> Columns {
         let g = &self.style.geometry;
         let gap = g.cell_gap;
         let pad = self.variant.padding_x;
-        let right = self.plan.width - pad;
-        let gap_right = right;
-        let best_right = gap_right - g.col_gap_expanded - gap;
-        let last_right = best_right - g.col_lap - gap;
-        let sectors = last_right - g.col_lap - gap - self.sectors_width();
-        let pit = sectors - gap - g.col_pit;
-        let compound = pit - gap - g.compound_size;
+        let size = self.options.size;
+        let gap_right = self.plan.width - pad;
+        let gap_width = if size == Size::Expanded {
+            g.col_gap_expanded
+        } else {
+            g.col_gap
+        };
+        let mut edge = gap_right - gap_width;
+        let mut take = |width: f32| {
+            edge -= gap + width;
+            edge
+        };
+        let (best_right, last_right) = if size == Size::Expanded {
+            let best = take(g.col_lap) + g.col_lap;
+            let last = take(g.col_lap) + g.col_lap;
+            (Some(best), Some(last))
+        } else {
+            (None, None)
+        };
+        let sectors = (size != Size::Compact).then(|| take(self.sectors_width()));
+        let pit = (size != Size::Compact).then(|| take(g.col_pit));
+        let compound = (size == Size::Expanded).then(|| take(g.compound_size));
+        let gained = (size != Size::Compact).then_some(pad + g.col_position + gap);
         Columns {
             position_right: pad + g.col_position,
-            gained: pad + g.col_position + gap,
-            dot: pad + g.col_position + gap + g.col_gained + gap,
+            gained,
+            dot: gained.map_or(pad + g.col_position + gap, |x| x + g.col_gained + gap),
             compound,
             pit,
             sectors,
             last_right,
             best_right,
             gap_right,
+            name_right: edge - gap,
         }
     }
 
@@ -1071,6 +1091,7 @@ impl Painter<'_> {
             ));
         }
         let class = self.style.class(&group.class);
+        let cols = self.layout_columns();
         // Posición.
         let ink = self.ink(Face::Display, f.position, 0.0, c.muted.hsla());
         self.label(
@@ -1078,19 +1099,18 @@ impl Painter<'_> {
             cx,
             &row.position,
             0.0,
-            Some(pad + g.col_position),
+            Some(cols.position_right),
             y,
             h,
             Face::Display,
             &ink,
         );
-        let mut x = pad + g.col_position + g.cell_gap;
-        if self.options.size != Size::Compact {
+        if let Some(x) = cols.gained {
             self.gained(window, cx, row, x, y);
-            x += g.col_gained + g.cell_gap;
         }
-        // Punto de clase.
+        // Punto de clase y dorsal.
         let dot = g.class_dot;
+        let mut x = cols.dot;
         round_rect(
             window,
             x,
@@ -1101,12 +1121,9 @@ impl Painter<'_> {
             class.dot.hsla(),
         );
         x += dot + g.cell_gap;
-        // Columnas derechas: se calculan antes para saber cuánto ocupa el nombre.
-        let gap_width = if self.options.size == Size::Expanded {
-            g.col_gap_expanded
-        } else {
-            g.col_gap
-        };
+        self.number(window, cx, row, class, x, y);
+        x += self.number_width(window, row) + g.cell_gap;
+        // Gap.
         let gap_text = self.gap_text(board, group, row);
         let frozen =
             matches!(board.banner, Some(Banner::FullCourseYellow)) || (me && board.player_in_pits);
@@ -1123,62 +1140,62 @@ impl Painter<'_> {
             cx,
             &gap_text,
             0.0,
-            Some(w - pad),
+            Some(cols.gap_right),
             y,
             h,
             Face::Mono,
             &ink,
         );
-        let name_right = match self.options.size {
-            Size::Expanded => {
-                let cols = self.expanded_columns();
-                self.number(window, cx, row, class, x, y);
-                x += self.number_width(window, row) + g.cell_gap;
-                self.compound(window, cx, row, cols.compound, y);
-                self.pit(window, cx, row, cols.pit, y, true);
-                self.sectors(window, cx, row, cols.sectors, y);
-                let value = self.ink(Face::Mono, f.mono, 0.0, c.value.hsla());
-                self.label(
-                    window,
-                    cx,
-                    &row.last_lap,
-                    0.0,
-                    Some(cols.last_right),
-                    y,
-                    h,
-                    Face::Mono,
-                    &value,
-                );
-                let best = match row.best_mark {
-                    Mark::Fastest => c.purple,
-                    Mark::Personal => c.best_personal,
-                    _ => c.value,
-                };
-                let ink = self.ink(Face::Mono, f.mono, 0.0, best.hsla());
-                self.label(
-                    window,
-                    cx,
-                    &row.best_lap,
-                    0.0,
-                    Some(cols.best_right),
-                    y,
-                    h,
-                    Face::Mono,
-                    &ink,
-                );
-                cols.compound - g.cell_gap
+        if let Some(cx0) = cols.compound {
+            self.compound(window, cx, row, cx0, y);
+        }
+        let mut name_right = cols.name_right;
+        match cols.pit {
+            Some(px0) => self.pit(window, cx, row, px0, y, true),
+            // Compacto: sin columna de paradas; la píldora BOX va junto al nombre.
+            None if row.pit == Pit::InPits => {
+                let width = self.pill_width(window, BOX);
+                self.pit(window, cx, row, name_right - width, y, false);
+                name_right -= width + g.cell_gap;
             }
-            Size::Standard | Size::Compact => {
-                let right = w - pad - gap_width - g.cell_gap;
-                if row.pit == Pit::InPits {
-                    let width = self.pill_width(window, BOX);
-                    self.pit(window, cx, row, right - width, y, false);
-                    right - width - g.cell_gap
-                } else {
-                    right
-                }
-            }
-        };
+            None => {}
+        }
+        if let Some(sx) = cols.sectors {
+            self.sectors(window, cx, row, sx, y);
+        }
+        if let Some(right) = cols.last_right {
+            let value = self.ink(Face::Mono, f.mono, 0.0, c.value.hsla());
+            self.label(
+                window,
+                cx,
+                &row.last_lap,
+                0.0,
+                Some(right),
+                y,
+                h,
+                Face::Mono,
+                &value,
+            );
+        }
+        if let Some(right) = cols.best_right {
+            let best = match row.best_mark {
+                Mark::Fastest => c.purple,
+                Mark::Personal => c.best_personal,
+                _ => c.value,
+            };
+            let ink = self.ink(Face::Mono, f.mono, 0.0, best.hsla());
+            self.label(
+                window,
+                cx,
+                &row.best_lap,
+                0.0,
+                Some(right),
+                y,
+                h,
+                Face::Mono,
+                &ink,
+            );
+        }
         self.name(window, cx, row, x, name_right, y);
     }
 
@@ -1295,15 +1312,10 @@ impl Painter<'_> {
         let used = self.label(window, cx, &driver, x, None, y, h, Face::Body, &driver_ink);
         let detail = match self.options.size {
             Size::Compact => String::new(),
-            Size::Standard => {
-                let short = row.vehicle.split_whitespace().next().unwrap_or("");
-                let number = Self::number_text(row);
-                if short.is_empty() {
-                    format!(" · {number}")
-                } else {
-                    format!(" · {short} {number}")
-                }
-            }
+            Size::Standard => match row.vehicle.split_whitespace().next() {
+                Some(short) => format!(" · {short}"),
+                None => String::new(),
+            },
             Size::Expanded if row.vehicle.is_empty() => String::new(),
             Size::Expanded => format!(" · {}", row.vehicle),
         };
@@ -1674,11 +1686,14 @@ impl Painter<'_> {
             }
             Footer::Session => {
                 let mut x = pad;
+                // Compacto abrevia el pie para que quepa en 340 px.
+                let compact = self.options.size == Size::Compact;
                 if let Some((time, driver)) = &board.fastest {
-                    let lead = if es {
-                        "Vuelta rápida "
-                    } else {
-                        "Fastest lap "
+                    let lead = match (compact, es) {
+                        (true, true) => "VR ",
+                        (true, false) => "FL ",
+                        (false, true) => "Vuelta rápida ",
+                        (false, false) => "Fastest lap ",
                     };
                     x += self.label(window, cx, lead, x, None, top, h, Face::Body, &ink);
                     let mono = self.ink(Face::Mono, f.mono_small, 0.0, c.purple.hsla());
@@ -1702,12 +1717,16 @@ impl Painter<'_> {
                     };
                     self.label(window, cx, lead, x, None, top, h, Face::Body, &ink);
                 }
-                let track = format!(
-                    "{} {} · {}",
-                    if es { "Pista" } else { "Track" },
-                    board.track_temperature,
-                    board.surface
-                );
+                let track = if compact {
+                    format!("{} · {}", board.track_temperature, board.surface)
+                } else {
+                    format!(
+                        "{} {} · {}",
+                        if es { "Pista" } else { "Track" },
+                        board.track_temperature,
+                        board.surface
+                    )
+                };
                 self.label(
                     window,
                     cx,
@@ -1726,14 +1745,16 @@ impl Painter<'_> {
 
 struct Columns {
     position_right: f32,
-    gained: f32,
+    gained: Option<f32>,
     dot: f32,
-    compound: f32,
-    pit: f32,
-    sectors: f32,
-    last_right: f32,
-    best_right: f32,
+    compound: Option<f32>,
+    pit: Option<f32>,
+    sectors: Option<f32>,
+    last_right: Option<f32>,
+    best_right: Option<f32>,
     gap_right: f32,
+    /// Borde derecho disponible para el nombre.
+    name_right: f32,
 }
 
 #[cfg(test)]

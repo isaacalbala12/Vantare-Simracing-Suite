@@ -346,7 +346,7 @@ fn backdrop(background: &str) -> gpui::Div {
 }
 
 impl Render for Workshop {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let language = if self.prefs.language == vantare_domain::format::Language::En {
             "en"
         } else {
@@ -386,7 +386,7 @@ impl Render for Workshop {
                     .mb(px(6.0))
                     .text_size(px(28.0))
                     .font_family("Inter W700")
-                    .child("Eficiencia."),
+                    .child(if vantare { "Vantare." } else { "Eficiencia." }),
             )
             .child(
                 div()
@@ -894,6 +894,25 @@ impl Render for Workshop {
             );
         let wanted = preview_size(self.kind, self.overlay.read(cx).wanted_size());
         let dimensions = self.dimensions.unwrap_or(wanted);
+        // Encaje: el widget nunca desborda el escenario visible (ventanas estrechas).
+        let viewport = window.viewport_size();
+        let panel_width = if self.panel_hidden { 0.0 } else { 248.0 };
+        let playback = if self.scene.snapshots.len() > 1 {
+            210.0
+        } else {
+            0.0
+        };
+        let stage_width = (f32::from(viewport.width) - panel_width - 48.0).max(120.0);
+        let stage_height = (f32::from(viewport.height) - 80.0 - playback).max(120.0);
+        let columns = if self.comparison.is_some() { 2.0 } else { 1.0 };
+        let fit = (stage_width / (dimensions.0 * self.scale * columns))
+            .min(stage_height / (dimensions.1 * self.scale))
+            .min(1.0);
+        if (fit - self.fit).abs() > 0.001 {
+            self.fit = fit;
+            self.apply_preview(cx);
+        }
+        let scale = self.scale * self.fit;
         let content = |view: Entity<Overlay>| {
             if self.source_error {
                 div()
@@ -906,11 +925,12 @@ impl Render for Workshop {
             }
         };
         let widget = div()
-            .w(px(dimensions.0 * self.scale))
-            .h(px(dimensions.1 * self.scale))
+            .w(px(dimensions.0 * scale))
+            .h(px(dimensions.1 * scale))
             .child(content(self.overlay.clone()));
         let mut previews = div()
             .w_full()
+            .flex_1()
             .flex()
             .items_center()
             .child(div().flex_1().flex().justify_center().child(widget));
@@ -918,8 +938,8 @@ impl Render for Workshop {
             previews = previews.child(
                 div().flex_1().flex().justify_center().child(
                     div()
-                        .w(px(dimensions.0 * self.scale))
-                        .h(px(dimensions.1 * self.scale))
+                        .w(px(dimensions.0 * scale))
+                        .h(px(dimensions.1 * scale))
                         .child(content(view.clone())),
                 ),
             );
@@ -933,7 +953,7 @@ impl Render for Workshop {
             .flex()
             .flex_col()
             .items_center()
-            .justify_center()
+            .pt(px(56.0))
             .bg(rgb(match self.background.as_str() {
                 "solid" => 0x252527,
                 "transparent" => 0xb8b7b3,
@@ -950,15 +970,32 @@ impl Render for Workshop {
                     .text_color(rgb(0xb9b9bd))
                     .child(format!("{} / ESTUDIO 01", self.kind.name().to_uppercase())),
             )
+            .child(
+                div().absolute().top(px(16.0)).right(px(20.0)).child(
+                    button(
+                        "toggle-panel".into(),
+                        if self.panel_hidden {
+                            "Mostrar panel"
+                        } else {
+                            "Ocultar panel"
+                        },
+                        false,
+                    )
+                    .text_size(px(10.0))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.panel_hidden = !this.panel_hidden;
+                        cx.notify();
+                    })),
+                ),
+            )
             .child(previews);
         if self.scene.snapshots.len() > 1 {
             stage =
                 stage.child(
                     div()
-                        .absolute()
-                        .bottom(px(22.0))
-                        .left(px(32.0))
-                        .w(px(430.0))
+                        .flex_shrink_0()
+                        .mb(px(16.0))
+                        .w(px(430.0_f32.min(stage_width)))
                         .p(px(16.0))
                         .rounded(px(8.0))
                         .bg(rgb(0x131315))
@@ -1067,7 +1104,7 @@ impl Render for Workshop {
             .size_full()
             .flex()
             .text_color(rgb(0xf5f5f5))
-            .child(panel)
+            .when(!self.panel_hidden, |this| this.child(panel))
             .child(stage)
     }
 }

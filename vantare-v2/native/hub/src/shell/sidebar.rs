@@ -362,40 +362,50 @@ impl Hub {
         )
         .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Settings, cx)));
         let logo = div()
-            .h(px(52.0))
+            .h(px(if expanded { 56.0 } else { 52.0 }))
             .flex_none()
             .flex()
             .items_center()
             .gap(px(10.0))
             .when(expanded, |logo| logo.px(px(4.0)))
             .when(!expanded, gpui::Styled::justify_center)
-            .child(orbit::icon("mark", 26.0, 0x00d8_0000))
+            .when(!expanded, |logo| {
+                logo.child(orbit::icon("mark", 26.0, 0x00d8_0000))
+            })
             .when(expanded, |logo| {
-                logo.child(orbit::wordmark(cx))
-                    .child(
-                        div()
-                            .px(px(6.0))
-                            .py(px(1.0))
-                            .rounded(px(skin.radius.xs))
-                            .border_1()
-                            .border_color(orbit::alpha(skin.line3))
-                            .text_size(px(10.0))
-                            .line_height(px(14.0))
-                            .font_weight(gpui::FontWeight(600.0))
-                            .text_color(rgb(skin.text2))
-                            .child("BETA"),
+                logo.child(
+                    div()
+                        .flex_none()
+                        .flex()
+                        .flex_col()
+                        .items_start()
+                        .gap(px(12.0))
+                        .child(orbit::wordmark(cx))
+                        .child(
+                            div()
+                                .px(px(6.0))
+                                .py(px(1.0))
+                                .rounded(px(skin.radius.xs))
+                                .border_1()
+                                .border_color(orbit::alpha(skin.line3))
+                                .text_size(px(10.0))
+                                .line_height(px(14.0))
+                                .font_weight(gpui::FontWeight(600.0))
+                                .text_color(rgb(skin.text2))
+                                .child("BETA"),
+                        ),
+                )
+                .child(div().flex_1())
+                .child(
+                    orbit::icon_button(
+                        "sidebar-toggle",
+                        "v-side",
+                        "Contraer barra (Ctrl B)",
+                        28.0,
+                        cx,
                     )
-                    .child(div().flex_1())
-                    .child(
-                        orbit::icon_button(
-                            "sidebar-toggle",
-                            "v-side",
-                            "Contraer barra (Ctrl B)",
-                            28.0,
-                            cx,
-                        )
-                        .on_click(cx.listener(|hub, _, _, cx| hub.toggle_sidebar(cx))),
-                    )
+                    .on_click(cx.listener(|hub, _, _, cx| hub.toggle_sidebar(cx))),
+                )
             });
         div()
             .w(px(adapt.sidebar_width()))

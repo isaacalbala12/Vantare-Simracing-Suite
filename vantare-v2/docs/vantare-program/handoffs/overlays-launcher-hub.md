@@ -71,6 +71,42 @@ El brief amplía R0 a R4 aunque el cuerpo de #1496 sigue describiendo R0;
 prevalece el encargo explícito de Isaac sobre las referencias históricas
 Notion de este checkout. Preguntas de alcance/contratos en el informe.
 Pendiente revisión de Isaac; sin push/PR/CI remoto/merge/promoción/release.
+## #1504 — Wordmark C2 aplicado, entrega local (2026-10-08)
+
+Brief `C:/tmp/ui-r10/brief-wordmark-aplicar.md`. Worktree
+`C:/tmp/vw3-1504-wm/vantare-v2`, rama `vantareapp/isa-1504-wordmark`,
+base UI R3 `a5a0108422b89c9ae113fe53761ee144f2bc820f`, limpia al comenzar.
+Los siete SVG de Isaac son copias idénticas en `build/brand/wordmark/`, con
+README de versiones, mínimos y respeto. El Hub embebe el blanco desde esa
+fuente única y lo tiñe con `skin.text1`: 24 px de alto, 182,85 px de ancho.
+Barra abierta de 272 px: nombre y BETA debajo; contraída: solo la Λ existente.
+`BRAND.md`, `DESIGN.md` y fragmento `ISA-1504.json` acompañan el cambio.
+Sin fuentes nuevas, dependencias ni cambios de navegación/persistencia.
+
+Por la cola `C:/tmp/fase2/compilar.ps1`, target propio `native/target/gates`,
+-j2: fmt PASS; workspace Clippy -D warnings PASS; Nextest default
+1257/1257 PASS, 6 skips propios del perfil; lifecycle 18 PASS.
+Build QA parity-capture PASS, con el aviso preexistente de `analysis/view.rs:989`
+(cx sin usar solo en QA); no se relajaron gates ni se cambió ese archivo.
+
+Ocho capturas GPUI finales 1600×900, todas inspeccionadas:
+Vantare/DeepSeek × oscuro/claro × barra abierta/contraída, en
+`C:/tmp/ui-r10/wordmark-capturas/`. C2 nítido, tinte correcto, sin colisión
+con BETA o el botón de contraer; la barra cerrada solo muestra la Λ.
+La primera tanda 1440×900 se reemplazó porque el responsive contrae la barra
+por debajo de 1500 px. Las capturas finales vienen del código productivo de
+este corte compilado como QA con fixture demo y source_dirty=true; no prueban
+telemetría live, instalación real, OBS, DPI físico ni macOS.
+
+Verificación manual: Hub a ≥1500 px, temas Vantare y DeepSeek claro/oscuro,
+Ctrl+B y comprobar nombre C2 a 24 px / Λ al cerrar. Comandos de repetición y
+logs `wordmark-*.log` en `C:/tmp/ui-r10/`; informe de ocho líneas en
+`C:/tmp/ui-r10/informe-wordmark-aplicar.md`.
+`docs/roadmap/plan.md` ausente en base y origin/nightly: no se recreó.
+Este corte no cierra los contrastes, rojo oficial ni icono plano restantes de
+#1504. Pendiente revisión del orquestador e Isaac e integración con la UI.
+Solo entrega local: sin push, PR, CI remoto, merge, promoción ni release.
+
 
 ## #1496 — UI R2 Launcher: entrega local para revisión (2026-10-08)
 
@@ -5755,3 +5791,13 @@ seguimiento autorizado en GitHub1496; no se cierra la issue ni se amplía su cue
 Informe≤15líneas, HEAD final, logs y preguntas: C:/tmp/ui-r10/informe-r3.md y
 C:/tmp/ui-r10/r3-evidence/VERIFICACION.md. Siguiente: revisión de Isaac/orquestador
 y tanda visual + medida nativa cuando esté libre la pantalla, antes de aceptación.
+
+### #1496 / #1504 — continuación e integración local (2026-10-08)
+
+Foco del Launcher completado en e597a009; R5 integrado a3307eb0 y R6 5797308f
+con merge no-ff, kit único y Adapt por ventana. Wordmark cafe8fd3 incorporado
+conservando icono contraído #D80000, Ajustes R4 y los siete arreglos.
+Conflictos de sidebar/handoff resueltos conservando marca y toda la evidencia.
+PresentMon previo mide intervalos de presentación, no latencia de entrada
+(cero muestras msSinceInput): arrastre pendiente explícito, sin afirmar fluidez.
+Gates/capturas del conjunto en curso. Sin push/PR/CI remoto/promoción/release.

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1504",
+  "type": "change",
+  "summary": "El Hub nativo muestra el wordmark oficial C2 elegido por Isaac.",
+  "technicalNotes": [
+    "SVG de trazos embebido desde build/brand/wordmark, a 24 px y teñido según el tema.",
+    "Barra abierta con BETA debajo del nombre; barra contraída con la Λ."
+  ],
+  "testing": [
+    "Comprobar Vantare y DeepSeek en claro/oscuro y alternar la barra con Ctrl+B."
+  ],
+  "knownLimitations": [
+    "Entrega local del wordmark; los contrastes y el icono plano restantes de #1504 no forman parte de este corte."
+  ]
+}

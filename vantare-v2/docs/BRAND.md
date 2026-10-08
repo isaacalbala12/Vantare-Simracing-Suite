@@ -265,3 +265,18 @@ Antes de publicar cualquier contenido de marca:
 - `docs/marketing/03-channel-strategy.md` — Mapa de canales y prioridad.
 - `docs/marketing/04-content-planning.md` — Calendario semanal de contenido.
 - `docs/marketing/05-execution.md` — Copy concreto y assets.
+
+## Wordmark oficial C2 · Compacta (#1504)
+
+Isaac eligió C2 el 2026-10-08. El nombre usa los trazos SVG aprobados de
+[build/brand/wordmark](../build/brand/wordmark/README.md), sin fuentes de texto.
+La Λ es el símbolo aislado para la barra contraída y espacios pequeños.
+Hay versiones color, blanco y negro; los lockups combinan Λ y nombre,
+con color para fondo claro/oscuro y versiones a una tinta.
+
+Conservar proporciones, geometría y espaciado. Altura mínima del wordmark:
+16 px en pantalla o 4 mm impreso; recomendada en el Hub: 24 px (182,85 px de ancho).
+Símbolo aislado: mínimo 16 px. Zona de respeto: media altura del wordmark
+alrededor; en lockups, media altura de la Λ. Usar blanco sobre oscuro y negro
+o casi negro sobre claro. Sustituye el logo con Rajdhani, sin alterar las
+familias tipográficas de la interfaz.

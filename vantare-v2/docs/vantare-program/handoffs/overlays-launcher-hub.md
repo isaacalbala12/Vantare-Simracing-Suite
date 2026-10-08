@@ -5659,3 +5659,27 @@ el inspector ni anchor persistido nuevo. Tests cubren nueve posiciones,
 movimientos, límites, recarga y undo. Tamaño −/+ deshabilitado; Rendimiento
 como sección pendiente: no se promete nivel4Hz ni frecuencia no soportada.
 Check y fmt PASS; pendiente suite/gates finales y QA si queda libre la pantalla.
+Hito 5 y cierre local: geometría máxima16:9 sin padding extra, centrado explícito
+del viewport medido y scroll espacial al ampliar; tests a siete tamaños y ambos
+paneles. Selectores/filas/celdas usan el kit común; docs y fragmento conservan R2.
+Gates finales PASS por cola: fmt/check/Clippy-Dwarnings; Nextest1257/1257,
+6 skips previos; lifecycle18/18; build prueba con beta-dev-clerk, exit0.
+Clippy detectó inicialmente función larga y nombres similares: corregidos
+separando rejilla/cruceta y renombrando, sin excepciones nuevas ni gates débiles.
+Core drag/cancel/commit/teclado4/4 idéntico a R2 (hashes en drag-core.json).
+Pantalla-ocupada existe al cierre: cero ventanas y cero capturas, también del
+mockup. QA visual/adaptación física y fluidez antes/después NO verificadas.
+El único benchmark encontrado es del frontend histórico, no certifica GPUI;
+no se ejecutó ni se sustituyó por una métrica sintética. Pendiente review visual.
+Controles sin contrato siguen pendientes: tamaño libre, estilo/acento general,
+frecuencia por instancia, otras escenas/slider, OBS y Mostrar en pista.
+README y evidencia incluyen pasos manuales y script de captura con guardia/mutex;
+QA parity-capture no compilado ni ejecutado por pantalla ocupada. Go/TS no aplican.
+plan.md ausente en la base; no recreado ni roadmap.json editado. Diff completo
+revisado; sin cambios runtime/domain/ipc/ui/frontend/locks/dependencias.
+Sin push/PR/CI remota/merge/promoción/release, rama remota y PR ausentes verificados.
+Caché target/gates y marcador de pantalla intactos. Única acción externa:
+seguimiento autorizado en GitHub1496; no se cierra la issue ni se amplía su cuerpo.
+Informe≤15líneas, HEAD final, logs y preguntas: C:/tmp/ui-r10/informe-r3.md y
+C:/tmp/ui-r10/r3-evidence/VERIFICACION.md. Siguiente: revisión de Isaac/orquestador
+y tanda visual + medida nativa cuando esté libre la pantalla, antes de aceptación.

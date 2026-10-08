@@ -86,7 +86,7 @@ cargo run --offline -j 2 -p vantare-hub -- --studio --data-dir C:/tmp/hub-local 
 
 Editor del único `vantare_ui::layout::Layout`: selección, añadir/eliminar/ordenar
 instancias, visibilidad, opacidad 0..1 y undo/redo acotado a 50 cambios. Canvas
-edita posición global mediante drag y controles X/Y; admite negativas. Drag
+edita posición global mediante drag, anclaje 3×3 y cruceta; admite negativas. Drag
 mantiene preview fuera del documento y confirma una sola edición al soltar.
 Inspector edita los `Settings` tipados. Mismo `Overlay::configured` que overlays;
 no hay otra implementación visual ni otro formato de layout.
@@ -120,6 +120,30 @@ El overlay ya vigila el archivo: no se añade comando de aplicación desde Hub.
 Canvas de preview 1920×1080, otros monitores quedan fuera de esta preview.
 Tests de documento/geometría no sustituyen arrastre físico, DPI, vigilancia
 de ventanas/OBS ni paridad.
+
+### Studio UI r10, ronda 3 (#1496)
+
+El lienzo 1920×1080 conserva 16:9, ocupa el máximo espacio disponible y se
+centra en el viewport medido. Zoom manual conserva el desplazamiento espacial;
+Ajustar vuelve al encaje. La barra inferior muestra x/y y tamaño efectivo del
+renderer. Anclar alinea los bordes o el centro del widget con una de nueve zonas:
+es una acción de posición, sin anclaje persistente ni seguimiento automático.
+La cruceta mueve 1 px, Mayús + clic 8 px; el punto centra. Se guardan y admiten
+undo/redo mediante el mismo Editor. Los valores exactos salen del inspector.
+
+El inspector usa secciones del panel derecho común; Ctrl Alt B lo recoge.
+Contenido, opacidad, visibilidad, columnas y color admitido conservan sus setters
+productivos. La tira permite seleccionar/ocultar y añadir el catálogo real.
+Carrera activa las muestras incrustadas existentes de cada widget; En vivo usa
+exclusivamente la foto recibida. Salida/Boxes/Lluvia/Noche y reproducción de vuelta
+no están implementadas. Las muestras no prueban una sesión real.
+
+El documento nativo no guarda escala libre, estilos Neo/Carmín/Limpio, acento
+general ni frecuencia por instancia. Tamaño −/+, estilo/acento no admitido,
+Rendimiento, selector de otros overlays, Publicar/Mostrar en pista y URL de OBS
+siguen pendientes. El indicador Hz muestra — porque no existe medición disponible;
+no se inventa nivel 4 Hz ni frecuencia efectiva. El renderer compartido es
+`Overlay::configured`, sin otra implementación de widgets ni schema nuevo.
 
 ## Secciones locales
 

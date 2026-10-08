@@ -17,7 +17,6 @@ use vantare_domain::{Snapshot, format::Preferences};
 use vantare_ui::{Kind, Overlay, Settings, layout::Instance};
 
 const STUDIO_PREVIEW_SCALE: f32 = 700.0 / 1920.0;
-const PREVIEW_PADDING: f32 = 12.0;
 const ZOOM_STEPS: [Option<u16>; 6] = [None, Some(50), Some(75), Some(100), Some(125), Some(150)];
 const AUTO_SAVED: &str = "Guardado";
 
@@ -25,9 +24,16 @@ fn fitted_scale(width: f32, height: f32) -> Option<f32> {
     if !width.is_finite() || !height.is_finite() {
         return None;
     }
-    let scale =
-        ((width - PREVIEW_PADDING * 2.0) / 1920.0).min((height - PREVIEW_PADDING * 2.0) / 1080.0);
+    let scale = ((width) / 1920.0).min((height) / 1080.0);
     (scale > 0.0).then_some(scale)
+}
+
+/// Centrado espacial: el zoom mayor que el viewport comienza en su origen para poder desplazarse.
+fn preview_origin(width: f32, height: f32, scale: f32) -> (f32, f32) {
+    (
+        ((width - 1920.0 * scale) / 2.0).max(0.0),
+        ((height - 1080.0 * scale) / 2.0).max(0.0),
+    )
 }
 
 #[cfg(any(test, feature = "parity-capture"))]
@@ -312,6 +318,7 @@ pub struct Studio {
     fields: Vec<(Tab, &'static str, gpui::AnyView, bool)>,
     demo_profile: Option<crate::demo::DemoProfile>,
     fit_scale: f32,
+    canvas_size: (f32, f32),
     zoom_step: usize,
 }
 /// La shell enlaza esta columna; Studio conserva el documento y sus interacciones.
@@ -576,6 +583,7 @@ impl Studio {
             fields: vec![],
             demo_profile,
             fit_scale: STUDIO_PREVIEW_SCALE,
+            canvas_size: (700.0, 1080.0 * STUDIO_PREVIEW_SCALE),
             zoom_step: 0,
         };
         studio.rebuild(cx);
@@ -1284,7 +1292,7 @@ impl Studio {
             cx,
         );
     }
-    fn position_controls(&self, item: &Instance, cx: &mut Context<Self>) -> gpui::Div {
+    fn anchor_grid(&self, item: &Instance, cx: &mut Context<Self>) -> gpui::Div {
         let size = self.selected_size(cx);
         let mut anchors = div()
             .flex()
@@ -1322,6 +1330,9 @@ impl Studio {
             }
             anchors = anchors.child(line);
         }
+        anchors
+    }
+    fn nudge_pad(cx: &mut Context<Self>) -> gpui::Div {
         let mut dpad = div().flex().flex_col().gap(px(3.0));
         let cells = [
             [None, Some(("▲", "Mover arriba", (0, -1))), None],
@@ -1361,6 +1372,9 @@ impl Studio {
             }
             dpad = dpad.child(line);
         }
+        dpad
+    }
+    fn position_controls(&self, item: &Instance, cx: &mut Context<Self>) -> gpui::Div {
         div()
             .min_w_0()
             .flex()
@@ -1371,8 +1385,8 @@ impl Studio {
                     .flex()
                     .items_center()
                     .gap(px(18.0))
-                    .child(anchors)
-                    .child(dpad),
+                    .child(self.anchor_grid(item, cx))
+                    .child(Self::nudge_pad(cx)),
             )
             .child(
                 div()
@@ -1447,6 +1461,16 @@ impl Studio {
                         "Neo, Carmín y Limpio no están disponibles para este documento.",
                         cx,
                     ));
+                    if self.color.is_none() {
+                        panel = panel.child(orbit::pending_select(
+                            "studio-accent",
+                            "Acento del widget",
+                            "Acento · Próximamente",
+                            180.0,
+                            "Este widget no admite un acento configurable en el documento actual.",
+                            cx,
+                        ));
+                    }
                 }
                 panel = self.color_settings(tab, panel, cx);
                 panel = Self::column_settings(item, tab, panel, cx);
@@ -1630,11 +1654,14 @@ impl Studio {
     }
 
     fn preview_stage(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let (left, top) =
+            preview_origin(self.canvas_size.0, self.canvas_size.1, self.preview_scale());
         let mut stage = div()
             .relative()
             .w(px(1920.0 * self.preview_scale()))
             .h(px(1080.0 * self.preview_scale()))
-            .m_auto()
+            .ml(px(left))
+            .mt(px(top))
             .flex_none()
             .overflow_hidden()
             .rounded(px(orbit::skin(cx).radius.md))
@@ -1671,10 +1698,9 @@ impl Studio {
     }
     fn preview_footer(&self, cx: &mut Context<Self>) -> gpui::Div {
         let selection = match (self.editor.selected(), self.selected_size(cx)) {
-            (Some(item), Some((width, height))) => format!(
-                "x {:.0} · y {:.0} · {:.0} × {:.0}",
-                item.x, item.y, width, height
-            ),
+            (Some(item), Some((width, height))) => {
+                format!("x {} · y {} · {} × {}", item.x, item.y, width, height)
+            }
             _ => "Sin selección".into(),
         };
         div()
@@ -1788,10 +1814,15 @@ impl Studio {
                     // el frame permite medir también los cambios del inspector.
                     cx.defer(move |cx| {
                         let _ = studio.update(cx, |this, cx| {
-                            if (this.fit_scale - scale).abs() > 0.000_01 {
+                            let size = (bounds.size.width.into(), bounds.size.height.into());
+                            if this.canvas_size != size || (this.fit_scale - scale).abs() > 0.000_01
+                            {
+                                this.canvas_size = size;
                                 this.fit_scale = scale;
                                 if this.zoom_step == 0 {
                                     this.rescale_preview(cx);
+                                } else {
+                                    cx.notify();
                                 }
                             }
                         });
@@ -1811,7 +1842,6 @@ impl Studio {
             .min_h_0()
             .relative()
             .flex()
-            .p(px(PREVIEW_PADDING))
             .overflow_scroll()
             .child(measure)
             .child(stage);
@@ -1869,6 +1899,48 @@ impl Render for Studio {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn fitted_canvas_is_maximal_16_by_9_and_centered_at_all_seven_sizes() {
+        for (width, height) in [
+            (1920.0, 1080.0),
+            (1680.0, 1050.0),
+            (1512.0, 900.0),
+            (1440.0, 900.0),
+            (1366.0, 768.0),
+            (1280.0, 720.0),
+            (2048.0, 1152.0),
+        ] {
+            for rail_open in [false, true] {
+                let adapt = orbit::Adapt::new(width, height, None, rail_open);
+                let (top, horizontal_padding, bottom) = adapt.padding();
+                let available = (
+                    adapt.center_width() - horizontal_padding * 2.0,
+                    height - 52.0 - top - bottom - 44.0 - 39.0 - 108.0 - adapt.gap() * 2.0,
+                );
+                let scale = fitted_scale(available.0, available.1).expect("cabe en la ventana");
+                let size = (1920.0 * scale, 1080.0 * scale);
+                let origin = preview_origin(available.0, available.1, scale);
+                assert!((size.0 / size.1 - 16.0 / 9.0).abs() < 0.000_01);
+                assert!(size.0 <= available.0 + 0.001 && size.1 <= available.1 + 0.001);
+                assert!(
+                    (size.0 - available.0).abs() < 0.001 || (size.1 - available.1).abs() < 0.001
+                );
+                assert!((origin.0 - (available.0 - size.0) / 2.0).abs() < 0.001);
+                assert!((origin.1 - (available.1 - size.1) / 2.0).abs() < 0.001);
+            }
+        }
+        assert_eq!(fitted_scale(3840.0, 2160.0), Some(2.0));
+        assert_eq!(preview_origin(800.0, 400.0, 1.0), (0.0, 0.0));
+    }
+    #[test]
+    fn carrera_reuses_existing_race_examples_for_every_widget() {
+        for (_, snapshot) in example_snapshots().expect("ejemplos") {
+            assert_eq!(
+                snapshot.state.session.kind.current(),
+                Some(&vantare_domain::SessionKind::Race)
+            );
+        }
+    }
     #[test]
     fn examples_cover_all_widgets_and_live_never_uses_a_sample() {
         let examples = example_snapshots().expect("muestras incrustadas válidas");
@@ -1946,17 +2018,17 @@ mod tests {
     fn fit_keeps_the_whole_overlay_inside_wide_and_tall_canvases() {
         for (width, height) in [(744.0, 731.0), (444.0, 731.0), (1044.0, 300.0)] {
             let scale = fitted_scale(width, height).expect("canvas medido");
-            assert!(1920.0 * scale <= width - PREVIEW_PADDING * 2.0);
-            assert!(1080.0 * scale <= height - PREVIEW_PADDING * 2.0);
+            assert!(1920.0 * scale <= width);
+            assert!(1080.0 * scale <= height);
             // Standings llega al borde derecho sin salirse del viewport.
             let overlay = Overlay::configured(&demo_standings_settings(), Preferences::default());
             assert_eq!(overlay.wanted_size(), (338.0, 424.0));
             assert!((1560.0 + overlay.wanted_size().0) * scale <= 1920.0 * scale);
         }
-        assert_eq!(fitted_scale(744.0, 731.0), Some(720.0 / 1920.0));
+        assert_eq!(fitted_scale(744.0, 731.0), Some(744.0 / 1920.0));
         for (width, height) in [
             (0.0, 10.0),
-            (44.0, 44.0),
+            (-1.0, 44.0),
             (f32::NAN, 900.0),
             (800.0, f32::INFINITY),
         ] {

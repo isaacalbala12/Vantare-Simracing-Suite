@@ -485,6 +485,30 @@ impl Cols {
     }
 }
 
+/// Columnas colocadas para editarlas: `(métrica, x, ancho)`, franja vertical
+/// de la cabecera a la última fila y separación entre columnas (px del widget).
+#[derive(Clone, Debug, PartialEq)]
+pub(crate) struct ColumnBoxes {
+    pub columns: Vec<(&'static str, f32, f32)>,
+    pub top: f32,
+    pub bottom: f32,
+    pub gap: f32,
+}
+
+impl ColumnBoxes {
+    /// Columna bajo el punto, contando media separación a cada lado.
+    pub(crate) fn at(&self, x: f32, y: f32) -> Option<(&'static str, f32, f32)> {
+        if y < self.top || y > self.bottom {
+            return None;
+        }
+        let half = self.gap / 2.0;
+        self.columns
+            .iter()
+            .copied()
+            .find(|(_, left, width)| x >= left - half && x <= left + width + half)
+    }
+}
+
 /// Una columna colocada: métrica, borde izquierdo y ancho (px del widget).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) struct Placed {
@@ -849,14 +873,32 @@ impl State {
         self.motion.settle();
     }
 
-    /// Columnas colocadas `(métrica, x, ancho)` en px del widget, para editar
-    /// el orden arrastrando sobre la vista previa.
-    pub(crate) fn columns(&self) -> Vec<(&'static str, f32, f32)> {
-        self.plan
-            .columns
+    /// Columnas colocadas en px del widget, para editar su orden arrastrando
+    /// sobre la vista previa. `None` sin filas que mostrar.
+    pub(crate) fn columns(&self) -> Option<ColumnBoxes> {
+        let top = self.plan.items.iter().find_map(|(y, item)| match item {
+            Item::Columns => Some(*y),
+            _ => None,
+        })?;
+        let bottom = self
+            .plan
+            .items
             .iter()
-            .map(|c| (c.kind.metric(), c.x, c.width))
-            .collect()
+            .filter(|(_, item)| matches!(item, Item::Row(..)))
+            .map(|(y, _)| y + self.style.geometry.row_height)
+            .reduce(f32::max)
+            .unwrap_or(top + self.style.geometry.column_header_height);
+        Some(ColumnBoxes {
+            columns: self
+                .plan
+                .columns
+                .iter()
+                .map(|c| (c.kind.metric(), c.x, c.width))
+                .collect(),
+            top,
+            bottom,
+            gap: self.style.geometry.cell_gap,
+        })
     }
 
     pub(crate) fn wake(&self, now: std::time::Instant) -> crate::app::Wake {
@@ -2153,6 +2195,42 @@ mod tests {
             width(&narrower) < 520.0,
             "quitar una columna estrecha el panel"
         );
+    }
+
+    #[test]
+    fn column_boxes_pick_the_exact_column_including_half_gaps_only_inside_the_table() {
+        let mut state = State::new(options("standard"));
+        assert!(
+            state.columns().is_none(),
+            "sin filas no hay columnas que editar"
+        );
+        state.ingest(vantare_domain::standings_vantare::project(
+            &scene(),
+            Preferences::default(),
+        ));
+        let boxes = state.columns().expect("columnas");
+        assert!(boxes.bottom > boxes.top);
+        for window in boxes.columns.windows(2) {
+            let ((_, left, width), (next, next_left, _)) = (window[0], window[1]);
+            assert!(
+                (next_left - (left + width) - boxes.gap).abs() < 0.01,
+                "separación"
+            );
+            // Justo pasada la media separación ya es la columna siguiente.
+            let x = left + width + boxes.gap / 2.0 + 0.5;
+            assert_eq!(boxes.at(x, boxes.top + 1.0).map(|c| c.0), Some(next));
+        }
+        let (first, left, _) = boxes.columns[0];
+        assert_eq!(
+            boxes.at(left + 1.0, boxes.bottom - 1.0).map(|c| c.0),
+            Some(first)
+        );
+        assert_eq!(
+            boxes.at(left + 1.0, boxes.top - 1.0),
+            None,
+            "cabecera de sesión"
+        );
+        assert_eq!(boxes.at(left + 1.0, boxes.bottom + 1.0), None, "pie");
     }
 
     #[test]

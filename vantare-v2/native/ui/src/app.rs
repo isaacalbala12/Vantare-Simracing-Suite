@@ -159,8 +159,8 @@ impl Overlay {
         }
     }
 
-    /// Workshop: columnas Vantare colocadas `(métrica, x, ancho)` del widget.
-    pub(crate) fn vantare_columns(&self) -> Option<Vec<(&'static str, f32, f32)>> {
+    /// Workshop: columnas Vantare colocadas del widget.
+    pub(crate) fn vantare_columns(&self) -> Option<crate::standings::vantare::ColumnBoxes> {
         match &self.widget {
             Widget::Standings(widget) => widget.vantare_columns(),
             _ => None,

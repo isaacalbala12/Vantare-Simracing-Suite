@@ -173,13 +173,6 @@ fn scenes(initial: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(paths)
 }
 
-/// Destino de una columna Vantare arrastrada.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum DropTarget {
-    Before(&'static str),
-    End,
-}
-
 /// Estilo editable en vivo: el último JSON válido se conserva ante errores.
 struct LiveStyle<T> {
     path: PathBuf,
@@ -349,8 +342,10 @@ struct Workshop {
     panel_hidden: bool,
     /// Rectángulo de la vista previa del widget en la ventana.
     widget_bounds: Option<gpui::Bounds<gpui::Pixels>>,
-    /// Columna Vantare que se está arrastrando: métrica y x (px del widget).
-    column_drag: Option<(&'static str, f32)>,
+    /// Columna Vantare cogida para moverla.
+    column_drag: Option<&'static str>,
+    /// Columna Vantare bajo el puntero, recuadrada para saber qué se coge.
+    column_hover: Option<&'static str>,
 }
 
 /// Ajustes de partida de Standings en Workshop para cada sistema de diseño.
@@ -643,64 +638,85 @@ impl Workshop {
         }
     }
 
-    /// x de la ventana → x del widget (px lógicos del widget).
-    fn widget_x(&self, x: gpui::Pixels) -> Option<f32> {
+    /// Punto de la ventana → punto del widget (px lógicos del widget).
+    fn widget_point(&self, point: gpui::Point<gpui::Pixels>, cx: &App) -> Option<(f32, f32)> {
         let bounds = self.widget_bounds?;
-        Some(f32::from(x - bounds.left()) / (self.scale * self.fit))
+        let (sx, sy) = self.widget_scale(cx);
+        Some((
+            f32::from(point.x - bounds.left()) / sx,
+            f32::from(point.y - bounds.top()) / sy,
+        ))
     }
 
-    /// Empieza a arrastrar la columna bajo el puntero (no la posición).
-    fn start_column_drag(&mut self, x: gpui::Pixels, cx: &mut Context<Self>) {
-        let (Some(x), Some(columns)) = (self.widget_x(x), self.overlay.read(cx).vantare_columns())
-        else {
+    /// Escala real de la vista previa en cada eje (px de pantalla por px del widget).
+    fn widget_scale(&self, cx: &App) -> (f32, f32) {
+        let size = self.overlay.read(cx).wanted_size();
+        let target = self.dimensions.unwrap_or(preview_size(self.kind, size));
+        let scale = self.scale * self.fit;
+        (scale * target.0 / size.0, scale * target.1 / size.1)
+    }
+
+    /// Coge la columna bajo el puntero (no la posición, que es fija).
+    fn start_column_drag(&mut self, point: gpui::Point<gpui::Pixels>, cx: &mut Context<Self>) {
+        let (Some((x, y)), Some(boxes)) = (
+            self.widget_point(point, cx),
+            self.overlay.read(cx).vantare_columns(),
+        ) else {
             return;
         };
-        self.column_drag = columns
-            .iter()
-            .find(|(_, left, width)| x >= *left && x <= left + width)
-            .map(|(metric, ..)| (*metric, x));
+        self.column_drag = boxes.at(x, y).map(|(metric, ..)| metric);
         cx.notify();
     }
 
-    fn drag_column(&mut self, x: gpui::Pixels, cx: &mut Context<Self>) {
-        if let (Some((metric, _)), Some(x)) = (self.column_drag, self.widget_x(x)) {
-            self.column_drag = Some((metric, x));
-            cx.notify();
-        }
-    }
-
-    /// Dónde caería la columna arrastrada.
-    fn drop_target(&self, cx: &App) -> Option<DropTarget> {
-        let (metric, x) = self.column_drag?;
-        let columns = self.overlay.read(cx).vantare_columns()?;
-        Some(
-            columns
-                .iter()
-                .filter(|(m, ..)| *m != metric)
-                .find(|(_, left, width)| x < left + width / 2.0)
-                .map_or(DropTarget::End, |(m, ..)| DropTarget::Before(m)),
-        )
-    }
-
-    fn finish_column_drag(&mut self, cx: &mut Context<Self>) {
-        let target = self.drop_target(cx);
-        let Some((metric, _)) = self.column_drag.take() else {
+    /// Recuadra la columna bajo el puntero o, arrastrando, la mueve en
+    /// directo en cuanto el puntero pasa la mitad de la vecina.
+    fn drag_column(&mut self, point: gpui::Point<gpui::Pixels>, cx: &mut Context<Self>) {
+        let (Some((x, y)), Some(boxes)) = (
+            self.widget_point(point, cx),
+            self.overlay.read(cx).vantare_columns(),
+        ) else {
             return;
         };
-        if let (Some(target), Settings::Standings(settings)) = (target, &mut self.settings) {
-            let columns = settings
+        let Some(dragged) = self.column_drag else {
+            let hover = boxes.at(x, y).map(|(metric, ..)| metric);
+            if hover != self.column_hover {
+                self.column_hover = hover;
+                cx.notify();
+            }
+            return;
+        };
+        let columns = &boxes.columns;
+        let Some(from) = columns.iter().position(|(m, ..)| *m == dragged) else {
+            return;
+        };
+        let target = if from + 1 < columns.len() {
+            let (next, left, width) = columns[from + 1];
+            (x > left + width / 2.0).then_some((next, 1))
+        } else {
+            None
+        }
+        .or_else(|| {
+            from.checked_sub(1).and_then(|index| {
+                let (previous, left, width) = columns[index];
+                (x < left + width / 2.0).then_some((previous, -1))
+            })
+        });
+        if let (Some((_, step)), Settings::Standings(settings)) = (target, &mut self.settings) {
+            let order = settings
                 .columns
                 .get_or_insert_with(|| crate::standings::vantare_template("standard"));
-            let before = match target {
-                DropTarget::Before(before) => Some(before),
-                DropTarget::End => None,
-            };
-            if crate::standings::move_column(columns, metric, before) {
+            if crate::standings::shift_column(order, dragged, step) {
                 self.replay(cx);
-                self.persist();
             }
         }
         cx.notify();
+    }
+
+    fn finish_column_drag(&mut self, cx: &mut Context<Self>) {
+        if self.column_drag.take().is_some() {
+            self.persist();
+            cx.notify();
+        }
     }
 
     /// Reaplica la escala de vista previa sin recrear los widgets.
@@ -1088,6 +1104,7 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                     panel_hidden: false,
                     widget_bounds: None,
                     column_drag: None,
+                    column_hover: None,
                     overlay,
                     state_file,
                     state_error,

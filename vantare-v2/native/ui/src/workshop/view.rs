@@ -1047,18 +1047,25 @@ impl Render for Workshop {
                 .left_0()
                 .size_full(),
             );
-        // Vantare: arrastrar una columna a izquierda o derecha cambia su orden.
-        if let Some(columns) = self.overlay.read(cx).vantare_columns() {
+        // Vantare: arrastrar una columna a izquierda o derecha cambia su orden en
+        // directo; al pasar por encima se recuadra la columna exacta.
+        if let Some(boxes) = self.overlay.read(cx).vantare_columns() {
             widget = widget
-                .cursor(gpui::CursorStyle::OpenHand)
+                .cursor(if self.column_drag.is_some() {
+                    gpui::CursorStyle::ClosedHand
+                } else if self.column_hover.is_some() {
+                    gpui::CursorStyle::OpenHand
+                } else {
+                    gpui::CursorStyle::Arrow
+                })
                 .on_mouse_down(
                     gpui::MouseButton::Left,
                     cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
-                        this.start_column_drag(event.position.x, cx);
+                        this.start_column_drag(event.position, cx);
                     }),
                 )
                 .on_mouse_move(cx.listener(|this, event: &gpui::MouseMoveEvent, _, cx| {
-                    this.drag_column(event.position.x, cx);
+                    this.drag_column(event.position, cx);
                 }))
                 .on_mouse_up(
                     gpui::MouseButton::Left,
@@ -1067,45 +1074,35 @@ impl Render for Workshop {
                 .on_mouse_up_out(
                     gpui::MouseButton::Left,
                     cx.listener(|this, _, _, cx| this.finish_column_drag(cx)),
+                )
+                .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                    if !hovered && this.column_hover.take().is_some() {
+                        cx.notify();
+                    }
+                }));
+            let marked = self
+                .column_drag
+                .map(|metric| (metric, true))
+                .or(self.column_hover.map(|metric| (metric, false)));
+            if let Some((metric, dragging)) = marked
+                && let Some((_, left, width)) = boxes.columns.iter().find(|(m, ..)| *m == metric)
+            {
+                let half = boxes.gap / 2.0;
+                let (sx, sy) = self.widget_scale(cx);
+                widget = widget.child(
+                    div()
+                        .absolute()
+                        .left(px((left - half) * sx))
+                        .top(px((boxes.top - 2.0) * sy))
+                        .w(px((width + boxes.gap) * sx))
+                        .h(px((boxes.bottom - boxes.top + 4.0) * sy))
+                        .rounded(px(4.0))
+                        .border_2()
+                        .when(dragging, |d| {
+                            d.border_color(rgb(0xe14a54)).bg(gpui::rgba(0xe14a541f))
+                        })
+                        .when(!dragging, |d| d.border_color(gpui::rgba(0xffffff4d))),
                 );
-            if let Some((metric, x)) = self.column_drag {
-                let gap = 10.0;
-                if let Some((_, _, width)) = columns.iter().find(|(m, ..)| *m == metric) {
-                    widget = widget.child(
-                        div()
-                            .absolute()
-                            .top_0()
-                            .bottom_0()
-                            .left(px((x - width / 2.0) * scale))
-                            .w(px(width * scale))
-                            .rounded(px(4.0))
-                            .bg(gpui::rgba(0xffffff1f))
-                            .border_1()
-                            .border_color(gpui::rgba(0xffffff59)),
-                    );
-                }
-                let guide = match self.drop_target(cx) {
-                    Some(DropTarget::Before(before)) => columns
-                        .iter()
-                        .find(|(m, ..)| *m == before)
-                        .map(|(_, left, _)| left - gap / 2.0),
-                    _ => columns
-                        .iter()
-                        .filter(|(m, ..)| *m != metric)
-                        .map(|(_, left, width)| left + width + gap / 2.0)
-                        .reduce(f32::max),
-                };
-                if let Some(guide) = guide {
-                    widget = widget.child(
-                        div()
-                            .absolute()
-                            .top_0()
-                            .bottom_0()
-                            .left(px(guide * scale - 1.0))
-                            .w(px(2.0))
-                            .bg(rgb(0xe14a54)),
-                    );
-                }
             }
         }
         let mut previews = div()

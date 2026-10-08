@@ -619,9 +619,9 @@ impl Widget {
         }
     }
 
-    /// Columnas Vantare colocadas `(métrica, x, ancho)`; `None` en Eficiencia.
-    pub(crate) fn vantare_columns(&self) -> Option<Vec<(&'static str, f32, f32)>> {
-        self.vantare.as_ref().map(vantare::State::columns)
+    /// Columnas Vantare colocadas; `None` en Eficiencia o sin filas.
+    pub(crate) fn vantare_columns(&self) -> Option<vantare::ColumnBoxes> {
+        self.vantare.as_ref().and_then(vantare::State::columns)
     }
 
     /// Estilo Vantare de Workshop en vivo; producto usa el compilado.

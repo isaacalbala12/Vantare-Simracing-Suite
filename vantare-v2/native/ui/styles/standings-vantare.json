@@ -8,9 +8,6 @@
     "column_header_height": 18.0,
     "row_height": 24.0,
     "cell_gap": 10.0,
-    "separator_height": 22.0,
-    "separator_gap_top": 6.0,
-    "separator_gap_bottom": 2.0,
     "footer_gap": 6.0,
     "footer_height": 20.0,
     "banner_height": 22.0,
@@ -55,7 +52,6 @@
     "pill": 10.0,
     "pill_tracking": 0.5,
     "compound": 8.0,
-    "separator": 11.0,
     "separator_tracking": 1.4,
     "banner": 12.0,
     "banner_tracking": 1.4,
@@ -76,7 +72,6 @@
     "column": "#6e6668",
     "frozen": "#6e6668",
     "line": "#ffffff0f",
-    "separator_band": "#ffffff08",
     "skeleton": "#ffffff12",
     "pulse": "#5a5052",
     "gain": "#4ade80",
@@ -212,5 +207,11 @@
       "player_white": 0.08,
       "square_dots": true
     }
+  },
+  "motion": {
+    "reorder_ms": 320.0,
+    "fade_ms": 220.0,
+    "flash_ms": 1400.0,
+    "flash_alpha": 0.22
   }
 }

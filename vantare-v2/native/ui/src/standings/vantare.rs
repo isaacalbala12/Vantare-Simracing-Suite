@@ -5,6 +5,7 @@
 //! visuales viven en `styles/standings-vantare.json`: compilados en producto y
 //! editables en vivo en Workshop.
 
+use super::vantare_motion::{Flash, Motion, Sample, Timing};
 use super::{Accent, Look, Size};
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::{rect, text};
@@ -15,12 +16,24 @@ use gpui::{
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, OnceLock};
 use vantare_domain::format::{Language, PLACEHOLDER};
-use vantare_domain::standings_vantare::{Banner, Board, Group, Mark, Pit, Row};
+use vantare_domain::standings_vantare::{Banner, Board, Mark, Pit, Row};
 use vantare_domain::{SourceState, TyreCompound};
 
 // ---------------------------------------------------------------------------
 // Estilo
 // ---------------------------------------------------------------------------
+
+thread_local! {
+    /// Opacidad de la fila que se está pintando (fundido de entrada).
+    static OPACITY: std::cell::Cell<f32> = const { std::cell::Cell::new(1.0) };
+}
+
+fn with_opacity<R>(value: f32, f: impl FnOnce() -> R) -> R {
+    let previous = OPACITY.with(|o| o.replace(o.get() * value));
+    let result = f();
+    OPACITY.with(|o| o.set(previous));
+    result
+}
 
 /// Color `#rrggbb` o `#rrggbbaa`.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -30,12 +43,13 @@ impl Color {
     pub(crate) fn hsla(self) -> Hsla {
         self.alpha(self.1)
     }
+    /// Color con opacidad propia, multiplicada por la de la fila en curso.
     pub(crate) fn alpha(self, alpha: f32) -> Hsla {
         Rgba {
             r: ((self.0 >> 16) & 0xff) as f32 / 255.0,
             g: ((self.0 >> 8) & 0xff) as f32 / 255.0,
             b: (self.0 & 0xff) as f32 / 255.0,
-            a: alpha,
+            a: alpha * OPACITY.with(std::cell::Cell::get),
         }
         .into()
     }
@@ -79,6 +93,28 @@ pub(crate) struct Style {
     pub classes: Vec<ClassColors>,
     pub accents: Accents,
     pub styles: Variants,
+    pub motion: MotionStyle,
+}
+
+/// Duraciones del movimiento en ms y opacidad máxima del destello.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct MotionStyle {
+    pub reorder_ms: f32,
+    pub fade_ms: f32,
+    pub flash_ms: f32,
+    pub flash_alpha: f32,
+}
+
+impl MotionStyle {
+    fn timing(&self) -> Timing {
+        let ms = |v: f32| std::time::Duration::from_secs_f32(v.max(0.0) / 1000.0);
+        Timing {
+            reorder: ms(self.reorder_ms),
+            fade: ms(self.fade_ms),
+            flash: ms(self.flash_ms),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -95,9 +131,6 @@ pub(crate) struct Geometry {
     pub column_header_height: f32,
     pub row_height: f32,
     pub cell_gap: f32,
-    pub separator_height: f32,
-    pub separator_gap_top: f32,
-    pub separator_gap_bottom: f32,
     pub footer_gap: f32,
     pub footer_height: f32,
     pub banner_height: f32,
@@ -145,7 +178,6 @@ pub(crate) struct Fonts {
     pub pill: f32,
     pub pill_tracking: f32,
     pub compound: f32,
-    pub separator: f32,
     pub separator_tracking: f32,
     pub banner: f32,
     pub banner_tracking: f32,
@@ -169,7 +201,6 @@ pub(crate) struct Colors {
     pub column: Color,
     pub frozen: Color,
     pub line: Color,
-    pub separator_band: Color,
     pub skeleton: Color,
     pub pulse: Color,
     pub gain: Color,
@@ -379,7 +410,6 @@ enum Item {
     Banner,
     Header,
     Columns,
-    Separator(usize),
     Row(usize, usize),
     Wait,
     Skeleton(usize),
@@ -404,14 +434,23 @@ fn waiting(board: Option<&Board>) -> bool {
     board.is_none_or(|b| matches!(b.source_state, SourceState::Waiting | SourceState::Lost))
 }
 
-/// Filas visibles `(grupo, fila)`, agrupadas por clase en todos los tamaños.
-/// Si el jugador queda fuera del límite, las tres últimas son su entorno.
-fn rows(board: &Board, size: Size, style: &Style) -> Vec<(usize, usize)> {
-    let all: Vec<(usize, usize)> = board
+/// Clase mostrada: la del jugador o, sin jugador, la primera (la del líder).
+fn shown_group(board: &Board) -> Option<usize> {
+    board
         .groups
         .iter()
-        .enumerate()
-        .flat_map(|(g, group)| (0..group.rows.len()).map(move |r| (g, r)))
+        .position(|group| group.rows.iter().any(|row| row.is_player))
+        .or_else(|| (!board.groups.is_empty()).then_some(0))
+}
+
+/// Filas visibles `(grupo, fila)` de la clase mostrada. Si el jugador queda
+/// fuera del límite, las tres últimas son su entorno.
+fn rows(board: &Board, size: Size, style: &Style) -> Vec<(usize, usize)> {
+    let Some(group) = shown_group(board) else {
+        return Vec::new();
+    };
+    let ordered: Vec<(usize, usize)> = (0..board.groups[group].rows.len())
+        .map(|r| (group, r))
         .collect();
     let limit = match size {
         Size::Compact => style.geometry.compact_rows,
@@ -419,7 +458,6 @@ fn rows(board: &Board, size: Size, style: &Style) -> Vec<(usize, usize)> {
         Size::Expanded => style.geometry.expanded_rows,
     }
     .max(1.0) as usize;
-    let ordered = all;
     let player = ordered
         .iter()
         .position(|&(g, r)| board.groups[g].rows[r].is_player);
@@ -458,14 +496,7 @@ fn plan(board: Option<&Board>, options: Options, style: &Style) -> Plan {
         Some(board) => {
             items.push((y, Item::Columns));
             y += g.column_header_height;
-            let mut group = None;
             for (gi, ri) in rows(board, options.size, style) {
-                if group != Some(gi) {
-                    group = Some(gi);
-                    y += g.separator_gap_top;
-                    items.push((y, Item::Separator(gi)));
-                    y += g.separator_height + g.separator_gap_bottom;
-                }
                 items.push((y, Item::Row(gi, ri)));
                 y += g.row_height;
             }
@@ -500,6 +531,7 @@ pub(crate) struct State {
     pub style: Arc<Style>,
     pub board: Option<Board>,
     plan: Plan,
+    motion: Motion,
 }
 
 impl State {
@@ -511,7 +543,38 @@ impl State {
             style,
             board: None,
             plan,
+            motion: Motion::default(),
         }
+    }
+
+    /// Filas visibles con su posición vertical para el movimiento.
+    fn samples(&self) -> Vec<Sample> {
+        let Some(board) = &self.board else {
+            return Vec::new();
+        };
+        self.plan
+            .items
+            .iter()
+            .filter_map(|&(y, item)| {
+                let Item::Row(g, r) = item else { return None };
+                let row = &board.groups[g].rows[r];
+                Some(Sample {
+                    id: row.id,
+                    y,
+                    position: row.position.parse().unwrap_or(u32::MAX),
+                    fastest: row.best_mark == Mark::Fastest,
+                    in_pits: row.pit == Pit::InPits,
+                })
+            })
+            .collect()
+    }
+
+    pub(crate) fn settle(&mut self) {
+        self.motion.settle();
+    }
+
+    pub(crate) fn wake(&self, now: std::time::Instant) -> crate::app::Wake {
+        self.motion.wake(self.style.motion.timing(), now)
     }
 
     /// Devuelve si cambió lo que se dibuja.
@@ -521,12 +584,20 @@ impl State {
         }
         self.board = Some(board);
         self.plan = plan(self.board.as_ref(), self.options, &self.style);
+        let samples = self.samples();
+        self.motion.update(
+            &samples,
+            self.style.motion.timing(),
+            std::time::Instant::now(),
+        );
         true
     }
 
     pub(crate) fn set_style(&mut self, style: Arc<Style>) {
         self.style = style;
         self.plan = plan(self.board.as_ref(), self.options, &self.style);
+        let samples = self.samples();
+        self.motion.snap(&samples);
     }
 
     /// Tamaño del panel. La sombra se pinta por fuera, como en el catálogo:
@@ -544,6 +615,8 @@ impl State {
             board: self.board.as_ref(),
             plan: &self.plan,
             language,
+            motion: &self.motion,
+            now: std::time::Instant::now(),
         }
         .paint(window, cx);
     }
@@ -564,6 +637,8 @@ struct Painter<'a> {
     board: Option<&'a Board>,
     plan: &'a Plan,
     language: Language,
+    motion: &'a Motion,
+    now: std::time::Instant,
 }
 
 #[derive(Clone, Copy)]
@@ -680,8 +755,7 @@ impl Painter<'_> {
                 Item::Banner => self.banner(window, cx),
                 Item::Header => self.header(window, cx, y),
                 Item::Columns => self.columns(window, cx, y),
-                Item::Separator(group) => self.separator(window, cx, y, group),
-                Item::Row(group, row) => self.row(window, cx, y, group, row),
+                Item::Row(group, row) => self.animated_row(window, cx, y, group, row),
                 Item::Wait => self.wait(window, cx, y),
                 Item::Skeleton(index) => self.skeleton(window, y, index),
                 Item::Footer(footer) => self.footer(window, cx, y, footer),
@@ -836,18 +910,10 @@ impl Painter<'_> {
             self.label(window, cx, lap, x, None, y, h, face, &em);
         }
         if let Some(board) = board {
-            let classes: Vec<&str> = if self.options.size == Size::Expanded {
-                board.groups.iter().map(|g| g.short.as_str()).collect()
-            } else {
-                let mut shown: Vec<&str> = Vec::new();
-                for (g, _) in rows(board, self.options.size, self.style) {
-                    let short = board.groups[g].short.as_str();
-                    if !shown.contains(&short) {
-                        shown.push(short);
-                    }
-                }
-                shown
-            };
+            let classes: Vec<&str> = shown_group(board)
+                .map(|g| board.groups[g].short.as_str())
+                .into_iter()
+                .collect();
             let mut parts: Vec<String> = Vec::new();
             if self.options.interval {
                 parts.push(if self.es() { "Intervalo" } else { "Interval" }.into());
@@ -1006,53 +1072,38 @@ impl Painter<'_> {
         3.0 * g.sector_width + 2.0 * g.sector_gap
     }
 
-    fn separator(&self, window: &mut Window, cx: &mut App, y: f32, group: usize) {
-        let Some(board) = self.board else { return };
-        let Some(group) = board.groups.get(group) else {
+    /// Fila con su movimiento: desplazamiento, fundido de entrada y destello.
+    fn animated_row(&self, window: &mut Window, cx: &mut App, y: f32, gi: usize, ri: usize) {
+        let Some(row) = self.board.and_then(|b| b.groups.get(gi)?.rows.get(ri)) else {
             return;
         };
-        let g = &self.style.geometry;
-        let f = &self.style.fonts;
-        let c = &self.style.colors;
-        let (pad, w, h) = (self.variant.padding_x, self.plan.width, g.separator_height);
-        round_rect(window, 0.0, y, w, h, 0.0, c.separator_band.hsla());
-        let class = self.style.class(&group.class);
-        let name = if group.class.is_empty() {
-            PLACEHOLDER.to_owned()
-        } else {
-            group.class.to_uppercase()
-        };
-        let ink = self.ink(
-            Face::Display,
-            f.separator,
-            f.separator_tracking,
-            class.ink.hsla(),
-        );
-        self.label(window, cx, &name, pad, None, y, h, Face::Display, &ink);
-        let detail = format!(
-            "{} {} · {} {}",
-            group.cars,
-            match (self.es(), group.cars) {
-                (true, 1) => "coche",
-                (true, _) => "coches",
-                (false, 1) => "car",
-                (false, _) => "cars",
-            },
-            if self.es() { "mejor" } else { "best" },
-            group.best_lap
-        );
-        let ink = self.ink(Face::Mono, f.mono_small, 0.0, c.muted.hsla());
-        self.label(
-            window,
-            cx,
-            &detail,
-            0.0,
-            Some(w - pad),
-            y,
-            h,
-            Face::Mono,
-            &ink,
-        );
+        let pose = self
+            .motion
+            .pose(row.id, self.style.motion.timing(), self.now);
+        let y = y + pose.offset;
+        with_opacity(pose.alpha, || {
+            if let Some((flash, strength)) = pose.flash {
+                let c = &self.style.colors;
+                let color = match flash {
+                    Flash::Gain => c.gain,
+                    Flash::Loss => c.loss,
+                    Flash::Best => c.purple,
+                    Flash::Pit => c.box_fill,
+                };
+                let g = &self.style.geometry;
+                let pad = self.variant.padding_x - g.player_bleed;
+                round_rect(
+                    window,
+                    pad,
+                    y,
+                    self.plan.width - 2.0 * pad,
+                    g.row_height,
+                    self.variant.player_radius,
+                    color.alpha(self.style.motion.flash_alpha * strength),
+                );
+            }
+            self.row(window, cx, y, gi, ri);
+        });
     }
 
     fn row(&self, window: &mut Window, cx: &mut App, y: f32, gi: usize, ri: usize) {
@@ -1124,7 +1175,7 @@ impl Painter<'_> {
         self.number(window, cx, row, class, x, y);
         x += self.number_width(window, row) + g.cell_gap;
         // Gap.
-        let gap_text = self.gap_text(board, group, row);
+        let gap_text = self.gap_text(row);
         let frozen =
             matches!(board.banner, Some(Banner::FullCourseYellow)) || (me && board.player_in_pits);
         let gap_color = if frozen {
@@ -1199,23 +1250,12 @@ impl Painter<'_> {
         self.name(window, cx, row, x, name_right, y);
     }
 
-    fn gap_text(&self, board: &Board, group: &Group, row: &Row) -> String {
-        let leader_text = if self.es() { "Líder" } else { "Leader" };
-        let text = if self.options.interval {
+    fn gap_text(&self, row: &Row) -> String {
+        if self.options.interval {
             row.interval.clone()
         } else {
             row.gap.clone()
-        };
-        // Fuera de ampliado, el líder de una clase que no lidera la general.
-        let first_class = board.groups.first().map(|g| g.class.as_str());
-        if self.options.size != Size::Expanded
-            && text == leader_text
-            && Some(group.class.as_str()) != first_class
-            && !group.short.is_empty()
-        {
-            return format!("1º {}", group.short);
         }
-        text
     }
 
     fn gained(&self, window: &mut Window, cx: &mut App, row: &Row, x: f32, y: f32) {
@@ -1804,34 +1844,58 @@ mod tests {
     }
 
     #[test]
-    fn real_acc_photo_plans_every_size_without_inventing_rows() {
+    fn real_acc_photo_shows_only_the_player_class_in_every_size() {
         let board = vantare_domain::standings_vantare::project(&scene(), Preferences::default());
         let cars: usize = board.groups.iter().map(|g| g.rows.len()).sum();
         assert_eq!(cars, 32);
+        let mine = shown_group(&board).expect("clase del jugador");
+        let class_cars = board.groups[mine].rows.len();
+        assert!(board.groups[mine].rows.iter().any(|row| row.is_player));
         let style = Style::compiled();
-        let mut heights = Vec::new();
         for size in [Size::Compact, Size::Standard, Size::Expanded] {
             let plan = plan(Some(&board), options(size), &style);
-            let rows = plan
+            let rows: Vec<_> = plan
                 .items
                 .iter()
-                .filter(|(_, item)| matches!(item, Item::Row(..)))
-                .count();
-            match size {
-                Size::Expanded => {
-                    assert_eq!(rows, 30, "límite de filas del ampliado");
-                    let bands = plan
-                        .items
-                        .iter()
-                        .filter(|(_, item)| matches!(item, Item::Separator(_)))
-                        .count();
-                    assert!(bands >= 1);
-                }
-                _ => assert_eq!(rows, 8),
-            }
-            heights.push(plan.height);
+                .filter_map(|(_, item)| match item {
+                    Item::Row(g, _) => Some(*g),
+                    _ => None,
+                })
+                .collect();
+            assert!(rows.iter().all(|g| *g == mine), "solo la clase del jugador");
+            let limit = if size == Size::Expanded { 30 } else { 8 };
+            assert_eq!(rows.len(), class_cars.min(limit));
         }
-        assert!(heights[2] > heights[1]);
+    }
+
+    #[test]
+    fn race_scene_animates_overtakes_best_lap_and_pit_entry_then_settles() {
+        use super::super::vantare_motion::Flash;
+        use vantare_domain::standings_vantare::project;
+        let scene: serde_json::Value = serde_json::from_str(include_str!(
+            "../../fixtures/standings-vantare-carrera.scene.json"
+        ))
+        .expect("escena de carrera");
+        let frames = scene["frames"].as_array().expect("fases");
+        let mut state = State::new(options(Size::Standard));
+        let timing = state.style.motion.timing();
+        let mut flashes = Vec::new();
+        for frame in frames {
+            let photo =
+                vantare_ipc::snapshot_from_json(&frame["snapshot"].to_string()).expect("foto DTO");
+            assert!(state.ingest(project(&photo, Preferences::default())));
+            let now = std::time::Instant::now();
+            for sample in state.samples() {
+                if let Some((flash, _)) = state.motion.pose(sample.id, timing, now).flash {
+                    flashes.push(flash);
+                }
+            }
+        }
+        for expected in [Flash::Gain, Flash::Loss, Flash::Best, Flash::Pit] {
+            assert!(flashes.contains(&expected), "{expected:?} en {flashes:?}");
+        }
+        let later = std::time::Instant::now() + timing.flash + timing.reorder;
+        assert_eq!(state.wake(later), crate::app::Wake::Idle);
     }
 
     #[test]

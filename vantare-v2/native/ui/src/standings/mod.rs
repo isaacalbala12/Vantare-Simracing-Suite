@@ -24,6 +24,7 @@ pub(crate) mod motion;
 pub mod options;
 pub(crate) mod style;
 pub(crate) mod vantare;
+pub(crate) mod vantare_motion;
 pub(crate) mod view;
 
 use crate::app::Paint;
@@ -496,6 +497,13 @@ impl Widget {
         self.plan = model::plan(&self.config, &self.vm);
     }
 
+    /// Termina las animaciones Vantare en curso (Workshop reconstruye la historia).
+    pub(crate) fn settle(&mut self) {
+        if let Some(state) = &mut self.vantare {
+            state.settle();
+        }
+    }
+
     /// Estilo Vantare de Workshop en vivo; producto usa el compilado.
     pub(crate) fn set_vantare_style(&mut self, style: std::sync::Arc<vantare::Style>) {
         if let Some(state) = &mut self.vantare {
@@ -520,16 +528,20 @@ impl Widget {
 
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
-        self.vantare.is_none() && self.motion.animating(Instant::now())
+        match &self.vantare {
+            Some(state) => state.wake(Instant::now()) != Wake::Idle,
+            None => self.motion.animating(Instant::now()),
+        }
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
         if let Some(state) = &self.vantare {
+            let wake = state.wake(Instant::now());
             let state = state.clone();
             let language = prefs.language;
             return (
                 Box::new(move |window, cx| state.paint(language, window, cx)),
-                Wake::Idle,
+                wake,
             );
         }
         let now = Instant::now();
@@ -644,11 +656,13 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.vantare.is_some());
-        let empty = widget.size();
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.ingest(&snapshot, prefs), "misma foto, mismo dibujo");
         assert!(
-            widget.size().1 > empty.1,
+            widget
+                .vantare
+                .as_ref()
+                .is_some_and(|state| state.board.is_some()),
             "las filas sustituyen al esqueleto"
         );
         let demand = Settings::default().demand();

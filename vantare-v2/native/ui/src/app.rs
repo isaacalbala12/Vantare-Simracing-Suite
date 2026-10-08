@@ -159,6 +159,13 @@ impl Overlay {
         }
     }
 
+    /// Workshop: da por terminadas las animaciones de las fotos ya ingeridas.
+    pub(crate) fn settle(&mut self) {
+        if let Widget::Standings(widget) = &mut self.widget {
+            widget.settle();
+        }
+    }
+
     pub fn new(kind: Kind, prefs: Preferences) -> Self {
         Self::configured(&Settings::default_for(kind), prefs)
     }

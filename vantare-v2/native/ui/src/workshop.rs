@@ -600,8 +600,13 @@ impl Workshop {
             {
                 eprintln!("Workshop: {error}");
             }
-            for snapshot in &snapshots {
-                overlay.ingest(snapshot, cx);
+            // La historia se ingiere de golpe: solo debe animar el último cambio.
+            if let Some((last, history)) = snapshots.split_last() {
+                for snapshot in history {
+                    overlay.ingest(snapshot, cx);
+                }
+                overlay.settle();
+                overlay.ingest(last, cx);
             }
             overlay
         };
@@ -1039,6 +1044,10 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
         })
         .detach();
         // Sin activar la app: se abre detrás para no robar el foco al editor.
+        // `VANTARE_WORKSHOP_ACTIVATE=1` la trae al frente (capturas de evidencia).
+        if std::env::var_os("VANTARE_WORKSHOP_ACTIVATE").is_some() {
+            cx.activate(true);
+        }
     });
     match result.borrow_mut().take() {
         Some(error) => Err(error),
@@ -1140,8 +1149,8 @@ mod tests {
                 );
             }
         }
-        // 43 demostraciones React + la escena del catálogo Vantare r10b (#1497).
-        assert_eq!(count, 44);
+        // 43 demostraciones React + las dos escenas Vantare r10b (#1497).
+        assert_eq!(count, 45);
         let default = Scene::new(&initial).expect("Standings default");
         assert_eq!(
             default.snapshots[0].state.cars[0].last_lap_s.current(),

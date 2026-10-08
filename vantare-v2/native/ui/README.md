@@ -388,6 +388,34 @@ JSON original restaurado al terminar. La revisión visual en su pantalla queda
 para Isaac. Build PASS con aviso heredado por `LiveScreens::toggle` sin uso;
 los gates completos se ejecutaron en Windows.
 
+### Workshop con recarga en el Mac (#1497)
+
+Desde `native/`: `bash ui/workshop-dev.sh --widget standings --escena ui/fixtures/standings-vantare-carrera.scene.json`.
+Estilos y escenas se recargan dentro del proceso. Al guardar Rust en `ui/src` o
+`domain/src` recompila con `-j 2` y sustituye la ventana: la nueva se abre antes
+de cerrar la vieja y recupera escena, fase y ajustes guardados; si no compila,
+sigue la anterior. Workshop se abre en la mitad derecha del monitor principal sin
+robar el foco; con Stage Manager queda en la tira hasta elegirlo. Si estaba a la
+vista, la recarga lo mantiene a la vista y devuelve el foco a la app activa.
+`VANTARE_WORKSHOP_ACTIVATE=1` lo trae al frente (capturas de evidencia).
+
+## Standings Vantare (#1497)
+
+Sistema de diseño principal (`designSystem: "vantare"`, por defecto); Eficiencia
+sigue disponible con `"eficiencia"`. Contrato visual: catálogo
+`vantare-widgets-r10b.html`. Muestra la clase del jugador (o la del líder sin
+jugador), en compacto 340, estándar 520 (el del Studio) o ampliado 900, con
+estilos Neo, Carmín y Limpio, cuatro acentos y gap al líder o intervalo.
+Valores visuales y duraciones de animación en `styles/standings-vantare.json`
+(compilados en producto, en vivo en Workshop). Animaciones: deslizamiento al
+cambiar de posición, fundido de filas nuevas y destellos al ganar o perder
+puestos, vuelta rápida de clase y entrada en boxes; sin cambios, `Wake::Idle`.
+Escenas: `standings-vantare.scene.json` (estados del catálogo) y
+`standings-vantare-carrera.scene.json` (secuencia animada). Son datos de
+demostración del catálogo, no telemetría real; las señales que el modelo no
+publica (salida de boxes, vuelta de la vuelta rápida, zona lenta) no se pintan.
+La captura de paridad de Windows sigue usando Eficiencia.
+
 ### Harness anterior y mediciones históricas
 
 `vantare-workshop` abre la misma ventana por monitor con uno o varios widgets

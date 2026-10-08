@@ -1,0 +1,2938 @@
+{
+  "goCommit": "bd28ed40dd7d2079de7bcfeb9ee9f9d06950cd52",
+  "sourceHashes": {
+    "internal/strategy/solver/bridge.go": "5977dd63e187cb6709f43053c6569ce5ddf9415caaf4732e8a2c59ded164b4a7",
+    "internal/strategy/solver/certified_free_service.go": "06c5ed85972f36115a67a491c6caab0eab1a60305ffe9965bcdcdee645b7e3be",
+    "internal/strategy/solver/certified_one_pit_test.go": "0149abc65b76e134614a73f7522b85d87cfb69545c3d1eb114f1ba053f20150d",
+    "internal/strategy/solver/certified_one_pit.go": "c34acdcccdb7823d7eae1a15583e8e807a956dbde0a198a2f6d6e4690ddd6b39",
+    "internal/strategy/solver/compare_test.go": "f5d56d338f7aa5f5b7ea74340de0b192c29640222cda183ae9bab56e1bd7ee12",
+    "internal/strategy/solver/compare.go": "ea366ce01815d85fd9a5df4f511feaf79eab590297de1394f6d685ef3609d2ef",
+    "internal/strategy/solver/compound_pace_test.go": "b160cd35640445964e52f8bf084bc1306476164f556a0f8563f739bcf2d44cfd",
+    "internal/strategy/solver/compound_pace.go": "71880bdf9d10a781e62314a3b39d0ddf5c4971f89345ea413ca6da0692474515",
+    "internal/strategy/solver/compute_budget.go": "fcdc9c1fb64318d86d369de8b5ae4bddce2cefa4e7db0796bf916e43c82e0076",
+    "internal/strategy/solver/driver_profile_test.go": "592866d1eeeb85dabd9358ed7e68d86d96f4eae4c8a678da27c6116b4e2a064e",
+    "internal/strategy/solver/driver_profile.go": "3f3d30b22f406821605baac9250bdf530f32265cf37d3f7ab0625d76f695e134",
+    "internal/strategy/solver/driver_time_availability_test.go": "0b4e3f49d16abf2fd104112f6eba44647dcfcfdaedcb0d6c0d00a82741182b15",
+    "internal/strategy/solver/event_rules_test.go": "7db27dc2dd750cd48a52753a09e97d4692e240f290d2b14cdf2af523c296d433",
+    "internal/strategy/solver/event_rules.go": "ce7105c6916339ac8e5ae0f43ee5dab1392009a98a01b4379f4f9b4df9d3f2a9",
+    "internal/strategy/solver/fuel_weight.go": "aad8b90a996903c58ffdd74a479e8643a771831d3aaa39f31b5f697627e59d84",
+    "internal/strategy/solver/historical_test.go": "3206677f214bc05d8b68ad3998b66bae193d27b6119636616664ee4b02227375",
+    "internal/strategy/solver/initial_resources_test.go": "8a405aa47f903c00f79e91fe34af2eb488cacd19a700aadf185d0410f61986fb",
+    "internal/strategy/solver/replay_v2_test.go": "7cda5e53f5fd775c5d0fcc86a62b95c4d11aba45360ac760c6032c4fcfe76998",
+    "internal/strategy/solver/replay_v2.go": "d9af93c7140c7342562cbe99084e97162a6453ac2d9de275a83e7975438c4870",
+    "internal/strategy/solver/reserve.go": "17cc8e85fe7f2a6c9f43a8e638e8de7b7c1680da2efcc8870da93f79e70c52fe",
+    "internal/strategy/solver/risk_variants_test.go": "d9babb81eb6066dfaa7af0f0f314dfe1d8f7c698558df9396c59ae1e54c572e0",
+    "internal/strategy/solver/risk_variants.go": "9dc2912f4e75f10dca036dce39f53187750b10a79e32813a36e904e37758edab",
+    "internal/strategy/solver/saving_cost.go": "900bc861929f0aad23be9004f6c564ca6c54a35a00ec4ccbfb621f26e95816a6",
+    "internal/strategy/solver/simple_resource_search_test.go": "d81b3413bd5430ef994636ca3a729bbe4bcf376343733a5ca6480da4a5aa07c4",
+    "internal/strategy/solver/simple_resource_search.go": "d49535d4f8465a63896a4dbc2889ae38fc3f404b806533de858fbde4637c03bd",
+    "internal/strategy/solver/solver_test.go": "7d7b67348a4d405fde3008593eb8b637bea77c32bac81d74a07febc3efa72b78",
+    "internal/strategy/solver/solver_v2_solve_test.go": "9a55c4f647d043e45c763055ea6915976f6c1e0dd4ea850c247d3f1b7ce4bfab",
+    "internal/strategy/solver/solver_v2_solve.go": "a26ea7b71fc454b084b6ca20209694a8583b51323c395041df39eecee3830998",
+    "internal/strategy/solver/solver_v2_test.go": "5d76017cc81a20665f6d10099655ce3d65122ffe3f31bd3115764f7e244a87d4",
+    "internal/strategy/solver/solver_v2.go": "94da0b0405a7fb1331edc5d944ed22b614b561d7bf6d94734d22150dadd3153a",
+    "internal/strategy/solver/solver.go": "8d7a4aae95f0fb9b3041db03fa15e4682bd00123762bf4751cda2ff9890a59c0",
+    "internal/strategy/solver/stint_pace_curve.go": "b1d11e632dd3c1b2e24d66f2637d63947e82b4acff49085b16125736ea5ee59d",
+    "internal/strategy/solver/timed_horizon_test.go": "439218e5545f33fcb2ad92f96b91e3cb7eb76c4beb23c4ad5f534c281078b6f0",
+    "internal/strategy/solver/tyre_search.go": "a4fa9ebcba0eb75e69a4ea4a0578d354867934237c972d577050943e57099a52",
+    "internal/strategy/solver/weather_scenarios_test.go": "7b5f47ac5752a04350f40f00ac0c4f4b7e4830774a298196a8b17d3e29d650a2",
+    "internal/strategy/solver/weather_scenarios.go": "1662a7148993a8ecf84ea84314afd2d0a9fd48e632d1bef0a6ad9860e260d970"
+  },
+  "cases": [
+    {
+      "name": "scalar-00",
+      "feasible": true,
+      "stints": [
+        1,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 286,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-01",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 7688
+    },
+    {
+      "name": "scalar-02",
+      "feasible": true,
+      "stints": [
+        2,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 467,
+      "withinBudget": true,
+      "iterations": 216
+    },
+    {
+      "name": "scalar-03",
+      "feasible": true,
+      "stints": [
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 3,
+          "fuelLiters": 1,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 556,
+      "withinBudget": true,
+      "iterations": 49133
+    },
+    {
+      "name": "scalar-04",
+      "feasible": true,
+      "stints": [
+        1,
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 3,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 674.75,
+      "withinBudget": true,
+      "iterations": 87
+    },
+    {
+      "name": "scalar-05",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 2,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 761,
+      "withinBudget": true,
+      "iterations": 35615
+    },
+    {
+      "name": "scalar-06",
+      "feasible": true,
+      "stints": [
+        3
+      ],
+      "totalSeconds": 273,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-07",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 7688
+    },
+    {
+      "name": "scalar-08",
+      "feasible": true,
+      "stints": [
+        1,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 3,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 481,
+      "withinBudget": true,
+      "iterations": 53
+    },
+    {
+      "name": "scalar-09",
+      "feasible": true,
+      "stints": [
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 3,
+          "fuelLiters": 3,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 556,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-10",
+      "feasible": true,
+      "stints": [
+        1,
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 3,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 669.75,
+      "withinBudget": true,
+      "iterations": 406
+    },
+    {
+      "name": "scalar-11",
+      "feasible": true,
+      "stints": [
+        2,
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 3,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 751.5,
+      "withinBudget": true,
+      "iterations": 103144
+    },
+    {
+      "name": "scalar-12",
+      "feasible": true,
+      "stints": [
+        1,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 286,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-13",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 7688
+    },
+    {
+      "name": "scalar-14",
+      "feasible": true,
+      "stints": [
+        2,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 467,
+      "withinBudget": true,
+      "iterations": 216
+    },
+    {
+      "name": "scalar-15",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 1,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 567,
+      "withinBudget": true,
+      "iterations": 47396
+    },
+    {
+      "name": "scalar-16",
+      "feasible": true,
+      "stints": [
+        1,
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 3,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 674.75,
+      "withinBudget": true,
+      "iterations": 87
+    },
+    {
+      "name": "scalar-17",
+      "feasible": true,
+      "stints": [
+        2,
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 3,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 751.5,
+      "withinBudget": true,
+      "iterations": 36867
+    },
+    {
+      "name": "scalar-18",
+      "feasible": true,
+      "stints": [
+        3
+      ],
+      "totalSeconds": 273,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-19",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 7688
+    },
+    {
+      "name": "scalar-20",
+      "feasible": true,
+      "stints": [
+        1,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 3,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 481,
+      "withinBudget": true,
+      "iterations": 53
+    },
+    {
+      "name": "scalar-21",
+      "feasible": true,
+      "stints": [
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 3,
+          "fuelLiters": 3,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 556,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-22",
+      "feasible": true,
+      "stints": [
+        3,
+        4
+      ],
+      "pitStops": [
+        {
+          "lap": 3,
+          "fuelLiters": 3,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 648.25,
+      "withinBudget": true,
+      "iterations": 577
+    },
+    {
+      "name": "scalar-23",
+      "feasible": true,
+      "stints": [
+        2,
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 3,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 751.5,
+      "withinBudget": true,
+      "iterations": 103144
+    },
+    {
+      "name": "scalar-24",
+      "feasible": true,
+      "stints": [
+        1,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 286,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-25",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 7767
+    },
+    {
+      "name": "scalar-26",
+      "feasible": true,
+      "stints": [
+        2,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 467,
+      "withinBudget": true,
+      "iterations": 216
+    },
+    {
+      "name": "scalar-27",
+      "feasible": true,
+      "stints": [
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 3,
+          "fuelLiters": 1,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 556,
+      "withinBudget": true,
+      "iterations": 49133
+    },
+    {
+      "name": "scalar-28",
+      "feasible": true,
+      "stints": [
+        1,
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 3,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 674.75,
+      "withinBudget": true,
+      "iterations": 87
+    },
+    {
+      "name": "scalar-29",
+      "feasible": true,
+      "stints": [
+        2,
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 3,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 751.5,
+      "withinBudget": true,
+      "iterations": 36867
+    },
+    {
+      "name": "scalar-30",
+      "error": "invalid_input (input): raceLaps out of range",
+      "feasible": false,
+      "totalSeconds": 0,
+      "withinBudget": false,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-31",
+      "error": "invalid_input (input): raceLaps out of range",
+      "feasible": false,
+      "totalSeconds": 0,
+      "withinBudget": false,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-32",
+      "error": "invalid_input (input): raceLaps out of range",
+      "feasible": false,
+      "totalSeconds": 0,
+      "withinBudget": false,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-33",
+      "error": "invalid_input (input): raceLaps out of range",
+      "feasible": false,
+      "totalSeconds": 0,
+      "withinBudget": false,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-34",
+      "error": "invalid_input (input): raceLaps out of range",
+      "feasible": false,
+      "totalSeconds": 0,
+      "withinBudget": false,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-35",
+      "error": "invalid_input (input): raceLaps out of range",
+      "feasible": false,
+      "totalSeconds": 0,
+      "withinBudget": false,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-36",
+      "feasible": true,
+      "stints": [
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 287,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-37",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 7688
+    },
+    {
+      "name": "scalar-38",
+      "feasible": true,
+      "stints": [
+        2,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 467,
+      "withinBudget": true,
+      "iterations": 216
+    },
+    {
+      "name": "scalar-39",
+      "feasible": true,
+      "stints": [
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 3,
+          "fuelLiters": 2,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 556,
+      "withinBudget": true,
+      "iterations": 49133
+    },
+    {
+      "name": "scalar-40",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 675.75,
+      "withinBudget": true,
+      "iterations": 87
+    },
+    {
+      "name": "scalar-41",
+      "feasible": true,
+      "stints": [
+        3,
+        3,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 3,
+          "fuelLiters": 3,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 3,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 752.5,
+      "withinBudget": true,
+      "iterations": 36867
+    },
+    {
+      "name": "scalar-42",
+      "feasible": true,
+      "stints": [
+        3
+      ],
+      "totalSeconds": 273,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-43",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 7688
+    },
+    {
+      "name": "scalar-44",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 482,
+      "withinBudget": true,
+      "iterations": 53
+    },
+    {
+      "name": "scalar-45",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 567,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-46",
+      "feasible": true,
+      "stints": [
+        4,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 4,
+          "fuelLiters": 4,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 649.25,
+      "withinBudget": true,
+      "iterations": 577
+    },
+    {
+      "name": "scalar-47",
+      "feasible": true,
+      "stints": [
+        2,
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 3,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 751.5,
+      "withinBudget": true,
+      "iterations": 103144
+    },
+    {
+      "name": "scalar-48",
+      "feasible": true,
+      "stints": [
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 287,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-49",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 7688
+    },
+    {
+      "name": "scalar-50",
+      "feasible": true,
+      "stints": [
+        1,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 3,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 478,
+      "withinBudget": true,
+      "iterations": 182
+    },
+    {
+      "name": "scalar-51",
+      "feasible": true,
+      "stints": [
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 3,
+          "fuelLiters": 2,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 556,
+      "withinBudget": true,
+      "iterations": 49133
+    },
+    {
+      "name": "scalar-52",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 675.75,
+      "withinBudget": true,
+      "iterations": 87
+    },
+    {
+      "name": "scalar-53",
+      "feasible": true,
+      "stints": [
+        3,
+        3,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 3,
+          "fuelLiters": 3,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 3,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 752.5,
+      "withinBudget": true,
+      "iterations": 36867
+    },
+    {
+      "name": "scalar-54",
+      "feasible": true,
+      "stints": [
+        3
+      ],
+      "totalSeconds": 273,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-55",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 7767
+    },
+    {
+      "name": "scalar-56",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 482,
+      "withinBudget": true,
+      "iterations": 53
+    },
+    {
+      "name": "scalar-57",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 2,
+          "vePercent": 2,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 567,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-58",
+      "feasible": true,
+      "stints": [
+        4,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 4,
+          "fuelLiters": 4,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 649.25,
+      "withinBudget": true,
+      "iterations": 577
+    },
+    {
+      "name": "scalar-59",
+      "feasible": true,
+      "stints": [
+        2,
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 3,
+          "vePercent": 6,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 751.5,
+      "withinBudget": true,
+      "iterations": 103144
+    },
+    {
+      "name": "scalar-60",
+      "feasible": true,
+      "stints": [
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 286,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-61",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 19969
+    },
+    {
+      "name": "scalar-62",
+      "feasible": true,
+      "stints": [
+        2,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0.5,
+          "vePercent": 0.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 467,
+      "withinBudget": true,
+      "iterations": 168825
+    },
+    {
+      "name": "scalar-63",
+      "feasible": true,
+      "stints": [
+        2,
+        4
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0.5,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 555,
+      "withinBudget": true,
+      "iterations": 551910
+    },
+    {
+      "name": "scalar-64",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 675.25,
+      "withinBudget": true,
+      "iterations": 147414
+    },
+    {
+      "name": "scalar-65",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 2,
+          "vePercent": 2.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 761,
+      "withinBudget": true,
+      "iterations": 614650
+    },
+    {
+      "name": "scalar-66",
+      "feasible": true,
+      "stints": [
+        3
+      ],
+      "totalSeconds": 273,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-67",
+      "feasible": true,
+      "stints": [
+        4
+      ],
+      "totalSeconds": 364.5,
+      "withinBudget": true,
+      "iterations": 19969
+    },
+    {
+      "name": "scalar-68",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 1.5,
+          "vePercent": 0.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 480.75,
+      "withinBudget": true,
+      "iterations": 50447
+    },
+    {
+      "name": "scalar-69",
+      "feasible": true,
+      "stints": [
+        4,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 4,
+          "fuelLiters": 2.5,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 555.5,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-70",
+      "feasible": true,
+      "stints": [
+        1,
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 3,
+          "fuelLiters": 0,
+          "vePercent": 0.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 2,
+          "vePercent": 2.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 669.75,
+      "withinBudget": true,
+      "iterations": 969043
+    },
+    {
+      "name": "scalar-71",
+      "feasible": true,
+      "stints": [
+        4,
+        4
+      ],
+      "pitStops": [
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 741,
+      "withinBudget": true,
+      "iterations": 2335403
+    },
+    {
+      "name": "scalar-72",
+      "feasible": true,
+      "stints": [
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 286,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-73",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 19969
+    },
+    {
+      "name": "scalar-74",
+      "feasible": true,
+      "stints": [
+        2,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0.5,
+          "vePercent": 0.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 467,
+      "withinBudget": true,
+      "iterations": 168825
+    },
+    {
+      "name": "scalar-75",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 0.5,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 567,
+      "withinBudget": true,
+      "iterations": 446983
+    },
+    {
+      "name": "scalar-76",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 675.25,
+      "withinBudget": true,
+      "iterations": 147414
+    },
+    {
+      "name": "scalar-77",
+      "feasible": true,
+      "stints": [
+        3,
+        3,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 3,
+          "fuelLiters": 2,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 2,
+          "vePercent": 2.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 750.5,
+      "withinBudget": true,
+      "iterations": 729452
+    },
+    {
+      "name": "scalar-78",
+      "feasible": true,
+      "stints": [
+        3
+      ],
+      "totalSeconds": 273,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-79",
+      "feasible": true,
+      "stints": [
+        4
+      ],
+      "totalSeconds": 364.5,
+      "withinBudget": true,
+      "iterations": 19969
+    },
+    {
+      "name": "scalar-80",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 1.5,
+          "vePercent": 0.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 480.75,
+      "withinBudget": true,
+      "iterations": 50447
+    },
+    {
+      "name": "scalar-81",
+      "feasible": true,
+      "stints": [
+        4,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 4,
+          "fuelLiters": 2.5,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 555.5,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-82",
+      "feasible": true,
+      "stints": [
+        3,
+        4
+      ],
+      "pitStops": [
+        {
+          "lap": 3,
+          "fuelLiters": 2,
+          "vePercent": 3,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 647.25,
+      "withinBudget": true,
+      "iterations": 1266447
+    },
+    {
+      "name": "scalar-83",
+      "feasible": true,
+      "stints": [
+        4,
+        4
+      ],
+      "pitStops": [
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 4,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 741,
+      "withinBudget": true,
+      "iterations": 2335403
+    },
+    {
+      "name": "scalar-84",
+      "feasible": true,
+      "stints": [
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 286,
+      "withinBudget": true,
+      "iterations": 5423
+    },
+    {
+      "name": "scalar-85",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 55355
+    },
+    {
+      "name": "scalar-86",
+      "feasible": true,
+      "stints": [
+        2,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0.5,
+          "vePercent": 0.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 467,
+      "withinBudget": true,
+      "iterations": 484984
+    },
+    {
+      "name": "scalar-87",
+      "feasible": true,
+      "stints": [
+        2,
+        4
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0.5,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 555,
+      "withinBudget": true,
+      "iterations": 1528248
+    },
+    {
+      "name": "scalar-88",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 675.25,
+      "withinBudget": true,
+      "iterations": 210655
+    },
+    {
+      "name": "scalar-89",
+      "feasible": true,
+      "stints": [
+        2,
+        4,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 2.5,
+          "vePercent": 2.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 751.5,
+      "withinBudget": true,
+      "iterations": 1828377
+    },
+    {
+      "name": "scalar-90",
+      "feasible": true,
+      "stints": [
+        1,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 285,
+      "withinBudget": true,
+      "iterations": 5423
+    },
+    {
+      "name": "scalar-91",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 55355
+    },
+    {
+      "name": "scalar-92",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 1.5,
+          "vePercent": 0.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 480.75,
+      "withinBudget": true,
+      "iterations": 154673
+    },
+    {
+      "name": "scalar-93",
+      "feasible": true,
+      "stints": [
+        1,
+        3,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 0.5,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 567,
+      "withinBudget": true,
+      "iterations": 866873
+    },
+    {
+      "name": "scalar-94",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 3,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 658.25,
+      "withinBudget": true,
+      "iterations": 3481078
+    },
+    {
+      "name": "scalar-95",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 0,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 2,
+          "vePercent": 2.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 761,
+      "withinBudget": true,
+      "iterations": 1112659
+    },
+    {
+      "name": "scalar-96",
+      "feasible": true,
+      "stints": [
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 286,
+      "withinBudget": true,
+      "iterations": 5423
+    },
+    {
+      "name": "scalar-97",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 55355
+    },
+    {
+      "name": "scalar-98",
+      "feasible": true,
+      "stints": [
+        2,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0.5,
+          "vePercent": 0.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 467,
+      "withinBudget": true,
+      "iterations": 484984
+    },
+    {
+      "name": "scalar-99",
+      "feasible": true,
+      "stints": [
+        2,
+        4
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0.5,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 555,
+      "withinBudget": true,
+      "iterations": 1528248
+    },
+    {
+      "name": "scalar-100",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 675.25,
+      "withinBudget": true,
+      "iterations": 210655
+    },
+    {
+      "name": "scalar-101",
+      "feasible": true,
+      "stints": [
+        2,
+        4,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 2.5,
+          "vePercent": 2.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 751.5,
+      "withinBudget": true,
+      "iterations": 1828377
+    },
+    {
+      "name": "scalar-102",
+      "feasible": true,
+      "stints": [
+        1,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 285,
+      "withinBudget": true,
+      "iterations": 5423
+    },
+    {
+      "name": "scalar-103",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 55355
+    },
+    {
+      "name": "scalar-104",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 1.5,
+          "vePercent": 0.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 480.75,
+      "withinBudget": true,
+      "iterations": 154673
+    },
+    {
+      "name": "scalar-105",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0.5,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 567,
+      "withinBudget": true,
+      "iterations": 576508
+    },
+    {
+      "name": "scalar-106",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 3,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 658.25,
+      "withinBudget": true,
+      "iterations": 3481078
+    },
+    {
+      "name": "scalar-107",
+      "feasible": true,
+      "stints": [
+        2,
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 0.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 2,
+          "vePercent": 3.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 750.5,
+      "withinBudget": true,
+      "iterations": 5189401
+    },
+    {
+      "name": "scalar-108",
+      "feasible": true,
+      "stints": [
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 286,
+      "withinBudget": true,
+      "iterations": 5423
+    },
+    {
+      "name": "scalar-109",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 55355
+    },
+    {
+      "name": "scalar-110",
+      "feasible": true,
+      "stints": [
+        1,
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 3,
+          "fuelLiters": 0.5,
+          "vePercent": 0.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 478,
+      "withinBudget": true,
+      "iterations": 459592
+    },
+    {
+      "name": "scalar-111",
+      "feasible": true,
+      "stints": [
+        2,
+        4
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0.5,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 555,
+      "withinBudget": true,
+      "iterations": 1528248
+    },
+    {
+      "name": "scalar-112",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 675.25,
+      "withinBudget": true,
+      "iterations": 210655
+    },
+    {
+      "name": "scalar-113",
+      "feasible": true,
+      "stints": [
+        2,
+        4,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1.5,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 6,
+          "fuelLiters": 2.5,
+          "vePercent": 2.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 751.5,
+      "withinBudget": true,
+      "iterations": 1828377
+    },
+    {
+      "name": "scalar-114",
+      "feasible": true,
+      "stints": [
+        1,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 285,
+      "withinBudget": true,
+      "iterations": 5423
+    },
+    {
+      "name": "scalar-115",
+      "feasible": true,
+      "stints": [
+        2,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 375.5,
+      "withinBudget": true,
+      "iterations": 55355
+    },
+    {
+      "name": "scalar-116",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        1
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 1.5,
+          "vePercent": 0.5,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 480.75,
+      "withinBudget": true,
+      "iterations": 154673
+    },
+    {
+      "name": "scalar-117",
+      "feasible": true,
+      "stints": [
+        1,
+        3,
+        2
+      ],
+      "pitStops": [
+        {
+          "lap": 1,
+          "fuelLiters": 0.5,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 1.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 567,
+      "withinBudget": true,
+      "iterations": 866873
+    },
+    {
+      "name": "scalar-118",
+      "feasible": true,
+      "stints": [
+        2,
+        2,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 4,
+          "fuelLiters": 2,
+          "vePercent": 3,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 658.25,
+      "withinBudget": true,
+      "iterations": 3481078
+    },
+    {
+      "name": "scalar-119",
+      "feasible": true,
+      "stints": [
+        2,
+        3,
+        3
+      ],
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 0,
+          "vePercent": 0.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 5,
+          "fuelLiters": 2,
+          "vePercent": 3.5,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 750.5,
+      "withinBudget": true,
+      "iterations": 5189401
+    },
+    {
+      "name": "scalar-120",
+      "feasible": true,
+      "stints": [
+        11,
+        32,
+        32,
+        32,
+        32
+      ],
+      "pitStops": [
+        {
+          "lap": 11,
+          "fuelLiters": 33,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 43,
+          "fuelLiters": 96,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 75,
+          "fuelLiters": 96,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        },
+        {
+          "lap": 107,
+          "fuelLiters": 96,
+          "vePercent": 0,
+          "serviceMode": "sequential",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 13153.5,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-121",
+      "feasible": true,
+      "stints": [
+        12,
+        32,
+        32,
+        32,
+        31
+      ],
+      "pitStops": [
+        {
+          "lap": 12,
+          "fuelLiters": 36,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 44,
+          "fuelLiters": 96,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 76,
+          "fuelLiters": 96,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 108,
+          "fuelLiters": 96,
+          "vePercent": 0,
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "totalSeconds": 13155,
+      "withinBudget": true,
+      "iterations": 0
+    },
+    {
+      "name": "scalar-122",
+      "feasible": false,
+      "totalSeconds": 0,
+      "withinBudget": true,
+      "iterations": 0,
+      "reasons": [
+        {
+          "code": "no_feasible_plan",
+          "message": "ninguna combinacion discretizada de paradas y servicios completa la carrera"
+        }
+      ]
+    },
+    {
+      "name": "scalar-123",
+      "feasible": false,
+      "totalSeconds": 0,
+      "withinBudget": false,
+      "iterations": 48685571,
+      "reasons": [
+        {
+          "code": "candidate_budget_exhausted",
+          "message": "el limite de candidatos termino la busqueda antes de demostrar el optimo"
+        }
+      ]
+    },
+    {
+      "name": "scalar-124",
+      "feasible": false,
+      "totalSeconds": 0,
+      "withinBudget": true,
+      "iterations": 0,
+      "reasons": [
+        {
+          "code": "no_feasible_plan",
+          "message": "ninguna combinacion discretizada de paradas y servicios completa la carrera"
+        }
+      ]
+    }
+  ]
+}

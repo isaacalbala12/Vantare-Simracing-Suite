@@ -23,13 +23,20 @@
 mod app;
 #[cfg(feature = "parity-capture")]
 pub mod capture;
+mod demand;
+pub mod efficiency;
+pub mod layout;
 mod overlay;
-mod pedals;
-mod radar;
+pub mod paths;
+mod rights;
 pub mod source;
-pub mod standings;
 #[cfg(feature = "paint-stats")]
 mod stats;
-mod text;
+pub mod workshop;
 
-pub use app::{Kind, layout_row, run, run_placed};
+include!("registry.rs");
+
+// Hub incrusta el mismo renderer productivo.
+pub use app::{
+    Overlay, layout_row, run_layout_requested, run_layout_with_rights, run_placed, run_with_rights,
+};

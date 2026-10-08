@@ -19,7 +19,8 @@ const IDLE: Duration = Duration::from_millis(2);
 /// ha cerrado y sus hilos han terminado; el adaptador lo suelta quien llama.
 ///
 /// El pipe solo es del usuario actual (ACL de `ipc`), así que se atiende a
-/// cualquier suscriptor que conecte.
+/// cualquier suscriptor de fotos que conecte. El canal ordenado de eventos
+/// exige además imagen de Engineer y usa otro pipe con la misma ACL.
 ///
 /// # Errors
 /// Si el pipe no se puede abrir (p. ej. otro núcleo ya lo tiene) o `ipc` falla al publicar.
@@ -30,8 +31,65 @@ pub fn run(
     speed: f64,
     stop: &AtomicBool,
 ) -> Result<(), Error> {
+    let image = std::env::current_exe()?.with_file_name("vantare-engineer.exe");
+    run_with_events(adapter, pipe, epoch, speed, stop, None, image)
+}
+
+/// Recording opt-in; su dueño de E/S nunca ejecuta en adquisición.
+pub fn run_with_events(
+    adapter: &mut dyn Adapter,
+    pipe: &str,
+    epoch: u64,
+    speed: f64,
+    stop: &AtomicBool,
+    recording: Option<&std::path::Path>,
+    engineer_image: std::path::PathBuf,
+) -> Result<(), Error> {
+    run_controlled(
+        adapter,
+        pipe,
+        epoch,
+        speed,
+        stop,
+        Options {
+            recording,
+            engineer_image,
+            rights_nonce: None,
+        },
+    )
+}
+
+pub struct Options<'a> {
+    pub recording: Option<&'a std::path::Path>,
+    pub engineer_image: std::path::PathBuf,
+    pub rights_nonce: Option<String>,
+}
+
+pub fn run_controlled(
+    adapter: &mut dyn Adapter,
+    pipe: &str,
+    epoch: u64,
+    speed: f64,
+    stop: &AtomicBool,
+    options: Options<'_>,
+) -> Result<(), Error> {
+    use crate::flows::host::{EventHost, pipe_name};
+    let rights = crate::rights::production(
+        pipe,
+        epoch,
+        options.rights_nonce,
+        options.engineer_image.clone(),
+    )?;
+    let mut events = EventHost::start(&pipe_name(pipe), epoch, options.recording, move |peer| {
+        peer.is_image(&options.engineer_image)
+    })?;
+    let mut core = Core::with_event_base(events.base())?;
     let mut publisher = Publisher::new(pipe, |_| true)?;
-    drive(&mut Core::new(epoch), adapter, speed, stop, |snapshot| {
+    let demand = publisher.demand_source();
+    drive_core_demanded(&mut core, adapter, speed, stop, Some(&demand), |core| {
+        let snapshot = core.snapshot();
+        rights.publish(Arc::clone(&snapshot));
+        events.publish(Arc::clone(&snapshot), core.events());
         publisher.publish(snapshot)
     })
 }
@@ -49,9 +107,38 @@ pub fn drive<E>(
     stop: &AtomicBool,
     mut publish: impl FnMut(Arc<Snapshot>) -> Result<(), E>,
 ) -> Result<(), E> {
+    drive_core(core, adapter, speed, stop, |core| publish(core.snapshot()))
+}
+
+fn drive_core<E>(
+    core: &mut Core,
+    adapter: &mut dyn Adapter,
+    speed: f64,
+    stop: &AtomicBool,
+    publish: impl FnMut(&Core) -> Result<(), E>,
+) -> Result<(), E> {
+    drive_core_demanded(core, adapter, speed, stop, None, publish)
+}
+
+fn drive_core_demanded<E>(
+    core: &mut Core,
+    adapter: &mut dyn Adapter,
+    speed: f64,
+    stop: &AtomicBool,
+    demand: Option<&vantare_ipc::DemandSource>,
+    mut publish: impl FnMut(&Core) -> Result<(), E>,
+) -> Result<(), E> {
     let start = Instant::now();
     let (mut sent, mut last_error) = (0, String::new());
+    let mut demand_revision = u64::MAX;
     while !stop.load(Ordering::Relaxed) {
+        if let Some(demand) = demand {
+            let revision = demand.revision();
+            if revision != demand_revision {
+                core.set_demand_mask(demand.mask());
+                demand_revision = revision;
+            }
+        }
         // Un fallo del adaptador no para el núcleo: se registra al cambiar de
         // causa (con la fuente cerrada, `poll` repite el mismo error).
         match core.step(adapter, start.elapsed().mul_f64(speed)) {
@@ -65,7 +152,7 @@ pub fn drive<E>(
         let snapshot = core.snapshot();
         if snapshot.sequence > sent {
             sent = snapshot.sequence;
-            publish(snapshot)?;
+            publish(core)?;
         } else {
             thread::sleep(IDLE);
         }

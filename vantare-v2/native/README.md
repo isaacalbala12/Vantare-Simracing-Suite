@@ -5,12 +5,14 @@
 | `domain` | Modelo común (`Snapshot`, `State`, `Quality`, capacidades, banderas), contrato del adaptador (`Adapter`, `Observation`), ViewModels (`standings`, `radar`, `pedals`) y formateador. Puro: sin simuladores, GPUI ni I/O; `unsafe` prohibido. |
 | `runtime` | Adaptadores de simulador (módulos privados), núcleo, flujos y ciclo de vida. |
 | `ipc` | DTO versionados (serde) y transporte entre procesos. |
+| `engineer` | Consumidor de fotos/eventos y voz local bajo demanda, proceso separado. |
 | `ui` | Biblioteca visual y binarios de overlays y Hub. |
 
 ## Dependencias permitidas
 
 ```text
 runtime → domain, ipc      ipc → domain      ui → domain, ipc
+engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
 ```
 
 `domain` no depende de nada del workspace; `domain` y `ui` **nunca** dependen de
@@ -70,17 +72,34 @@ escena LMU fija y la recompila al guardar (ver `ui/README.md`, «Workshop»).
 
 `vantare` (`runtime/src/bin/vantare/`) es el propietario del arranque y el
 cierre: lanza `vantare-core` y `vantare-overlays` como procesos hijos y los
-supervisa.
+supervisa. `--engineer <checkpoint>` añade `vantare-engineer` bajo demanda:
+mismo supervisor/Job, reinicios independientes y cierre antes de overlays.
+No nace sin esa opción. El checkpoint tiene un único dueño; no compartirlo
+entre instancias. Véase [`engineer/README.md`](engineer/README.md).
 
 ```powershell
-vantare [--core-bin R] [--overlays-bin R] [--plazo MS] [--reinicios N] [--instancia S] `
-        [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS]]
+vantare [--core-bin R] [--overlays-bin R] [--engineer CURSOR] [--engineer-bin R] `
+        [--plazo MS] [--reinicios N] [--instancia S] `
+        [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS [-- ARGS-DE-ENGINEER]]]
 vantare --parar        # pide el cierre ordenado a la instancia en marcha
 ```
 
 Los binarios hijos se buscan junto a `vantare.exe` salvo `--core-bin` /
 `--overlays-bin`. Los argumentos tras el primer `--` son del núcleo y los tras
 el segundo, de overlays (`vantare -- --replay carrera.jsonl -- 4 --fuente pipe`).
+El tercer grupo es de Engineer (requiere `--engineer`). Pipe e imágenes se
+comparten automáticamente para autenticar ambos extremos del canal de eventos.
+Ejemplo sin audio, desde `native/` con los binarios compilados:
+
+```powershell
+target/debug/vantare.exe --engineer C:/tmp/vantare-cursor.json -- `
+    --replay ../testdata/lmu-fixture.bin --build 1.3.0.0 -- 4
+```
+
+`vantare-core --recording <JSONL>` activa recording al arrancar; sin opción
+no abre fichero. Foto y eventos usan pipes distintos, misma ACL/primitivos:
+`<pipe>-events` sirve cursor, hecho o hueco y ACK; su dueño I/O confirma disco
+fuera de adquisición. El servicio mantiene ambos ciclos hasta cancelación.
 
 - **Muerte conjunta.** El launcher se mete en un Job Object con
   `KILL_ON_JOB_CLOSE` y los hijos nacen dentro: si el launcher muere (incluso
@@ -98,7 +117,7 @@ el segundo, de overlays (`vantare -- --replay carrera.jsonl -- 4 --fuente pipe`)
   propósito (overlays cerrado por el usuario, replay acabado): se cierra todo y
   se sale con 0.
 - **Cierre ordenado.** Ctrl+C, cierre de consola o `vantare --parar`: primero
-  overlays y después el núcleo. A cada hijo se le pide que termine
+  Engineer habilitado, overlays y después el núcleo. A cada hijo se le pide que termine
   (`WM_CLOSE` a sus ventanas y fin de su stdin) y, si sigue vivo pasado
   `--plazo` (3 s), se le mata. **Contrato para procesos sin ventana:** leer
   stdin hasta EOF y terminar.
@@ -106,7 +125,8 @@ el segundo, de overlays (`vantare -- --replay carrera.jsonl -- 4 --fuente pipe`)
 Las pruebas de caída (`runtime/tests/lifecycle.rs`, procesos de verdad sobre un
 pipe real) cubren: núcleo muerto (overlays sigue vivo, reconecta y acepta la
 época nueva), overlays muerto o colgado (el núcleo sigue publicando), segunda
-instancia, orden de cierre, presupuesto agotado y muerte conjunta.
+instancia, orden de cierre, presupuesto agotado y muerte conjunta, también
+para Engineer: caída aislada, presupuesto exacto, colgado y cierre por Job.
 
 ## Topología
 
@@ -114,18 +134,62 @@ Núcleo y overlays en procesos separados unidos por el pipe (topología B de la
 ADR 0099). La variante con todo en un proceso (A) se midió en la fase 0 y se
 retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 
+## Desarrollar en Linux y macOS
+
+La base Unix (#1437) permite compilar y probar en Linux y macOS el workspace
+completo:
+`domain`, `ipc`, `runtime`, `services`, `engineer`, `storage`, `ui` y `hub`.
+`strategy` sigue siendo un workspace independiente. IPC usa los mismos DTO,
+cursores, límites y nonce que Windows, mediante sockets de dominio Unix 0600 en
+un directorio 0700 por UID dentro de `$XDG_RUNTIME_DIR` o del temporal (`/tmp`
+en macOS, para no superar el límite de longitud del socket). Verifica UID, PID e
+imagen del par; retira el socket al cerrar y recupera sockets huérfanos tras una
+caída. Los ficheros `.lock` quedan para evitar carreras al reutilizar nombres.
+
+En Ubuntu, además de Rust fijado por `rust-toolchain.toml`, instala las
+herramientas y bibliotecas usadas por la revisión de GPUI y DuckDB:
+
+```sh
+sudo apt-get install build-essential clang cmake pkg-config libasound2-dev \
+  libfontconfig-dev libgit2-dev libglib2.0-dev libssl-dev libva-dev libvulkan1 \
+  libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev libzstd-dev
+cd vantare-v2/native
+cargo fmt --check
+cargo check --workspace --all-targets -j 4
+cargo clippy --workspace --all-targets -j 4 -- -D warnings
+cargo test --workspace --no-fail-fast -j 4
+cargo test --workspace --test lifecycle -j 4
+(cd strategy && cargo check --workspace --all-targets -j 4 && \
+  cargo clippy --workspace --all-targets -j 4 -- -D warnings && cargo test --workspace -j 4)
+# Workshop con escena grabada, sin núcleo ni telemetría live:
+cargo run -p vantare-ui --bin vantare-workshop
+```
+
+La sesión gráfica es necesaria para abrir Hub, Studio o Workshop. Para comprobar
+el arranque del núcleo con el Hub en modo demo sobre el mismo IPC Unix, desde
+`native/` ejecuta `./scripts/smoke-linux-ipc.sh`. La prueba automatizada del
+replay del núcleo usa `../testdata/lmu-fixture.bin` y un `Subscriber` real. El
+smoke funciona en Linux y macOS; en macOS confirma la conexión con `lsof`.
+
+GPUI necesita una sesión gráfica X11/Wayland y un driver Vulkan en Linux; en
+macOS, las herramientas de desarrollo de Xcode. #1437 verifica el workspace
+completo en ambos sistemas con esos gates y el smoke IPC. Las ventanas
+Unix son de desarrollo: telemetría live LMU/ACC, overlays sobre juego/OBS, MSIX
+y paridad por píxeles contra Wails siguen siendo exclusivamente Windows.
+
 ## Compilar y probar
 
 ```powershell
 cd vantare-v2/native
 cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --offline -j 2 -- -D warnings
+cargo test --workspace --offline -j 2
 ```
 
 `runtime/tests/core_e2e.rs` arranca el binario `vantare-core` con el fixture de
 44 coches y con el corpus de 47 y comprueba, con un `Subscriber` de `ipc`, que
 llegan fotos con revisión creciente y el número de coches de la captura.
 
-`rust-toolchain.toml` fija 1.95.0. El workflow `native.yml` ejecuta lo mismo en
-Windows para los PR que tocan `vantare-v2/native/**`.
+`rust-toolchain.toml` fija 1.95.0. `.github/workflows/quality.yml` ejecuta los
+gates del workspace en Ubuntu; #1437 no cambia los jobs ni el código de
+Windows, cuya validación se ejecuta en el entorno Windows del orquestador.

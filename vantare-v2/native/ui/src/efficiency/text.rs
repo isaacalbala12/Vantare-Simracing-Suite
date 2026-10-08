@@ -1,4 +1,4 @@
-//! Texto de la paridad: Inter estatica, cifras tabulares y `letter-spacing`.
+//! Texto común Eficiencia: Inter estática, cifras tabulares y `letter-spacing`.
 //!
 //! GPUI no tiene `letter-spacing`. Se emula partiendo la linea ya modelada en
 //! caracteres con `ShapedLineCursor` (conserva el kerning de la linea entera) y
@@ -17,13 +17,14 @@ use std::{
 };
 
 /// Instancias estaticas generadas por `assets/make-fonts.py`.
-const FONTS: [&[u8]; 6] = [
-    include_bytes!("../assets/fonts/Inter-400.ttf"),
-    include_bytes!("../assets/fonts/Inter-500.ttf"),
-    include_bytes!("../assets/fonts/Inter-600.ttf"),
-    include_bytes!("../assets/fonts/Inter-650.ttf"),
-    include_bytes!("../assets/fonts/Inter-700.ttf"),
-    include_bytes!("../assets/fonts/Inter-800.ttf"),
+const FONTS: [&[u8]; 7] = [
+    include_bytes!("../../assets/fonts/Inter-400.ttf"),
+    include_bytes!("../../assets/fonts/Inter-500.ttf"),
+    include_bytes!("../../assets/fonts/Inter-600.ttf"),
+    include_bytes!("../../assets/fonts/Inter-650.ttf"),
+    include_bytes!("../../assets/fonts/Inter-700.ttf"),
+    include_bytes!("../../assets/fonts/Inter-750.ttf"),
+    include_bytes!("../../assets/fonts/Inter-800.ttf"),
 ];
 
 pub fn register_fonts(cx: &App) -> Result<(), String> {
@@ -58,6 +59,16 @@ pub struct Ink {
     /// `letter-spacing` en px.
     pub tracking: f32,
     pub color: Hsla,
+}
+
+/// Tipografía con tracking en em, como `letter-spacing` en el CSS del producto.
+pub fn ink(size: f32, weight: f32, tracking_em: f32, color: Hsla) -> Ink {
+    Ink {
+        size,
+        weight,
+        tracking: tracking_em * size,
+        color,
+    }
 }
 
 /// (texto, tamano, peso, color) -> linea modelada.
@@ -157,13 +168,45 @@ pub fn with_origin<R>(origin: (f32, f32), f: impl FnOnce() -> R) -> R {
     result
 }
 
+/// Texto del kit en ventanas comunes o dentro de un widget escalado.
+pub trait TextWindow {
+    fn for_text(&mut self) -> (&mut Window, f32);
+}
+
+impl TextWindow for Window {
+    fn for_text(&mut self) -> (&mut Window, f32) {
+        (self, 1.0)
+    }
+}
+
+impl TextWindow for super::preview::PaintWindow<'_> {
+    fn for_text(&mut self) -> (&mut Window, f32) {
+        let scale = self.preview_scale();
+        (self, scale)
+    }
+}
+
 /// Pinta el texto con la linea de base en `base_y` y su borde izquierdo en `x`.
-pub fn draw(window: &mut Window, cx: &mut App, text: &str, x: f32, base_y: f32, ink: &Ink) {
+pub fn draw(
+    window: &mut impl TextWindow,
+    cx: &mut App,
+    text: &str,
+    x: f32,
+    base_y: f32,
+    ink: &Ink,
+) {
     if text.is_empty() {
         return;
     }
     let (ox, oy) = origin();
-    let (x, base_y) = (x + ox, base_y + oy);
+    let (window, scale) = window.for_text();
+    let scaled_ink = Ink {
+        size: ink.size * scale,
+        tracking: ink.tracking * scale,
+        ..*ink
+    };
+    let ink = if scale == 1.0 { ink } else { &scaled_ink };
+    let (x, base_y) = (x * scale + ox, base_y * scale + oy);
     let line = shape(window, text, ink);
     let ascent = f32::from(line.ascent);
     let descent = f32::from(line.descent);

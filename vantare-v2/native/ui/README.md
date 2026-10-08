@@ -16,21 +16,164 @@ El binario recibe los datos con `--fuente local|pipe[:<nombre>]`:
 - `pipe` (por defecto): `source::pipe_feed` conecta un `ipc::Subscriber` al
   named pipe del núcleo (`vantare-core`; sin nombre, el mismo por defecto, con
   el SID del usuario), reconecta solo y reenvía la foto más reciente a
-  `vantare_ui::run`. Los widgets no saben de dónde viene.
+  `vantare_ui::run_with_rights`. Los widgets no saben de dónde viene.
 - `local`: `source::local_feed()`, carrera sintética a 30 Hz, sin núcleo.
 
-Cada widget proyecta la instantánea con el `ViewModel` de `domain` y solo
-repinta cuando ese ViewModel cambia (Standings: solo lo que se dibuja; mientras
-haya animación pide fotogramas).
+## Kit Eficiencia (ISA-1427)
+
+`vantare_ui::efficiency` reúne las primitivas visuales compartidas que consumen los 18 renderers del registro. Conserva Inter estática, kerning, cifras tabulares y tracking en em convertido a px; los rectángulos se ajustan a píxel después de sumar el origen del widget. GPUI se usa directamente, sin renderer alternativo ni dependencias nuevas.
+
+Los elementos propios de Standings siguen en `standings/`. Pedales conserva su fondo al 90 % y Standings al 87 % con su degradado y sombra; radar conserva el lienzo transparente. Este refactor no amplía sus diseños.
+
+## Preview de Studio (ISA-1430)
+
+`Overlay::set_preview_scale` acepta un factor finito y positivo. Studio aplica
+el mismo factor a las posiciones del documento, los marcos y el renderer;
+`wanted_size` sigue devolviendo el tamaño lógico. El kit transforma quads,
+rutas, máscaras, imágenes, SVG, sombras y texto alrededor del origen del widget,
+sin cambiar el DPI de GPUI ni crear otro renderer. Las ventanas de overlay y
+OBS conservan el factor 1 y su camino de pintado. Al añadir una primitiva nueva,
+comprobar también su transformación en `efficiency/preview.rs`.
 
 ## Paridad visual
 
-`parity.ps1 -Parity <tools/native-ui/parity>` captura la escena `standings-44`
+La regresión histórica de Standings (escena `standings-44`, 474 × 364) se retiró
+al fijar la referencia de fase 2; su resultado era este: `parity.ps1` capturaba la escena `standings-44`
 con la feature `parity-capture` (dos pasadas GDI negro/blanco) y la compara con
 `reference/standings-44.png` con `diff.py`. Resultado en esta fase: 3,68 %
 (6341 / 172536 px, umbral 8), igual que el prototipo; la diferencia es la
-rasterización del texto de DirectWrite frente a Chrome. La referencia y
-`diff.py` viven en la rama del ensayo ISA-1410, no en esta.
+rasterización del texto de DirectWrite frente a Chrome. La referencia histórica
+vive en la rama del ensayo ISA-1410; `ui/diff.py` conserva una copia de su
+comparador (Pillow y numpy ya instalados, sin instalar dependencias).
+El refactor del kit ISA-1427 reproduce 6341 / 172536 px (3,6752 %) y su captura
+es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
+
+## Portar un widget
+
+1. Crear el ViewModel y la proyección pura en `native/domain/src/<widget>.rs`
+   (nombre Rust, p. ej. `fuel_strategy`) y exportarlos desde `domain/src/lib.rs`.
+   El widget recibe `Snapshot` y preferencias; no contiene reglas por simulador.
+2. Crear `native/ui/src/<widget>/mod.rs`, reutilizando `efficiency` y el renderer
+   productivo. Copiar el contrato concreto de `radar.rs` o `pedals.rs`: struct
+   `pub(crate) Widget` con estos métodos `pub(crate)` (sin trait):
+
+   | Método | Devuelve / responsabilidad |
+   | --- | --- |
+   | `new(settings: &Settings, prefs: Preferences)` | `Self`, estado inicial sin datos |
+   | `size(&self)` | `(f32, f32)`, rectángulo completo con sombras/rail |
+   | `ingest(&mut self, snapshot: &Snapshot, prefs: Preferences)` | `bool`, cambia solo si el dibujo cambió |
+   | `frame(&mut self, prefs: Preferences)` | `(crate::app::Paint, crate::app::Wake)`, escena propia clonada en la closure de pintado |
+   | `animating(&self)` con `#[cfg(feature = "parity-capture")]` | `bool`, hasta terminar movimientos **y** avisos temporales |
+
+   `Paint` es `Box<dyn Fn(&mut gpui::Window, &mut gpui::App)>`; para un widget
+   quieto devolver `Wake::Idle` y `animating = false`. Con animaciones usar
+   `Wake::Frame` / `Wake::At(Duration)` y acotar su final. El host coloca el
+   origen, registra Inter, programa repintados y pinta el fondo de captura.
+3. Añadir **una línea** al bloque `widgets!` al final de `ui/src/registry.rs`:
+   `FuelStrategy => fuel_strategy: "fuel-strategy",`. No editar `app.rs`,
+   `lib.rs`, los binarios ni los contadores. El nombre CLI debe coincidir con
+   `reference/<nombre>.png`; el módulo Rust usa guiones bajos.
+4. Crear `ui/fixtures/<nombre>.snapshot.json` en el DTO vigente de
+   `ipc::snapshot_from_json` (ahora `version: 3`); partir de una de las escenas
+   versionadas. Reproducir **los datos de ese widget** de
+   `tools/widget-reference/scene.tsx`: Workshop `default/race/track/ready`.
+   `ui/reference/<nombre>.geometry.json` conserva su `runtime.overlayV2Frame`,
+   layout, configuración y texto congelados. Traducir identidad, unidades SI,
+   calidad y capacidades a `Snapshot`: `fresh` con valor → `{"reliable": valor}`;
+   sin valor → `"unavailable"`, nunca cero inventado. Anotar cualquier señal
+   sin representación y coordinar su extensión con el propietario de domain/IPC.
+   Estas escenas son demostraciones reconstruidas, **no** capturas LMU reales.
+5. Medir desde `native/`, con escritorio visible, sin ventanas encima y DPI
+   al 100 % (la captura rechaza otro DPI y rectángulos mayores que el monitor):
+
+   ```powershell
+   .\ui\compare.ps1 -Widget fuel-strategy -MaxPercent 4
+   ```
+
+   Captura siempre con `compare.ps1`: compila y captura bajo un mutex global
+   (`Global\VantareParityCapture`), así varios workers en paralelo no solapan
+   sus ventanas. No lances la captura del Workshop a mano.
+   `compare.ps1` usa por defecto la escena y `ui/reference/<nombre>.png`, imprime
+   porcentaje (umbral por canal 8, RGBA premultiplicado, sin máscaras) y guarda
+   candidato/diff en `%TEMP%\vantare-parity\<nombre>`. Falla si falta un fichero,
+   cambia el tamaño o supera el límite. Acepta `-Scene`, `-Reference`, `-Diff`,
+   `-Out`, `-Threshold` y `-MaxPercent`; no genera ni modifica referencias.
+   La captura solo está compilada con `parity-capture`; no conecta al núcleo.
+6. Formatear el módulo con `rustfmt --edition 2024 ui/src/<widget>/mod.rs`
+   (rustfmt no descubre los módulos declarados dentro de una macro). Antes del
+   commit: `cargo fmt --check`,
+   `cargo clippy --workspace --all-targets -j 2 -- -D warnings` y
+   `cargo test --workspace -j 2`; además verificar captura y comparación de su
+   widget. Informar el porcentaje real y cualquier límite al orquestador.
+
+**Standings de fase 2 (#1427).** El modo predeterminado reproduce Signature:
+440 × 664, capacidad de 20 filas, clase del jugador, posiciones globales,
+última vuelta y sin rail PIT. La escena `fixtures/standings.snapshot.json`
+conserva los 20 coches de `reference/standings.geometry.json`; el filtro muestra
+los siete Hypercar, dejando libre la altura reservada por el documento Wails.
+Los gaps usan las señales de clase existentes, incluidos los guiones cuando
+faltan datos y la diferencia de una vuelta. El pie conserva Sebring y ≈79.
+
+```powershell
+# Desde native/:
+$cargoExe = (Get-Command cargo.exe).Source
+# Limitar también el -j 4 interno del comparador compartido.
+function cargo {
+    $limited = @($args)
+    for ($i = 0; $i -lt $limited.Count - 1; $i++) {
+        if ($limited[$i] -eq '-j') { $limited[$i + 1] = '2' }
+    }
+    & $cargoExe @limited
+}
+.\ui\compare.ps1 -Widget standings -MaxPercent 4
+```
+
+Signature de fase 2 es la única configuración de Standings (ver `Settings::config`).
+No se toca ningún `model.rs`, el kit Eficiencia, IPC, runtime ni otros widgets.
+No se añaden dependencias ni señales al modelo común.
+
+Validación de Standings (2026-09-30): fase 2 = 10705/292160 px (3,6641 %),
+histórica = 6341/172536 px (3,6752 %); ambas PASS con umbral por canal 8 y
+límite 4 %, sin máscaras. Capturas en `C:/tmp/vw2-standings2-evidence/`,
+subdirectorios `phase2` y `legacy`, con hashes en `parity.json`. Gates PASS:
+`cargo fmt --check`, `cargo clippy --workspace --all-targets -j 2 -- -D warnings`
+y `cargo test --workspace -j 2` (400 pruebas del harness, 0 fallos, 4 omitidas
+porque requieren LMU/ACC live; también pasan las pruebas de procesos). Salida
+de tests en `C:/tmp/vw2-standings2-evidence/tests.log`. El primer build usó
+artefactos de domain obsoletos; tras recompilarlo pasó la captura sin tocar otros módulos.
+El comparador compartido invoca Cargo con `-j 4`; para respetar el límite del
+encargo se ejecuta con un wrapper local de `cargo` que sustituye ese argumento
+por `-j 2`, sin cambiar el script compartido. Las capturas se serializan mediante
+su mutex global. Los PNG y logs quedan fuera del árbol de código.
+
+Límites: preferencias de presentación por proceso, aún sin editor de configuración
+nativo por instancia; `Vm::from_domain` conserva el cálculo histórico de posiciones
+de clase por orden y la lectura de números desde texto para las animaciones.
+La paridad de estas fotos no demuestra telemetría live, OBS, DPI mixto ni estados
+en movimiento. Estos aspectos requieren la revisión y pruebas del orquestador.
+Notion no está disponible según el encargo: reconciliación pendiente por el
+orquestador. Entrega local en `vantareapp/isa-1427-w-standings2`, base `13dc3b22`,
+sin push, PR, CI remoto, integración ni promoción.
+
+Registro de infraestructura previo (2026-09-29): las escenas
+`standings`, `radar` y `pedals` reconstruyen los canales que domain representa
+del runtime congelado. El radar aún deriva el solapamiento (a 4 m exactos difiere
+del booleano del demo) y no representa `lapped`; estos límites del porte visual
+existente no se resuelven en esta infraestructura. El tamaño de Standings de
+fase 2 se corrige en la entrega anterior del 2026-09-30; los valores de este
+registro corresponden a la base de infraestructura.
+
+Seguimiento de este lote: [GitHub #1427](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427),
+base `c0cd37e7`, rama `vantareapp/isa-1427-f2-infra`. Notion no disponible según
+el encargo de Isaac del 2026-09-29; queda pendiente su reconciliación por el
+orquestador. Este worker solo entrega commits locales, sin push/PR/promoción.
+
+Validación de infraestructura (2026-09-29): Workshop `standings-44` =
+6341/172536 px (3,6752 %) contra Wails y 0 px contra la captura de la ruta antigua
+con umbral 0. Capturas de fase 2: radar 220 × 220, 8,2665 %; pedales 120 × 160,
+8,5104 % (ambos superan el límite de 4 % y el script sale con 1). Standings de
+fase 2 detecta tamaño distinto (474 × 364 frente a 440 × 664, salida 2).
+Eran límites pendientes de los portes, no gates de paridad aprobados en esa base.
 
 ## Una ventana por monitor
 
@@ -168,6 +311,48 @@ tiene uno); el reparto está cubierto por un test unitario.
 
 ## Workshop (desarrollo)
 
+```powershell
+cd vantare-v2/native
+.\ui\dev.ps1 -Widget pedals -Escena ui/fixtures/pedals.snapshot.json
+# Solo JSON, sin recompilar Rust:
+cargo run -p vantare-ui --bin vantare-workshop -j 2 -- --dev --widget radar
+```
+
+`--dev` abre una ventana GPUI interactiva sobre el `Overlay` productivo: los
+botones recorren `Kind::ALL` (registro `widgets!`) y `fixtures/*.snapshot.json`;
+una escena externa indicada por CLI también entra en la lista. El estado vive
+en el DTO JSON, incluidas calidad y capacidades; no hay generador paralelo.
+Tab/Shift+Tab cambia el foco, Enter/Espacio activa el botón.
+Guardar la escena recarga cada 150 ms; un JSON inválido muestra el error y
+mantiene la última foto válida. La escena inicial debe ser válida. Sin `--escena`
+se usa la del widget si existe, o `lmu47`. `--captura` conserva su ruta y geometría;
+no admite combinarse con `--dev`.
+
+`dev.ps1` (PowerShell 7) vigila **domain/src y ui/src**, compila con `-j 2` y
+relanza una copia del binario conservando las selecciones hechas en la ventana.
+Errores de compilación o arranque mantienen la ventana anterior; Ctrl+C termina
+la sesión. Detecta guardados durante la compilación, borrados y renombrados.
+No modifica perfiles ni flags Cargo. Imprime guardar → compilado y → ventana
+visible; visibilidad de ventana no demuestra presentación de un píxel. No
+vigila assets/Cargo.toml ni descubre escenas nuevas hasta relanzar. Este flujo
+es para desarrollo; no demuestra telemetría real ni paridad de los portes.
+
+**Medición de este worker (2026-09-30, #1427):** guardar → píxel de Standings
+20,18 / 30,92 / 30,84 s (mediana 30,84 s), caché caliente, dev con depuración,
+`-j 2` y otros workers compilando. Cambio temporal Es/En de `Preferences` en
+`workshop.rs`, sin editar el widget: se observó el píxel (177,175) de su cabecera
+en el escritorio compuesto, con la ventana de prueba visible bajo el mutex de
+capturas. Es latencia observada con sondeo de 10 ms, no presupuesto reproducible.
+Evidencia local en `%TEMP%\vantare-workshop-dev-evidence`: `bench3.py`,
+`pixel-times.txt`, `dev.log`, `qa.py`, `qa.log` y PNG.
+Propuesta sin aplicar: medir `debug=0` en una tanda aislada con el mismo cambio y
+`-j 2`; el histórico inferior muestra ahorro, pero no cuantifica este equipo
+bajo la carga actual. No se cambió ningún perfil, flag ni dependencia.
+Gates finales: fmt/clippy/workspace tests PASS (`-j 2`, cuatro pruebas live
+omitidas); CLI con `parity-capture` 4/4 y pedales 755/19200 px (3,9323 %).
+
+### Harness anterior y mediciones históricas
+
 `vantare-workshop` abre la misma ventana por monitor con uno o varios widgets
 alimentados por **una escena fija**, sin núcleo. `workshop.ps1` la mantiene al
 día mientras editas: al guardar un fichero de `ui/src` (o `ui/fixtures`) recompila
@@ -224,3 +409,11 @@ cambio de una constante de color en `pedals.rs`, `radar.rs` y `standings/view.rs
 todo el árbol. Tras un error de compilación y su arreglo el ciclo sigue igual
 (3,9 s → 4,6 s). Casi todo el tiempo es compilar y enlazar `vantare-ui` con GPUI
 (el enlazado de los binarios domina), no la reapertura de la ventana (~0,6 s).
+
+## Layout nativo (#1427 → #1430)
+
+Sin un número de campaña, `vantare-overlays` vigila `%LOCALAPPDATA%\Vantare\native\layout.json`; `--layout <ruta>` permite probar `ui/fixtures/layout.json` (con `--fuente local` solo para QA sintética). Sondeo cada 500 ms, último JSON válido ante errores; ID, posición global, visibilidad, opacidad y `settings.kind` en kebab-case, resto camelCase. Las instancias ocultas conservan el HWND del monitor; eliminar todas las instancias tampoco termina el proceso. El orden del vector es el orden de pintado. Sin escala ni importación V4.
+
+`layout::Document::{open,save,poll}` limita la lectura a 1 MiB, normaliza entradas y compara bytes del último documento leído. `save` usa bloqueo cooperativo liberado al cerrar el fichero, temporal local con `write_all`/`sync_all`, copia `.bak` y `rename` sin borrar antes. Un conflicto requiere releer. `LiveScreens` conserva cada widget por ID mientras sus Settings sigan iguales, al moverlo, cambiar opacidad, ocultarlo o cambiar de monitor. Oculto conserva estado sin ingerir fotos; al volver visible recibe la última foto solo si su demanda está cubierta. Las preferencias reproyectan esa foto sin recrear la entidad; nuevos IDs o cambios de tipo/Settings crean otra. Borrar libera la entidad y su temporizador. Las ventanas se reutilizan por monitor ocupado.
+
+Los Settings de todos los widgets están junto a su renderer; el registro genera `Settings::{kind,default_for,normalized}`. Las variantes implementadas incluyen Delta capsule, transparencia de pedales, carrusel, volante específico, color de banderas, target behind y Standings broadcast, marca y métricas del pie. El host solo avisa de las claves legacy `headerFirst/headerSecond`, que persiste pero no usa en la cabecera; los límites de cada Settings se presentan en el inspector del Hub mediante `UNSUPPORTED`. Evidencia de paridad y QA: [layout-evidence.md](layout-evidence.md).

@@ -1,0 +1,487 @@
+{
+  "/navigation/state": {
+    "status": 200,
+    "body": {
+      "state": {
+        "appBuild": 14200,
+        "gamePhase": "BEFORE",
+        "gameSession": "PRACTICE1",
+        "gameState": "GSTATE_SETUP",
+        "internalStateCode": "OP_RAN_REALTIME_PASS",
+        "navigationState": "NAV_MAIN_MENU",
+        "settingMode": "SETTING_GRANDPRIX"
+      },
+      "loadingStatus": {
+        "loading": false,
+        "percentage": -1.0
+      }
+    },
+    "sanitization": "closed whitelist; user and loadingData removed"
+  },
+  "/rest/hud": {
+    "status": 200,
+    "body": {
+      "chat": true,
+      "mfd": true,
+      "speedo": true,
+      "timing": true,
+      "trackMap": true
+    },
+    "bodyEmpty": false
+  },
+  "/rest/sessions/GetGameState": {
+    "status": 503,
+    "body": {
+      "status": "unavailable",
+      "reason": "Game is not in an active session",
+      "gameState": "Setup"
+    },
+    "bodyEmpty": false
+  },
+  "/rest/sessions/GetSessionsInfoForEvent": {
+    "status": 200,
+    "body": {
+      "scheduledSessions": [
+        {
+          "airTemp": 29,
+          "lengthTime": 360,
+          "name": "PRACTICE",
+          "rainChance": 0
+        }
+      ]
+    },
+    "bodyEmpty": false
+  },
+  "/rest/sessions/amount": {
+    "status": 200,
+    "body": {
+      "PRACTICE": 1,
+      "QUALIFY": 0,
+      "RACE": 0,
+      "WARMUP": 0
+    },
+    "bodyEmpty": false
+  },
+  "/rest/sessions/weather": {
+    "status": 200,
+    "body": {
+      "PRACTICE": {
+        "FINISH": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 1,
+            "stringValue": "Light Clouds"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 29,
+            "stringValue": "29 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 2,
+            "stringValue": "East"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 17,
+            "stringValue": "61.2 kph"
+          }
+        },
+        "NODE_25": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 1,
+            "stringValue": "Light Clouds"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 30,
+            "stringValue": "30 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 2,
+            "stringValue": "East"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 19,
+            "stringValue": "68.4 kph"
+          }
+        },
+        "NODE_50": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 1,
+            "stringValue": "Light Clouds"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 30,
+            "stringValue": "30 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 2,
+            "stringValue": "East"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 19,
+            "stringValue": "68.4 kph"
+          }
+        },
+        "NODE_75": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 1,
+            "stringValue": "Light Clouds"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 29,
+            "stringValue": "29 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 2,
+            "stringValue": "East"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 19,
+            "stringValue": "68.4 kph"
+          }
+        },
+        "START": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 1,
+            "stringValue": "Light Clouds"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 29,
+            "stringValue": "29 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 2,
+            "stringValue": "East"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 19,
+            "stringValue": "68.4 kph"
+          }
+        }
+      },
+      "QUALIFY": {
+        "FINISH": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 1,
+            "stringValue": "Light Clouds"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 19,
+            "stringValue": "19 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 0,
+            "stringValue": "North"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 13,
+            "stringValue": "46.8 kph"
+          }
+        },
+        "NODE_25": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 1,
+            "stringValue": "Light Clouds"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 18,
+            "stringValue": "18 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 1,
+            "stringValue": "North East"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 15,
+            "stringValue": "54.0 kph"
+          }
+        },
+        "NODE_50": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 0,
+            "stringValue": "Clear"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 19,
+            "stringValue": "19 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 1,
+            "stringValue": "North East"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 13,
+            "stringValue": "46.8 kph"
+          }
+        },
+        "NODE_75": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 0,
+            "stringValue": "Clear"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 19,
+            "stringValue": "19 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 1,
+            "stringValue": "North East"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 13,
+            "stringValue": "46.8 kph"
+          }
+        },
+        "START": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 1,
+            "stringValue": "Light Clouds"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 18,
+            "stringValue": "18 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 1,
+            "stringValue": "North East"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 20,
+            "stringValue": "72.0 kph"
+          }
+        }
+      },
+      "RACE": {
+        "FINISH": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 1,
+            "stringValue": "Light Clouds"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 27,
+            "stringValue": "27 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 7,
+            "stringValue": "North West"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 11,
+            "stringValue": "39.6 kph"
+          }
+        },
+        "NODE_25": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 1,
+            "stringValue": "Light Clouds"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 18,
+            "stringValue": "18 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 6,
+            "stringValue": "West"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 7,
+            "stringValue": "25.2 kph"
+          }
+        },
+        "NODE_50": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 3,
+            "stringValue": "Mostly Cloudy"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 17,
+            "stringValue": "17 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 6,
+            "stringValue": "West"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 6,
+            "stringValue": "21.6 kph"
+          }
+        },
+        "NODE_75": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 4,
+            "stringValue": "Overcast"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 17,
+            "stringValue": "17 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 6,
+            "stringValue": "West"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 6,
+            "stringValue": "21.6 kph"
+          }
+        },
+        "START": {
+          "WNV_HUMIDITY": {
+            "currentValue": 60,
+            "stringValue": "60%"
+          },
+          "WNV_RAIN_CHANCE": {
+            "currentValue": 0,
+            "stringValue": "0%"
+          },
+          "WNV_SKY": {
+            "currentValue": 3,
+            "stringValue": "Mostly Cloudy"
+          },
+          "WNV_TEMPERATURE": {
+            "currentValue": 24,
+            "stringValue": "24 \u00b0"
+          },
+          "WNV_WINDDIRECTION": {
+            "currentValue": 7,
+            "stringValue": "North West"
+          },
+          "WNV_WINDSPEED": {
+            "currentValue": 7,
+            "stringValue": "25.2 kph"
+          }
+        }
+      }
+    },
+    "bodyEmpty": false
+  },
+  "/rest/strategy/usage": {
+    "status": 200,
+    "body": null,
+    "bodyEmpty": false
+  },
+  "/rest/watch/sessionInfo": {
+    "status": 200,
+    "body": null,
+    "bodyEmpty": true
+  },
+  "/rest/watch/standings": {
+    "status": 200,
+    "body": null,
+    "bodyEmpty": true
+  },
+  "/rest/watch/standings/history": {
+    "status": 200,
+    "body": {},
+    "bodyEmpty": false
+  }
+}

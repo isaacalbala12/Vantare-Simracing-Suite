@@ -3,7 +3,8 @@
 GPUI de Zed (rev `72d28c32`, la del prototipo de paridad ISA-1410) usado
 directamente; el crate añade la integración Win32 (`overlay.rs`: transparencia,
 click-through, sin foco, sin marco DWM, DPI), el texto Inter con `letter-spacing`
-(`text.rs`) y los widgets Standings Eficiencia, radar y pedales.
+(`text.rs`) y los 18 widgets del registro (Standings, Relative, Delta, Fuel, radar,
+pedales, mapas, flags y otros). Hub vive en el crate `hub`, no en `ui`.
 
 ```powershell
 cd vantare-v2/native
@@ -24,6 +25,17 @@ El binario recibe los datos con `--fuente local|pipe[:<nombre>]`:
 `vantare_ui::efficiency` reúne las primitivas visuales compartidas que consumen los 18 renderers del registro. Conserva Inter estática, kerning, cifras tabulares y tracking en em convertido a px; los rectángulos se ajustan a píxel después de sumar el origen del widget. GPUI se usa directamente, sin renderer alternativo ni dependencias nuevas.
 
 Los elementos propios de Standings siguen en `standings/`. Pedales conserva su fondo al 90 % y Standings al 87 % con su degradado y sombra; radar conserva el lienzo transparente. Este refactor no amplía sus diseños.
+
+## Kit Vantare y Looks (#1497)
+
+`src/vantare/{style,paint,motion,columns}.rs` y `styles/vantare.json` contienen
+el kit compartido Vantare. Standings, Relative, Delta y Fuel ofrecen
+`DesignSystem` Eficiencia/Vantare. Workshop recarga el estilo sin otro renderer.
+El seam de una proyección y un estado por widget con N Looks está **en curso,
+#1531**; esta base todavía mantiene dos vías. No duplicar proyecciones al portar.
+`registry.rs` aún adapta manualmente `frame_with_motion(prefs, reduced)` y la
+cadencia de widgets con movimiento; justificar cambios en ese seam, no extenderlo
+silenciosamente. La política de movimiento la decide el host.
 
 ## Preview de Studio (ISA-1430)
 
@@ -53,7 +65,7 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
 1. Crear el ViewModel y la proyección pura en `native/domain/src/<widget>.rs`
    (nombre Rust, p. ej. `fuel_strategy`) y exportarlos desde `domain/src/lib.rs`.
    El widget recibe `Snapshot` y preferencias; no contiene reglas por simulador.
-2. Crear `native/ui/src/<widget>/mod.rs`, reutilizando `efficiency` y el renderer
+2. Crear `native/ui/src/<widget>/mod.rs`, reutilizando el kit elegido (`efficiency`/`vantare`) y el renderer
    productivo. Copiar el contrato concreto de `radar.rs` o `pedals.rs`: struct
    `pub(crate) Widget` con estos métodos `pub(crate)` (sin trait):
 
@@ -62,7 +74,7 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
    | `new(settings: &Settings, prefs: Preferences)` | `Self`, estado inicial sin datos |
    | `size(&self)` | `(f32, f32)`, rectángulo completo con sombras/rail |
    | `ingest(&mut self, snapshot: &Snapshot, prefs: Preferences)` | `bool`, cambia solo si el dibujo cambió |
-   | `frame(&mut self, prefs: Preferences)` | `(crate::app::Paint, crate::app::Wake)`, escena propia clonada en la closure de pintado |
+   | `frame(&mut self, prefs: Preferences)` (o seam actual `frame_with_motion`) | `(crate::app::Paint, crate::app::Wake)`, escena propia clonada en la closure de pintado |
    | `animating(&self)` con `#[cfg(feature = "parity-capture")]` | `bool`, hasta terminar movimientos **y** avisos temporales |
 
    `Paint` es `Box<dyn Fn(&mut gpui::Window, &mut gpui::App)>`; para un widget
@@ -74,7 +86,7 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
    `lib.rs`, los binarios ni los contadores. El nombre CLI debe coincidir con
    `reference/<nombre>.png`; el módulo Rust usa guiones bajos.
 4. Crear `ui/fixtures/<nombre>.snapshot.json` en el DTO vigente de
-   `ipc::snapshot_from_json` (ahora `version: 3`); partir de una de las escenas
+   `ipc::snapshot_from_json` (DTO v9, `version: 9`); partir de una de las escenas
    versionadas. Reproducir **los datos de ese widget** de
    `tools/widget-reference/scene.tsx`: Workshop `default/race/track/ready`.
    `ui/reference/<nombre>.geometry.json` conserva su `runtime.overlayV2Frame`,
@@ -83,6 +95,10 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
    sin valor → `"unavailable"`, nunca cero inventado. Anotar cualquier señal
    sin representación y coordinar su extensión con el propietario de domain/IPC.
    Estas escenas son demostraciones reconstruidas, **no** capturas LMU reales.
+   Para animaciones, `.scene.json` añade `label`, `frameMs` (50–60000),
+   `watchFor` y `frames: [{caption, snapshot}]`; cada snapshot usa DTO v9.
+   El cargador guardado permite v7/v8/v9; el pipe live nunca migra fixtures.
+   Preferencias y geometría viven en el documento de layout, fuera del ViewModel.
 5. Medir desde `native/`, con escritorio visible, sin ventanas encima y DPI
    al 100 % (la captura rechaza otro DPI y rectángulos mayores que el monitor):
 
@@ -101,9 +117,9 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
    La captura solo está compilada con `parity-capture`; no conecta al núcleo.
 6. Formatear el módulo con `rustfmt --edition 2024 ui/src/<widget>/mod.rs`
    (rustfmt no descubre los módulos declarados dentro de una macro). Antes del
-   commit: `cargo fmt --check`,
-   `cargo clippy --workspace --all-targets -j 2 -- -D warnings` y
-   `cargo test --workspace -j 2`; además verificar captura y comparación de su
+   commit: fmt, Clippy -D warnings, Nextest y lifecycle por la cola de
+   `../AGENTS.md`; añadir telemetria al tocar domain/IPC/runtime/testdata.
+   Además verificar captura y comparación de su
    widget. Informar el porcentaje real y cualquier límite al orquestador.
 
 **Standings de fase 2 (#1427).** El modo predeterminado reproduce Signature:

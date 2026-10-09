@@ -1,5 +1,26 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1530 — contrato nativo v9 (2026-10-09)
+
+Rama `vantareapp/isa-1530-contrato`, base `5e1da3f6`; código `02981840` local.
+Fotos live estrictas v9; Studio/Workshop/exportaciones conservan v7/v8/v9 con
+`snapshot_from_saved_json`; helper de fixtures explícito y 85 JSON regenerados
+cambiando solo la versión. Fixture v8 real congelada de la base en ipc/tests.
+Inventario completo: los demás consumidores son tests/escenas incorporadas v9
+(o examples); `runtime/flows/wire.rs` es live estricto. DuckDB almacena
+SeriesChunk; recording guarda Event, no SnapshotDto: sus contratos no cambian.
+Aviso único de conexión en Hub y primer monitor de overlays, estable durante
+reintentos; se retira con foto/respuesta compatible. Sin cambios de acceso/licencia.
+README, AGENTS GitHub/nightly y native/AGENTS (§10) actualizados; ADR 0100
+registra Clerk/Polar/Supabase, dependencias compartidas y pendientes de #1514.
+Fmt y Clippy previos verdes; Nextest/lifecycle/telemetria y revisión final en curso.
+Plan de partición de vistas ya grandes, fuera de #1530: Studio → canvas,
+inspector y catálogo/fotos (P1-A); services/view → cuenta, reportes y estado
+(P3); requieren sus propias issues. Aquí solo se adapta el lector/diagnóstico.
+Siguiente paso: cerrar gates, comentario final y revisión del orquestador; #1531
+y #1529 integran sus cambios por separado. Sin push, PR, CI remota, promoción,
+merge, release, deploy ni acciones comerciales. No se recrea el roadmap retirado.
+
 ## #1511 — nombre visible Vantare (2026-10-08)
 
 Entrega técnica verificada en `C:/tmp/vw3-1511/vantare-v2`, rama

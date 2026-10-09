@@ -1,23 +1,23 @@
 # Instrucciones de entrada para agentes
 
-**Notion es el seguimiento principal obligatorio, también para issues existentes.**
+**El tracker obligatorio es GitHub Issues de este repositorio; el tablero es
+el GitHub Project Vantare.** Linear fue retirado el 2026-08-20.
 
-1. Abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192), localizar y leer la tarea y su proyecto.
-   Buscar una issue importada por su URL/número GitHub real; no duplicarla ni
-   confundir `VAN-N`, UUID Notion, número GitHub e ISA histórico.
-2. Leer [las reglas activas](vantare-v2/AGENTS.md) y el
-   [contrato Notion primero](vantare-v2/docs/vantare-program/notion-transition.md).
-3. Leer el [expediente técnico](vantare-v2/docs/vantare-program/README.md),
-   contratos y handoff técnico del proyecto antes de editar.
-4. Actualizar y releer Notion al empezar, bloquear, entregar y verificar merge:
-   Estado, Proyecto, agente, siguiente paso, dependencias, PR, checks y SHA/canal.
-   Un resumen en el chat, un handoff Git o cerrar una issue GitHub no lo sustituye.
-   Si no puedes leer/escribir Notion, conserva evidencia y comunica el bloqueo;
-   no ejecutes trabajo dependiente ni declares el seguimiento completado.
+1. Verificar raíz Git, rama, HEAD, worktree y `git status --short`.
+2. Leer la issue, sus dependencias y el plan vigente antes de editar.
+   `ISA-N` corresponde al número GitHub para issues nuevas; las migradas
+   conservan título e identificadores históricos. Usar `vantareapp/isa-N-slug`.
+3. Leer [las reglas activas](vantare-v2/AGENTS.md), el
+   [expediente técnico](vantare-v2/docs/vantare-program/README.md), contratos
+   y único handoff vivo del proyecto.
+4. Actualizar y verificar la issue y el handoff tras cada cambio material:
+   alcance, estado, dependencias, siguiente paso, PR, checks y SHA/canal.
+   Cada issue pertenece a su proyecto (`area:*`, GitHub Project Vantare) y,
+   si está comprometida para una versión, a su milestone de GitHub.
 
-GitHub aloja código, ramas, PR, CI y releases. Los validadores todavía necesitan
-una referencia GitHub/ISA: conservarla como puente técnico enlazado desde Notion,
-no como autoridad de prioridades o estado. No usar números VAN en ramas ISA.
+El roadmap público vive en Supabase según
+[vantare-v2/docs/roadmap-maintenance.md](vantare-v2/docs/roadmap-maintenance.md).
+No se exige el retirado `plan.md` ni su generador.
 
 ## Chats y checkouts nuevos
 

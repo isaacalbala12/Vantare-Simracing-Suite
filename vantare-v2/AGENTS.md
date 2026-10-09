@@ -22,59 +22,36 @@ Menos codigo es preferible cuando mantiene o mejora claridad, seguridad,
 pruebas y rendimiento. Si la complejidad supera claramente al problema, revisa
 y simplifica antes de ampliarla.
 
-## Notion primero: obligatorio desde 2026-09-14
+## Issues
 
-Abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192) y leer la tarea y su proyecto
-antes de ejecutar, incluidas las issues importadas. Leer el contrato completo
-[docs/vantare-program/notion-transition.md](docs/vantare-program/notion-transition.md).
-Actualizar y releer Notion al empezar, bloquear, entregar y verificar integración.
-Una tarea no está entregada si su evidencia solo existe en GitHub o en el chat.
+- El tracker es **GitHub Issues de este mismo repositorio**. Linear fue
+  retirado el 2026-08-20 y no queda ninguna dependencia operativa suya.
+- Los identificadores `ISA-N` corresponden al numero de issue de GitHub: una
+  issue nueva ya nace con su ISA-N. Los `ISA-N` migrados desde Linear
+  conservan su titulo `ISA-N · ...` y las labels `state:*` y `migrated:linear`.
+- Las ramas siguen la convencion `vantareapp/isa-N-slug`.
+- El tablero es el GitHub Project **Vantare**.
 
-### Compatibilidad técnica temporal con GitHub
-
-- GitHub conserva código, ramas, PR, CI, builds y releases. Su Project y labels
-  de estado son referencias históricas, no la cola de ejecución.
-- Los validadores actuales aún consultan una issue GitHub viva y usan ramas
-  `vantareapp/isa-N-slug`. Reutilizar la issue existente; si CI requiere una nueva,
-  crear primero la tarea Notion y enlazar la issue como puente técnico mínimo.
-  Mantener en ella el contrato de roadmap que consume CI, coherente con Notion.
-- Separar UUID/`VAN-N`, número GitHub e ISA histórico. GitHub #519 = ISA-233;
-  no obtener la identidad del título ni reutilizar VAN como ISA.
-- Linear fue retirado el 2026-08-20. No es una dependencia operativa.
-- El corte técnico exclusivo sigue pendiente; esto no pospone Notion como
-  autoridad de alcance, prioridades, dependencias y seguimiento.
+Las instrucciones antiguas de seguimiento en Notion en otros documentos
+son históricas: estas reglas y #1503 fijan GitHub como autoridad operativa.
 
 ## Fuentes de verdad y lectura obligatoria
 
 Antes de interpretar o ejecutar una tarea:
 
-1. Lee la tarea Notion y su proyecto; verifica acceso de lectura/escritura.
-   Verifica raiz Git, rama, HEAD, worktree y `git status --short`; consulta
-   las instrucciones de `origin/nightly` actualizado si el checkout es antiguo.
-2. Lee este archivo y `docs/vantare-program/notion-transition.md`.
+1. Verifica raiz Git, rama, HEAD, worktree y `git status --short`.
+2. Lee este archivo y `docs/roadmap-maintenance.md`.
 3. Lee `docs/agent-workflow.md` y `docs/branch-channels.md` si la tarea afecta
    Git, el tracker, CI, releases o estados.
 4. Lee `docs/vantare-program/README.md`, sus contratos aplicables y el unico
    handoff vivo del proyecto.
-5. Lee dependencias y aceptación en Notion, la referencia GitHub que consume CI
-   y el plan, ADR o microplan vigente.
+5. Lee la issue de GitHub, sus dependencias y el plan, ADR o microplan vigente.
 6. Lee el codigo y los tests que demuestran el comportamiento actual.
 
 Las decisiones recientes del expediente canonico y la evidencia del runtime
-prevalecen sobre planes historicos. La tarea Notion es la autoridad para alcance,
-dependencias y estado; GitHub demuestra rama, PR, CI e integración; no sustituye los contratos de producto o
+prevalecen sobre planes historicos. La issue de GitHub es la autoridad para alcance,
+dependencias, rama y estado; no sustituye los contratos de producto o
 arquitectura. No uses la skill `vantare-core`: esta desactualizada.
-
-Si un contrato pide `docs/roadmap/plan.md`, comprueba primero que existe en la
-rama. Si falta, desde la raíz Git comprueba
-`git cat-file -e origin/nightly:vantare-v2/docs/roadmap/plan.md` y, solo si
-existe, léelo con `git show origin/nightly:vantare-v2/docs/roadmap/plan.md`.
-En la base de #1483 tampoco existe en `origin/nightly` verificado; no inventes
-una ruta ni recrees el plan. Registra la ausencia y la contradicción con el
-contrato que exige actualizar alcance y entregas en el mismo PR para decisión
-de Isaac: consultar otra rama no cumple ese requisito ni autoriza omitirlo.
-El checkout contiene `docs/roadmap-maintenance.md`; no sustituye por sí solo
-la regla del mismo PR ni autoriza publicar cambios.
 
 ## Reglas generales
 
@@ -92,12 +69,10 @@ la regla del mismo PR ni autoriza publicar cambios.
   afirmes uno sin verificar la rama/SHA remota, PR, CI y release aplicables.
 - Cada proyecto mantiene un unico handoff vivo. Actualizalo despues de cada
   worker, decision o cambio material de estado, arquitectura, evidencia,
-  riesgos o siguiente accion. Notion contiene la continuidad operativa; Git
-  conserva la evidencia técnica versionada con enlace a la tarea.
-- Toda ejecución requiere tarea Notion antes de editar. Registrar Estado,
-  Proyecto, Agente, alcance, dependencias y siguiente paso. Los hallazgos fuera
-  de alcance van a Notion como pendientes; no se ejecutan sin alcance autorizado.
-  Releer después de escribir y registrar bloqueos de acceso sin simular éxito.
+  riesgos o siguiente accion; refleja el mismo estado real en la issue de GitHub.
+- Todo trabajo nuevo debe estar cubierto por una issue de GitHub antes de
+  editar. Los hallazgos fuera de alcance se documentan como issues y no se
+  incorporan silenciosamente.
 - La delegacion tiene un solo nivel por defecto: el orquestador puede crear
   workers, pero un worker no puede crear subagentes ni delegar su tarea salvo
   autorizacion expresa y acotada del orquestador. No ejecutes dos agentes en
@@ -112,16 +87,16 @@ la regla del mismo PR ni autoriza publicar cambios.
   compilador HTML, scaffolder o registro generico salvo una decision nueva.
   Los HTML son contratos visuales; el fondo del escenario no forma parte del
   widget ni de sus capturas de paridad.
-- Si tocas drag/resize del canvas V3 del legado Wails, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
-- El alcance, las dependencias y el estado operativo viven en la tarea Notion.
-  El roadmap público muestra varias vistas gráficas de una única publicación.
-  Isaac indica los cambios a Codex por chat; Codex actualiza la publicación
-  compartida en Supabase tras comprobar la versión vigente. La app solo lee.
-  No hay editor en la app, archivo de contenido ni requisito de modificar el
-  roadmap en cada PR.
-- Cada tarea vive bajo su **Proyecto** y, si está comprometida para una versión,
-  su **Hito** en Notion. Conservar labels/milestones GitHub solo cuando los
-  consumidores técnicos actuales los necesitan. El hito agrupa las entregas de una
+- Si tocas drag/resize del canvas V3, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
+- El alcance, las dependencias y el estado operativo viven en la issue de GitHub.
+  El roadmap público es una publicación compartida en Supabase; Isaac indica
+  los cambios a Codex por chat y la app solo lee. Consulta
+  `docs/roadmap-maintenance.md`. No hay editor en la app ni requisito de
+  modificar el roadmap en cada PR. `docs/roadmap/plan.md` y
+  `.github/scripts/roadmap_digest.py` fueron retirados de nightly; no se recrean.
+- Cada issue vive bajo su **proyecto** (label `area:*`, columna del GitHub
+  Project **Vantare**) y, si esta comprometida para una version, bajo su
+  **milestone** de GitHub. El milestone agrupa las features que justifican una
   promocion de canal: cuando se cierra al 100%, ese corte es **candidato** a
   subir de nightly a testers, y de testers a master tras su validacion. La
   promocion la dispara una persona, nunca el cierre automatico del milestone.
@@ -176,8 +151,7 @@ léela antes de planificar o delegar.
 
 ## Autoridad y acciones externas
 
-Dentro de una tarea Notion aprobada, los agentes pueden actualizar Notion y
-las referencias técnicas necesarias, crear o actualizar
+Dentro de una issue aprobada, los agentes pueden crear o actualizar issues,
 ramas, worktrees, commits, pushes, PRs draft, CI, documentacion y reviews.
 
 Requieren autorizacion explicita de Isaac:
@@ -199,9 +173,8 @@ Requieren autorizacion explicita de Isaac:
 6. Ejecuta los checks aplicables.
 7. Resume evidencia y verificacion manual.
 8. Revisa el diff completo y la evidencia; no confies solo en el resumen de un worker.
-9. Actualiza y relee la tarea y continuidad del proyecto en Notion después de
-   cada worker o cambio material; enlaza el handoff técnico versionado. Si Isaac
-   pide cambiar el roadmap público, actualiza la publicación compartida según
+9. Actualiza el handoff y la issue de GitHub después de cada worker o cambio
+   material. Si Isaac pide cambiar el roadmap público, sigue
    `docs/roadmap-maintenance.md`.
 
 ## Stop conditions
@@ -215,7 +188,7 @@ Para y pide revision si:
 - Encuentras cambios previos que chocan con tu tarea.
 - No sabes como verificar el resultado.
 - Hay contradicciones entre documentos.
-- La base, rama o SHA no coincide con la tarea Notion y su referencia técnica.
+- La base, rama o SHA no coincide con la issue.
 - La accion requiere una autorizacion reservada a Isaac.
 
 ## Ruta nativa
@@ -294,11 +267,33 @@ registra los checks omitidos y el motivo.
 - No mezcles UI con persistencia o logica core sin necesidad.
 - No cambies configuracion de build salvo que la tarea lo pida.
 
+## Compilacion Rust (`native/`)
+
+Cada worktree compila el workspace entero en su propio `target/` (~8 GB).
+Con varios workers en paralelo el disco se llena y los corta (ISA-1494).
+
+- Compila siempre a traves de la cola:
+  `pwsh -File native/scripts/compilar.ps1 <comando> [args...]`
+  (p. ej. `... compilar.ps1 cargo nextest run --workspace`). La cola limita
+  las compilaciones simultaneas (`VANTARE_CARGO_SLOTS`, 4 por defecto) y
+  espera si hay menos RAM libre que `VANTARE_CARGO_MIN_GB` (5 por defecto).
+- La cola activa `sccache` (`RUSTC_WRAPPER`) si esta instalado: las
+  dependencias ya compiladas en otro worktree se reutilizan. Ahorra tiempo,
+  no disco: cada `target/` sigue guardando su copia. Instalalo una vez con
+  `scoop install sccache`. Si una compilacion falla sin diagnostico del
+  compilador, repitela con `$env:VANTARE_SCCACHE='0'` y anota el caso en la
+  evidencia; no lo trates como fallo del codigo.
+- Al entregar el trabajo de un worktree, o si lleva dias sin usarse, borra su
+  `native/target/`; es cache y se regenera. Para podar sin borrarlo todo:
+  `cargo sweep --time 3` (artefactos sin usar en 3 dias).
+- Si la maquina tiene un segundo disco, deja alli los artefactos grandes que no
+  son cache (instaladores, builds de prueba, capturas pesadas). No guardes
+  copias de `target/` en carpetas de evidencia.
+
 ## Testing
 
-- En `native/`, el gate `test` no reproduce las grabaciones reales de telemetria
-  (~9 min). Si el cambio toca `native/runtime`, `native/domain`, `native/ipc` o
-  `testdata/`, pasa tambien `native/gates.ps1 -Gate telemetria` (#1498).
+- Si tocas runtime, domain, ipc o testdata, pasa también el gate telemetria (#1498).
+
 - Todo cambio de comportamiento necesita test o explicacion de por que no.
 - Bugs corregidos necesitan test de regresion cuando sea viable.
 - Antes de refactorizar comportamiento existente, crea o identifica tests que lo protejan.
@@ -320,7 +315,7 @@ registra los checks omitidos y el motivo.
 
 - Grandes rewrites.
 - Microservicios prematuros.
-- Cambios de arquitectura fuera de la decisión Rust + GPUI aceptada en ADR 0099 y de sus fases autorizadas.
+- Cambios de arquitectura fuera de ADR 0099 y sus fases autorizadas.
 - Abstracciones enormes.
 - Interfaces con una sola implementacion sin justificacion.
 - Factories/providers/managers innecesarios.
@@ -336,7 +331,7 @@ registra los checks omitidos y el motivo.
 
 Al terminar, informa:
 
-- URL/ID de la tarea Notion, proyecto, estado y última actualización verificada.
+- URL/número de la issue GitHub, proyecto, estado y última actualización verificada.
 - Archivos creados/modificados/movidos.
 - Tests o checks ejecutados y resultado.
 - Checks no ejecutados y motivo.

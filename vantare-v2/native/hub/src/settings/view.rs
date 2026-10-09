@@ -325,9 +325,9 @@ impl Hub {
                 "Prepara un informe del estado de Vantare, sin contraseñas ni datos de la carrera.",
             ),
             Page::Application => (
-                "Huella en pista",
+                "Preferencias del Hub",
                 "v-gauge",
-                "El consumo de CPU y memoria se mostrará cuando haya una medición disponible.",
+                "Los cambios se guardan en este equipo. Empezar minimizado se aplica en el siguiente arranque.",
             ),
         };
         rail.push(orbit::RailSection::new(
@@ -699,6 +699,9 @@ impl Hub {
                 prefs.minimized,
             ),
         ] {
+            if index == 0 && !cfg!(windows) {
+                continue;
+            }
             start = start.child(section_row(
                 label,
                 help,
@@ -731,6 +734,9 @@ impl Hub {
                 prefs.toasts,
             ),
         ] {
+            if index == 4 && !cfg!(windows) {
+                continue;
+            }
             notices = notices.child(section_row(
                 label,
                 help,
@@ -739,7 +745,7 @@ impl Hub {
                 cx,
             ));
         }
-        if prefs.toasts {
+        if cfg!(windows) && prefs.toasts {
             notices = notices.child(
                 orbit::small_button("general-test", "Enviar prueba", cx)
                     .track_focus(&self.settings.general_focus[5])

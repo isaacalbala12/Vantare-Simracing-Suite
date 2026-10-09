@@ -145,7 +145,7 @@ impl super::Hub {
         body: &str,
         cx: &mut gpui::Context<Self>,
     ) {
-        if self.general_preferences().toasts {
+        if cfg!(windows) && self.general_preferences().toasts {
             cx.show_system_notification(gpui::SystemNotification {
                 tag: tag.to_owned().into(),
                 title: title.to_owned().into(),
@@ -155,6 +155,9 @@ impl super::Hub {
         }
     }
     pub(super) fn test_notification(&mut self, cx: &mut gpui::Context<Self>) {
+        if !cfg!(windows) || !self.general_preferences().toasts {
+            return;
+        }
         self.notify_system("vantare.test", "Vantare", "Notificación de prueba", cx);
         self.settings.status =
             Some("Solicitud enviada a Windows. El modo No molestar puede ocultar el aviso.".into());

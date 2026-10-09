@@ -104,7 +104,9 @@ mod win {
 pub(super) fn startup(enabled: bool) -> Result<(), String> {
     #[cfg(windows)]
     {
-        let command = if let Some(root) = std::env::var_os("VANTARE_BETA_ROOT") {
+        let command = if !enabled {
+            None
+        } else if let Some(root) = std::env::var_os("VANTARE_BETA_ROOT") {
             let root = std::path::PathBuf::from(root);
             let script = root.join("beta.ps1");
             if !script.is_file() {
@@ -113,19 +115,16 @@ pub(super) fn startup(enabled: bool) -> Result<(), String> {
             let system = std::env::var_os("SystemRoot").ok_or("Windows sin SystemRoot")?;
             let executable = std::path::PathBuf::from(system)
                 .join("System32/WindowsPowerShell/v1.0/powershell.exe");
-            format!(
-                "{} -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File {} -Root {}",
-                quote(&executable)?,
-                quote(&script)?,
-                quote(&root)?
-            )
+            Some(installed_command(&executable, &root)?)
         } else {
-            quote(&std::env::current_exe().map_err(|error| error.to_string())?)?
+            Some(quote(
+                &std::env::current_exe().map_err(|error| error.to_string())?,
+            )?)
         };
         win::sync_run(
             r"Software\Microsoft\Windows\CurrentVersion\Run",
             "VantareNative.Hub",
-            enabled.then_some(command.as_str()),
+            command.as_deref(),
         )
         .map_err(|error| format!("Inicio con Windows: {error}"))
     }
@@ -136,7 +135,20 @@ pub(super) fn startup(enabled: bool) -> Result<(), String> {
     }
 }
 
-#[cfg(windows)]
+#[cfg(any(windows, test))]
+fn installed_command(
+    executable: &std::path::Path,
+    root: &std::path::Path,
+) -> Result<String, String> {
+    Ok(format!(
+        "{} -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File {} -Root {}",
+        quote(executable)?,
+        quote(&root.join("beta.ps1"))?,
+        quote(root)?
+    ))
+}
+
+#[cfg(any(windows, test))]
 fn quote(path: &std::path::Path) -> Result<String, String> {
     let value = path.to_str().ok_or("Ruta de inicio inválida")?;
     if value.contains(['"', '\0']) || value.ends_with('\\') {
@@ -144,7 +156,7 @@ fn quote(path: &std::path::Path) -> Result<String, String> {
     }
     Ok(format!("\"{value}\""))
 }
-#[cfg(all(test, windows))]
+#[cfg(test)]
 mod tests {
     use super::*;
     #[test]
@@ -154,7 +166,18 @@ mod tests {
             "\"C:/Aplicación Vantare/hub.exe\""
         );
         assert!(quote(std::path::Path::new("C:/hub\".exe")).is_err());
+        assert!(quote(std::path::Path::new("C:/hub\0.exe")).is_err());
+        assert!(quote(std::path::Path::new("C:\\Vantare\\")).is_err());
+        assert_eq!(
+            installed_command(
+                std::path::Path::new("C:/Windows/powershell.exe"),
+                std::path::Path::new("C:/Aplicación Vantare")
+            )
+            .expect("arranque estable"),
+            "\"C:/Windows/powershell.exe\" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:/Aplicación Vantare/beta.ps1\" -Root \"C:/Aplicación Vantare\""
+        );
     }
+    #[cfg(windows)]
     #[test]
     fn run_value_is_created_and_removed_in_an_isolated_user_key() {
         let name = format!(

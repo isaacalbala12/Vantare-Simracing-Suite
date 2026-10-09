@@ -472,6 +472,14 @@ impl Prepared {
                 .instances
                 .first()
                 .map(|item| item.id.clone());
+            if std::env::var("VANTARE_CAPTURE_WIDGET").as_deref() == Ok("delta") {
+                editor.selected = editor
+                    .layout()
+                    .instances
+                    .iter()
+                    .find(|item| item.settings.kind() == Kind::Delta)
+                    .map(|item| item.id.clone());
+            }
         }
         #[cfg(feature = "parity-capture")]
         if let Some(name) = capture_name() {
@@ -694,7 +702,7 @@ impl CanvasFrame {
             .map_or((self.item.x, self.item.y), |drag| drag.preview);
         let (x, y) = self.resize.as_ref().map_or((x, y), |r| r.preview.0);
         let (x, y) = self.nudge_position.unwrap_or((x, y));
-        let dimensions = self.renderer.read(cx).frame_size();
+        let dimensions = self.renderer.read(cx).painted_size();
         div()
             .id("widget-frame")
             .absolute()
@@ -1124,10 +1132,11 @@ impl Studio {
                 this.select(id.clone(), cx);
                 frame.update(cx, |frame, cx| {
                     if let Some(handle) = event.1 {
-                        let size = frame
-                            .item
-                            .geometry
-                            .resolved(frame.renderer.read(cx).wanted_size());
+                        let painted = frame.renderer.read(cx).painted_size();
+                        let size = vantare_ui::geometry::Size {
+                            width: painted.0,
+                            height: painted.1,
+                        };
                         frame.resize = Some(Resize {
                             pointer: (event.0.x.into(), event.0.y.into()),
                             origin: (frame.item.x, frame.item.y),
@@ -3472,6 +3481,50 @@ mod tests {
                 });
             }
             assert!(sizes.windows(2).all(|pair| pair[0] == pair[1]));
+            cx.quit();
+        });
+    }
+    #[test]
+    fn selection_matches_painted_bounds_for_every_widget_and_zoom() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            let frame = studio.read(cx).frames[0].1.clone();
+            for &kind in Kind::ALL {
+                for factor in [0.5, 1.0, 2.0] {
+                    frame.update(cx, |frame, cx| {
+                        frame.item.settings = Settings::default_for(kind);
+                        frame.renderer.update(cx, |renderer, _| {
+                            *renderer =
+                                Overlay::configured(&frame.item.settings, Preferences::default());
+                            let natural = renderer.wanted_size();
+                            renderer.set_frame_size(Some(vantare_ui::geometry::Size {
+                                width: natural.0 * factor,
+                                height: natural.1 * factor * 2.0,
+                            }));
+                        });
+                        let natural = frame.renderer.read(cx).wanted_size();
+                        for zoom in [0.1, 0.5, 1.0, 2.5, 4.0] {
+                            frame.preview_scale = zoom;
+                            frame.content_scale = 1.0;
+                            frame.selected = true;
+                            let expected = (natural.0 * factor * zoom, natural.1 * factor * zoom);
+                            let mut host = frame.element(cx);
+                            assert_eq!(
+                                host.style().size.width,
+                                Some(px(expected.0).into()),
+                                "{kind:?} ancho a {zoom}"
+                            );
+                            assert_eq!(
+                                host.style().size.height,
+                                Some(px(expected.1).into()),
+                                "{kind:?} alto a {zoom}"
+                            );
+                        }
+                    });
+                }
+            }
             cx.quit();
         });
     }

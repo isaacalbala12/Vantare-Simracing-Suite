@@ -1192,6 +1192,46 @@ mod demand_tests {
         }
     }
 
+    /// Heredar valores retenidos solo dentro del mismo ámbito: otra época,
+    /// sesión, estado de fuente, jugador o parrilla entregada empieza de cero.
+    #[test]
+    fn held_values_are_inherited_only_within_the_same_scope() {
+        let old = SnapshotDto::from(&crate::codec::tests::rich_snapshot(1, 1));
+        let cars = Demand::from_mask(Signal::Positions.bit());
+        let player = Demand::from_mask(Signal::Pedals.bit());
+        let session = Demand::from_mask(Signal::Weather.bit());
+        let other_player = |dto: &mut SnapshotDto| dto.state.player.as_mut().unwrap().car += 1;
+        let other_car = |dto: &mut SnapshotDto| dto.state.cars[0].id += 100;
+        let fewer_cars = |dto: &mut SnapshotDto| {
+            dto.state.cars.pop();
+        };
+        type Change = fn(&mut SnapshotDto);
+        let cases: [(&str, Change, &Demand, bool); 12] = [
+            ("igual", |_| {}, &cars, true),
+            ("época", |dto| dto.epoch += 1, &session, false),
+            ("sesión", |dto| dto.state.session.id ^= 1, &session, false),
+            (
+                "estado",
+                |dto| dto.state.source_state = SourceStateDto::Paused,
+                &session,
+                false,
+            ),
+            ("jugador con pedales", other_player, &player, false),
+            ("jugador con coches", other_player, &cars, false),
+            ("jugador sin entregar", other_player, &session, true),
+            ("coche con coches", other_car, &cars, false),
+            ("coche sin entregar", other_car, &player, true),
+            ("parrilla con coches", fewer_cars, &cars, false),
+            ("parrilla sin entregar", fewer_cars, &session, true),
+            ("secuencia", |dto| dto.sequence += 1, &cars, true),
+        ];
+        for (name, change, delivered, same) in cases {
+            let mut next = old.clone();
+            change(&mut next);
+            assert_eq!(next.same_scope(&old, delivered), same, "{name}");
+        }
+    }
+
     #[test]
     fn an_omitted_signal_cannot_be_claimed_as_delivered_unavailable() {
         let source = crate::codec::tests::rich_snapshot(1, 1);

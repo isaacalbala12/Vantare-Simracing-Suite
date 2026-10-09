@@ -1990,3 +1990,15 @@ Regresión3500/8000ms con reloj simulado, revocación/ausencia/TTL/logout; sin s
 Banco ui-quality aloja un peer separado de solo lectura contractual QA, sin licencia
 comercial. Base02441013, rama de integración; #1514 intacta y PR1523 recibirá defecto
 con referencias/arreglo. E4, gates y Setup0.0.972/QA pendientes; sin promoción.
+
+
+### #1496 — cierre v5 verificado (2026-10-09)
+
+- Fuente 5b86fbc34b1f3375ddceef69fa0f5987ceb60f9c; árbol nativo ce76ecd8c5169a9f76bd7de4604a4c4c293c874e, base v5 02441013/integración55e97390, misma rama aislada. Este bloque cierra los pendientes v5 anteriores; documentación posterior conserva el árbol probado. Diff completo revisado.
+- F4: Feed autenticado de solo lectura independiente de LicenseRenew; reply tardío no pisa derechos; confirmación desde núcleo detiene la espera. Sesión/logout/TTL2s/revocación/ausencia siguen cerrados, sin retocar checked_at/grants. Regresión3500/8000ms con reloj, sin sleep; Hub real con ambas demoras PASS.
+- Gates PASS: fmt, Clippy -Dwarnings, Nextest1299 (7 skips), lifecycle18 y telemetria21 (0 skips); packaging Bash175/99/50. Cargo y ambos Setup finales v5 solo por cola. QA/parity conserva warning heredado, Clippy canónico limpio; pilotos fallidos conservados y explicados.
+- E4:48PNG compactos DPI96 (checkpoint337),12 a125% Windows/DPI120 (5b), tres estados/ambos carriles/mensaje largo/claro.60 hashes/dimensiones y400 bounds PASS; originales representativos y regiones medidas. Scroll interno existente muestra Ingeniero con acciones inmóviles; sin cambio de layout. Delta337→5b no cambia esta composición Free. Windows restaurado100%.
+- E3: gesto8s/settings/persistencia al soltar/undo, Launcher QA lanzar/cancelar, catálogo LE→Pro→LE→Free→Pro/save/reopen, Testing fixture una vez/recibo/borrador, Calendario/Roadmap resultados/errores y favoritas/campanas PASS. Agenda densa11series QA completada. No acredita latencia general/input→Present ni18instancias.
+- Setup0.0.972 E:/tmp/beta-local/0.0.972/VantareSetup.exe, fuente5b limpia/Release/dev/NotSigned; SHA256E78741E2450750759A637DF59C6C077F03281301D73EB314D5E95BAAAB9E9807. QA1492 instalada/retirada, primer consentimiento y rechazo/reapertura/puerta de sesión sin servicio; no login comercial. Inventario real nuevo idéntico C8E36EF7A93905E8EFBF96A2BEA0FF947FABFA75951E09F77C89AFC694AAEC6D, mutex libre; datos QA retenidos.
+- F4 notificado en comentario PR1523#6078461742 con archivo/líneas/motivo/arreglo de fuente native aacd1e4d; #1514 intacta. Remoto33be660d/draft no publica el Hub: pendiente traslado por su worker. Evidencia/manual/archivos/omisiones en C:/tmp/ui-r10/integracion-v5-evidence/VERIFICACION.md; bloque v5≤6líneas en C:/tmp/ui-r10/informe-integracion-arreglos.md.
+- Pendientes: nueva review≥9, aceptación, traslado#1514, CI remota y matriz comercial real. Sin delegación/push/PR nuevo/merge/promoción/release/deploy/firma/pago; solo comentarios autorizados. plan.md ausente en base, no se inventa otro roadmap.

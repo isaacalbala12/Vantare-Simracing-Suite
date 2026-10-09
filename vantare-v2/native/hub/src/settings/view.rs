@@ -317,6 +317,108 @@ impl Hub {
         tabs
     }
 
+    fn settings_appearance_preview(&self, cx: &gpui::App) -> Div {
+        let launcher = self.launcher.read(cx);
+        let selected = launcher.default_profile_id();
+        let profile = launcher
+            .saved_profiles()
+            .iter()
+            .find(|profile| selected.as_deref() == Some(profile.id.as_str()));
+        let mut navigation = div()
+            .w(px(88.0))
+            .flex_none()
+            .flex()
+            .flex_col()
+            .gap(px(6.0))
+            .p(px(8.0))
+            .bg(rgb(orbit::surface_2(cx)))
+            .child(orbit::meta("VANTARE", 9.0, orbit::ink(cx), cx));
+        for (label, icon, active) in [
+            ("Inicio", "v-home", true),
+            ("Launcher", "v-launch", false),
+            ("Studio", "v-studio", false),
+        ] {
+            navigation = navigation.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(5.0))
+                    .p(px(5.0))
+                    .rounded(px(orbit::skin(cx).radius.sm))
+                    .when(active, |row| row.bg(orbit::tint(orbit::carmine(cx), 0.14)))
+                    .child(orbit::icon(icon, 11.0, orbit::ink_2(cx)))
+                    .child(orbit::text(label, 10.0, 500, orbit::ink_2(cx), cx)),
+            );
+        }
+        orbit::neo_card(cx)
+            .p_0()
+            .gap_0()
+            .overflow_hidden()
+            .child(
+                orbit::meta(
+                    cx.global::<orbit::theme::Theme>().palette.label(),
+                    10.0,
+                    orbit::ink_3(cx),
+                    cx,
+                )
+                .px(px(10.0))
+                .py(px(8.0)),
+            )
+            .child(
+                div().flex().child(navigation).child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .p(px(10.0))
+                        .flex()
+                        .flex_col()
+                        .gap(px(8.0))
+                        .child(orbit::text("Tu perfil", 12.0, 600, orbit::ink(cx), cx))
+                        .child(
+                            orbit::hero_surface(cx)
+                                .p(px(10.0))
+                                .gap(px(6.0))
+                                .child(
+                                    orbit::text(
+                                        profile.map_or("Sin perfil favorito", |profile| {
+                                            profile.name.as_str()
+                                        }),
+                                        16.0,
+                                        600,
+                                        orbit::ink(cx),
+                                        cx,
+                                    )
+                                    .truncate(),
+                                )
+                                .when_some(profile, |card, profile| {
+                                    card.child(orbit::meta(
+                                        &format!("{} aplicaciones", profile.steps.len()),
+                                        10.0,
+                                        orbit::ink_2(cx),
+                                        cx,
+                                    ))
+                                }),
+                        )
+                        .child(
+                            orbit::pill(
+                                if self.previous_source == Some(true) {
+                                    "Simulador conectado"
+                                } else {
+                                    "Esperando simulador"
+                                },
+                                if self.previous_source == Some(true) {
+                                    Tone::Success
+                                } else {
+                                    Tone::Neutral
+                                },
+                                cx,
+                            )
+                            .self_start(),
+                        ),
+                ),
+            )
+    }
+
     #[allow(clippy::too_many_lines)] // Composición del carril de las siete páginas, sin lógica de negocio.
     pub(in crate::shell) fn settings_rail(
         &self,
@@ -461,31 +563,7 @@ impl Hub {
             rail.push(orbit::RailSection::new(
                 "Vista previa",
                 "v-palette",
-                orbit::neo_card(cx)
-                    .flex_shrink(0.0)
-                    .child(orbit::neo_header("Vantare", "v-home", cx))
-                    .child(text(
-                        cx.global::<orbit::theme::Theme>().palette.label(),
-                        20.0,
-                        700,
-                        orbit::ink(cx),
-                        cx,
-                    ))
-                    .child(text(
-                        "Así se ven las tarjetas, los textos y los controles con tu tema.",
-                        13.0,
-                        400,
-                        orbit::ink_2(cx),
-                        cx,
-                    ))
-                    .child(orbit::pill("Tema actual", Tone::Accent, cx).self_start())
-                    .child(
-                        orbit::carmine_button("theme-preview-button", "Botón primario", cx)
-                            .self_start()
-                            .tab_stop(false)
-                            .cursor_default(),
-                    )
-                    .child(orbit::progress(0.65, cx)),
+                self.settings_appearance_preview(cx),
             ));
         }
         if self.settings.page == Page::Application {

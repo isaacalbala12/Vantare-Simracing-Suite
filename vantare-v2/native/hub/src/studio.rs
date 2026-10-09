@@ -171,6 +171,10 @@ fn preview_origin(width: f32, height: f32, scale: f32, resolution: CanvasResolut
     )
 }
 
+fn selection_caption_top(client_y: f32, scale: f32) -> f32 {
+    (-22.0_f32).max(-client_y * scale)
+}
+
 /// El documento conserva posiciones globales; el lienzo muestra el monitor de sus overlays.
 fn overlay_monitor(
     layout: &Layout,
@@ -737,7 +741,10 @@ impl CanvasFrame {
                         .whitespace_nowrap()
                         .line_height(px(14.0))
                         .absolute()
-                        .top(px(-22.0))
+                        .top(px(selection_caption_top(
+                            y - self.client_origin.1,
+                            self.preview_scale,
+                        )))
                         .left_0()
                         .px(px(5.0))
                         .bg(rgb(orbit::carmine(cx))),
@@ -3634,6 +3641,20 @@ mod tests {
             overlay_monitor(editor.layout(), &[primary, secondary], primary),
             primary
         );
+    }
+    #[test]
+    fn selection_caption_stays_inside_canvas_at_ultrawide_fit_without_moving_frame() {
+        for y in [0.0, 62.0, 300.0] {
+            for scale in [0.1, 0.25, 0.5, 1.0, 1.5] {
+                let frame_top = y * scale;
+                let caption_top = selection_caption_top(y, scale);
+                assert!(frame_top + caption_top >= 0.0);
+                assert!((-22.0..=0.0).contains(&caption_top));
+                if frame_top >= 22.0 {
+                    assert!((caption_top + 22.0).abs() < f32::EPSILON);
+                }
+            }
+        }
     }
     #[test]
     fn canvas_resolution_changes_preview_and_anchors_without_moving_widgets() {

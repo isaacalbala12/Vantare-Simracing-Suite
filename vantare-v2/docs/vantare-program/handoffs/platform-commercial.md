@@ -1958,3 +1958,10 @@ F3: los tres productos usan orbit::disabled con motivos distintos por falta de
 sesión/acción explícita. Mantienen la guarda del handler; background no deshabilita.
 UIA/Tab/Enter/Espacio/click se verificarán en el banco IPC aislado. Sin cambios de
 protocolo, identidad, OAuth, firma, dependencias ni packaging productivo.
+
+### #1496 — v4: solicitud de Roadmap durante sondeo
+QA del consumidor detecta una guarda busy residual en ensure_roadmap. Se usa
+working y la cola existente, sin ocupar ni sustituir otra acción pendiente; la
+composición alternativa llama al mismo método. Regresión del reply demorado y
+publicación encolada añadida. Gates y binarios anteriores se conservan como
+checkpoint a3b4723f; se repetirán sobre el código final. Sin cambio de IPC/arquitectura.

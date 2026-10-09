@@ -6141,3 +6141,10 @@ para replies locales del contrato. VANTARE_CAPTURE_POLICY=ipc permite probar
 actualizaciones reales de Remote en la shell de captura; otras capturas congeladas
 conservan su excepción. Ninguna fixture crea derechos comerciales. F1 final4272ce46,
 F28a919220 y F3c1172111; regresiones enfocadas5/5. Matriz y gates finales en curso.
+
+### #1496 — v4: solicitud de Roadmap durante sondeo
+QA del consumidor detecta una guarda busy residual en ensure_roadmap. Se usa
+working y la cola existente, sin ocupar ni sustituir otra acción pendiente; la
+composición alternativa llama al mismo método. Regresión del reply demorado y
+publicación encolada añadida. Gates y binarios anteriores se conservan como
+checkpoint a3b4723f; se repetirán sobre el código final. Sin cambio de IPC/arquitectura.

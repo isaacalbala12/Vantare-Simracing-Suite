@@ -1400,7 +1400,7 @@ impl Remote {
         }
     }
     pub(crate) fn ensure_roadmap(&mut self, cx: &mut Context<Self>) {
-        if !self.roadmap_requested && !self.busy() {
+        if !self.roadmap_requested && !self.working() && self.queued.is_none() {
             self.roadmap_requested = true;
             self.request(Command::RoadmapCached, cx);
         }
@@ -1408,10 +1408,7 @@ impl Remote {
 
     #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
     pub fn published_roadmap(&mut self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
-        if !self.roadmap_requested && !self.busy() {
-            self.roadmap_requested = true;
-            self.request(Command::RoadmapCached, cx);
-        }
+        self.ensure_roadmap(cx);
         let mut body = div().flex().flex_col().flex_1().min_h_0().gap(px(16.0));
         if let Some(publication) = &self.publication {
             body = body.child(orbit::text(
@@ -1826,6 +1823,47 @@ mod purchase_tests {
                     remote.working(),
                     "renovación manual relee OAuth con feedback"
                 );
+            });
+            cx.quit();
+        });
+    }
+    #[test]
+    fn roadmap_request_queues_once_during_a_delayed_purchase_poll() {
+        gpui_platform::headless().run(|cx| {
+            let file = crate::document::tests::File::new();
+            let (send, requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            remote.update(cx, |remote, cx| {
+                assert!(
+                    remote.dispatch_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew))
+                );
+                assert!(matches!(requests.try_recv(), Ok(Command::LicenseRenew)));
+                remote.ensure_roadmap(cx);
+                remote.ensure_roadmap(cx);
+                assert!(remote.roadmap_requested);
+                assert!(!remote.working());
+                assert!(requests.try_recv().is_err());
+                remote.complete(license(vantare_ipc::control::CatalogAccess::Free), cx);
+                assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
+                remote.complete(
+                    Reply::Account {
+                        signed_in: true,
+                        expires_at: Some(u64::MAX),
+                        pending: false,
+                        message: "QA".into(),
+                        error: None,
+                    },
+                    cx,
+                );
+                assert!(matches!(requests.try_recv(), Ok(Command::RoadmapCached)));
+                assert!(requests.try_recv().is_err());
+                remote.complete(
+                    Reply::Error {
+                        message: "QA error de publicación encolada".into(),
+                    },
+                    cx,
+                );
+                assert_eq!(remote.roadmap_status(), "QA error de publicación encolada");
             });
             cx.quit();
         });

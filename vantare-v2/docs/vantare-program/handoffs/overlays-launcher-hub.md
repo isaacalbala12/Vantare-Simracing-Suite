@@ -6134,3 +6134,10 @@ catálogo, respeta geometría y omite ingest/pintado del contenido denegado.
 Regresión Pro→LE sin editar el layout añadida; gates y matriz QA en curso.
 Clippy inicial detectó únicamente orden del helper respecto al módulo de tests;
 corregido sin debilitar el gate. plan.md ausente, no recreado; sin promoción.
+
+### #1496 — v4: banco QA integrado
+Banco ui-quality existente: --qa-catalog free/launch/pro y fresh_policy explícito
+para replies locales del contrato. VANTARE_CAPTURE_POLICY=ipc permite probar
+actualizaciones reales de Remote en la shell de captura; otras capturas congeladas
+conservan su excepción. Ninguna fixture crea derechos comerciales. F1 final4272ce46,
+F28a919220 y F3c1172111; regresiones enfocadas5/5. Matriz y gates finales en curso.

@@ -101,7 +101,7 @@ fn serve(root: &std::path::Path, name: &str, stop: Arc<Event>) -> Result<(), Str
             if let Some(delay) = script["delay_ms"][key].as_u64() {
                 stop.wait(Duration::from_millis(delay.min(10_000)));
             }
-            let reply = match &request.command {
+            let mut reply = match &request.command {
                 Command::DraftSave { fields } => {
                     let saved = protocol::report_document::Draft {
                         schema_version: 1,
@@ -150,6 +150,11 @@ fn serve(root: &std::path::Path, name: &str, stop: Arc<Event>) -> Result<(), Str
                 _ => serde_json::from_value(script[key].clone())
                     .map_err(|error| format!("reply QA {key}: {error}"))?,
             };
+            if script["fresh_policy"].as_bool() == Some(true)
+                && let Reply::License { policy, .. } = &mut reply
+            {
+                policy.checked_at_ms = control::wall_ms().map_err(|error| error.to_string())?;
+            }
             if protocol::write(
                 &mut pipe,
                 &Response {
@@ -200,6 +205,12 @@ fn main() -> Result<(), String> {
             serde_json::from_slice::<AppearanceSettings>(&bytes).map_err(|error| error.to_string())
         })
         .transpose()?;
+    let catalog = match argument(&args, "--qa-catalog").as_deref() {
+        None | Some("free") => control::CatalogAccess::Free,
+        Some("launch") => control::CatalogAccess::LaunchV1,
+        Some("pro") => control::CatalogAccess::Pro,
+        Some(_) => return Err("catálogo QA inválido".into()),
+    };
     let name = format!("vantare-ui-quality-{}", std::process::id());
     let stop = Arc::new(Event::new().map_err(|error| error.to_string())?);
     let telemetry = if args.iter().any(|arg| arg == "--qa-telemetry") {
@@ -236,6 +247,7 @@ fn main() -> Result<(), String> {
         options,
         Access {
             verified: true,
+            catalog,
             engineer: true,
             strategy: true,
             analysis: true,

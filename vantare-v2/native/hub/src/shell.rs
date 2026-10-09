@@ -59,6 +59,7 @@ struct Hub {
     shell: chrome::State,
     demo: Option<crate::demo::DemoData>,
     capture: Option<crate::demo::CaptureState>,
+    live_capture_policy: bool,
     focus: FocusHandle,
     workshop: Entity<Workshop>,
     studio: Entity<Studio>,
@@ -210,7 +211,7 @@ impl Hub {
     }
 
     fn refresh_access(&mut self, cx: &mut Context<Self>) {
-        if self.capture.is_none() {
+        if self.capture.is_none() || self.live_capture_policy {
             let access = self.remote.update(cx, |remote, cx| {
                 remote.refresh_license(cx);
                 remote.navigation_access()
@@ -1059,6 +1060,11 @@ impl Hub {
             capture.is_some() && std::env::var_os("VANTARE_CAPTURE_POLICY").is_some();
         #[cfg(not(feature = "parity-capture"))]
         let capture_policy = false;
+        #[cfg(feature = "parity-capture")]
+        let live_capture_policy = capture_policy
+            && std::env::var("VANTARE_CAPTURE_POLICY").is_ok_and(|value| value == "ipc");
+        #[cfg(not(feature = "parity-capture"))]
+        let live_capture_policy = false;
         if (capture.is_none() && demo.is_none()) || capture_policy {
             studio.update(cx, |studio, cx| studio.set_access(access, cx));
         }
@@ -1106,7 +1112,7 @@ impl Hub {
             cx.new(|cx| crate::services::view::Remote::new(service_pipe, &testing_dir, cx));
         calendar.update(cx, |calendar, _| calendar.attach_remote(remote.clone()));
         cx.observe(&remote, |this, remote, cx| {
-            if this.capture.is_none() {
+            if this.capture.is_none() || this.live_capture_policy {
                 this.shell.access = remote.read(cx).navigation_access();
                 this.studio
                     .update(cx, |studio, cx| studio.set_access(this.shell.access, cx));
@@ -1149,6 +1155,7 @@ impl Hub {
             shell: chrome::State::new(access, capture.as_ref(), cx),
             demo,
             capture,
+            live_capture_policy,
             focus,
             workshop,
             studio,

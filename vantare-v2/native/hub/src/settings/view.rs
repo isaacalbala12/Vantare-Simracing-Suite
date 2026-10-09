@@ -1388,7 +1388,14 @@ impl Hub {
                 "En Studio",
                 None,
                 keys(
-                    &[("Deshacer", "Ctrl Z"), ("Rehacer", "Ctrl Mayús Z / Ctrl Y")],
+                    &[
+                        ("Guardar", "Ctrl S"),
+                        ("Deshacer", "Ctrl Z"),
+                        ("Rehacer", "Ctrl Mayús Z / Ctrl Y"),
+                        ("Duplicar widget", "Ctrl D"),
+                        ("Borrar widget", "Supr"),
+                        ("Mover widget 1 px / 8 px", "Flechas / Mayús flechas"),
+                    ],
                     "Con el lienzo de Studio activo",
                 ),
                 cx,

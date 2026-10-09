@@ -21,6 +21,34 @@ const STUDIO_PREVIEW_SCALE: f32 = 700.0 / 1920.0;
 const ZOOM_STEPS: [Option<u16>; 6] = [None, Some(50), Some(75), Some(100), Some(125), Some(150)];
 const AUTO_SAVED: &str = "Guardado";
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum DocumentKey {
+    History(bool),
+    Duplicate,
+    Remove,
+    Save,
+}
+
+fn document_key(key: &gpui::Keystroke) -> Option<DocumentKey> {
+    let modifiers = key.modifiers;
+    if modifiers.alt || modifiers.function {
+        return None;
+    }
+    if modifiers.control || modifiers.platform {
+        match (key.key.to_ascii_lowercase().as_str(), modifiers.shift) {
+            ("z", redo) => Some(DocumentKey::History(redo)),
+            ("y", false) => Some(DocumentKey::History(true)),
+            ("d", false) => Some(DocumentKey::Duplicate),
+            ("s", false) => Some(DocumentKey::Save),
+            _ => None,
+        }
+    } else if !modifiers.shift && key.key == "delete" {
+        Some(DocumentKey::Remove)
+    } else {
+        None
+    }
+}
+
 fn keyboard_nudge(key: &gpui::Keystroke) -> Option<((i8, i8), bool)> {
     if key.modifiers.control
         || key.modifiers.platform
@@ -1163,7 +1191,18 @@ impl Studio {
             self.rebuild(cx);
         }
     }
-    pub(crate) fn handle_key(
+    pub(crate) fn handle_shell_key(
+        &mut self,
+        event: &gpui::KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if document_key(&event.keystroke).is_some() {
+            self.focus.focus(window, cx);
+            self.handle_key(event, window, cx);
+        }
+    }
+    fn handle_key(
         &mut self,
         event: &gpui::KeyDownEvent,
         window: &mut Window,
@@ -1173,14 +1212,18 @@ impl Studio {
         if key.key == "escape" && self.drag.is_some() {
             self.cancel_drag(cx);
             cx.stop_propagation();
-        } else if key.modifiers.control || key.modifiers.platform {
-            if key.key.eq_ignore_ascii_case("z") {
-                self.history(key.modifiers.shift, cx);
-                self.focus.focus(window, cx);
-                cx.stop_propagation();
-            } else if key.key.eq_ignore_ascii_case("y") {
-                self.history(true, cx);
-                self.focus.focus(window, cx);
+        } else if let Some(action) = document_key(key) {
+            // Los campos conservan Supr y sus atajos de edición de texto.
+            if matches!(action, DocumentKey::History(_)) || self.focus.is_focused(window) {
+                if !event.is_held {
+                    match action {
+                        DocumentKey::History(redo) => self.history(redo, cx),
+                        DocumentKey::Duplicate => self.edit(Editor::duplicate, cx),
+                        DocumentKey::Remove => self.edit(Editor::remove, cx),
+                        DocumentKey::Save => self.edit(Editor::persist, cx),
+                    }
+                    self.focus.focus(window, cx);
+                }
                 cx.stop_propagation();
             }
         } else if self.focus.is_focused(window)
@@ -2624,6 +2667,31 @@ impl Render for Studio {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn document_shortcuts_use_exact_modifiers() {
+        for (stroke, expected) in [
+            ("ctrl-z", Some(DocumentKey::History(false))),
+            ("ctrl-shift-z", Some(DocumentKey::History(true))),
+            ("ctrl-y", Some(DocumentKey::History(true))),
+            ("cmd-z", Some(DocumentKey::History(false))),
+            ("ctrl-d", Some(DocumentKey::Duplicate)),
+            ("ctrl-s", Some(DocumentKey::Save)),
+            ("delete", Some(DocumentKey::Remove)),
+            ("ctrl-alt-z", None),
+            ("ctrl-alt-d", None),
+            ("ctrl-shift-d", None),
+            ("shift-delete", None),
+            ("ctrl-delete", None),
+            ("backspace", None),
+            ("d", None),
+        ] {
+            assert_eq!(
+                document_key(&gpui::Keystroke::parse(stroke).expect("tecla")),
+                expected,
+                "{stroke}"
+            );
+        }
+    }
     fn prepared_widget(path: PathBuf) -> Prepared {
         let mut prepared = Prepared::load(path).expect("preparar Studio");
         prepared.editor.add(Kind::Standings).expect("widget");

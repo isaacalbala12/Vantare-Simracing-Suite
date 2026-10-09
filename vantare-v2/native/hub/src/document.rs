@@ -39,6 +39,11 @@ impl Editor {
     pub fn layout(&self) -> &Layout {
         self.document.layout()
     }
+    pub(crate) fn persist(&mut self) -> Result<(), String> {
+        self.document
+            .save(&self.layout().clone())
+            .map_err(|error| error.to_string())
+    }
     pub fn set_preferences(
         &mut self,
         preferences: vantare_domain::format::Preferences,
@@ -338,6 +343,22 @@ pub(crate) mod tests {
         assert_eq!(editor.layout().performance, prefs);
         std::fs::write(&file.path, b"{}").expect("edición externa");
         assert!(editor.set_performance(Preferences::default()).is_err());
+        assert_eq!(std::fs::read(&file.path).expect("leer externo"), b"{}");
+    }
+    #[test]
+    fn explicit_save_preserves_history_and_rejects_external_edits() {
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("Hub");
+        editor.add(Kind::Standings).expect("widget");
+        let before = editor.layout().clone();
+        editor.persist().expect("Ctrl S");
+        assert_eq!(editor.layout(), &before);
+        editor.undo().expect("guardar no añade historial");
+        assert!(editor.layout().instances.is_empty());
+        editor.redo().expect("rehacer");
+        std::fs::write(&file.path, b"{}").expect("edición externa");
+        assert!(editor.persist().is_err());
+        assert_eq!(editor.layout(), &before);
         assert_eq!(std::fs::read(&file.path).expect("leer externo"), b"{}");
     }
     #[test]

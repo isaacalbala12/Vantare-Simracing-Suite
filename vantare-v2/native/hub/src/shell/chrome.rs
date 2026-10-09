@@ -231,9 +231,12 @@ impl Hub {
             cx.stop_propagation();
             return;
         }
-        if self.section == Section::Studio && self.focus.is_focused(window) {
+        if !self.shell.palette_open
+            && self.section == Section::Studio
+            && self.focus.is_focused(window)
+        {
             self.studio
-                .update(cx, |studio, cx| studio.handle_key(event, window, cx));
+                .update(cx, |studio, cx| studio.handle_shell_key(event, window, cx));
         }
         if self.shell.palette_open {
             self.refresh_query(cx);

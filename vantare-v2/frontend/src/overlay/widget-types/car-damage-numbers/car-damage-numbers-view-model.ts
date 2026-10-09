@@ -1,1 +1,0 @@
-import type {WidgetViewModelBase} from "../../core/widget-definition";export type CarDamageNumbersViewModel=WidgetViewModelBase&{type:"car-damage-numbers";body?:number;aero?:number;suspension?:number;tyres?:readonly number[];showTyres:boolean;format:"percent"};

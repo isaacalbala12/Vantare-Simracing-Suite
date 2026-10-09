@@ -2,6 +2,8 @@
 
 ## #1533 — retirada Wails/React (2026-10-09)
 
+- Hito 2: retirado frontend React y generadores dependientes; conservados goldens, geometría y verificador de referencias. Hashes conservados: 451/451 iguales.
+
 Rama aislada `vantareapp/isa-1533-retirar-wails`, base `5e1da3f6`; plan
 aprobado por Isaac. Sin push, PR, merge, promoción, release ni despliegue.
 Hito 1: extraídas marca, fuentes, calendario, perfil y catálogos; 451 SHA-256

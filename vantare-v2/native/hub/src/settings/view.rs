@@ -901,7 +901,7 @@ impl Hub {
             (settings.glass_opacity, 50.0, 100.0, "Opacidad del cristal")
         };
         let entity = cx.entity();
-        orbit::appearance_slider(f32::from(value), min, max, label, cx)
+        orbit::appearance_slider(f32::from(self.settings.appearance_preview[index].unwrap_or(value)), min, max, label, cx)
             .relative()
             .track_focus(&self.settings.appearance_focus[12 + index])
             .tab_index(0)
@@ -926,26 +926,26 @@ impl Hub {
                         .is_some_and(|bounds| event.position.x >= bounds.left() + px(57.0))
                     {
                         hub.settings.appearance_dragging[index] = true;
-                        hub.settings_slider_pointer(index, event.position.x, window, cx);
+                        hub.settings_slider_pointer(index, event.position.x, cx);
                     }
                 }),
             )
             .on_mouse_move(
-                cx.listener(move |hub, event: &gpui::MouseMoveEvent, window, cx| {
+                cx.listener(move |hub, event: &gpui::MouseMoveEvent, _, cx| {
                     if hub.settings.appearance_dragging[index]
                         && event.pressed_button == Some(gpui::MouseButton::Left)
                     {
-                        hub.settings_slider_pointer(index, event.position.x, window, cx);
+                        hub.settings_slider_pointer(index, event.position.x, cx);
                     }
                 }),
             )
             .on_mouse_up(
                 gpui::MouseButton::Left,
-                cx.listener(move |hub, _, _, _| hub.settings.appearance_dragging[index] = false),
+                cx.listener(move |hub, _, window, cx| hub.settings_slider_release(index, window, cx)),
             )
             .on_mouse_up_out(
                 gpui::MouseButton::Left,
-                cx.listener(move |hub, _, _, _| hub.settings.appearance_dragging[index] = false),
+                cx.listener(move |hub, _, window, cx| hub.settings_slider_release(index, window, cx)),
             )
             .on_key_down(
                 cx.listener(move |hub, event: &gpui::KeyDownEvent, window, cx| {

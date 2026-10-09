@@ -139,6 +139,7 @@ impl Hub {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.settings.appearance_preview = [None, None];
         match self.settings.appearance.save(settings) {
             Ok(()) => {
                 theme::apply(self.settings.appearance.settings, window.appearance(), cx);
@@ -188,23 +189,25 @@ impl Hub {
         &mut self,
         index: usize,
         x: gpui::Pixels,
-        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         let Some(bounds) = self.settings.appearance_bounds[index] else {
             return;
         };
-        // La fila reserva 45 px para el valor + 12 px de separación; pista 128 px.
-        let fraction = ((f32::from(x - bounds.left()) - 57.0) / 128.0).clamp(0.0, 1.0);
-        let (min, span) = if index == 0 {
-            (80.0, 40.0)
-        } else {
-            (50.0, 50.0)
-        };
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        // rango acotado a 50..120.
-        let value = (min + span * fraction).round() as u8;
-        self.settings_slider_value(index, value, window, cx);
+        let value = slider_pointer_value(index, f32::from(x - bounds.left()));
+        if self.settings.appearance_preview[index] != Some(value) {
+            self.settings.appearance_preview[index] = Some(value);
+            cx.notify();
+        }
+    }
+    pub(super) fn settings_slider_release(
+        &mut self, index: usize, window: &mut Window, cx: &mut Context<Self>,
+    ) {
+        self.settings.appearance_dragging[index] = false;
+        if let Some(value) = self.settings.appearance_preview[index].take() {
+            self.settings_slider_value(index, value, window, cx);
+            cx.notify();
+        }
     }
     pub(super) fn settings_slider_value(
         &mut self,
@@ -223,6 +226,16 @@ impl Hub {
             self.settings_appearance_apply(settings, window, cx);
         }
     }
+}
+
+fn slider_pointer_value(index: usize, offset: f32) -> u8 {
+    use crate::orbit::{APPEARANCE_TRACK_WIDTH, APPEARANCE_THUMB_SIZE, APPEARANCE_VALUE_OFFSET};
+    let fraction = ((offset - APPEARANCE_VALUE_OFFSET - APPEARANCE_THUMB_SIZE / 2.0)
+        / (APPEARANCE_TRACK_WIDTH - APPEARANCE_THUMB_SIZE)).clamp(0.0, 1.0);
+    let (min, span) = if index == 0 { (80.0, 40.0) } else { (50.0, 50.0) };
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // 50..120, redondeo al entero mas cercano.
+    let value = (min + span * fraction).round() as u8;
+    value
 }
 
 fn zoom_step_limited(percent: u16, direction: i8, limit: f32) -> u16 {
@@ -245,6 +258,17 @@ fn zoom_step_limited(percent: u16, direction: i8, limit: f32) -> u16 {
 mod tests {
     use super::*;
     use crate::orbit::theme::Scheme;
+    #[test]
+    fn pointer_reaches_both_limits_at_the_thumb_centres_and_beyond() {
+        for (index, min, max) in [(0, 80, 120), (1, 50, 100)] {
+            assert_eq!(slider_pointer_value(index, 64.0), min);
+            assert_eq!(slider_pointer_value(index, 178.0), max);
+            assert_eq!(slider_pointer_value(index, 185.0), max);
+            assert_eq!(slider_pointer_value(index, 0.0), min);
+        }
+        assert_eq!(slider_pointer_value(0, 175.0), 119);
+        assert_eq!(slider_pointer_value(0, 177.0), 120);
+    }
     fn directory(label: &str) -> PathBuf {
         let nonce = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)

@@ -82,7 +82,7 @@ mod tests {
         let photo = tables().expect("ejemplo");
         let board = vantare_domain::standings_vantare::project(
             &photo,
-            vantare_domain::Preferences::default(),
+            vantare_domain::format::Preferences::default(),
         );
         assert_eq!(board.groups.len(), 3);
         assert!(board.groups.iter().all(|g| g.rows.len() == 30));
@@ -98,7 +98,7 @@ mod tests {
             let multi = multiclass(&photo, rows);
             let board = vantare_domain::standings_vantare::project(
                 &multi,
-                vantare_domain::Preferences::default(),
+                vantare_domain::format::Preferences::default(),
             );
             assert_eq!(board.groups.len(), 3);
             assert!(board.groups.iter().all(|g| !g.rows.is_empty()));

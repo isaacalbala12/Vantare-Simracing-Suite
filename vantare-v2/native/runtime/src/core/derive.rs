@@ -38,12 +38,16 @@ fn relative(state: &mut State) {
     for car in &mut state.cars {
         car.relative_laps = relative_laps(laps, distance, car, length)
             .map_or(Quality::Unavailable, Quality::Estimated);
-        car.relative_s = if car.in_pits == Quality::Reliable(true) {
-            Quality::Unavailable
-        } else {
-            relative_seconds(elapsed, car.lap_elapsed_s.current().copied(), period)
-                .map_or(Quality::Unavailable, Quality::Estimated)
-        };
+        // Cada observación es completa: conservar la señal actual del adaptador,
+        // incluida su calidad. La aproximación solo respalda su ausencia.
+        if car.relative_s.current().is_none() {
+            car.relative_s = if car.in_pits == Quality::Reliable(true) {
+                Quality::Unavailable
+            } else {
+                relative_seconds(elapsed, car.lap_elapsed_s.current().copied(), period)
+                    .map_or(Quality::Unavailable, Quality::Estimated)
+            };
+        }
     }
 }
 
@@ -323,6 +327,8 @@ mod tests {
                 Quality::Estimated(expected_laps)
             );
             assert_eq!(state.cars[1].relative_s, Quality::Estimated(expected_s));
+            // Una observación nueva no arrastra el respaldo de la anterior.
+            state.cars[1].relative_s = Quality::Unavailable;
             state.cars[1].in_pits = Quality::Reliable(true);
             derive(&mut state);
             assert_eq!(state.cars[1].relative_s, Quality::Unavailable);
@@ -337,6 +343,7 @@ mod tests {
             derive(&mut state);
             assert_eq!(state.cars[1].relative_laps, Quality::Unavailable);
             assert_eq!(state.cars[1].relative_s, Quality::Estimated(expected_s));
+            state.cars[1].relative_s = Quality::Unavailable;
             state.cars[0].last_lap_s = Quality::Unavailable;
             derive(&mut state);
             assert_eq!(state.cars[1].relative_s, Quality::Unavailable);
@@ -351,6 +358,42 @@ mod tests {
             derive(&mut state);
             assert_eq!(state.cars[1].relative_s, Quality::Unavailable);
             assert_eq!(state.cars[1].relative_laps, Quality::Unavailable);
+        }
+    }
+
+    #[test]
+    fn adapter_relative_wins_without_a_completed_lap_even_in_pits() {
+        for native in [Quality::Reliable(2.5), Quality::Estimated(-3.0)] {
+            let mut state = State {
+                player: Some(vantare_domain::Player {
+                    car: vantare_domain::CarId(1),
+                    ..vantare_domain::Player::default()
+                }),
+                cars: vec![
+                    Car {
+                        id: vantare_domain::CarId(1),
+                        ..Car::default()
+                    },
+                    Car {
+                        id: vantare_domain::CarId(2),
+                        relative_s: native,
+                        in_pits: Quality::Reliable(true),
+                        ..Car::default()
+                    },
+                ],
+                ..State::default()
+            };
+            derive(&mut state);
+            assert_eq!(state.cars[1].relative_s, native);
+            state.cars[0].best_lap_s = Quality::Reliable(100.0);
+            state.cars[0].lap_elapsed_s = Quality::Reliable(90.0);
+            state.cars[1].lap_elapsed_s = Quality::Reliable(10.0);
+            state.cars[1].in_pits = Quality::Reliable(false);
+            derive(&mut state);
+            assert_eq!(state.cars[1].relative_s, native, "no sustituir por +20 s");
+            state.player = None;
+            derive(&mut state);
+            assert_eq!(state.cars[1].relative_s, Quality::Unavailable);
         }
     }
 

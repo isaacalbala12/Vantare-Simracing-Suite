@@ -172,6 +172,7 @@ La configuración queda fuera del repositorio y del paquete. Lista cerrada:
 | `VANTARE_CLERK_ISSUER` | Issuer OAuth Clerk. |
 | `VANTARE_CLERK_CLIENT_ID` | Client ID público nativo. |
 | `VANTARE_CLERK_REDIRECT` | Callback loopback registrado. |
+| `VANTARE_CLERK_ACCOUNT_PORTAL_URL` | Origen HTTPS del Account Portal; obligatorio para alta/reset con dominio propio. Desarrollo conserva su derivación si falta. |
 | `VANTARE_ACCOUNT_BRIDGE_URL` | Endpoint exacto `native-account-authorize`. |
 | `VANTARE_POSTHOG_KEY` | Clave pública PostHog UE; ausencia desactiva diagnóstico. |
 | `VANTARE_ADMIN_URL` | Endpoint owner, solo para la compilación separada de admin. |
@@ -180,6 +181,8 @@ La configuración queda fuera del repositorio y del paquete. Lista cerrada:
 y el canal `beta`; no se aceptan en el fichero. `packaging/version.rs` es la
 fuente de identidad que usan binarios, PostHog y Testing Center. Las claves
 privadas de licencia y los secretos Clerk/Supabase viven solo en servidor.
+
+Para la instancia productiva, seguir el [runbook de Clerk](../../docs/billing/clerk-production-runbook.md).
 
 La miniapp `vantare-admin` se excluye de la compilación pública y del inventario
 del paquete; `beta.ps1` solo arranca supervisor y Hub. Se compila aparte según

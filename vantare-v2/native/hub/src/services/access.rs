@@ -227,33 +227,16 @@ enum Portal {
     Reset,
 }
 
-fn portal_url(issuer: Option<&str>, page: Portal) -> Option<String> {
-    let base = issuer?.trim_end_matches('/');
-    // La URL es pública de build, pero nunca se abre un esquema arbitrario ni
-    // una autoridad con credenciales. Solo un origen HTTPS de nombre DNS.
-    let host = base.strip_prefix("https://")?;
-    if host.is_empty()
-        || !host
-            .bytes()
-            .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'-'))
-    {
-        return None;
+fn portal_url(issuer: Option<&str>, portal: Option<&str>, page: Portal) -> Option<String> {
+    let mut url = vantare_services::config::account_portal_origin(issuer, portal)?;
+    url.set_path(match page {
+        Portal::SignUp => "/sign-up",
+        Portal::Reset => "/sign-in",
+    });
+    if matches!(page, Portal::Reset) {
+        url.set_query(Some("__clerk_reset_password=true"));
     }
-    // En desarrollo FAPI y Account Portal tienen dominios distintos.
-    // Verificado contra display_config de la instancia; un dominio productivo
-    // requiere su URL explícita de portal, no una ruta inventada en el issuer.
-    let instance = host.strip_suffix(".clerk.accounts.dev")?;
-    if instance.is_empty() || instance.contains('.') {
-        return None;
-    }
-    Some(format!(
-        "https://{instance}.accounts.dev{}",
-        match page {
-            Portal::SignUp => "/sign-up",
-            // Intent del SignIn alojado; no requiere identificar al usuario aquí.
-            Portal::Reset => "/sign-in?__clerk_reset_password=true",
-        }
-    ))
+    Some(url.into())
 }
 
 impl Remote {
@@ -310,7 +293,11 @@ impl Remote {
     }
 
     fn open_portal(&mut self, page: Portal, cx: &mut Context<Self>) {
-        if let Some(url) = portal_url(option_env!("VANTARE_CLERK_ISSUER"), page) {
+        if let Some(url) = portal_url(
+            option_env!("VANTARE_CLERK_ISSUER"),
+            option_env!("VANTARE_CLERK_ACCOUNT_PORTAL_URL"),
+            page,
+        ) {
             cx.open_url(&url);
         } else {
             self.access.error =
@@ -815,17 +802,33 @@ mod tests {
             Some("https://example.com?key=x"),
             Some("https://example.com/path"),
         ] {
-            assert!(portal_url(issuer, Portal::SignUp).is_none());
+            assert!(portal_url(issuer, None, Portal::SignUp).is_none());
         }
         let issuer = Some("https://enabled-lionfish-1336.clerk.accounts.dev/");
         assert_eq!(
-            portal_url(issuer, Portal::SignUp).as_deref(),
+            portal_url(issuer, None, Portal::SignUp).as_deref(),
             Some("https://enabled-lionfish-1336.accounts.dev/sign-up")
         );
         assert_eq!(
-            portal_url(issuer, Portal::Reset).as_deref(),
+            portal_url(issuer, None, Portal::Reset).as_deref(),
             Some("https://enabled-lionfish-1336.accounts.dev/sign-in?__clerk_reset_password=true")
         );
+    }
+
+    #[test]
+    fn production_hosted_links_use_the_explicit_account_portal() {
+        let issuer = Some("https://clerk.vantare.app");
+        let portal = Some("https://accounts.vantare.app/");
+        assert_eq!(
+            portal_url(issuer, portal, Portal::SignUp).as_deref(),
+            Some("https://accounts.vantare.app/sign-up")
+        );
+        assert_eq!(
+            portal_url(issuer, portal, Portal::Reset).as_deref(),
+            Some("https://accounts.vantare.app/sign-in?__clerk_reset_password=true")
+        );
+        assert!(portal_url(issuer, None, Portal::SignUp).is_none());
+        assert!(portal_url(issuer, Some("http://accounts.vantare.app"), Portal::Reset).is_none());
     }
 }
 

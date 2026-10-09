@@ -1,7 +1,7 @@
 # Configuración pública de compilación: datos literales, nunca código PowerShell.
 function Import-NativeBuildConfig([string]$Path) {
     $allowed = @('VANTARE_SUPABASE_URL', 'VANTARE_SUPABASE_ANON_KEY', 'VANTARE_LICENSE_PUBLIC_KEYS',
-        'VANTARE_CLERK_ISSUER', 'VANTARE_CLERK_CLIENT_ID', 'VANTARE_CLERK_REDIRECT',
+        'VANTARE_CLERK_ISSUER', 'VANTARE_CLERK_CLIENT_ID', 'VANTARE_CLERK_REDIRECT', 'VANTARE_CLERK_ACCOUNT_PORTAL_URL',
         'VANTARE_ACCOUNT_BRIDGE_URL', 'VANTARE_POSTHOG_KEY', 'VANTARE_ADMIN_URL',
         'VANTARE_BUILD_CHANNEL', 'VANTARE_VERSION')
     if ((Get-Item -LiteralPath $Path).Length -gt 65536) { throw 'Configuración de build demasiado grande.' }

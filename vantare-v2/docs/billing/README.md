@@ -13,6 +13,7 @@ Entrada contrastada con el código de nightly del 2026-09-14. [Notion](https://a
 
 | Necesidad | Runbook |
 |---|---|
+| Preparar Clerk de producción en la app nativa | [Clerk Production](clerk-production-runbook.md) |
 | Webhook pendiente, lease, retry o replay | [Inbox durable](bil-02-webhook-inbox-runbook.md) |
 | Diferencia entre Polar y proyección local | [Reconciliación](bil-05-reconciliation-runbook.md) |
 | Suscripción vencida o recuperación | [Lifecycle](bil-06-subscription-recovery-runbook.md) |

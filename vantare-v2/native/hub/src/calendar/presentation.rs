@@ -53,18 +53,25 @@ fn agenda_event(
         .tab_index(0)
         .aria_label(format!("{} · marcar favorita", event.series.name))
         .aria_selected(favorite)
-        .p(px(4.0))
+        .flex_none()
+        .h(px(30.0))
+        .overflow_hidden()
+        .p(px(2.0))
         .rounded(px(orbit::skin(cx).radius.sm))
         .bg(orbit::tint(color, if favorite { 0.18 } else { 0.08 }))
-        .child(orbit::text(
-            event.at.with_timezone(&Local).format("%H:%M").to_string(),
-            10.0,
-            500,
-            color,
-            cx,
-        ))
+        .child(
+            orbit::text(
+                event.at.with_timezone(&Local).format("%H:%M").to_string(),
+                10.0,
+                500,
+                color,
+                cx,
+            )
+            .line_height(px(12.0)),
+        )
         .child(
             orbit::text(event.series.name.clone(), 11.0, 600, orbit::ink(cx), cx)
+                .line_height(px(14.0))
                 .whitespace_nowrap()
                 .overflow_hidden()
                 .text_ellipsis(),
@@ -135,23 +142,28 @@ fn agenda_grid(
         .track_scroll(calendar.agenda_scroll.as_ref().expect("agenda abierta"))
         .flex()
         .flex_col()
-        .gap(px(4.0));
+        .gap_0();
     for hour in 0..24 {
         let mut line = div()
             .flex()
             .flex_none()
             .gap(px(4.0))
-            .min_h(px(calendar.adapt.row_height()))
+            // Una hora ocupa siempre la misma distancia, haya cero o muchas salidas.
+            .h(px((calendar.adapt.row_height() - 8.0).max(32.0)))
             .child(
                 orbit::text(format!("{hour:02}:00"), 10.0, 500, orbit::ink_3(cx), cx)
                     .w(px(48.0))
                     .flex_none(),
             );
-        for day in &days {
+        for (day_index, day) in days.iter().enumerate() {
             let cell = &day[hour];
             let mut column = div()
+                .id(format!("calendar-hour-{hour}-{day_index}"))
                 .flex_1()
                 .min_w_0()
+                .h_full()
+                .min_h_0()
+                .overflow_y_scroll()
                 .flex()
                 .flex_col()
                 .gap(px(3.0))
@@ -169,13 +181,14 @@ fn agenda_grid(
                 column = column.child(agenda_event(calendar, event, cx));
             }
             if more > 0 {
-                column = column.child(orbit::text(
-                    format!("+{more} salidas · filtra o abre Tiempos"),
-                    10.0,
-                    400,
-                    orbit::ink_3(cx),
-                    cx,
-                ));
+                column = column.child(
+                    orbit::small_button("calendar-more", &format!("+{more} · Tiempos"), cx)
+                        .id(format!("calendar-more-{hour}-{day_index}"))
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.view = CalendarView::Times;
+                            cx.notify();
+                        })),
+                );
             }
             line = line.child(column);
         }

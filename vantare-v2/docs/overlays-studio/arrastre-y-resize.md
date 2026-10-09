@@ -239,7 +239,7 @@ Score no mejora en 3 iteraciones, o `pointerLagMs_p95 < 8 ms` en traza `move-fas
 ## Studio nativo (#1496, 2026-10-09)
 
 GPUI conserva la preview en CanvasFrame, fuera del documento. Ocho tiradores
-editarán una geometría opcional compartida por Studio y el overlay de pista.
+editan una geometría opcional compartida por Studio y el overlay de pista.
 El documento v1 anterior mantiene tamaño natural; `geometry.size` guarda el frame
 en píxeles lógicos y `geometry.aspectLocked` mantiene su proporción actual.
 El ancho escala uniformemente todas las primitivas del renderer canónico; con

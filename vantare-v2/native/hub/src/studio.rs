@@ -1,5 +1,6 @@
 //! Editor espacial sobre el documento y el renderer compartidos.
 mod scenes;
+mod examples;
 use crate::{
     document::Editor,
     inspector::{self, Control, Tab},
@@ -306,7 +307,12 @@ fn example_snapshots() -> Result<Vec<(Kind, Snapshot)>, String> {
     ]
     .into_iter()
     .map(|(kind, text)| {
-        vantare_ipc::snapshot_from_json(text)
+        match kind {
+            Kind::Standings | Kind::Relative | Kind::MulticlassRelative => examples::tables(),
+            Kind::Delta => examples::snapshot(include_str!("../../ui/fixtures/delta-vantare.scene.json")),
+            Kind::FuelStrategy => examples::snapshot(include_str!("../../ui/fixtures/fuel-vantare.scene.json")),
+            _ => vantare_ipc::snapshot_from_json(text).map_err(|error| error.to_string()),
+        }
             .map(|snapshot| (kind, snapshot))
             .map_err(|error| format!("Ejemplo {}: {error}", kind.name()))
     })

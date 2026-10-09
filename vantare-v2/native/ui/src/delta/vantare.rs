@@ -38,6 +38,8 @@ pub(crate) struct Options {
     pub accent: Accent,
     pub size: Size,
     pub reference: Reference,
+    pub show_bar: bool,
+    pub show_sectors: bool,
     /// Marca Vantare en la cabecera (`brandVisible`, decidido por la licencia).
     pub brand: bool,
 }
@@ -57,6 +59,8 @@ impl Options {
                 "leader" => Reference::Leader,
                 _ => Reference::Best,
             },
+            show_bar: settings.show_bar,
+            show_sectors: settings.show_sectors,
             brand: settings.brand_visible == Some(true),
         }
     }
@@ -144,10 +148,12 @@ fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Layout {
         items.push((y, Item::Big));
         y += d.big_height;
     }
-    items.push((y, Item::Bar));
-    y += d.bar + d.tick_labels;
+    if options.show_bar {
+        items.push((y, Item::Bar));
+        y += d.bar + d.tick_labels;
+    }
     let sectors = shown.is_some_and(|b| !b.sectors.is_empty() && !grey(b) && !message(Some(b)));
-    if options.size == Size::Expanded && sectors {
+    if options.size == Size::Expanded && sectors && options.show_sectors {
         items.push((y, Item::Sectors));
         y += d.sector_height;
     }
@@ -721,10 +727,27 @@ mod tests {
             accent: Accent::Red,
             size,
             reference,
+            show_bar: true,
+            show_sectors: true,
             brand: false,
         }
     }
 
+    #[test]
+    fn hiding_delta_bar_and_sectors_removes_their_geometry_and_survives_reload() {
+        let settings = super::super::Settings { size: "expanded".into(),
+            show_bar: false, show_sectors: false, ..Default::default() };
+        let json = serde_json::to_string(&settings).expect("ajustes");
+        let restored: super::super::Settings = serde_json::from_str(&json).expect("recarga");
+        let options = Options::from_settings(&restored);
+        let style = Style::compiled();
+        let scene = frames(include_str!("../../fixtures/delta-vantare.scene.json"));
+        let board = vantare_domain::delta_vantare::project(&scene[0], Reference::Best);
+        let shown = layout(Some(&board), &super::tests::options(Size::Expanded, Reference::Best), &style);
+        let hidden = layout(Some(&board), &options, &style);
+        assert!(!hidden.items.iter().any(|(_, item)| matches!(item, Item::Bar | Item::Sectors)));
+        assert!(hidden.height < shown.height);
+    }
     #[test]
     fn sizes_match_the_catalogue_and_states_change_the_items() {
         let style = Style::compiled();

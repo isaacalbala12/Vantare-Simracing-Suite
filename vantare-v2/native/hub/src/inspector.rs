@@ -232,6 +232,21 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             ));
             rows
         }
+        Settings::Delta(value) if value.design_system == vantare_ui::standings::DesignSystem::Vantare => {
+            let mut rows = vec![
+                choice("Formato Delta", Tab::Appearance, &value.size,
+                    &[("Cápsula", "pill"), ("Barra", "bar"), ("Ampliado", "expanded")], set!(Delta.size string)),
+                choice("Vuelta de referencia", Tab::Content, &value.reference,
+                    &[("Mejor vuelta propia", "best"), ("Óptima (mejores sectores)", "optimal"), ("Mejor del líder de clase", "leader")], set!(Delta.reference string)),
+            ];
+            if value.size != "pill" {
+                rows.push(boolean("Barra de diferencia", Tab::Appearance, value.show_bar, set!(Delta.show_bar)));
+            }
+            if value.size == "expanded" {
+                rows.push(boolean("Comparación de sectores", Tab::Content, value.show_sectors, set!(Delta.show_sectors)));
+            }
+            rows
+        }
         Settings::Delta(value) => vec![choice(
             "Diseño",
             Tab::Appearance,
@@ -559,6 +574,29 @@ pub fn valid_color(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn delta_inspector_persists_every_supported_reference_and_format() {
+        use crate::document::{Editor, tests::File};
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
+        editor.add(vantare_ui::Kind::Delta).expect("delta");
+        for (title, keys) in [("Vuelta de referencia", vec!["best", "optimal", "leader"]),
+            ("Formato Delta", vec!["pill", "bar", "expanded"])] {
+            for key in keys {
+                let field = fields(&editor.selected().expect("selección").settings).into_iter()
+                    .find(|f| f.title == title).expect("control disponible");
+                let Control::Choice { set, .. } = field.control else { panic!("selector") };
+                editor.edit_selected(|item| set(&mut item.settings, key)).expect("guardar");
+                let reloaded = Editor::open(file.path.clone()).expect("recargar");
+                assert_eq!(reloaded.layout(), editor.layout());
+                let Settings::Delta(value) = &editor.selected().expect("delta").settings else { panic!("delta") };
+                assert_eq!(if title == "Vuelta de referencia" { &value.reference } else { &value.size }, key);
+            }
+        }
+        let fields = fields(&editor.selected().expect("selección").settings);
+        assert!(fields.iter().any(|f| f.title == "Barra de diferencia"));
+        assert!(fields.iter().any(|f| f.title == "Comparación de sectores"));
+    }
     #[test]
     fn standard_tables_have_no_class_scope_selector() {
         for settings in [Settings::Standings(Default::default()), Settings::Relative(Default::default())] {

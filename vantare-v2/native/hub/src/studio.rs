@@ -1474,6 +1474,7 @@ impl Studio {
                     if this.editor.selected.as_ref() == Some(&id)
                         && let Some((_, key)) = options.get(event.0)
                     {
+                        this.reset_fields();
                         this.edit(
                             |editor| editor.edit_selected(|item| set(&mut item.settings, key)),
                             cx,
@@ -2226,6 +2227,12 @@ impl Studio {
                 ));
             }
             Tab::Content | Tab::Appearance => {
+                if tab == Tab::Content && matches!(&item.settings, Settings::Delta(_)) {
+                    panel = panel.child(text(
+                        "La mejor vuelta es la propia. Óptima compara con tus mejores sectores; Líder, con la mejor de quien encabeza tu clase. Última vuelta y mejor absoluta de sesión: próximamente, sin señal independiente del núcleo.",
+                        11.0, 400, orbit::ink_3(cx), cx,
+                    ));
+                }
                 if tab == Tab::Appearance && inspector::appearance(&item.settings).is_none() {
                     panel = panel.child(orbit::pending_select(
                         "studio-style",

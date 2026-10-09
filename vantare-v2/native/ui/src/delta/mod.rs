@@ -21,6 +21,8 @@ pub struct Settings {
     pub size: String,
     /// Referencia Vantare: `best`, `optimal` o `leader`.
     pub reference: String,
+    pub show_bar: bool,
+    pub show_sectors: bool,
     /// Marca Vantare: decisión inyectada por el host según la licencia.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub brand_visible: Option<bool>,
@@ -34,6 +36,8 @@ impl Default for Settings {
             accent: crate::standings::Accent::Red,
             size: "pill".into(),
             reference: "best".into(),
+            show_bar: true,
+            show_sectors: true,
             brand_visible: None,
             template_id: "instrument".into(),
         }
@@ -52,7 +56,7 @@ impl Settings {
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
         (
             "reference=session-best",
-            "Snapshot solo publica delta_best_s personal",
+            "No hay delta independiente frente a la mejor vuelta absoluta de la sesión; la mejor propia, óptima y líder sí están disponibles",
         ),
         (
             "reference=previous-lap",

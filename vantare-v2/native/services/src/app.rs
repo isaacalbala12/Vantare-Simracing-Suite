@@ -174,6 +174,7 @@ impl App {
         }
         Ok(Reply::Account {
             signed_in: false,
+            profile: None,
             expires_at: None,
             pending: false,
             message: "Sesión cerrada y derechos locales revocados".into(),
@@ -287,7 +288,11 @@ impl App {
         let report_send = matches!(command, Command::ReportSend { .. });
         let account_action = matches!(
             command,
-            Command::AccountBegin | Command::AccountPoll | Command::AccountRenew | Command::Logout
+            Command::AccountBegin
+                | Command::AccountPoll
+                | Command::AccountRenew
+                | Command::AccountProfileRefresh
+                | Command::Logout
         );
         match self.execute(command) {
             Ok(reply) => reply,
@@ -377,6 +382,17 @@ impl App {
             }
             Command::Logout => return self.logout_reply(),
             Command::AccountPoll => return self.poll_account(),
+            Command::AccountProfileRefresh => {
+                let time = now()?;
+                self.ensure_oauth(time)?;
+                let account = self.account.as_mut().ok_or(Error::Authentication)?;
+                account.refresh_profile(
+                    &self.http,
+                    time,
+                    self.store.as_ref().ok_or(Error::Storage)?,
+                )?;
+                return Ok(Self::account_reply(account, None));
+            }
             _ => self.ensure_account()?,
         }
         let account = self.account.as_mut().ok_or(Error::Unconfigured)?;
@@ -404,6 +420,7 @@ impl App {
         let pending = account.login_pending();
         Reply::Account {
             signed_in: account.identity().is_some(),
+            profile: account.profile().cloned(),
             expires_at: account.expires_at(),
             pending,
             message: error.map_or_else(

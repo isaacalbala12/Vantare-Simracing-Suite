@@ -242,6 +242,7 @@ impl State {
 enum Portal {
     SignUp,
     Reset,
+    Profile,
 }
 
 fn portal_url(issuer: Option<&str>, portal: Option<&str>, page: Portal) -> Option<String> {
@@ -249,11 +250,20 @@ fn portal_url(issuer: Option<&str>, portal: Option<&str>, page: Portal) -> Optio
     url.set_path(match page {
         Portal::SignUp => "/sign-up",
         Portal::Reset => "/sign-in",
+        Portal::Profile => "/user",
     });
     if matches!(page, Portal::Reset) {
         url.set_query(Some("__clerk_reset_password=true"));
     }
     Some(url.into())
+}
+
+pub(super) fn profile_portal() -> Option<String> {
+    portal_url(
+        option_env!("VANTARE_CLERK_ISSUER"),
+        option_env!("VANTARE_CLERK_ACCOUNT_PORTAL_URL"),
+        Portal::Profile,
+    )
 }
 
 impl Remote {
@@ -553,6 +563,7 @@ mod tests {
 
     fn account_reply(signed_in: bool, pending: bool, error: Option<String>) -> Reply {
         Reply::Account {
+            profile: None,
             signed_in,
             pending,
             expires_at: signed_in.then_some(10),
@@ -661,6 +672,7 @@ mod tests {
     fn renewal_reloads_oauth_expiry_without_another_license_request() {
         let mut state = State::from_build();
         let expired = Reply::Account {
+            profile: None,
             signed_in: true,
             pending: false,
             expires_at: Some(1),
@@ -746,6 +758,7 @@ mod tests {
         assert!(state.required(false));
         for signed_in in [true, false] {
             let reply = Reply::Account {
+                profile: None,
                 signed_in,
                 pending: false,
                 expires_at: None,
@@ -790,6 +803,7 @@ mod tests {
         let mut cancel = false;
         for pending in [true, false] {
             let reply = Reply::Account {
+                profile: None,
                 signed_in: false,
                 expires_at: None,
                 pending,
@@ -836,6 +850,10 @@ mod tests {
     fn production_hosted_links_use_the_explicit_account_portal() {
         let issuer = Some("https://clerk.vantare.app");
         let portal = Some("https://accounts.vantare.app/");
+        assert_eq!(
+            portal_url(issuer, portal, Portal::Profile).as_deref(),
+            Some("https://accounts.vantare.app/user")
+        );
         assert_eq!(
             portal_url(issuer, portal, Portal::SignUp).as_deref(),
             Some("https://accounts.vantare.app/sign-up")
@@ -941,6 +959,7 @@ mod navigation_tests {
         let mut state = State::from_build();
         state.observe(
             &Reply::Account {
+                profile: None,
                 signed_in: true,
                 pending: false,
                 expires_at: Some(10),
@@ -1004,6 +1023,7 @@ mod navigation_tests {
         let mut state = state(true, true);
         state.observe(
             &Reply::Account {
+                profile: None,
                 signed_in: false,
                 pending: true,
                 expires_at: None,
@@ -1016,6 +1036,7 @@ mod navigation_tests {
         assert!(!state.login_requested);
         state.observe(
             &Reply::Account {
+                profile: None,
                 signed_in: false,
                 pending: false,
                 expires_at: None,
@@ -1106,6 +1127,7 @@ mod navigation_tests {
         state = self::state(true, true);
         state.observe(
             &Reply::Account {
+                profile: None,
                 signed_in: true,
                 pending: false,
                 expires_at: None,
@@ -1118,6 +1140,7 @@ mod navigation_tests {
         state = self::state(true, true);
         state.observe(
             &Reply::Account {
+                profile: None,
                 signed_in: false,
                 pending: false,
                 expires_at: None,
@@ -1133,6 +1156,7 @@ mod navigation_tests {
         let mut state = state(true, true);
         state.observe(
             &Reply::Account {
+                profile: None,
                 signed_in: true,
                 pending: false,
                 expires_at: Some(2),
@@ -1164,6 +1188,7 @@ mod navigation_tests {
         // aparecía al repintar (p. ej. al pasar el ratón por una pestaña).
         state.observe(
             &Reply::Account {
+                profile: None,
                 signed_in: true,
                 pending: false,
                 expires_at: Some(10),
@@ -1175,6 +1200,7 @@ mod navigation_tests {
         assert!(state.navigation(true, 1000).verified);
         state.observe(
             &Reply::Account {
+                profile: None,
                 signed_in: false,
                 pending: false,
                 expires_at: None,

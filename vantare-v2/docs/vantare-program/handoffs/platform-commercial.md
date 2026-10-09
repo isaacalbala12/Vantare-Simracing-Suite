@@ -70,6 +70,59 @@ services/view con #1529, preservar widgets de #1531 y retirada de legado #1533.
 Entrega local terminada; issue abierta para review. Sin push, PR, CI remota,
 promoción, merge, release, deploy ni acciones comerciales. No se recrea roadmap.
 
+## #1529 — licencia estable y avatar Clerk (2026-10-09)
+
+Implementación aislada en `C:/tmp/vw3-1529/vantare-v2`, rama
+`vantareapp/isa-1529-licencia-avatar`, base exacta `5e1da3f6`; sin push ni PR.
+El Feed introducido en F4 borraba una política aún vigente ante un error breve
+de transporte. Conserva ahora solo esa observación hasta su TTL original de
+2 s, sin modificar `checked_at_ms`, revisión, caducidad ni capacidades. Respuestas
+definitivas, revocación, protocolo/peer inválido, expiración y logout deniegan.
+Sigue existiendo un único lector de política, independiente de OAuth/HTTP;
+los heartbeats iguales no activan User ni cambian la proyección del Hub.
+Se conservan las regresiones #1480 y F2/F4/F5, incluida recuperación por Cuenta.
+
+Clerk OAuth devuelve el perfil como `name`/`picture`; también se admite
+`image_url`. Servicios valida el sujeto y descarga únicamente la imagen del
+CDN Clerk mediante HTTPS, sin bearer/redirects, con límites de tiempo, bytes y
+decodificación. Se reutiliza image del lock y su codec PNG ya resuelto por GPUI.
+Una miniatura JPEG acotada llega por IPC a Cuenta y barra lateral; iniciales
+Unicode como respaldo. Los datos de presentación no vinculan UUID ni derechos.
+La caché protegida `account-profile` exige issuer/subject coincidentes; el formato
+persistido de la sesión OAuth se mantiene y actualizar perfil no escribe sus tokens.
+Cuenta abre `/user` del portal configurado (`accounts.vantare.app` en Production)
+y ofrece Actualizar foto al volver. Las sesiones previas sin perfil hacen una
+única carga silenciosa; un fallo deja iniciales sin bloqueos ni bucle de reintentos.
+No hay sondeo HTTP continuo del perfil.
+IPC de servicios pasa a v5: compilar Hub/supervisor/servicios de la misma entrega;
+IPC del núcleo y credencial firmada permanecen en v4/v1 respectivamente.
+
+Gates finales PASS: fmt, clippy workspace/all-targets con -D warnings, nextest
+1409/1409 (7 omitidas por el perfil), lifecycle 18/18 y telemetría 21/21.
+Un intento paralelo de nextest encontró el ejecutable de telemetría bloqueado
+por Windows; su log se conserva y la repetición en serie pasó sin cambios en tests.
+QA nativa PASS con el renderizador productivo y un peer IPC local autenticado
+de contrato: foto inicial/actualizada en Cuenta y barra lateral, renovación
+manual lenta de 3,5 s conserva derechos y logout limpia la foto. Siete capturas
+revisadas en 1440x900, 1280x720 y 1366x768; controles visibles, layout sin cambios,
+dos actualizaciones explícitas y una sola renovación manual, sin sondeo de licencia.
+El primer piloto visual superó el plazo del controlador de arranque y se conserva;
+la repetición completó la interacción y cerró su proceso. Evidencia propia:
+`C:/tmp/feedback-0910/evidence-1529/`; informe final de hasta ocho líneas:
+`C:/tmp/feedback-0910/informe-1529.md`. Compilación únicamente por la cola y
+respeto de `C:/tmp/fase2/pantalla-ocupada`. Sin cuentas/secretos/instalación real.
+Coordinación: PR #1523 leído; este handoff registra el portado necesario.
+La rama native #1514 `aacd1e4d` conserva UserInfo
+con solo sub y debe portar el avatar; esa rama permanece intacta. El defecto
+adicional del Feed corresponde a la integración F4, no a su HEAD remoto.
+Seguimiento GitHub conforme al encargo reciente, sobre referencias Notion antiguas.
+`docs/roadmap/plan.md` ausente en esta base y origin/nightly consultado; no recreado.
+Sin merge, promoción, release, despliegue ni cambios comerciales.
+Entrega local para revisión; sin CI remota. Google y edición real del portal
+pendientes de verificación manual con cuenta real: no se usó login comercial,
+secreto, instalación ni servicio desplegado en estas pruebas.
+
+
 ## #1511 — nombre visible Vantare (2026-10-08)
 
 Entrega técnica verificada en `C:/tmp/vw3-1511/vantare-v2`, rama

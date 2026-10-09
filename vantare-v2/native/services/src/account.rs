@@ -153,6 +153,7 @@ struct Attempt {
 pub struct Account {
     oauth: OAuth,
     session: Option<Session>,
+    profile: Option<crate::protocol::AccountProfile>,
     attempt: Option<Attempt>,
     generation: u128,
 }
@@ -175,6 +176,7 @@ enum Grant {
 pub struct Completion {
     generation: u128,
     session: Session,
+    profile: crate::protocol::AccountProfile,
 }
 
 impl Completion {
@@ -193,7 +195,20 @@ struct Tokens {
 #[derive(Deserialize)]
 struct UserInfo {
     sub: String,
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    given_name: Option<String>,
+    #[serde(default)]
+    family_name: Option<String>,
+    #[serde(default)]
+    picture: Option<String>,
+    #[serde(default)]
+    image_url: Option<String>,
 }
+
+#[path = "account/profile.rs"]
+mod profile;
 
 impl Exchange {
     pub fn run(self, http: &Http, now: u64) -> Result<Completion> {
@@ -240,7 +255,7 @@ impl Exchange {
         }
         let identity = Identity {
             issuer: self.oauth.issuer.to_string(),
-            subject: info.sub,
+            subject: info.sub.clone(),
         };
         if self
             .previous_identity
@@ -254,8 +269,10 @@ impl Exchange {
             (None, Grant::Refresh(refresh)) => refresh.clone(),
             _ => return Err(Error::Protocol),
         };
+        let profile = info.profile(http);
         Ok(Completion {
             generation: self.generation,
+            profile,
             session: Session {
                 identity,
                 client_id: self.oauth.client_id,
@@ -285,9 +302,11 @@ impl Account {
             }
             Err(error) => return Err(error),
         };
+        let profile = profile::restore(store, session.as_ref().map(|session| &session.identity));
         Ok(Self {
             oauth,
             session,
+            profile,
             attempt: None,
             generation: fresh_generation()?,
         })
@@ -295,6 +314,26 @@ impl Account {
 
     pub fn identity(&self) -> Option<&Identity> {
         self.session.as_ref().map(|session| &session.identity)
+    }
+
+    pub fn profile(&self) -> Option<&crate::protocol::AccountProfile> {
+        self.profile.as_ref()
+    }
+
+    /// Acción explícita tras editar en el portal; no renueva la licencia.
+    pub fn refresh_profile(&mut self, http: &Http, now: u64, store: &Store) -> Result<()> {
+        let info: UserInfo = http
+            .get(&self.oauth.userinfo, Some(self.bearer(now)?), None)?
+            .success()?
+            .json()?;
+        let identity = self.identity().ok_or(Error::Authentication)?;
+        if info.sub != identity.subject {
+            return Err(Error::Authentication);
+        }
+        let profile = info.profile(http);
+        profile::save(store, identity, &profile)?;
+        self.profile = Some(profile);
+        Ok(())
     }
 
     pub(crate) fn generation(&self) -> u128 {
@@ -444,6 +483,7 @@ impl Account {
         if completion.generation != self.generation {
             return Err(Error::Canceled);
         }
+        profile::save(store, &completion.session.identity, &completion.profile)?;
         store.save(
             "account",
             &Saved::SignedIn {
@@ -456,6 +496,7 @@ impl Account {
             return Err(Error::Storage);
         };
         self.session = Some(session);
+        self.profile = Some(completion.profile);
         self.generation = self.generation.checked_add(1).ok_or(Error::Protocol)?;
         Ok(())
     }
@@ -463,8 +504,10 @@ impl Account {
     pub fn logout(&mut self, store: &Store) -> Result<()> {
         self.cancel_login()?;
         self.session = None;
+        self.profile = None;
         // Atomic tombstone survives a crash; no old refresh can restore the account.
-        store.save("account", &Saved::SignedOut)
+        store.save("account", &Saved::SignedOut)?;
+        store.remove("account-profile")
     }
 }
 

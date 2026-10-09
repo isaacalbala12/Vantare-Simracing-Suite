@@ -216,6 +216,55 @@ pub fn connect_ready(
 fn retryable_connect(error: &io::Error) -> bool {
     matches!(error.raw_os_error(), Some(2 | 231))
 }
+
+/// Un fallo de transporte no es una revocación. Conserva la última observación
+/// solo durante su TTL original; una respuesta definitiva la sustituye siempre.
+#[cfg(any(windows, unix))]
+fn feed_observation(
+    result: io::Result<Policy>,
+    previous: Option<Policy>,
+    cursor: &mut (u64, u64),
+    now_ms: u64,
+) -> Option<Policy> {
+    match result {
+        Ok(policy)
+            if policy.current_at(now_ms)
+                && (policy.epoch > cursor.0
+                    || (policy.epoch == cursor.0 && policy.revision >= cursor.1)) =>
+        {
+            *cursor = (policy.epoch, policy.revision);
+            Some(policy)
+        }
+        Err(error)
+            if error.get_ref().is_some_and(
+                <dyn std::error::Error + Send + Sync + 'static>::is::<VersionMismatch>,
+            ) =>
+        {
+            Some(Policy {
+                version: VERSION,
+                error: Some(VersionMismatch.to_string()),
+                ..Policy::default()
+            })
+        }
+        Err(error)
+            if matches!(
+                error.kind(),
+                io::ErrorKind::NotFound
+                    | io::ErrorKind::ConnectionRefused
+                    | io::ErrorKind::ConnectionReset
+                    | io::ErrorKind::ConnectionAborted
+                    | io::ErrorKind::BrokenPipe
+                    | io::ErrorKind::UnexpectedEof
+                    | io::ErrorKind::TimedOut
+                    | io::ErrorKind::Interrupted
+                    | io::ErrorKind::WouldBlock
+            ) =>
+        {
+            previous.filter(|policy| policy.current_at(now_ms))
+        }
+        _ => None,
+    }
+}
 #[cfg(unix)]
 fn retryable_connect(error: &io::Error) -> bool {
     matches!(
@@ -251,37 +300,14 @@ impl Feed {
             .spawn(move || {
                 let mut cursor = (0, 0);
                 while !cancel.is_set() {
-                    let policy = match request_cancelled(&link, Command::Read, &cancel) {
-                        Ok(policy)
-                            if policy.current()
-                                && (policy.epoch > cursor.0
-                                    || (policy.epoch == cursor.0
-                                        && policy.revision >= cursor.1)) =>
-                        {
-                            Some(policy)
-                        }
-                        Err(error)
-                            if error.get_ref().is_some_and(
-                                <dyn std::error::Error + Send + Sync + 'static>::is::<
-                                    VersionMismatch,
-                                >,
-                            ) =>
-                        {
-                            Some(Policy {
-                                version: VERSION,
-                                error: Some(VersionMismatch.to_string()),
-                                ..Policy::default()
-                            })
-                        }
-                        _ => None,
-                    };
-                    if let Some(p) = &policy
-                        && p.error.is_none()
-                    {
-                        cursor = (p.epoch, p.revision);
-                    }
+                    let result = request_cancelled(&link, Command::Read, &cancel);
                     if let Ok(mut slot) = target.lock() {
-                        *slot = policy;
+                        *slot = feed_observation(
+                            result,
+                            slot.take(),
+                            &mut cursor,
+                            wall_ms().unwrap_or(u64::MAX),
+                        );
                     } else {
                         break;
                     }
@@ -325,6 +351,102 @@ impl Drop for Feed {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn feed_keeps_original_ttl_during_transient_ipc_but_denies_definitive_changes() {
+        let fresh = Policy {
+            version: VERSION,
+            epoch: 1,
+            revision: 2,
+            checked_at_ms: 10_000,
+            overlays_advanced: true,
+            ..Policy::default()
+        };
+        let mut cursor = (0, 0);
+        let first = feed_observation(Ok(fresh.clone()), None, &mut cursor, 10_000);
+        for kind in [
+            io::ErrorKind::TimedOut,
+            io::ErrorKind::BrokenPipe,
+            io::ErrorKind::NotFound,
+        ] {
+            let held = feed_observation(Err(kind.into()), first.clone(), &mut cursor, 10_500);
+            assert_eq!(
+                held.as_ref(),
+                Some(&fresh),
+                "no cambia revisión ni checked_at"
+            );
+            assert!(feed_observation(Err(kind.into()), held, &mut cursor, 12_000).is_none());
+        }
+        let mut expired = fresh.clone();
+        expired.valid_until_ms = Some(10_500);
+        assert!(
+            feed_observation(
+                Err(io::ErrorKind::TimedOut.into()),
+                Some(expired),
+                &mut cursor,
+                10_500
+            )
+            .is_none()
+        );
+        for policy in [
+            Policy::default(),
+            Policy {
+                error: Some("revocada".into()),
+                ..fresh.clone()
+            },
+            Policy {
+                revision: 1,
+                ..fresh.clone()
+            },
+            Policy {
+                checked_at_ms: 9000,
+                ..fresh.clone()
+            },
+        ] {
+            assert!(feed_observation(Ok(policy), first.clone(), &mut cursor, 11_000).is_none());
+        }
+        for kind in [
+            io::ErrorKind::PermissionDenied,
+            io::ErrorKind::InvalidData,
+            io::ErrorKind::Other,
+        ] {
+            assert!(
+                feed_observation(Err(kind.into()), first.clone(), &mut cursor, 10_500).is_none()
+            );
+        }
+        let mismatch = feed_observation(
+            Err(io::Error::new(io::ErrorKind::InvalidData, VersionMismatch)),
+            first.clone(),
+            &mut cursor,
+            10_500,
+        )
+        .expect("incompatibilidad explícita");
+        assert!(mismatch.error.is_some());
+        assert!(!mismatch.current_at(10_500));
+        // Una respuesta válida sin derechos sustituye la anterior inmediatamente.
+        let denied = Policy {
+            revision: 3,
+            overlays_advanced: false,
+            ..fresh.clone()
+        };
+        assert_eq!(
+            feed_observation(Ok(denied.clone()), first, &mut cursor, 10_500),
+            Some(denied)
+        );
+        // Nueva época; mismo Feed, no una segunda comprobación en paralelo.
+        assert!(
+            feed_observation(
+                Ok(Policy {
+                    epoch: 2,
+                    revision: 1,
+                    ..fresh
+                }),
+                None,
+                &mut cursor,
+                10_500
+            )
+            .is_some()
+        );
+    }
     #[test]
     fn a_new_widget_is_outside_the_perpetual_catalog_and_missing_scope_fails_closed() {
         assert!(!CatalogAccess::LaunchV1.allows_widget("future-widget"));

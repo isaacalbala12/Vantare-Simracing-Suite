@@ -838,6 +838,7 @@ pub struct NumberChanged(pub f64);
 pub struct NumberControl {
     pub range: NumberRange,
     pub enabled: bool,
+    pub decimal_places: Option<usize>,
     label: &'static str,
     kind: NumberKind,
     focus: FocusHandle,
@@ -855,6 +856,7 @@ impl NumberControl {
         Self {
             range,
             enabled: true,
+            decimal_places: None,
             label,
             kind,
             focus: cx.focus_handle(),
@@ -909,7 +911,7 @@ impl NumberControl {
                     })),
             )
             .child(text(
-                format!("{}", self.range.value),
+                number_label(self.range.value, self.decimal_places),
                 BODY,
                 700,
                 ink(cx),
@@ -979,13 +981,27 @@ impl NumberControl {
                     ),
             )
             .child(text(
-                format!("{}", self.range.value),
+                number_label(self.range.value, self.decimal_places),
                 SECONDARY,
                 650,
                 ink_2(cx),
                 cx,
             ))
     }
+}
+// Presentation only: fractional geometry and NumberRange keep their exact value.
+fn number_label(value: f64, decimal_places: Option<usize>) -> String {
+    decimal_places.map_or_else(
+        || value.to_string(),
+        |places| {
+            let label = format!("{value:.places$}");
+            if label.contains('.') {
+                label.trim_end_matches('0').trim_end_matches('.').to_owned()
+            } else {
+                label
+            }
+        },
+    )
 }
 fn paint_slider(
     bounds: gpui::Bounds<gpui::Pixels>,
@@ -1189,6 +1205,17 @@ impl Table {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn size_labels_fit_the_inspector_without_rounding_the_geometry() {
+        for (value, label) in [
+            (396.214_751_927_26, "396.21"),
+            (3840.0, "3840"),
+            (64.125, "64.12"),
+        ] {
+            assert_eq!(number_label(value, Some(2)), label);
+        }
+        assert_eq!(number_label(0.000_125, None), "0.000125");
+    }
     #[test]
     fn avatar_uses_unicode_initials_and_empty_profile_fallback() {
         assert_eq!(initials(" Isaac Albala "), "IA");

@@ -1351,7 +1351,7 @@ impl Studio {
         cx: &mut Context<Self>,
     ) {
         let control = cx.new(|cx| {
-            NumberControl::new(
+            let mut control = NumberControl::new(
                 title,
                 if title == "Opacidad" {
                     NumberKind::Slider
@@ -1365,7 +1365,11 @@ impl Studio {
                     value,
                 },
                 cx,
-            )
+            );
+            if matches!(title, "Ancho" | "Alto") {
+                control.decimal_places = Some(2);
+            }
+            control
         });
         let id = self.editor.selected.clone();
         cx.subscribe(&control, move |this, _, event: &NumberChanged, cx| {

@@ -1,3 +1,26 @@
+## #1496 — integración local de arquitectura, ola 1 (2026-10-09)
+
+Integradas en orden #1534, #1533, #1530, #1529 y #1532 sobre `5e1da3f6`,
+con un merge --no-ff por rama en `vantareapp/isa-1496-integracion-prueba`.
+Checks workspace/all-targets tras los cinco merges PASS. Gates por cola:
+fmt, Clippy -D warnings, Nextest 1411/1411 (7 skips heredados, sin fallos ni
+reintentos), lifecycle 18/18 y telemetría 21/21, sin omisiones, PASS.
+Conflictos: AGENTS conserva la retirada y GitHub; handoffs acumulan entregas;
+contrato Services queda en ipc con v5 y paths locales; diagnóstico de conexión
+de #1530 preservado, un aviso por modo del Hub, sin cambios extra a access/Feed.
+Icono compartido en native/assets/icon.ico y mapa/documentación de 13 crates.
+86 pins de fixtures/docs reconciliados con la entrega exacta #1530 y la base:
+datos JSON/gzip conservados salvo etiqueta DTO; source_sha256 retiene origen,
+ACC v8 sigue fijado por el hash original y su regresión. Los 456 pins pasan.
+Rutas activas verificadas en native/.github/scripts; referencias históricas
+conservadas, ámbito automático frontend rechazado. Inventario, resoluciones,
+logs e informe: C:/tmp/auditoria-arquitectura-v2/integracion-* e
+informe-integracion-ola1.md. Árbol nativo validado:
+`c954fc3ff30333082056db5e04d97ba807eb1cae`.
+Sin push, PR, CI remota, promoción a nightly, release, deploy, instalación ni
+QA visual/Google/portal real/LMU/OBS física. No ventanas ni cambios de usuarios.
+Siguiente: revisión del orquestador; aceptación de Isaac antes de promoción.
+
 ## #1534 — Dependencias explícitas entre crates (2026-10-09)
 
 Worktree `C:/tmp/vw3-1534/vantare-v2`, rama `vantareapp/isa-1534-crates-path`,
@@ -6384,3 +6407,28 @@ Verificación final Windows, fuente productiva 00f37fef:
 Evidencia: C:/tmp/feedback-0910/integracion-evidence/canvas-*.json, *.log e interactive/.
 Informe breve: C:/tmp/feedback-0910/informe-integracion.md. GitHub #1496 sigue abierto;
 sin push, PR, CI remota, promoción, release, deploy o Notion. Aceptación de Isaac pendiente.
+
+## #1532 · Tests de contrato de catálogo y canal Hub→overlays (2026-10-09)
+
+Entrega aislada en C:/tmp/vw3-1532/vantare-v2, rama
+vantareapp/isa-1532-tests-contrato, base de integración 5e1da3f6.
+Hitos: 66256d5a (catálogo) y 4ded9f7d (canal por ficheros).
+El contrato fija los nombres Free y LaunchV1 contra Kind::ALL; comprueba
+unicidad, ida/vuelta del identificador y acceso Pro a todos los registrados.
+El Editor real del Hub escribe los 18 kinds con posiciones, visibilidad,
+opacidad, geometría, resolución, formato y cadencias; Document de overlays
+los recibe por poll, reapertura y undo/redo con igualdad completa del Layout.
+Store de apariencia escribe todas las paletas y alterna reducedMotion;
+MotionPolicy::load es el seam mínimo público del mismo lector productivo.
+Overlays solo consume reducedMotion: el resto de apariencia pertenece al Hub
+cuyo round-trip completo también se comprueba. No se añade watcher ni adapter paralelo.
+Por cola: fmt PASS, clippy workspace/all-targets -D warnings PASS;
+Nextest 1405/1405 PASS, 7 skips previstos, 281,268 s; lifecycle 5+13 PASS.
+Logs externos C:/tmp/auditoria-arquitectura-v2/1532-{fmt,clippy,test,lifecycle}.log.
+Telemetría no aplica: runtime/domain/ipc/testdata sin cambios. Sin QA visual,
+juego/OBS, build de distribución ni CI remoto: la entrega prueba el contrato de disco.
+Verificación manual: cambiar movimiento reducido en Hub y observar el overlay;
+editar/guardar layout, comprobar posición/tamaño/visibilidad y reabrir ambos hosts.
+plan.md ausente en esta base y origin/nightly; corrección de gobernanza en #1530.
+Sin dependencia nueva, delegación, Notion, push, PR, merge, promoción o release.
+Siguiente acción: revisión del orquestador e integración solo tras autorización de Isaac.

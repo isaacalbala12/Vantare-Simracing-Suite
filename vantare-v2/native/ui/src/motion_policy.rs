@@ -3,6 +3,12 @@ use std::path::Path;
 #[derive(Clone, Copy, Default, PartialEq, Eq)]
 pub struct MotionPolicy(pub bool);
 impl gpui::Global for MotionPolicy {}
+impl MotionPolicy {
+    /// Lee la parte de apariencia que consume el host de overlays.
+    pub fn load(path: &Path) -> Result<Self, String> {
+        load(path)
+    }
+}
 
 #[derive(Default, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -34,7 +40,7 @@ pub(crate) fn install(cx: &mut gpui::App) {
     else {
         return;
     };
-    match load(&path) {
+    match MotionPolicy::load(&path) {
         Ok(policy) => cx.set_global(policy),
         Err(error) => eprintln!("{error}"),
     }
@@ -44,7 +50,7 @@ pub(crate) fn install(cx: &mut gpui::App) {
             cx.background_executor()
                 .timer(std::time::Duration::from_millis(500))
                 .await;
-            match load(&path) {
+            match MotionPolicy::load(&path) {
                 Ok(policy) => {
                     last_error = None;
                     cx.update(|cx| {

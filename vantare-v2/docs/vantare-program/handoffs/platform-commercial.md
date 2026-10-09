@@ -1,5 +1,28 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1496 — integración local de arquitectura, ola 1 (2026-10-09)
+
+Integradas en orden #1534, #1533, #1530, #1529 y #1532 sobre `5e1da3f6`,
+con un merge --no-ff por rama en `vantareapp/isa-1496-integracion-prueba`.
+Checks workspace/all-targets tras los cinco merges PASS. Gates por cola:
+fmt, Clippy -D warnings, Nextest 1411/1411 (7 skips heredados, sin fallos ni
+reintentos), lifecycle 18/18 y telemetría 21/21, sin omisiones, PASS.
+Conflictos: AGENTS conserva la retirada y GitHub; handoffs acumulan entregas;
+contrato Services queda en ipc con v5 y paths locales; diagnóstico de conexión
+de #1530 preservado, un aviso por modo del Hub, sin cambios extra a access/Feed.
+Icono compartido en native/assets/icon.ico y mapa/documentación de 13 crates.
+86 pins de fixtures/docs reconciliados con la entrega exacta #1530 y la base:
+datos JSON/gzip conservados salvo etiqueta DTO; source_sha256 retiene origen,
+ACC v8 sigue fijado por el hash original y su regresión. Los 456 pins pasan.
+Rutas activas verificadas en native/.github/scripts; referencias históricas
+conservadas, ámbito automático frontend rechazado. Inventario, resoluciones,
+logs e informe: C:/tmp/auditoria-arquitectura-v2/integracion-* e
+informe-integracion-ola1.md. Árbol nativo validado:
+`c954fc3ff30333082056db5e04d97ba807eb1cae`.
+Sin push, PR, CI remota, promoción a nightly, release, deploy, instalación ni
+QA visual/Google/portal real/LMU/OBS física. No ventanas ni cambios de usuarios.
+Siguiente: revisión del orquestador; aceptación de Isaac antes de promoción.
+
 ## #1533 — retirada Wails/React (2026-10-09)
 
 Entrega local en `C:/tmp/vw3-1533`, rama `vantareapp/isa-1533-retirar-wails`,

@@ -506,6 +506,40 @@ mod tests {
     }
 
     #[test]
+    fn hub_appearance_file_is_read_by_the_overlay_motion_adapter() {
+        let dir = directory("overlay-contract");
+        let path = dir.join("appearance.json");
+        let mut hub = Store::load(path.clone()).expect("Hub");
+        assert!(!vantare_ui::MotionPolicy::load(&path).expect("ausente").0);
+        for palette in theme::Palette::ALL {
+            for reduced_motion in [true, false] {
+                let settings = AppearanceSettings {
+                    palette,
+                    scheme: Scheme::System,
+                    contrast: 115,
+                    glass_opacity: 65,
+                    interface_font: InterfaceFont::Arial,
+                    mono_font: MonoFont::Consolas,
+                    reduced_motion,
+                };
+                hub.save(settings).expect("escritor productivo del Hub");
+                assert_eq!(
+                    vantare_ui::MotionPolicy::load(&path)
+                        .expect("lector productivo de overlays")
+                        .0,
+                    reduced_motion,
+                    "{palette:?}"
+                );
+                assert_eq!(
+                    Store::load(path.clone()).expect("reabrir").settings,
+                    settings
+                );
+            }
+        }
+        std::fs::remove_dir_all(dir).expect("limpiar contrato");
+    }
+
+    #[test]
     fn rejects_invalid_or_oversized_data_and_clamps_numeric_preferences() {
         let dir = directory("bounds");
         std::fs::create_dir_all(&dir).expect("directorio");

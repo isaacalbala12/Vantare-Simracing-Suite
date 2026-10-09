@@ -323,6 +323,65 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn hub_layout_file_reaches_an_open_overlay_and_survives_restart_without_loss() {
+        use vantare_domain::format::{Language, Preferences, Units};
+        use vantare_ui::{geometry, layout::CanvasResolution, performance};
+
+        let file = File::new();
+        let mut hub = Editor::open(file.path.clone()).expect("Hub");
+        let mut overlay = Document::open(file.path.clone()).expect("overlay déjà abierto");
+        for &kind in Kind::ALL {
+            hub.add(kind).expect("añadir widget registrado");
+            hub.edit_selected(|item| {
+                item.x = -1920.25;
+                item.y = 127.5;
+                item.visible = false;
+                item.opacity = 0.75;
+                item.geometry = geometry::Geometry {
+                    size: Some(geometry::Size {
+                        width: 640.0,
+                        height: 360.0,
+                    }),
+                    aspect_locked: false,
+                };
+            })
+            .expect("editar propiedades del frame");
+        }
+        hub.set_canvas_resolution(Some(CanvasResolution {
+            width: 3440.0,
+            height: 1440.0,
+        }))
+        .expect("resolución del lienzo");
+        hub.set_preferences(Preferences {
+            units: Units::Imperial,
+            language: Language::En,
+        })
+        .expect("formato");
+        let id = hub.selected.clone().expect("selección");
+        hub.set_performance(performance::Preferences {
+            level: performance::Level::Economy,
+            widgets: [(id, 20)].into_iter().collect(),
+        })
+        .expect("cadencia por instancia");
+        assert!(overlay.poll().expect("recarga del overlay"));
+        assert_eq!(overlay.layout(), hub.layout());
+        assert_eq!(
+            Document::open(file.path.clone())
+                .expect("reinicio")
+                .layout(),
+            hub.layout()
+        );
+        assert!(!overlay.poll().expect("sin cambios"));
+
+        hub.undo().expect("deshacer");
+        assert!(overlay.poll().expect("recargar undo"));
+        assert_eq!(overlay.layout(), hub.layout());
+        hub.redo().expect("rehacer");
+        assert!(overlay.poll().expect("recargar redo"));
+        assert_eq!(overlay.layout(), hub.layout());
+    }
+
+    #[test]
     fn performance_is_one_document_with_overlays_history_restart_and_conflict_protection() {
         use vantare_ui::performance::{Level, Preferences};
         let file = File::new();

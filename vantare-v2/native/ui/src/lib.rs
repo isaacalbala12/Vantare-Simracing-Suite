@@ -25,6 +25,7 @@ mod app;
 pub mod capture;
 mod demand;
 pub mod efficiency;
+pub mod geometry;
 pub mod layout;
 mod overlay;
 pub mod paths;

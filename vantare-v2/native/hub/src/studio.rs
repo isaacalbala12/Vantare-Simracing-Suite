@@ -461,7 +461,37 @@ impl Drag {
         true
     }
 }
-struct Started(Point<Pixels>);
+struct Resize {
+    pointer: (f32, f32),
+    origin: (f32, f32),
+    size: vantare_ui::geometry::Size,
+    preview: ((f32, f32), vantare_ui::geometry::Size),
+    scale: f32,
+    handle: vantare_ui::geometry::Handle,
+    locked: bool,
+}
+impl Resize {
+    fn update(&mut self, pointer: (f32, f32)) -> bool {
+        if !self.scale.is_finite() || self.scale <= 0.0 {
+            return false;
+        }
+        let Some(next) = vantare_ui::geometry::resize(
+            self.origin,
+            self.size,
+            self.handle,
+            (
+                (pointer.0 - self.pointer.0) / self.scale,
+                (pointer.1 - self.pointer.1) / self.scale,
+            ),
+            self.locked,
+        ) else {
+            return false;
+        };
+        self.preview = next;
+        true
+    }
+}
+struct Started(Point<Pixels>, Option<vantare_ui::geometry::Handle>);
 /// En GPUI la preview pertenece a una entidad de marco, no al documento ni al widget.
 /// Mover invalida solo esta entidad; Overlay conserva su renderer y su foto durante el gesto.
 struct CanvasFrame {
@@ -472,6 +502,7 @@ struct CanvasFrame {
     selected: bool,
     focus: FocusHandle,
     drag: Option<Drag>,
+    resize: Option<Resize>,
 }
 impl EventEmitter<Started> for CanvasFrame {}
 impl Render for CanvasFrame {
@@ -485,7 +516,8 @@ impl CanvasFrame {
             .drag
             .as_ref()
             .map_or((self.item.x, self.item.y), |drag| drag.preview);
-        let dimensions = self.renderer.read(cx).wanted_size();
+        let (x, y) = self.resize.as_ref().map_or((x, y), |r| r.preview.0);
+        let dimensions = self.renderer.read(cx).frame_size();
         div()
             .id("widget-frame")
             .absolute()
@@ -500,7 +532,7 @@ impl CanvasFrame {
                 MouseButton::Left,
                 cx.listener(|this, event: &gpui::MouseDownEvent, window, cx| {
                     this.focus.focus(window, cx);
-                    cx.emit(Started(event.position));
+                    cx.emit(Started(event.position, None));
                 }),
             )
             .child(
@@ -510,28 +542,98 @@ impl CanvasFrame {
                     .child(self.renderer.clone()),
             )
             .when(self.selected, |frame| {
-                frame.child(
-                    text(
-                        format!(
-                            "{} · {:.0} × {:.0}",
-                            self.item.settings.kind().label(),
-                            dimensions.0,
-                            dimensions.1
-                        ),
-                        10.0,
-                        500,
-                        orbit::ink(cx),
-                        cx,
+                frame
+                    .child(
+                        text(
+                            format!(
+                                "{} · {:.0} × {:.0}",
+                                self.item.settings.kind().label(),
+                                dimensions.0,
+                                dimensions.1
+                            ),
+                            10.0,
+                            500,
+                            orbit::ink(cx),
+                            cx,
+                        )
+                        .whitespace_nowrap()
+                        .line_height(px(14.0))
+                        .absolute()
+                        .top(px(-22.0))
+                        .left_0()
+                        .px(px(5.0))
+                        .bg(rgb(orbit::carmine(cx))),
                     )
-                    .whitespace_nowrap()
-                    .line_height(px(14.0))
-                    .absolute()
-                    .top(px(-22.0))
-                    .left_0()
-                    .px(px(5.0))
-                    .bg(rgb(orbit::carmine(cx))),
-                )
+                    .children(self.resize_handles(dimensions, cx))
             })
+    }
+    fn resize_handles(
+        &self,
+        dimensions: (f32, f32),
+        cx: &mut Context<Self>,
+    ) -> Vec<gpui::Stateful<gpui::Div>> {
+        [
+            (-1, -1, 0.0, 0.0),
+            (0, -1, 0.5, 0.0),
+            (1, -1, 1.0, 0.0),
+            (-1, 0, 0.0, 0.5),
+            (1, 0, 1.0, 0.5),
+            (-1, 1, 0.0, 1.0),
+            (0, 1, 0.5, 1.0),
+            (1, 1, 1.0, 1.0),
+        ]
+        .into_iter()
+        .enumerate()
+        .map(|(index, (hx, hy, x, y))| {
+            let handle = vantare_ui::geometry::Handle(hx, hy);
+            let cursor = match (hx, hy) {
+                (0, _) => gpui::CursorStyle::ResizeUpDown,
+                (_, 0) => gpui::CursorStyle::ResizeLeftRight,
+                (-1, -1) | (1, 1) => gpui::CursorStyle::ResizeUpLeftDownRight,
+                _ => gpui::CursorStyle::ResizeUpRightDownLeft,
+            };
+            div()
+                .id(("studio-resize", index))
+                .role(gpui::Role::Button)
+                .aria_label(format!(
+                    "Redimensionar {} {}",
+                    match hx {
+                        -1 => "izquierda",
+                        1 => "derecha",
+                        _ => "centro",
+                    },
+                    match hy {
+                        -1 => "arriba",
+                        1 => "abajo",
+                        _ => "centro",
+                    }
+                ))
+                .absolute()
+                .left(px(dimensions.0
+                    * self.preview_scale
+                    * self.content_scale
+                    * x
+                    - 5.0))
+                .top(px(dimensions.1
+                    * self.preview_scale
+                    * self.content_scale
+                    * y
+                    - 5.0))
+                .size(px(10.0))
+                .bg(rgb(orbit::carmine(cx)))
+                .border_1()
+                .border_color(rgb(orbit::ink(cx)))
+                .cursor(cursor)
+                .on_mouse_down(
+                    MouseButton::Left,
+                    cx.listener(move |this, event: &gpui::MouseDownEvent, window, cx| {
+                        this.focus.focus(window, cx);
+                        cx.emit(Started(event.position, Some(handle)));
+                        cx.stop_propagation();
+                    }),
+                )
+        })
+        .collect()
     }
 }
 /// Región flexible: el error completo queda en accesibilidad y tooltip.
@@ -737,6 +839,7 @@ impl Studio {
         self.frames.clear();
         for item in &self.editor.layout().instances {
             let mut overlay = Overlay::configured(&item.settings, self.preferences());
+            overlay.set_frame_size(item.geometry.size);
             #[cfg(feature = "parity-capture")]
             let content_scale = if studio_demo_capture() {
                 demo_content_scale(item.settings.kind(), overlay.wanted_size().0)
@@ -760,17 +863,34 @@ impl Studio {
                 focus: self.focus.clone(),
                 selected: self.editor.selected.as_ref() == Some(&item.id),
                 drag: None,
+                resize: None,
             });
             let id = item.id.clone();
             cx.subscribe(&frame, move |this, frame, event: &Started, cx| {
                 this.select(id.clone(), cx);
                 frame.update(cx, |frame, cx| {
-                    frame.drag = Some(Drag {
-                        pointer: (event.0.x.into(), event.0.y.into()),
-                        origin: (frame.item.x, frame.item.y),
-                        preview: (frame.item.x, frame.item.y),
-                        scale: frame.preview_scale,
-                    });
+                    if let Some(handle) = event.1 {
+                        let size = frame
+                            .item
+                            .geometry
+                            .resolved(frame.renderer.read(cx).wanted_size());
+                        frame.resize = Some(Resize {
+                            pointer: (event.0.x.into(), event.0.y.into()),
+                            origin: (frame.item.x, frame.item.y),
+                            size,
+                            preview: ((frame.item.x, frame.item.y), size),
+                            scale: frame.preview_scale * frame.content_scale,
+                            handle,
+                            locked: frame.item.geometry.aspect_locked,
+                        });
+                    } else {
+                        frame.drag = Some(Drag {
+                            pointer: (event.0.x.into(), event.0.y.into()),
+                            origin: (frame.item.x, frame.item.y),
+                            preview: (frame.item.x, frame.item.y),
+                            scale: frame.preview_scale,
+                        });
+                    }
                     cx.notify();
                 });
                 this.drag = Some(frame);
@@ -873,6 +993,11 @@ impl Studio {
         if let Some(frame) = self.drag.take() {
             frame.update(cx, |frame, cx| {
                 frame.drag = None;
+                frame.resize = None;
+                frame.renderer.update(cx, |renderer, cx| {
+                    renderer.set_frame_size(frame.item.geometry.size);
+                    cx.notify();
+                });
                 cx.notify();
             });
             // Durante el gesto se congelaron todos: restaurar también los no arrastrados.
@@ -891,6 +1016,15 @@ impl Studio {
                 return;
             }
             frame.update(cx, |frame, cx| {
+                if let Some(resize) = &mut frame.resize
+                    && resize.update((event.position.x.into(), event.position.y.into()))
+                {
+                    frame.renderer.update(cx, |renderer, cx| {
+                        renderer.set_frame_size(Some(resize.preview.1));
+                        cx.notify();
+                    });
+                    cx.notify();
+                }
                 if let Some(drag) = &mut frame.drag
                     && drag.update((event.position.x.into(), event.position.y.into()))
                 {
@@ -904,12 +1038,22 @@ impl Studio {
             return;
         };
         let next = frame.update(cx, |frame, cx| {
-            let mut drag = frame.drag.take()?;
             cx.notify();
-            drag.update((pointer.x.into(), pointer.y.into()))
-                .then_some((frame.item.id.clone(), drag.preview))
+            if let Some(mut resize) = frame.resize.take() {
+                resize
+                    .update((pointer.x.into(), pointer.y.into()))
+                    .then_some((
+                        frame.item.id.clone(),
+                        resize.preview.0,
+                        Some(resize.preview.1),
+                    ))
+            } else {
+                let mut drag = frame.drag.take()?;
+                drag.update((pointer.x.into(), pointer.y.into()))
+                    .then_some((frame.item.id.clone(), drag.preview, None))
+            }
         });
-        if let Some((id, (x, y))) = next {
+        if let Some((id, (x, y), size)) = next {
             self.editor.selected = Some(id);
             self.reset_fields();
             self.edit(
@@ -917,6 +1061,9 @@ impl Studio {
                     editor.edit_selected(|item| {
                         item.x = x;
                         item.y = y;
+                        if let Some(size) = size {
+                            item.geometry.size = Some(size);
+                        }
                     })
                 },
                 cx,
@@ -943,6 +1090,20 @@ impl Studio {
                 self.history(true, cx);
                 cx.stop_propagation();
             }
+        } else if self.focus.is_focused(window)
+            && key.modifiers.alt
+            && !key.modifiers.function
+            && self.editor.selected().is_some()
+            && let Some((direction, shift)) = keyboard_nudge(&gpui::Keystroke {
+                modifiers: gpui::Modifiers {
+                    alt: false,
+                    ..key.modifiers
+                },
+                ..key.clone()
+            })
+        {
+            self.resize_nudge(direction, shift, cx);
+            cx.stop_propagation();
         } else if self.focus.is_focused(window)
             && self.editor.selected().is_some()
             && let Some((direction, shift)) = keyboard_nudge(key)
@@ -995,6 +1156,59 @@ impl Studio {
         } else {
             None
         };
+        if let Some(size) = self.selected_size(cx) {
+            for (title, axis, value, minimum, maximum) in [
+                ("Ancho", 0, size.0, 64.0, 3840.0),
+                ("Alto", 1, size.1, 32.0, 2160.0),
+            ] {
+                let natural = size;
+                self.instance_number(
+                    title,
+                    Tab::Layout,
+                    f64::from(value),
+                    minimum,
+                    maximum,
+                    1.0,
+                    move |item, v| {
+                        let size = item.geometry.resolved(natural);
+                        let delta = if axis == 0 {
+                            (v as f32 - size.width, 0.0)
+                        } else {
+                            (0.0, v as f32 - size.height)
+                        };
+                        if let Some((_, size)) = vantare_ui::geometry::resize(
+                            (item.x, item.y),
+                            size,
+                            if axis == 0 {
+                                vantare_ui::geometry::Handle(1, 0)
+                            } else {
+                                vantare_ui::geometry::Handle(0, 1)
+                            },
+                            delta,
+                            item.geometry.aspect_locked,
+                        ) {
+                            item.geometry.size = Some(size);
+                        }
+                    },
+                    cx,
+                );
+            }
+        }
+        let aspect =
+            cx.new(|cx| Checkbox::switch("Mantener proporción", item.geometry.aspect_locked, cx));
+        let id = item.id.clone();
+        cx.subscribe(&aspect, move |this, _, event: &Checked, cx| {
+            if this.editor.selected.as_ref() == Some(&id) {
+                this.reset_fields();
+                this.edit(
+                    |editor| editor.edit_selected(|item| item.geometry.aspect_locked = event.0),
+                    cx,
+                );
+            }
+        })
+        .detach();
+        self.fields
+            .push((Tab::Layout, "Mantener proporción", aspect.into(), false));
         self.instance_number(
             "Opacidad",
             Tab::Appearance,
@@ -1101,7 +1315,7 @@ impl Studio {
         min: f64,
         max: f64,
         step: f64,
-        set: fn(&mut Instance, f64),
+        set: impl Fn(&mut Instance, f64) + 'static,
         cx: &mut Context<Self>,
     ) {
         let control = cx.new(|cx| {
@@ -1124,6 +1338,9 @@ impl Studio {
         let id = self.editor.selected.clone();
         cx.subscribe(&control, move |this, _, event: &NumberChanged, cx| {
             if this.editor.selected == id {
+                if matches!(title, "Ancho" | "Alto") {
+                    this.reset_fields();
+                }
                 this.edit(|editor| editor.edit_selected(|item| set(item, event.0)), cx);
             }
         })
@@ -1548,6 +1765,72 @@ impl Studio {
         }
         dpad
     }
+    fn resize_nudge(&mut self, direction: (i8, i8), shift: bool, cx: &mut Context<Self>) {
+        let Some(size) = self.selected_size(cx) else {
+            return;
+        };
+        let amount = if shift { 8.0 } else { 1.0 };
+        self.resize_by(
+            (
+                f32::from(direction.0) * amount,
+                f32::from(direction.1) * amount,
+            ),
+            size,
+            cx,
+        );
+    }
+    fn resize_by(&mut self, delta: (f32, f32), size: (f32, f32), cx: &mut Context<Self>) {
+        self.reset_fields();
+        self.edit(
+            |editor| {
+                editor.edit_selected(|item| {
+                    let handle = if delta.0 == 0.0 {
+                        vantare_ui::geometry::Handle(0, 1)
+                    } else {
+                        vantare_ui::geometry::Handle(1, 0)
+                    };
+                    if let Some((_, next)) = vantare_ui::geometry::resize(
+                        (item.x, item.y),
+                        vantare_ui::geometry::Size {
+                            width: size.0,
+                            height: size.1,
+                        },
+                        handle,
+                        delta,
+                        item.geometry.aspect_locked,
+                    ) {
+                        item.geometry.size = Some(next);
+                    }
+                })
+            },
+            cx,
+        );
+    }
+    fn scale_by(&mut self, factor: f32, cx: &mut Context<Self>) {
+        let Some(size) = self.selected_size(cx) else {
+            return;
+        };
+        self.reset_fields();
+        self.edit(
+            |editor| {
+                editor.edit_selected(|item| {
+                    if let Some((_, next)) = vantare_ui::geometry::resize(
+                        (item.x, item.y),
+                        vantare_ui::geometry::Size {
+                            width: size.0,
+                            height: size.1,
+                        },
+                        vantare_ui::geometry::Handle(1, 1),
+                        (size.0 * (factor - 1.0), size.1 * (factor - 1.0)),
+                        true,
+                    ) {
+                        item.geometry.size = Some(next);
+                    }
+                })
+            },
+            cx,
+        );
+    }
     fn position_controls(&self, item: &Instance, cx: &mut Context<Self>) -> gpui::Div {
         div()
             .min_w_0()
@@ -1568,18 +1851,20 @@ impl Studio {
                     .items_center()
                     .gap(px(8.0))
                     .child(text("Tamaño", 11.0, 500, orbit::ink_3(cx), cx))
-                    .child(orbit::disabled(
-                        orbit::position_cell("studio-size-minus", "−", 28.0, 28.0, false, cx),
-                        "Próximamente: el documento no admite escala libre.",
-                    ))
-                    .child(orbit::mono_text("Contenido", 11.0, orbit::ink_2(cx), cx))
-                    .child(orbit::disabled(
-                        orbit::position_cell("studio-size-plus", "+", 28.0, 28.0, false, cx),
-                        "Próximamente: el documento no admite escala libre.",
-                    )),
+                    .child(
+                        orbit::position_cell("studio-size-minus", "−", 28.0, 28.0, false, cx)
+                            .aria_label("Reducir widget 10 %")
+                            .on_click(cx.listener(|this, _, _, cx| this.scale_by(0.9, cx))),
+                    )
+                    .child(orbit::mono_text("Escala", 11.0, orbit::ink_2(cx), cx))
+                    .child(
+                        orbit::position_cell("studio-size-plus", "+", 28.0, 28.0, false, cx)
+                            .aria_label("Ampliar widget 10 %")
+                            .on_click(cx.listener(|this, _, _, cx| this.scale_by(1.1, cx))),
+                    ),
             )
             .child(text(
-                "Flechas: 1 px · Mayús: 8 px · • centra",
+                "Flechas: mover · Alt: tamaño · Mayús: 8 px",
                 11.0,
                 400,
                 orbit::ink_3(cx),
@@ -1874,7 +2159,7 @@ impl Studio {
             .find(|(id, _)| *id == item.id)
             .map(|(_, frame)| {
                 let frame = frame.read(cx);
-                let (width, height) = frame.renderer.read(cx).wanted_size();
+                let (width, height) = frame.renderer.read(cx).frame_size();
                 (width * frame.content_scale, height * frame.content_scale)
             })
     }
@@ -2095,6 +2380,133 @@ mod tests {
             });
         });
         studio.drag = Some(frame);
+    }
+    #[test]
+    fn resize_preview_freezes_document_and_commit_roundtrips_with_one_undo() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let original = studio.editor.layout().clone();
+                let frame = studio.frames[0].1.clone();
+                let size = frame
+                    .read(cx)
+                    .item
+                    .geometry
+                    .resolved(frame.read(cx).renderer.read(cx).wanted_size());
+                frame.update(cx, |frame, _| {
+                    frame.resize = Some(Resize {
+                        pointer: (100.0, 100.0),
+                        origin: (frame.item.x, frame.item.y),
+                        size,
+                        preview: ((frame.item.x, frame.item.y), size),
+                        scale: 0.5,
+                        handle: vantare_ui::geometry::Handle(-1, -1),
+                        locked: true,
+                    });
+                });
+                studio.drag = Some(frame.clone());
+                studio.move_drag(
+                    &MouseMoveEvent {
+                        position: gpui::point(px(130.0), px(120.0)),
+                        pressed_button: Some(MouseButton::Left),
+                        ..Default::default()
+                    },
+                    cx,
+                );
+                let preview = frame.read(cx).resize.as_ref().expect("resize").preview;
+                assert_eq!(studio.editor.layout(), &original);
+                assert_eq!(
+                    Editor::open(file.path.clone())
+                        .expect("disk during")
+                        .layout(),
+                    &original
+                );
+                assert!(
+                    (preview.0.0 + preview.1.width - original.instances[0].x - size.width).abs()
+                        < 0.001
+                );
+                assert!(
+                    (preview.0.1 + preview.1.height - original.instances[0].y - size.height).abs()
+                        < 0.001
+                );
+                studio.finish_drag(gpui::point(px(130.0), px(120.0)), cx);
+                let next = studio.editor.layout().clone();
+                assert_eq!(next.instances[0].geometry.size, Some(preview.1));
+                assert_eq!(
+                    studio.frames[0].1.read(cx).renderer.read(cx).frame_size(),
+                    preview.1.tuple()
+                );
+                assert_eq!(
+                    Editor::open(file.path.clone()).expect("reopen").layout(),
+                    &next
+                );
+                studio.history(false, cx);
+                assert_eq!(studio.editor.layout(), &original);
+                studio.history(true, cx);
+                assert_eq!(studio.editor.layout(), &next);
+                studio.history(false, cx);
+                studio.history(false, cx);
+                assert!(
+                    studio.editor.layout().instances.is_empty(),
+                    "no history during preview"
+                );
+            });
+            cx.quit();
+        });
+    }
+    #[test]
+    fn resize_cancel_restores_renderer_and_keyboard_resize_keeps_position() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let initial = studio.editor.layout().clone();
+                let size = studio.selected_size(cx).expect("size");
+                studio.resize_nudge((1, 0), false, cx);
+                let n = studio.editor.selected().expect("selected");
+                assert_eq!((n.x, n.y), (initial.instances[0].x, initial.instances[0].y));
+                assert!((n.geometry.size.expect("size").width - size.0 - 1.0).abs() < 0.001);
+                studio.resize_nudge((0, 1), true, cx);
+                studio.history(false, cx);
+                studio.history(false, cx);
+                assert_eq!(studio.editor.layout(), &initial);
+                let frame = studio.frames[0].1.clone();
+                let start = vantare_ui::geometry::Size {
+                    width: size.0,
+                    height: size.1,
+                };
+                frame.update(cx, |f, cx| {
+                    f.resize = Some(Resize {
+                        pointer: (100.0, 100.0),
+                        origin: (f.item.x, f.item.y),
+                        size: start,
+                        preview: ((f.item.x, f.item.y), start),
+                        scale: 1.0,
+                        handle: vantare_ui::geometry::Handle(1, 1),
+                        locked: false,
+                    });
+                    f.renderer.update(cx, |renderer, cx| {
+                        renderer.set_frame_size(Some(vantare_ui::geometry::Size {
+                            width: 1000.0,
+                            height: 900.0,
+                        }));
+                        cx.notify();
+                    });
+                });
+                studio.drag = Some(frame);
+                studio.cancel_drag(cx);
+                assert_eq!(
+                    studio.frames[0].1.read(cx).renderer.read(cx).frame_size(),
+                    size
+                );
+                studio.finish_drag(gpui::point(px(500.0), px(500.0)), cx);
+                assert_eq!(studio.editor.layout(), &initial);
+            });
+            cx.quit();
+        });
     }
     #[test]
     fn geometry_changes_cancel_manual_and_fitted_gestures_without_a_document_edit() {

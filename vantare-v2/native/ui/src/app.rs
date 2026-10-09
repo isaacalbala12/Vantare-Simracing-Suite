@@ -102,6 +102,7 @@ pub(crate) fn starter_layout(monitor: (f32, f32, f32, f32)) -> crate::layout::La
         instances: placed
             .into_iter()
             .map(|(id, kind, (x, y))| crate::layout::Instance {
+                geometry: crate::geometry::Geometry::default(),
                 id: id.into(),
                 x: x.round(),
                 y: y.round(),
@@ -123,6 +124,7 @@ pub struct Overlay {
     /// Hay un despertar programado (ver `wake_after`).
     wake_deadline: WakeDeadline,
     wake_task: Option<gpui::Task<()>>,
+    frame_size: Option<crate::geometry::Size>,
     preview_scale: f32,
     preview_scale_y: f32,
     paused: bool,
@@ -163,6 +165,7 @@ impl Overlay {
             prefs,
             wake_deadline: WakeDeadline::default(),
             wake_task: None,
+            frame_size: None,
             preview_scale: 1.0,
             preview_scale_y: 1.0,
             paused: false,
@@ -208,6 +211,14 @@ impl Overlay {
     pub fn wanted_size(&self) -> (f32, f32) {
         let (width, height) = self.widget.size();
         (width, height + if self.paused { 22.0 } else { 0.0 })
+    }
+
+    pub fn frame_size(&self) -> (f32, f32) {
+        self.frame_size
+            .map_or_else(|| self.wanted_size(), crate::geometry::Size::tuple)
+    }
+    pub fn set_frame_size(&mut self, size: Option<crate::geometry::Size>) {
+        self.frame_size = size;
     }
 
     /// Solo el host de preview reduce/amplía el renderer. Las ventanas reales
@@ -322,8 +333,8 @@ impl Render for Overlay {
         if crate::rights::denied(self.kind, cx) {
             // Sin licencia el widget queda vacío: el aviso único lo pinta `Screen`.
             return div()
-                .w(px(self.wanted_size().0 * self.preview_scale))
-                .h(px(self.wanted_size().1 * self.preview_scale_y))
+                .w(px(self.frame_size().0 * self.preview_scale))
+                .h(px(self.frame_size().1 * self.preview_scale_y))
                 .into_any_element();
         }
         #[cfg(feature = "paint-stats")]
@@ -336,8 +347,10 @@ impl Render for Overlay {
             vantare_domain::format::Language::Es => "EN PAUSA",
             vantare_domain::format::Language::En => "PAUSED",
         };
-        let scale = self.preview_scale;
-        let scale_y = self.preview_scale_y;
+        let frame = self.frame_size();
+        let factor = frame.0 / size.0;
+        let scale = self.preview_scale * factor;
+        let scale_y = self.preview_scale_y * factor;
         let (paint, wake) = self.widget.frame(self.prefs);
         #[cfg(feature = "paint-stats")]
         let profile_photo = self.profile_photo.take();
@@ -395,15 +408,20 @@ impl Render for Overlay {
                 }
             },
         )
-        .w(px(size.0 * scale))
-        .h(px(size.1 * scale_y));
+        .w(px(frame.0 * self.preview_scale))
+        .h(px(frame.1 * self.preview_scale_y));
         // Sin datos nuevos ni animación en curso no se pide ningún fotograma.
         match wake {
             Wake::Frame => window.request_animation_frame(),
             Wake::At(after) => self.wake_after(after, cx),
             Wake::Idle => {}
         }
-        element.into_any_element()
+        div()
+            .w(px(frame.0 * self.preview_scale))
+            .h(px(frame.1 * self.preview_scale_y))
+            .overflow_hidden()
+            .child(element)
+            .into_any_element()
     }
 }
 
@@ -458,7 +476,7 @@ impl Render for Screen {
             .children(notice)
             .children(self.widgets.iter().map(|placed| {
                 // Una vista cacheada se coloca y dimensiona por estilo, no por contenido.
-                let (w, h) = placed.view.read(cx).wanted_size();
+                let (w, h) = placed.view.read(cx).frame_size();
                 // Entity::cached usa el estilo para layout, pero no compone su
                 // opacity. Div sí la propaga al pintado bajo nivel del canvas.
                 div()
@@ -690,9 +708,17 @@ impl LiveScreens {
         );
         // Las pantallas solo colocan referencias. La entidad pertenece al ID,
         // incluso oculta o fuera de un monitor; preferencias reproyectan sin reset.
-        for widget in self.widgets.values() {
+        for (id, widget) in &self.widgets {
             widget.view.update(cx, |overlay, cx| {
                 overlay.prefs = self.prefs;
+                overlay.set_frame_size(
+                    layout
+                        .instances
+                        .iter()
+                        .find(|i| &i.id == id)
+                        .and_then(|i| i.geometry.size),
+                );
+                cx.notify();
                 if widget.visible
                     && let Some(snapshot) = self
                         .last
@@ -1018,6 +1044,21 @@ fn run_placed_authorized(
 #[cfg(test)]
 mod tests {
     #[test]
+    fn frame_geometry_scales_shared_host_and_intrinsic_size_stays_canonical() {
+        let mut overlay = Overlay::new(Kind::Standings, Preferences::default());
+        let natural = overlay.wanted_size();
+        let size = crate::geometry::Size {
+            width: natural.0 * 1.5,
+            height: natural.1 * 0.7,
+        };
+        overlay.set_frame_size(Some(size));
+        overlay.set_preview_scale(0.5).expect("canvas scale");
+        assert_eq!(overlay.frame_size(), size.tuple());
+        assert_eq!(overlay.wanted_size(), natural);
+        overlay.set_frame_size(None);
+        assert_eq!(overlay.frame_size(), natural);
+    }
+    #[test]
     fn identical_samples_request_no_repaint_for_all_widgets() {
         let prefs = Preferences::default();
         for &kind in Kind::ALL {
@@ -1099,6 +1140,7 @@ mod tests {
         ))
         .expect("historia observada");
         let mut instance = crate::layout::Instance {
+            geometry: crate::geometry::Geometry::default(),
             id: "inputs".into(),
             x: 20.0,
             y: 30.0,
@@ -1151,6 +1193,7 @@ mod tests {
     #[test]
     fn layout_recreates_only_changed_settings_types_new_ids_and_deleted_widgets() {
         let mut instance = crate::layout::Instance {
+            geometry: crate::geometry::Geometry::default(),
             id: "inputs".into(),
             x: 20.0,
             y: 30.0,

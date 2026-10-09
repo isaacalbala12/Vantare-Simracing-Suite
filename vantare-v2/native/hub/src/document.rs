@@ -109,11 +109,12 @@ impl Editor {
         let mut next = previous.clone();
         edit(&mut next)?;
         // La API común normaliza documentos externos; una entrada interactiva no finita es un error.
-        if next
-            .instances
-            .iter()
-            .any(|item| !item.x.is_finite() || !item.y.is_finite() || !item.opacity.is_finite())
-        {
+        if next.instances.iter().any(|item| {
+            !item.x.is_finite()
+                || !item.y.is_finite()
+                || !item.opacity.is_finite()
+                || item.geometry.size.is_some_and(|s| !s.valid())
+        }) {
             return Err("posición u opacidad no finita".into());
         }
         let next = next.normalized().map_err(|error| error.to_string())?;
@@ -151,6 +152,7 @@ impl Editor {
         let id = self.next_id()?;
         self.change(|layout| {
             layout.instances.push(Instance {
+                geometry: vantare_ui::geometry::Geometry::default(),
                 id: id.clone(),
                 x: 20.0,
                 y: 20.0,

@@ -5990,3 +5990,11 @@ de build; no se añade un test de estilo que solo refleje la fórmula.
 - Latencia: doce tandas antesc1575ed0/después4fae991b,2880 inyecciones,2845 con evento/render/Present corroborado ETW. A60Hz p95 inyección→Present antes13,48–15,97/final16,26–18,12ms; evento→Present antes10,60–13,77/final10,26–12,08ms. Repetición59Hz evita fijar fase: total antes18,15–18,56/final18,25–19,04ms, cola igualada8,2–8,3ms, estimación DWM desde evento≈24,8ms ambas. Sin mejora ni empeoramiento estable acreditado; no es scanout. Coalescencia/exclusiones y primera presentación Dropped separados de frames estimados mostrados; sin trazas en producto.
 - Evidencia detallada, límites, instrucciones manuales, cada SHA y controladores en C:/tmp/ui-r10/calidad-2-evidence/studio-drag-preview/VERIFICACION.md y hallazgos.md. Banco terminó sin apps propias, mouse liberado, mutex comprobado y Windows100/restauración/cierre de Ajustes propios verificados. Gates/latencia no solaparon; durante funcional sí había Nextest, no se usa su timing como fluidez.
 - Reporte compacto12 líneas actualizado; fuente de verdad de la vuelta2 anterior se conserva y cita con sus propios SHA/binarios. Revisión independiente≥9 y valoración de señal histórica937fe794 pendientes. No delegación/push/PR/CI remota/merge/promoción/release; la documentación de cierre no cambia el árbol nativo probado.
+
+### Pendientes de Studio: hito de geometría (#1496)
+Autorización del orquestador2026-10-09: completar resize/escala y escenarios de corpus
+real, medir release, sin delegación/push/PR. Base3eb404c7 limpia. Geometry opcional
+en UI.layout, frame común en Overlay, ocho tiradores e inspector/Alt+flechas; preview
+independiente y commit único. Defaults conservan layouts anteriores; máximos/mínimos
+y proporción definidos en arrastre-y-resize.md. Pruebas/gates/capturas en curso.
+Plan.md ausente también en origin/nightly; no se recrea ni se publica roadmap.

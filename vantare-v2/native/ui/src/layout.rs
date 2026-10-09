@@ -101,6 +101,8 @@ pub struct Instance {
     pub visible: bool,
     #[serde(default = "opaque")]
     pub opacity: f32,
+    #[serde(default, skip_serializing_if = "crate::geometry::Geometry::is_default")]
+    pub geometry: crate::geometry::Geometry,
     pub settings: Settings,
 }
 
@@ -142,6 +144,12 @@ impl Layout {
             } else {
                 1.0
             };
+            if let Some(size) = instance.geometry.size {
+                if !size.valid() {
+                    return Err(Error::Invalid("tamaño del frame no finito o no positivo"));
+                }
+                instance.geometry.size = Some(size.bounded());
+            }
             instance.settings = instance.settings.normalized();
         }
         Ok(self)
@@ -427,6 +435,28 @@ mod tests {
         fs::remove_dir_all(dir).expect("limpiar");
     }
 
+    #[test]
+    fn geometry_old_documents_keep_natural_size_and_new_sizes_validate() {
+        let mut layout = Layout::from_json(FIXTURE).expect("old document");
+        assert!(
+            layout
+                .instances
+                .iter()
+                .all(|i| i.geometry == crate::geometry::Geometry::default())
+        );
+        layout.instances[0].geometry.size = Some(crate::geometry::Size {
+            width: 600.0,
+            height: 400.0,
+        });
+        layout.instances[0].geometry.aspect_locked = false;
+        let bytes = serde_json::to_vec(&layout).expect("serialize");
+        assert_eq!(Layout::from_json(&bytes).expect("new document"), layout);
+        layout.instances[0].geometry.size = Some(crate::geometry::Size {
+            width: 0.0,
+            height: 100.0,
+        });
+        assert!(layout.normalized().is_err());
+    }
     #[test]
     fn frozen_document_roundtrip_preserves_order_and_options() {
         let layout = Layout::from_json(FIXTURE).expect("fixture");

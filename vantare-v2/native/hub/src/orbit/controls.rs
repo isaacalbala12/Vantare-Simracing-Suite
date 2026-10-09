@@ -5,7 +5,7 @@ use gpui::{
     deferred, div, px, rgb, rgba,
 };
 pub(super) fn choice_background(theme: &theme::Theme) -> u32 {
-    theme.panel_bg
+    (theme.skin.l2 << 8) | 0xff
 }
 /// Select/input §4 (32, radio sm): l2 hundido con contorno; foco con anillo del acento.
 pub fn field(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
@@ -309,7 +309,8 @@ impl Choice {
                         .snap_to_window()
                         .child(list),
                 )
-                .with_priority(MENU_Z),
+                // Los selects tambien deben verse sobre formularios modales.
+                .with_priority(MODAL_Z + MENU_Z),
             );
         }
         result
@@ -1219,6 +1220,18 @@ impl Table {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn dropdown_surface_is_opaque_for_every_palette_scheme_and_glass_setting() {
+        for palette in theme::Palette::ALL {
+            for scheme in [theme::Scheme::Light, theme::Scheme::Dark] {
+                for glass in [50, 80, 100] {
+                    let theme = theme::Theme::resolve(palette, scheme, 100, glass);
+                    assert_eq!(choice_background(&theme) & 255, 255);
+                    assert_eq!(choice_background(&theme) >> 8, theme.skin.l2);
+                }
+            }
+        }
+    }
     #[test]
     fn size_labels_fit_the_inspector_without_rounding_the_geometry() {
         for (value, label) in [

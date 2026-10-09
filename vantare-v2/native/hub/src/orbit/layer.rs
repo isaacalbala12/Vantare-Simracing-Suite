@@ -24,8 +24,8 @@ pub struct Layer {
     popover_size: Option<(f32, f32)>,
 }
 impl EventEmitter<Dismissed> for Layer {}
-/// Solo los popovers comparten el ajuste de cristal con Choice. Los diálogos
-/// modales conservan su superficie opaca para separar una decisión del fondo.
+/// Solo los popovers usan el ajuste de cristal. Choice y los diálogos
+/// modales conservan su superficie opaca para separar su contenido del fondo.
 fn panel_ramp(theme: &super::theme::Theme, modal: bool) -> super::skin::Ramp {
     let opacity = if modal { 255 } else { theme.panel_bg & 255 };
     super::skin::Ramp {
@@ -203,7 +203,7 @@ mod tests {
     use crate::orbit::theme::{AppearanceSettings, Palette, Scheme, resolve_hub};
 
     #[test]
-    fn saved_glass_changes_choice_and_notification_backgrounds_without_fading_children() {
+    fn saved_glass_keeps_choices_opaque_and_changes_notification_backgrounds() {
         for palette in Palette::ALL {
             for scheme in [Scheme::Light, Scheme::Dark] {
                 for glass_opacity in [50, 100] {
@@ -218,10 +218,7 @@ mod tests {
                     let theme = resolve_hub(saved, gpui::WindowAppearance::Dark);
                     let popover = panel_ramp(&theme, false);
                     let expected = u32::from(glass_opacity) * 255 / 100;
-                    assert_eq!(
-                        super::super::controls::choice_background(&theme) & 255,
-                        expected
-                    );
+                    assert_eq!(super::super::controls::choice_background(&theme) & 255, 255);
                     assert_eq!((popover.from & 255, popover.to & 255), (expected, expected));
                     assert_eq!(
                         (popover.from >> 8, popover.to >> 8),

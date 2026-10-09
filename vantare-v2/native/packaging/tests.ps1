@@ -244,7 +244,7 @@ try {
 }
 
 # Perfil REAL versionado de Wails: se preservan bytes, no se simula conversión.
-$profileFile = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../pkg/config/testdata/profile-v2-general-layout.json'))
+$profileFile = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot 'fixtures/profile-v2-general-layout.json'))
 $profileHash = Get-NativeHash $profileFile
 $before = Read-NativeState $install
 $state = Import-NativeProfiles $install @($profileFile)

@@ -15,3 +15,6 @@
 *.ttf binary
 *.eot binary
 *.otf binary
+
+# Frozen Go catalogs retain their pre-retirement bytes, including CRLF.
+native/engineer/testdata/go-reference/*.txt -text

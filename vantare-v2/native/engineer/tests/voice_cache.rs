@@ -51,8 +51,8 @@ fn keys_match_frozen_go_cache_key_vectors_including_utf8() {
 
 #[test]
 fn shared_phrases_and_voices_match_the_go_catalog_for_each_locale() {
-    let catalog = include_str!("../../../internal/engineer/presentation/presentation.go");
-    let config = include_str!("../../../internal/engineer/audio/config.go");
+    let catalog = include_str!("../testdata/go-reference/presentation.go.txt");
+    let config = include_str!("../testdata/go-reference/config.go.txt");
     for (locale, section) in [
         (Locale::Es, "LocaleSpanish"),
         (Locale::En, "LocaleEnglish"),

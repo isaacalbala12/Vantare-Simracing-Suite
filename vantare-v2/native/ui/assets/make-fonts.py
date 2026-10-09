@@ -1,7 +1,7 @@
 """Genera las instancias estaticas de Inter que usa el modo efficiency-parity.
 
-Fuente: frontend/src/assets/fonts/orbit/Inter-Variable.woff2 (la misma que carga
-la produccion, licencia OFL). GPUI/DirectWrite necesita TTF/OTF, asi que se
+Fuente: Inter-Variable.woff2 conservada desde el frontend retirado (#1533),
+licencia OFL. GPUI/DirectWrite necesita TTF/OTF, asi que se
 instancia el eje wght (400, 500, 600, 650, 700, 800) y se recorta a Latin.
 Uso: python make-fonts.py  (requiere fonttools y brotli)
 """
@@ -11,7 +11,7 @@ from fontTools.varLib.instancer import instantiateVariableFont
 from fontTools import subset
 
 ROOT = Path(__file__).resolve().parents[3]
-SRC = ROOT / "frontend/src/assets/fonts/orbit/Inter-Variable.woff2"
+SRC = Path(__file__).resolve().parent / "Inter-Variable.woff2"
 OUT = Path(__file__).resolve().parent / "fonts"
 OUT.mkdir(exist_ok=True)
 UNICODES = list(range(0x20, 0x17F)) + [

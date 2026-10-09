@@ -7,7 +7,7 @@ pub struct Icons;
 const ASSETS: &[(&str, &[u8])] = &[
     (
         "brand/wordmark.svg",
-        include_bytes!("../../../../build/brand/wordmark/vantare-wordmark-blanco.svg"),
+        include_bytes!("../../../assets/brand/wordmark/vantare-wordmark-blanco.svg"),
     ),
     (
         "icons/alert.svg",

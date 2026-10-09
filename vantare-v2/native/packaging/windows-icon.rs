@@ -6,9 +6,7 @@ pub fn embed() -> Result<(), Box<dyn std::error::Error>> {
         return Ok(());
     }
     let manifest = PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").ok_or("manifest ausente")?);
-    let icon = manifest
-        .join("../../build/windows/icon.ico")
-        .canonicalize()?;
+    let icon = manifest.join("../assets/icon.ico").canonicalize()?;
     println!("cargo:rerun-if-changed={}", icon.display());
     println!("cargo:rerun-if-changed=../packaging/windows-icon.rs");
     println!("cargo:rerun-if-env-changed=WindowsSdkDir");

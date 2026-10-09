@@ -1,5 +1,24 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1533 — retirada Wails/React (2026-10-09)
+
+Rama aislada `vantareapp/isa-1533-retirar-wails`, base `5e1da3f6`; plan
+aprobado por Isaac. Sin push, PR, merge, promoción, release ni despliegue.
+Hito 1: extraídas marca, fuentes, calendario, perfil y catálogos; 451 SHA-256
+conservados, comprobados también contra los blobs staged. Oráculos Go mínimos
+archivados con fuentes, licencia y hashes; los tres se compilan/reproducen
+sin la app activa. LMU reproduce los 72 resultados/horarios con hashes iguales.
+Antes de borrar: fmt/check/Clippy PASS; Nextest 1402/1402 (7 skips), lifecycle
+PASS y telemetría 21/21 PASS. Primera ejecución falló por EOF al iniciar el
+proceso de Engineer; caso aislado y suite completa serial PASS sin cambiar
+código ni tests. Logs originales y retry conservados en
+`C:/tmp/auditoria-arquitectura-v2/evidence-1533/`.
+Packaging 175 checks PASS con artefacto beta anterior `00f37fef`, no distribución
+de este SHA; Python, marca y referencias PASS. Supabase/testdata se mantienen.
+Coordinar #1530 (AGENTS/README, DTO y pins de fixtures) y #1534 (windows-icon,
+que debe mantener `native/assets/icon.ico`). Roadmap ausente en esta base,
+propiedad de #1530. Siguiente: retirada por directorios, CI y gates finales.
+
 ## #1511 — nombre visible Vantare (2026-10-08)
 
 Entrega técnica verificada en `C:/tmp/vw3-1511/vantare-v2`, rama

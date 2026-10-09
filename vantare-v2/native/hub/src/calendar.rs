@@ -15,7 +15,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const SEED: &str = include_str!("../../../internal/calendar/seed/lmu-weekly-schedule.json");
+const SEED: &str = include_str!("../data/lmu-weekly-schedule.json");
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Schedule {

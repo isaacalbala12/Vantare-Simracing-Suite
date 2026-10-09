@@ -1,0 +1,2974 @@
+{
+  "schema": "vantare.engineer.catalog-voice.v1",
+  "version": 1,
+  "source": "docs/engineer/catalog-v1.md",
+  "sourceSha256": "dd9f94af8fb4730bfcfeac87236464f3e8d4fb6902a57079587b39f20a9b6676",
+  "generatedAt": "2026-08-21T11:40:37Z",
+  "locales": [
+    "es",
+    "en",
+    "it",
+    "pt-BR"
+  ],
+  "voiceModelsLock": "tools/engineer-voice-cache/voice-models.lock.json",
+  "intents": [
+    {
+      "intent": "spotter.car_left",
+      "family": "spotter",
+      "priority": "P0",
+      "type": "interrumpe",
+      "ttl": "3 s",
+      "voiceTexts": {
+        "en": "Car left",
+        "es": "Coche a la izquierda",
+        "it": "Auto a sinistra",
+        "pt-BR": "Carro à esquerda"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Car left",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Coche a la izquierda",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Auto a sinistra",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Carro à esquerda",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "spotter.car_right",
+      "family": "spotter",
+      "priority": "P0",
+      "type": "interrumpe",
+      "ttl": "3 s",
+      "voiceTexts": {
+        "en": "Car right",
+        "es": "Coche a la derecha",
+        "it": "Auto a destra",
+        "pt-BR": "Carro à direita"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Car right",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Coche a la derecha",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Auto a destra",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Carro à direita",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "spotter.still_there",
+      "family": "spotter",
+      "priority": "P0",
+      "type": "interrumpe",
+      "ttl": "3 s",
+      "voiceTexts": {
+        "en": "Still there",
+        "es": "Sigue ahí",
+        "it": "È ancora lì",
+        "pt-BR": "Ainda está aí"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Still there",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Sigue ahí",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "È ancora lì",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Ainda está aí",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "spotter.clear_left",
+      "family": "spotter",
+      "priority": "P0",
+      "type": "interrumpe",
+      "ttl": "3 s",
+      "voiceTexts": {
+        "en": "Clear on the left",
+        "es": "Libre por la izquierda",
+        "it": "Libero a sinistra",
+        "pt-BR": "Livre à esquerda"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Clear on the left",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Libre por la izquierda",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Libero a sinistra",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Livre à esquerda",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "spotter.clear_right",
+      "family": "spotter",
+      "priority": "P0",
+      "type": "interrumpe",
+      "ttl": "3 s",
+      "voiceTexts": {
+        "en": "Clear on the right",
+        "es": "Libre por la derecha",
+        "it": "Libero a destra",
+        "pt-BR": "Livre à direita"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Clear on the right",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Libre por la derecha",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Libero a destra",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Livre à direita",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "spotter.all_clear",
+      "family": "spotter",
+      "priority": "P0",
+      "type": "interrumpe",
+      "ttl": "3 s",
+      "voiceTexts": {
+        "en": "All clear",
+        "es": "Todo libre",
+        "it": "Tutto libero",
+        "pt-BR": "Tudo livre"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "All clear",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Todo libre",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Tutto libero",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Tudo livre",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "spotter.three_wide",
+      "family": "spotter",
+      "priority": "P0",
+      "type": "interrumpe",
+      "ttl": "3 s",
+      "voiceTexts": {
+        "en": "Three wide",
+        "es": "Tres coches en paralelo",
+        "it": "Tre auto affiancate",
+        "pt-BR": "Três carros lado a lado"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Three wide",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Tres coches en paralelo",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Tre auto affiancate",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Três carros lado a lado",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "flags.yellow_ahead",
+      "family": "banderas",
+      "priority": "P1",
+      "type": "interrumpe",
+      "ttl": "10 s",
+      "voiceTexts": {
+        "en": "Yellow flag ahead, caution",
+        "es": "Bandera amarilla delante, precaución",
+        "it": "Bandiera gialla davanti, attenzione",
+        "pt-BR": "Bandeira amarela à frente, atenção"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Yellow flag ahead, caution",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Bandera amarilla delante, precaución",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Bandiera gialla davanti, attenzione",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Bandeira amarela à frente, atenção",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "flags.yellow_clear",
+      "family": "banderas",
+      "priority": "P1",
+      "type": "informa",
+      "ttl": "10 s",
+      "voiceTexts": {
+        "en": "Track clear, yellow withdrawn",
+        "es": "Pista libre, amarilla retirada",
+        "it": "Pista libera, gialla rientrata",
+        "pt-BR": "Pista livre, amarela recolhida"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Track clear, yellow withdrawn",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Pista libre, amarilla retirada",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Pista libera, gialla rientrata",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Pista livre, amarela recolhida",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "flags.blue_flag",
+      "family": "banderas",
+      "priority": "P1",
+      "type": "informa",
+      "ttl": "8 s",
+      "voiceTexts": {
+        "en": "Blue flag, let them through",
+        "es": "Bandera azul, deja pasar",
+        "it": "Bandiera blu, lascia passare",
+        "pt-BR": "Bandeira azul, deixe passar"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Blue flag, let them through",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Bandera azul, deja pasar",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Bandiera blu, lascia passare",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Bandeira azul, deixe passar",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "fuel.low_half_tank",
+      "family": "fuel",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "30 s",
+      "voiceTexts": {
+        "en": "Half a tank remaining",
+        "es": "Queda medio depósito",
+        "it": "Rimane metà serbatoio",
+        "pt-BR": "Resta meio tanque"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Half a tank remaining",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Queda medio depósito",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Rimane metà serbatoio",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Resta meio tanque",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "fuel.low_2l",
+      "family": "fuel",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "25 s",
+      "voiceTexts": {
+        "en": "Two litres remaining",
+        "es": "Quedan dos litros",
+        "it": "Rimangono due litri",
+        "pt-BR": "Restam dois litros"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Two litres remaining",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Quedan dos litros",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Rimangono due litri",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Restam dois litros",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "fuel.low_1l",
+      "family": "fuel",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "One litre remaining",
+        "es": "Queda un litro",
+        "it": "Rimane un litro",
+        "pt-BR": "Resta um litro"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "One litre remaining",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Queda un litro",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Rimane un litro",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Resta um litro",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "fuel.laps_remaining_4",
+      "family": "fuel",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "30 s",
+      "voiceTexts": {
+        "en": "Four laps of fuel remaining",
+        "es": "Queda combustible para cuatro vueltas",
+        "it": "Carburante per quattro giri",
+        "pt-BR": "Combustível para quatro voltas"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Four laps of fuel remaining",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Queda combustible para cuatro vueltas",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Carburante per quattro giri",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Combustível para quatro voltas",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "fuel.laps_remaining_3",
+      "family": "fuel",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "30 s",
+      "voiceTexts": {
+        "en": "Three laps of fuel remaining",
+        "es": "Queda combustible para tres vueltas",
+        "it": "Carburante per tre giri",
+        "pt-BR": "Combustível para três voltas"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Three laps of fuel remaining",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Queda combustible para tres vueltas",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Carburante per tre giri",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Combustível para três voltas",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "fuel.laps_remaining_2",
+      "family": "fuel",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "25 s",
+      "voiceTexts": {
+        "en": "Two laps of fuel remaining",
+        "es": "Queda combustible para dos vueltas",
+        "it": "Carburante per due giri",
+        "pt-BR": "Combustível para duas voltas"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Two laps of fuel remaining",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Queda combustible para dos vueltas",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Carburante per due giri",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Combustível para duas voltas",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "fuel.laps_remaining_1",
+      "family": "fuel",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "One lap of fuel remaining",
+        "es": "Queda combustible para una vuelta",
+        "it": "Carburante per un giro",
+        "pt-BR": "Combustível para uma volta"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "One lap of fuel remaining",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Queda combustible para una vuelta",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Carburante per un giro",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Combustível para uma volta",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "fuel.for_pit_now",
+      "family": "fuel",
+      "priority": "P2",
+      "type": "interrumpe",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Fuel critical, pit now",
+        "es": "Combustible crítico, entra en boxes",
+        "it": "Carburante critico, rientra ai box",
+        "pt-BR": "Combustível crítico, entre nos boxes"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Fuel critical, pit now",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Combustible crítico, entra en boxes",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Carburante critico, rientra ai box",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Combustível crítico, entre nos boxes",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "fuel.status_on_demand",
+      "family": "fuel",
+      "priority": "P3",
+      "type": "consulta",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "Fuel, {n} litres, {gap} laps estimated",
+        "es": "Combustible, {n} litros, {gap} vueltas estimadas",
+        "it": "Carburante, {n} litri, {gap} giri stimati",
+        "pt-BR": "Combustível, {n} litros, {gap} voltas estimadas"
+      },
+      "placeholders": [
+        "{gap}",
+        "{n}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Fuel, {n} litres, {gap} laps estimated",
+          "placeholders": [
+            "{n}",
+            "{gap}"
+          ]
+        },
+        "es": {
+          "voiceText": "Combustible, {n} litros, {gap} vueltas estimadas",
+          "placeholders": [
+            "{n}",
+            "{gap}"
+          ]
+        },
+        "it": {
+          "voiceText": "Carburante, {n} litri, {gap} giri stimati",
+          "placeholders": [
+            "{n}",
+            "{gap}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Combustível, {n} litros, {gap} voltas estimadas",
+          "placeholders": [
+            "{n}",
+            "{gap}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "fuel.consumption_report",
+      "family": "fuel",
+      "priority": "P3",
+      "type": "consulta",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "Average {n} litres per lap",
+        "es": "Consumo medio {n} litros por vuelta",
+        "it": "Consumo medio {n} litri al giro",
+        "pt-BR": "Consumo médio {n} litros por volta"
+      },
+      "placeholders": [
+        "{n}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Average {n} litres per lap",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "es": {
+          "voiceText": "Consumo medio {n} litros por vuelta",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "it": {
+          "voiceText": "Consumo medio {n} litri al giro",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Consumo médio {n} litros por volta",
+          "placeholders": [
+            "{n}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "fuel.pit_window_open",
+      "family": "fuel",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "30 s",
+      "voiceTexts": {
+        "en": "Pit window open, {n} laps of range",
+        "es": "Ventana de repostaje abierta, {n} vueltas de autonomía",
+        "it": "Finestra rifornimento aperta, {n} giri di autonomia",
+        "pt-BR": "Janela de reabastecimento aberta, {n} voltas de autonomia"
+      },
+      "placeholders": [
+        "{n}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Pit window open, {n} laps of range",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "es": {
+          "voiceText": "Ventana de repostaje abierta, {n} vueltas de autonomía",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "it": {
+          "voiceText": "Finestra rifornimento aperta, {n} giri di autonomia",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Janela de reabastecimento aberta, {n} voltas de autonomia",
+          "placeholders": [
+            "{n}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "penalties.count_increased",
+      "family": "penalties",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "A new penalty is pending",
+        "es": "Hay una nueva penalización pendiente",
+        "it": "C'è una nuova penalità da scontare",
+        "pt-BR": "Há uma nova penalização pendente"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "A new penalty is pending",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Hay una nueva penalización pendiente",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "C'è una nuova penalità da scontare",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Há uma nova penalização pendente",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "penalties.count_on_demand",
+      "family": "penalties",
+      "priority": "P3",
+      "type": "consulta",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "You have {n} penalties pending",
+        "es": "Tienes {n} penalizaciones pendientes",
+        "it": "Hai {n} penalità da scontare",
+        "pt-BR": "Você tem {n} penalizações pendentes"
+      },
+      "placeholders": [
+        "{n}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "You have {n} penalties pending",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "es": {
+          "voiceText": "Tienes {n} penalizaciones pendientes",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "it": {
+          "voiceText": "Hai {n} penalità da scontare",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Você tem {n} penalizações pendentes",
+          "placeholders": [
+            "{n}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "penalties.drive_through_notice",
+      "family": "penalties",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "Penalty, drive through required",
+        "es": "Penalización, debes hacer paso por boxes",
+        "it": "Penalità, devi fare un drive through",
+        "pt-BR": "Penalização, passagem obrigatória pelos boxes"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Penalty, drive through required",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Penalización, debes hacer paso por boxes",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Penalità, devi fare un drive through",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Penalização, passagem obrigatória pelos boxes",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "laps.lap_completed",
+      "family": "laps",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "10 s",
+      "voiceTexts": {
+        "en": "Lap completed",
+        "es": "Vuelta completada",
+        "it": "Giro completato",
+        "pt-BR": "Volta concluída"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Lap completed",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Vuelta completada",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Giro completato",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Volta concluída",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "laps.personal_best",
+      "family": "laps",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Personal best, {gap}",
+        "es": "Mejor vuelta personal, {gap}",
+        "it": "Miglior giro personale, {gap}",
+        "pt-BR": "Melhor volta pessoal, {gap}"
+      },
+      "placeholders": [
+        "{gap}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Personal best, {gap}",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "es": {
+          "voiceText": "Mejor vuelta personal, {gap}",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "it": {
+          "voiceText": "Miglior giro personale, {gap}",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Melhor volta pessoal, {gap}",
+          "placeholders": [
+            "{gap}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "laps.session_best",
+      "family": "laps",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Session best, {gap}",
+        "es": "Mejor vuelta de sesión, {gap}",
+        "it": "Miglior giro della sessione, {gap}",
+        "pt-BR": "Melhor volta da sessão, {gap}"
+      },
+      "placeholders": [
+        "{gap}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Session best, {gap}",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "es": {
+          "voiceText": "Mejor vuelta de sesión, {gap}",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "it": {
+          "voiceText": "Miglior giro della sessione, {gap}",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Melhor volta da sessão, {gap}",
+          "placeholders": [
+            "{gap}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "laps.sector_time",
+      "family": "laps",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "12 s",
+      "voiceTexts": {
+        "en": "Sector {n}, {gap} seconds",
+        "es": "Sector {n}, {gap} segundos",
+        "it": "Settore {n}, {gap} secondi",
+        "pt-BR": "Setor {n}, {gap} segundos"
+      },
+      "placeholders": [
+        "{gap}",
+        "{n}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Sector {n}, {gap} seconds",
+          "placeholders": [
+            "{n}",
+            "{gap}"
+          ]
+        },
+        "es": {
+          "voiceText": "Sector {n}, {gap} segundos",
+          "placeholders": [
+            "{n}",
+            "{gap}"
+          ]
+        },
+        "it": {
+          "voiceText": "Settore {n}, {gap} secondi",
+          "placeholders": [
+            "{n}",
+            "{gap}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Setor {n}, {gap} segundos",
+          "placeholders": [
+            "{n}",
+            "{gap}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "laps.last_lap_report",
+      "family": "laps",
+      "priority": "P3",
+      "type": "consulta",
+      "ttl": "12 s",
+      "voiceTexts": {
+        "en": "Last lap, {gap} seconds",
+        "es": "Última vuelta, {gap} segundos",
+        "it": "Ultimo giro, {gap} secondi",
+        "pt-BR": "Última volta, {gap} segundos"
+      },
+      "placeholders": [
+        "{gap}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Last lap, {gap} seconds",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "es": {
+          "voiceText": "Última vuelta, {gap} segundos",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "it": {
+          "voiceText": "Ultimo giro, {gap} secondi",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Última volta, {gap} segundos",
+          "placeholders": [
+            "{gap}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "timings.gap_report",
+      "family": "timings",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Gaps updated",
+        "es": "Diferencias actualizadas",
+        "it": "Distacchi aggiornati",
+        "pt-BR": "Diferenças atualizadas"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Gaps updated",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Diferencias actualizadas",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Distacchi aggiornati",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Diferenças atualizadas",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "timings.gap_ahead",
+      "family": "timings",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Car ahead is {gap} seconds ahead",
+        "es": "El de delante está a {gap} segundos",
+        "it": "Quello davanti è a {gap} secondi",
+        "pt-BR": "Carro à frente a {gap} segundos"
+      },
+      "placeholders": [
+        "{gap}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Car ahead is {gap} seconds ahead",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "es": {
+          "voiceText": "El de delante está a {gap} segundos",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "it": {
+          "voiceText": "Quello davanti è a {gap} secondi",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Carro à frente a {gap} segundos",
+          "placeholders": [
+            "{gap}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "timings.gap_behind",
+      "family": "timings",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Car behind is {gap} seconds behind",
+        "es": "El de detrás está a {gap} segundos",
+        "it": "Quello dietro è a {gap} secondi",
+        "pt-BR": "Carro atrás a {gap} segundos"
+      },
+      "placeholders": [
+        "{gap}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Car behind is {gap} seconds behind",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "es": {
+          "voiceText": "El de detrás está a {gap} segundos",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "it": {
+          "voiceText": "Quello dietro è a {gap} secondi",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Carro atrás a {gap} segundos",
+          "placeholders": [
+            "{gap}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "timings.position_gained",
+      "family": "timings",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "12 s",
+      "voiceTexts": {
+        "en": "Position gained, you are P{pos}",
+        "es": "Has ganado una posición, vas {pos}º",
+        "it": "Hai guadagnato una posizione, sei {pos}º",
+        "pt-BR": "Ganhou uma posição, está em {pos}º"
+      },
+      "placeholders": [
+        "{pos}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Position gained, you are P{pos}",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "es": {
+          "voiceText": "Has ganado una posición, vas {pos}º",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "it": {
+          "voiceText": "Hai guadagnato una posizione, sei {pos}º",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Ganhou uma posição, está em {pos}º",
+          "placeholders": [
+            "{pos}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "timings.position_lost",
+      "family": "timings",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "12 s",
+      "voiceTexts": {
+        "en": "Position lost, you are P{pos}",
+        "es": "Has perdido una posición, vas {pos}º",
+        "it": "Hai perso una posizione, sei {pos}º",
+        "pt-BR": "Perdeu uma posição, está em {pos}º"
+      },
+      "placeholders": [
+        "{pos}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Position lost, you are P{pos}",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "es": {
+          "voiceText": "Has perdido una posición, vas {pos}º",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "it": {
+          "voiceText": "Hai perso una posizione, sei {pos}º",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Perdeu uma posição, está em {pos}º",
+          "placeholders": [
+            "{pos}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "timings.leader_pace",
+      "family": "timings",
+      "priority": "P3",
+      "type": "consulta",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Leader pace, {gap} per lap",
+        "es": "Ritmo de cabeza, {gap} por vuelta",
+        "it": "Passo del leader, {gap} al giro",
+        "pt-BR": "Ritmo do líder, {gap} por volta"
+      },
+      "placeholders": [
+        "{gap}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Leader pace, {gap} per lap",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "es": {
+          "voiceText": "Ritmo de cabeza, {gap} por vuelta",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "it": {
+          "voiceText": "Passo del leader, {gap} al giro",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Ritmo do líder, {gap} por volta",
+          "placeholders": [
+            "{gap}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "pitstops.entry",
+      "family": "pitstops",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "10 s",
+      "voiceTexts": {
+        "en": "Entering the pits",
+        "es": "Entrando en boxes",
+        "it": "Ingresso ai box",
+        "pt-BR": "Entrando nos boxes"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Entering the pits",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Entrando en boxes",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Ingresso ai box",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Entrando nos boxes",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "pitstops.exit",
+      "family": "pitstops",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "10 s",
+      "voiceTexts": {
+        "en": "Leaving the pits",
+        "es": "Saliendo de boxes",
+        "it": "Uscita dai box",
+        "pt-BR": "Saindo dos boxes"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Leaving the pits",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Saliendo de boxes",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Uscita dai box",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Saindo dos boxes",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "pitstops.stop_completed",
+      "family": "pitstops",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "12 s",
+      "voiceTexts": {
+        "en": "Stop completed, {n} stops total",
+        "es": "Parada completada, {n} paradas en total",
+        "it": "Sosta completata, {n} soste totali",
+        "pt-BR": "Parada concluída, {n} paradas no total"
+      },
+      "placeholders": [
+        "{n}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Stop completed, {n} stops total",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "es": {
+          "voiceText": "Parada completada, {n} paradas en total",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "it": {
+          "voiceText": "Sosta completata, {n} soste totali",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Parada concluída, {n} paradas no total",
+          "placeholders": [
+            "{n}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "pitstops.window_open",
+      "family": "pitstops",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "25 s",
+      "voiceTexts": {
+        "en": "Pit window open",
+        "es": "Ventana de parada abierta",
+        "it": "Finestra pit aperta",
+        "pt-BR": "Janela de parada aberta"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Pit window open",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Ventana de parada abierta",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Finestra pit aperta",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Janela de parada aberta",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "pitstops.crew_ready",
+      "family": "pitstops",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Crew ready for your stop",
+        "es": "Equipo listo para tu parada",
+        "it": "Squadra pronta per la sosta",
+        "pt-BR": "Equipe pronta para sua parada"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Crew ready for your stop",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Equipo listo para tu parada",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Squadra pronta per la sosta",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Equipe pronta para sua parada",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "damage.aero_minor",
+      "family": "damage",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "25 s",
+      "voiceTexts": {
+        "en": "Minor aero damage",
+        "es": "Daño aerodinámico leve",
+        "it": "Danno aerodinamico lieve",
+        "pt-BR": "Dano aerodinâmico leve"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Minor aero damage",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Daño aerodinámico leve",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Danno aerodinamico lieve",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Dano aerodinâmico leve",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "damage.aero_severe",
+      "family": "damage",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "Severe aero damage",
+        "es": "Daño aerodinámico grave",
+        "it": "Danno aerodinamico grave",
+        "pt-BR": "Dano aerodinâmico grave"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Severe aero damage",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Daño aerodinámico grave",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Danno aerodinamico grave",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Dano aerodinâmico grave",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "damage.suspension_minor",
+      "family": "damage",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "25 s",
+      "voiceTexts": {
+        "en": "Minor suspension damage",
+        "es": "Suspensión con daño leve",
+        "it": "Sospensione danneggiata lieve",
+        "pt-BR": "Suspensão com dano leve"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Minor suspension damage",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Suspensión con daño leve",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Sospensione danneggiata lieve",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Suspensão com dano leve",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "damage.suspension_severe",
+      "family": "damage",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "Severe suspension damage",
+        "es": "Suspensión con daño grave",
+        "it": "Sospensione gravemente danneggiata",
+        "pt-BR": "Suspensão com dano grave"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Severe suspension damage",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Suspensión con daño grave",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Sospensione gravemente danneggiata",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Suspensão com dano grave",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "damage.engine_minor",
+      "family": "damage",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "25 s",
+      "voiceTexts": {
+        "en": "Minor engine damage",
+        "es": "Motor con daño leve",
+        "it": "Motore con danno lieve",
+        "pt-BR": "Motor com dano leve"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Minor engine damage",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Motor con daño leve",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Motore con danno lieve",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Motor com dano leve",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "damage.engine_severe",
+      "family": "damage",
+      "priority": "P2",
+      "type": "informa",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Severe engine damage",
+        "es": "Motor con daño grave",
+        "it": "Motore con danno grave",
+        "pt-BR": "Motor com dano grave"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Severe engine damage",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Motor con daño grave",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Motore con danno grave",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Motor com dano grave",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "damage.component_busted",
+      "family": "damage",
+      "priority": "P2",
+      "type": "interrumpe",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Critical component failure, check the car",
+        "es": "Componente crítico dañado, revisa el coche",
+        "it": "Componente critico fuori uso, controlla la vettura",
+        "pt-BR": "Componente com falha crítica, verifique o carro"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Critical component failure, check the car",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Componente crítico dañado, revisa el coche",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Componente critico fuori uso, controlla la vettura",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Componente com falha crítica, verifique o carro",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "damage.detached_part",
+      "family": "damage",
+      "priority": "P2",
+      "type": "interrumpe",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Part detached",
+        "es": "Pieza desprendida",
+        "it": "Pezzo staccato",
+        "pt-BR": "Peça desprendida"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Part detached",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Pieza desprendida",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Pezzo staccato",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Peça desprendida",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "damage.status_on_demand",
+      "family": "damage",
+      "priority": "P3",
+      "type": "consulta",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Car status, no damage / minor damage",
+        "es": "Estado del coche, sin daños detectados / daños leves (según lectura)",
+        "it": "Stato vettura, nessun danno / danno lieve",
+        "pt-BR": "Estado do carro, sem dano / dano leve"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Car status, no damage / minor damage",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Estado del coche, sin daños detectados / daños leves (según lectura)",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Stato vettura, nessun danno / danno lieve",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Estado do carro, sem dano / dano leve",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "position.gained",
+      "family": "position",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "12 s",
+      "voiceTexts": {
+        "en": "Position gained, now P{pos}",
+        "es": "Has ganado posición, ahora {pos}º",
+        "it": "Hai guadagnato una posizione, sei {pos}ª",
+        "pt-BR": "Posição ganha, agora {pos}º"
+      },
+      "placeholders": [
+        "{pos}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Position gained, now P{pos}",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "es": {
+          "voiceText": "Has ganado posición, ahora {pos}º",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "it": {
+          "voiceText": "Hai guadagnato una posizione, sei {pos}ª",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Posição ganha, agora {pos}º",
+          "placeholders": [
+            "{pos}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "position.lost",
+      "family": "position",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "12 s",
+      "voiceTexts": {
+        "en": "Position lost, now P{pos}",
+        "es": "Has perdido posición, ahora {pos}º",
+        "it": "Hai perso una posizione, sei {pos}ª",
+        "pt-BR": "Posição perdida, agora {pos}º"
+      },
+      "placeholders": [
+        "{pos}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Position lost, now P{pos}",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "es": {
+          "voiceText": "Has perdido posición, ahora {pos}º",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "it": {
+          "voiceText": "Hai perso una posizione, sei {pos}ª",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Posição perdida, agora {pos}º",
+          "placeholders": [
+            "{pos}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "position.held",
+      "family": "position",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "12 s",
+      "voiceTexts": {
+        "en": "Holding position P{pos}",
+        "es": "Mantienes posición {pos}º",
+        "it": "Mantieni la posizione {pos}ª",
+        "pt-BR": "Mantendo posição {pos}º"
+      },
+      "placeholders": [
+        "{pos}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Holding position P{pos}",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "es": {
+          "voiceText": "Mantienes posición {pos}º",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "it": {
+          "voiceText": "Mantieni la posizione {pos}ª",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Mantendo posição {pos}º",
+          "placeholders": [
+            "{pos}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "position.race_start_grid",
+      "family": "position",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "Starting from P{pos} on the grid",
+        "es": "Sales {pos}º en parrilla",
+        "it": "Parti {pos}ª in griglia",
+        "pt-BR": "Largando em {pos}º no grid"
+      },
+      "placeholders": [
+        "{pos}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Starting from P{pos} on the grid",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "es": {
+          "voiceText": "Sales {pos}º en parrilla",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "it": {
+          "voiceText": "Parti {pos}ª in griglia",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Largando em {pos}º no grid",
+          "placeholders": [
+            "{pos}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "position.class_position",
+      "family": "position",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "You are P{pos} in class",
+        "es": "Vas {pos}º en tu clase",
+        "it": "Sei {pos}ª di classe",
+        "pt-BR": "Você está em {pos}º na classe"
+      },
+      "placeholders": [
+        "{pos}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "You are P{pos} in class",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "es": {
+          "voiceText": "Vas {pos}º en tu clase",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "it": {
+          "voiceText": "Sei {pos}ª di classe",
+          "placeholders": [
+            "{pos}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Você está em {pos}º na classe",
+          "placeholders": [
+            "{pos}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "position.on_demand",
+      "family": "position",
+      "priority": "P3",
+      "type": "consulta",
+      "ttl": "12 s",
+      "voiceTexts": {
+        "en": "You are P{pos}, {gap} seconds to leader",
+        "es": "Vas {pos}º, {gap} segundos al líder",
+        "it": "Sei {pos}ª, {gap} secondi dal leader",
+        "pt-BR": "Você está em {pos}º, {gap} segundos do líder"
+      },
+      "placeholders": [
+        "{gap}",
+        "{pos}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "You are P{pos}, {gap} seconds to leader",
+          "placeholders": [
+            "{pos}",
+            "{gap}"
+          ]
+        },
+        "es": {
+          "voiceText": "Vas {pos}º, {gap} segundos al líder",
+          "placeholders": [
+            "{pos}",
+            "{gap}"
+          ]
+        },
+        "it": {
+          "voiceText": "Sei {pos}ª, {gap} secondi dal leader",
+          "placeholders": [
+            "{pos}",
+            "{gap}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Você está em {pos}º, {gap} segundos do líder",
+          "placeholders": [
+            "{pos}",
+            "{gap}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "racetime.ten_minutes_remaining",
+      "family": "racetime",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "30 s",
+      "voiceTexts": {
+        "en": "Ten minutes remaining",
+        "es": "Quedan diez minutos de sesión",
+        "it": "Dieci minuti alla fine",
+        "pt-BR": "Dez minutos restantes"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Ten minutes remaining",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Quedan diez minutos de sesión",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Dieci minuti alla fine",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Dez minutos restantes",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "racetime.five_minutes_remaining",
+      "family": "racetime",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "30 s",
+      "voiceTexts": {
+        "en": "Five minutes remaining",
+        "es": "Quedan cinco minutos",
+        "it": "Cinque minuti alla fine",
+        "pt-BR": "Cinco minutos restantes"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Five minutes remaining",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Quedan cinco minutos",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Cinque minuti alla fine",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Cinco minutos restantes",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "racetime.one_minute_remaining",
+      "family": "racetime",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "One minute remaining",
+        "es": "Queda un minuto de sesión",
+        "it": "Un minuto alla fine",
+        "pt-BR": "Um minuto restante"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "One minute remaining",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Queda un minuto de sesión",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Un minuto alla fine",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Um minuto restante",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "racetime.halfway_point",
+      "family": "racetime",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "Half distance reached",
+        "es": "Mitad de carrera superada",
+        "it": "Metà gara raggiunta",
+        "pt-BR": "Metade da prova alcançada"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Half distance reached",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Mitad de carrera superada",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Metà gara raggiunta",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Metade da prova alcançada",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "racetime.laps_remaining",
+      "family": "racetime",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "{n} laps remaining",
+        "es": "Quedan {n} vueltas para el final",
+        "it": "Mancano {n} giri alla fine",
+        "pt-BR": "Faltam {n} voltas para o final"
+      },
+      "placeholders": [
+        "{n}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "{n} laps remaining",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "es": {
+          "voiceText": "Quedan {n} vueltas para el final",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "it": {
+          "voiceText": "Mancano {n} giri alla fine",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Faltam {n} voltas para o final",
+          "placeholders": [
+            "{n}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "racetime.time_expired",
+      "family": "racetime",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Session time expired",
+        "es": "Tiempo de sesión agotado",
+        "it": "Tempo di sessione scaduto",
+        "pt-BR": "Tempo de sessão esgotado"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Session time expired",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Tiempo de sesión agotado",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Tempo di sessione scaduto",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Tempo de sessão esgotado",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "sessionend.checkered_flag",
+      "family": "sessionend",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "Checkered flag, session finished",
+        "es": "Bandera a cuadros, final de sesión",
+        "it": "Bandiera a scacchi, sessione terminata",
+        "pt-BR": "Bandeira quadriculada, sessão encerrada"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Checkered flag, session finished",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Bandera a cuadros, final de sesión",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Bandiera a scacchi, sessione terminata",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Bandeira quadriculada, sessão encerrada",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "sessionend.session_ended",
+      "family": "sessionend",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "Session ended",
+        "es": "Sesión terminada",
+        "it": "Sessione terminata",
+        "pt-BR": "Sessão encerrada"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Session ended",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Sesión terminada",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Sessione terminata",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Sessão encerrada",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "conditions.track_temp_high",
+      "family": "conditions",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "30 s",
+      "voiceTexts": {
+        "en": "Track temperature high, {n} degrees",
+        "es": "Temperatura de pista alta, {n} grados",
+        "it": "Temperatura pista alta, {n} gradi",
+        "pt-BR": "Temperatura da pista alta, {n} graus"
+      },
+      "placeholders": [
+        "{n}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Track temperature high, {n} degrees",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "es": {
+          "voiceText": "Temperatura de pista alta, {n} grados",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "it": {
+          "voiceText": "Temperatura pista alta, {n} gradi",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Temperatura da pista alta, {n} graus",
+          "placeholders": [
+            "{n}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "conditions.track_freezing",
+      "family": "conditions",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "30 s",
+      "voiceTexts": {
+        "en": "Track temperature low, {n} degrees",
+        "es": "Temperatura de pista baja, {n} grados",
+        "it": "Temperatura pista bassa, {n} gradi",
+        "pt-BR": "Temperatura da pista baixa, {n} graus"
+      },
+      "placeholders": [
+        "{n}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Track temperature low, {n} degrees",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "es": {
+          "voiceText": "Temperatura de pista baja, {n} grados",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "it": {
+          "voiceText": "Temperatura pista bassa, {n} gradi",
+          "placeholders": [
+            "{n}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Temperatura da pista baixa, {n} graus",
+          "placeholders": [
+            "{n}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "conditions.rain_started",
+      "family": "conditions",
+      "priority": "P1",
+      "type": "informa",
+      "ttl": "30 s",
+      "voiceTexts": {
+        "en": "Rain detected on track",
+        "es": "Lluvia detectada en pista",
+        "it": "Pioggia rilevata in pista",
+        "pt-BR": "Chuva detectada na pista"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Rain detected on track",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Lluvia detectada en pista",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Pioggia rilevata in pista",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Chuva detectada na pista",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "conditions.rain_stopped",
+      "family": "conditions",
+      "priority": "P1",
+      "type": "informa",
+      "ttl": "30 s",
+      "voiceTexts": {
+        "en": "Rain has stopped",
+        "es": "La lluvia ha parado",
+        "it": "La pioggia è cessata",
+        "pt-BR": "A chuva parou"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Rain has stopped",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "La lluvia ha parado",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "La pioggia è cessata",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "A chuva parou",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "strategy.advice_overtake",
+      "family": "strategy",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "You have pace to overtake, go when you see a gap",
+        "es": "Tienes ritmo para adelantar, ataca cuando veas hueco",
+        "it": "Hai il passo per sorpassare, attacca quando vedi lo spazio",
+        "pt-BR": "Você tem ritmo para ultrapassar, ataque quando houver espaço"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "You have pace to overtake, go when you see a gap",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Tienes ritmo para adelantar, ataca cuando veas hueco",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Hai il passo per sorpassare, attacca quando vedi lo spazio",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Você tem ritmo para ultrapassar, ataque quando houver espaço",
+          "placeholders": []
+        }
+      }
+    },
+    {
+      "intent": "strategy.advice_defend",
+      "family": "strategy",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "20 s",
+      "voiceTexts": {
+        "en": "Defend position, car behind is {gap} behind",
+        "es": "Defiende posición, el de detrás está a {gap}",
+        "it": "Difendi la posizione, quello dietro è a {gap}",
+        "pt-BR": "Defenda posição, o carro atrás está a {gap}"
+      },
+      "placeholders": [
+        "{gap}"
+      ],
+      "locales": {
+        "en": {
+          "voiceText": "Defend position, car behind is {gap} behind",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "es": {
+          "voiceText": "Defiende posición, el de detrás está a {gap}",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "it": {
+          "voiceText": "Difendi la posizione, quello dietro è a {gap}",
+          "placeholders": [
+            "{gap}"
+          ]
+        },
+        "pt-BR": {
+          "voiceText": "Defenda posição, o carro atrás está a {gap}",
+          "placeholders": [
+            "{gap}"
+          ]
+        }
+      }
+    },
+    {
+      "intent": "strategy.encouragement",
+      "family": "strategy",
+      "priority": "P3",
+      "type": "informa",
+      "ttl": "15 s",
+      "voiceTexts": {
+        "en": "Good pace, keep it up",
+        "es": "Buen ritmo, sigue así",
+        "it": "Bel passo, continua così",
+        "pt-BR": "Bom ritmo, continue assim"
+      },
+      "placeholders": [],
+      "locales": {
+        "en": {
+          "voiceText": "Good pace, keep it up",
+          "placeholders": []
+        },
+        "es": {
+          "voiceText": "Buen ritmo, sigue así",
+          "placeholders": []
+        },
+        "it": {
+          "voiceText": "Bel passo, continua così",
+          "placeholders": []
+        },
+        "pt-BR": {
+          "voiceText": "Bom ritmo, continue assim",
+          "placeholders": []
+        }
+      }
+    }
+  ],
+  "numberClips": {
+    "locales": {
+      "en": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "49",
+        "50",
+        "51",
+        "52",
+        "53",
+        "54",
+        "55",
+        "56",
+        "57",
+        "58",
+        "59",
+        "60",
+        "61",
+        "62",
+        "63",
+        "64",
+        "65",
+        "66",
+        "67",
+        "68",
+        "69",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "80",
+        "81",
+        "82",
+        "83",
+        "84",
+        "85",
+        "86",
+        "87",
+        "88",
+        "89",
+        "90",
+        "91",
+        "92",
+        "93",
+        "94",
+        "95",
+        "96",
+        "97",
+        "98",
+        "99",
+        "100",
+        "200",
+        "300",
+        "400",
+        "500",
+        "600",
+        "700",
+        "800",
+        "900",
+        "point"
+      ],
+      "es": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "49",
+        "50",
+        "51",
+        "52",
+        "53",
+        "54",
+        "55",
+        "56",
+        "57",
+        "58",
+        "59",
+        "60",
+        "61",
+        "62",
+        "63",
+        "64",
+        "65",
+        "66",
+        "67",
+        "68",
+        "69",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "80",
+        "81",
+        "82",
+        "83",
+        "84",
+        "85",
+        "86",
+        "87",
+        "88",
+        "89",
+        "90",
+        "91",
+        "92",
+        "93",
+        "94",
+        "95",
+        "96",
+        "97",
+        "98",
+        "99",
+        "100",
+        "200",
+        "300",
+        "400",
+        "500",
+        "600",
+        "700",
+        "800",
+        "900",
+        "coma"
+      ],
+      "it": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "49",
+        "50",
+        "51",
+        "52",
+        "53",
+        "54",
+        "55",
+        "56",
+        "57",
+        "58",
+        "59",
+        "60",
+        "61",
+        "62",
+        "63",
+        "64",
+        "65",
+        "66",
+        "67",
+        "68",
+        "69",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "80",
+        "81",
+        "82",
+        "83",
+        "84",
+        "85",
+        "86",
+        "87",
+        "88",
+        "89",
+        "90",
+        "91",
+        "92",
+        "93",
+        "94",
+        "95",
+        "96",
+        "97",
+        "98",
+        "99",
+        "100",
+        "200",
+        "300",
+        "400",
+        "500",
+        "600",
+        "700",
+        "800",
+        "900",
+        "virgola"
+      ],
+      "pt-BR": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5",
+        "6",
+        "7",
+        "8",
+        "9",
+        "10",
+        "11",
+        "12",
+        "13",
+        "14",
+        "15",
+        "16",
+        "17",
+        "18",
+        "19",
+        "20",
+        "21",
+        "22",
+        "23",
+        "24",
+        "25",
+        "26",
+        "27",
+        "28",
+        "29",
+        "30",
+        "31",
+        "32",
+        "33",
+        "34",
+        "35",
+        "36",
+        "37",
+        "38",
+        "39",
+        "40",
+        "41",
+        "42",
+        "43",
+        "44",
+        "45",
+        "46",
+        "47",
+        "48",
+        "49",
+        "50",
+        "51",
+        "52",
+        "53",
+        "54",
+        "55",
+        "56",
+        "57",
+        "58",
+        "59",
+        "60",
+        "61",
+        "62",
+        "63",
+        "64",
+        "65",
+        "66",
+        "67",
+        "68",
+        "69",
+        "70",
+        "71",
+        "72",
+        "73",
+        "74",
+        "75",
+        "76",
+        "77",
+        "78",
+        "79",
+        "80",
+        "81",
+        "82",
+        "83",
+        "84",
+        "85",
+        "86",
+        "87",
+        "88",
+        "89",
+        "90",
+        "91",
+        "92",
+        "93",
+        "94",
+        "95",
+        "96",
+        "97",
+        "98",
+        "99",
+        "100",
+        "200",
+        "300",
+        "400",
+        "500",
+        "600",
+        "700",
+        "800",
+        "900",
+        "vírgula"
+      ]
+    },
+    "special": {
+      "en": "point",
+      "es": "coma",
+      "it": "virgola",
+      "pt-BR": "vírgula"
+    }
+  },
+  "concatenation": {
+    "description": "Concatenación por segmentos literales + clips numéricos (estilo CrewChief).",
+    "detail": "Cada VoiceText con placeholders se tokeniza por placeholders ({n},{gap},{pos},{lap}...). Los segmentos literales entre placeholders (ej. \"Combustible, \" y \" litros, \") se sintetizan como clips independientes (cache key por texto literal). Los números se resuelven via NumberClips: 0-99 directos, 100-900 por centenas + resto, y decimales como \u003centero\u003e + \u003ccoma\u003e + dígitos individuales. La reproducción concatena los audios resultantes sin crossfade, con gap de ~40ms. Spotter (P0) debe ser WAV PCM para evitar decode; resto puede ser mp3. Ver README § Concatenación.",
+    "example": "fuel.status_on_demand es: \"Combustible, {n} litros, {gap} vueltas estimadas\" -\u003e [\"Combustible, \", numberClip(n), \" litros, \", numberClip(gap), \" vueltas estimadas\"] ; gap=1.5 es en es -\u003e [\"1\",\"coma\",\"5\"]"
+  }
+}

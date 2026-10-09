@@ -16,7 +16,7 @@ foreach ($dll in @(Get-ChildItem -LiteralPath (Split-Path $Executable) -Filter '
     Copy-Item -LiteralPath $dll.FullName -Destination $destination -Force
 }
 $icon = Join-Path $destination 'vantare.ico'
-Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../../build/windows/icon.ico') -Destination $icon -Force
+Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../assets/icon.ico') -Destination $icon -Force
 $launcher = Join-Path $destination 'abrir.ps1'
 # CREATE_NO_WINDOW oculta solo la consola del binario; la ventana GPUI sigue visible.
 @'

@@ -1,0 +1,1809 @@
+{
+  "source_commit": "5e1da3f68f9735d60057b61798d55849bbca0677",
+  "files": {
+    "design-evidence/functional/concept-01.png": {
+      "source": "design-evidence/functional/concept-01.png",
+      "sha256": "9fedd09960d9959d6f999f9b49c123446804f30cb777b79803ae5d99df6d250e"
+    },
+    "design-evidence/functional/concept-02.png": {
+      "source": "design-evidence/functional/concept-02.png",
+      "sha256": "74345827748630d46d8cb7ecab599e5778a0d8533d90bccb5073a7dee4628c34"
+    },
+    "design-evidence/functional/delta-capsule.png": {
+      "source": "design-evidence/functional/delta-capsule.png",
+      "sha256": "af29d98ddb7a7a4b68ef7e645a070664c8978ce24c0284020cf7adb03668c89d"
+    },
+    "design-evidence/functional/delta-instrument-nobrand.png": {
+      "source": "design-evidence/functional/delta-instrument-nobrand.png",
+      "sha256": "07e6595d93acf73237f966d48274ee7d8ca3331733eb59fe1c31ac88eae96998"
+    },
+    "design-evidence/functional/delta-instrument.png": {
+      "source": "design-evidence/functional/delta-instrument.png",
+      "sha256": "60ba777bf4cfa31da89eebea37f410e538406aae1c808f9a4b8c51fcf4b305a1"
+    },
+    "design-evidence/functional/delta-noheader.png": {
+      "source": "design-evidence/functional/delta-noheader.png",
+      "sha256": "56bdd76748750e088cc51ede13037e39da0dba75729664ca9f96885ab15546a2"
+    },
+    "design-evidence/functional/demo-delta-default.png": {
+      "source": "design-evidence/functional/demo-delta-default.png",
+      "sha256": "9ed857263cc1a21d60459b02e26ce3e1624bd49a79143b699978fa19d6d015c4"
+    },
+    "design-evidence/functional/demo-input.png": {
+      "source": "design-evidence/functional/demo-input.png",
+      "sha256": "7a6ab34bc81246c71a8c99b8bd44a04a59f938bad2ce647e78edfc90642f574f"
+    },
+    "design-evidence/functional/demo-pedals-default.png": {
+      "source": "design-evidence/functional/demo-pedals-default.png",
+      "sha256": "e38eb006850bdefce57b87e80abf08313d0e1fc2638301c99404688dcbac0b4c"
+    },
+    "design-evidence/functional/demo-relative.png": {
+      "source": "design-evidence/functional/demo-relative.png",
+      "sha256": "db4c6dc2c3d70707d5d7399b0cfb995db4fe218bfcc3dc4ada4add5501934918"
+    },
+    "design-evidence/functional/demo-standings-original.png": {
+      "source": "design-evidence/functional/demo-standings-original.png",
+      "sha256": "8a1216b50158fcdd028270b52b62e37207e8be9cb3d01a6d4692d0f5425673a6"
+    },
+    "design-evidence/functional/efficiency-delta.png": {
+      "source": "design-evidence/functional/efficiency-delta.png",
+      "sha256": "d377e7f362fafccc90bf5ac5a17f76c1b8593570224ee2eb8d71f56c2cf0b66e"
+    },
+    "design-evidence/functional/efficiency-pedals.png": {
+      "source": "design-evidence/functional/efficiency-pedals.png",
+      "sha256": "d745181c1d2ea62d5471a90c95b79ced89b7fa954c2965a50eb0c8044f6fa79a"
+    },
+    "design-evidence/functional/efficiency-relative.png": {
+      "source": "design-evidence/functional/efficiency-relative.png",
+      "sha256": "ddddb9069506076898b3f5cbacab382a71ebe7220f13130e41240e05a08a3af6"
+    },
+    "design-evidence/functional/efficiency-v1-broadcast.png": {
+      "source": "design-evidence/functional/efficiency-v1-broadcast.png",
+      "sha256": "fe40a8cb96d675e97cf8fa3d07b9eb45736f9e23697993e691fbc8fb2f744ac3"
+    },
+    "design-evidence/functional/efficiency-v1-signature.png": {
+      "source": "design-evidence/functional/efficiency-v1-signature.png",
+      "sha256": "7209e8b13f459407612615d137a6e2c7cdaacd536df7e77506f7e5f1094566f7"
+    },
+    "design-evidence/functional/efficiency-v2-focus.png": {
+      "source": "design-evidence/functional/efficiency-v2-focus.png",
+      "sha256": "447dda50af4ace0dd6f1535ae3e58370cbca5ae953a6ada891c24c182bbd062c"
+    },
+    "design-evidence/functional/efficiency-v2-ladder.png": {
+      "source": "design-evidence/functional/efficiency-v2-ladder.png",
+      "sha256": "a94642a4e64699c4860fa2c2e6494e8af132ec7666eba51e8b008c0041c11c50"
+    },
+    "design-evidence/functional/efficiency-v2-paper.png": {
+      "source": "design-evidence/functional/efficiency-v2-paper.png",
+      "sha256": "b9f5c333ab36e4e614bd6ac0bdef2325d76df6e8b8b0f7f5b7f4f0b9a96a75bb"
+    },
+    "design-evidence/functional/efficiency-v2-pitwall.png": {
+      "source": "design-evidence/functional/efficiency-v2-pitwall.png",
+      "sha256": "056f7b0c7f7b544b7d61857155d0af7ba02c6c496215cf3ac6dd0a4da665f4aa"
+    },
+    "design-evidence/functional/efficiency-v2-podium.png": {
+      "source": "design-evidence/functional/efficiency-v2-podium.png",
+      "sha256": "72b166934813878ebfa269e7e79bea0664c2fea86c6c881411ce3bc22b105652"
+    },
+    "design-evidence/functional/efficiency-v2-tower.png": {
+      "source": "design-evidence/functional/efficiency-v2-tower.png",
+      "sha256": "0a5b82055212a1ebb65608cd61ef9d973bfae436e1228d21d6658909fc8349fa"
+    },
+    "design-evidence/functional/harness-delta-transport.png": {
+      "source": "design-evidence/functional/harness-delta-transport.png",
+      "sha256": "4586e75c16e84896251d3f279d6ccaecefd373896796f54722c1c2bb6be5710a"
+    },
+    "design-evidence/functional/harness-delta.png": {
+      "source": "design-evidence/functional/harness-delta.png",
+      "sha256": "8bb8a0c0f79fea1ab72e6f871883420cfb82e330d083bc5b057c38f485c29eae"
+    },
+    "design-evidence/functional/harness-original.png": {
+      "source": "design-evidence/functional/harness-original.png",
+      "sha256": "b1fdb5621f279f99bc655c77a03ae1b60ff0e0165459bf1445eb400799932e4b"
+    },
+    "design-evidence/functional/harness-relative.png": {
+      "source": "design-evidence/functional/harness-relative.png",
+      "sha256": "a7f1778da99fbdacaa18a9b1c4b21fc482a2b8b79d397c273cea63878f7e549d"
+    },
+    "design-evidence/functional/harness-standings.png": {
+      "source": "design-evidence/functional/harness-standings.png",
+      "sha256": "47e2d61794e27b6c40d2acd23a0d54b31e3b168df41bb18c5602e10b10751cdb"
+    },
+    "design-evidence/functional/integration-review.md": {
+      "source": "design-evidence/functional/integration-review.md",
+      "sha256": "5c6b114d55d3324dd20afdde8115b8b71ed9440dabf22162a8103a4085eab04a"
+    },
+    "design-evidence/functional/iracing-pedals-adv.png": {
+      "source": "design-evidence/functional/iracing-pedals-adv.png",
+      "sha256": "e3f08c992342e7eccb717a2cc487771f72ff187a5be1ef900f1af172c8edcdce"
+    },
+    "design-evidence/functional/pedals-noheader.png": {
+      "source": "design-evidence/functional/pedals-noheader.png",
+      "sha256": "f8a2261046b360e40a2d27444ec09d62b2c3bff70ff9ed8019d7ca219a83763e"
+    },
+    "design-evidence/functional/prompts.md": {
+      "source": "design-evidence/functional/prompts.md",
+      "sha256": "785ee2e8e0b35fdf1fafd75ad64d51507f153fd89d064e6c58b306a138e0d9ac"
+    },
+    "design-evidence/functional/relative-bars.png": {
+      "source": "design-evidence/functional/relative-bars.png",
+      "sha256": "76140c0180e7d2ba1b76d3cb6b6d2f7d41a29d2d46086be635f80bf4c54bfb40"
+    },
+    "design-evidence/functional/relative-footer-slots.png": {
+      "source": "design-evidence/functional/relative-footer-slots.png",
+      "sha256": "e9759788af1485cb36bef85058b6ec14bb879cfdf53acae699b174bdb84576c8"
+    },
+    "design-evidence/functional/relative-rows-only.png": {
+      "source": "design-evidence/functional/relative-rows-only.png",
+      "sha256": "452d39573dfdf899b2601891b0bb7cf5b487176593d8fe4163b21886c4141186"
+    },
+    "design-evidence/functional/selected-designs-review-01.md": {
+      "source": "design-evidence/functional/selected-designs-review-01.md",
+      "sha256": "7d5cae2d88c8256602ad04c9c2ebddf29a2e63663ec7347013058685ca916a5f"
+    },
+    "design-evidence/functional/selected-designs-review-02.md": {
+      "source": "design-evidence/functional/selected-designs-review-02.md",
+      "sha256": "d6e3a1138b430550302ed186f0bc6b80e5b07d42d9237473822fe12e62f9d182"
+    },
+    "design-evidence/functional/selected-designs-states.json": {
+      "source": "design-evidence/functional/selected-designs-states.json",
+      "sha256": "c33112787fbddf6ec7360ccfdbeaa9ff99117d60a639c8297acbb39d7fa4c660"
+    },
+    "design-evidence/functional/selected-designs-verification.json": {
+      "source": "design-evidence/functional/selected-designs-verification.json",
+      "sha256": "7ee9e32dee2eed61a326db126adb50835936b5396948a164f18c58ff5400d92b"
+    },
+    "design-evidence/functional/selected-images-v2.png": {
+      "source": "design-evidence/functional/selected-images-v2.png",
+      "sha256": "6a77570a54c661160fcdc7488074ac7308454ed5ca8be18a05c846c1324c37ab"
+    },
+    "design-evidence/functional/selected-images-v3.png": {
+      "source": "design-evidence/functional/selected-images-v3.png",
+      "sha256": "9e9e18725018a3bfb62b969e756c569a96d7805d62ad6e8e723232b086703b2d"
+    },
+    "design-evidence/functional/standings-broadcast-clean.png": {
+      "source": "design-evidence/functional/standings-broadcast-clean.png",
+      "sha256": "8cdba5ba713cfe65205419c4b3b058ffcf088c5c90a2b7bed64021c5cd2581df"
+    },
+    "design-evidence/functional/standings-broadcast-react.png": {
+      "source": "design-evidence/functional/standings-broadcast-react.png",
+      "sha256": "74b3af5bda22a8e009335533d7a2c6af701b51f923ec847936ca613215cfbf8b"
+    },
+    "design-evidence/functional/standings-depth-expanded.png": {
+      "source": "design-evidence/functional/standings-depth-expanded.png",
+      "sha256": "0835374398945605ebe64508db943c08ccc9d5047d48dd6710359f09e50456d1"
+    },
+    "design-evidence/functional/standings-depth-final.png": {
+      "source": "design-evidence/functional/standings-depth-final.png",
+      "sha256": "4ec5290df1f5a93a948dbd481bd1815ee512fb933b50324e77d9855875eac9ee"
+    },
+    "design-evidence/functional/standings-footer-slots.png": {
+      "source": "design-evidence/functional/standings-footer-slots.png",
+      "sha256": "a88a22c322cde0b696dc0a265b6358933cc89cc9c571b7981a4b9dbc52aa25b1"
+    },
+    "design-evidence/functional/standings-joined-expanded.png": {
+      "source": "design-evidence/functional/standings-joined-expanded.png",
+      "sha256": "abfb063f37776fc87f23230a8fb8e410c229ee06c078c54b50bc62a1ba98b698"
+    },
+    "design-evidence/functional/standings-joined-final.png": {
+      "source": "design-evidence/functional/standings-joined-final.png",
+      "sha256": "9d6c2cced59df4f8fb65b4a967aca7de441ff30e32ba1e82fbf32e2fafdf005a"
+    },
+    "design-evidence/functional/standings-joined-review.md": {
+      "source": "design-evidence/functional/standings-joined-review.md",
+      "sha256": "efa173615b01ff284bad86cd6ca5688a654f77f5165c1233369c8fa10e0e3694"
+    },
+    "design-evidence/functional/standings-no-brand.png": {
+      "source": "design-evidence/functional/standings-no-brand.png",
+      "sha256": "5e066f47b6ecf12d37cc0296ba22cbf0dbe41c50c65bad593211d5b3cf5ba390"
+    },
+    "design-evidence/functional/standings-signature-react.png": {
+      "source": "design-evidence/functional/standings-signature-react.png",
+      "sha256": "0a4503993926a7db6b5b898d77e3a8c26ec7f7d004fcd45bb4cf7cf4670e83d9"
+    },
+    "design-evidence/functional/standings-studio-integration.png": {
+      "source": "design-evidence/functional/standings-studio-integration.png",
+      "sha256": "1bf4953e4d526c4c9fddd73147cd22b919670c099d60b40761dbfd5144c47d4a"
+    },
+    "design-evidence/functional/study-delta.png": {
+      "source": "design-evidence/functional/study-delta.png",
+      "sha256": "3260def1fae98b7e0d2ccca5a6c720a704acf34fb46aba08bb506834c73c813e"
+    },
+    "design-evidence/functional/study-pedals.png": {
+      "source": "design-evidence/functional/study-pedals.png",
+      "sha256": "06bbb4be5bf2f243b3bad7bf7c35cb1f3f9b2dfb3115fda38dd16b953638cb35"
+    },
+    "design-evidence/functional/study-relative.png": {
+      "source": "design-evidence/functional/study-relative.png",
+      "sha256": "755e6cb5b047374f21db11233d79d96c429b7c773a4e63be1339487268b37445"
+    },
+    "design-evidence/functional/study-standings.png": {
+      "source": "design-evidence/functional/study-standings.png",
+      "sha256": "219f62092b56c1b9cb8609577f6f9f262f0cd68b8b89ba3e7ea06855eeed3e47"
+    },
+    "design-evidence/functional/taste-directions.png": {
+      "source": "design-evidence/functional/taste-directions.png",
+      "sha256": "e50a8dc49bb0219eb5c28035bf42c4259b7056115517060b83577d910096baac"
+    },
+    "design-evidence/functional/v2-directions.md": {
+      "source": "design-evidence/functional/v2-directions.md",
+      "sha256": "657f14d7b5d7ad6d988056d4df238990b847160aa0fa39d5f534940845f22cc5"
+    },
+    "native/assets/appicon.png": {
+      "source": "build/appicon.png",
+      "sha256": "edf7e375327964e5788a161d7ae76e423f6adeecbc5a73ec5b03e5c2cf93dc2e"
+    },
+    "native/assets/brand/avatar.svg": {
+      "source": "build/brand/avatar.svg",
+      "sha256": "49d5436e3bdf97f358e88e25f59ff320d7cde6fd1f7a11c4db9543e959c341e8"
+    },
+    "native/assets/brand/icon-black-small.svg": {
+      "source": "build/brand/icon-black-small.svg",
+      "sha256": "48c1498aea937639feec90abe15e865a303167ed9c0a2394487da2c7c9e619ca"
+    },
+    "native/assets/brand/icon-black.svg": {
+      "source": "build/brand/icon-black.svg",
+      "sha256": "28c4b8a25811478b19caf28bd143048c7c53bd7298f40144e19bcfb5f60a4fdc"
+    },
+    "native/assets/brand/icon-color-small.svg": {
+      "source": "build/brand/icon-color-small.svg",
+      "sha256": "db3e2b3390873bada60b90c39e550bf92d40bc167da5b0b6bbac2d88afd2027e"
+    },
+    "native/assets/brand/icon-color.svg": {
+      "source": "build/brand/icon-color.svg",
+      "sha256": "5ab54371cc8a8f4b5d893f79698ce280c369985a4399d31b4ed10b528ceefa00"
+    },
+    "native/assets/brand/icon-white-small.svg": {
+      "source": "build/brand/icon-white-small.svg",
+      "sha256": "18cf413fcbc03a1b0fa3726e0d766b807edf83a78f0a3a2b4dec881af8245f4c"
+    },
+    "native/assets/brand/icon-white.svg": {
+      "source": "build/brand/icon-white.svg",
+      "sha256": "5a30e2824ffaceac6187fcbc1b8ef38f4fef32f3fa073084f0e36e755c76eccb"
+    },
+    "native/assets/brand/wordmark/README.md": {
+      "source": "build/brand/wordmark/README.md",
+      "sha256": "7b8302cd70cf8ace2a6592e57cd3b42f392e6359cccf65f1423de77484a38b11"
+    },
+    "native/assets/brand/wordmark/vantare-lockup-blanco.svg": {
+      "source": "build/brand/wordmark/vantare-lockup-blanco.svg",
+      "sha256": "9ebe13061e704a14121bceb22e57428995aa668c8cedb14a06370ff5e0082bec"
+    },
+    "native/assets/brand/wordmark/vantare-lockup-color-oscuro.svg": {
+      "source": "build/brand/wordmark/vantare-lockup-color-oscuro.svg",
+      "sha256": "7c3fd2f67a2edef8fb2626f368473e9eddc6b12b33047e38480d4cef6bd77360"
+    },
+    "native/assets/brand/wordmark/vantare-lockup-color.svg": {
+      "source": "build/brand/wordmark/vantare-lockup-color.svg",
+      "sha256": "42eaa252e3d4765c5783742ada04be7b13d823190167509e6431f2ba00cad91e"
+    },
+    "native/assets/brand/wordmark/vantare-lockup-negro.svg": {
+      "source": "build/brand/wordmark/vantare-lockup-negro.svg",
+      "sha256": "55a23116e11fa2b788106ec6e210df7f0aa4a82251d9ab6467d17270ffd7324b"
+    },
+    "native/assets/brand/wordmark/vantare-wordmark-blanco.svg": {
+      "source": "build/brand/wordmark/vantare-wordmark-blanco.svg",
+      "sha256": "7519afa1f3262b2e04f47426878dfa762c56b8f7c843ef223d8389b49ae9ec9a"
+    },
+    "native/assets/brand/wordmark/vantare-wordmark-color.svg": {
+      "source": "build/brand/wordmark/vantare-wordmark-color.svg",
+      "sha256": "eb34a96fb3210eb0cf759b28df85e5d29417293812c115f4c3acee142df9b71f"
+    },
+    "native/assets/brand/wordmark/vantare-wordmark-negro.svg": {
+      "source": "build/brand/wordmark/vantare-wordmark-negro.svg",
+      "sha256": "149ce964e100faa9e8256da14fc10022e606edaaff8183d0a79972ecc2ccaf2d"
+    },
+    "native/assets/icon.ico": {
+      "source": "build/windows/icon.ico",
+      "sha256": "51c4427df220bb7e04d5c53b2023e217e5a3b2bef18ba213bd19daa6b49f4260"
+    },
+    "native/engineer/testdata/go-reference/config.go.txt": {
+      "source": "internal/engineer/audio/config.go",
+      "sha256": "878b1e6ddf68b13a6d358a0081bae57fe32832e967f180d3a4c4b951c6eafd4a"
+    },
+    "native/engineer/testdata/go-reference/presentation.go.txt": {
+      "source": "internal/engineer/presentation/presentation.go",
+      "sha256": "2ce2ee76624269ae2368eed1596bcfdf6eba8aa45a2482010e0144c9d4260c56"
+    },
+    "native/hub/data/lmu-weekly-schedule.json": {
+      "source": "internal/calendar/seed/lmu-weekly-schedule.json",
+      "sha256": "49cd40fb3fd099e9713f5ef26ea83a09c86eb86bb3fac19207de555c675c6628"
+    },
+    "native/hub/reference/README.md": {
+      "source": "native/hub/reference/README.md",
+      "sha256": "c11064554c51e5da863d6c3e44872576ccbe44c1d15aed212680f9391637cd25"
+    },
+    "native/hub/reference/compare.ps1": {
+      "source": "native/hub/reference/compare.ps1",
+      "sha256": "4e827e1e97ee45bf144f7f1ccb8970f9e02969c2fc01d024d64e56d328f6c84a"
+    },
+    "native/hub/reference/fixtures/calendar-lmu-2026-10-06.json": {
+      "source": "native/hub/reference/fixtures/calendar-lmu-2026-10-06.json",
+      "sha256": "01480a7cdf62eb164451646a92df0cd67714cd3f804562a9bd250c4b43425114"
+    },
+    "native/hub/reference/fixtures/demo-data.json": {
+      "source": "native/hub/reference/fixtures/demo-data.json",
+      "sha256": "087e702ccca797b888fc62fbab6f6d1e4ea68efe791a0d7c45896f2442aba7a2"
+    },
+    "native/hub/reference/fixtures/home-r7-launcher.json": {
+      "source": "native/hub/reference/fixtures/home-r7-launcher.json",
+      "sha256": "ad2d3cee9072b09b3d0f9bcd8276acb76685c613557fa14407d0252c6a8613b6"
+    },
+    "native/hub/reference/fixtures/launcher-r7.json": {
+      "source": "native/hub/reference/fixtures/launcher-r7.json",
+      "sha256": "5f7c787dbadc8e90b8d1fe0f1c10c57d07abdd2d5aadd5d2c3ce0c4f9869555c"
+    },
+    "native/hub/reference/fixtures/notifications-r8.json": {
+      "source": "native/hub/reference/fixtures/notifications-r8.json",
+      "sha256": "7268014e8c36bba49387bdfb9e0f4ca00de29c2521e389cb47c2ae1946ede437"
+    },
+    "native/hub/reference/fixtures/roadmap-clickup-test.json": {
+      "source": "native/hub/reference/fixtures/roadmap-clickup-test.json",
+      "sha256": "0482867c6fdbbe1582d97b42f64ebd461ab7c382f75b6f0912a0f529dcf92c9e"
+    },
+    "native/hub/reference/fixtures/strategy-capture-demo.json": {
+      "source": "native/hub/reference/fixtures/strategy-capture-demo.json",
+      "sha256": "28eaea63d474510a617ad6e2b25ea0a022b8f6f55160cf6b6539851adcc8f25f"
+    },
+    "native/hub/reference/fixtures/strategy-review-demo.json": {
+      "source": "native/hub/reference/fixtures/strategy-review-demo.json",
+      "sha256": "d794dd1c4e5c71d3f82590864b02b1d9ef2d600868e59075ece6a47c4494acc5"
+    },
+    "native/hub/reference/fixtures/strategy-solver-demo.json": {
+      "source": "native/hub/reference/fixtures/strategy-solver-demo.json",
+      "sha256": "708ed536c3e48b432f331fb6bfeb6ebea2068d48b227b2930b1b29a0d9427886"
+    },
+    "native/hub/reference/tools/alpha-scenes.json": {
+      "source": "native/hub/reference/tools/alpha-scenes.json",
+      "sha256": "dd7617d25c8e4fb5f90be17844c9642f28670f8c35cb8a3cc3added92ec72f46"
+    },
+    "native/hub/reference/tools/assert-opaque-tests.ps1": {
+      "source": "native/hub/reference/tools/assert-opaque-tests.ps1",
+      "sha256": "97a96127452aa4d0f09226c188fd7e1e8af84ffa7151c335dacb9c7513968e17"
+    },
+    "native/hub/reference/tools/assert-opaque.ps1": {
+      "source": "native/hub/reference/tools/assert-opaque.ps1",
+      "sha256": "c87c9f9c91ff4f68f247a18eb93294a114501e445641a9390f35309e473fc7a9"
+    },
+    "native/hub/reference/tools/capture-alpha.ps1": {
+      "source": "native/hub/reference/tools/capture-alpha.ps1",
+      "sha256": "2b944d4a64a7375aca01e85983f650f8879c5c599a9bb80eaec999187350028e"
+    },
+    "native/hub/reference/tools/capture-bitmap-tests.ps1": {
+      "source": "native/hub/reference/tools/capture-bitmap-tests.ps1",
+      "sha256": "2daedac787dc3d3ac67fedafcd46c5df7fe95bbe2f51106ae05ea401c6a4f909"
+    },
+    "native/hub/reference/tools/capture-bitmap.ps1": {
+      "source": "native/hub/reference/tools/capture-bitmap.ps1",
+      "sha256": "fc7bd24fe4641f7f1b48f5d79b0a9f4b733dc8484dde4cb4a0bd28a14f6a9e8f"
+    },
+    "native/hub/reference/tools/capture-cdp.mjs": {
+      "source": "native/hub/reference/tools/capture-cdp.mjs",
+      "sha256": "67e425d382ae47b7efa1a02c552014cde5f64bde2c57f9c02ac554bbd3549b97"
+    },
+    "native/hub/reference/tools/capture-native.ps1": {
+      "source": "native/hub/reference/tools/capture-native.ps1",
+      "sha256": "ad7258df285e4e25e9ba06e73cf3528f2cba7ad746529eae42ae3076063dc6f8"
+    },
+    "native/hub/reference/tools/capture-process.ps1": {
+      "source": "native/hub/reference/tools/capture-process.ps1",
+      "sha256": "322f0a8e6c895465331f84af0d9211219328a5536acbf54762f5186b0731a481"
+    },
+    "native/hub/reference/tools/capture-window.ps1": {
+      "source": "native/hub/reference/tools/capture-window.ps1",
+      "sha256": "d8e0f8c9de46fe74134c22a492f17146bbd779d27a7e49c3c826d151be2bfc8f"
+    },
+    "native/hub/reference/tools/demo-states.json": {
+      "source": "native/hub/reference/tools/demo-states.json",
+      "sha256": "1871a4b0161ed7708cf227cab76dba7fe7aee41bdc166cccfd562c13d7a3b074"
+    },
+    "native/hub/reference/tools/real-states.json": {
+      "source": "native/hub/reference/tools/real-states.json",
+      "sha256": "ab1d8ca562e42db4fbdb92acd6379d855624de56ede39be8ad58c9d508964183"
+    },
+    "native/hub/reference/wails/ajustes-actualizaciones.png": {
+      "source": "native/hub/reference/wails/ajustes-actualizaciones.png",
+      "sha256": "43632fd80b293f8299f211e9b2dfbebcb4472387da1a976388e95aa4d688338d"
+    },
+    "native/hub/reference/wails/ajustes-apariencia-detalle.png": {
+      "source": "native/hub/reference/wails/ajustes-apariencia-detalle.png",
+      "sha256": "2379a924ca28a169d8a01274cd1d5af3e6055f15d2269b337cf79d9c22d17021"
+    },
+    "native/hub/reference/wails/ajustes-apariencia.png": {
+      "source": "native/hub/reference/wails/ajustes-apariencia.png",
+      "sha256": "525cc666df6b4a48f1967c91ac148861bc562b7de450875fea8ddac83f4db4cf"
+    },
+    "native/hub/reference/wails/ajustes-aplicacion.png": {
+      "source": "native/hub/reference/wails/ajustes-aplicacion.png",
+      "sha256": "90726314d5af04eba63b1c0277abc31bed2e11f0b29aae5cff65cdc4cd73b1e1"
+    },
+    "native/hub/reference/wails/ajustes-atajos.png": {
+      "source": "native/hub/reference/wails/ajustes-atajos.png",
+      "sha256": "1bbc1fdd1a3e2be56d09b54849a4511424e994c50f593316fe3c121882d85790"
+    },
+    "native/hub/reference/wails/ajustes-diagnostico-detalle.png": {
+      "source": "native/hub/reference/wails/ajustes-diagnostico-detalle.png",
+      "sha256": "34ba5b212b9d0de5efdb0d66d15c06e2a542015f7ff3d4951ca6de3797e88ccb"
+    },
+    "native/hub/reference/wails/ajustes-diagnostico.png": {
+      "source": "native/hub/reference/wails/ajustes-diagnostico.png",
+      "sha256": "34ba5b212b9d0de5efdb0d66d15c06e2a542015f7ff3d4951ca6de3797e88ccb"
+    },
+    "native/hub/reference/wails/ajustes-idioma-desplegado.png": {
+      "source": "native/hub/reference/wails/ajustes-idioma-desplegado.png",
+      "sha256": "9857dbee18aaa1c7c0cb8b364019ffdcdd96b6656668d4edb73f5f1d0d306fa2"
+    },
+    "native/hub/reference/wails/ajustes-preparacion-oscuro.png": {
+      "source": "native/hub/reference/wails/ajustes-preparacion-oscuro.png",
+      "sha256": "4546955cb3ac9f6952f2b274bb44de2712d6ba357e7e1283e4643cf7806a0218"
+    },
+    "native/hub/reference/wails/ajustes-privacidad.png": {
+      "source": "native/hub/reference/wails/ajustes-privacidad.png",
+      "sha256": "a727059eb4ce1ebbfc19119507208f3e3b897c1abc0c9097b09fa8f5d9f12820"
+    },
+    "native/hub/reference/wails/ajustes-rendimiento-detalle.png": {
+      "source": "native/hub/reference/wails/ajustes-rendimiento-detalle.png",
+      "sha256": "0cebdee2c7215c1a82523cecab9c4f5b78a7bb0abcab0ef116ade05fbdb12c0f"
+    },
+    "native/hub/reference/wails/ajustes-rendimiento.png": {
+      "source": "native/hub/reference/wails/ajustes-rendimiento.png",
+      "sha256": "0cebdee2c7215c1a82523cecab9c4f5b78a7bb0abcab0ef116ade05fbdb12c0f"
+    },
+    "native/hub/reference/wails/calendario-base.png": {
+      "source": "native/hub/reference/wails/calendario-base.png",
+      "sha256": "a99066ca2953887c2b4682700172f5b44a75c4960a3ea34212c6fe07846d0fd2"
+    },
+    "native/hub/reference/wails/calendario-dia.png": {
+      "source": "native/hub/reference/wails/calendario-dia.png",
+      "sha256": "a1c26a18120968a4fa7d5bfd065c65b7ab16682ed2d5b9814a1f1fc96fcca051"
+    },
+    "native/hub/reference/wails/calendario-mes.png": {
+      "source": "native/hub/reference/wails/calendario-mes.png",
+      "sha256": "a7efc3b09b277a0dbe4406028cc061fb9c42efa830e27a29a1fbeffff5f6612b"
+    },
+    "native/hub/reference/wails/calendario-semana.png": {
+      "source": "native/hub/reference/wails/calendario-semana.png",
+      "sha256": "ee45cad9b1c6ab0e9e55d9f891359e02fad27e5879de3bf514cef55f4af0de1c"
+    },
+    "native/hub/reference/wails/calendario-timeline.png": {
+      "source": "native/hub/reference/wails/calendario-timeline.png",
+      "sha256": "8670e8924367ab9f07d27057f11add7a1a2d22653cb0aac19208918835550907"
+    },
+    "native/hub/reference/wails/cuenta-base.png": {
+      "source": "native/hub/reference/wails/cuenta-base.png",
+      "sha256": "353e13bcc75677e8dd592dcf0e411ca3ce7490492bb7954ae9a08eb52c70c806"
+    },
+    "native/hub/reference/wails/engineer-base.png": {
+      "source": "native/hub/reference/wails/engineer-base.png",
+      "sha256": "3dcdde691891b21c4604b3ab6b56f6250d460df71e0a614e58b89176c51cfe25"
+    },
+    "native/hub/reference/wails/engineer-historial.png": {
+      "source": "native/hub/reference/wails/engineer-historial.png",
+      "sha256": "fd6c3caa6b93ddc5dd08624908ccc6ca7942474cf8f7a7e74113291274a81bd0"
+    },
+    "native/hub/reference/wails/inicio-base.png": {
+      "source": "native/hub/reference/wails/inicio-base.png",
+      "sha256": "67ca8f37c752a16dc1929d55190cab27ec11a886dc025ee448f2130c4cc26ef6"
+    },
+    "native/hub/reference/wails/launcher-base.png": {
+      "source": "native/hub/reference/wails/launcher-base.png",
+      "sha256": "d19180f371a90aac0d7ed1c9590f3ab1d5ab07afebb821267fc9b6bb69893b9e"
+    },
+    "native/hub/reference/wails/launcher-nuevo-perfil.png": {
+      "source": "native/hub/reference/wails/launcher-nuevo-perfil.png",
+      "sha256": "6761f4d15e8f180bd3b0db5ef1696850cdc3e4445768aa28d82dcc03886b9e92"
+    },
+    "native/hub/reference/wails/licencias-modulos-dispositivos.png": {
+      "source": "native/hub/reference/wails/licencias-modulos-dispositivos.png",
+      "sha256": "353e13bcc75677e8dd592dcf0e411ca3ce7490492bb7954ae9a08eb52c70c806"
+    },
+    "native/hub/reference/wails/roadmap-base.png": {
+      "source": "native/hub/reference/wails/roadmap-base.png",
+      "sha256": "a6d9c8e3e4e6599bfcca8c89ef732245f106a4b9fdc5f9555690b8a6cd54ebc4"
+    },
+    "native/hub/reference/wails/shell-columna-colapsada.png": {
+      "source": "native/hub/reference/wails/shell-columna-colapsada.png",
+      "sha256": "eea15961e7bdeead3474993f5eb51878bea1b047d1cf5887ac57b6a305aacde5"
+    },
+    "native/hub/reference/wails/shell-completa.png": {
+      "source": "native/hub/reference/wails/shell-completa.png",
+      "sha256": "9c769ccc4797a9e65dd817659adb1d8ed773a8e01e2d76b2528bca117c814400"
+    },
+    "native/hub/reference/wails/shell-notificaciones-abiertas.png": {
+      "source": "native/hub/reference/wails/shell-notificaciones-abiertas.png",
+      "sha256": "c289ce0e277feb3a94cd05c7af9f0ac1b72175da1b93fdb5ee52bcb9f4025376"
+    },
+    "native/hub/reference/wails/shell-paleta-abierta.png": {
+      "source": "native/hub/reference/wails/shell-paleta-abierta.png",
+      "sha256": "5d49506cef1023a60253e4fb7ba5974b7949b3f662dc09ecfebcc705eda31e51"
+    },
+    "native/hub/reference/wails/shell-paleta-busqueda.png": {
+      "source": "native/hub/reference/wails/shell-paleta-busqueda.png",
+      "sha256": "e311350c5c7c1856ee7f57a277cbe21f23aaf3b5a10c633298b5bbe9bd50c940"
+    },
+    "native/hub/reference/wails/shell-paleta-vacia.png": {
+      "source": "native/hub/reference/wails/shell-paleta-vacia.png",
+      "sha256": "bc3c3a6ec4c245360393565a05933c84433adf9b86154f3a9a8630898e74866d"
+    },
+    "native/hub/reference/wails/strategy-v5-asistente-combinacion.png": {
+      "source": "native/hub/reference/wails/strategy-v5-asistente-combinacion.png",
+      "sha256": "100d938466667e9526de5417f7eb8167422f397b1ab66c30a9af3dc38bacec82"
+    },
+    "native/hub/reference/wails/strategy-v5-asistente-inicio.png": {
+      "source": "native/hub/reference/wails/strategy-v5-asistente-inicio.png",
+      "sha256": "20a6edb818840aadff87dd5aee1e813ca1aa6d5a0422af9873a7b899c4eb8851"
+    },
+    "native/hub/reference/wails/strategy-v5-asistente-pilotos.png": {
+      "source": "native/hub/reference/wails/strategy-v5-asistente-pilotos.png",
+      "sha256": "613cde78b747a28636bc521e107d267a4b74b7872550f4eda2b1b83368b8c284"
+    },
+    "native/hub/reference/wails/strategy-v5-asistente-reglas.png": {
+      "source": "native/hub/reference/wails/strategy-v5-asistente-reglas.png",
+      "sha256": "81a0a6b4ed4a7e6557cd26a81ebec58b8458b7a7cd2ea414002dd6505d31c9e0"
+    },
+    "native/hub/reference/wails/strategy-v5-asistente-sesiones.png": {
+      "source": "native/hub/reference/wails/strategy-v5-asistente-sesiones.png",
+      "sha256": "ead76e6378d142b029dba7788b8f94a1a8af1a5b977b66dc16e5454fcf92dab1"
+    },
+    "native/hub/reference/wails/strategy-v5-carrera.png": {
+      "source": "native/hub/reference/wails/strategy-v5-carrera.png",
+      "sha256": "5e703496f6c5768761b7e8894e8f53c6f8827d8f25a92783e6e41a0c41279234"
+    },
+    "native/hub/reference/wails/strategy-v5-combinacion-fuentes.png": {
+      "source": "native/hub/reference/wails/strategy-v5-combinacion-fuentes.png",
+      "sha256": "26c840a750956900f10eda430655fcb31f58324fdb1817d69b0b87874465ace4"
+    },
+    "native/hub/reference/wails/strategy-v5-datos-avanzado.png": {
+      "source": "native/hub/reference/wails/strategy-v5-datos-avanzado.png",
+      "sha256": "a579b2fe26e87326b20752f6bae512b981d87193971bb2fd87a18d2176caf2f4"
+    },
+    "native/hub/reference/wails/strategy-v5-datos-fuentes.png": {
+      "source": "native/hub/reference/wails/strategy-v5-datos-fuentes.png",
+      "sha256": "b9b2ddc70554df7ff93f00fc0b5a1464520d30e6d4a2a7f3b574a8c8b5d623cc"
+    },
+    "native/hub/reference/wails/strategy-v5-datos-vacio.png": {
+      "source": "native/hub/reference/wails/strategy-v5-datos-vacio.png",
+      "sha256": "8ac134593d2826b231ae64851f0348ded264740b7daa87c6cade65299fb73421"
+    },
+    "native/hub/reference/wails/strategy-v5-datos-vueltas.png": {
+      "source": "native/hub/reference/wails/strategy-v5-datos-vueltas.png",
+      "sha256": "8e9d8707df7c3c5d625a492b7200795f3d1da9861dd8775ba5fb31571916e7eb"
+    },
+    "native/hub/reference/wails/strategy-v5-editor-parada.png": {
+      "source": "native/hub/reference/wails/strategy-v5-editor-parada.png",
+      "sha256": "1c10eac3f4e8ec29a1e35b331d90c350b1a71f8ec53dd9df84f48e693cf7b8cd"
+    },
+    "native/hub/reference/wails/strategy-v5-editor-stint.png": {
+      "source": "native/hub/reference/wails/strategy-v5-editor-stint.png",
+      "sha256": "304d56a91afd69386ab4ee14b9094dac6d86cb4103ec4555bf2d2228aa39f8ff"
+    },
+    "native/hub/reference/wails/strategy-v5-plan-calculado.png": {
+      "source": "native/hub/reference/wails/strategy-v5-plan-calculado.png",
+      "sha256": "04ec47af18176ee74a59ea8c52f1dc2f7ad681fbe5db1f8b632b4147b6a48a99"
+    },
+    "native/hub/reference/wails/strategy-v5-plan-cargando.png": {
+      "source": "native/hub/reference/wails/strategy-v5-plan-cargando.png",
+      "sha256": "92e4079219d519bd706c14be71bd478e7af8c901ea5ece3b7cb01f3077aa712e"
+    },
+    "native/hub/reference/wails/strategy-v5-plan-error.png": {
+      "source": "native/hub/reference/wails/strategy-v5-plan-error.png",
+      "sha256": "4c3dbbca13ad9a273339e513c289fc6dbbdeb1549cfc35ff52c24653d7be6d0f"
+    },
+    "native/hub/reference/wails/strategy-v5-plan-parcial.png": {
+      "source": "native/hub/reference/wails/strategy-v5-plan-parcial.png",
+      "sha256": "9a662906ae6dd43357823cc90e49d68247b1bcfa065d83d1a3dd3cc9d23c75da"
+    },
+    "native/hub/reference/wails/strategy-v5-plan-reposo.png": {
+      "source": "native/hub/reference/wails/strategy-v5-plan-reposo.png",
+      "sha256": "64b62789459492205ace380e06aa3d56f7b19550f0901f7bf07c7d68e120ab19"
+    },
+    "native/hub/reference/wails/strategy-v5-revisiones.png": {
+      "source": "native/hub/reference/wails/strategy-v5-revisiones.png",
+      "sha256": "c56d7bce4acae2b38e92ce8271d1cfc934deb3b4cbe9a3cdd6e6fd995881d4ac"
+    },
+    "native/hub/reference/wails/studio-base.png": {
+      "source": "native/hub/reference/wails/studio-base.png",
+      "sha256": "1b54c392070a77b63cc9af72fce96b158e60b4553ec4ad5c009b7e44c4961219"
+    },
+    "native/hub/reference/wails/telemetria-base.png": {
+      "source": "native/hub/reference/wails/telemetria-base.png",
+      "sha256": "49a7fe99903ccadc557f069d31bed703f31fd04e6939152b60f7bb01d9d29fad"
+    },
+    "native/hub/reference/wails/telemetria-demo.png": {
+      "source": "native/hub/reference/wails/telemetria-demo.png",
+      "sha256": "a3778ebd18723f38806af6663664b79e12eabca48c105e12ff7925e0c480a807"
+    },
+    "native/hub/reference/wails/telemetria-trazas.png": {
+      "source": "native/hub/reference/wails/telemetria-trazas.png",
+      "sha256": "a3778ebd18723f38806af6663664b79e12eabca48c105e12ff7925e0c480a807"
+    },
+    "native/hub/reference/wails/testing-center-detalle.png": {
+      "source": "native/hub/reference/wails/testing-center-detalle.png",
+      "sha256": "1aecc873ca9f8a40e032c40e9faf113baa19eccc84cf898fc43090bdad331a80"
+    },
+    "native/hub/reference/wails/testing-center-informe.png": {
+      "source": "native/hub/reference/wails/testing-center-informe.png",
+      "sha256": "1aecc873ca9f8a40e032c40e9faf113baa19eccc84cf898fc43090bdad331a80"
+    },
+    "native/hub/reference/wails/testing-center-mis-reportes.png": {
+      "source": "native/hub/reference/wails/testing-center-mis-reportes.png",
+      "sha256": "ddb9c3d12a7d5ad3a00fdee4c5d680fd71ed5bf38d5af1ff4fd79ca48d00e120"
+    },
+    "native/hub/reference/wails/testing-center-validar.png": {
+      "source": "native/hub/reference/wails/testing-center-validar.png",
+      "sha256": "c596190399b9f0f10f00c08b80ed49a627c6495cc12b0032ebc0d2721aaaecf8"
+    },
+    "native/hub/reference/wails/workshop-base.png": {
+      "source": "native/hub/reference/wails/workshop-base.png",
+      "sha256": "6feec0200e341c8801da0e29fa80e9af21c2763b48c678cddefac161dc94e6f6"
+    },
+    "native/hub/reference/wails/workshop-detalle.png": {
+      "source": "native/hub/reference/wails/workshop-detalle.png",
+      "sha256": "c6e01895b89505d7646d6f4e60922c98bb2e5f5c8582cd3d223a8376d8a0eb77"
+    },
+    "native/packaging/fixtures/profile-v2-general-layout.json": {
+      "source": "pkg/config/testdata/profile-v2-general-layout.json",
+      "sha256": "78e4f987d39a5c8a11b9caa052d679f93ed1a95bb347f3669e076a7aa1bc076e"
+    },
+    "native/runtime/testdata/lmu-rest-2026-09-30/README.md": {
+      "source": "native/runtime/testdata/lmu-rest-2026-09-30/README.md",
+      "sha256": "e66f97dcf29a5617f4a719fe7432560f296e3f0d2fe7a4fb49f3cfe448c4aecc"
+    },
+    "native/runtime/testdata/lmu-rest-2026-09-30/captures.json": {
+      "source": "native/runtime/testdata/lmu-rest-2026-09-30/captures.json",
+      "sha256": "eac0ac78881c6c7522b63d55c0f3144b375d1827218e1ab19ceea2fae45d6c99"
+    },
+    "native/runtime/testdata/lmu-rest-2026-09-30/carga-practica.tar.gz": {
+      "source": "native/runtime/testdata/lmu-rest-2026-09-30/carga-practica.tar.gz",
+      "sha256": "6d7cac8735b58876b50fb79867718233c0950b67020327dd94e98b2ebb5d320f"
+    },
+    "native/runtime/testdata/lmu-rest-2026-09-30/cierre-observado.tar.gz": {
+      "source": "native/runtime/testdata/lmu-rest-2026-09-30/cierre-observado.tar.gz",
+      "sha256": "66983099642db08a98b32c4d1c1d91bee80474095c0aa4feb3bae25b1acee035"
+    },
+    "native/runtime/testdata/lmu-rest-2026-09-30/menu-responses.json": {
+      "source": "native/runtime/testdata/lmu-rest-2026-09-30/menu-responses.json",
+      "sha256": "a6426f7ae78e2cc89e894071de503b3cdfe3a44c909eba764331e13a4d045bf1"
+    },
+    "native/runtime/testdata/lmu-rest-2026-09-30/menu.tar.gz": {
+      "source": "native/runtime/testdata/lmu-rest-2026-09-30/menu.tar.gz",
+      "sha256": "b123d75db7c94d685412b520a973ca01e138c32e44fa9a16ed8c55e7461f640a"
+    },
+    "native/runtime/testdata/lmu-rest-2026-09-30/monza-carga.tar.gz": {
+      "source": "native/runtime/testdata/lmu-rest-2026-09-30/monza-carga.tar.gz",
+      "sha256": "f6dd6d774e514b06efaf071264d7a474e859bcbb770aa9d5109b8b1a5ba927fc"
+    },
+    "native/runtime/testdata/lmu-rest-2026-09-30/rest-inventory.json": {
+      "source": "native/runtime/testdata/lmu-rest-2026-09-30/rest-inventory.json",
+      "sha256": "7b059d2f259cf1fcd9c0205303cb85bfdfb836962b239d0b909c4190c75320e7"
+    },
+    "native/runtime/testdata/lmu-rest-2026-09-30/singlecar-entrada.tar.gz": {
+      "source": "native/runtime/testdata/lmu-rest-2026-09-30/singlecar-entrada.tar.gz",
+      "sha256": "1cc84dc5860bb262d4462b82c1d22633ff9fe10032f5c0aabc0e0a930e017fff"
+    },
+    "native/runtime/testdata/oracle/README.md": {
+      "source": "native/runtime/testdata/oracle/README.md",
+      "sha256": "ee4386a5e2ac9db94d0ca73e9ac26c544b3e8fc0205330636c65ae378dba241e"
+    },
+    "native/runtime/testdata/oracle/exceptions.json": {
+      "source": "native/runtime/testdata/oracle/exceptions.json",
+      "sha256": "dbf34205236ee51a039846b4c4212affc3171205cbaf1ea7af2dcc67d5eaf665"
+    },
+    "native/runtime/testdata/oracle/lmu-1.4-garage-fixture.json": {
+      "source": "native/runtime/testdata/oracle/lmu-1.4-garage-fixture.json",
+      "sha256": "f70ee238cc645db74454daa6304451813e2e1dec5c4241751b4e52ba1d505257"
+    },
+    "native/runtime/testdata/oracle/lmu-1.4-menu-fixture.json": {
+      "source": "native/runtime/testdata/oracle/lmu-1.4-menu-fixture.json",
+      "sha256": "9d946de1f00ddc82a0b10aa70f7487a500152ef8a45eafaa7e66491e43817612"
+    },
+    "native/runtime/testdata/oracle/lmu-1.4-outlap-fixture.json": {
+      "source": "native/runtime/testdata/oracle/lmu-1.4-outlap-fixture.json",
+      "sha256": "17cb7b366973d008012ebaf4fdf5274beae876375aee01e4edab5f62eb01a4c2"
+    },
+    "native/runtime/testdata/oracle/lmu-1.4-pit-fixture.json": {
+      "source": "native/runtime/testdata/oracle/lmu-1.4-pit-fixture.json",
+      "sha256": "4941dd5cae992fdcccdf128a0f78459dd30c7bc641e9d99740d685b4f6bc40af"
+    },
+    "native/runtime/testdata/oracle/lmu-1.4-pre-pit-track-fixture.json": {
+      "source": "native/runtime/testdata/oracle/lmu-1.4-pre-pit-track-fixture.json",
+      "sha256": "9a61e276b0d15c326e0db0c01e360969cc85ee551829067ab61b25c863f3db29"
+    },
+    "native/runtime/testdata/oracle/lmu-1.4-track-fixture.json": {
+      "source": "native/runtime/testdata/oracle/lmu-1.4-track-fixture.json",
+      "sha256": "dae0d4f5c294b60798ef5efca7ecdf9eadbb157726939cef5131af0b518354b6"
+    },
+    "native/runtime/testdata/oracle/lmu-1.4.1.3-menu-fixture.json": {
+      "source": "native/runtime/testdata/oracle/lmu-1.4.1.3-menu-fixture.json",
+      "sha256": "9d946de1f00ddc82a0b10aa70f7487a500152ef8a45eafaa7e66491e43817612"
+    },
+    "native/runtime/testdata/oracle/lmu-1.4.1.3-track-fixture.json": {
+      "source": "native/runtime/testdata/oracle/lmu-1.4.1.3-track-fixture.json",
+      "sha256": "2ea78ed9fe160eab6c09c4d359dafcca1f659b4641ec6798dd03498aa5c21460"
+    },
+    "native/runtime/testdata/oracle/lmu-1.4.2.0-menu-fixture.json": {
+      "source": "native/runtime/testdata/oracle/lmu-1.4.2.0-menu-fixture.json",
+      "sha256": "9d946de1f00ddc82a0b10aa70f7487a500152ef8a45eafaa7e66491e43817612"
+    },
+    "native/runtime/testdata/oracle/lmu-1.4.2.0-track-fixture.json": {
+      "source": "native/runtime/testdata/oracle/lmu-1.4.2.0-track-fixture.json",
+      "sha256": "c880e50b904aa702704889dd9f712f9467384ceef9e6c85bfcf5cf18a6e5f6cf"
+    },
+    "native/runtime/testdata/oracle/lmu-fixture.json": {
+      "source": "native/runtime/testdata/oracle/lmu-fixture.json",
+      "sha256": "5a9bcf34a661a01d4756675f3dc3b881c1d5027089e8e2c9d0162c3607267c6a"
+    },
+    "native/runtime/testdata/oracle/lmu-menu-fixture.json": {
+      "source": "native/runtime/testdata/oracle/lmu-menu-fixture.json",
+      "sha256": "9d946de1f00ddc82a0b10aa70f7487a500152ef8a45eafaa7e66491e43817612"
+    },
+    "native/runtime/testdata/oracle/lmu47-00s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-00s.json",
+      "sha256": "e9be850ab7f36355af2bdc92e13817e980cbc98d30308884523e6fd5d43d55dd"
+    },
+    "native/runtime/testdata/oracle/lmu47-01s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-01s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-02s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-02s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-03s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-03s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-04s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-04s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-05s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-05s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-06s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-06s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-07s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-07s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-08s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-08s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-09s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-09s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-10s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-10s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-11s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-11s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-12s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-12s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-13s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-13s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-14s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-14s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-15s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-15s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-16s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-16s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-17s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-17s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-18s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-18s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-19s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-19s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-20s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-20s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-21s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-21s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-22s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-22s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-23s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-23s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-24s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-24s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-25s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-25s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-26s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-26s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-27s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-27s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-28s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-28s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-29s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-29s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-30s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-30s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-31s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-31s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-32s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-32s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-33s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-33s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-34s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-34s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-35s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-35s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-36s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-36s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-37s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-37s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-38s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-38s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-39s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-39s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-40s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-40s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-41s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-41s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-42s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-42s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-43s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-43s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-44s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-44s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-45s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-45s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-46s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-46s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-47s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-47s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-48s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-48s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-49s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-49s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-50s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-50s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-51s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-51s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-52s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-52s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-53s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-53s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-54s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-54s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-55s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-55s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-56s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-56s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-57s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-57s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-58s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-58s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/lmu47-59s.json": {
+      "source": "native/runtime/testdata/oracle/lmu47-59s.json",
+      "sha256": "8e31dbaebc3915464aa91608d105c61997c1ae46321563a486a7db131ea51756"
+    },
+    "native/runtime/testdata/oracle/manifest.json": {
+      "source": "native/runtime/testdata/oracle/manifest.json",
+      "sha256": "b53373be4ebe61ded864c63f860998e5f40dff9340e81dee68c02cf58cd0f6b9"
+    },
+    "native/runtime/testdata/oracle/native-defects.json": {
+      "source": "native/runtime/testdata/oracle/native-defects.json",
+      "sha256": "53574208e30f1f1b9c8025990c509e089b0c2c2aa7a34f42adf8ecc301252c31"
+    },
+    "native/runtime/tests/golden/README.md": {
+      "source": "native/runtime/tests/golden/README.md",
+      "sha256": "b74cd322a978bafc3d96f65699be199561f2841659f66ad51c86aa0996da839b"
+    },
+    "native/runtime/tests/golden/acc-all.sha256": {
+      "source": "native/runtime/tests/golden/acc-all.sha256",
+      "sha256": "e8eb52bf9e4992069e51bcea71533fdf22010922f57cb22a241dfab8d68219a6"
+    },
+    "native/runtime/tests/golden/acc.jsonl.gz": {
+      "source": "native/runtime/tests/golden/acc.jsonl.gz",
+      "sha256": "8bbf3336f7cf7f72183ca729520acccc95adffb067e6b5018df7f30554b83f4d"
+    },
+    "native/runtime/tests/golden/lmu.jsonl.gz": {
+      "source": "native/runtime/tests/golden/lmu.jsonl.gz",
+      "sha256": "2f7b481fc726b58051fcbae17b45ea45fae191cada7be667657392f9d5368a76"
+    },
+    "native/runtime/tests/golden/lmu47.jsonl.gz": {
+      "source": "native/runtime/tests/golden/lmu47.jsonl.gz",
+      "sha256": "32f68cc6e71bf3032554012495ec4c0f6a415e17350fb38702e2a9ed144dedb4"
+    },
+    "native/strategy/testdata/fuji-1450-input.json": {
+      "source": "native/strategy/testdata/fuji-1450-input.json",
+      "sha256": "bd4d39f0f70ec7891f850fa4250434704e5d18f9d520ae1c6ccf733a84aa4344"
+    },
+    "native/strategy/testdata/fuji-1458-witness-decision.json": {
+      "source": "native/strategy/testdata/fuji-1458-witness-decision.json",
+      "sha256": "f1fecb60dc658ebb0ca7d8392c3773748111d5918395c3526a1717558703a28a"
+    },
+    "native/strategy/testdata/oracle/document-rules.json": {
+      "source": "native/strategy/testdata/oracle/document-rules.json",
+      "sha256": "47009f7935b04b267d8ed1e3a5c1e04ed86e32b0843ad96877a574089112ab52"
+    },
+    "native/strategy/testdata/oracle/documents.json": {
+      "source": "native/strategy/testdata/oracle/documents.json",
+      "sha256": "c5955d2c17dc36f0e7ab9e106bf2d24a511e62ee2d7b54da1e4540c0af8a8ace"
+    },
+    "native/strategy/testdata/oracle/edited-plan-v1-go.json": {
+      "source": "native/strategy/testdata/oracle/edited-plan-v1-go.json",
+      "sha256": "3e69e87b61a9006df7c26e65237aca3078c34b2bd2ebfb3d63e6c9fa2d1bd39d"
+    },
+    "native/strategy/testdata/oracle/family-correction-v1-go.json": {
+      "source": "native/strategy/testdata/oracle/family-correction-v1-go.json",
+      "sha256": "cf32f3d54e73ff113fa565659f4f36ff4c2d129bbf52398d83f2c4d334c51d65"
+    },
+    "native/strategy/testdata/oracle/manifest.json": {
+      "source": "native/strategy/testdata/oracle/manifest.json",
+      "sha256": "4a3eb9c8f50b0be540956fe294a0779a2399bdc1f3de7f333ecd119e9b705bf7"
+    },
+    "native/strategy/testdata/oracle/repository-v1-go.json": {
+      "source": "native/strategy/testdata/oracle/repository-v1-go.json",
+      "sha256": "8d3e9ea6259207f73b943e44884ab70b75767b5fc86af6d77a9c241acda1541d"
+    },
+    "native/strategy/testdata/oracle/repository-v2-go.golden.json": {
+      "source": "native/strategy/testdata/oracle/repository-v2-go.golden.json",
+      "sha256": "2b2e3d5c6287365762f04df98ef052a35b68595ce96cf7d20f89bb61d0b547a0"
+    },
+    "native/strategy/testdata/oracle/solver-boundaries.json": {
+      "source": "native/strategy/testdata/oracle/solver-boundaries.json",
+      "sha256": "ffc4381a22b11eed559b7f1865d3bb575329401ba5b60872b75beeede8e65990"
+    },
+    "native/strategy/testdata/oracle/solver-drivers.json": {
+      "source": "native/strategy/testdata/oracle/solver-drivers.json",
+      "sha256": "bd265ca498e403e6f028ba64d485edc94fad478610689014c40b89db8c73e533"
+    },
+    "native/strategy/testdata/oracle/solver-extended.json": {
+      "source": "native/strategy/testdata/oracle/solver-extended.json",
+      "sha256": "d79e06d9035a95029f3b08b616aefc2d3650533acacfb6946eaa842253c0b5cd"
+    },
+    "native/strategy/testdata/oracle/solver-go.json.gz": {
+      "source": "native/strategy/testdata/oracle/solver-go.json.gz",
+      "sha256": "fe23286432270625c1c1b206210b08055b0d798829924a6207a8219f9a45bcf9"
+    },
+    "native/strategy/testdata/oracle/solver-manifest.json": {
+      "source": "native/strategy/testdata/oracle/solver-manifest.json",
+      "sha256": "904bde8971bf841da81c7a28349badda8a4b0d8295290118e5e10cd5180e3b42"
+    },
+    "native/strategy/testdata/oracle/solver-optimality.json": {
+      "source": "native/strategy/testdata/oracle/solver-optimality.json",
+      "sha256": "54ae7872160e8ce00e8de37c7288b8792ebc2ea745e0ad767c319c2cf9b74140"
+    },
+    "native/strategy/testdata/oracle/solver-projection.json": {
+      "source": "native/strategy/testdata/oracle/solver-projection.json",
+      "sha256": "ecfebedc664d34609e9b1bd5151bd398956343c1240cd484c8aabd4d499e36ce"
+    },
+    "native/strategy/testdata/oracle/solver-resources.json": {
+      "source": "native/strategy/testdata/oracle/solver-resources.json",
+      "sha256": "042a64d0535b953fb2e64e264d307a60dc94cefbbccff7a59b232e7d7a125c89"
+    },
+    "native/strategy/testdata/oracle/solver-scenarios.json": {
+      "source": "native/strategy/testdata/oracle/solver-scenarios.json",
+      "sha256": "e4707484b4f71d3eb30b3cdc42508570e7ddb1563b6232a7dd1aa275e28cd09b"
+    },
+    "native/strategy/testdata/oracle/solver-tyres.json": {
+      "source": "native/strategy/testdata/oracle/solver-tyres.json",
+      "sha256": "9115aed478ebf7ce39c0ce7bc006dbb36d94eacaff44a7ca031c8c868b82217f"
+    },
+    "native/strategy/testdata/oracle/solver-v2-results.json": {
+      "source": "native/strategy/testdata/oracle/solver-v2-results.json",
+      "sha256": "6a9c78998624b0fca49e044f7572314e76a75dfef218a25de900e64888e8d889"
+    },
+    "native/strategy/testdata/oracle/solver-weather.json": {
+      "source": "native/strategy/testdata/oracle/solver-weather.json",
+      "sha256": "8afbb08795533c5f5ab65952a7c3075e54deb9cee6cb5096562ced01e3fb417f"
+    },
+    "native/strategy/testdata/oracle/solver.json": {
+      "source": "native/strategy/testdata/oracle/solver.json",
+      "sha256": "aede78c1a68101bf3b79510b6a139c75b0fe81722be9a8899037dc243cb0aa0f"
+    },
+    "native/strategy/testdata/oracle/sources.json": {
+      "source": "native/strategy/testdata/oracle/sources.json",
+      "sha256": "f58e0fda0b5fba3291d6a8b3f5dff15402b3c57aa81cee595f5b62a04e2e8da6"
+    },
+    "native/strategy/testdata/oracle/strategyinputprojection-v2-go.json": {
+      "source": "native/strategy/testdata/oracle/strategyinputprojection-v2-go.json",
+      "sha256": "46e129a0ae6580d6d1df98e55699122fb125d5c865639a165ff8b20dc2e7839c"
+    },
+    "native/ui/fixtures/broadcast-tower-crossing.scene.json": {
+      "source": "native/ui/fixtures/broadcast-tower-crossing.scene.json",
+      "sha256": "3d94257ca6f8944dae1f850878b06b2753ca8becf19a3b9810866fd2968295bb"
+    },
+    "native/ui/fixtures/broadcast-tower-default.scene.json": {
+      "source": "native/ui/fixtures/broadcast-tower-default.scene.json",
+      "sha256": "a5c3eafbf4905a74b40b4ded643c64f78a002eb7f077ed136f31e0fe9dda909b"
+    },
+    "native/ui/fixtures/broadcast-tower-exit-reentry.scene.json": {
+      "source": "native/ui/fixtures/broadcast-tower-exit-reentry.scene.json",
+      "sha256": "c36359f56ad5ffeaf7db41f2c67460afd392558013630edb1a126ef44c9387ba"
+    },
+    "native/ui/fixtures/broadcast-tower-fast-inversion.scene.json": {
+      "source": "native/ui/fixtures/broadcast-tower-fast-inversion.scene.json",
+      "sha256": "89e4877a94a5bb71e3db6a9b980f4387f8f071f919fbbeeeb6a038704a3e0a8f"
+    },
+    "native/ui/fixtures/broadcast-tower-overtake-sequence.scene.json": {
+      "source": "native/ui/fixtures/broadcast-tower-overtake-sequence.scene.json",
+      "sha256": "fafadb5df862d91569a1d05e13dcee9d2904a7db56cdba05f0b3836e7f4a26a8"
+    },
+    "native/ui/fixtures/broadcast-tower-stable-values.scene.json": {
+      "source": "native/ui/fixtures/broadcast-tower-stable-values.scene.json",
+      "sha256": "1eb01484877dddd83846b4977f65f705a28f4db9fa7bac399bdea0ba6f9b64c6"
+    },
+    "native/ui/fixtures/broadcast-tower.snapshot.json": {
+      "source": "native/ui/fixtures/broadcast-tower.snapshot.json",
+      "sha256": "2570b4e64ec328579f2fe2d80719be2e3dd70aed4e88e1bafd21471cee8415c7"
+    },
+    "native/ui/fixtures/car-damage-numbers-default.scene.json": {
+      "source": "native/ui/fixtures/car-damage-numbers-default.scene.json",
+      "sha256": "2eff91ced8461bb0ee734271bdc486b61bc1822dc3e43393b453c8823532ad17"
+    },
+    "native/ui/fixtures/car-damage-numbers.snapshot.json": {
+      "source": "native/ui/fixtures/car-damage-numbers.snapshot.json",
+      "sha256": "13bc5e265f9f5135b79832352d682149a575a2121823a013ecbca0430ad13f2b"
+    },
+    "native/ui/fixtures/car-damage-visual-default.scene.json": {
+      "source": "native/ui/fixtures/car-damage-visual-default.scene.json",
+      "sha256": "793efe85e2b60aa9bc305366dbba8c7c2d98c142fb447720d01940051f56f9ef"
+    },
+    "native/ui/fixtures/car-damage-visual.snapshot.json": {
+      "source": "native/ui/fixtures/car-damage-visual.snapshot.json",
+      "sha256": "970b8ce584b39a95fe3fd199f366359a243e1d30c7b246236f42219fd2521132"
+    },
+    "native/ui/fixtures/delta-cross-zero.scene.json": {
+      "source": "native/ui/fixtures/delta-cross-zero.scene.json",
+      "sha256": "3fa9b5410fb7c934451b4dd23cbd525685f781540b5bbe8d95fe02bb0cd999e0"
+    },
+    "native/ui/fixtures/delta-default.scene.json": {
+      "source": "native/ui/fixtures/delta-default.scene.json",
+      "sha256": "581eb78af0715e373f79ceb29073278c70abb3e6011a296df6936a24e0fa1f69"
+    },
+    "native/ui/fixtures/delta-new-best.scene.json": {
+      "source": "native/ui/fixtures/delta-new-best.scene.json",
+      "sha256": "7b7d1498f24ebdcc40fbed84c9edbce558675cf990cda9a95a0c694bdb2e9400"
+    },
+    "native/ui/fixtures/delta-trace-default.scene.json": {
+      "source": "native/ui/fixtures/delta-trace-default.scene.json",
+      "sha256": "e30ecd22e0a8910caa172325451cc23bf87d46b740012a1f58a27ad649d42fe3"
+    },
+    "native/ui/fixtures/delta-trace.sequence.json": {
+      "source": "native/ui/fixtures/delta-trace.sequence.json",
+      "sha256": "73ade07dd0aa208f9e94f3bd1f361b28301c75cc9d1cdf0681088039098ca1a8"
+    },
+    "native/ui/fixtures/delta-trace.snapshot.json": {
+      "source": "native/ui/fixtures/delta-trace.snapshot.json",
+      "sha256": "36dd647f342b5117a70371b690e02a679f1526858978db7de53e38b1e165abc2"
+    },
+    "native/ui/fixtures/delta-vantare-carrera.scene.json": {
+      "source": "native/ui/fixtures/delta-vantare-carrera.scene.json",
+      "sha256": "826dc02a486e22a6fc290cf10ba897d585ca4640a421d5b7faf1120a7fd4e890"
+    },
+    "native/ui/fixtures/delta-vantare.scene.json": {
+      "source": "native/ui/fixtures/delta-vantare.scene.json",
+      "sha256": "0a53312b8ce679e31f6d59f407e6427a7ca96085ee1439002a57dce0f98b28af"
+    },
+    "native/ui/fixtures/delta.snapshot.json": {
+      "source": "native/ui/fixtures/delta.snapshot.json",
+      "sha256": "7bb66416888448dce1976a017c16ab30f1c9798343d58000c4d38ace0f32f889"
+    },
+    "native/ui/fixtures/fastest-lap-alert.scene.json": {
+      "source": "native/ui/fixtures/fastest-lap-alert.scene.json",
+      "sha256": "0438a1744ed6f6572e0421b73e3d1bc01c6778ad60d71aefb8965fd5e5269516"
+    },
+    "native/ui/fixtures/fastest-lap-default.scene.json": {
+      "source": "native/ui/fixtures/fastest-lap-default.scene.json",
+      "sha256": "d1f38541cd6bc6e98129cbc74128f22ab5c9c52f847dcd5e7499441a03e45065"
+    },
+    "native/ui/fixtures/fastest-lap.snapshot.json": {
+      "source": "native/ui/fixtures/fastest-lap.snapshot.json",
+      "sha256": "1fda18507fc1134cdafa3e771196f14b96386419e32f374a447c4f6e7811c0b1"
+    },
+    "native/ui/fixtures/fuel-strategy-default.scene.json": {
+      "source": "native/ui/fixtures/fuel-strategy-default.scene.json",
+      "sha256": "f02bf017486d8db556bcf415e7299f5add8837fc45894f5a530a33f217ae94de"
+    },
+    "native/ui/fixtures/fuel-strategy.snapshot.json": {
+      "source": "native/ui/fixtures/fuel-strategy.snapshot.json",
+      "sha256": "0143623b5af7991356967d33e661889be88eb1f8776928f96f3496abb4fa2289"
+    },
+    "native/ui/fixtures/fuel-vantare-carrera.scene.json": {
+      "source": "native/ui/fixtures/fuel-vantare-carrera.scene.json",
+      "sha256": "3788eedcb747d2a257b12b5449423dd336284efac8316373511debdbe9f1cd98"
+    },
+    "native/ui/fixtures/fuel-vantare.scene.json": {
+      "source": "native/ui/fixtures/fuel-vantare.scene.json",
+      "sha256": "a0ca2db0e5b5560daf1b172b112a32c0721c865dc630955d0e33335ab70b1d35"
+    },
+    "native/ui/fixtures/head-to-head-default.scene.json": {
+      "source": "native/ui/fixtures/head-to-head-default.scene.json",
+      "sha256": "cd3000af9053fc6a639e3e7a7585f5de18309503f9467ce8bdeae0d0c6321374"
+    },
+    "native/ui/fixtures/head-to-head-player-p2.snapshot.json": {
+      "source": "native/ui/fixtures/head-to-head-player-p2.snapshot.json",
+      "sha256": "5f69767372fc54dbd8d88e91df63df735a9af2c2f6c15155135369ceec05e677"
+    },
+    "native/ui/fixtures/head-to-head.snapshot.json": {
+      "source": "native/ui/fixtures/head-to-head.snapshot.json",
+      "sha256": "e4838110845f7e835ede4a29f04d73ddc77d9c68ca4212006aecbc0a5c204716"
+    },
+    "native/ui/fixtures/input-telemetry-default.scene.json": {
+      "source": "native/ui/fixtures/input-telemetry-default.scene.json",
+      "sha256": "48bd40c2a7791ef4f053245954897514fb235ca1f69e2a674b904b73da87dae4"
+    },
+    "native/ui/fixtures/input-telemetry.sequence.json": {
+      "source": "native/ui/fixtures/input-telemetry.sequence.json",
+      "sha256": "21374d2709db61cd4eb411d3daab865dd8538db2fcf35da0d1c2bac4bcddedcc"
+    },
+    "native/ui/fixtures/input-telemetry.snapshot.json": {
+      "source": "native/ui/fixtures/input-telemetry.snapshot.json",
+      "sha256": "5dcd77e454b89e0eab8a62399d09465001b30736b622d6171339566c2a67f18d"
+    },
+    "native/ui/fixtures/layout.json": {
+      "source": "native/ui/fixtures/layout.json",
+      "sha256": "b097d8d979d90386bf406f5b629835b5c58d3041fa300210d450b2722922c033"
+    },
+    "native/ui/fixtures/lmu47.snapshot.json": {
+      "source": "native/ui/fixtures/lmu47.snapshot.json",
+      "sha256": "4a7af4e5edb4ee2392e2bbbb6635c92b2f8614dd2bbe0044e6f6bb0ff46a7b6d"
+    },
+    "native/ui/fixtures/multiclass-relative-default.scene.json": {
+      "source": "native/ui/fixtures/multiclass-relative-default.scene.json",
+      "sha256": "91e93791c8c93f3a45143012daec80360557fba1839cd8a2b134e97bebb2aa92"
+    },
+    "native/ui/fixtures/multiclass-relative.snapshot.json": {
+      "source": "native/ui/fixtures/multiclass-relative.snapshot.json",
+      "sha256": "9661977f1cb5d5227d3034bfdb0849eafe979aef446b4702e605e1de2aed899f"
+    },
+    "native/ui/fixtures/pedals-clutch.scene.json": {
+      "source": "native/ui/fixtures/pedals-clutch.scene.json",
+      "sha256": "714cb198fc77fb99482ad2c935a83f280482891ba8ee75c10742ebb27db8a674"
+    },
+    "native/ui/fixtures/pedals-default.scene.json": {
+      "source": "native/ui/fixtures/pedals-default.scene.json",
+      "sha256": "4b59a22da9c3d44a0ebf535fa16eb9c5d0d5ac511b8616bb0019bbf478a49edb"
+    },
+    "native/ui/fixtures/pedals-lap.scene.json": {
+      "source": "native/ui/fixtures/pedals-lap.scene.json",
+      "sha256": "ff0e07617aac16a2c488f49512d57d3a27393e152456f7d0b762cb6714a29538"
+    },
+    "native/ui/fixtures/pedals-telemetry-default.scene.json": {
+      "source": "native/ui/fixtures/pedals-telemetry-default.scene.json",
+      "sha256": "3257c45da832b99da67a29d5da1fd28e1582d555e2d4e48e97d4007c1af4ea8d"
+    },
+    "native/ui/fixtures/pedals-telemetry.snapshot.json": {
+      "source": "native/ui/fixtures/pedals-telemetry.snapshot.json",
+      "sha256": "a0442b041290d9ee8d04a9cde7967f72608bace81753fe0233a2170ad620616e"
+    },
+    "native/ui/fixtures/pedals.snapshot.json": {
+      "source": "native/ui/fixtures/pedals.snapshot.json",
+      "sha256": "8630ac1645b1b1b3ea13dfdbc708198ef18be18b940daa2a5f9444887e319428"
+    },
+    "native/ui/fixtures/racing-flags-default.scene.json": {
+      "source": "native/ui/fixtures/racing-flags-default.scene.json",
+      "sha256": "3e88d31661d495990be3dff1d222ec55e21abd5590cb35d6a6ef49add0b3a5f8"
+    },
+    "native/ui/fixtures/racing-flags-stale.snapshot.json": {
+      "source": "native/ui/fixtures/racing-flags-stale.snapshot.json",
+      "sha256": "87e7ce6967441633d344dae37f5674cabe3a34910cb92227675a7dbf4ccc5fec"
+    },
+    "native/ui/fixtures/racing-flags.snapshot.json": {
+      "source": "native/ui/fixtures/racing-flags.snapshot.json",
+      "sha256": "2df53c770528f819991592f2183b785da935f0056de2e1c86029bed790ca140e"
+    },
+    "native/ui/fixtures/radar-default.scene.json": {
+      "source": "native/ui/fixtures/radar-default.scene.json",
+      "sha256": "3346efa5645abb829e6cbe6a794d8e82bfe1cc5b2693149bceac62cfd4027a89"
+    },
+    "native/ui/fixtures/radar-nearby-traffic.scene.json": {
+      "source": "native/ui/fixtures/radar-nearby-traffic.scene.json",
+      "sha256": "8ac938552ba8024f4a330697bce4fa2dbfdbee9e6b163f635f140c3f51209a95"
+    },
+    "native/ui/fixtures/radar.snapshot.json": {
+      "source": "native/ui/fixtures/radar.snapshot.json",
+      "sha256": "c23ea17cb3f41f051451189fa3b3270328b9cc566097e3577978bcea4679d427"
+    },
+    "native/ui/fixtures/relative-default.scene.json": {
+      "source": "native/ui/fixtures/relative-default.scene.json",
+      "sha256": "5177147616ae91eb1feb0bf276cd032d1106d321d03adafc08526dbe6f412a75"
+    },
+    "native/ui/fixtures/relative-functional-cross-ahead.scene.json": {
+      "source": "native/ui/fixtures/relative-functional-cross-ahead.scene.json",
+      "sha256": "42681536375dfbc29f98a0f72c13ff9d2d500b4ae0c91e000cc2f9c06ffc7ef6"
+    },
+    "native/ui/fixtures/relative-functional-cross-behind.scene.json": {
+      "source": "native/ui/fixtures/relative-functional-cross-behind.scene.json",
+      "sha256": "ead34d87d2e074e972ace8c96efa4ee31c9033ae898e851053c64035bac3e0ee"
+    },
+    "native/ui/fixtures/relative-functional-fast-reversal.scene.json": {
+      "source": "native/ui/fixtures/relative-functional-fast-reversal.scene.json",
+      "sha256": "156d67826329f73ecea62eb178ea4545535871db81131d0b38225cf190a1ff48"
+    },
+    "native/ui/fixtures/relative-functional-lap-difference.scene.json": {
+      "source": "native/ui/fixtures/relative-functional-lap-difference.scene.json",
+      "sha256": "a9bfe64ee41d0a02fa1176320eb92471d8b0c0ef45de9a6dc464293c4132d36f"
+    },
+    "native/ui/fixtures/relative-functional-sequence.scene.json": {
+      "source": "native/ui/fixtures/relative-functional-sequence.scene.json",
+      "sha256": "09171d0ba9b4e8318bee45d3876d2615c01a510783ec554ddf45b4bf924a279d"
+    },
+    "native/ui/fixtures/relative-functional-stable-values.scene.json": {
+      "source": "native/ui/fixtures/relative-functional-stable-values.scene.json",
+      "sha256": "113fd7dd846f52fd07c5e9b035baf1bba5fd5001044a4e19f95b600f1ac7bc0d"
+    },
+    "native/ui/fixtures/relative-functional-window-cycle.scene.json": {
+      "source": "native/ui/fixtures/relative-functional-window-cycle.scene.json",
+      "sha256": "1c0b7d53f1a5af21a812f702aa2e2ce401187ababdc6f84648f61baed2763c9d"
+    },
+    "native/ui/fixtures/relative-vantare-carrera.scene.json": {
+      "source": "native/ui/fixtures/relative-vantare-carrera.scene.json",
+      "sha256": "f96417a5fcda18dfe228abb45e27dd136176eb72db7a6b938d168f7d9d0dbde1"
+    },
+    "native/ui/fixtures/relative-vantare.scene.json": {
+      "source": "native/ui/fixtures/relative-vantare.scene.json",
+      "sha256": "e32d0fc0486c3d4ab4bfc48b51004a6dd307042f8139d10c2561ed18b0c9a16f"
+    },
+    "native/ui/fixtures/relative.snapshot.json": {
+      "source": "native/ui/fixtures/relative.snapshot.json",
+      "sha256": "4f5138b31cd741f78afd40e6d34a4550aef2bf1c89e55b4007a68af8a1e34d8f"
+    },
+    "native/ui/fixtures/standings-default.scene.json": {
+      "source": "native/ui/fixtures/standings-default.scene.json",
+      "sha256": "fc2d85dcbf19781fe3511bc62df23ffe874e132530f0175a0f6296d56fd7ade6"
+    },
+    "native/ui/fixtures/standings-functional-battle.scene.json": {
+      "source": "native/ui/fixtures/standings-functional-battle.scene.json",
+      "sha256": "0381e6ceb0f8619a4402c3818e0dac53f0d2f260697fb4c8da9e2f85a269598f"
+    },
+    "native/ui/fixtures/standings-functional-combined.scene.json": {
+      "source": "native/ui/fixtures/standings-functional-combined.scene.json",
+      "sha256": "93b27a596fe92403bf44be2a900be10edab90f78e720b969d1df1e7ecd5f59ac"
+    },
+    "native/ui/fixtures/standings-functional-personal-best.scene.json": {
+      "source": "native/ui/fixtures/standings-functional-personal-best.scene.json",
+      "sha256": "86635acff7451934fe793a6ae76142f7574cc103f5cc396bc7c8904beddf52ed"
+    },
+    "native/ui/fixtures/standings-functional-pit.scene.json": {
+      "source": "native/ui/fixtures/standings-functional-pit.scene.json",
+      "sha256": "1074b7a0572fa4bf563a9e4d5988c0dba199ebc86a4cb0578c678cfe1758f740"
+    },
+    "native/ui/fixtures/standings-functional-position.scene.json": {
+      "source": "native/ui/fixtures/standings-functional-position.scene.json",
+      "sha256": "6baa681603b7fb4e7ed1c334886f89555ddc1009b94d91da3d3750e71c835181"
+    },
+    "native/ui/fixtures/standings-functional-session-best.scene.json": {
+      "source": "native/ui/fixtures/standings-functional-session-best.scene.json",
+      "sha256": "4f23be3dd1768706577901c7ab419c5a44248e1937bd3cd13b747a9d8470df4a"
+    },
+    "native/ui/fixtures/standings-functional-window.scene.json": {
+      "source": "native/ui/fixtures/standings-functional-window.scene.json",
+      "sha256": "188b96432ce39d0105a0cfbbc2101259427bb7c99c74104d7200060f9fb8759f"
+    },
+    "native/ui/fixtures/standings-legacy.snapshot.json": {
+      "source": "native/ui/fixtures/standings-legacy.snapshot.json",
+      "sha256": "4ac6dc693cc0e040b5f319f63859b60c594f18af1ad4e35039b41c76f3c9ca29"
+    },
+    "native/ui/fixtures/standings-vantare-carrera.scene.json": {
+      "source": "native/ui/fixtures/standings-vantare-carrera.scene.json",
+      "sha256": "ff48ba8f37bb3b0cfd9c0c26e4ff1fd6026e68dd670eb1eb3e50614d9650ce45"
+    },
+    "native/ui/fixtures/standings-vantare.scene.json": {
+      "source": "native/ui/fixtures/standings-vantare.scene.json",
+      "sha256": "a8c5ed2349cfb6754b2c2f09f94ec60883c410c06bdcf7727be12634c036efda"
+    },
+    "native/ui/fixtures/standings.snapshot.json": {
+      "source": "native/ui/fixtures/standings.snapshot.json",
+      "sha256": "980b76f7c6e47f5dba2638e773d6a59283fe7df330dd0637b0cfd244aa43a3f9"
+    },
+    "native/ui/fixtures/telemetry-real/README.md": {
+      "source": "native/ui/fixtures/telemetry-real/README.md",
+      "sha256": "ed06489271e1d960c04fb8cd2da067c63b959772900f63d5945cbf8e0797385e"
+    },
+    "native/ui/fixtures/telemetry-real/acc.snapshot.json": {
+      "source": "native/ui/fixtures/telemetry-real/acc.snapshot.json",
+      "sha256": "9f8b9c3858c06512ebf4003e1c34eaa016ceb52e5e71a517057ff6aa1d7c3885"
+    },
+    "native/ui/fixtures/telemetry-real/lmu-menu.snapshot.json": {
+      "source": "native/ui/fixtures/telemetry-real/lmu-menu.snapshot.json",
+      "sha256": "735783a7cdd1cd3fd9c5bb49af31caf7721ab7f8039bedfd9ef43ceece455e5a"
+    },
+    "native/ui/fixtures/telemetry-real/lmu-stale.snapshot.json": {
+      "source": "native/ui/fixtures/telemetry-real/lmu-stale.snapshot.json",
+      "sha256": "e4244ab9c21f4774125fe38d0d688c0c089bcddd640f4deb674a83c6db0b95b8"
+    },
+    "native/ui/fixtures/telemetry-real/lmu47-input.sequence.json": {
+      "source": "native/ui/fixtures/telemetry-real/lmu47-input.sequence.json",
+      "sha256": "4d2d002ba0dac11a36005e2582f648ecd85dae4c6194d3eb4cbb1a2a4b7c1071"
+    },
+    "native/ui/fixtures/telemetry-real/lmu47.snapshot.json": {
+      "source": "native/ui/fixtures/telemetry-real/lmu47.snapshot.json",
+      "sha256": "23dc883f111fe11817116358f8d25a343b2b341fe3da171385c93070bfb24d5a"
+    },
+    "native/ui/fixtures/track-map-default.scene.json": {
+      "source": "native/ui/fixtures/track-map-default.scene.json",
+      "sha256": "65660cb27d5feef6044901d11e009735577d0267d5c3cf43ac67b2b81a1084ae"
+    },
+    "native/ui/fixtures/track-map.snapshot.json": {
+      "source": "native/ui/fixtures/track-map.snapshot.json",
+      "sha256": "d3e7c6ab59626ab47e33708bd9913f67d34b3eca3267d3f558ee29ec39b77cfc"
+    },
+    "native/ui/fixtures/track-weather-default.scene.json": {
+      "source": "native/ui/fixtures/track-weather-default.scene.json",
+      "sha256": "beb40857bca985757d2f637fb6e0410ddbd0f484057098a0a09b2ca3991ac34a"
+    },
+    "native/ui/fixtures/track-weather.snapshot.json": {
+      "source": "native/ui/fixtures/track-weather.snapshot.json",
+      "sha256": "a111b1b77ad34ece680644d1df3617e5b08e0e99640e8615b3b13ac7219cd06c"
+    },
+    "native/ui/fixtures/workshop-sources.json": {
+      "source": "native/ui/fixtures/workshop-sources.json",
+      "sha256": "597fef2d4df2d4e613d0a7d36df12d8fce78987e8633974c240c40e2b4e969db"
+    },
+    "native/ui/reference/broadcast-tower.geometry.json": {
+      "source": "native/ui/reference/broadcast-tower.geometry.json",
+      "sha256": "5fd52b4f4b79c64bea08a38210b301df0239cfbd5bbac0bf038399d7ff865bbe"
+    },
+    "native/ui/reference/broadcast-tower.png": {
+      "source": "native/ui/reference/broadcast-tower.png",
+      "sha256": "ba58e26935d73659d4ef4133dfa4ca75aa46cc9da3a44c1a9f1c73226bfbb3a2"
+    },
+    "native/ui/reference/car-damage-numbers.geometry.json": {
+      "source": "native/ui/reference/car-damage-numbers.geometry.json",
+      "sha256": "2c18ad64297c5fc0ffbfe05d65b3d06f2739f762387f9439481faacd3cbc8f51"
+    },
+    "native/ui/reference/car-damage-numbers.png": {
+      "source": "native/ui/reference/car-damage-numbers.png",
+      "sha256": "62b305afd96493780a90ca9855ee9506b1afb07eeeebce1306a317f434d318d3"
+    },
+    "native/ui/reference/car-damage-visual.geometry.json": {
+      "source": "native/ui/reference/car-damage-visual.geometry.json",
+      "sha256": "8599e724aa0f0203692ceecd8adc1de156849b6035cea974087b445571ed46cb"
+    },
+    "native/ui/reference/car-damage-visual.png": {
+      "source": "native/ui/reference/car-damage-visual.png",
+      "sha256": "004f5379646b11b0e521d3a9f43cb1b1b2a904c5048fe53274e695f37c26fecd"
+    },
+    "native/ui/reference/delta-trace.geometry.json": {
+      "source": "native/ui/reference/delta-trace.geometry.json",
+      "sha256": "8eb22b5652a651f2af59c1caa97ba0254e921c687f54f4c191a499f7a4ad483a"
+    },
+    "native/ui/reference/delta-trace.png": {
+      "source": "native/ui/reference/delta-trace.png",
+      "sha256": "777d9638a82bafde6163077a98a8249ba71ec611ec4e2c92044734c268ef95de"
+    },
+    "native/ui/reference/delta.geometry.json": {
+      "source": "native/ui/reference/delta.geometry.json",
+      "sha256": "afeb49909ed2f221e3a11959d4b178a93be93fa09884844ed965f5fbad267c42"
+    },
+    "native/ui/reference/delta.png": {
+      "source": "native/ui/reference/delta.png",
+      "sha256": "d7f3b2bd972f10b7e7dda6bd05ac7221f1562a8286c05407dbd45d7ed2ce0031"
+    },
+    "native/ui/reference/engineer-radio.geometry.json": {
+      "source": "native/ui/reference/engineer-radio.geometry.json",
+      "sha256": "69730bf646bb7b37681ce13be28500c588dd51016fad8edab19dea6a7798c265"
+    },
+    "native/ui/reference/engineer-radio.png": {
+      "source": "native/ui/reference/engineer-radio.png",
+      "sha256": "76cf2fae7b71f4a7a7983218e0b93614ad6e6d178a6b77710bea15101699b622"
+    },
+    "native/ui/reference/fastest-lap.geometry.json": {
+      "source": "native/ui/reference/fastest-lap.geometry.json",
+      "sha256": "a8518933263e71915e6b86dd85ed25f443659108e3ef70409ef164e81e298e7c"
+    },
+    "native/ui/reference/fastest-lap.png": {
+      "source": "native/ui/reference/fastest-lap.png",
+      "sha256": "4dd95e3d42c338e047379e5933a26f84a14ece16de20c40a2643a35a2a227f28"
+    },
+    "native/ui/reference/fuel-strategy.geometry.json": {
+      "source": "native/ui/reference/fuel-strategy.geometry.json",
+      "sha256": "2e2ecc76c07db731b8abb2afa7a9a853f926d273dd98687e16d99f26e838c75c"
+    },
+    "native/ui/reference/fuel-strategy.png": {
+      "source": "native/ui/reference/fuel-strategy.png",
+      "sha256": "59416a13b5e6cb432f64dbbd22c24ad309fa387a943003e19a96c7cb95e2e8a0"
+    },
+    "native/ui/reference/head-to-head.geometry.json": {
+      "source": "native/ui/reference/head-to-head.geometry.json",
+      "sha256": "ed854b019b4b950976497d01d4f3c58fe2c02d7dbb035a5c54f0370e18cf0263"
+    },
+    "native/ui/reference/head-to-head.png": {
+      "source": "native/ui/reference/head-to-head.png",
+      "sha256": "20cea2aa7af7e43ec0738db7a8afd9c1f7ad2cf7ea6b48a722d16fdffdf77b96"
+    },
+    "native/ui/reference/input-telemetry.geometry.json": {
+      "source": "native/ui/reference/input-telemetry.geometry.json",
+      "sha256": "6cce08e23ca0687a1c00afa89616a114ca3064cf07c3d13639e08c566c8609d2"
+    },
+    "native/ui/reference/input-telemetry.png": {
+      "source": "native/ui/reference/input-telemetry.png",
+      "sha256": "9af275ebe15739b944c6ca537681755b7bedf32d93592cfd69251482fc9edfd6"
+    },
+    "native/ui/reference/manifest.json": {
+      "source": "native/ui/reference/manifest.json",
+      "sha256": "268d0a35706391099cb63ce402b5437175ab6f33cfe297354d2711360f0eb34d"
+    },
+    "native/ui/reference/multiclass-relative.geometry.json": {
+      "source": "native/ui/reference/multiclass-relative.geometry.json",
+      "sha256": "5edd61c97e11052a468dfa9502dc7862225ac0f0027d9b36b261e433411965c3"
+    },
+    "native/ui/reference/multiclass-relative.png": {
+      "source": "native/ui/reference/multiclass-relative.png",
+      "sha256": "c3221c50d069cd0035efe1df69c655f7395310830eccdf82bd8aef29569aaa05"
+    },
+    "native/ui/reference/pedals-telemetry.geometry.json": {
+      "source": "native/ui/reference/pedals-telemetry.geometry.json",
+      "sha256": "440a7b075ab591c7f8cbbb2827d149b334c9b86720b2a5dcf26ff5f28a738e30"
+    },
+    "native/ui/reference/pedals-telemetry.png": {
+      "source": "native/ui/reference/pedals-telemetry.png",
+      "sha256": "97af1980050134319569ca21548bd029f90f5c25ae7f19b470a99abcb3f67ed6"
+    },
+    "native/ui/reference/pedals.geometry.json": {
+      "source": "native/ui/reference/pedals.geometry.json",
+      "sha256": "aa558deabdd9f7f0dfc70ddbb1afe673f25442c1c01f4fb11ff282b29a0d0562"
+    },
+    "native/ui/reference/pedals.png": {
+      "source": "native/ui/reference/pedals.png",
+      "sha256": "bcef46404302da1c867fdb67539562420990e82f3050dd9a99d69bacadd63aff"
+    },
+    "native/ui/reference/race-schedule.geometry.json": {
+      "source": "native/ui/reference/race-schedule.geometry.json",
+      "sha256": "8e37561ddea6413dd4df778f936ecb5ebd56858a60492fe88591632bcc92c0fc"
+    },
+    "native/ui/reference/race-schedule.png": {
+      "source": "native/ui/reference/race-schedule.png",
+      "sha256": "a7cfef6f292758780fde9544160143ba4478109fc1a95efcd58545a52b3e37a6"
+    },
+    "native/ui/reference/racing-flags.geometry.json": {
+      "source": "native/ui/reference/racing-flags.geometry.json",
+      "sha256": "23149cc0eacc2f8d91285da3f407f9bf2cd7b1a2e40c4a176f6bbf1d69410242"
+    },
+    "native/ui/reference/racing-flags.png": {
+      "source": "native/ui/reference/racing-flags.png",
+      "sha256": "00cfa5e4a80df681f7f52f39962f7c78a4e720df037fbc68380ea7026e88f35b"
+    },
+    "native/ui/reference/radar.geometry.json": {
+      "source": "native/ui/reference/radar.geometry.json",
+      "sha256": "cfe2fca4e33dc9960c84edc193c2536b1ece1e6edd9fa7b6fa2502dac26b1475"
+    },
+    "native/ui/reference/radar.png": {
+      "source": "native/ui/reference/radar.png",
+      "sha256": "8df3583c9b98ae8ac416250f1da5ebf82b1e0c46dc03163500387b3ed2e02669"
+    },
+    "native/ui/reference/relative.geometry.json": {
+      "source": "native/ui/reference/relative.geometry.json",
+      "sha256": "6f7aeae315066d82928450d271255d270018149c8bf3ee90ba3505b77851d43f"
+    },
+    "native/ui/reference/relative.png": {
+      "source": "native/ui/reference/relative.png",
+      "sha256": "cf5e1f3ff83bcb3d0fc830f898790c95e1de6b621f23cafa35ac40e5761c8b85"
+    },
+    "native/ui/reference/standings.geometry.json": {
+      "source": "native/ui/reference/standings.geometry.json",
+      "sha256": "0e11a645ce5ab339aec2a564843c0d8ae7c183b89207e8c0fefe03dfde75a12b"
+    },
+    "native/ui/reference/standings.png": {
+      "source": "native/ui/reference/standings.png",
+      "sha256": "db792116a287578f63ab759192a5eb38651211f24e24982504352510381f2971"
+    },
+    "native/ui/reference/track-map.geometry.json": {
+      "source": "native/ui/reference/track-map.geometry.json",
+      "sha256": "1d65a39d33c285b386b5067dbed797d18f96f337aa01a3bf6b0407732590db64"
+    },
+    "native/ui/reference/track-map.png": {
+      "source": "native/ui/reference/track-map.png",
+      "sha256": "fa748d4690a777af71eac8248f8037bc00a868c4aa6809e56579340b62c60071"
+    },
+    "native/ui/reference/track-weather.geometry.json": {
+      "source": "native/ui/reference/track-weather.geometry.json",
+      "sha256": "5cb3b1ee383bdc4763c32b64456c5e10140d7c1d776ee8b923bc5e79dad60cfb"
+    },
+    "native/ui/reference/track-weather.png": {
+      "source": "native/ui/reference/track-weather.png",
+      "sha256": "ce69e11ae7caf34074721baad53696c814f297a0d4087b2008a92db7438d18fa"
+    },
+    "scripts/testdata/daily-schedule-2026-08-25.txt": {
+      "source": "internal/calendar/testdata/daily-schedule-2026-08-25.txt",
+      "sha256": "97d375c7b10081441b89d7a5b53751ea753dd3468988b21bdd7b6685ef05ced9"
+    },
+    "testdata/README.md": {
+      "source": "testdata/README.md",
+      "sha256": "1033fa42a1b848044e97e0b100bb8878fac1ed9b0cb2d01d1ef50125fce234b3"
+    },
+    "testdata/acc/README.md": {
+      "source": "testdata/acc/README.md",
+      "sha256": "1076d0541b8f0c8f483eba8df962467bf48acf2d8ecebbd8dd439a56be82a902"
+    },
+    "testdata/acc/acc-sesion-udp-20260929.tar.gz": {
+      "source": "testdata/acc/acc-sesion-udp-20260929.tar.gz",
+      "sha256": "422481dc88b1e7f9cb9ebaf025cc615d08453bea8fded36ca881b996ba386071"
+    },
+    "testdata/bench/huella-completo.json": {
+      "source": "testdata/bench/huella-completo.json",
+      "sha256": "df9cfff643bef28bcc18799709cd26b6ecad0f1a1e8f60dc1a614669f504fbbe"
+    },
+    "testdata/bench/huella-eficiencia-3.json": {
+      "source": "testdata/bench/huella-eficiencia-3.json",
+      "sha256": "a2567f5199c3683231b2d49c5e37f9aeac6a88e5683dc09719697741a684f1a7"
+    },
+    "testdata/bench/huella-endurance-3.json": {
+      "source": "testdata/bench/huella-endurance-3.json",
+      "sha256": "1d1638abcd4807f9e003d33c80e9dfd982f42ae61fa98a1fdf56353c0b80351d"
+    },
+    "testdata/bench/huella-endurance-s3-sin-delta.json": {
+      "source": "testdata/bench/huella-endurance-s3-sin-delta.json",
+      "sha256": "5f8892edcac4f24db3c8779d0b1d81378ca9419acfe5a28930ff51268f82381b"
+    },
+    "testdata/bench/huella-seis-l1.json": {
+      "source": "testdata/bench/huella-seis-l1.json",
+      "sha256": "5694f3a36258bb0a41763d77e70ca0204f0e3f7590fef8a49c8411c584e5bc10"
+    },
+    "testdata/bench/s3-redline-catalog.json": {
+      "source": "testdata/bench/s3-redline-catalog.json",
+      "sha256": "6d4d82cf18203d6a7e6bc64eba513ff54d35bf924a9c45d0e187b9ba16ae0c0d"
+    },
+    "testdata/engineer-replay": {
+      "source": "testdata/engineer-replay",
+      "sha256": "31b31b611261362fb6a932da43a266fc78f748884eb1e5d5e63bfd16e47aae9e"
+    },
+    "testdata/lmu-1.4-garage-fixture.bin": {
+      "source": "testdata/lmu-1.4-garage-fixture.bin",
+      "sha256": "a31a149597b14b291ffea4ef1a7e7e86e736e3ac553b53c90f1fcd7c9c1aa707"
+    },
+    "testdata/lmu-1.4-garage-fixture.json": {
+      "source": "testdata/lmu-1.4-garage-fixture.json",
+      "sha256": "b32c3acea96e1fcd48e5fa580b4372aace2dbe422dee85082f51dcf9c0f56d87"
+    },
+    "testdata/lmu-1.4-menu-fixture.bin": {
+      "source": "testdata/lmu-1.4-menu-fixture.bin",
+      "sha256": "0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0"
+    },
+    "testdata/lmu-1.4-outlap-fixture.bin": {
+      "source": "testdata/lmu-1.4-outlap-fixture.bin",
+      "sha256": "c495da06882b2ab8addef5778151201e8b7daf46e8b5ca15f6f2c86a6715e4a6"
+    },
+    "testdata/lmu-1.4-outlap-fixture.json": {
+      "source": "testdata/lmu-1.4-outlap-fixture.json",
+      "sha256": "ab714a8020fc64b55a70be4b39f0f859a2455bd0d637a8c04becd3d09af0d58f"
+    },
+    "testdata/lmu-1.4-pit-fixture.bin": {
+      "source": "testdata/lmu-1.4-pit-fixture.bin",
+      "sha256": "262700e53e722b46e1b03940e13be83cf4aa73bf9f5ebdd8b9814b7161c9ede1"
+    },
+    "testdata/lmu-1.4-pit-fixture.json": {
+      "source": "testdata/lmu-1.4-pit-fixture.json",
+      "sha256": "eed92573957be78f499595ed5047d82d143de42d0546bc2dcc77f47a8fb880bc"
+    },
+    "testdata/lmu-1.4-pre-pit-track-fixture.bin": {
+      "source": "testdata/lmu-1.4-pre-pit-track-fixture.bin",
+      "sha256": "eb79ec2a7806e217d4ef16dd2a93f3795b98234adbcb0dddba984651a5fd6fcc"
+    },
+    "testdata/lmu-1.4-pre-pit-track-fixture.json": {
+      "source": "testdata/lmu-1.4-pre-pit-track-fixture.json",
+      "sha256": "ed71b6a77a2ca0a85b8be182c2be8f2134217c6c369ce9e7597c72f22daf9fb9"
+    },
+    "testdata/lmu-1.4-rest-menu-fixture.json": {
+      "source": "testdata/lmu-1.4-rest-menu-fixture.json",
+      "sha256": "325d40882d718e7cb36837b0d3f77575eca72008ecef9bdb436325af1a285312"
+    },
+    "testdata/lmu-1.4-rest-track-fixture.json": {
+      "source": "testdata/lmu-1.4-rest-track-fixture.json",
+      "sha256": "bb89380fb672387b97735b2d318c0c8d0a246eaf2f34adbe799f17daa6f0fa36"
+    },
+    "testdata/lmu-1.4-track-fixture.bin": {
+      "source": "testdata/lmu-1.4-track-fixture.bin",
+      "sha256": "c2e005362419f1db33df96aab70e9e0d56b627ce4aee02d11b8b9ea49707b0e5"
+    },
+    "testdata/lmu-1.4.1.3-menu-fixture.bin": {
+      "source": "testdata/lmu-1.4.1.3-menu-fixture.bin",
+      "sha256": "0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0"
+    },
+    "testdata/lmu-1.4.1.3-rest-menu-fixture.json": {
+      "source": "testdata/lmu-1.4.1.3-rest-menu-fixture.json",
+      "sha256": "5db40a287ab52d5c85f4101b4ca275854869a59b4717fd7cca4452aeaac31ecb"
+    },
+    "testdata/lmu-1.4.1.3-rest-track-fixture.json": {
+      "source": "testdata/lmu-1.4.1.3-rest-track-fixture.json",
+      "sha256": "79f7691e70d936546ec09c4555fda170b6d44e513aced2ae67aecd1c22e92e1e"
+    },
+    "testdata/lmu-1.4.1.3-track-fixture.bin": {
+      "source": "testdata/lmu-1.4.1.3-track-fixture.bin",
+      "sha256": "52ff620c80fb464ef7032431fac39e26d547cbde42480bd5238b1c60fcae06b1"
+    },
+    "testdata/lmu-1.4.2.0-menu-fixture.bin": {
+      "source": "testdata/lmu-1.4.2.0-menu-fixture.bin",
+      "sha256": "0567b69abf96ecf4c63594293e29151bd802d6e52f30b5d5ccfb68c36e8aa4e0"
+    },
+    "testdata/lmu-1.4.2.0-rest-menu-fixture.json": {
+      "source": "testdata/lmu-1.4.2.0-rest-menu-fixture.json",
+      "sha256": "340e95de868d252e0b99173c59e18012a253d79319fb71084717ef6a33a03033"
+    },
+    "testdata/lmu-1.4.2.0-rest-track-fixture.json": {
+      "source": "testdata/lmu-1.4.2.0-rest-track-fixture.json",
+      "sha256": "fd3222b339894dfb29c2a32e58530d09b26d0caf12f89980a7904bdd859cabcb"
+    },
+    "testdata/lmu-1.4.2.0-track-fixture.bin": {
+      "source": "testdata/lmu-1.4.2.0-track-fixture.bin",
+      "sha256": "707dceb31dd94167b2817e47a6d546bf0c187378ae24c5403e7ed28eb05a5e39"
+    },
+    "testdata/lmu-barcelona-lap-trace.csv": {
+      "source": "testdata/lmu-barcelona-lap-trace.csv",
+      "sha256": "0a021e4d20f61b973f65cde88534aa3584ffbef38abca414bbc9c533856d0125"
+    },
+    "testdata/lmu-fixture.bin": {
+      "source": "testdata/lmu-fixture.bin",
+      "sha256": "959c51421529c6157371678d8db9bcbbdc8ab3780bd5557828f2bc0d2225e5ff"
+    },
+    "testdata/lmu-fixture.json": {
+      "source": "testdata/lmu-fixture.json",
+      "sha256": "f71cfff2cf941ef1d2791bb93b01d93eca1c268b94b3be84183040c3e2541c92"
+    },
+    "testdata/lmu-menu-fixture.bin": {
+      "source": "testdata/lmu-menu-fixture.bin",
+      "sha256": "8fc09829441e11a466bc9ff92e1a667b819eb6cf83cdf16891d7ed756d887f1a"
+    },
+    "testdata/lmu-menu-fixture.json": {
+      "source": "testdata/lmu-menu-fixture.json",
+      "sha256": "c1ab960a2f288be73803634f8e42d2fd9318dcb754f2cef53b20d0cbe11945af"
+    },
+    "testdata/rust-port/README.md": {
+      "source": "testdata/rust-port/README.md",
+      "sha256": "ba3a0b896984406659f6aab8be827c6aa3aa7b9763eeb5885e1f08f7bae98291"
+    },
+    "testdata/rust-port/lmu47-high-rate-60s.tar.gz": {
+      "source": "testdata/rust-port/lmu47-high-rate-60s.tar.gz",
+      "sha256": "c5b827ce1cfa558e732da934f11eb0f83f5dfb9e8a3c793f4d3f65ef8ca2a01c"
+    },
+    "native/ui/assets/Inter-Variable.woff2": {
+      "source": "frontend/src/assets/fonts/orbit/Inter-Variable.woff2",
+      "sha256": "3100e775e8616cd2611beecfa23a4263d7037586789b43f035236a2e6fbd4c62"
+    },
+    "native/retirement/legacy-evidence/tools/benchmarks/isa101-storage/README.md": {
+      "source": "tools/benchmarks/isa101-storage/README.md",
+      "sha256": "0e477f66c5a182e0491895c53e91f2eedc4ce032f0fc704a3e7cf85fdce9b1f4"
+    },
+    "native/retirement/legacy-evidence/tools/benchmarks/isa101-storage/testdata/recording-fact-v1.sha256": {
+      "source": "tools/benchmarks/isa101-storage/testdata/recording-fact-v1.sha256",
+      "sha256": "c854f331b740b1ed01d8b685b22f32c4917f6f68deca0f2c69a2dc1cf37a12cc"
+    },
+    "native/retirement/legacy-evidence/tools/benchmarks/isa101-storage/testdata/recording-payload-v1.sha256": {
+      "source": "tools/benchmarks/isa101-storage/testdata/recording-payload-v1.sha256",
+      "sha256": "7e29427cea32a2c358fc233e0a10cefdd45009c0a7b2edbc57e6c6d5095c3c6b"
+    },
+    "native/retirement/legacy-evidence/tools/engineer-voice-cache/catalog-voice.v1.json": {
+      "source": "tools/engineer-voice-cache/catalog-voice.v1.json",
+      "sha256": "7ba1a7f7948b48e0016bc12e681a6a65d58086327a9a272a91057e0ce473dfd1"
+    },
+    "native/retirement/legacy-evidence/tools/engineer-voice-cache/README.md": {
+      "source": "tools/engineer-voice-cache/README.md",
+      "sha256": "6074bb4edcd19a1955ee425fffc9c10d843b242db192e147dad14b75d347cf0e"
+    },
+    "native/retirement/legacy-evidence/tools/engineer-voice-cache/voice-cache.lock.json": {
+      "source": "tools/engineer-voice-cache/voice-cache.lock.json",
+      "sha256": "5957f31b151f53f11b3ada3a5392fa129398ab4d598b86e34c8e1513d5c4b46e"
+    },
+    "native/retirement/legacy-evidence/tools/engineer-voice-cache/voice-models.lock.json": {
+      "source": "tools/engineer-voice-cache/voice-models.lock.json",
+      "sha256": "335523ec8bc07b4c16042cce41fb1febc8464d6a1eea1c664985bba454160871"
+    },
+    "native/retirement/legacy-evidence/scripts/bench/README.md": {
+      "source": "scripts/bench/README.md",
+      "sha256": "c78e47ea8209e707d8a9c0d71006f6d117f34c85018e238a18a33daa19e36017"
+    },
+    "native/retirement/legacy-evidence/scripts/bench/testdata/hygiene-processes.json": {
+      "source": "scripts/bench/testdata/hygiene-processes.json",
+      "sha256": "8d9e34d5867910de58d40889d6dc003b02d5c5b47e5cd6e6f7067c9a9d4f8e6c"
+    },
+    "native/retirement/legacy-evidence/scripts/bench/testdata/logman-query-ets.txt": {
+      "source": "scripts/bench/testdata/logman-query-ets.txt",
+      "sha256": "cfe03a98ecf0ca3642fc212460cc5578f364482b6abfc9d139a5927bc10edd42"
+    },
+    "native/retirement/legacy-evidence/scripts/bench/testdata/presentmon-v2.csv": {
+      "source": "scripts/bench/testdata/presentmon-v2.csv",
+      "sha256": "c9fde5e62eeacd07b78cc23ddecfdc23b954ce42fc9eb34bb1b1f02730523de5"
+    },
+    "native/retirement/legacy-evidence/scripts/bench/testdata/renderer-attribution.json": {
+      "source": "scripts/bench/testdata/renderer-attribution.json",
+      "sha256": "39a13edae8527de20eb4f5bec33aa43efb2e304aba59d0fd8956ce44e753559b"
+    },
+    "native/retirement/legacy-evidence/scripts/bench/testdata/sesion-state-without-transport.json": {
+      "source": "scripts/bench/testdata/sesion-state-without-transport.json",
+      "sha256": "46add8af8ffc42193a1bd15a08a20d47efc7e985d228cc6a63b645627e2fded6"
+    }
+  }
+}

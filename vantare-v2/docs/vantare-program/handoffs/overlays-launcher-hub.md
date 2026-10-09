@@ -5,6 +5,8 @@ Merge no-ff en vantareapp/isa-1496-integracion-prueba, sin delegación.
 Cuenta conserva avatar/nombre reales y acciones #1529 con hero, avatar circular y
 Display adaptable #1528; handoff acumula ambas ramas. Aviso único #1530,
 Services v5, DTO v9, fuentes retiradas y arquitectura de la ola 1 conservados.
+Merge cerrado en ffc2efe8. NSIS corrige su referencia al icono retirado build/windows:
+usa native/assets/icon.ico de #1534; sin cambiar el recurso ni el instalador real.
 Gates y build local 0.0.975 en curso, evidencia externa:
 C:/tmp/auditoria-arquitectura-v2/integracion-1528-evidence/.
 Siguiente: gates por cola y Setup Release beta con configuración dev, sin firma.

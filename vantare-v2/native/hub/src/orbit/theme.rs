@@ -7,9 +7,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, Debug, Default, Deserialize, Eq, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum Palette {
+    /// Grafito con rojo oficial; tema predeterminado desde el feedback 7.
     #[default]
     Vantare,
-    /// «Vantare clásico»: tokens de la ronda 8 (§1).
+    /// Carmín intenso de la ronda 9; antes se llamaba «Vantare».
     Classic,
     /// Grises neutros con acento azul (R10.1).
     DeepSeek,
@@ -352,7 +353,7 @@ impl Theme {
                 top: 0x29_2026,
                 base: 0x10_0d11,
             },
-            skin: super::skin::Skin::vantare(),
+            skin: super::skin::Skin::carmine(),
         }
     }
 
@@ -723,7 +724,7 @@ impl Theme {
             ),
             (Palette::Mono, Scheme::Dark) => self.set_mono_dark(),
             (Palette::Mono, Scheme::Light) => self.set_mono_light(),
-            (Palette::Vantare, Scheme::Light) => self.set_vantare_light(),
+            (Palette::Classic, Scheme::Light) => self.set_vantare_light(),
             _ => self.set_vantare_dark(),
         }
     }
@@ -974,7 +975,7 @@ impl Theme {
         if let Some(token) = token {
             return token;
         }
-        if self.palette == Palette::Vantare && self.scheme == Scheme::Dark {
+        if self.palette == Palette::Classic && self.scheme == Scheme::Dark {
             return color;
         }
         // Contratos históricos de Engineer, fondos y selección de secciones.
@@ -1268,6 +1269,31 @@ mod tests {
     use crate::orbit;
 
     #[test]
+    fn graphite_vantare_is_the_first_selected_default_and_uses_official_red() {
+        let settings = AppearanceSettings::default();
+        assert_eq!(Palette::default(), Palette::Vantare);
+        assert_eq!(settings.palette, Palette::ALL[0]);
+        assert_eq!(Palette::ALL[0].label(), "Vantare");
+        assert_eq!(Palette::ALL[1].label(), "Vantare clásico");
+        for scheme in [Scheme::Dark, Scheme::Light] {
+            let skin = super::super::skin::Skin::resolve(settings.palette, scheme);
+            assert_eq!(skin.accent, 0xd8_0000);
+            let classic = super::super::skin::Skin::resolve(Palette::Classic, scheme);
+            assert_ne!(
+                skin.base, classic.base,
+                "orbs and previews have distinct surfaces"
+            );
+        }
+        assert_eq!(Theme::default().skin.base, 0x16_1314);
+        assert_eq!(
+            Theme::resolve(Palette::Classic, Scheme::Dark, 100, 80)
+                .skin
+                .base,
+            0x17_0a0e
+        );
+    }
+
+    #[test]
     fn production_design_keeps_text_accent_separate_from_brand_fill() {
         for palette in Palette::ALL {
             for scheme in [Scheme::Dark, Scheme::Light] {
@@ -1285,8 +1311,8 @@ mod tests {
     }
 
     #[test]
-    fn vantare_dark_matches_orbit_constants_field_by_field() {
-        let theme = Theme::resolve(Palette::Vantare, Scheme::Dark, 100, 80);
+    fn classic_dark_matches_historical_orbit_constants_field_by_field() {
+        let theme = Theme::resolve(Palette::Classic, Scheme::Dark, 100, 80);
         assert_eq!(theme.coral, orbit::CORAL);
         assert_eq!(theme.ember, orbit::EMBER);
         assert_eq!(theme.red, orbit::RED);
@@ -1398,8 +1424,11 @@ mod tests {
         }
     }
     #[test]
-    fn legacy_section_tokens_keep_exact_default_pixels() {
-        let t = Theme::from_settings(AppearanceSettings::default());
+    fn classic_keeps_exact_historical_section_pixels() {
+        let t = Theme::from_settings(AppearanceSettings {
+            palette: Palette::Classic,
+            ..AppearanceSettings::default()
+        });
         for color in [
             0x0019_191e,
             0x0013_1317,
@@ -1429,7 +1458,7 @@ mod tests {
     #[test]
     fn wcag_contrast_report_for_primary_and_secondary_text() {
         for palette in [
-            Palette::Vantare,
+            Palette::Classic,
             Palette::Rose,
             Palette::Grove,
             Palette::Ocean,
@@ -1461,14 +1490,14 @@ mod tests {
     fn studio_stage_backgrounds_match_wails_palette_table() {
         let cases = [
             (
-                Palette::Vantare,
+                Palette::Classic,
                 Scheme::Light,
                 0xb2_3546,
                 0xff_f4f2,
                 0xf9_f1ef,
             ),
             (
-                Palette::Vantare,
+                Palette::Classic,
                 Scheme::Dark,
                 0xf0_4755,
                 0x29_2026,

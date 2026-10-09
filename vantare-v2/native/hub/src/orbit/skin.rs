@@ -1,5 +1,5 @@
 //! Tokens del Hub R9/R10 (`ESPEC-GPUI.md`): shell, kit y superficies con carácter.
-//! Vantare = R9.1 y Clásico = §1, con los valores exactos de la espec. El resto de
+//! Vantare = grafito (§1); Clásico = carmín R9.1. El resto de
 //! temas se derivan con la misma regla HSL de la maqueta (`hub.html`, «tono»/«claro»):
 //! los rojos toman el acento/fondo del tema y los neutros conservan su luminosidad.
 //! Colores `0xRRGGBB`; con alfa `0xRRGGBBAA`. Estados, apps y logotipo no cambian.
@@ -109,10 +109,10 @@ impl Skin {
 
     pub fn resolve(palette: Palette, scheme: Scheme) -> Self {
         let mut skin = match palette {
-            Palette::Classic => Self::classic(),
-            Palette::Vantare => Self::vantare(),
+            Palette::Vantare => Self::graphite(),
+            Palette::Classic => Self::carmine(),
             other => {
-                let mut skin = Self::vantare();
+                let mut skin = Self::carmine();
                 skin.map(|color| retone(color, other));
                 if other == Palette::DeepSeek {
                     skin.base = 0x15_1517;
@@ -150,7 +150,7 @@ impl Skin {
         skin.button_pressed = readable(skin.button_pressed, &[0xff_ffff]);
         skin.button_hover.from = readable(skin.button_hover.from, &[0xff_ffff]);
         skin.button_hover.to = readable(skin.button_hover.to, &[0xff_ffff]);
-        if palette == Palette::Vantare {
+        if matches!(palette, Palette::Vantare | Palette::Classic) {
             skin.accent = 0xd8_0000;
             skin.accent_fill = 0xd8_0000;
             skin.button = ramp(0xdc_0a0a, 0xc4_0000);
@@ -158,6 +158,11 @@ impl Skin {
             skin.progress = ramp(0x8a_0000, 0xd8_0000);
             skin.brand = ramp(0xd8_0000, 0xb9_0000);
             skin.selection = alpha(0xd8_0000, 0xcc);
+            if palette == Palette::Vantare {
+                skin.accent_tint = alpha(0xd8_0000, 0x26);
+                skin.live_halo = alpha(0xd8_0000, 0x33);
+                skin.progress_glow = alpha(0xd8_0000, 0x80);
+            }
             if scheme == Scheme::Light {
                 // Rojo de texto oscuro: el rojo de marca queda reservado al relleno.
                 skin.accent_bright = readable(0x8a_0000, &[skin.l1, skin.l3]);
@@ -167,7 +172,7 @@ impl Skin {
     }
 
     /// R9.1 + R10.8, exactos.
-    pub fn vantare() -> Self {
+    pub fn carmine() -> Self {
         Self {
             window: Ramp {
                 from: 0x3a_111b,
@@ -255,7 +260,7 @@ impl Skin {
     }
 
     /// §1 (ronda 8, «grafito carmín»), exactos; el botón principal sigue R10.8.
-    pub fn classic() -> Self {
+    pub fn graphite() -> Self {
         Self {
             window: ramp(0x16_1314, 0x16_1314),
             wash: alpha(0xe1_4a54, 0x0b),
@@ -320,7 +325,7 @@ impl Skin {
             live_halo: alpha(0xe1_4a54, 0x33),
             progress: ramp(0x8e_1823, 0xff_525c),
             progress_glow: alpha(0xff_525c, 0x80),
-            ..Self::vantare()
+            ..Self::carmine()
         }
     }
 
@@ -443,7 +448,7 @@ fn anchors(palette: Palette) -> (u32, u32) {
         Palette::Ember => (0xde_985e, 0x1d_1511),
         Palette::Iris => (0x95_72d7, 0x15_111f),
         Palette::Mono => (0xf2_f2f2, 0x11_1111),
-        Palette::Vantare | Palette::Classic | Palette::DeepSeek => (0xe1_4a54, 0x17_0a0e),
+        Palette::Classic | Palette::Vantare | Palette::DeepSeek => (0xe1_4a54, 0x17_0a0e),
     }
 }
 
@@ -455,8 +460,8 @@ fn retone(color: u32, palette: Palette) -> u32 {
         return color;
     }
     let (h, s, l) = match palette {
-        Palette::Vantare => (h, s, l),
-        Palette::Classic => {
+        Palette::Classic => (h, s, l),
+        Palette::Vantare => {
             if l < 0.25 {
                 (h, s.min(0.12), l)
             } else if l > 0.75 {
@@ -621,8 +626,8 @@ mod tests {
     }
 
     #[test]
-    fn vantare_dark_uses_the_exact_r9_and_r10_tokens() {
-        let s = Skin::resolve(Palette::Vantare, Scheme::Dark);
+    fn classic_dark_preserves_the_r9_and_r10_tokens() {
+        let s = Skin::resolve(Palette::Classic, Scheme::Dark);
         assert_eq!(
             (s.window.from, s.window.to, s.window.end),
             (0x3a_111b, 0x12_080b, 0.58)
@@ -665,8 +670,8 @@ mod tests {
     }
 
     #[test]
-    fn classic_uses_the_exact_round_8_tokens() {
-        let s = Skin::resolve(Palette::Classic, Scheme::Dark);
+    fn vantare_preserves_the_graphite_round_8_surfaces() {
+        let s = Skin::resolve(Palette::Vantare, Scheme::Dark);
         assert_eq!(
             (s.base, s.window.from, s.window.to),
             (0x16_1314, 0x16_1314, 0x16_1314)
@@ -701,7 +706,7 @@ mod tests {
         assert_eq!((s.nav_active.from, s.nav_active.to), (0x46_3c3f, 0x3b_3335));
         assert_eq!(
             [s.accent, s.accent_bright, s.accent_fill, s.wine],
-            [0xe1_4a54, 0xff_7a82, 0xb5_2b35, 0x6e_1019]
+            [0xd8_0000, 0xff_7a82, 0xd8_0000, 0x6e_1019]
         );
         assert_eq!(
             [s.ok, s.ok_tint, s.warn, s.warn_tint, s.err, s.err_tint],
@@ -741,7 +746,7 @@ mod tests {
 
     #[test]
     fn light_scheme_keeps_text_readable_on_its_surfaces() {
-        for palette in [Palette::Vantare, Palette::Classic, Palette::DeepSeek] {
+        for palette in [Palette::Classic, Palette::Vantare, Palette::DeepSeek] {
             let s = Skin::resolve(palette, Scheme::Light);
             let (_, _, text) = hsl(s.text1);
             let (_, _, surface) = hsl(s.l1);

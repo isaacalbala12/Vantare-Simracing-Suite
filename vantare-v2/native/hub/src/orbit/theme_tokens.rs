@@ -67,7 +67,7 @@ fn retained_tokens(t: &Theme) -> serde_json::Value {
 fn all_tokens() -> serde_json::Value {
     let mut tokens = Vec::new();
     for palette in [
-        Palette::Vantare,
+        Palette::Classic,
         Palette::Rose,
         Palette::Grove,
         Palette::Ocean,

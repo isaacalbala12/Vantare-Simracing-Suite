@@ -279,7 +279,7 @@ pub const FEATURED_RADIUS: f32 = 25.0;
 pub fn stage(cx: &gpui::App) -> theme::StageBackground {
     let theme = cx.global::<theme::Theme>();
     if cx.try_global::<design::Tokens>().is_none()
-        && theme.palette == theme::Palette::Vantare
+        && theme.palette == theme::Palette::Classic
         && theme.scheme == theme::Scheme::Dark
     {
         // El lienzo nativo anterior usaba superficies Orbit; conserva paridad.
@@ -520,7 +520,7 @@ pub fn tracked_text(
 pub fn primary_label(cx: &gpui::App) -> u32 {
     let theme = cx.global::<theme::Theme>();
     if cx.try_global::<design::Tokens>().is_none()
-        && theme.palette == theme::Palette::Vantare
+        && theme.palette == theme::Palette::Classic
         && theme.scheme == theme::Scheme::Dark
     {
         theme.ink

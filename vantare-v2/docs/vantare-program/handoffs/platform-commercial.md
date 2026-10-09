@@ -1941,3 +1941,14 @@ Formato y Clippy del workspace PASS; Nextest de `shell::settings::` 16/16 PASS
 (287 fuera del filtro). Logs `C:/tmp/lanzamiento/1515-url-*.log`. Sin nueva prueba
 visual ni acciones de producción. La misma rama y PR draft #1519 reciben este
 seguimiento; HEAD/push final se registra en el informe del worker y GitHub #1515.
+
+### #1496 — v4: sondeo de compra aislado de acciones (2026-10-09)
+Solo worktree de integración 25d9e6bd, rama #1514 intacta. F2 distingue propósito
+PurchaseRenew/PurchaseSession de renovación manual, mantiene contexto/mensajes y
+relee caducidad OAuth en segundo plano. Calendario y acciones usan la cola existente;
+logout tiene prioridad. Espera ligada al producto, máximo10 minutos, salida manual,
+error recuperable y parada con política vigente/cancelación/logout. Redirect no da acceso.
+Regresiones iniciales5/5 PASS por cola (compra, calendario, roadmap, informes,
+catálogo y reloj controlado); primer intento detenido por falta de cx.quit en tests
+propios, corregido y evidencia conservada. Gates finales/IPC QA/instalador pendientes.
+PR1523 recibirá comentario de defectos y arreglo; no se modifica su rama. Sin promoción.

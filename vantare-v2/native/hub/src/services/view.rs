@@ -148,7 +148,45 @@ enum Inflight {
     Idle,
     /// Consulta periódica de política: no bloquea ni se muestra.
     Background,
+    PurchaseRenew,
+    PurchaseSession,
     User,
+}
+impl Inflight {
+    fn background(self) -> bool {
+        matches!(
+            self,
+            Self::Background | Self::PurchaseRenew | Self::PurchaseSession
+        )
+    }
+}
+struct PurchaseWait {
+    product: super::protocol::BillingProduct,
+    started: std::time::Instant,
+    polled: Option<std::time::Instant>,
+}
+impl PurchaseWait {
+    fn confirmed(&self, access: Access) -> bool {
+        use super::protocol::BillingProduct;
+        use vantare_ipc::control::CatalogAccess;
+        access.verified
+            && !access.blocked
+            && match self.product {
+                BillingProduct::ProMonthly | BillingProduct::ProAnnual => {
+                    access.catalog == CatalogAccess::Pro
+                }
+                BillingProduct::LaunchLifetime => {
+                    matches!(access.catalog, CatalogAccess::LaunchV1 | CatalogAccess::Pro)
+                }
+            }
+    }
+    fn expired(&self, now: std::time::Instant) -> bool {
+        now.duration_since(self.started) >= std::time::Duration::from_mins(10)
+    }
+    fn due(&self, now: std::time::Instant) -> bool {
+        self.polled
+            .is_none_or(|last| now.duration_since(last) >= std::time::Duration::from_secs(5))
+    }
 }
 // La petición del calendario espera al heartbeat sin ocupar ni sobrescribir
 // el único hueco reservado a una acción explícita del usuario.
@@ -203,8 +241,9 @@ pub struct Remote {
     /// la salida es liberar el activo, no reintentar a ciegas.
     device_limit: bool,
     license_polled_at: Option<std::time::Instant>,
-    purchase_started_at: Option<std::time::Instant>,
-    purchase_polled_at: Option<std::time::Instant>,
+    purchase_product: Option<super::protocol::BillingProduct>,
+    purchase_wait: Option<PurchaseWait>,
+    purchase_message: Option<String>,
     message: String,
     active: Area,
     calendar_target: Option<gpui::WeakEntity<crate::calendar::Calendar>>,
@@ -328,8 +367,9 @@ impl Remote {
             access: access::State::from_build(),
             device_limit: false,
             license_polled_at: None,
-            purchase_started_at: None,
-            purchase_polled_at: None,
+            purchase_product: None,
+            purchase_wait: None,
+            purchase_message: None,
             message: "Cuenta no disponible".into(),
             active: Area::Account,
             calendar_target: None,
@@ -356,17 +396,29 @@ impl Remote {
 
     /// `LicenseStatus` solo lee el núcleo por IPC. Su política caduca a los 2 s.
     pub(crate) fn refresh_license(&mut self, cx: &mut Context<Self>) {
+        let now = std::time::Instant::now();
+        if self
+            .purchase_wait
+            .as_ref()
+            .is_some_and(|wait| wait.expired(now))
+        {
+            self.purchase_wait = None;
+            self.purchase_message = Some(
+                "No se han confirmado los derechos. Usa Comprobar acceso para reintentarlo.".into(),
+            );
+            cx.notify();
+        }
         if !self.busy()
             && self.account.signed_in
             && self
-                .purchase_started_at
-                .is_some_and(|start| start.elapsed().as_secs() < 600)
-            && self
-                .purchase_polled_at
-                .is_none_or(|last| last.elapsed().as_secs() >= 5)
+                .purchase_wait
+                .as_ref()
+                .is_some_and(|wait| wait.due(now))
         {
-            self.purchase_polled_at = Some(std::time::Instant::now());
-            self.request(Command::LicenseRenew, cx);
+            if let Some(wait) = &mut self.purchase_wait {
+                wait.polled = Some(now);
+            }
+            self.request_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew), cx);
             return;
         }
         if !self.busy()
@@ -392,7 +444,7 @@ impl Remote {
         self.calendar_target = Some(target);
         // El heartbeat ya tiene un worker: entregar el horario justo después,
         // sin reemplazar la acción del usuario que pudiera estar en queued.
-        if self.inflight == Inflight::Background {
+        if self.inflight.background() {
             return true;
         }
         self.request(Command::CalendarRefresh, cx);
@@ -441,6 +493,8 @@ impl Remote {
     }
 
     pub fn cancel(&mut self) {
+        self.purchase_wait = None;
+        self.purchase_product = None;
         self.stop.store(true, Ordering::Release);
         if let Some(event) = &self.cancellation {
             event.set();
@@ -510,32 +564,43 @@ impl Remote {
         true
     }
 
-    fn dispatch(&mut self, command: Command) -> bool {
+    fn dispatch_with_kind(&mut self, command: Command, kind: Option<Inflight>) -> bool {
+        let inflight = kind.unwrap_or(if matches!(command, Command::LicenseStatus) {
+            Inflight::Background
+        } else {
+            Inflight::User
+        });
+        if let Command::Purchase { product } = &command {
+            self.purchase_product = Some(*product);
+        }
+        let background = inflight.background();
         // Otra acción de licencia del usuario releva al límite anterior; la
         // consulta periódica de política no lo hace.
         if matches!(command, Command::LicenseRenew | Command::DeviceReset) {
             self.device_limit = false;
         }
-        self.active = match command {
-            Command::CalendarRefresh => Area::Calendar,
-            Command::RoadmapCached | Command::RoadmapRefresh => Area::Roadmap,
-            Command::LicenseRenew => Area::Licenses { renew: true },
-            Command::LicenseStatus | Command::DeviceReset => Area::Licenses { renew: false },
-            Command::DraftLoad
-            | Command::DraftSave { .. }
-            | Command::DraftDiscard
-            | Command::ReportCapture { .. }
-            | Command::ReportRemoveScreenshot { .. }
-            | Command::ReportPrepare
-            | Command::ReportRetryPrepare
-            | Command::ReportSend { .. } => Area::Report,
-            _ => Area::Account,
-        };
-        self.report_revision = if matches!(self.active, Area::Report) {
-            Some(self.editor.revision)
-        } else {
-            None
-        };
+        if !background {
+            self.active = match command {
+                Command::CalendarRefresh => Area::Calendar,
+                Command::RoadmapCached | Command::RoadmapRefresh => Area::Roadmap,
+                Command::LicenseRenew => Area::Licenses { renew: true },
+                Command::LicenseStatus | Command::DeviceReset => Area::Licenses { renew: false },
+                Command::DraftLoad
+                | Command::DraftSave { .. }
+                | Command::DraftDiscard
+                | Command::ReportCapture { .. }
+                | Command::ReportRemoveScreenshot { .. }
+                | Command::ReportPrepare
+                | Command::ReportRetryPrepare
+                | Command::ReportSend { .. } => Area::Report,
+                _ => Area::Account,
+            };
+            self.report_revision = if matches!(self.active, Area::Report) {
+                Some(self.editor.revision)
+            } else {
+                None
+            };
+        }
         if !self.start() {
             self.access.observe(
                 &Reply::Error {
@@ -545,17 +610,12 @@ impl Remote {
             );
             return false;
         }
-        let background = matches!(command, Command::LicenseStatus);
         if self
             .send
             .as_ref()
             .is_some_and(|send| send.try_send(command).is_ok())
         {
-            self.inflight = if background {
-                Inflight::Background
-            } else {
-                Inflight::User
-            };
+            self.inflight = inflight;
             true
         } else {
             self.message = "Operación en curso".into();
@@ -571,11 +631,25 @@ impl Remote {
 
     // Ramifica por área y por variante del protocolo; ya se extrajo a `Reply` y
     // a `access` todo lo que no era reparto de mensajes.
-    #[allow(clippy::too_many_lines)]
     pub fn request(&mut self, command: Command, cx: &mut Context<Self>) {
+        self.request_with_kind(command, None, cx);
+    }
+    fn request_with_kind(
+        &mut self,
+        command: Command,
+        kind: Option<Inflight>,
+        cx: &mut Context<Self>,
+    ) {
         self.access.requested(&command);
-        if self.inflight == Inflight::Background {
-            self.queued = Some(command);
+        if matches!(command, Command::Logout) {
+            self.purchase_wait = None;
+            self.purchase_product = None;
+            self.purchase_message = None;
+        }
+        if self.inflight.background() {
+            if self.queued.is_none() || matches!(command, Command::Logout) {
+                self.queued = Some(command);
+            }
             return cx.notify();
         }
         if self.busy() && matches!(command, Command::Logout) {
@@ -583,11 +657,14 @@ impl Remote {
             cx.notify();
             return;
         }
-        if self.busy() || self.stop.load(Ordering::Acquire) || !self.dispatch(command) {
+        if self.busy()
+            || self.stop.load(Ordering::Acquire)
+            || !self.dispatch_with_kind(command, kind)
+        {
             cx.notify();
             return;
         }
-        if self.inflight != Inflight::Background {
+        if !self.inflight.background() {
             cx.notify();
         }
         cx.spawn(async move |this, cx| {
@@ -602,99 +679,7 @@ impl Remote {
                             _ => None,
                         };
                         if let Some(reply) = reply {
-                            let access_before = this.navigation_access();
-                            let failed = matches!(&reply, Reply::Error { .. });
-                            let after_renew = if matches!(this.active, Area::Licenses { renew: true }) {
-                                this.access.renewal_acknowledged(&reply)
-                            } else { None };
-                            this.access.observe(&reply, matches!(this.active, Area::Account));
-                            let next = this.access.next_command(&reply, &mut this.account.cancel_login).or(after_renew);
-                            let background = this.inflight == Inflight::Background;
-                            this.inflight = Inflight::Idle;
-                            this.account.pending = false;
-                            let quiet = background && matches!(reply, Reply::License { .. } | Reply::Error { .. });
-                            if matches!(this.active, Area::Calendar) {
-                                this.calendar_reply(reply.clone(), cx);
-                            }
-                            match reply {
-                                Reply::Checkout { url } => {
-                                    this.purchase_started_at = Some(std::time::Instant::now());
-                                    this.purchase_polled_at = None;
-                                    cx.open_url(&url);
-                                    this.message = "Compra abierta. Los derechos se comprobarán automáticamente.".into();
-                                },
-                                // La consulta periódica no pisa el resultado de una acción del usuario.
-                                Reply::Error { .. } | Reply::License { .. } if background => {}
-                                Reply::Status { message, .. } | Reply::Error { message } => {
-                                    if matches!(this.active,Area::Calendar) {
-                                        // El Calendario recibe su error sin alterar Cuenta.
-                                    } else if matches!(this.active,Area::Roadmap) {
-                                        this.roadmap_message = message;
-                                        this.stale = true;
-                                    } else if matches!(this.active,Area::Report) {
-                                        this.editor.clear_approval(cx); this.editor.error=failed;
-                                        this.editor.message=message;
-                                        this.editor.preview=None;
-                                    } else {
-                                        this.message = message;
-                                    }
-                                }
-                                // El límite de dispositivos ya llega distinguido del
-                                // resto de fallos: habilita la salida concreta.
-                                Reply::DeviceLimit { message } => {
-                                    this.device_limit = true;
-                                    this.message = message;
-                                }
-                                Reply::Calendar { .. } => {}
-                                Reply::Roadmap {
-                                    publication,
-                                    stale,
-                                    message,
-                                    ..
-                                } => {
-                                    this.publication = publication;
-                                    this.stale = stale;
-                                    this.roadmap_message = message;
-                                }
-                                Reply::Account {
-                                    signed_in,
-                                    pending,
-                                    message,
-                                    ..
-                                } => {
-                                    if !pending {
-                                        if !signed_in {
-                                            this.purchase_started_at = None;
-                                            this.purchase_polled_at = None;
-                                            this.report_receipts.clear();
-                                        }
-                                        this.account.signed_in = signed_in;
-                                    }
-                                    this.account.pending = pending;
-                                    this.message = message;
-                                }
-                                Reply::License { message, .. } => {
-                                    this.message = format!("{message} · Acceso: {}", account_plan_label(this.navigation_access().verified));
-                                }
-                                Reply::Closed => this.message = "Servicios cerrado".into(),
-                                Reply::Draft { draft,message }=> this.report_draft(draft,message,cx),
-                                Reply::ReportPreview { preview }=>{
-                                    if this.report_revision==Some(this.editor.revision) { this.editor.clear_approval(cx); this.editor.error=false; this.editor.screenshots.clone_from(&preview.screenshots); this.editor.preview=Some(preview); this.editor.message="Revise cuenta, canal y contenido; el envío exige su consentimiento".into(); }
-                                    else { this.editor.message="Texto cambiado; vuelva a revisar el envío".into(); }
-                                },
-                                Reply::ReportReceipt { receipt,draft_state }=> this.report_receipt(&receipt,draft_state,cx),
-                            }
-                            let next = next_request(next, &mut this.queued, this.calendar_target.is_some());
-                            let notify = !quiet || access_before != this.navigation_access() || next.is_some();
-                            if let Some(command) = next {
-                                this.access.login_requested = matches!(command, Command::Logout) || this.access.login_requested;
-                                if !this.dispatch(command) && matches!(this.active, Area::Calendar) {
-                                    this.calendar_reply(Reply::Error { message: this.message.clone() }, cx);
-                                }
-                            }
-                            if notify {
-                                cx.notify();
-                            }
+                            this.complete(reply, cx);
                         }
                         this.busy() && !this.stop.load(Ordering::Acquire)
                     })
@@ -762,6 +747,171 @@ impl Remote {
         );
     }
 
+    #[allow(clippy::too_many_lines)]
+    fn complete(&mut self, reply: Reply, cx: &mut Context<Self>) {
+        let access_before = self.navigation_access();
+        let failed = matches!(&reply, Reply::Error { .. });
+        let purchase_background = matches!(
+            self.inflight,
+            Inflight::PurchaseRenew | Inflight::PurchaseSession
+        );
+        let renewing = self.inflight == Inflight::PurchaseRenew
+            || (self.inflight == Inflight::User
+                && matches!(self.active, Area::Licenses { renew: true }));
+        let after_renew = if renewing {
+            self.access.renewal_acknowledged(&reply)
+        } else {
+            None
+        };
+        self.access.observe(
+            &reply,
+            !self.inflight.background() && matches!(self.active, Area::Account),
+        );
+        let next = self
+            .access
+            .next_command(&reply, &mut self.account.cancel_login)
+            .or(after_renew);
+        let background = self.inflight.background();
+        self.inflight = Inflight::Idle;
+        self.account.pending = false;
+        let purchase_message_before = self.purchase_message.clone();
+        if renewing
+            && matches!(&reply, Reply::License { policy, .. } if policy.current_at(vantare_ipc::control::wall_ms().unwrap_or(u64::MAX)))
+            && self
+                .purchase_wait
+                .as_ref()
+                .is_some_and(|wait| wait.confirmed(self.navigation_access()))
+        {
+            self.purchase_wait = None;
+            self.purchase_message = Some("Acceso solicitado verificado por el servicio.".into());
+        }
+        let quiet = background;
+        if background && failed && purchase_background {
+            self.purchase_message = Some("No se pudo comprobar la compra. Reintentamos durante la espera; también puedes comprobar el acceso manualmente.".into());
+        }
+        if !background && matches!(self.active, Area::Calendar) {
+            self.calendar_reply(reply.clone(), cx);
+        }
+        match reply {
+            Reply::Checkout { url } => {
+                if let Some(product) = self.purchase_product.take() {
+                    self.purchase_wait = Some(PurchaseWait {
+                        product,
+                        started: std::time::Instant::now(),
+                        polled: None,
+                    });
+                    cx.open_url(&url);
+                    self.purchase_message =
+                        Some("Compra abierta. Los derechos se comprobarán automáticamente.".into());
+                }
+            }
+            // La consulta periódica no pisa el resultado de una acción del usuario.
+            Reply::Error { .. } | Reply::License { .. } if background => {}
+            Reply::Status { message, .. } | Reply::Error { message } => {
+                if matches!(self.active, Area::Calendar) {
+                    // El Calendario recibe su error sin alterar Cuenta.
+                } else if matches!(self.active, Area::Roadmap) {
+                    self.roadmap_message = message;
+                    self.stale = true;
+                } else if matches!(self.active, Area::Report) {
+                    self.editor.clear_approval(cx);
+                    self.editor.error = failed;
+                    self.editor.message = message;
+                    self.editor.preview = None;
+                } else {
+                    self.message = message;
+                }
+            }
+            // El límite de dispositivos ya llega distinguido del
+            // resto de fallos: habilita la salida concreta.
+            Reply::DeviceLimit { message } => {
+                self.device_limit = true;
+                if purchase_background {
+                    self.purchase_message = Some(message);
+                } else if !background {
+                    self.message = message;
+                }
+            }
+            Reply::Calendar { .. } => {}
+            Reply::Roadmap {
+                publication,
+                stale,
+                message,
+                ..
+            } => {
+                self.publication = publication;
+                self.stale = stale;
+                self.roadmap_message = message;
+            }
+            Reply::Account {
+                signed_in,
+                pending,
+                message,
+                ..
+            } => {
+                if !pending {
+                    if !signed_in {
+                        self.purchase_wait = None;
+                        self.purchase_product = None;
+                        self.purchase_message = None;
+                        self.report_receipts.clear();
+                    }
+                    self.account.signed_in = signed_in;
+                }
+                self.account.pending = pending;
+                if !background {
+                    self.message = message;
+                }
+            }
+            Reply::License { message, .. } => {
+                self.message = format!(
+                    "{message} · Acceso: {}",
+                    account_plan_label(self.navigation_access().verified)
+                );
+            }
+            Reply::Closed => self.message = "Servicios cerrado".into(),
+            Reply::Draft { draft, message } => self.report_draft(draft, message, cx),
+            Reply::ReportPreview { preview } => {
+                if self.report_revision == Some(self.editor.revision) {
+                    self.editor.clear_approval(cx);
+                    self.editor.error = false;
+                    self.editor.screenshots.clone_from(&preview.screenshots);
+                    self.editor.preview = Some(preview);
+                    self.editor.message =
+                        "Revise cuenta, canal y contenido; el envío exige su consentimiento".into();
+                } else {
+                    self.editor.message = "Texto cambiado; vuelva a revisar el envío".into();
+                }
+            }
+            Reply::ReportReceipt {
+                receipt,
+                draft_state,
+            } => self.report_receipt(&receipt, draft_state, cx),
+        }
+        let next = next_request(next, &mut self.queued, self.calendar_target.is_some());
+        let notify = !quiet
+            || access_before != self.navigation_access()
+            || next.is_some()
+            || purchase_message_before != self.purchase_message;
+        if let Some(command) = next {
+            self.access.login_requested =
+                matches!(command, Command::Logout) || self.access.login_requested;
+            let kind = (purchase_background && matches!(command, Command::AccountPoll))
+                .then_some(Inflight::PurchaseSession);
+            if !self.dispatch_with_kind(command, kind) && matches!(self.active, Area::Calendar) {
+                self.calendar_reply(
+                    Reply::Error {
+                        message: self.message.clone(),
+                    },
+                    cx,
+                );
+            }
+        }
+        if notify {
+            cx.notify();
+        }
+    }
+
     fn account_identity_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
         if account_demo().is_some() {
             return div()
@@ -799,7 +949,7 @@ impl Remote {
                 .tab_stop(!self.working())
                 .when(self.working(), |button| button.opacity(orbit::DISABLED))
                 .on_click(cx.listener(|this, _, _, cx| {
-                    if !this.busy() {
+                    if !this.working() {
                         this.request(Command::LicenseRenew, cx);
                     }
                 })),
@@ -823,7 +973,7 @@ impl Remote {
                         button.opacity(orbit::DISABLED)
                     })
                     .on_click(cx.listener(move |this, _, _, cx| {
-                        if this.account.signed_in && !this.busy() {
+                        if this.account.signed_in && !this.working() {
                             this.request(Command::Purchase { product }, cx);
                         }
                     }))
@@ -834,7 +984,7 @@ impl Remote {
                     .tab_stop(!self.working())
                     .when(self.working(), |button| button.opacity(orbit::DISABLED))
                     .on_click(cx.listener(|this, _, _, cx| {
-                        if !this.busy() {
+                        if !this.working() {
                             this.request(Command::Logout, cx);
                         }
                     }))
@@ -855,7 +1005,7 @@ impl Remote {
                         .aria_description("El servicio de cuenta no está configurado")
                 })
                 .on_click(cx.listener(|this, _, _, cx| {
-                    if this.requires_access() && !this.busy() {
+                    if this.requires_access() && !this.working() {
                         this.request(Command::AccountBegin, cx);
                     }
                 }))
@@ -891,6 +1041,24 @@ impl Remote {
             },
             cx,
         ))
+    }
+    fn purchase_status(&self, cx: &mut Context<Self>) -> gpui::Div {
+        div().when_some(self.purchase_message.as_ref(), |body, message| {
+            body.child(account_note(message, cx))
+                .when(self.purchase_wait.is_some(), |body| {
+                    body.child(
+                        orbit::small_button("purchase-stop-wait", "Dejar de comprobar", cx)
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.purchase_wait = None;
+                                this.purchase_message = Some(
+                                    "Espera detenida. Puedes comprobar el acceso manualmente."
+                                        .into(),
+                                );
+                                cx.notify();
+                            })),
+                    )
+                })
+        })
     }
     fn account_identity(&self, cx: &mut Context<Self>) -> gpui::Div {
         let demo = account_demo();
@@ -1129,7 +1297,7 @@ impl Remote {
                     .tab_stop(!self.working() && !demo)
                     .when(self.working(), |button| button.opacity(orbit::DISABLED))
                     .on_click(cx.listener(|this, _, _, cx| {
-                        if !this.busy() && account_demo().is_none() {
+                        if !this.working() && account_demo().is_none() {
                             this.request(Command::DeviceReset, cx);
                         }
                     })),
@@ -1141,6 +1309,7 @@ impl Remote {
         div().flex_1().min_h_0().w_full().flex().flex_col().gap(px(self.adapt.gap()))
             .when(account_demo().is_none() && !self.message.is_empty(), |page| page.child(orbit::callout(self.message.clone(), cx)))
             .child(self.account_identity(cx).flex_none().w_full())
+            .child(self.purchase_status(cx))
             .child(orbit::neo_card(cx).p(px(16.0))
                 .child(orbit::neo_header("Acceso beta", "key", cx))
                 .child(orbit::caps(account_plan_label(self.account_access().verified && !self.account_access().blocked), 24.0, orbit::ink(cx), cx))
@@ -1476,5 +1645,275 @@ mod receipt_tests {
         assert_eq!(receipts[0].1.report_state, receipt.report_state);
         assert_eq!(receipts[0].1.created_at, receipt.created_at);
         assert!(receipts[0].1.idempotent);
+    }
+}
+
+#[cfg(test)]
+mod purchase_tests {
+    use super::super::protocol::{BillingProduct, DraftState, report_document::Receipt};
+    use super::*;
+    fn fixture(
+        cx: &mut Context<Remote>,
+        send: SyncSender<Command>,
+        data: &std::path::Path,
+    ) -> Remote {
+        let recovery = crate::testing::recovery::Recovery::load(data);
+        let editor = crate::testing::Editor::new(crate::testing::empty_fields(), cx);
+        let mut remote = Remote {
+            adapt: orbit::Adapt::default(),
+            pipe: "qa-in-memory".into(),
+            send: Some(send),
+            receive: None,
+            stop: Arc::new(AtomicBool::new(false)),
+            cancellation: None,
+            worker: None,
+            inflight: Inflight::Idle,
+            queued: None,
+            account: AccountState::default(),
+            access: access::State::from_build(),
+            device_limit: false,
+            license_polled_at: None,
+            purchase_product: None,
+            purchase_wait: None,
+            purchase_message: None,
+            message: "Cuenta no disponible".into(),
+            active: Area::Account,
+            calendar_target: None,
+            report_revision: None,
+            editor,
+            report_receipts: Vec::new(),
+            recovery,
+            publication: None,
+            roadmap_message: "No hay una publicación válida guardada".into(),
+            roadmap_requested: false,
+            manual_roadmap: crate::roadmap::State::load(),
+            stale: true,
+        };
+        remote.account.signed_in = true;
+        remote.access.observe(
+            &Reply::Account {
+                signed_in: true,
+                expires_at: Some(u64::MAX),
+                pending: false,
+                message: "QA".into(),
+                error: None,
+            },
+            true,
+        );
+        remote
+    }
+    fn license(catalog: vantare_ipc::control::CatalogAccess) -> Reply {
+        Reply::License {
+            message: "QA derechos".into(),
+            policy: vantare_ipc::control::Policy {
+                version: vantare_ipc::control::VERSION,
+                revision: 1,
+                checked_at_ms: vantare_ipc::control::wall_ms().expect("reloj"),
+                overlays_advanced: true,
+                catalog,
+                ..Default::default()
+            },
+        }
+    }
+    #[test]
+    fn purchase_poll_preserves_user_context_queues_actions_and_reloads_session_quietly() {
+        gpui_platform::headless().run(|cx| {
+            let file = crate::document::tests::File::new();
+            let (send, requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            let calendar = cx.new(|_| {
+                crate::calendar::Calendar::load(file.path.parent().expect("root"))
+                    .expect("calendario")
+            });
+            remote.update(cx, |remote, cx| {
+                remote.message = "Resultado de usuario".into();
+                remote.active = Area::Report;
+                remote.editor.dirty = true;
+                remote.editor.message = "Borrador conservado".into();
+                remote.purchase_message = Some("Compra abierta".into());
+                remote.purchase_wait = Some(PurchaseWait {
+                    product: BillingProduct::ProMonthly,
+                    started: std::time::Instant::now(),
+                    polled: None,
+                });
+                assert!(
+                    remote.dispatch_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew))
+                );
+                assert!(!remote.working());
+                assert!(!remote.holds_hub_in_game());
+                assert!(matches!(remote.active, Area::Report));
+                assert!(remote.refresh_calendar(calendar.downgrade(), cx));
+                remote.request(Command::ReportPrepare, cx);
+                assert!(matches!(requests.try_recv(), Ok(Command::LicenseRenew)));
+                // El servicio demora su respuesta: no llega aún la acción encolada.
+                assert!(requests.try_recv().is_err());
+                remote.complete(license(vantare_ipc::control::CatalogAccess::Free), cx);
+                assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
+                assert!(!remote.working());
+                assert_eq!(remote.message, "Resultado de usuario");
+                assert_eq!(remote.purchase_message.as_deref(), Some("Compra abierta"));
+                remote.complete(
+                    Reply::Account {
+                        signed_in: true,
+                        expires_at: Some(u64::MAX - 1),
+                        pending: false,
+                        message: "Sesión releída".into(),
+                        error: None,
+                    },
+                    cx,
+                );
+                assert!(matches!(requests.try_recv(), Ok(Command::ReportPrepare)));
+                assert!(remote.working());
+                assert_eq!(remote.message, "Resultado de usuario");
+                remote.complete(
+                    Reply::Error {
+                        message: "QA error del informe".into(),
+                    },
+                    cx,
+                );
+                assert_eq!(remote.editor.message, "QA error del informe");
+                assert!(remote.editor.dirty);
+                assert!(matches!(requests.try_recv(), Ok(Command::CalendarRefresh)));
+                remote.complete(
+                    Reply::Error {
+                        message: "QA error de calendario".into(),
+                    },
+                    cx,
+                );
+                assert!(remote.calendar_target.is_none());
+                assert_eq!(remote.message, "Resultado de usuario");
+                assert!(remote.dispatch_with_kind(Command::RoadmapRefresh, None));
+                remote.complete(
+                    Reply::Error {
+                        message: "QA error de roadmap".into(),
+                    },
+                    cx,
+                );
+                assert_eq!(remote.roadmap_status(), "QA error de roadmap");
+                assert_eq!(remote.message, "Resultado de usuario");
+                assert!(
+                    remote.dispatch_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew))
+                );
+                remote.complete(license(vantare_ipc::control::CatalogAccess::Pro), cx);
+                assert!(remote.purchase_wait.is_none());
+                assert!(!remote.working());
+                remote.complete(
+                    Reply::Account {
+                        signed_in: true,
+                        expires_at: Some(u64::MAX - 2),
+                        pending: false,
+                        message: "QA".into(),
+                        error: None,
+                    },
+                    cx,
+                );
+                assert!(remote.dispatch_with_kind(Command::LicenseRenew, None));
+                assert!(remote.working());
+                remote.complete(license(vantare_ipc::control::CatalogAccess::Pro), cx);
+                assert!(remote.message.starts_with("QA derechos"));
+                assert!(
+                    remote.working(),
+                    "renovación manual relee OAuth con feedback"
+                );
+            });
+            cx.quit();
+        });
+    }
+    #[test]
+    fn purchase_wait_is_bounded_and_requires_the_requested_verified_catalog() {
+        let now = std::time::Instant::now();
+        for product in [
+            BillingProduct::ProMonthly,
+            BillingProduct::ProAnnual,
+            BillingProduct::LaunchLifetime,
+        ] {
+            let wait = PurchaseWait {
+                product,
+                started: now,
+                polled: Some(now),
+            };
+            assert!(!wait.due(now + std::time::Duration::from_secs(4)));
+            assert!(wait.due(now + std::time::Duration::from_secs(5)));
+            assert!(!wait.expired(now + std::time::Duration::from_secs(599)));
+            assert!(wait.expired(now + std::time::Duration::from_mins(10)));
+            assert!(!wait.confirmed(Access::default()));
+            let pro = Access {
+                verified: true,
+                catalog: vantare_ipc::control::CatalogAccess::Pro,
+                ..Default::default()
+            };
+            assert!(wait.confirmed(pro));
+            assert!(!wait.confirmed(Access {
+                blocked: true,
+                ..pro
+            }));
+        }
+    }
+    #[test]
+    fn background_errors_logout_and_receipts_never_grant_access_or_lose_the_draft() {
+        gpui_platform::headless().run(|cx| {
+            let file = crate::document::tests::File::new();
+            let (send, requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            remote.update(cx, |remote, cx| {
+                remote.editor.dirty = true;
+                remote.purchase_wait = Some(PurchaseWait {
+                    product: BillingProduct::LaunchLifetime,
+                    started: std::time::Instant::now(),
+                    polled: None,
+                });
+                assert!(
+                    remote.dispatch_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew))
+                );
+                remote.complete(
+                    Reply::Error {
+                        message: "QA red".into(),
+                    },
+                    cx,
+                );
+                assert!(!remote.navigation_access().verified);
+                assert!(remote.purchase_wait.is_some());
+                assert!(remote.editor.dirty);
+                assert!(
+                    remote.dispatch_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew))
+                );
+                remote.request(Command::Logout, cx);
+                assert!(remote.purchase_wait.is_none());
+                remote.complete(license(vantare_ipc::control::CatalogAccess::Pro), cx);
+                assert!(
+                    !remote.navigation_access().verified,
+                    "logout invalida respuesta tardía"
+                );
+                while requests.try_recv().is_ok() {}
+                remote.complete(
+                    Reply::Account {
+                        signed_in: false,
+                        expires_at: None,
+                        pending: false,
+                        message: "QA logout".into(),
+                        error: None,
+                    },
+                    cx,
+                );
+                assert!(remote.purchase_wait.is_none());
+                assert!(remote.dispatch_with_kind(Command::ReportPrepare, None));
+                remote.complete(
+                    Reply::ReportReceipt {
+                        receipt: Receipt {
+                            report_id: "qa-report".into(),
+                            report_state: "submitted".into(),
+                            idempotent: false,
+                            created_at: "2026-10-09T00:00:00Z".into(),
+                        },
+                        draft_state: DraftState::Preserved,
+                    },
+                    cx,
+                );
+                assert_eq!(remote.report_receipts.len(), 1);
+                assert!(remote.editor.dirty);
+                assert!(!remote.working());
+            });
+            cx.quit();
+        });
     }
 }

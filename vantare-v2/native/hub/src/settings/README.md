@@ -26,6 +26,10 @@ Atajos del Hub: Ctrl L busca un favorito; sin favorito abre Launcher. Ctrl K
 abre búsqueda, Ctrl B cambia la barra izquierda y Ctrl Alt B la derecha.
 Se distinguen los modificadores exactos y una tecla mantenida no repite toggles.
 Deshacer/Rehacer de Studio también funciona cuando el foco está en la shell.
+Studio admite Ctrl/Cmd Z, Ctrl/Cmd Shift Z y Ctrl/Cmd Y; con foco en el lienzo,
+Ctrl/Cmd D duplica, Supr elimina y Ctrl/Cmd S confirma el documento. La paleta
+y los campos conservan sus propios atajos. Las acciones de navegación del Hub
+devuelven el foco a la shell antes de ocultar la sección o un panel.
 Atajos globales: se reutiliza el registro `RegisterHotKey` del residente del
 Launcher. Se editan en cada perfil y Ajustes muestra el registro real y sus
 conflictos; una combinación guardada sin respuesta vigente no se llama activa.
@@ -48,6 +52,15 @@ Actualizaciones mantiene metadatos, novedades y reinicio real de beta, ahora
 accesible por teclado. Privacidad conserva los dos consentimientos y la política;
 Diagnóstico prepara, filtra y copia el informe sanitizado existente. Los botones
 de zoom, nivel, frecuencia y prueba tienen foco y activación por teclado.
+En macOS no se muestran inicio con Windows, toasts ni registro global de perfiles.
+Diagnóstico solo ofrece Todos/Error, que son los niveles observados actualmente;
+retira las métricas de CPU/memoria y overlays sin fuente. La búsqueda solo ofrece
+controles reales. El informe tiene scroll propio y Copiar expone su inactividad
+hasta preparar contenido. Las tarjetas de canal son informativas, sin selector.
+
+Para QA aislada, `VANTARE_NATIVE_DATA_ROOT` funciona también en macOS/Linux;
+Privacidad usa `<raíz>/Vantare/native` en arranque normal. Una raíz relativa
+falla sin recurrir a datos del usuario. La captura usa su `--data-dir` aislado.
 
 Verificación manual: usar datos QA propios; cambiar General y reabrir. Con
 una beta instalada autorizada, activar/desactivar inicio y consultar únicamente
@@ -58,10 +71,31 @@ modificar externamente el layout debe bloquear la siguiente escritura. Preparar,
 filtrar y copiar Diagnóstico; no reiniciar ni actualizar la instalación real en
 QA. Los tests de registro trabajan solo sobre `VantareNativeTests/Settings-*`.
 
-Evidencia y gates de esta entrega: `C:/tmp/feedback-0910/informe-ajustes.md` y
-`C:/tmp/feedback-0910/evidencia-ajustes.md`. El traslado de artefactos a E: no
-modifica código ni targets de otros workers. `docs/roadmap/plan.md` no existe en
-la base ni en la referencia local de origin/nightly y no se ha recreado.
+Continuación Mac: `/Users/isaacalbala/evidence/fb-ajustes/informe.md`,
+`evidencia.md`, `checks.json`, logs y capturas PNG. Tarea
+[VAN-781](https://app.notion.com/p/3f4e51695c6581118500d3b95b6fac6f),
+proyecto Plataforma y roadmap; referencia técnica GitHub #1496. Base heredada
+`e55a43b3`, sin push/PR/merge. `origin/nightly` no existe en el remoto consultado;
+se conserva la base autorizada de esta continuación y no se recrea `plan.md`.
+
+PASS macOS arm64: formato, build Hub `prueba` con la feature existente
+`vantare-services/network`, Clippy de Hub/UI/Services `--all-targets --no-deps
+-D warnings`, Ajustes 21, documento 8, resolutores de atajos 4, rendimiento 2,
+diagnóstico/privacidad 19; biblioteca UI serial 181 (2 ignorados). Las suites
+completas no pasan: Hub requiere binario storage y varios tests GPUI arrancan
+fuera del hilo principal; demos asumen rutas Windows. El importador UI rechaza
+un enlace y un test Services no admite su PNG. Clippy con dependencias falla en
+`native/profiling.rs:230` heredado. Los archivos de esos fallos no cambian desde
+la base; logs íntegros y límites en la evidencia. El Hub debug aborta en Orbit
+por un hover duplicado heredado; QA visual usa `prueba` (perfil ya existente).
+
+QA real GPUI mediante el contexto de captura de la shell, sin productor IPC,
+sesión personal ni servicios de la instalación: nivel, frecuencia, densidad y
+consentimiento persisten; Ctrl B/Alt B/K/L, duplicar/borrar/deshacer/rehacer,
+Personalizado y preparación/copia/filtros de informe recorridos. No demuestra
+licencia, telemetría de un juego ni rendimiento medido. Windows sigue pendiente:
+Run del usuario, RegisterHotKey con juego/conflictos, toasts/No molestar, arranque
+minimizado instalado, actualizador beta, identidad/icono y empaquetado NSIS.
 Los apartados siguientes conservan antecedentes históricos.
 
 # Ajustes del Hub — ISA-1470

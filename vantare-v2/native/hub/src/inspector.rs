@@ -1,6 +1,9 @@
 //! Ajustes consumidos por los renderizadores productivos; no persiste ni dibuja widgets.
 use crate::orbit::NumberRange;
-use vantare_ui::Settings;
+use vantare_ui::{
+    Settings,
+    standings::{Accent, Look},
+};
 
 /// Acciones de posición sobre el lienzo lógico. No añade anclajes al documento.
 pub fn anchored_position(size: (f32, f32), column: u8, row: u8) -> Option<(f32, f32)> {
@@ -523,7 +526,6 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             )),
             _ => {}
         }
-        use vantare_ui::standings::{Accent, Look};
         rows.extend([
             choice(
                 "Estilo del widget",
@@ -724,8 +726,8 @@ mod tests {
     #[test]
     fn vantare_formats_and_default_columns_edit_the_productive_settings() {
         for mut settings in [
-            Settings::Standings(Default::default()),
-            Settings::Relative(Default::default()),
+            Settings::Standings(vantare_ui::standings::Settings::default()),
+            Settings::Relative(vantare_ui::relative::Settings::default()),
         ] {
             let default = columns(&settings).expect("columnas por defecto");
             assert!(default.iter().any(|c| c.metric_id == "gap" && c.enabled));
@@ -803,8 +805,8 @@ mod tests {
     #[test]
     fn standard_tables_have_no_class_scope_selector() {
         for settings in [
-            Settings::Standings(Default::default()),
-            Settings::Relative(Default::default()),
+            Settings::Standings(vantare_ui::standings::Settings::default()),
+            Settings::Relative(vantare_ui::relative::Settings::default()),
         ] {
             assert!(!fields(&settings).iter().any(|f| f.title == "Clases"));
         }
@@ -812,19 +814,25 @@ mod tests {
     #[test]
     fn automatic_player_visibility_has_no_redundant_center_switch() {
         assert!(
-            !fields(&Settings::Standings(Default::default()))
-                .iter()
-                .any(|f| f.title == "Centrar en el jugador")
+            !fields(&Settings::Standings(
+                vantare_ui::standings::Settings::default()
+            ))
+            .iter()
+            .any(|f| f.title == "Centrar en el jugador")
         );
     }
     #[test]
     fn surrounding_rows_belong_only_to_relative() {
         assert!(
-            !fields(&Settings::Standings(Default::default()))
-                .iter()
-                .any(|f| f.title.starts_with("Filas alrededor"))
+            !fields(&Settings::Standings(
+                vantare_ui::standings::Settings::default()
+            ))
+            .iter()
+            .any(|f| f.title.starts_with("Filas alrededor"))
         );
-        let relative = fields(&Settings::Relative(Default::default()));
+        let relative = fields(&Settings::Relative(
+            vantare_ui::relative::Settings::default(),
+        ));
         assert_eq!(
             relative
                 .iter()

@@ -1604,7 +1604,7 @@ impl Studio {
         .detach();
         if title == "Opacidad" {
             cx.subscribe(&control, |this, _, _: &NumberFinished, cx| {
-                this.finish_opacity(cx)
+                this.finish_opacity(cx);
             })
             .detach();
         }
@@ -2699,7 +2699,7 @@ impl Studio {
                 let release_target = studio.clone();
                 window.on_mouse_event(move |_: &gpui::MouseUpEvent, phase, _, cx| {
                     if phase == gpui::DispatchPhase::Capture {
-                        let _ = release_target.update(cx, |this, cx| this.finish_nudge(cx));
+                        let _ = release_target.update(cx, Studio::finish_nudge);
                     }
                 });
                 window.on_mouse_event(move |event: &MouseMoveEvent, phase, _, cx| {
@@ -3433,15 +3433,20 @@ mod tests {
     }
     #[test]
     fn held_arrows_repeat_accelerate_and_commit_once_on_release() {
-        assert_eq!(held_nudge_distance(Duration::ZERO, false), 1.0);
-        assert_eq!(held_nudge_distance(Duration::from_millis(299), false), 1.0);
-        assert_eq!(held_nudge_distance(Duration::from_millis(330), false), 2.0);
-        assert_eq!(held_nudge_distance(Duration::from_millis(930), false), 25.0);
-        assert_eq!(
-            held_nudge_distance(Duration::from_millis(1830), false),
-            149.0
-        );
-        assert_eq!(held_nudge_distance(Duration::from_millis(330), true), 16.0);
+        // Las distancias enteras son exactas en f32: comparar sus bits conserva esa garantía.
+        for (ms, shift, expected) in [
+            (0, false, 1.0_f32),
+            (299, false, 1.0),
+            (330, false, 2.0),
+            (930, false, 25.0),
+            (1830, false, 149.0),
+            (330, true, 16.0),
+        ] {
+            assert_eq!(
+                held_nudge_distance(Duration::from_millis(ms), shift).to_bits(),
+                expected.to_bits()
+            );
+        }
         gpui_platform::headless().run(|cx| {
             cx.set_global(orbit::theme::Theme::default());
             let file = crate::document::tests::File::new();
@@ -3469,8 +3474,8 @@ mod tests {
                 }
                 studio.finish_nudge(cx);
                 assert_eq!(
-                    studio.editor.selected().expect("selección").x,
-                    origin.0 + 149.0
+                    studio.editor.selected().expect("selección").x.to_bits(),
+                    (origin.0 + 149.0).to_bits()
                 );
                 studio.finish_nudge(cx); // La liberación también puede llegar desde el marco.
                 studio.history(false, cx);
@@ -3505,7 +3510,15 @@ mod tests {
                 studio.finish_opacity(cx);
                 assert_eq!(studio.frames[0].1, frame);
                 assert_eq!(frame.read(cx).renderer, renderer);
-                assert_eq!(studio.editor.selected().expect("selección").opacity, 0.0);
+                assert_eq!(
+                    studio
+                        .editor
+                        .selected()
+                        .expect("selección")
+                        .opacity
+                        .to_bits(),
+                    0.0_f32.to_bits()
+                );
                 assert_eq!(
                     Editor::open(file.path.clone()).expect("disco").layout(),
                     studio.editor.layout()

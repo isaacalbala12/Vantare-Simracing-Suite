@@ -89,7 +89,7 @@ fn section_row_hint(
     div()
         .min_h(px(adapt.setting_height()))
         .px(px(20.0))
-        .py(px(5.0))
+        .py(px(if adapt.show_optional() { 8.0 } else { 5.0 }))
         .flex()
         .items_center()
         .justify_between()
@@ -886,7 +886,11 @@ impl Hub {
             );
         }
         stack()
-            .gap(px(self.shell.adapt.gap()))
+            .gap(px(if self.shell.adapt.show_optional() {
+                16.0
+            } else {
+                self.shell.adapt.gap()
+            }))
             .when_some(self.settings.general.as_ref().err(), |body, error| {
                 body.child(section_note(error, cx))
             })

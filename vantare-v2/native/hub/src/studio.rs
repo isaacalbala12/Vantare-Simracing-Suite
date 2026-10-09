@@ -1870,7 +1870,7 @@ impl Studio {
                 if matches > 0 {
                     content_width += 8.0;
                 }
-                content_width += 160.0;
+                content_width += 180.0;
                 matches += 1;
                 list = list.child(self.widget_row(index, item, cx));
             }
@@ -1908,7 +1908,7 @@ impl Studio {
             .aria_label(item.settings.kind().label())
             .tab_index(0)
             .h(px(48.0))
-            .w(px(160.0))
+            .w(px(180.0))
             .flex_none()
             .border_1()
             .border_color(gpui::rgba(orbit::line(cx)))
@@ -1921,11 +1921,21 @@ impl Studio {
                 orbit::nav_active(row, cx).shadow(orbit::selection_ring(cx))
             })
             .hover(|row| row.bg(rgb(orbit::surface_2(cx))))
-            .child(orbit::icon(
-                if lock.is_some() { "v-lock" } else { "v-studio" },
-                20.0,
-                orbit::ink_2(cx),
-            ))
+            .child(
+                div()
+                    .size(px(30.0))
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(orbit::skin(cx).radius.sm))
+                    .bg(rgb(orbit::surface_3(cx)))
+                    .child(orbit::icon(
+                        if lock.is_some() { "v-lock" } else { "v-studio" },
+                        16.0,
+                        orbit::ink_2(cx),
+                    )),
+            )
             .aria_selected(selected)
             .child(
                 div()
@@ -2914,20 +2924,20 @@ impl Studio {
             .flex()
             .items_center()
             .gap(px(8.0))
-            .child(Self::toolbar_zoom_out_control(cx))
-            .child(self.toolbar_zoom_label(cx))
-            .child(Self::toolbar_zoom_in_control(cx))
             .when_some(self.resolution_choice.clone(), |row, choice| {
                 row.child(choice)
             })
             .child(
                 orbit::mono_text(selection, 11.0, orbit::ink_2(cx), cx)
+                    .flex_1()
                     .min_w_0()
                     .whitespace_nowrap()
                     .overflow_hidden()
                     .text_ellipsis(),
             )
-            .child(div().flex_1())
+            .child(Self::toolbar_zoom_out_control(cx))
+            .child(self.toolbar_zoom_label(cx))
+            .child(Self::toolbar_zoom_in_control(cx))
             .child(text("Telemetría · — Hz", 11.0, 500, orbit::ink_3(cx), cx))
     }
     fn scenario_controls(&self, cx: &mut Context<Self>) -> gpui::Div {

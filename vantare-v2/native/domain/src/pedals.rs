@@ -32,9 +32,16 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     let brake = fraction(&telemetry.brake);
     let clutch = fraction(&telemetry.clutch);
     let has_stale = state.source_state == SourceState::Stale
-        || [telemetry.throttle, telemetry.brake, telemetry.clutch]
-            .iter()
-            .any(|v| matches!(v, Quality::Stale(_)));
+        || matches!(telemetry.gear, Quality::Stale(_))
+        || [
+            telemetry.throttle,
+            telemetry.brake,
+            telemetry.clutch,
+            telemetry.speed_mps,
+            telemetry.engine_speed_rad_s,
+        ]
+        .iter()
+        .any(|v| matches!(v, Quality::Stale(_)));
     let missing = [throttle, brake, clutch].contains(&None);
     let status_text = match (state.source_state, has_stale, missing, prefs.language) {
         (SourceState::Waiting | SourceState::Lost, _, _, Language::Es) => Some("DESCONECTADO"),
@@ -160,5 +167,31 @@ mod tests {
             (vm.throttle, vm.gear.as_str(), vm.speed.as_str()),
             (None, format::PLACEHOLDER, format::PLACEHOLDER)
         );
+    }
+
+    #[test]
+    fn stale_powertrain_warns_even_with_fresh_pedals() {
+        let snapshot = Snapshot {
+            state: State {
+                source_state: crate::SourceState::Live,
+                player: Some(Player {
+                    telemetry: Telemetry {
+                        throttle: Reliable(0.5),
+                        brake: Reliable(0.0),
+                        clutch: Reliable(0.0),
+                        steering: Reliable(0.0),
+                        gear: Stale(3),
+                        speed_mps: Stale(50.0),
+                        engine_speed_rad_s: Stale(785.398_163_397),
+                    },
+                    ..Player::default()
+                }),
+                ..State::default()
+            },
+            ..Snapshot::default()
+        };
+        let vm = project(&snapshot, Preferences::default());
+        assert_eq!(vm.gear.as_str(), format::PLACEHOLDER);
+        assert_eq!(vm.status_text, Some("DATOS ANTIGUOS"));
     }
 }

@@ -2125,3 +2125,15 @@ Setup0.0.974 local, packaging Bash PASS y QA desinstalada; huella real idéntica
 Sin logout/login Windows, CI remota, pgTAP/DB, push/PR/promoción/release/deploy.
 Tracker GitHub #1496: ninguna escritura Notion. Evidencia/manual:
 `C:/tmp/feedback-0910/integracion-evidence`; resumen `informe-integracion.md`.
+
+### #1496 · actualización Windows del lienzo e instalador local 0.0.974
+
+El corte inicial de integración queda sustituido por el instalador de fuente 00f37fef,
+SHA256 A63C30A6F5DCBA886754A80E0ADE813B129BAA47BB88C0F306C1239F06F7166B.
+Studio guarda la resolución del cliente con el layout, conserva posiciones y presenta
+un solo lienzo centrado. Ocho casos 1920/1280 y cuatro proporciones PASS; native 1402/1402,
+clippy/fmt/lifecycle/telemetría y suites Bash PASS. Instalación/arranque/retirada QA1492
+repetidos: huella de la instalación real idéntica. No cambia auth, billing ni catálogo.
+Banner nativo bloqueado por DisabledForUser; FPS mostrados/latencia no acreditados.
+El detalle, límites y evidencia pertenecen al handoff vivo overlays-launcher-hub.md.
+Sin publicación/promoción, push, PR, CI remota, deploy ni Notion; #1496 abierto.

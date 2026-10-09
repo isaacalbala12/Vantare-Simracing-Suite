@@ -6319,6 +6319,38 @@ Las posiciones globales, tamaños, contenido y orden de widgets no cambian al el
 resolución. El inspector ancla y centra dentro del cliente elegido, incluido su origen
 en un monitor secundario. Sin dependencias nuevas ni renderer alternativo.
 Archivos previstos: native/ui/src/layout.rs, native/hub/src/{document,inspector,studio}.rs
-y fragmento ISA-1496. Clippy all-targets pasa; tests de proporciones, persistencia y
-monitor secundario en ejecución. Capturas Windows y reconstrucción 0.0.974 pendientes.
+y fragmento ISA-1496. Implementación b635ea67, cierre del harness headless be751010
+(faltaba cx.quit tras las comprobaciones) y etiqueta de selección visible en 32:9 00f37fef.
+El marco exterior ya desaparecía con el merge de Studio; el viewport no añade borde,
+fondo ni panel. Solo el propio lienzo dibuja su marco. No se mueve ningún widget.
 No existe docs/roadmap/plan.md en esta base ni origin/nightly; no se crea un roadmap paralelo.
+
+Verificación final Windows, fuente productiva 00f37fef:
+- Por cola, fmt y clippy workspace/all-targets -D warnings PASS; nextest 1402/1402,
+  7 skips previstos; lifecycle 5+13 PASS. Telemetría 21/21 PASS (521,76 s);
+  runtime/domain/ipc/testdata idénticos entre be751010 y 00f37fef.
+- Banco productivo de UI: ocho casos 1920×1080/1280×720 con 16:9, 21:9,
+  16:10 y 32:9; coordenadas, documento, deshacer/rehacer y reapertura PASS.
+  Capturas finales canvas-{1920,1280}-{16-9,21-9,16-10,32-9}.png inspeccionadas:
+  un único marco, tamaño máximo y centrado. La selección no recorta su etiqueta.
+- Instalador 0.0.974 reconstruido por cola, Release local sin firma/publicación;
+  manifest source_dirty=false y 91 archivos verificados. SHA256 VantareSetup.exe:
+  A63C30A6F5DCBA886754A80E0ADE813B129BAA47BB88C0F306C1239F06F7166B.
+  Este artefacto sustituye el de la integración inicial; anteriores archivados bajo
+  E:/tmp/beta-local/0.0.974-pre-* con su evidencia y datos, sin modificar la instalación real.
+- NSIS QA1492 real: instalación, arranque/primer consentimiento y hub-ready PASS;
+  QA retirada, datos retenidos, instalación de Isaac con huella D0EF1945…D4AF7ED idéntica.
+- Suites desde Bash: packaging 175, beta 99, instalador 50, config 24, feed 9,
+  uninstall 2, guards 2 y MSIX sintaxis 12 PASS. MSIX real/pgTAP/DB no ejecutados.
+- PresentMon 2.6.0 en el binario QA final DDB1A14C…6DC0368, cuatro widgets,
+  puntero físico a 59 Hz, dos tandas: medianas API Present/s drag 115,12 y opacidad 6,69.
+  Opacidad avanza en pasos de cinco puntos y redibuja al cambiar; no son FPS mostrados
+  ni latencia input→Present. Sigue pendiente acreditar ambas magnitudes.
+- Se mantienen las comprobaciones Win32 previas de RegisterHotKey, conflicto 1409,
+  liberación, Run QA/minimizado, cero widgets al arrancar e iconos de taskbar/NSIS:
+  estas rutas no cambian con el lienzo. No se ejecutó reinicio/login real de Windows.
+  Toast nativo sigue DisabledForUser/History 0: banner no acreditado; configuración
+  global del usuario intacta. No se inventa una entrega visible de notificación.
+Evidencia: C:/tmp/feedback-0910/integracion-evidence/canvas-*.json, *.log e interactive/.
+Informe breve: C:/tmp/feedback-0910/informe-integracion.md. GitHub #1496 sigue abierto;
+sin push, PR, CI remota, promoción, release, deploy o Notion. Aceptación de Isaac pendiente.

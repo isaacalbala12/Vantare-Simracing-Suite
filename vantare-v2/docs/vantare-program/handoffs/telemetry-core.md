@@ -3410,3 +3410,12 @@ Setup0.0.974 local, packaging Bash PASS y QA desinstalada; huella real idéntica
 Sin logout/login Windows, CI remota, pgTAP/DB, push/PR/promoción/release/deploy.
 Tracker GitHub #1496: ninguna escritura Notion. Evidencia/manual:
 `C:/tmp/feedback-0910/integracion-evidence`; resumen `informe-integracion.md`.
+
+### #1496 · repetición de telemetría tras el ajuste de lienzo
+
+Gate telemetria desde la cola Windows: 21/21 PASS, 521,76 s. Conformidad ACC lenta
+pero completada (483,37 s), sin cambiar oráculos ni relajar checks. Cambios posteriores
+be751010→00f37fef solo afectan etiqueta de Studio: runtime/domain/ipc/testdata idénticos.
+Nextest final 1402/1402, lifecycle PASS. El instalador local 0.0.974 usa fuente 00f37fef.
+No supone telemetría física nueva ni FPS mostrados medidos. Evidencia canvas-final-telemetria.log;
+estado completo y límites en overlays-launcher-hub.md, seguimiento GitHub #1496.

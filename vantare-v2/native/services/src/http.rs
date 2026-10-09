@@ -90,6 +90,19 @@ impl Http {
         Self::read(request.call())
     }
 
+    /// Foto pública sin credenciales: presupuesto menor que el login y sin redirects.
+    pub(crate) fn profile_image(&self, url: &Url) -> Result<Response> {
+        Self::validate_url(url)?;
+        Self::read(
+            self.agent
+                .get(url.as_str())
+                .config()
+                .timeout_global(Some(Duration::from_secs(2)))
+                .build()
+                .call(),
+        )
+    }
+
     pub fn post_json(
         &self,
         url: &Url,

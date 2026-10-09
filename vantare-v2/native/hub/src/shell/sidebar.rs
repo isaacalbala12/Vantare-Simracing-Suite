@@ -216,35 +216,50 @@ impl Hub {
             })
     }
 
+    fn sidebar_avatar(&self, cx: &gpui::App) -> Div {
+        let skin = orbit::skin(cx).clone();
+        if self.demo.is_none() {
+            self.remote.read(cx).profile_avatar(30.0, 15.0, cx)
+        } else {
+            div()
+                .size(px(30.0))
+                .flex_none()
+                .rounded_full()
+                .bg(orbit::ramp(
+                    orbit::skin::Ramp {
+                        from: skin.l3,
+                        to: skin.l2,
+                        end: 1.0,
+                    },
+                    135.0,
+                ))
+                .shadow(vec![orbit::kit_shadow(skin.line2, 0.0, 0.0, 1.0, false)])
+                .flex()
+                .items_center()
+                .justify_center()
+                .text_size(px(12.0))
+                .font_weight(gpui::FontWeight(600.0))
+                .text_color(rgb(skin.text2))
+                .child(self.avatar_initial())
+        }
+    }
+
     fn sidebar_account(&self, expanded: bool, cx: &mut Context<Self>) -> gpui::Stateful<Div> {
         let skin = orbit::skin(cx).clone();
         let active = matches!(self.section, Section::Account | Section::Licenses);
         let name = self
             .demo
             .as_ref()
-            .map_or("Cuenta", |demo| demo.user.full_name.as_str())
+            .map_or_else(
+                || {
+                    let name = self.remote.read(cx).profile_name();
+                    if name.is_empty() { "Cuenta" } else { name }
+                },
+                |demo| demo.user.full_name.as_str(),
+            )
             .to_owned();
         let hover = skin.hover;
-        let avatar = div()
-            .size(px(30.0))
-            .flex_none()
-            .rounded_full()
-            .bg(orbit::ramp(
-                orbit::skin::Ramp {
-                    from: skin.l3,
-                    to: skin.l2,
-                    end: 1.0,
-                },
-                135.0,
-            ))
-            .shadow(vec![orbit::kit_shadow(skin.line2, 0.0, 0.0, 1.0, false)])
-            .flex()
-            .items_center()
-            .justify_center()
-            .text_size(px(12.0))
-            .font_weight(gpui::FontWeight(600.0))
-            .text_color(rgb(skin.text2))
-            .child(self.avatar_initial());
+        let avatar = self.sidebar_avatar(cx);
         let row = div()
             .id("sidebar-account")
             .role(gpui::Role::Button)

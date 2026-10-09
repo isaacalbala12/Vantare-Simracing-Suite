@@ -116,7 +116,7 @@ fn pkce_refresh_restore_logout_and_late_completion_are_bound_to_identity() {
     let tokens = serde_json::json!({"access_token":access,"refresh_token":refresh,"expires_in":60,"token_type":"Bearer"}).to_string();
     let server = Server::start(vec![
         (200, tokens.clone()),
-        (200, "{\"sub\":\"user_fixture\"}".into()),
+        (200, "{\"sub\":\"user_fixture\",\"name\":\"Isaac Fixture\",\"picture\":\"file:///private.png\"}".into()),
         (200, tokens),
         (200, "{\"sub\":\"user_fixture\"}".into()),
     ]);
@@ -135,6 +135,8 @@ fn pkce_refresh_restore_logout_and_late_completion_are_bound_to_identity() {
         account.identity().expect("identity").subject,
         "user_fixture"
     );
+    assert_eq!(account.profile().expect("profile").name, "Isaac Fixture");
+    assert!(account.profile().expect("profile").image_url.is_none());
     assert!(
         account
             .authorized(159, |bearer| Ok(bearer == access))
@@ -350,4 +352,70 @@ fn successful_rotation_is_protected_before_restart() {
     server.finish();
     drop(store);
     crate::cleanup_store(&root, "rotation-test", &["account"]);
+}
+
+#[test]
+fn explicit_profile_refresh_restores_saved_photo_and_cannot_switch_identity() {
+    let server = Server::start(vec![
+        (200, r#"{"sub":"user_fixture","given_name":"Élise","family_name":"Fixture","image_url":"https://evil.invalid/photo"}"#.into()),
+        (200, r#"{"sub":"another_user","name":"Impostor"}"#.into()),
+        (500, "{}".into()),
+    ]);
+    let (root, store) = crate::test_store("profile-refresh");
+    let mut account = super::fixture(&server.base, &store);
+    let config = account.oauth.clone();
+    let identity = account.identity().expect("identity").clone();
+    let saved_before =
+        serde_json::to_value(store.load::<Saved>("account").expect("sesión original"))
+            .expect("JSON de test");
+    let expiry = account.expires_at();
+    let generation = account.generation();
+    account
+        .refresh_profile(&Http::default(), 100, &store)
+        .expect("profile");
+    assert_eq!(account.profile().expect("profile").name, "Élise Fixture");
+    assert!(account.profile().expect("profile").image_url.is_none());
+    let request = server
+        .requests
+        .recv_timeout(Duration::from_secs(3))
+        .expect("userinfo");
+    assert!(request.starts_with("GET /userinfo "));
+    assert!(account.identity() == Some(&identity));
+    assert_eq!(account.expires_at(), expiry);
+    assert_eq!(account.generation(), generation);
+    let saved_after =
+        serde_json::to_value(store.load::<Saved>("account").expect("sesión conservada"))
+            .expect("JSON de test");
+    assert!(
+        saved_before == saved_after,
+        "actualizar perfil no escribe ni cambia tokens OAuth"
+    );
+    assert!(matches!(
+        account.refresh_profile(&Http::default(), 100, &store),
+        Err(Error::Authentication)
+    ));
+    server
+        .requests
+        .recv_timeout(Duration::from_secs(3))
+        .expect("wrong subject");
+    assert!(matches!(
+        account.refresh_profile(&Http::default(), 100, &store),
+        Err(Error::Offline)
+    ));
+    server
+        .requests
+        .recv_timeout(Duration::from_secs(3))
+        .expect("error");
+    assert_eq!(account.profile().expect("preserved").name, "Élise Fixture");
+    let mut restored = Account::restore(config, &store).expect("restore");
+    assert_eq!(restored.profile().expect("saved").name, "Élise Fixture");
+    restored.logout(&store).expect("logout");
+    assert!(restored.profile().is_none());
+    assert!(matches!(
+        store.load::<serde_json::Value>("account-profile"),
+        Err(Error::NotFound)
+    ));
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "profile-refresh", &["account"]);
 }

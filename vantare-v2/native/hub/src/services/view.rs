@@ -5,6 +5,7 @@ use super::{
 };
 use crate::orbit;
 use crate::{Section, shell::navigation::Access};
+use base64::{Engine, engine::general_purpose::STANDARD};
 use gpui::{Context, div, linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba};
 use std::sync::{
     Arc,
@@ -141,6 +142,8 @@ struct AccountState {
     pending: bool,
     signed_in: bool,
     cancel_login: bool,
+    profile: Option<super::protocol::AccountProfile>,
+    avatar: Option<Arc<gpui::Image>>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -148,6 +151,7 @@ enum Inflight {
     Idle,
     /// Consulta periódica de política: no bloquea ni se muestra.
     Background,
+    Profile,
     PurchaseRenew,
     PurchaseSession,
     User,
@@ -156,7 +160,7 @@ impl Inflight {
     fn background(self) -> bool {
         matches!(
             self,
-            Self::Background | Self::PurchaseRenew | Self::PurchaseSession
+            Self::Background | Self::Profile | Self::PurchaseRenew | Self::PurchaseSession
         )
     }
 }
@@ -426,6 +430,38 @@ impl Remote {
             |_| crate::shell::navigation::Access::default(),
             |now| self.access.navigation(self.account.signed_in, now),
         )
+    }
+
+    pub(crate) fn profile_name(&self) -> &str {
+        self.account
+            .profile
+            .as_ref()
+            .map_or("", |profile| profile.name.as_str())
+    }
+
+    pub(crate) fn profile_avatar(&self, size: f32, radius: f32, cx: &gpui::App) -> gpui::Div {
+        let initials = orbit::initials(self.profile_name());
+        div()
+            .relative()
+            .size(px(size))
+            .flex_none()
+            .rounded(px(radius))
+            .overflow_hidden()
+            .bg(rgb(orbit::surface_2(cx)))
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(text(initials.clone(), size * 0.4, 650, orbit::ink(cx), cx))
+            .when_some(self.account.avatar.as_ref(), |body, image| {
+                body.child(
+                    gpui::img(image.clone())
+                        .absolute()
+                        .size_full()
+                        .object_fit(gpui::ObjectFit::Cover)
+                        .rounded(px(radius))
+                        .with_fallback(move || div().child(initials.clone()).into_any_element()),
+                )
+            })
     }
 
     fn observe_core_policy(
@@ -811,6 +847,8 @@ impl Remote {
     #[allow(clippy::too_many_lines)]
     fn complete(&mut self, reply: Reply, cx: &mut Context<Self>) {
         let access_before = self.navigation_access();
+        let mut profile_changed = false;
+        let mut missing_profile = false;
         let failed = matches!(&reply, Reply::Error { .. });
         let purchase_background = matches!(
             self.inflight,
@@ -826,7 +864,7 @@ impl Remote {
         };
         // La renovación puede devolver una foto anterior al último heartbeat.
         // Solo Feed alimenta derechos; el reply conserva feedback y seguimiento OAuth.
-        if !matches!(&reply, Reply::License { .. }) {
+        if !matches!(&reply, Reply::License { .. }) && self.inflight != Inflight::Profile {
             self.access.observe(
                 &reply,
                 !self.inflight.background() && matches!(self.active, Area::Account),
@@ -910,11 +948,31 @@ impl Remote {
             }
             Reply::Account {
                 signed_in,
+                profile,
                 pending,
                 message,
                 ..
             } => {
                 if !pending {
+                    missing_profile =
+                        signed_in && profile.is_none() && self.account.profile.is_none();
+                    // Un perfil vacío recuerda la lectura inicial, incluso si no
+                    // hay foto o la red falla. No se sondea HTTP continuamente.
+                    let profile = signed_in.then(|| profile.unwrap_or_default());
+                    if self.account.profile != profile {
+                        profile_changed = true;
+                        self.account.profile = profile;
+                        self.account.avatar = self
+                            .account
+                            .profile
+                            .as_ref()
+                            .and_then(|profile| profile.image_jpeg.as_ref())
+                            .filter(|jpeg| jpeg.len() <= 32 * 1024)
+                            .and_then(|jpeg| STANDARD.decode(jpeg).ok())
+                            .map(|bytes| {
+                                Arc::new(gpui::Image::from_bytes(gpui::ImageFormat::Jpeg, bytes))
+                            });
+                    }
                     if !signed_in {
                         self.purchase_wait = None;
                         self.purchase_product = None;
@@ -953,16 +1011,22 @@ impl Remote {
                 draft_state,
             } => self.report_receipt(&receipt, draft_state, cx),
         }
-        let next = next_request(next, &mut self.queued, self.calendar_target.is_some());
+        let next = next_request(next, &mut self.queued, self.calendar_target.is_some())
+            .or_else(|| missing_profile.then_some(Command::AccountProfileRefresh));
         let notify = !quiet
+            || profile_changed
             || access_before != self.navigation_access()
             || next.is_some()
             || purchase_message_before != self.purchase_message;
         if let Some(command) = next {
             self.access.login_requested =
                 matches!(command, Command::Logout) || self.access.login_requested;
-            let kind = (purchase_background && matches!(command, Command::AccountPoll))
-                .then_some(Inflight::PurchaseSession);
+            let kind = if missing_profile && matches!(command, Command::AccountProfileRefresh) {
+                Some(Inflight::Profile)
+            } else {
+                (purchase_background && matches!(command, Command::AccountPoll))
+                    .then_some(Inflight::PurchaseSession)
+            };
             if !self.dispatch_with_kind(command, kind) && matches!(self.active, Area::Calendar) {
                 self.calendar_reply(
                     Reply::Error {
@@ -1004,7 +1068,7 @@ impl Remote {
             .child(
                 orbit::small_button(
                     "services-account-check",
-                    if self.working() {
+                    if self.working() && matches!(self.active, Area::Licenses { .. }) {
                         "Comprobando…"
                     } else {
                         "Comprobar acceso"
@@ -1135,6 +1199,30 @@ impl Remote {
                 })
         })
     }
+    fn profile_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let signed_in = self.account.signed_in && account_demo().is_none();
+        div().flex().gap(px(6.0)).when(signed_in, |body| {
+            body.when_some(access::profile_portal(), |body, url| {
+                body.child(
+                    orbit::small_button("services-profile-edit", "Cambiar foto", cx)
+                        .on_click(cx.listener(move |_, _, _, cx| cx.open_url(&url))),
+                )
+            })
+            .child(
+                orbit::small_button("services-profile-refresh", "Actualizar foto", cx)
+                    .tab_stop(!self.working())
+                    .when(self.working(), |button| {
+                        orbit::disabled(button, "Operación en curso")
+                    })
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        if !this.working() && this.account.signed_in {
+                            this.request(Command::AccountProfileRefresh, cx);
+                        }
+                    })),
+            )
+        })
+    }
+
     fn account_identity(&self, cx: &mut Context<Self>) -> gpui::Div {
         let demo = account_demo();
         let signed_in = self.account.signed_in;
@@ -1156,7 +1244,7 @@ impl Remote {
                 cx.global::<orbit::design::Tokens>().gradients.hero,
                 120.0,
             ))
-            .child(
+            .child(if let Some(demo) = demo {
                 div()
                     .size(px(64.0))
                     .flex_none()
@@ -1170,24 +1258,15 @@ impl Remote {
                         linear_color_stop(rgb(crate::orbit::legacy_rgb(0x0017_171b, cx)), 1.0),
                     ))
                     .child(text(
-                        demo.map_or_else(
-                            || "·".to_owned(),
-                            |demo| {
-                                demo.user
-                                    .full_name
-                                    .split_whitespace()
-                                    .take(2)
-                                    .filter_map(|name| name.chars().next())
-                                    .flat_map(char::to_uppercase)
-                                    .collect()
-                            },
-                        ),
+                        orbit::initials(&demo.user.full_name),
                         26.0,
                         750,
                         orbit::ink(cx),
                         cx,
-                    )),
-            )
+                    ))
+            } else {
+                self.profile_avatar(64.0, 18.0, cx)
+            })
             .child(
                 div()
                     .flex_1()
@@ -1198,6 +1277,8 @@ impl Remote {
                     .child(orbit::caps(
                         if let Some(demo) = demo {
                             &demo.user.full_name
+                        } else if signed_in && !self.profile_name().is_empty() {
+                            self.profile_name()
                         } else if signed_in {
                             "Cuenta conectada"
                         } else {
@@ -1218,7 +1299,8 @@ impl Remote {
                         orbit::ink_3(cx),
                         cx,
                     ))
-                    .child(self.account_badges(cx)),
+                    .child(self.account_badges(cx))
+                    .child(self.profile_actions(cx)),
             )
             .child(identity_actions)
     }
@@ -1785,17 +1867,19 @@ mod purchase_tests {
             stale: true,
         };
         remote.account.signed_in = true;
-        remote.access.observe(
-            &Reply::Account {
-                signed_in: true,
-                expires_at: Some(u64::MAX),
-                pending: false,
-                message: "QA".into(),
-                error: None,
-            },
-            true,
-        );
+        remote.account.profile = Some(super::super::protocol::AccountProfile::default());
+        remote.access.observe(&session_reply("QA", u64::MAX), true);
         remote
+    }
+    fn session_reply(message: &str, expires_at: u64) -> Reply {
+        Reply::Account {
+            profile: None,
+            signed_in: true,
+            expires_at: Some(expires_at),
+            pending: false,
+            message: message.into(),
+            error: None,
+        }
     }
     fn license(catalog: vantare_ipc::control::CatalogAccess) -> Reply {
         Reply::License {
@@ -1817,6 +1901,153 @@ mod purchase_tests {
             remote.observe_core_policy(policy.clone(), policy.checked_at_ms, cx);
         }
         remote.complete(reply, cx);
+    }
+    #[test]
+    fn old_session_fetches_profile_once_quietly_and_offline_keeps_rights() {
+        gpui_platform::headless().run(|cx| {
+            let file = crate::document::tests::File::new();
+            let (send, requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            remote.update(cx, |remote, cx| {
+                let Reply::License { policy, .. } =
+                    license(vantare_ipc::control::CatalogAccess::Pro)
+                else {
+                    unreachable!()
+                };
+                remote.observe_core_policy(policy.clone(), policy.checked_at_ms, cx);
+                let access = remote.navigation_access();
+                remote.account.profile = None; // Sesión escrita por 0.0.974.
+                remote.complete(session_reply("Sesión restaurada", u64::MAX), cx);
+                assert!(matches!(
+                    requests.try_recv(),
+                    Ok(Command::AccountProfileRefresh)
+                ));
+                assert!(requests.try_recv().is_err());
+                assert!(!remote.working());
+                assert!(!remote.holds_hub_in_game());
+                assert_eq!(remote.navigation_access(), access);
+                let message = remote.message.clone();
+                let mut failed = session_reply("No hay red para el perfil", u64::MAX);
+                if let Reply::Account { error, .. } = &mut failed {
+                    *error = Some("offline".into());
+                }
+                remote.complete(failed, cx);
+                assert_eq!(remote.navigation_access(), access);
+                assert_eq!(remote.message, message);
+                assert_eq!(remote.home_access(), (false, None));
+                assert!(remote.account.avatar.is_none());
+                remote.complete(session_reply("Lectura de sesión", u64::MAX), cx);
+                assert!(
+                    requests.try_recv().is_err(),
+                    "sin renovación ni bucle del perfil"
+                );
+            });
+            cx.quit();
+        });
+    }
+    #[test]
+    fn profile_refresh_preserves_rights_and_pending_reply_but_logout_clears_photo() {
+        gpui_platform::headless().run(|cx| {
+            let file = crate::document::tests::File::new();
+            let (send, requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            remote.update(cx, |remote, cx| {
+                let Reply::License { policy, .. } =
+                    license(vantare_ipc::control::CatalogAccess::Pro)
+                else {
+                    unreachable!()
+                };
+                let now = policy.checked_at_ms;
+                remote.observe_core_policy(policy.clone(), now, cx);
+                let rights = remote.navigation_access();
+                let profile = super::super::protocol::AccountProfile {
+                    name: "Élise Fixture".into(),
+                    ..Default::default()
+                };
+                remote.request(Command::AccountProfileRefresh, cx);
+                remote.request(Command::AccountProfileRefresh, cx);
+                assert!(matches!(
+                    requests.try_recv(),
+                    Ok(Command::AccountProfileRefresh)
+                ));
+                assert!(requests.try_recv().is_err(), "una actualización explícita");
+                remote.complete(
+                    Reply::Account {
+                        signed_in: true,
+                        profile: Some(profile.clone()),
+                        expires_at: Some(u64::MAX),
+                        pending: false,
+                        message: "Perfil actualizado".into(),
+                        error: None,
+                    },
+                    cx,
+                );
+                assert_eq!(remote.profile_name(), "Élise Fixture");
+                assert_eq!(orbit::initials(remote.profile_name()), "ÉF");
+                assert_eq!(remote.navigation_access(), rights);
+                assert!(!remote.working());
+                assert!(
+                    requests.try_recv().is_err(),
+                    "el perfil no renueva ni sondea licencia"
+                );
+                remote.complete(
+                    Reply::Account {
+                        signed_in: true,
+                        profile: None,
+                        expires_at: None,
+                        pending: true,
+                        message: "Esperando callback".into(),
+                        error: None,
+                    },
+                    cx,
+                );
+                assert_eq!(remote.profile_name(), "Élise Fixture");
+                assert_eq!(remote.navigation_access(), rights);
+                assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
+                remote.complete(
+                    Reply::Account {
+                        signed_in: true,
+                        profile: Some(profile),
+                        expires_at: Some(u64::MAX),
+                        pending: false,
+                        message: "Sesión".into(),
+                        error: None,
+                    },
+                    cx,
+                );
+                // Heartbeats con revisión distinta no cambian la proyección ni ocupan User.
+                for revision in 2..8 {
+                    remote.observe_core_policy(
+                        vantare_ipc::control::Policy {
+                            revision,
+                            ..policy.clone()
+                        },
+                        now,
+                        cx,
+                    );
+                    assert_eq!(remote.navigation_access(), rights);
+                    assert!(!remote.working());
+                    assert!(requests.try_recv().is_err());
+                }
+                remote.request(Command::Logout, cx);
+                assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
+                remote.complete(
+                    Reply::Account {
+                        signed_in: false,
+                        profile: None,
+                        expires_at: None,
+                        pending: false,
+                        message: "Sesión cerrada".into(),
+                        error: None,
+                    },
+                    cx,
+                );
+                assert!(remote.account.profile.is_none());
+                assert!(remote.account.avatar.is_none());
+                assert!(!remote.navigation_access().verified);
+            });
+            cx.quit();
+        });
     }
     #[test]
     fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
@@ -1868,16 +2099,7 @@ mod purchase_tests {
                         !remote.navigation_access().verified,
                         "reply no restaura derechos"
                     );
-                    remote.complete(
-                        Reply::Account {
-                            signed_in: true,
-                            expires_at: Some(u64::MAX),
-                            pending: false,
-                            message: "QA sesión confirmada".into(),
-                            error: None,
-                        },
-                        cx,
-                    );
+                    remote.complete(session_reply("QA sesión confirmada", u64::MAX), cx);
                     remote.request(Command::Logout, cx);
                     if !remote.working() {
                         remote.request(Command::Logout, cx);
@@ -1886,6 +2108,7 @@ mod purchase_tests {
                     assert!(requests.try_recv().is_err(), "un cierre de sesión");
                     remote.complete(
                         Reply::Account {
+                            profile: None,
                             signed_in: false,
                             expires_at: None,
                             pending: false,
@@ -1982,6 +2205,7 @@ mod purchase_tests {
                     remote.access = access::State::from_build();
                     remote.access.observe(
                         &Reply::Account {
+                            profile: None,
                             signed_in: true,
                             expires_at: Some(u64::MAX),
                             pending: false,
@@ -2033,16 +2257,7 @@ mod purchase_tests {
                 assert!(!remote.working());
                 assert_eq!(remote.message, "Resultado de usuario");
                 assert_eq!(remote.purchase_message.as_deref(), Some("Compra abierta"));
-                remote.complete(
-                    Reply::Account {
-                        signed_in: true,
-                        expires_at: Some(u64::MAX - 1),
-                        pending: false,
-                        message: "Sesión releída".into(),
-                        error: None,
-                    },
-                    cx,
-                );
+                remote.complete(session_reply("Sesión releída", u64::MAX - 1), cx);
                 assert!(matches!(requests.try_recv(), Ok(Command::ReportPrepare)));
                 assert!(remote.working());
                 assert_eq!(remote.message, "Resultado de usuario");
@@ -2078,16 +2293,7 @@ mod purchase_tests {
                 confirmed_core_license(remote, cx);
                 assert!(remote.purchase_wait.is_none());
                 assert!(!remote.working());
-                remote.complete(
-                    Reply::Account {
-                        signed_in: true,
-                        expires_at: Some(u64::MAX - 2),
-                        pending: false,
-                        message: "QA".into(),
-                        error: None,
-                    },
-                    cx,
-                );
+                remote.complete(session_reply("QA", u64::MAX - 2), cx);
                 assert!(remote.dispatch_with_kind(Command::LicenseRenew, None));
                 assert!(remote.working());
                 remote.complete(license(vantare_ipc::control::CatalogAccess::Pro), cx);
@@ -2118,16 +2324,7 @@ mod purchase_tests {
                 assert!(requests.try_recv().is_err());
                 remote.complete(license(vantare_ipc::control::CatalogAccess::Free), cx);
                 assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
-                remote.complete(
-                    Reply::Account {
-                        signed_in: true,
-                        expires_at: Some(u64::MAX),
-                        pending: false,
-                        message: "QA".into(),
-                        error: None,
-                    },
-                    cx,
-                );
+                remote.complete(session_reply("QA", u64::MAX), cx);
                 assert!(matches!(requests.try_recv(), Ok(Command::RoadmapCached)));
                 assert!(requests.try_recv().is_err());
                 remote.complete(
@@ -2209,6 +2406,7 @@ mod purchase_tests {
                 while requests.try_recv().is_ok() {}
                 remote.complete(
                     Reply::Account {
+                        profile: None,
                         signed_in: false,
                         expires_at: None,
                         pending: false,

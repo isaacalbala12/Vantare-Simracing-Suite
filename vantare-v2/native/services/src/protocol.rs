@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-pub const VERSION: u32 = 4;
+pub const VERSION: u32 = 5;
 #[path = "report_document.rs"]
 pub mod report_document;
 #[path = "roadmap_document.rs"]
@@ -18,6 +18,7 @@ pub enum Command {
     AccountBegin,
     AccountPoll,
     AccountRenew,
+    AccountProfileRefresh,
     Logout,
     LicenseStatus,
     LicenseRenew,
@@ -102,6 +103,8 @@ pub enum Reply {
     },
     Account {
         signed_in: bool,
+        #[serde(default)]
+        profile: Option<AccountProfile>,
         expires_at: Option<u64>,
         pending: bool,
         message: String,
@@ -116,6 +119,15 @@ pub enum Reply {
     DeviceLimit {
         message: String,
     },
+}
+
+/// Presentación únicamente: nunca se usa para vincular identidad ni derechos.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct AccountProfile {
+    pub name: String,
+    pub image_url: Option<String>,
+    pub image_jpeg: Option<String>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]

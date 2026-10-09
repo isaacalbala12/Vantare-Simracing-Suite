@@ -8,7 +8,7 @@ const AGENDA_EVENT_HEIGHT: f32 = 30.0;
 const AGENDA_CELL_PADDING: f32 = 3.0;
 
 fn agenda_hour_height(adapt: orbit::Adapt) -> f32 {
-    // 30 de evento + 6 de padding + 1 de borde; 38 deja un píxel de aire en XS.
+    // 30 de evento + 6 de padding + 2 de bordes; caben completos en 38 px XS.
     (adapt.row_height() - 8.0).max(38.0)
 }
 
@@ -134,7 +134,9 @@ fn agenda_grid(
             )
             .flex_1()
             .min_w_0()
-            .py(px(10.0))
+            .py(px(8.0))
+            .border_1()
+            .border_color(orbit::alpha(orbit::skin(cx).line1))
             .rounded(px(orbit::skin(cx).radius.sm))
             .text_center()
             .when(date == today, |day| {
@@ -176,7 +178,8 @@ fn agenda_grid(
                 .flex_col()
                 .gap(px(3.0))
                 .p(px(AGENDA_CELL_PADDING))
-                .border_b_1()
+                .border_1()
+                .bg(orbit::tint(orbit::surface_3(cx), 0.18))
                 .border_color(orbit::alpha(orbit::skin(cx).line1))
                 .when(cell.now, |cell| {
                     cell.bg(orbit::tint(orbit::carmine(cx), 0.08))
@@ -225,6 +228,8 @@ pub(super) fn agenda(
             orbit::neo_card(cx)
                 .flex_1()
                 .min_h_0()
+                .p(px(16.0))
+                .gap(px(10.0))
                 .child(orbit::section_header(
                     "Semana · hora local",
                     "v-calendar",
@@ -455,7 +460,7 @@ mod tests {
     fn every_agenda_density_fits_one_complete_event_with_padding_and_border() {
         for height in [720.0, 768.0, 819.0, 820.0, 900.0, 1080.0, 1440.0] {
             let adapt = orbit::Adapt::new(1280.0, height, None, true);
-            let usable = agenda_hour_height(adapt) - 2.0 * AGENDA_CELL_PADDING - 1.0;
+            let usable = agenda_hour_height(adapt) - 2.0 * AGENDA_CELL_PADDING - 2.0;
             assert!(
                 usable >= AGENDA_EVENT_HEIGHT,
                 "franja incompleta a {height}"

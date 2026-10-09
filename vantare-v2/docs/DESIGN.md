@@ -8,9 +8,9 @@ Usar el [paquete Orbit v0.3](design/orbit-v03/README.md), sus [contratos de comp
 
 Fuentes productivas:
 
-- [orbit.tokens.css](../frontend/src/styles/orbit.tokens.css): tokens del Hub.
-- [vantare-orbit.json](../frontend/src/themes/vantare-orbit.json): tema.
-- [ui/orbit](../frontend/src/ui/orbit/): componentes compartidos.
+- [orbit.tokens.css](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/styles/orbit.tokens.css): tokens del Hub.
+- [vantare-orbit.json](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/themes/vantare-orbit.json): tema.
+- [ui/orbit](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/ui/orbit): componentes compartidos.
 - [handoff Hub/Studio](vantare-program/handoffs/overlays-launcher-hub.md): decisiones y evidencia por corte; Notion contiene la siguiente tarea.
 
 Los HTML y tokens de `docs/design/` son referencias de diseño. Para cambiar lo que muestra la app, editar la fuente productiva correspondiente y verificarla; no asumir sincronización automática entre ambas copias.
@@ -19,7 +19,7 @@ Los HTML y tokens de `docs/design/` son referencias de diseño. Para cambiar lo 
 ## Wordmark oficial C2 · Compacta (#1504)
 
 Isaac eligió C2 el 2026-10-08. El nombre usa los trazos SVG aprobados de
-[build/brand/wordmark](../build/brand/wordmark/README.md), sin fuentes de texto.
+[build/brand/wordmark](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/build/brand/wordmark/README.md), sin fuentes de texto.
 La Λ es el símbolo aislado para la barra contraída y espacios pequeños.
 Hay versiones color, blanco y negro; los lockups combinan Λ y nombre,
 con color para fondo claro/oscuro y versiones a una tinta.
@@ -40,13 +40,13 @@ solo muestra la Λ. Ctrl+B conserva su comportamiento.
 
 ## Overlays: autoría directa
 
-Usar la [guía Workshop](overlays-studio/overlay-workshop-authoring-guide.md). [WidgetVisualHost](../frontend/src/overlay/core/WidgetVisualHost.tsx) es la frontera común para Studio, Desktop, OBS y Workshop. El [catálogo oficial](../frontend/src/overlay/design-systems/official-designs.ts) y los [manifests y tokens](../frontend/src/overlay/design-systems/) indican sistemas, diseños y compatibilidad existentes.
+Usar la [guía Workshop](overlays-studio/overlay-workshop-authoring-guide.md). [WidgetVisualHost](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/overlay/core/WidgetVisualHost.tsx) es la frontera común para Studio, Desktop, OBS y Workshop. El [catálogo oficial](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/overlay/design-systems/official-designs.ts) y los [manifests y tokens](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/overlay/design-systems) indican sistemas, diseños y compatibilidad existentes.
 
 Los renderizadores reciben ViewModels puros; no leen persistencia, permisos, Wails/SSE ni posición. Editar el TSX/CSS productivo; HTML es referencia visual. Mantener estados de datos y ausencia de datos distinguibles y validar la superficie afectada.
 
 ## Verificación
 
-Los scripts exactos están en [package.json](../frontend/package.json); la preparación está en [operaciones](operations.md) y [pruebas](testing-strategy.md). Elegir el protocolo Orbit o Workshop correspondiente. Una captura del prototipo no demuestra paridad del runtime.
+Los scripts exactos están en [package.json](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/package.json); la preparación está en [operaciones](operations.md) y [pruebas](testing-strategy.md). Elegir el protocolo Orbit o Workshop correspondiente. Una captura del prototipo no demuestra paridad del runtime.
 
 ## Referencia histórica
 

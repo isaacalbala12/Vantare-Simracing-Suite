@@ -13,7 +13,7 @@ import xml.etree.ElementTree as ET
 from PIL import Image, ImageDraw
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCES = ROOT / "build/brand"
+SOURCES = ROOT / "native/assets/brand"
 SIZES = (16, 24, 32, 48, 64, 128, 256)
 NS = "{http://www.w3.org/2000/svg}"
 
@@ -76,7 +76,7 @@ def png(image):
 
 
 def generated():
-    with Image.open(ROOT / "build/appicon.png") as original:
+    with Image.open(ROOT / "native/assets/appicon.png") as original:
         gradient = original.convert("RGBA")
     icons = {size: symbol(size) if size <= 32 else gradient.resize((size, size), Image.Resampling.LANCZOS) for size in SIZES}
     # Escribir cada frame explícitamente: Pillow.save(ICO) puede derivar los
@@ -87,7 +87,7 @@ def generated():
     for size, frame in zip(SIZES, frames):
         entries.append(struct.pack("<BBBBHHII", size % 256, size % 256, 0, 0, 1, 32, len(frame), offset))
         offset += len(frame)
-    assets = {"build/windows/icon.ico": struct.pack("<HHH", 0, 1, len(frames)) + b"".join(entries + frames)}
+    assets = {"native/assets/icon.ico": struct.pack("<HHH", 0, 1, len(frames)) + b"".join(entries + frames)}
     msix = {}
     for name, size in (("StoreLogo", 50), ("Square44x44Logo", 44), ("Square150x150Logo", 150)):
         # 44 px es tamaño de manifiesto, no la variante targetsize-48.

@@ -69,9 +69,9 @@ El repositorio evoluciona de `strategy.repository.v1` a
 `strategy.repository.v2`. Esta migración es distinta de la importación
 Orbit de F2(c): conserva lógicamente los drafts, revisiones, activaciones y
 plan activo v1; el campo `strategyDocument` queda ausente hasta el primer
-comando de evento. La importación implementada en [legacy_migration.go](../../internal/strategy/application/legacy_migration.go) construye el documento desde el backup
+comando de evento. La importación implementada en [legacy_migration.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/strategy/application/legacy_migration.go) construye el documento desde el backup
 Orbit y sus marcas `legacy_synthetic_default`.
 
 ## Código que realiza el contrato
 
-[Documento](../../internal/strategy/document/document.go) · [mutaciones](../../internal/strategy/application/document_service.go) · [cálculo](../../internal/strategy/application/orbit_calculation.go) · [productor Analysis](../../internal/telemetryanalysis/sessioncatalog.go). Ejecutar los comandos anteriores desde `vantare-v2/`; no son evidencia de una prueba Windows.
+[Documento](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/strategy/document/document.go) · [mutaciones](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/strategy/application/document_service.go) · [cálculo](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/strategy/application/orbit_calculation.go) · [productor Analysis](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/telemetryanalysis/sessioncatalog.go). Ejecutar los comandos anteriores desde `vantare-v2/`; no son evidencia de una prueba Windows.

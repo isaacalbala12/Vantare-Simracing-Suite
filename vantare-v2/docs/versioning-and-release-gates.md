@@ -9,7 +9,7 @@ Vantare usa cuatro segmentos `major.phase.feature.patch`, con prefijo `v` en los
 
 ## Versión de una build
 
-Leer [VERSION](../VERSION) del commit exacto. La versión instalada se comprueba en la app y en los metadatos de su release; la versión del checkout no demuestra qué build está publicada. [sync_version.go](../build/sync_version.go) sincroniza los recursos de build. La [receta de artefactos](release-artifacts.md) explica el proceso real y sus gates.
+Leer [VERSION](../VERSION) del commit exacto. La versión instalada se comprueba en la app y en los metadatos de su release; la versión del checkout no demuestra qué build está publicada. [sync_version.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/build/sync_version.go) sincroniza los recursos de build. La [receta de artefactos](release-artifacts.md) explica el proceso real y sus gates.
 
 Los tags distribuidos son inmutables. Una corrección usa un tag nuevo. Los documentos, auditorías y reviews no crean versión, tag ni publicación por sí solos.
 

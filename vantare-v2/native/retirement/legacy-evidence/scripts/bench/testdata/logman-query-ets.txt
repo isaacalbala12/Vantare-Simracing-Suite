@@ -1,0 +1,8 @@
+Conjunto de recolectores de datos       Tipo                          Estado
+-------------------------------------------------------------------------------
+Circular Kernel Context Logger          Seguimiento                   En ejecución
+VantareHuella-18440-20260828-231501     Seguimiento                   En ejecución
+EventLog-System                         Seguimiento                   En ejecución
+VantareHuella-20912-20260828-232044     Seguimiento                   En ejecución
+
+Detalle repetido: VantareHuella-18440-20260828-231501

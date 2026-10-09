@@ -6,7 +6,7 @@ Fecha de corte: 2026-07-27. Issue: ISA-122 / TA-01. Base: GOV-01 `67e263392b2192
 
 ## Entrada actual
 
-Consultar el [handoff Analysis](../../handoffs/telemetry-analysis.md) y la tarea/proyecto Notion para continuar. El backend histórico y sus proyecciones alimentan Strategy; la [fuente de Telemetría Orbit](../../../../frontend/src/hub/telemetry-orbit/telemetry-orbit-source.ts) aún devuelve una lista vacía en el corte revisado del 2026-09-14. Esta investigación no demuestra integración de esa pantalla. Las propuestas y límites que siguen corresponden a TA-01.
+Consultar el [handoff Analysis](../../handoffs/telemetry-analysis.md) y la tarea/proyecto Notion para continuar. El backend histórico y sus proyecciones alimentan Strategy; la [fuente de Telemetría Orbit](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/hub/telemetry-orbit/telemetry-orbit-source.ts) aún devuelve una lista vacía en el corte revisado del 2026-09-14. Esta investigación no demuestra integración de esa pantalla. Las propuestas y límites que siguen corresponden a TA-01.
 
 ## Objetivo y alcance
 

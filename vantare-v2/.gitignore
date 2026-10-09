@@ -17,7 +17,6 @@
 
 # Generated at build time from Supabase env vars.
 # Never commit — contains public anon key from CI secrets.
-cmd/vantare/supabase_build.go
 
 # Local design mocks and screenshots
 fotos/
@@ -35,18 +34,10 @@ vantare.exe.stale
 # Local Pi runtime state
 .atl/
 # Local visual harnesses
-frontend/topbar-harness.html
-frontend/scripts/calendar-harness.html
-frontend/scripts/widget-parity-harness.html
-frontend/src/topbar-visual-harness.tsx
 docs/superpowers/screenshots/
-frontend/.tmp/
-frontend/.temp/
-frontend/dev-server.log
 
 # Local env (never commit)
 .env.local
-frontend/.env.local
 
 # Supabase CLI / smoke scratch (may contain tokens)
 supabase/.temp/

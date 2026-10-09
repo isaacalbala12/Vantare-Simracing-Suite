@@ -17,7 +17,7 @@ Antes de abrirla no existían procesos `vantare-baseline*`, `vantare-isa893*` ni
 automatizó ni se cerró.
 
 El helper reproducible
-[`isa-943-performance-smoke.mjs`](../../../../scripts/bench/isa-943-performance-smoke.mjs)
+[`isa-943-performance-smoke.mjs`](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/scripts/bench/isa-943-performance-smoke.mjs)
 abrió el overlay activo, conservó su target CDP, navegó mediante los controles
 reales a Ajustes › Rendimiento y pulsó **Ahorro**. El frame v2 observado por el
 pull HTTP cambió así:

@@ -13,7 +13,7 @@ ASSETS = ROOT / "native/packaging/msix/Assets"
 
 class BrandIcons(unittest.TestCase):
     def test_ico_seven_independent_frames(self):
-        data = (ROOT / "build/windows/icon.ico").read_bytes()
+        data = (ROOT / "native/assets/icon.ico").read_bytes()
         self.assertEqual(struct.unpack_from("<HHH", data), (0, 1, 7))
         sizes = []
         for index in range(7):

@@ -11,7 +11,7 @@ El rojo oficial único es **#D80000**, tono central del logo. Para texto y enlac
 
 El símbolo plano y las variantes pequeñas están aprobados. **El wordmark no está aprobado**: conservar el existente, sin crear variantes. El naranja #FF6B35, «AI Engineer», «100 % FPS» (también escrito «100% FPS») y las tablas italianas de abajo se conservan como **históricos**, no como instrucciones para copy nuevo. Esto no decide ni retira idiomas del producto: el [contrato de producto](vantare-program/product-contract.md) aún incluye italiano y requiere reconciliación por Isaac.
 
-Fuentes versionadas: [build/brand](../build/brand/). El avatar circular contiene solo el símbolo, sin texto. No derivar promesas de rendimiento ni disponibilidad del material histórico.
+Fuentes versionadas: [build/brand](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/build/brand). El avatar circular contiene solo el símbolo, sin texto. No derivar promesas de rendimiento ni disponibilidad del material histórico.
 
 ---
 
@@ -277,7 +277,7 @@ Antes de publicar cualquier contenido de marca:
 ## Wordmark oficial C2 · Compacta (#1504)
 
 Isaac eligió C2 el 2026-10-08. El nombre usa los trazos SVG aprobados de
-[build/brand/wordmark](../build/brand/wordmark/README.md), sin fuentes de texto.
+[build/brand/wordmark](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/build/brand/wordmark/README.md), sin fuentes de texto.
 La Λ es el símbolo aislado para la barra contraída y espacios pequeños.
 Hay versiones color, blanco y negro; los lockups combinan Λ y nombre,
 con color para fondo claro/oscuro y versiones a una tinta.

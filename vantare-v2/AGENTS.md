@@ -2,13 +2,12 @@
 
 Guia obligatoria para agentes que trabajen en este repo.
 
-Hay dos líneas de producto. La aplicación nativa **Rust + GPUI** en `native/`
-es la base de futuro y de la beta, por decisión aceptada en
-[ADR 0099](docs/adr/0099-arquitectura-rust-nativa.md). Wails **Go + React**
-(`internal/`, `cmd/`, `pkg/`, `frontend/`) es legado y sigue en producción
-hasta el corte autorizado. Para la ruta nativa, lee `native/README.md`, los
-README de los crates afectados y sus gates; las secciones Go y TypeScript /
-React de este archivo siguen siendo obligatorias cuando se toca el legado.
+La aplicación es **Rust + GPUI** en `native/`, conforme a
+[ADR 0099](docs/adr/0099-arquitectura-rust-nativa.md). #1533 retira el código de
+la app Wails/React de este checkout; esto no publica un corte ni una release.
+Lee `native/README.md`, los README de los crates afectados y sus gates.
+Los corpus y referencias se conservan en `native/retirement`; los oráculos
+Go históricos se reproducen opcionalmente desde `tools/frozen-go`.
 
 ## Contexto del usuario
 
@@ -105,14 +104,6 @@ la regla del mismo PR ni autoriza publicar cambios.
 - No delegues una tarea trivial cuando ejecutarla directamente sea mas clara y
   barata. El orquestador sigue siendo responsable de revisar el diff, la
   evidencia y el handoff; el reporte del worker no basta por si solo.
-- En el legado Wails, Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta ADR 0003 y el plan maestro V3.
-- En el legado Wails, `WidgetVisualHost` es la frontera compartida de renderizado para Studio,
-  Desktop, OBS y Workshop. En el flujo aprobado de autoria visual se edita el
-  TSX/CSS productivo y Workshop debe reflejarlo mediante HMR: no crees un renderer duplicado, DSL,
-  compilador HTML, scaffolder o registro generico salvo una decision nueva.
-  Los HTML son contratos visuales; el fondo del escenario no forma parte del
-  widget ni de sus capturas de paridad.
-- Si tocas drag/resize del canvas V3 del legado Wails, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
 - El alcance, las dependencias y el estado operativo viven en la tarea Notion.
   El roadmap público muestra varias vistas gráficas de una única publicación.
   Isaac indica los cambios a Codex por chat; Codex actualiza la publicación
@@ -249,50 +240,12 @@ bundled; para compilación, plataformas y empaquetado lee `native/README.md`.
 Una entrega solo documental puede omitir compilación si su brief lo autoriza;
 registra los checks omitidos y el motivo.
 
-## Go
+## Código retirado
 
-- Usa Go simple e idiomatico.
-- Ejecuta `gofmt` en archivos Go modificados.
-- Ejecuta `go test ./...` si tocaste Go o contratos compartidos.
-- Maneja errores siempre; no uses `_` para ignorarlos salvo justificacion clara.
-- Envuelve errores con contexto usando `%w` cuando propagas errores.
-- No uses `panic` salvo casos muy justificados o tests.
-- No uses `log.Fatal` fuera de `main`.
-- Usa `context.Context` en I/O, red, DB, procesos largos o tareas cancelables.
-- Evita interfaces prematuras; define interfaces en el consumidor cuando hagan falta.
-- Evita paquetes `utils` genericos.
-- No metas goroutines/channels sin razon clara.
-- Toda goroutine debe tener cancelacion o camino de cierre.
-- Preferir tests table-driven para logica.
-- Usa `testdata/` para fixtures reales.
-
-## TypeScript / React
-
-- Mantener TypeScript estricto segun la configuracion existente.
-- Ejecuta `pnpm --dir frontend test` si tocaste frontend.
-- Ejecuta `pnpm --dir frontend build` antes de cerrar cambios frontend relevantes.
-- Ejecuta `pnpm --dir frontend lint` si tocaste patrones que ESLint cubre.
-- Ejecuta `pnpm --dir frontend typecheck` para comprobar tipos sin construir.
-
-### Typecheck: usa `pnpm typecheck` o `pnpm build`, nunca `-p tsconfig.json`
-
-`frontend/tsconfig.json` es solution-style: tiene `"files": []` y delega en
-`references` (`tsconfig.app.json` y `tsconfig.node.json`). Por eso:
-
-- **VALIDO:** `pnpm --dir frontend typecheck` (`tsc -b --noEmit`) o
-  `pnpm --dir frontend build` (`tsc -b && vite build`). Ambos recorren los
-  proyectos referenciados y comprueban los ficheros de verdad.
-- **NO COMPRUEBA NADA:** `tsc --noEmit -p tsconfig.json`. Con `"files": []` no
-  typechequea ni un solo fichero y sale con codigo 0 en vacio, aunque el
-  codigo tenga errores de tipos. Ya provoco que un error de tipos real
-  llegara a CI sin ser detectado. No lo uses como gate.
-
-- No anadas librerias UI sin aprobacion.
-- No dupliques estado si ya existe una fuente clara.
-- Mantener logica de negocio fuera de componentes React cuando sea razonable.
-- Componentes pequenos, con nombres claros.
-- No mezcles UI con persistencia o logica core sin necesidad.
-- No cambies configuracion de build salvo que la tarea lo pida.
+No hay gates Go ni pnpm de la app nativa. Los archivos de oráculos Go son
+referencia histórica inerte, no otra aplicación; no reintroducir Wails/React.
+Validar las fuentes y fixtures conservadas con `python native/retirement/verify.py`.
+Los otros proyectos del monorepo conservan sus instrucciones propias.
 
 ## Testing
 

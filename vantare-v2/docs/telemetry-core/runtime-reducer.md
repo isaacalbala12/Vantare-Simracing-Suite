@@ -1,6 +1,6 @@
 # Reducer canónico single-writer
 
-Estado: componente conectado mediante `TelemetryEngine` en `internal/app/telemetry_core_runtime.go` (contraste 2026-09-14). El runtime prepara reducer, derivaciones y coordinator y confirma dentro de una frontera común; no publica cada etapa por separado. Ver [engine.go](../../internal/telemetry/engine/engine.go) y [ADR 0008](../adr/0008-telemetry-engine-commit-boundary-and-overlay-frame-v2.md).
+Estado: componente conectado mediante `TelemetryEngine` en `internal/app/telemetry_core_runtime.go` (contraste 2026-09-14). El runtime prepara reducer, derivaciones y coordinator y confirma dentro de una frontera común; no publica cada etapa por separado. Ver [engine.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/telemetry/engine/engine.go) y [ADR 0008](../adr/0008-telemetry-engine-commit-boundary-and-overlay-frame-v2.md).
 
 Las reglas y resultados ISA-35 siguientes describen el componente y su corte original; no sustituir la frontera de commit del engine por el uso aislado de `Apply`/`Run`.
 

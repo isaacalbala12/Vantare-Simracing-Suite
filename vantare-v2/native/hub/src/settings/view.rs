@@ -1542,26 +1542,36 @@ impl Hub {
         if let Some(error) = launcher.global_hotkey_error() {
             globals = globals.child(section_note(error, cx));
         }
+        if launcher
+            .saved_profiles()
+            .iter()
+            .all(|profile| profile.hotkey.is_empty())
+        {
+            globals = globals.child(section_row(
+                "Atajos de perfiles",
+                "Todavía no has asignado ninguna combinación",
+                orbit::keycap("—", cx),
+                self.shell.adapt,
+                cx,
+            ));
+        }
         globals = globals.child(
-            orbit::small_button("settings-global-edit", "Editar atajos de perfiles", cx)
-                .track_focus(&self.settings.global_hotkeys_focus)
-                .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
-                    if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                        hub.navigate(Section::Launcher, cx);
-                        cx.stop_propagation();
-                    }
-                }))
-                .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Launcher, cx))),
+            div().px(px(20.0)).py(px(10.0)).flex().justify_end().child(
+                orbit::small_button("settings-global-edit", "Editar atajos de perfiles", cx)
+                    .track_focus(&self.settings.global_hotkeys_focus)
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            hub.navigate(Section::Launcher, cx);
+                            cx.stop_propagation();
+                        }
+                    }))
+                    .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Launcher, cx))),
+            ),
         );
         stack()
             .h_full()
             .when(cfg!(windows), |body| {
-                body.child(section_surface(
-                    "Globales con el juego",
-                    Some("Registro nativo de Windows · editables en cada perfil del Launcher"),
-                    globals,
-                    cx,
-                ))
+                body.child(section_surface("Globales con el juego", None, globals, cx))
             })
             .child(section_surface(
                 "En el Hub",

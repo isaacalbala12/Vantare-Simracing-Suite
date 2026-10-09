@@ -5969,3 +5969,8 @@ pendiente; no se afirma conexión LMU ni se fabrica telemetría de producto.
 S7: escenarios sin implementar se presentan como rótulos sin Click/Focus, con
 Próximamente accesible y tooltip real. Carrera mantiene su acción. Regresión del
 elemento productivo en GPUI headless PASS; las cuatro escenas siguen pendientes.
+Regresiones adicionales de entidades/elementos productivos en GPUI headless:
+geometría cancela Fit/100/150 sin persistir ni añadir Undo; selección opaca0/25/100
+y tamaño estable; En vivo vacío hasta foto IPC y conserva la más reciente durante
+el gesto. Suite Studio18/18 PASS, incluidas seis nuevas; capturas siguen siendo
+necesarias para validar eventos/hitboxes/composición física.

@@ -478,6 +478,11 @@ struct CanvasFrame {
 impl EventEmitter<Started> for CanvasFrame {}
 impl Render for CanvasFrame {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.element(cx)
+    }
+}
+impl CanvasFrame {
+    fn element(&mut self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         let (x, y) = self
             .drag
             .as_ref()
@@ -806,6 +811,19 @@ impl Studio {
     fn zoom(&mut self, step: usize, cx: &mut Context<Self>) {
         self.zoom_step = step.min(ZOOM_STEPS.len() - 1);
         self.rescale_preview(cx);
+    }
+    fn measure_canvas(&mut self, size: (f32, f32), scale: f32, cx: &mut Context<Self>) {
+        if self.canvas_size != size || (self.fit_scale - scale).abs() > 0.000_01 {
+            // También el zoom manual pierde su sistema de coordenadas al cambiar el viewport.
+            self.cancel_drag(cx);
+            self.canvas_size = size;
+            self.fit_scale = scale;
+            if self.zoom_step == 0 {
+                self.rescale_preview(cx);
+            } else {
+                cx.notify();
+            }
+        }
     }
     pub fn ingest(&mut self, snapshot: &Snapshot, cx: &mut Context<Self>) {
         if self.snapshot == *snapshot {
@@ -1972,19 +1990,7 @@ impl Studio {
                     cx.defer(move |cx| {
                         let _ = studio.update(cx, |this, cx| {
                             let size = (bounds.size.width.into(), bounds.size.height.into());
-                            if this.canvas_size != size || (this.fit_scale - scale).abs() > 0.000_01
-                            {
-                                // También el zoom manual pierde su sistema de coordenadas
-                                // al cambiar el viewport (ventana o inspector).
-                                this.cancel_drag(cx);
-                                this.canvas_size = size;
-                                this.fit_scale = scale;
-                                if this.zoom_step == 0 {
-                                    this.rescale_preview(cx);
-                                } else {
-                                    cx.notify();
-                                }
-                            }
+                            this.measure_canvas(size, scale, cx);
                         });
                     });
                 }
@@ -2068,6 +2074,107 @@ impl Render for Studio {
 #[cfg(test)]
 mod tests {
     use super::*;
+    fn prepared_widget(path: PathBuf) -> Prepared {
+        let mut prepared = Prepared::load(path).expect("preparar Studio");
+        prepared.editor.add(Kind::Standings).expect("widget");
+        prepared
+    }
+    fn start_preview(studio: &mut Studio, cx: &mut Context<Studio>) {
+        let frame = studio.frames[0].1.clone();
+        frame.update(cx, |frame, _| {
+            frame.drag = Some(Drag {
+                pointer: (100.0, 200.0),
+                origin: (frame.item.x, frame.item.y),
+                preview: (frame.item.x + 80.0, frame.item.y + 40.0),
+                scale: frame.preview_scale,
+            });
+        });
+        studio.drag = Some(frame);
+    }
+    #[test]
+    fn geometry_changes_cancel_manual_and_fitted_gestures_without_a_document_edit() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            for step in [0, 3, 5] {
+                for rail_change in [false, true] {
+                    let file = crate::document::tests::File::new();
+                    let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+                    studio.update(cx, |studio, cx| {
+                        studio.zoom_step = step;
+                        let original = studio.editor.layout().clone();
+                        start_preview(studio, cx);
+                        if rail_change {
+                            studio.set_adapt(orbit::Adapt::new(1280.0, 720.0, None, false), cx);
+                        } else {
+                            studio.measure_canvas((640.0, 360.0), 1.0 / 3.0, cx);
+                        }
+                        assert!(studio.drag.is_none());
+                        assert!(studio.frames[0].1.read(cx).drag.is_none());
+                        studio.finish_drag(gpui::point(px(900.0), px(800.0)), cx);
+                        assert_eq!(studio.editor.layout(), &original);
+                        assert_eq!(
+                            Editor::open(file.path.clone()).expect("reabrir").layout(),
+                            &original
+                        );
+                        studio.editor.undo().expect("solo se deshace añadir");
+                        assert!(studio.editor.layout().instances.is_empty());
+                    });
+                }
+            }
+            cx.quit();
+        });
+    }
+    #[test]
+    fn selection_frame_stays_opaque_and_keeps_its_size_when_content_becomes_transparent() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            let frame = studio.read(cx).frames[0].1.clone();
+            let mut sizes = vec![];
+            for opacity in [0.0, 0.25, 1.0] {
+                frame.update(cx, |frame, cx| {
+                    frame.item.opacity = opacity;
+                    frame.selected = true;
+                    let mut host = frame.element(cx);
+                    assert_eq!(host.style().opacity, None);
+                    assert_eq!(host.style().border_widths.left, Some(px(1.0).into()));
+                    sizes.push(host.style().size.clone());
+                });
+            }
+            assert!(sizes.windows(2).all(|pair| pair[0] == pair[1]));
+            cx.quit();
+        });
+    }
+    #[test]
+    fn live_starts_empty_and_uses_only_received_photos_even_during_a_gesture() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                studio.example = false;
+                assert_eq!(studio.snapshot, Snapshot::default());
+                for &kind in Kind::ALL {
+                    assert_eq!(studio.preview_snapshot(kind), &Snapshot::default());
+                }
+                let photo = studio.examples[0].1.clone();
+                studio.ingest(&photo, cx);
+                start_preview(studio, cx);
+                let mut newest = photo.clone();
+                newest.sequence += 1;
+                studio.ingest(&newest, cx);
+                assert!(studio.drag.is_some(), "telemetría no cancela el gesto");
+                studio.cancel_drag(cx);
+                for &kind in Kind::ALL {
+                    assert_eq!(studio.preview_snapshot(kind), &newest);
+                }
+                studio.example = true;
+                assert_eq!(studio.preview_snapshot(Kind::Standings), &photo);
+            });
+            cx.quit();
+        });
+    }
     #[test]
     fn unavailable_scenarios_explain_their_state_without_offering_button_actions() {
         use gpui::Element;

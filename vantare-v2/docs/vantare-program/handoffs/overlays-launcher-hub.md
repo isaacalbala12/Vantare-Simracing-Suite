@@ -5935,3 +5935,17 @@ mínimo1280 y tamaño cliente comprobado, sin contar el intento como prueba.
 - Código `a335badb`, árbol nativo `55d68fbe14edeb584d47af64081a323bc28aa558`, binario QA SHA256 `F169A27102DD237BDAB6CC951FE6E890430EF155B298394AF7155077FE44942E`: 36 PNG de Inicio normal/vacío y Launcher, tres temas, 1920×1080/1280×720 y ambos carriles; tres PNG adicionales de Cuenta tras Ctrl B/Tab/clic del avatar. Grupo estático observado en UIA; hashes/dimensiones comprobados y hojas/originales críticos inspeccionados. Nueve ventanas del lote completo cerradas exit 0; driver terminado y mutex liberado. Windows sigue al 100%.
 - Dos intentos incompletos del controlador archivados/excluidos: selector del avatar incluía perfiles y comprobación de Cuenta esperaba Iniciar sesión en modo demo. La navegación funcionó y el selector final comprueba los controles reales de Cuenta; no se retocó producto para satisfacer el harness. Sin login/licencia reales. Warning heredado de `cx` en QA/parity documentado, no suprimido.
 - Sin delegación/push/PR/merge/promoción/release. Continúan pendientes la revisión independiente ≥9 y valoración de la latencia medida antes de este arreglo; no se atribuyen esas trazas a `a335badb`.
+
+## #1496 — Studio: arrastre y vista previa, auditoría práctica (2026-10-09)
+
+Encargo posterior a vuelta2 y #1525; baseline release c1575ed0 (código a335badb),
+SHA256 19325172E0E9FBBBD6162FE9E96DB28474FF34FED2BC4BA765ECAF4F2EDC7BDC.
+Contratos de arrastre/preview leídos; banco aislado sin --demo, capturas originales
+con coordenadas y documentos en calidad-2-evidence/studio-drag-preview/hallazgos.md.
+Reproducidos: flechas inertes, salto al redimensionar/recoger carril, selección
+borrada por opacidad, congelación al salir de Studio y datos Workshop en En vivo.
+Tamaño libre y cuatro escenarios siguen pendientes de sus contratos/escenas;
+no se inventan datos ni campos persistidos. Sin delegación ni acciones remotas.
+S1: flechas 1px/Mayús8px conectadas al editor con foco del lienzo; selección en
+lista devuelve ese foco, campos conservan el suyo. Dos regresiones PASS por cola,
+persistencia y Undo comprobados; revalidación física release y gates finales pendientes.

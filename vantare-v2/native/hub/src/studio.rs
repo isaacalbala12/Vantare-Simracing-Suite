@@ -20,6 +20,24 @@ const STUDIO_PREVIEW_SCALE: f32 = 700.0 / 1920.0;
 const ZOOM_STEPS: [Option<u16>; 6] = [None, Some(50), Some(75), Some(100), Some(125), Some(150)];
 const AUTO_SAVED: &str = "Guardado";
 
+fn keyboard_nudge(key: &gpui::Keystroke) -> Option<((i8, i8), bool)> {
+    if key.modifiers.control
+        || key.modifiers.platform
+        || key.modifiers.alt
+        || key.modifiers.function
+    {
+        return None;
+    }
+    let direction = match key.key.as_str() {
+        "left" => (-1, 0),
+        "right" => (1, 0),
+        "up" => (0, -1),
+        "down" => (0, 1),
+        _ => return None,
+    };
+    Some((direction, key.modifiers.shift))
+}
+
 fn fitted_scale(width: f32, height: f32) -> Option<f32> {
     if !width.is_finite() || !height.is_finite() {
         return None;
@@ -381,7 +399,9 @@ impl Render for StudioSidebar {
                 .flex_col()
                 .min_w_0()
                 .gap(px(0.0))
-                .on_key_down(cx.listener(|this, event, _, cx| this.handle_key(event, cx)))
+                .on_key_down(
+                    cx.listener(|this, event, window, cx| this.handle_key(event, window, cx)),
+                )
                 .child(orbit::scroll_fade(
                     div()
                         .id("studio-inspector-scroll")
@@ -861,7 +881,12 @@ impl Studio {
             self.rebuild(cx);
         }
     }
-    fn handle_key(&mut self, event: &gpui::KeyDownEvent, cx: &mut Context<Self>) {
+    fn handle_key(
+        &mut self,
+        event: &gpui::KeyDownEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         let key = &event.keystroke;
         if key.key == "escape" && self.drag.is_some() {
             self.cancel_drag(cx);
@@ -874,6 +899,13 @@ impl Studio {
                 self.history(true, cx);
                 cx.stop_propagation();
             }
+        } else if self.focus.is_focused(window)
+            && self.editor.selected().is_some()
+            && let Some((direction, shift)) = keyboard_nudge(key)
+        {
+            // Los campos del inspector conservan sus flechas y su propio foco.
+            self.position_nudge(direction, shift, cx);
+            cx.stop_propagation();
         }
     }
     fn init_navigation_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -1148,7 +1180,10 @@ impl Studio {
                         cx.stop_propagation();
                     })),
             )
-            .on_click(cx.listener(move |this, _, _, cx| this.select(id.clone(), cx)))
+            .on_click(cx.listener(move |this, _, window, cx| {
+                this.select(id.clone(), cx);
+                this.focus.focus(window, cx);
+            }))
     }
     fn widget_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
         div()
@@ -1988,13 +2023,53 @@ impl Render for Studio {
                     this.finish_drag(event.position, cx);
                 }),
             )
-            .on_key_down(cx.listener(|this, event, _, cx| this.handle_key(event, cx)))
+            .on_key_down(cx.listener(|this, event, window, cx| this.handle_key(event, window, cx)))
             .child(workspace)
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn keyboard_movement_persists_logical_pixels_and_undo_restores_each_step() {
+        let file = crate::document::tests::File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
+        editor.add(Kind::Standings).expect("widget");
+        let original = editor.layout().clone();
+        for (stroke, expected) in [("right", (21.0, 20.0)), ("shift-down", (21.0, 28.0))] {
+            let key = gpui::Keystroke::parse(stroke).expect("tecla");
+            let (direction, shift) = keyboard_nudge(&key).expect("flecha espacial");
+            editor
+                .edit_selected(|item| {
+                    (item.x, item.y) =
+                        inspector::nudged_position((item.x, item.y), direction, shift);
+                })
+                .expect("mover");
+            let reopened = Editor::open(file.path.clone()).expect("reabrir");
+            let item = &reopened.layout().instances[0];
+            assert_eq!((item.x, item.y), expected);
+        }
+        editor.undo().expect("deshacer 8 px");
+        assert_eq!(
+            editor.selected().map(|item| (item.x, item.y)),
+            Some((21.0, 20.0))
+        );
+        editor.undo().expect("deshacer 1 px");
+        assert_eq!(editor.layout(), &original);
+    }
+    #[test]
+    fn keyboard_movement_does_not_claim_modified_navigation_or_other_keys() {
+        for stroke in ["ctrl-right", "alt-left", "super-up", "a", "escape", "tab"] {
+            let key = gpui::Keystroke::parse(stroke).expect("tecla");
+            assert_eq!(keyboard_nudge(&key), None, "{stroke}");
+        }
+        for (stroke, direction) in [("left", (-1, 0)), ("up", (0, -1)), ("down", (0, 1))] {
+            assert_eq!(
+                keyboard_nudge(&gpui::Keystroke::parse(stroke).expect("tecla")),
+                Some((direction, false))
+            );
+        }
+    }
     #[test]
     fn fitted_canvas_is_maximal_16_by_9_and_centered_at_all_seven_sizes() {
         for (width, height) in [

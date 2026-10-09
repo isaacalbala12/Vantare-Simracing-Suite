@@ -1696,3 +1696,41 @@ en calidad-1-evidence/reanudacion/VERIFICACION.md. Instalación real intacta.
 Siguiente: revisión del orquestador/Isaac; latencia de entrada pendiente.
 Solo commits/merges locales autorizados y seguimiento GitHub; sin push/PR/
 CI remota/promoción/release. No se afirma aceptación ≥9 ni publicación.
+
+
+## #1504 — Icono plano, activos Windows y marca (2026-10-08)
+
+Brief autorizado: `C:/tmp/ui-r10/brief-1504-iconos-docs.md`; referencia aprobada
+`C:/tmp/ui-r10/marca-1504.html`. Worker sin delegación ni ventanas de la app,
+worktree `C:/tmp/vw3-1504/vantare-v2`, rama `vantareapp/isa-1504-marca`, base
+candidato beta `60510a0c4e2f71ba981ab2912c4e9cdc23d1f935`, inicialmente limpio.
+Usuario/brief fijan GitHub #1504 frente a referencias Notion antiguas del checkout.
+
+ICO siete frames independientes, 16/24 con patas gruesas, 32 normal plano
+#D80000; ≥48 conserva `build/appicon.png`. Siete SVG fuente (color/blanco/negro,
+normal/pequeño y avatar); Hub mark normal a 26 px actualizado, recoloreado por
+GPUI según tema. El `i-vantare` usado a 48 px queda fuera del corte ≤32.
+MSIX: 18 PNG (tres del manifiesto y cinco targetsize con tres formas); build
+copia los activos versionados y deja de redimensionar el icono genérico.
+Unplated sin placa; lightunplated negro para barra clara. Wordmark no aprobado,
+sin crearlo ni cambiarlo. BRAND/DESIGN registran escala roja, contrastes calculados
+sRGB y naranja/AI Engineer/100 % FPS/italiano históricos sin borrar material.
+
+Regenerador stdlib + Pillow instalado 12.1.1; `--check` compara bytes. Dos tests
+validan frames/colores/hueco/alpha/dimensiones y nombres contra manifiesto.
+Parser y negativos MSIX en PS5.1: 12 PASS. Hoja
+`C:/tmp/ui-r10/iconos-1504.png` MIRADA: tamaños reales en claro/oscuro, variantes
+sin placa, tres activos base, una tinta y avatar. Halo Lanczos de alfa pequeño
+conservado; el relleno opaco sigue siendo exactamente #D80000 tras corregir la
+reducción de RGBA para filtrar únicamente la máscara alfa.
+No build Rust/Go/frontend: no cambia código de esas rutas. Sin paquete real,
+firma, Store, instalación, arranque ni DPI físico. Contraste 3,04:1 del icono
+sobre oscuro es para gráfico, no texto; la variante negra es solo para fondo claro.
+
+Preguntas para orquestador/Isaac: ¿reconciliar italiano histórico con el contrato
+que todavía lo exige? ¿Cómo reflejar este corte en el roadmap exigido por las
+instrucciones recibidas si `docs/roadmap/plan.md` falta en base y origin/nightly?
+No se recrea una fuente paralela. UI/web/widgets y aprobación wordmark pertenecen
+a sus cortes. Entrega con commit local e informe ≤10 líneas en
+`C:/tmp/ui-r10/informe-1504.md`; comentario GitHub autorizado. Pendiente review
+e integración por orquestador; sin push, PR, CI remota, merge, promoción ni release.

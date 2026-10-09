@@ -428,22 +428,15 @@ pub fn column_width(viewport: f32) -> f32 {
 }
 
 /// Respaldo de avatar de Wails para una cuenta sin nombre/foto: punto medio.
-pub fn avatar(active: bool, initial: &str, cx: &gpui::App) -> Stateful<Div> {
+pub fn avatar(initial: &str, cx: &gpui::App) -> Div {
+    // La fila Cuenta posee la acción y el foco; el avatar solo pinta las iniciales.
     div()
-        .id("account")
-        .role(gpui::Role::Button)
-        .aria_label("Cuenta · sin sesión")
-        .aria_selected(active)
-        .tab_index(0)
         .size(px(CONTROL_H))
         .rounded(px(RADIUS_CONTROL))
         .flex()
         .items_center()
         .justify_center()
         .bg(rgb(surface_3(cx)))
-        .cursor_pointer()
-        .hover(|s| s.bg(rgb(surface_2(cx))))
-        .focus_visible(|s| s.border_1().border_color(rgb(carmine(cx))))
         .shadow(vec![gpui::BoxShadow {
             color: rgba(0x0000_0059).into(),
             offset: gpui::point(px(0.0), px(9.0)),
@@ -452,7 +445,6 @@ pub fn avatar(active: bool, initial: &str, cx: &gpui::App) -> Stateful<Div> {
             inset: false,
         }])
         .child(text(initial.to_owned(), 12.0, 850, white(cx), cx))
-        .tooltip(|_, cx| cx.new(|_| Tooltip("Cuenta · sin sesión".into())).into())
 }
 
 pub fn sans_family(w: u16, cx: &gpui::App) -> SharedString {

@@ -1,7 +1,12 @@
 [profile.default]
 # `lifecycle` usa harness propio (no admite --list): se ejecuta aparte con
 # `cargo test --workspace --test lifecycle`.
-default-filter = 'not binary(lifecycle)'
+# Réplicas de grabaciones reales de telemetría (~9 min): solo en `gates.ps1 -Gate telemetria`
+# cuando el cambio toca runtime, domain, ipc o testdata (AGENTS.md, #1498).
+default-filter = 'not binary(lifecycle) & not (package(vantare-runtime) & (binary(telemetry_golden) | binary(acc_conformance) | binary(lmu_conformance) | binary(lmu_oracle)))'
+
+[profile.telemetria]
+default-filter = 'package(vantare-runtime) & (binary(telemetry_golden) | binary(acc_conformance) | binary(lmu_conformance) | binary(lmu_oracle))'
 
 # Intermitentes conocidos: se reintentan solos; el resto falla a la primera.
 # Quitar cada línea al cerrar su issue (#1434 lanzador).

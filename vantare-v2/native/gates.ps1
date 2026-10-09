@@ -1,7 +1,7 @@
 # Gates con DuckDB oficial, sin desactivar defaults ajenos a storage.
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'test', 'lifecycle', 'prueba')][string]$Gate,
+    [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'test', 'telemetria', 'lifecycle', 'prueba')][string]$Gate,
     [string]$DuckDbDirectory = $env:DUCKDB_LIB_DIR,
     [string]$BuildConfig
 )
@@ -47,6 +47,7 @@ try {
         'check' { @('check', '--workspace', '--all-targets') }
         'clippy' { @('clippy', '--workspace', '--all-targets') }
         'test' { @('nextest', 'run', '--workspace') }
+        'telemetria' { @('nextest', 'run', '--workspace', '--profile', 'telemetria') }
         'lifecycle' { @('test', '--workspace', '--test', 'lifecycle') }
         'prueba' { @('build', '--workspace', '--exclude', 'vantare-admin', '--bins', '--profile', 'prueba') }
     }

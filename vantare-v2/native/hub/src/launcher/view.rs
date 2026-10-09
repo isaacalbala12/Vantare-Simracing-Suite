@@ -616,6 +616,30 @@ impl Launcher {
             .collect::<Vec<_>>()
             .join(" → ")
     }
+    pub(crate) fn global_hotkey_status(&self, id: &str) -> String {
+        vantare_ipc::launcher::read_status(&self.store.path)
+            .and_then(|status| {
+                status
+                    .profiles
+                    .into_iter()
+                    .find(|profile| profile.profile == id)
+            })
+            .map_or_else(
+                || "Registro no confirmado · abre Vantare desde el instalador".into(),
+                |registration| {
+                    registration.error.unwrap_or_else(|| {
+                        if registration.registered {
+                            "Registrado en Windows".into()
+                        } else {
+                            "Sin registro activo".into()
+                        }
+                    })
+                },
+            )
+    }
+    pub(crate) fn global_hotkey_error(&self) -> Option<&str> {
+        self.resident_error.as_deref()
+    }
     pub fn saved_profiles(&self) -> &[Profile] {
         &self.store.document.profiles
     }

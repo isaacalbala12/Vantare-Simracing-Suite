@@ -79,7 +79,7 @@ impl Page {
             Self::Appearance => "Personaliza colores, contraste y tipografía de Vantare.",
             Self::Performance => "Así funcionarán los niveles",
             Self::Updates => "Versión instalada, canal y novedades.",
-            Self::Hotkeys => "Atajos del Hub y combinaciones en pista disponibles próximamente.",
+            Self::Hotkeys => "Atajos locales y perfiles con registro global nativo.",
             Self::Privacy => "Elige qué informes y datos de uso puede enviar Vantare.",
             Self::Diagnostics => "Estado de las fuentes, datos locales y registros.",
         }
@@ -114,6 +114,7 @@ impl Page {
 pub(super) struct State {
     privacy: Result<privacy::Store, String>,
     privacy_focus: [FocusHandle; 2],
+    global_hotkeys_focus: FocusHandle,
     privacy_policy_focus: FocusHandle,
     consent_focus: [FocusHandle; 3],
     pub(super) appearance: appearance::Store,
@@ -278,6 +279,7 @@ impl State {
             privacy_focus: std::array::from_fn(|_| cx.focus_handle()),
             privacy_policy_focus: cx.focus_handle(),
             consent_focus: std::array::from_fn(|_| cx.focus_handle()),
+            global_hotkeys_focus: cx.focus_handle(),
             page: Page::default(),
             panel_scroll: gpui::ScrollHandle::new(),
             panel_height: panel_height(f32::from(window.viewport_size().height)),

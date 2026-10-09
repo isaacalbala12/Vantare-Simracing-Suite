@@ -1296,22 +1296,70 @@ impl Hub {
         }
         channels
     }
-    fn settings_hotkeys(&self, cx: &gpui::App) -> Div {
+    fn settings_hotkeys(&self, cx: &mut Context<Self>) -> Div {
         let keys = |items: &[(&str, &str)], help: &str| {
             section_body().children(items.iter().map(|(label, key)| {
                 section_row(label, help, orbit::keycap(*key, cx), self.shell.adapt, cx)
             }))
         };
-        stack().h_full()
-            .child(section_surface("Globales con el juego", Some("Próximamente"),
-                section_body().child(text("Las acciones en pista aún no tienen un registro global nativo. No hay combinaciones activas ni edición de atajos aquí.", 13.0, 400, orbit::ink_2(cx), cx)), cx))
-            .child(section_surface("En el Hub", None, keys(&[
-                ("Lanzar perfil favorito", "Ctrl L"), ("Buscar en Vantare", "Ctrl K"),
-                ("Contraer barra izquierda", "Ctrl B"), ("Contraer barra derecha", "Ctrl Alt B"),
-            ], "Con la ventana del Hub activa"), cx))
-            .child(section_surface("En Studio", None, keys(&[
-                ("Deshacer", "Ctrl Z"), ("Rehacer", "Ctrl Mayús Z / Ctrl Y"),
-            ], "Con el lienzo de Studio activo"), cx))
+        let mut globals = section_body();
+        for profile in self.launcher.read(cx).saved_profiles() {
+            if !profile.hotkey.is_empty() {
+                globals = globals.child(section_row(
+                    &profile.name,
+                    &self.launcher.read(cx).global_hotkey_status(&profile.id),
+                    orbit::keycap(profile.hotkey.clone(), cx),
+                    self.shell.adapt,
+                    cx,
+                ));
+            }
+        }
+        let launcher = self.launcher.read(cx);
+        if let Some(error) = launcher.global_hotkey_error() {
+            globals = globals.child(section_note(error, cx));
+        }
+        globals = globals.child(
+            orbit::small_button("settings-global-edit", "Editar atajos de perfiles", cx)
+                .track_focus(&self.settings.global_hotkeys_focus)
+                .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                    if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                        hub.navigate(Section::Launcher, cx);
+                        cx.stop_propagation();
+                    }
+                }))
+                .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Launcher, cx))),
+        );
+        stack()
+            .h_full()
+            .child(section_surface(
+                "Globales con el juego",
+                Some("Registro nativo de Windows · editables en cada perfil del Launcher"),
+                globals,
+                cx,
+            ))
+            .child(section_surface(
+                "En el Hub",
+                None,
+                keys(
+                    &[
+                        ("Lanzar perfil favorito", "Ctrl L"),
+                        ("Buscar en Vantare", "Ctrl K"),
+                        ("Contraer barra izquierda", "Ctrl B"),
+                        ("Contraer barra derecha", "Ctrl Alt B"),
+                    ],
+                    "Con la ventana del Hub activa",
+                ),
+                cx,
+            ))
+            .child(section_surface(
+                "En Studio",
+                None,
+                keys(
+                    &[("Deshacer", "Ctrl Z"), ("Rehacer", "Ctrl Mayús Z / Ctrl Y")],
+                    "Con el lienzo de Studio activo",
+                ),
+                cx,
+            ))
     }
     fn settings_privacy(&self, cx: &mut Context<Self>) -> Div {
         stack()

@@ -78,7 +78,13 @@ impl Hub {
         if self.launcher.read(cx).launch_progress().is_some() {
             return;
         }
-        if let Some(id) = self.launcher.read(cx).default_profile_id() {
+        if let Some(id) = self.launcher.read(cx).default_profile_id().filter(|id| {
+            self.launcher
+                .read(cx)
+                .saved_profiles()
+                .iter()
+                .any(|profile| &profile.id == id && profile.favorite)
+        }) {
             self.launch_profile(&id, cx);
         } else {
             self.navigate(Section::Launcher, cx);
@@ -195,33 +201,39 @@ impl Hub {
         if self.shell_zoom_key(event, window, cx) {
             return;
         }
-        if key.modifiers.control && key.modifiers.alt && key.key.eq_ignore_ascii_case("b") {
-            self.shell.column_open = !self.shell.column_open;
-            cx.notify();
-            cx.stop_propagation();
-            return;
-        }
-        if key.modifiers.control && key.key.eq_ignore_ascii_case("b") {
-            self.toggle_sidebar(cx);
-            cx.stop_propagation();
-            return;
-        }
-        if key.modifiers.control && key.modifiers.shift && key.key.eq_ignore_ascii_case("n") {
+        if key.modifiers.control
+            && key.modifiers.shift
+            && !key.modifiers.alt
+            && key.key.eq_ignore_ascii_case("n")
+        {
             self.notifications
                 .update(cx, |center, cx| center.toggle_popover(window, cx));
-            cx.notify();
             cx.stop_propagation();
             return;
         }
-        if key.modifiers.control && key.key.eq_ignore_ascii_case("l") {
-            self.launch_favorite(cx);
-            cx.stop_propagation();
-            return;
-        }
-        if (key.modifiers.control || key.modifiers.platform) && key.key.eq_ignore_ascii_case("k") {
+        if key.modifiers.platform && !key.modifiers.alt && key.key.eq_ignore_ascii_case("k") {
             self.toggle_palette(window, cx);
             cx.stop_propagation();
             return;
+        }
+        if let Some(shortcut) = super::shortcuts::resolve(key) {
+            if !event.is_held {
+                match shortcut {
+                    super::shortcuts::Shortcut::Launch => self.launch_favorite(cx),
+                    super::shortcuts::Shortcut::Search => self.toggle_palette(window, cx),
+                    super::shortcuts::Shortcut::Left => self.toggle_sidebar(cx),
+                    super::shortcuts::Shortcut::Right => {
+                        self.shell.column_open = !self.shell.column_open;
+                        cx.notify();
+                    }
+                }
+            }
+            cx.stop_propagation();
+            return;
+        }
+        if self.section == Section::Studio && self.focus.is_focused(window) {
+            self.studio
+                .update(cx, |studio, cx| studio.handle_key(event, window, cx));
         }
         if self.shell.palette_open {
             self.refresh_query(cx);

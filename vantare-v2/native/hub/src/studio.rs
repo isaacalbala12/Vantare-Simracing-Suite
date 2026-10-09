@@ -1161,7 +1161,7 @@ impl Studio {
             self.rebuild(cx);
         }
     }
-    fn handle_key(
+    pub(crate) fn handle_key(
         &mut self,
         event: &gpui::KeyDownEvent,
         window: &mut Window,

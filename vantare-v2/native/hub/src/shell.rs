@@ -31,6 +31,7 @@ pub(crate) mod assets;
 mod chrome;
 mod foundations;
 mod input;
+mod shortcuts;
 pub mod navigation;
 #[path = "settings/mod.rs"]
 mod settings;

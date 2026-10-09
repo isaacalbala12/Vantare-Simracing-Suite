@@ -1884,7 +1884,8 @@ impl Studio {
                 let selected = item.id.clone();
                 let required = inspector::appearance(&item.settings).is_some()
                     && (column.metric_id == "driverName"
-                        || (matches!(&item.settings, Settings::Standings(_)) && column.metric_id == "position"));
+                        || (matches!(&item.settings, Settings::Standings(_))
+                            && column.metric_id == "position"));
                 panel = panel.child(orbit::setting_row(
                     &column.metric_id,
                     &column.id,

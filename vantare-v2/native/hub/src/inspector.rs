@@ -667,24 +667,26 @@ pub fn columns_mut(
     settings: &mut Settings,
 ) -> Option<&mut Vec<vantare_ui::standings::options::ColumnSetting>> {
     match settings {
-        Settings::Standings(s)
-            if s.design_system == vantare_ui::standings::DesignSystem::Vantare =>
-        {
-            Some(
-                s.columns
-                    .get_or_insert_with(|| vantare_ui::standings::vantare_template("standard")),
-            )
+        Settings::Standings(s) => {
+            if s.design_system == vantare_ui::standings::DesignSystem::Vantare {
+                Some(
+                    s.columns
+                        .get_or_insert_with(|| vantare_ui::standings::vantare_template("standard")),
+                )
+            } else {
+                s.columns.as_mut()
+            }
         }
-        Settings::Relative(s)
-            if s.design_system == vantare_ui::standings::DesignSystem::Vantare =>
-        {
-            Some(
-                s.columns
-                    .get_or_insert_with(|| vantare_ui::relative::vantare_template("standard")),
-            )
+        Settings::Relative(s) => {
+            if s.design_system == vantare_ui::standings::DesignSystem::Vantare {
+                Some(
+                    s.columns
+                        .get_or_insert_with(|| vantare_ui::relative::vantare_template("standard")),
+                )
+            } else {
+                s.columns.as_mut()
+            }
         }
-        Settings::Standings(s) => s.columns.as_mut(),
-        Settings::Relative(s) => s.columns.as_mut(),
         _ => None,
     }
 }
@@ -698,19 +700,39 @@ mod tests {
     use super::*;
     #[test]
     fn vantare_formats_and_default_columns_edit_the_productive_settings() {
-        for mut settings in [Settings::Standings(Default::default()), Settings::Relative(Default::default())] {
+        for mut settings in [
+            Settings::Standings(Default::default()),
+            Settings::Relative(Default::default()),
+        ] {
             let default = columns(&settings).expect("columnas por defecto");
             assert!(default.iter().any(|c| c.metric_id == "gap" && c.enabled));
-            let gap = columns_mut(&mut settings).expect("columnas editables").iter_mut()
-                .find(|c| c.metric_id == "gap").expect("gap");
+            let gap = columns_mut(&mut settings)
+                .expect("columnas editables")
+                .iter_mut()
+                .find(|c| c.metric_id == "gap")
+                .expect("gap");
             gap.enabled = false;
-            assert!(columns(&settings).expect("columnas").iter().any(|c| c.metric_id == "gap" && !c.enabled));
+            assert!(
+                columns(&settings)
+                    .expect("columnas")
+                    .iter()
+                    .any(|c| c.metric_id == "gap" && !c.enabled)
+            );
             for key in ["compact", "standard", "expanded"] {
-                let format = fields(&settings).into_iter().find(|f| f.title == "Formato de tabla").expect("formato");
-                let Control::Choice { set, .. } = format.control else { panic!("selector") };
+                let format = fields(&settings)
+                    .into_iter()
+                    .find(|f| f.title == "Formato de tabla")
+                    .expect("formato");
+                let Control::Choice { set, .. } = format.control else {
+                    panic!("selector")
+                };
                 set(&mut settings, key);
                 let normalized = settings.normalized();
-                assert_eq!(columns(&normalized), columns(&settings), "no truncar gap de Vantare");
+                assert_eq!(
+                    columns(&normalized),
+                    columns(&settings),
+                    "no truncar gap de Vantare"
+                );
             }
             assert!(!fields(&settings).iter().any(|f| f.title == "Diseño"));
         }

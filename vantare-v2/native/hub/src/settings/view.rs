@@ -1706,11 +1706,16 @@ impl Hub {
                 ]
             })
             .collect();
-        let mut events =
-            section_body()
+        let mut events = section_body().child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(12.0))
                 .child(self.settings.event_filter.clone())
                 .child(
                     div()
+                        .flex_1()
+                        .min_w_0()
                         .relative()
                         .child(self.settings.event_query.clone())
                         .when(
@@ -1726,7 +1731,8 @@ impl Hub {
                     orbit::button("settings-events-clear", "Limpiar filtros", cx).on_click(
                         cx.listener(|this, _, window, cx| this.clear_event_filters(window, cx)),
                     ),
-                );
+                ),
+        );
         if rows.is_empty() {
             events = events.child(section_note(
                 super::event_empty_message(observed.errors.len()),
@@ -1756,27 +1762,77 @@ impl Hub {
         .flex_1()
         .min_h_0()
     }
-    fn settings_statistics(connected: bool, cx: &gpui::App) -> Div {
-        let stats = orbit::neo_card(cx)
-            .p(px(12.0))
-            .gap(px(6.0))
-            .child(orbit::caps("Telemetría", 14.0, orbit::ink_2(cx), cx))
-            .child(text(
-                if connected { "Conectada" } else { "Esperando" },
-                16.0,
-                600,
-                orbit::ink(cx),
-                cx,
-            ));
+    fn settings_statistics(&self, cx: &gpui::App) -> Div {
+        let stats = div().grid().grid_cols(3).gap(px(10.0)).children(
+            [
+                ("Hub", "En ejecución", "v-home"),
+                (
+                    "Telemetría",
+                    if self.previous_source == Some(true) {
+                        "Conectada"
+                    } else {
+                        "Esperando simulador"
+                    },
+                    "pulse",
+                ),
+                (
+                    "Launcher",
+                    if self.settings.launcher_running {
+                        "Lanzando"
+                    } else {
+                        "En reposo"
+                    },
+                    "v-launch",
+                ),
+                (
+                    "Preferencias",
+                    if self.settings.general.is_ok() {
+                        "Cargadas"
+                    } else {
+                        "Error local"
+                    },
+                    "v-sliders",
+                ),
+                (
+                    "Envío diagnóstico",
+                    if vantare_services::diagnostics::configured() {
+                        "Configurado"
+                    } else {
+                        "Sin configurar"
+                    },
+                    "v-shield",
+                ),
+                (
+                    "Informe local",
+                    if self.settings.diagnostic.is_some() {
+                        "Preparado"
+                    } else {
+                        "Sin preparar"
+                    },
+                    "v-testing",
+                ),
+            ]
+            .map(|(label, value, icon)| {
+                orbit::neo_card(cx)
+                    .p(px(12.0))
+                    .gap(px(6.0))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(8.0))
+                            .child(orbit::icon(icon, 18.0, orbit::ink_3(cx)))
+                            .child(text(label, 13.0, 600, orbit::ink(cx), cx)),
+                    )
+                    .child(text(value, 12.0, 400, orbit::ink_3(cx), cx))
+            }),
+        );
         orbit::settings_group(1, "Estado de Vantare", stats, cx)
     }
     fn settings_diagnostics(&self, _compact: bool, cx: &mut Context<Self>) -> Div {
         stack()
             .h_full()
-            .child(Self::settings_statistics(
-                self.previous_source == Some(true),
-                cx,
-            ))
+            .child(self.settings_statistics(cx))
             .child(section_surface(
                 "Diagnóstico local",
                 None,

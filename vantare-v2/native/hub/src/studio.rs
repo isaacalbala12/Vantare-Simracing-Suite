@@ -973,7 +973,7 @@ impl Studio {
                 eprintln!("Studio: {error}");
             }
             let renderer = cx.new(|cx| {
-                overlay.ingest(self.preview_snapshot(item.settings.kind()), cx);
+                overlay.ingest(&self.settings_snapshot(&item.settings), cx);
                 overlay
             });
             let frame = cx.new(|_| CanvasFrame {
@@ -1047,6 +1047,19 @@ impl Studio {
     }
     fn preview_scale(&self) -> f32 {
         ZOOM_STEPS[self.zoom_step].map_or(self.fit_scale, |percent| f32::from(percent) / 100.0)
+    }
+    fn settings_snapshot(&self, settings: &Settings) -> std::borrow::Cow<'_, Snapshot> {
+        let photo = self.preview_snapshot(settings.kind());
+        if self.example
+            && self.real_photo.is_none()
+            && let Settings::Standings(value) = settings
+            && value.design_system == vantare_ui::standings::DesignSystem::Vantare
+            && value.classification_mode == "multiclass"
+        {
+            std::borrow::Cow::Owned(examples::multiclass(photo, value.row_count))
+        } else {
+            std::borrow::Cow::Borrowed(photo)
+        }
     }
 
     fn rescale_preview(&mut self, cx: &mut Context<Self>) {
@@ -1148,6 +1161,8 @@ impl Studio {
                 frame.opacity_preview = None;
                 cx.notify();
             });
+            self.reset_fields();
+            cx.notify();
         }
         if let Some(frame) = self.drag.take() {
             frame.update(cx, |frame, cx| {
@@ -1161,9 +1176,9 @@ impl Studio {
             });
             // Durante el gesto se congelaron todos: restaurar también los no arrastrados.
             for (_, frame) in &self.frames {
-                let kind = frame.read(cx).item.settings.kind();
+                let settings = frame.read(cx).item.settings.clone();
                 frame.read(cx).renderer.clone().update(cx, |renderer, cx| {
-                    renderer.ingest(self.preview_snapshot(kind), cx);
+                    renderer.ingest(&self.settings_snapshot(&settings), cx);
                 });
             }
         }
@@ -1887,8 +1902,8 @@ impl Studio {
                         || (matches!(&item.settings, Settings::Standings(_))
                             && column.metric_id == "position"));
                 panel = panel.child(orbit::setting_row(
-                    &column.metric_id,
-                    &column.id,
+                    inspector::column_label(&column.metric_id),
+                    "",
                     orbit::toggle(
                         "column-visible",
                         "Mostrar columna",

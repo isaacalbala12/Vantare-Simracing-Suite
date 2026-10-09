@@ -652,6 +652,29 @@ pub fn pending(settings: &Settings) -> Vec<String> {
 }
 
 /// La familia de tablas comparte el tipo público de columnas; no recreamos sus defaults.
+pub fn column_label(metric: &str) -> &'static str {
+    match metric {
+        "position" => "Posición",
+        "positionsGained" => "Posiciones ganadas",
+        "driverName" => "Piloto",
+        "carNumber" | "driverNumber" => "Dorsal",
+        "vehicle" => "Coche",
+        "tireCompound" => "Neumático",
+        "pit" => "Paradas",
+        "sectors" => "Sectores",
+        "lastLap" => "Última vuelta",
+        "bestLap" => "Mejor vuelta",
+        "interval" => "Intervalo",
+        "gap" => "Diferencia",
+        "lapDelta" => "Vueltas de diferencia",
+        "driverRating" => "Nivel del piloto",
+        "safetyRating" => "Seguridad",
+        "trend" => "Tendencia",
+        "trackStrip" => "Tira de pista",
+        "class" => "Clase",
+        _ => "Columna",
+    }
+}
 pub fn columns(settings: &Settings) -> Option<Vec<vantare_ui::standings::options::ColumnSetting>> {
     match settings {
         Settings::Standings(s) => s.columns.clone().or_else(|| {

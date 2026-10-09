@@ -56,6 +56,24 @@ pub fn tables() -> Result<Snapshot, String> {
     Ok(photo)
 }
 
+/// Reparte la escena multiclase entre sus tres clases según el número de filas.
+/// Así cambiar a Multiclase muestra las franjas también con una tabla pequeña.
+pub fn multiclass(photo: &Snapshot, rows: usize) -> Snapshot {
+    let mut photo = photo.clone();
+    #[allow(clippy::cast_possible_truncation)]
+    // La escena contiene tres clases y como máximo 30 filas.
+    let per_class = rows.clamp(1, 30).div_ceil(3) as u32;
+    photo.state.cars.retain(|car| {
+        car.class_position
+            .current()
+            .is_some_and(|p| *p <= per_class)
+    });
+    if let Some(player) = &mut photo.state.player {
+        player.car = CarId(per_class.div_ceil(2));
+    }
+    photo
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -73,5 +91,16 @@ mod tests {
         let own = vantare_domain::relative_vantare::project(&photo, 8, 8, true);
         let all = vantare_domain::relative_vantare::project(&photo, 8, 8, false);
         assert!(all.strip.len() > own.strip.len());
+        for rows in [3, 8, 20, 30] {
+            let multi = multiclass(&photo, rows);
+            let board = vantare_domain::standings_vantare::project(&multi, Default::default());
+            assert_eq!(board.groups.len(), 3);
+            assert!(board.groups.iter().all(|g| !g.rows.is_empty()));
+            assert_eq!(
+                board.groups.iter().map(|g| g.rows.len()).sum::<usize>(),
+                rows.div_ceil(3) * 3
+            );
+            assert!(multi.state.player_car().is_some());
+        }
     }
 }

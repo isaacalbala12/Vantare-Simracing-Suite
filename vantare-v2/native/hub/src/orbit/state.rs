@@ -3,18 +3,28 @@
 pub struct OptionItem {
     pub label: String,
     pub enabled: bool,
+    pub lock_reason: Option<&'static str>,
 }
 impl OptionItem {
     pub fn new(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
             enabled: true,
+            lock_reason: None,
         }
     }
     pub fn disabled(label: impl Into<String>) -> Self {
         Self {
             label: label.into(),
             enabled: false,
+            lock_reason: None,
+        }
+    }
+    pub fn locked(label: impl Into<String>, reason: &'static str) -> Self {
+        Self {
+            label: label.into(),
+            enabled: false,
+            lock_reason: Some(reason),
         }
     }
 }

@@ -46,6 +46,7 @@ fn choices(labels: &[&str], disabled: Option<usize>) -> Vec<OptionItem> {
         .map(|(i, label)| OptionItem {
             label: (*label).into(),
             enabled: disabled != Some(i),
+            lock_reason: None,
         })
         .collect()
 }

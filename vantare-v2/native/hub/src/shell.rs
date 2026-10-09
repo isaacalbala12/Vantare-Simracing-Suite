@@ -90,16 +90,7 @@ impl Hub {
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
         self.poll_beta_update(cx);
-        if self.capture.is_none() {
-            let access = self.remote.update(cx, |remote, cx| {
-                remote.refresh_license(cx);
-                remote.navigation_access()
-            });
-            if self.shell.access != access {
-                self.shell.access = access;
-                cx.notify();
-            }
-        }
+        self.refresh_access(cx);
         self.notifications.update(cx, |notifications, cx| {
             notifications.set_tester(self.shell.access.beta_visible(Section::Testing), cx);
         });
@@ -218,6 +209,21 @@ impl Hub {
         }
     }
 
+    fn refresh_access(&mut self, cx: &mut Context<Self>) {
+        if self.capture.is_none() {
+            let access = self.remote.update(cx, |remote, cx| {
+                remote.refresh_license(cx);
+                remote.navigation_access()
+            });
+            if self.shell.access != access {
+                self.shell.access = access;
+                self.studio
+                    .update(cx, |studio, cx| studio.set_access(access, cx));
+                cx.notify();
+            }
+        }
+    }
+
     #[allow(clippy::too_many_lines)] // Composición de las dos páginas de módulos, sin lógica adicional.
     fn upcoming_page(&self, cx: &mut Context<Self>) -> gpui::Div {
         let (description, icon, features) = if self.section == Section::Strategy {
@@ -300,7 +306,14 @@ impl Hub {
                                 orbit::ink(cx),
                                 cx,
                             ))
-                            .child(orbit::pill("Próximamente", orbit::Tone::Neutral, cx)),
+                            .child(orbit::pill(
+                                self.shell
+                                    .access
+                                    .beta_lock(self.section)
+                                    .unwrap_or("Próximamente"),
+                                orbit::Tone::Neutral,
+                                cx,
+                            )),
                     )
                     .child(orbit::text(description, 16.0, 400, orbit::ink_2(cx), cx)),
             )
@@ -1041,6 +1054,14 @@ impl Hub {
         let workshop = create_workshop(prepared, cx);
         let snapshot = workshop.read(cx).scene.snapshot().clone();
         let studio = cx.new(|cx| Studio::new(prepared_studio, cx));
+        #[cfg(feature = "parity-capture")]
+        let capture_policy =
+            capture.is_some() && std::env::var_os("VANTARE_CAPTURE_POLICY").is_some();
+        #[cfg(not(feature = "parity-capture"))]
+        let capture_policy = false;
+        if (capture.is_none() && demo.is_none()) || capture_policy {
+            studio.update(cx, |studio, cx| studio.set_access(access, cx));
+        }
         let prefs = studio.read(cx).preferences();
         // Solo QA explícita usa la escena de autoría; el producto espera fotos IPC reales.
         let home_snapshot = if capture.is_some() || demo.is_some() {
@@ -1087,6 +1108,8 @@ impl Hub {
         cx.observe(&remote, |this, remote, cx| {
             if this.capture.is_none() {
                 this.shell.access = remote.read(cx).navigation_access();
+                this.studio
+                    .update(cx, |studio, cx| studio.set_access(this.shell.access, cx));
                 this.notifications.update(cx, |notifications, cx| {
                     notifications.set_tester(this.shell.access.beta_visible(Section::Testing), cx);
                 });

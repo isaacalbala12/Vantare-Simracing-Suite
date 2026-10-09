@@ -139,6 +139,7 @@ impl Choice {
             .tab_stop(false)
             .h(px(OPTION_H))
             .px(px(RADIUS_CHIP + FOCUS_WIDTH))
+            .gap(px(6.0))
             .rounded(px(RADIUS_CHIP))
             .flex()
             .items_center()
@@ -149,24 +150,30 @@ impl Choice {
             .when(!option.enabled, |s| {
                 super::inactive(s)
                     .opacity(DISABLED)
-                    .aria_description("Deshabilitado")
+                    .aria_description(option.lock_reason.unwrap_or("Deshabilitado"))
             })
             .when(option.enabled, |s| {
                 s.cursor_pointer().hover(|s| s.bg(rgba(line_row(cx))))
             })
+            .when(option.lock_reason.is_some(), |s| {
+                s.child(icon("v-lock", 12.0, skin(cx).text3))
+            })
             .child(
-                text(
-                    option.label.clone(),
-                    BODY,
-                    if selected { 650 } else { 500 },
-                    ink_2(cx),
-                    cx,
-                )
-                .flex_1()
-                .min_w_0()
-                .whitespace_nowrap()
-                .text_ellipsis()
-                .overflow_hidden(),
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .child(text(
+                        option.label.clone(),
+                        BODY,
+                        if selected { 650 } else { 500 },
+                        skin(cx).text2,
+                        cx,
+                    ))
+                    .when_some(option.lock_reason, |s, reason| {
+                        s.child(text(reason, SECONDARY, 400, skin(cx).text3, cx))
+                    }),
             )
             .when(selected, |s| {
                 s.child(text("✓", SECONDARY, 650, coral(cx), cx))

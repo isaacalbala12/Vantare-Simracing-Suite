@@ -192,6 +192,8 @@ pub(super) fn reminder_button(
     }))
 }
 pub(super) fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
+    let compact = calendar.view == super::CalendarView::Times
+        && calendar.adapt.density == orbit::adapt::Density::Xs;
     let available: BTreeSet<_> = calendar
         .schedule
         .series
@@ -205,7 +207,10 @@ pub(super) fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
         .iter()
         .map(|series| series.tier.clone())
         .collect();
-    let mut row = div().flex().flex_wrap().gap(px(6.0));
+    let mut row = div()
+        .flex()
+        .flex_wrap()
+        .gap(px(if compact { 4.0 } else { 6.0 }));
     for class in std::iter::once(None).chain(available.into_iter().map(Some)) {
         let label = class.clone().unwrap_or_else(|| "Todas las clases".into());
         row = row.child(
@@ -222,6 +227,7 @@ pub(super) fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
                         .bg(rgb(class_color(class, cx))),
                 )
             })
+            .when(compact, |button| button.h(px(28.0)).px(px(7.0)))
             .aria_label(label.clone())
             .child(orbit::text(label, 12.0, 500, orbit::ink_2(cx), cx))
             .when(calendar.class_filter == class, |button| {
@@ -233,7 +239,10 @@ pub(super) fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
             })),
         );
     }
-    let mut levels = div().flex().flex_wrap().gap(px(6.0));
+    let mut levels = div()
+        .flex()
+        .flex_wrap()
+        .gap(px(if compact { 4.0 } else { 6.0 }));
     for tier in std::iter::once(None).chain(tiers.into_iter().map(Some)) {
         let label = match tier.as_deref() {
             None => "Todos los niveles",
@@ -250,6 +259,7 @@ pub(super) fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
                 "",
                 cx,
             )
+            .when(compact, |button| button.h(px(28.0)).px(px(7.0)))
             .aria_label(label.clone())
             .child(orbit::text(
                 label.clone(),
@@ -275,7 +285,8 @@ pub(super) fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
     div()
         .flex()
         .flex_col()
-        .gap(px(8.0))
+        .gap(px(if compact { 6.0 } else { 8.0 }))
+        .when(compact, |filters| filters.flex_row().flex_wrap())
         .child(row)
         .child(levels)
 }
@@ -484,13 +495,14 @@ fn race_row(
     now: DateTime<Utc>,
     cx: &mut Context<Calendar>,
 ) -> Div {
+    let compact = calendar.adapt.density == orbit::adapt::Density::Xs;
     let soon = (row.at - now).num_minutes() < 10;
     div()
         .flex()
         .items_center()
         .gap(px(10.0))
-        .min_h(px(44.0))
-        .py(px(4.0))
+        .min_h(px(if compact { 36.0 } else { 40.0 }))
+        .py(px(2.0))
         .px(px(18.0))
         .border_b_1()
         .border_color(rgba(orbit::line_row(cx)))
@@ -534,7 +546,7 @@ fn race_row(
                 .children(
                     classes(row.series)
                         .into_iter()
-                        .map(|class| class_chip(class, cx)),
+                        .map(|class| class_chip(class, cx).when(compact, |chip| chip.py(px(2.0)))),
                 ),
         )
         .child(
@@ -561,18 +573,25 @@ fn race_row(
                 .flex_none()
                 .flex()
                 .gap(px(4.0))
-                .child(follow_button(calendar, row.series, cx))
-                .child(reminder_button(calendar, row.series, cx)),
+                .child(
+                    follow_button(calendar, row.series, cx)
+                        .when(compact, |button| button.size(px(26.0))),
+                )
+                .child(
+                    reminder_button(calendar, row.series, cx)
+                        .when(compact, |button| button.size(px(26.0))),
+                ),
         )
 }
 fn times_board_header(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> Div {
+    let compact = calendar.adapt.density == orbit::adapt::Density::Xs;
     div()
         .flex()
         .items_center()
         .flex_wrap()
-        .gap(px(12.0))
+        .gap(px(if compact { 8.0 } else { 12.0 }))
         .px(px(18.0))
-        .py(px(12.0))
+        .py(px(if compact { 8.0 } else { 12.0 }))
         .child(orbit::neo_header("Horario · próxima hora", "v-calendar", cx).flex_none())
         .when(
             matches!(calendar.schedule.is_current(now), Ok(true)),

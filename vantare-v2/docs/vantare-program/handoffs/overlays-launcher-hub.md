@@ -1,3 +1,33 @@
+## #1528 — Ronda 4 tras revisión 8,962/10 (2026-10-10)
+
+Entrega aislada sobre `a2adeb02`, misma rama `vantareapp/isa-1528-paridad-visual`
+y base de integración `5e1da3f6`; dos commits, uno por punto, sin delegación.
+Inicio reutiliza el presupuesto del estado real en render y tarjeta: descuenta
+el aviso y reserva cabecera, título, subtítulo, chips, métricas y acciones completas.
+El test recorre el límite inferior de cada hijo en siete tamaños, carril abierto/
+cerrado y con/sin error; las capturas 1280/1920 muestran subtítulo y botones íntegros.
+Tiempos XS reúne todos los filtros en una línea cuando caben, reduce controles
+a 28 px y filas a 36 px (40 en ancho), con padding menor. Nueve salidas visibles
+frente a seis; opciones, favoritos, avisos, scroll y procedencia real conservados.
+Sin split/clima inventados, nuevas dependencias ni renderer; kit Orbit existente.
+Archivos: native/hub/src/shell/foundations.rs, native/hub/src/calendar/beta.rs y este handoff.
+
+Gates por cola: fmt, Clippy workspace -D warnings, Nextest 1406 PASS / 7 skips,
+Hub 405 PASS / 1 skip y lifecycle 18 PASS. Build QA PASS; conserva el aviso previo
+unused cx de analysis/view.rs exclusivo de parity-capture, sin ampliar el alcance.
+12 pares app/HTML recapturados a 1280/1920 en Vantare: los cuatro estados de Inicio
+y Tiempos vacío/publicado. Superposiciones/diffs a tamaño original; matriz 76,
+r4-before conserva la evidencia anterior y final-manifest.json acredita SHA/hash.
+Informe doce líneas C:/tmp/ui-r10/informe-1528.md; detalle en 1528-evidence/diferencias.md
+ y checks.md. La nota anterior 8,9619318 pertenece a review-1528-r3.md; ≥9 requiere
+reevaluación independiente. Roadmap/Testing conservan Próximamente por Isaac;
+datos reales pendientes en [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+Verificación manual: Inicio con aviso en ambas resoluciones, botones Editar overlay/
+Detener completos; filtros, favorito, avisos y scroll de Tiempos con más salidas.
+Interacción humana, LMU y DPI físico no acreditados por QA; plan.md ausente, no recreado.
+Sin push, PR, merge, promoción, release ni CI remoto; únicamente comentario de evidencia
+en #1528 dentro de la autorización existente.
+
 ## #1528 — Ronda 3 tras revisión 8,88/10 (2026-10-10)
 
 Entrega aislada sobre `abb752b3`, rama `vantareapp/isa-1528-paridad-visual`,

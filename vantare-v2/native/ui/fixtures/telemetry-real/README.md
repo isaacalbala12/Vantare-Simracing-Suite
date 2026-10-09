@@ -47,3 +47,17 @@ para dibujar el histórico temporal. El tramo observado muestra el jugador
 detenido (freno 100 %, acelerador y embrague 0 %); no acredita conducción live.
 ACC se contrasta además con la foto real existente. La ausencia de embrague
 se prueba como vector de degradación explícito, no como captura real.
+
+## Probar con — Studio nativo (#1496)
+
+Boxes usa las doce fotos exactas de lmu47-input.sequence.json y la foto ACC.
+Vuelta y foto elige un Snapshot completo: no altera vuelta, revisión, reloj,
+identidad, datos ausentes ni estimados. Todos los widgets ven la misma foto.
+El jugador permanece en vuelta0/en boxes en las trece fotos: no es una vuelta
+cronometrada ni conducción. En vivo sigue exclusivamente IPC; Ejemplo general
+sigue siendo la demostración visual explícita y no se rotula como corpus real.
+Salida no está observada (Preparing ausente); Carrera tampoco (solo Practice);
+Lluvia está registrada en0; no existe señal de noche/hora del día. Las cuatro
+condiciones se dejan Próximamente, sin inferir noche de elapsed_s ni escoger
+otro coche como jugador. Se inspeccionaron también los goldens de procedencia:
+lmu47/acc tampoco contienen salida/carrera/lluvia/noche del jugador.

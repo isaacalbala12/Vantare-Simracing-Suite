@@ -1,4 +1,5 @@
 //! Editor espacial sobre el documento y el renderer compartidos.
+mod scenes;
 use crate::{
     document::Editor,
     inspector::{self, Control, Tab},
@@ -41,14 +42,14 @@ fn keyboard_nudge(key: &gpui::Keystroke) -> Option<((i8, i8), bool)> {
 fn unavailable_scenario(
     index: usize,
     label: &'static str,
+    reason: &'static str,
     cx: &gpui::App,
 ) -> gpui::Stateful<gpui::Div> {
-    const REASON: &str = "Próximamente: no hay una escena de ejemplo para esta condición.";
     div()
         .id(("studio-scenario", index))
         .role(gpui::Role::Label)
         .aria_label(format!("{label} · Próximamente"))
-        .aria_description(REASON)
+        .aria_description(reason)
         .h(px(30.0))
         .px(px(8.0))
         .flex_none()
@@ -56,7 +57,7 @@ fn unavailable_scenario(
         .items_center()
         .opacity(orbit::DISABLED)
         .child(orbit::text(label, 12.0, 650, orbit::ink_2(cx), cx))
-        .tooltip(|_, cx| cx.new(|_| orbit::Tooltip(REASON.to_owned())).into())
+        .tooltip(move |_, cx| cx.new(|_| orbit::Tooltip(reason.to_owned())).into())
 }
 
 fn fitted_scale(width: f32, height: f32) -> Option<f32> {
@@ -294,6 +295,7 @@ fn preview_snapshot<'a>(
 }
 
 pub struct Prepared {
+    photos: Vec<scenes::Photo>,
     editor: Editor,
     examples: Vec<(Kind, Snapshot)>,
 }
@@ -359,6 +361,7 @@ impl Prepared {
         Ok(Self {
             editor,
             examples: example_snapshots()?,
+            photos: scenes::load()?,
         })
     }
 }
@@ -391,6 +394,9 @@ pub struct Studio {
     snapshot: Snapshot,
     examples: Vec<(Kind, Snapshot)>,
     example: bool,
+    photos: Vec<scenes::Photo>,
+    real_photo: Option<usize>,
+    photo_choice: Option<Entity<Choice>>,
     status: Result<(), String>,
     drag: Option<Entity<CanvasFrame>>,
     focus: FocusHandle,
@@ -806,6 +812,9 @@ impl Studio {
             snapshot: Snapshot::default(),
             examples: prepared.examples,
             example: true,
+            photos: prepared.photos,
+            real_photo: None,
+            photo_choice: None,
             status,
             drag: None,
             focus: cx.focus_handle(),
@@ -902,6 +911,11 @@ impl Studio {
         cx.notify();
     }
     fn preview_snapshot(&self, kind: Kind) -> &Snapshot {
+        if self.example
+            && let Some(index) = self.real_photo
+        {
+            return &self.photos[index].snapshot;
+        }
         preview_snapshot(self.example, &self.examples, &self.snapshot, kind)
     }
     fn preview_scale(&self) -> f32 {
@@ -1135,6 +1149,28 @@ impl Studio {
                 )
             });
             self.catalog = Some(catalog);
+            let photo_choice = cx.new(|cx| {
+                Choice::new(
+                    "Vuelta y foto real",
+                    ChoiceKind::Dropdown,
+                    self.photos
+                        .iter()
+                        .map(|p| OptionItem::new(p.label.clone()))
+                        .collect(),
+                    Some(0),
+                    window,
+                    cx,
+                )
+            });
+            cx.subscribe(&photo_choice, |this, _, event: &ChoiceChanged, cx| {
+                if this.real_photo.is_some() && event.0 < this.photos.len() {
+                    this.cancel_drag(cx);
+                    this.real_photo = Some(event.0);
+                    this.rebuild(cx);
+                }
+            })
+            .detach();
+            self.photo_choice = Some(photo_choice);
         }
     }
     #[allow(clippy::cast_possible_truncation)] // Entradas acotadas a ±100000 y opacidad 0..1.
@@ -1516,6 +1552,7 @@ impl Studio {
                     .on_click(cx.listener(move |this, _, _, cx| {
                         this.cancel_drag(cx);
                         this.example = example;
+                        this.real_photo = None;
                         this.rebuild(cx);
                     })),
             );
@@ -2207,32 +2244,51 @@ impl Studio {
         };
         let mut row = div()
             .flex()
+            .flex_wrap()
             .items_center()
             .gap(px(6.0))
             .min_w_0()
             .child(text("Probar con", 11.0, 500, orbit::ink_3(cx), cx));
-        for (index, label) in ["Salida", "Carrera", "Boxes", "Lluvia", "Noche"]
-            .into_iter()
-            .enumerate()
-        {
-            let control = orbit::ghost_button(("studio-scenario", index), label, cx)
-                .h(px(30.0))
-                .px(px(8.0))
-                .flex_none();
-            row = if label == "Carrera" {
+        for (index, scenario) in scenes::Scenario::ALL.into_iter().enumerate() {
+            let label = scenario.label();
+            let first = self
+                .photos
+                .iter()
+                .position(|p| scenario.matches(&p.snapshot));
+            row = if let Some(first) = first {
+                let active = self.example
+                    && self
+                        .real_photo
+                        .is_some_and(|i| scenario.matches(&self.photos[i].snapshot));
                 row.child(
-                    control
-                        .aria_selected(self.example)
-                        .when(self.example, |button| orbit::nav_active(button, cx))
-                        .on_click(cx.listener(|this, _, _, cx| {
+                    orbit::ghost_button(("studio-scenario", index), label, cx)
+                        .h(px(30.0))
+                        .px(px(8.0))
+                        .flex_none()
+                        .aria_selected(active)
+                        .when(active, |b| orbit::nav_active(b, cx))
+                        .on_click(cx.listener(move |this, _, _, cx| {
                             this.cancel_drag(cx);
                             this.example = true;
+                            this.real_photo = Some(
+                                this.photo_choice
+                                    .as_ref()
+                                    .and_then(|c| c.read(cx).state.selected)
+                                    .filter(|i| scenario.matches(&this.photos[*i].snapshot))
+                                    .unwrap_or(first),
+                            );
                             this.rebuild(cx);
                         })),
                 )
             } else {
-                row.child(unavailable_scenario(index, label, cx))
+                row.child(unavailable_scenario(index, label, scenario.reason(), cx))
             };
+        }
+        if self.example
+            && self.real_photo.is_some()
+            && let Some(choice) = &self.photo_choice
+        {
+            row = row.child(div().w(px(240.0)).flex_none().child(choice.clone()));
         }
         row.child(div().flex_1()).child(
             orbit::mono_text(laps, 10.0, orbit::ink_3(cx), cx)
@@ -2380,6 +2436,39 @@ mod tests {
             });
         });
         studio.drag = Some(frame);
+    }
+    #[test]
+    fn real_scene_and_photo_selection_use_same_snapshot_for_all_widgets_without_editing_layout() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let layout = studio.editor.layout().clone();
+                for index in [0, 11, 12] {
+                    studio.real_photo = Some(index);
+                    studio.example = true;
+                    studio.rebuild(cx);
+                    for kind in Kind::ALL {
+                        assert!(std::ptr::eq(
+                            studio.preview_snapshot(*kind),
+                            std::ptr::from_ref(&studio.photos[index].snapshot)
+                        ));
+                    }
+                }
+                assert_eq!(studio.editor.layout(), &layout);
+                studio.example = false;
+                assert!(std::ptr::eq(
+                    studio.preview_snapshot(Kind::Standings),
+                    std::ptr::from_ref(&studio.snapshot)
+                ));
+                assert_eq!(
+                    Editor::open(file.path.clone()).expect("disk").layout(),
+                    &layout
+                );
+            });
+            cx.quit();
+        });
     }
     #[test]
     fn resize_preview_freezes_document_and_commit_roundtrips_with_one_undo() {
@@ -2601,7 +2690,8 @@ mod tests {
                 .into_iter()
                 .enumerate()
             {
-                let control = unavailable_scenario(index, label, cx);
+                let control =
+                    unavailable_scenario(index, label, scenes::Scenario::ALL[index].reason(), cx);
                 assert_eq!(control.a11y_role(), Some(gpui::Role::Label));
                 let mut node = gpui::accesskit::Node::new(gpui::Role::Label);
                 control.write_a11y_info(&mut node);
@@ -2689,7 +2779,7 @@ mod tests {
         assert_eq!(preview_origin(800.0, 400.0, 1.0), (0.0, 0.0));
     }
     #[test]
-    fn carrera_reuses_existing_race_examples_for_every_widget() {
+    fn general_examples_remain_explicit_design_samples_for_every_widget() {
         for (_, snapshot) in example_snapshots().expect("ejemplos") {
             assert_eq!(
                 snapshot.state.session.kind.current(),

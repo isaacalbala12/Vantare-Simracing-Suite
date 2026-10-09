@@ -5998,3 +5998,12 @@ en UI.layout, frame común en Overlay, ocho tiradores e inspector/Alt+flechas; p
 independiente y commit único. Defaults conservan layouts anteriores; máximos/mínimos
 y proporción definidos en arrastre-y-resize.md. Pruebas/gates/capturas en curso.
 Plan.md ausente también en origin/nightly; no se recrea ni se publica roadmap.
+
+Resize guardado en b69c9224; Clippy PASS y Studio20/20. UI178/179 (dos ignorados):
+dos tests Cargo del mismo proceso colisionaron en su pipe PID/kind/index; el caso
+fallido aislado PASS. Nextest ejecuta cada caso en proceso propio; no se debilita.
+Escenas: fotos reales completas de LMU47/ACC en Boxes, selector Vuelta y foto
+sin inventar laps; el corpus solo observa vuelta0. Salida/Carrera/Lluvia/Noche
+Próximamente por señales ausentes, Practice, lluvia0 y ausencia de hora del día.
+Regresiones comprueban serialización exacta, estado real y ninguna escritura
+al cambiar foto, selección o En vivo. Capturas/gates/latencia aún en curso.

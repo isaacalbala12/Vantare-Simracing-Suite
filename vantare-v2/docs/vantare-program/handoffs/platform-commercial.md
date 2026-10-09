@@ -2002,3 +2002,8 @@ con referencias/arreglo. E4, gates y Setup0.0.972/QA pendientes; sin promoción.
 - Setup0.0.972 E:/tmp/beta-local/0.0.972/VantareSetup.exe, fuente5b limpia/Release/dev/NotSigned; SHA256E78741E2450750759A637DF59C6C077F03281301D73EB314D5E95BAAAB9E9807. QA1492 instalada/retirada, primer consentimiento y rechazo/reapertura/puerta de sesión sin servicio; no login comercial. Inventario real nuevo idéntico C8E36EF7A93905E8EFBF96A2BEA0FF947FABFA75951E09F77C89AFC694AAEC6D, mutex libre; datos QA retenidos.
 - F4 notificado en comentario PR1523#6078461742 con archivo/líneas/motivo/arreglo de fuente native aacd1e4d; #1514 intacta. Remoto33be660d/draft no publica el Hub: pendiente traslado por su worker. Evidencia/manual/archivos/omisiones en C:/tmp/ui-r10/integracion-v5-evidence/VERIFICACION.md; bloque v5≤6líneas en C:/tmp/ui-r10/informe-integracion-arreglos.md.
 - Pendientes: nueva review≥9, aceptación, traslado#1514, CI remota y matriz comercial real. Sin delegación/push/PR nuevo/merge/promoción/release/deploy/firma/pago; solo comentarios autorizados. plan.md ausente en base, no se inventa otro roadmap.
+
+
+### #1496 · v6 F5 · recuperación de Cuenta en verificación (2026-10-09)
+
+Guarda heredada en shell/navigation.rs (fuente native incorporada aacd1e4d): blocked/!verified también impedía abrir Cuenta, consultar derechos y cerrar sesión. Integración limita la excepción a Account y conserva TTL, Feed, OAuth/UUID, grant y herramientas protegidas. Tests de revocación/caducidad/ausencia y consumidor añadidos. Traslado al worker #1514 por comentario PR1523 pendiente de la evidencia final; su rama no se modifica. Remoto PR1523 se comprobará sin atribuir líneas Hub inexistentes al HEAD remoto.

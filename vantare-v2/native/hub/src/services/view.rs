@@ -1098,7 +1098,7 @@ impl Remote {
             if verified {
                 "Acceso verificado · activo"
             } else {
-                "Acceso sin verificar"
+                self.account_access_label()
             },
             if verified {
                 orbit::Tone::Success
@@ -1107,6 +1107,15 @@ impl Remote {
             },
             cx,
         ))
+    }
+    fn account_access_label(&self) -> &'static str {
+        if account_demo().is_some() {
+            account_plan_label(self.account_access().verified)
+        } else {
+            self.access
+                .policy_denial(vantare_ipc::control::wall_ms().unwrap_or(u64::MAX))
+                .unwrap_or_else(|| account_plan_label(self.account_access().verified))
+        }
     }
     fn purchase_status(&self, cx: &mut Context<Self>) -> gpui::Div {
         div().when_some(self.purchase_message.as_ref(), |body, message| {
@@ -1213,7 +1222,7 @@ impl Remote {
             )
             .child(identity_actions)
     }
-    fn account_modules(included: [bool; 6], cx: &gpui::App) -> gpui::Div {
+    fn account_modules(included: [bool; 6], compact: bool, cx: &gpui::App) -> gpui::Div {
         let mut modules = div().flex().flex_col().w_full().gap(px(4.0));
         for (index, (section, label)) in ACCOUNT_MODULES.into_iter().enumerate() {
             if section == Section::Analysis {
@@ -1230,16 +1239,33 @@ impl Remote {
             modules = modules.child(
                 div()
                     .flex()
+                    .flex_none()
                     .items_center()
                     .justify_between()
                     .gap(px(12.0))
                     .border_b_1()
                     .border_color(rgba(orbit::line_row(cx)))
-                    .child(
-                        orbit::summary_row(label, description, icon, cx)
-                            .border_0()
-                            .flex_1(),
-                    )
+                    .when(compact, |row| {
+                        row.h(px(32.0)).child(
+                            div()
+                                .id(label)
+                                .role(gpui::Role::Group)
+                                .aria_label(label)
+                                .flex()
+                                .flex_1()
+                                .items_center()
+                                .gap(px(12.0))
+                                .child(orbit::icon(icon, 18.0, orbit::ink_3(cx)))
+                                .child(text(label, 13.0, 500, orbit::ink(cx), cx)),
+                        )
+                    })
+                    .when(!compact, |row| {
+                        row.child(
+                            orbit::summary_row(label, description, icon, cx)
+                                .border_0()
+                                .flex_1(),
+                        )
+                    })
                     .child(orbit::pill(
                         account_module_status(section, included[index]),
                         if !soon && included[index] {
@@ -1255,10 +1281,15 @@ impl Remote {
     }
     fn account_plan(&self, cx: &gpui::App) -> gpui::Div {
         let access = self.account_access();
+        let compact = self.adapt.density >= orbit::adapt::Density::B;
         orbit::neo_card(cx)
+            .when(compact, |card| card.p(px(16.0)).gap(px(8.0)))
             .child(orbit::neo_header("Módulos", "v-studio", cx))
-            .child(text("Acceso gratuito durante la beta. Estrategia e Ingeniero estarán disponibles próximamente.", 13.0, 400, orbit::ink_2(cx), cx))
-            .child(Self::account_modules(account_module_access(access, account_demo().is_some()), cx).id("account-modules-scroll").flex_grow(1.0).min_h_0().overflow_y_scroll())
+            .when(!compact, |card| card.child(text("Acceso gratuito durante la beta. Estrategia e Ingeniero estarán disponibles próximamente.", 13.0, 400, orbit::ink_2(cx), cx)))
+            .child(Self::account_modules(account_module_access(access, account_demo().is_some()), compact, cx).id("account-modules-scroll")
+                .when(compact, |list| list.flex_none().h(px(68.0)))
+                .when(!compact, |list| list.flex_grow(1.0).min_h_0())
+                .overflow_y_scroll())
     }
     fn account_session(&self, cx: &gpui::App) -> gpui::Div {
         let demo = account_demo().is_some();
@@ -1378,7 +1409,7 @@ impl Remote {
             .child(self.purchase_status(cx))
             .child(orbit::neo_card(cx).p(px(16.0))
                 .child(orbit::neo_header("Acceso beta", "key", cx))
-                .child(orbit::caps(account_plan_label(self.account_access().verified && !self.account_access().blocked), 24.0, orbit::ink(cx), cx))
+                .child(orbit::caps(self.account_access_label(), 24.0, orbit::ink(cx), cx))
                 .child(text("Acceso gratuito durante la beta para testers. La sesión valida tu acceso; no muestra ni copia claves privadas.", 13.0, 400, orbit::ink_2(cx), cx)))
             .child(self.account_plan(cx).flex_1().min_h_0())
             .when(self.adapt.show_notes(), |page| page.child(orbit::neo_card(cx).p(px(12.0))
@@ -1786,6 +1817,91 @@ mod purchase_tests {
             remote.observe_core_policy(policy.clone(), policy.checked_at_ms, cx);
         }
         remote.complete(reply, cx);
+    }
+    #[test]
+    fn denied_policy_keeps_manual_retry_and_logout_without_granting_tools() {
+        gpui_platform::headless().run(|cx| {
+            let file = crate::document::tests::File::new();
+            for denial in ["revoked", "expired", "missing"] {
+                let (send, requests) = mpsc::sync_channel(8);
+                let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+                remote.update(cx, |remote, cx| {
+                    let Reply::License { mut policy, .. } =
+                        license(vantare_ipc::control::CatalogAccess::Pro)
+                    else {
+                        unreachable!()
+                    };
+                    let now = policy.checked_at_ms;
+                    match denial {
+                        "revoked" => policy.error = Some("revocada".into()),
+                        "expired" => policy.valid_until_ms = Some(now),
+                        _ => policy = vantare_ipc::control::Policy::default(),
+                    }
+                    remote.observe_core_policy(policy, now, cx);
+                    let access = remote.navigation_access();
+                    assert_eq!(access.beta_lock(Section::Account), None);
+                    assert!(remote.account.signed_in && !remote.working());
+                    assert!(!access.verified);
+                    assert!(
+                        account_module_access(access, false)
+                            .iter()
+                            .all(|included| !included)
+                    );
+                    remote.request(Command::LicenseRenew, cx);
+                    remote.request(Command::LicenseRenew, cx);
+                    assert!(matches!(requests.try_recv(), Ok(Command::LicenseRenew)));
+                    assert!(requests.try_recv().is_err(), "un envío manual");
+                    remote.complete(
+                        Reply::Error {
+                            message: "QA reintento fallido".into(),
+                        },
+                        cx,
+                    );
+                    assert_eq!(remote.message, "QA reintento fallido");
+                    assert!(!remote.working());
+                    remote.request(Command::LicenseRenew, cx);
+                    assert!(matches!(requests.try_recv(), Ok(Command::LicenseRenew)));
+                    remote.complete(license(vantare_ipc::control::CatalogAccess::Pro), cx);
+                    assert!(remote.message.contains("QA derechos"));
+                    assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
+                    assert!(
+                        !remote.navigation_access().verified,
+                        "reply no restaura derechos"
+                    );
+                    remote.complete(
+                        Reply::Account {
+                            signed_in: true,
+                            expires_at: Some(u64::MAX),
+                            pending: false,
+                            message: "QA sesión confirmada".into(),
+                            error: None,
+                        },
+                        cx,
+                    );
+                    remote.request(Command::Logout, cx);
+                    if !remote.working() {
+                        remote.request(Command::Logout, cx);
+                    }
+                    assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
+                    assert!(requests.try_recv().is_err(), "un cierre de sesión");
+                    remote.complete(
+                        Reply::Account {
+                            signed_in: false,
+                            expires_at: None,
+                            pending: false,
+                            message: "QA sesión cerrada".into(),
+                            error: None,
+                        },
+                        cx,
+                    );
+                    assert!(!remote.account.signed_in);
+                    assert!(!remote.navigation_access().verified);
+                    assert!(requests.try_recv().is_err());
+                    remote.cancel();
+                });
+            }
+            cx.quit();
+        });
     }
     #[test]
     fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_deny() {

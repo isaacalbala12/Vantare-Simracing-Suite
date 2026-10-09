@@ -139,6 +139,17 @@ impl State {
         Access::from_policy(policy, now_ms)
     }
 
+    pub(super) fn policy_denial(&self, now_ms: u64) -> Option<&'static str> {
+        match self.policy.as_ref() {
+            Some(policy) if policy.error.is_some() => Some("Acceso bloqueado"),
+            Some(policy) if policy.revision > 0 && !policy.current_at(now_ms) => {
+                Some("Política caducada")
+            }
+            Some(policy) if policy.current_at(now_ms) => None,
+            _ => Some("Sin política vigente"),
+        }
+    }
+
     fn required(&self, signed_in: bool) -> bool {
         self.configured
             && (!self.session_checked
@@ -843,6 +854,77 @@ mod navigation_tests {
     use super::*;
     use crate::{Section, shell::navigation::Access};
     use vantare_ipc::control::Policy;
+
+    #[test]
+    fn confirmed_session_keeps_account_recovery_when_policy_is_denied() {
+        let fresh = valid();
+        let mut revoked = fresh.clone();
+        revoked.error = Some("revocada".into());
+        let mut expired = fresh.clone();
+        expired.valid_until_ms = Some(1500);
+        for (policy, now, reason) in [
+            (revoked, 1500, "Acceso bloqueado"),
+            (expired, 1500, "Política caducada"),
+            (fresh.clone(), 3000, "Política caducada"),
+            (Policy::default(), 1500, "Sin política vigente"),
+        ] {
+            let mut session = state(true, true);
+            session.configured = true;
+            session.observe_core_policy(policy);
+            let access = session.navigation(true, now);
+            assert!(
+                !session.required(true),
+                "la sesión confirmada no se convierte en login"
+            );
+            assert!(!access.verified);
+            assert_eq!(session.policy_denial(now), Some(reason));
+            for origin in [Section::Account, Section::Studio] {
+                let mut current = origin;
+                assert_eq!(access.beta_lock(Section::Account), None, "composición");
+                access
+                    .beta_navigate(&mut current, Section::Account)
+                    .expect("recuperación por navegación");
+                assert_eq!(current, Section::Account);
+                let item = crate::shell::navigation::beta_commands(access, "Cuenta")
+                    .into_iter()
+                    .find(|item| {
+                        item.command
+                            == crate::shell::navigation::Command::Navigate(Section::Account)
+                    })
+                    .expect("recuperación por teclado");
+                assert_eq!(item.locked, None);
+                for protected in [
+                    Section::Studio,
+                    Section::Launcher,
+                    Section::Settings,
+                    Section::Roadmap,
+                    Section::Testing,
+                    Section::Calendar,
+                ] {
+                    assert!(access.beta_lock(protected).is_some());
+                    assert!(access.beta_navigate(&mut current, protected).is_err());
+                    assert_eq!(current, Section::Account);
+                }
+            }
+            session.observe_core_policy(fresh.clone());
+            assert!(session.navigation(true, 1500).verified);
+            session.requested(&Command::Logout);
+            session.observe_core_policy(fresh.clone());
+            assert!(session.required(true), "logout vuelve al gate");
+            assert!(!session.navigation(true, 1500).verified);
+        }
+        let mut no_session = State::from_build();
+        no_session.configured = true;
+        no_session.observe(
+            &Reply::Error {
+                message: "OAuth falló".into(),
+            },
+            true,
+        );
+        no_session.observe_core_policy(fresh);
+        assert!(no_session.required(false));
+        assert!(!no_session.navigation(false, 1500).verified);
+    }
 
     fn valid() -> Policy {
         Policy {

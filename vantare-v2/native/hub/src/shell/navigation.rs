@@ -104,6 +104,11 @@ impl Access {
         if self.capture_locks.contains(&section) {
             return Some("No incluido en el acceso demo");
         }
+        // Cuenta recupera o cierra la sesión; no consume derechos de producto.
+        // El gate de autenticación sigue decidiendo si existe una sesión.
+        if section == Section::Account {
+            return None;
+        }
         if self.blocked {
             return Some("Licencia bloqueada");
         }
@@ -387,14 +392,15 @@ mod tests {
                 ..Access::default()
             };
             for &section in Section::ALL {
-                let allowed = verified
-                    && match section {
-                        Section::Engineer => engineer,
-                        Section::Strategy => strategy,
-                        Section::Analysis => analysis,
-                        Section::Calendar => calendar,
-                        _ => true,
-                    };
+                let allowed = section == Section::Account
+                    || verified
+                        && match section {
+                            Section::Engineer => engineer,
+                            Section::Strategy => strategy,
+                            Section::Analysis => analysis,
+                            Section::Calendar => calendar,
+                            _ => true,
+                        };
                 let visible = match section {
                     Section::Analysis => verified && analysis,
                     Section::Calendar => verified && calendar,
@@ -414,13 +420,14 @@ mod tests {
                 if verified && !allowed {
                     assert_eq!(access.lock(section), Some("Próximamente"));
                 }
-                assert!(
+                assert_eq!(
                     Access {
                         blocked: true,
                         ..access
                     }
                     .lock(section)
-                    .is_some()
+                    .is_some(),
+                    section != Section::Account
                 );
             }
         }

@@ -183,6 +183,15 @@ propio de Runtime interpreta `--test-threads 2` como filtro `2`, omitiendo escen
 
 ## Informes automáticos de fallo (#1472)
 
+Desde #1515, fallos y uso están desactivados por defecto. `privacy.json`
+registra `crashes_decided`: sin esa decisión explícita, un `crashes: true`
+antiguo no habilita captura ni envío. El Hub pregunta antes de mostrar su
+acceso normal y guarda aceptar o rechazar; ambos permiten continuar. Ajustes
+› Privacidad permite cambiarlo. Cambiar datos de uso no decide sobre fallos.
+La migración descarta los slots de fallos antiguos antes de aceptar; retirar
+el permiso borra los slots pendientes. No se modifica la cola voluntaria del
+Testing Center ni se realiza ninguna llamada remota desde la pregunta.
+
 La salida de crashes contiene únicamente `code=native_panic`, versión de la
 build, SO y como máximo 64 direcciones numéricas de pila. No se simbolizan ni
 se envían mensajes de panic, rutas, nombres de binarios, timestamps o el UUID

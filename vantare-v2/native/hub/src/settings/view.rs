@@ -1333,7 +1333,7 @@ impl Hub {
                         0,
                         false,
                         "Enviar informes de fallos",
-                        "Versión de Vantare y detalles del fallo. Se ocultan tus carpetas personales.",
+                        "Versión, sistema operativo, código de fallo y direcciones numéricas de la pila. Sin mensajes, rutas ni identificador personal.",
                         store.value.crashes,
                     ),
                     (
@@ -1382,6 +1382,11 @@ impl Hub {
                 }
             }
         }
+        body = body.child(super::privacy::policy_link(
+            "settings-privacy-policy",
+            &self.settings.privacy_policy_focus,
+            cx,
+        ));
         section_surface("Lo que compartes", None, body, cx)
     }
     fn settings_events(&self, cx: &mut Context<Self>) -> Div {

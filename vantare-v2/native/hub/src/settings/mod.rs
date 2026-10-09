@@ -114,6 +114,8 @@ impl Page {
 pub(super) struct State {
     privacy: Result<privacy::Store, String>,
     privacy_focus: [FocusHandle; 2],
+    privacy_policy_focus: FocusHandle,
+    consent_focus: [FocusHandle; 3],
     pub(super) appearance: appearance::Store,
     appearance_focus: [FocusHandle; 14],
     appearance_bounds: [Option<gpui::Bounds<gpui::Pixels>>; 2],
@@ -274,6 +276,8 @@ impl State {
                 .map_err(|error| error.to_string())
                 .and_then(|root| privacy::Store::load(&root)),
             privacy_focus: std::array::from_fn(|_| cx.focus_handle()),
+            privacy_policy_focus: cx.focus_handle(),
+            consent_focus: std::array::from_fn(|_| cx.focus_handle()),
             page: Page::default(),
             panel_scroll: gpui::ScrollHandle::new(),
             panel_height: panel_height(f32::from(window.viewport_size().height)),

@@ -1167,7 +1167,7 @@ impl Studio {
             });
             self.catalog = Some(catalog);
             let photo_choice = cx.new(|cx| {
-                Choice::new(
+                let mut choice = Choice::new(
                     "Vuelta y foto real",
                     ChoiceKind::Dropdown,
                     self.photos
@@ -1177,7 +1177,10 @@ impl Studio {
                     Some(0),
                     window,
                     cx,
-                )
+                );
+                // El ancho del contenedor no cambia el trigger: usar su variante compacta.
+                choice.compact(150.0);
+                choice
             });
             cx.subscribe(&photo_choice, |this, _, event: &ChoiceChanged, cx| {
                 if this.real_photo.is_some() && event.0 < this.photos.len() {
@@ -2326,7 +2329,7 @@ impl Studio {
             && self.real_photo.is_some()
             && let Some(choice) = &self.photo_choice
         {
-            row = row.child(div().w(px(240.0)).flex_none().child(choice.clone()));
+            row = row.child(div().w(px(150.0)).flex_none().child(choice.clone()));
         }
         row.child(div().flex_1()).child(
             orbit::mono_text(laps, 10.0, orbit::ink_3(cx), cx)

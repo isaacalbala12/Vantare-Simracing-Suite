@@ -619,7 +619,7 @@ impl Remote {
                             Reply::Error { message }
                                 if message == vantare_ipc::INCOMPATIBLE_COMPONENTS =>
                             {
-                                connection.store(true, Ordering::Release)
+                                connection.store(true, Ordering::Release);
                             }
                             Reply::Error { .. } => {}
                             _ => connection.store(false, Ordering::Release),

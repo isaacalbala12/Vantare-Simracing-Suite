@@ -18,10 +18,12 @@ cargo run -p vantare-ui --release --bin vantare-overlays -- 4 --fuente local   #
 
 El binario recibe los datos con `--fuente local|pipe[:<nombre>]`:
 
-- `pipe` (por defecto): `source::pipe_feed` conecta un `ipc::Subscriber` al
+- `pipe` (por defecto): `source::pipe_feed_observed` conecta un `ipc::Subscriber` al
   named pipe del núcleo (`vantare-core`; sin nombre, el mismo por defecto, con
   el SID del usuario), reconecta solo y reenvía la foto más reciente a
-  `vantare_ui::run_with_rights`. Los widgets no saben de dónde viene.
+  `vantare_ui::run_with_connection` (layout usa `layout_feed`). El host
+  muestra una sola vez el aviso de incompatibilidad, estable entre reintentos;
+  los widgets reciben datos degradados y no conocen el transporte.
 - `local`: `source::local_feed()`, carrera sintética a 30 Hz, sin núcleo.
 
 ## Kit Eficiencia (ISA-1427)

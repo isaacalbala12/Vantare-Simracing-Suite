@@ -6098,3 +6098,21 @@ y lifecycle18/18 PASS. Gates finales de esta inicialización y capturas aún pen
 - Capturas finales con fuente/hash/dimensiones en captures-final.json. Originales de Inicio1920, Launcher1280, Testing1280, Studio1280 y kit1280 inspeccionados. Apps/driver/UIA propios0, mutex liberado/reacquirido y DPI96 comprobados; sin ventanas de Ajustes ni cambio DPI en esta tanda. No se repite la matriz histórica/DPI125 ni latencia: adaptación/gesto no cambian; mediciones de Studio mantienen fuentec932 y sus límites, sin garantía histórica E3 nueva.
 - Evidencia y pasos manuales en C:/tmp/ui-r10/calidad-2-evidence/revision-v3-cierre/VERIFICACION.md; informe conserva12 líneas totales, bloque Studio6 y v3 de4, previo archivado. Modificados kit/consumidores de Inicio/Launcher/Studio/Testing, static_content y este handoff; ningún Go/TS, corpus o dependencia. Checks Go/TS independientes no ejecutados por ausencia de cambios; oráculos Go nativos sí pasan. No prueba nueva de backend/login real/LMU/OBS/macOS/lector hablado/hardware.
 - Base de continuación ba27963d limpia; rama vantareapp/isa-1496-ui-calidad. v3 acredita9,05 conjunto/todas rondas>9 sobre3eb404c7; nuevo SHA y aceptación de Isaac siguen requiriendo revisión propia. Issue1496 abierta; plan.md ausente, no recreado. gh pr list[] y git ls-remote sin esta rama al cierre. Sin delegación/push/PR/CI remota/merge/promoción/release. Este cierre documental conserva el árbol nativo probado.
+
+### #1496 — integración de prueba aislada, preparación (2026-10-09)
+Autorización directa de Isaac: base aprobada 55e97390, worktree C:/tmp/vw3-integracion/vantare-v2,
+rama vantareapp/isa-1496-integracion-prueba. Seis merges no-ff locales en orden:
+81b81d51→103dfac4; 3212e5ac→c5d7ebac; 71575916→5bb68705;
+80abb251→33d3010c; 046d3e72→37958208; aacd1e4d→77be7e91.
+Conflictos: prevalece la UI aprobada en sidebar, transparencia, geometría y accesibilidad;
+se conservan lógica de consentimiento/catálogo, ambas historias de handoff y regresiones.
+Consentimiento usa neo_card y skin; candados usan skin y preservan opacidad/ajustes del widget.
+#1514 se integra sin conflicto en services/access.rs, sin editar su implementación ni su rama;
+config-tests conserva casos de portal de #1507 y entorno de billing de #1514.
+Gates en curso por compilar.ps1, target propio E:/tmp/integracion-prueba; suites desde Bash/PS5.1.
+Build local 0.0.970 prevista E:/tmp/beta-local/0.0.970 mediante copia del build-local.ps1,
+configuración de desarrollo indicada por Isaac, sin firma/manifiesto/publicación.
+QA condicionada a pantalla libre: identidad QA1492, nunca registro/accesos/procesos reales.
+GitHub es la autoridad del encargo frente al texto Notion histórico de esta base;
+plan.md ausente también en origin/nightly, no se recrea. No hay push/PR/CI remota ni promoción.
+Evidencia y scripts externos: C:/tmp/ui-r10/integracion-prueba-evidence; informe final aún pendiente.

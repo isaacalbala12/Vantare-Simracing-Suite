@@ -9,13 +9,16 @@
     "Studio conserva el renderer y el documento nativos; la tira y el inspector usan el kit común del Hub.",
     "La cruceta mueve 1 px o 8 px con Mayús; anclar y centrar guardan la posición y admiten deshacer.",
     "General y Apariencia usan grupos numerados y componentes del kit; los esquemas se guardan con detección de conflictos.",
-    "Rendimiento y atajos globales siguen Próximamente; Personalizado abre Studio. Diagnóstico solo muestra observaciones reales.",
+    "Rendimiento aplica niveles y frecuencia por widget al layout compartido; Personalizado abre Studio. Atajos locales y registro global de perfiles muestran conflictos reales. Diagnóstico conserva observaciones reales.",
     "Testing Center conserva el redactor, la revisión y el consentimiento del envío; la lista muestra ID, fecha, módulo y estado del recibo de esta sesión sin retener el texto privado.",
     "Calendario conserva horario UTC, seguimiento local y filtros; no hay inscripción ni servicio activo de avisos/autolanzamiento.",
     "Roadmap solo muestra publicaciones de services; no inventa fases, porcentajes, fechas ni hitos editoriales.",
     "Relative respeta el gap actual del adaptador. Su respaldo estimado admite el periodo nativo de LMU antes de completar una vuelta, conservando la ausencia en boxes y con datos caducados.",
     "Calendario añade Probar calendario para testers: catálogo LMU archivado con fechas trasladadas solo en memoria y preferencias de prueba efímeras.",
-    "El script ClickUp prepara la publicación compartida de Vantare/Desarrollo con subtareas e identidades estables; Tablero muestra Ahora, Siguiente, Más adelante y Entregado."
+    "El script ClickUp prepara la publicación compartida de Vantare/Desarrollo con subtareas e identidades estables; Tablero muestra Ahora, Siguiente, Más adelante y Entregado.",
+    "Shell arranca sin mostrar widgets; Apariencia conserva guardado al soltar, movimiento reducido y migración versionada de paletas.",
+    "Studio incorpora los widgets Vantare de #1497, clic estable, preview ligero, repetición acelerada, multiclase normalizado y ejemplos ajustados a las opciones.",
+    "Run y notificaciones usan la identidad instalada; una instalación QA mantiene separados sus valores de Windows."
   ],
   "testing": [
     "Revisar Launcher en los tres temas, con ambos paneles, seleccionar un póster, ordenar pasos y guardar o cancelar el perfil.",
@@ -36,7 +39,7 @@
     "Capturas y fluidez de Studio pendientes si la pantalla compartida está ocupada; los tests no prueban paridad visual.",
     "Revisión visual de Ajustes y Cuenta pendiente mientras la pantalla compartida esté ocupada.",
     "Cuestionarios y su guardado automático, niveles, insignias, conversación, apoyo y seguimiento posterior son Próximamente; no se muestran datos del mockup. Redactor y lista alternan para reservar espacio.",
-    "Gap relativo nativo para toda la parrilla pendiente de una captura que identifique los vecinos del SDK. LMU47 tiene los 47 coches en boxes y no certifica valores positivos; tendencia y stint no existen en esta base.",
+    "Gap relativo nativo para toda la parrilla pendiente de una captura que identifique los vecinos del SDK. LMU47 tiene los 47 coches en boxes y no certifica valores positivos; las proyecciones de tendencia y stint de #1497 requieren señales disponibles, sin convertir datos ausentes en valores reales.",
     "Horario semanal vigente y publicaciones Supabase requieren fuente revisada y autorización de Isaac; los avisos siguen guardando solo preferencias, sin notificaciones reales.",
     "ClickUp conserva el límite publicado de 40 hitos y no trunca tareas. La migración later no se activa en producción mientras el lector Go legado no sea compatible."
   ]

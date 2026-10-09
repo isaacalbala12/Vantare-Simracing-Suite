@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
     [ValidateSet('Install', 'Run', 'Check', 'Apply', 'Uninstall')][string]$Operation = 'Run',
-    [string]$Root = (Join-Path $env:LOCALAPPDATA 'Programs/Vantare Native Beta'),
+    [string]$Root = (Join-Path $env:LOCALAPPDATA 'Programs/Vantare'),
     [string]$Archive,
     [string]$ExpectedSha256,
     [string]$LocalManifest,

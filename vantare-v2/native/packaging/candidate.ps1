@@ -1,7 +1,7 @@
 ﻿#requires -Version 5.1
 [CmdletBinding()]
 param(
-    [ValidateSet('Build', 'Install', 'Update', 'Rollback', 'ImportProfiles', 'ImportLayout', 'Status', 'Start')][string]$Operation = 'Status',
+    [ValidateSet('Build', 'Install', 'Update', 'Rollback', 'ImportProfiles', 'ImportLayout', 'Status', 'Start', 'Register', 'UninstallInstalled')][string]$Operation = 'Status',
     [string]$Root = $PSScriptRoot,
     [string]$Archive,
     [string]$ExpectedSha256,
@@ -253,6 +253,120 @@ function Expand-NativePackage([string]$ZipPath, [string]$Hash, [string]$Destinat
         } finally { $zip.Dispose() }
     } finally { $inputFile.Dispose() }
     Read-NativeManifest $Destination $ExpectedChannel
+}
+
+# La clave estable permite que el bootstrap antiguo siga corrigiendo la versión
+# tras rollback. Solo cambia la identidad visible; nunca se trasladan datos.
+function Sync-NativeRegistration([string]$Directory, [string]$Version) {
+    $directory = Assert-NativePath $Directory
+    $identity = 'VantareNativeBeta'
+    $folder = 'Vantare'
+    $legacyFolder = 'Vantare Native Beta'
+    $identityFile = Join-Path $directory 'registration-identity.txt'
+    $external = Test-Path -LiteralPath $identityFile
+    if ($external) {
+        $identity = [IO.File]::ReadAllText($identityFile).Trim()
+        if ($identity -cnotmatch '^[A-Za-z0-9]{1,64}$') { throw 'Identidad de registro inválida.' }
+    }
+    $key = "HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/$identity"
+    $registration = Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue
+    if ($null -eq $registration -or (Assert-NativePath $registration.InstallLocation) -ne $directory) { return }
+    # QA aporta sus carpetas desde NSIS: el producto no conoce identidades QA.
+    if ($external) {
+        if ($null -eq $registration.PSObject.Properties['ShortcutFolder'] -or
+            $null -eq $registration.PSObject.Properties['LegacyShortcutFolder']) {
+            Set-ItemProperty -LiteralPath $key -Name DisplayName -Value 'Vantare'
+            Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version
+            return
+        }
+        $folder = $registration.ShortcutFolder
+        $legacyFolder = $registration.LegacyShortcutFolder
+    }
+    foreach ($name in @($folder, $legacyFolder)) {
+        if ($name -cnotmatch '^[A-Za-z0-9][A-Za-z0-9 -]{0,63}$') { throw 'Carpeta de accesos inválida.' }
+    }
+    if ($folder -eq $legacyFolder) { throw 'Las carpetas de accesos deben ser diferentes.' }
+    # El NSIS anterior no conoce la carpeta nueva. La copia durable permite
+    # desinstalar por Inicio/Aplicaciones instaladas aun después de interrupciones.
+    $uninstaller = Join-Path $directory 'uninstall-vantare.ps1'
+    $powershell = Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+    $uninstallArgs = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $uninstaller + '" -Operation UninstallInstalled -Root "' + $directory + '"'
+    $programs = [Environment]::GetFolderPath('Programs')
+    $target = Join-Path $programs $folder
+    $shell = New-Object -ComObject WScript.Shell
+    foreach ($name in @('Vantare.lnk', 'Desinstalar.lnk')) {
+        $path = Join-Path $target $name
+        if (-not (Test-Path -LiteralPath $path)) { continue }
+        $existing = $shell.CreateShortcut($path)
+        $owned = if ($name -ceq 'Desinstalar.lnk') {
+            $existing.TargetPath -eq (Join-Path $directory 'Uninstall.exe') -or
+                $existing.Arguments.Contains('-Root "' + $directory + '"')
+        } else { $existing.Arguments.Contains('-Root "' + $directory + '"') }
+        if (-not $owned) { throw 'El acceso existente pertenece a otra instalación; se conserva.' }
+    }
+    $temp = Join-Path $directory ('.uninstall-' + [guid]::NewGuid().ToString('N') + '.tmp')
+    try {
+        Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'candidate.ps1') -Destination $temp
+        if (Test-Path -LiteralPath $uninstaller) { [IO.File]::Replace($temp, $uninstaller, [System.Management.Automation.Language.NullString]::Value) }
+        else { [IO.File]::Move($temp, $uninstaller) }
+    } finally { if (Test-Path -LiteralPath $temp) { Remove-Item -LiteralPath $temp } }
+    [IO.Directory]::CreateDirectory($target) | Out-Null
+    $link = $shell.CreateShortcut((Join-Path $target 'Vantare.lnk'))
+    $link.TargetPath = Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+    $link.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + (Join-Path $directory 'beta.ps1') + '" -Root "' + $directory + '"'
+    $link.Save()
+    $link = $shell.CreateShortcut((Join-Path $target 'Desinstalar.lnk'))
+    $link.TargetPath = $powershell
+    $link.Arguments = $uninstallArgs
+    $link.Save()
+    $legacy = Join-Path $programs $legacyFolder
+    foreach ($name in @('Vantare Native Beta.lnk', 'Desinstalar.lnk')) {
+        $path = Join-Path $legacy $name
+        if (-not (Test-Path -LiteralPath $path)) { continue }
+        $link = $shell.CreateShortcut($path)
+        $owned = if ($name -ceq 'Desinstalar.lnk') {
+            $link.TargetPath -eq (Join-Path $directory 'Uninstall.exe')
+        } else {
+            $link.Arguments.Contains('-Root "' + $directory + '"') -and
+                $link.Arguments.Contains('-File "' + (Join-Path $directory 'beta.ps1') + '"')
+        }
+        if ($owned) { Remove-Item -LiteralPath $path }
+    }
+    if ((Test-Path -LiteralPath $legacy) -and -not @(Get-ChildItem -LiteralPath $legacy -Force).Count) {
+        Remove-Item -LiteralPath $legacy
+    }
+    Set-ItemProperty -LiteralPath $key -Name DisplayName -Value 'Vantare'
+    Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version
+    Set-ItemProperty -LiteralPath $key -Name UninstallString -Value ('"' + $powershell + '" ' + $uninstallArgs)
+}
+
+function Uninstall-NativeRegistration([string]$Directory) {
+    $directory = Open-NativeRoot $Directory
+    $identityFile = Join-Path $directory 'registration-identity.txt'
+    $external = Test-Path -LiteralPath $identityFile
+    $identity = if ($external) { [IO.File]::ReadAllText($identityFile).Trim() } else { 'VantareNativeBeta' }
+    if ($identity -cnotmatch '^[A-Za-z0-9]{1,64}$') { throw 'Identidad de registro inválida.' }
+    $key = "HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/$identity"
+    $registration = Get-ItemProperty -LiteralPath $key
+    if ((Assert-NativePath $registration.InstallLocation) -ne $directory) { throw 'El registro pertenece a otra instalación.' }
+    $folder = if ($external) { $registration.ShortcutFolder } else { 'Vantare' }
+    if ($folder -cnotmatch '^[A-Za-z0-9][A-Za-z0-9 -]{0,63}$') { throw 'Carpeta de accesos inválida.' }
+    if (Test-Path -LiteralPath (Join-Path $directory 'state.json')) {
+        & (Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe') -NoProfile -ExecutionPolicy Bypass -File (Join-Path $directory 'beta.ps1') -Operation Uninstall -Root $directory
+        if ($LASTEXITCODE) { throw 'Cierra Vantare antes de desinstalar. Tus datos se conservan.' }
+    }
+    $target = Join-Path ([Environment]::GetFolderPath('Programs')) $folder
+    $shell = New-Object -ComObject WScript.Shell
+    foreach ($name in @('Vantare.lnk', 'Desinstalar.lnk')) {
+        $path = Join-Path $target $name
+        if ((Test-Path -LiteralPath $path) -and ($shell.CreateShortcut($path)).Arguments.Contains('-Root "' + $directory + '"')) { Remove-Item -LiteralPath $path }
+    }
+    if ((Test-Path -LiteralPath $target) -and -not @(Get-ChildItem -LiteralPath $target -Force).Count) { Remove-Item -LiteralPath $target }
+    Remove-Item -LiteralPath $key
+    foreach ($name in @('beta.ps1', 'candidate.ps1', 'registration-identity.txt', 'Uninstall.exe', 'uninstall-vantare.ps1')) {
+        $path = Join-Path $directory $name
+        if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
+    }
 }
 
 function Read-NativeState([string]$Directory, [bool]$VerifyActiveFiles = $true) {
@@ -547,6 +661,17 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
 
 if ($MyInvocation.InvocationName -eq '.') { return }
 switch ($Operation) {
+    'UninstallInstalled' { Uninstall-NativeRegistration $Root }
+    'Register' {
+        $Root = Open-NativeRoot $Root
+        $state = Read-NativeState $Root
+        if ($state.channel -cne 'beta') { throw 'El registro solo corresponde al instalador beta.' }
+        $generation = Join-Path $Root "generations/$($state.active.generation)"
+        # El Hub usa el script de su generación; Setup usa la copia idéntica raíz.
+        if ((Get-NativeHash $PSCommandPath) -cne (Get-NativeHash (Join-Path $generation 'candidate.ps1'))) { throw 'El registro requiere el script de la generación activa.' }
+        $manifest = Read-NativeManifest $generation 'beta'
+        Sync-NativeRegistration $Root $manifest.version
+    }
     'Build' { Build-NativeCandidate $OutputDirectory $Version $Channel $BuildProfile ([bool]$AllowDirty) }
     'Install' { Install-NativeCandidate $Root $Archive $ExpectedSha256 $Channel | ConvertTo-Json -Depth 5 }
     'Update' { Update-NativeCandidate $Root $Archive $ExpectedSha256 | ConvertTo-Json -Depth 5 }

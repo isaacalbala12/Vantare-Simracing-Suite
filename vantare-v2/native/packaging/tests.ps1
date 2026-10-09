@@ -49,7 +49,7 @@ if ($Channel -ceq 'beta') {
     Assert-True ('vantare-workshop' -cnotin $script:NativeBins) 'beta excluye Workshop de su inventario'
 }
 
-$install = Join-Path $script:TestRoot 'installed with spaces'
+$install = Join-Path $script:TestRoot 'Vantare Native Beta'
 $state = Install-NativeCandidate $install $script:Package $hash $Channel
 $active = Join-Path $install "generations/$($state.active.generation)"
 Assert-True ($state.channel -ceq $Channel -and $null -eq $state.previous) 'instalación nueva sin versión anterior'
@@ -63,6 +63,11 @@ foreach ($fixture in $script:NativeFixtures) {
 # El script instalado no dispone de ../ui/fixtures ni del checkout de compilación.
 & (Join-Path $active 'candidate.ps1') -Operation Status -Root $install | Out-Null
 Assert-True ($? -and (Test-Path -LiteralPath (Join-Path $install 'state.json'))) 'candidate instalado carga fuera del árbol de fuentes'
+if ($Channel -ceq 'beta') {
+    # Sin registro de esta raíz no se debe crear ni modificar una instalación real.
+    & (Join-Path $active 'candidate.ps1') -Operation Register -Root $install
+    Assert-True $? 'registro desde generación conserva raíz beta antigua sin registrar duplicados'
+}
 Assert-True (-not (Test-Path -LiteralPath (Join-Path $active 'bin/vantare-admin.exe'))) 'la miniapp owner no entra en el instalador público'
 Assert-True ((Test-Path -LiteralPath (Join-Path $active 'bin/vantare-workshop.exe')) -eq ($Channel -cne 'beta')) 'Workshop instalado solo fuera de beta'
 if ($Channel -ceq 'beta') {

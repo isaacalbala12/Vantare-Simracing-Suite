@@ -14,6 +14,7 @@ pub mod engineer;
 pub mod engineer_control;
 pub mod files;
 mod inspector;
+mod installation;
 pub mod launcher;
 pub mod lifecycle;
 pub mod notifications;

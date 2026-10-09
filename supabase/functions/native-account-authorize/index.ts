@@ -27,6 +27,7 @@ export async function signDataToken(
   now: Date,
   oauthExpiry: number,
   signing: NonNullable<AuthorizeDeps["signing"]>,
+  identity?: { issuer: string; subject: string },
 ) {
   const url = new URL(signing.supabaseUrl);
   if (
@@ -51,6 +52,13 @@ export async function signDataToken(
     sub: accountId,
     aud: "authenticated",
     role: "authenticated",
+    ...(identity
+      ? {
+        vantare_identity_provider: "clerk",
+        clerk_issuer: identity.issuer,
+        clerk_subject: identity.subject,
+      }
+      : {}),
     iat: issued,
     exp: expires,
   })));
@@ -123,6 +131,7 @@ export async function handleNativeAccountAuthorize(
           Deno.env.get("SUPABASE_JWT_SECRET") ?? "",
         supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",
       },
+      identity,
     );
     return respond({
       version: 1,

@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-pub const VERSION: u32 = 3;
+pub const VERSION: u32 = 4;
 #[path = "report_document.rs"]
 pub mod report_document;
 #[path = "roadmap_document.rs"]
@@ -21,6 +21,9 @@ pub enum Command {
     Logout,
     LicenseStatus,
     LicenseRenew,
+    Purchase {
+        product: BillingProduct,
+    },
     DeviceReset,
     CalendarRefresh,
     RoadmapCached,
@@ -65,6 +68,9 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "result", deny_unknown_fields)]
 pub enum Reply {
+    Checkout {
+        url: String,
+    },
     License {
         policy: vantare_ipc::control::Policy,
         message: String,
@@ -110,6 +116,23 @@ pub enum Reply {
     DeviceLimit {
         message: String,
     },
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BillingProduct {
+    ProMonthly,
+    ProAnnual,
+    LaunchLifetime,
+}
+impl BillingProduct {
+    pub fn key(self) -> &'static str {
+        match self {
+            Self::ProMonthly => "pro_monthly",
+            Self::ProAnnual => "pro_annual",
+            Self::LaunchLifetime => "launch_lifetime",
+        }
+    }
 }
 
 /// Estado local tras confirmar un informe; conservar otro borrador no es un fallo.

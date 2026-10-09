@@ -64,7 +64,11 @@ Deno.test("data authorization signs actual HS256, internal UUID and bounded expi
     tokenClaims.iss === `${signing.supabaseUrl}/auth/v1` &&
       tokenClaims.exp - tokenClaims.iat === 300,
   );
-  assert(!payload.includes(subject));
+  assert(
+    tokenClaims.vantare_identity_provider === "clerk" &&
+      tokenClaims.clerk_issuer === config.issuer &&
+      tokenClaims.clerk_subject === subject,
+  );
   const key = await crypto.subtle.importKey(
     "raw",
     new TextEncoder().encode(signing.secret),

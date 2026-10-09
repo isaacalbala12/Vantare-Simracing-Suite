@@ -3,7 +3,7 @@ function Import-NativeBuildConfig([string]$Path) {
     $allowed = @('VANTARE_SUPABASE_URL', 'VANTARE_SUPABASE_ANON_KEY', 'VANTARE_LICENSE_PUBLIC_KEYS',
         'VANTARE_CLERK_ISSUER', 'VANTARE_CLERK_CLIENT_ID', 'VANTARE_CLERK_REDIRECT', 'VANTARE_CLERK_ACCOUNT_PORTAL_URL',
         'VANTARE_ACCOUNT_BRIDGE_URL', 'VANTARE_POSTHOG_KEY', 'VANTARE_ADMIN_URL',
-        'VANTARE_BUILD_CHANNEL', 'VANTARE_VERSION')
+        'VANTARE_BUILD_CHANNEL', 'VANTARE_VERSION', 'VANTARE_BILLING_ENVIRONMENT')
     if ((Get-Item -LiteralPath $Path).Length -gt 65536) { throw 'Configuración de build demasiado grande.' }
     $values = @{}
     foreach ($line in [IO.File]::ReadAllLines((Resolve-Path -LiteralPath $Path).Path)) {
@@ -25,6 +25,7 @@ function Import-NativeBuildConfig([string]$Path) {
                 if ($claims.role -cne 'anon') { throw 'La clave debe ser anon' }
             } catch { throw 'La clave Supabase debe ser pública (anon), nunca privilegiada.' }
         }
+        if ($name -ceq 'VANTARE_BILLING_ENVIRONMENT' -and $value -cnotin @('sandbox','production')) { throw 'Entorno de billing inválido.' }
         $values[$name] = $value
     }
     $previous = @{}

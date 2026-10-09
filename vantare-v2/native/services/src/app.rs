@@ -358,6 +358,20 @@ impl App {
                 return self.roadmap_reply(matches!(command, Command::RoadmapRefresh));
             }
             Command::TransferRights => return self.transfer_rights(),
+            Command::Purchase { product } => {
+                let time = now()?;
+                self.ensure_oauth(time)?;
+                let url = crate::billing::purchase(
+                    &self.http,
+                    &self.config,
+                    self.account.as_ref().ok_or(Error::Authentication)?,
+                    time,
+                    self.store.as_ref().ok_or(Error::Storage)?,
+                    product,
+                    option_env!("VANTARE_BILLING_ENVIRONMENT").ok_or(Error::Unconfigured)?,
+                )?;
+                return Ok(Reply::Checkout { url });
+            }
             Command::LicenseStatus | Command::LicenseRenew | Command::DeviceReset => {
                 return self.license_reply(&command);
             }

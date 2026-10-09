@@ -541,9 +541,9 @@ impl Launcher {
             let icon_size = if compact {
                 48.0
             } else if running {
-                80.0
+                88.0
             } else {
-                48.0
+                64.0
             };
             if !running && index > 0 {
                 row = row.child(
@@ -566,7 +566,7 @@ impl Launcher {
                 } else {
                     12.0
                 }))
-                .rounded(px(18.0))
+                .rounded(px(orbit::skin(cx).radius.lg))
                 .when(!running, |card| {
                     card.justify_between()
                         .border_1()
@@ -576,17 +576,7 @@ impl Launcher {
                 .when(running, |card| card.items_center().text_center())
                 .when(running && label == "En espera", |card| card.opacity(0.45));
             if let Some(app) = app {
-                card = card.child(app_icon(
-                    app,
-                    if compact {
-                        48.0
-                    } else if running {
-                        80.0
-                    } else {
-                        48.0
-                    },
-                    cx,
-                ));
+                card = card.child(app_icon(app, icon_size, cx));
             }
             if running
                 && event.is_some_and(|event| {
@@ -848,7 +838,9 @@ impl Launcher {
             .relative()
             .overflow_hidden()
             .flex_none()
-            .h(px(hero_height(adapt)))
+            // R9.7: la cadena determina el alto; una estimación fija recorta
+            // las últimas filas cuando cambia la tipografía o el contenido.
+            .h_auto()
             .gap(px(if compact { 10.0 } else { 14.0 }))
             .p(px(if compact { 20.0 } else { 28.0 }))
             .child(
@@ -1027,11 +1019,16 @@ impl Launcher {
         let width = if compact { 200.0 } else { 284.0 };
         let adapt = self.adapt;
         let grid = adapt.show_optional();
-        let height = poster_height(adapt, self.store.document.profiles.len());
-        let viewport_height = if grid && self.store.document.profiles.len() > 1 {
-            height * 2.0 + 12.0
+        let viewport_height = f32::from(self.profile_scroll.bounds().size.height);
+        let rows = if grid && self.store.document.profiles.len() > 1 {
+            2.0
         } else {
-            height
+            1.0
+        };
+        let height = if viewport_height > 0.0 {
+            ((viewport_height - 12.0 * (rows - 1.0)) / rows).max(140.0)
+        } else {
+            poster_height(adapt, self.store.document.profiles.len())
         };
         let content_width = self
             .store
@@ -1230,8 +1227,8 @@ impl Launcher {
                 div()
                     .id("showcase-profile-carousel")
                     .w_full()
-                    .h(px(viewport_height))
-                    .flex_none()
+                    .flex_1()
+                    .min_h_0()
                     .overflow_x_scroll()
                     .when(grid, gpui::StatefulInteractiveElement::overflow_y_scroll)
                     .track_scroll(&scroll)

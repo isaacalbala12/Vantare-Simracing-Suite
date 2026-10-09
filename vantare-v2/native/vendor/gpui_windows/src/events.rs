@@ -33,6 +33,33 @@ pub(crate) const WM_GPUI_END_SESSION: u32 = WM_USER + 9;
 // Vantare per-window zoom protocol; kept in sync with vantare-ui/lib.rs.
 const WM_VANTARE_WINDOW_ZOOM: u32 = WM_APP + 0x1470;
 
+// Hub R9.5 supports 1280×720 at 100%; 800 forced the XS layout down to 90%.
+fn content_zoom_scale(width: f32, height: f32, dpi: f32, percent: u16) -> f32 {
+    let limit = (width / 1280.0).min(height / 720.0).max(dpi * 0.9);
+    (dpi * f32::from(percent) / 100.0).min(limit)
+}
+
+#[cfg(test)]
+mod zoom_tests {
+    use super::content_zoom_scale;
+
+    #[test]
+    fn supported_client_keeps_100_percent_and_limits_larger_zoom_per_window() {
+        for (width, height, dpi, requested, expected) in [
+            (1280.0, 720.0, 1.0, 100, 1.0),
+            (1280.0, 720.0, 1.0, 125, 1.0),
+            (1280.0, 720.0, 1.0, 90, 0.9),
+            (1600.0, 900.0, 1.25, 100, 1.25),
+            (1600.0, 900.0, 1.25, 125, 1.25),
+            (1920.0, 1080.0, 1.0, 125, 1.25),
+        ] {
+            assert!(
+                (content_zoom_scale(width, height, dpi, requested) - expected).abs() < f32::EPSILON
+            );
+        }
+    }
+}
+
 const SIZE_MOVE_LOOP_TIMER_ID: usize = 1;
 
 /// Coordinates window draws on the UI thread. Owned by the platform and
@@ -282,10 +309,12 @@ impl WindowsWindowInner {
     ) {
         let scale_factor = if self.state.limit_zoom.get() {
             let dpi = self.state.dpi_scale.get();
-            let limit = (device_size.width.0 as f32 / 1280.0)
-                .min(device_size.height.0 as f32 / 800.0)
-                .max(dpi * 0.9);
-            let effective = (dpi * self.state.zoom_percent.get() as f32 / 100.0).min(limit);
+            let effective = content_zoom_scale(
+                device_size.width.0 as f32,
+                device_size.height.0 as f32,
+                dpi,
+                self.state.zoom_percent.get(),
+            );
             let ratio = self.state.scale_factor.get() / effective;
             self.state.origin.set(self.state.origin.get() * ratio);
             let restore = self.state.fullscreen_restore_bounds.get();

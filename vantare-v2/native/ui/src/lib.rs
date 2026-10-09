@@ -86,7 +86,7 @@ pub fn set_window_zoom(window: &gpui::Window, percent: u16) -> Result<(), String
     }
 }
 
-/// Largest Hub zoom that leaves its 1280 x 800 logical design area.
+/// Largest Hub zoom that leaves its supported 1280 x 720 logical design area.
 pub fn window_zoom_limit(window: &gpui::Window) -> f32 {
     #[cfg(not(windows))]
     let _ = window;
@@ -101,7 +101,7 @@ pub fn window_zoom_limit(window: &gpui::Window) -> f32 {
             let dpi = unsafe { GetDpiForWindow(hwnd) } as f32 / 96.0;
             if dpi > 0.0 {
                 let size = window.viewport_size();
-                return (f32::from(size.width) / 1280.0).min(f32::from(size.height) / 800.0)
+                return (f32::from(size.width) / 1280.0).min(f32::from(size.height) / 720.0)
                     * window.scale_factor()
                     / dpi
                     * 100.0;

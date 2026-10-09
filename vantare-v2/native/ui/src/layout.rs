@@ -146,9 +146,7 @@ impl Layout {
             };
             if let Some(size) = instance.geometry.size {
                 if !size.valid() {
-                    return Err(Error::Invalid(
-                        "tamaño del frame no finito o no positivo",
-                    ));
+                    return Err(Error::Invalid("tamaño del frame no finito o no positivo"));
                 }
                 instance.geometry.size = Some(size.bounded());
             }
@@ -441,8 +439,7 @@ mod tests {
         let mut hub = Document::open(path.clone()).expect("Hub antes de overlays");
         let mut overlays = Document::open(path.clone()).expect("overlays antes de Hub");
         overlays.initialize(monitor).expect("primer escritor");
-        hub.initialize(monitor)
-            .expect("adoptar creación tardía");
+        hub.initialize(monitor).expect("adoptar creación tardía");
         assert_eq!(hub.layout(), overlays.layout());
         assert_eq!(hub.layout().instances.len(), 4);
         let mut changed = hub.layout().clone();

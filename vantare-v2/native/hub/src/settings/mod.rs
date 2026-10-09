@@ -117,7 +117,7 @@ pub(super) struct State {
     privacy_policy_focus: FocusHandle,
     consent_focus: [FocusHandle; 3],
     pub(super) appearance: appearance::Store,
-    appearance_focus: [FocusHandle; 14],
+    appearance_focus: [FocusHandle; 15],
     appearance_bounds: [Option<gpui::Bounds<gpui::Pixels>>; 2],
     appearance_dragging: [bool; 2],
     appearance_preview: [Option<u8>; 2],

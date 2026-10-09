@@ -20,6 +20,9 @@
     clippy::unreadable_literal // colores hex de CSS
 )]
 
+mod motion_policy;
+pub use motion_policy::MotionPolicy;
+
 mod app;
 #[cfg(feature = "parity-capture")]
 pub mod capture;

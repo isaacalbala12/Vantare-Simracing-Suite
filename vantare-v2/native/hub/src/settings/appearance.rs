@@ -201,7 +201,10 @@ impl Hub {
         }
     }
     pub(super) fn settings_slider_release(
-        &mut self, index: usize, window: &mut Window, cx: &mut Context<Self>,
+        &mut self,
+        index: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
     ) {
         self.settings.appearance_dragging[index] = false;
         if let Some(value) = self.settings.appearance_preview[index].take() {
@@ -229,11 +232,17 @@ impl Hub {
 }
 
 fn slider_pointer_value(index: usize, offset: f32) -> u8 {
-    use crate::orbit::{APPEARANCE_TRACK_WIDTH, APPEARANCE_THUMB_SIZE, APPEARANCE_VALUE_OFFSET};
+    use crate::orbit::{APPEARANCE_THUMB_SIZE, APPEARANCE_TRACK_WIDTH, APPEARANCE_VALUE_OFFSET};
     let fraction = ((offset - APPEARANCE_VALUE_OFFSET - APPEARANCE_THUMB_SIZE / 2.0)
-        / (APPEARANCE_TRACK_WIDTH - APPEARANCE_THUMB_SIZE)).clamp(0.0, 1.0);
-    let (min, span) = if index == 0 { (80.0, 40.0) } else { (50.0, 50.0) };
-    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)] // 50..120, redondeo al entero mas cercano.
+        / (APPEARANCE_TRACK_WIDTH - APPEARANCE_THUMB_SIZE))
+        .clamp(0.0, 1.0);
+    let (min, span) = if index == 0 {
+        (80.0, 40.0)
+    } else {
+        (50.0, 50.0)
+    };
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    // 50..120, redondeo al entero mas cercano.
     let value = (min + span * fraction).round() as u8;
     value
 }
@@ -258,6 +267,29 @@ fn zoom_step_limited(percent: u16, direction: i8, limit: f32) -> u16 {
 mod tests {
     use super::*;
     use crate::orbit::theme::Scheme;
+    #[test]
+    fn reduced_motion_persists_and_old_files_keep_the_default() {
+        let dir = directory("motion");
+        let path = dir.join("appearance.json");
+        let mut store = Store::load(path.clone()).expect("default");
+        assert!(!store.settings.reduced_motion);
+        for reduced_motion in [true, false] {
+            store
+                .save(AppearanceSettings {
+                    reduced_motion,
+                    ..store.settings
+                })
+                .expect("save");
+            assert_eq!(
+                Store::load(path.clone())
+                    .expect("reopen")
+                    .settings
+                    .reduced_motion,
+                reduced_motion
+            );
+        }
+        std::fs::remove_dir_all(dir).expect("cleanup");
+    }
     #[test]
     fn pointer_reaches_both_limits_at_the_thumb_centres_and_beyond() {
         for (index, min, max) in [(0, 80, 120), (1, 50, 100)] {
@@ -323,6 +355,7 @@ mod tests {
             glass_opacity: 65,
             interface_font: InterfaceFont::Arial,
             mono_font: MonoFont::Consolas,
+            reduced_motion: true,
         };
         first.save(settings).expect("guardar");
         assert_eq!(Store::load(path).expect("reinicio").settings, settings);

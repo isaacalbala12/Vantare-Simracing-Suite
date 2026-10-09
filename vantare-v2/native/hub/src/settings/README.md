@@ -4,8 +4,9 @@ Siete pestañas en la topbar. General usa Interfaz, Inicio, Avisos y Widgets;
 Apariencia ofrece Sistema/Claro/Oscuro y nueve temas con orbes claro/oscuro.
 El esquema, tema, contraste, opacidad y fuentes conservan el guardado atómico
 con detección de conflictos. Cada control tiene foco independiente; los
-selectores de esquema usan teclado y ratón. No se registra ninguna preferencia
-nueva fuera del Store existente.
+selectores de esquema usan teclado y ratón. Reducir animaciones se guarda en el mismo Store y desactiva transiciones,
+latidos y carruseles del renderer compartido. Durante el arrastre de contraste
+y opacidad solo se previsualiza el valor: el tema se aplica al soltar.
 
 Las páginas usan el kit Orbit R10, grupos numerados y densidad Adapt por alto;
 no tienen scroll propio. Las notas de versión, errores observados y módulos
@@ -125,7 +126,7 @@ No concede roles ni crea Agenda Owner.
 | Página | Conectado | Pendiente, deshabilitado |
 | --- | --- | --- |
 | Aplicación | Fuera del banco, idioma/unidades de widgets → preferencias de Studio → layout compartido. Workshop observa Studio; overlays recarga el layout. Error de guardado visible y selector restituido al valor real. | Idioma del Hub, zoom, densidad, inicio/minimizado, preferencias de avisos y prueba de notificación. |
-| Apariencia | Siete paletas, sistema/claro/oscuro, contraste, opacidad y fuentes, con vista previa y guardado inmediato. | Reducir animaciones. |
+| Apariencia | Siete paletas, sistema/claro/oscuro, contraste, opacidad y fuentes, con vista previa del valor y guardado al soltar; reducir animaciones real. | —. |
 | Rendimiento | Ninguna política nativa configurable. | Cinco niveles, Personalizado, Automático y cadencias por widget. Los FPS de referencia son descripciones Wails, no valores efectivos del núcleo. |
 | Actualizaciones | Metadatos locales del candidato fase 7, lectura en segundo plano al abrir y al actualizar. Portable: manifiesto junto a `bin/`; instalado: generación activa y `state.json`. Build de desarrollo identificada. | Búsqueda remota, instalación, cambio de canal. Las notas son lectura informativa de manifiestos versionados. No se validan hashes aquí: esta vista no autoriza actualización/rollback. |
 | Atajos | Las cuatro acciones reales del producto como referencia. | Sin registro global nativo: no combinaciones inventadas, editor o declaración de ausencia de conflictos. |

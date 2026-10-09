@@ -101,10 +101,18 @@ impl Widget {
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
+        self.frame_with_motion(prefs, false)
+    }
+    pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let now = Instant::now();
         let vm = self.vm.clone();
-        let carousel =
-            self.settings.driver_carousel && vm.status == Status::Ready && !vm.rows.is_empty();
+        let carousel = !reduced
+            && self.settings.driver_carousel
+            && vm.status == Status::Ready
+            && !vm.rows.is_empty();
+        if reduced {
+            self.motion.reset(&vm, now);
+        }
         let cards = if carousel {
             carousel_cards(
                 &vm,
@@ -117,7 +125,9 @@ impl Widget {
         let show_weather = self.settings.show_weather;
         (
             Box::new(move |window, cx| paint(&vm, &cards, show_weather, prefs, window, cx)),
-            if carousel {
+            if reduced {
+                Wake::Idle
+            } else if carousel {
                 Wake::Frame
             } else {
                 self.motion.wake(now)
@@ -592,6 +602,8 @@ mod tests {
             let cards = carousel_cards(&widget.vm, 15.0);
             assert_eq!(cards.len(), count * 2);
             assert_eq!(cards[0].slot, -(count as f32) / 2.0);
+            assert_eq!(widget.frame(prefs).1, Wake::Frame);
+            assert_eq!(widget.frame_with_motion(prefs, true).1, Wake::Idle);
             assert_eq!(widget.frame(prefs).1, Wake::Frame);
             let mut lost = snapshot.clone();
             lost.state.source_state = vantare_domain::SourceState::Lost;

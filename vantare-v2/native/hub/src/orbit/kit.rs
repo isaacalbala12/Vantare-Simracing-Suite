@@ -829,7 +829,8 @@ pub fn appearance_slider(
     cx: &gpui::App,
 ) -> gpui::Stateful<Div> {
     let fraction = ((value - min) / (max - min)).clamp(0.0, 1.0);
-    let fill = APPEARANCE_THUMB_SIZE / 2.0 + (APPEARANCE_TRACK_WIDTH - APPEARANCE_THUMB_SIZE) * fraction;
+    let fill =
+        APPEARANCE_THUMB_SIZE / 2.0 + (APPEARANCE_TRACK_WIDTH - APPEARANCE_THUMB_SIZE) * fraction;
     div()
         .id(if label == "Contraste" {
             "settings-contrast-slider"

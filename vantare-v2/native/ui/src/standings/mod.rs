@@ -429,9 +429,20 @@ impl Widget {
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
+        self.frame_with_motion(prefs, false)
+    }
+    pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let now = Instant::now();
-        let frame = self.motion.frame(&self.vm, self.plan.visible_rows, now);
-        let wake = self.motion.wake(now);
+        let frame = if reduced {
+            Motion::new().frame(&self.vm, self.plan.visible_rows, now)
+        } else {
+            self.motion.frame(&self.vm, self.plan.visible_rows, now)
+        };
+        let wake = if reduced {
+            Wake::Idle
+        } else {
+            self.motion.wake(now)
+        };
         let scene = view::Scene {
             config: self.config.clone(),
             vm: self.vm.clone(),

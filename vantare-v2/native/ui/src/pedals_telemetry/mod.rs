@@ -157,10 +157,21 @@ impl Widget {
         })
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
+        self.frame_with_motion(prefs, false)
+    }
+    pub(crate) fn frame_with_motion(
+        &mut self,
+        _prefs: Preferences,
+        reduced: bool,
+    ) -> (Paint, Wake) {
         let now = Instant::now();
-        let moving = self.moving_at(now);
-        let bars = self.bars_at(now);
+        let moving = !reduced && self.moving_at(now);
+        let bars = if reduced {
+            self.vm.pedals
+        } else {
+            self.bars_at(now)
+        };
         if !moving {
             self.started = None;
         }

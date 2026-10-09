@@ -351,7 +351,10 @@ impl Render for Overlay {
         let factor = frame.0 / size.0;
         let scale = self.preview_scale * factor;
         let scale_y = self.preview_scale_y * factor;
-        let (paint, wake) = self.widget.frame(self.prefs);
+        let reduced = cx
+            .try_global::<crate::MotionPolicy>()
+            .is_some_and(|policy| policy.0);
+        let (paint, wake) = self.widget.frame_with_motion(self.prefs, reduced);
         #[cfg(feature = "paint-stats")]
         let profile_photo = self.profile_photo.take();
         #[cfg(feature = "parity-capture")]
@@ -991,6 +994,7 @@ fn run_layout_feed<T: Send + 'static>(
 
 /// Registra las fuentes Inter embebidas; sin ellas el texto sale mal medido.
 pub(crate) fn init(cx: &mut App) -> bool {
+    crate::motion_policy::install(cx);
     match text::register_fonts(cx) {
         Ok(()) => true,
         Err(error) => {
@@ -1084,6 +1088,29 @@ fn run_placed_authorized(
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn reduced_motion_never_requests_animation_frames_for_any_widget() {
+        let prefs = Preferences::default();
+        for &kind in Kind::ALL {
+            let path = format!(
+                "{}/fixtures/{}.snapshot.json",
+                env!("CARGO_MANIFEST_DIR"),
+                kind.name()
+            );
+            let json = std::fs::read_to_string(path).expect("fixture");
+            let snapshot = vantare_ipc::snapshot_from_json(&json).expect("snapshot");
+            let mut widget = crate::Widget::new(&crate::Settings::default_for(kind), prefs);
+            widget.ingest(&snapshot, prefs);
+            for _ in 0..3 {
+                assert_ne!(
+                    widget.frame_with_motion(prefs, true).1,
+                    Wake::Frame,
+                    "{}",
+                    kind.name()
+                );
+            }
+        }
+    }
     #[test]
     fn frame_geometry_scales_shared_host_and_intrinsic_size_stays_canonical() {
         let mut overlay = Overlay::new(Kind::Standings, Preferences::default());

@@ -90,13 +90,24 @@ impl Widget {
         changed
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
+        self.frame_with_motion(prefs, false)
+    }
+    pub(crate) fn frame_with_motion(
+        &mut self,
+        _prefs: Preferences,
+        reduced: bool,
+    ) -> (Paint, Wake) {
         let now = Instant::now();
         let vm = self.vm.clone();
-        let frame = self.motion.frame(&vm, now);
+        let (frame, wake) = if reduced {
+            self.motion.reduced_frame(&vm, now)
+        } else {
+            (self.motion.frame(&vm, now), self.motion.wake(now))
+        };
         (
             Box::new(move |window, cx| view::paint(&vm, frame, window, cx)),
-            self.motion.wake(now),
+            wake,
         )
     }
 

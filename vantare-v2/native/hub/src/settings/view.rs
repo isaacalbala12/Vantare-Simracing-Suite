@@ -878,14 +878,45 @@ impl Hub {
                     }),
                 cx,
             ))
-            .when(self.shell.adapt.show_notes(), |page| {
+            .map(|page| {
                 page.child(section_surface(
                     "Movimiento",
                     None,
                     section_body().child(section_row(
                         "Reducir animaciones",
-                        "Transiciones y latidos",
-                        orbit::pill("Próximamente", Tone::Neutral, cx),
+                        "Sin transiciones, latidos ni carruseles",
+                        orbit::button(
+                            "settings-reduced-motion",
+                            if settings.reduced_motion {
+                                "Activado"
+                            } else {
+                                "Desactivado"
+                            },
+                            cx,
+                        )
+                        .role(gpui::Role::Switch)
+                        .aria_label("Reducir animaciones")
+                        .aria_toggled(if settings.reduced_motion {
+                            gpui::Toggled::True
+                        } else {
+                            gpui::Toggled::False
+                        })
+                        .track_focus(&self.settings.appearance_focus[14])
+                        .on_click(cx.listener(|hub, _, window, cx| {
+                            let mut settings = hub.settings.appearance.settings;
+                            settings.reduced_motion = !settings.reduced_motion;
+                            hub.settings_appearance_apply(settings, window, cx);
+                        }))
+                        .on_key_down(cx.listener(
+                            |hub, event: &gpui::KeyDownEvent, window, cx| {
+                                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                                    let mut settings = hub.settings.appearance.settings;
+                                    settings.reduced_motion = !settings.reduced_motion;
+                                    hub.settings_appearance_apply(settings, window, cx);
+                                    cx.stop_propagation();
+                                }
+                            },
+                        )),
                         self.shell.adapt,
                         cx,
                     )),
@@ -901,71 +932,77 @@ impl Hub {
             (settings.glass_opacity, 50.0, 100.0, "Opacidad del cristal")
         };
         let entity = cx.entity();
-        orbit::appearance_slider(f32::from(self.settings.appearance_preview[index].unwrap_or(value)), min, max, label, cx)
-            .relative()
-            .track_focus(&self.settings.appearance_focus[12 + index])
-            .tab_index(0)
-            .cursor_pointer()
-            .child(
-                gpui::canvas(
-                    move |bounds, _, cx| {
-                        entity.update(cx, |hub, _| {
-                            hub.settings.appearance_bounds[index] = Some(bounds);
-                        });
-                    },
-                    |_, (), _, _| {},
-                )
-                .absolute()
-                .size_full(),
+        orbit::appearance_slider(
+            f32::from(self.settings.appearance_preview[index].unwrap_or(value)),
+            min,
+            max,
+            label,
+            cx,
+        )
+        .relative()
+        .track_focus(&self.settings.appearance_focus[12 + index])
+        .tab_index(0)
+        .cursor_pointer()
+        .child(
+            gpui::canvas(
+                move |bounds, _, cx| {
+                    entity.update(cx, |hub, _| {
+                        hub.settings.appearance_bounds[index] = Some(bounds);
+                    });
+                },
+                |_, (), _, _| {},
             )
-            .on_mouse_down(
-                gpui::MouseButton::Left,
-                cx.listener(move |hub, event: &gpui::MouseDownEvent, window, cx| {
-                    hub.settings.appearance_focus[12 + index].focus(window, cx);
-                    if hub.settings.appearance_bounds[index]
-                        .is_some_and(|bounds| event.position.x >= bounds.left() + px(57.0))
-                    {
-                        hub.settings.appearance_dragging[index] = true;
-                        hub.settings_slider_pointer(index, event.position.x, cx);
-                    }
-                }),
-            )
-            .on_mouse_move(
-                cx.listener(move |hub, event: &gpui::MouseMoveEvent, _, cx| {
-                    if hub.settings.appearance_dragging[index]
-                        && event.pressed_button == Some(gpui::MouseButton::Left)
-                    {
-                        hub.settings_slider_pointer(index, event.position.x, cx);
-                    }
-                }),
-            )
-            .on_mouse_up(
-                gpui::MouseButton::Left,
-                cx.listener(move |hub, _, window, cx| hub.settings_slider_release(index, window, cx)),
-            )
-            .on_mouse_up_out(
-                gpui::MouseButton::Left,
-                cx.listener(move |hub, _, window, cx| hub.settings_slider_release(index, window, cx)),
-            )
-            .on_key_down(
-                cx.listener(move |hub, event: &gpui::KeyDownEvent, window, cx| {
-                    let current = if index == 0 {
-                        hub.settings.appearance.settings.contrast
-                    } else {
-                        hub.settings.appearance.settings.glass_opacity
-                    };
-                    let (min, max) = if index == 0 { (80, 120) } else { (50, 100) };
-                    let value = match event.keystroke.key.as_str() {
-                        "left" | "down" => current.saturating_sub(1).max(min),
-                        "right" | "up" => current.saturating_add(1).min(max),
-                        "home" => min,
-                        "end" => max,
-                        _ => return,
-                    };
-                    hub.settings_slider_value(index, value, window, cx);
-                    cx.stop_propagation();
-                }),
-            )
+            .absolute()
+            .size_full(),
+        )
+        .on_mouse_down(
+            gpui::MouseButton::Left,
+            cx.listener(move |hub, event: &gpui::MouseDownEvent, window, cx| {
+                hub.settings.appearance_focus[12 + index].focus(window, cx);
+                if hub.settings.appearance_bounds[index]
+                    .is_some_and(|bounds| event.position.x >= bounds.left() + px(57.0))
+                {
+                    hub.settings.appearance_dragging[index] = true;
+                    hub.settings_slider_pointer(index, event.position.x, cx);
+                }
+            }),
+        )
+        .on_mouse_move(
+            cx.listener(move |hub, event: &gpui::MouseMoveEvent, _, cx| {
+                if hub.settings.appearance_dragging[index]
+                    && event.pressed_button == Some(gpui::MouseButton::Left)
+                {
+                    hub.settings_slider_pointer(index, event.position.x, cx);
+                }
+            }),
+        )
+        .on_mouse_up(
+            gpui::MouseButton::Left,
+            cx.listener(move |hub, _, window, cx| hub.settings_slider_release(index, window, cx)),
+        )
+        .on_mouse_up_out(
+            gpui::MouseButton::Left,
+            cx.listener(move |hub, _, window, cx| hub.settings_slider_release(index, window, cx)),
+        )
+        .on_key_down(
+            cx.listener(move |hub, event: &gpui::KeyDownEvent, window, cx| {
+                let current = if index == 0 {
+                    hub.settings.appearance.settings.contrast
+                } else {
+                    hub.settings.appearance.settings.glass_opacity
+                };
+                let (min, max) = if index == 0 { (80, 120) } else { (50, 100) };
+                let value = match event.keystroke.key.as_str() {
+                    "left" | "down" => current.saturating_sub(1).max(min),
+                    "right" | "up" => current.saturating_add(1).min(max),
+                    "home" => min,
+                    "end" => max,
+                    _ => return,
+                };
+                hub.settings_slider_value(index, value, window, cx);
+                cx.stop_propagation();
+            }),
+        )
     }
     fn settings_performance(_compact: bool, cx: &mut Context<Self>) -> Div {
         let mut levels = div().grid().grid_cols(3).w_full().min_w_0().gap(px(10.0));

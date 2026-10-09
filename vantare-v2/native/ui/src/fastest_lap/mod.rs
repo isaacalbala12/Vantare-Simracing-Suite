@@ -126,7 +126,14 @@ impl Widget {
         changed
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
+        self.frame_with_motion(prefs, false)
+    }
+    pub(crate) fn frame_with_motion(
+        &mut self,
+        _prefs: Preferences,
+        reduced: bool,
+    ) -> (Paint, Wake) {
         if cfg!(feature = "parity-capture") {
             // El harness productivo previsualiza el récord sin crear un aviso live.
             let vm = self.vm.clone();
@@ -158,7 +165,11 @@ impl Widget {
             };
             let age = notice.started.elapsed();
             let lifetime = self.settings.lifetime();
-            let (alpha, offset, wake) = motion_for(age, lifetime);
+            let (alpha, offset, wake) = if reduced {
+                (1.0, 0.0, Wake::At(lifetime.saturating_sub(age)))
+            } else {
+                motion_for(age, lifetime)
+            };
             if age >= lifetime {
                 self.notice = None;
                 return (Box::new(|_, _| {}), Wake::Idle);

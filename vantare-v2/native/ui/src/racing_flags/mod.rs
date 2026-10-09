@@ -271,9 +271,20 @@ impl Widget {
         replace_if_changed(&mut self.vm, vm)
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
+        self.frame_with_motion(prefs, false)
+    }
+    pub(crate) fn frame_with_motion(
+        &mut self,
+        _prefs: Preferences,
+        reduced: bool,
+    ) -> (Paint, Wake) {
         let elapsed = self.yellow_since.map(|start| start.elapsed());
-        let (pulse, wake) = pulse(elapsed);
+        let (pulse, wake) = if reduced {
+            (0.0, Wake::Idle)
+        } else {
+            pulse(elapsed)
+        };
         if matches!(wake, Wake::Idle) {
             self.yellow_since = None;
         }

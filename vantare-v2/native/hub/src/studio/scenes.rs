@@ -76,7 +76,7 @@ pub fn load() -> Result<Vec<Photo>, String> {
             .and_then(|c| c.laps.current())
             .map_or_else(|| "—".to_owned(), ToString::to_string);
         photos.push(Photo {
-            label: format!("LMU · V{lap} · foto {}/{count}", i + 1),
+            label: format!("LMU · V{lap} · {}/{count}", i + 1),
             snapshot,
         });
     }
@@ -90,7 +90,7 @@ pub fn load() -> Result<Vec<Photo>, String> {
         .and_then(|c| c.laps.current())
         .map_or_else(|| "—".to_owned(), ToString::to_string);
     photos.push(Photo {
-        label: format!("ACC · V{lap} · foto 1/1"),
+        label: format!("ACC · V{lap} · 1/1"),
         snapshot,
     });
     Ok(photos)

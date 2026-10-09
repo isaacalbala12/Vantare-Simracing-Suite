@@ -190,14 +190,6 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     value.player_window,
                     set!(Standings.player_window),
                 ),
-                number(
-                    "Filas alrededor",
-                    value.window_around as f64,
-                    0.0,
-                    8.0,
-                    2.0,
-                    set!(Standings.window_around as usize),
-                ),
                 boolean(
                     "Cabecera de sesión",
                     Tab::Content,
@@ -438,7 +430,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
         ],
         Settings::Relative(value) => vec![
             number(
-                "Pilotos delante",
+                "Filas alrededor · delante",
                 value.range_ahead as f64,
                 0.0,
                 8.0,
@@ -446,7 +438,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 set!(Relative.range_ahead as usize),
             ),
             number(
-                "Pilotos detrás",
+                "Filas alrededor · detrás",
                 value.range_behind as f64,
                 0.0,
                 8.0,
@@ -591,6 +583,13 @@ pub fn valid_color(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn surrounding_rows_belong_only_to_relative() {
+        assert!(!fields(&Settings::Standings(Default::default())).iter()
+            .any(|f| f.title.starts_with("Filas alrededor")));
+        let relative = fields(&Settings::Relative(Default::default()));
+        assert_eq!(relative.iter().filter(|f| f.title.starts_with("Filas alrededor")).count(), 2);
+    }
     #[test]
     fn anchors_align_all_nine_zones_and_reject_invalid_sizes() {
         for row in 0..3 {

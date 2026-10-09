@@ -14,12 +14,31 @@ use gpui::{
     linear_gradient, prelude::*, px, rgb,
 };
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 use vantare_domain::{Snapshot, format::Preferences};
 use vantare_ui::{Kind, Overlay, Settings, layout::Instance};
 
 const STUDIO_PREVIEW_SCALE: f32 = 700.0 / 1920.0;
 const ZOOM_STEPS: [Option<u16>; 6] = [None, Some(50), Some(75), Some(100), Some(125), Some(150)];
 const AUTO_SAVED: &str = "Guardado";
+
+/// Un paso inmediato, pausa inicial y repetición a 1/4/8 px cada 30 ms.
+fn held_nudge_distance(elapsed: Duration, shift: bool) -> f32 {
+    let ticks = elapsed.as_millis().saturating_sub(300) / 30;
+    let pixels = 1 + ticks.min(20) + ticks.saturating_sub(20).min(30) * 4
+        + ticks.saturating_sub(50) * 8;
+    #[allow(clippy::cast_precision_loss)] // Acotado al límite de coordenadas del documento.
+    let distance = pixels.min(100_000) as f32;
+    distance * if shift { 8.0 } else { 1.0 }
+}
+
+struct HeldNudge {
+    frame: Entity<CanvasFrame>,
+    origin: (f32, f32),
+    direction: (i8, i8),
+    shift: bool,
+    started: Instant,
+}
 
 fn keyboard_nudge(key: &gpui::Keystroke) -> Option<((i8, i8), bool)> {
     if key.modifiers.control
@@ -418,6 +437,8 @@ pub struct Studio {
     status: Result<(), String>,
     drag: Option<Entity<CanvasFrame>>,
     opacity_preview: Option<(String, f32)>,
+    held_nudge: Option<HeldNudge>,
+    nudge_task: Option<gpui::Task<()>>,
     focus: FocusHandle,
     catalog: Option<Entity<Choice>>,
     catalog_open: bool,
@@ -538,6 +559,7 @@ struct CanvasFrame {
     drag: Option<Drag>,
     resize: Option<Resize>,
     opacity_preview: Option<f32>,
+    nudge_position: Option<(f32, f32)>,
 }
 impl EventEmitter<Started> for CanvasFrame {}
 impl Render for CanvasFrame {
@@ -552,6 +574,7 @@ impl CanvasFrame {
             .as_ref()
             .map_or((self.item.x, self.item.y), |drag| drag.preview);
         let (x, y) = self.resize.as_ref().map_or((x, y), |r| r.preview.0);
+        let (x, y) = self.nudge_position.unwrap_or((x, y));
         let dimensions = self.renderer.read(cx).frame_size();
         div()
             .id("widget-frame")
@@ -868,6 +891,8 @@ impl Studio {
             status,
             drag: None,
             opacity_preview: None,
+            held_nudge: None,
+            nudge_task: None,
             focus: cx.focus_handle(),
             catalog: None,
             catalog_open: false,
@@ -952,6 +977,7 @@ impl Studio {
                 drag: None,
                 resize: None,
                 opacity_preview: None,
+                nudge_position: None,
             });
             let id = item.id.clone();
             cx.subscribe(&frame, move |this, frame, event: &Started, cx| {
@@ -1098,6 +1124,13 @@ impl Studio {
         self.edit(if redo { Editor::redo } else { Editor::undo }, cx);
     }
     fn cancel_drag(&mut self, cx: &mut Context<Self>) {
+        self.nudge_task = None;
+        if let Some(held) = self.held_nudge.take() {
+            held.frame.update(cx, |frame, cx| {
+                frame.nudge_position = None;
+                cx.notify();
+            });
+        }
         if let Some((id, _)) = self.opacity_preview.take()
             && let Some((_, frame)) = self.frames.iter().find(|(key, _)| *key == id)
         {
@@ -1230,7 +1263,7 @@ impl Studio {
         cx: &mut Context<Self>,
     ) {
         let key = &event.keystroke;
-        if key.key == "escape" && self.drag.is_some() {
+        if key.key == "escape" && (self.drag.is_some() || self.held_nudge.is_some()) {
             self.cancel_drag(cx);
             cx.stop_propagation();
         } else if key.modifiers.control || key.modifiers.platform {
@@ -1262,7 +1295,7 @@ impl Studio {
             && let Some((direction, shift)) = keyboard_nudge(key)
         {
             // Los campos del inspector conservan sus flechas y su propio foco.
-            self.position_nudge(direction, shift, cx);
+            self.start_nudge(direction, shift, cx);
             cx.stop_propagation();
         }
     }
@@ -1904,6 +1937,54 @@ impl Studio {
             cx,
         );
     }
+    fn start_nudge(&mut self, direction: (i8, i8), shift: bool, cx: &mut Context<Self>) {
+        if self.held_nudge.as_ref().is_some_and(|held| held.direction == direction && held.shift == shift) {
+            return;
+        }
+        self.cancel_drag(cx);
+        let Some(item) = self.editor.selected() else { return };
+        let Some((_, frame)) = self.frames.iter().find(|(id, _)| *id == item.id) else { return };
+        self.held_nudge = Some(HeldNudge {
+            frame: frame.clone(), origin: (item.x, item.y), direction, shift, started: Instant::now(),
+        });
+        self.tick_nudge(Duration::ZERO, cx);
+        self.nudge_task = Some(cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor().timer(Duration::from_millis(16)).await;
+                if !this.update(cx, |this, cx| {
+                    let Some(held) = &this.held_nudge else { return false };
+                    this.tick_nudge(held.started.elapsed(), cx);
+                    true
+                }).unwrap_or(false) { break; }
+            }
+        }));
+    }
+    fn tick_nudge(&self, elapsed: Duration, cx: &mut Context<Self>) {
+        let Some(held) = &self.held_nudge else { return };
+        let distance = held_nudge_distance(elapsed, held.shift);
+        let position = (
+            (held.origin.0 + f32::from(held.direction.0) * distance).clamp(-100_000.0, 100_000.0),
+            (held.origin.1 + f32::from(held.direction.1) * distance).clamp(-100_000.0, 100_000.0),
+        );
+        held.frame.update(cx, |frame, cx| {
+            if frame.nudge_position != Some(position) {
+                frame.nudge_position = Some(position);
+                cx.notify();
+            }
+        });
+    }
+    fn finish_nudge(&mut self, cx: &mut Context<Self>) {
+        self.nudge_task = None;
+        let Some(held) = self.held_nudge.take() else { return };
+        let frame = held.frame.read(cx);
+        let position = frame.nudge_position;
+        let id = frame.item.id.clone();
+        held.frame.update(cx, |frame, cx| { frame.nudge_position = None; cx.notify(); });
+        if self.editor.selected.as_ref() == Some(&id) && let Some((x, y)) = position {
+            self.reset_fields();
+            self.edit(|editor| editor.edit_selected(|item| { item.x = x; item.y = y; }), cx);
+        }
+    }
     fn anchor_grid(&self, item: &Instance, cx: &mut Context<Self>) -> gpui::Div {
         let size = self.selected_size(cx);
         let mut anchors = div()
@@ -1970,11 +2051,18 @@ impl Studio {
                             cx,
                         )
                         .aria_label(label)
+                        .on_mouse_down(MouseButton::Left, cx.listener(
+                            move |this, event: &gpui::MouseDownEvent, _, cx| {
+                                if direction != (0, 0) { this.start_nudge(direction, event.modifiers.shift, cx); }
+                            },
+                        ))
+                        .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| this.finish_nudge(cx)))
+                        .on_mouse_up_out(MouseButton::Left, cx.listener(|this, _, _, cx| this.finish_nudge(cx)))
                         .on_click(cx.listener(
                             move |this, event: &gpui::ClickEvent, _, cx| {
                                 if direction == (0, 0) {
                                     this.position_anchor(1, 1, cx);
-                                } else {
+                                } else if !matches!(event, gpui::ClickEvent::Mouse(_)) {
                                     this.position_nudge(direction, event.modifiers().shift, cx);
                                 }
                             },
@@ -2527,6 +2615,12 @@ impl Studio {
             },
             move |_, (), window, _| {
                 let studio = drag_target.clone();
+                let release_target = studio.clone();
+                window.on_mouse_event(move |_: &gpui::MouseUpEvent, phase, _, cx| {
+                    if phase == gpui::DispatchPhase::Capture {
+                        let _ = release_target.update(cx, |this, cx| this.finish_nudge(cx));
+                    }
+                });
                 window.on_mouse_event(move |event: &MouseMoveEvent, phase, _, cx| {
                     if phase == gpui::DispatchPhase::Capture {
                         // El gesto sigue aunque el puntero salga del hitbox de Studio.
@@ -2598,6 +2692,12 @@ impl Render for Studio {
                 }),
             )
             .on_key_down(cx.listener(Self::handle_key))
+            .on_key_up(cx.listener(|this, event: &gpui::KeyUpEvent, _, cx| {
+                if matches!(event.keystroke.key.as_str(), "left" | "right" | "up" | "down") {
+                    this.finish_nudge(cx);
+                    cx.stop_propagation();
+                }
+            }))
             .child(workspace)
     }
 }
@@ -3246,6 +3346,42 @@ mod tests {
         );
         editor.undo().expect("deshacer");
         assert_eq!(editor.layout(), &original);
+    }
+    #[test]
+    fn held_arrows_repeat_accelerate_and_commit_once_on_release() {
+        assert_eq!(held_nudge_distance(Duration::ZERO, false), 1.0);
+        assert_eq!(held_nudge_distance(Duration::from_millis(299), false), 1.0);
+        assert_eq!(held_nudge_distance(Duration::from_millis(330), false), 2.0);
+        assert_eq!(held_nudge_distance(Duration::from_millis(930), false), 25.0);
+        assert_eq!(held_nudge_distance(Duration::from_millis(1830), false), 149.0);
+        assert_eq!(held_nudge_distance(Duration::from_millis(330), true), 16.0);
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let original = studio.editor.layout().clone();
+                let frame = studio.frames[0].1.clone();
+                let origin = (frame.read(cx).item.x, frame.read(cx).item.y);
+                let renderer = frame.read(cx).renderer.clone();
+                studio.held_nudge = Some(HeldNudge { frame: frame.clone(), origin,
+                    direction: (1, 0), shift: false, started: Instant::now() });
+                for ms in [0, 330, 930, 1830] {
+                    studio.tick_nudge(Duration::from_millis(ms), cx);
+                    assert_eq!(studio.editor.layout(), &original);
+                    assert_eq!(Editor::open(file.path.clone()).expect("disco").layout(), &original);
+                    assert_eq!(frame.read(cx).renderer, renderer);
+                }
+                studio.finish_nudge(cx);
+                assert_eq!(studio.editor.selected().expect("selección").x, origin.0 + 149.0);
+                studio.finish_nudge(cx); // La liberación también puede llegar desde el marco.
+                studio.history(false, cx);
+                assert_eq!(studio.editor.layout(), &original);
+                studio.editor.undo().expect("añadir");
+                assert!(studio.editor.layout().instances.is_empty());
+            });
+            cx.quit();
+        });
     }
     #[test]
     fn opacity_preview_keeps_renderers_and_disk_then_commits_one_undoable_edit() {

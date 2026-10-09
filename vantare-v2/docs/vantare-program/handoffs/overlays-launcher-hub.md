@@ -5961,3 +5961,8 @@ S4: movimiento del gesto observado en captura de ventana, no solo dentro del hit
 de Studio; mantiene invalidación de CanvasFrame y una única escritura al soltar.
 Ratón fuera del centro y fuera de ventana se revalidarán físicamente en release;
 regresión de eventos nativos, no una simulación de hitboxes.
+S5: Studio empieza con Snapshot vacío y recibe las fotos reales en Hub.tick; se
+elimina la observación de Workshop. Banco ui-quality permite --qa-telemetry con
+fixture explícita en su root: productor IPC propio, revisión y errores registrados,
+stop/join al cerrar. Prueba física de ausencia/cambio de foto/pause durante gesto
+pendiente; no se afirma conexión LMU ni se fabrica telemetría de producto.

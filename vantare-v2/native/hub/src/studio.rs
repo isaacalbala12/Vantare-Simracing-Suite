@@ -638,7 +638,7 @@ impl Studio {
         self.rebuild(cx);
         Ok(())
     }
-    pub fn new(mut prepared: Prepared, snapshot: Snapshot, cx: &mut Context<Self>) -> Self {
+    pub fn new(mut prepared: Prepared, cx: &mut Context<Self>) -> Self {
         let status = cx.primary_display().map_or(Ok(()), |display| {
             let bounds = display.bounds();
             prepared.editor.initialize((
@@ -676,7 +676,8 @@ impl Studio {
             editor: prepared.editor,
             sidebar,
             frames: vec![],
-            snapshot,
+            // Hasta recibir IPC, En vivo no tiene datos. Workshop es autoría, no telemetría.
+            snapshot: Snapshot::default(),
             examples: prepared.examples,
             example: true,
             status,

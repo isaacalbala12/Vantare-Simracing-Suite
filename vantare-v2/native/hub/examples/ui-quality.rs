@@ -18,6 +18,41 @@ fn argument(args: &[String], key: &str) -> Option<String> {
         .map(|pair| pair[1].clone())
 }
 
+/// Inyección explícita de fotos de contrato por el IPC del banco, nunca el de usuario.
+fn qa_telemetry(
+    root: PathBuf,
+    name: &str,
+    stop: Arc<Event>,
+) -> Result<std::thread::JoinHandle<Result<(), String>>, String> {
+    let mut publisher = vantare_ipc::Publisher::new(name, |_| true)
+        .map_err(|error| format!("publicador QA: {error}"))?;
+    Ok(std::thread::spawn(move || {
+        let mut previous = None;
+        while !stop.is_set() {
+            let bytes = match fs::read(root.join("telemetry.snapshot.json")) {
+                Ok(bytes) => Some(bytes),
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
+                Err(error) => return Err(format!("leer foto QA: {error}")),
+            };
+            if let Some(bytes) = bytes.filter(|bytes| previous.as_ref() != Some(bytes)) {
+                let photo = vantare_ipc::snapshot_from_json(
+                    std::str::from_utf8(&bytes).map_err(|error| error.to_string())?,
+                )
+                .map_err(|error| format!("foto QA inválida: {error}"))?;
+                let revision = format!("{},{}", photo.epoch, photo.sequence);
+                publisher
+                    .publish(Arc::new(photo))
+                    .map_err(|error| format!("publicar foto QA: {error}"))?;
+                fs::write(root.join("telemetry-published.txt"), revision)
+                    .map_err(|error| error.to_string())?;
+                previous = Some(bytes);
+            }
+            stop.wait(Duration::from_millis(100));
+        }
+        Ok(())
+    }))
+}
+
 fn serve(root: &std::path::Path, name: &str, stop: Arc<Event>) -> Result<(), String> {
     let mut listener = Listener::new(name, stop.clone(), Duration::from_secs(300))
         .map_err(|error| format!("listener QA: {error}"))?;
@@ -167,6 +202,11 @@ fn main() -> Result<(), String> {
         .transpose()?;
     let name = format!("vantare-ui-quality-{}", std::process::id());
     let stop = Arc::new(Event::new().map_err(|error| error.to_string())?);
+    let telemetry = if args.iter().any(|arg| arg == "--qa-telemetry") {
+        Some(qa_telemetry(root.clone(), &name, stop.clone())?)
+    } else {
+        None
+    };
     let server_stop = stop.clone();
     let server_root = root.clone();
     let server_name = format!("{name}-hub-services");
@@ -205,6 +245,11 @@ fn main() -> Result<(), String> {
         },
     );
     stop.set();
+    let telemetry_result = telemetry.map_or(Ok(()), |thread| {
+        thread
+            .join()
+            .map_err(|_| "publicador QA terminó con panic".to_owned())?
+    });
     let server_result = server.join().map_err(|_| "servidor QA terminó con panic")?;
-    result.and(server_result)
+    result.and(server_result).and(telemetry_result)
 }

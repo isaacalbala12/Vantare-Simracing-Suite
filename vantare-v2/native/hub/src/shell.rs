@@ -119,6 +119,8 @@ impl Hub {
         }
         if let Some(snapshot) = self.subscriber.next(Duration::ZERO) {
             self.home_previews.ingest(&snapshot, cx);
+            self.studio
+                .update(cx, |studio, cx| studio.ingest(&snapshot, cx));
             self.testing
                 .update(cx, |testing, _| testing.observed.snapshot(&snapshot));
             let signing_in = self.remote.read(cx).holds_hub_in_game();
@@ -897,15 +899,6 @@ fn wire_sections(
     .detach();
 }
 
-fn wire_studio_workshop(workshop: &Entity<Workshop>, cx: &mut Context<Hub>) {
-    cx.observe(workshop, |this, workshop, cx| {
-        let snapshot = workshop.read(cx).scene.snapshot().clone();
-        this.studio
-            .update(cx, |studio, cx| studio.ingest(&snapshot, cx));
-    })
-    .detach();
-}
-
 fn subscribe(pipe: Option<String>) -> Result<Subscriber, String> {
     // Mismo ACL privado del IPC que overlays; no consulta servicios ni credenciales.
     let pipe = match pipe {
@@ -1044,7 +1037,7 @@ impl Hub {
         focus.focus(window, cx);
         let workshop = create_workshop(prepared, cx);
         let snapshot = workshop.read(cx).scene.snapshot().clone();
-        let studio = cx.new(|cx| Studio::new(prepared_studio, snapshot.clone(), cx));
+        let studio = cx.new(|cx| Studio::new(prepared_studio, cx));
         let prefs = studio.read(cx).preferences();
         // Solo QA explícita usa la escena de autoría; el producto espera fotos IPC reales.
         let home_snapshot = if capture.is_some() || demo.is_some() {
@@ -1112,7 +1105,6 @@ impl Hub {
         }
         let testing = cx.new(|cx| Testing::new(testing_dir, remote.clone(), window, cx));
         wire_strategy(&strategy, cx);
-        wire_studio_workshop(&workshop, cx);
         cx.on_app_quit(move |this, cx| {
             this.analysis.update(cx, |analysis, _| analysis.cancel());
             if let Err(error) = this.launcher.update(cx, |launcher, _| launcher.shutdown()) {

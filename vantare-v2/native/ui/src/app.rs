@@ -492,6 +492,7 @@ fn attach(hwnd: &mut Option<Hwnd>, window: &Window, origin: (f32, f32)) {
 /// «Repintado en la ventana grande»). La ventana no cambia de tamaño: el alto de
 /// Standings, que depende de las filas visibles, lo gobierna el propio widget.
 struct Screen {
+    connection_owner: bool,
     widgets: Vec<PlacedOverlay>,
     origin: (f32, f32),
     hwnd: Option<Hwnd>,
@@ -536,6 +537,15 @@ impl Render for Screen {
                             .cached(StyleRefinement::default().w(px(w)).h(px(h))),
                     )
             }))
+            .when(
+                self.connection_owner && crate::connection::incompatible(cx),
+                |root| {
+                    root.child(license_notice(
+                        (16.0, 16.0),
+                        vantare_ipc::INCOMPATIBLE_COMPONENTS,
+                    ))
+                },
+            )
     }
 }
 
@@ -611,6 +621,7 @@ pub(crate) fn open_screens(
     let displays = cx.displays();
     let bounds: Vec<_> = displays.iter().map(|d| d.bounds()).collect();
     let mut all = Vec::new();
+    let mut connection_owner = true;
     for ((display, bounds), mine) in displays
         .iter()
         .zip(bounds.iter())
@@ -633,11 +644,13 @@ pub(crate) fn open_screens(
         let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
         let opened = cx.open_window(options, move |_, cx| {
             cx.new(|_| Screen {
+                connection_owner,
                 widgets,
                 origin,
                 hwnd: None,
             })
         });
+        connection_owner = false;
         if let Err(error) = opened {
             eprintln!("no se pudo abrir la ventana del monitor: {error}");
         }
@@ -831,6 +844,7 @@ impl LiveScreens {
                 .collect();
             if let Some(handle) = existing {
                 match handle.update(cx, |screen, _, cx| {
+                    screen.connection_owner = occupied.first() == Some(&display.id());
                     screen.widgets = widgets;
                     cx.notify();
                 }) {
@@ -843,6 +857,7 @@ impl LiveScreens {
                 let origin = (f32::from(bounds.origin.x), f32::from(bounds.origin.y));
                 match cx.open_window(options, |_, cx| {
                     cx.new(|_| Screen {
+                        connection_owner: occupied.first() == Some(&display.id()),
                         widgets,
                         origin,
                         hwnd: None,
@@ -965,6 +980,10 @@ fn run_layout_feed<T: Send + 'static>(
         cx.set_quit_mode(gpui::QuitMode::Explicit);
         #[cfg(feature = "paint-stats")]
         crate::stats::report();
+        crate::connection::install(
+            demand.as_ref().map(crate::source::DemandHandle::connection),
+            cx,
+        );
         let screens = Rc::new(RefCell::new(LiveScreens {
             cadences: HashMap::new(),
             usage_widgets: None,
@@ -1094,7 +1113,7 @@ pub fn run_with_rights(
     rights: Option<vantare_ipc::control::Feed>,
 ) {
     let placed = (0..windows).map(|i| (kind_of(i), origin_of(i))).collect();
-    run_placed_authorized(placed, snapshots, prefs, rights);
+    run_placed_authorized(placed, snapshots, prefs, rights, None);
 }
 
 /// Abre los widgets y sus posiciones (px globales de pantalla) dados.
@@ -1103,7 +1122,19 @@ pub fn run_placed(
     snapshots: flume::Receiver<Arc<Snapshot>>,
     prefs: Preferences,
 ) {
-    run_placed_authorized(placed, snapshots, prefs, None);
+    run_placed_authorized(placed, snapshots, prefs, None, None);
+}
+
+/// Abre la campaña con un único aviso del estado de conexión en el host.
+pub fn run_with_connection(
+    windows: usize,
+    snapshots: flume::Receiver<Arc<Snapshot>>,
+    prefs: Preferences,
+    rights: Option<vantare_ipc::control::Feed>,
+    connection: Option<vantare_ipc::ConnectionStatus>,
+) {
+    let placed = (0..windows).map(|i| (kind_of(i), origin_of(i))).collect();
+    run_placed_authorized(placed, snapshots, prefs, rights, connection);
 }
 
 fn run_placed_authorized(
@@ -1111,12 +1142,14 @@ fn run_placed_authorized(
     snapshots: flume::Receiver<Arc<Snapshot>>,
     prefs: Preferences,
     rights: Option<vantare_ipc::control::Feed>,
+    connection: Option<vantare_ipc::ConnectionStatus>,
 ) {
     gpui_platform::application().run(move |cx: &mut App| {
         if !init(cx) {
             return;
         }
         crate::rights::install(rights, cx);
+        crate::connection::install(connection, cx);
         #[cfg(feature = "paint-stats")]
         crate::stats::report();
         let widgets = open_screens(cx, &placed, prefs);

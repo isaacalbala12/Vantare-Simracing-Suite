@@ -62,8 +62,8 @@ fn decode(text: &str, jsonl: bool) -> Result<Vec<Snapshot>, String> {
     }
     let mut frames = Vec::new();
     for (line, text) in photos.iter().enumerate() {
-        let next =
-            vantare_ipc::snapshot_from_json(text).map_err(|e| format!("foto {}: {e}", line + 1))?;
+        let next = vantare_ipc::snapshot_from_saved_json(text)
+            .map_err(|e| format!("foto {}: {e}", line + 1))?;
         if let Some(previous) = frames.last() {
             let previous: &Snapshot = previous;
             if previous.epoch != next.epoch
@@ -265,6 +265,30 @@ mod tests {
     }
 
     #[test]
+    fn saved_v7_and_v8_scene_files_load_without_rewriting_user_data() {
+        let current = std::fs::read_to_string(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("../ipc/tests/fixtures/saved-v8.snapshot.json"),
+        )
+        .expect("escena v8 conservada de 5e1da3f6");
+        let expected = decode(&current, false).expect("dato v8 original");
+        for version in [7, 8] {
+            let mut old: serde_json::Value = serde_json::from_str(&current).expect("JSON");
+            old["version"] = version.into();
+            let bytes = old.to_string();
+            let path = std::env::temp_dir().join(format!(
+                "saved-1530-{}-{version}.snapshot.json",
+                std::process::id()
+            ));
+            std::fs::write(&path, &bytes).expect("guardar");
+            let scene = Scene::open(path.clone()).expect("abrir escena histórica");
+            assert_eq!(scene.snapshot(), &expected[0]);
+            assert_eq!(std::fs::read_to_string(&path).expect("original"), bytes);
+            std::fs::remove_file(path).expect("limpiar escena de prueba");
+        }
+    }
+
+    #[test]
     fn pause_on_last_photo_preserves_cursor_and_single_photo_cannot_play() {
         let mut scene = Scene::open(Path::new(FIXTURES).join("lmu47.snapshot.json")).expect("foto");
         scene.play();
@@ -336,7 +360,7 @@ mod tests {
         assert!(Scene::open(path.clone()).is_err());
         let frame = std::fs::read_to_string(Path::new(FIXTURES).join("lmu47.snapshot.json"))
             .expect("captura");
-        let snapshot = vantare_ipc::snapshot_from_json(&frame).expect("captura válida");
+        let snapshot = vantare_ipc::snapshot_from_saved_json(&frame).expect("captura válida");
         let json = vantare_ipc::snapshot_to_json(&snapshot).expect("serializa");
         std::fs::write(&path, format!("{json}\n{json}\n")).expect("duplicado");
         assert!(Scene::open(path.clone()).is_err());

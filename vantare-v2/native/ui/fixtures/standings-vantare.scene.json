@@ -8,7 +8,7 @@
   {
    "caption": "Carrera · vuelta 14/38",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 1,
     "origin": {
@@ -1396,7 +1396,7 @@
   {
    "caption": "FCY · amarilla en todo el circuito",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 2,
     "origin": {
@@ -2784,7 +2784,7 @@
   {
    "caption": "Amarilla local · sector 2",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 3,
     "origin": {
@@ -4174,7 +4174,7 @@
   {
    "caption": "Última vuelta · 38/38",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 4,
     "origin": {
@@ -5562,7 +5562,7 @@
   {
    "caption": "Jugador en boxes",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 5,
     "origin": {
@@ -6950,7 +6950,7 @@
   {
    "caption": "Sin datos · esperando al simulador",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 6,
     "origin": {
@@ -8338,7 +8338,7 @@
   {
    "caption": "Espectador · sin coche propio",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 7,
     "origin": {

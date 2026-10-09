@@ -1,3 +1,5 @@
+//! DTO v9: vehículo, parrilla, paradas, compuesto, sectores, rating, tendencia,
+//! energía, servicio de boxes, stint y deltas de #1497. El cable exige v9.
 //! DTO explícito del `Snapshot`: es el formato del cable, no los tipos de
 //! `domain` (que no son ABI). Añadir una señal al modelo exige añadirla aquí a
 //! propósito. En fotos completas o señales declaradas entregadas, un campo de
@@ -11,7 +13,7 @@ use vantare_domain as d;
 use crate::Error;
 
 /// Versión del DTO. Se sube al cambiar el esquema de forma incompatible.
-pub const VERSION: u32 = 8;
+pub const VERSION: u32 = 9;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct SnapshotDto {

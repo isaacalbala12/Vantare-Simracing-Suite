@@ -26,6 +26,7 @@ pub use motion_policy::MotionPolicy;
 mod app;
 #[cfg(feature = "parity-capture")]
 pub mod capture;
+mod connection;
 mod demand;
 pub mod efficiency;
 pub mod geometry;
@@ -50,7 +51,7 @@ include!("registry.rs");
 // Hub incrusta el mismo renderer productivo.
 pub use app::{
     Overlay, layout_row, run_layout_requested, run_layout_requested_hidden, run_layout_with_rights,
-    run_placed, run_with_rights,
+    run_placed, run_with_connection, run_with_rights,
 };
 
 /// Requests a zoom change for this window only, via the vendored Windows backend.

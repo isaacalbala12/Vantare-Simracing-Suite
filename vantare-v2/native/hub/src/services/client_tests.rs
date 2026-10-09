@@ -107,3 +107,46 @@ fn dropping_a_connection_does_not_cancel_the_owner_or_poison_reconnect() {
     }
     server.join().expect("peer terminó");
 }
+#[test]
+fn mismatched_service_hello_and_response_are_actionable_connection_errors() {
+    for hello_mismatch in [true, false] {
+        let name = format!("hub-version-1530-{}-{hello_mismatch}", std::process::id());
+        let server_stop = Arc::new(Event::new().expect("evento"));
+        let mut listener = Listener::new(
+            &format!("{name}-hub-services"),
+            server_stop,
+            Duration::from_secs(5),
+        )
+        .expect("listener");
+        let mut pipe = listener.instance().expect("instancia");
+        let server = std::thread::spawn(move || {
+            pipe.accept().expect("conectar");
+            control::write(
+                &mut pipe,
+                &SupervisorHello {
+                    version: protocol::VERSION - u32::from(hello_mismatch),
+                    nonce: "1".repeat(64),
+                },
+            )
+            .expect("saludo");
+            if !hello_mismatch {
+                let request: Request = protocol::read(&mut pipe).expect("petición");
+                protocol::write(
+                    &mut pipe,
+                    &Response {
+                        version: protocol::VERSION - 1,
+                        sequence: request.sequence,
+                        reply: Reply::Closed,
+                    },
+                )
+                .expect("respuesta incompatible");
+            }
+        });
+        let image = std::env::current_exe().expect("imagen");
+        let stop = Arc::new(Event::new().expect("evento cliente"));
+        let result = Client::start(&image, &name, stop)
+            .and_then(|mut client| client.request(Command::Status));
+        assert!(matches!(result, Err(vantare_ipc::INCOMPATIBLE_COMPONENTS)));
+        server.join().expect("cerrar peer");
+    }
+}

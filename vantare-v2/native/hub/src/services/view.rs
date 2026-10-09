@@ -232,6 +232,7 @@ pub struct Remote {
     stop: Arc<AtomicBool>,
     cancellation: Option<Arc<Event>>,
     worker: Option<std::thread::JoinHandle<()>>,
+    connection_incompatible: Arc<AtomicBool>,
     rights: Option<vantare_ipc::control::Feed>,
     inflight: Inflight,
     /// Acción del usuario recibida durante la consulta periódica; se envía al acabar.
@@ -394,6 +395,7 @@ impl Remote {
             stop: Arc::new(AtomicBool::new(false)),
             cancellation: None,
             worker: None,
+            connection_incompatible: Arc::new(AtomicBool::new(false)),
             rights,
             inflight: Inflight::Idle,
             queued: None,
@@ -563,6 +565,10 @@ impl Remote {
         self.send = None;
     }
 
+    pub(crate) fn connection_incompatible(&self) -> bool {
+        self.connection_incompatible.load(Ordering::Acquire)
+    }
+
     fn start(&mut self) -> bool {
         if self.send.is_some() {
             return true;
@@ -577,6 +583,7 @@ impl Remote {
         let (send, commands) = mpsc::sync_channel(2);
         let (responses, receive) = mpsc::sync_channel(2);
         let pipe = self.pipe.clone();
+        let connection = Arc::clone(&self.connection_incompatible);
         let stop = Arc::clone(&self.stop);
         self.worker = Some(std::thread::spawn(move || {
             let mut client = None;
@@ -607,8 +614,22 @@ impl Remote {
                         .request(command)
                 })();
                 let reply = match result {
-                    Ok(reply) => reply,
+                    Ok(reply) => {
+                        match &reply {
+                            Reply::Error { message }
+                                if message == vantare_ipc::INCOMPATIBLE_COMPONENTS =>
+                            {
+                                connection.store(true, Ordering::Release)
+                            }
+                            Reply::Error { .. } => {}
+                            _ => connection.store(false, Ordering::Release),
+                        }
+                        reply
+                    }
                     Err(message) => {
+                        if message == vantare_ipc::INCOMPATIBLE_COMPONENTS {
+                            connection.store(true, Ordering::Release);
+                        }
                         client = None;
                         Reply::Error {
                             message: message.into(),
@@ -872,6 +893,7 @@ impl Remote {
             }
             // La consulta periódica no pisa el resultado de una acción del usuario.
             Reply::Error { .. } | Reply::License { .. } if background => {}
+            Reply::Error { message } if message == vantare_ipc::INCOMPATIBLE_COMPONENTS => {}
             Reply::Status { message, .. } | Reply::Error { message } => {
                 if matches!(self.active, Area::Calendar) {
                     // El Calendario recibe su error sin alterar Cuenta.
@@ -1761,6 +1783,7 @@ mod purchase_tests {
             stop: Arc::new(AtomicBool::new(false)),
             cancellation: None,
             worker: None,
+            connection_incompatible: Arc::new(AtomicBool::new(false)),
             rights: None,
             inflight: Inflight::Idle,
             queued: None,

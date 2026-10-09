@@ -19,10 +19,16 @@ use vantare_domain::{
 /// # Errors
 /// Si el sistema no puede crear la conexión o el hilo.
 #[derive(Clone)]
-pub struct DemandHandle(Arc<Mutex<Demand>>);
+pub struct DemandHandle(Arc<Mutex<Demand>>, vantare_ipc::ConnectionStatus);
 impl DemandHandle {
     pub fn new(demand: Demand) -> Self {
-        Self(Arc::new(Mutex::new(demand)))
+        Self(
+            Arc::new(Mutex::new(demand)),
+            vantare_ipc::ConnectionStatus::default(),
+        )
+    }
+    pub fn connection(&self) -> vantare_ipc::ConnectionStatus {
+        self.1.clone()
     }
     pub fn set(&self, demand: Demand) {
         *self.0.lock().unwrap_or_else(PoisonError::into_inner) = demand;
@@ -48,6 +54,16 @@ pub fn pipe_feed_requested(
     })
 }
 
+/// Fuente con diagnóstico de conexión para el host de ventanas de medición.
+/// # Errors
+/// Los mismos que el transporte IPC.
+pub fn pipe_feed_observed(
+    name: &str,
+    handle: DemandHandle,
+) -> Result<flume::Receiver<Arc<Snapshot>>, vantare_ipc::Error> {
+    start_feed(name, Some(handle), |photo| photo.snapshot)
+}
+
 pub fn layout_feed(
     name: &str,
     handle: DemandHandle,
@@ -60,15 +76,20 @@ fn start_feed<T: Send + 'static>(
     handle: Option<DemandHandle>,
     convert: impl Fn(Photo) -> T + Send + 'static,
 ) -> Result<flume::Receiver<T>, vantare_ipc::Error> {
+    let connection = handle.as_ref().map_or_else(
+        vantare_ipc::ConnectionStatus::default,
+        DemandHandle::connection,
+    );
     let mut requested = handle
         .as_ref()
         .map_or_else(Demand::all, DemandHandle::current);
     // El pipe es solo del usuario actual (ACL del núcleo).
-    let mut subscriber = if handle.is_some() {
-        vantare_ipc::Subscriber::connect_requested(name, requested.clone(), |_| true)?
-    } else {
-        vantare_ipc::Subscriber::connect(name, |_| true)?
-    };
+    let mut subscriber = vantare_ipc::Subscriber::connect_observed(
+        name,
+        handle.as_ref().map(|_| requested.clone()),
+        connection.clone(),
+        |_| true,
+    )?;
     let (tx, rx) = flume::bounded(4);
     let oldest = rx.clone();
     thread::Builder::new()
@@ -101,7 +122,12 @@ fn start_feed<T: Send + 'static>(
                     health.heard(start.elapsed());
                     activity = current_activity;
                 }
-                let next = if let Some(photo) = incoming {
+                let next = if connection.incompatible() {
+                    health.incompatible().map(|snapshot| Photo {
+                        snapshot,
+                        demand: requested.clone(),
+                    })
+                } else if let Some(photo) = incoming {
                     health.received(Arc::clone(&photo.snapshot), start.elapsed());
                     Some(photo)
                 } else {
@@ -144,6 +170,17 @@ impl PipeHealth {
         self.last = Some(snapshot);
         self.received_at = now;
         self.lost = false;
+    }
+
+    fn incompatible(&mut self) -> Option<Arc<Snapshot>> {
+        if self.lost {
+            return None;
+        }
+        let mut snapshot = self.last.as_deref().cloned().unwrap_or_default();
+        vantare_domain::degrade(&mut snapshot.state);
+        snapshot.state.source_state = vantare_domain::SourceState::Lost;
+        self.lost = true;
+        Some(Arc::new(snapshot))
     }
 
     fn silence(&mut self, now: Duration) -> Option<Arc<Snapshot>> {
@@ -422,6 +459,18 @@ pub fn local_feed() -> flume::Receiver<Arc<Snapshot>> {
 mod tests {
     use super::*;
     use vantare_domain::{format::Preferences, pedals, radar, standings};
+
+    #[test]
+    fn incompatible_connection_degrades_once_even_before_the_first_photo() {
+        let mut health = PipeHealth::default();
+        let lost = health.incompatible().expect("estado sin datos");
+        assert_eq!(lost.state.source_state, vantare_domain::SourceState::Lost);
+        for _ in 0..10 {
+            assert!(health.incompatible().is_none());
+        }
+        health.received(Arc::new(Snapshot::default()), Duration::ZERO);
+        assert!(health.incompatible().is_some());
+    }
 
     #[test]
     fn requested_feed_keeps_unchanged_values_alive_and_receives_source_staleness() {

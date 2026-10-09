@@ -57,6 +57,40 @@ fn parse(args: &[String]) -> Option<(Option<usize>, Option<PathBuf>, Feed)> {
     Some((count, layout, feed))
 }
 
+fn snapshot_feed(
+    windows: Option<usize>,
+    feed: Feed,
+) -> Result<
+    (
+        flume::Receiver<std::sync::Arc<vantare_domain::Snapshot>>,
+        Option<vantare_ipc::ConnectionStatus>,
+    ),
+    vantare_ipc::Error,
+> {
+    let mut connection = None;
+    let snapshots = match feed {
+        Feed::Local => Ok(vantare_ui::source::local_feed()),
+        Feed::Pipe(name) => name
+            .map_or_else(vantare_ipc::default_pipe_name, Ok)
+            .map_err(Into::into)
+            .and_then(|name| {
+                let mut demand = vantare_ipc::Demand::default();
+                for index in 0..windows.unwrap_or(0) {
+                    let kind = [
+                        vantare_ui::Kind::Standings,
+                        vantare_ui::Kind::Radar,
+                        vantare_ui::Kind::Pedals,
+                    ][index % 3];
+                    demand.union(&vantare_ui::Settings::default_for(kind).demand());
+                }
+                let handle = vantare_ui::source::DemandHandle::new(demand);
+                connection = Some(handle.connection());
+                vantare_ui::source::pipe_feed_observed(&name, handle)
+            }),
+    };
+    Ok((snapshots?, connection))
+}
+
 fn main() -> ExitCode {
     if product::print_version() {
         return ExitCode::SUCCESS;
@@ -121,33 +155,21 @@ fn main() -> ExitCode {
             }
         };
     }
-    let snapshots = match feed {
-        Feed::Local => Ok(vantare_ui::source::local_feed()),
-        Feed::Pipe(name) => name
-            .map_or_else(vantare_ipc::default_pipe_name, Ok)
-            .map_err(Into::into)
-            .and_then(|name| {
-                let mut demand = vantare_ipc::Demand::default();
-                for index in 0..windows.unwrap_or(0) {
-                    let kind = [
-                        vantare_ui::Kind::Standings,
-                        vantare_ui::Kind::Radar,
-                        vantare_ui::Kind::Pedals,
-                    ][index % 3];
-                    demand.union(&vantare_ui::Settings::default_for(kind).demand());
-                }
-                vantare_ui::source::pipe_feed_requested(&name, demand)
-            }),
-    };
-    let snapshots = match snapshots {
-        Ok(snapshots) => snapshots,
+    let (snapshots, connection) = match snapshot_feed(windows, feed) {
+        Ok(feed) => feed,
         Err(error) => {
             eprintln!("vantare-overlays: {error}");
             return ExitCode::FAILURE;
         }
     };
     if let Some(windows) = windows {
-        vantare_ui::run_with_rights(windows, snapshots, Preferences::default(), rights);
+        vantare_ui::run_with_connection(
+            windows,
+            snapshots,
+            Preferences::default(),
+            rights,
+            connection,
+        );
     } else {
         let result = layout
             .map_or_else(vantare_ui::layout::default_path, Ok)

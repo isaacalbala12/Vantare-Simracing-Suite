@@ -46,7 +46,7 @@ pub use pipe::{Peer, default_pipe_name};
 #[cfg(any(windows, unix))]
 pub use publisher::{DemandSource, Publisher};
 #[cfg(any(windows, unix))]
-pub use subscriber::Subscriber;
+pub use subscriber::{ConnectionStatus, INCOMPATIBLE_COMPONENTS, Subscriber};
 
 /// Primitivos del transporte local para el flujo ordenado de eventos.
 /// Permisos, identidad, E/S con plazo y cancelación compartidas con foto; el
@@ -71,18 +71,38 @@ pub fn snapshot_to_json(snapshot: &Snapshot) -> Result<String, Error> {
     Ok(serde_json::to_string(&dto::SnapshotDto::from(snapshot))?)
 }
 
-/// Lee una foto guardada con [`snapshot_to_json`], incluidas escenas v7.
-/// El pipe negocia únicamente v8: un lector v7 no conoce el estado Paused.
+/// Lee exclusivamente el DTO vigente del cable; no migra versiones antiguas.
 ///
 /// # Errors
-/// [`Error::Json`] si el texto no es un DTO, [`Error::Version`] si es de una
-/// versión que este extremo no entiende, [`Error::Protocol`] si algún valor no
-/// se admite.
+/// JSON inválido, versión incompatible o valores fuera del contrato.
 pub fn snapshot_from_json(text: &str) -> Result<Snapshot, Error> {
+    decode_snapshot(serde_json::from_str(text)?)
+}
+
+/// Lee datos guardados (Studio, Workshop o exportaciones) v7/v8/v9.
+/// Nunca se usa en el pipe live ni en el canal de eventos.
+///
+/// # Errors
+/// Conserva todas las validaciones del DTO y rechaza versiones desconocidas.
+pub fn snapshot_from_saved_json(text: &str) -> Result<Snapshot, Error> {
     let mut dto = serde_json::from_str::<dto::SnapshotDto>(text)?;
-    if dto.version == 7 {
-        dto.version = dto::VERSION;
+    match dto.version {
+        7 | 8 => dto.version = dto::VERSION,
+        dto::VERSION => {}
+        got => return Err(Error::Version { got }),
     }
+    decode_snapshot(dto)
+}
+
+/// Helper explícito para fixtures históricas; comparte la lectura de datos guardados.
+///
+/// # Errors
+/// Los mismos que [`snapshot_from_saved_json`].
+pub fn snapshot_from_fixture_json(text: &str) -> Result<Snapshot, Error> {
+    snapshot_from_saved_json(text)
+}
+
+fn decode_snapshot(mut dto: dto::SnapshotDto) -> Result<Snapshot, Error> {
     dto.restore(None, &Demand::all(), &Demand::all())?;
     Snapshot::try_from(dto)
 }
@@ -159,7 +179,7 @@ mod tests {
     }
 
     #[test]
-    fn v8_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
+    fn v9_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
         use vantare_domain::SourceState;
         for state in [
             SourceState::Waiting,
@@ -185,15 +205,30 @@ mod tests {
     }
 
     #[test]
-    fn saved_v7_photos_remain_readable_without_accepting_v7_peers() {
+    fn saved_photos_remain_readable_without_accepting_old_peers() {
         let snapshot = rich_snapshot(1, 1);
-        let legacy =
-            snapshot_to_json(&snapshot)
-                .expect("v8")
-                .replacen("\"version\":8", "\"version\":7", 1);
-        assert_eq!(snapshot_from_json(&legacy).expect("escena v7"), snapshot);
-        assert!(!crate::codec::supports(7));
-        assert_eq!(crate::codec::negotiate(7, 7), None);
+        let current = snapshot_to_json(&snapshot).expect("v9");
+        for version in [7, 8] {
+            let legacy = current.replacen("\"version\":9", &format!("\"version\":{version}"), 1);
+            assert_eq!(
+                snapshot_from_saved_json(&legacy).expect("dato guardado"),
+                snapshot
+            );
+            assert_eq!(
+                snapshot_from_fixture_json(&legacy).expect("fixture"),
+                snapshot
+            );
+            assert!(
+                matches!(snapshot_from_json(&legacy), Err(Error::Version { got }) if got == version)
+            );
+            assert!(!crate::codec::supports(version));
+            assert_eq!(crate::codec::negotiate(version, version), None);
+        }
+        let future = current.replacen("\"version\":9", "\"version\":10", 1);
+        assert!(matches!(
+            snapshot_from_saved_json(&future),
+            Err(Error::Version { got: 10 })
+        ));
     }
 
     #[test]

@@ -57,12 +57,12 @@ pub fn snapshots_from_json(json: &str) -> Result<Vec<Snapshot>, String> {
             .into_iter()
             .enumerate()
             .map(|(i, value)| {
-                vantare_ipc::snapshot_from_json(&value.to_string())
+                vantare_ipc::snapshot_from_saved_json(&value.to_string())
                     .map_err(|e| format!("foto {i}: {e}"))
             })
             .collect()
     } else {
-        vantare_ipc::snapshot_from_json(json)
+        vantare_ipc::snapshot_from_saved_json(json)
             .map(|snapshot| vec![snapshot])
             .map_err(|e| e.to_string())
     }
@@ -88,7 +88,7 @@ impl Scene {
                 let mut captions = Vec::new();
                 for frame in document.frames {
                     snapshots.push(
-                        vantare_ipc::snapshot_from_json(&frame.snapshot.to_string())
+                        vantare_ipc::snapshot_from_saved_json(&frame.snapshot.to_string())
                             .map_err(|e| e.to_string())?,
                     );
                     captions.push(frame.caption);

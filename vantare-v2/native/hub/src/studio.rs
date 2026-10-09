@@ -622,16 +622,8 @@ impl CanvasFrame {
             .top(px(y * self.preview_scale))
             .w(px(dimensions.0 * self.preview_scale * self.content_scale))
             .h(px(dimensions.1 * self.preview_scale * self.content_scale))
-            .when(self.selected, |s| {
-                s.child(
-                    div()
-                        .absolute()
-                        .top_0()
-                        .left_0()
-                        .size_full()
-                        .border_1()
-                        .border_color(rgb(orbit::carmine(cx))),
-                )
+            .when(self.selected, |frame| {
+                frame.child(Self::selection_outline(cx))
             })
             .on_mouse_down(
                 MouseButton::Left,
@@ -676,6 +668,16 @@ impl CanvasFrame {
                     )
                     .children(self.resize_handles(dimensions, cx))
             })
+    }
+    /// El borde no participa en la geometría ni hereda la opacidad del contenido.
+    fn selection_outline(cx: &gpui::App) -> gpui::Div {
+        div()
+            .absolute()
+            .top_0()
+            .left_0()
+            .size_full()
+            .border_1()
+            .border_color(rgb(orbit::carmine(cx)))
     }
     fn resize_handles(
         &self,
@@ -3257,7 +3259,11 @@ mod tests {
                     frame.selected = true;
                     let mut host = frame.element(cx);
                     assert_eq!(host.style().opacity, None);
-                    assert_eq!(host.style().border_widths.left, Some(px(1.0).into()));
+                    assert_eq!(host.style().border_widths.left, None);
+                    let mut outline = CanvasFrame::selection_outline(cx);
+                    assert_eq!(outline.style().opacity, None);
+                    assert_eq!(outline.style().position, Some(gpui::Position::Absolute));
+                    assert_eq!(outline.style().border_widths.left, Some(px(1.0).into()));
                     sizes.push(host.style().size.clone());
                 });
             }

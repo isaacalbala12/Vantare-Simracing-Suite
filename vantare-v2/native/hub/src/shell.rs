@@ -27,7 +27,7 @@ use crate::{
 };
 
 use crate::testing::{self, Testing, diagnostic::Module as TestingModule};
-mod assets;
+pub(crate) mod assets;
 mod chrome;
 mod foundations;
 mod input;

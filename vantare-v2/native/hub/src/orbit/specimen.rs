@@ -406,7 +406,7 @@ pub fn run_kit() -> Result<(), String> {
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();
     gpui_platform::application()
-        .with_assets(crate::assets::Icons)
+        .with_assets(crate::shell::assets::Icons)
         .run(move |cx: &mut App| {
             cx.set_global(super::theme::Theme::default());
             if let Err(error) = vantare_ui::efficiency::text::register_fonts(cx)

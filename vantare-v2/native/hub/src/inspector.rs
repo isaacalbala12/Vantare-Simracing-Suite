@@ -174,7 +174,12 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     Tab::Content,
                     &value.classification_mode,
                     &[("Normal", "normal"), ("Multiclase", "multiclass")],
-                    set!(Standings.classification_mode string),
+                    |settings, key| {
+                        if let Settings::Standings(value) = settings {
+                            value.classification_mode = key.into();
+                            *value = value.normalized();
+                        }
+                    },
                 ),
                 boolean(
                     "Cabecera de sesión",

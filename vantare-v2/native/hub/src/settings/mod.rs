@@ -10,6 +10,7 @@ use std::{path::PathBuf, time::Instant};
 use vantare_domain::format::{Language, Preferences, Units};
 
 pub(super) mod appearance;
+pub(in crate::shell) mod general;
 mod privacy;
 mod releases;
 #[cfg(test)]
@@ -17,6 +18,7 @@ mod tests;
 mod text_rendering;
 mod updates;
 mod view;
+mod windows;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum Page {
@@ -59,7 +61,7 @@ impl Page {
         match self {
             Self::Application => "Interfaz y sistema",
             Self::Appearance => "Colores, contraste y fuentes",
-            Self::Performance => "Así funcionarán los niveles",
+            Self::Performance => "Nivel y frecuencia de tus widgets",
             Self::Updates => "Versión, canal y novedades",
             Self::Hotkeys => "Combinaciones globales",
             Self::Privacy => "Fallos, uso y contribución",
@@ -77,9 +79,9 @@ impl Page {
         match self {
             Self::Application => "Interfaz, sistema y comportamiento de la ventana.",
             Self::Appearance => "Personaliza colores, contraste y tipografía de Vantare.",
-            Self::Performance => "Así funcionarán los niveles",
+            Self::Performance => "Nivel y frecuencia de tus widgets",
             Self::Updates => "Versión instalada, canal y novedades.",
-            Self::Hotkeys => "Atajos locales y perfiles con registro global nativo.",
+            Self::Hotkeys => "Atajos del Hub y combinaciones en pista disponibles próximamente.",
             Self::Privacy => "Elige qué informes y datos de uso puede enviar Vantare.",
             Self::Diagnostics => "Estado de las fuentes, datos locales y registros.",
         }
@@ -112,9 +114,12 @@ impl Page {
 }
 
 pub(super) struct State {
+    general: Result<general::Store, String>,
+    general_focus: [FocusHandle; 6],
+    global_hotkeys_focus: FocusHandle,
+    pub(in crate::shell) launcher_running: bool,
     privacy: Result<privacy::Store, String>,
     privacy_focus: [FocusHandle; 2],
-    global_hotkeys_focus: FocusHandle,
     privacy_policy_focus: FocusHandle,
     consent_focus: [FocusHandle; 3],
     pub(super) appearance: appearance::Store,
@@ -129,7 +134,6 @@ pub(super) struct State {
     query: Entity<Input>,
     language: Entity<Choice>,
     units: Entity<Choice>,
-    hub_language: Entity<Choice>,
     density: Entity<Choice>,
     font: Entity<Choice>,
     mono: Entity<Choice>,
@@ -272,14 +276,21 @@ impl State {
         let query = cx.new(|cx| Input::new(String::new(), "Buscar ajustes…", cx));
         cx.observe(&query, |_, _, cx| cx.notify()).detach();
         let (event_filter, event_query) = Self::diagnostic_controls(window, cx);
+        let general = general::Store::load(&data);
+        let prefs = general
+            .as_ref()
+            .map_or_else(|_| general::Preferences::default(), |store| store.value);
         let state = Self {
+            general,
+            general_focus: std::array::from_fn(|_| cx.focus_handle()),
+            launcher_running: false,
+            global_hotkeys_focus: cx.focus_handle(),
             privacy: vantare_services::diagnostics::data_root()
                 .map_err(|error| error.to_string())
                 .and_then(|root| privacy::Store::load(&root)),
             privacy_focus: std::array::from_fn(|_| cx.focus_handle()),
             privacy_policy_focus: cx.focus_handle(),
             consent_focus: std::array::from_fn(|_| cx.focus_handle()),
-            global_hotkeys_focus: cx.focus_handle(),
             page: Page::default(),
             panel_scroll: gpui::ScrollHandle::new(),
             panel_height: panel_height(f32::from(window.viewport_size().height)),
@@ -288,21 +299,12 @@ impl State {
             query,
             language,
             units,
-            hub_language: choice(
-                "Idioma",
-                ChoiceKind::Dropdown,
-                &["Español", "English"],
-                Some(0),
-                false,
-                window,
-                cx,
-            ),
             density: choice(
                 "Densidad",
                 ChoiceKind::Dropdown,
                 &["Compacta", "Equilibrada", "Cómoda"],
-                Some(1),
-                false,
+                Some(prefs.density as usize),
+                true,
                 window,
                 cx,
             ),
@@ -340,6 +342,7 @@ impl State {
             beta_checked: Instant::now(),
         };
         appearance::wire(&state, window, cx);
+        general::wire(&state, cx);
         state
     }
 }
@@ -524,10 +527,12 @@ impl Hub {
         if status != self.settings.beta_status {
             if let Some(status) = &status
                 && status.state == "ready"
+                && self.general_preferences().updates
             {
                 self.notifications.update(cx, |center, cx| {
                     center.update_ready(status.message.clone(), cx);
                 });
+                self.notify_system("vantare.update", "Actualización lista", &status.message, cx);
             }
             self.settings.beta_status = status;
             cx.notify();

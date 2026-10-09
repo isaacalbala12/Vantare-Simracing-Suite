@@ -661,24 +661,128 @@ impl Hub {
                     .child(text("+", 16.0, 700, orbit::ink(cx), cx)),
             )
     }
-    #[allow(clippy::too_many_lines)] // Composición declarativa R4; solo añade Adapt explícito.
-    fn settings_application(&self, _compact: bool, _window: &Window, cx: &Context<Self>) -> Div {
-        let pending = |label| orbit::pill(label, Tone::Neutral, cx);
+    fn general_control(
+        &self,
+        index: usize,
+        toggle: super::general::Toggle,
+        label: &'static str,
+        on: bool,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<Div> {
+        orbit::toggle(
+            [
+                "general-startup",
+                "general-minimized",
+                "general-updates",
+                "general-launcher",
+                "general-toasts",
+            ][index],
+            label,
+            on,
+            self.settings.general.is_ok(),
+            cx,
+        )
+        .track_focus(&self.settings.general_focus[index])
+        .on_click(cx.listener(move |hub, _, _, cx| hub.general_toggle(toggle, cx)))
+        .on_key_down(cx.listener(move |hub, event: &gpui::KeyDownEvent, _, cx| {
+            if matches!(event.keystroke.key.as_str(), "space" | "enter") {
+                hub.general_toggle(toggle, cx);
+                cx.stop_propagation();
+            }
+        }))
+    }
+    #[allow(clippy::too_many_lines)] // Composición de cuatro grupos con controles del kit.
+    fn settings_application(
+        &self,
+        _compact: bool,
+        _window: &Window,
+        cx: &mut Context<Self>,
+    ) -> Div {
+        use super::general::Toggle;
+        let prefs = self.general_preferences();
+        let mut start = section_body();
+        for (index, toggle, label, help, on) in [
+            (
+                0,
+                Toggle::Startup,
+                "Abrir al iniciar Windows",
+                "Se abre al iniciar sesión en Windows",
+                prefs.startup,
+            ),
+            (
+                1,
+                Toggle::Minimized,
+                "Empezar minimizado",
+                "Arranque sin abrir la ventana",
+                prefs.minimized,
+            ),
+        ] {
+            start = start.child(section_row(
+                label,
+                help,
+                self.general_control(index, toggle, label, on, cx),
+                self.shell.adapt,
+                cx,
+            ));
+        }
+        let mut notices = section_body();
+        for (index, toggle, label, help, on) in [
+            (
+                2,
+                Toggle::Updates,
+                "Avisos de actualización",
+                "Cuando hay una versión nueva",
+                prefs.updates,
+            ),
+            (
+                3,
+                Toggle::Launcher,
+                "Avisos del Launcher",
+                "Al terminar de abrir tus aplicaciones",
+                prefs.launcher,
+            ),
+            (
+                4,
+                Toggle::Toasts,
+                "Notificaciones de Windows",
+                "Avisos con el Hub minimizado",
+                prefs.toasts,
+            ),
+        ] {
+            notices = notices.child(section_row(
+                label,
+                help,
+                self.general_control(index, toggle, label, on, cx),
+                self.shell.adapt,
+                cx,
+            ));
+        }
+        if prefs.toasts {
+            notices = notices.child(
+                orbit::small_button("general-test", "Enviar prueba", cx)
+                    .track_focus(&self.settings.general_focus[5])
+                    .on_click(cx.listener(|hub, _, _, cx| hub.test_notification(cx)))
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            hub.test_notification(cx);
+                            cx.stop_propagation();
+                        }
+                    })),
+            );
+        }
         stack()
-            .h_full()
             .gap(px(self.shell.adapt.gap()))
+            .when_some(self.settings.general.as_ref().err(), |body, error| {
+                body.child(section_note(error, cx))
+            })
             .child(section_surface(
                 "Interfaz",
                 None,
                 section_body()
                     .child(section_row(
-                        "Idioma · Próximamente",
-                        "Idioma del Hub · Próximamente",
-                        reference_choice(
-                            "settings-hub-language",
-                            &self.settings.hub_language.read(cx).state.options[0].label,
-                            cx,
-                        ),
+                        "Idioma del Hub",
+                        "Idioma de la interfaz",
+                        orbit::pill("Español", Tone::Neutral, cx),
                         self.shell.adapt,
                         cx,
                     ))
@@ -689,69 +793,17 @@ impl Hub {
                         self.shell.adapt,
                         cx,
                     ))
-                    .when(self.shell.adapt.show_optional(), |body| {
-                        body.child(section_row(
-                            "Densidad",
-                            &format!(
-                                "{} · Próximamente",
-                                self.settings.density.read(cx).state.options[1].label
-                            ),
-                            pending("Próximamente"),
-                            self.shell.adapt,
-                            cx,
-                        ))
-                    }),
-                cx,
-            ))
-            .child(section_surface(
-                "Inicio",
-                None,
-                section_body()
                     .child(section_row(
-                        "Abrir al iniciar Windows",
-                        "Se abre al iniciar sesión en Windows",
-                        pending("Próximamente"),
-                        self.shell.adapt,
-                        cx,
-                    ))
-                    .child(section_row(
-                        "Empezar minimizado",
-                        "Arranque sin abrir la ventana",
-                        pending("Próximamente"),
+                        "Densidad",
+                        "La ventana conserva sus límites de adaptación",
+                        self.settings.density.clone(),
                         self.shell.adapt,
                         cx,
                     )),
                 cx,
             ))
-            .child(section_surface(
-                "Avisos",
-                None,
-                section_body()
-                    .child(section_row(
-                        "Avisos de actualización",
-                        "Cuando hay una versión nueva",
-                        pending("Próximamente"),
-                        self.shell.adapt,
-                        cx,
-                    ))
-                    .child(section_row(
-                        "Avisos del Launcher",
-                        "Al terminar de abrir tus aplicaciones",
-                        pending("Próximamente"),
-                        self.shell.adapt,
-                        cx,
-                    ))
-                    .when(self.shell.adapt.show_optional(), |body| {
-                        body.child(section_row(
-                            "Notificaciones de Windows",
-                            "Avisos con el Hub minimizado",
-                            pending("Próximamente"),
-                            self.shell.adapt,
-                            cx,
-                        ))
-                    }),
-                cx,
-            ))
+            .child(section_surface("Inicio", None, start, cx))
+            .child(section_surface("Avisos", None, notices, cx))
             .child(section_surface(
                 "Widgets",
                 None,

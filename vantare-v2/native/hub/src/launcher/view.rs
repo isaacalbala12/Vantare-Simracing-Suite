@@ -577,6 +577,12 @@ impl Launcher {
         .detach();
     }
 
+    pub(crate) fn completed_launch(&self) -> Option<String> {
+        let profile = self.last_profile.as_ref()?;
+        let (ready, total) = self.profile_progress(&profile.id)?;
+        (total > 0 && ready == total && self.chain.is_none())
+            .then(|| format!("{} · Aplicaciones listas", profile.name))
+    }
     pub fn launch_progress(&self) -> Option<(usize, usize)> {
         if self.chain.is_none() && self.capture != Capture::Running {
             return None;

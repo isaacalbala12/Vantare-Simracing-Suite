@@ -232,6 +232,7 @@ pub struct Remote {
     stop: Arc<AtomicBool>,
     cancellation: Option<Arc<Event>>,
     worker: Option<std::thread::JoinHandle<()>>,
+    rights: Option<vantare_ipc::control::Feed>,
     inflight: Inflight,
     /// Acción del usuario recibida durante la consulta periódica; se envía al acabar.
     queued: Option<Command>,
@@ -264,6 +265,24 @@ pub struct Remote {
 // Margen para el cache de 1 s del núcleo, el tick de shell y la entrega IPC;
 // no amplía la caducidad de 2 s que impone Policy::current_at.
 const LICENSE_POLL: std::time::Duration = std::time::Duration::from_millis(500);
+
+fn core_feed(pipe: &str) -> Option<vantare_ipc::control::Feed> {
+    let image = default_binary().ok()?.with_file_name("vantare-core.exe");
+    #[cfg(feature = "parity-capture")]
+    let image = if std::env::var("VANTARE_CAPTURE_POLICY").as_deref() == Ok("ipc") {
+        // Banco ui-quality explícito: el peer QA aloja ambos contratos IPC.
+        std::env::current_exe().ok()?
+    } else {
+        image
+    };
+    match vantare_ipc::control::Feed::connect(pipe, image) {
+        Ok(feed) => Some(feed),
+        Err(error) => {
+            eprintln!("lector de política no disponible: {error}");
+            None
+        }
+    }
+}
 
 const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
 const SHELL_HEADER_OVERLAP: f32 = 162.0;
@@ -349,20 +368,24 @@ impl Remote {
         cx.on_app_quit(|this, cx| {
             this.cancel();
             let worker = this.worker.take();
+            let rights = this.rights.take();
             let executor = cx.background_executor().clone();
             async move {
-                if let Some(worker) = worker {
-                    executor
-                        .spawn(async move {
-                            if worker.join().is_err() {
-                                eprintln!("worker de servicios terminó con error");
-                            }
-                        })
-                        .await;
-                }
+                executor
+                    .spawn(async move {
+                        // Feed cancela y une su lector; nunca espera a HTTP.
+                        drop(rights);
+                        if let Some(worker) = worker
+                            && worker.join().is_err()
+                        {
+                            eprintln!("worker de servicios terminó con error");
+                        }
+                    })
+                    .await;
             }
         })
         .detach();
+        let rights = core_feed(&pipe);
         let mut remote = Self {
             adapt: orbit::Adapt::default(),
             pipe,
@@ -371,6 +394,7 @@ impl Remote {
             stop: Arc::new(AtomicBool::new(false)),
             cancellation: None,
             worker: None,
+            rights,
             inflight: Inflight::Idle,
             queued: None,
             account: AccountState::default(),
@@ -404,9 +428,47 @@ impl Remote {
         )
     }
 
-    /// `LicenseStatus` solo lee el núcleo por IPC. Su política caduca a los 2 s.
+    fn observe_core_policy(
+        &mut self,
+        policy: vantare_ipc::control::Policy,
+        now_ms: u64,
+        cx: &mut Context<Self>,
+    ) {
+        let before = self.access.navigation(self.account.signed_in, now_ms);
+        let current = policy.current_at(now_ms);
+        self.access.observe_core_policy(policy);
+        let access = self.access.navigation(self.account.signed_in, now_ms);
+        let confirmed = current
+            && self
+                .purchase_wait
+                .as_ref()
+                .is_some_and(|wait| wait.confirmed(access));
+        if confirmed {
+            self.purchase_wait = None;
+            self.purchase_message = Some("Acceso solicitado verificado por el servicio.".into());
+        }
+        if before != access || confirmed {
+            cx.notify();
+        }
+    }
+
+    /// Feed autenticado independiente de la cola HTTP; TTL y autoridad del núcleo intactos.
     pub(crate) fn refresh_license(&mut self, cx: &mut Context<Self>) {
         let now = std::time::Instant::now();
+        if self
+            .license_polled_at
+            .is_none_or(|last| now.duration_since(last) >= LICENSE_POLL)
+        {
+            self.license_polled_at = Some(now);
+            if let Some(rights) = &self.rights {
+                let policy = rights.policy();
+                self.observe_core_policy(
+                    policy,
+                    vantare_ipc::control::wall_ms().unwrap_or(u64::MAX),
+                    cx,
+                );
+            }
+        }
         if self
             .purchase_wait
             .as_ref()
@@ -429,17 +491,6 @@ impl Remote {
                 wait.polled = Some(now);
             }
             self.request_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew), cx);
-            return;
-        }
-        if !self.busy()
-            && self.account.signed_in
-            && self.access.session_known()
-            && self
-                .license_polled_at
-                .is_none_or(|last| last.elapsed() >= LICENSE_POLL)
-        {
-            self.license_polled_at = Some(std::time::Instant::now());
-            self.request(Command::LicenseStatus, cx);
         }
     }
 
@@ -773,10 +824,14 @@ impl Remote {
         } else {
             None
         };
-        self.access.observe(
-            &reply,
-            !self.inflight.background() && matches!(self.active, Area::Account),
-        );
+        // La renovación puede devolver una foto anterior al último heartbeat.
+        // Solo Feed alimenta derechos; el reply conserva feedback y seguimiento OAuth.
+        if !matches!(&reply, Reply::License { .. }) {
+            self.access.observe(
+                &reply,
+                !self.inflight.background() && matches!(self.active, Area::Account),
+            );
+        }
         let next = self
             .access
             .next_command(&reply, &mut self.account.cancel_login)
@@ -1675,6 +1730,7 @@ mod purchase_tests {
             stop: Arc::new(AtomicBool::new(false)),
             cancellation: None,
             worker: None,
+            rights: None,
             inflight: Inflight::Idle,
             queued: None,
             account: AccountState::default(),
@@ -1722,6 +1778,107 @@ mod purchase_tests {
                 ..Default::default()
             },
         }
+    }
+    fn confirmed_core_license(remote: &mut Remote, cx: &mut Context<Remote>) {
+        let reply = license(vantare_ipc::control::CatalogAccess::Pro);
+        if let Reply::License { policy, .. } = &reply {
+            // La misma observación que entrega Feed, independiente del reply HTTP.
+            remote.observe_core_policy(policy.clone(), policy.checked_at_ms, cx);
+        }
+        remote.complete(reply, cx);
+    }
+    #[test]
+    fn slow_renewal_keeps_fresh_core_access_but_revocation_logout_and_missing_core_deny() {
+        gpui_platform::headless().run(|cx| {
+            let file = crate::document::tests::File::new();
+            let (send, requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            remote.update(cx, |remote, cx| {
+                for delay in [3500, 8000] {
+                    remote.inflight = Inflight::PurchaseRenew;
+                    let mut policy = vantare_ipc::control::Policy {
+                        version: vantare_ipc::control::VERSION,
+                        epoch: 1,
+                        revision: 1,
+                        checked_at_ms: 1000,
+                        overlays_advanced: true,
+                        catalog: vantare_ipc::control::CatalogAccess::Pro,
+                        calendar: true,
+                        tester: true,
+                        ..Default::default()
+                    };
+                    let old = policy.clone();
+                    for now in (1000..=1000 + delay).step_by(500) {
+                        policy.checked_at_ms = now;
+                        remote.observe_core_policy(policy.clone(), now, cx);
+                        let access = remote.access.navigation(true, now);
+                        assert!(remote.busy() && !remote.working());
+                        assert!(access.verified);
+                        assert_eq!(access.catalog, policy.catalog);
+                        for section in [
+                            Section::Launcher,
+                            Section::Roadmap,
+                            Section::Testing,
+                            Section::Calendar,
+                        ] {
+                            assert!(access.lock(section).is_none(), "ruta {section:?} a {now}");
+                        }
+                        assert!(access.beta_visible(Section::Testing));
+                        assert!(access.beta_visible(Section::Calendar));
+                    }
+                    let now = 1000 + delay;
+                    assert!(!old.current_at(now), "la foto vieja habría caducado");
+                    remote.complete(
+                        Reply::License {
+                            policy: old,
+                            message: "reply lento".into(),
+                        },
+                        cx,
+                    );
+                    assert!(
+                        remote.access.navigation(true, now).verified,
+                        "reply tardío no pisa Feed"
+                    );
+                    assert!(matches!(requests.try_recv(), Ok(Command::AccountPoll)));
+                    policy.error = Some("revocación definitiva QA".into());
+                    remote.observe_core_policy(policy.clone(), now, cx);
+                    assert!(!remote.access.navigation(true, now).verified);
+                    policy.error = None;
+                    remote.observe_core_policy(policy.clone(), now, cx);
+                    assert!(remote.access.navigation(true, now).verified);
+                    remote.observe_core_policy(vantare_ipc::control::Policy::default(), now, cx);
+                    assert!(
+                        !remote.access.navigation(true, now).verified,
+                        "núcleo ausente"
+                    );
+                    remote.observe_core_policy(policy.clone(), now, cx);
+                    assert!(
+                        !remote.access.navigation(true, now + 2000).verified,
+                        "TTL intacto"
+                    );
+                    remote.access.requested(&Command::Logout);
+                    remote.observe_core_policy(policy, now, cx);
+                    assert!(
+                        !remote.access.navigation(true, now).verified,
+                        "logout domina Feed"
+                    );
+                    // Otra sesión confirmada para el segundo caso del reloj simulado.
+                    remote.access = access::State::from_build();
+                    remote.access.observe(
+                        &Reply::Account {
+                            signed_in: true,
+                            expires_at: Some(u64::MAX),
+                            pending: false,
+                            message: String::new(),
+                            error: None,
+                        },
+                        true,
+                    );
+                }
+                remote.cancel();
+            });
+            cx.quit();
+        });
     }
     #[test]
     fn purchase_poll_preserves_user_context_queues_actions_and_reloads_session_quietly() {
@@ -1802,7 +1959,7 @@ mod purchase_tests {
                 assert!(
                     remote.dispatch_with_kind(Command::LicenseRenew, Some(Inflight::PurchaseRenew))
                 );
-                remote.complete(license(vantare_ipc::control::CatalogAccess::Pro), cx);
+                confirmed_core_license(remote, cx);
                 assert!(remote.purchase_wait.is_none());
                 assert!(!remote.working());
                 remote.complete(

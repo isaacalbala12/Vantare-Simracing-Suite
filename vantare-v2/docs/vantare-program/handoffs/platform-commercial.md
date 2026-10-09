@@ -1981,3 +1981,12 @@ los checks de servicios y se reconstruirá el artefacto con el SHA final.
 - QA1492 instalada/hub-ready y retirada, registro/accesos QA ausentes, datos retenidos, mutex libre, apps propias cerradas y escala100% restaurada. Inventario real anterior/posterior idéntico SHA256C8E36EF7A93905E8EFBF96A2BEA0FF947FABFA75951E09F77C89AFC694AAEC6D. Instalación real, secretos y configuración de producción intactos. Un piloto NSIS directo quedó conservado y Setup final se repitió por cola; ninguna ocultación de errores intermedios.
 - PR1523 informado por issuecomment-6076735890 (F2/F3),6077213533 (Roadmap) y6077519034 (reinicio durable/SHA finales), cada defecto con archivo/línea/causa/arreglo para su worker. #1496 recibe cierre, sin editar la rama ni estado comercial de #1514. Evidencia/manual C:/tmp/ui-r10/integracion-arreglos-evidence/VERIFICACION.md e informe≤10líneas C:/tmp/ui-r10/informe-integracion-arreglos.md.
 - Pendientes: revisión para nota≥9, aceptación de Isaac, traslado por worker#1514, login/compra/refund/disputa/offline/recovery reales, servicio/configuración prod y CI. Sin delegación/push/PR nuevo/merge/promoción/release/deploy/firma/operación de pago; solo comentarios remotos autorizados. plan.md ausente, no se inventa otro roadmap. No se reabren gates comerciales ni se atribuye estado live al sandbox de una nota antigua.
+
+### #1496 — vuelta v5: política independiente de renovación HTTP
+El consumidor Hub usa el Feed autenticado existente del núcleo mientras LicenseRenew
+espera red; la política tardía del reply no sustituye ese heartbeat. Sesión/logout
+siguen siendo guardas, TTL2s no se amplía ni checked_at se modifica en producción.
+Regresión3500/8000ms con reloj simulado, revocación/ausencia/TTL/logout; sin sleep.
+Banco ui-quality aloja un peer separado de solo lectura contractual QA, sin licencia
+comercial. Base02441013, rama de integración; #1514 intacta y PR1523 recibirá defecto
+con referencias/arreglo. E4, gates y Setup0.0.972/QA pendientes; sin promoción.

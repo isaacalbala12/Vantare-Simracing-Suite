@@ -118,6 +118,12 @@ impl State {
         self.expires_at.is_some()
     }
 
+    pub(super) fn observe_core_policy(&mut self, policy: vantare_ipc::control::Policy) {
+        if self.transition == Transition::Idle && !self.login_requested && self.session_known() {
+            self.policy = Some(policy);
+        }
+    }
+
     pub(super) fn navigation(
         &self,
         signed_in: bool,

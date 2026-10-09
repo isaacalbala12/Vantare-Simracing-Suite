@@ -18,6 +18,66 @@ fn argument(args: &[String], key: &str) -> Option<String> {
         .map(|pair| pair[1].clone())
 }
 
+// Peer local QA separado del servidor de acciones: una demora de LicenseRenew
+// no bloquea lecturas. Solo Read; no instala ni verifica credenciales comerciales.
+fn serve_rights(root: &std::path::Path, name: &str, stop: Arc<Event>) -> Result<(), String> {
+    let image = std::env::current_exe().map_err(|error| error.to_string())?;
+    let mut listener = Listener::new(name, stop.clone(), Duration::from_secs(300))
+        .map_err(|error| error.to_string())?;
+    let mut log = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(root.join("rights-requests.jsonl"))
+        .map_err(|error| error.to_string())?;
+    while !stop.is_set() {
+        let mut pipe = listener.instance().map_err(|error| error.to_string())?;
+        if pipe.accept().is_err() {
+            continue;
+        }
+        if !pipe.client_peer().is_ok_and(|peer| peer.is_image(&image)) {
+            continue;
+        }
+        let request: control::Request = match control::read(&mut pipe) {
+            Ok(request) => request,
+            Err(_) => continue,
+        };
+        if request.version != control::VERSION
+            || !request.nonce.is_empty()
+            || !matches!(request.command, control::Command::Read)
+        {
+            return Err("lectura QA fuera del contrato".into());
+        }
+        let script: serde_json::Value = serde_json::from_slice(
+            &fs::read(root.join("replies.json")).map_err(|error| error.to_string())?,
+        )
+        .map_err(|error| error.to_string())?;
+        let mut policy: control::Policy = serde_json::from_value(
+            script
+                .get("core_policy")
+                .unwrap_or(&script["LicenseStatus"]["policy"])
+                .clone(),
+        )
+        .map_err(|error| error.to_string())?;
+        if script["fresh_policy"] == true {
+            policy.checked_at_ms = control::wall_ms().map_err(|error| error.to_string())?;
+        }
+        writeln!(log, "{}", serde_json::json!({"checked_at_ms":policy.checked_at_ms,"revision":policy.revision,"catalog":policy.catalog}))
+            .map_err(|error| error.to_string())?;
+        log.flush().map_err(|error| error.to_string())?;
+        // El consumidor puede cerrar mientras se entrega una foto; continuar el listener.
+        let _delivered = control::write(
+            &mut pipe,
+            &control::Response {
+                version: control::VERSION,
+                sequence: request.sequence,
+                policy,
+                error: None,
+            },
+        );
+    }
+    Ok(())
+}
+
 /// Inyección explícita de fotos de contrato por el IPC del banco, nunca el de usuario.
 fn qa_telemetry(
     root: PathBuf,
@@ -222,6 +282,10 @@ fn main() -> Result<(), String> {
     let server_root = root.clone();
     let server_name = format!("{name}-hub-services");
     let server = std::thread::spawn(move || serve(&server_root, &server_name, server_stop));
+    let rights_root = root.clone();
+    let rights_name = control::pipe_name(&name);
+    let rights_stop = stop.clone();
+    let rights = std::thread::spawn(move || serve_rights(&rights_root, &rights_name, rights_stop));
     let options = Options {
         controlled: false,
         data_dir: root.clone(),
@@ -263,5 +327,9 @@ fn main() -> Result<(), String> {
             .map_err(|_| "publicador QA terminó con panic".to_owned())?
     });
     let server_result = server.join().map_err(|_| "servidor QA terminó con panic")?;
-    result.and(server_result).and(telemetry_result)
+    let rights_result = rights.join().map_err(|_| "lector QA terminó con panic")?;
+    result
+        .and(server_result)
+        .and(telemetry_result)
+        .and(rights_result)
 }

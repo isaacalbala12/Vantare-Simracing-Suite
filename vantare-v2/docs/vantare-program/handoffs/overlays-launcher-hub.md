@@ -6165,3 +6165,13 @@ los checks de servicios y se reconstruirá el artefacto con el SHA final.
 - E:/tmp/beta-local/0.0.971/VantareSetup.exe, SHA2567C4E295EDA24D09DBA1BD5B7EBD5010665002532AA67EBB5C99AEC04DEA5478E. Release/windows-x64/dev, manifest fuente09f/source_dirty=false, normal/QA NotSigned; ZIP/payload disponibles. Procedimiento0.0.970 copiado externamente, originales intactos. QA1492 instalada/hub-ready/consentimiento y retirada conservando datos; registro/accesos QA ausentes, procesos propios cerrados, mutex libre y escala100% restaurada. Snapshot real anterior/posterior idéntico SHA256C8E36EF7A93905E8EFBF96A2BEA0FF947FABFA75951E09F77C89AFC694AAEC6D; instalación real preservada.
 - Informe≤10líneas C:/tmp/ui-r10/informe-integracion-arreglos.md; detalle/manual/logs/procedencia en C:/tmp/ui-r10/integracion-arreglos-evidence/VERIFICACION.md. Sin Go/React/Deno nuevos al no cambiar sus fuentes; MSIX real/macOS/OBS/LMU/lector hablado, login/compra/refund/disputa/offline/recovery reales y CI remota pendientes. plan.md sigue ausente, no recreado. La nota≥9 requiere nueva revisión, no se autoacredita.
 - PR1523 recibió comentarios de cada defecto con archivo/línea/causa/arreglo: issuecomment-6076735890,6077213533,6077519034; rama del worker intacta. Issue1496 registra cierre y permanece abierta. Sin delegación/push/PR nuevo/CI remota/merge/promoción/release/deploy/firma/publicación; solo comentarios remotos autorizados. Siguiente: nueva revisión de cierres, aceptación de Isaac y traslado de correcciones #1514 por su worker.
+
+### #1496 — vuelta v5: F4 y borde lento (2026-10-09)
+Continuación limpia02441013; v5 da8,94 y conserva F1/F3 cerrados. El Hub reutiliza
+Feed autenticado del núcleo, separado del worker HTTP. Sus fotos frescas alimentan
+Access aun con renovación en vuelo; el reply tardío no pisa esa fuente. TTL2s,
+sesión/logout, revocación y cierre/cancelación del lector preservados. No otro
+verificador ni cambios en firma/UUID/grants. Regresión de reloj3500/8000ms sin sleep
+y peer IPC QA independiente de solo lectura añadidos; fmt/Clippy piloto PASS.
+E4 y recorridos lentos de gesto/Launcher/Testing/Calendario/Roadmap en curso;
+gates finales, Setup0.0.972 y QA aislada pendientes. Sin delegación/promoción.

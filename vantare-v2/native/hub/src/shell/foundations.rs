@@ -7,10 +7,16 @@ use vantare_ui::{Kind, Overlay, Settings};
 struct Preview {
     view: Entity<Overlay>,
     scale: std::cell::Cell<f32>,
+    lock: Option<&'static str>,
+}
+struct PrimaryPreview {
+    layout: vantare_ui::layout::Layout,
+    access: Option<super::navigation::Access>,
+    views: Vec<Preview>,
 }
 pub(super) struct Previews {
     templates: Vec<Preview>,
-    primary: std::cell::RefCell<Option<(vantare_ui::layout::Layout, Vec<Preview>)>>,
+    primary: std::cell::RefCell<Option<PrimaryPreview>>,
     snapshot: std::cell::RefCell<Snapshot>,
 }
 /// Fixtures existentes, separadas de la ruta IPC del producto.
@@ -83,6 +89,7 @@ impl Previews {
                 Preview {
                     view,
                     scale: std::cell::Cell::new(1.0),
+                    lock: None,
                 }
             })
             .collect();
@@ -94,8 +101,12 @@ impl Previews {
     }
     pub fn ingest(&self, snapshot: &Snapshot, cx: &mut gpui::App) {
         self.snapshot.replace(snapshot.clone());
-        if let Some((_, previews)) = self.primary.borrow().as_ref() {
-            for preview in previews {
+        if let Some(primary) = self.primary.borrow().as_ref() {
+            for preview in primary
+                .views
+                .iter()
+                .filter(|preview| preview.lock.is_none())
+            {
                 preview
                     .view
                     .update(cx, |overlay, cx| overlay.ingest(snapshot, cx));
@@ -114,6 +125,7 @@ impl Previews {
     fn layout_thumbnail(
         &self,
         layout: &vantare_ui::layout::Layout,
+        access: Option<super::navigation::Access>,
         width: f32,
         height: f32,
         cx: &mut gpui::App,
@@ -121,27 +133,36 @@ impl Previews {
         let mut primary = self.primary.borrow_mut();
         if primary
             .as_ref()
-            .is_none_or(|(previous, _)| previous != layout)
+            .is_none_or(|previous| previous.layout != *layout || previous.access != access)
         {
             let views = layout
                 .instances
                 .iter()
                 .filter(|item| item.visible)
                 .map(|item| {
+                    let lock = access.and_then(|access| access.widget_lock(item.settings.kind()));
                     let mut overlay = Overlay::configured(&item.settings, layout.preferences);
+                    overlay.set_frame_size(item.geometry.size);
                     let view = cx.new(|cx| {
-                        overlay.ingest(&self.snapshot.borrow(), cx);
+                        if lock.is_none() {
+                            overlay.ingest(&self.snapshot.borrow(), cx);
+                        }
                         overlay
                     });
                     Preview {
                         view,
                         scale: std::cell::Cell::new(1.0),
+                        lock,
                     }
                 })
                 .collect();
-            *primary = Some((layout.clone(), views));
+            *primary = Some(PrimaryPreview {
+                layout: layout.clone(),
+                access,
+                views,
+            });
         }
-        let previews = &primary.as_ref().expect("vista inicializada").1;
+        let previews = &primary.as_ref().expect("vista inicializada").views;
         let items = thumbnail_items(layout);
         let left = items
             .iter()
@@ -156,7 +177,7 @@ impl Previews {
                 .iter()
                 .zip(previews)
                 .fold((left, top), |(right, bottom), (item, preview)| {
-                    let (w, h) = preview.view.read(cx).wanted_size();
+                    let (w, h) = preview.view.read(cx).frame_size();
                     (right.max(item.x + w), bottom.max(item.y + h))
                 });
         let scale = ((width - 16.0) / (right - left).max(1.0))
@@ -176,7 +197,22 @@ impl Previews {
                     cx.notify();
                 });
             }
-            stage = stage.child(thumbnail_host(item, left, top, scale, preview.view.clone()));
+            let view = if let Some(reason) = preview.lock {
+                let (w, h) = preview.view.read(cx).frame_size();
+                div()
+                    .w(px(w * scale))
+                    .h(px(h * scale))
+                    .child(orbit::catalog_placeholder(reason, cx))
+                    .into_any_element()
+            } else {
+                preview.view.clone().into_any_element()
+            };
+            let mut host = thumbnail_host(item, left, top, scale, view);
+            // El candado describe contenido retenido incluso si su opacidad guardada es cero.
+            if preview.lock.is_some() {
+                host = host.opacity(1.0);
+            }
+            stage = stage.child(host);
         }
         div()
             .w_full()
@@ -969,8 +1005,13 @@ impl Hub {
             cx,
         );
         let preview = main_settings.as_ref().map(|_| {
-            self.home_previews
-                .layout_thumbnail(&layout, overlay_width, preview_height, cx)
+            self.home_previews.layout_thumbnail(
+                &layout,
+                self.studio.read(cx).catalog_access(),
+                overlay_width,
+                preview_height,
+                cx,
+            )
         });
         let overlay = Self::home_overlay(preview, &widget_labels, connected, adapt, cx);
 
@@ -1284,5 +1325,50 @@ mod thumbnail_host_tests {
             assert_eq!(host.style().inset.left, Some(px(50.0).into()));
             assert_eq!(host.style().inset.top, Some(px(50.0).into()));
         }
+    }
+}
+
+#[cfg(test)]
+mod catalog_tests {
+    use super::*;
+    #[test]
+    fn home_catalog_changes_without_editing_the_retained_document() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let mut layout = vantare_ui::layout::Layout::default();
+            for kind in [Kind::Standings, Kind::Radar] {
+                layout.instances.push(vantare_ui::layout::Instance {
+                    id: kind.name().into(),
+                    settings: Settings::default_for(kind),
+                    x: 40.0,
+                    y: 20.0,
+                    visible: true,
+                    opacity: 0.25,
+                    geometry: vantare_ui::geometry::Geometry::default(),
+                });
+            }
+            let original = layout.clone();
+            let previews = Previews::new(&Snapshot::default(), layout.preferences, None, cx);
+            for catalog in [
+                vantare_ipc::control::CatalogAccess::LaunchV1,
+                vantare_ipc::control::CatalogAccess::Pro,
+                vantare_ipc::control::CatalogAccess::LaunchV1,
+            ] {
+                let access = super::super::navigation::Access {
+                    verified: true,
+                    catalog,
+                    ..Default::default()
+                };
+                let _stage = previews.layout_thumbnail(&layout, Some(access), 500.0, 200.0, cx);
+                let primary = previews.primary.borrow();
+                let primary = primary.as_ref().expect("miniatura");
+                assert!(primary.views[0].lock.is_none());
+                assert_eq!(primary.views[1].lock, access.widget_lock(Kind::Radar));
+                assert_eq!(primary.layout, original);
+            }
+            previews.ingest(&Snapshot::default(), cx);
+            assert_eq!(layout, original);
+            cx.quit();
+        });
     }
 }

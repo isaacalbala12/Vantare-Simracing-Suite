@@ -18,6 +18,16 @@ pub struct Access {
 }
 
 impl Access {
+    pub(crate) fn widget_lock(self, kind: vantare_ui::Kind) -> Option<&'static str> {
+        if !self.verified || self.blocked {
+            Some("Acceso sin verificar")
+        } else if !self.catalog.allows_widget(kind.name()) {
+            Some("Incluida en Pro")
+        } else {
+            None
+        }
+    }
+
     pub fn from_policy(policy: &vantare_ipc::control::Policy, now_ms: u64) -> Self {
         if policy.error.is_some() {
             return Self {

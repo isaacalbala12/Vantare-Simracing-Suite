@@ -1005,6 +1005,22 @@ pub fn callout(content: impl Into<SharedString>, cx: &gpui::App) -> Div {
         ))
 }
 
+/// Contenido retenido por el catálogo; comparte aspecto y motivo entre Inicio y Studio.
+pub(crate) fn catalog_placeholder(reason: &'static str, cx: &gpui::App) -> Div {
+    div()
+        .size_full()
+        .bg(rgb(skin(cx).l2))
+        .border_1()
+        .border_color(alpha(skin(cx).line1))
+        .flex()
+        .flex_col()
+        .items_center()
+        .justify_center()
+        .gap(px(6.0))
+        .child(icon("v-lock", 18.0, skin(cx).text3))
+        .child(text(reason, 12.0, 500, skin(cx).text2, cx))
+}
+
 #[cfg(test)]
 mod shell_tests {
     #[test]

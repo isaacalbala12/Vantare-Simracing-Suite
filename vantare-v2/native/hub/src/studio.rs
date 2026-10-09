@@ -64,14 +64,7 @@ fn widget_lock(
     access: Option<crate::shell::navigation::Access>,
     kind: Kind,
 ) -> Option<&'static str> {
-    let access = access?; // Workshop y capturas aisladas no conceden derechos al producto.
-    if !access.verified || access.blocked {
-        Some("Acceso sin verificar")
-    } else if !access.catalog.allows_widget(kind.name()) {
-        Some("Incluida en Pro")
-    } else {
-        None
-    }
+    access?.widget_lock(kind) // Workshop y capturas conservan su excepción explícita.
 }
 
 fn catalog_options(access: Option<crate::shell::navigation::Access>) -> Vec<OptionItem> {
@@ -577,17 +570,7 @@ impl CanvasFrame {
                 )
             })
             .when_some(self.lock, |frame, reason| {
-                frame
-                    .bg(rgb(orbit::skin(cx).l2))
-                    .border_1()
-                    .border_color(orbit::alpha(orbit::skin(cx).line1))
-                    .flex()
-                    .flex_col()
-                    .items_center()
-                    .justify_center()
-                    .gap(px(6.0))
-                    .child(orbit::icon("v-lock", 18.0, orbit::skin(cx).text3))
-                    .child(text(reason, 12.0, 500, orbit::skin(cx).text2, cx))
+                frame.child(orbit::catalog_placeholder(reason, cx))
             })
             .when(self.selected, |frame| {
                 frame
@@ -786,6 +769,10 @@ impl Studio {
         self.sidebar.clone()
     }
     /// Documento productivo para el resumen de Inicio; no implica ejecución en Desktop.
+    pub(crate) fn catalog_access(&self) -> Option<crate::shell::navigation::Access> {
+        self.access
+    }
+
     pub(crate) fn home_layout(&self) -> &vantare_ui::layout::Layout {
         self.editor.layout()
     }

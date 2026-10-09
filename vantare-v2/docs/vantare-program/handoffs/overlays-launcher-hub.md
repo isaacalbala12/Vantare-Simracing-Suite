@@ -6126,3 +6126,11 @@ Evidencia y scripts externos: C:/tmp/ui-r10/integracion-prueba-evidence; cierre 
 - QA desinstalada conservando sus datos; registro/accesos QA ausentes, ventanas propias cerradas y mutex reacquirido/liberado. real-before.json y real-after.json son idénticos (SHA256 C8E36EF7A93905E8EFBF96A2BEA0FF947FABFA75951E09F77C89AFC694AAEC6D): instalación, registro, shortcuts y procesos reales preservados. Los fallos auxiliares de ruta NSIS/variable root/metadatos no escribieron en la instalación real; quedaron registrados y corregidos.
 - Informe de hasta 12 líneas: C:/tmp/ui-r10/informe-integracion-prueba.md; detalle/manual/lista de 101 archivos/manifest de capturas/logs en integracion-prueba-evidence. Sin cambios Go/React ni sus checks independientes; los oráculos Go nativos sí pasan. Roadmap plan.md sigue ausente, no recreado. Pendientes: revisión de Isaac, login/compra/recuperación reales y CI remota; no hay equivalencia con habilitación comercial o release.
 - Alcance exclusivamente local, sin delegación, push, PR nuevo, CI remota, promoción de canal, firma, release, despliegue ni publicación del instalador. GitHub #1496 registra la evidencia técnica y permanece abierta; PR #1523 pertenece a otro worker y no se modifica.
+
+### #1496 — cierres revisión v4, catálogo de Inicio (2026-10-09)
+Base 25d9e6bd, misma rama/worktree aislados. F1: Inicio y Studio comparten
+Access::widget_lock y placeholder Orbit; caché de miniatura depende también del
+catálogo, respeta geometría y omite ingest/pintado del contenido denegado.
+Regresión Pro→LE sin editar el layout añadida; gates y matriz QA en curso.
+Clippy inicial detectó únicamente orden del helper respecto al módulo de tests;
+corregido sin debilitar el gate. plan.md ausente, no recreado; sin promoción.

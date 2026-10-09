@@ -416,6 +416,10 @@ impl Render for Overlay {
             Wake::At(after) => self.wake_after(after, cx),
             Wake::Idle => {}
         }
+        // Preserve the natural renderer path: only a custom frame needs clipping.
+        if self.frame_size.is_none() {
+            return element.into_any_element();
+        }
         div()
             .w(px(frame.0 * self.preview_scale))
             .h(px(frame.1 * self.preview_scale_y))

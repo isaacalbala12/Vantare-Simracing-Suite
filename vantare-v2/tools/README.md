@@ -11,7 +11,7 @@ python tools/generate-lmu-offsets.py
 Genera:
 
 - `packages/sim-core/src/lmu-offsets.ts` (v1)
-- `vantare-v2/internal/telemetry/lmu/offsets.go` (v2)
+- la salida Go histórica del corte `5e1da3f6` (retirada en #1533)
 
 Variables de entorno opcionales: `VANTARE_INGENIERO_PATH` apuntando a `shared-telemetry`.
 

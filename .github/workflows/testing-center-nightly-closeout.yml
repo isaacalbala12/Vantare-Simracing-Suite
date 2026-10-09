@@ -236,31 +236,23 @@ jobs:
           ref: ${{ needs.collect.outputs.source_sha }}
           fetch-depth: 0
           persist-credentials: false
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
-        with:
-          go-version: "1.25.0"
-          cache: true
-      - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1
-        with:
-          version: "9.1.0"
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: "22"
-          cache: pnpm
-          cache-dependency-path: vantare-v2/frontend/pnpm-lock.yaml
-      - name: Install pinned Wails CLI
-        run: go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.24
-      - name: Install frontend dependencies
-        run: pnpm --dir vantare-v2/frontend install --frozen-lockfile
-      - name: Post-merge smoke and frontend build
-        run: |
-          go test ./...
-          pnpm --dir vantare-v2/frontend test
-          pnpm --dir vantare-v2/frontend build
-      - name: Post-merge Windows Wails build
+      - name: Native post-merge smoke
+        working-directory: vantare-v2/native
+        shell: pwsh
         env:
-          VANTARE_BUILD_CHANNEL: nightly
-        run: wails3 task windows:build
+          NEXTEST_TEST_THREADS: '1'
+        run: |
+          cargo install cargo-nextest --locked --version 0.9.146
+          if ($LASTEXITCODE) { throw "nextest installation failed" }
+          cargo fetch --locked
+          if ($LASTEXITCODE) { throw "native dependency fetch failed" }
+          ./setup-duckdb.ps1
+          cargo fmt --all -- --check
+          if ($LASTEXITCODE) { throw "native format failed" }
+          foreach ($gate in @('check', 'clippy', 'test', 'lifecycle', 'telemetria')) {
+            ./gates.ps1 -Gate $gate
+            if ($LASTEXITCODE) { throw "native $gate failed" }
+          }
 
   release:
     needs: smoke
@@ -273,14 +265,6 @@ jobs:
       release_tag: ${{ needs.smoke.outputs.release_tag }}
       release_notes: ${{ needs.smoke.outputs.release_notes }}
       source_sha: ${{ needs.smoke.outputs.source_sha }}
-    secrets:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-      VANTARE_LICENSE_PUBLIC_KEYS: ${{ secrets.VANTARE_LICENSE_PUBLIC_KEYS }}
-      DISCORD_PROGRESS_WEBHOOK_URL: ${{ secrets.DISCORD_PROGRESS_WEBHOOK_URL }}
-      DISCORD_BUILD_WEBHOOK_URL: ${{ secrets.DISCORD_BUILD_WEBHOOK_URL }}
-      DISCORD_RELEASE_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
-      DISCORD_KNOWN_ISSUES_WEBHOOK_URL: ${{ secrets.DISCORD_KNOWN_ISSUES_WEBHOOK_URL }}
 
   callback_released:
     needs: [collect, release]

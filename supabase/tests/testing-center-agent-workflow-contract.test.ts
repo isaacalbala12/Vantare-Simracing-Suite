@@ -731,13 +731,8 @@ Deno.test("nightly closeout is serial source-bound and inert", async () => {
   assertIncludes(workflow, "uses: ./.github/workflows/release.yml");
   assertIncludes(workflow, "source_sha: ${{ needs.smoke.outputs.source_sha }}");
   assertIncludes(workflow, "publish_channel: nightly");
-  assertIncludes(workflow, "VITE_SUPABASE_URL:");
-  assertIncludes(workflow, "VITE_SUPABASE_ANON_KEY:");
-  assertIncludes(workflow, "VANTARE_LICENSE_PUBLIC_KEYS:");
-  assertIncludes(workflow, "DISCORD_PROGRESS_WEBHOOK_URL:");
-  assertIncludes(workflow, "DISCORD_BUILD_WEBHOOK_URL:");
-  assertIncludes(workflow, "DISCORD_RELEASE_WEBHOOK_URL:");
-  assertIncludes(workflow, "DISCORD_KNOWN_ISSUES_WEBHOOK_URL:");
+  assertNotIncludes(workflow, "VITE_SUPABASE_URL:");
+  assertNotIncludes(workflow, "VITE_SUPABASE_ANON_KEY:");
   assertNotIncludes(workflow, "secrets: inherit");
   assertIncludes(workflow, 'git push origin "HEAD:refs/heads/$branch"');
   assertIncludes(
@@ -769,13 +764,9 @@ Deno.test("nightly closeout is serial source-bound and inert", async () => {
   assertNotIncludes(workflow, "gh release create");
 });
 
-Deno.test("release reusable contract requires and uses the exact source sha", async () => {
+Deno.test("retired release keeps caller compatibility but cannot publish", async () => {
   const workflow = normalize(await Deno.readTextFile(releasePath));
   assertIncludes(workflow, "workflow_call:");
-  assertIncludes(
-    workflow,
-    "value: ${{ jobs.release.outputs.release_source_sha }}",
-  );
   for (
     const input of [
       "publish_channel",
@@ -783,36 +774,34 @@ Deno.test("release reusable contract requires and uses the exact source sha", as
       "release_notes",
       "source_sha",
     ]
-  ) assertIncludes(workflow, `${input}:`);
-  assertIncludes(
-    workflow,
-    'source_sha:\n        description: "Exact commit to build and publish"\n        required: true',
-  );
+  ) {
+    assertIncludes(workflow, `${input}:`);
+  }
   for (
-    const secret of [
-      "VITE_SUPABASE_URL",
-      "VITE_SUPABASE_ANON_KEY",
-      "VANTARE_LICENSE_PUBLIC_KEYS",
-      "DISCORD_PROGRESS_WEBHOOK_URL",
-      "DISCORD_BUILD_WEBHOOK_URL",
-      "DISCORD_RELEASE_WEBHOOK_URL",
-      "DISCORD_KNOWN_ISSUES_WEBHOOK_URL",
+    const output of [
+      "release_source_sha",
+      "release_asset_count",
+      "checksums_verified",
     ]
-  ) assertIncludes(workflow, `${secret}:\n        required: true`);
-  assertIncludes(
-    workflow,
-    "SOURCE_SHA: ${{ inputs.source_sha || github.sha }}",
-  );
-  assertIncludes(workflow, "ref: ${{ env.SOURCE_SHA }}");
-  assertIncludes(
-    workflow,
-    'git merge-base --is-ancestor "$SOURCE_SHA" "origin/$PUBLISH_CHANNEL"',
-  );
-  assertIncludes(workflow, '--target "$SOURCE_SHA"');
-  assertNotIncludes(workflow, '--target "$GITHUB_SHA"');
-  assertNotIncludes(workflow, '--revision "$GITHUB_SHA"');
-  for (const line of usesLines(workflow)) {
-    assertMatchPinned(line);
+  ) {
+    assertIncludes(
+      workflow,
+      "value: ${{ jobs.release.outputs." + output + " }}",
+    );
+  }
+  assertIncludes(workflow, "permissions:\n  contents: read");
+  assertIncludes(workflow, "exit 1");
+  for (
+    const forbidden of [
+      "contents: write",
+      "gh release",
+      "upload-artifact",
+      "secrets.",
+      "wails3",
+      "tags:",
+    ]
+  ) {
+    assertNotIncludes(workflow, forbidden);
   }
 });
 

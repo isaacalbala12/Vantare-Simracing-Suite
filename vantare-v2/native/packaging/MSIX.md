@@ -173,10 +173,10 @@ instalada en `%APPDATA%/Vantare/configs` y sesiones/logs en
 El MSIX nativo no incorpora esos componentes Go ni migra esas entradas/datos.
 Un reemplazo completo debe retirar el autoarranque antiguo con consentimiento
 y usar StartupTask para el nuevo; no dejar el updater NSIS apuntando a WindowsApps.
-Evidencia del checkout: [NSIS](../../build/windows/nsis/project.nsi),
-[rutas de datos](../../cmd/vantare/main.go),
-[updater](../../internal/updater/updater.go),
-[autoarranque](../../internal/app/launcher/autostart_windows.go).
+Evidencia del checkout: [NSIS](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/build/windows/nsis/project.nsi),
+[rutas de datos](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/cmd/vantare/main.go),
+[updater](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/updater/updater.go),
+[autoarranque](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/app/launcher/autostart_windows.go).
 
 La comparación del candidato **nativo** ya existente es:
 

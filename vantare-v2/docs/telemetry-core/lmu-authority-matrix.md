@@ -42,7 +42,7 @@ La salida nunca conserva el snapshot REST privado ni bytes raw.
 
 ## Campos REST adicionales en el runtime actual
 
-La matriz de solapamientos no enumera todos los campos admitidos por la fusión actual. [fusion.go](../../internal/telemetry/drivers/lmu/fusion.go) también une `AmbientTemp`, `TrackTemp`, `SessionFlag` y los números de coche REST sobre la parrilla SHM existente. Conserva TTL REST de 2 s y calidad por campo. `scopedSessionField` y `overlayCarNumbers` descartan datos obtenidos antes del último límite de sesión, incluso dentro del TTL; no crean identidad ni filas desde REST. Esta unión no añade reglas a `MatrixVersion=6` ni concede por sí sola capacidades Engineer/Strategy.
+La matriz de solapamientos no enumera todos los campos admitidos por la fusión actual. [fusion.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/telemetry/drivers/lmu/fusion.go) también une `AmbientTemp`, `TrackTemp`, `SessionFlag` y los números de coche REST sobre la parrilla SHM existente. Conserva TTL REST de 2 s y calidad por campo. `scopedSessionField` y `overlayCarNumbers` descartan datos obtenidos antes del último límite de sesión, incluso dentro del TTL; no crean identidad ni filas desde REST. Esta unión no añade reglas a `MatrixVersion=6` ni concede por sí sola capacidades Engineer/Strategy.
 
 ## Matriz v3
 

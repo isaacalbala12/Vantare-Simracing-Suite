@@ -1,16 +1,16 @@
 # Transporte local de proyecciones
 
-Contrato de navegación y límites contrastado el 2026-09-14. Las fuentes exactas son [telemetrytransport](../../internal/app/telemetrytransport/) y su conexión en [server.go](../../internal/server/server.go) y [main.go](../../cmd/vantare/main.go).
+Contrato de navegación y límites contrastado el 2026-09-14. Las fuentes exactas son [telemetrytransport](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/app/telemetrytransport) y su conexión en [server.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/server/server.go) y [main.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/cmd/vantare/main.go).
 
 ## Overlay V2
 
-[Publisher](../../internal/app/telemetrytransport/publisher.go) transporta `overlay-v2`, retiene el último snapshot y mantiene entrega acotada latest-wins. No envuelve el antiguo `Hub` v1 ni usa su sello privado, acoplamiento de `statusRevision` o JSON Merge Patch RFC 7396.
+[Publisher](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/app/telemetrytransport/publisher.go) transporta `overlay-v2`, retiene el último snapshot y mantiene entrega acotada latest-wins. No envuelve el antiguo `Hub` v1 ni usa su sello privado, acoplamiento de `statusRevision` o JSON Merge Patch RFC 7396.
 
-- Contrato del producto: [OverlayFrame/OverlayUpdate](../../internal/telemetry/projection/overlayv2/).
+- Contrato del producto: [OverlayFrame/OverlayUpdate](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/telemetry/projection/overlayv2).
 - Límite duro específico: **72 KiB** en Go y TypeScript. El objetivo representativo de 64 KiB no es el límite de aceptación.
 - SSE de OBS: `/telemetry/overlay-v2/projection`, con eventos `telemetry:overlay-v2:snapshot` y `telemetry:overlay-v2:status`.
-- Desktop/Studio: consumidores Wails pull con lifecycle propio; ver [overlay-wails-pull.ts](../../frontend/src/telemetry-transport/overlay-wails-pull.ts).
-- Existe transporte por secciones con base/ACK y recuperación completa; ver [overlay_sections.go](../../internal/app/telemetrytransport/overlay_sections.go) y [ADR 0095](../adr/0095-overlay-incremental-sections.md). Su presencia no prueba activación en todas las superficies ni un ahorro medido.
+- Desktop/Studio: consumidores Wails pull con lifecycle propio; ver [overlay-wails-pull.ts](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/telemetry-transport/overlay-wails-pull.ts).
+- Existe transporte por secciones con base/ACK y recuperación completa; ver [overlay_sections.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/app/telemetrytransport/overlay_sections.go) y [ADR 0095](../adr/0095-overlay-incremental-sections.md). Su presencia no prueba activación en todas las superficies ni un ahorro medido.
 
 ## Otros contratos
 

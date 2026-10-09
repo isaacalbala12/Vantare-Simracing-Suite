@@ -1,6 +1,6 @@
 # OBS en el mismo ordenador
 
-Vantare sirve el overlay en loopback; OBS y Vantare deben ejecutarse en el mismo PC. El servidor rechaza `0.0.0.0` y direcciones LAN mediante `ValidateAddr` en [server.go](../internal/server/server.go). El [plan de doble PC](obs-lan-double-pc-plan.md) es una propuesta, no una receta disponible.
+Vantare sirve el overlay en loopback; OBS y Vantare deben ejecutarse en el mismo PC. El servidor rechaza `0.0.0.0` y direcciones LAN mediante `ValidateAddr` en [server.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/server/server.go). El [plan de doble PC](obs-lan-double-pc-plan.md) es una propuesta, no una receta disponible.
 
 ## Configuración
 

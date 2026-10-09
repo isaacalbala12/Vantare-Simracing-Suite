@@ -554,12 +554,9 @@ Guardar `styles/standings.json` sigue recargando el estilo en el mismo proceso.
 
 `fixtures/*.scene.json` son 43 demostraciones exportadas del Workshop React,
 no telemetría real. `workshop-sources.json` registra procedencia y límites.
-Para regenerarlas con el frontend levantado:
-
-```powershell
-node native/ui/export-workshop-scenes.mjs http://127.0.0.1:5197 C:/tmp/workshop-scenes.json
-python native/ui/import-workshop-scenes.py C:/tmp/workshop-scenes.json
-```
+El exportador React se retiró en #1533. Las escenas y su procedencia siguen
+congeladas; el Workshop nativo usa estos documentos. La herramienta Python de
+importación conserva su utilidad para JSON archivado, sin un frontend levantado.
 
 Se conservan señales ausentes como ausentes. Los contratos nativos no tienen
 equivalente para `dents`, ciertos históricos React o los estilos V1/Foco;

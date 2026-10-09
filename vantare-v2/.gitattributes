@@ -18,3 +18,6 @@
 
 # Frozen Go catalogs retain their pre-retirement bytes, including CRLF.
 native/engineer/testdata/go-reference/*.txt -text
+
+# Archived scripts are inert and keep source bytes.
+native/retirement/legacy-evidence/**/*.txt -text

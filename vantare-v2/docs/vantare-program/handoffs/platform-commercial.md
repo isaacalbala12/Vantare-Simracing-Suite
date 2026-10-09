@@ -2,32 +2,38 @@
 
 ## #1533 — retirada Wails/React (2026-10-09)
 
-- Hito 6: retirado build Wails, raíz Go, arranque y runners exclusivos; retenidas herramientas independientes de medición y voz. Hashes conservados: 451/451 iguales.
-
-- Hito 5: retirado pkg Go; perfil v2 de packaging conservado byte a byte. Hashes conservados: 451/451 iguales.
-
-- Hito 4: retirado internal Go tras congelar LMU, Strategy, catálogos y calendario; servicios nativos intactos. Hashes conservados: 451/451 iguales.
-
-- Hito 3: retirados los comandos Wails y bot Go; calendario congelado y publicación manual conservados. Hashes conservados: 451/451 iguales.
-
-- Hito 2: retirado frontend React y generadores dependientes; conservados goldens, geometría y verificador de referencias. Hashes conservados: 451/451 iguales.
-
-Rama aislada `vantareapp/isa-1533-retirar-wails`, base `5e1da3f6`; plan
-aprobado por Isaac. Sin push, PR, merge, promoción, release ni despliegue.
-Hito 1: extraídas marca, fuentes, calendario, perfil y catálogos; 451 SHA-256
-conservados, comprobados también contra los blobs staged. Oráculos Go mínimos
-archivados con fuentes, licencia y hashes; los tres se compilan/reproducen
-sin la app activa. LMU reproduce los 72 resultados/horarios con hashes iguales.
-Antes de borrar: fmt/check/Clippy PASS; Nextest 1402/1402 (7 skips), lifecycle
-PASS y telemetría 21/21 PASS. Primera ejecución falló por EOF al iniciar el
-proceso de Engineer; caso aislado y suite completa serial PASS sin cambiar
-código ni tests. Logs originales y retry conservados en
-`C:/tmp/auditoria-arquitectura-v2/evidence-1533/`.
-Packaging 175 checks PASS con artefacto beta anterior `00f37fef`, no distribución
-de este SHA; Python, marca y referencias PASS. Supabase/testdata se mantienen.
-Coordinar #1530 (AGENTS/README, DTO y pins de fixtures) y #1534 (windows-icon,
-que debe mantener `native/assets/icon.ico`). Roadmap ausente en esta base,
-propiedad de #1530. Siguiente: retirada por directorios, CI y gates finales.
+Entrega local en `C:/tmp/vw3-1533`, rama `vantareapp/isa-1533-retirar-wails`,
+base `5e1da3f6`; plan aprobado por Isaac, siete hitos en orden.
+Retirados frontend/cmd/internal/pkg/build, raíz Go, arranque y runners
+exclusivos. Cuatro workflows pasan a gates nativos o cierre fail-closed;
+`release.yml` no construye ni publica. Autorización automática nativa no ampliada.
+README/AGENTS solo ajustan referencias retiradas; historia útil enlazada al SHA
+original. Tests de analizadores Go/React archivados; ratchet puro conservado.
+456 hashes conservados y comprobados contra blobs staged; las 451 entradas del
+primer commit permanecen idénticas. Corpus LMU/ACC/Strategy, escenas, goldens,
+marca, fuentes, voz, calendario y perfil v2 conservados para sus consumidores.
+Supabase íntegro: solo tests contractuales adaptados; funciones/migraciones
+sin cambios. Scripts independientes de calendario, voz y medición siguen.
+Go histórico mínimo con licencia, fuentes y SHA-256 en `tools/frozen-go`, sin
+`.env*`. Tras borrar compilan los tres módulos; LMU reproduce los mismos 72
+resultados y manifiesto/horarios. No se recalculan expectativas desde Rust.
+Antes de borrar: fmt/check/Clippy, Nextest 1402/1402 (7 skips), lifecycle y
+telemetría 21/21 PASS. Primer intento tuvo EOF al iniciar Engineer: caso aislado
+y suite completa serial PASS sin cambios ni relajación de tests; logs conservados.
+Tras retirar: fmt/check/Clippy, Nextest 1402/1402 y lifecycle PASS. Telemetría
+repetida por cola tras el reinicio T3: 21/21 PASS. Logs incompletos originales
+conservados; cierre en `telemetria-cierre-1533.log`, sin cambiar tests ni fuentes.
+Python 300, Node 32, Deno 35, configuración pública 24, marca y goldens PASS.
+Packaging 175 PASS con artefacto beta anterior `00f37fef`, no distribuible nuevo.
+Evidencia en `C:/tmp/auditoria-arquitectura-v2/evidence-1533/` y logs adyacentes;
+informe de cierre `C:/tmp/auditoria-arquitectura-v2/informe-1533.md` al acabar.
+Coordinar #1530 (AGENTS/README, DTO y pins de fixtures) y #1534 (windows-icon:
+conservar `native/assets/icon.ico`). Roadmap ausente en esta base, tarea #1530.
+Sin push, PR, merge, promoción, release, deploy ni cambios de datos reales.
+CI remota, paquete del SHA final y LMU/OBS real no ejecutados en este alcance.
+Rollback: revertir los siete commits en orden inverso, sin reset/clean ajenos.
+Entrega local terminada; informe y comentario en GitHub #1533. Siguiente:
+revisión e integración del orquestador, sin promoción ni publicación automática.
 
 ## #1511 — nombre visible Vantare (2026-10-08)
 

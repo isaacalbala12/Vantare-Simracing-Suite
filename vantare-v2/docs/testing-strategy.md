@@ -1,5 +1,7 @@
 # Pruebas y verificaciones
 
+> #1533: este documento conserva la referencia histórica Wails/React. Sus comandos y rutas retirados no son instrucciones ejecutables del checkout actual; usa [native/README.md](../native/README.md).
+
 Ejecutar checks adecuados al cambio y reportar sus resultados reales. Un comando documentado no es un check ejecutado; los resultados antiguos no son el estado de la build actual.
 
 ## Comandos disponibles
@@ -27,7 +29,7 @@ El build frontend precede a los checks Go que necesitan los assets embebidos. `t
 | Studio/Widgets visuales | Protocolo de la tarea, capturas e interacción; revisar scripts actuales antes de invocar un harness |
 | Runtime Windows/LMU/OBS | Evidencia en esa plataforma, con build y perfil identificados; mocks no la sustituyen |
 
-Los scripts disponibles están en [package.json](../frontend/package.json). Por ejemplo:
+Los scripts disponibles están en [package.json](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/package.json). Por ejemplo:
 
 ```powershell
 pnpm --dir frontend test -- src/hub/overlay-studio

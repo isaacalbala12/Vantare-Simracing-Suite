@@ -1804,6 +1804,26 @@
     "native/retirement/legacy-evidence/scripts/bench/testdata/sesion-state-without-transport.json": {
       "source": "scripts/bench/testdata/sesion-state-without-transport.json",
       "sha256": "46add8af8ffc42193a1bd15a08a20d47efc7e985d228cc6a63b645627e2fded6"
+    },
+    "native/retirement/legacy-evidence/orbit.tokens.css": {
+      "source": "frontend/src/styles/orbit.tokens.css",
+      "sha256": "2a3f45c2cc3bbb9ee0ccbb3e313c1ab8e54049ec4c459c043591a30b76659d74"
+    },
+    "native/retirement/legacy-evidence/scripts/Invoke-VantareEditorialCycle.ps1.txt": {
+      "source": "scripts/Invoke-VantareEditorialCycle.ps1",
+      "sha256": "b3833e4d2b7aa3964fda2c6544f3b6e58505fbec7681040b58d3e89a4b990662"
+    },
+    "native/retirement/legacy-evidence/scripts/telemetry-core/audit-consumers.ps1.txt": {
+      "source": "scripts/telemetry-core/audit-consumers.ps1",
+      "sha256": "e5b351cdfcde1a0d5cb8078cfc8d61bf3c71230840be6b5365217a3182387fc9"
+    },
+    "native/retirement/legacy-evidence/docs/design/orbit-v03/evidence/capture.mjs.txt": {
+      "source": "docs/design/orbit-v03/evidence/capture.mjs",
+      "sha256": "60363d019b7b2c3048a1889e12ceb02ca080200cedf4ddc9da4878d492dd2524"
+    },
+    "native/retirement/legacy-evidence/docs/telemetry-core/evidence/isa-893/capture-wails-v2.mjs.txt": {
+      "source": "docs/telemetry-core/evidence/isa-893/capture-wails-v2.mjs",
+      "sha256": "5967ef6d815ceedc4b30aee07568e2f3ca31227b964b89f1162d0b9003c968f5"
     }
   }
 }

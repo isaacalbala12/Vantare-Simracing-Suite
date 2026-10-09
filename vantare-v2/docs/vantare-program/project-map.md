@@ -18,9 +18,9 @@ Calendario → agenda y recordatorios
 Roadmap editorial + manifiestos → app y comunicaciones verificadas
 ```
 
-El camino live Strategy conserva `projection/strategy.SnapshotV1`, pero su construcción está condicionada por `StrategyPublicTransport`, desactivado por defecto en la composición de la app. No representa un consumidor live Strategy activo por defecto. La existencia del motor live no demuestra que esté conectado. Ver [runtime](../../internal/app/telemetry_core_runtime.go) y [composición](../../cmd/vantare/main.go).
+El camino live Strategy conserva `projection/strategy.SnapshotV1`, pero su construcción está condicionada por `StrategyPublicTransport`, desactivado por defecto en la composición de la app. No representa un consumidor live Strategy activo por defecto. La existencia del motor live no demuestra que esté conectado. Ver [runtime](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/app/telemetry_core_runtime.go) y [composición](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/cmd/vantare/main.go).
 
-El backend histórico de Analysis alimenta Strategy; la pantalla de Telemetría tiene su propia integración pendiente. Ver [fuente de la pantalla](../../frontend/src/hub/telemetry-orbit/telemetry-orbit-source.ts) y [handoff Analysis](handoffs/telemetry-analysis.md).
+El backend histórico de Analysis alimenta Strategy; la pantalla de Telemetría tiene su propia integración pendiente. Ver [fuente de la pantalla](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/hub/telemetry-orbit/telemetry-orbit-source.ts) y [handoff Analysis](handoffs/telemetry-analysis.md).
 
 ## Responsabilidades y entrada por módulo
 

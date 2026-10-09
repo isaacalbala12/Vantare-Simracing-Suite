@@ -1952,3 +1952,9 @@ Regresiones iniciales5/5 PASS por cola (compra, calendario, roadmap, informes,
 catálogo y reloj controlado); primer intento detenido por falta de cx.quit en tests
 propios, corregido y evidencia conservada. Gates finales/IPC QA/instalador pendientes.
 PR1523 recibirá comentario de defectos y arreglo; no se modifica su rama. Sin promoción.
+
+### #1496 — v4: botones de compra con disabled del kit
+F3: los tres productos usan orbit::disabled con motivos distintos por falta de
+sesión/acción explícita. Mantienen la guarda del handler; background no deshabilita.
+UIA/Tab/Enter/Espacio/click se verificarán en el banco IPC aislado. Sin cambios de
+protocolo, identidad, OAuth, firma, dependencias ni packaging productivo.

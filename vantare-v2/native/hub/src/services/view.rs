@@ -277,6 +277,16 @@ const ACCOUNT_MODULES: [(Section, &str); 6] = [
     (Section::Analysis, "Telemetría"),
 ];
 
+fn purchase_disabled_reason(signed_in: bool, working: bool) -> Option<&'static str> {
+    if !signed_in {
+        Some("Inicia sesión para comprar")
+    } else if working {
+        Some("Operación en curso")
+    } else {
+        None
+    }
+}
+
 fn account_plan_label(verified: bool) -> &'static str {
     if verified {
         "Acceso verificado"
@@ -969,9 +979,10 @@ impl Remote {
                         cx,
                     )
                     .tab_stop(signed_in && !self.working())
-                    .when(!signed_in || self.working(), |button| {
-                        button.opacity(orbit::DISABLED)
-                    })
+                    .when_some(
+                        purchase_disabled_reason(signed_in, self.working()),
+                        orbit::disabled,
+                    )
                     .on_click(cx.listener(move |this, _, _, cx| {
                         if this.account.signed_in && !this.working() {
                             this.request(Command::Purchase { product }, cx);

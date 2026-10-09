@@ -20,6 +20,13 @@
 #[allow(dead_code)]
 pub use vantare_profiling as profiling;
 
+/// Contrato local de Engineer, independiente del worker.
+pub mod engineer_control;
+/// Identidad de producto compartida por todos los binarios.
+pub mod product;
+/// DTO del proceso de servicios, sin HTTP ni credenciales.
+pub mod services_protocol;
+
 mod codec;
 mod demand;
 pub use demand::{Demand, Photo, Signal, SignalState};
@@ -280,10 +287,3 @@ mod tests {
         ));
     }
 }
-
-/// Contrato local de Engineer, independiente del worker.
-pub mod engineer_control;
-/// Identidad de producto compartida por todos los binarios.
-pub mod product;
-/// DTO del proceso de servicios, sin HTTP ni credenciales.
-pub mod services_protocol;

@@ -6488,6 +6488,7 @@ version = "0.0.0"
 dependencies = [
  "serde",
  "serde_json",
+ "vantare-services",
 ]
 
 [[package]]
@@ -6542,6 +6543,7 @@ dependencies = [
  "duckdb",
  "serde_json",
  "vantare-domain",
+ "vantare-ipc",
  "vantare-runtime",
  "vantare-services",
 ]

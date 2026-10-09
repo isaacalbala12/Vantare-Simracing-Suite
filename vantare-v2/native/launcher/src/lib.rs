@@ -602,3 +602,6 @@ impl LmuTrigger {
         launch
     }
 }
+
+#[cfg(test)]
+mod tests;

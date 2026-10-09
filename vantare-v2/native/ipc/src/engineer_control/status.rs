@@ -324,8 +324,9 @@ impl RuntimeStatus {
     }
 }
 
-#[cfg(test)]
-pub(crate) fn test_report() -> Report {
+#[cfg(any(test, feature = "test-support"))]
+#[doc(hidden)]
+pub fn test_report() -> Report {
     Report {
         status: Status {
             version: STATUS_VERSION,

@@ -11,6 +11,7 @@ default = ["bundled-duckdb"]
 bundled-duckdb = ["duckdb/bundled"]
 
 [dependencies]
+vantare-ipc.workspace = true
 vantare-services.workspace = true
 # Autorización explícita del orquestador, ISA-1429: solo este proceso usa SQL.
 duckdb = { version = "=1.10505.0" }

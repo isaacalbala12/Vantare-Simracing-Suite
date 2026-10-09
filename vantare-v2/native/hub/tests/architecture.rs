@@ -179,6 +179,26 @@ fn invalid_cli_arguments_fail_before_opening_a_window() {
 }
 
 #[test]
+fn version_cli_uses_the_shared_product_identity_without_opening_a_window() {
+    let output = Command::new(env!("CARGO_BIN_EXE_vantare-hub"))
+        .arg("--version")
+        .output()
+        .expect("consultar versión Hub");
+    assert!(output.status.success());
+    assert_eq!(
+        String::from_utf8(output.stdout)
+            .expect("versión UTF-8")
+            .trim(),
+        format!(
+            "Vantare Native {} ({})",
+            vantare_ipc::product::VERSION,
+            vantare_ipc::product::CHANNEL
+        )
+    );
+    assert!(output.stderr.is_empty());
+}
+
+#[test]
 fn a_missing_scene_fails_without_creating_or_overwriting_user_data() {
     let path = std::env::temp_dir().join(format!("vantare-hub-preflight-{}", std::process::id()));
     assert!(!path.exists());

@@ -38,3 +38,6 @@ workspace = true
 
 [build-dependencies]
 vantare-build-support.workspace = true
+
+[dev-dependencies]
+vantare-ipc = { workspace = true, features = ["test-support"] }

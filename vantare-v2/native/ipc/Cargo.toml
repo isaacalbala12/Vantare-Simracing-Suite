@@ -5,6 +5,10 @@ edition.workspace = true
 rust-version.workspace = true
 publish.workspace = true
 
+[features]
+# Fixture compartida solo para pruebas de consumidores; inactiva en producto.
+test-support = []
+
 [dependencies]
 vantare-profiling.workspace = true
 serde = { version = "1.0.229", features = ["derive"] }

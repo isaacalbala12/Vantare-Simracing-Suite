@@ -2,6 +2,8 @@
 
 ## #1533 — retirada Wails/React (2026-10-09)
 
+- Hito 6: retirado build Wails, raíz Go, arranque y runners exclusivos; retenidas herramientas independientes de medición y voz. Hashes conservados: 451/451 iguales.
+
 - Hito 5: retirado pkg Go; perfil v2 de packaging conservado byte a byte. Hashes conservados: 451/451 iguales.
 
 - Hito 4: retirado internal Go tras congelar LMU, Strategy, catálogos y calendario; servicios nativos intactos. Hashes conservados: 451/451 iguales.

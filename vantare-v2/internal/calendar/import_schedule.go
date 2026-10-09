@@ -76,9 +76,12 @@ func ImportDailySchedule(text string) (OfficialSchedule, error) {
 				last.Notes = append(last.Notes, strings.TrimSpace(strings.TrimPrefix(line, "IMPORTANT:")))
 			}
 
-		case strings.HasPrefix(line, "Race start:"):
+		case strings.HasPrefix(line, "In-game qualifying time:"):
+			sched.SourceNotes = append(sched.SourceNotes, line)
+
+		case strings.HasPrefix(line, "Race start:"), strings.HasPrefix(line, "In-game race start:"):
 			if lastSeriesIndex >= 0 {
-				sched.Series[lastSeriesIndex].InGameStartTime = strings.TrimSpace(strings.TrimPrefix(line, "Race start:"))
+				sched.Series[lastSeriesIndex].InGameStartTime = strings.TrimSpace(strings.TrimPrefix(strings.TrimPrefix(line, "Race start:"), "In-game race start:"))
 			}
 
 		case isSourceNote(line):
@@ -549,7 +552,7 @@ func parseWeeklySlots(spec string) (Recurrence, error) {
 		return rec, nil
 	}
 
-	for _, tok := range strings.Fields(timesPart) {
+	for _, tok := range strings.Fields(strings.ReplaceAll(timesPart, ",", " ")) {
 		if strings.EqualFold(tok, "UTC") {
 			continue
 		}

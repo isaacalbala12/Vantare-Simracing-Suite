@@ -214,8 +214,15 @@ pub struct Calendar {
     class_filter: Option<String>,
     tier_filter: Option<String>,
     clock_started: bool,
+    test_session: Option<TestSession>,
     pub error: Option<String>,
     pub status: String,
+}
+
+struct TestSession {
+    schedule: Schedule,
+    following: Following,
+    status: String,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -352,6 +359,7 @@ impl Calendar {
             class_filter: None,
             tier_filter: None,
             clock_started: false,
+            test_session: None,
             error: None,
             status,
         })
@@ -368,6 +376,27 @@ impl Calendar {
         #[cfg(feature = "parity-capture")]
         {
             calendar.view = capture_view();
+            if std::env::args()
+                .collect::<Vec<_>>()
+                .windows(2)
+                .any(|pair| pair[0] == "--capture" && pair[1] == "calendario-lmu-local")
+            {
+                calendar.schedule = Schedule::parse(include_bytes!(
+                    "../reference/fixtures/calendar-lmu-2026-10-06.json"
+                ))?;
+                calendar.demo_now = None;
+                calendar.status = "QA · horario real LMU 6–13 oct recibido de Discord; publicación Supabase pendiente".into();
+                let id = calendar.schedule.series[0].id.clone();
+                calendar.follow(id.clone())?;
+                calendar.toggle_reminder(id)?;
+            }
+            if calendar_test_capture() {
+                calendar.toggle_test_schedule(true, Utc::now())?;
+                calendar.demo_now = None;
+                let id = calendar.schedule.series[0].id.clone();
+                calendar.follow(id.clone())?;
+                calendar.toggle_reminder(id)?;
+            }
             if std::env::args().any(|arg| arg == "calendario-beta-archivo") {
                 // Escena QA explícita: catálogo oficial archivado y reloj dentro de su publicación.
                 calendar.demo_now = Some(
@@ -404,6 +433,10 @@ impl Calendar {
             reminder_ids: self.following.reminder_ids.clone(),
         };
         let data = serde_json::to_vec_pretty(&following).map_err(|error| error.to_string())?;
+        if self.test_session.is_some() {
+            self.following = following;
+            return Ok(());
+        }
         files::save(&self.path, &data, self.saved.as_deref())?;
         self.following = following;
         self.saved = Some(data);
@@ -421,6 +454,10 @@ impl Calendar {
             next.push(id);
         }
         let data = serde_json::to_vec_pretty(&next).map_err(|error| error.to_string())?;
+        if self.test_session.is_some() {
+            self.following.reminder_ids = next;
+            return Ok(());
+        }
         files::save(
             &self.path.with_file_name("calendar-reminders.json"),
             &data,
@@ -434,7 +471,7 @@ impl Calendar {
         self.remote = Some(remote);
     }
     fn refresh(&mut self, cx: &mut Context<Self>) {
-        if self.refreshing || self.demo_now.is_some() {
+        if self.refreshing || self.demo_now.is_some() || self.test_session.is_some() {
             return;
         }
         let target = cx.entity().downgrade();
@@ -452,6 +489,9 @@ impl Calendar {
         cx.notify();
     }
     fn apply_publication(&mut self, data: Option<&str>, now: DateTime<Utc>) -> Result<(), String> {
+        if self.test_session.is_some() {
+            return Ok(());
+        }
         let Some(data) = data else {
             self.status = if self.schedule.is_current(now)? {
                 "No hay una nueva publicación; se conserva el horario guardado"
@@ -543,7 +583,61 @@ impl Calendar {
 }
 
 impl Calendar {
-    pub(crate) fn page_header(adapt: orbit::Adapt, cx: &mut Context<Self>) -> gpui::Div {
+    fn official_state(&self) -> (&Schedule, &Following) {
+        self.test_session
+            .as_ref()
+            .map_or((&self.schedule, &self.following), |previous| {
+                (&previous.schedule, &previous.following)
+            })
+    }
+
+    fn tester_access(&self, cx: &gpui::App) -> bool {
+        #[cfg(feature = "parity-capture")]
+        if calendar_test_capture() {
+            return true;
+        }
+        self.remote.as_ref().is_some_and(|remote| {
+            let access = remote.read(cx).navigation_access();
+            access.verified && access.tester && !access.blocked
+        })
+    }
+
+    fn toggle_test_schedule(&mut self, allowed: bool, now: DateTime<Utc>) -> Result<(), String> {
+        if let Some(previous) = self.test_session.take() {
+            self.schedule = previous.schedule;
+            self.following = previous.following;
+            self.status = previous.status;
+        } else {
+            if !allowed || self.refreshing {
+                return Err("Prueba disponible solo para testers, después de actualizar".into());
+            }
+            // Catálogo REAL archivado; solo en memoria se traslada su ventana.
+            // No se presenta como publicación actual ni se guarda en la caché.
+            let mut data: serde_json::Value = serde_json::from_str(SEED)
+                .map_err(|error| format!("horario de prueba: {error}"))?;
+            data["validFrom"] = serde_json::json!(now.to_rfc3339());
+            data["validUntil"] = serde_json::json!((now + Duration::days(7)).to_rfc3339());
+            let mut schedule = Schedule::parse(data.to_string().as_bytes())?;
+            for series in &mut schedule.series {
+                series.id = format!("test-{}", series.id);
+            }
+            self.test_session = Some(TestSession {
+                schedule: std::mem::replace(&mut self.schedule, schedule),
+                following: std::mem::take(&mut self.following),
+                status: std::mem::replace(&mut self.status,
+                    "PRUEBA LOCAL · catálogo LMU archivado del 25-ago; fechas trasladadas, no horario oficial actual. Favoritas y avisos de prueba no se guardan.".into()),
+            });
+        }
+        self.error = None;
+        self.class_filter = None;
+        self.tier_filter = None;
+        self.agenda_scroll = None;
+        Ok(())
+    }
+
+    pub(crate) fn page_header(&self, adapt: orbit::Adapt, cx: &mut Context<Self>) -> gpui::Div {
+        let tester = self.tester_access(cx);
+        let testing = self.test_session.is_some();
         div()
             .flex()
             .items_center()
@@ -553,12 +647,41 @@ impl Calendar {
                 orbit::neo_page_header("Calendario LMU", "Carreras diarias y semanales", adapt, cx)
                     .flex_1(),
             )
+            .when(tester || testing, |header| {
+                header.child(
+                    orbit::button(
+                        "calendar-test",
+                        if testing {
+                            "Salir de la prueba"
+                        } else {
+                            "Probar calendario"
+                        },
+                        cx,
+                    )
+                    .tab_stop(!self.refreshing)
+                    .when(self.refreshing, |button| {
+                        orbit::disabled(button, "Espera a que termine la actualización")
+                    })
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.error = this
+                            .toggle_test_schedule(this.tester_access(cx), Utc::now())
+                            .err();
+                        cx.notify();
+                    })),
+                )
+            })
             .child(
-                orbit::button("calendar-reload", "Actualizar horario", cx).on_click(cx.listener(
-                    |this, _, _, cx| {
+                orbit::button("calendar-reload", "Actualizar horario", cx)
+                    .tab_stop(!testing)
+                    .when(testing, |button| {
+                        orbit::disabled(
+                            button,
+                            "Sal de la prueba para actualizar el horario oficial",
+                        )
+                    })
+                    .on_click(cx.listener(|this, _, _, cx| {
                         this.refresh(cx);
-                    },
-                )),
+                    })),
             )
     }
     pub(crate) fn topbar_controls(&self, cx: &mut Context<Self>) -> gpui::Div {
@@ -568,8 +691,19 @@ impl Calendar {
         beta::rail_sections(self, cx)
     }
 }
+
+#[cfg(feature = "parity-capture")]
+fn calendar_test_capture() -> bool {
+    std::env::args()
+        .collect::<Vec<_>>()
+        .windows(2)
+        .any(|pair| pair[0] == "--capture" && pair[1] == "calendario-beta-prueba")
+}
 impl Render for Calendar {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.test_session.is_some() && !self.tester_access(cx) {
+            self.error = self.toggle_test_schedule(false, Utc::now()).err();
+        }
         if !self.first_open_requested
             && self.demo_now.is_none()
             && !matches!(self.schedule.is_current(Utc::now()), Ok(true))
@@ -597,12 +731,95 @@ impl Render for Calendar {
             })
             .detach();
         }
-        beta::render(self, cx).flex_1().min_h_0().into_any_element()
+        div()
+            .size_full()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .gap(px(12.0))
+            .when(self.test_session.is_some(), |page| {
+                page.child(orbit::callout(self.status.clone(), cx))
+            })
+            .child(beta::render(self, cx).flex_1().min_h_0())
+            .into_any_element()
     }
 }
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn real_october_publication_is_current_and_keeps_official_weekly_slots() {
+        let schedule = Schedule::parse(include_bytes!(
+            "../reference/fixtures/calendar-lmu-2026-10-06.json"
+        ))
+        .expect("horario real serializado por el bot");
+        let now = timestamp("2026-10-09T10:00:00Z").expect("reloj");
+        assert!(schedule.is_current(now).expect("vigencia"));
+        assert_eq!(schedule.series.len(), 11);
+        let special = schedule
+            .series
+            .iter()
+            .find(|series| series.name == "10 Hours of Road Atlanta")
+            .expect("evento real");
+        assert_eq!(special.track, "Road Atlanta (RC)");
+        assert_eq!(special.race_duration_min, Some(600));
+        assert_eq!(
+            schedule
+                .starts(special, now, now + Duration::days(1))
+                .expect("salidas"),
+            vec![
+                timestamp("2026-10-09T15:00:00Z").expect("slot"),
+                timestamp("2026-10-09T21:00:00Z").expect("slot"),
+                timestamp("2026-10-10T02:00:00Z").expect("slot"),
+                timestamp("2026-10-10T09:00:00Z").expect("slot"),
+            ]
+        );
+    }
+    #[test]
+    fn tester_schedule_is_current_ephemeral_and_restores_real_preferences() {
+        let dir = std::env::temp_dir().join(format!("vantare-calroad-test-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("directorio propio");
+        let mut calendar = Calendar::load(&dir).expect("cargar");
+        let real_from = calendar.schedule.valid_from.clone();
+        let id = calendar.schedule.series[0].id.clone();
+        calendar.follow(id.clone()).expect("favorita real");
+        calendar
+            .toggle_reminder(id.clone())
+            .expect("preferencia real");
+        let favorites = std::fs::read(&calendar.path).expect("favoritas");
+        let reminders = std::fs::read(dir.join("calendar-reminders.json")).expect("avisos");
+        let now = timestamp("2026-10-09T10:00:00Z").expect("reloj");
+        assert!(calendar.toggle_test_schedule(false, now).is_err());
+        calendar.toggle_test_schedule(true, now).expect("tester");
+        assert_eq!(calendar.official_state().0.valid_from, real_from);
+        assert_eq!(calendar.official_state().1.series_ids, vec![id.clone()]);
+        assert!(calendar.schedule.is_current(now).expect("vigencia"));
+        assert!(calendar.following.series_ids.is_empty());
+        let test_id = calendar.schedule.series[0].id.clone();
+        calendar
+            .follow(test_id.clone())
+            .expect("favorita de prueba");
+        calendar
+            .toggle_reminder(test_id)
+            .expect("preferencia de prueba");
+        assert!(!calendar.upcoming(now).0.is_empty());
+        assert_eq!(std::fs::read(&calendar.path).expect("favoritas"), favorites);
+        assert_eq!(
+            std::fs::read(dir.join("calendar-reminders.json")).expect("avisos"),
+            reminders
+        );
+        assert!(!dir.join("official-schedule.json").exists());
+        calendar
+            .apply_publication(Some("no JSON"), now)
+            .expect("no mezcla red y prueba");
+        calendar
+            .toggle_test_schedule(false, now)
+            .expect("salir al revocar acceso");
+        assert_eq!(calendar.schedule.valid_from, real_from);
+        assert_eq!(calendar.following.series_ids, vec![id.clone()]);
+        assert_eq!(calendar.following.reminder_ids, vec![id]);
+        std::fs::remove_dir_all(dir).expect("limpiar fixture propia");
+    }
 
     #[test]
     fn favorites_and_pending_reminders_survive_restart_and_conflicts() {
@@ -710,6 +927,7 @@ mod tests {
             class_filter: None,
             tier_filter: None,
             clock_started: false,
+            test_session: None,
             error: None,
             status: String::new(),
         };

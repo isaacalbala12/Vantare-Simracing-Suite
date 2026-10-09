@@ -711,8 +711,8 @@ pub fn render(
 ) -> Stateful<Div> {
     let now = calendar.demo_now.unwrap_or_else(Utc::now);
     let starts_result = match demo {
-        Some(data) => demo_races(&calendar.schedule, data, now),
-        None => races(&calendar.schedule, now),
+        Some(data) => demo_races(calendar.official_state().0, data, now),
+        None => races(calendar.official_state().0, now),
     };
     let (starts, error) = match starts_result {
         Ok(starts) => (starts, None),
@@ -758,7 +758,7 @@ pub fn render(
         .child(hero(
             races_visible.then(|| {
                 next_race(
-                    target(&starts, &calendar.following.series_ids),
+                    target(&starts, &calendar.official_state().1.series_ids),
                     &navigate,
                     cx,
                 )

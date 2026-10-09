@@ -457,10 +457,11 @@ impl Hub {
                 self.testing
                     .update(cx, |_, cx| Testing::page_header(self.shell.adapt, cx)),
             ),
-            Section::Calendar if self.shell.access.beta_lock(self.section).is_none() => Some(
-                self.calendar
-                    .update(cx, |_, cx| Calendar::page_header(self.shell.adapt, cx)),
-            ),
+            Section::Calendar if self.shell.access.beta_lock(self.section).is_none() => {
+                Some(self.calendar.update(cx, |calendar, cx| {
+                    calendar.page_header(self.shell.adapt, cx)
+                }))
+            }
             _ => None,
         };
         div()

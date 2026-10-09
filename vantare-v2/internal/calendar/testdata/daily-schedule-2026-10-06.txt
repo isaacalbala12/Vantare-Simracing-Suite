@@ -1,0 +1,29 @@
+Daily Race Schedule from: 6th October 2026
+Beginner [Bronze SR]
+starts every 15min, 20 car splits, high assists allowed, tyre warmers enabled, tyres: 8
+LMGT3 Fixed: Sebring (WEC), LMGT3 Class, fixed setup, 20m races
+LMP3 Fixed: Spa-Francorchamps (WEC), LMP3 Class, fixed setup, 20m races
+Logitech McLaren G Challenge - Q1: Portimao (WEC), McLaren 720S LMGT3, fixed setup, 15m races
+Intermediate [Silver SR]
+starts every 20min, 30m races, 38 car splits, low assists allowed, no tyre warmers, tyres: 10
+LMGT3 Sprint Cup: Interlagos (WEC), LMGT3 Class, open setup
+Prototype Fixed: Silverstone (National), LMP2 (ELMS) & LMP3 Classes, fixed setup
+ELMS Sprint Trophy: Qatar (Short), LMP2 (ELMS) LMP3 & LMGT3 Classes, open setup
+Advanced [Gold SR]
+starts every 30min, 38 car splits, no assists allowed, no tyre warmers, tyres: 10
+One Stint Sprint: Le Mans (WEC), Hypercar LMP2 (WEC) & LMGT3 Classes, 40m races, open setup
+ELMS Super 60: Imola (ELMS), LMP2 (ELMS) (**70L fuel tank**) LMP3 (**70L fuel tank** ) & LMGT3 (**70% VE/NRG**) Classes, 60m races, open setup
+WEC-Xperience: Road Atlanta (RC), Hypercar LMP2 (WEC) & LMGT3 classes, **70% VE/NRG**, 60m races, open setup
+Weekly Races (Solo)
+WEC Weekly [**SR S2**]:__ Sebring (WEC), Hypercar & LMGT3 Classes, 38 car splits, 100m races, open setup, no tyre warmers, tyres: 10
+UTC Days & Times: Tue Wed Thu @ 02:00, 06:00, 09:00, 12:00, 15:00, 18:00, 20:00, 23:00 UTC
+Special Events (Team)
+10 Hours of Road Atlanta [**Player SR B2, Lineup Open Entry, No <:RookieDriver:1446457659770540033> or <:DangerousDriver:1446457773226463346> badges permitted**]:__ Road Atlanta (RC), Hypercar LMP2 (WEC) & LMGT3 classes, 54 car splits, 600m races, open setup, tyre warmers disabled, fair share applies, tyres: 32
+UTC Days & Times: Fri Sat Sun @ 0200 0900 1500 2100
+
+In-game qualifying time: 14:20
+In-game race start: 12:10
+
+IMPORTANT: If you are taking part in any races this week, add the following to your launch options: +tracerudp=3
+If you encounter issues, send the RUDP logs (lmu/userdata/log/rudp) to a !ticket with the race event name, date, time and timezone.
+If you are running on a low/mid spec system, ensure you [check you can run the larger grids](<https://guide.lemansultimate.com/hc/en-gb/articles/15769559223439-Performance-Optimization-Guide>) smoothly (62 cars, the day to night to day transition, rain/wet track) in single player before registering to a race. You may need to significantly reduce your graphics settings (lowest), set FSR to ultra performance, increase your pagefile size in Windows to over 32GB. If you cannot run this event smoothly, do not register for it.

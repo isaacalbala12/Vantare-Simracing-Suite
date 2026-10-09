@@ -238,9 +238,7 @@ func normalizeDiscordLine(raw string) string {
 	line = strings.TrimSpace(strings.TrimPrefix(line, "```"))
 	line = strings.TrimSpace(strings.TrimLeft(line, "#"))
 	for _, marker := range []string{"**", "__", "~~"} {
-		line = strings.TrimSpace(strings.TrimPrefix(line, marker))
-		line = strings.Replace(line, marker+":", ":", 1)
-		line = strings.TrimSpace(strings.TrimSuffix(line, marker))
+		line = strings.ReplaceAll(line, marker, "")
 	}
 	return strings.TrimSpace(line)
 }

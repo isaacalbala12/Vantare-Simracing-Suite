@@ -2012,3 +2012,24 @@ Guarda heredada en shell/navigation.rs (fuente native incorporada aacd1e4d): blo
 
 F5 corregido solo en integración73f60e9d: Account accesible en navegación/composición con derechos denegados; gate, TTL, Feed, identidad/OAuth/UUID y herramientas mantienen autoridad. Nextest1301/7skips, fmt/Clippy/lifecycle18/telemetría21 PASS;12 recorridos de recuperación y3 muestras físicas, un envío por intento/logout y ningún grant desde reply HTTP. Setup0.0.973 dev/NotSigned, QA instalada/retirada y real intacta; evidencia C:/tmp/ui-r10/integracion-v6-evidence/VERIFICACION.md.
 Defecto/herencia/archivo/líneas/arreglo trasladados en [PR1523#6079995712](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1523#issuecomment-6079995712), [validación#6080347894](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1523#issuecomment-6080347894); [issue1496#6080348259](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1496#issuecomment-6080348259). Fuente native incorporadaaacd1e4d navigation.rs:92–95/shell.rs:388–410; HEAD remoto33be660d no contiene Hub y no se modificó la rama#1514. Su worker debe incorporar F5 cuando restituya el Hub. No se cambia el estado comercial: CI, login/pago/recovery monetario y promoción externos pendientes; integración local sin push/merge/publicación/deploy/pago.
+
+## Feedback 9-oct · calroad punto 9 (#1496)
+Base e55a43b34dddb02d671b569dc3cb83fabf3793ab; worktree C:/tmp/vw3-fb-calroad/vantare-v2,
+rama vantareapp/isa-1496-fb-calroad. Prueba explícita tester sobre catálogo LMU
+archivado: fechas solo en memoria, banner visible y preferencias efímeras;
+salir/revocar acceso restaura datos reales. shell.rs cambia únicamente el paso
+al header para consultar acceso vigente. Parser de bandeja y runbook en
+scripts/calendar-publication.py y docs/calendar-weekly-hotfix/native-publication.md.
+Python 3/3 PASS; gates Rust en curso, evidencia externa C:/tmp/feedback-0910/.
+Horario real 6–13 oct recibido por el bot existente desde Discord oficial:
+mensaje 1556611324048445536, 11 series y payload RPC revisable externo preparado.
+Parser corregido para comas, markup interior y notas in-game, con regresión real.
+Escena QA calendario-lmu-local usa esa fuente, sin sustituir seed ni Supabase.
+Publicación Owner/Supabase PENDIENTE de autorización; fuente futura 13-oct
+rechazada por splits ambiguos, sin inventarlos. Avisos/autolanzamiento no implementados;
+la campana persiste una preferencia, cuenta atrás y favoritas ya tienen tests.
+plan.md ausente en base y origin/nightly; no se crea fuente paralela. El brief
+actual autoriza seguimiento GitHub y prevalece sobre la regla Notion antigua.
+Sin delegación/push/PR/merge/release/producción. Orquestador debe revisar esta
+entrega y reflejar #1496; autorización de publicación se pide en informe final.
+Punto 9: Inicio conserva siempre horario/favoritas oficiales incluso durante prueba; home.rs cambia solo esa selección. Escena QA calendario-beta-prueba exclusiva de --capture/parity-capture para inspeccionar renderer real sin login ni escribir preferencias.

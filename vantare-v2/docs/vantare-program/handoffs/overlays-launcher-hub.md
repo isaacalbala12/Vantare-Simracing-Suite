@@ -5949,3 +5949,7 @@ no se inventan datos ni campos persistidos. Sin delegación ni acciones remotas.
 S1: flechas 1px/Mayús8px conectadas al editor con foco del lienzo; selección en
 lista devuelve ese foco, campos conservan el suyo. Dos regresiones PASS por cola,
 persistencia y Undo comprobados; revalidación física release y gates finales pendientes.
+S2: cualquier cambio de Adapt/viewport o desplazamiento del lienzo cancela el gesto;
+Fit y zoom manual conservan el documento y evitan mezclar coordenadas. Reproducción
+release del salto guardada; regresión física con asserts pendiente del build final.
+No se añade test de geometría simulado: la regresión requiere hit-testing y ventana real.

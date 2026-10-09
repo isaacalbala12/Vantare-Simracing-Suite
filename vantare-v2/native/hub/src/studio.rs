@@ -522,6 +522,8 @@ fn save_status_host(status: &str, child: impl IntoElement) -> gpui::Stateful<gpu
 impl Studio {
     pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
         if self.adapt != adapt {
+            // No mezclar el origen/escala anteriores con los nuevos durante un gesto.
+            self.cancel_drag(cx);
             self.adapt = adapt;
             cx.notify();
         }
@@ -1948,6 +1950,9 @@ impl Studio {
                             let size = (bounds.size.width.into(), bounds.size.height.into());
                             if this.canvas_size != size || (this.fit_scale - scale).abs() > 0.000_01
                             {
+                                // También el zoom manual pierde su sistema de coordenadas
+                                // al cambiar el viewport (ventana o inspector).
+                                this.cancel_drag(cx);
                                 this.canvas_size = size;
                                 this.fit_scale = scale;
                                 if this.zoom_step == 0 {
@@ -1974,6 +1979,7 @@ impl Studio {
             .relative()
             .flex()
             .overflow_scroll()
+            .on_scroll_wheel(cx.listener(|this, _, _, cx| this.cancel_drag(cx)))
             .child(measure)
             .child(stage);
         div()

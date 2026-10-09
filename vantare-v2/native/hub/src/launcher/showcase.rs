@@ -558,7 +558,13 @@ impl Launcher {
                 .min_w_0()
                 .flex()
                 .flex_col()
-                .gap(px(if compact { 8.0 } else { 12.0 }))
+                .gap(px(if running {
+                    if compact { 8.0 } else { 12.0 }
+                } else if compact {
+                    6.0
+                } else {
+                    8.0
+                }))
                 .p(px(if running {
                     0.0
                 } else if compact {
@@ -618,6 +624,27 @@ impl Launcher {
                     .truncate()
                     .w_full(),
                 )
+                .when(!running && !compact, |card| {
+                    let delay = if index == 0 {
+                        profile.effective_policy().first_step_delay
+                    } else {
+                        step.delay_seconds
+                    };
+                    card.child(
+                        orbit::text(
+                            if delay == 0 {
+                                "Sin espera adicional".to_owned()
+                            } else {
+                                format!("Espera {delay} s antes del paso")
+                            },
+                            12.0,
+                            400,
+                            orbit::ink_2(cx),
+                            cx,
+                        )
+                        .line_height(px(18.0)),
+                    )
+                })
                 .when(running && self.adapt.show_notes(), |card| {
                     card.child(
                         orbit::text("Aplicación del perfil", 12.0, 400, orbit::ink_2(cx), cx)
@@ -893,27 +920,28 @@ impl Launcher {
         } else {
             64.0
         }));
-        card =
-            if running {
-                card.child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(12.0))
-                        .child(title.flex_1().min_w_0())
-                        .child(actions),
-                )
-                .when(adapt.show_notes(), |card| {
-                    card.child(orbit::text(description, 14.0, 400, orbit::ink_2(cx), cx).truncate())
-                })
-            } else {
-                card.child(
-                    div().flex().flex_col().gap(px(8.0)).child(title).child(
-                        orbit::text(description, 14.0, 400, orbit::ink_2(cx), cx).truncate(),
-                    ),
-                )
-                .child(actions)
-            };
+        card = if running {
+            card.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(12.0))
+                    .child(title.flex_1().min_w_0())
+                    .child(actions),
+            )
+            .when(adapt.show_notes(), |card| {
+                card.child(orbit::text(description, 14.0, 400, orbit::ink_2(cx), cx).truncate())
+            })
+        } else {
+            card.child(
+                div().flex().flex_col().gap(px(8.0)).child(title).child(
+                    orbit::text(description, 14.0, 400, orbit::ink_2(cx), cx)
+                        .max_w(px(650.0))
+                        .line_height(px(20.0)),
+                ),
+            )
+            .child(actions)
+        };
         if running {
             let fraction = if profile.steps.is_empty() {
                 0.0

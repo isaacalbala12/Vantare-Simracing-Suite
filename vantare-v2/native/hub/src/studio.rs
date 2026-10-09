@@ -38,6 +38,27 @@ fn keyboard_nudge(key: &gpui::Keystroke) -> Option<((i8, i8), bool)> {
     Some((direction, key.modifiers.shift))
 }
 
+fn unavailable_scenario(
+    index: usize,
+    label: &'static str,
+    cx: &gpui::App,
+) -> gpui::Stateful<gpui::Div> {
+    const REASON: &str = "Próximamente: no hay una escena de ejemplo para esta condición.";
+    div()
+        .id(("studio-scenario", index))
+        .role(gpui::Role::Label)
+        .aria_label(format!("{label} · Próximamente"))
+        .aria_description(REASON)
+        .h(px(30.0))
+        .px(px(8.0))
+        .flex_none()
+        .flex()
+        .items_center()
+        .opacity(orbit::DISABLED)
+        .child(orbit::text(label, 12.0, 650, orbit::ink_2(cx), cx))
+        .tooltip(|_, cx| cx.new(|_| orbit::Tooltip(REASON.to_owned())).into())
+}
+
 fn fitted_scale(width: f32, height: f32) -> Option<f32> {
     if !width.is_finite() || !height.is_finite() {
         return None;
@@ -1902,10 +1923,7 @@ impl Studio {
                         })),
                 )
             } else {
-                row.child(orbit::disabled(
-                    control,
-                    "Próximamente: no hay una escena de ejemplo para esta condición.",
-                ))
+                row.child(unavailable_scenario(index, label, cx))
             };
         }
         row.child(div().flex_1()).child(
@@ -2050,6 +2068,29 @@ impl Render for Studio {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn unavailable_scenarios_explain_their_state_without_offering_button_actions() {
+        use gpui::Element;
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            for (index, label) in ["Salida", "Boxes", "Lluvia", "Noche"]
+                .into_iter()
+                .enumerate()
+            {
+                let control = unavailable_scenario(index, label, cx);
+                assert_eq!(control.a11y_role(), Some(gpui::Role::Label));
+                let mut node = gpui::accesskit::Node::new(gpui::Role::Label);
+                control.write_a11y_info(&mut node);
+                assert_eq!(
+                    node.label(),
+                    Some(format!("{label} · Próximamente").as_str())
+                );
+                assert!(!node.supports_action(gpui::AccessibleAction::Click));
+                assert!(!node.supports_action(gpui::AccessibleAction::Focus));
+            }
+            cx.quit();
+        });
+    }
     #[test]
     fn keyboard_movement_persists_logical_pixels_and_undo_restores_each_step() {
         let file = crate::document::tests::File::new();

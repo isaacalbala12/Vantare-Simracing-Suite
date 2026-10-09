@@ -18,8 +18,8 @@ pub(super) fn derive(state: &mut State) {
     laps_remaining(session, cars);
 }
 
-/// Tráfico respecto al jugador, sin memoria. Go usa `EstimatedLapTime`;
-/// best/last del jugador son aquí una aproximación, siempre `Estimated`.
+/// Respaldo del tráfico respecto al jugador, sin memoria, siempre `Estimated`.
+/// Si no hay vuelta completada, usar el periodo estimado nativo de LMU.
 fn relative(state: &mut State) {
     let Some(player) = state.player_car() else {
         for car in &mut state.cars {
@@ -31,7 +31,7 @@ fn relative(state: &mut State) {
     let laps = player.laps.current().copied();
     let distance = player.lap_distance_m.current().copied();
     let elapsed = player.lap_elapsed_s.current().copied();
-    let period = [player.best_lap_s, player.last_lap_s]
+    let period = [player.best_lap_s, player.last_lap_s, player.estimated_lap_s]
         .into_iter()
         .find_map(|q| q.current().copied().filter(|v| v.is_finite() && *v > 0.0));
     let length = state.session.track_length_m.current().copied();
@@ -392,6 +392,51 @@ mod tests {
             derive(&mut state);
             assert_eq!(state.cars[1].relative_s, native, "no sustituir por +20 s");
             state.player = None;
+            derive(&mut state);
+            assert_eq!(state.cars[1].relative_s, Quality::Unavailable);
+        }
+    }
+
+    #[test]
+    fn relative_fallback_uses_a_current_native_period_before_the_first_lap() {
+        for (period, expected) in [
+            (Quality::Estimated(100.0), Quality::Estimated(20.0)),
+            (Quality::Reliable(100.0), Quality::Estimated(20.0)),
+            (Quality::Stale(100.0), Quality::Unavailable),
+            (Quality::Unavailable, Quality::Unavailable),
+            (Quality::Estimated(0.0), Quality::Unavailable),
+            (Quality::Estimated(-1.0), Quality::Unavailable),
+            (Quality::Estimated(f64::NAN), Quality::Unavailable),
+            (Quality::Estimated(f64::INFINITY), Quality::Unavailable),
+        ] {
+            let mut state = State {
+                player: Some(vantare_domain::Player {
+                    car: vantare_domain::CarId(1),
+                    ..vantare_domain::Player::default()
+                }),
+                cars: vec![
+                    Car {
+                        id: vantare_domain::CarId(1),
+                        estimated_lap_s: period,
+                        lap_elapsed_s: Quality::Reliable(90.0),
+                        ..Car::default()
+                    },
+                    Car {
+                        id: vantare_domain::CarId(2),
+                        lap_elapsed_s: Quality::Reliable(10.0),
+                        ..Car::default()
+                    },
+                ],
+                ..State::default()
+            };
+            derive(&mut state);
+            assert_eq!(state.cars[1].relative_s, expected);
+            state.cars[1].relative_s = Quality::Unavailable;
+            state.cars[1].in_pits = Quality::Reliable(true);
+            derive(&mut state);
+            assert_eq!(state.cars[1].relative_s, Quality::Unavailable);
+            state.cars[1].in_pits = Quality::Reliable(false);
+            state.cars[1].lap_elapsed_s = Quality::Stale(10.0);
             derive(&mut state);
             assert_eq!(state.cars[1].relative_s, Quality::Unavailable);
         }

@@ -50,3 +50,20 @@ Corpus de origen (`testdata/`, SHA-256):
 Estos goldens prueban conservación frente a la base Rust. Los oráculos y
 tests de conformidad existentes siguen comprobando la semántica. Replay
 no acredita rendimiento ni el ciclo de vida de los simuladores en vivo.
+
+## Relative: prioridad nativa y respaldo sin primera vuelta (#1496)
+
+Feedback del 9 de octubre, base `e55a43b3`: `relative_s` actual del adaptador
+conserva valor/calidad; el cálculo modular solo respalda su ausencia. Si
+best/last faltan, se admite el periodo estimado actual de LMU, sin atribuir
+al gap calculado calidad nativa. Véase la [investigación](../../../../docs/analysis/2026-10-09-relative-lmu.md).
+
+Se regeneraron los 10 DTO estáticos, los 3839 LMU47 y las fixtures derivadas
+con el runtime productivo: **ningún byte descomprimido cambia**. LMU47 tiene
+los 47 coches confirmados en boxes durante todo el corpus; Relative sigue
+ausente por esa protección. Por ello se conservan los gzip originales y
+no se editan snapshots ni el oráculo. ACC conserva también sus goldens/hash
+originales. No hay una captura positiva de los nuevos gaps nativos ni una
+conexión certificada de estos: el SDK ofrece vecinos sin ID; sus cuatro
+campos están a cero en todo LMU47. La regresión controlada comprueba el
+respaldo antes de la primera vuelta y su ausencia en boxes/caducidad.

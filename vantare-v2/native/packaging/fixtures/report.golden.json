@@ -28,7 +28,7 @@
     },
     {
       "path": "layouts.general.widgets[delta].settings.reference",
-      "reason": "opción sin Settings nativo: no importada"
+      "reason": "valor normalizado por Settings nativo"
     },
     {
       "path": "layouts.general.widgets[pedals].behavior.visibleWhen",

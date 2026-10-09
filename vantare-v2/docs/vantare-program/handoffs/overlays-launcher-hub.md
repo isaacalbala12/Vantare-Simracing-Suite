@@ -1,3 +1,18 @@
+## #1531 · Relative corregido y validado; Delta siguiente (2026-10-10)
+
+Rama vantareapp/isa-1531-widgets-looks, base 5e1da3f6, worktree C:/tmp/vw3-1531/vantare-v2.
+Standings cerrado c5c2f1d5/eb21ae33; Relative conserva un Board/proyección/Motion activo, sin IPC.
+Caché exacta sin Look/Snapshot; avisos por CarId conservan reloj. Layouts/columnas y una llamada por ingest probados.
+Paridad Relative: 80 configuraciones + 4 reales + fixture del golden, 0 RGBA antes/después; golden histórico 304×285 frente a nativo 470×277 intacto.
+Frío: LMU 2,4→3,1 µs (1,29×), ACC 2,4→3,4 (1,42×), límite 1,5× cumplido.
+Regresión ACC Vantare 36,0→41,5 corregida preparando etiquetas/fit por Board/presentación, antes del pintor de solo lectura.
+5 nuevas A/B: frame p50 Efi LMU/ACC 47,3/76,2→50,4/74,9 µs; Vantare 31,7/36,8→29,3/34,3. Todos sin superar rango baseline.
+p99 mediana dentro o debajo del rango en los cuatro casos; +3,6 % Efi ACC anterior aceptado por Isaac y conservado en evidencia.
+Standings revisado: Plan solo ingest/presentación y Frames prestan Arcs; no hay recomputación/clonación nueva por frame. Gate previo PASS.
+Clippy UI/domain/all-targets -D warnings PASS; Nextest 392/392 PASS, 2 skipped. Gates workspace/lifecycle/telemetria al cierre.
+Tandas antes y después del arreglo: C:/tmp/auditoria-arquitectura-v2/evidence-1531/performance/relative-gate-{before-correction,five-rounds}.{json,md}.
+Corpus real con hechos visibles estables; cifras CPU excluyen GPU/Present/latencia de entrada. Delta→Fuel siguientes; sin push/PR/merge/release.
+
 ## #1531 · Standings cerrado; Relative siguiente (2026-10-09)
 
 Base 5e1da3f6, worktree C:/tmp/vw3-1531/vantare-v2, rama vantareapp/isa-1531-widgets-looks.

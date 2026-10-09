@@ -215,8 +215,10 @@ impl Overlay {
 
     /// Solo cambia presentación: mantiene la proyección y los avisos del widget.
     pub fn set_look(&mut self, look: crate::look::Look) {
-        if let Widget::Standings(w) = &mut self.widget {
-            w.set_look(look, self.prefs);
+        match &mut self.widget {
+            Widget::Standings(w) => w.set_look(look, self.prefs),
+            Widget::Relative(w) => w.set_look(look, self.prefs),
+            _ => {}
         }
     }
 

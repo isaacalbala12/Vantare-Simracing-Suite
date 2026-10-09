@@ -1,6 +1,6 @@
 //! Relative en el sistema de diseño Vantare (#1497), según el catálogo r10b.
 //!
-//! El ViewModel es puro (`vantare_domain::relative_vantare`); aquí se decide
+//! El ViewModel es puro (`vantare_domain::relative`); aquí se decide
 //! la geometría y se pinta con el kit Vantare (`crate::vantare`): columnas en
 //! el orden de `columns` (el punto de clase queda fijo a la izquierda), tira de
 //! pista opcional, avisos de tráfico y boxes, y movimiento de filas y puntos.
@@ -14,12 +14,14 @@ use crate::vantare::motion::{Flash, Motion, Sample};
 use crate::vantare::paint::{BOX, Face, Kit, WHITE, estimate, estimate_mono, round_rect};
 use crate::vantare::style::{Color, Style, Variant, with_opacity};
 use gpui::{App, BorderStyle, Corners, Edges, px, quad};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 use vantare_domain::DriverRating;
 use vantare_domain::SourceState;
+#[cfg(test)]
+use vantare_domain::format::Preferences;
 use vantare_domain::format::{Language, PLACEHOLDER};
-use vantare_domain::relative_vantare::{Banner, Board, Row, Side};
+use vantare_domain::relative::{Banner, Board, Row, Side};
 
 // ---------------------------------------------------------------------------
 // Opciones
@@ -186,7 +188,13 @@ impl Options {
     }
 
     /// Columnas colocadas de izquierda a derecha y ancho total del panel.
-    fn layout(&self, style: &Style, driver: f32, gap_width: f32, order: &[Kind]) -> (Vec<Placed>, f32) {
+    fn layout(
+        &self,
+        style: &Style,
+        driver: f32,
+        gap_width: f32,
+        order: &[Kind],
+    ) -> (Vec<Placed>, f32) {
         let g = &style.geometry;
         let r = &style.relative;
         let gap = g.cell_gap;
@@ -257,7 +265,9 @@ fn driver_width(board: Option<&Board>, options: &Options, style: &Style) -> f32 
     let widest = board
         .into_iter()
         .flat_map(|b| &b.names)
-        .map(|(driver, vehicle, number)| {
+        .filter(|name| name.visible)
+        .map(|name| {
+            let (driver, vehicle, number) = (&name.driver, &name.vehicle, &name.number);
             estimate(&driver_text(driver, options), style.fonts.body)
                 + estimate(
                     &vehicle_detail(vehicle, number, &options.cols),
@@ -278,7 +288,7 @@ fn gap_width(board: Option<&Board>, style: &Style) -> f32 {
     let widest = board
         .into_iter()
         .flat_map(|b| b.slots.iter().flatten())
-        .map(|row| estimate_mono(&row.gap, style.fonts.mono))
+        .map(|row| estimate_mono(&row.rich_gap, style.fonts.mono))
         .fold(0.0_f32, f32::max);
     if widest <= 0.0 {
         return max;
@@ -338,7 +348,7 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
         .filter(|kind| {
             let rows = || shown.into_iter().flat_map(|b| b.slots.iter().flatten());
             match kind {
-                Kind::Laps => rows().any(|row| row.laps.is_some()),
+                Kind::Laps => rows().any(|row| row.lap_delta.is_some_and(|v| v != 0)),
                 Kind::Trend => {
                     shown.is_some_and(|b| b.banner != Some(Banner::FullCourseYellow))
                         && rows().any(|row| row.trend.is_some())
@@ -418,44 +428,175 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
 // Estado
 // ---------------------------------------------------------------------------
 
-#[derive(Clone)]
-pub(crate) struct State {
-    pub options: Options,
-    pub style: Arc<Style>,
-    pub board: Option<Board>,
-    plan: Plan,
-    rows: Motion,
-    dots: Motion,
-    started: Instant,
+/// Texto del Look activo, preparado al cambiar datos o idioma, nunca por frame.
+struct Labels {
+    language: Language,
+    header: String,
+    yellow: String,
+    traffic: String,
+    exit: String,
+    loss: String,
+    rows: Vec<Option<RowLabels>>,
+    fitted: OnceLock<Vec<Option<Fitted>>>,
+}
+struct RowLabels {
+    number: String,
+    driver: String,
+    detail: String,
+    laps: String,
+    trend: String,
+}
+struct Fitted {
+    driver: String,
+    detail: String,
+    used: f32,
+}
+impl Labels {
+    fn new(board: Option<&Board>, options: &Options, language: Language) -> Self {
+        let es = language == Language::Es;
+        let range = format!("±{}", options.ahead.max(options.behind));
+        Self {
+            language,
+            header: board.and_then(|b| b.slower_class.as_ref()).map_or_else(
+                || range.clone(),
+                |class| format!("{} · {range}", class.to_uppercase()),
+            ),
+            yellow: match board.and_then(|b| b.banner.as_ref()) {
+                Some(Banner::LocalYellow(sector)) => format!(
+                    "{} · Sector {sector}",
+                    if es { "Amarilla" } else { "Yellow" }
+                ),
+                _ => String::new(),
+            },
+            traffic: board
+                .and_then(|b| b.traffic.as_ref())
+                .map_or_else(String::new, |t| {
+                    format!(
+                        "{} {} {}",
+                        t.count,
+                        t.class,
+                        if es { "a menos de 6 s" } else { "within 6 s" }
+                    )
+                }),
+            exit: board
+                .and_then(|b| b.pit_exit.as_ref())
+                .map_or_else(String::new, |exit| match (&exit.ahead, &exit.behind, es) {
+                    (Some(a), Some(b), true) => format!("Sales entre {a} y {b}"),
+                    (Some(a), Some(b), false) => format!("You rejoin between {a} and {b}"),
+                    (Some(a), None, true) => format!("Sales tras {a}"),
+                    (Some(a), None, false) => format!("You rejoin behind {a}"),
+                    (None, Some(b), true) => format!("Sales delante de {b}"),
+                    (None, Some(b), false) => format!("You rejoin ahead of {b}"),
+                    (None, None, true) => "Sales con pista libre".to_owned(),
+                    (None, None, false) => "You rejoin on a clear track".to_owned(),
+                }),
+            loss: board
+                .and_then(|b| b.pit_exit.as_ref())
+                .map_or_else(String::new, |exit| {
+                    format!("{} {}", if es { "pérdida" } else { "loss" }, exit.loss)
+                }),
+            rows: board
+                .into_iter()
+                .flat_map(|b| &b.slots)
+                .map(|row| {
+                    row.as_ref().map(|row| RowLabels {
+                        number: if row.number.is_empty() {
+                            PLACEHOLDER.to_owned()
+                        } else {
+                            format!("#{}", row.number)
+                        },
+                        driver: driver_text(&row.driver, options),
+                        detail: vehicle_detail(&row.vehicle, &row.number, &options.cols),
+                        laps: row
+                            .lap_delta
+                            .filter(|n| *n != 0)
+                            .map_or_else(String::new, |n| {
+                                format!(
+                                    "{}{} {}",
+                                    if n < 0 { "−" } else { "+" },
+                                    n.unsigned_abs(),
+                                    if es { "V" } else { "L" }
+                                )
+                            }),
+                        trend: row.trend.as_ref().map_or_else(String::new, |t| {
+                            format!("{} {}", if t.closing { "▲" } else { "▼" }, t.value)
+                        }),
+                    })
+                })
+                .collect(),
+            fitted: OnceLock::new(),
+        }
+    }
+    fn prepare(
+        &self,
+        board: Option<&Board>,
+        plan: &Plan,
+        kit: &Kit<'_>,
+        window: &Window,
+    ) -> Vec<Option<Fitted>> {
+        let f = &kit.style.fonts;
+        let c = &kit.style.colors;
+        let ink = kit.ink(Face::Body, f.body, 0.0, c.text.hsla());
+        let small = kit.ink(Face::Body, f.small, 0.0, c.muted.hsla());
+        let column = plan.columns.iter().find(|c| c.kind == Kind::Driver);
+        self.rows
+            .iter()
+            .enumerate()
+            .map(|(i, row)| {
+                let row = row.as_ref()?;
+                let column = column?;
+                let in_pits = board?.slots[i].as_ref()?.in_pits;
+                let available = (column.width
+                    - if in_pits {
+                        kit.pill_width(window, BOX) + kit.style.geometry.cell_gap
+                    } else {
+                        0.0
+                    })
+                .max(0.0);
+                let driver = text::fit(window, &row.driver, &ink, available);
+                let used = text::width(window, &driver, &ink);
+                let rest = available - used;
+                let detail = if !row.detail.is_empty() && rest > 12.0 {
+                    text::fit(window, &row.detail, &small, rest)
+                } else {
+                    String::new()
+                };
+                Some(Fitted {
+                    driver,
+                    detail,
+                    used,
+                })
+            })
+            .collect()
+    }
 }
 
-impl State {
+#[derive(Clone)]
+pub(crate) struct Visual {
+    pub options: Arc<Options>,
+    pub style: Arc<Style>,
+    pub board: Option<Arc<Board>>,
+    plan: Arc<Plan>,
+    labels: Arc<Labels>,
+}
+
+impl Visual {
     pub(crate) fn new(options: Options) -> Self {
         let style = Style::compiled();
         let plan = plan(None, &options, &style);
+        let labels = Labels::new(None, &options, Language::Es);
         Self {
-            options,
+            options: Arc::new(options),
             style,
             board: None,
-            plan,
-            rows: Motion::default(),
-            dots: Motion::default(),
-            started: Instant::now(),
+            plan: Arc::new(plan),
+            labels: Arc::new(labels),
         }
-    }
-
-    pub(crate) fn project(&self, snapshot: &vantare_domain::Snapshot) -> Board {
-        vantare_domain::relative_vantare::project(
-            snapshot,
-            self.options.ahead,
-            self.options.behind,
-            self.options.same_class,
-        )
     }
 
     /// Filas visibles: el lado decide los destellos (pasar de delante a
     /// detrás es adelantar; de detrás a delante, ser adelantado).
-    fn row_samples(&self) -> Vec<Sample> {
+    pub(crate) fn row_samples(&self) -> Vec<Sample> {
         let Some(board) = &self.board else {
             return Vec::new();
         };
@@ -482,7 +623,7 @@ impl State {
     }
 
     /// Puntos de la tira: la x es su «posición» y se desliza al cambiar.
-    fn dot_samples(&self) -> Vec<Sample> {
+    pub(crate) fn dot_samples(&self) -> Vec<Sample> {
         let Some(board) = &self.board else {
             return Vec::new();
         };
@@ -500,49 +641,69 @@ impl State {
             .collect()
     }
 
-    pub(crate) fn ingest(&mut self, board: Board) -> bool {
-        if self.board.as_ref() == Some(&board) {
+    pub(crate) fn ingest_shared(
+        &mut self,
+        board: Arc<Board>,
+        movement: &mut Arc<Movement>,
+    ) -> bool {
+        if self
+            .board
+            .as_deref()
+            .is_some_and(|old| same_visible(old, &board))
+        {
+            self.board = Some(board);
             return false;
         }
         self.board = Some(board);
-        self.plan = plan(self.board.as_ref(), &self.options, &self.style);
+        self.plan = Arc::new(plan(self.board.as_deref(), &self.options, &self.style));
+        self.relabel(self.labels.language);
+        let movement = Arc::make_mut(movement);
         let timing = self.style.motion.timing();
         let now = Instant::now();
         let rows = self.row_samples();
-        self.rows.update(&rows, timing, now);
+        movement.rows.update(&rows, timing, now);
         let dots = self.dot_samples();
-        self.dots.update(&dots, timing, now);
+        movement.dots.update(&dots, timing, now);
         true
     }
 
-    pub(crate) fn settle(&mut self) {
-        self.rows.settle();
-        self.dots.settle();
-    }
-
-    pub(crate) fn set_style(&mut self, style: Arc<Style>) {
+    pub(crate) fn set_style(&mut self, style: Arc<Style>, movement: &mut Movement) {
         self.style = style;
-        self.plan = plan(self.board.as_ref(), &self.options, &self.style);
+        self.plan = Arc::new(plan(self.board.as_deref(), &self.options, &self.style));
+        self.relabel(self.labels.language);
         let rows = self.row_samples();
-        self.rows.snap(&rows);
+        movement.rows.snap(&rows);
         let dots = self.dot_samples();
-        self.dots.snap(&dots);
+        movement.dots.snap(&dots);
     }
 
     pub(crate) fn size(&self) -> (f32, f32) {
         (self.plan.width, self.plan.height)
     }
 
+    fn relabel(&mut self, language: Language) {
+        self.labels = Arc::new(Labels::new(self.board.as_deref(), &self.options, language));
+    }
+
+    pub(crate) fn presentation(&mut self, language: Language) {
+        if self.labels.language != language {
+            self.relabel(language);
+        }
+    }
+
     fn traffic_pulsing(&self) -> bool {
-        self.board.as_ref().is_some_and(|b| {
+        self.board.as_deref().is_some_and(|b| {
             b.banner != Some(Banner::FullCourseYellow)
                 && b.slots.iter().flatten().any(|row| row.fast_traffic)
         })
     }
 
-    pub(crate) fn wake(&self, now: Instant) -> Wake {
+    pub(crate) fn wake(&self, movement: &Movement, now: Instant) -> Wake {
         let timing = self.style.motion.timing();
-        match (self.rows.wake(timing, now), self.dots.wake(timing, now)) {
+        match (
+            movement.rows.wake(timing, now),
+            movement.dots.wake(timing, now),
+        ) {
             (Wake::Frame, _) | (_, Wake::Frame) => Wake::Frame,
             // El pulso de tráfico es lento: unos 20 fotogramas por segundo bastan.
             _ if self.traffic_pulsing() => Wake::At(Duration::from_millis(50)),
@@ -551,7 +712,7 @@ impl State {
     }
 
     pub(crate) fn columns(&self) -> Option<ColumnBoxes> {
-        if waiting(self.board.as_ref()) {
+        if waiting(self.board.as_deref()) {
             return None;
         }
         Some(ColumnBoxes {
@@ -567,24 +728,182 @@ impl State {
         })
     }
 
-    pub(crate) fn paint(&self, language: Language, window: &mut Window, cx: &mut App) {
+    pub(crate) fn paint(
+        &self,
+        movement: &Movement,
+        language: Language,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
+        let kit = Kit {
+            style: &self.style,
+            variant: self.options.variant(&self.style),
+            accent: self.options.accent(&self.style),
+            language,
+            width: self.plan.width,
+        };
+        // El ajuste real necesita la ventana/fuentes. Se prepara una vez por
+        // Board/Presentation, antes de entrar en el pintor de solo lectura.
+        let fitted = self.labels.fitted.get_or_init(|| {
+            self.labels
+                .prepare(self.board.as_deref(), &self.plan, &kit, window)
+        });
         Painter {
-            kit: Kit {
-                style: &self.style,
-                variant: self.options.variant(&self.style),
-                accent: self.options.accent(&self.style),
-                language,
-                width: self.plan.width,
-            },
+            kit,
             options: &self.options,
-            board: self.board.as_ref(),
+            board: self.board.as_deref(),
             plan: &self.plan,
-            rows: &self.rows,
-            dots: &self.dots,
+            labels: &self.labels,
+            fitted,
+            rows: &movement.rows,
+            dots: &movement.dots,
             now: Instant::now(),
-            started: self.started,
+            started: movement.started,
         }
         .paint(window, cx);
+    }
+}
+
+/// Movimiento del Look activo: avisos en filas, coordenadas de la tira y su reloj.
+#[derive(Clone)]
+pub(crate) struct Movement {
+    pub(crate) rows: Motion,
+    dots: Motion,
+    started: Instant,
+}
+impl Default for Movement {
+    fn default() -> Self {
+        Self {
+            rows: Motion::default(),
+            dots: Motion::default(),
+            started: Instant::now(),
+        }
+    }
+}
+impl Movement {
+    pub(crate) fn settle(&mut self) {
+        self.rows.settle();
+        self.dots.settle();
+    }
+}
+fn same_visible(a: &Board, b: &Board) -> bool {
+    (
+        a.source_state,
+        a.player_present,
+        a.player_in_pits,
+        a.pit_limiter,
+        &a.banner,
+        &a.strip,
+        &a.slower_class,
+        &a.traffic,
+        &a.pit_exit,
+    ) == (
+        b.source_state,
+        b.player_present,
+        b.player_in_pits,
+        b.pit_limiter,
+        &b.banner,
+        &b.strip,
+        &b.slower_class,
+        &b.traffic,
+        &b.pit_exit,
+    ) && a
+        .names
+        .iter()
+        .filter(|n| n.visible)
+        .map(|n| (&n.driver, &n.vehicle, &n.number))
+        .eq(b
+            .names
+            .iter()
+            .filter(|n| n.visible)
+            .map(|n| (&n.driver, &n.vehicle, &n.number)))
+        && a.slots.len() == b.slots.len()
+        && a.slots.iter().zip(&b.slots).all(|(a, b)| match (a, b) {
+            (None, None) => true,
+            (Some(a), Some(b)) => {
+                (
+                    (
+                        a.id,
+                        a.side,
+                        &a.class,
+                        &a.class_position,
+                        &a.number,
+                        &a.driver,
+                        &a.vehicle,
+                    ),
+                    (
+                        a.lap_delta.filter(|v| *v != 0),
+                        &a.rich_gap,
+                        a.rating,
+                        &a.safety,
+                        &a.trend,
+                        a.is_player,
+                        a.in_pits,
+                        a.fast_traffic,
+                    ),
+                ) == (
+                    (
+                        b.id,
+                        b.side,
+                        &b.class,
+                        &b.class_position,
+                        &b.number,
+                        &b.driver,
+                        &b.vehicle,
+                    ),
+                    (
+                        b.lap_delta.filter(|v| *v != 0),
+                        &b.rich_gap,
+                        b.rating,
+                        &b.safety,
+                        &b.trend,
+                        b.is_player,
+                        b.in_pits,
+                        b.fast_traffic,
+                    ),
+                )
+            }
+            _ => false,
+        })
+}
+#[cfg(test)]
+struct State {
+    visual: Visual,
+    movement: Arc<Movement>,
+}
+#[cfg(test)]
+impl std::ops::Deref for State {
+    type Target = Visual;
+    fn deref(&self) -> &Visual {
+        &self.visual
+    }
+}
+#[cfg(test)]
+impl State {
+    fn new(options: Options) -> Self {
+        Self {
+            visual: Visual::new(options),
+            movement: Arc::new(Movement::default()),
+        }
+    }
+    fn project(&self, snapshot: &vantare_domain::Snapshot) -> Board {
+        vantare_domain::relative::project_content(
+            snapshot,
+            Preferences::default(),
+            vantare_domain::relative::Content {
+                range_ahead: self.options.ahead,
+                range_behind: self.options.behind,
+                same_class: self.options.same_class,
+                ..Default::default()
+            },
+        )
+    }
+    fn ingest(&mut self, board: Board) -> bool {
+        self.visual
+            .ingest_shared(Arc::new(board), &mut self.movement)
+    }
+    fn wake(&self, now: Instant) -> Wake {
+        self.visual.wake(&self.movement, now)
     }
 }
 
@@ -592,8 +911,8 @@ impl State {
 fn strip_x(plan: &Plan, options: &Options, style: &Style, offset_s: f64) -> f32 {
     let pad = options.variant(style).padding_x;
     let span = plan.width - 2.0 * pad;
-    let t = ((offset_s + vantare_domain::relative_vantare::STRIP_S)
-        / (2.0 * vantare_domain::relative_vantare::STRIP_S))
+    let t = ((offset_s + vantare_domain::relative::STRIP_S)
+        / (2.0 * vantare_domain::relative::STRIP_S))
         .clamp(0.0, 1.0) as f32;
     pad + t * span
 }
@@ -607,6 +926,8 @@ struct Painter<'a> {
     options: &'a Options,
     board: Option<&'a Board>,
     plan: &'a Plan,
+    labels: &'a Labels,
+    fitted: &'a [Option<Fitted>],
     rows: &'a Motion,
     dots: &'a Motion,
     now: Instant,
@@ -654,19 +975,14 @@ impl Painter<'_> {
             Banner::FullCourseYellow => {
                 self.band(window, cx, c.fcy_fill, c.fcy_text, "FCY", None, false, None);
             }
-            Banner::LocalYellow(sector) => {
-                let title = if es {
-                    format!("Amarilla · Sector {sector}")
-                } else {
-                    format!("Yellow · Sector {sector}")
-                };
+            Banner::LocalYellow(_) => {
                 let line = Some(c.yellow_line);
                 self.band(
                     window,
                     cx,
                     c.yellow_fill,
                     c.yellow_text,
-                    &title,
+                    &self.labels.yellow,
                     None,
                     false,
                     line,
@@ -699,16 +1015,21 @@ impl Painter<'_> {
             v.header_color.hsla(),
         );
         self.label(window, cx, "RELATIVE", pad, None, y, h, face, &ink);
-        let range = format!("±{}", self.options.ahead.max(self.options.behind));
-        let right = match self.board.and_then(|b| b.slower_class.as_ref()) {
-            Some(class) => format!("{} · {range}", class.to_uppercase()),
-            None => range,
-        };
         let mut edge = w - pad;
         if self.options.brand {
             edge -= self.brand(window, cx, edge, y, h) + self.style.brand.margin;
         }
-        self.label(window, cx, &right, 0.0, Some(edge), y, h, face, &ink);
+        self.label(
+            window,
+            cx,
+            &self.labels.header,
+            0.0,
+            Some(edge),
+            y,
+            h,
+            face,
+            &ink,
+        );
         if v.header_rule > 0.0 {
             round_rect(
                 window,
@@ -812,7 +1133,9 @@ impl Painter<'_> {
         };
         let pose = self.rows.pose(row.id, self.style.motion.timing(), self.now);
         let y = y + pose.offset;
-        with_opacity(pose.alpha, || self.row(window, cx, y, row, pose.flash));
+        with_opacity(pose.alpha, || {
+            self.row(window, cx, y, row, index, pose.flash);
+        });
     }
 
     fn pulse(&self) -> f32 {
@@ -831,9 +1154,11 @@ impl Painter<'_> {
         cx: &mut App,
         y: f32,
         row: &Row,
+        index: usize,
         flash: Option<(Flash, f32)>,
     ) {
         let Some(board) = self.board else { return };
+        let labels = self.labels.rows[index].as_ref().expect("fila presentada");
         let g = &self.style.geometry;
         let f = &self.style.fonts;
         let c = &self.style.colors;
@@ -883,15 +1208,10 @@ impl Painter<'_> {
                     );
                 }
                 Kind::Number => {
-                    let label = if row.number.is_empty() {
-                        PLACEHOLDER.to_owned()
-                    } else {
-                        format!("#{}", row.number)
-                    };
-                    self.chip(window, cx, &label, class, x, y);
+                    self.chip(window, cx, &labels.number, class, x, y);
                 }
                 Kind::Driver => {
-                    let mut name_right = right;
+                    let name_right = right;
                     if row.in_pits {
                         let width = self.pill_width(window, BOX);
                         self.pill(
@@ -903,24 +1223,17 @@ impl Painter<'_> {
                             c.box_fill.hsla(),
                             c.box_text.hsla(),
                         );
-                        name_right -= width + g.cell_gap;
                     }
-                    self.name(window, cx, row, x, name_right, y);
+                    self.name(window, cx, index, x, y);
                 }
                 Kind::Laps => {
-                    if let Some(laps) = row.laps {
-                        let es = self.es();
-                        let unit = if es { "V" } else { "L" };
-                        let (label, fill, ink) = if laps < 0 {
-                            (
-                                format!("−{} {unit}", -laps),
-                                r.laps_down_fill,
-                                r.laps_down_text,
-                            )
+                    if let Some(laps) = row.lap_delta.filter(|v| *v != 0) {
+                        let (fill, ink) = if laps < 0 {
+                            (r.laps_down_fill, r.laps_down_text)
                         } else {
-                            (format!("+{laps} {unit}"), r.laps_up_fill, r.laps_up_text)
+                            (r.laps_up_fill, r.laps_up_text)
                         };
-                        self.pill(window, cx, &label, x, y, fill.hsla(), ink.hsla());
+                        self.pill(window, cx, &labels.laps, x, y, fill.hsla(), ink.hsla());
                     }
                 }
                 Kind::Rating => self.rating(window, cx, row.rating, x, column.width, y),
@@ -940,11 +1253,19 @@ impl Painter<'_> {
                 }
                 Kind::Trend => {
                     if let Some(trend) = row.trend.as_ref().filter(|_| !fcy) {
-                        let arrow = if trend.closing { "▲" } else { "▼" };
                         let color = if trend.good { c.gain } else { c.loss };
                         let ink = self.ink(Face::Mono, f.mono, 0.0, color.hsla());
-                        let text = format!("{arrow} {}", trend.value);
-                        self.label(window, cx, &text, 0.0, Some(right), y, h, Face::Mono, &ink);
+                        self.label(
+                            window,
+                            cx,
+                            &labels.trend,
+                            0.0,
+                            Some(right),
+                            y,
+                            h,
+                            Face::Mono,
+                            &ink,
+                        );
                     }
                 }
                 Kind::Gap => {
@@ -959,7 +1280,7 @@ impl Painter<'_> {
                     self.label(
                         window,
                         cx,
-                        &row.gap,
+                        &row.rich_gap,
                         0.0,
                         Some(right),
                         y,
@@ -972,29 +1293,22 @@ impl Painter<'_> {
         }
     }
 
-    fn name(&self, window: &mut Window, cx: &mut App, row: &Row, x: f32, right: f32, y: f32) {
+    fn name(&self, window: &mut Window, cx: &mut App, index: usize, x: f32, y: f32) {
+        let Some(name) = self.fitted[index].as_ref() else {
+            return;
+        };
         let f = &self.style.fonts;
         let c = &self.style.colors;
         let h = self.style.geometry.row_height;
-        let available = (right - x).max(0.0);
         let ink = self.ink(Face::Body, f.body, 0.0, c.text.hsla());
-        let driver = text::fit(
-            window,
-            &driver_text(&row.driver, self.options),
-            &ink,
-            available,
-        );
-        let used = self.label(window, cx, &driver, x, None, y, h, Face::Body, &ink);
-        let detail = vehicle_detail(&row.vehicle, &row.number, &self.options.cols);
-        let rest = available - used;
-        if !detail.is_empty() && rest > 12.0 {
+        self.label(window, cx, &name.driver, x, None, y, h, Face::Body, &ink);
+        if !name.detail.is_empty() {
             let small = self.ink(Face::Body, f.small, 0.0, c.muted.hsla());
-            let detail = text::fit(window, &detail, &small, rest);
             self.label(
                 window,
                 cx,
-                &detail,
-                x + used,
+                &name.detail,
+                x + name.used,
                 None,
                 y,
                 h,
@@ -1104,18 +1418,20 @@ impl Painter<'_> {
                 self.label(window, cx, text, x, None, top, h, Face::Body, &ink);
             }
             Footer::Traffic => {
-                let Some(traffic) = self.board.and_then(|b| b.traffic.as_ref()) else {
-                    return;
-                };
                 let arrow = self.ink(Face::Body, f.header, 0.0, c.loss.hsla());
                 let mut x = pad;
                 x += self.label(window, cx, "▲ ", x, None, top, h, Face::Body, &arrow);
-                let text = if es {
-                    format!("{} {} a menos de 6 s", traffic.count, traffic.class)
-                } else {
-                    format!("{} {} within 6 s", traffic.count, traffic.class)
-                };
-                self.label(window, cx, &text, x, None, top, h, Face::Body, &ink);
+                self.label(
+                    window,
+                    cx,
+                    &self.labels.traffic,
+                    x,
+                    None,
+                    top,
+                    h,
+                    Face::Body,
+                    &ink,
+                );
                 let hint = if es {
                     "deja hueco en la curva"
                 } else {
@@ -1134,29 +1450,21 @@ impl Painter<'_> {
                 );
             }
             Footer::Pits => {
-                let Some(exit) = self.board.and_then(|b| b.pit_exit.as_ref()) else {
-                    return;
-                };
-                let text = match (&exit.ahead, &exit.behind, es) {
-                    (Some(a), Some(b), true) => format!("Sales entre {a} y {b}"),
-                    (Some(a), Some(b), false) => format!("You rejoin between {a} and {b}"),
-                    (Some(a), None, true) => format!("Sales tras {a}"),
-                    (Some(a), None, false) => format!("You rejoin behind {a}"),
-                    (None, Some(b), true) => format!("Sales delante de {b}"),
-                    (None, Some(b), false) => format!("You rejoin ahead of {b}"),
-                    (None, None, true) => "Sales con pista libre".to_owned(),
-                    (None, None, false) => "You rejoin on a clear track".to_owned(),
-                };
-                self.label(window, cx, &text, pad, None, top, h, Face::Body, &ink);
-                let loss = if es {
-                    format!("pérdida {}", exit.loss)
-                } else {
-                    format!("loss {}", exit.loss)
-                };
                 self.label(
                     window,
                     cx,
-                    &loss,
+                    &self.labels.exit,
+                    pad,
+                    None,
+                    top,
+                    h,
+                    Face::Body,
+                    &ink,
+                );
+                self.label(
+                    window,
+                    cx,
+                    &self.labels.loss,
                     0.0,
                     Some(w - pad),
                     top,
@@ -1172,7 +1480,6 @@ impl Painter<'_> {
                     "▲▼ s/lap gained"
                 };
                 self.label(window, cx, text, pad, None, top, h, Face::Body, &ink);
-                let unit = if es { "V" } else { "L" };
                 let (down, up) = if es {
                     ("doblado", "te dobla")
                 } else {
@@ -1180,12 +1487,12 @@ impl Painter<'_> {
                 };
                 let mut right = w - pad;
                 right -= self.label(window, cx, up, 0.0, Some(right), top, h, Face::Body, &ink);
-                let plus = format!("+{unit}");
-                right -= 6.0 + self.pill_width(window, &plus);
+                let plus = if es { "+V" } else { "+L" };
+                right -= 6.0 + self.pill_width(window, plus);
                 self.pill(
                     window,
                     cx,
-                    &plus,
+                    plus,
                     right,
                     top + (h - g.row_height) / 2.0,
                     r.laps_up_fill.hsla(),
@@ -1193,12 +1500,12 @@ impl Painter<'_> {
                 );
                 right -= g.cell_gap;
                 right -= self.label(window, cx, down, 0.0, Some(right), top, h, Face::Body, &ink);
-                let minus = format!("−{unit}");
-                right -= 6.0 + self.pill_width(window, &minus);
+                let minus = if es { "−V" } else { "−L" };
+                right -= 6.0 + self.pill_width(window, minus);
                 self.pill(
                     window,
                     cx,
-                    &minus,
+                    minus,
                     right,
                     top + (h - g.row_height) / 2.0,
                     r.laps_down_fill.hsla(),
@@ -1212,6 +1519,42 @@ impl Painter<'_> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn labels_reuse_until_visible_facts_or_presentation_change() {
+        let photos = frames(include_str!("../../fixtures/relative-vantare.scene.json"));
+        let mut state = State::new(options("expanded"));
+        state.ingest(state.project(&photos[0]));
+        let labels = state.labels.clone();
+        state.ingest(state.project(&photos[0]));
+        state.visual.presentation(Language::Es);
+        assert!(Arc::ptr_eq(&labels, &state.labels));
+        state.visual.presentation(Language::En);
+        assert!(!Arc::ptr_eq(&labels, &state.labels));
+        assert!(
+            state
+                .labels
+                .rows
+                .iter()
+                .flatten()
+                .any(|row| row.laps.contains('L'))
+        );
+        let english = state.labels.clone();
+        state.visual.presentation(Language::En);
+        assert!(Arc::ptr_eq(&english, &state.labels));
+        state.ingest(state.project(&photos[2]));
+        assert!(!Arc::ptr_eq(&english, &state.labels));
+        assert!(state.labels.exit.starts_with("You rejoin"));
+        let current = state.labels.clone();
+        let style = state.style.clone();
+        state
+            .visual
+            .set_style(style, Arc::make_mut(&mut state.movement));
+        assert!(
+            !Arc::ptr_eq(&current, &state.labels),
+            "fuentes/anchos invalidan ajuste"
+        );
+    }
 
     /// Opciones de una plantilla con su alcance (±2, ±3 o ±4), como Workshop.
     fn options(name: &str) -> Options {
@@ -1263,16 +1606,22 @@ mod tests {
         let photos = frames(include_str!("../../fixtures/relative-vantare.scene.json"));
         let mut state = State::new(options("expanded"));
         state.ingest(state.project(&photos[0]));
-        let board = state.board.clone().expect("tablero");
+        let board = state.board.as_deref().cloned().expect("tablero");
         let me = board
             .slots
             .iter()
             .flatten()
             .find(|r| r.is_player)
             .expect("jugador");
-        assert_eq!((me.gap.as_str(), me.class_position.as_str()), ("0.0", "P3"));
+        assert_eq!(
+            (me.rich_gap.as_ref(), me.class_position.as_ref()),
+            ("0.0", "P3")
+        );
         let jarvis = board.slots[0].as_ref().expect("Jarvis");
-        assert_eq!((jarvis.gap.as_str(), jarvis.laps), ("-8.9", Some(-1)));
+        assert_eq!(
+            (jarvis.rich_gap.as_ref(), jarvis.lap_delta),
+            ("-8.9", Some(-1))
+        );
         assert_eq!(jarvis.rating, Some(DriverRating::Gold));
         assert_eq!(board.strip.len(), 9);
         let gt = state.project(&photos[1]);
@@ -1302,7 +1651,7 @@ mod tests {
         assert!(!metrics.contains(&Kind::Laps), "ningún Hypercar doblado");
         assert!(metrics.contains(&Kind::Trend));
         let narrow = state.size().0;
-        state.options.same_class = false;
+        Arc::make_mut(&mut state.visual.options).same_class = false;
         state.ingest(state.project(&photos[0]));
         assert!(state.plan.columns.iter().any(|c| c.kind == Kind::Laps));
         assert!(
@@ -1319,11 +1668,17 @@ mod tests {
     #[test]
     fn brand_only_shows_when_the_host_decides_it() {
         let mut settings = super::super::Settings::default();
-        assert!(!Options::from_settings(&settings).brand, "sin decisión, sin marca");
+        assert!(
+            !Options::from_settings(&settings).brand,
+            "sin decisión, sin marca"
+        );
         settings.brand_visible = Some(true);
         assert!(Options::from_settings(&settings).brand);
         let json = serde_json::to_value(super::super::Settings::default()).expect("json");
-        assert!(json.get("brandVisible").is_none(), "no cambia el JSON guardado");
+        assert!(
+            json.get("brandVisible").is_none(),
+            "no cambia el JSON guardado"
+        );
     }
 
     #[test]
@@ -1340,13 +1695,13 @@ mod tests {
                 .expect("gap")
                 .width
         };
-        let mut board = state.board.clone().expect("tablero");
+        let mut board = state.board.as_deref().cloned().expect("tablero");
         for row in board.slots.iter_mut().flatten() {
-            row.gap = "+3.8".into();
+            Arc::make_mut(row).rich_gap = "+3.8".into();
         }
         let mut far = board.clone();
         if let Some(row) = far.slots.iter_mut().flatten().next() {
-            row.gap = "+10.0".into();
+            Arc::make_mut(row).rich_gap = "+10.0".into();
         }
         state.ingest(far);
         let wide = gap(&state);
@@ -1368,14 +1723,14 @@ mod tests {
             assert!(state.ingest(state.project(photo)));
             let now = Instant::now();
             for sample in state.row_samples() {
-                if let Some((flash, _)) = state.rows.pose(sample.id, timing, now).flash {
+                if let Some((flash, _)) = state.movement.rows.pose(sample.id, timing, now).flash {
                     flashes.push(flash);
                 }
             }
             dots_moved |= state
                 .dot_samples()
                 .iter()
-                .any(|s| state.dots.pose(s.id, timing, now).offset != 0.0);
+                .any(|s| state.movement.dots.pose(s.id, timing, now).offset != 0.0);
         }
         assert!(flashes.contains(&Flash::Gain), "adelantar destella verde");
         assert!(

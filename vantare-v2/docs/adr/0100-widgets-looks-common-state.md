@@ -70,3 +70,44 @@ Standings cerrado: 148 tests domain, 224 UI (2 ignorados), arquitectura y Clippy
 El golden versionado ya difería del baseline: se conserva y se registra esa deuda previa.
 Cinco tandas A/B cumplen el gate. Frío LMU 98→116 µs (1,18×), ACC 44→55 µs (1,24×).
 Las cifras por tanda y ambas fases están en evidence-1531/performance/standings-gate-five-rounds.json.
+
+Relative aplica el mismo patrón: slots con una única fila por CarId, información
+de sesión y pie en el Board, Motion del pintor activo y transferencia de avisos
+con su reloj. Las dos coordenadas de Vantare (filas y tira) son animación activa;
+solo las filas producen avisos. Eficiencia conserva su FLIP y aviso de cruce.
+La caché compara hechos exactos sin Snapshot ni Look: sesión, fuente, preferencias,
+contenido, banderas, clima, gaps/ritmos y hechos de las filas visibles. Los nombres
+se guardan solo cuando el ancho o la salida de boxes los consumen; la clave presta
+esos nombres, sin copiarlos otra vez. Secuencia y pedales no invalidan; hechos,
+calidad, filtros o pie sí. Los casos de jugador oculto prueban también los boxes.
+Los textos ausentes usan Cow y se omiten cálculos de tráfico sin ritmo propio.
+Frío real medido: LMU 2,4→3,1 µs (1,29×), ACC 2,4→3,4 µs (1,42×).
+Relative queda WIP: 80 configuraciones, 4 casos reales y fixture del golden
+antes/después dan 0 diferencias. El golden histórico ya tiene otra geometría
+(304×285; baseline nativo 470×277) y se conserva intacto.
+Cinco tandas A/B: ingest PASS; frame ACC Eficiencia p99 163,2 µs supera el
+rango baseline 84,5–157,6 µs, y ACC Vantare p50 36,0→41,5 µs. Gate FAIL:
+Isaac acepta el +3,6 % Eficiencia como ruido; exige corregir el p50 Vantare.
+Gate Relative actualizado: mediana p50 sin superar el rango baseline en los cuatro
+casos; p99 dentro del rango o como máximo +5 % documentado. Corrección en curso.
+Detalle y todas las tandas en performance/relative-gate-five-rounds.{json,md}.
+
+Relative prepara etiquetas al cambiar Board/Presentation; el recorte necesita
+las fuentes reales de la ventana y se prepara una vez antes del pintor, mediante
+OnceLock propiedad del Look activo. Paint lee etiquetas y recortes; no hace
+format ni fit. Cambiar idioma/estilo/datos visibles invalida; hechos ajenos no.
+Revisión Standings: su Plan ya cambia solo en ingest/presentación y sus Frames
+prestan Arcs; el formato/fit de nombres restante viene del baseline, no de una
+clonación nueva. Su gate anterior pasó los cuatro casos; se conserva la evidencia.
+
+Corrección Relative: cinco nuevas tandas A/B PASS con el gate actualizado.
+Frame p50 Efi LMU 47,3→50,4 µs (rango baseline 47,0–53,2), ACC 76,2→74,9;
+Vantare LMU 31,7→29,3 y ACC 36,8→34,3 (antes del arreglo: 36,0→41,5).
+p99 mediana dentro o por debajo del rango en los cuatro casos; no se usa el margen
++5 % en las nuevas tandas. El +3,6 % de Efi ACC anterior queda aceptado por Isaac.
+Ingest p50 Efi LMU/ACC 5,8/7,4→1,3/1,0 µs; Vantare 6,2/6,0→1,3/1,1.
+Se conservan las tandas pre-fix y el resumen antes de corregir, sin sobrescribirlos.
+La revisión no demuestra un nuevo format/fit respecto al baseline: era trabajo
+heredado. Al retirarlo se resuelve la regresión medida; no se atribuye una causa
+microarquitectónica no perfilada. Corpus real, widgets visualmente estables (0
+invalidaciones tras warmup); no demuestra coste de cualquier secuencia del juego.

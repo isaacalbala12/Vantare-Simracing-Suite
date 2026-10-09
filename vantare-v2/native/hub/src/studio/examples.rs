@@ -87,12 +87,39 @@ mod tests {
         assert_eq!(board.groups.len(), 3);
         assert!(board.groups.iter().all(|g| g.rows.len() == 30));
         for (ahead, behind) in [(0, 0), (1, 5), (8, 8)] {
-            let board = vantare_domain::relative_vantare::project(&photo, ahead, behind, true);
+            let board = vantare_domain::relative::project_content(
+                &photo,
+                Default::default(),
+                vantare_domain::relative::Content {
+                    range_ahead: ahead,
+                    range_behind: behind,
+                    same_class: true,
+                    ..Default::default()
+                },
+            );
             assert_eq!(board.slots.len(), ahead + behind + 1);
             assert!(board.slots.iter().all(Option::is_some));
         }
-        let own = vantare_domain::relative_vantare::project(&photo, 8, 8, true);
-        let all = vantare_domain::relative_vantare::project(&photo, 8, 8, false);
+        let own = vantare_domain::relative::project_content(
+            &photo,
+            Default::default(),
+            vantare_domain::relative::Content {
+                range_ahead: 8,
+                range_behind: 8,
+                same_class: true,
+                ..Default::default()
+            },
+        );
+        let all = vantare_domain::relative::project_content(
+            &photo,
+            Default::default(),
+            vantare_domain::relative::Content {
+                range_ahead: 8,
+                range_behind: 8,
+                same_class: false,
+                ..Default::default()
+            },
+        );
         assert!(all.strip.len() > own.strip.len());
         for rows in [3, 8, 20, 30] {
             let multi = multiclass(&photo, rows);

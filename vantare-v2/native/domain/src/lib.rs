@@ -30,7 +30,6 @@ mod quality;
 pub mod racing_flags;
 pub mod radar;
 pub mod relative;
-pub mod relative_vantare;
 pub mod standings;
 pub mod track_map;
 pub mod track_weather;

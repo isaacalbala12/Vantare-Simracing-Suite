@@ -1,8 +1,21 @@
 //! Coste frío de la proyección común con fotos reales, sin ventana ni caché.
 use std::{hint::black_box, time::Instant};
 use vantare_domain::{Snapshot, format::Preferences, standings};
-fn project(snapshot: &Snapshot, prefs: Preferences, content: &standings::Content) {
-    black_box(standings::project_content(snapshot, prefs, content));
+enum Content {
+    Standings(standings::Content),
+    Relative(vantare_domain::relative::Content, Vec<String>),
+}
+fn project(snapshot: &Snapshot, prefs: Preferences, content: &Content) {
+    match content {
+        Content::Standings(c) => {
+            black_box(standings::project_content(snapshot, prefs, c));
+        }
+        Content::Relative(c, ids) => {
+            black_box(vantare_domain::relative::project_configured(
+                snapshot, prefs, *c, ids,
+            ));
+        }
+    }
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().skip(1).collect();
@@ -10,29 +23,37 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("uso: project layout.json fotos.json medicion.json".into());
     }
     let layout = vantare_ui::layout::Layout::from_json(&std::fs::read(&args[0])?)?;
-    let vantare_ui::Settings::Standings(settings) =
-        &layout.instances.first().ok_or("layout vacío")?.settings
-    else {
-        return Err("requiere Standings".into());
-    };
-    let content = standings::Content {
-        player_class: settings.class_scope != "all-classes",
-        class_gaps: settings.class_scope != "all-classes"
-            || settings.classification_mode == "multiclass",
-        footer_ids: settings
-            .footer_slots
-            .clone()
-            .filter(|v| !v.is_empty())
-            .unwrap_or_else(|| {
-                vec![
-                    settings.footer_first.clone(),
-                    settings.footer_second.clone(),
-                ]
-            }),
-        footer_slots: settings
-            .footer_slots
-            .as_ref()
-            .is_some_and(|v| !v.is_empty()),
+    let settings = &layout.instances.first().ok_or("layout vacío")?.settings;
+    let content = match settings {
+        vantare_ui::Settings::Standings(settings) => Content::Standings(standings::Content {
+            player_class: settings.class_scope != "all-classes",
+            class_gaps: settings.class_scope != "all-classes"
+                || settings.classification_mode == "multiclass",
+            footer_ids: settings
+                .footer_slots
+                .clone()
+                .filter(|v| !v.is_empty())
+                .unwrap_or_else(|| {
+                    vec![
+                        settings.footer_first.clone(),
+                        settings.footer_second.clone(),
+                    ]
+                }),
+            footer_slots: settings
+                .footer_slots
+                .as_ref()
+                .is_some_and(|v| !v.is_empty()),
+        }),
+        vantare_ui::Settings::Relative(settings) => Content::Relative(
+            vantare_domain::relative::Content {
+                range_ahead: settings.range_ahead,
+                range_behind: settings.range_behind,
+                same_class: settings.class_scope == "sameClass",
+                include_player: settings.include_player,
+            },
+            settings.footer_slots.clone(),
+        ),
+        _ => return Err("requiere un widget con proyección común".into()),
     };
     let photos = vantare_ui::workshop::snapshots_from_json(&std::fs::read_to_string(&args[1])?)?;
     if photos.is_empty() {

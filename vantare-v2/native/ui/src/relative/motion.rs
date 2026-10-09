@@ -6,14 +6,14 @@ use vantare_domain::relative::{Row, Side, ViewModel};
 
 #[derive(Clone)]
 pub(super) struct Visual {
-    pub row: Row,
+    pub row: std::sync::Arc<Row>,
     pub y: f32,
     pub opacity: f32,
     pub cue: Option<(u32, f32)>,
 }
 
 struct Transition {
-    row: Row,
+    row: std::sync::Arc<Row>,
     from_y: f32,
     to_y: f32,
     from_opacity: f32,
@@ -26,10 +26,56 @@ struct Transition {
 pub(super) struct Motion {
     start: Option<Instant>,
     transitions: Vec<Transition>,
+    transferred: Vec<(
+        vantare_domain::CarId,
+        crate::vantare::motion::Flash,
+        Instant,
+        i64,
+    )>,
 }
 
 impl Motion {
+    pub(super) fn notices(
+        &self,
+    ) -> Vec<(
+        vantare_domain::CarId,
+        crate::vantare::motion::Flash,
+        Instant,
+        i64,
+    )> {
+        let mut notices = self.transferred.clone();
+        if let Some(start) = self.start {
+            notices.extend(self.transitions.iter().filter_map(|t| {
+                t.cue.map(|color| {
+                    (
+                        t.row.id,
+                        if color == 0x7fb686 {
+                            crate::vantare::motion::Flash::Gain
+                        } else {
+                            crate::vantare::motion::Flash::Loss
+                        },
+                        start,
+                        0,
+                    )
+                })
+            }));
+        }
+        notices
+    }
+    pub(super) fn restore_notices(
+        &mut self,
+        notices: &[(
+            vantare_domain::CarId,
+            crate::vantare::motion::Flash,
+            Instant,
+            i64,
+        )],
+    ) {
+        self.transferred = notices.to_vec();
+    }
     pub fn update(&mut self, old: &ViewModel, next: &ViewModel, now: Instant) {
+        self.transferred
+            .retain(|n| now.saturating_duration_since(n.2).as_millis() < 480);
         let structure = |vm: &ViewModel| {
             vm.slots
                 .iter()
@@ -98,20 +144,29 @@ impl Motion {
                 });
             }
         }
+        self.transferred.retain(|n| {
+            !self
+                .transitions
+                .iter()
+                .any(|t| t.row.id == n.0 && t.cue.is_some())
+        });
         self.start = Some(now);
     }
 
     pub fn animating(&self, now: Instant) -> bool {
-        self.start.is_some_and(|start| {
-            self.transitions.iter().any(|t| {
-                let duration = if t.cue.is_some() {
-                    480.0
-                } else {
-                    t.slide_ms.max(120.0)
-                };
-                now.saturating_duration_since(start).as_secs_f32() * 1000.0 < duration
+        self.transferred
+            .iter()
+            .any(|n| now.saturating_duration_since(n.2).as_millis() < 480)
+            || self.start.is_some_and(|start| {
+                self.transitions.iter().any(|t| {
+                    let duration = if t.cue.is_some() {
+                        480.0
+                    } else {
+                        t.slide_ms.max(120.0)
+                    };
+                    now.saturating_duration_since(start).as_secs_f32() * 1000.0 < duration
+                })
             })
-        })
     }
 
     pub fn sample(&self, vm: &ViewModel, now: Instant) -> Vec<Visual> {
@@ -129,6 +184,7 @@ impl Motion {
             })
             .collect::<Vec<_>>();
         let Some(start) = self.start else {
+            self.apply_notices(&mut rows, now);
             return rows;
         };
         let elapsed = now.saturating_duration_since(start).as_secs_f32() * 1000.0;
@@ -166,7 +222,25 @@ impl Motion {
                 rows.push(visual);
             }
         }
+        self.apply_notices(&mut rows, now);
         rows
+    }
+    fn apply_notices(&self, rows: &mut [Visual], now: Instant) {
+        for &(id, kind, start, _) in &self.transferred {
+            let elapsed = now.saturating_duration_since(start).as_secs_f32() * 1000.0;
+            if elapsed < 480.0
+                && let Some(row) = rows.iter_mut().find(|r| r.row.id == id)
+            {
+                let color = match kind {
+                    crate::vantare::motion::Flash::Loss => 0xd95360,
+                    _ => 0x7fb686,
+                };
+                row.cue = Some((
+                    color,
+                    0.04 * (1.0 - ease((elapsed / 480.0).clamp(0.0, 1.0), 0.0, 0.0, 0.58, 1.0)),
+                ));
+            }
+        }
     }
 }
 
@@ -199,22 +273,17 @@ mod tests {
 
     fn model(side: Side, slot: usize) -> ViewModel {
         let mut vm = relative::project(&Snapshot::default(), Preferences::default());
-        vm.slots[slot] = Some(Row {
-            id: CarId(2),
-            side,
-            position: "2".into(),
-            number: String::new(),
-            driver: "Rival".into(),
-            class: "LMP2".into(),
-            gap: "—".into(),
-            best_lap: "—".into(),
-            lap_delta: None,
-            last_lap: "—".into(),
-            last_lap_stale: false,
-            position_stale: false,
-            best_lap_stale: false,
-            gap_stale: false,
-        });
+        let mut row = std::sync::Arc::new(Row::default());
+        let r = std::sync::Arc::make_mut(&mut row);
+        r.id = CarId(2);
+        r.side = side;
+        r.position = "2".into();
+        r.driver = "Rival".into();
+        r.class = "LMP2".into();
+        r.gap = "—".into();
+        r.best_lap = "—".into();
+        r.last_lap = "—".into();
+        vm.slots[slot] = Some(row);
         vm
     }
 
@@ -253,7 +322,7 @@ mod tests {
         );
         assert!(!motion.animating(now + Duration::from_millis(120)));
         let mut text = old.clone();
-        text.slots[2].as_mut().expect("rival").gap = "+0.3".into();
+        std::sync::Arc::make_mut(text.slots[2].as_mut().expect("rival")).gap = "+0.3".into();
         motion.update(&old, &text, now + Duration::from_secs(1));
         assert!(!motion.animating(now + Duration::from_secs(1)));
     }

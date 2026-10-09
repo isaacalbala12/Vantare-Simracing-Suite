@@ -329,8 +329,8 @@ pub fn wordmark(cx: &gpui::App) -> Div {
     div().flex_none().child(
         gpui::svg()
             .path("brand/wordmark.svg")
-            .w(px(24.0 * 5235.3 / 687.2))
-            .h(px(24.0))
+            .w(px(14.0 * 5235.3 / 687.2))
+            .h(px(14.0))
             .text_color(rgb(skin(cx).text1)),
     )
 }

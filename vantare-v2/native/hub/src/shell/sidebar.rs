@@ -362,41 +362,18 @@ impl Hub {
         )
         .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Settings, cx)));
         let logo = div()
-            .h(px(if expanded { 56.0 } else { 52.0 }))
+            .h(px(52.0))
             .flex_none()
             .flex()
             .items_center()
             .gap(px(10.0))
-            .when(expanded, |logo| logo.px(px(4.0)))
+            .when(expanded, |logo| logo.px(px(8.0)))
             .when(!expanded, gpui::Styled::justify_center)
             .when(!expanded, |logo| {
                 logo.child(orbit::icon("mark", 26.0, 0x00d8_0000))
             })
             .when(expanded, |logo| {
                 logo.child(
-                    div()
-                        .flex_none()
-                        .flex()
-                        .flex_col()
-                        .items_start()
-                        .gap(px(12.0))
-                        .child(orbit::wordmark(cx))
-                        .child(
-                            div()
-                                .px(px(6.0))
-                                .py(px(1.0))
-                                .rounded(px(skin.radius.xs))
-                                .border_1()
-                                .border_color(orbit::alpha(skin.line3))
-                                .text_size(px(10.0))
-                                .line_height(px(14.0))
-                                .font_weight(gpui::FontWeight(600.0))
-                                .text_color(rgb(skin.text2))
-                                .child("BETA"),
-                        ),
-                )
-                .child(div().flex_1())
-                .child(
                     orbit::icon_button(
                         "sidebar-toggle",
                         "v-side",
@@ -406,6 +383,7 @@ impl Hub {
                     )
                     .on_click(cx.listener(|hub, _, _, cx| hub.toggle_sidebar(cx))),
                 )
+                .child(orbit::wordmark(cx))
             });
         div()
             .w(px(adapt.sidebar_width()))
@@ -413,7 +391,6 @@ impl Hub {
             .flex_none()
             .flex()
             .flex_col()
-            .pt(px(6.0))
             .pb(px(12.0))
             .px(px(if expanded { 12.0 } else { 14.0 }))
             .bg(orbit::ramp(skin.sidebar, 180.0))

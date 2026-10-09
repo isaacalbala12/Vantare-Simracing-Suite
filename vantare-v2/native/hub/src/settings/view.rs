@@ -1811,7 +1811,7 @@ impl Hub {
                 ]
             })
             .collect();
-        let mut events = section_body().child(
+        let mut events = section_body().p(px(20.0)).child(
             div()
                 .flex()
                 .items_center()
@@ -1839,10 +1839,16 @@ impl Hub {
                 ),
         );
         if rows.is_empty() {
-            events = events.child(section_note(
-                super::event_empty_message(observed.errors.len()),
-                cx,
-            ));
+            events = events.child(
+                text(
+                    super::event_empty_message(observed.errors.len()),
+                    13.0,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                )
+                .p(px(16.0)),
+            );
         } else {
             let table = orbit::Table {
                 headers: vec![
@@ -1858,82 +1864,116 @@ impl Hub {
                 Err(error) => events = events.child(orbit::callout(error, cx)),
             }
         }
-        section_surface(
-            "Registro observado",
-            Some("Errores registrados en esta sesión"),
-            events,
-            12.0,
-            cx,
-        )
-        .flex_1()
-        .min_h_0()
+        orbit::neo_card(cx)
+            .p_0()
+            .flex_1()
+            .min_h_0()
+            .child(div().px(px(20.0)).py(px(14.0)).child(orbit::neo_header(
+                "Registro observado",
+                "v-testing",
+                cx,
+            )))
+            .child(
+                events
+                    .id("settings-observed-log")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .bg(rgb(orbit::canvas(cx))),
+            )
     }
+
     fn settings_statistics(&self, cx: &gpui::App) -> Div {
-        let stats = div().grid().grid_cols(3).gap(px(10.0)).children(
-            [
-                ("Hub", "En ejecución", "v-home"),
-                (
-                    "Telemetría",
-                    if self.previous_source == Some(true) {
-                        "Conectada"
-                    } else {
-                        "Esperando simulador"
-                    },
-                    "pulse",
-                ),
-                (
-                    "Launcher",
-                    if self.settings.launcher_running {
-                        "Lanzando"
-                    } else {
-                        "En reposo"
-                    },
-                    "v-launch",
-                ),
-                (
-                    "Preferencias",
-                    if self.settings.general.is_ok() {
-                        "Cargadas"
-                    } else {
-                        "Error local"
-                    },
-                    "v-sliders",
-                ),
-                (
-                    "Envío diagnóstico",
-                    if vantare_services::diagnostics::configured() {
-                        "Configurado"
-                    } else {
-                        "Sin configurar"
-                    },
-                    "v-shield",
-                ),
-                (
-                    "Informe local",
-                    if self.settings.diagnostic.is_some() {
-                        "Preparado"
-                    } else {
-                        "Sin preparar"
-                    },
-                    "v-testing",
-                ),
-            ]
-            .map(|(label, value, icon)| {
-                orbit::neo_card(cx)
-                    .p(px(12.0))
-                    .gap(px(6.0))
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(8.0))
-                            .child(orbit::icon(icon, 18.0, orbit::ink_3(cx)))
-                            .child(text(label, 13.0, 600, orbit::ink(cx), cx)),
-                    )
-                    .child(text(value, 12.0, 400, orbit::ink_3(cx), cx))
-            }),
-        );
-        orbit::settings_group(1, "Estado de Vantare", stats, cx)
+        let stats = div()
+            .grid()
+            .grid_cols(if self.shell.adapt.center_width() < 1100.0 {
+                2
+            } else {
+                3
+            })
+            .gap(px(10.0))
+            .children(
+                [
+                    ("Hub", "En ejecución", "v-home"),
+                    (
+                        "Telemetría",
+                        if self.previous_source == Some(true) {
+                            "Conectada"
+                        } else {
+                            "Esperando simulador"
+                        },
+                        "pulse",
+                    ),
+                    (
+                        "Launcher",
+                        if self.settings.launcher_running {
+                            "Lanzando"
+                        } else {
+                            "En reposo"
+                        },
+                        "v-launch",
+                    ),
+                    (
+                        "Preferencias",
+                        if self.settings.general.is_ok() {
+                            "Cargadas"
+                        } else {
+                            "Error local"
+                        },
+                        "v-sliders",
+                    ),
+                    (
+                        "Envío diagnóstico",
+                        if vantare_services::diagnostics::configured() {
+                            "Configurado"
+                        } else {
+                            "Sin configurar"
+                        },
+                        "v-shield",
+                    ),
+                    (
+                        "Informe local",
+                        if self.settings.diagnostic.is_some() {
+                            "Preparado"
+                        } else {
+                            "Sin preparar"
+                        },
+                        "v-testing",
+                    ),
+                ]
+                .map(|(label, value, icon)| {
+                    orbit::neo_card(cx)
+                        .flex_row()
+                        .items_center()
+                        .p(px(12.0))
+                        .gap(px(10.0))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .size(px(32.0))
+                                .flex_shrink_0()
+                                .rounded(px(orbit::RADIUS_CHIP))
+                                .bg(rgb(orbit::surface_1(cx)))
+                                .child(orbit::icon(icon, 18.0, orbit::ink_3(cx))),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .min_w_0()
+                                .gap(px(4.0))
+                                .child(text(label, 13.0, 600, orbit::ink(cx), cx))
+                                .child(text(value, 12.0, 400, orbit::ink_3(cx), cx)),
+                        )
+                }),
+            );
+        orbit::neo_card(cx)
+            .p(px(20.0))
+            .gap(px(14.0))
+            .child(orbit::neo_header("Estado de Vantare", "pulse", cx))
+            .child(stats)
     }
     fn settings_diagnostics(&self, _compact: bool, cx: &mut Context<Self>) -> Div {
         stack()
@@ -1973,7 +2013,7 @@ impl Hub {
                             cx,
                         ))
                     }),
-                12.0,
+                0.0,
                 cx,
             ))
             .child(self.settings_events(cx).flex_1().min_h_0())

@@ -1,3 +1,40 @@
+## #1528 — Ronda 3 tras revisión 8,88/10 (2026-10-10)
+
+Entrega aislada sobre `abb752b3`, rama `vantareapp/isa-1528-paridad-visual`,
+base de integración `5e1da3f6`. Siete commits por vista/grupo, sin delegación.
+Agenda XS reserva 38 px por hora: caben el evento de 30 px, padding y borde;
+regresión en siete alturas conserva escala estable, filtros y acceso a excedentes.
+Actualizaciones amplía hero a 160 px, agrupa canales y cabecera de notas;
+Tiempos usa todo el ancho, hero XS compacto, cuenta atrás real y duración acotada;
+la tabla separa serie/circuito e integra filtros y procedencia del horario;
+Launcher reposo recupera descripción y aire en la cadena, con altura natural;
+Inicio normal amplía preview compartido, vacío compone primeros pasos y conexión,
+carga distingue preview/actividad/plantillas y usa esqueletos en el perfil favorito.
+Rendimiento integra cabeceras, tarjetas de 96 px y filas de 48 px; XS usa tres
+columnas, tarjetas compactas y resumen de frecuencia aplicada, sin tabla secundaria;
+Diagnóstico agrupa estados observados, usa dos columnas XS y registro integrado
+con scroll y vacío neutro. Sin nuevas dependencias, renderer ni datos inventados.
+Archivos: calendar/presentation.rs, calendar/beta.rs, launcher/showcase.rs,
+shell/foundations.rs y settings/view.rs, más este handoff.
+
+Gates por cola: fmt, Clippy workspace -D warnings, Nextest workspace 1405 PASS / 7
+skips, Hub 404 PASS / 1 skip tras los ajustes visuales, lifecycle 18 PASS.
+Build QA conserva el aviso previo unused cx de analysis/view.rs bajo parity-capture;
+Clippy canónico sin warnings. Intentos iniciales fallidos y sus correcciones quedan
+archivados fuera del repo; no se rebajan tests. La última tanda visual se verifica
+mediante el manifest externo, procedencia por SHA/hash y comparaciones a igual tamaño.
+44 casos afectados recapturados app/HTML, con recaptura final de Rendimiento; matriz completa 76, overlays/diffs y
+r3-before conservan la evidencia anterior. Launcher cubre siete tamaños y dos extras.
+Informe de doce líneas: C:/tmp/ui-r10/informe-1528.md. Evidencia detallada:
+C:/tmp/ui-r10/1528-evidence/diferencias.md, checks.md y final-manifest.json.
+La nota 8,88 corresponde a review-1528-r2.md; ≥9 requiere reevaluación independiente.
+Roadmap/Testing mantienen Próximamente por decisión de Isaac; datos pendientes en
+[#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+Verificación manual: evento completo y scroll de Agenda XS, filtros de Tiempos,
+reposo/lanzamiento y carrusel en siete tamaños, los tres estados de Inicio, niveles
+de rendimiento y filtros/informe sanitizado. DPI físico, LMU real e interacción
+humana no acreditados por QA. Sin push, PR, merge, promoción, release ni CI remoto.
+
 ## #1528 — Ronda 2 tras revisión 8,80/10 (2026-10-10)
 
 Entrega aislada sobre `723cdb78`, misma rama y base de integración `5e1da3f6`.

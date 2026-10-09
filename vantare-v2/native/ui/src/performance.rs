@@ -115,6 +115,37 @@ impl Cadence {
 mod tests {
     use super::*;
     #[test]
+    fn host_cadence_limits_data_updates_and_flags_bypass_every_override() {
+        let start = Instant::now();
+        let identity = (1, vantare_domain::SourceState::Live);
+        for hz in [1, 4, 5, 10, 20] {
+            let mut cadence = Cadence::default();
+            let updates = (0..1000)
+                .filter(|millisecond| {
+                    cadence.due(hz, identity, start + Duration::from_millis(*millisecond))
+                })
+                .count();
+            assert_eq!(updates, usize::from(hz), "límite {hz} Hz");
+        }
+        for level in Level::ALL {
+            let mut prefs = Preferences {
+                level,
+                ..Default::default()
+            };
+            prefs.widgets.insert("flags".into(), 1);
+            let hz = prefs.hz("flags", crate::Kind::RacingFlags);
+            let mut cadence = Cadence::default();
+            assert!((0..1000).all(|millisecond| cadence.due(
+                hz,
+                identity,
+                start + Duration::from_millis(millisecond)
+            )));
+        }
+        for (level, hz) in Level::ALL.into_iter().zip([0, 60, 40, 30, 20]) {
+            assert_eq!(level.hz(crate::Kind::Pedals), hz);
+        }
+    }
+    #[test]
     fn levels_and_overrides_keep_flags_immediate_and_state_transitions_unthrottled() {
         for (level, hz) in Level::ALL.into_iter().zip([30, 20, 15, 10, 5]) {
             assert_eq!(level.hz(crate::Kind::Standings), hz);

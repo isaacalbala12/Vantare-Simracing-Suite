@@ -670,6 +670,7 @@ fn reconcile_widgets<T>(
 impl LiveScreens {
     /// «Mostrar/Ocultar overlays» de la bandeja: vacía las pantallas sin
     /// tocar el documento ni el estado de cada widget.
+    #[cfg(windows)]
     fn toggle(&mut self, cx: &mut App) {
         self.hidden = !self.hidden;
         let layout = self.layout.clone();

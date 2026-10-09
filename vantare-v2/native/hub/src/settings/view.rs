@@ -993,53 +993,140 @@ impl Hub {
                 }),
             )
     }
+    fn settings_level_card(
+        &self,
+        index: usize,
+        level: vantare_ui::performance::Level,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<Div> {
+        let selected = self.studio.read(cx).performance().level == level;
+        let description = [
+            "Cada foto · tablas a 30 Hz",
+            "Hasta 60 Hz · tablas a 20 Hz",
+            "Hasta 40 Hz · tablas a 15 Hz",
+            "Hasta 30 Hz · tablas a 10 Hz",
+            "Hasta 20 Hz · tablas a 5 Hz",
+        ][index];
+        let mut meter = div().flex().gap(px(4.0)).w_full();
+        for segment in 0..5 {
+            meter = meter.child(div().flex_1().h(px(5.0)).rounded_full().bg(
+                if segment < 5 - index {
+                    rgb(orbit::carmine(cx))
+                } else {
+                    rgb(orbit::surface_1(cx))
+                },
+            ));
+        }
+        orbit::neo_card(cx)
+            .id(("performance-level", index))
+            .role(gpui::Role::Button)
+            .aria_label(level.label())
+            .aria_selected(selected)
+            .aria_description(description)
+            .tab_stop(true)
+            .track_focus(&self.settings.performance_focus[index])
+            .cursor_pointer()
+            .p(px(14.0))
+            .gap(px(9.0))
+            .min_w_0()
+            .when(selected, |card| card.border_color(rgb(orbit::carmine(cx))))
+            .focus_visible(|card| card.border_color(rgb(orbit::carmine(cx))))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .child(text(level.label(), 15.0, 700, orbit::ink(cx), cx))
+                    .child(orbit::meta(
+                        &(index + 1).to_string(),
+                        16.0,
+                        orbit::ink_3(cx),
+                        cx,
+                    )),
+            )
+            .child(text(description, 12.0, 400, orbit::ink_2(cx), cx))
+            .child(meter)
+            .on_click(cx.listener(move |hub, _, _, cx| hub.settings_performance_level(level, cx)))
+            .on_key_down(cx.listener(move |hub, event: &gpui::KeyDownEvent, _, cx| {
+                if !event.is_held && matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                    hub.settings_performance_level(level, cx);
+                    cx.stop_propagation();
+                }
+            }))
+    }
+    fn settings_frequency_table(current: vantare_ui::performance::Level, cx: &gpui::App) -> Div {
+        use vantare_ui::performance::Level;
+        let mut table = div().grid().grid_cols(6).w_full().min_w_0();
+        for (row, label) in ["", "Widgets", "Relative y tablas", "Banderas"]
+            .into_iter()
+            .enumerate()
+        {
+            table = table.child(text(label, 12.0, 600, orbit::ink_2(cx), cx).p(px(8.0)));
+            for level in Level::ALL {
+                let hz = level.hz(if row == 2 {
+                    vantare_ui::Kind::Relative
+                } else {
+                    vantare_ui::Kind::Pedals
+                });
+                let value = match row {
+                    0 => level.label().to_owned(),
+                    3 => "Al instante".to_owned(),
+                    _ if hz == 0 => "Cada foto".to_owned(),
+                    _ => format!("{hz} Hz"),
+                };
+                table = table.child(
+                    text(value, 12.0, 500, orbit::ink(cx), cx)
+                        .min_w_0()
+                        .p(px(8.0))
+                        .text_center()
+                        .when(level == current, |cell| {
+                            cell.bg(rgba((orbit::carmine(cx) << 8) | 0x14))
+                        }),
+                );
+            }
+        }
+        table
+    }
     fn settings_performance(&self, _compact: bool, cx: &mut Context<Self>) -> Div {
-        let studio = self.studio.read(cx);
-        let current = studio.performance().level;
+        let current = self.studio.read(cx).performance().level;
         let mut levels = div().grid().grid_cols(3).w_full().min_w_0().gap(px(10.0));
         for (index, level) in vantare_ui::performance::Level::ALL.into_iter().enumerate() {
-            levels = levels.child(
-                orbit::small_button(
-                    [
-                        "level-maximum",
-                        "level-high",
-                        "level-balanced",
-                        "level-economy",
-                        "level-minimum",
-                    ][index],
-                    level.label(),
-                    cx,
-                )
-                .track_focus(&self.settings.performance_focus[index])
-                .when(current == level, |card| {
-                    card.border_color(rgb(orbit::carmine(cx)))
-                })
-                .on_click(
-                    cx.listener(move |hub, _, _, cx| hub.settings_performance_level(level, cx)),
-                )
-                .on_key_down(cx.listener(
-                    move |hub, event: &gpui::KeyDownEvent, _, cx| {
-                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                            hub.settings_performance_level(level, cx);
-                            cx.stop_propagation();
-                        }
-                    },
-                )),
-            );
+            levels = levels.child(self.settings_level_card(index, level, cx));
         }
+        levels = levels.child(
+            orbit::neo_card(cx)
+                .id("settings-custom-studio")
+                .role(gpui::Role::Button)
+                .aria_label("Personalizado · Abrir Studio")
+                .tab_stop(true)
+                .track_focus(&self.settings.custom_performance_focus)
+                .cursor_pointer()
+                .p(px(14.0))
+                .gap(px(9.0))
+                .min_w_0()
+                .focus_visible(|card| card.border_color(rgb(orbit::carmine(cx))))
+                .child(text("Personalizado", 15.0, 700, orbit::ink(cx), cx))
+                .child(text(
+                    "Cada widget, en el inspector de Studio",
+                    12.0,
+                    400,
+                    orbit::ink_2(cx),
+                    cx,
+                ))
+                .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                    if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                        hub.navigate(Section::Studio, cx);
+                        cx.stop_propagation();
+                    }
+                }))
+                .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx))),
+        );
         let state = format!("Nivel aplicado: {}", current.label());
-        stack().child(section_surface("Nivel de rendimiento", Some(&state), levels, cx))
-            .child(section_surface("Qué cambia en cada nivel", None, section_body()
-                .child(text("Tablas: 30 / 20 / 15 / 10 / 5 Hz. Otros widgets: cada foto / 60 / 40 / 30 / 20 Hz como máximo. Banderas y cambios de estado llegan inmediatamente.", 13.0, 400, orbit::ink_2(cx), cx)), cx))
-            .child(orbit::neo_card(cx).p(px(12.0)).gap(px(10.0))
-                .child(orbit::caps("Personalizado", 16.0, orbit::ink(cx), cx))
-                .child(text("Cambia la frecuencia de cada widget en el inspector de Studio.", 13.0, 400, orbit::ink_2(cx), cx))
-                .child(orbit::small_button("settings-custom-studio", "Abrir Studio", cx).self_start()
-                    .track_focus(&self.settings.custom_performance_focus)
-                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
-                        if matches!(event.keystroke.key.as_str(), "enter" | "space") { hub.navigate(Section::Studio, cx); cx.stop_propagation(); }
-                    }))
-                    .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)))))
+        stack()
+            .child(section_surface("Nivel de rendimiento", Some(&state), levels, cx))
+            .child(section_surface("Qué cambia en cada nivel", None,
+                Self::settings_frequency_table(current, cx), cx))
+            .child(text("Frecuencias máximas de actualización de datos. La fluidez depende también de las fotos recibidas y del monitor.", 12.0, 400, orbit::ink_3(cx), cx))
     }
 
     fn settings_updates(&self, cx: &mut Context<Self>) -> Div {

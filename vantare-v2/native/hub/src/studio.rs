@@ -405,6 +405,7 @@ pub struct Studio {
     search: Entity<orbit::Input>,
     color: Option<Entity<orbit::Input>>,
     inspector_selection: Option<String>,
+    size_fields: Vec<(&'static str, Entity<NumberControl>)>,
     fields: Vec<(Tab, &'static str, gpui::AnyView, bool)>,
     demo_profile: Option<crate::demo::DemoProfile>,
     fit_scale: f32,
@@ -824,6 +825,7 @@ impl Studio {
             color: None,
             inspector_selection: None,
             fields: vec![],
+            size_fields: vec![],
             demo_profile,
             fit_scale: STUDIO_PREVIEW_SCALE,
             canvas_size: (700.0, 1080.0 * STUDIO_PREVIEW_SCALE),
@@ -842,6 +844,7 @@ impl Studio {
     fn reset_fields(&mut self) {
         self.inspector_selection = None;
         self.fields.clear();
+        self.size_fields.clear();
     }
     fn rebuild(&mut self, cx: &mut Context<Self>) {
         self.drag = None;
@@ -908,7 +911,19 @@ impl Studio {
             .detach();
             self.frames.push((item.id.clone(), frame));
         }
+        self.sync_size_fields(cx);
         cx.notify();
+    }
+    fn sync_size_fields(&self, cx: &mut Context<Self>) {
+        if let Some(size) = self.selected_size(cx) {
+            for (title, control) in &self.size_fields {
+                control.update(cx, |control, cx| {
+                    control.range.value =
+                        f64::from(if *title == "Ancho" { size.0 } else { size.1 });
+                    cx.notify();
+                });
+            }
+        }
     }
     fn preview_snapshot(&self, kind: Kind) -> &Snapshot {
         if self.example
@@ -1099,9 +1114,11 @@ impl Studio {
         } else if key.modifiers.control || key.modifiers.platform {
             if key.key.eq_ignore_ascii_case("z") {
                 self.history(key.modifiers.shift, cx);
+                self.focus.focus(window, cx);
                 cx.stop_propagation();
             } else if key.key.eq_ignore_ascii_case("y") {
                 self.history(true, cx);
+                self.focus.focus(window, cx);
                 cx.stop_propagation();
             }
         } else if self.focus.is_focused(window)
@@ -1184,6 +1201,7 @@ impl Studio {
             return;
         }
         self.fields.clear();
+        self.size_fields.clear();
         self.inspector_selection = Some(item.id.clone());
         self.color = if let Settings::RacingFlags(settings) = &item.settings {
             Some(cx.new(|cx| {
@@ -1193,11 +1211,10 @@ impl Studio {
             None
         };
         if let Some(size) = self.selected_size(cx) {
-            for (title, axis, value, minimum, maximum) in [
-                ("Ancho", 0, size.0, 64.0, 3840.0),
-                ("Alto", 1, size.1, 32.0, 2160.0),
+            for (title, value, minimum, maximum) in [
+                ("Ancho", size.0, 64.0, 3840.0),
+                ("Alto", size.1, 32.0, 2160.0),
             ] {
-                let natural = size;
                 self.instance_number(
                     title,
                     Tab::Layout,
@@ -1205,27 +1222,7 @@ impl Studio {
                     minimum,
                     maximum,
                     1.0,
-                    move |item, v| {
-                        let size = item.geometry.resolved(natural);
-                        let delta = if axis == 0 {
-                            (v as f32 - size.width, 0.0)
-                        } else {
-                            (0.0, v as f32 - size.height)
-                        };
-                        if let Some((_, size)) = vantare_ui::geometry::resize(
-                            (item.x, item.y),
-                            size,
-                            if axis == 0 {
-                                vantare_ui::geometry::Handle(1, 0)
-                            } else {
-                                vantare_ui::geometry::Handle(0, 1)
-                            },
-                            delta,
-                            item.geometry.aspect_locked,
-                        ) {
-                            item.geometry.size = Some(size);
-                        }
-                    },
+                    |_, _| {},
                     cx,
                 );
             }
@@ -1375,12 +1372,50 @@ impl Studio {
         cx.subscribe(&control, move |this, _, event: &NumberChanged, cx| {
             if this.editor.selected == id {
                 if matches!(title, "Ancho" | "Alto") {
-                    this.reset_fields();
+                    let Some(size) = this.selected_size(cx) else {
+                        return;
+                    };
+                    let axis = if title == "Ancho" {
+                        vantare_ui::geometry::Handle(1, 0)
+                    } else {
+                        vantare_ui::geometry::Handle(0, 1)
+                    };
+                    #[allow(clippy::cast_possible_truncation)]
+                    // NumberRange acotado a límites de Geometry.
+                    let value = event.0 as f32;
+                    let delta = if title == "Ancho" {
+                        (value - size.0, 0.0)
+                    } else {
+                        (0.0, value - size.1)
+                    };
+                    this.edit(
+                        |editor| {
+                            editor.edit_selected(|item| {
+                                if let Some((_, next)) = vantare_ui::geometry::resize(
+                                    (item.x, item.y),
+                                    vantare_ui::geometry::Size {
+                                        width: size.0,
+                                        height: size.1,
+                                    },
+                                    axis,
+                                    delta,
+                                    item.geometry.aspect_locked,
+                                ) {
+                                    item.geometry.size = Some(next);
+                                }
+                            })
+                        },
+                        cx,
+                    );
+                } else {
+                    this.edit(|editor| editor.edit_selected(|item| set(item, event.0)), cx);
                 }
-                this.edit(|editor| editor.edit_selected(|item| set(item, event.0)), cx);
             }
         })
         .detach();
+        if matches!(title, "Ancho" | "Alto") {
+            self.size_fields.push((title, control.clone()));
+        }
         self.fields.push((tab, title, control.into(), true));
     }
     fn widget_list(&self, cx: &mut Context<Self>) -> gpui::Div {
@@ -2541,6 +2576,52 @@ mod tests {
                     studio.editor.layout().instances.is_empty(),
                     "no history during preview"
                 );
+            });
+            cx.quit();
+        });
+    }
+    #[test]
+    fn geometry_edits_keep_dimension_control_identity_and_sync_both_axes() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let size = studio.selected_size(cx).expect("size");
+                for (title, value, min, max) in [
+                    ("Ancho", size.0, 64.0, 3840.0),
+                    ("Alto", size.1, 32.0, 2160.0),
+                ] {
+                    studio.instance_number(
+                        title,
+                        Tab::Layout,
+                        f64::from(value),
+                        min,
+                        max,
+                        1.0,
+                        |_, _| {},
+                        cx,
+                    );
+                }
+                let controls = studio.size_fields.clone();
+                studio.edit(
+                    |editor| {
+                        editor.edit_selected(|item| {
+                            item.geometry.size = Some(vantare_ui::geometry::Size {
+                                width: 500.0,
+                                height: 700.0,
+                            });
+                        })
+                    },
+                    cx,
+                );
+                assert_eq!(studio.size_fields, controls, "focus-bearing entity remains");
+                assert!((controls[0].1.read(cx).range.value - 500.0).abs() < 0.001);
+                assert!((controls[1].1.read(cx).range.value - 700.0).abs() < 0.001);
+                studio.editor.undo().expect("undo");
+                studio.rebuild(cx);
+                assert_eq!(studio.size_fields, controls);
+                assert!((controls[0].1.read(cx).range.value - f64::from(size.0)).abs() < 0.001);
             });
             cx.quit();
         });

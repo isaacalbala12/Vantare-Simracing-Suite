@@ -242,27 +242,52 @@ pub(super) fn agenda(
 
 fn poster_card(calendar: &Calendar, row: &views::Start<'_>, cx: &mut Context<Calendar>) -> Div {
     let compact = calendar.adapt.center_width() < 950.0;
+    let short = !calendar.adapt.show_optional();
     let local = row.at.with_timezone(&Local);
+    let favorite = calendar.following.series_ids.contains(&row.series.id);
     orbit::neo_card(cx)
         .flex_none()
         .min_w_0()
-        .p(px(14.0))
+        .overflow_hidden()
+        .p_0()
+        .pr(px(14.0))
+        .h(px(if short { 84.0 } else { 118.0 }))
         .flex_row()
         .items_center()
-        .gap(px(if compact { 12.0 } else { 20.0 }))
+        .gap(px(if compact { 16.0 } else { 22.0 }))
+        .when(favorite, |card| {
+            card.bg(orbit::ramp(orbit::skin(cx).hero, 118.0))
+                .border_color(orbit::tint(orbit::carmine(cx), 0.32))
+        })
         .child(
             div()
-                .w(px(if compact { 80.0 } else { 110.0 }))
+                .w(px(if short { 84.0 } else { 108.0 }))
                 .flex_none()
+                .self_stretch()
                 .flex()
                 .flex_col()
-                .gap(px(6.0))
-                .child(orbit::caps(
-                    &local.format("%H:%M").to_string(),
-                    if compact { 24.0 } else { 30.0 },
-                    orbit::ink(cx),
+                .items_center()
+                .justify_center()
+                .gap(px(3.0))
+                .bg(orbit::tint(0, 0.24))
+                .border_r_1()
+                .border_color(orbit::alpha(orbit::skin(cx).line1))
+                .child(orbit::meta(
+                    ["LUN", "MAR", "MIÉ", "JUE", "VIE", "SÁB", "DOM"]
+                        [local.weekday().num_days_from_monday() as usize],
+                    10.0,
+                    orbit::ink_3(cx),
                     cx,
                 ))
+                .child(
+                    orbit::caps(
+                        &local.format("%H:%M").to_string(),
+                        if short { 22.0 } else { 30.0 },
+                        orbit::ink(cx),
+                        cx,
+                    )
+                    .line_height(px(if short { 24.0 } else { 32.0 })),
+                )
                 .child(orbit::text(
                     local.format("%d/%m").to_string(),
                     11.0,
@@ -271,49 +296,7 @@ fn poster_card(calendar: &Calendar, row: &views::Start<'_>, cx: &mut Context<Cal
                     cx,
                 )),
         )
-        .child(
-            div()
-                .flex_1()
-                .min_w_0()
-                .flex()
-                .flex_col()
-                .gap(px(6.0))
-                .child(
-                    div()
-                        .flex()
-                        .flex_wrap()
-                        .gap(px(4.0))
-                        .child(beta::tier_pill(&row.series.tier, cx))
-                        .children(
-                            beta::classes(row.series)
-                                .into_iter()
-                                .map(|class| beta::class_chip(class, cx)),
-                        ),
-                )
-                .child(
-                    orbit::text(row.series.name.clone(), 17.0, 600, orbit::ink(cx), cx)
-                        .whitespace_nowrap()
-                        .overflow_hidden()
-                        .text_ellipsis(),
-                )
-                .child(orbit::text(
-                    row.series.track.clone(),
-                    12.0,
-                    400,
-                    orbit::ink_3(cx),
-                    cx,
-                ))
-                .child(orbit::text(
-                    row.series.race_duration_min.map_or_else(
-                        || "Carrera · —".into(),
-                        |minutes| format!("Carrera · {minutes} min"),
-                    ),
-                    11.0,
-                    500,
-                    orbit::ink_3(cx),
-                    cx,
-                )),
-        )
+        .child(poster_details(row.series, short, cx))
         .when(!compact, |card| {
             card.child(
                 div()
@@ -324,6 +307,56 @@ fn poster_card(calendar: &Calendar, row: &views::Start<'_>, cx: &mut Context<Cal
             )
         })
         .child(poster_actions(calendar, row.series, compact, cx))
+}
+
+fn poster_details(series: &super::Series, short: bool, cx: &gpui::App) -> Div {
+    div()
+        .flex_1()
+        .min_w_0()
+        .flex()
+        .flex_col()
+        .gap(px(4.0))
+        .child(
+            div()
+                .flex()
+                .gap(px(4.0))
+                .child(beta::tier_pill(&series.tier, cx).h(px(20.0)))
+                .children(
+                    beta::classes(series)
+                        .into_iter()
+                        .map(|class| beta::class_chip(class, cx).h(px(20.0)).py(px(0.0))),
+                ),
+        )
+        .child(
+            orbit::display(
+                &series.name,
+                if short { 20.0 } else { 25.0 },
+                orbit::ink(cx),
+                cx,
+            )
+            .line_height(px(if short { 22.0 } else { 28.0 }))
+            .truncate(),
+        )
+        .child(
+            orbit::text(series.track.clone(), 12.0, 400, orbit::ink_3(cx), cx)
+                .line_height(px(16.0))
+                .truncate(),
+        )
+        .when(!short, |details| {
+            details.child(
+                orbit::text(
+                    series.race_duration_min.map_or_else(
+                        || "Carrera · —".into(),
+                        |minutes| format!("Carrera · {minutes} min"),
+                    ),
+                    11.0,
+                    500,
+                    orbit::ink_3(cx),
+                    cx,
+                )
+                .line_height(px(16.0)),
+            )
+        })
 }
 
 fn poster_actions(
@@ -376,7 +409,7 @@ pub(super) fn posters(
         .overflow_y_scroll()
         .flex()
         .flex_col()
-        .gap(px(12.0));
+        .gap(px(10.0));
     match beta::next_rows(calendar, now) {
         Ok(rows) => {
             if rows.is_empty() {

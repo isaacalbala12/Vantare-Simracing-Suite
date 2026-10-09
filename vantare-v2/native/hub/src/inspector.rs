@@ -428,13 +428,6 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 1.0,
                 set!(Relative.range_behind as usize),
             ),
-            choice(
-                "Clases",
-                Tab::Content,
-                &value.class_scope,
-                &[("Todas", "all"), ("Misma clase", "sameClass")],
-                set!(Relative.class_scope string),
-            ),
         ],
         _ => vec![],
     };
@@ -566,6 +559,12 @@ pub fn valid_color(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn standard_tables_have_no_class_scope_selector() {
+        for settings in [Settings::Standings(Default::default()), Settings::Relative(Default::default())] {
+            assert!(!fields(&settings).iter().any(|f| f.title == "Clases"));
+        }
+    }
     #[test]
     fn automatic_player_visibility_has_no_redundant_center_switch() {
         assert!(

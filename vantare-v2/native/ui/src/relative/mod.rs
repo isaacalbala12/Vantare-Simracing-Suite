@@ -55,7 +55,7 @@ impl Default for Settings {
             columns: None,
             range_ahead: 3,
             range_behind: 3,
-            class_scope: "all".into(),
+            class_scope: "sameClass".into(),
             include_player: true,
             row_height_mode: "compact".into(),
             footer_slots: Vec::new(),
@@ -178,7 +178,9 @@ impl Settings {
         value.range_ahead = value.range_ahead.min(8);
         value.range_behind = value.range_behind.min(8);
         value.include_player = true;
-        if value.class_scope != "sameClass" {
+        if value.design_system == crate::standings::DesignSystem::Vantare {
+            value.class_scope = "sameClass".into();
+        } else if value.class_scope != "sameClass" {
             value.class_scope = "all".into();
         }
         if value.row_height_mode != "fill" {
@@ -1099,6 +1101,11 @@ mod tests {
     use super::*;
     use crate::source;
 
+    #[test]
+    fn standard_vantare_relative_always_uses_player_class_even_in_old_documents() {
+        let settings = Settings { class_scope: "all".into(), ..Settings::default() };
+        assert_eq!(settings.normalized().class_scope, "sameClass");
+    }
     #[test]
     fn real_custom_footers_keep_visible_fresh_and_stale_data_through_requested_pipe() {
         use std::sync::Arc;

@@ -118,7 +118,13 @@ fn agenda_grid(
                 cx,
             )
             .flex_1()
-            .min_w_0(),
+            .min_w_0()
+            .py(px(10.0))
+            .rounded(px(orbit::skin(cx).radius.sm))
+            .text_center()
+            .when(date == today, |day| {
+                day.bg(orbit::tint(orbit::carmine(cx), 0.12))
+            }),
         );
     }
     let mut grid = div()
@@ -219,6 +225,7 @@ fn poster_card(calendar: &Calendar, row: &views::Start<'_>, cx: &mut Context<Cal
     orbit::neo_card(cx)
         .flex_none()
         .min_w_0()
+        .p(px(14.0))
         .flex_row()
         .items_center()
         .gap(px(if compact { 12.0 } else { 20.0 }))
@@ -295,13 +302,44 @@ fn poster_card(calendar: &Calendar, row: &views::Start<'_>, cx: &mut Context<Cal
                     .child(orbit::circuit(Some(&row.series.track), cx).size_full()),
             )
         })
+        .child(poster_actions(calendar, row.series, compact, cx))
+}
+
+fn poster_actions(
+    calendar: &Calendar,
+    series: &super::Series,
+    compact: bool,
+    cx: &mut Context<Calendar>,
+) -> Div {
+    div()
+        .flex()
+        .flex_col()
+        .gap(px(6.0))
         .child(
-            div()
-                .flex()
-                .flex_col()
-                .gap(px(6.0))
-                .child(beta::follow_button(calendar, row.series, cx))
-                .child(beta::reminder_button(calendar, row.series, cx)),
+            beta::follow_button(calendar, series, cx).when(!compact, |button| {
+                button.w(px(146.0)).gap(px(8.0)).child(orbit::text(
+                    if calendar.following.series_ids.contains(&series.id) {
+                        "Favorita"
+                    } else {
+                        "Marcar favorita"
+                    },
+                    12.0,
+                    500,
+                    orbit::ink_2(cx),
+                    cx,
+                ))
+            }),
+        )
+        .child(
+            beta::reminder_button(calendar, series, cx).when(!compact, |button| {
+                button.w(px(146.0)).gap(px(8.0)).child(orbit::text(
+                    "Aviso · Próximamente",
+                    11.0,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                ))
+            }),
         )
 }
 
@@ -336,8 +374,20 @@ pub(super) fn posters(
         Err(error) => cards = cards.child(orbit::callout(error, cx)),
     }
     page("calendar-posters", calendar.adapt)
-        .child(beta::filters(calendar, cx))
-        .child(cards)
+        .child(
+            orbit::neo_card(cx)
+                .flex_1()
+                .min_h_0()
+                .p(px(14.0))
+                .child(orbit::section_header(
+                    "Próximos eventos",
+                    "v-calendar",
+                    None,
+                    cx,
+                ))
+                .child(beta::filters(calendar, cx))
+                .child(cards),
+        )
         .when_some(calendar.error.clone(), |page, error| {
             page.child(orbit::callout(error, cx))
         })

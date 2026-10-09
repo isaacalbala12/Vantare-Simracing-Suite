@@ -279,6 +279,32 @@ pub(super) fn filters(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
         .child(row)
         .child(levels)
 }
+fn hero_countdown(
+    at: DateTime<Utc>,
+    now: DateTime<Utc>,
+    adapt: orbit::Adapt,
+    cx: &gpui::App,
+) -> Div {
+    div()
+        .child(
+            orbit::text(
+                countdown(at, now),
+                if adapt.show_notes() { 52.0 } else { 38.0 },
+                700,
+                orbit::ink(cx),
+                cx,
+            )
+            .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone()),
+        )
+        .child(orbit::text(
+            start_label(at),
+            12.0,
+            400,
+            orbit::ink_3(cx),
+            cx,
+        ))
+}
+
 fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> Div {
     let (followed, error) = calendar.upcoming(now);
     let next = followed.first().and_then(|(at, id)| {
@@ -289,7 +315,7 @@ fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> 
             .find(|series| &series.id == id)
             .map(|series| views::Start { series, at: *at })
     });
-    let mut hero = orbit::neo_accent_card(cx)
+    let mut hero = orbit::hero_surface(cx)
         .flex_none()
         .child(orbit::eyebrow("La siguiente que sigues", cx));
     if let Some(next) = next {
@@ -328,22 +354,7 @@ fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> 
                                 cx,
                             )),
                     )
-                    .child(
-                        div()
-                            .child(
-                                orbit::text(countdown(next.at, now), 38.0, 700, orbit::ink(cx), cx)
-                                    .font_family(
-                                        cx.global::<orbit::design::Tokens>().fonts.display.clone(),
-                                    ),
-                            )
-                            .child(orbit::text(
-                                start_label(next.at),
-                                12.0,
-                                400,
-                                orbit::ink_3(cx),
-                                cx,
-                            )),
-                    ),
+                    .child(hero_countdown(next.at, now, calendar.adapt, cx)),
             )
             .child(
                 div()

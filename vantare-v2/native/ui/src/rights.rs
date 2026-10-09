@@ -54,6 +54,34 @@ pub(crate) fn install(feed: Option<Feed>, cx: &mut App) {
 mod tests {
     use super::*;
     #[test]
+    fn catalog_contract_matches_registered_product_names() {
+        use std::collections::BTreeSet;
+        use vantare_ipc::control::CatalogAccess;
+
+        // Identificadores del contrato comercial, independientes del registro.
+        // Un rename, una baja o un alta accidental deben exigir revisión explícita.
+        for (catalog, expected) in [
+            (CatalogAccess::Free, vec!["pedals", "standings"]),
+            (
+                CatalogAccess::LaunchV1,
+                vec!["delta", "pedals", "relative", "standings"],
+            ),
+        ] {
+            let actual: BTreeSet<_> = Kind::ALL
+                .iter()
+                .filter(|kind| catalog.allows_widget(kind.name()))
+                .map(|kind| kind.name())
+                .collect();
+            assert_eq!(actual, expected.into_iter().collect(), "{catalog:?}");
+        }
+        let names: BTreeSet<_> = Kind::ALL.iter().map(|kind| kind.name()).collect();
+        assert_eq!(names.len(), Kind::ALL.len(), "nombres únicos del registro");
+        for &kind in Kind::ALL {
+            assert!(CatalogAccess::Pro.allows_widget(kind.name()), "{kind:?}");
+            assert_eq!(kind.name().parse::<Kind>(), Ok(kind));
+        }
+    }
+    #[test]
     fn free_launch_and_pro_apply_to_every_product_widget() {
         use vantare_ipc::control::CatalogAccess;
         for catalog in [

@@ -34,6 +34,7 @@ mod input;
 pub mod navigation;
 #[path = "settings/mod.rs"]
 mod settings;
+pub(crate) use settings::releases::news_for_channel;
 mod shortcuts;
 mod sidebar;
 

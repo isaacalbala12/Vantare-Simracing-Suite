@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub(super) struct Release {
+pub(crate) struct Release {
     pub schema_version: u32,
     pub tag: String,
     pub channel: String,
@@ -33,7 +33,7 @@ pub(super) fn news() -> Result<Vec<Release>, &'static str> {
 }
 
 /// Un canal no anuncia las entregas restringidas a otro público.
-pub(super) fn news_for_channel(channel: &str) -> Result<Vec<Release>, &'static str> {
+pub(crate) fn news_for_channel(channel: &str) -> Result<Vec<Release>, &'static str> {
     Ok(news()?
         .into_iter()
         .filter(|release| match channel {

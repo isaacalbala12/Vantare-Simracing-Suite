@@ -12,7 +12,7 @@ use vantare_domain::format::{Language, Preferences, Units};
 pub(super) mod appearance;
 pub(in crate::shell) mod general;
 mod privacy;
-mod releases;
+pub(crate) mod releases;
 #[cfg(test)]
 mod tests;
 mod text_rendering;

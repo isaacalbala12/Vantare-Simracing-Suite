@@ -1143,7 +1143,11 @@ impl Remote {
             .flex_1()
             .flex_basis(gpui::relative(1.3 / 2.3))
             .min_w_0()
-            .min_h(px(100.0))
+            .min_h(px(if self.adapt.show_notes() {
+                124.0
+            } else {
+                100.0
+            }))
             .px(px(22.0))
             .py(px(16.0))
             .flex()
@@ -1163,7 +1167,7 @@ impl Remote {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .rounded(px(18.0))
+                    .rounded_full()
                     .bg(linear_gradient(
                         160.0,
                         linear_color_stop(rgb(crate::orbit::legacy_rgb(0x002a_2a30, cx)), 0.0),
@@ -1195,7 +1199,7 @@ impl Remote {
                     .flex()
                     .flex_col()
                     .gap(px(2.0))
-                    .child(orbit::caps(
+                    .child(orbit::display(
                         if let Some(demo) = demo {
                             &demo.user.full_name
                         } else if signed_in {
@@ -1287,8 +1291,8 @@ impl Remote {
             .child(orbit::neo_header("Módulos", "v-studio", cx))
             .when(!compact, |card| card.child(text("Acceso gratuito durante la beta. Estrategia e Ingeniero estarán disponibles próximamente.", 13.0, 400, orbit::ink_2(cx), cx)))
             .child(Self::account_modules(account_module_access(access, account_demo().is_some()), compact, cx).id("account-modules-scroll")
-                .when(compact, |list| list.flex_none().h(px(68.0)))
-                .when(!compact, |list| list.flex_grow(1.0).min_h_0())
+                .when(compact, |list| list.flex_none().h_auto())
+                .when(!compact, |list| list.flex_none().min_h_0())
                 .overflow_y_scroll())
     }
     fn account_session(&self, cx: &gpui::App) -> gpui::Div {
@@ -1403,18 +1407,87 @@ impl Remote {
         .flex_1()
     }
     pub fn account(&self, _window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
-        div().flex_1().min_h_0().w_full().flex().flex_col().gap(px(self.adapt.gap()))
-            .when(account_demo().is_none() && !self.message.is_empty(), |page| page.child(orbit::callout(self.message.clone(), cx)))
+        let access = orbit::neo_card(cx).p(px(16.0)).flex_1().min_w_0()
+            .child(text("Acceso beta", 16.0, 600, orbit::ink(cx), cx))
+            .child(text("Acceso gratuito durante la beta para testers. La sesión valida tu acceso; no muestra ni copia claves privadas.", 13.0, 400, orbit::ink_2(cx), cx))
+            .child(orbit::pill(self.account_access_label(), orbit::Tone::Neutral, cx).self_start());
+        let contribution = orbit::neo_card(cx)
+            .p(px(16.0))
+            .flex_1()
+            .min_w_0()
+            .child(text("Tu aporte a la beta", 16.0, 600, orbit::ink(cx), cx))
+            .child(text(
+                "Los informes y cuestionarios viven en Testing Center.",
+                13.0,
+                400,
+                orbit::ink_2(cx),
+                cx,
+            ))
+            .child(text(
+                "Totales de tu cuenta · Próximamente",
+                12.0,
+                400,
+                orbit::ink_3(cx),
+                cx,
+            ));
+        div()
+            .flex_1()
+            .min_h_0()
+            .w_full()
+            .flex()
+            .flex_col()
+            .gap(px(self.adapt.gap()))
+            .when(
+                account_demo().is_none() && !self.message.is_empty(),
+                |page| page.child(orbit::callout(self.message.clone(), cx)),
+            )
             .child(self.account_identity(cx).flex_none().w_full())
             .child(self.purchase_status(cx))
-            .child(orbit::neo_card(cx).p(px(16.0))
-                .child(orbit::neo_header("Acceso beta", "key", cx))
-                .child(orbit::caps(self.account_access_label(), 24.0, orbit::ink(cx), cx))
-                .child(text("Acceso gratuito durante la beta para testers. La sesión valida tu acceso; no muestra ni copia claves privadas.", 13.0, 400, orbit::ink_2(cx), cx)))
-            .child(self.account_plan(cx).flex_1().min_h_0())
-            .when(self.adapt.show_notes(), |page| page.child(orbit::neo_card(cx).p(px(12.0))
-                .child(orbit::neo_header("Tu aporte", "v-testing", cx))
-                .child(text("Los informes y cuestionarios de la beta viven en Testing Center.", 13.0, 400, orbit::ink_2(cx), cx))))
+            .child(
+                div()
+                    .flex()
+                    .flex_none()
+                    .gap(px(self.adapt.gap()))
+                    .child(access)
+                    .when(self.adapt.show_optional(), |row| row.child(contribution)),
+            )
+            .child(self.account_plan(cx).flex_none().min_h_0())
+            .child(Self::account_news(cx))
+    }
+
+    fn account_news(cx: &gpui::App) -> gpui::Div {
+        let mut list = div()
+            .id("account-news")
+            .flex_1()
+            .min_h_0()
+            .overflow_y_scroll();
+        match crate::shell::news_for_channel(crate::product::CHANNEL) {
+            Ok(news) if news.is_empty() => {
+                list = list.child(text(
+                    "Sin notas publicadas para este canal",
+                    13.0,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                ));
+            }
+            Ok(news) => {
+                for release in news {
+                    list = list.child(orbit::summary_row(
+                        release.title,
+                        release.summary,
+                        "v-download",
+                        cx,
+                    ));
+                }
+            }
+            Err(error) => list = list.child(text(error, 13.0, 400, orbit::ink_3(cx), cx)),
+        }
+        orbit::neo_card(cx)
+            .flex_1()
+            .min_h_0()
+            .child(orbit::neo_header("Novedades de la beta", "v-download", cx))
+            .child(list)
     }
 
     pub fn account_rail(&self, cx: &mut Context<Self>) -> Vec<orbit::RailSection> {

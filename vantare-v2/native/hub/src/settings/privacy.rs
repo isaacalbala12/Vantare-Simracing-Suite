@@ -1,6 +1,6 @@
 //! Usa el mismo guardado atómico y detección de conflictos que los demás ajustes.
 use crate::orbit;
-use gpui::{Context, Div, FocusHandle, Stateful, Window, div, prelude::*, px, rgb};
+use gpui::{Context, Div, FocusHandle, Stateful, Window, div, prelude::*, px};
 use std::path::{Path, PathBuf};
 use vantare_services::diagnostics::{PRIVACY_FILE, Privacy};
 
@@ -129,7 +129,7 @@ impl super::Hub {
         div()
             .id("crash-consent-screen")
             .size_full()
-            .bg(rgb(orbit::skin(cx).bg))
+            .bg(orbit::ramp(orbit::skin(cx).window, 155.0))
             .flex()
             .items_center()
             .justify_center()

@@ -1,5 +1,44 @@
 # Handoff vivo — Telemetry Core
 
+## #1496 — feedback Relative: prioridad nativa y fuente pendiente — 2026-10-09
+
+Encargo: `C:/tmp/feedback-0910/comun.md` y `relative.md`; worker sin delegación.
+Base autorizada `vantareapp/isa-1496-integracion-prueba@e55a43b3`;
+rama `vantareapp/isa-1496-fb-relative`, worktree `C:/tmp/vw3-fb-relative`.
+Commits funcionales locales: `85f8e937` conserva el Relative actual del adaptador;
+`1801889a` añade el periodo estimado nativo como último respaldo antes de
+la primera vuelta. El gap calculado sigue `Estimated`, sin memoria y con
+protección en boxes/caducidad. No se modifica widget, IPC ni adaptador.
+
+**Entrega parcial:** no existe una fuente certificada de gap relativo nativo
+por coche en esta evidencia. SDK instalado + probe x64: TelemInfoV01 1888 B,
+gaps vecinos +780/+784 y clasificación +788/+792, sin ID del vecino.
+LMU47: 3600 SHM +239 REST; los cuatro campos están a cero; REST no los guarda.
+Las 3839 fotos tienen 47/47 coches en boxes: 180433 Relative `Unavailable`.
+Regeneración productiva de goldens/snapshots idéntica a la base; originales
+conservados. Ni esta captura ni las regresiones certifican gaps `Reliable`.
+`trend.rs`, `stint.rs` y `relative_trend_s_per_lap` no existen en la base.
+No se crea un contrato/renderer paralelo para suplirlos.
+
+Regresiones de derivación: 15/15 PASS. Fmt/Clippy workspace -D warnings PASS;
+Nextest completo 1303/1303 PASS (7 skips); lifecycle 5+13 PASS. Telemetría
+21/21 PASS, 0 skips, incluidos 3839 DTO LMU47 y hash exacto de 190308 DTO
+ACC (471,621 s). Todos los gates por `C:/tmp/fase2/compilar.ps1`, target aislado.
+Primer Nextest: disco lleno (973 PASS, 1 FAIL, 329 sin ejecutar). TEMP/TMP
+en E: produjo dos fallos de recuperación/pipe de causa no confirmada; al
+restituir el entorno original con espacio libre, suite completa PASS.
+No se borró caché (rechazo automático), ni se alteraron tests/Engineer.
+Evidencia externa: `C:/tmp/feedback-0910/relative-evidence/`.
+[Investigación, preguntas y manual](../../analysis/2026-10-09-relative-lmu.md).
+Diff completo revisado; entrega parcial local para review del orquestador.
+Siguiente: el orquestador solicita captura
+sin eliminar los gaps, con vecinos/signo anotados, y reconcilia la base de
+las señales de tendencia/stint. Ninguna captura física LMU/OBS/macOS ejecutada.
+`docs/roadmap/plan.md` ausente también en `origin/nightly`; no se recrea.
+Tus instrucciones actuales de GitHub prevalecen sobre los docs antiguos de
+Notion. Entrega solo local, sin push, PR, CI remoto, merge, promoción o release.
+
+
 ## #1471 — golden LMU47 macOS — 2026-10-07
 
 Encargo vigente: `C:/tmp/fase2/notas-1471.md`, base `7be12174`, rama

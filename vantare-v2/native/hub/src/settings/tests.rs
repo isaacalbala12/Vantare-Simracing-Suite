@@ -62,9 +62,9 @@ fn search_finds_visible_pages_by_control_and_never_creates_owner_sections() {
         ("opacidad", Page::Appearance),
         ("cadencia", Page::Performance),
         ("nightly", Page::Updates),
-        ("delta", Page::Hotkeys),
+        ("duplicar", Page::Hotkeys),
         ("consentimiento", Page::Privacy),
-        ("cpu", Page::Diagnostics),
+        ("errores", Page::Diagnostics),
     ] {
         assert!(page.matches(query));
     }
@@ -75,6 +75,18 @@ fn search_finds_visible_pages_by_control_and_never_creates_owner_sections() {
     assert!(Page::Updates.matches("VERSION"));
     assert!(Page::Diagnostics.matches("diagnostico"));
     assert!(Page::Diagnostics.matches(" DIAGNO\u{301}STICO "));
+    for removed in [
+        "automático",
+        "cpu",
+        "borrado remoto",
+        "animaciones",
+        "delta",
+    ] {
+        assert!(
+            !Page::ALL.iter().any(|page| page.matches(removed)),
+            "{removed}"
+        );
+    }
 }
 
 #[test]
@@ -95,10 +107,10 @@ fn diagnostic_filters_use_only_observed_errors_and_sanitized_codes() {
         observed_at_utc: 42,
     };
     assert!(event_matches(&error, 0, "launcher"));
-    assert!(event_matches(&error, 3, " LOCALERROR "));
-    assert!(event_matches(&error, 3, "completar la acción"));
-    assert!(!event_matches(&error, 1, ""));
+    assert!(event_matches(&error, 1, " LOCALERROR "));
+    assert!(event_matches(&error, 1, "completar la acción"));
     assert!(!event_matches(&error, 2, ""));
-    assert!(!event_matches(&error, 3, "engineer"));
+    assert!(!event_matches(&error, 3, ""));
+    assert!(!event_matches(&error, 1, "engineer"));
     assert!(!event_matches(&error, 99, ""));
 }

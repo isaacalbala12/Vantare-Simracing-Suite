@@ -92,20 +92,18 @@ impl Page {
                 "aplicación zoom idioma densidad inicio windows minimizado avisos notificaciones widgets unidades métrico imperial"
             }
             Self::Appearance => {
-                "paleta grafito carmín harness noche le mans piedra cálida contraste opacidad cristal fuentes animaciones"
+                "paleta grafito carmín harness noche le mans piedra cálida contraste opacidad cristal fuentes"
             }
             Self::Performance => {
-                "máximo alto equilibrado ahorro mínimo personalizado automático cadencia widgets hz coste"
+                "máximo alto equilibrado ahorro mínimo personalizado cadencia widgets hz frecuencia"
             }
             Self::Updates => "versión instalada canal novedades stable testers nightly rollback",
             Self::Hotkeys => {
-                "toggle overlay siguiente perfil anterior cambiar referencia delta combinaciones"
+                "perfil launcher globales ctrl guardar deshacer rehacer duplicar borrar flechas combinaciones"
             }
-            Self::Privacy => {
-                "fallos uso diagnóstico posthog consentimiento contribución cola strategy envíos borrado remoto"
-            }
+            Self::Privacy => "fallos uso diagnóstico posthog consentimiento envíos política",
             Self::Diagnostics => {
-                "telemetry core overlay cpu memoria datos registros fuentes eventos informe"
+                "telemetry core overlay datos registros fuentes eventos errores informe"
             }
         };
         search_text(&format!("{} {} {titles}", self.label(), self.subtitle()))
@@ -250,7 +248,7 @@ impl State {
         let event_filter = choice(
             "Filtrar eventos",
             ChoiceKind::Segmented,
-            &["Todos", "Info", "Aviso", "Error"],
+            &["Todos", "Error"],
             Some(0),
             true,
             window,
@@ -359,7 +357,7 @@ fn panel_height(viewport_height: f32) -> f32 {
     (viewport_height - 160.0).max(0.0)
 }
 fn event_matches(error: &SectionError, filter: usize, query: &str) -> bool {
-    matches!(filter, 0 | 3)
+    matches!(filter, 0 | 1)
         && search_text(&format!(
             "{} {:?} {}",
             error.module.label(),

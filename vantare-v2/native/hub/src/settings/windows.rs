@@ -173,7 +173,8 @@ mod tests {
                 std::path::Path::new("C:/Windows/powershell.exe"),
                 std::path::Path::new("C:/Aplicación Vantare")
             )
-            .expect("arranque estable"),
+            .expect("arranque estable")
+            .replace('\\', "/"),
             "\"C:/Windows/powershell.exe\" -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"C:/Aplicación Vantare/beta.ps1\" -Root \"C:/Aplicación Vantare\""
         );
     }

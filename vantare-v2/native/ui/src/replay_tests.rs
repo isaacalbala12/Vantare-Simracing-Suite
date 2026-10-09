@@ -1,9 +1,9 @@
 //! Fotos reales por el pipe real hasta `Widget::ingest` de cada widget (#1537).
 //!
 //! Fuente: las capturas sin comprimir de `fixtures/telemetry-real` (lmu47, su
-//! secuencia de doce, acc, stale y menú). Para ampliar a los corpus completos
-//! (`runtime/tests/golden/*.jsonl.gz`) basta con añadir sus líneas en
-//! `real_photos`; leer gzip exige aprobar `flate2` como dev-dependency.
+//! secuencia de doce, acc, stale y menú) y los goldens gzip de runtime: las
+//! 3.839 fotos de lmu47 y los ocho cortes de ACC (el golden no guarda más; las
+//! 190.308 fotos de ACC solo existen como hash y en el replay de runtime).
 //!
 //! Standings, Relative, Delta y Fuel cambian de proyección en #1531: aquí solo
 //! se comprueba su entrada pública (`ingest`, `frame`, `size`) sin pánico. Al
@@ -51,6 +51,25 @@ fn real_photos() -> Vec<(String, Snapshot)> {
         ));
     }
     photos
+}
+
+/// Fotos de un golden gzip de runtime (`jsonl`, una foto por línea).
+fn golden_photos(name: &str) -> Vec<(String, Snapshot)> {
+    use std::io::BufRead;
+    let path = format!(
+        "{}/../runtime/tests/golden/{name}.jsonl.gz",
+        env!("CARGO_MANIFEST_DIR")
+    );
+    let file = std::fs::File::open(path).expect("golden obligatorio");
+    std::io::BufReader::new(flate2::read::GzDecoder::new(file))
+        .lines()
+        .enumerate()
+        .map(|(index, line)| {
+            let line = line.expect("gzip íntegro");
+            let snapshot = vantare_ipc::snapshot_from_json(&line).expect("DTO vigente");
+            (format!("{name} #{}", index + 1), snapshot)
+        })
+        .collect()
 }
 
 fn shown<T: Copy>(quality: Quality<T>, valid: impl Fn(T) -> bool) -> bool {
@@ -189,6 +208,23 @@ fn real_photos_reach_every_widget_through_the_pipe_without_hiding_current_values
         checked += 1;
     });
     assert_eq!(checked, 16, "todas las fotos reales");
+}
+
+#[test]
+fn golden_corpora_reach_every_widget_through_the_pipe_without_hiding_current_values() {
+    let prefs = Preferences::default();
+    for (name, photos) in [("lmu47", 3839), ("acc", 8)] {
+        let mut checked = 0;
+        replay(name, golden_photos(name), |label, snapshot| {
+            let hidden = hidden_values(snapshot, prefs);
+            assert!(
+                hidden.is_empty(),
+                "{label}: «—» con dato actual: {hidden:?}"
+            );
+            checked += 1;
+        });
+        assert_eq!(checked, photos, "{name}: corpus completo");
+    }
 }
 
 /// Foto de 104 coches en tres clases intercaladas, ampliada desde la captura

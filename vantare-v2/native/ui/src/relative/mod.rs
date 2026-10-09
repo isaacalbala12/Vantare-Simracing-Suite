@@ -1103,8 +1103,21 @@ mod tests {
 
     #[test]
     fn standard_vantare_relative_always_uses_player_class_even_in_old_documents() {
+        let scene: serde_json::Value = serde_json::from_str(include_str!(
+            "../../fixtures/relative-vantare.scene.json"
+        )).expect("escena multiclase");
+        let photo = vantare_ipc::snapshot_from_json(&scene["frames"][0]["snapshot"].to_string())
+            .expect("foto multiclase");
         let settings = Settings { class_scope: "all".into(), ..Settings::default() };
         assert_eq!(settings.normalized().class_scope, "sameClass");
+        let widget = Widget::new(&settings, Preferences::default());
+        let board = widget.vantare.as_ref().expect("Vantare").project(&photo);
+        let own_class = photo.state.player_car().expect("jugador").class.as_ref();
+        assert!(board.slots.iter().flatten().any(|row| !row.is_player));
+        assert!(board.slots.iter().flatten().all(|row| {
+            photo.state.cars.iter().find(|car| car.id == row.id)
+                .expect("fila de la foto").class.as_ref() == own_class
+        }));
     }
     #[test]
     fn real_custom_footers_keep_visible_fresh_and_stale_data_through_requested_pipe() {
@@ -1247,7 +1260,13 @@ mod tests {
             vantare_ipc::snapshot_from_json(include_str!("../../fixtures/relative.snapshot.json"))
                 .expect("escena reconstruida v4");
         assert!(widget.ingest(&snapshot, prefs));
-        snapshot.state.cars[1].relative_s = vantare_domain::Quality::Reliable(-0.1);
+        // Mover un rival visible de la clase del jugador; cambiar otra clase
+        // ya no demuestra una animación en Relative estándar (#1496).
+        let rival = widget.vm.slots.iter().flatten()
+            .find(|row| row.side != vantare_domain::relative::Side::Player)
+            .expect("rival visible").id;
+        snapshot.state.cars.iter_mut().find(|car| car.id == rival)
+            .expect("rival en la foto").relative_s = vantare_domain::Quality::Reliable(-0.1);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.frame(prefs).1, Wake::Frame);
         snapshot.state.source_state = vantare_domain::SourceState::Lost;

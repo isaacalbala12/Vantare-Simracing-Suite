@@ -1220,12 +1220,16 @@ mod tests {
             "expanded" => 4,
             _ => 3,
         };
-        Options::from_settings(&super::super::Settings {
+        let mut options = Options::from_settings(&super::super::Settings {
             columns: Some(super::super::vantare_template(name)),
             range_ahead: range,
             range_behind: range,
             ..super::super::Settings::default()
-        })
+        });
+        // Las escenas del catálogo prueban también tráfico entre clases.
+        // El filtro propio se verifica aparte; no depende del default de Studio.
+        options.same_class = false;
+        options
     }
 
     fn frames(json: &str) -> Vec<vantare_domain::Snapshot> {

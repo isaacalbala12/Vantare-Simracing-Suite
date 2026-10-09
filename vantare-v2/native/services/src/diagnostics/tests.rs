@@ -1,5 +1,35 @@
 use super::*;
 
+#[test]
+fn isolated_data_root_child() {
+    if let Some(base) = std::env::var_os("VANTARE_TEST_DIAGNOSTICS_ROOT") {
+        let base = PathBuf::from(base);
+        if base.is_absolute() {
+            assert_eq!(data_root().expect("raíz QA"), base.join("Vantare/native"));
+        } else {
+            assert!(
+                data_root().is_err(),
+                "no usar datos personales como fallback"
+            );
+        }
+    }
+}
+
+#[test]
+fn explicit_data_root_is_isolated_on_every_platform_and_rejects_relative_paths() {
+    let root = root();
+    for base in [&root, &PathBuf::from("relative-qa-root")] {
+        let status = std::process::Command::new(std::env::current_exe().expect("test exe"))
+            .args(["--exact", "diagnostics::tests::isolated_data_root_child"])
+            .env("VANTARE_TEST_DIAGNOSTICS_ROOT", base)
+            .env("VANTARE_NATIVE_DATA_ROOT", base)
+            .status()
+            .expect("child");
+        assert!(status.success());
+    }
+    fs::remove_dir_all(root).expect("cleanup");
+}
+
 pub(super) fn consent(root: &Path) {
     fs::write(
         root.join(PRIVACY_FILE),

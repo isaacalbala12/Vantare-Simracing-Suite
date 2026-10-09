@@ -63,9 +63,7 @@ impl Privacy {
 /// Igual raíz que layout.json; no depende de UI, identidad ni licencia.
 pub fn data_root() -> Result<PathBuf> {
     #[cfg(windows)]
-    let base = std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
-        .or_else(|| std::env::var_os("LOCALAPPDATA"))
-        .map(PathBuf::from);
+    let base = std::env::var_os("LOCALAPPDATA").map(PathBuf::from);
     #[cfg(target_os = "linux")]
     let base = std::env::var_os("XDG_DATA_HOME")
         .map(PathBuf::from)
@@ -76,7 +74,10 @@ pub fn data_root() -> Result<PathBuf> {
         std::env::var_os("HOME").map(|p| PathBuf::from(p).join("Library/Application Support"));
     #[cfg(not(any(windows, target_os = "linux", target_os = "macos")))]
     let base: Option<PathBuf> = None;
-    base.filter(|p| p.is_absolute())
+    std::env::var_os("VANTARE_NATIVE_DATA_ROOT")
+        .map(PathBuf::from)
+        .or(base)
+        .filter(|p| p.is_absolute())
         .map(|p| p.join("Vantare/native"))
         .ok_or(Error::Storage)
 }

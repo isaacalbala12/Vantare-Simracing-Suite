@@ -34,6 +34,7 @@ mod input;
 pub mod navigation;
 #[path = "settings/mod.rs"]
 mod settings;
+pub(crate) use settings::releases::news_for_channel;
 mod shortcuts;
 mod sidebar;
 
@@ -1356,7 +1357,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             // Los tamaños QA están acotados a 8192 por el parser; evita el límite de tracking del monitor.
             #[allow(clippy::cast_precision_loss)]
             let minimum = options.capture.as_ref().and(options.capture_size).map_or(
-                gpui::size(gpui::px(1280.0), gpui::px(800.0)),
+                gpui::size(gpui::px(1280.0), gpui::px(720.0)),
                 |(width, height)| gpui::size(gpui::px(width as f32), gpui::px(height as f32)),
             );
             let minimized = options.capture.is_none()

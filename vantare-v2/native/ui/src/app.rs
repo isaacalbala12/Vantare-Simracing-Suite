@@ -253,6 +253,13 @@ impl Overlay {
         self.frame_size
             .map_or_else(|| self.wanted_size(), crate::geometry::Size::tuple)
     }
+    /// Extensión pintada del host: escala proporcional por ancho y recorte
+    /// por el alto del marco. Un marco alto no añade píxeles al widget.
+    pub fn painted_size(&self) -> (f32, f32) {
+        let natural = self.wanted_size();
+        let frame = self.frame_size();
+        (frame.0, frame.1.min(natural.1 * frame.0 / natural.0))
+    }
     pub fn set_frame_size(&mut self, size: Option<crate::geometry::Size>) {
         self.frame_size = size;
     }
@@ -383,7 +390,7 @@ impl Render for Overlay {
             vantare_domain::format::Language::Es => "EN PAUSA",
             vantare_domain::format::Language::En => "PAUSED",
         };
-        let frame = self.frame_size();
+        let frame = self.painted_size();
         let factor = frame.0 / size.0;
         let scale = self.preview_scale * factor;
         let scale_y = self.preview_scale_y * factor;
@@ -1247,6 +1254,32 @@ mod tests {
         assert_eq!(overlay.wanted_size(), natural);
         overlay.set_frame_size(None);
         assert_eq!(overlay.frame_size(), natural);
+    }
+    #[test]
+    fn painted_bounds_exclude_blank_frame_height_and_preserve_short_frame_clipping() {
+        for &kind in Kind::ALL {
+            let mut overlay = Overlay::new(kind, Preferences::default());
+            let natural = overlay.wanted_size();
+            assert_eq!(overlay.painted_size(), natural);
+            for scale in [0.5, 1.0, 2.0] {
+                let scaled = (natural.0 * scale, natural.1 * scale);
+                overlay.set_frame_size(Some(crate::geometry::Size {
+                    width: scaled.0,
+                    height: scaled.1 * 2.0,
+                }));
+                assert_eq!(overlay.painted_size(), scaled, "{kind:?}");
+                overlay.set_frame_size(Some(crate::geometry::Size {
+                    width: scaled.0,
+                    height: scaled.1 * 0.5,
+                }));
+                assert_eq!(
+                    overlay.painted_size(),
+                    (scaled.0, scaled.1 * 0.5),
+                    "{kind:?}"
+                );
+                assert_eq!(overlay.wanted_size(), natural);
+            }
+        }
     }
     #[test]
     fn identical_samples_request_no_repaint_for_all_widgets() {

@@ -88,7 +88,8 @@ fn section_row_hint(
 ) -> Div {
     div()
         .min_h(px(adapt.setting_height()))
-        .py(px(3.0))
+        .px(px(20.0))
+        .py(px(if adapt.show_optional() { 8.0 } else { 5.0 }))
         .flex()
         .items_center()
         .justify_between()
@@ -102,7 +103,7 @@ fn section_row_hint(
                 .flex()
                 .flex_col()
                 .gap(px(2.5))
-                .child(section_text(label, 13.5, 650, orbit::ink(cx), 20.25, cx))
+                .child(section_text(label, 14.0, 600, orbit::ink(cx), 21.0, cx))
                 .when(adapt.show_optional(), |row| {
                     row.child(section_text(
                         help,
@@ -123,7 +124,13 @@ fn section_row_hint(
 fn section_body() -> Div {
     div().flex().flex_col()
 }
-fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -> Div {
+fn section_surface(
+    title: &str,
+    meta: Option<&str>,
+    body: Div,
+    padding: f32,
+    cx: &gpui::App,
+) -> Div {
     let number = match title {
         "Inicio"
         | "Temas"
@@ -135,20 +142,21 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -
         "Widgets" | "Movimiento" => 4,
         _ => 1,
     };
-    section_numbered(number, title, meta, body, cx)
+    section_numbered(number, title, meta, body, padding, cx)
 }
 fn section_numbered(
     number: usize,
     title: &str,
     meta: Option<&str>,
     body: Div,
+    padding: f32,
     cx: &gpui::App,
 ) -> Div {
     orbit::settings_group(
         number,
         title,
         orbit::neo_card(cx)
-            .p(px(12.0))
+            .p(px(padding))
             .min_h_0()
             .when_some(meta, |card, meta| {
                 card.child(orbit::meta(meta, 10.0, orbit::skin(cx).text3, cx))
@@ -298,6 +306,108 @@ impl Hub {
         tabs
     }
 
+    fn settings_appearance_preview(&self, cx: &gpui::App) -> Div {
+        let launcher = self.launcher.read(cx);
+        let selected = launcher.default_profile_id();
+        let profile = launcher
+            .saved_profiles()
+            .iter()
+            .find(|profile| selected.as_deref() == Some(profile.id.as_str()));
+        let mut navigation = div()
+            .w(px(88.0))
+            .flex_none()
+            .flex()
+            .flex_col()
+            .gap(px(6.0))
+            .p(px(8.0))
+            .bg(rgb(orbit::surface_2(cx)))
+            .child(orbit::meta("VANTARE", 9.0, orbit::ink(cx), cx));
+        for (label, icon, active) in [
+            ("Inicio", "v-home", true),
+            ("Launcher", "v-launch", false),
+            ("Studio", "v-studio", false),
+        ] {
+            navigation = navigation.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(5.0))
+                    .p(px(5.0))
+                    .rounded(px(orbit::skin(cx).radius.sm))
+                    .when(active, |row| row.bg(orbit::tint(orbit::carmine(cx), 0.14)))
+                    .child(orbit::icon(icon, 11.0, orbit::ink_2(cx)))
+                    .child(orbit::text(label, 10.0, 500, orbit::ink_2(cx), cx)),
+            );
+        }
+        orbit::neo_card(cx)
+            .p_0()
+            .gap_0()
+            .overflow_hidden()
+            .child(
+                orbit::meta(
+                    cx.global::<orbit::theme::Theme>().palette.label(),
+                    10.0,
+                    orbit::ink_3(cx),
+                    cx,
+                )
+                .px(px(10.0))
+                .py(px(8.0)),
+            )
+            .child(
+                div().flex().child(navigation).child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .p(px(10.0))
+                        .flex()
+                        .flex_col()
+                        .gap(px(8.0))
+                        .child(orbit::text("Tu perfil", 12.0, 600, orbit::ink(cx), cx))
+                        .child(
+                            orbit::hero_surface(cx)
+                                .p(px(10.0))
+                                .gap(px(6.0))
+                                .child(
+                                    orbit::text(
+                                        profile.map_or("Sin perfil favorito", |profile| {
+                                            profile.name.as_str()
+                                        }),
+                                        16.0,
+                                        600,
+                                        orbit::ink(cx),
+                                        cx,
+                                    )
+                                    .truncate(),
+                                )
+                                .when_some(profile, |card, profile| {
+                                    card.child(orbit::meta(
+                                        &format!("{} aplicaciones", profile.steps.len()),
+                                        10.0,
+                                        orbit::ink_2(cx),
+                                        cx,
+                                    ))
+                                }),
+                        )
+                        .child(
+                            orbit::pill(
+                                if self.previous_source == Some(true) {
+                                    "Simulador conectado"
+                                } else {
+                                    "Esperando simulador"
+                                },
+                                if self.previous_source == Some(true) {
+                                    Tone::Success
+                                } else {
+                                    Tone::Neutral
+                                },
+                                cx,
+                            )
+                            .self_start(),
+                        ),
+                ),
+            )
+    }
+
     #[allow(clippy::too_many_lines)] // Composición del carril de las siete páginas, sin lógica de negocio.
     pub(in crate::shell) fn settings_rail(
         &self,
@@ -442,31 +552,7 @@ impl Hub {
             rail.push(orbit::RailSection::new(
                 "Vista previa",
                 "v-palette",
-                orbit::neo_card(cx)
-                    .flex_shrink(0.0)
-                    .child(orbit::neo_header("Vantare", "v-home", cx))
-                    .child(text(
-                        cx.global::<orbit::theme::Theme>().palette.label(),
-                        20.0,
-                        700,
-                        orbit::ink(cx),
-                        cx,
-                    ))
-                    .child(text(
-                        "Así se ven las tarjetas, los textos y los controles con tu tema.",
-                        13.0,
-                        400,
-                        orbit::ink_2(cx),
-                        cx,
-                    ))
-                    .child(orbit::pill("Tema actual", Tone::Accent, cx).self_start())
-                    .child(
-                        orbit::carmine_button("theme-preview-button", "Botón primario", cx)
-                            .self_start()
-                            .tab_stop(false)
-                            .cursor_default(),
-                    )
-                    .child(orbit::progress(0.65, cx)),
+                self.settings_appearance_preview(cx),
             ));
         }
         if self.settings.page == Page::Application {
@@ -800,7 +886,11 @@ impl Hub {
             );
         }
         stack()
-            .gap(px(self.shell.adapt.gap()))
+            .gap(px(if self.shell.adapt.show_optional() {
+                16.0
+            } else {
+                self.shell.adapt.gap()
+            }))
             .when_some(self.settings.general.as_ref().err(), |body, error| {
                 body.child(section_note(error, cx))
             })
@@ -829,30 +919,11 @@ impl Hub {
                         self.shell.adapt,
                         cx,
                     )),
+                0.0,
                 cx,
             ))
-            .child(section_surface("Inicio", None, start, cx))
-            .child(section_surface("Avisos", None, notices, cx))
-            .child(section_surface(
-                "Widgets",
-                None,
-                section_body()
-                    .child(section_row(
-                        "Idioma de los widgets",
-                        "Se guarda con el diseño de Studio",
-                        self.settings.language.clone(),
-                        self.shell.adapt,
-                        cx,
-                    ))
-                    .child(section_row(
-                        "Unidades de los widgets",
-                        "Combustible, temperatura y velocidad",
-                        self.settings.units.clone(),
-                        self.shell.adapt,
-                        cx,
-                    )),
-                cx,
-            ))
+            .child(section_surface("Inicio", None, start, 0.0, cx))
+            .child(section_surface("Avisos", None, notices, 0.0, cx))
     }
     #[allow(clippy::too_many_lines)] // Composición declarativa R4; solo añade Adapt explícito.
     fn settings_appearance(&self, cx: &mut Context<Self>) -> Div {
@@ -919,7 +990,11 @@ impl Hub {
         let opacity = self.settings_slider(1, cx);
         stack()
             .h_full()
-            .gap(px(self.shell.adapt.gap()))
+            .gap(px(if self.shell.adapt.show_optional() {
+                16.0
+            } else {
+                self.shell.adapt.gap()
+            }))
             .child(orbit::settings_group(1, "Esquema de color", schemes, cx))
             .child(orbit::settings_group(2, "Temas", palettes, cx))
             .child(section_numbered(
@@ -957,6 +1032,7 @@ impl Hub {
                             cx,
                         ))
                     }),
+                0.0,
                 cx,
             ))
             .map(|page| {
@@ -966,13 +1042,11 @@ impl Hub {
                     section_body().child(section_row(
                         "Reducir animaciones",
                         "Sin transiciones, latidos ni carruseles",
-                        orbit::button(
+                        orbit::toggle(
                             "settings-reduced-motion",
-                            if settings.reduced_motion {
-                                "Activado"
-                            } else {
-                                "Desactivado"
-                            },
+                            "Reducir animaciones",
+                            settings.reduced_motion,
+                            true,
                             cx,
                         )
                         .role(gpui::Role::Switch)
@@ -1001,6 +1075,7 @@ impl Hub {
                         self.shell.adapt,
                         cx,
                     )),
+                    0.0,
                     cx,
                 ))
             })
@@ -1091,6 +1166,7 @@ impl Hub {
         level: vantare_ui::performance::Level,
         cx: &mut Context<Self>,
     ) -> gpui::Stateful<Div> {
+        let compact = !self.shell.adapt.show_optional();
         let selected = self.studio.read(cx).performance().level == level;
         let description = [
             "Cada foto · tablas a 30 Hz",
@@ -1118,8 +1194,9 @@ impl Hub {
             .tab_stop(true)
             .track_focus(&self.settings.performance_focus[index])
             .cursor_pointer()
-            .p(px(14.0))
-            .gap(px(9.0))
+            .p(px(if compact { 10.0 } else { 14.0 }))
+            .gap(px(if compact { 4.0 } else { 9.0 }))
+            .min_h(px(if compact { 56.0 } else { 96.0 }))
             .min_w_0()
             .when(selected, |card| card.border_color(rgb(orbit::carmine(cx))))
             .focus_visible(|card| card.border_color(rgb(orbit::carmine(cx))))
@@ -1136,7 +1213,9 @@ impl Hub {
                         cx,
                     )),
             )
-            .child(text(description, 12.0, 400, orbit::ink_2(cx), cx))
+            .when(!compact, |card| {
+                card.child(text(description, 12.0, 400, orbit::ink_2(cx), cx))
+            })
             .child(meter)
             .on_click(cx.listener(move |hub, _, _, cx| hub.settings_performance_level(level, cx)))
             .on_key_down(cx.listener(move |hub, event: &gpui::KeyDownEvent, _, cx| {
@@ -1153,7 +1232,13 @@ impl Hub {
             .into_iter()
             .enumerate()
         {
-            table = table.child(text(label, 12.0, 600, orbit::ink_2(cx), cx).p(px(8.0)));
+            table = table.child(
+                text(label, 12.0, 600, orbit::ink_2(cx), cx)
+                    .min_h(px(48.0))
+                    .flex()
+                    .items_center()
+                    .p(px(8.0)),
+            );
             for level in Level::ALL {
                 let hz = level.hz(if row == 2 {
                     vantare_ui::Kind::Relative
@@ -1170,6 +1255,10 @@ impl Hub {
                     text(value, 12.0, 500, orbit::ink(cx), cx)
                         .min_w_0()
                         .p(px(8.0))
+                        .min_h(px(48.0))
+                        .flex()
+                        .items_center()
+                        .justify_center()
                         .text_center()
                         .when(level == current, |cell| {
                             cell.bg(rgba((orbit::carmine(cx) << 8) | 0x14))
@@ -1180,8 +1269,29 @@ impl Hub {
         table
     }
     fn settings_performance(&self, _compact: bool, cx: &mut Context<Self>) -> Div {
+        let compact = !self.shell.adapt.show_optional();
         let current = self.studio.read(cx).performance().level;
-        let mut levels = div().grid().grid_cols(3).w_full().min_w_0().gap(px(10.0));
+        let mut levels = div()
+            .grid()
+            .grid_cols(if compact { 3 } else { 4 })
+            .w_full()
+            .min_w_0()
+            .gap(px(10.0))
+            .child(
+                orbit::neo_card(cx)
+                    .col_span(if compact { 3 } else { 2 })
+                    .p(px(if compact { 10.0 } else { 14.0 }))
+                    .gap(px(if compact { 4.0 } else { 9.0 }))
+                    .min_h(px(if compact { 56.0 } else { 96.0 }))
+                    .child(text("Automático", 15.0, 600, orbit::ink(cx), cx))
+                    .child(text(
+                        "Próximamente · La app usa el nivel elegido",
+                        12.0,
+                        400,
+                        orbit::ink_3(cx),
+                        cx,
+                    )),
+            );
         for (index, level) in vantare_ui::performance::Level::ALL.into_iter().enumerate() {
             levels = levels.child(self.settings_level_card(index, level, cx));
         }
@@ -1193,18 +1303,21 @@ impl Hub {
                 .tab_stop(true)
                 .track_focus(&self.settings.custom_performance_focus)
                 .cursor_pointer()
-                .p(px(14.0))
-                .gap(px(9.0))
+                .p(px(if compact { 10.0 } else { 14.0 }))
+                .gap(px(if compact { 4.0 } else { 9.0 }))
+                .min_h(px(if compact { 56.0 } else { 96.0 }))
                 .min_w_0()
                 .focus_visible(|card| card.border_color(rgb(orbit::carmine(cx))))
                 .child(text("Personalizado", 15.0, 700, orbit::ink(cx), cx))
-                .child(text(
-                    "Cada widget, en el inspector de Studio",
-                    12.0,
-                    400,
-                    orbit::ink_2(cx),
-                    cx,
-                ))
+                .when(!compact, |card| {
+                    card.child(text(
+                        "Cada widget, en el inspector de Studio",
+                        12.0,
+                        400,
+                        orbit::ink_2(cx),
+                        cx,
+                    ))
+                })
                 .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
                     if matches!(event.keystroke.key.as_str(), "enter" | "space") {
                         hub.navigate(Section::Studio, cx);
@@ -1213,11 +1326,23 @@ impl Hub {
                 }))
                 .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx))),
         );
+        let widget_frequency = match current.hz(vantare_ui::Kind::Pedals) {
+            0 => "cada foto".to_owned(),
+            hz => format!("{hz} Hz"),
+        };
         let state = format!("Nivel aplicado: {}", current.label());
         stack()
-            .child(section_surface("Nivel de rendimiento", Some(&state), levels, cx))
-            .child(section_surface("Qué cambia en cada nivel", None,
-                Self::settings_frequency_table(current, cx), cx))
+            .child(orbit::neo_card(cx).p(px(20.0)).gap(px(14.0))
+                .child(div().flex().items_center().justify_between()
+                    .child(orbit::neo_header("Nivel de rendimiento", "pulse", cx))
+                    .child(text(state, 12.0, 400, orbit::ink_3(cx), cx)))
+                .child(levels))
+            .when(!compact, |body| body.child(orbit::neo_card(cx).p(px(20.0)).gap(px(14.0))
+                .child(orbit::neo_header("Qué cambia en cada nivel", "v-sliders", cx))
+                .child(Self::settings_frequency_table(current, cx))))
+            .when(compact, |body| body.child(text(format!("{} · widgets {} · Relative y tablas {} Hz; banderas al instante",
+                current.label(), widget_frequency, current.hz(vantare_ui::Kind::Relative)),
+                12.0, 400, orbit::ink_2(cx), cx)))
             .child(text("Frecuencias máximas de actualización de datos. La fluidez depende también de las fotos recibidas y del monitor.", 12.0, 400, orbit::ink_3(cx), cx))
     }
 
@@ -1238,14 +1363,16 @@ impl Hub {
             _ => "Versión instalada en este equipo.",
         }
         .to_owned();
-        let news = section_surface(
-            "Notas de versión",
-            None,
-            Self::settings_release_news(cx),
-            cx,
-        )
-        .flex_1()
-        .min_h_0();
+        let news = orbit::neo_card(cx)
+            .p_0()
+            .flex_1()
+            .min_h_0()
+            .child(div().px(px(20.0)).py(px(14.0)).child(orbit::neo_header(
+                "Notas de versión",
+                "v-download",
+                cx,
+            )))
+            .child(Self::settings_release_news(cx).px(px(20.0)).pb(px(12.0)));
         let beta = if self.demo.is_none() {
             self.settings.beta_status.clone()
         } else {
@@ -1275,7 +1402,7 @@ impl Hub {
             ))
             .child(if channel == Some("Beta") {
                 section_surface("Beta", Some("Actualizaciones automáticas al abrir y cada 6 horas"),
-                    section_body().child(text("Las nuevas versiones beta se descargan automáticamente y se aplican al cerrar o reiniciar el Hub.", 13.0, 400, orbit::ink_2(cx), cx)), cx)
+                    section_body().child(text("Las nuevas versiones beta se descargan automáticamente y se aplican al cerrar o reiniciar el Hub.", 13.0, 400, orbit::ink_2(cx), cx)), 12.0, cx)
             } else {
                 Self::settings_update_channels(channel, self.demo.is_some(), cx)
             })
@@ -1397,25 +1524,34 @@ impl Hub {
         body
     }
     fn settings_update_hero(version: String, state: String, current: bool, cx: &gpui::App) -> Div {
-        div()
-            .h(px(138.0))
+        orbit::hero_surface(cx)
+            .min_h(px(160.0))
+            .flex_none()
             .w_full()
             .flex()
+            .flex_row()
             .items_center()
             .gap(px(20.0))
-            .px(px(22.0))
+            .px(px(24.0))
             .py(px(20.0))
-            .rounded(px(orbit::RADIUS))
-            .border_1()
-            .border_color(rgba(orbit::line(cx)))
-            .bg(rgb(orbit::surface_1(cx)))
+            .child(
+                div()
+                    .size(px(60.0))
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(orbit::skin(cx).radius.lg))
+                    .bg(rgb(orbit::skin(cx).accent))
+                    .child(orbit::icon("v-download", 26.0, 0x00ff_ffff)),
+            )
             .child(
                 div()
                     .flex_1()
                     .min_w_0()
                     .child(eyebrow("Versión instalada", cx))
                     .child(
-                        text(version, 30.0, 600, orbit::ink(cx), cx)
+                        text(version, 34.0, 600, orbit::ink(cx), cx)
                             .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
                             .mt(px(4.0)),
                     )
@@ -1427,7 +1563,7 @@ impl Hub {
     }
 
     fn settings_update_channels(channel: Option<&str>, demo: bool, cx: &gpui::App) -> Div {
-        let mut channels = div().flex().w_full().gap(px(12.0));
+        let mut channels = orbit::neo_card(cx).p_0().gap_0();
         for (index, (name, description)) in [
             ("Estable", "Versiones probadas para todo el mundo."),
             (
@@ -1442,16 +1578,15 @@ impl Hub {
             let active = channel == Some(name);
             channels = channels.child(
                 div()
-                    .flex_1()
+                    .w_full()
                     .min_w_0()
-                    .min_h(px(125.0))
-                    .px(px(18.0))
-                    .py(px(16.0))
+                    .min_h(px(52.0))
+                    .px(px(20.0))
+                    .py(px(8.0))
                     .flex()
                     .flex_col()
-                    .gap(px(8.0))
-                    .rounded(px(orbit::RADIUS))
-                    .border_1()
+                    .gap(px(3.0))
+                    .border_b_1()
                     .border_color(if active {
                         rgba(crate::orbit::legacy_rgba(0xf047_5559, cx))
                     } else {
@@ -1467,10 +1602,16 @@ impl Hub {
                             .flex()
                             .items_center()
                             .justify_between()
-                            .child(text(name, 15.0, 700, orbit::ink(cx), cx))
-                            .when(active, |row| {
-                                row.child(orbit::status_dot(Tone::Success, 7.0, cx))
-                            }),
+                            .child(text(name, 14.0, 600, orbit::ink(cx), cx))
+                            .child(orbit::pill(
+                                if active {
+                                    "Canal instalado"
+                                } else {
+                                    "No seleccionado"
+                                },
+                                if active { Tone::Success } else { Tone::Neutral },
+                                cx,
+                            )),
                     )
                     .child(
                         text(
@@ -1488,21 +1629,21 @@ impl Hub {
                             cx,
                         )
                         .line_height(px(18.0)),
-                    )
-                    .child(text(
-                        if active {
-                            "Canal instalado"
-                        } else {
-                            "Canal no seleccionado"
-                        },
-                        11.0,
-                        600,
-                        orbit::ink_3(cx),
-                        cx,
-                    )),
+                    ),
             );
         }
         channels
+    }
+    fn settings_hotkey_editor(&self, cx: &Context<Self>) -> gpui::Stateful<Div> {
+        orbit::small_button("settings-global-edit", "Editar atajos de perfiles", cx)
+            .track_focus(&self.settings.global_hotkeys_focus)
+            .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                    hub.navigate(Section::Launcher, cx);
+                    cx.stop_propagation();
+                }
+            }))
+            .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Launcher, cx)))
     }
     fn settings_hotkeys(&self, cx: &mut Context<Self>) -> Div {
         let keys = |items: &[(&str, &str)], help: &str| {
@@ -1526,24 +1667,43 @@ impl Hub {
         if let Some(error) = launcher.global_hotkey_error() {
             globals = globals.child(section_note(error, cx));
         }
-        globals = globals.child(
-            orbit::small_button("settings-global-edit", "Editar atajos de perfiles", cx)
-                .track_focus(&self.settings.global_hotkeys_focus)
-                .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
-                    if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                        hub.navigate(Section::Launcher, cx);
-                        cx.stop_propagation();
-                    }
-                }))
-                .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Launcher, cx))),
-        );
+        let no_hotkeys = launcher
+            .saved_profiles()
+            .iter()
+            .all(|profile| profile.hotkey.is_empty());
+        if no_hotkeys {
+            globals = globals.child(section_row(
+                "Atajos de perfiles",
+                "Todavía no has asignado ninguna combinación",
+                self.settings_hotkey_editor(cx),
+                self.shell.adapt,
+                cx,
+            ));
+        }
+        if !no_hotkeys {
+            globals = globals.child(
+                div()
+                    .px(px(20.0))
+                    .py(px(8.0))
+                    .flex()
+                    .justify_end()
+                    .child(self.settings_hotkey_editor(cx)),
+            );
+        }
+
         stack()
             .h_full()
+            .gap(px(if self.shell.adapt.show_optional() {
+                16.0
+            } else {
+                self.shell.adapt.gap()
+            }))
             .when(cfg!(windows), |body| {
                 body.child(section_surface(
                     "Globales con el juego",
-                    Some("Registro nativo de Windows · editables en cada perfil del Launcher"),
+                    None,
                     globals,
+                    0.0,
                     cx,
                 ))
             })
@@ -1559,6 +1719,7 @@ impl Hub {
                     ],
                     "Con la ventana del Hub activa",
                 ),
+                0.0,
                 cx,
             ))
             .child(section_surface(
@@ -1575,6 +1736,7 @@ impl Hub {
                     ],
                     "Con el lienzo de Studio activo",
                 ),
+                0.0,
                 cx,
             ))
     }
@@ -1634,18 +1796,25 @@ impl Hub {
                     ));
                     body = body.child(section_row(label, help, toggle, self.shell.adapt, cx));
                 }
-                body = body.child(section_note("Estos datos no se vinculan a tu cuenta y se procesan en la Unión Europea. Puedes cambiar estas opciones cuando quieras.", cx));
+                body = body.child(div().px(px(20.0)).py(px(12.0)).child(text("Estos datos no se vinculan a tu cuenta y se procesan en la Unión Europea. Puedes cambiar estas opciones cuando quieras.", 12.0, 400, orbit::ink_3(cx), cx).line_height(px(18.0))));
                 if !vantare_services::diagnostics::configured() {
                     body = body.child(section_note("Esta versión aún no tiene configurado el envío. Tus preferencias quedan guardadas.", cx));
                 }
             }
         }
-        body = body.child(super::privacy::policy_link(
-            "settings-privacy-policy",
-            &self.settings.privacy_policy_focus,
-            cx,
-        ));
-        section_surface("Lo que compartes", None, body, cx)
+        body = body.child(
+            super::privacy::policy_link(
+                "settings-privacy-policy",
+                &self.settings.privacy_policy_focus,
+                cx,
+            )
+            .self_start()
+            .ml(px(20.0))
+            .mb(px(12.0))
+            .border_0()
+            .bg(gpui::transparent_black()),
+        );
+        section_surface("Lo que compartes", None, body, 0.0, cx)
     }
     fn settings_events(&self, cx: &mut Context<Self>) -> Div {
         let observed = &self.testing.read(cx).observed;
@@ -1671,11 +1840,16 @@ impl Hub {
                 ]
             })
             .collect();
-        let mut events =
-            section_body()
+        let mut events = section_body().p(px(20.0)).child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(12.0))
                 .child(self.settings.event_filter.clone())
                 .child(
                     div()
+                        .flex_1()
+                        .min_w_0()
                         .relative()
                         .child(self.settings.event_query.clone())
                         .when(
@@ -1691,12 +1865,19 @@ impl Hub {
                     orbit::button("settings-events-clear", "Limpiar filtros", cx).on_click(
                         cx.listener(|this, _, window, cx| this.clear_event_filters(window, cx)),
                     ),
-                );
+                ),
+        );
         if rows.is_empty() {
-            events = events.child(section_note(
-                super::event_empty_message(observed.errors.len()),
-                cx,
-            ));
+            events = events.child(
+                text(
+                    super::event_empty_message(observed.errors.len()),
+                    13.0,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                )
+                .p(px(16.0)),
+            );
         } else {
             let table = orbit::Table {
                 headers: vec![
@@ -1712,36 +1893,121 @@ impl Hub {
                 Err(error) => events = events.child(orbit::callout(error, cx)),
             }
         }
-        section_surface(
-            "Registro observado",
-            Some("Errores registrados en esta sesión"),
-            events,
-            cx,
-        )
-        .flex_1()
-        .min_h_0()
-    }
-    fn settings_statistics(connected: bool, cx: &gpui::App) -> Div {
-        let stats = orbit::neo_card(cx)
-            .p(px(12.0))
-            .gap(px(6.0))
-            .child(orbit::caps("Telemetría", 14.0, orbit::ink_2(cx), cx))
-            .child(text(
-                if connected { "Conectada" } else { "Esperando" },
-                16.0,
-                600,
-                orbit::ink(cx),
+        orbit::neo_card(cx)
+            .p_0()
+            .flex_1()
+            .min_h_0()
+            .child(div().px(px(20.0)).py(px(14.0)).child(orbit::neo_header(
+                "Registro observado",
+                "v-testing",
                 cx,
-            ));
-        orbit::settings_group(1, "Estado de Vantare", stats, cx)
+            )))
+            .child(
+                events
+                    .id("settings-observed-log")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .bg(rgb(orbit::canvas(cx))),
+            )
+    }
+
+    fn settings_statistics(&self, cx: &gpui::App) -> Div {
+        let stats = div()
+            .grid()
+            .grid_cols(if self.shell.adapt.center_width() < 1100.0 {
+                2
+            } else {
+                3
+            })
+            .gap(px(10.0))
+            .children(
+                [
+                    ("Hub", "En ejecución", "v-home"),
+                    (
+                        "Telemetría",
+                        if self.previous_source == Some(true) {
+                            "Conectada"
+                        } else {
+                            "Esperando simulador"
+                        },
+                        "pulse",
+                    ),
+                    (
+                        "Launcher",
+                        if self.settings.launcher_running {
+                            "Lanzando"
+                        } else {
+                            "En reposo"
+                        },
+                        "v-launch",
+                    ),
+                    (
+                        "Preferencias",
+                        if self.settings.general.is_ok() {
+                            "Cargadas"
+                        } else {
+                            "Error local"
+                        },
+                        "v-sliders",
+                    ),
+                    (
+                        "Envío diagnóstico",
+                        if vantare_services::diagnostics::configured() {
+                            "Configurado"
+                        } else {
+                            "Sin configurar"
+                        },
+                        "v-shield",
+                    ),
+                    (
+                        "Informe local",
+                        if self.settings.diagnostic.is_some() {
+                            "Preparado"
+                        } else {
+                            "Sin preparar"
+                        },
+                        "v-testing",
+                    ),
+                ]
+                .map(|(label, value, icon)| {
+                    orbit::neo_card(cx)
+                        .flex_row()
+                        .items_center()
+                        .p(px(12.0))
+                        .gap(px(10.0))
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .size(px(32.0))
+                                .flex_shrink_0()
+                                .rounded(px(orbit::RADIUS_CHIP))
+                                .bg(rgb(orbit::surface_1(cx)))
+                                .child(orbit::icon(icon, 18.0, orbit::ink_3(cx))),
+                        )
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .min_w_0()
+                                .gap(px(4.0))
+                                .child(text(label, 13.0, 600, orbit::ink(cx), cx))
+                                .child(text(value, 12.0, 400, orbit::ink_3(cx), cx)),
+                        )
+                }),
+            );
+        orbit::neo_card(cx)
+            .p(px(20.0))
+            .gap(px(14.0))
+            .child(orbit::neo_header("Estado de Vantare", "pulse", cx))
+            .child(stats)
     }
     fn settings_diagnostics(&self, _compact: bool, cx: &mut Context<Self>) -> Div {
         stack()
             .h_full()
-            .child(Self::settings_statistics(
-                self.previous_source == Some(true),
-                cx,
-            ))
+            .child(self.settings_statistics(cx))
             .child(section_surface(
                 "Diagnóstico local",
                 None,
@@ -1776,6 +2042,7 @@ impl Hub {
                             cx,
                         ))
                     }),
+                0.0,
                 cx,
             ))
             .child(self.settings_events(cx).flex_1().min_h_0())
@@ -1818,7 +2085,13 @@ impl Hub {
                 cx,
             ));
         }
-        report.push(section_surface("Componentes revisados", None, body, cx));
+        report.push(section_surface(
+            "Componentes revisados",
+            None,
+            body,
+            12.0,
+            cx,
+        ));
         match serde_json::to_string_pretty(diagnostic) {
             Ok(_) => {
                 let copy = self.settings_button(
@@ -1833,7 +2106,7 @@ impl Hub {
                     section_body()
                         .child(text("Incluye la versión de Vantare, el estado de la conexión y los componentes revisados. No incluye contraseñas ni datos de la carrera.", orbit::SECONDARY, 400, orbit::ink_2(cx), cx))
                         .child(copy),
-                    cx,
+                    12.0, cx,
                 ));
             }
             Err(_) => report.push(orbit::callout("No se pudo preparar el informe.", cx)),

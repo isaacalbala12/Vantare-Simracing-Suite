@@ -784,9 +784,9 @@ impl Testing {
     fn summary(&self, cx: &mut Context<Self>) -> gpui::Div {
         let adapt = self.adapt;
         div().flex_1().min_h_0().flex().flex_col().min_w_0().gap(px(adapt.gap()))
-            .child(orbit::hero_surface(cx).flex_none().p(px(20.0)).gap(px(12.0))
+            .child(orbit::hero_surface(cx).flex_none().p(px(if adapt.show_notes() { 28.0 } else { 20.0 })).gap(px(12.0))
                 .child(orbit::meta("CUESTIONARIOS · PRÓXIMAMENTE", 11.0, orbit::ink_3(cx), cx))
-                .child(orbit::caps("Tu experiencia cuenta", 28.0, orbit::ink(cx), cx))
+                .child(orbit::display("Tu experiencia cuenta", if adapt.show_notes() { 36.0 } else { 28.0 }, orbit::ink(cx), cx))
                 .when(adapt.show_optional(), |hero| hero.child(orbit::text("Aún no hay cuestionarios disponibles. Puedes contarnos un problema o una sugerencia.", 14.0, 400, orbit::ink_2(cx), cx)))
                 .child(orbit::primary_button("testing-summary-report", "Nuevo informe", cx).self_start()
                     .on_click(cx.listener(|this, _, _, cx| {

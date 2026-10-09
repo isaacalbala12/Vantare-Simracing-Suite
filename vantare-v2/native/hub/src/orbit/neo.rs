@@ -157,16 +157,23 @@ pub fn summary_row(
         .role(gpui::Role::Group)
         .aria_label(title)
         .relative()
-        .pl(px(42.0))
+        .pl(px(48.0))
         .min_h(px(54.0))
         .flex_none()
         .border_b_1()
         .border_color(rgba(line(cx)))
         .child(
-            icon(icon_name, 18.0, ink_3(cx))
+            div()
+                .size(px(32.0))
+                .rounded(px(super::skin(cx).radius.sm))
+                .bg(rgb(super::skin(cx).l3))
+                .flex()
+                .items_center()
+                .justify_center()
+                .child(icon(icon_name, 18.0, ink_3(cx)))
                 .absolute()
-                .left(px(12.0))
-                .top(px(18.0)),
+                .left(px(6.0))
+                .top(px(11.0)),
         )
 }
 /// Fila de acción sobre el mismo botón base, sin caja en reposo.

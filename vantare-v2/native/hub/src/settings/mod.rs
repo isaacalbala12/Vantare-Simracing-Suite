@@ -12,7 +12,7 @@ use vantare_domain::format::{Language, Preferences, Units};
 pub(super) mod appearance;
 pub(in crate::shell) mod general;
 mod privacy;
-mod releases;
+pub(crate) mod releases;
 #[cfg(test)]
 mod tests;
 mod text_rendering;
@@ -140,6 +140,7 @@ pub(super) struct State {
     density: Entity<Choice>,
     font: Entity<Choice>,
     mono: Entity<Choice>,
+    pub(in crate::shell) quick_theme: Entity<Choice>,
     event_filter: Entity<Choice>,
     event_query: Entity<Input>,
     data: PathBuf,
@@ -304,11 +305,12 @@ impl State {
             nav_focus: (0..Page::ALL.len()).map(|_| cx.focus_handle()).collect(),
             action_focus: std::array::from_fn(|_| cx.focus_handle()),
             query,
+            quick_theme: Self::theme_control(appearance_settings.palette, window, cx),
             language,
             units,
             density: choice(
                 "Densidad",
-                ChoiceKind::Dropdown,
+                ChoiceKind::Segmented,
                 &["Compacta", "Equilibrada", "Cómoda"],
                 Some(prefs.density as usize),
                 true,
@@ -317,7 +319,7 @@ impl State {
             ),
             font: choice(
                 "Fuente de interfaz",
-                ChoiceKind::Dropdown,
+                ChoiceKind::Segmented,
                 &["Inter", "Segoe UI", "Arial"],
                 Some(appearance_settings.interface_font as usize),
                 true,
@@ -352,6 +354,24 @@ impl State {
         appearance::wire(&state, window, cx);
         general::wire(&state, cx);
         state
+    }
+
+    fn theme_control(
+        palette: orbit::theme::Palette,
+        window: &mut Window,
+        cx: &mut Context<Hub>,
+    ) -> Entity<Choice> {
+        choice(
+            "Cambiar tema",
+            ChoiceKind::Dropdown,
+            &orbit::theme::Palette::ALL.map(orbit::theme::Palette::label),
+            orbit::theme::Palette::ALL
+                .iter()
+                .position(|candidate| *candidate == palette),
+            true,
+            window,
+            cx,
+        )
     }
 }
 // Topbar 52 + márgenes/cabecera 108 del layout beta; usado por las novedades.

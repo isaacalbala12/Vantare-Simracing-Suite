@@ -103,26 +103,25 @@ fn lane(
     if publication.is_none_or(|publication| items(publication, section).next().is_none()) {
         list = list.child(note("Sin hitos publicados", cx));
     }
-    div()
+    orbit::neo_card(cx)
         .flex_1()
         .min_w_0()
         .min_h_0()
-        .flex()
-        .flex_col()
+        .p(px(14.0))
         .gap(px(10.0))
         .child(orbit::section_header(title, "v-roadmap", None, cx))
         .child(list)
 }
 fn current(publication: Option<&Publication>, adapt: orbit::Adapt, cx: &gpui::App) -> Div {
     let compact = adapt.density != orbit::adapt::Density::A;
-    let mut hero = orbit::neo_accent_card(cx)
+    let mut hero = orbit::hero_surface(cx)
         .flex_none()
         .child(orbit::eyebrow("En qué estamos", cx));
     if let Some(item) = publication.and_then(|publication| items(publication, "now").next()) {
         hero = hero
             .child(
                 orbit::text(
-                    item.title.es.to_uppercase(),
+                    item.title.es.clone(),
                     if compact { 26.0 } else { 34.0 },
                     600,
                     orbit::ink(cx),
@@ -144,7 +143,28 @@ fn current(publication: Option<&Publication>, adapt: orbit::Adapt, cx: &gpui::Ap
     } else {
         hero = hero.child(note("Aún no hay hitos actuales publicados", cx));
     }
-    hero
+    hero.child(
+        div()
+            .flex()
+            .items_center()
+            .gap(px(12.0))
+            .pt(px(12.0))
+            .children(["Ahora", "Siguiente", "Más adelante"].map(|label| {
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(8.0))
+                    .child(
+                        div()
+                            .h(px(2.0))
+                            .w_full()
+                            .bg(orbit::alpha(orbit::skin(cx).line3)),
+                    )
+                    .child(orbit::meta(label, 11.0, orbit::skin(cx).text2, cx))
+            })),
+    )
 }
 impl Remote {
     pub(crate) fn roadmap_tabs(&self, cx: &mut Context<Self>) -> Div {
@@ -212,7 +232,10 @@ impl Remote {
                 })
                 .child(lane(publication, "next", "Siguiente", cx))
         } else {
-            orbit::neo_card(cx)
+            div()
+                .flex()
+                .flex_col()
+                .gap(px(adapt.gap()))
                 .flex_1()
                 .min_h_0()
                 .child(orbit::section_header("Qué viene", "v-roadmap", None, cx))
@@ -224,10 +247,7 @@ impl Remote {
                         .gap(px(adapt.gap()))
                         .child(lane(publication, "now", "Ahora", cx))
                         .child(lane(publication, "next", "Siguiente", cx))
-                        .child(lane(publication, "later", "Más adelante", cx))
-                        .when(self.manual_roadmap.view == View::Board, |board| {
-                            board.child(lane(publication, "done", "Entregado", cx))
-                        }),
+                        .child(lane(publication, "later", "Más adelante", cx)),
                 )
         };
         page.child(body)

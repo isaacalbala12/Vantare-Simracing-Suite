@@ -1,3 +1,14 @@
+## #1496 — integración local de #1528 sobre ola 1 (2026-10-10)
+
+Base autorizada 70170613, fuente #1528 db9bc480 (review R5 9,0335/10).
+Merge no-ff en vantareapp/isa-1496-integracion-prueba, sin delegación.
+Cuenta conserva avatar/nombre reales y acciones #1529 con hero, avatar circular y
+Display adaptable #1528; handoff acumula ambas ramas. Aviso único #1530,
+Services v5, DTO v9, fuentes retiradas y arquitectura de la ola 1 conservados.
+Gates y build local 0.0.975 en curso, evidencia externa:
+C:/tmp/auditoria-arquitectura-v2/integracion-1528-evidence/.
+Siguiente: gates por cola y Setup Release beta con configuración dev, sin firma.
+Sin push, PR, promoción, release, publicación ni instalación real de Isaac.
 ## #1496 — integración local de arquitectura, ola 1 (2026-10-09)
 
 Integradas en orden #1534, #1533, #1530, #1529 y #1532 sobre `5e1da3f6`,
@@ -50,6 +61,185 @@ Sin push/PR/CI remoto/merge/promoción/release/instalación ni otras acciones ex
 No QA visual ni macOS/distribución: traslado sin cambios de presentación; no
 se afirma prueba publicada ni interacción LMU/OBS real. Siguiente: revisión
 del orquestador y aceptación de Isaac antes de integrar sobre la base indicada.
+## #1528 — Ronda 5 tras revisión 8,980/10 (2026-10-10)
+
+Entrega aislada sobre `ba571aaa`, misma rama `vantareapp/isa-1528-paridad-visual`
+y base de integración `5e1da3f6`; cuatro commits, uno por grupo, sin delegación.
+Carteles recupera el bloque de fecha, título Display, favorita observada y tarjetas
+84 px XS / 118 amplias, con separación de 10 px. Duración real disponible en Tiempos.
+Agenda delimita días/franjas, compacta cabecera y filtros y conserva la escala
+estable: el test exige que los 30 px del evento caben tras padding y ambos bordes.
+Tiempos alinea Horario y las once opciones en XS; hero de unos 100 px, cuenta atrás
+real y acciones paralelas, filas 36/40 y scroll intactos; sin split/clima inventados.
+Studio ordena resolución/selección a la izquierda y zoom a la derecha; tarjetas
+180 px con iconos Orbit en marco, también en el cálculo del carrusel desplazable.
+Canvas, resolución del cliente, renderizador productivo y selección no se alteran.
+General da aire a filas y grupos a 1080; XS conserva todos los controles y las
+regresiones de densidades distintas. Apariencia ofrece muestras 148 px a 1080 y
+temas 56 px. Atajos integra Editar en el estado sin combinaciones, sin fila vacía;
+con combinaciones conserva filas y edición. Privacidad compacta el enlace de política;
+Cuenta usa hero Orbit y nombre Display 32. Launcher reposo usa iconos 88 en ancho,
+48 en compacto y mantiene altura natural. Diagnóstico recapturado por filas compartidas.
+Archivos: calendar/beta.rs y presentation.rs, studio.rs, settings/view.rs,
+orbit/kit.rs, services/view.rs, launcher/showcase.rs y este handoff.
+
+Gates por cola: fmt, Clippy workspace -D warnings, Nextest 1406 PASS / 7 skips
+(324,760 s, Go physical tyre 165,525 s PASS) y lifecycle 18 PASS. QA build PASS;
+aviso previo unused cx de analysis/view.rs exclusivo de parity-capture conservado,
+Clippy canónico sin warnings. Intentos de build/clippy fallidos y correcciones
+archivados en r5-*.log; no se rebajan tests ni gates. Sin nuevas dependencias.
+37 pares afectados app/HTML: 1280/1920 y siete tamaños extra de Launcher;
+10 vistas pedidas, Calendario vacío/publicado, Studio Delta y Diagnóstico compartido.
+Pares inspeccionados, overlays/diffs a resolución original; matriz completa 76,
+r5-before conserva R4, final-manifest.json acredita SHA/hash/dimensiones por caso.
+Pantalla-ocupada comprobada antes de cada ventana; HTML con cap.mjs headless.
+Informe de doce líneas C:/tmp/ui-r10/informe-1528.md, una por vista solicitada;
+detalle/limitaciones en 1528-evidence/diferencias.md y checks.md.
+Nota anterior 8,980113636 pertenece a review-1528-r4.md; ≥9 requiere reevaluación
+independiente. Roadmap/Testing conservan Próximamente por Isaac, datos reales
+pendientes en [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+Verificación manual: filtros/favoritos y scroll de Calendario; zoom/carrusel de
+Studio; densidad y preferencias persistidas, editor de atajos y enlace de política.
+Interacción humana, LMU y DPI físico no acreditados por QA; plan.md ausente, no recreado.
+Sin push, PR, merge, promoción, release ni CI remoto; únicamente comentario de evidencia
+en #1528 dentro de la autorización existente.
+
+## #1528 — Ronda 4 tras revisión 8,962/10 (2026-10-10)
+
+Entrega aislada sobre `a2adeb02`, misma rama `vantareapp/isa-1528-paridad-visual`
+y base de integración `5e1da3f6`; dos commits, uno por punto, sin delegación.
+Inicio reutiliza el presupuesto del estado real en render y tarjeta: descuenta
+el aviso y reserva cabecera, título, subtítulo, chips, métricas y acciones completas.
+El test recorre el límite inferior de cada hijo en siete tamaños, carril abierto/
+cerrado y con/sin error; las capturas 1280/1920 muestran subtítulo y botones íntegros.
+Tiempos XS reúne todos los filtros en una línea cuando caben, reduce controles
+a 28 px y filas a 36 px (40 en ancho), con padding menor. Nueve salidas visibles
+frente a seis; opciones, favoritos, avisos, scroll y procedencia real conservados.
+Sin split/clima inventados, nuevas dependencias ni renderer; kit Orbit existente.
+Archivos: native/hub/src/shell/foundations.rs, native/hub/src/calendar/beta.rs y este handoff.
+
+Gates por cola: fmt, Clippy workspace -D warnings, Nextest 1406 PASS / 7 skips,
+Hub 405 PASS / 1 skip y lifecycle 18 PASS. Build QA PASS; conserva el aviso previo
+unused cx de analysis/view.rs exclusivo de parity-capture, sin ampliar el alcance.
+12 pares app/HTML recapturados a 1280/1920 en Vantare: los cuatro estados de Inicio
+y Tiempos vacío/publicado. Superposiciones/diffs a tamaño original; matriz 76,
+r4-before conserva la evidencia anterior y final-manifest.json acredita SHA/hash.
+Informe doce líneas C:/tmp/ui-r10/informe-1528.md; detalle en 1528-evidence/diferencias.md
+ y checks.md. La nota anterior 8,9619318 pertenece a review-1528-r3.md; ≥9 requiere
+reevaluación independiente. Roadmap/Testing conservan Próximamente por Isaac;
+datos reales pendientes en [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+Verificación manual: Inicio con aviso en ambas resoluciones, botones Editar overlay/
+Detener completos; filtros, favorito, avisos y scroll de Tiempos con más salidas.
+Interacción humana, LMU y DPI físico no acreditados por QA; plan.md ausente, no recreado.
+Sin push, PR, merge, promoción, release ni CI remoto; únicamente comentario de evidencia
+en #1528 dentro de la autorización existente.
+
+## #1528 — Ronda 3 tras revisión 8,88/10 (2026-10-10)
+
+Entrega aislada sobre `abb752b3`, rama `vantareapp/isa-1528-paridad-visual`,
+base de integración `5e1da3f6`. Siete commits por vista/grupo, sin delegación.
+Agenda XS reserva 38 px por hora: caben el evento de 30 px, padding y borde;
+regresión en siete alturas conserva escala estable, filtros y acceso a excedentes.
+Actualizaciones amplía hero a 160 px, agrupa canales y cabecera de notas;
+Tiempos usa todo el ancho, hero XS compacto, cuenta atrás real y duración acotada;
+la tabla separa serie/circuito e integra filtros y procedencia del horario;
+Launcher reposo recupera descripción y aire en la cadena, con altura natural;
+Inicio normal amplía preview compartido, vacío compone primeros pasos y conexión,
+carga distingue preview/actividad/plantillas y usa esqueletos en el perfil favorito.
+Rendimiento integra cabeceras, tarjetas de 96 px y filas de 48 px; XS usa tres
+columnas, tarjetas compactas y resumen de frecuencia aplicada, sin tabla secundaria;
+Diagnóstico agrupa estados observados, usa dos columnas XS y registro integrado
+con scroll y vacío neutro. Sin nuevas dependencias, renderer ni datos inventados.
+Archivos: calendar/presentation.rs, calendar/beta.rs, launcher/showcase.rs,
+shell/foundations.rs y settings/view.rs, más este handoff.
+
+Gates por cola: fmt, Clippy workspace -D warnings, Nextest workspace 1405 PASS / 7
+skips, Hub 404 PASS / 1 skip tras los ajustes visuales, lifecycle 18 PASS.
+Build QA conserva el aviso previo unused cx de analysis/view.rs bajo parity-capture;
+Clippy canónico sin warnings. Intentos iniciales fallidos y sus correcciones quedan
+archivados fuera del repo; no se rebajan tests. La última tanda visual se verifica
+mediante el manifest externo, procedencia por SHA/hash y comparaciones a igual tamaño.
+44 casos afectados recapturados app/HTML, con recaptura final de Rendimiento; matriz completa 76, overlays/diffs y
+r3-before conservan la evidencia anterior. Launcher cubre siete tamaños y dos extras.
+Informe de doce líneas: C:/tmp/ui-r10/informe-1528.md. Evidencia detallada:
+C:/tmp/ui-r10/1528-evidence/diferencias.md, checks.md y final-manifest.json.
+La nota 8,88 corresponde a review-1528-r2.md; ≥9 requiere reevaluación independiente.
+Roadmap/Testing mantienen Próximamente por decisión de Isaac; datos pendientes en
+[#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+Verificación manual: evento completo y scroll de Agenda XS, filtros de Tiempos,
+reposo/lanzamiento y carrusel en siete tamaños, los tres estados de Inicio, niveles
+de rendimiento y filtros/informe sanitizado. DPI físico, LMU real e interacción
+humana no acreditados por QA. Sin push, PR, merge, promoción, release ni CI remoto.
+
+## #1528 — Ronda 2 tras revisión 8,80/10 (2026-10-10)
+
+Entrega aislada sobre `723cdb78`, misma rama y base de integración `5e1da3f6`.
+Cinco commits en el orden pedido: General restaura Equilibrada M / Cómoda automática
+con diferencias verificadas en gap, filas y padding, sin ampliar ventanas XS;
+Launcher mantiene hero natural, centra la cadena con aire y usa tira horizontal
+compacta al lanzar, evitando solapes de portada en alturas pequeñas; Agenda acota
+franjas y eventos, conserva filtros y scroll por celda y enlaza excedentes a Tiempos;
+Apariencia compone navegación/perfil/estado real con Orbit, sin progreso ficticio;
+Ajustes recibe padding explícito, independiente del título traducido.
+Archivos de código: `settings/general.rs`, `launcher/showcase.rs`,
+`calendar/presentation.rs`, `settings/view.rs`. Sin dependencias ni renderer nuevo.
+
+Gates por cola: fmt y Clippy -D warnings PASS; Nextest workspace 1404 PASS / 7 skips,
+Hub tras el último ajuste 403 PASS / 1 skip; lifecycle 18 PASS. El build QA conserva
+el aviso previo `unused cx` de analysis/view.rs bajo parity-capture; Clippy canónico
+pasa sin warnings. Los intentos fallidos de tipo/formato quedan en los logs externos.
+Las capturas R1 se conservan en `1528-evidence/r2-before`; 76 HTML recapturados y
+76 app, más recaptura final de Launcher en nueve tamaños. Cada PNG mantiene SHA y
+hash del binario en provenance.jsonl; `refs/1528/r2-first-capture` conserva el SHA
+previo a la última corrección de portada. Pares, overlays y diffs regenerados.
+`C:/tmp/ui-r10/informe-1528.md` mantiene doce líneas y el seguimiento de datos
+honestos en [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+La nota 8,80 pertenece a la revisión anterior; el objetivo ≥9 requiere reevaluación
+independiente. No se presenta una nueva puntuación calculada por el implementador.
+Verificación manual: alternar Equilibrada/Cómoda a 1920 y reducir a 1280; lanzar
+perfil y recorrer su tira; desplazar celdas densas de Agenda y abrir Tiempos;
+cambiar tema y comprobar la miniatura. DPI físico, LMU real e interacción humana
+no acreditados por las capturas QA. Sin push, PR, merge, promoción, release ni CI remoto.
+
+## #1528 — Paridad visual Hub r10h, entrega aislada (2026-10-09)
+
+Worktree `C:/tmp/vw3-1528/vantare-v2`, rama `vantareapp/isa-1528-paridad-visual`,
+base `5e1da3f6`. Implementación sin delegación; 15 commits de código por página/prioridad.
+Launcher `c0b38503`: escaparate de altura natural, carrusel medido y mínimo cliente
+1280×720 que evita el zoom efectivo 90% involuntario. Studio `68577b50`: borde,
+tiradores y resize usan límites pintados del renderer compartido. Sidebar `008d63a7`:
+los 9 temas de Apariencia mediante Choice, guardado común y acceso contraído.
+Inicio, las 7 páginas de Ajustes, Cuenta, Testing, Calendario y Roadmap usan los
+ajustes del kit; se conservan rojo #D80000, grafito Vantare, C2 y decisiones posteriores.
+Isaac autoriza mantener Próximamente en Roadmap/Testing: contratos de datos
+pendientes se conectan en [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+No se fabrican fases, porcentajes, versiones, cuestionarios ni contribuciones.
+
+Evidencia externa: `C:/tmp/ui-r10/1528-evidence/final-manifest.json`, 76 PNG app y
+76 HTML a igual tamaño, más 76 overlays y 76 diffs. Matriz 1920×1080/1280×720,
+4 estados Inicio, Launcher reposo/lanzando en los 7 tamaños y 2 extras, selección
+Delta, menú de tema, vistas vacías y fixtures publicados QA de Calendario/Roadmap.
+`informe-1528.md` tiene 12 líneas; `diferencias.md` enumera las ocho categorías,
+excepciones, archivos y límites. Los datos reales se anotan y no se evalúan contra
+cifras de ejemplo. Delta/menú son pruebas añadidas sobre vistas HTML base.
+Las capturas QA están aisladas; no prueban LMU real, DPI físico, release ni telemetría.
+
+Gates por cola obligatoria: fmt (incluido vendor) y Clippy -D warnings PASS,
+Nextest workspace 1404 PASS / 7 skips, Hub tras el último cambio 403 PASS / 1 skip,
+lifecycle 18 PASS. Studio: Kind::ALL, marcos altos/cortos, escalas 0.5/1/2 y zoom
+0.1/0.5/1/2.5/4. Backend zoom: seis escenarios con test extraído literalmente del
+vendor y ejecutado por rustc --test; su harness Cargo completo no se configura como
+miembro del workspace. Build QA parity-capture PASS; aviso previo unused cx en
+analysis/view.rs bajo esa feature conservado, gate canónico sin warnings.
+Consolidación local conserva árbol fuente `a9d1daa880649ac1311fbc0c4b680ad154708dde`;
+SHA originales de evidencia retenidos en `refs/1528/pre-consolidation` y manifiesto.
+Verificación manual: Launcher idle/lanzando en 7 tamaños; seleccionar y escalar
+Delta y demás widgets a varios zooms; cambiar tema con sidebar abierta/contraída y
+reiniciar para comprobar persistencia. Revisión visual registrada, sin identidad
+pixel a pixel de datos, controles productivos o ausencias aprobadas de #1535.
+`docs/roadmap/plan.md` ausente en esta base; se conserva #1535 como seguimiento.
+Sin push, PR, merge, CI remoto, promoción ni release; solo comentario de #1528
+expresamente solicitado. Siguiente acción: revisión aislada por Isaac/orquestador.
 
 ## #1496 — Calidad UI R0–R3, correcciones sobre R4 (2026-10-08)
 

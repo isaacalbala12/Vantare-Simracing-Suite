@@ -47,6 +47,7 @@ pub struct Choice {
     trigger_bounds: Option<gpui::Bounds<gpui::Pixels>>,
     reference_trigger: bool,
     compact_width: Option<f32>,
+    sidebar_expanded: Option<bool>,
 }
 impl EventEmitter<ChoiceChanged> for Choice {}
 impl Choice {
@@ -80,6 +81,7 @@ impl Choice {
             trigger_bounds: None,
             reference_trigger: false,
             compact_width: None,
+            sidebar_expanded: None,
         }
     }
     pub fn reference_trigger(&mut self) {
@@ -88,6 +90,10 @@ impl Choice {
     /// Variante estrecha para opciones contextuales; conserva menú, foco y teclado.
     pub fn compact(&mut self, width: f32) {
         self.compact_width = Some(width.clamp(72.0, FIELD_W));
+    }
+    /// El mismo selector, foco y menú con una entrada del rail abierto o contraído.
+    pub fn sidebar_trigger(&mut self, expanded: bool) {
+        self.sidebar_expanded = Some(expanded);
     }
     pub fn focus_handle(&self) -> FocusHandle {
         self.focus.clone()
@@ -221,13 +227,13 @@ impl Choice {
             )])))
         })
     }
-    fn dropdown(&self, cx: &mut Context<Self>) -> Div {
+    fn dropdown_trigger(&self, cx: &mut Context<Self>) -> gpui::Stateful<Div> {
         let value = self
             .state
             .selected
             .and_then(|i| self.state.options.get(i))
             .map_or("Seleccionar…", |o| o.label.as_str());
-        let trigger = field("choice-trigger", cx)
+        field("choice-trigger", cx)
             .aria_label(format!("{}: {value}", self.label))
             .relative()
             .w(px(FIELD_W))
@@ -244,27 +250,45 @@ impl Choice {
             .when(self.reference_trigger, |field| {
                 field.bg(tint(ink(cx), 7.0 / 255.0))
             })
-            .child(
-                self.trigger_label(
-                    value.to_owned(),
-                    if self.compact_width.is_some() {
-                        12.0
-                    } else if self.reference_trigger {
-                        14.0
-                    } else {
-                        BODY
-                    },
-                    500,
-                    ink_2(cx),
-                    cx,
+            .when_some(self.sidebar_expanded, |trigger, expanded| {
+                trigger
+                    .w(px(if expanded { 248.0 } else { 48.0 }))
+                    .h(px(if expanded { 40.0 } else { 44.0 }))
+                    .min_w_0()
+                    .px(px(10.0))
+                    .gap(px(10.0))
+                    .border_0()
+                    .bg(gpui::transparent_black())
+                    .rounded(px(skin(cx).radius.sm))
+                    .justify_center()
+                    .child(super::icon("v-palette", 21.0, skin(cx).accent_bright))
+                    .tooltip(|_, cx| cx.new(|_| super::Tooltip("Cambiar tema".into())).into())
+            })
+            .when(self.sidebar_expanded != Some(false), |trigger| {
+                trigger.child(
+                    self.trigger_label(
+                        value.to_owned(),
+                        if self.compact_width.is_some() {
+                            12.0
+                        } else if self.reference_trigger {
+                            14.0
+                        } else {
+                            BODY
+                        },
+                        500,
+                        ink_2(cx),
+                        cx,
+                    )
+                    .flex_1()
+                    .min_w_0()
+                    .whitespace_nowrap()
+                    .text_ellipsis()
+                    .overflow_hidden(),
                 )
-                .flex_1()
-                .min_w_0()
-                .whitespace_nowrap()
-                .text_ellipsis()
-                .overflow_hidden(),
-            )
-            .child(super::icon("down", 14.0, ink_3(cx)).flex_none())
+            })
+            .when(self.sidebar_expanded != Some(false), |trigger| {
+                trigger.child(super::icon("down", 14.0, ink_3(cx)).flex_none())
+            })
             .on_click(cx.listener(|this, _, window, cx| {
                 if !this.state.enabled {
                     return;
@@ -272,7 +296,10 @@ impl Choice {
                 this.focus.focus(window, cx);
                 this.state.toggle();
                 cx.notify();
-            }));
+            }))
+    }
+    fn dropdown(&self, cx: &mut Context<Self>) -> Div {
+        let trigger = self.dropdown_trigger(cx);
         let mut result = div().child(trigger);
         if self.state.open {
             let mut list = div()

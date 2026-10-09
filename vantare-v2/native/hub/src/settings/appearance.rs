@@ -103,6 +103,14 @@ impl Store {
 
 pub(super) fn wire(state: &State, window: &Window, cx: &mut Context<Hub>) {
     cx.subscribe_in(
+        &state.quick_theme,
+        window,
+        |hub, _, event: &crate::orbit::ChoiceChanged, window, cx| {
+            hub.settings_palette(event.0, window, cx);
+        },
+    )
+    .detach();
+    cx.subscribe_in(
         &state.font,
         window,
         |hub, _, event: &crate::orbit::ChoiceChanged, window, cx| {
@@ -179,6 +187,12 @@ impl Hub {
         }
         // Si falla el disco, los selectores vuelven a la configuración aplicada.
         let saved = self.settings.appearance.settings;
+        self.settings.quick_theme.update(cx, |choice, cx| {
+            choice.state.selected = theme::Palette::ALL
+                .iter()
+                .position(|palette| *palette == saved.palette);
+            cx.notify();
+        });
         self.settings.font.update(cx, |choice, cx| {
             choice.state.selected = Some(saved.interface_font as usize);
             cx.notify();
@@ -413,12 +427,12 @@ mod tests {
     fn pointer_reaches_both_limits_at_the_thumb_centres_and_beyond() {
         for (index, min, max) in [(0, 80, 120), (1, 50, 100)] {
             assert_eq!(slider_pointer_value(index, 64.0), min);
-            assert_eq!(slider_pointer_value(index, 178.0), max);
-            assert_eq!(slider_pointer_value(index, 185.0), max);
+            assert_eq!(slider_pointer_value(index, 226.0), max);
+            assert_eq!(slider_pointer_value(index, 233.0), max);
             assert_eq!(slider_pointer_value(index, 0.0), min);
         }
-        assert_eq!(slider_pointer_value(0, 175.0), 119);
-        assert_eq!(slider_pointer_value(0, 177.0), 120);
+        assert_eq!(slider_pointer_value(0, 223.0), 119);
+        assert_eq!(slider_pointer_value(0, 225.0), 120);
     }
     fn directory(label: &str) -> PathBuf {
         let nonce = std::time::SystemTime::now()

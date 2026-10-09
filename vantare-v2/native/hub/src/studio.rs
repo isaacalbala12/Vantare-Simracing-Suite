@@ -472,6 +472,14 @@ impl Prepared {
                 .instances
                 .first()
                 .map(|item| item.id.clone());
+            if std::env::var("VANTARE_CAPTURE_WIDGET").as_deref() == Ok("delta") {
+                editor.selected = editor
+                    .layout()
+                    .instances
+                    .iter()
+                    .find(|item| item.settings.kind() == Kind::Delta)
+                    .map(|item| item.id.clone());
+            }
         }
         #[cfg(feature = "parity-capture")]
         if let Some(name) = capture_name() {
@@ -694,7 +702,7 @@ impl CanvasFrame {
             .map_or((self.item.x, self.item.y), |drag| drag.preview);
         let (x, y) = self.resize.as_ref().map_or((x, y), |r| r.preview.0);
         let (x, y) = self.nudge_position.unwrap_or((x, y));
-        let dimensions = self.renderer.read(cx).frame_size();
+        let dimensions = self.renderer.read(cx).painted_size();
         div()
             .id("widget-frame")
             .absolute()
@@ -1124,10 +1132,11 @@ impl Studio {
                 this.select(id.clone(), cx);
                 frame.update(cx, |frame, cx| {
                     if let Some(handle) = event.1 {
-                        let size = frame
-                            .item
-                            .geometry
-                            .resolved(frame.renderer.read(cx).wanted_size());
+                        let painted = frame.renderer.read(cx).painted_size();
+                        let size = vantare_ui::geometry::Size {
+                            width: painted.0,
+                            height: painted.1,
+                        };
                         frame.resize = Some(Resize {
                             pointer: (event.0.x.into(), event.0.y.into()),
                             origin: (frame.item.x, frame.item.y),
@@ -1861,7 +1870,7 @@ impl Studio {
                 if matches > 0 {
                     content_width += 8.0;
                 }
-                content_width += 160.0;
+                content_width += 180.0;
                 matches += 1;
                 list = list.child(self.widget_row(index, item, cx));
             }
@@ -1899,7 +1908,7 @@ impl Studio {
             .aria_label(item.settings.kind().label())
             .tab_index(0)
             .h(px(48.0))
-            .w(px(160.0))
+            .w(px(180.0))
             .flex_none()
             .border_1()
             .border_color(gpui::rgba(orbit::line(cx)))
@@ -1912,11 +1921,21 @@ impl Studio {
                 orbit::nav_active(row, cx).shadow(orbit::selection_ring(cx))
             })
             .hover(|row| row.bg(rgb(orbit::surface_2(cx))))
-            .child(orbit::icon(
-                if lock.is_some() { "v-lock" } else { "v-studio" },
-                20.0,
-                orbit::ink_2(cx),
-            ))
+            .child(
+                div()
+                    .size(px(30.0))
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(orbit::skin(cx).radius.sm))
+                    .bg(rgb(orbit::surface_3(cx)))
+                    .child(orbit::icon(
+                        if lock.is_some() { "v-lock" } else { "v-studio" },
+                        16.0,
+                        orbit::ink_2(cx),
+                    )),
+            )
             .aria_selected(selected)
             .child(
                 div()
@@ -2905,20 +2924,20 @@ impl Studio {
             .flex()
             .items_center()
             .gap(px(8.0))
-            .child(Self::toolbar_zoom_out_control(cx))
-            .child(self.toolbar_zoom_label(cx))
-            .child(Self::toolbar_zoom_in_control(cx))
             .when_some(self.resolution_choice.clone(), |row, choice| {
                 row.child(choice)
             })
             .child(
                 orbit::mono_text(selection, 11.0, orbit::ink_2(cx), cx)
+                    .flex_1()
                     .min_w_0()
                     .whitespace_nowrap()
                     .overflow_hidden()
                     .text_ellipsis(),
             )
-            .child(div().flex_1())
+            .child(Self::toolbar_zoom_out_control(cx))
+            .child(self.toolbar_zoom_label(cx))
+            .child(Self::toolbar_zoom_in_control(cx))
             .child(text("Telemetría · — Hz", 11.0, 500, orbit::ink_3(cx), cx))
     }
     fn scenario_controls(&self, cx: &mut Context<Self>) -> gpui::Div {
@@ -3472,6 +3491,50 @@ mod tests {
                 });
             }
             assert!(sizes.windows(2).all(|pair| pair[0] == pair[1]));
+            cx.quit();
+        });
+    }
+    #[test]
+    fn selection_matches_painted_bounds_for_every_widget_and_zoom() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            let frame = studio.read(cx).frames[0].1.clone();
+            for &kind in Kind::ALL {
+                for factor in [0.5, 1.0, 2.0] {
+                    frame.update(cx, |frame, cx| {
+                        frame.item.settings = Settings::default_for(kind);
+                        frame.renderer.update(cx, |renderer, _| {
+                            *renderer =
+                                Overlay::configured(&frame.item.settings, Preferences::default());
+                            let natural = renderer.wanted_size();
+                            renderer.set_frame_size(Some(vantare_ui::geometry::Size {
+                                width: natural.0 * factor,
+                                height: natural.1 * factor * 2.0,
+                            }));
+                        });
+                        let natural = frame.renderer.read(cx).wanted_size();
+                        for zoom in [0.1, 0.5, 1.0, 2.5, 4.0] {
+                            frame.preview_scale = zoom;
+                            frame.content_scale = 1.0;
+                            frame.selected = true;
+                            let expected = (natural.0 * factor * zoom, natural.1 * factor * zoom);
+                            let mut host = frame.element(cx);
+                            assert_eq!(
+                                host.style().size.width,
+                                Some(px(expected.0).into()),
+                                "{kind:?} ancho a {zoom}"
+                            );
+                            assert_eq!(
+                                host.style().size.height,
+                                Some(px(expected.1).into()),
+                                "{kind:?} alto a {zoom}"
+                            );
+                        }
+                    });
+                }
+            }
             cx.quit();
         });
     }

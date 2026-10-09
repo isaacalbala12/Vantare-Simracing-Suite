@@ -538,13 +538,7 @@ impl Launcher {
                 .find(|app| app.id == step.app_id);
             let event = self.step_event(profile, index);
             let (label, tone) = self.step_state(profile, index);
-            let icon_size = if compact {
-                48.0
-            } else if running {
-                80.0
-            } else {
-                48.0
-            };
+            let icon_size = if compact { 48.0 } else { 88.0 };
             if !running && index > 0 {
                 row = row.child(
                     orbit::text("›", 20.0, 400, orbit::ink_3(cx), cx)
@@ -558,7 +552,13 @@ impl Launcher {
                 .min_w_0()
                 .flex()
                 .flex_col()
-                .gap(px(if compact { 8.0 } else { 12.0 }))
+                .gap(px(if running {
+                    if compact { 8.0 } else { 12.0 }
+                } else if compact {
+                    6.0
+                } else {
+                    8.0
+                }))
                 .p(px(if running {
                     0.0
                 } else if compact {
@@ -566,7 +566,7 @@ impl Launcher {
                 } else {
                     12.0
                 }))
-                .rounded(px(18.0))
+                .rounded(px(orbit::skin(cx).radius.lg))
                 .when(!running, |card| {
                     card.justify_between()
                         .border_1()
@@ -576,17 +576,7 @@ impl Launcher {
                 .when(running, |card| card.items_center().text_center())
                 .when(running && label == "En espera", |card| card.opacity(0.45));
             if let Some(app) = app {
-                card = card.child(app_icon(
-                    app,
-                    if compact {
-                        48.0
-                    } else if running {
-                        80.0
-                    } else {
-                        48.0
-                    },
-                    cx,
-                ));
+                card = card.child(app_icon(app, icon_size, cx));
             }
             if running
                 && event.is_some_and(|event| {
@@ -628,6 +618,27 @@ impl Launcher {
                     .truncate()
                     .w_full(),
                 )
+                .when(!running && !compact, |card| {
+                    let delay = if index == 0 {
+                        profile.effective_policy().first_step_delay
+                    } else {
+                        step.delay_seconds
+                    };
+                    card.child(
+                        orbit::text(
+                            if delay == 0 {
+                                "Sin espera adicional".to_owned()
+                            } else {
+                                format!("Espera {delay} s antes del paso")
+                            },
+                            12.0,
+                            400,
+                            orbit::ink_2(cx),
+                            cx,
+                        )
+                        .line_height(px(18.0)),
+                    )
+                })
                 .when(running && self.adapt.show_notes(), |card| {
                     card.child(
                         orbit::text("Aplicación del perfil", 12.0, 400, orbit::ink_2(cx), cx)
@@ -848,7 +859,10 @@ impl Launcher {
             .relative()
             .overflow_hidden()
             .flex_none()
-            .h(px(hero_height(adapt)))
+            // R9.7: la cadena determina el alto; una estimación fija recorta
+            // las últimas filas cuando cambia la tipografía o el contenido.
+            .h_auto()
+            .when(running, |card| card.flex_grow(1.0))
             .gap(px(if compact { 10.0 } else { 14.0 }))
             .p(px(if compact { 20.0 } else { 28.0 }))
             .child(
@@ -900,27 +914,28 @@ impl Launcher {
         } else {
             64.0
         }));
-        card =
-            if running {
-                card.child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap(px(12.0))
-                        .child(title.flex_1().min_w_0())
-                        .child(actions),
-                )
-                .when(adapt.show_notes(), |card| {
-                    card.child(orbit::text(description, 14.0, 400, orbit::ink_2(cx), cx).truncate())
-                })
-            } else {
-                card.child(
-                    div().flex().flex_col().gap(px(8.0)).child(title).child(
-                        orbit::text(description, 14.0, 400, orbit::ink_2(cx), cx).truncate(),
-                    ),
-                )
-                .child(actions)
-            };
+        card = if running {
+            card.child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(12.0))
+                    .child(title.flex_1().min_w_0())
+                    .child(actions),
+            )
+            .when(adapt.show_notes(), |card| {
+                card.child(orbit::text(description, 14.0, 400, orbit::ink_2(cx), cx).truncate())
+            })
+        } else {
+            card.child(
+                div().flex().flex_col().gap(px(8.0)).child(title).child(
+                    orbit::text(description, 14.0, 400, orbit::ink_2(cx), cx)
+                        .max_w(px(650.0))
+                        .line_height(px(20.0)),
+                ),
+            )
+            .child(actions)
+        };
         if running {
             let fraction = if profile.steps.is_empty() {
                 0.0
@@ -944,8 +959,18 @@ impl Launcher {
             );
         }
         card.child(
-            self.showcase_steps(profile, running, compact, cx)
-                .mt(px(0.0)),
+            div()
+                .flex_none()
+                .when(running, |chain| {
+                    chain
+                        .flex_grow(1.0)
+                        .flex()
+                        .flex_col()
+                        .justify_center()
+                        .pt(px(if compact { 24.0 } else { 48.0 }))
+                        .pb(px(if compact { 0.0 } else { 48.0 }))
+                })
+                .child(self.showcase_steps(profile, running, compact, cx)),
         )
     }
 
@@ -1026,12 +1051,21 @@ impl Launcher {
     fn showcase_profiles(&self, compact: bool, cx: &mut Context<Self>) -> Stateful<Div> {
         let width = if compact { 200.0 } else { 284.0 };
         let adapt = self.adapt;
-        let grid = adapt.show_optional();
-        let height = poster_height(adapt, self.store.document.profiles.len());
-        let viewport_height = if grid && self.store.document.profiles.len() > 1 {
-            height * 2.0 + 12.0
+        let running = self.launch_progress().is_some();
+        let grid = !running && adapt.show_optional();
+        let cover_badges = !running || adapt.height >= 820.0;
+        let viewport_height = f32::from(self.profile_scroll.bounds().size.height);
+        let rows = if grid && self.store.document.profiles.len() > 1 {
+            2.0
         } else {
-            height
+            1.0
+        };
+        let height = if running {
+            if adapt.height < 820.0 { 140.0 } else { 180.0 }
+        } else if viewport_height > 0.0 {
+            ((viewport_height - 12.0 * (rows - 1.0)) / rows).max(140.0)
+        } else {
+            poster_height(adapt, self.store.document.profiles.len())
         };
         let content_width = self
             .store
@@ -1075,6 +1109,7 @@ impl Launcher {
                     )
                     .flex_none()
                     .w(px(width))
+                    .h(px(height))
                     .when(grid, |card| card.w_full().h(px(height)))
                     .overflow_hidden()
                     .gap(px(8.0))
@@ -1088,7 +1123,13 @@ impl Launcher {
                         div()
                             .relative()
                             .overflow_hidden()
-                            .h(px(if compact { 76.0 } else { 120.0 }))
+                            .h(px(if running {
+                                64.0
+                            } else if compact {
+                                76.0
+                            } else {
+                                120.0
+                            }))
                             .flex_none()
                             .flex_1()
                             .min_h_0()
@@ -1107,7 +1148,8 @@ impl Launcher {
                                     .opacity(0.8),
                             )
                             .when(
-                                self.launch_progress().is_some()
+                                cover_badges
+                                    && self.launch_progress().is_some()
                                     && self
                                         .last_profile
                                         .as_ref()
@@ -1121,7 +1163,7 @@ impl Launcher {
                                     )
                                 },
                             )
-                            .when(profile.favorite, |cover| {
+                            .when(profile.favorite && cover_badges, |cover| {
                                 cover.child(
                                     orbit::chip("★ Favorito", Tone::Accent, cx)
                                         .h(px(22.0))
@@ -1221,6 +1263,9 @@ impl Launcher {
         div()
             .id("showcase-profiles")
             .flex_1()
+            .when(running, |profiles| {
+                profiles.flex_none().h(px(height + 30.0))
+            })
             .min_h_0()
             .flex()
             .flex_col()
@@ -1230,13 +1275,13 @@ impl Launcher {
                 div()
                     .id("showcase-profile-carousel")
                     .w_full()
-                    .h(px(viewport_height))
-                    .flex_none()
+                    .flex_1()
+                    .min_h_0()
                     .overflow_x_scroll()
                     .when(grid, gpui::StatefulInteractiveElement::overflow_y_scroll)
                     .track_scroll(&scroll)
                     .on_scroll_wheel(cx.listener(|this, event: &gpui::ScrollWheelEvent, _, cx| {
-                        if this.adapt.show_optional() {
+                        if this.launch_progress().is_none() && this.adapt.show_optional() {
                             return;
                         }
                         let delta = event.delta.pixel_delta(px(24.0));

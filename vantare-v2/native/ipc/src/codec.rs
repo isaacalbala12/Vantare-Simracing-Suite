@@ -697,6 +697,26 @@ pub(crate) mod tests {
         }
     }
 
+    /// 104 coches (máximo de LMU/ACC) con todas las señales y nombres largos:
+    /// el marco debe caber holgado en `MAX_MESSAGE` (#1537).
+    #[test]
+    fn a_full_104_car_photo_fits_the_frame_with_margin() {
+        let mut distinct = Distinct::new(0, 0, 3);
+        let mut snapshot = distinct.snapshot();
+        snapshot.state.cars = (1..=104).map(|id| distinct.car(id)).collect();
+        for car in &mut snapshot.state.cars {
+            car.driver.name = "Ñandú Pérez-Álvarez de la Fuente \"Rápido\"".into();
+            car.vehicle = "Oreca 07 Gibson LMP2 (Pro-Am) — #104".into();
+        }
+        let len = frame(&Message::Snapshot(SnapshotDto::from(&snapshot))).len();
+        eprintln!("foto de 104 coches: {len} bytes");
+        assert!(
+            len < MAX_MESSAGE / 2,
+            "{len} bytes: menos del doble de margen"
+        );
+        assert_eq!(round_trip(&snapshot), snapshot);
+    }
+
     fn frame(message: &Message) -> Vec<u8> {
         let mut bytes = Vec::new();
         write_message(&mut bytes, message).unwrap();

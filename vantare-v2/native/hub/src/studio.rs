@@ -1942,6 +1942,7 @@ impl Studio {
         self.init_controls(window, cx);
         let stage = self.preview_stage(cx);
         let studio = cx.entity().downgrade();
+        let drag_target = studio.clone();
         let measure = gpui::canvas(
             move |bounds, _, cx| {
                 if let Some(scale) =
@@ -1969,7 +1970,16 @@ impl Studio {
                     });
                 }
             },
-            |_, (), _, _| {},
+            move |_, (), window, _| {
+                let studio = drag_target.clone();
+                window.on_mouse_event(move |event: &MouseMoveEvent, phase, _, cx| {
+                    if phase == gpui::DispatchPhase::Capture {
+                        // El gesto sigue aunque el puntero salga del hitbox de Studio.
+                        // Una entidad cerrada ya no conserva ningún gesto.
+                        let _ = studio.update(cx, |this, cx| this.move_drag(event, cx));
+                    }
+                });
+            },
         )
         .absolute()
         .top_0()
@@ -2020,7 +2030,6 @@ impl Render for Studio {
             .flex()
             .flex_col()
             .overflow_hidden()
-            .on_mouse_move(cx.listener(|this, event, _, cx| this.move_drag(event, cx)))
             .on_mouse_up(
                 MouseButton::Left,
                 cx.listener(|this, event: &gpui::MouseUpEvent, _, cx| {

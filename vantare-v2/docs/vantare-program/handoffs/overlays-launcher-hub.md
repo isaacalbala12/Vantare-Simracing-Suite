@@ -5957,3 +5957,7 @@ S3: opacidad solo en el contenido Overlay compartido; borde y etiqueta de selecc
 permanecen opacos incluso al 0%. No cambia el alfa persistido ni el renderer de pista.
 Regresión visual 0/25/100 con ratón y teclado se ejecutará en release; sin test
 headless que simule composición: se comparan los píxeles de selección reales.
+S4: movimiento del gesto observado en captura de ventana, no solo dentro del hitbox
+de Studio; mantiene invalidación de CanvasFrame y una única escritura al soltar.
+Ratón fuera del centro y fuera de ventana se revalidarán físicamente en release;
+regresión de eventos nativos, no una simulación de hitboxes.

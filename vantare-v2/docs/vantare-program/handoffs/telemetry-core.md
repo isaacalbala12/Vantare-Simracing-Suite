@@ -3398,3 +3398,15 @@ Studio usó hook temporal exclusivo parity-capture para layout externo por widge
 Informe completo y verificación manual: `C:/tmp/fase2/informe-1473-integracion.md`.
 Sin evidencia LMU live/rendimiento/OBS/DPI alternativo/Mac; aceptación del orquestador pendiente. plan.md ausente en esta base: no se inventa roadmap alternativo.
 Solo merges locales autorizados por brief; sin push, PR, CI remota, promoción o release. Checkout principal y beta preservados.
+
+### #1496 · integración Windows y entrega local para revisión (9-oct)
+Rama `vantareapp/isa-1496-integracion-prueba`, base `e55a43b3`, fuente `5b950d79`;
+las cinco áreas están integradas localmente; detalles en [handoff Hub](overlays-launcher-hub.md).
+Clippy -Dwarnings, nextest1397/1397 (7skips), telemetría21/21 y lifecycle18 PASS.
+Regresión de movimiento reducido de las cuatro secuencias Vantare, incluido Fuel, PASS.
+DXGI Present/s de API: drag114.24 frente116.98 en base; opacidad6.69 ambas.
+Sin FPS mostrados/input→Present/juego/OBS; Delta última vuelta/mejor absoluta sin señal pendiente.
+Setup0.0.974 local, packaging Bash PASS y QA desinstalada; huella real idéntica.
+Sin logout/login Windows, CI remota, pgTAP/DB, push/PR/promoción/release/deploy.
+Tracker GitHub #1496: ninguna escritura Notion. Evidencia/manual:
+`C:/tmp/feedback-0910/integracion-evidence`; resumen `informe-integracion.md`.

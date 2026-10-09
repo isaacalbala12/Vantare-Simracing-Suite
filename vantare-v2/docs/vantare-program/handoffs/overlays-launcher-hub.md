@@ -6239,16 +6239,72 @@ Siguiente: puntos 11-18 y 20 del brief C:/tmp/feedback-0910/studio.md, regresion
 - Profiler GPUI Release externo, fuente Boxes LMU V0 1/12 y layout iguales, cuatro widgets; tres tandas20 gestos por acción. Present/s observados opacidad2,57→2,74 y drag4,58→2,89; p95 Draw16,79→16,26ms y15,70→16,36ms. **Resultado inconcluso para FPS sostenidos**: entrada CUA corta/variable y dibujo bajo demanda; no autoriza afirmar mejora ni regresión. Fotos contienen un coche visible, ventanas maximizadas difieren1 punto lógico de alto. Trazas/markers/analizador/piloto y límites en `~/evidence/fb-studio/VERIFICACION.md`; falta entrada continua controlada y carga real.
 - Evidencia local `~/evidence/fb-studio/`, informe≤12 líneas y capturas revisadas. README del Hub actualizado al contrato actual; el banco no se distribuye, no usa servicios/datos reales ni añade profiler al producto. Siguiente: review de Claude, gates/gestos continuos Windows, decisión de referencias Delta núcleo y aceptación de Isaac. Entrega aislada para revisión; sin push/PR/merge/release/acciones comerciales; únicas escrituras externas, seguimiento Notion autorizado.
 
-### #1496 · integración del feedback 9-oct en Windows (en verificación)
-Base e55a43b3, rama vantareapp/isa-1496-integracion-prueba, worktree C:/tmp/vw3-integracion/vantare-v2.
-Cinco merges no-ff en orden: shell 38d24188, Relative 15aa2964, calroad 188069d2,
-Ajustes ae7d1f4b y Studio f59e405f (incluye #1497). Conflictos acumulados en
-changelog y handoffs; kit único Orbit y renderizadores productivos compartidos.
-Se conservan atajos/preview de Ajustes y repetición/inspector/widgets de Studio.
-Run y toast se separan por la identidad instalada validada; producción conserva
-VantareNative.Hub. Reducir animaciones también termina los movimientos del nuevo
-sistema Vantare, incluido Fuel. Regresiones añadidas; gates completos en curso.
-QA/Setup 0.0.974 y FPS pendientes de verificación, sin afirmar resultados previos.
-No Notion: instrucción explícita de Isaac, tracker GitHub #1496. plan.md ausente
-en base/origin/nightly, sin recrearlo ni publicar roadmap. Evidencia externa:
-C:/tmp/feedback-0910/integracion-evidence. Instalación real excluida; sin delegación.
+### #1496 · cierre de integración del feedback 9-oct en Windows
+
+Base `e55a43b3`, rama `vantareapp/isa-1496-integracion-prueba`, worktree
+`C:/tmp/vw3-integracion/vantare-v2`. Fuente de binarios/gates `5b950d79`;
+árbol native `84a5cf7526c6a056c92705f471e4c341527f1ed4`. El siguiente commit
+solo actualiza los tres handoffs. GitHub #1496 es el tracker: no se escribió en
+Notion; las entradas Mac previas quedan como historial. plan.md no existe en la
+base ni en origin/nightly consultado; no se recrea ni se publica roadmap.
+
+Cinco merges locales no-ff, en orden: `377f8b99` (shell `38d24188`), `db3e56d0`
+(Relative `15aa2964`), `84511395` (calroad `188069d2`), `e8d28eb4` (Ajustes
+`ae7d1f4b`), `3c8c4edf` (Studio `f59e405f`, incluye #1497). Kit único Orbit;
+changelog/handoffs acumulados y conflictos de UI resueltos conservando cada área.
+Correcciones de integración: identidad QA distinta para Run/toasts, reducción de
+movimiento aplicada también a los nuevos widgets, y regresión del borde de
+selección absoluto fuera de la geometría/opacidad del contenido. Este último test
+estaba desalineado con #1497: primer nextest falló ahí; logs originales conservados.
+
+Gates Windows por cola, targets propios en E: fmt y clippy workspace/all-targets
+-D warnings PASS; nextest 1397/1397 PASS, siete skips configurados; lifecycle
+5 tests + 13 escenarios PASS; telemetría 21/21 PASS. Los fallos Mac de Hub/UI
+import-profile/Services PNG no se reproducen en la ejecución completa final.
+Go completo PASS tras construir frontend/dist (primera ejecución sin embed
+conservada); frontend build/typecheck PASS; Python calendario 3 y ClickUp 7 PASS.
+Packaging desde Bash: general175, beta99, instalador50, configuración24,
+remote-feed9, uninstall2, build-guards2 y MSIX12 PASS. MSIX real, pgTAP/DB,
+CI remota, juego/OBS/LMU físicos y logout/login Windows no ejecutados.
+
+Setup beta local 0.0.974 en `E:/tmp/beta-local/0.0.974/`, sin firma Authenticode,
+fuente limpia `5b950d79`; SHA256 Setup normal
+`9AF854DBC05FBAC1F4F045D1450DDDA9674F752AB0FC839A27C8A0177CDC3712`.
+Instalación QA1492 bajo carpeta propia: NSIS/consentimiento/bootstrap/minimizado
+PASS, cero ventanas de widgets al arrancar. RegisterHotKey detecta conflicto
+externo, registra al liberarlo, ejecuta una vez un helper QA con Hub cerrado y
+libera al salir; no se arrancó ningún juego. Run se creó/leyó/retiró en un valor
+QA usando las funciones Win32 productivas incluidas sin cambios en un helper;
+bootstrap instalado comprobado aparte, sin simular inicio real de sesión.
+Recursos HICON ID1/NSIS y captura física del icono de taskbar instalados verificados.
+Notificación nativa: Hub solicita el toast bajo AUMID QA; Windows devuelve
+`DisabledForUser`, History0 y sin banner. Entrega visible pendiente con avisos
+habilitados por Isaac; no se alteraron sus preferencias globales. No se declara
+la notificación entregada. Banco OS sin capture compilado como experimento
+externo, nunca ejecutado ni distribuido; ejemplo temporal retirado.
+
+Studio QA: ruido de clic no escribe, opacidad guarda al soltar/un undo, flecha
+sostenida acelera/se detiene/un undo, controles y ejemplos de Standings/Relative
+así como referencias/formato/estilo Delta PASS; capturas reales inspeccionadas.
+PresentMon2.6.0: 1920x1080, cuatro widgets, entrada física59Hz, dos tandas por
+acción/versión. Mediana DXGI Present/s: drag116.98(base)→114.24(integración),
+opacidad6.6916→6.6919 (paso5puntos/dibujo bajo demanda). API Present medida;
+seguimiento completo no produjo frames propios. FPS mostrados en pantalla,
+input→Present y rendimiento con juego/OBS siguen sin prueba. No se afirma mejora
+ni regresión causal con dos tandas y una base cuyos widgets difieren.
+
+QA desinstalada, registros/accesos retirados y datos QA conservados; ningún proceso
+QA ni mutex de captura retenido. Huella de instalación real anterior/posterior
+idéntica `D0EF194546F35BF4B0AA745883B5D8FDE88AF326AFA2BAFAF18F8B6D8D4AF7ED`.
+Evidencia `C:/tmp/feedback-0910/integracion-evidence/`; inventario completo en
+archivos.json/archivos.md y resumen corto en informe-integracion.md. Revisión
+manual: capturas Studio/consentimiento/taskbar, hotkeys/results.json,
+installed-boot.json, run-registration.json, toast-status.json y packaging-current.
+Pendientes funcionales ya declarados por las áreas: idioma Hub completo/Automático,
+Delta última vuelta/mejor absoluta sin señal independiente, prueba real de datos
+Relative y despliegue/calendario-roadmap Supabase no aplicados aquí.
+
+Entrega local para revisión/aceptación de Isaac u orquestador. Sin delegación,
+push, PR, CI remota, promoción a nightly/testers/master, release, deploy ni acción
+comercial. Acciones externas: lectura SSH Mac y comentarios de seguimiento en
+GitHub #1496. Solo merges locales de las cinco ramas autorizadas.

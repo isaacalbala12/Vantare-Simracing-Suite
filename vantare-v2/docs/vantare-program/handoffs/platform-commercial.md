@@ -2113,3 +2113,15 @@ por referencia remota ausente: la continuación conserva la base autorizada.
 Sin push, PR, merge, promoción, instalación real, release, deploy ni cambios
 comerciales. Seguimiento Notion se actualiza y relee al entregar; no hay merge
 que verificar en este encargo.
+
+### #1496 · integración Windows y entrega local para revisión (9-oct)
+Rama `vantareapp/isa-1496-integracion-prueba`, base `e55a43b3`, fuente `5b950d79`;
+las cinco áreas están integradas localmente; detalles en [handoff Hub](overlays-launcher-hub.md).
+Run creado/leído/retirado con funciones Win32 productivas; bootstrap instalado minimizado,
+RegisterHotKey/conflicto/ejecución global/liberación y recursos/taskbar/NSIS PASS.
+Native toast bajo identidad QA solicitado; Windows DisabledForUser bloquea el banner.
+No se alteró la preferencia global de Isaac. Idioma Hub y Automático siguen pendientes.
+Setup0.0.974 local, packaging Bash PASS y QA desinstalada; huella real idéntica.
+Sin logout/login Windows, CI remota, pgTAP/DB, push/PR/promoción/release/deploy.
+Tracker GitHub #1496: ninguna escritura Notion. Evidencia/manual:
+`C:/tmp/feedback-0910/integracion-evidence`; resumen `informe-integracion.md`.

@@ -366,6 +366,32 @@ fn visible_settings(layout: &vantare_ui::layout::Layout) -> Vec<&Settings> {
         .collect()
 }
 
+// Alturas de los hijos que no se pueden reducir: cabecera, pie y acciones.
+const OVERLAY_HEADER: f32 = 24.0;
+const OVERLAY_TITLE: f32 = 33.0;
+const OVERLAY_SUBTITLE: f32 = 18.0;
+const OVERLAY_CHIPS: f32 = 28.0;
+const OVERLAY_METRICS: f32 = 54.0;
+const OVERLAY_ACTIONS: f32 = 36.0;
+const OVERLAY_INSET: f32 = 17.0; // padding 16 + borde 1
+const OVERLAY_GAP: f32 = 8.0;
+
+fn overlay_preview_height(adapt: orbit::Adapt, error: bool) -> f32 {
+    let optional = if adapt.show_optional() {
+        OVERLAY_CHIPS + OVERLAY_METRICS + 2.0 * OVERLAY_GAP
+    } else {
+        0.0
+    };
+    let reserved = 2.0 * OVERLAY_INSET
+        + OVERLAY_HEADER
+        + OVERLAY_TITLE
+        + OVERLAY_SUBTITLE
+        + OVERLAY_ACTIONS
+        + 4.0 * OVERLAY_GAP
+        + optional;
+    (lower_height(adapt, error) - reserved).clamp(0.0, 340.0)
+}
+
 impl Hub {
     fn home_loading(
         composer: Div,
@@ -460,6 +486,7 @@ impl Hub {
         preview: Option<Div>,
         widget_labels: &[&str],
         connected: bool,
+        preview_height: f32,
         adapt: orbit::Adapt,
         cx: &mut Context<Self>,
     ) -> Div {
@@ -470,12 +497,9 @@ impl Hub {
             .min_h_0()
             .p(px(16.0))
             .gap(px(8.0))
-            .child(orbit::neo_header("Overlay en pista", "v-studio", cx))
+            .child(orbit::neo_header("Overlay en pista", "v-studio", cx).h(px(OVERLAY_HEADER)))
             .when_some(preview, |card, preview| {
-                let height = (lower_height(adapt, false)
-                    - if adapt.show_optional() { 260.0 } else { 158.0 })
-                .clamp(110.0, 340.0);
-                card.child(preview.h(px(height)).flex_none())
+                card.child(preview.h(px(preview_height)).flex_none())
             })
             .when(!has_preview, |card| {
                 card.child(
@@ -499,25 +523,38 @@ impl Hub {
                     .flex()
                     .items_center()
                     .gap(px(8.0))
-                    .child(orbit::text("Layout local", 22.0, 600, orbit::ink(cx), cx).flex_1())
+                    .h(px(OVERLAY_TITLE))
+                    .flex_none()
+                    .child(
+                        orbit::text("Layout local", 22.0, 600, orbit::ink(cx), cx)
+                            .line_height(px(OVERLAY_TITLE))
+                            .flex_1(),
+                    )
                     .child(orbit::pill("Vista previa", orbit::Tone::Neutral, cx)),
             )
-            .child(orbit::text(
-                if connected {
-                    "Telemetría conectada"
-                } else {
-                    "Esperando simulador"
-                },
-                12.0,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ))
+            .child(
+                orbit::text(
+                    if connected {
+                        "Telemetría conectada"
+                    } else {
+                        "Esperando simulador"
+                    },
+                    12.0,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                )
+                .line_height(px(OVERLAY_SUBTITLE))
+                .h(px(OVERLAY_SUBTITLE))
+                .flex_none(),
+            )
             .when(adapt.show_optional(), |card| {
                 card.child(
                     div()
                         .flex()
                         .gap(px(6.0))
+                        .h(px(OVERLAY_CHIPS))
+                        .flex_none()
                         .children(
                             widget_labels
                                 .iter()
@@ -535,26 +572,38 @@ impl Hub {
             })
             .when(adapt.show_optional(), |card| {
                 card.child(
-                    div().flex().gap(px(16.0)).children(
-                        [
-                            ("—".to_owned(), "Hz"),
-                            (widget_count.to_string(), "Widgets visibles"),
-                            ("—".to_owned(), "CPU"),
-                        ]
-                        .map(|(value, label)| {
-                            div()
-                                .flex_1()
-                                .min_w_0()
-                                .child(orbit::text(value, 24.0, 600, orbit::ink(cx), cx))
-                                .child(orbit::text(label, 11.0, 400, orbit::ink_3(cx), cx))
-                        }),
-                    ),
+                    div()
+                        .flex()
+                        .h(px(OVERLAY_METRICS))
+                        .flex_none()
+                        .gap(px(16.0))
+                        .children(
+                            [
+                                ("—".to_owned(), "Hz"),
+                                (widget_count.to_string(), "Widgets visibles"),
+                                ("—".to_owned(), "CPU"),
+                            ]
+                            .map(|(value, label)| {
+                                div()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .child(
+                                        orbit::text(value, 24.0, 600, orbit::ink(cx), cx)
+                                            .line_height(px(36.0)),
+                                    )
+                                    .child(
+                                        orbit::text(label, 11.0, 400, orbit::ink_3(cx), cx)
+                                            .line_height(px(18.0)),
+                                    )
+                            }),
+                        ),
                 )
             })
             .child(
                 div()
                     .flex()
                     .flex_none()
+                    .h(px(OVERLAY_ACTIONS))
                     .gap(px(8.0))
                     .child(
                         orbit::primary_button("home-edit-overlay", "Editar overlay", cx).on_click(
@@ -935,9 +984,7 @@ impl Hub {
                 _ => state,
             };
         }
-        let preview_height = (lower_height(adapt, state == HomeState::AccessError)
-            - if adapt.show_optional() { 260.0 } else { 158.0 })
-        .max(90.0);
+        let preview_height = overlay_preview_height(adapt, state == HomeState::AccessError);
         let compact = adapt.center_width() < 1100.0;
         let short = adapt.density != orbit::adapt::Density::A;
         let connected = self.previous_source == Some(true);
@@ -1165,7 +1212,14 @@ impl Hub {
         let overlay = if state == HomeState::Empty && !connected {
             Self::home_overlay_onboarding(cx)
         } else {
-            Self::home_overlay(preview, &widget_labels, connected, adapt, cx)
+            Self::home_overlay(
+                preview,
+                &widget_labels,
+                connected,
+                preview_height,
+                adapt,
+                cx,
+            )
         };
 
         let activity = self.home_activity(cx);
@@ -1464,6 +1518,48 @@ mod tests {
         let settings = visible_settings(&layout);
         assert_eq!(settings.len(), 1);
         assert_eq!(settings[0].kind(), Kind::Pedals);
+    }
+    #[test]
+    fn overlay_children_fit_with_and_without_access_error() {
+        for (width, height) in [
+            (1280.0, 720.0),
+            (1366.0, 768.0),
+            (1440.0, 900.0),
+            (1512.0, 900.0),
+            (1920.0, 1080.0),
+            (1680.0, 1050.0),
+            (2048.0, 1152.0),
+        ] {
+            for open in [false, true] {
+                let adapt = orbit::Adapt::new(width, height, None, open);
+                for error in [false, true] {
+                    let preview = overlay_preview_height(adapt, error);
+                    assert!(
+                        preview >= 90.0,
+                        "preview útil en {width}x{height}, error={error}"
+                    );
+                    let mut children = vec![24.0, preview, 33.0, 18.0];
+                    if adapt.show_optional() {
+                        children.extend([28.0, 54.0]);
+                    }
+                    children.push(36.0); // botones completos, sin reducir su altura
+                    let mut bottom = 17.0;
+                    for (index, child) in children.into_iter().enumerate() {
+                        if index > 0 {
+                            bottom += 8.0;
+                        }
+                        bottom += child;
+                        assert!(
+                            bottom <= lower_height(adapt, error) - 17.0,
+                            "hijo {index} fuera del panel en {width}x{height}, error={error}: {bottom}"
+                        );
+                    }
+                    if error {
+                        assert!(preview <= overlay_preview_height(adapt, false));
+                    }
+                }
+            }
+        }
     }
     #[test]
     fn seven_sizes_leave_complete_lower_cards_in_both_rail_states() {

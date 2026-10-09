@@ -2,28 +2,38 @@
 
 ## #1530 — contrato nativo v9 (2026-10-09)
 
-Rama `vantareapp/isa-1530-contrato`, base `5e1da3f6`; código `02981840` local.
+Rama `vantareapp/isa-1530-contrato`, base `5e1da3f6`; código local
+`02981840`, docs `ca2ceb2b`, goldens `320744e8`, cierre del diagnóstico `de72d9cb`.
 Fotos live estrictas v9; Studio/Workshop/exportaciones conservan v7/v8/v9 con
-`snapshot_from_saved_json`; helper de fixtures explícito y 85 JSON regenerados
-cambiando solo la versión. Fixture v8 real congelada de la base en ipc/tests.
-Inventario completo: los demás consumidores son tests/escenas incorporadas v9
-(o examples); `runtime/flows/wire.rs` es live estricto. DuckDB almacena
-SeriesChunk; recording guarda Event, no SnapshotDto: sus contratos no cambian.
+`snapshot_from_saved_json`; helper de fixtures explícito y 85 JSON regenerados.
+Fixture v8 real congelada de la base en ipc/tests; el test abre v7/v8 sin
+reescribir el archivo. Inventario completo externo: 1530-consumidores.md.
+`runtime/flows/wire.rs` es live estricto. DuckDB guarda SeriesChunk y recording
+Event, no SnapshotDto: sus contratos no cambian.
 Aviso único de conexión en Hub y primer monitor de overlays, estable durante
-reintentos; se retira con foto/respuesta compatible. Sin cambios de acceso/licencia.
+reintentos; no modifica acceso/licencia. Versión de servicios/control sigue v4.
 README, AGENTS GitHub/nightly y native/AGENTS (§10) actualizados; ADR 0100
-registra Clerk/Polar/Supabase, dependencias compartidas y pendientes de #1514.
-Nextest 1406/1406 y lifecycle 18/18 verdes; fmt/Clippy finales y telemetría
-en curso. Primera telemetría detectó LF alterados y goldens aún v8: se
-restauraron bytes, se migraron solo etiquetas y se conserva hash ACC v8
-para probar los 190.308 DTO completos además del hash v9. Logs externos
-en C:/tmp/auditoria-arquitectura-v2; fallos iniciales se conservan.
+registra Clerk/Polar/Supabase y pendientes de confirmar con #1514. Seam de
+proyección única explícitamente en curso, #1531.
+Gates por cola: fmt y Clippy -D warnings verdes; Nextest 1406/1406 (7 skips
+canónicos), lifecycle 18/18; telemetría 21/21 (0 skips, ACC 602.540 s).
+Los 190.308 DTO ACC pasan hash v9 y hash v8 conservado, cambiando solo la
+etiqueta; 85 JSON y 10/3839/8 fotos gzip verificadas directamente contra Git
+base byte a byte salvo versión. Sin ampliar tolerancias ni tocar corpus/oráculos.
+Fallos iniciales conservados: cleanup Launcher con PermissionDenied (repetición
+con 2 threads verde), LF de fixture y goldens v8 corregidos, punto y coma de
+Clippy. Replay cortado por reinicio T3 sin resumen no cuenta como verde;
+repetición íntegra: C:/tmp/auditoria-arquitectura-v2/1530-telemetria-reinicio.log.
+Evidencia, lista exacta de archivos y verificación manual en ese directorio;
+informe-1530.md y comentario final en la issue. QA visual del banner, instalación
+mixta real, Linux/macOS y CI remota no ejecutados; no se afirma prueba física.
 Plan de partición de vistas ya grandes, fuera de #1530: Studio → canvas,
 inspector y catálogo/fotos (P1-A); services/view → cuenta, reportes y estado
-(P3); requieren sus propias issues. Aquí solo se adapta el lector/diagnóstico.
-Siguiente paso: cerrar gates, comentario final y revisión del orquestador; #1531
-y #1529 integran sus cambios por separado. Sin push, PR, CI remota, promoción,
-merge, release, deploy ni acciones comerciales. No se recrea el roadmap retirado.
+(P3), con sus propias issues. Aquí solo se adapta lector/diagnóstico.
+Siguiente paso: revisión del orquestador; integrar los hunks diagnósticos de
+services/view con #1529, preservar widgets de #1531 y retirada de legado #1533.
+Entrega local terminada; issue abierta para review. Sin push, PR, CI remota,
+promoción, merge, release, deploy ni acciones comerciales. No se recrea roadmap.
 
 ## #1511 — nombre visible Vantare (2026-10-08)
 

@@ -1413,18 +1413,27 @@ impl Hub {
         body
     }
     fn settings_update_hero(version: String, state: String, current: bool, cx: &gpui::App) -> Div {
-        div()
-            .h(px(138.0))
+        orbit::hero_surface(cx)
+            .min_h(px(112.0))
+            .flex_none()
             .w_full()
             .flex()
+            .flex_row()
             .items_center()
             .gap(px(20.0))
             .px(px(22.0))
             .py(px(20.0))
-            .rounded(px(orbit::RADIUS))
-            .border_1()
-            .border_color(rgba(orbit::line(cx)))
-            .bg(rgb(orbit::surface_1(cx)))
+            .child(
+                div()
+                    .size(px(52.0))
+                    .flex_none()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .rounded(px(orbit::skin(cx).radius.lg))
+                    .bg(rgb(orbit::skin(cx).accent))
+                    .child(orbit::icon("v-download", 26.0, 0x00ff_ffff)),
+            )
             .child(
                 div()
                     .flex_1()

@@ -115,6 +115,28 @@ fn lmu47_comparison_only_allows_one_ulp_in_yaw() {
     assert!(!same_lmu47_dto(&dto("0.0"), &dto("-0.0")));
 }
 
+/// El golden prueba el emisor; esto prueba el lector: cada DTO real congelado
+/// vuelve a los mismos bytes tras `Dto → Snapshot → Dto` (#1537).
+#[test]
+fn every_golden_dto_survives_the_reader_byte_for_byte() {
+    for (name, photos) in [("lmu", 10), ("lmu47", 3839), ("acc", 8)] {
+        let path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("tests/golden/{name}.jsonl.gz"));
+        let golden = BufReader::new(GzDecoder::new(
+            fs::File::open(path).expect("golden obligatorio"),
+        ));
+        let mut count = 0;
+        for line in golden.lines() {
+            let line = line.expect("gzip íntegro");
+            count += 1;
+            let snapshot = vantare_ipc::snapshot_from_json(&line).expect("DTO vigente");
+            let again = vantare_ipc::snapshot_to_json(&snapshot).expect("DTO");
+            assert!(again == line, "{name}: foto {count} cambia al releerla");
+        }
+        assert_eq!(count, photos, "{name}: corpus completo");
+    }
+}
+
 fn append(core: &mut Core, observation: Observation, output: &mut Vec<u8>) {
     let now = observation.origin.received_at;
     core.step(&mut Once(Some(observation)), now)

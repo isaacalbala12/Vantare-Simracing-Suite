@@ -1,3 +1,46 @@
+## #1528 — Ronda 5 tras revisión 8,980/10 (2026-10-10)
+
+Entrega aislada sobre `ba571aaa`, misma rama `vantareapp/isa-1528-paridad-visual`
+y base de integración `5e1da3f6`; cuatro commits, uno por grupo, sin delegación.
+Carteles recupera el bloque de fecha, título Display, favorita observada y tarjetas
+84 px XS / 118 amplias, con separación de 10 px. Duración real disponible en Tiempos.
+Agenda delimita días/franjas, compacta cabecera y filtros y conserva la escala
+estable: el test exige que los 30 px del evento caben tras padding y ambos bordes.
+Tiempos alinea Horario y las once opciones en XS; hero de unos 100 px, cuenta atrás
+real y acciones paralelas, filas 36/40 y scroll intactos; sin split/clima inventados.
+Studio ordena resolución/selección a la izquierda y zoom a la derecha; tarjetas
+180 px con iconos Orbit en marco, también en el cálculo del carrusel desplazable.
+Canvas, resolución del cliente, renderizador productivo y selección no se alteran.
+General da aire a filas y grupos a 1080; XS conserva todos los controles y las
+regresiones de densidades distintas. Apariencia ofrece muestras 148 px a 1080 y
+temas 56 px. Atajos integra Editar en el estado sin combinaciones, sin fila vacía;
+con combinaciones conserva filas y edición. Privacidad compacta el enlace de política;
+Cuenta usa hero Orbit y nombre Display 32. Launcher reposo usa iconos 88 en ancho,
+48 en compacto y mantiene altura natural. Diagnóstico recapturado por filas compartidas.
+Archivos: calendar/beta.rs y presentation.rs, studio.rs, settings/view.rs,
+orbit/kit.rs, services/view.rs, launcher/showcase.rs y este handoff.
+
+Gates por cola: fmt, Clippy workspace -D warnings, Nextest 1406 PASS / 7 skips
+(324,760 s, Go physical tyre 165,525 s PASS) y lifecycle 18 PASS. QA build PASS;
+aviso previo unused cx de analysis/view.rs exclusivo de parity-capture conservado,
+Clippy canónico sin warnings. Intentos de build/clippy fallidos y correcciones
+archivados en r5-*.log; no se rebajan tests ni gates. Sin nuevas dependencias.
+37 pares afectados app/HTML: 1280/1920 y siete tamaños extra de Launcher;
+10 vistas pedidas, Calendario vacío/publicado, Studio Delta y Diagnóstico compartido.
+Pares inspeccionados, overlays/diffs a resolución original; matriz completa 76,
+r5-before conserva R4, final-manifest.json acredita SHA/hash/dimensiones por caso.
+Pantalla-ocupada comprobada antes de cada ventana; HTML con cap.mjs headless.
+Informe de doce líneas C:/tmp/ui-r10/informe-1528.md, una por vista solicitada;
+detalle/limitaciones en 1528-evidence/diferencias.md y checks.md.
+Nota anterior 8,980113636 pertenece a review-1528-r4.md; ≥9 requiere reevaluación
+independiente. Roadmap/Testing conservan Próximamente por Isaac, datos reales
+pendientes en [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+Verificación manual: filtros/favoritos y scroll de Calendario; zoom/carrusel de
+Studio; densidad y preferencias persistidas, editor de atajos y enlace de política.
+Interacción humana, LMU y DPI físico no acreditados por QA; plan.md ausente, no recreado.
+Sin push, PR, merge, promoción, release ni CI remoto; únicamente comentario de evidencia
+en #1528 dentro de la autorización existente.
+
 ## #1528 — Ronda 4 tras revisión 8,962/10 (2026-10-10)
 
 Entrega aislada sobre `a2adeb02`, misma rama `vantareapp/isa-1528-paridad-visual`

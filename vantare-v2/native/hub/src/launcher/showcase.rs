@@ -538,13 +538,7 @@ impl Launcher {
                 .find(|app| app.id == step.app_id);
             let event = self.step_event(profile, index);
             let (label, tone) = self.step_state(profile, index);
-            let icon_size = if compact {
-                48.0
-            } else if running {
-                88.0
-            } else {
-                64.0
-            };
+            let icon_size = if compact { 48.0 } else { 88.0 };
             if !running && index > 0 {
                 row = row.child(
                     orbit::text("›", 20.0, 400, orbit::ink_3(cx), cx)

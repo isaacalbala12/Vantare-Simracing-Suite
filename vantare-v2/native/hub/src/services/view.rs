@@ -1139,7 +1139,8 @@ impl Remote {
         let demo = account_demo();
         let signed_in = self.account.signed_in;
         let identity_actions = self.account_identity_actions(cx);
-        div()
+        orbit::hero_surface(cx)
+            .flex_row()
             .flex_1()
             .flex_basis(gpui::relative(1.3 / 2.3))
             .min_w_0()
@@ -1153,13 +1154,6 @@ impl Remote {
             .flex()
             .items_center()
             .gap(px(16.0))
-            .rounded(px(orbit::skin(cx).radius.lg))
-            .border_1()
-            .border_color(rgba(orbit::line(cx)))
-            .bg(orbit::gradient(
-                cx.global::<orbit::design::Tokens>().gradients.hero,
-                120.0,
-            ))
             .child(
                 div()
                     .size(px(64.0))
@@ -1199,18 +1193,29 @@ impl Remote {
                     .flex()
                     .flex_col()
                     .gap(px(2.0))
-                    .child(orbit::display(
-                        if let Some(demo) = demo {
-                            &demo.user.full_name
-                        } else if signed_in {
-                            "Cuenta conectada"
+                    .child(
+                        orbit::display(
+                            if let Some(demo) = demo {
+                                &demo.user.full_name
+                            } else if signed_in {
+                                "Cuenta conectada"
+                            } else {
+                                "Sin sesión"
+                            },
+                            if self.adapt.show_optional() {
+                                32.0
+                            } else {
+                                26.0
+                            },
+                            orbit::ink(cx),
+                            cx,
+                        )
+                        .line_height(px(if self.adapt.show_optional() {
+                            36.0
                         } else {
-                            "Sin sesión"
-                        },
-                        26.0,
-                        orbit::ink(cx),
-                        cx,
-                    ))
+                            30.0
+                        })),
+                    )
                     .child(text(
                         if demo.is_some() {
                             "Correo oculto por privacidad"

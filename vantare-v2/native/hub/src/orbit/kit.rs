@@ -723,7 +723,7 @@ pub fn palette_card(
         .justify_between()
         .gap(px(6.0))
         .px(px(14.0))
-        .py(px(12.0))
+        .py(px(if adapt.show_optional() { 15.0 } else { 12.0 }))
         .child(super::text(palette.label(), 13.0, 500, super::ink(cx), cx))
         .child(
             div()
@@ -785,7 +785,7 @@ pub fn scheme_card(
         );
         div()
             .flex_1()
-            .h(px(if adapt.show_notes() {
+            .h(px(if adapt.height >= 1000.0 {
                 88.0
             } else if adapt.show_optional() {
                 64.0
@@ -823,7 +823,7 @@ pub fn scheme_card(
         .aria_label(label)
         .flex_1()
         .min_w_0()
-        .h(px(if adapt.show_notes() {
+        .h(px(if adapt.height >= 1000.0 {
             148.0
         } else if adapt.show_optional() {
             124.0

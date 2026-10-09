@@ -990,7 +990,11 @@ impl Hub {
         let opacity = self.settings_slider(1, cx);
         stack()
             .h_full()
-            .gap(px(self.shell.adapt.gap()))
+            .gap(px(if self.shell.adapt.show_optional() {
+                16.0
+            } else {
+                self.shell.adapt.gap()
+            }))
             .child(orbit::settings_group(1, "Esquema de color", schemes, cx))
             .child(orbit::settings_group(2, "Temas", palettes, cx))
             .child(section_numbered(
@@ -1630,6 +1634,17 @@ impl Hub {
         }
         channels
     }
+    fn settings_hotkey_editor(&self, cx: &Context<Self>) -> gpui::Stateful<Div> {
+        orbit::small_button("settings-global-edit", "Editar atajos de perfiles", cx)
+            .track_focus(&self.settings.global_hotkeys_focus)
+            .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                    hub.navigate(Section::Launcher, cx);
+                    cx.stop_propagation();
+                }
+            }))
+            .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Launcher, cx)))
+    }
     fn settings_hotkeys(&self, cx: &mut Context<Self>) -> Div {
         let keys = |items: &[(&str, &str)], help: &str| {
             section_body().children(items.iter().map(|(label, key)| {
@@ -1652,40 +1667,43 @@ impl Hub {
         if let Some(error) = launcher.global_hotkey_error() {
             globals = globals.child(section_note(error, cx));
         }
-        if launcher
+        let no_hotkeys = launcher
             .saved_profiles()
             .iter()
-            .all(|profile| profile.hotkey.is_empty())
-        {
+            .all(|profile| profile.hotkey.is_empty());
+        if no_hotkeys {
             globals = globals.child(section_row(
                 "Atajos de perfiles",
                 "Todavía no has asignado ninguna combinación",
-                orbit::keycap("—", cx),
+                self.settings_hotkey_editor(cx),
                 self.shell.adapt,
                 cx,
             ));
         }
-        globals = globals.child(
-            div().px(px(20.0)).py(px(10.0)).flex().justify_end().child(
-                orbit::small_button("settings-global-edit", "Editar atajos de perfiles", cx)
-                    .track_focus(&self.settings.global_hotkeys_focus)
-                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
-                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                            hub.navigate(Section::Launcher, cx);
-                            cx.stop_propagation();
-                        }
-                    }))
-                    .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Launcher, cx))),
-            ),
-        );
+        if !no_hotkeys {
+            globals = globals.child(
+                div()
+                    .px(px(20.0))
+                    .py(px(8.0))
+                    .flex()
+                    .justify_end()
+                    .child(self.settings_hotkey_editor(cx)),
+            );
+        }
+
         stack()
             .h_full()
+            .gap(px(if self.shell.adapt.show_optional() {
+                16.0
+            } else {
+                self.shell.adapt.gap()
+            }))
             .when(cfg!(windows), |body| {
                 body.child(section_surface(
                     "Globales con el juego",
                     None,
                     globals,
-                    12.0,
+                    0.0,
                     cx,
                 ))
             })
@@ -1784,11 +1802,18 @@ impl Hub {
                 }
             }
         }
-        body = body.child(super::privacy::policy_link(
-            "settings-privacy-policy",
-            &self.settings.privacy_policy_focus,
-            cx,
-        ));
+        body = body.child(
+            super::privacy::policy_link(
+                "settings-privacy-policy",
+                &self.settings.privacy_policy_focus,
+                cx,
+            )
+            .self_start()
+            .ml(px(20.0))
+            .mb(px(12.0))
+            .border_0()
+            .bg(gpui::transparent_black()),
+        );
         section_surface("Lo que compartes", None, body, 0.0, cx)
     }
     fn settings_events(&self, cx: &mut Context<Self>) -> Div {

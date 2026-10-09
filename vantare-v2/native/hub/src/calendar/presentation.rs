@@ -75,6 +75,15 @@ fn agenda_event(
         }))
 }
 
+fn agenda_preview<'a>(
+    events: &[views::Start<'a>],
+    includes: impl Fn(&super::Series) -> bool,
+) -> (Vec<views::Start<'a>>, usize) {
+    let mut matching = events.iter().filter(|event| includes(event.series));
+    let preview = matching.by_ref().take(views::WEEK_SLOTS).cloned().collect();
+    (preview, matching.count())
+}
+
 fn agenda_grid(
     calendar: &Calendar,
     now: DateTime<Utc>,
@@ -146,12 +155,21 @@ fn agenda_grid(
                 .when(cell.now, |cell| {
                     cell.bg(orbit::tint(orbit::carmine(cx), 0.08))
                 });
-            for event in cell
-                .events
-                .iter()
-                .filter(|event| beta::includes(calendar, event.series))
-            {
+            // Bound GPUI elements, retaining the complete schedule and a visible
+            // overflow count. Class/tier filters are applied before the preview.
+            let (preview, more) =
+                agenda_preview(&cell.events, |series| beta::includes(calendar, series));
+            for event in &preview {
                 column = column.child(agenda_event(calendar, event, cx));
+            }
+            if more > 0 {
+                column = column.child(orbit::text(
+                    format!("+{more} salidas · filtra o abre Tiempos"),
+                    10.0,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                ));
             }
             line = line.child(column);
         }
@@ -323,4 +341,44 @@ pub(super) fn posters(
         .when_some(calendar.error.clone(), |page, error| {
             page.child(orbit::callout(error, cx))
         })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dense_official_agenda_preserves_counts_and_filters_before_previewing() {
+        let schedule = super::super::Schedule::parse(include_bytes!(
+            "../../reference/fixtures/calendar-lmu-2026-10-06.json"
+        ))
+        .expect("horario LMU real");
+        let now = DateTime::parse_from_rfc3339("2026-10-09T12:00:00Z")
+            .expect("reloj")
+            .with_timezone(&Utc);
+        let rows = views::day_rows(
+            &schedule,
+            views::Filter::default(),
+            now.date_naive(),
+            now,
+            &Utc,
+        )
+        .expect("agenda");
+        let events = &rows[12].events;
+        let (preview, more) = agenda_preview(events, |_| true);
+        assert_eq!(preview.len(), views::WEEK_SLOTS);
+        assert!(more > 0);
+        assert_eq!(preview.len() + more, events.len());
+        for series in &schedule.series {
+            let (filtered, more) = agenda_preview(events, |candidate| candidate.id == series.id);
+            assert!(filtered.iter().all(|event| event.series.id == series.id));
+            assert_eq!(
+                filtered.len() + more,
+                events
+                    .iter()
+                    .filter(|event| event.series.id == series.id)
+                    .count()
+            );
+        }
+    }
 }

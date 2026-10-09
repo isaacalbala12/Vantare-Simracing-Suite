@@ -1,5 +1,5 @@
 //! R6: tres presentaciones de la publicación pública recibida por services.
-//! El contrato actual no publica fases, áreas, progreso ni fechas por hito.
+//! El contrato publica cuatro estados, sin fases, áreas, progreso ni fechas por hito.
 use crate::services::protocol::roadmap_document::{Item, Publication};
 use crate::{orbit, services::view::Remote};
 use gpui::{Context, Div, Stateful, div, prelude::*, px};
@@ -14,6 +14,7 @@ enum View {
 
 pub(crate) struct State {
     view: View,
+    capture_publication: Option<Publication>,
 }
 impl State {
     pub(crate) fn load() -> Self {
@@ -24,11 +25,34 @@ impl State {
                 Ok("c") => View::Season,
                 _ => View::Circuit,
             };
-            return Self { view };
+            let capture_publication = std::env::args()
+                .collect::<Vec<_>>()
+                .windows(2)
+                .any(|pair| pair[0] == "--capture" && pair[1] == "roadmap-clickup-prueba")
+                .then(|| {
+                    serde_json::from_str(include_str!(
+                        "../reference/fixtures/roadmap-clickup-test.json"
+                    ))
+                    .expect("fixture ClickUp explícita")
+                });
+            return Self {
+                view,
+                capture_publication,
+            };
         }
         Self {
             view: View::default(),
+            capture_publication: None,
         }
+    }
+    pub(crate) fn publication<'a>(
+        &'a self,
+        actual: Option<&'a Publication>,
+    ) -> Option<&'a Publication> {
+        self.capture_publication.as_ref().or(actual)
+    }
+    pub(crate) fn is_capture(&self) -> bool {
+        self.capture_publication.is_some()
     }
 }
 
@@ -77,14 +101,7 @@ fn lane(
         }
     }
     if publication.is_none_or(|publication| items(publication, section).next().is_none()) {
-        list = list.child(note(
-            if section == "later" {
-                "Próximamente · sin hitos publicados a largo plazo"
-            } else {
-                "Sin hitos publicados"
-            },
-            cx,
-        ));
+        list = list.child(note("Sin hitos publicados", cx));
     }
     div()
         .flex_1()
@@ -148,7 +165,9 @@ impl Remote {
         )
     }
     pub fn roadmap(&mut self, _window: &gpui::Window, cx: &mut Context<Self>) -> Stateful<Div> {
-        self.ensure_roadmap(cx);
+        if !self.manual_roadmap.is_capture() {
+            self.ensure_roadmap(cx);
+        }
         let publication = self.roadmap_publication();
         let adapt = self.adapt;
         let mut page = div()
@@ -165,7 +184,14 @@ impl Remote {
                 adapt,
                 cx,
             ))
-            .child(note(self.roadmap_status().to_owned(), cx));
+            .child(note(
+                if self.manual_roadmap.is_capture() {
+                    "QA · ejemplo ClickUp, sin publicación remota".to_owned()
+                } else {
+                    self.roadmap_status().to_owned()
+                },
+                cx,
+            ));
         if self.manual_roadmap.view != View::Board {
             page = page.child(current(publication, adapt, cx));
         }
@@ -198,7 +224,10 @@ impl Remote {
                         .gap(px(adapt.gap()))
                         .child(lane(publication, "now", "Ahora", cx))
                         .child(lane(publication, "next", "Siguiente", cx))
-                        .child(lane(publication, "later", "Más adelante", cx)),
+                        .child(lane(publication, "later", "Más adelante", cx))
+                        .when(self.manual_roadmap.view == View::Board, |board| {
+                            board.child(lane(publication, "done", "Entregado", cx))
+                        }),
                 )
         };
         page.child(body)
@@ -250,7 +279,7 @@ mod tests {
             published_at: "2026-10-08T10:00:00Z".into(),
             document: Document {
                 schema_version: 1,
-                items: ["now", "next", "done"]
+                items: ["now", "next", "later", "done"]
                     .into_iter()
                     .map(|section| Item {
                         id: section.into(),
@@ -263,14 +292,14 @@ mod tests {
         }
     }
     #[test]
-    fn published_lanes_preserve_content_and_done_stays_out_of_board() {
+    fn published_lanes_preserve_content_in_all_four_sections() {
         let publication = publication();
-        let board: Vec<_> = ["now", "next", "later"]
+        let board: Vec<_> = ["now", "next", "later", "done"]
             .into_iter()
             .flat_map(|section| items(&publication, section))
             .map(|item| item.id.as_str())
             .collect();
-        assert_eq!(board, vec!["now", "next"]);
+        assert_eq!(board, vec!["now", "next", "later", "done"]);
         assert_eq!(
             items(&publication, "done")
                 .map(|item| item.id.as_str())

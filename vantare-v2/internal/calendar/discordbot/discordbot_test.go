@@ -13,6 +13,64 @@ import (
 	"time"
 )
 
+func TestOctober6OfficialMessageWithCommaSlotsAndInlineMarkdown(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "testdata", "daily-schedule-2026-10-06.txt"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	inbox, err := NewInbox(filepath.Join(t.TempDir(), "inbox.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy := SourcePolicy{GuildID: "guild-1", ChannelID: "channel-1"}
+	ingestor, err := NewIngestor(policy, inbox, time.Now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := ingestor.Ingest(Message{ID: "1556611324048445536", GuildID: "guild-1", ChannelID: "channel-1", Content: string(raw)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Accepted || result.Candidate == nil {
+		t.Fatal("official message must yield a reviewable candidate")
+	}
+	schedule := result.Candidate.Schedule
+	if schedule.ValidFrom.Format("2006-01-02") != "2026-10-06" || schedule.ValidUntil.Format("2006-01-02") != "2026-10-13" || len(schedule.Series) != 11 {
+		t.Fatal("official window/series changed")
+	}
+	var weeklyFound, specialFound bool
+	for _, series := range schedule.Series {
+		for _, class := range series.Classes {
+			if class.Name == "Classes" || strings.Contains(class.Name, "VE/NRG") || strings.Contains(class.Name, "fuel tank") {
+				t.Fatalf("source qualifier became a vehicle class: %+v", class)
+			}
+		}
+		if series.Name == "ELMS Super 60" {
+			if len(series.Classes) != 3 || series.Classes[0].Name != "LMP2" || series.Classes[0].Qualifier != "ELMS, 70L fuel tank" || series.Classes[1].Name != "LMP3" || series.Classes[2].Name != "LMGT3" || series.VELimit != 70 {
+				t.Fatalf("ELMS class qualifiers differ from source: %+v", series)
+			}
+		}
+		if series.Name == "WEC-Xperience" && (len(series.Classes) != 3 || series.VELimit != 70) {
+			t.Fatalf("standalone VE/NRG cap must not become a class: %+v", series)
+		}
+		if series.Name == "WEC Weekly" {
+			weeklyFound = true
+			if series.Track != "Sebring (WEC)" || series.SafetyRating != "SR S2" || strings.Join(series.Recurrence.TimesUTC, ",") != "02:00,06:00,09:00,12:00,15:00,18:00,20:00,23:00" {
+				t.Fatal("weekly times/track/SR differ from source")
+			}
+		}
+		if series.Name == "10 Hours of Road Atlanta" {
+			specialFound = true
+			if series.Track != "Road Atlanta (RC)" || series.RaceDurationMin != 600 || series.Splits != 54 || strings.Join(series.Recurrence.TimesUTC, ",") != "02:00,09:00,15:00,21:00" {
+				t.Fatal("special event differs from source")
+			}
+		}
+	}
+	if !weeklyFound || !specialFound {
+		t.Fatal("official weekly/special missing")
+	}
+}
+
 func scheduleMessage(t *testing.T, id, channel string) Message {
 	t.Helper()
 	raw, err := os.ReadFile(filepath.Join("..", "testdata", "daily-schedule-2026-08-25.txt"))

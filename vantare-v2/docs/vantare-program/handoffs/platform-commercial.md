@@ -2012,3 +2012,59 @@ Guarda heredada en shell/navigation.rs (fuente native incorporada aacd1e4d): blo
 
 F5 corregido solo en integración73f60e9d: Account accesible en navegación/composición con derechos denegados; gate, TTL, Feed, identidad/OAuth/UUID y herramientas mantienen autoridad. Nextest1301/7skips, fmt/Clippy/lifecycle18/telemetría21 PASS;12 recorridos de recuperación y3 muestras físicas, un envío por intento/logout y ningún grant desde reply HTTP. Setup0.0.973 dev/NotSigned, QA instalada/retirada y real intacta; evidencia C:/tmp/ui-r10/integracion-v6-evidence/VERIFICACION.md.
 Defecto/herencia/archivo/líneas/arreglo trasladados en [PR1523#6079995712](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1523#issuecomment-6079995712), [validación#6080347894](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1523#issuecomment-6080347894); [issue1496#6080348259](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1496#issuecomment-6080348259). Fuente native incorporadaaacd1e4d navigation.rs:92–95/shell.rs:388–410; HEAD remoto33be660d no contiene Hub y no se modificó la rama#1514. Su worker debe incorporar F5 cuando restituya el Hub. No se cambia el estado comercial: CI, login/pago/recovery monetario y promoción externos pendientes; integración local sin push/merge/publicación/deploy/pago.
+
+## Feedback 9-oct · calroad punto 9 (#1496)
+Base e55a43b34dddb02d671b569dc3cb83fabf3793ab; worktree C:/tmp/vw3-fb-calroad/vantare-v2,
+rama vantareapp/isa-1496-fb-calroad. Prueba explícita tester sobre catálogo LMU
+archivado: fechas solo en memoria, banner visible y preferencias efímeras;
+salir/revocar acceso restaura datos reales. shell.rs cambia únicamente el paso
+al header para consultar acceso vigente. Parser de bandeja y runbook en
+scripts/calendar-publication.py y docs/calendar-weekly-hotfix/native-publication.md.
+Python 3/3 PASS; gates Rust en curso, evidencia externa C:/tmp/feedback-0910/.
+Horario real 6–13 oct recibido por el bot existente desde Discord oficial:
+mensaje 1556611324048445536, 11 series y payload RPC revisable externo preparado.
+Parser corregido para comas, markup interior y notas in-game, con regresión real.
+Escena QA calendario-lmu-local usa esa fuente, sin sustituir seed ni Supabase.
+Publicación Owner/Supabase PENDIENTE de autorización; fuente futura 13-oct
+rechazada por splits ambiguos, sin inventarlos. Avisos/autolanzamiento no implementados;
+la campana persiste una preferencia, cuenta atrás y favoritas ya tienen tests.
+plan.md ausente en base y origin/nightly; no se crea fuente paralela. El brief
+actual autoriza seguimiento GitHub y prevalece sobre la regla Notion antigua.
+Sin delegación/push/PR/merge/release/producción. Orquestador debe revisar esta
+entrega y reflejar #1496; autorización de publicación se pide en informe final.
+Punto 9: Inicio conserva siempre horario/favoritas oficiales incluso durante prueba; home.rs cambia solo esa selección. Escena QA calendario-beta-prueba exclusiva de --capture/parity-capture para inspeccionar renderer real sin login ni escribir preferencias.
+
+## Feedback 9-oct · calroad punto 10 (#1496)
+Misma base e55a43b3 y rama/worktree de punto 9. scripts/clickup-roadmap.py:
+lectura API paginada de Vantare/Desarrollo con subtareas/cerradas; nombres
+exactos, ancestry en cuerpo, UUID estables. idea→later, en progreso/por revisar→now,
+testers→next, complete→done. Prepara JSON y SQL; --publish exige digest SQL
+revisado, host y UUID vigente, transacción/publisher existentes. Sin token real.
+SQL añade solo later al validador; permisos y límites (40 hitos) conservados.
+Hub Tablero muestra cuatro grupos; captura roadmap-clickup-prueba es QA explícita.
+services/view.rs cambia solo selección de publicación QA; no fallback productivo.
+Python 7/7 PASS; ejemplo cinco hitos en C:/tmp/feedback-0910/calroad-example/.
+Gates Rust/capturas finales en curso; pgTAP no ejecutado por falta de psql/Docker.
+Bloqueos reales: publicación necesita autorización y fuente/token aportados;
+Go legado rechaza later, requiere adaptación autorizada o entorno nativo aislado;
+si Desarrollo supera 40 tareas/subtareas, aborta sin truncar y requiere decisión.
+Runbook docs/clickup-roadmap-sync.md; migración/rollback/tests SQL preparados.
+No se aplicó SQL ni se escribió en producción. Sin push/PR/merge/release.
+
+### #1496 · calroad · continuación tras reinicio y disco lleno
+Misma base e55a43b3/rama vantareapp/isa-1496-fb-calroad; commits anteriores
+258ce19a (9) y 49440709 (10) conservados. Dos defectos del horario real corregidos:
+calificadores de combustible/VE no son clases; Agenda resume cuatro salidas por
+celda y cuenta las adicionales, sin retirar datos ni aplicar filtros después.
+Regresión Go real y conteos de Agenda añadidos; borrador final externo
+calroad-calendar-draft-resume.json conserva texto/hash/fechas originales.
+Target propio devuelto de junction E: a directorio C: tras verificar espacio;
+fallo de identidad Nextest preservado, test IPC intacto. PASS finales: fmt,
+Clippy -D warnings, Nextest 1304/1304 (7 skips), lifecycle 18/18, específicas
+33/33, Python 10/10, Go completo y builds frontend/QA. Ocho PNG opacos
+inspeccionados (Agenda/Tiempos/Carteles, tester y Roadmap oscuro/claro); cierre
+de Agenda PASS y ningún Hub propio abierto. Clippy QA opcional conserva
+warning heredado de Análisis; no se rebaja el gate canónico ni se toca esa área.
+Evidencia/manual C:/tmp/feedback-0910/calroad-verificacion.md.
+Publicación Supabase, token/fuente ClickUp reales, lector Go compatible con later,
+pgTAP y avisos entregados siguen pendientes. Sin push/PR/merge/release/producción.

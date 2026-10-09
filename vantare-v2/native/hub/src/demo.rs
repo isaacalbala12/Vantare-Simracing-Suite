@@ -624,7 +624,11 @@ impl CaptureState {
                     | "launcher-listo"
                     | "launcher-cancelado"
             )
-            && name != "calendario-beta-archivo"
+            && !matches!(
+                name,
+                "calendario-beta-archivo" | "calendario-beta-prueba" | "calendario-lmu-local"
+            )
+            && name != "roadmap-clickup-prueba"
             && !matches!(name, "notificaciones-panel" | "notificaciones-vacio")
             && !matches!(name, "inicio-vacio" | "inicio-cargando" | "inicio-error")
             && !TESTING_CAPTURE_SCREENS.contains(&name)
@@ -646,6 +650,8 @@ impl CaptureState {
             | "launcher-cancelado"
             | "launcher-nombres-largos" => Section::Launcher,
             "calendario-beta-archivo"
+            | "calendario-beta-prueba"
+            | "calendario-lmu-local"
             | "calendario-base"
             | "calendario-dia"
             | "calendario-semana"
@@ -662,7 +668,7 @@ impl CaptureState {
             | "testing-center-detalle"
             | "testing-center-validar"
             | "testing-center-mis-reportes" => Section::Testing,
-            "roadmap-base" => Section::Roadmap,
+            "roadmap-base" | "roadmap-clickup-prueba" => Section::Roadmap,
             "cuenta-base" => Section::Account,
             "licencias-modulos-dispositivos" => Section::Licenses,
             name if name.starts_with("studio-") => Section::Studio,

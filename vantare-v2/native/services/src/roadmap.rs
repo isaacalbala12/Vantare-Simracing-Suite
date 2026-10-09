@@ -30,7 +30,7 @@ fn validate(publication: &Publication) -> Result<()> {
     for item in &publication.document.items {
         if !uuid(&item.id)
             || !ids.insert(&item.id)
-            || !matches!(item.section.as_str(), "now" | "next" | "done")
+            || !matches!(item.section.as_str(), "now" | "next" | "later" | "done")
             || item.title.es.trim().is_empty()
         {
             return Err(Error::Protocol);
@@ -264,6 +264,10 @@ mod tests {
         publication.document.items[0].section = "invented".into();
         assert!(validate(&publication).is_err());
         publication.document.items[0].section = "now".into();
+        for section in ["now", "next", "later", "done"] {
+            publication.document.items[0].section = section.into();
+            assert!(validate(&publication).is_ok());
+        }
         publication.document.items[0].title.es = "ñ".repeat(121);
         assert!(validate(&publication).is_err());
     }

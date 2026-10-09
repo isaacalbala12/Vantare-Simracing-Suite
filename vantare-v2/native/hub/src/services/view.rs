@@ -1476,7 +1476,7 @@ impl Remote {
     pub(crate) fn roadmap_publication(
         &self,
     ) -> Option<&super::protocol::roadmap_document::Publication> {
-        self.publication.as_ref()
+        self.manual_roadmap.publication(self.publication.as_ref())
     }
     pub(crate) fn roadmap_status(&self) -> &str {
         if self.working() {

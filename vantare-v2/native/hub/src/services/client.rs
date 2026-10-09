@@ -26,8 +26,10 @@ impl Client {
         }
         let hello: SupervisorHello =
             control::read(&mut pipe).map_err(|_| "saludo del supervisor inválido")?;
-        if hello.version != protocol::VERSION
-            || hello.nonce.len() != 64
+        if hello.version != protocol::VERSION {
+            return Err(vantare_ipc::INCOMPATIBLE_COMPONENTS);
+        }
+        if hello.nonce.len() != 64
             || !hello
                 .nonce
                 .bytes()
@@ -56,7 +58,10 @@ impl Client {
         .map_err(|_| "servicios desconectados")?;
         let response: Response =
             protocol::read(&mut self.pipe).map_err(|_| "servicios desconectados")?;
-        if response.version != protocol::VERSION || response.sequence != self.sequence {
+        if response.version != protocol::VERSION {
+            return Err(vantare_ipc::INCOMPATIBLE_COMPONENTS);
+        }
+        if response.sequence != self.sequence {
             return Err("respuesta del supervisor inválida");
         }
         Ok(response.reply)

@@ -8,7 +8,7 @@
   {
    "caption": "Vuelta 15 · S1",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 1,
     "origin": {
@@ -309,7 +309,7 @@
   {
    "caption": "S1 récord de la sesión",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 2,
     "origin": {
@@ -614,7 +614,7 @@
   {
    "caption": "S2 a mitad",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 3,
     "origin": {
@@ -919,7 +919,7 @@
   {
    "caption": "S2 mejor personal",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 4,
     "origin": {
@@ -1227,7 +1227,7 @@
   {
    "caption": "S3 a 0.30",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 5,
     "origin": {
@@ -1535,7 +1535,7 @@
   {
    "caption": "Vuelta récord personal · 3:27.594",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 6,
     "origin": {
@@ -1836,7 +1836,7 @@
   {
    "caption": "Vuelta 16 · S1 más lento",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 7,
     "origin": {

@@ -420,7 +420,7 @@ fn example_snapshots() -> Result<Vec<(Kind, Snapshot)>, String> {
             Kind::FuelStrategy => {
                 examples::snapshot(include_str!("../../ui/fixtures/fuel-vantare.scene.json"))
             }
-            _ => vantare_ipc::snapshot_from_json(text).map_err(|error| error.to_string()),
+            _ => vantare_ipc::snapshot_from_saved_json(text).map_err(|error| error.to_string()),
         }
         .map(|snapshot| (kind, snapshot))
         .map_err(|error| format!("Ejemplo {}: {error}", kind.name()))

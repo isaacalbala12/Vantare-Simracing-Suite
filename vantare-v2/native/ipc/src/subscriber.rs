@@ -1,7 +1,7 @@
 //! Lado de overlays: mantiene la conexión con el núcleo y guarda la última foto.
 
 use std::sync::Arc;
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
@@ -17,6 +17,27 @@ use crate::{Demand, Error, Photo};
 /// Espera entre intentos de conexión (el núcleo puede no haber arrancado).
 const RETRY: Duration = Duration::from_millis(250);
 
+/// Estado compartido de esta conexión; los reintentos no borran el diagnóstico.
+#[derive(Clone, Default)]
+pub struct ConnectionStatus(Arc<AtomicBool>);
+
+pub const INCOMPATIBLE_COMPONENTS: &str =
+    "Componentes incompatibles. Reinstala la misma versión de Vantare";
+
+impl ConnectionStatus {
+    pub fn incompatible(&self) -> bool {
+        self.0.load(Ordering::Relaxed)
+    }
+    fn failed(&self, error: &Error) {
+        if matches!(error, Error::Version { .. } | Error::Rejected(_)) {
+            self.0.store(true, Ordering::Relaxed);
+        }
+    }
+    fn received(&self) {
+        self.0.store(false, Ordering::Relaxed);
+    }
+}
+
 pub struct Subscriber {
     name: String,
     accept_peer: Arc<dyn Fn(&Peer) -> bool + Send + Sync>,
@@ -26,6 +47,7 @@ pub struct Subscriber {
     stop: Arc<Event>,
     worker: Option<JoinHandle<()>>,
     activity: Arc<AtomicU64>,
+    connection: ConnectionStatus,
 }
 
 impl Subscriber {
@@ -57,7 +79,10 @@ impl Subscriber {
     /// conexión, con un breve solapamiento de clientes durante el cambio exitoso.
     pub fn set_demand(&mut self, demand: Demand) -> Result<(), Error> {
         self.change_demand(demand, |this, demand| {
-            Self::start(&this.name, Arc::clone(&this.accept_peer), Some(demand))
+            Self::connect_observed(&this.name, Some(demand), this.connection.clone(), {
+                let accept_peer = Arc::clone(&this.accept_peer);
+                move |peer| accept_peer(peer)
+            })
         })
     }
 
@@ -79,6 +104,24 @@ impl Subscriber {
         accept_peer: Arc<dyn Fn(&Peer) -> bool + Send + Sync>,
         demand: Option<Demand>,
     ) -> Result<Self, Error> {
+        Self::connect_observed(name, demand, ConnectionStatus::default(), move |peer| {
+            accept_peer(peer)
+        })
+    }
+
+    /// Conecta con diagnóstico compartido, independiente de datos y derechos.
+    /// # Errors
+    /// Demanda inválida o imposibilidad de crear el hilo/evento.
+    pub fn connect_observed(
+        name: &str,
+        demand: Option<Demand>,
+        connection: ConnectionStatus,
+        accept_peer: impl Fn(&Peer) -> bool + Send + Sync + 'static,
+    ) -> Result<Self, Error> {
+        if let Some(demand) = &demand {
+            demand.validate()?;
+        }
+        let accept_peer: Arc<dyn Fn(&Peer) -> bool + Send + Sync> = Arc::new(accept_peer);
         let latest = Arc::new(Slot::new());
         let stop = Arc::new(Event::new()?);
         let activity = Arc::new(AtomicU64::new(0));
@@ -87,6 +130,7 @@ impl Subscriber {
             let activity = Arc::clone(&activity);
             let accept_peer = Arc::clone(&accept_peer);
             let demand = demand.clone();
+            let connection = connection.clone();
             thread::Builder::new()
                 .name("ipc-subscriber".into())
                 .spawn(move || {
@@ -97,6 +141,7 @@ impl Subscriber {
                         &*accept_peer,
                         &activity,
                         demand.as_ref(),
+                        &connection,
                     );
                 })?
         };
@@ -109,6 +154,7 @@ impl Subscriber {
             stop,
             worker: Some(worker),
             activity,
+            connection,
         })
     }
 
@@ -127,6 +173,10 @@ impl Subscriber {
             }
             Wait::Timeout | Wait::Closed => None,
         }
+    }
+
+    pub fn connection(&self) -> ConnectionStatus {
+        self.connection.clone()
     }
 
     /// Contador de mensajes válidos recibidos, incluidos latidos. Permite
@@ -153,6 +203,7 @@ fn run(
     accept_peer: &dyn Fn(&Peer) -> bool,
     activity: &AtomicU64,
     demand: Option<&Demand>,
+    connection: &ConnectionStatus,
 ) {
     // El cursor sobrevive a las reconexiones: es lo que evita repeticiones
     // mientras el productor siga en su época.
@@ -166,13 +217,14 @@ fn run(
             latest,
             accept_peer,
             &mut cursor,
-            activity,
             demand,
-        ) && matches!(error, Error::Version { .. } | Error::Rejected(_))
-            && !reported_incompatible
-        {
-            eprintln!("IPC incompatible: {error}");
-            reported_incompatible = true;
+            (activity, connection),
+        ) {
+            connection.failed(&error);
+            if connection.incompatible() && !reported_incompatible {
+                eprintln!("{INCOMPATIBLE_COMPONENTS}");
+                reported_incompatible = true;
+            }
         }
         if stop.wait(RETRY) {
             break;
@@ -186,9 +238,10 @@ fn session(
     latest: &Slot<Photo>,
     accept_peer: &dyn Fn(&Peer) -> bool,
     cursor: &mut Option<Revision>,
-    activity: &AtomicU64,
     demand: Option<&Demand>,
+    health: (&AtomicU64, &ConnectionStatus),
 ) -> Result<(), Error> {
+    let (activity, connection) = health;
     let mut pipe = pipe::connect(name, Arc::clone(stop), IO_TIMEOUT)?;
     if !accept_peer(&pipe.server_peer()?) {
         return Err(Error::Peer);
@@ -222,7 +275,9 @@ fn session(
                     sequence: dto.sequence,
                 };
                 if revision.is_newer(*cursor) {
-                    latest.put(Arc::new(Photo::full(Arc::new(Snapshot::try_from(dto)?))));
+                    let decoded = Snapshot::try_from(dto)?;
+                    connection.received();
+                    latest.put(Arc::new(Photo::full(Arc::new(decoded))));
                     *cursor = Some(revision);
                 }
             }
@@ -255,6 +310,7 @@ fn session(
                     }
                     snapshot.restore(previous.as_ref(), &requested, &delivered)?;
                     let decoded = Snapshot::try_from(snapshot.clone())?;
+                    connection.received();
                     previous = Some(snapshot);
                     latest.put(Arc::new(Photo {
                         snapshot: Arc::new(decoded),
@@ -272,6 +328,19 @@ fn session(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn mismatch_survives_retries_until_a_compatible_photo_arrives() {
+        let status = ConnectionStatus::default();
+        status.failed(&Error::Version { got: 8 });
+        for _ in 0..10 {
+            status.failed(&Error::Io(std::io::ErrorKind::NotFound.into()));
+            assert!(status.incompatible());
+        }
+        status.received();
+        assert!(!status.incompatible());
+    }
+
     use crate::pipe::Listener;
 
     #[test]
@@ -336,13 +405,18 @@ mod tests {
                 let mut pipe = listener.instance().expect("instancia");
                 pipe.accept().expect("conexión");
                 assert!(matches!(read_message(&mut pipe), Ok(Message::Hello { .. })));
-                write_message(&mut pipe, &Message::Welcome { version: 3 })
+                write_message(&mut pipe, &Message::Welcome { version: 8 })
                     .expect("versión antigua");
             }
         });
         let mut subscriber = Subscriber::connect(&name, |_| true).expect("suscriptor");
         server.join().expect("tres reconexiones");
         assert!(subscriber.next(Duration::ZERO).is_none());
+        let deadline = std::time::Instant::now() + Duration::from_secs(2);
+        while !subscriber.connection().incompatible() {
+            assert!(std::time::Instant::now() < deadline);
+            thread::yield_now();
+        }
         // cargo test ... --nocapture permite comprobar que las tres respuestas
         // incompatibles anteriores producen una sola línea en stderr.
     }

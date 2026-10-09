@@ -8,7 +8,7 @@
   {
    "caption": "Persigues a Pier Guidi",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 1,
     "origin": {
@@ -672,7 +672,7 @@
   {
    "caption": "Le recortas: 0.9 s",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 2,
     "origin": {
@@ -1336,7 +1336,7 @@
   {
    "caption": "Adelantas a Pier Guidi",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 3,
     "origin": {
@@ -2000,7 +2000,7 @@
   {
    "caption": "Te escapas",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 4,
     "origin": {
@@ -2664,7 +2664,7 @@
   {
    "caption": "En LMGT3: Hypercar a 1.8 s",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 5,
     "origin": {
@@ -3216,7 +3216,7 @@
   {
    "caption": "Albalá se acerca: 0.9 s",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 6,
     "origin": {
@@ -3768,7 +3768,7 @@
   {
    "caption": "Albalá te dobla",
    "snapshot": {
-    "version": 8,
+    "version": 9,
     "epoch": 3,
     "sequence": 7,
     "origin": {

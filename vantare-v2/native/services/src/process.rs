@@ -157,7 +157,10 @@ impl Client {
         .map_err(|_| "servicios desconectado")?;
         let response: Response =
             protocol::read(&mut self.pipe).map_err(|_| "servicios desconectado")?;
-        if response.version != protocol::VERSION || response.sequence != self.sequence {
+        if response.version != protocol::VERSION {
+            return Err(vantare_ipc::INCOMPATIBLE_COMPONENTS);
+        }
+        if response.sequence != self.sequence {
             return Err("respuesta de servicios inválida");
         }
         Ok(response.reply)

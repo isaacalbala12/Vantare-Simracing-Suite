@@ -1,17 +1,34 @@
 # native — aplicación Rust (ADR 0099)
 
+Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
+cola de `AGENTS.md` (en esta ola, `C:/tmp/fase2/compilar.ps1`; normalmente,
+`native/scripts/compilar.ps1`). Usar target aislado y `-j 2`.
+
+El workspace tiene 13 crates; `default-members` excluye storage y admin.
+
 | Crate | Contiene |
 | --- | --- |
-| `domain` | Modelo común (`Snapshot`, `State`, `Quality`, capacidades, banderas), contrato del adaptador (`Adapter`, `Observation`), ViewModels (`standings`, `radar`, `pedals`) y formateador. Puro: sin simuladores, GPUI ni I/O; `unsafe` prohibido. |
-| `runtime` | Adaptadores de simulador (módulos privados), núcleo, flujos y ciclo de vida. |
-| `ipc` | DTO versionados (serde) y transporte entre procesos. |
-| `engineer` | Consumidor de fotos/eventos y voz local bajo demanda, proceso separado. |
-| `ui` | Biblioteca visual y binarios de overlays y Hub. |
+| `domain` | Modelo neutral, Adapter, proyecciones/ViewModels y formato; puro, sin I/O ni GPUI. |
+| `ipc` | Fotos DTO v9, demanda, transporte, derechos/control v4, contratos Engineer/Services y versión de producto. |
+| `runtime` | Adapters LMU/ACC privados, núcleo, flujos y supervisor `vantare`. |
+| `engineer` | Eventos, radio, spotter y voz local bajo demanda. |
+| `storage` | Propietario único de series DuckDB (`SeriesChunk`, contrato independiente del DTO de fotos). |
+| `services` | Cuenta Clerk, licencia, billing Polar, calendario/roadmap/reportes; protocolo v4, sin UI. |
+| `ui` | 18 widgets, hosts de overlays/Workshop GPUI, kits Eficiencia y Vantare. |
+| `hub` | Hub, Studio, presentación del Launcher, análisis, Testing Center y páginas de producto GPUI. |
+| `launcher` | Motor de perfiles, discovery, procesos y archivos locales; sin GPUI. |
+| `profiling` | Contadores compartidos por proceso, sin dependencias externas. |
+| `build-support` | Recurso Win32 compartido; icono en `native/assets/icon.ico`. |
+| `strategy` | Documento JSON y solver; miembro del mismo workspace. |
+| `admin` | Herramienta privada del owner, fuera del instalador público. |
+
+`packaging/` contiene scripts de distribución; versión y contratos viven en ipc,
+el recurso Win32 vive en build-support. No es un crate.
 
 ## Dependencias permitidas
 
 ```text
-runtime → domain, ipc      ipc → domain      ui → domain, ipc
+runtime → domain, ipc      ipc → domain, profiling      ui → domain, ipc
 engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
 ```
 
@@ -19,16 +36,33 @@ engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
 `runtime`, ni transitivamente. Lo comprueba `domain/tests/architecture.rs`
 (`cargo tree`) dentro de `cargo test`.
 
+## Contrato de fotos y datos guardados
+
+El pipe Core→Hub/overlays negocia solo DTO v9; rechaza peers v7/v8.
+El host muestra una sola vez «Componentes incompatibles. Reinstala la misma
+versión de Vantare», conserva el aviso durante los reintentos y lo retira al
+recibir una foto compatible. No es una comprobación de versión de producto:
+binarios distintos con el mismo contrato pueden interoperar.
+Servicios y derechos/control conservan sus protocolos v4 independientes.
+El Hub distingue errores de versión de servicios y conserva su aviso de conexión.
+`snapshot_from_json` es estricto; `snapshot_from_saved_json` conserva escenas
+Studio/Workshop/exportaciones v7/v8/v9 sin reescribir originales.
+`snapshot_from_fixture_json` es el helper explícito para fixtures históricas.
+No usar esos lectores de compatibilidad en pipes live ni eventos live.
+Fixtures actuales: DTO v9; `.scene.json` contiene fases con fotos/captions,
+no un protocolo alternativo. Ver [ui/README.md](ui/README.md).
+
 ## Contrato adaptador ↔ núcleo
 
 `Adapter::poll(now) -> Result<Option<Observation>, AdapterError>` (sin bloquear,
 reloj inyectado). Una `Observation` es `Origin` (simulador, reloj de origen y de
 recepción) más `State`, con las capacidades que declara el adaptador. El núcleo
-implementa `merge(previous: Option<&Snapshot>, Observation, epoch: u64) ->
-Result<Snapshot, Reject>` (validación, derivaciones, numeración; la frescura la
-vigila `Core`); ver `domain/src/adapter.rs`. Los widgets solo
-ven `standings::project(&Snapshot, Preferences)`, `radar::project(&Snapshot)` y
-`pedals::project(&Snapshot, Preferences)`.
+fusiona mediante `runtime::core::merge_validated` (validación, saneado,
+derivaciones y numeración; recibe los trackers de combustible/delta/stint/
+tendencia; la frescura la vigila `Core`); ver `domain/src/adapter.rs`.
+Los widgets consumen las proyecciones puras de domain y pintan sus ViewModels.
+La unificación de Standings, Relative, Delta y Fuel a una proyección/estado
+por widget con N Looks está **en curso, #1531**; esta base aún tiene vías duplicadas.
 
 ## Arrancar el esqueleto
 
@@ -138,8 +172,7 @@ retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 
 La base Unix (#1437) permite compilar y probar en Linux y macOS el workspace
 completo:
-`domain`, `ipc`, `runtime`, `services`, `engineer`, `storage`, `ui` y `hub`.
-`strategy` sigue siendo un workspace independiente. IPC usa los mismos DTO,
+los 10 crates listados arriba, incluido `strategy` en el mismo workspace. IPC usa los mismos DTO,
 cursores, límites y nonce que Windows, mediante sockets de dominio Unix 0600 en
 un directorio 0700 por UID dentro de `$XDG_RUNTIME_DIR` o del temporal (`/tmp`
 en macOS, para no superar el límite de longitud del socket). Verifica UID, PID e
@@ -159,8 +192,6 @@ cargo check --workspace --all-targets -j 4
 cargo clippy --workspace --all-targets -j 4 -- -D warnings
 cargo test --workspace --no-fail-fast -j 4
 cargo test --workspace --test lifecycle -j 4
-(cd strategy && cargo check --workspace --all-targets -j 4 && \
-  cargo clippy --workspace --all-targets -j 4 -- -D warnings && cargo test --workspace -j 4)
 # Workshop con escena grabada, sin núcleo ni telemetría live:
 cargo run -p vantare-ui --bin vantare-workshop
 ```

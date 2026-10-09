@@ -1,7 +1,11 @@
 # Corpus conservado · #1533
 
 `manifest.json` registra SHA-256 anterior al borrado y ruta original en
-`5e1da3f6`. `python native/retirement/verify.py` comprueba todos sus bytes.
+`5e1da3f6`. `python native/retirement/verify.py` comprueba todos sus bytes actuales. La integración #1530 migra las etiquetas
+DTO a v9 y actualiza solo sus pins y documentación: `source_sha256` conserva
+el hash anterior, `sha256` fija el archivo migrado. Los JSON y los gzip
+se compararon contra la base cambiando únicamente la etiqueta de versión;
+`acc-all-v8.sha256` y la regresión de telemetría conservan el pin ACC original.
 Se conservan corpus LMU/ACC, oráculos Strategy, referencias visuales y assets.
 Los catálogos Go de Engineer son texto de referencia inerte; los tests Rust
 siguen comparando sus frases/voces. El seed de calendario vive en `hub/data`,

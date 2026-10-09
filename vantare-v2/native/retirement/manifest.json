@@ -987,23 +987,33 @@
     },
     "native/runtime/tests/golden/README.md": {
       "source": "native/runtime/tests/golden/README.md",
-      "sha256": "b74cd322a978bafc3d96f65699be199561f2841659f66ad51c86aa0996da839b"
+      "sha256": "1294dda26bd2e0acc2286b2cb956d13f7fe7e030d99595f5c59acf48ddd8ffe1",
+      "source_sha256": "b74cd322a978bafc3d96f65699be199561f2841659f66ad51c86aa0996da839b",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/runtime/tests/golden/acc-all.sha256": {
       "source": "native/runtime/tests/golden/acc-all.sha256",
-      "sha256": "e8eb52bf9e4992069e51bcea71533fdf22010922f57cb22a241dfab8d68219a6"
+      "sha256": "38e10a785d3a262def656b17eb212cde7e3ad14e0901eeaa5c9445540aa51409",
+      "source_sha256": "e8eb52bf9e4992069e51bcea71533fdf22010922f57cb22a241dfab8d68219a6",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/runtime/tests/golden/acc.jsonl.gz": {
       "source": "native/runtime/tests/golden/acc.jsonl.gz",
-      "sha256": "8bbf3336f7cf7f72183ca729520acccc95adffb067e6b5018df7f30554b83f4d"
+      "sha256": "158690d09f4c100007a65b20eece3b5738a407799590190a884dc4f2a38fba47",
+      "source_sha256": "8bbf3336f7cf7f72183ca729520acccc95adffb067e6b5018df7f30554b83f4d",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/runtime/tests/golden/lmu.jsonl.gz": {
       "source": "native/runtime/tests/golden/lmu.jsonl.gz",
-      "sha256": "2f7b481fc726b58051fcbae17b45ea45fae191cada7be667657392f9d5368a76"
+      "sha256": "6dea5326f992006f8f6e0afc44ad588d0f30ea6580ea9d0b3f7ebbc578329173",
+      "source_sha256": "2f7b481fc726b58051fcbae17b45ea45fae191cada7be667657392f9d5368a76",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/runtime/tests/golden/lmu47.jsonl.gz": {
       "source": "native/runtime/tests/golden/lmu47.jsonl.gz",
-      "sha256": "32f68cc6e71bf3032554012495ec4c0f6a415e17350fb38702e2a9ed144dedb4"
+      "sha256": "f631edc2d61454db1058ae1a418e487521d856bd09b8ea8ddf444f0a722e7bcd",
+      "source_sha256": "32f68cc6e71bf3032554012495ec4c0f6a415e17350fb38702e2a9ed144dedb4",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/strategy/testdata/fuji-1450-input.json": {
       "source": "native/strategy/testdata/fuji-1450-input.json",
@@ -1103,135 +1113,201 @@
     },
     "native/ui/fixtures/broadcast-tower-crossing.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-crossing.scene.json",
-      "sha256": "3d94257ca6f8944dae1f850878b06b2753ca8becf19a3b9810866fd2968295bb"
+      "sha256": "1dc2c7125d04beb39f6e7df9c3f1ee0c021559f3888e02ecbbd4d17bdc61b733",
+      "source_sha256": "3d94257ca6f8944dae1f850878b06b2753ca8becf19a3b9810866fd2968295bb",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/broadcast-tower-default.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-default.scene.json",
-      "sha256": "a5c3eafbf4905a74b40b4ded643c64f78a002eb7f077ed136f31e0fe9dda909b"
+      "sha256": "05adf27d987574295ad10fb11f798a9080456fbcbda171fe3eecb66eafc51fe1",
+      "source_sha256": "a5c3eafbf4905a74b40b4ded643c64f78a002eb7f077ed136f31e0fe9dda909b",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/broadcast-tower-exit-reentry.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-exit-reentry.scene.json",
-      "sha256": "c36359f56ad5ffeaf7db41f2c67460afd392558013630edb1a126ef44c9387ba"
+      "sha256": "5b839f0f1d61988068661a76dc624007931fed72556711f48d44825b9a83dade",
+      "source_sha256": "c36359f56ad5ffeaf7db41f2c67460afd392558013630edb1a126ef44c9387ba",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/broadcast-tower-fast-inversion.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-fast-inversion.scene.json",
-      "sha256": "89e4877a94a5bb71e3db6a9b980f4387f8f071f919fbbeeeb6a038704a3e0a8f"
+      "sha256": "e3bdee7f5504cf2653b930814b4563f8a89f9c22b883e178e9b8045b578a7112",
+      "source_sha256": "89e4877a94a5bb71e3db6a9b980f4387f8f071f919fbbeeeb6a038704a3e0a8f",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/broadcast-tower-overtake-sequence.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-overtake-sequence.scene.json",
-      "sha256": "fafadb5df862d91569a1d05e13dcee9d2904a7db56cdba05f0b3836e7f4a26a8"
+      "sha256": "21a7422f75bc956d2e14cd6a46a3d5fd51a9a2c76cce13bb49a3b8e66507d57d",
+      "source_sha256": "fafadb5df862d91569a1d05e13dcee9d2904a7db56cdba05f0b3836e7f4a26a8",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/broadcast-tower-stable-values.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-stable-values.scene.json",
-      "sha256": "1eb01484877dddd83846b4977f65f705a28f4db9fa7bac399bdea0ba6f9b64c6"
+      "sha256": "5a3ca0700741873e89b721c3aa11c23f8a92b9d326006251283876c3a0d6be85",
+      "source_sha256": "1eb01484877dddd83846b4977f65f705a28f4db9fa7bac399bdea0ba6f9b64c6",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/broadcast-tower.snapshot.json": {
       "source": "native/ui/fixtures/broadcast-tower.snapshot.json",
-      "sha256": "2570b4e64ec328579f2fe2d80719be2e3dd70aed4e88e1bafd21471cee8415c7"
+      "sha256": "ddae868760b5d0364ac9d36fc130704850aba10cf4f45412dc554a292a906317",
+      "source_sha256": "2570b4e64ec328579f2fe2d80719be2e3dd70aed4e88e1bafd21471cee8415c7",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/car-damage-numbers-default.scene.json": {
       "source": "native/ui/fixtures/car-damage-numbers-default.scene.json",
-      "sha256": "2eff91ced8461bb0ee734271bdc486b61bc1822dc3e43393b453c8823532ad17"
+      "sha256": "3f7c709f6e9b4a68eed8068e392e4d8c0179995137ee332727fbc05b73134f4d",
+      "source_sha256": "2eff91ced8461bb0ee734271bdc486b61bc1822dc3e43393b453c8823532ad17",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/car-damage-numbers.snapshot.json": {
       "source": "native/ui/fixtures/car-damage-numbers.snapshot.json",
-      "sha256": "13bc5e265f9f5135b79832352d682149a575a2121823a013ecbca0430ad13f2b"
+      "sha256": "44a0ae31df2e51d258bb15410dd6ab931d26f3b569ea511958b7e3a2d7ac4be6",
+      "source_sha256": "13bc5e265f9f5135b79832352d682149a575a2121823a013ecbca0430ad13f2b",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/car-damage-visual-default.scene.json": {
       "source": "native/ui/fixtures/car-damage-visual-default.scene.json",
-      "sha256": "793efe85e2b60aa9bc305366dbba8c7c2d98c142fb447720d01940051f56f9ef"
+      "sha256": "2e7818a353582ce9f8b9907ce7e66a6fc06eb49113ede0e32b0c411b8d557b6e",
+      "source_sha256": "793efe85e2b60aa9bc305366dbba8c7c2d98c142fb447720d01940051f56f9ef",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/car-damage-visual.snapshot.json": {
       "source": "native/ui/fixtures/car-damage-visual.snapshot.json",
-      "sha256": "970b8ce584b39a95fe3fd199f366359a243e1d30c7b246236f42219fd2521132"
+      "sha256": "8a7255d27bf120876a922bac72ea80149243c77f6f99e03e0e3b23cd682c2bad",
+      "source_sha256": "970b8ce584b39a95fe3fd199f366359a243e1d30c7b246236f42219fd2521132",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/delta-cross-zero.scene.json": {
       "source": "native/ui/fixtures/delta-cross-zero.scene.json",
-      "sha256": "3fa9b5410fb7c934451b4dd23cbd525685f781540b5bbe8d95fe02bb0cd999e0"
+      "sha256": "75badab1190b1a9c233c6bb58aac8920f695560d590ef9f78605565214e9683f",
+      "source_sha256": "3fa9b5410fb7c934451b4dd23cbd525685f781540b5bbe8d95fe02bb0cd999e0",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/delta-default.scene.json": {
       "source": "native/ui/fixtures/delta-default.scene.json",
-      "sha256": "581eb78af0715e373f79ceb29073278c70abb3e6011a296df6936a24e0fa1f69"
+      "sha256": "f919a971129b51ff61b7902b1f99789d72f1c33891371a5fd5bf8e62b2aa3c9d",
+      "source_sha256": "581eb78af0715e373f79ceb29073278c70abb3e6011a296df6936a24e0fa1f69",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/delta-new-best.scene.json": {
       "source": "native/ui/fixtures/delta-new-best.scene.json",
-      "sha256": "7b7d1498f24ebdcc40fbed84c9edbce558675cf990cda9a95a0c694bdb2e9400"
+      "sha256": "ce452713d9d5b6d14813d31538bc770e7526d179c9608f65bf3f83cc3a9e7873",
+      "source_sha256": "7b7d1498f24ebdcc40fbed84c9edbce558675cf990cda9a95a0c694bdb2e9400",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/delta-trace-default.scene.json": {
       "source": "native/ui/fixtures/delta-trace-default.scene.json",
-      "sha256": "e30ecd22e0a8910caa172325451cc23bf87d46b740012a1f58a27ad649d42fe3"
+      "sha256": "64668d1209534003074288f39218749871e14361564b4e8d36b6389a1fd9a05b",
+      "source_sha256": "e30ecd22e0a8910caa172325451cc23bf87d46b740012a1f58a27ad649d42fe3",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/delta-trace.sequence.json": {
       "source": "native/ui/fixtures/delta-trace.sequence.json",
-      "sha256": "73ade07dd0aa208f9e94f3bd1f361b28301c75cc9d1cdf0681088039098ca1a8"
+      "sha256": "575fab2f070094467b79fb8fe2f3bf3df91a658b99403fb822f13c54cb6e5741",
+      "source_sha256": "73ade07dd0aa208f9e94f3bd1f361b28301c75cc9d1cdf0681088039098ca1a8",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/delta-trace.snapshot.json": {
       "source": "native/ui/fixtures/delta-trace.snapshot.json",
-      "sha256": "36dd647f342b5117a70371b690e02a679f1526858978db7de53e38b1e165abc2"
+      "sha256": "729fa979781e4054a422e5a8f15d18dfd1140544ed82e9baf317937053e0f989",
+      "source_sha256": "36dd647f342b5117a70371b690e02a679f1526858978db7de53e38b1e165abc2",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/delta-vantare-carrera.scene.json": {
       "source": "native/ui/fixtures/delta-vantare-carrera.scene.json",
-      "sha256": "826dc02a486e22a6fc290cf10ba897d585ca4640a421d5b7faf1120a7fd4e890"
+      "sha256": "d0c0852ea0403fbe57a7a19d38337309c2ce922d36de5c0effbb732ce8ee8632",
+      "source_sha256": "826dc02a486e22a6fc290cf10ba897d585ca4640a421d5b7faf1120a7fd4e890",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/delta-vantare.scene.json": {
       "source": "native/ui/fixtures/delta-vantare.scene.json",
-      "sha256": "0a53312b8ce679e31f6d59f407e6427a7ca96085ee1439002a57dce0f98b28af"
+      "sha256": "712b7a169ac04d09953479e19da9aa20c79f49efedad5e949677941e0bd820aa",
+      "source_sha256": "0a53312b8ce679e31f6d59f407e6427a7ca96085ee1439002a57dce0f98b28af",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/delta.snapshot.json": {
       "source": "native/ui/fixtures/delta.snapshot.json",
-      "sha256": "7bb66416888448dce1976a017c16ab30f1c9798343d58000c4d38ace0f32f889"
+      "sha256": "7b758b37cb3ac9c96de1d477698302e6f0611b180e111d845f966f3b6db6681e",
+      "source_sha256": "7bb66416888448dce1976a017c16ab30f1c9798343d58000c4d38ace0f32f889",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/fastest-lap-alert.scene.json": {
       "source": "native/ui/fixtures/fastest-lap-alert.scene.json",
-      "sha256": "0438a1744ed6f6572e0421b73e3d1bc01c6778ad60d71aefb8965fd5e5269516"
+      "sha256": "907006d9822dc3a1cab282729e238a6f3b20e857fdb4c6f4f31dc13656b54767",
+      "source_sha256": "0438a1744ed6f6572e0421b73e3d1bc01c6778ad60d71aefb8965fd5e5269516",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/fastest-lap-default.scene.json": {
       "source": "native/ui/fixtures/fastest-lap-default.scene.json",
-      "sha256": "d1f38541cd6bc6e98129cbc74128f22ab5c9c52f847dcd5e7499441a03e45065"
+      "sha256": "ad230664c6f13f2ae3a13c4631d3568a53b772efbcf455e4d966f271f07cee2a",
+      "source_sha256": "d1f38541cd6bc6e98129cbc74128f22ab5c9c52f847dcd5e7499441a03e45065",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/fastest-lap.snapshot.json": {
       "source": "native/ui/fixtures/fastest-lap.snapshot.json",
-      "sha256": "1fda18507fc1134cdafa3e771196f14b96386419e32f374a447c4f6e7811c0b1"
+      "sha256": "155d3a4ddfb8ee0c383a5bd1c12eb74f8fc298074ea8673a651fc4a76c8c7541",
+      "source_sha256": "1fda18507fc1134cdafa3e771196f14b96386419e32f374a447c4f6e7811c0b1",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/fuel-strategy-default.scene.json": {
       "source": "native/ui/fixtures/fuel-strategy-default.scene.json",
-      "sha256": "f02bf017486d8db556bcf415e7299f5add8837fc45894f5a530a33f217ae94de"
+      "sha256": "46b0ad3d08db8f282dd3304b285be2ddfd63b3188bbdfb4e7e5e48ff1574642b",
+      "source_sha256": "f02bf017486d8db556bcf415e7299f5add8837fc45894f5a530a33f217ae94de",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/fuel-strategy.snapshot.json": {
       "source": "native/ui/fixtures/fuel-strategy.snapshot.json",
-      "sha256": "0143623b5af7991356967d33e661889be88eb1f8776928f96f3496abb4fa2289"
+      "sha256": "56a1d92de78aa45453dc0fd9da2ab6796930834ef4ae80cca649a8a5ff4b62f8",
+      "source_sha256": "0143623b5af7991356967d33e661889be88eb1f8776928f96f3496abb4fa2289",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/fuel-vantare-carrera.scene.json": {
       "source": "native/ui/fixtures/fuel-vantare-carrera.scene.json",
-      "sha256": "3788eedcb747d2a257b12b5449423dd336284efac8316373511debdbe9f1cd98"
+      "sha256": "3fddba784223d1b5a0da8a1e8e177e847dd4a8a1e60c730becfba4163cbcb68b",
+      "source_sha256": "3788eedcb747d2a257b12b5449423dd336284efac8316373511debdbe9f1cd98",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/fuel-vantare.scene.json": {
       "source": "native/ui/fixtures/fuel-vantare.scene.json",
-      "sha256": "a0ca2db0e5b5560daf1b172b112a32c0721c865dc630955d0e33335ab70b1d35"
+      "sha256": "d76527664abc4edaf9d67a7ea29222d7173aabbea9315f9852cf9d26eae5c6ea",
+      "source_sha256": "a0ca2db0e5b5560daf1b172b112a32c0721c865dc630955d0e33335ab70b1d35",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/head-to-head-default.scene.json": {
       "source": "native/ui/fixtures/head-to-head-default.scene.json",
-      "sha256": "cd3000af9053fc6a639e3e7a7585f5de18309503f9467ce8bdeae0d0c6321374"
+      "sha256": "e44415471d053832038dff8994b6c35eed4526b9e1c54b8353ebfcc72f3fd807",
+      "source_sha256": "cd3000af9053fc6a639e3e7a7585f5de18309503f9467ce8bdeae0d0c6321374",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/head-to-head-player-p2.snapshot.json": {
       "source": "native/ui/fixtures/head-to-head-player-p2.snapshot.json",
-      "sha256": "5f69767372fc54dbd8d88e91df63df735a9af2c2f6c15155135369ceec05e677"
+      "sha256": "a37afc1dbacc7e1c34e0585b8f78233910cf38327979ed66615d3753c07b5a21",
+      "source_sha256": "5f69767372fc54dbd8d88e91df63df735a9af2c2f6c15155135369ceec05e677",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/head-to-head.snapshot.json": {
       "source": "native/ui/fixtures/head-to-head.snapshot.json",
-      "sha256": "e4838110845f7e835ede4a29f04d73ddc77d9c68ca4212006aecbc0a5c204716"
+      "sha256": "41871c042eafe6c6a43893171ded4774d476cc6c539af09b4e775ff2e6ff608f",
+      "source_sha256": "e4838110845f7e835ede4a29f04d73ddc77d9c68ca4212006aecbc0a5c204716",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/input-telemetry-default.scene.json": {
       "source": "native/ui/fixtures/input-telemetry-default.scene.json",
-      "sha256": "48bd40c2a7791ef4f053245954897514fb235ca1f69e2a674b904b73da87dae4"
+      "sha256": "f402802fa9805e8b82e69e526a65610f5051578229fe43e79f65fdb8ea896e52",
+      "source_sha256": "48bd40c2a7791ef4f053245954897514fb235ca1f69e2a674b904b73da87dae4",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/input-telemetry.sequence.json": {
       "source": "native/ui/fixtures/input-telemetry.sequence.json",
-      "sha256": "21374d2709db61cd4eb411d3daab865dd8538db2fcf35da0d1c2bac4bcddedcc"
+      "sha256": "240f5658096b11137d11be73d6f6c707053c979d2648ebb5a36b78f379ae7e6c",
+      "source_sha256": "21374d2709db61cd4eb411d3daab865dd8538db2fcf35da0d1c2bac4bcddedcc",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/input-telemetry.snapshot.json": {
       "source": "native/ui/fixtures/input-telemetry.snapshot.json",
-      "sha256": "5dcd77e454b89e0eab8a62399d09465001b30736b622d6171339566c2a67f18d"
+      "sha256": "cf7ecbb4f9a15d53e80651c3aef313bc113cf0524d895398635acbcd8c1ce298",
+      "source_sha256": "5dcd77e454b89e0eab8a62399d09465001b30736b622d6171339566c2a67f18d",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/layout.json": {
       "source": "native/ui/fixtures/layout.json",
@@ -1239,195 +1315,291 @@
     },
     "native/ui/fixtures/lmu47.snapshot.json": {
       "source": "native/ui/fixtures/lmu47.snapshot.json",
-      "sha256": "4a7af4e5edb4ee2392e2bbbb6635c92b2f8614dd2bbe0044e6f6bb0ff46a7b6d"
+      "sha256": "ccf8eb8195cd9768ea5fc140cfca994cc73914913f937bd9c9943367f837dddf",
+      "source_sha256": "4a7af4e5edb4ee2392e2bbbb6635c92b2f8614dd2bbe0044e6f6bb0ff46a7b6d",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/multiclass-relative-default.scene.json": {
       "source": "native/ui/fixtures/multiclass-relative-default.scene.json",
-      "sha256": "91e93791c8c93f3a45143012daec80360557fba1839cd8a2b134e97bebb2aa92"
+      "sha256": "a8876c52fab822ba6c70f4ee5bfc16466f55ff538334fb88cc255a686b0657e1",
+      "source_sha256": "91e93791c8c93f3a45143012daec80360557fba1839cd8a2b134e97bebb2aa92",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/multiclass-relative.snapshot.json": {
       "source": "native/ui/fixtures/multiclass-relative.snapshot.json",
-      "sha256": "9661977f1cb5d5227d3034bfdb0849eafe979aef446b4702e605e1de2aed899f"
+      "sha256": "2f5cebdfb315eede1d681435a5446ebf6679da1bd1aedc3813aa064b977292ee",
+      "source_sha256": "9661977f1cb5d5227d3034bfdb0849eafe979aef446b4702e605e1de2aed899f",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/pedals-clutch.scene.json": {
       "source": "native/ui/fixtures/pedals-clutch.scene.json",
-      "sha256": "714cb198fc77fb99482ad2c935a83f280482891ba8ee75c10742ebb27db8a674"
+      "sha256": "fe25db17bd825eda27242da3cb857159281c34732ff62f6ba173ec166155a918",
+      "source_sha256": "714cb198fc77fb99482ad2c935a83f280482891ba8ee75c10742ebb27db8a674",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/pedals-default.scene.json": {
       "source": "native/ui/fixtures/pedals-default.scene.json",
-      "sha256": "4b59a22da9c3d44a0ebf535fa16eb9c5d0d5ac511b8616bb0019bbf478a49edb"
+      "sha256": "8bba680729f7e243eb44b447dc698b1cc10eb0c7cb568d10e2ff86ee9d6e8dc4",
+      "source_sha256": "4b59a22da9c3d44a0ebf535fa16eb9c5d0d5ac511b8616bb0019bbf478a49edb",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/pedals-lap.scene.json": {
       "source": "native/ui/fixtures/pedals-lap.scene.json",
-      "sha256": "ff0e07617aac16a2c488f49512d57d3a27393e152456f7d0b762cb6714a29538"
+      "sha256": "53424491d81d79732844b08a6445919a31051b3d72e0238ce5d7bc58aaf86e72",
+      "source_sha256": "ff0e07617aac16a2c488f49512d57d3a27393e152456f7d0b762cb6714a29538",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/pedals-telemetry-default.scene.json": {
       "source": "native/ui/fixtures/pedals-telemetry-default.scene.json",
-      "sha256": "3257c45da832b99da67a29d5da1fd28e1582d555e2d4e48e97d4007c1af4ea8d"
+      "sha256": "dc8c6d5497de4adca46327daf2a4b0ef642a064c3d7c94b7a3ee191a18bf3796",
+      "source_sha256": "3257c45da832b99da67a29d5da1fd28e1582d555e2d4e48e97d4007c1af4ea8d",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/pedals-telemetry.snapshot.json": {
       "source": "native/ui/fixtures/pedals-telemetry.snapshot.json",
-      "sha256": "a0442b041290d9ee8d04a9cde7967f72608bace81753fe0233a2170ad620616e"
+      "sha256": "528a4a41c875ee0638c0ad56364a98b2eb33dc40e1dfb8bc62ebbaa2a206731b",
+      "source_sha256": "a0442b041290d9ee8d04a9cde7967f72608bace81753fe0233a2170ad620616e",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/pedals.snapshot.json": {
       "source": "native/ui/fixtures/pedals.snapshot.json",
-      "sha256": "8630ac1645b1b1b3ea13dfdbc708198ef18be18b940daa2a5f9444887e319428"
+      "sha256": "e42c0151f933b7504bac9fdf29866aa28fa6269e1815825891fc56d01adef233",
+      "source_sha256": "8630ac1645b1b1b3ea13dfdbc708198ef18be18b940daa2a5f9444887e319428",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/racing-flags-default.scene.json": {
       "source": "native/ui/fixtures/racing-flags-default.scene.json",
-      "sha256": "3e88d31661d495990be3dff1d222ec55e21abd5590cb35d6a6ef49add0b3a5f8"
+      "sha256": "da1debcbf7757a7a7a8d7046cec4d490d86fb86a7f90e239181c0c7cdb7ea186",
+      "source_sha256": "3e88d31661d495990be3dff1d222ec55e21abd5590cb35d6a6ef49add0b3a5f8",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/racing-flags-stale.snapshot.json": {
       "source": "native/ui/fixtures/racing-flags-stale.snapshot.json",
-      "sha256": "87e7ce6967441633d344dae37f5674cabe3a34910cb92227675a7dbf4ccc5fec"
+      "sha256": "453189876cff1559525e2d419c9897afcfd54faf9d463185f9d4012de34512c8",
+      "source_sha256": "87e7ce6967441633d344dae37f5674cabe3a34910cb92227675a7dbf4ccc5fec",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/racing-flags.snapshot.json": {
       "source": "native/ui/fixtures/racing-flags.snapshot.json",
-      "sha256": "2df53c770528f819991592f2183b785da935f0056de2e1c86029bed790ca140e"
+      "sha256": "0b897e4b6ef4df61970fe0fd780e91fd181c4bb376698fab63e831b971ca8f2e",
+      "source_sha256": "2df53c770528f819991592f2183b785da935f0056de2e1c86029bed790ca140e",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/radar-default.scene.json": {
       "source": "native/ui/fixtures/radar-default.scene.json",
-      "sha256": "3346efa5645abb829e6cbe6a794d8e82bfe1cc5b2693149bceac62cfd4027a89"
+      "sha256": "73ae41e512772158302522ed8815ec5fe035d6e13305809e55b44f6dfb535ade",
+      "source_sha256": "3346efa5645abb829e6cbe6a794d8e82bfe1cc5b2693149bceac62cfd4027a89",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/radar-nearby-traffic.scene.json": {
       "source": "native/ui/fixtures/radar-nearby-traffic.scene.json",
-      "sha256": "8ac938552ba8024f4a330697bce4fa2dbfdbee9e6b163f635f140c3f51209a95"
+      "sha256": "d06dadfb61347b0a23b1c441a385286e9acefd38a70b594319f7244892119acc",
+      "source_sha256": "8ac938552ba8024f4a330697bce4fa2dbfdbee9e6b163f635f140c3f51209a95",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/radar.snapshot.json": {
       "source": "native/ui/fixtures/radar.snapshot.json",
-      "sha256": "c23ea17cb3f41f051451189fa3b3270328b9cc566097e3577978bcea4679d427"
+      "sha256": "be76e5587e723af43cf8e820e6d65938be67f640db34ea3c2be0c9280ec7ac3d",
+      "source_sha256": "c23ea17cb3f41f051451189fa3b3270328b9cc566097e3577978bcea4679d427",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/relative-default.scene.json": {
       "source": "native/ui/fixtures/relative-default.scene.json",
-      "sha256": "5177147616ae91eb1feb0bf276cd032d1106d321d03adafc08526dbe6f412a75"
+      "sha256": "ff5566ef2fd28491e80654450104217333bf20532ce5dd9bfb342e736099fcb5",
+      "source_sha256": "5177147616ae91eb1feb0bf276cd032d1106d321d03adafc08526dbe6f412a75",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/relative-functional-cross-ahead.scene.json": {
       "source": "native/ui/fixtures/relative-functional-cross-ahead.scene.json",
-      "sha256": "42681536375dfbc29f98a0f72c13ff9d2d500b4ae0c91e000cc2f9c06ffc7ef6"
+      "sha256": "95b332b7122a74b0191224ad292e9005f458173d0d2fd536bdfd8abfe7b2edc3",
+      "source_sha256": "42681536375dfbc29f98a0f72c13ff9d2d500b4ae0c91e000cc2f9c06ffc7ef6",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/relative-functional-cross-behind.scene.json": {
       "source": "native/ui/fixtures/relative-functional-cross-behind.scene.json",
-      "sha256": "ead34d87d2e074e972ace8c96efa4ee31c9033ae898e851053c64035bac3e0ee"
+      "sha256": "43bcda1655b002ac9807cb6e25b5d4ecafdd473393e60fd017aef8d0f3ebc63a",
+      "source_sha256": "ead34d87d2e074e972ace8c96efa4ee31c9033ae898e851053c64035bac3e0ee",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/relative-functional-fast-reversal.scene.json": {
       "source": "native/ui/fixtures/relative-functional-fast-reversal.scene.json",
-      "sha256": "156d67826329f73ecea62eb178ea4545535871db81131d0b38225cf190a1ff48"
+      "sha256": "a1faaed08d394b88375147775313bdace154ce8e5b385ef94a5d6279265b9ba6",
+      "source_sha256": "156d67826329f73ecea62eb178ea4545535871db81131d0b38225cf190a1ff48",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/relative-functional-lap-difference.scene.json": {
       "source": "native/ui/fixtures/relative-functional-lap-difference.scene.json",
-      "sha256": "a9bfe64ee41d0a02fa1176320eb92471d8b0c0ef45de9a6dc464293c4132d36f"
+      "sha256": "7ad5c06c341aac9e202dbca1614ab4007e9b7802997e5cbcbf0fe0c676d3eac1",
+      "source_sha256": "a9bfe64ee41d0a02fa1176320eb92471d8b0c0ef45de9a6dc464293c4132d36f",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/relative-functional-sequence.scene.json": {
       "source": "native/ui/fixtures/relative-functional-sequence.scene.json",
-      "sha256": "09171d0ba9b4e8318bee45d3876d2615c01a510783ec554ddf45b4bf924a279d"
+      "sha256": "c4e7de97375cec2681cb500d5d3d08986ab64244dac5f909bdebefd6ed8015af",
+      "source_sha256": "09171d0ba9b4e8318bee45d3876d2615c01a510783ec554ddf45b4bf924a279d",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/relative-functional-stable-values.scene.json": {
       "source": "native/ui/fixtures/relative-functional-stable-values.scene.json",
-      "sha256": "113fd7dd846f52fd07c5e9b035baf1bba5fd5001044a4e19f95b600f1ac7bc0d"
+      "sha256": "556eaa68095ba19ac6842bd92d99a31f7eadd7c098f32605dba5dd9971bfeff7",
+      "source_sha256": "113fd7dd846f52fd07c5e9b035baf1bba5fd5001044a4e19f95b600f1ac7bc0d",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/relative-functional-window-cycle.scene.json": {
       "source": "native/ui/fixtures/relative-functional-window-cycle.scene.json",
-      "sha256": "1c0b7d53f1a5af21a812f702aa2e2ce401187ababdc6f84648f61baed2763c9d"
+      "sha256": "384bd8561ed9fca220cc3ff2345c1554b55b09e741ce89fdf65f2fd080b64fd2",
+      "source_sha256": "1c0b7d53f1a5af21a812f702aa2e2ce401187ababdc6f84648f61baed2763c9d",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/relative-vantare-carrera.scene.json": {
       "source": "native/ui/fixtures/relative-vantare-carrera.scene.json",
-      "sha256": "f96417a5fcda18dfe228abb45e27dd136176eb72db7a6b938d168f7d9d0dbde1"
+      "sha256": "4126a55048328788958baf59d80101d29015d7a8cb82ded08800c9af54fa4d7d",
+      "source_sha256": "f96417a5fcda18dfe228abb45e27dd136176eb72db7a6b938d168f7d9d0dbde1",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/relative-vantare.scene.json": {
       "source": "native/ui/fixtures/relative-vantare.scene.json",
-      "sha256": "e32d0fc0486c3d4ab4bfc48b51004a6dd307042f8139d10c2561ed18b0c9a16f"
+      "sha256": "c00952e39b01b6f077bfed327773bc4290fca60c7041f67bcb172fa9498e2435",
+      "source_sha256": "e32d0fc0486c3d4ab4bfc48b51004a6dd307042f8139d10c2561ed18b0c9a16f",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/relative.snapshot.json": {
       "source": "native/ui/fixtures/relative.snapshot.json",
-      "sha256": "4f5138b31cd741f78afd40e6d34a4550aef2bf1c89e55b4007a68af8a1e34d8f"
+      "sha256": "8ee9a764f9c834b38303f8e99939a78234cf6d93a849126e7829c6980f9faab8",
+      "source_sha256": "4f5138b31cd741f78afd40e6d34a4550aef2bf1c89e55b4007a68af8a1e34d8f",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/standings-default.scene.json": {
       "source": "native/ui/fixtures/standings-default.scene.json",
-      "sha256": "fc2d85dcbf19781fe3511bc62df23ffe874e132530f0175a0f6296d56fd7ade6"
+      "sha256": "d0266acf92b89cc397a0f9b1bcf4e8aa997acb7cbb08e63bbf5d9f4c946e558e",
+      "source_sha256": "fc2d85dcbf19781fe3511bc62df23ffe874e132530f0175a0f6296d56fd7ade6",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/standings-functional-battle.scene.json": {
       "source": "native/ui/fixtures/standings-functional-battle.scene.json",
-      "sha256": "0381e6ceb0f8619a4402c3818e0dac53f0d2f260697fb4c8da9e2f85a269598f"
+      "sha256": "4759734ed64a2243b74e89e4b338a229ee97231d6034ebb5e93cf43daa7e56ec",
+      "source_sha256": "0381e6ceb0f8619a4402c3818e0dac53f0d2f260697fb4c8da9e2f85a269598f",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/standings-functional-combined.scene.json": {
       "source": "native/ui/fixtures/standings-functional-combined.scene.json",
-      "sha256": "93b27a596fe92403bf44be2a900be10edab90f78e720b969d1df1e7ecd5f59ac"
+      "sha256": "57cb65ee64532fd15d403036d3b7c8f508c2b2a38d317111bff600cd95b7066e",
+      "source_sha256": "93b27a596fe92403bf44be2a900be10edab90f78e720b969d1df1e7ecd5f59ac",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/standings-functional-personal-best.scene.json": {
       "source": "native/ui/fixtures/standings-functional-personal-best.scene.json",
-      "sha256": "86635acff7451934fe793a6ae76142f7574cc103f5cc396bc7c8904beddf52ed"
+      "sha256": "3821447ce69426aa8c1ac46b7a991ca9f8c0512b6578146864a7a1413a3a5af6",
+      "source_sha256": "86635acff7451934fe793a6ae76142f7574cc103f5cc396bc7c8904beddf52ed",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/standings-functional-pit.scene.json": {
       "source": "native/ui/fixtures/standings-functional-pit.scene.json",
-      "sha256": "1074b7a0572fa4bf563a9e4d5988c0dba199ebc86a4cb0578c678cfe1758f740"
+      "sha256": "5f8f20c5c18040352b9a1918b08b1f021dbaa5353b0d4af0a8ba4a04d3cf1d73",
+      "source_sha256": "1074b7a0572fa4bf563a9e4d5988c0dba199ebc86a4cb0578c678cfe1758f740",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/standings-functional-position.scene.json": {
       "source": "native/ui/fixtures/standings-functional-position.scene.json",
-      "sha256": "6baa681603b7fb4e7ed1c334886f89555ddc1009b94d91da3d3750e71c835181"
+      "sha256": "46e13b846e457f570155705605aaa39bdd9da88773f090a4710e71687e74c64e",
+      "source_sha256": "6baa681603b7fb4e7ed1c334886f89555ddc1009b94d91da3d3750e71c835181",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/standings-functional-session-best.scene.json": {
       "source": "native/ui/fixtures/standings-functional-session-best.scene.json",
-      "sha256": "4f23be3dd1768706577901c7ab419c5a44248e1937bd3cd13b747a9d8470df4a"
+      "sha256": "38a4e15f9cdb36036ae8e26e310db488f19f16a280effa2e97c7245ca5ad8223",
+      "source_sha256": "4f23be3dd1768706577901c7ab419c5a44248e1937bd3cd13b747a9d8470df4a",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/standings-functional-window.scene.json": {
       "source": "native/ui/fixtures/standings-functional-window.scene.json",
-      "sha256": "188b96432ce39d0105a0cfbbc2101259427bb7c99c74104d7200060f9fb8759f"
+      "sha256": "a21e98e0e54731ece806c8549ebfdfe66bf169d207ff0747ba52b07a0e8aeaff",
+      "source_sha256": "188b96432ce39d0105a0cfbbc2101259427bb7c99c74104d7200060f9fb8759f",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/standings-legacy.snapshot.json": {
       "source": "native/ui/fixtures/standings-legacy.snapshot.json",
-      "sha256": "4ac6dc693cc0e040b5f319f63859b60c594f18af1ad4e35039b41c76f3c9ca29"
+      "sha256": "64ab6146cbb0601040b93f54194d0dc86885559365316c4b855d5e67225a4dcb",
+      "source_sha256": "4ac6dc693cc0e040b5f319f63859b60c594f18af1ad4e35039b41c76f3c9ca29",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/standings-vantare-carrera.scene.json": {
       "source": "native/ui/fixtures/standings-vantare-carrera.scene.json",
-      "sha256": "ff48ba8f37bb3b0cfd9c0c26e4ff1fd6026e68dd670eb1eb3e50614d9650ce45"
+      "sha256": "788427a274adb06760cde4ec4dd8b430035f4f600b1e9a2cd2747c96ddb5f312",
+      "source_sha256": "ff48ba8f37bb3b0cfd9c0c26e4ff1fd6026e68dd670eb1eb3e50614d9650ce45",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/standings-vantare.scene.json": {
       "source": "native/ui/fixtures/standings-vantare.scene.json",
-      "sha256": "a8c5ed2349cfb6754b2c2f09f94ec60883c410c06bdcf7727be12634c036efda"
+      "sha256": "fd88b81eb5821a7380bf54654fcb5fc3b07b0b26a1d07e2ff2bae1d61aba6aae",
+      "source_sha256": "a8c5ed2349cfb6754b2c2f09f94ec60883c410c06bdcf7727be12634c036efda",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/standings.snapshot.json": {
       "source": "native/ui/fixtures/standings.snapshot.json",
-      "sha256": "980b76f7c6e47f5dba2638e773d6a59283fe7df330dd0637b0cfd244aa43a3f9"
+      "sha256": "c874ec60069b6e16ada5318f4ab9dafc9a339196f7d740a051d53f8fa0e4876a",
+      "source_sha256": "980b76f7c6e47f5dba2638e773d6a59283fe7df330dd0637b0cfd244aa43a3f9",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/telemetry-real/README.md": {
       "source": "native/ui/fixtures/telemetry-real/README.md",
-      "sha256": "ed06489271e1d960c04fb8cd2da067c63b959772900f63d5945cbf8e0797385e"
+      "sha256": "2cc11f0cf3855e7a972be431f49ba958f4c39e465a034cdcd704a4ede36059da",
+      "source_sha256": "ed06489271e1d960c04fb8cd2da067c63b959772900f63d5945cbf8e0797385e",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/telemetry-real/acc.snapshot.json": {
       "source": "native/ui/fixtures/telemetry-real/acc.snapshot.json",
-      "sha256": "9f8b9c3858c06512ebf4003e1c34eaa016ceb52e5e71a517057ff6aa1d7c3885"
+      "sha256": "11500cb34cbb795957de2a43171d5668f7fde6cfed1a258cad099f294f3638d1",
+      "source_sha256": "9f8b9c3858c06512ebf4003e1c34eaa016ceb52e5e71a517057ff6aa1d7c3885",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/telemetry-real/lmu-menu.snapshot.json": {
       "source": "native/ui/fixtures/telemetry-real/lmu-menu.snapshot.json",
-      "sha256": "735783a7cdd1cd3fd9c5bb49af31caf7721ab7f8039bedfd9ef43ceece455e5a"
+      "sha256": "49df511d1ad8d53beae3ba7935b5ffa55d15ab2a58a0036c75f724dc6f5f9c9a",
+      "source_sha256": "735783a7cdd1cd3fd9c5bb49af31caf7721ab7f8039bedfd9ef43ceece455e5a",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/telemetry-real/lmu-stale.snapshot.json": {
       "source": "native/ui/fixtures/telemetry-real/lmu-stale.snapshot.json",
-      "sha256": "e4244ab9c21f4774125fe38d0d688c0c089bcddd640f4deb674a83c6db0b95b8"
+      "sha256": "5a08189e04e16d82689075a324d5223ec7c7a7880dbd3bf4e4a635bd319a0ca9",
+      "source_sha256": "e4244ab9c21f4774125fe38d0d688c0c089bcddd640f4deb674a83c6db0b95b8",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/telemetry-real/lmu47-input.sequence.json": {
       "source": "native/ui/fixtures/telemetry-real/lmu47-input.sequence.json",
-      "sha256": "4d2d002ba0dac11a36005e2582f648ecd85dae4c6194d3eb4cbb1a2a4b7c1071"
+      "sha256": "a7eedbcd4e301a422cd89a3b2965f7d2ea17ab93fe027d520fba0a6962c2f43d",
+      "source_sha256": "4d2d002ba0dac11a36005e2582f648ecd85dae4c6194d3eb4cbb1a2a4b7c1071",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/telemetry-real/lmu47.snapshot.json": {
       "source": "native/ui/fixtures/telemetry-real/lmu47.snapshot.json",
-      "sha256": "23dc883f111fe11817116358f8d25a343b2b341fe3da171385c93070bfb24d5a"
+      "sha256": "3fe5acef6f332dd01fd1afee64d419ec5250f415117fba71585a456e6fd92630",
+      "source_sha256": "23dc883f111fe11817116358f8d25a343b2b341fe3da171385c93070bfb24d5a",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/track-map-default.scene.json": {
       "source": "native/ui/fixtures/track-map-default.scene.json",
-      "sha256": "65660cb27d5feef6044901d11e009735577d0267d5c3cf43ac67b2b81a1084ae"
+      "sha256": "a6be67b4f42237b9aad1ca828975fd43b0211bc68c5c51259875eb322cb16ce9",
+      "source_sha256": "65660cb27d5feef6044901d11e009735577d0267d5c3cf43ac67b2b81a1084ae",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/track-map.snapshot.json": {
       "source": "native/ui/fixtures/track-map.snapshot.json",
-      "sha256": "d3e7c6ab59626ab47e33708bd9913f67d34b3eca3267d3f558ee29ec39b77cfc"
+      "sha256": "e59f282f8f1b7a28d6683068125e6c5a46cd640014687249c0c5b2fac9198fde",
+      "source_sha256": "d3e7c6ab59626ab47e33708bd9913f67d34b3eca3267d3f558ee29ec39b77cfc",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/track-weather-default.scene.json": {
       "source": "native/ui/fixtures/track-weather-default.scene.json",
-      "sha256": "beb40857bca985757d2f637fb6e0410ddbd0f484057098a0a09b2ca3991ac34a"
+      "sha256": "4a324c981b21382b4a2796ee964836cc93cc3d99153541791808bdc8f73a26dc",
+      "source_sha256": "beb40857bca985757d2f637fb6e0410ddbd0f484057098a0a09b2ca3991ac34a",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/track-weather.snapshot.json": {
       "source": "native/ui/fixtures/track-weather.snapshot.json",
-      "sha256": "a111b1b77ad34ece680644d1df3617e5b08e0e99640e8615b3b13ac7219cd06c"
+      "sha256": "df192ea5457486bf86a3897ea649bd83be08e8c0118e0d1b89a87603a47b6453",
+      "source_sha256": "a111b1b77ad34ece680644d1df3617e5b08e0e99640e8615b3b13ac7219cd06c",
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
     },
     "native/ui/fixtures/workshop-sources.json": {
       "source": "native/ui/fixtures/workshop-sources.json",

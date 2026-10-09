@@ -78,6 +78,7 @@ struct Hub {
     status: Option<String>,
     subscriber: Subscriber,
     previous_source: Option<bool>,
+    connection_incompatible: bool,
     close_requested: bool,
 }
 
@@ -91,6 +92,12 @@ impl Hub {
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
+        let incompatible = self.subscriber.connection().incompatible()
+            || self.remote.read(cx).connection_incompatible();
+        if incompatible != self.connection_incompatible {
+            self.connection_incompatible = incompatible;
+            cx.notify();
+        }
         self.poll_beta_update(cx);
         self.refresh_access(cx);
         self.notifications.update(cx, |notifications, cx| {
@@ -481,6 +488,9 @@ impl Hub {
                 content.pt(px(0.0))
             })
             .when_some(header, gpui::ParentElement::child)
+            .when(self.connection_incompatible, |content| {
+                content.child(orbit::callout(vantare_ipc::INCOMPATIBLE_COMPONENTS, cx))
+            })
             .when_some(self.status.clone(), |content, status| {
                 content.child(orbit::callout(status, cx))
             })
@@ -511,6 +521,14 @@ impl Hub {
             .size_full()
             .relative()
             .child(self.section_view(window, cx))
+            .when(self.connection_incompatible, |root| {
+                root.child(
+                    orbit::callout(vantare_ipc::INCOMPATIBLE_COMPONENTS, cx)
+                        .absolute()
+                        .top(gpui::px(52.0))
+                        .left(gpui::px(280.0)),
+                )
+            })
             .when_some(self.status.clone(), |root, status| {
                 root.child(
                     orbit::callout(status, cx)
@@ -1189,6 +1207,7 @@ impl Hub {
             status: None,
             subscriber,
             previous_source: None,
+            connection_incompatible: false,
             close_requested: false,
         }
     }

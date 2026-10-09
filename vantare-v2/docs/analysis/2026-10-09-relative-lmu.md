@@ -92,3 +92,21 @@ Manual: abrir LMU con Relative visible antes de completar una vuelta y
 comparar signos/vecinos; deben verse valores estimados donde hay tiempo en
 vuelta y periodo actual, o «—» en ausencia/boxes. Confirmar también la
 caducidad y reconexión. No se ejecutó ese ensayo físico, OBS ni macOS.
+
+## Gates y límites de entorno
+
+Fmt y Clippy workspace/all-targets `-D warnings` pasan. La primera ejecución
+de Nextest se detuvo con 973 PASS, un FAIL por `StorageFull` (OS 112) en
+`services::legacy_crash_is_redacted_before_sending` y 329 pruebas sin ejecutar.
+La revisión automática rechazó eliminar la caché incremental (`blocked by
+policy`); no se borró nada. El intento con TEMP/TMP exclusivos en E: produjo
+dos fallos de canalización de recuperación de Engineer (EOF/BrokenPipe),
+aunque esas dos pruebas habían pasado en el primer intento. No se atribuye
+su causa a Relative ni se cambia código/test ajeno para ocultarlos.
+Cuando C: volvió a tener espacio, se restituyó el entorno TEMP/TMP original
+y se lanzó la suite completa con dos hilos de test, seguida de lifecycle y
+telemetría: **Nextest 1303/1303 PASS (7 skips), lifecycle 5+13 PASS,
+telemetría 21/21 PASS (0 skips)**. ACC compara el hash de 190308 DTO y sus
+ocho cortes originales (471,621 s); LMU compara los 3839 DTO y las capturas
+estáticas. Logs y estado final en `relative-evidence/` y en el handoff.
+No se debilitaron tests ni se borraron cachés.

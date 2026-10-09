@@ -1054,13 +1054,13 @@ impl Studio {
         let next = frame.update(cx, |frame, cx| {
             cx.notify();
             if let Some(mut resize) = frame.resize.take() {
-                resize
-                    .update((pointer.x.into(), pointer.y.into()))
-                    .then_some((
-                        frame.item.id.clone(),
-                        resize.preview.0,
-                        Some(resize.preview.1),
-                    ))
+                let changed = resize.update((pointer.x.into(), pointer.y.into()))
+                    && resize.preview != (resize.origin, resize.size);
+                changed.then_some((
+                    frame.item.id.clone(),
+                    resize.preview.0,
+                    Some(resize.preview.1),
+                ))
             } else {
                 let mut drag = frame.drag.take()?;
                 drag.update((pointer.x.into(), pointer.y.into()))
@@ -2541,6 +2541,40 @@ mod tests {
                     studio.editor.layout().instances.is_empty(),
                     "no history during preview"
                 );
+            });
+            cx.quit();
+        });
+    }
+    #[test]
+    fn clicking_resize_handle_without_motion_does_not_write_geometry_or_history() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let layout = studio.editor.layout().clone();
+                let frame = studio.frames[0].1.clone();
+                let size = frame
+                    .read(cx)
+                    .item
+                    .geometry
+                    .resolved(frame.read(cx).renderer.read(cx).wanted_size());
+                frame.update(cx, |frame, _| {
+                    frame.resize = Some(Resize {
+                        pointer: (100.0, 100.0),
+                        origin: (frame.item.x, frame.item.y),
+                        size,
+                        preview: ((frame.item.x, frame.item.y), size),
+                        scale: 1.0,
+                        handle: vantare_ui::geometry::Handle(1, 1),
+                        locked: true,
+                    });
+                });
+                studio.drag = Some(frame);
+                studio.finish_drag(gpui::point(px(100.0), px(100.0)), cx);
+                assert_eq!(studio.editor.layout(), &layout);
+                studio.editor.undo().expect("undo adding");
+                assert!(studio.editor.layout().instances.is_empty());
             });
             cx.quit();
         });

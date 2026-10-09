@@ -111,3 +111,32 @@ La revisión no demuestra un nuevo format/fit respecto al baseline: era trabajo
 heredado. Al retirarlo se resuelve la regresión medida; no se atribuye una causa
 microarquitectónica no perfilada. Corpus real, widgets visualmente estables (0
 invalidaciones tras warmup); no demuestra coste de cualquier secuencia del juego.
+
+Delta WIP: Board tipado único y una llamada por ingest, sin caché; un pintor y
+Motion activos. Los avisos comunes conservan clase e instante al cambiar Look,
+incluido un récord pendiente aunque una vuelta posterior añada otro aviso.
+`contentVersion` migra una vez la referencia ignorada por Eficiencia a mejor propia;
+después la referencia no depende del Look. Plan y etiquetas cambian por datos o
+presentación, no por frame; los frames prestan Arcs y el pintor lee etiquetas.
+La demanda es la unión de señales a 16 ms, independiente del Look. No se toca IPC;
+dos consumidores de tests domain se adaptan a los helpers del Board común.
+89 pares antes/después dan 0 RGBA; golden versionado ya difería 81,71 %, intacto.
+Clippy UI/domain PASS y Nextest 395/395 PASS, 2 skipped; gates workspace pendientes.
+Frío real: LMU 43→50 ns (1,16×), ACC 25→37 ns (1,48×): PASS. Cada muestra mide
+32 proyecciones independientes para resolver el reloj de 100 ns, sin Board previo.
+Cinco A/B reales FAIL: Efi LMU frame p50 33,3→43,2 µs y p99 mediana 89,5 µs
+frente a rango baseline 63,1–82,6 (+8,35 % sobre máximo). Vantare frame p50
+LMU 18,4→28,8 y ACC 23,6→28,4; ingest falla LMU ambos y ACC Vantare.
+No se declara paridad de rendimiento ni causa no perfilada. Se detiene el avance
+a Fuel según el gate de Isaac; tandas completas en performance/delta-gate-five-rounds.json.
+
+Isaac actualiza el gate para Standings, Relative y Delta tras el bloqueo: cinco
+A/B intercaladas, p50 ingest/frame sin superar máximo del rango baseline; p99
+sin superar máximo o hasta +5 % documentado. Perfil QA por ingest, preparación
+frame y paint, con asignaciones/bytes solicitados del hilo UI y contadores de
+Plan/etiquetas/Motion. No demuestra RSS máximo ni GPU/Present. Datos iniciales
+profile-*.json conservados: no hay más invalidaciones ni asignaciones nuevas
+por frame en los casos medidos. No se declara inevitable una regresión por diseño.
+Corrección común en curso: contenido Standings estable, frame Idle de Relative/
+Delta memorizado y consulta prestada del caché de texto, manteniendo fuente,
+color y límite de 4096 entradas. Se vuelven a medir y capturar los tres widgets.

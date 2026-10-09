@@ -272,7 +272,7 @@ mod tests {
                 );
                 assert_eq!(
                     crate::delta::project(&data, prefs)
-                        .status_text
+                        .status_text(language)
                         .unwrap_or(""),
                     disconnected
                 );

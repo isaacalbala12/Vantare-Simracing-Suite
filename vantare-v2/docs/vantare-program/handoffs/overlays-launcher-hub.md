@@ -1,3 +1,19 @@
+## #1531 · Delta WIP; perfil y corrección común en ejecución, Fuel pendiente (2026-10-10)
+
+Rama vantareapp/isa-1531-widgets-looks, base 5e1da3f6, worktree C:/tmp/vw3-1531/vantare-v2.
+Standings c5c2f1d5/eb21ae33 y Relative a210c983 cerrados; Delta no cerrado.
+Delta tiene Board/proyección únicos sin caché, pintor/Motion activos, avisos con reloj original y migración de referencia.
+Plan/textos por Board/presentación; frame presta Arcs. Demand union 16 ms; IPC intacto, dos consumidores de tests domain adaptados.
+Paridad Delta 89 pares RGBA=0, capturas por Look inspeccionadas; golden previo difiere 81,71 %, sin renovar.
+Frío LMU 43→50 ns (1,16x), ACC 25→37 ns (1,48x); muestra de 32 llamadas independientes, resolución de reloj 100 ns.
+Cinco A/B intercaladas FAIL: Efi LMU frame p50 33,3→43,2 µs; p99 89,5 > máximo baseline 82,6 (+8,35 %).
+V frame p50 LMU 18,4→28,8 y ACC 23,6→28,4; ingest falla LMU ambos y ACC Vantare. No se atribuye una causa sin perfil.
+Clippy UI/domain/all-targets -D warnings PASS y Nextest 395/395 PASS, 2 skipped. Gates workspace/lifecycle/telemetria pendientes.
+Isaac ordena perfilar/corregir el patrón común antes de Fuel; perfil por etapas y asignaciones completado, corrección y nuevas A/B en curso.
+Fuel no implementado: baseline Release de 92 configuraciones capturado; pulso bajo no termina en el capturador previo, pendiente de reloj QA.
+Evidencia: C:/tmp/auditoria-arquitectura-v2/evidence-1531/performance/delta-gate-five-rounds.{json,md}; buzón BLOQUEO actualizado.
+Trabajo local WIP; sin push/PR/merge/release/promoción. Gate nuevo de los tres: p50 ingest/frame dentro o bajo rango baseline; p99 dentro o hasta +5 % documentado. Fuel después.
+
 ## #1531 · Relative corregido y validado; Delta siguiente (2026-10-10)
 
 Rama vantareapp/isa-1531-widgets-looks, base 5e1da3f6, worktree C:/tmp/vw3-1531/vantare-v2.

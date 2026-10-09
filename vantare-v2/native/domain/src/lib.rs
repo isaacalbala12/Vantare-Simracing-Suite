@@ -14,7 +14,6 @@ pub mod car_damage_numbers;
 pub mod car_damage_visual;
 pub mod delta;
 pub mod delta_trace;
-pub mod delta_vantare;
 pub mod fastest_lap;
 mod flag;
 pub mod format;

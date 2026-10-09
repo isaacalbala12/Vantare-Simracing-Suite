@@ -113,7 +113,10 @@ impl crate::Settings {
         }
     }
     pub fn look_change(&self, next: &Self) -> Option<Look> {
-        if !matches!(self, Self::Standings(_) | Self::Relative(_)) {
+        if !matches!(
+            self,
+            Self::Standings(_) | Self::Relative(_) | Self::Delta(_)
+        ) {
             return None;
         }
         let look = next.look()?;

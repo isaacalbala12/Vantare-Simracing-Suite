@@ -218,6 +218,7 @@ impl Overlay {
         match &mut self.widget {
             Widget::Standings(w) => w.set_look(look, self.prefs),
             Widget::Relative(w) => w.set_look(look, self.prefs),
+            Widget::Delta(w) => w.set_look(look, self.prefs),
             _ => {}
         }
     }

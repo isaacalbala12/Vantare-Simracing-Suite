@@ -3,10 +3,16 @@ use std::{hint::black_box, time::Instant};
 use vantare_domain::{Snapshot, format::Preferences, standings};
 enum Content {
     Standings(standings::Content),
+    Delta(vantare_domain::delta::Reference),
     Relative(vantare_domain::relative::Content, Vec<String>),
 }
 fn project(snapshot: &Snapshot, prefs: Preferences, content: &Content) {
     match content {
+        Content::Delta(r) => {
+            black_box(vantare_domain::delta::project_reference(
+                snapshot, prefs, *r,
+            ));
+        }
         Content::Standings(c) => {
             black_box(standings::project_content(snapshot, prefs, c));
         }
@@ -53,6 +59,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             },
             settings.footer_slots.clone(),
         ),
+        vantare_ui::Settings::Delta(s) => Content::Delta(match s.reference.as_str() {
+            "optimal" => vantare_domain::delta::Reference::Optimal,
+            "leader" => vantare_domain::delta::Reference::Leader,
+            _ => vantare_domain::delta::Reference::PersonalBest,
+        }),
         _ => return Err("requiere un widget con proyección común".into()),
     };
     let photos = vantare_ui::workshop::snapshots_from_json(&std::fs::read_to_string(&args[1])?)?;
@@ -68,12 +79,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for _ in 0..1000 {
         for photo in &photos {
             let start = Instant::now();
-            project(black_box(photo), layout.preferences, &content);
-            samples.push(u64::try_from(start.elapsed().as_nanos()).unwrap_or(u64::MAX));
+            for _ in 0..32 {
+                project(black_box(photo), layout.preferences, &content);
+            }
+            samples.push(u64::try_from(start.elapsed().as_nanos() / 32).unwrap_or(u64::MAX));
         }
     }
     samples.sort_unstable();
-    let report = serde_json::json!({"samples":samples.len(),"p50_ns":samples[samples.len()/2],"p99_ns":samples[samples.len()*99/100],"raw_ns":samples,"measurement":"cold project, real corpus, release, no previous Board"});
+    let report = serde_json::json!({"samples":samples.len(),"p50_ns":samples[samples.len()/2],"p99_ns":samples[samples.len()*99/100],"raw_ns":samples,"measurement":"cold project, 32 independent calls per timed sample, real corpus, release, no previous Board"});
     std::fs::write(&args[2], serde_json::to_vec_pretty(&report)?)?;
     Ok(())
 }

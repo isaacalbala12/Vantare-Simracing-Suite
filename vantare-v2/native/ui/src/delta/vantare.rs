@@ -1,6 +1,6 @@
 //! Delta en el sistema de diseño Vantare (#1497), según el catálogo r10b.
 //!
-//! El ViewModel es puro (`vantare_domain::delta_vantare`); aquí se mide y se
+//! El ViewModel es puro (`vantare_domain::delta`); aquí se mide y se
 //! pinta con el kit Vantare: píldora (la del Studio), barra de 380 y ampliado
 //! de 520 con referencia, vuelta predicha y sectores. La barra se desliza hacia
 //! el valor nuevo y una vuelta récord personal destella en morado.
@@ -12,12 +12,10 @@ use crate::standings::{Accent, Look};
 use crate::vantare::paint::{Face, Kit, round_rect};
 use crate::vantare::style::{Color, Style, Variant};
 use gpui::{App, BorderStyle, Corners, Edges, Hsla, linear_color_stop, linear_gradient, px, quad};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 use vantare_domain::SourceState;
-use vantare_domain::delta_vantare::{
-    Banner, Board, Pause, Phase, Reference, Sector, SectorTone,
-};
+use vantare_domain::delta::{Banner, Board, Pause, Phase, Reference, Sector, SectorTone};
 use vantare_domain::format::{Language, PLACEHOLDER, lap_time};
 
 // ---------------------------------------------------------------------------
@@ -57,7 +55,7 @@ impl Options {
             reference: match settings.reference.as_str() {
                 "optimal" => Reference::Optimal,
                 "leader" => Reference::Leader,
-                _ => Reference::Best,
+                _ => Reference::PersonalBest,
             },
             show_bar: settings.show_bar,
             show_sectors: settings.show_sectors,
@@ -122,6 +120,8 @@ fn grey(board: &Board) -> bool {
 }
 
 fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Layout {
+    #[cfg(feature = "parity-capture")]
+    crate::benchmark::mark(crate::benchmark::Work::Plan);
     let d = &style.delta;
     if options.size == Size::Pill {
         return Layout {
@@ -191,42 +191,111 @@ fn bar_target(board: Option<&Board>, style: &Style) -> f32 {
 // Estado
 // ---------------------------------------------------------------------------
 
-#[derive(Clone)]
-pub(crate) struct State {
-    pub options: Options,
-    pub style: Arc<Style>,
-    pub board: Option<Board>,
-    layout: Layout,
-    /// Barra: valor de partida, destino e inicio del deslizamiento.
-    bar: (f32, f32, Instant),
-    /// Inicio del destello de vuelta récord personal.
-    best: Option<Instant>,
+struct Labels {
+    language: Language,
+    title: String,
+    number: String,
+    reference: String,
+    predicted: String,
+    lap: String,
+    range: [String; 2],
+    sectors: Vec<(String, String)>,
+    segments: OnceLock<[f32; 3]>,
+}
+fn reference_name(reference: Reference, language: Language) -> &'static str {
+    match (reference, language) {
+        (Reference::PersonalBest, Language::Es) => "Mejor",
+        (Reference::PersonalBest, Language::En) => "Best",
+        (Reference::Optimal, Language::Es) => "Óptima",
+        (Reference::Optimal, Language::En) => "Optimal",
+        (Reference::Leader, Language::Es) => "Líder",
+        (Reference::Leader, Language::En) => "Leader",
+        (_, Language::Es) => "No disponible",
+        (_, Language::En) => "Unavailable",
+    }
+}
+impl Labels {
+    fn new(board: Option<&Board>, options: &Options, style: &Style, language: Language) -> Self {
+        #[cfg(feature = "parity-capture")]
+        crate::benchmark::mark(crate::benchmark::Work::Labels);
+        let es = language == Language::Es;
+        let live = board.filter(|b| !message(Some(b)));
+        Self {
+            language,
+            title: format!(
+                "DELTA · VS {}",
+                reference_name(options.reference, language).to_uppercase()
+            ),
+            number: match live {
+                Some(b) if matches!(b.phase, Phase::Paused(_)) => "—.———".into(),
+                Some(b) => signed(b.delta_s.unwrap_or(0.0)),
+                None => "-.---".into(),
+            },
+            reference: lap_time(board.and_then(|b| b.reference_lap_s)),
+            predicted: lap_time(board.and_then(|b| b.predicted_s)),
+            lap: match board.map(|b| (b.lap, b.sector)) {
+                Some((Some(lap), Some(sector))) => {
+                    format!("{} {lap} · S{sector}", if es { "Vuelta" } else { "Lap" })
+                }
+                Some((Some(lap), None)) => format!("{} {lap}", if es { "Vuelta" } else { "Lap" }),
+                _ => String::new(),
+            },
+            range: [
+                format!("−{:.1}", style.delta.range_s),
+                format!("+{:.1}", style.delta.range_s),
+            ],
+            sectors: board
+                .into_iter()
+                .flat_map(|b| &b.sectors)
+                .enumerate()
+                .map(|(i, sector)| {
+                    let title = if matches!(sector, Sector::Live(_)) {
+                        format!("S{} · {}", i + 1, if es { "en curso" } else { "live" })
+                    } else {
+                        format!("S{}", i + 1)
+                    };
+                    let value = match sector {
+                        Sector::Done(_, delta) => delta.map_or_else(|| PLACEHOLDER.into(), signed),
+                        Sector::Live(_) => String::new(),
+                        Sector::Pending => PLACEHOLDER.into(),
+                    };
+                    (title, value)
+                })
+                .collect(),
+            segments: OnceLock::new(),
+        }
+    }
 }
 
-impl State {
+#[derive(Clone)]
+pub(crate) struct Visual {
+    pub options: Arc<Options>,
+    pub style: Arc<Style>,
+    pub board: Option<Arc<Board>>,
+    layout: Arc<Layout>,
+    labels: Arc<Labels>,
+}
+
+impl Visual {
     pub(crate) fn new(options: Options) -> Self {
         let style = Style::compiled();
         let layout = layout(None, &options, &style);
+        let labels = Labels::new(None, &options, &style, Language::Es);
         Self {
-            options,
+            labels: Arc::new(labels),
+            options: Arc::new(options),
             style,
             board: None,
-            layout,
-            bar: (0.0, 0.0, Instant::now()),
-            best: None,
+            layout: Arc::new(layout),
         }
-    }
-
-    pub(crate) fn project(&self, snapshot: &vantare_domain::Snapshot) -> Board {
-        vantare_domain::delta_vantare::project(snapshot, self.options.reference)
     }
 
     fn ease(&self) -> Duration {
         Duration::from_secs_f32(self.style.delta.ease_ms.max(0.0) / 1000.0)
     }
 
-    fn bar_value(&self, now: Instant) -> f32 {
-        let (from, to, start) = self.bar;
+    fn bar_value(&self, movement: &Movement, now: Instant) -> f32 {
+        let (from, to, start) = movement.bar;
         let ease = self.ease();
         if ease.is_zero() {
             return to;
@@ -236,74 +305,115 @@ impl State {
         from + (to - from) * (1.0 - (1.0 - t).powi(3))
     }
 
-    pub(crate) fn ingest(&mut self, board: Board) -> bool {
-        if self.board.as_ref() == Some(&board) {
+    pub(crate) fn ingest_shared(&mut self, board: Arc<Board>, movement: &mut Movement) -> bool {
+        let now = Instant::now();
+        if let Some(old) = self.board.as_deref() {
+            movement.notices.observe(old, &board, now);
+        }
+        if self
+            .board
+            .as_deref()
+            .is_some_and(|old| same_visible(old, &board))
+        {
+            self.board = Some(board);
             return false;
         }
-        let now = Instant::now();
-        let improved = matches!(
-            (self.board.as_ref().and_then(|b| b.best_lap_s), board.best_lap_s),
-            (Some(old), Some(new)) if new < old - 1e-6
-        );
+        let improved = matches!((self.board.as_ref().and_then(|b| b.best_lap_s), board.best_lap_s), (Some(old), Some(new)) if new < old - 1e-6);
         if improved {
-            self.best = Some(now);
+            movement
+                .notices
+                .notify(now, vantare_domain::delta::Event::PersonalBest);
         }
         let to = bar_target(Some(&board), &self.style);
         let from = if self.board.is_some() {
-            self.bar_value(now)
+            self.bar_value(movement, now)
         } else {
             to
         };
-        self.bar = (from, to, now);
+        movement.bar = (from, to, now);
         self.board = Some(board);
-        self.layout = layout(self.board.as_ref(), &self.options, &self.style);
+        self.layout = Arc::new(layout(self.board.as_deref(), &self.options, &self.style));
+        self.relabel(self.labels.language);
         true
     }
-
-    pub(crate) fn settle(&mut self) {
-        self.bar.0 = self.bar.1;
-        self.best = None;
-    }
-
     pub(crate) fn set_style(&mut self, style: Arc<Style>) {
         self.style = style;
-        self.layout = layout(self.board.as_ref(), &self.options, &self.style);
+        self.layout = Arc::new(layout(self.board.as_deref(), &self.options, &self.style));
+        self.relabel(self.labels.language);
     }
 
+    fn relabel(&mut self, language: Language) {
+        self.labels = Arc::new(Labels::new(
+            self.board.as_deref(),
+            &self.options,
+            &self.style,
+            language,
+        ));
+    }
+    pub(crate) fn presentation(&mut self, language: Language) {
+        if self.labels.language != language {
+            self.relabel(language);
+        }
+    }
     pub(crate) fn size(&self) -> (f32, f32) {
         (self.layout.width, self.layout.height)
     }
 
-    fn flash(&self, now: Instant) -> Option<f32> {
+    fn flash(&self, movement: &Movement, now: Instant) -> Option<f32> {
         let duration = self.style.motion.timing().flash;
-        let start = self.best?;
+        let start = movement.notices.record()?;
         let t = now.saturating_duration_since(start).as_secs_f32() / duration.as_secs_f32();
         (t < 1.0).then_some(1.0 - t)
     }
 
-    pub(crate) fn wake(&self, now: Instant) -> Wake {
-        let moving = self.bar.0 != self.bar.1 && now.saturating_duration_since(self.bar.2) < self.ease();
-        if moving || self.flash(now).is_some() {
+    pub(crate) fn wake(&self, movement: &Movement, now: Instant) -> Wake {
+        let moving = movement.bar.0 != movement.bar.1
+            && now.saturating_duration_since(movement.bar.2) < self.ease();
+        if moving || self.flash(movement, now).is_some() {
             Wake::Frame
         } else {
             Wake::Idle
         }
     }
 
-    pub(crate) fn paint(&self, language: Language, window: &mut Window, cx: &mut App) {
+    pub(crate) fn paint(
+        &self,
+        movement: &Movement,
+        language: Language,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
         let now = Instant::now();
+        let kit = Kit {
+            style: &self.style,
+            variant: self.options.variant(&self.style),
+            accent: self.options.accent(&self.style),
+            language,
+            width: self.layout.width,
+        };
+        if self.options.size == Size::Expanded {
+            let ink = kit.ink(
+                Face::Body,
+                self.style.fonts.small,
+                0.0,
+                self.style.colors.value.hsla(),
+            );
+            self.labels.segments.get_or_init(|| {
+                [
+                    Reference::PersonalBest,
+                    Reference::Optimal,
+                    Reference::Leader,
+                ]
+                .map(|r| text::width(window, reference_name(r, language), &ink) + 20.0)
+            });
+        }
         let painter = Painter {
-            kit: Kit {
-                style: &self.style,
-                variant: self.options.variant(&self.style),
-                accent: self.options.accent(&self.style),
-                language,
-                width: self.layout.width,
-            },
+            labels: &self.labels,
+            kit,
             options: &self.options,
-            board: self.board.as_ref(),
-            bar: self.bar_value(now),
-            flash: self.flash(now),
+            board: self.board.as_deref(),
+            bar: self.bar_value(movement, now),
+            flash: self.flash(movement, now),
         };
         if self.options.size == Size::Pill {
             painter.pill_widget(window, cx, self.layout.height);
@@ -323,11 +433,99 @@ impl State {
     }
 }
 
+#[derive(Clone)]
+pub(crate) struct Movement {
+    bar: (f32, f32, Instant),
+    pub(super) notices: super::motion::Notices,
+}
+impl Default for Movement {
+    fn default() -> Self {
+        Self {
+            bar: (0.0, 0.0, Instant::now()),
+            notices: super::motion::Notices::default(),
+        }
+    }
+}
+impl Movement {
+    pub(crate) fn settle(&mut self) {
+        self.bar.0 = self.bar.1;
+        self.notices.clear_record();
+    }
+}
+fn same_visible(a: &Board, b: &Board) -> bool {
+    (
+        a.source_state,
+        a.player_present,
+        a.banner,
+        a.reference,
+        a.reference_lap_s,
+        a.delta_s,
+        a.phase,
+        a.predicted_s,
+        a.lap,
+        a.sector,
+        &a.sectors,
+        a.best_lap_s,
+    ) == (
+        b.source_state,
+        b.player_present,
+        b.banner,
+        b.reference,
+        b.reference_lap_s,
+        b.delta_s,
+        b.phase,
+        b.predicted_s,
+        b.lap,
+        b.sector,
+        &b.sectors,
+        b.best_lap_s,
+    )
+}
+#[cfg(test)]
+struct State {
+    visual: Visual,
+    movement: Movement,
+}
+#[cfg(test)]
+impl std::ops::Deref for State {
+    type Target = Visual;
+    fn deref(&self) -> &Visual {
+        &self.visual
+    }
+}
+#[cfg(test)]
+impl State {
+    fn new(options: Options) -> Self {
+        Self {
+            visual: Visual::new(options),
+            movement: Movement::default(),
+        }
+    }
+    fn project(&self, snapshot: &vantare_domain::Snapshot) -> Board {
+        vantare_domain::delta::project_reference(
+            snapshot,
+            vantare_domain::format::Preferences::default(),
+            self.options.reference,
+        )
+    }
+    fn ingest(&mut self, board: Board) -> bool {
+        self.visual
+            .ingest_shared(Arc::new(board), &mut self.movement)
+    }
+    fn wake(&self, now: Instant) -> Wake {
+        self.visual.wake(&self.movement, now)
+    }
+    fn settle(&mut self) {
+        self.movement.settle();
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Pintado
 // ---------------------------------------------------------------------------
 
 struct Painter<'a> {
+    labels: &'a Labels,
     kit: Kit<'a>,
     options: &'a Options,
     board: Option<&'a Board>,
@@ -353,11 +551,11 @@ impl Painter<'_> {
     }
 
     /// Texto y color del número.
-    fn number(&self) -> (String, Hsla) {
+    fn number(&self) -> (&str, Hsla) {
         let c = &self.style.colors;
         let grey = self.style.delta.grey.hsla();
         match self.live() {
-            Some(b) if matches!(b.phase, Phase::Paused(_)) => ("\u{2014}.\u{2014}\u{2014}\u{2014}".into(), grey),
+            Some(b) if matches!(b.phase, Phase::Paused(_)) => (&self.labels.number, grey),
             Some(b) => {
                 let delta = b.delta_s.unwrap_or(0.0);
                 let color = if b.phase == Phase::Invalid {
@@ -367,9 +565,9 @@ impl Painter<'_> {
                 } else {
                     c.loss.hsla()
                 };
-                (signed(delta), color)
+                (&self.labels.number, color)
             }
-            None => ("-.---".into(), grey),
+            None => (&self.labels.number, grey),
         }
     }
 
@@ -379,16 +577,31 @@ impl Painter<'_> {
         self.panel(window, height);
         let pad = 16.0;
         let label = self.ink(Face::Body, d.pill_label, 0.3, c.muted.hsla());
-        let x = pad + self.label(window, cx, "DELTA", pad, None, 0.0, height, Face::Body, &label);
+        let x = pad
+            + self.label(
+                window,
+                cx,
+                "DELTA",
+                pad,
+                None,
+                0.0,
+                height,
+                Face::Body,
+                &label,
+            );
         let (value, color) = self.number();
         let face = if self.live().is_some() {
             Face::Display
         } else {
             Face::Mono
         };
-        let size = if self.live().is_some() { d.pill_value } else { d.pill_value - 2.0 };
+        let size = if self.live().is_some() {
+            d.pill_value
+        } else {
+            d.pill_value - 2.0
+        };
         let ink = self.ink(face, size, 0.3, color);
-        self.label(window, cx, &value, x + 14.0, None, 0.0, height, face, &ink);
+        self.label(window, cx, value, x + 14.0, None, 0.0, height, face, &ink);
     }
 
     fn banner(&self, window: &mut Window, cx: &mut App) {
@@ -407,18 +620,16 @@ impl Painter<'_> {
                 Some(c.line),
             ),
             Some(Banner::FullCourseYellow) => {
-                self.band(window, cx, c.fcy_fill, c.fcy_text, "FCY", paused, false, None);
+                self.band(
+                    window, cx, c.fcy_fill, c.fcy_text, "FCY", paused, false, None,
+                );
             }
             None => {}
         }
     }
 
     fn reference_name(&self, reference: Reference) -> &'static str {
-        match reference {
-            Reference::Best => self.pick("Mejor", "Best"),
-            Reference::Optimal => self.pick("Óptima", "Optimal"),
-            Reference::Leader => self.pick("Líder", "Leader"),
-        }
+        reference_name(reference, self.language)
     }
 
     fn header(&self, window: &mut Window, cx: &mut App, y: f32) {
@@ -431,13 +642,13 @@ impl Painter<'_> {
         } else {
             Face::Body
         };
-        let ink = self.ink(face, v.header_size, v.header_tracking, v.header_color.hsla());
-        let title = format!(
-            "DELTA · {} {}",
-            self.pick("VS", "VS"),
-            self.reference_name(self.options.reference).to_uppercase()
+        let ink = self.ink(
+            face,
+            v.header_size,
+            v.header_tracking,
+            v.header_color.hsla(),
         );
-        self.label(window, cx, &title, pad, None, y, h, face, &ink);
+        self.label(window, cx, &self.labels.title, pad, None, y, h, face, &ink);
         let mut edge = w - pad;
         if self.options.brand {
             edge -= self.brand(window, cx, edge, y, h) + self.style.brand.margin;
@@ -445,9 +656,23 @@ impl Painter<'_> {
         if self.options.size == Size::Expanded {
             self.segments(window, cx, edge, y, h);
         } else {
-            let time = lap_time(self.board.and_then(|b| b.reference_lap_s));
-            let em = self.ink(Face::Mono, self.style.fonts.mono_small, 0.0, c.header_em.hsla());
-            self.label(window, cx, &time, 0.0, Some(edge), y, h, Face::Mono, &em);
+            let em = self.ink(
+                Face::Mono,
+                self.style.fonts.mono_small,
+                0.0,
+                c.header_em.hsla(),
+            );
+            self.label(
+                window,
+                cx,
+                &self.labels.reference,
+                0.0,
+                Some(edge),
+                y,
+                h,
+                Face::Mono,
+                &em,
+            );
         }
         if v.header_rule > 0.0 {
             round_rect(
@@ -468,14 +693,19 @@ impl Painter<'_> {
         let d = &self.style.delta;
         let ink = self.ink(Face::Body, self.style.fonts.small, 0.0, c.value.hsla());
         let active = self.ink(Face::Body, self.style.fonts.small, 0.0, c.text.hsla());
-        let names = [Reference::Best, Reference::Optimal, Reference::Leader];
-        let widths: Vec<f32> = names
-            .iter()
-            .map(|r| text::width(window, self.reference_name(*r), &ink) + 20.0)
-            .collect();
+        let names = [
+            Reference::PersonalBest,
+            Reference::Optimal,
+            Reference::Leader,
+        ];
+        let widths = self
+            .labels
+            .segments
+            .get()
+            .expect("segmentos preparados antes del pintor");
         let mut x = right - widths.iter().sum::<f32>();
         let top = y + (h - d.segment_height) / 2.0;
-        for (reference, width) in names.iter().zip(widths) {
+        for (reference, width) in names.iter().zip(widths.iter().copied()) {
             let on = *reference == self.options.reference;
             if on {
                 window.paint_quad(quad(
@@ -509,11 +739,16 @@ impl Painter<'_> {
         let (pad, w) = (self.variant.padding_x, self.width);
         if let Some(alpha) = self.flash {
             // Vuelta récord personal: destello morado bajo el número.
-            self.highlight(window, y + (d.big - self.style.geometry.row_height) / 2.0, c.purple, alpha);
+            self.highlight(
+                window,
+                y + (d.big - self.style.geometry.row_height) / 2.0,
+                c.purple,
+                alpha,
+            );
         }
         let (value, color) = self.number();
         let ink = self.ink(Face::Display, d.big, 0.5, color);
-        let width = self.label(window, cx, &value, pad, None, y, d.big, Face::Display, &ink);
+        let width = self.label(window, cx, value, pad, None, y, d.big, Face::Display, &ink);
         if board.phase == Phase::Invalid {
             // Tachado del número.
             round_rect(window, pad, y + d.big / 2.0, width, 2.0, 1.0, color);
@@ -540,21 +775,34 @@ impl Painter<'_> {
             }
             _ => {
                 let lead = self.pick("Predicha ", "Predicted ");
-                let at = x + self.label(window, cx, lead, x, None, base, label_h, Face::Body, &muted);
+                let at =
+                    x + self.label(window, cx, lead, x, None, base, label_h, Face::Body, &muted);
                 let mono = self.ink(Face::Mono, self.style.fonts.mono, 0.0, c.text.hsla());
-                let time = lap_time(board.predicted_s);
-                self.label(window, cx, &time, at, None, base, label_h, Face::Mono, &mono);
+                self.label(
+                    window,
+                    cx,
+                    &self.labels.predicted,
+                    at,
+                    None,
+                    base,
+                    label_h,
+                    Face::Mono,
+                    &mono,
+                );
             }
         }
         if self.options.size == Size::Expanded {
-            let lap = match (board.lap, board.sector) {
-                (Some(lap), Some(sector)) => {
-                    format!("{} {lap} · S{sector}", self.pick("Vuelta", "Lap"))
-                }
-                (Some(lap), None) => format!("{} {lap}", self.pick("Vuelta", "Lap")),
-                _ => String::new(),
-            };
-            self.label(window, cx, &lap, 0.0, Some(w - pad), base, label_h, Face::Body, &muted);
+            self.label(
+                window,
+                cx,
+                &self.labels.lap,
+                0.0,
+                Some(w - pad),
+                base,
+                label_h,
+                Face::Body,
+                &muted,
+            );
         }
     }
 
@@ -565,7 +813,10 @@ impl Painter<'_> {
         let spectator = self.board.is_some_and(|b| {
             !b.player_present && !matches!(b.source_state, SourceState::Waiting | SourceState::Lost)
         });
-        let (title, hint) = if self.board.is_some_and(|b| b.player_present && b.phase == Phase::NoReference) {
+        let (title, hint) = if self
+            .board
+            .is_some_and(|b| b.player_present && b.phase == Phase::NoReference)
+        {
             (
                 self.pick("SIN REFERENCIA", "NO REFERENCE"),
                 self.pick(
@@ -587,12 +838,37 @@ impl Painter<'_> {
                 ),
             )
         };
-        let ink = self.ink(Face::Display, f.wait_title, f.separator_tracking, c.header_em.hsla());
+        let ink = self.ink(
+            Face::Display,
+            f.wait_title,
+            f.separator_tracking,
+            c.header_em.hsla(),
+        );
         let width = text::width(window, title, &ink);
-        self.label(window, cx, title, center - width / 2.0, None, y + 4.0, f.wait_title, Face::Display, &ink);
+        self.label(
+            window,
+            cx,
+            title,
+            center - width / 2.0,
+            None,
+            y + 4.0,
+            f.wait_title,
+            Face::Display,
+            &ink,
+        );
         let small = self.ink(Face::Body, f.small, 0.0, c.muted.hsla());
         let width = text::width(window, hint, &small);
-        self.label(window, cx, hint, center - width / 2.0, None, y + 20.0, 18.0, Face::Body, &small);
+        self.label(
+            window,
+            cx,
+            hint,
+            center - width / 2.0,
+            None,
+            y + 20.0,
+            18.0,
+            Face::Body,
+            &small,
+        );
     }
 
     fn bar(&self, window: &mut Window, cx: &mut App, y: f32) {
@@ -607,19 +883,29 @@ impl Painter<'_> {
             let half = span / 2.0;
             let length = half * self.bar.abs();
             let (x, solid, angle, corners) = if self.bar < 0.0 {
-                (mid - length, d.fill_gain, 270.0, Corners {
-                    top_left: px(d.bar / 2.0),
-                    bottom_left: px(d.bar / 2.0),
-                    top_right: px(0.0),
-                    bottom_right: px(0.0),
-                })
+                (
+                    mid - length,
+                    d.fill_gain,
+                    270.0,
+                    Corners {
+                        top_left: px(d.bar / 2.0),
+                        bottom_left: px(d.bar / 2.0),
+                        top_right: px(0.0),
+                        bottom_right: px(0.0),
+                    },
+                )
             } else {
-                (mid, d.fill_loss, 90.0, Corners {
-                    top_left: px(0.0),
-                    bottom_left: px(0.0),
-                    top_right: px(d.bar / 2.0),
-                    bottom_right: px(d.bar / 2.0),
-                })
+                (
+                    mid,
+                    d.fill_loss,
+                    90.0,
+                    Corners {
+                        top_left: px(0.0),
+                        bottom_left: px(0.0),
+                        top_right: px(d.bar / 2.0),
+                        bottom_right: px(d.bar / 2.0),
+                    },
+                )
             };
             window.paint_quad(quad(
                 crate::efficiency::rect(x, y, length, d.bar),
@@ -639,18 +925,55 @@ impl Painter<'_> {
         } else {
             d.center.hsla()
         };
-        round_rect(window, mid - 1.0, y + (d.bar - d.tick) / 2.0, 2.0, d.tick, 1.0, center);
+        round_rect(
+            window,
+            mid - 1.0,
+            y + (d.bar - d.tick) / 2.0,
+            2.0,
+            d.tick,
+            1.0,
+            center,
+        );
         if message(self.board) {
             return;
         }
         let ink = self.ink(Face::Mono, 9.0, 0.0, c.column.hsla());
         let top = y + d.bar + 2.0;
         let h = d.tick_labels - 2.0;
-        let range = format!("{:.1}", d.range_s);
-        self.label(window, cx, &format!("\u{2212}{range}"), pad, None, top, h, Face::Mono, &ink);
+        self.label(
+            window,
+            cx,
+            &self.labels.range[0],
+            pad,
+            None,
+            top,
+            h,
+            Face::Mono,
+            &ink,
+        );
         let zero = text::width(window, "0", &ink);
-        self.label(window, cx, "0", mid - zero / 2.0, None, top, h, Face::Mono, &ink);
-        self.label(window, cx, &format!("+{range}"), 0.0, Some(w - pad), top, h, Face::Mono, &ink);
+        self.label(
+            window,
+            cx,
+            "0",
+            mid - zero / 2.0,
+            None,
+            top,
+            h,
+            Face::Mono,
+            &ink,
+        );
+        self.label(
+            window,
+            cx,
+            &self.labels.range[1],
+            0.0,
+            Some(w - pad),
+            top,
+            h,
+            Face::Mono,
+            &ink,
+        );
     }
 
     fn sectors(&self, window: &mut Window, cx: &mut App, y: f32) {
@@ -666,17 +989,25 @@ impl Painter<'_> {
         let gain = board.delta_s.is_some_and(|d| d < 0.0);
         for (index, sector) in board.sectors.iter().enumerate() {
             let x = pad + index as f32 * (cell + gap);
-            round_rect(window, x, top, cell, d.sector_bar, d.sector_bar / 2.0, c.sector_pending.hsla());
+            round_rect(
+                window,
+                x,
+                top,
+                cell,
+                d.sector_bar,
+                d.sector_bar / 2.0,
+                c.sector_pending.hsla(),
+            );
             let tone_color = |tone: SectorTone| match tone {
                 SectorTone::SessionBest => c.purple,
                 SectorTone::PersonalBest => c.green,
                 SectorTone::Slower => c.yellow,
             };
             let (fill, label, value, value_color) = match sector {
-                Sector::Done(tone, delta) => (
+                Sector::Done(tone, _) => (
                     Some((1.0, tone_color(*tone))),
-                    format!("S{}", index + 1),
-                    delta.map_or_else(|| PLACEHOLDER.into(), signed),
+                    self.labels.sectors[index].0.as_str(),
+                    self.labels.sectors[index].1.as_str(),
                     match tone {
                         SectorTone::SessionBest => c.purple.hsla(),
                         SectorTone::PersonalBest => c.gain.hsla(),
@@ -685,24 +1016,52 @@ impl Painter<'_> {
                 ),
                 Sector::Live(fraction) => (
                     fraction.map(|f| (f as f32, if gain { c.green } else { d.fill_loss })),
-                    format!("S{} · {}", index + 1, self.pick("en curso", "live")),
-                    String::new(),
+                    self.labels.sectors[index].0.as_str(),
+                    "",
                     c.muted.hsla(),
                 ),
                 Sector::Pending => (
                     None,
-                    format!("S{}", index + 1),
-                    PLACEHOLDER.into(),
+                    self.labels.sectors[index].0.as_str(),
+                    PLACEHOLDER,
                     c.muted.hsla(),
                 ),
             };
             if let Some((fraction, color)) = fill {
-                round_rect(window, x, top, cell * fraction, d.sector_bar, d.sector_bar / 2.0, color.hsla());
+                round_rect(
+                    window,
+                    x,
+                    top,
+                    cell * fraction,
+                    d.sector_bar,
+                    d.sector_bar / 2.0,
+                    color.hsla(),
+                );
             }
             let label_top = top + d.sector_bar + 3.0;
-            self.label(window, cx, &label, x, None, label_top, 14.0, Face::Mono, &small);
+            self.label(
+                window,
+                cx,
+                label,
+                x,
+                None,
+                label_top,
+                14.0,
+                Face::Mono,
+                &small,
+            );
             let ink = self.ink(Face::Mono, 10.0, 0.0, value_color);
-            self.label(window, cx, &value, 0.0, Some(x + cell), label_top, 14.0, Face::Mono, &ink);
+            self.label(
+                window,
+                cx,
+                value,
+                0.0,
+                Some(x + cell),
+                label_top,
+                14.0,
+                Face::Mono,
+                &ink,
+            );
         }
     }
 }
@@ -735,42 +1094,74 @@ mod tests {
 
     #[test]
     fn hiding_delta_bar_and_sectors_removes_their_geometry_and_survives_reload() {
-        let settings = super::super::Settings { size: "expanded".into(),
-            show_bar: false, show_sectors: false, ..Default::default() };
+        let settings = super::super::Settings {
+            size: "expanded".into(),
+            show_bar: false,
+            show_sectors: false,
+            ..Default::default()
+        };
         let json = serde_json::to_string(&settings).expect("ajustes");
         let restored: super::super::Settings = serde_json::from_str(&json).expect("recarga");
         let options = Options::from_settings(&restored);
         let style = Style::compiled();
         let scene = frames(include_str!("../../fixtures/delta-vantare.scene.json"));
-        let board = vantare_domain::delta_vantare::project(&scene[0], Reference::Best);
-        let shown = layout(Some(&board), &super::tests::options(Size::Expanded, Reference::Best), &style);
+        let board = vantare_domain::delta::project_reference(
+            &scene[0],
+            vantare_domain::format::Preferences::default(),
+            Reference::PersonalBest,
+        );
+        let shown = layout(
+            Some(&board),
+            &super::tests::options(Size::Expanded, Reference::PersonalBest),
+            &style,
+        );
         let hidden = layout(Some(&board), &options, &style);
-        assert!(!hidden.items.iter().any(|(_, item)| matches!(item, Item::Bar | Item::Sectors)));
+        assert!(
+            !hidden
+                .items
+                .iter()
+                .any(|(_, item)| matches!(item, Item::Bar | Item::Sectors))
+        );
         assert!(hidden.height < shown.height);
     }
     #[test]
     fn sizes_match_the_catalogue_and_states_change_the_items() {
         let style = Style::compiled();
         let photos = frames(include_str!("../../fixtures/delta-vantare.scene.json"));
-        let state = State::new(options(Size::Expanded, Reference::Best));
+        let state = State::new(options(Size::Expanded, Reference::PersonalBest));
         let board = |i: usize| state.project(&photos[i]);
-        let pill = layout(Some(&board(0)), &options(Size::Pill, Reference::Best), &style);
+        let pill = layout(
+            Some(&board(0)),
+            &options(Size::Pill, Reference::PersonalBest),
+            &style,
+        );
         assert_eq!((pill.width, pill.height), (150.0, 36.0));
-        let bar = layout(Some(&board(0)), &options(Size::Bar, Reference::Best), &style);
+        let bar = layout(
+            Some(&board(0)),
+            &options(Size::Bar, Reference::PersonalBest),
+            &style,
+        );
         assert_eq!(bar.width, 380.0);
         let items = |i: usize| {
-            layout(Some(&board(i)), &options(Size::Expanded, Reference::Best), &style)
-                .items
-                .into_iter()
-                .map(|(_, item)| item)
-                .collect::<Vec<_>>()
+            layout(
+                Some(&board(i)),
+                &options(Size::Expanded, Reference::PersonalBest),
+                &style,
+            )
+            .items
+            .into_iter()
+            .map(|(_, item)| item)
+            .collect::<Vec<_>>()
         };
         assert_eq!(
             items(0),
             vec![Item::Header, Item::Big, Item::Bar, Item::Sectors],
             "en vivo con sectores"
         );
-        assert!(!items(2).contains(&Item::Sectors), "invalidada: sin sectores");
+        assert!(
+            !items(2).contains(&Item::Sectors),
+            "invalidada: sin sectores"
+        );
         assert!(items(3).contains(&Item::Message), "sin referencia");
         assert_eq!(items(4)[0], Item::Banner, "boxes");
         assert!(items(6).contains(&Item::Message), "esperando");
@@ -781,8 +1172,10 @@ mod tests {
 
     #[test]
     fn bar_slides_and_a_personal_best_flashes() {
-        let photos = frames(include_str!("../../fixtures/delta-vantare-carrera.scene.json"));
-        let mut state = State::new(options(Size::Expanded, Reference::Best));
+        let photos = frames(include_str!(
+            "../../fixtures/delta-vantare-carrera.scene.json"
+        ));
+        let mut state = State::new(options(Size::Expanded, Reference::PersonalBest));
         assert!(state.ingest(state.project(&photos[0])));
         assert_eq!(state.wake(Instant::now()), Wake::Idle, "aparecer no anima");
         let mut flashed = false;
@@ -790,7 +1183,7 @@ mod tests {
         for photo in &photos[1..] {
             state.ingest(state.project(photo));
             slid |= state.wake(Instant::now()) == Wake::Frame;
-            flashed |= state.best.is_some();
+            flashed |= state.movement.notices.record().is_some();
         }
         assert!(slid, "la barra se desliza");
         assert!(flashed, "la secuencia marca vuelta récord");

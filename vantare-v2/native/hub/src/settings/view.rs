@@ -1669,7 +1669,7 @@ impl Hub {
                     ));
                     body = body.child(section_row(label, help, toggle, self.shell.adapt, cx));
                 }
-                body = body.child(section_note("Estos datos no se vinculan a tu cuenta y se procesan en la Unión Europea. Puedes cambiar estas opciones cuando quieras.", cx));
+                body = body.child(div().px(px(20.0)).py(px(12.0)).child(text("Estos datos no se vinculan a tu cuenta y se procesan en la Unión Europea. Puedes cambiar estas opciones cuando quieras.", 12.0, 400, orbit::ink_3(cx), cx).line_height(px(18.0))));
                 if !vantare_services::diagnostics::configured() {
                     body = body.child(section_note("Esta versión aún no tiene configurado el envío. Tus preferencias quedan guardadas.", cx));
                 }

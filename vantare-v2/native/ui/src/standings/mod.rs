@@ -255,7 +255,7 @@ impl Settings {
             settings.window_around = 4;
         }
         if let Some(columns) = &mut settings.columns {
-            columns.truncate(11);
+            columns.truncate(if settings.design_system == DesignSystem::Vantare { 12 } else { 11 });
         }
         if let Some(slots) = &mut settings.footer_slots {
             slots.truncate(9);

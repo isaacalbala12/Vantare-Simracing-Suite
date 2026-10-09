@@ -11,30 +11,48 @@ pub fn snapshot(scene: &str) -> Result<Snapshot, String> {
 /// Treinta pilotos por clase y ±8 rivales propios para probar todos los límites.
 /// Son muestras rotuladas, no señales derivadas de una sesión real.
 pub fn tables() -> Result<Snapshot, String> {
-    let mut photo = snapshot(include_str!("../../../ui/fixtures/standings-vantare.scene.json"))?;
+    let mut photo = snapshot(include_str!(
+        "../../../ui/fixtures/standings-vantare.scene.json"
+    ))?;
     let templates = photo.state.cars.clone();
     photo.state.cars.clear();
     for class in 0..3u32 {
-        let template = templates.iter().find(|car| car.class.as_ref().is_some_and(|c| c.id.0 == class))
+        let template = templates
+            .iter()
+            .find(|car| car.class.as_ref().is_some_and(|c| c.id.0 == class))
             .ok_or("escena de ejemplo sin una clase")?;
         for position in 1..=30u32 {
             let mut car = template.clone();
             let id = class * 30 + position;
             car.id = CarId(id);
             car.driver.id = DriverId(id);
-            car.driver.name = if id == 15 { "Tú · ejemplo".into() } else { format!("Piloto de ejemplo {id:02}") };
+            car.driver.name = if id == 15 {
+                "Tú · ejemplo".into()
+            } else {
+                format!("Piloto de ejemplo {id:02}")
+            };
             car.number = id.to_string();
             car.position = Quality::Reliable(id);
             car.class_position = Quality::Reliable(position);
             car.grid_position = Quality::Reliable(id);
-            car.relative_s = Quality::Reliable((15.0 - f64::from(position)) * 2.5 + f64::from(class) * 0.2);
+            car.relative_s =
+                Quality::Reliable((15.0 - f64::from(position)) * 2.5 + f64::from(class) * 0.2);
             car.relative_laps = Quality::Reliable(0);
-            car.gap_class_leader = Quality::Reliable(Gap::Seconds(f64::from(position - 1) * 2.5));
-            car.gap_leader = Quality::Reliable(Gap::Seconds(f64::from(id - 1) * 2.5));
+            car.gap_class_leader = Quality::Reliable(Gap::Time {
+                seconds: f64::from(position - 1) * 2.5,
+            });
+            car.gap_leader = Quality::Reliable(Gap::Time {
+                seconds: f64::from(id - 1) * 2.5,
+            });
             photo.state.cars.push(car);
         }
     }
-    photo.state.player.as_mut().ok_or("escena de ejemplo sin jugador")?.car = CarId(15);
+    photo
+        .state
+        .player
+        .as_mut()
+        .ok_or("escena de ejemplo sin jugador")?
+        .car = CarId(15);
     Ok(photo)
 }
 

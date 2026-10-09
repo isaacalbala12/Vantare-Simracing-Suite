@@ -1,6 +1,6 @@
 //! Editor espacial sobre el documento y el renderer compartidos.
-mod scenes;
 mod examples;
+mod scenes;
 use crate::{
     document::Editor,
     inspector::{self, Control, Tab},
@@ -26,8 +26,8 @@ const AUTO_SAVED: &str = "Guardado";
 /// Un paso inmediato, pausa inicial y repetición a 1/4/8 px cada 30 ms.
 fn held_nudge_distance(elapsed: Duration, shift: bool) -> f32 {
     let ticks = elapsed.as_millis().saturating_sub(300) / 30;
-    let pixels = 1 + ticks.min(20) + ticks.saturating_sub(20).min(30) * 4
-        + ticks.saturating_sub(50) * 8;
+    let pixels =
+        1 + ticks.min(20) + ticks.saturating_sub(20).min(30) * 4 + ticks.saturating_sub(50) * 8;
     #[allow(clippy::cast_precision_loss)] // Acotado al límite de coordenadas del documento.
     let distance = pixels.min(100_000) as f32;
     distance * if shift { 8.0 } else { 1.0 }
@@ -142,7 +142,7 @@ fn demo_standings_settings() -> Settings {
                 })
                 .collect(),
         ),
-        ..StandingsSettings::default()
+        ..StandingsSettings::eficiencia()
     })
 }
 
@@ -309,12 +309,16 @@ fn example_snapshots() -> Result<Vec<(Kind, Snapshot)>, String> {
     .map(|(kind, text)| {
         match kind {
             Kind::Standings | Kind::Relative | Kind::MulticlassRelative => examples::tables(),
-            Kind::Delta => examples::snapshot(include_str!("../../ui/fixtures/delta-vantare.scene.json")),
-            Kind::FuelStrategy => examples::snapshot(include_str!("../../ui/fixtures/fuel-vantare.scene.json")),
+            Kind::Delta => {
+                examples::snapshot(include_str!("../../ui/fixtures/delta-vantare.scene.json"))
+            }
+            Kind::FuelStrategy => {
+                examples::snapshot(include_str!("../../ui/fixtures/fuel-vantare.scene.json"))
+            }
             _ => vantare_ipc::snapshot_from_json(text).map_err(|error| error.to_string()),
         }
-            .map(|snapshot| (kind, snapshot))
-            .map_err(|error| format!("Ejemplo {}: {error}", kind.name()))
+        .map(|snapshot| (kind, snapshot))
+        .map_err(|error| format!("Ejemplo {}: {error}", kind.name()))
     })
     .collect()
 }
@@ -1878,19 +1882,22 @@ impl Studio {
             panel = panel.child(orbit::eyebrow("Columnas", cx));
             for (index, column) in columns.iter().enumerate() {
                 let selected = item.id.clone();
+                let required = inspector::appearance(&item.settings).is_some()
+                    && (column.metric_id == "driverName"
+                        || (matches!(&item.settings, Settings::Standings(_)) && column.metric_id == "position"));
                 panel = panel.child(orbit::setting_row(
                     &column.metric_id,
                     &column.id,
                     orbit::toggle(
                         "column-visible",
                         "Mostrar columna",
-                        column.enabled,
-                        true,
+                        column.enabled || required,
+                        !required,
                         cx,
                     )
                     .id(("column-visible", index))
                     .on_click(cx.listener(move |this, _, _, cx| {
-                        if this.editor.selected.as_ref() != Some(&selected) {
+                        if required || this.editor.selected.as_ref() != Some(&selected) {
                             return;
                         }
                         this.reset_fields();
@@ -1945,24 +1952,45 @@ impl Studio {
         );
     }
     fn start_nudge(&mut self, direction: (i8, i8), shift: bool, cx: &mut Context<Self>) {
-        if self.held_nudge.as_ref().is_some_and(|held| held.direction == direction && held.shift == shift) {
+        if self
+            .held_nudge
+            .as_ref()
+            .is_some_and(|held| held.direction == direction && held.shift == shift)
+        {
             return;
         }
         self.cancel_drag(cx);
-        let Some(item) = self.editor.selected() else { return };
-        let Some((_, frame)) = self.frames.iter().find(|(id, _)| *id == item.id) else { return };
+        let Some(item) = self.editor.selected() else {
+            return;
+        };
+        let Some((_, frame)) = self.frames.iter().find(|(id, _)| *id == item.id) else {
+            return;
+        };
         self.held_nudge = Some(HeldNudge {
-            frame: frame.clone(), origin: (item.x, item.y), direction, shift, started: Instant::now(),
+            frame: frame.clone(),
+            origin: (item.x, item.y),
+            direction,
+            shift,
+            started: Instant::now(),
         });
         self.tick_nudge(Duration::ZERO, cx);
         self.nudge_task = Some(cx.spawn(async move |this, cx| {
             loop {
-                cx.background_executor().timer(Duration::from_millis(16)).await;
-                if !this.update(cx, |this, cx| {
-                    let Some(held) = &this.held_nudge else { return false };
-                    this.tick_nudge(held.started.elapsed(), cx);
-                    true
-                }).unwrap_or(false) { break; }
+                cx.background_executor()
+                    .timer(Duration::from_millis(16))
+                    .await;
+                if !this
+                    .update(cx, |this, cx| {
+                        let Some(held) = &this.held_nudge else {
+                            return false;
+                        };
+                        this.tick_nudge(held.started.elapsed(), cx);
+                        true
+                    })
+                    .unwrap_or(false)
+                {
+                    break;
+                }
             }
         }));
     }
@@ -1982,14 +2010,29 @@ impl Studio {
     }
     fn finish_nudge(&mut self, cx: &mut Context<Self>) {
         self.nudge_task = None;
-        let Some(held) = self.held_nudge.take() else { return };
+        let Some(held) = self.held_nudge.take() else {
+            return;
+        };
         let frame = held.frame.read(cx);
         let position = frame.nudge_position;
         let id = frame.item.id.clone();
-        held.frame.update(cx, |frame, cx| { frame.nudge_position = None; cx.notify(); });
-        if self.editor.selected.as_ref() == Some(&id) && let Some((x, y)) = position {
+        held.frame.update(cx, |frame, cx| {
+            frame.nudge_position = None;
+            cx.notify();
+        });
+        if self.editor.selected.as_ref() == Some(&id)
+            && let Some((x, y)) = position
+        {
             self.reset_fields();
-            self.edit(|editor| editor.edit_selected(|item| { item.x = x; item.y = y; }), cx);
+            self.edit(
+                |editor| {
+                    editor.edit_selected(|item| {
+                        item.x = x;
+                        item.y = y;
+                    })
+                },
+                cx,
+            );
         }
     }
     fn anchor_grid(&self, item: &Instance, cx: &mut Context<Self>) -> gpui::Div {
@@ -2058,13 +2101,22 @@ impl Studio {
                             cx,
                         )
                         .aria_label(label)
-                        .on_mouse_down(MouseButton::Left, cx.listener(
-                            move |this, event: &gpui::MouseDownEvent, _, cx| {
-                                if direction != (0, 0) { this.start_nudge(direction, event.modifiers.shift, cx); }
-                            },
-                        ))
-                        .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| this.finish_nudge(cx)))
-                        .on_mouse_up_out(MouseButton::Left, cx.listener(|this, _, _, cx| this.finish_nudge(cx)))
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(move |this, event: &gpui::MouseDownEvent, _, cx| {
+                                if direction != (0, 0) {
+                                    this.start_nudge(direction, event.modifiers.shift, cx);
+                                }
+                            }),
+                        )
+                        .on_mouse_up(
+                            MouseButton::Left,
+                            cx.listener(|this, _, _, cx| this.finish_nudge(cx)),
+                        )
+                        .on_mouse_up_out(
+                            MouseButton::Left,
+                            cx.listener(|this, _, _, cx| this.finish_nudge(cx)),
+                        )
                         .on_click(cx.listener(
                             move |this, event: &gpui::ClickEvent, _, cx| {
                                 if direction == (0, 0) {
@@ -2706,7 +2758,10 @@ impl Render for Studio {
             )
             .on_key_down(cx.listener(Self::handle_key))
             .on_key_up(cx.listener(|this, event: &gpui::KeyUpEvent, _, cx| {
-                if matches!(event.keystroke.key.as_str(), "left" | "right" | "up" | "down") {
+                if matches!(
+                    event.keystroke.key.as_str(),
+                    "left" | "right" | "up" | "down"
+                ) {
                     this.finish_nudge(cx);
                     cx.stop_propagation();
                 }
@@ -3366,7 +3421,10 @@ mod tests {
         assert_eq!(held_nudge_distance(Duration::from_millis(299), false), 1.0);
         assert_eq!(held_nudge_distance(Duration::from_millis(330), false), 2.0);
         assert_eq!(held_nudge_distance(Duration::from_millis(930), false), 25.0);
-        assert_eq!(held_nudge_distance(Duration::from_millis(1830), false), 149.0);
+        assert_eq!(
+            held_nudge_distance(Duration::from_millis(1830), false),
+            149.0
+        );
         assert_eq!(held_nudge_distance(Duration::from_millis(330), true), 16.0);
         gpui_platform::headless().run(|cx| {
             cx.set_global(orbit::theme::Theme::default());
@@ -3377,16 +3435,27 @@ mod tests {
                 let frame = studio.frames[0].1.clone();
                 let origin = (frame.read(cx).item.x, frame.read(cx).item.y);
                 let renderer = frame.read(cx).renderer.clone();
-                studio.held_nudge = Some(HeldNudge { frame: frame.clone(), origin,
-                    direction: (1, 0), shift: false, started: Instant::now() });
+                studio.held_nudge = Some(HeldNudge {
+                    frame: frame.clone(),
+                    origin,
+                    direction: (1, 0),
+                    shift: false,
+                    started: Instant::now(),
+                });
                 for ms in [0, 330, 930, 1830] {
                     studio.tick_nudge(Duration::from_millis(ms), cx);
                     assert_eq!(studio.editor.layout(), &original);
-                    assert_eq!(Editor::open(file.path.clone()).expect("disco").layout(), &original);
+                    assert_eq!(
+                        Editor::open(file.path.clone()).expect("disco").layout(),
+                        &original
+                    );
                     assert_eq!(frame.read(cx).renderer, renderer);
                 }
                 studio.finish_nudge(cx);
-                assert_eq!(studio.editor.selected().expect("selección").x, origin.0 + 149.0);
+                assert_eq!(
+                    studio.editor.selected().expect("selección").x,
+                    origin.0 + 149.0
+                );
                 studio.finish_nudge(cx); // La liberación también puede llegar desde el marco.
                 studio.history(false, cx);
                 assert_eq!(studio.editor.layout(), &original);

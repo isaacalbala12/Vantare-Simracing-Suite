@@ -232,18 +232,48 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             ));
             rows
         }
-        Settings::Delta(value) if value.design_system == vantare_ui::standings::DesignSystem::Vantare => {
+        Settings::Delta(value)
+            if value.design_system == vantare_ui::standings::DesignSystem::Vantare =>
+        {
             let mut rows = vec![
-                choice("Formato Delta", Tab::Appearance, &value.size,
-                    &[("Cápsula", "pill"), ("Barra", "bar"), ("Ampliado", "expanded")], set!(Delta.size string)),
-                choice("Vuelta de referencia", Tab::Content, &value.reference,
-                    &[("Mejor vuelta propia", "best"), ("Óptima (mejores sectores)", "optimal"), ("Mejor del líder de clase", "leader")], set!(Delta.reference string)),
+                choice(
+                    "Formato Delta",
+                    Tab::Appearance,
+                    &value.size,
+                    &[
+                        ("Cápsula", "pill"),
+                        ("Barra", "bar"),
+                        ("Ampliado", "expanded"),
+                    ],
+                    set!(Delta.size string),
+                ),
+                choice(
+                    "Vuelta de referencia",
+                    Tab::Content,
+                    &value.reference,
+                    &[
+                        ("Mejor vuelta propia", "best"),
+                        ("Óptima (mejores sectores)", "optimal"),
+                        ("Mejor del líder de clase", "leader"),
+                    ],
+                    set!(Delta.reference string),
+                ),
             ];
             if value.size != "pill" {
-                rows.push(boolean("Barra de diferencia", Tab::Appearance, value.show_bar, set!(Delta.show_bar)));
+                rows.push(boolean(
+                    "Barra de diferencia",
+                    Tab::Appearance,
+                    value.show_bar,
+                    set!(Delta.show_bar),
+                ));
             }
             if value.size == "expanded" {
-                rows.push(boolean("Comparación de sectores", Tab::Content, value.show_sectors, set!(Delta.show_sectors)));
+                rows.push(boolean(
+                    "Comparación de sectores",
+                    Tab::Content,
+                    value.show_sectors,
+                    set!(Delta.show_sectors),
+                ));
             }
             rows
         }
@@ -447,6 +477,52 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
         _ => vec![],
     };
     if let Some((_, look, accent)) = appearance(settings) {
+        // Estas opciones son exclusivas del sistema heredado: Vantare compone
+        // su cabecera y pie con el contrato de #1497.
+        rows.retain(|field| {
+            !matches!(
+                field.title,
+                "Diseño"
+                    | "Cabecera de sesión"
+                    | "Pie de sesión"
+                    | "Primera métrica del pie"
+                    | "Segunda métrica del pie"
+                    | "Filas del historial"
+                    | "Proyección"
+            )
+        });
+        match settings {
+            Settings::Standings(value) => rows.push(choice(
+                "Formato de tabla",
+                Tab::Appearance,
+                table_template(value.columns.as_ref(), false),
+                TABLE_FORMATS,
+                |settings, key| {
+                    if let Settings::Standings(value) = settings {
+                        value.columns = Some(vantare_ui::standings::vantare_template(key));
+                    }
+                },
+            )),
+            Settings::Relative(value) => rows.push(choice(
+                "Formato de tabla",
+                Tab::Appearance,
+                table_template(value.columns.as_ref(), true),
+                TABLE_FORMATS,
+                |settings, key| {
+                    if let Settings::Relative(value) = settings {
+                        value.columns = Some(vantare_ui::relative::vantare_template(key));
+                    }
+                },
+            )),
+            Settings::FuelStrategy(value) => rows.push(choice(
+                "Formato Fuel y stint",
+                Tab::Appearance,
+                &value.size,
+                TABLE_FORMATS,
+                set!(FuelStrategy.size string),
+            )),
+            _ => {}
+        }
         use vantare_ui::standings::{Accent, Look};
         rows.extend([
             choice(
@@ -505,6 +581,32 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
     rows
 }
 
+const TABLE_FORMATS: &[(&str, &str)] = &[
+    ("Compacto", "compact"),
+    ("Estándar", "standard"),
+    ("Ampliado", "expanded"),
+];
+
+fn table_template(
+    columns: Option<&Vec<vantare_ui::standings::options::ColumnSetting>>,
+    relative: bool,
+) -> &'static str {
+    let Some(columns) = columns else {
+        return "standard";
+    };
+    ["compact", "standard", "expanded"]
+        .into_iter()
+        .find(|name| {
+            *columns
+                == if relative {
+                    vantare_ui::relative::vantare_template(name)
+                } else {
+                    vantare_ui::standings::vantare_template(name)
+                }
+        })
+        .unwrap_or("") // Columnas personalizadas: no afirmar una plantilla que no coincide.
+}
+
 pub fn appearance(
     settings: &Settings,
 ) -> Option<(
@@ -550,10 +652,14 @@ pub fn pending(settings: &Settings) -> Vec<String> {
 }
 
 /// La familia de tablas comparte el tipo público de columnas; no recreamos sus defaults.
-pub fn columns(settings: &Settings) -> Option<&Vec<vantare_ui::standings::options::ColumnSetting>> {
+pub fn columns(settings: &Settings) -> Option<Vec<vantare_ui::standings::options::ColumnSetting>> {
     match settings {
-        Settings::Standings(s) => s.columns.as_ref(),
-        Settings::Relative(s) => s.columns.as_ref(),
+        Settings::Standings(s) => s.columns.clone().or_else(|| {
+            appearance(settings).map(|_| vantare_ui::standings::vantare_template("standard"))
+        }),
+        Settings::Relative(s) => s.columns.clone().or_else(|| {
+            appearance(settings).map(|_| vantare_ui::relative::vantare_template("standard"))
+        }),
         _ => None,
     }
 }
@@ -561,6 +667,22 @@ pub fn columns_mut(
     settings: &mut Settings,
 ) -> Option<&mut Vec<vantare_ui::standings::options::ColumnSetting>> {
     match settings {
+        Settings::Standings(s)
+            if s.design_system == vantare_ui::standings::DesignSystem::Vantare =>
+        {
+            Some(
+                s.columns
+                    .get_or_insert_with(|| vantare_ui::standings::vantare_template("standard")),
+            )
+        }
+        Settings::Relative(s)
+            if s.design_system == vantare_ui::standings::DesignSystem::Vantare =>
+        {
+            Some(
+                s.columns
+                    .get_or_insert_with(|| vantare_ui::relative::vantare_template("standard")),
+            )
+        }
         Settings::Standings(s) => s.columns.as_mut(),
         Settings::Relative(s) => s.columns.as_mut(),
         _ => None,
@@ -575,22 +697,58 @@ pub fn valid_color(value: &str) -> bool {
 mod tests {
     use super::*;
     #[test]
+    fn vantare_formats_and_default_columns_edit_the_productive_settings() {
+        for mut settings in [Settings::Standings(Default::default()), Settings::Relative(Default::default())] {
+            let default = columns(&settings).expect("columnas por defecto");
+            assert!(default.iter().any(|c| c.metric_id == "gap" && c.enabled));
+            let gap = columns_mut(&mut settings).expect("columnas editables").iter_mut()
+                .find(|c| c.metric_id == "gap").expect("gap");
+            gap.enabled = false;
+            assert!(columns(&settings).expect("columnas").iter().any(|c| c.metric_id == "gap" && !c.enabled));
+            for key in ["compact", "standard", "expanded"] {
+                let format = fields(&settings).into_iter().find(|f| f.title == "Formato de tabla").expect("formato");
+                let Control::Choice { set, .. } = format.control else { panic!("selector") };
+                set(&mut settings, key);
+                let normalized = settings.normalized();
+                assert_eq!(columns(&normalized), columns(&settings), "no truncar gap de Vantare");
+            }
+            assert!(!fields(&settings).iter().any(|f| f.title == "Diseño"));
+        }
+    }
+    #[test]
     fn delta_inspector_persists_every_supported_reference_and_format() {
         use crate::document::{Editor, tests::File};
         let file = File::new();
         let mut editor = Editor::open(file.path.clone()).expect("editor");
         editor.add(vantare_ui::Kind::Delta).expect("delta");
-        for (title, keys) in [("Vuelta de referencia", vec!["best", "optimal", "leader"]),
-            ("Formato Delta", vec!["pill", "bar", "expanded"])] {
+        for (title, keys) in [
+            ("Vuelta de referencia", vec!["best", "optimal", "leader"]),
+            ("Formato Delta", vec!["pill", "bar", "expanded"]),
+        ] {
             for key in keys {
-                let field = fields(&editor.selected().expect("selección").settings).into_iter()
-                    .find(|f| f.title == title).expect("control disponible");
-                let Control::Choice { set, .. } = field.control else { panic!("selector") };
-                editor.edit_selected(|item| set(&mut item.settings, key)).expect("guardar");
+                let field = fields(&editor.selected().expect("selección").settings)
+                    .into_iter()
+                    .find(|f| f.title == title)
+                    .expect("control disponible");
+                let Control::Choice { set, .. } = field.control else {
+                    panic!("selector")
+                };
+                editor
+                    .edit_selected(|item| set(&mut item.settings, key))
+                    .expect("guardar");
                 let reloaded = Editor::open(file.path.clone()).expect("recargar");
                 assert_eq!(reloaded.layout(), editor.layout());
-                let Settings::Delta(value) = &editor.selected().expect("delta").settings else { panic!("delta") };
-                assert_eq!(if title == "Vuelta de referencia" { &value.reference } else { &value.size }, key);
+                let Settings::Delta(value) = &editor.selected().expect("delta").settings else {
+                    panic!("delta")
+                };
+                assert_eq!(
+                    if title == "Vuelta de referencia" {
+                        &value.reference
+                    } else {
+                        &value.size
+                    },
+                    key
+                );
             }
         }
         let fields = fields(&editor.selected().expect("selección").settings);
@@ -599,7 +757,10 @@ mod tests {
     }
     #[test]
     fn standard_tables_have_no_class_scope_selector() {
-        for settings in [Settings::Standings(Default::default()), Settings::Relative(Default::default())] {
+        for settings in [
+            Settings::Standings(Default::default()),
+            Settings::Relative(Default::default()),
+        ] {
             assert!(!fields(&settings).iter().any(|f| f.title == "Clases"));
         }
     }

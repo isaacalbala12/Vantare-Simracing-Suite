@@ -5974,3 +5974,10 @@ geometría cancela Fit/100/150 sin persistir ni añadir Undo; selección opaca0/
 y tamaño estable; En vivo vacío hasta foto IPC y conserva la más reciente durante
 el gesto. Suite Studio18/18 PASS, incluidas seis nuevas; capturas siguen siendo
 necesarias para validar eventos/hitboxes/composición física.
+
+S8 reproducido en release471e8395: a1280×720/Windows125, Fuel queda fuera del
+clip y ambos sentidos de rueda horizontal mantienen sus bounds (x686) bajo el
+botón Añadir. La lista encogía su ancho aunque las filas no encogen; el scroll
+medía ese hijo directo y no veía overflow. Reserva ahora el ancho de las filas
+filtradas y sus huecos. Regresión nativa de selección+flecha+Undo y filtros pendiente
+de build; no se añade un test de estilo que solo refleje la fórmula.

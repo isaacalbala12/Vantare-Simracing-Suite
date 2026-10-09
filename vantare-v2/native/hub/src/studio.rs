@@ -1134,11 +1134,16 @@ impl Studio {
         let query = self.search.read(cx).value.to_lowercase();
         let mut list = div().flex().gap(px(8.0));
         let mut matches = 0;
+        let mut content_width = 0.0;
         for (index, item) in self.editor.layout().instances.iter().enumerate() {
             if format!("{} {}", item.id, item.settings.kind().label())
                 .to_lowercase()
                 .contains(&query)
             {
+                if matches > 0 {
+                    content_width += 8.0;
+                }
+                content_width += 160.0;
                 matches += 1;
                 list = list.child(self.widget_row(index, item, cx));
             }
@@ -1156,7 +1161,9 @@ impl Studio {
                 cx,
             ));
         }
-        list
+        // El scroll mide el hijo directo: sus filas no deben desbordar un ancho
+        // encogido al viewport, porque entonces los últimos widgets son inaccesibles.
+        list.min_w(px(content_width))
     }
     fn widget_row(
         &self,

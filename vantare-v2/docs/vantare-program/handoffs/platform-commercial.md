@@ -13,7 +13,11 @@ Aviso único de conexión en Hub y primer monitor de overlays, estable durante
 reintentos; se retira con foto/respuesta compatible. Sin cambios de acceso/licencia.
 README, AGENTS GitHub/nightly y native/AGENTS (§10) actualizados; ADR 0100
 registra Clerk/Polar/Supabase, dependencias compartidas y pendientes de #1514.
-Fmt y Clippy previos verdes; Nextest/lifecycle/telemetria y revisión final en curso.
+Nextest 1406/1406 y lifecycle 18/18 verdes; fmt/Clippy finales y telemetría
+en curso. Primera telemetría detectó LF alterados y goldens aún v8: se
+restauraron bytes, se migraron solo etiquetas y se conserva hash ACC v8
+para probar los 190.308 DTO completos además del hash v9. Logs externos
+en C:/tmp/auditoria-arquitectura-v2; fallos iniciales se conservan.
 Plan de partición de vistas ya grandes, fuera de #1530: Studio → canvas,
 inspector y catálogo/fotos (P1-A); services/view → cuenta, reportes y estado
 (P3); requieren sus propias issues. Aquí solo se adapta el lector/diagnóstico.

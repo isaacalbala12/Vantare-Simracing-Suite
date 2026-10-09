@@ -213,6 +213,7 @@ fn acc_real_corpus_matches_frozen_dtos() {
     let mut output = Vec::new();
     let mut count = 0;
     let mut hash = Sha256::new();
+    let mut previous_version_hash = Sha256::new();
     for _ in 0..190_471 {
         if let Some(observation) = replay
             .poll(Duration::from_secs(121))
@@ -230,6 +231,12 @@ fn acc_real_corpus_matches_frozen_dtos() {
                     "la escena UI debe proceder del corpus real sin editar campos"
                 );
             }
+            // La migración #1530 solo cambia la etiqueta, incluso en las fotos
+            // fuera de los ocho cortes congelados. Conservamos el hash v8.
+            let unchanged = dto.strip_prefix(r#"{"version":9,"#).expect("DTO v9");
+            previous_version_hash.update(br#"{"version":8,"#);
+            previous_version_hash.update(unchanged.as_bytes());
+            previous_version_hash.update(b"\n");
             hash.update(dto.as_bytes());
             hash.update(b"\n");
             if [1, 1000, 30_000, 60_000, 90_000, 120_000, 150_000, 190_308].contains(&count) {
@@ -252,6 +259,11 @@ fn acc_real_corpus_matches_frozen_dtos() {
         format!("{:x}", hash.finalize()),
         include_str!("golden/acc-all.sha256").trim(),
         "todos los DTO de ACC, sin saltar fotos"
+    );
+    assert_eq!(
+        format!("{:x}", previous_version_hash.finalize()),
+        include_str!("golden/acc-all-v8.sha256").trim(),
+        "migración v9: todos los bytes salvo la etiqueta conservan el golden v8"
     );
     check("acc", &output);
 }

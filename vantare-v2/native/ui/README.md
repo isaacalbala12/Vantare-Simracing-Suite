@@ -1,5 +1,9 @@
 # ui — overlays GPUI
 
+Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
+cola de `AGENTS.md` (en esta ola, `C:/tmp/fase2/compilar.ps1`; normalmente,
+`native/scripts/compilar.ps1`). Usar target aislado y `-j 2`.
+
 GPUI de Zed (rev `72d28c32`, la del prototipo de paridad ISA-1410) usado
 directamente; el crate añade la integración Win32 (`overlay.rs`: transparencia,
 click-through, sin foco, sin marco DWM, DPI), el texto Inter con `letter-spacing`

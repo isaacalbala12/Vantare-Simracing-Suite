@@ -1,15 +1,18 @@
 # Fotos reales para el contrato de demanda (#1474)
 
+DTO v9 (#1530): solo se cambia la etiqueta de versión respecto a 5e1da3f6;
+los datos, calidad, números y separadores originales se conservan byte a byte.
+
 Copias exactas, sin LF final ni cambios de campos, de los goldens congelados de
 #1463. No son escenas de diseño ni telemetría live. `telemetry_golden.rs` compara
 estas copias contra el replay real, además de conservar los goldens originales.
 
 | Foto | Origen | Corte | SHA-256 de la copia |
 | --- | --- | --- | --- |
-| `lmu47.snapshot.json` | `runtime/tests/golden/lmu47.jsonl.gz` | 1 de 3839 | `2ba8ff6f23361d00b8b25fb5b177cbb51d424fd2d9840796d27378a0aa327447` |
-| `acc.snapshot.json` | `runtime/tests/golden/acc.jsonl.gz` | 8, observación 190308 | `85f560b2c14bb9c79d2035cc373fddb785dfc92af281b688744f63efb1d69b59` |
-| `lmu-stale.snapshot.json` | `runtime/tests/golden/lmu.jsonl.gz` | 2: fixture real de 44 coches degradado a 500 ms | `d8e42c880a9d74bd112aa80738f77701b38b7c0badcd87e0e1e8b93612cfba7a` |
-| `lmu-menu.snapshot.json` | `runtime/tests/golden/lmu.jsonl.gz` | 3: menú real sin parrilla | `735783a7cdd1cd3fd9c5bb49af31caf7721ab7f8039bedfd9ef43ceece455e5a` |
+| `lmu47.snapshot.json` | `runtime/tests/golden/lmu47.jsonl.gz` | 1 de 3839 | `3fe5acef6f332dd01fd1afee64d419ec5250f415117fba71585a456e6fd92630` |
+| `acc.snapshot.json` | `runtime/tests/golden/acc.jsonl.gz` | 8, observación 190308 | `11500cb34cbb795957de2a43171d5668f7fde6cfed1a258cad099f294f3638d1` |
+| `lmu-stale.snapshot.json` | `runtime/tests/golden/lmu.jsonl.gz` | 2: fixture real de 44 coches degradado a 500 ms | `5a08189e04e16d82689075a324d5223ec7c7a7880dbd3bf4e4a635bd319a0ca9` |
+| `lmu-menu.snapshot.json` | `runtime/tests/golden/lmu.jsonl.gz` | 3: menú real sin parrilla | `49df511d1ad8d53beae3ba7935b5ffa55d15ab2a58a0036c75f724dc6f5f9c9a` |
 
 Corpus originales y hashes: `runtime/tests/golden/README.md`. Extracción desde
 `native/`, con Python de la biblioteca estándar:

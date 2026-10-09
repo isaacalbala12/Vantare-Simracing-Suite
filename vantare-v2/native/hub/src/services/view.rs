@@ -636,6 +636,16 @@ impl Remote {
                         }
                     }
                 };
+                // El aviso accionable pertenece al estado de conexión del Hub.
+                // Las páginas conservan un error contextual sin duplicar ese aviso.
+                let reply = match reply {
+                    Reply::Error { message } if message == vantare_ipc::INCOMPATIBLE_COMPONENTS => {
+                        Reply::Error {
+                            message: "Servicios no disponibles por incompatibilidad".into(),
+                        }
+                    }
+                    reply => reply,
+                };
                 if responses.try_send(reply).is_err() {
                     break;
                 }
@@ -893,7 +903,6 @@ impl Remote {
             }
             // La consulta periódica no pisa el resultado de una acción del usuario.
             Reply::Error { .. } | Reply::License { .. } if background => {}
-            Reply::Error { message } if message == vantare_ipc::INCOMPATIBLE_COMPONENTS => {}
             Reply::Status { message, .. } | Reply::Error { message } => {
                 if matches!(self.active, Area::Calendar) {
                     // El Calendario recibe su error sin alterar Cuenta.

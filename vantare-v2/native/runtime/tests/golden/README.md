@@ -77,3 +77,16 @@ originales. No hay una captura positiva de los nuevos gaps nativos ni una
 conexión certificada de estos: el SDK ofrece vecinos sin ID; sus cuatro
 campos están a cero en todo LMU47. La regresión controlada comprueba el
 respaldo antes de la primera vuelta y su ausencia en boxes/caducidad.
+
+## Migración del contrato v9 (#1530)
+
+Los tres gzip pasan de v8 a v9 cambiando exclusivamente el prefijo
+`{"version":8,` por `{"version":9,` de cada foto. La inversión de ese cambio
+reproduce byte a byte los 10 cortes LMU, 3.839 LMU47 y 8 ACC de la base
+`5e1da3f6`; se preservan los LF y mtime 0. Corpus y oráculos no cambian.
+
+El hash ACC v9 se obtiene del replay completo de 190.308 fotos. El test
+conserva además `acc-all-v8.sha256`: calcula el hash de esas mismas fotos
+con solo la etiqueta invertida y exige el hash original de la base. Así
+la migración no puede esconder cambios en los datos entre los ocho cortes.
+No se añade modo de regeneración ni se amplía ninguna tolerancia.

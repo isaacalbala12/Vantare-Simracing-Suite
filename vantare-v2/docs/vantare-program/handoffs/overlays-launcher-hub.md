@@ -1,3 +1,33 @@
+## #1528 — Ronda 2 tras revisión 8,80/10 (2026-10-10)
+
+Entrega aislada sobre `723cdb78`, misma rama y base de integración `5e1da3f6`.
+Cinco commits en el orden pedido: General restaura Equilibrada M / Cómoda automática
+con diferencias verificadas en gap, filas y padding, sin ampliar ventanas XS;
+Launcher mantiene hero natural, centra la cadena con aire y usa tira horizontal
+compacta al lanzar, evitando solapes de portada en alturas pequeñas; Agenda acota
+franjas y eventos, conserva filtros y scroll por celda y enlaza excedentes a Tiempos;
+Apariencia compone navegación/perfil/estado real con Orbit, sin progreso ficticio;
+Ajustes recibe padding explícito, independiente del título traducido.
+Archivos de código: `settings/general.rs`, `launcher/showcase.rs`,
+`calendar/presentation.rs`, `settings/view.rs`. Sin dependencias ni renderer nuevo.
+
+Gates por cola: fmt y Clippy -D warnings PASS; Nextest workspace 1404 PASS / 7 skips,
+Hub tras el último ajuste 403 PASS / 1 skip; lifecycle 18 PASS. El build QA conserva
+el aviso previo `unused cx` de analysis/view.rs bajo parity-capture; Clippy canónico
+pasa sin warnings. Los intentos fallidos de tipo/formato quedan en los logs externos.
+Las capturas R1 se conservan en `1528-evidence/r2-before`; 76 HTML recapturados y
+76 app, más recaptura final de Launcher en nueve tamaños. Cada PNG mantiene SHA y
+hash del binario en provenance.jsonl; `refs/1528/r2-first-capture` conserva el SHA
+previo a la última corrección de portada. Pares, overlays y diffs regenerados.
+`C:/tmp/ui-r10/informe-1528.md` mantiene doce líneas y el seguimiento de datos
+honestos en [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+La nota 8,80 pertenece a la revisión anterior; el objetivo ≥9 requiere reevaluación
+independiente. No se presenta una nueva puntuación calculada por el implementador.
+Verificación manual: alternar Equilibrada/Cómoda a 1920 y reducir a 1280; lanzar
+perfil y recorrer su tira; desplazar celdas densas de Agenda y abrir Tiempos;
+cambiar tema y comprobar la miniatura. DPI físico, LMU real e interacción humana
+no acreditados por las capturas QA. Sin push, PR, merge, promoción, release ni CI remoto.
+
 ## #1528 — Paridad visual Hub r10h, entrega aislada (2026-10-09)
 
 Worktree `C:/tmp/vw3-1528/vantare-v2`, rama `vantareapp/isa-1528-paridad-visual`,

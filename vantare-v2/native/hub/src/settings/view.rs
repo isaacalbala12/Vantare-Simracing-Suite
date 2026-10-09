@@ -124,7 +124,13 @@ fn section_row_hint(
 fn section_body() -> Div {
     div().flex().flex_col()
 }
-fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -> Div {
+fn section_surface(
+    title: &str,
+    meta: Option<&str>,
+    body: Div,
+    padding: f32,
+    cx: &gpui::App,
+) -> Div {
     let number = match title {
         "Inicio"
         | "Temas"
@@ -136,38 +142,21 @@ fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -
         "Widgets" | "Movimiento" => 4,
         _ => 1,
     };
-    section_numbered(number, title, meta, body, cx)
+    section_numbered(number, title, meta, body, padding, cx)
 }
 fn section_numbered(
     number: usize,
     title: &str,
     meta: Option<&str>,
     body: Div,
+    padding: f32,
     cx: &gpui::App,
 ) -> Div {
     orbit::settings_group(
         number,
         title,
         orbit::neo_card(cx)
-            .p(px(
-                if matches!(
-                    title,
-                    "Interfaz"
-                        | "Inicio"
-                        | "Avisos"
-                        | "Texto"
-                        | "Transparencia"
-                        | "Movimiento"
-                        | "En el Hub"
-                        | "En Studio"
-                        | "Datos que compartes"
-                        | "Lo que compartes"
-                ) {
-                    0.0
-                } else {
-                    12.0
-                },
-            ))
+            .p(px(padding))
             .min_h_0()
             .when_some(meta, |card, meta| {
                 card.child(orbit::meta(meta, 10.0, orbit::skin(cx).text3, cx))
@@ -926,10 +915,11 @@ impl Hub {
                         self.shell.adapt,
                         cx,
                     )),
+                0.0,
                 cx,
             ))
-            .child(section_surface("Inicio", None, start, cx))
-            .child(section_surface("Avisos", None, notices, cx))
+            .child(section_surface("Inicio", None, start, 0.0, cx))
+            .child(section_surface("Avisos", None, notices, 0.0, cx))
     }
     #[allow(clippy::too_many_lines)] // Composición declarativa R4; solo añade Adapt explícito.
     fn settings_appearance(&self, cx: &mut Context<Self>) -> Div {
@@ -1034,6 +1024,7 @@ impl Hub {
                             cx,
                         ))
                     }),
+                0.0,
                 cx,
             ))
             .map(|page| {
@@ -1076,6 +1067,7 @@ impl Hub {
                         self.shell.adapt,
                         cx,
                     )),
+                    0.0,
                     cx,
                 ))
             })
@@ -1309,9 +1301,9 @@ impl Hub {
         );
         let state = format!("Nivel aplicado: {}", current.label());
         stack()
-            .child(section_surface("Nivel de rendimiento", Some(&state), levels, cx))
+            .child(section_surface("Nivel de rendimiento", Some(&state), levels, 12.0, cx))
             .child(section_surface("Qué cambia en cada nivel", None,
-                Self::settings_frequency_table(current, cx), cx))
+                Self::settings_frequency_table(current, cx), 12.0, cx))
             .child(text("Frecuencias máximas de actualización de datos. La fluidez depende también de las fotos recibidas y del monitor.", 12.0, 400, orbit::ink_3(cx), cx))
     }
 
@@ -1336,6 +1328,7 @@ impl Hub {
             "Notas de versión",
             None,
             Self::settings_release_news(cx),
+            12.0,
             cx,
         )
         .flex_1()
@@ -1369,7 +1362,7 @@ impl Hub {
             ))
             .child(if channel == Some("Beta") {
                 section_surface("Beta", Some("Actualizaciones automáticas al abrir y cada 6 horas"),
-                    section_body().child(text("Las nuevas versiones beta se descargan automáticamente y se aplican al cerrar o reiniciar el Hub.", 13.0, 400, orbit::ink_2(cx), cx)), cx)
+                    section_body().child(text("Las nuevas versiones beta se descargan automáticamente y se aplican al cerrar o reiniciar el Hub.", 13.0, 400, orbit::ink_2(cx), cx)), 12.0, cx)
             } else {
                 Self::settings_update_channels(channel, self.demo.is_some(), cx)
             })
@@ -1658,7 +1651,13 @@ impl Hub {
         stack()
             .h_full()
             .when(cfg!(windows), |body| {
-                body.child(section_surface("Globales con el juego", None, globals, cx))
+                body.child(section_surface(
+                    "Globales con el juego",
+                    None,
+                    globals,
+                    12.0,
+                    cx,
+                ))
             })
             .child(section_surface(
                 "En el Hub",
@@ -1672,6 +1671,7 @@ impl Hub {
                     ],
                     "Con la ventana del Hub activa",
                 ),
+                0.0,
                 cx,
             ))
             .child(section_surface(
@@ -1688,6 +1688,7 @@ impl Hub {
                     ],
                     "Con el lienzo de Studio activo",
                 ),
+                0.0,
                 cx,
             ))
     }
@@ -1758,7 +1759,7 @@ impl Hub {
             &self.settings.privacy_policy_focus,
             cx,
         ));
-        section_surface("Lo que compartes", None, body, cx)
+        section_surface("Lo que compartes", None, body, 0.0, cx)
     }
     fn settings_events(&self, cx: &mut Context<Self>) -> Div {
         let observed = &self.testing.read(cx).observed;
@@ -1835,6 +1836,7 @@ impl Hub {
             "Registro observado",
             Some("Errores registrados en esta sesión"),
             events,
+            12.0,
             cx,
         )
         .flex_1()
@@ -1945,6 +1947,7 @@ impl Hub {
                             cx,
                         ))
                     }),
+                12.0,
                 cx,
             ))
             .child(self.settings_events(cx).flex_1().min_h_0())
@@ -1987,7 +1990,13 @@ impl Hub {
                 cx,
             ));
         }
-        report.push(section_surface("Componentes revisados", None, body, cx));
+        report.push(section_surface(
+            "Componentes revisados",
+            None,
+            body,
+            12.0,
+            cx,
+        ));
         match serde_json::to_string_pretty(diagnostic) {
             Ok(_) => {
                 let copy = self.settings_button(
@@ -2002,7 +2011,7 @@ impl Hub {
                     section_body()
                         .child(text("Incluye la versión de Vantare, el estado de la conexión y los componentes revisados. No incluye contraseñas ni datos de la carrera.", orbit::SECONDARY, 400, orbit::ink_2(cx), cx))
                         .child(copy),
-                    cx,
+                    12.0, cx,
                 ));
             }
             Err(_) => report.push(orbit::callout("No se pudo preparar el informe.", cx)),

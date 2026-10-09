@@ -1178,7 +1178,26 @@ impl Hub {
     }
     fn settings_performance(&self, _compact: bool, cx: &mut Context<Self>) -> Div {
         let current = self.studio.read(cx).performance().level;
-        let mut levels = div().grid().grid_cols(3).w_full().min_w_0().gap(px(10.0));
+        let mut levels = div()
+            .grid()
+            .grid_cols(4)
+            .w_full()
+            .min_w_0()
+            .gap(px(10.0))
+            .child(
+                orbit::neo_card(cx)
+                    .col_span(2)
+                    .p(px(14.0))
+                    .gap(px(9.0))
+                    .child(text("Automático", 15.0, 600, orbit::ink(cx), cx))
+                    .child(text(
+                        "Próximamente · La app usa el nivel elegido",
+                        12.0,
+                        400,
+                        orbit::ink_3(cx),
+                        cx,
+                    )),
+            );
         for (index, level) in vantare_ui::performance::Level::ALL.into_iter().enumerate() {
             levels = levels.child(self.settings_level_card(index, level, cx));
         }

@@ -88,7 +88,8 @@ fn section_row_hint(
 ) -> Div {
     div()
         .min_h(px(adapt.setting_height()))
-        .py(px(3.0))
+        .px(px(20.0))
+        .py(px(5.0))
         .flex()
         .items_center()
         .justify_between()
@@ -102,7 +103,7 @@ fn section_row_hint(
                 .flex()
                 .flex_col()
                 .gap(px(2.5))
-                .child(section_text(label, 13.5, 650, orbit::ink(cx), 20.25, cx))
+                .child(section_text(label, 14.0, 600, orbit::ink(cx), 21.0, cx))
                 .when(adapt.show_optional(), |row| {
                     row.child(section_text(
                         help,
@@ -148,7 +149,25 @@ fn section_numbered(
         number,
         title,
         orbit::neo_card(cx)
-            .p(px(12.0))
+            .p(px(
+                if matches!(
+                    title,
+                    "Interfaz"
+                        | "Inicio"
+                        | "Avisos"
+                        | "Texto"
+                        | "Transparencia"
+                        | "Movimiento"
+                        | "En el Hub"
+                        | "En Studio"
+                        | "Datos que compartes"
+                        | "Lo que compartes"
+                ) {
+                    0.0
+                } else {
+                    12.0
+                },
+            ))
             .min_h_0()
             .when_some(meta, |card, meta| {
                 card.child(orbit::meta(meta, 10.0, orbit::skin(cx).text3, cx))
@@ -833,26 +852,6 @@ impl Hub {
             ))
             .child(section_surface("Inicio", None, start, cx))
             .child(section_surface("Avisos", None, notices, cx))
-            .child(section_surface(
-                "Widgets",
-                None,
-                section_body()
-                    .child(section_row(
-                        "Idioma de los widgets",
-                        "Se guarda con el diseño de Studio",
-                        self.settings.language.clone(),
-                        self.shell.adapt,
-                        cx,
-                    ))
-                    .child(section_row(
-                        "Unidades de los widgets",
-                        "Combustible, temperatura y velocidad",
-                        self.settings.units.clone(),
-                        self.shell.adapt,
-                        cx,
-                    )),
-                cx,
-            ))
     }
     #[allow(clippy::too_many_lines)] // Composición declarativa R4; solo añade Adapt explícito.
     fn settings_appearance(&self, cx: &mut Context<Self>) -> Div {

@@ -310,7 +310,7 @@ impl State {
             units,
             density: choice(
                 "Densidad",
-                ChoiceKind::Dropdown,
+                ChoiceKind::Segmented,
                 &["Compacta", "Equilibrada", "Cómoda"],
                 Some(prefs.density as usize),
                 true,

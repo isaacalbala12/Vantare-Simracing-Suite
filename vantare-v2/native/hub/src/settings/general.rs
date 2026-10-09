@@ -16,8 +16,9 @@ impl Density {
         use crate::orbit::adapt::Density as Responsive;
         match self {
             Self::Compact => adapt.density = adapt.density.max(Responsive::B),
-            Self::Balanced => adapt.density = adapt.density.max(Responsive::M),
-            Self::Comfortable => {}
+            // Equilibrada conserva los tokens de cada tamaño: forzar M
+            // reducía títulos, espaciados y héroes incluso a 1920×1080.
+            Self::Balanced | Self::Comfortable => {}
         }
     }
 }
@@ -201,7 +202,8 @@ mod tests {
         let mut comfortable = base;
         Density::Comfortable.apply(&mut comfortable);
         assert!(compact.gap() < balanced.gap());
-        assert!(balanced.gap() < comfortable.gap());
+        assert_eq!(balanced, base);
+        assert_eq!(comfortable, base);
         for density in [Density::Compact, Density::Balanced, Density::Comfortable] {
             let mut small = crate::orbit::Adapt::new(1280.0, 700.0, None, true);
             density.apply(&mut small);

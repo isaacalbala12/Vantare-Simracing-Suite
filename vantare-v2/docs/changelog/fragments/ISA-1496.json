@@ -12,7 +12,9 @@
     "Rendimiento y atajos globales siguen Próximamente; Personalizado abre Studio. Diagnóstico solo muestra observaciones reales.",
     "Testing Center conserva el redactor, la revisión y el consentimiento del envío; la lista muestra ID, fecha, módulo y estado del recibo de esta sesión sin retener el texto privado.",
     "Calendario conserva horario UTC, seguimiento local y filtros; no hay inscripción ni servicio activo de avisos/autolanzamiento.",
-    "Roadmap solo muestra publicaciones de services; no inventa fases, porcentajes, fechas ni hitos editoriales."
+    "Roadmap solo muestra publicaciones de services; no inventa fases, porcentajes, fechas ni hitos editoriales.",
+    "Calendario añade Probar calendario para testers: catálogo LMU archivado con fechas trasladadas solo en memoria y preferencias de prueba efímeras.",
+    "El script ClickUp prepara la publicación compartida de Vantare/Desarrollo con subtareas e identidades estables; Tablero muestra Ahora, Siguiente, Más adelante y Entregado."
   ],
   "testing": [
     "Revisar Launcher en los tres temas, con ambos paneles, seleccionar un póster, ordenar pasos y guardar o cancelar el perfil.",
@@ -21,7 +23,8 @@
     "Cambiar Ejemplo/En vivo, visibilidad y opacidad; revisar zoom Ajustar y panel derecho abierto/recogido.",
     "Recorrer las siete pestañas de Ajustes y Cuenta; cambiar tema/esquema, reabrir, revisar conflictos, consentimiento y diagnóstico local.",
     "Como tester u owner, recorrer las cuatro pestañas, alternar Nuevo informe/Ver mis informes, revisar los recibos con clic o teclado, y abrir Borradores y diagnóstico. Comprobar los tres temas y el panel abierto/recogido en los tamaños de soporte.",
-    "Recorrer Agenda/Carteles/Tiempos y las tres vistas de Roadmap en ambos temas; comprobar favoritas/campanas locales y los estados vacíos reales."
+    "Recorrer Agenda/Carteles/Tiempos y las tres vistas de Roadmap en ambos temas; comprobar favoritas/campanas locales y los estados vacíos reales.",
+    "Como tester, entrar/salir de Probar calendario, marcar estrella/campana, revisar cuenta atrás y comprobar que al salir se recuperan los datos reales. Probar ClickUp con el fixture local y revisar los cuatro estados y las subtareas."
   ],
   "knownLimitations": [
     "Color y circuito del perfil aparecen como Próximamente porque el documento actual no los guarda.",
@@ -30,6 +33,8 @@
     "Escala libre, estilos, frecuencia por widget, OBS y Mostrar en pista siguen pendientes de sus contratos nativos.",
     "Capturas y fluidez de Studio pendientes si la pantalla compartida está ocupada; los tests no prueban paridad visual.",
     "Revisión visual de Ajustes y Cuenta pendiente mientras la pantalla compartida esté ocupada.",
-    "Cuestionarios y su guardado automático, niveles, insignias, conversación, apoyo y seguimiento posterior son Próximamente; no se muestran datos del mockup. Redactor y lista alternan para reservar espacio."
+    "Cuestionarios y su guardado automático, niveles, insignias, conversación, apoyo y seguimiento posterior son Próximamente; no se muestran datos del mockup. Redactor y lista alternan para reservar espacio.",
+    "Horario semanal vigente y publicaciones Supabase requieren fuente revisada y autorización de Isaac; los avisos siguen guardando solo preferencias, sin notificaciones reales.",
+    "ClickUp conserva el límite publicado de 40 hitos y no trunca tareas. La migración later no se activa en producción mientras el lector Go legado no sea compatible."
   ]
 }

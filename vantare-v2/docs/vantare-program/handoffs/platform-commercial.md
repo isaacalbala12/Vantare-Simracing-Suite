@@ -2033,3 +2033,20 @@ actual autoriza seguimiento GitHub y prevalece sobre la regla Notion antigua.
 Sin delegación/push/PR/merge/release/producción. Orquestador debe revisar esta
 entrega y reflejar #1496; autorización de publicación se pide en informe final.
 Punto 9: Inicio conserva siempre horario/favoritas oficiales incluso durante prueba; home.rs cambia solo esa selección. Escena QA calendario-beta-prueba exclusiva de --capture/parity-capture para inspeccionar renderer real sin login ni escribir preferencias.
+
+## Feedback 9-oct · calroad punto 10 (#1496)
+Misma base e55a43b3 y rama/worktree de punto 9. scripts/clickup-roadmap.py:
+lectura API paginada de Vantare/Desarrollo con subtareas/cerradas; nombres
+exactos, ancestry en cuerpo, UUID estables. idea→later, en progreso/por revisar→now,
+testers→next, complete→done. Prepara JSON y SQL; --publish exige digest SQL
+revisado, host y UUID vigente, transacción/publisher existentes. Sin token real.
+SQL añade solo later al validador; permisos y límites (40 hitos) conservados.
+Hub Tablero muestra cuatro grupos; captura roadmap-clickup-prueba es QA explícita.
+services/view.rs cambia solo selección de publicación QA; no fallback productivo.
+Python 7/7 PASS; ejemplo cinco hitos en C:/tmp/feedback-0910/calroad-example/.
+Gates Rust/capturas finales en curso; pgTAP no ejecutado por falta de psql/Docker.
+Bloqueos reales: publicación necesita autorización y fuente/token aportados;
+Go legado rechaza later, requiere adaptación autorizada o entorno nativo aislado;
+si Desarrollo supera 40 tareas/subtareas, aborta sin truncar y requiere decisión.
+Runbook docs/clickup-roadmap-sync.md; migración/rollback/tests SQL preparados.
+No se aplicó SQL ni se escribió en producción. Sin push/PR/merge/release.

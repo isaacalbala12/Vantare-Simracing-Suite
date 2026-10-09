@@ -1,0 +1,12 @@
+{
+  "workspaceId": "example-workspace",
+  "space": {"id": "example-space", "name": "Vantare"},
+  "list": {"id": "example-list", "name": "Desarrollo"},
+  "tasks": [
+    {"id": "example-1", "name": "Feature · Calendario", "parent": null, "status": {"status": "en progreso"}},
+    {"id": "example-2", "name": "Revisar favoritas", "parent": "example-1", "status": {"status": "por revisar"}},
+    {"id": "example-3", "name": "Comprobar reinicio", "parent": "example-2", "status": {"status": "testers"}},
+    {"id": "example-4", "name": "Idea · Agenda", "parent": null, "status": {"status": "idea"}},
+    {"id": "example-5", "name": "Fix · Cuenta atrás", "parent": null, "status": {"status": "complete"}}
+  ]
+}

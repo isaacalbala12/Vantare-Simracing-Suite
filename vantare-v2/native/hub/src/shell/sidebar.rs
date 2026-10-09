@@ -318,6 +318,13 @@ impl Hub {
     pub(super) fn redesign_rail(&self, cx: &mut Context<Self>) -> Div {
         let adapt = self.shell.adapt;
         let expanded = adapt.sidebar_open;
+        self.settings.quick_theme.update(cx, |choice, _| {
+            choice.sidebar_trigger(expanded);
+            #[cfg(feature = "parity-capture")]
+            if self.capture.is_some() && std::env::var_os("VANTARE_CAPTURE_THEME_MENU").is_some() {
+                choice.state.open = true;
+            }
+        });
         let skin = orbit::skin(cx).clone();
         let mut nav = div().flex_none().flex().flex_col().gap(px(2.0));
         for (index, (heading, sections)) in groups(self.shell.access).into_iter().enumerate() {
@@ -407,6 +414,7 @@ impl Hub {
                     .flex_col()
                     .gap(px(2.0))
                     .child(collapse)
+                    .child(self.settings.quick_theme.clone())
                     .child(settings),
             )
             .child(self.sidebar_account(expanded, cx))

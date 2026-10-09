@@ -218,6 +218,11 @@ impl Hub {
         }
         if let Some(shortcut) = super::shortcuts::resolve(key) {
             if !event.is_held {
+                // La acción puede desmontar la sección o el panel que tenía el foco.
+                // Conserva una ruta de teclado viva para el siguiente atajo.
+                if shortcut != super::shortcuts::Shortcut::Search {
+                    self.focus.focus(window, cx);
+                }
                 match shortcut {
                     super::shortcuts::Shortcut::Launch => self.launch_favorite(cx),
                     super::shortcuts::Shortcut::Search => self.toggle_palette(window, cx),

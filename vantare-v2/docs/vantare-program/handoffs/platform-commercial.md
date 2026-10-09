@@ -2,6 +2,8 @@
 
 ## #1533 — retirada Wails/React (2026-10-09)
 
+- Hito 3: retirados los comandos Wails y bot Go; calendario congelado y publicación manual conservados. Hashes conservados: 451/451 iguales.
+
 - Hito 2: retirado frontend React y generadores dependientes; conservados goldens, geometría y verificador de referencias. Hashes conservados: 451/451 iguales.
 
 Rama aislada `vantareapp/isa-1533-retirar-wails`, base `5e1da3f6`; plan

@@ -25,12 +25,12 @@ fn pending_faces_describe_value_and_reason_without_click_or_focus() {
             ),
             (
                 orbit::pending_select("select", "Layout activo", "Layout local", 180.0, reason, cx),
-                "Layout activo",
+                "Layout activo: Layout local",
                 Some("Layout local"),
             ),
         ] {
-            assert_eq!(control.a11y_role(), Some(gpui::Role::Label));
-            let mut node = gpui::accesskit::Node::new(gpui::Role::Label);
+            assert_eq!(control.a11y_role(), Some(gpui::Role::Group));
+            let mut node = gpui::accesskit::Node::new(gpui::Role::Group);
             control.write_a11y_info(&mut node);
             assert_eq!(node.label(), Some(label));
             assert_eq!(node.value(), value);

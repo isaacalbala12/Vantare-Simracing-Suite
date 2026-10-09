@@ -512,7 +512,7 @@ impl Render for Input {
             .cursor(gpui::CursorStyle::IBeam)
             .when(multiline, |s| s.h(gpui::px(TEXTAREA_H)))
             .when_some(self.preferred_height, gpui::Styled::h)
-            .when(!self.enabled, |s| s.opacity(DISABLED))
+            .when(!self.enabled, |s| super::inactive(s).opacity(DISABLED))
             .overflow_hidden()
             .on_mouse_down(
                 gpui::MouseButton::Left,

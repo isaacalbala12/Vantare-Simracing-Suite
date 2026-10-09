@@ -27,8 +27,8 @@ pub fn pending_select(
     let skin = skin(cx);
     div()
         .id(id)
-        .role(gpui::Role::Label)
-        .aria_label(label.to_owned())
+        .role(gpui::Role::Group)
+        .aria_label(format!("{label}: {value}"))
         .aria_value(value.to_owned())
         .aria_description(reason.to_owned())
         .tab_stop(false)

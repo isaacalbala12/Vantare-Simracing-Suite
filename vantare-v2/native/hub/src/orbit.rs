@@ -849,7 +849,7 @@ pub fn pending_button(
 }
 
 fn pending_face(face: Stateful<Div>, reason: &str) -> Stateful<Div> {
-    face.role(gpui::Role::Label)
+    face.role(gpui::Role::Group)
         .aria_description(reason.to_owned())
         .cursor_default()
         .opacity(DISABLED)

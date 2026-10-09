@@ -6038,3 +6038,12 @@ ni cambio de arquitectura. Clippy workspace/all-targets-Dwarnings PASS por cola;
 primer intento falló solo doc_markdown por backticks, log retenido y corregido.
 La comprobación de disabled efectivo requiere el árbol tras prepaint: pendiente
 UIA release, además de gates completos/capturas antes del cierre.
+
+### Revisión v3: nombre accesible verificado en Windows (#1496)
+Release91777a97/UIA reproduce caras permanentes sin nombre: AccessKit Windows
+obtiene Name de value para Role::Label; label/description del nodo unitario no
+bastaban. Las caras pendientes y escenas indisponibles usan Group descriptivo,
+sin acciones; el selector incluye nombre y valor en el nombre UIA, conserva value
+y description. Input temporalmente deshabilitado incorpora el mismo callback.
+Regresión productiva static_content2/2 PASS; UIA final y gates completos pendientes.
+Evidencia del fallo conservada en revision-v3-cierre/interactive/a1-studio-first.

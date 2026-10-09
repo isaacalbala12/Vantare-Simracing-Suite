@@ -47,7 +47,7 @@ fn unavailable_scenario(
 ) -> gpui::Stateful<gpui::Div> {
     div()
         .id(("studio-scenario", index))
-        .role(gpui::Role::Label)
+        .role(gpui::Role::Group)
         .aria_label(format!("{label} · Próximamente"))
         .aria_description(reason)
         .h(px(30.0))
@@ -2816,8 +2816,8 @@ mod tests {
             {
                 let control =
                     unavailable_scenario(index, label, scenes::Scenario::ALL[index].reason(), cx);
-                assert_eq!(control.a11y_role(), Some(gpui::Role::Label));
-                let mut node = gpui::accesskit::Node::new(gpui::Role::Label);
+                assert_eq!(control.a11y_role(), Some(gpui::Role::Group));
+                let mut node = gpui::accesskit::Node::new(gpui::Role::Group);
                 control.write_a11y_info(&mut node);
                 assert_eq!(
                     node.label(),

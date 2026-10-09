@@ -404,6 +404,7 @@ fn studio_demo_capture() -> bool {
         })
 }
 pub struct Studio {
+    frequency_focus: [gpui::FocusHandle; 9],
     adapt: orbit::Adapt,
     access: Option<crate::shell::navigation::Access>,
     editor: Editor,
@@ -836,6 +837,7 @@ impl Studio {
         #[cfg(not(feature = "parity-capture"))]
         let demo_profile = None;
         let mut studio = Self {
+            frequency_focus: std::array::from_fn(|_| cx.focus_handle()),
             adapt: orbit::Adapt::default(),
             access: None,
             editor: prepared.editor,
@@ -2019,15 +2021,106 @@ impl Studio {
                 cx,
             ))
     }
-    fn performance_settings(cx: &gpui::App) -> gpui::Div {
-        orbit::inspector_section("Rendimiento", "v-gauge", cx).child(orbit::pending_select(
-            "studio-cadence",
-            "Frecuencia del widget",
-            "Actualización · Próximamente",
-            250.0,
-            "El documento actual no admite nivel ni frecuencia fija por widget.",
-            cx,
-        ))
+    pub(crate) fn performance(&self) -> &vantare_ui::performance::Preferences {
+        &self.editor.layout().performance
+    }
+    pub(crate) fn set_performance_level(
+        &mut self,
+        level: vantare_ui::performance::Level,
+        cx: &mut Context<Self>,
+    ) -> Result<(), String> {
+        let mut next = self.performance().clone();
+        next.level = level;
+        let result = self.editor.set_performance(next);
+        self.status.clone_from(&result);
+        cx.notify();
+        result
+    }
+    fn set_widget_frequency(&mut self, hz: Option<u16>, cx: &mut Context<Self>) {
+        let Some(item) = self.editor.selected() else {
+            return;
+        };
+        let id = item.id.clone();
+        let mut next = self.performance().clone();
+        if let Some(hz) = hz {
+            next.widgets.insert(id, hz);
+        } else {
+            next.widgets.remove(&id);
+        }
+        self.status = self.editor.set_performance(next);
+        cx.notify();
+    }
+    fn performance_settings(&self, cx: &mut Context<Self>) -> gpui::Div {
+        if self
+            .editor
+            .selected()
+            .is_some_and(|item| item.settings.kind() == vantare_ui::Kind::RacingFlags)
+        {
+            return orbit::inspector_section("Rendimiento", "v-gauge", cx).child(text(
+                "Las banderas se actualizan con cada foto para conservar los avisos inmediatos.",
+                12.0,
+                400,
+                orbit::ink_2(cx),
+                cx,
+            ));
+        }
+        let mut controls = div().flex().flex_wrap().gap(px(6.0));
+        for (index, hz) in [
+            None,
+            Some(1),
+            Some(4),
+            Some(5),
+            Some(10),
+            Some(15),
+            Some(20),
+            Some(30),
+            Some(60),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            controls = controls.child(
+                button(
+                    format!("studio-frequency-{index}"),
+                    &hz.map_or_else(|| "Usar nivel".to_owned(), |hz| format!("{hz} Hz")),
+                    cx,
+                )
+                .track_focus(&self.frequency_focus[index])
+                .when(
+                    self.editor
+                        .selected()
+                        .map(|item| self.performance().widgets.get(&item.id).copied())
+                        == Some(hz),
+                    |button| button.border_color(rgb(orbit::carmine(cx))),
+                )
+                .on_key_down(
+                    cx.listener(move |studio, event: &gpui::KeyDownEvent, _, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            studio.set_widget_frequency(hz, cx);
+                            cx.stop_propagation();
+                        }
+                    }),
+                )
+                .on_click(cx.listener(move |studio, _, _, cx| studio.set_widget_frequency(hz, cx))),
+            );
+        }
+        let prefs = self.performance();
+        let label = self.editor.selected().map_or_else(
+            || "Selecciona un widget".to_owned(),
+            |item| {
+                format!(
+                    "Frecuencia aplicada: {} · {}",
+                    match prefs.hz(&item.id, item.settings.kind()) {
+                        0 => "cada foto".to_owned(),
+                        hz => format!("{hz} Hz"),
+                    },
+                    prefs.level.label()
+                )
+            },
+        );
+        orbit::inspector_section("Rendimiento", "v-gauge", cx)
+            .child(text(label, 12.0, 400, orbit::ink_2(cx), cx))
+            .child(controls)
     }
     fn tab_settings(
         &self,
@@ -2147,7 +2240,7 @@ impl Studio {
             );
             for tab in Tab::ALL {
                 if tab == Tab::Layout {
-                    panel = panel.child(Self::performance_settings(cx));
+                    panel = panel.child(self.performance_settings(cx));
                 }
                 let title = tab.label();
                 let mut card = orbit::inspector_section(

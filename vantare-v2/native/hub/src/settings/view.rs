@@ -572,7 +572,7 @@ impl Hub {
                 match self.settings.page {
                     Page::Application => self.settings_application(true, window, cx),
                     Page::Appearance => self.settings_appearance(cx),
-                    Page::Performance => Self::settings_performance(true, cx),
+                    Page::Performance => self.settings_performance(true, cx),
                     Page::Updates => self.settings_updates(cx),
                     Page::Hotkeys => self.settings_hotkeys(cx),
                     Page::Privacy => self.settings_privacy(cx),
@@ -1019,48 +1019,52 @@ impl Hub {
                 }),
             )
     }
-    fn settings_performance(_compact: bool, cx: &mut Context<Self>) -> Div {
+    fn settings_performance(&self, _compact: bool, cx: &mut Context<Self>) -> Div {
+        let studio = self.studio.read(cx);
+        let current = studio.performance().level;
         let mut levels = div().grid().grid_cols(3).w_full().min_w_0().gap(px(10.0));
-        for (index, name) in [
-            "Automático",
-            "Máximo",
-            "Alto",
-            "Equilibrado",
-            "Ahorro",
-            "Mínimo",
-        ]
-        .into_iter()
-        .enumerate()
-        {
+        for (index, level) in vantare_ui::performance::Level::ALL.into_iter().enumerate() {
             levels = levels.child(
-                orbit::neo_card(cx)
-                    .p(px(12.0))
-                    .gap(px(8.0))
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .child(orbit::caps(name, 16.0, orbit::ink(cx), cx))
-                            .child(orbit::meta(
-                                &if index == 0 {
-                                    "AUTO".into()
-                                } else {
-                                    index.to_string()
-                                },
-                                11.0,
-                                orbit::skin(cx).accent_bright,
-                                cx,
-                            )),
-                    )
-                    .child(orbit::pill("Próximamente", Tone::Neutral, cx).self_start()),
+                orbit::small_button(
+                    [
+                        "level-maximum",
+                        "level-high",
+                        "level-balanced",
+                        "level-economy",
+                        "level-minimum",
+                    ][index],
+                    level.label(),
+                    cx,
+                )
+                .track_focus(&self.settings.performance_focus[index])
+                .when(current == level, |card| {
+                    card.border_color(rgb(orbit::carmine(cx)))
+                })
+                .on_click(
+                    cx.listener(move |hub, _, _, cx| hub.settings_performance_level(level, cx)),
+                )
+                .on_key_down(cx.listener(
+                    move |hub, event: &gpui::KeyDownEvent, _, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            hub.settings_performance_level(level, cx);
+                            cx.stop_propagation();
+                        }
+                    },
+                )),
             );
         }
-        stack().h_full().child(section_surface("Nivel de rendimiento", Some("La selección nativa aún no está disponible"), levels, cx))
+        let state = format!("Nivel aplicado: {}", current.label());
+        stack().child(section_surface("Nivel de rendimiento", Some(&state), levels, cx))
+            .child(section_surface("Qué cambia en cada nivel", None, section_body()
+                .child(text("Tablas: 30 / 20 / 15 / 10 / 5 Hz. Otros widgets: cada foto / 60 / 40 / 30 / 20 Hz como máximo. Banderas y cambios de estado llegan inmediatamente.", 13.0, 400, orbit::ink_2(cx), cx)), cx))
             .child(orbit::neo_card(cx).p(px(12.0)).gap(px(10.0))
                 .child(orbit::caps("Personalizado", 16.0, orbit::ink(cx), cx))
-                .child(text("La frecuencia por widget pertenece al inspector de Studio. Estará disponible próximamente.", 13.0, 400, orbit::ink_2(cx), cx))
+                .child(text("Cambia la frecuencia de cada widget en el inspector de Studio.", 13.0, 400, orbit::ink_2(cx), cx))
                 .child(orbit::small_button("settings-custom-studio", "Abrir Studio", cx).self_start()
+                    .track_focus(&self.settings.custom_performance_focus)
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") { hub.navigate(Section::Studio, cx); cx.stop_propagation(); }
+                    }))
                     .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)))))
     }
 

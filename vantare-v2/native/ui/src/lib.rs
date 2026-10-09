@@ -105,3 +105,5 @@ pub fn window_zoom_limit(window: &gpui::Window) -> f32 {
     }
     100.0
 }
+
+pub mod performance;

@@ -117,6 +117,8 @@ pub(super) struct State {
     general: Result<general::Store, String>,
     general_focus: [FocusHandle; 6],
     global_hotkeys_focus: FocusHandle,
+    custom_performance_focus: FocusHandle,
+    performance_focus: [FocusHandle; 5],
     pub(in crate::shell) launcher_running: bool,
     privacy: Result<privacy::Store, String>,
     privacy_focus: [FocusHandle; 2],
@@ -285,6 +287,8 @@ impl State {
             general_focus: std::array::from_fn(|_| cx.focus_handle()),
             launcher_running: false,
             global_hotkeys_focus: cx.focus_handle(),
+            custom_performance_focus: cx.focus_handle(),
+            performance_focus: std::array::from_fn(|_| cx.focus_handle()),
             privacy: vantare_services::diagnostics::data_root()
                 .map_err(|error| error.to_string())
                 .and_then(|root| privacy::Store::load(&root)),
@@ -397,6 +401,17 @@ fn search_text(value: &str) -> String {
         .collect()
 }
 impl Hub {
+    fn settings_performance_level(
+        &mut self,
+        level: vantare_ui::performance::Level,
+        cx: &mut Context<Self>,
+    ) {
+        self.settings.status = self
+            .studio
+            .update(cx, |studio, cx| studio.set_performance_level(level, cx))
+            .err();
+        cx.notify();
+    }
     fn clear_event_filters(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.settings.event_filter.update(cx, |filter, cx| {
             filter.state.selected = Some(0);

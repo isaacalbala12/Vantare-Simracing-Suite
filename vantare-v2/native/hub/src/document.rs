@@ -48,6 +48,15 @@ impl Editor {
             Ok(())
         })
     }
+    pub(crate) fn set_performance(
+        &mut self,
+        preferences: vantare_ui::performance::Preferences,
+    ) -> Result<(), String> {
+        self.change(|layout| {
+            layout.performance = preferences;
+            Ok(())
+        })
+    }
     pub fn can_undo(&self) -> bool {
         !self.undo.is_empty()
     }
@@ -169,6 +178,7 @@ impl Editor {
         let id = self.selected.clone().ok_or("selecciona una instancia")?;
         self.change(|layout| {
             layout.instances.retain(|item| item.id != id);
+            layout.performance.widgets.remove(&id);
             Ok(())
         })
     }
@@ -291,6 +301,45 @@ pub(crate) mod tests {
         );
     }
 
+    #[test]
+    fn performance_is_one_document_with_overlays_history_restart_and_conflict_protection() {
+        use vantare_ui::performance::{Level, Preferences};
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("Hub");
+        editor.add(Kind::Standings).expect("widget");
+        let id = editor.selected.clone().expect("selección");
+        let mut prefs = Preferences {
+            level: Level::Minimum,
+            ..Default::default()
+        };
+        prefs.widgets.insert(id.clone(), 4);
+        editor.set_performance(prefs.clone()).expect("frecuencia");
+        assert_eq!(
+            Document::open(file.path.clone())
+                .expect("overlays")
+                .layout()
+                .performance,
+            prefs
+        );
+        assert_eq!(
+            Editor::open(file.path.clone())
+                .expect("reinicio")
+                .layout()
+                .performance,
+            prefs
+        );
+        editor.undo().expect("deshacer");
+        assert_eq!(editor.layout().performance, Preferences::default());
+        editor.redo().expect("rehacer");
+        assert_eq!(editor.layout().performance, prefs);
+        let mut invalid = prefs.clone();
+        invalid.widgets.insert(id, 1000);
+        assert!(editor.set_performance(invalid).is_err());
+        assert_eq!(editor.layout().performance, prefs);
+        std::fs::write(&file.path, b"{}").expect("edición externa");
+        assert!(editor.set_performance(Preferences::default()).is_err());
+        assert_eq!(std::fs::read(&file.path).expect("leer externo"), b"{}");
+    }
     #[test]
     fn settings_use_the_shared_document_and_survive_edits_undo_and_restart() {
         use vantare_domain::format::{Language, Preferences, Units};

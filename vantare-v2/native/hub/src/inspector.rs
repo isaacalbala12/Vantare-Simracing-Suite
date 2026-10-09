@@ -185,12 +185,6 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     set!(Standings.classification_mode string),
                 ),
                 boolean(
-                    "Centrar en el jugador",
-                    Tab::Content,
-                    value.player_window,
-                    set!(Standings.player_window),
-                ),
-                boolean(
                     "Cabecera de sesión",
                     Tab::Content,
                     value.show_session_header,
@@ -583,6 +577,11 @@ pub fn valid_color(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn automatic_player_visibility_has_no_redundant_center_switch() {
+        assert!(!fields(&Settings::Standings(Default::default())).iter()
+            .any(|f| f.title == "Centrar en el jugador"));
+    }
     #[test]
     fn surrounding_rows_belong_only_to_relative() {
         assert!(!fields(&Settings::Standings(Default::default())).iter()

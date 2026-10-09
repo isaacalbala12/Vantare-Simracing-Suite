@@ -579,15 +579,27 @@ mod tests {
     use super::*;
     #[test]
     fn automatic_player_visibility_has_no_redundant_center_switch() {
-        assert!(!fields(&Settings::Standings(Default::default())).iter()
-            .any(|f| f.title == "Centrar en el jugador"));
+        assert!(
+            !fields(&Settings::Standings(Default::default()))
+                .iter()
+                .any(|f| f.title == "Centrar en el jugador")
+        );
     }
     #[test]
     fn surrounding_rows_belong_only_to_relative() {
-        assert!(!fields(&Settings::Standings(Default::default())).iter()
-            .any(|f| f.title.starts_with("Filas alrededor")));
+        assert!(
+            !fields(&Settings::Standings(Default::default()))
+                .iter()
+                .any(|f| f.title.starts_with("Filas alrededor"))
+        );
         let relative = fields(&Settings::Relative(Default::default()));
-        assert_eq!(relative.iter().filter(|f| f.title.starts_with("Filas alrededor")).count(), 2);
+        assert_eq!(
+            relative
+                .iter()
+                .filter(|f| f.title.starts_with("Filas alrededor"))
+                .count(),
+            2
+        );
     }
     #[test]
     fn anchors_align_all_nine_zones_and_reject_invalid_sizes() {

@@ -849,6 +849,9 @@ pub enum NumberKind {
 }
 #[derive(Clone, Copy, Debug)]
 pub struct NumberChanged(pub f64);
+/// Valor confirmado al soltar el deslizador o al cambiarlo con el teclado.
+#[derive(Clone, Copy, Debug)]
+pub struct NumberFinished(pub f64);
 pub struct NumberControl {
     pub range: NumberRange,
     pub enabled: bool,
@@ -860,6 +863,7 @@ pub struct NumberControl {
     dragging: bool,
 }
 impl EventEmitter<NumberChanged> for NumberControl {}
+impl EventEmitter<NumberFinished> for NumberControl {}
 impl NumberControl {
     pub fn new(
         label: &'static str,
@@ -884,6 +888,7 @@ impl NumberControl {
     fn key(&mut self, key: &str, cx: &mut Context<Self>) {
         if self.enabled && self.range.key(key) {
             cx.emit(NumberChanged(self.range.value));
+            cx.emit(NumberFinished(self.range.value));
             cx.notify();
         }
     }
@@ -902,6 +907,12 @@ impl NumberControl {
                 cx.emit(NumberChanged(self.range.value));
                 cx.notify();
             }
+        }
+    }
+    fn finish(&mut self, cx: &mut Context<Self>) {
+        if self.dragging {
+            self.dragging = false;
+            cx.emit(NumberFinished(self.range.value));
         }
     }
 }
@@ -970,17 +981,19 @@ impl NumberControl {
                         }),
                     )
                     .on_mouse_move(cx.listener(|this, event: &gpui::MouseMoveEvent, _, cx| {
-                        if this.dragging {
+                        if this.dragging && event.dragging() {
                             this.pointer(event.position.x, cx);
+                        } else {
+                            this.finish(cx);
                         }
                     }))
                     .on_mouse_up(
                         gpui::MouseButton::Left,
-                        cx.listener(|this, _, _, _| this.dragging = false),
+                        cx.listener(|this, _, _, cx| this.finish(cx)),
                     )
                     .on_mouse_up_out(
                         gpui::MouseButton::Left,
-                        cx.listener(|this, _, _, _| this.dragging = false),
+                        cx.listener(|this, _, _, cx| this.finish(cx)),
                     )
                     .child(
                         gpui::canvas(

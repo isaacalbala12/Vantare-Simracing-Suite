@@ -5,7 +5,7 @@ use crate::{
     inspector::{self, Control, Tab},
     orbit::{
         self, Checkbox, Checked, Choice, ChoiceChanged, ChoiceKind, NumberChanged, NumberControl,
-        NumberKind, NumberRange, OptionItem, button,
+        NumberFinished, NumberKind, NumberRange, OptionItem, button,
     },
 };
 use gpui::{
@@ -417,6 +417,7 @@ pub struct Studio {
     photo_choice: Option<Entity<Choice>>,
     status: Result<(), String>,
     drag: Option<Entity<CanvasFrame>>,
+    opacity_preview: Option<(String, f32)>,
     focus: FocusHandle,
     catalog: Option<Entity<Choice>>,
     catalog_open: bool,
@@ -536,6 +537,7 @@ struct CanvasFrame {
     focus: FocusHandle,
     drag: Option<Drag>,
     resize: Option<Resize>,
+    opacity_preview: Option<f32>,
 }
 impl EventEmitter<Started> for CanvasFrame {}
 impl Render for CanvasFrame {
@@ -559,8 +561,15 @@ impl CanvasFrame {
             .w(px(dimensions.0 * self.preview_scale * self.content_scale))
             .h(px(dimensions.1 * self.preview_scale * self.content_scale))
             .when(self.selected, |s| {
-                s.child(div().absolute().top_0().left_0().size_full()
-                    .border_1().border_color(rgb(orbit::carmine(cx))))
+                s.child(
+                    div()
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .size_full()
+                        .border_1()
+                        .border_color(rgb(orbit::carmine(cx))),
+                )
             })
             .on_mouse_down(
                 MouseButton::Left,
@@ -573,7 +582,7 @@ impl CanvasFrame {
                 frame.child(
                     div()
                         .size_full()
-                        .opacity(self.item.opacity)
+                        .opacity(self.opacity_preview.unwrap_or(self.item.opacity))
                         .child(self.renderer.clone()),
                 )
             })
@@ -858,6 +867,7 @@ impl Studio {
             photo_choice: None,
             status,
             drag: None,
+            opacity_preview: None,
             focus: cx.focus_handle(),
             catalog: None,
             catalog_open: false,
@@ -941,6 +951,7 @@ impl Studio {
                 selected: self.editor.selected.as_ref() == Some(&item.id),
                 drag: None,
                 resize: None,
+                opacity_preview: None,
             });
             let id = item.id.clone();
             cx.subscribe(&frame, move |this, frame, event: &Started, cx| {
@@ -1087,6 +1098,14 @@ impl Studio {
         self.edit(if redo { Editor::redo } else { Editor::undo }, cx);
     }
     fn cancel_drag(&mut self, cx: &mut Context<Self>) {
+        if let Some((id, _)) = self.opacity_preview.take()
+            && let Some((_, frame)) = self.frames.iter().find(|(key, _)| *key == id)
+        {
+            frame.update(cx, |frame, cx| {
+                frame.opacity_preview = None;
+                cx.notify();
+            });
+        }
         if let Some(frame) = self.drag.take() {
             frame.update(cx, |frame, cx| {
                 frame.drag = None;
@@ -1105,6 +1124,41 @@ impl Studio {
                 });
             }
         }
+    }
+    fn preview_opacity(&mut self, id: &str, value: f32, cx: &mut Context<Self>) {
+        if self.editor.selected.as_deref() != Some(id) || !value.is_finite() {
+            return;
+        }
+        let value = value.clamp(0.0, 1.0);
+        self.opacity_preview = Some((id.to_owned(), value));
+        if let Some((_, frame)) = self.frames.iter().find(|(key, _)| key == id) {
+            frame.update(cx, |frame, cx| {
+                frame.opacity_preview = Some(value);
+                cx.notify();
+            });
+        }
+    }
+    fn finish_opacity(&mut self, cx: &mut Context<Self>) {
+        let Some((id, value)) = self.opacity_preview.take() else {
+            return;
+        };
+        if self.editor.selected.as_ref() != Some(&id) {
+            self.cancel_drag(cx);
+            return;
+        }
+        self.status = self.editor.edit_selected(|item| item.opacity = value);
+        let saved = self.editor.selected().map_or(1.0, |item| item.opacity);
+        if let Some((_, frame)) = self.frames.iter().find(|(key, _)| *key == id) {
+            frame.update(cx, |frame, cx| {
+                frame.item.opacity = saved;
+                frame.opacity_preview = None;
+                cx.notify();
+            });
+        }
+        if self.status.is_err() {
+            self.reset_fields();
+        }
+        cx.notify();
     }
     fn move_drag(&mut self, event: &MouseMoveEvent, cx: &mut Context<Self>) {
         if let Some(frame) = self.drag.clone() {
@@ -1442,7 +1496,12 @@ impl Studio {
         let id = self.editor.selected.clone();
         cx.subscribe(&control, move |this, _, event: &NumberChanged, cx| {
             if this.editor.selected == id {
-                if matches!(title, "Ancho" | "Alto") {
+                if title == "Opacidad" {
+                    #[allow(clippy::cast_possible_truncation)]
+                    if let Some(id) = id.as_deref() {
+                        this.preview_opacity(id, (event.0 / 100.0) as f32, cx);
+                    }
+                } else if matches!(title, "Ancho" | "Alto") {
                     let Some(size) = this.selected_size(cx) else {
                         return;
                     };
@@ -1484,6 +1543,12 @@ impl Studio {
             }
         })
         .detach();
+        if title == "Opacidad" {
+            cx.subscribe(&control, |this, _, _: &NumberFinished, cx| {
+                this.finish_opacity(cx)
+            })
+            .detach();
+        }
         if matches!(title, "Ancho" | "Alto") {
             self.size_fields.push((title, control.clone()));
         }
@@ -3183,6 +3248,61 @@ mod tests {
         assert_eq!(editor.layout(), &original);
     }
     #[test]
+    fn opacity_preview_keeps_renderers_and_disk_then_commits_one_undoable_edit() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let original = studio.editor.layout().clone();
+                let id = studio.editor.selected.clone().expect("selección");
+                let frame = studio.frames[0].1.clone();
+                let renderer = frame.read(cx).renderer.clone();
+                for value in [0.9, 0.5, 0.25, 0.0] {
+                    studio.preview_opacity(&id, value, cx);
+                    assert_eq!(studio.editor.layout(), &original);
+                    assert_eq!(
+                        Editor::open(file.path.clone()).expect("disco").layout(),
+                        &original
+                    );
+                    assert_eq!(frame.read(cx).renderer, renderer);
+                    assert_eq!(frame.read(cx).opacity_preview, Some(value));
+                }
+                studio.finish_opacity(cx);
+                assert_eq!(studio.frames[0].1, frame);
+                assert_eq!(frame.read(cx).renderer, renderer);
+                assert_eq!(studio.editor.selected().expect("selección").opacity, 0.0);
+                assert_eq!(
+                    Editor::open(file.path.clone()).expect("disco").layout(),
+                    studio.editor.layout()
+                );
+                studio.history(false, cx);
+                assert_eq!(studio.editor.layout(), &original);
+                studio.editor.undo().expect("añadir");
+                assert!(studio.editor.layout().instances.is_empty());
+            });
+            cx.quit();
+        });
+    }
+    #[test]
+    fn interrupted_opacity_preview_is_discarded() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let original = studio.editor.layout().clone();
+                let id = studio.editor.selected.clone().expect("selección");
+                studio.preview_opacity(&id, 0.1, cx);
+                studio.cancel_drag(cx);
+                studio.finish_opacity(cx);
+                assert_eq!(studio.editor.layout(), &original);
+                assert!(studio.frames[0].1.read(cx).opacity_preview.is_none());
+            });
+            cx.quit();
+        });
+    }
+    #[test]
     fn click_and_pointer_noise_leave_position_disk_and_history_unchanged() {
         gpui_platform::headless().run(|cx| {
             cx.set_global(orbit::theme::Theme::default());
@@ -3203,7 +3323,10 @@ mod tests {
                     studio.drag = Some(frame);
                     studio.finish_drag(gpui::point(px(101.0), px(102.0)), cx);
                     assert_eq!(studio.editor.layout(), &original);
-                    assert_eq!(Editor::open(file.path.clone()).expect("disco").layout(), &original);
+                    assert_eq!(
+                        Editor::open(file.path.clone()).expect("disco").layout(),
+                        &original
+                    );
                 }
                 studio.editor.undo().expect("solo deshace añadir");
                 assert!(studio.editor.layout().instances.is_empty());

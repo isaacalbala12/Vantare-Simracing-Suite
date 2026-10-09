@@ -414,9 +414,8 @@ fn migration_arguments_follow_wails_without_shell_execution() {
 #[test]
 fn launcher_demo_loads_wails_catalog_without_machine_discovery_or_launch_paths() {
     let demo = crate::demo::DemoData::load().expect("fixture Wails");
-    let store =
-        Store::demo(PathBuf::from("capture-only-launcher.json"), &demo).expect("store demo");
-    let discovery = Discovery::demo(&demo);
+    let store = demo_store(PathBuf::from("capture-only-launcher.json"), &demo).expect("store demo");
+    let discovery = crate::launcher::demo_discovery(&demo);
 
     assert_eq!(store.document.apps.len(), 7);
     assert_eq!(store.document.profiles.len(), 2);

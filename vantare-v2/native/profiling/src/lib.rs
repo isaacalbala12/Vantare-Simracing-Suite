@@ -141,8 +141,8 @@ pub fn report() {
     }
 }
 
-/// El backend no depende de ui: comparte el mismo fichero de diagnóstico,
-/// con contadores propios y una emisión acotada por segundo desde Present.
+/// El backend no depende de ui: comparte el crate de diagnóstico,
+/// con una emisión acotada por segundo.
 pub fn report_if_due() {
     static PREVIOUS: AtomicU64 = AtomicU64::new(0);
     if !enabled() {

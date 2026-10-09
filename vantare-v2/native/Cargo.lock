@@ -2675,6 +2675,7 @@ dependencies = [
  "raw-window-handle",
  "smallvec",
  "uuid",
+ "vantare-profiling",
  "windows 0.62.2",
  "windows-core 0.62.2",
  "windows-numerics 0.3.1",
@@ -6419,10 +6420,15 @@ dependencies = [
  "serde_json",
  "ureq",
  "url",
+ "vantare-build-support",
  "vantare-hub",
  "vantare-services",
  "vantare-ui",
 ]
+
+[[package]]
+name = "vantare-build-support"
+version = "0.0.0"
 
 [[package]]
 name = "vantare-domain"
@@ -6455,8 +6461,10 @@ dependencies = [
  "gpui_platform",
  "serde",
  "serde_json",
+ "vantare-build-support",
  "vantare-domain",
  "vantare-ipc",
+ "vantare-launcher",
  "vantare-services",
  "vantare-strategy",
  "vantare-ui",
@@ -6470,8 +6478,21 @@ dependencies = [
  "serde",
  "serde_json",
  "vantare-domain",
+ "vantare-profiling",
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "vantare-launcher"
+version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "vantare-profiling"
+version = "0.0.0"
 
 [[package]]
 name = "vantare-runtime"
@@ -6489,6 +6510,8 @@ dependencies = [
  "ureq",
  "vantare-domain",
  "vantare-ipc",
+ "vantare-launcher",
+ "vantare-profiling",
  "vantare-services",
  "windows-sys 0.61.2",
 ]
@@ -6544,8 +6567,10 @@ dependencies = [
  "raw-window-handle",
  "serde",
  "serde_json",
+ "vantare-build-support",
  "vantare-domain",
  "vantare-ipc",
+ "vantare-profiling",
  "vantare-services",
  "windows-sys 0.61.2",
 ]

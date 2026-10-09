@@ -1,3 +1,21 @@
+## #1534 — Dependencias explícitas entre crates (2026-10-09)
+
+Worktree `C:/tmp/vw3-1534/vantare-v2`, rama `vantareapp/isa-1534-crates-path`,
+base de integración `5e1da3f6`; alcance autorizado por tareas.md y GitHub #1534.
+Launcher y sus archivos locales pasan a `vantare-launcher`; Hub conserva la
+presentación y sus demos. Contratos Engineer/Services y producto pasan a ipc,
+con aliases públicos para los consumidores. Icono de los tres build.rs en
+`vantare-build-support`; profiling en crate sin dependencias, también para GPUI.
+No cambian transportes, DTO, permisos ni persistencia. No hay dependencias externas nuevas.
+Un contador de profiling por proceso aceptado por Isaac: 24 etapas disjuntas
+entre runtime(11), ipc(4), ui(6), GPUI(3); test rechaza futuros solapamientos.
+Test de arquitectura recorre native/vendor y prohíbe #[path] entre propietarios
+Cargo, manteniendo módulos internos. Gates por cola en curso; evidencia en
+`C:/tmp/auditoria-arquitectura-v2/1534-*.log`; no se afirma validación completa.
+plan.md ausente también en origin/nightly; #1530 tiene la corrección documental.
+Sin push/PR/CI remoto/merge/promoción/release; siguiente paso: completar gates,
+informe de diez líneas y comentario GitHub, revisión del orquestador.
+
 ## #1496 — Calidad UI R0–R3, correcciones sobre R4 (2026-10-08)
 
 Worktree C:/tmp/vw3-ui-calidad/vantare-v2, rama vantareapp/isa-1496-ui-calidad,

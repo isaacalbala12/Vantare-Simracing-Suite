@@ -10,17 +10,15 @@ pub mod demo;
 pub mod document;
 // Un único contrato serde_json sin arrastrar engineer → runtime al Hub.
 pub mod engineer;
-#[path = "../../engineer/src/control.rs"]
-pub mod engineer_control;
-pub mod files;
+pub use vantare_ipc::engineer_control;
+pub use vantare_launcher::files;
 mod inspector;
 mod installation;
 pub mod launcher;
 pub mod lifecycle;
 pub mod notifications;
 pub mod orbit;
-#[path = "../../packaging/version.rs"]
-pub mod product;
+pub use vantare_ipc::product;
 
 /// Identidad instalada compartida por todas las pantallas del Hub.
 pub(crate) fn version_label() -> &'static str {

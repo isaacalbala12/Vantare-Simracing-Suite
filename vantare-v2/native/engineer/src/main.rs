@@ -1,7 +1,6 @@
 #![deny(unsafe_code)]
 
-#[path = "../../packaging/version.rs"]
-mod product;
+use vantare_ipc::product;
 
 use std::ffi::OsString;
 use std::io;

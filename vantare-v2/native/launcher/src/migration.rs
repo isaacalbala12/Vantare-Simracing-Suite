@@ -69,7 +69,7 @@ pub fn source() -> Result<Option<PathBuf>, String> {
     source_in(&directories)
 }
 
-pub(crate) fn source_in(directories: &[PathBuf]) -> Result<Option<PathBuf>, String> {
+pub fn source_in(directories: &[PathBuf]) -> Result<Option<PathBuf>, String> {
     for directory in directories {
         if !is_local_path(directory) {
             return Err("la configuración Wails debe estar en disco local".into());
@@ -224,7 +224,7 @@ fn import_profiles(
 }
 
 /// Tokenización del contrato Go parseWindowsArgs; nunca se invoca un shell.
-pub(crate) fn parse_args(raw: &str) -> Result<Vec<String>, String> {
+pub fn parse_args(raw: &str) -> Result<Vec<String>, String> {
     if raw.contains('\0') {
         return Err("argumentos Wails con NUL".into());
     }

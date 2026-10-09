@@ -1,8 +1,7 @@
 #[cfg(windows)]
 mod implementation;
 
-#[path = "../../../../packaging/version.rs"]
-mod product;
+use vantare_ipc::product;
 
 #[cfg(windows)]
 fn main() {

@@ -24,21 +24,14 @@
 mod unix;
 #[cfg(windows)]
 mod win;
-// La misma fuente del motor Launcher: no enlaza GPUI ni duplica la ejecución.
 #[cfg(windows)]
-#[path = "../../../../hub/src/files.rs"]
-pub(crate) mod files;
-#[cfg(windows)]
-#[allow(dead_code)] // El motor también expone operaciones de edición usadas solo por el Hub.
-#[path = "../../../../hub/src/launcher/engine.rs"]
-mod launcher;
+use vantare_launcher as launcher;
 #[cfg(windows)]
 mod resident;
 #[cfg(windows)]
 mod triggers_win;
 
-#[path = "../../../../packaging/version.rs"]
-mod product;
+use vantare_ipc::product;
 
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitCode, Stdio};

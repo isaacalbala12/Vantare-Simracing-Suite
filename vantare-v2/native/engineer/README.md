@@ -299,7 +299,7 @@ Spotter audible/on-off, penalties o timings; Hub muestra su indisponibilidad.
 `enabled=false` silencia radio pero continúa consumiendo/checkpointando hechos;
 no arranca ni mata el proceso. Cada cambio retira cola/voz/presentación previas.
 
-Ambos lados compilan el mismo `engineer/src/control.rs` (`#[path]` en Hub):
+Ambos lados usan `vantare_ipc::engineer_control` (reexportado como `engineer::control` y `hub::engineer_control`):
 contrato JSON e I/O sin dependencia Hub → Engineer/runtime ni dependencia
 nueva. Guardado: lock del SO, bytes observados, temporal exclusivo, fsync y
 rename sin borrar destino. Conflicto conserva disco/memoria; Hub permite

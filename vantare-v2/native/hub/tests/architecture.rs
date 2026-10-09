@@ -1,5 +1,133 @@
 use std::process::Command;
 
+fn crate_root(path: &std::path::Path) -> &std::path::Path {
+    path.ancestors()
+        .find(|dir| dir.join("Cargo.toml").is_file())
+        .expect("cada fuente debe pertenecer a un crate")
+}
+
+fn path_attributes(source: &str) -> Vec<&str> {
+    source
+        .split("#[")
+        .skip(1)
+        .filter_map(|attribute| {
+            let attribute = attribute.split(']').next()?.trim();
+            let value = attribute
+                .strip_prefix("path")?
+                .trim()
+                .strip_prefix('=')?
+                .trim();
+            value.strip_prefix('"')?.split('"').next()
+        })
+        .collect()
+}
+
+#[test]
+fn path_attribute_reader_handles_spacing_and_multiline_attributes() {
+    assert_eq!(
+        path_attributes("#[path=\"../one.rs\"]\n#[path \n = \"two.rs\"]\n#[cfg(test)]"),
+        ["../one.rs", "two.rs"]
+    );
+}
+
+#[test]
+fn crate_boundaries_include_build_scripts_tests_and_vendor() {
+    let native = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .canonicalize()
+        .expect("workspace nativo");
+    let hub = native.join("hub/src/lib.rs");
+    assert_eq!(crate_root(&hub), crate_root(&native.join("hub/build.rs")));
+    assert_eq!(
+        crate_root(&hub),
+        crate_root(&native.join("hub/tests/architecture.rs"))
+    );
+    for other in [
+        "launcher/src/lib.rs",
+        "ipc/src/lib.rs",
+        "vendor/gpui_windows/src/gpui_windows.rs",
+    ] {
+        assert_ne!(crate_root(&hub), crate_root(&native.join(other)));
+    }
+}
+
+#[test]
+fn native_path_attributes_never_cross_crate_boundaries() {
+    fn visit(directory: &std::path::Path) {
+        for entry in std::fs::read_dir(directory).expect("directorio nativo") {
+            let path = entry.expect("entrada nativa").path();
+            if path.is_dir() {
+                if !matches!(
+                    path.file_name().and_then(|name| name.to_str()),
+                    Some("target" | ".git")
+                ) {
+                    visit(&path);
+                }
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                let source = std::fs::read_to_string(&path).expect("fuente Rust");
+                for relative in path_attributes(&source) {
+                    let target = path
+                        .parent()
+                        .expect("directorio fuente")
+                        .join(relative)
+                        .canonicalize()
+                        .expect("módulo referenciado existente");
+                    assert_eq!(
+                        crate_root(&path),
+                        crate_root(&target),
+                        "{} importa {} mediante #[path]; usar una dependencia de Cargo",
+                        path.display(),
+                        target.display()
+                    );
+                }
+            }
+        }
+    }
+    let native = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .canonicalize()
+        .expect("workspace nativo");
+    visit(&native);
+}
+
+#[test]
+fn profiling_consumers_use_distinct_stage_names() {
+    fn stages(directory: &std::path::Path, found: &mut std::collections::BTreeSet<String>) {
+        for entry in std::fs::read_dir(directory).expect("consumidor de profiling") {
+            let path = entry.expect("fuente de profiling").path();
+            if path.is_dir() {
+                stages(&path, found);
+            } else if path.extension().is_some_and(|extension| extension == "rs") {
+                let source = std::fs::read_to_string(path).expect("fuente Rust");
+                for stage in source.split("profiling::Stage::").skip(1) {
+                    found.insert(
+                        stage
+                            .chars()
+                            .take_while(char::is_ascii_alphanumeric)
+                            .collect(),
+                    );
+                }
+            }
+        }
+    }
+    let native = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("..");
+    let mut owners = std::collections::BTreeMap::new();
+    for consumer in ["runtime", "ipc", "ui", "vendor/gpui_windows"] {
+        let mut found = std::collections::BTreeSet::new();
+        stages(&native.join(consumer).join("src"), &mut found);
+        assert!(
+            !found.is_empty(),
+            "{consumer} debe mantener instrumentación"
+        );
+        for stage in found {
+            assert!(
+                owners.insert(stage.clone(), consumer).is_none(),
+                "etapa {stage} compartida por consumidores: usar un nombre distinto"
+            );
+        }
+    }
+}
+
 #[test]
 fn hub_reuses_ui_without_acquiring_runtime_or_services() {
     let output = Command::new(env!("CARGO"))

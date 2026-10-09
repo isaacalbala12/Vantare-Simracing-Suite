@@ -6,8 +6,7 @@ pub mod adapter;
 pub mod core;
 pub mod flows;
 #[cfg(feature = "paint-stats")]
-#[path = "../../profiling.rs"]
-pub mod profiling;
+pub use vantare_profiling as profiling;
 #[cfg(windows)]
 pub mod rights;
 pub mod service;

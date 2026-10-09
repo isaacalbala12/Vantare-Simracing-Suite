@@ -1274,7 +1274,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             .map(|capture| capture.name.as_str()),
     )?;
     let launcher = match options.demo.as_ref() {
-        Some(demo) => LauncherStore::demo(options.launcher_file.clone(), demo)?,
+        Some(demo) => crate::launcher::demo_store(options.launcher_file.clone(), demo)?,
         None => {
             if options.launcher_file == crate::launcher::default_path()? {
                 LauncherStore::load_production(options.launcher_file.clone())?

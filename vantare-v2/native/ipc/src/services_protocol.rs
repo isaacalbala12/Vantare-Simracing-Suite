@@ -3,9 +3,9 @@ use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
 pub const VERSION: u32 = 4;
-#[path = "report_document.rs"]
+#[path = "services_protocol/report_document.rs"]
 pub mod report_document;
-#[path = "roadmap_document.rs"]
+#[path = "services_protocol/roadmap_document.rs"]
 pub mod roadmap_document;
 // Tres miniaturas + preview JSON del texto (con escape doble). Nunca JPEG completos.
 pub const MAX_FRAME: usize = 128 * 1024;
@@ -72,7 +72,7 @@ pub enum Reply {
         url: String,
     },
     License {
-        policy: vantare_ipc::control::Policy,
+        policy: crate::control::Policy,
         message: String,
     },
     Status {

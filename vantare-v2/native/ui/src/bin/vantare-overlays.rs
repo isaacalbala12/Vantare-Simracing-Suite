@@ -62,7 +62,11 @@ fn main() -> ExitCode {
         return ExitCode::SUCCESS;
     }
     vantare_services::diagnostics::install_panic_hook("vantare-overlays");
-    let args: Vec<String> = std::env::args().skip(1).collect();
+    let mut args: Vec<String> = std::env::args().skip(1).collect();
+    let start_hidden = args.first().is_some_and(|arg| arg == "--start-hidden");
+    if start_hidden {
+        args.remove(0);
+    }
     #[cfg(feature = "parity-capture")]
     if let [flag, path] = args.as_slice()
         && flag == "--parity-capture"
@@ -106,7 +110,7 @@ fn main() -> ExitCode {
                 .clone()
                 .map_or_else(vantare_ipc::default_pipe_name, Ok)?;
             let photos = vantare_ui::source::layout_feed(&name, handle.clone())?;
-            vantare_ui::run_layout_requested(path, photos, rights, handle)?;
+            vantare_ui::run_layout_requested_hidden(path, photos, rights, handle, start_hidden)?;
             Ok(())
         })();
         return match result {

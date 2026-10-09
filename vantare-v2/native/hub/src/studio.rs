@@ -718,14 +718,18 @@ impl Studio {
                 cx,
             )
         };
-        let show = orbit::pending_play_button(
+        let show = orbit::play_button(
             "studio-show-track",
             if compact { "" } else { "Mostrar en pista" },
             44.0,
-            "Próximamente",
+            false,
             cx,
         )
-        .aria_label("Mostrar en pista · Próximamente");
+        .aria_label("Mostrar en pista")
+        .on_click(cx.listener(|studio, _, _, cx| {
+            studio.status = studio.editor.show_on_track();
+            cx.notify();
+        }));
         div()
             .w_full()
             .flex()

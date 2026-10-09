@@ -4,6 +4,36 @@ use crate::orbit::theme::{self, AppearanceSettings, InterfaceFont, MonoFont};
 use gpui::{Context, Window};
 use std::path::PathBuf;
 
+/// Versión de las claves: Vantare = grafito, Classic = carmín desde el feedback 7.
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct StoredAppearance {
+    palette_version: u8,
+    #[serde(flatten)]
+    settings: AppearanceSettings,
+}
+
+fn read_settings(bytes: &[u8]) -> Result<AppearanceSettings, String> {
+    let value: serde_json::Value =
+        serde_json::from_slice(bytes).map_err(|error| format!("leer apariencia: {error}"))?;
+    let legacy = match value.get("paletteVersion") {
+        None => true,
+        Some(version) if version.as_u64() == Some(1) => false,
+        Some(_) => return Err("Versión de paleta no compatible".into()),
+    };
+    let explicit = value.get("palette").is_some();
+    let mut settings: AppearanceSettings =
+        serde_json::from_value(value).map_err(|error| format!("leer apariencia: {error}"))?;
+    if legacy && explicit {
+        settings.palette = match settings.palette {
+            theme::Palette::Vantare => theme::Palette::Classic,
+            theme::Palette::Classic => theme::Palette::Vantare,
+            other => other,
+        };
+    }
+    Ok(settings)
+}
+
 pub(crate) struct Store {
     pub settings: AppearanceSettings,
     path: PathBuf,
@@ -19,12 +49,9 @@ impl Store {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
             Err(error) => return Err(format!("inspeccionar apariencia: {error}")),
         };
-        let mut settings: AppearanceSettings = observed.as_deref().map_or_else(
-            || Ok(AppearanceSettings::default()),
-            |bytes| {
-                serde_json::from_slice(bytes).map_err(|error| format!("leer apariencia: {error}"))
-            },
-        )?;
+        let mut settings: AppearanceSettings = observed
+            .as_deref()
+            .map_or_else(|| Ok(AppearanceSettings::default()), read_settings)?;
         settings.contrast = settings.contrast.clamp(80, 120);
         settings.glass_opacity = settings.glass_opacity.clamp(50, 100);
         let zoom_path = path.with_file_name("hub-zoom.json");
@@ -62,8 +89,11 @@ impl Store {
     pub fn save(&mut self, mut settings: AppearanceSettings) -> Result<(), String> {
         settings.contrast = settings.contrast.clamp(80, 120);
         settings.glass_opacity = settings.glass_opacity.clamp(50, 100);
-        let bytes = serde_json::to_vec_pretty(&settings)
-            .map_err(|error| format!("serializar apariencia: {error}"))?;
+        let bytes = serde_json::to_vec_pretty(&StoredAppearance {
+            palette_version: 1,
+            settings,
+        })
+        .map_err(|error| format!("serializar apariencia: {error}"))?;
         crate::files::save(&self.path, &bytes, self.observed.as_deref())?;
         self.observed = Some(bytes);
         self.settings = settings;
@@ -139,6 +169,7 @@ impl Hub {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.settings.appearance_preview = [None, None];
         match self.settings.appearance.save(settings) {
             Ok(()) => {
                 theme::apply(self.settings.appearance.settings, window.appearance(), cx);
@@ -188,23 +219,28 @@ impl Hub {
         &mut self,
         index: usize,
         x: gpui::Pixels,
-        window: &mut Window,
         cx: &mut Context<Self>,
     ) {
         let Some(bounds) = self.settings.appearance_bounds[index] else {
             return;
         };
-        // La fila reserva 45 px para el valor + 12 px de separación; pista 128 px.
-        let fraction = ((f32::from(x - bounds.left()) - 57.0) / 128.0).clamp(0.0, 1.0);
-        let (min, span) = if index == 0 {
-            (80.0, 40.0)
-        } else {
-            (50.0, 50.0)
-        };
-        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-        // rango acotado a 50..120.
-        let value = (min + span * fraction).round() as u8;
-        self.settings_slider_value(index, value, window, cx);
+        let value = slider_pointer_value(index, f32::from(x - bounds.left()));
+        if self.settings.appearance_preview[index] != Some(value) {
+            self.settings.appearance_preview[index] = Some(value);
+            cx.notify();
+        }
+    }
+    pub(super) fn settings_slider_release(
+        &mut self,
+        index: usize,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        self.settings.appearance_dragging[index] = false;
+        if let Some(value) = self.settings.appearance_preview[index].take() {
+            self.settings_slider_value(index, value, window, cx);
+            cx.notify();
+        }
     }
     pub(super) fn settings_slider_value(
         &mut self,
@@ -223,6 +259,22 @@ impl Hub {
             self.settings_appearance_apply(settings, window, cx);
         }
     }
+}
+
+fn slider_pointer_value(index: usize, offset: f32) -> u8 {
+    use crate::orbit::{APPEARANCE_THUMB_SIZE, APPEARANCE_TRACK_WIDTH, APPEARANCE_VALUE_OFFSET};
+    let fraction = ((offset - APPEARANCE_VALUE_OFFSET - APPEARANCE_THUMB_SIZE / 2.0)
+        / (APPEARANCE_TRACK_WIDTH - APPEARANCE_THUMB_SIZE))
+        .clamp(0.0, 1.0);
+    let (min, span) = if index == 0 {
+        (80.0, 40.0)
+    } else {
+        (50.0, 50.0)
+    };
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+    // 50..120, redondeo al entero mas cercano.
+    let value = (min + span * fraction).round() as u8;
+    value
 }
 
 fn zoom_step_limited(percent: u16, direction: i8, limit: f32) -> u16 {
@@ -245,6 +297,129 @@ fn zoom_step_limited(percent: u16, direction: i8, limit: f32) -> u16 {
 mod tests {
     use super::*;
     use crate::orbit::theme::Scheme;
+    #[test]
+    fn legacy_choices_keep_their_visual_palette_and_migrate_only_once() {
+        use theme::Palette;
+        let dir = directory("palette-migration");
+        std::fs::create_dir_all(&dir).expect("directory");
+        let path = dir.join("appearance.json");
+        for (old_key, expected, base) in [
+            ("vantare", Palette::Classic, 0x17_0a0e),
+            ("classic", Palette::Vantare, 0x16_1314),
+            (
+                "ocean",
+                Palette::Ocean,
+                theme::Theme::resolve(Palette::Ocean, Scheme::Dark, 100, 80)
+                    .skin
+                    .base,
+            ),
+        ] {
+            for scheme in [Scheme::Dark, Scheme::Light] {
+                let legacy = serde_json::json!({
+                    "palette": old_key, "scheme": scheme, "contrast": 110,
+                    "glassOpacity": 60, "interfaceFont": "arial", "reducedMotion": true
+                });
+                let bytes = serde_json::to_vec(&legacy).expect("legacy fixture");
+                std::fs::write(&path, &bytes).expect("write fixture");
+                let mut store = Store::load(path.clone()).expect("migrate");
+                assert_eq!(store.settings.palette, expected);
+                assert_eq!(store.settings.scheme, scheme);
+                assert_eq!(
+                    (store.settings.contrast, store.settings.glass_opacity),
+                    (110, 60)
+                );
+                assert_eq!(store.settings.interface_font, InterfaceFont::Arial);
+                assert!(store.settings.reduced_motion);
+                assert_eq!(
+                    std::fs::read(&path).expect("read"),
+                    bytes,
+                    "load does not write"
+                );
+                if scheme == Scheme::Dark {
+                    assert_eq!(theme::Theme::from_settings(store.settings).skin.base, base);
+                }
+                let settings = store.settings;
+                store.save(settings).expect("save migrated choice");
+                let saved: serde_json::Value =
+                    serde_json::from_slice(&std::fs::read(&path).expect("read version"))
+                        .expect("saved JSON");
+                assert_eq!(saved["paletteVersion"], 1);
+                assert_eq!(
+                    saved["palette"],
+                    serde_json::to_value(expected).expect("key")
+                );
+                assert_eq!(
+                    Store::load(path.clone()).expect("restart").settings,
+                    settings
+                );
+            }
+        }
+        std::fs::remove_dir_all(dir).expect("cleanup");
+    }
+
+    #[test]
+    fn no_explicit_palette_gets_graphite_default_without_changing_other_preferences() {
+        use theme::Palette;
+        let dir = directory("palette-default");
+        let path = dir.join("appearance.json");
+        assert_eq!(
+            Store::load(path.clone())
+                .expect("missing file")
+                .settings
+                .palette,
+            Palette::Vantare
+        );
+        std::fs::create_dir_all(&dir).expect("directory");
+        for bytes in [
+            b"{}".as_slice(),
+            b"{\"scheme\":\"light\",\"interfaceFont\":\"arial\"}",
+        ] {
+            std::fs::write(&path, bytes).expect("write no choice");
+            let store = Store::load(path.clone()).expect("missing palette");
+            assert_eq!(store.settings.palette, Palette::Vantare);
+            if bytes != b"{}" {
+                assert_eq!(store.settings.scheme, Scheme::Light);
+                assert_eq!(store.settings.interface_font, InterfaceFont::Arial);
+            }
+        }
+        assert!(read_settings(b"{\"paletteVersion\":2,\"palette\":\"vantare\"}").is_err());
+        std::fs::remove_dir_all(dir).expect("cleanup");
+    }
+
+    #[test]
+    fn reduced_motion_persists_and_old_files_keep_the_default() {
+        let dir = directory("motion");
+        let path = dir.join("appearance.json");
+        let mut store = Store::load(path.clone()).expect("default");
+        assert!(!store.settings.reduced_motion);
+        for reduced_motion in [true, false] {
+            store
+                .save(AppearanceSettings {
+                    reduced_motion,
+                    ..store.settings
+                })
+                .expect("save");
+            assert_eq!(
+                Store::load(path.clone())
+                    .expect("reopen")
+                    .settings
+                    .reduced_motion,
+                reduced_motion
+            );
+        }
+        std::fs::remove_dir_all(dir).expect("cleanup");
+    }
+    #[test]
+    fn pointer_reaches_both_limits_at_the_thumb_centres_and_beyond() {
+        for (index, min, max) in [(0, 80, 120), (1, 50, 100)] {
+            assert_eq!(slider_pointer_value(index, 64.0), min);
+            assert_eq!(slider_pointer_value(index, 178.0), max);
+            assert_eq!(slider_pointer_value(index, 185.0), max);
+            assert_eq!(slider_pointer_value(index, 0.0), min);
+        }
+        assert_eq!(slider_pointer_value(0, 175.0), 119);
+        assert_eq!(slider_pointer_value(0, 177.0), 120);
+    }
     fn directory(label: &str) -> PathBuf {
         let nonce = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -299,6 +474,7 @@ mod tests {
             glass_opacity: 65,
             interface_font: InterfaceFont::Arial,
             mono_font: MonoFont::Consolas,
+            reduced_motion: true,
         };
         first.save(settings).expect("guardar");
         assert_eq!(Store::load(path).expect("reinicio").settings, settings);

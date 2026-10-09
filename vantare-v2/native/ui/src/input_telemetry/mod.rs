@@ -128,12 +128,23 @@ impl Widget {
             && self.vm.pedals.iter().any(Option::is_some)
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
+        self.frame_with_motion(prefs, false)
+    }
+    pub(crate) fn frame_with_motion(
+        &mut self,
+        _prefs: Preferences,
+        reduced: bool,
+    ) -> (Paint, Wake) {
         let vm = self.vm.clone();
         let now = Instant::now();
-        let pedals = self.pedals_at(now);
+        let pedals = if reduced {
+            self.vm.pedals
+        } else {
+            self.pedals_at(now)
+        };
         let samples: Vec<_> = self.trace.samples().iter().copied().collect();
-        let wake = if self.moving(now) {
+        let wake = if !reduced && self.moving(now) {
             Wake::Frame
         } else {
             Wake::Idle

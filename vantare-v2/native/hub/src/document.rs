@@ -36,6 +36,9 @@ impl Editor {
             .initialize(monitor)
             .map_err(|error| error.to_string())
     }
+    pub fn show_on_track(&self) -> Result<(), String> {
+        vantare_ui::layout::Presentation::show(&self.path).map_err(|error| error.to_string())
+    }
     pub fn layout(&self) -> &Layout {
         self.document.layout()
     }

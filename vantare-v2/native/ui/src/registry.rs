@@ -127,6 +127,20 @@ macro_rules! widgets {
                 match self { $(Self::$kind(widget) => widget.frame(prefs)),+ }
             }
 
+            pub(crate) fn frame_with_motion(&mut self, prefs: vantare_domain::format::Preferences, reduced: bool) -> (crate::app::Paint, crate::app::Wake) {
+                match self {
+                    Self::Standings(widget) => widget.frame_with_motion(prefs, reduced),
+                    Self::Delta(widget) => widget.frame_with_motion(prefs, reduced),
+                    Self::Relative(widget) => widget.frame_with_motion(prefs, reduced),
+                    Self::BroadcastTower(widget) => widget.frame_with_motion(prefs, reduced),
+                    Self::RacingFlags(widget) => widget.frame_with_motion(prefs, reduced),
+                    Self::FastestLap(widget) => widget.frame_with_motion(prefs, reduced),
+                    Self::InputTelemetry(widget) => widget.frame_with_motion(prefs, reduced),
+                    Self::PedalsTelemetry(widget) => widget.frame_with_motion(prefs, reduced),
+                    _ => self.frame(prefs),
+                }
+            }
+
             #[cfg(feature = "parity-capture")]
             pub(crate) fn animating(&self) -> bool {
                 match self { $(Self::$kind(widget) => widget.animating()),+ }

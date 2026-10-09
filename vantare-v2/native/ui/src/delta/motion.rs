@@ -123,6 +123,32 @@ impl Motion {
         frame
     }
 
+    /// Conserva los avisos, pero cambia de estado de golpe y solo despierta al caducar.
+    pub fn reduced_frame(&self, vm: &ViewModel, now: Instant) -> (Frame, Wake) {
+        let event = self
+            .event
+            .filter(|(start, event)| now.saturating_duration_since(*start) < event_life(*event));
+        let cross = self
+            .cross
+            .filter(|(start, _)| now.saturating_duration_since(*start) < CROSS);
+        let next = event
+            .map(|(start, event)| (start, event_life(event)))
+            .into_iter()
+            .chain(cross.map(|(start, _)| (start, CROSS)))
+            .map(|(start, life)| life.saturating_sub(now.saturating_duration_since(start)))
+            .min();
+        (
+            Frame {
+                fill: geometry(vm),
+                event: event.map(|(_, event)| event),
+                notice_alpha: if event.is_some() { 1.0 } else { 0.0 },
+                cross: cross.map(|(_, tone)| tone),
+                cross_alpha: if cross.is_some() { 1.0 } else { 0.0 },
+            },
+            next.map_or(Wake::Idle, Wake::At),
+        )
+    }
+
     pub fn wake(&self, now: Instant) -> Wake {
         let mut wake_at: Option<Duration> = None;
         if self
@@ -172,6 +198,23 @@ mod tests {
             ..Car::default()
         });
         delta::project(&s, Preferences::default())
+    }
+
+    #[test]
+    fn reduced_motion_keeps_notices_and_expires_without_a_fade() {
+        let now = Instant::now();
+        let mut motion = Motion::default();
+        let before = vm(0.2, 10, 90.0);
+        let after = vm(0.2, 11, 89.0);
+        motion.update(&before, &after, now);
+        let (frame, wake) = motion.reduced_frame(&after, now);
+        assert_eq!(frame.event, Some(Event::PersonalBest));
+        assert_eq!(frame.notice_alpha, 1.0);
+        assert!(matches!(wake, Wake::At(_)));
+        let (frame, wake) = motion.reduced_frame(&after, now + Duration::from_secs(4));
+        assert_eq!(frame.event, None);
+        assert_eq!(frame.notice_alpha, 0.0);
+        assert_eq!(wake, Wake::Idle);
     }
 
     #[test]

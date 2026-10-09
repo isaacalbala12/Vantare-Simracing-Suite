@@ -329,8 +329,8 @@ pub fn wordmark(cx: &gpui::App) -> Div {
     div().flex_none().child(
         gpui::svg()
             .path("brand/wordmark.svg")
-            .w(px(24.0 * 5235.3 / 687.2))
-            .h(px(24.0))
+            .w(px(14.0 * 5235.3 / 687.2))
+            .h(px(14.0))
             .text_color(rgb(skin(cx).text1)),
     )
 }
@@ -817,6 +817,10 @@ fn skin_palette(cx: &gpui::App) -> super::theme::Palette {
     cx.global::<super::theme::Theme>().palette
 }
 
+pub const APPEARANCE_TRACK_WIDTH: f32 = 128.0;
+pub const APPEARANCE_THUMB_SIZE: f32 = 14.0;
+pub const APPEARANCE_VALUE_OFFSET: f32 = 57.0;
+
 pub fn appearance_slider(
     value: f32,
     min: f32,
@@ -825,7 +829,8 @@ pub fn appearance_slider(
     cx: &gpui::App,
 ) -> gpui::Stateful<Div> {
     let fraction = ((value - min) / (max - min)).clamp(0.0, 1.0);
-    let fill = 128.0 * fraction;
+    let fill =
+        APPEARANCE_THUMB_SIZE / 2.0 + (APPEARANCE_TRACK_WIDTH - APPEARANCE_THUMB_SIZE) * fraction;
     div()
         .id(if label == "Contraste" {
             "settings-contrast-slider"
@@ -856,7 +861,8 @@ pub fn appearance_slider(
         .child(
             div()
                 .relative()
-                .w(px(128.0))
+                .w(px(APPEARANCE_TRACK_WIDTH))
+                .flex_none()
                 .h(px(20.0))
                 .child(
                     div()
@@ -881,9 +887,9 @@ pub fn appearance_slider(
                 .child(
                     div()
                         .absolute()
-                        .left(px(fill - 8.0))
+                        .left(px(fill - APPEARANCE_THUMB_SIZE / 2.0))
                         .top(px(2.0))
-                        .size(px(14.0))
+                        .size(px(APPEARANCE_THUMB_SIZE))
                         .rounded_full()
                         .bg(rgb(super::skin(cx).accent)),
                 ),

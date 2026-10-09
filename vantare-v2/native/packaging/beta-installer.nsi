@@ -23,6 +23,8 @@ VIAddVersionKey "ProductVersion" "${VERSION}"
 VIAddVersionKey "FileVersion" "${VERSION}"
 VIAddVersionKey "FileDescription" "Instalador Vantare"
 VIAddVersionKey "LegalCopyright" "Vantare 2026"
+!define MUI_ICON "${BOOTSTRAP}\\..\\..\\build\\windows\\icon.ico"
+!define MUI_UNICON "${BOOTSTRAP}\\..\\..\\build\\windows\\icon.ico"
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_FUNCTION StartHub
 !define MUI_FINISHPAGE_RUN_TEXT "Abrir Vantare"

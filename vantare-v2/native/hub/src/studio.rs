@@ -3674,6 +3674,7 @@ mod tests {
                     assert_eq!(studio.frames[0].1.read(cx).item, instances[0]);
                 }
             });
+            cx.quit();
         });
     }
     #[test]

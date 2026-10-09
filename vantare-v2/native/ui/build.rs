@@ -1,7 +1,11 @@
 //! Compila exclusivamente valores; no genera un renderer ni interpreta instrucciones.
 use std::{env, fmt::Write, fs, path::PathBuf};
 
+#[path = "../packaging/windows-icon.rs"]
+mod windows_icon;
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    windows_icon::embed()?;
     println!("cargo:rerun-if-changed=styles/standings.json");
     let json: serde_json::Value =
         serde_json::from_str(&fs::read_to_string("styles/standings.json")?)?;

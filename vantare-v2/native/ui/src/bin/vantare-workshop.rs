@@ -14,8 +14,7 @@
 //! otra: arrancar `vantare-core --replay <corpus>` y ejecutar `--guardar`, que
 //! guarda la primera foto fresca que reciba por el pipe del núcleo.
 
-#[path = "../../../packaging/version.rs"]
-mod product;
+use vantare_ipc::product;
 
 use std::path::PathBuf;
 use std::process::ExitCode;

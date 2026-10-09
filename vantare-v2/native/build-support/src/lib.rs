@@ -10,7 +10,6 @@ pub fn embed() -> Result<(), Box<dyn std::error::Error>> {
         .join("../../build/windows/icon.ico")
         .canonicalize()?;
     println!("cargo:rerun-if-changed={}", icon.display());
-    println!("cargo:rerun-if-changed=../packaging/windows-icon.rs");
     println!("cargo:rerun-if-env-changed=WindowsSdkDir");
     let sdk = env::var_os("WindowsSdkDir")
         .map(PathBuf::from)

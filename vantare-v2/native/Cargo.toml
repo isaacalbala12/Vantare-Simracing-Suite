@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "storage", "services", "strategy", "admin"]
+members = ["launcher", "profiling", "build-support", "domain", "runtime", "ipc", "ui", "hub", "engineer", "storage", "services", "strategy", "admin"]
 # DuckDB bundled solo se compila al pedir storage o los gates --workspace.
 # Admin es privado: compilarlo explícitamente y excluirlo del instalador público.
 default-members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "services", "strategy"]
@@ -12,6 +12,9 @@ rust-version = "1.95"
 publish = false
 
 [workspace.dependencies]
+vantare-launcher = { path = "launcher" }
+vantare-profiling = { path = "profiling" }
+vantare-build-support = { path = "build-support" }
 vantare-domain = { path = "domain" }
 vantare-ipc = { path = "ipc" }
 vantare-services = { path = "services", default-features = false }

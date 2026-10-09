@@ -2,7 +2,7 @@
 #![deny(unsafe_code)]
 
 mod checkpoint;
-pub mod control;
+pub use vantare_ipc::engineer_control as control;
 pub mod local;
 pub mod radio;
 pub mod spotter;

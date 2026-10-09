@@ -38,7 +38,7 @@ pub fn read(path: &Path, limit: u64) -> Result<Vec<u8>, String> {
 /// el lector de accesos directos y el arnes de captura para que no divergan:
 /// el segundo lo invocaba por nombre.
 #[cfg(windows)]
-pub(crate) fn windows_powershell() -> Result<std::path::PathBuf, String> {
+pub fn windows_powershell() -> Result<std::path::PathBuf, String> {
     Ok(
         std::path::PathBuf::from(std::env::var_os("SystemRoot").ok_or("SystemRoot ausente")?)
             .join("System32/WindowsPowerShell/v1.0/powershell.exe"),

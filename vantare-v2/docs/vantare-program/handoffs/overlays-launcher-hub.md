@@ -1,3 +1,33 @@
+## #1534 — Dependencias explícitas entre crates (2026-10-09)
+
+Worktree `C:/tmp/vw3-1534/vantare-v2`, rama `vantareapp/isa-1534-crates-path`,
+base de integración `5e1da3f6`; alcance autorizado por tareas.md y GitHub #1534.
+Launcher y sus archivos locales pasan a `vantare-launcher`; Hub conserva la
+presentación y sus demos. Contratos Engineer/Services y producto pasan a ipc,
+con aliases públicos para los consumidores. Icono de los tres build.rs en
+`vantare-build-support`; profiling en crate sin dependencias, también para GPUI.
+El launcher declara services sin network para hashes y confianza ya existentes.
+No cambian transportes, DTO, permisos ni persistencia. Sin dependencias externas nuevas.
+Un contador de profiling por proceso aceptado por Isaac: 24 etapas disjuntas
+entre runtime(11), ipc(4), ui(6), GPUI(3); test rechaza futuros solapamientos.
+Test de arquitectura recorre native/vendor y prohíbe #[path] entre propietarios
+Cargo, manteniendo módulos internos. fmt y Clippy workspace/all-targets -D warnings PASS. Tests del motor en launcher;
+fixture Engineer mediante test-support IPC solo dev en Hub. Nextest 1397/1397
+(7 skips), lifecycle 18 PASS. Primer Nextest: dos fallos TimedOut/BrokenPipe
+en recovery; repetición completa con NEXTEST_TEST_THREADS=2 PASS, sin alterar tests.
+Telemetría 21/21 PASS, 0 skips (645.220 s; ACC golden 606.112 s, 190308 fotos).
+Check all-targets runtime/UI con paint-stats PASS, sin warnings; build UI dev
+con paint-stats PASS. Once binarios --version idénticos: 0.0.0 (development),
+sin abrir ventanas. Código validado en 58e5dd66 (hitos 4e63a461 + 58e5dd66).
+Evidencia en
+`C:/tmp/auditoria-arquitectura-v2/1534-*.log`; gates exigidos completos en verde.
+plan.md ausente también en origin/nightly; #1530 tiene la corrección documental.
+Entrega local completa: informe de diez líneas y comentario GitHub #1534.
+Sin push/PR/CI remoto/merge/promoción/release/instalación ni otras acciones externas.
+No QA visual ni macOS/distribución: traslado sin cambios de presentación; no
+se afirma prueba publicada ni interacción LMU/OBS real. Siguiente: revisión
+del orquestador y aceptación de Isaac antes de integrar sobre la base indicada.
+
 ## #1496 — Calidad UI R0–R3, correcciones sobre R4 (2026-10-08)
 
 Worktree C:/tmp/vw3-ui-calidad/vantare-v2, rama vantareapp/isa-1496-ui-calidad,

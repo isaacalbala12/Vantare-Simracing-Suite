@@ -24,3 +24,6 @@ gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32
 
 [lints]
 workspace = true
+
+[build-dependencies]
+vantare-build-support.workspace = true

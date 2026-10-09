@@ -6,8 +6,7 @@
 //! feature `parity-capture`, `vantare-overlays --parity-capture <png>` captura
 //! Standings con la escena fija.
 
-#[path = "../../../packaging/version.rs"]
-mod product;
+use vantare_ipc::product;
 
 use std::path::PathBuf;
 use std::process::ExitCode;

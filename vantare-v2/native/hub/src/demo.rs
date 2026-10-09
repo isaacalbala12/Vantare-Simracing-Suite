@@ -997,7 +997,7 @@ mod tests {
         assert_eq!(home.launcher.profiles.len(), 3);
         assert_eq!(home.launcher.profiles[0].name, "Carrera LMU");
         assert_eq!(home.launcher.profiles[0].last_ready_steps, Some(4));
-        crate::launcher::Store::demo(std::path::PathBuf::from("C:/QA/launcher.json"), &home)?;
+        crate::launcher::demo_store(std::path::PathBuf::from("C:/QA/launcher.json"), &home)?;
         Ok(())
     }
 
@@ -1016,7 +1016,7 @@ mod tests {
             demo.apply_capture(&capture)?;
             assert!(demo.overlay_profile().is_some());
             assert_eq!(demo.launcher.profiles.len(), 3);
-            crate::launcher::Store::demo(
+            crate::launcher::demo_store(
                 std::path::PathBuf::from("C:/QA/home-quality.json"),
                 &demo,
             )?;
@@ -1076,7 +1076,7 @@ mod tests {
             assert!(demo.overlay_profile().is_none());
             assert_eq!(demo.launcher.profiles[0].name, "Carrera LMU");
             assert_eq!(demo.launcher.profiles[0].steps.len(), 4);
-            crate::launcher::Store::demo(std::path::PathBuf::from("C:/QA/showcase.json"), &demo)?;
+            crate::launcher::demo_store(std::path::PathBuf::from("C:/QA/showcase.json"), &demo)?;
         }
         Ok(())
     }

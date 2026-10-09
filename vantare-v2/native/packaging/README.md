@@ -178,7 +178,7 @@ La configuración queda fuera del repositorio y del paquete. Lista cerrada:
 | `VANTARE_ADMIN_URL` | Endpoint owner, solo para la compilación separada de admin. |
 
 `VANTARE_VERSION` y `VANTARE_BUILD_CHANNEL` los fija el builder desde `-Version`
-y el canal `beta`; no se aceptan en el fichero. `packaging/version.rs` es la
+y el canal `beta`; no se aceptan en el fichero. `ipc::product` es la
 fuente de identidad que usan binarios, PostHog y Testing Center. Las claves
 privadas de licencia y los secretos Clerk/Supabase viven solo en servidor.
 

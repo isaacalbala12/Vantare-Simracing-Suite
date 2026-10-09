@@ -2,8 +2,7 @@
 #[path = "../profile_import.rs"]
 mod profile_import;
 
-#[path = "../../../packaging/version.rs"]
-mod product;
+use vantare_ipc::product;
 
 use profile_import::{MAX_PROFILE_BYTES, Monitor};
 use std::fs::{self, File, OpenOptions};

@@ -1,25 +1,19 @@
-//! Motor compartido sin GPUI; Hub y supervisor compilan esta misma fuente.
-#[path = "chain.rs"]
+//! Motor compartido sin GPUI; Hub y supervisor dependen de este crate.
+#![deny(unsafe_code)]
+
 pub mod chain;
-#[path = "discovery.rs"]
 pub mod discovery;
-#[path = "migration.rs"]
-pub(crate) mod migration;
-#[path = "policy.rs"]
+pub mod migration;
 pub mod policy;
-#[path = "processes.rs"]
 pub mod processes;
 #[cfg(windows)]
-#[path = "shortcuts.rs"]
 pub(crate) mod shortcuts;
-#[path = "triggers.rs"]
 pub mod triggers;
 #[cfg(windows)]
 #[allow(unsafe_code)] // Frontera Win32 documentada, igual que antes de compartir el motor.
-#[path = "windows.rs"]
 pub(crate) mod windows;
 
-pub(crate) use crate::files;
+pub mod files;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
@@ -420,10 +414,20 @@ impl Document {
 pub struct Store {
     pub document: Document,
     pub path: PathBuf,
-    pub(super) saved: Option<Vec<u8>>,
+    saved: Option<Vec<u8>>,
 }
 
 impl Store {
+    /// Documento de demostración en memoria, sin leer ni escribir archivos.
+    pub fn in_memory(path: PathBuf, document: Document) -> Result<Self, String> {
+        document.validate()?;
+        Ok(Self {
+            document,
+            path,
+            saved: None,
+        })
+    }
+
     /// Importar solo al crear el store productivo, nunca al cargar fixtures/QA.
     pub fn load_production(path: PathBuf) -> Result<Self, String> {
         if path
@@ -563,7 +567,7 @@ pub fn is_trusted_install_path(path: &Path) -> bool {
 /// Prefijo por componentes: `C:\Users\Bob` no contiene a `C:\Users\Bobby`, y en
 /// Windows la comparación de rutas del sistema no distingue mayúsculas.
 #[cfg(windows)]
-pub(super) fn under_ascii_case(path: &Path, root: &Path) -> bool {
+fn under_ascii_case(path: &Path, root: &Path) -> bool {
     let mut parts = path.components();
     root.components().all(|want| {
         parts
@@ -598,3 +602,6 @@ impl LmuTrigger {
         launch
     }
 }
+
+#[cfg(test)]
+mod tests;

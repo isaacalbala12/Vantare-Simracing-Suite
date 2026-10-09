@@ -10,6 +10,8 @@ publish.workspace = true
 paint-stats = []
 
 [dependencies]
+vantare-profiling.workspace = true
+vantare-launcher.workspace = true
 vantare-domain.workspace = true
 vantare-ipc.workspace = true
 vantare-services.workspace = true

@@ -2,8 +2,7 @@
 
 // Diagnóstico apagado por VANTARE_PROFILE_PHASES; no dependencia hacia ui.
 #[allow(dead_code)]
-#[path = "../../../profiling.rs"]
-mod profiling;
+use vantare_profiling as profiling;
 
 mod clipboard;
 mod destination_list;

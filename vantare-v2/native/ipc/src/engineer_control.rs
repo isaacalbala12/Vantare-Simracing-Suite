@@ -1,4 +1,4 @@
-//! Contrato de archivos local. Hub compila este mismo módulo, sin depender del
+//! Contrato de archivos local compartido por Hub y Engineer, sin depender del
 //! worker ni del runtime. Solo `std`/`serde_json`: no introduce otro transporte.
 use serde_json::{Value, json};
 use std::fs::{self, File, OpenOptions};
@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::time::{Duration, Instant, SystemTime};
 
-#[path = "status.rs"]
+#[path = "engineer_control/status.rs"]
 pub mod runtime;
 
 pub const MAX_BYTES: u64 = 64 * 1024;

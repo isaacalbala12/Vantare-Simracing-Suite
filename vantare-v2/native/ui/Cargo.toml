@@ -12,6 +12,7 @@ parity-capture = []
 paint-stats = []
 
 [dependencies]
+vantare-profiling.workspace = true
 vantare-services.workspace = true
 vantare-domain.workspace = true
 vantare-ipc.workspace = true
@@ -38,5 +39,6 @@ gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32
 workspace = true
 
 [build-dependencies]
+vantare-build-support.workspace = true
 # Ya utilizada por UI: compila los valores de estilo sin lectura de disco en producto.
 serde_json = '1'

@@ -90,8 +90,7 @@ fn parse(args: &[String]) -> Result<Args, String> {
     })
 }
 
-#[path = "../../../packaging/version.rs"]
-mod product;
+use vantare_ipc::product;
 
 #[cfg(any(windows, unix))]
 fn main() -> std::process::ExitCode {

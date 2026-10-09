@@ -145,7 +145,7 @@ impl Launcher {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let mut view = Self::build(store, Some(Discovery::demo(demo)), cx);
+        let mut view = Self::build(store, Some(crate::launcher::demo_discovery(demo)), cx);
         view.demo_descriptions = demo
             .launcher
             .profiles

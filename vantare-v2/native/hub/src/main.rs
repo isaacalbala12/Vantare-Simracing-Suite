@@ -1,7 +1,6 @@
 #![forbid(unsafe_code)]
 
-#[path = "../../packaging/version.rs"]
-mod product;
+use vantare_ipc::product;
 
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;

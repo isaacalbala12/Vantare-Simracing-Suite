@@ -1965,3 +1965,10 @@ working y la cola existente, sin ocupar ni sustituir otra acción pendiente; la
 composición alternativa llama al mismo método. Regresión del reply demorado y
 publicación encolada añadida. Gates y binarios anteriores se conservan como
 checkpoint a3b4723f; se repetirán sobre el código final. Sin cambio de IPC/arquitectura.
+
+### #1496 — v4: reintento durable tras reinicio
+E2: el test HTTP de compra incierta ahora destruye Account/Store y reabre el root
+DPAPI antes de reintentar: mismo payload/intento y entorno/producto. Solo cambia
+la regresión de servicios, no código comercial ni identidad. Gates finales f39:
+fmt/Clippy/Nextest1298 y lifecycle18 PASS; telemetría en curso. Se repetirán
+los checks de servicios y se reconstruirá el artefacto con el SHA final.

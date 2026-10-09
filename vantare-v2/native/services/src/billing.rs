@@ -209,6 +209,12 @@ mod tests {
             ),
             Err(Error::Conflict)
         ));
+        // Simula reinicio entre el resultado incierto y el reintento: sin Store
+        // ni Account residentes, solo el estado durable del mismo root QA.
+        drop(account);
+        drop(store);
+        let store = Store::open(&root, "billing-http").expect("reabrir intento durable");
+        let account = crate::account::fixture(&server.base, &store);
         assert_eq!(
             purchase(
                 &http,

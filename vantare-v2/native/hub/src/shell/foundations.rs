@@ -337,10 +337,13 @@ fn home_state(pending: bool, error: bool, profiles: usize) -> HomeState {
 }
 
 fn hero_height(adapt: orbit::Adapt) -> f32 {
-    match adapt.density {
-        orbit::adapt::Density::A => 300.0,
-        orbit::adapt::Density::M => 236.0,
-        _ => 200.0,
+    // La altura del hero sigue el viewport; la preferencia de densidad conserva gaps y filas.
+    if adapt.height >= 1000.0 {
+        300.0
+    } else if adapt.height >= 820.0 {
+        236.0
+    } else {
+        200.0
     }
 }
 fn lower_height(adapt: orbit::Adapt, error: bool) -> f32 {
@@ -370,14 +373,37 @@ impl Hub {
         adapt: orbit::Adapt,
         cx: &gpui::App,
     ) -> (Div, Vec<orbit::RailSection>) {
-        let skeletons = || {
-            orbit::neo_card(cx)
+        let skeletons = |overlay: bool| {
+            let mut card = orbit::neo_card(cx)
                 .flex_1()
                 .min_h_0()
-                .gap(px(18.0))
-                .child(orbit::skeleton(0.4, 16.0, cx))
-                .child(orbit::skeleton(0.8, 36.0, cx))
-                .child(orbit::skeleton(1.0, 64.0, cx))
+                .gap(px(14.0))
+                .child(orbit::skeleton(0.3, 14.0, cx));
+            if overlay {
+                card = card.child(
+                    div()
+                        .flex()
+                        .gap(px(20.0))
+                        .child(orbit::skeleton(1.0, 225.0, cx).flex_1())
+                        .when(adapt.center_width() >= 1100.0, |row| {
+                            row.child(
+                                div()
+                                    .w(px(150.0))
+                                    .flex_none()
+                                    .flex()
+                                    .flex_col()
+                                    .gap(px(14.0))
+                                    .child(orbit::skeleton(1.0, 24.0, cx))
+                                    .child(orbit::skeleton(0.6, 14.0, cx)),
+                            )
+                        }),
+                );
+            } else {
+                for _ in 0..5 {
+                    card = card.child(orbit::skeleton(1.0, 42.0, cx));
+                }
+            }
+            card
         };
         let (top, _, _) = adapt.padding();
         let status_height =
@@ -398,16 +424,34 @@ impl Hub {
                         .min_h_0()
                         .flex()
                         .gap(px(adapt.gap()))
-                        .child(skeletons())
-                        .child(skeletons()),
+                        .child(skeletons(true))
+                        .child(skeletons(false)),
                 ),
             vec![
                 orbit::RailSection::new(
                     "Estado",
                     "pulse",
-                    skeletons().flex_none().min_h(px(status_height)),
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap(px(12.0))
+                        .min_h(px(status_height))
+                        .children((0..4).map(|_| orbit::skeleton(1.0, 36.0, cx))),
                 ),
-                orbit::RailSection::new("Plantillas", "v-studio", skeletons()).grow(),
+                orbit::RailSection::new(
+                    "Plantillas",
+                    "v-studio",
+                    div()
+                        .grid()
+                        .grid_cols(2)
+                        .gap(px(12.0))
+                        .children((0..4).map(|_| {
+                            orbit::neo_card(cx)
+                                .min_h(px(150.0))
+                                .child(orbit::skeleton(1.0, 90.0, cx))
+                        })),
+                )
+                .grow(),
             ],
         )
     }
@@ -428,11 +472,9 @@ impl Hub {
             .gap(px(8.0))
             .child(orbit::neo_header("Overlay en pista", "v-studio", cx))
             .when_some(preview, |card, preview| {
-                let height = if adapt.show_notes() {
-                    (adapt.height * 0.21).clamp(140.0, 280.0)
-                } else {
-                    (adapt.height * 0.20).clamp(110.0, 200.0)
-                };
+                let height = (lower_height(adapt, false)
+                    - if adapt.show_optional() { 260.0 } else { 158.0 })
+                .clamp(110.0, 340.0);
                 card.child(preview.h(px(height)).flex_none())
             })
             .when(!has_preview, |card| {
@@ -527,6 +569,68 @@ impl Hub {
                     )),
             )
     }
+    fn home_overlay_onboarding(cx: &mut Context<Self>) -> Div {
+        orbit::neo_card(cx)
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap(px(12.0))
+            .child(orbit::icon("v-studio", 32.0, orbit::ink_3(cx)))
+            .child(orbit::text(
+                "Prepara tu overlay",
+                16.0,
+                600,
+                orbit::ink(cx),
+                cx,
+            ))
+            .child(
+                orbit::text(
+                    "Elige una plantilla y ajusta tu layout en Studio.",
+                    13.0,
+                    400,
+                    orbit::ink_3(cx),
+                    cx,
+                )
+                .text_center(),
+            )
+            .child(
+                orbit::small_button("home-first-overlay", "Ver plantillas", cx)
+                    .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx))),
+            )
+    }
+
+    fn home_first_steps(cx: &gpui::App) -> Div {
+        orbit::neo_card(cx)
+            .w(px(360.0))
+            .flex_none()
+            .p(px(20.0))
+            .gap(px(12.0))
+            .child(orbit::eyebrow("Así funciona", cx))
+            .children(
+                [
+                    (
+                        "1 · Elige tus apps",
+                        "Crea tu perfil en Launcher",
+                        "v-launch",
+                    ),
+                    (
+                        "2 · Ajusta tu overlay",
+                        "Elige una plantilla en Studio",
+                        "v-studio",
+                    ),
+                    (
+                        "3 · Lanza con Ctrl L",
+                        "Abre las apps de tu perfil en orden",
+                        "v-keys",
+                    ),
+                ]
+                .map(|(label, note, icon)| orbit::summary_row(label, note, icon, cx).border_b_0()),
+            )
+    }
+
     fn home_recent(&self, cx: &Context<Self>) -> Vec<(String, i64, &'static str, orbit::Tone)> {
         let mut recent = self.notifications.read(cx).home_activity();
         recent.extend(
@@ -638,15 +742,17 @@ impl Hub {
     fn home_hero(
         &self,
         adapt: orbit::Adapt,
-        empty: bool,
+        state: HomeState,
         connected: bool,
         launch: gpui::AnyElement,
         studio: gpui::AnyElement,
         favorite: Div,
         cx: &mut Context<Self>,
     ) -> Div {
+        let empty = state == HomeState::Empty;
+        let loading = state == HomeState::Loading;
         let compact = adapt.center_width() < 1100.0;
-        let short = adapt.density != orbit::adapt::Density::A;
+        let short = adapt.height < 1000.0;
         let name = self.demo.as_ref().map_or("piloto", |demo| {
             demo.user
                 .full_name
@@ -700,31 +806,33 @@ impl Hub {
                     .flex()
                     .flex_col()
                     .gap(px(if short { 8.0 } else { 12.0 }))
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap(px(8.0))
-                            .child(if connected {
-                                orbit::live_dot(cx)
-                            } else {
-                                orbit::status_dot(orbit::Tone::Neutral, 8.0, cx)
-                            })
-                            .child(orbit::meta(
-                                &format!(
-                                    "{} · {status}{}",
-                                    now.format("%d/%m"),
-                                    self.studio
-                                        .read(cx)
-                                        .home_track()
-                                        .filter(|_| connected && adapt.show_secondary())
-                                        .map_or(String::new(), |track| format!(" · {track}"))
-                                ),
-                                10.0,
-                                orbit::ink_2(cx),
-                                cx,
-                            )),
-                    )
+                    .when(!loading, |hero| {
+                        hero.child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .gap(px(8.0))
+                                .child(if connected {
+                                    orbit::live_dot(cx)
+                                } else {
+                                    orbit::status_dot(orbit::Tone::Neutral, 8.0, cx)
+                                })
+                                .child(orbit::meta(
+                                    &format!(
+                                        "{} · {status}{}",
+                                        now.format("%d/%m"),
+                                        self.studio
+                                            .read(cx)
+                                            .home_track()
+                                            .filter(|_| connected && adapt.show_secondary())
+                                            .map_or(String::new(), |track| format!(" · {track}"))
+                                    ),
+                                    10.0,
+                                    orbit::ink_2(cx),
+                                    cx,
+                                )),
+                        )
+                    })
                     .child(
                         orbit::text(
                             greeting.clone(),
@@ -761,7 +869,7 @@ impl Hub {
                             56.0
                         })),
                     )
-                    .when(adapt.show_optional(), |hero| {
+                    .when(!loading && adapt.show_optional(), |hero| {
                         hero.child(orbit::text(
                             if empty {
                                 "Crea un perfil para abrir tus aplicaciones en orden."
@@ -1023,9 +1131,19 @@ impl Hub {
                     ))
                 },
             );
+        let favorite = match state {
+            HomeState::Empty => Self::home_first_steps(cx),
+            HomeState::Loading => orbit::neo_card(cx)
+                .w(px(360.0))
+                .flex_none()
+                .p(px(20.0))
+                .gap(px(12.0))
+                .children((0..4).map(|_| orbit::skeleton(1.0, 18.0, cx))),
+            _ => favorite,
+        };
         let hero = self.home_hero(
             adapt,
-            empty,
+            state,
             connected,
             launch.into_any_element(),
             studio.into_any_element(),
@@ -1044,7 +1162,11 @@ impl Hub {
                 cx,
             )
         });
-        let overlay = Self::home_overlay(preview, &widget_labels, connected, adapt, cx);
+        let overlay = if state == HomeState::Empty && !connected {
+            Self::home_overlay_onboarding(cx)
+        } else {
+            Self::home_overlay(preview, &widget_labels, connected, adapt, cx)
+        };
 
         let activity = self.home_activity(cx);
         let center = div()
@@ -1180,6 +1302,36 @@ impl Hub {
                     )
                     .child(orbit::pill("Beta", orbit::Tone::Neutral, cx)),
             );
+        let status_body = if empty && !connected {
+            div()
+                .min_h(px(status_height - 63.0))
+                .flex_none()
+                .flex()
+                .flex_col()
+                .items_center()
+                .gap(px(12.0))
+                .pt(px(24.0))
+                .child(orbit::icon("v-helmet", 32.0, orbit::ink_3(cx)))
+                .child(orbit::text(
+                    "Esperando a Le Mans Ultimate",
+                    14.0,
+                    600,
+                    orbit::ink(cx),
+                    cx,
+                ))
+                .child(
+                    orbit::text(
+                        "Abre LMU y entra en pista para recibir telemetría.",
+                        13.0,
+                        400,
+                        orbit::ink_3(cx),
+                        cx,
+                    )
+                    .text_center(),
+                )
+        } else {
+            status_body
+        };
         let mut templates = div().flex_1().min_h_0().flex().flex_col().gap(px(gap));
         // Alto B/XS: solo la primera fila de plantillas (`.op-b`).
         for row in 0..if adapt.show_optional() { 2 } else { 1 } {

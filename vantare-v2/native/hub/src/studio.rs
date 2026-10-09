@@ -477,6 +477,13 @@ impl Drag {
         {
             return false;
         }
+        // El umbral está en píxeles de pantalla: seleccionar con ruido de ratón
+        // no debe mover el documento, ni siquiera con el lienzo reducido.
+        if self.preview == self.origin
+            && (pointer.0 - self.pointer.0).hypot(pointer.1 - self.pointer.1) < 3.0
+        {
+            return false;
+        }
         self.preview = (
             (self.origin.0 + (pointer.0 - self.pointer.0) / self.scale)
                 .clamp(-100_000.0, 100_000.0),
@@ -552,7 +559,8 @@ impl CanvasFrame {
             .w(px(dimensions.0 * self.preview_scale * self.content_scale))
             .h(px(dimensions.1 * self.preview_scale * self.content_scale))
             .when(self.selected, |s| {
-                s.border_1().border_color(rgb(orbit::carmine(cx)))
+                s.child(div().absolute().top_0().left_0().size_full()
+                    .border_1().border_color(rgb(orbit::carmine(cx))))
             })
             .on_mouse_down(
                 MouseButton::Left,
@@ -3156,7 +3164,7 @@ mod tests {
             preview: (20.0, 20.0),
             scale: 1.0,
         };
-        assert!(drag.update((100.0, 200.0)));
+        assert!(!drag.update((100.0, 200.0)));
         assert_eq!(drag.preview, (20.0, 20.0));
         assert!(drag.update((150.0, 260.0)));
         assert_eq!(editor.layout(), &original);
@@ -3173,6 +3181,35 @@ mod tests {
         );
         editor.undo().expect("deshacer");
         assert_eq!(editor.layout(), &original);
+    }
+    #[test]
+    fn click_and_pointer_noise_leave_position_disk_and_history_unchanged() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let original = studio.editor.layout().clone();
+                for scale in [0.25, 0.5, 1.0, 1.5] {
+                    let frame = studio.frames[0].1.clone();
+                    frame.update(cx, |frame, _| {
+                        frame.drag = Some(Drag {
+                            pointer: (100.0, 100.0),
+                            origin: (frame.item.x, frame.item.y),
+                            preview: (frame.item.x, frame.item.y),
+                            scale,
+                        });
+                    });
+                    studio.drag = Some(frame);
+                    studio.finish_drag(gpui::point(px(101.0), px(102.0)), cx);
+                    assert_eq!(studio.editor.layout(), &original);
+                    assert_eq!(Editor::open(file.path.clone()).expect("disco").layout(), &original);
+                }
+                studio.editor.undo().expect("solo deshace añadir");
+                assert!(studio.editor.layout().instances.is_empty());
+            });
+            cx.quit();
+        });
     }
     #[test]
     fn preview_accepts_negative_positions_rejects_invalid_input_and_bounds_coordinates() {

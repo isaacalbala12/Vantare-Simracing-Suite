@@ -121,10 +121,6 @@ const METRICS: &[(&str, &str)] = &[
     ("Circuito", "track"),
     ("Vueltas estimadas", "estimatedLaps"),
 ];
-const CLASSES: &[(&str, &str)] = &[
-    ("Todas las clases", "all-classes"),
-    ("Clase del jugador", "player-class"),
-];
 
 // Solo elimina la repetición del setter; cada fila sigue nombrando su Settings tipado.
 macro_rules! set {
@@ -169,13 +165,6 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     30.0,
                     1.0,
                     set!(Standings.row_count as usize),
-                ),
-                choice(
-                    "Clases",
-                    Tab::Content,
-                    &value.class_scope,
-                    CLASSES,
-                    set!(Standings.class_scope string),
                 ),
                 choice(
                     "Clasificación",

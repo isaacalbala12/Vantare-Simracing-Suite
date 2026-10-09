@@ -244,6 +244,13 @@ impl Settings {
         if settings.classification_mode != "multiclass" {
             settings.classification_mode = "normal".into();
         }
+        if settings.design_system == DesignSystem::Vantare {
+            settings.class_scope = if settings.classification_mode == "multiclass" {
+                "all-classes"
+            } else {
+                "player-class"
+            }.into();
+        }
         if ![0, 2, 4, 6, 8].contains(&settings.window_around) {
             settings.window_around = 4;
         }
@@ -724,6 +731,14 @@ mod tests {
     use super::*;
     use crate::source;
 
+    #[test]
+    fn standard_vantare_is_player_class_and_only_multiclass_shows_all() {
+        let settings = Settings { class_scope: "all-classes".into(), ..Settings::default() };
+        assert_eq!(settings.normalized().class_scope, "player-class");
+        let settings = Settings { classification_mode: "multiclass".into(),
+            class_scope: "player-class".into(), ..Settings::default() };
+        assert_eq!(settings.normalized().class_scope, "all-classes");
+    }
     #[test]
     fn vantare_is_the_default_system_and_paints_its_own_board() {
         let snapshot = vantare_ipc::snapshot_from_json(include_str!(

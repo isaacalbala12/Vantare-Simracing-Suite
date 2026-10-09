@@ -577,6 +577,12 @@ impl Launcher {
         .detach();
     }
 
+    pub(crate) fn completed_launch(&self) -> Option<String> {
+        let profile = self.last_profile.as_ref()?;
+        let (ready, total) = self.profile_progress(&profile.id)?;
+        (total > 0 && ready == total && self.chain.is_none())
+            .then(|| format!("{} · Aplicaciones listas", profile.name))
+    }
     pub fn launch_progress(&self) -> Option<(usize, usize)> {
         if self.chain.is_none() && self.capture != Capture::Running {
             return None;
@@ -615,6 +621,30 @@ impl Launcher {
             })
             .collect::<Vec<_>>()
             .join(" → ")
+    }
+    pub(crate) fn global_hotkey_status(&self, id: &str) -> String {
+        vantare_ipc::launcher::read_status(&self.store.path)
+            .and_then(|status| {
+                status
+                    .profiles
+                    .into_iter()
+                    .find(|profile| profile.profile == id)
+            })
+            .map_or_else(
+                || "Registro no confirmado · abre Vantare desde el instalador".into(),
+                |registration| {
+                    registration.error.unwrap_or_else(|| {
+                        if registration.registered {
+                            "Registrado en Windows".into()
+                        } else {
+                            "Sin registro activo".into()
+                        }
+                    })
+                },
+            )
+    }
+    pub(crate) fn global_hotkey_error(&self) -> Option<&str> {
+        self.resident_error.as_deref()
     }
     pub fn saved_profiles(&self) -> &[Profile] {
         &self.store.document.profiles

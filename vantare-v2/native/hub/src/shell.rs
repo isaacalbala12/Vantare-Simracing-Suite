@@ -34,6 +34,7 @@ mod input;
 pub mod navigation;
 #[path = "settings/mod.rs"]
 mod settings;
+mod shortcuts;
 mod sidebar;
 
 pub struct Options {
@@ -699,12 +700,13 @@ impl Render for Hub {
                 .into_any_element();
         }
         let viewport = window.viewport_size();
-        let adapt = orbit::Adapt::new(
+        let mut adapt = orbit::Adapt::new(
             f32::from(viewport.width),
             f32::from(viewport.height),
             self.shell.sidebar_pref,
             self.shell.column_open,
         );
+        self.general_preferences().density.apply(&mut adapt);
         self.shell.adapt = adapt;
         self.studio.update(cx, |view, cx| view.set_adapt(adapt, cx));
         self.calendar
@@ -890,11 +892,24 @@ fn wire_sections(
     cx: &mut Context<Hub>,
 ) {
     cx.observe(launcher, |this, launcher, cx| {
-        if let Some(error) = &launcher.read(cx).error {
+        if this.general_preferences().launcher
+            && let Some(error) = &launcher.read(cx).error
+        {
             let error = error.clone();
             this.notifications
                 .update(cx, |center, cx| center.report("hub.launcher", error, cx));
         }
+        let running = launcher.read(cx).launch_progress().is_some();
+        if this.settings.launcher_running
+            && !running
+            && this.general_preferences().launcher
+            && let Some(message) = launcher.read(cx).completed_launch()
+        {
+            this.notifications
+                .update(cx, |center, cx| center.launch_ready(message.clone(), cx));
+            this.notify_system("vantare.launcher", "Launcher", &message, cx);
+        }
+        this.settings.launcher_running = running;
         // La columna de contexto del Launcher vive en el shell: repinta con él.
         cx.notify();
     })
@@ -1303,6 +1318,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
         .with_assets(assets::Icons)
         .run(move |cx: &mut App| {
             cx.set_global(orbit::theme::Theme::default());
+            cx.set_app_identity("VantareNative.Hub", "Vantare");
             if let Err(error) = vantare_ui::efficiency::text::register_fonts(cx)
                 .and_then(|()| orbit::design::register_fonts(cx))
             {
@@ -1316,7 +1332,12 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 gpui::size(gpui::px(1280.0), gpui::px(800.0)),
                 |(width, height)| gpui::size(gpui::px(width as f32), gpui::px(height as f32)),
             );
+            let minimized = options.capture.is_none()
+                && options.demo.is_none()
+                && settings::general::Store::load(&options.data_dir)
+                    .is_ok_and(|store| store.value.minimized);
             let window_options = WindowOptions {
+                focus: !minimized,
                 window_min_size: Some(minimum),
                 kind: if options.capture.is_some() {
                     gpui::WindowKind::PopUp
@@ -1339,6 +1360,9 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                     hub.settings_zoom_restore(window);
                     hub
                 });
+                if minimized {
+                    window.minimize_window();
+                }
                 let closing = hub.downgrade();
                 window.on_window_should_close(cx, move |_, cx| {
                     closing.update(cx, Hub::can_close).unwrap_or(true)
@@ -1358,7 +1382,9 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
                 return;
             }
             quit_when_done(cx, options.controlled, stop);
-            cx.activate(true);
+            if !minimized {
+                cx.activate(true);
+            }
         });
     match result.borrow_mut().take() {
         Some(error) => Err(error),

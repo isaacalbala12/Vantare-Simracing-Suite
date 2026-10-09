@@ -42,12 +42,26 @@ impl Editor {
     pub fn layout(&self) -> &Layout {
         self.document.layout()
     }
+    pub(crate) fn persist(&mut self) -> Result<(), String> {
+        self.document
+            .save(&self.layout().clone())
+            .map_err(|error| error.to_string())
+    }
     pub fn set_preferences(
         &mut self,
         preferences: vantare_domain::format::Preferences,
     ) -> Result<(), String> {
         self.change(|layout| {
             layout.preferences = preferences;
+            Ok(())
+        })
+    }
+    pub(crate) fn set_performance(
+        &mut self,
+        preferences: vantare_ui::performance::Preferences,
+    ) -> Result<(), String> {
+        self.change(|layout| {
+            layout.performance = preferences;
             Ok(())
         })
     }
@@ -59,12 +73,16 @@ impl Editor {
     }
     pub fn duplicate(&mut self) -> Result<(), String> {
         let mut item = self.selected().cloned().ok_or("selecciona una instancia")?;
+        let frequency = self.layout().performance.widgets.get(&item.id).copied();
         let id = self.next_id()?;
         item.id.clone_from(&id);
         item.x += 20.0;
         item.y += 20.0;
         self.change(|layout| {
             layout.instances.push(item);
+            if let Some(hz) = frequency {
+                layout.performance.widgets.insert(id.clone(), hz);
+            }
             Ok(())
         })?;
         self.selected = Some(id);
@@ -172,6 +190,7 @@ impl Editor {
         let id = self.selected.clone().ok_or("selecciona una instancia")?;
         self.change(|layout| {
             layout.instances.retain(|item| item.id != id);
+            layout.performance.widgets.remove(&id);
             Ok(())
         })
     }
@@ -294,6 +313,85 @@ pub(crate) mod tests {
         );
     }
 
+    #[test]
+    fn performance_is_one_document_with_overlays_history_restart_and_conflict_protection() {
+        use vantare_ui::performance::{Level, Preferences};
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("Hub");
+        editor.add(Kind::Standings).expect("widget");
+        let id = editor.selected.clone().expect("selección");
+        let mut prefs = Preferences {
+            level: Level::Minimum,
+            ..Default::default()
+        };
+        prefs.widgets.insert(id.clone(), 4);
+        editor.set_performance(prefs.clone()).expect("frecuencia");
+        assert_eq!(
+            Document::open(file.path.clone())
+                .expect("overlays")
+                .layout()
+                .performance,
+            prefs
+        );
+        assert_eq!(
+            Editor::open(file.path.clone())
+                .expect("reinicio")
+                .layout()
+                .performance,
+            prefs
+        );
+        editor.undo().expect("deshacer");
+        assert_eq!(editor.layout().performance, Preferences::default());
+        editor.redo().expect("rehacer");
+        assert_eq!(editor.layout().performance, prefs);
+        let mut invalid = prefs.clone();
+        invalid.widgets.insert(id, 1000);
+        assert!(editor.set_performance(invalid).is_err());
+        assert_eq!(editor.layout().performance, prefs);
+        std::fs::write(&file.path, b"{}").expect("edición externa");
+        assert!(editor.set_performance(Preferences::default()).is_err());
+        assert_eq!(std::fs::read(&file.path).expect("leer externo"), b"{}");
+    }
+    #[test]
+    fn explicit_save_preserves_history_and_rejects_external_edits() {
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("Hub");
+        editor.add(Kind::Standings).expect("widget");
+        let before = editor.layout().clone();
+        editor.persist().expect("Ctrl S");
+        assert_eq!(editor.layout(), &before);
+        editor.undo().expect("guardar no añade historial");
+        assert!(editor.layout().instances.is_empty());
+        editor.redo().expect("rehacer");
+        std::fs::write(&file.path, b"{}").expect("edición externa");
+        assert!(editor.persist().is_err());
+        assert_eq!(editor.layout(), &before);
+        assert_eq!(std::fs::read(&file.path).expect("leer externo"), b"{}");
+    }
+    #[test]
+    fn duplicate_keeps_widget_frequency_and_delete_undo_restores_it() {
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("Hub");
+        editor.add(Kind::Standings).expect("widget");
+        let original = editor.selected.clone().expect("selección");
+        let mut prefs = editor.layout().performance.clone();
+        prefs.widgets.insert(original.clone(), 4);
+        editor.set_performance(prefs).expect("4 Hz");
+        editor.duplicate().expect("duplicar");
+        let duplicate = editor.selected.clone().expect("duplicado");
+        assert_eq!(
+            editor.layout().performance.widgets.get(&duplicate),
+            Some(&4)
+        );
+        editor.remove().expect("quitar duplicado");
+        assert!(!editor.layout().performance.widgets.contains_key(&duplicate));
+        assert_eq!(editor.layout().performance.widgets.get(&original), Some(&4));
+        editor.undo().expect("restaurar duplicado");
+        assert_eq!(
+            editor.layout().performance.widgets.get(&duplicate),
+            Some(&4)
+        );
+    }
     #[test]
     fn settings_use_the_shared_document_and_survive_edits_undo_and_restart() {
         use vantare_domain::format::{Language, Preferences, Units};

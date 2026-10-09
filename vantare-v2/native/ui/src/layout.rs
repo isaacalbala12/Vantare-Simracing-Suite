@@ -23,6 +23,11 @@ pub struct Layout {
     /// Los documentos v1 anteriores conservan ES/métrico por defecto.
     #[serde(default, with = "preferences")]
     pub preferences: Preferences,
+    #[serde(
+        default,
+        skip_serializing_if = "crate::performance::Preferences::is_default"
+    )]
+    pub performance: crate::performance::Preferences,
 }
 
 impl Default for Layout {
@@ -31,6 +36,7 @@ impl Default for Layout {
             version: VERSION,
             instances: Vec::new(),
             preferences: Preferences::default(),
+            performance: crate::performance::Preferences::default(),
         }
     }
 }
@@ -126,6 +132,9 @@ impl Layout {
     pub fn normalized(mut self) -> Result<Self, Error> {
         if self.version != VERSION {
             return Err(Error::Invalid("versión de layout desconocida"));
+        }
+        if !self.performance.valid() {
+            return Err(Error::Invalid("frecuencia de widget no válida"));
         }
         let mut ids = HashSet::new();
         for instance in &mut self.instances {

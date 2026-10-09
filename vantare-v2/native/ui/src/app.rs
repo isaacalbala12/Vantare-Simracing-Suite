@@ -627,6 +627,7 @@ fn window_action(existing: bool, occupied: bool) -> WindowAction {
 }
 
 struct LiveScreens {
+    cadences: HashMap<String, crate::performance::Cadence>,
     usage_widgets: Option<Vec<String>>,
     /// Último layout aplicado y su ocultación desde la bandeja.
     layout: crate::layout::Layout,
@@ -672,6 +673,7 @@ fn reconcile_widgets<T>(
 impl LiveScreens {
     /// «Mostrar/Ocultar overlays» de la bandeja: vacía las pantallas sin
     /// tocar el documento ni el estado de cada widget.
+    #[cfg(windows)]
     fn toggle(&mut self, cx: &mut App) {
         self.hidden = !self.hidden;
         let layout = self.layout.clone();
@@ -679,7 +681,12 @@ impl LiveScreens {
     }
 
     fn apply(&mut self, layout: &crate::layout::Layout, cx: &mut App) {
+        if self.layout.performance != layout.performance {
+            self.cadences.clear();
+        }
         self.layout.clone_from(layout);
+        self.cadences
+            .retain(|id, _| layout.instances.iter().any(|item| &item.id == id));
         let mut widget_types: Vec<_> = layout
             .instances
             .iter()
@@ -830,10 +837,18 @@ impl LiveScreens {
         }
         let snapshot = photo.snapshot;
         self.last_demand = photo.demand;
-        for widget in self.widgets.values().filter(|widget| widget.visible) {
-            widget
-                .view
-                .update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
+        let now = Instant::now();
+        for (id, widget) in self.widgets.iter().filter(|(_, widget)| widget.visible) {
+            let hz = self.layout.performance.hz(id, widget.settings.kind());
+            if self.cadences.entry(id.clone()).or_default().due(
+                hz,
+                (snapshot.epoch, snapshot.state.source_state),
+                now,
+            ) {
+                widget
+                    .view
+                    .update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
+            }
         }
         self.last = Some(snapshot);
     }
@@ -915,6 +930,7 @@ fn run_layout_feed<T: Send + 'static>(
         #[cfg(feature = "paint-stats")]
         crate::stats::report();
         let screens = Rc::new(RefCell::new(LiveScreens {
+            cadences: HashMap::new(),
             usage_widgets: None,
             layout: crate::layout::Layout::default(),
             hidden: start_hidden,

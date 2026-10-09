@@ -532,6 +532,12 @@ impl Notifications {
     pub fn report(&mut self, key: &str, cause: String, cx: &mut Context<Self>) {
         self.publish_local(Record::local_error(key, cause), cx);
     }
+    pub(crate) fn launch_ready(&mut self, message: String, cx: &mut Context<Self>) {
+        let mut record = Record::local_error("launcher.ready", message);
+        record.severity = Severity::Info;
+        record.title_key = "Aplicaciones listas".into();
+        self.publish_local(record, cx);
+    }
     pub fn update_ready(&mut self, message: String, cx: &mut Context<Self>) {
         let mut record = Record::local_error("updater.ready", message);
         record.source = Source::Updater;

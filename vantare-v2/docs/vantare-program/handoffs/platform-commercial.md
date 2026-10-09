@@ -2068,3 +2068,48 @@ warning heredado de Análisis; no se rebaja el gate canónico ni se toca esa ár
 Evidencia/manual C:/tmp/feedback-0910/calroad-verificacion.md.
 Publicación Supabase, token/fuente ClickUp reales, lector Go compatible con later,
 pgTAP y avisos entregados siguen pendientes. Sin push/PR/merge/release/producción.
+
+### #1496 · feedback 9-oct · Ajustes en entrega aislada
+
+Rama `vantareapp/isa-1496-fb-ajustes`, base de integración `e55a43b3`.
+Atajos locales y estado global real del residente `b53fb397`; General persistente,
+Run exclusivo del Hub, minimización y toasts `74970cbb`; nivel y frecuencia por
+widget en el único layout con historial `7e00e350`. Sin duplicar renderer,
+adquisición, IPC, permisos ni dependencias. El registro global y su edición se
+reutilizan desde los perfiles del Launcher, con conflictos visibles.
+Se retiran los controles y tarjetas sin implementación de Ajustes; Actualizaciones,
+Privacidad y Diagnóstico conservan sus acciones reales. El idioma completo del
+Hub y el modo Automático quedan pendientes y retirados del selector: recomendación
+separar i18n completo y política adaptativa medida. No se afirma ahorro de CPU/FPS.
+Un layout con `performance` puede ser rechazado por binarios anteriores; conservar
+`.bak` antes de un rollback. `plan.md` sigue ausente en esta base y no se inventa.
+Validación final y recorridos: `C:/tmp/feedback-0910/evidencia-ajustes.md`;
+informe de hasta 12 líneas: `C:/tmp/feedback-0910/informe-ajustes.md`.
+Continuación Mac terminada para revisión Claude: General `fd2f95db`, Studio
+`dce4b5ea`, tarjetas/tabla R10.10 `2d07d5e8`, foco tras Ctrl L/paneles `3399fc64`,
+raíz privada de QA multiplataforma `bd2d8a6a` y cierre de subpáginas `f6ef6e07`.
+WIP `a058603b` revisado y completado sin rehacer commits Windows. Notion
+[VAN-781](https://app.notion.com/p/3f4e51695c6581118500d3b95b6fac6f), proyecto
+Plataforma y roadmap; GitHub #1496 es solo el puente técnico, no un nuevo VAN/ISA.
+
+Mac arm64: formato, build Hub `prueba`, Clippy de los tres crates modificados
+con `--no-deps --all-targets -D warnings` y tests focales PASS. UI lib serial
+181 PASS/2 ignorados. Suites completas Hub/Services/UI fallan en casos ajenos al
+diff: storage ausente, GPUI fuera del hilo principal, rutas Windows, enlace de
+importación y PNG de screenshot. Clippy completo falla en profiling heredado.
+QA visual real GPUI en shell de captura con datos aislados: 13 capturas,
+persistencia de densidad/nivel/1 Hz/consentimiento, atajos, Personalizado,
+historial y diagnóstico. Debug aborta por hover duplicado de Orbit heredado;
+el perfil `prueba` existente permite el recorrido. No se declara telemetría,
+rendimiento medido ni sesión/licencia verificados por este banco.
+
+Siguiente paso: Claude recogerá la rama local y revisará diff y gates Windows,
+Run, registro/conflictos con juego, toasts, minimización instalada y actualizador
+beta; identidad/icono/NSIS también sin verificar aquí. Idioma Hub completo,
+Automático y globales de overlays quedan retirados y pendientes explícitos.
+Evidencia Mac: `/Users/isaacalbala/evidence/fb-ajustes/`; `informe.md` (≤12 líneas)
+y `evidencia.md`, comandos/resultados y capturas. `fetch origin nightly` falla
+por referencia remota ausente: la continuación conserva la base autorizada.
+Sin push, PR, merge, promoción, instalación real, release, deploy ni cambios
+comerciales. Seguimiento Notion se actualiza y relee al entregar; no hay merge
+que verificar en este encargo.

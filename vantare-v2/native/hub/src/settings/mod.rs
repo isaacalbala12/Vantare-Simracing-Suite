@@ -10,6 +10,7 @@ use std::{path::PathBuf, time::Instant};
 use vantare_domain::format::{Language, Preferences, Units};
 
 pub(super) mod appearance;
+pub(in crate::shell) mod general;
 mod privacy;
 mod releases;
 #[cfg(test)]
@@ -17,6 +18,7 @@ mod tests;
 mod text_rendering;
 mod updates;
 mod view;
+mod windows;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum Page {
@@ -59,16 +61,16 @@ impl Page {
         match self {
             Self::Application => "Interfaz y sistema",
             Self::Appearance => "Colores, contraste y fuentes",
-            Self::Performance => "Así funcionarán los niveles",
+            Self::Performance => "Nivel y frecuencia de tus widgets",
             Self::Updates => "Versión, canal y novedades",
             Self::Hotkeys => "Combinaciones globales",
-            Self::Privacy => "Fallos, uso y contribución",
+            Self::Privacy => "Fallos y uso anónimo",
             Self::Diagnostics => "Fuentes, datos y registros",
         }
     }
     fn title(self) -> &'static str {
         if self == Self::Privacy {
-            "Privacidad y contribución"
+            "Privacidad"
         } else {
             self.label()
         }
@@ -77,9 +79,9 @@ impl Page {
         match self {
             Self::Application => "Interfaz, sistema y comportamiento de la ventana.",
             Self::Appearance => "Personaliza colores, contraste y tipografía de Vantare.",
-            Self::Performance => "Así funcionarán los niveles",
+            Self::Performance => "Nivel y frecuencia de tus widgets",
             Self::Updates => "Versión instalada, canal y novedades.",
-            Self::Hotkeys => "Atajos del Hub y combinaciones en pista disponibles próximamente.",
+            Self::Hotkeys => "Atajos del Hub y combinaciones globales de perfiles.",
             Self::Privacy => "Elige qué informes y datos de uso puede enviar Vantare.",
             Self::Diagnostics => "Estado de las fuentes, datos locales y registros.",
         }
@@ -90,20 +92,18 @@ impl Page {
                 "aplicación zoom idioma densidad inicio windows minimizado avisos notificaciones widgets unidades métrico imperial"
             }
             Self::Appearance => {
-                "paleta grafito carmín harness noche le mans piedra cálida contraste opacidad cristal fuentes animaciones"
+                "paleta grafito carmín harness noche le mans piedra cálida contraste opacidad cristal fuentes"
             }
             Self::Performance => {
-                "máximo alto equilibrado ahorro mínimo personalizado automático cadencia widgets hz coste"
+                "máximo alto equilibrado ahorro mínimo personalizado cadencia widgets hz frecuencia"
             }
             Self::Updates => "versión instalada canal novedades stable testers nightly rollback",
             Self::Hotkeys => {
-                "toggle overlay siguiente perfil anterior cambiar referencia delta combinaciones"
+                "perfil launcher globales ctrl guardar deshacer rehacer duplicar borrar flechas combinaciones"
             }
-            Self::Privacy => {
-                "fallos uso diagnóstico posthog consentimiento contribución cola strategy envíos borrado remoto"
-            }
+            Self::Privacy => "fallos uso diagnóstico posthog consentimiento envíos política",
             Self::Diagnostics => {
-                "telemetry core overlay cpu memoria datos registros fuentes eventos informe"
+                "telemetry core overlay datos registros fuentes eventos errores informe"
             }
         };
         search_text(&format!("{} {} {titles}", self.label(), self.subtitle()))
@@ -112,6 +112,14 @@ impl Page {
 }
 
 pub(super) struct State {
+    general: Result<general::Store, String>,
+    general_focus: [FocusHandle; 6],
+    global_hotkeys_focus: FocusHandle,
+    zoom_focus: [FocusHandle; 3],
+    update_focus: FocusHandle,
+    custom_performance_focus: FocusHandle,
+    performance_focus: [FocusHandle; 5],
+    pub(in crate::shell) launcher_running: bool,
     privacy: Result<privacy::Store, String>,
     privacy_focus: [FocusHandle; 2],
     privacy_policy_focus: FocusHandle,
@@ -129,7 +137,6 @@ pub(super) struct State {
     query: Entity<Input>,
     language: Entity<Choice>,
     units: Entity<Choice>,
-    hub_language: Entity<Choice>,
     density: Entity<Choice>,
     font: Entity<Choice>,
     mono: Entity<Choice>,
@@ -242,7 +249,7 @@ impl State {
         let event_filter = choice(
             "Filtrar eventos",
             ChoiceKind::Segmented,
-            &["Todos", "Info", "Aviso", "Error"],
+            &["Todos", "Error"],
             Some(0),
             true,
             window,
@@ -272,7 +279,19 @@ impl State {
         let query = cx.new(|cx| Input::new(String::new(), "Buscar ajustes…", cx));
         cx.observe(&query, |_, _, cx| cx.notify()).detach();
         let (event_filter, event_query) = Self::diagnostic_controls(window, cx);
+        let general = general::Store::load(&data);
+        let prefs = general
+            .as_ref()
+            .map_or_else(|_| general::Preferences::default(), |store| store.value);
         let state = Self {
+            general,
+            general_focus: std::array::from_fn(|_| cx.focus_handle()),
+            launcher_running: false,
+            global_hotkeys_focus: cx.focus_handle(),
+            zoom_focus: std::array::from_fn(|_| cx.focus_handle()),
+            update_focus: cx.focus_handle(),
+            custom_performance_focus: cx.focus_handle(),
+            performance_focus: std::array::from_fn(|_| cx.focus_handle()),
             privacy: vantare_services::diagnostics::data_root()
                 .map_err(|error| error.to_string())
                 .and_then(|root| privacy::Store::load(&root)),
@@ -287,21 +306,12 @@ impl State {
             query,
             language,
             units,
-            hub_language: choice(
-                "Idioma",
-                ChoiceKind::Dropdown,
-                &["Español", "English"],
-                Some(0),
-                false,
-                window,
-                cx,
-            ),
             density: choice(
                 "Densidad",
                 ChoiceKind::Dropdown,
                 &["Compacta", "Equilibrada", "Cómoda"],
-                Some(1),
-                false,
+                Some(prefs.density as usize),
+                true,
                 window,
                 cx,
             ),
@@ -340,6 +350,7 @@ impl State {
             beta_checked: Instant::now(),
         };
         appearance::wire(&state, window, cx);
+        general::wire(&state, cx);
         state
     }
 }
@@ -348,7 +359,7 @@ fn panel_height(viewport_height: f32) -> f32 {
     (viewport_height - 160.0).max(0.0)
 }
 fn event_matches(error: &SectionError, filter: usize, query: &str) -> bool {
-    matches!(filter, 0 | 3)
+    matches!(filter, 0 | 1)
         && search_text(&format!(
             "{} {:?} {}",
             error.module.label(),
@@ -394,6 +405,17 @@ fn search_text(value: &str) -> String {
         .collect()
 }
 impl Hub {
+    fn settings_performance_level(
+        &mut self,
+        level: vantare_ui::performance::Level,
+        cx: &mut Context<Self>,
+    ) {
+        self.settings.status = self
+            .studio
+            .update(cx, |studio, cx| studio.set_performance_level(level, cx))
+            .err();
+        cx.notify();
+    }
     fn clear_event_filters(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.settings.event_filter.update(cx, |filter, cx| {
             filter.state.selected = Some(0);
@@ -416,6 +438,15 @@ impl Hub {
         }
     }
 
+    fn settings_restart(&mut self, cx: &mut Context<Self>) {
+        match updates::request_restart() {
+            Ok(()) => self.close(cx),
+            Err(error) => {
+                self.settings.status = Some(error);
+                cx.notify();
+            }
+        }
+    }
     fn settings_action(&mut self, action: Action, cx: &mut Context<Self>) {
         match action {
             Action::PrepareDiagnostic => self.prepare_settings_diagnostic(cx),
@@ -524,10 +555,12 @@ impl Hub {
         if status != self.settings.beta_status {
             if let Some(status) = &status
                 && status.state == "ready"
+                && self.general_preferences().updates
             {
                 self.notifications.update(cx, |center, cx| {
                     center.update_ready(status.message.clone(), cx);
                 });
+                self.notify_system("vantare.update", "Actualización lista", &status.message, cx);
             }
             self.settings.beta_status = status;
             cx.notify();

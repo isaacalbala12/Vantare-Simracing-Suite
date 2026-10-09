@@ -50,32 +50,6 @@ fn font(family: impl Into<gpui::SharedString>) -> gpui::Font {
     }
 }
 
-fn paragraph(content: &str, size: f32, weight: u16, color: u32, cx: &gpui::App) -> Div {
-    div()
-        .text_size(px(size))
-        .line_height(px(size * 1.5))
-        .child(Paragraph {
-            text: content.to_owned().into(),
-            runs: vec![gpui::TextRun {
-                len: content.len(),
-                font: gpui::Font {
-                    weight: if cx.global::<orbit::theme::Theme>().interface_font
-                        == orbit::theme::InterfaceFont::Inter
-                    {
-                        gpui::FontWeight::NORMAL
-                    } else {
-                        gpui::FontWeight(f32::from(weight))
-                    },
-                    ..font(orbit::sans_family(weight, cx))
-                },
-                color: rgb(color).into(),
-                background_color: None,
-                underline: None,
-                strikethrough: None,
-            }],
-        })
-}
-
 fn stack() -> Div {
     div()
         .flex()
@@ -151,7 +125,12 @@ fn section_body() -> Div {
 }
 fn section_surface(title: &str, meta: Option<&str>, body: Div, cx: &gpui::App) -> Div {
     let number = match title {
-        "Inicio" | "Temas" | "En el Hub" | "Canal" | "Diagnóstico local" => 2,
+        "Inicio"
+        | "Temas"
+        | "En el Hub"
+        | "Canal"
+        | "Diagnóstico local"
+        | "Qué cambia en cada nivel" => 2,
         "Avisos" | "En Studio" | "Notas de versión" | "Registro observado" => 3,
         "Widgets" | "Movimiento" => 4,
         _ => 1,
@@ -182,9 +161,7 @@ fn section_numbered(
                     .when(
                         matches!(
                             title,
-                            "Notas de versión"
-                                | "Registro observado"
-                                | "Informe de diagnóstico local"
+                            "Notas de versión" | "Registro observado" | "Componentes revisados"
                         ),
                         gpui::StatefulInteractiveElement::overflow_y_scroll,
                     ),
@@ -207,9 +184,6 @@ fn section_note(content: &str, cx: &gpui::App) -> Div {
         .child(section_text(content, 12.0, 400, orbit::ink_3(cx), 18.0, cx))
 }
 
-fn reference_choice(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
-    orbit::pending_select(id, label, label, 210.0, "Próximamente", cx)
-}
 fn reference_primary(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
     orbit::carmine_button(id, label, cx)
 }
@@ -237,7 +211,15 @@ impl Hub {
         .self_start()
         .track_focus(&self.settings.action_focus[focus_index])
         .tab_stop(enabled)
-        .when(!enabled, |button| button.opacity(orbit::DISABLED))
+        .when(!enabled, |button| {
+            button
+                .opacity(orbit::DISABLED)
+                .a11y_synthetic_children(|tree| {
+                    let node = tree.parent_node();
+                    node.set_disabled();
+                    node.clear_actions();
+                })
+        })
         .on_click(cx.listener(move |this, _, window, cx| {
             if enabled {
                 this.settings.action_focus[focus_index].focus(window, cx);
@@ -331,12 +313,16 @@ impl Hub {
             Page::Performance => (
                 "Ahora mismo",
                 "v-gauge",
-                "No hay una medición de CPU, memoria o coste por fotograma disponible. Los niveles automáticos están pendientes.",
+                "El nivel limita la actualización de los widgets. Los cambios de estado y las banderas se aplican inmediatamente.",
             ),
             Page::Hotkeys => (
-                "Botones del volante",
-                "v-wheel",
-                "Próximamente podrás asignar acciones a tu volante.",
+                "Atajos",
+                "v-keys",
+                if cfg!(windows) {
+                    "Edita las combinaciones globales en cada perfil del Launcher. Un conflicto de Windows se muestra como error de registro."
+                } else {
+                    "Los atajos del Hub funcionan con su ventana activa; los de Studio, con el lienzo activo."
+                },
             ),
             Page::Privacy => (
                 "Qué sale de tu equipo",
@@ -344,9 +330,9 @@ impl Hub {
                 "El envío de fallos y uso anónimo depende de tu consentimiento. Los informes de Testing Center solo se envían al confirmarlos.",
             ),
             Page::Updates => (
-                "Historial",
-                "clock",
-                "Próximamente podrás consultar las versiones instaladas anteriormente.",
+                "Instalación",
+                "v-download",
+                "Consulta la versión y el canal instalados en este equipo.",
             ),
             Page::Diagnostics => (
                 "Informe de diagnóstico",
@@ -354,9 +340,9 @@ impl Hub {
                 "Prepara un informe del estado de Vantare, sin contraseñas ni datos de la carrera.",
             ),
             Page::Application => (
-                "Huella en pista",
+                "Preferencias del Hub",
                 "v-gauge",
-                "El consumo de CPU y memoria se mostrará cuando haya una medición disponible.",
+                "Los cambios se guardan en este equipo. Empezar minimizado se aplica en el siguiente arranque.",
             ),
         };
         rail.push(orbit::RailSection::new(
@@ -365,10 +351,36 @@ impl Hub {
             stack()
                 .gap(px(12.0))
                 .child(text(note, 13.0, 400, orbit::ink_2(cx), cx))
+                .when(self.settings.page == Page::Performance, |card| {
+                    let performance = self.studio.read(cx).performance();
+                    card.child(orbit::pill(performance.level.label(), Tone::Accent, cx))
+                        .child(text(
+                            format!(
+                                "{} {} con frecuencia propia",
+                                performance.widgets.len(),
+                                if performance.widgets.len() == 1 {
+                                    "widget"
+                                } else {
+                                    "widgets"
+                                }
+                            ),
+                            12.0,
+                            400,
+                            orbit::ink_2(cx),
+                            cx,
+                        ))
+                })
                 .when(self.settings.page == Page::Appearance, |card| {
                     card.child(
                         orbit::small_button("settings-open-studio", "Abrir Overlay Studio", cx)
                             .self_start()
+                            .track_focus(&self.settings.custom_performance_focus)
+                            .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                                if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                                    hub.navigate(Section::Studio, cx);
+                                    cx.stop_propagation();
+                                }
+                            }))
                             .on_click(
                                 cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)),
                             ),
@@ -376,18 +388,6 @@ impl Hub {
                 }),
         ));
         let sections: &[(&str, &str, &str)] = match self.settings.page {
-            Page::Performance => &[
-                (
-                    "Por perfil",
-                    "v-launch",
-                    "Próximamente podrás elegir un nivel para cada perfil.",
-                ),
-                (
-                    "Últimos 10 minutos",
-                    "clock",
-                    "Próximamente · el historial de consumo aún no está disponible.",
-                ),
-            ],
             Page::Hotkeys => &[
                 (
                     "Antes de cambiar uno",
@@ -412,18 +412,11 @@ impl Hub {
                     "Reinicia Vantare. Si el problema continúa, prepara un informe en Diagnóstico.",
                 ),
             ],
-            Page::Privacy => &[
-                (
-                    "Lo que nunca sale",
-                    "v-lock",
-                    "Tus contraseñas y claves de acceso no se incluyen en los informes de diagnóstico.",
-                ),
-                (
-                    "Lo último que salió",
-                    "clock",
-                    "Próximamente · el historial de envíos aún no está disponible aquí.",
-                ),
-            ],
+            Page::Privacy => &[(
+                "Lo que nunca sale",
+                "v-lock",
+                "Tus contraseñas y claves de acceso no se incluyen en los informes de diagnóstico.",
+            )],
             Page::Diagnostics => &[
                 (
                     "Tu equipo",
@@ -436,7 +429,7 @@ impl Hub {
                     "Si no llegan datos, comprueba que el simulador esté abierto y en pista. Para un fallo repetido, adjunta un informe.",
                 ),
             ],
-            Page::Appearance | Page::Application => &[],
+            Page::Performance | Page::Appearance | Page::Application => &[],
         };
         for (title, icon, note) in sections {
             rail.push(orbit::RailSection::new(
@@ -572,7 +565,7 @@ impl Hub {
                 match self.settings.page {
                     Page::Application => self.settings_application(true, window, cx),
                     Page::Appearance => self.settings_appearance(cx),
-                    Page::Performance => Self::settings_performance(true, cx),
+                    Page::Performance => self.settings_performance(true, cx),
                     Page::Updates => self.settings_updates(cx),
                     Page::Hotkeys => self.settings_hotkeys(cx),
                     Page::Privacy => self.settings_privacy(cx),
@@ -618,6 +611,16 @@ impl Hub {
                     .items_center()
                     .justify_center()
                     .id("settings-zoom-less")
+                    .role(gpui::Role::Button)
+                    .aria_label("Reducir tamaño de la interfaz")
+                    .track_focus(&self.settings.zoom_focus[0])
+                    .tab_index(0)
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            hub.settings_zoom_change(-1, window, cx);
+                            cx.stop_propagation();
+                        }
+                    }))
                     .cursor_pointer()
                     .on_click(
                         cx.listener(|hub, _, window, cx| hub.settings_zoom_change(-1, window, cx)),
@@ -635,6 +638,16 @@ impl Hub {
                     .border_r_1()
                     .border_color(rgba(orbit::line_row(cx)))
                     .id("settings-zoom-reset")
+                    .role(gpui::Role::Button)
+                    .aria_label("Restablecer tamaño de la interfaz")
+                    .track_focus(&self.settings.zoom_focus[1])
+                    .tab_index(0)
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            hub.settings_zoom_change(0, window, cx);
+                            cx.stop_propagation();
+                        }
+                    }))
                     .cursor_pointer()
                     .on_click(
                         cx.listener(|hub, _, window, cx| hub.settings_zoom_change(0, window, cx)),
@@ -654,6 +667,16 @@ impl Hub {
                     .items_center()
                     .justify_center()
                     .id("settings-zoom-more")
+                    .role(gpui::Role::Button)
+                    .aria_label("Aumentar tamaño de la interfaz")
+                    .track_focus(&self.settings.zoom_focus[2])
+                    .tab_index(0)
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            hub.settings_zoom_change(1, window, cx);
+                            cx.stop_propagation();
+                        }
+                    }))
                     .cursor_pointer()
                     .on_click(
                         cx.listener(|hub, _, window, cx| hub.settings_zoom_change(1, window, cx)),
@@ -661,24 +684,134 @@ impl Hub {
                     .child(text("+", 16.0, 700, orbit::ink(cx), cx)),
             )
     }
-    #[allow(clippy::too_many_lines)] // Composición declarativa R4; solo añade Adapt explícito.
-    fn settings_application(&self, _compact: bool, _window: &Window, cx: &Context<Self>) -> Div {
-        let pending = |label| orbit::pill(label, Tone::Neutral, cx);
+    fn general_control(
+        &self,
+        index: usize,
+        toggle: super::general::Toggle,
+        label: &'static str,
+        on: bool,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<Div> {
+        orbit::toggle(
+            [
+                "general-startup",
+                "general-minimized",
+                "general-updates",
+                "general-launcher",
+                "general-toasts",
+            ][index],
+            label,
+            on,
+            self.settings.general.is_ok(),
+            cx,
+        )
+        .track_focus(&self.settings.general_focus[index])
+        .on_click(cx.listener(move |hub, _, _, cx| hub.general_toggle(toggle, cx)))
+        .on_key_down(cx.listener(move |hub, event: &gpui::KeyDownEvent, _, cx| {
+            if matches!(event.keystroke.key.as_str(), "space" | "enter") {
+                hub.general_toggle(toggle, cx);
+                cx.stop_propagation();
+            }
+        }))
+    }
+    #[allow(clippy::too_many_lines)] // Composición de cuatro grupos con controles del kit.
+    fn settings_application(
+        &self,
+        _compact: bool,
+        _window: &Window,
+        cx: &mut Context<Self>,
+    ) -> Div {
+        use super::general::Toggle;
+        let prefs = self.general_preferences();
+        let mut start = section_body();
+        for (index, toggle, label, help, on) in [
+            (
+                0,
+                Toggle::Startup,
+                "Abrir al iniciar Windows",
+                "Se abre al iniciar sesión en Windows",
+                prefs.startup,
+            ),
+            (
+                1,
+                Toggle::Minimized,
+                "Empezar minimizado",
+                "Arranque sin abrir la ventana",
+                prefs.minimized,
+            ),
+        ] {
+            if index == 0 && !cfg!(windows) {
+                continue;
+            }
+            start = start.child(section_row(
+                label,
+                help,
+                self.general_control(index, toggle, label, on, cx),
+                self.shell.adapt,
+                cx,
+            ));
+        }
+        let mut notices = section_body();
+        for (index, toggle, label, help, on) in [
+            (
+                2,
+                Toggle::Updates,
+                "Avisos de actualización",
+                "Cuando hay una versión nueva",
+                prefs.updates,
+            ),
+            (
+                3,
+                Toggle::Launcher,
+                "Avisos del Launcher",
+                "Al terminar de abrir tus aplicaciones",
+                prefs.launcher,
+            ),
+            (
+                4,
+                Toggle::Toasts,
+                "Notificaciones de Windows",
+                "Avisos con el Hub minimizado",
+                prefs.toasts,
+            ),
+        ] {
+            if index == 4 && !cfg!(windows) {
+                continue;
+            }
+            notices = notices.child(section_row(
+                label,
+                help,
+                self.general_control(index, toggle, label, on, cx),
+                self.shell.adapt,
+                cx,
+            ));
+        }
+        if cfg!(windows) && prefs.toasts {
+            notices = notices.child(
+                orbit::small_button("general-test", "Enviar prueba", cx)
+                    .track_focus(&self.settings.general_focus[5])
+                    .on_click(cx.listener(|hub, _, _, cx| hub.test_notification(cx)))
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            hub.test_notification(cx);
+                            cx.stop_propagation();
+                        }
+                    })),
+            );
+        }
         stack()
-            .h_full()
             .gap(px(self.shell.adapt.gap()))
+            .when_some(self.settings.general.as_ref().err(), |body, error| {
+                body.child(section_note(error, cx))
+            })
             .child(section_surface(
                 "Interfaz",
                 None,
                 section_body()
                     .child(section_row(
-                        "Idioma · Próximamente",
-                        "Idioma del Hub · Próximamente",
-                        reference_choice(
-                            "settings-hub-language",
-                            &self.settings.hub_language.read(cx).state.options[0].label,
-                            cx,
-                        ),
+                        "Idioma del Hub",
+                        "Idioma de la interfaz",
+                        orbit::pill("Español", Tone::Neutral, cx),
                         self.shell.adapt,
                         cx,
                     ))
@@ -689,69 +822,17 @@ impl Hub {
                         self.shell.adapt,
                         cx,
                     ))
-                    .when(self.shell.adapt.show_optional(), |body| {
-                        body.child(section_row(
-                            "Densidad",
-                            &format!(
-                                "{} · Próximamente",
-                                self.settings.density.read(cx).state.options[1].label
-                            ),
-                            pending("Próximamente"),
-                            self.shell.adapt,
-                            cx,
-                        ))
-                    }),
-                cx,
-            ))
-            .child(section_surface(
-                "Inicio",
-                None,
-                section_body()
                     .child(section_row(
-                        "Abrir al iniciar Windows",
-                        "Se abre al iniciar sesión en Windows",
-                        pending("Próximamente"),
-                        self.shell.adapt,
-                        cx,
-                    ))
-                    .child(section_row(
-                        "Empezar minimizado",
-                        "Arranque sin abrir la ventana",
-                        pending("Próximamente"),
+                        "Densidad",
+                        "La ventana conserva sus límites de adaptación",
+                        self.settings.density.clone(),
                         self.shell.adapt,
                         cx,
                     )),
                 cx,
             ))
-            .child(section_surface(
-                "Avisos",
-                None,
-                section_body()
-                    .child(section_row(
-                        "Avisos de actualización",
-                        "Cuando hay una versión nueva",
-                        pending("Próximamente"),
-                        self.shell.adapt,
-                        cx,
-                    ))
-                    .child(section_row(
-                        "Avisos del Launcher",
-                        "Al terminar de abrir tus aplicaciones",
-                        pending("Próximamente"),
-                        self.shell.adapt,
-                        cx,
-                    ))
-                    .when(self.shell.adapt.show_optional(), |body| {
-                        body.child(section_row(
-                            "Notificaciones de Windows",
-                            "Avisos con el Hub minimizado",
-                            pending("Próximamente"),
-                            self.shell.adapt,
-                            cx,
-                        ))
-                    }),
-                cx,
-            ))
+            .child(section_surface("Inicio", None, start, cx))
+            .child(section_surface("Avisos", None, notices, cx))
             .child(section_surface(
                 "Widgets",
                 None,
@@ -1004,49 +1085,140 @@ impl Hub {
             }),
         )
     }
-    fn settings_performance(_compact: bool, cx: &mut Context<Self>) -> Div {
-        let mut levels = div().grid().grid_cols(3).w_full().min_w_0().gap(px(10.0));
-        for (index, name) in [
-            "Automático",
-            "Máximo",
-            "Alto",
-            "Equilibrado",
-            "Ahorro",
-            "Mínimo",
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            levels = levels.child(
-                orbit::neo_card(cx)
-                    .p(px(12.0))
-                    .gap(px(8.0))
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .child(orbit::caps(name, 16.0, orbit::ink(cx), cx))
-                            .child(orbit::meta(
-                                &if index == 0 {
-                                    "AUTO".into()
-                                } else {
-                                    index.to_string()
-                                },
-                                11.0,
-                                orbit::skin(cx).accent_bright,
-                                cx,
-                            )),
-                    )
-                    .child(orbit::pill("Próximamente", Tone::Neutral, cx).self_start()),
-            );
+    fn settings_level_card(
+        &self,
+        index: usize,
+        level: vantare_ui::performance::Level,
+        cx: &mut Context<Self>,
+    ) -> gpui::Stateful<Div> {
+        let selected = self.studio.read(cx).performance().level == level;
+        let description = [
+            "Cada foto · tablas a 30 Hz",
+            "Hasta 60 Hz · tablas a 20 Hz",
+            "Hasta 40 Hz · tablas a 15 Hz",
+            "Hasta 30 Hz · tablas a 10 Hz",
+            "Hasta 20 Hz · tablas a 5 Hz",
+        ][index];
+        let mut meter = div().flex().gap(px(4.0)).w_full();
+        for segment in 0..5 {
+            meter = meter.child(div().flex_1().h(px(5.0)).rounded_full().bg(
+                if segment < 5 - index {
+                    rgb(orbit::carmine(cx))
+                } else {
+                    rgb(orbit::surface_1(cx))
+                },
+            ));
         }
-        stack().h_full().child(section_surface("Nivel de rendimiento", Some("La selección nativa aún no está disponible"), levels, cx))
-            .child(orbit::neo_card(cx).p(px(12.0)).gap(px(10.0))
-                .child(orbit::caps("Personalizado", 16.0, orbit::ink(cx), cx))
-                .child(text("La frecuencia por widget pertenece al inspector de Studio. Estará disponible próximamente.", 13.0, 400, orbit::ink_2(cx), cx))
-                .child(orbit::small_button("settings-custom-studio", "Abrir Studio", cx).self_start()
-                    .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)))))
+        orbit::neo_card(cx)
+            .id(("performance-level", index))
+            .role(gpui::Role::Button)
+            .aria_label(level.label())
+            .aria_selected(selected)
+            .aria_description(description)
+            .tab_stop(true)
+            .track_focus(&self.settings.performance_focus[index])
+            .cursor_pointer()
+            .p(px(14.0))
+            .gap(px(9.0))
+            .min_w_0()
+            .when(selected, |card| card.border_color(rgb(orbit::carmine(cx))))
+            .focus_visible(|card| card.border_color(rgb(orbit::carmine(cx))))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .child(text(level.label(), 15.0, 700, orbit::ink(cx), cx))
+                    .child(orbit::meta(
+                        &(index + 1).to_string(),
+                        16.0,
+                        orbit::ink_3(cx),
+                        cx,
+                    )),
+            )
+            .child(text(description, 12.0, 400, orbit::ink_2(cx), cx))
+            .child(meter)
+            .on_click(cx.listener(move |hub, _, _, cx| hub.settings_performance_level(level, cx)))
+            .on_key_down(cx.listener(move |hub, event: &gpui::KeyDownEvent, _, cx| {
+                if !event.is_held && matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                    hub.settings_performance_level(level, cx);
+                    cx.stop_propagation();
+                }
+            }))
+    }
+    fn settings_frequency_table(current: vantare_ui::performance::Level, cx: &gpui::App) -> Div {
+        use vantare_ui::performance::Level;
+        let mut table = div().grid().grid_cols(6).w_full().min_w_0();
+        for (row, label) in ["", "Widgets", "Relative y tablas", "Banderas"]
+            .into_iter()
+            .enumerate()
+        {
+            table = table.child(text(label, 12.0, 600, orbit::ink_2(cx), cx).p(px(8.0)));
+            for level in Level::ALL {
+                let hz = level.hz(if row == 2 {
+                    vantare_ui::Kind::Relative
+                } else {
+                    vantare_ui::Kind::Pedals
+                });
+                let value = match row {
+                    0 => level.label().to_owned(),
+                    3 => "Al instante".to_owned(),
+                    _ if hz == 0 => "Cada foto".to_owned(),
+                    _ => format!("{hz} Hz"),
+                };
+                table = table.child(
+                    text(value, 12.0, 500, orbit::ink(cx), cx)
+                        .min_w_0()
+                        .p(px(8.0))
+                        .text_center()
+                        .when(level == current, |cell| {
+                            cell.bg(rgba((orbit::carmine(cx) << 8) | 0x14))
+                        }),
+                );
+            }
+        }
+        table
+    }
+    fn settings_performance(&self, _compact: bool, cx: &mut Context<Self>) -> Div {
+        let current = self.studio.read(cx).performance().level;
+        let mut levels = div().grid().grid_cols(3).w_full().min_w_0().gap(px(10.0));
+        for (index, level) in vantare_ui::performance::Level::ALL.into_iter().enumerate() {
+            levels = levels.child(self.settings_level_card(index, level, cx));
+        }
+        levels = levels.child(
+            orbit::neo_card(cx)
+                .id("settings-custom-studio")
+                .role(gpui::Role::Button)
+                .aria_label("Personalizado · Abrir Studio")
+                .tab_stop(true)
+                .track_focus(&self.settings.custom_performance_focus)
+                .cursor_pointer()
+                .p(px(14.0))
+                .gap(px(9.0))
+                .min_w_0()
+                .focus_visible(|card| card.border_color(rgb(orbit::carmine(cx))))
+                .child(text("Personalizado", 15.0, 700, orbit::ink(cx), cx))
+                .child(text(
+                    "Cada widget, en el inspector de Studio",
+                    12.0,
+                    400,
+                    orbit::ink_2(cx),
+                    cx,
+                ))
+                .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                    if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                        hub.navigate(Section::Studio, cx);
+                        cx.stop_propagation();
+                    }
+                }))
+                .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx))),
+        );
+        let state = format!("Nivel aplicado: {}", current.label());
+        stack()
+            .child(section_surface("Nivel de rendimiento", Some(&state), levels, cx))
+            .child(section_surface("Qué cambia en cada nivel", None,
+                Self::settings_frequency_table(current, cx), cx))
+            .child(text("Frecuencias máximas de actualización de datos. La fluidez depende también de las fotos recibidas y del monitor.", 12.0, 400, orbit::ink_3(cx), cx))
     }
 
     fn settings_updates(&self, cx: &mut Context<Self>) -> Div {
@@ -1092,7 +1264,7 @@ impl Hub {
         stack().h_full()
             .when_some(beta.filter(|status| status.state != "current"), |surface, status| {
                 surface.child(
-                    Self::settings_beta_notice(status, cx),
+                    self.settings_beta_notice(status, cx),
                 )
             })
             .child(Self::settings_update_hero(
@@ -1109,7 +1281,11 @@ impl Hub {
             })
             .child(div().flex_1().min_h_0().child(Grayscale(news.h_full().into_any_element())))
     }
-    fn settings_beta_notice(status: super::updates::BetaStatus, cx: &mut Context<Self>) -> Div {
+    fn settings_beta_notice(
+        &self,
+        status: super::updates::BetaStatus,
+        cx: &mut Context<Self>,
+    ) -> Div {
         let ready = status.ready_for(crate::version_label());
         section_body()
             .flex_row()
@@ -1125,18 +1301,17 @@ impl Hub {
             .when(ready, |body| {
                 body.child(
                     orbit::carmine_button("beta-restart-now", "Instalar y reiniciar", cx)
+                        .track_focus(&self.settings.update_focus)
                         .tab_stop(true)
                         .aria_description("Aplicar la actualización y volver a abrir Vantare")
                         .cursor_pointer()
-                        .on_click(cx.listener(
-                            |this, _, _, cx| match super::updates::request_restart() {
-                                Ok(()) => this.close(cx),
-                                Err(error) => {
-                                    this.settings.status = Some(error);
-                                    cx.notify();
-                                }
-                            },
-                        )),
+                        .on_click(cx.listener(|this, _, _, cx| this.settings_restart(cx)))
+                        .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+                            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                                this.settings_restart(cx);
+                                cx.stop_propagation();
+                            }
+                        })),
                 )
             })
     }
@@ -1293,12 +1468,8 @@ impl Hub {
                             .items_center()
                             .justify_between()
                             .child(text(name, 15.0, 700, orbit::ink(cx), cx))
-                            .child(if active {
-                                orbit::status_dot(Tone::Success, 7.0, cx).into_any_element()
-                            } else if index > 0 {
-                                orbit::icon("i-lock", 13.0, orbit::ink_3(cx)).into_any_element()
-                            } else {
-                                orbit::icon("down", 14.0, orbit::ink_3(cx)).into_any_element()
+                            .when(active, |row| {
+                                row.child(orbit::status_dot(Tone::Success, 7.0, cx))
                             }),
                     )
                     .child(
@@ -1333,32 +1504,82 @@ impl Hub {
         }
         channels
     }
-    fn settings_hotkeys(&self, cx: &gpui::App) -> Div {
+    fn settings_hotkeys(&self, cx: &mut Context<Self>) -> Div {
         let keys = |items: &[(&str, &str)], help: &str| {
             section_body().children(items.iter().map(|(label, key)| {
                 section_row(label, help, orbit::keycap(*key, cx), self.shell.adapt, cx)
             }))
         };
-        stack().h_full()
-            .child(section_surface("Globales con el juego", Some("Próximamente"),
-                section_body().child(text("Las acciones en pista aún no tienen un registro global nativo. No hay combinaciones activas ni edición de atajos aquí.", 13.0, 400, orbit::ink_2(cx), cx)), cx))
-            .child(section_surface("En el Hub", None, keys(&[
-                ("Lanzar perfil favorito", "Ctrl L"), ("Buscar en Vantare", "Ctrl K"),
-                ("Contraer barra izquierda", "Ctrl B"), ("Contraer barra derecha", "Ctrl Alt B"),
-            ], "Con la ventana del Hub activa"), cx))
-            .child(section_surface("En Studio", None, keys(&[
-                ("Deshacer", "Ctrl Z"), ("Rehacer", "Ctrl Mayús Z / Ctrl Y"),
-            ], "Con el lienzo de Studio activo"), cx))
+        let mut globals = section_body();
+        for profile in self.launcher.read(cx).saved_profiles() {
+            if !profile.hotkey.is_empty() {
+                globals = globals.child(section_row(
+                    &profile.name,
+                    &self.launcher.read(cx).global_hotkey_status(&profile.id),
+                    orbit::keycap(profile.hotkey.clone(), cx),
+                    self.shell.adapt,
+                    cx,
+                ));
+            }
+        }
+        let launcher = self.launcher.read(cx);
+        if let Some(error) = launcher.global_hotkey_error() {
+            globals = globals.child(section_note(error, cx));
+        }
+        globals = globals.child(
+            orbit::small_button("settings-global-edit", "Editar atajos de perfiles", cx)
+                .track_focus(&self.settings.global_hotkeys_focus)
+                .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+                    if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                        hub.navigate(Section::Launcher, cx);
+                        cx.stop_propagation();
+                    }
+                }))
+                .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Launcher, cx))),
+        );
+        stack()
+            .h_full()
+            .when(cfg!(windows), |body| {
+                body.child(section_surface(
+                    "Globales con el juego",
+                    Some("Registro nativo de Windows · editables en cada perfil del Launcher"),
+                    globals,
+                    cx,
+                ))
+            })
+            .child(section_surface(
+                "En el Hub",
+                None,
+                keys(
+                    &[
+                        ("Lanzar perfil favorito", "Ctrl L"),
+                        ("Buscar en Vantare", "Ctrl K"),
+                        ("Contraer barra izquierda", "Ctrl B"),
+                        ("Contraer barra derecha", "Ctrl Alt B"),
+                    ],
+                    "Con la ventana del Hub activa",
+                ),
+                cx,
+            ))
+            .child(section_surface(
+                "En Studio",
+                None,
+                keys(
+                    &[
+                        ("Guardar", "Ctrl S"),
+                        ("Deshacer", "Ctrl Z"),
+                        ("Rehacer", "Ctrl Mayús Z / Ctrl Y"),
+                        ("Duplicar widget", "Ctrl D"),
+                        ("Borrar widget", "Supr"),
+                        ("Mover widget 1 px / 8 px", "Flechas / Mayús flechas"),
+                    ],
+                    "Con el lienzo de Studio activo",
+                ),
+                cx,
+            ))
     }
     fn settings_privacy(&self, cx: &mut Context<Self>) -> Div {
-        stack()
-            .child(self.settings_privacy_diagnostics(cx).flex_none())
-            .when(self.shell.access.lock(Section::Strategy).is_none(), |page| {
-                page.child(section_numbered(2, "Contribución de estrategia", None,
-                    section_body().gap(px(12.0))
-                        .child(paragraph("Compartir resúmenes de carrera, consultar los envíos y solicitar su borrado estará disponible próximamente.", 14.0, 400, orbit::ink_2(cx), cx))
-                        .child(orbit::pill("Próximamente", Tone::Neutral, cx).self_start()), cx).flex_none())
-            })
+        stack().child(self.settings_privacy_diagnostics(cx).flex_none())
     }
     fn settings_privacy_diagnostics(&self, cx: &mut Context<Self>) -> Div {
         let mut body = section_body();
@@ -1450,14 +1671,27 @@ impl Hub {
                 ]
             })
             .collect();
-        let mut events = section_body()
-            .child(self.settings.event_filter.clone())
-            .child(self.settings.event_query.clone())
-            .child(
-                orbit::button("settings-events-clear", "Limpiar filtros", cx).on_click(
-                    cx.listener(|this, _, window, cx| this.clear_event_filters(window, cx)),
-                ),
-            );
+        let mut events =
+            section_body()
+                .child(self.settings.event_filter.clone())
+                .child(
+                    div()
+                        .relative()
+                        .child(self.settings.event_query.clone())
+                        .when(
+                            self.settings.event_query.read(cx).value.is_empty(),
+                            |search| {
+                                search.child(div().absolute().left(px(13.0)).top(px(10.0)).child(
+                                    text("Buscar eventos…", 14.0, 400, orbit::ink_3(cx), cx),
+                                ))
+                            },
+                        ),
+                )
+                .child(
+                    orbit::button("settings-events-clear", "Limpiar filtros", cx).on_click(
+                        cx.listener(|this, _, window, cx| this.clear_event_filters(window, cx)),
+                    ),
+                );
         if rows.is_empty() {
             events = events.child(section_note(
                 super::event_empty_message(observed.errors.len()),
@@ -1488,23 +1722,17 @@ impl Hub {
         .min_h_0()
     }
     fn settings_statistics(connected: bool, cx: &gpui::App) -> Div {
-        let mut stats = div().grid().grid_cols(3).w_full().gap(px(10.0));
-        for (label, value) in [
-            (
-                "Telemetría",
+        let stats = orbit::neo_card(cx)
+            .p(px(12.0))
+            .gap(px(6.0))
+            .child(orbit::caps("Telemetría", 14.0, orbit::ink_2(cx), cx))
+            .child(text(
                 if connected { "Conectada" } else { "Esperando" },
-            ),
-            ("Overlays", "Sin observación"),
-            ("CPU / memoria", "—"),
-        ] {
-            stats = stats.child(
-                orbit::neo_card(cx)
-                    .p(px(12.0))
-                    .gap(px(6.0))
-                    .child(orbit::caps(label, 14.0, orbit::ink_2(cx), cx))
-                    .child(text(value, 16.0, 600, orbit::ink(cx), cx)),
-            );
-        }
+                16.0,
+                600,
+                orbit::ink(cx),
+                cx,
+            ));
         orbit::settings_group(1, "Estado de Vantare", stats, cx)
     }
     fn settings_diagnostics(&self, _compact: bool, cx: &mut Context<Self>) -> Div {
@@ -1590,12 +1818,7 @@ impl Hub {
                 cx,
             ));
         }
-        report.push(section_surface(
-            "Informe de diagnóstico local",
-            None,
-            body,
-            cx,
-        ));
+        report.push(section_surface("Componentes revisados", None, body, cx));
         match serde_json::to_string_pretty(diagnostic) {
             Ok(_) => {
                 let copy = self.settings_button(

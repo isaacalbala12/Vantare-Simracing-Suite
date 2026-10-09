@@ -227,6 +227,7 @@ pub fn clock() -> Option<u64> {
         .and_then(|value| u64::try_from(value.as_nanos()).ok())
 }
 #[cfg(not(windows))]
+#[allow(clippy::unnecessary_wraps)] // Misma firma que la versión Windows, que puede fallar.
 pub fn frequency() -> Option<u64> {
     Some(1_000_000_000)
 }

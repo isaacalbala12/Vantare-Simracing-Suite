@@ -149,6 +149,42 @@ impl Overlay {
         }
     }
 
+    /// Estilo Vantare en Workshop en vivo (Standings y Relative).
+    pub(crate) fn vantare_style(
+        &mut self,
+        style: Arc<crate::vantare::style::Style>,
+        cx: &mut Context<Self>,
+    ) {
+        match &mut self.widget {
+            Widget::Standings(widget) => widget.set_vantare_style(style),
+            Widget::Relative(widget) => widget.set_vantare_style(style),
+            Widget::FuelStrategy(widget) => widget.set_vantare_style(style),
+            Widget::Delta(widget) => widget.set_vantare_style(style),
+            _ => return,
+        }
+        cx.notify();
+    }
+
+    /// Workshop: columnas Vantare colocadas del widget.
+    pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
+        match &self.widget {
+            Widget::Standings(widget) => widget.vantare_columns(),
+            Widget::Relative(widget) => widget.vantare_columns(),
+            _ => None,
+        }
+    }
+
+    /// Workshop: da por terminadas las animaciones de las fotos ya ingeridas.
+    pub(crate) fn settle(&mut self) {
+        match &mut self.widget {
+            Widget::Standings(widget) => widget.settle(),
+            Widget::Relative(widget) => widget.settle(),
+            Widget::FuelStrategy(widget) => widget.settle(),
+            Widget::Delta(widget) => widget.settle(),
+            _ => {}
+        }
+    }
+
     pub fn new(kind: Kind, prefs: Preferences) -> Self {
         Self::configured(&Settings::default_for(kind), prefs)
     }
@@ -669,6 +705,7 @@ fn reconcile_widgets<T>(
 impl LiveScreens {
     /// «Mostrar/Ocultar overlays» de la bandeja: vacía las pantallas sin
     /// tocar el documento ni el estado de cada widget.
+    #[cfg_attr(not(windows), allow(dead_code))] // Solo la bandeja de Windows lo usa.
     fn toggle(&mut self, cx: &mut App) {
         self.hidden = !self.hidden;
         let layout = self.layout.clone();
@@ -954,7 +991,8 @@ fn run_layout_feed<T: Send + 'static>(
 
 /// Registra las fuentes Inter embebidas; sin ellas el texto sale mal medido.
 pub(crate) fn init(cx: &mut App) -> bool {
-    match text::register_fonts(cx) {
+    // Inter para todos; Rajdhani y Space Mono para el sistema Vantare.
+    match text::register_fonts(cx).and_then(|()| crate::theme::register_fonts(cx)) {
         Ok(()) => true,
         Err(error) => {
             eprintln!("{error}");
@@ -1393,7 +1431,7 @@ mod tests {
     fn changed_settings_recreate_the_widget_and_reingest_the_latest_snapshot() {
         let snapshot = crate::source::fixed();
         let prefs = Preferences::default();
-        let initial = Settings::default_for(Kind::Standings);
+        let initial = Settings::Standings(crate::standings::Settings::eficiencia());
         let before = Overlay::with_snapshot(&initial, prefs, Some(&snapshot));
         let Settings::Standings(mut options) = initial else {
             panic!("Standings");

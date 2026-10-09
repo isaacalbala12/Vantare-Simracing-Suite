@@ -383,6 +383,24 @@ pub fn run_sequence(kind: Kind, snapshots: &[Snapshot], path: PathBuf) -> ExitCo
             return;
         };
         view.update(cx, |v, cx| {
+            // Las referencias de paridad de Standings, Relative, Fuel y Delta son del sistema
+            // Eficiencia; Vantare (#1497) es el predeterminado del producto.
+            let reference = match kind {
+                Kind::Standings => Some(crate::Settings::Standings(
+                    crate::standings::Settings::eficiencia(),
+                )),
+                Kind::Relative => Some(crate::Settings::Relative(
+                    crate::relative::Settings::eficiencia(),
+                )),
+                Kind::FuelStrategy => Some(crate::Settings::FuelStrategy(
+                    crate::fuel_strategy::Settings::eficiencia(),
+                )),
+                Kind::Delta => Some(crate::Settings::Delta(crate::delta::Settings::eficiencia())),
+                _ => None,
+            };
+            if let Some(settings) = reference {
+                *v = Overlay::configured(&settings, Preferences::default());
+            }
             for snapshot in &snapshots {
                 v.ingest(snapshot, cx);
             }

@@ -2059,7 +2059,7 @@ impl Studio {
                 ));
             }
             Tab::Content | Tab::Appearance => {
-                if tab == Tab::Appearance {
+                if tab == Tab::Appearance && inspector::appearance(&item.settings).is_none() {
                     panel = panel.child(orbit::pending_select(
                         "studio-style",
                         "Estilo del widget",

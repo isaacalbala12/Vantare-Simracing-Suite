@@ -1,0 +1,1891 @@
+{
+ "id": "fuel-vantare",
+ "widget": "fuel-strategy",
+ "label": "Vantare · catálogo r10b",
+ "frameMs": 2600,
+ "watchFor": "Datos de demostración del catálogo vantare-widgets-r10b. No es telemetría real.",
+ "frames": [
+  {
+   "caption": "LMGT3 · solo combustible",
+   "snapshot": {
+    "version": 8,
+    "epoch": 3,
+    "sequence": 1,
+    "origin": {
+     "simulator": "unknown",
+     "kind": "replay",
+     "source_time": null,
+     "received_at": {
+      "secs": 0,
+      "nanos": 0
+     }
+    },
+    "state": {
+     "capabilities": {
+      "session_clock": "fresh",
+      "positions": "fresh",
+      "lap_times": "fresh",
+      "gaps": "fresh",
+      "pit_status": "fresh",
+      "flags": "fresh",
+      "spatial": "unsupported",
+      "driver_inputs": "fresh",
+      "powertrain": "fresh",
+      "fuel": "fresh",
+      "delta": "fresh",
+      "sectors": "unsupported",
+      "lap_progress": "unsupported",
+      "weather": "fresh",
+      "damage": "fresh"
+     },
+     "session": {
+      "id": 0,
+      "kind": {
+       "reliable": "race"
+      },
+      "state": "unavailable",
+      "elapsed_s": "unavailable",
+      "remaining_s": {
+       "reliable": 20538
+      },
+      "track_name": {
+       "reliable": "Le Mans"
+      },
+      "laps_remaining": {
+       "estimated": 25
+      },
+      "laps_total": {
+       "reliable": 38
+      },
+      "track_length_m": "unavailable",
+      "weather_air_temperature_k": {
+       "reliable": 294.15
+      },
+      "weather_track_temperature_k": {
+       "reliable": 301.15
+      },
+      "weather_wind_speed_mps": {
+       "reliable": 3.888888888888889
+      },
+      "weather_wind_direction_rad": "unavailable",
+      "weather_rain": {
+       "reliable": 0.0
+      },
+      "weather_track_wetness": {
+       "reliable": 0.0
+      },
+      "weather_pressure_pa": "unavailable"
+     },
+     "flags": {
+      "reliable": [
+       {
+        "kind": "green",
+        "scope": "session"
+       }
+      ]
+     },
+     "cars": [
+      {
+       "id": 50,
+       "number": "50",
+       "vehicle": "Ferrari 499P",
+       "driver_id": 250,
+       "driver_name": "I. Albalá",
+       "class": [
+        2,
+        "LMGT3"
+       ],
+       "position": {
+        "reliable": 3
+       },
+       "class_position": {
+        "reliable": 3
+       },
+       "laps": {
+        "reliable": 13
+       },
+       "last_lap_s": {
+        "reliable": 207.904
+       },
+       "best_lap_s": {
+        "reliable": 207.904
+       },
+       "estimated_lap_s": "unavailable",
+       "last_sectors_s": [],
+       "gap_leader": "unavailable",
+       "gap_ahead": "unavailable",
+       "gap_class_leader": "unavailable",
+       "gap_class_ahead": "unavailable",
+       "relative_s": {
+        "reliable": 0.0
+       },
+       "relative_laps": {
+        "reliable": 0
+       },
+       "lap_distance_m": "unavailable",
+       "lap_elapsed_s": "unavailable",
+       "current_sector": "unavailable",
+       "in_pits": {
+        "reliable": false
+       },
+       "pose": "unavailable",
+       "velocity_mps": "unavailable",
+       "pending_penalties": "unavailable",
+       "pit_stops": {
+        "reliable": 1
+       },
+       "tyre_compound": {
+        "reliable": "medium"
+       }
+      }
+     ],
+     "player": {
+      "car": 50,
+      "throttle": {
+       "reliable": 0.75
+      },
+      "brake": {
+       "reliable": 0.125
+      },
+      "clutch": {
+       "reliable": 0.06
+      },
+      "gear": {
+       "reliable": 4
+      },
+      "speed_mps": {
+       "reliable": 50
+      },
+      "engine_speed_rad_s": {
+       "reliable": 753.9822368615503
+      },
+      "fuel_level_l": {
+       "reliable": 42.6
+      },
+      "fuel_capacity_l": {
+       "reliable": 90.0
+      },
+      "fuel_per_lap_l": {
+       "estimated": 3.71
+      },
+      "fuel_laps_left": {
+       "estimated": 11.3
+      },
+      "delta_best_s": {
+       "reliable": 0.214
+      },
+      "pit_limiter_active": {
+       "reliable": false
+      },
+      "pit_stop_stopped": "unavailable",
+      "damage_aero": "unavailable",
+      "damage_body": "unavailable",
+      "damage_suspension": "unavailable",
+      "damage_tyre_wear": [
+       {
+        "reliable": 0.98
+       },
+       {
+        "reliable": 0.91
+       },
+       {
+        "reliable": 0.87
+       },
+       {
+        "reliable": 0.93
+       }
+      ],
+      "steering": {
+       "reliable": 0.08
+      },
+      "fuel_history": [
+       [
+        4,
+        3.78
+       ],
+       [
+        5,
+        3.74
+       ],
+       [
+        6,
+        3.81
+       ],
+       [
+        7,
+        3.69
+       ],
+       [
+        8,
+        3.72
+       ],
+       [
+        9,
+        3.66
+       ],
+       [
+        10,
+        3.75
+       ],
+       [
+        11,
+        3.7
+       ],
+       [
+        12,
+        3.68
+       ],
+       [
+        13,
+        3.71
+       ]
+      ],
+      "stint_laps": {
+       "reliable": 13
+      },
+      "stint_elapsed_s": {
+       "reliable": 2712.0
+      }
+     },
+     "source_state": "live"
+    }
+   }
+  },
+  {
+   "caption": "Hypercar · limita la energía virtual",
+   "snapshot": {
+    "version": 8,
+    "epoch": 3,
+    "sequence": 2,
+    "origin": {
+     "simulator": "unknown",
+     "kind": "replay",
+     "source_time": null,
+     "received_at": {
+      "secs": 0,
+      "nanos": 0
+     }
+    },
+    "state": {
+     "capabilities": {
+      "session_clock": "fresh",
+      "positions": "fresh",
+      "lap_times": "fresh",
+      "gaps": "fresh",
+      "pit_status": "fresh",
+      "flags": "fresh",
+      "spatial": "unsupported",
+      "driver_inputs": "fresh",
+      "powertrain": "fresh",
+      "fuel": "fresh",
+      "delta": "fresh",
+      "sectors": "unsupported",
+      "lap_progress": "unsupported",
+      "weather": "fresh",
+      "damage": "fresh"
+     },
+     "session": {
+      "id": 0,
+      "kind": {
+       "reliable": "race"
+      },
+      "state": "unavailable",
+      "elapsed_s": "unavailable",
+      "remaining_s": {
+       "reliable": 20538
+      },
+      "track_name": {
+       "reliable": "Le Mans"
+      },
+      "laps_remaining": {
+       "estimated": 25
+      },
+      "laps_total": {
+       "reliable": 38
+      },
+      "track_length_m": "unavailable",
+      "weather_air_temperature_k": {
+       "reliable": 294.15
+      },
+      "weather_track_temperature_k": {
+       "reliable": 301.15
+      },
+      "weather_wind_speed_mps": {
+       "reliable": 3.888888888888889
+      },
+      "weather_wind_direction_rad": "unavailable",
+      "weather_rain": {
+       "reliable": 0.0
+      },
+      "weather_track_wetness": {
+       "reliable": 0.0
+      },
+      "weather_pressure_pa": "unavailable"
+     },
+     "flags": {
+      "reliable": [
+       {
+        "kind": "green",
+        "scope": "session"
+       }
+      ]
+     },
+     "cars": [
+      {
+       "id": 50,
+       "number": "50",
+       "vehicle": "Ferrari 499P",
+       "driver_id": 250,
+       "driver_name": "I. Albalá",
+       "class": [
+        0,
+        "Hypercar"
+       ],
+       "position": {
+        "reliable": 3
+       },
+       "class_position": {
+        "reliable": 3
+       },
+       "laps": {
+        "reliable": 13
+       },
+       "last_lap_s": {
+        "reliable": 207.904
+       },
+       "best_lap_s": {
+        "reliable": 207.904
+       },
+       "estimated_lap_s": "unavailable",
+       "last_sectors_s": [],
+       "gap_leader": "unavailable",
+       "gap_ahead": "unavailable",
+       "gap_class_leader": "unavailable",
+       "gap_class_ahead": "unavailable",
+       "relative_s": {
+        "reliable": 0.0
+       },
+       "relative_laps": {
+        "reliable": 0
+       },
+       "lap_distance_m": "unavailable",
+       "lap_elapsed_s": "unavailable",
+       "current_sector": "unavailable",
+       "in_pits": {
+        "reliable": false
+       },
+       "pose": "unavailable",
+       "velocity_mps": "unavailable",
+       "pending_penalties": "unavailable",
+       "pit_stops": {
+        "reliable": 1
+       },
+       "tyre_compound": {
+        "reliable": "medium"
+       }
+      }
+     ],
+     "player": {
+      "car": 50,
+      "throttle": {
+       "reliable": 0.75
+      },
+      "brake": {
+       "reliable": 0.125
+      },
+      "clutch": {
+       "reliable": 0.06
+      },
+      "gear": {
+       "reliable": 4
+      },
+      "speed_mps": {
+       "reliable": 50
+      },
+      "engine_speed_rad_s": {
+       "reliable": 753.9822368615503
+      },
+      "fuel_level_l": {
+       "reliable": 48.2
+      },
+      "fuel_capacity_l": {
+       "reliable": 90.0
+      },
+      "fuel_per_lap_l": {
+       "estimated": 3.47
+      },
+      "fuel_laps_left": {
+       "estimated": 13.9
+      },
+      "delta_best_s": {
+       "reliable": 0.214
+      },
+      "pit_limiter_active": {
+       "reliable": false
+      },
+      "pit_stop_stopped": "unavailable",
+      "damage_aero": "unavailable",
+      "damage_body": "unavailable",
+      "damage_suspension": "unavailable",
+      "damage_tyre_wear": [
+       {
+        "reliable": 0.98
+       },
+       {
+        "reliable": 0.91
+       },
+       {
+        "reliable": 0.87
+       },
+       {
+        "reliable": 0.93
+       }
+      ],
+      "steering": {
+       "reliable": 0.08
+      },
+      "fuel_history": [
+       [
+        4,
+        3.78
+       ],
+       [
+        5,
+        3.74
+       ],
+       [
+        6,
+        3.81
+       ],
+       [
+        7,
+        3.69
+       ],
+       [
+        8,
+        3.72
+       ],
+       [
+        9,
+        3.66
+       ],
+       [
+        10,
+        3.75
+       ],
+       [
+        11,
+        3.7
+       ],
+       [
+        12,
+        3.68
+       ],
+       [
+        13,
+        3.71
+       ]
+      ],
+      "stint_laps": {
+       "reliable": 13
+      },
+      "stint_elapsed_s": {
+       "reliable": 2712.0
+      },
+      "fuel_energy": {
+       "reliable": 0.614
+      },
+      "fuel_energy_per_lap": {
+       "estimated": 0.0482
+      }
+     },
+     "source_state": "live"
+    }
+   }
+  },
+  {
+   "caption": "Combustible bajo · entra esta vuelta",
+   "snapshot": {
+    "version": 8,
+    "epoch": 3,
+    "sequence": 3,
+    "origin": {
+     "simulator": "unknown",
+     "kind": "replay",
+     "source_time": null,
+     "received_at": {
+      "secs": 0,
+      "nanos": 0
+     }
+    },
+    "state": {
+     "capabilities": {
+      "session_clock": "fresh",
+      "positions": "fresh",
+      "lap_times": "fresh",
+      "gaps": "fresh",
+      "pit_status": "fresh",
+      "flags": "fresh",
+      "spatial": "unsupported",
+      "driver_inputs": "fresh",
+      "powertrain": "fresh",
+      "fuel": "fresh",
+      "delta": "fresh",
+      "sectors": "unsupported",
+      "lap_progress": "unsupported",
+      "weather": "fresh",
+      "damage": "fresh"
+     },
+     "session": {
+      "id": 0,
+      "kind": {
+       "reliable": "race"
+      },
+      "state": "unavailable",
+      "elapsed_s": "unavailable",
+      "remaining_s": {
+       "reliable": 20538
+      },
+      "track_name": {
+       "reliable": "Le Mans"
+      },
+      "laps_remaining": {
+       "estimated": 17
+      },
+      "laps_total": {
+       "reliable": 38
+      },
+      "track_length_m": "unavailable",
+      "weather_air_temperature_k": {
+       "reliable": 294.15
+      },
+      "weather_track_temperature_k": {
+       "reliable": 301.15
+      },
+      "weather_wind_speed_mps": {
+       "reliable": 3.888888888888889
+      },
+      "weather_wind_direction_rad": "unavailable",
+      "weather_rain": {
+       "reliable": 0.0
+      },
+      "weather_track_wetness": {
+       "reliable": 0.0
+      },
+      "weather_pressure_pa": "unavailable"
+     },
+     "flags": {
+      "reliable": [
+       {
+        "kind": "green",
+        "scope": "session"
+       }
+      ]
+     },
+     "cars": [
+      {
+       "id": 50,
+       "number": "50",
+       "vehicle": "Ferrari 499P",
+       "driver_id": 250,
+       "driver_name": "I. Albalá",
+       "class": [
+        2,
+        "LMGT3"
+       ],
+       "position": {
+        "reliable": 3
+       },
+       "class_position": {
+        "reliable": 3
+       },
+       "laps": {
+        "reliable": 21
+       },
+       "last_lap_s": {
+        "reliable": 207.904
+       },
+       "best_lap_s": {
+        "reliable": 207.904
+       },
+       "estimated_lap_s": "unavailable",
+       "last_sectors_s": [],
+       "gap_leader": "unavailable",
+       "gap_ahead": "unavailable",
+       "gap_class_leader": "unavailable",
+       "gap_class_ahead": "unavailable",
+       "relative_s": {
+        "reliable": 0.0
+       },
+       "relative_laps": {
+        "reliable": 0
+       },
+       "lap_distance_m": "unavailable",
+       "lap_elapsed_s": "unavailable",
+       "current_sector": "unavailable",
+       "in_pits": {
+        "reliable": false
+       },
+       "pose": "unavailable",
+       "velocity_mps": "unavailable",
+       "pending_penalties": "unavailable",
+       "pit_stops": {
+        "reliable": 1
+       },
+       "tyre_compound": {
+        "reliable": "medium"
+       }
+      }
+     ],
+     "player": {
+      "car": 50,
+      "throttle": {
+       "reliable": 0.75
+      },
+      "brake": {
+       "reliable": 0.125
+      },
+      "clutch": {
+       "reliable": 0.06
+      },
+      "gear": {
+       "reliable": 4
+      },
+      "speed_mps": {
+       "reliable": 50
+      },
+      "engine_speed_rad_s": {
+       "reliable": 753.9822368615503
+      },
+      "fuel_level_l": {
+       "reliable": 4.4
+      },
+      "fuel_capacity_l": {
+       "reliable": 90.0
+      },
+      "fuel_per_lap_l": {
+       "estimated": 3.71
+      },
+      "fuel_laps_left": {
+       "estimated": 1.2
+      },
+      "delta_best_s": {
+       "reliable": 0.214
+      },
+      "pit_limiter_active": {
+       "reliable": false
+      },
+      "pit_stop_stopped": "unavailable",
+      "damage_aero": "unavailable",
+      "damage_body": "unavailable",
+      "damage_suspension": "unavailable",
+      "damage_tyre_wear": [
+       {
+        "reliable": 0.98
+       },
+       {
+        "reliable": 0.91
+       },
+       {
+        "reliable": 0.87
+       },
+       {
+        "reliable": 0.93
+       }
+      ],
+      "steering": {
+       "reliable": 0.08
+      },
+      "fuel_history": [
+       [
+        12,
+        3.78
+       ],
+       [
+        13,
+        3.74
+       ],
+       [
+        14,
+        3.81
+       ],
+       [
+        15,
+        3.69
+       ],
+       [
+        16,
+        3.72
+       ],
+       [
+        17,
+        3.66
+       ],
+       [
+        18,
+        3.75
+       ],
+       [
+        19,
+        3.7
+       ],
+       [
+        20,
+        3.68
+       ],
+       [
+        21,
+        3.71
+       ]
+      ],
+      "stint_laps": {
+       "reliable": 13
+      },
+      "stint_elapsed_s": {
+       "reliable": 2712.0
+      }
+     },
+     "source_state": "live"
+    }
+   }
+  },
+  {
+   "caption": "Repostando · 34.1 de 58.0 L",
+   "snapshot": {
+    "version": 8,
+    "epoch": 3,
+    "sequence": 4,
+    "origin": {
+     "simulator": "unknown",
+     "kind": "replay",
+     "source_time": null,
+     "received_at": {
+      "secs": 0,
+      "nanos": 0
+     }
+    },
+    "state": {
+     "capabilities": {
+      "session_clock": "fresh",
+      "positions": "fresh",
+      "lap_times": "fresh",
+      "gaps": "fresh",
+      "pit_status": "fresh",
+      "flags": "fresh",
+      "spatial": "unsupported",
+      "driver_inputs": "fresh",
+      "powertrain": "fresh",
+      "fuel": "fresh",
+      "delta": "fresh",
+      "sectors": "unsupported",
+      "lap_progress": "unsupported",
+      "weather": "fresh",
+      "damage": "fresh"
+     },
+     "session": {
+      "id": 0,
+      "kind": {
+       "reliable": "race"
+      },
+      "state": "unavailable",
+      "elapsed_s": "unavailable",
+      "remaining_s": {
+       "reliable": 20538
+      },
+      "track_name": {
+       "reliable": "Le Mans"
+      },
+      "laps_remaining": {
+       "estimated": 16
+      },
+      "laps_total": {
+       "reliable": 38
+      },
+      "track_length_m": "unavailable",
+      "weather_air_temperature_k": {
+       "reliable": 294.15
+      },
+      "weather_track_temperature_k": {
+       "reliable": 301.15
+      },
+      "weather_wind_speed_mps": {
+       "reliable": 3.888888888888889
+      },
+      "weather_wind_direction_rad": "unavailable",
+      "weather_rain": {
+       "reliable": 0.0
+      },
+      "weather_track_wetness": {
+       "reliable": 0.0
+      },
+      "weather_pressure_pa": "unavailable"
+     },
+     "flags": {
+      "reliable": [
+       {
+        "kind": "green",
+        "scope": "session"
+       }
+      ]
+     },
+     "cars": [
+      {
+       "id": 50,
+       "number": "50",
+       "vehicle": "Ferrari 499P",
+       "driver_id": 250,
+       "driver_name": "I. Albalá",
+       "class": [
+        2,
+        "LMGT3"
+       ],
+       "position": {
+        "reliable": 3
+       },
+       "class_position": {
+        "reliable": 3
+       },
+       "laps": {
+        "reliable": 22
+       },
+       "last_lap_s": {
+        "reliable": 207.904
+       },
+       "best_lap_s": {
+        "reliable": 207.904
+       },
+       "estimated_lap_s": "unavailable",
+       "last_sectors_s": [],
+       "gap_leader": "unavailable",
+       "gap_ahead": "unavailable",
+       "gap_class_leader": "unavailable",
+       "gap_class_ahead": "unavailable",
+       "relative_s": {
+        "reliable": 0.0
+       },
+       "relative_laps": {
+        "reliable": 0
+       },
+       "lap_distance_m": "unavailable",
+       "lap_elapsed_s": "unavailable",
+       "current_sector": "unavailable",
+       "in_pits": {
+        "reliable": true
+       },
+       "pose": "unavailable",
+       "velocity_mps": "unavailable",
+       "pending_penalties": "unavailable",
+       "pit_stops": {
+        "reliable": 1
+       },
+       "tyre_compound": {
+        "reliable": "medium"
+       }
+      }
+     ],
+     "player": {
+      "car": 50,
+      "throttle": {
+       "reliable": 0.75
+      },
+      "brake": {
+       "reliable": 0.125
+      },
+      "clutch": {
+       "reliable": 0.06
+      },
+      "gear": {
+       "reliable": 4
+      },
+      "speed_mps": {
+       "reliable": 50
+      },
+      "engine_speed_rad_s": {
+       "reliable": 753.9822368615503
+      },
+      "fuel_level_l": {
+       "reliable": 52.6
+      },
+      "fuel_capacity_l": {
+       "reliable": 90.0
+      },
+      "fuel_per_lap_l": {
+       "estimated": 3.71
+      },
+      "fuel_laps_left": {
+       "estimated": 14.2
+      },
+      "delta_best_s": {
+       "reliable": 0.214
+      },
+      "pit_limiter_active": {
+       "reliable": true
+      },
+      "pit_stop_stopped": "unavailable",
+      "damage_aero": "unavailable",
+      "damage_body": "unavailable",
+      "damage_suspension": "unavailable",
+      "damage_tyre_wear": [
+       {
+        "reliable": 0.98
+       },
+       {
+        "reliable": 0.91
+       },
+       {
+        "reliable": 0.87
+       },
+       {
+        "reliable": 0.93
+       }
+      ],
+      "steering": {
+       "reliable": 0.08
+      },
+      "fuel_history": [
+       [
+        13,
+        3.78
+       ],
+       [
+        14,
+        3.74
+       ],
+       [
+        15,
+        3.81
+       ],
+       [
+        16,
+        3.69
+       ],
+       [
+        17,
+        3.72
+       ],
+       [
+        18,
+        3.66
+       ],
+       [
+        19,
+        3.75
+       ],
+       [
+        20,
+        3.7
+       ],
+       [
+        21,
+        3.68
+       ],
+       [
+        22,
+        3.71
+       ]
+      ],
+      "stint_laps": {
+       "reliable": 13
+      },
+      "stint_elapsed_s": {
+       "reliable": 2712.0
+      },
+      "pit_refuel_target_l": {
+       "reliable": 58.0
+      },
+      "pit_refuel_added_l": {
+       "reliable": 34.1
+      },
+      "pit_service_remaining_s": {
+       "estimated": 9.8
+      },
+      "pit_tyres": {
+       "reliable": 4
+      }
+     },
+     "source_state": "live"
+    }
+   }
+  },
+  {
+   "caption": "FCY · el consumo cae",
+   "snapshot": {
+    "version": 8,
+    "epoch": 3,
+    "sequence": 5,
+    "origin": {
+     "simulator": "unknown",
+     "kind": "replay",
+     "source_time": null,
+     "received_at": {
+      "secs": 0,
+      "nanos": 0
+     }
+    },
+    "state": {
+     "capabilities": {
+      "session_clock": "fresh",
+      "positions": "fresh",
+      "lap_times": "fresh",
+      "gaps": "fresh",
+      "pit_status": "fresh",
+      "flags": "fresh",
+      "spatial": "unsupported",
+      "driver_inputs": "fresh",
+      "powertrain": "fresh",
+      "fuel": "fresh",
+      "delta": "fresh",
+      "sectors": "unsupported",
+      "lap_progress": "unsupported",
+      "weather": "fresh",
+      "damage": "fresh"
+     },
+     "session": {
+      "id": 0,
+      "kind": {
+       "reliable": "race"
+      },
+      "state": "unavailable",
+      "elapsed_s": "unavailable",
+      "remaining_s": {
+       "reliable": 20538
+      },
+      "track_name": {
+       "reliable": "Le Mans"
+      },
+      "laps_remaining": {
+       "estimated": 23
+      },
+      "laps_total": {
+       "reliable": 38
+      },
+      "track_length_m": "unavailable",
+      "weather_air_temperature_k": {
+       "reliable": 294.15
+      },
+      "weather_track_temperature_k": {
+       "reliable": 301.15
+      },
+      "weather_wind_speed_mps": {
+       "reliable": 3.888888888888889
+      },
+      "weather_wind_direction_rad": "unavailable",
+      "weather_rain": {
+       "reliable": 0.0
+      },
+      "weather_track_wetness": {
+       "reliable": 0.0
+      },
+      "weather_pressure_pa": "unavailable"
+     },
+     "flags": {
+      "reliable": [
+       {
+        "kind": "yellow",
+        "scope": "session"
+       }
+      ]
+     },
+     "cars": [
+      {
+       "id": 50,
+       "number": "50",
+       "vehicle": "Ferrari 499P",
+       "driver_id": 250,
+       "driver_name": "I. Albalá",
+       "class": [
+        2,
+        "LMGT3"
+       ],
+       "position": {
+        "reliable": 3
+       },
+       "class_position": {
+        "reliable": 3
+       },
+       "laps": {
+        "reliable": 15
+       },
+       "last_lap_s": {
+        "reliable": 207.904
+       },
+       "best_lap_s": {
+        "reliable": 207.904
+       },
+       "estimated_lap_s": "unavailable",
+       "last_sectors_s": [],
+       "gap_leader": "unavailable",
+       "gap_ahead": "unavailable",
+       "gap_class_leader": "unavailable",
+       "gap_class_ahead": "unavailable",
+       "relative_s": {
+        "reliable": 0.0
+       },
+       "relative_laps": {
+        "reliable": 0
+       },
+       "lap_distance_m": "unavailable",
+       "lap_elapsed_s": "unavailable",
+       "current_sector": "unavailable",
+       "in_pits": {
+        "reliable": false
+       },
+       "pose": "unavailable",
+       "velocity_mps": "unavailable",
+       "pending_penalties": "unavailable",
+       "pit_stops": {
+        "reliable": 1
+       },
+       "tyre_compound": {
+        "reliable": "medium"
+       }
+      }
+     ],
+     "player": {
+      "car": 50,
+      "throttle": {
+       "reliable": 0.75
+      },
+      "brake": {
+       "reliable": 0.125
+      },
+      "clutch": {
+       "reliable": 0.06
+      },
+      "gear": {
+       "reliable": 4
+      },
+      "speed_mps": {
+       "reliable": 50
+      },
+      "engine_speed_rad_s": {
+       "reliable": 753.9822368615503
+      },
+      "fuel_level_l": {
+       "reliable": 42.6
+      },
+      "fuel_capacity_l": {
+       "reliable": 90.0
+      },
+      "fuel_per_lap_l": {
+       "estimated": 3.71
+      },
+      "fuel_laps_left": {
+       "estimated": 11.5
+      },
+      "delta_best_s": {
+       "reliable": 0.214
+      },
+      "pit_limiter_active": {
+       "reliable": false
+      },
+      "pit_stop_stopped": "unavailable",
+      "damage_aero": "unavailable",
+      "damage_body": "unavailable",
+      "damage_suspension": "unavailable",
+      "damage_tyre_wear": [
+       {
+        "reliable": 0.98
+       },
+       {
+        "reliable": 0.91
+       },
+       {
+        "reliable": 0.87
+       },
+       {
+        "reliable": 0.93
+       }
+      ],
+      "steering": {
+       "reliable": 0.08
+      },
+      "fuel_history": [
+       [
+        6,
+        3.78
+       ],
+       [
+        7,
+        3.74
+       ],
+       [
+        8,
+        3.81
+       ],
+       [
+        9,
+        3.69
+       ],
+       [
+        10,
+        3.72
+       ],
+       [
+        11,
+        3.66
+       ],
+       [
+        12,
+        3.75
+       ],
+       [
+        13,
+        3.7
+       ],
+       [
+        14,
+        3.68
+       ],
+       [
+        15,
+        3.71
+       ]
+      ],
+      "stint_laps": {
+       "reliable": 13
+      },
+      "stint_elapsed_s": {
+       "reliable": 2712.0
+      },
+      "fuel_lap_projection_l": {
+       "estimated": 1.41
+      }
+     },
+     "source_state": "live"
+    }
+   }
+  },
+  {
+   "caption": "Última vuelta · llegas",
+   "snapshot": {
+    "version": 8,
+    "epoch": 3,
+    "sequence": 6,
+    "origin": {
+     "simulator": "unknown",
+     "kind": "replay",
+     "source_time": null,
+     "received_at": {
+      "secs": 0,
+      "nanos": 0
+     }
+    },
+    "state": {
+     "capabilities": {
+      "session_clock": "fresh",
+      "positions": "fresh",
+      "lap_times": "fresh",
+      "gaps": "fresh",
+      "pit_status": "fresh",
+      "flags": "fresh",
+      "spatial": "unsupported",
+      "driver_inputs": "fresh",
+      "powertrain": "fresh",
+      "fuel": "fresh",
+      "delta": "fresh",
+      "sectors": "unsupported",
+      "lap_progress": "unsupported",
+      "weather": "fresh",
+      "damage": "fresh"
+     },
+     "session": {
+      "id": 0,
+      "kind": {
+       "reliable": "race"
+      },
+      "state": "unavailable",
+      "elapsed_s": "unavailable",
+      "remaining_s": {
+       "reliable": 20538
+      },
+      "track_name": {
+       "reliable": "Le Mans"
+      },
+      "laps_remaining": {
+       "estimated": 1
+      },
+      "laps_total": {
+       "reliable": 38
+      },
+      "track_length_m": "unavailable",
+      "weather_air_temperature_k": {
+       "reliable": 294.15
+      },
+      "weather_track_temperature_k": {
+       "reliable": 301.15
+      },
+      "weather_wind_speed_mps": {
+       "reliable": 3.888888888888889
+      },
+      "weather_wind_direction_rad": "unavailable",
+      "weather_rain": {
+       "reliable": 0.0
+      },
+      "weather_track_wetness": {
+       "reliable": 0.0
+      },
+      "weather_pressure_pa": "unavailable"
+     },
+     "flags": {
+      "reliable": [
+       {
+        "kind": "green",
+        "scope": "session"
+       }
+      ]
+     },
+     "cars": [
+      {
+       "id": 50,
+       "number": "50",
+       "vehicle": "Ferrari 499P",
+       "driver_id": 250,
+       "driver_name": "I. Albalá",
+       "class": [
+        2,
+        "LMGT3"
+       ],
+       "position": {
+        "reliable": 3
+       },
+       "class_position": {
+        "reliable": 3
+       },
+       "laps": {
+        "reliable": 37
+       },
+       "last_lap_s": {
+        "reliable": 207.904
+       },
+       "best_lap_s": {
+        "reliable": 207.904
+       },
+       "estimated_lap_s": "unavailable",
+       "last_sectors_s": [],
+       "gap_leader": "unavailable",
+       "gap_ahead": "unavailable",
+       "gap_class_leader": "unavailable",
+       "gap_class_ahead": "unavailable",
+       "relative_s": {
+        "reliable": 0.0
+       },
+       "relative_laps": {
+        "reliable": 0
+       },
+       "lap_distance_m": "unavailable",
+       "lap_elapsed_s": "unavailable",
+       "current_sector": "unavailable",
+       "in_pits": {
+        "reliable": false
+       },
+       "pose": "unavailable",
+       "velocity_mps": "unavailable",
+       "pending_penalties": "unavailable",
+       "pit_stops": {
+        "reliable": 1
+       },
+       "tyre_compound": {
+        "reliable": "medium"
+       }
+      }
+     ],
+     "player": {
+      "car": 50,
+      "throttle": {
+       "reliable": 0.75
+      },
+      "brake": {
+       "reliable": 0.125
+      },
+      "clutch": {
+       "reliable": 0.06
+      },
+      "gear": {
+       "reliable": 4
+      },
+      "speed_mps": {
+       "reliable": 50
+      },
+      "engine_speed_rad_s": {
+       "reliable": 753.9822368615503
+      },
+      "fuel_level_l": {
+       "reliable": 5.8
+      },
+      "fuel_capacity_l": {
+       "reliable": 90.0
+      },
+      "fuel_per_lap_l": {
+       "estimated": 3.71
+      },
+      "fuel_laps_left": {
+       "estimated": 1.6
+      },
+      "delta_best_s": {
+       "reliable": 0.214
+      },
+      "pit_limiter_active": {
+       "reliable": false
+      },
+      "pit_stop_stopped": "unavailable",
+      "damage_aero": "unavailable",
+      "damage_body": "unavailable",
+      "damage_suspension": "unavailable",
+      "damage_tyre_wear": [
+       {
+        "reliable": 0.98
+       },
+       {
+        "reliable": 0.91
+       },
+       {
+        "reliable": 0.87
+       },
+       {
+        "reliable": 0.93
+       }
+      ],
+      "steering": {
+       "reliable": 0.08
+      },
+      "fuel_history": [
+       [
+        28,
+        3.78
+       ],
+       [
+        29,
+        3.74
+       ],
+       [
+        30,
+        3.81
+       ],
+       [
+        31,
+        3.69
+       ],
+       [
+        32,
+        3.72
+       ],
+       [
+        33,
+        3.66
+       ],
+       [
+        34,
+        3.75
+       ],
+       [
+        35,
+        3.7
+       ],
+       [
+        36,
+        3.68
+       ],
+       [
+        37,
+        3.71
+       ]
+      ],
+      "stint_laps": {
+       "reliable": 13
+      },
+      "stint_elapsed_s": {
+       "reliable": 2712.0
+      }
+     },
+     "source_state": "live"
+    }
+   }
+  },
+  {
+   "caption": "Sin datos · esperando al simulador",
+   "snapshot": {
+    "version": 8,
+    "epoch": 3,
+    "sequence": 7,
+    "origin": {
+     "simulator": "unknown",
+     "kind": "replay",
+     "source_time": null,
+     "received_at": {
+      "secs": 0,
+      "nanos": 0
+     }
+    },
+    "state": {
+     "capabilities": {
+      "session_clock": "fresh",
+      "positions": "fresh",
+      "lap_times": "fresh",
+      "gaps": "fresh",
+      "pit_status": "fresh",
+      "flags": "fresh",
+      "spatial": "unsupported",
+      "driver_inputs": "fresh",
+      "powertrain": "fresh",
+      "fuel": "fresh",
+      "delta": "fresh",
+      "sectors": "unsupported",
+      "lap_progress": "unsupported",
+      "weather": "fresh",
+      "damage": "fresh"
+     },
+     "session": {
+      "id": 0,
+      "kind": {
+       "reliable": "race"
+      },
+      "state": "unavailable",
+      "elapsed_s": "unavailable",
+      "remaining_s": {
+       "reliable": 20538
+      },
+      "track_name": {
+       "reliable": "Le Mans"
+      },
+      "laps_remaining": {
+       "estimated": 25
+      },
+      "laps_total": {
+       "reliable": 38
+      },
+      "track_length_m": "unavailable",
+      "weather_air_temperature_k": {
+       "reliable": 294.15
+      },
+      "weather_track_temperature_k": {
+       "reliable": 301.15
+      },
+      "weather_wind_speed_mps": {
+       "reliable": 3.888888888888889
+      },
+      "weather_wind_direction_rad": "unavailable",
+      "weather_rain": {
+       "reliable": 0.0
+      },
+      "weather_track_wetness": {
+       "reliable": 0.0
+      },
+      "weather_pressure_pa": "unavailable"
+     },
+     "flags": {
+      "reliable": [
+       {
+        "kind": "green",
+        "scope": "session"
+       }
+      ]
+     },
+     "cars": [
+      {
+       "id": 50,
+       "number": "50",
+       "vehicle": "Ferrari 499P",
+       "driver_id": 250,
+       "driver_name": "I. Albalá",
+       "class": [
+        2,
+        "LMGT3"
+       ],
+       "position": {
+        "reliable": 3
+       },
+       "class_position": {
+        "reliable": 3
+       },
+       "laps": {
+        "reliable": 13
+       },
+       "last_lap_s": {
+        "reliable": 207.904
+       },
+       "best_lap_s": {
+        "reliable": 207.904
+       },
+       "estimated_lap_s": "unavailable",
+       "last_sectors_s": [],
+       "gap_leader": "unavailable",
+       "gap_ahead": "unavailable",
+       "gap_class_leader": "unavailable",
+       "gap_class_ahead": "unavailable",
+       "relative_s": {
+        "reliable": 0.0
+       },
+       "relative_laps": {
+        "reliable": 0
+       },
+       "lap_distance_m": "unavailable",
+       "lap_elapsed_s": "unavailable",
+       "current_sector": "unavailable",
+       "in_pits": {
+        "reliable": false
+       },
+       "pose": "unavailable",
+       "velocity_mps": "unavailable",
+       "pending_penalties": "unavailable",
+       "pit_stops": {
+        "reliable": 1
+       },
+       "tyre_compound": {
+        "reliable": "medium"
+       }
+      }
+     ],
+     "player": {
+      "car": 50,
+      "throttle": {
+       "reliable": 0.75
+      },
+      "brake": {
+       "reliable": 0.125
+      },
+      "clutch": {
+       "reliable": 0.06
+      },
+      "gear": {
+       "reliable": 4
+      },
+      "speed_mps": {
+       "reliable": 50
+      },
+      "engine_speed_rad_s": {
+       "reliable": 753.9822368615503
+      },
+      "fuel_level_l": {
+       "reliable": 42.6
+      },
+      "fuel_capacity_l": {
+       "reliable": 90.0
+      },
+      "fuel_per_lap_l": {
+       "estimated": 3.71
+      },
+      "fuel_laps_left": {
+       "estimated": 11.48
+      },
+      "delta_best_s": {
+       "reliable": 0.214
+      },
+      "pit_limiter_active": {
+       "reliable": false
+      },
+      "pit_stop_stopped": "unavailable",
+      "damage_aero": "unavailable",
+      "damage_body": "unavailable",
+      "damage_suspension": "unavailable",
+      "damage_tyre_wear": [
+       {
+        "reliable": 0.98
+       },
+       {
+        "reliable": 0.91
+       },
+       {
+        "reliable": 0.87
+       },
+       {
+        "reliable": 0.93
+       }
+      ],
+      "steering": {
+       "reliable": 0.08
+      },
+      "fuel_history": [
+       [
+        4,
+        3.78
+       ],
+       [
+        5,
+        3.74
+       ],
+       [
+        6,
+        3.81
+       ],
+       [
+        7,
+        3.69
+       ],
+       [
+        8,
+        3.72
+       ],
+       [
+        9,
+        3.66
+       ],
+       [
+        10,
+        3.75
+       ],
+       [
+        11,
+        3.7
+       ],
+       [
+        12,
+        3.68
+       ],
+       [
+        13,
+        3.71
+       ]
+      ],
+      "stint_laps": {
+       "reliable": 13
+      },
+      "stint_elapsed_s": {
+       "reliable": 2712.0
+      }
+     },
+     "source_state": "waiting"
+    }
+   }
+  },
+  {
+   "caption": "Sin coche propio · espectador",
+   "snapshot": {
+    "version": 8,
+    "epoch": 3,
+    "sequence": 8,
+    "origin": {
+     "simulator": "unknown",
+     "kind": "replay",
+     "source_time": null,
+     "received_at": {
+      "secs": 0,
+      "nanos": 0
+     }
+    },
+    "state": {
+     "capabilities": {
+      "session_clock": "fresh",
+      "positions": "fresh",
+      "lap_times": "fresh",
+      "gaps": "fresh",
+      "pit_status": "fresh",
+      "flags": "fresh",
+      "spatial": "unsupported",
+      "driver_inputs": "fresh",
+      "powertrain": "fresh",
+      "fuel": "fresh",
+      "delta": "fresh",
+      "sectors": "unsupported",
+      "lap_progress": "unsupported",
+      "weather": "fresh",
+      "damage": "fresh"
+     },
+     "session": {
+      "id": 0,
+      "kind": {
+       "reliable": "race"
+      },
+      "state": "unavailable",
+      "elapsed_s": "unavailable",
+      "remaining_s": {
+       "reliable": 20538
+      },
+      "track_name": {
+       "reliable": "Le Mans"
+      },
+      "laps_remaining": {
+       "estimated": 25
+      },
+      "laps_total": {
+       "reliable": 38
+      },
+      "track_length_m": "unavailable",
+      "weather_air_temperature_k": {
+       "reliable": 294.15
+      },
+      "weather_track_temperature_k": {
+       "reliable": 301.15
+      },
+      "weather_wind_speed_mps": {
+       "reliable": 3.888888888888889
+      },
+      "weather_wind_direction_rad": "unavailable",
+      "weather_rain": {
+       "reliable": 0.0
+      },
+      "weather_track_wetness": {
+       "reliable": 0.0
+      },
+      "weather_pressure_pa": "unavailable"
+     },
+     "flags": {
+      "reliable": [
+       {
+        "kind": "green",
+        "scope": "session"
+       }
+      ]
+     },
+     "cars": [
+      {
+       "id": 50,
+       "number": "50",
+       "vehicle": "Ferrari 499P",
+       "driver_id": 250,
+       "driver_name": "I. Albalá",
+       "class": [
+        2,
+        "LMGT3"
+       ],
+       "position": {
+        "reliable": 3
+       },
+       "class_position": {
+        "reliable": 3
+       },
+       "laps": {
+        "reliable": 13
+       },
+       "last_lap_s": {
+        "reliable": 207.904
+       },
+       "best_lap_s": {
+        "reliable": 207.904
+       },
+       "estimated_lap_s": "unavailable",
+       "last_sectors_s": [],
+       "gap_leader": "unavailable",
+       "gap_ahead": "unavailable",
+       "gap_class_leader": "unavailable",
+       "gap_class_ahead": "unavailable",
+       "relative_s": {
+        "reliable": 0.0
+       },
+       "relative_laps": {
+        "reliable": 0
+       },
+       "lap_distance_m": "unavailable",
+       "lap_elapsed_s": "unavailable",
+       "current_sector": "unavailable",
+       "in_pits": {
+        "reliable": false
+       },
+       "pose": "unavailable",
+       "velocity_mps": "unavailable",
+       "pending_penalties": "unavailable",
+       "pit_stops": {
+        "reliable": 1
+       },
+       "tyre_compound": {
+        "reliable": "medium"
+       }
+      }
+     ],
+     "player": null,
+     "source_state": "live"
+    }
+   }
+  }
+ ]
+}

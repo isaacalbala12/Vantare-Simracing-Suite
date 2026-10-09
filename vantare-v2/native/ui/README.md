@@ -388,6 +388,101 @@ JSON original restaurado al terminar. La revisión visual en su pantalla queda
 para Isaac. Build PASS con aviso heredado por `LiveScreens::toggle` sin uso;
 los gates completos se ejecutaron en Windows.
 
+### Workshop con recarga en el Mac (#1497)
+
+Desde `native/`: `bash ui/workshop-dev.sh --widget standings --escena ui/fixtures/standings-vantare-carrera.scene.json`.
+Estilos y escenas se recargan dentro del proceso. Al guardar Rust en `ui/src` o
+`domain/src` recompila con `-j 2` y sustituye la ventana: la nueva se abre antes
+de cerrar la vieja y recupera escena, fase y ajustes guardados; si no compila,
+sigue la anterior. Workshop se abre ocupando el monitor principal sin
+robar el foco; con Stage Manager queda en la tira hasta elegirlo. Si estaba a la
+vista, la recarga lo mantiene a la vista y devuelve el foco a la app activa.
+`VANTARE_WORKSHOP_ACTIVATE=1` lo trae al frente (capturas de evidencia).
+
+## Standings Vantare (#1497)
+
+Sistema de diseño principal (`designSystem: "vantare"`, por defecto); Eficiencia
+sigue disponible con `"eficiencia"`. Contrato visual: catálogo
+`vantare-widgets-r10b.html`. En modo estándar muestra la clase del jugador (o la del líder sin
+jugador) o, con `classificationMode`/`classScope`, todas las clases o
+multiclase con franjas. Usa `columns` y `rowCount` de Settings: columnas
+elegibles (±, dorsal, coche, compuesto, paradas/BOX, sectores, última, mejor,
+intervalo, gap) en el orden del catálogo y ancho calculado desde las activas.
+`vantare_template` da las plantillas compacto 340, estándar 520 (el del
+Studio) y ampliado 900. Estilos Neo y Neutro (fondos en gris, sin subtono rojo) y cuatro acentos.
+Marca Vantare (#1504) en la cabecera de Standings y Relative solo si el host
+envía `brandVisible: true` (lo decide la licencia); sin decisión no se pinta.
+El Workshop la activa por defecto y tiene el interruptor «Marca».
+Valores visuales y duraciones de animación en `styles/vantare.json`, el estilo
+único del sistema (compilado en producto, en vivo en Workshop). El kit común
+vive en `ui/src/vantare/`: estilo, primitivas de pintado, movimiento y edición
+del orden de columnas; cada widget conserva su ViewModel y su layout. Animaciones: deslizamiento al
+cambiar de posición, fundido de filas nuevas y destellos al ganar o perder
+puestos, vuelta rápida de clase y entrada en boxes; sin cambios, `Wake::Idle`.
+Escenas: `standings-vantare.scene.json` (estados del catálogo) y
+`standings-vantare-carrera.scene.json` (secuencia animada). Son datos de
+demostración del catálogo, no telemetría real; las señales que el modelo no
+publica (salida de boxes, vuelta de la vuelta rápida, zona lenta) no se pintan.
+La captura de paridad de Windows sigue usando Eficiencia.
+
+## Relative Vantare (#1497)
+
+Mismo sistema y kit que Standings, sistema por defecto (`designSystem`); Eficiencia
+sigue disponible. Proyección pura en `domain::relative_vantare`: la ventana en
+pista de Relative con gap firmado como el catálogo (delante negativo), nivel del
+piloto, Safety Rating, tendencia del gap por vuelta y si conviene, tira de ±10 s,
+aviso de tráfico de una clase más rápida a menos de 6 s y estimación de salida
+de boxes (`Player::pit_loss_s`). Columnas en `columns` (posición en clase,
+dorsal, piloto, vueltas de diferencia, nivel, SR, tendencia y gap; el punto de
+clase es fijo, el coche y la tira de pista son complementos), con
+`relative::vantare_template` (compacto ±2 280, estándar ±3 420, ampliado ±4 600),
+arrastre y ◀ ▶ en Workshop. Animaciones: filas que se deslizan, destello verde al
+adelantar y rojo al ser adelantado, pulso del tráfico rápido y puntos de la tira
+en movimiento. Escenas `relative-vantare.scene.json` y
+`relative-vantare-carrera.scene.json` con los datos del catálogo (no telemetría).
+La tendencia la deriva el núcleo al cruzar meta mientras LMU no la publique;
+LMU no ofrece nivel ni SR en local (ADR-0001) y la pérdida en boxes espera a su
+REST: en pista real salen «—» u omitidos.
+
+## Fuel y stint Vantare (#1497)
+
+Mismo sistema y kit, sistema por defecto (`designSystem`); Eficiencia sigue
+disponible. Proyección pura en `domain::fuel_vantare`: combustible y, si la
+fuente la publica, energía virtual (`Fuel::energy`, `energy_per_lap`); el recurso
+que se acaba antes decide las vueltas que quedan y la vuelta de parada (por
+debajo de 1.5 vueltas, «esta vuelta»; si llega a meta, «sobran»). Además: ventana
+de parada sobre el total de vueltas, litros y paradas para terminar, ahorro en
+FCY (`Fuel::lap_projection_l`), repostaje en curso (`Player::pit_service`) y stint
+(`Player::stint`). Tamaños en `size`: compacto 230, estándar 300 (el del Studio) y
+ampliado 460 con medidores, mosaico, gráfica de consumo y ventana. Avisos de
+combustible bajo (franja y borde que late), boxes, FCY, amarilla y última vuelta.
+Las barras se deslizan al cambiar de vuelta. Escenas `fuel-vantare.scene.json` y
+`fuel-vantare-carrera.scene.json` con los datos del catálogo (no telemetría). Mientras
+LMU no los lea el adaptador (debería darlos), el núcleo deriva el stint (desde
+la salida de boxes o el inicio de la sesión), el consumo previsto de la vuelta y
+los litros cargados en la parada. La energía virtual y el objetivo del
+repostaje esperan a leerse de la REST de LMU: hasta entonces se omiten.
+
+## Delta Vantare (#1497)
+
+Mismo sistema y kit, sistema por defecto (`designSystem`); Eficiencia sigue
+disponible. Proyección pura en `domain::delta_vantare`: el delta lo resuelve el
+núcleo para cada referencia (`reference`: mejor vuelta `delta_best_s`, vuelta
+óptima `Player::delta_optimal_s` y líder de la clase `Player::delta_leader_s`);
+no se reconstruye en la proyección. Añade el tiempo de la referencia, la vuelta
+predicha (la nativa con la mejor vuelta), los estados en pausa (boxes, vuelta de
+salida, FCY), vuelta invalidada (`Player::lap_invalid`), sin referencia, y los
+sectores de la vuelta en curso (morado mejor de la sesión, verde mejor propio,
+amarillo más lento; el sector en curso se rellena). Formatos en `size`: píldora
+(la del Studio), barra 380 y ampliado 520 con selector de referencia y sectores.
+La barra de ±1 s se desliza hacia el valor nuevo y la vuelta récord personal
+destella en morado. Escenas `delta-vantare.scene.json` y
+`delta-vantare-carrera.scene.json` con los datos del catálogo (no telemetría).
+LMU publica los mejores sectores (S1 y S2 de la sesión, S3 de la mejor vuelta),
+los sectores de la vuelta en curso y si la vuelta cuenta (`mCountLapFlag`); con
+ellos el núcleo deriva los deltas frente a óptima y líder escalando la
+referencia de la mejor vuelta propia (exactos en meta, `Estimated`).
+
 ### Harness anterior y mediciones históricas
 
 `vantare-workshop` abre la misma ventana por monitor con uno o varios widgets

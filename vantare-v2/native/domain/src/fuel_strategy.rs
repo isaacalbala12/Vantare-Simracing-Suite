@@ -492,6 +492,7 @@ mod tests {
                 capacity_l: Quality::Reliable(100.0),
                 per_lap_l: Quality::Estimated(average),
                 laps_left: Quality::Estimated(laps),
+                ..Fuel::default()
             });
             data.state.session.laps_remaining = Quality::Reliable(79);
             let vm = project(&data, Preferences::default());

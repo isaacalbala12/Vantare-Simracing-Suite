@@ -51,7 +51,7 @@ pub struct ViewModel {
 
 /// Ventana pura: delante lejos→cerca, jugador, detrás cerca→lejos. Un gap
 /// ausente, no finito o cero no demuestra de qué lado está un rival.
-fn track_window_configured(
+pub(crate) fn track_window_configured(
     cars: &[Car],
     player: CarId,
     ahead_count: usize,

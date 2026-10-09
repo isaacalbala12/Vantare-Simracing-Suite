@@ -1,6 +1,8 @@
 //! Instrumento Delta Eficiencia: geometría congelada 280 × 96.
+//! Con el sistema Vantare (por defecto) pinta `vantare.rs` (#1497).
 
 mod motion;
+pub(crate) mod vantare;
 mod view;
 
 use crate::app::{Paint, Wake};
@@ -11,16 +13,42 @@ use vantare_domain::{Snapshot, delta, format::Preferences};
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
+    pub design_system: crate::standings::DesignSystem,
+    pub style: crate::standings::Look,
+    pub accent: crate::standings::Accent,
+    /// Formato Vantare: `pill` (el del Studio), `bar` (380) o `expanded` (520).
+    pub size: String,
+    /// Referencia Vantare: `best`, `optimal` o `leader`.
+    pub reference: String,
+    /// Marca Vantare: decisión inyectada por el host según la licencia.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub brand_visible: Option<bool>,
     pub template_id: String,
 }
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            design_system: crate::standings::DesignSystem::Vantare,
+            style: crate::standings::Look::Neo,
+            accent: crate::standings::Accent::Red,
+            size: "pill".into(),
+            reference: "best".into(),
+            brand_visible: None,
             template_id: "instrument".into(),
         }
     }
 }
 impl Settings {
+    /// Ajustes por defecto del sistema Eficiencia heredado.
+    #[must_use]
+    pub fn eficiencia() -> Self {
+        Self {
+            design_system: crate::standings::DesignSystem::Eficiencia,
+            ..Self::default()
+        }
+    }
+
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
         (
             "reference=session-best",
@@ -46,11 +74,22 @@ impl Settings {
                 "instrument"
             }
             .into(),
+            size: match self.size.as_str() {
+                "bar" | "expanded" => self.size.clone(),
+                _ => "pill".into(),
+            },
+            reference: match self.reference.as_str() {
+                "optimal" | "leader" => self.reference.clone(),
+                _ => "best".into(),
+            },
+            ..self.clone()
         }
     }
 }
 
 pub(crate) struct Widget {
+    /// Presente con el sistema Vantare; si no, se usa el renderer Eficiencia.
+    vantare: Option<vantare::State>,
     settings: Settings,
     vm: delta::ViewModel,
     motion: Motion,
@@ -60,18 +99,42 @@ impl Widget {
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
         let settings = settings.normalized();
         Self {
+            vantare: (settings.design_system == crate::standings::DesignSystem::Vantare)
+                .then(|| vantare::State::new(vantare::Options::from_settings(&settings))),
             vm: settings.project(&Snapshot::default(), prefs),
             settings,
             motion: Motion::default(),
         }
     }
 
-    #[allow(clippy::unused_self)] // Contrato común del registro.
+    /// Termina las animaciones Vantare en curso (Workshop reconstruye la historia).
+    pub(crate) fn settle(&mut self) {
+        if let Some(state) = &mut self.vantare {
+            state.settle();
+        }
+    }
+
+    /// Estilo Vantare de Workshop en vivo; producto usa el compilado.
+    pub(crate) fn set_vantare_style(
+        &mut self,
+        style: std::sync::Arc<crate::vantare::style::Style>,
+    ) {
+        if let Some(state) = &mut self.vantare {
+            state.set_style(style);
+        }
+    }
+
     pub(crate) fn size(&self) -> (f32, f32) {
-        (280.0, 96.0)
+        self.vantare
+            .as_ref()
+            .map_or((280.0, 96.0), vantare::State::size)
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
+        if let Some(state) = &mut self.vantare {
+            let board = state.project(snapshot);
+            return state.ingest(board);
+        }
         let next = self.settings.project(snapshot, prefs);
         if next == self.vm {
             return false;
@@ -90,8 +153,17 @@ impl Widget {
         changed
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
         let now = Instant::now();
+        if let Some(state) = &self.vantare {
+            let wake = state.wake(now);
+            let state = state.clone();
+            let language = prefs.language;
+            return (
+                Box::new(move |window, cx| state.paint(language, window, cx)),
+                wake,
+            );
+        }
         let vm = self.vm.clone();
         let frame = self.motion.frame(&vm, now);
         (
@@ -102,14 +174,35 @@ impl Widget {
 
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
-        !matches!(self.motion.wake(Instant::now()), Wake::Idle)
+        match &self.vantare {
+            Some(state) => state.wake(Instant::now()) != Wake::Idle,
+            None => !matches!(self.motion.wake(Instant::now()), Wake::Idle),
+        }
     }
 }
 
 impl Settings {
-    #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{Delta, LapCount, LapTimes};
+        if self.design_system == crate::standings::DesignSystem::Vantare {
+            use vantare_ipc::Signal::{Cars, Flags, LapProgress, PitStatus, Positions, Sectors};
+            // Cars y Positions: líder de la clase; Sectors y LapProgress: sectores
+            // de la vuelta; PitStatus: boxes y vuelta de salida; Flags: FCY.
+            return crate::demand::signals(
+                16,
+                &[
+                    Delta,
+                    LapTimes,
+                    LapCount,
+                    Cars,
+                    Positions,
+                    Sectors,
+                    LapProgress,
+                    PitStatus,
+                    Flags,
+                ],
+            );
+        }
         crate::demand::signals(16, &[Delta, LapTimes, LapCount])
     }
 }
@@ -123,6 +216,7 @@ mod tests {
                 .expect("escena");
         let settings = Settings {
             template_id: "capsule".into(),
+            ..Settings::eficiencia()
         };
         let vm = settings.project(&snapshot, Preferences::default());
         assert!(vm.capsule);
@@ -148,7 +242,7 @@ mod tests {
         );
         assert_eq!(vm.status, delta::Status::Ready);
         assert_eq!(vm.completed_lap, Some(127));
-        let mut widget = Widget::new(&Settings::default(), prefs);
+        let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.ingest(&snapshot, prefs));
         assert!(matches!(widget.motion.wake(Instant::now()), Wake::Idle));
@@ -158,7 +252,7 @@ mod tests {
     fn repaint_only_for_display_changes() {
         use vantare_domain::{Player, Quality};
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings::default(), prefs);
+        let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         let mut s = Snapshot::default();
         s.state.source_state = vantare_domain::SourceState::Live;
         s.state.player = Some(Player {
@@ -192,7 +286,7 @@ mod tests {
             laps: Quality::Reliable(127),
             ..Car::default()
         });
-        let mut widget = Widget::new(&Settings::default(), prefs);
+        let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         assert!(widget.ingest(&s, prefs));
         s.state.cars[0].last_lap_s = Quality::Reliable(91.234);
         s.state.cars[0].best_lap_s = Quality::Reliable(90.964);

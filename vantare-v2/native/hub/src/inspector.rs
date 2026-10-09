@@ -159,7 +159,7 @@ macro_rules! set {
     clippy::cast_precision_loss
 )]
 pub fn fields(settings: &Settings) -> Vec<Field> {
-    match settings {
+    let mut rows = match settings {
         Settings::Standings(value) => {
             let mut rows = vec![
                 number(
@@ -462,7 +462,81 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             ),
         ],
         _ => vec![],
+    };
+    if let Some((_, look, accent)) = appearance(settings) {
+        use vantare_ui::standings::{Accent, Look};
+        rows.extend([
+            choice(
+                "Estilo del widget",
+                Tab::Appearance,
+                if look == Look::Neo { "neo" } else { "neutro" },
+                &[("Neo", "neo"), ("Neutro", "neutro")],
+                |settings, next| {
+                    let value = if next == "neutro" {
+                        Look::Neutro
+                    } else {
+                        Look::Neo
+                    };
+                    match settings {
+                        Settings::Standings(s) => s.style = value,
+                        Settings::Relative(s) => s.style = value,
+                        Settings::Delta(s) => s.style = value,
+                        Settings::FuelStrategy(s) => s.style = value,
+                        _ => {}
+                    }
+                },
+            ),
+            choice(
+                "Acento del widget",
+                Tab::Appearance,
+                match accent {
+                    Accent::Red => "red",
+                    Accent::Amber => "amber",
+                    Accent::Green => "green",
+                    Accent::White => "white",
+                },
+                &[
+                    ("Rojo", "red"),
+                    ("Ámbar", "amber"),
+                    ("Verde", "green"),
+                    ("Blanco", "white"),
+                ],
+                |settings, next| {
+                    let value = match next {
+                        "amber" => Accent::Amber,
+                        "green" => Accent::Green,
+                        "white" => Accent::White,
+                        _ => Accent::Red,
+                    };
+                    match settings {
+                        Settings::Standings(s) => s.accent = value,
+                        Settings::Relative(s) => s.accent = value,
+                        Settings::Delta(s) => s.accent = value,
+                        Settings::FuelStrategy(s) => s.accent = value,
+                        _ => {}
+                    }
+                },
+            ),
+        ]);
     }
+    rows
+}
+
+pub fn appearance(
+    settings: &Settings,
+) -> Option<(
+    vantare_ui::standings::DesignSystem,
+    vantare_ui::standings::Look,
+    vantare_ui::standings::Accent,
+)> {
+    match settings {
+        Settings::Standings(s) => Some((s.design_system, s.style, s.accent)),
+        Settings::Relative(s) => Some((s.design_system, s.style, s.accent)),
+        Settings::Delta(s) => Some((s.design_system, s.style, s.accent)),
+        Settings::FuelStrategy(s) => Some((s.design_system, s.style, s.accent)),
+        _ => None,
+    }
+    .filter(|(system, _, _)| *system == vantare_ui::standings::DesignSystem::Vantare)
 }
 /// Capacidades publicadas por ui; una opción persistida pero ignorada no recibe manejador.
 pub fn pending(settings: &Settings) -> Vec<String> {

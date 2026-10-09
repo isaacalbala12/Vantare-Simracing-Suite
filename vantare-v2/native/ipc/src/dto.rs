@@ -184,6 +184,8 @@ struct CarDto {
     id: u32,
     #[serde(default, skip_serializing_if = "String::is_empty")]
     number: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    vehicle: String,
     #[serde(default, skip_serializing_if = "zero")]
     driver_id: u32,
     #[serde(default, skip_serializing_if = "String::is_empty")]
@@ -230,6 +232,61 @@ struct CarDto {
     velocity_mps: QualityDto<[f64; 2]>,
     #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     pending_penalties: QualityDto<u32>,
+    // Señales de #1497, ausentes en fotos anteriores: si faltan valen
+    // Unavailable y no se escriben mientras no haya dato (las fotos existentes
+    // conservan sus bytes).
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    grid_position: QualityDto<u32>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    pit_stops: QualityDto<u32>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    tyre_compound: QualityDto<TyreCompoundDto>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    best_sectors_s: Vec<QualityDto<f64>>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    current_sectors_s: Vec<QualityDto<f64>>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    driver_rating: QualityDto<DriverRatingDto>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    safety_rating: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    relative_trend_s_per_lap: QualityDto<f64>,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum DriverRatingDto {
+    Bronze,
+    Silver,
+    Gold,
+    Platinum,
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum TyreCompoundDto {
+    Soft,
+    Medium,
+    Hard,
+    Wet,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
@@ -279,6 +336,72 @@ struct PlayerDto {
     pit_limiter_active: QualityDto<bool>,
     #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     pit_stop_stopped: QualityDto<bool>,
+    // #1497: opcional, como las señales nuevas de los coches.
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    pit_loss_s: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    fuel_energy: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    fuel_energy_per_lap: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    fuel_lap_projection_l: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    pit_refuel_target_l: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    pit_refuel_added_l: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    pit_service_remaining_s: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    pit_tyres: QualityDto<u8>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    stint_laps: QualityDto<u32>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    stint_elapsed_s: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    delta_optimal_s: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    delta_leader_s: QualityDto<f64>,
+    #[serde(
+        default = "QualityDto::unavailable",
+        skip_serializing_if = "QualityDto::absent"
+    )]
+    lap_invalid: QualityDto<bool>,
     #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
     damage_aero: QualityDto<f64>,
     #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
@@ -374,6 +497,7 @@ fn car(c: &d::Car) -> CarDto {
     CarDto {
         id: c.id.0,
         number: c.number.clone(),
+        vehicle: c.vehicle.clone(),
         driver_id: c.driver.id.0,
         driver_name: c.driver.name.clone(),
         class: c.class.as_ref().map(|k| (k.id.0, k.name.clone())),
@@ -401,6 +525,24 @@ fn car(c: &d::Car) -> CarDto {
         }),
         velocity_mps: q(&c.velocity_mps, copied),
         pending_penalties: q(&c.pending_penalties, copied),
+        grid_position: q(&c.grid_position, copied),
+        pit_stops: q(&c.pit_stops, copied),
+        tyre_compound: q(&c.tyre_compound, |t| match t {
+            d::TyreCompound::Soft => TyreCompoundDto::Soft,
+            d::TyreCompound::Medium => TyreCompoundDto::Medium,
+            d::TyreCompound::Hard => TyreCompoundDto::Hard,
+            d::TyreCompound::Wet => TyreCompoundDto::Wet,
+        }),
+        best_sectors_s: c.best_sectors_s.iter().map(|s| q(s, copied)).collect(),
+        current_sectors_s: c.current_sectors_s.iter().map(|s| q(s, copied)).collect(),
+        driver_rating: q(&c.driver_rating, |r| match r {
+            d::DriverRating::Bronze => DriverRatingDto::Bronze,
+            d::DriverRating::Silver => DriverRatingDto::Silver,
+            d::DriverRating::Gold => DriverRatingDto::Gold,
+            d::DriverRating::Platinum => DriverRatingDto::Platinum,
+        }),
+        safety_rating: q(&c.safety_rating, copied),
+        relative_trend_s_per_lap: q(&c.relative_trend_s_per_lap, copied),
     }
 }
 
@@ -423,6 +565,19 @@ fn player(p: &d::Player) -> PlayerDto {
         delta_best_s: q(&p.delta_best_s, copied),
         pit_limiter_active: q(&p.pit_limiter_active, copied),
         pit_stop_stopped: q(&p.pit_stop_stopped, copied),
+        pit_loss_s: q(&p.pit_loss_s, copied),
+        fuel_energy: q(&p.fuel.energy, copied),
+        fuel_energy_per_lap: q(&p.fuel.energy_per_lap, copied),
+        fuel_lap_projection_l: q(&p.fuel.lap_projection_l, copied),
+        pit_refuel_target_l: q(&p.pit_service.refuel_target_l, copied),
+        pit_refuel_added_l: q(&p.pit_service.refuel_added_l, copied),
+        pit_service_remaining_s: q(&p.pit_service.remaining_s, copied),
+        pit_tyres: q(&p.pit_service.tyres, copied),
+        stint_laps: q(&p.stint.laps, copied),
+        stint_elapsed_s: q(&p.stint.elapsed_s, copied),
+        delta_optimal_s: q(&p.delta_optimal_s, copied),
+        delta_leader_s: q(&p.delta_leader_s, copied),
+        lap_invalid: q(&p.lap_invalid, copied),
         damage_aero: q(&p.damage.aero, copied),
         damage_body: q(&p.damage.body, copied),
         damage_suspension: q(&p.damage.suspension, copied),
@@ -588,6 +743,7 @@ fn ucar(c: CarDto) -> d::Car {
     d::Car {
         id: d::CarId(c.id),
         number: c.number,
+        vehicle: c.vehicle,
         driver: d::Driver {
             id: d::DriverId(c.driver_id),
             name: c.driver_name,
@@ -620,6 +776,24 @@ fn ucar(c: CarDto) -> d::Car {
         }),
         velocity_mps: uq(c.velocity_mps, id),
         pending_penalties: uq(c.pending_penalties, id),
+        grid_position: uq(c.grid_position, id),
+        pit_stops: uq(c.pit_stops, id),
+        tyre_compound: uq(c.tyre_compound, |t| match t {
+            TyreCompoundDto::Soft => d::TyreCompound::Soft,
+            TyreCompoundDto::Medium => d::TyreCompound::Medium,
+            TyreCompoundDto::Hard => d::TyreCompound::Hard,
+            TyreCompoundDto::Wet => d::TyreCompound::Wet,
+        }),
+        best_sectors_s: c.best_sectors_s.into_iter().map(|s| uq(s, id)).collect(),
+        current_sectors_s: c.current_sectors_s.into_iter().map(|s| uq(s, id)).collect(),
+        driver_rating: uq(c.driver_rating, |r| match r {
+            DriverRatingDto::Bronze => d::DriverRating::Bronze,
+            DriverRatingDto::Silver => d::DriverRating::Silver,
+            DriverRatingDto::Gold => d::DriverRating::Gold,
+            DriverRatingDto::Platinum => d::DriverRating::Platinum,
+        }),
+        safety_rating: uq(c.safety_rating, id),
+        relative_trend_s_per_lap: uq(c.relative_trend_s_per_lap, id),
     }
 }
 
@@ -645,10 +819,27 @@ fn uplayer(p: PlayerDto) -> d::Player {
             per_lap_l: uq(p.fuel_per_lap_l, id),
             laps_left: uq(p.fuel_laps_left, id),
             history,
+            energy: uq(p.fuel_energy, id),
+            energy_per_lap: uq(p.fuel_energy_per_lap, id),
+            lap_projection_l: uq(p.fuel_lap_projection_l, id),
         },
+        pit_service: d::PitService {
+            refuel_target_l: uq(p.pit_refuel_target_l, id),
+            refuel_added_l: uq(p.pit_refuel_added_l, id),
+            remaining_s: uq(p.pit_service_remaining_s, id),
+            tyres: uq(p.pit_tyres, id),
+        },
+        stint: d::Stint {
+            laps: uq(p.stint_laps, id),
+            elapsed_s: uq(p.stint_elapsed_s, id),
+        },
+        delta_optimal_s: uq(p.delta_optimal_s, id),
+        delta_leader_s: uq(p.delta_leader_s, id),
+        lap_invalid: uq(p.lap_invalid, id),
         delta_best_s: uq(p.delta_best_s, id),
         pit_limiter_active: uq(p.pit_limiter_active, id),
         pit_stop_stopped: uq(p.pit_stop_stopped, id),
+        pit_loss_s: uq(p.pit_loss_s, id),
         damage: d::Damage {
             aero: uq(p.damage_aero, id),
             body: uq(p.damage_body, id),
@@ -721,6 +912,12 @@ impl TryFrom<SnapshotDto> for d::Snapshot {
 impl<T> QualityDto<T> {
     fn not_requested(&self) -> bool {
         matches!(self, Self::NotRequested)
+    }
+    fn unavailable() -> Self {
+        Self::Unavailable
+    }
+    fn absent(&self) -> bool {
+        matches!(self, Self::NotRequested | Self::Unavailable)
     }
 }
 fn unrequested_tyres(values: &[QualityDto<f64>; 4]) -> bool {
@@ -836,12 +1033,14 @@ impl SnapshotDto {
         for car in &mut self.state.cars {
             let old = previous.and_then(|old| old.state.cars.iter().find(|old| old.id == car.id));
             fields!(car, old, requested_mask, delivered_mask;
-                Cars => [number, driver_id, driver_name, class],
-                Positions => [position, class_position], LapCount => [laps],
-                LapTimes => [last_lap_s, best_lap_s, estimated_lap_s], Sectors => [last_sectors_s, current_sector],
+                Cars => [number, vehicle, driver_id, driver_name, class, driver_rating, safety_rating],
+                Positions => [position, class_position, grid_position], LapCount => [laps],
+                LapTimes => [last_lap_s, best_lap_s, estimated_lap_s],
+                Sectors => [last_sectors_s, current_sector, best_sectors_s, current_sectors_s],
                 Gaps => [gap_leader, gap_ahead], ClassGaps => [gap_class_leader, gap_class_ahead],
-                Relative => [relative_s, relative_laps], LapProgress => [lap_distance_m, lap_elapsed_s],
-                PitStatus => [in_pits], Spatial => [pose], Velocity => [velocity_mps], Penalties => [pending_penalties]);
+                Relative => [relative_s, relative_laps, relative_trend_s_per_lap], LapProgress => [lap_distance_m, lap_elapsed_s],
+                PitStatus => [in_pits, pit_stops, tyre_compound], Spatial => [pose], Velocity => [velocity_mps],
+                Penalties => [pending_penalties]);
         }
         if let Some(player) = &mut self.state.player {
             let old = previous
@@ -849,9 +1048,11 @@ impl SnapshotDto {
                 .filter(|old| old.car == player.car);
             fields!(player, old, requested_mask, delivered_mask;
                 Pedals => [throttle, brake], Clutch => [clutch], Steering => [steering],
-                Powertrain => [gear, speed_mps, engine_speed_rad_s], FuelLevel => [fuel_level_l, fuel_capacity_l],
-                FuelEstimate => [fuel_per_lap_l, fuel_laps_left, fuel_history], Delta => [delta_best_s],
-                PitStatus => [pit_limiter_active, pit_stop_stopped],
+                Powertrain => [gear, speed_mps, engine_speed_rad_s], FuelLevel => [fuel_level_l, fuel_capacity_l, fuel_energy],
+                FuelEstimate => [fuel_per_lap_l, fuel_laps_left, fuel_history, fuel_energy_per_lap, fuel_lap_projection_l],
+                Delta => [delta_best_s, delta_optimal_s, delta_leader_s, lap_invalid],
+                PitStatus => [pit_limiter_active, pit_stop_stopped, pit_loss_s, pit_refuel_target_l,
+                    pit_refuel_added_l, pit_service_remaining_s, pit_tyres, stint_laps, stint_elapsed_s],
                 Damage => [damage_aero, damage_body, damage_suspension, damage_tyre_wear]);
         }
         Ok(())

@@ -1126,6 +1126,72 @@ mod demand_tests {
             "sesión nueva no hereda valores"
         );
     }
+    /// Claves restaurables de un DTO, sin la identidad (IDs de sesión, coche y jugador).
+    fn restorable(dto: &SnapshotDto) -> std::collections::BTreeMap<String, serde_json::Value> {
+        let value = serde_json::to_value(dto).expect("JSON");
+        let state = &value["state"];
+        let mut keys = std::collections::BTreeMap::new();
+        keys.insert("flags".to_owned(), state["flags"].clone());
+        let mut add = |prefix: &str, object: &serde_json::Value, identity: &str| {
+            for (key, field) in object.as_object().expect("objeto") {
+                if key != identity {
+                    keys.insert(format!("{prefix}.{key}"), field.clone());
+                }
+            }
+        };
+        add("session", &state["session"], "id");
+        add("player", &state["player"], "car");
+        for (index, car) in state["cars"].as_array().expect("coches").iter().enumerate() {
+            add(&format!("car{index}"), car, "id");
+        }
+        keys
+    }
+
+    #[test]
+    fn every_restorable_key_belongs_to_exactly_one_signal() {
+        // Misma identidad, todos los valores distintos y ninguno Unavailable.
+        let distinct =
+            |base| SnapshotDto::from(&crate::codec::tests::Distinct::new(base, 0, 3).snapshot());
+        let (old, new) = (distinct(0), distinct(5000));
+        let (old_keys, new_keys) = (restorable(&old), restorable(&new));
+        assert_eq!(
+            old_keys.keys().collect::<Vec<_>>(),
+            new_keys.keys().collect::<Vec<_>>()
+        );
+        assert!(old_keys.len() > 140, "DTO rico: {} claves", old_keys.len());
+        for (key, value) in &old_keys {
+            assert_ne!(value, &new_keys[key], "{key} debe distinguir ambas fotos");
+        }
+        // Entregar una sola señal: sus claves llegan nuevas y el resto se
+        // restaura. Un campo que `restore` olvida conserva el valor nuevo con
+        // cualquier señal y queda con más de un dueño.
+        let mut owners = std::collections::BTreeMap::<&str, Vec<Signal>>::new();
+        for &signal in Signal::ALL {
+            let delivered = Demand::from_mask(signal.bit());
+            let mut next = new.clone();
+            next.filter(&delivered).expect("selección");
+            next.restore(Some(&old), &Demand::all(), &delivered)
+                .expect("restauración");
+            let next_keys = restorable(&next);
+            for (key, value) in &old_keys {
+                let got = next_keys.get(key);
+                if got == Some(&new_keys[key]) {
+                    owners.entry(key).or_default().push(signal);
+                } else {
+                    assert_eq!(got, Some(value), "{key} con {signal:?}");
+                }
+            }
+        }
+        for key in old_keys.keys() {
+            assert_eq!(
+                owners.get(key.as_str()).map(Vec::len),
+                Some(1),
+                "{key}: dueños {:?}",
+                owners.get(key.as_str())
+            );
+        }
+    }
+
     #[test]
     fn an_omitted_signal_cannot_be_claimed_as_delivered_unavailable() {
         let source = crate::codec::tests::rich_snapshot(1, 1);

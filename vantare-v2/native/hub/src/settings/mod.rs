@@ -319,7 +319,7 @@ impl State {
             ),
             font: choice(
                 "Fuente de interfaz",
-                ChoiceKind::Dropdown,
+                ChoiceKind::Segmented,
                 &["Inter", "Segoe UI", "Arial"],
                 Some(appearance_settings.interface_font as usize),
                 true,

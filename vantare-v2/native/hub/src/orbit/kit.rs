@@ -701,7 +701,7 @@ pub fn palette_card(
     use super::skin::Skin;
     let orb = |skin: Skin| {
         div()
-            .size(px(if adapt.show_optional() { 26.0 } else { 18.0 }))
+            .size(px(if adapt.show_notes() { 26.0 } else { 24.0 }))
             .flex_none()
             .rounded_full()
             .border_1()
@@ -718,12 +718,12 @@ pub fn palette_card(
         .aria_label(palette.label())
         .aria_selected(active)
         .tab_stop(false)
-        .flex_col()
+        .flex_row()
         .items_center()
-        .justify_center()
+        .justify_between()
         .gap(px(6.0))
-        .px(px(10.0))
-        .py(px(6.0))
+        .px(px(14.0))
+        .py(px(12.0))
         .child(super::text(palette.label(), 13.0, 500, super::ink(cx), cx))
         .child(
             div()
@@ -785,19 +785,54 @@ pub fn scheme_card(
         );
         div()
             .flex_1()
-            .h(px(if adapt.show_optional() { 38.0 } else { 28.0 }))
-            .p(px(6.0))
+            .h(px(if adapt.show_notes() {
+                88.0
+            } else if adapt.show_optional() {
+                64.0
+            } else {
+                44.0
+            }))
+            .flex()
             .bg(rgb(theme.base))
-            .child(div().h(px(5.0)).w_full().bg(rgb(theme.l3)))
-            .child(div().mt(px(5.0)).h(px(12.0)).w_full().bg(rgb(theme.accent)))
+            .child(div().w(gpui::relative(0.22)).h_full().bg(rgb(theme.l1)))
+            .child(
+                div()
+                    .flex_1()
+                    .p(px(8.0))
+                    .flex()
+                    .flex_col()
+                    .gap(px(6.0))
+                    .child(div().h(px(5.0)).w_full().rounded(px(2.0)).bg(rgb(theme.l3)))
+                    .child(
+                        div()
+                            .flex_1()
+                            .w_full()
+                            .rounded(px(4.0))
+                            .bg(super::ramp(theme.neo, 180.0)),
+                    )
+                    .child(
+                        div()
+                            .h(px(8.0))
+                            .w(px(28.0))
+                            .rounded(px(3.0))
+                            .bg(rgb(theme.accent)),
+                    ),
+            )
     };
-    super::button(("settings-scheme", index), label, cx)
+    super::button(("settings-scheme", index), "", cx)
+        .aria_label(label)
         .flex_1()
         .min_w_0()
-        .h_auto()
+        .h(px(if adapt.show_notes() {
+            148.0
+        } else if adapt.show_optional() {
+            124.0
+        } else {
+            92.0
+        }))
         .flex_col()
-        .p(px(8.0))
-        .gap(px(6.0))
+        .p(px(10.0))
+        .gap(px(10.0))
         .aria_selected(active)
         .child(
             div()
@@ -810,6 +845,7 @@ pub fn scheme_card(
                     row.child(preview(false))
                 }),
         )
+        .child(super::text(label, 14.0, 500, super::ink(cx), cx))
         .when(active, |card| card.shadow(super::selection_ring(cx)))
 }
 
@@ -817,7 +853,7 @@ fn skin_palette(cx: &gpui::App) -> super::theme::Palette {
     cx.global::<super::theme::Theme>().palette
 }
 
-pub const APPEARANCE_TRACK_WIDTH: f32 = 128.0;
+pub const APPEARANCE_TRACK_WIDTH: f32 = 176.0;
 pub const APPEARANCE_THUMB_SIZE: f32 = 14.0;
 pub const APPEARANCE_VALUE_OFFSET: f32 = 57.0;
 
@@ -839,7 +875,7 @@ pub fn appearance_slider(
         })
         .role(gpui::Role::Slider)
         .aria_label(label)
-        .w(px(185.0))
+        .w(px(APPEARANCE_TRACK_WIDTH + APPEARANCE_VALUE_OFFSET))
         .flex()
         .flex_none()
         .items_center()
@@ -869,7 +905,7 @@ pub fn appearance_slider(
                         .absolute()
                         .left_0()
                         .top(px(7.0))
-                        .w(px(128.0))
+                        .w(px(APPEARANCE_TRACK_WIDTH))
                         .h(px(6.0))
                         .rounded(px(3.0))
                         .bg(rgb(super::primary_bg(cx))),

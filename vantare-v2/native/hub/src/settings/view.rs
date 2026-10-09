@@ -965,13 +965,11 @@ impl Hub {
                     section_body().child(section_row(
                         "Reducir animaciones",
                         "Sin transiciones, latidos ni carruseles",
-                        orbit::button(
+                        orbit::toggle(
                             "settings-reduced-motion",
-                            if settings.reduced_motion {
-                                "Activado"
-                            } else {
-                                "Desactivado"
-                            },
+                            "Reducir animaciones",
+                            settings.reduced_motion,
+                            true,
                             cx,
                         )
                         .role(gpui::Role::Switch)

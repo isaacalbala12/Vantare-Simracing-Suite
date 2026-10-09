@@ -4,6 +4,14 @@ use crate::orbit;
 use chrono::{DateTime, Datelike, Duration, Local, Timelike, Utc};
 use gpui::{Context, Div, Stateful, div, prelude::*, px};
 
+const AGENDA_EVENT_HEIGHT: f32 = 30.0;
+const AGENDA_CELL_PADDING: f32 = 3.0;
+
+fn agenda_hour_height(adapt: orbit::Adapt) -> f32 {
+    // 30 de evento + 6 de padding + 1 de borde; 38 deja un píxel de aire en XS.
+    (adapt.row_height() - 8.0).max(38.0)
+}
+
 pub(super) fn views_control(calendar: &Calendar, cx: &mut Context<Calendar>) -> Div {
     div().flex().h_full().gap(px(18.0)).children(
         [
@@ -54,7 +62,7 @@ fn agenda_event(
         .aria_label(format!("{} · marcar favorita", event.series.name))
         .aria_selected(favorite)
         .flex_none()
-        .h(px(30.0))
+        .h(px(AGENDA_EVENT_HEIGHT))
         .overflow_hidden()
         .p(px(2.0))
         .rounded(px(orbit::skin(cx).radius.sm))
@@ -149,7 +157,7 @@ fn agenda_grid(
             .flex_none()
             .gap(px(4.0))
             // Una hora ocupa siempre la misma distancia, haya cero o muchas salidas.
-            .h(px((calendar.adapt.row_height() - 8.0).max(32.0)))
+            .h(px(agenda_hour_height(calendar.adapt)))
             .child(
                 orbit::text(format!("{hour:02}:00"), 10.0, 500, orbit::ink_3(cx), cx)
                     .w(px(48.0))
@@ -167,7 +175,7 @@ fn agenda_grid(
                 .flex()
                 .flex_col()
                 .gap(px(3.0))
-                .p(px(3.0))
+                .p(px(AGENDA_CELL_PADDING))
                 .border_b_1()
                 .border_color(orbit::alpha(orbit::skin(cx).line1))
                 .when(cell.now, |cell| {
@@ -409,6 +417,18 @@ pub(super) fn posters(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn every_agenda_density_fits_one_complete_event_with_padding_and_border() {
+        for height in [720.0, 768.0, 819.0, 820.0, 900.0, 1080.0, 1440.0] {
+            let adapt = orbit::Adapt::new(1280.0, height, None, true);
+            let usable = agenda_hour_height(adapt) - 2.0 * AGENDA_CELL_PADDING - 1.0;
+            assert!(
+                usable >= AGENDA_EVENT_HEIGHT,
+                "franja incompleta a {height}"
+            );
+        }
+    }
 
     #[test]
     fn dense_official_agenda_preserves_counts_and_filters_before_previewing() {

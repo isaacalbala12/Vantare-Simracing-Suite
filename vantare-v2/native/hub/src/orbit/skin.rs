@@ -285,11 +285,11 @@ impl Skin {
             cap: 0x87_7d80,
             radius: Radii {
                 xs: 4.0,
-                sm: 8.0,
-                md: 12.0,
-                lg: 16.0,
-                xl: 20.0,
-                panel: 28.0,
+                sm: 6.0,
+                md: 8.0,
+                lg: 10.0,
+                xl: 14.0,
+                panel: 10.0,
             },
             hero: ramp(0x5c_1720, 0x1e_1517),
             hero_wash: Ramp {
@@ -699,7 +699,7 @@ mod tests {
         let r = s.radius;
         assert_eq!(
             [r.sm, r.md, r.lg, r.xl, r.panel],
-            [8.0, 12.0, 16.0, 20.0, 28.0]
+            [6.0, 8.0, 10.0, 14.0, 10.0]
         );
         assert_eq!((s.hero.from, s.hero.to), (0x5c_1720, 0x1e_1517));
         assert_eq!((s.now.from, s.now.to), (0x33_191d, 0x1f_1719));

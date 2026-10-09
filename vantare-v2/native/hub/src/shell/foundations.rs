@@ -364,6 +364,53 @@ fn visible_settings(layout: &vantare_ui::layout::Layout) -> Vec<&Settings> {
 }
 
 impl Hub {
+    fn home_loading(
+        composer: Div,
+        hero: Div,
+        adapt: orbit::Adapt,
+        cx: &gpui::App,
+    ) -> (Div, Vec<orbit::RailSection>) {
+        let skeletons = || {
+            orbit::neo_card(cx)
+                .flex_1()
+                .min_h_0()
+                .gap(px(18.0))
+                .child(orbit::skeleton(0.4, 16.0, cx))
+                .child(orbit::skeleton(0.8, 36.0, cx))
+                .child(orbit::skeleton(1.0, 64.0, cx))
+        };
+        let (top, _, _) = adapt.padding();
+        let status_height =
+            top + if adapt.show_notes() { 60.0 } else { 52.0 } + adapt.gap() + hero_height(adapt)
+                - 63.0;
+        (
+            div()
+                .size_full()
+                .min_h_0()
+                .flex()
+                .flex_col()
+                .gap(px(adapt.gap()))
+                .child(composer)
+                .child(hero)
+                .child(
+                    div()
+                        .flex_1()
+                        .min_h_0()
+                        .flex()
+                        .gap(px(adapt.gap()))
+                        .child(skeletons())
+                        .child(skeletons()),
+                ),
+            vec![
+                orbit::RailSection::new(
+                    "Estado",
+                    "pulse",
+                    skeletons().flex_none().min_h(px(status_height)),
+                ),
+                orbit::RailSection::new("Plantillas", "v-studio", skeletons()).grow(),
+            ],
+        )
+    }
     #[allow(clippy::too_many_lines)] // Composición lineal del layout C; las piezas se comparten en Orbit.
     fn home_overlay(
         preview: Option<Div>,
@@ -381,7 +428,12 @@ impl Hub {
             .gap(px(8.0))
             .child(orbit::neo_header("Overlay en pista", "v-studio", cx))
             .when_some(preview, |card, preview| {
-                card.child(preview.flex_1().min_h_0())
+                let height = if adapt.show_notes() {
+                    (adapt.height * 0.21).clamp(140.0, 280.0)
+                } else {
+                    (adapt.height * 0.20).clamp(110.0, 200.0)
+                };
+                card.child(preview.h(px(height)).flex_none())
             })
             .when(!has_preview, |card| {
                 card.child(
@@ -757,7 +809,7 @@ impl Hub {
             .map(|settings| settings.kind().label())
             .collect();
         let main_settings = visible.first().map(|settings| (*settings).clone());
-        let template_width = (adapt.rail_width() - 32.0 - gap) / 2.0 - 20.0;
+        let template_width = (adapt.rail_width() - 32.0 - gap) / 2.0;
         let (pending, access_error) = self.remote.read(cx).home_access();
         let mut state = home_state(
             pending,
@@ -774,30 +826,6 @@ impl Hub {
                 _ if capture.home_session() => HomeState::Session,
                 _ => state,
             };
-        }
-        if state == HomeState::Loading {
-            let skeletons = || {
-                orbit::neo_card(cx)
-                    .flex_1()
-                    .gap(px(18.0))
-                    .child(orbit::skeleton(0.4, 16.0, cx))
-                    .child(orbit::skeleton(0.8, 36.0, cx))
-                    .child(orbit::skeleton(1.0, 64.0, cx))
-            };
-            return (
-                div()
-                    .size_full()
-                    .flex()
-                    .flex_col()
-                    .gap(px(gap))
-                    .child(orbit::skeleton(1.0, 52.0, cx))
-                    .child(skeletons())
-                    .child(skeletons()),
-                vec![
-                    orbit::RailSection::new("Estado", "pulse", skeletons()),
-                    orbit::RailSection::new("Plantillas", "v-studio", skeletons()).grow(),
-                ],
-            );
         }
         let preview_height = (lower_height(adapt, state == HomeState::AccessError)
             - if adapt.show_optional() { 260.0 } else { 158.0 })
@@ -1004,6 +1032,9 @@ impl Hub {
             favorite,
             cx,
         );
+        if state == HomeState::Loading {
+            return Self::home_loading(composer, hero, adapt, cx);
+        }
         let preview = main_settings.as_ref().map(|_| {
             self.home_previews.layout_thumbnail(
                 &layout,
@@ -1035,7 +1066,20 @@ impl Hub {
                     .child(overlay)
                     .child(activity),
             );
+        // Align the second rail section with the cards below the hero.
+        let (top, _, _) = adapt.padding();
+        let composer_height = if adapt.show_notes() { 60.0 } else { 52.0 };
+        let status_height = top
+            + composer_height
+            + adapt.gap()
+            + hero_height(adapt)
+            + if state == HomeState::AccessError {
+                60.0 + adapt.gap()
+            } else {
+                0.0
+            };
         let status_body = div()
+            .min_h(px(status_height - 63.0)) // rail inset, header, bottom padding and separator
             .flex_none()
             .flex()
             .flex_col()
@@ -1139,7 +1183,7 @@ impl Hub {
         let mut templates = div().flex_1().min_h_0().flex().flex_col().gap(px(gap));
         // Alto B/XS: solo la primera fila de plantillas (`.op-b`).
         for row in 0..if adapt.show_optional() { 2 } else { 1 } {
-            templates = templates.child(div().flex_1().min_h_0().flex().gap(px(gap)).children(
+            templates = templates.child(div().flex_none().min_h_0().flex().gap(px(gap)).children(
                 (row * 2..row * 2 + 2).map(|index| {
                     let title = [
                         "Standings multiclase",
@@ -1147,25 +1191,31 @@ impl Hub {
                         "Fuel y stint",
                         "Delta y sectores",
                     ][index];
-                    orbit::neo_card(cx)
+                    orbit::button(("home-template", index), "", cx)
+                        .aria_label(format!("{title} · Abrir Studio"))
                         .flex_1()
-                        .p(px(10.0))
+                        .min_w_0()
+                        .h_auto()
+                        .flex_col()
+                        .items_start()
+                        .bg(gpui::transparent_black())
+                        .border_0()
+                        .p(px(0.0))
                         .gap(px(8.0))
                         .overflow_hidden()
-                        .child(self.home_previews.thumbnail(
-                            index + 1,
-                            template_width,
-                            if compact { 90.0 } else { 150.0 },
+                        .child(
+                            self.home_previews
+                                .thumbnail(index + 1, template_width, 92.0, cx),
+                        )
+                        .child(orbit::text(title, 13.0, 600, orbit::ink(cx), cx))
+                        .child(orbit::text(
+                            "Plantilla local · Abrir Studio",
+                            11.0,
+                            400,
+                            orbit::ink_3(cx),
                             cx,
                         ))
-                        .child(orbit::text(title, 13.0, 600, orbit::ink(cx), cx))
-                        .child(
-                            orbit::button(title, "Abrir Studio", cx)
-                                .self_start()
-                                .on_click(
-                                    cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)),
-                                ),
-                        )
+                        .on_click(cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)))
                 }),
             ));
         }

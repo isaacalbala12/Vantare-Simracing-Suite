@@ -496,7 +496,7 @@ pub fn text(
     div()
         .text_size(px(size))
         .font_family(sans_family(w, cx))
-        .font_weight(FontWeight(f32::from(w)))
+        .font_weight(face_weight(w, cx))
         .text_color(rgb(color))
         .child(content.into())
 }
@@ -854,7 +854,9 @@ pub fn button(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> St
     button_base(id, label, cx)
         .hover(move |s| s.bg(alpha(hover)))
         .focus_visible(|s| s.border_color(alpha(skin.selection)))
-        .child(text(label.to_owned(), 14.0, 500, skin.text1, cx))
+        .when(!label.is_empty(), |button| {
+            button.child(text(label.to_owned(), 14.0, 500, skin.text1, cx))
+        })
 }
 
 /// Botón compacto de fila (Ajustes, Cuenta): discreto en reposo, responde a hover y foco.

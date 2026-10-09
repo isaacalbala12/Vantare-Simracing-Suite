@@ -42,6 +42,15 @@ impl Editor {
     pub fn layout(&self) -> &Layout {
         self.document.layout()
     }
+    pub(crate) fn set_canvas_resolution(
+        &mut self,
+        resolution: Option<vantare_ui::layout::CanvasResolution>,
+    ) -> Result<(), String> {
+        self.change(|layout| {
+            layout.canvas_resolution = resolution;
+            Ok(())
+        })
+    }
     pub(crate) fn persist(&mut self) -> Result<(), String> {
         self.document
             .save(&self.layout().clone())
@@ -504,5 +513,64 @@ pub(crate) mod tests {
         assert_eq!(editor.layout().instances.len(), 2);
         editor.redo().expect("rehacer");
         assert_eq!(editor.layout().instances.len(), 1);
+    }
+    #[test]
+    fn canvas_resolution_is_durable_undoable_and_preserves_every_widget() {
+        use vantare_ui::layout::CanvasResolution;
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
+        editor.add(Kind::Radar).expect("radar");
+        editor
+            .edit_selected(|item| {
+                item.x = -1240.5;
+                item.y = 83.25;
+            })
+            .expect("monitor secundario");
+        editor.add(Kind::Standings).expect("standings");
+        let instances = editor.layout().instances.clone();
+        let selected = editor.selected.clone();
+        for (width, height) in [
+            (1920.0, 1080.0),
+            (2520.0, 1080.0),
+            (1920.0, 1200.0),
+            (3840.0, 1080.0),
+        ] {
+            let previous = editor.layout().canvas_resolution;
+            let resolution = Some(CanvasResolution { width, height });
+            editor
+                .set_canvas_resolution(resolution)
+                .expect("resolución");
+            assert_eq!(editor.layout().instances, instances);
+            assert_eq!(editor.selected, selected);
+            let reopened = Editor::open(file.path.clone()).expect("reabrir layout");
+            assert_eq!(reopened.layout().canvas_resolution, resolution);
+            assert_eq!(reopened.layout().instances, instances);
+            editor.undo().expect("deshacer");
+            assert_eq!(editor.layout().canvas_resolution, previous);
+            assert_eq!(editor.layout().instances, instances);
+            editor.redo().expect("rehacer");
+            assert_eq!(editor.layout().canvas_resolution, resolution);
+        }
+        let previous = editor.layout().clone();
+        assert!(
+            editor
+                .set_canvas_resolution(Some(CanvasResolution {
+                    width: 0.0,
+                    height: 1080.0
+                }))
+                .is_err()
+        );
+        assert_eq!(editor.layout(), &previous);
+        editor
+            .set_canvas_resolution(None)
+            .expect("volver al monitor");
+        assert_eq!(editor.layout().instances, instances);
+        assert_eq!(
+            Editor::open(file.path.clone())
+                .expect("reabrir")
+                .layout()
+                .canvas_resolution,
+            None
+        );
     }
 }

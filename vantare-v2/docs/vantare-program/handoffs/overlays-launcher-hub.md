@@ -6308,3 +6308,17 @@ Entrega local para revisión/aceptación de Isaac u orquestador. Sin delegación
 push, PR, CI remota, promoción a nightly/testers/master, release, deploy ni acción
 comercial. Acciones externas: lectura SSH Mac y comentarios de seguimiento en
 GitHub #1496. Solo merges locales de las cinco ramas autorizadas.
+
+### #1496 · ajuste de lienzo solicitado por Isaac el 9 de octubre
+
+Isaac amplía el feedback en la misma rama de integración: R10.3 conserva un único marco,
+maximiza y centra el lienzo; reemplaza 16:9 fijo por la resolución lógica del monitor que
+contiene los overlays o por la elegida en la barra. La elección pertenece al layout v1,
+se conserva al reabrir y admite deshacer; los layouts anteriores siguen el monitor.
+Las posiciones globales, tamaños, contenido y orden de widgets no cambian al elegir
+resolución. El inspector ancla y centra dentro del cliente elegido, incluido su origen
+en un monitor secundario. Sin dependencias nuevas ni renderer alternativo.
+Archivos previstos: native/ui/src/layout.rs, native/hub/src/{document,inspector,studio}.rs
+y fragmento ISA-1496. Clippy all-targets pasa; tests de proporciones, persistencia y
+monitor secundario en ejecución. Capturas Windows y reconstrucción 0.0.974 pendientes.
+No existe docs/roadmap/plan.md en esta base ni origin/nightly; no se crea un roadmap paralelo.

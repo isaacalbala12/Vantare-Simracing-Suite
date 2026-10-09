@@ -17,7 +17,10 @@ use gpui::{
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use vantare_domain::{Snapshot, format::Preferences};
-use vantare_ui::{Kind, Overlay, Settings, layout::Instance};
+use vantare_ui::{
+    Kind, Overlay, Settings,
+    layout::{CanvasResolution, Instance, Layout},
+};
 
 const STUDIO_PREVIEW_SCALE: f32 = 700.0 / 1920.0;
 const ZOOM_STEPS: [Option<u16>; 6] = [None, Some(50), Some(75), Some(100), Some(125), Some(150)];
@@ -125,19 +128,89 @@ fn catalog_options(access: Option<crate::shell::navigation::Access>) -> Vec<Opti
         .collect()
 }
 
-fn fitted_scale(width: f32, height: f32) -> Option<f32> {
-    if !width.is_finite() || !height.is_finite() {
+const CANVAS_PRESETS: [CanvasResolution; 6] = [
+    CanvasResolution {
+        width: 1920.0,
+        height: 1080.0,
+    },
+    CanvasResolution {
+        width: 2520.0,
+        height: 1080.0,
+    },
+    CanvasResolution {
+        width: 1920.0,
+        height: 1200.0,
+    },
+    CanvasResolution {
+        width: 3840.0,
+        height: 1080.0,
+    },
+    CanvasResolution {
+        width: 2560.0,
+        height: 1440.0,
+    },
+    CanvasResolution {
+        width: 3840.0,
+        height: 2160.0,
+    },
+];
+
+fn fitted_scale(width: f32, height: f32, resolution: CanvasResolution) -> Option<f32> {
+    if !width.is_finite() || !height.is_finite() || !resolution.valid() {
         return None;
     }
-    let scale = ((width) / 1920.0).min((height) / 1080.0);
+    let scale = (width / resolution.width).min(height / resolution.height);
     (scale > 0.0).then_some(scale)
 }
 
-/// Centrado espacial: el zoom mayor que el viewport comienza en su origen para poder desplazarse.
-fn preview_origin(width: f32, height: f32, scale: f32) -> (f32, f32) {
+/// El zoom mayor que el viewport comienza en su origen para poder desplazarse.
+fn preview_origin(width: f32, height: f32, scale: f32, resolution: CanvasResolution) -> (f32, f32) {
     (
-        ((width - 1920.0 * scale) / 2.0).max(0.0),
-        ((height - 1080.0 * scale) / 2.0).max(0.0),
+        ((width - resolution.width * scale) / 2.0).max(0.0),
+        ((height - resolution.height * scale) / 2.0).max(0.0),
+    )
+}
+
+/// El documento conserva posiciones globales; el lienzo muestra el monitor de sus overlays.
+fn overlay_monitor(
+    layout: &Layout,
+    displays: &[(f32, f32, f32, f32)],
+    fallback: (f32, f32, f32, f32),
+) -> (f32, f32, f32, f32) {
+    layout
+        .instances
+        .iter()
+        .filter(|item| item.visible)
+        .find_map(|item| {
+            displays.iter().copied().find(|&(x, y, width, height)| {
+                item.x >= x && item.x < x + width && item.y >= y && item.y < y + height
+            })
+        })
+        .unwrap_or(fallback)
+}
+
+fn client_monitor(layout: &Layout, cx: &gpui::App) -> (f32, f32, f32, f32) {
+    let bounds = |bounds: gpui::Bounds<Pixels>| {
+        (
+            f32::from(bounds.origin.x),
+            f32::from(bounds.origin.y),
+            f32::from(bounds.size.width),
+            f32::from(bounds.size.height),
+        )
+    };
+    let fallback = cx
+        .primary_display()
+        .as_ref()
+        .map_or((0.0, 0.0, 1920.0, 1080.0), |display| {
+            bounds(display.bounds())
+        });
+    overlay_monitor(
+        layout,
+        &cx.displays()
+            .iter()
+            .map(|display| bounds(display.bounds()))
+            .collect::<Vec<_>>(),
+        fallback,
     )
 }
 
@@ -473,6 +546,8 @@ pub struct Studio {
     photos: Vec<scenes::Photo>,
     real_photo: Option<usize>,
     photo_choice: Option<Entity<Choice>>,
+    resolution_choice: Option<Entity<Choice>>,
+    monitor: (f32, f32, f32, f32),
     status: Result<(), String>,
     drag: Option<Entity<CanvasFrame>>,
     opacity_preview: Option<(String, f32)>,
@@ -592,6 +667,7 @@ struct CanvasFrame {
     lock: Option<&'static str>,
     renderer: Entity<Overlay>,
     preview_scale: f32,
+    client_origin: (f32, f32),
     content_scale: f32,
     selected: bool,
     focus: FocusHandle,
@@ -618,8 +694,8 @@ impl CanvasFrame {
         div()
             .id("widget-frame")
             .absolute()
-            .left(px(x * self.preview_scale))
-            .top(px(y * self.preview_scale))
+            .left(px((x - self.client_origin.0) * self.preview_scale))
+            .top(px((y - self.client_origin.1) * self.preview_scale))
             .w(px(dimensions.0 * self.preview_scale * self.content_scale))
             .h(px(dimensions.1 * self.preview_scale * self.content_scale))
             .when(self.selected, |frame| {
@@ -920,6 +996,7 @@ impl Studio {
         };
         #[cfg(not(feature = "parity-capture"))]
         let demo_profile = None;
+        let monitor = client_monitor(prepared.editor.layout(), cx);
         let mut studio = Self {
             frequency_focus: std::array::from_fn(|_| cx.focus_handle()),
             adapt: orbit::Adapt::default(),
@@ -934,6 +1011,8 @@ impl Studio {
             photos: prepared.photos,
             real_photo: None,
             photo_choice: None,
+            resolution_choice: None,
+            monitor,
             status,
             drag: None,
             opacity_preview: None,
@@ -993,6 +1072,13 @@ impl Studio {
     }
     fn rebuild(&mut self, cx: &mut Context<Self>) {
         self.drag = None;
+        self.monitor = client_monitor(self.editor.layout(), cx);
+        self.fit_scale = fitted_scale(
+            self.canvas_size.0,
+            self.canvas_size.1,
+            self.canvas_resolution(),
+        )
+        .unwrap_or(self.fit_scale);
         self.frames.clear();
         for item in &self.editor.layout().instances {
             let mut overlay = Overlay::configured(&item.settings, self.preferences());
@@ -1017,6 +1103,7 @@ impl Studio {
                 lock: widget_lock(self.access, item.settings.kind()),
                 renderer,
                 preview_scale: self.preview_scale(),
+                client_origin: (self.monitor.0, self.monitor.1),
                 content_scale,
                 focus: self.focus.clone(),
                 selected: self.editor.selected.as_ref() == Some(&item.id),
@@ -1080,6 +1167,46 @@ impl Studio {
             return &self.photos[index].snapshot;
         }
         preview_snapshot(self.example, &self.examples, &self.snapshot, kind)
+    }
+    fn canvas_resolution(&self) -> CanvasResolution {
+        self.editor
+            .layout()
+            .canvas_resolution
+            .unwrap_or(CanvasResolution {
+                width: self.monitor.2,
+                height: self.monitor.3,
+            })
+    }
+    fn resolution_values(&self) -> Vec<Option<CanvasResolution>> {
+        let mut values = vec![None];
+        values.extend(CANVAS_PRESETS.into_iter().map(Some));
+        if let Some(current) = self.editor.layout().canvas_resolution
+            && !CANVAS_PRESETS.contains(&current)
+        {
+            values.push(Some(current));
+        }
+        values
+    }
+    fn set_canvas_resolution(
+        &mut self,
+        resolution: Option<CanvasResolution>,
+        cx: &mut Context<Self>,
+    ) {
+        self.cancel_drag(cx);
+        self.status = self.editor.set_canvas_resolution(resolution);
+        self.rebuild(cx);
+    }
+    fn anchored_position(&self, size: (f32, f32), column: u8, row: u8) -> Option<(f32, f32)> {
+        inspector::anchored_position(
+            size,
+            (
+                self.canvas_resolution().width,
+                self.canvas_resolution().height,
+            ),
+            column,
+            row,
+        )
+        .map(|(x, y)| (x + self.monitor.0, y + self.monitor.1))
     }
     fn preview_scale(&self) -> f32 {
         ZOOM_STEPS[self.zoom_step].map_or(self.fit_scale, |percent| f32::from(percent) / 100.0)
@@ -1419,6 +1546,56 @@ impl Studio {
             })
             .detach();
             self.photo_choice = Some(photo_choice);
+        }
+        let values = self.resolution_values();
+        let selected = values
+            .iter()
+            .position(|value| *value == self.editor.layout().canvas_resolution);
+        let options: Vec<_> = values
+            .iter()
+            .map(|value| {
+                OptionItem::new(match value {
+                    Some(resolution) => {
+                        format!("{:.0} × {:.0}", resolution.width, resolution.height)
+                    }
+                    None => format!("Monitor · {:.0} × {:.0}", self.monitor.2, self.monitor.3),
+                })
+            })
+            .collect();
+        if let Some(choice) = &self.resolution_choice {
+            choice.update(cx, |choice, cx| {
+                if choice.state.selected != selected
+                    || choice
+                        .state
+                        .options
+                        .iter()
+                        .map(|item| &item.label)
+                        .ne(options.iter().map(|item| &item.label))
+                {
+                    choice.state = orbit::ChoiceState::new(options, selected);
+                    cx.notify();
+                }
+            });
+        } else {
+            let choice = cx.new(|cx| {
+                let mut choice = Choice::new(
+                    "Resolución del lienzo",
+                    ChoiceKind::Dropdown,
+                    options,
+                    selected,
+                    window,
+                    cx,
+                );
+                choice.compact(170.0);
+                choice
+            });
+            cx.subscribe(&choice, |this, _, event: &ChoiceChanged, cx| {
+                if let Some(resolution) = this.resolution_values().get(event.0).copied() {
+                    this.set_canvas_resolution(resolution, cx);
+                }
+            })
+            .detach();
+            self.resolution_choice = Some(choice);
         }
     }
     #[allow(clippy::cast_possible_truncation)] // Entradas acotadas a ±100000 y opacidad 0..1.
@@ -1991,7 +2168,7 @@ impl Studio {
     fn position_anchor(&mut self, column: u8, row: u8, cx: &mut Context<Self>) {
         if let Some(position) = self
             .selected_size(cx)
-            .and_then(|size| inspector::anchored_position(size, column, row))
+            .and_then(|size| self.anchored_position(size, column, row))
         {
             self.reset_fields();
             self.edit(
@@ -2114,8 +2291,7 @@ impl Studio {
         for row in 0..3u8 {
             let mut line = div().flex().gap(px(4.0));
             for column in 0..3u8 {
-                let position =
-                    size.and_then(|size| inspector::anchored_position(size, column, row));
+                let position = size.and_then(|size| self.anchored_position(size, column, row));
                 let active = position
                     .is_some_and(|(x, y)| (item.x - x).abs() < 0.01 && (item.y - y).abs() < 0.01);
                 let label = format!(
@@ -2653,12 +2829,16 @@ impl Studio {
     }
 
     fn preview_stage(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let (left, top) =
-            preview_origin(self.canvas_size.0, self.canvas_size.1, self.preview_scale());
+        let (left, top) = preview_origin(
+            self.canvas_size.0,
+            self.canvas_size.1,
+            self.preview_scale(),
+            self.canvas_resolution(),
+        );
         let mut stage = div()
             .relative()
-            .w(px(1920.0 * self.preview_scale()))
-            .h(px(1080.0 * self.preview_scale()))
+            .w(px(self.canvas_resolution().width * self.preview_scale()))
+            .h(px(self.canvas_resolution().height * self.preview_scale()))
             .ml(px(left))
             .mt(px(top))
             .flex_none()
@@ -2677,10 +2857,20 @@ impl Studio {
             }
         }
         stage.child(
-            text("1920 × 1080", 10.0, 500, orbit::ink_3(cx), cx)
-                .absolute()
-                .bottom(px(14.0))
-                .right(px(14.0)),
+            text(
+                format!(
+                    "{:.0} × {:.0}",
+                    self.canvas_resolution().width,
+                    self.canvas_resolution().height
+                ),
+                10.0,
+                500,
+                orbit::ink_3(cx),
+                cx,
+            )
+            .absolute()
+            .bottom(px(14.0))
+            .right(px(14.0)),
         )
     }
 
@@ -2711,6 +2901,9 @@ impl Studio {
             .child(Self::toolbar_zoom_out_control(cx))
             .child(self.toolbar_zoom_label(cx))
             .child(Self::toolbar_zoom_in_control(cx))
+            .when_some(self.resolution_choice.clone(), |row, choice| {
+                row.child(choice)
+            })
             .child(
                 orbit::mono_text(selection, 11.0, orbit::ink_2(cx), cx)
                     .min_w_0()
@@ -2819,13 +3012,16 @@ impl Studio {
     fn editor_workspace(&mut self, window: &mut Window, cx: &mut Context<Self>) -> gpui::Div {
         self.init_controls(window, cx);
         let stage = self.preview_stage(cx);
+        let resolution = self.canvas_resolution();
         let studio = cx.entity().downgrade();
         let drag_target = studio.clone();
         let measure = gpui::canvas(
             move |bounds, _, cx| {
-                if let Some(scale) =
-                    fitted_scale(bounds.size.width.into(), bounds.size.height.into())
-                {
+                if let Some(scale) = fitted_scale(
+                    bounds.size.width.into(),
+                    bounds.size.height.into(),
+                    resolution,
+                ) {
                     // La entidad aún participa en el prepaint: actualizar al terminar
                     // el frame permite medir también los cambios del inspector.
                     cx.defer(move |cx| {
@@ -2857,6 +3053,7 @@ impl Studio {
         .top_0()
         .left_0()
         .size_full();
+        // Sin panel alrededor: solo preview_stage dibuja el marco del propio lienzo (R10.3).
         let canvas = div()
             .id("studio-canvas")
             .flex_1()
@@ -3365,37 +3562,119 @@ mod tests {
         }
     }
     #[test]
-    fn fitted_canvas_is_maximal_16_by_9_and_centered_at_all_seven_sizes() {
-        for (width, height) in [
-            (1920.0, 1080.0),
-            (1680.0, 1050.0),
-            (1512.0, 900.0),
-            (1440.0, 900.0),
-            (1366.0, 768.0),
-            (1280.0, 720.0),
-            (2048.0, 1152.0),
-        ] {
-            for rail_open in [false, true] {
-                let adapt = orbit::Adapt::new(width, height, None, rail_open);
-                let (top, horizontal_padding, bottom) = adapt.padding();
-                let available = (
-                    adapt.center_width() - horizontal_padding * 2.0,
-                    height - 52.0 - top - bottom - 44.0 - 39.0 - 108.0 - adapt.gap() * 2.0,
-                );
-                let scale = fitted_scale(available.0, available.1).expect("cabe en la ventana");
-                let size = (1920.0 * scale, 1080.0 * scale);
-                let origin = preview_origin(available.0, available.1, scale);
-                assert!((size.0 / size.1 - 16.0 / 9.0).abs() < 0.000_01);
-                assert!(size.0 <= available.0 + 0.001 && size.1 <= available.1 + 0.001);
-                assert!(
-                    (size.0 - available.0).abs() < 0.001 || (size.1 - available.1).abs() < 0.001
-                );
-                assert!((origin.0 - (available.0 - size.0) / 2.0).abs() < 0.001);
-                assert!((origin.1 - (available.1 - size.1) / 2.0).abs() < 0.001);
+    fn fitted_canvas_is_maximal_and_centered_at_four_aspects_and_all_seven_sizes() {
+        for resolution in &CANVAS_PRESETS[..4] {
+            let resolution = *resolution;
+            for (width, height) in [
+                (1920.0, 1080.0),
+                (1680.0, 1050.0),
+                (1512.0, 900.0),
+                (1440.0, 900.0),
+                (1366.0, 768.0),
+                (1280.0, 720.0),
+                (2048.0, 1152.0),
+            ] {
+                for rail_open in [false, true] {
+                    let adapt = orbit::Adapt::new(width, height, None, rail_open);
+                    let (top, horizontal_padding, bottom) = adapt.padding();
+                    let available = (
+                        adapt.center_width() - horizontal_padding * 2.0,
+                        height - 52.0 - top - bottom - 44.0 - 39.0 - 108.0 - adapt.gap() * 2.0,
+                    );
+                    let scale = fitted_scale(available.0, available.1, resolution)
+                        .expect("cabe en la ventana");
+                    let size = (resolution.width * scale, resolution.height * scale);
+                    let origin = preview_origin(available.0, available.1, scale, resolution);
+                    assert!(
+                        (size.0 / size.1 - resolution.width / resolution.height).abs() < 0.000_01
+                    );
+                    assert!(size.0 <= available.0 + 0.001 && size.1 <= available.1 + 0.001);
+                    assert!(
+                        (size.0 - available.0).abs() < 0.001
+                            || (size.1 - available.1).abs() < 0.001
+                    );
+                    assert!((origin.0 - (available.0 - size.0) / 2.0).abs() < 0.001);
+                    assert!((origin.1 - (available.1 - size.1) / 2.0).abs() < 0.001);
+                }
             }
         }
-        assert_eq!(fitted_scale(3840.0, 2160.0), Some(2.0));
-        assert_eq!(preview_origin(800.0, 400.0, 1.0), (0.0, 0.0));
+        assert_eq!(fitted_scale(3840.0, 2160.0, CANVAS_PRESETS[0]), Some(2.0));
+        assert_eq!(
+            preview_origin(800.0, 400.0, 1.0, CANVAS_PRESETS[0]),
+            (0.0, 0.0)
+        );
+    }
+    #[test]
+    fn default_canvas_follows_overlay_monitor_with_global_positions_unchanged() {
+        let secondary = (-2560.0, 0.0, 2560.0, 1600.0);
+        let primary = (0.0, 0.0, 1920.0, 1080.0);
+        let file = crate::document::tests::File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
+        editor.add(Kind::Radar).expect("radar");
+        editor
+            .edit_selected(|item| {
+                item.x = -2400.0;
+                item.y = 100.0;
+            })
+            .expect("posición global");
+        let previous = editor.layout().clone();
+        assert_eq!(
+            overlay_monitor(editor.layout(), &[primary, secondary], primary),
+            secondary
+        );
+        assert_eq!(editor.layout(), &previous);
+        assert_eq!(
+            overlay_monitor(&Layout::default(), &[secondary, primary], primary),
+            primary
+        );
+        editor
+            .edit_selected(|item| item.visible = false)
+            .expect("ocultar");
+        assert_eq!(
+            overlay_monitor(editor.layout(), &[primary, secondary], primary),
+            primary
+        );
+    }
+    #[test]
+    fn canvas_resolution_changes_preview_and_anchors_without_moving_widgets() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let instances = studio.editor.layout().instances.clone();
+                studio.measure_canvas(
+                    (850.0, 500.0),
+                    fitted_scale(850.0, 500.0, studio.canvas_resolution()).expect("fit"),
+                    cx,
+                );
+                for resolution in &CANVAS_PRESETS[..4] {
+                    studio.set_canvas_resolution(Some(*resolution), cx);
+                    assert_eq!(studio.canvas_resolution(), *resolution);
+                    assert_eq!(studio.editor.layout().instances, instances);
+                    let mut stage = studio.preview_stage(cx);
+                    assert_eq!(
+                        stage.style().size.width,
+                        Some(px(resolution.width * studio.preview_scale()).into())
+                    );
+                    assert_eq!(
+                        stage.style().size.height,
+                        Some(px(resolution.height * studio.preview_scale()).into())
+                    );
+                    let anchored = studio
+                        .anchored_position((400.0, 200.0), 2, 2)
+                        .expect("anclar");
+                    assert_eq!(
+                        anchored,
+                        (
+                            studio.monitor.0 + resolution.width - 400.0,
+                            studio.monitor.1 + resolution.height - 200.0
+                        )
+                    );
+                    assert_eq!(studio.frames[0].1.read(cx).item, instances[0]);
+                }
+            });
+        });
     }
     #[test]
     fn general_examples_remain_explicit_design_samples_for_every_widget() {
@@ -3528,7 +3807,7 @@ mod tests {
     #[test]
     fn fit_keeps_the_whole_overlay_inside_wide_and_tall_canvases() {
         for (width, height) in [(744.0, 731.0), (444.0, 731.0), (1044.0, 300.0)] {
-            let scale = fitted_scale(width, height).expect("canvas medido");
+            let scale = fitted_scale(width, height, CANVAS_PRESETS[0]).expect("canvas medido");
             assert!(1920.0 * scale <= width);
             assert!(1080.0 * scale <= height);
             // Standings llega al borde derecho sin salirse del viewport.
@@ -3536,14 +3815,17 @@ mod tests {
             assert_eq!(overlay.wanted_size(), (338.0, 424.0));
             assert!((1560.0 + overlay.wanted_size().0) * scale <= 1920.0 * scale);
         }
-        assert_eq!(fitted_scale(744.0, 731.0), Some(744.0 / 1920.0));
+        assert_eq!(
+            fitted_scale(744.0, 731.0, CANVAS_PRESETS[0]),
+            Some(744.0 / 1920.0)
+        );
         for (width, height) in [
             (0.0, 10.0),
             (-1.0, 44.0),
             (f32::NAN, 900.0),
             (800.0, f32::INFINITY),
         ] {
-            assert_eq!(fitted_scale(width, height), None);
+            assert_eq!(fitted_scale(width, height, CANVAS_PRESETS[0]), None);
         }
     }
     #[test]
@@ -3777,7 +4059,7 @@ mod tests {
             let mut editor = Editor::open(file.path.clone()).expect("editor");
             editor.add(Kind::Standings).expect("widget");
             let original = editor.layout().clone();
-            let scale = fitted_scale(width, height).expect("canvas");
+            let scale = fitted_scale(width, height, CANVAS_PRESETS[0]).expect("canvas");
             let mut drag = Drag {
                 pointer: (100.0, 100.0),
                 origin: (20.0, 20.0),

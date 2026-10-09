@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "ISA-1496",
   "type": "change",
-  "summary": "Launcher presenta el perfil favorito, su cadena y las vistas de aplicaciones, historial y edición con la nueva interfaz del Hub. Studio añade un lienzo 16:9 centrado y un inspector con anclaje y cruceta. Ajustes incorpora los esquemas de color y nueve temas; Cuenta usa el panel derecho común. Testing Center incorpora Resumen, Cuestionarios, Informes y Comunidad con recibos reales y estados pendientes. Calendario ofrece Agenda, Carteles y Tiempos; Roadmap presenta tres vistas de la publicación compartida.",
+  "summary": "Launcher presenta el perfil favorito, su cadena y las vistas de aplicaciones, historial y edición con la nueva interfaz del Hub. Studio presenta un único lienzo centrado a la resolución del monitor de overlays o a la elegida en su barra, con inspector de anclaje y cruceta. Ajustes incorpora los esquemas de color y nueve temas; Cuenta usa el panel derecho común. Testing Center incorpora Resumen, Cuestionarios, Informes y Comunidad con recibos reales y estados pendientes. Calendario ofrece Agenda, Carteles y Tiempos; Roadmap presenta tres vistas de la publicación compartida.",
   "technicalNotes": [
     "La tarjeta conserva su tamaño durante el lanzamiento y muestra progreso, reintentos, resultado y cancelación del motor existente.",
     "Las pestañas y el panel derecho usan el kit común. Los cambios del perfil son un borrador hasta Guardar.",
@@ -18,7 +18,8 @@
     "El script ClickUp prepara la publicación compartida de Vantare/Desarrollo con subtareas e identidades estables; Tablero muestra Ahora, Siguiente, Más adelante y Entregado.",
     "Shell arranca sin mostrar widgets; Apariencia conserva guardado al soltar, movimiento reducido y migración versionada de paletas.",
     "Studio incorpora los widgets Vantare de #1497, clic estable, preview ligero, repetición acelerada, multiclase normalizado y ejemplos ajustados a las opciones.",
-    "Run y notificaciones usan la identidad instalada; una instalación QA mantiene separados sus valores de Windows."
+    "Run y notificaciones usan la identidad instalada; una instalación QA mantiene separados sus valores de Windows.",
+    "La resolución se guarda con el layout y admite deshacer sin mover ni redimensionar sus widgets; Ajustar conserva la proporción y ocupa el máximo espacio disponible."
   ],
   "testing": [
     "Revisar Launcher en los tres temas, con ambos paneles, seleccionar un póster, ordenar pasos y guardar o cancelar el perfil.",
@@ -29,7 +30,8 @@
     "Como tester u owner, recorrer las cuatro pestañas, alternar Nuevo informe/Ver mis informes, revisar los recibos con clic o teclado, y abrir Borradores y diagnóstico. Comprobar los tres temas y el panel abierto/recogido en los tamaños de soporte.",
     "Recorrer Agenda/Carteles/Tiempos y las tres vistas de Roadmap en ambos temas; comprobar favoritas/campanas locales y los estados vacíos reales.",
     "En LMU, comprobar Relative antes de la primera vuelta, en boxes y al desconectar. Comparar sus vecinos con el overlay del juego.",
-    "Como tester, entrar/salir de Probar calendario, marcar estrella/campana, revisar cuenta atrás y comprobar que al salir se recuperan los datos reales. Probar ClickUp con el fixture local y revisar los cuatro estados y las subtareas."
+    "Como tester, entrar/salir de Probar calendario, marcar estrella/campana, revisar cuenta atrás y comprobar que al salir se recuperan los datos reales. Probar ClickUp con el fixture local y revisar los cuatro estados y las subtareas.",
+    "En Studio, cambiar entre Monitor, 16:9, 21:9, 16:10 y 32:9; comprobar un solo marco centrado a 1920/1280, conservar posiciones, deshacer y reabrir."
   ],
   "knownLimitations": [
     "Color y circuito del perfil aparecen como Próximamente porque el documento actual no los guarda.",

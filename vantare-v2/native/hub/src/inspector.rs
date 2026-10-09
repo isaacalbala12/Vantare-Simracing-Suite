@@ -6,9 +6,18 @@ use vantare_ui::{
 };
 
 /// Acciones de posición sobre el lienzo lógico. No añade anclajes al documento.
-pub fn anchored_position(size: (f32, f32), column: u8, row: u8) -> Option<(f32, f32)> {
+pub fn anchored_position(
+    size: (f32, f32),
+    canvas: (f32, f32),
+    column: u8,
+    row: u8,
+) -> Option<(f32, f32)> {
     if column > 2
         || row > 2
+        || !canvas.0.is_finite()
+        || !canvas.1.is_finite()
+        || canvas.0 <= 0.0
+        || canvas.1 <= 0.0
         || !size.0.is_finite()
         || !size.1.is_finite()
         || size.0 <= 0.0
@@ -17,8 +26,8 @@ pub fn anchored_position(size: (f32, f32), column: u8, row: u8) -> Option<(f32, 
         return None;
     }
     Some((
-        (1920.0 - size.0) * f32::from(column) / 2.0,
-        (1080.0 - size.1) * f32::from(row) / 2.0,
+        (canvas.0 - size.0) * f32::from(column) / 2.0,
+        (canvas.1 - size.1) * f32::from(row) / 2.0,
     ))
 }
 
@@ -851,7 +860,7 @@ mod tests {
         for row in 0..3 {
             for column in 0..3 {
                 assert_eq!(
-                    anchored_position((400.0, 200.0), column, row),
+                    anchored_position((400.0, 200.0), (1920.0, 1080.0), column, row),
                     Some((f32::from(column) * 760.0, f32::from(row) * 440.0))
                 );
             }
@@ -862,10 +871,16 @@ mod tests {
             (f32::NAN, 1.0),
             (1.0, f32::INFINITY),
         ] {
-            assert_eq!(anchored_position(size, 1, 1), None);
+            assert_eq!(anchored_position(size, (1920.0, 1080.0), 1, 1), None);
         }
-        assert_eq!(anchored_position((400.0, 200.0), 3, 0), None);
-        assert_eq!(anchored_position((400.0, 200.0), 0, 3), None);
+        assert_eq!(
+            anchored_position((400.0, 200.0), (1920.0, 1080.0), 3, 0),
+            None
+        );
+        assert_eq!(
+            anchored_position((400.0, 200.0), (1920.0, 1080.0), 0, 3),
+            None
+        );
     }
     #[test]
     fn anchors_nudges_and_center_persist_reload_and_undo() {
@@ -876,7 +891,8 @@ mod tests {
         let original = editor.layout().clone();
         for row in 0..3 {
             for column in 0..3 {
-                let next = anchored_position((400.0, 200.0), column, row).expect("zona");
+                let next =
+                    anchored_position((400.0, 200.0), (1920.0, 1080.0), column, row).expect("zona");
                 editor
                     .edit_selected(|item| {
                         item.x = next.0;
@@ -922,7 +938,7 @@ mod tests {
             }
         }
         assert_eq!(
-            anchored_position((400.0, 200.0), 1, 1),
+            anchored_position((400.0, 200.0), (1920.0, 1080.0), 1, 1),
             Some((760.0, 440.0))
         );
         assert_eq!(

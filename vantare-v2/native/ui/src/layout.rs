@@ -14,11 +14,29 @@ use vantare_domain::format::Preferences;
 pub const VERSION: u32 = 1;
 pub const MAX_BYTES: u64 = 1024 * 1024;
 
+/// Resolución lógica del cliente: usa las mismas coordenadas que los overlays.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CanvasResolution {
+    pub width: f32,
+    pub height: f32,
+}
+impl CanvasResolution {
+    pub fn valid(self) -> bool {
+        [self.width, self.height]
+            .into_iter()
+            .all(|value| value.is_finite() && (64.0..=32_768.0).contains(&value))
+    }
+}
+
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Layout {
     pub version: u32,
     pub instances: Vec<Instance>,
+    /// Ausente en layouts anteriores: seguir el monitor donde están los overlays.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub canvas_resolution: Option<CanvasResolution>,
     /// Un solo documento permite aplicar formato y layout con la misma recarga.
     /// Los documentos v1 anteriores conservan ES/métrico por defecto.
     #[serde(default, with = "preferences")]
@@ -35,6 +53,7 @@ impl Default for Layout {
         Self {
             version: VERSION,
             instances: Vec::new(),
+            canvas_resolution: None,
             preferences: Preferences::default(),
             performance: crate::performance::Preferences::default(),
         }
@@ -135,6 +154,12 @@ impl Layout {
         }
         if !self.performance.valid() {
             return Err(Error::Invalid("frecuencia de widget no válida"));
+        }
+        if self
+            .canvas_resolution
+            .is_some_and(|resolution| !resolution.valid())
+        {
+            return Err(Error::Invalid("resolución de lienzo no válida"));
         }
         let mut ids = HashSet::new();
         for instance in &mut self.instances {
@@ -527,6 +552,34 @@ mod tests {
     }
 
     #[test]
+    fn canvas_resolution_rejects_invalid_sizes_and_accepts_previous_layouts() {
+        for (width, height) in [
+            (0.0, 1080.0),
+            (1920.0, -1.0),
+            (f32::NAN, 900.0),
+            (800.0, f32::INFINITY),
+            (100_000.0, 1080.0),
+        ] {
+            assert!(
+                Layout {
+                    canvas_resolution: Some(CanvasResolution { width, height }),
+                    ..Layout::default()
+                }
+                .normalized()
+                .is_err()
+            );
+        }
+        let previous = Layout::from_json(FIXTURE).expect("layout v1 anterior");
+        assert_eq!(previous.canvas_resolution, None);
+        assert!(
+            !serde_json::to_value(previous)
+                .expect("guardar")
+                .as_object()
+                .expect("layout")
+                .contains_key("canvasResolution")
+        );
+    }
+    #[test]
     fn preferences_are_durable_polled_and_old_layouts_keep_defaults() {
         use vantare_domain::format::{Language, Units};
         let dir = directory();
@@ -534,6 +587,7 @@ mod tests {
         fs::write(&path, FIXTURE).expect("layout previo");
         let mut overlay_reader = Document::open(path.clone()).expect("overlays");
         assert_eq!(overlay_reader.layout().preferences, Preferences::default());
+        assert_eq!(overlay_reader.layout().canvas_resolution, None);
         let mut editor = Document::open(path.clone()).expect("Hub");
         let mut layout = editor.layout().clone();
         layout.preferences = Preferences {

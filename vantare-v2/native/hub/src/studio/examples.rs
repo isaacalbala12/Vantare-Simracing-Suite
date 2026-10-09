@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn examples_support_all_rows_both_class_modes_and_asymmetric_relative_ranges() {
         let photo = tables().expect("ejemplo");
-        let board = vantare_domain::standings_vantare::project(
+        let board = vantare_domain::standings::project(
             &photo,
             vantare_domain::format::Preferences::default(),
         );
@@ -96,7 +96,7 @@ mod tests {
         assert!(all.strip.len() > own.strip.len());
         for rows in [3, 8, 20, 30] {
             let multi = multiclass(&photo, rows);
-            let board = vantare_domain::standings_vantare::project(
+            let board = vantare_domain::standings::project(
                 &multi,
                 vantare_domain::format::Preferences::default(),
             );

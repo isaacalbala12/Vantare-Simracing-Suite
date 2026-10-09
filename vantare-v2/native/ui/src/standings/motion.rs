@@ -183,6 +183,8 @@ pub enum EventKind {
     PersonalBest,
     Position,
     SessionBest,
+    Lead,
+    Pit,
 }
 
 impl EventKind {
@@ -191,6 +193,7 @@ impl EventKind {
             EventKind::SessionBest => 3,
             EventKind::Position => 2,
             EventKind::PersonalBest => 1,
+            EventKind::Lead | EventKind::Pit => 2,
         }
     }
 }
@@ -393,6 +396,64 @@ pub struct Motion {
 impl Motion {
     pub fn new() -> Self {
         Self::default()
+    }
+
+    pub(super) fn notices(
+        &self,
+    ) -> Vec<(
+        vantare_domain::CarId,
+        crate::vantare::motion::Flash,
+        Instant,
+        i64,
+    )> {
+        use crate::vantare::motion::Flash;
+        self.notices
+            .iter()
+            .filter_map(|(id, n)| {
+                Some((
+                    vantare_domain::CarId(id.parse().ok()?),
+                    match n.kind {
+                        EventKind::Position if n.places > 0 => Flash::Gain,
+                        EventKind::Position => Flash::Loss,
+                        EventKind::PersonalBest => Flash::PersonalBest,
+                        EventKind::SessionBest => Flash::Best,
+                        EventKind::Lead => Flash::Lead,
+                        EventKind::Pit => Flash::Pit,
+                    },
+                    n.start,
+                    n.places,
+                ))
+            })
+            .collect()
+    }
+    pub(super) fn restore_notices(
+        &mut self,
+        notices: &[(
+            vantare_domain::CarId,
+            crate::vantare::motion::Flash,
+            Instant,
+            i64,
+        )],
+    ) {
+        use crate::vantare::motion::Flash;
+        for &(id, flash, start, places) in notices {
+            let kind = match flash {
+                Flash::Gain | Flash::Loss => EventKind::Position,
+                Flash::Lead => EventKind::Lead,
+                Flash::PersonalBest => EventKind::PersonalBest,
+                Flash::Best => EventKind::SessionBest,
+                Flash::Pit => EventKind::Pit,
+            };
+            self.notices.insert(
+                id.0.to_string(),
+                Notice {
+                    priority: kind.priority(),
+                    kind,
+                    start,
+                    places,
+                },
+            );
+        }
     }
 
     fn reset(&mut self) {
@@ -631,12 +692,16 @@ impl Motion {
             }
             if let Some(notice) = self.notices.get(&row.id) {
                 match notice.kind {
-                    EventKind::Position => {
+                    EventKind::Position | EventKind::Lead => {
                         v.flash = self.flash_tw.get(&row.id).map_or(1.0, |t| t.value(now));
                         v.flash_up = notice.places > 0;
                         let alpha = self.chip_tw.get(&row.id).map_or(1.0, |t| t.value(now));
                         let sign = if notice.places > 0 { "+" } else { "−" };
                         v.chip = Some((format!("{sign}{}", notice.places.abs()), alpha));
+                    }
+                    EventKind::Pit => {
+                        v.pit_alpha = 1.0;
+                        v.pit_dx = 0.0;
                     }
                     EventKind::PersonalBest | EventKind::SessionBest => {
                         let elapsed =

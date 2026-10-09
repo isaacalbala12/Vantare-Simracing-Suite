@@ -481,7 +481,7 @@ impl Vm {
         let leader = format::gap(None, true, prefs);
         let mut per_class: HashMap<String, i64> = HashMap::new();
         let all: Vec<Row> = domain
-            .rows
+            .rows()
             .iter()
             .map(|row| {
                 let position = row.position.parse().unwrap_or(0);
@@ -500,19 +500,19 @@ impl Vm {
                     class_position,
                     driver_number: row.number.clone(),
                     driver_name: row.driver.clone(),
-                    vehicle_class: row.class.clone(),
-                    gap_text: row.gap.clone(),
-                    interval_text: row.interval.clone(),
+                    vehicle_class: row.class.to_string(),
+                    gap_text: row.classification_gap.clone(),
+                    interval_text: row.classification_interval.clone(),
                     current_lap_text: row.laps.clone(),
                     last_lap_text: row.last_lap.clone(),
                     best_lap_text: row.best_lap.clone(),
                     best_lap_seconds: lap_seconds(&row.best_lap),
                     battle_gap_seconds: (race && position > 0 && !row.in_pits)
                         .then(|| {
-                            if row.gap == leader {
+                            if row.classification_gap == leader {
                                 Some(0.0)
                             } else {
-                                gap_seconds(&row.gap)
+                                gap_seconds(&row.classification_gap)
                             }
                         })
                         .flatten(),

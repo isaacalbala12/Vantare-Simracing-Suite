@@ -298,7 +298,7 @@ mod tests {
                 );
                 let available = matches!(source, SourceState::Live | SourceState::Stale);
                 assert_eq!(
-                    !crate::standings::project(&data, prefs).rows.is_empty(),
+                    !crate::standings::project(&data, prefs).rows().is_empty(),
                     available
                 );
                 assert_eq!(

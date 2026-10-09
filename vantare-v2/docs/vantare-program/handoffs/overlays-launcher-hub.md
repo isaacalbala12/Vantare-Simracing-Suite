@@ -1,3 +1,14 @@
+## #1531 · Standings recuperado tras reinicio de T3 (2026-10-09)
+
+Base 5e1da3f6, worktree C:/tmp/vw3-1531/vantare-v2, rama vantareapp/isa-1531-widgets-looks.
+Standings comparte Board/proyección y un Motion activo; los Looks conservan pintores y animación.
+Caché de hechos sin Look, invalidación y una llamada por ingest probadas; migración contentVersion.
+UI/Domain tests PASS (148 + 221, dos ignorados); check Hub/UI con red y capturas PASS.
+Warning previo Hub analysis/view.rs:989 fuera de alcance. ADR 0100 y herramientas de QA añadidos.
+Baseline previo congelado en evidence-1531; paridad final y medición real p50/p99 aún pendientes.
+Relative, Delta y Fuel todavía pendientes. IPC intacto; #1530 integra DTO v9.
+Commit de recuperación local; sin push, PR, merge, CI remoto ni promoción/release.
+
 ## #1496 — Calidad UI R0–R3, correcciones sobre R4 (2026-10-08)
 
 Worktree C:/tmp/vw3-ui-calidad/vantare-v2, rama vantareapp/isa-1496-ui-calidad,

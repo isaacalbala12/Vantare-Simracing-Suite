@@ -859,6 +859,7 @@ impl Painter<'_> {
                 Flash::Loss => c.flash_loss,
                 Flash::Lead => c.leader,
                 Flash::Best => c.purple,
+                Flash::PersonalBest => c.flash_gain,
                 Flash::Pit => c.box_fill,
             };
             self.highlight(window, y, color, strength * self.style.motion.flash_boost);

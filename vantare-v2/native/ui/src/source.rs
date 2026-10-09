@@ -562,15 +562,19 @@ mod tests {
     #[test]
     fn the_fixed_scene_matches_the_reference_description() {
         let vm = standings::project(&fixed(), Preferences::default());
-        assert_eq!(vm.rows.len(), 44);
-        assert_eq!(vm.rows[8].driver, "PLAYER");
-        assert!(vm.rows[8].is_player);
+        assert_eq!(vm.rows().len(), 44);
+        assert_eq!(vm.rows()[8].driver, "PLAYER");
+        assert!(vm.rows()[8].is_player);
         assert_eq!(
             (vm.session_label.as_str(), vm.clock.as_str()),
             ("PRÁCTICA", "58:12")
         );
         assert_eq!(vm.class_chip, "LMP");
-        assert_eq!(vm.rows[0].gap, "—", "sin mejor vuelta no hay gap");
+        assert_eq!(
+            vm.rows()[0].classification_gap,
+            "—",
+            "sin mejor vuelta no hay gap"
+        );
     }
 
     #[test]
@@ -582,7 +586,7 @@ mod tests {
             .map(|second| {
                 let snapshot = synthetic(second * RATE_HZ);
                 standings::project(&snapshot, Preferences::default())
-                    .rows
+                    .rows()
                     .iter()
                     .map(|r| r.id)
                     .collect()

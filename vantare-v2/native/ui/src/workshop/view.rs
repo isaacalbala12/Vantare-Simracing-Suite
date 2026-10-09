@@ -409,10 +409,10 @@ impl Render for Workshop {
             "es"
         };
         let vantare = match &self.settings {
-            Settings::Standings(s) => s.design_system == crate::standings::DesignSystem::Vantare,
-            Settings::Relative(s) => s.design_system == crate::standings::DesignSystem::Vantare,
-            Settings::FuelStrategy(s) => s.design_system == crate::standings::DesignSystem::Vantare,
-            Settings::Delta(s) => s.design_system == crate::standings::DesignSystem::Vantare,
+            Settings::Standings(s) => s.design_system.has_variants(),
+            Settings::Relative(s) => s.design_system.has_variants(),
+            Settings::FuelStrategy(s) => s.design_system.has_variants(),
+            Settings::Delta(s) => s.design_system.has_variants(),
             _ => false,
         };
         let relative = self.kind == Kind::Relative;

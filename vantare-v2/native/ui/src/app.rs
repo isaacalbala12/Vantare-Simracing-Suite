@@ -213,6 +213,14 @@ impl Overlay {
         }
     }
 
+    /// Solo cambia presentación: mantiene la proyección y los avisos del widget.
+    pub fn set_look(&mut self, look: crate::look::Look) {
+        match &mut self.widget {
+            Widget::Standings(w) => w.set_look(look, self.prefs),
+            _ => {}
+        }
+    }
+
     fn with_snapshot(settings: &Settings, prefs: Preferences, snapshot: Option<&Snapshot>) -> Self {
         let mut overlay = Self::configured(settings, prefs);
         if let Some(snapshot) = snapshot {
@@ -414,7 +422,7 @@ impl Render for Overlay {
                             0.0,
                             0.0,
                             size.0.ceil(),
-                            size.1.ceil() + 2.0,
+                            size.1.ceil() + crate::capture::MARGIN as f32,
                             color,
                         );
                     }
@@ -691,7 +699,12 @@ fn reconcile_widgets<T>(
         .iter()
         .map(|instance| {
             let view = match previous.remove(&instance.id) {
-                Some(old) if old.settings == instance.settings => old.view,
+                Some(old)
+                    if old.settings == instance.settings
+                        || old.settings.look_change(&instance.settings).is_some() =>
+                {
+                    old.view
+                }
                 _ => create(instance),
             };
             (
@@ -741,6 +754,16 @@ impl LiveScreens {
         }
         self.prefs = layout.preferences;
         self.required = layout.demand();
+        let look_changes: std::collections::HashSet<_> = layout
+            .instances
+            .iter()
+            .filter_map(|i| {
+                self.widgets
+                    .get(&i.id)
+                    .and_then(|old| old.settings.look_change(&i.settings))
+                    .map(|_| i.id.clone())
+            })
+            .collect();
         self.widgets = reconcile_widgets(
             std::mem::take(&mut self.widgets),
             &layout.instances,
@@ -760,7 +783,11 @@ impl LiveScreens {
         // incluso oculta o fuera de un monitor; preferencias reproyectan sin reset.
         for (id, widget) in &self.widgets {
             widget.view.update(cx, |overlay, cx| {
+                let reproject = overlay.prefs != self.prefs || !look_changes.contains(id);
                 overlay.prefs = self.prefs;
+                if let Some(look) = widget.settings.look() {
+                    overlay.set_look(look);
+                }
                 overlay.set_frame_size(
                     layout
                         .instances
@@ -770,6 +797,7 @@ impl LiveScreens {
                 );
                 cx.notify();
                 if widget.visible
+                    && reproject
                     && let Some(snapshot) = self
                         .last
                         .as_deref()
@@ -1501,7 +1529,11 @@ mod tests {
                 "footerSlots":["trackTemperature", "rain", "wetness"]}),
         ] {
             let settings: Settings = serde_json::from_value(value).expect("variante soportada");
-            assert_eq!(settings.normalized(), settings, "opciones aplicables");
+            assert_eq!(
+                settings.normalized().normalized(),
+                settings.normalized(),
+                "migración idempotente"
+            );
             assert_eq!(
                 settings_limit(&settings),
                 None,
@@ -1628,8 +1660,11 @@ mod tests {
         for &kind in Kind::ALL {
             let parsed: Settings = serde_json::from_value(serde_json::json!({"kind": kind.name()}))
                 .expect("opciones parciales");
-            assert_eq!(parsed, Settings::default_for(kind));
-            assert_eq!(parsed.normalized(), parsed);
+            assert_eq!(
+                parsed.normalized(),
+                Settings::default_for(kind).normalized()
+            );
+            assert_eq!(parsed.normalized().normalized(), parsed.normalized());
             assert!(settings_limit(&parsed).is_none());
         }
         let parsed: Settings = serde_json::from_value(

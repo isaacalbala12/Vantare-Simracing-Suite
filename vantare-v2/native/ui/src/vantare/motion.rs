@@ -16,6 +16,8 @@ pub(crate) enum Flash {
     /// Toma el liderato de la clase.
     Lead,
     Best,
+    /// Aviso personal trasladado desde otra política visual.
+    PersonalBest,
     Pit,
 }
 
@@ -68,6 +70,7 @@ struct Track {
     fastest: bool,
     in_pits: bool,
     leader: bool,
+    places: i64,
 }
 
 impl Track {
@@ -138,6 +141,11 @@ impl Motion {
                         fastest: sample.fastest,
                         in_pits: sample.in_pits,
                         leader: sample.leader,
+                        places: if old.position == sample.position {
+                            old.places
+                        } else {
+                            i64::from(old.position) - i64::from(sample.position)
+                        },
                     }
                 }
                 _ => Track {
@@ -150,11 +158,28 @@ impl Motion {
                     fastest: sample.fastest,
                     in_pits: sample.in_pits,
                     leader: sample.leader,
+                    places: 0,
                 },
             };
             next.insert(sample.id, track);
         }
         self.rows = next;
+    }
+
+    /// Avisos semánticos con su reloj original; se mueven al cambiar Look.
+    pub(crate) fn notices(&self) -> Vec<(CarId, Flash, Instant, i64)> {
+        self.rows
+            .iter()
+            .filter_map(|(id, t)| t.flash.map(|(kind, at)| (*id, kind, at, t.places)))
+            .collect()
+    }
+    pub(crate) fn restore_notices(&mut self, notices: &[(CarId, Flash, Instant, i64)]) {
+        for &(id, kind, at, places) in notices {
+            if let Some(t) = self.rows.get_mut(&id) {
+                t.flash = Some((kind, at));
+                t.places = places;
+            }
+        }
     }
 
     /// Recoloca sin animar (cambio de estilo o de tamaño).

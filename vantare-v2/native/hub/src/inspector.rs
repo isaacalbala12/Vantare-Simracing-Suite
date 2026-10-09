@@ -249,9 +249,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             ));
             rows
         }
-        Settings::Delta(value)
-            if value.design_system == vantare_ui::standings::DesignSystem::Vantare =>
-        {
+        Settings::Delta(value) if value.design_system.has_variants() => {
             let mut rows = vec![
                 choice(
                     "Formato Delta",
@@ -493,6 +491,23 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
         ],
         _ => vec![],
     };
+    if let Some(look) = settings.look() {
+        let options: Vec<_> = vantare_ui::look::Look::ALL
+            .iter()
+            .map(|l| (l.label(), l.name()))
+            .collect();
+        rows.push(choice(
+            "Look",
+            Tab::Appearance,
+            look.name(),
+            &options,
+            |settings, value| {
+                if let Some(look) = vantare_ui::look::Look::from_name(value) {
+                    settings.set_look(look);
+                }
+            },
+        ));
+    }
     if let Some((_, look, accent)) = appearance(settings) {
         // Estas opciones son exclusivas del sistema heredado: Vantare compone
         // su cabecera y pie con el contrato de #1497.
@@ -544,14 +559,10 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             choice(
                 "Estilo del widget",
                 Tab::Appearance,
-                if look == Look::Neo { "neo" } else { "neutro" },
+                look.name(),
                 &[("Neo", "neo"), ("Neutro", "neutro")],
                 |settings, next| {
-                    let value = if next == "neutro" {
-                        Look::Neutro
-                    } else {
-                        Look::Neo
-                    };
+                    let value = Look::from_name(next);
                     match settings {
                         Settings::Standings(s) => s.style = value,
                         Settings::Relative(s) => s.style = value,
@@ -637,7 +648,7 @@ pub fn appearance(
         Settings::FuelStrategy(s) => Some((s.design_system, s.style, s.accent)),
         _ => None,
     }
-    .filter(|(system, _, _)| *system == vantare_ui::standings::DesignSystem::Vantare)
+    .filter(|(system, _, _)| system.has_variants())
 }
 /// Capacidades publicadas por ui; una opción persistida pero ignorada no recibe manejador.
 pub fn pending(settings: &Settings) -> Vec<String> {
@@ -707,7 +718,7 @@ pub fn columns_mut(
 ) -> Option<&mut Vec<vantare_ui::standings::options::ColumnSetting>> {
     match settings {
         Settings::Standings(s) => {
-            if s.design_system == vantare_ui::standings::DesignSystem::Vantare {
+            if s.design_system.has_variants() {
                 Some(
                     s.columns
                         .get_or_insert_with(|| vantare_ui::standings::vantare_template("standard")),
@@ -717,7 +728,7 @@ pub fn columns_mut(
             }
         }
         Settings::Relative(s) => {
-            if s.design_system == vantare_ui::standings::DesignSystem::Vantare {
+            if s.design_system.has_variants() {
                 Some(
                     s.columns
                         .get_or_insert_with(|| vantare_ui::relative::vantare_template("standard")),

@@ -30,6 +30,7 @@ mod demand;
 pub mod efficiency;
 pub mod geometry;
 pub mod layout;
+pub mod look;
 mod overlay;
 pub mod paths;
 #[cfg(feature = "paint-stats")]
@@ -112,3 +113,6 @@ pub fn window_zoom_limit(window: &gpui::Window) -> f32 {
 }
 
 pub mod performance;
+
+#[cfg(all(windows, feature = "parity-capture"))]
+pub mod benchmark;

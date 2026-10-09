@@ -1,6 +1,6 @@
 //! Pantalla beta: catálogo UTC y seguimiento locales; avisos sin servicio se anuncian pendientes.
 use super::{Calendar, Series, views};
-use crate::orbit;
+use crate::orbit::{self, Tone};
 use chrono::{DateTime, Datelike, Duration, Local, Utc};
 use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb, rgba};
 use std::collections::BTreeSet;
@@ -285,24 +285,82 @@ fn hero_countdown(
     adapt: orbit::Adapt,
     cx: &gpui::App,
 ) -> Div {
+    let seconds = (at - now).num_seconds().max(0);
     div()
+        .flex_none()
+        .child(orbit::eyebrow("Salida en", cx))
         .child(
-            orbit::text(
-                countdown(at, now),
-                if adapt.show_notes() { 52.0 } else { 38.0 },
-                700,
+            orbit::mono_text(
+                format!(
+                    "{:02}:{:02}:{:02}",
+                    seconds / 3600,
+                    seconds / 60 % 60,
+                    seconds % 60
+                ),
+                if adapt.height >= 1000.0 { 66.0 } else { 44.0 },
                 orbit::ink(cx),
                 cx,
             )
-            .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone()),
+            .line_height(px(if adapt.height >= 1000.0 { 72.0 } else { 50.0 })),
         )
         .child(orbit::text(
             start_label(at),
-            12.0,
+            11.0,
             400,
             orbit::ink_3(cx),
             cx,
         ))
+}
+
+fn hero_details(series: &Series, compact: bool, cx: &gpui::App) -> Div {
+    div()
+        .flex_1()
+        .min_w_0()
+        .flex()
+        .flex_col()
+        .gap(px(if compact { 4.0 } else { 8.0 }))
+        .child(orbit::eyebrow("La siguiente que sigues", cx))
+        .child(
+            orbit::text(
+                series.name.clone(),
+                if compact { 24.0 } else { 30.0 },
+                600,
+                orbit::ink(cx),
+                cx,
+            )
+            .line_height(px(if compact { 26.0 } else { 32.0 }))
+            .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
+            .truncate(),
+        )
+        .child(
+            orbit::text(
+                if compact {
+                    format!("{} · {}", series.track, classes(series).join(" · "))
+                } else {
+                    series.track.clone()
+                },
+                11.0,
+                400,
+                orbit::ink_2(cx),
+                cx,
+            )
+            .line_height(px(16.0))
+            .truncate(),
+        )
+        .when(!compact, |details| {
+            details.child(
+                div()
+                    .flex()
+                    .flex_wrap()
+                    .gap(px(6.0))
+                    .children(
+                        classes(series)
+                            .into_iter()
+                            .map(|class| class_chip(class, cx)),
+                    )
+                    .child(tier_pill(&series.tier, cx)),
+            )
+        })
 }
 
 fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> Div {
@@ -315,59 +373,51 @@ fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> 
             .find(|series| &series.id == id)
             .map(|series| views::Start { series, at: *at })
     });
+    let compact = calendar.adapt.height < 820.0;
     let mut hero = orbit::hero_surface(cx)
         .flex_none()
-        .child(orbit::eyebrow("La siguiente que sigues", cx));
+        .flex_row()
+        .items_center()
+        .gap(px(if compact { 16.0 } else { 24.0 }))
+        .p(px(if compact { 16.0 } else { 24.0 }));
     if let Some(next) = next {
         hero = hero
+            .child(hero_details(next.series, compact, cx))
+            .child(hero_countdown(next.at, now, calendar.adapt, cx))
+            .when(calendar.adapt.center_width() >= 1100.0, |hero| {
+                hero.child(
+                    orbit::neo_card(cx)
+                        .w(px(140.0))
+                        .flex_none()
+                        .p(px(14.0))
+                        .gap(px(6.0))
+                        .child(orbit::eyebrow("Carrera", cx))
+                        .child(orbit::text(
+                            next.series
+                                .race_duration_min
+                                .map_or_else(|| "—".into(), |minutes| format!("{minutes} min")),
+                            18.0,
+                            600,
+                            orbit::ink(cx),
+                            cx,
+                        )),
+                )
+            })
             .child(
                 div()
+                    .flex_none()
                     .flex()
-                    .items_center()
-                    .justify_between()
-                    .gap(px(12.0))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .child(
-                                orbit::text(
-                                    next.series.name.clone(),
-                                    30.0,
-                                    700,
-                                    orbit::ink(cx),
-                                    cx,
-                                )
-                                .font_family(
-                                    cx.global::<orbit::design::Tokens>().fonts.display.clone(),
-                                ),
-                            )
-                            .child(orbit::text(
-                                format!(
-                                    "{} · {}",
-                                    next.series.track,
-                                    classes(next.series).join(" · ")
-                                ),
-                                13.0,
-                                400,
-                                orbit::ink_2(cx),
-                                cx,
-                            )),
-                    )
-                    .child(hero_countdown(next.at, now, calendar.adapt, cx)),
-            )
-            .child(
-                div()
-                    .flex()
-                    .flex_wrap()
-                    .items_center()
-                    .gap(px(6.0))
-                    .children(
-                        classes(next.series)
-                            .into_iter()
-                            .map(|class| class_chip(class, cx)),
-                    )
-                    .child(tier_pill(&next.series.tier, cx)),
+                    .flex_col()
+                    .gap(px(8.0))
+                    .child(follow_button(calendar, next.series, cx))
+                    .child(reminder_button(calendar, next.series, cx))
+                    .child(orbit::text(
+                        "Avisos · Próximamente",
+                        10.0,
+                        400,
+                        orbit::ink_3(cx),
+                        cx,
+                    )),
             );
     } else {
         hero = hero.child(orbit::text(
@@ -378,87 +428,105 @@ fn hero(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> 
             cx,
         ));
     }
-    hero = hero.when_some(error, |hero, error| hero.child(orbit::callout(error, cx)));
-    hero.child(orbit::text(
-        "Avisos y lanzamiento de perfil antes de la carrera · Próximamente",
-        12.0,
-        400,
-        orbit::ink_3(cx),
-        cx,
-    ))
+    hero.when_some(error, |hero, error| hero.child(orbit::callout(error, cx)))
 }
+
+fn times_header(cx: &gpui::App) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .gap(px(10.0))
+        .px(px(18.0))
+        .py(px(8.0))
+        .border_b_1()
+        .border_color(rgba(orbit::line(cx)))
+        .child(
+            orbit::meta("Estado", 10.0, orbit::ink_3(cx), cx)
+                .w(px(72.0))
+                .flex_none(),
+        )
+        .child(
+            orbit::meta("Hora", 10.0, orbit::ink_3(cx), cx)
+                .w(px(60.0))
+                .flex_none(),
+        )
+        .child(
+            orbit::meta("Serie", 10.0, orbit::ink_3(cx), cx)
+                .flex_1()
+                .min_w_0(),
+        )
+        .child(
+            orbit::meta("Circuito", 10.0, orbit::ink_3(cx), cx)
+                .flex_1()
+                .min_w_0(),
+        )
+        .child(
+            orbit::meta("Clases", 10.0, orbit::ink_3(cx), cx)
+                .w(px(224.0))
+                .flex_none(),
+        )
+        .child(
+            orbit::meta("Carrera", 10.0, orbit::ink_3(cx), cx)
+                .w(px(60.0))
+                .flex_none(),
+        )
+        .child(
+            orbit::meta("Salida en", 10.0, orbit::ink_3(cx), cx)
+                .w(px(76.0))
+                .flex_none(),
+        )
+        .child(div().w(px(68.0)).flex_none())
+}
+
 fn race_row(
     calendar: &Calendar,
     row: &views::Start<'_>,
     now: DateTime<Utc>,
     cx: &mut Context<Calendar>,
 ) -> Div {
+    let soon = (row.at - now).num_minutes() < 10;
     div()
         .flex()
         .items_center()
-        .gap(px(16.0))
-        .py(px(12.0))
+        .gap(px(10.0))
+        .min_h(px(44.0))
+        .py(px(4.0))
+        .px(px(18.0))
         .border_b_1()
         .border_color(rgba(orbit::line_row(cx)))
-        .when((row.at - now).num_minutes() < 10, |row| {
-            row.bg(orbit::tint(orbit::carmine(cx), 0.06))
-        })
+        .when(soon, |row| row.bg(orbit::tint(orbit::carmine(cx), 0.06)))
+        .child(div().w(px(72.0)).flex_none().child(orbit::pill(
+            if soon { "En breve" } else { "Próxima" },
+            if soon { Tone::Accent } else { Tone::Neutral },
+            cx,
+        )))
         .child(
-            div()
-                .w(px(96.0))
-                .flex_none()
-                .child(
-                    orbit::text(
-                        row.at.with_timezone(&Local).format("%H:%M").to_string(),
-                        22.0,
-                        700,
-                        orbit::ink(cx),
-                        cx,
-                    )
-                    .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone()),
-                )
-                .child(orbit::text(
-                    format!("en {}", countdown(row.at, now)),
-                    11.0,
-                    400,
-                    orbit::ink_3(cx),
-                    cx,
-                )),
+            orbit::mono_text(
+                row.at.with_timezone(&Local).format("%H:%M").to_string(),
+                13.0,
+                orbit::ink(cx),
+                cx,
+            )
+            .w(px(60.0))
+            .flex_none(),
         )
         .child(
-            div()
+            orbit::text(row.series.name.clone(), 13.0, 600, orbit::ink(cx), cx)
+                .line_height(px(16.0))
+                .truncate()
                 .flex_1()
-                .min_w_0()
-                .child(orbit::text(
-                    row.series.name.clone(),
-                    14.0,
-                    600,
-                    orbit::ink(cx),
-                    cx,
-                ))
-                .child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .flex_wrap()
-                        .gap(px(8.0))
-                        .child(tier_pill(&row.series.tier, cx))
-                        .child(orbit::text(
-                            row.series.track.clone(),
-                            12.0,
-                            400,
-                            orbit::ink_3(cx),
-                            cx,
-                        )),
-                ),
+                .min_w_0(),
+        )
+        .child(
+            orbit::text(row.series.track.clone(), 12.0, 400, orbit::ink_3(cx), cx)
+                .line_height(px(16.0))
+                .truncate()
+                .flex_1()
+                .min_w_0(),
         )
         .child(
             div()
-                .w(px(if calendar.adapt.center_width() < 950.0 {
-                    100.0
-                } else {
-                    180.0
-                }))
+                .w(px(224.0))
                 .flex_none()
                 .flex()
                 .flex_wrap()
@@ -469,18 +537,56 @@ fn race_row(
                         .map(|class| class_chip(class, cx)),
                 ),
         )
-        .child(orbit::text(
-            row.series
-                .race_duration_min
-                .map_or_else(|| "—".into(), |minutes| format!("{minutes} min")),
-            12.0,
-            500,
-            orbit::ink_2(cx),
-            cx,
-        ))
-        .child(follow_button(calendar, row.series, cx))
-        .child(reminder_button(calendar, row.series, cx))
+        .child(
+            orbit::text(
+                row.series
+                    .race_duration_min
+                    .map_or_else(|| "—".into(), |minutes| format!("{minutes} min")),
+                12.0,
+                500,
+                orbit::ink_2(cx),
+                cx,
+            )
+            .w(px(60.0))
+            .flex_none(),
+        )
+        .child(
+            orbit::mono_text(countdown(row.at, now), 12.0, orbit::ink_2(cx), cx)
+                .w(px(76.0))
+                .flex_none(),
+        )
+        .child(
+            div()
+                .w(px(68.0))
+                .flex_none()
+                .flex()
+                .gap(px(4.0))
+                .child(follow_button(calendar, row.series, cx))
+                .child(reminder_button(calendar, row.series, cx)),
+        )
 }
+fn times_board_header(calendar: &Calendar, now: DateTime<Utc>, cx: &mut Context<Calendar>) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .flex_wrap()
+        .gap(px(12.0))
+        .px(px(18.0))
+        .py(px(12.0))
+        .child(orbit::neo_header("Horario · próxima hora", "v-calendar", cx).flex_none())
+        .when(
+            matches!(calendar.schedule.is_current(now), Ok(true)),
+            |header| header.child(filters(calendar, cx).flex_row().flex_wrap().gap(px(8.0))),
+        )
+}
+
+fn times_footer(status: &str, cx: &gpui::App) -> Div {
+    orbit::text(status.to_owned(), 10.0, 400, orbit::ink_3(cx), cx)
+        .px(px(18.0))
+        .py(px(8.0))
+        .flex_none()
+}
+
 pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Stateful<Div> {
     let now = calendar.demo_now.unwrap_or_else(Utc::now);
     if matches!(calendar.schedule.is_current(now), Ok(true)) {
@@ -491,15 +597,13 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         }
     }
     let mut table = orbit::neo_card(cx)
+        .p_0()
+        .gap_0()
         .flex_1()
-        .child(orbit::neo_header(
-            "Próxima hora · una fila por serie",
-            "v-calendar",
-            cx,
-        ))
+        .child(times_board_header(calendar, now, cx))
         .when(
             matches!(calendar.schedule.is_current(now), Ok(true)),
-            |table| table.child(filters(calendar, cx)),
+            |table| table.child(times_header(cx)),
         );
     let mut races = div()
         .id("calendar-races")
@@ -569,6 +673,7 @@ pub(super) fn render(calendar: &mut Calendar, cx: &mut Context<Calendar>) -> Sta
         races,
         cx.global::<orbit::design::Tokens>().colors.neo_bottom,
     ));
+    table = table.child(times_footer(&calendar.status, cx));
     div()
         .id("calendar")
         .w_full()
@@ -639,6 +744,10 @@ pub(super) fn rail_sections(
     calendar: &Calendar,
     cx: &mut Context<Calendar>,
 ) -> Vec<orbit::RailSection> {
+    // La pantalla de tiempos usa todo el ancho; la semana y recordatorios siguen en Agenda/Carteles.
+    if calendar.view == super::CalendarView::Times {
+        return Vec::new();
+    }
     let now = calendar.demo_now.unwrap_or_else(Utc::now);
     let week = week_card(calendar, now, cx);
     let current = matches!(calendar.schedule.is_current(now), Ok(true));

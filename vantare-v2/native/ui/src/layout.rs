@@ -146,7 +146,9 @@ impl Layout {
             };
             if let Some(size) = instance.geometry.size {
                 if !size.valid() {
-                    return Err(Error::Invalid("tamaño del frame no finito o no positivo"));
+                    return Err(Error::Invalid(
+                        "tamaño del frame no finito o no positivo",
+                    ));
                 }
                 instance.geometry.size = Some(size.bounded());
             }
@@ -307,6 +309,50 @@ impl Document {
     }
 }
 
+/// Solicitud explícita de presentación, separada del diseño persistido.
+/// Cada proceso toma el valor inicial como referencia: reabrir no repite solicitudes viejas.
+pub struct Presentation {
+    path: PathBuf,
+    observed: Option<Vec<u8>>,
+}
+impl Presentation {
+    pub fn watch(layout: &Path) -> Result<Self, Error> {
+        let path = layout.with_extension("show.json");
+        let observed = read(&path)?;
+        Ok(Self { path, observed })
+    }
+    pub fn show(layout: &Path) -> Result<(), Error> {
+        let watcher = Self::watch(layout)?;
+        let current = watcher
+            .observed
+            .as_deref()
+            .map_or(Ok(0_u64), serde_json::from_slice)
+            .map_err(Error::Json)?;
+        let next = current
+            .checked_add(1)
+            .ok_or(Error::Invalid("solicitud agotada"))?;
+        let bytes = serde_json::to_vec(&next).map_err(Error::Json)?;
+        persist(
+            &watcher.path,
+            watcher.observed.as_deref(),
+            &bytes,
+            || Ok(()),
+        )
+    }
+    pub fn poll(&mut self) -> Result<bool, Error> {
+        let bytes = read(&self.path)?;
+        if bytes == self.observed {
+            return Ok(false);
+        }
+        if let Some(bytes) = &bytes {
+            let _: u64 = serde_json::from_slice(bytes).map_err(Error::Json)?;
+        }
+        let requested = bytes.is_some();
+        self.observed = bytes;
+        Ok(requested)
+    }
+}
+
 // Serializa los escritores de esta API; los bytes comparados siguen siendo la
 // autoridad del conflicto. Un editor externo se detecta antes del reemplazo.
 struct PendingFile {
@@ -395,7 +441,8 @@ mod tests {
         let mut hub = Document::open(path.clone()).expect("Hub antes de overlays");
         let mut overlays = Document::open(path.clone()).expect("overlays antes de Hub");
         overlays.initialize(monitor).expect("primer escritor");
-        hub.initialize(monitor).expect("adoptar creación tardía");
+        hub.initialize(monitor)
+            .expect("adoptar creación tardía");
         assert_eq!(hub.layout(), overlays.layout());
         assert_eq!(hub.layout().instances.len(), 4);
         let mut changed = hub.layout().clone();
@@ -616,5 +663,32 @@ mod tests {
         assert!(document.poll().expect("recarga"));
         assert!(document.layout().instances.is_empty());
         fs::remove_dir_all(dir).expect("limpiar");
+    }
+}
+
+#[cfg(test)]
+mod presentation_tests {
+    use super::*;
+    #[test]
+    fn edits_do_not_show_and_old_requests_are_not_replayed() {
+        let dir = std::env::temp_dir().join(format!(
+            "presentation-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        ));
+        let path = dir.join("layout.json");
+        let mut watcher = Presentation::watch(&path).expect("watch");
+        assert!(!watcher.poll().expect("idle"));
+        Presentation::show(&path).expect("show");
+        assert!(watcher.poll().expect("request"));
+        assert!(!watcher.poll().expect("consumed"));
+        let mut reopened = Presentation::watch(&path).expect("reopen");
+        assert!(!reopened.poll().expect("old request"));
+        Presentation::show(&path).expect("show again");
+        assert!(reopened.poll().expect("new request"));
+        fs::remove_dir_all(dir).expect("cleanup");
     }
 }

@@ -319,7 +319,7 @@ function Start-BetaHub([string]$Directory) {
     $exitMarker = Join-Path $Directory 'hub-exit'
     if (Test-Path -LiteralPath $exitMarker) { Remove-Item -LiteralPath $exitMarker }
     $launcher = Join-Path $generation 'data/Vantare/native/launcher.json'
-    $runtimeArgs = '--instancia native-beta --launcher-file "' + $launcher + '" -- --live'
+    $runtimeArgs = '--instancia native-beta --launcher-file "' + $launcher + '" -- --live -- --start-hidden'
     $runtime = Start-Process -FilePath (Join-Path $generation 'bin/vantare.exe') -ArgumentList $runtimeArgs -WindowStyle Hidden -PassThru
     $runtime.Dispose()
     $sid = [Security.Principal.WindowsIdentity]::GetCurrent().User.Value

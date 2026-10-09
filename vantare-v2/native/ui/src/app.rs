@@ -739,6 +739,7 @@ impl LiveScreens {
         let placed: Vec<_> = layout
             .instances
             .iter()
+            .filter(|_| !self.hidden)
             .map(|instance| (instance, (instance.x, instance.y)))
             .collect();
         let parts = partition(&bounds, &placed);
@@ -842,7 +843,14 @@ pub fn run_layout_with_rights(
     snapshots: flume::Receiver<Arc<Snapshot>>,
     rights: Option<vantare_ipc::control::Feed>,
 ) -> Result<(), crate::layout::Error> {
-    run_layout_feed(path, snapshots, rights, vantare_ipc::Photo::full, None)
+    run_layout_feed(
+        path,
+        snapshots,
+        rights,
+        vantare_ipc::Photo::full,
+        None,
+        false,
+    )
 }
 
 pub fn run_layout_requested(
@@ -851,7 +859,24 @@ pub fn run_layout_requested(
     rights: Option<vantare_ipc::control::Feed>,
     demand: crate::source::DemandHandle,
 ) -> Result<(), crate::layout::Error> {
-    run_layout_feed(path, photos, rights, std::convert::identity, Some(demand))
+    run_layout_requested_hidden(path, photos, rights, demand, false)
+}
+
+pub fn run_layout_requested_hidden(
+    path: PathBuf,
+    photos: flume::Receiver<vantare_ipc::Photo>,
+    rights: Option<vantare_ipc::control::Feed>,
+    demand: crate::source::DemandHandle,
+    start_hidden: bool,
+) -> Result<(), crate::layout::Error> {
+    run_layout_feed(
+        path,
+        photos,
+        rights,
+        std::convert::identity,
+        Some(demand),
+        start_hidden,
+    )
 }
 
 fn run_layout_feed<T: Send + 'static>(
@@ -860,7 +885,9 @@ fn run_layout_feed<T: Send + 'static>(
     rights: Option<vantare_ipc::control::Feed>,
     decode: impl Fn(T) -> vantare_ipc::Photo + Send + 'static,
     demand: Option<crate::source::DemandHandle>,
+    start_hidden: bool,
 ) -> Result<(), crate::layout::Error> {
+    let mut presentation = crate::layout::Presentation::watch(&path)?;
     let mut document = crate::layout::Document::open(path)?;
     gpui_platform::application().run(move |cx: &mut App| {
         if !init(cx) {
@@ -887,7 +914,7 @@ fn run_layout_feed<T: Send + 'static>(
         let screens = Rc::new(RefCell::new(LiveScreens {
             usage_widgets: None,
             layout: crate::layout::Layout::default(),
-            hidden: false,
+            hidden: start_hidden,
             screens: Vec::new(),
             widgets: HashMap::new(),
             prefs: document.layout().preferences,
@@ -928,6 +955,16 @@ fn run_layout_feed<T: Send + 'static>(
                 cx.background_executor()
                     .timer(Duration::from_millis(500))
                     .await;
+                match presentation.poll() {
+                    Ok(true) => cx.update(|cx| {
+                        let mut screens = screens.borrow_mut();
+                        screens.hidden = false;
+                        let layout = screens.layout.clone();
+                        screens.apply(&layout, cx);
+                    }),
+                    Ok(false) => {}
+                    Err(error) => eprintln!("solicitud de mostrar en pista: {error}"),
+                }
                 match document.poll() {
                     Ok(true) => {
                         last_error = None;

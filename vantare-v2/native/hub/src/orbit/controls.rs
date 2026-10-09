@@ -147,7 +147,9 @@ impl Choice {
                 s.bg(rgba(line_row(cx)))
             })
             .when(!option.enabled, |s| {
-                s.opacity(DISABLED).aria_description("Deshabilitado")
+                super::inactive(s)
+                    .opacity(DISABLED)
+                    .aria_description("Deshabilitado")
             })
             .when(option.enabled, |s| {
                 s.cursor_pointer().hover(|s| s.bg(rgba(line_row(cx))))
@@ -228,7 +230,9 @@ impl Choice {
             .tab_stop(false)
             .cursor_pointer()
             .justify_between()
-            .when(!self.state.enabled, |s| s.opacity(DISABLED))
+            .when(!self.state.enabled, |s| {
+                super::inactive(s).opacity(DISABLED)
+            })
             .child(Self::trigger_tracker(cx))
             .when(self.reference_trigger, |field| {
                 field.bg(tint(ink(cx), 7.0 / 255.0))
@@ -389,7 +393,9 @@ impl Choice {
                             .border_color(selection_border(cx))
                     })
                     .when(!option.enabled || !self.state.enabled, |s| {
-                        s.opacity(DISABLED).aria_description("Deshabilitado")
+                        super::inactive(s)
+                            .opacity(DISABLED)
+                            .aria_description("Deshabilitado")
                     })
                     .when(option.enabled && self.state.enabled, |s| {
                         s.cursor_pointer().hover(|s| s.bg(rgba(line_row(cx))))
@@ -426,6 +432,7 @@ impl Render for Choice {
             })
             .aria_label(self.label)
             .aria_expanded(self.state.open)
+            .when(!self.state.enabled, super::inactive)
             .relative()
             .on_key_down(cx.listener(Self::key))
             .child(match self.kind {
@@ -698,7 +705,7 @@ pub fn profile_avatar(
         .when(enabled, |s| {
             s.cursor_pointer().hover(|s| s.bg(rgb(surface_2(cx))))
         })
-        .when(!enabled, |s| s.opacity(DISABLED))
+        .when(!enabled, |s| super::inactive(s).opacity(DISABLED))
         .focus_visible(|s| s.border_2().border_color(rgb(coral(cx))))
         .child(text(initials(name), SECONDARY, 800, ink(cx), cx))
 }
@@ -786,7 +793,7 @@ impl Render for Checkbox {
             .items_center()
             .gap(px(FIELD_PAD))
             .cursor_pointer()
-            .when(!self.enabled, |s| s.opacity(DISABLED))
+            .when(!self.enabled, |s| super::inactive(s).opacity(DISABLED))
             .focus_visible(|s| {
                 s.border_2()
                     .m(px(-FOCUS_WIDTH))
@@ -901,7 +908,7 @@ impl NumberControl {
                 button("number-minus", "−", cx)
                     .tab_stop(false)
                     .when(!self.enabled || self.range.value <= self.range.min, |s| {
-                        s.opacity(DISABLED)
+                        super::inactive(s).opacity(DISABLED)
                     })
                     .on_click(cx.listener(|this, _, window, cx| {
                         if this.enabled {
@@ -921,7 +928,7 @@ impl NumberControl {
                 button("number-plus", "+", cx)
                     .tab_stop(false)
                     .when(!self.enabled || self.range.value >= self.range.max, |s| {
-                        s.opacity(DISABLED)
+                        super::inactive(s).opacity(DISABLED)
                     })
                     .on_click(cx.listener(|this, _, window, cx| {
                         if this.enabled {
@@ -1065,7 +1072,7 @@ impl Render for NumberControl {
             .flex()
             .items_center()
             .gap(px(RADIUS_CONTROL))
-            .when(!self.enabled, |s| s.opacity(DISABLED))
+            .when(!self.enabled, |s| super::inactive(s).opacity(DISABLED))
             .focus_visible(|s| {
                 s.border_2()
                     .rounded(px(RADIUS_CONTROL))
@@ -1124,7 +1131,7 @@ pub fn list_row(
         .when(enabled, |s| {
             s.cursor_pointer().hover(|s| s.bg(rgba(line_row(cx))))
         })
-        .when(!enabled, |s| s.opacity(DISABLED))
+        .when(!enabled, |s| super::inactive(s).opacity(DISABLED))
         .focus_visible(|s| s.border_2().border_color(rgb(coral(cx))))
 }
 pub fn empty_state(title: &str, help: &str, cx: &gpui::App) -> Div {

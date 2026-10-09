@@ -6028,3 +6028,13 @@ Migrados Inicio, Launcher, Studio y Testing; regresión productiva static_conten
 PASS por cola. Estado temporal disabled efectivo y UIA/capturas/gates completos aún
 pendientes. La revisión no cita refactors concretos de legibilidad R1/R2/R4/R5/R6:
 no se amplía composición ni se cambia el motor; miniaturas R4 son pulido opcional.
+
+### Revisión v3: A1, inactividad temporal (#1496)
+Roles activos preservados; disabled temporal ahora modifica el nodo AccessKit
+original con set_disabled/clear_actions mediante callback público tras prepaint.
+Aplicado a helper disabled, toggles y caras compartidas Choice/Checkbox/Number,
+filas y avatar; handlers conservan sus guardas. No se introduce renderer, dependencia
+ni cambio de arquitectura. Clippy workspace/all-targets-Dwarnings PASS por cola;
+primer intento falló solo doc_markdown por backticks, log retenido y corregido.
+La comprobación de disabled efectivo requiere el árbol tras prepaint: pendiente
+UIA release, además de gates completos/capturas antes del cierre.

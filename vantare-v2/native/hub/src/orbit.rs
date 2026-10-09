@@ -796,7 +796,7 @@ pub fn toggle(
                 .shadow(vec![kit::kit_shadow(0x0000_0066, 1.0, 2.0, 0.0, true)])
         })
         .when(enabled, Styled::cursor_pointer)
-        .when(!enabled, |t| t.opacity(0.4))
+        .when(!enabled, |t| inactive(t).opacity(0.4))
         .focus_visible(|s| s.border_1().border_color(alpha(skin.selection)))
         .child(div().size(px(16.0)).rounded_full().bg(rgb(if on {
             0x00ff_ffff
@@ -892,14 +892,25 @@ pub fn small_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<D
         )
 }
 
-/// Control inactivo: atenuado, fuera del tabulador y sin cursor de clic.
-/// `reason` se lee por accesibilidad; no añade texto visible. GPUI no deja
-/// retirar un hover ya puesto: el del botón base sigue, pero atenuado.
-pub fn disabled(control: Stateful<Div>, reason: &str) -> Stateful<Div> {
+/// Inactividad temporal: conserva el rol del control y expone disabled efectivo.
+/// GPUI no ofrece `aria_disabled`; su callback público modifica el mismo nodo
+/// AccessKit tras prepaint, también si el consumidor añade listeners después.
+fn inactive(control: Stateful<Div>) -> Stateful<Div> {
     control
-        .opacity(DISABLED)
         .tab_stop(false)
         .cursor_default()
+        .a11y_synthetic_children(|tree| {
+            let node = tree.parent_node();
+            node.set_disabled();
+            node.clear_actions();
+        })
+}
+
+/// Control temporalmente inactivo: atenuado, sin acciones accesibles.
+/// El consumidor protege su handler; los pendientes permanentes usan pending_*.
+pub fn disabled(control: Stateful<Div>, reason: &str) -> Stateful<Div> {
+    inactive(control)
+        .opacity(DISABLED)
         .aria_description(reason.to_owned())
 }
 

@@ -431,9 +431,11 @@ impl Hub {
                             cx.listener(|hub, _, _, cx| hub.navigate(Section::Studio, cx)),
                         ),
                     )
-                    .child(orbit::disabled(
-                        orbit::button("home-stop-overlay", "Detener", cx),
+                    .child(orbit::pending_button(
+                        "home-stop-overlay",
+                        "Detener",
                         "Control de overlays desde Inicio: próximamente",
+                        cx,
                     )),
             )
     }

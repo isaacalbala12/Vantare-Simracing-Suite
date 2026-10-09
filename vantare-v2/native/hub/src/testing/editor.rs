@@ -441,9 +441,11 @@ impl Editor {
                         orbit::ink_3(cx),
                         cx,
                     ))
-                    .child(orbit::disabled(
-                        orbit::button("report-logs", "Adjuntar registro · Próximamente", cx),
+                    .child(orbit::pending_button(
+                        "report-logs",
+                        "Adjuntar registro · Próximamente",
                         "Adjuntar registros estará disponible próximamente.",
+                        cx,
                     )),
             );
         // El primario solo se atenúa: nunca destaca más deshabilitado que activo.

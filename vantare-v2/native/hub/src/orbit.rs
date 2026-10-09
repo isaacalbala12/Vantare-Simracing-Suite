@@ -805,14 +805,12 @@ pub fn toggle(
         })))
 }
 
-/// Base de botón R9.2/§4: 36 de alto, radio md, contorno line.3.
-fn button_base(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> Stateful<Div> {
+/// Cara compartida, sin rol ni foco: también presenta acciones aún inexistentes.
+fn button_face(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> Stateful<Div> {
     let skin = skin(cx);
     div()
         .id(id)
-        .role(gpui::Role::Button)
         .aria_label(label.to_owned())
-        .tab_index(0)
         .h(px(36.0))
         .px(px(16.0))
         .flex_none()
@@ -824,7 +822,37 @@ fn button_base(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> S
         .bg(gpui::transparent_black())
         .border_1()
         .border_color(alpha(skin.line3))
+}
+
+/// Base de botón R9.2/§4: añade interacción a la cara compartida.
+fn button_base(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App) -> Stateful<Div> {
+    button_face(id, label, cx)
+        .role(gpui::Role::Button)
+        .tab_index(0)
         .cursor_pointer()
+}
+
+/// Acción pendiente permanente: contenido descriptivo, sin Click ni Focus.
+pub fn pending_button(
+    id: impl Into<gpui::ElementId>,
+    label: &str,
+    reason: &str,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    pending_face(button_face(id, label, cx), reason).child(text(
+        label.to_owned(),
+        14.0,
+        500,
+        skin(cx).text1,
+        cx,
+    ))
+}
+
+fn pending_face(face: Stateful<Div>, reason: &str) -> Stateful<Div> {
+    face.role(gpui::Role::Label)
+        .aria_description(reason.to_owned())
+        .cursor_default()
+        .opacity(DISABLED)
 }
 
 /// Botón secundario: transparente con contorno; hover con velo.
@@ -919,18 +947,25 @@ pub fn carmine_button(id: &'static str, label: &str, cx: &gpui::App) -> Stateful
     let skin = skin(cx);
     let hover = skin.button_hover;
     let pressed = skin.button_pressed;
-    button_base(id, label, cx)
+    carmine_face(id, label, cx)
+        .role(gpui::Role::Button)
+        .tab_index(0)
+        .cursor_pointer()
+        .hover(move |s| s.bg(kit::ramp(hover, 180.0)))
+        .active(move |s| s.bg(rgb(pressed)))
+        .focus_visible(|s| s.border_2().border_color(rgb(skin.text1)))
+}
+
+fn carmine_face(id: &'static str, label: &str, cx: &gpui::App) -> Stateful<Div> {
+    button_face(id, label, cx)
         .self_start()
         .rounded(px(10.0))
         .border_0()
-        .bg(kit::ramp(skin.button, 180.0))
+        .bg(kit::ramp(skin(cx).button, 180.0))
         .shadow(vec![
             kit::kit_shadow(0xffff_ff38, 1.0, 0.0, 0.0, true),
             kit::kit_shadow(0x0000_0059, 1.0, 2.0, 0.0, false),
         ])
-        .hover(move |s| s.bg(kit::ramp(hover, 180.0)))
-        .active(move |s| s.bg(rgb(pressed)))
-        .focus_visible(|s| s.border_2().border_color(rgb(skin.text1)))
         .when(!label.is_empty(), |button| {
             button.child(text(label.to_owned(), 15.0, 600, 0x00ff_ffff, cx))
         })

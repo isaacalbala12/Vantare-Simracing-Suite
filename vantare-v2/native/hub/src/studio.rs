@@ -678,21 +678,27 @@ impl Studio {
             .map_or(AUTO_SAVED, String::as_str);
         let compact = self.adapt.center_width() - 2.0 * self.adapt.padding().1 < 960.0;
         let publish = if compact {
-            orbit::icon_button(
+            orbit::pending_icon_button(
                 "publish-obs",
                 "v-camera",
                 "Publicar en OBS · Próximamente",
                 36.0,
+                "Próximamente. Usa captura de ventana en OBS",
                 cx,
             )
         } else {
-            button("publish-obs", "Publicar en OBS", cx)
+            orbit::pending_button(
+                "publish-obs",
+                "Publicar en OBS",
+                "Próximamente. Usa captura de ventana en OBS",
+                cx,
+            )
         };
-        let show = orbit::play_button(
+        let show = orbit::pending_play_button(
             "studio-show-track",
             if compact { "" } else { "Mostrar en pista" },
             44.0,
-            false,
+            "Próximamente",
             cx,
         )
         .aria_label("Mostrar en pista · Próximamente");
@@ -732,11 +738,8 @@ impl Studio {
                 .truncate()
                 .min_w_0(),
             ))
-            .child(orbit::disabled(
-                publish.flex_none(),
-                "Próximamente. Usa captura de ventana en OBS",
-            ))
-            .child(orbit::disabled(show.flex_none(), "Próximamente"))
+            .child(publish.flex_none())
+            .child(show.flex_none())
     }
     pub(crate) fn context_column(&self) -> Entity<StudioSidebar> {
         self.sidebar.clone()

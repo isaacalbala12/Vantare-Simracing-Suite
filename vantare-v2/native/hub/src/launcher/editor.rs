@@ -976,17 +976,21 @@ impl Launcher {
                     .gap(px(12.0))
                     .child(editor_field(
                         "Color",
-                        orbit::disabled(
-                            orbit::button("profile-color-soon", "Próximamente", cx),
+                        orbit::pending_button(
+                            "profile-color-soon",
+                            "Próximamente",
                             "El perfil aún no guarda un color",
+                            cx,
                         ),
                         cx,
                     ))
                     .child(editor_field(
                         "Circuito",
-                        orbit::disabled(
-                            orbit::button("profile-track-soon", "Próximamente", cx),
+                        orbit::pending_button(
+                            "profile-track-soon",
+                            "Próximamente",
                             "El perfil aún no guarda un circuito",
+                            cx,
                         ),
                         cx,
                     ))

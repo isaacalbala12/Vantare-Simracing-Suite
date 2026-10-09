@@ -6018,3 +6018,13 @@ Capturas/gates/latencia aún en curso en este hito; cierre actualizado más abaj
 - Fuentes visuales separadas:80768614 recorrido completo328 checks únicos,24 combinaciones1920/1280 × panel abierto/recogido × Fit/100/150 × Windows100/125 físicos,16 clics de escenas deshabilitadas y16 resizes de los cuatro tipos. c7a033a0 repite24 combinaciones natural/custom/Undo,16 resizes y4 casos de píxeles alfa0/recorte32. c932ff12 selector primera/última/ACC en12 casos, menú/trigger y En vivo.445 PNG con fuente/hash/dimensiones (pilotos aparte); hojas y originales críticos inspeccionados. El resize físico explícito distingue QA lógico de DPI120 real.
 - Latencia final:12 tandas alternadas,2880/2880 entradas→preview→render→Present corroboradas ETW,59Hz, perdidos del logger0. P95 evento→ETW Present base3eb10,03–11,04/final drag10,68–12,29/resize bloqueado13,97–14,42/libre13,59–13,84ms; total inyección→Present18,03–18,30/18,57–19,43/21,36–22,32/21,31–21,44ms. Present-Dropped aparte; no scanout/hardware ni mejora estable acreditada. Baseline y final reconstruidos con logger try_send65536/escritura en otro hilo, exactamente5 archivos instrumentados externos por fuente; marca Present difiere de ETW≤0,0247ms. La repetición síncrona con pausa336,7ms antes de DXGI y las tandas807 se conservan; no se atribuye esa pausa al resize ni se ocultan sus outliers.
 - Evidencia completa/manual/binarios/gates/fuentes en studio-pendientes/VERIFICACION.md; informe compacto12 líneas con bloque Pendientes de Studio de8. Driver/UIA/apps propios cerrados con exit0, mouse libre, mutex liberado y reacquirido, Windows100 y cierre del Ajustes propio confirmados. Gates/compilación no solaparon esta latencia. Rama vantareapp/isa-1496-ui-calidad, base3eb404c7; local, sin delegación/push/PR/CI remota de la entrega/merge/promoción/release. Roadmap plan.md ausente: no recreado. Issue1496 abierta; aceptación independiente≥9 y señal histórica937fe794 siguen pendientes. Este cierre documental no cambia el árbol nativo probado.
+
+### Revisión v3: A1, primer grupo (#1496)
+Autorización2026-10-09: cerrar A1 después de Studio; lectura de revision-v3-r0-r6.md
+83–93. Las caras compartidas de botones/iconos/reproducción ahora se construyen
+sin foco ni rol de acción para pendientes permanentes; botones activos conservan
+Button/Click/Focus. Selectores sin opciones exponen etiqueta/valor/motivo, no ComboBox.
+Migrados Inicio, Launcher, Studio y Testing; regresión productiva static_content2/2
+PASS por cola. Estado temporal disabled efectivo y UIA/capturas/gates completos aún
+pendientes. La revisión no cita refactors concretos de legibilidad R1/R2/R4/R5/R6:
+no se amplía composición ni se cambia el motor; miniaturas R4 son pulido opcional.

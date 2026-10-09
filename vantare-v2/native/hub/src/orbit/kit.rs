@@ -27,7 +27,7 @@ pub fn pending_select(
     let skin = skin(cx);
     div()
         .id(id)
-        .role(gpui::Role::ComboBox)
+        .role(gpui::Role::Label)
         .aria_label(label.to_owned())
         .aria_value(value.to_owned())
         .aria_description(reason.to_owned())
@@ -242,11 +242,38 @@ pub fn icon_button(
     let skin = skin(cx);
     let hover = skin.hover;
     let tip = label.to_owned();
+    icon_button_face(id, icon_name, label, size, cx)
+        .role(gpui::Role::Button)
+        .tab_index(0)
+        .cursor_pointer()
+        .hover(move |s| s.bg(super::alpha(hover)))
+        .focus_visible(|s| s.shadow(focus_ring(cx)))
+        .tooltip(move |_, cx| cx.new(|_| super::Tooltip(tip.clone())).into())
+}
+
+/// Icono de una acción inexistente: conserva su cara, sin prometer interacción.
+pub fn pending_icon_button(
+    id: impl Into<gpui::ElementId>,
+    icon_name: &'static str,
+    label: &str,
+    size: f32,
+    reason: &str,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    super::pending_face(icon_button_face(id, icon_name, label, size, cx), reason)
+}
+
+fn icon_button_face(
+    id: impl Into<gpui::ElementId>,
+    icon_name: &'static str,
+    label: &str,
+    size: f32,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    let skin = skin(cx);
     div()
         .id(id)
-        .role(gpui::Role::Button)
         .aria_label(label.to_owned())
-        .tab_index(0)
         .size(px(size))
         .flex_none()
         .relative()
@@ -254,11 +281,7 @@ pub fn icon_button(
         .items_center()
         .justify_center()
         .rounded(px(skin.radius.sm))
-        .cursor_pointer()
-        .hover(move |s| s.bg(super::alpha(hover)))
-        .focus_visible(|s| s.shadow(focus_ring(cx)))
         .child(icon(icon_name, (size * 0.62).round(), skin.text3))
-        .tooltip(move |_, cx| cx.new(|_| super::Tooltip(tip.clone())).into())
 }
 
 /// Pestaña de la barra superior (R10.10): subrayado horizontal 2 px de marca.

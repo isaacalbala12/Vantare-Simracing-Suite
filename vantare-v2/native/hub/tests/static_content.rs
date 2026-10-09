@@ -1,5 +1,60 @@
 use gpui::Element;
+use gpui::prelude::*;
 use vantare_hub::orbit;
+
+#[test]
+fn pending_faces_describe_value_and_reason_without_click_or_focus() {
+    gpui_platform::headless().run(|cx| {
+        cx.set_global(orbit::theme::Theme::default());
+        let reason = "Próximamente. Usa captura de ventana en OBS";
+        for (control, label, value) in [
+            (
+                orbit::pending_button("pending", "Publicar en OBS", reason, cx),
+                "Publicar en OBS",
+                None,
+            ),
+            (
+                orbit::pending_icon_button("icon", "v-camera", "OBS", 36.0, reason, cx),
+                "OBS",
+                None,
+            ),
+            (
+                orbit::pending_play_button("play", "Mostrar en pista", 44.0, reason, cx),
+                "Mostrar en pista",
+                None,
+            ),
+            (
+                orbit::pending_select("select", "Layout activo", "Layout local", 180.0, reason, cx),
+                "Layout activo",
+                Some("Layout local"),
+            ),
+        ] {
+            assert_eq!(control.a11y_role(), Some(gpui::Role::Label));
+            let mut node = gpui::accesskit::Node::new(gpui::Role::Label);
+            control.write_a11y_info(&mut node);
+            assert_eq!(node.label(), Some(label));
+            assert_eq!(node.value(), value);
+            assert_eq!(node.description(), Some(reason));
+            assert!(!node.supports_action(gpui::AccessibleAction::Click));
+            assert!(!node.supports_action(gpui::AccessibleAction::Focus));
+        }
+        // Los activos siguen siendo accionables aunque compartan la misma cara.
+        for button in [
+            orbit::button("active", "Editar", cx),
+            orbit::carmine_button("primary", "Enviar", cx),
+            orbit::icon_button("active-icon", "v-camera", "Capturar", 36.0, cx),
+            orbit::play_button("active-play", "Lanzar", 44.0, false, cx),
+        ] {
+            let button = button.on_click(|_, _, _| {});
+            assert_eq!(button.a11y_role(), Some(gpui::Role::Button));
+            let mut node = gpui::accesskit::Node::new(gpui::Role::Button);
+            button.write_a11y_info(&mut node);
+            assert!(node.supports_action(gpui::AccessibleAction::Click));
+            assert!(node.supports_action(gpui::AccessibleAction::Focus));
+        }
+        cx.quit();
+    });
+}
 
 #[test]
 fn summary_accessibility_describes_content_without_button_actions() {

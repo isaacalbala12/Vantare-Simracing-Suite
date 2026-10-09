@@ -474,7 +474,7 @@ impl Testing {
             if expanded {
                 rows = rows.child(orbit::text("El texto privado no se conserva en esta lista. El recibo confirma el envío; no consulta cambios posteriores.", 13.0, 400, orbit::ink_2(cx), cx))
                     .child(orbit::text("Conversación · Próximamente", 12.0, 400, orbit::ink_3(cx), cx))
-                    .child(orbit::disabled(orbit::button("testing-also-happens", "A mí también me pasa · Próximamente", cx), "El servicio nativo aún no permite apoyar otro informe."));
+                    .child(orbit::pending_button("testing-also-happens", "A mí también me pasa · Próximamente", "El servicio nativo aún no permite apoyar otro informe.", cx));
             }
         }
         rows

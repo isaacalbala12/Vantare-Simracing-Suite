@@ -132,8 +132,11 @@ pub(super) fn title(content: String, size: f32, tracking: f32, line_height: f32)
 }
 
 fn quick_button(id: &'static str, label: &'static str, cx: &gpui::App) -> Stateful<Div> {
-    orbit::button(id, "", cx)
-        .aria_label(label)
+    quick_content(orbit::button(id, "", cx), label, cx)
+}
+
+fn quick_content(face: Stateful<Div>, label: &'static str, cx: &gpui::App) -> Stateful<Div> {
+    face.aria_label(label)
         .h(px(36.0))
         .px(px(13.0))
         .rounded(px(8.0))
@@ -144,9 +147,10 @@ fn quick_button(id: &'static str, label: &'static str, cx: &gpui::App) -> Statef
 
 /// Falta el contrato de control de overlays: se muestra, pero no finge funcionar.
 fn pending_overlay(id: &'static str, cx: &gpui::App) -> Stateful<Div> {
-    orbit::disabled(
-        quick_button(id, "Abrir overlay", cx),
-        "Pendiente: el Hub aún no controla el overlay",
+    quick_content(
+        orbit::pending_button(id, "", "Pendiente: el Hub aún no controla el overlay", cx),
+        "Abrir overlay",
+        cx,
     )
 }
 

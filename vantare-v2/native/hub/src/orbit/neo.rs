@@ -200,6 +200,30 @@ pub fn play_button(
     key: bool,
     cx: &gpui::App,
 ) -> Stateful<Div> {
+    play_content(super::carmine_button(id, "", cx), label, height, key, cx)
+}
+
+/// Cara de reproducción pendiente, sobre el mismo contenido del botón activo.
+pub fn pending_play_button(
+    id: &'static str,
+    label: &str,
+    height: f32,
+    reason: &str,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    super::pending_face(
+        play_content(super::carmine_face(id, "", cx), label, height, false, cx),
+        reason,
+    )
+}
+
+fn play_content(
+    face: Stateful<Div>,
+    label: &str,
+    height: f32,
+    key: bool,
+    cx: &gpui::App,
+) -> Stateful<Div> {
     let (size, glyph, pad) = if height >= 50.0 {
         (16.0, 14.0, 20.0)
     } else if height >= 40.0 {
@@ -207,8 +231,7 @@ pub fn play_button(
     } else {
         (14.0, 12.0, 12.0)
     };
-    super::carmine_button(id, "", cx)
-        .h(px(height))
+    face.h(px(height))
         .min_w_0()
         .flex_shrink(1.0)
         .px(px(pad))

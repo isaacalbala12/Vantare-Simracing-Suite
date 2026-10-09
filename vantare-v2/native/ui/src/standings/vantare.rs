@@ -516,10 +516,10 @@ fn same_board(a: &Board, b: &Board) -> bool {
 
 #[derive(Clone)]
 pub(crate) struct Visual {
-    pub options: Options,
+    pub options: Arc<Options>,
     pub style: Arc<Style>,
     pub board: Option<Arc<Board>>,
-    plan: Plan,
+    plan: Arc<Plan>,
 }
 
 impl Visual {
@@ -527,10 +527,10 @@ impl Visual {
         let style = Style::compiled();
         let plan = plan(None, &options, &style);
         Self {
-            options,
+            options: Arc::new(options),
             style,
             board: None,
-            plan,
+            plan: Arc::new(plan),
         }
     }
 
@@ -595,7 +595,7 @@ impl Visual {
             return false;
         }
         self.board = Some(board);
-        self.plan = plan(self.board.as_deref(), &self.options, &self.style);
+        self.plan = Arc::new(plan(self.board.as_deref(), &self.options, &self.style));
         let samples = self.samples();
         motion.update(
             &samples,
@@ -607,7 +607,7 @@ impl Visual {
 
     pub(crate) fn set_style(&mut self, style: Arc<Style>, motion: &mut Motion) {
         self.style = style;
-        self.plan = plan(self.board.as_deref(), &self.options, &self.style);
+        self.plan = Arc::new(plan(self.board.as_deref(), &self.options, &self.style));
         let samples = self.samples();
         motion.snap(&samples);
     }
@@ -1060,11 +1060,10 @@ impl Painter<'_> {
         }
         if let Some((kind, strength)) = flash {
             let color = match kind {
-                Flash::Gain => c.flash_gain,
+                Flash::Gain | Flash::PersonalBest => c.flash_gain,
                 Flash::Loss => c.flash_loss,
                 Flash::Lead => c.leader,
                 Flash::Best => c.purple,
-                Flash::PersonalBest => c.flash_gain,
                 Flash::Pit => c.box_fill,
             };
             self.highlight(window, y, color, strength * self.style.motion.flash_boost);

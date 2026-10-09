@@ -3,13 +3,13 @@ use super::model::{Config, Metric, Plan, Status, Vm};
 use super::motion::{Motion, Wake};
 use super::{Settings, model, style, view};
 use crate::app::Paint;
-use std::time::Instant;
+use std::{sync::Arc, time::Instant};
 use vantare_domain::{format::Preferences, standings};
 pub(crate) struct Visual {
-    pub(super) config: Config,
+    pub(super) config: Arc<Config>,
     pub(super) settings: Settings,
-    pub(super) vm: Vm,
-    pub(super) plan: Plan,
+    pub(super) vm: Arc<Vm>,
+    pub(super) plan: Arc<Plan>,
 }
 
 impl Visual {
@@ -20,10 +20,10 @@ impl Visual {
         let vm = Vm::unavailable(Status::Disconnected);
         let plan = model::plan(&config, &vm);
         Self {
-            config,
+            config: Arc::new(config),
             settings: settings.normalized(),
-            vm,
-            plan,
+            vm: Arc::new(vm),
+            plan: Arc::new(plan),
         }
     }
 
@@ -36,6 +36,7 @@ impl Visual {
         sequence: u64,
         motion: &mut Motion,
     ) -> bool {
+        let config = Arc::make_mut(&mut self.config);
         let identity = format!("{session}:{epoch}");
         let mut next = Vm::from_domain(domain, prefs, 104, identity, sequence);
         if self.settings.player_window {
@@ -60,12 +61,12 @@ impl Visual {
                 })
                 .collect();
         } else {
-            next.rows.truncate(self.config.row_count);
+            next.rows.truncate(config.row_count);
         }
-        if self.config.show_session_footer {
-            next.footer_cells = domain.footer_cells.clone();
+        if config.show_session_footer {
+            next.footer_cells.clone_from(&domain.footer_cells);
         }
-        if self.config.multiclass {
+        if config.multiclass {
             let mut classes = Vec::<String>::new();
             for row in &next.rows {
                 if !row.vehicle_class.is_empty() && !classes.contains(&row.vehicle_class) {
@@ -119,9 +120,9 @@ impl Visual {
             }
         }
         // Wails reserva la capacidad aunque su filtro de clase muestre menos coches.
-        self.config.footer_rows = 1;
-        if self.config.footer_slots.len() > 5 {
-            let inner = (self.config.width - 24.0).max(80.0);
+        config.footer_rows = 1;
+        if config.footer_slots.len() > 5 {
+            let inner = (config.width - 24.0).max(80.0);
             let total = next
                 .footer_cells
                 .iter()
@@ -132,21 +133,20 @@ impl Visual {
                         + 14.0
                 })
                 .sum::<f32>();
-            self.config.footer_rows = (total / inner).ceil() as usize;
+            config.footer_rows = (total / inner).ceil() as usize;
         }
-        self.config.fit(self.config.row_count);
-        if self.config.multiclass {
+        config.fit(config.row_count);
+        if config.multiclass {
             let mut classes = std::collections::HashSet::new();
             let bands = next
                 .rows
                 .iter()
                 .filter(|row| !row.vehicle_class.is_empty() && classes.insert(&row.vehicle_class))
                 .count();
-            self.config.height += bands as f32 * self.config.style.geometry.class_band_height;
+            config.height += bands as f32 * config.style.geometry.class_band_height;
         }
         // Una columna oculta no debe cambiar la firma del contenido visible.
-        if !self
-            .config
+        if !config
             .columns
             .iter()
             .any(|column| column.metric == Metric::CurrentLap)
@@ -155,8 +155,7 @@ impl Visual {
                 row.current_lap_text = vantare_domain::format::PLACEHOLDER.into();
             }
         }
-        if !self
-            .config
+        if !config
             .columns
             .iter()
             .any(|column| column.metric == Metric::Interval)
@@ -167,15 +166,13 @@ impl Visual {
         }
         // paint_footer usa footer_cells con slots o metricas no legacy.
         // En esos casos el nombre visible, si se pide, ya esta en esas celdas.
-        let legacy_track_visible = self.config.show_session_footer
-            && self.config.footer_slots.is_empty()
-            && self
-                .config
+        let legacy_track_visible = config.show_session_footer
+            && config.footer_slots.is_empty()
+            && config
                 .footer_ids
                 .iter()
                 .all(|id| ["none", "track", "estimatedLaps"].contains(&id.as_str()))
-            && [self.config.footer_first, self.config.footer_second]
-                .contains(&model::InfoMetric::Track);
+            && [config.footer_first, config.footer_second].contains(&model::InfoMetric::Track);
         if !legacy_track_visible {
             next.track = vantare_domain::format::PLACEHOLDER.into();
         }
@@ -184,7 +181,7 @@ impl Visual {
         let changed = {
             #[cfg(feature = "paint-stats")]
             let _span = crate::profiling::begin(crate::profiling::Stage::VmDiff);
-            next != self.vm
+            next != *self.vm
         };
 
         next.sequence = sequence;
@@ -193,12 +190,12 @@ impl Visual {
             let plan = {
                 #[cfg(feature = "paint-stats")]
                 let _span = crate::profiling::begin(crate::profiling::Stage::Layout);
-                model::plan(&self.config, &next)
+                model::plan(config, &next)
             };
             let lap_visible = plan.columns.iter().any(|c| c.metric == Metric::BestLap);
             motion.update(&next, plan.visible_rows, lap_visible, Instant::now());
-            self.vm = next;
-            self.plan = plan;
+            self.vm = Arc::new(next);
+            self.plan = Arc::new(plan);
         }
         changed
     }
@@ -206,13 +203,14 @@ impl Visual {
 
 impl Visual {
     pub(crate) fn set_study(&mut self, study: &str) {
-        self.config.study = study.into();
+        Arc::make_mut(&mut self.config).study = study.into();
     }
 
     pub(crate) fn set_style(&mut self, style: std::sync::Arc<style::Style>) {
-        self.config.style = style;
-        self.config.fit(self.config.row_count);
-        if self.config.multiclass {
+        let config = Arc::make_mut(&mut self.config);
+        config.style = style;
+        config.fit(config.row_count);
+        if config.multiclass {
             let classes: std::collections::HashSet<_> = self
                 .vm
                 .rows
@@ -220,10 +218,9 @@ impl Visual {
                 .filter(|row| !row.vehicle_class.is_empty())
                 .map(|row| &row.vehicle_class)
                 .collect();
-            self.config.height +=
-                classes.len() as f32 * self.config.style.geometry.class_band_height;
+            config.height += classes.len() as f32 * config.style.geometry.class_band_height;
         }
-        self.plan = model::plan(&self.config, &self.vm);
+        self.plan = Arc::new(model::plan(config, &self.vm));
     }
 
     pub(crate) fn size(&self) -> (f32, f32) {
@@ -246,9 +243,9 @@ impl Visual {
     ) -> (Paint, Wake) {
         let now = Instant::now();
         let frame = if reduced {
-            Motion::new().frame(&self.vm, self.plan.visible_rows, now)
+            Arc::new(Motion::new().frame(&self.vm, self.plan.visible_rows, now))
         } else {
-            motion.frame(&self.vm, self.plan.visible_rows, now)
+            motion.frame_shared(&self.vm, self.plan.visible_rows, now)
         };
         let wake = if reduced {
             Wake::Idle

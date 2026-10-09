@@ -17,17 +17,15 @@ fn check(path: &Path, allowed: bool) {
     {
         let source = fs::read_to_string(path).expect("fuente UTF-8");
         let production = source.split("#[cfg(test)]").next().expect("fuente");
-        for token in [
-            "DesignSystem::Eficiencia",
-            "DesignSystem::Vantare",
-            "Look::Eficiencia",
-            "Look::Vantare",
-        ] {
-            assert!(
-                !production.contains(token),
-                "{}: estilo concreto fuera del módulo: {token}",
-                path.display()
-            );
+        for look in vantare_ui::look::Look::ALL {
+            for type_name in ["DesignSystem", "Look"] {
+                let token = format!("{type_name}::{look:?}");
+                assert!(
+                    !production.contains(&token),
+                    "{}: estilo concreto fuera del módulo: {token}",
+                    path.display()
+                );
+            }
         }
     }
 }

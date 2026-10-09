@@ -855,11 +855,10 @@ impl Painter<'_> {
         }
         if let Some((kind, strength)) = flash {
             let color = match kind {
-                Flash::Gain => c.flash_gain,
+                Flash::Gain | Flash::PersonalBest => c.flash_gain,
                 Flash::Loss => c.flash_loss,
                 Flash::Lead => c.leader,
                 Flash::Best => c.purple,
-                Flash::PersonalBest => c.flash_gain,
                 Flash::Pit => c.box_fill,
             };
             self.highlight(window, y, color, strength * self.style.motion.flash_boost);

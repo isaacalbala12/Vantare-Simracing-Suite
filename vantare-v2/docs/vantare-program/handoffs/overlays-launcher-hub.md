@@ -1,13 +1,16 @@
-## #1531 · Standings recuperado tras reinicio de T3 (2026-10-09)
+## #1531 · Standings cerrado; Relative siguiente (2026-10-09)
 
 Base 5e1da3f6, worktree C:/tmp/vw3-1531/vantare-v2, rama vantareapp/isa-1531-widgets-looks.
-Standings comparte Board/proyección y un Motion activo; los Looks conservan pintores y animación.
-Caché de hechos sin Look, invalidación y una llamada por ingest probadas; migración contentVersion.
-UI/Domain tests PASS (148 + 221, dos ignorados); check Hub/UI con red y capturas PASS.
-Warning previo Hub analysis/view.rs:989 fuera de alcance. ADR 0100 y herramientas de QA añadidos.
-Baseline previo congelado en evidence-1531; paridad final y medición real p50/p99 aún pendientes.
-Relative, Delta y Fuel todavía pendientes. IPC intacto; #1530 integra DTO v9.
-Commit de recuperación local; sin push, PR, merge, CI remoto ni promoción/release.
+Recuperación local c5c2f1d5 y cierre en un segundo commit del mismo widget; sin push, PR ni merge.
+Standings posee un Board, una proyección por ingest y un Motion activo: cambiar Look mantiene CarId, avisos y su reloj.
+Migración de contenido en memoria; estilos concretos confinados a UI del widget/look.rs, guardado/recarga y entidad del host probados.
+Checks: fmt y Clippy UI/domain/all-targets -D warnings PASS; domain 148 y UI 224 PASS (2 ignorados), arquitectura de Looks PASS.
+Un timeout de demanda IPC con todos los hilos pasó al repetir la suite con 2 hilos; test intacto. Gates workspace finales pendientes.
+Paridad Release 48/48 casos y 4/4 reales: 0 RGBA; golden antes/después 0. Golden versionado ya difiere del baseline (85,37%), intacto.
+Cinco tandas A/B intercaladas PASS según criterio de Isaac: mediana p50 no empeora y p99 dentro o debajo del rango del baseline.
+Frío real: LMU 98→116 µs (1,18×), ACC 44→55 µs (1,24×), límite 1,5×; caché por hechos exactos sin Look y con invalidación probada.
+Tandas/capturas/cifras completas: C:/tmp/auditoria-arquitectura-v2/evidence-1531/performance/standings-gate-five-rounds.{json,md}.
+Siguiente: Relative → Delta → Fuel; Fuel solo tendrá un historial de consumo. No se toca IPC (#1530).
 
 ## #1496 — Calidad UI R0–R3, correcciones sobre R4 (2026-10-08)
 

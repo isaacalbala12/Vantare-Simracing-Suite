@@ -191,9 +191,8 @@ impl EventKind {
     fn priority(self) -> u8 {
         match self {
             EventKind::SessionBest => 3,
-            EventKind::Position => 2,
+            EventKind::Position | EventKind::Lead | EventKind::Pit => 2,
             EventKind::PersonalBest => 1,
-            EventKind::Lead | EventKind::Pit => 2,
         }
     }
 }
@@ -378,6 +377,8 @@ struct ExitRow {
 #[derive(Default)]
 pub struct Motion {
     prev: Option<Vm>,
+    /// Resultado derivado reutilizable solo mientras no hay animacion ni nueva ingestion.
+    idle_frame: Option<std::sync::Arc<Frame>>,
     /// Tops de layout (relativos al cuerpo) de la ultima pasada, por id.
     tops: HashMap<String, f32>,
     flips: HashMap<String, Tween>,
@@ -436,6 +437,7 @@ impl Motion {
         )],
     ) {
         use crate::vantare::motion::Flash;
+        self.idle_frame = None;
         for &(id, flash, start, places) in notices {
             let kind = match flash {
                 Flash::Gain | Flash::Loss => EventKind::Position,
@@ -463,6 +465,7 @@ impl Motion {
     /// Registra un nuevo ViewModel. `visible` = filas pintadas (prefijo de `vm.rows`);
     /// `lap_visible` = columna de mejor vuelta activa.
     pub fn update(&mut self, vm: &Vm, visible: usize, lap_visible: bool, now: Instant) {
+        self.idle_frame = None;
         if vm.status != Status::Ready {
             self.reset();
             self.prev = None;
@@ -665,6 +668,17 @@ impl Motion {
         self.chip_tw.remove(id);
     }
 
+    /// Un frame quieto no vuelve a asignar mapas de filas; update/restaurar avisos lo invalida.
+    pub(super) fn frame_shared(&mut self, vm: &Vm, visible: usize, now: Instant) -> std::sync::Arc<Frame> {
+        if self.wake(now) == Wake::Idle
+            && let Some(frame) = &self.idle_frame {
+            return frame.clone();
+        }
+        let frame = std::sync::Arc::new(self.frame(vm, visible, now));
+        self.idle_frame = (self.wake(now) == Wake::Idle).then(|| frame.clone());
+        frame
+    }
+
     /// Estado visual en `now`.
     pub fn frame(&mut self, vm: &Vm, visible: usize, now: Instant) -> Frame {
         self.notices.retain(|_, n| {
@@ -822,6 +836,22 @@ mod tests {
             race: true,
             ..Vm::unavailable(Status::Ready)
         }
+    }
+
+    #[test]
+    fn idle_frames_are_shared_and_a_new_photo_invalidates_them() {
+        let now = Instant::now();
+        let initial = vm(vec![row("a", 1)], 1);
+        let mut motion = Motion::new();
+        motion.update(&initial, 1, true, now);
+        let first = motion.frame_shared(&initial, 1, now);
+        let same = motion.frame_shared(&initial, 1, now + Duration::from_millis(100));
+        assert!(std::sync::Arc::ptr_eq(&first, &same));
+        let next = vm(vec![row("a", 2)], 2);
+        motion.update(&next, 1, true, now + Duration::from_millis(100));
+        let changed = motion.frame_shared(&next, 1, now + Duration::from_millis(100));
+        assert!(!std::sync::Arc::ptr_eq(&first, &changed));
+        assert!(changed.row("a").chip.is_some());
     }
 
     #[test]

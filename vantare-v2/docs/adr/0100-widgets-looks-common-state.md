@@ -57,5 +57,16 @@ contenido, preferencias, sesión/fuente, clima/banderas y hechos por CarId. No g
 Snapshot ni clave de Look; secuencia/inputs ajenos a la clasificación no invalidan.
 Un cambio de hechos o de referencia global invalida y produce el mismo Board que
 una proyección en frío. Hay tests de ambas invalidaciones y de una llamada por ingest.
-Gate aprobado: ingest/frame CPU completos del corpus real sin regresión p50/p99;
-proyección fría como máximo 1,5× Vantare anterior. Evidencia externa, aún pendiente.
+Gate aprobado: cinco tandas A/B intercaladas en procesos separados con el corpus
+real y el Look activo. La mediana de p50 no empeora y la mediana de p99 del nuevo
+queda dentro o por debajo de mín–máx de los p99 del baseline; no se afinan umbrales ni máscaras.
+Proyección fría como máximo 1,5× Vantare anterior. Cifras y tandas en la evidencia externa.
+El Motion Eficiencia reutiliza únicamente su Frame cuando Wake es Idle; una nueva
+ingestión o restaurar avisos lo invalida. Vantare presta Motion/Plan/Opciones con Arc
+al Frame; estas lecturas efímeras evitan clonar mapas y no son historiales dormidos.
+
+Standings cerrado: 148 tests domain, 224 UI (2 ignorados), arquitectura y Clippy PASS;
+48 pares de configuración + 4 reales + golden antes/después con 0 diferencias RGBA.
+El golden versionado ya difería del baseline: se conserva y se registra esa deuda previa.
+Cinco tandas A/B cumplen el gate. Frío LMU 98→116 µs (1,18×), ACC 44→55 µs (1,24×).
+Las cifras por tanda y ambas fases están en evidence-1531/performance/standings-gate-five-rounds.json.

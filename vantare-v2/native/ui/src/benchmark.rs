@@ -1,4 +1,4 @@
-//! Medición de QA sobre Widget::ingest, frame y pintor productivos; no entra en producto.
+//! Medición de QA sobre `Widget::ingest`, frame y pintor productivos; no entra en producto.
 use crate::{
     Settings, Widget, app,
     efficiency::{preview::PaintWindow, text},
@@ -17,12 +17,21 @@ use std::{
 use vantare_domain::{Snapshot, format::Preferences};
 const WARMUP: usize = 60;
 const SAMPLES: usize = 600;
-#[derive(Default)]
 struct Samples {
     ingest: Vec<u64>,
     frame: Vec<u64>,
     paint: Vec<u64>,
     invalidations: usize,
+}
+impl Default for Samples {
+    fn default() -> Self {
+        Self {
+            ingest: Vec::with_capacity(SAMPLES),
+            frame: Vec::with_capacity(SAMPLES),
+            paint: Vec::with_capacity(SAMPLES),
+            invalidations: 0,
+        }
+    }
 }
 struct Panel {
     widget: Widget,
@@ -66,7 +75,7 @@ impl Render for Panel {
             if index > WARMUP {
                 let mut stats=samples.borrow_mut(); stats.ingest.push(ingest); stats.frame.push(preparation+elapsed); stats.paint.push(elapsed); stats.invalidations+=usize::from(changed);
                 if stats.frame.len()==SAMPLES {
-                    let value=serde_json::json!({"samples":SAMPLES,"warmup":WARMUP,"ingest_ns":{"p50":percentile(&stats.ingest,50),"p99":percentile(&stats.ingest,99)},"frame_ns":{"p50":percentile(&stats.frame,50),"p99":percentile(&stats.frame,99)},"paint_ns":{"p50":percentile(&stats.paint,50),"p99":percentile(&stats.paint,99)},"invalidations":stats.invalidations,"measurement":"CPU: ingest + frame preparation and productive paint; excludes GPU submit/present"});
+                    let value=serde_json::json!({"samples":SAMPLES,"warmup":WARMUP,"ingest_ns":{"p50":percentile(&stats.ingest,50),"p99":percentile(&stats.ingest,99)},"frame_ns":{"p50":percentile(&stats.frame,50),"p99":percentile(&stats.frame,99)},"paint_ns":{"p50":percentile(&stats.paint,50),"p99":percentile(&stats.paint,99)},"invalidations":stats.invalidations,"raw_ns":{"ingest":stats.ingest,"frame":stats.frame,"paint":stats.paint},"measurement":"CPU: ingest + frame preparation and productive paint; excludes GPU submit/present"});
                     let result=serde_json::to_vec_pretty(&value).map_err(std::io::Error::other).and_then(|bytes| std::fs::write(&output,bytes));
                     if let Err(error)=result { eprintln!("benchmark: {error}"); failure.set(true); }
                     cx.quit();

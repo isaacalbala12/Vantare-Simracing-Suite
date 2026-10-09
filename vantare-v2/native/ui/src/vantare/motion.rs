@@ -60,6 +60,7 @@ impl Default for Pose {
 }
 
 #[derive(Clone, Copy, Debug)]
+#[allow(clippy::struct_excessive_bools)] // Hechos independientes: récord, boxes, liderato y fila visible.
 struct Track {
     from: f32,
     to: f32,
@@ -71,6 +72,7 @@ struct Track {
     in_pits: bool,
     leader: bool,
     places: i64,
+    visible: bool,
 }
 
 impl Track {
@@ -114,7 +116,7 @@ impl Motion {
         let mut next = HashMap::with_capacity(rows.len());
         for sample in rows {
             let track = match self.rows.get(&sample.id) {
-                Some(old) if !first => {
+                Some(old) if !first && old.visible => {
                     let current = old.y(timing, now);
                     // Boxes manda: entrar suele costar puestos y es lo que hay que ver.
                     let flash = if sample.in_pits && !old.in_pits {
@@ -141,6 +143,7 @@ impl Motion {
                         fastest: sample.fastest,
                         in_pits: sample.in_pits,
                         leader: sample.leader,
+                        visible: true,
                         places: if old.position == sample.position {
                             old.places
                         } else {
@@ -153,15 +156,32 @@ impl Motion {
                     to: sample.y,
                     moved: now,
                     born: (!first).then_some(now),
-                    flash: None,
+                    flash: self.rows.get(&sample.id).and_then(|old| old.flash),
                     position: sample.position,
                     fastest: sample.fastest,
                     in_pits: sample.in_pits,
                     leader: sample.leader,
-                    places: 0,
+                    places: self.rows.get(&sample.id).map_or(0, |old| old.places),
+                    visible: true,
                 },
             };
             next.insert(sample.id, track);
+        }
+        // Un aviso trasladado sigue vivo aunque este Look no pinte su fila.
+        for (&id, old) in &self.rows {
+            if !next.contains_key(&id)
+                && old
+                    .flash
+                    .is_some_and(|(_, at)| Track::progress(at, timing.flash, now) < 1.0)
+            {
+                next.insert(
+                    id,
+                    Track {
+                        visible: false,
+                        ..*old
+                    },
+                );
+            }
         }
         self.rows = next;
     }
@@ -175,10 +195,21 @@ impl Motion {
     }
     pub(crate) fn restore_notices(&mut self, notices: &[(CarId, Flash, Instant, i64)]) {
         for &(id, kind, at, places) in notices {
-            if let Some(t) = self.rows.get_mut(&id) {
-                t.flash = Some((kind, at));
-                t.places = places;
-            }
+            let t = self.rows.entry(id).or_insert(Track {
+                from: 0.0,
+                to: 0.0,
+                moved: at,
+                born: None,
+                flash: None,
+                position: 0,
+                fastest: false,
+                in_pits: false,
+                leader: false,
+                places: 0,
+                visible: false,
+            });
+            t.flash = Some((kind, at));
+            t.places = places;
         }
     }
 
@@ -220,7 +251,11 @@ impl Motion {
     }
 
     pub(crate) fn wake(&self, timing: Timing, now: Instant) -> Wake {
-        if self.rows.values().any(|track| track.active(timing, now)) {
+        if self
+            .rows
+            .values()
+            .any(|track| track.visible && track.active(timing, now))
+        {
             Wake::Frame
         } else {
             Wake::Idle

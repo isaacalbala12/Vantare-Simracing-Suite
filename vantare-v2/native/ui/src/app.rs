@@ -215,9 +215,8 @@ impl Overlay {
 
     /// Solo cambia presentación: mantiene la proyección y los avisos del widget.
     pub fn set_look(&mut self, look: crate::look::Look) {
-        match &mut self.widget {
-            Widget::Standings(w) => w.set_look(look, self.prefs),
-            _ => {}
+        if let Widget::Standings(w) = &mut self.widget {
+            w.set_look(look, self.prefs);
         }
     }
 
@@ -1373,6 +1372,32 @@ mod tests {
                 .widget
                 .ingest(latest, prefs)
         );
+    }
+
+    #[test]
+    fn layout_look_changes_reuse_the_same_renderer_entity() {
+        let mut instance = crate::layout::Instance {
+            geometry: crate::geometry::Geometry::default(),
+            id: "board".into(),
+            x: 20.0,
+            y: 30.0,
+            visible: true,
+            opacity: 1.0,
+            settings: Settings::default_for(Kind::Standings).normalized(),
+        };
+        let mut widgets = reconcile_widgets(HashMap::new(), &[instance.clone()], |_| Box::new(17));
+        let identity = std::ptr::from_ref(widgets["board"].view.as_ref());
+        for &look in crate::look::Look::ALL
+            .iter()
+            .rev()
+            .chain(crate::look::Look::ALL)
+        {
+            instance.settings.set_look(look);
+            widgets = reconcile_widgets(widgets, &[instance.clone()], |_| {
+                panic!("Look conserva entidad y estado")
+            });
+            assert_eq!(std::ptr::from_ref(widgets["board"].view.as_ref()), identity);
+        }
     }
 
     #[test]

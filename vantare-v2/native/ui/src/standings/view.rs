@@ -23,10 +23,10 @@ use vantare_domain::{FlagKind, format::Language};
 const LOGO: &[u8] = include_bytes!("../../assets/vantare-mark.png");
 
 pub struct Scene {
-    pub config: Config,
-    pub vm: Vm,
-    pub plan: Plan,
-    pub frame: Frame,
+    pub config: Arc<Config>,
+    pub vm: Arc<Vm>,
+    pub plan: Arc<Plan>,
+    pub frame: Arc<Frame>,
     pub language: Language,
     pub height: f32,
 }

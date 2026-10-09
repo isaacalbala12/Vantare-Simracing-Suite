@@ -348,13 +348,13 @@ pub(crate) struct Widget {
 }
 
 enum Visual {
-    Eficiencia(eficiencia::Visual),
+    Eficiencia(Box<eficiencia::Visual>),
     Vantare(vantare::Visual),
 }
 /// La política visual cambia; nunca quedan dos historiales dormidos.
 enum Motion {
-    Eficiencia(motion::Motion),
-    Vantare(crate::vantare::motion::Motion),
+    Eficiencia(Box<motion::Motion>),
+    Vantare(std::sync::Arc<crate::vantare::motion::Motion>),
 }
 impl Motion {
     fn notices(
@@ -381,7 +381,7 @@ impl Motion {
     ) {
         match self {
             Self::Eficiencia(m) => m.restore_notices(notices),
-            Self::Vantare(m) => m.restore_notices(notices),
+            Self::Vantare(m) => std::sync::Arc::make_mut(m).restore_notices(notices),
         }
     }
 }
@@ -389,14 +389,14 @@ impl Widget {
     fn presentation(settings: &Settings, prefs: Preferences) -> (Visual, Motion) {
         match settings.design_system {
             DesignSystem::Eficiencia => (
-                Visual::Eficiencia(eficiencia::Visual::new(settings, prefs)),
-                Motion::Eficiencia(motion::Motion::new()),
+                Visual::Eficiencia(Box::new(eficiencia::Visual::new(settings, prefs))),
+                Motion::Eficiencia(Box::new(motion::Motion::new())),
             ),
             DesignSystem::Vantare => (
                 Visual::Vantare(vantare::Visual::new(vantare::Options::from_settings(
                     settings,
                 ))),
-                Motion::Vantare(crate::vantare::motion::Motion::default()),
+                Motion::Vantare(std::sync::Arc::default()),
             ),
         }
     }
@@ -451,11 +451,22 @@ impl Widget {
         ) -> std::sync::Arc<standings::Board>,
     ) -> bool {
         let next = project(snapshot, prefs, &self.content(), self.board.as_ref());
-        self.boundary = (
+        let boundary = (
             snapshot.epoch,
             snapshot.state.session.id.0,
             snapshot.sequence,
         );
+        let same_facts = self
+            .board
+            .as_ref()
+            .is_some_and(|old| std::sync::Arc::ptr_eq(old, &next));
+        let continuous = self.boundary.0 == boundary.0
+            && self.boundary.1 == boundary.1
+            && boundary.2 >= self.boundary.2;
+        self.boundary = boundary;
+        if same_facts && continuous {
+            return false;
+        }
         let changed = self.present(next.clone(), prefs);
         self.board = Some(next);
         changed
@@ -470,11 +481,11 @@ impl Widget {
                 self.boundary.2,
                 m,
             ),
-            (Visual::Vantare(v), Motion::Vantare(m)) => v.ingest_shared(board, m),
+            (Visual::Vantare(v), Motion::Vantare(m)) => v.ingest_shared(board, std::sync::Arc::make_mut(m)),
             _ => unreachable!("pintor y política se seleccionan juntos"),
         }
     }
-    /// Cambiar Look conserva la foto, CarIds y el reloj de los avisos; no proyecta.
+    /// Cambiar Look conserva la foto, `CarIds` y el reloj de los avisos; no proyecta.
     pub(crate) fn set_look(&mut self, look: crate::look::Look, prefs: Preferences) {
         if self.settings.design_system == look {
             return;
@@ -503,7 +514,7 @@ impl Widget {
             }
             (Visual::Vantare(v), Motion::Vantare(m)) => {
                 if reduced {
-                    m.settle();
+                    std::sync::Arc::make_mut(m).settle();
                 }
                 let wake = m.wake(v.style.motion.timing(), Instant::now());
                 let visual = v.clone();
@@ -518,7 +529,7 @@ impl Widget {
     }
     pub(crate) fn settle(&mut self) {
         if let Motion::Vantare(m) = &mut self.motion {
-            m.settle();
+            std::sync::Arc::make_mut(m).settle();
         }
     }
     pub(crate) fn set_study(&mut self, study: &str) {
@@ -536,7 +547,7 @@ impl Widget {
         style: std::sync::Arc<crate::vantare::style::Style>,
     ) {
         if let (Visual::Vantare(v), Motion::Vantare(m)) = (&mut self.visual, &mut self.motion) {
-            v.set_style(style, m);
+            v.set_style(style, std::sync::Arc::make_mut(m));
         }
     }
     pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
@@ -740,7 +751,13 @@ mod tests {
                 notice.2,
                 0,
             );
-            widget.motion.restore_notices(&[notice, personal]);
+            let hidden = (
+                vantare_domain::CarId(98765),
+                crate::vantare::motion::Flash::Best,
+                notice.2,
+                0,
+            );
+            widget.motion.restore_notices(&[notice, personal, hidden]);
             for &next in crate::look::Look::ALL
                 .iter()
                 .rev()
@@ -761,7 +778,41 @@ mod tests {
                     widget.motion.notices().contains(&personal),
                     "conservar tipo personal y reloj"
                 );
+                assert!(
+                    widget.motion.notices().contains(&hidden),
+                    "avisos de filas fuera del Look activo"
+                );
             }
+        }
+    }
+
+    #[test]
+    fn saved_layout_keeps_look_and_migrated_content_after_switching() {
+        let bytes = br#"{"version":1,"instances":[{"id":"saved","x":73,"y":41,"opacity":0.6,"settings":{"kind":"standings","designSystem":"vantare","style":"neutro","accent":"green","classScope":"all-classes","classificationMode":"normal","columns":[{"metricId":"driverName"},{"metricId":"interval","enabled":false}]}}]}"#;
+        let mut layout = crate::layout::Layout::from_json(bytes).expect("layout histórico");
+        let original = layout.clone();
+        for &look in crate::look::Look::ALL {
+            layout.instances[0].settings.set_look(look);
+            let saved = serde_json::to_vec(&layout).expect("guardar");
+            layout = crate::layout::Layout::from_json(&saved).expect("recargar");
+            assert_eq!(layout.instances[0].settings.look(), Some(look));
+            let Settings {
+                class_scope,
+                content_version,
+                columns,
+                style,
+                accent,
+                ..
+            } = match &layout.instances[0].settings {
+                crate::Settings::Standings(s) => s.clone(),
+                _ => unreachable!(),
+            };
+            assert_eq!(class_scope, "player-class");
+            assert_eq!(content_version, 1);
+            assert_eq!(columns.as_ref().expect("columnas").len(), 2);
+            assert_eq!(style, Look::Neutro);
+            assert_eq!(accent, Accent::Green);
+            assert_eq!(layout.instances[0].geometry, original.instances[0].geometry);
         }
     }
 

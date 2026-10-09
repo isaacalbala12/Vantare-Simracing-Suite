@@ -29,6 +29,7 @@ pub struct Content {
 pub struct Board {
     key: ProjectionKey,
     row_index: std::collections::HashMap<CarId, (usize, usize)>,
+    input_order: Vec<(usize, usize)>,
     pub content: Content,
     pub player_class: Option<crate::ClassId>,
     pub capability: Capability,
@@ -242,6 +243,7 @@ struct ProjectionKey {
     prefs: Preferences,
     source: SourceState,
     player: Option<CarId>,
+    anchor: Option<CarId>,
     positions: Capability,
     kind: Quality<SessionKind>,
     remaining: Quality<f64>,
@@ -259,6 +261,7 @@ impl ProjectionKey {
             prefs,
             source: v.source_state,
             player: v.player.as_ref().map(|p| p.car),
+            anchor: v.player_car().or_else(|| v.cars.first()).map(|c| c.id),
             positions: v.capabilities.positions,
             kind: t.kind.clone(),
             remaining: t.remaining_s,
@@ -275,6 +278,7 @@ impl ProjectionKey {
         self.prefs == prefs
             && self.source == v.source_state
             && self.player == v.player.as_ref().map(|p| p.car)
+            && self.anchor == v.player_car().or_else(|| v.cars.first()).map(|c| c.id)
             && self.positions == v.capabilities.positions
             && self.kind == t.kind
             && self.remaining == t.remaining_s
@@ -296,12 +300,12 @@ impl Board {
         ) {
             return s.state.cars.is_empty();
         }
-        self.row_index.len() == s.state.cars.len()
-            && s.state.cars.iter().all(|c| {
-                self.row_index
-                    .get(&c.id)
-                    .is_some_and(|&(g, r)| self.groups[g].rows[r].matches(c))
-            })
+        self.input_order.len() == s.state.cars.len()
+            && s.state
+                .cars
+                .iter()
+                .zip(&self.input_order)
+                .all(|(car, &(g, r))| self.groups[g].rows[r].matches(car))
     }
 }
 
@@ -383,20 +387,16 @@ fn project_with_previous(
         content.footer_slots,
         player_gap,
     );
-    let row_index = groups
+    let row_index = row_index(&groups);
+    let input_order = state
+        .cars
         .iter()
-        .enumerate()
-        .flat_map(|(g, group)| {
-            group
-                .rows
-                .iter()
-                .enumerate()
-                .map(move |(r, row)| (row.id, (g, r)))
-        })
+        .filter_map(|car| row_index.get(&car.id).copied())
         .collect();
     Board {
         key: ProjectionKey::new(snapshot, prefs),
         row_index,
+        input_order,
         content: content.clone(),
         player_class: class,
         capability: state.capabilities.positions,
@@ -435,6 +435,20 @@ fn project_with_previous(
         ),
         surface: surface(session.weather.track_wetness.current().copied(), prefs),
     }
+}
+
+fn row_index(groups: &[Group]) -> std::collections::HashMap<CarId, (usize, usize)> {
+    groups
+        .iter()
+        .enumerate()
+        .flat_map(|(g, group)| {
+            group
+                .rows
+                .iter()
+                .enumerate()
+                .map(move |(r, row)| (row.id, (g, r)))
+        })
+        .collect()
 }
 
 fn project_groups(
@@ -604,29 +618,6 @@ fn row(
             .is_none_or(|c| Some(c.id) == context.selected_class);
     let leader = car.class_position.current() == Some(&1);
     let best = rich_positive(&car.best_lap_s);
-    let best_mark = match (best, class_best) {
-        (Some(lap), Some(top)) if lap <= top + TOLERANCE_S => Mark::Fastest,
-        (Some(lap), _)
-            if rich_positive(&car.last_lap_s).is_some_and(|l| l <= lap + TOLERANCE_S) =>
-        {
-            Mark::Personal
-        }
-        _ => Mark::Pending,
-    };
-    let count = class_sectors.len().max(car.current_sectors_s.len());
-    let sectors = (0..count)
-        .map(|i| {
-            let Some(time) = car.current_sectors_s.get(i).and_then(positive) else {
-                return Mark::Pending;
-            };
-            let own = car.best_sectors_s.get(i).and_then(positive);
-            match class_sectors.get(i).copied().flatten() {
-                Some(top) if time <= top + TOLERANCE_S => Mark::Fastest,
-                _ if own.is_some_and(|own| time <= own + TOLERANCE_S) => Mark::Personal,
-                _ => Mark::Slower,
-            }
-        })
-        .collect();
     let gained = match (car.grid_position.current(), car.position.current()) {
         (Some(&grid), Some(&now)) => Some(i64::from(grid) - i64::from(now)),
         _ => None,
@@ -668,9 +659,7 @@ fn row(
                 prefs,
             )
         },
-        classification_interval: if !classified {
-            String::new()
-        } else {
+        classification_interval: if classified {
             format::gap(
                 (if content.class_gaps {
                     car.gap_class_ahead
@@ -682,6 +671,8 @@ fn row(
                 false,
                 prefs,
             )
+        } else {
+            String::new()
         },
         id: car.id,
         position: car
@@ -700,14 +691,39 @@ fn row(
                 .current()
                 .map_or(Pit::Unknown, |n| Pit::Stops(*n))
         },
-        sectors,
+        sectors: sector_marks(car, class_sectors),
         last_lap: format::lap_time(car.last_lap_s.current().copied()),
         best_lap: format::lap_time(best),
-        best_mark,
+        best_mark: lap_mark(best, class_best, rich_positive(&car.last_lap_s)),
         gap: gap(car.gap_class_leader, leader, prefs),
         interval: gap(car.gap_class_ahead, leader, prefs),
         is_player: player == Some(car.id),
     }
+}
+
+fn lap_mark(best: Option<f64>, class_best: Option<f64>, last: Option<f64>) -> Mark {
+    match (best, class_best) {
+        (Some(lap), Some(top)) if lap <= top + TOLERANCE_S => Mark::Fastest,
+        (Some(lap), _) if last.is_some_and(|l| l <= lap + TOLERANCE_S) => Mark::Personal,
+        _ => Mark::Pending,
+    }
+}
+
+fn sector_marks(car: &Car, class_sectors: &[Option<f64>]) -> Vec<Mark> {
+    let count = class_sectors.len().max(car.current_sectors_s.len());
+    (0..count)
+        .map(|i| {
+            let Some(time) = car.current_sectors_s.get(i).and_then(positive) else {
+                return Mark::Pending;
+            };
+            let own = car.best_sectors_s.get(i).and_then(positive);
+            match class_sectors.get(i).copied().flatten() {
+                Some(top) if time <= top + TOLERANCE_S => Mark::Fastest,
+                _ if own.is_some_and(|own| time <= own + TOLERANCE_S) => Mark::Personal,
+                _ => Mark::Slower,
+            }
+        })
+        .collect()
 }
 
 fn rich_positive(time: &Quality<f64>) -> Option<f64> {

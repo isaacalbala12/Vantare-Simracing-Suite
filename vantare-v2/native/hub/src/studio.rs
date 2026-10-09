@@ -1232,7 +1232,6 @@ impl Studio {
         let id = item.id.clone();
         cx.subscribe(&aspect, move |this, _, event: &Checked, cx| {
             if this.editor.selected.as_ref() == Some(&id) {
-                this.reset_fields();
                 this.edit(
                     |editor| editor.edit_selected(|item| item.geometry.aspect_locked = event.0),
                     cx,

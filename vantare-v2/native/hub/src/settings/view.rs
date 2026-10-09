@@ -1324,15 +1324,16 @@ impl Hub {
             _ => "Versión instalada en este equipo.",
         }
         .to_owned();
-        let news = section_surface(
-            "Notas de versión",
-            None,
-            Self::settings_release_news(cx),
-            12.0,
-            cx,
-        )
-        .flex_1()
-        .min_h_0();
+        let news = orbit::neo_card(cx)
+            .p_0()
+            .flex_1()
+            .min_h_0()
+            .child(div().px(px(20.0)).py(px(14.0)).child(orbit::neo_header(
+                "Notas de versión",
+                "v-download",
+                cx,
+            )))
+            .child(Self::settings_release_news(cx).px(px(20.0)).pb(px(12.0)));
         let beta = if self.demo.is_none() {
             self.settings.beta_status.clone()
         } else {
@@ -1485,18 +1486,18 @@ impl Hub {
     }
     fn settings_update_hero(version: String, state: String, current: bool, cx: &gpui::App) -> Div {
         orbit::hero_surface(cx)
-            .min_h(px(112.0))
+            .min_h(px(160.0))
             .flex_none()
             .w_full()
             .flex()
             .flex_row()
             .items_center()
             .gap(px(20.0))
-            .px(px(22.0))
+            .px(px(24.0))
             .py(px(20.0))
             .child(
                 div()
-                    .size(px(52.0))
+                    .size(px(60.0))
                     .flex_none()
                     .flex()
                     .items_center()
@@ -1511,7 +1512,7 @@ impl Hub {
                     .min_w_0()
                     .child(eyebrow("Versión instalada", cx))
                     .child(
-                        text(version, 30.0, 600, orbit::ink(cx), cx)
+                        text(version, 34.0, 600, orbit::ink(cx), cx)
                             .font_family(cx.global::<orbit::design::Tokens>().fonts.display.clone())
                             .mt(px(4.0)),
                     )
@@ -1523,7 +1524,7 @@ impl Hub {
     }
 
     fn settings_update_channels(channel: Option<&str>, demo: bool, cx: &gpui::App) -> Div {
-        let mut channels = div().flex().w_full().gap(px(12.0));
+        let mut channels = orbit::neo_card(cx).p_0().gap_0();
         for (index, (name, description)) in [
             ("Estable", "Versiones probadas para todo el mundo."),
             (
@@ -1538,16 +1539,15 @@ impl Hub {
             let active = channel == Some(name);
             channels = channels.child(
                 div()
-                    .flex_1()
+                    .w_full()
                     .min_w_0()
-                    .min_h(px(125.0))
-                    .px(px(18.0))
-                    .py(px(16.0))
+                    .min_h(px(52.0))
+                    .px(px(20.0))
+                    .py(px(8.0))
                     .flex()
                     .flex_col()
-                    .gap(px(8.0))
-                    .rounded(px(orbit::RADIUS))
-                    .border_1()
+                    .gap(px(3.0))
+                    .border_b_1()
                     .border_color(if active {
                         rgba(crate::orbit::legacy_rgba(0xf047_5559, cx))
                     } else {
@@ -1563,10 +1563,16 @@ impl Hub {
                             .flex()
                             .items_center()
                             .justify_between()
-                            .child(text(name, 15.0, 700, orbit::ink(cx), cx))
-                            .when(active, |row| {
-                                row.child(orbit::status_dot(Tone::Success, 7.0, cx))
-                            }),
+                            .child(text(name, 14.0, 600, orbit::ink(cx), cx))
+                            .child(orbit::pill(
+                                if active {
+                                    "Canal instalado"
+                                } else {
+                                    "No seleccionado"
+                                },
+                                if active { Tone::Success } else { Tone::Neutral },
+                                cx,
+                            )),
                     )
                     .child(
                         text(
@@ -1584,18 +1590,7 @@ impl Hub {
                             cx,
                         )
                         .line_height(px(18.0)),
-                    )
-                    .child(text(
-                        if active {
-                            "Canal instalado"
-                        } else {
-                            "Canal no seleccionado"
-                        },
-                        11.0,
-                        600,
-                        orbit::ink_3(cx),
-                        cx,
-                    )),
+                    ),
             );
         }
         channels

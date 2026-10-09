@@ -420,9 +420,7 @@ impl Render for StudioSidebar {
                 .flex_col()
                 .min_w_0()
                 .gap(px(0.0))
-                .on_key_down(
-                    cx.listener(|this, event, window, cx| this.handle_key(event, window, cx)),
-                )
+                .on_key_down(cx.listener(Studio::handle_key))
                 .child(orbit::scroll_fade(
                     div()
                         .id("studio-inspector-scroll")
@@ -2067,7 +2065,7 @@ impl Render for Studio {
                     this.finish_drag(event.position, cx);
                 }),
             )
-            .on_key_down(cx.listener(|this, event, window, cx| this.handle_key(event, window, cx)))
+            .on_key_down(cx.listener(Self::handle_key))
             .child(workspace)
     }
 }

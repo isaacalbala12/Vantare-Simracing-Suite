@@ -405,34 +405,39 @@ impl Render for Specimen {
 pub fn run_kit() -> Result<(), String> {
     let failure = std::rc::Rc::new(std::cell::RefCell::new(None));
     let result = failure.clone();
-    gpui_platform::application().run(move |cx: &mut App| {
-        cx.set_global(super::theme::Theme::default());
-        if let Err(error) = vantare_ui::efficiency::text::register_fonts(cx) {
-            *failure.borrow_mut() = Some(error);
-            cx.quit();
-            return;
-        }
-        let options = WindowOptions {
-            titlebar: Some(gpui::TitlebarOptions {
-                title: Some("Vantare Hub — Orbit Kit".into()),
+    gpui_platform::application()
+        .with_assets(crate::assets::Icons)
+        .run(move |cx: &mut App| {
+            cx.set_global(super::theme::Theme::default());
+            if let Err(error) = vantare_ui::efficiency::text::register_fonts(cx)
+                .and_then(|()| super::design::register_fonts(cx))
+            {
+                *failure.borrow_mut() = Some(error);
+                cx.quit();
+                return;
+            }
+            let options = WindowOptions {
+                titlebar: Some(gpui::TitlebarOptions {
+                    title: Some("Vantare Hub — Orbit Kit".into()),
+                    ..Default::default()
+                }),
                 ..Default::default()
-            }),
-            ..Default::default()
-        };
-        if let Err(error) =
-            cx.open_window(options, |window, cx| cx.new(|cx| Specimen::new(window, cx)))
-        {
-            *failure.borrow_mut() = Some(format!("abrir kit: {error}"));
-            cx.quit();
-        }
-        cx.on_window_closed(|cx, _| {
-            if cx.windows().is_empty() {
+            };
+            if let Err(error) = cx.open_window(options, |window, cx| {
+                super::theme::install(super::theme::AppearanceSettings::default(), window, cx);
+                cx.new(|cx| Specimen::new(window, cx))
+            }) {
+                *failure.borrow_mut() = Some(format!("abrir kit: {error}"));
                 cx.quit();
             }
-        })
-        .detach();
-        cx.activate(true);
-    });
+            cx.on_window_closed(|cx, _| {
+                if cx.windows().is_empty() {
+                    cx.quit();
+                }
+            })
+            .detach();
+            cx.activate(true);
+        });
     match result.borrow_mut().take() {
         Some(error) => Err(error),
         None => Ok(()),

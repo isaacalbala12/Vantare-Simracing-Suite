@@ -6047,3 +6047,12 @@ sin acciones; el selector incluye nombre y valor en el nombre UIA, conserva valu
 y description. Input temporalmente deshabilitado incorpora el mismo callback.
 Regresión productiva static_content2/2 PASS; UIA final y gates completos pendientes.
 Evidencia del fallo conservada en revision-v3-cierre/interactive/a1-studio-first.
+
+### Revisión v3: banco de caras compartidas (#1496)
+El kit productivo --kit fallaba antes de mostrar controles (release642efc28):
+no state of type vantare_ui::theme::Tokens exists. La entrada aislada ahora instala
+el mismo tema, fuentes y assets de la shell, antes de construir Specimen. Es el
+banco del kit R0, sin IPC ni datos del usuario; verificación de arranque real y
+estados deshabilitados se repite en release, no se sustituye por un test de estilo.
+Fuente642efc28 antes de este ajuste: fmt/Clippy/Nextest1293/1293 (533,261s; ACC442,514s)
+y lifecycle18/18 PASS. Gates finales de esta inicialización y capturas aún pendientes.

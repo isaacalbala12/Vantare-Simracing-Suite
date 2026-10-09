@@ -2050,3 +2050,21 @@ Go legado rechaza later, requiere adaptación autorizada o entorno nativo aislad
 si Desarrollo supera 40 tareas/subtareas, aborta sin truncar y requiere decisión.
 Runbook docs/clickup-roadmap-sync.md; migración/rollback/tests SQL preparados.
 No se aplicó SQL ni se escribió en producción. Sin push/PR/merge/release.
+
+### #1496 · calroad · continuación tras reinicio y disco lleno
+Misma base e55a43b3/rama vantareapp/isa-1496-fb-calroad; commits anteriores
+258ce19a (9) y 49440709 (10) conservados. Dos defectos del horario real corregidos:
+calificadores de combustible/VE no son clases; Agenda resume cuatro salidas por
+celda y cuenta las adicionales, sin retirar datos ni aplicar filtros después.
+Regresión Go real y conteos de Agenda añadidos; borrador final externo
+calroad-calendar-draft-resume.json conserva texto/hash/fechas originales.
+Target propio devuelto de junction E: a directorio C: tras verificar espacio;
+fallo de identidad Nextest preservado, test IPC intacto. PASS finales: fmt,
+Clippy -D warnings, Nextest 1304/1304 (7 skips), lifecycle 18/18, específicas
+33/33, Python 10/10, Go completo y builds frontend/QA. Ocho PNG opacos
+inspeccionados (Agenda/Tiempos/Carteles, tester y Roadmap oscuro/claro); cierre
+de Agenda PASS y ningún Hub propio abierto. Clippy QA opcional conserva
+warning heredado de Análisis; no se rebaja el gate canónico ni se toca esa área.
+Evidencia/manual C:/tmp/feedback-0910/calroad-verificacion.md.
+Publicación Supabase, token/fuente ClickUp reales, lector Go compatible con later,
+pgTAP y avisos entregados siguen pendientes. Sin push/PR/merge/release/producción.

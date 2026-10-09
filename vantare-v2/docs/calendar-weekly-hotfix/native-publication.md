@@ -44,6 +44,15 @@ El 9-oct se recibió el anuncio vigente del canal configurado, mensaje
 horas separadas por comas, marcado Discord en línea y textos de hora dentro
 del juego; regresión basada en el texto real en `internal/calendar/testdata`.
 La fuente y el borrador preparado están en `C:/tmp/feedback-0910/`.
+La continuación tras el reinicio corrigió también los calificadores consecutivos
+de combustible y VE/NRG: no se muestran como clases de coche. El candidato
+reprocesado conserva texto/hash/fechas de origen en `calroad-discord-reparsed-inbox.json`;
+usar `calroad-calendar-draft-resume.json` para la revisión Owner. Los borradores
+anteriores se conservan como evidencia histórica, no como payload final.
+Agenda dibuja hasta cuatro salidas por celda horaria y cuenta las adicionales
+con «+N salidas»: evita generar toda la semana densa como elementos GPUI.
+El horario completo se conserva; los filtros se aplican antes del resumen y
+Tiempos/Carteles permiten consultar la próxima salida de cada serie.
 Escena QA `calendario-lmu-local`: carga ese horario REAL, sin trasladar fechas;
 usa el renderer y reloj del Hub, en datos aislados, e indica que Supabase está
 pendiente. La fixture nativa es el horario serializado por el bot existente.

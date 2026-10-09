@@ -40,6 +40,19 @@ func TestOctober6OfficialMessageWithCommaSlotsAndInlineMarkdown(t *testing.T) {
 	}
 	var weeklyFound, specialFound bool
 	for _, series := range schedule.Series {
+		for _, class := range series.Classes {
+			if class.Name == "Classes" || strings.Contains(class.Name, "VE/NRG") || strings.Contains(class.Name, "fuel tank") {
+				t.Fatalf("source qualifier became a vehicle class: %+v", class)
+			}
+		}
+		if series.Name == "ELMS Super 60" {
+			if len(series.Classes) != 3 || series.Classes[0].Name != "LMP2" || series.Classes[0].Qualifier != "ELMS, 70L fuel tank" || series.Classes[1].Name != "LMP3" || series.Classes[2].Name != "LMGT3" || series.VELimit != 70 {
+				t.Fatalf("ELMS class qualifiers differ from source: %+v", series)
+			}
+		}
+		if series.Name == "WEC-Xperience" && (len(series.Classes) != 3 || series.VELimit != 70) {
+			t.Fatalf("standalone VE/NRG cap must not become a class: %+v", series)
+		}
 		if series.Name == "WEC Weekly" {
 			weeklyFound = true
 			if series.Track != "Sebring (WEC)" || series.SafetyRating != "SR S2" || strings.Join(series.Recurrence.TimesUTC, ",") != "02:00,06:00,09:00,12:00,15:00,18:00,20:00,23:00" {

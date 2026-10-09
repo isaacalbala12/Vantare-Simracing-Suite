@@ -195,7 +195,7 @@ var (
 	tyresRE     = regexp.MustCompile(`tyres:\s*(\d+)`)
 	assistsRE   = regexp.MustCompile(`(?i)((?:no|low|high|medium)\s+assists\s+allowed)`)
 	timeScaleRE = regexp.MustCompile(`(\d+)x time scale`)
-	veLimitRE   = regexp.MustCompile(`(\d+)%\s*VE\s*Limit`)
+	veLimitRE   = regexp.MustCompile(`(?i)^(\d+)%\s*VE(?:/NRG|\s*Limit)$`)
 	setupRE     = regexp.MustCompile(`(?i)\b(fixed|open) setup\b`)
 	srRE        = regexp.MustCompile(`\[([^\]]+)\]`)
 	badgeRE     = regexp.MustCompile(`:([^:]+):`)
@@ -404,6 +404,8 @@ func splitTopLevel(s string) []string {
 }
 
 var classNameRE = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9 .\-]*?)\s*(?:\(([^)]*)\))?$`)
+var classSuffixRE = regexp.MustCompile(`(?i)\s+class(es)?$`)
+var adjacentQualifiersRE = regexp.MustCompile(`\)\s*\(`)
 
 // parseVehicleClasses reads "Hypercar & LMGT3 Classes" or
 // "LMP2 (ELMS, full fuel tank) LMP3 (70L fuel tank) & LMGT3 Classes (75% VE)".
@@ -412,6 +414,10 @@ var classNameRE = regexp.MustCompile(`^([A-Za-z0-9][A-Za-z0-9 .\-]*?)\s*(?:\(([^
 func parseVehicleClasses(fields []string) []VehicleClass {
 	var out []VehicleClass
 	for _, field := range fields {
+		// The October announcement places "Classes" after a qualifier and
+		// uses separate brackets for category and fuel cap. Neither is a car.
+		field = classSuffixRE.ReplaceAllString(strings.TrimSpace(field), "")
+		field = adjacentQualifiersRE.ReplaceAllString(field, ", ")
 		for _, chunk := range splitClassChunks(field) {
 			chunk = strings.TrimSpace(chunk)
 			chunk = regexp.MustCompile(`(?i)\s+class(es)?$`).ReplaceAllString(chunk, "")

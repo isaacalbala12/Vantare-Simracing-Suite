@@ -356,7 +356,9 @@
       "vehicleClass": "LMP2 (ELMS) (70L fuel tank) LMP3 (70L fuel tank ) & LMGT3 (70% VE/NRG) Classes",
       "classes": [
         {
-          "name": "LMP2 (ELMS) (70L fuel tank)"
+          "name": "LMP2",
+          "qualifier": "ELMS, 70L fuel tank",
+          "telemetryClassName": "LMP2_ELMS"
         },
         {
           "name": "LMP3",
@@ -367,9 +369,6 @@
           "name": "LMGT3",
           "qualifier": "70% VE/NRG",
           "telemetryClassName": "GT3"
-        },
-        {
-          "name": "Classes"
         }
       ],
       "setup": "open",
@@ -411,7 +410,7 @@
       "format": "solo",
       "licenseLabel": "Gold SR",
       "track": "Road Atlanta (RC)",
-      "vehicleClass": "Hypercar LMP2 (WEC) & LMGT3 classes, 70% VE/NRG",
+      "vehicleClass": "Hypercar LMP2 (WEC) & LMGT3 classes",
       "classes": [
         {
           "name": "Hypercar",
@@ -425,9 +424,6 @@
         {
           "name": "LMGT3",
           "telemetryClassName": "GT3"
-        },
-        {
-          "name": "70% VE/NRG"
         }
       ],
       "setup": "open",
@@ -455,6 +451,7 @@
       "assists": "No assists allowed",
       "tyreWarmers": false,
       "tyres": 10,
+      "veLimit": 70,
       "recurrence": {
         "kind": "interval",
         "intervalMinutes": 30

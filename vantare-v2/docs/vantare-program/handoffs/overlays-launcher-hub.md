@@ -1,3 +1,43 @@
+## #1528 — Paridad visual Hub r10h, entrega aislada (2026-10-09)
+
+Worktree `C:/tmp/vw3-1528/vantare-v2`, rama `vantareapp/isa-1528-paridad-visual`,
+base `5e1da3f6`. Implementación sin delegación; 15 commits de código por página/prioridad.
+Launcher `c0b38503`: escaparate de altura natural, carrusel medido y mínimo cliente
+1280×720 que evita el zoom efectivo 90% involuntario. Studio `68577b50`: borde,
+tiradores y resize usan límites pintados del renderer compartido. Sidebar `008d63a7`:
+los 9 temas de Apariencia mediante Choice, guardado común y acceso contraído.
+Inicio, las 7 páginas de Ajustes, Cuenta, Testing, Calendario y Roadmap usan los
+ajustes del kit; se conservan rojo #D80000, grafito Vantare, C2 y decisiones posteriores.
+Isaac autoriza mantener Próximamente en Roadmap/Testing: contratos de datos
+pendientes se conectan en [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+No se fabrican fases, porcentajes, versiones, cuestionarios ni contribuciones.
+
+Evidencia externa: `C:/tmp/ui-r10/1528-evidence/final-manifest.json`, 76 PNG app y
+76 HTML a igual tamaño, más 76 overlays y 76 diffs. Matriz 1920×1080/1280×720,
+4 estados Inicio, Launcher reposo/lanzando en los 7 tamaños y 2 extras, selección
+Delta, menú de tema, vistas vacías y fixtures publicados QA de Calendario/Roadmap.
+`informe-1528.md` tiene 12 líneas; `diferencias.md` enumera las ocho categorías,
+excepciones, archivos y límites. Los datos reales se anotan y no se evalúan contra
+cifras de ejemplo. Delta/menú son pruebas añadidas sobre vistas HTML base.
+Las capturas QA están aisladas; no prueban LMU real, DPI físico, release ni telemetría.
+
+Gates por cola obligatoria: fmt (incluido vendor) y Clippy -D warnings PASS,
+Nextest workspace 1404 PASS / 7 skips, Hub tras el último cambio 403 PASS / 1 skip,
+lifecycle 18 PASS. Studio: Kind::ALL, marcos altos/cortos, escalas 0.5/1/2 y zoom
+0.1/0.5/1/2.5/4. Backend zoom: seis escenarios con test extraído literalmente del
+vendor y ejecutado por rustc --test; su harness Cargo completo no se configura como
+miembro del workspace. Build QA parity-capture PASS; aviso previo unused cx en
+analysis/view.rs bajo esa feature conservado, gate canónico sin warnings.
+Consolidación local conserva árbol fuente `a9d1daa880649ac1311fbc0c4b680ad154708dde`;
+SHA originales de evidencia retenidos en `refs/1528/pre-consolidation` y manifiesto.
+Verificación manual: Launcher idle/lanzando en 7 tamaños; seleccionar y escalar
+Delta y demás widgets a varios zooms; cambiar tema con sidebar abierta/contraída y
+reiniciar para comprobar persistencia. Revisión visual registrada, sin identidad
+pixel a pixel de datos, controles productivos o ausencias aprobadas de #1535.
+`docs/roadmap/plan.md` ausente en esta base; se conserva #1535 como seguimiento.
+Sin push, PR, merge, CI remoto, promoción ni release; solo comentario de #1528
+expresamente solicitado. Siguiente acción: revisión aislada por Isaac/orquestador.
+
 ## #1496 — Calidad UI R0–R3, correcciones sobre R4 (2026-10-08)
 
 Worktree C:/tmp/vw3-ui-calidad/vantare-v2, rama vantareapp/isa-1496-ui-calidad,

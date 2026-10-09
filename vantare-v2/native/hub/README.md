@@ -105,13 +105,19 @@ si es inválido, conserva el anterior. Un archivo inválido al arrancar falla si
 abrir ventana ni reemplazarlo. Tamaño/normalización/backup/escritura pertenecen
 solo a la API común. Cerrar no vuelve a escribir el layout ni pisa cambios externos.
 
-Opciones aplicadas de Standings: cabecera, pie, marca (auto/oculta/visible) y
-métricas de pie `none`, `track`, `estimatedLaps`. Plantillas, métricas de cabecera,
-marca legacy, slots alternativos y variantes de Delta/Pedals/BroadcastTower/
-PedalsTelemetry/RacingFlags/HeadToHead que solo se persisten se muestran sin
-edición con «pendiente». Se conservan al editar otra propiedad. Otros widgets
-no tienen opciones extra en la API actual. Fuente: constructores de `ui` y
-`ui/layout-evidence.md`; habilitar variantes exige que su renderer las aplique.
+Standings estándar usa siempre la clase del jugador; Multiclase agrupa todas
+las clases. Relative estándar conserva solo la clase del jugador y admite filas
+delante/detrás independientes. Se retiran sus selectores redundantes de clase
+y el centrado de tabla en el jugador. El punto de la cruceta sigue centrando
+espacialmente el widget en el lienzo.
+
+Delta Vantare admite Cápsula/Barra/Ampliado y referencias Mejor propia/Óptima/
+Líder de clase. Barra y sectores se editan cuando el formato los representa.
+Última vuelta y mejor absoluta de sesión siguen pendientes: el núcleo no
+publica señales independientes para ellas. Neo/Neutro y los acentos del kit
+Vantare están disponibles en los widgets portados de #1497. Las opciones que
+el renderer no aplica permanecen pendientes y se conservan al editar otra
+propiedad; fuente: constructores de `ui` y `ui/layout-evidence.md`.
 
 Para probar en un archivo aislado, usar `--layout C:/tmp/hub-local/layout.json`
 en Hub y en `vantare-overlays`; sin ese argumento ambos usan el layout común.
@@ -128,22 +134,30 @@ centra en el viewport medido. Zoom manual conserva el desplazamiento espacial;
 Ajustar vuelve al encaje. La barra inferior muestra x/y y tamaño efectivo del
 renderer. Anclar alinea los bordes o el centro del widget con una de nueve zonas:
 es una acción de posición, sin anclaje persistente ni seguimiento automático.
-La cruceta mueve 1 px, Mayús + clic 8 px; el punto centra. Se guardan y admiten
-undo/redo mediante el mismo Editor. Los valores exactos salen del inspector.
+La cruceta mueve 1 px, Mayús 8 px; mantener pulsada una flecha repite con
+aceleración. Teclado y botones confirman una sola edición al soltar, con
+undo/redo mediante el mismo Editor. El punto centra. Un clic o ruido de puntero
+por debajo del umbral de drag no cambia posición, archivo ni historial.
+Los valores exactos salen del inspector.
 
 El inspector usa secciones del panel derecho común; Ctrl Alt B lo recoge.
 Contenido, opacidad, visibilidad, columnas y color admitido conservan sus setters
 productivos. La tira permite seleccionar/ocultar y añadir el catálogo real.
-Carrera activa las muestras incrustadas existentes de cada widget; En vivo usa
-exclusivamente la foto recibida. Salida/Boxes/Lluvia/Noche y reproducción de vuelta
-no están implementadas. Las muestras no prueban una sesión real.
+Ejemplo usa muestras de diseño por widget; las tablas están marcadas como
+ficticias y contienen 30 coches por clase para responder a filas, ventanas y
+multiclase. Boxes permite seleccionar fotos reales del corpus sin inventar
+señales y comparte la misma foto entre todos los widgets. En vivo usa
+exclusivamente la foto recibida. Salida/Carrera/Lluvia/Noche explican
+su indisponibilidad si el corpus no demuestra esas condiciones; las muestras
+no certifican una sesión real. Durante el slider de opacidad, la preview altera
+solo el marco exterior y conserva renderers/foto; al soltar se guarda una edición.
 
-El documento nativo no guarda escala libre, estilos Neo/Carmín/Limpio, acento
-general ni frecuencia por instancia. Tamaño −/+, estilo/acento no admitido,
-Rendimiento, selector de otros overlays, Publicar/Mostrar en pista y URL de OBS
-siguen pendientes. El indicador Hz muestra — porque no existe medición disponible;
-no se inventa nivel 4 Hz ni frecuencia efectiva. El renderer compartido es
-`Overlay::configured`, sin otra implementación de widgets ni schema nuevo.
+El documento nativo no guarda escala libre ni frecuencia por instancia. Tamaño
+−/+ usa las dimensiones admitidas del widget. Rendimiento, selector de otros
+overlays, Publicar/Mostrar en pista y URL de OBS siguen pendientes. El indicador
+Hz muestra — porque no existe medición disponible; no se inventa nivel 4 Hz ni
+frecuencia efectiva. El renderer compartido es `Overlay::configured`, sin otra
+implementación de widgets ni schema nuevo.
 
 ## Secciones locales
 

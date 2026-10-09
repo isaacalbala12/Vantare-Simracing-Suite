@@ -97,6 +97,14 @@ pub(super) struct Vehicle {
     pub last_lap_s: Option<f64>,
     pub estimated_lap_s: Option<f64>,
     pub last_sectors_s: [Option<f64>; 3],
+    /// Mejores sectores: S1 y S2 son los mejores de la sesión; S3 es el de la
+    /// mejor vuelta (el SDK no publica un mejor S3 independiente). #1497.
+    pub best_sectors_s: [Option<f64>; 3],
+    /// Sectores completados de la vuelta en curso, en orden. #1497.
+    pub current_sectors_s: Vec<f64>,
+    /// La vuelta en curso cuenta para el tiempo (`mCountLapFlag == 2`). Solo
+    /// el jugador y con reloj de telemetría: el sanitizador borra el byte. #1497.
+    pub lap_time_counts: Option<bool>,
     pub pit_stop_stopped: Option<bool>,
     pub time_behind_next_s: Option<f64>,
     pub laps_behind_next: u32,
@@ -284,6 +292,9 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
             read_f64(buffer, base + 160),
             last,
         ),
+        best_sectors_s: best_sectors(buffer, base, best),
+        current_sectors_s: current_sectors(buffer, base),
+        lap_time_counts: lap_time_counts(buffer[base + 506], inputs.as_ref()),
         // mPitState @457: 0=none, 1=request, 2=entering, 3=stopped, 4=exiting.
         // Legacy sanitizado borró este byte y mElapsedTime. Su cero es ausencia.
         pit_stop_stopped: match buffer[base + 457] {
@@ -314,6 +325,42 @@ fn last_sectors(s1: f64, s12: f64, lap: f64) -> [Option<f64>; 3] {
         [Some(s1), Some(s12 - s1), Some(lap - s12)]
     } else {
         [None; 3]
+    }
+}
+
+/// Mejores S1 y S2 de la sesión y S3 de la mejor vuelta; ausentes si no
+/// cuadran (cero = sin vuelta medida). mBestSector1/2 (+128/+136) son
+/// acumulados como los últimos, y mBestLapSector2 (+532, f32) también.
+fn best_sectors(buffer: &[u8], base: usize, best: f64) -> [Option<f64>; 3] {
+    let (s1, s12) = (read_f64(buffer, base + 128), read_f64(buffer, base + 136));
+    let best_lap_s12 = f64::from(read_f32(buffer, base + 532));
+    let ok = |v: f64| v.is_finite() && v > 0.0;
+    [
+        ok(s1).then_some(s1),
+        (ok(s1) && ok(s12) && s12 > s1).then_some(s12 - s1),
+        (ok(best_lap_s12) && ok(best) && best > best_lap_s12).then_some(best - best_lap_s12),
+    ]
+}
+
+/// mCountLapFlag (+506): 0 = no cuenta, 1 = cuenta la vuelta pero no el
+/// tiempo, 2 = cuenta vuelta y tiempo. Solo con reloj de telemetría: el
+/// sanitizador borra el byte y su cero sería una vuelta inválida falsa.
+fn lap_time_counts(flag: u8, inputs: Option<&Inputs>) -> Option<bool> {
+    (flag <= 2 && inputs.is_some_and(|i| i.source_time.is_some())).then_some(flag == 2)
+}
+
+/// Sectores ya cerrados de la vuelta en curso: mCurSector1/2 (+176/+184),
+/// acumulados en el SDK.
+fn current_sectors(buffer: &[u8], base: usize) -> Vec<f64> {
+    split_current(read_f64(buffer, base + 176), read_f64(buffer, base + 184))
+}
+
+fn split_current(s1: f64, s12: f64) -> Vec<f64> {
+    let ok = |v: f64| v.is_finite() && v > 0.0;
+    match (ok(s1), ok(s12) && s12 > s1) {
+        (true, true) => vec![s1, s12 - s1],
+        (true, false) => vec![s1],
+        _ => Vec::new(),
     }
 }
 
@@ -606,6 +653,10 @@ fn read_f64(bytes: &[u8], at: usize) -> f64 {
     f64::from_le_bytes(fixed(bytes, at))
 }
 
+fn read_f32(bytes: &[u8], at: usize) -> f32 {
+    f32::from_le_bytes(fixed(bytes, at))
+}
+
 /// Los offsets salen de constantes del layout y el buffer mide al menos
 /// `OBJECT_OUT_SIZE`: un fallo aquí es un bug, no un dato malo.
 fn fixed<const N: usize>(bytes: &[u8], at: usize) -> [u8; N] {
@@ -764,6 +815,36 @@ mod tests {
         assert!((published.yaw_rad - rival.yaw_rad).abs() < f64::EPSILON);
         // El jugador no se extrapola: ya publica su pose de telemetría.
         assert_eq!(frame.vehicles[43].pose.unwrap(), telemetry);
+    }
+
+    #[test]
+    fn best_and_current_sectors_come_from_the_cumulative_sdk_fields() {
+        let mut bytes = REAL_44.to_vec();
+        let base = SCORING_BASE;
+        let mut put = |at: usize, value: f64| {
+            bytes[base + at..base + at + 8].copy_from_slice(&value.to_le_bytes());
+        };
+        put(128, 69.1);
+        put(136, 141.7);
+        put(144, 207.9);
+        put(176, 68.98);
+        bytes[base + 532..base + 536].copy_from_slice(&141.6_f32.to_le_bytes());
+        let vehicle = &admit(&bytes, "1.3.0.0").unwrap().vehicles[0];
+        let [s1, s2, s3] = vehicle.best_sectors_s.map(Option::unwrap);
+        assert!((s1 - 69.1).abs() < 1e-9 && (s2 - 72.6).abs() < 1e-9);
+        assert!(
+            (s3 - (207.9 - f64::from(141.6_f32))).abs() < 1e-9,
+            "S3 de la mejor vuelta"
+        );
+        assert_eq!(vehicle.current_sectors_s, vec![68.98]);
+        // Sin reloj de telemetría (rival) no se lee mCountLapFlag.
+        assert_eq!(vehicle.lap_time_counts, None);
+        // La captura real aún no tiene vueltas: todo ausente, como antes.
+        let untouched = &admit(REAL_44, "1.3.0.0").unwrap().vehicles[0];
+        assert_eq!(untouched.best_sectors_s, [None; 3]);
+        assert!(untouched.current_sectors_s.is_empty());
+        assert_eq!(split_current(68.98, 141.0), vec![68.98, 141.0 - 68.98]);
+        assert_eq!(split_current(-1.0, -1.0), Vec::<f64>::new());
     }
 
     #[test]

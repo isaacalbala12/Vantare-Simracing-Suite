@@ -2,6 +2,7 @@
 //! La proyección usa las señales relativas v4 del núcleo.
 
 mod motion;
+pub(crate) mod vantare;
 
 use crate::app::{Paint, Wake};
 use crate::efficiency::preview::PaintWindow as Window;
@@ -29,6 +30,10 @@ const EDGES: [f32; 7] = [0.0, 30.0, 38.0, 68.0, 300.0, 364.0, 470.0];
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
+    pub design_system: crate::standings::DesignSystem,
+    pub style: crate::standings::Look,
+    pub accent: crate::standings::Accent,
     pub columns: Option<Vec<crate::standings::options::ColumnSetting>>,
     pub range_ahead: usize,
     pub range_behind: usize,
@@ -36,21 +41,123 @@ pub struct Settings {
     pub include_player: bool,
     pub row_height_mode: String,
     pub footer_slots: Vec<String>,
+    /// Marca Vantare: decisión inyectada por el host según la licencia
+    /// (como en Standings). Sin decisión no se pinta.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub brand_visible: Option<bool>,
 }
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            design_system: crate::standings::DesignSystem::Vantare,
+            style: crate::standings::Look::Neo,
+            accent: crate::standings::Accent::Red,
             columns: None,
             range_ahead: 3,
             range_behind: 3,
-            class_scope: "all".into(),
+            class_scope: "sameClass".into(),
             include_player: true,
             row_height_mode: "compact".into(),
             footer_slots: Vec::new(),
+            brand_visible: None,
         }
     }
 }
+/// Métricas de Relative Vantare que ocupan un hueco propio (el punto de clase
+/// es fijo; el coche y la tira de pista son complementos).
+const MOVABLE: &[&str] = &[
+    "position",
+    "carNumber",
+    "driverNumber",
+    "driverName",
+    "lapDelta",
+    "driverRating",
+    "safetyRating",
+    "trend",
+    "gap",
+];
+
+/// Plantillas Relative Vantare del catálogo r10b: `compact` (±2, 280 px),
+/// `standard` (±3, 420 px, el del Studio) y `expanded` (±4, 600 px, con tira).
+#[must_use]
+pub fn vantare_template(name: &str) -> Vec<crate::standings::options::ColumnSetting> {
+    let (driver, on): (&str, &[&str]) = match name {
+        "compact" => ("sm", &["carNumber", "driverName", "gap"]),
+        "expanded" => (
+            "md",
+            &[
+                "position",
+                "carNumber",
+                "driverName",
+                "vehicle",
+                "lapDelta",
+                "driverRating",
+                "safetyRating",
+                "trend",
+                "gap",
+                "trackStrip",
+            ],
+        ),
+        _ => (
+            "lg",
+            &["position", "driverName", "vehicle", "lapDelta", "gap"],
+        ),
+    };
+    [
+        "position",
+        "carNumber",
+        "driverName",
+        "vehicle",
+        "lapDelta",
+        "driverRating",
+        "safetyRating",
+        "trend",
+        "gap",
+        "trackStrip",
+    ]
+    .iter()
+    .map(|metric| crate::standings::options::ColumnSetting {
+        id: (*metric).into(),
+        metric_id: (*metric).into(),
+        enabled: on.contains(metric),
+        width_preset: if *metric == "driverName" {
+            driver.into()
+        } else {
+            "auto".into()
+        },
+        ..crate::standings::options::ColumnSetting::default()
+    })
+    .collect()
+}
+
+/// Mueve `metric` delante de `before` (o al final); ver `vantare::columns`.
+pub fn move_column(
+    columns: &mut Vec<crate::standings::options::ColumnSetting>,
+    metric: &str,
+    before: Option<&str>,
+) -> bool {
+    crate::vantare::columns::move_column(columns, metric, before, MOVABLE)
+}
+
+/// Desplaza `metric` un puesto entre las columnas visibles.
+pub fn shift_column(
+    columns: &mut Vec<crate::standings::options::ColumnSetting>,
+    metric: &str,
+    step: i32,
+) -> bool {
+    crate::vantare::columns::shift_column(columns, metric, step, MOVABLE)
+}
+
 impl Settings {
+    /// Relative del sistema Eficiencia heredado.
+    #[must_use]
+    pub fn eficiencia() -> Self {
+        Self {
+            design_system: crate::standings::DesignSystem::Eficiencia,
+            ..Self::default()
+        }
+    }
+
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
         (
             "includePlayer",
@@ -71,13 +178,19 @@ impl Settings {
         value.range_ahead = value.range_ahead.min(8);
         value.range_behind = value.range_behind.min(8);
         value.include_player = true;
-        if value.class_scope != "sameClass" {
+        if value.design_system == crate::standings::DesignSystem::Vantare {
+            value.class_scope = "sameClass".into();
+        } else if value.class_scope != "sameClass" {
             value.class_scope = "all".into();
         }
         if value.row_height_mode != "fill" {
             value.row_height_mode = "compact".into();
         }
         value.footer_slots.truncate(9);
+        // Vantare tiene sus propias métricas (ver `vantare_template`).
+        if value.design_system == crate::standings::DesignSystem::Vantare {
+            return value;
+        }
         if let Some(columns) = &mut value.columns {
             columns.truncate(7);
             columns.retain(|c| {
@@ -112,6 +225,8 @@ impl Settings {
 }
 
 pub(crate) struct Widget {
+    /// Presente con el sistema Vantare; si no, se usa el renderer Eficiencia.
+    vantare: Option<vantare::State>,
     vm: ViewModel,
     settings: Settings,
     footer: Vec<vantare_domain::standings::InfoCell>,
@@ -123,7 +238,10 @@ pub(crate) struct Widget {
 
 impl Widget {
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let normalized = settings.normalized();
         Self {
+            vantare: (normalized.design_system == crate::standings::DesignSystem::Vantare)
+                .then(|| vantare::State::new(vantare::Options::from_settings(&normalized))),
             vm: relative::project_content(
                 &Snapshot::default(),
                 prefs,
@@ -142,7 +260,32 @@ impl Widget {
         self.workshop = true;
     }
 
+    /// Termina las animaciones Vantare en curso (Workshop reconstruye la historia).
+    pub(crate) fn settle(&mut self) {
+        if let Some(state) = &mut self.vantare {
+            state.settle();
+        }
+    }
+
+    /// Estilo Vantare de Workshop en vivo; producto usa el compilado.
+    pub(crate) fn set_vantare_style(
+        &mut self,
+        style: std::sync::Arc<crate::vantare::style::Style>,
+    ) {
+        if let Some(state) = &mut self.vantare {
+            state.set_style(style);
+        }
+    }
+
+    /// Columnas Vantare colocadas; `None` en Eficiencia o sin datos.
+    pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
+        self.vantare.as_ref().and_then(vantare::State::columns)
+    }
+
     pub(crate) fn size(&self) -> (f32, f32) {
+        if let Some(state) = &self.vantare {
+            return state.size();
+        }
         if self.workshop {
             let footer = if self.footer.is_empty() {
                 FOOTER
@@ -159,6 +302,10 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
+        if let Some(state) = &mut self.vantare {
+            let board = state.project(snapshot);
+            return state.ingest(board);
+        }
         let mut next = relative::project_content(snapshot, prefs, self.settings.content());
         let last_lap_visible = self.settings.footer_slots.iter().any(|id| id == "lastLap")
             || self
@@ -207,6 +354,18 @@ impl Widget {
     }
     pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let now = Instant::now();
+        if let Some(state) = &mut self.vantare {
+            if reduced {
+                state.settle();
+            }
+            let wake = state.wake(now);
+            let state = state.clone();
+            let language = prefs.language;
+            return (
+                Box::new(move |window, cx| state.paint(language, window, cx)),
+                wake,
+            );
+        }
         let rows = if reduced {
             motion::Motion::default().sample(&self.vm, now)
         } else {
@@ -242,7 +401,10 @@ impl Widget {
 
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
-        self.motion.animating(Instant::now())
+        match &self.vantare {
+            Some(state) => state.wake(Instant::now()) != Wake::Idle,
+            None => self.motion.animating(Instant::now()),
+        }
     }
 }
 
@@ -908,6 +1070,22 @@ impl Settings {
             LapTimes, PitStatus, Positions, Relative, SessionClock, SessionInfo, TrackName, Weather,
         };
         let settings = self.normalized();
+        if settings.design_system == crate::standings::DesignSystem::Vantare {
+            use vantare_ipc::Signal::{Cars, Flags};
+            // LapTimes: el ritmo de clase decide el aviso de tráfico.
+            return crate::demand::signals(
+                33,
+                &[
+                    Cars,
+                    Relative,
+                    Positions,
+                    PitStatus,
+                    SessionInfo,
+                    Flags,
+                    LapTimes,
+                ],
+            );
+        }
         let mut demand = crate::demand::signals(
             33,
             &[Relative, Positions, PitStatus, SessionInfo, TrackName],
@@ -934,6 +1112,24 @@ mod tests {
     use crate::source;
 
     #[test]
+    fn standard_vantare_relative_always_uses_player_class_even_in_old_documents() {
+        let scene: serde_json::Value = serde_json::from_str(include_str!(
+            "../../fixtures/relative-vantare.scene.json"
+        )).expect("escena multiclase");
+        let photo = vantare_ipc::snapshot_from_json(&scene["frames"][0]["snapshot"].to_string())
+            .expect("foto multiclase");
+        let settings = Settings { class_scope: "all".into(), ..Settings::default() };
+        assert_eq!(settings.normalized().class_scope, "sameClass");
+        let widget = Widget::new(&settings, Preferences::default());
+        let board = widget.vantare.as_ref().expect("Vantare").project(&photo);
+        let own_class = photo.state.player_car().expect("jugador").class.as_ref();
+        assert!(board.slots.iter().flatten().any(|row| !row.is_player));
+        assert!(board.slots.iter().flatten().all(|row| {
+            photo.state.cars.iter().find(|car| car.id == row.id)
+                .expect("fila de la foto").class.as_ref() == own_class
+        }));
+    }
+    #[test]
     fn real_custom_footers_keep_visible_fresh_and_stale_data_through_requested_pipe() {
         use std::sync::Arc;
         let mut lost = Vec::new();
@@ -948,7 +1144,7 @@ mod tests {
             for id in ["track", "ambient", "time"] {
                 let settings = Settings {
                     footer_slots: vec![id.into()],
-                    ..Settings::default()
+                    ..Settings::eficiencia()
                 };
                 let prefs = Preferences::default();
                 let mut full = Widget::new(&settings, prefs);
@@ -1015,7 +1211,7 @@ mod tests {
                 let settings = Settings {
                     range_ahead: ahead,
                     range_behind: behind,
-                    ..Settings::default()
+                    ..Settings::eficiencia()
                 };
                 let (width, height) = settings.size();
                 assert_eq!(width, 470.0);
@@ -1030,7 +1226,7 @@ mod tests {
         let snapshot =
             vantare_ipc::snapshot_from_json(include_str!("../../fixtures/relative.snapshot.json"))
                 .expect("escena");
-        let settings: Settings = serde_json::from_str(r#"{"rangeAhead":1,"rangeBehind":2,"classScope":"sameClass","rowHeightMode":"fill","footerSlots":["time","lastLap","track"],"columns":[{"id":"driverName","metricId":"driverName","format":{"mode":"initial"}},{"id":"lastLap","metricId":"lastLap","widthPreset":"md"}]}"#).expect("ajustes");
+        let settings: Settings = serde_json::from_str(r#"{"designSystem":"eficiencia","rangeAhead":1,"rangeBehind":2,"classScope":"sameClass","rowHeightMode":"fill","footerSlots":["time","lastLap","track"],"columns":[{"id":"driverName","metricId":"driverName","format":{"mode":"initial"}},{"id":"lastLap","metricId":"lastLap","widthPreset":"md"}]}"#).expect("ajustes");
         let mut widget = Widget::new(&settings, prefs);
         widget.ingest(&snapshot, prefs);
         assert_eq!(widget.vm.slots.len(), 4);
@@ -1045,7 +1241,7 @@ mod tests {
         assert!(
             Settings {
                 include_player: false,
-                ..Settings::default()
+                ..Settings::eficiencia()
             }
             .normalized()
             .include_player
@@ -1055,7 +1251,7 @@ mod tests {
     #[test]
     fn unchanged_drawing_does_not_repaint_and_first_snapshot_is_quiet() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings::default(), prefs);
+        let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         let mut snapshot = source::synthetic(0);
         assert!(widget.ingest(&snapshot, prefs));
         snapshot.sequence += 1;
@@ -1069,12 +1265,18 @@ mod tests {
     #[test]
     fn source_interruption_clears_rows_without_animated_ghosts() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings::default(), prefs);
+        let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         let mut snapshot =
             vantare_ipc::snapshot_from_json(include_str!("../../fixtures/relative.snapshot.json"))
                 .expect("escena reconstruida v4");
         assert!(widget.ingest(&snapshot, prefs));
-        snapshot.state.cars[1].relative_s = vantare_domain::Quality::Reliable(-0.1);
+        // Mover un rival visible de la clase del jugador; cambiar otra clase
+        // ya no demuestra una animación en Relative estándar (#1496).
+        let rival = widget.vm.slots.iter().flatten()
+            .find(|row| row.side != vantare_domain::relative::Side::Player)
+            .expect("rival visible").id;
+        snapshot.state.cars.iter_mut().find(|car| car.id == rival)
+            .expect("rival en la foto").relative_s = vantare_domain::Quality::Reliable(-0.1);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.frame(prefs).1, Wake::Frame);
         snapshot.state.source_state = vantare_domain::SourceState::Lost;

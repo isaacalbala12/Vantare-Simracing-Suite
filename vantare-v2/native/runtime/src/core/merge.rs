@@ -4,12 +4,12 @@
 use std::collections::HashSet;
 
 use vantare_domain::{
-    Car, CarId, Damage, Fuel, Gap, Observation, Player, Pose, Quality, Session, SessionId,
-    Snapshot, SourceState, State, Telemetry, Weather, degrade,
+    Car, CarId, Damage, Fuel, Gap, Observation, PitService, Player, Pose, Quality, Session,
+    SessionId, Snapshot, SourceState, State, Telemetry, Weather, degrade,
 };
 
 use super::derive::derive;
-use super::{delta, fuel};
+use super::{delta, fuel, stint, trend};
 
 /// Observación que el núcleo no admite: no se publica y la revisión no avanza.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -91,6 +91,8 @@ pub(super) struct Trackers {
     identity: Option<(SessionId, CarId)>,
     fuel: fuel::Tracker,
     delta: delta::Tracker,
+    stint: stint::Tracker,
+    trend: trend::Tracker,
 }
 
 impl Trackers {
@@ -104,22 +106,32 @@ impl Trackers {
                 // Sesión o coche del jugador nuevos: nada es comparable.
                 self.fuel.reset();
                 self.delta.reset();
+                self.stint.reset();
+                self.trend.reset();
             }
             self.identity = Some(identity);
         }
-        let State { cars, player, .. } = state;
+        let State {
+            cars,
+            player,
+            session,
+            ..
+        } = state;
         let Some(player) = player.as_mut() else {
             self.fuel.invalidate();
             self.delta.invalidate();
             return;
         };
+        self.trend.derive(cars, player.car);
         let Some(car) = cars.iter().find(|car| car.id == player.car) else {
             self.fuel.invalidate();
             self.delta.invalidate();
             return;
         };
         self.fuel.derive(player, car);
-        self.delta.derive(player, car, state.session.track_length_m);
+        self.delta.derive(player, car, session.track_length_m);
+        delta::references(player, car, cars);
+        self.stint.derive(player, car, session);
     }
 }
 
@@ -165,6 +177,7 @@ fn sanitize(state: &mut State) {
         let Car {
             id: _,
             number: _,
+            vehicle: _,
             driver: _,
             class: _,
             position: _,
@@ -187,11 +200,25 @@ fn sanitize(state: &mut State) {
             pose,
             velocity_mps,
             pending_penalties: _, // u32: no hay NaN ni contador negativo.
+            grid_position: _,
+            pit_stops: _,
+            tyre_compound: _,
+            best_sectors_s,
+            current_sectors_s,
+            driver_rating: _,
+            safety_rating,
+            relative_trend_s_per_lap,
         } = car;
         finite(last_lap_s);
         finite(best_lap_s);
         keep_if(estimated_lap_s, |v| v.is_finite() && *v > 0.0);
         last_sectors_s.iter_mut().for_each(finite);
+        best_sectors_s.iter_mut().for_each(finite);
+        current_sectors_s.iter_mut().for_each(finite);
+        keep_if(safety_rating, |v| {
+            v.is_finite() && (0.0..=100.0).contains(v)
+        });
+        finite(relative_trend_s_per_lap);
         for gap in [gap_leader, gap_ahead, gap_class_leader, gap_class_ahead] {
             keep_if(gap, finite_gap);
         }
@@ -221,7 +248,15 @@ fn sanitize_player(player: &mut Player) {
         delta_best_s,
         pit_limiter_active: _, // bool: no requiere saneamiento numérico.
         pit_stop_stopped: _,
+        pit_loss_s,
+        pit_service,
+        stint,
+        delta_optimal_s,
+        delta_leader_s,
+        lap_invalid: _, // bool: no requiere saneamiento numérico.
     } = player;
+    finite(delta_optimal_s);
+    finite(delta_leader_s);
     let Telemetry {
         throttle,
         brake,
@@ -241,16 +276,34 @@ fn sanitize_player(player: &mut Player) {
         per_lap_l,
         laps_left,
         history,
+        energy,
+        energy_per_lap,
+        lap_projection_l,
     } = fuel;
     for signal in [level_l, capacity_l, per_lap_l, laps_left] {
         finite(signal);
     }
+    fraction(energy);
+    fraction(energy_per_lap);
+    keep_if(lap_projection_l, |v| v.is_finite() && *v >= 0.0);
+    let PitService {
+        refuel_target_l,
+        refuel_added_l,
+        remaining_s,
+        tyres,
+    } = pit_service;
+    for signal in [refuel_target_l, refuel_added_l, remaining_s] {
+        keep_if(signal, |v| v.is_finite() && *v >= 0.0);
+    }
+    keep_if(tyres, |v| *v <= 4);
+    keep_if(&mut stint.elapsed_s, |v| v.is_finite() && *v >= 0.0);
     for entry in history {
         if entry.is_some_and(|(_, litres)| !litres.is_finite() || litres <= 0.0) {
             *entry = None;
         }
     }
     finite(delta_best_s);
+    keep_if(pit_loss_s, |v| v.is_finite() && *v >= 0.0);
     let Damage {
         aero,
         body,

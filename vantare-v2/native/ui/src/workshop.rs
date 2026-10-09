@@ -173,20 +173,27 @@ fn scenes(initial: &Path) -> Result<Vec<PathBuf>, String> {
     Ok(paths)
 }
 
-struct LiveStyle {
+/// Estilo editable en vivo: el último JSON válido se conserva ante errores.
+struct LiveStyle<T> {
     path: PathBuf,
     modified: Option<SystemTime>,
-    value: std::sync::Arc<crate::standings::style::Style>,
+    value: std::sync::Arc<T>,
     error: Option<String>,
+    parse: fn(&str) -> Result<std::sync::Arc<T>, String>,
 }
 
-impl LiveStyle {
-    fn new(path: PathBuf) -> Self {
+impl<T> LiveStyle<T> {
+    fn new(
+        path: PathBuf,
+        compiled: std::sync::Arc<T>,
+        parse: fn(&str) -> Result<std::sync::Arc<T>, String>,
+    ) -> Self {
         let mut file = Self {
             path,
             modified: None,
-            value: crate::standings::style::Style::compiled(),
+            value: compiled,
             error: None,
+            parse,
         };
         file.reload();
         file
@@ -196,7 +203,7 @@ impl LiveStyle {
         self.modified = modified(&self.path);
         match std::fs::read_to_string(&self.path)
             .map_err(|e| e.to_string())
-            .and_then(|json| crate::standings::style::Style::from_json(&json))
+            .and_then(|json| (self.parse)(&json))
         {
             Ok(style) => {
                 self.value = style;
@@ -240,6 +247,12 @@ enum Control {
     Footer(&'static str),
     Preset,
     Setting(&'static str),
+    /// Plantilla de columnas Vantare (compact, standard, expanded).
+    Template(&'static str),
+    /// Desplaza una columna Vantare un puesto (−1 izquierda, +1 derecha).
+    MoveColumn(&'static str, i32),
+    /// Marca Vantare visible u oculta (en producto la decide la licencia).
+    Brand,
 }
 
 struct Playback {
@@ -294,7 +307,8 @@ impl Playback {
 }
 
 struct Workshop {
-    style: LiveStyle,
+    style: LiveStyle<crate::standings::style::Style>,
+    vantare_style: LiveStyle<crate::vantare::style::Style>,
     kind: Kind,
     settings: Settings,
     prefs: Preferences,
@@ -324,27 +338,75 @@ struct Workshop {
     numeric: Option<(Control, String)>,
     slider_bounds: Option<gpui::Bounds<gpui::Pixels>>,
     dragging: bool,
+    /// Escala que encaja el widget en el escenario visible (≤ 1).
+    fit: f32,
+    /// Panel lateral oculto para dar todo el ancho al escenario.
+    panel_hidden: bool,
+    /// Rectángulo de la vista previa del widget en la ventana.
+    widget_bounds: Option<gpui::Bounds<gpui::Pixels>>,
+    /// Columna Vantare cogida para moverla.
+    column_drag: Option<&'static str>,
+    /// Columna Vantare bajo el puntero, recuadrada para saber qué se coge.
+    column_hover: Option<&'static str>,
+}
+
+/// Ajustes de partida de Standings en Workshop para cada sistema de diseño.
+/// Ajustes de partida en Workshop de un widget con columnas para cada sistema.
+fn system_defaults(kind: Kind, system: crate::standings::DesignSystem) -> Settings {
+    use crate::standings::DesignSystem;
+    match (kind, system) {
+        (Kind::Standings, DesignSystem::Vantare) => {
+            Settings::Standings(crate::standings::Settings {
+                row_count: 8,
+                columns: Some(crate::standings::vantare_template("standard")),
+                brand_visible: Some(true),
+                ..Default::default()
+            })
+        }
+        (Kind::Standings, DesignSystem::Eficiencia) => {
+            Settings::Standings(crate::standings::Settings {
+                row_count: 10,
+                columns: Some(default_columns(Kind::Standings)),
+                player_window: true,
+                window_around: 4,
+                class_scope: "all-classes".into(),
+                brand_visible: Some(true),
+                ..crate::standings::Settings::eficiencia()
+            })
+        }
+        (Kind::Relative, DesignSystem::Vantare) => Settings::Relative(crate::relative::Settings {
+            columns: Some(crate::relative::vantare_template("standard")),
+            brand_visible: Some(true),
+            ..Default::default()
+        }),
+        (Kind::FuelStrategy, DesignSystem::Vantare) => {
+            Settings::FuelStrategy(crate::fuel_strategy::Settings {
+                brand_visible: Some(true),
+                ..Default::default()
+            })
+        }
+        (Kind::Delta, DesignSystem::Vantare) => Settings::Delta(crate::delta::Settings {
+            brand_visible: Some(true),
+            ..Default::default()
+        }),
+        (Kind::Delta, DesignSystem::Eficiencia) => {
+            Settings::Delta(crate::delta::Settings::eficiencia())
+        }
+        (Kind::FuelStrategy, DesignSystem::Eficiencia) => {
+            Settings::FuelStrategy(crate::fuel_strategy::Settings::eficiencia())
+        }
+        (Kind::Relative, DesignSystem::Eficiencia) => {
+            Settings::Relative(crate::relative::Settings {
+                columns: Some(default_columns(Kind::Relative)),
+                ..crate::relative::Settings::eficiencia()
+            })
+        }
+        _ => Settings::default_for(kind),
+    }
 }
 
 fn default_settings(kind: Kind) -> Settings {
-    if kind == Kind::Standings {
-        Settings::Standings(crate::standings::Settings {
-            row_count: 10,
-            columns: Some(default_columns(kind)),
-            player_window: true,
-            window_around: 4,
-            class_scope: "all-classes".into(),
-            brand_visible: Some(true),
-            ..Default::default()
-        })
-    } else if kind == Kind::Relative {
-        Settings::Relative(crate::relative::Settings {
-            columns: Some(default_columns(kind)),
-            ..Default::default()
-        })
-    } else {
-        Settings::default_for(kind)
-    }
+    system_defaults(kind, crate::standings::DesignSystem::default())
 }
 
 fn default_columns(kind: Kind) -> Vec<crate::standings::options::ColumnSetting> {
@@ -393,8 +455,10 @@ fn default_path(kind: Kind) -> PathBuf {
     Path::new(FIXTURES).join("lmu47.snapshot.json")
 }
 
-fn preview_size(kind: Kind, size: (f32, f32)) -> (f32, f32) {
-    if kind == Kind::Relative {
+/// Tamaño de la vista previa: el Relative Eficiencia heredado se muestra con su
+/// ancho fijo de 470 px; el resto (Vantare incluido) con su tamaño real.
+fn preview_size(eficiencia_relative: bool, size: (f32, f32)) -> (f32, f32) {
+    if eficiencia_relative {
         (
             crate::relative::SIZE.0,
             size.1 * crate::relative::SIZE.0 / size.0,
@@ -405,6 +469,12 @@ fn preview_size(kind: Kind, size: (f32, f32)) -> (f32, f32) {
 }
 
 impl Workshop {
+    /// El widget es el Relative Eficiencia heredado (vista previa a 470 px).
+    fn eficiencia_relative(&self) -> bool {
+        matches!(&self.settings, Settings::Relative(s)
+            if s.design_system == crate::standings::DesignSystem::Eficiencia)
+    }
+
     fn edit_number(&mut self, key: &str, cx: &mut Context<Self>) -> bool {
         let Some((control, text)) = &mut self.numeric else {
             return false;
@@ -487,7 +557,10 @@ impl Workshop {
 
     fn snapshot(&self, index: usize) -> Snapshot {
         let mut snapshot = self.scene.snapshots[index].clone();
-        if let Settings::Standings(settings) = &self.settings {
+        // «Pilotos totales» es un control de Eficiencia; Vantare elige sus filas.
+        if let Settings::Standings(settings) = &self.settings
+            && settings.design_system == crate::standings::DesignSystem::Eficiencia
+        {
             snapshot.state.cars.retain(|car| {
                 car.position
                     .current()
@@ -566,31 +639,170 @@ impl Workshop {
             style.geometry.chip_cut_radius = 3.0;
         }
         let style = std::sync::Arc::new(style);
-        let scale = self.scale;
+        let vantare = self.vantare_style.value.clone();
+        let scale = self.scale * self.fit;
         let dimensions = self.dimensions;
         let study = self.study.clone();
-        let kind = self.kind;
+        let legacy = self.eficiencia_relative();
         let make = |cx: &mut Context<Overlay>| {
             let mut overlay = Overlay::configured(&settings, prefs);
             overlay.workshop_layout();
             overlay.standings_style(style.clone(), cx);
+            overlay.vantare_style(vantare.clone(), cx);
             overlay.standings_study(&study);
             let size = overlay.wanted_size();
-            let natural = preview_size(kind, size);
+            let natural = preview_size(legacy, size);
             let target = dimensions.unwrap_or(natural);
             if let Err(error) =
                 overlay.set_preview_axes(scale * target.0 / size.0, scale * target.1 / size.1)
             {
                 eprintln!("Workshop: {error}");
             }
-            for snapshot in &snapshots {
-                overlay.ingest(snapshot, cx);
+            // La historia se ingiere de golpe: solo debe animar el último cambio.
+            if let Some((last, history)) = snapshots.split_last() {
+                for snapshot in history {
+                    overlay.ingest(snapshot, cx);
+                }
+                overlay.settle();
+                overlay.ingest(last, cx);
             }
             overlay
         };
         self.overlay = cx.new(make);
         if self.comparison.is_some() {
             self.comparison = Some(cx.new(make));
+        }
+    }
+
+    /// Punto de la ventana → punto del widget (px lógicos del widget).
+    fn widget_point(&self, point: gpui::Point<gpui::Pixels>, cx: &App) -> Option<(f32, f32)> {
+        let bounds = self.widget_bounds?;
+        let (sx, sy) = self.widget_scale(cx);
+        Some((
+            f32::from(point.x - bounds.left()) / sx,
+            f32::from(point.y - bounds.top()) / sy,
+        ))
+    }
+
+    /// Escala real de la vista previa en cada eje (px de pantalla por px del widget).
+    fn widget_scale(&self, cx: &App) -> (f32, f32) {
+        let size = self.overlay.read(cx).wanted_size();
+        let target = self
+            .dimensions
+            .unwrap_or(preview_size(self.eficiencia_relative(), size));
+        let scale = self.scale * self.fit;
+        (scale * target.0 / size.0, scale * target.1 / size.1)
+    }
+
+    /// Coge la columna bajo el puntero (no la posición, que es fija).
+    fn start_column_drag(&mut self, point: gpui::Point<gpui::Pixels>, cx: &mut Context<Self>) {
+        let (Some((x, y)), Some(boxes)) = (
+            self.widget_point(point, cx),
+            self.overlay.read(cx).vantare_columns(),
+        ) else {
+            return;
+        };
+        self.column_drag = boxes.at(x, y).map(|(metric, ..)| metric);
+        cx.notify();
+    }
+
+    /// Recuadra la columna bajo el puntero o, arrastrando, la mueve en
+    /// directo en cuanto el puntero pasa la mitad de la vecina.
+    fn drag_column(&mut self, point: gpui::Point<gpui::Pixels>, cx: &mut Context<Self>) {
+        let (Some((x, y)), Some(boxes)) = (
+            self.widget_point(point, cx),
+            self.overlay.read(cx).vantare_columns(),
+        ) else {
+            return;
+        };
+        let Some(dragged) = self.column_drag else {
+            let hover = boxes.at(x, y).map(|(metric, ..)| metric);
+            if hover != self.column_hover {
+                self.column_hover = hover;
+                cx.notify();
+            }
+            return;
+        };
+        let columns = &boxes.columns;
+        let Some(from) = columns.iter().position(|(m, ..)| *m == dragged) else {
+            return;
+        };
+        let target = if from + 1 < columns.len() {
+            let (next, left, width) = columns[from + 1];
+            (x > left + width / 2.0).then_some((next, 1))
+        } else {
+            None
+        }
+        .or_else(|| {
+            from.checked_sub(1).and_then(|index| {
+                let (previous, left, width) = columns[index];
+                (x < left + width / 2.0).then_some((previous, -1))
+            })
+        });
+        if let Some((_, step)) = target
+            && self.shift_vantare_column(dragged, step)
+        {
+            self.replay(cx);
+        }
+        cx.notify();
+    }
+
+    /// Columnas Vantare del widget (Standings o Relative), con la plantilla
+    /// estándar si aún no hay ninguna.
+    fn vantare_columns_mut(
+        &mut self,
+    ) -> Option<&mut Vec<crate::standings::options::ColumnSetting>> {
+        use crate::standings::DesignSystem::Vantare;
+        match &mut self.settings {
+            Settings::Standings(s) if s.design_system == Vantare => Some(
+                s.columns
+                    .get_or_insert_with(|| crate::standings::vantare_template("standard")),
+            ),
+            Settings::Relative(s) if s.design_system == Vantare => Some(
+                s.columns
+                    .get_or_insert_with(|| crate::relative::vantare_template("standard")),
+            ),
+            _ => None,
+        }
+    }
+
+    fn shift_vantare_column(&mut self, metric: &str, step: i32) -> bool {
+        let relative = self.kind == Kind::Relative;
+        let Some(columns) = self.vantare_columns_mut() else {
+            return false;
+        };
+        if relative {
+            crate::relative::shift_column(columns, metric, step)
+        } else {
+            crate::standings::shift_column(columns, metric, step)
+        }
+    }
+
+    fn finish_column_drag(&mut self, cx: &mut Context<Self>) {
+        if self.column_drag.take().is_some() {
+            self.persist();
+            cx.notify();
+        }
+    }
+
+    /// Reaplica la escala de vista previa sin recrear los widgets.
+    fn apply_preview(&self, cx: &mut App) {
+        let (scale, dimensions, legacy) = (
+            self.scale * self.fit,
+            self.dimensions,
+            self.eficiencia_relative(),
+        );
+        for view in std::iter::once(&self.overlay).chain(self.comparison.as_ref()) {
+            view.update(cx, |overlay, cx| {
+                let size = overlay.wanted_size();
+                let target = dimensions.unwrap_or(preview_size(legacy, size));
+                if overlay
+                    .set_preview_axes(scale * target.0 / size.0, scale * target.1 / size.1)
+                    .is_ok()
+                {
+                    cx.notify();
+                }
+            });
         }
     }
 
@@ -719,7 +931,10 @@ impl Workshop {
                 }
                 Control::Location => self.in_pits = Some(value == "pits"),
                 Control::Width | Control::Height => {
-                    let wanted = preview_size(self.kind, self.overlay.read(cx).wanted_size());
+                    let wanted = preview_size(
+                        self.eficiencia_relative(),
+                        self.overlay.read(cx).wanted_size(),
+                    );
                     let mut size = self.dimensions.unwrap_or(wanted);
                     let number = value.parse::<f32>().map_err(|e| format!("tamaño: {e}"))?;
                     if control == Control::Width {
@@ -762,6 +977,45 @@ impl Workshop {
                         }
                     }
                 }
+                Control::Template(name) => {
+                    let mut template = if self.kind == Kind::Relative {
+                        crate::relative::vantare_template(name)
+                    } else {
+                        crate::standings::vantare_template(name)
+                    };
+                    for column in &mut template {
+                        if column.metric_id == "driverName" {
+                            column.format.mode.clone_from(&self.name_mode);
+                        }
+                    }
+                    let Some(columns) = self.vantare_columns_mut() else {
+                        return Err("este widget no tiene plantillas Vantare".into());
+                    };
+                    *columns = template;
+                    // Las plantillas de Relative fijan también su alcance (±2, ±3, ±4).
+                    if let Settings::Relative(settings) = &mut self.settings {
+                        let range = match name {
+                            "compact" => 2,
+                            "expanded" => 4,
+                            _ => 3,
+                        };
+                        settings.range_ahead = range;
+                        settings.range_behind = range;
+                    }
+                }
+                Control::MoveColumn(metric, step) => {
+                    self.shift_vantare_column(metric, step);
+                }
+                Control::Brand => {
+                    let brand = match &mut self.settings {
+                        Settings::Standings(settings) => &mut settings.brand_visible,
+                        Settings::Relative(settings) => &mut settings.brand_visible,
+                        Settings::FuelStrategy(settings) => &mut settings.brand_visible,
+                        Settings::Delta(settings) => &mut settings.brand_visible,
+                        _ => return Err("este widget no tiene marca".into()),
+                    };
+                    *brand = Some(value == "true");
+                }
                 Control::Footer(slot) => {
                     let slots = match &mut self.settings {
                         Settings::Standings(settings) => {
@@ -795,9 +1049,33 @@ impl Workshop {
                     } else {
                         serde_json::json!(value)
                     };
-                    self.settings = serde_json::from_value::<Settings>(settings)
+                    let next = serde_json::from_value::<Settings>(settings)
                         .map_err(|e| e.to_string())?
                         .normalized();
+                    // Cambiar de sistema parte de los ajustes por defecto de ese sistema.
+                    self.settings = match (&self.settings, next) {
+                        (Settings::Standings(old), Settings::Standings(new))
+                            if old.design_system != new.design_system =>
+                        {
+                            system_defaults(Kind::Standings, new.design_system)
+                        }
+                        (Settings::Relative(old), Settings::Relative(new))
+                            if old.design_system != new.design_system =>
+                        {
+                            system_defaults(Kind::Relative, new.design_system)
+                        }
+                        (Settings::FuelStrategy(old), Settings::FuelStrategy(new))
+                            if old.design_system != new.design_system =>
+                        {
+                            system_defaults(Kind::FuelStrategy, new.design_system)
+                        }
+                        (Settings::Delta(old), Settings::Delta(new))
+                            if old.design_system != new.design_system =>
+                        {
+                            system_defaults(Kind::Delta, new.design_system)
+                        }
+                        (_, next) => next,
+                    };
                 }
             }
             Ok(())
@@ -846,7 +1124,16 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
         || PathBuf::from(concat!(env!("CARGO_MANIFEST_DIR"), "/styles")),
         PathBuf::from,
     );
-    let style = LiveStyle::new(style_path.join("standings.json"));
+    let style = LiveStyle::new(
+        style_path.join("standings.json"),
+        crate::standings::style::Style::compiled(),
+        crate::standings::style::Style::from_json,
+    );
+    let vantare_style = LiveStyle::new(
+        style_path.join("vantare.json"),
+        crate::vantare::style::Style::compiled(),
+        crate::vantare::style::Style::from_json,
+    );
     let scenes = scenes(&scene.path)?;
     let scene_labels = scenes
         .iter()
@@ -860,11 +1147,17 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
             *failure.borrow_mut() = Some("no se pudieron registrar las fuentes".into());
             return;
         }
+        // Ocupa todo el monitor principal (macOS la ajusta bajo la barra de menús).
+        let window_bounds = cx
+            .primary_display()
+            .map(|display| gpui::WindowBounds::Windowed(display.bounds()));
         let options = WindowOptions {
             titlebar: Some(gpui::TitlebarOptions {
                 title: Some("Vantare — Workshop en vivo".into()),
                 ..Default::default()
             }),
+            window_bounds,
+            focus: false,
             ..Default::default()
         };
         let opened = cx.open_window(options, |window, cx| {
@@ -874,6 +1167,7 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                 let overlay = cx.new(|cx| {
                     let mut overlay = Overlay::new(kind, Preferences::default());
                     overlay.standings_style(style.value.clone(), cx);
+                    overlay.vantare_style(vantare_style.value.clone(), cx);
                     for snapshot in &scene.snapshots {
                         overlay.ingest(snapshot, cx);
                     }
@@ -881,6 +1175,7 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                 });
                 let mut workshop = Workshop {
                     style,
+                    vantare_style,
                     kind,
                     settings: default_settings(kind),
                     prefs: Preferences::default(),
@@ -906,6 +1201,11 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                     numeric: None,
                     slider_bounds: None,
                     dragging: false,
+                    fit: 1.0,
+                    panel_hidden: false,
+                    widget_bounds: None,
+                    column_drag: None,
+                    column_hover: None,
                     overlay,
                     state_file,
                     state_error,
@@ -944,7 +1244,8 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
                         if this
                             .update(cx, |this, cx| {
                                 this.tick(Instant::now(), cx);
-                                if this.style.poll() {
+                                // `|` para sondear ambos ficheros en cada vuelta.
+                                if this.style.poll() | this.vantare_style.poll() {
                                     this.replay(cx);
                                     cx.notify();
                                 }
@@ -979,7 +1280,11 @@ pub fn run(kind: Option<Kind>, path: Option<PathBuf>) -> Result<(), String> {
             }
         })
         .detach();
-        cx.activate(true);
+        // Sin activar la app: se abre detrás para no robar el foco al editor.
+        // `VANTARE_WORKSHOP_ACTIVATE=1` la trae al frente (capturas de evidencia).
+        if std::env::var_os("VANTARE_WORKSHOP_ACTIVATE").is_some() {
+            cx.activate(true);
+        }
     });
     match result.borrow_mut().take() {
         Some(error) => Err(error),
@@ -993,7 +1298,7 @@ mod tests {
 
     #[test]
     fn workshop_relative_uses_react_columns_and_compact_height() {
-        let settings = default_settings(Kind::Relative);
+        let settings = system_defaults(Kind::Relative, crate::standings::DesignSystem::Eficiencia);
         let Settings::Relative(relative) = &settings else {
             panic!("Relative");
         };
@@ -1008,7 +1313,7 @@ mod tests {
         let mut overlay = Overlay::configured(&settings, Preferences::default());
         let production = overlay.wanted_size();
         overlay.workshop_layout();
-        let preview = preview_size(Kind::Relative, overlay.wanted_size());
+        let preview = preview_size(true, overlay.wanted_size());
         assert_eq!(preview.0, 470.0);
         assert!((preview.1 - 277.0).abs() < 0.01);
         assert_eq!(production, crate::relative::SIZE);
@@ -1081,7 +1386,8 @@ mod tests {
                 );
             }
         }
-        assert_eq!(count, 43);
+        // 43 demostraciones React + ocho escenas Vantare r10b (#1497).
+        assert_eq!(count, 51);
         let default = Scene::new(&initial).expect("Standings default");
         assert_eq!(
             default.snapshots[0].state.cars[0].last_lap_s.current(),
@@ -1177,7 +1483,11 @@ mod tests {
         let path = dir.join("standings.json");
         let original = include_str!("../styles/standings.json");
         std::fs::write(&path, original).expect("estilo");
-        let mut file = LiveStyle::new(path.clone());
+        let mut file = LiveStyle::new(
+            path.clone(),
+            crate::standings::style::Style::compiled(),
+            crate::standings::style::Style::from_json,
+        );
         assert!(!file.poll());
         let previous = file.value.clone();
         std::fs::write(&path, "{").expect("escritura parcial");
@@ -1196,6 +1506,32 @@ mod tests {
         assert!(file.error.is_none());
         assert_eq!(file.value.colors.panel.0, 0x123456);
         assert_eq!(file.value.geometry.row_height, 40.0);
+        std::fs::remove_dir_all(dir).expect("limpiar");
+    }
+
+    #[test]
+    fn vantare_style_reloads_live_and_keeps_the_last_valid_one() {
+        let dir = std::env::temp_dir().join(format!("vantare-style-v-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).expect("directorio");
+        let path = dir.join("vantare.json");
+        std::fs::write(&path, include_str!("../styles/vantare.json")).expect("estilo");
+        let mut file = LiveStyle::new(
+            path.clone(),
+            crate::vantare::style::Style::compiled(),
+            crate::vantare::style::Style::from_json,
+        );
+        assert!(file.error.is_none());
+        let mut changed = serde_json::to_value(&*file.value).expect("JSON");
+        changed["geometry"]["row_height"] = serde_json::json!(30);
+        std::fs::write(&path, changed.to_string()).expect("guardar");
+        file.modified = None;
+        assert!(file.poll());
+        assert_eq!(file.value.geometry.row_height, 30.0);
+        std::fs::write(&path, "{").expect("escritura parcial");
+        file.modified = None;
+        assert!(file.poll());
+        assert!(file.error.is_some());
+        assert_eq!(file.value.geometry.row_height, 30.0);
         std::fs::remove_dir_all(dir).expect("limpiar");
     }
 

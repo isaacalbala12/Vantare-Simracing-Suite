@@ -15,6 +15,16 @@ El test no tiene modo de regeneración: un cambio de salida falla.
   no sustituye los ocho cortes legibles. El replay también debe descartar
   exactamente tres tramas y agotar el corpus.
 
+## Regeneración por #1497 (stint del jugador)
+
+El núcleo deriva ahora el stint del jugador (vueltas y tiempo desde la salida
+de boxes o el inicio de la sesión) mientras LMU no lo publique. Esto añade
+`stint_laps` y `stint_elapsed_s` al jugador cuando hay datos, y nada más: con
+esos dos campos quitados, las 3.839 fotos de LMU47, los 10 cortes LMU y los 8
+de ACC son idénticos a los congelados (comparación JSON completa; en LMU47
+salvo el yaw de plataforma). LMU47 conserva los `yaw_rad` exactos del golden
+Windows. El test sigue sin modo de regeneración.
+
 Los gzip solo comprimen los bytes congelados, con mtime 0. No normalizan
 campos, calidad, números, orden ni secuencia. Ausencia, truncado o diferencia
 fallan; no se aceptan corpus vacíos ni parciales.

@@ -23,6 +23,7 @@ pub mod model;
 pub(crate) mod motion;
 pub mod options;
 pub(crate) mod style;
+pub(crate) mod vantare;
 pub(crate) mod view;
 
 use crate::app::Paint;
@@ -35,6 +36,9 @@ use vantare_domain::{Snapshot, format::Preferences, standings};
 #[serde(default, rename_all = "camelCase")]
 #[allow(clippy::struct_excessive_bools)] // Opciones productivas independientes, no estados excluyentes.
 pub struct Settings {
+    pub design_system: DesignSystem,
+    pub style: Look,
+    pub accent: Accent,
     pub row_count: usize,
     pub columns: Option<Vec<options::ColumnSetting>>,
     pub class_scope: String,
@@ -55,9 +59,141 @@ pub struct Settings {
     pub footer_slots: Option<Vec<String>>,
 }
 
+/// Sistema de diseño. Un valor desconocido usa Vantare, el principal.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum DesignSystem {
+    /// Sistema heredado del producto Wails (Signature/Broadcast).
+    Eficiencia,
+    #[default]
+    #[serde(other)]
+    Vantare,
+}
+
+/// Estilo Vantare del catálogo r10b.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Look {
+    /// Neo con fondos en escala de grises, sin subtono rojo.
+    Neutro,
+    #[default]
+    #[serde(other)]
+    Neo,
+}
+
+/// Acento Vantare: fila propia, bordes y énfasis.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Accent {
+    Amber,
+    Green,
+    White,
+    #[default]
+    #[serde(other)]
+    Red,
+}
+
+/// Métricas de Standings Vantare que ocupan un hueco propio (P es fija).
+const MOVABLE: &[&str] = &[
+    "positionsGained",
+    "driverNumber",
+    "carNumber",
+    "driverName",
+    "tireCompound",
+    "pit",
+    "sectors",
+    "lastLap",
+    "bestLap",
+    "interval",
+    "gap",
+];
+
+/// Mueve `metric` delante de `before` (o al final); ver `vantare::columns`.
+pub fn move_column(
+    columns: &mut Vec<options::ColumnSetting>,
+    metric: &str,
+    before: Option<&str>,
+) -> bool {
+    crate::vantare::columns::move_column(columns, metric, before, MOVABLE)
+}
+
+/// Desplaza `metric` un puesto entre las columnas visibles.
+pub fn shift_column(columns: &mut Vec<options::ColumnSetting>, metric: &str, step: i32) -> bool {
+    crate::vantare::columns::shift_column(columns, metric, step, MOVABLE)
+}
+
+/// Plantillas Vantare del catálogo r10b: todas las columnas elegibles en su
+/// orden, activas según el tamaño. `compact` (340 px), `standard` (520, el del
+/// Studio) y `expanded` (900). Eficiencia ignora las métricas que no conoce.
+#[must_use]
+pub fn vantare_template(name: &str) -> Vec<options::ColumnSetting> {
+    let (driver, on): (&str, &[&str]) = match name {
+        "compact" => ("sm", &["position", "driverNumber", "driverName", "gap"]),
+        "expanded" => (
+            "lg",
+            &[
+                "position",
+                "positionsGained",
+                "driverNumber",
+                "driverName",
+                "vehicle",
+                "tireCompound",
+                "pit",
+                "sectors",
+                "lastLap",
+                "bestLap",
+                "gap",
+            ],
+        ),
+        _ => (
+            "md",
+            &[
+                "position",
+                "positionsGained",
+                "driverNumber",
+                "driverName",
+                "vehicle",
+                "pit",
+                "sectors",
+                "gap",
+            ],
+        ),
+    };
+    [
+        "position",
+        "positionsGained",
+        "driverNumber",
+        "driverName",
+        "vehicle",
+        "tireCompound",
+        "pit",
+        "sectors",
+        "lastLap",
+        "bestLap",
+        "interval",
+        "gap",
+    ]
+    .iter()
+    .map(|metric| options::ColumnSetting {
+        id: (*metric).into(),
+        metric_id: (*metric).into(),
+        enabled: on.contains(metric),
+        width_preset: if *metric == "driverName" {
+            driver.into()
+        } else {
+            "auto".into()
+        },
+        ..options::ColumnSetting::default()
+    })
+    .collect()
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            design_system: DesignSystem::Vantare,
+            style: Look::Neo,
+            accent: Accent::Red,
             row_count: 20,
             columns: None,
             class_scope: "player-class".into(),
@@ -89,6 +225,15 @@ impl Settings {
             "Snapshot no publica compuesto; no se inventa",
         ),
     ];
+    /// Standings del sistema Eficiencia heredado (Signature por defecto).
+    #[must_use]
+    pub fn eficiencia() -> Self {
+        Self {
+            design_system: DesignSystem::Eficiencia,
+            ..Self::default()
+        }
+    }
+
     #[must_use]
     pub fn normalized(&self) -> Self {
         let mut settings = self.clone();
@@ -99,11 +244,18 @@ impl Settings {
         if settings.classification_mode != "multiclass" {
             settings.classification_mode = "normal".into();
         }
+        if settings.design_system == DesignSystem::Vantare {
+            settings.class_scope = if settings.classification_mode == "multiclass" {
+                "all-classes"
+            } else {
+                "player-class"
+            }.into();
+        }
         if ![0, 2, 4, 6, 8].contains(&settings.window_around) {
             settings.window_around = 4;
         }
         if let Some(columns) = &mut settings.columns {
-            columns.truncate(11);
+            columns.truncate(if settings.design_system == DesignSystem::Vantare { 12 } else { 11 });
         }
         if let Some(slots) = &mut settings.footer_slots {
             slots.truncate(9);
@@ -172,6 +324,8 @@ impl Settings {
 }
 
 pub(crate) struct Widget {
+    /// Presente con el sistema Vantare; si no, se usa el renderer Eficiencia.
+    vantare: Option<vantare::State>,
     config: Config,
     settings: Settings,
     vm: Vm,
@@ -186,7 +340,10 @@ impl Widget {
         config.fit(config.row_count);
         let vm = Vm::unavailable(Status::Disconnected);
         let plan = model::plan(&config, &vm);
+        let normalized = settings.normalized();
         Self {
+            vantare: (normalized.design_system == DesignSystem::Vantare)
+                .then(|| vantare::State::new(vantare::Options::from_settings(&normalized))),
             config,
             settings: settings.normalized(),
             vm,
@@ -196,6 +353,9 @@ impl Widget {
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
+        if let Some(state) = &mut self.vantare {
+            return state.ingest(vantare_domain::standings_vantare::project(snapshot, prefs));
+        }
         let domain = standings::project_classification(
             snapshot,
             prefs,
@@ -355,9 +515,11 @@ impl Widget {
         // En esos casos el nombre visible, si se pide, ya esta en esas celdas.
         let legacy_track_visible = self.config.show_session_footer
             && self.config.footer_slots.is_empty()
-            && self.config.footer_ids.iter().all(|id| {
-                ["none", "track", "estimatedLaps"].contains(&id.as_str())
-            })
+            && self
+                .config
+                .footer_ids
+                .iter()
+                .all(|id| ["none", "track", "estimatedLaps"].contains(&id.as_str()))
             && [self.config.footer_first, self.config.footer_second]
                 .contains(&model::InfoMetric::Track);
         if !legacy_track_visible {
@@ -411,7 +573,32 @@ impl Widget {
         self.plan = model::plan(&self.config, &self.vm);
     }
 
+    /// Termina las animaciones Vantare en curso (Workshop reconstruye la historia).
+    pub(crate) fn settle(&mut self) {
+        if let Some(state) = &mut self.vantare {
+            state.settle();
+        }
+    }
+
+    /// Columnas Vantare colocadas; `None` en Eficiencia o sin filas.
+    pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
+        self.vantare.as_ref().and_then(vantare::State::columns)
+    }
+
+    /// Estilo Vantare de Workshop en vivo; producto usa el compilado.
+    pub(crate) fn set_vantare_style(
+        &mut self,
+        style: std::sync::Arc<crate::vantare::style::Style>,
+    ) {
+        if let Some(state) = &mut self.vantare {
+            state.set_style(style);
+        }
+    }
+
     pub(crate) fn size(&self) -> (f32, f32) {
+        if let Some(state) = &self.vantare {
+            return state.size();
+        }
         (
             self.config.width
                 + if self.plan.pit_enabled {
@@ -425,13 +612,28 @@ impl Widget {
 
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
-        self.motion.animating(Instant::now())
+        match &self.vantare {
+            Some(state) => state.wake(Instant::now()) != Wake::Idle,
+            None => self.motion.animating(Instant::now()),
+        }
     }
 
     pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
         self.frame_with_motion(prefs, false)
     }
     pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+        if let Some(state) = &mut self.vantare {
+            if reduced {
+                state.settle();
+            }
+            let wake = state.wake(Instant::now());
+            let state = state.clone();
+            let language = prefs.language;
+            return (
+                Box::new(move |window, cx| state.paint(language, window, cx)),
+                wake,
+            );
+        }
         let now = Instant::now();
         let frame = if reduced {
             Motion::new().frame(&self.vm, self.plan.visible_rows, now)
@@ -465,6 +667,25 @@ impl Settings {
             SessionInfo,
         };
         let settings = self.normalized();
+        if settings.design_system == DesignSystem::Vantare {
+            use vantare_ipc::Signal::{Cars, LapCount, LapTimes, Sectors, Weather};
+            return crate::demand::signals(
+                250,
+                &[
+                    Cars,
+                    Positions,
+                    PitStatus,
+                    SessionInfo,
+                    SessionClock,
+                    Flags,
+                    ClassGaps,
+                    LapCount,
+                    LapTimes,
+                    Sectors,
+                    Weather,
+                ],
+            );
+        }
         let config = settings.config();
         let mut demand = crate::demand::signals(250, &[Positions, PitStatus, SessionInfo]);
         if settings.classification_mode == "multiclass" {
@@ -525,10 +746,101 @@ mod tests {
     use crate::source;
 
     #[test]
+    fn standard_vantare_is_player_class_and_only_multiclass_shows_all() {
+        let settings = Settings { class_scope: "all-classes".into(), ..Settings::default() };
+        assert_eq!(settings.normalized().class_scope, "player-class");
+        let settings = Settings { classification_mode: "multiclass".into(),
+            class_scope: "player-class".into(), ..Settings::default() };
+        assert_eq!(settings.normalized().class_scope, "all-classes");
+    }
+    #[test]
+    fn vantare_is_the_default_system_and_paints_its_own_board() {
+        let snapshot = vantare_ipc::snapshot_from_json(include_str!(
+            "../../fixtures/telemetry-real/acc.snapshot.json"
+        ))
+        .expect("foto real ACC");
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(&Settings::default(), prefs);
+        assert!(widget.vantare.is_some());
+        assert!(widget.ingest(&snapshot, prefs));
+        assert!(!widget.ingest(&snapshot, prefs), "misma foto, mismo dibujo");
+        assert!(
+            widget
+                .vantare
+                .as_ref()
+                .is_some_and(|state| state.board.is_some()),
+            "las filas sustituyen al esqueleto"
+        );
+        let demand = Settings::default().demand();
+        assert!(demand.contains(vantare_ipc::Signal::Sectors));
+        assert!(demand.contains(vantare_ipc::Signal::Weather));
+        let unknown: Settings = serde_json::from_str(r#"{"designSystem":"otro","style":"carmin"}"#)
+            .expect("valores desconocidos");
+        assert_eq!(
+            (unknown.design_system, unknown.style),
+            (DesignSystem::Vantare, Look::Neo)
+        );
+        assert!(
+            Widget::new(&Settings::eficiencia(), prefs)
+                .vantare
+                .is_none()
+        );
+    }
+
+    #[test]
+    fn columns_move_between_visible_ones_and_keep_hidden_ones_and_position() {
+        let order = |columns: &[options::ColumnSetting]| -> Vec<String> {
+            columns
+                .iter()
+                .filter(|c| (c.enabled || c.metric_id == "driverName") && c.metric_id != "vehicle")
+                .map(|c| c.metric_id.clone())
+                .collect()
+        };
+        let mut columns = vantare_template("standard");
+        let before = columns.clone();
+        assert!(move_column(&mut columns, "gap", Some("driverName")));
+        assert_eq!(
+            order(&columns),
+            [
+                "position",
+                "positionsGained",
+                "driverNumber",
+                "gap",
+                "driverName",
+                "pit",
+                "sectors"
+            ]
+        );
+        assert_eq!(columns.len(), before.len(), "no se pierde ni duplica nada");
+        assert!(!move_column(&mut columns, "position", None), "P es fija");
+        assert!(!move_column(&mut columns, "gap", Some("gap")));
+        assert!(!move_column(&mut columns, "gap", Some("noExiste")));
+        assert!(shift_column(&mut columns, "gap", 1));
+        assert_eq!(order(&columns)[3..5], ["driverName", "gap"]);
+        assert!(shift_column(&mut columns, "pit", -1));
+        assert!(
+            !shift_column(&mut columns, "positionsGained", -1),
+            "ya es la primera"
+        );
+        let last = order(&columns).last().cloned().expect("columnas");
+        assert!(!shift_column(&mut columns, &last, 1), "ya es la última");
+        assert!(move_column(&mut columns, "positionsGained", None));
+        assert_eq!(
+            order(&columns).last().map(String::as_str),
+            Some("positionsGained")
+        );
+        let options = vantare::Options::from_settings(&Settings {
+            columns: Some(columns),
+            ..Settings::default()
+        });
+        assert_eq!(options.cols.order.last(), Some(&vantare::Kind::Gained));
+    }
+
+    #[test]
     fn hidden_interval_changes_do_not_request_repaint() {
         let prefs = Preferences::default();
         let mut snapshot = source::fixed();
-        let mut widget = Widget::new(&Settings::default(), prefs);
+        let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         assert!(widget.ingest(&snapshot, prefs));
         snapshot.sequence += 1;
         snapshot.state.cars[3].gap_class_ahead =
@@ -536,9 +848,11 @@ mod tests {
         assert!(!widget.ingest(&snapshot, prefs), "intervalo oculto");
 
         let settings = Settings {
-            columns: Some(serde_json::from_str(r#"[{"id":"interval","metricId":"interval"}]"#)
-                .expect("columna")),
-            ..Settings::default()
+            columns: Some(
+                serde_json::from_str(r#"[{"id":"interval","metricId":"interval"}]"#)
+                    .expect("columna"),
+            ),
+            ..Settings::eficiencia()
         };
         let mut visible = Widget::new(&settings, prefs);
         visible.ingest(&snapshot, prefs);
@@ -553,28 +867,32 @@ mod tests {
     fn benchmark_hidden_interval_projection() {
         let prefs = Preferences::default();
         let mut snapshot = source::fixed();
-        let mut widget = Widget::new(&Settings::default(), prefs);
+        let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         widget.ingest(&snapshot, prefs);
         let start = Instant::now();
         let mut repaints = 0;
         for sequence in 1..=10_000 {
             snapshot.sequence = sequence;
-            snapshot.state.cars[3].gap_class_ahead = vantare_domain::Quality::Reliable(
-                vantare_domain::Gap::Time { seconds: if sequence % 2 == 0 { 1.23 } else { 2.34 } },
-            );
+            snapshot.state.cars[3].gap_class_ahead =
+                vantare_domain::Quality::Reliable(vantare_domain::Gap::Time {
+                    seconds: if sequence % 2 == 0 { 1.23 } else { 2.34 },
+                });
             repaints += usize::from(std::hint::black_box(widget.ingest(&snapshot, prefs)));
         }
-        eprintln!("hidden_interval samples=10000 repaints={repaints} elapsed_us={}", start.elapsed().as_micros());
+        eprintln!(
+            "hidden_interval samples=10000 repaints={repaints} elapsed_us={}",
+            start.elapsed().as_micros()
+        );
     }
     /// Diagnóstico sin GPUI/ventana; no mide CPU del renderer ni del juego.
     #[test]
     #[ignore = "benchmark manual sin pantalla"]
     fn benchmark_unchanged_standings_projection() {
         let prefs = Preferences::default();
-        let mut snapshot = vantare_ipc::snapshot_from_json(include_str!(
-            "../../fixtures/standings.snapshot.json"
-        )).expect("captura LMU");
-        let mut widget = Widget::new(&Settings::default(), prefs);
+        let mut snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../../fixtures/standings.snapshot.json"))
+                .expect("captura LMU");
+        let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         widget.ingest(&snapshot, prefs);
         #[cfg(feature = "paint-stats")]
         crate::profiling::report();
@@ -584,7 +902,10 @@ mod tests {
             snapshot.sequence = sequence;
             repaints += usize::from(std::hint::black_box(widget.ingest(&snapshot, prefs)));
         }
-        eprintln!("unchanged_standings samples=10000 repaints={repaints} elapsed_us={}", start.elapsed().as_micros());
+        eprintln!(
+            "unchanged_standings samples=10000 repaints={repaints} elapsed_us={}",
+            start.elapsed().as_micros()
+        );
         #[cfg(feature = "paint-stats")]
         crate::profiling::report();
         assert_eq!(repaints, 0);
@@ -597,7 +918,7 @@ mod tests {
             "../../fixtures/telemetry-real/lmu47.snapshot.json"
         ))
         .expect("foto LMU47 real");
-        let settings: Settings = serde_json::from_str(r#"{"classScope":"all-classes","classificationMode":"multiclass","columns":[{"metricId":"position"},{"metricId":"carNumber"},{"metricId":"driverName"},{"metricId":"class"},{"metricId":"gap"},{"metricId":"interval"},{"metricId":"currentLap"},{"metricId":"lastLap"},{"metricId":"bestLap"},{"metricId":"pit"}],"footerSlots":["ambient","track","wind","rain","wetness","time","lap","position","bestLap"]}"#).expect("opciones de la issue #1475");
+        let settings: Settings = serde_json::from_str(r#"{"designSystem":"eficiencia","classScope":"all-classes","classificationMode":"multiclass","columns":[{"metricId":"position"},{"metricId":"carNumber"},{"metricId":"driverName"},{"metricId":"class"},{"metricId":"gap"},{"metricId":"interval"},{"metricId":"currentLap"},{"metricId":"lastLap"},{"metricId":"bestLap"},{"metricId":"pit"}],"footerSlots":["ambient","track","wind","rain","wetness","time","lap","position","bestLap"]}"#).expect("opciones de la issue #1475");
         let demand = settings.demand();
         assert!(!demand.contains(vantare_ipc::Signal::TrackName));
         let name = format!("vantare-standings-1475-{}", std::process::id());
@@ -611,8 +932,12 @@ mod tests {
             assert!(Instant::now() < deadline, "demanda no aceptada");
             std::thread::yield_now();
         }
-        publisher.publish(Arc::new(snapshot.clone())).expect("foto real");
-        let photo = subscriber.next_photo(Duration::from_secs(2)).expect("foto pedida");
+        publisher
+            .publish(Arc::new(snapshot.clone()))
+            .expect("foto real");
+        let photo = subscriber
+            .next_photo(Duration::from_secs(2))
+            .expect("foto pedida");
         let prefs = Preferences::default();
         let mut widget = Widget::new(&settings, prefs);
         assert!(widget.ingest(&snapshot, prefs));
@@ -634,16 +959,41 @@ mod tests {
     fn track_name_invalidates_only_when_the_footer_draws_it() {
         let prefs = Preferences::default();
         for (settings, visible) in [
-            (Settings::default(), true),
-            (Settings { footer_slots: Some(vec!["track".into()]), ..Settings::default() }, false),
-            (Settings { show_session_footer: false, ..Settings::default() }, false),
-            (Settings { footer_first: "none".into(), ..Settings::default() }, false),
-            (Settings { footer_second: "totalLaps".into(), ..Settings::default() }, true),
+            (Settings::eficiencia(), true),
+            (
+                Settings {
+                    footer_slots: Some(vec!["track".into()]),
+                    ..Settings::eficiencia()
+                },
+                false,
+            ),
+            (
+                Settings {
+                    show_session_footer: false,
+                    ..Settings::eficiencia()
+                },
+                false,
+            ),
+            (
+                Settings {
+                    footer_first: "none".into(),
+                    ..Settings::eficiencia()
+                },
+                false,
+            ),
+            (
+                Settings {
+                    footer_second: "totalLaps".into(),
+                    ..Settings::eficiencia()
+                },
+                true,
+            ),
         ] {
             let mut snapshot = source::fixed();
             let mut widget = Widget::new(&settings, prefs);
             assert!(widget.ingest(&snapshot, prefs));
-            snapshot.state.session.track_name = vantare_domain::Quality::Reliable("Otra pista".into());
+            snapshot.state.session.track_name =
+                vantare_domain::Quality::Reliable("Otra pista".into());
             assert_eq!(widget.ingest(&snapshot, prefs), visible, "{settings:?}");
         }
     }
@@ -654,7 +1004,7 @@ mod tests {
             vantare_ipc::snapshot_from_json(include_str!("../../fixtures/standings.snapshot.json"))
                 .expect("escena");
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings::default(), prefs);
+        let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         widget.ingest(&snapshot, prefs);
         let rows = widget.vm.rows.clone();
         let before = widget.size();
@@ -687,7 +1037,7 @@ mod tests {
                         show_session_footer: footer,
                         row_count: 3,
                         brand_visible: Some(false),
-                        ..Settings::default()
+                        ..Settings::eficiencia()
                     };
                     let mut widget = Widget::new(&settings, prefs);
                     widget.ingest(&snapshot, prefs);
@@ -713,7 +1063,7 @@ mod tests {
                 footer_slots: Some(vec!["position".into(), "gap".into(), "lastLap".into()]),
                 show_session_header: false,
                 brand_visible: Some(true),
-                ..Settings::default()
+                ..Settings::eficiencia()
             },
             prefs,
         );
@@ -741,7 +1091,7 @@ mod tests {
                 &Settings {
                     footer_first: metric.into(),
                     footer_second: "none".into(),
-                    ..Settings::default()
+                    ..Settings::eficiencia()
                 },
                 prefs,
             );
@@ -769,7 +1119,7 @@ mod tests {
                 columns: Some(columns),
                 class_scope: "all-classes".into(),
                 row_count: 4,
-                ..Settings::default()
+                ..Settings::eficiencia()
             },
             prefs,
         );
@@ -783,7 +1133,7 @@ mod tests {
                 class_scope: "all-classes".into(),
                 player_window: true,
                 window_around: 2,
-                ..Settings::default()
+                ..Settings::eficiencia()
             },
             prefs,
         );
@@ -801,7 +1151,7 @@ mod tests {
             &Settings {
                 class_scope: "all-classes".into(),
                 classification_mode: "multiclass".into(),
-                ..Settings::default()
+                ..Settings::eficiencia()
             },
             prefs,
         );
@@ -816,7 +1166,7 @@ mod tests {
             vantare_ipc::snapshot_from_json(include_str!("../../fixtures/standings.snapshot.json"))
                 .expect("escena fase 2");
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings::default(), prefs);
+        let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.size(), (440.0, 664.0));
         assert!(!widget.plan.pit_enabled);
@@ -857,7 +1207,7 @@ mod tests {
     #[test]
     fn standings_repaint_only_when_what_is_drawn_changes() {
         let prefs = Preferences::default();
-        let mut standings = Widget::new(&Settings::default(), Preferences::default());
+        let mut standings = Widget::new(&Settings::eficiencia(), Preferences::default());
         let first = source::fixed();
         assert!(standings.ingest(&first, prefs), "el primer estado se pinta");
 
@@ -884,7 +1234,7 @@ mod tests {
 
     /// Cuántas veces pediría repintar Standings en un minuto a 30 Hz.
     fn standings_repaints(scene: fn(u64) -> Snapshot) -> usize {
-        let mut standings = Widget::new(&Settings::default(), Preferences::default());
+        let mut standings = Widget::new(&Settings::eficiencia(), Preferences::default());
         (0..30 * 60)
             .filter(|&tick| standings.ingest(&scene(tick), Preferences::default()))
             .count()

@@ -2,6 +2,57 @@
 use super::*;
 
 impl Workshop {
+    /// Grupos Aspecto (estilo y acento) y Marca de los widgets Vantare.
+    fn vantare_look(&self, cx: &mut Context<Self>) -> [gpui::Div; 2] {
+        let current = |key: &str| {
+            serde_json::to_value(&self.settings)
+                .ok()
+                .and_then(|v| v[key].as_str().map(str::to_owned))
+                .unwrap_or_default()
+        };
+        let brand = match &self.settings {
+            Settings::Standings(s) => s.brand_visible,
+            Settings::Relative(s) => s.brand_visible,
+            Settings::FuelStrategy(s) => s.brand_visible,
+            Settings::Delta(s) => s.brand_visible,
+            _ => None,
+        };
+        [
+            group("Aspecto")
+                .child(Self::segments(
+                    Control::Setting("style"),
+                    &current("style"),
+                    &[("neo", "Neo"), ("neutro", "Neutro")],
+                    cx,
+                ))
+                .child(div().mt(px(6.0)).child(Self::segments(
+                    Control::Setting("accent"),
+                    &current("accent"),
+                    &[
+                        ("red", "Rojo"),
+                        ("amber", "Ámbar"),
+                        ("green", "Verde"),
+                        ("white", "Blanco"),
+                    ],
+                    cx,
+                ))),
+            group("Marca")
+                .child(Self::segments(
+                    Control::Brand,
+                    if brand == Some(true) { "true" } else { "false" },
+                    &[("true", "Con marca"), ("false", "Sin marca")],
+                    cx,
+                ))
+                .child(
+                    div()
+                        .mt(px(6.0))
+                        .text_size(px(10.0))
+                        .text_color(rgb(0x95959c))
+                        .child("En la app lo decidirá la licencia; aquí se prueba a mano."),
+                ),
+        ]
+    }
+
     fn segments(
         control: Control,
         selected: &str,
@@ -158,6 +209,10 @@ impl Workshop {
                     .id(format!("options-{label}"))
                     .max_h(px(180.0))
                     .overflow_y_scroll()
+                    // La rueda desplaza solo la lista: GPUI no corta el evento y
+                    // el panel de detrás se movía a la vez. La lista ya se ha
+                    // desplazado (su oyente va antes en la fase de burbuja).
+                    .on_scroll_wheel(|_, _, cx| cx.stop_propagation())
                     .bg(rgb(0x232325))
                     .children(options.into_iter().map(|(id, label)| {
                         button(format!("option-{label}-{id}"), &label, id == selected).on_click(
@@ -190,6 +245,7 @@ fn widget_label(kind: Kind) -> &'static str {
         Kind::Standings => "Standings",
         Kind::Relative => "Relative",
         Kind::Delta => "Delta",
+        Kind::FuelStrategy => "Fuel y stint",
         Kind::Pedals => "Pedals",
         Kind::PedalsTelemetry => "Pedales avanzados",
         Kind::FastestLap => "Vuelta rápida",
@@ -346,11 +402,32 @@ fn backdrop(background: &str) -> gpui::Div {
 }
 
 impl Render for Workshop {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let language = if self.prefs.language == vantare_domain::format::Language::En {
             "en"
         } else {
             "es"
+        };
+        let vantare = match &self.settings {
+            Settings::Standings(s) => s.design_system == crate::standings::DesignSystem::Vantare,
+            Settings::Relative(s) => s.design_system == crate::standings::DesignSystem::Vantare,
+            Settings::FuelStrategy(s) => s.design_system == crate::standings::DesignSystem::Vantare,
+            Settings::Delta(s) => s.design_system == crate::standings::DesignSystem::Vantare,
+            _ => false,
+        };
+        let relative = self.kind == Kind::Relative;
+        let system = if matches!(
+            self.kind,
+            Kind::Standings | Kind::Relative | Kind::FuelStrategy | Kind::Delta
+        ) {
+            Self::segments(
+                Control::Setting("designSystem"),
+                if vantare { "vantare" } else { "eficiencia" },
+                &[("vantare", "Vantare"), ("eficiencia", "Eficiencia")],
+                cx,
+            )
+        } else {
+            div().child(button("system".into(), "Eficiencia", true))
         };
         let mut panel = div()
             .id("properties")
@@ -375,13 +452,17 @@ impl Render for Workshop {
                     .mb(px(6.0))
                     .text_size(px(28.0))
                     .font_family("Inter W700")
-                    .child("Eficiencia."),
+                    .child(if vantare { "Vantare." } else { "Eficiencia." }),
             )
             .child(
                 div()
                     .text_size(px(11.0))
                     .text_color(rgb(0xa5a5ab))
-                    .child(format!("{} · Sistema Eficiencia", widget_label(self.kind))),
+                    .child(format!(
+                        "{} · Sistema {}",
+                        widget_label(self.kind),
+                        if vantare { "Vantare" } else { "Eficiencia" }
+                    )),
             )
             .child(group("Idioma del widget").child(self.picker(
                 Control::Language,
@@ -411,7 +492,7 @@ impl Render for Workshop {
                             .text_color(rgb(0xacacb2))
                             .child("Sistema de diseño"),
                     )
-                    .child(button("system".into(), "Eficiencia", true))
+                    .child(system)
                     .child(
                         div()
                             .mt(px(6.0))
@@ -434,7 +515,203 @@ impl Render for Workshop {
                 ],
                 cx,
             )));
-        if self.kind == Kind::Standings {
+        if vantare && self.kind == Kind::FuelStrategy {
+            let size = match &self.settings {
+                Settings::FuelStrategy(s) => s.size.clone(),
+                _ => String::new(),
+            };
+            panel = panel
+                .child(group("Tamaño").child(Self::segments(
+                    Control::Setting("size"),
+                    &size,
+                    &[
+                        ("compact", "Compacto"),
+                        ("standard", "Estándar"),
+                        ("expanded", "Ampliado"),
+                    ],
+                    cx,
+                )))
+                .children(self.vantare_look(cx));
+        } else if vantare && self.kind == Kind::Delta {
+            let (size, reference) = match &self.settings {
+                Settings::Delta(s) => (s.size.clone(), s.reference.clone()),
+                _ => (String::new(), String::new()),
+            };
+            panel = panel
+                .child(group("Formato").child(Self::segments(
+                    Control::Setting("size"),
+                    &size,
+                    &[
+                        ("pill", "Píldora"),
+                        ("bar", "Barra"),
+                        ("expanded", "Ampliado"),
+                    ],
+                    cx,
+                )))
+                .child(group("Referencia").child(Self::segments(
+                    Control::Setting("reference"),
+                    &reference,
+                    &[
+                        ("best", "Mejor"),
+                        ("optimal", "Óptima"),
+                        ("leader", "Líder"),
+                    ],
+                    cx,
+                )))
+                .children(self.vantare_look(cx));
+        } else if vantare {
+            let current = |key: &str| {
+                serde_json::to_value(&self.settings)
+                    .ok()
+                    .and_then(|v| v[key].as_str().map(str::to_owned))
+                    .unwrap_or_default()
+            };
+            let columns = match &self.settings {
+                Settings::Standings(settings) => settings
+                    .columns
+                    .clone()
+                    .unwrap_or_else(|| crate::standings::vantare_template("standard")),
+                Settings::Relative(settings) => settings
+                    .columns
+                    .clone()
+                    .unwrap_or_else(|| crate::relative::vantare_template("standard")),
+                _ => Vec::new(),
+            };
+            let multiclass = current("classificationMode") == "multiclass";
+            let mut modes = if relative {
+                group("Ventana")
+                    .child(Self::segments(
+                        Control::Setting("classScope"),
+                        &current("classScope"),
+                        &[("all", "Todas las clases"), ("sameClass", "Mi clase")],
+                        cx,
+                    ))
+                    .child(self.setting("rangeAhead", "Delante", numbers(0..=8), cx))
+                    .child(self.setting("rangeBehind", "Detrás", numbers(0..=8), cx))
+            } else {
+                group("Modo").child(Self::segments(
+                    Control::Setting("classificationMode"),
+                    if multiclass { "multiclass" } else { "normal" },
+                    &[("normal", "Estándar"), ("multiclass", "Multiclase")],
+                    cx,
+                ))
+            };
+            if !multiclass && !relative {
+                modes = modes.child(div().mt(px(6.0)).child(Self::segments(
+                    Control::Setting("classScope"),
+                    &current("classScope"),
+                    &[("player-class", "Mi clase"), ("all-classes", "Todas")],
+                    cx,
+                )));
+            }
+            panel = panel
+                .child(modes)
+                .child(
+                    group("Plantilla de columnas").child(
+                        div().flex().gap(px(4.0)).children(
+                            [
+                                ("compact", "Compacto"),
+                                ("standard", "Estándar"),
+                                ("expanded", "Ampliado"),
+                            ]
+                            .into_iter()
+                            .map(|(id, label)| {
+                                button(format!("template-{id}"), label, false)
+                                    .flex_1()
+                                    .px(px(3.0))
+                                    .text_size(px(10.0))
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.select(Control::Template(id), "", cx);
+                                    }))
+                            }),
+                        ),
+                    ),
+                )
+                .child(
+                    group("Columnas")
+                        .child(
+                            div()
+                                .text_size(px(10.0))
+                                .text_color(rgb(0x919197))
+                                .child("Arrastra una columna en el widget o usa ◀ ▶."),
+                        )
+                        .children(columns.iter().filter_map(|column| {
+                            let (id, label): (&'static str, &str) = match column.metric_id.as_str()
+                            {
+                                "position" if relative => ("position", "Posición en clase"),
+                                "carNumber" => ("carNumber", "Dorsal"),
+                                "lapDelta" => ("lapDelta", "Vueltas de diferencia"),
+                                "driverRating" => ("driverRating", "Nivel del piloto"),
+                                "safetyRating" => ("safetyRating", "Safety Rating"),
+                                "trend" => ("trend", "Tendencia s/vuelta"),
+                                "trackStrip" => ("trackStrip", "Tira de pista (arriba)"),
+                                "positionsGained" => ("positionsGained", "Posiciones ganadas ±"),
+                                "driverNumber" => ("driverNumber", "Dorsal"),
+                                "driverName" => ("driverName", "Piloto"),
+                                "vehicle" => ("vehicle", "Coche (junto al piloto)"),
+                                "tireCompound" => ("tireCompound", "Compuesto"),
+                                "pit" => ("pit", "Paradas / BOX"),
+                                "sectors" => ("sectors", "Sectores"),
+                                "lastLap" => ("lastLap", "Última vuelta"),
+                                "bestLap" => ("bestLap", "Mejor vuelta"),
+                                "interval" => ("interval", "Intervalo"),
+                                "gap" => ("gap", "Gap al líder"),
+                                _ => return None,
+                            };
+                            let driver = id == "driverName";
+                            let enabled = column.enabled || driver;
+                            let mut line = div().mt(px(4.0)).flex().gap(px(4.0)).child(
+                                button(
+                                    format!("column-{id}"),
+                                    &if driver {
+                                        format!("{label}   ●")
+                                    } else {
+                                        format!("{label}   {}", if enabled { "●" } else { "○" })
+                                    },
+                                    enabled,
+                                )
+                                .flex_1()
+                                .on_click(cx.listener(
+                                    move |this, _, _, cx| {
+                                        if !driver {
+                                            this.select(Control::Module(id), "", cx);
+                                        }
+                                    },
+                                )),
+                            );
+                            if enabled && !matches!(id, "vehicle" | "trackStrip") {
+                                for (step, arrow) in [(-1, "◀"), (1, "▶")] {
+                                    line = line.child(
+                                        button(format!("move-{id}-{step}"), arrow, false)
+                                            .px(px(6.0))
+                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                this.select(Control::MoveColumn(id, step), "", cx);
+                                            })),
+                                    );
+                                }
+                            }
+                            Some(line)
+                        })),
+                )
+                .child(
+                    group(if relative { "Nombre" } else { "Filas y nombre" })
+                        .when(!relative, |g| {
+                            g.child(self.setting("rowCount", "Filas", numbers(1..=30), cx))
+                        })
+                        .child(self.picker(
+                            Control::Name,
+                            "Nombre",
+                            &self.name_mode,
+                            options(&[
+                                ("full", "Completo"),
+                                ("initial", "N. Apellido"),
+                                ("surname", "Apellido"),
+                            ]),
+                            cx,
+                        )),
+                )
+                .children(self.vantare_look(cx));
+        } else if self.kind == Kind::Standings {
             panel = panel
                 .child(group("Marca").child(Self::segments(
                     Control::Setting("brandVisible"),
@@ -493,7 +770,7 @@ impl Render for Workshop {
             )));
         }
 
-        if self.kind == Kind::Standings || self.kind == Kind::Relative {
+        if !vantare && matches!(self.kind, Kind::Standings | Kind::Relative) {
             if self.kind == Kind::Standings {
                 panel = panel.child(group("Posición del jugador").child(self.picker(
                     Control::Player,
@@ -764,24 +1041,36 @@ impl Render for Workshop {
                         ]),
                         cx,
                     ))
-                    .child(self.numeric_field(
-                        Control::Width,
-                        "Ancho",
-                        self.dimensions.map_or(
-                            preview_size(self.kind, self.overlay.read(cx).wanted_size()).0,
-                            |s| s.0,
+                    .child(
+                        self.numeric_field(
+                            Control::Width,
+                            "Ancho",
+                            self.dimensions.map_or(
+                                preview_size(
+                                    self.eficiencia_relative(),
+                                    self.overlay.read(cx).wanted_size(),
+                                )
+                                .0,
+                                |s| s.0,
+                            ),
+                            cx,
                         ),
-                        cx,
-                    ))
-                    .child(self.numeric_field(
-                        Control::Height,
-                        "Alto",
-                        self.dimensions.map_or(
-                            preview_size(self.kind, self.overlay.read(cx).wanted_size()).1,
-                            |s| s.1,
+                    )
+                    .child(
+                        self.numeric_field(
+                            Control::Height,
+                            "Alto",
+                            self.dimensions.map_or(
+                                preview_size(
+                                    self.eficiencia_relative(),
+                                    self.overlay.read(cx).wanted_size(),
+                                )
+                                .1,
+                                |s| s.1,
+                            ),
+                            cx,
                         ),
-                        cx,
-                    ))
+                    )
                     .child(
                         button("natural-size".into(), "Aplicar tamaño declarado", false).on_click(
                             cx.listener(|this, _, _, cx| {
@@ -834,8 +1123,30 @@ impl Render for Workshop {
                         }
                     })),
             );
-        let wanted = preview_size(self.kind, self.overlay.read(cx).wanted_size());
+        let wanted = preview_size(
+            self.eficiencia_relative(),
+            self.overlay.read(cx).wanted_size(),
+        );
         let dimensions = self.dimensions.unwrap_or(wanted);
+        // Encaje: el widget nunca desborda el escenario visible (ventanas estrechas).
+        let viewport = window.viewport_size();
+        let panel_width = if self.panel_hidden { 0.0 } else { 248.0 };
+        let playback = if self.scene.snapshots.len() > 1 {
+            210.0
+        } else {
+            0.0
+        };
+        let stage_width = (f32::from(viewport.width) - panel_width - 48.0).max(120.0);
+        let stage_height = (f32::from(viewport.height) - 80.0 - playback).max(120.0);
+        let columns = if self.comparison.is_some() { 2.0 } else { 1.0 };
+        let fit = (stage_width / (dimensions.0 * self.scale * columns))
+            .min(stage_height / (dimensions.1 * self.scale))
+            .min(1.0);
+        if (fit - self.fit).abs() > 0.001 {
+            self.fit = fit;
+            self.apply_preview(cx);
+        }
+        let scale = self.scale * self.fit;
         let content = |view: Entity<Overlay>| {
             if self.source_error {
                 div()
@@ -847,12 +1158,86 @@ impl Render for Workshop {
                 view.into_any_element()
             }
         };
-        let widget = div()
-            .w(px(dimensions.0 * self.scale))
-            .h(px(dimensions.1 * self.scale))
-            .child(content(self.overlay.clone()));
+        let entity = cx.entity();
+        let mut widget = div()
+            .id("widget-preview")
+            .relative()
+            .w(px(dimensions.0 * scale))
+            .h(px(dimensions.1 * scale))
+            .child(content(self.overlay.clone()))
+            .child(
+                gpui::canvas(
+                    move |bounds, _, cx| {
+                        entity.update(cx, |this, _| this.widget_bounds = Some(bounds));
+                    },
+                    |_, (), _, _| {},
+                )
+                .absolute()
+                .top_0()
+                .left_0()
+                .size_full(),
+            );
+        // Vantare: arrastrar una columna a izquierda o derecha cambia su orden en
+        // directo; al pasar por encima se recuadra la columna exacta.
+        if let Some(boxes) = self.overlay.read(cx).vantare_columns() {
+            widget = widget
+                .cursor(if self.column_drag.is_some() {
+                    gpui::CursorStyle::ClosedHand
+                } else if self.column_hover.is_some() {
+                    gpui::CursorStyle::OpenHand
+                } else {
+                    gpui::CursorStyle::Arrow
+                })
+                .on_mouse_down(
+                    gpui::MouseButton::Left,
+                    cx.listener(|this, event: &gpui::MouseDownEvent, _, cx| {
+                        this.start_column_drag(event.position, cx);
+                    }),
+                )
+                .on_mouse_move(cx.listener(|this, event: &gpui::MouseMoveEvent, _, cx| {
+                    this.drag_column(event.position, cx);
+                }))
+                .on_mouse_up(
+                    gpui::MouseButton::Left,
+                    cx.listener(|this, _, _, cx| this.finish_column_drag(cx)),
+                )
+                .on_mouse_up_out(
+                    gpui::MouseButton::Left,
+                    cx.listener(|this, _, _, cx| this.finish_column_drag(cx)),
+                )
+                .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                    if !hovered && this.column_hover.take().is_some() {
+                        cx.notify();
+                    }
+                }));
+            let marked = self
+                .column_drag
+                .map(|metric| (metric, true))
+                .or(self.column_hover.map(|metric| (metric, false)));
+            if let Some((metric, dragging)) = marked
+                && let Some((_, left, width)) = boxes.columns.iter().find(|(m, ..)| *m == metric)
+            {
+                let half = boxes.gap / 2.0;
+                let (sx, sy) = self.widget_scale(cx);
+                widget = widget.child(
+                    div()
+                        .absolute()
+                        .left(px((left - half) * sx))
+                        .top(px((boxes.top - 2.0) * sy))
+                        .w(px((width + boxes.gap) * sx))
+                        .h(px((boxes.bottom - boxes.top + 4.0) * sy))
+                        .rounded(px(4.0))
+                        .border_2()
+                        .when(dragging, |d| {
+                            d.border_color(rgb(0xe14a54)).bg(gpui::rgba(0xe14a541f))
+                        })
+                        .when(!dragging, |d| d.border_color(gpui::rgba(0xffffff4d))),
+                );
+            }
+        }
         let mut previews = div()
             .w_full()
+            .flex_1()
             .flex()
             .items_center()
             .child(div().flex_1().flex().justify_center().child(widget));
@@ -860,8 +1245,8 @@ impl Render for Workshop {
             previews = previews.child(
                 div().flex_1().flex().justify_center().child(
                     div()
-                        .w(px(dimensions.0 * self.scale))
-                        .h(px(dimensions.1 * self.scale))
+                        .w(px(dimensions.0 * scale))
+                        .h(px(dimensions.1 * scale))
                         .child(content(view.clone())),
                 ),
             );
@@ -875,7 +1260,7 @@ impl Render for Workshop {
             .flex()
             .flex_col()
             .items_center()
-            .justify_center()
+            .pt(px(56.0))
             .bg(rgb(match self.background.as_str() {
                 "solid" => 0x252527,
                 "transparent" => 0xb8b7b3,
@@ -892,15 +1277,32 @@ impl Render for Workshop {
                     .text_color(rgb(0xb9b9bd))
                     .child(format!("{} / ESTUDIO 01", self.kind.name().to_uppercase())),
             )
+            .child(
+                div().absolute().top(px(16.0)).right(px(20.0)).child(
+                    button(
+                        "toggle-panel".into(),
+                        if self.panel_hidden {
+                            "Mostrar panel"
+                        } else {
+                            "Ocultar panel"
+                        },
+                        false,
+                    )
+                    .text_size(px(10.0))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.panel_hidden = !this.panel_hidden;
+                        cx.notify();
+                    })),
+                ),
+            )
             .child(previews);
         if self.scene.snapshots.len() > 1 {
             stage =
                 stage.child(
                     div()
-                        .absolute()
-                        .bottom(px(22.0))
-                        .left(px(32.0))
-                        .w(px(430.0))
+                        .flex_shrink_0()
+                        .mb(px(16.0))
+                        .w(px(430.0_f32.min(stage_width)))
                         .p(px(16.0))
                         .rounded(px(8.0))
                         .bg(rgb(0x131315))
@@ -969,6 +1371,7 @@ impl Render for Workshop {
             .error
             .as_ref()
             .or(self.style.error.as_ref())
+            .or(self.vantare_style.error.as_ref())
             .or(self.state_error.as_ref())
         {
             stage = stage.child(
@@ -1008,7 +1411,7 @@ impl Render for Workshop {
             .size_full()
             .flex()
             .text_color(rgb(0xf5f5f5))
-            .child(panel)
+            .when(!self.panel_hidden, |this| this.child(panel))
             .child(stage)
     }
 }

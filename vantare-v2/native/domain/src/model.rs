@@ -104,6 +104,8 @@ pub struct Car {
     pub id: CarId,
     /// Número de carrera tal como se muestra ("7", "07", "A3").
     pub number: String,
+    /// Modelo del coche tal como lo nombra la fuente ("Ferrari 499P"); vacío si no lo publica.
+    pub vehicle: String,
     pub driver: Driver,
     /// `None` si el simulador no informa de clases.
     pub class: Option<Class>,
@@ -146,6 +148,41 @@ pub struct Car {
     /// ser un límite inferior si la fuente solo expone una sanción activa.
     /// La del jugador se consulta mediante `State::player_car`, sin duplicarla.
     pub pending_penalties: Quality<u32>,
+    /// Posición de salida, desde 1. Las posiciones ganadas se derivan de ella.
+    pub grid_position: Quality<u32>,
+    /// Paradas en boxes completadas en la sesión.
+    pub pit_stops: Quality<u32>,
+    /// Compuesto de neumático montado.
+    pub tyre_compound: Quality<TyreCompound>,
+    /// Mejores sectores personales de la sesión; tantos como tenga el circuito.
+    pub best_sectors_s: Vec<Quality<f64>>,
+    /// Sectores ya completados de la vuelta en curso, en orden.
+    pub current_sectors_s: Vec<Quality<f64>>,
+    /// Nivel del piloto en el simulador (LMU: Bronce, Plata, Oro, Platino).
+    pub driver_rating: Quality<DriverRating>,
+    /// Safety Rating del piloto, 0–100.
+    pub safety_rating: Quality<f64>,
+    /// Cambio por vuelta del valor absoluto de `relative_s`: negativo = se
+    /// acerca al jugador, positivo = se aleja. Normalmente `Estimated`.
+    pub relative_trend_s_per_lap: Quality<f64>,
+}
+
+/// Nivel del piloto, de menor a mayor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum DriverRating {
+    Bronze,
+    Silver,
+    Gold,
+    Platinum,
+}
+
+/// Compuesto de neumático, normalizado entre simuladores.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum TyreCompound {
+    Soft,
+    Medium,
+    Hard,
+    Wet,
 }
 
 /// Telemetría del coche del jugador.
@@ -177,6 +214,32 @@ pub struct Fuel {
     /// y no cambiar las proyecciones. El DTO publica solo las plazas ocupadas.
     /// Son medidas históricas: el silencio no cambia sus litros.
     pub history: [Option<(u32, f64)>; 10],
+    /// Energía virtual restante, fracción 0–1 (Hypercar en LMU). #1497.
+    pub energy: Quality<f64>,
+    /// Energía virtual media por vuelta, fracción 0–1.
+    pub energy_per_lap: Quality<f64>,
+    /// Litros que gastará la vuelta en curso al ritmo actual (cae en FCY).
+    pub lap_projection_l: Quality<f64>,
+}
+
+/// Parada en curso del jugador: repostaje y neumáticos. #1497.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct PitService {
+    /// Litros que la parada va a cargar en total.
+    pub refuel_target_l: Quality<f64>,
+    /// Litros cargados hasta ahora en esta parada.
+    pub refuel_added_l: Quality<f64>,
+    /// Segundos que faltan para terminar el servicio.
+    pub remaining_s: Quality<f64>,
+    /// Neumáticos que se cambian (0–4).
+    pub tyres: Quality<u8>,
+}
+
+/// Stint actual del jugador (desde la última salida de boxes). #1497.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Stint {
+    pub laps: Quality<u32>,
+    pub elapsed_s: Quality<f64>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
@@ -207,6 +270,18 @@ pub struct Player {
     pub pit_limiter_active: Quality<bool>,
     /// Detenido en la parada según la fuente; no acredita reparación ni servicio cumplido.
     pub pit_stop_stopped: Quality<bool>,
+    /// Tiempo que se pierde en una parada (entrada, servicio típico y salida),
+    /// en segundos. Normalmente `Estimated`.
+    pub pit_loss_s: Quality<f64>,
+    pub pit_service: PitService,
+    pub stint: Stint,
+    /// Diferencia con la vuelta óptima (suma de los mejores sectores propios)
+    /// en este punto de la vuelta; negativo = más rápido. #1497.
+    pub delta_optimal_s: Quality<f64>,
+    /// Diferencia con la mejor vuelta del líder de la clase. #1497.
+    pub delta_leader_s: Quality<f64>,
+    /// La vuelta en curso no cuenta (límites de pista). #1497.
+    pub lap_invalid: Quality<bool>,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -392,6 +467,7 @@ fn degrade_car(car: &mut Car) {
     let Car {
         id: _,
         number: _,
+        vehicle: _,
         driver: _,
         class: _,
         position,
@@ -414,6 +490,14 @@ fn degrade_car(car: &mut Car) {
         pose,
         velocity_mps,
         pending_penalties,
+        grid_position,
+        pit_stops,
+        tyre_compound,
+        best_sectors_s,
+        current_sectors_s,
+        driver_rating,
+        safety_rating,
+        relative_trend_s_per_lap,
     } = car;
     make_stale(position);
     make_stale(class_position);
@@ -435,6 +519,14 @@ fn degrade_car(car: &mut Car) {
     make_stale(pose);
     make_stale(velocity_mps);
     make_stale(pending_penalties);
+    make_stale(grid_position);
+    make_stale(pit_stops);
+    make_stale(tyre_compound);
+    best_sectors_s.iter_mut().for_each(make_stale);
+    current_sectors_s.iter_mut().for_each(make_stale);
+    make_stale(driver_rating);
+    make_stale(safety_rating);
+    make_stale(relative_trend_s_per_lap);
 }
 
 fn degrade_player(player: &mut Player) {
@@ -446,7 +538,16 @@ fn degrade_player(player: &mut Player) {
         delta_best_s,
         pit_limiter_active,
         pit_stop_stopped,
+        pit_loss_s,
+        pit_service,
+        stint,
+        delta_optimal_s,
+        delta_leader_s,
+        lap_invalid,
     } = player;
+    make_stale(delta_optimal_s);
+    make_stale(delta_leader_s);
+    make_stale(lap_invalid);
     let Telemetry {
         throttle,
         brake,
@@ -469,7 +570,26 @@ fn degrade_player(player: &mut Player) {
         per_lap_l,
         laps_left,
         history: _,
+        energy,
+        energy_per_lap,
+        lap_projection_l,
     } = fuel;
+    make_stale(energy);
+    make_stale(energy_per_lap);
+    make_stale(lap_projection_l);
+    let PitService {
+        refuel_target_l,
+        refuel_added_l,
+        remaining_s,
+        tyres,
+    } = pit_service;
+    make_stale(refuel_target_l);
+    make_stale(refuel_added_l);
+    make_stale(remaining_s);
+    make_stale(tyres);
+    let Stint { laps, elapsed_s } = stint;
+    make_stale(laps);
+    make_stale(elapsed_s);
     make_stale(level_l);
     make_stale(capacity_l);
     make_stale(per_lap_l);
@@ -477,6 +597,7 @@ fn degrade_player(player: &mut Player) {
     make_stale(delta_best_s);
     make_stale(pit_limiter_active);
     make_stale(pit_stop_stopped);
+    make_stale(pit_loss_s);
     let Damage {
         aero,
         body,

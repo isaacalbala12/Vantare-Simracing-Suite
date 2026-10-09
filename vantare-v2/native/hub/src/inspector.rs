@@ -1,6 +1,9 @@
 //! Ajustes consumidos por los renderizadores productivos; no persiste ni dibuja widgets.
 use crate::orbit::NumberRange;
-use vantare_ui::Settings;
+use vantare_ui::{
+    Settings,
+    standings::{Accent, Look},
+};
 
 /// Acciones de posición sobre el lienzo lógico. No añade anclajes al documento.
 pub fn anchored_position(size: (f32, f32), column: u8, row: u8) -> Option<(f32, f32)> {
@@ -121,10 +124,6 @@ const METRICS: &[(&str, &str)] = &[
     ("Circuito", "track"),
     ("Vueltas estimadas", "estimatedLaps"),
 ];
-const CLASSES: &[(&str, &str)] = &[
-    ("Todas las clases", "all-classes"),
-    ("Clase del jugador", "player-class"),
-];
 
 // Solo elimina la repetición del setter; cada fila sigue nombrando su Settings tipado.
 macro_rules! set {
@@ -159,7 +158,7 @@ macro_rules! set {
     clippy::cast_precision_loss
 )]
 pub fn fields(settings: &Settings) -> Vec<Field> {
-    match settings {
+    let mut rows = match settings {
         Settings::Standings(value) => {
             let mut rows = vec![
                 number(
@@ -171,32 +170,16 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     set!(Standings.row_count as usize),
                 ),
                 choice(
-                    "Clases",
-                    Tab::Content,
-                    &value.class_scope,
-                    CLASSES,
-                    set!(Standings.class_scope string),
-                ),
-                choice(
                     "Clasificación",
                     Tab::Content,
                     &value.classification_mode,
                     &[("Normal", "normal"), ("Multiclase", "multiclass")],
-                    set!(Standings.classification_mode string),
-                ),
-                boolean(
-                    "Centrar en el jugador",
-                    Tab::Content,
-                    value.player_window,
-                    set!(Standings.player_window),
-                ),
-                number(
-                    "Filas alrededor",
-                    value.window_around as f64,
-                    0.0,
-                    8.0,
-                    2.0,
-                    set!(Standings.window_around as usize),
+                    |settings, key| {
+                        if let Settings::Standings(value) = settings {
+                            value.classification_mode = key.into();
+                            *value = value.normalized();
+                        }
+                    },
                 ),
                 boolean(
                     "Cabecera de sesión",
@@ -255,6 +238,51 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     }
                 },
             ));
+            rows
+        }
+        Settings::Delta(value)
+            if value.design_system == vantare_ui::standings::DesignSystem::Vantare =>
+        {
+            let mut rows = vec![
+                choice(
+                    "Formato Delta",
+                    Tab::Appearance,
+                    &value.size,
+                    &[
+                        ("Cápsula", "pill"),
+                        ("Barra", "bar"),
+                        ("Ampliado", "expanded"),
+                    ],
+                    set!(Delta.size string),
+                ),
+                choice(
+                    "Vuelta de referencia",
+                    Tab::Content,
+                    &value.reference,
+                    &[
+                        ("Mejor vuelta propia", "best"),
+                        ("Óptima (mejores sectores)", "optimal"),
+                        ("Mejor del líder de clase", "leader"),
+                    ],
+                    set!(Delta.reference string),
+                ),
+            ];
+            if value.size != "pill" {
+                rows.push(boolean(
+                    "Barra de diferencia",
+                    Tab::Appearance,
+                    value.show_bar,
+                    set!(Delta.show_bar),
+                ));
+            }
+            if value.size == "expanded" {
+                rows.push(boolean(
+                    "Comparación de sectores",
+                    Tab::Content,
+                    value.show_sectors,
+                    set!(Delta.show_sectors),
+                ));
+            }
             rows
         }
         Settings::Delta(value) => vec![choice(
@@ -438,7 +466,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
         ],
         Settings::Relative(value) => vec![
             number(
-                "Pilotos delante",
+                "Filas alrededor · delante",
                 value.range_ahead as f64,
                 0.0,
                 8.0,
@@ -446,23 +474,161 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 set!(Relative.range_ahead as usize),
             ),
             number(
-                "Pilotos detrás",
+                "Filas alrededor · detrás",
                 value.range_behind as f64,
                 0.0,
                 8.0,
                 1.0,
                 set!(Relative.range_behind as usize),
             ),
-            choice(
-                "Clases",
-                Tab::Content,
-                &value.class_scope,
-                &[("Todas", "all"), ("Misma clase", "sameClass")],
-                set!(Relative.class_scope string),
-            ),
         ],
         _ => vec![],
+    };
+    if let Some((_, look, accent)) = appearance(settings) {
+        // Estas opciones son exclusivas del sistema heredado: Vantare compone
+        // su cabecera y pie con el contrato de #1497.
+        rows.retain(|field| {
+            !matches!(
+                field.title,
+                "Diseño"
+                    | "Cabecera de sesión"
+                    | "Pie de sesión"
+                    | "Primera métrica del pie"
+                    | "Segunda métrica del pie"
+                    | "Filas del historial"
+                    | "Proyección"
+            )
+        });
+        match settings {
+            Settings::Standings(value) => rows.push(choice(
+                "Formato de tabla",
+                Tab::Appearance,
+                table_template(value.columns.as_ref(), false),
+                TABLE_FORMATS,
+                |settings, key| {
+                    if let Settings::Standings(value) = settings {
+                        value.columns = Some(vantare_ui::standings::vantare_template(key));
+                    }
+                },
+            )),
+            Settings::Relative(value) => rows.push(choice(
+                "Formato de tabla",
+                Tab::Appearance,
+                table_template(value.columns.as_ref(), true),
+                TABLE_FORMATS,
+                |settings, key| {
+                    if let Settings::Relative(value) = settings {
+                        value.columns = Some(vantare_ui::relative::vantare_template(key));
+                    }
+                },
+            )),
+            Settings::FuelStrategy(value) => rows.push(choice(
+                "Formato Fuel y stint",
+                Tab::Appearance,
+                &value.size,
+                TABLE_FORMATS,
+                set!(FuelStrategy.size string),
+            )),
+            _ => {}
+        }
+        rows.extend([
+            choice(
+                "Estilo del widget",
+                Tab::Appearance,
+                if look == Look::Neo { "neo" } else { "neutro" },
+                &[("Neo", "neo"), ("Neutro", "neutro")],
+                |settings, next| {
+                    let value = if next == "neutro" {
+                        Look::Neutro
+                    } else {
+                        Look::Neo
+                    };
+                    match settings {
+                        Settings::Standings(s) => s.style = value,
+                        Settings::Relative(s) => s.style = value,
+                        Settings::Delta(s) => s.style = value,
+                        Settings::FuelStrategy(s) => s.style = value,
+                        _ => {}
+                    }
+                },
+            ),
+            choice(
+                "Acento del widget",
+                Tab::Appearance,
+                match accent {
+                    Accent::Red => "red",
+                    Accent::Amber => "amber",
+                    Accent::Green => "green",
+                    Accent::White => "white",
+                },
+                &[
+                    ("Rojo", "red"),
+                    ("Ámbar", "amber"),
+                    ("Verde", "green"),
+                    ("Blanco", "white"),
+                ],
+                |settings, next| {
+                    let value = match next {
+                        "amber" => Accent::Amber,
+                        "green" => Accent::Green,
+                        "white" => Accent::White,
+                        _ => Accent::Red,
+                    };
+                    match settings {
+                        Settings::Standings(s) => s.accent = value,
+                        Settings::Relative(s) => s.accent = value,
+                        Settings::Delta(s) => s.accent = value,
+                        Settings::FuelStrategy(s) => s.accent = value,
+                        _ => {}
+                    }
+                },
+            ),
+        ]);
     }
+    rows
+}
+
+const TABLE_FORMATS: &[(&str, &str)] = &[
+    ("Compacto", "compact"),
+    ("Estándar", "standard"),
+    ("Ampliado", "expanded"),
+];
+
+fn table_template(
+    columns: Option<&Vec<vantare_ui::standings::options::ColumnSetting>>,
+    relative: bool,
+) -> &'static str {
+    let Some(columns) = columns else {
+        return "standard";
+    };
+    ["compact", "standard", "expanded"]
+        .into_iter()
+        .find(|name| {
+            *columns
+                == if relative {
+                    vantare_ui::relative::vantare_template(name)
+                } else {
+                    vantare_ui::standings::vantare_template(name)
+                }
+        })
+        .unwrap_or("") // Columnas personalizadas: no afirmar una plantilla que no coincide.
+}
+
+pub fn appearance(
+    settings: &Settings,
+) -> Option<(
+    vantare_ui::standings::DesignSystem,
+    vantare_ui::standings::Look,
+    vantare_ui::standings::Accent,
+)> {
+    match settings {
+        Settings::Standings(s) => Some((s.design_system, s.style, s.accent)),
+        Settings::Relative(s) => Some((s.design_system, s.style, s.accent)),
+        Settings::Delta(s) => Some((s.design_system, s.style, s.accent)),
+        Settings::FuelStrategy(s) => Some((s.design_system, s.style, s.accent)),
+        _ => None,
+    }
+    .filter(|(system, _, _)| *system == vantare_ui::standings::DesignSystem::Vantare)
 }
 /// Capacidades publicadas por ui; una opción persistida pero ignorada no recibe manejador.
 pub fn pending(settings: &Settings) -> Vec<String> {
@@ -493,10 +659,37 @@ pub fn pending(settings: &Settings) -> Vec<String> {
 }
 
 /// La familia de tablas comparte el tipo público de columnas; no recreamos sus defaults.
-pub fn columns(settings: &Settings) -> Option<&Vec<vantare_ui::standings::options::ColumnSetting>> {
+pub fn column_label(metric: &str) -> &'static str {
+    match metric {
+        "position" => "Posición",
+        "positionsGained" => "Posiciones ganadas",
+        "driverName" => "Piloto",
+        "carNumber" | "driverNumber" => "Dorsal",
+        "vehicle" => "Coche",
+        "tireCompound" => "Neumático",
+        "pit" => "Paradas",
+        "sectors" => "Sectores",
+        "lastLap" => "Última vuelta",
+        "bestLap" => "Mejor vuelta",
+        "interval" => "Intervalo",
+        "gap" => "Diferencia",
+        "lapDelta" => "Vueltas de diferencia",
+        "driverRating" => "Nivel del piloto",
+        "safetyRating" => "Seguridad",
+        "trend" => "Tendencia",
+        "trackStrip" => "Tira de pista",
+        "class" => "Clase",
+        _ => "Columna",
+    }
+}
+pub fn columns(settings: &Settings) -> Option<Vec<vantare_ui::standings::options::ColumnSetting>> {
     match settings {
-        Settings::Standings(s) => s.columns.as_ref(),
-        Settings::Relative(s) => s.columns.as_ref(),
+        Settings::Standings(s) => s.columns.clone().or_else(|| {
+            appearance(settings).map(|_| vantare_ui::standings::vantare_template("standard"))
+        }),
+        Settings::Relative(s) => s.columns.clone().or_else(|| {
+            appearance(settings).map(|_| vantare_ui::relative::vantare_template("standard"))
+        }),
         _ => None,
     }
 }
@@ -504,8 +697,26 @@ pub fn columns_mut(
     settings: &mut Settings,
 ) -> Option<&mut Vec<vantare_ui::standings::options::ColumnSetting>> {
     match settings {
-        Settings::Standings(s) => s.columns.as_mut(),
-        Settings::Relative(s) => s.columns.as_mut(),
+        Settings::Standings(s) => {
+            if s.design_system == vantare_ui::standings::DesignSystem::Vantare {
+                Some(
+                    s.columns
+                        .get_or_insert_with(|| vantare_ui::standings::vantare_template("standard")),
+                )
+            } else {
+                s.columns.as_mut()
+            }
+        }
+        Settings::Relative(s) => {
+            if s.design_system == vantare_ui::standings::DesignSystem::Vantare {
+                Some(
+                    s.columns
+                        .get_or_insert_with(|| vantare_ui::relative::vantare_template("standard")),
+                )
+            } else {
+                s.columns.as_mut()
+            }
+        }
         _ => None,
     }
 }
@@ -517,6 +728,124 @@ pub fn valid_color(value: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn vantare_formats_and_default_columns_edit_the_productive_settings() {
+        for mut settings in [
+            Settings::Standings(vantare_ui::standings::Settings::default()),
+            Settings::Relative(vantare_ui::relative::Settings::default()),
+        ] {
+            let default = columns(&settings).expect("columnas por defecto");
+            assert!(default.iter().any(|c| c.metric_id == "gap" && c.enabled));
+            let gap = columns_mut(&mut settings)
+                .expect("columnas editables")
+                .iter_mut()
+                .find(|c| c.metric_id == "gap")
+                .expect("gap");
+            gap.enabled = false;
+            assert!(
+                columns(&settings)
+                    .expect("columnas")
+                    .iter()
+                    .any(|c| c.metric_id == "gap" && !c.enabled)
+            );
+            for key in ["compact", "standard", "expanded"] {
+                let format = fields(&settings)
+                    .into_iter()
+                    .find(|f| f.title == "Formato de tabla")
+                    .expect("formato");
+                let Control::Choice { set, .. } = format.control else {
+                    panic!("selector")
+                };
+                set(&mut settings, key);
+                let normalized = settings.normalized();
+                assert_eq!(
+                    columns(&normalized),
+                    columns(&settings),
+                    "no truncar gap de Vantare"
+                );
+            }
+            assert!(!fields(&settings).iter().any(|f| f.title == "Diseño"));
+        }
+    }
+    #[test]
+    fn delta_inspector_persists_every_supported_reference_and_format() {
+        use crate::document::{Editor, tests::File};
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
+        editor.add(vantare_ui::Kind::Delta).expect("delta");
+        for (title, keys) in [
+            ("Vuelta de referencia", vec!["best", "optimal", "leader"]),
+            ("Formato Delta", vec!["pill", "bar", "expanded"]),
+        ] {
+            for key in keys {
+                let field = fields(&editor.selected().expect("selección").settings)
+                    .into_iter()
+                    .find(|f| f.title == title)
+                    .expect("control disponible");
+                let Control::Choice { set, .. } = field.control else {
+                    panic!("selector")
+                };
+                editor
+                    .edit_selected(|item| set(&mut item.settings, key))
+                    .expect("guardar");
+                let reloaded = Editor::open(file.path.clone()).expect("recargar");
+                assert_eq!(reloaded.layout(), editor.layout());
+                let Settings::Delta(value) = &editor.selected().expect("delta").settings else {
+                    panic!("delta")
+                };
+                assert_eq!(
+                    if title == "Vuelta de referencia" {
+                        &value.reference
+                    } else {
+                        &value.size
+                    },
+                    key
+                );
+            }
+        }
+        let fields = fields(&editor.selected().expect("selección").settings);
+        assert!(fields.iter().any(|f| f.title == "Barra de diferencia"));
+        assert!(fields.iter().any(|f| f.title == "Comparación de sectores"));
+    }
+    #[test]
+    fn standard_tables_have_no_class_scope_selector() {
+        for settings in [
+            Settings::Standings(vantare_ui::standings::Settings::default()),
+            Settings::Relative(vantare_ui::relative::Settings::default()),
+        ] {
+            assert!(!fields(&settings).iter().any(|f| f.title == "Clases"));
+        }
+    }
+    #[test]
+    fn automatic_player_visibility_has_no_redundant_center_switch() {
+        assert!(
+            !fields(&Settings::Standings(
+                vantare_ui::standings::Settings::default()
+            ))
+            .iter()
+            .any(|f| f.title == "Centrar en el jugador")
+        );
+    }
+    #[test]
+    fn surrounding_rows_belong_only_to_relative() {
+        assert!(
+            !fields(&Settings::Standings(
+                vantare_ui::standings::Settings::default()
+            ))
+            .iter()
+            .any(|f| f.title.starts_with("Filas alrededor"))
+        );
+        let relative = fields(&Settings::Relative(
+            vantare_ui::relative::Settings::default(),
+        ));
+        assert_eq!(
+            relative
+                .iter()
+                .filter(|f| f.title.starts_with("Filas alrededor"))
+                .count(),
+            2
+        );
+    }
     #[test]
     fn anchors_align_all_nine_zones_and_reject_invalid_sizes() {
         for row in 0..3 {

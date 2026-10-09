@@ -213,6 +213,47 @@ impl Tracker {
 
 /// Vista del coche del jugador; `None` si falta cualquier señal o hay valores
 /// imposibles.
+/// Deltas frente a la vuelta óptima (suma de los mejores sectores propios) y
+/// a la mejor vuelta del líder de la clase (#1497). Sin traza de esas vueltas,
+/// la de la mejor vuelta propia se escala en el tiempo por `r = referencia /
+/// mejor`: `delta = transcurrido · (1 − r) + delta_mejor · r`. En meta coincide
+/// exactamente con la vuelta menos la referencia. Un valor nativo gana.
+pub(super) fn references(player: &mut Player, car: &Car, cars: &[Car]) {
+    let finite = |q: &Quality<f64>| q.current().copied().filter(|v| v.is_finite());
+    let positive = |q: &Quality<f64>| finite(q).filter(|v| *v > 0.0);
+    let (Some(delta), Some(elapsed), Some(best)) = (
+        finite(&player.delta_best_s),
+        finite(&car.lap_elapsed_s).filter(|e| *e >= 0.0),
+        positive(&car.best_lap_s),
+    ) else {
+        return;
+    };
+    if car.in_pits.current().copied() == Some(true) {
+        return;
+    }
+    let scaled = |reference: f64| {
+        let r = reference / best;
+        Quality::Estimated(elapsed * (1.0 - r) + delta * r)
+    };
+    if player.delta_optimal_s.current().is_none() && !car.best_sectors_s.is_empty() {
+        let optimal: Option<f64> = car.best_sectors_s.iter().map(positive).sum();
+        if let Some(optimal) = optimal {
+            player.delta_optimal_s = scaled(optimal);
+        }
+    }
+    if player.delta_leader_s.current().is_none() {
+        let class = car.class.as_ref().map(|c| c.id);
+        let leader = cars
+            .iter()
+            .filter(|c| c.class.as_ref().map(|c| c.id) == class)
+            .find(|c| c.class_position.current() == Some(&1))
+            .and_then(|c| positive(&c.best_lap_s));
+        if let Some(leader) = leader {
+            player.delta_leader_s = scaled(leader);
+        }
+    }
+}
+
 fn reading(car: &Car, track_length: Quality<f64>) -> Option<Reading> {
     let length_m = *track_length.current()?;
     let lap = car.laps.current().copied()?;
@@ -256,6 +297,67 @@ fn interpolate(samples: &[Point], distance_m: f64) -> Option<f64> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn optimal_and_leader_deltas_scale_the_best_lap_reference() {
+        use vantare_domain::{CarId, Class, ClassId};
+        let class = Some(Class {
+            id: ClassId(1),
+            name: "Hypercar".into(),
+        });
+        let me = Car {
+            id: CarId(50),
+            class: class.clone(),
+            class_position: Quality::Estimated(3),
+            best_lap_s: Quality::Reliable(208.0),
+            best_sectors_s: vec![
+                Quality::Reliable(69.0),
+                Quality::Reliable(72.5),
+                Quality::Estimated(66.0),
+            ],
+            lap_elapsed_s: Quality::Reliable(104.0),
+            in_pits: Quality::Reliable(false),
+            ..Car::default()
+        };
+        let leader = Car {
+            id: CarId(6),
+            class,
+            class_position: Quality::Estimated(1),
+            best_lap_s: Quality::Reliable(206.0),
+            ..Car::default()
+        };
+        let mut player = Player {
+            car: CarId(50),
+            delta_best_s: Quality::Estimated(-0.2),
+            ..Player::default()
+        };
+        let cars = vec![leader, me.clone()];
+        references(&mut player, &me, &cars);
+        let at = |reference: f64| 104.0 * (1.0 - reference / 208.0) - 0.2 * reference / 208.0;
+        let optimal = player.delta_optimal_s.current().copied().unwrap();
+        assert!((optimal - at(207.5)).abs() < 1e-9);
+        let leader = player.delta_leader_s.current().copied().unwrap();
+        assert!((leader - at(206.0)).abs() < 1e-9);
+        // En meta: la vuelta menos la referencia, sin escalar.
+        let mut finished = me.clone();
+        finished.lap_elapsed_s = Quality::Reliable(207.7);
+        let mut player = Player {
+            car: CarId(50),
+            delta_best_s: Quality::Estimated(-0.3),
+            ..Player::default()
+        };
+        references(&mut player, &finished, &cars);
+        assert!((player.delta_leader_s.current().unwrap() - (207.7 - 206.0)).abs() < 1e-9);
+        // En boxes o sin delta propio no hay referencias.
+        let mut pits = me.clone();
+        pits.in_pits = Quality::Reliable(true);
+        let mut player = Player {
+            delta_best_s: Quality::Estimated(-0.2),
+            ..Player::default()
+        };
+        references(&mut player, &pits, &cars);
+        assert!(player.delta_optimal_s.current().is_none());
+    }
+
     use vantare_domain::Quality;
 
     use super::*;

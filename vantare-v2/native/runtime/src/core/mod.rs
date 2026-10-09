@@ -14,6 +14,8 @@ mod derive;
 mod fuel;
 mod merge;
 mod publish;
+mod stint;
+mod trend;
 
 use std::sync::Arc;
 use std::time::Duration;

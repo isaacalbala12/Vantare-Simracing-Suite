@@ -42,6 +42,7 @@ mod stats;
 pub mod theme;
 #[cfg(windows)]
 mod tray;
+mod vantare;
 pub mod workshop;
 
 include!("registry.rs");

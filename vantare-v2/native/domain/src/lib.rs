@@ -14,10 +14,12 @@ pub mod car_damage_numbers;
 pub mod car_damage_visual;
 pub mod delta;
 pub mod delta_trace;
+pub mod delta_vantare;
 pub mod fastest_lap;
 mod flag;
 pub mod format;
 pub mod fuel_strategy;
+pub mod fuel_vantare;
 pub mod head_to_head;
 pub mod input_telemetry;
 mod model;
@@ -28,7 +30,9 @@ mod quality;
 pub mod racing_flags;
 pub mod radar;
 pub mod relative;
+pub mod relative_vantare;
 pub mod standings;
+pub mod standings_vantare;
 pub mod track_map;
 pub mod track_weather;
 
@@ -36,9 +40,10 @@ pub use adapter::{Adapter, AdapterError, Observation};
 pub use capability::{Capabilities, Capability};
 pub use flag::{Flag, FlagKind, FlagScope};
 pub use model::{
-    Car, CarId, Class, ClassId, Damage, Driver, DriverId, Fuel, Gap, Origin, Player, Pose, Session,
-    SessionId, SessionKind, SessionState, Snapshot, Source, SourceKind, SourceState, State,
-    Telemetry, UNKNOWN_SIMULATOR, Weather, degrade,
+    Car, CarId, Class, ClassId, Damage, Driver, DriverId, DriverRating, Fuel, Gap, Origin,
+    PitService, Player, Pose, Session, SessionId, SessionKind, SessionState, Snapshot, Source,
+    SourceKind, SourceState, State, Stint, Telemetry, TyreCompound, UNKNOWN_SIMULATOR, Weather,
+    degrade,
 };
 pub use quality::Quality;
 pub mod text;

@@ -8,8 +8,8 @@ use std::time::Duration;
 
 use vantare_domain::{
     Capabilities, Capability, Car, CarId, Class, ClassId, Damage, Driver, DriverId, Flag, FlagKind,
-    FlagScope, Fuel, Gap, Observation, Origin, Player, Quality, Session, SessionId, SessionKind,
-    Source, SourceKind, State, Telemetry, Weather,
+    FlagScope, Fuel, Gap, Observation, Origin, PitService, Player, Quality, Session, SessionId,
+    SessionKind, Source, SourceKind, State, Stint, Telemetry, Weather,
 };
 
 use super::frame::{self, Frame, Inputs, Kind, Rejection, Vehicle};
@@ -349,12 +349,25 @@ impl Translator {
             laps: quality(Some(vehicle.laps), stale),
             last_lap_s: quality(vehicle.last_lap_s, stale),
             best_lap_s: quality(vehicle.best_lap_s, stale),
-            // LMU solo publica el sector en curso; los tiempos de sector no
-            // están en el layout admitido.
             last_sectors_s: vehicle
                 .last_sectors_s
                 .iter()
                 .map(|v| quality(*v, stale))
+                .collect(),
+            // Sin ninguno medido se quedan vacíos, como antes de leerlos (#1497).
+            best_sectors_s: if vehicle.best_sectors_s.iter().any(Option::is_some) {
+                vehicle
+                    .best_sectors_s
+                    .iter()
+                    .map(|v| quality(*v, stale))
+                    .collect()
+            } else {
+                Vec::new()
+            },
+            current_sectors_s: vehicle
+                .current_sectors_s
+                .iter()
+                .map(|v| quality(Some(*v), stale))
                 .collect(),
             estimated_lap_s: estimate(vehicle.estimated_lap_s, stale),
             lap_distance_m: quality(vehicle.lap_distance_m, stale),
@@ -466,6 +479,18 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool, telemetry_stale: bool) -> 
             inputs
                 .and_then(|inputs| inputs.delta_best_s)
                 .filter(|delta| *delta != 0.0 || vehicle.best_lap_s.is_some()),
+            telemetry_stale,
+        ),
+        // LMU no publica la pérdida estimada de una parada (#1497).
+        pit_loss_s: Quality::Unavailable,
+        // Energía virtual, servicio de la parada y stint aún no se leen de LMU (#1497).
+        pit_service: PitService::default(),
+        stint: Stint::default(),
+        // Los deltas frente a óptima y líder los deriva el núcleo (#1497).
+        delta_optimal_s: Quality::Unavailable,
+        delta_leader_s: Quality::Unavailable,
+        lap_invalid: quality(
+            vehicle.lap_time_counts.map(|counts| !counts),
             telemetry_stale,
         ),
     }

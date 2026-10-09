@@ -1,9 +1,12 @@
 //! Eficiencia: tabla de 523 × 272, filas de 23 px y datos canónicos de la VM.
 //! El historial se omite como en el productivo cuando no hay filas canónicas.
 //! No hay animaciones ni avisos temporales en `FuelStrategyFunctional.tsx`.
+//! Con el sistema Vantare (por defecto) pinta `vantare.rs` (#1497).
 
 use crate::efficiency::preview::PaintWindow as Window;
 use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
+pub(crate) mod vantare;
+
 use vantare_domain::{
     Snapshot,
     format::Preferences,
@@ -151,6 +154,15 @@ fn paint_main(vm: &ViewModel, window: &mut Window, cx: &mut App) {
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
+    pub design_system: crate::standings::DesignSystem,
+    pub style: crate::standings::Look,
+    pub accent: crate::standings::Accent,
+    /// Tamaño Vantare: `compact` (230), `standard` (300) o `expanded` (460).
+    pub size: String,
+    /// Marca Vantare: decisión inyectada por el host según la licencia.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub brand_visible: Option<bool>,
     pub history_rows: u8,
     pub show_projection: bool,
     pub source: String,
@@ -159,6 +171,11 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
+            design_system: crate::standings::DesignSystem::Vantare,
+            style: crate::standings::Look::Neo,
+            accent: crate::standings::Accent::Red,
+            size: "standard".into(),
+            brand_visible: None,
             history_rows: 4,
             show_projection: true,
             source: "fuel".into(),
@@ -167,6 +184,15 @@ impl Default for Settings {
     }
 }
 impl Settings {
+    /// Ajustes por defecto del sistema Eficiencia heredado.
+    #[must_use]
+    pub fn eficiencia() -> Self {
+        Self {
+            design_system: crate::standings::DesignSystem::Eficiencia,
+            ..Self::default()
+        }
+    }
+
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
         "source=virtual-energy:live",
         "Solo estado no disponible; Snapshot no publica energía virtual",
@@ -182,6 +208,10 @@ impl Settings {
             }
             .into(),
             units: "liters".into(),
+            size: match self.size.as_str() {
+                "compact" | "expanded" => self.size.clone(),
+                _ => "standard".into(),
+            },
             ..self.clone()
         }
     }
@@ -246,6 +276,8 @@ fn paint_history(vm: &ViewModel, window: &mut Window, cx: &mut App) {
 }
 
 pub(crate) struct Widget {
+    /// Presente con el sistema Vantare; si no, se usa el renderer Eficiencia.
+    vantare: Option<vantare::State>,
     settings: Settings,
     vm: ViewModel,
 }
@@ -254,21 +286,51 @@ impl Widget {
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
         let settings = settings.normalized();
         Self {
+            vantare: (settings.design_system == crate::standings::DesignSystem::Vantare)
+                .then(|| vantare::State::new(vantare::Options::from_settings(&settings))),
             settings: settings.clone(),
             vm: settings.project(&Snapshot::default(), prefs),
         }
     }
 
-    #[allow(clippy::unused_self)] // Contrato común del registro, tamaño fijo.
+    /// Termina las animaciones Vantare en curso (Workshop reconstruye la historia).
+    pub(crate) fn settle(&mut self) {
+        if let Some(state) = &mut self.vantare {
+            state.settle();
+        }
+    }
+
+    /// Estilo Vantare de Workshop en vivo; producto usa el compilado.
+    pub(crate) fn set_vantare_style(
+        &mut self,
+        style: std::sync::Arc<crate::vantare::style::Style>,
+    ) {
+        if let Some(state) = &mut self.vantare {
+            state.set_style(style);
+        }
+    }
+
     pub(crate) fn size(&self) -> (f32, f32) {
-        SIZE
+        self.vantare.as_ref().map_or(SIZE, vantare::State::size)
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
+        if let Some(state) = &mut self.vantare {
+            return state.ingest(vantare::State::project(snapshot));
+        }
         replace_if_changed(&mut self.vm, self.settings.project(snapshot, prefs))
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
+        if let Some(state) = &self.vantare {
+            let wake = state.wake(std::time::Instant::now());
+            let state = state.clone();
+            let language = prefs.language;
+            return (
+                Box::new(move |window, cx| state.paint(language, window, cx)),
+                wake,
+            );
+        }
         let vm = self.vm.clone();
         (
             Box::new(move |window, cx| paint(&vm, window, cx)),
@@ -277,15 +339,34 @@ impl Widget {
     }
 
     #[cfg(feature = "parity-capture")]
-    #[allow(clippy::unused_self)] // El productivo no anima este widget.
     pub(crate) fn animating(&self) -> bool {
-        false
+        self.vantare
+            .as_ref()
+            .is_some_and(|state| state.wake(std::time::Instant::now()) != Wake::Idle)
     }
 }
 
 impl Settings {
     pub fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{FuelEstimate, FuelLevel, LapsRemaining};
+        if self.design_system == crate::standings::DesignSystem::Vantare {
+            use vantare_ipc::Signal::{Cars, Flags, LapCount, PitStatus, SessionInfo};
+            // Cars: clase; LapCount: vuelta en curso; PitStatus: boxes, paradas,
+            // repostaje y stint; SessionInfo: total de vueltas.
+            return crate::demand::signals(
+                250,
+                &[
+                    FuelLevel,
+                    FuelEstimate,
+                    LapsRemaining,
+                    Cars,
+                    LapCount,
+                    PitStatus,
+                    SessionInfo,
+                    Flags,
+                ],
+            );
+        }
         let mut demand = crate::demand::signals(500, &[FuelLevel, FuelEstimate]);
         if self.show_projection {
             demand.request(LapsRemaining, 500);
@@ -357,7 +438,7 @@ mod tests {
     #[test]
     fn only_visual_changes_repaint_and_frames_are_idle() {
         let prefs = Preferences::default();
-        let mut widget = Widget::new(&Settings::default(), prefs);
+        let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         let mut data = Snapshot {
             state: State {
                 source_state: vantare_domain::SourceState::Live,

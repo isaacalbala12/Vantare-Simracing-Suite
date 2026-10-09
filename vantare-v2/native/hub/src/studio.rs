@@ -1,11 +1,12 @@
 //! Editor espacial sobre el documento y el renderer compartidos.
+mod examples;
 mod scenes;
 use crate::{
     document::Editor,
     inspector::{self, Control, Tab},
     orbit::{
         self, Checkbox, Checked, Choice, ChoiceChanged, ChoiceKind, NumberChanged, NumberControl,
-        NumberKind, NumberRange, OptionItem, button,
+        NumberFinished, NumberKind, NumberRange, OptionItem, button,
     },
 };
 use gpui::{
@@ -14,6 +15,7 @@ use gpui::{
     linear_gradient, prelude::*, px, rgb,
 };
 use std::path::PathBuf;
+use std::time::{Duration, Instant};
 use vantare_domain::{Snapshot, format::Preferences};
 use vantare_ui::{Kind, Overlay, Settings, layout::Instance};
 
@@ -47,6 +49,24 @@ fn document_key(key: &gpui::Keystroke) -> Option<DocumentKey> {
     } else {
         None
     }
+}
+
+/// Un paso inmediato, pausa inicial y repetición a 1/4/8 px cada 30 ms.
+fn held_nudge_distance(elapsed: Duration, shift: bool) -> f32 {
+    let ticks = elapsed.as_millis().saturating_sub(300) / 30;
+    let pixels =
+        1 + ticks.min(20) + ticks.saturating_sub(20).min(30) * 4 + ticks.saturating_sub(50) * 8;
+    #[allow(clippy::cast_precision_loss)] // Acotado al límite de coordenadas del documento.
+    let distance = pixels.min(100_000) as f32;
+    distance * if shift { 8.0 } else { 1.0 }
+}
+
+struct HeldNudge {
+    frame: Entity<CanvasFrame>,
+    origin: (f32, f32),
+    direction: (i8, i8),
+    shift: bool,
+    started: Instant,
 }
 
 fn keyboard_nudge(key: &gpui::Keystroke) -> Option<((i8, i8), bool)> {
@@ -150,7 +170,7 @@ fn demo_standings_settings() -> Settings {
                 })
                 .collect(),
         ),
-        ..StandingsSettings::default()
+        ..StandingsSettings::eficiencia()
     })
 }
 
@@ -315,9 +335,18 @@ fn example_snapshots() -> Result<Vec<(Kind, Snapshot)>, String> {
     ]
     .into_iter()
     .map(|(kind, text)| {
-        vantare_ipc::snapshot_from_json(text)
-            .map(|snapshot| (kind, snapshot))
-            .map_err(|error| format!("Ejemplo {}: {error}", kind.name()))
+        match kind {
+            Kind::Standings | Kind::Relative | Kind::MulticlassRelative => examples::tables(),
+            Kind::Delta => {
+                examples::snapshot(include_str!("../../ui/fixtures/delta-vantare.scene.json"))
+            }
+            Kind::FuelStrategy => {
+                examples::snapshot(include_str!("../../ui/fixtures/fuel-vantare.scene.json"))
+            }
+            _ => vantare_ipc::snapshot_from_json(text).map_err(|error| error.to_string()),
+        }
+        .map(|snapshot| (kind, snapshot))
+        .map_err(|error| format!("Ejemplo {}: {error}", kind.name()))
     })
     .collect()
 }
@@ -446,6 +475,9 @@ pub struct Studio {
     photo_choice: Option<Entity<Choice>>,
     status: Result<(), String>,
     drag: Option<Entity<CanvasFrame>>,
+    opacity_preview: Option<(String, f32)>,
+    held_nudge: Option<HeldNudge>,
+    nudge_task: Option<gpui::Task<()>>,
     focus: FocusHandle,
     catalog: Option<Entity<Choice>>,
     catalog_open: bool,
@@ -506,6 +538,13 @@ impl Drag {
         {
             return false;
         }
+        // El umbral está en píxeles de pantalla: seleccionar con ruido de ratón
+        // no debe mover el documento, ni siquiera con el lienzo reducido.
+        if self.preview == self.origin
+            && (pointer.0 - self.pointer.0).hypot(pointer.1 - self.pointer.1) < 3.0
+        {
+            return false;
+        }
         self.preview = (
             (self.origin.0 + (pointer.0 - self.pointer.0) / self.scale)
                 .clamp(-100_000.0, 100_000.0),
@@ -558,6 +597,8 @@ struct CanvasFrame {
     focus: FocusHandle,
     drag: Option<Drag>,
     resize: Option<Resize>,
+    opacity_preview: Option<f32>,
+    nudge_position: Option<(f32, f32)>,
 }
 impl EventEmitter<Started> for CanvasFrame {}
 impl Render for CanvasFrame {
@@ -572,6 +613,7 @@ impl CanvasFrame {
             .as_ref()
             .map_or((self.item.x, self.item.y), |drag| drag.preview);
         let (x, y) = self.resize.as_ref().map_or((x, y), |r| r.preview.0);
+        let (x, y) = self.nudge_position.unwrap_or((x, y));
         let dimensions = self.renderer.read(cx).frame_size();
         div()
             .id("widget-frame")
@@ -581,7 +623,15 @@ impl CanvasFrame {
             .w(px(dimensions.0 * self.preview_scale * self.content_scale))
             .h(px(dimensions.1 * self.preview_scale * self.content_scale))
             .when(self.selected, |s| {
-                s.border_1().border_color(rgb(orbit::carmine(cx)))
+                s.child(
+                    div()
+                        .absolute()
+                        .top_0()
+                        .left_0()
+                        .size_full()
+                        .border_1()
+                        .border_color(rgb(orbit::carmine(cx))),
+                )
             })
             .on_mouse_down(
                 MouseButton::Left,
@@ -594,7 +644,7 @@ impl CanvasFrame {
                 frame.child(
                     div()
                         .size_full()
-                        .opacity(self.item.opacity)
+                        .opacity(self.opacity_preview.unwrap_or(self.item.opacity))
                         .child(self.renderer.clone()),
                 )
             })
@@ -884,6 +934,9 @@ impl Studio {
             photo_choice: None,
             status,
             drag: None,
+            opacity_preview: None,
+            held_nudge: None,
+            nudge_task: None,
             focus: cx.focus_handle(),
             catalog: None,
             catalog_open: false,
@@ -954,7 +1007,7 @@ impl Studio {
                 eprintln!("Studio: {error}");
             }
             let renderer = cx.new(|cx| {
-                overlay.ingest(self.preview_snapshot(item.settings.kind()), cx);
+                overlay.ingest(&self.settings_snapshot(&item.settings), cx);
                 overlay
             });
             let frame = cx.new(|_| CanvasFrame {
@@ -967,6 +1020,8 @@ impl Studio {
                 selected: self.editor.selected.as_ref() == Some(&item.id),
                 drag: None,
                 resize: None,
+                opacity_preview: None,
+                nudge_position: None,
             });
             let id = item.id.clone();
             cx.subscribe(&frame, move |this, frame, event: &Started, cx| {
@@ -1026,6 +1081,19 @@ impl Studio {
     }
     fn preview_scale(&self) -> f32 {
         ZOOM_STEPS[self.zoom_step].map_or(self.fit_scale, |percent| f32::from(percent) / 100.0)
+    }
+    fn settings_snapshot(&self, settings: &Settings) -> std::borrow::Cow<'_, Snapshot> {
+        let photo = self.preview_snapshot(settings.kind());
+        if self.example
+            && self.real_photo.is_none()
+            && let Settings::Standings(value) = settings
+            && value.design_system == vantare_ui::standings::DesignSystem::Vantare
+            && value.classification_mode == "multiclass"
+        {
+            std::borrow::Cow::Owned(examples::multiclass(photo, value.row_count))
+        } else {
+            std::borrow::Cow::Borrowed(photo)
+        }
     }
 
     fn rescale_preview(&mut self, cx: &mut Context<Self>) {
@@ -1113,6 +1181,23 @@ impl Studio {
         self.edit(if redo { Editor::redo } else { Editor::undo }, cx);
     }
     fn cancel_drag(&mut self, cx: &mut Context<Self>) {
+        self.nudge_task = None;
+        if let Some(held) = self.held_nudge.take() {
+            held.frame.update(cx, |frame, cx| {
+                frame.nudge_position = None;
+                cx.notify();
+            });
+        }
+        if let Some((id, _)) = self.opacity_preview.take()
+            && let Some((_, frame)) = self.frames.iter().find(|(key, _)| *key == id)
+        {
+            frame.update(cx, |frame, cx| {
+                frame.opacity_preview = None;
+                cx.notify();
+            });
+            self.reset_fields();
+            cx.notify();
+        }
         if let Some(frame) = self.drag.take() {
             frame.update(cx, |frame, cx| {
                 frame.drag = None;
@@ -1125,12 +1210,47 @@ impl Studio {
             });
             // Durante el gesto se congelaron todos: restaurar también los no arrastrados.
             for (_, frame) in &self.frames {
-                let kind = frame.read(cx).item.settings.kind();
+                let settings = frame.read(cx).item.settings.clone();
                 frame.read(cx).renderer.clone().update(cx, |renderer, cx| {
-                    renderer.ingest(self.preview_snapshot(kind), cx);
+                    renderer.ingest(&self.settings_snapshot(&settings), cx);
                 });
             }
         }
+    }
+    fn preview_opacity(&mut self, id: &str, value: f32, cx: &mut Context<Self>) {
+        if self.editor.selected.as_deref() != Some(id) || !value.is_finite() {
+            return;
+        }
+        let value = value.clamp(0.0, 1.0);
+        self.opacity_preview = Some((id.to_owned(), value));
+        if let Some((_, frame)) = self.frames.iter().find(|(key, _)| key == id) {
+            frame.update(cx, |frame, cx| {
+                frame.opacity_preview = Some(value);
+                cx.notify();
+            });
+        }
+    }
+    fn finish_opacity(&mut self, cx: &mut Context<Self>) {
+        let Some((id, value)) = self.opacity_preview.take() else {
+            return;
+        };
+        if self.editor.selected.as_ref() != Some(&id) {
+            self.cancel_drag(cx);
+            return;
+        }
+        self.status = self.editor.edit_selected(|item| item.opacity = value);
+        let saved = self.editor.selected().map_or(1.0, |item| item.opacity);
+        if let Some((_, frame)) = self.frames.iter().find(|(key, _)| *key == id) {
+            frame.update(cx, |frame, cx| {
+                frame.item.opacity = saved;
+                frame.opacity_preview = None;
+                cx.notify();
+            });
+        }
+        if self.status.is_err() {
+            self.reset_fields();
+        }
+        cx.notify();
     }
     fn move_drag(&mut self, event: &MouseMoveEvent, cx: &mut Context<Self>) {
         if let Some(frame) = self.drag.clone() {
@@ -1213,7 +1333,7 @@ impl Studio {
         cx: &mut Context<Self>,
     ) {
         let key = &event.keystroke;
-        if key.key == "escape" && self.drag.is_some() {
+        if key.key == "escape" && (self.drag.is_some() || self.held_nudge.is_some()) {
             self.cancel_drag(cx);
             cx.stop_propagation();
         } else if let Some(action) = document_key(key) {
@@ -1249,7 +1369,7 @@ impl Studio {
             && let Some((direction, shift)) = keyboard_nudge(key)
         {
             // Los campos del inspector conservan sus flechas y su propio foco.
-            self.position_nudge(direction, shift, cx);
+            self.start_nudge(direction, shift, cx);
             cx.stop_propagation();
         }
     }
@@ -1422,6 +1542,7 @@ impl Studio {
                     if this.editor.selected.as_ref() == Some(&id)
                         && let Some((_, key)) = options.get(event.0)
                     {
+                        this.reset_fields();
                         this.edit(
                             |editor| editor.edit_selected(|item| set(&mut item.settings, key)),
                             cx,
@@ -1483,7 +1604,12 @@ impl Studio {
         let id = self.editor.selected.clone();
         cx.subscribe(&control, move |this, _, event: &NumberChanged, cx| {
             if this.editor.selected == id {
-                if matches!(title, "Ancho" | "Alto") {
+                if title == "Opacidad" {
+                    #[allow(clippy::cast_possible_truncation)]
+                    if let Some(id) = id.as_deref() {
+                        this.preview_opacity(id, (event.0 / 100.0) as f32, cx);
+                    }
+                } else if matches!(title, "Ancho" | "Alto") {
                     let Some(size) = this.selected_size(cx) else {
                         return;
                     };
@@ -1525,6 +1651,12 @@ impl Studio {
             }
         })
         .detach();
+        if title == "Opacidad" {
+            cx.subscribe(&control, |this, _, _: &NumberFinished, cx| {
+                this.finish_opacity(cx);
+            })
+            .detach();
+        }
         if matches!(title, "Ancho" | "Alto") {
             self.size_fields.push((title, control.clone()));
         }
@@ -1814,19 +1946,23 @@ impl Studio {
             panel = panel.child(orbit::eyebrow("Columnas", cx));
             for (index, column) in columns.iter().enumerate() {
                 let selected = item.id.clone();
+                let required = inspector::appearance(&item.settings).is_some()
+                    && (column.metric_id == "driverName"
+                        || (matches!(&item.settings, Settings::Standings(_))
+                            && column.metric_id == "position"));
                 panel = panel.child(orbit::setting_row(
-                    &column.metric_id,
-                    &column.id,
+                    inspector::column_label(&column.metric_id),
+                    "",
                     orbit::toggle(
                         "column-visible",
                         "Mostrar columna",
-                        column.enabled,
-                        true,
+                        column.enabled || required,
+                        !required,
                         cx,
                     )
                     .id(("column-visible", index))
                     .on_click(cx.listener(move |this, _, _, cx| {
-                        if this.editor.selected.as_ref() != Some(&selected) {
+                        if required || this.editor.selected.as_ref() != Some(&selected) {
                             return;
                         }
                         this.reset_fields();
@@ -1879,6 +2015,90 @@ impl Studio {
             },
             cx,
         );
+    }
+    fn start_nudge(&mut self, direction: (i8, i8), shift: bool, cx: &mut Context<Self>) {
+        if self
+            .held_nudge
+            .as_ref()
+            .is_some_and(|held| held.direction == direction && held.shift == shift)
+        {
+            return;
+        }
+        self.cancel_drag(cx);
+        let Some(item) = self.editor.selected() else {
+            return;
+        };
+        let Some((_, frame)) = self.frames.iter().find(|(id, _)| *id == item.id) else {
+            return;
+        };
+        self.held_nudge = Some(HeldNudge {
+            frame: frame.clone(),
+            origin: (item.x, item.y),
+            direction,
+            shift,
+            started: Instant::now(),
+        });
+        self.tick_nudge(Duration::ZERO, cx);
+        self.nudge_task = Some(cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(16))
+                    .await;
+                if !this
+                    .update(cx, |this, cx| {
+                        let Some(held) = &this.held_nudge else {
+                            return false;
+                        };
+                        this.tick_nudge(held.started.elapsed(), cx);
+                        true
+                    })
+                    .unwrap_or(false)
+                {
+                    break;
+                }
+            }
+        }));
+    }
+    fn tick_nudge(&self, elapsed: Duration, cx: &mut Context<Self>) {
+        let Some(held) = &self.held_nudge else { return };
+        let distance = held_nudge_distance(elapsed, held.shift);
+        let position = (
+            (held.origin.0 + f32::from(held.direction.0) * distance).clamp(-100_000.0, 100_000.0),
+            (held.origin.1 + f32::from(held.direction.1) * distance).clamp(-100_000.0, 100_000.0),
+        );
+        held.frame.update(cx, |frame, cx| {
+            if frame.nudge_position != Some(position) {
+                frame.nudge_position = Some(position);
+                cx.notify();
+            }
+        });
+    }
+    fn finish_nudge(&mut self, cx: &mut Context<Self>) {
+        self.nudge_task = None;
+        let Some(held) = self.held_nudge.take() else {
+            return;
+        };
+        let frame = held.frame.read(cx);
+        let position = frame.nudge_position;
+        let id = frame.item.id.clone();
+        held.frame.update(cx, |frame, cx| {
+            frame.nudge_position = None;
+            cx.notify();
+        });
+        if self.editor.selected.as_ref() == Some(&id)
+            && let Some((x, y)) = position
+        {
+            self.reset_fields();
+            self.edit(
+                |editor| {
+                    editor.edit_selected(|item| {
+                        item.x = x;
+                        item.y = y;
+                    })
+                },
+                cx,
+            );
+        }
     }
     fn anchor_grid(&self, item: &Instance, cx: &mut Context<Self>) -> gpui::Div {
         let size = self.selected_size(cx);
@@ -1946,11 +2166,27 @@ impl Studio {
                             cx,
                         )
                         .aria_label(label)
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(move |this, event: &gpui::MouseDownEvent, _, cx| {
+                                if direction != (0, 0) {
+                                    this.start_nudge(direction, event.modifiers.shift, cx);
+                                }
+                            }),
+                        )
+                        .on_mouse_up(
+                            MouseButton::Left,
+                            cx.listener(|this, _, _, cx| this.finish_nudge(cx)),
+                        )
+                        .on_mouse_up_out(
+                            MouseButton::Left,
+                            cx.listener(|this, _, _, cx| this.finish_nudge(cx)),
+                        )
                         .on_click(cx.listener(
                             move |this, event: &gpui::ClickEvent, _, cx| {
                                 if direction == (0, 0) {
                                     this.position_anchor(1, 1, cx);
-                                } else {
+                                } else if !matches!(event, gpui::ClickEvent::Mouse(_)) {
                                     this.position_nudge(direction, event.modifiers().shift, cx);
                                 }
                             },
@@ -2199,7 +2435,13 @@ impl Studio {
                 ));
             }
             Tab::Content | Tab::Appearance => {
-                if tab == Tab::Appearance {
+                if tab == Tab::Content && matches!(&item.settings, Settings::Delta(_)) {
+                    panel = panel.child(text(
+                        "La mejor vuelta es la propia. Óptima compara con tus mejores sectores; Líder, con la mejor de quien encabeza tu clase. Última vuelta y mejor absoluta de sesión: próximamente, sin señal independiente del núcleo.",
+                        11.0, 400, orbit::ink_3(cx), cx,
+                    ));
+                }
+                if tab == Tab::Appearance && inspector::appearance(&item.settings).is_none() {
                     panel = panel.child(orbit::pending_select(
                         "studio-style",
                         "Estilo del widget",
@@ -2594,6 +2836,12 @@ impl Studio {
             },
             move |_, (), window, _| {
                 let studio = drag_target.clone();
+                let release_target = studio.clone();
+                window.on_mouse_event(move |_: &gpui::MouseUpEvent, phase, _, cx| {
+                    if phase == gpui::DispatchPhase::Capture {
+                        let _ = release_target.update(cx, Studio::finish_nudge);
+                    }
+                });
                 window.on_mouse_event(move |event: &MouseMoveEvent, phase, _, cx| {
                     if phase == gpui::DispatchPhase::Capture {
                         // El gesto sigue aunque el puntero salga del hitbox de Studio.
@@ -2665,6 +2913,15 @@ impl Render for Studio {
                 }),
             )
             .on_key_down(cx.listener(Self::handle_key))
+            .on_key_up(cx.listener(|this, event: &gpui::KeyUpEvent, _, cx| {
+                if matches!(
+                    event.keystroke.key.as_str(),
+                    "left" | "right" | "up" | "down"
+                ) {
+                    this.finish_nudge(cx);
+                    cx.stop_propagation();
+                }
+            }))
             .child(workspace)
     }
 }
@@ -3321,7 +3578,7 @@ mod tests {
             preview: (20.0, 20.0),
             scale: 1.0,
         };
-        assert!(drag.update((100.0, 200.0)));
+        assert!(!drag.update((100.0, 200.0)));
         assert_eq!(drag.preview, (20.0, 20.0));
         assert!(drag.update((150.0, 260.0)));
         assert_eq!(editor.layout(), &original);
@@ -3338,6 +3595,156 @@ mod tests {
         );
         editor.undo().expect("deshacer");
         assert_eq!(editor.layout(), &original);
+    }
+    #[test]
+    fn held_arrows_repeat_accelerate_and_commit_once_on_release() {
+        // Las distancias enteras son exactas en f32: comparar sus bits conserva esa garantía.
+        for (ms, shift, expected) in [
+            (0, false, 1.0_f32),
+            (299, false, 1.0),
+            (330, false, 2.0),
+            (930, false, 25.0),
+            (1830, false, 149.0),
+            (330, true, 16.0),
+        ] {
+            assert_eq!(
+                held_nudge_distance(Duration::from_millis(ms), shift).to_bits(),
+                expected.to_bits()
+            );
+        }
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let original = studio.editor.layout().clone();
+                let frame = studio.frames[0].1.clone();
+                let origin = (frame.read(cx).item.x, frame.read(cx).item.y);
+                let renderer = frame.read(cx).renderer.clone();
+                studio.held_nudge = Some(HeldNudge {
+                    frame: frame.clone(),
+                    origin,
+                    direction: (1, 0),
+                    shift: false,
+                    started: Instant::now(),
+                });
+                for ms in [0, 330, 930, 1830] {
+                    studio.tick_nudge(Duration::from_millis(ms), cx);
+                    assert_eq!(studio.editor.layout(), &original);
+                    assert_eq!(
+                        Editor::open(file.path.clone()).expect("disco").layout(),
+                        &original
+                    );
+                    assert_eq!(frame.read(cx).renderer, renderer);
+                }
+                studio.finish_nudge(cx);
+                assert_eq!(
+                    studio.editor.selected().expect("selección").x.to_bits(),
+                    (origin.0 + 149.0).to_bits()
+                );
+                studio.finish_nudge(cx); // La liberación también puede llegar desde el marco.
+                studio.history(false, cx);
+                assert_eq!(studio.editor.layout(), &original);
+                studio.editor.undo().expect("añadir");
+                assert!(studio.editor.layout().instances.is_empty());
+            });
+            cx.quit();
+        });
+    }
+    #[test]
+    fn opacity_preview_keeps_renderers_and_disk_then_commits_one_undoable_edit() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let original = studio.editor.layout().clone();
+                let id = studio.editor.selected.clone().expect("selección");
+                let frame = studio.frames[0].1.clone();
+                let renderer = frame.read(cx).renderer.clone();
+                for value in [0.9, 0.5, 0.25, 0.0] {
+                    studio.preview_opacity(&id, value, cx);
+                    assert_eq!(studio.editor.layout(), &original);
+                    assert_eq!(
+                        Editor::open(file.path.clone()).expect("disco").layout(),
+                        &original
+                    );
+                    assert_eq!(frame.read(cx).renderer, renderer);
+                    assert_eq!(frame.read(cx).opacity_preview, Some(value));
+                }
+                studio.finish_opacity(cx);
+                assert_eq!(studio.frames[0].1, frame);
+                assert_eq!(frame.read(cx).renderer, renderer);
+                assert_eq!(
+                    studio
+                        .editor
+                        .selected()
+                        .expect("selección")
+                        .opacity
+                        .to_bits(),
+                    0.0_f32.to_bits()
+                );
+                assert_eq!(
+                    Editor::open(file.path.clone()).expect("disco").layout(),
+                    studio.editor.layout()
+                );
+                studio.history(false, cx);
+                assert_eq!(studio.editor.layout(), &original);
+                studio.editor.undo().expect("añadir");
+                assert!(studio.editor.layout().instances.is_empty());
+            });
+            cx.quit();
+        });
+    }
+    #[test]
+    fn interrupted_opacity_preview_is_discarded() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let original = studio.editor.layout().clone();
+                let id = studio.editor.selected.clone().expect("selección");
+                studio.preview_opacity(&id, 0.1, cx);
+                studio.cancel_drag(cx);
+                studio.finish_opacity(cx);
+                assert_eq!(studio.editor.layout(), &original);
+                assert!(studio.frames[0].1.read(cx).opacity_preview.is_none());
+            });
+            cx.quit();
+        });
+    }
+    #[test]
+    fn click_and_pointer_noise_leave_position_disk_and_history_unchanged() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let original = studio.editor.layout().clone();
+                for scale in [0.25, 0.5, 1.0, 1.5] {
+                    let frame = studio.frames[0].1.clone();
+                    frame.update(cx, |frame, _| {
+                        frame.drag = Some(Drag {
+                            pointer: (100.0, 100.0),
+                            origin: (frame.item.x, frame.item.y),
+                            preview: (frame.item.x, frame.item.y),
+                            scale,
+                        });
+                    });
+                    studio.drag = Some(frame);
+                    studio.finish_drag(gpui::point(px(101.0), px(102.0)), cx);
+                    assert_eq!(studio.editor.layout(), &original);
+                    assert_eq!(
+                        Editor::open(file.path.clone()).expect("disco").layout(),
+                        &original
+                    );
+                }
+                studio.editor.undo().expect("solo deshace añadir");
+                assert!(studio.editor.layout().instances.is_empty());
+            });
+            cx.quit();
+        });
     }
     #[test]
     fn preview_accepts_negative_positions_rejects_invalid_input_and_bounds_coordinates() {

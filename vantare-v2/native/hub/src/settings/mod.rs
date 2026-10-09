@@ -64,13 +64,13 @@ impl Page {
             Self::Performance => "Nivel y frecuencia de tus widgets",
             Self::Updates => "Versión, canal y novedades",
             Self::Hotkeys => "Combinaciones globales",
-            Self::Privacy => "Fallos, uso y contribución",
+            Self::Privacy => "Fallos y uso anónimo",
             Self::Diagnostics => "Fuentes, datos y registros",
         }
     }
     fn title(self) -> &'static str {
         if self == Self::Privacy {
-            "Privacidad y contribución"
+            "Privacidad"
         } else {
             self.label()
         }
@@ -81,7 +81,7 @@ impl Page {
             Self::Appearance => "Personaliza colores, contraste y tipografía de Vantare.",
             Self::Performance => "Nivel y frecuencia de tus widgets",
             Self::Updates => "Versión instalada, canal y novedades.",
-            Self::Hotkeys => "Atajos del Hub y combinaciones en pista disponibles próximamente.",
+            Self::Hotkeys => "Atajos del Hub y combinaciones globales de perfiles.",
             Self::Privacy => "Elige qué informes y datos de uso puede enviar Vantare.",
             Self::Diagnostics => "Estado de las fuentes, datos locales y registros.",
         }
@@ -117,6 +117,8 @@ pub(super) struct State {
     general: Result<general::Store, String>,
     general_focus: [FocusHandle; 6],
     global_hotkeys_focus: FocusHandle,
+    zoom_focus: [FocusHandle; 3],
+    update_focus: FocusHandle,
     custom_performance_focus: FocusHandle,
     performance_focus: [FocusHandle; 5],
     pub(in crate::shell) launcher_running: bool,
@@ -287,6 +289,8 @@ impl State {
             general_focus: std::array::from_fn(|_| cx.focus_handle()),
             launcher_running: false,
             global_hotkeys_focus: cx.focus_handle(),
+            zoom_focus: std::array::from_fn(|_| cx.focus_handle()),
+            update_focus: cx.focus_handle(),
             custom_performance_focus: cx.focus_handle(),
             performance_focus: std::array::from_fn(|_| cx.focus_handle()),
             privacy: vantare_services::diagnostics::data_root()
@@ -434,6 +438,15 @@ impl Hub {
         }
     }
 
+    fn settings_restart(&mut self, cx: &mut Context<Self>) {
+        match updates::request_restart() {
+            Ok(()) => self.close(cx),
+            Err(error) => {
+                self.settings.status = Some(error);
+                cx.notify();
+            }
+        }
+    }
     fn settings_action(&mut self, action: Action, cx: &mut Context<Self>) {
         match action {
             Action::PrepareDiagnostic => self.prepare_settings_diagnostic(cx),

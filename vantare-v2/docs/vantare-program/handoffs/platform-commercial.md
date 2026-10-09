@@ -2012,3 +2012,23 @@ Guarda heredada en shell/navigation.rs (fuente native incorporada aacd1e4d): blo
 
 F5 corregido solo en integración73f60e9d: Account accesible en navegación/composición con derechos denegados; gate, TTL, Feed, identidad/OAuth/UUID y herramientas mantienen autoridad. Nextest1301/7skips, fmt/Clippy/lifecycle18/telemetría21 PASS;12 recorridos de recuperación y3 muestras físicas, un envío por intento/logout y ningún grant desde reply HTTP. Setup0.0.973 dev/NotSigned, QA instalada/retirada y real intacta; evidencia C:/tmp/ui-r10/integracion-v6-evidence/VERIFICACION.md.
 Defecto/herencia/archivo/líneas/arreglo trasladados en [PR1523#6079995712](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1523#issuecomment-6079995712), [validación#6080347894](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1523#issuecomment-6080347894); [issue1496#6080348259](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1496#issuecomment-6080348259). Fuente native incorporadaaacd1e4d navigation.rs:92–95/shell.rs:388–410; HEAD remoto33be660d no contiene Hub y no se modificó la rama#1514. Su worker debe incorporar F5 cuando restituya el Hub. No se cambia el estado comercial: CI, login/pago/recovery monetario y promoción externos pendientes; integración local sin push/merge/publicación/deploy/pago.
+
+
+### #1496 · feedback 9-oct · Ajustes en entrega aislada
+
+Rama `vantareapp/isa-1496-fb-ajustes`, base de integración `e55a43b3`.
+Atajos locales y estado global real del residente `b53fb397`; General persistente,
+Run exclusivo del Hub, minimización y toasts `74970cbb`; nivel y frecuencia por
+widget en el único layout con historial `a7d106e5`. Sin duplicar renderer,
+adquisición, IPC, permisos ni dependencias. El registro global y su edición se
+reutilizan desde los perfiles del Launcher, con conflictos visibles.
+Se retiran los controles y tarjetas sin implementación de Ajustes; Actualizaciones,
+Privacidad y Diagnóstico conservan sus acciones reales. El idioma completo del
+Hub y el modo Automático quedan pendientes y retirados del selector: recomendación
+separar i18n completo y política adaptativa medida. No se afirma ahorro de CPU/FPS.
+Un layout con `performance` puede ser rechazado por binarios anteriores; conservar
+`.bak` antes de un rollback. `plan.md` sigue ausente en esta base y no se inventa.
+Validación final y recorridos: `C:/tmp/feedback-0910/evidencia-ajustes.md`;
+informe de hasta 12 líneas: `C:/tmp/feedback-0910/informe-ajustes.md`.
+Gates y capturas en curso; se añadirá su resultado antes de cerrar. Sin push,
+PR, merge, promoción, instalación real, release, deploy ni cambios comerciales.

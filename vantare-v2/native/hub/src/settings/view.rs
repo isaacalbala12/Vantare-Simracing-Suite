@@ -50,32 +50,6 @@ fn font(family: impl Into<gpui::SharedString>) -> gpui::Font {
     }
 }
 
-fn paragraph(content: &str, size: f32, weight: u16, color: u32, cx: &gpui::App) -> Div {
-    div()
-        .text_size(px(size))
-        .line_height(px(size * 1.5))
-        .child(Paragraph {
-            text: content.to_owned().into(),
-            runs: vec![gpui::TextRun {
-                len: content.len(),
-                font: gpui::Font {
-                    weight: if cx.global::<orbit::theme::Theme>().interface_font
-                        == orbit::theme::InterfaceFont::Inter
-                    {
-                        gpui::FontWeight::NORMAL
-                    } else {
-                        gpui::FontWeight(f32::from(weight))
-                    },
-                    ..font(orbit::sans_family(weight, cx))
-                },
-                color: rgb(color).into(),
-                background_color: None,
-                underline: None,
-                strikethrough: None,
-            }],
-        })
-}
-
 fn stack() -> Div {
     div()
         .flex()
@@ -207,9 +181,6 @@ fn section_note(content: &str, cx: &gpui::App) -> Div {
         .child(section_text(content, 12.0, 400, orbit::ink_3(cx), 18.0, cx))
 }
 
-fn reference_choice(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
-    orbit::pending_select(id, label, label, 210.0, "Próximamente", cx)
-}
 fn reference_primary(id: &'static str, label: &str, cx: &gpui::App) -> gpui::Stateful<Div> {
     orbit::carmine_button(id, label, cx)
 }
@@ -331,12 +302,12 @@ impl Hub {
             Page::Performance => (
                 "Ahora mismo",
                 "v-gauge",
-                "No hay una medición de CPU, memoria o coste por fotograma disponible. Los niveles automáticos están pendientes.",
+                "El nivel limita la actualización de los widgets. Los cambios de estado y las banderas se aplican inmediatamente.",
             ),
             Page::Hotkeys => (
-                "Botones del volante",
-                "v-wheel",
-                "Próximamente podrás asignar acciones a tu volante.",
+                "Atajos de perfiles",
+                "v-keys",
+                "Edita las combinaciones globales en cada perfil del Launcher. Un conflicto de Windows se muestra como error de registro.",
             ),
             Page::Privacy => (
                 "Qué sale de tu equipo",
@@ -344,9 +315,9 @@ impl Hub {
                 "El envío de fallos y uso anónimo depende de tu consentimiento. Los informes de Testing Center solo se envían al confirmarlos.",
             ),
             Page::Updates => (
-                "Historial",
-                "clock",
-                "Próximamente podrás consultar las versiones instaladas anteriormente.",
+                "Instalación",
+                "v-download",
+                "Consulta la versión y el canal instalados en este equipo.",
             ),
             Page::Diagnostics => (
                 "Informe de diagnóstico",
@@ -376,18 +347,6 @@ impl Hub {
                 }),
         ));
         let sections: &[(&str, &str, &str)] = match self.settings.page {
-            Page::Performance => &[
-                (
-                    "Por perfil",
-                    "v-launch",
-                    "Próximamente podrás elegir un nivel para cada perfil.",
-                ),
-                (
-                    "Últimos 10 minutos",
-                    "clock",
-                    "Próximamente · el historial de consumo aún no está disponible.",
-                ),
-            ],
             Page::Hotkeys => &[
                 (
                     "Antes de cambiar uno",
@@ -412,18 +371,11 @@ impl Hub {
                     "Reinicia Vantare. Si el problema continúa, prepara un informe en Diagnóstico.",
                 ),
             ],
-            Page::Privacy => &[
-                (
-                    "Lo que nunca sale",
-                    "v-lock",
-                    "Tus contraseñas y claves de acceso no se incluyen en los informes de diagnóstico.",
-                ),
-                (
-                    "Lo último que salió",
-                    "clock",
-                    "Próximamente · el historial de envíos aún no está disponible aquí.",
-                ),
-            ],
+            Page::Privacy => &[(
+                "Lo que nunca sale",
+                "v-lock",
+                "Tus contraseñas y claves de acceso no se incluyen en los informes de diagnóstico.",
+            )],
             Page::Diagnostics => &[
                 (
                     "Tu equipo",
@@ -436,7 +388,7 @@ impl Hub {
                     "Si no llegan datos, comprueba que el simulador esté abierto y en pista. Para un fallo repetido, adjunta un informe.",
                 ),
             ],
-            Page::Appearance | Page::Application => &[],
+            Page::Performance | Page::Appearance | Page::Application => &[],
         };
         for (title, icon, note) in sections {
             rail.push(orbit::RailSection::new(
@@ -618,6 +570,16 @@ impl Hub {
                     .items_center()
                     .justify_center()
                     .id("settings-zoom-less")
+                    .role(gpui::Role::Button)
+                    .aria_label("Reducir tamaño de la interfaz")
+                    .track_focus(&self.settings.zoom_focus[0])
+                    .tab_index(0)
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            hub.settings_zoom_change(-1, window, cx);
+                            cx.stop_propagation();
+                        }
+                    }))
                     .cursor_pointer()
                     .on_click(
                         cx.listener(|hub, _, window, cx| hub.settings_zoom_change(-1, window, cx)),
@@ -635,6 +597,16 @@ impl Hub {
                     .border_r_1()
                     .border_color(rgba(orbit::line_row(cx)))
                     .id("settings-zoom-reset")
+                    .role(gpui::Role::Button)
+                    .aria_label("Restablecer tamaño de la interfaz")
+                    .track_focus(&self.settings.zoom_focus[1])
+                    .tab_index(0)
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            hub.settings_zoom_change(0, window, cx);
+                            cx.stop_propagation();
+                        }
+                    }))
                     .cursor_pointer()
                     .on_click(
                         cx.listener(|hub, _, window, cx| hub.settings_zoom_change(0, window, cx)),
@@ -654,6 +626,16 @@ impl Hub {
                     .items_center()
                     .justify_center()
                     .id("settings-zoom-more")
+                    .role(gpui::Role::Button)
+                    .aria_label("Aumentar tamaño de la interfaz")
+                    .track_focus(&self.settings.zoom_focus[2])
+                    .tab_index(0)
+                    .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
+                        if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                            hub.settings_zoom_change(1, window, cx);
+                            cx.stop_propagation();
+                        }
+                    }))
                     .cursor_pointer()
                     .on_click(
                         cx.listener(|hub, _, window, cx| hub.settings_zoom_change(1, window, cx)),
@@ -930,20 +912,6 @@ impl Hub {
                     }),
                 cx,
             ))
-            .when(self.shell.adapt.show_notes(), |page| {
-                page.child(section_surface(
-                    "Movimiento",
-                    None,
-                    section_body().child(section_row(
-                        "Reducir animaciones",
-                        "Transiciones y latidos",
-                        orbit::pill("Próximamente", Tone::Neutral, cx),
-                        self.shell.adapt,
-                        cx,
-                    )),
-                    cx,
-                ))
-            })
     }
     fn settings_slider(&self, index: usize, cx: &mut Context<Self>) -> gpui::Stateful<Div> {
         let settings = self.settings.appearance.settings;
@@ -1111,7 +1079,7 @@ impl Hub {
         stack().h_full()
             .when_some(beta.filter(|status| status.state != "current"), |surface, status| {
                 surface.child(
-                    Self::settings_beta_notice(status, cx),
+                    self.settings_beta_notice(status, cx),
                 )
             })
             .child(Self::settings_update_hero(
@@ -1128,7 +1096,11 @@ impl Hub {
             })
             .child(div().flex_1().min_h_0().child(Grayscale(news.h_full().into_any_element())))
     }
-    fn settings_beta_notice(status: super::updates::BetaStatus, cx: &mut Context<Self>) -> Div {
+    fn settings_beta_notice(
+        &self,
+        status: super::updates::BetaStatus,
+        cx: &mut Context<Self>,
+    ) -> Div {
         let ready = status.ready_for(crate::version_label());
         section_body()
             .flex_row()
@@ -1144,18 +1116,17 @@ impl Hub {
             .when(ready, |body| {
                 body.child(
                     orbit::carmine_button("beta-restart-now", "Instalar y reiniciar", cx)
+                        .track_focus(&self.settings.update_focus)
                         .tab_stop(true)
                         .aria_description("Aplicar la actualización y volver a abrir Vantare")
                         .cursor_pointer()
-                        .on_click(cx.listener(
-                            |this, _, _, cx| match super::updates::request_restart() {
-                                Ok(()) => this.close(cx),
-                                Err(error) => {
-                                    this.settings.status = Some(error);
-                                    cx.notify();
-                                }
-                            },
-                        )),
+                        .on_click(cx.listener(|this, _, _, cx| this.settings_restart(cx)))
+                        .on_key_down(cx.listener(|this, event: &gpui::KeyDownEvent, _, cx| {
+                            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                                this.settings_restart(cx);
+                                cx.stop_propagation();
+                            }
+                        })),
                 )
             })
     }
@@ -1418,14 +1389,7 @@ impl Hub {
             ))
     }
     fn settings_privacy(&self, cx: &mut Context<Self>) -> Div {
-        stack()
-            .child(self.settings_privacy_diagnostics(cx).flex_none())
-            .when(self.shell.access.lock(Section::Strategy).is_none(), |page| {
-                page.child(section_numbered(2, "Contribución de estrategia", None,
-                    section_body().gap(px(12.0))
-                        .child(paragraph("Compartir resúmenes de carrera, consultar los envíos y solicitar su borrado estará disponible próximamente.", 14.0, 400, orbit::ink_2(cx), cx))
-                        .child(orbit::pill("Próximamente", Tone::Neutral, cx).self_start()), cx).flex_none())
-            })
+        stack().child(self.settings_privacy_diagnostics(cx).flex_none())
     }
     fn settings_privacy_diagnostics(&self, cx: &mut Context<Self>) -> Div {
         let mut body = section_body();

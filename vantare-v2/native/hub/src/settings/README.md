@@ -1,44 +1,67 @@
-# Ajustes y Cuenta — UI R4 (#1496 / #1504)
+# Ajustes — feedback del 9 de octubre (#1496)
 
-Siete pestañas en la topbar. General usa Interfaz, Inicio, Avisos y Widgets;
-Apariencia ofrece Sistema/Claro/Oscuro y nueve temas con orbes claro/oscuro.
-El esquema, tema, contraste, opacidad y fuentes conservan el guardado atómico
-con detección de conflictos. Cada control tiene foco independiente; los
-selectores de esquema usan teclado y ratón. No se registra ninguna preferencia
-nueva fuera del Store existente.
+General guarda `general.json` con escritura atómica, límite de tamaño y detección
+ de cambios externos. Densidad, inicio con Windows, arranque minimizado, avisos
+ de actualización, avisos del Launcher y toasts son preferencias reales.
+El valor Run `HKCU/Software/Microsoft/Windows/CurrentVersion/Run/VantareNative.Hub`
+solo cambia tras activar o desactivar la opción desde el Hub normal. Una beta
+instalada usa su `beta.ps1` estable, que selecciona la generación vigente; un
+build de desarrollo usa su propio ejecutable. No se cambia el Run del Launcher.
+Si falla el guardado se intenta restituir el estado anterior de inicio y se
+muestra cualquier fallo. La prueba de registro utiliza una clave QA aislada.
 
-Las páginas usan el kit Orbit R10, grupos numerados y densidad Adapt por alto;
-no tienen scroll propio. Las notas de versión, errores observados y módulos
-se desplazan dentro de sus tarjetas. Cuenta usa la barra derecha común,
-retráctil, con Estado, Dispositivos, Avisos por email y Tus datos.
+El Hub mantiene español. Se ha retirado el selector de idioma incompleto: el
+idioma de los widgets sigue siendo independiente y se guarda en el layout.
+La localización completa del Hub y el nivel Automático quedan pendientes y no
+se presentan como controles disponibles. Densidad Cómoda conserva la adaptación
+por altura; Equilibrada y Compacta reducen espacio sin superar los límites de
+ventanas pequeñas. Empezar minimizado afecta al siguiente arranque normal.
 
-Rendimiento solo presenta niveles pendientes: no hay política configurable en
-el núcleo ni cadencia por widget persistida. Personalizado abre Studio, donde
-ese contrato sigue pendiente. Atajos muestra Ctrl L/K/B, Ctrl Alt B y
-Deshacer/Rehacer de Studio; no inventa combinaciones globales en pista.
+Las notificaciones de Windows usan el backend nativo de GPUI y una identidad
+propia. Enviar prueba solicita un toast; No molestar o la configuración de
+Windows pueden ocultarlo. El Hub no afirma que Windows lo haya mostrado.
+Los avisos de actualización y final de lanzamiento respetan sus preferencias.
 
-Actualizaciones conserva metadatos, novedades empaquetadas y acciones reales
-de beta. Privacidad conserva sus dos consentimientos locales; Diagnóstico
-prepara y copia el informe sanitizado en segundo plano y muestra solo errores
-observados. Cuenta conserva inicio/cierre de sesión, permisos y restablecer
-el dispositivo. No aparecen claves copiables ni recuentos remotos inventados.
+Atajos del Hub: Ctrl L busca un favorito; sin favorito abre Launcher. Ctrl K
+abre búsqueda, Ctrl B cambia la barra izquierda y Ctrl Alt B la derecha.
+Se distinguen los modificadores exactos y una tecla mantenida no repite toggles.
+Deshacer/Rehacer de Studio también funciona cuando el foco está en la shell.
+Atajos globales: se reutiliza el registro `RegisterHotKey` del residente del
+Launcher. Se editan en cada perfil y Ajustes muestra el registro real y sus
+conflictos; una combinación guardada sin respuesta vigente no se llama activa.
+No se ofrecen acciones globales de overlays ni botones del volante inexistentes.
 
-El rojo de relleno Vantare es #D80000; texto activo oscuro #FF6B6B,
-caption #AA8F94 y botón #DC0A0A → #C40000 con texto blanco. Clásico y DeepSeek
-conservan identidad, con correcciones de contraste. Tests WCAG de las nueve
-paletas en claro/oscuro comprueban AA en superficies l1/l3, botón rojo y blanco;
-el test de producción comprueba también el mapeo a Theme/design::Tokens.
+Rendimiento guarda nivel y frecuencias dentro del único documento de layout
+(`performance`, omitido cuando conserva los valores por defecto). El editor
+comparte persistencia, conflictos y Deshacer/Rehacer con los demás cambios.
+Máximo/Alto/Equilibrado/Ahorro/Mínimo limitan tablas a 30/20/15/10/5 Hz; los otros
+widgets a cada foto/60/40/30/20 Hz. Son límites de proyección, no FPS medidos.
+Banderas, cambio de estado de fuente y época nueva se aplican inmediatamente.
+El inspector permite Usar nivel o 1/4/5/10/15/20/30/60 Hz por widget.
+Personalizado abre Studio. Adquisición, IPC, derechos y renderers no cambian.
+Una versión antigua que no admite `performance` puede rechazar un layout
+modificado: conservar la copia `.bak` antes de volver a un binario anterior.
 
-Verificación manual: con datos QA propios, recorrer siete pestañas y Cuenta,
-seleccionar los tres esquemas y nueve temas con ratón/teclado y reabrir.
-Cambiar externamente appearance.json debe bloquear un guardado sin reemplazar
-el archivo externo. Cambiar idioma/unidades de widgets y reabrir el layout;
-alternar consentimientos, preparar/filtrar/copiar diagnóstico local. No activar
-reinicio/restablecimiento en la instalación real como parte del QA visual.
+Apariencia conserva temas, esquema, contraste, cristal y fuentes. Se retiran
+Reducir animaciones y las tarjetas sin funcionalidad de las otras subpáginas.
+Actualizaciones mantiene metadatos, novedades y reinicio real de beta, ahora
+accesible por teclado. Privacidad conserva los dos consentimientos y la política;
+Diagnóstico prepara, filtra y copia el informe sanitizado existente. Los botones
+de zoom, nivel, frecuencia y prueba tienen foco y activación por teclado.
 
-Evidencia: C:/tmp/ui-r10/r4-evidence/VERIFICACION.md. Si existe
-C:/tmp/fase2/pantalla-ocupada, no abrir ventanas ni hacer capturas. La entrega
-local sin capturas no acredita paridad visual, DPI físico, login ni LMU/OBS/Mac.
+Verificación manual: usar datos QA propios; cambiar General y reabrir. Con
+una beta instalada autorizada, activar/desactivar inicio y consultar únicamente
+el valor Run del Hub; comprobar minimización en el siguiente arranque. Activar
+toasts y enviar prueba, después desactivarlos. Probar Ctrl L/K/B/Alt B y el
+historial de Studio. Cambiar nivel y frecuencia, reabrir y deshacer/rehacer;
+modificar externamente el layout debe bloquear la siguiente escritura. Preparar,
+filtrar y copiar Diagnóstico; no reiniciar ni actualizar la instalación real en
+QA. Los tests de registro trabajan solo sobre `VantareNativeTests/Settings-*`.
+
+Evidencia y gates de esta entrega: `C:/tmp/feedback-0910/informe-ajustes.md` y
+`C:/tmp/feedback-0910/evidencia-ajustes.md`. El traslado de artefactos a E: no
+modifica código ni targets de otros workers. `docs/roadmap/plan.md` no existe en
+la base ni en la referencia local de origin/nightly y no se ha recreado.
 Los apartados siguientes conservan antecedentes históricos.
 
 # Ajustes del Hub — ISA-1470

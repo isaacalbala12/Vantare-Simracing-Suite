@@ -469,7 +469,6 @@ impl Render for CanvasFrame {
             .top(px(y * self.preview_scale))
             .w(px(dimensions.0 * self.preview_scale * self.content_scale))
             .h(px(dimensions.1 * self.preview_scale * self.content_scale))
-            .opacity(self.item.opacity)
             .when(self.selected, |s| {
                 s.border_1().border_color(rgb(orbit::carmine(cx)))
             })
@@ -480,7 +479,12 @@ impl Render for CanvasFrame {
                     cx.emit(Started(event.position));
                 }),
             )
-            .child(self.renderer.clone())
+            .child(
+                div()
+                    .size_full()
+                    .opacity(self.item.opacity)
+                    .child(self.renderer.clone()),
+            )
             .when(self.selected, |frame| {
                 frame.child(
                     text(

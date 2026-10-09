@@ -5953,3 +5953,7 @@ S2: cualquier cambio de Adapt/viewport o desplazamiento del lienzo cancela el ge
 Fit y zoom manual conservan el documento y evitan mezclar coordenadas. Reproducción
 release del salto guardada; regresión física con asserts pendiente del build final.
 No se añade test de geometría simulado: la regresión requiere hit-testing y ventana real.
+S3: opacidad solo en el contenido Overlay compartido; borde y etiqueta de selección
+permanecen opacos incluso al 0%. No cambia el alfa persistido ni el renderer de pista.
+Regresión visual 0/25/100 con ratón y teclado se ejecutará en release; sin test
+headless que simule composición: se comparan los píxeles de selección reales.

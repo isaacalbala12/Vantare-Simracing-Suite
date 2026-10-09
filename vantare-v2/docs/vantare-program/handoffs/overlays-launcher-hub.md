@@ -12,12 +12,21 @@ Un contador de profiling por proceso aceptado por Isaac: 24 etapas disjuntas
 entre runtime(11), ipc(4), ui(6), GPUI(3); test rechaza futuros solapamientos.
 Test de arquitectura recorre native/vendor y prohíbe #[path] entre propietarios
 Cargo, manteniendo módulos internos. fmt y Clippy workspace/all-targets -D warnings PASS. Tests del motor en launcher;
-fixture Engineer mediante test-support IPC solo dev en Hub. Nextest/lifecycle/
-telemetría por cola pendientes; evidencia en
-`C:/tmp/auditoria-arquitectura-v2/1534-*.log`; no se afirma validación completa.
+fixture Engineer mediante test-support IPC solo dev en Hub. Nextest 1397/1397
+(7 skips), lifecycle 18 PASS. Primer Nextest: dos fallos TimedOut/BrokenPipe
+en recovery; repetición completa con NEXTEST_TEST_THREADS=2 PASS, sin alterar tests.
+Telemetría 21/21 PASS, 0 skips (645.220 s; ACC golden 606.112 s, 190308 fotos).
+Check all-targets runtime/UI con paint-stats PASS, sin warnings; build UI dev
+con paint-stats PASS. Once binarios --version idénticos: 0.0.0 (development),
+sin abrir ventanas. Código validado en 58e5dd66 (hitos 4e63a461 + 58e5dd66).
+Evidencia en
+`C:/tmp/auditoria-arquitectura-v2/1534-*.log`; gates exigidos completos en verde.
 plan.md ausente también en origin/nightly; #1530 tiene la corrección documental.
-Sin push/PR/CI remoto/merge/promoción/release; siguiente paso: completar gates,
-informe de diez líneas y comentario GitHub, revisión del orquestador.
+Entrega local completa: informe de diez líneas y comentario GitHub #1534.
+Sin push/PR/CI remoto/merge/promoción/release/instalación ni otras acciones externas.
+No QA visual ni macOS/distribución: traslado sin cambios de presentación; no
+se afirma prueba publicada ni interacción LMU/OBS real. Siguiente: revisión
+del orquestador y aceptación de Isaac antes de integrar sobre la base indicada.
 
 ## #1496 — Calidad UI R0–R3, correcciones sobre R4 (2026-10-08)
 

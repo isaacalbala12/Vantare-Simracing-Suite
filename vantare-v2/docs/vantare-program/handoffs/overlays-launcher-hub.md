@@ -6238,3 +6238,17 @@ Siguiente: puntos 11-18 y 20 del brief C:/tmp/feedback-0910/studio.md, regresion
 - Checks: fmt y Clippy Hub/UI/domain/ipc/all-targets-Dwarnings PASS con feature existente `vantare-services/network`; UI210 PASS/2ignored, inspector10, Relative20, golden1 PASS; domain146+2 e IPC47+15 PASS. Telemetría21/21 y lifecycle10/10 disponibles Mac PASS; Clippy runtime/all-targets-Dwarnings PASS. Los casos exclusivos Windows de lifecycle no se ejecutan en macOS. Suite completa por crates conserva Hub23 fallos (19 main-thread GPUI macOS,3 fixtures Windows,1 storage no construido),3 integraciones main-thread; import retry pasa5/5 con TMPDIR real (fallo /var symlink inicial conservado). No se debilitan tests ni guardas. Gates Windows completos, parity-capture Win32/DuckDB/NSIS/DPI/OBS y CI remota pendientes; no Go/React al no cambiar sus fuentes.
 - Profiler GPUI Release externo, fuente Boxes LMU V0 1/12 y layout iguales, cuatro widgets; tres tandas20 gestos por acción. Present/s observados opacidad2,57→2,74 y drag4,58→2,89; p95 Draw16,79→16,26ms y15,70→16,36ms. **Resultado inconcluso para FPS sostenidos**: entrada CUA corta/variable y dibujo bajo demanda; no autoriza afirmar mejora ni regresión. Fotos contienen un coche visible, ventanas maximizadas difieren1 punto lógico de alto. Trazas/markers/analizador/piloto y límites en `~/evidence/fb-studio/VERIFICACION.md`; falta entrada continua controlada y carga real.
 - Evidencia local `~/evidence/fb-studio/`, informe≤12 líneas y capturas revisadas. README del Hub actualizado al contrato actual; el banco no se distribuye, no usa servicios/datos reales ni añade profiler al producto. Siguiente: review de Claude, gates/gestos continuos Windows, decisión de referencias Delta núcleo y aceptación de Isaac. Entrega aislada para revisión; sin push/PR/merge/release/acciones comerciales; únicas escrituras externas, seguimiento Notion autorizado.
+
+### #1496 · integración del feedback 9-oct en Windows (en verificación)
+Base e55a43b3, rama vantareapp/isa-1496-integracion-prueba, worktree C:/tmp/vw3-integracion/vantare-v2.
+Cinco merges no-ff en orden: shell 38d24188, Relative 15aa2964, calroad 188069d2,
+Ajustes ae7d1f4b y Studio f59e405f (incluye #1497). Conflictos acumulados en
+changelog y handoffs; kit único Orbit y renderizadores productivos compartidos.
+Se conservan atajos/preview de Ajustes y repetición/inspector/widgets de Studio.
+Run y toast se separan por la identidad instalada validada; producción conserva
+VantareNative.Hub. Reducir animaciones también termina los movimientos del nuevo
+sistema Vantare, incluido Fuel. Regresiones añadidas; gates completos en curso.
+QA/Setup 0.0.974 y FPS pendientes de verificación, sin afirmar resultados previos.
+No Notion: instrucción explícita de Isaac, tracker GitHub #1496. plan.md ausente
+en base/origin/nightly, sin recrearlo ni publicar roadmap. Evidencia externa:
+C:/tmp/feedback-0910/integracion-evidence. Instalación real excluida; sin delegación.

@@ -123,7 +123,7 @@ pub(super) fn startup(enabled: bool) -> Result<(), String> {
         };
         win::sync_run(
             r"Software\Microsoft\Windows\CurrentVersion\Run",
-            "VantareNative.Hub",
+            &crate::installation::hub_identity()?,
             command.as_deref(),
         )
         .map_err(|error| format!("Inicio con Windows: {error}"))

@@ -70,3 +70,59 @@ mod tests {
         );
     }
 }
+
+/// Run y toasts usan la identidad del instalador, también en QA aislada.
+pub(crate) fn hub_identity() -> Result<String, String> {
+    hub_identity_at(
+        std::env::var_os("VANTARE_BETA_ROOT")
+            .as_deref()
+            .map(Path::new),
+    )
+}
+
+fn hub_identity_at(root: Option<&Path>) -> Result<String, String> {
+    let Some(root) = root else {
+        return Ok("VantareNative.Hub".into());
+    };
+    let identity = match std::fs::read_to_string(root.join("registration-identity.txt")) {
+        Ok(identity) => identity,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok("VantareNative.Hub".into());
+        }
+        Err(error) => return Err(format!("leer identidad instalada: {error}")),
+    };
+    let identity = identity.trim();
+    if identity.is_empty()
+        || identity.len() > 64
+        || !identity.bytes().all(|byte| byte.is_ascii_alphanumeric())
+    {
+        return Err("Identidad de registro inválida".into());
+    }
+    Ok(if identity == "VantareNativeBeta" {
+        "VantareNative.Hub".into()
+    } else {
+        format!("{identity}.Hub")
+    })
+}
+
+#[cfg(test)]
+mod identity_tests {
+    use super::*;
+    #[test]
+    fn isolated_installation_does_not_use_the_real_run_or_toast_identity() {
+        let root = std::env::temp_dir().join(format!("vantare-identity-{}", std::process::id()));
+        std::fs::create_dir_all(&root).expect("raíz propia");
+        assert_eq!(hub_identity_at(None).unwrap(), "VantareNative.Hub");
+        assert_eq!(hub_identity_at(Some(&root)).unwrap(), "VantareNative.Hub");
+        for (marker, expected) in [
+            ("VantareNativeBeta", "VantareNative.Hub"),
+            ("VantareQAIntegration", "VantareQAIntegration.Hub"),
+        ] {
+            std::fs::write(root.join("registration-identity.txt"), marker).unwrap();
+            assert_eq!(hub_identity_at(Some(&root)).unwrap(), expected);
+        }
+        std::fs::write(root.join("registration-identity.txt"), "invalid/identity").unwrap();
+        assert!(hub_identity_at(Some(&root)).is_err());
+        std::fs::remove_dir_all(root).unwrap();
+    }
+}

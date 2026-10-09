@@ -1165,6 +1165,42 @@ mod tests {
         }
     }
     #[test]
+    fn reduced_motion_settles_new_vantare_race_sequences() {
+        let prefs = Preferences::default();
+        for (kind, scene) in [
+            (
+                Kind::Standings,
+                include_str!("../fixtures/standings-vantare-carrera.scene.json"),
+            ),
+            (
+                Kind::Relative,
+                include_str!("../fixtures/relative-vantare-carrera.scene.json"),
+            ),
+            (
+                Kind::Delta,
+                include_str!("../fixtures/delta-vantare-carrera.scene.json"),
+            ),
+            (
+                Kind::FuelStrategy,
+                include_str!("../fixtures/fuel-vantare-carrera.scene.json"),
+            ),
+        ] {
+            let scene: serde_json::Value = serde_json::from_str(scene).expect("escena");
+            let mut widget = crate::Widget::new(&crate::Settings::default_for(kind), prefs);
+            for frame in scene["frames"].as_array().expect("fases") {
+                let snapshot =
+                    vantare_ipc::snapshot_from_json(&frame["snapshot"].to_string()).expect("foto");
+                widget.ingest(&snapshot, prefs);
+                assert_ne!(
+                    widget.frame_with_motion(prefs, true).1,
+                    Wake::Frame,
+                    "{}",
+                    kind.name()
+                );
+            }
+        }
+    }
+    #[test]
     fn frame_geometry_scales_shared_host_and_intrinsic_size_stays_canonical() {
         let mut overlay = Overlay::new(Kind::Standings, Preferences::default());
         let natural = overlay.wanted_size();

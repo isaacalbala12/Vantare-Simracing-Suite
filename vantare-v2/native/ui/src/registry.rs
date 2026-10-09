@@ -129,6 +129,10 @@ macro_rules! widgets {
 
             pub(crate) fn frame_with_motion(&mut self, prefs: vantare_domain::format::Preferences, reduced: bool) -> (crate::app::Paint, crate::app::Wake) {
                 match self {
+                    Self::FuelStrategy(widget) => {
+                        if reduced { widget.settle(); }
+                        widget.frame(prefs)
+                    }
                     Self::Standings(widget) => widget.frame_with_motion(prefs, reduced),
                     Self::Delta(widget) => widget.frame_with_motion(prefs, reduced),
                     Self::Relative(widget) => widget.frame_with_motion(prefs, reduced),

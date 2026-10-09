@@ -1318,7 +1318,15 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
         .with_assets(assets::Icons)
         .run(move |cx: &mut App| {
             cx.set_global(orbit::theme::Theme::default());
-            cx.set_app_identity("VantareNative.Hub", "Vantare");
+            let identity = match crate::installation::hub_identity() {
+                Ok(identity) => identity,
+                Err(error) => {
+                    *failure.borrow_mut() = Some(error);
+                    cx.quit();
+                    return;
+                }
+            };
+            cx.set_app_identity(&identity, "Vantare");
             if let Err(error) = vantare_ui::efficiency::text::register_fonts(cx)
                 .and_then(|()| orbit::design::register_fonts(cx))
             {

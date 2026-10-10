@@ -31,6 +31,45 @@ fn callback(url: &Url, state_override: Option<&str>) -> (TcpStream, String) {
 }
 
 #[test]
+fn isa1548_oversized_callback_receives_http_error_and_keeps_valid_attempt() {
+    let server = Server::start(vec![]);
+    let (root, store) = crate::test_store("oversized-callback");
+    let mut account = Account::restore(oauth(&server), &store).expect("account");
+    let login = account.begin_login().expect("login");
+    let redirect = login
+        .query_pairs()
+        .find(|(key, _)| key == "redirect_uri")
+        .expect("redirect")
+        .1;
+    let redirect = Url::parse(&redirect).expect("URL");
+    let mut socket =
+        TcpStream::connect(("127.0.0.1", redirect.port().expect("port"))).expect("callback");
+    socket
+        .set_read_timeout(Some(Duration::from_secs(3)))
+        .expect("timeout");
+    // Exactly one byte over the bound: no unread tail can reset the TCP response.
+    socket
+        .write_all(&vec![b'x'; 8193])
+        .expect("oversized request");
+    assert!(matches!(account.poll_login(), Err(Error::TooLarge)));
+    let mut reply = String::new();
+    socket.read_to_string(&mut reply).expect("HTTP reply");
+    assert!(reply.starts_with("HTTP/1.1 413 Payload Too Large\r\n"));
+    assert!(reply.contains("Cache-Control: no-store"));
+    assert!(account.login_pending());
+    let (_socket, _) = callback(&login, None);
+    assert!(
+        account
+            .poll_login()
+            .expect("valid callback after rejection")
+            .is_some()
+    );
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "oversized-callback", &[]);
+}
+
+#[test]
 fn explicit_login_restart_releases_the_fixed_callback_port() {
     let server = Server::start(vec![]);
     let (root, store) = crate::test_store("login-restart");

@@ -9,6 +9,7 @@ use std::{
     collections::{HashMap, HashSet},
     time::{Duration, Instant},
 };
+use vantare_domain::CarId;
 
 const MAX_NOTICES: usize = 3;
 const NOTICE_MS: u64 = 1200;
@@ -184,17 +185,17 @@ pub struct Ghost {
 
 #[derive(Clone, Debug, Default)]
 pub struct Frame {
-    vis: HashMap<String, RowVis>,
+    vis: HashMap<CarId, RowVis>,
     pub ghosts: Vec<Ghost>,
 }
 
 impl Frame {
-    pub fn row(&self, id: &str) -> RowVis {
+    pub fn row(&self, id: &CarId) -> RowVis {
         self.vis.get(id).cloned().unwrap_or_default()
     }
 }
 
-fn is_session_best(content_plan: &ContentPlan, id: &str) -> bool {
+fn is_session_best(content_plan: &ContentPlan, id: &CarId) -> bool {
     content_plan
         .session_best
         .as_ref()
@@ -226,7 +227,7 @@ impl EventKind {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Event {
-    pub row_id: String,
+    pub row_id: CarId,
     pub kind: EventKind,
     pub places: i64,
 }
@@ -247,10 +248,10 @@ pub fn derive_events(prev: &ContentPlan, next: &ContentPlan, lap_visible: bool) 
     if !motion_continues(prev, next) {
         return Vec::new();
     }
-    let before: HashMap<&str, &Row> = prev.rows.iter().map(|r| (r.id.as_str(), r)).collect();
+    let before: HashMap<CarId, &Row> = prev.rows.iter().map(|r| (r.id, r)).collect();
     let mut events = Vec::new();
     for row in &next.rows {
-        let Some(old) = before.get(row.id.as_str()) else {
+        let Some(old) = before.get(&row.id) else {
             continue;
         };
         if old.class != row.class {
@@ -285,19 +286,19 @@ pub fn derive_events(prev: &ContentPlan, next: &ContentPlan, lap_visible: bool) 
             };
         if session_best {
             events.push(Event {
-                row_id: row.id.clone(),
+                row_id: row.id,
                 kind: EventKind::SessionBest,
                 places: 0,
             });
         } else if places != 0 {
             events.push(Event {
-                row_id: row.id.clone(),
+                row_id: row.id,
                 kind: EventKind::Position,
                 places,
             });
         } else if lap_visible && improved {
             events.push(Event {
-                row_id: row.id.clone(),
+                row_id: row.id,
                 kind: EventKind::PersonalBest,
                 places: 0,
             });
@@ -309,8 +310,8 @@ pub fn derive_events(prev: &ContentPlan, next: &ContentPlan, lap_visible: bool) 
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Battle {
-    pub ahead: String,
-    pub behind: String,
+    pub ahead: CarId,
+    pub behind: CarId,
     pub gap: f64,
     pub player: bool,
 }
@@ -319,7 +320,7 @@ pub struct Battle {
 #[allow(clippy::implicit_hasher)]
 pub fn select_battle(
     content_plan: &ContentPlan,
-    visible: &HashSet<String>,
+    visible: &HashSet<CarId>,
     previous: Option<&Battle>,
 ) -> Option<Battle> {
     if content_plan.status != Status::Ready || !content_plan.race {
@@ -360,8 +361,8 @@ pub fn select_battle(
         });
         if gap <= if retained { 1.2 } else { 0.8 } {
             candidates.push(Battle {
-                ahead: ahead.id.clone(),
-                behind: behind.id.clone(),
+                ahead: ahead.id,
+                behind: behind.id,
                 gap,
                 player: ahead.is_player || behind.is_player,
             });
@@ -410,18 +411,18 @@ pub struct Motion {
     /// Resultado derivado reutilizable solo mientras no hay animacion ni nueva ingestion.
     idle_frame: Option<std::sync::Arc<Frame>>,
     /// Tops de layout (relativos al cuerpo) de la ultima pasada, por id.
-    tops: HashMap<String, f32>,
-    flips: HashMap<String, Tween>,
-    fades: HashMap<String, Tween>,
-    exits: HashMap<String, ExitRow>,
-    presence: HashMap<String, Row>,
-    notices: HashMap<String, Notice>,
+    tops: HashMap<CarId, f32>,
+    flips: HashMap<CarId, Tween>,
+    fades: HashMap<CarId, Tween>,
+    exits: HashMap<CarId, ExitRow>,
+    presence: HashMap<CarId, Row>,
+    notices: HashMap<CarId, Notice>,
     battle: Option<Battle>,
-    battle_tw: HashMap<String, Tween>,
-    best_tw: HashMap<String, Tween>,
-    pit_tw: HashMap<String, (Tween, Tween)>,
-    chip_tw: HashMap<String, Tween>,
-    flash_tw: HashMap<String, Tween>,
+    battle_tw: HashMap<CarId, Tween>,
+    best_tw: HashMap<CarId, Tween>,
+    pit_tw: HashMap<CarId, (Tween, Tween)>,
+    chip_tw: HashMap<CarId, Tween>,
+    flash_tw: HashMap<CarId, Tween>,
 }
 
 impl Motion {
@@ -441,9 +442,9 @@ impl Motion {
         use crate::vantare::motion::Flash;
         self.notices
             .iter()
-            .filter_map(|(id, n)| {
-                Some((
-                    vantare_domain::CarId(id.parse().ok()?),
+            .map(|(id, n)| {
+                (
+                    *id,
                     match n.kind {
                         EventKind::Position if n.places > 0 => Flash::Gain,
                         EventKind::Position => Flash::Loss,
@@ -454,7 +455,7 @@ impl Motion {
                     },
                     n.start,
                     n.places,
-                ))
+                )
             })
             .collect()
     }
@@ -478,7 +479,7 @@ impl Motion {
                 Flash::Pit => EventKind::Pit,
             };
             self.notices.insert(
-                id.0.to_string(),
+                id,
                 Notice {
                     priority: kind.priority(),
                     kind,
@@ -518,10 +519,8 @@ impl Motion {
             .filter(|p| motion_continues(p, content_plan))
         else {
             // Se rompe la continuidad: se descarta todo y se re-siembra sin animar.
-            let pit_state: HashMap<String, bool> = visible_rows
-                .iter()
-                .map(|r| (r.id.clone(), r.in_pits))
-                .collect();
+            let pit_state: HashMap<CarId, bool> =
+                visible_rows.iter().map(|r| (r.id, r.in_pits)).collect();
             self.reset();
             self.seed(&visible_rows, now);
             for (id, active) in pit_state {
@@ -533,19 +532,19 @@ impl Motion {
         };
 
         // 1) Presencia: filas que salen o entran de la ventana visible.
-        let current_ids: HashSet<&str> = visible_rows.iter().map(|r| r.id.as_str()).collect();
-        let dropped: Vec<(String, Row)> = self
+        let current_ids: HashSet<CarId> = visible_rows.iter().map(|r| r.id).collect();
+        let dropped: Vec<(CarId, Row)> = self
             .presence
             .iter()
-            .filter(|(id, _)| !current_ids.contains(id.as_str()))
-            .map(|(id, row)| (id.clone(), row.clone()))
+            .filter(|(id, _)| !current_ids.contains(id))
+            .map(|(id, row)| (*id, row.clone()))
             .collect();
         for (id, row) in dropped {
             let flight = self.flips.get(&id).map_or(0.0, |t| t.value(now));
             let top = self.tops.get(&id).copied().unwrap_or(0.0) + flight;
             let from = self.fades.get(&id).map_or(1.0, |t| t.value(now));
             self.exits.insert(
-                id.clone(),
+                id,
                 ExitRow {
                     row,
                     top,
@@ -561,17 +560,15 @@ impl Motion {
                 continue;
             }
             let from = if let Some(exit) = self.exits.remove(&row.id) {
-                self.tops.insert(row.id.clone(), exit.top);
+                self.tops.insert(row.id, exit.top);
                 exit.fade.value(now)
             } else {
                 0.0
             };
-            self.fades.insert(
-                row.id.clone(),
-                Tween::animate(from, 1.0, now, FADE_MS, EASE_OUT),
-            );
+            self.fades
+                .insert(row.id, Tween::animate(from, 1.0, now, FADE_MS, EASE_OUT));
             self.pit_tw
-                .entry(row.id.clone())
+                .entry(row.id)
                 .or_insert_with(|| pit_tweens(row.in_pits, now));
         }
 
@@ -580,26 +577,21 @@ impl Motion {
             let top = index as f32 * super::model::ROW_HEIGHT;
             let in_flight = self.flips.get(&row.id).map_or(0.0, |t| t.value(now));
             self.flips.remove(&row.id);
-            let previous = self.tops.insert(row.id.clone(), top);
+            let previous = self.tops.insert(row.id, top);
             if let Some(previous) = previous {
                 let from = previous - top + in_flight;
                 if from.abs() >= 0.5 {
                     let duration = (280.0 + from.abs() * 1.1).min(460.0) as u64;
-                    self.flips.insert(
-                        row.id.clone(),
-                        Tween::animate(from, 0.0, now, duration, FLIP),
-                    );
+                    self.flips
+                        .insert(row.id, Tween::animate(from, 0.0, now, duration, FLIP));
                 }
             }
         }
-        self.tops.retain(|id, _| current_ids.contains(id.as_str()));
-        self.presence = visible_rows
-            .iter()
-            .map(|r| (r.id.clone(), (*r).clone()))
-            .collect();
+        self.tops.retain(|id, _| current_ids.contains(id));
+        self.presence = visible_rows.iter().map(|r| (r.id, (*r).clone())).collect();
 
         // 3) Duelo y avisos.
-        let visible_set: HashSet<String> = visible_rows.iter().map(|r| r.id.clone()).collect();
+        let visible_set: HashSet<CarId> = visible_rows.iter().map(|r| r.id).collect();
         let battle = select_battle(content_plan, &visible_set, self.battle.as_ref());
         self.battle = battle;
         self.notices.retain(|_, n| {
@@ -615,7 +607,7 @@ impl Motion {
                     .notices
                     .iter()
                     .min_by_key(|(_, n)| n.priority)
-                    .map(|(id, n)| (id.clone(), n.priority));
+                    .map(|(id, n)| (*id, n.priority));
                 if let Some((id, lowest_priority)) = lowest {
                     if lowest_priority >= priority {
                         continue;
@@ -632,7 +624,7 @@ impl Motion {
             }
             self.clear_notice(&event.row_id);
             self.notices.insert(
-                event.row_id.clone(),
+                event.row_id,
                 Notice {
                     priority,
                     kind: event.kind,
@@ -641,14 +633,10 @@ impl Motion {
                 },
             );
             if event.kind == EventKind::Position {
-                self.flash_tw.insert(
-                    event.row_id.clone(),
-                    Tween::animate(0.0, 1.0, now, 500, EASE_OUT),
-                );
-                self.chip_tw.insert(
-                    event.row_id.clone(),
-                    Tween::animate(0.0, 1.0, now, 180, EASE),
-                );
+                self.flash_tw
+                    .insert(event.row_id, Tween::animate(0.0, 1.0, now, 500, EASE_OUT));
+                self.chip_tw
+                    .insert(event.row_id, Tween::animate(0.0, 1.0, now, 180, EASE));
             }
         }
         // Objetivos de duelo (oculto si la fila tiene aviso).
@@ -663,12 +651,12 @@ impl Motion {
                 _ => 0.0,
             };
             self.battle_tw
-                .entry(row.id.clone())
+                .entry(row.id)
                 .or_insert_with(|| Tween::fixed(0.0, now))
                 .retarget(target, now, 200, EASE);
             let (alpha, dx) = self
                 .pit_tw
-                .entry(row.id.clone())
+                .entry(row.id)
                 .or_insert_with(|| pit_tweens(row.in_pits, now));
             alpha.retarget(if row.in_pits { 1.0 } else { 0.0 }, now, 200, EASE);
             dx.retarget(if row.in_pits { 0.0 } else { -5.0 }, now, 200, EASE);
@@ -692,7 +680,7 @@ impl Motion {
             };
             let entry = self
                 .best_tw
-                .entry(row.id.clone())
+                .entry(row.id)
                 .or_insert_with(|| Tween::fixed(target, now));
             if animate {
                 entry.retarget(target, now, 220, EASE);
@@ -706,13 +694,13 @@ impl Motion {
         self.seeded = true;
         for (index, row) in rows.iter().enumerate() {
             self.tops
-                .insert(row.id.clone(), index as f32 * super::model::ROW_HEIGHT);
-            self.presence.insert(row.id.clone(), (*row).clone());
-            self.fades.insert(row.id.clone(), Tween::fixed(1.0, now));
+                .insert(row.id, index as f32 * super::model::ROW_HEIGHT);
+            self.presence.insert(row.id, (*row).clone());
+            self.fades.insert(row.id, Tween::fixed(1.0, now));
         }
     }
 
-    fn clear_notice(&mut self, id: &str) {
+    fn clear_notice(&mut self, id: &CarId) {
         self.notices.remove(id);
         self.flash_tw.remove(id);
         self.chip_tw.remove(id);
@@ -740,7 +728,7 @@ impl Motion {
         self.notices.retain(|_, n| {
             now.saturating_duration_since(n.start) < Duration::from_millis(NOTICE_MS)
         });
-        let ids: HashSet<String> = self.notices.keys().cloned().collect();
+        let ids: HashSet<CarId> = self.notices.keys().cloned().collect();
         self.flash_tw.retain(|id, _| ids.contains(id));
         self.chip_tw.retain(|id, _| ids.contains(id));
         self.exits.retain(|_, e| e.fade.running(now));
@@ -791,7 +779,7 @@ impl Motion {
                     }
                 }
             }
-            vis.insert(row.id.clone(), v);
+            vis.insert(row.id, v);
         }
         let ghosts = self
             .exits
@@ -862,14 +850,14 @@ impl Motion {
         let first = !self.seeded;
         self.seeded = true;
         for sample in samples {
-            let id = sample.id.0.to_string();
+            let id = sample.id;
             let old = self.presence.get(&id);
             let known = self.tops.get(&id).copied();
             let current =
                 known.unwrap_or(sample.y) + self.flips.get(&id).map_or(0.0, |t| t.value(now));
             if known.is_some() && (current - sample.y).abs() > 0.01 {
                 self.flips.insert(
-                    id.clone(),
+                    id,
                     Tween::policy(
                         current - sample.y,
                         0.0,
@@ -881,12 +869,10 @@ impl Motion {
             } else if known.is_none() {
                 self.flips.remove(&id);
             }
-            self.tops.insert(id.clone(), sample.y);
+            self.tops.insert(id, sample.y);
             if known.is_none() && !first {
-                self.fades.insert(
-                    id.clone(),
-                    Tween::policy(0.0, 1.0, now, timing.fade, Curve::Linear),
-                );
+                self.fades
+                    .insert(id, Tween::policy(0.0, 1.0, now, timing.fade, Curve::Linear));
             }
             let flash = old.and_then(|old| {
                 let old_leader = matches!(old.gap.as_str(), "Líder" | "Leader");
@@ -912,7 +898,7 @@ impl Motion {
             }
             if let Some(row) = board.row(sample.id) {
                 self.presence.insert(
-                    id.clone(),
+                    id,
                     Row {
                         row: row.clone(),
                         id,
@@ -922,7 +908,7 @@ impl Motion {
                 );
             }
         }
-        let visible: HashSet<_> = samples.iter().map(|s| s.id.0.to_string()).collect();
+        let visible: HashSet<_> = samples.iter().map(|s| s.id).collect();
         self.tops.retain(|id, _| visible.contains(id));
         self.presence.retain(|id, _| visible.contains(id));
         // El Plan anterior es una caché derivada; el historial por coche sigue en presence.
@@ -933,8 +919,8 @@ impl Motion {
         self.prev = Some(content.clone());
         for (i, row) in content.rows.iter().enumerate() {
             self.tops
-                .insert(row.id.clone(), i as f32 * super::model::ROW_HEIGHT);
-            self.presence.insert(row.id.clone(), row.clone());
+                .insert(row.id, i as f32 * super::model::ROW_HEIGHT);
+            self.presence.insert(row.id, row.clone());
         }
     }
     pub(super) fn relayout(
@@ -943,11 +929,11 @@ impl Motion {
         samples: &[crate::vantare::motion::Sample],
     ) {
         for sample in samples {
-            let id = sample.id.0.to_string();
-            self.tops.insert(id.clone(), sample.y);
+            let id = sample.id;
+            self.tops.insert(id, sample.y);
             if let Some(row) = board.row(sample.id) {
                 self.presence.insert(
-                    id.clone(),
+                    id,
                     Row {
                         row: row.clone(),
                         id,
@@ -961,8 +947,8 @@ impl Motion {
     pub(super) fn snap(&mut self, samples: &[crate::vantare::motion::Sample]) {
         let now = Instant::now();
         for s in samples {
-            let id = s.id.0.to_string();
-            self.tops.insert(id.clone(), s.y);
+            let id = s.id;
+            self.tops.insert(id, s.y);
             self.flips.insert(id, Tween::fixed(0.0, now));
         }
     }
@@ -987,7 +973,6 @@ impl Motion {
         now: Instant,
     ) -> crate::vantare::motion::Pose {
         use crate::vantare::motion::{Flash, Pose};
-        let id = id.0.to_string();
         let flash = self.notices.get(&id).and_then(|n| {
             if timing.flash.is_zero() {
                 return None;
@@ -1036,46 +1021,46 @@ impl Motion {
         clocks.extend(
             self.flips
                 .iter()
-                .map(|(id, t)| (format!("flips:{id}"), t.start, t.duration)),
+                .map(|(id, t)| (format!("flips:{id:?}"), t.start, t.duration)),
         );
         clocks.extend(
             self.fades
                 .iter()
-                .map(|(id, t)| (format!("fades:{id}"), t.start, t.duration)),
+                .map(|(id, t)| (format!("fades:{id:?}"), t.start, t.duration)),
         );
         clocks.extend(
             self.battle_tw
                 .iter()
-                .map(|(id, t)| (format!("battle_tw:{id}"), t.start, t.duration)),
+                .map(|(id, t)| (format!("battle_tw:{id:?}"), t.start, t.duration)),
         );
         clocks.extend(
             self.best_tw
                 .iter()
-                .map(|(id, t)| (format!("best_tw:{id}"), t.start, t.duration)),
+                .map(|(id, t)| (format!("best_tw:{id:?}"), t.start, t.duration)),
         );
         clocks.extend(
             self.chip_tw
                 .iter()
-                .map(|(id, t)| (format!("chip_tw:{id}"), t.start, t.duration)),
+                .map(|(id, t)| (format!("chip_tw:{id:?}"), t.start, t.duration)),
         );
         clocks.extend(
             self.flash_tw
                 .iter()
-                .map(|(id, t)| (format!("flash_tw:{id}"), t.start, t.duration)),
+                .map(|(id, t)| (format!("flash_tw:{id:?}"), t.start, t.duration)),
         );
         for (id, (a, b)) in &self.pit_tw {
-            clocks.push((format!("pit-alpha:{id}"), a.start, a.duration));
-            clocks.push((format!("pit-dx:{id}"), b.start, b.duration));
+            clocks.push((format!("pit-alpha:{id:?}"), a.start, a.duration));
+            clocks.push((format!("pit-dx:{id:?}"), b.start, b.duration));
         }
         clocks.extend(
             self.exits
                 .iter()
-                .map(|(id, t)| (format!("exit:{id}"), t.fade.start, t.fade.duration)),
+                .map(|(id, t)| (format!("exit:{id:?}"), t.fade.start, t.fade.duration)),
         );
         clocks.extend(
             self.notices
                 .iter()
-                .map(|(id, t)| (format!("notice:{id}"), t.start, Duration::ZERO)),
+                .map(|(id, t)| (format!("notice:{id:?}"), t.start, Duration::ZERO)),
         );
         clocks.sort_by(|a, b| a.0.cmp(&b.0));
         clocks
@@ -1096,10 +1081,17 @@ fn pit_tweens(active: bool, now: Instant) -> (Tween, Tween) {
 mod tests {
     use super::*;
 
-    fn row(id: &str, position: i64) -> Row {
-        let mut row = Row::unavailable(id.into(), position);
+    fn id(name: &str) -> CarId {
+        CarId(
+            name.bytes()
+                .fold(0u32, |n, b| n.wrapping_mul(31).wrapping_add(u32::from(b))),
+        )
+    }
+
+    fn row(name: &str, position: i64) -> Row {
+        let mut row = Row::unavailable(id(name), position);
         let cells = std::sync::Arc::make_mut(&mut row.row);
-        cells.driver = id.into();
+        cells.driver = name.into();
         cells.class = "GT3".into();
         row
     }
@@ -1127,7 +1119,7 @@ mod tests {
         motion.update(&next, 1, true, now + Duration::from_millis(100));
         let changed = motion.frame_shared(&next, 1, now + Duration::from_millis(100));
         assert!(!std::sync::Arc::ptr_eq(&first, &changed));
-        assert!(changed.row("a").chip.is_some());
+        assert!(changed.row(&id("a")).chip.is_some());
     }
 
     #[test]
@@ -1156,11 +1148,11 @@ mod tests {
         let next = content_plan(vec![row("b", 1), row("a", 2)], 2);
         motion.update(&next, 2, true, t0);
         let frame = motion.frame(&next, 2, t0);
-        assert_eq!(frame.row("b").dy, 30.0);
-        assert_eq!(frame.row("a").dy, -30.0);
+        assert_eq!(frame.row(&id("b")).dy, 30.0);
+        assert_eq!(frame.row(&id("a")).dy, -30.0);
         let done = t0 + Duration::from_millis(1300);
         let frame = motion.frame(&next, 2, done);
-        assert_eq!(frame.row("b").dy, 0.0);
+        assert_eq!(frame.row(&id("b")).dy, 0.0);
         assert!(!motion.animating(done));
     }
 
@@ -1173,11 +1165,11 @@ mod tests {
         assert!(!motion.animating(t0));
         let second = content_plan(vec![row("a", 1), row("b", 2)], 2);
         motion.update(&second, 2, true, t0);
-        assert_eq!(motion.frame(&second, 2, t0).row("b").alpha, 0.0);
+        assert_eq!(motion.frame(&second, 2, t0).row(&id("b")).alpha, 0.0);
         assert!(
             (motion
                 .frame(&second, 2, t0 + Duration::from_millis(300))
-                .row("b")
+                .row(&id("b"))
                 .alpha
                 - 1.0)
                 .abs()
@@ -1221,15 +1213,15 @@ mod tests {
         let next = content_plan(vec![row("b", 1), row("a", 2)], 2);
         motion.update(&next, 2, true, t0);
         let frame = motion.frame(&next, 2, t0 + Duration::from_millis(600));
-        let b = frame.row("b");
+        let b = frame.row(&id("b"));
         assert!(b.flash > 0.99 && b.flash_up);
         assert_eq!(b.chip.as_ref().map(|c| c.0.as_str()), Some("+1"));
         assert_eq!(
-            frame.row("a").chip.as_ref().map(|c| c.0.as_str()),
+            frame.row(&id("a")).chip.as_ref().map(|c| c.0.as_str()),
             Some("−1")
         );
         let frame = motion.frame(&next, 2, t0 + Duration::from_millis(1300));
-        assert!(frame.row("b").chip.is_none() && frame.row("b").flash == 0.0);
+        assert!(frame.row(&id("b")).chip.is_none() && frame.row(&id("b")).flash == 0.0);
     }
 
     #[test]
@@ -1251,7 +1243,7 @@ mod tests {
         motion.update(&next, 8, true, t0);
         let frame = motion.frame(&next, 8, t0);
         let chips = (1..=8)
-            .filter(|i| frame.row(&format!("c{i}")).chip.is_some())
+            .filter(|i| frame.row(&id(&format!("c{i}"))).chip.is_some())
             .count();
         assert_eq!(chips, 3);
     }
@@ -1265,11 +1257,11 @@ mod tests {
         std::sync::Arc::make_mut(&mut pit.row).in_pits = true;
         let next = content_plan(vec![pit], 2);
         motion.update(&next, 1, true, t0);
-        let start = motion.frame(&next, 1, t0).row("a");
+        let start = motion.frame(&next, 1, t0).row(&id("a"));
         assert_eq!((start.pit_alpha, start.pit_dx), (0.0, -5.0));
         let end = motion
             .frame(&next, 1, t0 + Duration::from_millis(250))
-            .row("a");
+            .row(&id("a"));
         assert_eq!((end.pit_alpha, end.pit_dx), (1.0, 0.0));
     }
 
@@ -1310,7 +1302,7 @@ mod tests {
         let mut next = content_plan(vec![row("b", 1), row("a", 2)], 6);
         next.identity = "other:2".into();
         motion.update(&next, 2, true, t0);
-        assert_eq!(motion.frame(&next, 2, t0).row("b").dy, 0.0);
+        assert_eq!(motion.frame(&next, 2, t0).row(&id("b")).dy, 0.0);
     }
 
     #[test]
@@ -1319,7 +1311,7 @@ mod tests {
         let mut b = row("b", 2);
         std::sync::Arc::make_mut(&mut a.row).battle_gap_seconds = Some(10.0);
         std::sync::Arc::make_mut(&mut b.row).battle_gap_seconds = Some(10.5);
-        let visible: HashSet<String> = ["a".to_string(), "b".to_string()].into();
+        let visible: HashSet<CarId> = [id("a"), id("b")].into();
         let close = content_plan(vec![a.clone(), b.clone()], 1);
         let battle = select_battle(&close, &visible, None).expect("duelo a 0,5 s");
         std::sync::Arc::make_mut(&mut b.row).battle_gap_seconds = Some(11.1);

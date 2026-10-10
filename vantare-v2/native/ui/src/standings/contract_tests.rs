@@ -229,3 +229,31 @@ fn content_plan_borrows_the_only_board_rows_and_formats_in_domain() {
         );
     }
 }
+
+#[test]
+fn row_index_uses_car_id_even_when_names_and_numbers_repeat() {
+    use std::sync::Arc;
+    let mut photo = crate::board_contracts::photos().remove(0).1;
+    for car in &mut photo.state.cars {
+        car.driver.name = "Mismo piloto".into();
+        car.number = "7".into();
+    }
+    let settings = Settings {
+        class_scope: "all-classes".into(),
+        row_count: photo.state.cars.len(),
+        ..Settings::eficiencia()
+    };
+    let board = Arc::new(standings::project_content(
+        &photo,
+        Preferences::default(),
+        &settings.content(),
+    ));
+    let plan = standings::Plan::new(board.clone(), "session".into(), photo.sequence);
+    assert_eq!(plan.rows.len(), photo.state.cars.len());
+    for selected in &plan.rows {
+        let indexed = board.row(selected.id).expect("CarId indexado");
+        assert_eq!(selected.id, indexed.id);
+        assert!(Arc::ptr_eq(indexed, &selected.row));
+    }
+    assert!(board.row(vantare_domain::CarId(u32::MAX)).is_none());
+}

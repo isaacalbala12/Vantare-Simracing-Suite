@@ -515,7 +515,10 @@ mod tests {
     };
 
     pub fn test_row(position: i64) -> Row {
-        let mut row = Row::unavailable(format!("car-{position}"), position);
+        let mut row = Row::unavailable(
+            CarId(u32::try_from(position).expect("posición de test")),
+            position,
+        );
         let cells = std::sync::Arc::make_mut(&mut row.row);
         cells.driver = "X".into();
         cells.class = "GT3".into();
@@ -614,7 +617,7 @@ mod tests {
         assert_eq!(classes, [1, 1, 2]);
         assert_eq!(content_plan.rows[1].best_lap_s, Some(100.8));
         assert!(content_plan.rows[1].in_pits && content_plan.rows[1].is_player);
-        assert_eq!(content_plan.session_best, Some(("1".into(), 100.0)));
+        assert_eq!(content_plan.session_best, Some((CarId(1), 100.0)));
         assert!(content_plan.board.gap_to_best_lap && !content_plan.race);
         assert!(
             content_plan

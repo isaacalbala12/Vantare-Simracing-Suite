@@ -1,6 +1,6 @@
 //! Selección de contenido compartida. Las filas prestan el Board; no copian textos.
 use super::{Board, Row};
-use crate::{Capability, SourceState};
+use crate::{Capability, CarId, SourceState};
 use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -13,7 +13,7 @@ pub enum Status {
 #[derive(Clone, Debug, PartialEq)]
 pub struct SelectedRow {
     pub row: Arc<Row>,
-    pub id: String,
+    pub id: CarId,
     pub position: i64,
     pub class_position: i64,
 }
@@ -30,7 +30,7 @@ pub struct Plan {
     pub rows: Vec<SelectedRow>,
     pub status: Status,
     pub race: bool,
-    pub session_best: Option<(String, f64)>,
+    pub session_best: Option<(CarId, f64)>,
     pub identity: String,
     pub sequence: u64,
 }
@@ -58,7 +58,7 @@ impl Plan {
                 let &(g, r) = &board.row_index[&row.id];
                 rows.push(SelectedRow {
                     row: board.groups[g].rows[r].clone(),
-                    id: row.id.0.to_string(),
+                    id: row.id,
                     position,
                     class_position,
                 });
@@ -66,12 +66,7 @@ impl Plan {
         }
         let session_best = rows
             .iter()
-            .filter_map(|r| {
-                Some((
-                    r.id.clone(),
-                    r.best_lap_s.filter(|s| s.is_finite() && *s > 0.0)?,
-                ))
-            })
+            .filter_map(|r| Some((r.id, r.best_lap_s.filter(|s| s.is_finite() && *s > 0.0)?)))
             .min_by(|a, b| a.1.total_cmp(&b.1));
         let content = &board.content;
         if content.player_window {
@@ -220,10 +215,13 @@ impl Plan {
 
 impl SelectedRow {
     /// Fila ausente para escenas de movimiento y geometría sin telemetría.
-    pub fn unavailable(id: String, position: i64) -> Self {
+    pub fn unavailable(id: CarId, position: i64) -> Self {
         let mut snapshot = crate::Snapshot::default();
         snapshot.state.source_state = SourceState::Live;
-        snapshot.state.cars.push(crate::Car::default());
+        snapshot.state.cars.push(crate::Car {
+            id,
+            ..crate::Car::default()
+        });
         let board = super::project(&snapshot, crate::format::Preferences::default());
         Self {
             row: board.groups[0].rows[0].clone(),

@@ -324,6 +324,25 @@ pub fn move_cursor(current: usize, forward: bool, count: usize) -> usize {
     }
 }
 
+/// Cabeceras que `palette_rows` inserta antes de la fila `cursor`.
+pub fn palette_headers(items: &[Item], cursor: usize) -> usize {
+    let Some(first) = items.first() else {
+        return 0;
+    };
+    let first_navigate = matches!(first.command, Command::Navigate(_));
+    let mixed = items
+        .iter()
+        .any(|item| matches!(item.command, Command::Navigate(_)) != first_navigate);
+    if !mixed {
+        return 1;
+    }
+    let first_group_len = items
+        .iter()
+        .take_while(|item| matches!(item.command, Command::Navigate(_)) == first_navigate)
+        .count();
+    if cursor < first_group_len { 1 } else { 2 }
+}
+
 /// No inventa pestañas que las entidades de sección aún no exponen.
 pub fn context(section: Section) -> &'static [Section] {
     match section {
@@ -608,6 +627,37 @@ mod tests {
             .navigate(&mut current, Section::Workshop)
             .expect("herramienta local");
         assert_eq!(current, Section::Workshop);
+    }
+
+    #[test]
+    fn palette_scroll_counts_only_the_inserted_headers() {
+        let navigate = |section| Item {
+            command: Command::Navigate(section),
+            label: String::new(),
+            meta: "",
+            icon: "",
+            locked: None,
+        };
+        let action = Item {
+            command: Command::Save,
+            label: String::new(),
+            meta: "",
+            icon: "",
+            locked: None,
+        };
+        assert_eq!(palette_headers(&[], 0), 0);
+        let actions = vec![action.clone(), action.clone()];
+        assert_eq!(palette_headers(&actions, 0), 1);
+        assert_eq!(palette_headers(&actions, 1), 1);
+        let destinations = vec![navigate(Section::Home), navigate(Section::Studio)];
+        assert_eq!(palette_headers(&destinations, 0), 1);
+        assert_eq!(palette_headers(&destinations, 1), 1);
+        let mixed = vec![navigate(Section::Home), action.clone()];
+        assert_eq!(palette_headers(&mixed, 0), 1);
+        assert_eq!(palette_headers(&mixed, 1), 2);
+        let mixed = vec![action.clone(), navigate(Section::Home)];
+        assert_eq!(palette_headers(&mixed, 0), 1);
+        assert_eq!(palette_headers(&mixed, 1), 2);
     }
 
     #[test]

@@ -42,3 +42,8 @@ workspace = true
 vantare-build-support.workspace = true
 # Ya utilizada por UI: compila los valores de estilo sin lectura de disco en producto.
 serde_json = '1'
+
+[dev-dependencies]
+# Aprobada por Isaac (#1537): lee los goldens gzip de runtime en los tests de
+# replay; misma versión que ya está en Cargo.lock (runtime). Nunca en producto.
+flate2 = "1.1.10"

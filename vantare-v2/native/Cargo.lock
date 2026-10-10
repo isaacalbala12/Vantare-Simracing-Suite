@@ -6562,6 +6562,7 @@ dependencies = [
 name = "vantare-ui"
 version = "0.0.0"
 dependencies = [
+ "flate2",
  "flume",
  "gpui",
  "gpui_platform",

@@ -115,6 +115,28 @@ fn lmu47_comparison_only_allows_one_ulp_in_yaw() {
     assert!(!same_lmu47_dto(&dto("0.0"), &dto("-0.0")));
 }
 
+/// El golden prueba el emisor; esto prueba el lector: cada DTO real congelado
+/// vuelve a los mismos bytes tras `Dto → Snapshot → Dto` (#1537).
+#[test]
+fn every_golden_dto_survives_the_reader_byte_for_byte() {
+    for (name, photos) in [("lmu", 10), ("lmu47", 3839), ("acc", 8)] {
+        let path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("tests/golden/{name}.jsonl.gz"));
+        let golden = BufReader::new(GzDecoder::new(
+            fs::File::open(path).expect("golden obligatorio"),
+        ));
+        let mut count = 0;
+        for line in golden.lines() {
+            let line = line.expect("gzip íntegro");
+            count += 1;
+            let snapshot = vantare_ipc::snapshot_from_json(&line).expect("DTO vigente");
+            let again = vantare_ipc::snapshot_to_json(&snapshot).expect("DTO");
+            assert!(again == line, "{name}: foto {count} cambia al releerla");
+        }
+        assert_eq!(count, photos, "{name}: corpus completo");
+    }
+}
+
 fn append(core: &mut Core, observation: Observation, output: &mut Vec<u8>) {
     let now = observation.origin.received_at;
     core.step(&mut Once(Some(observation)), now)
@@ -292,4 +314,173 @@ fn input_sequence_matches_real_lmu47_replay_with_observed_clock() {
         }
     }
     panic!("el corpus debe aportar doce observaciones");
+}
+
+/// Invariantes en cada foto publicada (#1537). Siempre: revisión creciente,
+/// posiciones de clase que deriva el núcleo (`Estimated`) en el orden de la
+/// general y gap al líder creciente en carrera. Con `native`, también las
+/// posiciones que publica el simulador: únicas y, con la parrilla completa,
+/// 1..N; con `gaps`, el gap creciente en cualquier sesión.
+fn invariants(
+    snapshot: &vantare_domain::Snapshot,
+    last: &mut Option<(u64, u64)>,
+    native: bool,
+    gaps: bool,
+) -> Vec<String> {
+    use std::collections::{BTreeMap, BTreeSet};
+    let mut broken = Vec::new();
+    let revision = (snapshot.epoch, snapshot.sequence);
+    if last.is_some_and(|last| revision <= last) {
+        broken.push(format!("revisión: {revision:?} tras {last:?}"));
+    }
+    *last = Some(revision);
+    let cars = &snapshot.state.cars;
+    let positions: Vec<u32> = cars
+        .iter()
+        .filter_map(|c| c.position.current().copied())
+        .collect();
+    let unique: BTreeSet<u32> = positions.iter().copied().collect();
+    if native && unique.len() != positions.len() {
+        broken.push(format!("duplicadas: posiciones {positions:?}"));
+    }
+    // Parrilla completa: tantas posiciones como coches y la última es N.
+    let n = u32::try_from(cars.len()).expect("parrilla acotada");
+    let complete = positions.len() == cars.len() && unique.last() == Some(&n);
+    if native && complete && unique != (1..=n).collect() {
+        broken.push(format!("huecos: posiciones {unique:?}"));
+    }
+    let mut ordered: Vec<_> = cars
+        .iter()
+        .filter_map(|c| Some((*c.position.current()?, c)))
+        .collect();
+    ordered.sort_by_key(|(position, _)| *position);
+    let race = snapshot.state.session.kind.current() == Some(&vantare_domain::SessionKind::Race);
+    let mut previous: Option<(u32, f64)> = None;
+    for (position, car) in &ordered {
+        let gap = match car.gap_leader.current() {
+            Some(vantare_domain::Gap::Time { seconds }) => Some(*seconds),
+            _ => None,
+        };
+        if let (true, Some((before, gap_before)), Some(gap)) = (gaps || race, previous, gap)
+            && gap + 1e-9 < gap_before
+        {
+            broken.push(format!("gap: P{position} {gap} < P{before} {gap_before}"));
+        }
+        if let Some(gap) = gap {
+            previous = Some((*position, gap));
+        }
+    }
+    let mut classes: BTreeMap<u32, Vec<(u32, bool)>> = BTreeMap::new();
+    for (_, car) in &ordered {
+        if let (Some(class), Some(rank)) = (&car.class, car.class_position.current()) {
+            let derived = matches!(car.class_position, vantare_domain::Quality::Estimated(_));
+            classes
+                .entry(class.id.0)
+                .or_default()
+                .push((*rank, derived));
+        }
+    }
+    for (class, ranks) in classes {
+        if ranks
+            .windows(2)
+            .any(|w| w[0].0 >= w[1].0 && (native || w[0].1 || w[1].1))
+        {
+            broken.push(format!(
+                "clase: {class} con posiciones {ranks:?} fuera de la general"
+            ));
+        }
+    }
+    broken
+}
+
+/// Cuenta las fotos y falla con la primera y la última violación de cada tipo.
+fn check_invariants(
+    name: &str,
+    native: bool,
+    gaps: bool,
+    snapshots: impl Iterator<Item = std::sync::Arc<vantare_domain::Snapshot>>,
+) -> usize {
+    let mut last = None;
+    let mut count = 0;
+    let mut seen = std::collections::BTreeMap::<String, (usize, String, String)>::new();
+    for snapshot in snapshots {
+        count += 1;
+        for broken in invariants(&snapshot, &mut last, native, gaps) {
+            let kind = broken.split(':').next().unwrap_or_default().to_owned();
+            let entry =
+                seen.entry(kind)
+                    .or_insert((0, format!("foto {count}: {broken}"), String::new()));
+            entry.0 += 1;
+            entry.2 = format!("última foto {count}: {broken}");
+        }
+    }
+    assert!(seen.is_empty(), "{name}: {seen:#?}");
+    count
+}
+
+/// Las 3.839 fotos que publica el núcleo con el replay de lmu47.
+fn lmu47_photos() -> impl Iterator<Item = std::sync::Arc<vantare_domain::Snapshot>> {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../testdata/rust-port/lmu47-high-rate-60s.tar.gz");
+    let mut replay = open_replay(&path, None).expect("corpus real obligatorio");
+    let mut core = Core::new(1463);
+    std::iter::from_fn(move || {
+        let observation = replay
+            .poll(Duration::from_secs(61))
+            .expect("corpus válido")?;
+        let now = observation.origin.received_at;
+        core.step(&mut Once(Some(observation)), now)
+            .expect("foto válida");
+        Some(core.snapshot())
+    })
+}
+
+/// Las 190.308 fotos que publica el núcleo con el replay de ACC.
+fn acc_photos() -> impl Iterator<Item = std::sync::Arc<vantare_domain::Snapshot>> {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../testdata/acc/acc-sesion-udp-20260929.tar.gz");
+    let mut replay = open_acc_replay(&path).expect("corpus real obligatorio");
+    let mut core = Core::new(1463);
+    let mut polls = 0;
+    std::iter::from_fn(move || {
+        // Mismo recorrido que el golden: 190.471 lecturas, algunas vacías.
+        while polls < 190_471 {
+            polls += 1;
+            if let Some(observation) = replay
+                .poll(Duration::from_secs(121))
+                .expect("corpus válido")
+            {
+                let now = observation.origin.received_at;
+                core.step(&mut Once(Some(observation)), now)
+                    .expect("foto válida");
+                return Some(core.snapshot());
+            }
+        }
+        None
+    })
+}
+
+#[test]
+fn core_invariants_hold_on_every_real_photo() {
+    assert_eq!(check_invariants("lmu47", true, false, lmu47_photos()), 3839);
+    assert_eq!(check_invariants("acc", false, false, acc_photos()), 190_308);
+}
+
+/// Ambos corpus son de práctica: LMU publica `time_behind_leader` como gap
+/// Reliable y deja 0 s en coches sin tiempo (P11 a 0 s tras P10 a 0,92 s en la
+/// foto 1; 7.678 casos). Standings compara mejores vueltas en práctica, pero
+/// la torre pinta `gap_leader` en cualquier sesión (#1537).
+#[test]
+#[ignore = "posible bug: gap LMU de práctica Reliable a 0 s; issue propuesta en el informe de #1537"]
+fn lmu_practice_gaps_follow_the_position() {
+    check_invariants("lmu47", true, true, lmu47_photos());
+}
+
+/// ACC: en 27 fotos (de la 94.528 a la 131.593) dos coches comparten posición
+/// general Reliable y falta otra (p. ej. dos P5 sin P6), y en 6 se repite la
+/// posición de clase: el núcleo publica a medias un adelantamiento (#1537).
+#[test]
+#[ignore = "posible bug: ACC publica posiciones duplicadas Reliable; issue propuesta en el informe de #1537"]
+fn acc_native_positions_stay_unique_during_overtakes() {
+    check_invariants("acc", true, false, acc_photos());
 }

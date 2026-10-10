@@ -119,12 +119,11 @@ impl Worker {
                 loop {
                     line.clear();
                     match pipe.read_line(&mut line) {
-                        Ok(0) => return,
+                        Ok(0) | Err(_) => return,
                         Ok(_) => stderr_log
                             .lock()
-                            .unwrap_or_else(|poison| poison.into_inner())
+                            .unwrap_or_else(std::sync::PoisonError::into_inner)
                             .push_str(&line),
-                        Err(_) => return,
                     }
                 }
             }
@@ -159,12 +158,12 @@ impl Worker {
     /// Últimas líneas del diagnóstico del hijo para explicar un timeout en
     /// vez de limitarse a esperar más.
     fn stderr_tail(&self) -> String {
+        const TAIL: usize = 4000;
         let log = self
             .stderr_log
             .lock()
-            .unwrap_or_else(|poison| poison.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone();
-        const TAIL: usize = 4000;
         if log.len() > TAIL {
             format!("…{}", &log[log.len() - TAIL..])
         } else {
@@ -179,7 +178,7 @@ impl Worker {
         }
         self.stderr_log
             .lock()
-            .unwrap_or_else(|poison| poison.into_inner())
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
             .clone()
     }
     /// El saludo (o el cierre) es un evento del hijo, no un plazo a ciegas:
@@ -200,16 +199,15 @@ impl Worker {
                     self.stderr_tail()
                 );
             }
-            Err(_) => {
-                let alive = self
-                    .child
-                    .try_wait()
-                    .map(|status| status.is_none())
-                    .unwrap_or(false);
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                let alive = self.child.try_wait().is_ok_and(|status| status.is_none());
                 panic!(
                     "sin HELLO en 30 s (hijo vivo: {alive}); stderr={}",
                     self.stderr_tail()
                 );
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                panic!("el lector del saludo murió; stderr={}", self.stderr_tail());
             }
         }
     }
@@ -224,7 +222,12 @@ impl Worker {
                     self.stderr_tail()
                 );
             }
-            Err(_) => panic!("sin ACK en 10 s; stderr={}", self.stderr_tail()),
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                panic!("sin ACK en 10 s; stderr={}", self.stderr_tail())
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                panic!("el lector de ACK murió; stderr={}", self.stderr_tail())
+            }
         }
     }
     fn eof(&mut self) {
@@ -234,7 +237,12 @@ impl Worker {
         match self.acknowledgements.recv_timeout(Duration::from_secs(10)) {
             Ok(Err(_)) => {}
             Ok(Ok(cursor)) => panic!("ACK inesperado al cerrar: {cursor:?}"),
-            Err(_) => panic!("sin cierre en 10 s; stderr={}", self.stderr_tail()),
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                panic!("sin cierre en 10 s; stderr={}", self.stderr_tail())
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                panic!("el lector de ACK murió; stderr={}", self.stderr_tail())
+            }
         }
         assert!(self.child.wait().unwrap().success());
     }

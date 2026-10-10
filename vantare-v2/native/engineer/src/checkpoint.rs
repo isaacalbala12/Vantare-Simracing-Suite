@@ -32,8 +32,7 @@ pub(super) fn save_cursor(path: &Path, cursor: Cursor) -> io::Result<()> {
         let uniq = NEXT.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
-            .map(|elapsed| elapsed.as_nanos())
-            .unwrap_or(0);
+            .map_or(0, |elapsed| elapsed.as_nanos());
         let temp = path.with_extension(format!(
             "checkpoint-{}-{nanos}-{uniq}.tmp",
             std::process::id()

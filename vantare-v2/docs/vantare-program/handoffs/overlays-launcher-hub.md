@@ -8,7 +8,13 @@ Incluidas #1528, #1529, #1530, #1532, #1533 y #1534. #1531 sigue pendiente y abi
 Etiqueta autorizada native-beta-v0.0.975 (o siguiente si existe), título nightly nativa,
 prerelease, nunca latest. USB requerido únicamente para firma Ed25519 mediante
 ruta directa; no leer/copiar/imprimir/subir la semilla. Instalación real intacta.
-Siguiente: repetir gates por cola, PR a nightly y CI; squash solo con checks verdes.
+Gates repetidos sobre nightly incorporado, por cola: fmt, Clippy -D warnings,
+Nextest 1415/1415 (7 skips heredados), lifecycle 18/18 y telemetría 21/21
+(0 skips; ACC 721,861 s), PASS. Lifecycle tuvo un timeout IPC inicial;
+repetición íntegra con idéntico código/configuración/plazos PASS, sin reproducirlo.
+Causa no acreditada; ambos logs conservados. Quality 31 tests y 456 pins PASS.
+Residuos ignorados frontend/dist y node_modules apartados fuera del checkout.
+Siguiente: PR a nightly y CI; squash solo con checks verdes.
 Evidencia externa promocion-nightly-1528-evidence/; firma/publicación aún pendientes.
 
 ## #1496 — integración local de #1528 e instalador 0.0.975 (2026-10-10)
@@ -6658,3 +6664,4 @@ editar/guardar layout, comprobar posición/tamaño/visibilidad y reabrir ambos h
 plan.md ausente en esta base y origin/nightly; corrección de gobernanza en #1530.
 Sin dependencia nueva, delegación, Notion, push, PR, merge, promoción o release.
 Siguiente acción: revisión del orquestador e integración solo tras autorización de Isaac.
+

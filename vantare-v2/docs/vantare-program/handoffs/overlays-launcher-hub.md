@@ -4,7 +4,7 @@
 
 ## 1. Resultado
 
-Hub/Studio GPUI editan el layout único y los widgets del registro. Launcher gobierna procesos mediante el motor propio. Standings tiene columnas/formatos por Práctica, Qualy y Carrera; todos los widgets filtran por sesión. Pedales conserva separación ajustable; el botón de pista alterna mostrar/dejar de mostrar mediante la solicitud compartida.
+Hub/Studio GPUI editan el layout único y los widgets del registro. Launcher gobierna procesos mediante el motor propio. Standings tiene columnas/formatos por Práctica, Qualy y Carrera; todos los widgets filtran por sesión. Pedales conserva separación ajustable y gana Look Vantare en columnas (#1566, en review); el botón de pista alterna mostrar/dejar de mostrar mediante la solicitud compartida.
 
 ## 2. Autoridad y lectura verificada
 
@@ -16,6 +16,7 @@ Rama `vantareapp/isa-1564-widgets-por-sesion-impl`. Base original #1562 `cdcc2bf
 
 ## 4. Decisiones cerradas
 
+- #1566 (Isaac): Pedales Vantare = opción A, tres columnas en la huella de Eficiencia (`width_for_gap` × 160), sin marcha ni velocidad; separación #1563 en ambos Looks. Guardados sin `designSystem` → Eficiencia; nuevos → Vantare. `reference/pedals.png` intacta.
 - Una proyección/estado por widget; N Looks sobre Board/Motion, sin otra aplicación Wails/React.
 - Standings: tres listas/formatos; filas, Look, clase/gaps, pie y ventana del jugador comunes. Presets D7 solo nuevos/reset; reset afecta una pestaña. Legacy conserva columnas, también al editar Carrera primero; orden del simulador e intervalo sin cambios.
 - Other/warmup = Práctica; columnas sin tipo inicial = Carrera; Stale conserva tipo. Mostrar en sin tipo = visible; AND con fuera de pista, incluso durante pausa. AlwaysVisible evita solo fuera de pista. Importación sessionTypes respetada.
@@ -30,6 +31,7 @@ Domain proyecta; UI guarda settings y pinta; Hub edita documento/historial. [Reg
 ## 6. Evidencia y límites
 
 Entrega anterior #1564: RED `9c218b38`; código/capturas `c8401b50`; test D12 ampliado `63bead05`. Fmt/Clippy PASS, Nextest 1601/1601 (7 skips), lifecycle 18/18, telemetría 25/25, anti-slop 456 huellas PASS. Cuatro capturas Studio 1440×900 inspeccionadas: Práctica/Qualy 537,3345 de ancho natural y Carrera 579,3345, x=48/y=62 constante. Frame explícito 800×400/documento/ancla por tres pestañas PASS. Post-merge final: fmt/Clippy -D warnings PASS (22.43s), Nextest 1613/1613 (7 skips, 266.205s), lifecycle 18/18 y telemetría 25/25 PASS; anti-slop 456 huellas PASS. Cuatro capturas nuevas merge-studio-*.png abiertas e inspeccionadas, hashes idénticos a las anteriores. Botón de pista/tray y preview por sesión con tamaño explícito pasan los tests.
+**#1566 · Pedales Vantare** (rama `vantareapp/isa-1566-pedales-look-vantare`, PR draft a nightly): fmt/Clippy -D warnings PASS, Nextest 1618/1618 (7 skips), lifecycle 18/18. Captura Eficiencia 0/17280 px frente a `reference/pedals.png` (umbral 0). Capturas antes/después en `C:/tmp/ola2/1566/`; buzón `C:/tmp/buzon/1566.md`. Sin cambios en domain/IPC: telemetría no aplica.
 Logs y revisión/hashes: `C:/tmp/ola2/evidence-1564`; informe `C:/tmp/ola2/informe-1564-impl.md`; buzón `C:/tmp/buzon/1564.md`. No convierte fixtures/replays en LMU/ACC/OBS físicos, DPI/macOS ni input→Present. Present/s no mide latencia. Históricos/goldens se conservan sin recalibrar.
 **#1536 · Launcher:** test COM compara destinos canonicalizados, conserva ejecutable/bytes, no ejecuta y rechaza UNC; arreglo `d7c6cd17`, histórico enlazado arriba.
 
@@ -42,7 +44,7 @@ Logs y revisión/hashes: `C:/tmp/ola2/evidence-1564`; informe `C:/tmp/ola2/infor
 
 ## 8. Issues terminadas, activas y pendientes
 
-Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. Activa de esta rama: #1564/PR #1577. Pendientes coordinadas: #1561 PR-3/PR-5, #1566, #1569 y #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
+Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. Activa de esta rama: #1564/PR #1577. En review: #1566 (PR draft a nightly). Pendientes coordinadas: #1561 PR-3/PR-5, #1569 y #1527; si PR-3 entra antes, #1566 hace merge de nightly (`standings::{Look, Accent}` → `look.rs`). #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
 
 ## 9. Siguiente acción exacta
 
@@ -50,4 +52,4 @@ Commit de merge y push de la rama, tras gates locales completos y diff revisado 
 
 ## 10. Última actualización
 
-2026-10-10 · GitHub #1564 · Codex. Dependencias y nightly leídos; resolución local autorizada por el orquestador. Estado y diario en #1564, sin entradas por worker/ronda aquí.
+2026-10-11 · GitHub #1566 · Claude (Opus 5.5): §1, §4, §6 y §8 por Pedales Vantare. 2026-10-10 · GitHub #1564 · Codex. Dependencias y nightly leídos; resolución local autorizada por el orquestador. Estado y diario en #1564, sin entradas por worker/ronda aquí.

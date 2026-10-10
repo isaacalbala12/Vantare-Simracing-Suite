@@ -1196,6 +1196,7 @@ mod demand_tests {
     /// sesión, estado de fuente, jugador o parrilla entregada empieza de cero.
     #[test]
     fn held_values_are_inherited_only_within_the_same_scope() {
+        type Change = fn(&mut SnapshotDto);
         let old = SnapshotDto::from(&crate::codec::tests::rich_snapshot(1, 1));
         let cars = Demand::from_mask(Signal::Positions.bit());
         let player = Demand::from_mask(Signal::Pedals.bit());
@@ -1205,7 +1206,6 @@ mod demand_tests {
         let fewer_cars = |dto: &mut SnapshotDto| {
             dto.state.cars.pop();
         };
-        type Change = fn(&mut SnapshotDto);
         let cases: [(&str, Change, &Demand, bool); 12] = [
             ("igual", |_| {}, &cars, true),
             ("época", |dto| dto.epoch += 1, &session, false),

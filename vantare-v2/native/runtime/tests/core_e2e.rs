@@ -21,6 +21,67 @@ use vantare_runtime::service;
 
 mod support;
 
+struct Recording(PathBuf);
+impl Drop for Recording {
+    fn drop(&mut self) {
+        if let Err(error) = std::fs::remove_file(&self.0)
+            && error.kind() != std::io::ErrorKind::NotFound
+        {
+            assert!(
+                std::thread::panicking(),
+                "limpiar grabación de prueba: {:?}",
+                error.kind()
+            );
+            eprintln!("limpiar grabación de prueba: {:?}", error.kind());
+        }
+    }
+}
+
+#[test]
+fn recording_cleanup_still_fails_on_remove_error_outside_unwind() {
+    let path =
+        std::env::temp_dir().join(format!("vantare-recording-cleanup-{}", std::process::id()));
+    std::fs::create_dir(&path).expect("directorio propio");
+    let result = std::panic::catch_unwind(|| drop(Recording(path.clone())));
+    std::fs::remove_dir(&path).expect("limpiar directorio propio");
+    assert!(
+        result.is_err(),
+        "el fallo de limpieza sigue fallando el test"
+    );
+}
+
+#[test]
+fn recording_cleanup_preserves_the_original_panic_on_remove_error() {
+    const CHILD_PATH: &str = "VANTARE_TEST_RECORDING_REMOVE_ERROR";
+    if let Some(path) = std::env::var_os(CHILD_PATH) {
+        let result = std::panic::catch_unwind(|| {
+            let _recording = Recording(PathBuf::from(path));
+            panic!("original recording test failure");
+        });
+        assert!(result.is_err(), "conservar el fallo original");
+        return;
+    }
+    let path =
+        std::env::temp_dir().join(format!("vantare-recording-remove-{}", std::process::id()));
+    std::fs::create_dir(&path).expect("directorio propio: remove_file fallará");
+    let output = Command::new(std::env::current_exe().unwrap())
+        .args([
+            "--exact",
+            "recording_cleanup_preserves_the_original_panic_on_remove_error",
+            "--nocapture",
+        ])
+        .env(CHILD_PATH, &path)
+        .output()
+        .expect("subproceso de prueba");
+    std::fs::remove_dir(&path).expect("limpiar solo directorio propio");
+    assert!(
+        output.status.success(),
+        "la limpieza no debe abortar el proceso: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    assert!(String::from_utf8_lossy(&output.stderr).contains("original recording test failure"));
+}
+
 fn testdata(file: &str) -> PathBuf {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../testdata")
@@ -88,14 +149,6 @@ fn assert_one_growing_revision(got: &[Arc<Snapshot>]) {
 fn the_core_process_emits_and_persists_source_fact_outside_acquisition() {
     use vantare_domain::SourceState;
     use vantare_runtime::flows::{Delivery, FactKind, RecordingStatus, client::EventClient, host};
-    struct Recording(PathBuf);
-    impl Drop for Recording {
-        fn drop(&mut self) {
-            if self.0.exists() {
-                std::fs::remove_file(&self.0).unwrap();
-            }
-        }
-    }
     let recording = Recording(
         std::env::temp_dir().join(format!("vantare-e2e-events-{}.jsonl", std::process::id())),
     );

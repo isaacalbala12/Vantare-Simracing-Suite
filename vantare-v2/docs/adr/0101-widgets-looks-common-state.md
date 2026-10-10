@@ -4,11 +4,12 @@ Aceptado por Isaac para #1531. Base: 5e1da3f6. Aplicación incremental: Standing
 
 ## Estado de la ronda 2
 
-Los siete puntos de la revisión se implementan en commits separados. La repetición
-autorizada tras perfilar Standings pasa sus ocho costes; el cierre sigue bloqueado
-por Relative Eficiencia ACC ingest p99: 8,4 frente a máximo baseline 7,2 µs
-(+16,67%, límite +5%). Todos los p50 de ambos widgets pasan. Se detienen Delta,
-Fuel y frío nuevo; las cifras anteriores permanecen como evidencia histórica.
+Los siete puntos de la revisión se implementan en commits separados. Standings
+pasa ocho costes tras perfilar; Relative pasa ocho en la repetición autorizada
+con cola libre. El cierre sigue bloqueado por Delta Eficiencia ACC p99: ingest
+5,2 frente a máximo baseline 4,6 µs (+13,04%); frame 58,0 frente a 51,8
+(+11,97%, límite +5%). Los otros seis costes Delta y todos sus p50 pasan.
+Fuel y frío nuevo se detienen; las cifras anteriores son evidencia histórica.
 El gate no cambia: mediana p50 ≤ 1,03 × máximo baseline y p99 ≤ 1,05 × máximo.
 Tandas iniciales y su FAIL conservados en round2/performance; repetición y
 perfil en round2/hot-path. No se repiten tandas para estabilizar ruido.
@@ -24,11 +25,18 @@ No se atribuye el p99 de ingest al ajuste de frame: apenas varía 15,1→15,2 µ
 el rango baseline del mismo fefe pasa de 4,9–13,5 a 9,8–24,2 µs. Dispersión
 completa comunicada como DUDA; Standings PASS según el criterio vigente.
 Paridad nueva Standings 57/57 RGBA=0; los 366 pares previos permanecen archivados.
-La repetición de Relative autorizada después de ese bloqueo espera a cero Cargo,
-reserva todos los mutex de la cola y aborta si Cargo aparece entre procesos.
-Su revisión de ingest no encuentra heap ni reconstrucciones nuevas en ACC estable;
-el perfil y cinco A/B se registran separadamente en round2/hot-path/quiet.
-Si vuelve a fallar sin causa demostrada, se comunicará DUDA y se detendrá.
+Relative repite con cero Cargo, reserva de cuatro mutex durante toda la tanda
+y comprobación entre procesos. PASS sin márgenes: Efi ACC ingest p99 6,0 dentro
+de 2,8–9,0 µs. Sin causa de código ni cambio: perfil antes 0/1/262 y después
+0/1/249 asignaciones ingest/preparación/paint; trabajo e invalidaciones cero.
+El FAIL anterior se conserva; no se declara una causa de ruido demostrada.
+Delta también mide con esa reserva. Perfil antes/después 0/1/42 asignaciones
+y bytes 0/32/3024, iguales en todas las muestras; trabajo e invalidaciones cero.
+Ingest estable retorna antes de Arc/Labels/Motion; pintor Eficiencia sin diff.
+Motion común añade indirection/selección de interpolación, pero no hay evidencia
+suficiente para atribuirle esos p99. Sin causa corregible demostrada, DUDA con
+diff y cifras de cinco tandas; parada sin otra A/B ni cambio arbitrario de código.
+Perfil, revisión y tandas en round2/hot-path/quiet; gate intacto.
 
 ## Decisión
 

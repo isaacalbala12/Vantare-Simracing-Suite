@@ -134,7 +134,7 @@ impl Roadmap {
             return Err(Error::Unconfigured);
         }
         let url = base
-            .join("rest/v1/rpc/visual_roadmap_current")
+            .join("rest/v1/rpc/visual_roadmap_current_v2")
             .map_err(|_| Error::Unconfigured)?;
         // POST is an explicitly read-only RPC. One request per manual refresh.
         let mut rows: Vec<Publication> = http
@@ -277,7 +277,7 @@ mod tests {
                 .requests
                 .recv_timeout(Duration::from_secs(3))
                 .expect("capture");
-            assert!(request.starts_with("POST /rest/v1/rpc/visual_roadmap_current "));
+            assert!(request.starts_with("POST /rest/v1/rpc/visual_roadmap_current_v2 "));
         }
         server.finish();
         drop(store);

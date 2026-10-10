@@ -1,3 +1,16 @@
+## #1535 · ACL, compatibilidad y protección de publicación (2026-10-10)
+
+Sol #1/Opus P3-5: PUBLIC cerrado para draft, is_active_owner y trigger;
+grant authenticated conservado. Gate pg_proc rechaza cualquier DEFINER
+no revisado (allowlist sync, calendario publicado y shims digest puros).
+RPC actual antigua proyecta v1; nueva current_v2 mantiene misma publicación.
+Vacío rechazado; retirada >=50% IDs requiere aprobación administrativa exacta
+con caducidad <=1 h, inaccesible para CI y consumida una vez. Rol idempotente
+con atributos reafirmados. v1 conserva límite histórico de caracteres.
+Runner PostgreSQL local desechable: pgTAP 20+29 PASS; LOGIN real con claims
+owner falsos denegado; authenticated owner conserva borrador y rol repetido PASS.
+No producción. TLS/workflow/documentación y gates Rust en cierre.
+
 ## #1535 · corrección Sol/Opus de identidad (2026-10-10)
 
 Las FKs de respuestas/contribuciones ahora apuntan a profiles(id), cascade.

@@ -4,7 +4,7 @@ export async function mountRoadmap(element, { supabaseUrl, anonKey, language = '
   try {
     const url = new URL(supabaseUrl);
     if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !anonKey) throw new Error('Unconfigured');
-    const response = await fetch(new URL('/rest/v1/rpc/visual_roadmap_current', url), {
+    const response = await fetch(new URL('/rest/v1/rpc/visual_roadmap_current_v2', url), {
       method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json', apikey: anonKey, Authorization: `Bearer ${anonKey}` },
       credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(8000)
     });

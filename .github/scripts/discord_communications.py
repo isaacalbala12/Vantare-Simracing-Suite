@@ -817,7 +817,7 @@ def publish(
             raise RuntimeError(f"Discord returned status {error.code}") from error
 
 
-ROADMAP_RPC = "/rest/v1/rpc/visual_roadmap_current"
+ROADMAP_RPC = "/rest/v1/rpc/visual_roadmap_current_v2"
 
 
 def resolve_development_projects(*, token="", repository="", supabase_url="", anon_key="", opener=urllib.request.urlopen):

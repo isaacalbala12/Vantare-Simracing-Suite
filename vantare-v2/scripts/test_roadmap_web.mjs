@@ -15,7 +15,7 @@ const config = { supabaseUrl: 'https://public.example.test', anonKey: 'public-fi
 test('shared Supabase RPC uses public config, no cookies, and literal text', async () => {
   const element = new Element();
   globalThis.fetch = async (url, request) => {
-    assert.equal(String(url), 'https://public.example.test/rest/v1/rpc/visual_roadmap_current');
+    assert.equal(String(url), 'https://public.example.test/rest/v1/rpc/visual_roadmap_current_v2');
     assert.equal(request.method, 'POST');
     assert.equal(request.body, '{}');
     assert.equal(request.credentials, 'omit');

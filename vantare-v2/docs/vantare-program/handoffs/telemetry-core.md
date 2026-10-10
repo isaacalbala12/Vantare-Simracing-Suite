@@ -3419,3 +3419,47 @@ be751010→00f37fef solo afectan etiqueta de Studio: runtime/domain/ipc/testdata
 Nextest final 1402/1402, lifecycle PASS. El instalador local 0.0.974 usa fuente 00f37fef.
 No supone telemetría física nueva ni FPS mostrados medidos. Evidencia canvas-final-telemetria.log;
 estado completo y límites en overlays-launcher-hub.md, seguimiento GitHub #1496.
+
+### #1547 · robustez del runtime — entrega local validada (10-oct)
+
+Worktree `C:/tmp/vw3-1547/vantare-v2`; rama `vantareapp/isa-1547-runtime-robustez`;
+base autorizada `701706130765a1653a914aa8a2c91a23c5d0c02e`, fuente validada
+`95cbd3f95dcd2e3b6378991e06579e16602d6ba6`. Se leyó `origin/nightly` tras fetch;
+se conserva la base explícita de `C:/tmp/review-1536/brief-fix.md`.
+
+Ocho hallazgos de [#1547](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1547)
+corregidos con reproducciones rojas antes del arreglo:
+
+- 09#2: ACC descarta `InvalidData` y drena el datagrama siguiente, conservando socket/conexión y sin refrescar `last_udp` por bytes inválidos. Commit `b13c3aff`; source y regresión `runtime/{src/adapter,tests}/acc/live.rs`.
+- 10#1: LMU poda identidades antes de construir la observación, conserva las activas y asigna IDs monotónicos por sesión; rechaza agotamiento sin envolver. Commit `519ed387`; solo `runtime/src/adapter/lmu/translate.rs` y sus tests.
+- 10#2: cierre Unix continúa con los demás hijos tras un error y devuelve el primero. Commit `e82b4c2b`; `runtime/src/bin/vantare/unix.rs`, regresión con dos hijos reales y kill fallido inyectado.
+- 10#4: Launcher deriva ausencia y bytes del mismo resultado de metadata; eliminación concurrente vuelve a defaults sin falso JSON inválido. Commit `7a2460dc`; `runtime/src/bin/vantare/resident.rs`, test elimina el archivo entre existencia y metadata.
+- 10#6: retirada la entrada Unix inalcanzable de la implementación Windows de `vantare-grabar-acc`; wrapper intacto y regresión estructural. Commit `c185be73`; `runtime/src/bin/vantare-grabar-acc/{implementation,main}.rs`.
+- 11#1 y 11#2: rights/services conservan sus rechazos y registran solo `ErrorKind`, sin nonce ni payload. Commit `147b69bf`; `runtime/src/{rights/host,services}.rs`, nueva `runtime/tests/ipc_diagnostics.rs` con pipes reales y captura de stderr.
+- 12#5: cleanup E2E conserva el fallo fuera de unwind; durante unwind evita un segundo panic y mantiene el original. Commit `95cbd3f9`; `runtime/tests/core_e2e.rs`, regresiones en subproceso y fuera de unwind.
+
+Gates finales por `C:/tmp/fase2/compilar.ps1`, target propio `native/target/gates`,
+`--locked --offline -j 2`: fmt y Clippy `-D warnings` PASS; Nextest 1419/1419 PASS
+(7 skips previstos); lifecycle 18/18 PASS; **telemetria 21/21 PASS**, 0 skips.
+ACC golden terminó en 709,130 s; goldens y todo `testdata` idénticos a la base.
+Sin dependencias, allowances, baselines, gates ni rutas excluidas por #1531 modificados.
+
+Límite Unix: función exacta extraída del source, compilada por cola y probada con dos
+procesos Windows reales; rojo visita 1/2, verde visita 2/2 y cierra el restante.
+El error kill es inyectado. No se ejecutó el backend completo Linux/macOS.
+Cross-check Linux adicional bloqueado porque falta `x86_64-linux-gnu-gcc` para `ring`;
+no equivale a una validación Linux. No hay prueba física LMU/ACC, UI o rendimiento nueva.
+
+#1538 modifica adaptadores en paralelo: aquí ACC toca únicamente `receive` y LMU
+únicamente `translate.rs`; no se modifica `lmu/live.rs`, frame/open ni ACC translate.
+Siguiente: revisión e integración autorizada junto a #1538, conservando ambos cambios
+y repitiendo los gates sobre el árbol integrado. No se ha realizado esa integración.
+
+Tracker verificado: issue OPEN, Project Vantare In Progress,
+`area:telemetria-core` y `state:in-progress`; sin milestone de versión comprometida.
+Entrega exclusivamente local: sin push, PR, CI remota, merge, promoción ni release.
+Issue e hilo abiertos. Informe `C:/tmp/review-1536/informe-1547.md`, buzón append-only
+`C:/tmp/buzon/1547.md`; logs y SHAs en `C:/tmp/review-1536/evidence-1547`.
+Repetición desde `native/`: `pwsh -NoProfile -File C:/tmp/fase2/compilar.ps1 pwsh -NoProfile -File C:/tmp/review-1536/evidence-1547/run-gates.ps1`.
+Revisar `gates.json` y logs por gate; el cross-check opcional se registra por separado.
+`native/target` queda conservado: la revisión automática rechazó su borrado (blocked by policy), incluso con ruta literal propia verificada; no se intenta eludir el bloqueo.

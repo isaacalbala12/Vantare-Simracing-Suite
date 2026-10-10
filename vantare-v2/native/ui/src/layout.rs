@@ -374,6 +374,14 @@ impl Presentation {
         let observed = read(&path)?;
         Ok(Self { path, observed })
     }
+    /// Firma del fichero de solicitud (mtime, tamaño): solo cambia al
+    /// escribirse o borrarse. Patrón compartido con el estado resident del
+    /// Launcher (#1553): la vista cachea el estado y solo reparsea al
+    /// cambiar la firma, sin E/S en el render.
+    pub fn signature(layout: &Path) -> Option<(SystemTime, u64)> {
+        let metadata = fs::metadata(layout.with_extension("show.json")).ok()?;
+        Some((metadata.modified().ok()?, metadata.len()))
+    }
     pub fn show(layout: &Path) -> Result<(), Error> {
         let watcher = Self::watch(layout)?;
         let current = watcher
@@ -883,6 +891,29 @@ mod presentation_tests {
         // Reabrir tras ocultar no repite la solicitud vieja.
         let mut reopened = Presentation::watch(&path).expect("reopen");
         assert_eq!(reopened.poll().expect("sin solicitud"), None);
+        fs::remove_dir_all(dir).expect("cleanup");
+    }
+
+    #[test]
+    fn signature_tracks_show_requests_without_reparsing() {
+        let dir = std::env::temp_dir().join(format!(
+            "presentation-signature-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        ));
+        let path = dir.join("layout.json");
+        assert_eq!(Presentation::signature(&path), None);
+        Presentation::show(&path).expect("show");
+        let first = Presentation::signature(&path).expect("firma tras mostrar");
+        // Sin cambios la firma es estable: la vista sirve la caché sin releer.
+        assert_eq!(Presentation::signature(&path), Some(first));
+        Presentation::hide(&path).expect("hide");
+        assert_eq!(Presentation::signature(&path), None);
+        Presentation::show(&path).expect("show again");
+        assert!(Presentation::signature(&path).is_some());
         fs::remove_dir_all(dir).expect("cleanup");
     }
 }

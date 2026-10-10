@@ -1,5 +1,5 @@
 //! Editor del único documento compartido. Historial y selección pertenecen al Hub.
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use vantare_ui::{
     Kind, Settings,
     layout::{Document, Instance, Layout},
@@ -43,8 +43,13 @@ impl Editor {
         vantare_ui::layout::Presentation::hide(&self.path).map_err(|error| error.to_string())
     }
     /// Estado real compartido (solicitud vigente en show.json), sin duplicar estado.
+    /// El render no lo llama: Studio sirve su caché y la sincroniza (#1567).
     pub fn is_showing_on_track(&self) -> bool {
         vantare_ui::layout::Presentation::is_showing(&self.path)
+    }
+    /// Ruta del documento: Studio firma show.json sin releer en cada render (#1567).
+    pub(crate) fn layout_path(&self) -> &Path {
+        &self.path
     }
     /// Alterna mostrar/dejar de mostrar según el estado real vigente.
     pub fn toggle_on_track(&self) -> Result<(), String> {

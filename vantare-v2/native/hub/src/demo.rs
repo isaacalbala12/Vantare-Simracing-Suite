@@ -328,6 +328,16 @@ impl DemoData {
                 include_str!("../reference/fixtures/launcher-r7.json")
             })
             .map_err(|error| format!("fixture visual Inicio: {error}"))?;
+            // Las rutas QA de estas fixtures son Windows; la captura Unix usa su raíz local.
+            #[cfg(not(windows))]
+            for app in &mut self.launcher.apps {
+                if let Some(path) = &mut app.executable_path
+                    && let Some(relative) =
+                        path.to_str().and_then(|text| text.strip_prefix("C:/QA/"))
+                {
+                    *path = std::path::Path::new("/QA").join(relative);
+                }
+            }
             if self.launcher.profiles.iter().any(|profile| {
                 profile
                     .last_ready_steps

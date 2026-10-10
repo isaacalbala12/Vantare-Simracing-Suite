@@ -121,15 +121,25 @@ impl Acc {
             return Ok(false);
         };
         let mut changed = false;
+        let mut rejected = 0;
         for _ in 0..256 {
             match socket.recv(&mut self.buffer) {
-                Ok(n) => {
-                    self.last_udp = Some(now);
-                    changed |= self.translator.udp(&self.buffer[..n], now)?;
-                }
+                Ok(n) => match self.translator.udp(&self.buffer[..n], now) {
+                    Ok(received) => {
+                        self.last_udp = Some(now);
+                        changed |= received;
+                    }
+                    Err(error) if error.kind() == io::ErrorKind::InvalidData => {
+                        rejected += 1;
+                    }
+                    Err(error) => return Err(error),
+                },
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => return Err(e),
             }
+        }
+        if rejected > 0 {
+            eprintln!("broadcasting ACC: {rejected} datagramas inválidos descartados");
         }
         if now >= self.next_register {
             if self.translator.connection.is_none() {

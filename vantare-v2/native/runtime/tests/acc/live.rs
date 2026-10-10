@@ -2,6 +2,54 @@
 use super::*;
 
 #[test]
+fn malformed_udp_preserves_the_connection_and_drains_the_next_valid_packet() {
+    let server = UdpSocket::bind("127.0.0.1:0").expect("vector UDP");
+    let socket = UdpSocket::bind("127.0.0.1:0").expect("adaptador");
+    socket
+        .connect(server.local_addr().expect("servidor"))
+        .expect("peer");
+    socket.set_nonblocking(true).expect("no bloquear");
+    let peer = socket.local_addr().expect("puerto original");
+    let mut acc = Acc::new();
+    acc.socket = Some(socket);
+    acc.retry = Duration::MAX;
+    acc.next_register = Duration::MAX;
+    acc.next_entries = Duration::MAX;
+    acc.next_track = Duration::MAX;
+    acc.translator.connection = Some(42);
+    acc.last_udp = Some(Duration::ZERO);
+    server.send_to(&[1], peer).expect("ACK truncado");
+    let now = Duration::from_millis(100);
+    acc.poll(now).expect_err("no hay SHM en este vector");
+    assert_eq!(
+        acc.translator.connection,
+        Some(42),
+        "un datagrama no desconecta"
+    );
+    assert_eq!(
+        acc.last_udp,
+        Some(Duration::ZERO),
+        "bytes inválidos no refrescan UDP"
+    );
+    assert_eq!(
+        acc.socket
+            .as_ref()
+            .expect("socket conservado")
+            .local_addr()
+            .expect("puerto"),
+        peer
+    );
+
+    server.send_to(&[1], peer).expect("otro ACK truncado");
+    server
+        .send_to(&[1, 43, 0, 0, 0, 1, 0, 0, 0], peer)
+        .expect("ACK válido detrás");
+    acc.receive(now).expect("drenaje continúa");
+    assert_eq!(acc.translator.connection, Some(43));
+    assert_eq!(acc.last_udp, Some(now));
+}
+
+#[test]
 #[allow(unsafe_code)] // Mappings Win32 propios, igual que tests/acc/shm.rs.
 fn broken_broadcasting_configuration_does_not_skip_shared_memory() {
     use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};

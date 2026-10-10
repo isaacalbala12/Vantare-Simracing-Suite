@@ -12,7 +12,6 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::mpsc::{self, Receiver};
 #[cfg(windows)]
 use std::thread::{self, JoinHandle};
-#[cfg(windows)]
 use std::time::Duration;
 
 use vantare_domain::{Car, CarId, Observation, Player, Quality, State};

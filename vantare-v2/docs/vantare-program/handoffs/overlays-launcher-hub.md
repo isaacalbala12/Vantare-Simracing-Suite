@@ -20,6 +20,7 @@ la fixture DPAPI de runtime::rights sin cfg(windows). La corrección acota solo
 esa fixture, auxiliares y escenarios de procesos con autoridad a Windows;
 checkpoint puro y rechazo de stream sin licencia siguen activos en Linux.
 No cambia código de producto, asserts, deadlines ni gates. Revalidación Windows por cola: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados) y lifecycle18/18 PASS. CI Linux debe repetirse y pasar antes del squash.
+Segundo fallo Linux E0433: Duration se había acotado en exceso y también es usado por photo/checkpoint puro. Se conserva el import en todas las plataformas; fixture DPAPI y procesos autenticados siguen solo Windows. Revalidación Windows por cola PASS: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados) y lifecycle18/18; CI Linux completa pendiente.
 CI Windows anterior detectó alias 8.3 de TEMP: COM devuelve runneradmin mientras
 la fixture usa RUNNER~1. Test LNK compara cardinalidad y destinos canónicos,
 conservando byte a byte el enlace y las comprobaciones de no ejecución.

@@ -1,5 +1,26 @@
 ## #1496 — promoción a nightly autorizada el 2026-10-10
 
+## #1536 · fixtures de captura portables del PR #1557 (2026-10-10)
+
+La CI Linux de b6b778c supera fmt/check/Clippy y llega a Nextest: falla
+launcher_showcase_scenes_use_isolated_valid_profiles por C:/QA/vantare-hub.exe.
+df215d69eb94158b8fdc1ab1542a299b016a7812 adapta únicamente las rutas C:/QA/ de las dos fixtures visuales
+del Launcher a /QA/ al cargar capturas fuera de Windows. No modifica JSON,
+validador de producción, descubrimiento, lanzamientos ni aserciones/tests.
+Windows conserva exactamente sus rutas. Las otras escenas Inicio que usan
+la misma fixture quedan cubiertas por la corrección y sus tests existentes.
+Árbol native 20259fe6e9c4ca25435992a00aa92a950bc23116; check/fmt/Clippy -D warnings, Nextest 1526/1526
+(7 skips heredados) y lifecycle 18/18 repetidos PASS por cola en Windows.
+Recovery/status_process sin flake ni reintentos. Logs linux-demo-*.log.
+Adaptadores/Core, domain/IPC/UI, corpus y goldens siguen idénticos al PASS
+telemetría 25/25 (0 skips) de d3ff5919; no se repite por cambio exclusivo Hub.
+Auditoría R3: 22 archivos idénticos a origen y 17 tests nuevos preservados.
+Linux pendiente de la CI de esta revisión; no afirmar que sus tests pasan.
+
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557,
+sin merge, #1531 fuera. FIN tras los dos checks obligatorios PASS con estado
+de cada check. GitGuardian conocido no bloqueante, pendiente de Isaac.
+
 ## #1536 · corrección Clippy Unix del PR #1557 (2026-10-10)
 
 La nueva CI Linux superó cargo check y detectó redundant_closure_for_method_calls

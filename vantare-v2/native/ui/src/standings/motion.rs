@@ -4,7 +4,7 @@
 //! Maquina de estados pura: recibe ViewModels sucesivos y muestrea el estado
 //! visual en un instante dado. No toca GPUI; `view.rs` solo pinta el `Frame`.
 
-use super::model::{Row, Status, Vm};
+use super::model::{ContentPlan, Row, Status};
 use std::{
     collections::{HashMap, HashSet},
     time::{Duration, Instant},
@@ -170,8 +170,11 @@ impl Frame {
     }
 }
 
-fn is_session_best(vm: &Vm, id: &str) -> bool {
-    vm.session_best.as_ref().is_some_and(|(best, _)| best == id)
+fn is_session_best(content_plan: &ContentPlan, id: &str) -> bool {
+    content_plan
+        .session_best
+        .as_ref()
+        .is_some_and(|(best, _)| best == id)
 }
 
 // ---------------------------------------------------------------------------
@@ -204,11 +207,11 @@ pub struct Event {
     pub places: i64,
 }
 
-pub fn motion_continues(prev: &Vm, next: &Vm) -> bool {
+pub fn motion_continues(prev: &ContentPlan, next: &ContentPlan) -> bool {
     prev.status == Status::Ready
         && next.status == Status::Ready
         && prev.identity == next.identity
-        && prev.session_label == next.session_label
+        && prev.session_label() == next.session_label()
         && next.sequence >= prev.sequence
 }
 
@@ -216,7 +219,7 @@ fn valid_lap(seconds: Option<f64>) -> Option<f64> {
     seconds.filter(|s| s.is_finite() && *s > 0.0)
 }
 
-pub fn derive_events(prev: &Vm, next: &Vm, lap_visible: bool) -> Vec<Event> {
+pub fn derive_events(prev: &ContentPlan, next: &ContentPlan, lap_visible: bool) -> Vec<Event> {
     if !motion_continues(prev, next) {
         return Vec::new();
     }
@@ -226,7 +229,7 @@ pub fn derive_events(prev: &Vm, next: &Vm, lap_visible: bool) -> Vec<Event> {
         let Some(old) = before.get(row.id.as_str()) else {
             continue;
         };
-        if old.vehicle_class != row.vehicle_class {
+        if old.class != row.class {
             continue;
         }
         let (previous, current) = (old.position, row.position);
@@ -235,10 +238,7 @@ pub fn derive_events(prev: &Vm, next: &Vm, lap_visible: bool) -> Vec<Event> {
         } else {
             0
         };
-        let improved = match (
-            valid_lap(old.best_lap_seconds),
-            valid_lap(row.best_lap_seconds),
-        ) {
+        let improved = match (valid_lap(old.best_lap_s), valid_lap(row.best_lap_s)) {
             (Some(o), Some(n)) => n < o - 0.0005,
             _ => false,
         };
@@ -294,27 +294,30 @@ pub struct Battle {
 /// `selectStandingsBattle`: un duelo de la misma clase, con histeresis.
 #[allow(clippy::implicit_hasher)]
 pub fn select_battle(
-    vm: &Vm,
+    content_plan: &ContentPlan,
     visible: &HashSet<String>,
     previous: Option<&Battle>,
 ) -> Option<Battle> {
-    if vm.status != Status::Ready || !vm.race {
+    if content_plan.status != Status::Ready || !content_plan.race {
         return None;
     }
-    let rows: Vec<&Row> = vm.rows.iter().filter(|r| visible.contains(&r.id)).collect();
+    let rows: Vec<&Row> = content_plan
+        .rows
+        .iter()
+        .filter(|r| visible.contains(&r.id))
+        .collect();
     let mut candidates: Vec<Battle> = Vec::new();
     for behind in &rows {
-        let class = behind.vehicle_class.trim().to_uppercase();
+        let class = behind.class.trim().to_uppercase();
         if class.is_empty() || behind.class_position < 2 {
             continue;
         }
         let Some(ahead) = rows.iter().find(|r| {
-            r.vehicle_class.trim().to_uppercase() == class
-                && r.class_position == behind.class_position - 1
+            r.class.trim().to_uppercase() == class && r.class_position == behind.class_position - 1
         }) else {
             continue;
         };
-        if ahead.pit_active || behind.pit_active {
+        if ahead.in_pits || behind.in_pits {
             continue;
         }
         if ahead.position < 1 || behind.position < 1 || behind.position <= ahead.position {
@@ -376,7 +379,7 @@ struct ExitRow {
 
 #[derive(Default)]
 pub struct Motion {
-    prev: Option<Vm>,
+    prev: Option<ContentPlan>,
     /// Resultado derivado reutilizable solo mientras no hay animacion ni nueva ingestion.
     idle_frame: Option<std::sync::Arc<Frame>>,
     /// Tops de layout (relativos al cuerpo) de la ultima pasada, por id.
@@ -462,32 +465,42 @@ impl Motion {
         *self = Self::default();
     }
 
-    /// Registra un nuevo ViewModel. `visible` = filas pintadas (prefijo de `vm.rows`);
+    /// Registra un nuevo ViewModel. `visible` = filas pintadas (prefijo de `content_plan.rows`);
     /// `lap_visible` = columna de mejor vuelta activa.
-    pub fn update(&mut self, vm: &Vm, visible: usize, lap_visible: bool, now: Instant) {
+    pub fn update(
+        &mut self,
+        content_plan: &ContentPlan,
+        visible: usize,
+        lap_visible: bool,
+        now: Instant,
+    ) {
         #[cfg(feature = "parity-capture")]
         crate::benchmark::mark(crate::benchmark::Work::Motion);
         self.idle_frame = None;
-        if vm.status != Status::Ready {
+        if content_plan.status != Status::Ready {
             self.reset();
             self.prev = None;
             return;
         }
-        let visible_rows: Vec<&Row> = vm.rows.iter().take(visible).collect();
+        let visible_rows: Vec<&Row> = content_plan.rows.iter().take(visible).collect();
         let seeded = self.prev.is_some();
-        let Some(prev) = self.prev.clone().filter(|p| motion_continues(p, vm)) else {
+        let Some(prev) = self
+            .prev
+            .clone()
+            .filter(|p| motion_continues(p, content_plan))
+        else {
             // Se rompe la continuidad: se descarta todo y se re-siembra sin animar.
             let pit_state: HashMap<String, bool> = visible_rows
                 .iter()
-                .map(|r| (r.id.clone(), r.pit_active))
+                .map(|r| (r.id.clone(), r.in_pits))
                 .collect();
             self.reset();
             self.seed(&visible_rows, now);
             for (id, active) in pit_state {
                 self.pit_tw.insert(id, pit_tweens(active, now));
             }
-            self.sync_best_marker(vm, &visible_rows, now, seeded);
-            self.prev = Some(vm.clone());
+            self.sync_best_marker(content_plan, &visible_rows, now, seeded);
+            self.prev = Some(content_plan.clone());
             return;
         };
 
@@ -531,7 +544,7 @@ impl Motion {
             );
             self.pit_tw
                 .entry(row.id.clone())
-                .or_insert_with(|| pit_tweens(row.pit_active, now));
+                .or_insert_with(|| pit_tweens(row.in_pits, now));
         }
 
         // 2) FLIP por identidad.
@@ -559,12 +572,12 @@ impl Motion {
 
         // 3) Duelo y avisos.
         let visible_set: HashSet<String> = visible_rows.iter().map(|r| r.id.clone()).collect();
-        let battle = select_battle(vm, &visible_set, self.battle.as_ref());
+        let battle = select_battle(content_plan, &visible_set, self.battle.as_ref());
         self.battle = battle;
         self.notices.retain(|_, n| {
             now.saturating_duration_since(n.start) < Duration::from_millis(NOTICE_MS)
         });
-        for event in derive_events(&prev, vm, lap_visible) {
+        for event in derive_events(&prev, content_plan, lap_visible) {
             if !visible_set.contains(&event.row_id) {
                 continue;
             }
@@ -628,17 +641,23 @@ impl Motion {
             let (alpha, dx) = self
                 .pit_tw
                 .entry(row.id.clone())
-                .or_insert_with(|| pit_tweens(row.pit_active, now));
-            alpha.retarget(if row.pit_active { 1.0 } else { 0.0 }, now, 200, EASE);
-            dx.retarget(if row.pit_active { 0.0 } else { -5.0 }, now, 200, EASE);
+                .or_insert_with(|| pit_tweens(row.in_pits, now));
+            alpha.retarget(if row.in_pits { 1.0 } else { 0.0 }, now, 200, EASE);
+            dx.retarget(if row.in_pits { 0.0 } else { -5.0 }, now, 200, EASE);
         }
-        self.sync_best_marker(vm, &visible_rows, now, true);
-        self.prev = Some(vm.clone());
+        self.sync_best_marker(content_plan, &visible_rows, now, true);
+        self.prev = Some(content_plan.clone());
     }
 
-    fn sync_best_marker(&mut self, vm: &Vm, rows: &[&Row], now: Instant, animate: bool) {
+    fn sync_best_marker(
+        &mut self,
+        content_plan: &ContentPlan,
+        rows: &[&Row],
+        now: Instant,
+        animate: bool,
+    ) {
         for row in rows {
-            let target = if is_session_best(vm, &row.id) {
+            let target = if is_session_best(content_plan, &row.id) {
                 1.0
             } else {
                 0.0
@@ -673,7 +692,7 @@ impl Motion {
     /// Un frame quieto no vuelve a asignar mapas de filas; update/restaurar avisos lo invalida.
     pub(super) fn frame_shared(
         &mut self,
-        vm: &Vm,
+        content_plan: &ContentPlan,
         visible: usize,
         now: Instant,
     ) -> std::sync::Arc<Frame> {
@@ -682,13 +701,13 @@ impl Motion {
         {
             return frame.clone();
         }
-        let frame = std::sync::Arc::new(self.frame(vm, visible, now));
+        let frame = std::sync::Arc::new(self.frame(content_plan, visible, now));
         self.idle_frame = (self.wake(now) == Wake::Idle).then(|| frame.clone());
         frame
     }
 
     /// Estado visual en `now`.
-    pub fn frame(&mut self, vm: &Vm, visible: usize, now: Instant) -> Frame {
+    pub fn frame(&mut self, content_plan: &ContentPlan, visible: usize, now: Instant) -> Frame {
         self.notices.retain(|_, n| {
             now.saturating_duration_since(n.start) < Duration::from_millis(NOTICE_MS)
         });
@@ -697,7 +716,7 @@ impl Motion {
         self.chip_tw.retain(|id, _| ids.contains(id));
         self.exits.retain(|_, e| e.fade.running(now));
         let mut vis = HashMap::new();
-        for row in vm.rows.iter().take(visible) {
+        for row in content_plan.rows.iter().take(visible) {
             let mut v = RowVis {
                 dy: self.flips.get(&row.id).map_or(0.0, |t| t.value(now)),
                 alpha: self.fades.get(&row.id).map_or(1.0, |t| t.value(now)),
@@ -709,8 +728,8 @@ impl Motion {
                 v.pit_alpha = alpha.value(now);
                 v.pit_dx = dx.value(now);
             } else {
-                v.pit_alpha = if row.pit_active { 1.0 } else { 0.0 };
-                v.pit_dx = if row.pit_active { 0.0 } else { -5.0 };
+                v.pit_alpha = if row.in_pits { 1.0 } else { 0.0 };
+                v.pit_dx = if row.in_pits { 0.0 } else { -5.0 };
             }
             if let Some(notice) = self.notices.get(&row.id) {
                 match notice.kind {
@@ -753,7 +772,7 @@ impl Motion {
                 top: e.top,
                 vis: RowVis {
                     alpha: e.fade.value(now),
-                    pit_alpha: if e.row.pit_active { 1.0 } else { 0.0 },
+                    pit_alpha: if e.row.in_pits { 1.0 } else { 0.0 },
                     pit_dx: 0.0,
                     ..RowVis::default()
                 },
@@ -813,49 +832,35 @@ fn pit_tweens(active: bool, now: Instant) -> (Tween, Tween) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use vantare_domain::format::PLACEHOLDER;
 
     fn row(id: &str, position: i64) -> Row {
-        Row {
-            id: id.into(),
-            position,
-            class_position: position,
-            driver_number: String::new(),
-            driver_name: id.into(),
-            vehicle_class: "GT3".into(),
-            gap_text: PLACEHOLDER.into(),
-            interval_text: PLACEHOLDER.into(),
-            current_lap_text: PLACEHOLDER.into(),
-            last_lap_text: PLACEHOLDER.into(),
-            best_lap_text: PLACEHOLDER.into(),
-            best_lap_seconds: None,
-            battle_gap_seconds: None,
-            pit_active: false,
-            is_player: false,
-        }
+        let mut row = Row::unavailable(id.into(), position);
+        let cells = std::sync::Arc::make_mut(&mut row.row);
+        cells.driver = id.into();
+        cells.class = "GT3".into();
+        row
     }
 
-    fn vm(rows: Vec<Row>, sequence: u64) -> Vm {
-        Vm {
+    fn content_plan(rows: Vec<Row>, sequence: u64) -> ContentPlan {
+        ContentPlan {
             rows,
             sequence,
             identity: "s:1".into(),
-            session_label: "RACE".into(),
             race: true,
-            ..Vm::unavailable(Status::Ready)
+            ..ContentPlan::unavailable(Status::Ready)
         }
     }
 
     #[test]
     fn idle_frames_are_shared_and_a_new_photo_invalidates_them() {
         let now = Instant::now();
-        let initial = vm(vec![row("a", 1)], 1);
+        let initial = content_plan(vec![row("a", 1)], 1);
         let mut motion = Motion::new();
         motion.update(&initial, 1, true, now);
         let first = motion.frame_shared(&initial, 1, now);
         let same = motion.frame_shared(&initial, 1, now + Duration::from_millis(100));
         assert!(std::sync::Arc::ptr_eq(&first, &same));
-        let next = vm(vec![row("a", 2)], 2);
+        let next = content_plan(vec![row("a", 2)], 2);
         motion.update(&next, 1, true, now + Duration::from_millis(100));
         let changed = motion.frame_shared(&next, 1, now + Duration::from_millis(100));
         assert!(!std::sync::Arc::ptr_eq(&first, &changed));
@@ -879,8 +884,13 @@ mod tests {
     fn reorder_starts_flip_from_previous_position_and_ends_at_rest() {
         let t0 = Instant::now();
         let mut motion = Motion::new();
-        motion.update(&vm(vec![row("a", 1), row("b", 2)], 1), 2, true, t0);
-        let next = vm(vec![row("b", 1), row("a", 2)], 2);
+        motion.update(
+            &content_plan(vec![row("a", 1), row("b", 2)], 1),
+            2,
+            true,
+            t0,
+        );
+        let next = content_plan(vec![row("b", 1), row("a", 2)], 2);
         motion.update(&next, 2, true, t0);
         let frame = motion.frame(&next, 2, t0);
         assert_eq!(frame.row("b").dy, 30.0);
@@ -895,10 +905,10 @@ mod tests {
     fn first_update_does_not_animate_and_new_row_fades_in() {
         let t0 = Instant::now();
         let mut motion = Motion::new();
-        let first = vm(vec![row("a", 1)], 1);
+        let first = content_plan(vec![row("a", 1)], 1);
         motion.update(&first, 1, true, t0);
         assert!(!motion.animating(t0));
-        let second = vm(vec![row("a", 1), row("b", 2)], 2);
+        let second = content_plan(vec![row("a", 1), row("b", 2)], 2);
         motion.update(&second, 2, true, t0);
         assert_eq!(motion.frame(&second, 2, t0).row("b").alpha, 0.0);
         assert!(
@@ -916,8 +926,13 @@ mod tests {
     fn row_leaving_the_window_becomes_a_fading_ghost() {
         let t0 = Instant::now();
         let mut motion = Motion::new();
-        motion.update(&vm(vec![row("a", 1), row("b", 2)], 1), 2, true, t0);
-        let next = vm(vec![row("a", 1)], 2);
+        motion.update(
+            &content_plan(vec![row("a", 1), row("b", 2)], 1),
+            2,
+            true,
+            t0,
+        );
+        let next = content_plan(vec![row("a", 1)], 2);
         motion.update(&next, 1, true, t0);
         let frame = motion.frame(&next, 1, t0 + Duration::from_millis(100));
         assert_eq!(frame.ghosts.len(), 1);
@@ -934,8 +949,13 @@ mod tests {
     fn position_gain_sets_flash_chip_and_clears_after_1200ms() {
         let t0 = Instant::now();
         let mut motion = Motion::new();
-        motion.update(&vm(vec![row("a", 1), row("b", 2)], 1), 2, true, t0);
-        let next = vm(vec![row("b", 1), row("a", 2)], 2);
+        motion.update(
+            &content_plan(vec![row("a", 1), row("b", 2)], 1),
+            2,
+            true,
+            t0,
+        );
+        let next = content_plan(vec![row("b", 1), row("a", 2)], 2);
         motion.update(&next, 2, true, t0);
         let frame = motion.frame(&next, 2, t0 + Duration::from_millis(600));
         let b = frame.row("b");
@@ -954,7 +974,7 @@ mod tests {
         let t0 = Instant::now();
         let mut motion = Motion::new();
         let before: Vec<Row> = (1..=8).map(|i| row(&format!("c{i}"), i)).collect();
-        motion.update(&vm(before.clone(), 1), 8, true, t0);
+        motion.update(&content_plan(before.clone(), 1), 8, true, t0);
         // Se intercambian 4 parejas: 8 cambios de posicion, solo 3 avisos.
         let mut after = before;
         for pair in after.chunks_mut(2) {
@@ -964,7 +984,7 @@ mod tests {
             pair[0].class_position = pair[0].position;
             pair[1].class_position = pair[1].position;
         }
-        let next = vm(after, 2);
+        let next = content_plan(after, 2);
         motion.update(&next, 8, true, t0);
         let frame = motion.frame(&next, 8, t0);
         let chips = (1..=8)
@@ -977,10 +997,10 @@ mod tests {
     fn pit_label_slides_in_when_pit_starts() {
         let t0 = Instant::now();
         let mut motion = Motion::new();
-        motion.update(&vm(vec![row("a", 1)], 1), 1, true, t0);
+        motion.update(&content_plan(vec![row("a", 1)], 1), 1, true, t0);
         let mut pit = row("a", 1);
-        pit.pit_active = true;
-        let next = vm(vec![pit], 2);
+        std::sync::Arc::make_mut(&mut pit.row).in_pits = true;
+        let next = content_plan(vec![pit], 2);
         motion.update(&next, 1, true, t0);
         let start = motion.frame(&next, 1, t0).row("a");
         assert_eq!((start.pit_alpha, start.pit_dx), (0.0, -5.0));
@@ -995,9 +1015,14 @@ mod tests {
         let t0 = Instant::now();
         let ms = Duration::from_millis;
         let mut motion = Motion::new();
-        motion.update(&vm(vec![row("a", 1), row("b", 2)], 1), 2, true, t0);
+        motion.update(
+            &content_plan(vec![row("a", 1), row("b", 2)], 1),
+            2,
+            true,
+            t0,
+        );
         assert_eq!(motion.wake(t0), Wake::Idle, "sin cambios no hay fotogramas");
-        let next = vm(vec![row("b", 1), row("a", 2)], 2);
+        let next = content_plan(vec![row("b", 1), row("a", 2)], 2);
         motion.update(&next, 2, true, t0);
         assert_eq!(motion.wake(t0), Wake::Frame);
         // Pasados el FLIP (<= 460 ms) y el destello (500 ms) el chip queda quieto.
@@ -1013,8 +1038,13 @@ mod tests {
     fn broken_continuity_resets_without_animation() {
         let t0 = Instant::now();
         let mut motion = Motion::new();
-        motion.update(&vm(vec![row("a", 1), row("b", 2)], 5), 2, true, t0);
-        let mut next = vm(vec![row("b", 1), row("a", 2)], 6);
+        motion.update(
+            &content_plan(vec![row("a", 1), row("b", 2)], 5),
+            2,
+            true,
+            t0,
+        );
+        let mut next = content_plan(vec![row("b", 1), row("a", 2)], 6);
         next.identity = "other:2".into();
         motion.update(&next, 2, true, t0);
         assert_eq!(motion.frame(&next, 2, t0).row("b").dy, 0.0);
@@ -1024,13 +1054,13 @@ mod tests {
     fn battle_needs_close_same_class_race_rivals_and_keeps_hysteresis() {
         let mut a = row("a", 1);
         let mut b = row("b", 2);
-        a.battle_gap_seconds = Some(10.0);
-        b.battle_gap_seconds = Some(10.5);
+        std::sync::Arc::make_mut(&mut a.row).battle_gap_seconds = Some(10.0);
+        std::sync::Arc::make_mut(&mut b.row).battle_gap_seconds = Some(10.5);
         let visible: HashSet<String> = ["a".to_string(), "b".to_string()].into();
-        let close = vm(vec![a.clone(), b.clone()], 1);
+        let close = content_plan(vec![a.clone(), b.clone()], 1);
         let battle = select_battle(&close, &visible, None).expect("duelo a 0,5 s");
-        b.battle_gap_seconds = Some(11.1);
-        let wider = vm(vec![a, b], 2);
+        std::sync::Arc::make_mut(&mut b.row).battle_gap_seconds = Some(11.1);
+        let wider = content_plan(vec![a, b], 2);
         assert!(select_battle(&wider, &visible, None).is_none());
         assert!(select_battle(&wider, &visible, Some(&battle)).is_some());
     }

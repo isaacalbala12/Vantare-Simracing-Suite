@@ -390,7 +390,37 @@ impl Motion {
 }
 impl Settings {
     fn content(&self) -> standings::Content {
+        let config = self.config();
+        let lap_format = |metric: &str| {
+            self.columns
+                .as_ref()
+                .and_then(|columns| columns.iter().find(|c| c.enabled && c.metric_id == metric))
+                .map(|c| standings::LapFormat {
+                    compact: c.format.display.as_deref() == Some("compact"),
+                    decimals: c.format.decimals.unwrap_or(3),
+                })
+                .filter(|f| f.compact || f.decimals != 3)
+        };
         standings::Content {
+            row_count: self.row_count,
+            player_window: self.player_window,
+            window_around: self.window_around,
+            multiclass: self.classification_mode == "multiclass",
+            last_lap_format: lap_format("lastLap"),
+            best_lap_format: lap_format("bestLap"),
+            lap_visible: config
+                .columns
+                .iter()
+                .any(|c| c.metric == Metric::CurrentLap),
+            interval_visible: config.columns.iter().any(|c| c.metric == Metric::Interval),
+            footer_visible: self.show_session_footer,
+            legacy_track_visible: self.show_session_footer
+                && config.footer_slots.is_empty()
+                && config
+                    .footer_ids
+                    .iter()
+                    .all(|id| ["none", "track", "estimatedLaps"].contains(&id.as_str()))
+                && [config.footer_first, config.footer_second].contains(&model::InfoMetric::Track),
             player_class: self.class_scope != "all-classes",
             class_gaps: self.class_scope != "all-classes"
                 || self.classification_mode == "multiclass",
@@ -468,16 +498,16 @@ impl Widget {
         self.board = Some(next);
         changed
     }
-    fn present(&mut self, board: std::sync::Arc<standings::Board>, prefs: Preferences) -> bool {
+    fn present(&mut self, board: std::sync::Arc<standings::Board>, _prefs: Preferences) -> bool {
         match (&mut self.visual, &mut self.motion) {
-            (Visual::Eficiencia(v), Motion::Eficiencia(m)) => v.ingest(
-                &board,
-                prefs,
-                self.boundary.0,
-                self.boundary.1,
-                self.boundary.2,
-                m,
-            ),
+            (Visual::Eficiencia(v), Motion::Eficiencia(m)) => {
+                let content = std::sync::Arc::new(standings::Plan::new(
+                    board,
+                    format!("{}:{}", self.boundary.1, self.boundary.0),
+                    self.boundary.2,
+                ));
+                v.ingest(content, m)
+            }
             (Visual::Vantare(v), Motion::Vantare(m)) => {
                 v.ingest_shared(board, std::sync::Arc::make_mut(m))
             }
@@ -969,18 +999,18 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&settings, prefs);
         assert!(widget.ingest(&snapshot, prefs));
-        let visible_rows = widget.vm.rows.clone();
-        let visible_footer = widget.vm.footer_cells.clone();
+        let visible_rows = widget.content_plan.rows.clone();
+        let visible_footer = widget.content_plan.board.footer_cells.clone();
         assert_eq!(visible_footer.len(), 9);
         let mut requested = Widget::new(&settings, prefs);
         assert!(requested.ingest(&photo.snapshot, prefs));
-        assert_eq!(requested.vm.rows, visible_rows);
-        assert_eq!(requested.vm.footer_cells, visible_footer);
+        assert_eq!(requested.content_plan.rows, visible_rows);
+        assert_eq!(requested.content_plan.board.footer_cells, visible_footer);
         assert!(
             !widget.ingest(&photo.snapshot, prefs),
             "mismo contenido visible: sin invalidacion por nombre de pista omitido"
         );
-        assert_eq!(widget.vm, requested.vm);
+        assert!(widget.content_plan.same_visible(&requested.content_plan));
     }
 
     #[test]
@@ -1034,7 +1064,7 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         widget.ingest(&snapshot, prefs);
-        let rows = widget.vm.rows.clone();
+        let rows = widget.content_plan.rows.clone();
         let before = widget.size();
         let tops = widget.plan.row_tops.clone();
         let mut style = style::Style::default();
@@ -1042,7 +1072,7 @@ mod tests {
         style.geometry.session_header_height = 50.0;
         style.colors.panel = style::Color(0x123456);
         widget.set_style(std::sync::Arc::new(style));
-        assert_eq!(widget.vm.rows, rows);
+        assert_eq!(widget.content_plan.rows, rows);
         assert_eq!(widget.plan.visible_rows, tops.len());
         assert_eq!(widget.size().0, before.0);
         assert_eq!(widget.size().1, before.1 + 208.0);
@@ -1069,7 +1099,7 @@ mod tests {
                     };
                     let mut widget = Widget::new(&settings, prefs);
                     widget.ingest(&snapshot, prefs);
-                    assert_eq!(widget.vm.rows.len(), 3);
+                    assert_eq!(widget.content_plan.rows.len(), 3);
                     assert_eq!(widget.plan.visible_rows, 3);
                     assert_eq!(widget.plan.has_header, header);
                     assert!(!widget.plan.brand_visible);
@@ -1097,16 +1127,25 @@ mod tests {
         );
         widget.ingest(&snapshot, prefs);
         assert_eq!(widget.plan.brand_band, 22.0);
-        assert_eq!(widget.vm.footer_cells.len(), 3);
+        assert_eq!(widget.content_plan.board.footer_cells.len(), 3);
         let player = widget
-            .vm
+            .content_plan
             .rows
             .iter()
             .find(|row| row.is_player)
             .expect("jugador");
-        assert_eq!(widget.vm.footer_cells[0].value, player.position.to_string());
-        assert_eq!(widget.vm.footer_cells[1].value, player.gap_text);
-        assert_eq!(widget.vm.footer_cells[2].value, player.last_lap_text);
+        assert_eq!(
+            widget.content_plan.board.footer_cells[0].value,
+            player.position.to_string()
+        );
+        assert_eq!(
+            widget.content_plan.board.footer_cells[1].value,
+            player.classification_gap
+        );
+        assert_eq!(
+            widget.content_plan.board.footer_cells[2].value,
+            widget.content_plan.last_lap(player)
+        );
         for metric in [
             "trackTemperature",
             "airTemperature",
@@ -1124,8 +1163,8 @@ mod tests {
                 prefs,
             );
             widget.ingest(&snapshot, prefs);
-            assert_eq!(widget.vm.footer_cells[0].id, metric);
-            assert_eq!(widget.vm.footer_cells.len(), 1);
+            assert_eq!(widget.content_plan.board.footer_cells[0].id, metric);
+            assert_eq!(widget.content_plan.board.footer_cells.len(), 1);
         }
     }
 
@@ -1155,7 +1194,7 @@ mod tests {
         assert_eq!(widget.plan.columns.len(), 2);
         assert!(widget.plan.pit_enabled);
         assert_eq!(widget.plan.widths, [156.0, 82.0]);
-        assert_eq!(widget.vm.rows.len(), 4);
+        assert_eq!(widget.content_plan.rows.len(), 4);
         let mut widget = Widget::new(
             &Settings {
                 class_scope: "all-classes".into(),
@@ -1168,7 +1207,7 @@ mod tests {
         widget.ingest(&snapshot, prefs);
         assert_eq!(
             widget
-                .vm
+                .content_plan
                 .rows
                 .iter()
                 .map(|row| row.position)
@@ -1201,18 +1240,21 @@ mod tests {
         assert_eq!(widget.plan.visible_rows, 7);
         assert_eq!(
             widget
-                .vm
+                .content_plan
                 .rows
                 .iter()
                 .map(|r| r.position)
                 .collect::<Vec<_>>(),
             [1, 4, 7, 10, 13, 16, 19]
         );
-        assert_eq!(widget.vm.rows[0].last_lap_text, "1:49.667");
-        assert_eq!(widget.vm.rows[1].gap_text, "—");
-        assert_eq!(widget.vm.rows[3].gap_text, "+11.11s");
-        assert_eq!(widget.vm.rows[6].gap_text, "+1 V");
-        assert_eq!(widget.vm.estimated_laps, "≈79");
+        assert_eq!(
+            widget.content_plan.last_lap(&widget.content_plan.rows[0]),
+            "1:49.667"
+        );
+        assert_eq!(widget.content_plan.rows[1].classification_gap, "—");
+        assert_eq!(widget.content_plan.rows[3].classification_gap, "+11.11s");
+        assert_eq!(widget.content_plan.rows[6].classification_gap, "+1 V");
+        assert_eq!(widget.content_plan.estimated_laps(), "≈79");
         assert_eq!(
             widget.plan.columns.last().map(|c| c.metric),
             Some(Metric::LastLap)
@@ -1227,8 +1269,8 @@ mod tests {
             ..vantare_domain::Player::default()
         });
         assert!(widget.ingest(&other_class, prefs));
-        assert_eq!(widget.vm.rows.len(), 7);
-        assert_eq!(widget.vm.rows[0].position, 2);
+        assert_eq!(widget.content_plan.rows.len(), 7);
+        assert_eq!(widget.content_plan.rows[0].position, 2);
         assert_eq!(widget.size(), (440.0, 664.0));
     }
 

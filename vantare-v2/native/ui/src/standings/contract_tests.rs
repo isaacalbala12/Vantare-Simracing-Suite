@@ -180,3 +180,52 @@ fn check_board(photo: &vantare_domain::Snapshot, board: &standings::Board) {
         }
     }
 }
+
+#[test]
+fn content_plan_borrows_the_only_board_rows_and_formats_in_domain() {
+    use std::sync::Arc;
+    let photo = crate::board_contracts::photos().remove(0).1;
+    let prefs = Preferences::default();
+    let mut settings = Settings::eficiencia();
+    settings.class_scope = "all-classes".into();
+    settings.classification_mode = "multiclass".into();
+    settings.columns = Some(vec![super::options::ColumnSetting {
+        metric_id: "lastLap".into(),
+        format: super::options::Format {
+            display: Some("compact".into()),
+            decimals: Some(1),
+            ..super::options::Format::default()
+        },
+        ..super::options::ColumnSetting::default()
+    }]);
+    let board = Arc::new(standings::project_content(
+        &photo,
+        prefs,
+        &settings.content(),
+    ));
+    let plan = standings::Plan::new(board.clone(), "session:epoch".into(), photo.sequence);
+    assert!(Arc::ptr_eq(&board, &plan.board));
+    for selected in &plan.rows {
+        let original = board
+            .groups
+            .iter()
+            .flat_map(|g| &g.rows)
+            .find(|r| r.id == selected.row.id)
+            .expect("fila única");
+        assert!(
+            Arc::ptr_eq(original, &selected.row),
+            "sin clon de textos ni segunda fila"
+        );
+        assert_eq!(
+            selected.position,
+            selected
+                .row
+                .class_position
+                .map_or(selected.position, i64::from)
+        );
+        assert_eq!(
+            plan.last_lap(selected),
+            standings::lap_time_column(original.last_lap_s, true, 1)
+        );
+    }
+}

@@ -55,6 +55,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .footer_slots
                 .as_ref()
                 .is_some_and(|v| !v.is_empty()),
+            ..standings::Content::default()
         }),
         vantare_ui::Settings::Relative(settings) => Content::Relative(
             vantare_domain::relative::Content {

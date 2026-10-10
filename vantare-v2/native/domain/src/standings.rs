@@ -14,14 +14,53 @@ use crate::{
 /// Diferencia por debajo de la cual dos tiempos se consideran iguales.
 const TOLERANCE_S: f64 = 0.0005;
 
+mod plan;
+pub use plan::{Plan, SelectedRow, Status};
+
 pub type ViewModel = Board;
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
+#[allow(clippy::struct_excessive_bools)] // Opciones de contenido independientes.
 pub struct Content {
     pub player_class: bool,
     pub class_gaps: bool,
     pub footer_ids: Vec<String>,
     pub footer_slots: bool,
+    pub row_count: usize,
+    pub player_window: bool,
+    pub window_around: usize,
+    pub multiclass: bool,
+    pub last_lap_format: Option<LapFormat>,
+    pub best_lap_format: Option<LapFormat>,
+    pub lap_visible: bool,
+    pub interval_visible: bool,
+    pub footer_visible: bool,
+    pub legacy_track_visible: bool,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LapFormat {
+    pub compact: bool,
+    pub decimals: u8,
+}
+impl Default for Content {
+    fn default() -> Self {
+        Self {
+            player_class: false,
+            class_gaps: false,
+            footer_ids: Vec::new(),
+            footer_slots: false,
+            row_count: 104,
+            player_window: false,
+            window_around: 4,
+            multiclass: false,
+            last_lap_format: None,
+            best_lap_format: None,
+            lap_visible: true,
+            interval_visible: true,
+            footer_visible: true,
+            legacy_track_visible: true,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -93,6 +132,9 @@ pub struct Row {
     pub in_pits: bool,
     pub last_lap_s: Option<f64>,
     pub best_lap_s: Option<f64>,
+    pub battle_gap_seconds: Option<f64>,
+    pub last_lap_column: Option<String>,
+    pub best_lap_column: Option<String>,
     pub classification_gap: String,
     pub classification_interval: String,
     pub id: CarId,
@@ -666,6 +708,27 @@ fn row(
         in_pits: car.in_pits.current() == Some(&true),
         last_lap_s: car.last_lap_s.current().copied(),
         best_lap_s: car.best_lap_s.current().copied(),
+        battle_gap_seconds: if kind == Some(&SessionKind::Race)
+            && car.position.current().is_some_and(|p| *p > 0)
+            && car.in_pits.current() != Some(&true)
+        {
+            if classification_leader {
+                Some(0.0)
+            } else {
+                match classification_gap.current() {
+                    Some(Gap::Time { seconds }) => format::to_fixed(*seconds, 2).parse().ok(),
+                    _ => None,
+                }
+            }
+        } else {
+            None
+        },
+        last_lap_column: content
+            .last_lap_format
+            .map(|f| lap_time_column(car.last_lap_s.current().copied(), f.compact, f.decimals)),
+        best_lap_column: content
+            .best_lap_format
+            .map(|f| lap_time_column(car.best_lap_s.current().copied(), f.compact, f.decimals)),
         classification_gap: if !classified {
             String::new()
         } else if matches!(kind, Some(SessionKind::Practice | SessionKind::Qualifying)) {

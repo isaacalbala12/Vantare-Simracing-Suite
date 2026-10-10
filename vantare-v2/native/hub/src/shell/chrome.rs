@@ -245,13 +245,7 @@ impl Hub {
                 "up" | "down" => {
                     self.shell.cursor =
                         navigation::move_cursor(self.shell.cursor, key.key == "down", items.len());
-                    let headers = usize::from(
-                        self.shell.cursor
-                            >= items
-                                .iter()
-                                .take_while(|item| matches!(item.command, Command::Navigate(_)))
-                                .count(),
-                    ) + 1;
+                    let headers = navigation::palette_headers(&items, self.shell.cursor);
                     self.shell
                         .scroll
                         .scroll_to_item(self.shell.cursor + headers);

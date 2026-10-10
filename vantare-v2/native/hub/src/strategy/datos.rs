@@ -207,7 +207,11 @@ impl State {
     }
 
     fn change_page(&mut self, page: usize) {
-        self.page = page.min(self.page_count().saturating_sub(1));
+        let clamped = page.min(self.page_count().saturating_sub(1));
+        if clamped == self.page {
+            return;
+        }
+        self.page = clamped;
         self.selected_lap = None;
     }
 }
@@ -659,22 +663,32 @@ impl Strategy {
         cx: &mut Context<Self>,
     ) -> gpui::AnyElement {
         let total_pages = self.data.page_count();
+        let at_first = self.data.page == 0;
+        let at_last = self.data.page.saturating_add(1) >= total_pages;
+        let previous = secondary_action("strategy-data-previous", "Anterior", cx).h(px(34.0));
+        let previous = if at_first {
+            orbit::disabled(previous, "Ya estás en la primera página")
+        } else {
+            previous
+        };
+        let next = secondary_action("strategy-data-next", "Siguiente", cx).h(px(34.0));
+        let next = if at_last {
+            orbit::disabled(next, "Ya estás en la última página")
+        } else {
+            next
+        };
         let pager = div()
             .mt(px(16.0))
             .flex()
             .items_center()
             .justify_between()
-            .child(
-                secondary_action("strategy-data-previous", "Anterior", cx)
-                    .h(px(34.0))
-                    .when(self.data.page == 0, |button| {
-                        button.opacity(orbit::DISABLED)
-                    })
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.data.change_page(this.data.page.saturating_sub(1));
-                        cx.notify();
-                    })),
-            )
+            .child(previous.on_click(cx.listener(|this, _, _, cx| {
+                if this.data.page == 0 {
+                    return;
+                }
+                this.data.change_page(this.data.page.saturating_sub(1));
+                cx.notify();
+            })))
             .child(orbit::text(
                 page_label(range, total),
                 12.0,
@@ -682,17 +696,13 @@ impl Strategy {
                 orbit::ink_3(cx),
                 cx,
             ))
-            .child(
-                secondary_action("strategy-data-next", "Siguiente", cx)
-                    .h(px(34.0))
-                    .when(self.data.page.saturating_add(1) >= total_pages, |button| {
-                        button.opacity(orbit::DISABLED)
-                    })
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.data.change_page(this.data.page.saturating_add(1));
-                        cx.notify();
-                    })),
-            );
+            .child(next.on_click(cx.listener(move |this, _, _, cx| {
+                if this.data.page.saturating_add(1) >= this.data.page_count() {
+                    return;
+                }
+                this.data.change_page(this.data.page.saturating_add(1));
+                cx.notify();
+            })));
         pager.into_any_element()
     }
 
@@ -1320,6 +1330,29 @@ pub(super) fn tight_title(
 mod tests {
     use super::*;
 
+    #[test]
+    fn paging_at_either_end_keeps_the_selected_lap() {
+        let demo = crate::demo::strategy_review_demo().expect("fuente demo válida");
+        let selected = vec![demo.source.revision.clone()];
+        let mut state = State::default();
+        state
+            .load(demo.label, demo.source, selected, &[])
+            .expect("fuente y revisión exactas");
+        assert_eq!(state.page_count(), 5);
+        state.page = 0;
+        state.selected_lap = Some(2);
+        state.change_page(state.page.saturating_sub(1));
+        assert_eq!(state.page, 0);
+        assert_eq!(state.selected_lap, Some(2));
+        state.page = 4;
+        state.selected_lap = Some(23);
+        state.change_page(state.page.saturating_add(1));
+        assert_eq!(state.page, 4);
+        assert_eq!(state.selected_lap, Some(23));
+        state.change_page(2);
+        assert_eq!(state.page, 2);
+        assert_eq!(state.selected_lap, None);
+    }
     #[test]
     fn lap_pages_are_bounded_and_empty_sources_have_no_pages() {
         let mut state = State::default();

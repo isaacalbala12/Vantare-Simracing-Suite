@@ -6664,4 +6664,3 @@ editar/guardar layout, comprobar posición/tamaño/visibilidad y reabrir ambos h
 plan.md ausente en esta base y origin/nightly; corrección de gobernanza en #1530.
 Sin dependencia nueva, delegación, Notion, push, PR, merge, promoción o release.
 Siguiente acción: revisión del orquestador e integración solo tras autorización de Isaac.
-

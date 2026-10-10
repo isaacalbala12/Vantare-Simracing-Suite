@@ -116,9 +116,10 @@ impl Acc {
         Ok(())
     }
 
-    fn receive(&mut self, now: Duration) -> io::Result<bool> {
+    // El segundo valor pide revisar el estado sin presentar el rechazo como muestra.
+    fn receive(&mut self, now: Duration) -> io::Result<(bool, bool)> {
         let Some(socket) = &self.socket else {
-            return Ok(false);
+            return Ok((false, false));
         };
         let mut changed = false;
         let mut rejected = 0;
@@ -156,7 +157,7 @@ impl Acc {
                 .is_none_or(|at| now.saturating_sub(at) >= Duration::from_secs(2))
             {
                 self.disconnect();
-                return Ok(changed);
+                return Ok((changed, rejected > 0));
             }
         }
         if let Some(id) = self.translator.connection {
@@ -170,7 +171,7 @@ impl Acc {
                 self.next_track = now + Duration::from_secs(1);
             }
         }
-        Ok(changed)
+        Ok((changed, rejected > 0))
     }
 
     fn disconnect(&mut self) {
@@ -225,15 +226,19 @@ impl Adapter for Acc {
                 }
             }
         }
-        let mut receive_failed = false;
-        match self.receive(now) {
-            Ok(received) => changed |= received,
+        let receive_needs_refresh = match self.receive(now) {
+            Ok((received, rejected)) => {
+                changed |= received;
+                // Un ACK negativo puede retirar velocidades antes de devolver
+                // InvalidData. Reconstruir conserva esa retirada sin desconectar.
+                rejected
+            }
             Err(error) => {
                 eprintln!("broadcasting ACC: {error}; reconectando");
                 self.disconnect(); // SHM sigue operativa y UDP envejece por señal.
-                receive_failed = true; // Puede haber cambios aceptados antes del error.
+                true // Puede haber cambios aceptados antes del error.
             }
-        }
+        };
         if rejected_page {
             self.latest = None; // La recuperación debe publicar también UDP recibido aquí.
             return Err(AdapterError::Rejected(
@@ -241,7 +246,7 @@ impl Adapter for Acc {
             ));
         }
         if !changed
-            && !receive_failed
+            && !receive_needs_refresh
             && self
                 .latest
                 .as_ref()

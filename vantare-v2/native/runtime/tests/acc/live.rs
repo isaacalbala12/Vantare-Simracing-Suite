@@ -431,6 +431,7 @@ fn udp_registration_requests_unknown_car_throttling_and_reconnect() {
     assert!(
         acc.receive(Duration::from_millis(100))
             .expect("actualización")
+            .0
     );
     assert!(
         acc.translator.request_entries,

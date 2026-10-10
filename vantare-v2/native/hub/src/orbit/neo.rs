@@ -224,9 +224,55 @@ pub fn pending_play_button(
     )
 }
 
+/// Texto visible del botón de pista según la solicitud vigente.
+pub fn track_toggle_text(showing: bool) -> &'static str {
+    if showing {
+        "Dejar de mostrar"
+    } else {
+        "Mostrar en pista"
+    }
+}
+
+/// Icono del botón de pista según la solicitud vigente.
+pub fn track_toggle_icon(showing: bool) -> &'static str {
+    if showing { "stop" } else { "play" }
+}
+
+/// Botón Mostrar/Dejar de mostrar en pista: misma cara que reproducir,
+/// con texto, aria e icono según la solicitud vigente.
+pub fn track_toggle_button(
+    id: &'static str,
+    label: &str,
+    showing: bool,
+    height: f32,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    track_content(
+        super::carmine_button(id, "", cx),
+        label,
+        track_toggle_text(showing),
+        track_toggle_icon(showing),
+        height,
+        false,
+        cx,
+    )
+}
+
 fn play_content(
     face: Stateful<Div>,
     label: &str,
+    height: f32,
+    key: bool,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    track_content(face, label, label, "play", height, key, cx)
+}
+
+fn track_content(
+    face: Stateful<Div>,
+    label: &str,
+    aria: &str,
+    icon_name: &'static str,
     height: f32,
     key: bool,
     cx: &gpui::App,
@@ -243,8 +289,8 @@ fn play_content(
         .flex_shrink(1.0)
         .px(px(pad))
         .gap(px(if height >= 50.0 { 12.0 } else { 10.0 }))
-        .aria_label(label.to_owned())
-        .child(icon("play", glyph, 0x00ff_ffff).flex_none())
+        .aria_label(aria.to_owned())
+        .child(icon(icon_name, glyph, 0x00ff_ffff).flex_none())
         .child(
             super::text(label.to_owned(), size, 600, 0x00ff_ffff, cx)
                 .min_w_0()

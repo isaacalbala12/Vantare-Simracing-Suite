@@ -15,11 +15,11 @@ use gpui::{
     linear_gradient, prelude::*, px, rgb,
 };
 use std::path::PathBuf;
-use std::time::{Duration, Instant};
+use std::time::{Duration, Instant, SystemTime};
 use vantare_domain::{Snapshot, format::Preferences};
 use vantare_ui::{
     Kind, Overlay, Settings,
-    layout::{CanvasResolution, Instance, Layout},
+    layout::{CanvasResolution, Instance, Layout, Presentation},
 };
 
 const STUDIO_PREVIEW_SCALE: f32 = 700.0 / 1920.0;
@@ -587,6 +587,11 @@ pub struct Studio {
     fit_scale: f32,
     canvas_size: (f32, f32),
     zoom_step: usize,
+    /// Mostrar en pista cacheado: el render sirve este bool sin E/S; el clic
+    /// lo actualiza en el acto y un temporizador lo sincroniza con la
+    /// bandeja y otros procesos mediante la firma (mtime, len) (#1567).
+    track_showing: bool,
+    track_showing_sig: Option<(SystemTime, u64)>,
 }
 /// La shell enlaza esta columna; Studio conserva el documento y sus interacciones.
 pub(crate) struct StudioSidebar {
@@ -872,6 +877,25 @@ impl Studio {
         }
     }
 
+    /// Refresco barato del estado de pista: solo reparsea show.json si cambia
+    /// su firma (mtime, len), como el estado resident del Launcher (#1553).
+    /// Devuelve si cambió el estado. El clic lo invoca en el acto y el
+    /// temporizador de Studio lo invoca cada 500 ms; el render solo lee la
+    /// caché y nunca toca disco.
+    fn refresh_track_showing(&mut self) -> bool {
+        let signature = Presentation::signature(self.editor.layout_path());
+        if signature == self.track_showing_sig {
+            return false;
+        }
+        self.track_showing_sig = signature;
+        let showing = self.editor.is_showing_on_track();
+        if showing == self.track_showing {
+            return false;
+        }
+        self.track_showing = showing;
+        true
+    }
+
     pub(crate) fn topbar_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
         let profile = self
             .demo_profile
@@ -900,16 +924,23 @@ impl Studio {
                 cx,
             )
         };
-        let show = orbit::play_button(
+        // El render sirve la caché sin E/S; el clic y el temporizador la
+        // sincronizan con la firma (mtime, len) (#1567).
+        let showing = self.track_showing;
+        let show = orbit::track_toggle_button(
             "studio-show-track",
-            if compact { "" } else { "Mostrar en pista" },
+            if compact {
+                ""
+            } else {
+                orbit::track_toggle_text(showing)
+            },
+            showing,
             44.0,
-            false,
             cx,
         )
-        .aria_label("Mostrar en pista")
         .on_click(cx.listener(|studio, _, _, cx| {
-            studio.status = studio.editor.show_on_track();
+            studio.status = studio.editor.toggle_on_track();
+            studio.refresh_track_showing();
             cx.notify();
         }));
         div()
@@ -1035,6 +1066,10 @@ impl Studio {
         #[cfg(not(feature = "parity-capture"))]
         let demo_profile = None;
         let monitor = client_monitor(prepared.editor.layout(), cx);
+        // La caché de pista se sirve en el render sin E/S; el clic y el
+        // temporizador la sincronizan con la firma (mtime, len) (#1567).
+        let track_showing_sig = Presentation::signature(prepared.editor.layout_path());
+        let track_showing = prepared.editor.is_showing_on_track();
         let mut studio = Self {
             frequency_focus: std::array::from_fn(|_| cx.focus_handle()),
             adapt: orbit::Adapt::default(),
@@ -1068,7 +1103,31 @@ impl Studio {
             fit_scale: STUDIO_PREVIEW_SCALE,
             canvas_size: (700.0, 1080.0 * STUDIO_PREVIEW_SCALE),
             zoom_step: 0,
+            track_showing,
+            track_showing_sig,
         };
+        // Refresco barato y poco frecuente del estado de pista, con la misma
+        // firma (mtime, len) que el estado resident del Launcher (#1553):
+        // solo reparsea show.json al cambiar la firma y solo repinta al
+        // cambiar el estado. El render nunca toca disco.
+        cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(500))
+                    .await;
+                if this
+                    .update(cx, |this, cx| {
+                        if this.refresh_track_showing() {
+                            cx.notify();
+                        }
+                    })
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        })
+        .detach();
         #[cfg(feature = "parity-capture")]
         match capture_name().as_deref() {
             Some("studio-error-largo" | "studio-error-largo-sin-carril") => studio.status = Err("No se pudo guardar el documento de QA: otra aplicación modificó el archivo en una ruta extensa. Recarga el diseño para revisar los cambios antes de reintentar. ".repeat(3)),
@@ -3279,6 +3338,31 @@ mod tests {
                     studio.inspector_selection.is_none(),
                     "el inspector debe reconstruirse tras ocultar desde la tira"
                 );
+            });
+            crate::quit_headless_test(cx);
+        });
+    }
+    #[test]
+    fn track_button_serves_cached_state_and_follows_tray_hide() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, _| {
+                // El botón sirve la caché sin releer: firma estable, sin cambios.
+                assert!(!studio.track_showing);
+                assert!(!studio.refresh_track_showing());
+                studio.editor.show_on_track().expect("mostrar");
+                assert!(studio.refresh_track_showing());
+                assert!(studio.track_showing);
+                assert!(
+                    !studio.refresh_track_showing(),
+                    "firma estable: el render no reparsea"
+                );
+                // La bandeja retira por el mismo canal; el refresco lo refleja.
+                Presentation::hide(&file.path).expect("bandeja oculta");
+                assert!(studio.refresh_track_showing());
+                assert!(!studio.track_showing);
             });
             crate::quit_headless_test(cx);
         });

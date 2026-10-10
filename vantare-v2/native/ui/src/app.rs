@@ -5,6 +5,8 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+#[cfg(windows)]
+use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -712,8 +714,11 @@ fn window_action(existing: bool, occupied: bool) -> WindowAction {
 struct LiveScreens {
     cadences: HashMap<String, crate::performance::Cadence>,
     usage_widgets: Option<Vec<String>>,
-    /// Último layout aplicado y su ocultación desde la bandeja.
+    /// Último layout aplicado y su ocultación (bandeja o Studio).
     layout: crate::layout::Layout,
+    /// Ruta del layout: la bandeja comparte el canal de pista con Studio (#1567).
+    #[cfg(windows)]
+    path: PathBuf,
     hidden: bool,
     screens: Vec<(DisplayId, WindowHandle<Screen>)>,
     widgets: HashMap<String, LiveWidget<Entity<Overlay>>>,
@@ -760,12 +765,24 @@ fn reconcile_widgets<T>(
 
 impl LiveScreens {
     /// «Mostrar/Ocultar overlays» de la bandeja: vacía las pantallas sin
-    /// tocar el documento ni el estado de cada widget.
+    /// tocar el documento ni el estado de cada widget. Ocultar retira por el
+    /// mismo canal la solicitud vigente de Studio (#1567).
     #[cfg(windows)]
     fn toggle(&mut self, cx: &mut App) {
         self.hidden = !self.hidden;
+        Self::sync_track_request(&self.path, self.hidden);
         let layout = self.layout.clone();
         self.apply(&layout, cx);
+    }
+
+    /// La bandeja y Studio usan el mismo estado/canal: ocultar desde la
+    /// bandeja retira la solicitud vigente de mostrar en pista; mostrar
+    /// desde la bandeja no crea ninguna solicitud.
+    #[cfg(windows)]
+    fn sync_track_request(layout: &Path, now_hidden: bool) {
+        if now_hidden && let Err(error) = crate::layout::Presentation::hide(layout) {
+            eprintln!("bandeja: retirar solicitud de pista: {error}");
+        }
     }
 
     fn apply(&mut self, layout: &crate::layout::Layout, cx: &mut App) {
@@ -1036,6 +1053,8 @@ fn run_layout_feed<T: Send + 'static>(
     demand: Option<crate::source::DemandHandle>,
     start_hidden: bool,
 ) -> Result<(), crate::layout::Error> {
+    #[cfg(windows)]
+    let track_path = path.clone();
     let mut presentation = crate::layout::Presentation::watch(&path)?;
     let mut document = crate::layout::Document::open(path)?;
     gpui_platform::application().run(move |cx: &mut App| {
@@ -1068,6 +1087,8 @@ fn run_layout_feed<T: Send + 'static>(
             cadences: HashMap::new(),
             usage_widgets: None,
             layout: crate::layout::Layout::default(),
+            #[cfg(windows)]
+            path: track_path,
             hidden: start_hidden,
             screens: Vec::new(),
             widgets: HashMap::new(),
@@ -1110,14 +1131,14 @@ fn run_layout_feed<T: Send + 'static>(
                     .timer(Duration::from_millis(500))
                     .await;
                 match presentation.poll() {
-                    Ok(true) => cx.update(|cx| {
+                    Ok(Some(showing)) => cx.update(|cx| {
                         let mut screens = screens.borrow_mut();
-                        screens.hidden = false;
+                        screens.hidden = !showing;
                         let layout = screens.layout.clone();
                         screens.apply(&layout, cx);
                     }),
-                    Ok(false) => {}
-                    Err(error) => eprintln!("solicitud de mostrar en pista: {error}"),
+                    Ok(None) => {}
+                    Err(error) => eprintln!("solicitud de pista: {error}"),
                 }
                 match document.poll() {
                     Ok(true) => {
@@ -2007,5 +2028,37 @@ mod tests {
         );
         assert_eq!(parts[1], [(Kind::Radar, (80.0, 50.0))]);
         assert!(parts[2].is_empty(), "sin widgets no hay ventana");
+    }
+
+    /// La bandeja y Studio usan el mismo estado/canal: ocultar desde la
+    /// bandeja retira la solicitud vigente de mostrar en pista; mostrar
+    /// desde la bandeja no crea ninguna (#1567).
+    #[cfg(windows)]
+    #[test]
+    fn tray_hide_retires_studio_track_request() {
+        let dir = std::env::temp_dir().join(format!(
+            "vantare-tray-track-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("reloj")
+                .as_nanos()
+        ));
+        let layout = dir.join("layout.json");
+        // Sin solicitud vigente, ocultar es idempotente y mostrar no crea nada.
+        LiveScreens::sync_track_request(&layout, true);
+        assert!(!crate::layout::Presentation::is_showing(&layout));
+        LiveScreens::sync_track_request(&layout, false);
+        assert!(!crate::layout::Presentation::is_showing(&layout));
+        // Solicitud vigente de Studio: ocultar desde la bandeja la retira y
+        // el observador del overlay lo ve como dejar de mostrar.
+        crate::layout::Presentation::show(&layout).expect("mostrar");
+        assert!(crate::layout::Presentation::is_showing(&layout));
+        let mut watcher = crate::layout::Presentation::watch(&layout).expect("vigilar");
+        assert_eq!(watcher.poll().expect("sin cambios"), None);
+        LiveScreens::sync_track_request(&layout, true);
+        assert!(!crate::layout::Presentation::is_showing(&layout));
+        assert_eq!(watcher.poll().expect("dejar de mostrar"), Some(false));
+        std::fs::remove_dir_all(&dir).expect("limpiar");
     }
 }

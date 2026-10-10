@@ -20,17 +20,16 @@ sido activada en producción.
    las demás traducciones pueden quedar vacías y la app mostrará español.
    El orden de los hitos dentro de cada estado es el orden de `items`.
 3. Si el contenido o el destino es ambiguo, aclararlo con Isaac. No derivar
-   automáticamente estados o fechas de GitHub/Notion ni inventar porcentajes.
+   automáticamente estados o fechas de GitHub ni inventar porcentajes.
 4. Comprobar `visual_roadmap_valid(document)` y publicar mediante la conexión
    SQL privilegiada con `visual_roadmap_publish(document)`. La función conserva
    la versión anterior como `superseded` y publica la nueva de forma atómica.
    Los clientes `anon` y `authenticated` no tienen permiso para publicar.
 5. Releer `visual_roadmap_current` y comprobar ID, texto, orden y estado.
    Verificar en una sesión lectora que aparece al recargar Roadmap. Registrar
-   el cambio en la tarea Notion aplicable.
+   el cambio en la tarea GitHub Issues aplicable.
 
-El seguimiento interno, las dependencias y los canales siguen en Notion y
-GitHub. Publicar un hito no cambia el estado de una tarea, PR, canal o release.
+El seguimiento interno, las dependencias y los canales siguen en GitHub Issues. Publicar un hito no cambia el estado de una tarea, PR, canal o release.
 
 ## Primera activación
 

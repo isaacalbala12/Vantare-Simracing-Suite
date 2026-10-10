@@ -136,11 +136,10 @@ transiciones ni gaps positivos. Fase/banderas LMU, varias integridades,
 litros ACC, dirección meteorológica/presión siguen ausentes justificadamente.
 `docs/roadmap/plan.md` no existe en esta base; no se crea publicación paralela.
 
-> **Seguimiento obligatorio en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).**
-> Abrir tarea y proyecto antes de ejecutar; actualizar y releer al empezar,
-> bloquear, entregar y verificar merge. [Contrato](../notion-transition.md).
-> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
-> sustituyen el estado vivo ni autorizan nuevas tareas. Enlazar las nuevas entradas a Notion.
+> **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
+> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
+> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
+> estados de trackers anteriores son evidencia histórica, no instrucciones.
 
 ## ISA-1388 — proyección espacial del radar (2026-09-25)
 

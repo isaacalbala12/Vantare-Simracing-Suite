@@ -1,3 +1,16 @@
+## #1496 — promoción a nightly autorizada el 2026-10-10
+
+Isaac autoriza expresamente PR, push, squash a nightly y prerelease nativa <0.1.
+Base local 8e844c9d y origen nightly 2148bf7e: se incorpora la base sin perder
+la integración. Conflictos solo documentales: AGENTS conserva Rust/GitHub y la
+retirada Wails/React; handoffs acumulan entregas y el seguimiento vigente #1503.
+Incluidas #1528, #1529, #1530, #1532, #1533 y #1534. #1531 sigue pendiente y abierta.
+Etiqueta autorizada native-beta-v0.0.975 (o siguiente si existe), título nightly nativa,
+prerelease, nunca latest. USB requerido únicamente para firma Ed25519 mediante
+ruta directa; no leer/copiar/imprimir/subir la semilla. Instalación real intacta.
+Siguiente: repetir gates por cola, PR a nightly y CI; squash solo con checks verdes.
+Evidencia externa promocion-nightly-1528-evidence/; firma/publicación aún pendientes.
+
 ## #1496 — integración local de #1528 e instalador 0.0.975 (2026-10-10)
 
 Rama vantareapp/isa-1496-integracion-prueba, base autorizada 70170613.
@@ -779,6 +792,10 @@ Solo transferencia autorizada al bare privado Mac. No se toca la beta
 `native-beta` ni telemetría live de Isaac. El spike de dylib queda
 cancelado por la nota de Isaac de las 15:15.
 
+> **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
+> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
+> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
+> estados de trackers anteriores son evidencia histórica, no instrucciones.
 
 ## 2026-09-28 · ISA-1406 · Navegación Orbit sin salto
 

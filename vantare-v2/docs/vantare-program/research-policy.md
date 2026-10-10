@@ -27,7 +27,7 @@ configuración propietaria. Assets y sound packs se licencian por separado.
 5. Auditoría de Vantare contra la matriz.
 6. Clasificar: conservar, endurecer, rehacer, eliminar o aplazar.
 7. HTML interactivo de referencia antes de React.
-8. Convertir hallazgos en decisiones, microcortes y tareas Notion.
+8. Convertir hallazgos en decisiones, microcortes y tareas GitHub Issues.
 
 ## Entregables
 
@@ -38,7 +38,7 @@ configuración propietaria. Assets y sound packs se licencian por separado.
 - HTML interactivo;
 - plan por microcortes;
 - handoff vivo;
-- backlog en Notion según [notion-transition.md](notion-transition.md);
+- backlog en GitHub Issues según [execution-policy.md](execution-policy.md);
   capturar hallazgos fuera de alcance como pendientes sin implementarlos
   silenciosamente. Actualizar y releer la tarea y el proyecto al entregar.
 

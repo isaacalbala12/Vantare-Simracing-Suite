@@ -1,11 +1,9 @@
 # Vantare — expediente canónico del programa
 
-> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
-> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
-> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
-> [Contrato vigente](notion-transition.md). GitHub conserva código, PR, CI y releases;
-> las referencias ISA exigidas por los controles son un puente técnico temporal.
-> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+> **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
+> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
+> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
+> estados de trackers anteriores son evidencia histórica, no instrucciones.
 
 
 Estado: vigente desde ISA-120; revisado el 2026-08-05.
@@ -13,25 +11,25 @@ Estado: vigente desde ISA-120; revisado el 2026-08-05.
 Este directorio concentra las decisiones confirmadas por Isaac y el contexto
 mínimo para continuar Vantare sin depender de conversaciones anteriores. No
 reemplaza las especificaciones técnicas detalladas: las enlaza, indica cuál
-sigue vigente y conserva evidencia técnica. El estado operativo vive en Notion.
+sigue vigente y conserva evidencia técnica. El estado operativo vive en GitHub Issues.
 
 ## Orden de lectura obligatorio
 
-1. Tarea y proyecto del hub Notion, con acceso comprobado.
-2. `AGENTS.md` actualizado desde origin/nightly, este documento y `notion-transition.md`.
+1. Issue de GitHub y proyecto Vantare, con acceso comprobado.
+2. `AGENTS.md` actualizado desde origin/nightly, este documento.
 3. `product-contract.md`.
 4. `project-map.md`.
 5. `execution-policy.md`.
 6. `../branch-channels.md` cuando haya ramas, promociones o releases.
 7. El handoff del proyecto asignado en `handoffs/`.
-8. La referencia GitHub exigida por CI, el ADR, `../roadmap/plan.md` y el plan vigente.
+8. La issue vigente, el ADR, `../roadmap-maintenance.md` y el plan vigente.
 
 Si dos documentos se contradicen:
 
 1. prevalecen las decisiones más recientes de este directorio;
 2. después, la evidencia comprobable del código y del runtime;
 3. después, ADR y planes vigentes;
-4. Notion decide alcance, prioridades, dependencias y estado; GitHub demuestra integración;
+4. GitHub Issues decide alcance, prioridades, dependencias y estado; GitHub demuestra integración;
 5. los documentos históricos se conservan como contexto, no como orden de
    ejecución.
 
@@ -39,12 +37,12 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
 
 ## Documentos
 
-- `notion-transition.md`: Notion obligatorio ahora, lote histórico y puertas del corte técnico.
-- `notion-document-audit.md`: revision individual de documentos y controles del corte.
+- `notion-transition.md`: histórico, sustituido por GitHub Issues (#1503).
+- `notion-document-audit.md`: auditoría histórica del tracker anterior.
 
 - `product-contract.md`: alcance, experiencia, licencias, privacidad e idiomas.
-- `project-map.md`: módulos, fronteras y caminos de datos; el estado operativo vive en Notion.
-- `execution-policy.md`: flujo Notion/Git, autonomía, reviews y promoción.
+- `project-map.md`: módulos, fronteras y caminos de datos; el estado operativo vive en GitHub Issues.
+- `execution-policy.md`: flujo GitHub Issues/Git, autonomía, reviews y promoción.
 - `../roadmap-maintenance.md`: actualización por Codex y publicación del roadmap gráfico.
 - `research-policy.md`: investigación de productos, repositorios y apps.
 - `handoff-template.md`: contrato común para los handoffs.
@@ -67,11 +65,11 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
   tomar una decision material; no se espera al final de una fase larga.
 - Los workers no crean subagentes por defecto. La delegacion anidada requiere
   autorizacion expresa y acotada del orquestador.
-- La entrega en la tarea Notion enlaza el handoff y enumera evidencia real.
+- La entrega en la issue GitHub enlaza el handoff y enumera evidencia real.
   Actualizar al empezar, bloquear, entregar y verificar merge; releer la escritura.
 - Mocks, capturas y tests no pueden presentarse como prueba de runtime real.
-- Los hallazgos fuera del lote de cierre se capturan en Notion como pendientes,
-  segun `notion-transition.md`; no se ejecutan ni amplian el lote automaticamente.
+- Los hallazgos fuera del lote de cierre se capturan en GitHub Issues como pendientes,
+  según la issue vigente; no se ejecutan ni amplian el lote automaticamente.
 - Contenido pertenece a Isaac y queda fuera de la ejecución autónoma. Los
   agentes solo preparan borradores cuando se les solicita.
 
@@ -82,7 +80,7 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
   issue conserva rama y worktree propios.
 - `develop` y `refactor` son historia y no reciben trabajo nuevo. Los checkouts
   historicos sucios se preservan hasta una limpieza trazada.
-- Los handoffs de este directorio y Notion contienen la continuidad técnica y
+- Los handoffs de este directorio y GitHub Issues contienen la continuidad técnica y
   el estado operativo; Codex actualiza el roadmap público cuando Isaac lo solicita.
 - Testing Center es un proyecto independiente y no se mezcla con la
   orquestacion de los modulos de producto salvo que una issue lo indique.

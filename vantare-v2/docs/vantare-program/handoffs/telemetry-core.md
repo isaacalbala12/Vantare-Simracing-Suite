@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## #1536 · continuación #1551/#1552 integrada y validada (2026-10-10)
+
+Merge --no-ff caa6dfb8b04f7dbf12b9106a84ff5d4d44580f86 de 6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6, tras los 13 merges R2. Código probado a1aadd4038a749207ae62e98515a37ea237d17db; árbol native 29f3e82249be7eef8095d61763f0888e2cdce013. Check, fmt y Clippy -D warnings PASS; Nextest 1509/1509 (7 skips heredados del perfil), lifecycle 18/18 y telemetría 25/25 (0 skips) PASS por cola. Ambas regresiones #1551/#1552 activadas, sin #[ignore]; Engineer recovery/status_process pasa a la primera.
+
+Conflicto LMU: conserva numeración monotónica y poda anticipada de #1547, incorporando race/gaps ausentes fuera de carrera de #1551; evita restaurar IDs basados en longitud del mapa. ACC combina orden coherente con correcciones anteriores; extrae observed_cars para cumplir el límite de Clippy sin excepciones ni cambio semántico. Handoff conserva las dos entregas. 94 tests R2 presentes: solo las dos regresiones ahora fortalecidas con cuenta exacta; siete tests nuevos y un oráculo renombrado #1551 idénticos a origen. Goldens/oracle actualizados con las pruebas de inversión de #1551/#1552 que restringen el cambio a gaps LMU y rangos ACC.
+
+Evidencia C:/tmp/review-full/1551-*.log, tests-preservados-1551.json y conflictos-r2.md; informe vivo C:/tmp/review-full/informe-integracion-r2.md, buzón C:/tmp/buzon/integracion-r2.md. Rama vantareapp/isa-1536-arreglos-revision, tracker #1536 abierto. Siguiente: esperar revisión de #1531 para integración explícita; todavía sin push, PR, nightly ni release y #1550 intacto. Las pruebas no acreditan sesiones físicas ni CI remoto. La entrada R2 siguiente conserva la evidencia anterior a #1551/#1552.
+
 ## #1536 · integración R2 local validada (2026-10-10)
 
 13 merges --no-ff en orden autorizado sobre 026c1207, con 13/13 checks por cola PASS. Código validado ca8afd7205e3820d38341a2559002ac56004428c; árbol native 9c57fd70fda86dc7b0c494cfed1c2aa1cc4b9d1f. Fmt y Clippy -D warnings PASS; Nextest 1502/1502 (7 skips del perfil), lifecycle 18/18 y telemetría 23/23 (2 ignorados de #1537) PASS. 94 tests nuevos conservados con cuerpos idénticos. Engineer recovery/status_process pasa sin flake ni reintento.

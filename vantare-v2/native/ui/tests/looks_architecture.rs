@@ -1,5 +1,34 @@
 //! Los consumidores reciben capacidades; ningún helper debe clasificar un Look.
 use std::{fs, path::Path};
+
+#[test]
+fn saved_efficiency_layout_preserves_tone_and_accent_byte_for_byte() {
+    let saved = br#"{"version":1,"instances":[
+        {"id":"standings","x":20,"y":30,"visible":true,"settings":{"kind":"standings","designSystem":"eficiencia","style":"neutro","accent":"amber"}},
+        {"id":"relative","x":40,"y":50,"visible":true,"settings":{"kind":"relative","designSystem":"eficiencia","style":"neutro","accent":"green"}},
+        {"id":"delta","x":60,"y":70,"visible":true,"settings":{"kind":"delta","designSystem":"eficiencia","style":"neutro","accent":"white"}},
+        {"id":"fuel","x":80,"y":90,"visible":true,"settings":{"kind":"fuel-strategy","designSystem":"eficiencia","style":"neutro","accent":"amber"}}
+    ]}"#;
+    let layout = vantare_ui::layout::Layout::from_json(saved).expect("layout guardado");
+    for (instance, accent) in layout
+        .instances
+        .iter()
+        .zip(["amber", "green", "white", "amber"])
+    {
+        let settings = serde_json::to_value(&instance.settings).expect("settings");
+        assert_eq!(settings["designSystem"], "eficiencia");
+        assert_eq!(settings["style"], "neutro");
+        assert_eq!(settings["accent"], accent);
+    }
+    // Guardar usa esta misma serialización canónica. No se recalibra al refactorizar.
+    let bytes = serde_json::to_vec_pretty(&layout).expect("guardar");
+    let restored = vantare_ui::layout::Layout::from_json(&bytes).expect("releer");
+    assert_eq!(
+        serde_json::to_vec_pretty(&restored).expect("guardar otra vez"),
+        bytes
+    );
+    assert_eq!(restored, layout);
+}
 fn violations(source: &str) -> Vec<String> {
     let compact = |text: &str| {
         text.chars()

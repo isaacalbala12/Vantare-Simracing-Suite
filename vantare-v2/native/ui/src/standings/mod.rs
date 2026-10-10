@@ -702,15 +702,12 @@ impl Widget {
             Presentation::Vantare { visual: v, .. } => v.size(),
         }
     }
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        self.frame_with_motion(prefs, false)
-    }
-    pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         match &mut self.presentation {
             Presentation::Eficiencia {
                 visual: v,
                 motion: m,
-            } => v.frame_with_motion(prefs, reduced, std::sync::Arc::make_mut(m)),
+            } => v.frame(prefs, reduced, std::sync::Arc::make_mut(m)),
             Presentation::Vantare {
                 visual: v,
                 motion: m,

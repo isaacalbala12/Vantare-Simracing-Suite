@@ -12,7 +12,7 @@ GitHub #1561, area:plataforma, Project Vantare In Progress, sin milestone. Esta 
 
 ## 3. Estado real y canal
 
-Rama aislada `vantareapp/isa-1561-looks-frame`, base nightly `b2186f82746424b4844a5909efd31530c5bbe5b3`, checkout inicialmente limpio. Guardias `22fe7490` antes del refactor; PR-3 local validado: fmt/Clippy -D warnings PASS, Nextest 1615/1615 (7 skips), lifecycle 18/18. Paridad PR-3: Standings 0/292160 y Delta 0/26880 píxeles, umbral 0. PR-5 pendiente. Sin push/PR todavía, sin merge, promoción ni release. Las entregas #1562/#1563/#1564/#1567 y documentación #1570 ya forman parte de la base.
+Rama aislada `vantareapp/isa-1561-looks-frame`, base nightly `b2186f82746424b4844a5909efd31530c5bbe5b3`, checkout inicialmente limpio. Guardias `22fe7490` antes del refactor; PR-3 local validado: fmt/Clippy -D warnings PASS, Nextest 1615/1615 (7 skips), lifecycle 18/18. Paridad PR-3: Standings 0/292160 y Delta 0/26880 píxeles, umbral 0. PR-3 `abc22332`; PR-5 validado y entregado con estas notas en el tercer hito. Draft [#1579](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1579) a nightly; SHA final y verificación del push en issue/buzón. Sin merge, promoción ni release. Las entregas #1562/#1563/#1564/#1567 y documentación #1570 ya forman parte de la base.
 
 ## 4. Decisiones cerradas
 
@@ -25,7 +25,7 @@ Rama aislada `vantareapp/isa-1561-looks-frame`, base nightly `b2186f82746424b484
 
 ## 5. Arquitectura y ownership
 
-Domain proyecta; UI guarda settings y pinta; Hub edita documento/historial. [Registro](../../../native/ui/src/registry.rs), [layout](../../../native/ui/src/layout.rs), [Studio](../../../native/hub/src/studio.rs), [sesiones](../../../native/hub/src/studio/sessions.rs). UI/domain no dependen de runtime. Sin deps nuevas ni transporte/permiso en pintores. #1561 P1-A mantiene la partición coordinada del Studio preexistente >2000 LOC; PR-3/PR-5 de #1561 no se afirman integradas. PR-3 de esta rama mueve la apariencia a `ui::look::{Look, Tone, Accent}`, sin cambiar nombres serde. PR-5 sigue pendiente; `frame_with_motion` sigue vigente hasta ese hito.
+Domain proyecta; UI guarda settings y pinta; Hub edita documento/historial. [Registro](../../../native/ui/src/registry.rs), [layout](../../../native/ui/src/layout.rs), [Studio](../../../native/hub/src/studio.rs), [sesiones](../../../native/hub/src/studio/sessions.rs). UI/domain no dependen de runtime. Sin deps nuevas ni transporte/permiso en pintores. #1561 P1-A mantiene la partición coordinada del Studio preexistente >2000 LOC; PR-3/PR-5 de #1561 se entregan en draft #1579, sin integración. PR-3 de esta rama mueve la apariencia a `ui::look::{Look, Tone, Accent}`, sin cambiar nombres serde. PR-5 usa `frame(prefs, reduced)` en los 18 widgets: despacho generado, Fuel asienta en su propio frame, estáticos aceptan `_reduced`. Cadencia/etiquetas/catálogo sin cambios.
 
 ## 6. Evidencia y límites
 
@@ -33,22 +33,22 @@ Entrega anterior #1564: RED `9c218b38`; código/capturas `c8401b50`; test D12 am
 Logs y revisión/hashes: `C:/tmp/ola2/evidence-1564`; informe `C:/tmp/ola2/informe-1564-impl.md`; buzón `C:/tmp/buzon/1564.md`. No convierte fixtures/replays en LMU/ACC/OBS físicos, DPI/macOS ni input→Present. Present/s no mide latencia. Históricos/goldens se conservan sin recalibrar.
 **#1536 · Launcher:** test COM compara destinos canonicalizados, conserva ejecutable/bytes, no ejecuta y rechaza UNC; arreglo `d7c6cd17`, histórico enlazado arriba.
 
-Guardias #1561 `22fe7490`: layout Eficiencia/Neutro/acentos de cuatro widgets, transiciones activas de Banderas/FastestLap/Input/PedalsTelemetry y replay: 8/8 PASS antes del refactor. Capturas base de 18 widgets por `compare.ps1` guardadas e inspeccionadas; diferencias con goldens históricos registradas sin recalibración. Cuatro pintores equivalentes tras renombrado de imports/tipos; PR-3 reduce 4 líneas Rust. Evidencia nueva: `C:/tmp/ola2/evidence-1561-ui`; buzón `C:/tmp/buzon/1561-ui.md`.
+Guardias #1561 `22fe7490`: layout Eficiencia/Neutro/acentos de cuatro widgets, transiciones activas de Banderas/FastestLap/Input/PedalsTelemetry y replay: 8/8 PASS antes del refactor. Capturas base de 18 widgets por `compare.ps1` guardadas e inspeccionadas; diferencias con goldens históricos registradas sin recalibración. Cuatro pintores equivalentes tras renombrado de imports/tipos; PR-3 reduce 4 líneas Rust. PR-5 reduce 72 líneas Rust (12945→12873 en 24 fuentes); registro 175→157, wrappers 8→0 y sitios de API de movimiento por widget animado 2→1. Cuerpos de frame conservados 18/18. Gates finales por la cola: fmt/Clippy -D warnings PASS, Nextest 1615/1615 (7 skips), lifecycle 18/18; build parity-capture/paint-stats y guardias con ambas features 5/5 PASS. Paridad final inspeccionada: 18/18 hashes PNG idénticos, 0/1720978 píxeles distintos, umbral 0 sin máscaras. Verificación retenida 456 huellas PASS. Evidencia nueva: `C:/tmp/ola2/evidence-1561-ui`; buzón `C:/tmp/buzon/1561-ui.md`.
 
 ## 7. Riesgos y deuda
 
-- #1561: comparar contra esta base; los goldens históricos ya difieren en dimensiones/píxeles antes del refactor. No se recalibran. CI de esta rama pendiente hasta el push.
+- #1561: comparar contra esta base; los goldens históricos ya difieren en dimensiones/píxeles antes del refactor. No se recalibran. CI remoto del draft pendiente de revisión; no se acredita con los gates locales.
 - P2: Studio compartido con #1569; no partir durante entregas concurrentes. #1524 sigue pendiente: autoría no acredita fuente live.
 - #1527 debe partir del DTO live v10 realmente integrado y mantener lectores persistidos compatibles.
 - Evidencia física/plataforma y deuda de paridad de ADR 0101 conservadas en el histórico; no elevar severidad sin nueva prueba.
 
 ## 8. Issues terminadas, activas y pendientes
 
-Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. #1564/PR #1577 integrada en la base. Activa de esta rama: #1561 PR-3/PR-5. Pendientes coordinadas: #1566, #1569 y #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
+Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. #1564/PR #1577 integrada en la base. Activa de esta rama: #1561 PR-3/PR-5 en draft #1579. Pendientes coordinadas: #1566, #1569 y #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
 
 ## 9. Siguiente acción exacta
 
-Commit de PR-3 con docs; después PR-5 con firma uniforme, gates y paridad exacta de los 18 widgets contra las capturas base. Push y PR draft a nightly, verificar SHA remoto y FIN en buzón/issue. Sin merge, testers/master ni release.
+Revisar el draft #1579 y sus checks remotos; #1561 sigue abierta para el resto de la ola. Consultar SHA final y FIN en buzón/issue. Sin merge, testers/master ni release.
 
 ## 10. Última actualización
 

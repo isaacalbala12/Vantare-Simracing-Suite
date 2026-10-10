@@ -251,10 +251,7 @@ impl Widget {
             visual.attach(self.board.clone());
         }
     }
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        self.frame_with_motion(prefs, false)
-    }
-    pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let now = Instant::now();
         match &mut self.presentation {
             Presentation::Vantare {
@@ -379,14 +376,14 @@ mod tests {
         let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         let mut snapshot = crate::source::fixed();
         widget.ingest(&snapshot, prefs);
-        drop(widget.frame(prefs));
+        drop(widget.frame(prefs, false));
         assert!(widget.idle_frame.is_some());
-        drop(widget.frame(prefs));
+        drop(widget.frame(prefs, false));
         assert!(widget.idle_frame.is_some());
         snapshot.state.source_state = vantare_domain::SourceState::Lost;
         widget.ingest(&snapshot, prefs);
         assert!(widget.idle_frame.is_none());
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         assert!(widget.idle_frame.is_some());
     }
 

@@ -245,7 +245,7 @@ impl Widget {
         replace_if_changed(&mut self.vm, self.trace.project(snapshot, prefs)) || changed
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, _prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         let samples: Vec<_> = self.trace.samples().iter().copied().collect();
         (
@@ -327,7 +327,7 @@ mod tests {
             widget.ingest(&snapshot, prefs),
             "se retira el dato anterior"
         );
-        assert!(matches!(widget.frame(prefs).1, Wake::Idle));
+        assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
     }
 
     #[test]
@@ -348,7 +348,10 @@ mod tests {
         assert_eq!(widget.trace.samples().len(), 81);
         assert_eq!(widget.vm.current_text, "+0.257");
         assert_eq!(widget.vm.trend_text, "PERDIENDO");
-        assert!(matches!(widget.frame(Preferences::default()).1, Wake::Idle));
+        assert!(matches!(
+            widget.frame(Preferences::default(), false).1,
+            Wake::Idle
+        ));
     }
 
     #[cfg(feature = "parity-capture")]

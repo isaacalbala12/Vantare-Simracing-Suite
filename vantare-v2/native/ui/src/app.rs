@@ -456,7 +456,7 @@ impl Render for Overlay {
         let reduced = cx
             .try_global::<crate::MotionPolicy>()
             .is_some_and(|policy| policy.0);
-        let (paint, wake) = self.widget.frame_with_motion(self.prefs, reduced);
+        let (paint, wake) = self.widget.frame(self.prefs, reduced);
         #[cfg(feature = "paint-stats")]
         let profile_photo = self.profile_photo.take();
         #[cfg(feature = "parity-capture")]
@@ -1371,18 +1371,10 @@ mod tests {
             assert!(reduced.ingest(&snapshot, prefs), "{kind:?}");
             // FastestLap usa un preview estático solo con parity-capture.
             if kind != Kind::FastestLap || !cfg!(feature = "parity-capture") {
-                assert_eq!(
-                    normal.frame_with_motion(prefs, false).1,
-                    Wake::Frame,
-                    "{kind:?}"
-                );
+                assert_eq!(normal.frame(prefs, false).1, Wake::Frame, "{kind:?}");
             }
             for _ in 0..3 {
-                assert_ne!(
-                    reduced.frame_with_motion(prefs, true).1,
-                    Wake::Frame,
-                    "{kind:?}"
-                );
+                assert_ne!(reduced.frame(prefs, true).1, Wake::Frame, "{kind:?}");
             }
         }
     }
@@ -1400,12 +1392,7 @@ mod tests {
             let mut widget = crate::Widget::new(&crate::Settings::default_for(kind), prefs);
             widget.ingest(&snapshot, prefs);
             for _ in 0..3 {
-                assert_ne!(
-                    widget.frame_with_motion(prefs, true).1,
-                    Wake::Frame,
-                    "{}",
-                    kind.name()
-                );
+                assert_ne!(widget.frame(prefs, true).1, Wake::Frame, "{}", kind.name());
             }
         }
     }
@@ -1436,12 +1423,7 @@ mod tests {
                 let snapshot =
                     vantare_ipc::snapshot_from_json(&frame["snapshot"].to_string()).expect("foto");
                 widget.ingest(&snapshot, prefs);
-                assert_ne!(
-                    widget.frame_with_motion(prefs, true).1,
-                    Wake::Frame,
-                    "{}",
-                    kind.name()
-                );
+                assert_ne!(widget.frame(prefs, true).1, Wake::Frame, "{}", kind.name());
             }
         }
     }

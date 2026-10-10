@@ -65,9 +65,10 @@ guardados `designSystem`, `style` y `accent` conservan nombres y valores.
 Workshop recarga el estilo sin otro renderer.
 Una proyección y un estado por widget con N Looks están integrados (#1531):
 Board y Motion comunes, con una sola presentación activa. No duplicar proyecciones al portar.
-`registry.rs` aún adapta manualmente `frame_with_motion(prefs, reduced)` y la
-cadencia de widgets con movimiento; justificar cambios en ese seam, no extenderlo
-silenciosamente. La política de movimiento la decide el host.
+El registro genera el despacho uniforme `frame(prefs, reduced)` para los 18
+widgets; cada widget aplica movimiento reducido o acepta `_reduced` si es estático.
+Fuel asienta su movimiento dentro de `frame`. La política la decide el host;
+la cadencia sigue en `Level::hz` y cualquier cambio necesita justificación.
 
 ## Preview de Studio (ISA-1430)
 
@@ -106,7 +107,7 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
    | `new(settings: &Settings, prefs: Preferences)` | `Self`, estado inicial sin datos |
    | `size(&self)` | `(f32, f32)`, rectángulo completo con sombras/rail |
    | `ingest(&mut self, snapshot: &Snapshot, prefs: Preferences)` | `bool`, cambia solo si el dibujo cambió |
-   | `frame(&mut self, prefs: Preferences)` (o seam actual `frame_with_motion`) | `(crate::app::Paint, crate::app::Wake)`, escena propia clonada en la closure de pintado |
+   | `frame(&mut self, prefs: Preferences, reduced: bool)` | `(crate::app::Paint, crate::app::Wake)`, escena propia clonada en la closure; aplicar movimiento reducido (estático: `_reduced`) |
    | `animating(&self)` con `#[cfg(feature = "parity-capture")]` | `bool`, hasta terminar movimientos **y** avisos temporales |
 
    `Paint` es `Box<dyn Fn(&mut gpui::Window, &mut gpui::App)>`; para un widget

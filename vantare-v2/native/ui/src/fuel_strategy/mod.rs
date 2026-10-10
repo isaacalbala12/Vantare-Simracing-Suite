@@ -247,7 +247,10 @@ impl Widget {
         self.settings.design_system = look;
         self.presentation = Self::presentation(&self.settings, prefs, &self.board, motion);
     }
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+        if reduced {
+            self.settle();
+        }
         match &mut self.presentation {
             Presentation::Eficiencia {
                 visual: labels,
@@ -462,7 +465,7 @@ mod tests {
         };
         let saved = v.clone();
         for _ in 0..3 {
-            drop(widget.frame(prefs));
+            drop(widget.frame(prefs, false));
         }
         let Presentation::Vantare { visual: v, .. } = &widget.presentation else {
             unreachable!()
@@ -597,13 +600,13 @@ mod tests {
             player.fuel.level_l = Quality::Unavailable;
         }
         assert!(widget.ingest(&data, prefs));
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         let english = Preferences {
             language: vantare_domain::format::Language::En,
             ..prefs
         };
         assert!(widget.ingest(&data, english));
-        assert_eq!(widget.frame(english).1, Wake::Idle);
+        assert_eq!(widget.frame(english, false).1, Wake::Idle);
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
     }

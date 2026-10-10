@@ -185,7 +185,7 @@ fn replay(name: &str, photos: Vec<(String, Snapshot)>, mut each: impl FnMut(&str
         assert_eq!(photo.snapshot.sequence, sequence, "{label}");
         for (widget, settings) in widgets.iter_mut().zip(&settings) {
             widget.ingest(&photo.snapshot, prefs);
-            let _ = widget.frame_with_motion(prefs, true);
+            let _ = widget.frame(prefs, true);
             let (w, h) = widget.size();
             assert!(
                 w > 0.0 && h > 0.0 && w.is_finite() && h.is_finite(),

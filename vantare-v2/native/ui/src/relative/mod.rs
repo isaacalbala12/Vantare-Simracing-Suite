@@ -400,10 +400,7 @@ impl Widget {
             }
         }
     }
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        self.frame_with_motion(prefs, false)
-    }
-    pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         match &mut self.presentation {
             Presentation::Eficiencia {
                 visual: v,
@@ -799,7 +796,7 @@ mod tests {
             widget.settings.columns.as_ref().expect("columnas")[0].driver_name("André Lotterer"),
             "A. Lotterer"
         );
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         assert!(
             Settings {
                 include_player: false,
@@ -818,10 +815,10 @@ mod tests {
         assert!(widget.ingest(&snapshot, prefs));
         snapshot.sequence += 1;
         assert!(!widget.ingest(&snapshot, prefs));
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         snapshot.state.player = None;
         assert!(widget.ingest(&snapshot, prefs));
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
     }
 
     #[test]
@@ -850,15 +847,15 @@ mod tests {
             .expect("rival en la foto")
             .relative_s = vantare_domain::Quality::Reliable(-0.1);
         assert!(widget.ingest(&snapshot, prefs));
-        assert_eq!(widget.frame(prefs).1, Wake::Frame);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Frame);
         snapshot.state.source_state = vantare_domain::SourceState::Lost;
         assert!(widget.ingest(&snapshot, prefs));
         assert!(widget.vm.slots.iter().all(Option::is_none));
         assert_eq!(widget.vm.status.as_deref(), Some("DESCONECTADO"));
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         snapshot.state.source_state = vantare_domain::SourceState::Live;
         assert!(widget.ingest(&snapshot, prefs));
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
     }
 
     #[test]

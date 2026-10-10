@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## #1536 · ronda 3 integrada localmente (2026-10-10)
+
+Cuatro merges --no-ff en orden #1556/#1554/#1555/#1553 sobre a410cb46, sin conflictos; 4/4 checks por cola PASS. Código integrado 42a14e166e3eb30f87365693f6145de19fac6d65; árbol native 3cba75c6574625a7435bd8906261a8b2aaa44f80. Fmt y Clippy -D warnings PASS; Nextest, lifecycle y telemetría del conjunto en curso. 22 archivos nativos idénticos a las ramas aceptadas, 17 tests nuevos conservados; corpus/goldens y archivos excluidos #1531 intactos.
+
+#1554: rechazo de registro ACC con aviso sanitizado y backoff de 10 s, rechazo de --pipe repetido y conservación de la marca de sesión durante Paused; #1556: viento half-up.
+
+Rama vantareapp/isa-1536-arreglos-revision; tracker #1536 abierto en Vantare/In Progress, cuatro issues R3 abiertas en Vantare/In Review. Evidencia C:/tmp/review-full/r3-*.log, merges-r3.tsv y tests-preservados-r3.json; buzón C:/tmp/buzon/integracion-r2.md. Siguiente: gates completos y cierre local; #1531 espera su revisión. Sin delegación, push, PR, nightly ni release; #1550 intacto, pantalla-ocupada respetada. Windows es la plataforma ejecutada; sin QA visual, sesiones físicas ni CI remoto. Las entradas siguientes conservan el historial anterior.
+
 ## #1554 · correcciones runtime R3 validadas localmente (2026-10-10)
 
 Rama `vantareapp/isa-1554-runtime-r3`, worktree `C:/tmp/vw3-1554`, base exacta

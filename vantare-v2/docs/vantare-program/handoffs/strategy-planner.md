@@ -1,5 +1,13 @@
 # Handoff vivo — Strategy Planner
 
+## #1536 · ronda 3 integrada localmente (2026-10-10)
+
+Cuatro merges --no-ff en orden #1556/#1554/#1555/#1553 sobre a410cb46, sin conflictos; 4/4 checks por cola PASS. Código integrado 42a14e166e3eb30f87365693f6145de19fac6d65; árbol native 3cba75c6574625a7435bd8906261a8b2aaa44f80. Fmt y Clippy -D warnings PASS; Nextest, lifecycle y telemetría del conjunto en curso. 22 archivos nativos idénticos a las ramas aceptadas, 17 tests nuevos conservados; corpus/goldens y archivos excluidos #1531 intactos.
+
+#1553: paginador sin acción ni pérdida de selección en los extremos. Sin cambios en solver, contratos o las proyecciones reservadas a #1531.
+
+Rama vantareapp/isa-1536-arreglos-revision; tracker #1536 abierto en Vantare/In Progress, cuatro issues R3 abiertas en Vantare/In Review. Evidencia C:/tmp/review-full/r3-*.log, merges-r3.tsv y tests-preservados-r3.json; buzón C:/tmp/buzon/integracion-r2.md. Siguiente: gates completos y cierre local; #1531 espera su revisión. Sin delegación, push, PR, nightly ni release; #1550 intacto, pantalla-ocupada respetada. Windows es la plataforma ejecutada; sin QA visual, sesiones físicas ni CI remoto. Las entradas siguientes conservan el historial anterior.
+
 ## #1536 · integración R2 local validada (2026-10-10)
 
 13 merges --no-ff en orden autorizado sobre 026c1207, con 13/13 checks por cola PASS. Código validado ca8afd7205e3820d38341a2559002ac56004428c; árbol native 9c57fd70fda86dc7b0c494cfed1c2aa1cc4b9d1f. Fmt y Clippy -D warnings PASS; Nextest 1502/1502 (7 skips del perfil), lifecycle 18/18 y telemetría 23/23 (2 ignorados de #1537) PASS. 94 tests nuevos conservados con cuerpos idénticos. Engineer recovery/status_process pasa sin flake ni reintento.

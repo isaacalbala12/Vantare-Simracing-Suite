@@ -1,3 +1,19 @@
+## #1535 · correcciones ronda 2 (2026-10-10)
+
+R2-1: clock_timestamp en el CHECK de 1 h y al consumir aprobaciones tras el
+bloqueo. pgTAP 20+31 PASS; dos sesiones LOGIN reales prueban BEGIN antiguo y
+espera del bloqueo hasta caducidad (42501, documento/aprobacion conservados).
+Control contrafactual local con solo el predicado now() restaurado detecta
+la aceptacion indebida y falla la regresion. N1: gate DEFINER requiere USAGE
+ademas de EXECUTE, sin ampliar allowlist; schema sin USAGE excluido, concederlo
+provoca rechazo del gate real. N2: eliminada sonda TLS sin CA mal etiquetada;
+3 tests PASS y OpenSSL real CA/hostname + hostname falso PASS sin auth/SQL.
+Quality 456 huellas y diff-check PASS. Sin cambios Rust/runtime/UI: gates
+nativos previos conservados, no repetidos. P2-4 sin cambios, decision de Isaac.
+SQL preparado, nada aplicado/configurado en produccion. Antes de aplicar:
+revision y copia LOCAL del esquema completo; antes de activar, permisos/secretos
+por Isaac y verificacion del host CI. Informe/buzon #1535 contienen SHA y push.
+
 ## #1535 · cierre de correcciones Sol/Opus (2026-10-10)
 
 Hitos 9918c539 (identidad), a4ffdd3a (ACL/lectura dual/guardas/runner).

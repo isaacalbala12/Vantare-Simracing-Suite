@@ -117,7 +117,7 @@ revoke execute on function public.handle_new_user() from public;
 -- CI cannot read, create, extend or consume these approvals except via sync.
 create table public.visual_roadmap_sync_approvals (
   document jsonb not null check(public.visual_roadmap_valid(document)),
-  expires_at timestamptz not null check(expires_at <= now()+interval '1 hour')
+  expires_at timestamptz not null check(expires_at <= clock_timestamp()+interval '1 hour')
 );
 alter table public.visual_roadmap_sync_approvals enable row level security;
 alter table public.visual_roadmap_sync_approvals force row level security;
@@ -137,8 +137,9 @@ begin
     where not exists(select 1 from jsonb_array_elements(p_document->'items') new
       where new->>'id'=old->>'id');
   if v_removed>0 and v_removed*2 >= jsonb_array_length(v_old->'items') then
+    -- Wall clock here is evaluated after the publication lock, not at BEGIN.
     with approved as (delete from public.visual_roadmap_sync_approvals
-      where document=p_document and expires_at>now() returning 1)
+      where document=p_document and expires_at>clock_timestamp() returning 1)
       select count(*) into v_approved from approved;
     if v_approved=0 then
       raise exception 'roadmap_mass_removal_requires_approval' using errcode='42501';
@@ -159,6 +160,7 @@ begin
   into unexpected from pg_proc p join pg_namespace n on n.oid=p.pronamespace
   where n.nspname not in ('pg_catalog','information_schema') and p.prosecdef
     and has_function_privilege('vantare_roadmap_publisher',p.oid,'EXECUTE')
+    and has_schema_privilege('vantare_roadmap_publisher',n.oid,'USAGE')
     and p.oid::regprocedure::text not in ('visual_roadmap_sync(jsonb)',
       'race_schedule_current()','digest(text,text)','digest(bytea,text)');
   if unexpected is not null then raise exception 'unreviewed_ci_definers: %',unexpected; end if;

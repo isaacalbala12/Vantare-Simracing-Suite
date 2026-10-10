@@ -1,6 +1,6 @@
 -- LOCAL only; real LOGIN adversarial test also run by run-1535-postgres.py.
 begin;
-select plan(29);
+select plan(31);
 select ok(public.visual_roadmap_valid('{"schemaVersion":2,"items":[]}'::jsonb),'v2 empty structurally valid, sync rejects');
 select ok(public.visual_roadmap_valid('{"schemaVersion":1,"items":[]}'::jsonb),'v1 retained');
 select ok(not public.visual_roadmap_valid('{"schemaVersion":3,"items":[]}'::jsonb),'future rejected');
@@ -12,9 +12,13 @@ select ok(not exists(select 1 from pg_auth_members m join pg_roles r on r.oid=m.
 select ok(not has_function_privilege('vantare_roadmap_publisher','public.race_schedule_my_draft()','EXECUTE'),'private draft inaccessible');
 select ok(has_function_privilege('authenticated','public.race_schedule_my_draft()','EXECUTE'),'authenticated draft retained');
 select ok(not has_function_privilege('vantare_roadmap_publisher','public.is_active_owner(uuid)','EXECUTE'),'owner oracle closed');
+create schema internal_ci_fixture;
+revoke all on schema internal_ci_fixture from public;
+create function internal_ci_fixture.hidden() returns integer language sql security definer as $$select 1$$;
 select is((select count(*)::integer from pg_proc p join pg_namespace n on n.oid=p.pronamespace
  where n.nspname not in ('pg_catalog','information_schema') and p.prosecdef
  and has_function_privilege('vantare_roadmap_publisher',p.oid,'EXECUTE')
+ and has_schema_privilege('vantare_roadmap_publisher',n.oid,'USAGE')
  and p.oid::regprocedure::text not in ('visual_roadmap_sync(jsonb)','race_schedule_current()','digest(text,text)','digest(bytea,text)')),0,'no unreviewed reachable definers');
 set local role vantare_roadmap_publisher;
 select throws_ok($$insert into public.visual_roadmap_sync_approvals values('{}',now())$$,'42501',null,'CI cannot approve own replacement');
@@ -47,5 +51,9 @@ select ok(public.visual_roadmap_valid(jsonb_build_object('schemaVersion',1,'item
  'body',jsonb_build_object('es',repeat('á',600),'en','','pt','','it','')))
  from generate_series(1,35) n))),'existing multibyte v1 preserves character limit');
 select ok(not has_function_privilege('vantare_roadmap_publisher','public.handle_new_user()','EXECUTE'),'trigger helper closed to CI');
+-- BEGIN predates insertion: a fresh nearly-one-hour approval must still work.
+select pg_sleep(0.1);
+select lives_ok($$insert into public.visual_roadmap_sync_approvals values('{"schemaVersion":2,"items":[]}',clock_timestamp()+interval '1 hour'-interval '0.05 seconds')$$,'approval insertion uses wall clock rather than transaction start');
+select throws_ok($$insert into public.visual_roadmap_sync_approvals values('{"schemaVersion":2,"items":[]}',clock_timestamp()+interval '1 hour 5 seconds')$$,'23514',null,'approval cannot exceed one hour from insertion');
 select * from finish();
 rollback;

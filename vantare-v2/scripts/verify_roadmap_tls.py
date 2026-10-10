@@ -18,10 +18,7 @@ def verify(host, port, ca, openssl):
     wrong = probe(['-verify_hostname', 'wrong-host.invalid', '-CAfile', str(ca)])
     if wrong.returncode == 0 or 'hostname mismatch' not in wrong.stderr:
         raise RuntimeError('Wrong-host negative control failed')
-    system = probe(['-verify_hostname', host])
-    if system.returncode == 0 or 'certificate verify failed' not in system.stderr:
-        raise RuntimeError('System-CA negative control failed; review certificate change')
-    return 'PASS CA and hostname; wrong hostname and system-only trust rejected'
+    return 'PASS CA and hostname; wrong hostname rejected'
 
 
 def main():

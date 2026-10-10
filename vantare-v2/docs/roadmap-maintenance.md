@@ -63,7 +63,8 @@ no aceptar una CA obtenida del servidor como su propia prueba de confianza.
 [Supabase exige CA y verify-full](https://supabase.com/docs/guides/platform/ssl-enforcement).
 Verificación real sin autenticación/SQL, 2026-10-10: STARTTLS Postgres contra
 aws-0-eu-central-1.pooler.supabase.com:5432, CA/hostname correctos PASS;
-hostname falso y confianza solo del sistema fallan. Libpq/psql 18.6 también
+hostname falso falla. Se elimina la sonda OpenSSL sin CA, que no probaba
+el almacén del sistema; la evidencia libpq independiente sí lo comprueba. Libpq/psql 18.6 también
 probado con verify-full: CA correcta llega al rechazo de routing esperado con
 usuario ficticio sin tenant; CA system falla y PGHOST falso con PGHOSTADDR real
 falla por hostname. Nunca se autenticó una cuenta ni se ejecutó SQL remoto.
@@ -117,11 +118,13 @@ un administrador puede insertar una aprobación exacta:
 
 ```sql
 insert into public.visual_roadmap_sync_approvals(document,expires_at)
-values (<documento_v2_revisado>::jsonb, now()+interval '30 minutes');
+values (<documento_v2_revisado>::jsonb, clock_timestamp()+interval '30 minutes');
 ```
 
-La aprobación dura como máximo una hora, se consume dentro de la transacción
-exitosa y no concede permisos para el siguiente cambio. CI no tiene lectura/DML
+La aprobación dura como máximo una hora desde la inserción (clock_timestamp).
+Su caducidad se comprueba con clock_timestamp después del bloqueo de publicación;
+BEGIN antiguo o espera del bloqueo no extienden su vigencia. Se consume dentro
+de la transacción exitosa y no concede permisos para el siguiente cambio. CI no tiene lectura/DML
 de esa tabla. Vacíos permanecen rechazados aun con aprobación. El histórico
 v1 conserva su límite de caracteres para que marcar superseded no falle por
 acentos; v2 mantiene el límite de bytes. Antes de aplicar, inspeccionar el tamaño
@@ -133,7 +136,7 @@ existente sigue funcionando sin EXECUTE directo del caller. Inventario estático
 de 107 nombres DEFINER incluyendo revocaciones FOREACH: solo el calendario
 publicado queda con EXECUTE inicial PUBLIC. digest son shims de hash INVOKER;
 se permiten si una instalación los marca DEFINER. La migración y pgTAP consultan
-pg_proc + has_function_privilege en todos los schemas fuera de catálogos:
+pg_proc + has_function_privilege y has_schema_privilege(USAGE), fuera de catálogos:
 allowlist sync, race_schedule_current y ambos digest. Cualquier otra función
 alcanzable hace fallar la migración antes de asignar credenciales; revisar su
 consumidor y ACL, no añadirla por comodidad. Escribir/leer el calendario privado
@@ -163,11 +166,15 @@ Necesita PostgreSQL con pgTAP; crea su propio PGDATA temporal, puerto loopback y
 base desechable, borra entorno PG heredado, aplica migraciones reales sobre un
 bootstrap explícito del contrato nativo. Nunca acepta DSN ni DB existente.
 Fixture perfiles + account_identities + membership, sin filas auth.users.
-PASS local PostgreSQL 18.6/pgTAP 1.3.4: 20+29, LOGIN real con claims falsos
+PASS local PostgreSQL 18.6/pgTAP 1.3.4: 20+31, LOGIN real con claims falsos
 denegado, authenticated owner conserva draft y bloque de rol repetido.
 El trigger real handle_new_user sigue creando perfil/licencia desde un INSERT
 permitido a service_role aunque PUBLIC no tenga EXECUTE directo. Crear un nuevo
 DEFINER default-PUBLIC ficticio hace fallar el gate real de la migración.
+Otro DEFINER sin USAGE queda excluido; conceder USAGE causa rechazo sin ampliar
+la allowlist. Dos sesiones reales prueban 42501 tras caducar la aprobación,
+con BEGIN antiguo y con espera del bloqueo, preservando documento y aprobación.
+La inserción comprueba el límite de 1 h contra reloj real en transacciones antiguas.
 El bootstrap es un subconjunto, no acredita todas las migraciones ni ACL remotos.
 Antes de aplicar: repetir con copia LOCAL del esquema completo objetivo y auditar
 allí los grants reales. Revisiones/activación remotas siguen fuera de esta entrega.

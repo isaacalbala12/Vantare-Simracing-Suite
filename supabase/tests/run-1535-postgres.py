@@ -5,6 +5,7 @@ from pathlib import Path
 import socket
 import subprocess
 import tempfile
+from roadmap_approval_race import check_approval_races
 
 
 def main():
@@ -49,7 +50,7 @@ def main():
                               '20261010000000_testing_participation.sql',
                               '20261010001000_visual_roadmap_clickup.sql'):
                 file(root / 'supabase/migrations' / migration, migration + '.log')
-            for suite, count in [('testing_participation', 20), ('visual_roadmap_clickup', 29)]:
+            for suite, count in [('testing_participation', 20), ('visual_roadmap_clickup', 31)]:
                 output = file(root / f'supabase/tests/{suite}.test.sql', suite + '.log')
                 if 'not ok ' in output or f'1..{count}' not in output or f'ok {count} ' not in output:
                     raise RuntimeError(f'{suite} pgTAP failed')
@@ -97,14 +98,27 @@ def main():
             if 'unreviewed_ci_definers' not in rejected or 'unreviewed_ci_fixture' not in rejected:
                 raise RuntimeError('unknown DEFINER audit did not reject the new function')
             run('psql', *connection, '-c', 'drop function public.unreviewed_ci_fixture();', name='unknown-definer-cleanup.log')
+            run('psql', *connection, '-c', '''
+                create schema internal_ci_fixture;
+                revoke all on schema internal_ci_fixture from public;
+                create function internal_ci_fixture.hidden() returns integer
+                  language sql security definer as $$select 1$$;
+                ''', name='hidden-definer-seed.log')
+            run('psql', *connection, '-c', audit, name='hidden-definer-excluded.log')
+            run('psql', *connection, '-c', 'grant usage on schema internal_ci_fixture to vantare_roadmap_publisher;', name='hidden-definer-grant.log')
+            rejected = run('psql', *connection, '-c', audit, name='hidden-definer-reachable-denied.log', expected=1)
+            if 'internal_ci_fixture.hidden' not in rejected:
+                raise RuntimeError('schema USAGE did not make the DEFINER gate reject')
+            run('psql', *connection, '-c', 'drop schema internal_ci_fixture cascade;', name='hidden-definer-cleanup.log')
             run('psql', *connection, '-c', audit, name='acl-audit.log')
+            check_approval_races(args.pg_bin / 'psql', connection, login, env, args.output)
             run('psql', *connection, '-c', """
                 do $$ begin create role vantare_roadmap_publisher;
                 exception when duplicate_object then null; end $$;
                 alter role vantare_roadmap_publisher login noinherit nosuperuser nocreatedb
                   nocreaterole noreplication nobypassrls connection limit 2;
                 """, name='role-repeat.log')
-            print('PASS: pgTAP 20+29, real LOGIN rejects forged owner claims, role repeat')
+            print('PASS: pgTAP 20+31, two-session approval expiry and lock wait, real LOGIN rejects forged owner claims, role repeat')
         finally:
             run('pg_ctl', '-D', data, '-m', 'fast', '-w', 'stop', name='stop.log')
 

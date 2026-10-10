@@ -10,6 +10,8 @@ use vantare_domain::pedals::ViewModel;
 use crate::efficiency::text::{self, ink};
 use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
 
+mod vantare;
+
 /// Tamaño por defecto, con la separación casi pegada de 2 px (ISA-1563); el
 /// ancho real para otro ajuste lo da `width_for_gap`.
 pub const SIZE: (f32, f32) = (108.0, 160.0);
@@ -185,18 +187,46 @@ use vantare_domain::{Snapshot, format::Preferences};
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    /// Look: los layouts anteriores a #1566 no lo guardan y siguen en Eficiencia.
+    #[serde(default = "eficiencia")]
+    pub design_system: crate::look::Look,
+    pub style: crate::standings::Look,
+    pub accent: crate::standings::Accent,
+    /// Marca Vantare: decisión inyectada por el host según la licencia.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub brand_visible: Option<bool>,
     pub transparent_background: bool,
     pub gap: f32,
 }
+fn eficiencia() -> crate::look::Look {
+    crate::look::Look::Eficiencia
+}
 impl Default for Settings {
     fn default() -> Self {
+        Self::for_look(crate::look::Look::default())
+    }
+}
+impl Settings {
+    pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
         Self {
+            brand_visible: (look == crate::look::Look::Vantare).then_some(true),
+            ..Self::for_look(look)
+        }
+    }
+
+    /// Única fuente de los ajustes base: el Look cambia solo la presentación.
+    #[must_use]
+    pub fn for_look(design_system: crate::look::Look) -> Self {
+        Self {
+            design_system,
+            style: crate::standings::Look::Neo,
+            accent: crate::standings::Accent::Red,
+            brand_visible: None,
             transparent_background: false,
             gap: DEFAULT_GAP,
         }
     }
-}
-impl Settings {
+
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
     fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         let mut vm = vantare_domain::pedals::project(snapshot, prefs);
@@ -217,36 +247,79 @@ impl Settings {
     }
 }
 
+/// Solo existe el pintor activo; el ViewModel es común a los dos Looks.
+enum Presentation {
+    Eficiencia,
+    Vantare(vantare::Visual),
+}
+
 pub(crate) struct Widget {
     settings: Settings,
     vm: ViewModel,
+    presentation: Presentation,
 }
 
 impl Widget {
+    fn presentation(settings: &Settings) -> Presentation {
+        match settings.design_system {
+            crate::look::Look::Eficiencia => Presentation::Eficiencia,
+            crate::look::Look::Vantare => Presentation::Vantare(vantare::Visual::new(
+                vantare::Options::from_settings(settings),
+            )),
+        }
+    }
+
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
         let settings = settings.normalized();
         Self {
             vm: settings.project(&Snapshot::default(), prefs),
+            presentation: Self::presentation(&settings),
             settings,
+        }
+    }
+
+    /// Cambia el pintor sin volver a proyectar: el ViewModel se conserva.
+    pub(crate) fn set_look(&mut self, look: crate::look::Look, _prefs: Preferences) {
+        if self.settings.design_system != look {
+            self.settings.design_system = look;
+            self.presentation = Self::presentation(&self.settings);
+        }
+    }
+
+    pub(crate) fn set_vantare_style(
+        &mut self,
+        style: std::sync::Arc<crate::vantare::style::Style>,
+    ) {
+        if let Presentation::Vantare(visual) = &mut self.presentation {
+            visual.set_style(style);
         }
     }
 
     // Tamaño intrínseco: depende de la separación entre barras.
     pub(crate) fn size(&self) -> (f32, f32) {
-        (width_for_gap(self.settings.gap), SIZE.1)
+        match &self.presentation {
+            Presentation::Eficiencia => (width_for_gap(self.settings.gap), SIZE.1),
+            Presentation::Vantare(visual) => visual.size(),
+        }
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
         replace_if_changed(&mut self.vm, self.settings.project(snapshot, prefs))
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
         let vm = self.vm.clone();
-        let gap = self.settings.gap;
-        (
-            Box::new(move |window, cx| paint(&vm, gap, window, cx)),
-            Wake::Idle,
-        )
+        let paint: Paint = match &self.presentation {
+            Presentation::Eficiencia => {
+                let gap = self.settings.gap;
+                Box::new(move |window, cx| paint(&vm, gap, window, cx))
+            }
+            Presentation::Vantare(visual) => {
+                let visual = visual.clone();
+                Box::new(move |window, cx| visual.paint(&vm, prefs.language, window, cx))
+            }
+        };
+        (paint, Wake::Idle)
     }
 
     #[cfg(feature = "parity-capture")]
@@ -306,9 +379,11 @@ mod tests {
     fn old_layouts_without_gap_default_to_almost_touching() {
         // La app anterior no tenía este ajuste (gap fijo de 8 px en el CSS):
         // los layouts guardados cargan con el 2 por defecto, casi pegadas.
-        for json in [r#"{"kind":"pedals"}"#, r#"{"kind":"pedals","transparentBackground":true}"#] {
-            let settings: crate::Settings =
-                serde_json::from_str(json).expect("layout antiguo");
+        for json in [
+            r#"{"kind":"pedals"}"#,
+            r#"{"kind":"pedals","transparentBackground":true}"#,
+        ] {
+            let settings: crate::Settings = serde_json::from_str(json).expect("layout antiguo");
             let crate::Settings::Pedals(value) = settings.normalized() else {
                 panic!("pedales");
             };

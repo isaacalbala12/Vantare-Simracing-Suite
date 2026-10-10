@@ -160,6 +160,7 @@ impl Overlay {
             Widget::Relative(widget) => widget.set_vantare_style(style),
             Widget::FuelStrategy(widget) => widget.set_vantare_style(style),
             Widget::Delta(widget) => widget.set_vantare_style(style),
+            Widget::Pedals(widget) => widget.set_vantare_style(style),
             _ => return,
         }
         cx.notify();
@@ -227,6 +228,7 @@ impl Overlay {
             Widget::Relative(w) => w.set_look(look, self.prefs),
             Widget::Delta(w) => w.set_look(look, self.prefs),
             Widget::FuelStrategy(w) => w.set_look(look, self.prefs),
+            Widget::Pedals(w) => w.set_look(look, self.prefs),
             _ => {}
         }
     }

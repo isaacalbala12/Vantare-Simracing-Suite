@@ -25,6 +25,7 @@ impl Look {
             Kind::FuelStrategy => {
                 Settings::FuelStrategy(crate::fuel_strategy::Settings::workshop_defaults(self))
             }
+            Kind::Pedals => Settings::Pedals(crate::pedals::Settings::workshop_defaults(self)),
             _ => Settings::default_for(kind),
         }
     }
@@ -63,6 +64,7 @@ impl crate::Settings {
             Self::Relative(s) => (s.design_system, s.style, s.accent),
             Self::Delta(s) => (s.design_system, s.style, s.accent),
             Self::FuelStrategy(s) => (s.design_system, s.style, s.accent),
+            Self::Pedals(s) => (s.design_system, s.style, s.accent),
             _ => return None,
         };
         matches!(a.0, Look::Vantare).then_some(a)
@@ -109,6 +111,7 @@ impl crate::Settings {
             Self::Relative(s) => Some(s.design_system),
             Self::Delta(s) => Some(s.design_system),
             Self::FuelStrategy(s) => Some(s.design_system),
+            Self::Pedals(s) => Some(s.design_system),
             _ => None,
         }
     }
@@ -130,13 +133,21 @@ impl crate::Settings {
                 *s = s.normalized();
                 s.design_system = look;
             }
+            Self::Pedals(s) => {
+                *s = s.normalized();
+                s.design_system = look;
+            }
             _ => {}
         }
     }
     pub fn look_change(&self, next: &Self) -> Option<Look> {
         if !matches!(
             self,
-            Self::Standings(_) | Self::Relative(_) | Self::Delta(_) | Self::FuelStrategy(_)
+            Self::Standings(_)
+                | Self::Relative(_)
+                | Self::Delta(_)
+                | Self::FuelStrategy(_)
+                | Self::Pedals(_)
         ) {
             return None;
         }

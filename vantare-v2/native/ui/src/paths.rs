@@ -38,6 +38,7 @@ mod tests {
     use super::default_data_dir;
     use std::{env, path::PathBuf};
 
+    #[cfg(windows)]
     #[test]
     fn empty_or_relative_overrides_fall_back_to_the_platform_location() {
         let saved = env::var_os("VANTARE_NATIVE_DATA_ROOT");

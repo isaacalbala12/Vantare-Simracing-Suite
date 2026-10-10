@@ -20,6 +20,15 @@ la fixture DPAPI de runtime::rights sin cfg(windows). La corrección acota solo
 esa fixture, auxiliares y escenarios de procesos con autoridad a Windows;
 checkpoint puro y rechazo de stream sin licencia siguen activos en Linux.
 No cambia código de producto, asserts, deadlines ni gates. Revalidación Windows por cola: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados) y lifecycle18/18 PASS. CI Linux debe repetirse y pasar antes del squash.
+CI Windows anterior detectó alias 8.3 de TEMP: COM devuelve runneradmin mientras
+la fixture usa RUNNER~1. Test LNK compara cardinalidad y destinos canónicos,
+conservando byte a byte el enlace y las comprobaciones de no ejecución.
+Revalidación Windows por cola: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados) y lifecycle18/18 PASS; no cambia código de producto.
+GitGuardian incidente37742164 señala manifest.json:289 de frozen-go como alta
+entropía: SHA-256 del archivo credentials_store.go recalculado en ambos tar.gz,
+coincide con sus pins, no es credencial. Prueba/nota en evidencia externa y PR.
+Dashboard exige sesión para clasificar false_positive; Isaac lo clasificará después. El usuario verificó el 2026-10-10 que el archivo archivado no contiene secretos escritos en código y que GitGuardian no es obligatorio de nightly; autoriza continuar con los checks obligatorios verdes. BLOQUEO anterior revocado para la promoción.
+No se cambia conclusión del scanner, pins, historia ni reglas de ignorar.
 Isaac confirma USB Ventoy conectado: al firmar, comprobar existencia y pasar
 ruta directa, sin esperar nueva autorización ni acceder al contenido de la semilla.
 Evidencia externa promocion-nightly-1528-evidence/; firma/publicación aún pendientes.

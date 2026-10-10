@@ -295,6 +295,39 @@ pub fn save(path: &Path, expected: Option<&[u8]>, bytes: &[u8]) -> io::Result<()
     if read(path)?.as_deref() != expected {
         return Err(conflict());
     }
+    // Con el lock tomado, ningún escritor de este documento mantiene un temporal vivo.
+    // Retirar solo nombres del protocolo anterior: <documento>.json.<pid>.<contador>.tmp.
+    let base = path.with_extension("json");
+    let prefix = format!(
+        "{}.",
+        base.file_name()
+            .ok_or_else(|| invalid("ruta sin nombre"))?
+            .to_string_lossy()
+    );
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    for entry in fs::read_dir(parent)? {
+        let entry = entry?;
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        let Some(suffix) = name
+            .strip_prefix(&prefix)
+            .and_then(|s| s.strip_suffix(".tmp"))
+        else {
+            continue;
+        };
+        let Some((pid, sequence)) = suffix.split_once('.') else {
+            continue;
+        };
+        if pid.parse::<u32>().is_ok()
+            && sequence.parse::<u64>().is_ok()
+            && entry.file_type()?.is_file()
+        {
+            fs::remove_file(entry.path())?;
+        }
+    }
     let temporary = path.with_extension(format!(
         "json.{}.{}.tmp",
         std::process::id(),
@@ -422,6 +455,51 @@ impl Document {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn regression_1555_orphan_from_reused_pid_does_not_block_save() {
+        let root =
+            std::env::temp_dir().join(format!("engineer-orphan-1555-{}", std::process::id()));
+        fs::create_dir(&root).expect("root");
+        let path = root.join("engineer.json");
+        // Cover the process-local counter even when other save tests run first.
+        for sequence in 0..128 {
+            fs::write(
+                path.with_extension(format!("json.{}.{sequence}.tmp", std::process::id())),
+                b"orphan",
+            )
+            .expect("orphan");
+        }
+        let unrelated = root.join("other.json.1.0.tmp");
+        let non_protocol = root.join("engineer.json.backup.tmp");
+        fs::write(&non_protocol, b"preserve").expect("non protocol");
+        let old_pid = path.with_extension("json.4294967295.1000.tmp");
+        fs::write(&old_pid, b"old process").expect("old pid");
+        fs::write(&unrelated, b"preserve").expect("other document");
+        let guard = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path.with_extension("json.lock"))
+            .expect("lock");
+        guard.try_lock().expect("writer lock");
+        assert!(save(&path, None, b"{}").is_err());
+        assert!(old_pid.exists(), "busy writer must keep temporaries");
+        drop(guard);
+        save(&path, None, b"{}").expect("save despite reused PID");
+        assert_eq!(read(&path).expect("read"), Some(b"{}".to_vec()));
+        assert_eq!(fs::read(unrelated).expect("unrelated"), b"preserve");
+        assert_eq!(fs::read(non_protocol).expect("non protocol"), b"preserve");
+        assert!(!old_pid.exists());
+        for sequence in 0..128 {
+            assert!(
+                !path
+                    .with_extension(format!("json.{}.{sequence}.tmp", std::process::id()))
+                    .exists()
+            );
+        }
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
     #[test]
     fn valid_settings_with_unchanged_mtime_are_detected() {
         let root = std::env::temp_dir().join(format!("engineer-same-mtime-{}", std::process::id()));

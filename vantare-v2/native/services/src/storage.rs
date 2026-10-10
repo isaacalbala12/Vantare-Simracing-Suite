@@ -190,7 +190,7 @@ impl Store {
 
     /// Recuperación explícita: conservar cada copia y no seguir si no se pudo apartar.
     #[cfg(any(feature = "network", test))]
-    pub(crate) fn quarantine_preserving(&self, name: &str) -> Result<()> {
+    pub fn quarantine_preserving(&self, name: &str) -> Result<()> {
         let path = self.path(name)?;
         let aside = self
             .root

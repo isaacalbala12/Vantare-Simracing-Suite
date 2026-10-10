@@ -370,6 +370,168 @@ mod tests {
     use super::*;
 
     #[test]
+    fn car_numeric_bounds_preserve_valid_quality_and_reject_invalid_values() {
+        for (value, lap_ok, rating_ok) in [
+            (f64::NAN, false, false),
+            (f64::INFINITY, false, false),
+            (f64::NEG_INFINITY, false, false),
+            (-0.001, false, false),
+            (0.0, false, true),
+            (0.001, true, true),
+            (100.0, true, true),
+            (100.001, true, false),
+        ] {
+            for quality in [
+                Quality::Reliable(value),
+                Quality::Estimated(value),
+                Quality::Stale(value),
+            ] {
+                let mut state = State {
+                    cars: vec![Car {
+                        estimated_lap_s: quality,
+                        safety_rating: quality,
+                        ..Car::default()
+                    }],
+                    ..State::default()
+                };
+                sanitize(&mut state);
+                assert_eq!(
+                    state.cars[0].estimated_lap_s,
+                    if lap_ok {
+                        quality
+                    } else {
+                        Quality::Unavailable
+                    }
+                );
+                assert_eq!(
+                    state.cars[0].safety_rating,
+                    if rating_ok {
+                        quality
+                    } else {
+                        Quality::Unavailable
+                    }
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn player_nonnegative_bounds_reject_nonfinite_and_negative_without_clamping() {
+        for (value, valid) in [
+            (f64::NAN, false),
+            (f64::INFINITY, false),
+            (f64::NEG_INFINITY, false),
+            (-0.001, false),
+            (-0.0, true),
+            (0.0, true),
+            (0.001, true),
+            (100.0, true),
+        ] {
+            for quality in [
+                Quality::Reliable(value),
+                Quality::Estimated(value),
+                Quality::Stale(value),
+            ] {
+                let mut state = State {
+                    player: Some(Player::default()),
+                    ..State::default()
+                };
+                let player = state.player.as_mut().expect("jugador");
+                player.fuel.lap_projection_l = quality;
+                player.pit_loss_s = quality;
+                player.stint.elapsed_s = quality;
+                player.pit_service = PitService {
+                    refuel_target_l: quality,
+                    refuel_added_l: quality,
+                    remaining_s: quality,
+                    tyres: Quality::Unavailable,
+                };
+                sanitize(&mut state);
+                let player = state.player.expect("jugador");
+                let expected = if valid { quality } else { Quality::Unavailable };
+                assert_eq!(player.fuel.lap_projection_l, expected);
+                assert_eq!(player.pit_loss_s, expected);
+                assert_eq!(player.stint.elapsed_s, expected);
+                assert_eq!(player.pit_service.refuel_target_l, expected);
+                assert_eq!(player.pit_service.refuel_added_l, expected);
+                assert_eq!(player.pit_service.remaining_s, expected);
+            }
+        }
+    }
+
+    #[test]
+    fn steering_and_tyre_count_keep_inclusive_endpoints_in_every_quality() {
+        for (value, valid) in [
+            (f64::NAN, false),
+            (f64::INFINITY, false),
+            (f64::NEG_INFINITY, false),
+            (-1.001, false),
+            (-1.0, true),
+            (0.0, true),
+            (1.0, true),
+            (1.001, false),
+        ] {
+            for quality in [
+                Quality::Reliable(value),
+                Quality::Estimated(value),
+                Quality::Stale(value),
+            ] {
+                let mut player = Player::default();
+                player.telemetry.steering = quality;
+                sanitize_player(&mut player);
+                assert_eq!(
+                    player.telemetry.steering,
+                    if valid { quality } else { Quality::Unavailable }
+                );
+            }
+        }
+        for (value, valid) in [
+            (0, true),
+            (1, true),
+            (4, true),
+            (5, false),
+            (u8::MAX, false),
+        ] {
+            for quality in [
+                Quality::Reliable(value),
+                Quality::Estimated(value),
+                Quality::Stale(value),
+            ] {
+                let mut player = Player::default();
+                player.pit_service.tyres = quality;
+                sanitize_player(&mut player);
+                assert_eq!(
+                    player.pit_service.tyres,
+                    if valid { quality } else { Quality::Unavailable }
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn fuel_history_accepts_only_finite_strictly_positive_consumption() {
+        for (litres, valid) in [
+            (f64::NAN, false),
+            (f64::INFINITY, false),
+            (f64::NEG_INFINITY, false),
+            (-0.001, false),
+            (0.0, false),
+            (-0.0, false),
+            (0.001, true),
+            (4.0, true),
+        ] {
+            let mut player = Player::default();
+            player.fuel.history.fill(Some((23, litres)));
+            sanitize_player(&mut player);
+            let expected = if valid { Some((23, litres)) } else { None };
+            assert!(player.fuel.history.iter().all(|entry| *entry == expected));
+        }
+        let mut player = Player::default();
+        sanitize_player(&mut player);
+        assert!(player.fuel.history.iter().all(Option::is_none));
+    }
+
+    #[test]
     fn pit_booleans_expire_and_invalid_estimates_cannot_escape_the_core() {
         for raw in [f64::NAN, f64::INFINITY, -1.0, 0.0] {
             let mut state = State {

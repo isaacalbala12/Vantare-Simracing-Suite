@@ -466,14 +466,12 @@ fn core_invariants_hold_on_every_real_photo() {
     assert_eq!(check_invariants("acc", false, false, acc_photos()), 190_308);
 }
 
-/// Ambos corpus son de práctica: LMU publica `time_behind_leader` como gap
-/// Reliable y deja 0 s en coches sin tiempo (P11 a 0 s tras P10 a 0,92 s en la
-/// foto 1; 7.678 casos). Standings compara mejores vueltas en práctica, pero
-/// la torre pinta `gap_leader` en cualquier sesión (#1537).
+/// En la base, práctica LMU publica gaps de progreso como Reliable, incluso
+/// P11 a 0 s tras P10 a 0,92 s (7.678 violaciones). P11 sí tiene mejor vuelta:
+/// esos gaps no describen la clasificación por mejores vueltas (#1551).
 #[test]
-#[ignore = "posible bug: gap LMU de práctica Reliable a 0 s; issue propuesta en el informe de #1537"]
 fn lmu_practice_gaps_follow_the_position() {
-    check_invariants("lmu47", true, true, lmu47_photos());
+    assert_eq!(check_invariants("lmu47", true, true, lmu47_photos()), 3839);
 }
 
 /// ACC: en 27 fotos (de la 94.528 a la 131.593) dos coches comparten posición

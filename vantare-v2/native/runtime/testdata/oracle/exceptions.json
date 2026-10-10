@@ -100,38 +100,10 @@
     "reason": "Menu real sin identidad de sesion mapeable: Go rechaza antes de proyectar; el adaptador nativo publica estado sin coches, tipo no disponible y el reloj/circuito que observa. No demuestra ciclo de vida ni frescura live."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-00s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-00s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-00s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-01s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-01s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -140,38 +112,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-02s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-02s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-02s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-03s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-03s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -180,38 +124,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-04s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-04s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-04s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-05s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-05s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -220,38 +136,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-06s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-06s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-06s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-07s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-07s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -260,38 +148,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-08s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-08s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-08s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-09s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-09s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -300,38 +160,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-10s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-10s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-10s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-11s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-11s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -340,38 +172,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-12s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-12s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-12s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-13s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-13s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -380,38 +184,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-14s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-14s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-14s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-15s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-15s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -420,38 +196,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-16s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-16s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-16s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-17s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-17s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -460,38 +208,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-18s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-18s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-18s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-19s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-19s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -500,38 +220,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-20s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-20s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-20s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-21s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-21s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -540,38 +232,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-22s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-22s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-22s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-23s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-23s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -580,38 +244,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-24s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-24s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-24s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-25s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-25s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -620,38 +256,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-26s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-26s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-26s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-27s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-27s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -660,38 +268,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-28s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-28s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-28s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-29s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-29s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -700,38 +280,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-30s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-30s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-30s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-31s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-31s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -740,38 +292,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-32s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-32s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-32s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-33s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-33s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -780,38 +304,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-34s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-34s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-34s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-35s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-35s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -820,38 +316,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-36s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-36s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-36s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-37s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-37s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -860,38 +328,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-38s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-38s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-38s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-39s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-39s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -900,38 +340,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-40s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-40s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-40s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-41s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-41s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -940,38 +352,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-42s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-42s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-42s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-43s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-43s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -980,38 +364,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-44s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-44s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-44s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-45s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-45s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -1020,38 +376,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-46s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-46s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-46s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-47s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-47s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -1060,38 +388,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-48s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-48s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-48s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-49s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-49s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -1100,38 +400,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-50s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-50s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-50s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-51s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-51s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -1140,38 +412,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-52s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-52s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-52s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-53s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-53s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -1180,38 +424,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-54s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-54s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-54s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-55s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-55s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -1220,38 +436,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-56s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-56s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-56s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-57s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-57s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",
@@ -1260,38 +448,10 @@
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
   },
   {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-58s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-58s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
     "go": "invalid",
     "native": "missing",
     "path": "lmu47-58s.json.session.remaining_ms.q",
     "reason": "mEndET queda detras de mCurrentET en el corpus: Go publica invalid sin valor; el modelo Rust no tiene Quality::Invalid y publica Unavailable, missing sin valor. Ninguno publica un tiempo restante utilizable."
-  },
-  {
-    "go": "missing",
-    "native": "fresh",
-    "path": "lmu47-59s.json.cars[11].gap_ahead.q",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
-  },
-  {
-    "go": null,
-    "native": {
-      "time_ms": 0.0
-    },
-    "path": "lmu47-59s.json.cars[11].gap_ahead.v",
-    "reason": "Go conserva intervalo ausente; Core deriva Estimated(Time(0)) entre P1 y P2, consecutivos con gap al lider de 0 s. Estimated se representa fresh al comparar frescura, sin afirmar autoridad observada."
   },
   {
     "go": "invalid",

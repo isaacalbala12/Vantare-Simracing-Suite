@@ -142,13 +142,20 @@ impl Translator {
         let stale = stale && !paused;
         let telemetry_stale = telemetry_stale && !paused;
         self.frame_count += 1;
+        let rest_session = self.rest.session(now, self.floor);
+        let session = self.session(&frame, rest_session, stale);
+        let flags = flags(rest_session);
+        let race = matches!(
+            session.kind,
+            Quality::Reliable(SessionKind::Race) | Quality::Stale(SessionKind::Race)
+        );
         let cars: Vec<Car> = frame
             .vehicles
             .iter()
             .map(|vehicle| {
                 let id = self.car_id(vehicle);
                 let number = self.car_number(vehicle, now);
-                self.car(vehicle, id, number, stale)
+                self.car(vehicle, id, number, stale, race)
             })
             .collect();
         let player = frame.player.map(|index| {
@@ -159,8 +166,6 @@ impl Translator {
                 telemetry_stale,
             )
         });
-        let rest_session = self.rest.session(now, self.floor);
-        let flags = flags(rest_session);
         Ok(Observation {
             origin: Origin {
                 source: Source {
@@ -188,7 +193,7 @@ impl Translator {
                     stale,
                     telemetry_stale,
                 ),
-                session: self.session(&frame, rest_session, stale),
+                session,
                 flags,
                 cars,
                 player,
@@ -300,7 +305,14 @@ impl Translator {
         car
     }
 
-    fn car(&mut self, vehicle: &Vehicle, id: CarId, number: String, stale: bool) -> Car {
+    fn car(
+        &mut self,
+        vehicle: &Vehicle,
+        id: CarId,
+        number: String,
+        stale: bool,
+        race: bool,
+    ) -> Car {
         // Tope de identidades recordadas. Una carrera legitima no pasa de
         // `frame::MAX_VEHICLES` pilotos; el margen absorbe entradas y salidas.
         // Sin tope, quien escriba la memoria del simulador acuna un nombre
@@ -329,7 +341,11 @@ impl Translator {
             }
         });
         let gap = |seconds: Option<f64>, laps: u32| {
-            if laps > 0 {
+            // Scoring compara progreso en pista, no mejores vueltas. En
+            // práctica/clasificación su cero y sus vueltas no son gaps de tabla.
+            if !race {
+                None
+            } else if laps > 0 {
                 Some(Gap::Laps { count: laps })
             } else {
                 seconds.map(|seconds| Gap::Time { seconds })
@@ -547,7 +563,11 @@ fn capabilities(
         session_clock: capability(frame.source_time.is_some(), stale),
         positions: capability(has_cars, stale),
         lap_times: capability(has_cars, stale),
-        gaps: capability(has_cars, stale),
+        gaps: capability(
+            cars.iter()
+                .any(|car| has(&car.gap_leader) || has(&car.gap_ahead)),
+            stale,
+        ),
         pit_status: capability(has_cars, stale),
         flags: capability(
             !matches!(flags, Quality::Unavailable),

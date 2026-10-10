@@ -12,7 +12,7 @@ use vantare_domain::{Adapter, Gap, Quality, SessionKind, Snapshot};
 use vantare_runtime::{adapter::open_replay, core::Core};
 
 const MANIFEST_SHA256: &str = "b53373be4ebe61ded864c63f860998e5f40dff9340e81dee68c02cf58cd0f6b9";
-const EXCEPTIONS_SHA256: &str = "dbf34205236ee51a039846b4c4212affc3171205cbaf1ea7af2dcc67d5eaf665";
+const EXCEPTIONS_SHA256: &str = "e1fdcde7b43602eb46ab89364caf817cfda0e9b257d52b6462d7865f8d00a133";
 // Go stores source durations at nanosecond precision; the common contract
 // displays milliseconds. 1 ms also bounds gaps, with no relative tolerance.
 const TIME_TOLERANCE_MS: f64 = 1.0;
@@ -141,6 +141,7 @@ fn differences(expected: &Value, actual: &Value, path: &str, out: &mut Vec<Value
 fn compare(entry: &Value, snapshot: &Snapshot, out: &mut Vec<Value>) {
     let file = text(entry, "file");
     let mut expected = load_json(&oracle_dir().join(file), text(entry, "sha256"));
+    let race = expected["session"]["kind"]["v"] == "race";
     for row in expected["cars"].as_array_mut().expect("coches Go") {
         // The full Go ID is retained in each golden. Its ordinal is the
         // namespace-independent first-appearance identity, checked above all
@@ -151,6 +152,17 @@ fn compare(entry: &Value, snapshot: &Snapshot, out: &mut Vec<Value>) {
             "identidad Go inválida"
         );
         row.as_object_mut().expect("fila Go").remove("id");
+        // #1551 corrige el contrato histórico: fuera de carrera no usar
+        // progreso como gap de mejores vueltas. Se exige ausencia exacta,
+        // salvo el cero del líder por identidad; no se omiten estos campos.
+        if !race {
+            row["gap_leader"] = if row["position"] == json!({"q":"fresh","v":1}) {
+                json!({"q":"fresh","v":{"time_ms":0}})
+            } else {
+                json!({"q":"missing","v":null})
+            };
+            row["gap_ahead"] = json!({"q":"missing","v":null});
+        }
     }
     differences(&expected, &common_values(snapshot), file, out);
 }
@@ -258,7 +270,7 @@ fn lmu_standings_match_the_frozen_go_oracle() {
 }
 
 #[test]
-fn the_lmu_adapter_preserves_the_four_real_lap_deficits() {
+fn practice_lap_deficits_are_not_standings_gaps_but_race_deficits_are_preserved() {
     let manifest = load_json(&oracle_dir().join("manifest.json"), MANIFEST_SHA256);
     let entry = manifest["entries"]
         .as_array()
@@ -283,6 +295,27 @@ fn the_lmu_adapter_preserves_the_four_real_lap_deficits() {
         .collect();
     assert_eq!(cars.len(), 4);
     for car in cars {
+        assert_eq!(car.gap_leader, Quality::Unavailable);
+    }
+    let mut frame = fs::read(path).expect("fixture de práctica");
+    frame[1696..1700].copy_from_slice(&10_i32.to_le_bytes());
+    let mut race = vantare_runtime::adapter::Replay::new(
+        text(entry, "build"),
+        [vantare_runtime::adapter::ReplayEvent::Shm {
+            at: Duration::ZERO,
+            frame,
+        }],
+    );
+    let observation = race
+        .poll(Duration::ZERO)
+        .expect("carrera explícita")
+        .expect("observación");
+    for car in observation
+        .state
+        .cars
+        .iter()
+        .filter(|car| car.position.current().is_some_and(|p| (9..=12).contains(p)))
+    {
         assert_eq!(car.gap_leader, Quality::Reliable(Gap::Laps { count: 1 }));
     }
 }

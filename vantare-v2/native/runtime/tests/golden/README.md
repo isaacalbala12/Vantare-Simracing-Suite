@@ -1,5 +1,22 @@
 # Goldens de telemetría (#1463)
 
+## Calidad de gaps LMU #1551 (2026-10-10)
+
+Base de auditoría `ec743de8`. LMU scoring entrega progreso, que en práctica
+no corresponde al orden por mejores vueltas: en LMU47 P11 tiene 239,289 s
+de mejor vuelta, pero gap 0 tras P10 con gap 0,921 s. El adapter retira
+`gap_leader` y `gap_ahead` fuera de carrera; el núcleo conserva únicamente
+el cero del líder por identidad y los gaps de clase que pueda justificar.
+La capability deja de afirmar datos nativos de gaps en esas sesiones.
+
+Se revisaron las **3.849 fotos LMU** contra los originales: solo cambian
+los cuatro campos de gaps y `capabilities.gaps`. Posiciones, tiempos,
+inputs, poses, revisiones y todo otro campo son idénticos. Los snapshots
+UI y las doce fotos de la secuencia se copian de esos mismos replays.
+La regresión con sesión de carrera explícita conserva los gaps nativos,
+incluidos los déficits de vueltas y la caducidad. No es captura de carrera.
+
+
 Salida congelada con el código productivo de
 `0ad4052254f947f5234d30418d5f7b334ce4a55c`, antes de recuperar las
 simplificaciones. Época fija 1463 y reloj del corpus, sin reloj de pared.

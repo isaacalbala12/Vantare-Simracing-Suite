@@ -1,5 +1,27 @@
 # Handoff vivo — Telemetry Core
 
+## #1551 — gaps LMU y límites de saneado — 2026-10-10
+
+Encargo local sobre `ec743de8` (#1537), rama `vantareapp/isa-1551-telemetria-calidad`,
+worktree `C:/tmp/vw3-1551`; sin delegación, push, PR, merge ni promoción.
+RED: 7.678 violaciones de gaps en las 3.839 fotos LMU47. P11 sí tiene mejor
+vuelta (239,289 s), pero scoring publica gap 0 tras P10 con 0,921 s.
+El adapter retira gaps de progreso fuera de carrera; no inventa tiempos.
+Carrera conserva los valores nativos y su caducidad en vectores explícitos.
+Golden revisado en 3.849 fotos: solo cuatro gaps/capability cambian; todo
+otro campo es idéntico. UI y secuencia proceden de los mismos replays.
+Regresión sin ignore; LMU dirigido 20/20 PASS. Oráculos originales intactos;
+se retiraron solo las 120 excepciones de gap, conservando las otras 68.
+Extra #1537: cuatro tests de rangos en `merge.rs`, núcleo productivo intacto.
+Auditoría antes: 12 vivos de saneado/33 cazados. Nueva selección `core::`:
+45 mutantes, 44 cazados/1 vivo (Display, fuera de rangos), 0 inviables/timeouts;
+`sanitize`/`sanitize_player`: 20/20 cazados, cero vivos de esos rangos.
+La selección difiere de la auditoría: no se presenta como la misma suite.
+Evidencia `C:/tmp/1551-evidence/`; buzón `C:/tmp/buzon/1551.md`.
+Issue abierta, `area:telemetria-core`, Project Vantare; sin milestone comprometido.
+Siguiente: revisión local de la entrega conjunta #1551/#1552 y sus gates.
+No acredita sesiones/simuladores físicos ni CI remoto.
+
 ## #1496 — feedback Relative: prioridad nativa y fuente pendiente — 2026-10-09
 
 Encargo: `C:/tmp/feedback-0910/comun.md` y `relative.md`; worker sin delegación.

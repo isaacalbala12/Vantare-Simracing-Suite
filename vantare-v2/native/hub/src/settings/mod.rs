@@ -89,7 +89,7 @@ impl Page {
     fn matches(self, query: &str) -> bool {
         let titles = match self {
             Self::Application => {
-                "aplicación zoom idioma densidad inicio windows minimizado avisos notificaciones widgets unidades métrico imperial"
+                "aplicación zoom idioma densidad inicio windows minimizado avisos notificaciones widgets unidades métrico imperial overlays ocultar fuera de pista garaje boxes pausa replay"
             }
             Self::Appearance => {
                 "paleta grafito carmín harness noche le mans piedra cálida contraste opacidad cristal fuentes"

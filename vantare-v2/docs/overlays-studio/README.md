@@ -72,7 +72,19 @@ Config y trazas: `benchmarks/arrastre-y-resize.benchmark.json`, `benchmarks/trac
 ## #1562 · Ocultar fuera de pista
 
 Ajustes → General → Ocultar fuera de pista controla el opt-in global.
-Studio → En pista → Fuera de pista ofrece Heredar ajuste global / Siempre
-visible / Ocultar fuera de pista por instancia, con guardado y Deshacer/Rehacer.
+Studio → En pista → Fuera de pista ofrece Heredar global / Siempre
+visible / Ocultar por instancia, con guardado y Deshacer/Rehacer.
 El preview nunca se oculta. En pit lane conduciendo los overlays siguen visibles;
 con señal ausente no se oculta. Ver [contrato](../../native/runtime/README.md).
+
+Para #1564, el control de #1562 está aislado en `Studio::off_track_control`
+y la regla pura en `Instance::hidden_off_track`. El filtro por tipo de sesión
+irá en la misma sección de comportamiento y se combinará con Y con el permiso
+de situación y `visible` del documento. «Siempre visible» de #1562 solo anula
+su regla, no el filtro de sesión. Aquí no se anticipan campos ni código de #1564.
+
+`native/hub/src/studio.rs` ya supera 2000 líneas. El plan de partición es
+extraer construcción y sincronización del inspector a `studio/inspector.rs`,
+después autoría del canvas a `studio/canvas.rs`, conservando `Editor` como
+único dueño del documento y los tests de guardado, undo y preview. #1562
+añade un helper de control aislado; esa partición no se mezcla con esta función.

@@ -700,6 +700,12 @@ mod tests {
         core.observe(paused.clone()).unwrap();
         let mut retained = core.snapshot().state.clone();
         retained.source_state = SourceState::Live;
+        assert_eq!(
+            retained.driving_situation,
+            vantare_domain::DrivingSituation::Unknown,
+            "la pausa recién recibida tras stale aún está en confirmación"
+        );
+        retained.driving_situation = live.state.driving_situation;
         assert_eq!(retained, live.state);
         paused.origin.received_at = ms(700);
         paused.state.session.id = vantare_domain::SessionId(2);

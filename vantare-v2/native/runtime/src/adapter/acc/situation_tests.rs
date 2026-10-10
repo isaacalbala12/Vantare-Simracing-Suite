@@ -72,7 +72,11 @@ fn real_acc_live_and_explicit_pause_replay_pit_stop_moving_and_absence_transitio
     let mut t = Translator::new(SourceKind::Live);
     let mut core = Core::new(1562);
     assert_eq!(feed(&mut t, &mut core, &p, 0, 1), S::Unknown);
-    assert_eq!(feed(&mut t, &mut core, &p, 250, 250), S::Garage, "corpus real: parado en pit lane");
+    assert_eq!(
+        feed(&mut t, &mut core, &p, 250, 250),
+        S::Garage,
+        "corpus real: parado en pit lane"
+    );
     for (status, expected, start) in [(3_i32, S::Paused, 260), (1, S::Replay, 520)] {
         p[1][4..8].copy_from_slice(&status.to_le_bytes());
         feed(

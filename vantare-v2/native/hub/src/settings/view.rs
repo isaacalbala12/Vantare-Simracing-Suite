@@ -138,8 +138,8 @@ fn section_surface(
         | "Canal"
         | "Diagnóstico local"
         | "Qué cambia en cada nivel" => 2,
-        "Avisos" | "En Studio" | "Notas de versión" | "Registro observado" => 3,
-        "Widgets" | "Movimiento" => 4,
+        "Overlays" | "En Studio" | "Notas de versión" | "Registro observado" => 3,
+        "Avisos" | "Widgets" | "Movimiento" => 4,
         _ => 1,
     };
     section_numbered(number, title, meta, body, padding, cx)

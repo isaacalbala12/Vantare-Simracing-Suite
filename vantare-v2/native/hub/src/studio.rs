@@ -1760,11 +1760,7 @@ impl Studio {
             Choice::new(
                 "Fuera de pista",
                 ChoiceKind::Dropdown,
-                [
-                    "Heredar ajuste global",
-                    "Siempre visible",
-                    "Ocultar fuera de pista",
-                ]
+                ["Heredar global", "Siempre visible", "Ocultar"]
                 .into_iter()
                 .map(OptionItem::new)
                 .collect(),
@@ -3253,6 +3249,18 @@ mod tests {
         assert!(Studio::ingest_skips_frame(true, false));
         assert!(!Studio::ingest_skips_frame(false, true));
         assert!(Studio::ingest_skips_frame(false, false));
+    }
+    #[test]
+    fn preview_mode_toolbar_builds_without_duplicate_hover_styles() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let _ = studio.toolbar_preview_mode(cx);
+            });
+            crate::quit_headless_test(cx);
+        });
     }
     #[test]
     fn strip_visibility_toggle_resets_the_inspector() {

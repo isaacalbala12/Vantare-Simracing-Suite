@@ -66,7 +66,9 @@ fn golden_photos(name: &str) -> Vec<(String, Snapshot)> {
         .enumerate()
         .map(|(index, line)| {
             let line = line.expect("gzip íntegro");
-            let snapshot = vantare_ipc::snapshot_from_json(&line).expect("DTO vigente");
+            // Oracle guardado v9: el pipe que prueba este módulo sigue siendo v10.
+            let snapshot =
+                vantare_ipc::snapshot_from_saved_json(&line).expect("golden DTO guardado");
             (format!("{name} #{}", index + 1), snapshot)
         })
         .collect()

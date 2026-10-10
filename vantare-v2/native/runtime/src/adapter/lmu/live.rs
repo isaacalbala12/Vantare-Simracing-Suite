@@ -296,7 +296,17 @@ mod tests {
                     "en {at} ms"
                 );
                 let mut preserved = snapshot.state.clone();
+                assert_eq!(
+                    preserved.driving_situation,
+                    if at >= 750 {
+                        vantare_domain::DrivingSituation::Paused
+                    } else {
+                        original.driving_situation
+                    },
+                    "situación tras 250 ms de pausa confirmada"
+                );
                 preserved.source_state = original.source_state;
+                preserved.driving_situation = original.driving_situation;
                 assert_eq!(
                     preserved, original,
                     "no cambia ningún dato durante la pausa"

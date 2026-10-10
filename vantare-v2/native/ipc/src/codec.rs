@@ -890,7 +890,7 @@ pub(crate) mod tests {
         assert_eq!(negotiate(1, dto::VERSION - 1), None);
         assert!(!supports(dto::VERSION - 1));
         assert!(supports(dto::VERSION));
-        assert_eq!(negotiate(1, 9), Some(dto::VERSION));
+        assert_eq!(negotiate(1, dto::VERSION), Some(dto::VERSION));
         assert_eq!(negotiate(dto::VERSION + 1, dto::VERSION + 2), None);
         assert_eq!(negotiate(0, 0), None);
     }

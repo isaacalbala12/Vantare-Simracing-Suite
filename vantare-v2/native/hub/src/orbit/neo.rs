@@ -272,7 +272,6 @@ pub fn ghost_button(id: impl Into<gpui::ElementId>, label: &str, cx: &gpui::App)
     button(id, label, cx)
         .bg(gpui::transparent_black())
         .border_0()
-        .hover(|style| style.bg(rgb(surface_2(cx))))
 }
 
 /// Borde de scroll común. El padding permite leer completa la última fila al llegar abajo.

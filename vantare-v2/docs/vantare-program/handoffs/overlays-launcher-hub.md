@@ -1,5 +1,23 @@
 ## #1496 — promoción a nightly autorizada el 2026-10-10
 
+## #1536 · corrección de compilación Linux del PR #1557 (2026-10-10)
+
+La CI sobre b386b522 detectó E0433 en engineer/tests/recovery.rs: Duration
+estaba importado sólo bajo cfg(windows), aunque photo() es un helper compartido.
+Corrección 38c35eca4babf12cef46d4ec094c63da59354eeb: se retira únicamente esa guarda del import;
+aserciones y guardas de fixtures/tests DPAPI intactas. Árbol native 6c5bdebbc2863d717343c87e3ea6b50a5d54e291.
+Check/fmt/Clippy -D warnings PASS por cola; Nextest 1526/1526 (7 skips
+heredados) y lifecycle 18/18 repetidos PASS, recovery/status_process sin flake.
+Telemetría 25/25 (0 skips) acreditada en d3ff5919; runtime/domain/IPC/UI,
+corpus y goldens siguen byte a byte idénticos tras esta corrección de import.
+Linux pendiente de la CI de esta nueva revisión; logs linux-import-*.log.
+
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557,
+sin merge; #1531 fuera. Según Isaac, sólo Validate promotion path y Validate
+Vantare blocking gates son obligatorios para FIN. GitGuardian es el falso
+positivo histórico de #1550, no bloqueante, que clasificará Isaac. El estado
+vigente de cada check se consulta en el PR; buzón/informe conservan resultados.
+
 ## #1536 · sincronización con nightly para PR (2026-10-10)
 
 Las tres rondas y la auditoría de telemetría están integradas en

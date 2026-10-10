@@ -1,5 +1,23 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1555 · correcciones R3 locales (2026-10-10)
+
+Worktree `C:/tmp/vw3-1555`, rama `vantareapp/isa-1555-auth-servicios-r3`,
+base `a410cb46` autorizada por el brief R3. Scope: 01#1 metadata OAuth de admin,
+12#1 cola usage corrupta y 08#2 temporales de Engineer. Tres regresiones FAIL antes del arreglo
+(`1555-red-all.log`, OAuth válido en `1555-red-admin.log`); cinco tests focales PASS
+(`1555-green-final.log`). Admin conserva metadata incompatible y sesión antes de
+redescubrir; usage retira slots JSON ilegibles; Engineer limpia huérfanos del mismo
+documento bajo lock, preservando temporales ajenos. Sin cambio de DTO o dependencias.
+Código `b0a171063e2b170d47d573680158baa01670628b` (commits `1f3dedef`, `25555ce9`,
+`b0a17106`). Fmt, Clippy -D warnings, Nextest 1512/1512 (7 skips del perfil) y
+lifecycle 18/18 y telemetría 25/25 (0 skips) PASS. Logs `C:/tmp/review-r3/1555-*.log`;
+informe de diez líneas `C:/tmp/review-r3/informe-1555.md`, buzón `C:/tmp/buzon/1555.md`.
+Siguiente: revisión e integración por el orquestador, sin publicación autorizada.
+Issue [#1555](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1555),
+area:plataforma, Project Vantare (In Review); abierta. Evidencia local con fixtures,
+sin OAuth real. Sin push, PR, CI remoto, merge, promoción o release.
+
 ## #1536 · integración R2 local validada (2026-10-10)
 
 13 merges --no-ff en orden autorizado sobre 026c1207, con 13/13 checks por cola PASS. Código validado ca8afd7205e3820d38341a2559002ac56004428c; árbol native 9c57fd70fda86dc7b0c494cfed1c2aa1cc4b9d1f. Fmt y Clippy -D warnings PASS; Nextest 1502/1502 (7 skips del perfil), lifecycle 18/18 y telemetría 23/23 (2 ignorados de #1537) PASS. 94 tests nuevos conservados con cuerpos idénticos. Engineer recovery/status_process pasa sin flake ni reintento.

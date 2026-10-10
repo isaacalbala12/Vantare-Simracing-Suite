@@ -13,7 +13,7 @@ Leídos [#1485](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
-Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. Sin PR, merge, promoción ni release por este encargo. El binario nativo y supervisor están presentes; antiguos wiring Wails/voice-host test-only y sus estados no son el runtime actual. #1485/#1477/#1491 permanecen abiertas.
+Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. PR [#1570](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1570) contra nightly, con auto-merge autorizado por el orquestador. Nightly `0cf38ed2` incorporada mediante merge `dbee0c18`; sin promoción ni release. El binario nativo y supervisor están presentes; antiguos wiring Wails/voice-host test-only y sus estados no son el runtime actual. #1485/#1477/#1491 permanecen abiertas.
 
 ## 4. Decisiones cerradas
 
@@ -30,7 +30,7 @@ Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a
 
 ## 6. Evidencia y límites
 
-Evidencia registrada en la base, no reejecutada por esta entrega documental: integración #1531, fmt/check/Clippy `-D warnings`, Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría 25/25. No convierte fixtures/replays en prueba física LMU/ACC, OBS, DPI, audio ni latencia de entrada. README conserva límites de vectores ACC estimados, caducidad 500 ms, clips y paridad de radio. #1491 documenta terminación 0xc0000409 intermitente sin causa confirmada; una repetición PASS no la resuelve. Corpus lingüístico/voz humano y soak físicos no están acreditados por esta compactación.
+Evidencia registrada en la base: integración #1531, fmt/check/Clippy `-D warnings`, Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría 25/25. La revisión de PR #1570 ejecuta fmt/check/Clippy, Nextest 1574/1574 (7 skips) y telemetría 25/25, y reproduce lifecycle dos veces por la cola nativa: 5/5 Engineer y 13/13 supervisor PASS, con concurrencia y límites originales. El run 38068714205 falló al esperar el ACK firmado durable (`Kind(TimedOut)`, derechos `BrokenPipe`); no se ha confirmado la causa del timeout ni relajado sus límites. No convierte fixtures/replays en prueba física LMU/ACC, OBS, DPI, audio ni latencia de entrada. README conserva límites de vectores ACC estimados, caducidad 500 ms, clips y paridad de radio. #1491 documenta terminación 0xc0000409 intermitente sin causa confirmada; una repetición PASS no la resuelve. Corpus lingüístico/voz humano y soak físicos no están acreditados por esta compactación.
 
 ## 7. Riesgos y deuda
 

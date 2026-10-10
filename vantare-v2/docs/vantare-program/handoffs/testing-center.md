@@ -13,7 +13,7 @@ Leídos [#1452](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
-Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. Sin PR, merge, promoción ni release por este encargo. #1535 reporta hito Testing `7900e08e`: IPC v6, cuestionarios y contribuciones en rama local; RLS/pgTAP/revisión pendientes y nada aplicado en producción. La base documental actual conserva servicios v5. #1452 sigue abierta para verificar envío remoto real.
+Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. PR [#1570](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1570) contra nightly, con auto-merge autorizado por el orquestador. Nightly `0cf38ed2` incorporada mediante merge `dbee0c18`; sin promoción ni release. #1535 reporta hito Testing `7900e08e`: IPC v6, cuestionarios y contribuciones en rama local; RLS/pgTAP/revisión pendientes y nada aplicado en producción. La base documental actual conserva servicios v5. #1452 sigue abierta para verificar envío remoto real.
 
 ## 4. Decisiones cerradas
 

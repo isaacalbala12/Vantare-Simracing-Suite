@@ -35,3 +35,5 @@ revisión conserva el pin previo y la base ca17545f; la inversión byte a byte
 reproduce ese pin, incluidos saltos de línea. Corpus crudo, gzip y pins de
 goldens siguen intactos. Otras cinco fixtures UI no fijadas migran la misma
 etiqueta. El verificador mantiene la exigencia SHA-256 exacta de los 456 archivos.
+
+#1559 regenera `native/assets/icon.ico` con el logo con fondo en todos los tamaños: `source_sha256` conserva el pin anterior y `sha256` fija el ICO nuevo.

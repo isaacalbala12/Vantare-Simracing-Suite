@@ -16,8 +16,8 @@ enum ReportView {
 }
 
 pub struct Testing {
-    adapt: orbit::Adapt,
-    remote: Entity<Remote>,
+    pub(super) adapt: orbit::Adapt,
+    pub(super) remote: Entity<Remote>,
     tabs: Entity<orbit::Choice>,
     local_module: Entity<orbit::Choice>,
     local_open: bool,
@@ -33,6 +33,7 @@ pub struct Testing {
     status: String,
     error: Option<String>,
     channel_label: String,
+    pub(super) participation_form: super::participation::Form,
 }
 impl Testing {
     pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
@@ -109,6 +110,22 @@ impl Testing {
             },
         )
         .detach();
+        #[cfg(feature = "parity-capture")]
+        let capture_questionnaire = if matches!(selected_capture_tab(&data), Some(1 | 3)) {
+            remote.update(cx, |remote, _| {
+                remote.participation = serde_json::from_str(include_str!(
+                    "../../reference/fixtures/testing-participation.json"
+                ))
+                .expect("explicit QA fixture");
+                remote.participation_message =
+                    "QA · ejemplo de participación, sin backend ni envío".into();
+            });
+            (selected_tab == 1).then(|| "15350000-0000-0000-0000-000000000001".into())
+        } else {
+            None
+        };
+        #[cfg(not(feature = "parity-capture"))]
+        let capture_questionnaire = None;
         Self {
             adapt: orbit::Adapt::default(),
             remote,
@@ -127,6 +144,7 @@ impl Testing {
             status: "Borrador privado local. Guarda para continuar más tarde.".into(),
             error,
             channel_label,
+            participation_form: super::participation::Form::new(capture_questionnaire, cx),
         }
     }
     pub fn persist(&mut self) -> Result<(), String> {
@@ -570,12 +588,17 @@ impl Testing {
                 orbit::RailSection::new(
                     "Abiertos y cerrados",
                     "v-testing",
-                    note("Próximamente · No hay cuestionarios disponibles."),
+                    note(&format!(
+                        "{} cuestionarios cargados (últimos 10)",
+                        self.remote.read(cx).participation.questionnaires.len()
+                    )),
                 ),
                 orbit::RailSection::new(
                     "Resultados",
                     "pulse",
-                    note("Qué cambiamos con tus respuestas · Próximamente"),
+                    note(
+                        "Tus respuestas son privadas; el equipo revisa el feedback de cada versión.",
+                    ),
                 ),
             ],
             2 => {
@@ -609,20 +632,23 @@ impl Testing {
                         .flex()
                         .flex_col()
                         .gap(px(10.0))
-                        .child(note("Nivel · Próximamente"))
+                        .child(note(&format!(
+                            "{} contribuciones cargadas (últimas 20)",
+                            self.remote.read(cx).participation.contributions.len()
+                        )))
                         .child(note(&format!("{count} recibos de informes en esta sesión"))),
                 )];
                 if adapt.show_optional() {
                     sections.push(orbit::RailSection::new(
                         "Insignias",
                         "v-testing",
-                        note("Próximamente · No hay insignias disponibles."),
+                        note("La primera versión no asigna insignias ni niveles."),
                     ));
                 }
                 sections.push(orbit::RailSection::new(
                     "Esta semana",
                     "clock",
-                    note("Estadísticas de la beta · Próximamente"),
+                    note("No hay estadísticas globales publicadas."),
                 ));
                 sections
             }
@@ -631,6 +657,11 @@ impl Testing {
 }
 impl Render for Testing {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let generation = self.remote.read(cx).participation_generation;
+        if self.participation_form.generation != generation {
+            self.participation_form = super::participation::Form::new(None, cx);
+            self.participation_form.generation = generation;
+        }
         let tab = self.tabs.read(cx).state.selected.unwrap_or(0);
         let content = match tab {
             1 => self.questionnaires(cx),
@@ -785,9 +816,9 @@ impl Testing {
         let adapt = self.adapt;
         div().flex_1().min_h_0().flex().flex_col().min_w_0().gap(px(adapt.gap()))
             .child(orbit::hero_surface(cx).flex_none().p(px(if adapt.show_notes() { 28.0 } else { 20.0 })).gap(px(12.0))
-                .child(orbit::meta("CUESTIONARIOS · PRÓXIMAMENTE", 11.0, orbit::ink_3(cx), cx))
+                .child(orbit::meta("CUESTIONARIOS POR VERSIÓN", 11.0, orbit::ink_3(cx), cx))
                 .child(orbit::display("Tu experiencia cuenta", if adapt.show_notes() { 36.0 } else { 28.0 }, orbit::ink(cx), cx))
-                .when(adapt.show_optional(), |hero| hero.child(orbit::text("Aún no hay cuestionarios disponibles. Puedes contarnos un problema o una sugerencia.", 14.0, 400, orbit::ink_2(cx), cx)))
+                .when(adapt.show_optional(), |hero| hero.child(orbit::text("Consulta los cuestionarios publicados y comparte una contribución. Tus respuestas son privadas.", 14.0, 400, orbit::ink_2(cx), cx)))
                 .child(orbit::primary_button("testing-summary-report", "Nuevo informe", cx).self_start()
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.report_view = ReportView::Compose;
@@ -799,73 +830,6 @@ impl Testing {
                 .child(Self::pending_view("Pendiente para ti", "Las solicitudes de respuesta y validación estarán disponibles próximamente.", cx).flex_1())
                 .child(Self::pending_view("Gracias a los probadores", "El reconocimiento de contribuciones estará disponible próximamente.", cx).flex_1())))
             .child(self.reports_panel(cx))
-    }
-}
-
-impl Testing {
-    fn questionnaires(&self, cx: &gpui::App) -> gpui::Div {
-        let adapt = self.adapt;
-        let mut page = div()
-            .flex_1()
-            .min_h_0()
-            .flex()
-            .flex_col()
-            .gap(px(adapt.gap()))
-            .child(Self::pending_view(
-                "Cuestionarios",
-                "Próximamente · Aún no hay cuestionarios disponibles para responder.",
-                cx,
-            ));
-        let mut formats = orbit::neo_card(cx)
-            .flex_1()
-            .min_h_0()
-            .child(orbit::neo_header("Cómo podrás responder", "v-testing", cx));
-        for (label, description) in super::model::QUESTION_FORMATS {
-            formats = formats.child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(12.0))
-                    .py(px(8.0))
-                    .child(
-                        orbit::text(label, 13.0, 600, orbit::ink(cx), cx)
-                            .flex_1()
-                            .min_w_0(),
-                    )
-                    .when(adapt.show_optional(), |row| {
-                        row.child(orbit::text(description, 12.0, 400, orbit::ink_3(cx), cx))
-                    }),
-            );
-        }
-        page = page.child(formats);
-        page.child(orbit::text("Respuesta y guardado automático · Próximamente. No hay respuestas guardadas ni resultados disponibles.", 12.0, 400, orbit::ink_3(cx), cx))
-    }
-    fn community(&self, cx: &gpui::App) -> gpui::Div {
-        let adapt = self.adapt;
-        let mut page = div()
-            .flex_1()
-            .min_h_0()
-            .flex()
-            .flex_col()
-            .gap(px(adapt.gap()))
-            .child(Self::pending_view(
-                "Ayúdanos a mejorar Vantare",
-                "Comunidad · Próximamente. El acceso actual sigue reservado a testers y owner.",
-                cx,
-            ));
-        if adapt.show_optional() {
-            page = page.child(orbit::neo_card(cx)
-                .child(orbit::neo_header("Niveles de participación", "pulse", cx))
-                .child(orbit::text("Visitante → Probador → Probador verificado → Colaborador", 14.0, 600, orbit::ink(cx), cx))
-                .child(orbit::text("Propuesta pendiente: los criterios y su relación con los canales aún no están definidos. No tienes un nivel asignado por esta pantalla.", 12.0, 400, orbit::ink_3(cx), cx)));
-        }
-        page.child(div().flex_none().flex().min_w_0().gap(px(adapt.gap()))
-            .child(Self::pending_view("Cómo unirse", "El alta sin invitación estará disponible próximamente.", cx).flex_1())
-            .child(Self::pending_view("Reconocimiento", "Insignias y menciones públicas · Próximamente", cx).flex_1()))
-            .child(orbit::neo_card(cx).flex_1().min_h_0()
-                .child(orbit::neo_header("Qué compartes", "v-testing", cx))
-                .child(orbit::text("Revisas y apruebas el contenido de cada informe antes de enviarlo. Las capturas son opcionales. El borrador privado y el diagnóstico local no se adjuntan automáticamente.", 13.0, 400, orbit::ink_2(cx), cx))
-                .when(adapt.show_optional(), |card| card.child(orbit::text("Cómo apareces en la comunidad y en las notas de versión · Próximamente", 12.0, 400, orbit::ink_3(cx), cx))))
     }
 }
 

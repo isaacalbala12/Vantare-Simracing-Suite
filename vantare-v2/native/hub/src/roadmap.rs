@@ -1,5 +1,6 @@
 //! R6: tres presentaciones de la publicación pública recibida por services.
-//! El contrato publica cuatro estados, sin fases, áreas, progreso ni fechas por hito.
+//! v2 incorpora áreas, etiquetas de versión y fechas previstas de `ClickUp`;
+//! v1 mantiene sus estados vacíos sin inventar esos metadatos.
 use crate::services::protocol::roadmap_document::{Item, Publication};
 use crate::{orbit, services::view::Remote};
 use gpui::{Context, Div, Stateful, div, prelude::*, px};
@@ -31,7 +32,7 @@ impl State {
                 .any(|pair| pair[0] == "--capture" && pair[1] == "roadmap-clickup-prueba")
                 .then(|| {
                     serde_json::from_str(include_str!(
-                        "../reference/fixtures/roadmap-clickup-test.json"
+                        "../reference/fixtures/roadmap-clickup-v2-test.json"
                     ))
                     .expect("fixture ClickUp explícita")
                 });
@@ -80,6 +81,14 @@ fn item_card(item: &Item, cx: &gpui::App) -> Div {
             cx,
         ))
         .child(note(item.body.es.clone(), cx))
+        .child(note(
+            format!(
+                "{} · {}",
+                item.version.as_deref().unwrap_or("Sin versión"),
+                item.due_date.as_deref().unwrap_or("Sin fecha")
+            ),
+            cx,
+        ))
 }
 fn lane(
     publication: Option<&Publication>,
@@ -149,22 +158,66 @@ fn current(publication: Option<&Publication>, adapt: orbit::Adapt, cx: &gpui::Ap
             .items_center()
             .gap(px(12.0))
             .pt(px(12.0))
-            .children(["Ahora", "Siguiente", "Más adelante"].map(|label| {
-                div()
-                    .flex_1()
-                    .min_w_0()
-                    .flex()
-                    .flex_col()
-                    .gap(px(8.0))
-                    .child(
-                        div()
-                            .h(px(2.0))
-                            .w_full()
-                            .bg(orbit::alpha(orbit::skin(cx).line3)),
-                    )
-                    .child(orbit::meta(label, 11.0, orbit::skin(cx).text2, cx))
-            })),
+            .children(
+                [
+                    ("done", "Entregado"),
+                    ("now", "Ahora"),
+                    ("next", "Siguiente"),
+                    ("later", "Más adelante"),
+                ]
+                .map(|(section, label)| {
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .flex()
+                        .flex_col()
+                        .gap(px(8.0))
+                        .child(
+                            div()
+                                .h(px(2.0))
+                                .w_full()
+                                .bg(orbit::alpha(orbit::skin(cx).line3)),
+                        )
+                        .child(orbit::meta(label, 11.0, orbit::skin(cx).text2, cx))
+                        .child(note(
+                            publication.map_or_else(
+                                || "—".into(),
+                                |p| format!("{} tareas", items(p, section).count()),
+                            ),
+                            cx,
+                        ))
+                }),
+            ),
     )
+}
+fn version_calendar(publication: Option<&Publication>, cx: &gpui::App) -> Div {
+    let mut list = div()
+        .id("roadmap-versions")
+        .flex_1()
+        .min_h_0()
+        .overflow_y_scroll()
+        .flex()
+        .flex_col()
+        .gap(px(10.0));
+    let mut scheduled: Vec<_> = publication
+        .into_iter()
+        .flat_map(|p| &p.document.items)
+        .filter(|item| item.version.is_some() || item.due_date.is_some())
+        .collect();
+    scheduled.sort_by_key(|item| {
+        (
+            item.due_date.is_none(),
+            item.due_date.as_deref(),
+            item.version.as_deref(),
+        )
+    });
+    if scheduled.is_empty() {
+        list = list.child(note("Sin versiones o fechas previstas publicadas", cx));
+    }
+    for item in scheduled {
+        list = list.child(item_card(item, cx));
+    }
+    div().flex().flex_col().flex_1().min_h_0().child(list)
 }
 impl Remote {
     pub(crate) fn roadmap_tabs(&self, cx: &mut Context<Self>) -> Div {
@@ -221,7 +274,7 @@ impl Remote {
                 .min_h_0()
                 .child(orbit::section_header("Temporada", "v-calendar", None, cx))
                 .child(note(
-                    "Fechas, versiones y canales por hito · Próximamente",
+                    "Calendario de versiones · fechas previstas de ClickUp, sin garantía de release",
                     cx,
                 ))
                 .when_some(publication, |card, publication| {
@@ -230,7 +283,7 @@ impl Remote {
                         cx,
                     ))
                 })
-                .child(lane(publication, "next", "Siguiente", cx))
+                .child(version_calendar(publication, cx))
         } else {
             div()
                 .flex()
@@ -253,10 +306,45 @@ impl Remote {
         page.child(body)
     }
     pub(crate) fn roadmap_rail(&self, cx: &mut Context<Self>) -> Vec<orbit::RailSection> {
-        let areas = div().child(note(
-            "Áreas y porcentajes · Próximamente. La publicación actual no contiene estos datos.",
-            cx,
-        ));
+        let mut areas = div().flex().flex_col().gap(px(10.0));
+        if let Some(publication) = self.roadmap_publication() {
+            let mut groups = std::collections::BTreeMap::<&str, (u16, u16)>::new();
+            for item in &publication.document.items {
+                let counts = groups
+                    .entry(item.area.as_deref().unwrap_or("Sin área"))
+                    .or_default();
+                counts.1 += 1;
+                counts.0 += u16::from(item.section == "done");
+            }
+            for (area, (done, total)) in groups {
+                areas = areas
+                    .child(note(
+                        format!(
+                            "{area} · {done}/{total} tareas completadas · {}%",
+                            done * 100 / total
+                        ),
+                        cx,
+                    ))
+                    .child(
+                        div()
+                            .h(px(4.0))
+                            .w_full()
+                            .bg(orbit::alpha(orbit::skin(cx).line3))
+                            .child(
+                                div()
+                                    .h_full()
+                                    .w(gpui::relative(f32::from(done) / f32::from(total)))
+                                    .bg(gpui::rgb(orbit::carmine(cx))),
+                            ),
+                    );
+            }
+        }
+        if self
+            .roadmap_publication()
+            .is_none_or(|p| p.document.items.is_empty())
+        {
+            areas = areas.child(note("Sin datos de progreso publicados", cx));
+        }
         let mut delivered = div()
             .id("roadmap-delivered")
             .flex_1()
@@ -304,6 +392,9 @@ mod tests {
                     .map(|section| Item {
                         id: section.into(),
                         section: section.into(),
+                        area: None,
+                        version: None,
+                        due_date: None,
                         title: localized(section),
                         body: localized("Publicación del servicio"),
                     })

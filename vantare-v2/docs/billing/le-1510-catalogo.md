@@ -1,3 +1,6 @@
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](../roadmap-maintenance.md).
+
 # Launch Edition: catálogo fijo y funciones posteriores (#1510)
 
 Decisión vigente: Isaac, `DECISIONES-VANTARE.md` §6j y `founder/launch.md`,

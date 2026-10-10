@@ -15,9 +15,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Open GitHub milestones, then an honest "no news" embed.
+      # Public Supabase ClickUp publication, then an honest "no news" embed.
       - name: Build development digest
         env:
+          VANTARE_SUPABASE_URL: ${{ vars.VANTARE_SUPABASE_URL }}
+          VANTARE_SUPABASE_ANON_KEY: ${{ vars.VANTARE_SUPABASE_ANON_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           python .github/scripts/discord_communications.py development --dry-run \

@@ -1,3 +1,6 @@
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](../roadmap-maintenance.md).
+
 # ISA-1027 — Plan de corrección y optimización de Calendario
 
 Versión 1 · 2026-09-08 · Aprobado por Isaac; ejecución iniciada en ISA-1029.

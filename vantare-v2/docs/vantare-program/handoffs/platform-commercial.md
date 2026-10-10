@@ -13,12 +13,20 @@ Leídos [#1568](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
-Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. PR [#1570](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1570) contra nightly, con auto-merge autorizado por el orquestador. Nightly `0cf38ed2` incorporada mediante merge `dbee0c18`; sin promoción ni release. #1568 en `vantareapp/isa-1568-acceso-al-abrir-lmu`: carrera RED `9677362a` corregida (`8957d9f6`: admisión protegida, cancelación serializada y revalidación; 3 regresiones GREEN); fmt/Clippy, Nextest 1577/1577, lifecycle 18/18, telemetría 25/25 y corpus 456/456 PASS; correlación humana pendiente (DUDA `C:/tmp/buzon/1568.md`). #1535 prepara otra rama de servicios/Testing; sus migraciones no se aplicaron según la issue.
+Base incorporada mediante merge (sin rebase): `origin/nightly@661149b07565137a2450580169fd608ebeb2bd42`,
+que contiene #1570 (handoffs de estado), #1572 (#1563 pedales) y #1573 (#1568 acceso).
+Rama `vantareapp/isa-1535-roadmap-testing`, entrega #1535 `3d762e8b`, PR
+[#1578](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1578) a nightly.
+SHA del merge/push y CI se registran en la issue y `C:/tmp/buzon/1535.md`.
+Auto-merge activo por el orquestador; esta escritura no acredita fusion remota ni release.
+Servicios IPC v6, DTO v9 y control/derechos v4 son contratos independientes.
+#1568 conserva admision protegida, cancelacion serializada y revalidacion;
+la correlacion del incidente humano sigue pendiente. SQL #1535 no aplicado.
 
 ## 4. Decisiones cerradas
 
-- Clerk identifica; Polar cobra; Supabase conserva UUID interno/datos. No atribuir compras por email, metadata editable o `sub` aislado; identidad ambigua se rechaza/cuarentena.
-- DTO de fotos v9, servicios v5 y control/derechos v4 son contratos independientes en esta base.
+- ClickUp es la unica fuente del roadmap, publicado en Supabase con lectura anon y compatibilidad v1/v2; no depende del repositorio publico. Clerk identifica; Polar cobra; Supabase conserva UUID interno/datos. No atribuir compras por email, metadata editable o `sub` aislado; identidad ambigua se rechaza/cuarentena.
+- DTO de fotos v9, servicios v6 y control/derechos v4 son contratos independientes en esta base.
 - Account conserva recuperación aun con herramientas denegadas; negar derechos no inventa un login ni un pago.
 - Venta pública exige matriz monetaria/reconciliación y autorización. Implementado, integrado, publicado y validado en producción son estados distintos.
 
@@ -28,23 +36,41 @@ Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a
 
 ## 6. Evidencia y límites
 
-Evidencia registrada en la base, no reejecutada por esta entrega documental: integración #1531, fmt/check/Clippy `-D warnings`, Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría 25/25. No convierte fixtures/replays en prueba física LMU/ACC, OBS, DPI, audio ni latencia de entrada. Evidencia comercial y sandbox/CI se consulta en #1514 y sus entregas; los checks locales no prueban OAuth, DNS/TLS, pago, webhook ni despliegue real. #1568 demuestra una carrera determinista del cierre por juego; aún no correlaciona el incidente humano.
+#1535: fmt/Clippy PASS; Nextest 1579/1579 (7 skips), lifecycle 18/18 y
+telemetria 25/25 en la entrega aislada. SQL corregido tras Sol+Opus: PostgreSQL
+18.6/pgTAP 1.3.4 local 20+31 PASS, LOGIN adversarial, aislamiento de cuentas,
+aprobaciones caducadas con dos sesiones y auditoria DEFINER EXECUTE+USAGE.
+TLS CA/hostname y control de hostname real PASS sin auth/SQL; tres tests Python.
+Quality 456 huellas PASS. Evidencia: `C:/tmp/ola2/1535-evidence/`.
+El merge actual tuvo conflictos solo documentales; no repetidos gates Rust
+por la condicion del encargo. No acredita esquema Supabase completo, CI remota,
+configuracion del host de CI, OAuth, pagos, entorno fisico ni produccion.
 
 ## 7. Riesgos y deuda
 
 - P1: acceso al abrir LMU (#1568); no dar la causa real por confirmada solo con RED local.
 - P1: readiness comercial, identidad y pagos (#1514/#1506/#1507/#1499/#1501); no abrir venta desde docs.
-- P2: #1535 tiene migraciones/revisión y activación pendientes; su estado no sustituye el contrato de la base.
+- P2: SQL #1535 corregido y probado localmente; esquema completo, aplicacion y activacion pendientes. P2-4 queda para Isaac.
 - Login/logout físico, expiración, recuperación, instalación/upgrade y QA remota requieren evidencia propia.
 
 ## 8. Issues terminadas, activas y pendientes
 
-#1530–#1534 y #1536 cerradas; #1561 documental en entrega. Activa de acceso: #1568. Abiertas: #1514, #1506, #1507, #1510, #1511, #1515 y [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535), además de los gates comerciales citados. IDs migrados y evidencia de cortes previos quedan en el histórico; no renumerarlos.
+#1530-#1534 y #1536 cerradas; #1570/#1572/#1573 fusionadas en la base indicada.
+#1535 en PR #1578; #1568 mantiene correlacion humana pendiente. Abiertas
+#1514/#1506/#1507/#1510/#1511/#1515 y gates comerciales: consultar su estado
+antes de actuar. IDs migrados y evidencia previa permanecen en el historico.
 
 ## 9. Siguiente acción exacta
 
-Continuar #1568 en su rama: confirmar GREEN, preservar serialización/revalidación del acceso antes de cancelar/cerrar por juego y pasar fmt/Clippy/Nextest/lifecycle por cola. Registrar reproducción humana pendiente y pasos del buzón `C:/tmp/buzon/1568.md`. El orquestador coordina #1535 y sus revisiones/migraciones; esta rama no aplica ni configura producción. Para #1561, revisar/push de los dos commits documentales y releer la issue.
+Resolver/push de PR #1578 conservando el estado de #1570 y ambos cambios
+nativos entrantes; verificar CI del SHA resultante. Antes de aplicar SQL #1535:
+revision y copia LOCAL del esquema completo/ACL. Antes de activar: Isaac decide
+P2-4 (secretos de repo), configura credencial minima y verifica host/CA con
+autorizacion. No aplicar migraciones, cargar secretos ni desplegar desde esta tarea.
+#1568 mantiene su reproduccion humana pendiente; gates comerciales en #1514.
 
 ## 10. Última actualización
 
-2026-10-10 · GitHub #1561 · Codex. Código, README del área e issues leídos; seguimiento #1561 escrito y releído. Las siguientes acciones de área proceden de las issues abiertas, sin nuevas autorizaciones implícitas. El diario y los avances por ronda se escriben en la issue; aquí se sustituye el estado.
+2026-10-10 · GitHub #1535 · Codex. PR #1578, base nightly y cambios
+#1570/#1572/#1573 contrastados. Estado sustituido segun plantilla; diario,
+SHA, push y checks en la issue/buzon. Sin autorizacion de produccion.

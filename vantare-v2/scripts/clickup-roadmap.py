@@ -1,6 +1,6 @@
 """Read ClickUp Vantare/Desarrollo and prepare a Supabase roadmap publication.
 
-Default: local output only. --publish executes reviewed SQL through psql.
+Legacy local output only. --publish is retired by #1535; use the Action.
 CLICKUP_API_TOKEN is used only in the Authorization header, never logged.
 """
 import argparse
@@ -178,6 +178,8 @@ def main():
     parser.add_argument("--expected-db-user", help="Approved libpq PGUSER (poolers share a host)")
     args = parser.parse_args()
     try:
+        if args.publish:
+            raise SyncError("Publicación Supabase retirada; usar Action ClickUp #1535")
         snapshot = (json.loads(args.fixture.read_text(encoding="utf-8-sig")) if args.fixture
                     else fetch(ClickUp(os.environ.get("CLICKUP_API_TOKEN", "")), args.workspace_id))
         doc = document(snapshot)
@@ -187,21 +189,6 @@ def main():
         args.output_dir.joinpath("publish.sql").write_text(sql, encoding="utf-8")
         digest = hashlib.sha256(sql.encode()).hexdigest()
         print(f"Preparado: {len(doc['items'])} hitos; SQL SHA256 {digest}")
-        if args.publish:
-            if args.fixture:
-                raise SyncError("Los fixtures nunca se publican")
-            if (args.approved_sql_sha256 != digest or not args.expected_db_host
-                    or os.environ.get("PGHOST") != args.expected_db_host
-                    or not args.expected_db_user or os.environ.get("PGUSER") != args.expected_db_user):
-                raise SyncError("SQL o destino no coincide con la revisión aprobada")
-            # libpq reads PG* from the environment; no connection secrets in argv.
-            result = subprocess.run(["psql", "-X", "--host", args.expected_db_host,
-                                     "--username", args.expected_db_user, "-v", "ON_ERROR_STOP=1"], input=sql,
-                                    encoding="utf-8", capture_output=True, check=False)
-            if result.returncode:
-                raise SyncError("SQL rechazado; consulta estado remoto antes de reintentar")
-            args.output_dir.joinpath("publication-receipt.txt").write_text(result.stdout, encoding="utf-8")
-            print("Publicado; releer desde un cliente anon y verificar en Hub.")
     except SyncError as error:
         parser.exit(1, str(error) + "\n")
     except (ValueError, KeyError, TypeError, OSError):

@@ -1,3 +1,6 @@
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](../../roadmap-maintenance.md).
+
 # Tareas ISA-909: bootstrap de cuenta Clerk
 
 Estado: T0-T7 completadas localmente. La segunda review Fable medio emitió

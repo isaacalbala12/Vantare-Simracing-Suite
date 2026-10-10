@@ -13,14 +13,22 @@ GitHub Issues y Project Vantare. Leídos [#1561](https://github.com/isaacalbala1
 
 ## 3. Estado real y canal
 
-Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. PR [#1570](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1570) contra nightly, con auto-merge autorizado por el orquestador. Nightly `0cf38ed2` incorporada mediante merge `dbee0c18`; sin promoción ni release.
+Base incorporada mediante merge (sin rebase): `origin/nightly@661149b07565137a2450580169fd608ebeb2bd42`,
+que contiene #1570 (handoffs de estado), #1572 (#1563 pedales) y #1573 (#1568 acceso).
+Rama `vantareapp/isa-1535-roadmap-testing`, entrega #1535 `3d762e8b`, PR
+[#1578](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1578) a nightly.
+SHA del merge/push y CI se registran en la issue y `C:/tmp/buzon/1535.md`.
+Auto-merge activo por el orquestador; esta escritura no acredita fusion remota ni release.
+Servicios IPC v6, DTO v9 y control/derechos v4 son contratos independientes.
+#1568 conserva admision protegida, cancelacion serializada y revalidacion;
+la correlacion del incidente humano sigue pendiente. SQL #1535 no aplicado.
 
 ## 4. Decisiones cerradas
 
 - Una entrada de registro y una proyección/estado por widget; cambiar Look conserva Motion y no reproyecta.
 - Layout v1 conserva nombres persistidos y migración de contenido en memoria; archivo inválido/conflicto no se sobrescribe.
 - PR-3 y PR-5 de #1561 quedan para otra entrega. Studio se parte solo en ventana coordinada sin cambios concurrentes; sin entidades nuevas.
-- Isaac quiere los otros 14 Looks en una versión siguiente, uno a uno. Pedales necesita Look Vantare antes de vender (#1566), después de separación ajustable (#1563).
+- Isaac quiere los otros 14 Looks en una versión siguiente, uno a uno. Pedales necesita Look Vantare antes de vender (#1566), con separacion ajustable (#1563) ya integrada.
 - Canvas e inspector comparten documento/historial; preview no sustituye datos live.
 
 ## 5. Arquitectura y ownership
@@ -28,6 +36,10 @@ Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a
 [Registro](../../../native/ui/src/registry.rs), [Looks](../../../native/ui/src/look.rs), [layout/documento](../../../native/ui/src/layout.rs), [editor Hub](../../../native/hub/src/document.rs) y [Studio](../../../native/hub/src/studio.rs). Pintores consumen Board/presentación; domain/UI no dependen de runtime. Permisos, transporte y persistencia no viven en el pintor. La cadencia/movimiento reducido aún usa `frame_with_motion`: no documentar PR-5 como integrado.
 
 ## 6. Evidencia y límites
+
+Merge #1535 sin conflictos de codigo; cambios entrantes nativos identicos a
+nightly. Gates Rust no repetidos por la condicion del encargo. Testing/Roadmap
+conserva los checks de su rama y SQL local; no se acredita CI remota del merge.
 
 Evidencia registrada en la base, no reejecutada por esta entrega documental: integración #1531, fmt/check/Clippy `-D warnings`, Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría 25/25. No convierte fixtures/replays en prueba física LMU/ACC, OBS, DPI, audio ni latencia de entrada.
 RGBA #1531: 366 pares históricos exactos y 32 capturas DTO v9; ocho slots ES/EN de Standings/Relative con cambio de footer aceptado. Perfil Standings ACC coincide con la entrega aprobada. Delta Eficiencia ACC conserva FAIL p99 aceptado por magnitud, sin causalidad de ruido demostrada (ADR 0101).
@@ -42,12 +54,19 @@ RGBA #1531: 366 pares históricos exactos y 32 capturas DTO v9; ocho slots ES/EN
 
 ## 8. Issues terminadas, activas y pendientes
 
-Cerradas y presentes en la base: #1530–#1534 y #1536; contrastadas con código e historial de integración. Abierta principal: #1561. Pendientes/ramas separadas: #1562, #1563, #1564, #1566, #1567, #1569 y [#1527](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1527). #1496/#1497 siguen abiertas aunque tengan entregas integradas: no cerrarlas por este resumen. IDs ISA/VAN previos permanecen en el histórico por SHA.
+Cerradas y presentes en la base: #1530–#1534 y #1536; contrastadas con código e historial de integración. Abierta principal: #1561. Integrada #1563 por #1572. Pendientes/ramas separadas: #1562, #1564, #1566, #1567, #1569 y [#1527](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1527). #1496/#1497 siguen abiertas aunque tengan entregas integradas: no cerrarlas por este resumen. IDs ISA/VAN previos permanecen en el histórico por SHA.
 
 ## 9. Siguiente acción exacta
 
-Entregar PR-1/PR-2 de #1561 con dos commits y push, sin abrir PR ni fusionar. El orquestador revisa los criterios documentales y coordina PR-3/PR-5; PR-4 espera la ventana de Studio. Otros workers continúan #1562 (señal neutral, global/excepción, previews visibles y gates de telemetría) y #1563 (separación persistida y ancho proporcional); sus entregas no se incorporan aquí. Verificar diff, enlaces, límites de líneas, 10 apartados y una sola nota Launcher #1536.
+Resolver/push de #1578 con el formato de estado de #1570. Preservar #1563
+(separacion persistida 0-12 px, defecto 2 px y ancho proporcional) y #1568
+(admision/cancelacion de acceso), ya integrados en la base. #1535 conserva
+Roadmap ClickUp/Supabase y participacion Testing IPC v6 sin activar backend.
+El orquestador coordina Studio/#1564/#1569 y los PR-3/PR-5 restantes de #1561;
+no ampliar esta resolucion. Verificar CI remoto antes de acreditar integracion.
 
 ## 10. Última actualización
 
-2026-10-10 · GitHub #1561 · Codex. Código, README del área e issues leídos; seguimiento #1561 escrito y releído. Las siguientes acciones de área proceden de las issues abiertas, sin nuevas autorizaciones implícitas. El diario y los avances por ronda se escriben en la issue; aquí se sustituye el estado.
+2026-10-10 · GitHub #1535 · Codex. PR #1578, base nightly y cambios
+#1570/#1572/#1573 contrastados. Estado sustituido segun plantilla; diario,
+SHA, push y checks en la issue/buzon. Sin autorizacion de produccion.

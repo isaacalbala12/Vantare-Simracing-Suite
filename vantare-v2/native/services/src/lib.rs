@@ -31,6 +31,8 @@ pub mod report;
 #[cfg(feature = "network")]
 pub mod roadmap;
 pub mod storage;
+#[cfg(feature = "network")]
+mod testing;
 pub mod update_manifest;
 
 pub use error::{Error, Result};

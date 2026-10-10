@@ -1,0 +1,104 @@
+{
+  "document": {
+    "schemaVersion": 2,
+    "items": [
+      {
+        "id": "ebbc41e5-2c43-5ffb-b8c6-f93d75562c5f",
+        "section": "now",
+        "title": {
+          "es": "Feature · Calendario",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "body": {
+          "es": "Estado: en progreso",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "area": "Feature",
+        "version": "v0.0.974",
+        "dueDate": "2026-10-20"
+      },
+      {
+        "id": "cdb5cc38-9bd6-5f9f-995b-933b50c45f26",
+        "section": "now",
+        "title": {
+          "es": "Revisar favoritas",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "body": {
+          "es": "Estado: por revisar\nSubtarea de: Feature · Calendario",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "area": "Feature",
+        "version": "v0.0.974",
+        "dueDate": "2026-10-20"
+      },
+      {
+        "id": "3bc4a54f-1d46-5900-9498-bba4495c27e5",
+        "section": "next",
+        "title": {
+          "es": "Comprobar reinicio",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "body": {
+          "es": "Estado: testers\nSubtarea de: Feature · Calendario → Revisar favoritas",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "area": "Feature",
+        "version": null,
+        "dueDate": null
+      },
+      {
+        "id": "8c99e411-bf51-5d98-b5be-d92c07a11285",
+        "section": "later",
+        "title": {
+          "es": "Idea · Agenda",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "body": {
+          "es": "Estado: idea",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "area": "Feature",
+        "version": null,
+        "dueDate": null
+      },
+      {
+        "id": "29650cd2-083e-535b-8b64-49a80112ff18",
+        "section": "done",
+        "title": {
+          "es": "Fix · Cuenta atrás",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "body": {
+          "es": "Estado: complete",
+          "en": "",
+          "pt": "",
+          "it": ""
+        },
+        "area": "Feature",
+        "version": null,
+        "dueDate": null
+      }
+    ]
+  },
+  "published_at": "2026-10-09T10:00:00Z",
+  "id": "550e8400-e29b-41d4-a716-446655440000"
+}

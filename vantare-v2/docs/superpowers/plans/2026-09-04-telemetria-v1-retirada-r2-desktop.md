@@ -1,3 +1,6 @@
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](../../roadmap-maintenance.md).
+
 # Retirada V1 — R2 Desktop exclusivamente V2 Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: use subagent-driven-development and test-driven-development. One writer only; independent spec and quality reviewers.

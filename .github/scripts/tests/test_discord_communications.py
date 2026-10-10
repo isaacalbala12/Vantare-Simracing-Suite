@@ -112,23 +112,23 @@ class FragmentTests(unittest.TestCase):
 
 
 class DevelopmentDigestSourceTests(unittest.TestCase):
-    """The digest uses open milestones or honest silence."""
+    """The digest uses the public ClickUp publication or honest silence."""
 
     def test_public_text_neutralizes_discord_mass_mentions(self):
         value = communications.sanitize_public_text("@everyone avance @here")
         self.assertNotIn("@everyone", value)
         self.assertNotIn("@here", value)
 
-    def test_milestones_are_the_source_with_closed_over_total_progress(self):
-        milestones = [{"title": "Overlay Studio V3", "state": "open", "description": "Paridad visual.",
-                       "closed_issues": 2, "open_issues": 8, "html_url": "https://example.test/m/1",
-                       "updated_at": "2026-08-01T00:00:00Z"}]
+    def test_clickup_is_the_source_with_completed_over_total_progress(self):
+        publication = {"published_at":"2026-10-10T00:00:00Z", "document":{"schemaVersion":2,"items":[
+            {"area":"Studio","section":"done" if i < 2 else "now","title":{"es":"Tarea"}} for i in range(10)]}}
+
 
         class _Response:
             status = 200
 
-            def read(self):
-                return json.dumps(milestones).encode("utf-8")
+            def read(self, limit):
+                return json.dumps([publication]).encode("utf-8")
 
             def __enter__(self):
                 return self
@@ -137,19 +137,19 @@ class DevelopmentDigestSourceTests(unittest.TestCase):
                 return False
 
         projects, source = communications.resolve_development_projects(
-            token="t", repository="owner/repo",
+            token="t", repository="owner/repo", supabase_url="https://fixture.supabase.co", anon_key="public-fixture",
             opener=lambda *args, **kwargs: _Response(),
         )
-        self.assertEqual(source, communications.DEVELOPMENT_SOURCE_MILESTONES)
+        self.assertEqual(source, communications.DEVELOPMENT_SOURCE_CLICKUP)
         self.assertAlmostEqual(projects[0]["progress"], 0.2)
-        self.assertEqual(projects[0]["url"], "https://example.test/m/1")
+        self.assertEqual(projects[0]["url"], "")
 
     def test_a_failing_milestone_lookup_degrades_to_no_news(self):
         def _boom(*args, **kwargs):
             raise urllib.error.URLError("offline")
 
         projects, source = communications.resolve_development_projects(
-            token="t", repository="owner/repo", opener=_boom,
+            token="t", repository="owner/repo", supabase_url="https://fixture.supabase.co", anon_key="public-fixture", opener=_boom,
         )
         self.assertEqual((projects, source), ([], communications.DEVELOPMENT_SOURCE_NONE))
 

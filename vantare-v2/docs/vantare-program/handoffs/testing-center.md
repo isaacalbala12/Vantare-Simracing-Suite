@@ -5,7 +5,10 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## 1. Resultado
 
-Diagnóstico local y envío de reportes con borrador, vista previa, consentimiento y recibos de sesión. Cuestionarios/comunidad son «Próximamente» en esta base; las nuevas tablas/vistas de #1535 están en otra rama.
+Diagnostico local y reportes con borrador, vista previa, consentimiento y
+recibos de sesion. #1535 implementa cuestionarios por version y contribuciones
+por cuenta; bugs reutiliza la RPC existente. Cliente y SQL preparado no prueban
+activacion del backend: ausencia y errores se presentan sin datos inventados.
 
 ## 2. Autoridad y lectura verificada
 
@@ -13,7 +16,15 @@ Leídos [#1452](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
-Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. PR [#1570](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1570) contra nightly, con auto-merge autorizado por el orquestador. Nightly `0cf38ed2` incorporada mediante merge `dbee0c18`; sin promoción ni release. #1535 reporta hito Testing `7900e08e`: IPC v6, cuestionarios y contribuciones en rama local; RLS/pgTAP/revisión pendientes y nada aplicado en producción. La base documental actual conserva servicios v5. #1452 sigue abierta para verificar envío remoto real.
+Base incorporada mediante merge (sin rebase): `origin/nightly@661149b07565137a2450580169fd608ebeb2bd42`,
+que contiene #1570 (handoffs de estado), #1572 (#1563 pedales) y #1573 (#1568 acceso).
+Rama `vantareapp/isa-1535-roadmap-testing`, entrega #1535 `3d762e8b`, PR
+[#1578](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1578) a nightly.
+SHA del merge/push y CI se registran en la issue y `C:/tmp/buzon/1535.md`.
+Auto-merge activo por el orquestador; esta escritura no acredita fusion remota ni release.
+Servicios IPC v6, DTO v9 y control/derechos v4 son contratos independientes.
+#1568 conserva admision protegida, cancelacion serializada y revalidacion;
+la correlacion del incidente humano sigue pendiente. SQL #1535 no aplicado.
 
 ## 4. Decisiones cerradas
 
@@ -30,14 +41,24 @@ Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a
 
 ## 6. Evidencia y límites
 
-Evidencia registrada en la base, no reejecutada por esta entrega documental: integración #1531, fmt/check/Clippy `-D warnings`, Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría 25/25. No convierte fixtures/replays en prueba física LMU/ACC, OBS, DPI, audio ni latencia de entrada. Capturas R5 históricas 96 GPUI +96 mockup, matrices inspeccionadas: composición visual, no envío/Clerk/Storage reales. La integración de la base preserva formulario/adjuntos/recibos; el código no prueba activación de tablas nuevas. #1535 reporta tests offline y quality/456 huellas, con gates/capturas/pgTAP/revisiones pendientes al leer.
+#1535 entrega aislada: fmt/Clippy PASS; Nextest 1579/1579 (7 skips),
+lifecycle 18/18 y telemetria 25/25. Ronda SQL corregida: pgTAP local 20+31,
+fixtures profiles+account_identities+membership sin auth.users, aislamiento y
+revocacion, LOGIN real adversarial, gate EXECUTE+USAGE sin ampliar allowlist.
+Dos sesiones comprueban caducidad tras BEGIN antiguo y espera de bloqueo;
+restaurar solo now() detecta el defecto. Quality 456 huellas PASS.
+Evidencia en `C:/tmp/ola2/1535-evidence/`; informe `C:/tmp/ola2/informe-1535.md`.
+Merge actual sin conflictos de codigo: no repetidos gates Rust por el encargo.
+Bootstrap es subconjunto; no acredita Supabase completo ni envio remoto real.
+Capturas y gates previos no prueban Clerk/Storage, instalacion o produccion.
 
 ## 7. Riesgos y deuda
 
-- P1: #1535 requiere revisión Sol+Opus de migración/RLS antes de aplicar producción y pgTAP; no asumir autorización satisfecha porque la migración existe.
-- P2: envío real autorizado, bearer/rol, expiración, logout y replies tardíos requieren QA de servicio.
-- P2: seguimiento/historial/conversación no demostrados en servicios v5. Reportar ausencia, no mock como backend.
-- Mantener bot y workflows inertes; configuración/despliegue de terceros fuera de esta entrega.
+- SQL no aplicado: conservar revision y validacion con copia LOCAL del esquema completo antes de produccion.
+- P2-4 secretos de repo: decision pendiente de Isaac, sin cambios en este merge.
+- Cuota de contribuciones diferida (P3-9); no inventar un limite aprobado.
+- Envio real, bearer/rol, expiracion, logout y replies tardios requieren QA autorizada; no hay historial remoto demostrado.
+- Bots/workflows inertes; infraestructura, permisos y despliegues fuera de esta tarea.
 
 ## 8. Issues terminadas, activas y pendientes
 
@@ -45,8 +66,14 @@ Activa #1535 para cuestionarios/reportes/comunidad; #1452 abierta para puente/en
 
 ## 9. Siguiente acción exacta
 
-Completar #1535 en su rama: gates/capturas de Hub y revisión Sol+Opus de migración, RLS y vínculo al UUID interno; ejecutar pgTAP en entorno disponible antes de activar. Bugs reutiliza RPC existente. #1452 requiere QA remota autorizada (sin imagen, imagen validada, rol ausente, bearer vencido y reconexión). Esta rama docs solo entrega/push de #1561; no envía reportes, aplica SQL ni configura secretos.
+Push de la resolucion de PR #1578 y comprobar CI del SHA resultante.
+SQL #1535 corregido con pgTAP local PASS; revisar y repetir en copia LOCAL del
+esquema completo antes de aplicar. Isaac decide/configura activacion y secretos.
+#1452 requiere QA remota autorizada (texto, imagen, rol ausente, bearer vencido,
+reconexion). No enviar reportes ni aplicar SQL desde esta entrega.
 
 ## 10. Última actualización
 
-2026-10-10 · GitHub #1561 · Codex. Código, README del área e issues leídos; seguimiento #1561 escrito y releído. Las siguientes acciones de área proceden de las issues abiertas, sin nuevas autorizaciones implícitas. El diario y los avances por ronda se escriben en la issue; aquí se sustituye el estado.
+2026-10-10 · GitHub #1535 · Codex. PR #1578, base nightly y cambios
+#1570/#1572/#1573 contrastados. Estado sustituido segun plantilla; diario,
+SHA, push y checks en la issue/buzon. Sin autorizacion de produccion.

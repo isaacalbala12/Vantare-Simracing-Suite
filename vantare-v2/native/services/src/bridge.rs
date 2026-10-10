@@ -115,6 +115,9 @@ impl DataSession {
                 | "rest/v1/rpc/testing_center_prepare_screenshot_batch"
                 | "rest/v1/rpc/testing_center_finalize_screenshot"
                 | "rest/v1/rpc/testing_center_submit_report_with_evidence"
+                | "rest/v1/rpc/testing_participation_current"
+                | "rest/v1/rpc/testing_answer_save"
+                | "rest/v1/rpc/testing_contribution_submit"
         ) {
             return Err(Error::Protocol);
         }

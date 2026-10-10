@@ -1,3 +1,6 @@
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](../../roadmap-maintenance.md).
+
 # Plan de implementación: columnas configurables en Standings Redline
 
 Estado: IMPLEMENT completado localmente tras PLAN/TASKS aprobado y enmendado

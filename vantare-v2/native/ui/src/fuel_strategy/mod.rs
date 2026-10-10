@@ -1,156 +1,10 @@
-//! Eficiencia: tabla de 523 × 272, filas de 23 px y datos canónicos de la VM.
-//! El historial se omite como en el productivo cuando no hay filas canónicas.
-//! No hay animaciones ni avisos temporales en `FuelStrategyFunctional.tsx`.
-//! Con el sistema Vantare (por defecto) pinta `vantare.rs` (#1497).
-
-use crate::efficiency::preview::PaintWindow as Window;
-use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
+//! Fuel y stint: una proyección y un historial; un pintor y Motion activos.
+use crate::app::{Paint, Wake};
+use std::sync::Arc;
+use std::time::Instant;
+use vantare_domain::{Snapshot, format::Preferences, fuel_strategy};
+mod eficiencia;
 pub(crate) mod vantare;
-
-use vantare_domain::{
-    Snapshot,
-    format::Preferences,
-    fuel_strategy::{self, ViewModel},
-};
-
-use crate::app::{Paint, Wake, replace_if_changed};
-use crate::efficiency::text::{self, Ink, ink};
-use crate::efficiency::{col, paint_highlighted_frame, paint_panel, paint_rect, rect, tokens};
-
-pub const SIZE: (f32, f32) = (523.0, 272.0);
-const ROW_HEIGHT: f32 = 23.0;
-const HISTORY_TOP: f32 = 173.0;
-
-fn draw(window: &mut Window, cx: &mut App, value: &str, x: f32, top: f32, style: &Ink) {
-    text::draw(
-        window,
-        cx,
-        value,
-        x,
-        text::baseline(top, style.size, style.size),
-        style,
-    );
-}
-
-pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
-    paint_panel(window, SIZE.0, SIZE.1, 0.87);
-    // Igual al panel Standings; el kit aún no expone el brillo común.
-    window.paint_quad(quad(
-        rect(0.0, 0.0, SIZE.0, SIZE.1),
-        Corners::all(px(tokens::RADIUS)),
-        linear_gradient(
-            120.0,
-            linear_color_stop(col(0xffffff, 0.03), 0.0),
-            linear_color_stop(col(0xffffff, 0.0), 0.38),
-        ),
-        Edges::all(px(0.0)),
-        col(0x000000, 0.0),
-        BorderStyle::default(),
-    ));
-    if let Some(status) = vm.status {
-        let style = ink(14.0, 600.0, 0.14, col(tokens::MUTED, 1.0));
-        draw(
-            window,
-            cx,
-            status,
-            (SIZE.0 - text::width(window, status, &style)) / 2.0,
-            (SIZE.1 - 14.0) / 2.0,
-            &style,
-        );
-    } else {
-        paint_main(vm, window, cx);
-        paint_history(vm, window, cx);
-    }
-    paint_highlighted_frame(window, SIZE.0, SIZE.1);
-}
-
-fn paint_main(vm: &ViewModel, window: &mut Window, cx: &mut App) {
-    let label = ink(11.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
-    let fuel = ink(28.0, 700.0, 0.0, col(tokens::INK, 1.0));
-    draw(window, cx, vm.labels[0], 7.0, 22.0, &label);
-    draw(
-        window,
-        cx,
-        &vm.fuel,
-        SIZE.0 - 7.0 - text::width(window, &vm.fuel, &fuel),
-        14.0,
-        &fuel,
-    );
-    // Celdas en el espacio libre de las filas existentes: medidas intactas.
-    for (caption, value, left) in [("MIN", &vm.minimum, 104.0), ("MAX", &vm.maximum, 250.0)] {
-        text::draw(
-            window,
-            cx,
-            caption,
-            left,
-            text::baseline(58.0, ROW_HEIGHT, 11.0).round(),
-            &label,
-        );
-        let style = ink(14.0, 650.0, 0.0, col(tokens::INK, 1.0));
-        let value = text::fit(window, value, &style, 87.0);
-        text::draw(
-            window,
-            cx,
-            &value,
-            left + 30.0,
-            text::baseline(58.0, ROW_HEIGHT, 14.0).round(),
-            &style,
-        );
-    }
-    if vm.show_projection {
-        text::draw(
-            window,
-            cx,
-            vm.stops_label,
-            164.0,
-            text::baseline(127.0, ROW_HEIGHT, 11.0).round(),
-            &label,
-        );
-        let style = ink(14.0, 650.0, 0.0, col(0xe2c568, 1.0));
-        let stops = text::fit(window, &vm.stops, &style, 90.0);
-        text::draw(
-            window,
-            cx,
-            &stops,
-            240.0,
-            text::baseline(127.0, ROW_HEIGHT, 14.0).round(),
-            &style,
-        );
-    }
-    for (index, value) in [&vm.average, &vm.laps, &vm.required, &vm.finish]
-        .into_iter()
-        .enumerate()
-    {
-        if !vm.show_projection && index > 0 {
-            continue;
-        }
-        let top = 58.0 + index as f32 * ROW_HEIGHT;
-        paint_rect(window, 7.0, top, SIZE.0 - 14.0, 1.0, col(tokens::INK, 0.08));
-        let style = ink(
-            14.0,
-            650.0,
-            0.0,
-            col(if index >= 2 { 0xe2c568 } else { tokens::INK }, 1.0),
-        );
-        text::draw(
-            window,
-            cx,
-            vm.labels[index + 1],
-            7.0,
-            text::baseline(top, ROW_HEIGHT, 11.0).round(),
-            &label,
-        );
-        text::draw(
-            window,
-            cx,
-            value,
-            SIZE.0 - 7.0 - text::width(window, value, &style),
-            text::baseline(top, ROW_HEIGHT, 14.0).round(),
-            &style,
-        );
-    }
-}
-
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
@@ -163,6 +17,7 @@ pub struct Settings {
     /// Marca Vantare: decisión inyectada por el host según la licencia.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub brand_visible: Option<bool>,
+    pub content_version: u8,
     pub history_rows: u8,
     pub show_projection: bool,
     pub source: String,
@@ -176,6 +31,7 @@ impl Default for Settings {
             accent: crate::standings::Accent::Red,
             size: "standard".into(),
             brand_visible: None,
+            content_version: 0,
             history_rows: 4,
             show_projection: true,
             source: "fuel".into(),
@@ -195,13 +51,25 @@ impl Settings {
 
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
         "source=virtual-energy:live",
-        "Solo estado no disponible; Snapshot no publica energía virtual",
+        "El Look Eficiencia conserva el estado histórico no disponible",
     )];
     #[must_use]
     pub fn normalized(&self) -> Self {
+        let legacy_rich =
+            self.content_version == 0 && self.design_system == crate::look::Look::Vantare;
         Self {
-            history_rows: self.history_rows.clamp(1, 8),
-            source: if self.source == "virtual-energy" {
+            content_version: 1,
+            history_rows: if legacy_rich {
+                4
+            } else {
+                self.history_rows.clamp(1, 8)
+            },
+            show_projection: if legacy_rich {
+                true
+            } else {
+                self.show_projection
+            },
+            source: if !legacy_rich && self.source == "virtual-energy" {
                 "virtual-energy"
             } else {
                 "fuel"
@@ -215,169 +83,332 @@ impl Settings {
             ..self.clone()
         }
     }
-    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
-        fuel_strategy::project_with_config(
-            snapshot,
+    fn content(&self) -> fuel_strategy::Config {
+        fuel_strategy::Config {
+            history_rows: self.history_rows,
+            show_projection: self.show_projection,
+            virtual_energy: self.source == "virtual-energy",
+        }
+    }
+    #[cfg(test)]
+    fn project(&self, snapshot: &Snapshot, prefs: Preferences) -> eficiencia::Labels {
+        eficiencia::Labels::new(
+            &fuel_strategy::project_with_config(snapshot, prefs, self.content()),
             prefs,
-            fuel_strategy::Config {
-                history_rows: self.history_rows,
-                show_projection: self.show_projection,
-                virtual_energy: self.source == "virtual-energy",
-            },
         )
     }
 }
 
-fn paint_history(vm: &ViewModel, window: &mut Window, cx: &mut App) {
-    if vm.history.is_empty() {
-        return;
-    }
-    let title = ink(11.0, 600.0, 0.0, col(tokens::MUTED, 1.0));
-    text::draw(
-        window,
-        cx,
-        vm.history_label,
-        7.0,
-        text::baseline(HISTORY_TOP - ROW_HEIGHT, ROW_HEIGHT, 11.0).round(),
-        &title,
-    );
-    let value = ink(14.0, 700.0, 0.0, col(tokens::INK, 1.0));
-    // Up to eight canonical laps fit in two columns, retaining 23 px rows.
-    let columns = vm.history.len().div_ceil(4);
-    let width = (SIZE.0 - 14.0) / columns as f32;
-    for (index, row) in vm.history.iter().enumerate() {
-        let left = 7.0 + (index / 4) as f32 * width;
-        let top = HISTORY_TOP + (index % 4) as f32 * ROW_HEIGHT;
-        paint_rect(
-            window,
-            left,
-            top,
-            width,
-            ROW_HEIGHT - 1.0,
-            col(tokens::INK, 0.03),
-        );
-        text::draw(
-            window,
-            cx,
-            &row.lap,
-            left + 6.0,
-            text::baseline(top, ROW_HEIGHT, 11.0).round(),
-            &title,
-        );
-        text::draw(
-            window,
-            cx,
-            &row.consumed,
-            left + width - 6.0 - text::width(window, &row.consumed, &value),
-            text::baseline(top, ROW_HEIGHT, 14.0).round(),
-            &value,
-        );
-    }
+enum Painter {
+    Eficiencia(Arc<eficiencia::Labels>),
+    Vantare(vantare::Visual),
 }
-
+enum Engine {
+    Eficiencia,
+    Vantare(Arc<vantare::Movement>),
+}
 pub(crate) struct Widget {
-    /// Presente con el sistema Vantare; si no, se usa el renderer Eficiencia.
-    vantare: Option<vantare::State>,
     settings: Settings,
-    vm: ViewModel,
+    content: fuel_strategy::Config,
+    board: Arc<fuel_strategy::Board>,
+    visual: Painter,
+    motion: Engine,
+    prefs: Preferences,
+    // Common pulse clock survives Look changes; no inactive animation engine.
+    started: Instant,
 }
-
 impl Widget {
+    fn presentation(
+        settings: &Settings,
+        prefs: Preferences,
+        board: &Arc<fuel_strategy::Board>,
+        started: Instant,
+    ) -> (Painter, Engine) {
+        match settings.design_system {
+            crate::look::Look::Eficiencia => (
+                Painter::Eficiencia(Arc::new(eficiencia::Labels::new(board, prefs))),
+                Engine::Eficiencia,
+            ),
+            crate::look::Look::Vantare => {
+                let mut visual = vantare::Visual::new(vantare::Options::from_settings(settings));
+                let mut motion = vantare::Movement::new(started);
+                visual.ingest_shared(board.clone(), &mut motion);
+                visual.presentation(prefs.language);
+                (Painter::Vantare(visual), Engine::Vantare(Arc::new(motion)))
+            }
+        }
+    }
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
         let settings = settings.normalized();
+        let content = settings.content();
+        let board = Arc::new(fuel_strategy::project_with_config(
+            &Snapshot::default(),
+            prefs,
+            content,
+        ));
+        let started = Instant::now();
+        let (visual, motion) = Self::presentation(&settings, prefs, &board, started);
         Self {
-            vantare: (settings.design_system == crate::standings::DesignSystem::Vantare)
-                .then(|| vantare::State::new(vantare::Options::from_settings(&settings))),
-            settings: settings.clone(),
-            vm: settings.project(&Snapshot::default(), prefs),
+            settings,
+            content,
+            board,
+            visual,
+            motion,
+            prefs,
+            started,
         }
     }
-
-    /// Termina las animaciones Vantare en curso (Workshop reconstruye la historia).
+    #[cfg(feature = "parity-capture")]
+    pub(crate) fn freeze_for_capture(&mut self) {
+        if let Engine::Vantare(m) = &mut self.motion {
+            Arc::make_mut(m).freeze_for_capture();
+        }
+    }
     pub(crate) fn settle(&mut self) {
-        if let Some(state) = &mut self.vantare {
-            state.settle();
+        if let Engine::Vantare(m) = &mut self.motion {
+            Arc::make_mut(m).settle();
         }
     }
-
-    /// Estilo Vantare de Workshop en vivo; producto usa el compilado.
-    pub(crate) fn set_vantare_style(
-        &mut self,
-        style: std::sync::Arc<crate::vantare::style::Style>,
-    ) {
-        if let Some(state) = &mut self.vantare {
-            state.set_style(style);
+    pub(crate) fn set_vantare_style(&mut self, style: Arc<crate::vantare::style::Style>) {
+        if let Painter::Vantare(v) = &mut self.visual {
+            v.set_style(style);
         }
     }
-
     pub(crate) fn size(&self) -> (f32, f32) {
-        self.vantare.as_ref().map_or(SIZE, vantare::State::size)
+        match &self.visual {
+            Painter::Eficiencia(_) => eficiencia::SIZE,
+            Painter::Vantare(v) => v.size(),
+        }
     }
-
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        if let Some(state) = &mut self.vantare {
-            return state.ingest(vantare::State::project(snapshot));
-        }
-        replace_if_changed(&mut self.vm, self.settings.project(snapshot, prefs))
+        self.ingest_using(snapshot, prefs, fuel_strategy::project_with_config)
     }
-
+    fn ingest_using(
+        &mut self,
+        snapshot: &Snapshot,
+        prefs: Preferences,
+        project: impl FnOnce(&Snapshot, Preferences, fuel_strategy::Config) -> fuel_strategy::Board,
+    ) -> bool {
+        let next = project(snapshot, prefs, self.content);
+        if next == *self.board && prefs == self.prefs {
+            return false;
+        }
+        let next = Arc::new(next);
+        let changed = match (&mut self.visual, &mut self.motion) {
+            (Painter::Vantare(v), Engine::Vantare(m)) => {
+                let changed = v.ingest_shared(next.clone(), Arc::make_mut(m));
+                changed | v.presentation(prefs.language)
+            }
+            (Painter::Eficiencia(labels), Engine::Eficiencia) => {
+                let next_labels = eficiencia::Labels::new(&next, prefs);
+                let changed = **labels != next_labels;
+                if changed {
+                    *labels = Arc::new(next_labels);
+                }
+                changed
+            }
+            _ => unreachable!("un solo pintor y Motion activos"),
+        };
+        self.board = next;
+        self.prefs = prefs;
+        changed
+    }
+    pub(crate) fn set_look(&mut self, look: crate::look::Look, prefs: Preferences) {
+        if self.settings.design_system == look {
+            return;
+        }
+        self.settings.design_system = look;
+        (self.visual, self.motion) =
+            Self::presentation(&self.settings, prefs, &self.board, self.started);
+    }
     pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        if let Some(state) = &self.vantare {
-            let wake = state.wake(std::time::Instant::now());
-            let state = state.clone();
-            let language = prefs.language;
-            return (
-                Box::new(move |window, cx| state.paint(language, window, cx)),
-                wake,
-            );
+        match (&mut self.visual, &self.motion) {
+            (Painter::Eficiencia(labels), Engine::Eficiencia) => {
+                let labels = labels.clone();
+                (
+                    Box::new(move |w, cx| {
+                        labels.prepare(w);
+                        eficiencia::paint(&labels, w, cx)
+                    }),
+                    Wake::Idle,
+                )
+            }
+            (Painter::Vantare(v), Engine::Vantare(m)) => {
+                v.presentation(prefs.language);
+                let wake = v.wake(m, Instant::now());
+                let v = v.clone();
+                let m = m.clone();
+                (
+                    Box::new(move |w, cx| {
+                        v.prepare(w);
+                        v.paint(&m, prefs.language, w, cx)
+                    }),
+                    wake,
+                )
+            }
+            _ => unreachable!(),
         }
-        let vm = self.vm.clone();
-        (
-            Box::new(move |window, cx| paint(&vm, window, cx)),
-            Wake::Idle,
-        )
     }
-
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
-        self.vantare
-            .as_ref()
-            .is_some_and(|state| state.wake(std::time::Instant::now()) != Wake::Idle)
+        match (&self.visual, &self.motion) {
+            (Painter::Vantare(v), Engine::Vantare(m)) => v.wake(m, Instant::now()) != Wake::Idle,
+            _ => false,
+        }
     }
 }
-
 impl Settings {
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::{FuelEstimate, FuelLevel, LapsRemaining};
-        if self.design_system == crate::standings::DesignSystem::Vantare {
-            use vantare_ipc::Signal::{Cars, Flags, LapCount, PitStatus, SessionInfo};
-            // Cars: clase; LapCount: vuelta en curso; PitStatus: boxes, paradas,
-            // repostaje y stint; SessionInfo: total de vueltas.
-            return crate::demand::signals(
-                250,
-                &[
-                    FuelLevel,
-                    FuelEstimate,
-                    LapsRemaining,
-                    Cars,
-                    LapCount,
-                    PitStatus,
-                    SessionInfo,
-                    Flags,
-                ],
-            );
-        }
-        let mut demand = crate::demand::signals(500, &[FuelLevel, FuelEstimate]);
-        if self.show_projection {
-            demand.request(LapsRemaining, 500);
-        }
-        demand
+        use vantare_ipc::Signal::{
+            Cars, Flags, FuelEstimate, FuelLevel, LapCount, LapsRemaining, PitStatus, SessionInfo,
+        };
+        crate::demand::signals(
+            250,
+            &[
+                FuelLevel,
+                FuelEstimate,
+                LapsRemaining,
+                Cars,
+                LapCount,
+                PitStatus,
+                SessionInfo,
+                Flags,
+            ],
+        )
     }
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn every_look_projects_once_and_switches_without_a_second_history_or_clock_reset() {
+        let photo = crate::source::fixed();
+        let prefs = Preferences::default();
+        for &look in crate::look::Look::ALL {
+            let mut widget = Widget::new(
+                &Settings {
+                    design_system: look,
+                    ..Settings::default()
+                },
+                prefs,
+            );
+            let mut calls = 0;
+            widget.ingest_using(&photo, prefs, |s, p, c| {
+                calls += 1;
+                fuel_strategy::project_with_config(s, p, c)
+            });
+            assert_eq!(calls, 1);
+            let board = widget.board.clone();
+            let started = widget.started;
+            let history = widget.board.history.as_ptr();
+            let content = widget.content;
+            let demand = widget.settings.demand();
+            for &next in crate::look::Look::ALL
+                .iter()
+                .rev()
+                .chain(crate::look::Look::ALL)
+            {
+                widget.set_look(next, prefs);
+                assert!(Arc::ptr_eq(&board, &widget.board));
+                assert_eq!(history, widget.board.history.as_ptr());
+                assert_eq!(started, widget.started);
+                assert_eq!(content, widget.content);
+                assert_eq!(demand, widget.settings.demand());
+                if let Engine::Vantare(m) = &widget.motion {
+                    assert_eq!(m.started, started);
+                }
+            }
+            assert!(!widget.ingest_using(&photo, prefs, |s, p, c| {
+                calls += 1;
+                fuel_strategy::project_with_config(s, p, c)
+            }));
+            assert_eq!(calls, 2);
+        }
+    }
+    #[test]
+    fn saved_content_migrates_once_and_then_survives_look_changes() {
+        let old = Settings {
+            history_rows: 8,
+            show_projection: false,
+            source: "virtual-energy".into(),
+            ..Settings::default()
+        };
+        let migrated = old.normalized();
+        assert_eq!(migrated.content_version, 1);
+        assert_eq!(migrated.content(), fuel_strategy::Config::default());
+        let modern = Settings {
+            content_version: 1,
+            history_rows: 8,
+            show_projection: false,
+            source: "virtual-energy".into(),
+            ..Settings::default()
+        }
+        .normalized();
+        let mut opposite = modern.clone();
+        opposite.design_system = crate::look::Look::Eficiencia;
+        assert_eq!(modern.content(), opposite.normalized().content());
+        let old_efi = Settings {
+            design_system: crate::look::Look::Eficiencia,
+            ..old
+        }
+        .normalized();
+        assert_eq!(old_efi.history_rows, 8);
+        assert!(!old_efi.show_projection);
+        assert!(old_efi.content().virtual_energy);
+    }
+
+    #[test]
+    fn idle_frame_reuses_plan_and_labels_and_fact_changes_invalidate_them() {
+        let photo = crate::source::fixed();
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(&Settings::default(), prefs);
+        widget.ingest(&photo, prefs);
+        let Painter::Vantare(v) = &widget.visual else {
+            unreachable!()
+        };
+        let saved = v.clone();
+        for _ in 0..3 {
+            widget.frame(prefs);
+        }
+        let Painter::Vantare(v) = &widget.visual else {
+            unreachable!()
+        };
+        assert!(v.reuses_preparation(&saved));
+        let mut changed = photo.clone();
+        changed.state.source_state = vantare_domain::SourceState::Lost;
+        assert!(widget.ingest(&changed, prefs));
+        let Painter::Vantare(v) = &widget.visual else {
+            unreachable!()
+        };
+        assert!(!v.reuses_preparation(&saved));
+    }
+
+    #[test]
+    fn saved_layout_keeps_look_content_and_geometry_after_switching() {
+        let bytes=br#"{"version":1,"instances":[{"id":"saved-fuel","x":73,"y":41,"opacity":0.6,"settings":{"kind":"fuel-strategy","designSystem":"eficiencia","style":"neutro","accent":"green","historyRows":8,"showProjection":false,"source":"virtual-energy","size":"expanded"}}]}"#;
+        let mut layout = crate::layout::Layout::from_json(bytes).expect("layout histórico");
+        let original = layout.clone();
+        let crate::Settings::FuelStrategy(before) = &original.instances[0].settings else {
+            unreachable!()
+        };
+        for &look in crate::look::Look::ALL {
+            layout.instances[0].settings.set_look(look);
+            layout =
+                crate::layout::Layout::from_json(&serde_json::to_vec(&layout).expect("guardar"))
+                    .expect("recargar");
+            let crate::Settings::FuelStrategy(after) = &layout.instances[0].settings else {
+                unreachable!()
+            };
+            assert_eq!(after.design_system, look);
+            assert_eq!(after.content(), before.content());
+            assert_eq!(after.content_version, 1);
+            assert_eq!(after.style, before.style);
+            assert_eq!(after.accent, before.accent);
+            assert_eq!(after.size, before.size);
+            assert_eq!(layout.instances[0].geometry, original.instances[0].geometry);
+            assert_eq!(layout.instances[0].opacity, original.instances[0].opacity);
+        }
+    }
     #[test]
     fn eight_lap_scene_projects_all_canonical_rows() {
         let snapshot =
@@ -389,7 +420,7 @@ mod tests {
         };
         let vm = settings.project(&snapshot, Preferences::default());
         assert_eq!(vm.history.len(), 8);
-        assert!(HISTORY_TOP + 4.0 * ROW_HEIGHT <= SIZE.1 - 6.0);
+        assert!(eficiencia::HISTORY_TOP + 4.0 * eficiencia::ROW_HEIGHT <= eficiencia::SIZE.1 - 6.0);
         assert_eq!(vm.history.len().div_ceil(4), 2);
     }
 
@@ -423,7 +454,7 @@ mod tests {
         assert_eq!(player.fuel.per_lap_l, Quality::Reliable(2.14));
         assert_eq!(player.fuel.laps_left, Quality::Unavailable);
         assert_eq!(snapshot.state.session.laps_remaining, Quality::Reliable(79));
-        let vm = fuel_strategy::project(&snapshot, Preferences::default());
+        let vm = Settings::eficiencia().project(&snapshot, Preferences::default());
         assert_eq!(vm.status, None);
         assert_eq!(
             (vm.fuel.as_str(), vm.average.as_str()),

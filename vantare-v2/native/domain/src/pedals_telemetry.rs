@@ -255,7 +255,7 @@ mod tests {
                 assert_eq!(project(&data, prefs).status_text, disconnected);
                 assert_eq!(
                     crate::fuel_strategy::project(&data, prefs)
-                        .status
+                        .status_text(language)
                         .unwrap_or(""),
                     expected
                 );

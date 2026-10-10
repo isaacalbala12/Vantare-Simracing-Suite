@@ -409,6 +409,7 @@ pub fn run_configured_sequence(
             for snapshot in &snapshots {
                 v.ingest(snapshot, cx);
             }
+            v.freeze_for_capture();
         });
         cx.spawn(async move |cx| {
             let result = capture(cx.clone(), view, path).await;

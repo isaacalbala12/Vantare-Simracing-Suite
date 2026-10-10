@@ -3,11 +3,17 @@ use std::{hint::black_box, time::Instant};
 use vantare_domain::{Snapshot, format::Preferences, standings};
 enum Content {
     Standings(standings::Content),
+    Fuel(vantare_domain::fuel_strategy::Config),
     Delta(vantare_domain::delta::Reference),
     Relative(vantare_domain::relative::Content, Vec<String>),
 }
 fn project(snapshot: &Snapshot, prefs: Preferences, content: &Content) {
     match content {
+        Content::Fuel(c) => {
+            black_box(vantare_domain::fuel_strategy::project_with_config(
+                snapshot, prefs, *c,
+            ));
+        }
         Content::Delta(r) => {
             black_box(vantare_domain::delta::project_reference(
                 snapshot, prefs, *r,
@@ -64,6 +70,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             "leader" => vantare_domain::delta::Reference::Leader,
             _ => vantare_domain::delta::Reference::PersonalBest,
         }),
+        vantare_ui::Settings::FuelStrategy(s) => {
+            Content::Fuel(vantare_domain::fuel_strategy::Config {
+                history_rows: s.history_rows,
+                show_projection: s.show_projection,
+                virtual_energy: s.source == "virtual-energy",
+            })
+        }
         _ => return Err("requiere un widget con proyección común".into()),
     };
     let photos = vantare_ui::workshop::snapshots_from_json(&std::fs::read_to_string(&args[1])?)?;

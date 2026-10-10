@@ -18,7 +18,6 @@ pub mod fastest_lap;
 mod flag;
 pub mod format;
 pub mod fuel_strategy;
-pub mod fuel_vantare;
 pub mod head_to_head;
 pub mod input_telemetry;
 mod model;

@@ -1,6 +1,6 @@
 //! Fuel y stint en el sistema de diseño Vantare (#1497), según el catálogo r10b.
 //!
-//! El ViewModel es puro (`vantare_domain::fuel_vantare`); aquí se eligen las
+//! El ViewModel es puro (`vantare_domain::fuel_strategy`); aquí se eligen las
 //! líneas de cada tamaño (compacto, estándar, ampliado) y estado, se miden y se
 //! pintan con el kit Vantare. Las barras se deslizan al cambiar de valor y el
 //! borde late con combustible bajo.
@@ -12,10 +12,10 @@ use crate::standings::{Accent, Look};
 use crate::vantare::paint::{Face, Kit, round_rect};
 use crate::vantare::style::{Color, Style, Variant};
 use gpui::{App, BorderStyle, Corners, Edges, PathBuilder, point, px, quad};
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 use vantare_domain::format::{Language, PLACEHOLDER};
-use vantare_domain::fuel_vantare::{Banner, Board, Plan, Resource, Tank};
+use vantare_domain::fuel_strategy::{Banner, Board, Plan, Resource, Tank};
 use vantare_domain::{SourceState, TyreCompound};
 
 // ---------------------------------------------------------------------------
@@ -341,7 +341,10 @@ fn waiting_lines(board: Option<&Board>, options: &Options, w: &Words, out: &mut 
     }
     out.push(Line::Footer {
         left: if spectator {
-            w.pick("Sin coche propio · espectador", "No car of your own · spectator")
+            w.pick(
+                "Sin coche propio · espectador",
+                "No car of your own · spectator",
+            )
         } else {
             w.pick("Esperando al simulador", "Waiting for the simulator")
         }
@@ -374,7 +377,11 @@ fn plan_text(board: &Board, w: &Words) -> (&'static str, String, Tone) {
             ),
             Tone::Green,
         ),
-        Plan::Unknown => (w.pick("Parar en", "Pit on"), PLACEHOLDER.into(), Tone::Plain),
+        Plan::Unknown => (
+            w.pick("Parar en", "Pit on"),
+            PLACEHOLDER.into(),
+            Tone::Plain,
+        ),
     }
 }
 
@@ -415,7 +422,11 @@ fn compact(board: &Board, w: &Words) -> Line {
             w.pick("llegas", "you finish"),
             Tone::Green,
         ),
-        Plan::Unknown => (PLACEHOLDER.into(), w.pick("parar en", "pit on"), Tone::Accent),
+        Plan::Unknown => (
+            PLACEHOLDER.into(),
+            w.pick("parar en", "pit on"),
+            Tone::Accent,
+        ),
     };
     Line::Big {
         left: board
@@ -488,11 +499,20 @@ fn standard(board: &Board, w: &Words, out: &mut Vec<Line>) {
     };
     let (plan_key, plan_value, plan_tone) = plan_text(board, w);
     for (key, value, tone, me) in [
-        (level_key, level, if low { Tone::Red } else { Tone::Hi }, false),
+        (
+            level_key,
+            level,
+            if low { Tone::Red } else { Tone::Hi },
+            false,
+        ),
         (
             w.pick("Por vuelta", "Per lap"),
             per_lap,
-            if fcy.is_some() { Tone::Amber } else { Tone::Plain },
+            if fcy.is_some() {
+                Tone::Amber
+            } else {
+                Tone::Plain
+            },
             false,
         ),
         (
@@ -523,7 +543,7 @@ fn compound(compound: TyreCompound) -> &'static str {
     }
 }
 
-fn refuel_gauge(service: &vantare_domain::fuel_vantare::Service, w: &Words) -> Line {
+fn refuel_gauge(service: &vantare_domain::fuel_strategy::Service, w: &Words) -> Line {
     Line::Gauge {
         bar: Bar::Refuel,
         title: w.pick("REPOSTANDO", "REFUELLING").into(),
@@ -541,7 +561,7 @@ fn refuel_gauge(service: &vantare_domain::fuel_vantare::Service, w: &Words) -> L
 }
 
 /// Barra de repostaje: solo con objetivo.
-fn refuel_fraction(service: &vantare_domain::fuel_vantare::Service) -> Option<f32> {
+fn refuel_fraction(service: &vantare_domain::fuel_strategy::Service) -> Option<f32> {
     let (added, target) = (service.added_l?, service.target_l?);
     Some((added / target).clamp(0.0, 1.0) as f32)
 }
@@ -637,16 +657,16 @@ fn expanded(board: &Board, w: &Words, out: &mut Vec<Line>) {
         },
     });
     out.push(tiles(board, w));
-    if board.history.len() >= 2 {
+    if board.positive_history().count() >= 2 {
         let average = board.fuel.per_lap.map(|l| format!("{l:.2} L"));
-        let energy = board.energy.and_then(|e| e.per_lap).map(|e| percent(Some(e), 2));
+        let energy = board
+            .energy
+            .and_then(|e| e.per_lap)
+            .map(|e| percent(Some(e), 2));
         let right = [average, energy].into_iter().flatten().collect::<Vec<_>>();
         out.push(Line::Sub {
             left: w
-                .pick(
-                    "CONSUMO · ÚLTIMAS 10 VUELTAS",
-                    "CONSUMPTION · LAST 10 LAPS",
-                )
+                .pick("CONSUMO · ÚLTIMAS 10 VUELTAS", "CONSUMPTION · LAST 10 LAPS")
                 .into(),
             right: if right.is_empty() {
                 String::new()
@@ -708,12 +728,7 @@ fn window_lines(board: &Board, w: &Words, out: &mut Vec<Line>) {
     let total = window.total.max(close).max(1) as f32;
     out.push(Line::Sub {
         left: w.pick("VENTANA DE PARADA", "PIT WINDOW").into(),
-        right: format!(
-            "{} – {}",
-            w.lap(window.open),
-            w.lap(close)
-        )
-        .to_uppercase(),
+        right: format!("{} – {}", w.lap(window.open), w.lap(close)).to_uppercase(),
     });
     out.push(Line::Window {
         open: (window.open.saturating_sub(1)) as f32 / total,
@@ -798,11 +813,11 @@ struct Plan2 {
     tops: Vec<f32>,
 }
 
-fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Plan2 {
+fn layout_lines(lines: &[Line], options: &Options, style: &Style) -> Plan2 {
     let variant = options.variant(style);
     let mut y = variant.padding_y;
     let mut tops = Vec::new();
-    for line in lines(board, options, true) {
+    for line in lines {
         if matches!(line, Line::Banner(_)) {
             // La franja ocupa el borde superior del panel.
             tops.push(0.0);
@@ -810,7 +825,7 @@ fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Plan2 {
             continue;
         }
         tops.push(y);
-        y += height(&line, style, variant);
+        y += height(line, style, variant);
     }
     Plan2 {
         width: options.width(style),
@@ -850,115 +865,260 @@ impl Ease {
     }
 }
 
-fn targets(board: Option<&Board>, options: &Options) -> Vec<(Bar, f32)> {
-    lines(board, options, true)
-        .into_iter()
-        .filter_map(|line| match line {
-            Line::Big { fraction, .. } => Some((Bar::Compact, fraction?)),
-            Line::Gauge { bar, fraction, .. } => Some((bar, fraction?)),
-            Line::Window { now, .. } => Some((Bar::Now, now)),
-            _ => None,
-        })
-        .collect()
+fn targets(lines: &[Line]) -> impl Iterator<Item = (Bar, f32)> + '_ {
+    lines.iter().filter_map(|line| match line {
+        Line::Big { fraction, .. } => Some((Bar::Compact, (*fraction)?)),
+        Line::Gauge { bar, fraction, .. } => Some((*bar, (*fraction)?)),
+        Line::Window { now, .. } => Some((Bar::Now, *now)),
+        _ => None,
+    })
 }
-
 #[derive(Clone)]
-pub(crate) struct State {
-    pub options: Options,
-    pub style: Arc<Style>,
-    pub board: Option<Board>,
-    plan: Plan2,
+pub(crate) struct Movement {
     bars: Vec<Ease>,
-    started: Instant,
+    #[cfg(feature = "parity-capture")]
+    capture_time: Option<Instant>,
+    pub(super) started: Instant,
 }
-
-impl State {
-    pub(crate) fn new(options: Options) -> Self {
-        let style = Style::compiled();
-        let plan = layout(None, &options, &style);
+impl Movement {
+    pub(crate) fn new(started: Instant) -> Self {
         Self {
-            options,
-            style,
-            board: None,
-            plan,
             bars: Vec::new(),
-            started: Instant::now(),
+            #[cfg(feature = "parity-capture")]
+            capture_time: None,
+            started,
         }
     }
-
-    pub(crate) fn project(snapshot: &vantare_domain::Snapshot) -> Board {
-        vantare_domain::fuel_vantare::project(snapshot)
+    #[cfg(feature = "parity-capture")]
+    pub(crate) fn freeze_for_capture(&mut self) {
+        self.settle();
+        self.capture_time = Some(self.started);
     }
-
-    fn duration(&self) -> Duration {
-        self.style.motion.timing().reorder
-    }
-
-    pub(crate) fn ingest(&mut self, board: Board) -> bool {
-        if self.board.as_ref() == Some(&board) {
-            return false;
-        }
-        self.board = Some(board);
-        self.plan = layout(self.board.as_ref(), &self.options, &self.style);
-        let now = Instant::now();
-        let duration = self.duration();
-        let mut next = Vec::new();
-        for (bar, to) in targets(self.board.as_ref(), &self.options) {
-            // Aparecer no anima: solo cambiar de valor.
-            let from = self
-                .bars
-                .iter()
-                .find(|e| e.bar == bar)
-                .map_or(to, |e| e.value(now, duration));
-            next.push(Ease {
-                bar,
-                from,
-                to,
-                start: now,
-            });
-        }
-        self.bars = next;
-        true
-    }
-
     pub(crate) fn settle(&mut self) {
         for ease in &mut self.bars {
             ease.from = ease.to;
         }
     }
-
+}
+// Normalized spark geometry derives from the one Board history; no second consumption list.
+#[derive(Default)]
+struct Spark {
+    points: Vec<(f32, f32)>,
+    average: f32,
+}
+impl Spark {
+    fn new(board: Option<&Board>, options: &Options, style: &Style) -> Self {
+        let Some(board) = board else {
+            return Self::default();
+        };
+        let count = board.positive_history().count();
+        if count < 2 {
+            return Self::default();
+        }
+        let variant = options.variant(style);
+        let w = options.width(style) - 2.0 * variant.padding_x;
+        let average = board.positive_history().sum::<f64>() / count as f64;
+        let low = board.positive_history().fold(f64::INFINITY, f64::min);
+        let high = board.positive_history().fold(f64::NEG_INFINITY, f64::max);
+        let margin = ((high - low) * 0.15).max(0.05);
+        let (low, high) = (low - margin, high + margin);
+        let at = |index: usize, value: f64| {
+            let x = variant.padding_x + 2.0 + index as f32 * (w - 4.0) / (count - 1) as f32;
+            let t = ((value - low) / (high - low)) as f32;
+            (x, t)
+        };
+        Self {
+            points: board
+                .positive_history()
+                .enumerate()
+                .map(|(i, v)| at(i, v))
+                .collect(),
+            average: at(0, average).1,
+        }
+    }
+}
+#[derive(Clone)]
+pub(crate) struct Visual {
+    options: Arc<Options>,
+    style: Arc<Style>,
+    board: Option<Arc<Board>>,
+    plan: Arc<Plan2>,
+    lines: Arc<Vec<Line>>,
+    spark: Arc<Spark>,
+    language: Language,
+    band_text: Arc<(String, String)>,
+    fitted_tiles: Arc<OnceLock<Vec<Vec<String>>>>,
+}
+impl Visual {
+    pub(crate) fn new(options: Options) -> Self {
+        let style = Style::compiled();
+        let language = Language::Es;
+        let lines = Arc::new(lines(None, &options, true));
+        let plan = Arc::new(layout_lines(&lines, &options, &style));
+        Self {
+            options: Arc::new(options),
+            style,
+            board: None,
+            plan,
+            lines,
+            spark: Arc::new(Spark::default()),
+            language,
+            band_text: Arc::new((String::new(), String::new())),
+            fitted_tiles: Arc::new(OnceLock::new()),
+        }
+    }
+    fn duration(&self) -> Duration {
+        self.style.motion.timing().reorder
+    }
+    fn rebuild(&mut self) {
+        #[cfg(feature = "parity-capture")]
+        crate::benchmark::mark(crate::benchmark::Work::Plan);
+        self.fitted_tiles = Arc::new(OnceLock::new());
+        self.band_text = Arc::new(match self.board.as_deref().and_then(band) {
+            Some(Band::Yellow(sector)) => (
+                format!(
+                    "{} · Sector {sector}",
+                    if self.language == Language::Es {
+                        "Amarilla"
+                    } else {
+                        "Yellow"
+                    }
+                ),
+                String::new(),
+            ),
+            Some(Band::Final(lap, total)) => (String::new(), format!("{lap}/{total}")),
+            _ => (String::new(), String::new()),
+        });
+        self.lines = Arc::new(lines(
+            self.board.as_deref(),
+            &self.options,
+            self.language == Language::Es,
+        ));
+        self.plan = Arc::new(layout_lines(&self.lines, &self.options, &self.style));
+        self.spark = Arc::new(Spark::new(
+            self.board.as_deref(),
+            &self.options,
+            &self.style,
+        ));
+    }
+    pub(crate) fn presentation(&mut self, language: Language) -> bool {
+        if self.language == language {
+            return false;
+        }
+        self.language = language;
+        self.rebuild();
+        true
+    }
+    pub(crate) fn ingest_shared(&mut self, board: Arc<Board>, motion: &mut Movement) -> bool {
+        if self.board.as_deref() == Some(&*board) {
+            return false;
+        }
+        self.board = Some(board);
+        self.rebuild();
+        let now = Instant::now();
+        let duration = self.duration();
+        motion.bars = targets(&self.lines)
+            .map(|(bar, to)| {
+                let from = motion
+                    .bars
+                    .iter()
+                    .find(|e| e.bar == bar)
+                    .map_or(to, |e| e.value(now, duration));
+                Ease {
+                    bar,
+                    from,
+                    to,
+                    start: now,
+                }
+            })
+            .collect();
+        true
+    }
     pub(crate) fn set_style(&mut self, style: Arc<Style>) {
         self.style = style;
-        self.plan = layout(self.board.as_ref(), &self.options, &self.style);
+        self.rebuild();
     }
-
+    #[cfg(test)]
+    pub(super) fn reuses_preparation(&self, previous: &Self) -> bool {
+        Arc::ptr_eq(&self.plan, &previous.plan) && Arc::ptr_eq(&self.lines, &previous.lines)
+    }
     pub(crate) fn size(&self) -> (f32, f32) {
         (self.plan.width, self.plan.height)
     }
-
     fn low(&self) -> bool {
         self.board
-            .as_ref()
+            .as_deref()
             .is_some_and(|b| !waiting(Some(b)) && b.plan == Plan::Now && b.service.is_none())
     }
-
-    pub(crate) fn wake(&self, now: Instant) -> Wake {
-        let duration = self.duration();
-        if self.bars.iter().any(|e| e.moving(now, duration)) {
+    pub(crate) fn wake(&self, motion: &Movement, now: Instant) -> Wake {
+        #[cfg(feature = "parity-capture")]
+        if motion.capture_time.is_some() {
+            return Wake::Idle;
+        }
+        if motion.bars.iter().any(|e| e.moving(now, self.duration())) {
             Wake::Frame
         } else if self.low() {
-            // El latido del borde es lento: unos 20 fotogramas por segundo bastan.
             Wake::At(Duration::from_millis(50))
         } else {
             Wake::Idle
         }
     }
-
-    pub(crate) fn paint(&self, language: Language, window: &mut Window, cx: &mut App) {
+    pub(crate) fn prepare(&self, window: &Window) {
+        self.fitted_tiles.get_or_init(|| {
+            let f = &self.style.fuel;
+            let variant = self.options.variant(&self.style);
+            let span = self.plan.width - 2.0 * variant.padding_x;
+            self.lines
+                .iter()
+                .map(|line| {
+                    if let Line::Tiles(tiles) = line {
+                        let count = tiles.len().max(1) as f32;
+                        let cell = (span - (count - 1.0)) / count;
+                        let painter = Painter {
+                            kit: Kit {
+                                style: &self.style,
+                                variant,
+                                accent: self.options.accent(&self.style),
+                                language: self.language,
+                                width: self.plan.width,
+                            },
+                            options: &self.options,
+                            spark: &self.spark,
+                            band_text: &self.band_text,
+                        };
+                        tiles
+                            .iter()
+                            .map(|(_, value, tone)| {
+                                let ink = painter.ink(
+                                    Face::Display,
+                                    f.tile_value,
+                                    0.3,
+                                    painter.tone(*tone),
+                                );
+                                text::fit(window, value, &ink, cell - 12.0)
+                            })
+                            .collect()
+                    } else {
+                        Vec::new()
+                    }
+                })
+                .collect()
+        });
+    }
+    pub(crate) fn paint(
+        &self,
+        motion: &Movement,
+        language: Language,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
         let now = Instant::now();
+        #[cfg(feature = "parity-capture")]
+        let now = motion.capture_time.unwrap_or(now);
         let duration = self.duration();
         let bar = |bar: Bar, target: f32| {
-            self.bars
+            motion
+                .bars
                 .iter()
                 .find(|e| e.bar == bar)
                 .map_or(target, |e| e.value(now, duration))
@@ -972,22 +1132,53 @@ impl State {
                 width: self.plan.width,
             },
             options: &self.options,
-            board: self.board.as_ref(),
+            spark: &self.spark,
+            band_text: &self.band_text,
         };
         painter.panel(window, self.plan.height);
         if self.low() {
             let period = self.style.fuel.low_pulse_ms.max(1.0) / 1000.0;
-            let phase = now.saturating_duration_since(self.started).as_secs_f32() / period;
+            let phase = now.saturating_duration_since(motion.started).as_secs_f32() / period;
             let alpha = 0.55 + 0.45 * (phase * std::f32::consts::TAU).cos().abs();
             painter.border(window, self.plan.height, alpha);
         }
-        let es = language == Language::Es;
-        for (line, &y) in lines(self.board.as_ref(), &self.options, es)
-            .iter()
-            .zip(&self.plan.tops)
-        {
-            painter.line(window, cx, line, y, &bar);
+        let fitted = self.fitted_tiles.get().expect("prepared before paint");
+        for ((line, &y), fitted) in self.lines.iter().zip(&self.plan.tops).zip(fitted) {
+            painter.line(window, cx, line, y, &bar, fitted);
         }
+    }
+}
+#[cfg(test)]
+fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Plan2 {
+    layout_lines(&lines(board, options, true), options, style)
+}
+#[cfg(test)]
+struct State {
+    visual: Visual,
+    motion: Movement,
+}
+#[cfg(test)]
+impl State {
+    fn new(options: Options) -> Self {
+        Self {
+            visual: Visual::new(options),
+            motion: Movement::new(Instant::now()),
+        }
+    }
+    fn project(snapshot: &vantare_domain::Snapshot) -> Board {
+        vantare_domain::fuel_strategy::project(
+            snapshot,
+            vantare_domain::format::Preferences::default(),
+        )
+    }
+    fn ingest(&mut self, board: Board) -> bool {
+        self.visual.ingest_shared(Arc::new(board), &mut self.motion)
+    }
+    fn settle(&mut self) {
+        self.motion.settle();
+    }
+    fn wake(&self, now: Instant) -> Wake {
+        self.visual.wake(&self.motion, now)
     }
 }
 
@@ -998,7 +1189,8 @@ impl State {
 struct Painter<'a> {
     kit: Kit<'a>,
     options: &'a Options,
-    board: Option<&'a Board>,
+    spark: &'a Spark,
+    band_text: &'a (String, String),
 }
 
 impl<'a> std::ops::Deref for Painter<'a> {
@@ -1064,6 +1256,7 @@ impl Painter<'_> {
         line: &Line,
         y: f32,
         bar: &dyn Fn(Bar, f32) -> f32,
+        fitted_tiles: &[String],
     ) {
         match line {
             Line::Banner(band) => self.band_line(window, cx, *band),
@@ -1083,7 +1276,15 @@ impl Painter<'_> {
                     let pad = self.variant.padding_x;
                     let top = y + f.big_height - f.bar - 4.0;
                     let value = bar(Bar::Compact, *fraction);
-                    self.bar(window, pad, top, self.width - 2.0 * pad, f.bar, value, *fill);
+                    self.bar(
+                        window,
+                        pad,
+                        top,
+                        self.width - 2.0 * pad,
+                        f.bar,
+                        value,
+                        *fill,
+                    );
                 }
             }
             Line::Gauge {
@@ -1119,7 +1320,7 @@ impl Painter<'_> {
                 tone,
                 me,
             } => self.row(window, cx, y, key, value, *tone, *me),
-            Line::Tiles(tiles) => self.tiles(window, cx, y, tiles),
+            Line::Tiles(tiles) => self.tiles(window, cx, y, tiles, fitted_tiles),
             Line::Sub { left, right } => self.sub(window, cx, y, left, right),
             Line::Spark => self.spark(window, y),
             Line::Window { open, close, now } => {
@@ -1133,7 +1334,15 @@ impl Painter<'_> {
                 right,
                 pill,
                 pulse,
-            } => self.footer(window, cx, y, left, right.as_deref(), pill.as_deref(), *pulse),
+            } => self.footer(
+                window,
+                cx,
+                y,
+                left,
+                right.as_deref(),
+                pill.as_deref(),
+                *pulse,
+            ),
         }
     }
 
@@ -1148,7 +1357,11 @@ impl Painter<'_> {
                 f.low_fill,
                 f.low_text,
                 if es { "Combustible bajo" } else { "Low fuel" },
-                Some(if es { "entra esta vuelta" } else { "pit this lap" }),
+                Some(if es {
+                    "entra esta vuelta"
+                } else {
+                    "pit this lap"
+                }),
                 false,
                 None,
             ),
@@ -1163,30 +1376,25 @@ impl Painter<'_> {
                 Some(c.line),
             ),
             Band::Fcy => self.band(window, cx, c.fcy_fill, c.fcy_text, "FCY", None, false, None),
-            Band::Yellow(sector) => {
-                let title = if es {
-                    format!("Amarilla · Sector {sector}")
-                } else {
-                    format!("Yellow · Sector {sector}")
-                };
+            Band::Yellow(_) => {
                 self.band(
                     window,
                     cx,
                     c.yellow_fill,
                     c.yellow_text,
-                    &title,
+                    &self.band_text.0,
                     None,
                     false,
                     Some(c.yellow_line),
                 );
             }
-            Band::Final(lap, total) => self.band(
+            Band::Final(_, _) => self.band(
                 window,
                 cx,
                 c.final_fill,
                 c.final_text,
                 if es { "Última vuelta" } else { "Final lap" },
-                Some(&format!("{lap}/{total}")),
+                Some(&self.band_text.1),
                 true,
                 None,
             ),
@@ -1233,7 +1441,17 @@ impl Painter<'_> {
         let fonts = &self.style.fonts;
         let (pad, w) = (self.variant.padding_x, self.width);
         let big = self.ink(Face::Display, f.big, 0.5, c.text.hsla());
-        self.label(window, cx, text[0], pad, None, y, f.big, Face::Display, &big);
+        self.label(
+            window,
+            cx,
+            text[0],
+            pad,
+            None,
+            y,
+            f.big,
+            Face::Display,
+            &big,
+        );
         let second = self.ink(Face::Display, f.big_secondary, 0.5, self.tone(tone));
         self.label(
             window,
@@ -1248,7 +1466,17 @@ impl Painter<'_> {
         );
         let small = self.ink(Face::Body, fonts.small, 0.0, c.muted.hsla());
         let label_top = y + f.big + 2.0;
-        self.label(window, cx, text[1], pad, None, label_top, 16.0, Face::Body, &small);
+        self.label(
+            window,
+            cx,
+            text[1],
+            pad,
+            None,
+            label_top,
+            16.0,
+            Face::Body,
+            &small,
+        );
         self.label(
             window,
             cx,
@@ -1283,11 +1511,35 @@ impl Painter<'_> {
         let mut right = w - pad;
         if !suffix.is_empty() {
             let ink = self.ink(Face::Body, f.gauge_suffix, 0.0, c.muted.hsla());
-            right -= self.label(window, cx, suffix, 0.0, Some(right), y + 2.0, h, Face::Body, &ink);
+            right -= self.label(
+                window,
+                cx,
+                suffix,
+                0.0,
+                Some(right),
+                y + 2.0,
+                h,
+                Face::Body,
+                &ink,
+            );
         }
-        let size = if small { f.gauge_value_small } else { f.gauge_value };
+        let size = if small {
+            f.gauge_value_small
+        } else {
+            f.gauge_value
+        };
         let ink = self.ink(Face::Display, size, 0.5, c.text.hsla());
-        right -= self.label(window, cx, value, 0.0, Some(right), y, h, Face::Display, &ink);
+        right -= self.label(
+            window,
+            cx,
+            value,
+            0.0,
+            Some(right),
+            y,
+            h,
+            Face::Display,
+            &ink,
+        );
         if let Some(pill) = pill {
             let width = self.pill_width(window, pill);
             let g = &self.style.geometry;
@@ -1328,34 +1580,76 @@ impl Painter<'_> {
         let key_ink = self.ink(Face::Body, self.style.fuel.row_label, 0.0, c.text.hsla());
         self.label(window, cx, key, pad, None, y, h, Face::Body, &key_ink);
         let ink = self.ink(Face::Mono, self.style.fonts.mono, 0.0, self.tone(tone));
-        self.label(window, cx, value, 0.0, Some(w - pad), y, h, Face::Mono, &ink);
+        self.label(
+            window,
+            cx,
+            value,
+            0.0,
+            Some(w - pad),
+            y,
+            h,
+            Face::Mono,
+            &ink,
+        );
     }
 
-    fn tiles(&self, window: &mut Window, cx: &mut App, y: f32, tiles: &[(String, String, Tone)]) {
+    fn tiles(
+        &self,
+        window: &mut Window,
+        cx: &mut App,
+        y: f32,
+        tiles: &[(String, String, Tone)],
+        fitted: &[String],
+    ) {
         let f = &self.style.fuel;
         let c = &self.style.colors;
         let pad = self.variant.padding_x;
         let top = y + f.tile_margin;
         let span = self.width - 2.0 * pad;
-        round_rect(window, pad, top, span, f.tile_height, f.tile_radius, f.tile_line.hsla());
+        round_rect(
+            window,
+            pad,
+            top,
+            span,
+            f.tile_height,
+            f.tile_radius,
+            f.tile_line.hsla(),
+        );
         let count = tiles.len().max(1) as f32;
         let cell = (span - (count - 1.0)) / count;
-        for (index, (label, value, tone)) in tiles.iter().enumerate() {
+        for (index, ((label, _, tone), fitted)) in tiles.iter().zip(fitted).enumerate() {
             let x = pad + index as f32 * (cell + 1.0);
             let radius = if index == 0 || index + 1 == tiles.len() {
                 f.tile_radius
             } else {
                 0.0
             };
-            round_rect(window, x, top, cell, f.tile_height, radius, f.tile_fill.hsla());
+            round_rect(
+                window,
+                x,
+                top,
+                cell,
+                f.tile_height,
+                radius,
+                f.tile_fill.hsla(),
+            );
             let small = self.ink(Face::Body, f.tile_label, 0.3, c.muted.hsla());
-            self.label(window, cx, label, x + 8.0, None, top + 6.0, 14.0, Face::Body, &small);
-            let ink = self.ink(Face::Display, f.tile_value, 0.3, self.tone(*tone));
-            let fitted = text::fit(window, value, &ink, cell - 12.0);
             self.label(
                 window,
                 cx,
-                &fitted,
+                label,
+                x + 8.0,
+                None,
+                top + 6.0,
+                14.0,
+                Face::Body,
+                &small,
+            );
+            let ink = self.ink(Face::Display, f.tile_value, 0.3, self.tone(*tone));
+            self.label(
+                window,
+                cx,
+                fitted,
                 x + 8.0,
                 None,
                 top + 20.0,
@@ -1372,39 +1666,55 @@ impl Painter<'_> {
         let (pad, w) = (v.padding_x, self.width);
         let top = y + 6.0;
         let h = self.style.fuel.sub_height - 6.0;
-        let ink = self.ink(Face::Body, v.header_size, v.header_tracking, v.header_color.hsla());
+        let ink = self.ink(
+            Face::Body,
+            v.header_size,
+            v.header_tracking,
+            v.header_color.hsla(),
+        );
         self.label(window, cx, left, pad, None, top, h, Face::Body, &ink);
-        let em = self.ink(Face::Body, v.header_size, v.header_tracking, c.header_em.hsla());
-        self.label(window, cx, right, 0.0, Some(w - pad), top, h, Face::Body, &em);
+        let em = self.ink(
+            Face::Body,
+            v.header_size,
+            v.header_tracking,
+            c.header_em.hsla(),
+        );
+        self.label(
+            window,
+            cx,
+            right,
+            0.0,
+            Some(w - pad),
+            top,
+            h,
+            Face::Body,
+            &em,
+        );
     }
 
     /// Gráfica de consumo: polilínea de las vueltas medidas y línea de media.
     fn spark(&self, window: &mut Window, y: f32) {
-        let Some(board) = self.board else { return };
-        let values = &board.history;
-        if values.len() < 2 {
+        let spark = self.spark;
+        if spark.points.len() < 2 {
             return;
         }
         let f = &self.style.fuel;
         let pad = self.variant.padding_x;
-        let (w, h) = (self.width - 2.0 * pad, f.spark_height);
-        let average = values.iter().sum::<f64>() / values.len() as f64;
-        let low = values.iter().copied().fold(f64::INFINITY, f64::min);
-        let high = values.iter().copied().fold(f64::NEG_INFINITY, f64::max);
-        let margin = ((high - low) * 0.15).max(0.05);
-        let (low, high) = (low - margin, high + margin);
+        let w = self.width - 2.0 * pad;
         let (ox, oy) = text::origin();
-        let at = |index: usize, value: f64| {
-            let x = pad + 2.0 + index as f32 * (w - 4.0) / (values.len() - 1) as f32;
-            let t = ((value - low) / (high - low)) as f32;
-            (x, y + h - 2.0 - t * (h - 4.0))
-        };
-        let (_, average_y) = at(0, average);
-        round_rect(window, pad, average_y, w, 1.0, 0.0, f.average_line.hsla());
+        round_rect(
+            window,
+            pad,
+            y + f.spark_height - 2.0 - spark.average * (f.spark_height - 4.0),
+            w,
+            1.0,
+            0.0,
+            f.average_line.hsla(),
+        );
         let mut path = PathBuilder::stroke(px(f.spark_stroke));
-        for (index, value) in values.iter().enumerate() {
-            let (x, y) = at(index, *value);
-            let p = point(px(x + ox), px(y + oy));
+        for (index, &(x, top)) in spark.points.iter().enumerate() {
+            let top = y + f.spark_height - 2.0 - top * (f.spark_height - 4.0);
+            let p = point(px(x + ox), px(top + oy));
             if index == 0 {
                 path.move_to(p);
             } else {
@@ -1414,9 +1724,10 @@ impl Painter<'_> {
         if let Ok(path) = path.build() {
             window.paint_path(path, self.accent.hsla());
         }
-        let (x, y) = at(values.len() - 1, values[values.len() - 1]);
+        let &(x, top) = spark.points.last().expect("two spark points");
         let r = f.spark_dot;
-        round_rect(window, x - r, y - r, 2.0 * r, 2.0 * r, r, f.now.hsla());
+        let top = y + f.spark_height - 2.0 - top * (f.spark_height - 4.0);
+        round_rect(window, x - r, top - r, 2.0 * r, 2.0 * r, r, f.now.hsla());
     }
 
     fn pit_window(&self, window: &mut Window, y: f32, open: f32, close: f32, now: f32) {
@@ -1434,7 +1745,15 @@ impl Painter<'_> {
             self.accent.hsla(),
             BorderStyle::default(),
         ));
-        round_rect(window, pad + now * w - 1.0, y + 1.0, 2.0, 16.0, 1.0, f.now.hsla());
+        round_rect(
+            window,
+            pad + now * w - 1.0,
+            y + 1.0,
+            2.0,
+            16.0,
+            1.0,
+            f.now.hsla(),
+        );
     }
 
     fn window_labels(&self, window: &mut Window, cx: &mut App, y: f32, text: [&String; 3]) {
@@ -1455,7 +1774,17 @@ impl Painter<'_> {
             Face::Mono,
             &ink,
         );
-        self.label(window, cx, text[2], 0.0, Some(w - pad), y, h, Face::Mono, &ink);
+        self.label(
+            window,
+            cx,
+            text[2],
+            0.0,
+            Some(w - pad),
+            y,
+            h,
+            Face::Mono,
+            &ink,
+        );
     }
 
     #[allow(clippy::too_many_arguments)] // Pie: textos, píldora y pulso de espera.
@@ -1479,13 +1808,31 @@ impl Painter<'_> {
         let mut x = pad;
         if pulse {
             let d = g.pulse;
-            round_rect(window, x, top + (h - d) / 2.0, d, d, d / 2.0, c.pulse.hsla());
+            round_rect(
+                window,
+                x,
+                top + (h - d) / 2.0,
+                d,
+                d,
+                d / 2.0,
+                c.pulse.hsla(),
+            );
             x += d + 8.0;
         }
         let ink = self.ink(Face::Body, fonts.header, 0.0, c.muted.hsla());
         self.label(window, cx, left, x, None, top, h, Face::Body, &ink);
         if let Some(right) = right {
-            self.label(window, cx, right, 0.0, Some(w - pad), top, h, Face::Body, &ink);
+            self.label(
+                window,
+                cx,
+                right,
+                0.0,
+                Some(w - pad),
+                top,
+                h,
+                Face::Body,
+                &ink,
+            );
         }
         if let Some(pill) = pill {
             let width = self.pill_width(window, &pill.to_uppercase());
@@ -1549,25 +1896,40 @@ mod tests {
         let pits = standard(3);
         assert!(pits.contains("REPOSTANDO") && pits.contains("4 nuevos · M"));
         let fcy = standard(4);
-        assert!(fcy.contains("Banner(Fcy)") && fcy.contains("1.41 L") && fcy.contains("Ahorro FCY"));
+        assert!(
+            fcy.contains("Banner(Fcy)") && fcy.contains("1.41 L") && fcy.contains("Ahorro FCY")
+        );
         let last = standard(5);
         assert!(last.contains("Final(38, 38)") && last.contains("sobran"));
         assert!(standard(6).contains("Esperando al simulador"));
         assert!(standard(7).contains("Sin coche propio"));
         let expanded = texts(&lines(Some(&board(1)), &options(Size::Expanded), true));
-        for part in ["ENERGÍA VIRTUAL", "LIMITA", "AÑADIR", "Spark", "VENTANA DE PARADA", "Stint 2"] {
+        for part in [
+            "ENERGÍA VIRTUAL",
+            "LIMITA",
+            "AÑADIR",
+            "Spark",
+            "VENTANA DE PARADA",
+            "Stint 2",
+        ] {
             assert!(expanded.contains(part), "{part}");
         }
     }
 
     #[test]
     fn bars_slide_between_laps_and_low_fuel_pulses() {
-        let photos = frames(include_str!("../../fixtures/fuel-vantare-carrera.scene.json"));
+        let photos = frames(include_str!(
+            "../../fixtures/fuel-vantare-carrera.scene.json"
+        ));
         let mut state = State::new(options(Size::Expanded));
         assert!(state.ingest(State::project(&photos[0])));
         assert_eq!(state.wake(Instant::now()), Wake::Idle, "aparecer no anima");
         assert!(state.ingest(State::project(&photos[1])));
-        assert_eq!(state.wake(Instant::now()), Wake::Frame, "la barra se desliza");
+        assert_eq!(
+            state.wake(Instant::now()),
+            Wake::Frame,
+            "la barra se desliza"
+        );
         state.settle();
         assert_eq!(state.wake(Instant::now()), Wake::Idle);
         let low = photos
@@ -1576,8 +1938,14 @@ mod tests {
             .expect("fase con combustible bajo");
         state.ingest(State::project(&photos[low]));
         state.settle();
-        assert!(matches!(state.wake(Instant::now()), Wake::At(_)), "el borde late");
-        assert!(!state.ingest(State::project(&photos[low])), "misma foto, sin repintar");
+        assert!(
+            matches!(state.wake(Instant::now()), Wake::At(_)),
+            "el borde late"
+        );
+        assert!(
+            !state.ingest(State::project(&photos[low])),
+            "misma foto, sin repintar"
+        );
     }
 
     #[test]

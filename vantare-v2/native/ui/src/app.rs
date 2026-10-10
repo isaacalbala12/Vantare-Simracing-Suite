@@ -174,6 +174,13 @@ impl Overlay {
         }
     }
 
+    /// QA: misma fase del pulso Fuel en baseline y candidato.
+    #[cfg(feature = "parity-capture")]
+    pub(crate) fn freeze_for_capture(&mut self) {
+        if let Widget::FuelStrategy(w) = &mut self.widget {
+            w.freeze_for_capture();
+        }
+    }
     /// Workshop: da por terminadas las animaciones de las fotos ya ingeridas.
     pub(crate) fn settle(&mut self) {
         match &mut self.widget {
@@ -219,6 +226,7 @@ impl Overlay {
             Widget::Standings(w) => w.set_look(look, self.prefs),
             Widget::Relative(w) => w.set_look(look, self.prefs),
             Widget::Delta(w) => w.set_look(look, self.prefs),
+            Widget::FuelStrategy(w) => w.set_look(look, self.prefs),
             _ => {}
         }
     }
@@ -1379,27 +1387,35 @@ mod tests {
 
     #[test]
     fn layout_look_changes_reuse_the_same_renderer_entity() {
-        let mut instance = crate::layout::Instance {
-            geometry: crate::geometry::Geometry::default(),
-            id: "board".into(),
-            x: 20.0,
-            y: 30.0,
-            visible: true,
-            opacity: 1.0,
-            settings: Settings::default_for(Kind::Standings).normalized(),
-        };
-        let mut widgets = reconcile_widgets(HashMap::new(), &[instance.clone()], |_| Box::new(17));
-        let identity = std::ptr::from_ref(widgets["board"].view.as_ref());
-        for &look in crate::look::Look::ALL
-            .iter()
-            .rev()
-            .chain(crate::look::Look::ALL)
-        {
-            instance.settings.set_look(look);
-            widgets = reconcile_widgets(widgets, &[instance.clone()], |_| {
-                panic!("Look conserva entidad y estado")
-            });
-            assert_eq!(std::ptr::from_ref(widgets["board"].view.as_ref()), identity);
+        for kind in [
+            Kind::Standings,
+            Kind::Relative,
+            Kind::Delta,
+            Kind::FuelStrategy,
+        ] {
+            let mut instance = crate::layout::Instance {
+                geometry: crate::geometry::Geometry::default(),
+                id: "board".into(),
+                x: 20.0,
+                y: 30.0,
+                visible: true,
+                opacity: 1.0,
+                settings: Settings::default_for(kind).normalized(),
+            };
+            let mut widgets =
+                reconcile_widgets(HashMap::new(), &[instance.clone()], |_| Box::new(17));
+            let identity = std::ptr::from_ref(widgets["board"].view.as_ref());
+            for &look in crate::look::Look::ALL
+                .iter()
+                .rev()
+                .chain(crate::look::Look::ALL)
+            {
+                instance.settings.set_look(look);
+                widgets = reconcile_widgets(widgets, &[instance.clone()], |_| {
+                    panic!("Look conserva entidad y estado")
+                });
+                assert_eq!(std::ptr::from_ref(widgets["board"].view.as_ref()), identity);
+            }
         }
     }
 

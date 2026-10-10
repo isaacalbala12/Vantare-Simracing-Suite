@@ -36,6 +36,16 @@ fn check_color(cx: &gpui::App) -> u32 {
     orbit::legacy_rgb(0x008d_c9ff, cx)
 }
 
+fn language_name(locale: &str) -> &'static str {
+    match locale {
+        "es" | "es-ES" => "Español",
+        "en" | "en-US" | "en-GB" => "Inglés",
+        "it" => "Italiano",
+        "pt" | "pt-BR" => "Portugués",
+        _ => "Idioma no disponible",
+    }
+}
+
 #[allow(clippy::struct_excessive_bools)] // Estado independiente de captura, filtro y despliegue.
 pub struct Engineer {
     document: Document,
@@ -434,11 +444,7 @@ impl Engineer {
                     .model
                     .report()
                     .map_or("—", |report| report.status.settings.locale.as_str());
-                let language = match locale {
-                    "es" | "es-ES" => "Español",
-                    "en" | "en-US" | "en-GB" => "Inglés",
-                    _ => "Idioma no disponible",
-                };
+                let language = language_name(locale);
                 let voice = if runtime.voice.selected_voice.is_empty() {
                     "Sin voz seleccionada"
                 } else {
@@ -1298,6 +1304,18 @@ mod tests {
             std::fs::remove_file(file).expect("limpiar");
         }
         std::fs::remove_dir(root).expect("limpiar temporal");
+    }
+
+    #[test]
+    fn observed_voice_language_names_cover_selectable_locales() {
+        assert_eq!(language_name("es"), "Español");
+        assert_eq!(language_name("es-ES"), "Español");
+        assert_eq!(language_name("en"), "Inglés");
+        assert_eq!(language_name("en-US"), "Inglés");
+        assert_eq!(language_name("it"), "Italiano");
+        assert_eq!(language_name("pt-BR"), "Portugués");
+        assert_eq!(language_name("pt"), "Portugués");
+        assert_eq!(language_name("fr"), "Idioma no disponible");
     }
 
     #[test]

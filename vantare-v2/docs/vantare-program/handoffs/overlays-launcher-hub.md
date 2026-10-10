@@ -1,16 +1,33 @@
-## #1496 — integración local de #1528 sobre ola 1 (2026-10-10)
+## #1496 — integración local de #1528 e instalador 0.0.975 (2026-10-10)
 
-Base autorizada 70170613, fuente #1528 db9bc480 (review R5 9,0335/10).
-Merge no-ff en vantareapp/isa-1496-integracion-prueba, sin delegación.
-Cuenta conserva avatar/nombre reales y acciones #1529 con hero, avatar circular y
-Display adaptable #1528; handoff acumula ambas ramas. Aviso único #1530,
-Services v5, DTO v9, fuentes retiradas y arquitectura de la ola 1 conservados.
-Merge cerrado en ffc2efe8. NSIS corrige su referencia al icono retirado build/windows:
-usa native/assets/icon.ico de #1534; sin cambiar el recurso ni el instalador real.
-Gates y build local 0.0.975 en curso, evidencia externa:
-C:/tmp/auditoria-arquitectura-v2/integracion-1528-evidence/.
-Siguiente: gates por cola y Setup Release beta con configuración dev, sin firma.
-Sin push, PR, promoción, release, publicación ni instalación real de Isaac.
+Rama vantareapp/isa-1496-integracion-prueba, base autorizada 70170613.
+Merge no-ff ffc2efe8 incorpora db9bc480 (#1528, aprobación visual aislada R5 9,0335/10).
+Dos conflictos: Cuenta conserva avatar/nombre reales y acciones #1529 con hero,
+avatar circular y Display adaptable #1528; handoff acumula ambas entregas.
+Aviso único de conexión #1530, Services v5, DTO v9 y retirada/arquitectura ola 1 preservados.
+9eb91b52 corrige NSIS para usar native/assets/icon.ico de #1534: build/windows ya no existe.
+Fuente de gates/binarios 9eb91b524cac8331eded47734dab4aec701ed5fd; árbol native
+297ccc1229ef68f781b752e1a78adfea161d7a3d. El cierre documental no modifica ese árbol.
+Por cola: fmt y Clippy workspace/all-targets -D warnings PASS, Nextest 1415/1415
+(7 skips heredados; una prueba lenta, sin fallos), lifecycle 18/18 y telemetría 21/21
+(0 skips; ACC 744,182 s), PASS. Target aislado en E:/tmp/integracion-prueba/.
+Setup local E:/tmp/beta-local/0.0.975/VantareSetup.exe: Release beta, configuración dev
+mediante el mismo loader/ruta de 0.0.974; source_dirty=false, 91 archivos, NotSigned.
+SHA256 080EC593C36A1D81773409094E282A600D337251200535E6C0433D2F4653A027.
+Packaging directo desde Bash/PowerShell 5.1 PASS: general175, beta99, config24,
+Setup50, feed9, uninstall2, guards2, MSIX sintaxis12; paquete MSIX real omitido.
+Primer Setup intentado con 0.0.974 como fixture antigua falló el assert de nombre:
+la suite exige 0.0.960. Argumento corregido, log preservado y repetición íntegra PASS.
+QA1492 retirada; datos de prueba conservados. Sin ejecutar Setup normal, tocar instalación
+real de Isaac ni clave de firma productiva; firma del feed solo con semilla de TEST.
+Sin delegación, push, PR, CI remota, promoción, release, firma ni publicación de artefactos.
+Seguimiento GitHub #1496/#1528, area:ui, Project Vantare In Review; issues abiertas.
+No QA visual nueva, interacción humana, DPI/juego/OBS/Google/portal real acreditados.
+Isaac: comprobar Cuenta/avatar/licencia estable, aviso de conexión; Calendario filtros/
+favoritos/scroll, tema/sidebar; Studio zoom/densidad y límites 1280×720/1920×1080.
+Evidencia C:/tmp/auditoria-arquitectura-v2/integracion-1528-evidence/;
+informe breve informe-integracion-1528.md. Siguiente: prueba y aceptación local de Isaac.
+
 ## #1496 — integración local de arquitectura, ola 1 (2026-10-09)
 
 Integradas en orden #1534, #1533, #1530, #1529 y #1532 sobre `5e1da3f6`,

@@ -63,6 +63,11 @@ fn byte_at(text: &str, utf16: usize) -> usize {
     text.len()
 }
 
+/// Texto para Ctrl+C/X: la selección vacía no debe tocar el portapapeles.
+fn copy_text(value: &str, selected: Range<usize>) -> Option<String> {
+    (!selected.is_empty()).then(|| value[selected].to_owned())
+}
+
 impl Input {
     pub fn new(value: String, label: &'static str, cx: &mut Context<Self>) -> Self {
         let end = value.len();
@@ -74,15 +79,6 @@ impl Input {
             reversed: false,
             marked: None,
         }
-    }
-
-    /// Reinicia la búsqueda sin reemplazar la entidad ni invalidar su foco.
-    pub fn clear(&mut self, cx: &mut Context<Self>) {
-        self.value.clear();
-        self.selected = 0..0;
-        self.reversed = false;
-        self.marked = None;
-        cx.notify();
     }
 
     fn bytes(&self, range: Range<usize>) -> Range<usize> {
@@ -127,9 +123,9 @@ impl Input {
                 self.reversed = false;
             }
             "c" | "x" if ctrl => {
-                cx.write_to_clipboard(gpui::ClipboardItem::new_string(
-                    self.value[self.selected.clone()].into(),
-                ));
+                if let Some(text) = copy_text(&self.value, self.selected.clone()) {
+                    cx.write_to_clipboard(gpui::ClipboardItem::new_string(text));
+                }
                 if key.key == "x" {
                     self.insert(None, "");
                 }
@@ -307,6 +303,13 @@ impl Render for Input {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn empty_selection_keeps_clipboard_content() {
+        assert_eq!(super::copy_text("abc", 1..1), None);
+        assert_eq!(super::copy_text("abc", 0..0), None);
+        assert_eq!(super::copy_text("abc", 0..3).as_deref(), Some("abc"));
+        assert_eq!(super::copy_text("aé🏁z", 1..3).as_deref(), Some("é"));
+    }
     #[test]
     fn shift_selection_can_expand_reverse_shrink_and_collapse_unicode() {
         let mut selected = 7..7;

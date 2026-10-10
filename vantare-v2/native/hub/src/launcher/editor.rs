@@ -905,12 +905,24 @@ impl Launcher {
         }
     }
 
+    const MAX_STEPS: usize = 128;
+    /// Aviso al llegar al tope de pasos: antes se ignoraba sin informar.
+    fn append_limit_message(steps: usize) -> Option<&'static str> {
+        (steps >= Self::MAX_STEPS).then_some("Pasos: el perfil admite como máximo 128 pasos")
+    }
     fn append_step(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         if self
             .profile_draft
             .as_ref()
-            .is_none_or(|draft| draft.steps.len() >= 128)
+            .is_none_or(|draft| draft.steps.len() >= Self::MAX_STEPS)
         {
+            if let Some(message) = Self::append_limit_message(
+                self.profile_draft
+                    .as_ref()
+                    .map_or(0, |draft| draft.steps.len()),
+            ) {
+                self.report(Err(message.into()), cx);
+            }
             return;
         }
         let step = Self::make_step(
@@ -1324,6 +1336,19 @@ fn move_step<T>(steps: &mut [T], index: usize, delta: isize) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn step_limit_reports_instead_of_silently_ignoring() {
+        assert_eq!(Launcher::append_limit_message(0), None);
+        assert_eq!(Launcher::append_limit_message(127), None);
+        assert_eq!(
+            Launcher::append_limit_message(128),
+            Some("Pasos: el perfil admite como máximo 128 pasos")
+        );
+        assert_eq!(
+            Launcher::append_limit_message(200),
+            Some("Pasos: el perfil admite como máximo 128 pasos")
+        );
+    }
     #[test]
     fn ordering_preserves_steps_and_rejects_edges() {
         let mut steps = ["LMU", "OBS", "Spotify"];

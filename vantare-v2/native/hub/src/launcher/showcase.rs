@@ -1516,6 +1516,20 @@ impl Launcher {
                 row.child(orbit::pill(label, tone, cx))
             })
     }
+    /// Orden del historial: primero el lanzamiento más reciente como instante
+    /// real; lo ilegible queda al final, como en el resumen de Inicio.
+    fn history_instant(profile: &Profile) -> Option<i64> {
+        profile.last_launched_at.as_deref().and_then(|value| {
+            chrono::DateTime::parse_from_rfc3339(value)
+                .ok()
+                .map(|when| when.timestamp_millis())
+        })
+    }
+    fn sort_history(profiles: &mut Vec<&Profile>) {
+        profiles.sort_by_key(|profile| {
+            std::cmp::Reverse(Self::history_instant(profile).unwrap_or(i64::MIN))
+        });
+    }
     pub(super) fn showcase_history(&self, compact: bool, cx: &mut Context<Self>) -> Div {
         let mut card = div()
             .flex()
@@ -1532,7 +1546,7 @@ impl Launcher {
             .iter()
             .filter(|profile| profile.last_launched_at.is_some())
             .collect();
-        profiles.sort_by(|a, b| b.last_launched_at.cmp(&a.last_launched_at));
+        Self::sort_history(&mut profiles);
         if profiles.is_empty() {
             rows = rows.child(orbit::text(
                 "Todavía no has lanzado un perfil.",
@@ -2040,6 +2054,25 @@ mod tests {
         assert!(!profile.launch_on_windows_startup);
         assert_eq!(profile.effective_policy().cancel, original_cancel);
         assert!(profile.steps.is_empty());
+    }
+    #[test]
+    fn history_orders_by_instant_across_offsets_and_pushes_unreadable_last() {
+        let mut recent = Profile::new("recent".into(), "Reciente".into());
+        recent.last_launched_at = Some("2026-07-07T17:42:00Z".into());
+        // 17:40Z: anterior al reciente aunque su texto con offset ordene después.
+        let mut earlier = Profile::new("earlier".into(), "Anterior".into());
+        earlier.last_launched_at = Some("2026-07-07T19:40:00+02:00".into());
+        let mut invalid = Profile::new("invalid".into(), "Ilegible".into());
+        invalid.last_launched_at = Some("no es una fecha".into());
+        let mut profiles = vec![&earlier, &invalid, &recent];
+        Launcher::sort_history(&mut profiles);
+        assert_eq!(
+            profiles
+                .iter()
+                .map(|profile| profile.id.as_str())
+                .collect::<Vec<_>>(),
+            ["recent", "earlier", "invalid"]
+        );
     }
     #[test]
     fn retry_is_shown_only_after_a_second_launch_event_and_ready_wins() {

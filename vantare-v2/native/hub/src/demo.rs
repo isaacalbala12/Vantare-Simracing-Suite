@@ -542,12 +542,8 @@ pub enum CaptureStrategyPage {
 
 fn strategy_capture_page(name: &str) -> Option<CaptureStrategyPage> {
     match name {
-        "strategy-asistente-origen" | "strategy-v5-asistente-inicio" => {
-            Some(CaptureStrategyPage::AssistantInicio)
-        }
-        "strategy-asistente-equipo" | "strategy-v5-asistente-combinacion" => {
-            Some(CaptureStrategyPage::AssistantCombinacion)
-        }
+        "strategy-v5-asistente-inicio" => Some(CaptureStrategyPage::AssistantInicio),
+        "strategy-v5-asistente-combinacion" => Some(CaptureStrategyPage::AssistantCombinacion),
         "strategy-v5-asistente-reglas" => Some(CaptureStrategyPage::AssistantReglas),
         "strategy-v5-asistente-pilotos" => Some(CaptureStrategyPage::AssistantPilotos),
         "strategy-v5-asistente-sesiones" => Some(CaptureStrategyPage::AssistantSesiones),
@@ -915,6 +911,21 @@ mod tests {
             assert_eq!(CaptureState::parse(name).unwrap().strategy_page, Some(page));
         }
         assert!(CaptureState::parse("ajustes-desconocidos").is_err());
+    }
+
+    #[test]
+    fn retired_aliases_have_no_strategy_capture_page() {
+        // Parse ya los rechaza; sus brazos serían inalcanzables.
+        assert!(strategy_capture_page("strategy-asistente-origen").is_none());
+        assert!(strategy_capture_page("strategy-asistente-equipo").is_none());
+        assert_eq!(
+            strategy_capture_page("strategy-v5-asistente-inicio"),
+            Some(CaptureStrategyPage::AssistantInicio)
+        );
+        assert_eq!(
+            strategy_capture_page("strategy-v5-asistente-combinacion"),
+            Some(CaptureStrategyPage::AssistantCombinacion)
+        );
     }
 
     #[test]

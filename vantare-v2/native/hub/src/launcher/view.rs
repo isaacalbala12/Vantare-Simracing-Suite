@@ -742,8 +742,17 @@ impl Launcher {
         }
     }
 
+    /// Aviso cuando el reintento no puede arrancar: el panel final conserva
+    /// sus botones durante el escaneo y antes se retornaba en silencio.
+    fn retry_wait_message(chain: bool, scanning: bool) -> Option<&'static str> {
+        (!chain && scanning).then_some("Escaneo local en curso; reintenta al terminar.")
+    }
     fn retry(&mut self, scope: super::chain::RetryScope, cx: &mut Context<Self>) {
         if self.chain.is_some() || self.scanning {
+            if let Some(message) = Self::retry_wait_message(self.chain.is_some(), self.scanning) {
+                self.status = message.into();
+                cx.notify();
+            }
             return;
         }
         let Some(profile) = self.last_profile.clone() else {
@@ -1010,5 +1019,20 @@ mod close_tests {
             }
         });
         assert_eq!(result, Err("falla B".to_owned()));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn retry_during_scan_reports_instead_of_silently_returning() {
+        assert_eq!(Launcher::retry_wait_message(false, false), None);
+        assert_eq!(Launcher::retry_wait_message(true, false), None);
+        assert_eq!(Launcher::retry_wait_message(true, true), None);
+        assert_eq!(
+            Launcher::retry_wait_message(false, true),
+            Some("Escaneo local en curso; reintenta al terminar.")
+        );
     }
 }

@@ -1036,6 +1036,7 @@ fn create_engineer(engineer: Engineer, cx: &mut App) -> Entity<Engineer> {
 struct Loaded {
     preview_fixtures: Option<[vantare_domain::Snapshot; 5]>,
     appearance: settings::appearance::Store,
+    appearance_error: Option<String>,
     prepared: Prepared,
     studio: PreparedStudio,
     calendar: Calendar,
@@ -1069,6 +1070,7 @@ impl Hub {
         let Loaded {
             preview_fixtures,
             appearance,
+            appearance_error,
             prepared,
             studio: prepared_studio,
             calendar,
@@ -1167,6 +1169,9 @@ impl Hub {
             None => Strategy::new(strategy_dir, cx),
         });
         let mut settings = settings::State::new(prefs, appearance, testing_dir.clone(), window, cx);
+        // Un appearance.json ilegible abre con valores por defecto y deja el
+        // motivo visible en Ajustes, en lugar de tumbar el arranque.
+        settings.status = appearance_error;
         if let Some(page) = capture.as_ref().and_then(|capture| capture.settings_page) {
             settings.select_demo_page(page);
         }
@@ -1274,8 +1279,8 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
     if let (Some(demo), Some(capture)) = (&mut options.demo, &options.capture) {
         demo.apply_capture(capture)?;
     }
-    let mut appearance =
-        settings::appearance::Store::load(options.data_dir.join("appearance.json"))?;
+    let (mut appearance, appearance_error) =
+        settings::appearance::Store::load_or_default(&options.data_dir.join("appearance.json"));
     if let Some(settings) = options.capture.as_ref().and(options.capture_appearance) {
         appearance.settings = settings;
     }
@@ -1310,6 +1315,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             .map(|_| foundations::capture_photos())
             .transpose()?,
         appearance,
+        appearance_error,
         analysis: prepare_analysis(&options)?,
         prepared: Prepared::load(&options.data_dir, options.scene)?,
         studio: PreparedStudio::load(options.layout)?,

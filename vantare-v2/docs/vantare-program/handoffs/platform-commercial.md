@@ -2,24 +2,40 @@
 
 ## #1568 · carrera de cierre de servicios durante acceso (2026-10-10)
 
-Base `origin/nightly ca17545f`, rama `vantareapp/isa-1568-acceso-al-abrir-lmu`.
-Regresión determinista RED en `9677362a`: el timer observa juego/sin acceso,
-comienza una operación de acceso y el cierre no revalida esa protección.
-`game_exit_rechecks_access_started_after_the_live_decision` falla al exigir
-conservar el auxiliar/cancelación; log `C:/tmp/ola2/evidence-1568/red.log`.
-Corrección: admisión protegida antes de esperar estado, cancelación
-serializada con admisión y revalidación tras adquirir estado. Otros comandos
-remotos mantienen cancelación al entrar en juego; ningún TTL/derecho se amplía.
-Instalación real leída solamente: activa 0.0.975/beta, fuente `f49d71f4`.
-Los logs no contienen decisiones de licencia; pendiente correlación humana con
-los pasos DUDA del buzón `C:/tmp/buzon/1568.md`. La regresión demuestra la carrera,
-pero todavía no demuestra que sea la causa del incidente de Isaac con LMU.
-GREEN 3/3: acceso posterior a decisión de cierre, acceso con mutex ocupado y
-cancelación de E/S ajena al acceso; log `C:/tmp/ola2/evidence-1568/green.log`.
-Siguiente: gates por cola, informe y push sin PR.
-Issue #1568 abierta, area:licencias, Project Vantare/In Progress, sin milestone.
-Sin PR/merge/promoción/release ni cambios en instalación, producción o secretos.
+Rama `vantareapp/isa-1568-acceso-al-abrir-lmu`, base `origin/nightly ca17545f`.
+RED `9677362a`: el timer observa live/sin acceso; comienza un comando de acceso
+y el cierre usa la decisión antigua sin revalidar. La regresión exige conservar
+auxiliar/cancelación y falla antes del arreglo (`red.log`). Puede cancelar E/S o
+cerrar el proceso que conserva el callback OAuth, perdiendo el intento en memoria.
 
+Corrección compartida `8957d9f6`, formato `a41f5945`: admisión de Status/login/
+sondeo/renovación protegida antes del mutex, cancelación serializada con admisión
+y revalidación al adquirir estado. Otros comandos remotos conservan cancelación
+al entrar en juego; ventana OAuth pendiente de diez minutos, TTL, caducidades,
+revocación, DTO y dependencias intactos. Tres regresiones GREEN 3/3: acceso tras
+la decisión, acceso con mutex ocupado y cancelación de E/S ajena al acceso.
+
+Código probado/push `a41f59457e4fa779598dadcd50492878c7f0c251`; árbol native
+`629900af1eedeedf8b7a9e49ba11deec0981434e`. Por cola: fmt y Clippy workspace/
+all-targets `-D warnings` PASS; Nextest 1577/1577 (7 skips del perfil, 1 slow),
+lifecycle 18/18 y telemetría 25/25 (0 skips, 3 slow) PASS. Última comparación
+ACC 894 s; se conserva íntegra. Corpus 456/456 huellas y diff-check PASS.
+
+Datos de tests aislados por LOCALAPPDATA/VANTARE_NATIVE_DATA_ROOT; DuckDB oficial
+solo lectura. Intentos conservados: fmt inicial con aserciones sin formatear;
+Nextest 707 PASS/1 FAIL por barras `/` del runner en cmd/mklink, resuelto únicamente
+normalizando la raíz aislada con GetFullPath (Launcher/aserciones intactos).
+El intento anterior a aislamiento se detuvo todavía en cola sin ejecutar tests.
+Evidencia `C:/tmp/ola2/evidence-1568/`; informe `C:/tmp/ola2/informe-1568.md`;
+buzón `C:/tmp/buzon/1568.md`. Sin capturas/ventanas ni cambios en instalación real.
+
+Manifiesto local activo leído: 0.0.975/beta, fuente `f49d71f4`, que contiene esta
+carrera. Los logs existentes no acreditan la decisión de licencia en el fallo
+humano. La carrera queda demostrada/corregida en código; su correlación con el
+incidente real requiere los pasos DUDA del buzón. #1568 queda abierta para revisión,
+area:licencias, Project Vantare/In Review, sin milestone comprometido.
+Rama publicada, sin PR por brief ni CI remoto acreditado. No merge/promoción,
+release, producción, .env, secretos, subagentes ni cambios de cuenta real.
 
 ## #1536 · destino real de accesos directos en CI Windows (2026-10-10)
 

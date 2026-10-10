@@ -21,7 +21,9 @@ Visibilidad: sesión + fuera de pista con Y para los 18 widgets y durante pausa;
 layouts filtrados piden SessionInfo aunque solo contengan Pedales.
 Solo cambio de ancho natural invalida Screen; ninguna coordenada cambia.
 Riesgos: falta cerrar Nextest/telemetría y CI. Sin prueba física LMU/ACC/OBS.
-Los tamaños explícitos de frame conservan su contrato de geometría.
+D12 aclarada por el orquestador: ancho por sesión solo en tamaño automático;
+el tamaño explícito del usuario se respeta y el ancla permanece fija en ambos.
+Test de Studio explícito 800×400 por tres pestañas PASS; fmt/Clippy PASS (8.27s).
 #1561 P1-A conserva el plan de partición del Studio preexistente >2000 LOC;
 el código nuevo va en módulo de sesiones. #1562 pendiente de merge en nightly;
 cuando entre se incorpora origin/nightly mediante merge, sin rebase.

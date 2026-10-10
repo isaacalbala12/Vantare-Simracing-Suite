@@ -15,8 +15,8 @@ Los presets D7 se aplican al crear una instancia en Studio/layout inicial o
 al restablecer una pestaña; no reemplazan los settings guardados.
 Practice y Other (warmup incluido) usan Práctica, Qualifying usa Qualy y
 Race usa Carrera; al arrancar sin tipo las columnas son las de Carrera.
-El ancho natural cambia con las columnas; las coordenadas del layout no cambian.
-Un tamaño explícito de frame sigue obedeciendo al contrato de geometría.
+En tamaño automático el ancho natural cambia con las columnas. El tamaño
+explícito del usuario se respeta; el ancla no cambia en ninguno de los dos casos.
 La demanda reúne las señales de las tres pestañas, sin cambiar su cadencia.
 
 `profile_import` traduce sessionTypes practice/warmup, qualifying/qual y

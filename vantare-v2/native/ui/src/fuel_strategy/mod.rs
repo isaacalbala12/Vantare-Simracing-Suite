@@ -287,7 +287,7 @@ impl Widget {
                 visual: v,
                 motion: m,
             } => v.wake(m, Instant::now()) != Wake::Idle,
-            _ => false,
+            Presentation::Eficiencia { .. } => false,
         }
     }
 }

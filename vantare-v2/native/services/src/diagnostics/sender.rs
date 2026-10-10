@@ -74,9 +74,11 @@ fn flush_until(
                 let properties = serde_json::json!({"code": "native_panic", "version": version, "os": std::env::consts::OS, "stack": crash.frames.into_iter().take(64).collect::<Vec<_>>()});
                 ("crash".to_owned(), properties)
             } else {
-                let usage: Usage = match serde_json::from_slice(&bytes) {
-                    Ok(usage) => usage,
-                    Err(_) => continue,
+                let usage: Usage = if let Ok(usage) = serde_json::from_slice(&bytes) {
+                    usage
+                } else {
+                    fs::remove_file(&path).map_err(|_| Error::Storage)?;
+                    continue;
                 };
                 if !usage.valid() {
                     fs::remove_file(&path).map_err(|_| Error::Storage)?;
@@ -172,6 +174,37 @@ mod tests {
     use super::*;
     use crate::diagnostics::{PRIVACY_FILE, enqueue_usage, write_crash};
     use crate::test_http::Server;
+
+    #[test]
+    fn regression_1555_partial_usage_releases_all_slots_without_sending() {
+        let root = super::super::tests::root();
+        fs::write(
+            root.join(PRIVACY_FILE),
+            br#"{"crashes":false,"usage":true,"crashes_decided":true}"#,
+        )
+        .expect("consent");
+        fs::create_dir(root.join("usage")).expect("queue");
+        for slot in 0..QUEUE_LIMIT {
+            fs::write(
+                root.join("usage").join(format!("{slot:02}.json")),
+                b"{\"binary\":",
+            )
+            .expect("partial");
+        }
+        let server = Server::start(vec![]);
+        flush(&root, &Http::default(), &server.base, Some("public-test")).expect("flush");
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        assert_eq!(fs::read_dir(root.join("usage")).expect("queue").count(), 0);
+        enqueue_usage(
+            &root,
+            &Usage::LiveSessionStarted {
+                simulator: "lmu".into(),
+            },
+        )
+        .expect("slot reusable");
+        fs::remove_dir_all(root).expect("cleanup");
+    }
 
     #[test]
     fn regression_1542_invalid_usage_does_not_block_later_slots() {

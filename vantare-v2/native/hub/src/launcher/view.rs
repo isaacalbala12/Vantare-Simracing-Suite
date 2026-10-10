@@ -128,12 +128,7 @@ fn resident_is_fresh(status: &vantare_ipc::launcher::Status) -> bool {
 fn hotkey_status_text(status: Option<&vantare_ipc::launcher::Status>, id: &str) -> String {
     status
         .filter(|status| resident_is_fresh(status))
-        .and_then(|status| {
-            status
-                .profiles
-                .iter()
-                .find(|profile| profile.profile == id)
-        })
+        .and_then(|status| status.profiles.iter().find(|profile| profile.profile == id))
         .map_or_else(
             || "Registro no confirmado · abre Vantare desde el instalador".into(),
             |registration| {

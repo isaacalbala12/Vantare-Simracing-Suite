@@ -682,15 +682,13 @@ impl Strategy {
             .flex()
             .items_center()
             .justify_between()
-            .child(
-                previous.on_click(cx.listener(|this, _, _, cx| {
-                    if this.data.page == 0 {
-                        return;
-                    }
-                    this.data.change_page(this.data.page.saturating_sub(1));
-                    cx.notify();
-                })),
-            )
+            .child(previous.on_click(cx.listener(|this, _, _, cx| {
+                if this.data.page == 0 {
+                    return;
+                }
+                this.data.change_page(this.data.page.saturating_sub(1));
+                cx.notify();
+            })))
             .child(orbit::text(
                 page_label(range, total),
                 12.0,
@@ -698,15 +696,13 @@ impl Strategy {
                 orbit::ink_3(cx),
                 cx,
             ))
-            .child(
-                next.on_click(cx.listener(move |this, _, _, cx| {
-                    if this.data.page.saturating_add(1) >= this.data.page_count() {
-                        return;
-                    }
-                    this.data.change_page(this.data.page.saturating_add(1));
-                    cx.notify();
-                })),
-            );
+            .child(next.on_click(cx.listener(move |this, _, _, cx| {
+                if this.data.page.saturating_add(1) >= this.data.page_count() {
+                    return;
+                }
+                this.data.change_page(this.data.page.saturating_add(1));
+                cx.notify();
+            })));
         pager.into_any_element()
     }
 

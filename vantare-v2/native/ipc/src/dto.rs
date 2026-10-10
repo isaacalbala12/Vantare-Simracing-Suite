@@ -595,52 +595,22 @@ impl From<&d::Snapshot> for SnapshotDto {
 
 impl SnapshotDto {
     pub(crate) fn selected(s: &d::Snapshot, delivered: &crate::Demand) -> Result<Self, Error> {
-        // No construir y borrar 47 filas cuando solo vencen los pedales o el reloj.
-        let mut dto = Self::encode(s, delivered.car_data(), delivered.player_data());
+        // Codifica solo lo entregado: no clona 47 filas completas para borrarlas
+        // después en `filter`. Las identidades exigidas se conservan siempre.
+        let mut dto = Self::encode_selected(s, delivered);
         dto.filter(delivered)?;
         Ok(dto)
     }
 
     fn encode(s: &d::Snapshot, cars: bool, has_player: bool) -> Self {
-        let c = &s.state.capabilities;
         SnapshotDto {
             version: VERSION,
             epoch: s.epoch,
             sequence: s.sequence,
-            origin: OriginDto {
-                simulator: s.origin.source.simulator.to_owned(),
-                kind: match s.origin.source.kind {
-                    d::SourceKind::Live => SourceKindDto::Live,
-                    d::SourceKind::Replay => SourceKindDto::Replay,
-                },
-                source_time: s.origin.source_time,
-                received_at: s.origin.received_at,
-            },
+            origin: origin(s),
             state: StateDto {
-                source_state: match s.state.source_state {
-                    d::SourceState::Waiting => SourceStateDto::Waiting,
-                    d::SourceState::Live => SourceStateDto::Live,
-                    d::SourceState::Paused => SourceStateDto::Paused,
-                    d::SourceState::Stale => SourceStateDto::Stale,
-                    d::SourceState::Lost => SourceStateDto::Lost,
-                },
-                capabilities: CapabilitiesDto {
-                    session_clock: cap(c.session_clock),
-                    positions: cap(c.positions),
-                    lap_times: cap(c.lap_times),
-                    gaps: cap(c.gaps),
-                    pit_status: cap(c.pit_status),
-                    flags: cap(c.flags),
-                    spatial: cap(c.spatial),
-                    driver_inputs: cap(c.driver_inputs),
-                    powertrain: cap(c.powertrain),
-                    fuel: cap(c.fuel),
-                    delta: cap(c.delta),
-                    sectors: cap(c.sectors),
-                    lap_progress: cap(c.lap_progress),
-                    weather: cap(c.weather),
-                    damage: cap(c.damage),
-                },
+                source_state: source_state(s.state.source_state),
+                capabilities: capabilities(&s.state.capabilities),
                 session: session(&s.state.session),
                 flags: q(&s.state.flags, |fs| fs.iter().map(flag).collect()),
                 cars: if cars {
@@ -655,6 +625,308 @@ impl SnapshotDto {
                 },
             },
         }
+    }
+
+    fn encode_selected(s: &d::Snapshot, delivered: &crate::Demand) -> Self {
+        use crate::Signal;
+        SnapshotDto {
+            version: VERSION,
+            epoch: s.epoch,
+            sequence: s.sequence,
+            origin: origin(s),
+            state: StateDto {
+                source_state: source_state(s.state.source_state),
+                capabilities: capabilities(&s.state.capabilities),
+                session: session_selected(&s.state.session, delivered),
+                flags: if delivered.contains(Signal::Flags) {
+                    q(&s.state.flags, |fs| fs.iter().map(flag).collect())
+                } else {
+                    QualityDto::NotRequested
+                },
+                cars: if delivered.car_data() {
+                    s.state
+                        .cars
+                        .iter()
+                        .map(|car| car_selected(car, delivered))
+                        .collect()
+                } else {
+                    Vec::new()
+                },
+                player: if delivered.player_data() {
+                    s.state
+                        .player
+                        .as_ref()
+                        .map(|p| player_selected(p, delivered))
+                } else {
+                    None
+                },
+            },
+        }
+    }
+}
+
+fn origin(s: &d::Snapshot) -> OriginDto {
+    OriginDto {
+        simulator: s.origin.source.simulator.to_owned(),
+        kind: match s.origin.source.kind {
+            d::SourceKind::Live => SourceKindDto::Live,
+            d::SourceKind::Replay => SourceKindDto::Replay,
+        },
+        source_time: s.origin.source_time,
+        received_at: s.origin.received_at,
+    }
+}
+
+fn source_state(state: d::SourceState) -> SourceStateDto {
+    match state {
+        d::SourceState::Waiting => SourceStateDto::Waiting,
+        d::SourceState::Live => SourceStateDto::Live,
+        d::SourceState::Paused => SourceStateDto::Paused,
+        d::SourceState::Stale => SourceStateDto::Stale,
+        d::SourceState::Lost => SourceStateDto::Lost,
+    }
+}
+
+fn capabilities(c: &d::Capabilities) -> CapabilitiesDto {
+    CapabilitiesDto {
+        session_clock: cap(c.session_clock),
+        positions: cap(c.positions),
+        lap_times: cap(c.lap_times),
+        gaps: cap(c.gaps),
+        pit_status: cap(c.pit_status),
+        flags: cap(c.flags),
+        spatial: cap(c.spatial),
+        driver_inputs: cap(c.driver_inputs),
+        powertrain: cap(c.powertrain),
+        fuel: cap(c.fuel),
+        delta: cap(c.delta),
+        sectors: cap(c.sectors),
+        lap_progress: cap(c.lap_progress),
+        weather: cap(c.weather),
+        damage: cap(c.damage),
+    }
+}
+
+// --- dominio → DTO selectivo -------------------------------------------------
+// `qs` solo codifica la señal pedida; el resto queda `NotRequested` y `filter`
+// lo valida. Mismo reparto señal→campos que `restore`.
+
+fn qs<T, U>(
+    quality: &d::Quality<T>,
+    signal: crate::Signal,
+    delivered: &crate::Demand,
+    f: impl FnOnce(&T) -> U,
+) -> QualityDto<U> {
+    if delivered.contains(signal) {
+        q(quality, f)
+    } else {
+        QualityDto::NotRequested
+    }
+}
+
+fn session_selected(s: &d::Session, delivered: &crate::Demand) -> SessionDto {
+    use crate::Signal;
+    SessionDto {
+        id: s.id.0,
+        kind: qs(&s.kind, Signal::SessionInfo, delivered, |k| match k {
+            d::SessionKind::Practice => SessionKindDto::Practice,
+            d::SessionKind::Qualifying => SessionKindDto::Qualifying,
+            d::SessionKind::Race => SessionKindDto::Race,
+            d::SessionKind::Other(name) => SessionKindDto::Other(name.clone()),
+        }),
+        state: qs(&s.state, Signal::SessionInfo, delivered, |st| match st {
+            d::SessionState::Preparing => SessionStateDto::Preparing,
+            d::SessionState::Running => SessionStateDto::Running,
+            d::SessionState::Interrupted => SessionStateDto::Interrupted,
+            d::SessionState::Finished => SessionStateDto::Finished,
+        }),
+        elapsed_s: qs(&s.elapsed_s, Signal::SessionClock, delivered, copied),
+        remaining_s: qs(&s.remaining_s, Signal::SessionClock, delivered, copied),
+        track_name: qs(&s.track_name, Signal::TrackName, delivered, String::clone),
+        laps_remaining: qs(&s.laps_remaining, Signal::LapsRemaining, delivered, copied),
+        laps_total: qs(&s.laps_total, Signal::SessionInfo, delivered, copied),
+        track_length_m: qs(&s.track_length_m, Signal::TrackLength, delivered, copied),
+        weather_air_temperature_k: qs(
+            &s.weather.air_temperature_k,
+            Signal::Weather,
+            delivered,
+            copied,
+        ),
+        weather_track_temperature_k: qs(
+            &s.weather.track_temperature_k,
+            Signal::Weather,
+            delivered,
+            copied,
+        ),
+        weather_wind_speed_mps: qs(
+            &s.weather.wind_speed_mps,
+            Signal::Weather,
+            delivered,
+            copied,
+        ),
+        weather_wind_direction_rad: qs(
+            &s.weather.wind_direction_rad,
+            Signal::Weather,
+            delivered,
+            copied,
+        ),
+        weather_rain: qs(&s.weather.rain, Signal::Weather, delivered, copied),
+        weather_track_wetness: qs(&s.weather.track_wetness, Signal::Weather, delivered, copied),
+        weather_pressure_pa: qs(&s.weather.pressure_pa, Signal::Weather, delivered, copied),
+    }
+}
+
+fn car_selected(c: &d::Car, delivered: &crate::Demand) -> CarDto {
+    use crate::Signal;
+    CarDto {
+        id: c.id.0,
+        number: c.number.clone(),
+        vehicle: c.vehicle.clone(),
+        driver_id: c.driver.id.0,
+        driver_name: c.driver.name.clone(),
+        class: c.class.as_ref().map(|k| (k.id.0, k.name.clone())),
+        position: qs(&c.position, Signal::Positions, delivered, copied),
+        class_position: qs(&c.class_position, Signal::Positions, delivered, copied),
+        laps: qs(&c.laps, Signal::LapCount, delivered, copied),
+        last_lap_s: qs(&c.last_lap_s, Signal::LapTimes, delivered, copied),
+        best_lap_s: qs(&c.best_lap_s, Signal::LapTimes, delivered, copied),
+        estimated_lap_s: qs(&c.estimated_lap_s, Signal::LapTimes, delivered, copied),
+        last_sectors_s: if delivered.contains(Signal::Sectors) {
+            c.last_sectors_s.iter().map(|s| q(s, copied)).collect()
+        } else {
+            Vec::new()
+        },
+        gap_leader: qs(&c.gap_leader, Signal::Gaps, delivered, gap),
+        gap_ahead: qs(&c.gap_ahead, Signal::Gaps, delivered, gap),
+        gap_class_leader: qs(&c.gap_class_leader, Signal::ClassGaps, delivered, gap),
+        gap_class_ahead: qs(&c.gap_class_ahead, Signal::ClassGaps, delivered, gap),
+        relative_s: qs(&c.relative_s, Signal::Relative, delivered, copied),
+        relative_laps: qs(&c.relative_laps, Signal::Relative, delivered, copied),
+        lap_distance_m: qs(&c.lap_distance_m, Signal::LapProgress, delivered, copied),
+        lap_elapsed_s: qs(&c.lap_elapsed_s, Signal::LapProgress, delivered, copied),
+        current_sector: qs(&c.current_sector, Signal::Sectors, delivered, copied),
+        in_pits: qs(&c.in_pits, Signal::PitStatus, delivered, copied),
+        pose: qs(&c.pose, Signal::Spatial, delivered, |p| PoseDto {
+            x_m: p.x_m,
+            y_m: p.y_m,
+            yaw_rad: p.yaw_rad,
+        }),
+        velocity_mps: qs(&c.velocity_mps, Signal::Velocity, delivered, copied),
+        pending_penalties: qs(&c.pending_penalties, Signal::Penalties, delivered, copied),
+        grid_position: qs(&c.grid_position, Signal::Positions, delivered, copied),
+        pit_stops: qs(&c.pit_stops, Signal::PitStatus, delivered, copied),
+        tyre_compound: qs(
+            &c.tyre_compound,
+            Signal::PitStatus,
+            delivered,
+            |t| match t {
+                d::TyreCompound::Soft => TyreCompoundDto::Soft,
+                d::TyreCompound::Medium => TyreCompoundDto::Medium,
+                d::TyreCompound::Hard => TyreCompoundDto::Hard,
+                d::TyreCompound::Wet => TyreCompoundDto::Wet,
+            },
+        ),
+        best_sectors_s: if delivered.contains(Signal::Sectors) {
+            c.best_sectors_s.iter().map(|s| q(s, copied)).collect()
+        } else {
+            Vec::new()
+        },
+        current_sectors_s: if delivered.contains(Signal::Sectors) {
+            c.current_sectors_s.iter().map(|s| q(s, copied)).collect()
+        } else {
+            Vec::new()
+        },
+        driver_rating: qs(&c.driver_rating, Signal::Cars, delivered, |r| match r {
+            d::DriverRating::Bronze => DriverRatingDto::Bronze,
+            d::DriverRating::Silver => DriverRatingDto::Silver,
+            d::DriverRating::Gold => DriverRatingDto::Gold,
+            d::DriverRating::Platinum => DriverRatingDto::Platinum,
+        }),
+        safety_rating: qs(&c.safety_rating, Signal::Cars, delivered, copied),
+        relative_trend_s_per_lap: qs(
+            &c.relative_trend_s_per_lap,
+            Signal::Relative,
+            delivered,
+            copied,
+        ),
+    }
+}
+
+fn player_selected(p: &d::Player, delivered: &crate::Demand) -> PlayerDto {
+    use crate::Signal;
+    let t = &p.telemetry;
+    PlayerDto {
+        car: p.car.0,
+        throttle: qs(&t.throttle, Signal::Pedals, delivered, copied),
+        brake: qs(&t.brake, Signal::Pedals, delivered, copied),
+        clutch: qs(&t.clutch, Signal::Clutch, delivered, copied),
+        steering: qs(&t.steering, Signal::Steering, delivered, copied),
+        gear: qs(&t.gear, Signal::Powertrain, delivered, copied),
+        speed_mps: qs(&t.speed_mps, Signal::Powertrain, delivered, copied),
+        engine_speed_rad_s: qs(&t.engine_speed_rad_s, Signal::Powertrain, delivered, copied),
+        fuel_level_l: qs(&p.fuel.level_l, Signal::FuelLevel, delivered, copied),
+        fuel_capacity_l: qs(&p.fuel.capacity_l, Signal::FuelLevel, delivered, copied),
+        fuel_per_lap_l: qs(&p.fuel.per_lap_l, Signal::FuelEstimate, delivered, copied),
+        fuel_laps_left: qs(&p.fuel.laps_left, Signal::FuelEstimate, delivered, copied),
+        fuel_history: if delivered.contains(Signal::FuelEstimate) {
+            p.fuel.history.iter().flatten().copied().collect()
+        } else {
+            Vec::new()
+        },
+        delta_best_s: qs(&p.delta_best_s, Signal::Delta, delivered, copied),
+        pit_limiter_active: qs(&p.pit_limiter_active, Signal::PitStatus, delivered, copied),
+        pit_stop_stopped: qs(&p.pit_stop_stopped, Signal::PitStatus, delivered, copied),
+        pit_loss_s: qs(&p.pit_loss_s, Signal::PitStatus, delivered, copied),
+        fuel_energy: qs(&p.fuel.energy, Signal::FuelLevel, delivered, copied),
+        fuel_energy_per_lap: qs(
+            &p.fuel.energy_per_lap,
+            Signal::FuelEstimate,
+            delivered,
+            copied,
+        ),
+        fuel_lap_projection_l: qs(
+            &p.fuel.lap_projection_l,
+            Signal::FuelEstimate,
+            delivered,
+            copied,
+        ),
+        pit_refuel_target_l: qs(
+            &p.pit_service.refuel_target_l,
+            Signal::PitStatus,
+            delivered,
+            copied,
+        ),
+        pit_refuel_added_l: qs(
+            &p.pit_service.refuel_added_l,
+            Signal::PitStatus,
+            delivered,
+            copied,
+        ),
+        pit_service_remaining_s: qs(
+            &p.pit_service.remaining_s,
+            Signal::PitStatus,
+            delivered,
+            copied,
+        ),
+        pit_tyres: qs(&p.pit_service.tyres, Signal::PitStatus, delivered, copied),
+        stint_laps: qs(&p.stint.laps, Signal::PitStatus, delivered, copied),
+        stint_elapsed_s: qs(&p.stint.elapsed_s, Signal::PitStatus, delivered, copied),
+        delta_optimal_s: qs(&p.delta_optimal_s, Signal::Delta, delivered, copied),
+        delta_leader_s: qs(&p.delta_leader_s, Signal::Delta, delivered, copied),
+        lap_invalid: qs(&p.lap_invalid, Signal::Delta, delivered, copied),
+        damage_aero: qs(&p.damage.aero, Signal::Damage, delivered, copied),
+        damage_body: qs(&p.damage.body, Signal::Damage, delivered, copied),
+        damage_suspension: qs(&p.damage.suspension, Signal::Damage, delivered, copied),
+        damage_tyre_wear: if delivered.contains(Signal::Damage) {
+            p.damage.tyre_wear.map(|v| q(&v, copied))
+        } else {
+            [
+                QualityDto::NotRequested,
+                QualityDto::NotRequested,
+                QualityDto::NotRequested,
+                QualityDto::NotRequested,
+            ]
+        },
     }
 }
 
@@ -962,11 +1234,7 @@ fn ucar_ref(c: &CarDto) -> d::Car {
             TyreCompoundDto::Wet => d::TyreCompound::Wet,
         }),
         best_sectors_s: c.best_sectors_s.iter().map(|s| uq_ref(s, id)).collect(),
-        current_sectors_s: c
-            .current_sectors_s
-            .iter()
-            .map(|s| uq_ref(s, id))
-            .collect(),
+        current_sectors_s: c.current_sectors_s.iter().map(|s| uq_ref(s, id)).collect(),
         driver_rating: uq_ref(&c.driver_rating, |r| match r {
             DriverRatingDto::Bronze => d::DriverRating::Bronze,
             DriverRatingDto::Silver => d::DriverRating::Silver,
@@ -1385,5 +1653,43 @@ mod demand_tests {
         let by_ref = d::Snapshot::try_from(&dto).expect("decodificación por referencia");
         let owned = d::Snapshot::try_from(dto).expect("decodificación por valor");
         assert_eq!(by_ref, owned);
+    }
+
+    #[test]
+    fn selected_encodes_only_delivered_car_signals_and_keeps_identities() {
+        let source = crate::codec::tests::rich_snapshot(1, 1);
+        let mut delivered = Demand::default();
+        delivered.request(Signal::Gaps, 250);
+        let dto = SnapshotDto::selected(&source, &delivered).expect("selección");
+        assert_eq!(dto.state.cars.len(), source.state.cars.len());
+        for (car, original) in dto.state.cars.iter().zip(&source.state.cars) {
+            assert_eq!((car.id, car.number.as_str(), car.vehicle.as_str()), {
+                (
+                    original.id.0,
+                    original.number.as_str(),
+                    original.vehicle.as_str(),
+                )
+            });
+            assert!(!matches!(car.gap_leader, QualityDto::NotRequested));
+            assert!(!matches!(car.gap_ahead, QualityDto::NotRequested));
+            assert!(matches!(car.position, QualityDto::NotRequested));
+            assert!(matches!(car.best_lap_s, QualityDto::NotRequested));
+            assert!(car.last_sectors_s.is_empty());
+            assert!(matches!(car.pose, QualityDto::NotRequested));
+        }
+        let json = serde_json::to_string(&dto).expect("JSON");
+        assert!(!json.contains("best_lap_s") && !json.contains("last_sectors_s"));
+        let full = serde_json::to_string(&SnapshotDto::from(&source)).expect("JSON completo");
+        assert!(json.len() < full.len());
+    }
+
+    #[test]
+    fn selected_with_all_signals_matches_the_full_encoding() {
+        let source = crate::codec::tests::rich_snapshot(1, 1);
+        let partial = SnapshotDto::selected(&source, &Demand::all()).expect("selección");
+        assert_eq!(
+            serde_json::to_string(&partial).expect("JSON parcial"),
+            serde_json::to_string(&SnapshotDto::from(&source)).expect("JSON completo"),
+        );
     }
 }

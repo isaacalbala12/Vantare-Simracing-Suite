@@ -1,20 +1,21 @@
 //! Standings en el sistema de diseño Vantare (#1497), según el catálogo r10b.
 //!
-//! El ViewModel es puro (`vantare_domain::standings_vantare`); aquí solo se
+//! El ViewModel es puro (`vantare_domain::standings`); aquí solo se
 //! decide la geometría y se pinta con el kit Vantare (`crate::vantare`). Los
 //! valores visuales viven en `styles/vantare.json`.
 
+use super::motion::Motion;
 use super::{Accent, Look};
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::{rect, text};
 use crate::vantare::columns::ColumnBoxes;
-use crate::vantare::motion::{Flash, Motion, Sample};
+use crate::vantare::motion::{Flash, Sample};
 use crate::vantare::paint::{BOX, Face, Kit, WHITE, estimate, round_rect, transparent};
 use crate::vantare::style::{ClassColors, Color, Style, Variant, with_opacity};
 use gpui::{App, BorderStyle, Corners, Edges, px, quad};
 use std::sync::Arc;
 use vantare_domain::format::{Language, PLACEHOLDER};
-use vantare_domain::standings_vantare::{Banner, Board, Mark, Pit, Row};
+use vantare_domain::standings::{Banner, Board, Mark, Pit, Row};
 use vantare_domain::{SourceState, TyreCompound};
 
 // ---------------------------------------------------------------------------
@@ -382,6 +383,8 @@ fn rows(board: &Board, options: &Options) -> Vec<(usize, usize)> {
 }
 
 fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
+    #[cfg(feature = "parity-capture")]
+    crate::benchmark::mark(crate::benchmark::Work::Plan);
     let variant = options.variant(style);
     let g = &style.geometry;
     let shown = board.filter(|b| !waiting(Some(b)));
@@ -440,29 +443,101 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
     }
 }
 
+// Solo valores consumidos por este pintor; los campos de otros Looks no invalidan su caché.
+fn same_board(a: &Board, b: &Board) -> bool {
+    (
+        a.source_state,
+        &a.session,
+        &a.lap,
+        a.final_lap,
+        &a.remaining,
+        &a.banner,
+        a.player_present,
+        a.player_in_pits,
+        &a.fastest,
+        &a.track_temperature,
+        &a.surface,
+    ) == (
+        b.source_state,
+        &b.session,
+        &b.lap,
+        b.final_lap,
+        &b.remaining,
+        &b.banner,
+        b.player_present,
+        b.player_in_pits,
+        &b.fastest,
+        &b.track_temperature,
+        &b.surface,
+    ) && a.groups.len() == b.groups.len()
+        && a.groups.iter().zip(&b.groups).all(|(a, b)| {
+            (&a.class, &a.short, a.cars, &a.best_lap) == (&b.class, &b.short, b.cars, &b.best_lap)
+                && a.rows.len() == b.rows.len()
+                && a.rows.iter().zip(&b.rows).all(|(a, b)| {
+                    (
+                        a.id,
+                        &a.position,
+                        a.gained,
+                        &a.number,
+                        &a.driver,
+                        &a.vehicle,
+                        a.compound,
+                        a.pit,
+                    ) == (
+                        b.id,
+                        &b.position,
+                        b.gained,
+                        &b.number,
+                        &b.driver,
+                        &b.vehicle,
+                        b.compound,
+                        b.pit,
+                    ) && (
+                        &a.sectors,
+                        &a.last_lap,
+                        &a.best_lap,
+                        a.best_mark,
+                        &a.gap,
+                        &a.interval,
+                        a.is_player,
+                    ) == (
+                        &b.sectors,
+                        &b.last_lap,
+                        &b.best_lap,
+                        b.best_mark,
+                        &b.gap,
+                        &b.interval,
+                        b.is_player,
+                    )
+                })
+        })
+}
+
 // ---------------------------------------------------------------------------
 // Estado del widget
 // ---------------------------------------------------------------------------
 
 #[derive(Clone)]
-pub(crate) struct State {
-    pub options: Options,
+pub(crate) struct Visual {
+    pub options: Arc<Options>,
     pub style: Arc<Style>,
-    pub board: Option<Board>,
-    plan: Plan,
-    motion: Motion,
+    pub board: Option<Arc<Board>>,
+    plan: Arc<Plan>,
 }
 
-impl State {
+impl Visual {
+    #[cfg(test)]
+    pub(super) fn plan_identity(&self) -> *const () {
+        Arc::as_ptr(&self.plan).cast()
+    }
     pub(crate) fn new(options: Options) -> Self {
         let style = Style::compiled();
         let plan = plan(None, &options, &style);
         Self {
-            options,
+            options: Arc::new(options),
             style,
             board: None,
-            plan,
-            motion: Motion::default(),
+            plan: Arc::new(plan),
         }
     }
 
@@ -487,10 +562,6 @@ impl State {
                 })
             })
             .collect()
-    }
-
-    pub(crate) fn settle(&mut self) {
-        self.motion.settle();
     }
 
     /// Columnas colocadas en px del widget, para editar su orden arrastrando
@@ -521,19 +592,20 @@ impl State {
         })
     }
 
-    pub(crate) fn wake(&self, now: std::time::Instant) -> crate::app::Wake {
-        self.motion.wake(self.style.motion.timing(), now)
-    }
-
-    /// Devuelve si cambió lo que se dibuja.
-    pub(crate) fn ingest(&mut self, board: Board) -> bool {
-        if self.board.as_ref() == Some(&board) {
+    pub(crate) fn ingest_shared(&mut self, board: Arc<Board>, motion: &mut Motion) -> bool {
+        if self
+            .board
+            .as_deref()
+            .is_some_and(|old| same_board(old, &board))
+        {
+            self.board = Some(board);
             return false;
         }
         self.board = Some(board);
-        self.plan = plan(self.board.as_ref(), &self.options, &self.style);
+        self.plan = Arc::new(plan(self.board.as_deref(), &self.options, &self.style));
         let samples = self.samples();
-        self.motion.update(
+        motion.update_rows(
+            self.board.as_ref().expect("Board adjunto"),
             &samples,
             self.style.motion.timing(),
             std::time::Instant::now(),
@@ -541,11 +613,16 @@ impl State {
         true
     }
 
-    pub(crate) fn set_style(&mut self, style: Arc<Style>) {
+    pub(super) fn attach(&mut self, board: Arc<Board>, motion: &mut Motion) {
+        self.board = Some(board);
+        self.plan = Arc::new(plan(self.board.as_deref(), &self.options, &self.style));
+        motion.relayout(self.board.as_ref().expect("Board adjunto"), &self.samples());
+    }
+    pub(crate) fn set_style(&mut self, style: Arc<Style>, motion: &mut Motion) {
         self.style = style;
-        self.plan = plan(self.board.as_ref(), &self.options, &self.style);
+        self.plan = Arc::new(plan(self.board.as_deref(), &self.options, &self.style));
         let samples = self.samples();
-        self.motion.snap(&samples);
+        motion.snap(&samples);
     }
 
     /// Tamaño del panel. La sombra se pinta por fuera, como en el catálogo:
@@ -554,7 +631,13 @@ impl State {
         (self.plan.width, self.plan.height)
     }
 
-    pub(crate) fn paint(&self, language: Language, window: &mut Window, cx: &mut App) {
+    pub(crate) fn paint(
+        &self,
+        motion: &Motion,
+        language: Language,
+        window: &mut Window,
+        cx: &mut App,
+    ) {
         Painter {
             kit: Kit {
                 style: &self.style,
@@ -564,12 +647,49 @@ impl State {
                 width: self.plan.width,
             },
             options: &self.options,
-            board: self.board.as_ref(),
+            board: self.board.as_deref(),
             plan: &self.plan,
-            motion: &self.motion,
+            motion,
             now: std::time::Instant::now(),
         }
         .paint(window, cx);
+    }
+}
+
+#[cfg(test)]
+struct State {
+    visual: Visual,
+    motion: Motion,
+}
+#[cfg(test)]
+impl std::ops::Deref for State {
+    type Target = Visual;
+    fn deref(&self) -> &Visual {
+        &self.visual
+    }
+}
+#[cfg(test)]
+impl std::ops::DerefMut for State {
+    fn deref_mut(&mut self) -> &mut Visual {
+        &mut self.visual
+    }
+}
+#[cfg(test)]
+impl State {
+    fn new(options: Options) -> Self {
+        Self {
+            visual: Visual::new(options),
+            motion: Motion::default(),
+        }
+    }
+    fn ingest(&mut self, board: Board) -> bool {
+        self.visual.ingest_shared(Arc::new(board), &mut self.motion)
+    }
+    fn set_style(&mut self, style: Arc<Style>) {
+        self.visual.set_style(style, &mut self.motion);
+    }
+    fn wake(&self, now: std::time::Instant) -> crate::app::Wake {
+        self.motion.wake_rows(self.style.motion.timing(), now)
     }
 }
 
@@ -744,10 +864,13 @@ impl Painter<'_> {
             // Dos clases con la misma abreviatura no se distinguen: se cuentan.
             let ambiguous = unique.len() < named.len();
             let room = edge - left_end - self.style.geometry.cell_gap;
-            let listed = [parts.clone(), unique.iter().map(|s| (*s).to_owned()).collect()]
-                .concat()
-                .join(" · ")
-                .to_uppercase();
+            let listed = [
+                parts.clone(),
+                unique.iter().map(|s| (*s).to_owned()).collect(),
+            ]
+            .concat()
+            .join(" · ")
+            .to_uppercase();
             // Si las clases no caben, se cuentan; si ni así, solo lo que quepa.
             let counted = || {
                 let mut parts = parts.clone();
@@ -950,7 +1073,7 @@ impl Painter<'_> {
         }
         if let Some((kind, strength)) = flash {
             let color = match kind {
-                Flash::Gain => c.flash_gain,
+                Flash::Gain | Flash::PersonalBest => c.flash_gain,
                 Flash::Loss => c.flash_loss,
                 Flash::Lead => c.leader,
                 Flash::Best => c.purple,
@@ -1475,7 +1598,7 @@ mod tests {
 
     #[test]
     fn real_acc_photo_shows_only_the_player_class_in_standard_mode() {
-        let board = vantare_domain::standings_vantare::project(&scene(), Preferences::default());
+        let board = vantare_domain::standings::project(&scene(), Preferences::default());
         let cars: usize = board.groups.iter().map(|g| g.rows.len()).sum();
         assert_eq!(cars, 32);
         let mine = shown_group(&board).expect("clase del jugador");
@@ -1518,7 +1641,7 @@ mod tests {
             state.columns().is_none(),
             "sin filas no hay columnas que editar"
         );
-        state.ingest(vantare_domain::standings_vantare::project(
+        state.ingest(vantare_domain::standings::project(
             &scene(),
             Preferences::default(),
         ));
@@ -1549,7 +1672,7 @@ mod tests {
 
     #[test]
     fn modes_choose_player_class_all_classes_or_multiclass_bands() {
-        let board = vantare_domain::standings_vantare::project(&scene(), Preferences::default());
+        let board = vantare_domain::standings::project(&scene(), Preferences::default());
         let style = Style::compiled();
         let count = |plan: &Plan, separator: bool| {
             plan.items
@@ -1581,7 +1704,7 @@ mod tests {
     #[test]
     fn race_scene_animates_overtakes_best_lap_and_pit_entry_then_settles() {
         use crate::vantare::motion::Flash;
-        use vantare_domain::standings_vantare::project;
+        use vantare_domain::standings::project;
         let scene: serde_json::Value = serde_json::from_str(include_str!(
             "../../fixtures/standings-vantare-carrera.scene.json"
         ))
@@ -1629,7 +1752,7 @@ mod tests {
         );
         let mut photo = scene();
         photo.state.player = None;
-        let board = vantare_domain::standings_vantare::project(&photo, Preferences::default());
+        let board = vantare_domain::standings::project(&photo, Preferences::default());
         let plan = plan(Some(&board), &options("standard"), &style);
         assert!(
             plan.items
@@ -1640,7 +1763,7 @@ mod tests {
 
     #[test]
     fn catalogue_scene_reproduces_the_r10b_marks() {
-        use vantare_domain::standings_vantare::project;
+        use vantare_domain::standings::project;
         let scene: serde_json::Value =
             serde_json::from_str(include_str!("../../fixtures/standings-vantare.scene.json"))
                 .expect("escena del catálogo");
@@ -1716,7 +1839,7 @@ mod tests {
     fn repaints_only_when_the_board_changes() {
         let mut state = State::new(options("expanded"));
         let photo = scene();
-        let board = vantare_domain::standings_vantare::project(&photo, Preferences::default());
+        let board = vantare_domain::standings::project(&photo, Preferences::default());
         assert!(state.ingest(board.clone()));
         assert!(!state.ingest(board));
         let before = state.size();

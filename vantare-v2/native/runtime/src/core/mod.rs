@@ -552,7 +552,11 @@ mod tests {
         assert_eq!((snapshot.epoch, snapshot.sequence), (3, 2));
 
         let table = standings::project(&snapshot, Preferences::default());
-        let intervals: Vec<_> = table.rows.iter().map(|row| row.interval.as_str()).collect();
+        let intervals: Vec<_> = table
+            .rows()
+            .into_iter()
+            .map(|row| row.classification_interval.as_str())
+            .collect();
         // Intervalos derivados: el 2º a 2 s del 1º, el 3º a 3 s del 2º.
         assert_eq!(intervals, ["—", "+2.00s", "+3.00s"]);
 
@@ -750,7 +754,10 @@ mod tests {
         assert_eq!(old.sequence, 2);
         assert_eq!(old.state.cars[0].position, Quality::Stale(1));
         assert_eq!(old.state.capabilities.gaps, Capability::WithData);
-        assert!(standings::project(&old, Preferences::default()).rows[1].interval == "—");
+        assert!(
+            standings::project(&old, Preferences::default()).rows()[1].classification_interval
+                == "—"
+        );
 
         // Muestra recibida pero con el reloj de la fuente parado: sigue obsoleta.
         adapter

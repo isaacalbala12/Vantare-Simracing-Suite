@@ -21,7 +21,7 @@ fn delta_projections_match_node_at_decimal_boundaries() {
             expected.into()
         };
         assert_eq!(
-            delta::project(&snapshot, format::Preferences::default()).delta_text,
+            delta::project(&snapshot, format::Preferences::default()).delta_text(),
             signed,
             "delta {value:?}"
         );

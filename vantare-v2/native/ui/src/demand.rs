@@ -34,14 +34,23 @@ mod tests {
     use crate::{Kind, Settings};
 
     #[test]
-    fn columns_footer_and_hidden_inputs_declare_only_their_signals() {
+    fn common_boards_and_hidden_inputs_declare_required_signals() {
         let settings: Settings = serde_json::from_str(r#"{"kind":"standings","designSystem":"eficiencia","classScope":"all-classes","showSessionHeader":false,"showSessionFooter":true,"footerSlots":["ambient"],"columns":[{"metricId":"driverName"},{"metricId":"gap","enabled":false}]}"#).expect("ajustes");
         let demand = settings.demand();
         assert!(demand.contains(Signal::Weather));
-        assert!(!demand.contains(Signal::Gaps));
-        assert!(!demand.contains(Signal::ClassGaps));
+        assert!(demand.contains(Signal::Gaps));
+        assert!(demand.contains(Signal::ClassGaps));
         assert!(!demand.contains(Signal::LapsRemaining));
-        assert!(!demand.contains(Signal::SessionClock));
+        assert!(demand.contains(Signal::SessionClock));
+        for &look in crate::look::Look::ALL {
+            let mut next = settings.normalized();
+            next.set_look(look);
+            assert_eq!(
+                next.demand(),
+                demand,
+                "Look no cambia la señal del Board común"
+            );
+        }
         let settings: Settings =
             serde_json::from_str(r#"{"kind":"input-telemetry","showClutch":false}"#)
                 .expect("ajustes");

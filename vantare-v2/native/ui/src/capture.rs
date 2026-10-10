@@ -23,6 +23,8 @@ use crate::efficiency::col;
 use crate::overlay::{Hwnd, ffi};
 use crate::source;
 
+pub(crate) const MARGIN: i32 = 66;
+
 mod gdi {
     use std::ffi::c_void;
 
@@ -302,11 +304,11 @@ async fn pass(
     let mut last = None;
     for _ in 0..60 {
         sleep(cx, 120).await;
-        let (w, h, mut pixels) = capture_client(hwnd, size.0, size.1 + 2)?;
+        let (w, h, mut pixels) = capture_client(hwnd, size.0, size.1 + MARGIN)?;
         let at = (h as usize - 1) * w as usize * 4;
         if pixels[at..at + 3].iter().all(|c| c.abs_diff(level) <= 1) {
-            pixels.truncate(at - w as usize * 4);
-            return Ok((w, h - 2, pixels));
+            pixels.truncate(size.1 as usize * w as usize * 4);
+            return Ok((w, size.1 as u32, pixels));
         }
         last = Some(pixels[at..at + 4].to_vec());
     }
@@ -327,7 +329,7 @@ async fn capture(mut cx: AsyncApp, view: Entity<Overlay>, path: PathBuf) -> Resu
         || w <= 0.0
         || h <= 0.0
         || w.ceil() > (client.right - client.left) as f32
-        || h.ceil() + 2.0 > (client.bottom - client.top) as f32
+        || h.ceil() + MARGIN as f32 > (client.bottom - client.top) as f32
     {
         return Err(format!(
             "el widget ({w}x{h}) no cabe en el área cliente con su marca de captura"
@@ -362,6 +364,26 @@ pub fn run_widget(kind: Kind, snapshot: Snapshot, path: PathBuf) -> ExitCode {
 
 /// Alimenta todas las fotos en orden antes de esperar el fin de las animaciones.
 pub fn run_sequence(kind: Kind, snapshots: &[Snapshot], path: PathBuf) -> ExitCode {
+    let settings = match kind {
+        Kind::Standings => crate::Settings::Standings(crate::standings::Settings::eficiencia()),
+        Kind::Relative => crate::Settings::Relative(crate::relative::Settings::eficiencia()),
+        Kind::FuelStrategy => {
+            crate::Settings::FuelStrategy(crate::fuel_strategy::Settings::eficiencia())
+        }
+        Kind::Delta => crate::Settings::Delta(crate::delta::Settings::eficiencia()),
+        _ => crate::Settings::default_for(kind),
+    };
+    run_configured_sequence(settings, Preferences::default(), snapshots, path)
+}
+
+/// Captura exactamente los ajustes y el idioma del layout, para cualquier Look.
+pub fn run_configured_sequence(
+    settings: crate::Settings,
+    prefs: Preferences,
+    snapshots: &[Snapshot],
+    path: PathBuf,
+) -> ExitCode {
+    let kind = settings.kind();
     if snapshots.is_empty() {
         eprintln!("la escena no contiene fotos");
         return ExitCode::FAILURE;
@@ -376,34 +398,18 @@ pub fn run_sequence(kind: Kind, snapshots: &[Snapshot], path: PathBuf) -> ExitCo
         }
         // El widget en la esquina del monitor principal: se captura solo su rectángulo.
         let placed = [(kind, (0.0, 0.0))];
-        let Some(view) = app::open_screens(cx, &placed, Preferences::default()).pop() else {
+        let Some(view) = app::open_screens(cx, &placed, prefs).pop() else {
             eprintln!("no se pudo abrir la ventana");
             flag.set(true);
             cx.quit();
             return;
         };
         view.update(cx, |v, cx| {
-            // Las referencias de paridad de Standings, Relative, Fuel y Delta son del sistema
-            // Eficiencia; Vantare (#1497) es el predeterminado del producto.
-            let reference = match kind {
-                Kind::Standings => Some(crate::Settings::Standings(
-                    crate::standings::Settings::eficiencia(),
-                )),
-                Kind::Relative => Some(crate::Settings::Relative(
-                    crate::relative::Settings::eficiencia(),
-                )),
-                Kind::FuelStrategy => Some(crate::Settings::FuelStrategy(
-                    crate::fuel_strategy::Settings::eficiencia(),
-                )),
-                Kind::Delta => Some(crate::Settings::Delta(crate::delta::Settings::eficiencia())),
-                _ => None,
-            };
-            if let Some(settings) = reference {
-                *v = Overlay::configured(&settings, Preferences::default());
-            }
+            *v = Overlay::configured(&settings, prefs);
             for snapshot in &snapshots {
                 v.ingest(snapshot, cx);
             }
+            v.freeze_for_capture();
         });
         cx.spawn(async move |cx| {
             let result = capture(cx.clone(), view, path).await;

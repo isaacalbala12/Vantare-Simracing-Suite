@@ -2,9 +2,9 @@
 //!
 //! Todo se dibuja en un unico lienzo a partir de la geometria CSS del producto
 //! (`parity/SPEC.md`): la tabla, los pies y el rail PIT se posicionan con las
-//! mismas cifras que mide el widget Wails, sin depender del layout flex de GPUI.
+//! mismas cifras de la referencia visual original, sin depender del layout flex de GPUI.
 
-use super::model::{self, Align, Config, Labels, Metric, Plan, Row, Status, Vm};
+use super::model::{self, Align, Config, ContentPlan, Labels, Metric, Plan, Row, Status};
 use super::motion::{Frame, RowVis};
 use super::style::Style;
 use crate::efficiency::preview::PaintWindow as Window;
@@ -23,10 +23,10 @@ use vantare_domain::{FlagKind, format::Language};
 const LOGO: &[u8] = include_bytes!("../../assets/vantare-mark.png");
 
 pub struct Scene {
-    pub config: Config,
-    pub vm: Vm,
-    pub plan: Plan,
-    pub frame: Frame,
+    pub config: Arc<Config>,
+    pub content_plan: Arc<ContentPlan>,
+    pub plan: Arc<Plan>,
+    pub frame: Arc<Frame>,
     pub language: Language,
     pub height: f32,
 }
@@ -258,7 +258,10 @@ fn aligned_x(align: Align, left: f32, width: f32, text_width: f32) -> f32 {
 pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
     let style = &*scene.config.style;
     let Scene {
-        config, vm, plan, ..
+        config,
+        content_plan,
+        plan,
+        ..
     } = scene;
     let labels = model::labels(scene.language);
     let width = config.width;
@@ -321,10 +324,17 @@ pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
         text::draw(window, cx, "VANTARE", 34.0, 15.0, &brand);
     }
     if plan.has_header && config.study != "v2-focus" {
-        paint_flag_ribbon(style, window, vm.flag.as_ref(), width, config.broadcast);
+        paint_flag_ribbon(
+            style,
+            window,
+            content_plan.board.flag.as_ref(),
+            width,
+            config.broadcast,
+        );
     }
 
-    if matches!(vm.status, Status::Ready | Status::Stale) && !vm.rows.is_empty() {
+    if matches!(content_plan.status, Status::Ready | Status::Stale) && !content_plan.rows.is_empty()
+    {
         paint_table(scene, &labels, window, cx);
     } else {
         paint_unavailable(scene, &labels, window, cx);
@@ -367,7 +377,10 @@ pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
 fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App) {
     let style = &*scene.config.style;
     let Scene {
-        config, vm, plan, ..
+        config,
+        content_plan,
+        plan,
+        ..
     } = scene;
     let width = config.width;
     if plan.loose_header > 0.0 {
@@ -505,8 +518,8 @@ fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App
             cx,
         );
     }
-    for (index, row) in vm.rows.iter().take(plan.visible_rows).enumerate() {
-        let vis = scene.frame.row(&row.id);
+    for (index, row) in content_plan.rows.iter().take(plan.visible_rows).enumerate() {
+        let vis = scene.frame.row(row.id);
         let last = index + 1 == plan.visible_rows;
         let top = body_top + plan.row_tops[index];
         paint_row(scene, row, top, &vis, last, body_top, window, cx);
@@ -524,7 +537,10 @@ fn paint_session_header(
 ) {
     let style = &*scene.config.style;
     let Scene {
-        config, vm, plan, ..
+        config,
+        content_plan,
+        plan,
+        ..
     } = scene;
     let mut x = left + 10.0;
     let mid = top
@@ -564,16 +580,16 @@ fn paint_session_header(
         x += style.geometry.logo_size + 6.0 + text::width(window, "VANTARE", &brand) + 8.0;
     }
     // Contexto de sesion: filete + tipo (7px) + reloj (15px).
-    let session_label = if vm.status == Status::Stale {
-        labels.stale.to_string()
+    let session_label = if content_plan.status == Status::Stale {
+        labels.stale
     } else {
-        vm.session_label.clone()
+        content_plan.session_label()
     };
     let type_ink = style.ink(
         style.fonts.session_label_size,
         style.fonts.semibold_weight,
         0.16,
-        if vm.status == Status::Stale {
+        if content_plan.status == Status::Stale {
             col(style.colors.gold.0, 1.0)
         } else {
             col(style.colors.session.0, 1.0)
@@ -584,7 +600,7 @@ fn paint_session_header(
         style.fonts.metric_weight,
         -0.025,
         col(
-            if vm.status == Status::Stale {
+            if content_plan.status == Status::Stale {
                 style.colors.muted.0
             } else {
                 style.colors.ink.0
@@ -593,8 +609,8 @@ fn paint_session_header(
         ),
     );
     if plan.brand_visible {
-        let type_text = text::fit(window, &session_label, &type_ink, 68.0);
-        let clock_w = text::width(window, &vm.remaining_text, &clock_ink);
+        let type_text = text::fit(window, session_label, &type_ink, 68.0);
+        let clock_w = text::width(window, content_plan.remaining_text(), &clock_ink);
         let type_w = text::width(window, &type_text, &type_ink);
         let context_w = 10.0 + type_w.max(clock_w);
         let context_h =
@@ -633,7 +649,7 @@ fn paint_session_header(
         text::draw(
             window,
             cx,
-            &vm.remaining_text,
+            content_plan.remaining_text(),
             text_x,
             text::baseline(
                 clock_top,
@@ -659,14 +675,14 @@ fn paint_session_header(
         );
         let line = text::css_normal_line(style.fonts.plain_clock_size);
         let base = text::baseline(mid - line / 2.0, line, style.fonts.plain_clock_size).round();
-        text::draw(window, cx, &session_label, x, base, &kind);
-        x += text::width(window, &session_label, &kind) + 7.0;
-        text::draw(window, cx, &vm.remaining_text, x, base, &clock);
-        x += text::width(window, &vm.remaining_text, &clock) + 8.0;
+        text::draw(window, cx, session_label, x, base, &kind);
+        x += text::width(window, session_label, &kind) + 7.0;
+        text::draw(window, cx, content_plan.remaining_text(), x, base, &clock);
+        x += text::width(window, content_plan.remaining_text(), &clock) + 8.0;
     }
     // Chip de clase.
-    let class_text: String = vm
-        .active_class
+    let class_text: String = content_plan
+        .active_class()
         .chars()
         .take(3)
         .collect::<String>()
@@ -842,8 +858,8 @@ fn paint_column_label(
     cx: &mut App,
 ) {
     let style = &*scene.config.style;
-    let vm = &scene.vm;
-    let label = labels.metric(column.metric, vm.pace_session);
+    let content_plan = &scene.content_plan;
+    let label = labels.metric(column.metric, content_plan.board.gap_to_best_lap);
     if scene.config.broadcast {
         paint_rect(window, tx, head_top, tw, head_height, col(0, 0.13));
         let font = style.ink(
@@ -884,7 +900,7 @@ fn paint_column_label(
         );
         return;
     }
-    let color = if vm.pace_session && column.metric == Metric::BestLap {
+    let color = if content_plan.board.gap_to_best_lap && column.metric == Metric::BestLap {
         col(style.colors.ink.0, 1.0)
     } else {
         col(style.colors.column_label.0, 1.0)
@@ -959,17 +975,20 @@ fn paint_row(
 ) {
     let style = &*scene.config.style;
     let Scene {
-        config, vm, plan, ..
+        config,
+        content_plan,
+        plan,
+        ..
     } = scene;
     let top = top + vis.dy * style.geometry.row_height / model::ROW_HEIGHT;
     let width = config.width;
-    let pace = vm.pace_session;
+    let pace = content_plan.board.gap_to_best_lap;
     let opacity = vis.alpha;
     let paint = |window: &mut Window, cx: &mut App| {
         if config.study == "default"
             && !config.multiclass
             && !row.is_player
-            && vm
+            && content_plan
                 .rows
                 .iter()
                 .take(3)
@@ -1100,7 +1119,7 @@ fn paint_cell(
     cx: &mut App,
 ) {
     let style = &*scene.config.style;
-    let vm = &scene.vm;
+    let content_plan = &scene.content_plan;
     let line = |size: f32| text::css_normal_line(size);
     // td: contenido centrado en vertical dentro de 30 px.
     let base_for = |size: f32| {
@@ -1111,7 +1130,7 @@ fn paint_cell(
         )
         .round()
     };
-    let is_best = vm
+    let is_best = content_plan
         .session_best
         .as_ref()
         .is_some_and(|(id, _)| *id == row.id);
@@ -1149,7 +1168,7 @@ fn paint_cell(
                 -0.025,
                 col(style.colors.number.0, 1.0),
             );
-            let w = text::width(window, &row.driver_number, &i);
+            let w = text::width(window, &row.number, &i);
             let tx = aligned_x(
                 column.align.unwrap_or(Align::Center),
                 x + style.geometry.cell_padding,
@@ -1159,7 +1178,7 @@ fn paint_cell(
             text::draw(
                 window,
                 cx,
-                &row.driver_number,
+                &row.number,
                 tx,
                 base_for(style.fonts.number_size),
                 &i,
@@ -1173,7 +1192,7 @@ fn paint_cell(
                 col(style.colors.ink.0, 1.0),
             );
             let name = vantare_domain::standings::driver_name(
-                &row.driver_name,
+                &row.driver,
                 column.name_mode.as_str(),
                 column.max_chars,
             )
@@ -1225,7 +1244,7 @@ fn paint_cell(
             }
         }
         Metric::Gap => {
-            let value = row.gap_text.clone();
+            let value = row.classification_gap.clone();
             let (weight, color) = if pace {
                 (style.fonts.medium_weight, col(style.colors.pace_gap.0, 1.0))
             } else {
@@ -1268,11 +1287,11 @@ fn paint_cell(
         | Metric::Interval
         | Metric::VehicleClass => {
             let (value, is_lap) = match column.metric {
-                Metric::BestLap => (row.best_lap_text.clone(), true),
-                Metric::LastLap => (row.last_lap_text.clone(), true),
-                Metric::CurrentLap => (row.current_lap_text.clone(), false),
-                Metric::Interval => (row.interval_text.clone(), false),
-                _ => (row.vehicle_class.clone(), false),
+                Metric::BestLap => (content_plan.best_lap(row), true),
+                Metric::LastLap => (content_plan.last_lap(row), true),
+                Metric::CurrentLap => (content_plan.current_lap(row), false),
+                Metric::Interval => (content_plan.interval(row), false),
+                _ => (row.class.as_ref(), false),
             };
             let (weight, color) = if is_lap && pace && column.metric == Metric::BestLap {
                 (style.fonts.metric_weight, col(style.colors.ink.0, 1.0))
@@ -1287,7 +1306,7 @@ fn paint_cell(
                 color
             };
             let i = style.ink(style.fonts.body_size, weight, -0.025, color);
-            let w = text::width(window, &value, &i);
+            let w = text::width(window, value, &i);
             let align = column
                 .align
                 .unwrap_or(if column.metric == Metric::VehicleClass {
@@ -1326,7 +1345,7 @@ fn paint_cell(
                     BorderStyle::default(),
                 ));
             }
-            text::draw(window, cx, &value, tx, base_for(style.fonts.body_size), &i);
+            text::draw(window, cx, value, tx, base_for(style.fonts.body_size), &i);
             if column.metric == Metric::BestLap && vis.best_marker > 0.0 {
                 let mi = style.ink(
                     style.fonts.marker_size,
@@ -1413,7 +1432,11 @@ fn paint_sweep(
 
 fn paint_footer(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App) {
     let style = &*scene.config.style;
-    let Scene { config, vm, .. } = scene;
+    let Scene {
+        config,
+        content_plan,
+        ..
+    } = scene;
     if !config.show_session_footer {
         return;
     }
@@ -1427,7 +1450,7 @@ fn paint_footer(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut Ap
     {
         paint_styled_info_cells(
             &config.style,
-            &vm.footer_cells,
+            &content_plan.board.footer_cells,
             width,
             height,
             config.footer_height(),
@@ -1468,8 +1491,13 @@ fn paint_footer(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut Ap
             continue;
         }
         let label = labels.info(metric).to_string();
-        let value = if matches!(vm.status, Status::Ready | Status::Stale) {
-            vm.info(metric).to_string()
+        let value = if matches!(content_plan.status, Status::Ready | Status::Stale) {
+            match metric {
+                model::InfoMetric::None => "",
+                model::InfoMetric::Track => content_plan.track(),
+                model::InfoMetric::EstimatedLaps => content_plan.estimated_laps(),
+            }
+            .to_string()
         } else {
             "—".into()
         };
@@ -1633,8 +1661,10 @@ fn paint_styled_info_cells(
 
 fn paint_unavailable(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App) {
     let style = &*scene.config.style;
-    let Scene { vm, plan, .. } = scene;
-    let message = match vm.status {
+    let Scene {
+        content_plan, plan, ..
+    } = scene;
+    let message = match content_plan.status {
         Status::Disconnected => labels.disconnected,
         _ => labels.missing,
     };
@@ -1666,7 +1696,10 @@ fn paint_unavailable(scene: &Scene, labels: &Labels, window: &mut Window, cx: &m
 fn paint_pit_rail(scene: &Scene, window: &mut Window, cx: &mut App) {
     let style = &*scene.config.style;
     let Scene {
-        config, vm, plan, ..
+        config,
+        content_plan,
+        plan,
+        ..
     } = scene;
     let x0 = config.width;
     let rail_top = plan.table_top;
@@ -1741,13 +1774,13 @@ fn paint_pit_rail(scene: &Scene, window: &mut Window, cx: &mut App) {
         let _ = row;
     };
     for ghost in &scene.frame.ghosts {
-        if ghost.row.pit_active {
+        if ghost.row.in_pits {
             let top = origin + ghost.top * style.geometry.row_height / model::ROW_HEIGHT;
             draw_one(&ghost.row, top, &ghost.vis, window, cx);
         }
     }
-    for (index, row) in vm.rows.iter().take(plan.visible_rows).enumerate() {
-        let vis = scene.frame.row(&row.id);
+    for (index, row) in content_plan.rows.iter().take(plan.visible_rows).enumerate() {
+        let vis = scene.frame.row(row.id);
         let top =
             origin + plan.row_tops[index] + vis.dy * style.geometry.row_height / model::ROW_HEIGHT;
         draw_one(row, top, &vis, window, cx);
@@ -1816,7 +1849,7 @@ mod tests {
 
     #[test]
     fn shadow_tail_matches_the_reference_alpha_profile() {
-        // Referencia (Wails, y = 100): alfa 19 en x = 440, 17 en 441, 10 en 445 y 0 desde 460.
+        // Referencia original (y = 100): alfa 19 en x = 440, 17 en 441, 10 en 445 y 0 desde 460.
         let strip = shadow_strip(&Style::default(), 440.0, 364);
         let alpha =
             |x: usize, y: usize| i32::from(strip[(y * model::PIT_RAIL_WIDTH as usize + x) * 4 + 3]);

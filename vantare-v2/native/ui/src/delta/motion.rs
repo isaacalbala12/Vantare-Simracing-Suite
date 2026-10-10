@@ -1,13 +1,13 @@
 use crate::app::Wake;
 use std::time::{Duration, Instant};
-use vantare_domain::delta::{self, Event, Status, Tone, ViewModel};
+use vantare_domain::delta::{self, Board, Event, Status, Tone};
 
 const FILL: Duration = Duration::from_millis(140);
 const FADE: Duration = Duration::from_millis(180);
 const CROSS: Duration = Duration::from_millis(700);
 const CROSS_FADE: Duration = Duration::from_millis(350);
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Frame {
     pub fill: [f32; 2],
     pub event: Option<Event>,
@@ -16,15 +16,33 @@ pub(super) struct Frame {
     pub cross_alpha: f32,
 }
 
-#[derive(Default)]
-pub(super) struct Motion {
-    fill: Option<(Instant, [f32; 2], [f32; 2])>,
-    event: Option<(Instant, Event)>,
-    cross: Option<(Instant, Tone)>,
-    last_side: Option<Tone>,
+#[derive(Clone, Default)]
+pub(super) struct Notices {
+    events: Vec<(Instant, Event)>,
+    pub(super) cross: Option<(Instant, Tone)>,
+    pub(super) last_side: Option<Tone>,
+}
+#[derive(Clone, Copy)]
+enum Interpolation {
+    Fill {
+        start: Instant,
+        from: [f32; 2],
+        to: [f32; 2],
+    },
+    Bar {
+        start: Instant,
+        from: f32,
+        to: f32,
+        duration: Duration,
+    },
+}
+#[derive(Clone, Default)]
+pub(crate) struct Motion {
+    interpolation: Option<Interpolation>,
+    pub(super) notices: Notices,
 }
 
-fn geometry(vm: &ViewModel) -> [f32; 2] {
+fn geometry(vm: &Board) -> [f32; 2] {
     let progress = vm.progress.unwrap_or(0.0);
     [0.5 + progress.min(0.0) * 0.5, progress.abs() * 0.5]
 }
@@ -46,10 +64,27 @@ fn fraction(elapsed: Duration, duration: Duration) -> f32 {
     (elapsed.as_secs_f64() / duration.as_secs_f64()).clamp(0.0, 1.0) as f32
 }
 
-impl Motion {
-    pub fn update(&mut self, prev: &ViewModel, next: &ViewModel, now: Instant) {
+impl Notices {
+    pub(super) fn latest(&self) -> Option<(Instant, Event)> {
+        self.events.iter().copied().max_by_key(|e| e.0)
+    }
+    pub(super) fn record(&self) -> Option<Instant> {
+        self.events
+            .iter()
+            .find(|e| e.1 == Event::PersonalBest)
+            .map(|e| e.0)
+    }
+    pub(super) fn notify(&mut self, now: Instant, event: Event) {
+        self.events.retain(|e| e.1 != event);
+        self.events.push((now, event));
+    }
+    pub(super) fn clear_record(&mut self) {
+        self.events.retain(|e| e.1 != Event::PersonalBest);
+    }
+
+    pub(super) fn observe(&mut self, prev: &Board, next: &Board, now: Instant) {
         if prev.identity != next.identity
-            || prev.requested_reference != next.requested_reference
+            || prev.reference != next.reference
             || prev.status != Status::Ready
             || next.status != Status::Ready
         {
@@ -58,9 +93,6 @@ impl Motion {
                 ..Self::default()
             };
             return;
-        }
-        if prev.progress != next.progress {
-            self.fill = Some((now, self.frame(prev, now).fill, geometry(next)));
         }
         self.last_side = side(prev.tone).or(self.last_side);
         if let Some(to) = side(next.tone) {
@@ -73,18 +105,110 @@ impl Motion {
             self.last_side = Some(to);
         }
         if let Some(event) = delta::event(prev, next) {
-            self.event = Some((now, event));
+            self.notify(now, event);
         }
     }
+}
 
-    pub fn frame(&self, vm: &ViewModel, now: Instant) -> Frame {
+impl Motion {
+    pub(super) fn retarget_bar(&mut self, from: f32, to: f32, start: Instant, duration: Duration) {
+        self.interpolation = Some(Interpolation::Bar {
+            start,
+            from,
+            to,
+            duration,
+        });
+    }
+    pub(super) fn bar_value(&self, now: Instant) -> f32 {
+        match self.interpolation {
+            Some(Interpolation::Bar {
+                start,
+                from,
+                to,
+                duration,
+            }) => {
+                if duration.is_zero() {
+                    return to;
+                }
+                let t = fraction(now.saturating_duration_since(start), duration);
+                from + (to - from) * (1.0 - (1.0 - t).powi(3))
+            }
+            Some(Interpolation::Fill { start, from, to }) => {
+                let t = fraction(now.saturating_duration_since(start), FILL);
+                let left = from[0] + (to[0] - from[0]) * t;
+                let width = from[1] + (to[1] - from[1]) * t;
+                if left < 0.5 {
+                    -2.0 * width
+                } else {
+                    2.0 * width
+                }
+            }
+            None => 0.0,
+        }
+    }
+    pub(super) fn moving(&self, now: Instant) -> bool {
+        match self.interpolation {
+            Some(Interpolation::Fill { start, .. }) => now.saturating_duration_since(start) < FILL,
+            Some(Interpolation::Bar {
+                start,
+                from,
+                to,
+                duration,
+            }) => from != to && now.saturating_duration_since(start) < duration,
+            None => false,
+        }
+    }
+    pub(super) fn settle(&mut self) {
+        if let Some(interpolation) = &mut self.interpolation {
+            match interpolation {
+                Interpolation::Fill { from, to, .. } => *from = *to,
+                Interpolation::Bar { from, to, .. } => *from = *to,
+            }
+        }
+        self.notices.clear_record();
+    }
+    pub fn update(&mut self, prev: &Board, next: &Board, now: Instant) {
+        #[cfg(feature = "parity-capture")]
+        crate::benchmark::mark(crate::benchmark::Work::Motion);
+        if prev.identity != next.identity
+            || prev.reference != next.reference
+            || prev.status != Status::Ready
+            || next.status != Status::Ready
+        {
+            *self = Self {
+                notices: Notices {
+                    last_side: side(next.tone),
+                    ..Notices::default()
+                },
+                ..Self::default()
+            };
+            return;
+        }
+        if prev.progress != next.progress {
+            self.interpolation = Some(Interpolation::Fill {
+                start: now,
+                from: self.frame(prev, now).fill,
+                to: geometry(next),
+            });
+        }
+        self.notices.observe(prev, next, now);
+    }
+
+    pub(super) fn frame(&self, vm: &Board, now: Instant) -> Frame {
         let mut fill = geometry(vm);
-        if let Some((start, from, to)) = self.fill {
-            let t = fraction(now.saturating_duration_since(start), FILL);
-            fill = [
-                from[0] + (to[0] - from[0]) * t,
-                from[1] + (to[1] - from[1]) * t,
-            ];
+        match self.interpolation {
+            Some(Interpolation::Fill { start, from, to }) => {
+                let t = fraction(now.saturating_duration_since(start), FILL);
+                fill = [
+                    from[0] + (to[0] - from[0]) * t,
+                    from[1] + (to[1] - from[1]) * t,
+                ];
+            }
+            Some(Interpolation::Bar { .. }) => {
+                let bar = self.bar_value(now);
+                fill = [0.5 + bar.min(0.0) * 0.5, bar.abs() * 0.5];
+            }
+            None => {}
         }
         let mut frame = Frame {
             fill,
@@ -93,7 +217,7 @@ impl Motion {
             cross: None,
             cross_alpha: 0.0,
         };
-        if let Some((start, event)) = self.event {
+        if let Some((start, event)) = self.notices.latest() {
             let age = now.saturating_duration_since(start);
             let life = event_life(event);
             if age < life + FADE {
@@ -107,7 +231,7 @@ impl Motion {
                 };
             }
         }
-        if let Some((start, tone)) = self.cross {
+        if let Some((start, tone)) = self.notices.cross {
             let age = now.saturating_duration_since(start);
             if age < CROSS + CROSS_FADE {
                 frame.cross = Some(tone);
@@ -124,11 +248,13 @@ impl Motion {
     }
 
     /// Conserva los avisos, pero cambia de estado de golpe y solo despierta al caducar.
-    pub fn reduced_frame(&self, vm: &ViewModel, now: Instant) -> (Frame, Wake) {
+    pub(super) fn reduced_frame(&self, vm: &Board, now: Instant) -> (Frame, Wake) {
         let event = self
-            .event
+            .notices
+            .latest()
             .filter(|(start, event)| now.saturating_duration_since(*start) < event_life(*event));
         let cross = self
+            .notices
             .cross
             .filter(|(start, _)| now.saturating_duration_since(*start) < CROSS);
         let next = event
@@ -151,17 +277,19 @@ impl Motion {
 
     pub fn wake(&self, now: Instant) -> Wake {
         let mut wake_at: Option<Duration> = None;
-        if self
-            .fill
-            .is_some_and(|(start, _, _)| now.saturating_duration_since(start) < FILL)
-        {
+        if self.moving(now) {
             return Wake::Frame;
         }
         for (start, hold, fade, entrance) in self
-            .event
+            .notices
+            .latest()
             .map(|(t, e)| (t, event_life(e), FADE, FADE))
             .into_iter()
-            .chain(self.cross.map(|(t, _)| (t, CROSS, CROSS_FADE, CROSS_FADE)))
+            .chain(
+                self.notices
+                    .cross
+                    .map(|(t, _)| (t, CROSS, CROSS_FADE, CROSS_FADE)),
+            )
         {
             let age = now.saturating_duration_since(start);
             if age < entrance || (age >= hold && age < hold + fade) {
@@ -179,10 +307,30 @@ impl Motion {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn later_lap_preserves_record_clock_for_the_active_vantare_policy() {
+        let now = Instant::now();
+        let mut notices = Notices::default();
+        notices.notify(now, Event::PersonalBest);
+        notices.notify(now + Duration::from_millis(100), Event::LapCompleted);
+        assert_eq!(notices.record(), Some(now));
+        assert_eq!(
+            notices.latest(),
+            Some((now + Duration::from_millis(100), Event::LapCompleted))
+        );
+        assert_eq!(notices.events.len(), 2);
+        notices.notify(now + Duration::from_millis(200), Event::PersonalBest);
+        assert_eq!(
+            notices.events.len(),
+            2,
+            "sin duplicar un aviso por compatibilidad"
+        );
+    }
+
     use super::*;
     use vantare_domain::{Car, CarId, Player, Quality, Snapshot, format::Preferences};
 
-    fn vm(delta: f64, lap: u32, best: f64) -> ViewModel {
+    fn vm(delta: f64, lap: u32, best: f64) -> Board {
         let mut s = Snapshot::default();
         s.state.source_state = vantare_domain::SourceState::Live;
         s.state.player = Some(Player {

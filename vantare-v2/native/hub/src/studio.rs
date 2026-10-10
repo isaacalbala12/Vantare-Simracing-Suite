@@ -1104,7 +1104,7 @@ impl Studio {
             self.canvas_resolution(),
         )
         .unwrap_or(self.fit_scale);
-        self.frames.clear();
+        let previous = std::mem::take(&mut self.frames);
         for item in &self.editor.layout().instances {
             let mut overlay = Overlay::configured(&item.settings, self.preferences());
             overlay.set_frame_size(item.geometry.size);
@@ -1119,10 +1119,31 @@ impl Studio {
             if let Err(error) = overlay.set_preview_scale(self.preview_scale() * content_scale) {
                 eprintln!("Studio: {error}");
             }
-            let renderer = cx.new(|cx| {
-                overlay.ingest(&self.settings_snapshot(&item.settings), cx);
-                overlay
+            let kept = previous.iter().find(|(id, frame)| {
+                id == &item.id
+                    && frame
+                        .read(cx)
+                        .item
+                        .settings
+                        .look_change(&item.settings)
+                        .is_some()
             });
+            let renderer = if let Some((_, frame)) = kept {
+                let renderer = frame.read(cx).renderer.clone();
+                renderer.update(cx, |overlay, cx| {
+                    if let Some(look) = item.settings.look() {
+                        overlay.set_look(look);
+                    }
+                    overlay.set_frame_size(item.geometry.size);
+                    cx.notify();
+                });
+                renderer
+            } else {
+                cx.new(|cx| {
+                    overlay.ingest(&self.settings_snapshot(&item.settings), cx);
+                    overlay
+                })
+            };
             let frame = cx.new(|_| CanvasFrame {
                 item: item.clone(),
                 lock: widget_lock(self.access, item.settings.kind()),
@@ -1242,7 +1263,7 @@ impl Studio {
         if self.example
             && self.real_photo.is_none()
             && let Settings::Standings(value) = settings
-            && value.design_system == vantare_ui::standings::DesignSystem::Vantare
+            && settings.appearance().is_some()
             && value.classification_mode == "multiclass"
         {
             std::borrow::Cow::Owned(examples::multiclass(photo, value.row_count))

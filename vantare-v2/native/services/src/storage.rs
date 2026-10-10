@@ -191,10 +191,20 @@ impl Store {
     pub fn save(&self, name: &str, value: &impl Serialize) -> Result<()> {
         let path = self.path(name)?;
         let bytes = Zeroizing::new(serde_json::to_vec(value).map_err(|_| Error::Storage)?);
-        if bytes.len() as u64 > MAX_BLOB / 2 {
+        // Base64 de tres JPEG de 400 KiB, miniaturas y JSON caben en 2 MiB.
+        // Reservar margen para DPAPI sin ampliar los demás documentos.
+        let limit = if matches!(name, "report-images" | "report-attempt") {
+            MAX_BLOB - 64 * 1024
+        } else {
+            MAX_BLOB / 2
+        };
+        if bytes.len() as u64 > limit {
             return Err(Error::TooLarge);
         }
         let stored = Zeroizing::new(protect(&bytes, &self.context)?);
+        if stored.len() as u64 > MAX_BLOB {
+            return Err(Error::TooLarge);
+        }
         let temporary = self.root.join(format!("{}.tmp", crate::random_id()?));
         let result = (|| {
             let mut options = OpenOptions::new();

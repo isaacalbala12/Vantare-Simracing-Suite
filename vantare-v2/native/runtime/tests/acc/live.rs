@@ -525,3 +525,38 @@ fn unchanged_udp_values_still_advance_reception_in_live_poll() {
         assert_eq!(observation.origin.received_at, Duration::from_millis(ms));
     }
 }
+
+#[test]
+fn rejected_registration_backs_off_without_losing_socket_and_recovers() {
+    let server = UdpSocket::bind("127.0.0.1:0").unwrap();
+    server.set_nonblocking(true).unwrap();
+    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    socket.connect(server.local_addr().unwrap()).unwrap();
+    socket.set_nonblocking(true).unwrap();
+    let peer = socket.local_addr().unwrap();
+    let mut acc = idle_acc();
+    acc.socket = Some(socket);
+    acc.registration = vec![1, 4];
+    acc.next_register = Duration::from_secs(2);
+    server.send_to(&[1, 42, 0, 0, 0, 0, 0, 0, 0], peer).unwrap();
+    assert_eq!(acc.receive(Duration::ZERO).unwrap(), (false, true));
+    assert_eq!(acc.next_register, Duration::from_secs(10));
+    assert!(acc.socket.is_some());
+    acc.receive(Duration::from_secs(2)).unwrap();
+    let mut buffer = [0; 32];
+    assert_eq!(
+        server.recv(&mut buffer).unwrap_err().kind(),
+        io::ErrorKind::WouldBlock
+    );
+    acc.receive(Duration::from_secs(10)).unwrap();
+    let (n, repeated) = server.recv_from(&mut buffer).unwrap();
+    assert_eq!(&buffer[..n], &[1, 4]);
+    assert_eq!(repeated, peer);
+    server.send_to(&[1, 42, 0, 0, 0, 1, 0, 0, 0], peer).unwrap();
+    acc.receive(Duration::from_secs(10)).unwrap();
+    assert_eq!(acc.translator.connection, Some(42));
+    for kind in [10, 11] {
+        let n = server.recv(&mut buffer).unwrap();
+        assert_eq!(&buffer[..n], &[kind, 42, 0, 0, 0]);
+    }
+}

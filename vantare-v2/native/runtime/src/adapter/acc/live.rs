@@ -7,6 +7,7 @@ use std::time::Duration;
 use vantare_domain::{Adapter, AdapterError, Observation, SourceKind};
 
 use super::{
+    protocol::{self, Message},
     shm::{Page, config_path},
     translate::{PAGE_SIZES, Translator},
     udp,
@@ -123,6 +124,7 @@ impl Acc {
         };
         let mut changed = false;
         let mut rejected = 0;
+        let mut registration_rejected = false;
         for _ in 0..256 {
             match socket.recv(&mut self.buffer) {
                 Ok(n) => {
@@ -133,9 +135,24 @@ impl Acc {
                             changed |= received;
                             // Otro registro retira velocidades aunque no sea una muestra.
                             changed |= connection != self.translator.connection;
+                            if connection != self.translator.connection {
+                                self.next_register = now + Duration::from_secs(2);
+                            }
                         }
                         Err(error) if error.kind() == io::ErrorKind::InvalidData => {
-                            rejected += 1;
+                            if matches!(
+                                protocol::parse(&self.buffer[..n]),
+                                Ok(Message::Registration { success: false, .. })
+                            ) {
+                                registration_rejected = true;
+                                // Causa sanitizada: nunca imprimir el mensaje del servidor.
+                                self.next_register = now + Duration::from_secs(10);
+                                eprintln!(
+                                    "broadcasting ACC: registro UDP ACC rechazado; revisa connectionPassword y la configuración broadcasting del juego; reintento en 10 s"
+                                );
+                            } else {
+                                rejected += 1;
+                            }
                         }
                         Err(error) => return Err(error),
                     }
@@ -157,7 +174,7 @@ impl Acc {
                 .is_none_or(|at| now.saturating_sub(at) >= Duration::from_secs(2))
             {
                 self.disconnect();
-                return Ok((changed, rejected > 0));
+                return Ok((changed, rejected > 0 || registration_rejected));
             }
         }
         if let Some(id) = self.translator.connection {
@@ -171,7 +188,7 @@ impl Acc {
                 self.next_track = now + Duration::from_secs(1);
             }
         }
-        Ok((changed, rejected > 0))
+        Ok((changed, rejected > 0 || registration_rejected))
     }
 
     fn disconnect(&mut self) {

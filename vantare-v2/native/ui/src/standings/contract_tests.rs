@@ -1,6 +1,48 @@
 use super::*;
 use crate::board_contracts::{STATES, cases, known, photos};
+use std::sync::Arc;
 use vantare_domain::{Quality, SourceState};
+
+#[test]
+fn unchanged_acc_keeps_board_plan_and_motion_with_previous_paint_alive() {
+    let (_, photo) = photos()
+        .into_iter()
+        .find(|(name, _)| *name == "acc")
+        .unwrap();
+    let prefs = Preferences::default();
+    for &look in crate::look::Look::ALL {
+        let mut widget = Widget::new(&Settings::for_look(look), prefs);
+        assert!(widget.ingest(&photo, prefs));
+        let identity = |widget: &Widget| {
+            let (plan, motion) = match &widget.presentation {
+                Presentation::Eficiencia { visual, motion } => {
+                    (Arc::as_ptr(&visual.plan).cast::<()>(), Arc::as_ptr(motion))
+                }
+                Presentation::Vantare { visual, motion } => {
+                    (visual.plan_identity(), Arc::as_ptr(motion))
+                }
+            };
+            (
+                Arc::as_ptr(widget.board.as_ref().expect("Board ACC")),
+                plan,
+                motion,
+            )
+        };
+        let saved = identity(&widget);
+        let mut previous_paint = widget.frame(prefs).0;
+        for _ in 0..12 {
+            assert!(!widget.ingest(&photo, prefs), "foto repetida no notifica");
+            let next_paint = widget.frame(prefs).0;
+            assert_eq!(
+                identity(&widget),
+                saved,
+                "sin reconstrucción ni clone por COW"
+            );
+            previous_paint = next_paint;
+        }
+        drop(previous_paint);
+    }
+}
 
 #[test]
 fn real_stale_classification_keeps_last_known_order_without_current_positions() {

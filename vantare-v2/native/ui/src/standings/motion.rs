@@ -846,6 +846,8 @@ impl Motion {
         now: Instant,
     ) {
         use crate::vantare::motion::Flash;
+        #[cfg(feature = "parity-capture")]
+        crate::benchmark::mark(crate::benchmark::Work::Motion);
         self.idle_frame = None;
         let first = !self.seeded;
         self.seeded = true;
@@ -973,6 +975,9 @@ impl Motion {
         now: Instant,
     ) -> crate::vantare::motion::Pose {
         use crate::vantare::motion::{Flash, Pose};
+        if self.row_channels_empty() {
+            return Pose::default();
+        }
         let flash = self.notices.get(&id).and_then(|n| {
             if timing.flash.is_zero() {
                 return None;
@@ -999,6 +1004,11 @@ impl Motion {
         }
     }
     pub(super) fn wake_rows(&self, timing: crate::vantare::motion::Timing, now: Instant) -> Wake {
+        // La primera foto estable no tiene canales: evita recorrer todas las
+        // filas y consultar tres mapas por coche en cada frame quieto.
+        if self.row_channels_empty() {
+            return Wake::Idle;
+        }
         if self.tops.keys().any(|id| {
             self.flips.get(id).is_some_and(|t| t.running(now))
                 || self.fades.get(id).is_some_and(|t| t.running(now))
@@ -1011,6 +1021,9 @@ impl Motion {
         } else {
             Wake::Idle
         }
+    }
+    fn row_channels_empty(&self) -> bool {
+        self.flips.is_empty() && self.fades.is_empty() && self.notices.is_empty()
     }
 }
 

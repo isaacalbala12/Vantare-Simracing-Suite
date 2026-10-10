@@ -526,6 +526,10 @@ pub(crate) struct Visual {
 }
 
 impl Visual {
+    #[cfg(test)]
+    pub(super) fn plan_identity(&self) -> *const () {
+        Arc::as_ptr(&self.plan).cast()
+    }
     pub(crate) fn new(options: Options) -> Self {
         let style = Style::compiled();
         let plan = plan(None, &options, &style);

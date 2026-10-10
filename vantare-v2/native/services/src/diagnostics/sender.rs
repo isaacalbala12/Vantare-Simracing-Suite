@@ -57,10 +57,13 @@ fn flush_until(
                 continue;
             }
             let (event, properties) = if folder == "crashes" {
-                let crash: Crash = match serde_json::from_slice(&bytes) {
-                    Ok(crash) => crash,
-                    // Puede estar escribiendo otro proceso: conservar para el siguiente ciclo.
-                    Err(_) => continue,
+                let crash: Crash = if let Ok(crash) = serde_json::from_slice(&bytes) {
+                    crash
+                } else {
+                    // queue publica un documento completo de forma atómica.
+                    // Retirar escrituras parciales heredadas libera su slot.
+                    fs::remove_file(path).map_err(|_| Error::Storage)?;
+                    continue;
                 };
                 // También los archivos antiguos pasan por esta proyección cerrada.
                 let version = if crash.version == crate::product::VERSION {
@@ -168,6 +171,30 @@ mod tests {
     use super::*;
     use crate::diagnostics::{PRIVACY_FILE, enqueue_usage, write_crash};
     use crate::test_http::Server;
+
+    #[test]
+    fn isa1548_partial_crashes_release_all_slots_without_sending() {
+        let root = super::super::tests::root();
+        super::super::tests::consent(&root);
+        fs::create_dir(root.join("crashes")).expect("queue");
+        for slot in 0..QUEUE_LIMIT {
+            fs::write(
+                root.join("crashes").join(format!("{slot:02}.json")),
+                b"{\"binary\":",
+            )
+            .expect("interrupted write fixture");
+        }
+        let server = Server::start(vec![]);
+        flush(&root, &Http::default(), &server.base, Some("public-test")).expect("flush");
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        assert_eq!(
+            fs::read_dir(root.join("crashes")).expect("queue").count(),
+            0
+        );
+        write_crash(&root, "core", "panic", "trace").expect("slot reusable");
+        fs::remove_dir_all(root).expect("cleanup");
+    }
 
     #[test]
     fn default_legacy_and_rejected_privacy_discard_pending_without_http() {

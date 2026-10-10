@@ -1,317 +1,52 @@
 # Handoff vivo — Testing Center
 
-## #1536 · destino real de accesos directos en CI Windows (2026-10-10)
+Estado de la base indicada; releer la issue antes de ejecutar.
+[Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/testing-center.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 
-El check obligatorio de b6b778c falla en el test .lnk real: COM devuelve
-runneradmin mientras el temporal usa RUNNER~1. Ambos nombres apuntan al
-mismo fichero. d7c6cd175ebcfdca392afc06747a29b40d3e44a3 exige un único destino y compara ambas rutas
-canonicalizadas en actual_lnk_is_read_without_modification_or_execution.
-Mantiene lectura COM real, existencia del ejecutable concreto, bytes del
-enlace intactos, marcador ausente, proceso no ejecutado, discovery y rechazo
-UNC. No se permiten otros destinos ni se omite ningún caso. Producción intacta.
+## 1. Resultado
 
-Árbol native 7d45bae6c85412bdceb963d58f325b805e151737; check/fmt/Clippy -D warnings, Nextest 1526/1526
-(7 skips heredados) y lifecycle 18/18 repetidos PASS por cola en Windows.
-Recovery/status_process sin flake ni reintentos; logs windows-lnk-*.log.
-Adaptadores/Core, domain/IPC/UI, corpus y goldens idénticos a telemetría
-25/25 (0 skips) de d3ff5919; no se repite por cambio sólo del test Launcher.
-Auditoría R3: 22 archivos idénticos a origen y 17 tests nuevos preservados.
-La nueva CI verificará los gates Windows y los arreglos Linux anteriores.
+Diagnóstico local y envío de reportes con borrador, vista previa, consentimiento y recibos de sesión. Cuestionarios/comunidad son «Próximamente» en esta base; las nuevas tablas/vistas de #1535 están en otra rama.
 
-PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557,
-sin merge, #1531 fuera. FIN tras los dos checks obligatorios PASS con estado
-de cada check. GitGuardian conocido no bloqueante, pendiente de Isaac.
+## 2. Autoridad y lectura verificada
 
-## #1536 · fixtures de captura portables del PR #1557 (2026-10-10)
+Leídos [#1452](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1452) y [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535) con decisiones/avances actuales. GitHub/Project Vantare contiene alcance. [Testing nativo](../../../native/hub/src/testing/README.md), [servicios](../../../native/services/README.md) y [canales](../../branch-channels.md) fijan contratos. #1561 registra/relee compactación, sin enviar informes reales.
 
-La CI Linux de b6b778c supera fmt/check/Clippy y llega a Nextest: falla
-launcher_showcase_scenes_use_isolated_valid_profiles por C:/QA/vantare-hub.exe.
-df215d69eb94158b8fdc1ab1542a299b016a7812 adapta únicamente las rutas C:/QA/ de las dos fixtures visuales
-del Launcher a /QA/ al cargar capturas fuera de Windows. No modifica JSON,
-validador de producción, descubrimiento, lanzamientos ni aserciones/tests.
-Windows conserva exactamente sus rutas. Las otras escenas Inicio que usan
-la misma fixture quedan cubiertas por la corrección y sus tests existentes.
-Árbol native 20259fe6e9c4ca25435992a00aa92a950bc23116; check/fmt/Clippy -D warnings, Nextest 1526/1526
-(7 skips heredados) y lifecycle 18/18 repetidos PASS por cola en Windows.
-Recovery/status_process sin flake ni reintentos. Logs linux-demo-*.log.
-Adaptadores/Core, domain/IPC/UI, corpus y goldens siguen idénticos al PASS
-telemetría 25/25 (0 skips) de d3ff5919; no se repite por cambio exclusivo Hub.
-Auditoría R3: 22 archivos idénticos a origen y 17 tests nuevos preservados.
-Linux pendiente de la CI de esta revisión; no afirmar que sus tests pasan.
+## 3. Estado real y canal
 
-PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557,
-sin merge, #1531 fuera. FIN tras los dos checks obligatorios PASS con estado
-de cada check. GitGuardian conocido no bloqueante, pendiente de Isaac.
+Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. Sin PR, merge, promoción ni release por este encargo. #1535 reporta hito Testing `7900e08e`: IPC v6, cuestionarios y contribuciones en rama local; RLS/pgTAP/revisión pendientes y nada aplicado en producción. La base documental actual conserva servicios v5. #1452 sigue abierta para verificar envío remoto real.
 
-## #1536 · corrección Clippy Unix del PR #1557 (2026-10-10)
+## 4. Decisiones cerradas
 
-La nueva CI Linux superó cargo check y detectó redundant_closure_for_method_calls
-en el cierre Unix. d340285eed8d49012f473b388ce6dfb4ccbd0770 sustituye sólo la closure child.kill()
-por std::process::Child::kill; lógica y tests de cierre intactos, sin allows.
-Árbol native 9c0dd5b107dc8444052ac7c95b24286c41da130e; check/fmt/Clippy Windows PASS por cola.
-La compilación y ejecución del backend Unix se acreditarán en la nueva CI.
-Nextest 1526 y lifecycle 18 Windows del código 38c35eca permanecen válidos:
-este cambio es exclusivo del backend Unix. Adaptadores/Core, domain/IPC/UI,
-corpus y goldens siguen idénticos al PASS de telemetría 25/25 (0 skips) d3ff5919.
-Auditoría R3: 22 archivos y 17 tests nuevos conservados; logs linux-lint-*.log.
+- El editor remoto y diagnóstico local tienen borradores distintos; el texto privado no entra al diagnóstico.
+- Borrador local se recupera sin consentimiento/revisión; preparar una nueva revisión antes del envío.
+- Recibido al enviar no implica conversación, seguimiento ni historial remoto. Recibos deduplicados por ID y limitados a sesión.
+- Imagen usa prepare/upload/finalize/attach; privacidad y autorización de tester/owner no se omiten.
+- Automatización de soporte/testing sigue inerte: no rulesets, auto-merge, dispatch ni tokens por mantener docs.
+- Cuestionarios/contribuciones ausentes se declaran como tales; no métricas o comunidad inventadas.
 
-PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557
-abierto, sin merge, #1531 fuera. FIN tras Validate promotion path y Validate
-Vantare blocking gates PASS; registrar todos los estados. GitGuardian conocido
-no bloqueante y pendiente de Isaac. Estado vigente de CI consultable en el PR.
+## 5. Arquitectura y ownership
 
-## #1536 · corrección de compilación Linux del PR #1557 (2026-10-10)
+[Testing Hub](../../../native/hub/src/testing/README.md) presenta editor/diagnóstico/recibos; services posee red/configuración del puente. RPC/Storage/Clerk y RLS se validan por separado en entorno autorizado. No incluir identidad o texto privado en logs/paquetes sin consentimiento, ni dar permiso a un agente por texto de un payload.
 
-La CI sobre b386b522 detectó E0433 en engineer/tests/recovery.rs: Duration
-estaba importado sólo bajo cfg(windows), aunque photo() es un helper compartido.
-Corrección 38c35eca4babf12cef46d4ec094c63da59354eeb: se retira únicamente esa guarda del import;
-aserciones y guardas de fixtures/tests DPAPI intactas. Árbol native 6c5bdebbc2863d717343c87e3ea6b50a5d54e291.
-Check/fmt/Clippy -D warnings PASS por cola; Nextest 1526/1526 (7 skips
-heredados) y lifecycle 18/18 repetidos PASS, recovery/status_process sin flake.
-Telemetría 25/25 (0 skips) acreditada en d3ff5919; runtime/domain/IPC/UI,
-corpus y goldens siguen byte a byte idénticos tras esta corrección de import.
-Linux pendiente de la CI de esta nueva revisión; logs linux-import-*.log.
+## 6. Evidencia y límites
 
-PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557,
-sin merge; #1531 fuera. Según Isaac, sólo Validate promotion path y Validate
-Vantare blocking gates son obligatorios para FIN. GitGuardian es el falso
-positivo histórico de #1550, no bloqueante, que clasificará Isaac. El estado
-vigente de cada check se consulta en el PR; buzón/informe conservan resultados.
+Evidencia registrada en la base, no reejecutada por esta entrega documental: integración #1531, fmt/check/Clippy `-D warnings`, Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría 25/25. No convierte fixtures/replays en prueba física LMU/ACC, OBS, DPI, audio ni latencia de entrada. Capturas R5 históricas 96 GPUI +96 mockup, matrices inspeccionadas: composición visual, no envío/Clerk/Storage reales. La integración de la base preserva formulario/adjuntos/recibos; el código no prueba activación de tablas nuevas. #1535 reporta tests offline y quality/456 huellas, con gates/capturas/pgTAP/revisiones pendientes al leer.
 
-## #1536 · sincronización con nightly para PR (2026-10-10)
+## 7. Riesgos y deuda
 
-Las tres rondas y la auditoría de telemetría están integradas en
-vantareapp/isa-1536-arreglos-revision. Tras los cuatro merges --no-ff de R3
-(#1556/#1554/#1555/#1553), se fusionó origin/nightly por merge normal
-185404a6c3696c716af6e4b886c818772578a0e7, con segundo padre
-f49d71f4f1ab9d1a424d2bba18895ddcdf87b601, squash publicado de #1550.
-Los 108 conflictos de historial se resolvieron conservando nuestro contenido,
-según instrucción de Isaac. Tras ello se recuperó el cierre diferido headless de #1550 en tres casos del Hub, sin cambiar aserciones, para evitar bloquear Calloop/Linux; ambos archivos de tests quedan idénticos a nightly.
-La auditoría confirma los 22 archivos y los 17 tests nuevos de R3 intactos;
-corpus/goldens y archivos reservados a #1531 no cambian por esta sincronización.
+- P1: #1535 requiere revisión Sol+Opus de migración/RLS antes de aplicar producción y pgTAP; no asumir autorización satisfecha porque la migración existe.
+- P2: envío real autorizado, bearer/rol, expiración, logout y replies tardíos requieren QA de servicio.
+- P2: seguimiento/historial/conversación no demostrados en servicios v5. Reportar ausencia, no mock como backend.
+- Mantener bot y workflows inertes; configuración/despliegue de terceros fuera de esta entrega.
 
-El gate de integridad detectó diez pins pendientes de la entrega revisada
-6094472e (#1551/#1552). El manifiesto registra sus SHA-256 actuales, los
-anteriores y la procedencia; conserva source_sha256 y la migración #1530.
-Verificador, tests, corpus fuente y baselines históricos intactos: 456/456
-huellas y 31 tests de tooling PASS. Gates nativos tras nightly: fmt PASS; Clippy -D warnings PASS; Nextest 1526/1526 (7 skips heredados de la suite general); lifecycle 18/18; telemetría 25/25 (0 skips). Recovery/status_process sin fallos ni reintentos. Fmt, Clippy y Nextest se repitieron tras recuperar el harness headless. Código/harness probado d3ff5919e3e819b92ec563f90364eabbb076439d; árbol native cbc10c77dca49a6122e6cdc4798dd4aea8271ab3.
+## 8. Issues terminadas, activas y pendientes
 
-Canal actual: rama de issue publicada; PR draft a nightly https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557. El estado vigente de CI se consulta en los checks del PR; no fusionar. Autorizados push y PR;
-esperar CI y dejar el PR abierto sin fusionarlo. #1531 sigue aparte hasta su
-revisión. Buzón C:/tmp/buzon/integracion-r2.md; informe y logs en
-C:/tmp/review-full/. Sin delegación, release ni QA visual nueva; se respeta
-pantalla-ocupada. Las entradas siguientes conservan el historial anterior.
+Activa #1535 para cuestionarios/reportes/comunidad; #1452 abierta para puente/envío real. #1521 diseño de bot de guardia es otro alcance. #1496 UI sigue abierta con entregas en base; #1536 y arreglos cerrados. IDs TC/ISA migrados quedan en histórico sin renumeración ni segundo tracker.
 
-## #1536 · ronda 3 integrada localmente (2026-10-10)
+## 9. Siguiente acción exacta
 
-Cuatro merges --no-ff en orden #1556/#1554/#1555/#1553 sobre a410cb46, sin conflictos; 4/4 checks por cola PASS. Código integrado 42a14e166e3eb30f87365693f6145de19fac6d65; árbol native 3cba75c6574625a7435bd8906261a8b2aaa44f80. Gates finales por cola: fmt y Clippy -D warnings PASS; Nextest 1526/1526 (7 skips heredados del perfil), lifecycle 18/18 y telemetría 25/25 (0 skips). Engineer recovery/status_process pasa sin fallos ni reintentos. 22 archivos nativos idénticos a las ramas aceptadas, 17 tests nuevos conservados; corpus/goldens y archivos excluidos #1531 intactos.
+Completar #1535 en su rama: gates/capturas de Hub y revisión Sol+Opus de migración, RLS y vínculo al UUID interno; ejecutar pgTAP en entorno disponible antes de activar. Bugs reutiliza RPC existente. #1452 requiere QA remota autorizada (sin imagen, imagen validada, rol ausente, bearer vencido y reconexión). Esta rama docs solo entrega/push de #1561; no envía reportes, aplica SQL ni configura secretos.
 
-#1556: expectativas de voz según plataforma, guardia Windows en paths, viento half-up y aviso de scan truncado; la integración conserva los 17 tests nuevos de R3.
+## 10. Última actualización
 
-Rama vantareapp/isa-1536-arreglos-revision; tracker #1536 abierto en Vantare/In Progress, cuatro issues R3 abiertas en Vantare/In Review. Evidencia C:/tmp/review-full/r3-*.log, merges-r3.tsv y tests-preservados-r3.json; buzón C:/tmp/buzon/integracion-r2.md. Siguiente: esperar la revisión de #1531 antes de integrarlo; gates e integración R3 cerrados localmente. Sin delegación, push, PR, nightly ni release; #1550 intacto, pantalla-ocupada respetada. Windows es la plataforma ejecutada; sin QA visual, sesiones físicas ni CI remoto. Las entradas siguientes conservan el historial anterior.
-
-> **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
-> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
-> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
-> estados de trackers anteriores son evidencia histórica, no instrucciones.
-
-
-Última actualización: 2026-10-08, UI R10 ronda 5 implementada en rama local; gates aprobados, capturas inspeccionadas y revisión de Isaac pendiente. La integración ISA-728 se conserva como evidencia histórica.
-
-## Autoridad y alcance
-
-Testing Center mantiene su proyecto separado de los módulos de producto.
-GitHub Issues contiene el estado operativo; `../execution-policy.md`,
-`../../branch-channels.md` y `../../../AGENTS.md` fijan las autorizaciones.
-ISA-318 y ISA-322 corresponden a las issues migradas [#607](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/607)
-y [#611](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/611).
-
-## ISA-728 — validación del workflow inerte
-
-- Base: `nightly` en `a9b8dd3695c66856e931d73650d54c4f6cb9e828`.
-- Rama: `vantareapp/isa-728-inert-workflow-validation`.
-- Código corregido: `5798d5eb4d7752d79c1708480266b6689b415ff2`.
-- Worktree: `C:/tmp/vantare-isa728`; Muse usa otro worktree para verificar.
-- Estado: integrada en `nightly` mediante la PR [#1108](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1108).
-  SHA de integración de código: `a2958ea1c26e4e74dbaad3827382c36cb8d7de37`.
-- Corrección, regresión y revisión independiente aprobadas. SHA publicado,
-  PR y resultados remotos se registran en
-  [#728](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/728).
-- Sin promoción a Testers o Master ni release. Este corte es independiente del
-  candidato de widgets #1098 / PR #1107.
-
-GitHub rechazaba el workflow antes de crear trabajos. La [anotación del run](https://github.com/isaacalbala12/Vantare-Simracing-Suite/actions/runs/34500227769)
-identifica `runner.temp` en las líneas 156 y 219: ese contexto no está
-disponible en `jobs.<job_id>.env`, incluso si el trabajo está desactivado.
-Las dos declaraciones de `MANIFEST_PATH` pasan al entorno de los cinco pasos
-que consumen el manifiesto, conservando su ruta bajo la carpeta temporal del
-ejecutor. La [tabla de contextos de GitHub](https://docs.github.com/en/actions/reference/workflows-and-actions/contexts#context-availability)
-admite `runner` en `steps.env`.
-
-## Evidencia y límites
-
-- Muse confirmó el fallo estructural y que el contrato anterior pasaba sus
-  14 pruebas sin detectarlo. Logs locales en su `.task/isa-728-evidence/`.
-- La nueva regresión falla con el workflow original; el candidato pasa las
-  15 pruebas Deno, formato y `git diff --check`.
-- Muse revisó `5798d5eb`: APROBADO, sin hallazgos P0, P1 o P2, y confirmó las
-  15 pruebas. Codex revisa los cambios documentales posteriores; el código
-  permanece idéntico al SHA revisado.
-- Comprobación local con PyYAML ya instalado: YAML válido y los cinco
-  consumidores conservan la misma variable en el entorno de su paso. Esto no
-  sustituye al validador remoto de GitHub Actions.
-- Evidencia local de implementación en `vantare-v2/.task/isa-728-evidence/`.
-- No hay cambios de Go, frontend o contratos de telemetría; no se repiten sus
-  suites locales para este arreglo. Los gates oficiales se verifican en la PR.
-
-## Decisiones y siguiente acción
-
-Se conservan los dos disparadores, la fixture manual `small-frontend-bug`,
-permisos de lectura, acciones fijadas por SHA y todos los trabajos productivos
-desactivados. No se configura ningún proveedor, secreto, ruleset ni auto-merge.
-
-La integración de Nightly quedó registrada con el merge de la PR #1108 y el
-SHA `a2958ea1`. El resultado del CI postmerge y la punta vigente se cierran en
-la issue de integración [#1109](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1109).
-La siguiente promoción a Testers requiere feedback Pro Plus y la aprobación
-reservada a Isaac.
-No reenviar eventos
-`repository_dispatch` ni activar correcciones automáticas.
-## Beta nativa #1456 — Admin compatible con native-admin (2026-10-05)
-
-Rama aislada `vantareapp/isa-1453-posthog-admin`, base `a464e9fc`.
-Cliente adaptado al servidor versionado en `supabase/functions/native-admin`
-y `20261003201000_native_admin.sql`: capacidades `vantare.module.*`, contactos
-nullable, búsqueda no vacía, `next_cursor`, texto de payload y objetos de URLs
-firmadas. Sin `VANTARE_ADMIN_URL`, deriva la ruta exacta del origen Supabase.
-La búsqueda inicial pide introducir correo/nombre, sin enviar una query vacía.
-El servidor devuelve módulos efectivos, no concesiones individuales: la UI
-muestra ese acceso y permite Conceder/Revocar explícitamente; revocar no elimina
-acceso por rol o rollout. Confirmación y relectura tras ACK se conservan.
-No se cambia servidor ni se despliega. E2E owner pendiente: el orquestador
-confirmó owner activo de Isaac (nota 15:04); Isaac inicia sesión en raíz aislada; no usar tokens de
-native-beta. Escrituras solo cuenta propia y restaurando el estado, sin rollout
-global. Guía y checklist en `C:/tmp/mac-evidence/`.
-Gates completos Unix presentan fallos ajenos en UI; resultados propios y logs
-se reportan sin declarar verde el workspace. No se crea PR ni se promociona.
-
-Actualización #1456 (nota 15:24): instalación privada reproducible mediante native/admin/instalar-escritorio.ps1, en LOCALAPPDATA/Vantare Admin; accesos Escritorio/Inicio con icono y lanzador sin consola, sesión aislada y reinstalación conservando datos. Instalación 2x y arranque desde el acceso verificados. Binario Windows perfil prueba con config real OK; capturas físicas demo limpias de las tres pantallas revisadas (1280x800, DPI96), beta sin cambios. Mac: fmt y Clippy propios --no-deps OK; 69 tests propios y 10 lifecycle OK. E2E owner producción continúa pendiente del login de Isaac.
-
-## Ronda 2 Admin #1456 — listado y respuesta local (2026-10-05)
-
-La búsqueda real por nombre y correo de Isaac devuelve una cuenta owner. La
-lista inicial vacía era el flujo de búsqueda obligatoria; Isaac pide listado
-paginado al abrir. `search_accounts` con query vacía y cursor UUID lista solo
-cuentas ya mapeadas al issuer, ordenadas por alta/UUID descendentes. La migración
-20261005160000 precede al despliegue Edge. No se crean identidades objetivo.
-El perfil actor validado se reutiliza en enriquecimiento; bloqueo, owner,
-revocación OAuth, presupuesto y auditoría siguen comprobándose en cada petición.
-Logs sanitizados separan las fases del servidor. No hay caché de autenticación.
-Dos regresiones fallaron antes; después Deno Admin/authorize 70/70 y lint/fmt OK.
-Tests pgTAP de páginas añadidos; NO ejecutados: sin PostgreSQL/Docker local.
-Servidor 06c9f761 desplegado por el orquestador según nota 15:58. E2E con la
-sesión aislada de Isaac: primera página devuelve una cuenta owner y cursor null;
-nombre y correo encuentran esa cuenta. Solo hay una cuenta real: no se demostró
-navegación entre dos páginas pobladas. Lectura de fases por MCP Supabase denegada;
-falta extracto sanitizado del orquestador.
-
-Cliente: tabla al abrir, filtro local inmediato, debounce remoto 300 ms, caché de
-lecturas 30 s/64 entradas, precarga de módulos/reportes y refresco de fondo.
-Actualizar, mutaciones, logout y denegación invalidan la caché. Respuestas tardías
-tras perder autorización se descartan. No hay reintento automático de precarga
-fallida. Worker bloquea en reposo y GPUI solo sondea respuestas pendientes.
-RUST_LOG escribe tiempos sanitizados fuera del hilo UI.
-
-Capturas reales: C:/tmp/mac-evidence/ronda-2.png. Hasta construcción de render,
-lecturas cacheadas finales: detalle5,68ms/módulos4,90ms/reportes4,74ms/lista6,23ms.
-Consultas remotas aún ~0,74–1,8s: <300ms no se cumple en carga fría. Hover p95
-7,97ms/siguiente frame GPUI p95 9,71ms: no son DWM/GPU ni prueba de listas largas.
-Workspace1094/1094 (4 skips de plataforma), lifecycle, fmt, check y Clippy PASS;
-tras revisión final, Admin14/14 PASS y binario prueba con config real PASS.
-CPU, instalación y límites: C:/tmp/mac-evidence/entrega-r2.md y
-C:/tmp/fase2/informe-mac.md. No se atribuye mejora CPU sin comparación controlada.
-Sin push, PR, integración o release. plan.md no existe en la base recibida.
-
-
-## Hub beta #1470 — formulario y recibos de sesión (2026-10-05)
-
-El formulario productivo GPUI usa acción como título y observado como texto;
-conserva esperado/contexto porque el contrato v1 los exige. Tipo Algo falla /
-Sugerencia se guarda como marcador explícito de contexto, sin nuevo schema.
-Los recibos reales de envío/reintento aparecen en Mis informes, deduplicados
-por ID, con el estado/fecha del servidor. Lista limitada a la sesión: no existe
-consulta de historial ni conversación en el servicio nativo. Registros,
-conversación e historial remoto quedan pendientes, sin datos inventados.
-JPEG comprimido, vista previa, quitar y prepare/upload/finalize/attach mantienen
-el protocolo anterior; no se toca backend, auth ni la política tester/owner.
-Pruebas nuevas cubren cambio de tipo y deduplicación sin duplicar texto privado.
-Evidencia y estado de gates: sección Fase 2 Testing Center del handoff vivo
-`overlays-launcher-hub.md` y C:/tmp/1470-testing-evidence/.
-
-## 2026-10-08 — UI R10, ronda 5 (#1496), entrega aislada
-
-Encargo explícito: C:/tmp/ui-r10/brief-r5-testing.md y PLAN.md; usuario fija
-GitHub y ejecución sin preguntas. Las referencias históricas a Notion no
-sustituyen este encargo. Issue técnica #1496 sigue describiendo R0; ampliar su
-cuerpo se deja al orquestador junto con las demás rondas, sin sobrescribirlo.
-
-- Worktree C:/tmp/vw3-ui-r5-testing/vantare-v2; rama
-  vantareapp/isa-1496-ui-r5-testing; base R3 a5a0108422b89c9ae113fe53761ee144f2bc820f.
-- Hitos previos locales: 51a922ad (pestañas/Resumen), 63bd938d (Informes),
-  fc27e1d1 (Cuestionarios/Comunidad). El cuarto hito contiene adaptación,
-  regresiones, correcciones de gates y esta evidencia; SHA final en el informe.
-- Cuatro pestañas en la barra superior, hero y secciones pendientes, redactor
-  existente, lista de recibos con ID/estado/fecha y detalle accesible por teclado.
-- Privacidad y envío sin cambios. El texto privado sigue fuera de la lista;
-  submitted significa Recibido al enviar, sin inferir seguimiento remoto.
-- Cuestionarios, niveles, insignias, votos, conversación, reconocimiento y alta
-  pública son Próximamente. Se describen formatos/propuestas sin inventar datos.
-- RailSection común y Adapt; secciones opcionales fuera de B/XS, scroll interior
-  del editor/lista/herramientas. Redactor y lista alternan en Informes para
-  conservar espacio; diferencia con el mockup pendiente de revisión de Isaac.
-- Kit/tokens/dependencias/contratos/runtime intactos. Shell y demo solo cambian
-  sus bloques Testing. Otros workers trabajan en ramas independientes.
-- Evidencia: C:/tmp/ui-r10/r5-evidence/VERIFICACION.md e informe-r5.md.
-  PASS fmt/check/Clippy, Nextest1260/1260 (6 skips heredados), lifecycle18.
-  Build prueba configurado PASS. Logs de fallos/repeticiones y hash conservados.
-- Pantalla compartida respetada: sin ventanas mientras existía el marcador;
-  tanda final96 GPUI +96 mockup, seis matrices inspeccionadas y originales
-  ampliados. Cada ventana se cerró. No se afirma paridad exacta ni QA física.
-- plan.md falta tanto en la base como en origin/nightly consultado. No se crea
-  otra fuente manual ni se publica contenido del roadmap.
-- Pendiente: revisión de Isaac de las diferencias y preguntas del informe;
-  validar interacción y envío real en entorno autorizado. Fuji23h falló en
-  un intento y pasó al repetir el gate con dos casos simultáneos; evidencia
-  conservada y hallazgo fuera de alcance registrado en #1458, sin tocar solver.
-  Tests no demuestran login, envío remoto real, LMU/OBS, Mac, DPI físico ni fluidez.
-- Sin push, PR, CI remota, merge, promoción ni release. No se toca la instalación
-  personal ni se envían informes de prueba a servicios reales.
-
-### #1496 — integración local R5 en calidad (2026-10-08)
-
-Merge no-ff de b299be82 sobre calidad/e597a009 autorizado por Isaac.
-Conservados Cuenta/Ajustes R4, kit único, rojo y contrastes semánticos vigentes.
-Resueltos shell, cabecera Testing y fragmento acumulando R4/R5. Las nuevas
-vistas reciben Adapt de su ventana; no se restaura el global retirado.
-Gates y captura del conjunto pendientes; sin push/PR/promoción/release.
-
-Verificación del conjunto calidad/70e15d11 (2026-10-08): fmt/check/Clippy
--D warnings PASS; Nextest1272/1272 (6 skips previos + microbenchmark ignorado),
-lifecycle18/18 y builds prueba/QA PASS por la cola, target propio -j2.
-QA conserva warning heredado analysis/view.rs:989. Capturas del conjunto en
-curso; primer intento oculto falló por HWND no visible, repetido correctamente
-por ruta nativa prevista. Logs/manifiesto: calidad-1-evidence/reanudacion.
-Latencia de entrada sigue pendiente (PresentMon msSinceInput=0); no se
-certifica fluidez, DPI físico, LMU live, OBS, login ni Mac. Solo local.
-
-Cierre de la tanda de calidad (código70e15d11): 144/144 PNG en 1920×1080 y
-1280×720, Vantare/DeepSeek, hashes y dimensiones comprobados. Doce hojas
-y originales de casos principales inspeccionados; sin regresión de conflictos
-observada en la muestra. Ventanas y helpers QA cerrados; mutex libre.
-Tres aliases históricos Workshop/Telemetría/Licencias muestran Inicio/cargando
-y no acreditan esos módulos; R0–R6 sí cubiertos. No paridad exacta ni latencia.
-Informe≤15 líneas C:/tmp/ui-r10/informe-calidad-1.md; logs/diff/manifiestos/manual
-en calidad-1-evidence/reanudacion/VERIFICACION.md. Instalación real intacta.
-Siguiente: revisión del orquestador/Isaac; latencia de entrada pendiente.
-Solo commits/merges locales autorizados y seguimiento GitHub; sin push/PR/
-CI remota/promoción/release. No se afirma aceptación ≥9 ni publicación.
+2026-10-10 · GitHub #1561 · Codex. Código, README del área e issues leídos; seguimiento #1561 escrito y releído. Las siguientes acciones de área proceden de las issues abiertas, sin nuevas autorizaciones implícitas. El diario y los avances por ronda se escriben en la issue; aquí se sustituye el estado.

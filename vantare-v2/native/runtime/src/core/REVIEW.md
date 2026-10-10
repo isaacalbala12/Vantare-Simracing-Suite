@@ -1,3 +1,5 @@
+> Evidencia histórica de #1403; contrato vigente en [README nativo](../../../README.md). Estados, versiones DTO y gates siguientes describen su corte, no la base actual.
+
 # Revisión al portar ISA-1403 → `runtime/src/core` (fases 0 y 1)
 
 Origen: `C:\tmp\vantare-review-1403\vantare-v2\rust\telemetry\src` (SHA `db524bf7`).

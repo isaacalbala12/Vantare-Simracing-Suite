@@ -1,3 +1,5 @@
+> Evidencia histórica de #1427; contrato vigente en [README nativo](../README.md). Estados, versiones DTO y gates siguientes describen su corte, no la base actual.
+
 # Primera candidata de demanda — #1427 / ADR 0099
 
 Los ajustes de cada renderer declaran señales y periodos mínimos; `Settings`

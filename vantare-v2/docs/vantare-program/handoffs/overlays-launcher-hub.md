@@ -13,19 +13,20 @@ Ownership: domain proyecta, ui guarda settings y pinta, hub edita el documento;
 sin dependencias nuevas ni runtime/IPC nuevos, sin subagentes.
 Evidencia: RED de dominio y APIs UI/Hub confirmado en 9c218b38.
 Selección de aceptación 29/29 PASS (10.983s), fmt y Clippy workspace/all-targets
--D warnings PASS (9.25s); tests completos y capturas Studio 1440 pendientes. Logs externos en
+-D warnings PASS (13.69s); lifecycle 18/18 PASS. Cuatro capturas Studio 1440 inspeccionadas; Nextest/telemetría en curso. Logs externos en
 `C:/tmp/ola2/evidence-1564`; reporte `C:/tmp/buzon/1564.md`.
 Migración: editar Carrera primero independiza Práctica/Qualy, también si el
 layout legacy omitía columnas; round-trip conserva formatos. Presets en orden D7.
 Visibilidad: sesión + fuera de pista con Y para los 18 widgets y durante pausa;
 layouts filtrados piden SessionInfo aunque solo contengan Pedales.
 Solo cambio de ancho natural invalida Screen; ninguna coordenada cambia.
-Riesgos: falta validar gates completos, capturas y CI. Sin prueba física LMU/ACC/OBS.
+Riesgos: falta cerrar Nextest/telemetría y CI. Sin prueba física LMU/ACC/OBS.
 Los tamaños explícitos de frame conservan su contrato de geometría.
 #1561 P1-A conserva el plan de partición del Studio preexistente >2000 LOC;
 el código nuevo va en módulo de sesiones. #1562 pendiente de merge en nightly;
 cuando entre se incorpora origin/nightly mediante merge, sin rebase.
-Siguiente: tests completos, lifecycle/telemetría y capturas inspeccionadas;
+Corrección de arquitectura: el ajuste del Look de captura queda dentro de UI/Standings; no se debilita el gate. Revisión visual y hashes en evidence-1564/visual-review.md.
+Siguiente: cerrar Nextest/telemetría;
 commits por hito, push de rama impl y PR draft a nightly. Sin promoción/release.
 Última actualización: 2026-10-10, #1564, Codex.
 

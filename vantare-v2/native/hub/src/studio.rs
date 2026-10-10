@@ -280,8 +280,7 @@ fn capture_settings(kind: Kind) -> Settings {
         settings.row_count = 8;
         #[cfg(feature = "parity-capture")]
         if capture_session().is_some() {
-            settings.design_system = vantare_ui::standings::DesignSystem::Vantare;
-            settings.apply_session_presets();
+            settings.apply_session_preview();
         }
     }
     settings

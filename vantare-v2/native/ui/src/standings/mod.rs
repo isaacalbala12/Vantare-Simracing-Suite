@@ -253,6 +253,13 @@ impl Default for Settings {
 }
 
 impl Settings {
+    /// Ejemplo nativo del inspector con los presets de sesión.
+    #[cfg(feature = "parity-capture")]
+    pub fn apply_session_preview(&mut self) {
+        self.design_system = DesignSystem::Vantare;
+        self.apply_session_presets();
+    }
+
     /// Widgets nuevos: cada pestaña con su preset.
     pub fn apply_session_presets(&mut self) {
         for session in Session::ALL {

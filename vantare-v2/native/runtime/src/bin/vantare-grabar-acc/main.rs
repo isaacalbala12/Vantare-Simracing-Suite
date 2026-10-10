@@ -3,6 +3,12 @@ mod implementation;
 
 use vantare_ipc::product;
 
+#[test]
+fn windows_implementation_has_no_unreachable_unix_entrypoint() {
+    let source = include_str!("implementation.rs").replace('\r', "");
+    assert!(!source.contains("#[cfg(not(windows))]\nfn main()"));
+}
+
 #[cfg(windows)]
 fn main() -> std::process::ExitCode {
     if product::print_version() {

@@ -1456,15 +1456,6 @@ pub(super) fn run_cli() -> std::process::ExitCode {
     }
 }
 
-#[cfg(not(windows))]
-fn main() {
-    eprintln!(
-        "vantare-grabar-acc solo funciona en Windows: necesita la memoria compartida \
-         y el broadcasting de ACC"
-    );
-    std::process::exit(1);
-}
-
 // ---------------------------------------------------------------------------
 // Pruebas
 // ---------------------------------------------------------------------------

@@ -1,3 +1,4 @@
+mod support;
 use gpui::Element;
 use gpui::prelude::*;
 use vantare_hub::orbit;
@@ -52,7 +53,7 @@ fn pending_faces_describe_value_and_reason_without_click_or_focus() {
             assert!(node.supports_action(gpui::AccessibleAction::Click));
             assert!(node.supports_action(gpui::AccessibleAction::Focus));
         }
-        cx.quit();
+        support::quit_headless_test(cx);
     });
 }
 
@@ -76,6 +77,6 @@ fn summary_accessibility_describes_content_without_button_actions() {
         button.write_a11y_info(&mut node);
         assert_eq!(node.label(), Some("Perfil"));
         assert_eq!(node.is_selected(), Some(true));
-        cx.quit();
+        support::quit_headless_test(cx);
     });
 }

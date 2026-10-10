@@ -1,3 +1,4 @@
+mod support;
 use gpui::{Element, ParentElement};
 use vantare_hub::orbit;
 
@@ -13,6 +14,6 @@ fn sidebar_avatar_leaves_the_account_row_as_the_only_accessible_button() {
         let mut node = gpui::accesskit::Node::new(gpui::Role::Button);
         account.write_a11y_info(&mut node);
         assert_eq!(node.label(), Some("Cuenta"));
-        cx.quit();
+        support::quit_headless_test(cx);
     });
 }

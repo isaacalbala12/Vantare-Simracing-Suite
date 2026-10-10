@@ -87,7 +87,7 @@ Los ratios del icono se refieren al relleno sólido; los píxeles antialias mezc
 ### Icono y regeneración
 
 - ViewBox 64. Símbolo normal: `M9 51 32 10l23 41H42L32 32 22 51Z`. Los SVG usan su forma absoluta equivalente.
-- A ≤32 px: plano #D80000. A 16 y 24 px: patas gruesas `M6 54 32 8l26 46H39L32 40 25 54Z`, con el hueco abierto. A ≥48 px: degradado actual de `native/assets/appicon.png` en el ICO y activos con placa. El tamaño base MSIX 44 px usa plano; no representa el targetsize-48.
+- Logo siempre con fondo (#1559): el ICO y los activos MSIX con placa llevan la placa oscura en todos los tamaños. A ≤32 px (y StoreLogo 50 / Square44 44): símbolo plano #D80000 sobre la placa (degradado 26 → 10). A 16 y 24 px: patas gruesas `M6 54 32 8l26 46H39L32 40 25 54Z`, con el hueco abierto. A ≥48 px: degradado actual de `native/assets/appicon.png`. El tamaño base MSIX 44 px usa plano; no representa el targetsize-48.
 - Versiones a una tinta blanca y negra, normal y pequeña, en `native/assets/brand/`; elegir la que contraste con el fondo. Avatar circular oscuro con símbolo rojo, sin wordmark.
 - MSIX incluye los tres activos del manifiesto (StoreLogo 50, Square44 44 y Square150 150) y targetsize 16/24/32/48/256. `altform-unplated` quita la placa; `altform-lightunplated` usa negro para fondo claro. Los ≥48 unplated conservan el degradado aprobado sin placa.
 - El Hub consume el símbolo normal en `native/hub/assets/pit/mark.svg` (26 px en sidebar); GPUI aplica el color del tema. La migración de ese token pertenece al corte de UI. `i-vantare.svg` se usa a 48 px y no se cambia aquí.

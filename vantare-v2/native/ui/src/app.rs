@@ -108,8 +108,15 @@ pub(crate) fn starter_layout(monitor: (f32, f32, f32, f32)) -> crate::layout::La
                 x: x.round(),
                 y: y.round(),
                 visible: true,
+                show_in: crate::session::ShowIn::default(),
                 opacity: 1.0,
-                settings: Settings::default_for(kind),
+                settings: {
+                    let mut settings = Settings::default_for(kind);
+                    if let Settings::Standings(standings) = &mut settings {
+                        standings.apply_session_presets();
+                    }
+                    settings
+                },
             })
             .collect(),
         ..crate::layout::Layout::default()
@@ -132,6 +139,9 @@ pub struct Overlay {
     live_projection: bool,
     /// Solo `LiveScreens` aplica la política; Studio/Workshop nunca la activan.
     hidden_off_track: bool,
+    /// «Mostrar en» de la instancia y última sesión vista (#1564).
+    show_in: crate::session::ShowIn,
+    session: Option<crate::session::Session>,
     #[cfg(feature = "paint-stats")]
     profile_photo: Option<(u64, u64)>,
     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
@@ -222,6 +232,8 @@ impl Overlay {
             hidden_off_track: false,
             paused: false,
             live_projection: false,
+            show_in: crate::session::ShowIn::default(),
+            session: None,
             #[cfg(feature = "paint-stats")]
             profile_photo: None,
             #[cfg(feature = "parity-capture")]
@@ -291,6 +303,21 @@ impl Overlay {
         self.frame_size = size;
     }
 
+    /// Solo los overlays en vivo lo aplican; Studio siempre dibuja la instancia.
+    pub(crate) fn set_show_in(&mut self, show_in: crate::session::ShowIn) {
+        self.show_in = show_in;
+    }
+
+    fn shown_in_session(&self) -> bool {
+        self.show_in.allows(self.session)
+    }
+
+    fn update_session_visibility(&mut self, snapshot: &Snapshot) -> bool {
+        let shown = self.shown_in_session();
+        self.session = crate::session::Session::of(&snapshot.state.session.kind);
+        shown != self.shown_in_session()
+    }
+
     /// Solo el host de preview reduce/amplía el renderer. Las ventanas reales
     /// conservan el factor 1; tamaño lógico y ViewModel permanecen iguales.
     pub fn set_preview_scale(&mut self, scale: f32) -> Result<(), &'static str> {
@@ -346,10 +373,11 @@ impl Overlay {
     /// puede proyectar la foto conservada, sin tratarla como desconectada.
     fn project_snapshot(&mut self, snapshot: &Snapshot) -> bool {
         let paused = snapshot.state.source_state == vantare_domain::SourceState::Paused;
+        let session_changed = self.update_session_visibility(snapshot);
         if paused && self.paused {
-            return false;
+            return session_changed;
         }
-        let changed = self.paused != paused;
+        let changed = self.paused != paused || session_changed;
         self.paused = paused;
         if paused && self.live_projection {
             return changed;
@@ -400,8 +428,10 @@ impl Render for Overlay {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
         let _span = crate::profiling::begin(crate::profiling::Stage::Render);
-        if self.hidden_off_track || crate::rights::denied(self.kind, cx) {
+        if self.hidden_off_track || crate::rights::denied(self.kind, cx) || !self.shown_in_session()
+        {
             // Sin licencia el widget queda vacío: el aviso único lo pinta `Screen`.
+            // Fuera de sus sesiones (#1564) tampoco pinta nada.
             return div()
                 .w(px(self.frame_size().0 * self.preview_scale))
                 .h(px(self.frame_size().1 * self.preview_scale_y))
@@ -833,6 +863,12 @@ impl LiveScreens {
                     });
                 let reproject = overlay.prefs != self.prefs || !look_changes.contains(id);
                 overlay.prefs = self.prefs;
+                if let Some(instance) = layout.instances.iter().find(|i| &i.id == id) {
+                    overlay.set_show_in(instance.show_in);
+                }
+                if let Some(snapshot) = &self.last {
+                    overlay.update_session_visibility(snapshot);
+                }
                 if let Some(look) = widget.settings.look() {
                     overlay.set_look(look);
                 }
@@ -952,6 +988,7 @@ impl LiveScreens {
         let snapshot = photo.snapshot;
         self.last_demand = photo.demand;
         let now = Instant::now();
+        let mut width_changed = false;
         for (id, widget) in self.widgets.iter().filter(|(_, widget)| widget.visible) {
             let hidden = self
                 .layout
@@ -962,7 +999,9 @@ impl LiveScreens {
                     i.hidden_off_track(self.layout.hide_off_track, snapshot.state.driving_situation)
                 });
             let visibility_changed = widget.view.update(cx, |overlay, cx| {
-                let changed = overlay.update_off_track_visibility(hidden);
+                let off_track_changed = overlay.update_off_track_visibility(hidden);
+                let session_changed = overlay.update_session_visibility(&snapshot);
+                let changed = off_track_changed || session_changed;
                 if changed {
                     cx.notify();
                 }
@@ -976,9 +1015,18 @@ impl LiveScreens {
                     now,
                 )
             {
-                widget
-                    .view
-                    .update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
+                width_changed |= widget.view.update(cx, |overlay, cx| {
+                    let width = overlay.frame_size().0;
+                    overlay.ingest(&snapshot, cx);
+                    width != overlay.frame_size().0
+                });
+            }
+        }
+        // El tamaño cacheado de Screen debe seguir el ancho de la sesión activa;
+        // las fotos con el mismo ancho conservan la invalidación por widget.
+        if width_changed {
+            for (_, screen) in &self.screens {
+                let _ = screen.update(cx, |_, _, cx| cx.notify());
             }
         }
         self.last = Some(snapshot);
@@ -1453,6 +1501,88 @@ mod tests {
     }
 
     #[test]
+    fn show_in_hides_the_overlay_outside_its_sessions_but_never_without_data() {
+        use vantare_domain::{Quality, SessionKind};
+        let mut overlay = Overlay::new(Kind::Standings, Preferences::default());
+        overlay.set_show_in(crate::session::ShowIn {
+            practice: false,
+            qualifying: false,
+            race: true,
+        });
+        let mut snapshot = crate::source::fixed();
+        for (kind, shown) in [
+            (Quality::Reliable(SessionKind::Practice), false),
+            (
+                Quality::Reliable(SessionKind::Other("warmup".into())),
+                false,
+            ),
+            (Quality::Reliable(SessionKind::Qualifying), false),
+            (Quality::Reliable(SessionKind::Race), true),
+            (Quality::Stale(SessionKind::Practice), false),
+            (Quality::Unavailable, true),
+        ] {
+            snapshot.state.session.kind = kind.clone();
+            snapshot.sequence += 1;
+            overlay.project_snapshot(&snapshot);
+            assert_eq!(overlay.shown_in_session(), shown, "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn every_widget_combines_sessions_with_off_track_even_during_pause() {
+        use vantare_domain::{DrivingSituation, Quality, SessionKind, SourceState};
+        let mut photo = crate::source::fixed();
+        for &kind in Kind::ALL {
+            let mut overlay = Overlay::new(kind, Preferences::default());
+            overlay.set_show_in(crate::session::ShowIn {
+                practice: false,
+                qualifying: false,
+                race: true,
+            });
+            for off_track in [
+                crate::layout::OffTrack::Inherit,
+                crate::layout::OffTrack::AlwaysVisible,
+                crate::layout::OffTrack::Hide,
+            ] {
+                for situation in [
+                    DrivingSituation::Unknown,
+                    DrivingSituation::OnTrack,
+                    DrivingSituation::Garage,
+                    DrivingSituation::Paused,
+                    DrivingSituation::Replay,
+                ] {
+                    let instance: crate::layout::Instance = serde_json::from_value(serde_json::json!({"id":"test", "x":10, "y":20, "settings":Settings::default_for(kind), "offTrack":off_track})).unwrap();
+                    for session in [
+                        Some(SessionKind::Practice),
+                        Some(SessionKind::Qualifying),
+                        Some(SessionKind::Race),
+                        Some(SessionKind::Other("warmup".into())),
+                        None,
+                    ] {
+                        photo.state.source_state = SourceState::Paused;
+                        photo.state.session.kind = session
+                            .clone()
+                            .map_or(Quality::Unavailable, Quality::Reliable);
+                        overlay.update_off_track_visibility(
+                            instance.hidden_off_track(true, situation),
+                        );
+                        overlay.project_snapshot(&photo);
+                        let visible = !overlay.hidden_off_track && overlay.shown_in_session();
+                        assert_eq!(
+                            visible,
+                            !instance.hidden_off_track(true, situation)
+                                && session
+                                    .as_ref()
+                                    .is_none_or(|session| *session == SessionKind::Race),
+                            "{kind:?}/{off_track:?}/{situation:?}/{session:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn layout_spatial_edits_and_visibility_preserve_the_same_widget_state() {
         let prefs = Preferences::default();
         let snapshots = crate::workshop::snapshots_from_json(include_str!(
@@ -1466,6 +1596,7 @@ mod tests {
             x: 20.0,
             y: 30.0,
             visible: true,
+            show_in: crate::session::ShowIn::default(),
             opacity: 1.0,
             settings: Settings::default_for(Kind::InputTelemetry),
         };
@@ -1526,6 +1657,7 @@ mod tests {
                 x: 20.0,
                 y: 30.0,
                 visible: true,
+                show_in: crate::session::ShowIn::default(),
                 opacity: 1.0,
                 settings: Settings::default_for(kind).normalized(),
             };
@@ -1555,6 +1687,7 @@ mod tests {
             x: 20.0,
             y: 30.0,
             visible: true,
+            show_in: crate::session::ShowIn::default(),
             opacity: 1.0,
             settings: Settings::default_for(Kind::InputTelemetry),
         };
@@ -2007,32 +2140,5 @@ mod tests {
         );
         assert_eq!(parts[1], [(Kind::Radar, (80.0, 50.0))]);
         assert!(parts[2].is_empty(), "sin widgets no hay ventana");
-    }
-    #[test]
-    fn show_in_hides_the_overlay_outside_its_sessions_but_never_without_data() {
-        use vantare_domain::{Quality, SessionKind};
-        let mut overlay = Overlay::new(Kind::Standings, Preferences::default());
-        overlay.set_show_in(crate::session::ShowIn {
-            practice: false,
-            qualifying: false,
-            race: true,
-        });
-        let mut snapshot = crate::source::fixed();
-        for (kind, shown) in [
-            (Quality::Reliable(SessionKind::Practice), false),
-            (
-                Quality::Reliable(SessionKind::Other("warmup".into())),
-                false,
-            ),
-            (Quality::Reliable(SessionKind::Qualifying), false),
-            (Quality::Reliable(SessionKind::Race), true),
-            (Quality::Stale(SessionKind::Practice), false),
-            (Quality::Unavailable, true),
-        ] {
-            snapshot.state.session.kind = kind.clone();
-            snapshot.sequence += 1;
-            overlay.project_snapshot(&snapshot);
-            assert_eq!(overlay.shown_in_session(), shown, "{kind:?}");
-        }
     }
 }

@@ -1,6 +1,6 @@
 ## #1564 · Widgets por sesión, entrega sobre #1562
 
-Resultado: en curso, tests de aceptación antes de implementar D1–D18.
+Resultado: D1–D18 implementadas en esta rama, validación final en curso.
 Autoridad: [GitHub #1564](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1564),
 area:ui y GitHub Project Vantare/In Progress; escritura y lectura verificadas.
 Rama `vantareapp/isa-1564-widgets-por-sesion-impl`; base `cdcc2bf72333df74357aa44c998e076f11a9919b`
@@ -11,15 +11,21 @@ Unavailable inicial = Carrera, Stale conserva tipo. Visibilidad sin tipo = visib
 reglas de sesión y fuera de pista combinadas con Y, incluso AlwaysVisible.
 Ownership: domain proyecta, ui guarda settings y pinta, hub edita el documento;
 sin dependencias nuevas ni runtime/IPC nuevos, sin subagentes.
-Evidencia: RED de dominio para warmup confirmado; UI/Hub RED en compilación,
-capturas Studio 1440 y gates completos pendientes. Logs externos en
+Evidencia: RED de dominio y APIs UI/Hub confirmado en 9c218b38.
+Selección de aceptación 29/29 PASS (10.983s), fmt y Clippy workspace/all-targets
+-D warnings PASS (9.25s); tests completos y capturas Studio 1440 pendientes. Logs externos en
 `C:/tmp/ola2/evidence-1564`; reporte `C:/tmp/buzon/1564.md`.
-Riesgos: independencia de pestañas al editar Carrera de un layout legacy; orden D7;
-visibilidad combinada y transiciones bajo pausa; ancla y cambio de ancho.
+Migración: editar Carrera primero independiza Práctica/Qualy, también si el
+layout legacy omitía columnas; round-trip conserva formatos. Presets en orden D7.
+Visibilidad: sesión + fuera de pista con Y para los 18 widgets y durante pausa;
+layouts filtrados piden SessionInfo aunque solo contengan Pedales.
+Solo cambio de ancho natural invalida Screen; ninguna coordenada cambia.
+Riesgos: falta validar gates completos, capturas y CI. Sin prueba física LMU/ACC/OBS.
+Los tamaños explícitos de frame conservan su contrato de geometría.
 #1561 P1-A conserva el plan de partición del Studio preexistente >2000 LOC;
 el código nuevo va en módulo de sesiones. #1562 pendiente de merge en nightly;
 cuando entre se incorpora origin/nightly mediante merge, sin rebase.
-Siguiente: RED criterios 1–8, implementación mínima, gates y capturas inspeccionadas;
+Siguiente: tests completos, lifecycle/telemetría y capturas inspeccionadas;
 commits por hito, push de rama impl y PR draft a nightly. Sin promoción/release.
 Última actualización: 2026-10-10, #1564, Codex.
 

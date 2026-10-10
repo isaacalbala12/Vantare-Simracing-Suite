@@ -1,6 +1,7 @@
 //! Editor espacial sobre el documento y el renderer compartidos.
 mod examples;
 mod scenes;
+mod sessions;
 use crate::{
     document::Editor,
     inspector::{self, Control, Tab},
@@ -277,8 +278,26 @@ fn capture_settings(kind: Kind) -> Settings {
     };
     if let Settings::Standings(settings) = &mut settings {
         settings.row_count = 8;
+        #[cfg(feature = "parity-capture")]
+        if capture_session().is_some() {
+            settings.design_system = vantare_ui::standings::DesignSystem::Vantare;
+            settings.apply_session_presets();
+        }
     }
     settings
+}
+
+#[cfg(feature = "parity-capture")]
+fn capture_session() -> Option<vantare_ui::session::Session> {
+    if !capture_name().is_some_and(|name| name.starts_with("studio-")) {
+        return None;
+    }
+    match std::env::var("VANTARE_CAPTURE_SESSION").as_deref() {
+        Ok("practice") => Some(vantare_ui::session::Session::Practice),
+        Ok("qualifying") => Some(vantare_ui::session::Session::Qualifying),
+        Ok("race") => Some(vantare_ui::session::Session::Race),
+        _ => None,
+    }
 }
 
 // El peso ya está en las fuentes Inter estáticas del kit.
@@ -567,6 +586,9 @@ pub struct Studio {
     example: bool,
     photos: Vec<scenes::Photo>,
     real_photo: Option<usize>,
+    /// Pestaña de columnas de Standings en edición y escena de su vista previa.
+    session_tab: vantare_ui::session::Session,
+    session_column: String,
     photo_choice: Option<Entity<Choice>>,
     resolution_choice: Option<Entity<Choice>>,
     monitor: (f32, f32, f32, f32),
@@ -1048,6 +1070,8 @@ impl Studio {
             example: true,
             photos: prepared.photos,
             real_photo: None,
+            session_tab: vantare_ui::session::Session::Race,
+            session_column: "driverName".into(),
             photo_choice: None,
             resolution_choice: None,
             monitor,
@@ -1075,6 +1099,10 @@ impl Studio {
             Some("studio-manual") => studio.zoom_step = 3,
             Some("studio-en-vivo") => studio.example = false,
             _ => {}
+        }
+        #[cfg(feature = "parity-capture")]
+        if let Some(session) = capture_session() {
+            studio.session_tab = session;
         }
         studio.rebuild(cx);
         studio
@@ -1273,7 +1301,7 @@ impl Studio {
     }
     fn settings_snapshot(&self, settings: &Settings) -> std::borrow::Cow<'_, Snapshot> {
         let photo = self.preview_snapshot(settings.kind());
-        if self.example
+        let mut snapshot = if self.example
             && self.real_photo.is_none()
             && let Settings::Standings(value) = settings
             && settings.appearance().is_some()
@@ -1282,7 +1310,14 @@ impl Studio {
             std::borrow::Cow::Owned(examples::multiclass(photo, value.row_count))
         } else {
             std::borrow::Cow::Borrowed(photo)
+        };
+        // El ejemplo de diseño de Standings adopta la sesión de la pestaña (#1564);
+        // las fotos reales y En vivo conservan la suya.
+        if self.example && self.real_photo.is_none() && matches!(settings, Settings::Standings(_)) {
+            snapshot.to_mut().state.session.kind =
+                vantare_domain::Quality::Reliable(self.session_tab.kind());
         }
+        snapshot
     }
 
     fn rescale_preview(&mut self, cx: &mut Context<Self>) {
@@ -1743,10 +1778,18 @@ impl Studio {
         self.fields
             .push((Tab::Behavior, "Visible", visible.into(), false));
         self.off_track_control(&item, window, cx);
-        for field in inspector::fields(&item.settings) {
+        self.push_show_in_fields(&item, cx);
+        self.push_session_column_formats(&item, window, cx);
+        let fields_settings = match &item.settings {
+            Settings::Standings(settings) => {
+                Settings::Standings(settings.for_session(self.session_tab))
+            }
+            settings => settings.clone(),
+        };
+        for field in inspector::fields(&fields_settings) {
             let (tab, title) = (field.tab, field.title);
             let label = !matches!(&field.control, Control::Boolean { .. });
-            let view = Self::setting_control(item.id.clone(), field, window, cx);
+            let view = Self::setting_control(item.id.clone(), field, self.session_tab, window, cx);
             self.fields.push((tab, title, view, label));
         }
     }
@@ -1788,6 +1831,7 @@ impl Studio {
     fn setting_control(
         id: String,
         field: inspector::Field,
+        session: vantare_ui::session::Session,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> gpui::AnyView {
@@ -1810,6 +1854,7 @@ impl Studio {
                 selected,
                 set,
             } => {
+                let table_columns = field.title == "Formato de tabla";
                 let control = cx.new(|cx| {
                     Choice::new(
                         field.title,
@@ -1829,7 +1874,18 @@ impl Studio {
                     {
                         this.reset_fields();
                         this.edit(
-                            |editor| editor.edit_selected(|item| set(&mut item.settings, key)),
+                            |editor| {
+                                editor.edit_selected(|item| {
+                                    if table_columns
+                                        && let Settings::Standings(settings) = &mut item.settings
+                                    {
+                                        *settings.session_columns_mut(session) =
+                                            vantare_ui::standings::vantare_template(key);
+                                    } else {
+                                        set(&mut item.settings, key);
+                                    }
+                                })
+                            },
                             cx,
                         );
                     }
@@ -2232,11 +2288,12 @@ impl Studio {
     fn column_settings(
         item: &Instance,
         tab: Tab,
+        session: vantare_ui::session::Session,
         mut panel: gpui::Div,
         cx: &mut Context<Self>,
     ) -> gpui::Div {
         if tab == Tab::Content
-            && let Some(columns) = inspector::columns(&item.settings)
+            && let Some(columns) = inspector::columns(&item.settings, session)
         {
             panel = panel.child(orbit::eyebrow("Columnas", cx));
             for (index, column) in columns.iter().enumerate() {
@@ -2265,7 +2322,7 @@ impl Studio {
                             |editor| {
                                 editor.edit_selected(|item| {
                                     if let Some(columns) =
-                                        inspector::columns_mut(&mut item.settings)
+                                        inspector::columns_mut(&mut item.settings, session)
                                         && let Some(column) = columns.get_mut(index)
                                     {
                                         column.enabled = !column.enabled;
@@ -2756,7 +2813,7 @@ impl Studio {
                     }
                 }
                 panel = self.color_settings(tab, panel, cx);
-                panel = Self::column_settings(item, tab, panel, cx);
+                panel = Self::column_settings(item, tab, self.session_tab, panel, cx);
 
                 if tab == Tab::Content && !inspector::pending(&item.settings).is_empty() {
                     panel = panel.child(text(
@@ -2822,6 +2879,20 @@ impl Studio {
                     ),
             );
             for tab in Tab::ALL {
+                #[cfg(feature = "parity-capture")]
+                if capture_session().is_some() {
+                    let behavior =
+                        std::env::var("VANTARE_CAPTURE_INSPECTOR").as_deref() == Ok("behavior");
+                    if tab
+                        != if behavior {
+                            Tab::Behavior
+                        } else {
+                            Tab::Content
+                        }
+                    {
+                        continue;
+                    }
+                }
                 if tab == Tab::Layout {
                     panel = panel.child(self.performance_settings(cx));
                 }
@@ -2837,6 +2908,9 @@ impl Studio {
                     cx,
                 );
                 let mut body = div().flex().flex_col().gap(px(10.0));
+                if tab == Tab::Content {
+                    body = body.children(Self::session_tabs(item, self.session_tab, cx));
+                }
                 for (field_tab, label, control, show_label) in &self.fields {
                     if *field_tab == tab {
                         body =

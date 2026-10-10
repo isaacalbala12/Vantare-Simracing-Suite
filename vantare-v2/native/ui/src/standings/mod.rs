@@ -30,6 +30,7 @@ pub(crate) mod vantare;
 pub(crate) mod view;
 
 use crate::app::Paint;
+use crate::session::Session;
 use model::{Config, Metric};
 use motion::Wake;
 use std::time::Instant;
@@ -46,7 +47,13 @@ pub struct Settings {
     pub style: Look,
     pub accent: Accent,
     pub row_count: usize,
+    /// Columnas de carrera y, en layouts anteriores a #1564, de todas las sesiones.
     pub columns: Option<Vec<options::ColumnSetting>>,
+    /// Pestañas Práctica y Qualy (#1564); `None` usa `columns`.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub practice_columns: Option<Vec<options::ColumnSetting>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub qualifying_columns: Option<Vec<options::ColumnSetting>>,
     pub class_scope: String,
     pub classification_mode: String,
     pub player_window: bool,
@@ -202,9 +209,131 @@ pub fn vantare_template(name: &str) -> Vec<options::ColumnSetting> {
     .collect()
 }
 
+/// Preset de columnas de cada pestaña (#1564), en el orden de las plantillas.
+#[must_use]
+pub fn session_preset(session: Session) -> Vec<options::ColumnSetting> {
+    let on: &[&str] = match session {
+        Session::Practice | Session::Qualifying => &[
+            "position",
+            "driverNumber",
+            "driverName",
+            "bestLap",
+            "gap",
+            "lastLap",
+            "sectors",
+        ],
+        Session::Race => &[
+            "position",
+            "driverNumber",
+            "driverName",
+            "gap",
+            "interval",
+            "lastLap",
+            "pit",
+            "positionsGained",
+            "tireCompound",
+        ],
+    };
+    let mut columns = vantare_template("standard");
+    for column in &mut columns {
+        column.enabled = on.contains(&column.metric_id.as_str());
+    }
+    columns.sort_by_key(|column| {
+        on.iter()
+            .position(|metric| *metric == column.metric_id)
+            .unwrap_or(on.len())
+    });
+    columns
+}
+
 impl Default for Settings {
     fn default() -> Self {
         Self::for_look(crate::look::Look::default())
+    }
+}
+
+impl Settings {
+    /// Widgets nuevos: cada pestaña con su preset.
+    pub fn apply_session_presets(&mut self) {
+        for session in Session::ALL {
+            *self.session_columns_slot(session) = Some(session_preset(session));
+        }
+    }
+
+    /// Columnas guardadas de una pestaña, con la herencia de `columns`.
+    #[must_use]
+    pub fn session_columns(&self, session: Session) -> Option<&Vec<options::ColumnSetting>> {
+        match session {
+            Session::Practice => self.practice_columns.as_ref(),
+            Session::Qualifying => self.qualifying_columns.as_ref(),
+            Session::Race => None,
+        }
+        .or(self.columns.as_ref())
+    }
+
+    /// Editar una pestaña la independiza: copia antes lo que heredaba.
+    pub fn session_columns_mut(&mut self, session: Session) -> &mut Vec<options::ColumnSetting> {
+        // Editing Race must first detach the other tabs from legacy `columns`.
+        if session == Session::Race {
+            let inherited = self
+                .columns
+                .clone()
+                .unwrap_or_else(|| self.legacy_columns());
+            if self.practice_columns.is_none() {
+                self.practice_columns = Some(inherited.clone());
+            }
+            if self.qualifying_columns.is_none() {
+                self.qualifying_columns = Some(inherited);
+            }
+        }
+        let inherited = self
+            .session_columns(session)
+            .cloned()
+            .unwrap_or_else(|| self.legacy_columns());
+        self.session_columns_slot(session).get_or_insert(inherited)
+    }
+
+    fn legacy_columns(&self) -> Vec<options::ColumnSetting> {
+        if self.design_system == DesignSystem::Vantare {
+            return vantare_template("standard");
+        }
+        // Eficiencia Signature without explicit columns: the existing config.
+        [
+            ("position", "xs"),
+            ("driverNumber", "sm"),
+            ("driverName", "lg"),
+            ("gap", "md"),
+            ("lastLap", "lg"),
+        ]
+        .into_iter()
+        .map(|(metric, width)| options::ColumnSetting {
+            id: metric.into(),
+            metric_id: metric.into(),
+            width_preset: width.into(),
+            ..options::ColumnSetting::default()
+        })
+        .collect()
+    }
+
+    fn session_columns_slot(
+        &mut self,
+        session: Session,
+    ) -> &mut Option<Vec<options::ColumnSetting>> {
+        match session {
+            Session::Practice => &mut self.practice_columns,
+            Session::Qualifying => &mut self.qualifying_columns,
+            Session::Race => &mut self.columns,
+        }
+    }
+
+    /// Ajustes efectivos de una pestaña: sus columnas en `columns`.
+    #[must_use]
+    pub fn for_session(&self, session: Session) -> Self {
+        let mut settings = self.clone();
+        settings.columns = self.session_columns(session).cloned();
+        settings.practice_columns = None;
+        settings.qualifying_columns = None;
+        settings
     }
 }
 
@@ -237,6 +366,8 @@ impl Settings {
             accent: Accent::Red,
             row_count: 20,
             columns: None,
+            practice_columns: None,
+            qualifying_columns: None,
             class_scope: "player-class".into(),
             classification_mode: "normal".into(),
             player_window: false,
@@ -254,16 +385,10 @@ impl Settings {
         }
     }
 
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
-        (
-            "headerFirst/headerSecond",
-            "claves legacy: Eficiencia eliminó la segunda banda de información",
-        ),
-        (
-            "columns.tireCompound",
-            "Snapshot no publica compuesto; no se inventa",
-        ),
-    ];
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
+        "headerFirst/headerSecond",
+        "claves legacy: Eficiencia eliminó la segunda banda de información",
+    )];
     /// Standings del sistema Eficiencia heredado (Signature por defecto).
     #[must_use]
     pub fn eficiencia() -> Self {
@@ -292,7 +417,14 @@ impl Settings {
         if ![0, 2, 4, 6, 8].contains(&settings.window_around) {
             settings.window_around = 4;
         }
-        if let Some(columns) = &mut settings.columns {
+        for columns in [
+            &mut settings.columns,
+            &mut settings.practice_columns,
+            &mut settings.qualifying_columns,
+        ]
+        .into_iter()
+        .flatten()
+        {
             columns.truncate(12);
         }
         if let Some(slots) = &mut settings.footer_slots {
@@ -363,6 +495,9 @@ impl Settings {
 
 /// Un Board y un Motion activo; los pintores no poseen historial.
 pub(crate) struct Widget {
+    /// Ajustes completos (tres pestañas) y los efectivos de `session`.
+    all: Settings,
+    session: Session,
     settings: Settings,
     content: standings::Content,
     board: Option<std::sync::Arc<standings::Board>>,
@@ -474,9 +609,14 @@ impl Widget {
         }
     }
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
-        let settings = settings.normalized();
+        let all = settings.normalized();
+        // Sin dato de sesión se usa Carrera (#1564).
+        let session = Session::Race;
+        let settings = all.for_session(session);
         let presentation = Self::presentation(&settings, prefs, std::sync::Arc::default());
         Self {
+            all,
+            session,
             content: settings.content(),
             settings,
             board: None,
@@ -501,6 +641,11 @@ impl Widget {
             Option<&std::sync::Arc<standings::Board>>,
         ) -> std::sync::Arc<standings::Board>,
     ) -> bool {
+        if let Some(session) = Session::of(&snapshot.state.session.kind)
+            && session != self.session
+        {
+            self.switch_session(session, prefs);
+        }
         let next = project(snapshot, prefs, self.content(), self.board.as_ref());
         let boundary = (
             snapshot.epoch,
@@ -541,6 +686,20 @@ impl Widget {
             } => v.ingest_shared(board, std::sync::Arc::make_mut(m)),
         }
     }
+    /// Cambia a las columnas de otra pestaña conservando el Motion; la foto
+    /// siguiente proyecta con el contenido nuevo.
+    fn switch_session(&mut self, session: Session, prefs: Preferences) {
+        let motion = match &self.presentation {
+            Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                motion.clone()
+            }
+        };
+        self.session = session;
+        self.settings = self.all.for_session(session);
+        self.content = self.settings.content();
+        self.presentation = Self::presentation(&self.settings, prefs, motion);
+        self.board = None;
+    }
     /// Cambiar Look conserva la foto, `CarIds` y el reloj de los avisos; no proyecta.
     pub(crate) fn set_look(&mut self, look: crate::look::Look, prefs: Preferences) {
         if self.settings.design_system == look {
@@ -552,6 +711,7 @@ impl Widget {
             }
         };
         self.settings.design_system = look;
+        self.all.design_system = look;
         self.presentation = Self::presentation(&self.settings, prefs, motion);
         if let Some(board) = self.board.clone() {
             match &mut self.presentation {
@@ -686,7 +846,12 @@ impl Settings {
         if settings.classification_mode == "multiclass" {
             demand.request(ClassGaps, 250);
         }
-        for column in &config.columns {
+        // Señales de las tres pestañas: el cambio de sesión no espera a la demanda.
+        let tabs: Vec<Config> = Session::ALL
+            .iter()
+            .map(|session| settings.for_session(*session).config())
+            .collect();
+        for column in tabs.iter().flat_map(|tab| &tab.columns) {
             match column.metric {
                 Metric::Gap | Metric::Interval => {
                     demand.request(
@@ -737,6 +902,7 @@ impl Settings {
 
 #[cfg(test)]
 mod tests {
+
     #[test]
     fn look_switch_preserves_all_motion_channels_and_their_clocks() {
         let prefs = Preferences::default();

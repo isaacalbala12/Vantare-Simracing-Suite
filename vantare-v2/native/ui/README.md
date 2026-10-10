@@ -1,5 +1,29 @@
 # ui — overlays GPUI
 
+## #1564 · Sesiones y columnas de Standings
+
+Las instancias guardan `showIn` (practice/qualifying/race, todas por defecto).
+Solo LiveScreens lo aplica y lo combina con Y con #1562, incluso si fuera de
+pista está en AlwaysVisible. Studio/Workshop siguen mostrando la instancia.
+Sin tipo conocido se ve; un tipo Stale conserva la última sesión conocida.
+
+Standings guarda Carrera en `columns`, Práctica en `practiceColumns` y Qualy
+en `qualifyingColumns`. Los campos nuevos ausentes heredan las columnas
+anteriores. Antes de editar Carrera se independizan las otras pestañas;
+se preservan orden, activación, anchuras y formatos en el round-trip.
+Los presets D7 se aplican al crear una instancia en Studio/layout inicial o
+al restablecer una pestaña; no reemplazan los settings guardados.
+Practice y Other (warmup incluido) usan Práctica, Qualifying usa Qualy y
+Race usa Carrera; al arrancar sin tipo las columnas son las de Carrera.
+El ancho natural cambia con las columnas; las coordenadas del layout no cambian.
+Un tamaño explícito de frame sigue obedeciendo al contrato de geometría.
+La demanda reúne las señales de las tres pestañas, sin cambiar su cadencia.
+
+`profile_import` traduce sessionTypes practice/warmup, qualifying/qual y
+race/endurance. Otras condiciones no soportadas siguen importando oculto con
+aviso. Los valores de telemetría y el orden por posición conservan su contrato;
+solo warmup/Other pasan a comparar mejor vuelta como Práctica.
+
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
 cola de `AGENTS.md` (en esta ola, `C:/tmp/fase2/compilar.ps1`; normalmente,
 `native/scripts/compilar.ps1`). Usar target aislado y `-j 2`.

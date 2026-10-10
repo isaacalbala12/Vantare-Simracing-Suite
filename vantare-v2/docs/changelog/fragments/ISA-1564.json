@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1564",
+  "type": "feature",
+  "summary": "Standings cambia sus columnas por sesión y cada widget permite elegir en qué sesiones se muestra.",
+  "technicalNotes": [
+    "Práctica, Qualy y Carrera guardan columnas y formatos independientes; los layouts anteriores conservan sus columnas.",
+    "Warmup y Other usan Práctica; Stale conserva la sesión y sin tipo inicial Standings usa Carrera.",
+    "Mostrar en se combina con Ocultar fuera de pista; Studio y Workshop mantienen sus previews visibles.",
+    "La importación respeta visibleWhen.sessionTypes y conserva los avisos de otras condiciones no soportadas."
+  ],
+  "testing": [
+    "Crear Standings, editar una pestaña y comprobar que las otras conservan sus columnas y formatos tras reabrir Studio.",
+    "Cambiar pestaña y observar su ejemplo, ancho y posición; Restablecer preset afecta solo a esa sesión.",
+    "Marcar solo Carrera en un widget y comprobar la regla junto a Fuera de pista, incluso con Siempre visible."
+  ],
+  "knownLimitations": [
+    "Las fotos reales y En vivo conservan su sesión propia; la pestaña cambia el ejemplo de diseño.",
+    "Los frames de tamaño explícito conservan su geometría; el ancho natural responde a las columnas.",
+    "Los tests y capturas QA no certifican LMU/ACC/OBS físicos."
+  ]
+}

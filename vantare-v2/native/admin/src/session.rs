@@ -134,29 +134,7 @@ impl Session {
         );
         let store = Store::open(root, &context)?;
         let http = Http::default();
-        let oauth = match store.load::<OAuth>("oauth-metadata") {
-            Ok(oauth)
-                if oauth.matches(
-                    &oauth_config.issuer,
-                    &oauth_config.client_id,
-                    &oauth_config.redirect_uri,
-                ) =>
-            {
-                oauth
-            }
-            Ok(_) => return Err(Error::Storage),
-            Err(Error::NotFound) => {
-                let oauth = OAuth::discover(
-                    &http,
-                    oauth_config.issuer,
-                    oauth_config.client_id,
-                    oauth_config.redirect_uri,
-                )?;
-                store.save("oauth-metadata", &oauth)?;
-                oauth
-            }
-            Err(error) => return Err(error),
-        };
+        let oauth = load_oauth(&store, &http, oauth_config)?;
         Ok(Self {
             account: Account::restore(oauth, &store)?,
             store,
@@ -233,6 +211,41 @@ impl Session {
         Ok(None)
     }
 }
+fn load_oauth(
+    store: &Store,
+    http: &Http,
+    oauth_config: vantare_services::config::OAuthBuild,
+) -> Result<OAuth> {
+    let cached = match store.load::<OAuth>("oauth-metadata") {
+        Ok(oauth)
+            if oauth.matches(
+                &oauth_config.issuer,
+                &oauth_config.client_id,
+                &oauth_config.redirect_uri,
+            ) =>
+        {
+            Some(oauth)
+        }
+        Ok(_) => {
+            store.quarantine_preserving("oauth-metadata")?;
+            None
+        }
+        Err(Error::NotFound) => None,
+        Err(error) => return Err(error),
+    };
+    if let Some(oauth) = cached {
+        return Ok(oauth);
+    }
+    let oauth = OAuth::discover(
+        http,
+        oauth_config.issuer,
+        oauth_config.client_id,
+        oauth_config.redirect_uri,
+    )?;
+    store.save("oauth-metadata", &oauth)?;
+    Ok(oauth)
+}
+
 fn now() -> Result<u64> {
     SystemTime::now()
         .duration_since(UNIX_EPOCH)
@@ -427,4 +440,86 @@ fn diagnose_searches(session: &Session, profile: Profile) -> Result<()> {
         );
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn regression_1555_admin_redirect_mismatch_is_quarantined_before_discovery() {
+        let root = std::env::temp_dir().join(format!("admin-oauth-1555-{}", std::process::id()));
+        let issuer = url::Url::parse("http://127.0.0.1:1/").expect("issuer");
+        let old_redirect = url::Url::parse("http://127.0.0.1:0/old-callback").expect("redirect");
+        let old: OAuth = serde_json::from_value(serde_json::json!({
+            "issuer":issuer, "client_id":"public-fixture", "redirect":old_redirect,
+            "authorization":issuer.join("authorize").expect("url"),
+            "token":issuer.join("token").expect("url"),
+            "userinfo":issuer.join("userinfo").expect("url")
+        }))
+        .expect("metadata");
+        let store = Store::open(&root, "1555-admin-context").expect("store");
+        store.save("oauth-metadata", &old).expect("metadata");
+        store
+            .save("account", &serde_json::json!({"fixture":"preserve"}))
+            .expect("session marker");
+        let namespace = std::fs::read_dir(&root)
+            .expect("root")
+            .next()
+            .expect("namespace")
+            .expect("entry")
+            .path();
+        let before = std::fs::read_dir(&namespace)
+            .expect("namespace")
+            .filter_map(|entry| {
+                let path = entry.expect("entry").path();
+                if path.file_name().expect("name") == "owner.lock" {
+                    return None;
+                }
+                Some((path.clone(), std::fs::read(path).expect("bytes")))
+            })
+            .collect::<Vec<_>>();
+        let config = || vantare_services::config::OAuthBuild {
+            issuer: issuer.clone(),
+            client_id: "public-fixture".into(),
+            redirect_uri: url::Url::parse("http://127.0.0.1:0/callback").expect("redirect"),
+        };
+        // HTTP is rejected by the services dependency: reaching discovery is observable
+        // without network or build-time credentials.
+        assert!(matches!(
+            load_oauth(&store, &Http::default(), config()),
+            Err(Error::Unconfigured)
+        ));
+        assert!(matches!(
+            store.load::<OAuth>("oauth-metadata"),
+            Err(Error::NotFound)
+        ));
+        let aside = std::fs::read_dir(&namespace)
+            .expect("namespace")
+            .filter_map(|entry| {
+                let path = entry.expect("entry").path();
+                path.extension()
+                    .is_some_and(|ext| ext == "corrupto")
+                    .then_some(path)
+            })
+            .collect::<Vec<_>>();
+        assert_eq!(aside.len(), 1);
+        for (path, bytes) in before {
+            if path
+                .file_name()
+                .expect("name")
+                .to_string_lossy()
+                .starts_with("oauth-metadata")
+            {
+                assert_eq!(std::fs::read(&aside[0]).expect("quarantined bytes"), bytes);
+            } else {
+                assert_eq!(std::fs::read(path).expect("preserved session"), bytes);
+            }
+        }
+        assert!(matches!(
+            load_oauth(&store, &Http::default(), config()),
+            Err(Error::Unconfigured)
+        ));
+        drop(store);
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
 }

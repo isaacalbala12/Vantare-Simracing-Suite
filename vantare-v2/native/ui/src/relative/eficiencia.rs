@@ -6,21 +6,26 @@ use super::{
     ink, linear_color_stop, linear_gradient, paint_rect, px, quad, rect, text, tokens,
 };
 use std::sync::Arc;
+mod labels;
+use labels::{Cell, Labels, Prepared, RowLabels};
 pub(crate) struct Visual {
     pub(super) vm: Arc<ViewModel>,
     settings: Arc<Settings>,
     footer_rows: usize,
     workshop: bool,
     idle_rows: Option<Arc<Vec<RowVisual>>>,
+    labels: Arc<Labels>,
 }
 impl Visual {
     pub(super) fn new(settings: &Settings, board: Arc<ViewModel>) -> Self {
+        let labels = Arc::new(Labels::new(&board, settings, Language::Es, &[]));
         Self {
             vm: board,
             settings: Arc::new(settings.clone()),
             footer_rows: 1,
             workshop: false,
             idle_rows: None,
+            labels,
         }
     }
     pub(super) fn attach(&mut self, motion: &mut Motion) {
@@ -41,6 +46,12 @@ impl Visual {
             })
             .collect::<Vec<_>>();
         motion.rows.relayout(&self.vm, &samples, 1.0, 0.0);
+        self.labels = Arc::new(Labels::new(
+            &self.vm,
+            &self.settings,
+            self.labels.language,
+            &motion.sample(&self.vm, Instant::now()),
+        ));
         if self.vm.footer_cells.len() > 5 {
             let total = self
                 .vm
@@ -105,6 +116,12 @@ impl Visual {
                 .sum::<f32>();
             self.footer_rows = (total / (SIZE.0 - 24.0)).ceil().max(1.0) as usize;
         }
+        self.labels = Arc::new(Labels::new(
+            &next,
+            &self.settings,
+            self.labels.language,
+            &motion.sample(&next, now),
+        ));
         self.vm = next;
         changed
     }
@@ -131,12 +148,17 @@ impl Visual {
                 .clone()
         };
         let wake = if active { Wake::Frame } else { Wake::Idle };
+        if self.labels.language != prefs.language {
+            self.labels = Arc::new(Labels::new(&self.vm, &self.settings, prefs.language, &rows));
+        }
+        let labels = self.labels.clone();
         let vm = self.vm.clone();
         let settings = self.settings.clone();
         let size = self.size();
         let footer_rows = self.footer_rows;
         (
             Box::new(move |window, cx| {
+                let prepared = labels.prepare(&vm, size.0, window);
                 paint(
                     &vm,
                     &rows,
@@ -144,7 +166,8 @@ impl Visual {
                     &vm.footer_cells,
                     size,
                     footer_rows,
-                    prefs,
+                    &labels,
+                    prepared,
                     window,
                     cx,
                 );
@@ -213,7 +236,8 @@ fn paint(
     footer: &[vantare_domain::standings::InfoCell],
     size: (f32, f32),
     footer_rows: usize,
-    prefs: Preferences,
+    labels: &Labels,
+    prepared: &Prepared,
     window: &mut Window,
     cx: &mut App,
 ) {
@@ -262,7 +286,7 @@ fn paint(
     }
     if has_meta {
         line(window, BAND - SCALE, tokens::INK, 0.1);
-        let (label, _) = labels(prefs.language);
+        let (label, _) = super::eficiencia::labels(labels.language);
         let font = ink(
             14.0 * SCALE,
             650.0,
@@ -276,24 +300,15 @@ fn paint(
                 },
             ),
         );
-        let badge_width = text::width(window, &vm.player_badge, &font);
-        let label_width = text::width(
-            window,
-            label,
-            &ink(11.0, 600.0, 0.1, col(tokens::MUTED, 1.0)),
-        );
-        let track = text::fit(
-            window,
-            &vm.track,
-            &font,
-            (width - badge_width - label_width - 42.0).max(0.0),
-        );
+        let badge_width = prepared.badge_width;
+        let track = &prepared.track;
         item(
             window,
             cx,
             12.0 * SCALE,
             0.0,
-            (label, &track, vm.header_stale.track),
+            (label, track, vm.header_stale.track),
+            prepared.header_advance,
         );
         let x = width - 12.0 * SCALE - badge_width;
         text::draw(
@@ -318,13 +333,17 @@ fn paint(
         }),
         |window| {
             for row in rows {
+                let Some(row_labels) = prepared.rows.get(&row.row.id) else {
+                    continue;
+                };
                 if settings.columns.is_some() {
                     paint_configured_row(
                         row,
                         top,
                         row_height,
                         settings,
-                        prefs.language,
+                        &labels.columns,
+                        row_labels,
                         window,
                         cx,
                     );
@@ -334,14 +353,14 @@ fn paint(
                         top,
                         row_height,
                         settings.slot_count(),
-                        prefs.language,
+                        row_labels,
                         window,
                         cx,
                     );
                 }
             }
             if rows.is_empty() && vm.status.is_none() {
-                let message = if prefs.language == Language::Es {
+                let message = if labels.language == Language::Es {
                     "SIN DATOS"
                 } else {
                     "NO DATA"
@@ -351,27 +370,11 @@ fn paint(
             }
         },
     );
-    let session = [&vm.session, &vm.remaining]
-        .into_iter()
-        .filter(|v| !v.is_empty())
-        .cloned()
-        .collect::<Vec<_>>()
-        .join(" ");
-    let (_, weather) = labels(prefs.language);
-    let fields = [
-        ("", session.as_str(), false),
-        (weather[0], vm.air.as_str(), vm.header_stale.air),
-        (
-            weather[1],
-            vm.track_temperature.as_str(),
-            vm.header_stale.track_temperature,
-        ),
-        (weather[2], vm.wind.as_str(), vm.header_stale.wind),
-    ];
-    let visible = fields
+    let fields = labels.fields(vm);
+    let count = fields
         .iter()
         .filter(|(_, value, _)| !value.is_empty())
-        .collect::<Vec<_>>();
+        .count();
     if !footer.is_empty() && vm.status.is_none() {
         crate::standings::view::paint_info_cells(
             footer,
@@ -384,36 +387,51 @@ fn paint(
             window,
             cx,
         );
-    } else if !visible.is_empty() {
+    } else if count > 0 {
         let y = height - FOOTER;
         line(window, y, tokens::INK, 0.1);
-        let widths = visible
-            .iter()
-            .map(|(label, value, _)| item_width(window, label, value))
-            .collect::<Vec<_>>();
         let gap = 16.0 * SCALE;
-        let total = widths.iter().sum::<f32>() + gap * (visible.len() - 1) as f32;
+        let total = fields
+            .iter()
+            .enumerate()
+            .filter(|(_, (_, value, _))| !value.is_empty())
+            .map(|(i, _)| prepared.footer_widths[i])
+            .sum::<f32>()
+            + gap * (count - 1) as f32;
         let mut x = (width - total) / 2.0;
-        for ((label, value, stale), w) in visible.into_iter().zip(widths) {
+        for (i, (label, value, stale)) in fields
+            .into_iter()
+            .enumerate()
+            .filter(|(_, (_, value, _))| !value.is_empty())
+        {
             if label.is_empty() && (vm.header_stale.session || vm.header_stale.remaining) {
-                // Solo el valor obsoleto se atenúa; el texto fresco conserva su tinta.
-                item(window, cx, x, y, ("", &vm.session, vm.header_stale.session));
-                let advance = if vm.session.is_empty() || vm.remaining.is_empty() {
-                    0.0
-                } else {
-                    item_width(window, "", &vm.session) + item_width(window, "", " ")
-                };
                 item(
                     window,
                     cx,
-                    x + advance,
+                    x,
+                    y,
+                    ("", &vm.session, vm.header_stale.session),
+                    0.0,
+                );
+                item(
+                    window,
+                    cx,
+                    x + prepared.session_advance,
                     y,
                     ("", &vm.remaining, vm.header_stale.remaining),
+                    0.0,
                 );
             } else {
-                item(window, cx, x, y, (label, value, *stale));
+                item(
+                    window,
+                    cx,
+                    x,
+                    y,
+                    (label, value, stale),
+                    prepared.footer_advances[i],
+                );
             }
-            x += w + gap;
+            x += prepared.footer_widths[i] + gap;
         }
     }
     window.paint_quad(quad(
@@ -489,6 +507,7 @@ fn item(
     x: f32,
     y: f32,
     (label, value, stale): (&str, &str, bool),
+    advance: f32,
 ) {
     if value.is_empty() {
         return;
@@ -500,11 +519,6 @@ fn item(
         -0.01,
         col(tokens::INK, if stale { 0.6 } else { 1.0 }),
     );
-    let advance = if label.is_empty() {
-        0.0
-    } else {
-        text::width(window, label, &label_font) + 6.0 * SCALE
-    };
     text::draw(
         window,
         cx,
@@ -528,7 +542,7 @@ fn paint_row(
     top: f32,
     row_height: f32,
     slot_count: usize,
-    language: Language,
+    prepared: &RowLabels,
     window: &mut Window,
     cx: &mut App,
 ) {
@@ -588,9 +602,9 @@ fn paint_row(
         ),
     );
     // Posición 2ch + hueco 4 + tick 3, centrado como el grid del productivo.
-    let two_ch = text::width(window, "00", &ink(13.0 * SCALE, 600.0, 0.0, position.color));
+    let two_ch = prepared.two_ch;
     let identity_x = (edges[1] - two_ch - 7.0 * SCALE) / 2.0;
-    let pos_x = identity_x + (two_ch - text::width(window, &row.position, &position)) / 2.0;
+    let pos_x = identity_x + (two_ch - prepared.position_width) / 2.0;
     text::draw(
         window,
         cx,
@@ -599,13 +613,7 @@ fn paint_row(
         text::baseline(y, row_height, position.size),
         &position,
     );
-    let color = match row.class.to_uppercase().as_str() {
-        "HYPERCAR" => 0xc1121f,
-        "LMP2" => 0x0055a4,
-        "LMP3" => 0xf59e0b,
-        "GT3" | "LMGT3" => 0x2ecc71,
-        _ => 0x6b7280,
-    };
+    let color = prepared.color;
     paint_rect(
         window,
         identity_x + two_ch + 4.0 * SCALE,
@@ -618,7 +626,7 @@ fn paint_row(
     cell(
         window,
         cx,
-        &row.number,
+        &prepared.number,
         edges[2],
         edges[3],
         text::baseline(y, row_height, number.size),
@@ -626,34 +634,10 @@ fn paint_row(
         true,
     );
     let name = ink(14.0 * SCALE, 700.0, -0.025, col(tokens::INK, opacity));
-    let badge = row
-        .lap_delta
-        .filter(|delta| *delta != 0 && !player)
-        .map(|delta| {
-            format!(
-                "{}{} {}",
-                if delta > 0 { "+" } else { "−" },
-                delta.unsigned_abs(),
-                if language == Language::Es { "V" } else { "L" }
-            )
-        });
+    let badge = prepared.badge.as_deref();
     let badge_font = ink(8.0 * SCALE, 650.0, 0.01, col(0xc6c6cb, opacity));
-    let badge_width = badge.as_ref().map_or(0.0, |value| {
-        text::width(window, value, &badge_font) + 10.0 * SCALE
-    });
-    let value = text::fit(
-        window,
-        &row.driver.to_uppercase(),
-        &name,
-        edges[4]
-            - edges[3]
-            - 10.0 * SCALE
-            - if badge.is_some() {
-                badge_width + 7.0 * SCALE
-            } else {
-                0.0
-            },
-    );
+    let badge_width = prepared.badge_width;
+    let value = &prepared.name.text;
     // Cada tamaño de letra comparte el centro vertical de la fila.
     text::draw(
         window,
@@ -691,7 +675,7 @@ fn paint_row(
     cell(
         window,
         cx,
-        &row.gap,
+        &prepared.gap,
         edges[4],
         edges[5],
         text::baseline(y, row_height, gap.size),
@@ -710,7 +694,7 @@ fn paint_row(
     cell(
         window,
         cx,
-        &row.best_lap,
+        &prepared.best,
         edges[5],
         edges[6],
         text::baseline(y, row_height, lap.size),
@@ -724,7 +708,8 @@ fn paint_configured_row(
     top: f32,
     height: f32,
     settings: &Settings,
-    language: Language,
+    columns: &[labels::Column],
+    prepared: &RowLabels,
     window: &mut Window,
     cx: &mut App,
 ) {
@@ -758,86 +743,22 @@ fn paint_configured_row(
             0.1 * visual.opacity,
         );
     }
-    let columns: Vec<_> = settings
-        .columns
-        .iter()
-        .flatten()
-        .filter(|c| {
-            c.enabled
-                && [
-                    "position",
-                    "class",
-                    "carNumber",
-                    "driverName",
-                    "gap",
-                    "bestLap",
-                    "lastLap",
-                ]
-                .contains(&c.metric_id.as_str())
-        })
-        .take(7)
-        .collect();
-    let total = columns
-        .iter()
-        .map(|c| c.relative_width())
-        .sum::<f32>()
-        .max(1.0);
-    let has_position = columns.iter().any(|c| c.metric_id == "position");
-    let has_class = columns.iter().any(|c| c.metric_id == "class");
-    let mut x = 0.0;
-    for column in columns {
-        let w = column.relative_width() / total * SIZE.0;
-        let stale = match column.metric_id.as_str() {
+    for (column, value) in columns.iter().zip(&prepared.columns) {
+        let setting = &column.setting;
+        let w = column.width;
+        let x = column.x;
+        let stale = match setting.metric_id.as_str() {
             "position" => row.position_stale,
             "gap" => row.gap_stale,
             "bestLap" => row.best_lap_stale,
             "lastLap" => row.last_lap_stale,
             _ => false,
         };
-        let value = match column.metric_id.as_str() {
-            "position" => row.position.to_string(),
-            "class" => String::new(),
-            "carNumber" => row.number.clone(),
-            "driverName" => column.driver_name(&row.driver).to_uppercase(),
-            "gap" => row.gap.to_string(),
-            "bestLap" => row.best_lap.to_string(),
-            "lastLap" => row.last_lap.to_string(),
-            _ => "—".into(),
-        };
-        let centered = column.style.align.as_deref().map_or(
-            matches!(
-                column.metric_id.as_str(),
-                "position" | "class" | "carNumber"
-            ),
-            |v| v == "center",
-        );
-        let font = ink(
-            if column.metric_id == "driverName" {
-                14.0
-            } else if column.metric_id == "gap" {
-                16.0
-            } else {
-                13.0
-            } * SCALE,
-            if column.metric_id == "driverName" {
-                700.0
-            } else {
-                600.0
-            },
-            -0.02,
-            col(tokens::INK, visual.opacity * if stale { 0.6 } else { 1.0 }),
-        );
+        let centered = column.centered;
+        let font = column.font(visual.opacity * if stale { 0.6 } else { 1.0 });
         let baseline = text::baseline(y, height, font.size);
-        if (column.metric_id == "class" && !has_position)
-            || (column.metric_id == "position" && has_class)
-        {
-            let color = match row.class.to_uppercase().as_str() {
-                "HYPERCAR" => 0xc1121f,
-                "LMP2" => 0x0055a4,
-                "LMP3" => 0xf59e0b,
-                "GT3" | "LMGT3" => 0x2ecc71,
-                _ => 0x6b7280,
-            };
+        if column.tick {
+            let color = prepared.color;
             paint_rect(
                 window,
                 x + w - 4.0 * SCALE,
@@ -848,36 +769,22 @@ fn paint_configured_row(
             );
         }
         // Clase es un tick, nunca una celda de texto vacía recortada con elipsis.
-        if column.metric_id == "class" {
-            x += w;
+        if setting.metric_id == "class" {
             continue;
         }
-        if column.style.align.as_deref() == Some("left")
-            || (column.metric_id == "driverName" && column.style.align.is_none())
-        {
-            let badge = (column.metric_id == "driverName" && row.side != Side::Player)
-                .then_some(row.lap_delta)
-                .flatten()
-                .filter(|delta| *delta != 0)
-                .map(|delta| {
-                    format!(
-                        "{}{} {}",
-                        if delta > 0 { "+" } else { "−" },
-                        delta.unsigned_abs(),
-                        if language == Language::Es { "V" } else { "L" }
-                    )
-                });
+        if column.left {
+            let badge = if setting.metric_id == "driverName" {
+                prepared.badge.as_deref()
+            } else {
+                None
+            };
             let badge_font = ink(8.0 * SCALE, 650.0, 0.01, col(0xc6c6cb, visual.opacity));
-            let badge_width = badge
-                .as_ref()
-                .map_or(0.0, |v| text::width(window, v, &badge_font) + 10.0 * SCALE);
-            let reserve = if badge.is_some() {
-                badge_width + 7.0 * SCALE
+            let badge_width = if badge.is_some() {
+                prepared.badge_width
             } else {
                 0.0
             };
-            let fitted = text::fit(window, &value, &font, (w - 10.0 * SCALE - reserve).max(0.0));
-            text::draw(window, cx, &fitted, x, baseline, &font);
+            text::draw(window, cx, &value.text, x, baseline, &font);
             if let Some(badge) = badge {
                 let bx = x + w - 10.0 * SCALE - badge_width;
                 let by = y + (height - 14.0 * SCALE) / 2.0;
@@ -899,35 +806,60 @@ fn paint_configured_row(
                 );
             }
         } else {
-            cell(window, cx, &value, x, x + w, baseline, &font, centered);
+            cell(window, cx, value, x, x + w, baseline, &font, centered);
         }
-        x += w;
     }
 }
 
 fn cell(
     window: &mut Window,
     cx: &mut App,
-    value: &str,
+    value: &Cell,
     left: f32,
     right: f32,
     baseline: f32,
     font: &Ink,
     centered: bool,
 ) {
-    let fitted = text::fit(window, value, font, right - left - 12.0 * SCALE);
-    let width = text::width(window, &fitted, font);
+    let width = value.width;
     let x = if centered {
         (left + right - width) / 2.0
     } else {
         right - 6.0 * SCALE - width
     };
-    text::draw(window, cx, &fitted, x, baseline, font);
+    text::draw(window, cx, &value.text, x, baseline, font);
 }
 
 #[cfg(test)]
 mod idle_tests {
     use super::*;
+    #[test]
+    fn language_change_invalidates_text_and_measurement_preparation_once() {
+        let prefs = Preferences::default();
+        let board = Arc::new(vantare_domain::relative::project(
+            &crate::source::fixed(),
+            prefs,
+        ));
+        let mut visual = Visual::new(&Settings::eficiencia(), board);
+        let motion = Motion::default();
+        drop(visual.frame(prefs, false, &motion));
+        let first = visual.labels.clone();
+        let other = Preferences {
+            language: if prefs.language == Language::Es {
+                Language::En
+            } else {
+                Language::Es
+            },
+            ..prefs
+        };
+        drop(visual.frame(other, false, &motion));
+        let translated = visual.labels.clone();
+        assert!(!Arc::ptr_eq(&first, &translated));
+        assert_eq!(translated.language, other.language);
+        drop(visual.frame(other, false, &motion));
+        assert!(Arc::ptr_eq(&translated, &visual.labels));
+    }
+
     #[test]
     fn idle_frame_reuses_rows_and_new_facts_invalidate_them() {
         let prefs = Preferences::default();
@@ -937,12 +869,17 @@ mod idle_tests {
         let mut motion = Motion::default();
         assert_eq!(visual.frame(prefs, false, &motion).1, Wake::Idle);
         let idle = visual.idle_rows.clone().expect("filas quietas");
+        let labels = visual.labels.clone();
         assert!(!idle.is_empty());
         assert_eq!(visual.frame(prefs, false, &motion).1, Wake::Idle);
         assert!(Arc::ptr_eq(
             &idle,
             visual.idle_rows.as_ref().expect("misma presentación")
         ));
+        assert!(
+            Arc::ptr_eq(&labels, &visual.labels),
+            "sin preparar textos por frame"
+        );
         let mut next = snapshot;
         next.state.source_state = vantare_domain::SourceState::Lost;
         visual.ingest(
@@ -951,6 +888,10 @@ mod idle_tests {
             true,
         );
         assert!(visual.idle_rows.is_none());
+        assert!(
+            !Arc::ptr_eq(&labels, &visual.labels),
+            "nuevos hechos invalidan textos y medidas"
+        );
         drop(visual.frame(prefs, false, &motion));
         assert!(!Arc::ptr_eq(
             &idle,

@@ -215,12 +215,19 @@ fn cache_resolution_is_read_only_exact_and_missing_preserves_catalog() {
     fs::remove_dir(&wav_path).expect("quitar directorio");
     let missing_root = cache.0.join("sin-carpeta");
     let mut player = Voice::new(Some(&missing_root)).expect("no abortar por cache ausente");
+    // En Unix play rechaza con Unsupported antes de canonicalizar (voice.rs:50-56);
+    // el caso Unix ya lo cubre play_without_audio_support_returns_unsupported_before_touching_clips.
+    let expected_kind = if cfg!(windows) {
+        io::ErrorKind::NotFound
+    } else {
+        io::ErrorKind::Unsupported
+    };
     assert_eq!(
         player
             .play(Locale::Es, Intent::FuelOne, Duration::ZERO)
             .expect_err("ausente")
             .kind(),
-        io::ErrorKind::NotFound
+        expected_kind
     );
     assert!(!missing_root.exists());
 }

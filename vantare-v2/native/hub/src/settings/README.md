@@ -308,3 +308,10 @@ los 18 widgets, y capturas de Inicio/Apariencia en Vantare oscuro/claro, Grises
 oscuro/claro y Océano. En esta sesión no hay DISPLAY ni WAYLAND_DISPLAY. Notion
 está pendiente por la indisponibilidad explícita del encargo; no se ha simulado
 su seguimiento ni realizado push, PR, merge o release.
+
+## #1562 · Ocultar fuera de pista
+
+La opción global se guarda en `Layout.hideOffTrack`, con false por defecto.
+El toggle usa teclado/ratón y comunica los errores del guardado del Editor.
+Studio ofrece la excepción por widget; no existe una segunda preferencia en
+general.json. Ver [contrato](../../../runtime/README.md).

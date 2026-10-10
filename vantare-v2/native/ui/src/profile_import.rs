@@ -203,6 +203,7 @@ fn convert_widget(
         }
     }
     Ok(Some(Instance {
+        off_track: vantare_ui::layout::OffTrack::default(),
         geometry: vantare_ui::geometry::Geometry::default(),
         id: widget.id,
         x: origin.0 + widget.layout.x * scale,

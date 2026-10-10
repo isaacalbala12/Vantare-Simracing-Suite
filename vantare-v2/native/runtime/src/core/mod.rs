@@ -14,6 +14,7 @@ mod derive;
 mod fuel;
 mod merge;
 mod publish;
+mod situation;
 mod stint;
 mod trend;
 
@@ -84,6 +85,7 @@ pub struct Core {
     /// Memoria entre fotos de las derivaciones (combustible y delta); fuera de
     /// `domain`, porque no es una señal publicada.
     trackers: Trackers,
+    situation: situation::Tracker,
     events: Journal,
     series: Series,
     measurement_skip_flows: bool,
@@ -111,6 +113,7 @@ impl Core {
             stale: false,
             freshness_reason: "sin sesión admitida",
             trackers: Trackers::default(),
+            situation: situation::Tracker::default(),
             events: Journal::volatile(epoch),
             series: Series::default(),
             measurement_skip_flows: false,
@@ -283,6 +286,9 @@ impl Core {
         // vuelve a caducar a los mismos 500 ms; no cambia el límite del núcleo.
         self.stale = self.is_stale_at(origin.received_at);
         self.freshness_reason = match snapshot.state.source_state {
+            SourceState::Paused if origin.source.simulator == "acc" => {
+                "ACC graphics.status=PAUSE vigente"
+            }
             SourceState::Paused => {
                 "SHM mCurrentET sin avance >=500ms; proceso vivo y REST de sesión <500ms"
             }
@@ -298,6 +304,10 @@ impl Core {
             snapshot.state.source_state = SourceState::Stale;
             self.freshness_reason = "núcleo: origin.source_time sin avance >=500ms";
         }
+        if !same_scope(&self.current, &snapshot) {
+            self.situation.reset();
+        }
+        self.situation.update(&mut snapshot);
         self.publish(snapshot);
         Ok(())
     }
@@ -311,13 +321,24 @@ impl Core {
                 "núcleo: origin.source_time sin avance >=500ms"
             };
             self.publish_stale(reason);
+        } else if let Some(situation) = self.situation.advance(now) {
+            let mut snapshot = (*self.current).clone();
+            snapshot.sequence += 1;
+            snapshot.state.driving_situation = situation;
+            // Es metadata de visibilidad, no una adquisición nueva para series/journal.
+            self.current = Arc::new(snapshot);
+            self.publisher.publish(Arc::clone(&self.current));
         }
     }
 
     /// Plazo ya vigente: el servicio no debe dormir más allá de la degradación.
     pub(crate) fn freshness_deadline(&self) -> Option<Duration> {
-        (!self.stale && self.current.sequence != 0)
-            .then(|| self.last_advance.saturating_add(STALL_LIMIT))
+        (!self.stale && self.current.sequence != 0).then(|| {
+            let stale = self.last_advance.saturating_add(STALL_LIMIT);
+            self.situation
+                .deadline()
+                .map_or(stale, |settle| stale.min(settle))
+        })
     }
 
     fn is_stale_at(&self, now: Duration) -> bool {
@@ -325,6 +346,7 @@ impl Core {
     }
 
     fn publish_stale(&mut self, reason: &'static str) {
+        self.situation.reset();
         if self.stale || self.current.sequence == 0 {
             return; // ya obsoleto, o nada que degradar
         }
@@ -967,5 +989,32 @@ mod tests {
             core.series().active().expect("vuelta").samples.len(),
             samples
         );
+    }
+
+    #[test]
+    fn settling_a_frozen_pause_updates_visibility_without_journal_or_series_samples() {
+        let mut core = Core::new(1);
+        core.observe(lap_photo(ms(0), 1, 100.0, 0.0, 0.0))
+            .expect("live");
+        let mut paused = lap_photo(ms(100), 1, 100.0, 0.0, 0.0);
+        paused.state.source_state = SourceState::Paused;
+        core.observe(paused).expect("pausa");
+        let samples = core.series().active().expect("vuelta").samples.len();
+        let tail = core.events().tail();
+        let before = core.snapshot();
+        assert_eq!(core.freshness_deadline(), Some(ms(350)));
+        core.tick(ms(350));
+        assert_eq!(
+            core.snapshot().state.driving_situation,
+            vantare_domain::DrivingSituation::Paused
+        );
+        assert_eq!(core.snapshot().origin, before.origin);
+        assert_eq!(core.snapshot().state.player, before.state.player);
+        assert_eq!(core.events().tail(), tail);
+        assert_eq!(
+            core.series().active().expect("vuelta").samples.len(),
+            samples
+        );
+        assert_eq!(core.freshness_deadline(), Some(ms(600)));
     }
 }

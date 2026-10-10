@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1562",
+  "type": "feature",
+  "summary": "Ocultar los overlays fuera de pista con una opción global y excepciones por widget.",
+  "technicalNotes": [
+    "Situación central con confirmación de 250 ms; dato ausente mantiene visibilidad.",
+    "DTO v10; datos guardados v7/v8/v9 siguen legibles.",
+    "Previews de Studio/Workshop siempre visibles."
+  ],
+  "testing": [
+    "Activar Ocultar fuera de pista en Ajustes. Parar en boxes, pausar, reanudar y conducir por pit lane.",
+    "En Studio elegir Siempre visible para Fuel y comprobar que no se oculta.",
+    "ACC: comprobar replay; abrir una escena antigua y verificar preview visible."
+  ],
+  "knownLimitations": [
+    "El adapter LMU no tiene una señal verificada de replay del juego; no lo infiere del transporte ni de datos ausentes.",
+    "Validación física LMU/ACC/OBS pendiente; fixtures y tests no la sustituyen."
+  ]
+}

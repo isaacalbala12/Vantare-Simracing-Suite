@@ -68,3 +68,11 @@ Config y trazas: `benchmarks/arrastre-y-resize.benchmark.json`, `benchmarks/trac
 - ADR rebuild: `docs/adr/0003-overlay-studio-v3-rebuild.md`
 - Plan maestro: `docs/superpowers/plans/2026-07-10-overlay-studio-rebuild-master.md`
 - Editor único y separación interna entre canvas, inspector y renderizadores: [AGENTS](../../AGENTS.md).
+
+## #1562 · Ocultar fuera de pista
+
+Ajustes → General → Ocultar fuera de pista controla el opt-in global.
+Studio → En pista → Fuera de pista ofrece Heredar ajuste global / Siempre
+visible / Ocultar fuera de pista por instancia, con guardado y Deshacer/Rehacer.
+El preview nunca se oculta. En pit lane conduciendo los overlays siguen visibles;
+con señal ausente no se oculta. Ver [contrato](../../native/runtime/README.md).

@@ -232,3 +232,10 @@ un fallo de red o de escritura conserva el horario anterior. La ventana es
 `[validFrom, validUntil)`; cuando no hay uno vigente, todas las vistas muestran
 «Aún no hay horario publicado para esta semana» sin carreras caducadas.
 No publica horarios ni activa recordatorios.
+
+## #1562 · Ocultar fuera de pista
+
+Ajustes → General ofrece Ocultar fuera de pista (opt-in). Studio → En pista
+ofrece heredar / siempre visible / ocultar por instancia. Se guardan en el único
+layout mediante el Editor existente, con conflictos y Deshacer/Rehacer. Studio
+no aplica ocultación a sus previews. Ver [contrato](../runtime/README.md).

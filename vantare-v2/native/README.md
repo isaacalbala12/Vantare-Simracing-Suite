@@ -9,7 +9,7 @@ El workspace tiene 13 crates; `default-members` excluye storage y admin.
 | Crate | Contiene |
 | --- | --- |
 | `domain` | Modelo neutral, Adapter, proyecciones/ViewModels y formato; puro, sin I/O ni GPUI. |
-| `ipc` | Fotos DTO v9, demanda, transporte, derechos/control v4, contratos Engineer/Services y versión de producto. |
+| `ipc` | Fotos DTO v10, demanda, transporte, derechos/control v4, contratos Engineer/Services y versión de producto. |
 | `runtime` | Adapters LMU/ACC privados, núcleo, flujos y supervisor `vantare`. |
 | `engineer` | Eventos, radio, spotter y voz local bajo demanda. |
 | `storage` | Propietario único de series DuckDB (`SeriesChunk`, contrato independiente del DTO de fotos). |
@@ -38,18 +38,18 @@ engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
 
 ## Contrato de fotos y datos guardados
 
-El pipe Core→Hub/overlays negocia solo DTO v9; rechaza peers v7/v8.
+El pipe Core→Hub/overlays negocia solo DTO v10; rechaza peers v7/v8/v9.
 El host muestra una sola vez «Componentes incompatibles. Reinstala la misma
 versión de Vantare», conserva el aviso durante los reintentos y lo retira al
 recibir una foto compatible. No es una comprobación de versión de producto:
 binarios distintos con el mismo contrato pueden interoperar.
-Servicios usa protocolo v5 (#1529); derechos/control conserva v4, independiente del DTO v9.
+Servicios usa protocolo v5 (#1529); derechos/control conserva v4, independiente del DTO v10.
 El Hub distingue errores de versión de servicios y conserva su aviso de conexión.
 `snapshot_from_json` es estricto; `snapshot_from_saved_json` conserva escenas
-Studio/Workshop/exportaciones v7/v8/v9 sin reescribir originales.
+Studio/Workshop/exportaciones v7/v8/v9/v10 sin reescribir originales.
 `snapshot_from_fixture_json` es el helper explícito para fixtures históricas.
 No usar esos lectores de compatibilidad en pipes live ni eventos live.
-Fixtures actuales: DTO v9; `.scene.json` contiene fases con fotos/captions,
+Fixtures actuales: DTO v10; `.scene.json` contiene fases con fotos/captions,
 no un protocolo alternativo. Ver [ui/README.md](ui/README.md).
 
 ## Contrato adaptador ↔ núcleo

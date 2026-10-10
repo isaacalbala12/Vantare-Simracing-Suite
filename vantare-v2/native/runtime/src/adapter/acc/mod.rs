@@ -17,6 +17,9 @@ mod velocity;
 #[cfg(test)]
 mod velocity_corpus_tests;
 
+#[cfg(test)]
+mod situation_tests;
+
 #[cfg(windows)]
 pub use live::Acc;
 pub use replay::{AccReplay, open_acc_replay};

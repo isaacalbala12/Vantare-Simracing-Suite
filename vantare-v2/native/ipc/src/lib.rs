@@ -85,7 +85,7 @@ pub fn snapshot_from_json(text: &str) -> Result<Snapshot, Error> {
     decode_snapshot(serde_json::from_str(text)?)
 }
 
-/// Lee datos guardados (Studio, Workshop o exportaciones) v7/v8/v9.
+/// Lee datos guardados (Studio, Workshop o exportaciones) v7/v8/v9/v10.
 /// Nunca se usa en el pipe live ni en el canal de eventos.
 ///
 /// # Errors
@@ -93,7 +93,7 @@ pub fn snapshot_from_json(text: &str) -> Result<Snapshot, Error> {
 pub fn snapshot_from_saved_json(text: &str) -> Result<Snapshot, Error> {
     let mut dto = serde_json::from_str::<dto::SnapshotDto>(text)?;
     match dto.version {
-        7 | 8 => dto.version = dto::VERSION,
+        7..=9 => dto.version = dto::VERSION,
         dto::VERSION => {}
         got => return Err(Error::Version { got }),
     }
@@ -185,7 +185,38 @@ mod tests {
     }
 
     #[test]
-    fn v9_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
+    fn v10_situation_is_delivered_without_widget_signals_and_absence_never_hides() {
+        use vantare_domain::DrivingSituation as S;
+        for situation in [S::Unknown, S::OnTrack, S::Garage, S::Paused, S::Replay] {
+            let mut snapshot = rich_snapshot(1, 1);
+            snapshot.state.driving_situation = situation;
+            let dto = dto::SnapshotDto::selected(&snapshot, &crate::Demand::default())
+                .expect("selección");
+            let photo = Snapshot::try_from(dto).expect("foto parcial");
+            assert_eq!(photo.state.driving_situation, situation);
+            let text = snapshot_to_json(&snapshot).expect("DTO v10");
+            assert_eq!(snapshot_from_json(&text).expect("roundtrip"), snapshot);
+        }
+        let mut json: serde_json::Value =
+            serde_json::from_str(&snapshot_to_json(&rich_snapshot(1, 1)).expect("DTO"))
+                .expect("JSON");
+        json["state"]
+            .as_object_mut()
+            .expect("state")
+            .remove("driving_situation");
+        assert_eq!(
+            snapshot_from_json(&json.to_string())
+                .expect("ausente")
+                .state
+                .driving_situation,
+            S::Unknown
+        );
+        json["state"]["driving_situation"] = serde_json::json!("invented");
+        assert!(snapshot_from_json(&json.to_string()).is_err());
+    }
+
+    #[test]
+    fn v10_round_trips_every_source_state_and_rejects_oversized_fuel_history() {
         use vantare_domain::SourceState;
         for state in [
             SourceState::Waiting,
@@ -214,8 +245,8 @@ mod tests {
     fn saved_photos_remain_readable_without_accepting_old_peers() {
         let snapshot = rich_snapshot(1, 1);
         let current = snapshot_to_json(&snapshot).expect("v9");
-        for version in [7, 8] {
-            let legacy = current.replacen("\"version\":9", &format!("\"version\":{version}"), 1);
+        for version in [7, 8, 9] {
+            let legacy = current.replacen("\"version\":10", &format!("\"version\":{version}"), 1);
             assert_eq!(
                 snapshot_from_saved_json(&legacy).expect("dato guardado"),
                 snapshot
@@ -230,10 +261,10 @@ mod tests {
             assert!(!crate::codec::supports(version));
             assert_eq!(crate::codec::negotiate(version, version), None);
         }
-        let future = current.replacen("\"version\":9", "\"version\":10", 1);
+        let future = current.replacen("\"version\":10", "\"version\":11", 1);
         assert!(matches!(
             snapshot_from_saved_json(&future),
-            Err(Error::Version { got: 10 })
+            Err(Error::Version { got: 11 })
         ));
     }
 

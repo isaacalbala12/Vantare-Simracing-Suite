@@ -181,6 +181,7 @@ impl Translator {
                 received_at: now,
             },
             state: State {
+                driving_situation: vantare_domain::DrivingSituation::Unknown,
                 source_state: if frame.vehicles.is_empty() {
                     vantare_domain::SourceState::Waiting
                 } else if paused {

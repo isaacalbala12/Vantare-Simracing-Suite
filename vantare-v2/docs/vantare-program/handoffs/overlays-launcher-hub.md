@@ -1,5 +1,14 @@
 ## #1531 · Actualización de #1558 tras Linux verde y squash #1557
 
+## #1562 · implementación aislada en validación (2026-10-10)
+
+Rama `vantareapp/isa-1562-ocultar-fuera-de-pista`, base `ca17545f607b85f5d47dc9d060721b69e6a6a158` (origin/nightly).
+Brief `C:/tmp/ola2/brief-1562.md`; informe `C:/tmp/ola2/informe-1562.md`; buzón `C:/tmp/buzon/1562.md`.
+Situación central, DTO v10, 250 ms, ajuste global + excepciones, previews siempre visibles.
+Paridad: frontend antiguo solo tenía reglas inPit/sessionTypes, sin opción global ni pausa/replay.
+Sin señal LMU replay verificada: no se inventa. Tests por capturas reales y mutaciones explícitas.
+Gates Windows por cola en curso; sin PR/merge/promoción. Siguiente paso: completar gates y push aislado.
+
 - #1557, HEAD f03f69c1918cb53a361bacd8da623c3b3fb5ec5e: Validate promotion
   path, Validate Vantare blocking gates, native-linux y quality-check SUCCESS.
   GitGuardian FAILURE es el falso positivo conocido/no obligatorio que marcará

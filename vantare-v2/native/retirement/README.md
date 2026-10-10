@@ -29,3 +29,9 @@ Los tokens CSS de Discord y sondas/editorial Go/React se conservan como evidenci
 inactiva en `legacy-evidence` (scripts con extensión `.txt`). No ejecutar sus
 comandos históricos: requieren el checkout retirado. Los scripts independientes
 de calendario, voz, marca y medición continúan activos. Supabase permanece íntegro.
+
+#1562 migra 80 fixtures UI fijadas únicamente en su etiqueta DTO 9→10. Cada
+revisión conserva el pin previo y la base ca17545f; la inversión byte a byte
+reproduce ese pin, incluidos saltos de línea. Corpus crudo, gzip y pins de
+goldens siguen intactos. Otras cinco fixtures UI no fijadas migran la misma
+etiqueta. El verificador mantiene la exigencia SHA-256 exacta de los 456 archivos.

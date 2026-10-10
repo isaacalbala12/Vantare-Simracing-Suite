@@ -1181,201 +1181,531 @@
     },
     "native/ui/fixtures/broadcast-tower-crossing.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-crossing.scene.json",
-      "sha256": "1dc2c7125d04beb39f6e7df9c3f1ee0c021559f3888e02ecbbd4d17bdc61b733",
+      "sha256": "a91e65d1618fee27c02de9d3ce5c60561aa43ef9a4b2f514dd6902205e070571",
       "source_sha256": "3d94257ca6f8944dae1f850878b06b2753ca8becf19a3b9810866fd2968295bb",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "1dc2c7125d04beb39f6e7df9c3f1ee0c021559f3888e02ecbbd4d17bdc61b733",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/broadcast-tower-default.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-default.scene.json",
-      "sha256": "05adf27d987574295ad10fb11f798a9080456fbcbda171fe3eecb66eafc51fe1",
+      "sha256": "823b36b9d323d3903162faf2478efd35da80bc8b6e96d97ee9ec26cd77c95ce3",
       "source_sha256": "a5c3eafbf4905a74b40b4ded643c64f78a002eb7f077ed136f31e0fe9dda909b",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "05adf27d987574295ad10fb11f798a9080456fbcbda171fe3eecb66eafc51fe1",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/broadcast-tower-exit-reentry.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-exit-reentry.scene.json",
-      "sha256": "5b839f0f1d61988068661a76dc624007931fed72556711f48d44825b9a83dade",
+      "sha256": "23100584e34503dd7cd8d724c0b7f64c8b1263c6d0bad42227deec6dc6722d63",
       "source_sha256": "c36359f56ad5ffeaf7db41f2c67460afd392558013630edb1a126ef44c9387ba",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "5b839f0f1d61988068661a76dc624007931fed72556711f48d44825b9a83dade",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/broadcast-tower-fast-inversion.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-fast-inversion.scene.json",
-      "sha256": "e3bdee7f5504cf2653b930814b4563f8a89f9c22b883e178e9b8045b578a7112",
+      "sha256": "2acb31671dcaffe55b1580a5a2c99f623cbc9c8e02edbf2fc0f4acc5f4c726fe",
       "source_sha256": "89e4877a94a5bb71e3db6a9b980f4387f8f071f919fbbeeeb6a038704a3e0a8f",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "e3bdee7f5504cf2653b930814b4563f8a89f9c22b883e178e9b8045b578a7112",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/broadcast-tower-overtake-sequence.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-overtake-sequence.scene.json",
-      "sha256": "21a7422f75bc956d2e14cd6a46a3d5fd51a9a2c76cce13bb49a3b8e66507d57d",
+      "sha256": "fe72de920cd37a2a44922fa5f4bd93c3755d73158f772e013397c663da29f478",
       "source_sha256": "fafadb5df862d91569a1d05e13dcee9d2904a7db56cdba05f0b3836e7f4a26a8",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "21a7422f75bc956d2e14cd6a46a3d5fd51a9a2c76cce13bb49a3b8e66507d57d",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/broadcast-tower-stable-values.scene.json": {
       "source": "native/ui/fixtures/broadcast-tower-stable-values.scene.json",
-      "sha256": "5a3ca0700741873e89b721c3aa11c23f8a92b9d326006251283876c3a0d6be85",
+      "sha256": "a71be9cc8c1f5fafc918de8c101ca2c428c482656efdb3932871ca9f90fefce1",
       "source_sha256": "1eb01484877dddd83846b4977f65f705a28f4db9fa7bac399bdea0ba6f9b64c6",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "5a3ca0700741873e89b721c3aa11c23f8a92b9d326006251283876c3a0d6be85",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/broadcast-tower.snapshot.json": {
       "source": "native/ui/fixtures/broadcast-tower.snapshot.json",
-      "sha256": "ddae868760b5d0364ac9d36fc130704850aba10cf4f45412dc554a292a906317",
+      "sha256": "b3eded12e93e4025844e0ec63e1fc077c49eec80b7cd801d600c6a33add0275e",
       "source_sha256": "2570b4e64ec328579f2fe2d80719be2e3dd70aed4e88e1bafd21471cee8415c7",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "ddae868760b5d0364ac9d36fc130704850aba10cf4f45412dc554a292a906317",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/car-damage-numbers-default.scene.json": {
       "source": "native/ui/fixtures/car-damage-numbers-default.scene.json",
-      "sha256": "3f7c709f6e9b4a68eed8068e392e4d8c0179995137ee332727fbc05b73134f4d",
+      "sha256": "c68f7fe7780ed2e259f43be727e28019d8928883c4f9b735f700d5b10f6c3631",
       "source_sha256": "2eff91ced8461bb0ee734271bdc486b61bc1822dc3e43393b453c8823532ad17",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "3f7c709f6e9b4a68eed8068e392e4d8c0179995137ee332727fbc05b73134f4d",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/car-damage-numbers.snapshot.json": {
       "source": "native/ui/fixtures/car-damage-numbers.snapshot.json",
-      "sha256": "44a0ae31df2e51d258bb15410dd6ab931d26f3b569ea511958b7e3a2d7ac4be6",
+      "sha256": "f254687ad025cd5829aae9f80004a58e59163fa0f17493c23855994aa724c4a5",
       "source_sha256": "13bc5e265f9f5135b79832352d682149a575a2121823a013ecbca0430ad13f2b",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "44a0ae31df2e51d258bb15410dd6ab931d26f3b569ea511958b7e3a2d7ac4be6",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/car-damage-visual-default.scene.json": {
       "source": "native/ui/fixtures/car-damage-visual-default.scene.json",
-      "sha256": "2e7818a353582ce9f8b9907ce7e66a6fc06eb49113ede0e32b0c411b8d557b6e",
+      "sha256": "9c89e0160187123b7e53a5ac63417606878226046802f39293a1e7c674bd3d3c",
       "source_sha256": "793efe85e2b60aa9bc305366dbba8c7c2d98c142fb447720d01940051f56f9ef",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "2e7818a353582ce9f8b9907ce7e66a6fc06eb49113ede0e32b0c411b8d557b6e",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/car-damage-visual.snapshot.json": {
       "source": "native/ui/fixtures/car-damage-visual.snapshot.json",
-      "sha256": "8a7255d27bf120876a922bac72ea80149243c77f6f99e03e0e3b23cd682c2bad",
+      "sha256": "bd127f5c1d17602c2fcb95aa14c3c114d8cd1194116cf2df5686142428bf43d1",
       "source_sha256": "970b8ce584b39a95fe3fd199f366359a243e1d30c7b246236f42219fd2521132",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "8a7255d27bf120876a922bac72ea80149243c77f6f99e03e0e3b23cd682c2bad",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/delta-cross-zero.scene.json": {
       "source": "native/ui/fixtures/delta-cross-zero.scene.json",
-      "sha256": "75badab1190b1a9c233c6bb58aac8920f695560d590ef9f78605565214e9683f",
+      "sha256": "5f0028381eec7d94dea54c97e97509c8c01d85611fc1c10080d5afb1338d9b82",
       "source_sha256": "3fa9b5410fb7c934451b4dd23cbd525685f781540b5bbe8d95fe02bb0cd999e0",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "75badab1190b1a9c233c6bb58aac8920f695560d590ef9f78605565214e9683f",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/delta-default.scene.json": {
       "source": "native/ui/fixtures/delta-default.scene.json",
-      "sha256": "f919a971129b51ff61b7902b1f99789d72f1c33891371a5fd5bf8e62b2aa3c9d",
+      "sha256": "90e079178d141bf7877f1cd6756aab52fe0670185ff6145a593eb3bcd1e28920",
       "source_sha256": "581eb78af0715e373f79ceb29073278c70abb3e6011a296df6936a24e0fa1f69",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "f919a971129b51ff61b7902b1f99789d72f1c33891371a5fd5bf8e62b2aa3c9d",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/delta-new-best.scene.json": {
       "source": "native/ui/fixtures/delta-new-best.scene.json",
-      "sha256": "ce452713d9d5b6d14813d31538bc770e7526d179c9608f65bf3f83cc3a9e7873",
+      "sha256": "6a85dfea2613af126c6309e035003e474c9236d50c532e5c74fcdf2e1c63e17b",
       "source_sha256": "7b7d1498f24ebdcc40fbed84c9edbce558675cf990cda9a95a0c694bdb2e9400",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "ce452713d9d5b6d14813d31538bc770e7526d179c9608f65bf3f83cc3a9e7873",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/delta-trace-default.scene.json": {
       "source": "native/ui/fixtures/delta-trace-default.scene.json",
-      "sha256": "64668d1209534003074288f39218749871e14361564b4e8d36b6389a1fd9a05b",
+      "sha256": "9dfdec3181323758d0a302a1b3f56b822bc6e7fcf53de956d9ce9321154179bf",
       "source_sha256": "e30ecd22e0a8910caa172325451cc23bf87d46b740012a1f58a27ad649d42fe3",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "64668d1209534003074288f39218749871e14361564b4e8d36b6389a1fd9a05b",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/delta-trace.sequence.json": {
       "source": "native/ui/fixtures/delta-trace.sequence.json",
-      "sha256": "575fab2f070094467b79fb8fe2f3bf3df91a658b99403fb822f13c54cb6e5741",
+      "sha256": "8a32b39e57be34542d1318cedc78a169b0e9b43c24a2be4a13a9a63483011921",
       "source_sha256": "73ade07dd0aa208f9e94f3bd1f361b28301c75cc9d1cdf0681088039098ca1a8",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "575fab2f070094467b79fb8fe2f3bf3df91a658b99403fb822f13c54cb6e5741",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/delta-trace.snapshot.json": {
       "source": "native/ui/fixtures/delta-trace.snapshot.json",
-      "sha256": "729fa979781e4054a422e5a8f15d18dfd1140544ed82e9baf317937053e0f989",
+      "sha256": "34527f4a3051237476cd39979b544595dae8b5f65efa01d0d561bf52c1235401",
       "source_sha256": "36dd647f342b5117a70371b690e02a679f1526858978db7de53e38b1e165abc2",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "729fa979781e4054a422e5a8f15d18dfd1140544ed82e9baf317937053e0f989",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/delta-vantare-carrera.scene.json": {
       "source": "native/ui/fixtures/delta-vantare-carrera.scene.json",
-      "sha256": "d0c0852ea0403fbe57a7a19d38337309c2ce922d36de5c0effbb732ce8ee8632",
+      "sha256": "ffc2d6aca8b3d0a2a0ad405f49cadee22db5e7f7452ba447793db97e4f136958",
       "source_sha256": "826dc02a486e22a6fc290cf10ba897d585ca4640a421d5b7faf1120a7fd4e890",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "d0c0852ea0403fbe57a7a19d38337309c2ce922d36de5c0effbb732ce8ee8632",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/delta-vantare.scene.json": {
       "source": "native/ui/fixtures/delta-vantare.scene.json",
-      "sha256": "712b7a169ac04d09953479e19da9aa20c79f49efedad5e949677941e0bd820aa",
+      "sha256": "faa1e740833cd3e9e07044220487bcf05f145c871ea671a0fc24434254bea07c",
       "source_sha256": "0a53312b8ce679e31f6d59f407e6427a7ca96085ee1439002a57dce0f98b28af",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "712b7a169ac04d09953479e19da9aa20c79f49efedad5e949677941e0bd820aa",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/delta.snapshot.json": {
       "source": "native/ui/fixtures/delta.snapshot.json",
-      "sha256": "7b758b37cb3ac9c96de1d477698302e6f0611b180e111d845f966f3b6db6681e",
+      "sha256": "8263bd968fc6008a48b3a6201b425d018577e4258293e1e6cd1e50602245232c",
       "source_sha256": "7bb66416888448dce1976a017c16ab30f1c9798343d58000c4d38ace0f32f889",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "7b758b37cb3ac9c96de1d477698302e6f0611b180e111d845f966f3b6db6681e",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/fastest-lap-alert.scene.json": {
       "source": "native/ui/fixtures/fastest-lap-alert.scene.json",
-      "sha256": "907006d9822dc3a1cab282729e238a6f3b20e857fdb4c6f4f31dc13656b54767",
+      "sha256": "96eb081ef99f69a36ade832cbbecd52a8f6dbd77cec5728e7fe6b2475392415a",
       "source_sha256": "0438a1744ed6f6572e0421b73e3d1bc01c6778ad60d71aefb8965fd5e5269516",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "907006d9822dc3a1cab282729e238a6f3b20e857fdb4c6f4f31dc13656b54767",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/fastest-lap-default.scene.json": {
       "source": "native/ui/fixtures/fastest-lap-default.scene.json",
-      "sha256": "ad230664c6f13f2ae3a13c4631d3568a53b772efbcf455e4d966f271f07cee2a",
+      "sha256": "e1e881d8a6e357eca03de2caeea20f44d66910aab4f183b98e4247701a69af8d",
       "source_sha256": "d1f38541cd6bc6e98129cbc74128f22ab5c9c52f847dcd5e7499441a03e45065",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "ad230664c6f13f2ae3a13c4631d3568a53b772efbcf455e4d966f271f07cee2a",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/fastest-lap.snapshot.json": {
       "source": "native/ui/fixtures/fastest-lap.snapshot.json",
-      "sha256": "155d3a4ddfb8ee0c383a5bd1c12eb74f8fc298074ea8673a651fc4a76c8c7541",
+      "sha256": "3608e9c1a9866524ab0f19c2f67ef9dba84b639553cf827b0875df2c85ad666b",
       "source_sha256": "1fda18507fc1134cdafa3e771196f14b96386419e32f374a447c4f6e7811c0b1",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "155d3a4ddfb8ee0c383a5bd1c12eb74f8fc298074ea8673a651fc4a76c8c7541",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/fuel-strategy-default.scene.json": {
       "source": "native/ui/fixtures/fuel-strategy-default.scene.json",
-      "sha256": "46b0ad3d08db8f282dd3304b285be2ddfd63b3188bbdfb4e7e5e48ff1574642b",
+      "sha256": "3f047344e343c20a5c8aeb7bc70881bdd79ccad14154c59f4cf4955c36a8bffe",
       "source_sha256": "f02bf017486d8db556bcf415e7299f5add8837fc45894f5a530a33f217ae94de",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "46b0ad3d08db8f282dd3304b285be2ddfd63b3188bbdfb4e7e5e48ff1574642b",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/fuel-strategy.snapshot.json": {
       "source": "native/ui/fixtures/fuel-strategy.snapshot.json",
-      "sha256": "56a1d92de78aa45453dc0fd9da2ab6796930834ef4ae80cca649a8a5ff4b62f8",
+      "sha256": "a442dea38ba05aeaa29d5f58b8120bde2291cd97c743e5413a3b529d3ff768cb",
       "source_sha256": "0143623b5af7991356967d33e661889be88eb1f8776928f96f3496abb4fa2289",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "56a1d92de78aa45453dc0fd9da2ab6796930834ef4ae80cca649a8a5ff4b62f8",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/fuel-vantare-carrera.scene.json": {
       "source": "native/ui/fixtures/fuel-vantare-carrera.scene.json",
-      "sha256": "3fddba784223d1b5a0da8a1e8e177e847dd4a8a1e60c730becfba4163cbcb68b",
+      "sha256": "68acc39b9e2d7be139b8cecdfb87fcf6c53ed33d939ad1ded51fdf5ea072a7a1",
       "source_sha256": "3788eedcb747d2a257b12b5449423dd336284efac8316373511debdbe9f1cd98",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "3fddba784223d1b5a0da8a1e8e177e847dd4a8a1e60c730becfba4163cbcb68b",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/fuel-vantare.scene.json": {
       "source": "native/ui/fixtures/fuel-vantare.scene.json",
-      "sha256": "d76527664abc4edaf9d67a7ea29222d7173aabbea9315f9852cf9d26eae5c6ea",
+      "sha256": "484caa34c8707ac01e5d2ecde76260e10f1f5aedc80de75ea4b59b18a761ac62",
       "source_sha256": "a0ca2db0e5b5560daf1b172b112a32c0721c865dc630955d0e33335ab70b1d35",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "d76527664abc4edaf9d67a7ea29222d7173aabbea9315f9852cf9d26eae5c6ea",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/head-to-head-default.scene.json": {
       "source": "native/ui/fixtures/head-to-head-default.scene.json",
-      "sha256": "e44415471d053832038dff8994b6c35eed4526b9e1c54b8353ebfcc72f3fd807",
+      "sha256": "cd137dec75cada2c854af7deaf6d31174fdac7f78dff3255f6c24759d28a6931",
       "source_sha256": "cd3000af9053fc6a639e3e7a7585f5de18309503f9467ce8bdeae0d0c6321374",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "e44415471d053832038dff8994b6c35eed4526b9e1c54b8353ebfcc72f3fd807",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/head-to-head-player-p2.snapshot.json": {
       "source": "native/ui/fixtures/head-to-head-player-p2.snapshot.json",
-      "sha256": "a37afc1dbacc7e1c34e0585b8f78233910cf38327979ed66615d3753c07b5a21",
+      "sha256": "3e3b0d89aaffa7109c5553902a1849b2dec2b0188ef483a3e81a53c542ab3dc1",
       "source_sha256": "5f69767372fc54dbd8d88e91df63df735a9af2c2f6c15155135369ceec05e677",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "a37afc1dbacc7e1c34e0585b8f78233910cf38327979ed66615d3753c07b5a21",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/head-to-head.snapshot.json": {
       "source": "native/ui/fixtures/head-to-head.snapshot.json",
-      "sha256": "41871c042eafe6c6a43893171ded4774d476cc6c539af09b4e775ff2e6ff608f",
+      "sha256": "e83bf753fabd1c09f047e6fce2bbe53e0a1af1d47fe2d395f45a1f4b7253d3f0",
       "source_sha256": "e4838110845f7e835ede4a29f04d73ddc77d9c68ca4212006aecbc0a5c204716",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "41871c042eafe6c6a43893171ded4774d476cc6c539af09b4e775ff2e6ff608f",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/input-telemetry-default.scene.json": {
       "source": "native/ui/fixtures/input-telemetry-default.scene.json",
-      "sha256": "f402802fa9805e8b82e69e526a65610f5051578229fe43e79f65fdb8ea896e52",
+      "sha256": "e6a3ab7d6798234be80507931c021c35cf90fb6edc2d4e2c737034ed891e2687",
       "source_sha256": "48bd40c2a7791ef4f053245954897514fb235ca1f69e2a674b904b73da87dae4",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "f402802fa9805e8b82e69e526a65610f5051578229fe43e79f65fdb8ea896e52",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/input-telemetry.sequence.json": {
       "source": "native/ui/fixtures/input-telemetry.sequence.json",
-      "sha256": "240f5658096b11137d11be73d6f6c707053c979d2648ebb5a36b78f379ae7e6c",
+      "sha256": "555ec621fd1edf92968ea607038bb4e0abab37c2b1779fc4c4a86e4ac5b60de2",
       "source_sha256": "21374d2709db61cd4eb411d3daab865dd8538db2fcf35da0d1c2bac4bcddedcc",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "240f5658096b11137d11be73d6f6c707053c979d2648ebb5a36b78f379ae7e6c",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/input-telemetry.snapshot.json": {
       "source": "native/ui/fixtures/input-telemetry.snapshot.json",
-      "sha256": "cf7ecbb4f9a15d53e80651c3aef313bc113cf0524d895398635acbcd8c1ce298",
+      "sha256": "8ada2b49f9b0466759f112c5264fb88b71ac65dcc9cd2cac72244e7e209d1b21",
       "source_sha256": "5dcd77e454b89e0eab8a62399d09465001b30736b622d6171339566c2a67f18d",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "cf7ecbb4f9a15d53e80651c3aef313bc113cf0524d895398635acbcd8c1ce298",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/layout.json": {
       "source": "native/ui/fixtures/layout.json",
@@ -1383,231 +1713,611 @@
     },
     "native/ui/fixtures/lmu47.snapshot.json": {
       "source": "native/ui/fixtures/lmu47.snapshot.json",
-      "sha256": "ccf8eb8195cd9768ea5fc140cfca994cc73914913f937bd9c9943367f837dddf",
+      "sha256": "532dc45de9d59c23a35503431d5deb2a5fe6695c1c1955d0bcf3d98f21990f01",
       "source_sha256": "4a7af4e5edb4ee2392e2bbbb6635c92b2f8614dd2bbe0044e6f6bb0ff46a7b6d",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "ccf8eb8195cd9768ea5fc140cfca994cc73914913f937bd9c9943367f837dddf",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/multiclass-relative-default.scene.json": {
       "source": "native/ui/fixtures/multiclass-relative-default.scene.json",
-      "sha256": "a8876c52fab822ba6c70f4ee5bfc16466f55ff538334fb88cc255a686b0657e1",
+      "sha256": "fae40ec1773406ee87c6024d2b586370186a0ccc4f75ada5a40a379d21283d7c",
       "source_sha256": "91e93791c8c93f3a45143012daec80360557fba1839cd8a2b134e97bebb2aa92",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "a8876c52fab822ba6c70f4ee5bfc16466f55ff538334fb88cc255a686b0657e1",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/multiclass-relative.snapshot.json": {
       "source": "native/ui/fixtures/multiclass-relative.snapshot.json",
-      "sha256": "2f5cebdfb315eede1d681435a5446ebf6679da1bd1aedc3813aa064b977292ee",
+      "sha256": "84493de49a420b04e7dbef2d8766cae8f6edfb25c670afffef1e682edbd192a6",
       "source_sha256": "9661977f1cb5d5227d3034bfdb0849eafe979aef446b4702e605e1de2aed899f",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "2f5cebdfb315eede1d681435a5446ebf6679da1bd1aedc3813aa064b977292ee",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/pedals-clutch.scene.json": {
       "source": "native/ui/fixtures/pedals-clutch.scene.json",
-      "sha256": "fe25db17bd825eda27242da3cb857159281c34732ff62f6ba173ec166155a918",
+      "sha256": "a14e429c04195275cfdac64d85e685394e866ac5ec926949088305cb0eb1593a",
       "source_sha256": "714cb198fc77fb99482ad2c935a83f280482891ba8ee75c10742ebb27db8a674",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "fe25db17bd825eda27242da3cb857159281c34732ff62f6ba173ec166155a918",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/pedals-default.scene.json": {
       "source": "native/ui/fixtures/pedals-default.scene.json",
-      "sha256": "8bba680729f7e243eb44b447dc698b1cc10eb0c7cb568d10e2ff86ee9d6e8dc4",
+      "sha256": "8fc67e0290217a88e06fad8bb98139c29474bb7af6c534230671a6019e6e68ff",
       "source_sha256": "4b59a22da9c3d44a0ebf535fa16eb9c5d0d5ac511b8616bb0019bbf478a49edb",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "8bba680729f7e243eb44b447dc698b1cc10eb0c7cb568d10e2ff86ee9d6e8dc4",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/pedals-lap.scene.json": {
       "source": "native/ui/fixtures/pedals-lap.scene.json",
-      "sha256": "53424491d81d79732844b08a6445919a31051b3d72e0238ce5d7bc58aaf86e72",
+      "sha256": "b650d9a6d6cfcdce47affd56a66720979eaa33e720b72a268ed195e1c70a422a",
       "source_sha256": "ff0e07617aac16a2c488f49512d57d3a27393e152456f7d0b762cb6714a29538",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "53424491d81d79732844b08a6445919a31051b3d72e0238ce5d7bc58aaf86e72",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/pedals-telemetry-default.scene.json": {
       "source": "native/ui/fixtures/pedals-telemetry-default.scene.json",
-      "sha256": "dc8c6d5497de4adca46327daf2a4b0ef642a064c3d7c94b7a3ee191a18bf3796",
+      "sha256": "9f118cdd6c353f1fe42770691a89bb6bf9a62a703c21216519dddd7b87e93f82",
       "source_sha256": "3257c45da832b99da67a29d5da1fd28e1582d555e2d4e48e97d4007c1af4ea8d",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "dc8c6d5497de4adca46327daf2a4b0ef642a064c3d7c94b7a3ee191a18bf3796",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/pedals-telemetry.snapshot.json": {
       "source": "native/ui/fixtures/pedals-telemetry.snapshot.json",
-      "sha256": "528a4a41c875ee0638c0ad56364a98b2eb33dc40e1dfb8bc62ebbaa2a206731b",
+      "sha256": "a51ad06f46afa88d93cd26c9c2384ce7fd598c2f49a95baf94ccb9014f71aedf",
       "source_sha256": "a0442b041290d9ee8d04a9cde7967f72608bace81753fe0233a2170ad620616e",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "528a4a41c875ee0638c0ad56364a98b2eb33dc40e1dfb8bc62ebbaa2a206731b",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/pedals.snapshot.json": {
       "source": "native/ui/fixtures/pedals.snapshot.json",
-      "sha256": "e42c0151f933b7504bac9fdf29866aa28fa6269e1815825891fc56d01adef233",
+      "sha256": "e22ad21d49491084ac41c3838a0c57596494f802646b7a253b6dfc48408b45d2",
       "source_sha256": "8630ac1645b1b1b3ea13dfdbc708198ef18be18b940daa2a5f9444887e319428",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "e42c0151f933b7504bac9fdf29866aa28fa6269e1815825891fc56d01adef233",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/racing-flags-default.scene.json": {
       "source": "native/ui/fixtures/racing-flags-default.scene.json",
-      "sha256": "da1debcbf7757a7a7a8d7046cec4d490d86fb86a7f90e239181c0c7cdb7ea186",
+      "sha256": "e23ba9f6b7a54ae089d6feeb7bf46ab7d1485e6fa48efe19ab692c58f5da9fc4",
       "source_sha256": "3e88d31661d495990be3dff1d222ec55e21abd5590cb35d6a6ef49add0b3a5f8",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "da1debcbf7757a7a7a8d7046cec4d490d86fb86a7f90e239181c0c7cdb7ea186",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/racing-flags-stale.snapshot.json": {
       "source": "native/ui/fixtures/racing-flags-stale.snapshot.json",
-      "sha256": "453189876cff1559525e2d419c9897afcfd54faf9d463185f9d4012de34512c8",
+      "sha256": "bcc86bd72a40d6b8a192ff7bb8d26713c6e6528af3a6cb0d6d9ab5680e20862d",
       "source_sha256": "87e7ce6967441633d344dae37f5674cabe3a34910cb92227675a7dbf4ccc5fec",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "453189876cff1559525e2d419c9897afcfd54faf9d463185f9d4012de34512c8",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/racing-flags.snapshot.json": {
       "source": "native/ui/fixtures/racing-flags.snapshot.json",
-      "sha256": "0b897e4b6ef4df61970fe0fd780e91fd181c4bb376698fab63e831b971ca8f2e",
+      "sha256": "bd6c06fd1f00bab55bb7d655ff48de67b7cb3fb950ab6847cc1709a102092b57",
       "source_sha256": "2df53c770528f819991592f2183b785da935f0056de2e1c86029bed790ca140e",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "0b897e4b6ef4df61970fe0fd780e91fd181c4bb376698fab63e831b971ca8f2e",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/radar-default.scene.json": {
       "source": "native/ui/fixtures/radar-default.scene.json",
-      "sha256": "73ae41e512772158302522ed8815ec5fe035d6e13305809e55b44f6dfb535ade",
+      "sha256": "06ebed8bea1dd2d1c245d7e083c7b04a9a929bcd1d8dffb312c4d7ff8287f5d4",
       "source_sha256": "3346efa5645abb829e6cbe6a794d8e82bfe1cc5b2693149bceac62cfd4027a89",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "73ae41e512772158302522ed8815ec5fe035d6e13305809e55b44f6dfb535ade",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/radar-nearby-traffic.scene.json": {
       "source": "native/ui/fixtures/radar-nearby-traffic.scene.json",
-      "sha256": "d06dadfb61347b0a23b1c441a385286e9acefd38a70b594319f7244892119acc",
+      "sha256": "6ca31bb6bc3795c2b9c59d3841c2a58304268df1df552ce17eb51fd0fa23e1f0",
       "source_sha256": "8ac938552ba8024f4a330697bce4fa2dbfdbee9e6b163f635f140c3f51209a95",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "d06dadfb61347b0a23b1c441a385286e9acefd38a70b594319f7244892119acc",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/radar.snapshot.json": {
       "source": "native/ui/fixtures/radar.snapshot.json",
-      "sha256": "be76e5587e723af43cf8e820e6d65938be67f640db34ea3c2be0c9280ec7ac3d",
+      "sha256": "1a6eaa31b85ba4d12594234e20fb237d967bd0b044612c4540edecea3b74cf57",
       "source_sha256": "c23ea17cb3f41f051451189fa3b3270328b9cc566097e3577978bcea4679d427",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "be76e5587e723af43cf8e820e6d65938be67f640db34ea3c2be0c9280ec7ac3d",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/relative-default.scene.json": {
       "source": "native/ui/fixtures/relative-default.scene.json",
-      "sha256": "ff5566ef2fd28491e80654450104217333bf20532ce5dd9bfb342e736099fcb5",
+      "sha256": "256b3f4ed4e07328e2e558e32179f0c6cb0916f75d0d4c7b99f2dd5323877ac3",
       "source_sha256": "5177147616ae91eb1feb0bf276cd032d1106d321d03adafc08526dbe6f412a75",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "ff5566ef2fd28491e80654450104217333bf20532ce5dd9bfb342e736099fcb5",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/relative-functional-cross-ahead.scene.json": {
       "source": "native/ui/fixtures/relative-functional-cross-ahead.scene.json",
-      "sha256": "95b332b7122a74b0191224ad292e9005f458173d0d2fd536bdfd8abfe7b2edc3",
+      "sha256": "b9aa37515c109a5828369c658664de79a96690d6f5dc89158abdfb6a54b8f498",
       "source_sha256": "42681536375dfbc29f98a0f72c13ff9d2d500b4ae0c91e000cc2f9c06ffc7ef6",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "95b332b7122a74b0191224ad292e9005f458173d0d2fd536bdfd8abfe7b2edc3",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/relative-functional-cross-behind.scene.json": {
       "source": "native/ui/fixtures/relative-functional-cross-behind.scene.json",
-      "sha256": "43bcda1655b002ac9807cb6e25b5d4ecafdd473393e60fd017aef8d0f3ebc63a",
+      "sha256": "afb2e9247206df81b47f6e52a346207195779e0aabf3be50d91c7791ec82bad1",
       "source_sha256": "ead34d87d2e074e972ace8c96efa4ee31c9033ae898e851053c64035bac3e0ee",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "43bcda1655b002ac9807cb6e25b5d4ecafdd473393e60fd017aef8d0f3ebc63a",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/relative-functional-fast-reversal.scene.json": {
       "source": "native/ui/fixtures/relative-functional-fast-reversal.scene.json",
-      "sha256": "a1faaed08d394b88375147775313bdace154ce8e5b385ef94a5d6279265b9ba6",
+      "sha256": "0831a199a0eda39fd3cd7fc79010c58e623bb678c1bedde349461c29b0eec313",
       "source_sha256": "156d67826329f73ecea62eb178ea4545535871db81131d0b38225cf190a1ff48",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "a1faaed08d394b88375147775313bdace154ce8e5b385ef94a5d6279265b9ba6",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/relative-functional-lap-difference.scene.json": {
       "source": "native/ui/fixtures/relative-functional-lap-difference.scene.json",
-      "sha256": "7ad5c06c341aac9e202dbca1614ab4007e9b7802997e5cbcbf0fe0c676d3eac1",
+      "sha256": "e9e1674c77f94ae0a6ef59966e2adcea3881f5b16b410203e22a032ba61a3ee0",
       "source_sha256": "a9bfe64ee41d0a02fa1176320eb92471d8b0c0ef45de9a6dc464293c4132d36f",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "7ad5c06c341aac9e202dbca1614ab4007e9b7802997e5cbcbf0fe0c676d3eac1",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/relative-functional-sequence.scene.json": {
       "source": "native/ui/fixtures/relative-functional-sequence.scene.json",
-      "sha256": "c4e7de97375cec2681cb500d5d3d08986ab64244dac5f909bdebefd6ed8015af",
+      "sha256": "b9b76b0c78c67f3beeed888f52479c14fc686b7b5ab931d9d0c4c5a9e781b183",
       "source_sha256": "09171d0ba9b4e8318bee45d3876d2615c01a510783ec554ddf45b4bf924a279d",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "c4e7de97375cec2681cb500d5d3d08986ab64244dac5f909bdebefd6ed8015af",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/relative-functional-stable-values.scene.json": {
       "source": "native/ui/fixtures/relative-functional-stable-values.scene.json",
-      "sha256": "556eaa68095ba19ac6842bd92d99a31f7eadd7c098f32605dba5dd9971bfeff7",
+      "sha256": "032ef1159fd865b15909dbb4ccf3d731e082bef88ecb8a164b164698c8c4a713",
       "source_sha256": "113fd7dd846f52fd07c5e9b035baf1bba5fd5001044a4e19f95b600f1ac7bc0d",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "556eaa68095ba19ac6842bd92d99a31f7eadd7c098f32605dba5dd9971bfeff7",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/relative-functional-window-cycle.scene.json": {
       "source": "native/ui/fixtures/relative-functional-window-cycle.scene.json",
-      "sha256": "384bd8561ed9fca220cc3ff2345c1554b55b09e741ce89fdf65f2fd080b64fd2",
+      "sha256": "d97fa818ae2a68e3d5542ce43c3399eebdf664206f43fd795a993b411c2e07bd",
       "source_sha256": "1c0b7d53f1a5af21a812f702aa2e2ce401187ababdc6f84648f61baed2763c9d",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "384bd8561ed9fca220cc3ff2345c1554b55b09e741ce89fdf65f2fd080b64fd2",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/relative-vantare-carrera.scene.json": {
       "source": "native/ui/fixtures/relative-vantare-carrera.scene.json",
-      "sha256": "4126a55048328788958baf59d80101d29015d7a8cb82ded08800c9af54fa4d7d",
+      "sha256": "71f0e9d24b77f202b3703e6392e7a27cfd1805e2bc83cd20156a099667ac2474",
       "source_sha256": "f96417a5fcda18dfe228abb45e27dd136176eb72db7a6b938d168f7d9d0dbde1",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "4126a55048328788958baf59d80101d29015d7a8cb82ded08800c9af54fa4d7d",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/relative-vantare.scene.json": {
       "source": "native/ui/fixtures/relative-vantare.scene.json",
-      "sha256": "c00952e39b01b6f077bfed327773bc4290fca60c7041f67bcb172fa9498e2435",
+      "sha256": "4b4c463858a9f2155cc3e6d61fb5e049f56d5f423b4b2af32121df762f314eb7",
       "source_sha256": "e32d0fc0486c3d4ab4bfc48b51004a6dd307042f8139d10c2561ed18b0c9a16f",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "c00952e39b01b6f077bfed327773bc4290fca60c7041f67bcb172fa9498e2435",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/relative.snapshot.json": {
       "source": "native/ui/fixtures/relative.snapshot.json",
-      "sha256": "8ee9a764f9c834b38303f8e99939a78234cf6d93a849126e7829c6980f9faab8",
+      "sha256": "8ff9e630f59b794d80eddbe6bf940af06913c9abce92da9ab7392b6fa13e64ad",
       "source_sha256": "4f5138b31cd741f78afd40e6d34a4550aef2bf1c89e55b4007a68af8a1e34d8f",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "8ee9a764f9c834b38303f8e99939a78234cf6d93a849126e7829c6980f9faab8",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/standings-default.scene.json": {
       "source": "native/ui/fixtures/standings-default.scene.json",
-      "sha256": "d0266acf92b89cc397a0f9b1bcf4e8aa997acb7cbb08e63bbf5d9f4c946e558e",
+      "sha256": "1cb148b01ab6643732ae976e89b86d086d3f3305fbee33e806c83123b2c946cd",
       "source_sha256": "fc2d85dcbf19781fe3511bc62df23ffe874e132530f0175a0f6296d56fd7ade6",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "d0266acf92b89cc397a0f9b1bcf4e8aa997acb7cbb08e63bbf5d9f4c946e558e",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/standings-functional-battle.scene.json": {
       "source": "native/ui/fixtures/standings-functional-battle.scene.json",
-      "sha256": "4759734ed64a2243b74e89e4b338a229ee97231d6034ebb5e93cf43daa7e56ec",
+      "sha256": "25ad9cf30e39d0b45cb13d2e0c5c5d0053af9bf280aaad0e090a914c62a2348a",
       "source_sha256": "0381e6ceb0f8619a4402c3818e0dac53f0d2f260697fb4c8da9e2f85a269598f",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "4759734ed64a2243b74e89e4b338a229ee97231d6034ebb5e93cf43daa7e56ec",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/standings-functional-combined.scene.json": {
       "source": "native/ui/fixtures/standings-functional-combined.scene.json",
-      "sha256": "57cb65ee64532fd15d403036d3b7c8f508c2b2a38d317111bff600cd95b7066e",
+      "sha256": "2099c03813e1952b4afaab383c37993271c15be88860ca2f7f4703eaee1220ce",
       "source_sha256": "93b27a596fe92403bf44be2a900be10edab90f78e720b969d1df1e7ecd5f59ac",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "57cb65ee64532fd15d403036d3b7c8f508c2b2a38d317111bff600cd95b7066e",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/standings-functional-personal-best.scene.json": {
       "source": "native/ui/fixtures/standings-functional-personal-best.scene.json",
-      "sha256": "3821447ce69426aa8c1ac46b7a991ca9f8c0512b6578146864a7a1413a3a5af6",
+      "sha256": "00a48120eea31445e58f012a9ebf33133e718ddc11570e435c07f76556084b1e",
       "source_sha256": "86635acff7451934fe793a6ae76142f7574cc103f5cc396bc7c8904beddf52ed",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "3821447ce69426aa8c1ac46b7a991ca9f8c0512b6578146864a7a1413a3a5af6",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/standings-functional-pit.scene.json": {
       "source": "native/ui/fixtures/standings-functional-pit.scene.json",
-      "sha256": "5f8f20c5c18040352b9a1918b08b1f021dbaa5353b0d4af0a8ba4a04d3cf1d73",
+      "sha256": "10a487197eb374e51383425413274639e65f6adc14eef11ff1ebc24b5490f686",
       "source_sha256": "1074b7a0572fa4bf563a9e4d5988c0dba199ebc86a4cb0578c678cfe1758f740",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "5f8f20c5c18040352b9a1918b08b1f021dbaa5353b0d4af0a8ba4a04d3cf1d73",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/standings-functional-position.scene.json": {
       "source": "native/ui/fixtures/standings-functional-position.scene.json",
-      "sha256": "46e13b846e457f570155705605aaa39bdd9da88773f090a4710e71687e74c64e",
+      "sha256": "2e6c026f52aeb296ba9b5aa0f0cad54f7d7fedcbbbf8f0ad686e5cad3f9bec21",
       "source_sha256": "6baa681603b7fb4e7ed1c334886f89555ddc1009b94d91da3d3750e71c835181",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "46e13b846e457f570155705605aaa39bdd9da88773f090a4710e71687e74c64e",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/standings-functional-session-best.scene.json": {
       "source": "native/ui/fixtures/standings-functional-session-best.scene.json",
-      "sha256": "38a4e15f9cdb36036ae8e26e310db488f19f16a280effa2e97c7245ca5ad8223",
+      "sha256": "eb00c7f03e5b0497e2f078b9721ed184bb6dc82f0dfff1cfc6261bea9306d8d3",
       "source_sha256": "4f23be3dd1768706577901c7ab419c5a44248e1937bd3cd13b747a9d8470df4a",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "38a4e15f9cdb36036ae8e26e310db488f19f16a280effa2e97c7245ca5ad8223",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/standings-functional-window.scene.json": {
       "source": "native/ui/fixtures/standings-functional-window.scene.json",
-      "sha256": "a21e98e0e54731ece806c8549ebfdfe66bf169d207ff0747ba52b07a0e8aeaff",
+      "sha256": "17b55f2d93ad692f52fbacb98a08401fb2aec31fddf6eb54ee573fdbb80a28e7",
       "source_sha256": "188b96432ce39d0105a0cfbbc2101259427bb7c99c74104d7200060f9fb8759f",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "a21e98e0e54731ece806c8549ebfdfe66bf169d207ff0747ba52b07a0e8aeaff",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/standings-legacy.snapshot.json": {
       "source": "native/ui/fixtures/standings-legacy.snapshot.json",
-      "sha256": "64ab6146cbb0601040b93f54194d0dc86885559365316c4b855d5e67225a4dcb",
+      "sha256": "ff1ac39dcc8192955f3d78cf11be76e82c0773a3b99f159310a1cf867c3c20c0",
       "source_sha256": "4ac6dc693cc0e040b5f319f63859b60c594f18af1ad4e35039b41c76f3c9ca29",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "64ab6146cbb0601040b93f54194d0dc86885559365316c4b855d5e67225a4dcb",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/standings-vantare-carrera.scene.json": {
       "source": "native/ui/fixtures/standings-vantare-carrera.scene.json",
-      "sha256": "788427a274adb06760cde4ec4dd8b430035f4f600b1e9a2cd2747c96ddb5f312",
+      "sha256": "dd265f6b4a9b54b6b7e7cd6b332f4f9aaa314941f9fea5be14521b244e0df585",
       "source_sha256": "ff48ba8f37bb3b0cfd9c0c26e4ff1fd6026e68dd670eb1eb3e50614d9650ce45",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "788427a274adb06760cde4ec4dd8b430035f4f600b1e9a2cd2747c96ddb5f312",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/standings-vantare.scene.json": {
       "source": "native/ui/fixtures/standings-vantare.scene.json",
-      "sha256": "fd88b81eb5821a7380bf54654fcb5fc3b07b0b26a1d07e2ff2bae1d61aba6aae",
+      "sha256": "3207c97b0be6aee55fa4c52c0a9293134421d49583dac0528ea66b5bd3f58989",
       "source_sha256": "a8c5ed2349cfb6754b2c2f09f94ec60883c410c06bdcf7727be12634c036efda",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "fd88b81eb5821a7380bf54654fcb5fc3b07b0b26a1d07e2ff2bae1d61aba6aae",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/standings.snapshot.json": {
       "source": "native/ui/fixtures/standings.snapshot.json",
-      "sha256": "c874ec60069b6e16ada5318f4ab9dafc9a339196f7d740a051d53f8fa0e4876a",
+      "sha256": "546cbf0ef67bf38bc6720fbe14e7c624fc987612398e15b7f4005bd00d34a080",
       "source_sha256": "980b76f7c6e47f5dba2638e773d6a59283fe7df330dd0637b0cfd244aa43a3f9",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "c874ec60069b6e16ada5318f4ab9dafc9a339196f7d740a051d53f8fa0e4876a",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/telemetry-real/README.md": {
       "source": "native/ui/fixtures/telemetry-real/README.md",
@@ -1628,19 +2338,39 @@
     },
     "native/ui/fixtures/telemetry-real/acc.snapshot.json": {
       "source": "native/ui/fixtures/telemetry-real/acc.snapshot.json",
-      "sha256": "11500cb34cbb795957de2a43171d5668f7fde6cfed1a258cad099f294f3638d1",
+      "sha256": "fcf53331124757534305824ac94a0dcb2252ee38249f386002bfc6b30369310a",
       "source_sha256": "9f8b9c3858c06512ebf4003e1c34eaa016ceb52e5e71a517057ff6aa1d7c3885",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "11500cb34cbb795957de2a43171d5668f7fde6cfed1a258cad099f294f3638d1",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/telemetry-real/lmu-menu.snapshot.json": {
       "source": "native/ui/fixtures/telemetry-real/lmu-menu.snapshot.json",
-      "sha256": "49df511d1ad8d53beae3ba7935b5ffa55d15ab2a58a0036c75f724dc6f5f9c9a",
+      "sha256": "e318830015701e746dd11e7b2773fc885a5357c85f2928df23a3adf2fd33e17d",
       "source_sha256": "735783a7cdd1cd3fd9c5bb49af31caf7721ab7f8039bedfd9ef43ceece455e5a",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "49df511d1ad8d53beae3ba7935b5ffa55d15ab2a58a0036c75f724dc6f5f9c9a",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/telemetry-real/lmu-stale.snapshot.json": {
       "source": "native/ui/fixtures/telemetry-real/lmu-stale.snapshot.json",
-      "sha256": "d65148b339431d644cbb4077737a86407189be5d19a03baf9d57d43bec1f9ddd",
+      "sha256": "1dd3bcf0fe1e9be0e83818c57962b6c921dc2e83dc2dbb2b5644003af27c60dd",
       "source_sha256": "e4244ab9c21f4774125fe38d0d688c0c089bcddd640f4deb674a83c6db0b95b8",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1652,12 +2382,20 @@
           ],
           "previous_sha256": "5a08189e04e16d82689075a324d5223ec7c7a7880dbd3bf4e4a635bd319a0ca9",
           "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        },
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "d65148b339431d644cbb4077737a86407189be5d19a03baf9d57d43bec1f9ddd",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
         }
       ]
     },
     "native/ui/fixtures/telemetry-real/lmu47-input.sequence.json": {
       "source": "native/ui/fixtures/telemetry-real/lmu47-input.sequence.json",
-      "sha256": "bcd2466c5b619f0ac72d9165d02b07e3f9a91cc64cb19cfc4691658d55dc34a9",
+      "sha256": "95ecc8fa8742f6caf00b235ae03f7f298905963256b560e012085c9c7d29ee78",
       "source_sha256": "4d2d002ba0dac11a36005e2582f648ecd85dae4c6194d3eb4cbb1a2a4b7c1071",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1669,12 +2407,20 @@
           ],
           "previous_sha256": "a7eedbcd4e301a422cd89a3b2965f7d2ea17ab93fe027d520fba0a6962c2f43d",
           "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        },
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "bcd2466c5b619f0ac72d9165d02b07e3f9a91cc64cb19cfc4691658d55dc34a9",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
         }
       ]
     },
     "native/ui/fixtures/telemetry-real/lmu47.snapshot.json": {
       "source": "native/ui/fixtures/telemetry-real/lmu47.snapshot.json",
-      "sha256": "23b1f8ff3e8fef1a56c322b308f80eb07e71e1dfb85b23fe4e8d82bdf648185b",
+      "sha256": "79b9bb74f9d5f1ca13937233faa4e8264519899ff0d0b675b0be5a622bd588bc",
       "source_sha256": "23dc883f111fe11817116358f8d25a343b2b341fe3da171385c93070bfb24d5a",
       "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
       "revisions": [
@@ -1686,32 +2432,80 @@
           ],
           "previous_sha256": "3fe5acef6f332dd01fd1afee64d419ec5250f415117fba71585a456e6fd92630",
           "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        },
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "23b1f8ff3e8fef1a56c322b308f80eb07e71e1dfb85b23fe4e8d82bdf648185b",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
         }
       ]
     },
     "native/ui/fixtures/track-map-default.scene.json": {
       "source": "native/ui/fixtures/track-map-default.scene.json",
-      "sha256": "a6be67b4f42237b9aad1ca828975fd43b0211bc68c5c51259875eb322cb16ce9",
+      "sha256": "8383268f563ef094740c42b1221726a32fa508909fb3e2470210b6866cda456b",
       "source_sha256": "65660cb27d5feef6044901d11e009735577d0267d5c3cf43ac67b2b81a1084ae",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "a6be67b4f42237b9aad1ca828975fd43b0211bc68c5c51259875eb322cb16ce9",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/track-map.snapshot.json": {
       "source": "native/ui/fixtures/track-map.snapshot.json",
-      "sha256": "e59f282f8f1b7a28d6683068125e6c5a46cd640014687249c0c5b2fac9198fde",
+      "sha256": "c41d4e0a003adc6702c734d8b46d19ed915a7be1cbdf63b12d5e7e8d5f2ac5fa",
       "source_sha256": "d3e7c6ab59626ab47e33708bd9913f67d34b3eca3267d3f558ee29ec39b77cfc",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "e59f282f8f1b7a28d6683068125e6c5a46cd640014687249c0c5b2fac9198fde",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/track-weather-default.scene.json": {
       "source": "native/ui/fixtures/track-weather-default.scene.json",
-      "sha256": "4a324c981b21382b4a2796ee964836cc93cc3d99153541791808bdc8f73a26dc",
+      "sha256": "6ae5c1608ee74d2aeaf63847a34bdd597d10f1d50ceff6062ac928bec601d4c8",
       "source_sha256": "beb40857bca985757d2f637fb6e0410ddbd0f484057098a0a09b2ca3991ac34a",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "4a324c981b21382b4a2796ee964836cc93cc3d99153541791808bdc8f73a26dc",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/track-weather.snapshot.json": {
       "source": "native/ui/fixtures/track-weather.snapshot.json",
-      "sha256": "df192ea5457486bf86a3897ea649bd83be08e8c0118e0d1b89a87603a47b6453",
+      "sha256": "8041a26d70d2daec7b160530cbadfaa48f271ad273480991270c4b4c80e591fe",
       "source_sha256": "a111b1b77ad34ece680644d1df3617e5b08e0e99640e8615b3b13ac7219cd06c",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "issues": [
+            1562
+          ],
+          "base_commit": "ca17545f607b85f5d47dc9d060721b69e6a6a158",
+          "previous_sha256": "df192ea5457486bf86a3897ea649bd83be08e8c0118e0d1b89a87603a47b6453",
+          "reason": "DTO v10 label-only migration. Inverse byte comparison preserves all data and original golden pins."
+        }
+      ]
     },
     "native/ui/fixtures/workshop-sources.json": {
       "source": "native/ui/fixtures/workshop-sources.json",

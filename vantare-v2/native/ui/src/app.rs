@@ -102,6 +102,7 @@ pub(crate) fn starter_layout(monitor: (f32, f32, f32, f32)) -> crate::layout::La
         instances: placed
             .into_iter()
             .map(|(id, kind, (x, y))| crate::layout::Instance {
+                off_track: crate::layout::OffTrack::default(),
                 geometry: crate::geometry::Geometry::default(),
                 id: id.into(),
                 x: x.round(),
@@ -129,6 +130,8 @@ pub struct Overlay {
     preview_scale_y: f32,
     paused: bool,
     live_projection: bool,
+    /// Solo `LiveScreens` aplica la política; Studio/Workshop nunca la activan.
+    hidden_off_track: bool,
     #[cfg(feature = "paint-stats")]
     profile_photo: Option<(u64, u64)>,
     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
@@ -211,6 +214,7 @@ impl Overlay {
             frame_size: None,
             preview_scale: 1.0,
             preview_scale_y: 1.0,
+            hidden_off_track: false,
             paused: false,
             live_projection: false,
             #[cfg(feature = "paint-stats")]
@@ -391,7 +395,7 @@ impl Render for Overlay {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
         let _span = crate::profiling::begin(crate::profiling::Stage::Render);
-        if crate::rights::denied(self.kind, cx) {
+        if self.hidden_off_track || crate::rights::denied(self.kind, cx) {
             // Sin licencia el widget queda vacío: el aviso único lo pinta `Screen`.
             return div()
                 .w(px(self.frame_size().0 * self.preview_scale))
@@ -813,6 +817,15 @@ impl LiveScreens {
         // incluso oculta o fuera de un monitor; preferencias reproyectan sin reset.
         for (id, widget) in &self.widgets {
             widget.view.update(cx, |overlay, cx| {
+                overlay.hidden_off_track = layout
+                    .instances
+                    .iter()
+                    .find(|i| &i.id == id)
+                    .is_some_and(|i| {
+                        self.last.as_ref().is_some_and(|s| {
+                            i.hidden_off_track(layout.hide_off_track, s.state.driving_situation)
+                        })
+                    });
                 let reproject = overlay.prefs != self.prefs || !look_changes.contains(id);
                 overlay.prefs = self.prefs;
                 if let Some(look) = widget.settings.look() {
@@ -935,12 +948,30 @@ impl LiveScreens {
         self.last_demand = photo.demand;
         let now = Instant::now();
         for (id, widget) in self.widgets.iter().filter(|(_, widget)| widget.visible) {
+            let hidden = self
+                .layout
+                .instances
+                .iter()
+                .find(|i| &i.id == id)
+                .is_some_and(|i| {
+                    i.hidden_off_track(self.layout.hide_off_track, snapshot.state.driving_situation)
+                });
+            let visibility_changed = widget.view.update(cx, |overlay, cx| {
+                let changed = overlay.hidden_off_track != hidden;
+                if changed {
+                    overlay.hidden_off_track = hidden;
+                    cx.notify();
+                }
+                changed
+            });
             let hz = self.layout.performance.hz(id, widget.settings.kind());
-            if self.cadences.entry(id.clone()).or_default().due(
-                hz,
-                (snapshot.epoch, snapshot.state.source_state),
-                now,
-            ) {
+            if visibility_changed
+                || self.cadences.entry(id.clone()).or_default().due(
+                    hz,
+                    (snapshot.epoch, snapshot.state.source_state),
+                    now,
+                )
+            {
                 widget
                     .view
                     .update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
@@ -1401,6 +1432,7 @@ mod tests {
         ))
         .expect("historia observada");
         let mut instance = crate::layout::Instance {
+            off_track: crate::layout::OffTrack::default(),
             geometry: crate::geometry::Geometry::default(),
             id: "inputs".into(),
             x: 20.0,
@@ -1460,6 +1492,7 @@ mod tests {
             Kind::FuelStrategy,
         ] {
             let mut instance = crate::layout::Instance {
+                off_track: crate::layout::OffTrack::default(),
                 geometry: crate::geometry::Geometry::default(),
                 id: "board".into(),
                 x: 20.0,
@@ -1488,6 +1521,7 @@ mod tests {
     #[test]
     fn layout_recreates_only_changed_settings_types_new_ids_and_deleted_widgets() {
         let mut instance = crate::layout::Instance {
+            off_track: crate::layout::OffTrack::default(),
             geometry: crate::geometry::Geometry::default(),
             id: "inputs".into(),
             x: 20.0,
@@ -1599,6 +1633,29 @@ mod tests {
                 "quita aviso al reanudar {kind:?}"
             );
             assert_eq!(overlay.wanted_size(), normal_size);
+        }
+    }
+
+    #[test]
+    fn studio_and_workshop_preview_never_hide_for_any_situation_or_widget() {
+        let mut snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .expect("foto");
+        for &kind in Kind::ALL {
+            for situation in [
+                vantare_domain::DrivingSituation::Garage,
+                vantare_domain::DrivingSituation::Paused,
+                vantare_domain::DrivingSituation::Replay,
+            ] {
+                snapshot.state.driving_situation = situation;
+                let mut preview = Overlay::with_snapshot(
+                    &Settings::default_for(kind),
+                    Preferences::default(),
+                    Some(&snapshot),
+                );
+                preview.project_snapshot(&snapshot);
+                assert!(!preview.hidden_off_track, "preview {kind:?}/{situation:?}");
+            }
         }
     }
 

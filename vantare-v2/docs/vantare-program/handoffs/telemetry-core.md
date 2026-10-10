@@ -1,5 +1,14 @@
 # Handoff vivo — Telemetry Core
 
+## #1562 · implementación aislada en validación (2026-10-10)
+
+Rama `vantareapp/isa-1562-ocultar-fuera-de-pista`, base `ca17545f607b85f5d47dc9d060721b69e6a6a158` (origin/nightly).
+Brief `C:/tmp/ola2/brief-1562.md`; informe `C:/tmp/ola2/informe-1562.md`; buzón `C:/tmp/buzon/1562.md`.
+Situación central, DTO v10, 250 ms, ajuste global + excepciones, previews siempre visibles.
+Paridad: frontend antiguo solo tenía reglas inPit/sessionTypes, sin opción global ni pausa/replay.
+Sin señal LMU replay verificada: no se inventa. Tests por capturas reales y mutaciones explícitas.
+Gates Windows por cola en curso; sin PR/merge/promoción. Siguiente paso: completar gates y push aislado.
+
 ## #1536 · destino real de accesos directos en CI Windows (2026-10-10)
 
 El check obligatorio de b6b778c falla en el test .lnk real: COM devuelve

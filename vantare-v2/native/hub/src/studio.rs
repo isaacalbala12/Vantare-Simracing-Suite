@@ -973,6 +973,19 @@ impl Studio {
     pub fn preferences(&self) -> Preferences {
         self.editor.layout().preferences
     }
+    pub(crate) fn hide_off_track(&self) -> bool {
+        self.editor.layout().hide_off_track
+    }
+    pub(crate) fn set_hide_off_track(
+        &mut self,
+        enabled: bool,
+        cx: &mut Context<Self>,
+    ) -> Result<(), String> {
+        let result = self.editor.set_hide_off_track(enabled);
+        self.status.clone_from(&result);
+        cx.notify();
+        result
+    }
     pub fn set_preferences(
         &mut self,
         prefs: Preferences,
@@ -1729,12 +1742,52 @@ impl Studio {
         .detach();
         self.fields
             .push((Tab::Behavior, "Visible", visible.into(), false));
+        self.off_track_control(&item, window, cx);
         for field in inspector::fields(&item.settings) {
             let (tab, title) = (field.tab, field.title);
             let label = !matches!(&field.control, Control::Boolean { .. });
             let view = Self::setting_control(item.id.clone(), field, window, cx);
             self.fields.push((tab, title, view, label));
         }
+    }
+    fn off_track_control(&mut self, item: &Instance, window: &mut Window, cx: &mut Context<Self>) {
+        let options = [
+            vantare_ui::layout::OffTrack::Inherit,
+            vantare_ui::layout::OffTrack::AlwaysVisible,
+            vantare_ui::layout::OffTrack::Hide,
+        ];
+        let off_track = cx.new(|cx| {
+            Choice::new(
+                "Fuera de pista",
+                ChoiceKind::Dropdown,
+                [
+                    "Heredar ajuste global",
+                    "Siempre visible",
+                    "Ocultar fuera de pista",
+                ]
+                .into_iter()
+                .map(OptionItem::new)
+                .collect(),
+                options.iter().position(|value| *value == item.off_track),
+                window,
+                cx,
+            )
+        });
+        let id = item.id.clone();
+        cx.subscribe(&off_track, move |this, _, event: &ChoiceChanged, cx| {
+            if this.editor.selected.as_ref() == Some(&id)
+                && let Some(value) = options.get(event.0)
+            {
+                this.reset_fields();
+                this.edit(
+                    |editor| editor.edit_selected(|item| item.off_track = *value),
+                    cx,
+                );
+            }
+        })
+        .detach();
+        self.fields
+            .push((Tab::Behavior, "Fuera de pista", off_track.into(), true));
     }
     fn setting_control(
         id: String,

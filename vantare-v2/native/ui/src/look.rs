@@ -169,6 +169,7 @@ mod tests {
         assert_eq!(delta.content_version, 1);
         let layout = crate::layout::Layout {
             instances: vec![crate::layout::Instance {
+                off_track: crate::layout::OffTrack::default(),
                 id: "delta".into(),
                 x: 0.0,
                 y: 0.0,

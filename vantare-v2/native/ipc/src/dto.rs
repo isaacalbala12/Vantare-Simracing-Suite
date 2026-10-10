@@ -1,5 +1,5 @@
-//! DTO v9: vehículo, parrilla, paradas, compuesto, sectores, rating, tendencia,
-//! energía, servicio de boxes, stint y deltas de #1497. El cable exige v9.
+//! DTO v10: situación de conducción de #1562; señales v9: vehículo, parrilla, paradas, compuesto, sectores, rating, tendencia,
+//! energía, servicio de boxes, stint y deltas de #1497. El cable exige v10.
 //! DTO explícito del `Snapshot`: es el formato del cable, no los tipos de
 //! `domain` (que no son ABI). Añadir una señal al modelo exige añadirla aquí a
 //! propósito. En fotos completas o señales declaradas entregadas, un campo de
@@ -13,7 +13,7 @@ use vantare_domain as d;
 use crate::Error;
 
 /// Versión del DTO. Se sube al cambiar el esquema de forma incompatible.
-pub const VERSION: u32 = 9;
+pub const VERSION: u32 = 10;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub(crate) struct SnapshotDto {
@@ -91,6 +91,8 @@ enum SourceStateDto {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 struct StateDto {
     source_state: SourceStateDto,
+    #[serde(default)]
+    driving_situation: DrivingSituationDto,
     capabilities: CapabilitiesDto,
     session: SessionDto,
     #[serde(default, skip_serializing_if = "QualityDto::not_requested")]
@@ -99,6 +101,41 @@ struct StateDto {
     cars: Vec<CarDto>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     player: Option<PlayerDto>,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum DrivingSituationDto {
+    #[default]
+    Unknown,
+    OnTrack,
+    Garage,
+    Paused,
+    Replay,
+}
+
+impl From<d::DrivingSituation> for DrivingSituationDto {
+    fn from(value: d::DrivingSituation) -> Self {
+        match value {
+            d::DrivingSituation::Unknown => Self::Unknown,
+            d::DrivingSituation::OnTrack => Self::OnTrack,
+            d::DrivingSituation::Garage => Self::Garage,
+            d::DrivingSituation::Paused => Self::Paused,
+            d::DrivingSituation::Replay => Self::Replay,
+        }
+    }
+}
+
+impl From<DrivingSituationDto> for d::DrivingSituation {
+    fn from(value: DrivingSituationDto) -> Self {
+        match value {
+            DrivingSituationDto::Unknown => Self::Unknown,
+            DrivingSituationDto::OnTrack => Self::OnTrack,
+            DrivingSituationDto::Garage => Self::Garage,
+            DrivingSituationDto::Paused => Self::Paused,
+            DrivingSituationDto::Replay => Self::Replay,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -610,6 +647,7 @@ impl SnapshotDto {
             origin: origin(s),
             state: StateDto {
                 source_state: source_state(s.state.source_state),
+                driving_situation: s.state.driving_situation.into(),
                 capabilities: capabilities(&s.state.capabilities),
                 session: session(&s.state.session),
                 flags: q(&s.state.flags, |fs| fs.iter().map(flag).collect()),
@@ -636,6 +674,7 @@ impl SnapshotDto {
             origin: origin(s),
             state: StateDto {
                 source_state: source_state(s.state.source_state),
+                driving_situation: s.state.driving_situation.into(),
                 capabilities: capabilities(&s.state.capabilities),
                 session: session_selected(&s.state.session, delivered),
                 flags: if delivered.contains(Signal::Flags) {
@@ -1325,6 +1364,7 @@ impl TryFrom<SnapshotDto> for d::Snapshot {
                 received_at: o.received_at,
             },
             state: d::State {
+                driving_situation: s.driving_situation.into(),
                 source_state: match s.source_state {
                     SourceStateDto::Waiting => d::SourceState::Waiting,
                     SourceStateDto::Live => d::SourceState::Live,
@@ -1385,6 +1425,7 @@ impl TryFrom<&SnapshotDto> for d::Snapshot {
                 received_at: o.received_at,
             },
             state: d::State {
+                driving_situation: s.driving_situation.into(),
                 source_state: match s.source_state {
                     SourceStateDto::Waiting => d::SourceState::Waiting,
                     SourceStateDto::Live => d::SourceState::Live,
@@ -1477,6 +1518,7 @@ impl SnapshotDto {
         self.epoch == old.epoch
             && self.state.session.id == old.state.session.id
             && self.state.source_state == old.state.source_state
+            && self.state.driving_situation == old.state.driving_situation
             && (!delivered.player_data()
                 || self.state.player.as_ref().map(|p| p.car)
                     == old.state.player.as_ref().map(|p| p.car))

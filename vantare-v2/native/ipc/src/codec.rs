@@ -298,6 +298,7 @@ pub(crate) mod tests {
             },
             state: State {
                 source_state: vantare_domain::SourceState::Live,
+                driving_situation: vantare_domain::DrivingSituation::Unknown,
                 capabilities: Capabilities {
                     session_clock: Capability::Fresh,
                     positions: Capability::WithData,
@@ -637,6 +638,7 @@ pub(crate) mod tests {
                     received_at: Duration::from_micros(u64::from(shift) + 9),
                 },
                 state: State {
+                    driving_situation: vantare_domain::DrivingSituation::Unknown,
                     source_state: [
                         vantare_domain::SourceState::Live,
                         vantare_domain::SourceState::Paused,

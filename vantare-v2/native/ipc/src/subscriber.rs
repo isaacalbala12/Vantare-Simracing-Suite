@@ -309,7 +309,7 @@ fn session(
                         return Err(Error::Protocol("primera entrega sin hidratación completa"));
                     }
                     snapshot.restore(previous.as_ref(), &requested, &delivered)?;
-                    let decoded = Snapshot::try_from(snapshot.clone())?;
+                    let decoded = Snapshot::try_from(&snapshot)?;
                     connection.received();
                     previous = Some(snapshot);
                     latest.put(Arc::new(Photo {

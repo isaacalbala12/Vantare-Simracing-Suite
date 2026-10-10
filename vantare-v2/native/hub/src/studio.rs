@@ -1341,6 +1341,10 @@ impl Studio {
         self.reset_fields();
         self.edit(if redo { Editor::redo } else { Editor::undo }, cx);
     }
+    fn toggle_visibility_from_strip(&mut self, id: &str, cx: &mut Context<Self>) {
+        self.edit(|editor| toggle_visibility(editor, id), cx);
+        self.reset_fields();
+    }
     fn cancel_drag(&mut self, cx: &mut Context<Self>) {
         self.nudge_task = None;
         if let Some(held) = self.held_nudge.take() {
@@ -1988,7 +1992,7 @@ impl Studio {
                     .tab_index(0)
                     .child(visibility_icon(item.visible))
                     .on_click(cx.listener(move |this, _, _, cx| {
-                        this.edit(|editor| toggle_visibility(editor, &visibility_id), cx);
+                        this.toggle_visibility_from_strip(&visibility_id, cx);
                         cx.stop_propagation();
                     })),
             )
@@ -3175,6 +3179,27 @@ mod tests {
         assert!(Studio::ingest_skips_frame(true, false));
         assert!(!Studio::ingest_skips_frame(false, true));
         assert!(Studio::ingest_skips_frame(false, false));
+    }
+    #[test]
+    fn strip_visibility_toggle_resets_the_inspector() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let id = studio.editor.layout().instances[0].id.clone();
+                assert!(studio.editor.layout().instances[0].visible);
+                studio.select(id.clone(), cx);
+                studio.inspector_selection = Some(id.clone());
+                studio.toggle_visibility_from_strip(&id, cx);
+                assert!(!studio.editor.layout().instances[0].visible);
+                assert!(
+                    studio.inspector_selection.is_none(),
+                    "el inspector debe reconstruirse tras ocultar desde la tira"
+                );
+            });
+            cx.quit();
+        });
     }
     #[test]
     fn document_shortcuts_use_exact_modifiers() {

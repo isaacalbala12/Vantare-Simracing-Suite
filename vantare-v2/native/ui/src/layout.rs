@@ -251,11 +251,17 @@ fn modified(path: &Path) -> Option<SystemTime> {
         .ok()
 }
 
+/// Cada cuántas lecturas sin cambio de mtime se comparan los bytes: cubre FS
+/// de resolución gruesa o editores que conservan la marca (~10 s a la
+/// cadencia de 500 ms del host sin releer el fichero en cada vuelta).
+const VERIFY_EVERY: u64 = 20;
+
 /// Conserva los bytes originales para detectar conflictos y el último layout válido.
 pub struct Document {
     path: PathBuf,
     bytes: Option<Vec<u8>>,
     modified: Option<SystemTime>,
+    unchanged: u64,
     layout: Layout,
 }
 
@@ -271,6 +277,7 @@ impl Document {
             path,
             bytes,
             modified: stamp,
+            unchanged: 0,
             layout,
         })
     }
@@ -289,7 +296,20 @@ impl Document {
     pub fn poll(&mut self) -> Result<bool, Error> {
         let stamp = modified(&self.path);
         if stamp == self.modified {
-            return Ok(false);
+            // La mtime puede redondearse o conservarse tras reemplazar el
+            // contenido: cada N lecturas se comparan los bytes para no servir
+            // overlays antiguos. Sin diferencias sigue sin releer de verdad.
+            self.unchanged = self.unchanged.wrapping_add(1);
+            if !self.unchanged.is_multiple_of(VERIFY_EVERY) {
+                return Ok(false);
+            }
+            if read(&self.path)? == self.bytes {
+                return Ok(false);
+            }
+            // Contenido distinto con la misma marca: cae a la vía normal
+            // (adoptar si parsea; error sin sustituir el último válido).
+        } else {
+            self.unchanged = 0;
         }
         let bytes = read(&self.path)?.ok_or(Error::Invalid("layout desaparecido"))?;
         let layout = Layout::from_json(&bytes)?;
@@ -679,6 +699,57 @@ mod tests {
         assert_eq!(
             Layout::from_json(&fs::read(&path).expect("nuevo")).expect("válido"),
             changed
+        );
+        fs::remove_dir_all(dir).expect("limpiar");
+    }
+
+    /// Dos reemplazos con la misma marca (FS de resolución gruesa o editor
+    /// que conserva mtime) no pueden dejar overlays antiguos (#1540).
+    #[test]
+    fn same_mtime_content_replacement_is_detected() {
+        let dir = directory();
+        let path = dir.join("layout.json");
+        fs::write(&path, FIXTURE).expect("fixture");
+        let mut document = Document::open(path.clone()).expect("abrir");
+        let stamp = modified(&path).expect("mtime inicial");
+        let changed = Layout::default();
+        fs::write(&path, serde_json::to_vec(&changed).expect("serializar"))
+            .expect("reemplazar contenido");
+        OpenOptions::new()
+            .write(true)
+            .open(&path)
+            .expect("abrir para fijar mtime")
+            .set_modified(stamp)
+            .expect("misma marca que el contenido anterior");
+        let mut detected = false;
+        for _ in 0..VERIFY_EVERY {
+            detected |= document.poll().expect("vigilar");
+        }
+        assert!(
+            detected,
+            "reemplazo con la misma mtime deja overlays antiguos"
+        );
+        assert_eq!(document.layout(), &changed);
+        assert!(!document.poll().expect("sin cambios tras adoptar"));
+        fs::remove_dir_all(dir).expect("limpiar");
+    }
+
+    /// Un editor manual que escribe dentro de la ventana de guardado no pierde
+    /// su cambio en silencio: el guardado cooperativo falla en conflicto (#1540).
+    #[test]
+    fn external_write_inside_save_window_is_a_conflict_not_a_loss() {
+        let dir = directory();
+        let path = dir.join("layout.json");
+        fs::write(&path, FIXTURE).expect("fixture");
+        let injected = b"{\"version\":1,\"instances\":[]}";
+        let result = persist(&path, Some(FIXTURE), b"nuevo", || {
+            fs::write(&path, injected)?;
+            Ok(())
+        });
+        assert!(matches!(result, Err(Error::Conflict)));
+        assert_eq!(
+            fs::read(&path).expect("editor externo preservado"),
+            injected
         );
         fs::remove_dir_all(dir).expect("limpiar");
     }

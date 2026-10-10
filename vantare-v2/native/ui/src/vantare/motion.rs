@@ -16,6 +16,8 @@ pub(crate) enum Flash {
     /// Toma el liderato de la clase.
     Lead,
     Best,
+    /// Aviso personal trasladado desde otra política visual.
+    PersonalBest,
     Pit,
 }
 
@@ -58,6 +60,7 @@ impl Default for Pose {
 }
 
 #[derive(Clone, Copy, Debug)]
+#[allow(clippy::struct_excessive_bools)] // Hechos independientes: récord, boxes, liderato y fila visible.
 struct Track {
     from: f32,
     to: f32,
@@ -68,6 +71,8 @@ struct Track {
     fastest: bool,
     in_pits: bool,
     leader: bool,
+    places: i64,
+    visible: bool,
 }
 
 impl Track {
@@ -106,12 +111,14 @@ pub(crate) struct Motion {
 impl Motion {
     /// Nueva disposición tras un cambio del ViewModel.
     pub(crate) fn update(&mut self, rows: &[Sample], timing: Timing, now: Instant) {
+        #[cfg(feature = "parity-capture")]
+        crate::benchmark::mark(crate::benchmark::Work::Motion);
         let first = !self.started;
         self.started = true;
         let mut next = HashMap::with_capacity(rows.len());
         for sample in rows {
             let track = match self.rows.get(&sample.id) {
-                Some(old) if !first => {
+                Some(old) if !first && old.visible => {
                     let current = old.y(timing, now);
                     // Boxes manda: entrar suele costar puestos y es lo que hay que ver.
                     let flash = if sample.in_pits && !old.in_pits {
@@ -138,6 +145,12 @@ impl Motion {
                         fastest: sample.fastest,
                         in_pits: sample.in_pits,
                         leader: sample.leader,
+                        visible: true,
+                        places: if old.position == sample.position {
+                            old.places
+                        } else {
+                            i64::from(old.position) - i64::from(sample.position)
+                        },
                     }
                 }
                 _ => Track {
@@ -145,18 +158,56 @@ impl Motion {
                     to: sample.y,
                     moved: now,
                     born: (!first).then_some(now),
-                    flash: None,
+                    flash: self.rows.get(&sample.id).and_then(|old| old.flash),
                     position: sample.position,
                     fastest: sample.fastest,
                     in_pits: sample.in_pits,
                     leader: sample.leader,
+                    places: self.rows.get(&sample.id).map_or(0, |old| old.places),
+                    visible: true,
                 },
             };
             next.insert(sample.id, track);
         }
+        // Un aviso trasladado sigue vivo aunque este Look no pinte su fila.
+        for (&id, old) in &self.rows {
+            if !next.contains_key(&id)
+                && old
+                    .flash
+                    .is_some_and(|(_, at)| Track::progress(at, timing.flash, now) < 1.0)
+            {
+                next.insert(
+                    id,
+                    Track {
+                        visible: false,
+                        ..*old
+                    },
+                );
+            }
+        }
         self.rows = next;
     }
 
+    /// Añade canales al nuevo layout sin reiniciar los relojes ya activos.
+    pub(crate) fn attach(&mut self, samples: &[Sample]) {
+        let now = Instant::now();
+        for s in samples {
+            self.rows.entry(s.id).or_insert(Track {
+                from: s.y,
+                to: s.y,
+                moved: now,
+                born: None,
+                flash: None,
+                position: s.position,
+                fastest: s.fastest,
+                in_pits: s.in_pits,
+                leader: s.leader,
+                places: 0,
+                visible: true,
+            });
+        }
+        self.started = true;
+    }
     /// Recoloca sin animar (cambio de estilo o de tamaño).
     pub(crate) fn snap(&mut self, rows: &[Sample]) {
         for sample in rows {
@@ -195,11 +246,31 @@ impl Motion {
     }
 
     pub(crate) fn wake(&self, timing: Timing, now: Instant) -> Wake {
-        if self.rows.values().any(|track| track.active(timing, now)) {
+        if self
+            .rows
+            .values()
+            .any(|track| track.visible && track.active(timing, now))
+        {
             Wake::Frame
         } else {
             Wake::Idle
         }
+    }
+}
+
+#[cfg(test)]
+pub(crate) type ClockSignature = Vec<(CarId, Instant, Option<Instant>, Option<(Flash, Instant)>)>;
+
+#[cfg(test)]
+impl Motion {
+    pub(crate) fn clock_signature(&self) -> ClockSignature {
+        let mut rows = self
+            .rows
+            .iter()
+            .map(|(&id, t)| (id, t.moved, t.born, t.flash))
+            .collect::<Vec<_>>();
+        rows.sort_by_key(|r| r.0.0);
+        rows
     }
 }
 

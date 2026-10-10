@@ -7,6 +7,21 @@ use gpui::{BorderStyle, Bounds, Corners, Edges, Hsla, Pixels, Rgba, fill, point,
 pub mod preview;
 pub mod text;
 
+/// Estimación histórica de filas de información; los pintores deciden cuándo
+/// aplicarla y cuánto espacio reservar. Cuenta caracteres, no bytes UTF-8.
+pub(crate) fn footer_rows(
+    cells: &[vantare_domain::standings::InfoCell],
+    inner_width: f32,
+) -> usize {
+    let total = cells
+        .iter()
+        .map(|cell| {
+            cell.label.chars().count() as f32 * 5.5 + cell.value.chars().count() as f32 * 7.5 + 26.0
+        })
+        .sum::<f32>();
+    (total / inner_width.max(80.0)).ceil() as usize
+}
+
 /// Valores compartidos de `vantare-functional/tokens.css`.
 pub mod tokens {
     pub const INK: u32 = 0xf5f5f5;
@@ -95,6 +110,20 @@ pub fn paint_highlighted_frame(window: &mut Window, width: f32, height: f32) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn footer_row_estimate_counts_unicode_and_preserves_the_existing_widths() {
+        let cell = vantare_domain::standings::InfoCell {
+            id: "track".into(),
+            label: "ÁÉÍÓÚÑ".into(),
+            value: "123456".into(),
+            stale: false,
+        };
+        let cells = vec![cell; 6];
+        assert_eq!(super::footer_rows(&cells, 446.0), 2);
+        assert_eq!(super::footer_rows(&cells, 200.0), 4);
+        assert_eq!(super::footer_rows(&[], 446.0), 0);
+    }
+
     use super::*;
 
     #[test]

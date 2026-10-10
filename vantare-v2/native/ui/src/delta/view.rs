@@ -1,3 +1,4 @@
+use super::eficiencia::Labels as ViewModel;
 use super::motion::Frame;
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::text::{self, ink};
@@ -6,7 +7,7 @@ use gpui::{
     App, BorderStyle, BoxShadow, ContentMask, Corners, Edges, linear_color_stop, linear_gradient,
     point, px, quad,
 };
-use vantare_domain::delta::{Event, Tone, ViewModel};
+use vantare_domain::delta::{Event, Tone};
 
 fn tone_color(tone: Tone) -> u32 {
     match tone {

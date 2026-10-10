@@ -1,12 +1,13 @@
 //! Modelo visual de Standings Eficiencia: configuración, geometría y la
-//! adaptación del ViewModel de `domain` a lo que necesitan el movimiento y el
+//! geometría del Plan común de `domain` para el movimiento y el
 //! pintado. Geometría de `functional-standings-layout.ts` y
 //! `StandingsFunctional.tsx`. Lógica pura, sin GPUI.
 
-use std::collections::HashMap;
-
-use vantare_domain::format::{self, Language, PLACEHOLDER, Preferences};
-use vantare_domain::{Capability, FlagKind, SourceState, standings};
+use vantare_domain::format::Language;
+#[cfg(test)]
+use vantare_domain::format::Preferences;
+#[cfg(test)]
+use vantare_domain::{Capability, SourceState, standings};
 
 pub(crate) const ROW_HEIGHT: f32 = 30.0;
 #[cfg(test)]
@@ -372,189 +373,7 @@ impl Labels {
 // ViewModel de `domain` -> modelo visual
 // ---------------------------------------------------------------------------
 
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Row {
-    pub id: String,
-    /// 0 si el dato no es fiable.
-    pub position: i64,
-    /// Posición dentro de su clase; 0 si no hay posición.
-    pub class_position: i64,
-    pub driver_number: String,
-    pub driver_name: String,
-    pub vehicle_class: String,
-    pub gap_text: String,
-    pub interval_text: String,
-    pub current_lap_text: String,
-    pub last_lap_text: String,
-    pub best_lap_text: String,
-    pub best_lap_seconds: Option<f64>,
-    /// Distancia al líder en segundos, solo para elegir el duelo (carrera, en pista).
-    pub battle_gap_seconds: Option<f64>,
-    pub pit_active: bool,
-    pub is_player: bool,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum Status {
-    Ready,
-    Stale,
-    Disconnected,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub(crate) struct Vm {
-    pub status: Status,
-    pub session_label: String,
-    pub remaining_text: String,
-    pub active_class: String,
-    pub flag: Option<FlagKind>,
-    pub rows: Vec<Row>,
-    /// Coche con la mejor vuelta de la sesión y su tiempo.
-    pub session_best: Option<(String, f64)>,
-    pub track: String,
-    pub estimated_laps: String,
-    /// Práctica o clasificación: la columna de gap compara mejores vueltas.
-    pub pace_session: bool,
-    pub race: bool,
-    /// Identidad del flujo: al cambiar se descarta el movimiento en curso.
-    pub identity: String,
-    pub sequence: u64,
-    pub footer_cells: Vec<standings::InfoCell>,
-}
-
-impl Vm {
-    pub fn unavailable(status: Status) -> Self {
-        Self {
-            status,
-            session_label: PLACEHOLDER.into(),
-            remaining_text: PLACEHOLDER.into(),
-            active_class: PLACEHOLDER.into(),
-            flag: None,
-            rows: Vec::new(),
-            session_best: None,
-            track: PLACEHOLDER.into(),
-            estimated_laps: PLACEHOLDER.into(),
-            pace_session: false,
-            race: false,
-            identity: String::new(),
-            sequence: 0,
-            footer_cells: Vec::new(),
-        }
-    }
-
-    pub fn info(&self, metric: InfoMetric) -> &str {
-        match metric {
-            InfoMetric::None => "",
-            InfoMetric::Track => &self.track,
-            InfoMetric::EstimatedLaps => &self.estimated_laps,
-        }
-    }
-
-    /// Adapta la proyección de `domain`. `identity` y `sequence` son de la
-    /// instantánea (época + sesión, y su número), que la proyección no lleva.
-    ///
-    /// Los números que el movimiento necesita (tiempos, posición de clase,
-    /// gap al líder) no están en el `ViewModel` de `domain`, solo su texto: se
-    /// leen de ese texto. Ver la pregunta al orquestador en el informe.
-    pub fn from_domain(
-        domain: &standings::ViewModel,
-        prefs: Preferences,
-        row_count: usize,
-        identity: String,
-        sequence: u64,
-    ) -> Self {
-        if matches!(
-            domain.source_state,
-            SourceState::Waiting | SourceState::Lost
-        ) {
-            return Self::unavailable(Status::Disconnected);
-        }
-        let status = match (domain.source_state, domain.capability) {
-            (SourceState::Stale, _) | (_, Capability::WithData) => Status::Stale,
-            (_, Capability::Fresh) => Status::Ready,
-            (_, Capability::Supported | Capability::Unsupported) => {
-                return Self::unavailable(Status::Disconnected);
-            }
-        };
-        let race =
-            domain.session_label == format::session_kind(&vantare_domain::SessionKind::Race, prefs);
-        let leader = format::gap(None, true, prefs);
-        let mut per_class: HashMap<String, i64> = HashMap::new();
-        let all: Vec<Row> = domain
-            .rows
-            .iter()
-            .map(|row| {
-                let position = row.position.parse().unwrap_or(0);
-                let class_position = if position > 0 {
-                    let count = per_class
-                        .entry(row.class.trim().to_uppercase())
-                        .or_default();
-                    *count += 1;
-                    *count
-                } else {
-                    0
-                };
-                Row {
-                    id: row.id.0.to_string(),
-                    position,
-                    class_position,
-                    driver_number: row.number.clone(),
-                    driver_name: row.driver.clone(),
-                    vehicle_class: row.class.clone(),
-                    gap_text: row.gap.clone(),
-                    interval_text: row.interval.clone(),
-                    current_lap_text: row.laps.clone(),
-                    last_lap_text: row.last_lap.clone(),
-                    best_lap_text: row.best_lap.clone(),
-                    best_lap_seconds: lap_seconds(&row.best_lap),
-                    battle_gap_seconds: (race && position > 0 && !row.in_pits)
-                        .then(|| {
-                            if row.gap == leader {
-                                Some(0.0)
-                            } else {
-                                gap_seconds(&row.gap)
-                            }
-                        })
-                        .flatten(),
-                    pit_active: row.in_pits,
-                    is_player: row.is_player,
-                }
-            })
-            .collect();
-        let session_best = all
-            .iter()
-            .filter_map(|r| Some((r, r.best_lap_seconds.filter(|s| *s > 0.0)?)))
-            .min_by(|a, b| a.1.total_cmp(&b.1))
-            .map(|(row, seconds)| (row.id.clone(), seconds));
-        Self {
-            status,
-            session_label: domain.session_label.clone(),
-            remaining_text: domain.clock.clone(),
-            active_class: domain.class_chip.clone(),
-            flag: domain.flag.clone(),
-            rows: all.into_iter().take(row_count).collect(),
-            session_best,
-            track: domain.track.clone(),
-            estimated_laps: domain.laps_remaining.clone(),
-            pace_session: domain.gap_to_best_lap,
-            race,
-            identity,
-            sequence,
-            footer_cells: Vec::new(),
-        }
-    }
-}
-
-/// `m:ss.mmm` -> segundos.
-fn lap_seconds(text: &str) -> Option<f64> {
-    let (minutes, seconds) = text.split_once(':')?;
-    Some(minutes.parse::<f64>().ok()? * 60.0 + seconds.parse::<f64>().ok()?)
-}
-
-/// `+1.23s` -> segundos.
-fn gap_seconds(text: &str) -> Option<f64> {
-    text.strip_prefix('+')?.strip_suffix('s')?.parse().ok()
-}
+pub(crate) use vantare_domain::standings::{Plan as ContentPlan, SelectedRow as Row, Status};
 
 // ---------------------------------------------------------------------------
 // Geometría (StandingsFunctional.tsx)
@@ -584,7 +403,9 @@ pub(crate) struct Plan {
     pub class_bands: Vec<(f32, String)>,
 }
 
-pub(crate) fn plan(config: &Config, vm: &Vm) -> Plan {
+pub(crate) fn plan(config: &Config, content_plan: &ContentPlan) -> Plan {
+    #[cfg(feature = "parity-capture")]
+    crate::benchmark::mark(crate::benchmark::Work::Plan);
     let columns: Vec<Column> = config
         .columns
         .iter()
@@ -595,8 +416,8 @@ pub(crate) fn plan(config: &Config, vm: &Vm) -> Plan {
     let span = identity_span(&columns);
     let has_header = config.show_session_header;
     let brand_visible = config.brand_visible.unwrap_or(has_header);
-    let unavailable = !matches!(vm.status, Status::Ready | Status::Stale);
-    let external = config.broadcast || span == 0 || unavailable || vm.rows.is_empty();
+    let unavailable = !matches!(content_plan.status, Status::Ready | Status::Stale);
+    let external = config.broadcast || span == 0 || unavailable || content_plan.rows.is_empty();
     let footer = config.footer_height();
     let brand_band = if !has_header && brand_visible {
         config.style.geometry.brand_band_height
@@ -625,16 +446,16 @@ pub(crate) fn plan(config: &Config, vm: &Vm) -> Plan {
     let mut class_bands = Vec::new();
     let mut top = 0.0;
     let mut previous = "";
-    for row in vm.rows.iter().take(fit) {
-        if config.multiclass && !row.vehicle_class.is_empty() && previous != row.vehicle_class {
+    for row in content_plan.rows.iter().take(fit) {
+        if config.multiclass && !row.class.is_empty() && previous != row.class.as_ref() {
             if top + config.style.geometry.class_band_height + config.style.geometry.row_height
                 > body
             {
                 break;
             }
-            class_bands.push((top, row.vehicle_class.clone()));
+            class_bands.push((top, row.class.to_string()));
             top += config.style.geometry.class_band_height;
-            previous = &row.vehicle_class;
+            previous = &row.class;
         }
         if top + config.style.geometry.row_height > body {
             break;
@@ -694,23 +515,14 @@ mod tests {
     };
 
     pub fn test_row(position: i64) -> Row {
-        Row {
-            id: format!("car-{position}"),
+        let mut row = Row::unavailable(
+            CarId(u32::try_from(position).expect("posición de test")),
             position,
-            class_position: position,
-            driver_number: String::new(),
-            driver_name: "X".into(),
-            vehicle_class: "GT3".into(),
-            gap_text: PLACEHOLDER.into(),
-            interval_text: PLACEHOLDER.into(),
-            current_lap_text: PLACEHOLDER.into(),
-            last_lap_text: PLACEHOLDER.into(),
-            best_lap_text: PLACEHOLDER.into(),
-            best_lap_seconds: None,
-            battle_gap_seconds: None,
-            pit_active: false,
-            is_player: false,
-        }
+        );
+        let cells = std::sync::Arc::make_mut(&mut row.row);
+        cells.driver = "X".into();
+        cells.class = "GT3".into();
+        row
     }
 
     #[test]
@@ -719,26 +531,17 @@ mod tests {
         let mut config = Config::reference();
         config.fit(10);
         assert_eq!((config.width, config.height), (440.0, 364.0));
-        let vm = Vm {
+        let content_plan = ContentPlan {
             rows: (0..44).map(|i| test_row(i + 1)).collect(),
-            ..Vm::unavailable(Status::Ready)
+            ..ContentPlan::unavailable(Status::Ready)
         };
-        let plan = plan(&config, &vm);
+        let plan = plan(&config, &content_plan);
         assert_eq!(plan.widths, vec![30.0, 30.0, 200.0, 92.0, 88.0]);
         assert_eq!(plan.identity_span, 3);
         assert!(!plan.external_header);
         assert_eq!(plan.head_row, 43.0);
         assert_eq!(plan.table_top + plan.head_row, 43.0);
         assert_eq!(plan.visible_rows, 10);
-    }
-
-    #[test]
-    fn text_readers_accept_only_the_domain_formats() {
-        assert!((lap_seconds("1:42.198").unwrap() - 102.198).abs() < 1e-9);
-        assert_eq!(lap_seconds(PLACEHOLDER), None);
-        assert_eq!(gap_seconds("+1.23s"), Some(1.23));
-        assert_eq!(gap_seconds("+2 V"), None);
-        assert_eq!(gap_seconds("LÍDER"), None);
     }
 
     fn car(id: u32, position: u32, class: &str, best: f64) -> Car {
@@ -782,10 +585,14 @@ mod tests {
         }
     }
 
-    fn vm_of(snapshot: &Snapshot, row_count: usize) -> Vm {
+    fn vm_of(snapshot: &Snapshot, row_count: usize) -> ContentPlan {
         let prefs = Preferences::default();
-        let domain = standings::project(snapshot, prefs);
-        Vm::from_domain(&domain, prefs, row_count, "s:1".into(), snapshot.sequence)
+        let content = standings::Content {
+            row_count,
+            ..standings::Content::default()
+        };
+        let domain = standings::project_content(snapshot, prefs, &content);
+        ContentPlan::new(std::sync::Arc::new(domain), "s:1".into(), snapshot.sequence)
     }
 
     #[test]
@@ -802,18 +609,21 @@ mod tests {
             ],
         );
 
-        let vm = vm_of(&snapshot, 3);
+        let content_plan = vm_of(&snapshot, 3);
 
-        assert_eq!(vm.status, Status::Ready);
-        assert_eq!(vm.rows.len(), 3, "se recorta a row_count");
-        let classes: Vec<i64> = vm.rows.iter().map(|r| r.class_position).collect();
+        assert_eq!(content_plan.status, Status::Ready);
+        assert_eq!(content_plan.rows.len(), 3, "se recorta a row_count");
+        let classes: Vec<i64> = content_plan.rows.iter().map(|r| r.class_position).collect();
         assert_eq!(classes, [1, 1, 2]);
-        assert_eq!(vm.rows[1].best_lap_seconds, Some(100.8));
-        assert!(vm.rows[1].pit_active && vm.rows[1].is_player);
-        assert_eq!(vm.session_best, Some(("1".into(), 100.0)));
-        assert!(vm.pace_session && !vm.race);
+        assert_eq!(content_plan.rows[1].best_lap_s, Some(100.8));
+        assert!(content_plan.rows[1].in_pits && content_plan.rows[1].is_player);
+        assert_eq!(content_plan.session_best, Some((CarId(1), 100.0)));
+        assert!(content_plan.board.gap_to_best_lap && !content_plan.race);
         assert!(
-            vm.rows.iter().all(|r| r.battle_gap_seconds.is_none()),
+            content_plan
+                .rows
+                .iter()
+                .all(|r| r.battle_gap_seconds.is_none()),
             "el duelo solo existe en carrera"
         );
     }
@@ -830,10 +640,14 @@ mod tests {
         cars[2].gap_leader = Reliable(Gap::Time { seconds: 0.9 });
         cars[2].in_pits = Reliable(true);
 
-        let vm = vm_of(&snapshot(SessionKind::Race, cars), 10);
+        let content_plan = vm_of(&snapshot(SessionKind::Race, cars), 10);
 
-        assert!(vm.race);
-        let gaps: Vec<Option<f64>> = vm.rows.iter().map(|r| r.battle_gap_seconds).collect();
+        assert!(content_plan.race);
+        let gaps: Vec<Option<f64>> = content_plan
+            .rows
+            .iter()
+            .map(|r| r.battle_gap_seconds)
+            .collect();
         assert_eq!(gaps, [Some(0.0), Some(0.5), None]);
     }
 
@@ -856,10 +670,10 @@ mod tests {
             (SourceState::Lost, Status::Disconnected),
         ] {
             snapshot.state.source_state = source;
-            let vm = vm_of(&snapshot, 10);
-            assert_eq!(vm.status, expected);
+            let content_plan = vm_of(&snapshot, 10);
+            assert_eq!(content_plan.status, expected);
             assert_eq!(
-                vm.rows.is_empty(),
+                content_plan.rows.is_empty(),
                 matches!(source, SourceState::Waiting | SourceState::Lost)
             );
         }

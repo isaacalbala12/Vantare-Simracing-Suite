@@ -1,6 +1,8 @@
-//! Relative Eficiencia: filas de 29 px, letra base 14 y siete huecos por defecto.
-//! La proyección usa las señales relativas v4 del núcleo.
+//! Relative común: un Board y Motion activos, con pintores por Look.
 
+#[cfg(test)]
+mod contract_tests;
+mod eficiencia;
 mod motion;
 pub(crate) mod vantare;
 
@@ -11,7 +13,7 @@ use crate::efficiency::{col, paint_rect, rect, tokens};
 use gpui::{
     App, BorderStyle, ContentMask, Corners, Edges, linear_color_stop, linear_gradient, px, quad,
 };
-use motion::{Motion, Visual};
+use motion::Motion;
 use std::time::Instant;
 use vantare_domain::{
     Snapshot,
@@ -32,6 +34,8 @@ const EDGES: [f32; 7] = [0.0, 30.0, 38.0, 68.0, 300.0, 364.0, 470.0];
 pub struct Settings {
     /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
     pub design_system: crate::standings::DesignSystem,
+    #[serde(default)]
+    pub content_version: u8,
     pub style: crate::standings::Look,
     pub accent: crate::standings::Accent,
     pub columns: Option<Vec<crate::standings::options::ColumnSetting>>,
@@ -48,19 +52,7 @@ pub struct Settings {
 }
 impl Default for Settings {
     fn default() -> Self {
-        Self {
-            design_system: crate::standings::DesignSystem::Vantare,
-            style: crate::standings::Look::Neo,
-            accent: crate::standings::Accent::Red,
-            columns: None,
-            range_ahead: 3,
-            range_behind: 3,
-            class_scope: "sameClass".into(),
-            include_player: true,
-            row_height_mode: "compact".into(),
-            footer_slots: Vec::new(),
-            brand_visible: None,
-        }
+        Self::for_look(crate::look::Look::default())
     }
 }
 /// Métricas de Relative Vantare que ocupan un hueco propio (el punto de clase
@@ -149,13 +141,42 @@ pub fn shift_column(
 }
 
 impl Settings {
+    pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
+        let mut s = Self::for_look(look);
+        match look {
+            crate::look::Look::Vantare => {
+                s.columns = Some(vantare_template("standard"));
+                s.brand_visible = Some(true);
+            }
+            crate::look::Look::Eficiencia => {
+                s.columns = Some(crate::workshop::default_columns(crate::Kind::Relative));
+            }
+        }
+        s
+    }
+    /// Única fuente de los ajustes base: el Look cambia solo la presentación.
+    #[must_use]
+    pub fn for_look(design_system: crate::look::Look) -> Self {
+        Self {
+            design_system,
+            content_version: 1,
+            style: crate::standings::Look::Neo,
+            accent: crate::standings::Accent::Red,
+            columns: None,
+            range_ahead: 3,
+            range_behind: 3,
+            class_scope: "sameClass".into(),
+            include_player: true,
+            row_height_mode: "compact".into(),
+            footer_slots: Vec::new(),
+            brand_visible: None,
+        }
+    }
+
     /// Relative del sistema Eficiencia heredado.
     #[must_use]
     pub fn eficiencia() -> Self {
-        Self {
-            design_system: crate::standings::DesignSystem::Eficiencia,
-            ..Self::default()
-        }
+        Self::for_look(crate::look::Look::Eficiencia)
     }
 
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
@@ -178,7 +199,9 @@ impl Settings {
         value.range_ahead = value.range_ahead.min(8);
         value.range_behind = value.range_behind.min(8);
         value.include_player = true;
-        if value.design_system == crate::standings::DesignSystem::Vantare {
+        if value.content_version == 0
+            && value.design_system == crate::standings::DesignSystem::Vantare
+        {
             value.class_scope = "sameClass".into();
         } else if value.class_scope != "sameClass" {
             value.class_scope = "all".into();
@@ -187,11 +210,10 @@ impl Settings {
             value.row_height_mode = "compact".into();
         }
         value.footer_slots.truncate(9);
-        // Vantare tiene sus propias métricas (ver `vantare_template`).
-        if value.design_system == crate::standings::DesignSystem::Vantare {
-            return value;
-        }
-        if let Some(columns) = &mut value.columns {
+        if value.content_version == 0
+            && value.design_system == crate::standings::DesignSystem::Eficiencia
+            && let Some(columns) = &mut value.columns
+        {
             columns.truncate(7);
             columns.retain(|c| {
                 [
@@ -206,6 +228,7 @@ impl Settings {
                 .contains(&c.metric_id.as_str())
             });
         }
+        value.content_version = 1;
         value
     }
     fn content(&self) -> relative::Content {
@@ -224,844 +247,211 @@ impl Settings {
     }
 }
 
+/// Board y Motion activos comunes: los pintores solo reciben datos proyectados.
 pub(crate) struct Widget {
-    /// Presente con el sistema Vantare; si no, se usa el renderer Eficiencia.
-    vantare: Option<vantare::State>,
-    vm: ViewModel,
     settings: Settings,
-    footer: Vec<vantare_domain::standings::InfoCell>,
-    footer_rows: usize,
-    workshop: bool,
-    motion: Motion,
+    board: std::sync::Arc<relative::Board>,
+    presentation: Presentation,
     boundary: Option<(u64, u64, Preferences)>,
+    workshop: bool,
+}
+enum Presentation {
+    Eficiencia {
+        visual: Box<eficiencia::Visual>,
+        motion: std::sync::Arc<Motion>,
+    },
+    Vantare {
+        visual: vantare::Visual,
+        motion: std::sync::Arc<Motion>,
+    },
 }
 
 impl Widget {
-    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
-        let normalized = settings.normalized();
-        Self {
-            vantare: (normalized.design_system == crate::standings::DesignSystem::Vantare)
-                .then(|| vantare::State::new(vantare::Options::from_settings(&normalized))),
-            vm: relative::project_content(
-                &Snapshot::default(),
-                prefs,
-                settings.normalized().content(),
-            ),
-            settings: settings.normalized(),
-            footer: Vec::new(),
-            footer_rows: 1,
-            workshop: false,
-            motion: Motion::default(),
-            boundary: None,
+    fn presentation(
+        settings: &Settings,
+        board: std::sync::Arc<relative::Board>,
+        motion: std::sync::Arc<Motion>,
+    ) -> Presentation {
+        match settings.design_system {
+            crate::standings::DesignSystem::Eficiencia => Presentation::Eficiencia {
+                visual: Box::new(eficiencia::Visual::new(settings, board)),
+                motion,
+            },
+            crate::standings::DesignSystem::Vantare => Presentation::Vantare {
+                visual: vantare::Visual::new(vantare::Options::from_settings(settings)),
+                motion,
+            },
         }
     }
-
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
+        let board = std::sync::Arc::new(relative::project_configured(
+            &Snapshot::default(),
+            prefs,
+            settings.content(),
+            &settings.footer_slots,
+        ));
+        let presentation = Self::presentation(&settings, board.clone(), std::sync::Arc::default());
+        Self {
+            settings,
+            board,
+            presentation,
+            boundary: None,
+            workshop: false,
+        }
+    }
     pub(crate) fn workshop_layout(&mut self) {
         self.workshop = true;
-    }
-
-    /// Termina las animaciones Vantare en curso (Workshop reconstruye la historia).
-    pub(crate) fn settle(&mut self) {
-        if let Some(state) = &mut self.vantare {
-            state.settle();
+        if let Presentation::Eficiencia { visual: v, .. } = &mut self.presentation {
+            v.workshop_layout();
         }
     }
-
-    /// Estilo Vantare de Workshop en vivo; producto usa el compilado.
+    pub(crate) fn settle(&mut self) {
+        if let Presentation::Vantare { motion: m, .. } = &mut self.presentation {
+            std::sync::Arc::make_mut(m).settle();
+        }
+    }
     pub(crate) fn set_vantare_style(
         &mut self,
         style: std::sync::Arc<crate::vantare::style::Style>,
     ) {
-        if let Some(state) = &mut self.vantare {
-            state.set_style(style);
+        if let Presentation::Vantare {
+            visual: v,
+            motion: m,
+        } = &mut self.presentation
+        {
+            v.set_style(style, std::sync::Arc::make_mut(m));
         }
     }
-
-    /// Columnas Vantare colocadas; `None` en Eficiencia o sin datos.
     pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
-        self.vantare.as_ref().and_then(vantare::State::columns)
+        match &self.presentation {
+            Presentation::Eficiencia { visual: _, .. } => None,
+            Presentation::Vantare { visual: v, .. } => v.columns(),
+        }
     }
-
     pub(crate) fn size(&self) -> (f32, f32) {
-        if let Some(state) = &self.vantare {
-            return state.size();
-        }
-        if self.workshop {
-            let footer = if self.footer.is_empty() {
-                FOOTER
-            } else {
-                (15.0 + self.footer_rows as f32 * 14.0).max(FOOTER) * SCALE
-            };
-            (
-                SIZE.0,
-                BAND + self.settings.slot_count() as f32 * ROW + footer,
-            )
-        } else {
-            self.settings.size()
+        match &self.presentation {
+            Presentation::Eficiencia { visual: v, .. } => v.size(),
+            Presentation::Vantare { visual: v, .. } => v.size(),
         }
     }
-
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        if let Some(state) = &mut self.vantare {
-            let board = state.project(snapshot);
-            return state.ingest(board);
+        self.ingest_using(snapshot, prefs, relative::project_cached)
+    }
+    fn ingest_using(
+        &mut self,
+        snapshot: &Snapshot,
+        prefs: Preferences,
+        project: impl FnOnce(
+            &Snapshot,
+            Preferences,
+            relative::Content,
+            &[String],
+            Option<&std::sync::Arc<relative::Board>>,
+        ) -> std::sync::Arc<relative::Board>,
+    ) -> bool {
+        let next = project(
+            snapshot,
+            prefs,
+            self.settings.content(),
+            &self.settings.footer_slots,
+            Some(&self.board),
+        );
+        let boundary = Some((snapshot.epoch, snapshot.state.session.id.0, prefs));
+        let continuous = self.boundary == boundary;
+        self.boundary = boundary;
+        let changed = self.present(next.clone(), continuous);
+        self.board = next;
+        changed
+    }
+    fn present(&mut self, board: std::sync::Arc<relative::Board>, continuous: bool) -> bool {
+        if continuous && std::sync::Arc::ptr_eq(&self.board, &board) {
+            return false;
         }
-        let mut next = relative::project_content(snapshot, prefs, self.settings.content());
-        let last_lap_visible = self.settings.footer_slots.iter().any(|id| id == "lastLap")
-            || self
-                .settings
-                .columns
-                .iter()
-                .flatten()
-                .any(|c| c.enabled && c.metric_id == "lastLap");
-        if !last_lap_visible {
-            for row in next.slots.iter_mut().flatten() {
-                row.last_lap = "—".into();
-                row.last_lap_stale = false;
+        match &mut self.presentation {
+            Presentation::Eficiencia {
+                visual: v,
+                motion: m,
+            } => v.ingest(board, std::sync::Arc::make_mut(m), continuous),
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => v.ingest_shared(board, m),
+        }
+    }
+    pub(crate) fn set_look(&mut self, look: crate::look::Look, _prefs: Preferences) {
+        if self.settings.design_system == look {
+            return;
+        }
+        let motion = match &self.presentation {
+            Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                motion.clone()
+            }
+        };
+        self.settings.design_system = look;
+        self.presentation = Self::presentation(&self.settings, self.board.clone(), motion);
+        if self.workshop {
+            self.workshop_layout();
+        }
+        match &mut self.presentation {
+            Presentation::Eficiencia { visual, motion } => {
+                visual.attach(std::sync::Arc::make_mut(motion));
+            }
+            Presentation::Vantare { visual, motion } => {
+                visual.attach(self.board.clone(), std::sync::Arc::make_mut(motion));
             }
         }
-        let footer = relative::footer_slots(snapshot, prefs, &next, &self.settings.footer_slots);
-        self.footer_rows = 1;
-        if footer.len() > 5 {
-            let total = footer
-                .iter()
-                .map(|cell| {
-                    cell.label.chars().count() as f32 * 5.5
-                        + cell.value.chars().count() as f32 * 7.5
-                        + 12.0
-                        + 14.0
-                })
-                .sum::<f32>();
-            self.footer_rows = (total / (SIZE.0 - 24.0)).ceil().max(1.0) as usize;
-        }
-        let footer_changed = crate::app::replace_if_changed(&mut self.footer, footer);
-        let boundary = Some((snapshot.epoch, snapshot.state.session.id.0, prefs));
-        let interrupted = self.boundary != boundary && self.motion.animating(Instant::now());
-        if next.status.is_some() || self.vm.status.is_some() {
-            self.motion = Motion::default();
-            self.boundary = boundary;
-        } else if self.boundary == boundary {
-            self.motion.update(&self.vm, &next, Instant::now());
-        } else {
-            self.motion = Motion::default();
-            self.boundary = boundary;
-        }
-        crate::app::replace_if_changed(&mut self.vm, next) || interrupted || footer_changed
     }
-
     pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
         self.frame_with_motion(prefs, false)
     }
     pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
-        let now = Instant::now();
-        if let Some(state) = &mut self.vantare {
-            if reduced {
-                state.settle();
+        match &mut self.presentation {
+            Presentation::Eficiencia {
+                visual: v,
+                motion: m,
+            } => v.frame(prefs, reduced, m),
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => {
+                v.presentation(prefs.language);
+                if reduced {
+                    std::sync::Arc::make_mut(m).settle();
+                }
+                let wake = v.wake(m, Instant::now());
+                let v = v.clone();
+                let m = m.clone();
+                (
+                    Box::new(move |window, cx| v.paint(&m, prefs.language, window, cx)),
+                    wake,
+                )
             }
-            let wake = state.wake(now);
-            let state = state.clone();
-            let language = prefs.language;
-            return (
-                Box::new(move |window, cx| state.paint(language, window, cx)),
-                wake,
-            );
         }
-        let rows = if reduced {
-            motion::Motion::default().sample(&self.vm, now)
-        } else {
-            self.motion.sample(&self.vm, now)
-        };
-        let wake = if !reduced && self.motion.animating(now) {
-            Wake::Frame
-        } else {
-            Wake::Idle
-        };
-        let vm = self.vm.clone();
-        let settings = self.settings.clone();
-        let footer = self.footer.clone();
-        let size = self.size();
-        let footer_rows = self.footer_rows;
-        (
-            Box::new(move |window, cx| {
-                paint(
-                    &vm,
-                    &rows,
-                    &settings,
-                    &footer,
-                    size,
-                    footer_rows,
-                    prefs,
-                    window,
-                    cx,
-                );
-            }),
-            wake,
-        )
     }
-
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
-        match &self.vantare {
-            Some(state) => state.wake(Instant::now()) != Wake::Idle,
-            None => self.motion.animating(Instant::now()),
+        match &self.presentation {
+            Presentation::Eficiencia {
+                visual: _,
+                motion: m,
+            } => m.animating(Instant::now()),
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => v.wake(m, Instant::now()) != Wake::Idle,
         }
     }
 }
-
-fn paint(
-    vm: &ViewModel,
-    rows: &[Visual],
-    settings: &Settings,
-    footer: &[vantare_domain::standings::InfoCell],
-    size: (f32, f32),
-    footer_rows: usize,
-    prefs: Preferences,
-    window: &mut Window,
-    cx: &mut App,
-) {
-    let (width, height) = size;
-    let panel = rect(0.0, 0.0, width, height);
-    let radius = Corners::all(px(tokens::RADIUS * SCALE));
-    let no_border = Edges::all(px(0.0));
-    window.paint_quad(quad(
-        panel,
-        radius,
-        col(tokens::PANEL, 0.87),
-        no_border,
-        col(0, 0.0),
-        BorderStyle::default(),
-    ));
-    window.paint_quad(quad(
-        panel,
-        radius,
-        linear_gradient(
-            120.0,
-            linear_color_stop(col(0xffffff, 0.03), 0.0),
-            linear_color_stop(col(0xffffff, 0.0), 0.38),
-        ),
-        no_border,
-        col(0, 0.0),
-        BorderStyle::default(),
-    ));
-    let has_meta = !vm.track.is_empty() || !vm.player_badge.is_empty();
-    let meta_bottom = if has_meta { BAND } else { 0.0 };
-    let top = meta_bottom
-        + if vm.status.is_some() {
-            38.0 * SCALE
-        } else {
-            0.0
-        };
-    if let Some(status) = &vm.status {
-        let font = ink(12.0 * SCALE, 700.0, 0.0, col(0xe2c568, 1.0));
-        text::draw(
-            window,
-            cx,
-            status,
-            12.0 * SCALE,
-            meta_bottom + text::baseline(10.0, 18.0, 12.0) * SCALE,
-            &font,
-        );
-    }
-    if has_meta {
-        line(window, BAND - SCALE, tokens::INK, 0.1);
-        let (label, _) = labels(prefs.language);
-        let font = ink(14.0 * SCALE, 650.0, -0.01, col(tokens::INK, 1.0));
-        let badge_width = text::width(window, &vm.player_badge, &font);
-        let label_width = text::width(
-            window,
-            label,
-            &ink(11.0, 600.0, 0.1, col(tokens::MUTED, 1.0)),
-        );
-        let track = text::fit(
-            window,
-            &vm.track,
-            &font,
-            (width - badge_width - label_width - 42.0).max(0.0),
-        );
-        item(window, cx, 12.0 * SCALE, 0.0, label, &track);
-        let x = width - 12.0 * SCALE - badge_width;
-        text::draw(
-            window,
-            cx,
-            &vm.player_badge,
-            x,
-            text::baseline(0.0, BAND, font.size),
-            &font,
-        );
-    }
-    let footer_height = if footer.is_empty() {
-        FOOTER
-    } else {
-        (15.0 + footer_rows as f32 * 14.0).max(FOOTER) * SCALE
-    };
-    let row_height =
-        ((height - footer_height - top) / settings.slot_count().max(1) as f32).min(ROW);
-    window.with_content_mask(
-        Some(ContentMask {
-            bounds: rect(0.0, top, width, height - footer_height - top),
-        }),
-        |window| {
-            for row in rows {
-                if settings.columns.is_some() {
-                    paint_configured_row(
-                        row,
-                        top,
-                        row_height,
-                        settings,
-                        prefs.language,
-                        window,
-                        cx,
-                    );
-                } else {
-                    paint_row(
-                        row,
-                        top,
-                        row_height,
-                        settings.slot_count(),
-                        prefs.language,
-                        window,
-                        cx,
-                    );
-                }
-            }
-            if rows.is_empty() && vm.status.is_none() {
-                let message = if prefs.language == Language::Es {
-                    "SIN DATOS"
-                } else {
-                    "NO DATA"
-                };
-                let font = ink(12.0 * SCALE, 600.0, 0.0, col(tokens::MUTED, 1.0));
-                text::draw(window, cx, message, 12.0 * SCALE, top + 22.0 * SCALE, &font);
-            }
-        },
-    );
-    let session = [&vm.session, &vm.remaining]
-        .into_iter()
-        .filter(|v| !v.is_empty())
-        .cloned()
-        .collect::<Vec<_>>()
-        .join(" ");
-    let (_, weather) = labels(prefs.language);
-    let fields = [
-        ("", session.as_str()),
-        (weather[0], vm.air.as_str()),
-        (weather[1], vm.track_temperature.as_str()),
-        (weather[2], vm.wind.as_str()),
-    ];
-    let visible = fields
-        .iter()
-        .filter(|(_, value)| !value.is_empty())
-        .collect::<Vec<_>>();
-    if !footer.is_empty() && vm.status.is_none() {
-        crate::standings::view::paint_info_cells(
-            footer,
-            width,
-            height,
-            footer_height,
-            true,
-            SCALE,
-            SIZE.0,
-            window,
-            cx,
-        );
-    } else if !visible.is_empty() {
-        let y = height - FOOTER;
-        line(window, y, tokens::INK, 0.1);
-        let widths = visible
-            .iter()
-            .map(|(label, value)| item_width(window, label, value))
-            .collect::<Vec<_>>();
-        let gap = 16.0 * SCALE;
-        let total = widths.iter().sum::<f32>() + gap * (visible.len() - 1) as f32;
-        let mut x = (width - total) / 2.0;
-        for ((label, value), w) in visible.into_iter().zip(widths) {
-            item(window, cx, x, y, label, value);
-            x += w + gap;
+#[cfg(test)]
+impl std::ops::Deref for Widget {
+    type Target = eficiencia::Visual;
+    fn deref(&self) -> &Self::Target {
+        match &self.presentation {
+            Presentation::Eficiencia { visual: v, .. } => v,
+            Presentation::Vantare { visual: _, .. } => panic!("test Eficiencia sobre otro Look"),
         }
     }
-    window.paint_quad(quad(
-        panel,
-        radius,
-        col(0, 0.0),
-        Edges::all(px(SCALE)),
-        col(0xffffff, 0.085),
-        BorderStyle::default(),
-    ));
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, 6.0 * SCALE),
-        Corners {
-            top_left: px(tokens::RADIUS * SCALE),
-            top_right: px(tokens::RADIUS * SCALE),
-            bottom_left: px(0.0),
-            bottom_right: px(0.0),
-        },
-        col(0, 0.0),
-        Edges {
-            top: px(SCALE),
-            right: px(0.0),
-            bottom: px(0.0),
-            left: px(0.0),
-        },
-        col(0xffffff, 0.085),
-        BorderStyle::default(),
-    ));
-}
-
-// Un borde CSS escalado mide menos de 1 px: el snap del kit puede vaciarlo.
-// Se reparte su cobertura entre como máximo dos píxeles, sin tocar el kit.
-fn line(window: &mut Window, y: f32, color: u32, alpha: f32) {
-    let (_, origin_y) = text::origin();
-    let start = y + origin_y;
-    let first = start.floor();
-    for pixel in [first, first + 1.0] {
-        let coverage = ((start + SCALE).min(pixel + 1.0) - start.max(pixel)).max(0.0);
-        if coverage > 0.0 {
-            paint_rect(
-                window,
-                0.0,
-                pixel - origin_y,
-                SIZE.0,
-                1.0,
-                col(color, alpha * coverage),
-            );
-        }
-    }
-}
-
-fn labels(language: Language) -> (&'static str, [&'static str; 3]) {
-    match language {
-        Language::Es => ("PISTA", ["AIRE", "PISTA", "VIENTO"]),
-        Language::En => ("TRACK", ["AIR", "TRACK", "WIND"]),
-    }
-}
-
-fn item_width(window: &Window, label: &str, value: &str) -> f32 {
-    let label_font = ink(11.0 * SCALE, 600.0, 0.1, col(tokens::MUTED, 1.0));
-    let font = ink(14.0 * SCALE, 650.0, -0.01, col(tokens::INK, 1.0));
-    text::width(window, value, &font)
-        + if label.is_empty() {
-            0.0
-        } else {
-            text::width(window, label, &label_font) + 6.0 * SCALE
-        }
-}
-
-fn item(window: &mut Window, cx: &mut App, x: f32, y: f32, label: &str, value: &str) {
-    if value.is_empty() {
-        return;
-    }
-    let label_font = ink(11.0 * SCALE, 600.0, 0.1, col(tokens::MUTED, 1.0));
-    let font = ink(14.0 * SCALE, 650.0, -0.01, col(tokens::INK, 1.0));
-    let advance = if label.is_empty() {
-        0.0
-    } else {
-        text::width(window, label, &label_font) + 6.0 * SCALE
-    };
-    text::draw(
-        window,
-        cx,
-        label,
-        x,
-        y + text::baseline(0.0, BAND, font.size),
-        &label_font,
-    );
-    text::draw(
-        window,
-        cx,
-        value,
-        x + advance,
-        y + text::baseline(0.0, BAND, font.size),
-        &font,
-    );
-}
-
-fn paint_row(
-    visual: &Visual,
-    top: f32,
-    row_height: f32,
-    slot_count: usize,
-    language: Language,
-    window: &mut Window,
-    cx: &mut App,
-) {
-    let row = &visual.row;
-    let y = top + visual.y * row_height;
-    let opacity = visual.opacity;
-    let player = row.side == Side::Player;
-    if player {
-        paint_rect(
-            window,
-            0.0,
-            y,
-            SIZE.0,
-            row_height,
-            col(0xbfc2ca, 0.23 * opacity),
-        );
-        window.paint_quad(quad(
-            rect(0.0, y, SIZE.0, row_height),
-            Corners::all(px(0.0)),
-            linear_gradient(
-                180.0,
-                linear_color_stop(col(0xffffff, 0.04 * opacity), 0.0),
-                linear_color_stop(col(0xffffff, 0.0), 0.6),
-            ),
-            Edges::all(px(0.0)),
-            col(0, 0.0),
-            BorderStyle::default(),
-        ));
-        line(window, y, 0xffffff, 0.13 * opacity);
-    }
-    if let Some((color, alpha)) = visual.cue {
-        paint_rect(
-            window,
-            0.0,
-            y,
-            SIZE.0,
-            row_height,
-            col(color, alpha * opacity),
-        );
-    }
-    if visual.y < slot_count.saturating_sub(1) as f32 {
-        let (color, alpha) = if player {
-            (0xffffff, 0.08)
-        } else {
-            (tokens::INK, 0.1)
-        };
-        line(window, y + row_height - SCALE, color, alpha * opacity);
-    }
-    let edges = EDGES;
-    let position = ink(
-        13.0 * SCALE,
-        600.0,
-        -0.02,
-        col(
-            if player { 0xffffff } else { 0xb9bbc1 },
-            opacity * if row.position_stale { 0.6 } else { 1.0 },
-        ),
-    );
-    // Posición 2ch + hueco 4 + tick 3, centrado como el grid del productivo.
-    let two_ch = text::width(window, "00", &ink(13.0 * SCALE, 600.0, 0.0, position.color));
-    let identity_x = (edges[1] - two_ch - 7.0 * SCALE) / 2.0;
-    let pos_x = identity_x + (two_ch - text::width(window, &row.position, &position)) / 2.0;
-    text::draw(
-        window,
-        cx,
-        &row.position,
-        pos_x,
-        text::baseline(y, row_height, position.size),
-        &position,
-    );
-    let color = match row.class.to_uppercase().as_str() {
-        "HYPERCAR" => 0xc1121f,
-        "LMP2" => 0x0055a4,
-        "LMP3" => 0xf59e0b,
-        "GT3" | "LMGT3" => 0x2ecc71,
-        _ => 0x6b7280,
-    };
-    paint_rect(
-        window,
-        identity_x + two_ch + 4.0 * SCALE,
-        y + (row_height - 14.0) / 2.0,
-        3.0 * SCALE,
-        14.0 * SCALE,
-        col(color, position.color.a),
-    );
-    let number = ink(11.0 * SCALE, 600.0, -0.02, col(0xa5a5ab, opacity));
-    cell(
-        window,
-        cx,
-        &row.number,
-        edges[2],
-        edges[3],
-        text::baseline(y, row_height, number.size),
-        &number,
-        true,
-    );
-    let name = ink(14.0 * SCALE, 700.0, -0.025, col(tokens::INK, opacity));
-    let badge = row
-        .lap_delta
-        .filter(|delta| *delta != 0 && !player)
-        .map(|delta| {
-            format!(
-                "{}{} {}",
-                if delta > 0 { "+" } else { "−" },
-                delta.unsigned_abs(),
-                if language == Language::Es { "V" } else { "L" }
-            )
-        });
-    let badge_font = ink(8.0 * SCALE, 650.0, 0.01, col(0xc6c6cb, opacity));
-    let badge_width = badge.as_ref().map_or(0.0, |value| {
-        text::width(window, value, &badge_font) + 10.0 * SCALE
-    });
-    let value = text::fit(
-        window,
-        &row.driver.to_uppercase(),
-        &name,
-        edges[4]
-            - edges[3]
-            - 10.0 * SCALE
-            - if badge.is_some() {
-                badge_width + 7.0 * SCALE
-            } else {
-                0.0
-            },
-    );
-    // Cada tamaño de letra comparte el centro vertical de la fila.
-    text::draw(
-        window,
-        cx,
-        &value,
-        edges[3],
-        text::baseline(y, row_height, name.size),
-        &name,
-    );
-    if let Some(value) = badge {
-        let x = edges[4] - 10.0 * SCALE - badge_width;
-        window.paint_quad(quad(
-            rect(x, y + (row_height - 14.0) / 2.0, badge_width, 14.0 * SCALE),
-            Corners::all(px(3.0 * SCALE)),
-            col(0, 0.0),
-            Edges::all(px(SCALE)),
-            col(tokens::INK, 0.16 * opacity),
-            BorderStyle::default(),
-        ));
-        text::draw(
-            window,
-            cx,
-            &value,
-            x + 5.0 * SCALE,
-            y + 17.0 * SCALE,
-            &badge_font,
-        );
-    }
-    let gap = ink(
-        16.0 * SCALE,
-        650.0,
-        -0.02,
-        col(tokens::INK, opacity * if row.gap_stale { 0.6 } else { 1.0 }),
-    );
-    cell(
-        window,
-        cx,
-        &row.gap,
-        edges[4],
-        edges[5],
-        text::baseline(y, row_height, gap.size),
-        &gap,
-        false,
-    );
-    let lap = ink(
-        13.0 * SCALE,
-        600.0,
-        -0.02,
-        col(
-            0xe6e5e9,
-            opacity * if row.best_lap_stale { 0.6 } else { 1.0 },
-        ),
-    );
-    cell(
-        window,
-        cx,
-        &row.best_lap,
-        edges[5],
-        edges[6],
-        text::baseline(y, row_height, lap.size),
-        &lap,
-        false,
-    );
-}
-
-fn paint_configured_row(
-    visual: &Visual,
-    top: f32,
-    height: f32,
-    settings: &Settings,
-    language: Language,
-    window: &mut Window,
-    cx: &mut App,
-) {
-    let row = &visual.row;
-    let y = top + visual.y * height;
-    if row.side == Side::Player {
-        paint_rect(
-            window,
-            0.0,
-            y,
-            SIZE.0,
-            height,
-            col(0xbfc2ca, 0.23 * visual.opacity),
-        );
-    }
-    if let Some((color, alpha)) = visual.cue {
-        paint_rect(
-            window,
-            0.0,
-            y,
-            SIZE.0,
-            height,
-            col(color, alpha * visual.opacity),
-        );
-    }
-    if visual.y < settings.slot_count().saturating_sub(1) as f32 {
-        line(
-            window,
-            y + height - SCALE,
-            tokens::INK,
-            0.1 * visual.opacity,
-        );
-    }
-    let columns: Vec<_> = settings
-        .columns
-        .iter()
-        .flatten()
-        .filter(|c| c.enabled)
-        .collect();
-    let total = columns
-        .iter()
-        .map(|c| c.relative_width())
-        .sum::<f32>()
-        .max(1.0);
-    let has_position = columns.iter().any(|c| c.metric_id == "position");
-    let has_class = columns.iter().any(|c| c.metric_id == "class");
-    let mut x = 0.0;
-    for column in columns {
-        let w = column.relative_width() / total * SIZE.0;
-        let stale = match column.metric_id.as_str() {
-            "position" => row.position_stale,
-            "gap" => row.gap_stale,
-            "bestLap" => row.best_lap_stale,
-            "lastLap" => row.last_lap_stale,
-            _ => false,
-        };
-        let value = match column.metric_id.as_str() {
-            "position" => row.position.clone(),
-            "class" => String::new(),
-            "carNumber" => row.number.clone(),
-            "driverName" => column.driver_name(&row.driver).to_uppercase(),
-            "gap" => row.gap.clone(),
-            "bestLap" => row.best_lap.clone(),
-            "lastLap" => row.last_lap.clone(),
-            _ => "—".into(),
-        };
-        let centered = column.style.align.as_deref().map_or(
-            matches!(
-                column.metric_id.as_str(),
-                "position" | "class" | "carNumber"
-            ),
-            |v| v == "center",
-        );
-        let font = ink(
-            if column.metric_id == "driverName" {
-                14.0
-            } else if column.metric_id == "gap" {
-                16.0
-            } else {
-                13.0
-            } * SCALE,
-            if column.metric_id == "driverName" {
-                700.0
-            } else {
-                600.0
-            },
-            -0.02,
-            col(tokens::INK, visual.opacity * if stale { 0.6 } else { 1.0 }),
-        );
-        let baseline = text::baseline(y, height, font.size);
-        if (column.metric_id == "class" && !has_position)
-            || (column.metric_id == "position" && has_class)
-        {
-            let color = match row.class.to_uppercase().as_str() {
-                "HYPERCAR" => 0xc1121f,
-                "LMP2" => 0x0055a4,
-                "LMP3" => 0xf59e0b,
-                "GT3" | "LMGT3" => 0x2ecc71,
-                _ => 0x6b7280,
-            };
-            paint_rect(
-                window,
-                x + w - 4.0 * SCALE,
-                y + (height - 14.0 * SCALE) / 2.0,
-                3.0 * SCALE,
-                14.0 * SCALE,
-                col(color, visual.opacity),
-            );
-        }
-        // Clase es un tick, nunca una celda de texto vacía recortada con elipsis.
-        if column.metric_id == "class" {
-            x += w;
-            continue;
-        }
-        if column.style.align.as_deref() == Some("left")
-            || (column.metric_id == "driverName" && column.style.align.is_none())
-        {
-            let badge = (column.metric_id == "driverName" && row.side != Side::Player)
-                .then_some(row.lap_delta)
-                .flatten()
-                .filter(|delta| *delta != 0)
-                .map(|delta| {
-                    format!(
-                        "{}{} {}",
-                        if delta > 0 { "+" } else { "−" },
-                        delta.unsigned_abs(),
-                        if language == Language::Es { "V" } else { "L" }
-                    )
-                });
-            let badge_font = ink(8.0 * SCALE, 650.0, 0.01, col(0xc6c6cb, visual.opacity));
-            let badge_width = badge
-                .as_ref()
-                .map_or(0.0, |v| text::width(window, v, &badge_font) + 10.0 * SCALE);
-            let reserve = if badge.is_some() {
-                badge_width + 7.0 * SCALE
-            } else {
-                0.0
-            };
-            let fitted = text::fit(window, &value, &font, (w - 10.0 * SCALE - reserve).max(0.0));
-            text::draw(window, cx, &fitted, x, baseline, &font);
-            if let Some(badge) = badge {
-                let bx = x + w - 10.0 * SCALE - badge_width;
-                let by = y + (height - 14.0 * SCALE) / 2.0;
-                window.paint_quad(quad(
-                    rect(bx, by, badge_width, 14.0 * SCALE),
-                    Corners::all(px(3.0 * SCALE)),
-                    col(0, 0.0),
-                    Edges::all(px(SCALE)),
-                    col(tokens::INK, 0.16 * visual.opacity),
-                    BorderStyle::default(),
-                ));
-                text::draw(
-                    window,
-                    cx,
-                    &badge,
-                    bx + 5.0 * SCALE,
-                    by + 10.0 * SCALE,
-                    &badge_font,
-                );
-            }
-        } else {
-            cell(window, cx, &value, x, x + w, baseline, &font, centered);
-        }
-        x += w;
-    }
-}
-
-fn cell(
-    window: &mut Window,
-    cx: &mut App,
-    value: &str,
-    left: f32,
-    right: f32,
-    baseline: f32,
-    font: &Ink,
-    centered: bool,
-) {
-    let fitted = text::fit(window, value, font, right - left - 12.0 * SCALE);
-    let width = text::width(window, &fitted, font);
-    let x = if centered {
-        (left + right - width) / 2.0
-    } else {
-        right - 6.0 * SCALE - width
-    };
-    text::draw(window, cx, &fitted, x, baseline, font);
 }
 
 impl Settings {
@@ -1070,25 +460,18 @@ impl Settings {
             LapTimes, PitStatus, Positions, Relative, SessionClock, SessionInfo, TrackName, Weather,
         };
         let settings = self.normalized();
-        if settings.design_system == crate::standings::DesignSystem::Vantare {
-            use vantare_ipc::Signal::{Cars, Flags};
-            // LapTimes: el ritmo de clase decide el aviso de tráfico.
-            return crate::demand::signals(
-                33,
-                &[
-                    Cars,
-                    Relative,
-                    Positions,
-                    PitStatus,
-                    SessionInfo,
-                    Flags,
-                    LapTimes,
-                ],
-            );
-        }
         let mut demand = crate::demand::signals(
             33,
-            &[Relative, Positions, PitStatus, SessionInfo, TrackName],
+            &[
+                vantare_ipc::Signal::Cars,
+                Relative,
+                Positions,
+                PitStatus,
+                SessionInfo,
+                TrackName,
+                vantare_ipc::Signal::Flags,
+                LapTimes,
+            ],
         );
         if settings.columns.as_ref().is_none_or(|cols| {
             cols.iter()
@@ -1108,25 +491,203 @@ impl Settings {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn look_switch_preserves_row_strip_fades_and_pulse_clocks() {
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(&Settings::default(), prefs);
+        widget.ingest(&crate::source::fixed(), prefs);
+        let old = widget.board.clone();
+        let mut next = (*old).clone();
+        next.slots.swap(0, 6);
+        for (index, side) in [(0, Side::Ahead), (6, Side::Behind)] {
+            if let Some(row) = &mut next.slots[index] {
+                std::sync::Arc::make_mut(row).side = side;
+            }
+        }
+        let motion = match &mut widget.presentation {
+            Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                std::sync::Arc::make_mut(motion)
+            }
+        };
+        motion.rows.relayout(
+            &old,
+            &old.slots
+                .iter()
+                .enumerate()
+                .filter_map(|(i, r)| {
+                    r.as_ref().map(|r| crate::vantare::motion::Sample {
+                        id: r.id,
+                        y: i as f32,
+                        position: 0,
+                        fastest: false,
+                        in_pits: false,
+                        leader: false,
+                    })
+                })
+                .collect::<Vec<_>>(),
+            1.0,
+            0.0,
+        );
+        motion.rows.update_content(&old, &next, Instant::now());
+        let clocks = motion.clock_signature();
+        assert!(!clocks.1.is_empty());
+        assert!(!clocks.2.is_empty(), "historial de la tira presente");
+        widget.board = std::sync::Arc::new(next);
+        for look in [
+            crate::look::Look::Eficiencia,
+            crate::look::Look::Vantare,
+            crate::look::Look::Eficiencia,
+        ] {
+            widget.set_look(look, prefs);
+            let after = match &widget.presentation {
+                Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                    motion.clock_signature()
+                }
+            };
+            assert_eq!(
+                clocks, after,
+                "movimiento, fundidos, tira y reloj siguen enteros"
+            );
+        }
+    }
+
     use super::*;
     use crate::source;
 
     #[test]
+    fn every_look_projects_once_per_ingest_and_switches_on_the_same_board() {
+        let photo = source::fixed();
+        let prefs = Preferences::default();
+        for &look in crate::look::Look::ALL {
+            let settings = Settings {
+                design_system: look,
+                class_scope: "all".into(),
+                ..Settings::default()
+            };
+            let mut widget = Widget::new(&settings, prefs);
+            let mut calls = 0;
+            widget.ingest_using(&photo, prefs, |s, p, c, ids, previous| {
+                calls += 1;
+                relative::project_cached(s, p, c, ids, previous)
+            });
+            assert_eq!(calls, 1);
+            let board = widget.board.clone();
+            let demand = widget.settings.demand();
+            let content = widget.settings.content();
+            let notice = (
+                vantare_domain::CarId(98765),
+                crate::vantare::motion::Flash::Gain,
+                Instant::now(),
+                1,
+            );
+            match &mut widget.presentation {
+                Presentation::Eficiencia { motion: m, .. } => {
+                    std::sync::Arc::make_mut(m).restore_notices(&[notice]);
+                }
+                Presentation::Vantare { motion: m, .. } => {
+                    std::sync::Arc::make_mut(m).rows.restore_notices(&[notice]);
+                }
+            }
+            for &next in crate::look::Look::ALL
+                .iter()
+                .rev()
+                .chain(crate::look::Look::ALL)
+            {
+                widget.set_look(next, prefs);
+                assert!(std::sync::Arc::ptr_eq(&board, &widget.board));
+                assert_eq!(content, widget.settings.content());
+                assert_eq!(demand, widget.settings.demand());
+                let notices = match &widget.presentation {
+                    Presentation::Eficiencia { motion: m, .. } => m.notices(),
+                    Presentation::Vantare { motion: m, .. } => m.rows.notices(),
+                };
+                assert!(
+                    notices.contains(&notice),
+                    "mantener CarId, kind y reloj aunque la fila no se pinte"
+                );
+            }
+            widget.ingest_using(&photo, prefs, |s, p, c, ids, previous| {
+                calls += 1;
+                relative::project_cached(s, p, c, ids, previous)
+            });
+            assert_eq!(calls, 2);
+        }
+    }
+
+    #[test]
+    fn saved_relative_keeps_look_migrated_scope_columns_and_geometry() {
+        let json=br#"{"version":1,"instances":[{"id":"relative","x":17,"y":29,"opacity":0.8,"settings":{"kind":"relative","designSystem":"vantare","style":"neutro","accent":"amber","classScope":"all","columns":[{"metricId":"driverName"},{"metricId":"gap","enabled":false}]}}]}"#;
+        let mut layout = crate::layout::Layout::from_json(json).expect("layout histórico");
+        let original = layout.clone();
+        for &look in crate::look::Look::ALL {
+            layout.instances[0].settings.set_look(look);
+            layout =
+                crate::layout::Layout::from_json(&serde_json::to_vec(&layout).expect("guardar"))
+                    .expect("recargar");
+            let crate::Settings::Relative(s) = &layout.instances[0].settings else {
+                panic!("tipo relativo")
+            };
+            assert_eq!(s.design_system, look);
+            assert_eq!(s.class_scope, "sameClass");
+            assert_eq!(s.content_version, 1);
+            assert_eq!(s.columns.as_ref().expect("columnas").len(), 2);
+            assert_eq!(s.style, crate::standings::Look::Neutro);
+            assert_eq!(s.accent, crate::standings::Accent::Amber);
+            assert_eq!(layout.instances[0].geometry, original.instances[0].geometry);
+        }
+    }
+
+    #[test]
+    fn normalized_content_keeps_columns_for_future_looks() {
+        let columns: Vec<_> = (0..14)
+            .map(|id| crate::standings::options::ColumnSetting {
+                id: format!("column-{id}"),
+                metric_id: "driverName".into(),
+                ..Default::default()
+            })
+            .collect();
+        for &look in crate::look::Look::ALL {
+            let settings = Settings {
+                design_system: look,
+                columns: Some(columns.clone()),
+                ..Default::default()
+            };
+            let saved = serde_json::to_vec(&settings.normalized()).expect("guardar");
+            let reloaded: Settings = serde_json::from_slice(&saved).expect("recargar");
+            assert_eq!(reloaded.normalized().columns.as_ref(), Some(&columns));
+        }
+    }
+
+    #[test]
     fn standard_vantare_relative_always_uses_player_class_even_in_old_documents() {
-        let scene: serde_json::Value = serde_json::from_str(include_str!(
-            "../../fixtures/relative-vantare.scene.json"
-        )).expect("escena multiclase");
+        let scene: serde_json::Value =
+            serde_json::from_str(include_str!("../../fixtures/relative-vantare.scene.json"))
+                .expect("escena multiclase");
         let photo = vantare_ipc::snapshot_from_json(&scene["frames"][0]["snapshot"].to_string())
             .expect("foto multiclase");
-        let settings = Settings { class_scope: "all".into(), ..Settings::default() };
+        let settings = Settings {
+            class_scope: "all".into(),
+            content_version: 0,
+            ..Settings::default()
+        };
         assert_eq!(settings.normalized().class_scope, "sameClass");
-        let widget = Widget::new(&settings, Preferences::default());
-        let board = widget.vantare.as_ref().expect("Vantare").project(&photo);
+        let board = relative::project_content(
+            &photo,
+            Preferences::default(),
+            settings.normalized().content(),
+        );
         let own_class = photo.state.player_car().expect("jugador").class.as_ref();
         assert!(board.slots.iter().flatten().any(|row| !row.is_player));
         assert!(board.slots.iter().flatten().all(|row| {
-            photo.state.cars.iter().find(|car| car.id == row.id)
-                .expect("fila de la foto").class.as_ref() == own_class
+            photo
+                .state
+                .cars
+                .iter()
+                .find(|car| car.id == row.id)
+                .expect("fila de la foto")
+                .class
+                .as_ref()
+                == own_class
         }));
     }
     #[test]
@@ -1149,8 +710,11 @@ mod tests {
                 let prefs = Preferences::default();
                 let mut full = Widget::new(&settings, prefs);
                 full.ingest(&snapshot, prefs);
-                assert_eq!(full.footer.len(), 1);
-                assert_ne!(full.footer[0].value, vantare_domain::format::PLACEHOLDER);
+                assert_eq!(full.vm.footer_cells.len(), 1);
+                assert_ne!(
+                    full.vm.footer_cells[0].value,
+                    vantare_domain::format::PLACEHOLDER
+                );
 
                 let name = format!(
                     "vantare-relative-footer-real-{}-{index}-{id}",
@@ -1175,10 +739,10 @@ mod tests {
                     .expect("foto pedida");
                 let mut requested = Widget::new(&settings, prefs);
                 requested.ingest(&photo.snapshot, prefs);
-                if full.footer != requested.footer {
+                if full.vm.footer_cells != requested.vm.footer_cells {
                     lost.push(format!(
                         "foto {index}, slot {id}: {:?} -> {:?}",
-                        full.footer, requested.footer
+                        full.vm.footer_cells, requested.vm.footer_cells
                     ));
                 }
                 if full.vm.status.is_some() {
@@ -1230,8 +794,8 @@ mod tests {
         let mut widget = Widget::new(&settings, prefs);
         widget.ingest(&snapshot, prefs);
         assert_eq!(widget.vm.slots.len(), 4);
-        assert_eq!(widget.footer.len(), 3);
-        assert_eq!(widget.footer[0].value, "01:59:58");
+        assert_eq!(widget.vm.footer_cells.len(), 3);
+        assert_eq!(widget.vm.footer_cells[0].value, "01:59:58");
         assert_eq!(widget.settings.row_height_mode, "fill");
         assert_eq!(
             widget.settings.columns.as_ref().expect("columnas")[0].driver_name("André Lotterer"),
@@ -1272,11 +836,21 @@ mod tests {
         assert!(widget.ingest(&snapshot, prefs));
         // Mover un rival visible de la clase del jugador; cambiar otra clase
         // ya no demuestra una animación en Relative estándar (#1496).
-        let rival = widget.vm.slots.iter().flatten()
+        let rival = widget
+            .vm
+            .slots
+            .iter()
+            .flatten()
             .find(|row| row.side != vantare_domain::relative::Side::Player)
-            .expect("rival visible").id;
-        snapshot.state.cars.iter_mut().find(|car| car.id == rival)
-            .expect("rival en la foto").relative_s = vantare_domain::Quality::Reliable(-0.1);
+            .expect("rival visible")
+            .id;
+        snapshot
+            .state
+            .cars
+            .iter_mut()
+            .find(|car| car.id == rival)
+            .expect("rival en la foto")
+            .relative_s = vantare_domain::Quality::Reliable(-0.1);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.frame(prefs).1, Wake::Frame);
         snapshot.state.source_state = vantare_domain::SourceState::Lost;

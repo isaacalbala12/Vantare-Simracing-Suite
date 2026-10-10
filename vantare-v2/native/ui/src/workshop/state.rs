@@ -77,7 +77,9 @@ impl Saved {
         // resto huérfano de un PID reutilizado pueden sobrescribirlo.
         static NEXT: AtomicU64 = AtomicU64::new(0);
         self.validate()?;
-        let bytes = serde_json::to_vec(self).map_err(|error| error.to_string())?;
+        let mut saved = self.clone();
+        saved.settings = saved.settings.normalized();
+        let bytes = serde_json::to_vec(&saved).map_err(|error| error.to_string())?;
         if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
             std::fs::create_dir_all(parent).map_err(|error| format!("crear ajustes: {error}"))?;
         }

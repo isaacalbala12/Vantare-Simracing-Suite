@@ -267,7 +267,7 @@ mod tests {
                 assert_eq!(project(&data, prefs).status_text, disconnected);
                 assert_eq!(
                     crate::fuel_strategy::project(&data, prefs)
-                        .status
+                        .status_text(language)
                         .unwrap_or(""),
                     expected
                 );
@@ -284,7 +284,7 @@ mod tests {
                 );
                 assert_eq!(
                     crate::delta::project(&data, prefs)
-                        .status_text
+                        .status_text(language)
                         .unwrap_or(""),
                     disconnected
                 );
@@ -310,7 +310,7 @@ mod tests {
                 );
                 let available = matches!(source, SourceState::Live | SourceState::Stale);
                 assert_eq!(
-                    !crate::standings::project(&data, prefs).rows.is_empty(),
+                    !crate::standings::project(&data, prefs).rows().is_empty(),
                     available
                 );
                 assert_eq!(

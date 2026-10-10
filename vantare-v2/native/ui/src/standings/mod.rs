@@ -19,6 +19,9 @@
 //! let _ = (Settings::default(), ColumnSetting::default(), Format::default(), PIT_RAIL_WIDTH);
 //! ```
 
+#[cfg(test)]
+mod contract_tests;
+mod eficiencia;
 pub mod model;
 pub(crate) mod motion;
 pub mod options;
@@ -27,8 +30,8 @@ pub(crate) mod vantare;
 pub(crate) mod view;
 
 use crate::app::Paint;
-use model::{Config, Metric, Plan, Status, Vm};
-use motion::{Motion, Wake};
+use model::{Config, Metric};
+use motion::Wake;
 use std::time::Instant;
 use vantare_domain::{Snapshot, format::Preferences, standings};
 
@@ -37,6 +40,9 @@ use vantare_domain::{Snapshot, format::Preferences, standings};
 #[allow(clippy::struct_excessive_bools)] // Opciones productivas independientes, no estados excluyentes.
 pub struct Settings {
     pub design_system: DesignSystem,
+    /// V1: contenido normalizado antes de separar su Look (layouts antiguos migran en memoria).
+    #[serde(default)]
+    pub content_version: u8,
     pub style: Look,
     pub accent: Accent,
     pub row_count: usize,
@@ -59,16 +65,8 @@ pub struct Settings {
     pub footer_slots: Option<Vec<String>>,
 }
 
-/// Sistema de diseño. Un valor desconocido usa Vantare, el principal.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum DesignSystem {
-    /// Sistema heredado del producto Wails (Signature/Broadcast).
-    Eficiencia,
-    #[default]
-    #[serde(other)]
-    Vantare,
-}
+/// Alias público para layouts/inspector anteriores; los Looks viven en UI.
+pub use crate::look::Look as DesignSystem;
 
 /// Estilo Vantare del catálogo r10b.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -79,6 +77,22 @@ pub enum Look {
     #[default]
     #[serde(other)]
     Neo,
+}
+
+impl Look {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Neo => "neo",
+            Self::Neutro => "neutro",
+        }
+    }
+    pub fn from_name(name: &str) -> Self {
+        if name == "neutro" {
+            Self::Neutro
+        } else {
+            Self::Neo
+        }
+    }
 }
 
 /// Acento Vantare: fila propia, bordes y énfasis.
@@ -190,8 +204,35 @@ pub fn vantare_template(name: &str) -> Vec<options::ColumnSetting> {
 
 impl Default for Settings {
     fn default() -> Self {
+        Self::for_look(crate::look::Look::default())
+    }
+}
+
+impl Settings {
+    pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
+        let mut s = Self::for_look(look);
+        s.brand_visible = Some(true);
+        match look {
+            crate::look::Look::Vantare => {
+                s.row_count = 8;
+                s.columns = Some(vantare_template("standard"));
+            }
+            crate::look::Look::Eficiencia => {
+                s.row_count = 10;
+                s.columns = Some(crate::workshop::default_columns(crate::Kind::Standings));
+                s.player_window = true;
+                s.class_scope = "all-classes".into();
+            }
+        }
+        s
+    }
+
+    /// Única fuente de los ajustes base: el Look cambia solo la presentación.
+    #[must_use]
+    pub fn for_look(design_system: crate::look::Look) -> Self {
         Self {
-            design_system: DesignSystem::Vantare,
+            design_system,
+            content_version: 1,
             style: Look::Neo,
             accent: Accent::Red,
             row_count: 20,
@@ -212,9 +253,7 @@ impl Default for Settings {
             footer_slots: None,
         }
     }
-}
 
-impl Settings {
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
         (
             "headerFirst/headerSecond",
@@ -228,10 +267,7 @@ impl Settings {
     /// Standings del sistema Eficiencia heredado (Signature por defecto).
     #[must_use]
     pub fn eficiencia() -> Self {
-        Self {
-            design_system: DesignSystem::Eficiencia,
-            ..Self::default()
-        }
+        Self::for_look(crate::look::Look::Eficiencia)
     }
 
     #[must_use]
@@ -244,18 +280,20 @@ impl Settings {
         if settings.classification_mode != "multiclass" {
             settings.classification_mode = "normal".into();
         }
-        if settings.design_system == DesignSystem::Vantare {
+        if settings.content_version == 0 && settings.design_system == DesignSystem::Vantare {
             settings.class_scope = if settings.classification_mode == "multiclass" {
                 "all-classes"
             } else {
                 "player-class"
-            }.into();
+            }
+            .into();
         }
+        settings.content_version = 1;
         if ![0, 2, 4, 6, 8].contains(&settings.window_around) {
             settings.window_around = 4;
         }
         if let Some(columns) = &mut settings.columns {
-            columns.truncate(if settings.design_system == DesignSystem::Vantare { 12 } else { 11 });
+            columns.truncate(12);
         }
         if let Some(slots) = &mut settings.footer_slots {
             slots.truncate(9);
@@ -323,343 +361,303 @@ impl Settings {
     }
 }
 
+/// Un Board y un Motion activo; los pintores no poseen historial.
 pub(crate) struct Widget {
-    /// Presente con el sistema Vantare; si no, se usa el renderer Eficiencia.
-    vantare: Option<vantare::State>,
-    config: Config,
     settings: Settings,
-    vm: Vm,
-    plan: Plan,
-    motion: Motion,
+    content: standings::Content,
+    board: Option<std::sync::Arc<standings::Board>>,
+    boundary: (u64, u64, u64),
+    presentation: Presentation,
 }
 
-impl Widget {
-    pub(crate) fn new(settings: &Settings, _prefs: Preferences) -> Self {
-        let mut config = settings.normalized().config();
-        // Signature reserva la capacidad completa aunque haya menos coches.
-        config.fit(config.row_count);
-        let vm = Vm::unavailable(Status::Disconnected);
-        let plan = model::plan(&config, &vm);
-        let normalized = settings.normalized();
-        Self {
-            vantare: (normalized.design_system == DesignSystem::Vantare)
-                .then(|| vantare::State::new(vantare::Options::from_settings(&normalized))),
-            config,
-            settings: settings.normalized(),
-            vm,
-            plan,
-            motion: Motion::new(),
+/// Un solo pintor activo conserva el Motion común completo.
+enum Presentation {
+    Eficiencia {
+        visual: Box<eficiencia::Visual>,
+        motion: std::sync::Arc<motion::Motion>,
+    },
+    Vantare {
+        visual: vantare::Visual,
+        motion: std::sync::Arc<motion::Motion>,
+    },
+}
+#[cfg(test)]
+impl Presentation {
+    fn notices(
+        &self,
+    ) -> Vec<(
+        vantare_domain::CarId,
+        crate::vantare::motion::Flash,
+        Instant,
+        i64,
+    )> {
+        match self {
+            Self::Eficiencia { motion: m, .. } | Self::Vantare { motion: m, .. } => m.notices(),
         }
     }
-
+    fn restore_notices(
+        &mut self,
+        notices: &[(
+            vantare_domain::CarId,
+            crate::vantare::motion::Flash,
+            Instant,
+            i64,
+        )],
+    ) {
+        match self {
+            Self::Eficiencia { motion: m, .. } | Self::Vantare { motion: m, .. } => {
+                std::sync::Arc::make_mut(m).restore_notices(notices);
+            }
+        }
+    }
+}
+impl Settings {
+    fn content(&self) -> standings::Content {
+        let config = self.config();
+        let lap_format = |metric: &str| {
+            self.columns
+                .as_ref()
+                .and_then(|columns| columns.iter().find(|c| c.enabled && c.metric_id == metric))
+                .map(|c| standings::LapFormat {
+                    compact: c.format.display.as_deref() == Some("compact"),
+                    decimals: c.format.decimals.unwrap_or(3),
+                })
+                .filter(|f| f.compact || f.decimals != 3)
+        };
+        standings::Content {
+            row_count: self.row_count,
+            player_window: self.player_window,
+            window_around: self.window_around,
+            multiclass: self.classification_mode == "multiclass",
+            last_lap_format: lap_format("lastLap"),
+            best_lap_format: lap_format("bestLap"),
+            lap_visible: config
+                .columns
+                .iter()
+                .any(|c| c.metric == Metric::CurrentLap),
+            interval_visible: config.columns.iter().any(|c| c.metric == Metric::Interval),
+            footer_visible: self.show_session_footer,
+            legacy_track_visible: self.show_session_footer
+                && config.footer_slots.is_empty()
+                && config
+                    .footer_ids
+                    .iter()
+                    .all(|id| ["none", "track", "estimatedLaps"].contains(&id.as_str()))
+                && [config.footer_first, config.footer_second].contains(&model::InfoMetric::Track),
+            player_class: self.class_scope != "all-classes",
+            class_gaps: self.class_scope != "all-classes"
+                || self.classification_mode == "multiclass",
+            footer_ids: if self.footer_slots.as_ref().is_some_and(|s| !s.is_empty()) {
+                self.footer_slots.clone().unwrap_or_default()
+            } else {
+                vec![self.footer_first.clone(), self.footer_second.clone()]
+            },
+            footer_slots: self.footer_slots.as_ref().is_some_and(|s| !s.is_empty()),
+        }
+    }
+}
+impl Widget {
+    fn presentation(
+        settings: &Settings,
+        prefs: Preferences,
+        motion: std::sync::Arc<motion::Motion>,
+    ) -> Presentation {
+        match settings.design_system {
+            DesignSystem::Eficiencia => Presentation::Eficiencia {
+                visual: Box::new(eficiencia::Visual::new(settings, prefs)),
+                motion,
+            },
+            DesignSystem::Vantare => Presentation::Vantare {
+                visual: vantare::Visual::new(vantare::Options::from_settings(settings)),
+                motion,
+            },
+        }
+    }
+    pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
+        let settings = settings.normalized();
+        let presentation = Self::presentation(&settings, prefs, std::sync::Arc::default());
+        Self {
+            content: settings.content(),
+            settings,
+            board: None,
+            boundary: (0, 0, 0),
+            presentation,
+        }
+    }
+    fn content(&self) -> &standings::Content {
+        &self.content
+    }
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
-        if let Some(state) = &mut self.vantare {
-            return state.ingest(vantare_domain::standings_vantare::project(snapshot, prefs));
-        }
-        let domain = standings::project_classification(
-            snapshot,
-            prefs,
-            self.settings.class_scope != "all-classes",
-            self.settings.class_scope != "all-classes" || self.config.multiclass,
+        self.ingest_using(snapshot, prefs, standings::project_cached)
+    }
+    fn ingest_using(
+        &mut self,
+        snapshot: &Snapshot,
+        prefs: Preferences,
+        project: impl FnOnce(
+            &Snapshot,
+            Preferences,
+            &standings::Content,
+            Option<&std::sync::Arc<standings::Board>>,
+        ) -> std::sync::Arc<standings::Board>,
+    ) -> bool {
+        let next = project(snapshot, prefs, self.content(), self.board.as_ref());
+        let boundary = (
+            snapshot.epoch,
+            snapshot.state.session.id.0,
+            snapshot.sequence,
         );
-        let identity = format!("{}:{}", snapshot.state.session.id.0, snapshot.epoch);
-        let mut next = Vm::from_domain(&domain, prefs, 104, identity, snapshot.sequence);
-        if self.settings.player_window {
-            let count = next.rows.len();
-            let around = self.settings.window_around;
-            let index = next.rows.iter().position(|row| row.is_player).unwrap_or(0);
-            let fixed = count.min(3);
-            let mut start = fixed.max(index.saturating_sub(around / 2));
-            let end = (start + around + 1).min(count);
-            start = fixed.max(end.saturating_sub(around + 1));
-            next.rows = next
-                .rows
-                .into_iter()
-                .enumerate()
-                .filter_map(|(i, row)| {
-                    (if index < fixed {
-                        i < fixed + around
-                    } else {
-                        i < fixed || (start..end).contains(&i)
-                    })
-                    .then_some(row)
-                })
-                .collect();
-        } else {
-            next.rows.truncate(self.config.row_count);
+        let same_facts = self
+            .board
+            .as_ref()
+            .is_some_and(|old| std::sync::Arc::ptr_eq(old, &next));
+        let continuous = self.boundary.0 == boundary.0
+            && self.boundary.1 == boundary.1
+            && boundary.2 >= self.boundary.2;
+        self.boundary = boundary;
+        if same_facts && continuous {
+            return false;
         }
-        let player_gap = domain
-            .rows
-            .iter()
-            .find(|r| r.is_player)
-            .map(|r| r.gap.as_str());
-        let ids = if self.config.footer_slots.is_empty() {
-            &self.config.footer_ids
-        } else {
-            &self.config.footer_slots
-        };
-        if self.config.show_session_footer {
-            next.footer_cells = standings::information(
-                snapshot,
-                prefs,
-                ids,
-                !self.config.footer_slots.is_empty(),
-                player_gap,
-            );
-        }
-        if self.config.multiclass {
-            let mut classes = Vec::<String>::new();
-            for row in &next.rows {
-                if !row.vehicle_class.is_empty() && !classes.contains(&row.vehicle_class) {
-                    classes.push(row.vehicle_class.clone());
-                }
-            }
-            next.rows.sort_by_key(|row| {
-                classes
-                    .iter()
-                    .position(|class| class == &row.vehicle_class)
-                    .unwrap_or(usize::MAX)
-            });
-            for row in &mut next.rows {
-                if let Some(car) = snapshot
-                    .state
-                    .cars
-                    .iter()
-                    .find(|c| c.id.0.to_string() == row.id)
-                {
-                    row.position = car
-                        .class_position
-                        .current()
-                        .copied()
-                        .map_or(row.position, i64::from);
-                }
-            }
-        }
-        if let Some(columns) = &self.settings.columns {
-            for row in &mut next.rows {
-                let Some(car) = snapshot
-                    .state
-                    .cars
-                    .iter()
-                    .find(|c| c.id.0.to_string() == row.id)
-                else {
-                    continue;
-                };
-                for column in columns.iter().filter(|c| c.enabled) {
-                    let text = match column.metric_id.as_str() {
-                        "lastLap" => &mut row.last_lap_text,
-                        "bestLap" => &mut row.best_lap_text,
-                        _ => continue,
-                    };
-                    let seconds = if column.metric_id == "lastLap" {
-                        car.last_lap_s.current().copied()
-                    } else {
-                        car.best_lap_s.current().copied()
-                    };
-                    *text = standings::lap_time_column(
-                        seconds,
-                        column.format.display.as_deref() == Some("compact"),
-                        column.format.decimals.unwrap_or(3),
-                    );
-                }
-            }
-        }
-        // Wails reserva la capacidad aunque su filtro de clase muestre menos coches.
-        self.config.footer_rows = 1;
-        if self.config.footer_slots.len() > 5 {
-            let inner = (self.config.width - 24.0).max(80.0);
-            let total = next
-                .footer_cells
-                .iter()
-                .map(|cell| {
-                    cell.label.chars().count() as f32 * 5.5
-                        + cell.value.chars().count() as f32 * 7.5
-                        + 12.0
-                        + 14.0
-                })
-                .sum::<f32>();
-            self.config.footer_rows = (total / inner).ceil() as usize;
-        }
-        self.config.fit(self.config.row_count);
-        if self.config.multiclass {
-            let mut classes = std::collections::HashSet::new();
-            let bands = next
-                .rows
-                .iter()
-                .filter(|row| !row.vehicle_class.is_empty() && classes.insert(&row.vehicle_class))
-                .count();
-            self.config.height += bands as f32 * self.config.style.geometry.class_band_height;
-        }
-        // Una columna oculta no debe cambiar la firma del contenido visible.
-        if !self
-            .config
-            .columns
-            .iter()
-            .any(|column| column.metric == Metric::CurrentLap)
-        {
-            for row in &mut next.rows {
-                row.current_lap_text = vantare_domain::format::PLACEHOLDER.into();
-            }
-        }
-        if !self
-            .config
-            .columns
-            .iter()
-            .any(|column| column.metric == Metric::Interval)
-        {
-            for row in &mut next.rows {
-                row.interval_text = vantare_domain::format::PLACEHOLDER.into();
-            }
-        }
-        // paint_footer usa footer_cells con slots o metricas no legacy.
-        // En esos casos el nombre visible, si se pide, ya esta en esas celdas.
-        let legacy_track_visible = self.config.show_session_footer
-            && self.config.footer_slots.is_empty()
-            && self
-                .config
-                .footer_ids
-                .iter()
-                .all(|id| ["none", "track", "estimatedLaps"].contains(&id.as_str()))
-            && [self.config.footer_first, self.config.footer_second]
-                .contains(&model::InfoMetric::Track);
-        if !legacy_track_visible {
-            next.track = vantare_domain::format::PLACEHOLDER.into();
-        }
-        // El número de secuencia cambia siempre y no se ve: no cuenta.
-        let sequence = std::mem::replace(&mut next.sequence, self.vm.sequence);
-        let changed = {
-            #[cfg(feature = "paint-stats")]
-            let _span = crate::profiling::begin(crate::profiling::Stage::VmDiff);
-            next != self.vm
-        };
-
-        next.sequence = sequence;
-        if changed {
-            // El layout depende de la VM y de los ajustes fijos del widget.
-            let plan = {
-                #[cfg(feature = "paint-stats")]
-                let _span = crate::profiling::begin(crate::profiling::Stage::Layout);
-                model::plan(&self.config, &next)
-            };
-            let lap_visible = plan.columns.iter().any(|c| c.metric == Metric::BestLap);
-            self.motion
-                .update(&next, plan.visible_rows, lap_visible, Instant::now());
-            self.vm = next;
-            self.plan = plan;
-        }
+        let changed = self.present(next.clone(), prefs);
+        self.board = Some(next);
         changed
     }
-}
-
-impl Widget {
-    pub(crate) fn set_study(&mut self, study: &str) {
-        self.config.study = study.into();
-    }
-
-    pub(crate) fn set_style(&mut self, style: std::sync::Arc<style::Style>) {
-        self.config.style = style;
-        self.config.fit(self.config.row_count);
-        if self.config.multiclass {
-            let classes: std::collections::HashSet<_> = self
-                .vm
-                .rows
-                .iter()
-                .filter(|row| !row.vehicle_class.is_empty())
-                .map(|row| &row.vehicle_class)
-                .collect();
-            self.config.height +=
-                classes.len() as f32 * self.config.style.geometry.class_band_height;
-        }
-        self.plan = model::plan(&self.config, &self.vm);
-    }
-
-    /// Termina las animaciones Vantare en curso (Workshop reconstruye la historia).
-    pub(crate) fn settle(&mut self) {
-        if let Some(state) = &mut self.vantare {
-            state.settle();
+    fn present(&mut self, board: std::sync::Arc<standings::Board>, _prefs: Preferences) -> bool {
+        match &mut self.presentation {
+            Presentation::Eficiencia {
+                visual: v,
+                motion: m,
+            } => {
+                let content = std::sync::Arc::new(standings::Plan::new(
+                    board,
+                    format!("{}:{}", self.boundary.1, self.boundary.0),
+                    self.boundary.2,
+                ));
+                v.ingest(content, Some(std::sync::Arc::make_mut(m)))
+            }
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => v.ingest_shared(board, std::sync::Arc::make_mut(m)),
         }
     }
-
-    /// Columnas Vantare colocadas; `None` en Eficiencia o sin filas.
-    pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
-        self.vantare.as_ref().and_then(vantare::State::columns)
-    }
-
-    /// Estilo Vantare de Workshop en vivo; producto usa el compilado.
-    pub(crate) fn set_vantare_style(
-        &mut self,
-        style: std::sync::Arc<crate::vantare::style::Style>,
-    ) {
-        if let Some(state) = &mut self.vantare {
-            state.set_style(style);
+    /// Cambiar Look conserva la foto, `CarIds` y el reloj de los avisos; no proyecta.
+    pub(crate) fn set_look(&mut self, look: crate::look::Look, prefs: Preferences) {
+        if self.settings.design_system == look {
+            return;
+        }
+        let motion = match &self.presentation {
+            Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                motion.clone()
+            }
+        };
+        self.settings.design_system = look;
+        self.presentation = Self::presentation(&self.settings, prefs, motion);
+        if let Some(board) = self.board.clone() {
+            match &mut self.presentation {
+                Presentation::Eficiencia { visual, motion } => {
+                    let content = std::sync::Arc::new(standings::Plan::new(
+                        board,
+                        format!("{}:{}", self.boundary.1, self.boundary.0),
+                        self.boundary.2,
+                    ));
+                    visual.ingest(content.clone(), None);
+                    std::sync::Arc::make_mut(motion).resume_content(&content);
+                }
+                Presentation::Vantare { visual, motion } => {
+                    visual.attach(board, std::sync::Arc::make_mut(motion));
+                }
+            }
         }
     }
-
     pub(crate) fn size(&self) -> (f32, f32) {
-        if let Some(state) = &self.vantare {
-            return state.size();
-        }
-        (
-            self.config.width
-                + if self.plan.pit_enabled {
-                    self.config.style.geometry.pit_rail_width
-                } else {
-                    0.0
-                },
-            self.config.height,
-        )
-    }
-
-    #[cfg(feature = "parity-capture")]
-    pub(crate) fn animating(&self) -> bool {
-        match &self.vantare {
-            Some(state) => state.wake(Instant::now()) != Wake::Idle,
-            None => self.motion.animating(Instant::now()),
+        match &self.presentation {
+            Presentation::Eficiencia { visual: v, .. } => v.size(),
+            Presentation::Vantare { visual: v, .. } => v.size(),
         }
     }
-
     pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
         self.frame_with_motion(prefs, false)
     }
     pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
-        if let Some(state) = &mut self.vantare {
-            if reduced {
-                state.settle();
+        match &mut self.presentation {
+            Presentation::Eficiencia {
+                visual: v,
+                motion: m,
+            } => v.frame_with_motion(prefs, reduced, std::sync::Arc::make_mut(m)),
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => {
+                if reduced {
+                    std::sync::Arc::make_mut(m).settle();
+                }
+                let wake = m.wake_rows(v.style.motion.timing(), Instant::now());
+                let visual = v.clone();
+                let motion = m.clone();
+                (
+                    Box::new(move |window, cx| visual.paint(&motion, prefs.language, window, cx)),
+                    wake,
+                )
             }
-            let wake = state.wake(Instant::now());
-            let state = state.clone();
-            let language = prefs.language;
-            return (
-                Box::new(move |window, cx| state.paint(language, window, cx)),
-                wake,
-            );
         }
-        let now = Instant::now();
-        let frame = if reduced {
-            Motion::new().frame(&self.vm, self.plan.visible_rows, now)
-        } else {
-            self.motion.frame(&self.vm, self.plan.visible_rows, now)
-        };
-        let wake = if reduced {
-            Wake::Idle
-        } else {
-            self.motion.wake(now)
-        };
-        let scene = view::Scene {
-            config: self.config.clone(),
-            vm: self.vm.clone(),
-            plan: self.plan.clone(),
-            frame,
-            language: prefs.language,
-            height: self.config.height,
-        };
-        (
-            Box::new(move |window, cx| view::paint(&scene, window, cx)),
-            wake,
-        )
+    }
+    pub(crate) fn settle(&mut self) {
+        if let Presentation::Vantare { motion: m, .. } = &mut self.presentation {
+            std::sync::Arc::make_mut(m).settle();
+        }
+    }
+    pub(crate) fn set_study(&mut self, study: &str) {
+        if let Presentation::Eficiencia { visual: v, .. } = &mut self.presentation {
+            v.set_study(study);
+        }
+    }
+    pub(crate) fn set_style(&mut self, style: std::sync::Arc<style::Style>) {
+        if let Presentation::Eficiencia { visual: v, .. } = &mut self.presentation {
+            v.set_style(style);
+        }
+    }
+    pub(crate) fn set_vantare_style(
+        &mut self,
+        style: std::sync::Arc<crate::vantare::style::Style>,
+    ) {
+        if let Presentation::Vantare {
+            visual: v,
+            motion: m,
+        } = &mut self.presentation
+        {
+            v.set_style(style, std::sync::Arc::make_mut(m));
+        }
+    }
+    pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
+        match &self.presentation {
+            Presentation::Eficiencia { visual: _, .. } => None,
+            Presentation::Vantare { visual: v, .. } => v.columns(),
+        }
+    }
+    #[cfg(feature = "parity-capture")]
+    pub(crate) fn animating(&self) -> bool {
+        match &self.presentation {
+            Presentation::Eficiencia { motion: m, .. } => m.animating(Instant::now()),
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => m.wake_rows(v.style.motion.timing(), Instant::now()) != Wake::Idle,
+        }
     }
 }
 
+// Los tests históricos inspeccionan geometría y celdas del pintor Eficiencia.
+#[cfg(test)]
+impl std::ops::Deref for Widget {
+    type Target = eficiencia::Visual;
+    fn deref(&self) -> &Self::Target {
+        match &self.presentation {
+            Presentation::Eficiencia { visual: v, .. } => v,
+            Presentation::Vantare { visual: _, .. } => panic!("test Eficiencia sobre otro Look"),
+        }
+    }
+}
 impl Settings {
     pub fn demand(&self) -> vantare_ipc::Demand {
         use vantare_ipc::Signal::{
@@ -667,27 +665,24 @@ impl Settings {
             SessionInfo,
         };
         let settings = self.normalized();
-        if settings.design_system == DesignSystem::Vantare {
-            use vantare_ipc::Signal::{Cars, LapCount, LapTimes, Sectors, Weather};
-            return crate::demand::signals(
-                250,
-                &[
-                    Cars,
-                    Positions,
-                    PitStatus,
-                    SessionInfo,
-                    SessionClock,
-                    Flags,
-                    ClassGaps,
-                    LapCount,
-                    LapTimes,
-                    Sectors,
-                    Weather,
-                ],
-            );
-        }
         let config = settings.config();
-        let mut demand = crate::demand::signals(250, &[Positions, PitStatus, SessionInfo]);
+        let mut demand = crate::demand::signals(
+            250,
+            &[
+                vantare_ipc::Signal::Cars,
+                Positions,
+                PitStatus,
+                SessionInfo,
+                SessionClock,
+                Flags,
+                Gaps,
+                ClassGaps,
+                LapCount,
+                LapTimes,
+                vantare_ipc::Signal::Sectors,
+                vantare_ipc::Signal::Weather,
+            ],
+        );
         if settings.classification_mode == "multiclass" {
             demand.request(ClassGaps, 250);
         }
@@ -742,15 +737,59 @@ impl Settings {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn look_switch_preserves_all_motion_channels_and_their_clocks() {
+        let prefs = Preferences::default();
+        let mut photo = crate::source::fixed();
+        let mut widget = Widget::new(
+            &Settings {
+                class_scope: "all-classes".into(),
+                ..Settings::eficiencia()
+            },
+            prefs,
+        );
+        widget.ingest(&photo, prefs);
+        let p0 = photo.state.cars[0].position;
+        photo.state.cars[0].position = photo.state.cars[1].position;
+        photo.state.cars[1].position = p0;
+        photo.state.cars[0].in_pits = vantare_domain::Quality::Reliable(true);
+        photo.sequence += 1;
+        widget.ingest(&photo, prefs);
+        let clocks = match &widget.presentation {
+            Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                motion.clock_signature()
+            }
+        };
+        assert!(clocks.iter().any(|c| c.0.starts_with("flips:")));
+        assert!(clocks.iter().any(|c| c.0.starts_with("pit-alpha:")));
+        for look in [
+            DesignSystem::Vantare,
+            DesignSystem::Eficiencia,
+            DesignSystem::Vantare,
+            DesignSystem::Eficiencia,
+        ] {
+            widget.set_look(look, prefs);
+            let after = match &widget.presentation {
+                Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                    motion.clock_signature()
+                }
+            };
+            assert_eq!(clocks, after, "todos los canales, no solo los avisos");
+        }
+    }
+
     use super::*;
     use crate::source;
 
     #[test]
     fn standard_vantare_is_player_class_and_only_multiclass_shows_all() {
-        let settings = Settings { class_scope: "all-classes".into(), ..Settings::default() };
+        let settings: Settings =
+            serde_json::from_str(r#"{"classScope":"all-classes"}"#).expect("layout anterior");
         assert_eq!(settings.normalized().class_scope, "player-class");
-        let settings = Settings { classification_mode: "multiclass".into(),
-            class_scope: "player-class".into(), ..Settings::default() };
+        let settings: Settings = serde_json::from_str(
+            r#"{"classificationMode":"multiclass","classScope":"player-class"}"#,
+        )
+        .expect("layout anterior");
         assert_eq!(settings.normalized().class_scope, "all-classes");
     }
     #[test]
@@ -761,16 +800,13 @@ mod tests {
         .expect("foto real ACC");
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::default(), prefs);
-        assert!(widget.vantare.is_some());
+        assert!(matches!(
+            widget.presentation,
+            Presentation::Vantare { visual: _, .. }
+        ));
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.ingest(&snapshot, prefs), "misma foto, mismo dibujo");
-        assert!(
-            widget
-                .vantare
-                .as_ref()
-                .is_some_and(|state| state.board.is_some()),
-            "las filas sustituyen al esqueleto"
-        );
+        assert!(widget.board.is_some(), "las filas sustituyen al esqueleto");
         let demand = Settings::default().demand();
         assert!(demand.contains(vantare_ipc::Signal::Sectors));
         assert!(demand.contains(vantare_ipc::Signal::Weather));
@@ -780,11 +816,129 @@ mod tests {
             (unknown.design_system, unknown.style),
             (DesignSystem::Vantare, Look::Neo)
         );
-        assert!(
-            Widget::new(&Settings::eficiencia(), prefs)
-                .vantare
-                .is_none()
-        );
+        assert!(matches!(
+            Widget::new(&Settings::eficiencia(), prefs).presentation,
+            Presentation::Eficiencia { visual: _, .. }
+        ));
+    }
+
+    #[test]
+    fn each_ingest_runs_one_projection_for_every_look() {
+        let prefs = Preferences::default();
+        let snapshot = source::fixed();
+        for &look in crate::look::Look::ALL {
+            let mut widget = Widget::new(
+                &Settings {
+                    design_system: look,
+                    ..Settings::default()
+                },
+                prefs,
+            );
+            let mut count = 0;
+            for _ in 0..3 {
+                widget.ingest_using(&snapshot, prefs, |snapshot, prefs, content, previous| {
+                    count += 1;
+                    standings::project_cached(snapshot, prefs, content, previous)
+                });
+            }
+            assert_eq!(count, 3, "una sola proyección por ingest con {look:?}");
+        }
+    }
+
+    #[test]
+    fn changing_look_preserves_board_content_demand_and_active_notices() {
+        let prefs = Preferences::default();
+        let snapshot = source::fixed();
+        for &look in crate::look::Look::ALL {
+            let mut widget = Widget::new(
+                &Settings {
+                    design_system: look,
+                    class_scope: "all-classes".into(),
+                    ..Settings::default()
+                },
+                prefs,
+            );
+            widget.ingest(&snapshot, prefs);
+            let board = widget.board.clone().expect("foto");
+            let content = widget.content().clone();
+            let demand = widget.settings.demand();
+            let notice = (
+                board.groups[0].rows[0].id,
+                crate::vantare::motion::Flash::Gain,
+                Instant::now(),
+                2,
+            );
+            let personal = (
+                board.groups[0].rows[1].id,
+                crate::vantare::motion::Flash::PersonalBest,
+                notice.2,
+                0,
+            );
+            let hidden = (
+                vantare_domain::CarId(98765),
+                crate::vantare::motion::Flash::Best,
+                notice.2,
+                0,
+            );
+            widget
+                .presentation
+                .restore_notices(&[notice, personal, hidden]);
+            for &next in crate::look::Look::ALL
+                .iter()
+                .rev()
+                .chain(crate::look::Look::ALL)
+            {
+                widget.set_look(next, prefs);
+                assert!(std::sync::Arc::ptr_eq(
+                    &board,
+                    widget.board.as_ref().expect("misma foto")
+                ));
+                assert_eq!(widget.content(), &content);
+                assert_eq!(widget.settings.demand(), demand);
+                assert!(
+                    widget.presentation.notices().contains(&notice),
+                    "no reiniciar reloj del aviso"
+                );
+                assert!(
+                    widget.presentation.notices().contains(&personal),
+                    "conservar tipo personal y reloj"
+                );
+                assert!(
+                    widget.presentation.notices().contains(&hidden),
+                    "avisos de filas fuera del Look activo"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn saved_layout_keeps_look_and_migrated_content_after_switching() {
+        let bytes = br#"{"version":1,"instances":[{"id":"saved","x":73,"y":41,"opacity":0.6,"settings":{"kind":"standings","designSystem":"vantare","style":"neutro","accent":"green","classScope":"all-classes","classificationMode":"normal","columns":[{"metricId":"driverName"},{"metricId":"interval","enabled":false}]}}]}"#;
+        let mut layout = crate::layout::Layout::from_json(bytes).expect("layout histórico");
+        let original = layout.clone();
+        for &look in crate::look::Look::ALL {
+            layout.instances[0].settings.set_look(look);
+            let saved = serde_json::to_vec(&layout).expect("guardar");
+            layout = crate::layout::Layout::from_json(&saved).expect("recargar");
+            assert_eq!(layout.instances[0].settings.look(), Some(look));
+            let Settings {
+                class_scope,
+                content_version,
+                columns,
+                style,
+                accent,
+                ..
+            } = match &layout.instances[0].settings {
+                crate::Settings::Standings(s) => s.clone(),
+                _ => panic!("layout Standings"),
+            };
+            assert_eq!(class_scope, "player-class");
+            assert_eq!(content_version, 1);
+            assert_eq!(columns.as_ref().expect("columnas").len(), 2);
+            assert_eq!(style, Look::Neutro);
+            assert_eq!(accent, Accent::Green);
+            assert_eq!(layout.instances[0].geometry, original.instances[0].geometry);
+        }
     }
 
     #[test]
@@ -941,18 +1095,18 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&settings, prefs);
         assert!(widget.ingest(&snapshot, prefs));
-        let visible_rows = widget.vm.rows.clone();
-        let visible_footer = widget.vm.footer_cells.clone();
+        let visible_rows = widget.content_plan.rows.clone();
+        let visible_footer = widget.content_plan.board.footer_cells.clone();
         assert_eq!(visible_footer.len(), 9);
         let mut requested = Widget::new(&settings, prefs);
         assert!(requested.ingest(&photo.snapshot, prefs));
-        assert_eq!(requested.vm.rows, visible_rows);
-        assert_eq!(requested.vm.footer_cells, visible_footer);
+        assert_eq!(requested.content_plan.rows, visible_rows);
+        assert_eq!(requested.content_plan.board.footer_cells, visible_footer);
         assert!(
             !widget.ingest(&photo.snapshot, prefs),
             "mismo contenido visible: sin invalidacion por nombre de pista omitido"
         );
-        assert_eq!(widget.vm, requested.vm);
+        assert!(widget.content_plan.same_visible(&requested.content_plan));
     }
 
     #[test]
@@ -1006,7 +1160,7 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::eficiencia(), prefs);
         widget.ingest(&snapshot, prefs);
-        let rows = widget.vm.rows.clone();
+        let rows = widget.content_plan.rows.clone();
         let before = widget.size();
         let tops = widget.plan.row_tops.clone();
         let mut style = style::Style::default();
@@ -1014,7 +1168,7 @@ mod tests {
         style.geometry.session_header_height = 50.0;
         style.colors.panel = style::Color(0x123456);
         widget.set_style(std::sync::Arc::new(style));
-        assert_eq!(widget.vm.rows, rows);
+        assert_eq!(widget.content_plan.rows, rows);
         assert_eq!(widget.plan.visible_rows, tops.len());
         assert_eq!(widget.size().0, before.0);
         assert_eq!(widget.size().1, before.1 + 208.0);
@@ -1041,7 +1195,7 @@ mod tests {
                     };
                     let mut widget = Widget::new(&settings, prefs);
                     widget.ingest(&snapshot, prefs);
-                    assert_eq!(widget.vm.rows.len(), 3);
+                    assert_eq!(widget.content_plan.rows.len(), 3);
                     assert_eq!(widget.plan.visible_rows, 3);
                     assert_eq!(widget.plan.has_header, header);
                     assert!(!widget.plan.brand_visible);
@@ -1069,16 +1223,25 @@ mod tests {
         );
         widget.ingest(&snapshot, prefs);
         assert_eq!(widget.plan.brand_band, 22.0);
-        assert_eq!(widget.vm.footer_cells.len(), 3);
+        assert_eq!(widget.content_plan.board.footer_cells.len(), 3);
         let player = widget
-            .vm
+            .content_plan
             .rows
             .iter()
             .find(|row| row.is_player)
             .expect("jugador");
-        assert_eq!(widget.vm.footer_cells[0].value, player.position.to_string());
-        assert_eq!(widget.vm.footer_cells[1].value, player.gap_text);
-        assert_eq!(widget.vm.footer_cells[2].value, player.last_lap_text);
+        assert_eq!(
+            widget.content_plan.board.footer_cells[0].value,
+            player.position.to_string()
+        );
+        assert_eq!(
+            widget.content_plan.board.footer_cells[1].value,
+            player.classification_gap
+        );
+        assert_eq!(
+            widget.content_plan.board.footer_cells[2].value,
+            widget.content_plan.last_lap(player)
+        );
         for metric in [
             "trackTemperature",
             "airTemperature",
@@ -1096,8 +1259,8 @@ mod tests {
                 prefs,
             );
             widget.ingest(&snapshot, prefs);
-            assert_eq!(widget.vm.footer_cells[0].id, metric);
-            assert_eq!(widget.vm.footer_cells.len(), 1);
+            assert_eq!(widget.content_plan.board.footer_cells[0].id, metric);
+            assert_eq!(widget.content_plan.board.footer_cells.len(), 1);
         }
     }
 
@@ -1127,7 +1290,7 @@ mod tests {
         assert_eq!(widget.plan.columns.len(), 2);
         assert!(widget.plan.pit_enabled);
         assert_eq!(widget.plan.widths, [156.0, 82.0]);
-        assert_eq!(widget.vm.rows.len(), 4);
+        assert_eq!(widget.content_plan.rows.len(), 4);
         let mut widget = Widget::new(
             &Settings {
                 class_scope: "all-classes".into(),
@@ -1140,7 +1303,7 @@ mod tests {
         widget.ingest(&snapshot, prefs);
         assert_eq!(
             widget
-                .vm
+                .content_plan
                 .rows
                 .iter()
                 .map(|row| row.position)
@@ -1173,18 +1336,21 @@ mod tests {
         assert_eq!(widget.plan.visible_rows, 7);
         assert_eq!(
             widget
-                .vm
+                .content_plan
                 .rows
                 .iter()
                 .map(|r| r.position)
                 .collect::<Vec<_>>(),
             [1, 4, 7, 10, 13, 16, 19]
         );
-        assert_eq!(widget.vm.rows[0].last_lap_text, "1:49.667");
-        assert_eq!(widget.vm.rows[1].gap_text, "—");
-        assert_eq!(widget.vm.rows[3].gap_text, "+11.11s");
-        assert_eq!(widget.vm.rows[6].gap_text, "+1 V");
-        assert_eq!(widget.vm.estimated_laps, "≈79");
+        assert_eq!(
+            widget.content_plan.last_lap(&widget.content_plan.rows[0]),
+            "1:49.667"
+        );
+        assert_eq!(widget.content_plan.rows[1].classification_gap, "—");
+        assert_eq!(widget.content_plan.rows[3].classification_gap, "+11.11s");
+        assert_eq!(widget.content_plan.rows[6].classification_gap, "+1 V");
+        assert_eq!(widget.content_plan.estimated_laps(), "≈79");
         assert_eq!(
             widget.plan.columns.last().map(|c| c.metric),
             Some(Metric::LastLap)
@@ -1199,8 +1365,8 @@ mod tests {
             ..vantare_domain::Player::default()
         });
         assert!(widget.ingest(&other_class, prefs));
-        assert_eq!(widget.vm.rows.len(), 7);
-        assert_eq!(widget.vm.rows[0].position, 2);
+        assert_eq!(widget.content_plan.rows.len(), 7);
+        assert_eq!(widget.content_plan.rows[0].position, 2);
         assert_eq!(widget.size(), (440.0, 664.0));
     }
 

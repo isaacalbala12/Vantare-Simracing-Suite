@@ -352,64 +352,15 @@ struct Workshop {
 
 /// Ajustes de partida de Standings en Workshop para cada sistema de diseño.
 /// Ajustes de partida en Workshop de un widget con columnas para cada sistema.
-fn system_defaults(kind: Kind, system: crate::standings::DesignSystem) -> Settings {
-    use crate::standings::DesignSystem;
-    match (kind, system) {
-        (Kind::Standings, DesignSystem::Vantare) => {
-            Settings::Standings(crate::standings::Settings {
-                row_count: 8,
-                columns: Some(crate::standings::vantare_template("standard")),
-                brand_visible: Some(true),
-                ..Default::default()
-            })
-        }
-        (Kind::Standings, DesignSystem::Eficiencia) => {
-            Settings::Standings(crate::standings::Settings {
-                row_count: 10,
-                columns: Some(default_columns(Kind::Standings)),
-                player_window: true,
-                window_around: 4,
-                class_scope: "all-classes".into(),
-                brand_visible: Some(true),
-                ..crate::standings::Settings::eficiencia()
-            })
-        }
-        (Kind::Relative, DesignSystem::Vantare) => Settings::Relative(crate::relative::Settings {
-            columns: Some(crate::relative::vantare_template("standard")),
-            brand_visible: Some(true),
-            ..Default::default()
-        }),
-        (Kind::FuelStrategy, DesignSystem::Vantare) => {
-            Settings::FuelStrategy(crate::fuel_strategy::Settings {
-                brand_visible: Some(true),
-                ..Default::default()
-            })
-        }
-        (Kind::Delta, DesignSystem::Vantare) => Settings::Delta(crate::delta::Settings {
-            brand_visible: Some(true),
-            ..Default::default()
-        }),
-        (Kind::Delta, DesignSystem::Eficiencia) => {
-            Settings::Delta(crate::delta::Settings::eficiencia())
-        }
-        (Kind::FuelStrategy, DesignSystem::Eficiencia) => {
-            Settings::FuelStrategy(crate::fuel_strategy::Settings::eficiencia())
-        }
-        (Kind::Relative, DesignSystem::Eficiencia) => {
-            Settings::Relative(crate::relative::Settings {
-                columns: Some(default_columns(Kind::Relative)),
-                ..crate::relative::Settings::eficiencia()
-            })
-        }
-        _ => Settings::default_for(kind),
-    }
+fn system_defaults(kind: Kind, system: crate::look::Look) -> Settings {
+    system.workshop_defaults(kind)
 }
 
 fn default_settings(kind: Kind) -> Settings {
     system_defaults(kind, crate::standings::DesignSystem::default())
 }
 
-fn default_columns(kind: Kind) -> Vec<crate::standings::options::ColumnSetting> {
+pub(crate) fn default_columns(kind: Kind) -> Vec<crate::standings::options::ColumnSetting> {
     let metrics: &[(&str, &str, bool)] = if kind == Kind::Relative {
         &[
             ("position", "xs", true),
@@ -457,8 +408,8 @@ fn default_path(kind: Kind) -> PathBuf {
 
 /// Tamaño de la vista previa: el Relative Eficiencia heredado se muestra con su
 /// ancho fijo de 470 px; el resto (Vantare incluido) con su tamaño real.
-fn preview_size(eficiencia_relative: bool, size: (f32, f32)) -> (f32, f32) {
-    if eficiencia_relative {
+fn preview_size(fixed_relative_preview: bool, size: (f32, f32)) -> (f32, f32) {
+    if fixed_relative_preview {
         (
             crate::relative::SIZE.0,
             size.1 * crate::relative::SIZE.0 / size.0,
@@ -470,9 +421,8 @@ fn preview_size(eficiencia_relative: bool, size: (f32, f32)) -> (f32, f32) {
 
 impl Workshop {
     /// El widget es el Relative Eficiencia heredado (vista previa a 470 px).
-    fn eficiencia_relative(&self) -> bool {
-        matches!(&self.settings, Settings::Relative(s)
-            if s.design_system == crate::standings::DesignSystem::Eficiencia)
+    fn fixed_relative_preview(&self) -> bool {
+        self.settings.fixed_relative_preview()
     }
 
     fn edit_number(&mut self, key: &str, cx: &mut Context<Self>) -> bool {
@@ -558,13 +508,11 @@ impl Workshop {
     fn snapshot(&self, index: usize) -> Snapshot {
         let mut snapshot = self.scene.snapshots[index].clone();
         // «Pilotos totales» es un control de Eficiencia; Vantare elige sus filas.
-        if let Settings::Standings(settings) = &self.settings
-            && settings.design_system == crate::standings::DesignSystem::Eficiencia
-        {
+        if let Some(row_count) = self.settings.preview_row_limit() {
             snapshot.state.cars.retain(|car| {
                 car.position
                     .current()
-                    .is_some_and(|position| *position <= settings.row_count as u32)
+                    .is_some_and(|position| *position <= row_count as u32)
             });
         }
         if let Some(position) = self.player_position {
@@ -643,7 +591,7 @@ impl Workshop {
         let scale = self.scale * self.fit;
         let dimensions = self.dimensions;
         let study = self.study.clone();
-        let legacy = self.eficiencia_relative();
+        let legacy = self.fixed_relative_preview();
         let make = |cx: &mut Context<Overlay>| {
             let mut overlay = Overlay::configured(&settings, prefs);
             overlay.workshop_layout();
@@ -689,7 +637,7 @@ impl Workshop {
         let size = self.overlay.read(cx).wanted_size();
         let target = self
             .dimensions
-            .unwrap_or(preview_size(self.eficiencia_relative(), size));
+            .unwrap_or(preview_size(self.fixed_relative_preview(), size));
         let scale = self.scale * self.fit;
         (scale * target.0 / size.0, scale * target.1 / size.1)
     }
@@ -752,18 +700,7 @@ impl Workshop {
     fn vantare_columns_mut(
         &mut self,
     ) -> Option<&mut Vec<crate::standings::options::ColumnSetting>> {
-        use crate::standings::DesignSystem::Vantare;
-        match &mut self.settings {
-            Settings::Standings(s) if s.design_system == Vantare => Some(
-                s.columns
-                    .get_or_insert_with(|| crate::standings::vantare_template("standard")),
-            ),
-            Settings::Relative(s) if s.design_system == Vantare => Some(
-                s.columns
-                    .get_or_insert_with(|| crate::relative::vantare_template("standard")),
-            ),
-            _ => None,
-        }
+        self.settings.style_columns_mut()
     }
 
     fn shift_vantare_column(&mut self, metric: &str, step: i32) -> bool {
@@ -790,7 +727,7 @@ impl Workshop {
         let (scale, dimensions, legacy) = (
             self.scale * self.fit,
             self.dimensions,
-            self.eficiencia_relative(),
+            self.fixed_relative_preview(),
         );
         for view in std::iter::once(&self.overlay).chain(self.comparison.as_ref()) {
             view.update(cx, |overlay, cx| {
@@ -881,6 +818,7 @@ impl Workshop {
     }
 
     fn select(&mut self, control: Control, value: &str, cx: &mut Context<Self>) {
+        let previous_settings = self.settings.clone();
         self.open = None;
         let result: Result<(), String> = (|| {
             match control {
@@ -932,7 +870,7 @@ impl Workshop {
                 Control::Location => self.in_pits = Some(value == "pits"),
                 Control::Width | Control::Height => {
                     let wanted = preview_size(
-                        self.eficiencia_relative(),
+                        self.fixed_relative_preview(),
                         self.overlay.read(cx).wanted_size(),
                     );
                     let mut size = self.dimensions.unwrap_or(wanted);
@@ -1038,6 +976,10 @@ impl Workshop {
                         Some(self.overlay.clone())
                     };
                 }
+                Control::Setting("designSystem") => {
+                    let look = crate::look::Look::from_name(value).ok_or("Look inválido")?;
+                    self.settings.set_look(look);
+                }
                 Control::Setting(key) => {
                     let mut settings =
                         serde_json::to_value(&self.settings).map_err(|e| e.to_string())?;
@@ -1052,37 +994,28 @@ impl Workshop {
                     let next = serde_json::from_value::<Settings>(settings)
                         .map_err(|e| e.to_string())?
                         .normalized();
-                    // Cambiar de sistema parte de los ajustes por defecto de ese sistema.
-                    self.settings = match (&self.settings, next) {
-                        (Settings::Standings(old), Settings::Standings(new))
-                            if old.design_system != new.design_system =>
-                        {
-                            system_defaults(Kind::Standings, new.design_system)
-                        }
-                        (Settings::Relative(old), Settings::Relative(new))
-                            if old.design_system != new.design_system =>
-                        {
-                            system_defaults(Kind::Relative, new.design_system)
-                        }
-                        (Settings::FuelStrategy(old), Settings::FuelStrategy(new))
-                            if old.design_system != new.design_system =>
-                        {
-                            system_defaults(Kind::FuelStrategy, new.design_system)
-                        }
-                        (Settings::Delta(old), Settings::Delta(new))
-                            if old.design_system != new.design_system =>
-                        {
-                            system_defaults(Kind::Delta, new.design_system)
-                        }
-                        (_, next) => next,
-                    };
+                    self.settings = next;
                 }
             }
             Ok(())
         })();
         self.state_error = result.err();
         if self.state_error.is_none() && self.scene.error.is_none() {
-            self.replay(cx);
+            if let Some(look) = previous_settings.look_change(&self.settings) {
+                self.overlay.update(cx, |overlay, cx| {
+                    overlay.set_look(look);
+                    cx.notify();
+                });
+                if let Some(view) = &self.comparison {
+                    view.update(cx, |overlay, cx| {
+                        overlay.set_look(look);
+                        cx.notify();
+                    });
+                }
+                self.apply_preview(cx);
+            } else {
+                self.replay(cx);
+            }
             self.persist();
         }
         cx.notify();

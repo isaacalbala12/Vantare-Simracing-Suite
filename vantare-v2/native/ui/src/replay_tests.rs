@@ -269,12 +269,15 @@ fn a_104_car_multiclass_grid_reaches_every_widget_and_keeps_the_player() {
     assert_eq!(snapshot.state.cars.len(), 104, "el cable no recorta coches");
     let hidden = hidden_values(&snapshot, prefs);
     assert!(hidden.is_empty(), "«—» con dato actual: {hidden:?}");
-    // Contrato observable hasta #1531: el jugador sigue en la clasificación.
-    let rows = vantare_domain::standings::project(&snapshot, prefs).rows;
+    // Ambos Looks conservan al jugador con el Board común y su Plan (#1531).
+    let board = std::sync::Arc::new(vantare_domain::standings::project(&snapshot, prefs));
+    let plan = vantare_domain::standings::Plan::new(board.clone(), "104".into(), snapshot.sequence);
+    assert_eq!(plan.rows.len(), 104, "el Plan no recorta coches");
+    let rows = &plan.rows;
     let me: Vec<_> = rows.iter().filter(|row| row.is_player).collect();
     assert_eq!(me.len(), 1, "un solo jugador en Standings");
-    assert_eq!(me[0].position, "104");
-    let board = vantare_domain::standings_vantare::project(&snapshot, prefs);
+    assert_eq!(me[0].position, 104);
+    assert_eq!(me[0].row.position, "104");
     assert!(board.player_present);
     let players = board
         .groups

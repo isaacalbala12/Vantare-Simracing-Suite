@@ -1,3 +1,211 @@
+## #1531 · Actualización de #1558 tras Linux verde y squash #1557
+
+- #1557, HEAD f03f69c1918cb53a361bacd8da623c3b3fb5ec5e: Validate promotion
+  path, Validate Vantare blocking gates, native-linux y quality-check SUCCESS.
+  GitGuardian FAILURE es el falso positivo conocido/no obligatorio que marcará
+  Isaac. FIN verificado en el buzón y en la issue #1536.
+- Isaac fusionó #1557 en nightly como squash d175fd7448059538cfb3f4ae8c61632799eafedd
+  el 2026-10-10 a las 11:14:37Z y cambió la base de #1558 a nightly.
+- Merge normal 9a5e7d4c de f03f69c1 en vantareapp/isa-1531-integracion:
+  incorpora el helper de cierre asíncrono y todos los harness headless del Hub,
+  además del prefijo corto del fixture IPC de #1548, con la misma entropía.
+  Solo cambian tests; permanecen sus aserciones y las decisiones de #1531.
+- Merge normal 506f5d9f de origin/nightly d175fd74, con preferencia por nuestro
+  contenido (-X ours). La fusión fue automática, sin conflictos pendientes.
+  El preview y el resultado conservaron byte a byte el árbol native
+  a8f137b5d33855ee90191f1a26b44081d6101048; los gates corren sobre ese árbol.
+- Gates por la cola, target propio y en serie: check/fmt/Clippy -D warnings
+  PASS; Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría
+  25/25 (0 skips, 803,734 s; corpus ACC 760,575 s). Recovery/status_process
+  sin flake ni reintentos; retirada 456 SHA-256 PASS.
+- La primera compilación Nextest falló antes de ejecutar tests por un socket
+  de sccache (os error 10048). Log conservado y reintento conforme al runbook
+  con VANTARE_SCCACHE=0: la suite completa pasó. Ningún cambio de código o
+  de tests por ese fallo.
+- UI/domain/runtime/IPC/testdata y configuración siguen idénticos al HEAD
+  7709a496 validado de #1558. Conservan vigencia RGBA 366/366, las 32 capturas
+  v9, los ocho slots ES/EN y el perfil Standings ACC de 600 muestras por etapa
+  y Look. No se repite la matriz A/B por decisión de Isaac.
+- RGBA conservada reverificada sobre los PNG: 366/366 pares y los ocho slots
+  aprobados, cero diferencias; entradas y binarios mantienen sus SHA-256.
+  Umbral cero y sin máscaras/goldens nuevos ni nuevas capturas.
+- PR #1558 a nightly, listo para revisión tras el push autorizado. CI del nuevo
+  HEAD documental pendiente, incluidos Validate promotion path, Validate
+  Vantare blocking gates y native-linux; FIN conjunto cuando termine esa CI.
+  El agente no fusiona PRs ni publica releases.
+  Evidencia nueva: C:/tmp/review-1558-linux; estado vivo en issue #1531/buzón.
+- #1537, #1538–#1549 y #1551–#1556: 19 issues consultadas con gh issue view,
+  todas OPEN antes de cerrarlas y CLOSED después; comentario exacto «entró en
+  nightly con #1557, d175fd74». #1536 y #1531 siguen OPEN e In Review en el
+  GitHub Project Vantare; no se cambia su alcance.
+- Las 19 issues cerradas figuran en Vantare/Nightly; diez carecían de área y
+  proyecto, completados según el alcance de su entrega. Se retiraron labels
+  de estado previo; cierres, comentarios, áreas y columna verificados de nuevo.
+
+### Historial de la primera integración #1531
+
+## #1531 · Integración aprobada por Opus (ronda 2, 8/10)
+
+- Revisión completa: C:/tmp/auditoria-arquitectura-v2/review-1531-r2.md.
+- Rama vantareapp/isa-1531-integracion, worktree propio C:/tmp/vw3-1531-int,
+  desde d61ef4a897d797987da6e982afdf3ef752d37b2a (#1557).
+- Los dos checks obligatorios de #1557 están SUCCESS y su FIN precede a esta
+  integración; su fusión corresponde a Isaac.
+- Merge --no-ff de 8da5394ef063493aa8b80bca1ec1a7bfbe67baf9.
+  Único conflicto: este handoff; se conservan ambos historiales y las decisiones
+  vigentes de integración. DTO v9/fixtures actuales, crates separados y retirada
+  de Wails permanecen intactos. ADR 0101.
+- Puntos no bloqueantes documentados en ADR 0101: estimatedLaps/totalLaps
+  disponibles con slots=true y Delta Eficiencia ACC alto p99 +14–17 %.
+  Este último es no concluyente y aceptado por magnitud; el préstamo de Motion
+  por Arc es un mecanismo plausible, sin causalidad demostrada.
+- Compatibilidad de tests (#1537): 47932598 adapta el replay de 104 coches
+  al Board/Plan común. Mantiene jugador único/posición 104 en ambos recorridos
+  y exige 104 filas del Plan; no se elimina ninguna aserción ni se cambia el corpus.
+- Check, fmt y Clippy -D warnings PASS por la cola; calidad de retirada PASS
+  (456 SHA-256). Nextest 1574/1574 (7 skips heredados), lifecycle 18/18;
+  recovery/status_process sin flake ni reintentos. Telemetría 25/25, 0 skips.
+- RGBA 366/366 sin diferencias crudas/premultiplicadas, umbral 0 y sin máscaras;
+  32 capturas actuales v9 y 8 de slots. Los slots coinciden con 569fa5ef;
+  Eficiencia ES/EN cambia solo su footer frente al baseline, con valores 79/38
+  de un fixture QA preexistente. Inspección visual documentada en la evidencia.
+  Sin renovar goldens; pantalla-ocupada y mutex de captura respetados.
+- DUDA resuelta por la comprobación indicada por Isaac: Standings ACC coincide
+  con la entrega 8da5394e en las 600 muestras de asignaciones/bytes por etapa
+  y Look. Vantare ingest/preparación/paint 0/1/181 y 0/48/11192 bytes;
+  Eficiencia 0/1/330 y 0/40/37313. Plan/Labels/Motion e invalidaciones cero.
+  Referencia profile aprobado de 569fa5ef (native idéntico a 8da5394e),
+  SHA-256 d0f71a0f9cab9014a098979ea22c81b181a019074d06d10512e74852d080e4b0.
+  Misma entrada/layout, afinidad 0xFF00 y cuatro mutex de cola reservados.
+- Observación: p50 Vantare ACC ingest 3,0 us frente a máximo baseline 2,8 us
+  (rango 2,2–2,8; p99 PASS). El FAIL numérico parcial 7/8 queda conservado.
+  Isaac confirma que A/B es el gate ya aprobado de la rama #1531; se detiene
+  la matriz completa y, con el perfil idéntico, no bloquea esta integración.
+  Sin código adicional, cambio de umbrales ni extensión de la excepción Delta.
+- Push realizado de vantareapp/isa-1531-integracion; PR draft #1558:
+  https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1558
+  Base vantareapp/isa-1536-arreglos-revision. Isaac cambiará su base a nightly
+  después de fusionar #1557; CI del draft y promoción a nightly pendientes.
+  Código validado 47932598, native tree 5fefde7df3c4fbb2a745fcf26109599f200c1337;
+  los commits posteriores de cierre solo actualizan documentación.
+- Sin otros arreglos, subagentes, merge del PR ni release.
+- Evidencia: C:/tmp/review-1531-integracion; buzón C:/tmp/buzon/integracion-r2.md.
+
+### Historial de la entrega aislada #1531
+
+## #1531 · Ronda 2 completa para revisión Opus (2026-10-10)
+
+Rama vantareapp/isa-1531-widgets-looks, base 5e1da3f68f9735d60057b61798d55849bbca0677, baseline de ronda 2 fefe870f, worktree C:/tmp/vw3-1531/vantare-v2. Siete puntos de revisión en commits separados; corrección productiva posterior 5ec8e28a (Motion vacío Standings/test), QA equivalente 569fa5ef; checkpoint Delta/Fuel 2bb4f0a5. En este cierre solo se actualizan ADR/handoff; no cambios arbitrarios de Relative, Delta o Fuel.
+Standings y Relative PASS 8/8 tras el procedimiento autorizado; Standings usa los márgenes p50 +2,33/+2,22/+0,50% ya documentados, Relative ninguno. Delta conserva PASS 6/8 numérico y dos FAIL p99 ACC Eficiencia: ingest +13,04%, frame +11,97%. Isaac los acepta como «p99 fuera de margen por ruido; perfil de asignaciones y trabajo idéntico» (0/1/42 y 0/32/3024 bytes; work/notify cero, tandas bimodales). No se cambia el gate, sus números ni se repite A/B. Excepción limitada al mismo perfil y ausencia de trabajo nuevo.
+Fuel nuevo con cola libre: cinco A/B intercaladas, PASS 8/8 sin márgenes/excepciones, perfil de cuatro casos idéntico muestra a muestra en asignaciones, bytes, work y notify. LMU conserva los cien cambios legítimos de Labels/Plan en ambos binarios. Sin asignaciones o trabajo añadidos en ingest/frame por Presentation.
+Frío nuevo con cola libre y cuatro huecos reservados: PASS 8/8, máximo 1,480× (Delta ACC), límite 1,5× frente a Vantare original 5e1da3f6 verificado por SHA-256. Ratios LMU/ACC: Standings 1,172/1,201; Relative 1,283/1,308; Delta 1,150/1,480; Fuel 0,855/0,893. Perfil separado antes/después de ronda 2: ninguna nueva llamada de asignación; Relative/Delta/Fuel mismos bytes. Standings +64 bytes por fila (47/32 filas), exactamente dos Option<String> y Option<f64> del Board común P1; mismo número de bloques 1088/469, sin textos nuevos con columnas opcionales apagadas. No equivale a RSS. Contador QA excluye setup/JSON, fuentes y binarios archivados, checkout temporal propio restaurado.
+Gates vigentes del código: fmt/check/Clippy workspace -D warnings y UI all-targets parity-capture PASS; 72/72 enfocados, Nextest 1450/1450 (7 skips oficiales), lifecycle 5+13 PASS. Telemetría 21/21 previa vigente: cambios posteriores solo UI/documentación, domain/IPC/runtime/testdata intactos desde ese gate. No se repiten tests por este cierre documental. Paridad de ronda 2 366/366 RGBA=0 (44 Live +22 Stale incluidos), y 57/57 Standings nuevos tras su corrección; Live ES/EN inspeccionadas. Fuel conserva sus 99 pares exactos sin cambios de pintor.
+Evidencia completa, hashes, procedimiento, perfiles, tandas, capturas y manual: C:/tmp/auditoria-arquitectura-v2/evidence-1531/round2/hot-path; datos nuevos de Relative/Delta/Fuel/frío en quiet/. Fuera del repo se archivan los scripts QA, sin dependencias nuevas. Informe externo ≤10 líneas y buzón FIN con HEAD; issue abierta y actualizada. Entrega local para Opus, no aceptación/integración/publicación. IPC intacto; DTO v9 y repetir gates/corpus al integrar pertenecen al orquestador. Sin push, PR, merge, release, promoción, instalación ni CI remoto. CPU medido no acredita GPU/Present, OBS, latencia ni RSS. Historial de checkpoints y FAIL conservado a continuación.
+
+## #1531 · Delta aceptado por perfil idéntico; Fuel PASS; frío pendiente (2026-10-10)
+
+Decisión del orquestador: Delta «p99 fuera de margen por ruido; perfil de asignaciones y trabajo idéntico». Se conservan FAIL y números: ACC Eficiencia ingest 5,2 vs máximo 4,6 µs (+13,04%), frame 58,0 vs 51,8 (+11,97%). Perfil 0/1/42 asignaciones, 0/32/3024 bytes, work/notify cero en ambos; tandas bimodales documentadas. Gate sin cambios; excepción limitada al mismo perfil sin trabajo nuevo. No nueva A/B ni cambios arbitrarios de Delta.
+Fuel con cola libre: cinco A/B, PASS 8/8; todos los p50/p99 dentro del rango baseline sin márgenes. Perfil de cuatro casos, 600 muestras por etapa, idéntico muestra a muestra: asignaciones, bytes, work y notify. Eficiencia ACC 1/1/0 asignaciones, 6/8/0 bytes; Vantare ACC 1/1/55, 6/88/3896. LMU conserva cien cambios de Labels o Plan en ambos binarios. Sin cambios productivos nuevos; paridad previa Fuel vigente.
+Frío pendiente de cola libre. QA externa cuenta solo project independiente, excluye entrada/setup/JSON y usa el mismo allocator TLS antes/después. Builds release PASS contra fefe870f y ada9cd1d en el propio worktree, checkout temporal restaurado y árbol limpio antes de este checkpoint. Fuentes, binarios, SHA-256 y procedimiento bajo evidence-1531/round2/hot-path/quiet/. Cronómetro congelado se compara aparte con Vantare original 5e1da3f6, límite 1,5×.
+Standings/Relative, gates y capturas del checkpoint anterior se conservan. Rama/base sin cambios; IPC intacto. Sin push, PR, merge, release, promoción, instalación ni CI remoto. Cierre final pendiente de frío y revisión independiente de Opus; DTO v9 y gates al integrar corresponden al orquestador.
+## #1531 · Standings y Relative PASS; cierre BLOQUEADO en Delta con cola libre (2026-10-10)
+
+Rama vantareapp/isa-1531-widgets-looks, base 5e1da3f6, baseline de ronda 2 fefe870f; worktree C:/tmp/vw3-1531/vantare-v2. Código productivo 5ec8e28a (Motion vacío Standings y test) y QA 569fa5ef (variante Fuel explícita); checkpoint 8c404e59. P1/P2 y siete puntos de revisión preservados. Sin cambios adicionales de Relative/Delta sin causa encontrada.
+Standings cerrado: 72/72 enfocados, 57/57 capturas nuevas RGBA=0, cuatro Live ES/EN por Look inspeccionadas; cinco A/B PASS 8/8. Excesos p50 documentados dentro de +3%: V LMU frame +2,33%, V ACC ingest +2,22% y frame +0,50%; todos los p99 dentro del rango. Perfil y dispersión de antes/después en hot-path/. No se atribuye a Motion el PASS de ingest ni todo el resultado a ruido.
+Relative cerrado tras la repetición autorizada con cola libre: cinco A/B PASS 8/8, todos los p50/p99 dentro o bajo el rango sin márgenes. Eficiencia ACC ingest p99 nuevo 6,0 µs frente a baseline 2,8–9,0; p50 1,4 dentro de 1,1–1,9. Perfil 600 muestras: ingest 0/0 asignaciones/bytes, preparación 1/48 en ambos; paint 262/18148→249/17928; Plan/Labels/Motion e invalidaciones cero. Ingest estable conserva Board y retorna antes del pintor/Motion. Los textos nuevos solo se preparan con nuevos hechos; las dos Quality de vueltas de la clave son necesarias. Sin cambio de código. FAIL anterior preservado, sin atribución causal de ruido demostrada.
+Delta con cola libre: cinco A/B PASS 6/8; todos los p50 dentro del rango. FAIL Eficiencia ACC p99 ingest 5,2 frente a máximo 4,6 µs (+13,04%) y frame 58,0 frente a 51,8 (+11,97%), límite +5%. Tandas baseline/nuevo ingest 4,6/4,6/2,2/1,5/1,3 frente a 5,6/5,2/1,4/1,3/5,6; frame 51,8/50,9/31,9/26,3/22,9 frente a 60,6/58,0/24,7/24,8/60,1.
+Perfil Delta diagnóstico independiente también con cola libre: ambos 0/1/42 asignaciones y 0/32/3024 bytes por ingest/preparación/paint, constantes en todas las muestras; trabajo e invalidaciones cero. Ingest estable sale antes de crear Arc/Labels/Motion. Domain, pintor y etiquetas Eficiencia sin diff respecto al baseline; Motion común añade indirection/selección de interpolación, sin evidencia suficiente para atribuirle el exceso p99. No se encuentra una causa corregible demostrada. DUDA con diff/tandas enviada al buzón; Fuel y frío nuevo detenidos, sin otra A/B ni relajación del gate.
+La reserva usa todos los Global\VantareCargoSlotN y exige cero cargo/cargo-nextest/rustc/rust-lld; libera reservas parciales mientras espera, mantiene los cuatro huecos durante cada tanda y aborta si aparece Cargo entre procesos. Logs registran inicio Relative 07:37:05, Delta 07:41:41 y perfil Delta 07:47:10, +02:00. Espera externa anterior preservada; no se midió Relative bajo carga en esta repetición.
+Fmt/check/Clippy workspace -D warnings, UI all-targets parity-capture, Nextest 1450/1450 (7 skips oficiales, 185 s), lifecycle 5+13 PASS. Telemetría no repetida porque esta corrección solo toca UI; 21/21 PASS de ronda 2 vigente para domain/IPC/runtime/testdata intactos. Ronda 2 anterior conserva 366 pares RGBA=0; los otros pintores no cambiaron en esta corrección. No se presentan cifras históricas de Fuel/frío como acreditación nueva.
+Evidencia/manual/binarios/hashes: evidence-1531/round2/hot-path; revisiones, perfiles y cuarenta JSON por widget en quiet/, guardas/procedimiento y tablas en quiet/performance/. Informe externo máximo diez líneas; ADR 0101 actualizado. Siguiente acción: revisión del orquestador del bloqueo Delta antes de continuar Fuel/frío. No entrega completa aceptada ni integración/push/PR/merge/release/promoción/instalación/CI remoto. DTO v9 y revalidación después de integrar corresponden al orquestador. Los gates antiguos siguientes se conservan como historia.
+
+## #1531 · Standings cerrado; Relative espera repetición con cola libre (2026-10-10)
+
+Rama vantareapp/isa-1531-widgets-looks, base 5e1da3f6, baseline ronda 2 fefe870f, worktree C:/tmp/vw3-1531/vantare-v2. Ajuste 5ec8e28a y QA 569fa5ef; puntos P1/P2 conservados. Sin cambios en domain/IPC/runtime/testdata desde sus gates anteriores.
+Perfil Standings Vantare ACC: 600 muestras por etapa, asignaciones ingest/preparación/paint 0/1/181 y bytes 0/48/11192 idénticos antes/después. Ingest estable sale antes de reconstruir Plan/Presentation/Motion o notificar. Se elimina en frame el recorrido de filas y tres mapas cuando Motion no tiene canales; animaciones activas intactas. Test nuevo retiene Paint previo y prueba identidad Board/Plan/Motion en ambos Looks.
+Standings: 72/72 enfocados, 57/57 capturas nuevas RGBA=0; cuatro Live ES/EN por Look inspeccionadas. Cinco A/B autorizadas PASS 8/8; p50 V LMU frame +2,33%, V ACC ingest +2,22% y frame +0,50% sobre máximo baseline, dentro de +3%; todos los p99 dentro del rango, sin margen +5%. No se atribuye a Motion el PASS de ingest: p99 nuevo 15,1→15,2 µs, baseline 4,9–13,5→9,8–24,2. Dispersión en hot-path/dispersion.md y DUDA en buzón.
+Relative primera continuación: cinco A/B PASS 7/8; todos p50 pasan. FAIL Eficiencia ACC ingest p99 nuevo 8,4 µs frente a máximo 7,2 (+16,67%, límite +5%). Baseline por tanda 4,1/5,0/6,3/5,9/7,2; nuevo 4,7/8,4/2,2/8,8/8,4. Gate intacto, FAIL preservado. Delta/Fuel/frío nuevos detenidos mientras se resuelve este coste.
+Isaac autoriza repetir Relative con cola libre. Revisión fefe→ronda 2 sin asignaciones ni Board/VM/Plan nuevos en ingest ACC estable: retorna por identidad Board antes del pintor/Motion. Los textos se preparan solo si cambia el Board; dos Quality de vueltas añadidas a la clave son necesarias para el pie. Sin cambio de código sin causa. Perfil y cinco A/B esperan cero cargo/cargo-nextest/rustc/rust-lld; reserva todos los Global\VantareCargoSlotN, libera reservas parciales mientras espera y aborta si Cargo aparece entre fases. Si sigue fallando sin causa, DUDA con diff/cifras y parada; si pasa, Delta→Fuel→frío.
+Fmt/check/Clippy workspace -D warnings, Nextest 1450/1450 (7 skips oficiales, 185 s), lifecycle 5+13 PASS. Clippy UI all-targets parity-capture también PASS; wildcard QA Fuel explícito sin cambio funcional. Examples PASS tras repetir secuencialmente un reenlace bloqueado por looks.exe ocupado por mis capturas; ambos logs preservados. Telemetría no repetida en esta corrección solo UI; 21/21 PASS anterior en round2/gate-telemetria.log.
+Evidencia actual evidence-1531/round2/hot-path: investigation.md, provenance.json, manual.md, relative-ingest-diff.txt, performance/ y quiet/. Binarios congelados quiet/new-bin/ al 569fa5ef. Logs oficiales nuevos hot-path/gate-*.log; round2/ histórico. Issue abierta; entrega completa pendiente del gate. Sin push/PR/merge/release/promoción/instalación/CI remoto. DTO v9 y QA al integrar corresponden al orquestador.
+
+## #1531 · Ronda 2 implementada; cierre BLOQUEADO por gate p99 (2026-10-10)
+
+Rama vantareapp/isa-1531-widgets-looks, base 5e1da3f6, baseline de ronda 2 fefe870f, worktree C:/tmp/vw3-1531/vantare-v2. Revisión completa de Opus corregida en orden: fbdf5d90, b8815d28, e331be8a, 3c8fe23d, 73534d45, a0813354; último hito renumera el ADR a 0101 y quita comentarios de Standings sobre la app retirada.
+Standings lee el Plan común del dominio con filas Arc/CarId; ventana, truncado, bandas, posiciones y vueltas dejan de decidirse en el pintor. Los cuatro widgets usan un solo Presentation con el Motion común completo; cambio de Look conserva interpolaciones, fades, tira, avisos y relojes. No se emparejan enums con unreachable.
+Relative invalida el pie por laps_remaining/laps_total y su Quality; filas/cabecera Eficiencia preparan mayúsculas, insignias, textos y anchos por Board/presentación, con métricas Window una vez. Fuel documenta su OnceLock; pie/defaults compartidos, guardas para legacy/has_variants y Delta normalizado antes de alternar/guardar. Cambio mínimo fuera del área: Hub inspector/studio consume capacidades publicadas desde UI; IPC intacto.
+Pruebas enfocadas 278/278, fmt/check/Clippy workspace/all-targets -D warnings PASS; Nextest completo 1449/1449 PASS (7 skips oficiales), lifecycle 5+13 PASS. Telemetría 21/21 PASS, 0 skips; gate completo 534 s con replay ACC 497 s, dentro de la grabación real. Logs en round2/gate-telemetria.log.
+Paridad final: 366/366 PNG RGBA=0 frente a fefe870f, sin máscaras ni umbral; 44 Live y 22 Stale incluidos. Inspeccionados Live ES/EN de ambos Looks en los cuatro widgets. Goldens versionados intactos y cambios Stale de ronda 1 conservados.
+Cinco A/B intercaladas de Standings, procesos separados y corpus real LMU47/ACC: 6/8 costes PASS y todos los p50 PASS; Efi LMU frame +1,07% sobre máximo baseline, dentro de +3%. FAIL Vantare ACC p99 ingest 15,1 vs máximo 13,5 us (+11,85%) y frame 154,5 vs 138,7 (+11,39%), ambos por encima del margen +5%. Las cinco tandas originales y JSON/Markdown están preservados; no se declara una causa ni se reitera para estabilizar ruido.
+Se detienen A/B de Relative/Delta/Fuel y nuevas cifras de frío conforme a la condición de parada de Isaac. Las cifras históricas no sustituyen este gate pendiente. Próxima acción: decisión del orquestador sobre este bloqueo antes de continuar QA; la entrega no está aceptada para integración.
+Evidencia externa: evidence-1531/round2, provenance.json, source-inventory-round2.txt, parity-summary.json y performance/standings-gate-pattern-five-rounds.{json,md}. Verificación manual: manual-round2.md. DTO v9 y repetición de QA tras integrar quedan al orquestador. Trabajo local, sin push/PR/merge/release/promoción/instalación ni CI remoto.
+
+## #1531 · Fuel: contadores extremos de #1539 corregidos y gates PASS (2026-10-10)
+
+Commit productivo 0a4e08a1. Cinco sumas de fuel_strategy protegidas con checked_add: vuelta, stint, parada, total derivado y sector. Overflow produce None/Plan::Unknown; el fallback del total solo se evalúa cuando hace falta. Historial único, pintores, IPC, dependencias y fixtures intactos.
+Cuatro tests nuevos: extremos aislados/combinados, parada que desborda aunque la vuelta actual quepa, fallback/total explícito, y DTO real modificado con ambos Looks. Antes: dos FAIL por overflow y dos no ejecutados por fail-fast; diagnóstico preservado.
+Enfocados 30/30 PASS en debug y release; fmt/check/Clippy -D warnings, Nextest 1436/1436 (7 skips oficiales), lifecycle 5+13 y telemetría 21/21 PASS por cola. Entrega aislada completa, revisión de Isaac pendiente. Evidencia: evidence-1531/fuel-range-1539; sin push/PR/merge/promoción.
+
+## #1531 · Ampliación P1.1/P1.4 y frescura Relative completa; gates PASS (2026-10-10)
+
+Standings be505e8f corrige ambos sorts históricos y preserva —/None; Relative d595fac8 añade HeaderStale con siete marcas y tinta Eficiencia al 60 % por valor. Vantare no dibuja esos metadatos. Misma rama/base/worktree; IPC intacto.
+Siete tests nuevos: cuatro fotos reales × cinco SourceState + degradación Core, Boards y Arcs por Look, jugador/clase, calidad, orden/cache; transición Relative sin cambiar texto y cambio de Look. 123/123 enfocados PASS.
+Fmt/check/Clippy -D warnings PASS; Nextest 1432/1432 PASS (7 skips oficiales), lifecycle 5+13 PASS. Telemetría 21/21 PASS (09771afb-98fc-47bc-8fe2-af3a521b723d). Entrega aislada completa, revisión de Isaac pendiente.
+Capturas Standings 57: 53 anteriores RGBA=0 + cuatro stale con orden corregido. Relative 121: 106 idénticas, 15 cambios solo Stale en cabecera/pie Eficiencia; 91 sin señales Stale y todo Vantare RGBA=0, filas y aviso intactos. Goldens intactos; pares inspeccionados ES/EN.
+Cinco A/B adicionales por widget: Standings y Relative 16 costes PASS sin márgenes; frío LMU/ACC Standings 1,195x/1,232x y Relative 1,279x/1,334x (límite 1,5x). Tandas y pruebas en evidence-1531/stale-contract-1537 y relative-freshness.
+DTO v9 de #1530 queda al orquestador; no cambia el contrato espacial de Relative. Sin push/PR/merge/release/promoción/CI remoto. Cierre inicial de abajo conserva su evidencia histórica.
+
+## #1531 · Entrega aislada completa; cuatro widgets y gates PASS (2026-10-10)
+
+Rama vantareapp/isa-1531-widgets-looks, base 5e1da3f6, código productivo 746c2cc4, tests runtime 79cbc6eb/607941c7 y Studio 0d58f187; Fuel inicial 2cb3a6e3; corrección común a849296f; worktree C:/tmp/vw3-1531/vantare-v2.
+Standings c5c2f1d5/eb21ae33, Relative a210c983, Delta 41445297 y Fuel 2cb3a6e3/746c2cc4; corrección común a849296f. Los cuatro quedan revalidados con el gate vigente de Isaac.
+Delta tiene Board/proyección/Motion únicos, avisos con reloj y migración; IPC intacto. Cinco A/B anteriores FAIL conservadas.
+Perfil 600 muestras/caso LMU: Plan/etiquetas/Motion 0/0/0 e invalidaciones 0; no aparecen asignaciones nuevas respecto al original.
+Corrección común: Content de Standings memorizado; filas Relative/Frame Delta Idle reutilizados; consulta de shape sin claves String en hit.
+Asignaciones ingest/preparación/paint: Stand Efi 46/33/343→0/1/311, V 917/482/241→0/1/179; Rel Efi 20/20/181→0/1/161, V 11/16/91→0/1/65; Delta Efi 3/4/65→0/1/57, V 0/1/37→0/1/30.
+Nuevo Standings tras Scalars prestados: cinco A/B PASS en los ocho costes; Efi LMU ingest p50 28,6 µs dentro de 24,1–37,0, p99 65,0 vs máximo 63,4 (+2,52 % documentado). Tandas previas FAIL preservadas.
+Nuevo Relative: cinco A/B PASS en ocho costes, p99 dentro/bajo rango sin usar +5 %. Delta PASS: V LMU ingest 5,3 vs 5,2 µs (+1,92 %) aceptado; gate vigente p50 +3 % / p99 +5 % sobre máximo baseline.
+Snapshot/State/Car/DTO no ofrecen revisión por señal o coche; Lost puede conservar epoch/sequence. No se introduce atajo global inseguro ni cambio IPC.
+Fmt/check/Clippy workspace -D warnings PASS; Nextest 1425/1425 PASS (7 skipped oficiales), lifecycle 5+13 PASS; telemetria 21/21 PASS, 0 skipped. UI/domain previo 402/402 PASS, 2 skipped. Importación/default Fuel sigue Default1/JSON histórico0. Adaptaciones de tests runtime 79cbc6eb/607941c7 y Studio 0d58f187; aserciones intactas. EOF Engineer inicial no reproducido en repetición completa, causa no demostrada.
+Paridad final tras kit común: 53/85/89/99 pares (326), RGBA original=0. Goldens históricos intactos. Copias QA UTF8 recapturadas y validadas, con v0 archivado.
+Frío conservado: Standings 1,18x/1,24x; Relative 1,29x/1,42x; Delta 1,16x/1,48x. No hay Board previo en medición fría.
+Fuel/stint: Board/historial únicos, pintor/Motion activos; migración y project una vez probados. Release/99 pares/cinco A/B PASS. Frame p50 Efi LMU/ACC 28,5/45,8 µs, V 59,0/64,2; ocho costes dentro/bajo rango sin márgenes. Frío 0,93x/1,00x. Perfil Fuel PASS: ACC estable Plan/textos/Motion e invalidaciones 0; LMU conserva 100 invalidaciones V por cambios Board; paint Efi 27→0, V ACC 99→55. Gates workspace completos PASS.
+Evidencia externa performance/{widget}-gate-pattern-five-rounds.{json,md}, pattern-profile.md y profile-pattern-*.json. Buzón actualizado.
+Trabajo local; sin push/PR/merge/release/promoción. No se declara una causa microarquitectónica ni una regresión inevitable sin evidencia.
+Riesgos: unión de demanda Delta 16/Fuel 250 ms puede cambiar frecuencia Efi; CPU por ingest/frame no acredita carga total del juego, GPU/Present, latencia OBS o RSS. EOF Engineer inicial no reproducido, causa sin demostrar; conservar evidencia. Integración IPC v9/fixtures #1530 corresponde al orquestador.
+Inventario y verificación manual: evidence-1531/source-inventory.txt y manual-1531.md; informe externo de 10 líneas. Próxima acción: revisión aislada de Isaac, sin promoción autorizada.
+
+## #1531 · Relative corregido y validado; Delta siguiente (2026-10-10)
+
+Rama vantareapp/isa-1531-widgets-looks, base 5e1da3f6, worktree C:/tmp/vw3-1531/vantare-v2.
+Standings cerrado c5c2f1d5/eb21ae33; Relative conserva un Board/proyección/Motion activo, sin IPC.
+Caché exacta sin Look/Snapshot; avisos por CarId conservan reloj. Layouts/columnas y una llamada por ingest probados.
+Paridad Relative: 80 configuraciones + 4 reales + fixture del golden, 0 RGBA antes/después; golden histórico 304×285 frente a nativo 470×277 intacto.
+Frío: LMU 2,4→3,1 µs (1,29×), ACC 2,4→3,4 (1,42×), límite 1,5× cumplido.
+Regresión ACC Vantare 36,0→41,5 corregida preparando etiquetas/fit por Board/presentación, antes del pintor de solo lectura.
+5 nuevas A/B: frame p50 Efi LMU/ACC 47,3/76,2→50,4/74,9 µs; Vantare 31,7/36,8→29,3/34,3. Todos sin superar rango baseline.
+p99 mediana dentro o debajo del rango en los cuatro casos; +3,6 % Efi ACC anterior aceptado por Isaac y conservado en evidencia.
+Standings revisado: Plan solo ingest/presentación y Frames prestan Arcs; no hay recomputación/clonación nueva por frame. Gate previo PASS.
+Clippy UI/domain/all-targets -D warnings PASS; Nextest 392/392 PASS, 2 skipped. Gates workspace/lifecycle/telemetria al cierre.
+Tandas antes y después del arreglo: C:/tmp/auditoria-arquitectura-v2/evidence-1531/performance/relative-gate-{before-correction,five-rounds}.{json,md}.
+Corpus real con hechos visibles estables; cifras CPU excluyen GPU/Present/latencia de entrada. Delta→Fuel siguientes; sin push/PR/merge/release.
+
+## #1531 · Standings cerrado; Relative siguiente (2026-10-09)
+
+Base 5e1da3f6, worktree C:/tmp/vw3-1531/vantare-v2, rama vantareapp/isa-1531-widgets-looks.
+Recuperación local c5c2f1d5 y cierre en un segundo commit del mismo widget; sin push, PR ni merge.
+Standings posee un Board, una proyección por ingest y un Motion activo: cambiar Look mantiene CarId, avisos y su reloj.
+Migración de contenido en memoria; estilos concretos confinados a UI del widget/look.rs, guardado/recarga y entidad del host probados.
+Checks: fmt y Clippy UI/domain/all-targets -D warnings PASS; domain 148 y UI 224 PASS (2 ignorados), arquitectura de Looks PASS.
+Un timeout de demanda IPC con todos los hilos pasó al repetir la suite con 2 hilos; test intacto. Gates workspace finales pendientes.
+Paridad Release 48/48 casos y 4/4 reales: 0 RGBA; golden antes/después 0. Golden versionado ya difiere del baseline (85,37%), intacto.
+Cinco tandas A/B intercaladas PASS según criterio de Isaac: mediana p50 no empeora y p99 dentro o debajo del rango del baseline.
+Frío real: LMU 98→116 µs (1,18×), ACC 44→55 µs (1,24×), límite 1,5×; caché por hechos exactos sin Look y con invalidación probada.
+Tandas/capturas/cifras completas: C:/tmp/auditoria-arquitectura-v2/evidence-1531/performance/standings-gate-five-rounds.{json,md}.
+Siguiente: Relative → Delta → Fuel; Fuel solo tendrá un historial de consumo. No se toca IPC (#1530).
+
+### Historial conservado de la integración base
+
 ## #1496 — promoción a nightly autorizada el 2026-10-10
 
 ## #1536 · reproducción completa y cierre de los harness restantes (#1557)

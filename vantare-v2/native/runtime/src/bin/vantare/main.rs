@@ -145,6 +145,7 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
             other => return Err(format!("argumento desconocido: {other}")),
         }
     }
+    validate_core_pipe(&config.core.args)?;
     if let Some(engineer) = &mut config.engineer {
         engineer.path = engineer_bin;
         if let Some(pipe) = config.core.args.windows(2).find(|pair| pair[0] == "--pipe") {
@@ -181,6 +182,13 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
         }
     }
     Ok(config)
+}
+
+fn validate_core_pipe(args: &[String]) -> Result<(), String> {
+    if args.iter().filter(|arg| *arg == "--pipe").count() > 1 {
+        return Err("--pipe del núcleo no se puede repetir".into());
+    }
+    Ok(())
 }
 
 fn binary_name(name: &str) -> String {
@@ -617,6 +625,18 @@ fn main() -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn duplicate_core_pipe_is_rejected_before_wiring_consumers() {
+        for prefix in [vec![], vec!["--engineer", "cursor.json"]] {
+            let mut command = prefix;
+            command.extend(["--", "--live", "--pipe", "a", "--pipe", "b"]);
+            assert!(
+                parsed(&command).is_err(),
+                "duplicated pipe must be rejected"
+            );
+        }
+    }
 
     #[test]
     fn engineer_start_requires_fresh_error_free_module_permission() {

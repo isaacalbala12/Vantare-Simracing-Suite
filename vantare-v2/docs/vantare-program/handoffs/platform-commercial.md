@@ -1,5 +1,29 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1536 · sincronización con nightly para PR (2026-10-10)
+
+Las tres rondas y la auditoría de telemetría están integradas en
+vantareapp/isa-1536-arreglos-revision. Tras los cuatro merges --no-ff de R3
+(#1556/#1554/#1555/#1553), se fusionó origin/nightly por merge normal
+185404a6c3696c716af6e4b886c818772578a0e7, con segundo padre
+f49d71f4f1ab9d1a424d2bba18895ddcdf87b601, squash publicado de #1550.
+Los 108 conflictos de historial se resolvieron conservando nuestro contenido,
+según instrucción de Isaac. Tras ello se recuperó el cierre diferido headless de #1550 en tres casos del Hub, sin cambiar aserciones, para evitar bloquear Calloop/Linux; ambos archivos de tests quedan idénticos a nightly.
+La auditoría confirma los 22 archivos y los 17 tests nuevos de R3 intactos;
+corpus/goldens y archivos reservados a #1531 no cambian por esta sincronización.
+
+El gate de integridad detectó diez pins pendientes de la entrega revisada
+6094472e (#1551/#1552). El manifiesto registra sus SHA-256 actuales, los
+anteriores y la procedencia; conserva source_sha256 y la migración #1530.
+Verificador, tests, corpus fuente y baselines históricos intactos: 456/456
+huellas y 31 tests de tooling PASS. Gates nativos tras nightly: fmt PASS; Clippy -D warnings PASS; Nextest 1526/1526 (7 skips heredados de la suite general); lifecycle 18/18; telemetría 25/25 (0 skips). Recovery/status_process sin fallos ni reintentos. Fmt, Clippy y Nextest se repitieron tras recuperar el harness headless. Código/harness probado d3ff5919e3e819b92ec563f90364eabbb076439d; árbol native cbc10c77dca49a6122e6cdc4798dd4aea8271ab3.
+
+Canal actual: rama de issue, PR a nightly PENDIENTE. Autorizados push y PR;
+esperar CI y dejar el PR abierto sin fusionarlo. #1531 sigue aparte hasta su
+revisión. Buzón C:/tmp/buzon/integracion-r2.md; informe y logs en
+C:/tmp/review-full/. Sin delegación, release ni QA visual nueva; se respeta
+pantalla-ocupada. Las entradas siguientes conservan el historial anterior.
+
 ## #1536 · ronda 3 integrada localmente (2026-10-10)
 
 Cuatro merges --no-ff en orden #1556/#1554/#1555/#1553 sobre a410cb46, sin conflictos; 4/4 checks por cola PASS. Código integrado 42a14e166e3eb30f87365693f6145de19fac6d65; árbol native 3cba75c6574625a7435bd8906261a8b2aaa44f80. Gates finales por cola: fmt y Clippy -D warnings PASS; Nextest 1526/1526 (7 skips heredados del perfil), lifecycle 18/18 y telemetría 25/25 (0 skips). Engineer recovery/status_process pasa sin fallos ni reintentos. 22 archivos nativos idénticos a las ramas aceptadas, 17 tests nuevos conservados; corpus/goldens y archivos excluidos #1531 intactos.

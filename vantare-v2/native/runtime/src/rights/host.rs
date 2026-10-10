@@ -304,7 +304,10 @@ fn new_usage_session(
     previous: &mut Option<(u64, u64)>,
 ) -> Option<&'static str> {
     if !is_live(snapshot) {
-        if snapshot.state.source_state != SourceState::Stale {
+        if !matches!(
+            snapshot.state.source_state,
+            SourceState::Stale | SourceState::Paused
+        ) {
             *previous = None;
         }
         return None;
@@ -353,6 +356,30 @@ fn spawn_timer(
 #[cfg(test)]
 mod response_tests {
     use super::*;
+
+    #[test]
+    fn paused_session_resumes_without_duplicate_usage_and_new_session_still_counts() {
+        let mut snapshot = Snapshot::default();
+        snapshot.origin.source.simulator = "lmu";
+        snapshot.state.source_state = SourceState::Live;
+        let mut previous = None;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), Some("lmu"));
+        snapshot.state.source_state = SourceState::Paused;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), None);
+        snapshot.state.source_state = SourceState::Live;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), None);
+        snapshot.state.session.id.0 += 1;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), Some("lmu"));
+        snapshot.state.source_state = SourceState::Paused;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), None);
+        snapshot.epoch += 1;
+        snapshot.state.source_state = SourceState::Live;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), Some("lmu"));
+        snapshot.state.source_state = SourceState::Waiting;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), None);
+        snapshot.state.source_state = SourceState::Live;
+        assert_eq!(new_usage_session(&snapshot, &mut previous), Some("lmu"));
+    }
 
     #[test]
     fn usage_session_is_once_per_live_session_without_replay_or_stale_events() {

@@ -221,6 +221,13 @@ fn split_utc(value: &str) -> io::Result<(&str, i128)> {
     else {
         return Err(bad());
     };
+    if parts.next().is_some()
+        || !(0..24).contains(&h)
+        || !(0..60).contains(&m)
+        || !(0..60).contains(&s)
+    {
+        return Err(bad());
+    }
     let fraction = format!("{fraction:0<9}");
     let nanos = fraction
         .get(..9)
@@ -297,6 +304,34 @@ mod tests {
     use vantare_domain::Adapter;
 
     use super::*;
+
+    #[test]
+    fn utc_rejects_out_of_range_or_extra_clock_components() {
+        for time in [
+            "25:00:00",
+            "24:00:00",
+            "10:60:00",
+            "10:00:60",
+            "-1:00:00",
+            "10:00:00:99",
+            "170141183460469231731687303715884105727:00:00",
+        ] {
+            let stamp = format!("2026-10-10T{time}.0Z");
+            assert!(Clock::new(&stamp).is_err(), "aceptado {stamp}");
+            assert!(
+                Clock::new("2026-10-10T10:00:00.0Z")
+                    .unwrap()
+                    .at(&stamp)
+                    .is_err(),
+                "aceptado {stamp}"
+            );
+        }
+        let clock = Clock::new("2026-10-10T00:00:00.0Z").unwrap();
+        assert_eq!(
+            clock.at("2026-10-10T23:59:59.999999999Z").unwrap(),
+            Duration::from_nanos(86_400_999_999_999)
+        );
+    }
 
     fn tar(files: &[(&str, &[u8])]) -> Vec<u8> {
         let mut out = Vec::new();

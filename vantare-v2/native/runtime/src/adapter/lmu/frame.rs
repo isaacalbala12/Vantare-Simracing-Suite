@@ -25,6 +25,9 @@ const SUPPORTED_BUILDS: &[&str] = &["1.3.0.0", "1.4.0.0", "1.4.1.3", "1.4.2.0"];
 const MAX_SESSION_LAPS: u32 = 10_000;
 /// Cotas del delta nativo: fuera de ±10 000 s el valor es un marcador, no un delta.
 const DELTA_LIMIT_S: f64 = 10_000.0;
+/// Presupuesto de alineación igual al de frescura LMU; también en la grabadora,
+/// que admite frames con este módulo sin el reloj de frescura del adaptador.
+const MAX_SCORING_LAG_S: f64 = 0.5;
 
 pub(super) fn supports_build(build: &str) -> bool {
     SUPPORTED_BUILDS.contains(&build)
@@ -546,7 +549,15 @@ fn scoring_lag_s(scoring: Pose, telemetry: Pose, velocity: Option<[f64; 2]>) -> 
     }
     let dx = telemetry.x_m - scoring.x_m;
     let dy = telemetry.y_m - scoring.y_m;
-    (dx * x + dy * y) / squared
+    let lag = (dx * x + dy * y) / squared;
+    // No extrapolar más allá del presupuesto de frescura de LMU (500 ms).
+    // Un salto no compatible conserva las poses scoring originales, sin clamp
+    // que invente movimiento para todos los rivales.
+    if lag.is_finite() && lag.abs() <= MAX_SCORING_LAG_S {
+        lag
+    } else {
+        0.0
+    }
 }
 
 /// Velocidad en el mundo, en el plano del suelo (`x`, `y = z`): las columnas
@@ -818,6 +829,29 @@ mod tests {
     }
 
     #[test]
+    fn teleport_disagreement_does_not_extrapolate_rival_poses() {
+        let mut bytes = REAL_44.to_vec();
+        let scoring_base = SCORING_BASE + 43 * SCORING_STRIDE;
+        let telemetry_base = TELEMETRY_BASE + 43 * TELEMETRY_STRIDE;
+        let scoring = pose(&bytes, scoring_base + 264, scoring_base + 336).unwrap();
+        let velocity = world_velocity(&bytes, telemetry_base + 184, telemetry_base + 232).unwrap();
+        for (offset, value) in [
+            (160, scoring.x_m + velocity[0] * 60.0),
+            (176, scoring.y_m + velocity[1] * 60.0),
+        ] {
+            bytes[telemetry_base + offset..telemetry_base + offset + 8]
+                .copy_from_slice(&value.to_le_bytes());
+        }
+        let frame = admit(&bytes, "1.3.0.0").unwrap();
+        let raw = pose(&bytes, SCORING_BASE + 264, SCORING_BASE + 336).unwrap();
+        assert_eq!(
+            frame.vehicles[0].pose.unwrap(),
+            raw,
+            "no desplazar rivales por teletransporte del jugador"
+        );
+    }
+
+    #[test]
     fn best_and_current_sectors_come_from_the_cumulative_sdk_fields() {
         let mut bytes = REAL_44.to_vec();
         let base = SCORING_BASE;
@@ -861,7 +895,9 @@ mod tests {
         };
         assert!(scoring_lag_s(still, moved, Some([0.5, -0.5])).abs() < f64::EPSILON);
         assert!(scoring_lag_s(still, moved, None).abs() < f64::EPSILON);
-        assert!((scoring_lag_s(still, moved, Some([2.0, 0.0])) - 1.5).abs() < 1e-9);
+        assert!(scoring_lag_s(still, moved, Some([2.0, 0.0])).abs() < f64::EPSILON);
+        let within_budget = Pose { x_m: 0.3, ..moved };
+        assert!((scoring_lag_s(still, within_budget, Some([2.0, 0.0])) - 0.15).abs() < 1e-9);
     }
 
     #[test]

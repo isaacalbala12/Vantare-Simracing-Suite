@@ -125,7 +125,10 @@ impl Acc {
             match socket.recv(&mut self.buffer) {
                 Ok(n) => {
                     self.last_udp = Some(now);
+                    let connection = self.translator.connection;
                     changed |= self.translator.udp(&self.buffer[..n], now)?;
+                    // Otro registro retira velocidades aunque no sea una muestra.
+                    changed |= connection != self.translator.connection;
                 }
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => return Err(e),
@@ -188,33 +191,51 @@ impl Adapter for Acc {
             self.disconnect();
         }
         let mut changed = false;
+        let mut rejected_page = false;
         // static primero en vivo: no publicar una página sin versión inicializada.
         for i in [2, 0, 1] {
             if let Some(page) = &self.pages[i] {
                 match page.stable(i != 2) {
                     Ok(bytes) => {
-                        changed |= self
-                            .translator
-                            .shm(
-                                u8::try_from(i).map_err(|_| AdapterError::Disconnected)?,
-                                bytes,
-                                now,
-                            )
-                            .map_err(|_| {
-                                AdapterError::Rejected("página ACC sin layout admitido".into())
-                            })?;
+                        if let Ok(updated) = self.translator.shm(
+                            u8::try_from(i).map_err(|_| AdapterError::Disconnected)?,
+                            bytes,
+                            now,
+                        ) {
+                            changed |= updated;
+                        } else {
+                            rejected_page = true;
+                            break; // Static desconocida: no interpretar physics/graphics.
+                        }
                     }
                     Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
                     Err(_) => self.pages[i] = None,
                 }
             }
         }
+        let mut receive_failed = false;
         match self.receive(now) {
             Ok(received) => changed |= received,
             Err(error) => {
                 eprintln!("broadcasting ACC: {error}; reconectando");
                 self.disconnect(); // SHM sigue operativa y UDP envejece por señal.
+                receive_failed = true; // Puede haber cambios aceptados antes del error.
             }
+        }
+        if rejected_page {
+            self.latest = None; // La recuperación debe publicar también UDP recibido aquí.
+            return Err(AdapterError::Rejected(
+                "página ACC sin layout admitido".into(),
+            ));
+        }
+        if !changed
+            && !receive_failed
+            && self
+                .latest
+                .as_ref()
+                .is_some_and(|old| !self.translator.needs_refresh(old.origin.received_at, now))
+        {
+            return Ok(None);
         }
         let Some(observation) = self.translator.observe(now) else {
             return Err(AdapterError::Disconnected);
@@ -228,6 +249,11 @@ impl Adapter for Acc {
             self.latest = Some(observation.clone());
             Ok(Some(observation))
         } else {
+            // Se cruzó una caducidad sin efecto visible (p. ej. una fuente no
+            // usada). Confirmarla también evita reconstruir en cada poll futuro.
+            if let Some(latest) = &mut self.latest {
+                latest.origin.received_at = now;
+            }
             Ok(None)
         }
     }

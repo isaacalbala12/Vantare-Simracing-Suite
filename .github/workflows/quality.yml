@@ -58,7 +58,7 @@ jobs:
       - name: Test workspace
         env:
           NEXTEST_TEST_THREADS: '1'
-        run: cargo nextest run --workspace --locked -j 2
+        run: cargo nextest run --workspace --locked -j 2 --no-fail-fast
 
       - name: Test real telemetry corpus
         env:

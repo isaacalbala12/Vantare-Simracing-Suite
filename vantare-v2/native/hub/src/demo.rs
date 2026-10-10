@@ -734,6 +734,27 @@ impl CaptureState {
 mod tests {
     use super::*;
 
+    fn launcher_store_on_host(
+        name: &str,
+        demo: &DemoData,
+    ) -> Result<crate::launcher::Store, String> {
+        let mut local = demo.clone();
+        // Las referencias congeladas usan C:/QA. Solo la copia del banco
+        // adapta sus rutas a Unix; no se escribe ni ejecuta ningún archivo.
+        if !cfg!(windows) {
+            for app in &mut local.launcher.apps {
+                if let Some(path) = &mut app.executable_path {
+                    assert!(path.to_string_lossy().starts_with("C:/QA/"));
+                    let filename = path.file_name().expect("fixture con nombre de ejecutable");
+                    *path = std::env::temp_dir()
+                        .join("vantare-capture-qa")
+                        .join(filename);
+                }
+            }
+        }
+        crate::launcher::demo_store(std::env::temp_dir().join(name), &local)
+    }
+
     #[test]
     fn home_capture_states_are_explicit_and_empty_scenes_have_no_profiles() {
         for name in [
@@ -997,7 +1018,7 @@ mod tests {
         assert_eq!(home.launcher.profiles.len(), 3);
         assert_eq!(home.launcher.profiles[0].name, "Carrera LMU");
         assert_eq!(home.launcher.profiles[0].last_ready_steps, Some(4));
-        crate::launcher::demo_store(std::path::PathBuf::from("C:/QA/launcher.json"), &home)?;
+        launcher_store_on_host("launcher.json", &home)?;
         Ok(())
     }
 
@@ -1016,10 +1037,7 @@ mod tests {
             demo.apply_capture(&capture)?;
             assert!(demo.overlay_profile().is_some());
             assert_eq!(demo.launcher.profiles.len(), 3);
-            crate::launcher::demo_store(
-                std::path::PathBuf::from("C:/QA/home-quality.json"),
-                &demo,
-            )?;
+            launcher_store_on_host("home-quality.json", &demo)?;
             assert_eq!(
                 demo.user.full_name.starts_with("PilotoConNombre"),
                 name == "inicio-nombre-largo"
@@ -1076,7 +1094,7 @@ mod tests {
             assert!(demo.overlay_profile().is_none());
             assert_eq!(demo.launcher.profiles[0].name, "Carrera LMU");
             assert_eq!(demo.launcher.profiles[0].steps.len(), 4);
-            crate::launcher::demo_store(std::path::PathBuf::from("C:/QA/showcase.json"), &demo)?;
+            launcher_store_on_host("showcase.json", &demo)?;
         }
         Ok(())
     }

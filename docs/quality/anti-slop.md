@@ -1,5 +1,7 @@
 # Vantare anti-slop: criterios de diseño
 
+> #1533 retira los analizadores de producto Go/React descritos aquí. Sus baselines quedan como evidencia sin recalibrar; el gate actual valida integridad y los jobs nativos ejecutan fmt/Clippy/Nextest/lifecycle/telemetría. Los tests puros de identidad/ratchet se conservan.
+
 Este documento define la política de calidad "anti-slop" de Vantare como
 **criterios de diseño**, no como prohibiciones sintácticas. El objetivo no es
 reducir líneas de código ni silenciar avisos: es impedir que la complejidad

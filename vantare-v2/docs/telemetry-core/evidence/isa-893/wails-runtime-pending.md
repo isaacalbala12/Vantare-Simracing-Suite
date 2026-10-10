@@ -1,5 +1,7 @@
 # ISA-893 — prueba Wails/LMU real del catálogo completo
 
+> #1533: comandos Go/React retirados. Scripts originales congelados como texto en `native/retirement/legacy-evidence`; este documento conserva historia, no un procedimiento ejecutable actual.
+
 ## Resultado
 
 La segunda revalidación física del HEAD corregido tras la review de PR #941

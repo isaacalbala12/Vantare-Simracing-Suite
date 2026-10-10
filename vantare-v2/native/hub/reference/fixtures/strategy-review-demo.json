@@ -1,0 +1,884 @@
+{
+  "label": "2026-09-15 · Imola Race",
+  "source": {
+    "base": {
+      "sessionId": "imola-race",
+      "contentSha256": "76bdfae6653a7dc7574fbea50de484df5ea9294ed315585eae9889a11bd11f7a",
+      "sizeBytes": 4096,
+      "parserId": "vantare-demo-recording",
+      "parserVersion": "1",
+      "schemaFingerprint": "0e7d7756a55d0b305894fb81175c2a6924e9a471f2dd4e0dcb450cd4b3602102",
+      "analysisVersion": "analysis.v1",
+      "segmentationDigest": "1a47ec0cbbde16e4c6ba0057de0f6d849a8c51f49ad7d68eda450b6c93fcd955"
+    },
+    "revision": {
+      "sessionId": "imola-race",
+      "baseDigest": "0000000000000000000000000000000000000000000000000000000000000000",
+      "revisionId": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "snapshotId": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "validity": {
+      "sessionId": "imola-race",
+      "computationVersion": "analysis.v1",
+      "temporal": {
+        "contractVersion": "temporalsegments.v1",
+        "segments": [
+          {
+            "segmentId": "demo-recording-coverage",
+            "sessionStartTs": "2026-09-15T12:00:00Z",
+            "sessionEndTs": "2026-09-15T18:00:00Z",
+            "reason": "recorded",
+            "presence": "valid",
+            "provenance": {
+              "kind": "recorded"
+            },
+            "confidence": {
+              "sampleSize": 25,
+              "computationVersion": "analysis.v1"
+            }
+          }
+        ],
+        "gaps": null,
+        "lapBoundaries": null,
+        "stintBoundaries": null
+      },
+      "laps": [
+        {
+          "number": 21,
+          "start": "2026-09-15T12:00:00Z",
+          "end": "2026-09-15T12:01:45Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 22,
+          "start": "2026-09-15T12:01:45Z",
+          "end": "2026-09-15T12:03:30Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 23,
+          "start": "2026-09-15T12:03:30Z",
+          "end": "2026-09-15T12:05:15Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 24,
+          "start": "2026-09-15T12:05:15Z",
+          "end": "2026-09-15T12:07:00Z",
+          "complete": false,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": false,
+              "exclusionReasons": [
+                "incomplete"
+              ]
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": false,
+              "exclusionReasons": [
+                "incomplete"
+              ]
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": false,
+              "exclusionReasons": [
+                "incomplete"
+              ]
+            },
+            {
+              "family": "tyre_degradation",
+              "included": false,
+              "exclusionReasons": [
+                "incomplete"
+              ]
+            },
+            {
+              "family": "saving_cost",
+              "included": false,
+              "exclusionReasons": [
+                "incomplete"
+              ]
+            }
+          ]
+        },
+        {
+          "number": 25,
+          "start": "2026-09-15T12:07:00Z",
+          "end": "2026-09-15T12:08:45Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 26,
+          "start": "2026-09-15T12:08:45Z",
+          "end": "2026-09-15T12:10:30Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 27,
+          "start": "2026-09-15T12:10:30Z",
+          "end": "2026-09-15T12:12:15Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 28,
+          "start": "2026-09-15T12:12:15Z",
+          "end": "2026-09-15T12:14:00Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 29,
+          "start": "2026-09-15T12:14:00Z",
+          "end": "2026-09-15T12:15:45Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 30,
+          "start": "2026-09-15T12:15:45Z",
+          "end": "2026-09-15T12:17:30Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 31,
+          "start": "2026-09-15T12:17:30Z",
+          "end": "2026-09-15T12:19:15Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 32,
+          "start": "2026-09-15T12:19:15Z",
+          "end": "2026-09-15T12:21:00Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 33,
+          "start": "2026-09-15T12:21:00Z",
+          "end": "2026-09-15T12:22:45Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 34,
+          "start": "2026-09-15T12:22:45Z",
+          "end": "2026-09-15T12:24:30Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 35,
+          "start": "2026-09-15T12:24:30Z",
+          "end": "2026-09-15T12:26:15Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 36,
+          "start": "2026-09-15T12:26:15Z",
+          "end": "2026-09-15T12:28:00Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 37,
+          "start": "2026-09-15T12:28:00Z",
+          "end": "2026-09-15T12:29:45Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 38,
+          "start": "2026-09-15T12:29:45Z",
+          "end": "2026-09-15T12:31:30Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 39,
+          "start": "2026-09-15T12:31:30Z",
+          "end": "2026-09-15T12:33:15Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 40,
+          "start": "2026-09-15T12:33:15Z",
+          "end": "2026-09-15T12:35:00Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 41,
+          "start": "2026-09-15T12:35:00Z",
+          "end": "2026-09-15T12:36:45Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 42,
+          "start": "2026-09-15T12:36:45Z",
+          "end": "2026-09-15T12:38:30Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 43,
+          "start": "2026-09-15T12:38:30Z",
+          "end": "2026-09-15T12:40:15Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 44,
+          "start": "2026-09-15T12:40:15Z",
+          "end": "2026-09-15T12:42:00Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        },
+        {
+          "number": 45,
+          "start": "2026-09-15T12:42:00Z",
+          "end": "2026-09-15T12:43:45Z",
+          "complete": true,
+          "familyUse": [
+            {
+              "family": "fuel_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "virtual_energy_consumption",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "combined_stint_pace_curve",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "tyre_degradation",
+              "included": true,
+              "exclusionReasons": null
+            },
+            {
+              "family": "saving_cost",
+              "included": true,
+              "exclusionReasons": null
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

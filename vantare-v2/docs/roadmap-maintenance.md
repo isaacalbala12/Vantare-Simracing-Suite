@@ -3,7 +3,10 @@
 Isaac comunica los cambios a Codex por chat. Codex actualiza una única
 publicación compartida en Supabase; la app solo la muestra como línea temporal,
 tablero por estado y gráfico de distribución. No hay editor en la app, archivo
-de contenido ni generador.
+de contenido ni generador en la app. El feedback del 9-oct (#1496) añade una
+herramienta externa para preparar la sincronización manual desde ClickUp;
+consultar [runbook y límites de activación](clickup-roadmap-sync.md). No ha
+sido activada en producción.
 
 ## Actualización solicitada por Isaac
 
@@ -11,7 +14,8 @@ de contenido ni generador.
    proyecto Supabase de destino. Si no hay publicación, comenzar con
    `{"schemaVersion":1,"items":[]}`.
 2. Preparar los cambios solicitados conservando los identificadores de hitos
-   existentes. Cada hito tiene `id` UUID, `section` (`done`, `now` o `next`),
+   existentes. Cada hito tiene `id` UUID, `section` (`done`, `now`, `next` o
+   `later` tras aplicar la migración y verificar consumidores),
    `title` y `body` en `es`, `en`, `pt`, `it`. El título español es obligatorio;
    las demás traducciones pueden quedar vacías y la app mostrará español.
    El orden de los hitos dentro de cada estado es el orden de `items`.

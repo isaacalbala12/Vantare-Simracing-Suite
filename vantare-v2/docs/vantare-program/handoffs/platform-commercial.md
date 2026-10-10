@@ -1,5 +1,445 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1496 — integración local de arquitectura, ola 1 (2026-10-09)
+
+Integradas en orden #1534, #1533, #1530, #1529 y #1532 sobre `5e1da3f6`,
+con un merge --no-ff por rama en `vantareapp/isa-1496-integracion-prueba`.
+Checks workspace/all-targets tras los cinco merges PASS. Gates por cola:
+fmt, Clippy -D warnings, Nextest 1411/1411 (7 skips heredados, sin fallos ni
+reintentos), lifecycle 18/18 y telemetría 21/21, sin omisiones, PASS.
+Conflictos: AGENTS conserva la retirada y GitHub; handoffs acumulan entregas;
+contrato Services queda en ipc con v5 y paths locales; diagnóstico de conexión
+de #1530 preservado, un aviso por modo del Hub, sin cambios extra a access/Feed.
+Icono compartido en native/assets/icon.ico y mapa/documentación de 13 crates.
+86 pins de fixtures/docs reconciliados con la entrega exacta #1530 y la base:
+datos JSON/gzip conservados salvo etiqueta DTO; source_sha256 retiene origen,
+ACC v8 sigue fijado por el hash original y su regresión. Los 456 pins pasan.
+Rutas activas verificadas en native/.github/scripts; referencias históricas
+conservadas, ámbito automático frontend rechazado. Inventario, resoluciones,
+logs e informe: C:/tmp/auditoria-arquitectura-v2/integracion-* e
+informe-integracion-ola1.md. Árbol nativo validado:
+`c954fc3ff30333082056db5e04d97ba807eb1cae`.
+Sin push, PR, CI remota, promoción a nightly, release, deploy, instalación ni
+QA visual/Google/portal real/LMU/OBS física. No ventanas ni cambios de usuarios.
+Siguiente: revisión del orquestador; aceptación de Isaac antes de promoción.
+
+## #1533 — retirada Wails/React (2026-10-09)
+
+Entrega local en `C:/tmp/vw3-1533`, rama `vantareapp/isa-1533-retirar-wails`,
+base `5e1da3f6`; plan aprobado por Isaac, siete hitos en orden.
+Retirados frontend/cmd/internal/pkg/build, raíz Go, arranque y runners
+exclusivos. Cuatro workflows pasan a gates nativos o cierre fail-closed;
+`release.yml` no construye ni publica. Autorización automática nativa no ampliada.
+README/AGENTS solo ajustan referencias retiradas; historia útil enlazada al SHA
+original. Tests de analizadores Go/React archivados; ratchet puro conservado.
+456 hashes conservados y comprobados contra blobs staged; las 451 entradas del
+primer commit permanecen idénticas. Corpus LMU/ACC/Strategy, escenas, goldens,
+marca, fuentes, voz, calendario y perfil v2 conservados para sus consumidores.
+Supabase íntegro: solo tests contractuales adaptados; funciones/migraciones
+sin cambios. Scripts independientes de calendario, voz y medición siguen.
+Go histórico mínimo con licencia, fuentes y SHA-256 en `tools/frozen-go`, sin
+`.env*`. Tras borrar compilan los tres módulos; LMU reproduce los mismos 72
+resultados y manifiesto/horarios. No se recalculan expectativas desde Rust.
+Antes de borrar: fmt/check/Clippy, Nextest 1402/1402 (7 skips), lifecycle y
+telemetría 21/21 PASS. Primer intento tuvo EOF al iniciar Engineer: caso aislado
+y suite completa serial PASS sin cambios ni relajación de tests; logs conservados.
+Tras retirar: fmt/check/Clippy, Nextest 1402/1402 y lifecycle PASS. Telemetría
+repetida por cola tras el reinicio T3: 21/21 PASS. Logs incompletos originales
+conservados; cierre en `telemetria-cierre-1533.log`, sin cambiar tests ni fuentes.
+Python 300, Node 32, Deno 35, configuración pública 24, marca y goldens PASS.
+Packaging 175 PASS con artefacto beta anterior `00f37fef`, no distribuible nuevo.
+Evidencia en `C:/tmp/auditoria-arquitectura-v2/evidence-1533/` y logs adyacentes;
+informe de cierre `C:/tmp/auditoria-arquitectura-v2/informe-1533.md` al acabar.
+Coordinar #1530 (AGENTS/README, DTO y pins de fixtures) y #1534 (windows-icon:
+conservar `native/assets/icon.ico`). Roadmap ausente en esta base, tarea #1530.
+Sin push, PR, merge, promoción, release, deploy ni cambios de datos reales.
+CI remota, paquete del SHA final y LMU/OBS real no ejecutados en este alcance.
+Rollback: revertir los siete commits en orden inverso, sin reset/clean ajenos.
+Entrega local terminada; informe y comentario en GitHub #1533. Siguiente:
+revisión e integración del orquestador, sin promoción ni publicación automática.
+
+## #1530 — contrato nativo v9 (2026-10-09)
+
+Rama `vantareapp/isa-1530-contrato`, base `5e1da3f6`; código local
+`02981840`, docs `ca2ceb2b`, goldens `320744e8`, cierre del diagnóstico `de72d9cb`.
+Fotos live estrictas v9; Studio/Workshop/exportaciones conservan v7/v8/v9 con
+`snapshot_from_saved_json`; helper de fixtures explícito y 85 JSON regenerados.
+Fixture v8 real congelada de la base en ipc/tests; el test abre v7/v8 sin
+reescribir el archivo. Inventario completo externo: 1530-consumidores.md.
+`runtime/flows/wire.rs` es live estricto. DuckDB guarda SeriesChunk y recording
+Event, no SnapshotDto: sus contratos no cambian.
+Aviso único de conexión en Hub y primer monitor de overlays, estable durante
+reintentos; no modifica acceso/licencia. Versión de servicios/control sigue v4.
+README, AGENTS GitHub/nightly y native/AGENTS (§10) actualizados; ADR 0100
+registra Clerk/Polar/Supabase y pendientes de confirmar con #1514. Seam de
+proyección única explícitamente en curso, #1531.
+Gates por cola: fmt y Clippy -D warnings verdes; Nextest 1406/1406 (7 skips
+canónicos), lifecycle 18/18; telemetría 21/21 (0 skips, ACC 602.540 s).
+Los 190.308 DTO ACC pasan hash v9 y hash v8 conservado, cambiando solo la
+etiqueta; 85 JSON y 10/3839/8 fotos gzip verificadas directamente contra Git
+base byte a byte salvo versión. Sin ampliar tolerancias ni tocar corpus/oráculos.
+Fallos iniciales conservados: cleanup Launcher con PermissionDenied (repetición
+con 2 threads verde), LF de fixture y goldens v8 corregidos, punto y coma de
+Clippy. Replay cortado por reinicio T3 sin resumen no cuenta como verde;
+repetición íntegra: C:/tmp/auditoria-arquitectura-v2/1530-telemetria-reinicio.log.
+Evidencia, lista exacta de archivos y verificación manual en ese directorio;
+informe-1530.md y comentario final en la issue. QA visual del banner, instalación
+mixta real, Linux/macOS y CI remota no ejecutados; no se afirma prueba física.
+Plan de partición de vistas ya grandes, fuera de #1530: Studio → canvas,
+inspector y catálogo/fotos (P1-A); services/view → cuenta, reportes y estado
+(P3), con sus propias issues. Aquí solo se adapta lector/diagnóstico.
+Siguiente paso: revisión del orquestador; integrar los hunks diagnósticos de
+services/view con #1529, preservar widgets de #1531 y retirada de legado #1533.
+Entrega local terminada; issue abierta para review. Sin push, PR, CI remota,
+promoción, merge, release, deploy ni acciones comerciales. No se recrea roadmap.
+
+## #1529 — licencia estable y avatar Clerk (2026-10-09)
+
+Implementación aislada en `C:/tmp/vw3-1529/vantare-v2`, rama
+`vantareapp/isa-1529-licencia-avatar`, base exacta `5e1da3f6`; sin push ni PR.
+El Feed introducido en F4 borraba una política aún vigente ante un error breve
+de transporte. Conserva ahora solo esa observación hasta su TTL original de
+2 s, sin modificar `checked_at_ms`, revisión, caducidad ni capacidades. Respuestas
+definitivas, revocación, protocolo/peer inválido, expiración y logout deniegan.
+Sigue existiendo un único lector de política, independiente de OAuth/HTTP;
+los heartbeats iguales no activan User ni cambian la proyección del Hub.
+Se conservan las regresiones #1480 y F2/F4/F5, incluida recuperación por Cuenta.
+
+Clerk OAuth devuelve el perfil como `name`/`picture`; también se admite
+`image_url`. Servicios valida el sujeto y descarga únicamente la imagen del
+CDN Clerk mediante HTTPS, sin bearer/redirects, con límites de tiempo, bytes y
+decodificación. Se reutiliza image del lock y su codec PNG ya resuelto por GPUI.
+Una miniatura JPEG acotada llega por IPC a Cuenta y barra lateral; iniciales
+Unicode como respaldo. Los datos de presentación no vinculan UUID ni derechos.
+La caché protegida `account-profile` exige issuer/subject coincidentes; el formato
+persistido de la sesión OAuth se mantiene y actualizar perfil no escribe sus tokens.
+Cuenta abre `/user` del portal configurado (`accounts.vantare.app` en Production)
+y ofrece Actualizar foto al volver. Las sesiones previas sin perfil hacen una
+única carga silenciosa; un fallo deja iniciales sin bloqueos ni bucle de reintentos.
+No hay sondeo HTTP continuo del perfil.
+IPC de servicios pasa a v5: compilar Hub/supervisor/servicios de la misma entrega;
+IPC del núcleo y credencial firmada permanecen en v4/v1 respectivamente.
+
+Gates finales PASS: fmt, clippy workspace/all-targets con -D warnings, nextest
+1409/1409 (7 omitidas por el perfil), lifecycle 18/18 y telemetría 21/21.
+Un intento paralelo de nextest encontró el ejecutable de telemetría bloqueado
+por Windows; su log se conserva y la repetición en serie pasó sin cambios en tests.
+QA nativa PASS con el renderizador productivo y un peer IPC local autenticado
+de contrato: foto inicial/actualizada en Cuenta y barra lateral, renovación
+manual lenta de 3,5 s conserva derechos y logout limpia la foto. Siete capturas
+revisadas en 1440x900, 1280x720 y 1366x768; controles visibles, layout sin cambios,
+dos actualizaciones explícitas y una sola renovación manual, sin sondeo de licencia.
+El primer piloto visual superó el plazo del controlador de arranque y se conserva;
+la repetición completó la interacción y cerró su proceso. Evidencia propia:
+`C:/tmp/feedback-0910/evidence-1529/`; informe final de hasta ocho líneas:
+`C:/tmp/feedback-0910/informe-1529.md`. Compilación únicamente por la cola y
+respeto de `C:/tmp/fase2/pantalla-ocupada`. Sin cuentas/secretos/instalación real.
+Coordinación: PR #1523 leído; este handoff registra el portado necesario.
+La rama native #1514 `aacd1e4d` conserva UserInfo
+con solo sub y debe portar el avatar; esa rama permanece intacta. El defecto
+adicional del Feed corresponde a la integración F4, no a su HEAD remoto.
+Seguimiento GitHub conforme al encargo reciente, sobre referencias Notion antiguas.
+`docs/roadmap/plan.md` ausente en esta base y origin/nightly consultado; no recreado.
+Sin merge, promoción, release, despliegue ni cambios comerciales.
+Entrega local para revisión; sin CI remota. Google y edición real del portal
+pendientes de verificación manual con cuenta real: no se usó login comercial,
+secreto, instalación ni servicio desplegado en estas pruebas.
+
+
+## #1511 — nombre visible Vantare (2026-10-08)
+
+Entrega técnica verificada en `C:/tmp/vw3-1511/vantare-v2`, rama
+`vantareapp/isa-1511-nombre-vantare`, base candidata `a8f9bdc3`.
+Código `731af462624a482bdbdb2c62a5ac5b910a298bc4`, push verificado; PR draft
+[#1518](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1518)
+contra `vantareapp/isa-1470-candidato-beta` (base remota `a8f9bdc3`). CI recién
+iniciada (ratchet, native-linux y GitGuardian); no se afirma verde. Entrega
+para revisión del orquestador, sin integración ni publicación.
+NSIS/Inicio/DisplayName/ventana pasan a Vantare; la carpeta nueva por defecto
+es `Programs/Vantare`. Se conserva clave `VantareNativeBeta`, canal/tag/asset
+beta y la raíz de instalaciones anteriores: compatibilidad con el updater y
+su rollback, sin mover datos ni duplicar registros. El Hub sincroniza mediante
+`candidate.ps1` de su generación verificada, antes de hub-ready, aunque el
+bootstrap instalado sea antiguo. Inicio/Windows usan desinstalación durable
+para retirar accesos nuevos también en instalaciones migradas solo por feed.
+No cambia compra/login #1506, servicios remotos, claves ni publicación.
+
+PASS por cola: fmt/check/Clippy, Nextest 1216/1216 (6 skips heredados),
+lifecycle 18/18 y Hub Release propio. PS5.1 desde Bash: packaging 175, beta 99
+(+configuración 10), Setup NSIS 50, feed 9, desinstalación 2, guardas 2,
+MSIX/sintaxis 12 sin paquete Store real; sintaxis PS, changelog y diff PASS.
+Setup anterior 0.0.960 y nuevo 0.0.961 prueban cambio de nombre, datos exactos,
+rollback/versiones, rechazo 2/3/4, instalación limpia, reparación y reinstalación.
+Hub real confirma tras Setup y reparación (PIDs 22680/32720). Feed firmado con
+clave TEST y bootstrap antiguo: fallo real restaura generación/registro;
+reaplicación confirma Hub PID 6228, renombra y conserva hashes de ambos scripts
+raíz. Desinstalación registrada conserva datos y retira accesos también por feed.
+Tres capturas 1440×900/DPI100 inspeccionadas; ninguna instalación real modificada:
+huella de scripts/estado/registro de Isaac idéntica y sin registro/accesos/Hub QA.
+
+Evidencia, scripts y hashes: `C:/tmp/1511-nombre-evidence/`; Setup/paquetes
+QA en `E:/tmp/1511/0.0.960` y `0.0.961`. Se reutilizan nueve exe de #1492 y
+se recompila Hub Release: local, unsigned/source_dirty=true, no candidata del
+SHA completo. Plantilla NSIS productiva compila con nombre Vantare, sin ejecutarla.
+Se conservan fallos corregidos del harness: LASTEXITCODE no definido, portable
+no preparado y título consultado antes de mostrar el Hub oculto; además un
+turno de pantalla ocupado, respetado antes de abrir ventanas. Suites finales PASS.
+No prueba login real, feed publicado, LMU/OBS, Windows limpio, Mac ni DPI125.
+No gates Go/frontend ni telemetría larga: no cambian legado/runtime/domain/IPC
+ni testdata. Falta revisión independiente y build completa sobre la integración
+limpia antes de distribuir; siguiente paso: revisar la PR draft contra candidata.
+`docs/roadmap/plan.md` ausente también en origin/nightly consultado; no se recrea.
+Seguimiento GitHub por encargo, por encima de la regla Notion antigua de esta base.
+Sin merge, promoción, release ni acción de producción.
+
+## #1510 — Launch Edition y funciones posteriores (2026-10-08)
+
+Worktree `C:/tmp/vw3-1510/vantare-v2`, rama `vantareapp/isa-1510-le-bloqueo`,
+base exacta `a8f9bdc3`. Implementación aislada contra candidato beta, sin
+delegación y sin tocar #1506, precios, productos, compra ni producción.
+El núcleo distingue Free/LaunchV1/Pro a partir de derechos firmados vigentes;
+LE congela Standings/Relative/Delta/Pedals. Pro amplía durante su vigencia;
+canal/rol tester no amplían LE. Owner conserva QA. Calendario inicial;
+otros módulos requieren su capacidad existente y quedan fuera de LE.
+Control IPC v4, licencia firmada sin cambios. Studio conserva perfiles y
+muestra candado/«Incluida en Pro»; overlays no pintan/proyectan lo bloqueado.
+Inventario, límites, revisión del corte y QA real para Isaac:
+[contrato y runbook](../../billing/le-1510-catalogo.md).
+Check completo PASS por cola/-j2. Primera pasada Clippy detectó 101/100 líneas
+en `poll_source`; se extrajo su bloque de actualización de acceso, sin excepción
+al lint. Segunda pasada Clippy PASS; Nextest 1221/1221 PASS (6 excluidos del
+perfil habitual), lifecycle 18/18 PASS. Log fallido conservado; corpus de
+telemetría 21/21 PASS. Captura Debug falló por `GenericContainer` heredado,
+igual en la base; hallazgo separado [#1520](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1520),
+sin tocar sidebar/neo. Fmt/diff PASS. Tres capturas del Hub real en perfil
+`prueba`, 1440×900, inspeccionadas: Free bloquea Relative/Delta y conserva
+sus instancias; LE conserva los cuatro iniciales y bloquea módulos posteriores;
+Pro conserva acceso. Evidencia local `C:/tmp/lanzamiento/1510-capturas/`,
+políticas sanitizadas exportadas por tests con credenciales firmadas, sin
+cuentas reales. Intento adicional de catálogo abierto no completado: timeout
+del helper/mutex compartido; no se afirma esa aceptación visual. Selección
+por teclado/ratón y los 18 tipos están cubiertos por tests. No prueba backend,
+LMU/OBS, macOS, instalación ni release. Pendiente de revisión de Isaac;
+el informe `C:/tmp/lanzamiento/informe-1510.md` registra SHA/PR/CI finales.
+Código publicado en `e12aabaa6b03f11d52640b6edb656ec30b1b835d`,
+[PR draft #1522](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1522)
+contra `vantareapp/isa-1470-candidato-beta` remoto exacto `a8f9bdc3`.
+#1510 permanece abierta, Project Vantare en revisión. CI remoto en curso
+al entregar, sin aceptación/integración, merge, promoción ni release.
+La actualización documental posterior no cambia el código ya verificado.
+Roadmap `plan.md` ausente también en `origin/nightly`; no se recrea ni publica.
+Seguimiento GitHub por brief reciente, sin aplicar referencias Notion antiguas.
+
+## #1507 — Clerk Production nativo (2026-10-08)
+
+Continuación CLI autorizada por Isaac: cliente OAuth público Production creado
+con Clerk CLI 3.4.1; client ID `n5cqSYkpsTiEw6jk`, PKCE obligatorio, scopes
+openid/profile/offline_access, loopback `http://127.0.0.1/callback` (build puerto 0).
+Plantilla pública `native/packaging/build-config-production.template` añadida.
+PR #1523 `907989d6` inspeccionado: no cambia access.rs ni código nativo.
+Third-party auth, session token y webhooks reservados a #1514; servidor y
+prueba de login son dependencias. Orígenes raíz/www/accounts aplicados y
+allowlist de subdominios solo www/accounts; redirect loopback en cliente OAuth.
+Portal confirmado accounts.vantare.app para alta/reset; Paths web conservados.
+DNS/TLS/mail pendientes: cinco CNAME exactos enumerados en runbook, ninguno
+creado. Wrangler 4.149.0 no tiene comando ni scope DNS Write; sesión zone:read.
+No se extraen tokens para otra vía. Isaac debe añadirlos DNS only y desplegar
+certificados; Google también requiere credenciales propias. Login real no
+ejecutable todavía, ni build Production aceptada. Usuario de prueba existente
+elegido por Isaac, raíz QA aislada y servidor coordinado con #1514 pendientes.
+No usuarios ni secretos versionados. Esta autorización reemplaza la exclusión
+administrativa de la entrega original; no autoriza merge/promoción/release.
+Readback oficial 20:39 UTC PASS: cliente/PKCE/scopes/redirect, instancia,
+orígenes/allowlist, issuer/portal. DNS/TLS/mail not_started, dominio incomplete;
+cinco CNAME ausentes también en resolver local. PS5.1 configuración 21 PASS,
+plantilla 8 variables/solo client ID público PASS y diff-check PASS. Sin cambios
+Rust/Go/frontend/Deno: sus gates/build no se repiten. CI original 02f86218:
+native-linux FAIL por imports vantare_runtime::rights en Engineer/recovery;
+no reparado en este alcance. Informe CLI ≤10 líneas y evidencia pública externa
+en C:/tmp/lanzamiento/informe-1507-cli.md y C:/tmp/1507-clerk-cli/.
+
+Worktree `C:/tmp/vw3-1507/vantare-v2`, rama
+`vantareapp/isa-1507-clerk-produccion`, base candidata `a8f9bdc3`.
+Hub admite `VANTARE_CLERK_ACCOUNT_PORTAL_URL` como origen HTTPS DNS explícito
+para alta/reset; Development conserva la derivación si falta. Configuración
+inválida falla cerrada. No hay dependencias nuevas ni cambios en el checkout #1506.
+Issuer OAuth propio y validadores de servidor ya eran independientes del dominio;
+regresiones comprueban portal, configuración, cache discovery y descarte de
+sesión al cambiar issuer/client. OAuth no se transforma en JWT Supabase.
+Runbook: `docs/billing/clerk-production-runbook.md`, instancia/DNS Cloudflare,
+cliente público PKCE, variables de servidor, Third-Party Auth para sesión web,
+plantilla externa sin valores y prueba manual de login/corte/rollback.
+PASS: configuración PS5.1 21; validadores Deno 78; Rust check/Clippy
+`-D warnings`, Nextest 1220/1220 (6 skips previos, 1 slow PASS), lifecycle
+18/18. Compilaciones y gates por cola/-j2. `cargo fmt --all -- --check` PASS
+directo, sin compilación; su espera duplicada en cola se retiró únicamente
+tras comprobar proceso propio sin hijos (no un fallo de formato). Intento de
+beta-tests no ejecutado por faltar paquetes QA/firmador; no se fabrica evidencia
+productiva. Logs, archivos y detalle en `C:/tmp/1507-clerk-evidence/`; informe
+de hasta doce líneas en `C:/tmp/lanzamiento/informe-1507.md`.
+No se accede a `.env*`, credenciales, instalación real ni paneles de producción.
+Preguntas: checkout/variable final de web #1506 y vinculación de identidades
+Development existentes. Recomendación: alta nueva Production para QA y decidir
+vinculaciones antes de distribuir. Login real pendiente de preparación de Isaac.
+`docs/roadmap/plan.md` ausente también en `origin/nightly`; no se recrea.
+Seguimiento GitHub por encargo explícito, que prevalece sobre instrucciones
+históricas de Notion. Código `b5684da5` subido; entrega técnica en revisión en
+[PR draft #1516](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1516)
+contra `vantareapp/isa-1470-candidato-beta`. CI observada en curso sobre ese
+SHA; no se anuncia CI verde. Sin merge, promoción, release o cutover productivo.
+
+## #1492 — Setup encima y adopción de datos (2026-10-08)
+
+Ronda 2 sobre `072ca621`: códigos de bloqueo tipados en `Exception.Data`
+(2 sesión/binarios abiertos, 3 versión/datos superiores, 4 arranque pendiente).
+El código 4 tiene mensaje NSIS específico y conserva generación, datos y
+marcador exacto; el fallo posterior del Hub sigue restaurando la anterior.
+La identidad QA se escribe únicamente desde NSIS TEST en
+`registration-identity.txt`; el bootstrap valida ese dato y solo conoce
+`VantareNativeBeta` como predeterminado. Desinstalar QA retira el archivo.
+Setup reconstruidos mediante la cola, sin recompilar Rust: 33/33 PASS reales
+en raíz aislada; rollback y versión registrada anteriores recuperados. Sin
+registro/accesos QA restantes; huella comprobada de Isaac idéntica.
+Evidencia de esta ronda: `C:/tmp/1492-instalador-evidence/ronda2/`.
+Gates de ronda 2 PASS: packaging 174, beta 86 (+configuración 10), feed 9,
+desinstalación 2, guardas 2, MSIX 12 (sin paquete MSIX real), sintaxis y diff.
+Se conservó el fallo del lanzador PS5.1 al elevar stderr esperado de un
+negativo; repetición completa desde PS7 con suites PS5.1 PASS. Sin cambios
+Rust ni gates Rust; instaladores QA sin firma, mensajes verificados por códigos
+silenciosos. Entrega local pendiente de revisión del orquestador, sin push,
+PR, CI remoto, merge, promoción ni release; seguimiento en GitHub por encargo.
+
+Evidencia de la ronda 1:
+
+Rama `vantareapp/isa-1492-instalador-encima`, base `aa8ba9e1`, worktree
+`C:/tmp/vw3-1492-instalador/vantare-v2`. Continuación del intento interrumpido
+por disco lleno; se conservan y revisan sus cuatro archivos de packaging.
+Setup comparte Update/boot-pending/confirmación/rollback con el feed, reinstala
+la misma versión y rechaza versiones inferiores. Exige cerrar sesión y binarios
+sin matar procesos; el desinstalador conserva la referencia a los datos activos.
+Reinstalar adopta esa copia; copias antiguas distintas sin referencia se rechazan.
+QA usa dos instaladores 0.0.960/0.0.961, raíz y registro/accesos separados,
+target `E:/tmp/1492/target`, exclusivamente por la cola de compilación.
+Evidencia: `C:/tmp/1492-instalador-evidence/`; informe del worker:
+`C:/tmp/fase2/informe-1492-instalador.md`. PASS: packaging 174, beta 76,
+feed remoto firmado simulado 9, Setup NSIS 24 y desinstalación 2.
+Hub real 0.0.961 confirmó ventana tras actualizar y reparar (PIDs 17624/17208).
+Setup rechazó lock de sesión y Hub en uso con código 2, sin terminar esos PIDs;
+código 3 rechazó downgrade. Un Hub que salió con error antes de ready restauró
+generación, datos y versión registrada anteriores. Inicio apuntó al bootstrap QA.
+Capturas `primera-setup-updated.png` y `primera-setup-repaired.png` inspeccionadas;
+registro/accesos QA retirados y huella de scripts/estado/registro de Isaac idéntica
+antes/después. Los instaladores están en `E:/tmp/1492/0.0.960` y `0.0.961`;
+hashes en `artifacts.json`, Release sin firma y `source_dirty=true` (QA local).
+Se conservan logs de los fallos corregidos del harness: variable sobrescrita al
+cargar candidate, validación de JSON comprobada en el firmador en vez del
+verificador, y ruta NSIS con barras `/` en vez de ruta nativa Windows.
+Límites: no prueba login, carrera LMU, equipo limpio ni feed remoto productivo;
+datos antiguos distintos sin referencia requieren recuperación explícita.
+No hay push, PR, CI remoto, merge, promoción ni publicación. No se toca la
+instalación de Isaac ni su clave privada. `docs/roadmap/plan.md` no existe en
+esta base; no se recrea un roadmap fuera del alcance de packaging.
+
+## #1480 — acceso intermitente, corrección aislada (2026-10-07)
+
+Rama `vantareapp/isa-1480-acceso-parpadeo`, base `d96acc64`, worktree
+`C:/tmp/vw3-1480-acceso`; pendiente de revisión del orquestador.
+Causa reproducida por cuatro regresiones RED: cache de política de 1 s + sondeo
+Hub de 1 s + entrega IPC pueden vencer el heartbeat de 2 s; errores genéricos
+retiraban la política y cada consulta notificaba la página completa. El
+supervisor ocultaba la política revocada tras un error genérico.
+Corrección: consultas a 500 ms, última política conservada ante fallos/pending
+solo dentro de su vigencia, resultados definitivos entregados por LicenseStatus
+y heartbeats sin cambios de Access sin notificación. No cambia el modelo de
+derechos, TTL, firma, IPC ni persistencia; logout y revocación siguen bloqueando.
+Gates finales PASS por cola/-j2: fmt/check/Clippy -D warnings, Nextest
+1214/1214 (6 skips previos; ACC/LMU incluidos), lifecycle18/18. Cuatro
+regresiones RED antes del arreglo y PASS dentro de la suite final. Se conserva
+el primer fallo Clippy (brazos idénticos), corregido sin excepciones al lint.
+Standings Release propio 0/292160 px, umbral0/delta0, referencia/captura/mapa
+inspeccionados. Baseline nativa aprobada F1; intentos histórico Wails85,3666%
+y Debug1px/delta1 conservados, sin modificar referencias, imágenes o umbral.
+Evidencia, diagnóstico, hashes y manual `C:/tmp/1480-acceso-evidence/`;
+informe y SHA local `C:/tmp/fase2/informe-1480-acceso.md`. Issue #1480 abierta
+para revisión del orquestador; no se anuncia una beta corregida publicada.
+No se tocó la instalación real ni se leyó DPAPI/tokens/.env. Falta prueba física
+con la sesión de Isaac; los tests deterministas no la sustituyen. Sin push,
+PR, CI remota, integración, promoción o release. `docs/roadmap/plan.md` ausente
+en esta base: no se crea una segunda fuente del roadmap.
+
+## Candidato beta — verificación local cerrada (2026-10-07)
+Código `1c9ca48d`, base `dd90b49c`, rama `vantareapp/isa-1470-candidato-beta`; merges en orden `6338e31e` y `f18b842e`, sin squash. Zoom no autorizado por nota y no integrado.
+Gates completos finales PASS: fmt/check/Clippy -D warnings, Nextest1205/1205 (6 skips, goldens ACC/LMU), lifecycle17. Se conserva el fallo intermedio de caché/mtime y su repetición completa verde.
+QA `0.1.0-beta.1`/testers: 72 capturas Hub 1920/1440 opacas, 54 widgets y todas sus hojas/paneles inspeccionados. 18/18 widgets idénticos a referencias; Standings0/292160px. Regresión alfa255/254/0 PASS.
+Paquete Release beta fuera del repo: source_sha `1c9ca48d19997733df2d8e2cf425bca67fe3d466`, source_dirty=false; 10 ejecutables, sin Workshop; build Release PASS, packaging/tests.ps1 beta174 PASS. Desinstalación normal/interrumpida PASS en PS5.1 y pwsh.
+Hub empaquetado abre/responde/cierra exit0 con datos y pipe aislados; captura1440 opaca inspeccionada. Muestra pantalla de acceso Comprobando sesión: no acredita login completado, LMU live, OBS, DPI125, Mac ni rendimiento. Feed GitHub real/firma USB/NSIS no probados.
+Evidencia `C:/tmp/candidato-evidence/`; hojas `resumen-1920.png`, `resumen-1440.png`, `widgets/resumen.png`; detalle `inspeccion.md`. Informe/archivos/checks/manual en `C:/tmp/fase2/informe-candidato.md`. Paquete `release-package/`; primer paquete dirty es solo evidencia histórica, no el candidato final.
+Cierre documental posterior al código no cambia los binarios del paquete. plan.md ausente en base: no se inventa otro roadmap. Checkout principal preservado.
+Solo integración local autorizada por brief. Sin push, PR, CI remota, promoción, release ni cambios de cuentas/datos/servicios remotos.
+
+## #1472 — seguridad incorporada al candidato beta local (2026-10-07)
+Rama `vantareapp/isa-1470-candidato-beta`, base `dd90b49c`, worktree `C:/tmp/vw3-candidato`.
+Se incorpora `f18b842e` (contiene R2 `d1aa7fc2`) mediante segundo merge sin squash, después de widgets/telemetría `2ab5d362`.
+Seguridad de arranque/guardado/licencia/IPC/packaging/actualizador preservada; Launcher conserva visual r2 y añade Trust.
+El diagnóstico ya no espera Workshop en beta/testers. Regresión RED/PASS con inventario real; desarrollo/nightly/master sin cambio de inventario.
+Gates propios finales PASS: fmt/check/Clippy -D warnings, Nextest 1205/1205 con goldens ACC/LMU, lifecycle 17 escenarios. Un build de test RED reutilizado por mtime antiguo queda conservado; repetición final completa verde.
+Desinstalación normal/interrumpida con fixtures PASS en PS 5.1 y pwsh, datos preservados. QA beta.1/testers y 72 capturas opacas PASS; inspección y paquete Release en curso.
+Evidencia `C:/tmp/candidato-evidence`; continuidad `C:/tmp/fase2/informe-candidato.md`.
+No se prueba el feed contra GitHub real: prerelease autorizada por Isaac sigue pendiente. Sin push, PR, promoción, publicación, cuentas ni servicios remotos modificados.
+
+## ISA-1472 — decisiones de seguridad de Isaac (2026-10-07)
+
+Entrega local en `vantareapp/isa-1472-seguridad-decisiones`, worktree
+`C:/tmp/vw3-1472-decisiones`, base `d4a4e73a`. Implementación:
+`984909ea` revisión de perfiles, `7193b868` manifiesto firmado y `b3111fd0`
+crashes con campos cerrados. Pendiente de revisión del orquestador e Isaac;
+no integrado, promocionado ni publicado. Sin push, PR o CI remota.
+
+El actualizador exige el sobre Ed25519 antes de descargar y al aplicar,
+incluido modo local. Reutiliza licencia/services; no hay dependencias nuevas.
+La clave pública Ed25519 está fijada en `PUBLIC_KEY_BASE64` de
+`native/services/src/update_manifest.rs` desde `e8f3f11f`; no hay clave de
+test ni fallback productivo. Isaac custodia la privada en un USB, carpeta
+`vantare-claves\actualizador-ed25519.seed`, con letra de unidad variable.
+Firmar exige conectar el USB y pasar
+`-SigningKeyFile <USB>\vantare-claves\actualizador-ed25519.seed`; nunca copiar
+la semilla al disco. Este worker no accede al USB ni a la semilla. El firmador recibe una ruta explícita y no
+imprime claves. Procedimiento en `native/packaging/README.md`.
+El bootstrap antiguo necesita reinstalación para pasar al feed firmado.
+Pruebas locales con clave generada de TEST verifican el sobre y el feed;
+no equivalen a firma privada real, NSIS ni actualización desde GitHub.
+
+Los crashes enviados contienen código, versión conocida (o `unknown` para
+metadatos antiguos), SO y hasta 64 direcciones numéricas. No mensajes, rutas,
+binarios libres, timestamp ni UUID estable. La proyección protege también las
+colas antiguas; el hook local y Testing Center voluntario conservan su
+comportamiento. Fuera de Windows la pila es vacía. No es certificación integral
+de seguridad, SmartScreen/Authenticode ni validación de cuentas de producción.
+
+`cargo install cargo-audit --locked` y auditoría de `native/Cargo.lock`:
+cargo-audit 0.22.2, **0 vulnerabilidades**, DB
+`ef6173cbc5c50ec8166f9a5b28f07834144373ee`. Avisos pendientes, sin modificar
+dependencias: `paste 1.0.15` (RUSTSEC-2024-0436), `rustybuzz 0.20.1`
+(RUSTSEC-2026-0206), `ttf-parser 0.25.1` (RUSTSEC-2026-0192), sin mantenimiento;
+`yoke-derive 0.8.3`, yanked. No equivalen a vulnerabilidades demostradas ni se
+silencian. Evidencia íntegra `C:/tmp/1472-decisiones-evidence/audit.json`.
+
+Gates por la cola: fmt/check/clippy `-D warnings` PASS; nextest completo
+1188/1188, seis omisiones previas; tras el ajuste de perfiles históricos,
+check/clippy finales y 302/302 tests de Hub/supervisor PASS; lifecycle 5+12
+PASS. Standings Release propio: **0/292160 px**, umbral 0; captura, referencia
+y diff inspeccionados. Debug tuvo un píxel delta 1 en dos rondas; se conservan
+las capturas y logs, no se alteró la referencia. No hubo cambios en UI de
+Standings. Logs, hashes y capturas fuera del repo en
+`C:/tmp/1472-decisiones-evidence/`; informe de cierre
+`C:/tmp/fase2/informe-1472-decisiones.md`. No Go/TS/CSS modificados ni LMU vivo,
+DPI, instalador final o CI remota verificados. `docs/roadmap/plan.md` no existe
+en esta base; no se inventó otro roadmap ni se anunció disponibilidad pública.
+
+Siguiente acción: clave pública ya fijada (privada en el USB de Isaac);
+reconstruir y verificar el roundtrip firmado con el instalador y una
+prerelease real de GitHub antes de autorizar una promoción a nightly.
+
 ## #1503 — instrucciones de agentes y tracker (2026-10-08)
 
 Issue [#1503](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1503),
@@ -1201,17 +1641,72 @@ reembolsar o habilitar venta. Los gates monetarios siguen pendientes.
 
 ## Issues y siguiente acción
 
-1. Completar gates locales y review de BIL-10C / ISA-247.
-2. Presentar dry-run, backup y rollback antes de cualquier apply remoto.
-3. Recoger feedback Nightly de BIL-01..10C sin habilitar venta.
-4. Continuar gates monetarios y despliegue controlado sin venta pública.
-5. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
-6. Reauditar ISA-14 cuando se cierren worktrees grandes.
+1. Revisar el PR draft #913 de ISA-909 y no hacer merge ni apply remoto sin
+   autorización separada.
+2. Revisar ISA-911 antes de habilitar UI Clerk: lifecycle al borrar usuarios,
+   Billing, Testing Center, policies `auth.uid()` y logout/cache.
+3. Completar gates locales y review de BIL-10C / ISA-247.
+4. Presentar dry-run, backup y rollback antes de cualquier apply remoto.
+5. Recoger feedback Nightly de BIL-01..10C sin habilitar venta.
+6. Continuar gates monetarios y despliegue controlado sin venta pública.
+7. Crear proyectos Account, Calendar, Settings e Installer con handoffs propios.
+8. Reauditar ISA-14 cuando se cierren worktrees grandes.
 
 Cada issue fija base limpia, archivos, checks y rollback antes de editar. Los
 cambios monetarios reales y Master requieren Isaac.
 
 ## Última actualización
+
+2026-08-28, ISA-909 abre el primer corte implementable de Clerk después del
+spike ISA-885. La decisión de producto permite crear un UUID interno nuevo en el
+primer login: no se preservan automáticamente UUID ni perfil anteriores y email
+nunca autoriza un enlace. Solo los grants con valor justifican una reasignación
+administrativa posterior, con prueba, dry-run y autorización separada. El SDD
+inicial limita el cambio a una tabla de identidad, un resolver SQL privado, la
+Edge Function de credencial y la verificación Go; UI/SDK Clerk, deploy, datos
+reales, merge y promociones quedan fuera. La revisión Fable medio previa al
+código terminó `APROBADO_CON_CAMBIOS`: el plan usa advisory lock por identidad,
+distingue el issuer legacy, hace de la RPC PostgREST TPA la única autoridad y
+separa rechazos 401 de indisponibilidad para impedir gracia offline tras un token
+rechazado. ISA-911 registra Billing, Testing Center, policies `auth.uid()` y
+logout/cache que aún no son compatibles con Clerk.
+El baseline previo a código dejó Go license y Deno credential verdes. El runner
+Postgres heredado fallaba antes de ISA-909 porque su bootstrap no reproducía
+`extensions/storage` y el upgrade aplicaba calendario antes de acceso
+operacional; el fixture y orden mínimos quedaron corregidos y el contrato
+clean/upgrade/restore completo volvió a PASS.
+El corte SQL posterior crea `account_identities`, retira únicamente la FK de
+`profiles` a `auth.users` y resuelve claims PostgREST en una función privada con
+lock transaccional por identidad. Las cuatro RPC de licencia consumen el UUID
+  interno; 31 pgTAP pasan en clean/upgrade y dos logins Clerk concurrentes producen
+exactamente un mapping, un profile y cero huérfanos. La migración sigue solo
+local, sin apply remoto.
+El corte Edge elimina `getUser()` solo de `license-credential`: conserva el
+bearer opaco, deja la validación Clerk a PostgREST TPA, firma el UUID que devuelve
+la RPC y traduce rechazo TPA a 401 en vez de disponibilidad. Su config declara
+`verify_jwt=false`; Billing y Testing Center mantienen sus fronteras actuales.
+  La suite focal pasa 20/20. No hay deploy de función.
+El corte Go acepta un `sub` externo no vacío de hasta 255 caracteres, pero el
+`Result.UserID` nace solo de una credencial Ed25519 válida con subject UUID y
+dispositivo coincidente. Un rechazo 401 no usa la caché aunque el token sea el
+protegido; el focal `internal/license` pasa. `go test ./...` recorrió el resto de
+paquetes verdes y falló únicamente en `cmd/vantare`/`frontend` porque aún no
+existía el artefacto generado `frontend/dist`; queda construirlo en el gate final.
+El gate final construyó `frontend/dist` y después `go test ./...` pasó completo;
+  Deno quedó 20/20 y Postgres repitió clean/upgrade/restore, 31 pgTAP Clerk y la
+carrera de primer login. El roadmap ya describe la frontera entregada como
+  feature sin afirmar que exista UI Clerk. La primera review final Fable medio
+  encontró dos fallos: status PostgREST 401/403 tratados como 503 y un usuario
+  legacy borrado remapeado como externo. Ambos tuvieron regresión roja y quedaron
+  corregidos: los rechazos ya impiden gracia offline y el issuer legacy falla
+  cerrado si `auth.users` no contiene el subject. También quedó explícito que al
+  retirar la FK desaparece el cascade de borrado; ISA-911 debe definir ese
+  lifecycle antes de habilitar Clerk. La segunda review Fable 5 con esfuerzo
+  medio emitió `ACCEPT`, sin P0/P1/P2 ni simplificaciones necesarias antes de
+  integrar. La rama quedó publicada y el PR draft #913 abierto hacia `nightly`.
+  En el HEAD `6738902a`, GitGuardian, ruta de promoción y gates bloqueantes
+  terminaron verdes (run 33176001927; gate principal 11m01s). Schema/Edge remotos
+  siguen intactos y no hubo merge.
 
 2026-08-04, ISA-243/287 completaron el piloto remoto con un caso sintético
 nuevo. ISA-288 se creó exactamente una vez, el binding quedó `completed` sin
@@ -1253,3 +1748,586 @@ PASS. Se revalidan cambios finales; Go completo en curso. No publicacion real.
 - [Tarea Notion](https://app.notion.com/p/3e3e51695c6581bc88fbda9b7d057975), dependencia de la integración de widgets #1298 autorizada por Isaac. Base nightly `1e9932c4`; rama `vantareapp/isa-1301-quality-policy-test`.
 - La prueba anterior asumía que cualquier PR modificaba la política; un check correcto PASS hacía fallar CI. Se sustituye por un repositorio Git temporal: control limpio PASS, cambios de política sin commit/con commit/untracked REVIEW_REQUIRED y hallazgo de analizador FAIL. El diff Git, el detector de política, el agregado y el exit del proceso son reales; solo se inyectan resultados de analizadores, cuyos binarios ya prueban las otras clases.
 - Sin cambios de producto, motor de calidad, reglas, baselines ni excepciones. Roadmap required: `milestones:quality-linux-analysis`. Revisión independiente y gates remotos previos a nightly; sin testers/master/release.
+
+
+### #1464 — acceso nativo durante LMU Live (2026-10-05)
+
+Worker en `C:/tmp/vw3-1464/vantare-v2`, base recibida `376d9ae3`.
+La captura real `C:/tmp/acceso-evidence/inicio-diagnostic.png` muestra el Hub
+rechazando el acceso con «servicios cerrados durante el juego». A la vez, las
+trazas temporales del núcleo (`runtime-acceso-diagnostic.err.log`) verifican
+`overlays_advanced=true`, los cuatro módulos habilitados y `error=None`.
+Firma, binding y transferencia al núcleo funcionan en esta sesión; no hace
+falta cambiar roles para resolver este rechazo. No se consultaron ni cambiaron
+secretos, archivos DPAPI, roles o producción.
+
+Causa confirmada del Hub: el supervisor bloqueaba `Status` y `LicenseStatus`
+al cerrar services en Live. Ahora `Status` puede descubrir el acceso guardado
+y el heartbeat devuelve directamente la política del núcleo, sin reabrir el
+helper ni reinstalar candidatos. Regresión con helper/IPC reales: RED antes,
+PASS después. Se conserva el cierre de servicios de red durante el juego.
+
+También se reproduce con reloj inyectado un falso `Clock`: comparar pared con
+el tiempo efectivo adelantado por deriva rechazaba la segunda observación del
+mismo instante. Se comparan observaciones de pared entre sí y se conserva el
+tiempo efectivo monotónico, los vencimientos y la protección tras reinicio;
+sin cambios del formato persistido. No se ha reproducido físicamente el
+parpadeo original en esta sesión, por lo que no se atribuye a este segundo
+fallo sin evidencia. Las trazas temporales se retiraron del código.
+
+Gates: fmt y Clippy workspace/all-targets PASS; nextest 1088/1088 PASS con
+4 omisiones del perfil; lifecycle PASS, 0 fallos. Evidencia fuera del repo en
+`C:/tmp/acceso-evidence/`. Una repetición chocó con un temporal de Analysis
+basado en PID; la suite final completa pasó con TEMP/TMP aislados.
+
+Código local `4bdc00d44c88652a122e8d19ce14881cc9e29bdb`; Release recompilado
+con la configuración autorizada y `-j 2` (PASS). App de Isaac arrancada con
+este código: Hub muestra Inicio sin rechazo de acceso, los widgets dibujan
+LMU Live, y las capturas `inicio-final.png` / `inicio-final-60s.png`, separadas
+113 segundos, mantienen ese estado. Los mismos PID siguen activos; hashes
+de cinco binarios y listados de procesos en la carpeta de evidencia. Esto no
+es una observación continua ni certifica todos los módulos. Se hicieron tres
+arranques (dos reinicios), conservando la cuenta y todos los datos. La app
+queda abierta. Verificación de Isaac: abrir Cuenta/Studio, comprobar el acceso
+y observar los widgets al continuar en pista. Si vuelve el parpadeo, registrar
+esa sesión; su causa física original sigue sin atribución concluyente.
+Solo commits locales; sin push, PR, CI remota, integración ni release. No se
+modificaron roles ni servicios remotos. `docs/roadmap/plan.md` no existe en
+esta base recibida; no se creó un roadmap paralelo para este bug.
+## Beta nativa #1453 — corrección del ACK de PostHog (2026-10-05)
+
+Rama aislada `vantareapp/isa-1453-posthog-admin`, base `a464e9fc`.
+El endpoint EU aceptó `vantare_diag_1453_144911` a las 14:49:12 +02 con HTTP 200
+y `status: "Ok"`. El emisor esperaba solo `1`, conservaba el pendiente y podía
+reenviarlo. Ahora reconoce ambos ACK; regresión con servidor HTTP local.
+No cambia consentimiento, eventos allowlisted, UUID ni redacción.
+La configuración pública real de beta contiene `VANTARE_POSTHOG_KEY`; se carga
+con `native/packaging/build-config.ps1`, sin mostrar valores. Debe incorporarse
+al compilar; no se comprobó la clave del binario ya instalado de Isaac.
+Read-back del panel EU pendiente de Isaac; HTTP aceptado no lo sustituye.
+Gates/evidencia y estado explicado: `C:/tmp/mac-evidence/`; compilación diaria
+solo en Mac. No se declara promoción ni publicación.
+
+Read-back #1453: Isaac confirmó el evento en su panel PostHog (nota del orquestador 15:26 del 2026-10-05). Captura y lectura real confirmadas; sin revelar clave.
+## #1472 — arreglos R2 (2026-10-07, entrega local)
+
+Base recibida `e8f3f11f`, rama `vantareapp/isa-1472-seguridad-decisiones`.
+B-01: desinstalación por inventario, directorios vacíos de hijos a padres y
+reintento con estado estructural aunque falten archivos ya eliminados.
+Regresión `native/packaging/uninstall-tests.ps1`: RED contra base, 2 PASS
+con fixtures, interrupción inyectada y datos conservados. Evidencia externa
+`C:/tmp/1472-arreglos-r2-evidence/`. Sin push, PR, promoción ni release.
+N-10: la nota del orquestador confirma que beta aún no se ha distribuido y
+permite cambiar su inventario/bootstrap sin migración. Workshop oculto en beta;
+Studio/preview renderizan en el Hub y no dependen del EXE. Se excluyen Workshop
+y su sidecar solo del paquete beta (10 bins); continúa compilándose para
+desarrollo/paridad y los otros canales conservan sus 11 bins. Lectura de
+manifiesto/estado e importación usan el inventario del canal guardado.
+`docs/roadmap/plan.md` no existe en el checkout recibido. La nota R2 externa
+se recibió después del inicio y sus instrucciones de custodia USB se aplicaron.
+
+N-2: selección descendente de la primera release verificable; assets inválidos
+se omiten y byte[] se decodifica con UTF-8 estricto/detección BOM.
+Regresión con verificador Ed25519 aislado y clave generada TEST: RED base,
+3 PASS (string, UTF-8 bytes, UTF-16 BOM). GitHub real pendiente de prerelease
+autorizada; procedimiento en packaging/README.md, sin publicación en esta tarea.
+
+B-02: destino y raíces confiables canonicalizados antes de comparar componentes;
+los enlaces compartidos se identifican también por su ruta real. Test con
+junction real RED/GREEN y acceso propio a D: permitido. Gates de esta pasada:
+fmt, clippy workspace/all-targets -D warnings, nextest 1189 PASS (6 omitidos)
+y lifecycle PASS (0 fallos). Logs en 1472-arreglos-r2-evidence/*-b02.log.
+
+B-03: mapas de pilotos/clases acotados independientemente a 512 identidades;
+solo una identidad nueva agota su mapa. Regresión con 2000 clases y pilotos
+fijos RED/GREEN, conservando el número de pilotos. Árbol funcional final:
+fmt/check/clippy -D warnings PASS, nextest 1192 PASS (6 omisiones del perfil),
+lifecycle PASS (0 fallos). Sin cambio de datos del renderer ni telemetría inventada.
+Build Release PASS (-j 2, target aislado, cola autorizada).
+
+#21 parcial: legacy se carga independientemente de installation. Regresión
+con archivo guardado inválido y bytes DPAPI ilegibles: conserva fingerprint y
+Owner acepta una credencial v1 firmada y concede overlays_advanced. RED/GREEN;
+mismos gates completos del árbol final PASS, sin cambios funcionales posteriores.
+No se aparta/genera otra identidad v2: el servidor actual admite solo
+`deviceFingerprint`, no hay reenrolamiento autenticado del cliente ni reset de
+dispositivo. Recuperación v2 requiere contrato de servidor y queda documentada;
+se conserva fail-closed para v2 y no se cambia Store, cuenta ni datos reales.
+
+N-5: todos los eventos PostHog llevan `$ip: null` y `$geoip_disable: true`;
+Testing usa un UUID estable en namespace propio, diferente del de uso.
+Regresiones crashes/uso/identidad RED, 8 focales GREEN; mismos gates completos
+finales PASS sobre todo el árbol funcional, sin cambios posteriores de código.
+No borra vínculos históricos ni reescribe intentos de informe ya consentidos.
+No se envió telemetría a PostHog real ni se cambió su configuración remota.
+
+Validación de cierre R2: Release final PASS; packaging/tests.ps1 sobre paquete
+QA con binarios Release: 174 PASS (incluye CLI, launcher/hijos replay,
+rollback y muerte abrupta). Requirió DuckDB externo en PATH; no prueba una
+máquina Windows limpia. Recorrido firmado install/Stage/tamper reject/Apply/
+replay no-op/uninstall PASS, datos conservados. Usa payload Release excepto
+services reemplazado por verificador aislado con pública TEST; versiones QA
+0.1.0/0.1.1, no build ni firma distribuible de producción. Regresiones uninstall
+2 PASS y feed 3 PASS también en PS5.1. Paridad Standings Release contra GPUI
+#1470: 0/292160 píxeles distintos, umbral0/delta0; captura y diff inspeccionados.
+Evidencia: C:/tmp/1472-arreglos-r2-evidence/*-final.log,
+packaging-n10-final.log, signed-walk-release-n10.log y standings-final.png.
+Sin prueba de firma privada productiva, GitHub real, NSIS, PostHog real ni
+LMU físico/DPI/OBS/Mac. Pendiente: contrato de recuperación v2 (#21). Solo commits locales; sin push,
+PR, CI remota, integración/promoción ni release. Issue #1472 abierta para revisión.
+
+N-10 final: regresión beta RED antes del arreglo; suite Release sin Workshop
+174 PASS y recorrido firmado TEST install/update/uninstall PASS. Cuatro canales
+con fixtures: install/status/update/import/rollback PASS, incluso con valor de
+canal por defecto opuesto (channel-regressions-green.log). Workshop ausente
+en beta y presente en nightly/testers/master. Bootstrap antiguo de paquetes
+QA descartados no migra; no existen instalaciones beta distribuidas según
+nota del orquestador. Gates Rust/paridad no se repitieron: ningún cambio Rust
+ni visual después de los gates finales, solo packaging/docs y su validación.
+
+## #1472 — Prerelease E2E, fase 2 (2026-10-07)
+
+Encargo directo: C:/tmp/beta/r4/brief-prerelease-fase2.md; manda
+C:/tmp/fase2/notas-prerelease-fase2.md. Rama aislada
+`vantareapp/isa-1472-feed-vacio`, base `1c26b898907cb3b3b3b4547ff39bd925cdf2fe01`,
+worktree C:/tmp/vw3-1472-feed; el candidato compartido no se editó.
+La instrucción recibida fija GitHub #1472 y prevalece sobre las referencias
+Notion antiguas de esta base. docs/roadmap/plan.md no existe en ella.
+
+beta.ps1 considera current un feed consultado sin manifiesto verificable o
+sin versión superior. Un fallo de transporte del índice o del asset conserva
+state=error y la versión activa, devuelve false y no bloquea el Hub. La firma,
+la selección descendente y la verificación del paquete permanecen obligatorias.
+remote-feed-tests.ps1: RED con feed vacío; GREEN 9/9 en PS5.1 y PS7:
+tres codificaciones, vacío, igual, anterior, mayor inválida, red del índice y
+red del asset. Fixtures de inventario y firma real con clave exclusivamente TEST;
+no se usó la clave del USB ni se publicó nada.
+
+Runtime productivo aislado: Apply realizado por el orquestador antes de esta
+fase; arranque 0.0.901 confirmó current y retiró boot-pending. El feed vacío
+reprodujo el error inicial; Check corregido real contra GitHub salió 0/current.
+Se copió solo beta.ps1 corregido a la raíz de la instalación aislada para
+repetir Run: Hub listo, current/Estás al día, cierre normal idle. Capturas
+segunda-hub.png y segunda-hub-fixed.png inspeccionadas; Hub sin acceso verificado,
+no prueba login/LMU/OBS ni una instalación Windows limpia.
+
+Uninstall real PASS; state y EXE retirados, datos preservados por el bootstrap.
+Después se borró exclusivamente E:/tmp/prerelease salvo candidato-target;
+0 procesos de la prueba y 0 accesos directos en Desktop/Inicio. Logs externos
+conservados en C:/tmp/prerelease-e2e-evidence. Informe FASE 2:
+C:/tmp/fase2/informe-prerelease.md. Sin gates Rust/frontend ni rebuild porque
+solo cambió PowerShell; diff-check PASS. Entrega solo local al orquestador,
+pendiente de revisión/unión: sin push, PR, CI remota, merge, promoción ni release.
+
+## #1488 — Calendario nativo: horario publicado (2026-10-07)
+
+Encargo `C:/tmp/beta/r4/brief-1488-calendario.md`; rama aislada
+`vantareapp/isa-1488-calendario-publicado`, base recibida `bce17802`.
+La cabecera del encargo fija GitHub como seguimiento y entrega local al
+orquestador: sin subagentes, push, PR, merge ni publicación.
+
+Se incorpora `CalendarRefresh` al IPC existente del Hub/supervisor/services.
+Services consulta la RPC pública de solo lectura `race_schedule_current` con
+la configuración Supabase anon del build; sin HTTP desde UI, sesión Clerk,
+esquema nuevo ni dependencias nuevas. El Hub aplica `Schedule::parse`, guarda
+atómicamente `official-schedule.json` en su directorio de datos y lo restaura.
+La primera apertura sin horario vigente y los dos botones de actualización
+usan esa ruta. Una petición en curso no se duplica; demo/capturas de ejemplo
+no piden red ni guardan publicaciones. Se conserva el último horario válido
+ante errores de red, respuesta o escritura; nada caducado se presenta como
+actual en ninguna vista. Sin uno vigente: «Aún no hay horario publicado para
+esta semana». La vigencia conserva el intervalo UTC `[validFrom, validUntil)`.
+
+Consulta real del 07/10 con la configuración pública de beta cargada por el
+loader autorizado, sin mostrar valores: HTTP 200 y `[]`. No hay publicación,
+por tanto tampoco horario vigente: Isaac debe publicar uno. No se ha escrito
+nada en Supabase. Tests con fixture/servidor HTTP local cubren descarga,
+validación, ausencia de publicación, caché, reinicio, caducidad, red y guardado
+bloqueado; no demuestran una publicación real que el servidor aún no tiene.
+
+Gates finales: fmt/check/Clippy PASS; Nextest 1220/1220 PASS (6 omitidas); lifecycle PASS en repetición. El fallo anterior del ejecutable Engineer 0xc0000409 queda conservado y registrado en #1491, sin cambio fuera de alcance. Standings perfil prueba: 0/292160 px, sin máscaras ni tolerancias, captura/referencia/mapa inspeccionados. Calendario demo 1440×900 inspeccionado: vacío honesto. Probe del código Rust real de services: RPC OK, 0 publicaciones. La build con parity-capture conserva un warning heredado de analysis/view.rs (cx sin usar); Clippy normal pasa. El comparador JSON con diferencias falla por numpy int64: #1490. Evidencia fuera del repo:
+`C:/tmp/1488-calendario-evidence/`. Informe del worker:
+`C:/tmp/fase2/informe-1488-calendario.md`. `docs/roadmap/plan.md` no existe en
+la base ni en `origin/nightly` consultado; no se crea un roadmap paralelo.
+Entrega local para revisión del orquestador; sin push, PR, CI remota, integración, promoción ni release. Siguiente: revisión y validación con un horario
+que Isaac publique. Se mantiene el cierre de services durante Live y el
+heartbeat/permisos existentes; no se amplía su vigencia durante llamadas de red.
+
+## #1496 — UI r10 R6: Calendario y Roadmap (2026-10-08)
+
+Trabajo local autorizado por brief-r6-calendario-roadmap.md; issue abierta.
+Rama vantareapp/isa-1496-ui-r6-calendario-roadmap; base exacta a5a01084 (R3).
+Sin push, PR, CI remota, merge, promoción ni release.
+docs/roadmap/plan.md no existe en esta base; no se crea una fuente paralela.
+
+Calendario: Agenda/Carteles/Tiempos en pestañas superiores; horario real,
+estrella y campana como preferencia persistente. Favoritas conservan el JSON
+anterior con seriesIds; campanas en calendar-reminders.json separado.
+Ambos archivos usan escritura atómica y comprobación de conflicto.
+Campana y autolanzamiento indican Próximamente: no entregan avisos ni lanzan.
+Hero de siguiente favorita independiente de filtros; próxima hora [now,now+1h)
+con una fila por serie. Recurrencias acotadas sin perder intervalos largos.
+Horario caducado/no publicado permanece vacío. Carril compartido
+Esta semana/Horario/Tus recordatorios; kit/tokens intactos.
+
+Roadmap: Circuito/Tablero/Temporada leen solo la Publication de services;
+Entregado queda en el carril. No usa el recurso editorial local como fallback.
+El contrato publicado solo contiene id/section/title/body; fases, áreas,
+porcentajes, fechas/versiones/canales por hito y later no existen en él.
+Se indican Próximamente sin inferir datos. No cambia schema, servicios remotos,
+IPC, dependencias ni publicación Supabase. Integrar los hunks puntuales de
+shell.rs y el bloque de accesores de services/view.rs junto a R4/R5.
+
+Checks por cola con target propio: fmt/check y Clippy -D warnings pasan;
+Nextest workspace 1258/1258 (6 skips heredados), lifecycle 18 casos PASS.
+Tras corregir Carteles a tarjetas horizontales: Nextest Hub 322/322, 0 skips;
+check/Clippy workspace, build prueba y QA parity-capture PASS; fmt --check PASS.
+Regresiones de favoritos/campana/formato anterior/conflicto, vacío/caducidad,
+proyecciones por vista, límites horario/recurrencia y copia sin inscripciones.
+Se retiró solo el test de grid añadido aquí al sustituirlo por la lista;
+ningún test heredado debilitado. QA conserva warning ajeno analysis/view.rs:989.
+
+Matriz visual completa e inspeccionada: 144 GPUI + 144 referencias, 3 temas,
+ambos carriles, 4 tamaños, 6 vistas; 36 hojas comparadas. Las 24 de Carteles
+se repitieron tras corregir su composición; las anteriores quedan archivadas.
+Fuente final Carteles/binario a4b7e0de; otras 120 imágenes ed2b9505, sin cambios
+en esas vistas. captures.json y VERIFICACION.md trazan ambos snapshots.
+Agenda sigue más densa que el mockup por conservar todas las salidas reales;
+Tiempos es más sencillo; Roadmap no tiene los campos ricos del ejemplo.
+No se declara paridad literal. Calendario QA usa horario oficial archivado;
+Roadmap QA muestra carga sin publicación utilizable. No es prueba live.
+
+Se respetó el marcador de pantalla y el mutex; ventanas aisladas cerradas.
+No hay prueba de login/calendario publicado live, LMU/OBS/macOS/DPI físico,
+ni entrega de avisos. Interacción y aceptación final pendientes de Isaac.
+Evidencia: C:/tmp/ui-r10/r6-evidence/VERIFICACION.md; informe-r6.md y logs.
+Siguiente: revisión del orquestador e integración autorizada de hunks compartidos.
+Preguntas: servicio futuro de avisos/autolanzamiento y contrato editorial rico;
+actualización del cuerpo R0 de #1496/plan canónico ausente.
+
+### #1496 — integración local R6 en calidad (2026-10-08)
+
+Merge no-ff de 7bea1049; shell conserva Cuenta R4 y Testing R5.
+Calendario y Roadmap usan el kit único con rojo/contrastes R4 y accesibilidad
+corregida. Adapt queda en las entidades de ventana, nunca en el global.
+Gates/capturas del conjunto pendientes; sin push/PR/promoción/release.
+
+Verificación del conjunto calidad/70e15d11 (2026-10-08): fmt/check/Clippy
+-D warnings PASS; Nextest1272/1272 (6 skips previos + microbenchmark ignorado),
+lifecycle18/18 y builds prueba/QA PASS por la cola, target propio -j2.
+QA conserva warning heredado analysis/view.rs:989. Capturas del conjunto en
+curso; primer intento oculto falló por HWND no visible, repetido correctamente
+por ruta nativa prevista. Logs/manifiesto: calidad-1-evidence/reanudacion.
+Latencia de entrada sigue pendiente (PresentMon msSinceInput=0); no se
+certifica fluidez, DPI físico, LMU live, OBS, login ni Mac. Solo local.
+
+Cierre de la tanda de calidad (código70e15d11): 144/144 PNG en 1920×1080 y
+1280×720, Vantare/DeepSeek, hashes y dimensiones comprobados. Doce hojas
+y originales de casos principales inspeccionados; sin regresión de conflictos
+observada en la muestra. Ventanas y helpers QA cerrados; mutex libre.
+Tres aliases históricos Workshop/Telemetría/Licencias muestran Inicio/cargando
+y no acreditan esos módulos; R0–R6 sí cubiertos. No paridad exacta ni latencia.
+Informe≤15 líneas C:/tmp/ui-r10/informe-calidad-1.md; logs/diff/manifiestos/manual
+en calidad-1-evidence/reanudacion/VERIFICACION.md. Instalación real intacta.
+Siguiente: revisión del orquestador/Isaac; latencia de entrada pendiente.
+Solo commits/merges locales autorizados y seguimiento GitHub; sin push/PR/
+CI remota/promoción/release. No se afirma aceptación ≥9 ni publicación.
+
+
+## #1504 — Icono plano, activos Windows y marca (2026-10-08)
+
+Brief autorizado: `C:/tmp/ui-r10/brief-1504-iconos-docs.md`; referencia aprobada
+`C:/tmp/ui-r10/marca-1504.html`. Worker sin delegación ni ventanas de la app,
+worktree `C:/tmp/vw3-1504/vantare-v2`, rama `vantareapp/isa-1504-marca`, base
+candidato beta `60510a0c4e2f71ba981ab2912c4e9cdc23d1f935`, inicialmente limpio.
+Usuario/brief fijan GitHub #1504 frente a referencias Notion antiguas del checkout.
+
+ICO siete frames independientes, 16/24 con patas gruesas, 32 normal plano
+#D80000; ≥48 conserva `build/appicon.png`. Siete SVG fuente (color/blanco/negro,
+normal/pequeño y avatar); Hub mark normal a 26 px actualizado, recoloreado por
+GPUI según tema. El `i-vantare` usado a 48 px queda fuera del corte ≤32.
+MSIX: 18 PNG (tres del manifiesto y cinco targetsize con tres formas); build
+copia los activos versionados y deja de redimensionar el icono genérico.
+Unplated sin placa; lightunplated negro para barra clara. Wordmark no aprobado,
+sin crearlo ni cambiarlo. BRAND/DESIGN registran escala roja, contrastes calculados
+sRGB y naranja/AI Engineer/100 % FPS/italiano históricos sin borrar material.
+
+Regenerador stdlib + Pillow instalado 12.1.1; `--check` compara bytes. Dos tests
+validan frames/colores/hueco/alpha/dimensiones y nombres contra manifiesto.
+Parser y negativos MSIX en PS5.1: 12 PASS. Hoja
+`C:/tmp/ui-r10/iconos-1504.png` MIRADA: tamaños reales en claro/oscuro, variantes
+sin placa, tres activos base, una tinta y avatar. Halo Lanczos de alfa pequeño
+conservado; el relleno opaco sigue siendo exactamente #D80000 tras corregir la
+reducción de RGBA para filtrar únicamente la máscara alfa.
+No build Rust/Go/frontend: no cambia código de esas rutas. Sin paquete real,
+firma, Store, instalación, arranque ni DPI físico. Contraste 3,04:1 del icono
+sobre oscuro es para gráfico, no texto; la variante negra es solo para fondo claro.
+
+Preguntas para orquestador/Isaac: ¿reconciliar italiano histórico con el contrato
+que todavía lo exige? ¿Cómo reflejar este corte en el roadmap exigido por las
+instrucciones recibidas si `docs/roadmap/plan.md` falta en base y origin/nightly?
+No se recrea una fuente paralela. UI/web/widgets y aprobación wordmark pertenecen
+a sus cortes. Entrega con commit local e informe ≤10 líneas en
+`C:/tmp/ui-r10/informe-1504.md`; comentario GitHub autorizado. Pendiente review
+e integración por orquestador; sin push, PR, CI remota, merge, promoción ni release.
+
+## #1515 — Informes de fallos con consentimiento (2026-10-08)
+
+Brief autorizado `C:/tmp/lanzamiento/brief-1515.md`; GitHub #1515 fija alcance
+y tracker frente a la referencia Notion antigua del checkout. Worktree
+`C:/tmp/vw3-1515/vantare-v2`, rama `vantareapp/isa-1515-consentimiento-fallos`,
+base candidato beta `a8f9bdc3b69561e007e656f270de95fa41fba54b`, inicialmente limpio.
+Worker sin delegación. #1506 y producción permanecen fuera del cambio.
+
+`Privacy::default` desactiva fallos y uso. `crashes_decided`, ausente en las
+preferencias antiguas, exige una decisión nueva; nunca hereda el sí implícito.
+Pregunta Orbit antes del acceso normal del Hub, con aceptar/rechazar, enlace
+a la política, foco inicial en rechazar y teclado. Guarda atómicamente antes
+de continuar; un conflicto mantiene la pregunta y los fallos desactivados.
+Reinicio conserva la decisión; Ajustes › Privacidad permite cambiarla.
+La migración elimina los slots de fallos previos antes de aceptar y la
+revocación descarta los pendientes. Usage mantiene su consentimiento separado.
+
+Validación: formato/check/Clippy PASS; Nextest 1220/1220 PASS, 6 omitidas por
+el perfil existente; lifecycle PASS, sin filtros. Diagnósticos: 19 tests PASS
+con HTTP local y proceso de panic real. Los cuatro tests de Store verifican
+aceptar/rechazar, migración, reinicio, revocación, conflicto y guardado fallido.
+No se debilitan gates ni se cambia el kit. No son envíos a PostHog real.
+Evidencia en `C:/tmp/lanzamiento/1515-*.log`; fallos iniciales de tipo GPUI,
+estilo y formato quedan conservados junto a las ejecuciones finales PASS.
+Sin gate telemetría: no cambian runtime/domain/ipc ni fixtures. Sin Go/frontend
+ni otras plataformas: este corte cambia solo services y Hub nativos Windows.
+
+Captura no ejecutada: tres intentos encontraron ocupado el mutex
+`Global\VantareParityCapture` y no abrieron ventanas. No se afirma aceptación
+visual. `C:/tmp/lanzamiento/1515-qa.ps1` deja la comprobación preparada con
+raíces/pipe aislados y comprobación de `pantalla-ocupada` antes de cada arranque.
+Verificación manual: primer arranque, Tab/Shift+Tab y Enter/Espacio; rechazar
+y reiniciar; aceptar y reiniciar; cambiar en Ajustes › Privacidad; migrar un
+privacy.json antiguo y comprobar desaparición de sus slots previos. Pendiente
+revisión visual cuando la pantalla quede libre y revisión del orquestador.
+Commit/push y PR draft contra el candidato autorizados por el brief; sin merge,
+promoción, release, despliegue ni modificación de instalación real.
+
+Isaac confirma la URL canónica `https://vantare.app/privacidad`: la pregunta
+y Ajustes › Privacidad comparten ese enlace y su manejo de teclado. El Hub
+aún no distingue idioma de interfaz (el selector está inactivo); el idioma
+de widgets no cambia la URL. Pendientes: publicación de la política y retención,
+DPA y descarte de IP en PostHog conforme a las marcas VERIFICAR de la política.
+No se configura producción desde este worker. `docs/roadmap/plan.md` falta en
+base y `origin/nightly`: decidir cómo reconciliar el contrato de actualización
+en el mismo PR, sin crear un roadmap paralelo.
+Runbook para Isaac: `C:/tmp/lanzamiento/1515-runbook-isaac.md`.
+
+Entrega de implementación: `a1d137e2ee8cd761adb8192674bc249bd8979ebf`, push
+verificado en `origin/vantareapp/isa-1515-consentimiento-fallos`. PR draft
+[1519](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1519)
+abierta contra `vantareapp/isa-1470-candidato-beta` y vinculada al hilo T3.
+CI remota en curso al comprobar la entrega; no se afirma CI verde ni integración.
+Informe final del worker: `C:/tmp/lanzamiento/informe-1515.md` (HEAD final y
+estado remoto). Siguiente: revisar PR/CI, validar la pantalla al liberarse y
+publicar la política antes de autorizar una integración/promoción.
+
+Seguimiento autorizado de #1515: URL confirmada y enlace compartido en ambas
+vistas, disponible también si hay error de preferencias. Foco propio en Ajustes,
+clic y Enter/Espacio; no se cambia el permiso ni el flujo de compra/cuenta.
+Formato y Clippy del workspace PASS; Nextest de `shell::settings::` 16/16 PASS
+(287 fuera del filtro). Logs `C:/tmp/lanzamiento/1515-url-*.log`. Sin nueva prueba
+visual ni acciones de producción. La misma rama y PR draft #1519 reciben este
+seguimiento; HEAD/push final se registra en el informe del worker y GitHub #1515.
+
+### #1496 — v4: sondeo de compra aislado de acciones (2026-10-09)
+Solo worktree de integración 25d9e6bd, rama #1514 intacta. F2 distingue propósito
+PurchaseRenew/PurchaseSession de renovación manual, mantiene contexto/mensajes y
+relee caducidad OAuth en segundo plano. Calendario y acciones usan la cola existente;
+logout tiene prioridad. Espera ligada al producto, máximo10 minutos, salida manual,
+error recuperable y parada con política vigente/cancelación/logout. Redirect no da acceso.
+Regresiones iniciales5/5 PASS por cola (compra, calendario, roadmap, informes,
+catálogo y reloj controlado); primer intento detenido por falta de cx.quit en tests
+propios, corregido y evidencia conservada. Gates finales/IPC QA/instalador pendientes.
+PR1523 recibirá comentario de defectos y arreglo; no se modifica su rama. Sin promoción.
+
+### #1496 — v4: botones de compra con disabled del kit
+F3: los tres productos usan orbit::disabled con motivos distintos por falta de
+sesión/acción explícita. Mantienen la guarda del handler; background no deshabilita.
+UIA/Tab/Enter/Espacio/click se verificarán en el banco IPC aislado. Sin cambios de
+protocolo, identidad, OAuth, firma, dependencias ni packaging productivo.
+
+### #1496 — v4: solicitud de Roadmap durante sondeo
+QA del consumidor detecta una guarda busy residual en ensure_roadmap. Se usa
+working y la cola existente, sin ocupar ni sustituir otra acción pendiente; la
+composición alternativa llama al mismo método. Regresión del reply demorado y
+publicación encolada añadida. Gates y binarios anteriores se conservan como
+checkpoint a3b4723f; se repetirán sobre el código final. Sin cambio de IPC/arquitectura.
+
+### #1496 — v4: reintento durable tras reinicio
+E2: el test HTTP de compra incierta ahora destruye Account/Store y reabre el root
+DPAPI antes de reintentar: mismo payload/intento y entorno/producto. Solo cambia
+la regresión de servicios, no código comercial ni identidad. Gates finales f39:
+fmt/Clippy/Nextest1298 y lifecycle18 PASS; telemetría en curso. Se repetirán
+los checks de servicios y se reconstruirá el artefacto con el SHA final.
+
+### #1496 — v4: cierre local de compra y consumidor integrado (2026-10-09)
+- Fuente09f640ed91ef43486b476c3e728b1f0e59f04954, árbol nativo cd14ee9ea9bf4509098db5ec64757c30b8f4640a; continuación25d9e6bd en vantareapp/isa-1496-integracion-prueba, base integrada55e97390. F28a919220, F3bec513e0, Roadmapf39e923a y test durable09f640ed; solo este worktree, rama #1514 intacta. Este commit documental no cambia el árbol probado.
+- PASS finales por cola: fmt, Clippy-Dwarnings, Nextest1298/1298 (7 skips), lifecycle18/18, telemetria21/21. Regresión HTTP ahora destruye/reabre Store/Account entre409/200 y demuestra reutilización del intento/payload. Sin modificación productiva adicional de UUID/OAuth/firma/grants/backend. Packaging Bash175/99/50 PASS; Setup normal/QA0.0.971 en E:/tmp/beta-local/0.0.971, fuente09f limpia/dev/NotSigned.
+- Hub real y contratos IPC/HTTP QA:3productos, disabled/sin Invoke/motivos y Tab, click/Enter/Espacio una Purchase cada uno; renovación automática quieta y manual working; acciones Calendario/Roadmap/informe se encolan y responden una vez al consumidor correcto. Borrador/recibo y favoritas/campanas conservados. Confirmación de política vigente termina espera; error/cancelación/logout/reinicio y límite10min controlado no conceden derechos. Retorno127.0.0.1 propio cerrado; ninguna compra/licencia/login comercial acreditados.
+- E1 y consentimiento:344PNG7tamaños/DPI96+72compactos125% físico;24consentimiento instalado96+6a120.446 hashes/bounds PASS, originales extremos inspeccionados; fuentes de checkpoints diferenciadas en capture-provenance.json. Consentimiento rechazo/aceptación/reinicio/foco por teclado/error de guardado recuperable PASS; uso independiente. Política QA nunca se presenta como comercial. Piloto Agenda densa demorada no completado; R6 final PASS con2series explícitas, TTL2s intacto y sin causa inventada.
+- QA1492 instalada/hub-ready y retirada, registro/accesos QA ausentes, datos retenidos, mutex libre, apps propias cerradas y escala100% restaurada. Inventario real anterior/posterior idéntico SHA256C8E36EF7A93905E8EFBF96A2BEA0FF947FABFA75951E09F77C89AFC694AAEC6D. Instalación real, secretos y configuración de producción intactos. Un piloto NSIS directo quedó conservado y Setup final se repitió por cola; ninguna ocultación de errores intermedios.
+- PR1523 informado por issuecomment-6076735890 (F2/F3),6077213533 (Roadmap) y6077519034 (reinicio durable/SHA finales), cada defecto con archivo/línea/causa/arreglo para su worker. #1496 recibe cierre, sin editar la rama ni estado comercial de #1514. Evidencia/manual C:/tmp/ui-r10/integracion-arreglos-evidence/VERIFICACION.md e informe≤10líneas C:/tmp/ui-r10/informe-integracion-arreglos.md.
+- Pendientes: revisión para nota≥9, aceptación de Isaac, traslado por worker#1514, login/compra/refund/disputa/offline/recovery reales, servicio/configuración prod y CI. Sin delegación/push/PR nuevo/merge/promoción/release/deploy/firma/operación de pago; solo comentarios remotos autorizados. plan.md ausente, no se inventa otro roadmap. No se reabren gates comerciales ni se atribuye estado live al sandbox de una nota antigua.
+
+### #1496 — vuelta v5: política independiente de renovación HTTP
+El consumidor Hub usa el Feed autenticado existente del núcleo mientras LicenseRenew
+espera red; la política tardía del reply no sustituye ese heartbeat. Sesión/logout
+siguen siendo guardas, TTL2s no se amplía ni checked_at se modifica en producción.
+Regresión3500/8000ms con reloj simulado, revocación/ausencia/TTL/logout; sin sleep.
+Banco ui-quality aloja un peer separado de solo lectura contractual QA, sin licencia
+comercial. Base02441013, rama de integración; #1514 intacta y PR1523 recibirá defecto
+con referencias/arreglo. E4, gates y Setup0.0.972/QA pendientes; sin promoción.
+
+
+### #1496 — cierre v5 verificado (2026-10-09)
+
+- Fuente 5b86fbc34b1f3375ddceef69fa0f5987ceb60f9c; árbol nativo ce76ecd8c5169a9f76bd7de4604a4c4c293c874e, base v5 02441013/integración55e97390, misma rama aislada. Este bloque cierra los pendientes v5 anteriores; documentación posterior conserva el árbol probado. Diff completo revisado.
+- F4: Feed autenticado de solo lectura independiente de LicenseRenew; reply tardío no pisa derechos; confirmación desde núcleo detiene la espera. Sesión/logout/TTL2s/revocación/ausencia siguen cerrados, sin retocar checked_at/grants. Regresión3500/8000ms con reloj, sin sleep; Hub real con ambas demoras PASS.
+- Gates PASS: fmt, Clippy -Dwarnings, Nextest1299 (7 skips), lifecycle18 y telemetria21 (0 skips); packaging Bash175/99/50. Cargo y ambos Setup finales v5 solo por cola. QA/parity conserva warning heredado, Clippy canónico limpio; pilotos fallidos conservados y explicados.
+- E4:48PNG compactos DPI96 (checkpoint337),12 a125% Windows/DPI120 (5b), tres estados/ambos carriles/mensaje largo/claro.60 hashes/dimensiones y400 bounds PASS; originales representativos y regiones medidas. Scroll interno existente muestra Ingeniero con acciones inmóviles; sin cambio de layout. Delta337→5b no cambia esta composición Free. Windows restaurado100%.
+- E3: gesto8s/settings/persistencia al soltar/undo, Launcher QA lanzar/cancelar, catálogo LE→Pro→LE→Free→Pro/save/reopen, Testing fixture una vez/recibo/borrador, Calendario/Roadmap resultados/errores y favoritas/campanas PASS. Agenda densa11series QA completada. No acredita latencia general/input→Present ni18instancias.
+- Setup0.0.972 E:/tmp/beta-local/0.0.972/VantareSetup.exe, fuente5b limpia/Release/dev/NotSigned; SHA256E78741E2450750759A637DF59C6C077F03281301D73EB314D5E95BAAAB9E9807. QA1492 instalada/retirada, primer consentimiento y rechazo/reapertura/puerta de sesión sin servicio; no login comercial. Inventario real nuevo idéntico C8E36EF7A93905E8EFBF96A2BEA0FF947FABFA75951E09F77C89AFC694AAEC6D, mutex libre; datos QA retenidos.
+- F4 notificado en comentario PR1523#6078461742 con archivo/líneas/motivo/arreglo de fuente native aacd1e4d; #1514 intacta. Remoto33be660d/draft no publica el Hub: pendiente traslado por su worker. Evidencia/manual/archivos/omisiones en C:/tmp/ui-r10/integracion-v5-evidence/VERIFICACION.md; bloque v5≤6líneas en C:/tmp/ui-r10/informe-integracion-arreglos.md.
+- Pendientes: nueva review≥9, aceptación, traslado#1514, CI remota y matriz comercial real. Sin delegación/push/PR nuevo/merge/promoción/release/deploy/firma/pago; solo comentarios autorizados. plan.md ausente en base, no se inventa otro roadmap.
+
+
+### #1496 · v6 F5 · recuperación de Cuenta en verificación (2026-10-09)
+
+Guarda heredada en shell/navigation.rs (fuente native incorporada aacd1e4d): blocked/!verified también impedía abrir Cuenta, consultar derechos y cerrar sesión. Integración limita la excepción a Account y conserva TTL, Feed, OAuth/UUID, grant y herramientas protegidas. Tests de revocación/caducidad/ausencia y consumidor añadidos. Traslado al worker #1514 por comentario PR1523 pendiente de la evidencia final; su rama no se modifica. Remoto PR1523 se comprobará sin atribuir líneas Hub inexistentes al HEAD remoto.
+
+### #1496 · v6 F5 · cierre y traslado local (2026-10-09)
+
+F5 corregido solo en integración73f60e9d: Account accesible en navegación/composición con derechos denegados; gate, TTL, Feed, identidad/OAuth/UUID y herramientas mantienen autoridad. Nextest1301/7skips, fmt/Clippy/lifecycle18/telemetría21 PASS;12 recorridos de recuperación y3 muestras físicas, un envío por intento/logout y ningún grant desde reply HTTP. Setup0.0.973 dev/NotSigned, QA instalada/retirada y real intacta; evidencia C:/tmp/ui-r10/integracion-v6-evidence/VERIFICACION.md.
+Defecto/herencia/archivo/líneas/arreglo trasladados en [PR1523#6079995712](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1523#issuecomment-6079995712), [validación#6080347894](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1523#issuecomment-6080347894); [issue1496#6080348259](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1496#issuecomment-6080348259). Fuente native incorporadaaacd1e4d navigation.rs:92–95/shell.rs:388–410; HEAD remoto33be660d no contiene Hub y no se modificó la rama#1514. Su worker debe incorporar F5 cuando restituya el Hub. No se cambia el estado comercial: CI, login/pago/recovery monetario y promoción externos pendientes; integración local sin push/merge/publicación/deploy/pago.
+
+## Feedback 9-oct · calroad punto 9 (#1496)
+Base e55a43b34dddb02d671b569dc3cb83fabf3793ab; worktree C:/tmp/vw3-fb-calroad/vantare-v2,
+rama vantareapp/isa-1496-fb-calroad. Prueba explícita tester sobre catálogo LMU
+archivado: fechas solo en memoria, banner visible y preferencias efímeras;
+salir/revocar acceso restaura datos reales. shell.rs cambia únicamente el paso
+al header para consultar acceso vigente. Parser de bandeja y runbook en
+scripts/calendar-publication.py y docs/calendar-weekly-hotfix/native-publication.md.
+Python 3/3 PASS; gates Rust en curso, evidencia externa C:/tmp/feedback-0910/.
+Horario real 6–13 oct recibido por el bot existente desde Discord oficial:
+mensaje 1556611324048445536, 11 series y payload RPC revisable externo preparado.
+Parser corregido para comas, markup interior y notas in-game, con regresión real.
+Escena QA calendario-lmu-local usa esa fuente, sin sustituir seed ni Supabase.
+Publicación Owner/Supabase PENDIENTE de autorización; fuente futura 13-oct
+rechazada por splits ambiguos, sin inventarlos. Avisos/autolanzamiento no implementados;
+la campana persiste una preferencia, cuenta atrás y favoritas ya tienen tests.
+plan.md ausente en base y origin/nightly; no se crea fuente paralela. El brief
+actual autoriza seguimiento GitHub y prevalece sobre la regla Notion antigua.
+Sin delegación/push/PR/merge/release/producción. Orquestador debe revisar esta
+entrega y reflejar #1496; autorización de publicación se pide en informe final.
+Punto 9: Inicio conserva siempre horario/favoritas oficiales incluso durante prueba; home.rs cambia solo esa selección. Escena QA calendario-beta-prueba exclusiva de --capture/parity-capture para inspeccionar renderer real sin login ni escribir preferencias.
+
+## Feedback 9-oct · calroad punto 10 (#1496)
+Misma base e55a43b3 y rama/worktree de punto 9. scripts/clickup-roadmap.py:
+lectura API paginada de Vantare/Desarrollo con subtareas/cerradas; nombres
+exactos, ancestry en cuerpo, UUID estables. idea→later, en progreso/por revisar→now,
+testers→next, complete→done. Prepara JSON y SQL; --publish exige digest SQL
+revisado, host y UUID vigente, transacción/publisher existentes. Sin token real.
+SQL añade solo later al validador; permisos y límites (40 hitos) conservados.
+Hub Tablero muestra cuatro grupos; captura roadmap-clickup-prueba es QA explícita.
+services/view.rs cambia solo selección de publicación QA; no fallback productivo.
+Python 7/7 PASS; ejemplo cinco hitos en C:/tmp/feedback-0910/calroad-example/.
+Gates Rust/capturas finales en curso; pgTAP no ejecutado por falta de psql/Docker.
+Bloqueos reales: publicación necesita autorización y fuente/token aportados;
+Go legado rechaza later, requiere adaptación autorizada o entorno nativo aislado;
+si Desarrollo supera 40 tareas/subtareas, aborta sin truncar y requiere decisión.
+Runbook docs/clickup-roadmap-sync.md; migración/rollback/tests SQL preparados.
+No se aplicó SQL ni se escribió en producción. Sin push/PR/merge/release.
+
+### #1496 · calroad · continuación tras reinicio y disco lleno
+Misma base e55a43b3/rama vantareapp/isa-1496-fb-calroad; commits anteriores
+258ce19a (9) y 49440709 (10) conservados. Dos defectos del horario real corregidos:
+calificadores de combustible/VE no son clases; Agenda resume cuatro salidas por
+celda y cuenta las adicionales, sin retirar datos ni aplicar filtros después.
+Regresión Go real y conteos de Agenda añadidos; borrador final externo
+calroad-calendar-draft-resume.json conserva texto/hash/fechas originales.
+Target propio devuelto de junction E: a directorio C: tras verificar espacio;
+fallo de identidad Nextest preservado, test IPC intacto. PASS finales: fmt,
+Clippy -D warnings, Nextest 1304/1304 (7 skips), lifecycle 18/18, específicas
+33/33, Python 10/10, Go completo y builds frontend/QA. Ocho PNG opacos
+inspeccionados (Agenda/Tiempos/Carteles, tester y Roadmap oscuro/claro); cierre
+de Agenda PASS y ningún Hub propio abierto. Clippy QA opcional conserva
+warning heredado de Análisis; no se rebaja el gate canónico ni se toca esa área.
+Evidencia/manual C:/tmp/feedback-0910/calroad-verificacion.md.
+Publicación Supabase, token/fuente ClickUp reales, lector Go compatible con later,
+pgTAP y avisos entregados siguen pendientes. Sin push/PR/merge/release/producción.
+
+### #1496 · feedback 9-oct · Ajustes en entrega aislada
+
+Rama `vantareapp/isa-1496-fb-ajustes`, base de integración `e55a43b3`.
+Atajos locales y estado global real del residente `b53fb397`; General persistente,
+Run exclusivo del Hub, minimización y toasts `74970cbb`; nivel y frecuencia por
+widget en el único layout con historial `7e00e350`. Sin duplicar renderer,
+adquisición, IPC, permisos ni dependencias. El registro global y su edición se
+reutilizan desde los perfiles del Launcher, con conflictos visibles.
+Se retiran los controles y tarjetas sin implementación de Ajustes; Actualizaciones,
+Privacidad y Diagnóstico conservan sus acciones reales. El idioma completo del
+Hub y el modo Automático quedan pendientes y retirados del selector: recomendación
+separar i18n completo y política adaptativa medida. No se afirma ahorro de CPU/FPS.
+Un layout con `performance` puede ser rechazado por binarios anteriores; conservar
+`.bak` antes de un rollback. `plan.md` sigue ausente en esta base y no se inventa.
+Validación final y recorridos: `C:/tmp/feedback-0910/evidencia-ajustes.md`;
+informe de hasta 12 líneas: `C:/tmp/feedback-0910/informe-ajustes.md`.
+Continuación Mac terminada para revisión Claude: General `fd2f95db`, Studio
+`dce4b5ea`, tarjetas/tabla R10.10 `2d07d5e8`, foco tras Ctrl L/paneles `3399fc64`,
+raíz privada de QA multiplataforma `bd2d8a6a` y cierre de subpáginas `f6ef6e07`.
+WIP `a058603b` revisado y completado sin rehacer commits Windows. Notion
+[VAN-781](https://app.notion.com/p/3f4e51695c6581118500d3b95b6fac6f), proyecto
+Plataforma y roadmap; GitHub #1496 es solo el puente técnico, no un nuevo VAN/ISA.
+
+Mac arm64: formato, build Hub `prueba`, Clippy de los tres crates modificados
+con `--no-deps --all-targets -D warnings` y tests focales PASS. UI lib serial
+181 PASS/2 ignorados. Suites completas Hub/Services/UI fallan en casos ajenos al
+diff: storage ausente, GPUI fuera del hilo principal, rutas Windows, enlace de
+importación y PNG de screenshot. Clippy completo falla en profiling heredado.
+QA visual real GPUI en shell de captura con datos aislados: 13 capturas,
+persistencia de densidad/nivel/1 Hz/consentimiento, atajos, Personalizado,
+historial y diagnóstico. Debug aborta por hover duplicado de Orbit heredado;
+el perfil `prueba` existente permite el recorrido. No se declara telemetría,
+rendimiento medido ni sesión/licencia verificados por este banco.
+
+Siguiente paso: Claude recogerá la rama local y revisará diff y gates Windows,
+Run, registro/conflictos con juego, toasts, minimización instalada y actualizador
+beta; identidad/icono/NSIS también sin verificar aquí. Idioma Hub completo,
+Automático y globales de overlays quedan retirados y pendientes explícitos.
+Evidencia Mac: `/Users/isaacalbala/evidence/fb-ajustes/`; `informe.md` (≤12 líneas)
+y `evidencia.md`, comandos/resultados y capturas. `fetch origin nightly` falla
+por referencia remota ausente: la continuación conserva la base autorizada.
+Sin push, PR, merge, promoción, instalación real, release, deploy ni cambios
+comerciales. Seguimiento Notion se actualiza y relee al entregar; no hay merge
+que verificar en este encargo.
+
+### #1496 · integración Windows y entrega local para revisión (9-oct)
+Rama `vantareapp/isa-1496-integracion-prueba`, base `e55a43b3`, fuente `5b950d79`;
+las cinco áreas están integradas localmente; detalles en [handoff Hub](overlays-launcher-hub.md).
+Run creado/leído/retirado con funciones Win32 productivas; bootstrap instalado minimizado,
+RegisterHotKey/conflicto/ejecución global/liberación y recursos/taskbar/NSIS PASS.
+Native toast bajo identidad QA solicitado; Windows DisabledForUser bloquea el banner.
+No se alteró la preferencia global de Isaac. Idioma Hub y Automático siguen pendientes.
+Setup0.0.974 local, packaging Bash PASS y QA desinstalada; huella real idéntica.
+Sin logout/login Windows, CI remota, pgTAP/DB, push/PR/promoción/release/deploy.
+Tracker GitHub #1496: ninguna escritura Notion. Evidencia/manual:
+`C:/tmp/feedback-0910/integracion-evidence`; resumen `informe-integracion.md`.
+
+### #1496 · actualización Windows del lienzo e instalador local 0.0.974
+
+El corte inicial de integración queda sustituido por el instalador de fuente 00f37fef,
+SHA256 A63C30A6F5DCBA886754A80E0ADE813B129BAA47BB88C0F306C1239F06F7166B.
+Studio guarda la resolución del cliente con el layout, conserva posiciones y presenta
+un solo lienzo centrado. Ocho casos 1920/1280 y cuatro proporciones PASS; native 1402/1402,
+clippy/fmt/lifecycle/telemetría y suites Bash PASS. Instalación/arranque/retirada QA1492
+repetidos: huella de la instalación real idéntica. No cambia auth, billing ni catálogo.
+Banner nativo bloqueado por DisabledForUser; FPS mostrados/latencia no acreditados.
+El detalle, límites y evidencia pertenecen al handoff vivo overlays-launcher-hub.md.
+Sin publicación/promoción, push, PR, CI remota, deploy ni Notion; #1496 abierto.

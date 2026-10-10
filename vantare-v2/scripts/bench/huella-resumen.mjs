@@ -129,7 +129,7 @@ export function aggregateRuns(runs, stat = "mean") {
     throw new Error("Corridas producidas por builds distintos; el agregado no es publicable");
   }
   if (runs.some((run) => run.__metadata?.buildStable === false)) {
-    throw new Error("El ejecutable o frontend/dist cambió durante una corrida");
+    throw new Error("El ejecutable o sus recursos cambió durante una corrida");
   }
   const roles = new Set(runs.flatMap((run) => Object.keys(run)));
   return [...roles].flatMap((role) => METRICS.flatMap((metric) => {

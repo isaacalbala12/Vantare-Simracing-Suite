@@ -17,20 +17,32 @@
 //!   sale con código 0 ha terminado a propósito (overlays cerrado por el
 //!   usuario, replay acabado): el launcher cierra todo y sale con 0.
 //! - **Cierre** (Ctrl+C, cierre de consola o `vantare --parar`): primero
-//!   overlays y después el núcleo; a cada uno se le pide que termine y, pasado
+//!   Engineer (si está habilitado), overlays y después el núcleo; a cada uno se le pide que termine y, pasado
 //!   el plazo, se le mata.
 
+#[cfg(unix)]
+mod unix;
+#[cfg(windows)]
 mod win;
+#[cfg(windows)]
+use vantare_launcher as launcher;
+#[cfg(windows)]
+mod resident;
+#[cfg(windows)]
+mod triggers_win;
+
+use vantare_ipc::product;
 
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, ExitCode, Stdio};
 use std::time::{Duration, Instant};
 use std::{env, io};
 
+#[cfg(windows)]
 use win::{Instance, Stop};
 
 const USAGE: &str = "uso: vantare [--core-bin R] [--overlays-bin R] [--plazo MS] [--reinicios N] \
-[--instancia S] [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS]]\n     vantare --parar [--instancia S]";
+[--instancia S] [--launcher-file R] [--launch PERFIL] [--engineer CURSOR] [--engineer-bin R] [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS [-- ARGS-DE-ENGINEER]]]\n     vantare --parar [--instancia S]";
 const DEFAULT_GRACE: Duration = Duration::from_secs(3);
 const DEFAULT_RESTARTS: u32 = 5;
 /// Espera antes del primer reinicio; se duplica en cada caída seguida.
@@ -53,11 +65,14 @@ struct Program {
 struct Config {
     core: Program,
     overlays: Program,
+    engineer: Option<Program>,
     grace: Duration,
     restarts: u32,
     /// Sufijo de los nombres de los objetos del sistema, para aislar instancias (pruebas).
     instance: String,
     stop_only: bool,
+    launcher_file: Option<PathBuf>,
+    launch: Option<String>,
 }
 
 fn value<'a>(
@@ -70,23 +85,39 @@ fn value<'a>(
 fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
     let mut config = Config {
         core: Program {
-            path: bin_dir.join("vantare-core.exe"),
+            path: bin_dir.join(binary_name("vantare-core")),
             args: Vec::new(),
         },
         overlays: Program {
-            path: bin_dir.join("vantare-overlays.exe"),
+            path: bin_dir.join(binary_name("vantare-overlays")),
             args: Vec::new(),
         },
+        engineer: None,
         grace: DEFAULT_GRACE,
         restarts: DEFAULT_RESTARTS,
         instance: String::new(),
         stop_only: false,
+        launcher_file: None,
+        launch: None,
     };
     let mut args = args.iter();
+    let mut engineer_bin = bin_dir.join(binary_name("vantare-engineer"));
+    let mut engineer_args = Vec::new();
     while let Some(arg) = args.next() {
         match arg.as_str() {
             "--core-bin" => config.core.path = value(&mut args, arg)?.into(),
             "--overlays-bin" => config.overlays.path = value(&mut args, arg)?.into(),
+            "--engineer-bin" => engineer_bin = value(&mut args, arg)?.into(),
+            "--engineer" => {
+                config.engineer = Some(Program {
+                    path: engineer_bin.clone(),
+                    args: vec![
+                        "--pipe".into(),
+                        "--cursor".into(),
+                        value(&mut args, arg)?.clone(),
+                    ],
+                });
+            }
             "--plazo" => {
                 let ms = value(&mut args, arg)?
                     .parse()
@@ -100,20 +131,71 @@ fn parse(args: &[String], bin_dir: &Path) -> Result<Config, String> {
             }
             "--instancia" => config.instance.clone_from(value(&mut args, arg)?),
             "--parar" => config.stop_only = true,
+            "--launcher-file" => config.launcher_file = Some(value(&mut args, arg)?.into()),
+            "--launch" => config.launch = Some(value(&mut args, arg)?.clone()),
+            flag if flag.starts_with("--launch=") => config.launch = Some(flag[9..].into()),
             "--" => {
                 // El resto son argumentos de los hijos: núcleo hasta el siguiente `--`.
                 let rest: Vec<String> = args.by_ref().cloned().collect();
-                let mut groups = rest.splitn(2, |a| a == "--");
+                let mut groups = rest.splitn(3, |a| a == "--");
                 config.core.args = groups.next().unwrap_or_default().to_vec();
                 config.overlays.args = groups.next().unwrap_or_default().to_vec();
+                engineer_args = groups.next().unwrap_or_default().to_vec();
             }
             other => return Err(format!("argumento desconocido: {other}")),
+        }
+    }
+    if let Some(engineer) = &mut config.engineer {
+        engineer.path = engineer_bin;
+        if let Some(pipe) = config.core.args.windows(2).find(|pair| pair[0] == "--pipe") {
+            engineer
+                .args
+                .extend(["--pipe-name".into(), pipe[1].clone()]);
+        }
+        config.core.args.extend([
+            "--engineer-image".into(),
+            engineer.path.to_string_lossy().into_owned(),
+        ]);
+        engineer.args.extend([
+            "--core-image".into(),
+            config.core.path.to_string_lossy().into_owned(),
+        ]);
+        engineer.args.extend(engineer_args);
+    } else if !engineer_args.is_empty() {
+        return Err("argumentos Engineer requieren --engineer R".into());
+    }
+    if let Some(id) = &config.launch {
+        if id.is_empty()
+            || id.len() > 128
+            || !id
+                .bytes()
+                .all(|c| c.is_ascii_alphanumeric() || b"-_".contains(&c))
+        {
+            return Err("--launch: ID de perfil inválido".into());
+        }
+        if config.stop_only {
+            return Err("--launch no se combina con --parar".into());
+        }
+        if config.core.args.is_empty() {
+            config.core.args.push("--live".into());
         }
     }
     Ok(config)
 }
 
+fn binary_name(name: &str) -> String {
+    #[cfg(windows)]
+    {
+        format!("{name}.exe")
+    }
+    #[cfg(unix)]
+    {
+        name.to_owned()
+    }
+}
+
 /// Nombres de los objetos del sistema, por usuario (y por `--instancia`).
+#[cfg(windows)]
 fn object_name(kind: &str, instance: &str) -> String {
     let user = env::var("USERNAME").unwrap_or_else(|_| "usuario".into());
     let suffix = if instance.is_empty() {
@@ -122,6 +204,16 @@ fn object_name(kind: &str, instance: &str) -> String {
         format!("-{instance}")
     };
     format!(r"Global\vantare-{kind}-{user}{suffix}")
+}
+
+#[cfg(unix)]
+fn object_name(kind: &str, instance: &str) -> String {
+    let suffix = if instance.is_empty() {
+        String::new()
+    } else {
+        format!("-{instance}")
+    };
+    format!("vantare-{kind}{suffix}")
 }
 
 /// Presupuesto de reinicios de un hijo con espera creciente.
@@ -145,6 +237,8 @@ impl Restarts {
 
 struct Service {
     name: &'static str,
+    #[cfg(windows)]
+    bootstrap: Option<String>,
     program: Program,
     child: Option<Child>,
     started: Instant,
@@ -157,6 +251,8 @@ impl Service {
     fn new(name: &'static str, program: Program, budget: u32) -> Self {
         Self {
             name,
+            #[cfg(windows)]
+            bootstrap: None,
             program,
             child: None,
             started: Instant::now(),
@@ -173,6 +269,28 @@ impl Service {
             .args(&self.program.args)
             .stdin(Stdio::piped()) // su cierre es la petición de fin de los hijos sin ventana
             .spawn()?;
+        #[cfg(windows)]
+        let mut child = child;
+        #[cfg(windows)]
+        if let Some(nonce) = &self.bootstrap {
+            let sent = child
+                .stdin
+                .as_mut()
+                .ok_or_else(|| io::Error::other("bootstrap no disponible"))
+                .and_then(|stdin| {
+                    vantare_ipc::control::write(
+                        stdin,
+                        &vantare_ipc::control::Bootstrap {
+                            nonce: nonce.clone(),
+                        },
+                    )
+                });
+            if let Err(error) = sent {
+                let _killed = child.kill();
+                let _reaped = child.wait();
+                return Err(error);
+            }
+        }
         log(format_args!("{} en marcha (pid {})", self.name, child.id()));
         self.started = Instant::now();
         self.start_at = None;
@@ -194,6 +312,10 @@ impl Service {
     }
 }
 
+fn engineer_allowed(policy: &vantare_ipc::control::Policy) -> bool {
+    policy.current() && policy.overlays_advanced && policy.engineer
+}
+
 enum Outcome {
     Stopped,
     /// Un hijo terminó a propósito.
@@ -201,11 +323,27 @@ enum Outcome {
     Exhausted(&'static str),
 }
 
-fn supervise(services: &mut [Service; 2], stop: &Stop) -> io::Result<Outcome> {
+#[cfg(windows)]
+fn supervise(
+    services: &mut [Service],
+    stop: &Stop,
+    rights: Option<&vantare_ipc::control::Feed>,
+    grace: Duration,
+) -> io::Result<Outcome> {
     use std::os::windows::io::AsRawHandle;
     loop {
         let now = Instant::now();
+        let engineer_permitted = rights.is_some_and(|feed| engineer_allowed(&feed.policy()));
         for service in services.iter_mut() {
+            if service.name == "Engineer" && !engineer_permitted {
+                if service.child.is_some() {
+                    shutdown(std::slice::from_mut(service), grace);
+                    service.child = None;
+                    service.start_at = Some(now);
+                    service.restarts.attempts = 0;
+                }
+                continue;
+            }
             if service.child.is_none()
                 && service.start_at.is_some_and(|at| at <= now)
                 && let Err(error) = service.spawn()
@@ -227,9 +365,13 @@ fn supervise(services: &mut [Service; 2], stop: &Stop) -> io::Result<Outcome> {
         }
         let timeout = services
             .iter()
+            .filter(|s| s.name != "Engineer" || engineer_permitted)
             .filter_map(|s| s.start_at)
             .min()
-            .map(|at| at.saturating_duration_since(Instant::now()));
+            .map(|at| at.saturating_duration_since(Instant::now()))
+            .map_or(Some(Duration::from_millis(250)), |delay| {
+                Some(delay.min(Duration::from_millis(250)))
+            });
         let Some(signaled) = win::wait_any(&handles, timeout)? else {
             continue; // toca reiniciar a alguien
         };
@@ -252,9 +394,10 @@ fn supervise(services: &mut [Service; 2], stop: &Stop) -> io::Result<Outcome> {
     }
 }
 
-/// Overlays primero, después el núcleo. A cada uno se le pide que termine y se
+/// Engineer si está habilitado, overlays, núcleo. A cada uno se le pide que termine y se
 /// le mata si pasa el plazo.
-fn shutdown(services: &mut [Service; 2], grace: Duration) {
+#[cfg(windows)]
+fn shutdown(services: &mut [Service], grace: Duration) {
     for service in services.iter_mut().rev() {
         let Some(child) = service.child.as_mut() else {
             continue;
@@ -272,19 +415,147 @@ fn shutdown(services: &mut [Service; 2], grace: Duration) {
     }
 }
 
-fn run(config: Config) -> io::Result<ExitCode> {
+#[cfg(windows)]
+fn start_remote_services(
+    config: &mut Config,
+) -> io::Result<(vantare_runtime::services::Host, String)> {
+    let photo = if let Some(pair) = config.core.args.windows(2).find(|pair| pair[0] == "--pipe") {
+        pair[1].clone()
+    } else {
+        let mut photo = vantare_ipc::default_pipe_name()?;
+        if !config.instance.is_empty() {
+            photo.push('-');
+            photo.push_str(&config.instance);
+        }
+        config.core.args.extend(["--pipe".into(), photo.clone()]);
+        photo
+    };
+    config.core.args.push("--managed-rights".into());
+    if let Some(engineer) = &mut config.engineer
+        && !engineer.args.iter().any(|arg| arg == "--pipe-name")
+    {
+        engineer.args.extend(["--pipe-name".into(), photo.clone()]);
+    }
+    if !config.overlays.args.iter().any(|arg| arg == "--fuente") {
+        config
+            .overlays
+            .args
+            .extend(["--fuente".into(), format!("pipe:{photo}")]);
+    }
+    let nonce =
+        vantare_services::random_id().map_err(|_| io::Error::other("bootstrap no disponible"))?;
+    let image = env::current_exe()?;
+    let host = vantare_runtime::services::Host::start(
+        &photo,
+        vantare_runtime::services::Options {
+            binary: image.with_file_name("vantare-services.exe"),
+            hub: image.with_file_name("vantare-hub.exe"),
+            root: None,
+            core: vantare_ipc::control::CoreLink {
+                pipe: vantare_ipc::control::pipe_name(&photo),
+                image: config.core.path.clone(),
+                nonce: nonce.clone(),
+            },
+        },
+    )?;
+    Ok((host, nonce))
+}
+
+#[cfg(windows)]
+fn resident_settings(explicit: Option<PathBuf>) -> io::Result<PathBuf> {
+    let path = match explicit {
+        Some(path) => path,
+        None => PathBuf::from(
+            env::var_os("VANTARE_NATIVE_DATA_ROOT")
+                .or_else(|| env::var_os("LOCALAPPDATA"))
+                .ok_or_else(|| io::Error::other("LOCALAPPDATA no definido"))?,
+        )
+        .join("Vantare/native/launcher.json"),
+    };
+    let path = if path.is_absolute() {
+        path
+    } else {
+        env::current_dir()?.join(path)
+    };
+    if !launcher::is_local_path(&path) {
+        return Err(io::Error::other("Launcher requiere archivo local"));
+    }
+    Ok(path)
+}
+
+#[cfg(windows)]
+fn run(mut config: Config) -> io::Result<ExitCode> {
     let Some(_instance) = Instance::acquire(&object_name("launcher", &config.instance))? else {
+        if let Some(profile) = config.launch {
+            let path = resident_settings(config.launcher_file)?;
+            let request = vantare_ipc::launcher::Request::Launch { profile };
+            let bytes = serde_json::to_vec(&request).map_err(io::Error::other)?;
+            launcher::files::save(&vantare_ipc::launcher::request_path(&path), &bytes, None)
+                .map_err(io::Error::other)?;
+        }
         log("ya hay una instancia en marcha");
         return Ok(ExitCode::SUCCESS);
     };
     let stop = Stop::create(&object_name("launcher-stop", &config.instance))?;
     win::adopt_self_in_job()?;
-    let mut services = [
-        Service::new("núcleo", config.core, config.restarts),
+    let resident = if config.instance.is_empty() || config.launcher_file.is_some() {
+        let path = resident_settings(config.launcher_file.clone())?;
+        Some(resident::Resident::start(
+            path,
+            config.launch.clone(),
+            config.instance.is_empty(),
+        )?)
+    } else {
+        None
+    };
+    vantare_services::diagnostics::record_usage(
+        &vantare_services::diagnostics::Usage::AppStarted {
+            version: product::VERSION.into(),
+            channel: product::CHANNEL.into(),
+        },
+    );
+    let remote = start_remote_services(&mut config)?;
+    let photo = config
+        .core
+        .args
+        .windows(2)
+        .find(|pair| pair[0] == "--pipe")
+        .map(|pair| pair[1].clone())
+        .ok_or_else(|| io::Error::other("falta pipe del núcleo"))?;
+    let rights = config
+        .engineer
+        .as_ref()
+        .map(|_| vantare_ipc::control::Feed::connect(&photo, config.core.path.clone()))
+        .transpose()?;
+    let mut core = Service::new("núcleo", config.core, config.restarts);
+    core.bootstrap = Some(remote.1);
+    let mut services = vec![
+        core,
         Service::new("overlays", config.overlays, config.restarts),
     ];
-    let outcome = supervise(&mut services, &stop);
+    let mut diagnostics = Vec::new();
+    if vantare_services::diagnostics::configured() {
+        let mut diagnostic = Service::new(
+            "diagnóstico",
+            Program {
+                path: std::env::current_exe()?.with_file_name("vantare-services.exe"),
+                args: vec!["--diagnostics".into()],
+            },
+            0,
+        );
+        match diagnostic.spawn() {
+            Ok(()) => diagnostics.push(diagnostic),
+            Err(error) => log(format_args!("diagnóstico no disponible: {error}")),
+        }
+    }
+    if let Some(engineer) = config.engineer {
+        services.push(Service::new("Engineer", engineer, config.restarts));
+    }
+    let outcome = supervise(&mut services, &stop, rights.as_ref(), config.grace);
+    drop(resident);
+    drop(remote.0); // Cierra el auxiliar mientras el núcleo sigue vivo.
     shutdown(&mut services, config.grace);
+    shutdown(&mut diagnostics, config.grace);
     Ok(match outcome? {
         Outcome::Stopped => ExitCode::SUCCESS,
         Outcome::Finished(name) => {
@@ -300,7 +571,26 @@ fn run(config: Config) -> io::Result<ExitCode> {
     })
 }
 
+#[cfg(unix)]
+fn run(config: Config) -> io::Result<ExitCode> {
+    unix::run(config)
+}
+
+#[cfg(windows)]
+fn signal_stop(instance: &str) -> io::Result<()> {
+    Stop::signal(&object_name("launcher-stop", instance))
+}
+
+#[cfg(unix)]
+fn signal_stop(instance: &str) -> io::Result<()> {
+    unix::Stop::signal(&object_name("launcher-stop", instance))
+}
+
 fn main() -> ExitCode {
+    if product::print_version() {
+        return ExitCode::SUCCESS;
+    }
+    vantare_services::diagnostics::install_panic_hook("vantare");
     let args: Vec<String> = env::args().skip(1).collect();
     let bin_dir = env::current_exe()
         .ok()
@@ -314,7 +604,7 @@ fn main() -> ExitCode {
         }
     };
     let result = if config.stop_only {
-        Stop::signal(&object_name("launcher-stop", &config.instance)).map(|()| ExitCode::SUCCESS)
+        signal_stop(&config.instance).map(|()| ExitCode::SUCCESS)
     } else {
         run(config)
     };
@@ -328,12 +618,154 @@ fn main() -> ExitCode {
 mod tests {
     use super::*;
 
+    #[test]
+    fn engineer_start_requires_fresh_error_free_module_permission() {
+        use vantare_ipc::control::{self, Policy};
+        let now = control::wall_ms().expect("clock");
+        let policy = Policy {
+            version: control::VERSION,
+            revision: 1,
+            checked_at_ms: now,
+            overlays_advanced: true,
+            engineer: true,
+            ..Policy::default()
+        };
+        assert!(engineer_allowed(&policy));
+        for denied in [
+            Policy::default(),
+            Policy {
+                engineer: false,
+                ..policy.clone()
+            },
+            Policy {
+                overlays_advanced: false,
+                ..policy.clone()
+            },
+            Policy {
+                error: Some("fixture".into()),
+                ..policy.clone()
+            },
+            Policy {
+                checked_at_ms: now - 2000,
+                ..policy.clone()
+            },
+            Policy {
+                valid_until_ms: Some(now),
+                ..policy.clone()
+            },
+            Policy {
+                version: control::VERSION - 1,
+                ..policy
+            },
+        ] {
+            assert!(!engineer_allowed(&denied));
+        }
+    }
+
+    #[test]
+    fn startup_profile_uses_live_core_and_validated_profile_id() {
+        let config = parsed(&[
+            "--launcher-file",
+            "local settings.json",
+            "--launch",
+            "rig-1",
+        ])
+        .expect("inicio por perfil");
+        assert_eq!(config.launch.as_deref(), Some("rig-1"));
+        assert_eq!(config.core.args, args(&["--live"]));
+        assert_eq!(
+            config.launcher_file,
+            Some(PathBuf::from("local settings.json"))
+        );
+        assert_eq!(
+            parsed(&["--launch=rig-1"])
+                .expect("compatibilidad Wails")
+                .launch,
+            config.launch
+        );
+        for invalid in ["", "../otro", "rig con espacio", "a\"b"] {
+            assert!(parsed(&["--launch", invalid]).is_err());
+        }
+        assert!(parsed(&["--launch", "rig", "--parar"]).is_err());
+    }
+
     fn args(list: &[&str]) -> Vec<String> {
         list.iter().map(|s| (*s).into()).collect()
     }
 
     fn parsed(list: &[&str]) -> Result<Config, String> {
         parse(&args(list), Path::new("bin"))
+    }
+
+    #[test]
+    fn engineer_is_opt_in_and_shares_pipe_identity_and_restart_policy() {
+        assert!(parsed(&[]).unwrap().engineer.is_none());
+        let config = parsed(&[
+            "--engineer",
+            "cursor.json",
+            "--engineer-bin",
+            "voice.exe",
+            "--",
+            "--live",
+            "--pipe",
+            "p",
+            "--",
+            "4",
+            "--",
+            "--locale",
+            "en",
+        ])
+        .unwrap();
+        let engineer = config.engineer.unwrap();
+        assert_eq!(engineer.path, Path::new("voice.exe"));
+        let core_image = Path::new("bin").join(binary_name("vantare-core"));
+        assert_eq!(
+            engineer.args,
+            args(&[
+                "--pipe",
+                "--cursor",
+                "cursor.json",
+                "--pipe-name",
+                "p",
+                "--core-image",
+                core_image.to_str().unwrap(),
+                "--locale",
+                "en"
+            ])
+        );
+        assert_eq!(config.core.args.last().unwrap(), "voice.exe");
+        assert!(parsed(&["--", "--live", "--", "4", "--", "--locale", "en"]).is_err());
+    }
+
+    #[test]
+    #[cfg(windows)]
+    fn managed_services_share_the_generated_instance_pipe_with_all_consumers() {
+        let instance = vantare_services::random_id().expect("instancia de test");
+        let mut config = parsed(&["--instancia", &instance, "--engineer", "cursor.json"])
+            .expect("configuración");
+        let (host, _) = start_remote_services(&mut config).expect("supervisor sin hijos");
+        let photo = config
+            .core
+            .args
+            .windows(2)
+            .find(|pair| pair[0] == "--pipe")
+            .expect("pipe del núcleo")[1]
+            .clone();
+        assert!(photo.ends_with(&instance));
+        assert!(config.core.args.iter().any(|arg| arg == "--managed-rights"));
+        assert_eq!(
+            config.overlays.args,
+            args(&["--fuente", &format!("pipe:{photo}")])
+        );
+        assert!(
+            config
+                .engineer
+                .expect("Engineer")
+                .args
+                .windows(2)
+                .any(|pair| pair == ["--pipe-name", &photo])
+        );
+        drop(host);
     }
 
     #[test]
@@ -344,7 +776,10 @@ mod tests {
         ])
         .unwrap();
         assert_eq!(config.grace, Duration::from_millis(500));
-        assert_eq!(config.core.path, Path::new("bin").join("vantare-core.exe"));
+        assert_eq!(
+            config.core.path,
+            Path::new("bin").join(binary_name("vantare-core"))
+        );
         assert_eq!(
             config.core.args,
             args(&["--replay", "x.jsonl", "--pipe", "p"])

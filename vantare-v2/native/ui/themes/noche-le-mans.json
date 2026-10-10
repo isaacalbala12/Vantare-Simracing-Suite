@@ -1,0 +1,92 @@
+{
+  "name": "Noche Le Mans",
+  "colors": {
+    "window": 1381655,
+    "base": 988963,
+    "sidebar": 1318445,
+    "l1": 1779768,
+    "l2": 2372680,
+    "l3": 3163226,
+    "elevated": 4408650,
+    "neoTop": 2175558,
+    "neoBottom": 1582390,
+    "text": 16382715,
+    "text2": 13620182,
+    "text3": 11383480,
+    "caption": 8488332,
+    "onPrimary": 987413,
+    "accent": 3524027,
+    "accentBright": 8513757,
+    "accentDark": 1343363,
+    "wine": 2176359,
+    "ok": 2278750,
+    "warn": 16096779,
+    "error": 15882842,
+    "line": 4294967055,
+    "line2": 4294967066,
+    "line3": 4294967078
+  },
+  "geometry": {
+    "sidebar": 272,
+    "sidebarCollapsed": 76,
+    "gap": 16,
+    "gutter": 28,
+    "radius": 16,
+    "controlRadius": 8,
+    "controlHeight": 36,
+    "topbar": 52,
+    "columns": 3
+  },
+  "fonts": {
+    "body": "Inter W400",
+    "display": "Rajdhani",
+    "mono": "Space Mono",
+    "bodySize": 14,
+    "smallSize": 12,
+    "titleSize": 44
+  },
+  "shadow": {
+    "lightAlpha": 0.08,
+    "alpha": 0.28,
+    "blur": 24,
+    "y": 8
+  },
+  "gradients": {
+    "hero": [
+      1791323,
+      1320241
+    ],
+    "button": [
+      3586479,
+      1343363
+    ],
+    "progress": [
+      1343363,
+      8513757
+    ],
+    "active": [
+      4408650,
+      3487288
+    ],
+    "appGame": [
+      3107544,
+      1191530
+    ],
+    "appVoice": [
+      15303978,
+      9389323
+    ],
+    "appTools": [
+      9063648,
+      4202618
+    ],
+    "appVideo": [
+      5922148,
+      2500395
+    ],
+    "appMusic": [
+      2278237,
+      944944
+    ]
+  }
+}

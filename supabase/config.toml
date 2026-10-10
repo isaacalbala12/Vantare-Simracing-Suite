@@ -13,6 +13,18 @@ verify_jwt = true
 [functions.billing-webhook]
 verify_jwt = false
 
+[functions.license-credential]
+verify_jwt = false
+
+[functions.native-license]
+verify_jwt = false
+
+[functions.native-account-authorize]
+verify_jwt = false
+
+[functions.native-admin]
+verify_jwt = false
+
 [functions.testing-center-feedback]
 verify_jwt = true
 
@@ -20,4 +32,9 @@ verify_jwt = true
 verify_jwt = false
 
 [functions.testing-center-linear-webhook]
+verify_jwt = false
+
+[functions.native-billing-checkout]
+verify_jwt = false
+[functions.native-billing-portal]
 verify_jwt = false

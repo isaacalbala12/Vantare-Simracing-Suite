@@ -1,6 +1,9 @@
 [workspace]
 resolver = "3"
-members = ["domain", "runtime", "ipc", "ui"]
+members = ["launcher", "profiling", "build-support", "domain", "runtime", "ipc", "ui", "hub", "engineer", "storage", "services", "strategy", "admin"]
+# DuckDB bundled solo se compila al pedir storage o los gates --workspace.
+# Admin es privado: compilarlo explícitamente y excluirlo del instalador público.
+default-members = ["domain", "runtime", "ipc", "ui", "hub", "engineer", "services", "strategy"]
 
 [workspace.package]
 version = "0.0.0"
@@ -9,8 +12,12 @@ rust-version = "1.95"
 publish = false
 
 [workspace.dependencies]
+vantare-launcher = { path = "launcher" }
+vantare-profiling = { path = "profiling" }
+vantare-build-support = { path = "build-support" }
 vantare-domain = { path = "domain" }
 vantare-ipc = { path = "ipc" }
+vantare-services = { path = "services", default-features = false }
 
 [workspace.lints.clippy]
 pedantic = { level = "warn", priority = -1 }
@@ -22,3 +29,40 @@ module_name_repetitions = "allow"
 must_use_candidate = "allow"
 missing_errors_doc = "allow"
 missing_panics_doc = "allow"
+
+[patch."https://github.com/zed-industries/zed"]
+gpui_windows = { path = "vendor/gpui_windows" }
+
+# Solo líneas de depuración: las trazas siguen dando fichero y línea, pero se
+# enlaza más rápido y los target/ ocupan ~25 % menos.
+[profile.dev]
+debug = "line-tables-only"
+
+# Los crates propios conservan fichero/línea; las dependencias no generan símbolos.
+# Test hereda dev. Release mantiene su configuración de distribución.
+[profile.dev.package."*"]
+debug = 0
+
+# El solver de Strategy es cálculo puro con plazo real: optimizado también en debug/tests.
+[profile.dev.package.vantare-strategy]
+opt-level = 3
+
+# Build para pruebas manuales, no para distribución ni mediciones de rendimiento.
+[profile.prueba]
+inherits = "release"
+opt-level = 0
+debug = "line-tables-only"
+lto = false
+codegen-units = 256
+incremental = true
+
+# GPUI y el resto de dependencias mantienen la optimización de Release.
+[profile.prueba.package."*"]
+opt-level = 3
+debug = 0
+codegen-units = 16
+incremental = false
+
+# El solver conserva el mismo requisito que en dev/test.
+[profile.prueba.package.vantare-strategy]
+opt-level = 3

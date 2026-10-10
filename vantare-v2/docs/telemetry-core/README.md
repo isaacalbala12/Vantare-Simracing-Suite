@@ -4,7 +4,7 @@ Entrada técnica contrastada con nightly del 2026-09-14. El [handoff](../vantare
 
 ## Camino actual
 
-[telemetry_core_runtime.go](../../internal/app/telemetry_core_runtime.go) conecta las fuentes y construye `TelemetryEngine`. [engine.go](../../internal/telemetry/engine/engine.go) coordina preparación y commit canónico. Los consumidores leen el resultado aceptado; no poseen un reader independiente.
+[telemetry_core_runtime.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/app/telemetry_core_runtime.go) conecta las fuentes y construye `TelemetryEngine`. [engine.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/telemetry/engine/engine.go) coordina preparación y commit canónico. Los consumidores leen el resultado aceptado; no poseen un reader independiente.
 
 - [Drivers y autoridad LMU](lmu-authority-matrix.md).
 - [Proyecciones](runtime-projections.md): Overlay V2, Engineer y Strategy según su contrato y wiring.

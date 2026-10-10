@@ -1,4 +1,4 @@
-//! Captura con alfa de Standings para la prueba de paridad (feature
+//! Captura con alfa de un widget para la prueba de paridad (feature
 //! `parity-capture`, no entra en el binario de producto).
 //!
 //! GPUI en Windows no lee la textura de la ventana. Se pinta el mismo estado
@@ -14,12 +14,14 @@ use std::rc::Rc;
 use std::time::Duration;
 
 use gpui::{App, AsyncApp, Entity};
+use vantare_domain::Snapshot;
 use vantare_domain::format::Preferences;
 
-use crate::app::{self, Kind, Overlay};
+use crate::Kind;
+use crate::app::{self, Overlay};
+use crate::efficiency::col;
 use crate::overlay::{Hwnd, ffi};
 use crate::source;
-use crate::standings::view::col;
 
 mod gdi {
     use std::ffi::c_void;
@@ -77,26 +79,44 @@ mod gdi {
     }
 }
 
+fn read_dib(
+    expected: i32,
+    restore: impl FnOnce() -> bool,
+    read: impl FnOnce() -> i32,
+) -> Result<(), String> {
+    if !restore() {
+        return Err("SelectObject no pudo deseleccionar el bitmap".into());
+    }
+    let lines = read();
+    if lines == expected {
+        Ok(())
+    } else {
+        Err(format!("GetDIBits copió {lines}/{expected} filas"))
+    }
+}
+
 /// Copia BGRA de la esquina superior izquierda (`w` x `h` px) de la región
 /// cliente tal como la compone DWM en pantalla: el widget está en (0, 0) de una
 /// ventana del tamaño del monitor.
-fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Option<(u32, u32, Vec<u8>)> {
+fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), String> {
     use gdi::{
-        BitBlt, BitmapInfoHeader, CreateCompatibleBitmap, CreateCompatibleDC, DeleteDC,
-        DeleteObject, GetDC, GetDIBits, ReleaseDC, SelectObject,
+        BitBlt, BitmapInfoHeader, CreateCompatibleBitmap, CreateCompatibleDC, GetDC, GetDIBits,
+        SelectObject,
     };
     const SRCCOPY: u32 = 0x00CC_0020;
     const CAPTUREBLT: u32 = 0x4000_0000;
+    let bytes = pixel_bytes(w, h)?;
+    let mut pixels = Vec::new();
+    pixels
+        .try_reserve_exact(bytes)
+        .map_err(|e| format!("reservar captura BGRA: {e}"))?;
+    pixels.resize(bytes, 0);
     let mut origin = ffi::Point::default();
     // SAFETY: `hwnd` es un HWND vivo de este proceso; el puntero es de un local
     // que vive durante la llamada.
-    unsafe {
-        ffi::ClientToScreen(hwnd, &raw mut origin);
+    if unsafe { ffi::ClientToScreen(hwnd, &raw mut origin) } == 0 {
+        return Err("ClientToScreen no pudo localizar el área cliente".into());
     }
-    if w <= 0 || h <= 0 {
-        return None;
-    }
-    let mut pixels = vec![0u8; (w * h * 4) as usize];
     let mut info = BitmapInfoHeader {
         size: std::mem::size_of::<BitmapInfoHeader>() as u32,
         width: w,
@@ -110,41 +130,99 @@ fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Option<(u32, u32, Vec<u8>)> {
         clr_used: 0,
         clr_important: 0,
     };
-    // SAFETY: cada recurso GDI se crea y se libera aquí, en orden inverso;
-    // `pixels` tiene exactamente `w * h * 4` bytes, lo que `GetDIBits` escribe
-    // para un DIB de 32 bpp de `h` líneas.
-    let (copied, lines) = unsafe {
-        let screen = GetDC(0);
-        let memory = CreateCompatibleDC(screen);
-        let bitmap = CreateCompatibleBitmap(screen, w, h);
-        let previous = SelectObject(memory, bitmap);
-        let copied = BitBlt(
-            memory,
+    let mut resources = GdiResources::default();
+    // SAFETY: se comprueba cada handle antes de usarlo. El propietario libera
+    // todos los recursos incluso en las salidas de error. `pixels` dispone de
+    // w*h*4 bytes comprobados para el DIB de 32 bpp, con filas alineadas a DWORD.
+    unsafe {
+        resources.screen = GetDC(0);
+        if resources.screen.is_null() {
+            return Err("GetDC no pudo obtener el escritorio".into());
+        }
+        resources.memory = CreateCompatibleDC(resources.screen);
+        if resources.memory.is_null() {
+            return Err("CreateCompatibleDC falló".into());
+        }
+        resources.bitmap = CreateCompatibleBitmap(resources.screen, w, h);
+        if resources.bitmap.is_null() {
+            return Err("CreateCompatibleBitmap falló".into());
+        }
+        let previous = SelectObject(resources.memory, resources.bitmap);
+        if !valid_object(previous) {
+            return Err("SelectObject no pudo seleccionar el bitmap".into());
+        }
+        if BitBlt(
+            resources.memory,
             0,
             0,
             w,
             h,
-            screen,
+            resources.screen,
             origin.x,
             origin.y,
             SRCCOPY | CAPTUREBLT,
-        );
-        let lines = GetDIBits(
-            memory,
-            bitmap,
-            0,
-            h as u32,
-            pixels.as_mut_ptr().cast(),
-            &raw mut info,
-            0,
-        );
-        SelectObject(memory, previous);
-        DeleteObject(bitmap);
-        DeleteDC(memory);
-        ReleaseDC(0, screen);
-        (copied, lines)
-    };
-    (copied != 0 && lines != 0).then_some((w as u32, h as u32, pixels))
+        ) == 0
+        {
+            return Err("BitBlt no pudo copiar el área cliente".into());
+        }
+        read_dib(
+            h,
+            || valid_object(SelectObject(resources.memory, previous)),
+            || {
+                GetDIBits(
+                    resources.memory,
+                    resources.bitmap,
+                    0,
+                    h as u32,
+                    pixels.as_mut_ptr().cast(),
+                    &raw mut info,
+                    0,
+                )
+            },
+        )?;
+    }
+    Ok((w as u32, h as u32, pixels))
+}
+
+fn pixel_bytes(w: i32, h: i32) -> Result<usize, String> {
+    if w <= 0 || h <= 0 {
+        return Err(format!("dimensiones de captura inválidas: {w}x{h}"));
+    }
+    (w as usize)
+        .checked_mul(h as usize)
+        .and_then(|pixels| pixels.checked_mul(4))
+        .filter(|bytes| isize::try_from(*bytes).is_ok())
+        .ok_or_else(|| format!("dimensiones de captura demasiado grandes: {w}x{h}"))
+}
+
+fn valid_object(object: *mut std::ffi::c_void) -> bool {
+    !object.is_null() && object as isize != -1
+}
+
+#[derive(Default)]
+struct GdiResources {
+    screen: *mut std::ffi::c_void,
+    memory: *mut std::ffi::c_void,
+    bitmap: *mut std::ffi::c_void,
+}
+
+impl Drop for GdiResources {
+    fn drop(&mut self) {
+        // SAFETY: handles creados y poseídos exclusivamente por capture_client.
+        // Se destruye el DC antes del bitmap para liberarlo incluso si falló
+        // la restauración de SelectObject. Los handles nulos no se liberan.
+        unsafe {
+            if !self.memory.is_null() {
+                gdi::DeleteDC(self.memory);
+            }
+            if !self.bitmap.is_null() {
+                gdi::DeleteObject(self.bitmap);
+            }
+            if !self.screen.is_null() {
+                gdi::ReleaseDC(0, self.screen);
+            }
+        }
+    }
 }
 
 /// Combina dos capturas BGRA del mismo estado sobre fondo negro y blanco en un
@@ -203,12 +281,12 @@ async fn settled(cx: &mut AsyncApp, view: &Entity<Overlay>) -> Result<Hwnd, Stri
             return Ok(hwnd);
         }
     }
-    Err("no se obtuvo el HWND de la ventana".into())
+    Err("la ventana no apareció o las animaciones no terminaron en 10 s".into())
 }
 
 /// Pinta el estado sobre `level` (0 negro, 255 blanco) y captura cuando DWM ya
-/// lo compuso: el hueco derecho (x = w-4, y = 3) es siempre transparente y debe
-/// mostrar el fondo puro.
+/// lo compuso: la marca bajo el widget debe mostrar el fondo puro (abajo y no a
+/// la derecha para que quepan widgets tan anchos como el monitor).
 async fn pass(
     cx: &mut AsyncApp,
     view: &Entity<Overlay>,
@@ -224,13 +302,13 @@ async fn pass(
     let mut last = None;
     for _ in 0..60 {
         sleep(cx, 120).await;
-        if let Some((w, h, pixels)) = capture_client(hwnd, size.0, size.1) {
-            let at = (3 * w as usize + w as usize - 4) * 4;
-            if pixels[at..at + 3].iter().all(|c| c.abs_diff(level) <= 1) {
-                return Ok((w, h, pixels));
-            }
-            last = Some(pixels[at..at + 4].to_vec());
+        let (w, h, mut pixels) = capture_client(hwnd, size.0, size.1 + 2)?;
+        let at = (h as usize - 1) * w as usize * 4;
+        if pixels[at..at + 3].iter().all(|c| c.abs_diff(level) <= 1) {
+            pixels.truncate(at - w as usize * 4);
+            return Ok((w, h - 2, pixels));
         }
+        last = Some(pixels[at..at + 4].to_vec());
     }
     Err(format!(
         "la pasada de nivel {level} no se asentó (píxel de margen BGRA: {last:?})"
@@ -240,7 +318,22 @@ async fn pass(
 async fn capture(mut cx: AsyncApp, view: Entity<Overlay>, path: PathBuf) -> Result<(), String> {
     let hwnd = settled(&mut cx, &view).await?;
     let (w, h) = view.read_with(&cx, |v, _| v.wanted_size());
-    let size = (w as i32, h as i32);
+    let mut client = ffi::Rect::default();
+    // SAFETY: HWND vivo y puntero a un Rect local válido durante la llamada.
+    let valid = unsafe { ffi::GetClientRect(hwnd, &raw mut client) };
+    if valid == 0
+        || !w.is_finite()
+        || !h.is_finite()
+        || w <= 0.0
+        || h <= 0.0
+        || w.ceil() > (client.right - client.left) as f32
+        || h.ceil() + 2.0 > (client.bottom - client.top) as f32
+    {
+        return Err(format!(
+            "el widget ({w}x{h}) no cabe en el área cliente con su marca de captura"
+        ));
+    }
+    let size = (w.ceil() as i32, h.ceil() as i32);
     // La referencia son píxeles físicos a 100 % de DPI (SPEC §7).
     // SAFETY: `hwnd` es el HWND vivo de la ventana; la llamada no toma punteros.
     let dpi = unsafe { gdi::GetDpiForWindow(hwnd) };
@@ -259,6 +352,21 @@ async fn capture(mut cx: AsyncApp, view: Entity<Overlay>, path: PathBuf) -> Resu
 
 /// Abre Standings con la escena fija de `source::fixed`, captura y sale.
 pub fn run(path: PathBuf) -> ExitCode {
+    run_widget(Kind::Standings, source::fixed(), path)
+}
+
+/// Captura el renderer productivo con una sola foto, sin núcleo ni feed live.
+pub fn run_widget(kind: Kind, snapshot: Snapshot, path: PathBuf) -> ExitCode {
+    run_sequence(kind, &[snapshot], path)
+}
+
+/// Alimenta todas las fotos en orden antes de esperar el fin de las animaciones.
+pub fn run_sequence(kind: Kind, snapshots: &[Snapshot], path: PathBuf) -> ExitCode {
+    if snapshots.is_empty() {
+        eprintln!("la escena no contiene fotos");
+        return ExitCode::FAILURE;
+    }
+    let snapshots = snapshots.to_vec();
     let failure = Rc::new(Cell::new(false));
     let flag = failure.clone();
     gpui_platform::application().run(move |cx: &mut App| {
@@ -267,14 +375,36 @@ pub fn run(path: PathBuf) -> ExitCode {
             return;
         }
         // El widget en la esquina del monitor principal: se captura solo su rectángulo.
-        let placed = [(Kind::Standings, (0.0, 0.0))];
+        let placed = [(kind, (0.0, 0.0))];
         let Some(view) = app::open_screens(cx, &placed, Preferences::default()).pop() else {
             eprintln!("no se pudo abrir la ventana");
             flag.set(true);
             cx.quit();
             return;
         };
-        view.update(cx, |v, cx| v.ingest(&source::fixed(), cx));
+        view.update(cx, |v, cx| {
+            // Las referencias de paridad de Standings, Relative, Fuel y Delta son del sistema
+            // Eficiencia; Vantare (#1497) es el predeterminado del producto.
+            let reference = match kind {
+                Kind::Standings => Some(crate::Settings::Standings(
+                    crate::standings::Settings::eficiencia(),
+                )),
+                Kind::Relative => Some(crate::Settings::Relative(
+                    crate::relative::Settings::eficiencia(),
+                )),
+                Kind::FuelStrategy => Some(crate::Settings::FuelStrategy(
+                    crate::fuel_strategy::Settings::eficiencia(),
+                )),
+                Kind::Delta => Some(crate::Settings::Delta(crate::delta::Settings::eficiencia())),
+                _ => None,
+            };
+            if let Some(settings) = reference {
+                *v = Overlay::configured(&settings, Preferences::default());
+            }
+            for snapshot in &snapshots {
+                v.ingest(snapshot, cx);
+            }
+        });
         cx.spawn(async move |cx| {
             let result = capture(cx.clone(), view, path).await;
             if let Err(error) = &result {
@@ -295,6 +425,60 @@ pub fn run(path: PathBuf) -> ExitCode {
 #[cfg(test)]
 mod tests {
     use super::solve_alpha;
+
+    #[test]
+    fn capture_rejects_invalid_sizes_and_window_before_gdi_copy() {
+        assert_eq!(super::pixel_bytes(3, 2).expect("tamaño válido"), 24);
+        for (w, h) in [(0, 2), (2, 0), (-1, 2), (2, -1), (i32::MAX, i32::MAX)] {
+            assert!(super::pixel_bytes(w, h).is_err());
+            assert!(super::capture_client(0, w, h).is_err());
+        }
+        let error = super::capture_client(0, 1, 1).expect_err("HWND nulo");
+        assert!(error.contains("ClientToScreen"));
+    }
+
+    #[test]
+    fn dib_restores_the_bitmap_before_reading_its_pixels() {
+        let restored = std::cell::Cell::new(false);
+        let read_after_restore = std::cell::Cell::new(false);
+        super::read_dib(
+            2,
+            || {
+                restored.set(true);
+                true
+            },
+            || {
+                read_after_restore.set(restored.get());
+                2
+            },
+        )
+        .expect("copia completa");
+        assert!(
+            read_after_restore.get(),
+            "GetDIBits exige bitmap deseleccionado"
+        );
+    }
+
+    #[test]
+    fn dib_requires_every_row_and_skips_reading_if_restore_fails() {
+        assert!(
+            super::read_dib(2, || true, || 1).is_err(),
+            "una fila no es una captura completa"
+        );
+        let read = std::cell::Cell::new(false);
+        assert!(
+            super::read_dib(
+                2,
+                || false,
+                || {
+                    read.set(true);
+                    2
+                }
+            )
+            .is_err()
+        );
+        assert!(!read.get(), "no leer un bitmap aún seleccionado");
+    }
 
     #[test]
     fn alpha_is_recovered_from_black_and_white_composites() {

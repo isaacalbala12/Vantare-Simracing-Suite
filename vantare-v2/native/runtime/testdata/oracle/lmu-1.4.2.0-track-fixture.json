@@ -1,0 +1,1868 @@
+{
+  "go_rejection": "",
+  "session": {
+    "kind": {
+      "v": "practice",
+      "q": "fresh"
+    },
+    "remaining_ms": {
+      "v": 21491000,
+      "q": "fresh"
+    },
+    "track": {
+      "v": "Track-01",
+      "q": "fresh"
+    }
+  },
+  "cars": [
+    {
+      "id": "lmu-slot-1000007-generation-1",
+      "ordinal": 7,
+      "number": "",
+      "driver": "Driver-007",
+      "class": "Class-007",
+      "position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 0
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 0
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000009-generation-1",
+      "ordinal": 9,
+      "number": "",
+      "driver": "Driver-009",
+      "class": "Class-009",
+      "position": {
+        "v": 2,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 2204.486846923828
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 2204.486846923828
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000014-generation-1",
+      "ordinal": 14,
+      "number": "",
+      "driver": "Driver-014",
+      "class": "Class-014",
+      "position": {
+        "v": 3,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 6723.564147949219
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 4519.077301025391
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000030-generation-1",
+      "ordinal": 30,
+      "number": "",
+      "driver": "Driver-030",
+      "class": "Class-030",
+      "position": {
+        "v": 4,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 18886.962890625
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 12163.398742675781
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000001-generation-1",
+      "ordinal": 1,
+      "number": "",
+      "driver": "Driver-001",
+      "class": "Class-001",
+      "position": {
+        "v": 5,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 21337.303161621094
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 2450.3402709960938
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000036-generation-1",
+      "ordinal": 36,
+      "number": "",
+      "driver": "Driver-036",
+      "class": "Class-036",
+      "position": {
+        "v": 6,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 22054.527282714844
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 717.22412109375
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000033-generation-1",
+      "ordinal": 33,
+      "number": "",
+      "driver": "Driver-033",
+      "class": "Class-033",
+      "position": {
+        "v": 7,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 27186.97166442871
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 5132.444381713867
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000026-generation-1",
+      "ordinal": 26,
+      "number": "",
+      "driver": "Driver-026",
+      "class": "Class-026",
+      "position": {
+        "v": 8,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 31554.73518371582
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 4367.763519287109
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000010-generation-1",
+      "ordinal": 10,
+      "number": "",
+      "driver": "Driver-010",
+      "class": "Class-010",
+      "position": {
+        "v": 9,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 50463.43994140625
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 18908.702850341797
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000024-generation-1",
+      "ordinal": 24,
+      "number": "",
+      "driver": "Driver-024",
+      "class": "Class-024",
+      "position": {
+        "v": 10,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 52837.72659301758
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 2374.2899894714355
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000003-generation-1",
+      "ordinal": 3,
+      "number": "",
+      "driver": "Driver-003",
+      "class": "Class-003",
+      "position": {
+        "v": 11,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 53343.68133544922
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 505.953311920166
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000034-generation-1",
+      "ordinal": 34,
+      "number": "",
+      "driver": "Driver-034",
+      "class": "Class-034",
+      "position": {
+        "v": 12,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 54133.37707519531
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 789.696216583252
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000042-generation-1",
+      "ordinal": 42,
+      "number": "",
+      "driver": "Driver-042",
+      "class": "Class-042",
+      "position": {
+        "v": 13,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 54179.48532104492
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 46.108245849609375
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000027-generation-1",
+      "ordinal": 27,
+      "number": "",
+      "driver": "Driver-027",
+      "class": "Class-027",
+      "position": {
+        "v": 14,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 54284.828186035156
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 105.34143447875977
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000025-generation-1",
+      "ordinal": 25,
+      "number": "",
+      "driver": "Driver-025",
+      "class": "Class-025",
+      "position": {
+        "v": 15,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 54490.46325683594
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 205.63745498657227
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000008-generation-1",
+      "ordinal": 8,
+      "number": "",
+      "driver": "Driver-008",
+      "class": "Class-008",
+      "position": {
+        "v": 16,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 54632.164001464844
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 141.69907569885254
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000016-generation-1",
+      "ordinal": 16,
+      "number": "",
+      "driver": "Driver-016",
+      "class": "Class-016",
+      "position": {
+        "v": 17,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 54775.44403076172
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 143.2809829711914
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000005-generation-1",
+      "ordinal": 5,
+      "number": "",
+      "driver": "Driver-005",
+      "class": "Class-005",
+      "position": {
+        "v": 18,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 55016.441345214844
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 240.9963607788086
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000029-generation-1",
+      "ordinal": 29,
+      "number": "",
+      "driver": "Driver-029",
+      "class": "Class-029",
+      "position": {
+        "v": 19,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 55227.455139160156
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 211.0142707824707
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000041-generation-1",
+      "ordinal": 41,
+      "number": "",
+      "driver": "Driver-041",
+      "class": "Class-041",
+      "position": {
+        "v": 20,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 55451.74789428711
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 224.29299354553223
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000021-generation-1",
+      "ordinal": 21,
+      "number": "",
+      "driver": "Driver-021",
+      "class": "Class-021",
+      "position": {
+        "v": 21,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 55598.976135253906
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 147.22847938537598
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000022-generation-1",
+      "ordinal": 22,
+      "number": "",
+      "driver": "Driver-022",
+      "class": "Class-022",
+      "position": {
+        "v": 22,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 55666.59927368164
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 67.62266159057617
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000023-generation-1",
+      "ordinal": 23,
+      "number": "",
+      "driver": "Driver-023",
+      "class": "Class-023",
+      "position": {
+        "v": 23,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 55765.750885009766
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 99.15304183959961
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000018-generation-1",
+      "ordinal": 18,
+      "number": "",
+      "driver": "Driver-018",
+      "class": "Class-018",
+      "position": {
+        "v": 24,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 55833.15658569336
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 67.40570068359375
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000035-generation-1",
+      "ordinal": 35,
+      "number": "",
+      "driver": "Driver-035",
+      "class": "Class-035",
+      "position": {
+        "v": 25,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 55913.822174072266
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 80.66415786743164
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000032-generation-1",
+      "ordinal": 32,
+      "number": "",
+      "driver": "Driver-032",
+      "class": "Class-032",
+      "position": {
+        "v": 26,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 55980.796813964844
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 66.97535514831543
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000011-generation-1",
+      "ordinal": 11,
+      "number": "",
+      "driver": "Driver-011",
+      "class": "Class-011",
+      "position": {
+        "v": 27,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 56062.660217285156
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 81.8624496459961
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000020-generation-1",
+      "ordinal": 20,
+      "number": "",
+      "driver": "Driver-020",
+      "class": "Class-020",
+      "position": {
+        "v": 28,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 56132.27844238281
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 69.61894035339355
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000017-generation-1",
+      "ordinal": 17,
+      "number": "",
+      "driver": "Driver-017",
+      "class": "Class-017",
+      "position": {
+        "v": 29,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 56281.82601928711
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 149.54710006713867
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000040-generation-1",
+      "ordinal": 40,
+      "number": "",
+      "driver": "Driver-040",
+      "class": "Class-040",
+      "position": {
+        "v": 30,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 56380.92803955078
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 99.10345077514648
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000039-generation-1",
+      "ordinal": 39,
+      "number": "",
+      "driver": "Driver-039",
+      "class": "Class-039",
+      "position": {
+        "v": 31,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 56444.95391845703
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 64.02277946472168
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000012-generation-1",
+      "ordinal": 12,
+      "number": "",
+      "driver": "Driver-012",
+      "class": "Class-012",
+      "position": {
+        "v": 32,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 56539.20364379883
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 94.25091743469238
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000002-generation-1",
+      "ordinal": 2,
+      "number": "",
+      "driver": "Driver-002",
+      "class": "Class-002",
+      "position": {
+        "v": 33,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 56766.76940917969
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 227.56588459014893
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000043-generation-1",
+      "ordinal": 43,
+      "number": "",
+      "driver": "Driver-043",
+      "class": "Class-043",
+      "position": {
+        "v": 34,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 56852.61917114258
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 85.85047721862793
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000019-generation-1",
+      "ordinal": 19,
+      "number": "",
+      "driver": "Driver-019",
+      "class": "Class-019",
+      "position": {
+        "v": 35,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 57009.124755859375
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 156.50498867034912
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000031-generation-1",
+      "ordinal": 31,
+      "number": "",
+      "driver": "Driver-031",
+      "class": "Class-031",
+      "position": {
+        "v": 36,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 57169.03305053711
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 159.9065065383911
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000038-generation-1",
+      "ordinal": 38,
+      "number": "",
+      "driver": "Driver-038",
+      "class": "Class-038",
+      "position": {
+        "v": 37,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 57339.168548583984
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 170.13812065124512
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000037-generation-1",
+      "ordinal": 37,
+      "number": "",
+      "driver": "Driver-037",
+      "class": "Class-037",
+      "position": {
+        "v": 38,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 57417.17529296875
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 78.00495624542236
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000028-generation-1",
+      "ordinal": 28,
+      "number": "",
+      "driver": "Driver-028",
+      "class": "Class-028",
+      "position": {
+        "v": 39,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 57503.43704223633
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 86.26186847686768
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000004-generation-1",
+      "ordinal": 4,
+      "number": "",
+      "driver": "Driver-004",
+      "class": "Class-004",
+      "position": {
+        "v": 40,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 57578.060150146484
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 74.62412118911743
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000015-generation-1",
+      "ordinal": 15,
+      "number": "",
+      "driver": "Driver-015",
+      "class": "Class-015",
+      "position": {
+        "v": 41,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 57667.945861816406
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 89.88583087921143
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000013-generation-1",
+      "ordinal": 13,
+      "number": "",
+      "driver": "Driver-013",
+      "class": "Class-013",
+      "position": {
+        "v": 42,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 57833.69827270508
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 165.75241088867188
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    },
+    {
+      "id": "lmu-slot-1000006-generation-1",
+      "ordinal": 6,
+      "number": "",
+      "driver": "Driver-006",
+      "class": "Class-006",
+      "position": {
+        "v": 43,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 57908.68377685547
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 74.98544454574585
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": true,
+        "q": "fresh"
+      }
+    }
+  ]
+}

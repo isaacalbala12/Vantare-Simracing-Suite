@@ -707,18 +707,14 @@ impl Motion {
     }
 
     /// `true` mientras quede algo por animar o caducar.
+    #[cfg(any(test, feature = "parity-capture"))]
     pub fn animating(&self, now: Instant) -> bool {
         self.wake(now) != Wake::Idle
     }
 }
 
-/// Lo que la vista debe pedir a GPUI tras pintar (ver [`Motion::wake`]).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Wake {
-    Frame,
-    At(Duration),
-    Idle,
-}
+// Compatibilidad para consumidores de Motion; el ritmo lo gobierna el host.
+pub use crate::app::Wake;
 
 fn pit_tweens(active: bool, now: Instant) -> (Tween, Tween) {
     (

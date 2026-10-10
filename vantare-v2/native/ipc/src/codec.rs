@@ -12,8 +12,7 @@ use crate::dto::{self, SnapshotDto};
 
 pub(crate) const MAX_MESSAGE: usize = 1 << 20;
 /// Versiones de DTO que este extremo sabe hablar.
-const MIN_VERSION: u32 = 1;
-const MAX_VERSION: u32 = dto::VERSION;
+const PROTOCOL_VERSION: u32 = dto::VERSION;
 
 /// Posición de una foto en la línea de tiempo de un productor.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -53,6 +52,8 @@ pub(crate) enum Message {
         min_version: u32,
         max_version: u32,
         cursor: Option<Revision>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        demand: Option<crate::Demand>,
     },
     /// Productor → suscriptor: versión elegida.
     Welcome {
@@ -64,49 +65,88 @@ pub(crate) enum Message {
     /// Latido del productor para detectar pares muertos y silencios.
     Ping,
     Snapshot(SnapshotDto),
+    DemandSnapshot {
+        snapshot: SnapshotDto,
+        requested: crate::Demand,
+        delivered: crate::Demand,
+    },
 }
 
 /// Mayor versión común, si la hay.
 pub(crate) fn negotiate(min: u32, max: u32) -> Option<u32> {
-    let version = max.min(MAX_VERSION);
-    (version >= min.max(MIN_VERSION)).then_some(version)
+    (min <= PROTOCOL_VERSION && max >= PROTOCOL_VERSION).then_some(PROTOCOL_VERSION)
 }
 
 pub(crate) fn hello(cursor: Option<Revision>) -> Message {
     Message::Hello {
-        min_version: MIN_VERSION,
-        max_version: MAX_VERSION,
+        min_version: PROTOCOL_VERSION,
+        max_version: PROTOCOL_VERSION,
         cursor,
+        demand: None,
+    }
+}
+
+pub(crate) fn hello_requested(cursor: Option<Revision>, demand: crate::Demand) -> Message {
+    Message::Hello {
+        min_version: PROTOCOL_VERSION,
+        max_version: PROTOCOL_VERSION,
+        cursor,
+        demand: Some(demand),
     }
 }
 
 pub(crate) fn supports(version: u32) -> bool {
-    (MIN_VERSION..=MAX_VERSION).contains(&version)
+    version == PROTOCOL_VERSION
 }
 
 pub(crate) fn write_message(w: &mut impl Write, message: &Message) -> Result<(), Error> {
-    let mut frame = vec![0; 4];
-    serde_json::to_writer(&mut frame, message)?;
+    write_buffered(w, message, &mut Vec::new())
+}
+
+pub(crate) fn write_buffered(
+    w: &mut impl Write,
+    message: &Message,
+    frame: &mut Vec<u8>,
+) -> Result<(), Error> {
+    frame.clear();
+    frame.resize(4, 0);
+    {
+        let _span = crate::profiling::begin(crate::profiling::Stage::Serialize);
+        serde_json::to_writer(&mut *frame, message)?;
+    }
     let len = frame.len() - 4;
     let header = match u32::try_from(len) {
         Ok(header) if len <= MAX_MESSAGE => header,
         _ => return Err(Error::TooLarge { len }),
     };
     frame[..4].copy_from_slice(&header.to_le_bytes());
-    w.write_all(&frame)?; // un solo write: un solo `WriteFile` en el pipe
+    {
+        let _span = crate::profiling::begin(crate::profiling::Stage::IpcWrite);
+        w.write_all(frame)?; // un solo write: un solo `WriteFile` en el pipe
+    }
+    crate::profiling::report_if_due();
     Ok(())
 }
 
 pub(crate) fn read_message(r: &mut impl Read) -> Result<Message, Error> {
+    read_buffered(r, &mut Vec::new())
+}
+
+pub(crate) fn read_buffered(r: &mut impl Read, body: &mut Vec<u8>) -> Result<Message, Error> {
     let mut header = [0; 4];
     r.read_exact(&mut header)?;
     let len = u32::from_le_bytes(header) as usize;
     if len > MAX_MESSAGE {
         return Err(Error::TooLarge { len });
     }
-    let mut body = vec![0; len];
-    r.read_exact(&mut body)?;
-    Ok(serde_json::from_slice(&body)?)
+    body.resize(len, 0);
+    r.read_exact(body)?;
+    let message = {
+        let _span = crate::profiling::begin(crate::profiling::Stage::Decode);
+        serde_json::from_slice(body)?
+    };
+    crate::profiling::report_if_due();
+    Ok(message)
 }
 
 #[cfg(test)]
@@ -115,18 +155,19 @@ pub(crate) mod tests {
     use std::time::Duration;
 
     use vantare_domain::{
-        Capabilities, Capability, Car, CarId, Class, ClassId, Driver, DriverId, Flag, FlagKind,
-        FlagScope, Gap, Origin, Player, Pose, Quality, Session, SessionId, SessionKind,
-        SessionState, Source, SourceKind, State, Telemetry,
+        Capabilities, Capability, Car, CarId, Class, ClassId, Damage, Driver, DriverId,
+        DriverRating, Flag, FlagKind, FlagScope, Fuel, Gap, Origin, PitService, Player, Pose,
+        Quality, Session, SessionId, SessionKind, SessionState, Source, SourceKind, State, Stint,
+        Telemetry, TyreCompound, Weather,
     };
 
     use super::*;
 
-    /// Foto que ejercita todas las variantes del modelo.
-    pub(crate) fn rich_snapshot(epoch: u64, sequence: u64) -> Snapshot {
-        let car = |id: u32| Car {
+    fn rich_car(id: u32) -> Car {
+        Car {
             id: CarId(id),
             number: format!("{id}"),
+            vehicle: "Ferrari 499P".into(),
             driver: Driver {
                 id: DriverId(id + 100),
                 name: "Ñandú \"Rápido\"".into(),
@@ -140,16 +181,110 @@ pub(crate) mod tests {
             laps: Quality::Stale(3),
             last_lap_s: Quality::Reliable(92.123_456_789),
             best_lap_s: Quality::Unavailable,
+            estimated_lap_s: Quality::Estimated(91.5),
             last_sectors_s: vec![Quality::Reliable(30.5), Quality::Unavailable],
             gap_leader: Quality::Estimated(Gap::Time { seconds: 1.25 }),
             gap_ahead: Quality::Reliable(Gap::Laps { count: 2 }),
+            gap_class_leader: Quality::Stale(Gap::Time { seconds: 3.5 }),
+            gap_class_ahead: Quality::Unavailable,
+            relative_s: Quality::Estimated(-2.5),
+            relative_laps: Quality::Estimated(-1),
+            lap_distance_m: Quality::Reliable(1234.5),
+            lap_elapsed_s: Quality::Estimated(41.25),
+            current_sector: Quality::Reliable(2),
             in_pits: Quality::Reliable(true),
             pose: Quality::Reliable(Pose {
                 x_m: -1.5,
                 y_m: 1e-9,
                 yaw_rad: 3.25,
             }),
-        };
+            velocity_mps: Quality::Reliable([-12.5, 40.0]),
+            pending_penalties: Quality::Estimated(2),
+            grid_position: Quality::Reliable(id + 2),
+            pit_stops: Quality::Estimated(1),
+            tyre_compound: Quality::Stale(TyreCompound::Wet),
+            best_sectors_s: vec![Quality::Reliable(29.75), Quality::Unavailable],
+            current_sectors_s: vec![Quality::Estimated(30.25)],
+            driver_rating: Quality::Reliable(DriverRating::Gold),
+            safety_rating: Quality::Reliable(88.0),
+            relative_trend_s_per_lap: Quality::Estimated(-0.6),
+        }
+    }
+
+    #[test]
+    fn signals_1497_are_optional_on_the_wire_and_keep_each_quality() {
+        // Una foto anterior a #1497 no los lleva: se leen como no disponibles.
+        let mut value = serde_json::to_value(SnapshotDto::from(&rich_snapshot(1, 1))).expect("DTO");
+        let car = value["state"]["cars"][0].as_object_mut().expect("coche");
+        for field in [
+            "vehicle",
+            "grid_position",
+            "pit_stops",
+            "tyre_compound",
+            "best_sectors_s",
+            "current_sectors_s",
+            "driver_rating",
+            "safety_rating",
+            "relative_trend_s_per_lap",
+        ] {
+            assert!(car.remove(field).is_some(), "{field}");
+        }
+        let player = value["state"]["player"].as_object_mut().expect("jugador");
+        for field in [
+            "pit_loss_s",
+            "fuel_energy",
+            "fuel_energy_per_lap",
+            "fuel_lap_projection_l",
+            "pit_refuel_target_l",
+            "pit_refuel_added_l",
+            "pit_service_remaining_s",
+            "pit_tyres",
+            "stint_laps",
+            "stint_elapsed_s",
+            "delta_optimal_s",
+            "delta_leader_s",
+            "lap_invalid",
+        ] {
+            assert!(player.remove(field).is_some(), "{field}");
+        }
+        let old = crate::snapshot_from_json(&value.to_string()).expect("foto sin señales nuevas");
+        let car = &old.state.cars[0];
+        assert!(car.vehicle.is_empty());
+        assert_eq!(car.grid_position, Quality::Unavailable);
+        assert_eq!(car.pit_stops, Quality::Unavailable);
+        assert_eq!(car.driver_rating, Quality::Unavailable);
+        assert_eq!(car.safety_rating, Quality::Unavailable);
+        assert_eq!(car.relative_trend_s_per_lap, Quality::Unavailable);
+        let me = old.state.player.as_ref().expect("jugador");
+        assert_eq!(me.pit_loss_s, Quality::Unavailable);
+        assert_eq!(me.fuel.energy, Quality::Unavailable);
+        assert_eq!(me.fuel.lap_projection_l, Quality::Unavailable);
+        assert_eq!(me.pit_service, PitService::default());
+        assert_eq!(me.stint, Stint::default());
+        assert_eq!(me.delta_optimal_s, Quality::Unavailable);
+        assert_eq!(me.lap_invalid, Quality::Unavailable);
+        assert_eq!(car.tyre_compound, Quality::Unavailable);
+        assert!(car.best_sectors_s.is_empty() && car.current_sectors_s.is_empty());
+        // Sin dato no se escriben: las fotos existentes conservan sus bytes.
+        let written = serde_json::to_value(SnapshotDto::from(&old)).expect("DTO");
+        let car = written["state"]["cars"][0].as_object().expect("coche");
+        assert!(!car.contains_key("grid_position") && !car.contains_key("tyre_compound"));
+        let player = written["state"]["player"].as_object().expect("jugador");
+        assert!(!player.contains_key("fuel_energy") && !player.contains_key("stint_laps"));
+        for compound in [
+            TyreCompound::Soft,
+            TyreCompound::Medium,
+            TyreCompound::Hard,
+            TyreCompound::Wet,
+        ] {
+            let mut original = rich_snapshot(1, 1);
+            original.state.cars[0].tyre_compound = Quality::Reliable(compound);
+            assert_eq!(round_trip(&original), original);
+        }
+    }
+
+    /// Foto que ejercita todas las variantes del modelo.
+    pub(crate) fn rich_snapshot(epoch: u64, sequence: u64) -> Snapshot {
         Snapshot {
             epoch,
             sequence,
@@ -162,10 +297,15 @@ pub(crate) mod tests {
                 received_at: Duration::from_millis(1500),
             },
             state: State {
+                source_state: vantare_domain::SourceState::Live,
                 capabilities: Capabilities {
                     session_clock: Capability::Fresh,
                     positions: Capability::WithData,
                     gaps: Capability::Supported,
+                    fuel: Capability::Fresh,
+                    lap_progress: Capability::WithData,
+                    weather: Capability::Fresh,
+                    damage: Capability::WithData,
                     ..Capabilities::default()
                 },
                 session: Session {
@@ -176,6 +316,17 @@ pub(crate) mod tests {
                     remaining_s: Quality::Stale(20.0),
                     track_name: Quality::Reliable("Le Mans".into()),
                     laps_remaining: Quality::Unavailable,
+                    laps_total: Quality::Reliable(24),
+                    track_length_m: Quality::Reliable(13_626.0),
+                    weather: Weather {
+                        air_temperature_k: Quality::Reliable(295.15),
+                        track_temperature_k: Quality::Estimated(308.15),
+                        wind_speed_mps: Quality::Reliable(5.0),
+                        wind_direction_rad: Quality::Stale(std::f64::consts::FRAC_PI_2),
+                        rain: Quality::Reliable(0.25),
+                        track_wetness: Quality::Estimated(0.5),
+                        pressure_pa: Quality::Reliable(101_325.0),
+                    },
                 },
                 flags: Quality::Reliable(vec![
                     Flag {
@@ -187,15 +338,69 @@ pub(crate) mod tests {
                         scope: FlagScope::Car(CarId(7)),
                     },
                 ]),
-                cars: vec![car(1), car(2)],
-                player: Some(Player {
-                    car: CarId(2),
-                    telemetry: Telemetry {
-                        throttle: Quality::Reliable(0.75),
-                        gear: Quality::Reliable(-1),
-                        ..Telemetry::default()
-                    },
-                }),
+                cars: vec![rich_car(1), rich_car(2)],
+                player: Some(rich_player()),
+            },
+        }
+    }
+
+    /// Jugador con todas las señales, de `rich_snapshot`.
+    fn rich_player() -> Player {
+        Player {
+            car: CarId(2),
+            telemetry: Telemetry {
+                throttle: Quality::Reliable(0.75),
+                steering: Quality::Reliable(-0.25),
+                gear: Quality::Reliable(-1),
+                ..Telemetry::default()
+            },
+            fuel: Fuel {
+                level_l: Quality::Reliable(42.5),
+                per_lap_l: Quality::Estimated(3.1),
+                history: [
+                    Some((1, 3.0)),
+                    Some((2, 3.2)),
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                    None,
+                ],
+                energy: Quality::Reliable(0.614),
+                energy_per_lap: Quality::Estimated(0.0482),
+                lap_projection_l: Quality::Stale(1.41),
+                ..Fuel::default()
+            },
+            delta_best_s: Quality::Reliable(-0.125),
+            pit_limiter_active: Quality::Reliable(false),
+            pit_stop_stopped: Quality::Unavailable,
+            pit_loss_s: Quality::Estimated(27.4),
+            pit_service: PitService {
+                refuel_target_l: Quality::Reliable(58.0),
+                refuel_added_l: Quality::Reliable(34.1),
+                remaining_s: Quality::Estimated(9.8),
+                tyres: Quality::Reliable(4),
+            },
+            stint: Stint {
+                laps: Quality::Reliable(13),
+                elapsed_s: Quality::Stale(2712.0),
+            },
+            delta_optimal_s: Quality::Estimated(0.388),
+            delta_leader_s: Quality::Reliable(-0.05),
+            lap_invalid: Quality::Reliable(true),
+            damage: Damage {
+                aero: Quality::Reliable(0.9),
+                body: Quality::Estimated(0.8),
+                suspension: Quality::Stale(0.7),
+                tyre_wear: [
+                    Quality::Reliable(1.0),
+                    Quality::Estimated(0.75),
+                    Quality::Stale(0.5),
+                    Quality::Reliable(0.25),
+                ],
             },
         }
     }
@@ -222,6 +427,125 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn pit_and_estimated_time_signals_preserve_all_qualities_and_are_required_in_v7_full_photos() {
+        for (time, limiter, stopped) in [
+            (
+                Quality::Reliable(90.0),
+                Quality::Reliable(false),
+                Quality::Reliable(true),
+            ),
+            (
+                Quality::Estimated(91.0),
+                Quality::Estimated(true),
+                Quality::Estimated(false),
+            ),
+            (
+                Quality::Stale(92.0),
+                Quality::Stale(false),
+                Quality::Stale(true),
+            ),
+            (
+                Quality::Unavailable,
+                Quality::Unavailable,
+                Quality::Unavailable,
+            ),
+        ] {
+            let mut original = rich_snapshot(1, 1);
+            original.state.cars[0].estimated_lap_s = time;
+            let p = original.state.player.as_mut().expect("jugador");
+            p.pit_limiter_active = limiter;
+            p.pit_stop_stopped = stopped;
+            assert_eq!(round_trip(&original), original);
+        }
+        for (section, field) in [
+            ("player", "pit_limiter_active"),
+            ("player", "pit_stop_stopped"),
+            ("cars", "estimated_lap_s"),
+        ] {
+            let mut value =
+                serde_json::to_value(SnapshotDto::from(&rich_snapshot(1, 1))).expect("DTO");
+            let object = if section == "cars" {
+                &mut value["state"][section][0]
+            } else {
+                &mut value["state"][section]
+            };
+            object.as_object_mut().expect("sección").remove(field);
+            assert!(crate::snapshot_from_json(&value.to_string()).is_err());
+        }
+    }
+
+    #[test]
+    fn velocity_and_penalties_preserve_each_quality_and_are_required_in_v7_full_photos() {
+        for (velocity, penalties) in [
+            (Quality::Reliable([-1.0, 40.0]), Quality::Reliable(0)),
+            (Quality::Estimated([1.0, 40.0]), Quality::Estimated(1)),
+            (Quality::Stale([-1.0, 40.0]), Quality::Stale(3)),
+            (Quality::Unavailable, Quality::Unavailable),
+        ] {
+            let mut original = rich_snapshot(1, 1);
+            original.state.cars[0].velocity_mps = velocity;
+            original.state.cars[0].pending_penalties = penalties;
+            assert_eq!(round_trip(&original), original);
+        }
+        for field in ["velocity_mps", "pending_penalties"] {
+            let mut value =
+                serde_json::to_value(SnapshotDto::from(&rich_snapshot(1, 1))).expect("DTO");
+            value["state"]["cars"][0]
+                .as_object_mut()
+                .expect("coche")
+                .remove(field);
+            assert!(crate::snapshot_from_json(&value.to_string()).is_err());
+        }
+    }
+
+    #[test]
+    fn weather_and_damage_fields_are_required_and_tyres_have_four_slots() {
+        let json = serde_json::to_value(SnapshotDto::from(&rich_snapshot(1, 1))).unwrap();
+        for (section, fields) in [
+            (
+                "session",
+                &[
+                    "weather_air_temperature_k",
+                    "weather_track_temperature_k",
+                    "weather_wind_speed_mps",
+                    "weather_wind_direction_rad",
+                    "weather_rain",
+                    "weather_track_wetness",
+                    "weather_pressure_pa",
+                ][..],
+            ),
+            (
+                "player",
+                &[
+                    "damage_aero",
+                    "damage_body",
+                    "damage_suspension",
+                    "damage_tyre_wear",
+                ][..],
+            ),
+            ("capabilities", &["weather", "damage"][..]),
+        ] {
+            for field in fields {
+                let mut missing = json.clone();
+                missing["state"][section]
+                    .as_object_mut()
+                    .unwrap()
+                    .remove(*field);
+                assert!(
+                    crate::snapshot_from_json(&missing.to_string()).is_err(),
+                    "{field}"
+                );
+            }
+        }
+        for count in [3, 5] {
+            let mut malformed = json.clone();
+            malformed["state"]["player"]["damage_tyre_wear"] =
+                serde_json::json!(vec!["unavailable"; count]);
+            assert!(serde_json::from_value::<SnapshotDto>(malformed).is_err());
+        }
+    }
+
+    #[test]
     fn a_simulator_name_outside_the_table_decodes_as_unknown() {
         let mut json = serde_json::to_value(SnapshotDto::from(&rich_snapshot(1, 1))).unwrap();
         assert_eq!(json["origin"]["simulator"], "lmu");
@@ -236,20 +560,62 @@ pub(crate) mod tests {
 
     #[test]
     fn incompatible_dto_version_is_refused() {
-        let mut dto = SnapshotDto::from(&Snapshot::default());
-        dto.version = dto::VERSION + 1;
-        assert!(matches!(
-            Snapshot::try_from(dto),
-            Err(Error::Version { got }) if got == dto::VERSION + 1
-        ));
+        for version in [dto::VERSION - 1, dto::VERSION + 1] {
+            let mut dto = SnapshotDto::from(&Snapshot::default());
+            dto.version = version;
+            assert!(matches!(
+                Snapshot::try_from(dto),
+                Err(Error::Version { got }) if got == version
+            ));
+        }
     }
 
     #[test]
     fn negotiation_picks_the_highest_common_version() {
-        assert_eq!(negotiate(1, 1), Some(1));
+        assert_eq!(negotiate(1, 1), None);
+        assert_eq!(negotiate(1, dto::VERSION - 1), None);
+        assert!(!supports(dto::VERSION - 1));
+        assert!(supports(dto::VERSION));
         assert_eq!(negotiate(1, 9), Some(dto::VERSION));
         assert_eq!(negotiate(dto::VERSION + 1, dto::VERSION + 2), None);
         assert_eq!(negotiate(0, 0), None);
+    }
+
+    #[test]
+    fn reused_buffers_preserve_wire_bytes_and_do_not_leak_a_previous_body() {
+        let messages = [
+            Message::Snapshot(SnapshotDto::from(&rich_snapshot(1, 1))),
+            Message::Ping,
+        ];
+        let mut encode = Vec::new();
+        let mut decode = Vec::new();
+        let mut capacities = None;
+        for message in messages {
+            // Referencia independiente: no llama al codec que se está probando.
+            let body = serde_json::to_vec(&message).unwrap();
+            let mut expected = u32::try_from(body.len()).unwrap().to_le_bytes().to_vec();
+            expected.extend_from_slice(&body);
+            let mut actual = Vec::new();
+            write_buffered(&mut actual, &message, &mut encode).unwrap();
+            assert_eq!(actual, expected);
+            let got = read_buffered(&mut Cursor::new(actual), &mut decode).unwrap();
+            assert_eq!(frame(&got), expected);
+            let current = (encode.capacity(), decode.capacity());
+            if let Some(previous) = capacities {
+                assert_eq!(
+                    current, previous,
+                    "Ping reutiliza la reserva del DTO grande"
+                );
+            }
+            capacities = Some(current);
+        }
+        let capacity = decode.capacity();
+        let header = u32::try_from(MAX_MESSAGE + 1).unwrap().to_le_bytes();
+        assert!(matches!(
+            read_buffered(&mut Cursor::new(header), &mut decode),
+            Err(Error::TooLarge { .. })
+        ));
+        assert_eq!(decode.capacity(), capacity, "rechazar antes de reservar");
     }
 
     #[test]
@@ -310,5 +676,44 @@ pub(crate) mod tests {
         assert!(!r(1, 1).is_newer(Some(r(1, 5))));
         // Época distinta = productor reiniciado: aporta aunque la secuencia sea menor.
         assert!(r(2, 1).is_newer(Some(r(1, 5))));
+    }
+
+    /// El lector de marcos del pipe es la frontera mas expuesta del nucleo:
+    /// acepta bytes de cualquier proceso del usuario que abra el pipe, y un
+    /// panico aqui tumba al que publica la telemetria.
+    #[test]
+    fn hostile_frames_are_rejected_without_panicking_or_allocating() {
+        // Un prefijo de longitud enorme con el cuerpo vacio. Si el tope se
+        // comprobase DESPUES de `vec![0; len]`, esto agotaria la memoria: la
+        // prueba pasa precisamente porque no se reserva nada.
+        let mut hostile = u32::MAX.to_le_bytes().to_vec();
+        hostile.extend_from_slice(b"{}");
+        assert!(read_message(&mut Cursor::new(hostile)).is_err());
+
+        // Bytes arbitrarios: nunca panico.
+        let mut state = 0x9E37_79B9_7F4A_7C15_u64;
+        let mut next = || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        for _ in 0..20_000 {
+            let len = usize::try_from(next() % 64).unwrap_or(0);
+            let mut bytes = vec![0_u8; len];
+            for byte in &mut bytes {
+                *byte = (next() & 0xff) as u8;
+            }
+            let _ = read_message(&mut Cursor::new(bytes));
+        }
+
+        // Marcos validos con un byte cambiado: tampoco.
+        let valid = frame(&Message::Ping);
+        for _ in 0..20_000 {
+            let mut bytes = valid.clone();
+            let at = usize::try_from(next()).unwrap_or(0) % bytes.len();
+            bytes[at] = (next() & 0xff) as u8;
+            let _ = read_message(&mut Cursor::new(bytes));
+        }
     }
 }

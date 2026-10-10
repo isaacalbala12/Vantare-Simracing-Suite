@@ -1,5 +1,141 @@
 # Handoff vivo — Telemetry Core
 
+## #1496 — feedback Relative: prioridad nativa y fuente pendiente — 2026-10-09
+
+Encargo: `C:/tmp/feedback-0910/comun.md` y `relative.md`; worker sin delegación.
+Base autorizada `vantareapp/isa-1496-integracion-prueba@e55a43b3`;
+rama `vantareapp/isa-1496-fb-relative`, worktree `C:/tmp/vw3-fb-relative`.
+Commits funcionales locales: `85f8e937` conserva el Relative actual del adaptador;
+`1801889a` añade el periodo estimado nativo como último respaldo antes de
+la primera vuelta. El gap calculado sigue `Estimated`, sin memoria y con
+protección en boxes/caducidad. No se modifica widget, IPC ni adaptador.
+
+**Entrega parcial:** no existe una fuente certificada de gap relativo nativo
+por coche en esta evidencia. SDK instalado + probe x64: TelemInfoV01 1888 B,
+gaps vecinos +780/+784 y clasificación +788/+792, sin ID del vecino.
+LMU47: 3600 SHM +239 REST; los cuatro campos están a cero; REST no los guarda.
+Las 3839 fotos tienen 47/47 coches en boxes: 180433 Relative `Unavailable`.
+Regeneración productiva de goldens/snapshots idéntica a la base; originales
+conservados. Ni esta captura ni las regresiones certifican gaps `Reliable`.
+`trend.rs`, `stint.rs` y `relative_trend_s_per_lap` no existen en la base.
+No se crea un contrato/renderer paralelo para suplirlos.
+
+Regresiones de derivación: 15/15 PASS. Fmt/Clippy workspace -D warnings PASS;
+Nextest completo 1303/1303 PASS (7 skips); lifecycle 5+13 PASS. Telemetría
+21/21 PASS, 0 skips, incluidos 3839 DTO LMU47 y hash exacto de 190308 DTO
+ACC (471,621 s). Todos los gates por `C:/tmp/fase2/compilar.ps1`, target aislado.
+Primer Nextest: disco lleno (973 PASS, 1 FAIL, 329 sin ejecutar). TEMP/TMP
+en E: produjo dos fallos de recuperación/pipe de causa no confirmada; al
+restituir el entorno original con espacio libre, suite completa PASS.
+No se borró caché (rechazo automático), ni se alteraron tests/Engineer.
+Evidencia externa: `C:/tmp/feedback-0910/relative-evidence/`.
+[Investigación, preguntas y manual](../../analysis/2026-10-09-relative-lmu.md).
+Diff completo revisado; entrega parcial local para review del orquestador.
+Siguiente: el orquestador solicita captura
+sin eliminar los gaps, con vecinos/signo anotados, y reconcilia la base de
+las señales de tendencia/stint. Ninguna captura física LMU/OBS/macOS ejecutada.
+`docs/roadmap/plan.md` ausente también en `origin/nightly`; no se recrea.
+Tus instrucciones actuales de GitHub prevalecen sobre los docs antiguos de
+Notion. Entrega solo local, sin push, PR, CI remoto, merge, promoción o release.
+
+
+## #1471 — golden LMU47 macOS — 2026-10-07
+
+Encargo vigente: `C:/tmp/fase2/notas-1471.md`, base `7be12174`, rama
+`vantareapp/isa-1471-lmu47-macos`, worktree `C:/tmp/vw3-1471`.
+Compilación/tests únicamente en Mac arm64, clon propio `~/vantare-1471`;
+entrega y commit locales en Windows, sin push a GitHub ni PR/promoción.
+RED en la base: bloque 24. Medición completa de 3.839 DTO: 1.356 diferencias
+exclusivamente en `cars[*].pose.reliable.yaw_rad`, máximo 1 ULP (4,44e-16 rad).
+El test permite ese único ULP finito y conserva todos los demás bytes.
+No cambia runtime, DTO, dependencias, corpus, goldens ni renderizadores.
+Decisión y límites en `native/runtime/tests/golden/README.md`; regresión que
+rechaza dos ULP y cambios de posición, calidad, formato o estructura.
+Mac Rust 1.95.0/-j2/cola: fmt PASS; goldens 4/4 PASS, 0 skips (ACC 433,302 s);
+lifecycle 10/10 PASS. SHA-256 del test idéntico entre Mac y entrega Windows.
+Check/Clippy/Nextest globales bloqueados por errores heredados ajenos al diff:
+imports Windows de Engineer y `unnecessary_wraps` en profiling, registrados
+en [#1489](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1489).
+Clippy del target golden también se bloquea en profiling antes de revisar el
+test: no se afirma que ese gate pase. Paridad Standings Windows no ejecutada
+(compilar/probar en este PC está prohibido; runtime/renderizadores intactos).
+Evidencia `C:/tmp/1471-evidence/`; informe final `C:/tmp/fase2/informe-1471.md`.
+Manual en Mac, desde `vantare-v2/native`, con `/opt/homebrew/bin` en PATH:
+`cargo nextest run --workspace --test telemetry_golden -j 2`.
+Diff revisado; entrega local lista para revisión del orquestador, sin aceptación
+ni integración/promoción. Siguiente: revisar #1471 y resolver gates en #1489.
+`docs/roadmap/plan.md` ausente en esta base; no se crea un roadmap alternativo.
+/^>>>>>>> vantareapp/isa-1481-derivar-siempre$/d
+## #1481 — derivaciones independientes de overlays — 2026-10-07
+
+Encargo vigente: GitHub #1481, base `5924264284cc19c8f1e71a920c1e0fbe8e418602`,
+rama `vantareapp/isa-1481-derivar-siempre`, worktree `C:/tmp/vw3-1481-derivar`.
+Entrega local para review del orquestador; sin Notion disponible ni push/PR/merge/release.
+Tres regresiones fallan en la base y pasan con el arreglo: cambio de demanda pierde
+consumo/historial, máscara cero pierde referencia delta y canal de eventos sin widgets
+recibe derivados ausentes. El núcleo deriva en cada observación y alimenta ambos
+trackers, conservando la excepción de pausa y los resets por sesión/coche/dato inválido.
+La demanda solo notifica una nueva revisión para la hidratación que exige el IPC
+actual; esa notificación no deriva, no genera hechos ni muestras y conserva el origen.
+No cambia DTO/protocolo, filtro/cadencia por suscriptor, arquitectura ni dependencias.
+Gates PASS: fmt/check/Clippy -D warnings; Nextest 1213/1213 (6 skips existentes);
+lifecycle 5+13, sin fallos. Paridad Standings nativa 0/292160 px, umbral 0/delta 0,
+captura/base/diff inspeccionados. UI y su cierre de dependencias coinciden con
+`59242642` y excluyen runtime: la referencia nativa se captura con esos inputs
+verificados. El PNG versionado de Wails no es el baseline nativo de regresión.
+Medición Release con `paint-stats`, mismo LMU47 y máscara cero, sin compilaciones:
+3839 derivaciones por brazo; media `Stage::Derive` 1,07 → 10,83 µs/llamada;
+CPU total del núcleo 1,844 → 1,906 s en ventanas de 65 s; ambos cierran con 0,
+sin errores de ciclos. Una toma por brazo: no certifica CPU/FPS de LMU live ni OBS.
+La reserva de todos los huecos libres evita contención; dos intentos anteriores
+de espera agotaron sus 12 minutos. Sin microoptimizaciones ni cambios al banco.
+Evidencia externa: `C:/tmp/1481-derivar-evidence/`; informe de entrega:
+`C:/tmp/fase2/informe-1481-derivar.md`. No hay `docs/roadmap/plan.md` en esta base;
+no se crea un roadmap paralelo. Memoria y skill local ponytail: lectura bloqueada
+por revisión automática del entorno; se aplica la solución mínima del brief.
+Siguiente: review del diff y evidencia por el orquestador; Isaac valida en LMU live
+el historial y la referencia tras ocultar Fuel/Delta o reiniciar overlays, y el
+rendimiento de producto. Entrega local; no aceptación ni integración/promoción.
+
+## #1474 — revisión nativa LMU/ACC — 2026-10-06
+
+Encargo vigente de Isaac/brief local: GitHub #1474, entrega local para revisión
+del orquestador, sin Notion ni push/PR/merge/release. Base `13ae6945`, rama
+`vantareapp/isa-1474-telemetria-revision`, worktree `C:/tmp/vw3-1474`.
+Las menciones históricas inferiores a Notion no cambian este encargo.
+
+Inventario de 18 widgets y trazabilidad campo a campo en
+[revisión #1474](../../analysis/2026-10-06-1474-revision-telemetria.md).
+`fd505f6f` y `c4fbd278` ya están en la base: no se reintegran ramas antiguas.
+Fallo reproducido con foto real LMU47: la demanda H2H retiraba la familia
+Relative (`Estimated(78)` → `Unavailable`). H2H solicita ahora Positions y
+Relative, las señales que usa su proyección, en lugar de gaps/tiempos/sectores
+que no consume. No cambia renderer, DTO, adquisición, goldens ni dependencias.
+Los cortes UI LMU/ACC quedan vinculados byte a byte al replay real y los 18
+widgets se comprueban con demanda IPC sobre ellos.
+Revisión ampliada: Relative perdía temperatura en el slot `track` y
+reloj/clima en el pie común stale con slots personalizados. RED real:
+ACC `40°` → `—`; LMU stale pierde `58:12`, `16°`, `23°`. Se corrige la demanda
+usando el mapeo común y conservando señales del pie stale; seis casos de
+regresión sin modificar las fotos, GREEN UI 172/172 y gates completos PASS.
+La invalidación por nombre de pista oculto de Standings se documenta fuera de
+alcance en [#1475](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1475).
+
+Gates, SHAs y estado final: `C:/tmp/beta/r4/informe-1474-telemetria.md`; evidencia
+`C:/tmp/1474-evidence/`. Primer hito H2H `76518fe1ee31`: fmt/check/Clippy,
+Nextest 1157 PASS (6 skips previos) y lifecycle 5+12 PASS. Segundo hito
+Relative: fmt/check/Clippy, Nextest 1158 PASS (6 skips), lifecycle 5+12 PASS.
+Standings perfil prueba final después de ambos arreglos: 0/292160 px,
+umbral 0/delta 0, referencia/captura/diff inspeccionados y binario verificado.
+Entrega local de implementación/revisión sistemática lista para revisión del
+orquestador; no aceptación ni integración/promoción. Siguiente: review y campaña;
+Isaac valida H2H solo delante/detrás con mejor
+vuelta real, transición de sesión/pit/desconexión y rendimiento live. Corpus
+actual: una sesión por simulador y jugador ACC en boxes; no certifica esas
+transiciones ni gaps positivos. Fase/banderas LMU, varias integridades,
+litros ACC, dirección meteorológica/presión siguen ausentes justificadamente.
+`docs/roadmap/plan.md` no existe en esta base; no se crea publicación paralela.
+
 > **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
 > Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
 > cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
@@ -3241,3 +3377,44 @@ lector opt-in y auditoría de privacidad PASS. La suite Go global reprodujo solo
 la contención Windows heredada de `app-settings.json.tmp`; el focal aislado
 pasó al repetir y la suite global serial quedó verde. Siguiente: D5. Sin PR,
 merge, wiring productivo ni promoción.
+
+### #1473 + #1474 — integración sobre Hub unión 4 (2026-10-07)
+Worktree aislado `C:/tmp/vw3-1473-integracion`, rama `vantareapp/isa-1473-integracion`, base `40a4ddc9`.
+Primer merge incorpora `18fdf07a` sin conflictos: demanda Relative en H2H y pie de Relative con datos tardíos.
+Gates por cola/-j2/target propio: fmt/check/clippy PASS; Nextest 1185/1185 PASS (6 skips), golden ACC 631,186 s; lifecycle PASS.
+Pendiente incorporar tablas y resto, QA Workshop/Studio y paridad Standings. Evidencia `C:/tmp/1473-integracion-evidence/`.
+Solo integración local autorizada; sin push, PR, promoción ni release. plan.md ausente en esta base.
+
+### #1473 + #1474 — integración y QA completadas (2026-10-07)
+Base `40a4ddc9`; rama `vantareapp/isa-1473-integracion`, worktree `C:/tmp/vw3-1473-integracion`.
+Merges sin squash en orden: `93d0cb1d` (18fdf07a), `59c5092b` (1cb6c892), `3f9232a2` (8004af81).
+Hub productivo igual a la base; se conservaron ambas entradas de handoff y ambos tests en los conflictos.
+Cada merge pasó fmt/check/clippy -D warnings, Nextest completo (1185/1189/1190 PASS, 6 skips previstos), goldens ACC/LMU y lifecycle, por cola/-j2/target propio.
+QA MIRADA: 18 widgets Workshop default/unavailable/stale, 18 espera con datos retenidos, tres escenas H2H y 18 aperturas Studio a 1920x1080.
+Default 18/18 idénticos a referencias; H2H extra 3/3 idénticos; Standings 0/292160 píxeles distintos.
+Hoja `C:/tmp/1473-integracion-evidence/resumen.png`; paneles Studio y capturas individuales en la misma carpeta.
+Studio usó hook temporal exclusivo parity-capture para layout externo por widget, retirado tras build; fuente restaurada con hash idéntico. Binarios solo QA, no distribución.
+Informe completo y verificación manual: `C:/tmp/fase2/informe-1473-integracion.md`.
+Sin evidencia LMU live/rendimiento/OBS/DPI alternativo/Mac; aceptación del orquestador pendiente. plan.md ausente en esta base: no se inventa roadmap alternativo.
+Solo merges locales autorizados por brief; sin push, PR, CI remota, promoción o release. Checkout principal y beta preservados.
+
+### #1496 · integración Windows y entrega local para revisión (9-oct)
+Rama `vantareapp/isa-1496-integracion-prueba`, base `e55a43b3`, fuente `5b950d79`;
+las cinco áreas están integradas localmente; detalles en [handoff Hub](overlays-launcher-hub.md).
+Clippy -Dwarnings, nextest1397/1397 (7skips), telemetría21/21 y lifecycle18 PASS.
+Regresión de movimiento reducido de las cuatro secuencias Vantare, incluido Fuel, PASS.
+DXGI Present/s de API: drag114.24 frente116.98 en base; opacidad6.69 ambas.
+Sin FPS mostrados/input→Present/juego/OBS; Delta última vuelta/mejor absoluta sin señal pendiente.
+Setup0.0.974 local, packaging Bash PASS y QA desinstalada; huella real idéntica.
+Sin logout/login Windows, CI remota, pgTAP/DB, push/PR/promoción/release/deploy.
+Tracker GitHub #1496: ninguna escritura Notion. Evidencia/manual:
+`C:/tmp/feedback-0910/integracion-evidence`; resumen `informe-integracion.md`.
+
+### #1496 · repetición de telemetría tras el ajuste de lienzo
+
+Gate telemetria desde la cola Windows: 21/21 PASS, 521,76 s. Conformidad ACC lenta
+pero completada (483,37 s), sin cambiar oráculos ni relajar checks. Cambios posteriores
+be751010→00f37fef solo afectan etiqueta de Studio: runtime/domain/ipc/testdata idénticos.
+Nextest final 1402/1402, lifecycle PASS. El instalador local 0.0.974 usa fuente 00f37fef.
+No supone telemetría física nueva ni FPS mostrados medidos. Evidencia canvas-final-telemetria.log;
+estado completo y límites en overlays-launcher-hub.md, seguimiento GitHub #1496.

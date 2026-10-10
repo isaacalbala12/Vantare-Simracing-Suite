@@ -1,14 +1,15 @@
-//! Fusión pura (sin I/O) de una observación con el snapshot previo.
+//! Fusión pura (sin I/O) de una observación con el snapshot previo, más las
+//! derivaciones que necesitan memoria entre fotos (combustible y delta).
 
 use std::collections::HashSet;
-use std::mem;
 
 use vantare_domain::{
-    Capabilities, Capability, Car, CarId, Gap, Observation, Pose, Quality, Session, Snapshot,
-    State, Telemetry,
+    Car, CarId, Damage, Fuel, Gap, Observation, PitService, Player, Pose, Quality, Session,
+    SessionId, Snapshot, SourceState, State, Telemetry, Weather, degrade,
 };
 
 use super::derive::derive;
+use super::{delta, fuel, stint, trend};
 
 /// Observación que el núcleo no admite: no se publica y la revisión no avanza.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -34,18 +35,41 @@ impl std::error::Error for Reject {}
 /// Fusión mínima: no arrastra valores del snapshot previo. Cada observación es
 /// el estado completo que declara el adaptador, así que un cambio de
 /// `session.id` (sesión nueva del mismo productor) no puede heredar nada.
+#[cfg(test)]
 pub(super) fn merge(
     previous: Option<&Snapshot>,
     observation: Observation,
     epoch: u64,
+    trackers: &mut Trackers,
+) -> Result<Snapshot, Reject> {
+    merge_validated(previous, observation, epoch, trackers, true)
+}
+
+pub(super) fn merge_validated(
+    previous: Option<&Snapshot>,
+    observation: Observation,
+    epoch: u64,
+    trackers: &mut Trackers,
+    validate: bool,
 ) -> Result<Snapshot, Reject> {
     let Observation { origin, mut state } = observation;
-    let mut seen = HashSet::with_capacity(state.cars.len());
-    if let Some(car) = state.cars.iter().find(|car| !seen.insert(car.id)) {
-        return Err(Reject::DuplicateCar(car.id));
+    if validate {
+        #[cfg(feature = "paint-stats")]
+        let _span = crate::profiling::begin(crate::profiling::Stage::Validation);
+        let mut seen = HashSet::with_capacity(state.cars.len());
+        if let Some(car) = state.cars.iter().find(|car| !seen.insert(car.id)) {
+            return Err(Reject::DuplicateCar(car.id));
+        }
+        sanitize(&mut state);
     }
-    sanitize(&mut state);
-    derive(&mut state.cars);
+    {
+        #[cfg(feature = "paint-stats")]
+        let _span = crate::profiling::begin(crate::profiling::Stage::Derive);
+        derive(&mut state);
+        if state.source_state != SourceState::Paused {
+            trackers.derive(&mut state);
+        }
+    }
     let sequence = match previous {
         Some(previous) if previous.epoch == epoch => previous.sequence + 1,
         _ => 1,
@@ -58,151 +82,267 @@ pub(super) fn merge(
     })
 }
 
+/// Derivaciones con memoria entre fotos: combustible y delta del jugador. El
+/// estado no vive en `domain` porque no es una señal publicada, sino la
+/// memoria de la derivación; lo posee el único escritor.
+#[derive(Debug, Default)]
+pub(super) struct Trackers {
+    /// Sesión y coche de los que son los datos acumulados.
+    identity: Option<(SessionId, CarId)>,
+    fuel: fuel::Tracker,
+    delta: delta::Tracker,
+    stint: stint::Tracker,
+    trend: trend::Tracker,
+}
+
+impl Trackers {
+    pub(super) fn derive(&mut self, state: &mut State) {
+        let identity = state
+            .player
+            .as_ref()
+            .map(|player| (state.session.id, player.car));
+        if let Some(identity) = identity {
+            if self.identity != Some(identity) {
+                // Sesión o coche del jugador nuevos: nada es comparable.
+                self.fuel.reset();
+                self.delta.reset();
+                self.stint.reset();
+                self.trend.reset();
+            }
+            self.identity = Some(identity);
+        }
+        let State {
+            cars,
+            player,
+            session,
+            ..
+        } = state;
+        let Some(player) = player.as_mut() else {
+            self.fuel.invalidate();
+            self.delta.invalidate();
+            return;
+        };
+        self.trend.derive(cars, player.car);
+        let Some(car) = cars.iter().find(|car| car.id == player.car) else {
+            self.fuel.invalidate();
+            self.delta.invalidate();
+            return;
+        };
+        self.fuel.derive(player, car);
+        self.delta.derive(player, car, session.track_length_m);
+        delta::references(player, car, cars);
+        self.stint.derive(player, car, session);
+    }
+}
+
 /// Mismo contenido, siguiente revisión, con todo lo actual degradado a
 /// obsoleto. Se publica cuando la fuente calla o se pierde.
 pub(super) fn stale(previous: &Snapshot) -> Snapshot {
     let mut next = previous.clone();
     next.sequence += 1;
     degrade(&mut next.state);
+    next.state.source_state = SourceState::Stale;
     next
-}
-
-/// Lo actual pasa a obsoleto: los valores siguen ahí, ya no son "actuales".
-///
-/// Desestructura cada tipo sin `..`: una señal nueva en `domain` no compila
-/// hasta que se decide aquí cómo se vuelve obsoleta.
-pub(super) fn degrade(state: &mut State) {
-    let State {
-        capabilities,
-        session,
-        flags,
-        cars,
-        player,
-    } = state;
-    let Capabilities {
-        session_clock,
-        positions,
-        lap_times,
-        gaps,
-        pit_status,
-        flags: flags_capability,
-        spatial,
-        driver_inputs,
-        powertrain,
-    } = capabilities;
-    for capability in [
-        session_clock,
-        positions,
-        lap_times,
-        gaps,
-        pit_status,
-        flags_capability,
-        spatial,
-        driver_inputs,
-        powertrain,
-    ] {
-        if *capability == Capability::Fresh {
-            *capability = Capability::WithData;
-        }
-    }
-    let Session {
-        id: _,
-        kind,
-        state,
-        elapsed_s,
-        remaining_s,
-        track_name,
-        laps_remaining,
-    } = session;
-    make_stale(kind);
-    make_stale(state);
-    make_stale(elapsed_s);
-    make_stale(remaining_s);
-    make_stale(track_name);
-    make_stale(laps_remaining);
-    make_stale(flags);
-    for car in cars {
-        let Car {
-            id: _,
-            number: _,
-            driver: _,
-            class: _,
-            position,
-            class_position,
-            laps,
-            last_lap_s,
-            best_lap_s,
-            last_sectors_s,
-            gap_leader,
-            gap_ahead,
-            in_pits,
-            pose,
-        } = car;
-        make_stale(position);
-        make_stale(class_position);
-        make_stale(laps);
-        make_stale(last_lap_s);
-        make_stale(best_lap_s);
-        last_sectors_s.iter_mut().for_each(make_stale);
-        make_stale(gap_leader);
-        make_stale(gap_ahead);
-        make_stale(in_pits);
-        make_stale(pose);
-    }
-    if let Some(player) = player {
-        let Telemetry {
-            throttle,
-            brake,
-            clutch,
-            gear,
-            speed_mps,
-            engine_speed_rad_s,
-        } = &mut player.telemetry;
-        make_stale(throttle);
-        make_stale(brake);
-        make_stale(clutch);
-        make_stale(gear);
-        make_stale(speed_mps);
-        make_stale(engine_speed_rad_s);
-    }
-}
-
-fn make_stale<T>(quality: &mut Quality<T>) {
-    *quality = match mem::take(quality) {
-        Quality::Reliable(value) | Quality::Estimated(value) => Quality::Stale(value),
-        other => other,
-    };
 }
 
 /// Frontera de confianza: un `NaN` o infinito del simulador se vuelve ausente,
 /// no se propaga a gaps, radar ni formato.
-// ponytail: lista explícita de campos numéricos; una señal `f64` nueva hay que
-// añadirla aquí (si no, pasa sin sanear). Sustituir por un recorrido común solo
-// si las señales numéricas crecen.
+// Desestructuración exhaustiva: una señal nueva obliga a decidir su saneado.
 fn sanitize(state: &mut State) {
-    let session = &mut state.session;
-    finite(&mut session.elapsed_s);
-    finite(&mut session.remaining_s);
-    for car in &mut state.cars {
-        finite(&mut car.last_lap_s);
-        finite(&mut car.best_lap_s);
-        car.last_sectors_s.iter_mut().for_each(finite);
-        keep_if(&mut car.gap_leader, finite_gap);
-        keep_if(&mut car.gap_ahead, finite_gap);
-        keep_if(&mut car.pose, |pose: &Pose| {
+    let State {
+        source_state: _,
+        capabilities: _,
+        session,
+        flags: _,
+        cars,
+        player,
+    } = state;
+    let Session {
+        id: _,
+        kind: _,
+        state: _,
+        elapsed_s,
+        remaining_s,
+        track_name: _,
+        laps_remaining: _,
+        laps_total: _,
+        track_length_m,
+        weather,
+    } = session;
+    finite(elapsed_s);
+    finite(remaining_s);
+    finite(track_length_m);
+    sanitize_weather(weather);
+    for car in cars {
+        let Car {
+            id: _,
+            number: _,
+            vehicle: _,
+            driver: _,
+            class: _,
+            position: _,
+            class_position: _,
+            laps: _,
+            last_lap_s,
+            best_lap_s,
+            estimated_lap_s,
+            last_sectors_s,
+            gap_leader,
+            gap_ahead,
+            gap_class_leader,
+            gap_class_ahead,
+            relative_s,
+            relative_laps: _,
+            lap_distance_m,
+            lap_elapsed_s,
+            current_sector: _,
+            in_pits: _,
+            pose,
+            velocity_mps,
+            pending_penalties: _, // u32: no hay NaN ni contador negativo.
+            grid_position: _,
+            pit_stops: _,
+            tyre_compound: _,
+            best_sectors_s,
+            current_sectors_s,
+            driver_rating: _,
+            safety_rating,
+            relative_trend_s_per_lap,
+        } = car;
+        finite(last_lap_s);
+        finite(best_lap_s);
+        keep_if(estimated_lap_s, |v| v.is_finite() && *v > 0.0);
+        last_sectors_s.iter_mut().for_each(finite);
+        best_sectors_s.iter_mut().for_each(finite);
+        current_sectors_s.iter_mut().for_each(finite);
+        keep_if(safety_rating, |v| {
+            v.is_finite() && (0.0..=100.0).contains(v)
+        });
+        finite(relative_trend_s_per_lap);
+        for gap in [gap_leader, gap_ahead, gap_class_leader, gap_class_ahead] {
+            keep_if(gap, finite_gap);
+        }
+        finite(relative_s);
+        finite(lap_distance_m);
+        finite(lap_elapsed_s);
+        keep_if(pose, |pose: &Pose| {
             [pose.x_m, pose.y_m, pose.yaw_rad]
                 .iter()
                 .all(|v| v.is_finite())
         });
+        keep_if(velocity_mps, |v| {
+            v.iter().all(|component| component.is_finite())
+        });
     }
-    if let Some(player) = &mut state.player {
-        let telemetry = &mut player.telemetry;
-        finite(&mut telemetry.throttle);
-        finite(&mut telemetry.brake);
-        finite(&mut telemetry.clutch);
-        finite(&mut telemetry.speed_mps);
-        finite(&mut telemetry.engine_speed_rad_s);
+    if let Some(player) = player {
+        sanitize_player(player);
     }
+}
+
+fn sanitize_player(player: &mut Player) {
+    let Player {
+        car: _,
+        telemetry,
+        fuel,
+        damage,
+        delta_best_s,
+        pit_limiter_active: _, // bool: no requiere saneamiento numérico.
+        pit_stop_stopped: _,
+        pit_loss_s,
+        pit_service,
+        stint,
+        delta_optimal_s,
+        delta_leader_s,
+        lap_invalid: _, // bool: no requiere saneamiento numérico.
+    } = player;
+    finite(delta_optimal_s);
+    finite(delta_leader_s);
+    let Telemetry {
+        throttle,
+        brake,
+        clutch,
+        steering,
+        gear: _,
+        speed_mps,
+        engine_speed_rad_s,
+    } = telemetry;
+    for signal in [throttle, brake, clutch, speed_mps, engine_speed_rad_s] {
+        finite(signal);
+    }
+    keep_if(steering, |v| (-1.0..=1.0).contains(v));
+    let Fuel {
+        level_l,
+        capacity_l,
+        per_lap_l,
+        laps_left,
+        history,
+        energy,
+        energy_per_lap,
+        lap_projection_l,
+    } = fuel;
+    for signal in [level_l, capacity_l, per_lap_l, laps_left] {
+        finite(signal);
+    }
+    fraction(energy);
+    fraction(energy_per_lap);
+    keep_if(lap_projection_l, |v| v.is_finite() && *v >= 0.0);
+    let PitService {
+        refuel_target_l,
+        refuel_added_l,
+        remaining_s,
+        tyres,
+    } = pit_service;
+    for signal in [refuel_target_l, refuel_added_l, remaining_s] {
+        keep_if(signal, |v| v.is_finite() && *v >= 0.0);
+    }
+    keep_if(tyres, |v| *v <= 4);
+    keep_if(&mut stint.elapsed_s, |v| v.is_finite() && *v >= 0.0);
+    for entry in history {
+        if entry.is_some_and(|(_, litres)| !litres.is_finite() || litres <= 0.0) {
+            *entry = None;
+        }
+    }
+    finite(delta_best_s);
+    keep_if(pit_loss_s, |v| v.is_finite() && *v >= 0.0);
+    let Damage {
+        aero,
+        body,
+        suspension,
+        tyre_wear,
+    } = damage;
+    fraction(aero);
+    fraction(body);
+    fraction(suspension);
+    tyre_wear.iter_mut().for_each(fraction);
+}
+
+fn sanitize_weather(weather: &mut Weather) {
+    let Weather {
+        air_temperature_k,
+        track_temperature_k,
+        wind_speed_mps,
+        wind_direction_rad,
+        rain,
+        track_wetness,
+        pressure_pa,
+    } = weather;
+    for quality in [
+        air_temperature_k,
+        track_temperature_k,
+        wind_speed_mps,
+        pressure_pa,
+    ] {
+        keep_if(quality, |v| v.is_finite() && *v >= 0.0);
+    }
+    keep_if(wind_direction_rad, |v| {
+        (0.0..std::f64::consts::TAU).contains(v)
+    });
+    fraction(rain);
+    fraction(track_wetness);
+}
+
+fn fraction(quality: &mut Quality<f64>) {
+    keep_if(quality, |v| (0.0..=1.0).contains(v));
 }
 
 fn finite_gap(gap: &Gap) -> bool {
@@ -225,14 +365,129 @@ fn keep_if<T>(quality: &mut Quality<T>, ok: impl Fn(&T) -> bool) {
 
 #[cfg(test)]
 mod tests {
-    use vantare_domain::{Player, SessionId, Source};
+    use vantare_domain::{Capabilities, Capability, Player, SessionId, Source};
 
     use super::*;
+
+    #[test]
+    fn pit_booleans_expire_and_invalid_estimates_cannot_escape_the_core() {
+        for raw in [f64::NAN, f64::INFINITY, -1.0, 0.0] {
+            let mut state = State {
+                cars: vec![Car {
+                    estimated_lap_s: Quality::Estimated(raw),
+                    ..Car::default()
+                }],
+                ..State::default()
+            };
+            sanitize(&mut state);
+            assert_eq!(state.cars[0].estimated_lap_s, Quality::Unavailable);
+        }
+        let mut state = State {
+            cars: vec![Car {
+                estimated_lap_s: Quality::Estimated(90.0),
+                ..Car::default()
+            }],
+            player: Some(Player {
+                pit_limiter_active: Quality::Reliable(false),
+                pit_stop_stopped: Quality::Reliable(true),
+                ..Player::default()
+            }),
+            ..State::default()
+        };
+        sanitize(&mut state);
+        degrade(&mut state);
+        assert_eq!(state.cars[0].estimated_lap_s, Quality::Stale(90.0));
+        let p = state.player.expect("jugador");
+        assert_eq!(p.pit_limiter_active, Quality::Stale(false));
+        assert_eq!(p.pit_stop_stopped, Quality::Stale(true));
+    }
+
+    #[test]
+    fn velocity_is_sanitized_and_both_signals_expire() {
+        for velocity in [[f64::NAN, 1.0], [1.0, f64::INFINITY]] {
+            for quality in [
+                Quality::Reliable(velocity),
+                Quality::Estimated(velocity),
+                Quality::Stale(velocity),
+            ] {
+                let mut state = State {
+                    cars: vec![Car {
+                        velocity_mps: quality,
+                        ..Car::default()
+                    }],
+                    ..State::default()
+                };
+                sanitize(&mut state);
+                assert_eq!(state.cars[0].velocity_mps, Quality::Unavailable);
+            }
+        }
+        let mut state = State {
+            cars: vec![Car {
+                velocity_mps: Quality::Reliable([-2.0, 40.0]),
+                pending_penalties: Quality::Estimated(1),
+                ..Car::default()
+            }],
+            ..State::default()
+        };
+        sanitize(&mut state);
+        degrade(&mut state);
+        assert_eq!(state.cars[0].velocity_mps, Quality::Stale([-2.0, 40.0]));
+        assert_eq!(state.cars[0].pending_penalties, Quality::Stale(1));
+        state.cars[0].velocity_mps = Quality::Unavailable;
+        state.cars[0].pending_penalties = Quality::Unavailable;
+        degrade(&mut state);
+        assert_eq!(state.cars[0].velocity_mps, Quality::Unavailable);
+        assert_eq!(state.cars[0].pending_penalties, Quality::Unavailable);
+    }
+
+    #[test]
+    fn new_signals_are_sanitized_and_degraded_without_losing_history() {
+        let mut obs = observation(vec![car(1, 1)]);
+        obs.state.cars[0].relative_s = Quality::Reliable(f64::INFINITY);
+        obs.state.cars[0].relative_laps = Quality::Estimated(-2);
+        obs.state.player = Some(Player {
+            car: CarId(1),
+            telemetry: Telemetry {
+                steering: Quality::Reliable(1.1),
+                ..Telemetry::default()
+            },
+            ..Player::default()
+        });
+        let player = obs.state.player.as_mut().expect("jugador");
+        player.fuel.history[0] = Some((1, 3.5));
+        player.fuel.history[1] = Some((2, f64::NAN));
+        sanitize(&mut obs.state);
+        assert_eq!(obs.state.cars[0].relative_s, Quality::Unavailable);
+        assert_eq!(
+            obs.state.player.expect("jugador").telemetry.steering,
+            Quality::Unavailable
+        );
+        obs.state.cars[0].relative_s = Quality::Estimated(-2.0);
+        obs.state
+            .player
+            .as_mut()
+            .expect("jugador")
+            .telemetry
+            .steering = Quality::Reliable(-0.5);
+        let before = Snapshot {
+            state: obs.state,
+            ..Snapshot::default()
+        };
+        let after = stale(&before);
+        assert_eq!(after.state.source_state, SourceState::Stale);
+        assert_eq!(after.state.cars[0].relative_s, Quality::Stale(-2.0));
+        assert_eq!(after.state.cars[0].relative_laps, Quality::Stale(-2));
+        let player = after.state.player.expect("jugador");
+        assert_eq!(player.telemetry.steering, Quality::Stale(-0.5));
+        assert_eq!(player.fuel.history[0], Some((1, 3.5)));
+        assert_eq!(player.fuel.history[1], None);
+    }
 
     fn car(id: u32, position: u32) -> Car {
         Car {
             id: CarId(id),
             position: Quality::Reliable(position),
+            in_pits: Quality::Reliable(false),
             ..Car::default()
         }
     }
@@ -254,44 +509,244 @@ mod tests {
 
     #[test]
     fn revision_is_one_counter_per_epoch_and_origin_is_kept() {
+        let mut trackers = Trackers::default();
         let mut obs = observation(vec![car(1, 1)]);
         obs.origin.source = Source {
             simulator: "test",
             ..Source::default()
         };
-        let first = merge(None, obs.clone(), 7).unwrap();
+        let first = merge(None, obs.clone(), 7, &mut trackers).unwrap();
         assert_eq!((first.epoch, first.sequence), (7, 1));
         assert_eq!(first.origin, obs.origin);
-        let second = merge(Some(&first), obs.clone(), 7).unwrap();
+        let second = merge(Some(&first), obs.clone(), 7, &mut trackers).unwrap();
         assert_eq!(second.sequence, 2);
         let old = stale(&second);
         assert_eq!(old.sequence, 3, "la bajada a obsoleto comparte contador");
-        assert_eq!(merge(Some(&old), obs.clone(), 7).unwrap().sequence, 4);
+        assert_eq!(
+            merge(Some(&old), obs.clone(), 7, &mut trackers)
+                .unwrap()
+                .sequence,
+            4
+        );
         // Época nueva: la secuencia vuelve a 1.
-        assert_eq!(merge(Some(&old), obs, 8).unwrap().sequence, 1);
+        assert_eq!(
+            merge(Some(&old), obs, 8, &mut trackers).unwrap().sequence,
+            1
+        );
     }
 
     #[test]
     fn duplicate_cars_are_rejected() {
         let obs = observation(vec![car(1, 1), car(2, 2), car(1, 3)]);
-        assert_eq!(merge(None, obs, 1), Err(Reject::DuplicateCar(CarId(1))));
+        assert_eq!(
+            merge(None, obs, 1, &mut Trackers::default()),
+            Err(Reject::DuplicateCar(CarId(1)))
+        );
+    }
+
+    #[test]
+    fn adapter_source_state_is_preserved_across_observations() {
+        let mut trackers = Trackers::default();
+        let mut previous = None;
+        for declared in [
+            SourceState::Live,
+            SourceState::Waiting,
+            SourceState::Stale,
+            SourceState::Live,
+        ] {
+            let mut obs = observation(vec![car(1, 1)]);
+            obs.state.source_state = declared;
+            let snapshot = merge(previous.as_ref(), obs, 1, &mut trackers).unwrap();
+            assert_eq!(snapshot.state.source_state, declared);
+            assert_eq!(stale(&snapshot).state.source_state, SourceState::Stale);
+            previous = Some(snapshot);
+        }
     }
 
     #[test]
     fn session_change_carries_nothing_over() {
+        let mut trackers = Trackers::default();
         let mut first = observation(vec![car(1, 1)]);
         first.state.session.id = SessionId(1);
         first.state.cars[0].last_lap_s = Quality::Reliable(90.0);
-        let before = merge(None, first, 1).unwrap();
+        let before = merge(None, first, 1, &mut trackers).unwrap();
         let mut next = observation(vec![car(1, 1)]);
         next.state.session.id = SessionId(2);
-        let after = merge(Some(&before), next, 1).unwrap();
+        let after = merge(Some(&before), next, 1, &mut trackers).unwrap();
         assert_eq!(after.sequence, 2, "misma época, sesión nueva");
         assert_eq!(after.state.cars[0].last_lap_s, Quality::Unavailable);
     }
 
     #[test]
+    fn accumulated_trackers_reset_on_session_or_player_change() {
+        let mut trackers = Trackers::default();
+        let mut first = observation(vec![car(1, 1)]);
+        first.state.session.id = SessionId(1);
+        first.state.cars[0].laps = Quality::Reliable(1);
+        first.state.player = Some(Player {
+            car: CarId(1),
+            fuel: Fuel {
+                level_l: Quality::Reliable(100.0),
+                ..Fuel::default()
+            },
+            ..Player::default()
+        });
+        let mut preceding = first.clone();
+        preceding.state.cars[0].laps = Quality::Reliable(0);
+        merge(None, preceding, 1, &mut trackers).unwrap();
+        merge(None, first.clone(), 1, &mut trackers).unwrap();
+        let mut second = first.clone();
+        second.state.cars[0].laps = Quality::Reliable(2);
+        second.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(96.0);
+        let snapshot = merge(None, second, 1, &mut trackers).unwrap();
+        assert_eq!(
+            snapshot.state.player.unwrap().fuel.per_lap_l,
+            Quality::Estimated(4.0),
+            "misma sesión: la vuelta medida se conserva"
+        );
+
+        let mut other_session = first.clone();
+        other_session.state.session.id = SessionId(2);
+        let snapshot = merge(None, other_session, 1, &mut trackers).unwrap();
+        assert_eq!(
+            snapshot.state.player.unwrap().fuel.per_lap_l,
+            Quality::Unavailable,
+            "sesión nueva: la memoria se descarta"
+        );
+
+        let mut other_car = first;
+        other_car.state.player.as_mut().unwrap().car = CarId(2);
+        other_car.state.cars.push(car(2, 2));
+        let snapshot = merge(None, other_car, 1, &mut trackers).unwrap();
+        assert_eq!(
+            snapshot.state.player.unwrap().fuel.per_lap_l,
+            Quality::Unavailable,
+            "coche de jugador nuevo: la memoria se descarta"
+        );
+    }
+
+    #[test]
+    fn weather_and_damage_defaults_are_unavailable() {
+        let mut obs = observation(vec![car(1, 1)]);
+        obs.state.player = Some(Player::default());
+        let snapshot = merge(None, obs, 1, &mut Trackers::default()).unwrap();
+        assert_eq!(snapshot.state.session.weather, Weather::default());
+        assert_eq!(snapshot.state.player.unwrap().damage, Damage::default());
+        assert_eq!(snapshot.state.capabilities.weather, Capability::Unsupported);
+        assert_eq!(snapshot.state.capabilities.damage, Capability::Unsupported);
+    }
+
+    fn weather_with(value: Quality<f64>) -> Weather {
+        Weather {
+            air_temperature_k: value,
+            track_temperature_k: value,
+            wind_speed_mps: value,
+            wind_direction_rad: value,
+            rain: value,
+            track_wetness: value,
+            pressure_pa: value,
+        }
+    }
+
+    fn damage_with(value: Quality<f64>) -> Damage {
+        Damage {
+            aero: value,
+            body: value,
+            suspension: value,
+            tyre_wear: [value; 4],
+        }
+    }
+
+    #[test]
+    fn weather_and_damage_degrade_all_fields_without_losing_values() {
+        for quality in [
+            Quality::Reliable(0.5),
+            Quality::Estimated(0.5),
+            Quality::Stale(0.5),
+            Quality::Unavailable,
+        ] {
+            let mut obs = observation(vec![car(1, 1)]);
+            obs.state.capabilities.weather = Capability::Fresh;
+            obs.state.capabilities.damage = Capability::Fresh;
+            obs.state.session.weather = weather_with(quality);
+            obs.state.player = Some(Player {
+                damage: damage_with(quality),
+                ..Player::default()
+            });
+            let fresh = merge(None, obs, 1, &mut Trackers::default()).unwrap();
+            let old = stale(&fresh);
+            let expected = match quality {
+                Quality::Unavailable => Quality::Unavailable,
+                _ => Quality::Stale(0.5),
+            };
+            assert_eq!(old.state.session.weather, weather_with(expected));
+            assert_eq!(old.state.player.unwrap().damage, damage_with(expected));
+            assert_eq!(old.state.capabilities.weather, Capability::WithData);
+            assert_eq!(old.state.capabilities.damage, Capability::WithData);
+            assert_eq!(fresh.state.session.weather, weather_with(quality));
+            assert_eq!(fresh.state.player.unwrap().damage, damage_with(quality));
+        }
+    }
+
+    #[test]
+    fn invalid_weather_and_damage_are_absent_in_every_quality() {
+        for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1.0] {
+            for quality in [
+                Quality::Reliable(value),
+                Quality::Estimated(value),
+                Quality::Stale(value),
+            ] {
+                let mut obs = observation(vec![car(1, 1)]);
+                obs.state.session.weather = weather_with(quality);
+                obs.state.player = Some(Player {
+                    damage: damage_with(quality),
+                    ..Player::default()
+                });
+                let snapshot = merge(None, obs, 1, &mut Trackers::default()).unwrap();
+                assert_eq!(snapshot.state.session.weather, Weather::default());
+                assert_eq!(snapshot.state.player.unwrap().damage, Damage::default());
+            }
+        }
+    }
+
+    #[test]
+    fn weather_and_damage_bounds_reject_without_clamping() {
+        for value in [0.0, 1.0, 1.01] {
+            let quality = Quality::Reliable(value);
+            let mut obs = observation(vec![car(1, 1)]);
+            obs.state.session.weather = weather_with(quality);
+            obs.state.player = Some(Player {
+                damage: damage_with(quality),
+                ..Player::default()
+            });
+            let snapshot = merge(None, obs, 1, &mut Trackers::default()).unwrap();
+            let expected = if value <= 1.0 {
+                quality
+            } else {
+                Quality::Unavailable
+            };
+            let weather = snapshot.state.session.weather;
+            assert_eq!(weather.rain, expected);
+            assert_eq!(weather.track_wetness, expected);
+            assert_eq!(weather.air_temperature_k, quality);
+            assert_eq!(weather.track_temperature_k, quality);
+            assert_eq!(weather.wind_speed_mps, quality);
+            assert_eq!(weather.wind_direction_rad, quality);
+            assert_eq!(weather.pressure_pa, quality);
+            assert_eq!(snapshot.state.player.unwrap().damage, damage_with(expected));
+        }
+        for value in [std::f64::consts::TAU, 7.0] {
+            let mut weather = weather_with(Quality::Reliable(0.5));
+            weather.wind_direction_rad = Quality::Reliable(value);
+            sanitize_weather(&mut weather);
+            assert_eq!(weather.wind_direction_rad, Quality::Unavailable);
+            assert_eq!(weather.rain, Quality::Reliable(0.5));
+        }
+    }
+
+    #[test]
     fn non_finite_numbers_become_unavailable() {
+        let mut trackers = Trackers::default();
         let mut obs = observation(vec![car(1, 1), car(2, 2)]);
         obs.state.cars[0].last_lap_s = Quality::Reliable(f64::NAN);
         obs.state.cars[0].best_lap_s = Quality::Reliable(91.0);
@@ -310,8 +765,9 @@ mod tests {
                 brake: Quality::Reliable(0.5),
                 ..Telemetry::default()
             },
+            ..Player::default()
         });
-        let snapshot = merge(None, obs, 1).unwrap();
+        let snapshot = merge(None, obs, 1, &mut trackers).unwrap();
         let cars = &snapshot.state.cars;
         assert_eq!(cars[0].last_lap_s, Quality::Unavailable);
         assert_eq!(cars[0].best_lap_s, Quality::Reliable(91.0));
@@ -325,9 +781,10 @@ mod tests {
 
     #[test]
     fn merge_derives_before_publishing() {
+        let mut trackers = Trackers::default();
         let mut obs = observation(vec![car(1, 1), car(2, 2)]);
         obs.state.cars[1].gap_leader = Quality::Reliable(Gap::Time { seconds: 4.0 });
-        let snapshot = merge(None, obs, 1).unwrap();
+        let snapshot = merge(None, obs, 1, &mut trackers).unwrap();
         assert_eq!(
             snapshot.state.cars[1].gap_ahead,
             Quality::Estimated(Gap::Time { seconds: 4.0 })
@@ -336,6 +793,7 @@ mod tests {
 
     #[test]
     fn stale_downgrades_current_data_and_capabilities_only() {
+        let mut trackers = Trackers::default();
         let mut obs = observation(vec![car(1, 1)]);
         obs.state.cars[0].best_lap_s = Quality::Estimated(90.0);
         obs.state.cars[0].last_sectors_s = vec![Quality::Reliable(30.0), Quality::Unavailable];
@@ -346,8 +804,9 @@ mod tests {
                 throttle: Quality::Reliable(1.0),
                 ..Telemetry::default()
             },
+            ..Player::default()
         });
-        let fresh = merge(None, obs, 1).unwrap();
+        let fresh = merge(None, obs, 1, &mut trackers).unwrap();
         let old = stale(&fresh);
         let state = &old.state;
         assert_eq!(state.capabilities.gaps, Capability::WithData);

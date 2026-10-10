@@ -1,0 +1,341 @@
+{
+  "version": 9,
+  "epoch": 3,
+  "sequence": 2,
+  "origin": {
+    "simulator": "unknown",
+    "kind": "replay",
+    "source_time": null,
+    "received_at": {
+      "secs": 0,
+      "nanos": 0
+    }
+  },
+  "state": {
+    "capabilities": {
+      "session_clock": "fresh",
+      "positions": "fresh",
+      "lap_times": "fresh",
+      "gaps": "fresh",
+      "pit_status": "fresh",
+      "flags": "fresh",
+      "spatial": "unsupported",
+      "driver_inputs": "fresh",
+      "powertrain": "unsupported",
+      "fuel": "unsupported",
+      "delta": "unsupported",
+      "sectors": "unsupported",
+      "lap_progress": "unsupported",
+      "weather": "fresh",
+      "damage": "unsupported"
+    },
+    "session": {
+      "id": 3,
+      "kind": {
+        "reliable": "race"
+      },
+      "state": "unavailable",
+      "elapsed_s": "unavailable",
+      "remaining_s": {
+        "reliable": 7198
+      },
+      "track_name": {
+        "reliable": "Sebring"
+      },
+      "laps_remaining": "unavailable",
+      "laps_total": "unavailable",
+      "track_length_m": "unavailable",
+      "weather_air_temperature_k": {
+        "reliable": 294.15
+      },
+      "weather_track_temperature_k": {
+        "reliable": 301.15
+      },
+      "weather_wind_speed_mps": {
+        "reliable": 3.888888888888889
+      },
+      "weather_wind_direction_rad": {
+        "reliable": 5.497787143782138
+      },
+      "weather_rain": {
+        "reliable": 0.0
+      },
+      "weather_track_wetness": {
+        "reliable": 0.0
+      },
+      "weather_pressure_pa": "unavailable"
+    },
+    "flags": {
+      "reliable": [
+        {
+          "scope": "session",
+          "kind": "green"
+        }
+      ]
+    },
+    "cars": [
+      {
+        "id": 1,
+        "number": "",
+        "driver_id": 1,
+        "driver_name": "André Lotterer",
+        "class": [
+          1,
+          "hypercar"
+        ],
+        "position": {
+          "reliable": 1
+        },
+        "class_position": {
+          "reliable": 1
+        },
+        "laps": "unavailable",
+        "last_lap_s": {
+          "reliable": 91.234
+        },
+        "best_lap_s": {
+          "reliable": 90.964
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": "unavailable",
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
+      },
+      {
+        "id": 2,
+        "number": "",
+        "driver_id": 2,
+        "driver_name": "Ben Hanley",
+        "class": [
+          2,
+          "lmp2"
+        ],
+        "position": {
+          "reliable": 2
+        },
+        "class_position": {
+          "reliable": 1
+        },
+        "laps": {
+          "reliable": 127
+        },
+        "last_lap_s": {
+          "reliable": 91.28399999999999
+        },
+        "best_lap_s": {
+          "reliable": 90.94399999999999
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 1.234
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
+      },
+      {
+        "id": 3,
+        "number": "",
+        "driver_id": 3,
+        "driver_name": "Kévin Estre",
+        "class": [
+          3,
+          "gte"
+        ],
+        "position": {
+          "reliable": 3
+        },
+        "class_position": {
+          "reliable": 1
+        },
+        "laps": {
+          "reliable": 127
+        },
+        "last_lap_s": {
+          "reliable": 91.33399999999999
+        },
+        "best_lap_s": {
+          "reliable": 90.92399999999999
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 2.468
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
+      },
+      {
+        "id": 4,
+        "number": "",
+        "driver_id": 4,
+        "driver_name": "Antonio Giovinazzi",
+        "class": [
+          1,
+          "hypercar"
+        ],
+        "position": {
+          "reliable": 4
+        },
+        "class_position": {
+          "reliable": 2
+        },
+        "laps": {
+          "reliable": 127
+        },
+        "last_lap_s": {
+          "reliable": 91.384
+        },
+        "best_lap_s": {
+          "reliable": 90.904
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 3.702
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
+      },
+      {
+        "id": 5,
+        "number": "",
+        "driver_id": 5,
+        "driver_name": "Filipe Albuquerque",
+        "class": [
+          2,
+          "lmp2"
+        ],
+        "position": {
+          "reliable": 5
+        },
+        "class_position": {
+          "reliable": 2
+        },
+        "laps": {
+          "reliable": 127
+        },
+        "last_lap_s": {
+          "reliable": 91.434
+        },
+        "best_lap_s": {
+          "reliable": 90.884
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 4.936
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable","velocity_mps":"unavailable","pending_penalties":"unavailable"
+      }
+    ],
+    "player": {
+      "car": 1,
+      "throttle": {
+        "reliable": 0.75
+      },
+      "brake": {
+        "reliable": 0.125
+      },
+      "clutch": {
+        "reliable": 0.06
+      },
+      "gear": {
+        "reliable": 4
+      },
+      "speed_mps": {
+        "reliable": 50
+      },
+      "engine_speed_rad_s": {
+        "reliable": 753.9822368615503
+      },
+      "fuel_level_l": "unavailable",
+      "fuel_capacity_l": "unavailable",
+      "fuel_per_lap_l": "unavailable",
+      "fuel_laps_left": "unavailable",
+      "delta_best_s": "unavailable",
+      "pit_limiter_active": "unavailable",
+      "pit_stop_stopped": "unavailable",
+      "damage_aero": "unavailable",
+      "damage_body": "unavailable",
+      "damage_suspension": "unavailable",
+      "damage_tyre_wear": [
+        "unavailable",
+        "unavailable",
+        "unavailable",
+        "unavailable"
+      ],
+      "steering": "unavailable",
+      "fuel_history": []
+    },
+    "source_state": "live"
+  }
+}

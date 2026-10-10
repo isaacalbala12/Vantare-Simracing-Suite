@@ -1,0 +1,29 @@
+[package]
+name = "vantare-admin"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+publish.workspace = true
+
+[dependencies]
+# Reutiliza Orbit sin copiar sus controles ni extraer otra arquitectura.
+vantare-hub = { path = "../hub" }
+vantare-ui = { path = "../ui" }
+vantare-services = { workspace = true, features = ["network"] }
+gpui = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b" }
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", features = ["font-kit"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ureq = { version = "3.4.2", default-features = false, features = ["rustls"] }
+url = "2"
+# GPUI ya usa image: valida dimensiones/decodificación antes de entregar bytes a UI.
+image = { version = "0.25.10", default-features = false, features = ["png", "jpeg"] }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+gpui_platform = { git = "https://github.com/zed-industries/zed", rev = "72d28c32c2ba77a579e1c02f984654518552124b", features = ["wayland", "x11"] }
+
+[lints]
+workspace = true
+
+[build-dependencies]
+vantare-build-support.workspace = true

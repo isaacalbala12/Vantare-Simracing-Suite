@@ -1,0 +1,1100 @@
+{
+  "version": 9,
+  "epoch": 3,
+  "sequence": 2,
+  "origin": {
+    "simulator": "unknown",
+    "kind": "replay",
+    "source_time": null,
+    "received_at": {
+      "secs": 0,
+      "nanos": 0
+    }
+  },
+  "state": {
+    "capabilities": {
+      "session_clock": "fresh",
+      "positions": "fresh",
+      "lap_times": "fresh",
+      "gaps": "fresh",
+      "pit_status": "fresh",
+      "flags": "unsupported",
+      "spatial": "unsupported",
+      "driver_inputs": "fresh",
+      "powertrain": "unsupported",
+      "fuel": "unsupported",
+      "delta": "unsupported",
+      "sectors": "unsupported",
+      "lap_progress": "unsupported",
+      "weather": "unsupported",
+      "damage": "unsupported"
+    },
+    "session": {
+      "id": 0,
+      "kind": {
+        "reliable": "race"
+      },
+      "state": "unavailable",
+      "elapsed_s": "unavailable",
+      "remaining_s": {
+        "reliable": 7198
+      },
+      "track_name": {
+        "reliable": "Sebring"
+      },
+      "laps_remaining": "unavailable",
+      "laps_total": "unavailable",
+      "track_length_m": "unavailable",
+      "weather_air_temperature_k": "unavailable",
+      "weather_track_temperature_k": "unavailable",
+      "weather_wind_speed_mps": "unavailable",
+      "weather_wind_direction_rad": "unavailable",
+      "weather_rain": "unavailable",
+      "weather_track_wetness": "unavailable",
+      "weather_pressure_pa": "unavailable"
+    },
+    "flags": "unavailable",
+    "cars": [
+      {
+        "id": 1,
+        "number": "",
+        "driver_id": 1,
+        "driver_name": "André Lotterer",
+        "class": [
+          1,
+          "hypercar"
+        ],
+        "position": {
+          "reliable": 1
+        },
+        "class_position": {
+          "reliable": 1
+        },
+        "laps": {
+          "reliable": 127
+        },
+        "last_lap_s": {
+          "reliable": 91.234
+        },
+        "best_lap_s": {
+          "reliable": 90.964
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": "unavailable",
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 2,
+        "number": "",
+        "driver_id": 2,
+        "driver_name": "Ben Hanley",
+        "class": [
+          2,
+          "lmp2"
+        ],
+        "position": {
+          "reliable": 2
+        },
+        "class_position": {
+          "reliable": 1
+        },
+        "laps": {
+          "reliable": 127
+        },
+        "last_lap_s": {
+          "reliable": 91.28399999999999
+        },
+        "best_lap_s": {
+          "reliable": 90.94399999999999
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 1.234
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": 4.5
+        },
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 3,
+        "number": "",
+        "driver_id": 3,
+        "driver_name": "Kévin Estre",
+        "class": [
+          3,
+          "gte"
+        ],
+        "position": {
+          "reliable": 3
+        },
+        "class_position": {
+          "reliable": 1
+        },
+        "laps": {
+          "reliable": 127
+        },
+        "last_lap_s": {
+          "reliable": 91.33399999999999
+        },
+        "best_lap_s": {
+          "reliable": 90.92399999999999
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 2.468
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": 9
+        },
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 4,
+        "number": "",
+        "driver_id": 4,
+        "driver_name": "Antonio Giovinazzi",
+        "class": [
+          1,
+          "hypercar"
+        ],
+        "position": {
+          "reliable": 4
+        },
+        "class_position": {
+          "reliable": 2
+        },
+        "laps": {
+          "reliable": 127
+        },
+        "last_lap_s": {
+          "reliable": 91.384
+        },
+        "best_lap_s": {
+          "reliable": 90.904
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 3.702
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": 13.5
+        },
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 5,
+        "number": "",
+        "driver_id": 5,
+        "driver_name": "Filipe Albuquerque",
+        "class": [
+          2,
+          "lmp2"
+        ],
+        "position": {
+          "reliable": 5
+        },
+        "class_position": {
+          "reliable": 2
+        },
+        "laps": {
+          "reliable": 127
+        },
+        "last_lap_s": {
+          "reliable": 91.434
+        },
+        "best_lap_s": {
+          "reliable": 90.884
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 4.936
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": 18
+        },
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 6,
+        "number": "",
+        "driver_id": 6,
+        "driver_name": "Alessandro Pier Guidi",
+        "class": [
+          3,
+          "gte"
+        ],
+        "position": {
+          "reliable": 6
+        },
+        "class_position": {
+          "reliable": 2
+        },
+        "laps": {
+          "reliable": 127
+        },
+        "last_lap_s": {
+          "reliable": 91.484
+        },
+        "best_lap_s": {
+          "reliable": 90.86399999999999
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 6.17
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": 22.5
+        },
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 7,
+        "number": "",
+        "driver_id": 7,
+        "driver_name": "Sarah Bovy",
+        "class": [
+          1,
+          "hypercar"
+        ],
+        "position": {
+          "reliable": 7
+        },
+        "class_position": {
+          "reliable": 3
+        },
+        "laps": {
+          "reliable": 127
+        },
+        "last_lap_s": {
+          "reliable": 91.53399999999999
+        },
+        "best_lap_s": {
+          "reliable": 91.33399999999999
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 7.404
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": 27
+        },
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 8,
+        "number": "",
+        "driver_id": 8,
+        "driver_name": "Martin Berry",
+        "class": [
+          2,
+          "lmp2"
+        ],
+        "position": {
+          "reliable": 8
+        },
+        "class_position": {
+          "reliable": 3
+        },
+        "laps": {
+          "reliable": 127
+        },
+        "last_lap_s": {
+          "reliable": 91.58399999999999
+        },
+        "best_lap_s": {
+          "reliable": 91.314
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 8.638
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": 31.5
+        },
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 9,
+        "number": "",
+        "driver_id": 9,
+        "driver_name": "Michael Birch",
+        "class": [
+          3,
+          "gte"
+        ],
+        "position": {
+          "reliable": 9
+        },
+        "class_position": {
+          "reliable": 3
+        },
+        "laps": {
+          "reliable": 126
+        },
+        "last_lap_s": {
+          "reliable": 91.634
+        },
+        "best_lap_s": {
+          "reliable": 91.294
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 9.872
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": 36
+        },
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 10,
+        "number": "",
+        "driver_id": 10,
+        "driver_name": "Gianmaria Bruni",
+        "class": [
+          1,
+          "hypercar"
+        ],
+        "position": {
+          "reliable": 10
+        },
+        "class_position": {
+          "reliable": 4
+        },
+        "laps": {
+          "reliable": 126
+        },
+        "last_lap_s": {
+          "reliable": 91.684
+        },
+        "best_lap_s": {
+          "reliable": 91.274
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 11.106
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 11,
+        "number": "",
+        "driver_id": 11,
+        "driver_name": "Phil Hanson",
+        "class": [
+          2,
+          "lmp2"
+        ],
+        "position": {
+          "reliable": 11
+        },
+        "class_position": {
+          "reliable": 4
+        },
+        "laps": {
+          "reliable": 126
+        },
+        "last_lap_s": {
+          "reliable": 91.734
+        },
+        "best_lap_s": {
+          "reliable": 91.25399999999999
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 12.34
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 12,
+        "number": "",
+        "driver_id": 12,
+        "driver_name": "Matt Campbell",
+        "class": [
+          3,
+          "gte"
+        ],
+        "position": {
+          "reliable": 12
+        },
+        "class_position": {
+          "reliable": 4
+        },
+        "laps": {
+          "reliable": 126
+        },
+        "last_lap_s": {
+          "reliable": 91.78399999999999
+        },
+        "best_lap_s": {
+          "reliable": 91.234
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 13.574
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": "unavailable",
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 13,
+        "number": "",
+        "driver_id": 13,
+        "driver_name": "Duncan Cameron",
+        "class": [
+          1,
+          "hypercar"
+        ],
+        "position": {
+          "reliable": 13
+        },
+        "class_position": {
+          "reliable": 5
+        },
+        "laps": {
+          "reliable": 126
+        },
+        "last_lap_s": {
+          "reliable": 91.83399999999999
+        },
+        "best_lap_s": {
+          "reliable": 91.21399999999998
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 14.808
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": -36
+        },
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 14,
+        "number": "",
+        "driver_id": 14,
+        "driver_name": "Job van Uitert",
+        "class": [
+          2,
+          "lmp2"
+        ],
+        "position": {
+          "reliable": 14
+        },
+        "class_position": {
+          "reliable": 5
+        },
+        "laps": {
+          "reliable": 126
+        },
+        "last_lap_s": {
+          "reliable": 91.884
+        },
+        "best_lap_s": {
+          "reliable": 91.684
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 16.042
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": -31.5
+        },
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 15,
+        "number": "",
+        "driver_id": 15,
+        "driver_name": "Daniel Juncadella",
+        "class": [
+          3,
+          "gte"
+        ],
+        "position": {
+          "reliable": 15
+        },
+        "class_position": {
+          "reliable": 5
+        },
+        "laps": {
+          "reliable": 126
+        },
+        "last_lap_s": {
+          "reliable": 91.934
+        },
+        "best_lap_s": {
+          "reliable": 91.664
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 17.276
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": -27
+        },
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 16,
+        "number": "",
+        "driver_id": 16,
+        "driver_name": "Conrad Laursen",
+        "class": [
+          1,
+          "hypercar"
+        ],
+        "position": {
+          "reliable": 16
+        },
+        "class_position": {
+          "reliable": 6
+        },
+        "laps": {
+          "reliable": 126
+        },
+        "last_lap_s": {
+          "reliable": 91.984
+        },
+        "best_lap_s": {
+          "reliable": 91.64399999999999
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 18.509999999999998
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": -22.5
+        },
+        "relative_laps": "unavailable",
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 17,
+        "number": "",
+        "driver_id": 17,
+        "driver_name": "Oliver Jarvis",
+        "class": [
+          2,
+          "lmp2"
+        ],
+        "position": {
+          "reliable": 17
+        },
+        "class_position": {
+          "reliable": 6
+        },
+        "laps": {
+          "reliable": 125
+        },
+        "last_lap_s": {
+          "reliable": 92.03399999999999
+        },
+        "best_lap_s": {
+          "reliable": 91.624
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 19.744
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": -18
+        },
+        "relative_laps": {
+          "reliable": -1
+        },
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 18,
+        "number": "",
+        "driver_id": 18,
+        "driver_name": "Maro Engel",
+        "class": [
+          3,
+          "gte"
+        ],
+        "position": {
+          "reliable": 18
+        },
+        "class_position": {
+          "reliable": 6
+        },
+        "laps": {
+          "reliable": 125
+        },
+        "last_lap_s": {
+          "reliable": 92.08399999999999
+        },
+        "best_lap_s": {
+          "reliable": 91.60399999999998
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 20.978
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": true
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": -13.5
+        },
+        "relative_laps": {
+          "reliable": -1
+        },
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 19,
+        "number": "",
+        "driver_id": 19,
+        "driver_name": "Mikkel Jensen",
+        "class": [
+          1,
+          "hypercar"
+        ],
+        "position": {
+          "reliable": 19
+        },
+        "class_position": {
+          "reliable": 7
+        },
+        "laps": {
+          "reliable": 125
+        },
+        "last_lap_s": {
+          "reliable": 92.134
+        },
+        "best_lap_s": {
+          "reliable": 91.584
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 22.212
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": -9
+        },
+        "relative_laps": {
+          "reliable": -1
+        },
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      },
+      {
+        "id": 20,
+        "number": "",
+        "driver_id": 20,
+        "driver_name": "Nico Pino",
+        "class": [
+          2,
+          "lmp2"
+        ],
+        "position": {
+          "reliable": 20
+        },
+        "class_position": {
+          "reliable": 7
+        },
+        "laps": {
+          "reliable": 125
+        },
+        "last_lap_s": {
+          "reliable": 92.184
+        },
+        "best_lap_s": {
+          "reliable": 91.564
+        },
+        "estimated_lap_s": "unavailable",
+        "last_sectors_s": [],
+        "gap_leader": {
+          "reliable": {
+            "time": {
+              "seconds": 23.445999999999998
+            }
+          }
+        },
+        "gap_ahead": "unavailable",
+        "in_pits": {
+          "reliable": false
+        },
+        "pose": "unavailable",
+        "gap_class_leader": "unavailable",
+        "gap_class_ahead": "unavailable",
+        "lap_distance_m": "unavailable",
+        "lap_elapsed_s": "unavailable",
+        "current_sector": "unavailable",
+        "relative_s": {
+          "reliable": -4.5
+        },
+        "relative_laps": {
+          "reliable": -1
+        },
+        "velocity_mps": "unavailable",
+        "pending_penalties": "unavailable"
+      }
+    ],
+    "player": {
+      "car": 2,
+      "throttle": {
+        "reliable": 0.75
+      },
+      "brake": {
+        "reliable": 0.125
+      },
+      "clutch": {
+        "reliable": 0.06
+      },
+      "gear": {
+        "reliable": 4
+      },
+      "speed_mps": {
+        "reliable": 50
+      },
+      "engine_speed_rad_s": {
+        "reliable": 753.9822368615503
+      },
+      "fuel_level_l": "unavailable",
+      "fuel_capacity_l": "unavailable",
+      "fuel_per_lap_l": "unavailable",
+      "fuel_laps_left": "unavailable",
+      "delta_best_s": "unavailable",
+      "pit_limiter_active": "unavailable",
+      "pit_stop_stopped": "unavailable",
+      "damage_aero": "unavailable",
+      "damage_body": "unavailable",
+      "damage_suspension": "unavailable",
+      "damage_tyre_wear": [
+        "unavailable",
+        "unavailable",
+        "unavailable",
+        "unavailable"
+      ],
+      "steering": "unavailable",
+      "fuel_history": []
+    },
+    "source_state": "live"
+  },
+  "fixture_provenance": {
+    "kind": "reconstructed-reference",
+    "source": "tools/widget-reference/scene.tsx",
+    "frozen_metadata": "native/ui/reference/head-to-head.geometry.json",
+    "note": "QA reconstruida: jugador P2 con rival delante; no telemetría live."
+  }
+}

@@ -1,4 +1,821 @@
+## #1496 — promoción a nightly autorizada el 2026-10-10
+
+Isaac autoriza expresamente PR, push, squash a nightly y prerelease nativa <0.1.
+Base local 8e844c9d y origen nightly 2148bf7e: se incorpora la base sin perder
+la integración. Conflictos solo documentales: AGENTS conserva Rust/GitHub y la
+retirada Wails/React; handoffs acumulan entregas y el seguimiento vigente #1503.
+Incluidas #1528, #1529, #1530, #1532, #1533 y #1534. #1531 sigue pendiente y abierta.
+Etiqueta autorizada native-beta-v0.0.975 (o siguiente si existe), título nightly nativa,
+prerelease, nunca latest. USB requerido únicamente para firma Ed25519 mediante
+ruta directa; no leer/copiar/imprimir/subir la semilla. Instalación real intacta.
+Gates repetidos sobre nightly incorporado, por cola: fmt, Clippy -D warnings,
+Nextest 1415/1415 (7 skips heredados), lifecycle 18/18 y telemetría 21/21
+(0 skips; ACC 721,861 s), PASS. Lifecycle tuvo un timeout IPC inicial;
+repetición íntegra con idéntico código/configuración/plazos PASS, sin reproducirlo.
+Causa no acreditada; ambos logs conservados. Quality 31 tests y 456 pins PASS.
+Residuos ignorados frontend/dist y node_modules apartados fuera del checkout.
+PR #1550 abierto a nightly: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1550. CI pendiente; squash solo con checks verdes.
+CI Linux en PR #1550 detectó E0432/E0433: tests recovery/status_process importaban
+la fixture DPAPI de runtime::rights sin cfg(windows). La corrección acota solo
+esa fixture, auxiliares y escenarios de procesos con autoridad a Windows;
+checkpoint puro y rechazo de stream sin licencia siguen activos en Linux.
+No cambia código de producto, asserts, deadlines ni gates. Revalidación Windows por cola: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados) y lifecycle18/18 PASS. CI Linux debe repetirse y pasar antes del squash.
+Segundo fallo Linux E0433: Duration se había acotado en exceso y también es usado por photo/checkpoint puro. Se conserva el import en todas las plataformas; fixture DPAPI y procesos autenticados siguen solo Windows. Revalidación Windows por cola PASS: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados) y lifecycle18/18; CI Linux completa pendiente.
+Linux ya pasa compilación/Clippy y los tests compartidos de Engineer; Nextest detectó que demo de Launcher valida C:/QA como ruta absoluta en Unix. Helper solo de tests clona la fixture y adapta las rutas C:/QA en memoria a temp_dir del host; perfiles/catálogo, validación de ruta local y referencias/pins permanecen intactos. No escribe ni ejecuta archivos. CI Linux usa --no-fail-fast para recopilar todos los fallos de plataforma en una ronda; mantiene suite completa y resultado bloqueante ante cualquier fallo. Revalidación Windows por cola PASS: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados), lifecycle18/18; quality31 y456pins PASS. CI Linux completa pendiente.
+CI Linux 8c657ac: el job agotó90min dentro de Nextest; no fue cancelación manual. Calloop0.14.4 reinicia stop al entrar en run(), después del callback de lanzamiento GPUI; quit síncrono del harness se pierde. Helper solo de tests programa quit como tarea foreground para los26 escenarios headless de Cuenta, catálogo, Studio y accesibilidad. Sin cambios productivos, pins, asserts ni exclusiones. Revalidación Windows por cola PASS: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados;239,844s), lifecycle18/18; quality31 y456pins PASS. Telemetría previa21/21 válida sobre idéntico código productivo. CI Linux completa pendiente.
+CI Windows anterior detectó alias 8.3 de TEMP: COM devuelve runneradmin mientras
+la fixture usa RUNNER~1. Test LNK compara cardinalidad y destinos canónicos,
+conservando byte a byte el enlace y las comprobaciones de no ejecución.
+Revalidación Windows por cola: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados) y lifecycle18/18 PASS; no cambia código de producto.
+GitGuardian incidente37742164 señala manifest.json:289 de frozen-go como alta
+entropía: SHA-256 del archivo credentials_store.go recalculado en ambos tar.gz,
+coincide con sus pins, no es credencial. Prueba/nota en evidencia externa y PR.
+Dashboard exige sesión para clasificar false_positive; Isaac lo clasificará después. El usuario verificó el 2026-10-10 que el archivo archivado no contiene secretos escritos en código y que GitGuardian no es obligatorio de nightly; autoriza continuar con los checks obligatorios verdes. BLOQUEO anterior revocado para la promoción.
+No se cambia conclusión del scanner, pins, historia ni reglas de ignorar.
+Isaac confirma USB Ventoy conectado: al firmar, comprobar existencia y pasar
+ruta directa, sin esperar nueva autorización ni acceder al contenido de la semilla.
+Evidencia externa promocion-nightly-1528-evidence/; firma/publicación aún pendientes.
+
+## #1496 — integración local de #1528 e instalador 0.0.975 (2026-10-10)
+
+Rama vantareapp/isa-1496-integracion-prueba, base autorizada 70170613.
+Merge no-ff ffc2efe8 incorpora db9bc480 (#1528, aprobación visual aislada R5 9,0335/10).
+Dos conflictos: Cuenta conserva avatar/nombre reales y acciones #1529 con hero,
+avatar circular y Display adaptable #1528; handoff acumula ambas entregas.
+Aviso único de conexión #1530, Services v5, DTO v9 y retirada/arquitectura ola 1 preservados.
+9eb91b52 corrige NSIS para usar native/assets/icon.ico de #1534: build/windows ya no existe.
+Fuente de gates/binarios 9eb91b524cac8331eded47734dab4aec701ed5fd; árbol native
+297ccc1229ef68f781b752e1a78adfea161d7a3d. El cierre documental no modifica ese árbol.
+Por cola: fmt y Clippy workspace/all-targets -D warnings PASS, Nextest 1415/1415
+(7 skips heredados; una prueba lenta, sin fallos), lifecycle 18/18 y telemetría 21/21
+(0 skips; ACC 744,182 s), PASS. Target aislado en E:/tmp/integracion-prueba/.
+Setup local E:/tmp/beta-local/0.0.975/VantareSetup.exe: Release beta, configuración dev
+mediante el mismo loader/ruta de 0.0.974; source_dirty=false, 91 archivos, NotSigned.
+SHA256 080EC593C36A1D81773409094E282A600D337251200535E6C0433D2F4653A027.
+Packaging directo desde Bash/PowerShell 5.1 PASS: general175, beta99, config24,
+Setup50, feed9, uninstall2, guards2, MSIX sintaxis12; paquete MSIX real omitido.
+Primer Setup intentado con 0.0.974 como fixture antigua falló el assert de nombre:
+la suite exige 0.0.960. Argumento corregido, log preservado y repetición íntegra PASS.
+QA1492 retirada; datos de prueba conservados. Sin ejecutar Setup normal, tocar instalación
+real de Isaac ni clave de firma productiva; firma del feed solo con semilla de TEST.
+Sin delegación, push, PR, CI remota, promoción, release, firma ni publicación de artefactos.
+Seguimiento GitHub #1496/#1528, area:ui, Project Vantare In Review; issues abiertas.
+No QA visual nueva, interacción humana, DPI/juego/OBS/Google/portal real acreditados.
+Isaac: comprobar Cuenta/avatar/licencia estable, aviso de conexión; Calendario filtros/
+favoritos/scroll, tema/sidebar; Studio zoom/densidad y límites 1280×720/1920×1080.
+Evidencia C:/tmp/auditoria-arquitectura-v2/integracion-1528-evidence/;
+informe breve informe-integracion-1528.md. Siguiente: prueba y aceptación local de Isaac.
+
+## #1496 — integración local de arquitectura, ola 1 (2026-10-09)
+
+Integradas en orden #1534, #1533, #1530, #1529 y #1532 sobre `5e1da3f6`,
+con un merge --no-ff por rama en `vantareapp/isa-1496-integracion-prueba`.
+Checks workspace/all-targets tras los cinco merges PASS. Gates por cola:
+fmt, Clippy -D warnings, Nextest 1411/1411 (7 skips heredados, sin fallos ni
+reintentos), lifecycle 18/18 y telemetría 21/21, sin omisiones, PASS.
+Conflictos: AGENTS conserva la retirada y GitHub; handoffs acumulan entregas;
+contrato Services queda en ipc con v5 y paths locales; diagnóstico de conexión
+de #1530 preservado, un aviso por modo del Hub, sin cambios extra a access/Feed.
+Icono compartido en native/assets/icon.ico y mapa/documentación de 13 crates.
+86 pins de fixtures/docs reconciliados con la entrega exacta #1530 y la base:
+datos JSON/gzip conservados salvo etiqueta DTO; source_sha256 retiene origen,
+ACC v8 sigue fijado por el hash original y su regresión. Los 456 pins pasan.
+Rutas activas verificadas en native/.github/scripts; referencias históricas
+conservadas, ámbito automático frontend rechazado. Inventario, resoluciones,
+logs e informe: C:/tmp/auditoria-arquitectura-v2/integracion-* e
+informe-integracion-ola1.md. Árbol nativo validado:
+`c954fc3ff30333082056db5e04d97ba807eb1cae`.
+Sin push, PR, CI remota, promoción a nightly, release, deploy, instalación ni
+QA visual/Google/portal real/LMU/OBS física. No ventanas ni cambios de usuarios.
+Siguiente: revisión del orquestador; aceptación de Isaac antes de promoción.
+
+## #1534 — Dependencias explícitas entre crates (2026-10-09)
+
+Worktree `C:/tmp/vw3-1534/vantare-v2`, rama `vantareapp/isa-1534-crates-path`,
+base de integración `5e1da3f6`; alcance autorizado por tareas.md y GitHub #1534.
+Launcher y sus archivos locales pasan a `vantare-launcher`; Hub conserva la
+presentación y sus demos. Contratos Engineer/Services y producto pasan a ipc,
+con aliases públicos para los consumidores. Icono de los tres build.rs en
+`vantare-build-support`; profiling en crate sin dependencias, también para GPUI.
+El launcher declara services sin network para hashes y confianza ya existentes.
+No cambian transportes, DTO, permisos ni persistencia. Sin dependencias externas nuevas.
+Un contador de profiling por proceso aceptado por Isaac: 24 etapas disjuntas
+entre runtime(11), ipc(4), ui(6), GPUI(3); test rechaza futuros solapamientos.
+Test de arquitectura recorre native/vendor y prohíbe #[path] entre propietarios
+Cargo, manteniendo módulos internos. fmt y Clippy workspace/all-targets -D warnings PASS. Tests del motor en launcher;
+fixture Engineer mediante test-support IPC solo dev en Hub. Nextest 1397/1397
+(7 skips), lifecycle 18 PASS. Primer Nextest: dos fallos TimedOut/BrokenPipe
+en recovery; repetición completa con NEXTEST_TEST_THREADS=2 PASS, sin alterar tests.
+Telemetría 21/21 PASS, 0 skips (645.220 s; ACC golden 606.112 s, 190308 fotos).
+Check all-targets runtime/UI con paint-stats PASS, sin warnings; build UI dev
+con paint-stats PASS. Once binarios --version idénticos: 0.0.0 (development),
+sin abrir ventanas. Código validado en 58e5dd66 (hitos 4e63a461 + 58e5dd66).
+Evidencia en
+`C:/tmp/auditoria-arquitectura-v2/1534-*.log`; gates exigidos completos en verde.
+plan.md ausente también en origin/nightly; #1530 tiene la corrección documental.
+Entrega local completa: informe de diez líneas y comentario GitHub #1534.
+Sin push/PR/CI remoto/merge/promoción/release/instalación ni otras acciones externas.
+No QA visual ni macOS/distribución: traslado sin cambios de presentación; no
+se afirma prueba publicada ni interacción LMU/OBS real. Siguiente: revisión
+del orquestador y aceptación de Isaac antes de integrar sobre la base indicada.
+## #1528 — Ronda 5 tras revisión 8,980/10 (2026-10-10)
+
+Entrega aislada sobre `ba571aaa`, misma rama `vantareapp/isa-1528-paridad-visual`
+y base de integración `5e1da3f6`; cuatro commits, uno por grupo, sin delegación.
+Carteles recupera el bloque de fecha, título Display, favorita observada y tarjetas
+84 px XS / 118 amplias, con separación de 10 px. Duración real disponible en Tiempos.
+Agenda delimita días/franjas, compacta cabecera y filtros y conserva la escala
+estable: el test exige que los 30 px del evento caben tras padding y ambos bordes.
+Tiempos alinea Horario y las once opciones en XS; hero de unos 100 px, cuenta atrás
+real y acciones paralelas, filas 36/40 y scroll intactos; sin split/clima inventados.
+Studio ordena resolución/selección a la izquierda y zoom a la derecha; tarjetas
+180 px con iconos Orbit en marco, también en el cálculo del carrusel desplazable.
+Canvas, resolución del cliente, renderizador productivo y selección no se alteran.
+General da aire a filas y grupos a 1080; XS conserva todos los controles y las
+regresiones de densidades distintas. Apariencia ofrece muestras 148 px a 1080 y
+temas 56 px. Atajos integra Editar en el estado sin combinaciones, sin fila vacía;
+con combinaciones conserva filas y edición. Privacidad compacta el enlace de política;
+Cuenta usa hero Orbit y nombre Display 32. Launcher reposo usa iconos 88 en ancho,
+48 en compacto y mantiene altura natural. Diagnóstico recapturado por filas compartidas.
+Archivos: calendar/beta.rs y presentation.rs, studio.rs, settings/view.rs,
+orbit/kit.rs, services/view.rs, launcher/showcase.rs y este handoff.
+
+Gates por cola: fmt, Clippy workspace -D warnings, Nextest 1406 PASS / 7 skips
+(324,760 s, Go physical tyre 165,525 s PASS) y lifecycle 18 PASS. QA build PASS;
+aviso previo unused cx de analysis/view.rs exclusivo de parity-capture conservado,
+Clippy canónico sin warnings. Intentos de build/clippy fallidos y correcciones
+archivados en r5-*.log; no se rebajan tests ni gates. Sin nuevas dependencias.
+37 pares afectados app/HTML: 1280/1920 y siete tamaños extra de Launcher;
+10 vistas pedidas, Calendario vacío/publicado, Studio Delta y Diagnóstico compartido.
+Pares inspeccionados, overlays/diffs a resolución original; matriz completa 76,
+r5-before conserva R4, final-manifest.json acredita SHA/hash/dimensiones por caso.
+Pantalla-ocupada comprobada antes de cada ventana; HTML con cap.mjs headless.
+Informe de doce líneas C:/tmp/ui-r10/informe-1528.md, una por vista solicitada;
+detalle/limitaciones en 1528-evidence/diferencias.md y checks.md.
+Nota anterior 8,980113636 pertenece a review-1528-r4.md; ≥9 requiere reevaluación
+independiente. Roadmap/Testing conservan Próximamente por Isaac, datos reales
+pendientes en [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+Verificación manual: filtros/favoritos y scroll de Calendario; zoom/carrusel de
+Studio; densidad y preferencias persistidas, editor de atajos y enlace de política.
+Interacción humana, LMU y DPI físico no acreditados por QA; plan.md ausente, no recreado.
+Sin push, PR, merge, promoción, release ni CI remoto; únicamente comentario de evidencia
+en #1528 dentro de la autorización existente.
+
+## #1528 — Ronda 4 tras revisión 8,962/10 (2026-10-10)
+
+Entrega aislada sobre `a2adeb02`, misma rama `vantareapp/isa-1528-paridad-visual`
+y base de integración `5e1da3f6`; dos commits, uno por punto, sin delegación.
+Inicio reutiliza el presupuesto del estado real en render y tarjeta: descuenta
+el aviso y reserva cabecera, título, subtítulo, chips, métricas y acciones completas.
+El test recorre el límite inferior de cada hijo en siete tamaños, carril abierto/
+cerrado y con/sin error; las capturas 1280/1920 muestran subtítulo y botones íntegros.
+Tiempos XS reúne todos los filtros en una línea cuando caben, reduce controles
+a 28 px y filas a 36 px (40 en ancho), con padding menor. Nueve salidas visibles
+frente a seis; opciones, favoritos, avisos, scroll y procedencia real conservados.
+Sin split/clima inventados, nuevas dependencias ni renderer; kit Orbit existente.
+Archivos: native/hub/src/shell/foundations.rs, native/hub/src/calendar/beta.rs y este handoff.
+
+Gates por cola: fmt, Clippy workspace -D warnings, Nextest 1406 PASS / 7 skips,
+Hub 405 PASS / 1 skip y lifecycle 18 PASS. Build QA PASS; conserva el aviso previo
+unused cx de analysis/view.rs exclusivo de parity-capture, sin ampliar el alcance.
+12 pares app/HTML recapturados a 1280/1920 en Vantare: los cuatro estados de Inicio
+y Tiempos vacío/publicado. Superposiciones/diffs a tamaño original; matriz 76,
+r4-before conserva la evidencia anterior y final-manifest.json acredita SHA/hash.
+Informe doce líneas C:/tmp/ui-r10/informe-1528.md; detalle en 1528-evidence/diferencias.md
+ y checks.md. La nota anterior 8,9619318 pertenece a review-1528-r3.md; ≥9 requiere
+reevaluación independiente. Roadmap/Testing conservan Próximamente por Isaac;
+datos reales pendientes en [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+Verificación manual: Inicio con aviso en ambas resoluciones, botones Editar overlay/
+Detener completos; filtros, favorito, avisos y scroll de Tiempos con más salidas.
+Interacción humana, LMU y DPI físico no acreditados por QA; plan.md ausente, no recreado.
+Sin push, PR, merge, promoción, release ni CI remoto; únicamente comentario de evidencia
+en #1528 dentro de la autorización existente.
+
+## #1528 — Ronda 3 tras revisión 8,88/10 (2026-10-10)
+
+Entrega aislada sobre `abb752b3`, rama `vantareapp/isa-1528-paridad-visual`,
+base de integración `5e1da3f6`. Siete commits por vista/grupo, sin delegación.
+Agenda XS reserva 38 px por hora: caben el evento de 30 px, padding y borde;
+regresión en siete alturas conserva escala estable, filtros y acceso a excedentes.
+Actualizaciones amplía hero a 160 px, agrupa canales y cabecera de notas;
+Tiempos usa todo el ancho, hero XS compacto, cuenta atrás real y duración acotada;
+la tabla separa serie/circuito e integra filtros y procedencia del horario;
+Launcher reposo recupera descripción y aire en la cadena, con altura natural;
+Inicio normal amplía preview compartido, vacío compone primeros pasos y conexión,
+carga distingue preview/actividad/plantillas y usa esqueletos en el perfil favorito.
+Rendimiento integra cabeceras, tarjetas de 96 px y filas de 48 px; XS usa tres
+columnas, tarjetas compactas y resumen de frecuencia aplicada, sin tabla secundaria;
+Diagnóstico agrupa estados observados, usa dos columnas XS y registro integrado
+con scroll y vacío neutro. Sin nuevas dependencias, renderer ni datos inventados.
+Archivos: calendar/presentation.rs, calendar/beta.rs, launcher/showcase.rs,
+shell/foundations.rs y settings/view.rs, más este handoff.
+
+Gates por cola: fmt, Clippy workspace -D warnings, Nextest workspace 1405 PASS / 7
+skips, Hub 404 PASS / 1 skip tras los ajustes visuales, lifecycle 18 PASS.
+Build QA conserva el aviso previo unused cx de analysis/view.rs bajo parity-capture;
+Clippy canónico sin warnings. Intentos iniciales fallidos y sus correcciones quedan
+archivados fuera del repo; no se rebajan tests. La última tanda visual se verifica
+mediante el manifest externo, procedencia por SHA/hash y comparaciones a igual tamaño.
+44 casos afectados recapturados app/HTML, con recaptura final de Rendimiento; matriz completa 76, overlays/diffs y
+r3-before conservan la evidencia anterior. Launcher cubre siete tamaños y dos extras.
+Informe de doce líneas: C:/tmp/ui-r10/informe-1528.md. Evidencia detallada:
+C:/tmp/ui-r10/1528-evidence/diferencias.md, checks.md y final-manifest.json.
+La nota 8,88 corresponde a review-1528-r2.md; ≥9 requiere reevaluación independiente.
+Roadmap/Testing mantienen Próximamente por decisión de Isaac; datos pendientes en
+[#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+Verificación manual: evento completo y scroll de Agenda XS, filtros de Tiempos,
+reposo/lanzamiento y carrusel en siete tamaños, los tres estados de Inicio, niveles
+de rendimiento y filtros/informe sanitizado. DPI físico, LMU real e interacción
+humana no acreditados por QA. Sin push, PR, merge, promoción, release ni CI remoto.
+
+## #1528 — Ronda 2 tras revisión 8,80/10 (2026-10-10)
+
+Entrega aislada sobre `723cdb78`, misma rama y base de integración `5e1da3f6`.
+Cinco commits en el orden pedido: General restaura Equilibrada M / Cómoda automática
+con diferencias verificadas en gap, filas y padding, sin ampliar ventanas XS;
+Launcher mantiene hero natural, centra la cadena con aire y usa tira horizontal
+compacta al lanzar, evitando solapes de portada en alturas pequeñas; Agenda acota
+franjas y eventos, conserva filtros y scroll por celda y enlaza excedentes a Tiempos;
+Apariencia compone navegación/perfil/estado real con Orbit, sin progreso ficticio;
+Ajustes recibe padding explícito, independiente del título traducido.
+Archivos de código: `settings/general.rs`, `launcher/showcase.rs`,
+`calendar/presentation.rs`, `settings/view.rs`. Sin dependencias ni renderer nuevo.
+
+Gates por cola: fmt y Clippy -D warnings PASS; Nextest workspace 1404 PASS / 7 skips,
+Hub tras el último ajuste 403 PASS / 1 skip; lifecycle 18 PASS. El build QA conserva
+el aviso previo `unused cx` de analysis/view.rs bajo parity-capture; Clippy canónico
+pasa sin warnings. Los intentos fallidos de tipo/formato quedan en los logs externos.
+Las capturas R1 se conservan en `1528-evidence/r2-before`; 76 HTML recapturados y
+76 app, más recaptura final de Launcher en nueve tamaños. Cada PNG mantiene SHA y
+hash del binario en provenance.jsonl; `refs/1528/r2-first-capture` conserva el SHA
+previo a la última corrección de portada. Pares, overlays y diffs regenerados.
+`C:/tmp/ui-r10/informe-1528.md` mantiene doce líneas y el seguimiento de datos
+honestos en [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+La nota 8,80 pertenece a la revisión anterior; el objetivo ≥9 requiere reevaluación
+independiente. No se presenta una nueva puntuación calculada por el implementador.
+Verificación manual: alternar Equilibrada/Cómoda a 1920 y reducir a 1280; lanzar
+perfil y recorrer su tira; desplazar celdas densas de Agenda y abrir Tiempos;
+cambiar tema y comprobar la miniatura. DPI físico, LMU real e interacción humana
+no acreditados por las capturas QA. Sin push, PR, merge, promoción, release ni CI remoto.
+
+## #1528 — Paridad visual Hub r10h, entrega aislada (2026-10-09)
+
+Worktree `C:/tmp/vw3-1528/vantare-v2`, rama `vantareapp/isa-1528-paridad-visual`,
+base `5e1da3f6`. Implementación sin delegación; 15 commits de código por página/prioridad.
+Launcher `c0b38503`: escaparate de altura natural, carrusel medido y mínimo cliente
+1280×720 que evita el zoom efectivo 90% involuntario. Studio `68577b50`: borde,
+tiradores y resize usan límites pintados del renderer compartido. Sidebar `008d63a7`:
+los 9 temas de Apariencia mediante Choice, guardado común y acceso contraído.
+Inicio, las 7 páginas de Ajustes, Cuenta, Testing, Calendario y Roadmap usan los
+ajustes del kit; se conservan rojo #D80000, grafito Vantare, C2 y decisiones posteriores.
+Isaac autoriza mantener Próximamente en Roadmap/Testing: contratos de datos
+pendientes se conectan en [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535).
+No se fabrican fases, porcentajes, versiones, cuestionarios ni contribuciones.
+
+Evidencia externa: `C:/tmp/ui-r10/1528-evidence/final-manifest.json`, 76 PNG app y
+76 HTML a igual tamaño, más 76 overlays y 76 diffs. Matriz 1920×1080/1280×720,
+4 estados Inicio, Launcher reposo/lanzando en los 7 tamaños y 2 extras, selección
+Delta, menú de tema, vistas vacías y fixtures publicados QA de Calendario/Roadmap.
+`informe-1528.md` tiene 12 líneas; `diferencias.md` enumera las ocho categorías,
+excepciones, archivos y límites. Los datos reales se anotan y no se evalúan contra
+cifras de ejemplo. Delta/menú son pruebas añadidas sobre vistas HTML base.
+Las capturas QA están aisladas; no prueban LMU real, DPI físico, release ni telemetría.
+
+Gates por cola obligatoria: fmt (incluido vendor) y Clippy -D warnings PASS,
+Nextest workspace 1404 PASS / 7 skips, Hub tras el último cambio 403 PASS / 1 skip,
+lifecycle 18 PASS. Studio: Kind::ALL, marcos altos/cortos, escalas 0.5/1/2 y zoom
+0.1/0.5/1/2.5/4. Backend zoom: seis escenarios con test extraído literalmente del
+vendor y ejecutado por rustc --test; su harness Cargo completo no se configura como
+miembro del workspace. Build QA parity-capture PASS; aviso previo unused cx en
+analysis/view.rs bajo esa feature conservado, gate canónico sin warnings.
+Consolidación local conserva árbol fuente `a9d1daa880649ac1311fbc0c4b680ad154708dde`;
+SHA originales de evidencia retenidos en `refs/1528/pre-consolidation` y manifiesto.
+Verificación manual: Launcher idle/lanzando en 7 tamaños; seleccionar y escalar
+Delta y demás widgets a varios zooms; cambiar tema con sidebar abierta/contraída y
+reiniciar para comprobar persistencia. Revisión visual registrada, sin identidad
+pixel a pixel de datos, controles productivos o ausencias aprobadas de #1535.
+`docs/roadmap/plan.md` ausente en esta base; se conserva #1535 como seguimiento.
+Sin push, PR, merge, CI remoto, promoción ni release; solo comentario de #1528
+expresamente solicitado. Siguiente acción: revisión aislada por Isaac/orquestador.
+
+## #1496 — Calidad UI R0–R3, correcciones sobre R4 (2026-10-08)
+
+Worktree C:/tmp/vw3-ui-calidad/vantare-v2, rama vantareapp/isa-1496-ui-calidad,
+base R4 2f323fb9; brief C:/tmp/ui-r10/brief-calidad-arreglos-1.md, sin delegación.
+Grupo R0: Adapt deja de ser Global; geometría en shell y entidades por ventana,
+primitivas reciben el valor explícito. Accesibilidad resuelta antes de Tokens;
+menú Choice usa cristal, tarjetas/barras R4 opacas y alcance explicado en Ajustes.
+Rojo oficial, fuentes, permisos y contratos R4 conservados. Regresiones de
+extremos y dos ventanas añadidas; gates completos/evidencia pendientes de cierre.
+Resto del lote en ejecución; no aceptación >=9 acreditada todavía.
+Docs históricos Notion contradicen el AGENTS aportado por Isaac: prevalece GitHub.
+plan.md ausente también en origin/nightly; no se recrea ni publica roadmap.
+Sin push/PR/merge/CI remoto/promoción/release. Evidencia externa calidad-1-evidence.
 # Handoff vivo — Overlay Studio, Launcher y Hub
+
+R1: host real con opacidad/visibilidad/orden/superposición y regresión de su estilo;
+hero/overlay/actividad separados. Circuitos tipados validados y parseados una vez.
+Microbenchmark manual preparado; caché de entidades conservada hasta medir.
+Base R0 corregida cb6ca7d4; check/Clippy workspace PASS, suite y QA pendientes.
+
+R2: Avanzado admite Tab con foco visible y el focus target existente;
+resultados descriptivos de terminal/reintentos/confirmación, sin Lento inferido.
+Regresiones de recuperación, decisión, pasos independientes, fallo y cancelación.
+Motor, persistencia y controladores intactos; interacción nativa pendiente de QA.
+
+R3: estado flexible/recortado con tooltip y accesibilidad completa; acciones
+compactas por ancho central efectivo, sin fila extra ni scroll de página.
+Escenas QA aisladas: sidebar forzada/error largo/carril, vacío/sin selección/
+oculto/manual/En vivo y preview con opacidad/nombres largos. Test del host real.
+Clippy workspace PASS; pendientes gates completos, capturas y medidas nativas.
+
+QA de calidad: las nuevas variantes Inicio reutilizan la sesión/layout de base;
+el selector común y el saludo recortan nombres largos, con texto completo
+accesible y tooltip del saludo. Capturas reales antes/después en 1280 revisadas;
+barra Studio con error largo/sidebar abierta mantiene todas sus acciones.
+Microbenchmark release: parseo 3,895 us frente a consulta 0,053 us; clones
+4/18 widgets 1,098/2,632 us. No se amplía la invalidación de previews.
+Nextest workspace 1266 PASS, lifecycle18 PASS, prueba PASS. Nuevos casos QA
+cubiertos por Hub332 PASS; revalidación de los últimos textos y matriz en curso.
+## #1496 / #1504 — UI R4 Ajustes y Cuenta, entrega local (2026-10-08)
+
+Worktree C:/tmp/vw3-ui-r1/vantare-v2, rama
+vantareapp/isa-1496-ui-r4-ajustes, base R3 a5a01084. Cinco hitos locales:
+rojo/AA (#1504), General/Apariencia, Rendimiento/Atajos,
+Actualizaciones/Privacidad/Diagnóstico y Cuenta/adaptación/tests (#1496).
+Kit Orbit común, nueve temas, esquema persistido con conflictos y focos
+independientes. Cuenta usa panel derecho acoplado y retráctil de la shell.
+No se modifican protocolos, permisos, servicios remotos ni dependencias.
+
+Rendimiento no tiene política nativa ni cadencias guardables: Próximamente;
+Personalizado abre Studio. Atajos globales sin combinaciones inventadas.
+Consentimientos, diagnóstico sanitizado, beta/reinicio y acciones de cuenta
+conservan sus contratos. Novedades son los manifiestos empaquetados.
+
+Pantalla ocupada durante implementación y gates: cero ventanas/capturas entonces.
+Al quedar libre: tanda aislada de Inicio, siete pestañas y Cuenta en 1280/1920,
+Vantare/Clásico/DeepSeek, con sus referencias HTML e inspección visual.
+Se corrigieron overflow XS en Privacidad/Cuenta y porcentaje partido; sin
+mediciones ni acciones inventadas. No se declara paridad exacta ni DPI físico,
+login/LMU/OBS/Mac. Error de Cuenta tiene tests; escena visual nativa pendiente.
+Gates por cola PASS: fmt/check/Clippy -D warnings, Nextest1260/1260
+(6 skips heredados; ACC622.870s), lifecycle18 y build prueba beta-dev-clerk.
+Tras último pulido visual: fmt/Clippy PASS, Hub325/325 PASS y prueba PASS.
+Suite completa anterior al pulido de vistas; Hub repetido cubre el código
+modificado. QA parity-capture compila, con warning heredado en analysis/view.rs.
+Código validado/build final: 62e35535; cierre documental en el mismo hito.
+SHA y logs en C:/tmp/ui-r10/r4-evidence/VERIFICACION.md;
+informe C:/tmp/ui-r10/informe-r4.md. Caché conservada.
+Roadmap plan.md ausente en la base y origin/nightly: no recreado.
+El brief amplía R0 a R4 aunque el cuerpo de #1496 sigue describiendo R0;
+prevalece el encargo explícito de Isaac sobre las referencias históricas
+Notion de este checkout. Preguntas de alcance/contratos en el informe.
+Pendiente revisión de Isaac; sin push/PR/CI remoto/merge/promoción/release.
+## #1504 — Wordmark C2 aplicado, entrega local (2026-10-08)
+
+Brief `C:/tmp/ui-r10/brief-wordmark-aplicar.md`. Worktree
+`C:/tmp/vw3-1504-wm/vantare-v2`, rama `vantareapp/isa-1504-wordmark`,
+base UI R3 `a5a0108422b89c9ae113fe53761ee144f2bc820f`, limpia al comenzar.
+Los siete SVG de Isaac son copias idénticas en `build/brand/wordmark/`, con
+README de versiones, mínimos y respeto. El Hub embebe el blanco desde esa
+fuente única y lo tiñe con `skin.text1`: 24 px de alto, 182,85 px de ancho.
+Barra abierta de 272 px: nombre y BETA debajo; contraída: solo la Λ existente.
+`BRAND.md`, `DESIGN.md` y fragmento `ISA-1504.json` acompañan el cambio.
+Sin fuentes nuevas, dependencias ni cambios de navegación/persistencia.
+
+Por la cola `C:/tmp/fase2/compilar.ps1`, target propio `native/target/gates`,
+-j2: fmt PASS; workspace Clippy -D warnings PASS; Nextest default
+1257/1257 PASS, 6 skips propios del perfil; lifecycle 18 PASS.
+Build QA parity-capture PASS, con el aviso preexistente de `analysis/view.rs:989`
+(cx sin usar solo en QA); no se relajaron gates ni se cambió ese archivo.
+
+Ocho capturas GPUI finales 1600×900, todas inspeccionadas:
+Vantare/DeepSeek × oscuro/claro × barra abierta/contraída, en
+`C:/tmp/ui-r10/wordmark-capturas/`. C2 nítido, tinte correcto, sin colisión
+con BETA o el botón de contraer; la barra cerrada solo muestra la Λ.
+La primera tanda 1440×900 se reemplazó porque el responsive contrae la barra
+por debajo de 1500 px. Las capturas finales vienen del código productivo de
+este corte compilado como QA con fixture demo y source_dirty=true; no prueban
+telemetría live, instalación real, OBS, DPI físico ni macOS.
+
+Verificación manual: Hub a ≥1500 px, temas Vantare y DeepSeek claro/oscuro,
+Ctrl+B y comprobar nombre C2 a 24 px / Λ al cerrar. Comandos de repetición y
+logs `wordmark-*.log` en `C:/tmp/ui-r10/`; informe de ocho líneas en
+`C:/tmp/ui-r10/informe-wordmark-aplicar.md`.
+`docs/roadmap/plan.md` ausente en base y origin/nightly: no se recreó.
+Este corte no cierra los contrastes, rojo oficial ni icono plano restantes de
+#1504. Pendiente revisión del orquestador e Isaac e integración con la UI.
+Solo entrega local: sin push, PR, CI remoto, merge, promoción ni release.
+
+
+## #1496 — UI R2 Launcher: entrega local para revisión (2026-10-08)
+
+Worktree `C:/tmp/vw3-ui-r1/vantare-v2`, rama
+`vantareapp/isa-1496-ui-r2-launcher`, base R1 `d14e5561`.
+Cinco hitos en español (#1496): reposo, lanzamiento, carril común,
+pestañas/editor y adaptación/tests. El código del quinto hito queda acompañado
+por este cierre documental; los SHA completos están en el informe externo.
+
+Launcher usa kit/tokens Orbit R0, tarjeta de altura estable entre estados,
+cadena de aplicaciones, pósteres que aprovechan el alto y abren el editor,
+y carril común de aplicaciones/opciones/últimas veces. El editor mantiene el
+borrador y validación existentes, cadena ordenable, espera por paso, preview
+y comportamiento. Color/Circuito deshabilitados: el documento no los guarda.
+Le Mans es decoración. «Listo» es un evento, no observación continua de procesos.
+El historial conserva solo el último lanzamiento por perfil y el resultado
+transitorio disponible, sin inventar duración o registro de intentos.
+Motor, contratos, persistencia y dependencias intactos; sin animaciones nuevas.
+
+Gates por cola, target/gates y -j2: fmt/check/Clippy -D warnings PASS;
+Nextest1253/1253 PASS (6 skips previos, ACC422.525s), lifecycle18 PASS;
+build prueba con beta-dev-clerk PASS. Después del último pulido visual:
+fmt/Clippy PASS y Hub317/317 PASS. El primer Hub aislado falló porque no
+preparaba PATH de DuckDB; corregido el entorno, sin tocar ni relajar el test.
+QA parity-capture PASS, con warning preexistente solo QA en analysis/view.rs989.
+
+Capturas finales pendientes por pantalla ocupada: el orquestador ordenó parar
+la tanda y cerrar nuestras ventanas. Se completaron 64/102 capturas del binario
+final antes de parar; no se presenta esa matriz parcial como validación completa.
+La tanda anterior tenía 102 GPUI, 96 mockups y 22 hojas inspeccionadas; esa revisión
+permitió corregir portadas ocultas con carriles recogidos. Tres originales nuevos
+(1440×900, 1366×768 y XS recogidas) confirmaron la corrección. Las restantes
+capturas anteriores corresponden a un código visual anterior y no acreditan HEAD.
+No se abren más ventanas mientras exista C:/tmp/fase2/pantalla-ocupada.
+El cierre se entrega sin una tanda final completa de capturas.
+El límite de zoom R0 permanece: 1280×720/1366×768 reducen escala;
+2560×1440 usa zoom125 con monitor DPI100. No acredita DPI físico125,
+LMU live, OBS, Mac, login ni rendimiento. Las escenas aisladas no inician
+aplicaciones reales; lifecycle conserva pruebas con procesos propios.
+Comparación visual, sin declarar paridad píxel con HTML.
+
+Evidencia `C:/tmp/ui-r10/r2-evidence/VERIFICACION.md`, informe de hasta15 líneas
+`C:/tmp/ui-r10/informe-r2.md`. Caché native/target/gates intacta para R3.
+docs/roadmap/plan.md no existe en esta base; no se recrea ni se edita su digest.
+Preguntas: ampliar #1496 (aún describe R0), futuro contrato Color/Circuito e
+historial persistido/estado continuo. El brief R2 autoriza solo presentación.
+Pendiente revisión de Isaac antes de integrar. Rama remota/PR/CI ausentes;
+sin push, merge, promoción ni release. Actualización de evidencia en #1496,
+sin cerrar la issue ni modificar canales.
+
+## #1496 — UI R1 Inicio: entrega local para revisión (2026-10-08)
+
+Worktree `C:/tmp/vw3-ui-r1/vantare-v2`, rama
+`vantareapp/isa-1496-ui-r1-inicio`, rebased sobre la corrección R0
+`1cb32aac`. Cuatro hitos en español (#1496); código verificado `4f0c7d68`,
+seguido solo de este cierre documental en el cuarto hito. El intento previo
+interrumpido se conservó y revisó. No se tocaron los cinco archivos protegidos
+del orquestador; `docs/roadmap/plan.md` no existe en esta base y no se recreó.
+
+Inicio usa el kit/tokens R0: composer/paleta y selector con Launcher real;
+hero/favorito, circuito del recurso R9.3, baldosas por pasos guardados;
+preview de todas las instancias visibles del layout con los mismos `Overlay`
+productivos de Studio/Desktop; actividad de notificaciones y último lanzamiento;
+Estado/Plantillas y sesión/vacío/cargando/error con Reintentar.
+Ausencias honestas: «Esperando simulador», «Layout local»/«Vista previa»,
+Hz/CPU «—», Detener deshabilitado. Las plantillas abren Studio; no existe
+contrato de presets, estado/stop/metrics del Desktop ni nombre de usuario remoto
+para prometer más. Saludo sin identidad: «piloto»; QA usa la fixture Isaac.
+
+Gates finales por cola, -j2 y target aislado: fmt/check/Clippy -D warnings PASS;
+Nextest1251/1251 PASS (6 skips previos, golden ACC418.328s), lifecycle18 PASS
+(Engineer5 + Launcher13); prueba con build-config beta-dev-clerk PASS.
+QA parity-capture PASS; warning preexistente solo QA en analysis/view.rs:989,
+fuera del alcance. Fallos intermedios preservados y corregidos sin relajar gates.
+Sccache desactivado por Windows10055. Sin Go/frontend ni dependencias nuevas.
+
+33 pares GPUI/mockup: 24 obligatorios en tres temas/cuatro tamaños/dos carriles,
+6 adicionales de adaptación y 3 estados; todos salida0. Tres capturas XS
+adicionales: 1152×648 al90%=1280×720 lógicos, abierto/recogido/error; inspeccionadas
+sin controles cortados. 36/36 PNG opacos, seis hojas principales, dos adicionales
+y estados inspeccionados personalmente. DeepSeek ya toma el color del tema en
+el circuito. Datos de QA no acreditan LMU live, login, OBS, Mac, rendimiento ni
+DPI físico125: 2560×1440 usa zoom de interfaz125 en monitor DPI100.
+El backend heredado limita contenido a1280×800 y reduce escala en720/768;
+el contrato puro cubre siete tamaños, sin modificar ese backend.
+
+Evidencia `C:/tmp/ui-r10/r1-evidence/VERIFICACION.md`; informe de hasta15 líneas
+`C:/tmp/ui-r10/informe-r1.md`. Binarios QA y productivos conservados en
+`r1-evidence/bin/`. Limpieza solicitada de target/gates (11.04GiB) bloqueada
+por revisión automática: «blocked by policy»; caché intacta, detalle cleanup.json.
+Preguntas de revisión: Vista previa/Detener/metrics, presets reales, límite de
+zoom y ampliar el expediente #1496 que aún describe R0. Isaac debe revisar
+R1 antes de integración. Rama remota/PR/CI ausentes; sin push, merge,
+promoción ni release. Solo actualización del handoff y comentario de evidencia
+en #1496, sin cerrar la issue ni cambiar el canal.
+
+## #1525 — panic de accesibilidad del candidato beta (2026-10-08)
+
+Worktree `C:/tmp/vw3-1525/vantare-v2`, rama
+`vantareapp/isa-1525-panic-sidebar`, base exacta `a8f9bdc3`.
+Reproducido en debug con `RUST_BACKTRACE=1`, datos y pipe propios:
+`GenericContainer is filtered out of the a11y tree and has no effect`;
+traza GPUI `div.rs:1305` → Hub `shell/sidebar.rs:286`.
+Avatar puramente visual dentro del botón Cuenta; `summary_row` construye
+contenido estático como `Group`, sin heredar foco ni selección de un botón.
+Auditoría de todos los `.role(...)`/`tab_stop` del Hub: dos conversiones
+inválidas a `GenericContainer`; corregidas ambas. Dos regresiones de
+accesibilidad sobre constructores productivos: RED antes, PASS después;
+sin dependencias nuevas ni ventanas en los tests.
+UI #1496 consultada solo con Git en `4a2584f1`: avatar ya estático,
+`orbit/neo.rs::summary_row` conserva el panic. Commit compartido `4aa5254e`:
+`git cherry-pick 4aa5254e` cuando lo incorpore su worker propietario;
+`git apply --check` PASS sobre copias exactas de esa revisión, sin escribir
+en su worktree. El avatar del candidato se corrige en `a7d55dfc`.
+fmt/Clippy workspace/all-targets `-D warnings` PASS; Nextest 1217/1217
+PASS (6 skips configurados); lifecycle 5 + 13 PASS. Todo por la cola indicada.
+Cuatro capturas físicas 1440×900/DPI100 opacas e inspeccionadas: barra
+expandida/contraída, foco de Tab y respuesta al click de Cuenta. Demo con
+acceso sin verificar: el click de Cuenta muestra ese aviso; no acredita
+login, lector de pantalla real, LMU, OBS, macOS ni otros DPI. Procesos propios
+cerrados exit0; comprobada ausencia de `pantalla-ocupada` antes de abrir.
+Build debug/parity-capture de reproducción conserva el warning previo de
+`analysis/view.rs:989`; no se modifica ni oculta ese código.
+Rama remota publicada; [PR draft #1526](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1526)
+contra `vantareapp/isa-1470-candidato-beta`; CI remota pendiente de cierre.
+Evidencia externa `C:/tmp/lanzamiento/evidencia-1525/`; `plan.md` ausente
+en esta base, sin crear roadmap paralelo. Sin merge, promoción ni release.
+
+## #1468 — Input/Fuel entrega local; H2H pendiente (2026-10-07)
+
+Worktree `C:/tmp/vw3-1468-datos/vantare-v2`, rama
+`vantareapp/isa-1468-widgets-datos`, base `f0aea665` limpia al empezar.
+Input conserva freno y embrague en el mismo historial observado; colores
+idénticos a sus barras. Embrague ausente oculta su barra sin reservar columna.
+Fixture: doce DTO del replay LMU47 real con reloj de 20 ms; ACC original
+y vectores de ausencia.
+Input commit local `f64f4f06`, sin push.
+Fuel implementado en el segundo hito: MIN/MAX sobre todas las vueltas positivas
+finitas del historial de diez, independiente de las filas visibles. PARADAS =
+ceil(max(0, consumo medio × vueltas restantes − nivel actual) / capacidad).
+Si falta una entrada actual válida, PARADAS muestra «—»; no deriva ritmo desde
+una vuelta aislada cuando solo hay reloj restante. Celdas en las filas
+existentes MED. y EST. META.; conserva 523×272 y filas de 23 px.
+Fuel validado: fmt/check/Clippy -D warnings PASS, Nextest 1225/1225
+(6 skips previos, goldens ACC/LMU y procedencia temporal), lifecycle 17 PASS.
+Build prueba/parity-capture final PASS; Standings vigente 0/292160 px.
+Alfa completo 108/108 opacas en 1920/1440/1280; capturas y hojas inspeccionadas.
+Fuel real LMU47/ACC mantiene ausencia honesta; demo heredado positivo encaja
+MIN2.08 L/MAX2.26 L/PARADAS2 sin solapamientos. Ausencia de embrague inspeccionada
+como vector explícito. No se atribuyen esos vectores/demo a conducción real.
+Logs iniciales de Clippy (límite de líneas) y referencia Standings histórica
+incorrecta se conservan; corregidos sin debilitar los gates. Estado GitHub #1468
+abierta para revisión, H2H aún necesita decisión. Rama remota/PR/CI ausentes.
+Sin cambios de DTO, demanda, adaptadores, medidas ni dependencias.
+H2H bloqueado por el límite visual del brief: filas de rival de 24 px ocupadas,
+388×110. Captura real inspeccionada `primera-head-to-head.png`; añadir sectores
+y mejor vuelta a ambas filas exige rediseño. Opciones para decisión de Isaac:
+(1) ampliar filas de rival a dos líneas y aumentar altura total; (2) conservar
+110 px y sustituir columnas actuales por sectores/mejor vuelta. No se ejecuta
+ninguna opción ni se inventan sectores. Informe `C:/tmp/fase2/informe-1468-datos.md`.
+Input validado por cola/-j2/target propio: fmt/check/Clippy -D warnings PASS,
+Nextest 1223/1223 (6 skips) y lifecycle 17 PASS; tras renovar el reloj de la
+fixture, UI+procedencia temporal 184/184 PASS y check/Clippy repetidos PASS.
+Capturas Input LMU47/ACC inspeccionadas; misma geometría, traza roja añadida
+(572 px de diferencia intencional). Standings vigente 0/292160 px inspeccionado.
+Evidencia externa
+`C:/tmp/1468-datos-evidence/`. El corpus no acredita Fuel medido durante carrera,
+conducción live, OBS ni DPI. `plan.md` ausente aquí y en `origin/nightly`;
+no se recrea roadmap paralelo. Sin push, PR, merge, promoción ni release.
+
+
+## Candidato beta — verificación local cerrada (2026-10-07)
+Código `1c9ca48d`, base `dd90b49c`, rama `vantareapp/isa-1470-candidato-beta`; merges en orden `6338e31e` y `f18b842e`, sin squash. Zoom no autorizado por nota y no integrado.
+Gates completos finales PASS: fmt/check/Clippy -D warnings, Nextest1205/1205 (6 skips, goldens ACC/LMU), lifecycle17. Se conserva el fallo intermedio de caché/mtime y su repetición completa verde.
+QA `0.1.0-beta.1`/testers: 72 capturas Hub 1920/1440 opacas, 54 widgets y todas sus hojas/paneles inspeccionados. 18/18 widgets idénticos a referencias; Standings0/292160px. Regresión alfa255/254/0 PASS.
+Paquete Release beta fuera del repo: source_sha `1c9ca48d19997733df2d8e2cf425bca67fe3d466`, source_dirty=false; 10 ejecutables, sin Workshop; build Release PASS, packaging/tests.ps1 beta174 PASS. Desinstalación normal/interrumpida PASS en PS5.1 y pwsh.
+Hub empaquetado abre/responde/cierra exit0 con datos y pipe aislados; captura1440 opaca inspeccionada. Muestra pantalla de acceso Comprobando sesión: no acredita login completado, LMU live, OBS, DPI125, Mac ni rendimiento. Feed GitHub real/firma USB/NSIS no probados.
+Evidencia `C:/tmp/candidato-evidence/`; hojas `resumen-1920.png`, `resumen-1440.png`, `widgets/resumen.png`; detalle `inspeccion.md`. Informe/archivos/checks/manual en `C:/tmp/fase2/informe-candidato.md`. Paquete `release-package/`; primer paquete dirty es solo evidencia histórica, no el candidato final.
+Cierre documental posterior al código no cambia los binarios del paquete. plan.md ausente en base: no se inventa otro roadmap. Checkout principal preservado.
+Solo integración local autorizada por brief. Sin push, PR, CI remota, promoción, release ni cambios de cuentas/datos/servicios remotos.
+
+## #1470 + #1472 + #1473 + #1474 — candidato beta, segundo merge (2026-10-07)
+Base `dd90b49c`, rama `vantareapp/isa-1470-candidato-beta`, worktree `C:/tmp/vw3-candidato`.
+Primer merge `2ab5d362` incorpora `6338e31e`; este segundo incorpora `f18b842e` sin squash.
+Solo conflictos documentales: se conservan todas las entradas. Launcher r2 visual prevalece; añade Trust de seguridad. Widgets conservan la fuente #1473/#1474.
+Diagnóstico Testing filtra Workshop para beta/testers, conserva inventario anterior para desarrollo/nightly/master. Regresión RED con inventario antiguo y PASS con el filtro correcto.
+Gates finales por cola/-j2/target propio: fmt/check/Clippy -D warnings PASS, Nextest 1205/1205 (6 skips), ACC 752,973 s y LMU PASS; lifecycle 17 escenarios PASS.
+Se conserva m2-test.log: reutilizó el binario RED al restaurar un mtime antiguo; fecha corregida y gates completos repetidos en final-*.log sin debilitar tests.
+Build QA beta.1/testers PASS (warning previo parity-capture analysis/view.rs:989). 72 capturas Hub 1920/1440 PASS; alfa 255 en todos los píxeles; revisión visual en curso.
+Pendientes hoja widgets/Standings 0 px y paquete Release externo. Evidencia `C:/tmp/candidato-evidence`, informe `C:/tmp/fase2/informe-candidato.md`.
+Zoom NO integrado: no existe nota autorizándolo. plan.md ausente en base; no se crea otro roadmap.
+Solo merges locales del brief; sin push, PR, CI remota, promoción, release ni cambios de usuarios/servicios remotos.
+
+## #1470 + #1473 + #1474 — candidato beta, primer merge (2026-10-07)
+Worktree `C:/tmp/vw3-candidato`, rama `vantareapp/isa-1470-candidato-beta`, base `dd90b49c`.
+Se incorpora `6338e31e` mediante merge sin squash; único conflicto documental, ambas entradas conservadas completas.
+Hub productivo idéntico a la base; los demás archivos incorporados coinciden con la fuente.
+Gates por cola, -j 2 y target propio: fmt/check/Clippy -D warnings PASS; Nextest 1193/1193 PASS (6 skips), golden ACC 646,270 s y LMU PASS; lifecycle 17 escenarios PASS.
+Evidencia `C:/tmp/candidato-evidence/m1-*.log`. Guard de alfa 255/254/0 PASS.
+Pendiente segundo merge de seguridad `f18b842e`, diagnóstico beta sin Workshop, QA visual y paquete Release.
+Zoom no incorporado: notas-candidato.md ausente. plan.md ausente en esta base; no se recrea.
+Sin push, PR, CI remota, promoción ni release; checkout principal y beta instalada preservados.
+
+## ISA-1470 — ronda 4, estados (2026-10-06)
+
+Reanudación en `vantareapp/isa-1470-r4-estados`, base `136a90fa`, sobre los
+11 ficheros sin commit conservados. Testing usa el canal de build compartido;
+Mis informes tiene vacío centrado con acción y variante compacta bajo el formulario;
+Validar elimina la pill suelta. Rótulos sin tracking, consejos con badges y
+textareas sin asas falsas. Actividad se ajusta a su contenido y centra el vacío.
+Cuenta limita su pill al contenido, elimina hover de resúmenes estáticos y
+extiende los separadores bajo las pills. El enlace Abrir Aplicaciones queda
+junto al error. Actualizaciones muestra aviso y acción solo para un paquete
+preparado de versión distinta, y Estás al día con estado current confirmado.
+
+El capturador QA reconoce un turno propio explícito y conserva el mutex global.
+La raíz de estado QA se consulta solo con parity-capture y captura explícita;
+no se modifica la instancia native-beta. Lanzar oculto hizo esperar una ventana
+visible; las capturas se lanzan normales, con turno y timeout externo de 90 s.
+Diagnósticos temporales retirados. Evidencia y logs fuera del repo:
+`C:/tmp/1470-r4-estados-evidence/`; notas e informe en `C:/tmp/fase2/`.
+Validación Windows PASS por cola: fmt, check, Clippy -D warnings, Nextest
+1158/1158 (6 omitidos por configuración existente) y lifecycle (17 escenarios).
+Tras el ajuste visual final se repiten check/Clippy/lifecycle y Hub 277/277.
+Build QA perfil prueba PASS, 0.1.0-beta.1/testers. 18 capturas finales 1920/1440
+miradas, incluidos Actividad vacía y actualización preparada; ambas comparativas
+ronda-1/ronda-2 también inspeccionadas. Hashes y revisión en capture-hashes.json
+e inspeccion.md. El guard de instalación cubre misma versión, vacía y estados
+no ready; la prueba de turno cubre propio/ajeno/ausente. No se pulsó Instalar.
+Persisten recortes de Overlay en pista a 1440 y otras zonas de la lista del
+worker cortes; no se certifica paridad total. Go/frontend y CI remota no
+aplican a esta entrega local; juegos/OBS y envío/instalación reales no probados.
+El roadmap manual no existe en esta base; no se recrea. Se conserva DemoData
+según nota 05:43: --demo explícito puede cargar fixtures, el arranque normal no.
+Sin push, PR, integración, promoción, release ni medición de rendimiento.
+
+
+## ISA-1473 — Tablas: proporciones RaceLabs, presentación Vantare (2026-10-06)
+
+Worker `1473-tablas`, rama `vantareapp/isa-1473-widgets-tablas`, base
+`13ae6945524b1b33dbd73b8df1ee2ae758707e7b`. Entrega local terminada para
+revisión del orquestador, no integrada ni promovida. Commits por widget:
+Relative `c4dae159`, Multiclass `e8c58dba`, H2H `bd011bcc`,
+Broadcast `8373b8b7`, Fastest Lap `d203472a`.
+
+Relative pasa a 470×277, siete filas de 29 px, cabecera 36 y pie 38;
+Multiclass a 470×181 con cinco filas de 29 px y cabecera 36;
+H2H a 388×110 con rivales de 24 y jugador de 62; Broadcast a 1920×86,
+nombre 16, gap 12 y tarjeta del jugador 1,4 veces el ancho de sus vecinos.
+Fastest Lap conserva 480×104, rótulo y piloto 14 con cajas de línea de 29.
+Inter, colores y cifras tabulares siguen siendo los de Eficiencia.
+Workshop deja de forzar Relative a 430 px; usa el ancho productivo 470.
+
+La nota del orquestador de las 03:55 autoriza cambiar SIZE sin migración:
+la beta nativa aún no se distribuyó. Las 14 escenas de layout de estas tablas
+caben en 1920×1080; el layout de inicio coloca Relative desde su ancho.
+Capturas antes/después y referencias públicas inspeccionadas en
+`C:/tmp/1473-tablas-evidence/`; demostraciones Workshop, no evidencia LMU.
+Ronda 3/resumen y nombres largos inspeccionados; H2H con tres pilotos,
+Broadcast también a escala 1×. Separadores Multiclass únicos de 1 px.
+Fmt (workspace y módulos), check y Clippy con warnings denegados pasan;
+Nextest 1159/1159, seis skips (cinco pruebas manuales/live y lifecycle,
+que pasa aparte: cinco tests de engineer y doce escenarios de runtime).
+Build final de captura pasa en 15,08 s. Logs y reproducción manual en
+`C:/tmp/1473-tablas-evidence/VERIFICACION.md`. Sin prueba LMU, OBS, Mac,
+DPI distinto ni rendimiento; sin push, PR, CI remoto, merge o release.
+
+Los cinco bloques de demanda permanecen idénticos a la base. #1474 modifica
+Relative/H2H en otra rama: posible conflicto de fichero en sus `mod.rs`,
+sin conflicto intencionado de responsabilidad; preservar sus cambios de demanda.
+No se tocan domain, IPC, persistencia ni dependencias. `efficiency` es el kit
+compartido, no un widget; se conserva intacto, igual que Standings.
+Standings solo tiene propuesta/pregunta en `C:/tmp/beta/r4/informe-1473-tablas.md`.
+Sin datos de sectores/mejores vueltas H2H ni ratings Relative: no se inventan.
+Broadcast conserva selección, orden y cantidad configurada de pilotos;
+centrar siempre al jugador requiere una decisión de contenido posterior.
+`docs/roadmap/plan.md` no existe en esta base; no se recrea.
+
+## ISA-1472 — confianza de perfiles importados (2026-10-07)
+
+Entrega local `984909ea` en `vantareapp/isa-1472-seguridad-decisiones`, base
+`d4a4e73a`, pendiente de revisión e integración. Hub y supervisor usan la
+misma barrera previa a cualquier programa: rutas/argumentos efectivos y
+«Confiar y lanzar» / «Cancelar». Reutiliza el diálogo de decisiones existente,
+con SHA-256 por ID/contenido y comandos resueltos en `launcher-trust/` de la
+generación de datos. Cambiar contenido o rutas vuelve a pedir revisión; las
+estadísticas no. El origen Wails antiguo se conserva al cargar, editar y
+duplicar. Atajos, LMU, inicio con Windows y reintentos no eluden la revisión;
+sin respuesta no ejecutan. No se bloquean scripts legítimos ni se cierra
+ninguna aplicación ajena. Un perfil creado por el usuario no requiere esto.
+
+Regresiones: espera antes de cualquier Child, cancelación sin confianza,
+confianza recordada, cambio de argumentos/rutas y duplicación histórica sin
+marcar perfiles locales. Suite completa 1188/1188 + seis omisiones previas;
+revalidación final Hub/supervisor 302/302, fmt/check/clippy y lifecycle PASS.
+Standings Release propio 0/292160 px, umbral 0, referencia/captura/diff
+inspeccionados. Dos capturas Debug tuvieron un píxel delta 1; se conservan.
+Sin cambios en renderizadores. Evidencia `C:/tmp/1472-decisiones-evidence/`.
+
+Verificación manual pendiente en un entorno aislado: lanzar un perfil ya
+importado, revisar y cancelar; aceptar y repetir; cambiar un argumento o
+ruta y comprobar la nueva revisión. No se probaron LMU vivo ni DPI ni se
+controlaron programas reales del usuario. Sin push/PR/merge/promoción/release.
+La clave pública y el roundtrip firmado del actualizador quedan para Isaac;
+continuidad completa de auditoría y servicios en el handoff de plataforma.
+
+
+## ISA-1467 — Workshop: estilo de Standings en vivo (2026-10-05)
+
+### Ronda 2 / 1467b — entrega para revisión, paridad completa pendiente
+
+Parte de `fe12dcbbf00003e983931e10ac7d3948eb8aae7d`, mismo worktree/rama.
+El panel GPUI ahora tiene 248 px, scroll propio, selección del widget y sus
+Settings, idiomas es/en, sesión, fuente, ubicación, fondo, escala, dimensiones,
+comparación y restablecer. Las 43 escenas React se exportan con Playwright
+existente y se convierten al DTO IPC; son demostraciones, nunca prueba LMU.
+La reproducción añade fases, pausa, anterior/siguiente, bucle y deslizador.
+Retroceder reconstruye el renderer productivo desde el inicio; la recarga de
+estilo conserva el mismo proceso. No hay WebView ni renderer alternativo.
+
+Se reprodujo y corrigió la colisión de IDs `#dev-1`; se añadieron regresiones
+para IDs únicos/estables, tiempos Standings sin overwrite Relative, signo
+relativo, playback y último documento válido ante escritura parcial.
+Referencia e inventario en `C:/tmp/1467b-evidence/react.md`, capturas en
+`react/` y `gpui/`, rondas 1 y 2 revisadas visualmente. La fase 2 se accionó
+en la ventana propia y mostró cambio de posición/caption. Informe operativo:
+`C:/tmp/fase2/informe-1467b.md`.
+
+La validación de escala 0,5 reprodujo un brillo PIT fuera del widget:
+`standings/view.rs` usaba una posición absoluta como offset de sombra.
+Se cambia únicamente ese offset a un vector cero. `ronda-3.png` conserva
+la reproducción y la captura corregida, ambas revisadas. La regresión es
+visual sobre una ventana real porque el efecto depende del pintado GPUI;
+no se añade un test que solo compare la constante de la implementación.
+
+No se declara IGUAL completo: faltan V1/Foco, idiomas pt/it, estado Error
+(el contrato nativo tiene Waiting), equivalentes de dents/históricos React,
+persistencia de los nuevos controles al recompilar y paridad de tamaño/
+columnas de Relative. Ancho/alto cambian el marco; no reproducen el escalado
+independiente X/Y de React. Las superficies comparan el mismo renderer y no
+simulan sus transportes. Persisten diferencias de controles/espaciado y el
+centrado de la zona PIT. La comparación se apila verticalmente; la reproducción
+recorre keyframes y no interpola continuamente las señales como React.
+El siguiente trabajo requiere decidir el alcance de
+paridad del renderer/contrato; no se altera arquitectura para ocultarlo.
+
+Gates Windows finales PASS: check, Clippy `-D warnings`, fmt, Nextest
+1095/1095 (4 omitidas) y lifecycle (12 escenarios). Build prueba PASS.
+Exportador reejecutado con SHA idéntico; 43 escenas regeneradas idénticas.
+No se ejecutaron gates frontend porque sus archivos no cambiaron.
+Código local `56e11e8f19214d4191a06343e257858966878e7e`, transferido por
+bundle privado al worktree Mac limpio y detached. `ui/workshop-en-vivo.sh`
+PASS sobre ese SHA: build incremental 10,60 s, ventana GPUI y tres cargas de
+estilo en PID 59560. JSON restaurado, proceso propio cerrado y worktree limpio.
+`mac-verification.json` registra el hash del binario; no es verificación de
+presentación física. Guardar → log 269,18 ms, sin afirmar latencia visual.
+Persiste el aviso heredado de `LiveScreens::toggle` sin uso en Mac; no se
+ejecutaron allí los gates completos ni una revisión visual de la pantalla.
+La corrección PIT posterior es `a68316e426f822dcedd24a957f1ee97d918888bb`:
+todos los gates Windows se repitieron y pasaron sobre ella. Su transferencia
+al Mac quedó bloqueada por conexión cerrada y tres intentos SSH con timeout
+(17:07). La prueba Mac anterior NO valida este último SHA. Siguiente acción:
+restablecida la conexión, transferir el bundle final y repetir
+`ui/workshop-en-vivo.sh`; no se tocó ningún proceso ajeno para recuperarla.
+Sin push, PR, CI remoto, merge, promoción ni release. El roadmap manual no
+existe en esta base; no se recrea. La issue #1467 permanece abierta.
+
+### Entrega de estilo en vivo anterior
+
+Entrega aislada en `vantareapp/isa-1467-workshop-estilo-vivo`, base
+`a464e9fc95ff0af10508f88a53302a8803437b36`, worktree `C:/tmp/vw3-1467`.
+El brief de Isaac autoriza extraer valores visuales, conservando Rust + GPUI y
+el renderer productivo. `native/ui/styles/standings.json` contiene colores,
+geometría, tipografía, sombra y opacidades; el build compila esos valores.
+Solo `vantare-workshop --dev` lee y recarga el fichero cada 50 ms. Un JSON
+inválido conserva el último estilo válido y muestra el error; la recarga
+recalcula la geometría sin cambiar la escena ni reiniciar la ventana.
+
+Gates Windows PASS: check, Clippy `-D warnings`, fmt (incluidos módulos UI
+explícitos), Nextest 1092/1092 (4 omitidas) y lifecycle. La captura del renderer
+compilado con sus valores originales es idéntica a la base: 0/292160 píxeles,
+umbral 0. Frente a Wails: 7343/292160 (2,5133 %, umbral 8), igual que la base.
+Se revisaron referencia, captura y mapa; estructura y contenido coinciden.
+Evidencia en `C:/tmp/1467-evidence/`, incluida `ronda-1.png`; informe operativo
+en `C:/tmp/fase2/informe-1467.md`. Guardar → píxel visible en Windows: 10/10 <200 ms, mediana 53,79 ms,
+máximo 62,36 ms (`GetPixel`, sondeo 2 ms, mismo proceso, sin recompilar).
+Se revisaron capturas limpias de cambios de fuente/color/geometría y del JSON
+inválido. Commits de código: `030d117d` y `ae6ccb70`, transferidos al bare
+privado Mac. El worktree aislado `/Users/isaacalbala/vw3-1467` ejecutó el script
+Mac sobre `ae6ccb70`: build frío 7m12s, incremental 3,09s, ventana GPUI abierta
+y tres cargas de estilo aceptadas en el mismo PID 97771. Guardar → log:
+110,50 ms; esto no mide presentación física. JSON original restaurado y
+proceso propio cerrado. Logs y hash del binario en `mac-verification.json` y
+`mac-workshop.log`, dentro del banco de evidencia. El build Mac tiene un aviso
+heredado de la base por `LiveScreens::toggle` sin uso; no se ejecutaron allí
+los gates completos. La prueba visual del Mac queda a Isaac. En Windows el
+script también pasó de extremo a extremo (build, ventana, recarga y cierre).
+Los scripts
+`native/ui/workshop-en-vivo.sh` y `.ps1` compilan con perfil `prueba`, `-j 2` y
+abren Standings. La nota de Isaac de las 15:15 autoriza transferir esta rama
+al bare privado del Mac; no autoriza push a GitHub ni integración.
+
+`docs/roadmap/plan.md` no existe en esta base: se conserva su retirada previa,
+sin inventar otro roadmap. Las instrucciones actuales de Isaac fijan GitHub
+como tracker y prevalecen sobre referencias históricas a Notion/Asana.
+Sin push a GitHub, PR, CI remoto, integración, promoción ni release.
+Solo transferencia autorizada al bare privado Mac. No se toca la beta
+`native-beta` ni telemetría live de Isaac. El spike de dylib queda
+cancelado por la nota de Isaac de las 15:15.
 
 > **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
 > Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
@@ -3730,3 +4547,2139 @@ Isaac ofreció el PC tras reiniciar Windows. El arranque del sistema fue el 2026
 `nightly` avanzó a `5b6a0781` con ISA-1381 (apariencia), incluido su handoff y plan. Se incorporó a la rama de ISA-1368; el único conflicto fue `roadmap.json` generado, regenerado desde el plan combinado y `origin/nightly` con `--check` PASS. El frontend compiló y pasó el chequeo de tipos, las 129 pruebas focales del Launcher y `go test ./...` PASS en el árbol combinado. Este nuevo merge requiere sus propios gates de CI y un nuevo paquete para cualquier prueba física del HEAD final. La instalación previa conserva otro hash y mostró siete apps detectadas y dos perfiles oficiales, sin editar perfiles.
 
 Isaac autorizó integrar #1369 en `nightly` para poder probar el Launcher. La PR pasó todos sus gates en `da304acc` y se integró por squash como `b6833bb5368a459688cc1d76f526ecf1c2aa1833`, sin diferencias de árbol entre el candidato y `origin/nightly`. El digest del roadmap posterior al merge y la ejecución `36252220712` pasaron: ruta de promoción y gate bloqueante completo, incluidos Go, frontend y build Wails Windows. La issue #1368 permanece abierta con `state:nightly` para instalación/actualización física, una sesión nueva de Windows con un solo perfil, hotkeys, políticas de cancelar/salir y validación Steam/LMU. El paquete local de `da304acc` coincide en código y contenido con `b6833bb5`, pero sigue sin firma y sin prueba de instalación. No hay promoción a `testers`/`master` ni release; el lanzamiento comercial permanece NO-GO.
+
+### Continuación RONDA 2 — bloque 1 (2026-10-05)
+
+Dirección V1/Default/Foco en el Workshop sobre el mismo renderer. Foco elimina
+ornamento y usa chip al contorno; Default conserva la ventana del jugador.
+Comparación horizontal y dimensiones que escalan las primitivas en X/Y.
+Regresión de ejes independientes añadida. Check, Clippy, fmt, Nextest
+1096/1096 (4 omitidas), lifecycle12 y build prueba PASS. Captura ronda-4
+mirada en C:/tmp/1467b-evidence. Límite: glifos usan tamaño Y y espaciado X;
+GPUI no ofrece aquí deformación anisotrópica de glifos. No es paridad exacta.
+SSH Mac vuelve a responder; validación del HEAD final pendiente. Sin push,
+PR, merge, promoción ni release. Roadmap manual ausente en esta base.
+
+### RONDA 2 — bloque 2 (2026-10-05)
+Relative usa en Workshop el tamaño compacto 430×256 y columnas del React;
+se conserva el tamaño productivo. Corregida la elipsis vacía de clase y la
+alineación de nombres. Las 18 selecciones nativas tienen escena válida; cross-ahead
+se capturó en fase 3. El importador prioriza classId explícito; regenerar 43
+escenas no cambió sus bytes. Comparación reparte dos columnas iguales.
+Fmt/check/clippy, Nextest 1097/1097 (4 omitidas), lifecycle12 y prueba PASS.
+Ronda-5 recompilada y mirada: datos, filas y caja coinciden; no certifica
+paridad píxel a píxel. Sin push/PR/merge/release.
+
+### RONDA 2 — bloque 3 (2026-10-05)
+Ajustes JSON versionados por worktree: widget, escena, fondo, escala,
+dimensiones, idioma es/en, dirección y settings. Reabrir sin argumentos y
+recompilar con dev.ps1 restauran la selección; CLI explícita conserva autoridad.
+Ficheros inválidos se conservan y muestran error. Test de archivo real PASS.
+Fmt/check/clippy, Nextest1098/1098 (4 skip), lifecycle12 y prueba PASS.
+Dos procesos 29160/24828 restauraron Relative/cross-ahead/solid/1.5x; sus
+capturas son idénticas. Ronda-6 React/GPUI mirada: misma caja y datos;
+chrome y transporte aún tienen diferencias visuales. Watcher completo de
+recompilación no se repitió en esta ronda. Sin push/PR/merge/release.
+
+### RONDA 2 — bloque 4 (2026-10-05)
+Interpolación local del Workshop: easing React, radar lineal y muestreo por
+cadencia del widget registrado. Gaps/delta/pedales/reloj continuos; posición,
+boxes y vueltas cambian al llegar. Ausencias y Stale no se rellenan. Pausa
+conserva fase; Reproducir del panel empieza desde cero. Historias no se inventan.
+Fmt/check/clippy, Nextest1099/1099 (4 skip), lifecycle12 y prueba PASS.
+Ronda-7 y muestras temprana/tardía miradas: Nico −0.6→−0.3 dentro de fase1,
+posición20 y fila quietas. Tiempos React/GPUI no sincronizados; no prueba
+paridad temporal exacta ni rendimiento LMU. Corrección: registro nativo18,
+React22; faltan engineer-radio/race-schedule/delta-advanced/pedals-telemetry-compact.
+Sin push/PR/merge/release. Error y validación Mac final siguen pendientes.
+
+### RONDA 2 — bloque 5 parcial (2026-10-05)
+Error seleccionado oculta el renderer y muestra el texto del React en la
+caja del widget; Recibiendo/restablecer recuperan el renderer. No se inventa
+SourceState ni se toca runtime. Ronda-8 y recuperación miradas en proceso22476.
+Es comprobación UI manual, sin test UI automatizado añadido. Gates completos
+fmt/check/clippy, Nextest1099/1099 (4 omitidas), lifecycle12 y prueba PASS.
+Pendientes al corte: pt/it (Language y32 consumidores compartidos), cuatro
+renderers React ausentes, históricos/dents adicionales y paridad del chrome.
+X/Y de glifos conserva límite del bloque1. Mac00454fe4 compiló, abrió ventana
+GPUI y aceptó cambio/restauración de JSON con worktree limpio; por SSH no
+certifica presentación física. Se verificará el último HEAD tras este bloque.
+No hubo push/PR/merge/promoción/release ni modificaciones de dependencias.
+
+### Corte RONDA 2 — Mac y entrega (2026-10-05)
+Código b9419d3d verificado en Darwin arm64 mediante ui/workshop-en-vivo.sh:
+compilación, ventana GPUI y tres estilos aceptados (original/cambio/restauración),
+worktree limpio. Evidencia mac-verification-r2.json fuera del repo. No prueba
+visual física Mac ni gates completos de su workspace. Este cierre documental
+no altera código; se transfiere y repite el script sobre su HEAD final.
+Ronda-4 repetida y mirada sobre el ejecutable final: comparación en dos
+columnas iguales; rondas5–8 inspeccionadas. Persistencia antes/después idéntica.
+Entrega parcial y pendientes del bloque5 siguen vigentes; issue1467 abierta.
+Gates de cada bloque PASS. Sin CI remota, push, PR, merge, promoción ni release.
+### ISA-1470 - Fase 0, integración local del rediseño (2026-10-05)
+
+Issue GitHub #1470, worktree `C:/tmp/vw3-1470`, rama
+`vantareapp/isa-1470-hub-rediseno`, base `a464e9fc`. Merges locales expresamente
+pedidos por el brief: #1453 `b45fc499`, #1463 `a6006ef2`, #1461 `21fc7cc0`,
+#1467 `c57c2c43` y #1469 `84e88526`, en ese orden. El conflicto de Standings
+conserva las regresiones de invalidación y de estilo vivo. Los ocho archivos
+pendientes de #1469 se copiaron sin alterar su checkout; commit `39690eae`.
+
+Fmt/check/clippy y 1120/1120 pruebas Nextest filtradas PASS; el corpus ACC
+completo se ejecutó aparte (190308 fotos, 478,768 s) y lifecycle 5+12 PASS.
+La exclusión entre merges afecta solo a ese golden; no se modifica el corpus.
+La revisión de paridad encontró que un borde coloreado de ancho cero añadía
+seis píxeles en las esquinas del chip HYP. Signature vuelve a usar borde
+transparente; Focus conserva el suyo. La regresión se verifica con la captura
+real del renderer y `ui/compare.ps1`: 0/292160 píxeles, umbral 0, sin máscaras,
+frente a la base NATIVA congelada de #1467 en a464e9fc, mismo perfil prueba.
+La referencia Wails del repo conserva diferencias históricas: este cero no
+certifica paridad con Wails ni con el chrome completo del Workshop.
+Evidencia externa: `C:/tmp/1470-evidence/`, `f0-corner-fixed.log` y su PNG/diff.
+
+El cierre supera el límite de 60 minutos por corpus, gates repetidos y build
+frío de prueba. No se reducen checks para declarar el resultado. Fase 1 aún
+pendiente de validación. No hay push, PR, CI remota, promoción ni release;
+solo los cinco merges locales autorizados, con la beta de Isaac intacta.
+
+### ISA-1470 - Fase 1, cimientos del Hub (2026-10-05)
+
+Sobre F0 `0f06ad5c`, sin promoción de canal. Bloque público UI `aacc0908`. La API compartida es
+`vantare_ui::theme::{Design, Tokens, LiveTheme, register_fonts}`. Sus cuatro JSON
+viven en `native/ui/themes/`: Grafito carmín por defecto, DeepSeek Harness con
+los neutros de la referencia, Noche Le Mans y Piedra cálida (ambos oscuros).
+Release/prueba incorpora los JSON; debug observa mtime. `for_authoring` permite
+Workshop --dev incluso en perfil prueba. El consumidor instala `value` en GPUI,
+refresca y presenta `error`; una escritura parcial conserva el último tema válido.
+Rajdhani y Space Mono, con OFL, viven en `native/ui/assets/fonts/`; registrar tras
+Inter. El tema se persiste atómicamente en appearance.json con detección de conflicto.
+Los estilos de widgets conservan su autoridad independiente.
+
+Hub consume esos tokens mediante Orbit: tarjeta neo, cabecera, filas, botones,
+play circular, keycaps, progreso, avatar y los SVG Pit aprobados. Reutiliza los
+controles existentes y sus estados, sin renderer paralelo ni dependencia nueva.
+`orbit::activity_time(value, now)` es el helper común de fechas españolas, con
+reloj inyectable y pruebas de cambio de día y conversión de zona. La shell usa
+barra 272/76, Ctrl+B, Ctrl+L, breadcrumb/estado LMU/campana y contexto a la derecha.
+Inicio implementa el layout C con selector de perfiles del Launcher y miniaturas
+del renderer productivo. Los lanzamientos pasan por el controlador existente;
+no se añade ejecución ni autoridad. Strategy/Engineer quedan Próximamente;
+Workshop/Analysis se ocultan en la shell beta. Licencias permanece dentro de Cuenta.
+
+Contrato LOCAL de derechos IPC: versión 2 -> 3, nuevo `Policy.tester`, derivado
+solo de credenciales verificadas válidas con derechos exactos
+`vantare.operational.owner`, `vantare.operational.tester` o
+`vantare.operational.nightly_tester` (categoría tester ya admitida por el núcleo).
+Comprar Calendario no concede rol. Testing/Calendario solo se pintan con ese rol
+verificado. Invalidación/expiración lo revocan. No cambia servidor ni licencia remota.
+Versiones distintas producen `VersionMismatch` tipado, deniegan permisos y muestran
+un aviso cerrado de reiniciar núcleo/Hub/overlays de la misma build. La regresión
+usa servidores en otro proceso y recoge sus hijos incluso ante fallo. Matrices de
+credencial firmada y navegación cubren usuario, tester, owner y módulo comprado.
+
+Evidencia externa: `C:/tmp/1470-evidence/f1-inicio.png` (HTML | GPUI), rondas 1–3,
+1440x900/1920x1080/2560x1440, tema DeepSeek y Apariencia; imágenes inspeccionadas.
+Las notas 21:20 y 21:40 están aplicadas. Estado mide su contenido; favorito compacto
+no desborda; candado dentro del chip; actividad desplaza dentro de la tarjeta.
+Los PNG muestran datos de QA explícitos del renderer vigente, no telemetría en vivo.
+Solo `inicio-base` carga home-r7-launcher.json. Su app manual usa una ruta QA
+inexistente y discovery no la marca launchable; no se usa en producto. Sin captura,
+Inicio empieza vacío y recibe fotos IPC reales; no fabrica estado conectado ni CPU.
+La ruta de captura queda detrás de parity-capture, omite login solo en --capture y
+usa ventana exacta a DPI96; respeta pantalla-ocupada/mutex y solo recoge su instancia.
+La ventana productiva conserva login verificado y usa mínimo 1280x800.
+
+Paridad final del renderer Workshop/Standings: 0/292160 px, umbral por canal 0,
+contra base nativa congelada a464e9fc; no certifica Wails ni chrome completo.
+Fmt/check/clippy PASS; lifecycle 5+12 PASS. Nextest completo 1129/1129 PASS
+(580,112 s; ACC 190308 fotos, 479,569 s), seis skips del filtro existente; los
+dos binarios lifecycle se verifican por separado. Build prueba PASS, con un aviso
+preexistente de cx sin usar en analysis/view.rs bajo parity-capture.
+No se cambian el corpus ni sus expectativas; quedan registrados los dos fallos QA
+corregidos (fixture de shell y nombre de tubería Feed), sin debilitar tests.
+
+Siguiente: las seis pantallas de Fase 2 consumen esta API y Orbit. Sus vistas
+anteriores no se declaran rediseñadas aquí. Verificar manualmente selección/reinicio
+de tema, autoría JSON válida/parcial/recuperada, Ctrl+B/Ctrl+L, navegación por rol
+y escalas Windows 125/150 %, todavía sin prueba física en esta campaña. No hay
+medición de rendimiento LMU, build Release distribuible, push, PR, CI remota ni
+promoción/release. docs/roadmap/plan.md no existe en esta base; comunicado al
+orquestador, sin inventar un roadmap alternativo. La beta de Isaac permanece intacta.
+## ISA-1470 — Fase 2, Ajustes y Cuenta (1470-ajustes)
+
+Entrega aislada sobre `46244ea2`, rama `vantareapp/isa-1470-ajustes`, worktree
+`C:/tmp/vw3-1470-ajustes/vantare-v2`. Sin cambios de IPC, permisos, dependencias
+ni comandos de servicios. Ajustes ofrece General, Apariencia, Rendimiento en pista, Atajos,
+Actualizaciones, Privacidad y Diagnóstico en la topbar; Cuenta es un destino
+propio y Licencias se presenta dentro de Cuenta. Ambas pantallas usan layout C,
+tarjetas neo y scroll independiente en contenido y carril.
+
+General conserva los controles y añade grupos Overlays/Canal con preferencias
+reales del layout y el mismo consentimiento de uso de Privacidad. Apariencia
+presenta los cuatro temas productivos con miniaturas; mantiene guardado atómico,
+contraste, opacidad y fuentes. Atajos muestra Ctrl L/K/B del Hub y la referencia
+global pendiente. Rendimiento conserva los niveles de referencia; su tabla
+anuncia objetivos pendientes y nunca los presenta como una política efectiva.
+Actualizaciones conserva lectura local, novedades y reinicio de beta. Diagnóstico
+conserva preparación, filtros y copia sanitizada. Cuenta conserva sesión y reset
+de dispositivo, anuncia Beta para testers gratuita y Strategy/Engineer Próximamente
+incluso con derechos firmados para esos módulos; la regresión cubre ese caso.
+
+Los datos que el servicio no expone permanecen no disponibles. No se inventan
+métricas, dispositivos, claves beta ni historial de envíos en producción. Exportar
+y eliminar cuenta siguen pendientes de contrato nativo. El banco de capturas
+continúa aislado por parity-capture/--capture --demo; no es telemetría LMU real.
+Evidencia externa: `C:/tmp/1470-ajustes-evidence/`. Referencias rondas 6/7/8
+inspeccionadas; comparaciones HTML/GPUI1920, capturas1440/2560 y DeepSeek1920
+conservadas. Correcciones22:46: topbar sin ruta redundante y tabs con scroll
+horizontal; buscador visible; hero con tokens del tema; Cuenta sin jerga ni
+repetir el título beta. Novedades/aporte omitidos sin datos reales en ese contrato.
+Orbit admite ruta vacía sin alterar otras pantallas. Gates del árbol conjunto final,
+siempre por cola y -j2: fmt PASS, check PASS10,31s, Clippy PASS22,79s;
+Nextest1130/1130,6 skipped existentes (compilación3m30s, ejecución813,607s);
+lifecycle5+12 casos PASS. Buildprueba con parity-capture PASS25s; conserva el
+warning heredado de analysis/view.rs:989 (cx sin usar, solo con esa feature).
+El destino legacy Licencias también se capturó dentro de Cuenta. Cuatro temas y
+detalle1440 de fuentes/animaciones/eventos inspeccionados. No se afirma paridad
+exacta, runtime de servicios con sesión real ni rendimiento LMU live. No se
+corrieron gates Go/frontend porque no se tocaron sus fuentes/contratos.
+Siguiente acción: revisión del orquestador y verificación manual de sesión,
+consentimiento, diagnóstico y actualizador en una instalación QA aislada.
+
+`docs/roadmap/plan.md` no existe en esta base; coordinación del roadmap a cargo
+del orquestador. No hay push, PR, CI remota, merge, promoción ni release. La beta
+de Isaac no se ha tocado.
+
+### #1470 · Worker Launcher · Fase 2 (2026-10-05)
+
+Worktree `C:/tmp/vw3-1470-launcher/vantare-v2`, rama
+`vantareapp/isa-1470-launcher`, base `46244ea2`. Entrega aislada, sin integración.
+Escaparate favorito con tarjetas de apps y portadas de perfiles; al lanzar,
+el mismo contenedor muestra línea de tiempo/progreso y el carril derecho refleja
+los últimos eventos reales por paso. La barra compartida conserva N de M.
+Administración anterior accesible desde «Aplicaciones · Historial» y «Ver todas»;
+se conservan editor, detección/rutas, alta manual, estadísticas, diagnóstico,
+reintentos, políticas y propiedad de procesos. Selección por teclado y toggles
+con Enter/Espacio; dropdown usa el foco/teclado existentes de Orbit.
+
+Opciones guardadas por perfil; durante el lanzamiento se aplican la próxima vez.
+No se promete minimizar ventanas ni cerrar apps al cerrar LMU: `exit` significa
+salir de Vantare. La transición es básica; animaciones finas siguen pendientes.
+API compartida pequeña: `orbit::Choice::compact(width)` y cinco gradientes de app
+en `vantare_ui::theme`, con defaults compatibles y validación RGB.
+No se añade dependencia ni cambia motor, IPC, auth, permisos o servidor.
+
+Escenas QA nuevas `launcher-reposo`/`launcher-lanzando`, aisladas en
+`launcher-r7.json`; bloquean ejecución de procesos y usan detección QA lista.
+No cambian `inicio-base` ni datos productivos. Capturas externas HTML|GPUI,
+1440/1920/2560 y DeepSeek en `C:/tmp/1470-launcher-evidence/`, inspeccionadas.
+Se aplicaron las seis notas 22:25. No se afirma paridad exacta por píxel,
+ejecución física LMU/OBS, rendimiento, DPI 125/150 ni animaciones finales.
+
+Verificación manual pendiente de Isaac/orquestador: abrir Launcher, elegir otro
+perfil, editar y guardar; variar opciones y comprobar persistencia; lanzar con
+apps reales y observar N de M/reintentos/cancelación; volver a administración y
+probar búsqueda, rutas, detección y teclado. `docs/roadmap/plan.md` sigue ausente
+en esta base, ya comunicado; no se crea una fuente de roadmap alternativa.
+Gates finales: fmt/check/clippy PASS; nextest 1137/1137 PASS (834,701 s),
+seis skips del filtro existente; lifecycle 5+12 PASS. Build prueba PASS
+(32,52 s), con el aviso preexistente cx sin usar en analysis/view.rs:989.
+Ocho capturas finales inspeccionadas, HTML|GPUI y ronda-4 antes/después.
+Logs closure-* y build-final.log en la carpeta externa; git diff --check PASS.
+El commit local queda identificado en el informe del worker. Sin push/PR/CI remota,
+merge, promoción ni release; beta de Isaac intacta.
+
+### ISA-1470 - Fase 2, Studio (2026-10-05)
+
+Worker `1470-studio`, worktree `C:/tmp/vw3-1470-studio/vantare-v2`, rama
+`vantareapp/isa-1470-studio`, base `46244ea2`. Studio adopta la distribución C:
+barra superior de layout/modo/guardado/OBS, lienzo flexible 16:9 con selección y
+medidas, tira horizontal de widgets, catálogo existente y barra Probar con.
+Inspector Contenido/Apariencia/En pista/Posición y tamaño, con OBS en la última
+tarjeta y scroll interno para los ajustes largos. La shell cambia solo su
+geometría Studio. Orbit y tokens compartidos; sin renderer ni dependencia nueva.
+
+Se conservan documento, persistencia atómica, historial, añadir/duplicar/eliminar,
+orden Z, visibilidad, búsqueda (al abrir el catálogo), ajustes productivos, zoom y
+drag de CanvasFrame con commit al soltar/cancelación al perder foco. Las nuevas
+regresiones verifican arrastre ajustado, disco/reapertura, undo a tres tamaños,
+cobertura de ejemplos y separación de la fuente real.
+
+Notas del orquestador 22:40 aplicadas: nombres legibles en Kind::label sin cambiar
+IDs; Checkbox::switch reutiliza el interruptor Orbit y el mismo evento Checked;
+Opacidad es slider 0–100 %. Sin caja vacía ni jerga de Snapshot/QA en la UI.
+Ejemplo usa las 18 muestras existentes incrustadas, exclusivamente al seleccionarlo;
+En vivo utiliza la última foto real, incluso tras recibir datos en modo Ejemplo.
+Esta excepción explícita del orquestador prevalece sobre la restricción inicial
+del brief a fixtures QA. No se introduce fallback ni se altera el documento.
+
+Límites previos comprobados: no hay dimensiones persistidas/resize libre nativo,
+servidor Browser Source/publicación OBS, control del overlay desde Hub, varios
+layouts ni escenarios productivos. Esos controles están deshabilitados con motivo
+accesible. OBS conserva las instrucciones de captura de ventana. Las posiciones
+iniciales de la escena de revisión son solo parity-capture y --capture/--demo.
+No se toca la beta de Isaac ni sus datos. No se afirma rendimiento ni LMU live.
+
+Capturas revisadas 1440/1920/2560 y tema DeepSeek Harness. Comparación HTML|GPUI:
+`C:/tmp/1470-studio-evidence/studio.png`; antes/después: `ronda-3.png`.
+Gates finales PASS: fmt, check, Clippy, Nextest 1132/1132 (6 excluidos por la
+configuración existente) y lifecycle sin fallos. Compilación Prueba PASS; aviso
+previo de cx sin usar en analysis/view.rs solo bajo parity-capture, fuera del
+bloque. El SHA local de esta entrega se registra en el informe del orquestador
+y en la issue. Regresiones adicionales de Ejemplo validan datos Fuel/Delta y
+la separación de la fuente real. No se ejecutan gates Go/frontend porque no
+cambian esos componentes. Prueba física LMU/OBS y escalas Windows 125/150 %
+pendientes; la captura QA no las demuestra. plan.md no existe en esta base; límite
+registrado por el orquestador, sin crear otra fuente manual de roadmap.
+Sin push, PR, CI remota, merge, promoción ni release.
+
+
+### ISA-1470 - Fase 2, Testing Center (2026-10-05)
+
+Worker `1470-testing`, rama `vantareapp/isa-1470-testing`, base `46244ea2`.
+Testing Center usa las tarjetas neo y el layout C de F1: formulario y Mis
+informes a la izquierda; recibos de sesión, conversación pendiente y ayuda a
+la derecha. Conserva el candado de tester/owner y el mensaje del shell para
+otros roles. Las pestañas y las herramientas locales existentes siguen disponibles.
+
+El contrato nativo v1 exige acción, esperado y observado: el título usa acción,
+el texto usa observado y se mantienen esperado/contexto. El tipo se codifica
+explícitamente en contexto, sin ampliar el protocolo. El editor conserva el
+texto al cambiar de tipo. Versión/equipo siguen añadidos por el servicio; la
+etiqueta muestra la build/OS actuales. No se habilitan registros: el servicio
+rechaza ese adjunto, de modo que la UI dice Próximamente. Capturas JPEG, vista
+previa y quitar conservan prepare -> upload -> finalize -> attach, consentimiento
+e invalidación de la vista previa ante una edición. No se modifica el backend.
+
+Mis informes contiene exclusivamente recibos reales obtenidos al enviar o
+recuperar un intento durante la sesión. Deduplica por report_id, conserva título,
+módulo, fecha y estado del servidor; submitted se presenta como Enviado. No
+retiene una segunda copia del cuerpo privado ni adjuntos y se vacía al salir.
+No hay consulta de historial/cambios posteriores ni conversaciones en este
+servicio: se indica el límite y no se fabrican estados, métricas o respuestas.
+
+API genérica mínima añadida a Orbit: Input::with_height mantiene edición,
+selección e IME; neo_page_header y neo_context_column alinean las pantallas beta;
+neo_accent_card permite un acento de fondo suave con tokens del tema.
+
+Evidencia externa: C:/tmp/1470-testing-evidence/, primeras capturas conservadas,
+1440x900/1920x1080/2560x1440 y DeepSeek Harness. Imágenes inspeccionadas; la captura
+muestra un formulario real vacío y cero recibos, sin acceso a datos de Isaac.
+A 1440 la lista inferior se alcanza por scroll o por la pestaña Mis informes.
+Build prueba final, fmt/check/clippy -Dwarnings PASS. Nextest workspace
+1132/1132 PASS (6 skips del filtro existente, dos binarios lifecycle separados):
+compilación 3m28s y ejecución 718,168 s; corpus ACC 597,771 s, sin reducirlo.
+Lifecycle 5+12 PASS. Tres regresiones nuevas PASS: tipo, recibos y calendario.
+No es una medición de rendimiento LMU. Build captura tiene el aviso preexistente
+de cx sin usar en analysis/view.rs bajo parity-capture, sin cambios en ese archivo.
+La incidencia os error 112 quedó resuelta al liberar espacio el orquestador
+(nota 23:56). La política rechazó borrar caché propia; el worker no borró nada
+ni cambió de método. No push/PR/merge/release. E2E servidor con usuario real,
+teclado/IME y DPI físico pendientes: se conserva native-beta intacta.
+
+
+### ISA-1470 - Fase 2, Calendario (2026-10-06)
+
+Mismo worker/base que Testing Center. Próximas usa el catálogo oficial local,
+la recurrencia UTC y el seguimiento persistido existentes. Añade filtros por
+clase/nivel, una salida por serie, cuenta atrás de la siguiente serie seguida,
+tabla con scroll propio y carril de semana/vigencia/series seguidas. Fecha y hora
+se convierten a la zona real del equipo, sin afirmar Europe/Madrid por defecto.
+Día/Semana/Mes/Timeline conservan su contenido, navegación y tests; se retiran
+las compensaciones geométricas de la cabecera antigua y se usan tarjetas neo.
+El reloj productivo notifica cada 30 s y se recoge al desaparecer la entidad.
+
+Seguir guarda la selección local con la detección de conflicto existente; no
+promete avisos. Recordatorios, sonido y lanzamiento automático no tienen
+servicio nativo: aparecen Próximamente. Actualizar horario conserva la recarga
+del archivo oficial local, sin red nueva ni horario fabricado. El seed empaquetado
+es de 25 agosto -> 1 septiembre 2026: está caducado para la beta de octubre. La
+pantalla lo declara y no muestra sus carreras como salidas actuales. Renovar
+el catálogo oficial corresponde al responsable del servicio/calendario.
+
+Escena calendario-beta-archivo detrás de parity-capture: catálogo archivado
+real, reloj QA dentro de esa publicación y una selección semanal explícita.
+Su carril indica QA / reloj congelado / no es el horario actual. No modifica
+el reloj ni los datos productivos. Capturas a 1440/1920/2560 + DeepSeek Harness,
+Semana y catálogo caducado inspeccionados. HTML|GPUI en
+C:/tmp/1470-testing-evidence/calendario.png; ronda-2.png conserva antes/después.
+No certifican paridad pixel exacta, calendario actual ni rendimiento LMU.
+
+Árbol final de ambas pantallas: fmt/check/clippy -Dwarnings, build prueba,
+Nextest1132/1132 (6 skips del filtro existente) y lifecycle5+12 PASS. Tres
+regresiones nuevas PASS. Compilación test3m28s / ejecución718,168s / ACC597,771s.
+Incidencia disco resuelta por el orquestador, sin borrado por el worker.
+No se debilita corpus ni expectativas. Logs finales en la carpeta de evidencia.
+
+Verificación manual pendiente del orquestador: rol tester/owner y usuario sin
+rol; envío real de un informe con captura/quitar/consentimiento; recuperación
+tras reinicio; filtros y seguimiento con catálogo oficial renovado; teclado/IME,
+scroll a 1440 y DPI 125/150 %. La beta native-beta de Isaac permanece intacta.
+No build Release distribuible, push, PR, CI remota, merge, promoción ni release.
+plan.md no existe en la base; la coordinación del roadmap queda en el orquestador.
+
+
+### ISA-1470 - Fase 2, Roadmap y Notificaciones (worker 1470-roadmap, 2026-10-06)
+
+Bloque entregado localmente en `vantareapp/isa-1470-roadmap`, worktree
+`C:/tmp/vw3-1470-roadmap/vantare-v2`, base `46244ea2`.
+Roadmap: commit `c8635b58`. Notificaciones: segundo hito local de esta entrega;
+los SHAs completos están en el informe externo y la issue1470.
+Roadmap para todos los usuarios del Hub, conservando login/política:
+fase/fases, tablero Ahora/Siguiente/Más adelante filtrable, áreas y entregas.
+JSON manual `native/hub/roadmap/roadmap.json`, esquema y parser/tests estrictos,
+incorporado al compilar. Comparte `schemaVersion/items/Localized` con la
+publicación del servicio; conserva su acceso, scroll y cabecera correcta.
+Textos públicos; porcentajes editoriales provisionales según nota00:10:
+fase75, Hub80, Overlays/Launcher75, Módulos25. Isaac los ajusta; no telemetría.
+ClickUp no conectado. Esta base no contiene docs/roadmap/plan.md; el
+orquestador coordina su actualización antes de integrar. Digest intacto.
+
+Campana sobre Center: contador, filtros, grupos civiles Hoy/Ayer/Esta semana,
+con antiguos/sin fecha, acciones cerradas, lectura individual/todas y vacío.
+Fechas convertidas por zona local de cada evento, incluido DST. Se conserva
+historial local de sesión máximo50, dismiss/foco, navegación y centro completo.
+Beta oculta sin acceso tester/owner; todavía sin productor Beta real conectado.
+Orbit solo añade geometría opcional Layer::with_popover_size, defaults intactos.
+Fixture/reloj QA solo en capturas explícitas con parity-capture; test de frontera
+asegura que notificaciones-panel es la única escena que recibe los avisos QA.
+
+Gates del árbol de trabajo completo antes de dividir commits por pantalla:
+fmt/check/Clippy PASS; Nextest1137/1137 (598.791s,6 omitidos por configuración
+vigente, incluidos casos manuales/live), lifecycle19/19 y JSON Schema PASS.
+Ocho tests añadidos; regresiones existentes conservadas/adaptadas a grupos de fecha.
+BuildQA prueba/parity PASS; aviso previo analysis/view.rs989, fuera de alcance.
+Evidencia `C:/tmp/1470-roadmap-evidence/`: capturas1920/1440/2560/DeepSeek1920
+miradas, comparativas HTML/GPUI, mapas, recortes, hashes y verificación manual.
+Defecto conocido: manchas del borde/sombra del popover en PNG nativo;
+recorte ampliado defecto-sombra-popover.png. Nota00:33 lo acepta para revisión
+visual posterior y prohíbe tocar el renderer ahora; causa no confirmada.
+No se afirma paridad de datos/píxel, interacción física, escala125/150,
+LMU live ni rendimiento. Beta/datos de Isaac intactos. Sin Go/frontend tocados.
+Issue1470 actualizada; sin push, PR, CI remota, merge, promoción ni release.
+Siguiente: review visual/integración por el orquestador y aceptación de Isaac.
+
+### ISA-1470 — Fase 3, unión local del Hub (1470-union, 2026-10-06)
+
+Base `46244ea28265184f43f92066eadfcd135c088912`; rama
+`vantareapp/isa-1470-hub-rediseno`, worktree `C:/tmp/vw3-1470/vantare-v2`.
+Uniones locales por orden: Ajustes/Cuenta `00d56019` (fuente `864f8ddb`),
+Launcher `a4225388` (`6b21d1b5`), Studio `b41caef1` (`716e563a`),
+Testing/Calendario `8527a247` (`e34f10cb`) y Roadmap/Notificaciones
+(fuente `564134a6`, autorizada por nota00:38). Cada hito anterior pasó
+fmt/check/clippy y Nextest excluyendo solamente el golden ACC según el brief:
+1129, 1137, 1140 y 1143 tests PASS, respectivamente; siete skips con ese filtro.
+
+Conflictos resueltos conservando todas las entradas del handoff y escenas QA.
+Shell conserva pestañas Ajustes, Testing y Calendario; Studio mantiene sus acciones
+en el contenido e inspector condicional. Launcher, Cuenta, Ajustes, Studio y
+Roadmap conservan su scroll y carril propios. Retirado el último margen legacy
+135 px al unir Roadmap: las demás pantallas ya lo retiraron en sus entregas.
+Choice::compact, Checkbox::switch, Input::with_height y geometría opcional del
+popover conviven sin renderer duplicado. El primer Clippy de Launcher detectó
+ramas idénticas: se agruparon los destinos equivalentes y se repitieron los gates.
+No dependencias, contratos IPC, Go, frontend, workflows ni release modificados
+por la resolución de unión.
+
+Evidencia exclusivamente externa `C:/tmp/1470-union-evidence/`. Capturas QA
+aisladas, no LMU live ni prueba de rendimiento, permisos reales o servicio remoto.
+Calendario declara el catálogo oficial caducado; archivo QA explícitamente
+rotulado. Workshop/Analysis siguen ocultos y Strategy/Engineer bloqueados en beta.
+La sombra exterior de la campana tiene manchas conocidas en la entrega aislada;
+nota00:33 del worker Roadmap las acepta para revisión posterior, sin tocar renderer.
+Studio conserva el recorte previo dentro de la tarjeta Apariencia.
+`docs/roadmap/plan.md` no existe en esta base: el orquestador coordina su actualización
+antes de integrar; no se inventó otro roadmap. Checkout principal y native-beta
+Isaac intactos. Sin push, PR, CI remota, promoción, merge remoto ni release.
+
+Gates finales del árbol completo: fmt PASS; check13,26s y clippy16,60s
+-Dwarnings PASS; Nextest1152/1152 PASS (572,438s de ejecución, seis skips
+configurados, sin filtro adicional; golden ACC475,400s PASS); lifecycle5+12
+PASS; build prueba/parity-capture23,44s PASS. Compilación siempre por
+C:/tmp/fase2/compilar.ps1, target propio, -j2. El build QA conserva el aviso
+preexistente unused cx en analysis/view.rs989; Clippy ordinario sin warnings.
+
+Final/: 28 capturas1920x1080 (27 Grafito carmín + Inicio DeepSeek), todas
+MIRADAS, junto con resumen-hub.png y ronda-3.png. Ajustes7/Cuenta/Studio,
+Testing3/Calendario3 comparables y Roadmap:16 imágenes0px frente a la ronda
+anterior o entrega aislada. Launcher2 e Inicio/DeepSeek cambian únicamente las
+fechas relativas después de medianoche: su historial usa Local::now existente,
+no el reloj congelado del capturador. Campana2 conserva panel interior0px;
+el fondo recibe los iconos compartidos de Launcher y el vacío tiene3 píxeles
+de variación en sombra externa. detalle-diferencias.png y JSON comparables
+conservan evidencia, sin afirmar0px para toda la imagen. Guard Engineer con
+franja blanca y Workshop blanco son estados QA de destinos bloqueados/ocultos,
+no certificación de sus módulos. strategy-base es una escena retirada: intento
+rechazado registrado; no se añadió para forzar la captura.
+
+Standings final: compare.ps1 con binario prueba compilado previamente en cola,
+0/292160px, threshold0/maxpercent0/delta0 contra baseline nativa F1;
+captura/base/diff MIRADOS. No es comparación Wails ni LMU live.
+No frontend/Go/Release/CI remota ejecutados: ajenos al brief/local-only.
+Verificación manual pendiente: abrir esta build con datos aislados, recorrer
+cada destino y siete pestañas de Ajustes, cambiar tema, abrir/cerrar campana,
+scroll por tarjetas, rol no-tester y DPI125/150. Servicio real de Testing y
+catálogo renovado requieren campaña propia. Revisar el mosaico y capturas
+antes de aceptar o autorizar promoción. Entrega terminada localmente;
+revisión del orquestador/Isaac e integración de canal pendientes.
+
+## 2026-10-06 — #1470 contenido de pantallas, entrega aislada
+
+Worker `1470-fix-textos`, worktree `C:/tmp/vw3-1470-fix-textos/vantare-v2`,
+rama `vantareapp/isa-1470-fix-textos`, base `e264cf435b5f41af306174c3d8ba7026573ef6ac`.
+Contenido del Hub revisado para clientes: mensajes y diagnóstico en español,
+sin nombres de componentes ejecutables, identificadores de informes o notas
+internas de releases en sus pantallas habituales. Los nombres de producto
+Standings, Relative, Fuel y stint, Overlay Studio, Testing Center y los canales
+Nightly/Testers se conservan por indicación del orquestador. No se modifican
+identificadores persistidos, permisos, contratos IPC ni las notas originales.
+
+Cuenta y Validar llenan las columnas; Ajustes tiene carriles específicos por
+subpágina, Atajos utiliza todo el ancho y alto, Rendimiento reserva espacio para
+su tabla, y Diagnóstico para el registro. Cada página mantiene el alto completo
+y desplaza su propio contenido sobrante, con el mismo control de desplazamiento
+del panel, sin reglas especiales por subpágina. La captura de detalle
+de Diagnóstico verifica que se alcanza la octava fila a 1920 y 1440.
+Equilibrado coincide con la tarjeta y punto seleccionados en el ejemplo QA;
+Automático queda sin marcar y anunciado como pendiente. En producto, donde no
+hay nivel confirmado, no se inventa una selección activa.
+
+Versión instalada: `product::VERSION` de packaging es la única fuente, presentada
+mediante `version_label()`; `0.0.0` se muestra como «Versión local». Las versiones
+históricas de las notas y del contenido original de un envío no se sustituyen.
+Actualizaciones usa 17 resúmenes para clientes en
+`native/hub/src/settings/customer-news.json`, con tipos Nuevo/Mejora/Arreglo.
+Las próximas entregas deberán añadir allí su resumen para clientes; nunca se
+vuelca automáticamente el cuerpo técnico de una release beta. El documento local
+`native/hub/roadmap/roadmap.json` recibe únicamente cuatro correcciones de texto;
+no cambian estados, porcentajes ni alcance. `docs/roadmap/plan.md` sigue ausente
+en esta base: su actualización queda coordinada por el orquestador al integrar.
+
+La vista previa del informe muestra etiquetas legibles y el contenido privado
+original aprobado, también al reintentar. Consentimiento y envío permanecen
+intactos. Un formato inesperado conserva el payload real anterior como vista
+de revisión, para no ocultar lo que se enviaría. Regresiones para resúmenes de
+versiones, búsqueda de errores en español y preservación de ese contenido.
+
+Validación local: fmt/check/clippy -Dwarnings PASS; Nextest workspace
+1153/1153 PASS, seis skips configurados, sin filtro adicional (707,676 s de
+ejecución; ACC 587,652 s). Después de los últimos ajustes exclusivamente de
+presentación se repite Hub: 272/272 PASS. Lifecycle: cinco y doce tests PASS.
+Build prueba/parity PASS; conserva únicamente el aviso previo unused cx en
+`analysis/view.rs:989`, exclusivo de esa configuración QA. Compilación por
+`C:/tmp/fase2/compilar.ps1`, target propio y -j2. El primer test de búsqueda y
+Clippy fallaron durante la iteración: se corrigieron sin cambiar tests ni añadir
+excepciones a lint, y se repitieron los checks.
+
+Evidencia externa `C:/tmp/1470-fix-textos-evidence/`: primeras capturas,
+29 estados finales (18 a 1920x1080 y 11 a 1440x900), galerías MIRADAS,
+`ronda-1.png` antes/después, mapas de diferencias visuales, logs y hash del
+binario QA. No es prueba de paridad pixel a pixel, LMU live, rendimiento,
+permisos reales, servicio remoto ni publicación. La captura «diagnostico-detalle»
+es desplazamiento del registro; no simula pulsar Preparar ni certifica ese flujo.
+No Go/frontend/release/CI remota ejecutados: ajenos a este cambio local.
+
+Verificación manual pendiente de aceptación: recorrer Cuenta, Validar y las
+siete páginas de Ajustes a ambos tamaños; bajar hasta el final de General,
+Rendimiento y Diagnóstico, comprobar carriles distintos, versión instalada,
+Automático sin seleccionar y textos del informe antes de consentir. Revisar
+también Novedades y los nombres de producto conservados. DPI125/150, cuenta
+real, preparar/copiar diagnóstico y envío remoto requieren comprobación física.
+Checkout principal y native-beta Isaac intactos. Entrega local para revisión,
+sin push, PR, CI remota, merge, promoción ni release.
+### ISA-1470 — Fase 3, componentes y detalles visuales (1470-fix-componentes, 2026-10-06)
+
+Worker de implementación en `vantareapp/isa-1470-fix-componentes`, worktree
+`C:/tmp/vw3-1470-fix-componentes/vantare-v2`, base `e264cf435b5f41af306174c3d8ba7026573ef6ac`.
+Alcance cerrado: página Próximamente Strategy/Engineer sin acción y rutas Hub ocultas
+Workshop/Analysis; Apariencia crece sin recortar controles (las otras tarjetas conservan sus límites); secundarios pill y chevron SVG;
+contador separado en campana (también Studio), selección de Ajustes/Cuenta; conectores
+horizontales continuos del Launcher, iconos en baldosa y clases/niveles de Calendario.
+No cambia permisos del núcleo, servicios, catálogo ni datos del usuario.
+Estado: terminado localmente; revisión e integración pendientes. Primer commit de
+componentes/rutas `8ea77958a63bd7d2f1a53034da091663c158baa2`; segundo commit Launcher/Calendario/docs en HEAD
+(consultar `git log -2`; SHAs finales en informe externo y comentario de #1470).
+Gates del árbol final: check PASS12,10s, clippy -Dwarnings PASS14,50s,
+Nextest1153/1153 PASS (6 tests y 2 binarios omitidos por configuración del repo),
+lifecycle PASS17/17 (5 Hub + 12 UI); fmt/diff-check y schema del fragmento PASS.
+Build prueba/parity-capture PASS36,26s; conserva el warning previo de `cx` no usado
+en analysis/view.rs bajo esa feature. No se amplía el alcance para eliminarlo.
+24 capturas1920/1440 MIRADAS; antes/después `C:/tmp/1470-fix-componentes-evidence/ronda-1.png`.
+Apariencia ya muestra ambos selects completos; conexiones continuas sin verticales,
+iconos y chips de clase/nivel legibles. Workshop/Analysis arrancan en Inicio;
+regresión de navegación PASS también con permisos concedidos. Escenas QA aisladas,
+no evidencia de LMU o servicios reales. No se renueva el catálogo del calendario.
+Verificación manual: pulsar Estrategia/Ingeniero; revisar Apariencia y desplegables;
+marcar avisos y comprobar contador; entrar en Ajustes/Cuenta; lanzar perfil,
+revisar conectores e iconos; filtrar clases/niveles del Calendario a1920 y1440.
+Coordinar al unir: settings/view.rs tiene solo dos glifos aprobados por nota01:09;
+chrome.rs no modifica la fuente de versión del otro worker. El fragmento ISA-1470.json
+contiene solo este bloque y se combinará con la entrega paralela. plan.md ausente en
+esta base, ya registrado por 1470-union; no se crea otro roadmap. Sin push, PR,
+CI remota, merge, promoción ni release. Siguiente: revisión del diff/capturas por el orquestador/Isaac y unión aislada.
+
+### ISA-1470 — Ronda 2 de componentes (2026-10-06)
+
+Misma rama/worktree `vantareapp/isa-1470-fix-componentes`; entrada `cd763fd1128fbac795c54f1b198dbdd908f38def`.
+Corrección solicitada por revisión: Ingeniero/Estrategia ahora heredan el alto disponible,
+con cabecera icono/título/estado, tres tarjetas específicas y bloque «Síguelo en el Roadmap»
+con navegación real. Textos breves, sin fecha ni compromiso concreto.
+Studio conserva scroll para propiedades y fija OBS debajo: texto y botón completos
+sin desplazarse a 1920×1080 y 1440×900; no cambia controles, permisos ni persistencia.
+Regresión de rutas comprueba Roadmap con acceso verificado y conserva el bloqueo sin verificar.
+Ocho capturas MIRADAS (seis de distribución y dos de interacción QA); antes/después
+`C:/tmp/1470-fix-componentes-evidence/ronda-2.png`. Clic real en Ver Roadmap y rueda
+hasta Posición y tamaño PASS1440. Escenas QA aisladas; sin prueba de LMU/servicios reales.
+Gates R2: check PASS9,82s; clippy -Dwarnings PASS13,05s; Nextest1153/1153 PASS670,495s
+(6 omitidos por configuración); lifecycle17/17 PASS; fmt/diff-check PASS.
+Build prueba/parity PASS18,92s; warning previo de cx en analysis/view.rs solo en parity.
+Fragmento ISA-1470 actualizado, schema PASS. No dependencias nuevas ni cambios fuera de estos dos defectos.
+Siguiente: revisar el commit R2 y unir la entrega aislada. Sin push, PR, CI remota,
+merge, promoción o release. plan.md ausente en esta base; no se crea otro roadmap.
+
+### #1470 — Unión de textos y componentes (1470-union2, 2026-10-06)
+
+Base e264cf43, merge textos 47b420e2 (0830113a) y componentes 1dfef24d.
+Handoff combinado conservando las dos entregas, sin duplicar entradas. Código
+compartido fusionado automáticamente y revisado; textos conservados junto a
+las páginas Próximamente, OBS fijo y controles/componentes. Fragmento ISA-1470
+combinado con ambos alcances. Validación final y corrección Roadmap a continuación.
+Merges exclusivamente locales autorizados por Isaac; sin push ni promoción.
+
+### #1470 — Roadmap restaurado y validación unión2 (2026-10-06)
+
+Merges locales autorizados: textos 47b420e2 desde 0830113a; componentes
+0ddc4a96 desde 1dfef24d. Se conserva TODO el código de textos y la estructura
+/componentes; único conflicto en el handoff, conservando ambas entradas.
+Fragmento ISA-1470 combinado sin duplicados. El commit posterior restaura
+«Roadmap» en Section::label y el título de página; búsqueda/miga consumen esa
+misma etiqueta. Actualizaciones conserva «Notas de versión» y sus novedades.
+Regresión de búsqueda/miga y navegación beta PASS.
+
+Gates del código final: fmt PASS; check8,48s y clippy13,86s -Dwarnings PASS;
+Nextest1155/1155 PASS (610,592s, seis skips configurados; ACC501,262s PASS);
+lifecycle5+12 PASS. Compilación SOLO por C:/tmp/fase2/compilar.ps1, -j2 y target
+propio native/target/gates. Build prueba/parity-capture35,12s PASS; conserva
+aviso previo unused cx analysis/view.rs989 exclusivo de captura. Los gates
+ordinarios no tienen warnings. No se repiten gates completos tras documentación:
+el código final conserva los hashes de la ejecución validada.
+
+Evidencia externa C:/tmp/1470-union2-evidence/: 35 capturas1920x1080 del tema por
+defecto Grafito carmín, todas MIRADAS en galerías1–9 y capturas ampliadas;
+resumen-hub.png y ronda-1.png antes/después MIRADOS, mapas1–9 y JSON comparables.
+Sin regresiones visuales atribuibles al merge observadas. Launcher2 e Ingeniero
+/Estrategia0px frente a componentes; Studio cambia solo el texto OBS de textos.
+No se afirma0px para todo el Hub. Rutas beta ocultas (Workshop/Analysis/Licencias
+separada) arrancan en Inicio: no certifica sus módulos. Calendario conserva el
+catálogo caducado y la escena archivada explícita; no se renueva su horario.
+
+Standings compare.ps1: 0/292160px, threshold0/maxpercent0/delta0 frente a baseline
+nativa F1, binario prueba previamente compilado por cola; base/captura/diff
+MIRADOS. No es paridad Wails ni prueba LMU live o de rendimiento.
+Intento adicional de interacción con helper Hidden falló antes del PNG por no
+presentar ventana detectable; cerrado solo el proceso propio y su helper.
+Reintento con ventana normal por indicación del orquestador PASS: clic real desde Ingeniero abre Roadmap y rueda del inspector Studio llega a Posición y tamaño con OBS fijo. Ambas capturas1920 MIRADAS; 37 capturas en total. El fallo Hidden queda conservado en la evidencia.
+
+Manual: abrir el Hub con datos aislados; recorrer las siete pestañas de Ajustes,
+Launcher2, Cuenta, Testing3, Calendario5, campana y búsqueda; pulsar Ver Roadmap,
+confirmar nombre en menú/miga/título y desplazar inspector con OBS fijo.
+Pendientes DPI125/150, cuenta/servicios reales y aceptación Isaac/orquestador.
+plan.md sigue ausente en esta base; coordinación pública pendiente del orquestador.
+Sin frontend/Go/Release/CI remota: fuera del brief. Sin push/PR/promoción/release
+ni merges externos. Checkout principal y native-beta Isaac intactos.
+
+### #1470 — Ronda 3 · pantallas (2026-10-06, entrega local)
+
+Worker `1470-r3-pantallas`, rama `vantareapp/isa-1470-r3-pantallas`, base
+`13ae6945524b1b33dbd73b8df1ee2ae758707e7b`. Solo la lista de pantallas del brief
+`C:/tmp/beta/r3/w15-arreglos-r3.md`; componentes/scroll en otro worktree.
+
+Implementación: identidad de paquete visible en topbar, General y Actualizaciones,
+notas sin salto en la versión y pills del kit; Rendimiento sin «Activo ahora»;
+Inicio con buscador normal/separado, estados con pills, lanzamientos como actividad,
+indicadores sin cifras inventadas y acciones de Overlay de ancho por contenido.
+Estrategia/Ingeniero: tarjetas a altura natural con iconos propios y descripción,
+póster sobrio inferior que compone el alto. Consentimiento: cuerpo 14 px, dos
+columnas y viñetas. Launcher muestra nombres del catálogo/perfiles personalizados,
+abre Aplicaciones y titula «Nuevo perfil» cuando todavía no existe el perfil.
+Roadmap presenta fechas españolas con año. General explica funciones pendientes.
+Calendario: la etiqueta QA está confinada al constructor demo/escena archivada y
+`parity-capture`; no hay cambio de catálogo. Según nota 03:01 se conserva el nombre
+«DeepSeek Harness» en el selector, sin cambiar ID, tema ni persistencia.
+
+Gates finales PASS: fmt, check (36,63 s), clippy con -D warnings (125,4 s),
+nextest (1157 passed, 6 skipped; 993,6 s con compilación) y lifecycle (5 + 12
+casos, sin fallos; 32,85 s). QA prueba/parity-capture PASS (36,77 s), identidad
+verificada `Vantare Native 0.1.0-beta.1 (testers)` mediante VANTARE_VERSION y
+VANTARE_BUILD_CHANNEL, sin modificar Cargo.toml. Único warning heredado del
+build parity: analysis/view.rs:989, fuera de alcance; gates ordinarios limpios.
+35 pantallas preliminares de 1440 inspeccionadas, además de las 10 modificadas
+a 1920. La recaptura completa sobre HEAD y sus hashes se registra en el canal
+y manifiesto externos al cerrar la entrega; no es prueba de runtime LMU, DPI
+125/150 ni CI remota. Cortes heredados de listas/scroll son del worker común.
+Evidencia y canal: `C:/tmp/1470-r3-pantallas-evidence/` y
+`C:/tmp/fase2/informe-1470-r3-pantallas.md`. `docs/roadmap/plan.md` sigue ausente en
+esta base; su coordinación queda al orquestador, sin inventar otra fuente pública.
+Sin dependencias nuevas, frontend, Go, push, PR, merge, promoción o release.
+
+### #1470 — Ronda 3, componentes comunes (1470-r3-comunes, 2026-10-06)
+
+Worker aislado en `vantareapp/isa-1470-r3-comunes`, base `13ae6945524b1b33dbd73b8df1ee2ae758707e7b`.
+Alcance: barra/topbar comunes, botones por contenido, desvanecido de scroll,
+rótulos sin mayúsculas forzadas, sans para interfaz y display para KPIs.
+La barra mantiene las filas de navegación/perfiles a su alto real y desplaza
+la lista completa antes del pie fijo; Lanzar es neutro y muestra Ctrl L.
+Los contadores de Launcher/Perfiles salen de perfiles guardados, Tester del acceso.
+Nota 03:11: Roadmap sin indicador en beta; Testing sin contador sin fuente real.
+Sin cambios de textos/contenido del worker paralelo ni de servicios/permisos.
+La comprobación con rueda real a 1440 detectó y corrigió también el carril de
+Atajos (Ctrl B fuera de tarjeta) y tarjetas finales Canal/Historial de borrado
+reducidas al encabezado: se conserva su alto intrínseco, sin cambiar contenido.
+Build prueba/parity por cola PASS (11 exe + duckdb.dll); warning heredado de
+analysis/view.rs:989 con parity-capture. check/clippy/fmt PASS, Nextest1155 PASS,
+6 skips existentes, corpus ACC completo PASS568,646s. Lifecycle final falló una
+vez en alive(pid39296) de engineer_restart_budget; repetición completa PASS
+(5 Hub + 12 runtime), sin modificar tests. Intermitencia fuera de alcance en
+#1476, area:plataforma y Project Vantare; causa no demostrada, logs conservados.
+30 capturas (15 pantallas × 1920/1440) y 19 de rueda real a 1440 MIRADAS,
+ronda-4.png y detalle-scroll.png MIRADOS; dimensiones/hash PASS. EXE SHA256
+33C6A4E02E0A2011258C9B9421C126FC13701E49C1B28A22F853422AC8231266.
+QA a DPI96; sin certificación DPI125/150, LMU live ni igualdad total del Hub.
+Evidencia externa `C:/tmp/1470-r3-comunes-evidence/`, canal del orquestador
+`C:/tmp/fase2/informe-1470-r3-comunes.md`. Aceptación del orquestador pendiente.
+No se añaden tests que repitan estilos: se usan los suites existentes y capturas
+nativas con rueda real; escenas demo son QA visual, no evidencia LMU live.
+Chevrons ya corregidos en base/ronda 2: se verifican sin duplicar implementación.
+Los tokens de `vantare_ui::theme` ya separan body/display/mono; se corrigen los
+consumidores que usaban mono para texto, sin alterar esquema ni temas de widgets.
+`plan.md` ausente en esta base; no se crea otro roadmap. Sin push, PR, CI remota,
+merge, promoción ni release. No se toca la beta de Isaac ni el checkout principal.
+
+### #1470 — Unión ronda 3 (1470-union3, 2026-10-06)
+
+Base limpia `13ae6945524b1b33dbd73b8df1ee2ae758707e7b`, misma rama aislada
+`vantareapp/isa-1470-hub-rediseno`, worktree `C:/tmp/vw3-1470/vantare-v2`.
+Primer merge local `f9a60b92` incorpora pantallas `e4b4f96a`; el segundo merge
+incorpora comunes `b305db34` (SHA de entrega en informe externo/issue).
+Dos conflictos: handoff combinado conservando ambas entradas; badge de las
+notas conserva `orbit::pill` y condición de pantallas. Se mantienen TODO el
+contenido/textos y los scroll, rótulos/botones comunes, incluido `self_start`
+de Plantillas. Roadmap y DeepSeek Harness intactos; fragmento sin duplicados.
+
+Gates finales por cola, -j2 y target propio: fmt PASS; check12,13s PASS;
+clippy -Dwarnings14,62s PASS; Nextest1157/1157 PASS753,040s, seis skips
+configurados, golden ACC612,588s PASS; lifecycle5 Hub+12 UI PASS al primer
+intento (incluido engineer_restart_budget; sin reintento #1476).
+QA prueba/parity-capture sellado0.1.0-beta.1/testers PASS42,11s. Se conserva
+warning previo unused cx analysis/view.rs989 solo bajo captura; ordinarios verdes.
+Standings0/292160px, threshold0/maxpercent0/delta0 frente a nativa F1; captura,
+referencia y mapa MIRADOS. No es prueba Wails ni LMU live/rendimiento.
+
+Evidencia externa `C:/tmp/1470-union3-evidence/`: 35 escenas1920x1080 y35
+1440x900, todas MIRADAS; resumen-1920.png/resumen-1440.png y ronda-1.png
+antes/después MIRADOS; diez capturas adicionales con rueda real a1440 MIRADAS.
+Sin regresiones de unión observadas: perfiles desplazables sin pisar Contraer
+barra; últimas filas legibles, primarios/Plantillas por contenido, caso normal,
+OBS fijo y Posición y tamaño accesible. Hashes de binarios/capturas/código,
+logs completos y scripts reproducibles conservados fuera del repo.
+Rutas beta ocultas Workshop/Telemetría/Licencias separada abren Inicio: no
+certifican sus módulos. Calendario conserva el archivo QA y catálogo caducado.
+Manual: recorrer Hub/Ajustes a1920 y1440, desplazar perfiles/listas/inspector,
+revisar badge0.1.0-beta.1, Roadmap/fechas y botones de Plantillas.
+Pendientes aceptación del orquestador/Isaac, DPI125/150 y servicios reales.
+plan.md ausente en la base, no se crea otro roadmap; coordinación pública del
+orquestador pendiente. No Go/frontend/Release/CI remota: fuera del brief.
+Solo merges locales autorizados; sin push/PR/promoción/release ni modificación
+de native-beta Isaac o checkout principal. Siguiente: revisión aislada de la unión.
+### ISA-1470 — Ronda 4, cortes y cabeceras (2026-10-06)
+
+Entrega aislada del worker `1470-r4-cortes`, rama
+`vantareapp/isa-1470-r4-cortes`, base `136a90fa`; se retoman los ocho
+archivos sin commit dejados por el worker anterior, sin descartar cambios.
+Corrige el fit de Standings y los rótulos compactos de Inicio a 1440,
+separadores de Estado a todo el ancho (Cuenta y Actividad quedan al otro
+worker), dos filas completas de aplicaciones con acceso a «Ver todas»,
+flechas y descripción funcional de la cadena, insignias según su estado,
+espera atenuada, pósteres arriba y «Probar» oculto durante el lanzamiento.
+Studio muestra «Fuel y stint» a 1440, botón de inspector con icono y nombre
+accesible, y «Probar con · Próximamente» deshabilitado sin selección ficticia.
+Testing y Calendario comparten cabecera hasta el borde derecho; sus columnas
+no duplican el espacio de la antigua cabecera.
+
+La primera captura heredada bloqueaba el mutex global en el proceso padre
+mientras el helper del Hub esperaba el mismo mutex. La validación usa el
+helper de turno `VANTARE_CAPTURE_TURN` del worker estados únicamente en el
+binario QA externo; se restaura el script del repo después de compilar y no
+se incluye esa adaptación en este commit. El helper posee el mutex global,
+el script externo reserva `pantalla-ocupada` con identificador y limita cada
+captura a 90 s, cerrando solo su árbol de procesos. Inicio solo termina en
+2,8 s: no se reprodujo un cuelgue de layout después de corregir la captura.
+
+Evidencia externa: `C:/tmp/1470-r4-cortes-evidence/`, 20 capturas de diez
+pantallas a 1920x1080 y 1440x900, comparaciones antes/después inspeccionadas.
+Las 20 recapturas finales y las comparaciones se han inspeccionado;
+`ronda-2.png` y `seal.json` conservan la revisión y hashes. Fmt, check y
+Clippy `-D warnings` PASS después del último cambio. Nextest 1157/1157 PASS
+(754,329 s, seis skips configurados); corpus ACC completo PASS (604,246 s).
+Lifecycle PASS (5 escenarios Hub y 12 UI). Build QA PASS (aviso heredado de analysis/view.rs
+solo con parity-capture); build ordinario PASS sin avisos. Escaneo UTF8/UTF16
+confirma que el binario ordinario no contiene los dos textos exclusivos QA.
+Regresión visual con escenas existentes: no se añade un test que compare
+constantes de layout. No hay cambios de lógica core, dependencias, Go ni
+frontend. Los textos QA del calendario y Notificaciones mantienen sus guards
+`parity-capture` y fixtures; no se introducen datos QA en las rutas normales.
+La app normal obtiene Cuenta del servicio; la cuenta de ejemplo exige demo.
+
+Manual: recorrer Inicio/Launcher/Studio/Testing/Calendario a ambas resoluciones,
+comprobar bordes completos, Fuel visible, inspector conmutado, escenarios
+inactivos, y acciones de cabecera a la derecha. A 1440 Fuel pasa a una segunda
+línea para conservar su acceso; no se promete una sola línea con cualquier
+número de widgets. ETA no se inventa: solo se representa el progreso existente.
+`plan.md` está ausente en esta base y no se crea un roadmap paralelo.
+Sin push, PR, CI remota, merge, promoción ni release; beta de Isaac intacta.
+La aceptación y actualización conjunta de #1470 corresponden al orquestador.
+
+### #1472 — Integración seleccionada de seguridad (2026-10-06)
+
+Worktree aislado `C:/tmp/vw3-1472-integracion`, rama
+`vantareapp/isa-1472-seguridad-integracion`, base `136a90fa`.
+Manda `C:/tmp/beta/r4/revision-auditoria-1472.md`; no se integran #5 ni #7.
+Primer hito: fixtures junto al ejecutable, lista fija del catálogo actual en
+packaging y recuperación de selección/escena/cursor inválidos del Taller.
+Navegación y derechos conservan el Hub; guardados con lock del SO y temporal
+exclusivo. `domain::text` se adelanta desde #2 porque #4 lo consume.
+Los tests del Launcher limpian también los locks persistentes en sus temporales.
+Evidencia y validación conjunta: `C:/tmp/1472-integracion-evidence/` e informe
+`C:/tmp/fase2/informe-1472-integracion.md`. Target propio en E: mediante junction;
+Nextest/lifecycle usan su ruta real para mantener la identidad Win32 del proceso.
+`docs/roadmap/plan.md` no existe en esta base; no se inventa otro roadmap.
+Entrega local para revisión del orquestador; sin push, PR, merge ni promoción.
+Segundo hito: Host loopback en Go heredado, checkout fijado, secretos solo en el step y .dockerignore; DEPLOY_SURFACE conservado.
+Tercer hito: capacidades del Hub (11), desconocidas ignoradas, cotas y cuarentena solo de JSON/versión/validación; errores de E/S se conservan y screenshots::validate permanece.
+Cuarto hito: cotas de identidades/lecturas/tar y pruebas codec/LMU; rights/mod.rs conserva íntegro el Hub y se recolocan CLOCK_WRAP_FROM/read_bounded.
+Quinto hito: Reader::text de ACC sanea U+202E, con test unitario; no se incorpora el fuzz de 863 líneas.
+Sexto hito (#9+#10 juntos): allowlist solo para enlaces de PUBLIC/ProgramData, los del usuario se confían; DeviceLimit tipado, botón principal y test semántico de cuarentena del roadmap repuesto.
+
+Validación final (cola `compilar.ps1`, Rust `-j 2`): fmt/check/clippy
+`-D warnings` PASS (`final5`), Nextest 1181 PASS y 6 omitidos preexistentes,
+lifecycle PASS (`final6`), `go test ./...` PASS. Go necesitó el `frontend/dist`
+ya construido del checkout principal para el embed; no se modificó frontend.
+`packaging/tests.ps1` PASS: 174 comprobaciones en Debug y 174 en Release.
+Release público real, con `parity-capture` para QA, compilado/empaquetado con
+exit 0; candidato local `0.0.0-local`, `source_sha=136a90fa`, `source_dirty=true`.
+No es una release publicada ni un paquete construido desde un commit limpio.
+Arranque desde `C:/tmp/1472-paquete` PASS: ventana en 3,81 s, datos propios,
+captura `primera-paquete.png` inspeccionada; sin renombrar fuentes del repo.
+Standings F1 PASS: 0/292160 píxeles, umbral 0; captura, referencia y diff
+inspeccionados: misma cabecera, siete filas, nombres/datos y pie Sebring.
+Hash PNG de ambos: `2b63ea4a40309fedd14337073a289c8767bd3f48c450c3fce0945a2ca34ba7df`.
+El vector heredado del test de timestamp se adaptó al `MAX_FRAME` del Hub
+(128 KiB); conserva la exigencia de superar el marco real, sin debilitarla.
+Fallos previos conservados: identidad IPC de la junction, limpieza de locks,
+disco lleno, test de timestamp con marco antiguo y enlace de exe aún vivo.
+Debug abortó por una aserción de accesibilidad de GPUI antes de abrir; Release
+abrió. La primera prueba Release con ventana oculta no midió apertura visible;
+la repetición con ventana normal y la misma copia verificada por hash sí pasó.
+Queda el warning Release de `analysis/view.rs` (`cx`), fuera del diff.
+Por falta de espacio, evidencia voluminosa y paquetes propios están en
+`E:/tmp/1472-integracion-evidence/` y `E:/tmp/1472-integracion-package-release/`;
+logs/capturas/lista de 51 archivos en `C:/tmp/1472-integracion-evidence/`.
+Manual: abrir el Hub copiado con datos aislados, recorrer Taller y guardar una
+escena; repetir con selección obsoleta. Un `.lock` residual permite guardar;
+un lock activo conserva el rechazo. Verificar enlaces compartidos/usuario y
+el botón de DeviceLimit con el flujo real de renovación antes de promoción.
+Sin LMU vivo, DPI ni DeviceLimit real; no se acredita rendimiento o servicios
+reales. La cuarentena de installation y los hallazgos de voz/radio de la revisión
+quedan fuera del alcance seleccionado para el orquestador.
+Sin gates frontend (no cambió TS/CSS), CI remota, push, PR, merge, promoción,
+release ni acción externa fuera del alcance. Siguiente: revisión aislada del
+orquestador; no integrar en nightly sin autorización de Isaac.
+
+### #1470 — Unión ronda 4 y seguridad seleccionada (1470-union4, 2026-10-07)
+
+Worktree `C:/tmp/vw3-1470/vantare-v2`, rama aislada
+`vantareapp/isa-1470-hub-rediseno`, base limpia `136a90fa`.
+Brief `C:/tmp/beta/r4/brief-1470-union4.md`; notas propias ausentes durante
+la ejecución. Merges locales en orden: `84a11584` incorpora `7c2ba572`,
+`aebe102f` incorpora `79d0c178`; tercer merge incorpora `d4a4e73a`
+(SHA final en informe externo). Único conflicto documental del tercer merge:
+se conservan completas las entregas de cortes y seguridad. Ninguna resolución
+altera código; los cruces automáticos de calendario/cuenta/Testing se revisan.
+
+Gates completos por cola/-j2/target propio: fmt --all/check/clippy -D warnings
+PASS; Nextest1182/1182 PASS810,550s, seis skips configurados, golden
+ACC616,975s PASS; lifecycle5Hub+12UI PASS al primer intento.
+Go ./... inicial sin frontend/dist; se reutilizan assets reales de1472
+con árbol frontend Git idéntico `1abfb3d0`. Un timeout SQLite en la repetición
+paralela; suite completa `go test -p 1 ./...` PASS, sin cambios de tests.
+Gofmt verificado. Packaging actual contra artefacto Release heredado1472:
+PowerShell7 falla por ruta PSHOME/powershell.exe; Windows PowerShell5.1
+PASS174 checks. Esto no demuestra un nuevo paquete Release de Unión4.
+
+QA prueba/parity-capture PASS: once binarios0.1.0-beta.1/testers,
+DuckDB DLL copiada; warning cx heredado solo bajo captura. No distribuir.
+Standings F1:0/292160px, threshold0/maxpercent0/delta0; captura, referencia
+y mapa MIRADOS. No es prueba Wails ni LMU live/rendimiento.
+70 capturas (35x1920x1080 y35x1440x900), galerías y hojas resumen MIRADAS.
+Inicio mantiene fit de Standings/Actividad; Launcher conserva cadena y estados;
+Studio envuelve Fuel a1440; cabeceras de Calendario/Testing abarcan las columnas.
+Capturas ocultas bloquean Inicio: timeout90s y árbol propio cerrado, visible
+PASS. Un cierre de paleta falla tras guardar PNG; repetición PASS, log conservado.
+Paquete QA copiado `C:/tmp/1470-union4-paquete`: ventana login en3,72s,
+y captura Inicio desde copia con fixtures locales; ambas imágenes MIRADAS.
+
+Evidencia `C:/tmp/1470-union4-evidence/`, informe
+`C:/tmp/fase2/informe-1470-union4.md`; diffs/lista65archivos y hashes externos.
+Manual: recorrer Hub/Ajustes a1920/1440, desplazar inspector/listas, verificar
+canalTesters/versión, cabeceras y estados; ejecutar solo copia QA con datos aislados.
+Pendientes aceptación de Isaac/orquestador, DPI125/150, servicios/DeviceLimit
+reales y Release de esta unión. Rutas beta ocultas abren Inicio; calendario
+conserva catálogo caducado/archivo QA y Roadmap datos demo. No certifican módulos.
+plan.md ausente en esta base; no se crea otro roadmap. Sin gates frontend
+(sin TS/CSS), CI remota ni LMU vivo. Rama remota ausente verificada.
+Solo merges locales autorizados, sin push/PR/promoción/release ni cambios a la
+beta de Isaac/checkout principal; siguiente: revisión aislada del orquestador.
+
+### Corte #1470 r5 — LISTA A (render), 2026-10-07
+
+Worker aislado `vantareapp/isa-1470-r5-render`, base `40a4ddc9`, worktree
+`C:/tmp/vw3-1470-r5-render`. Sin push, PR, merge, promoción ni release.
+Lista B y suciedad del checkout principal preservadas.
+
+B1: fuera halos difusos externos de paleta/popovers/drawer; velo del drawer
+del color de superficie. El renderer existente comunica Opaque/Transparent
+por padding de GlobalParams (48 bytes), conserva cobertura sin dithering en
+ventanas opacas y el render previo de degradados en overlays transparentes.
+Mezcla sin división0/0 y cobertura de sombras limitada a[0,1]. Sin dependencia
+ni renderer nuevo. Captura RGBA original con checker que rechaza alfa<255:
+autotest acepta255/rechaza254/0; paleta r4 rechazada con1058px.
+18 capturas finales1920/1440 MIRADAS, todas opacas. B1 antes/después
+drawer36484/26754→0/0, paleta1058/849→0/0, notificaciones1619/1056→0/0.
+Standings0/292160px, threshold0/maxpercent0/delta0; mapa/referencia MIRADOS.
+La retirada global del dithering falló143279px; se descartó, sin relajar gate.
+
+I1 Actividad hasta abajo, vacío centrado, fundido y hasta8 registros existentes.
+La escena tiene3; no se inventan6–8 eventos. I6 cadena sin hueco del hero,
+historial3filas y Aplicaciones/Historial separados; Opciones conserva controles
+mediante scroll a1440, perfiles en lanzamiento mantienen198px. Pills terminales
+Bien/Lento/Falló solo para resultado observado de sesión, con regresión de
+reintento recuperado; persistencia no guarda resultado histórico. P2 inicial
+neutra MoTeC/Pro, P3 tarjetas iguales/subtítulos1línea, P11 Avanzado12/600/tracking0.
+
+Gates finales del código definitivo PASS: fmt/check/clippy por cola,
+-j2/target/gates propio; Nextest1183/1183 en622,786s, seis skips configurados,
+golden ACC501,372s; lifecycle5Hub+12UI PASS. Logs verified-*.log.
+Build QA beta.1/Testers PASS, warning cx previo solo parity-capture.
+Evidencia `C:/tmp/1470-r5-render-evidence/`; informe vivo
+`C:/tmp/fase2/informe-1470-r5-render.md`. Capturas RGB24 descartadas: ocultaban
+el fallo de alfa pero mantenían grano; capturador original preservado.
+
+Pendiente aceptación del orquestador/Isaac, ventana normal SIN captura/DPI125
+(intento aislado: Ventana no disponible), pills antiguas sin datos terminales,
+6–8 eventos reales, LMU/OBS/Mac/rendimiento. Favorito/Abriendo se solapan en
+cubierta compacta durante lanzamiento: hallazgo para revisión #1470.
+Manual: CtrlK, Notificaciones y editar perfil a100/125%; revisar halos y bordes;
+Aplicaciones/Historial/Volver, tres filas, cadena4pasos y scroll de Opciones.
+Go/frontend/CI remota no ejecutados (sin cambios/push). plan.md ausente en esta
+base, sin roadmap alternativo. Siguiente: revisar entrega aislada y sus límites.
+### #1470 — Ronda 5, LISTA B pantallas (2026-10-07)
+
+Rama `vantareapp/isa-1470-r5-pantallas`, worktree
+`C:/tmp/vw3-1470-r5-pantallas/vantare-v2`, base `40a4ddc9`.
+Brief `C:/tmp/beta/r4/brief-1470-r5.md`, revisión r4 completa y recortes
+aplicables. Solo LISTA B; no delegación ni cambios de la LISTA A.
+Actualizaciones muestra la versión instalada y filtra notas por canal; Cuenta
+alinea nombre/iniciales de la escena con sidebar, sin ampliar autenticación.
+Calendario centra el vacío con icono y recarga, elimina guiones de acento y
+zona repetida, y muestra ambos meses en el rango semanal. Rendimiento usa
+tarjetas informativas neo, sin radios/selección/Disponibilidad Pendiente;
+Cómo elegir ocupa la sexta celda. Acciones a tamaño de contenido, iconos de
+sección, mini preview de Apariencia, contador sin leer, cifra/canal de informes
+en una línea, lenguaje llano/pills para funciones inertes y área/icono del
+Roadmap. Cambios en doce archivos Rust del Hub; sin dependencias ni contratos.
+
+fmt/check/clippy -D warnings PASS por cola `compilar.ps1`, -j2, target propio.
+Nextest1183/1183 PASS733,796s, seis skips configurados; golden ACC605,828s.
+Lifecycle5Hub+12UI PASS al primer intento. Build ordinario sin parity-capture
+PASS40,03s; seis textos exclusivos de avisos QA ausentes UTF8/UTF16, control
+positivo en binario QA y fixture ausente de allowlist de empaquetado. No se
+generó paquete distribuible. Ambos binarios/hashes conservados externamente.
+Tests de filtrado por canal y rango semanal mes/año PASS. QA prueba con
+parity-capture 0.1.0-beta.1/testers PASS; warning cx heredado solo en captura.
+40 capturas 20 nombres x1920/1440, detalles y hojas MIRADOS, 18 pares antes/
+después y mapas MIRADOS. Standings F1 0/292160px, umbral0/delta0, captura/
+referencia/mapa MIRADOS. Una captura falló al cerrar ventana tras guardar PNG;
+reintento PASS, logs conservados. Clippy inicial unused_self/match_same_arms
+corregido; log conservado. Build propio simultáneo cancelado y serializado.
+
+Evidencia `C:/tmp/1470-r5-pantallas-evidence/`, informe
+`C:/tmp/fase2/informe-1470-r5-pantallas.md`. Cuenta completa se acredita en
+cuenta-base: ruta QA licencias-modulos-dispositivos heredada abre Inicio.
+Manual: recorrer pantallas a1440/1920 y desplazar inspectores/listas; comprobar
+Instalada/Testers, avatar común, vacío, niveles sin selección, mini preview,
+pill/filtro sin leer, informes en línea e iconos/áreas del Roadmap.
+Calendario mantiene recarga local y seed caducado; no se añadió descarga ni
+horario vigente. Cuenta real no transmite nombre/correo en su IPC actual.
+Fixtures de Roadmap/calendario/avisos no acreditan servicios reales. B1 es del
+otro worker; no se arreglan sombras/velos aquí. Sin LMU vivo, DPI125/150, OBS,
+Mac, gates frontend/Go (sin cambios) ni CI remoto. plan.md ausente en la base.
+Entrega local aislada para revisión; sin push, PR, merge, promoción o release.
+
+### #1470 — Unión ronda 5 (1470-union5, 2026-10-07)
+
+Worktree `C:/tmp/vw3-1470/vantare-v2`, rama
+`vantareapp/isa-1470-hub-rediseno`, base limpia `40a4ddc9`.
+Brief `C:/tmp/beta/r4/brief-1470-union5.md`, notas
+`C:/tmp/fase2/notas-1470-union5.md`. Merges locales no squash autorizados:
+`24092193` mediante `d9af7965` (render), `918df80e` mediante `c02d7373`
+(pantallas). Único conflicto en este handoff, conservando ambas entregas.
+
+Corrección propia: `native/hub/src/launcher/showcase.rs` evita que la fila de
+perfiles absorba todo el alto restante; las tarjetas y Nuevo perfil siguen
+el alto de contenido, mínimo198px. La columna derecha mantiene Últimas veces
+hasta abajo. `native/hub/src/settings/view.rs` elimina la repetición de
+«Así funcionarán los niveles» en la tarjeta, conservando el subtítulo.
+Cambios exclusivamente visuales, sin nuevos tests que repliquen estilos;
+las capturas comprueban ambos tamaños y los tests existentes de resultados
+terminales protegen las pills Bien/Lento/Falló.
+Últimas veces ya muestra esas pills si existe resultado del perfil en la
+sesión actual. El historial persistido solo guarda fecha/contador/media:
+las fechas QA no tienen resultado terminal, y no se inventa ninguno.
+
+Build QA `0.1.0-beta.1 (testers)` PASS, perfil prueba/parity-capture,
+no distribuible ni apto para demostrar rendimiento. Warning previo
+`analysis/view.rs:989` exclusivo de parity-capture conservado.
+Fmt/check/clippy-Dwarnings PASS; nextest1184/1184 PASS en712,270s (ACC578,928s, seis skips configurados). Lifecycle5Hub+12UI PASS al primer intento.
+72 capturas finales,36 escenas×1920x1080/1440x900, con turno y mutex;
+18 hojas detalle,2 resúmenes y principales/diffs MIRADOS. Alfa<255=0 en72/72;
+autotest255 aceptado,254/0 rechazados. Standings0/292160px, umbral0/delta0,
+referencia/captura/mapa MIRADOS. `source-seal.json` acredita mismo código.
+Evidencia externa `C:/tmp/1470-union5-evidence/`, informe
+`C:/tmp/fase2/informe-1470-union5.md`.
+
+Ventana normal real a100% capturada con CopyFromScreen en datos aislados:
+`runtime-historial-before.png`/`after.png` muestran Comprobando sesión,
+no acreditan panel de perfil/paleta/notificaciones ni navegación de pestañas.
+Primer intento1920 limitado por el marco normal a1920x1061; repetición1440
+produjo screenshots reales, segundo arranque falló «Ventana no disponible».
+Logs conservados. DPI125 no tiene override por sesión en renderer Windows;
+no se altera configuración global compartida. Esa validación sigue pendiente
+porque el binario actual no admite escena QA en ventana Normal.
+Alias QA licencias-modulos-dispositivos/telemetria/workshop abren Inicio;
+Cuenta se acredita en cuenta-base. Fixtures Calendario/Roadmap no certifican
+datos públicos actuales. No LMU live, OBS, Mac, DPI125 ni rendimiento.
+`docs/roadmap/plan.md` ausente en esta base, sin roadmap alternativo.
+Sin cambios Go/TS ni sus gates; CI remoto no ejecutado, sin push/PR.
+Solo merges locales autorizados; sin promoción nightly/testers/master,
+release, anuncio ni cambios al checkout principal. #1470 sigue abierta.
+Siguiente: revisión aislada del orquestador; después
+escena QA en ventana Normal cuando exista soporte aprobado; DPI125 manual de Isaac.
+
+Nota final del orquestador (releída): no construir soporte QA normal ni bypass.
+El parser solo selecciona CaptureState mediante --capture; esa ruta abre
+WindowKind::PopUp, visible pero distinta de Normal. --demo abre Normal sin
+aplicar CaptureState, y --scene solo carga foto de telemetría; no admite
+las cuatro escenas pedidas en Normal. Evidencia qa-normal-limit.txt.
+Se documenta el límite y se cierra lo posible conforme a la nota; DPI125
+queda manual para Isaac, sin cambiar escala global ni exigir sesión para
+esta comprobación de DWM.
+
+### #1470 — Zoom del Hub: condición de parada (2026-10-07)
+
+Worktree `C:/tmp/vw3-1470`, rama `vantareapp/isa-1470-hub-rediseno`,
+base `dd90b49c9fa2244fb8fa881a44ff094f71bd4b11`, inicialmente limpio.
+Brief `C:/tmp/beta/r4/brief-1470-zoom.md`; notas específicas ausentes.
+No se implementa zoom parcial: GPUI fijado en `72d28c3` ofrece
+`set_rem_size`, pero `AbsoluteLength::Pixels` ignora rem; 40 archivos del Hub
+usan `px(...)`. `set_scale_factor` está limitado a tests. Ampliar la solución
+a esos consumidores o al backend excede el ajuste pequeño autorizado.
+Alternativa propuesta, pendiente de decisión: conversión a rem de la interfaz del Hub,
+con canvas/widgets aislados en píxeles y revisión de interacción/responsive.
+README de settings actualizado; ningún código, dependencia o renderer cambia.
+Informe y evidencia de fuentes: `C:/tmp/fase2/informe-1470-zoom.md` y
+`C:/tmp/1470-zoom-evidence/viabilidad.md`. Verificación: diff-check;
+gates Rust, capturas y paridad no ejecutados porque no hay cambio de runtime.
+`docs/roadmap/plan.md` sigue ausente en esta base; no se crea otro roadmap.
+Siguiente: orquestador revisa el límite y decide el lote; no hay push, PR,
+merge, promoción, release ni prueba LMU/OBS/Mac/DPI/rendimiento.
+
+### #1470 — Launcher alto, ronda 2 (2026-10-07)
+
+Base local `a6d0bb6f`, worktree `C:/tmp/vw3-1470`, rama
+`vantareapp/isa-1470-hub-rediseno`; entrega aislada sin push ni promoción.
+`native/hub/src/launcher/showcase.rs`: flechas por páginas en la cabecera
+«Tus perfiles», fuera de tarjetas; título/descripción agrupados y aire entre
+acciones y cadena. Opciones reserva alto para sus cinco filas a 1440×900 y
+1280×900; historial cede alto y conserva scroll. En ventanas bajas, opciones
+usa scroll interno con degradado e indicación «Desplaza para ver las 5 opciones».
+Capturas antes/después de reposo 1920×1080, 1440×900, 1280×900 y de lanzando/
+nuevo perfil 1440×900, inspeccionadas; evidencia externa `C:/tmp/1470-launcher-alto-evidence/r2-*`.
+Build QA beta.1/testers y gates por cola: fmt, check, clippy -D warnings,
+nextest Hub (285/285), lifecycle y Standings (0/292160 px; referencia/captura/mapa vistos).
+Sin cambio del motor ni dependencias; regresión visual validada mediante capturas
+más tests existentes. Warning QA previo de analysis/view.rs:989 conservado.
+No LMU live, OBS, Mac, DPI125/150, pruebas de rendimiento ni CI remoto.
+`docs/roadmap/plan.md` ausente en la base; esta ronda no cambia alcance o fases.
+Siguiente: revisión del orquestador; ninguna integración/publicación ejecutada.
+### #1473 — Tablas, ronda 2 Head to Head (2026-10-06)
+
+Revisión de Isaac sobre 6f91d8d1: se conserva SIZE 388×110, filas 24/62/24
+y letra 14. Solo cambia native/ui/src/head_to_head/mod.rs: rivales con
+posición, nombre con elipsis, clase mayúscula, RIVAL y gap disponible a la
+derecha; jugador con posición/nombre y una línea «CLASE · H2H · modo».
+La VM no expone vueltas ni sectores: hueco derecho central libre, sin cambiar
+proyección, telemetría, demanda, settings ni otros widgets.
+
+Evidencia externa C:/tmp/1473-tablas-evidence/: head-to-head-r2.png,
+head-to-head-r2-gap.png, head-to-head-r2-long.png y ronda-2-h2h.png MIRADAS
+a escala 1×; resumen.png actualizado y MIRADO. Escenas QA reconstruidas,
+no prueba LMU live, DPI alternativo ni rendimiento. Regresión protegida por
+los tests existentes de límites 24/62/24, ambas direcciones, proyección y
+goldens, y por inspección visual con rivales/gap/nombres largos.
+Entrega local pendiente de aceptación del orquestador/Isaac; sin push, PR,
+merge, CI remota, promoción ni release. plan.md ausente en esta base;
+no cambia alcance ni planificación. Informe final externo ≤10 líneas.
+Gates ronda 2: fmt/check/Clippy PASS; Nextest 1159/1159 PASS (6 skips
+configurados, 787,799 s; ACC 641,974 s PASS); lifecycle 17 escenarios PASS.
+Logs externos r2-*.log; build Workshop/parity-capture prueba PASS (9,20 s).
+No se añaden tests nuevos para esta redistribución exclusivamente visual:
+los tests existentes y las capturas inspeccionadas cubren la regresión.
+Manual: abrir head-to-head-middle con rivales y head-to-head-r2.snapshot.json
+con gap; comprobar clase/RIVAL en ambas filas, dos líneas centrales y espacio
+derecho libre. Aceptación visual final de Isaac/orquestador pendiente.
+
+### #1473 + #1474 — integración sobre Hub unión 4, tablas (2026-10-07)
+Rama `vantareapp/isa-1473-integracion`, worktree `C:/tmp/vw3-1473-integracion`, base `40a4ddc9`.
+Primer merge `93d0cb1d` incorpora `18fdf07a`; segundo incorpora `1cb6c892`.
+Conflictos resueltos conservando dos entradas del handoff y ambos tests independientes en H2H/Relative; no hay conflicto productivo.
+Gates segunda ronda por cola/-j2/target propio: fmt/check/clippy PASS; Nextest 1189/1189 PASS (6 skips, ACC 572,170 s); lifecycle PASS.
+Pendiente resto `8004af81`, QA Workshop/Studio y Standings 0 px. Evidencia `C:/tmp/1473-integracion-evidence/`.
+Sin push, PR, promoción ni release; plan.md ausente en la base; checkout principal y beta de Isaac preservados.
+
+### #1473 — Proporciones de widgets, worker 1473-resto (2026-10-06, entrega local)
+
+Base13ae6945, rama vantareapp/isa-1473-widgets-resto; HEAD de código 52367c31fc835e633d0382f663fbaeebb54017df.
+Doce commits por widget (commits.json externo), doce renderizadores modificados;
+este handoff es el único archivo adicional. Standings, Eficiencia, workshop.rs,
+domain/IPC/persistencia/fixtures y DEMANDA12/12 intactos. Sin dependencias nuevas.
+SIZE autorizado por notas: beta nativa no distribuida, sin migración.
+Fuel523x272, filas historial34→23px medidos; Input420x110; Flags250x70;
+Map554x415, trazo4→10px; daños numéricos164x132, pitch29/29/29 medido.
+Pedals valores encima y textos completos; PedalsTelemetry barras14/pitch24,
+tres100 separados. Delta barra280x96/cifra27>=24; Radar220x220/tráfico0px diff.
+Capturas antes/después y estados/100% MIRADOS en
+C:/tmp/1473-resto-evidence/resumen.png y ronda-4.png.14 escenas caben1920x1080.
+Gates finales PASS: fmt workspace+módulos, check, Clippy -D warnings,
+Nextest1156/1156 (goldens,6 skips previstos), lifecycle5+12, build captura, diffcheck.
+Los gates validan el árbol conjunto final; commits intermedios no certificados.
+Map live sin geometría/posiciones; InputTrace solo acelerador; Fuel sin datos
+AVG/MAX/MIN/pits inventados. Espera Flags/Weather conserva semántica previa.
+Preguntas y límites para #1474 en VERIFICACION.md externo; no arreglados aquí.
+Manual: Workshop fixtures/default/stale/espera/100%, settings history8/clutch/
+tyres/aero/projection/virtual-energy y escalas. Pendientes aceptación Isaac,
+DPI/OBS/Mac/LMU real/performance. Frontend/Go no tocados, no gates de esas capas.
+plan.md ausente en base: no se crea roadmap alternativo. GitHub#1473 actualizado.
+Sin push/PR/CI remota/merge/promoción/release. Siguiente: revisión orquestador.
+
+### #1473 — Ronda 2 reanudada, resto (2026-10-06, revisión local)
+
+Continuación autorizada desde 040f15b2 en vantareapp/isa-1473-widgets-resto;
+se preservaron y completaron los cambios sin commit de Weather y Daños.
+Weather pasa 240×150→240×164: dos columnas, rótulo11/valor14, celda29+gap7;
+Daños pasa150×191→180×201: leyenda en tres filas29, SVG centrado.
+Fuel conserva523×272, distribuye datos VM en tabla continua con filas23;
+historial de ocho vueltas usa dos columnas. No reproduce la división351/172
+ni añade AVG/MAX/MIN, pits o tiempos inexistentes: composición adaptada al VM.
+Solo tres renderizadores y este handoff; sin cambios domain/IPC/telemetría,
+settings, demanda, Workshop, Standings, dependencias o layouts persistidos.
+Gates del árbol final PASS: fmt/check/clippy -D warnings, Nextest1156/1156
+(6 skips previstos), lifecycle5+12, build de captura y diffcheck.
+Weather b3d105f1fad9456f0ceab4126df4a6ecce64a767, Daños bff49f9f2fd8b009f37b4a75dbc83cdf57367f3c; Fuel en este commit.
+SHAs completos y estado final en C:/tmp/fase2/informe-1473-resto.md.
+Evidencia: C:/tmp/1473-resto-evidence/ronda-2-reanudada.png, resumen.png,
+r2-medidas.json, r2-layout-fit.json, r2-source-hashes.json y logs r2-resume-*.
+Antes/después y seis estados stale/espera MIRADOS; turno pantalla con marcador,
+mutex y timeout90, marcador propio retirado. Tres escenas default caben1920×1080;
+los perfiles de ejemplo no incluyen estos tres widgets. Letras nominales11/14:
+glifos medidos8/11, pitch daño29; historial23; Weather36=29+7, gap texto6/11px.
+Pruebas existentes de VM/repaint y prueba de ocho vueltas conservadas/adaptadas;
+verificación de solapamientos por captura del renderer; no tests visuales complacientes.
+Manual: abrir Workshop con fixtures/default, mirar tres PNG a1× y estados antiguos/
+espera; seleccionar historyRows8, showProjection y showAero en inspector.
+Límites: QA Workshop, no LMU live/rendimiento/DPI alternativo/OBS/Mac;
+8 vueltas con test y cálculo de encaje, sin nueva captura de ese ajuste del inspector.
+plan.md ausente en base; Notion exceptuado por cabecera-sol del encargo.
+Sin push/PR/CI remota/merge/promoción/release; siguiente revisión del orquestador.
+
+### #1473 + #1474 — integración sobre Hub unión 4, widgets completos (2026-10-07)
+Rama `vantareapp/isa-1473-integracion`, worktree `C:/tmp/vw3-1473-integracion`, base `40a4ddc9`.
+Merges en orden: `93d0cb1d` incorpora `18fdf07a`; `59c5092b` incorpora `1cb6c892`; tercero incorpora `8004af81`.
+El tercer conflicto es exclusivamente documental; se conservan completas las entradas del Hub, tablas y resto.
+Hub productivo idéntico a la base. Dos conflictos de tests de tablas conservan ambos tests; no se cambia arquitectura ni dependencias.
+Gates tercera ronda por cola/-j2/target propio: fmt/check/clippy PASS; Nextest 1190/1190 PASS (6 skips, ACC 536,833 s); lifecycle PASS.
+Pendiente QA Workshop/Studio y Standings 0 px; se actualizará esta entrada con resultados inspeccionados.
+Evidencia `C:/tmp/1473-integracion-evidence/`, informe `C:/tmp/fase2/informe-1473-integracion.md`.
+Sin push, PR, promoción ni release; plan.md ausente en la base, no se crea roadmap paralelo. Beta y checkout principal preservados.
+
+### #1473 + #1474 — integración y QA completadas (2026-10-07)
+Base `40a4ddc9`; rama `vantareapp/isa-1473-integracion`, worktree `C:/tmp/vw3-1473-integracion`.
+Merges sin squash en orden: `93d0cb1d` (18fdf07a), `59c5092b` (1cb6c892), `3f9232a2` (8004af81).
+Hub productivo igual a la base; se conservaron ambas entradas de handoff y ambos tests en los conflictos.
+Cada merge pasó fmt/check/clippy -D warnings, Nextest completo (1185/1189/1190 PASS, 6 skips previstos), goldens ACC/LMU y lifecycle, por cola/-j2/target propio.
+QA MIRADA: 18 widgets Workshop default/unavailable/stale, 18 espera con datos retenidos, tres escenas H2H y 18 aperturas Studio a 1920x1080.
+Default 18/18 idénticos a referencias; H2H extra 3/3 idénticos; Standings 0/292160 píxeles distintos.
+Hoja `C:/tmp/1473-integracion-evidence/resumen.png`; paneles Studio y capturas individuales en la misma carpeta.
+Studio usó hook temporal exclusivo parity-capture para layout externo por widget, retirado tras build; fuente restaurada con hash idéntico. Binarios solo QA, no distribución.
+Informe completo y verificación manual: `C:/tmp/fase2/informe-1473-integracion.md`.
+Sin evidencia LMU live/rendimiento/OBS/DPI alternativo/Mac; aceptación del orquestador pendiente. plan.md ausente en esta base: no se inventa roadmap alternativo.
+Solo merges locales autorizados por brief; sin push, PR, CI remota, promoción o release. Checkout principal y beta preservados.
+
+### #1470 — R6 sobre candidato beta (2026-10-07)
+Rama `vantareapp/isa-1470-r6`, worktree `C:/tmp/vw3-1470-r6`, base `1c26b898907cb3b3b3b4547ff39bd925cdf2fe01`.
+I1: navegación y pie fijos; solo Perfiles flexible con scroll/fundido. A altura800, filas36 y márgenes12 dejan visible el primer perfil.
+I2: seis controles Sistema no implementados pasan a pills Próximamente; nota limitada a inicio, bandeja y preferencias de avisos.
+I3: cinco filtros en una fila; filas/grupos no se comprimen y test excluye filtro vacío. No se alteró el agrupador ni la entrada QA.
+P7/P8/P9/P10/P11/P12/P13/P5/P6/P4: separación, pills, iconos, textos de paleta, envío sin play, opciones sin duplicar, historial compacto sin inventar resultados e inspector con scroll de columna. Etiqueta Studio a una línea, separada22px.
+Nota del orquestador: mínimo1280x800; hero Inicio crece para Abrir Studio, cadena Launcher completa y columnas centrales con scroll; Testing compacto y contexto sin compresión.
+V3: dos fixtures QA nuevos y tests, banderas Quality::Stale con WithData, jugador P2 y rival delante. Renderizadores/VM/domain/IPC/runtime/Standings intactos.
+34 capturas Hub finales1920/1440/1280 MIRADAS, alfa255; escenas V3 MIRADAS. Standings0/292160 frente a referencia nativa aprobada `C:/tmp/1470-evidence/f1-standings-parity/standings.png`.
+Primero se comparó por error con referencia Wails histórica: fallo conservado, también aparece en candidato base; R6 idéntico a candidato0px.
+Scroll adicional con rueda mediante instrumentación temporal solo del capturador QA; `capture.rs` restaurado con hash idéntico, diff y hashes externos. No entra en el commit.
+Gates finales PASS: fmt/check/clippy -D warnings, Nextest1207/1207 (6 skips previstos; ACC563.175s), lifecycle5+12. Primer Nextest falló StorageFull112; log conservado y repetición completa verde sin cambiar tests.
+Release candidato base abierto sin capture/scene en datos aislados: responde/cierra exit0 pero queda Comprobando sesión. NO acredita panel vacío por navegación ni un Release R6; exclusión QA protegida por cfg/test, verificación autenticada pendiente.
+Evidencia `C:/tmp/1470-r6-evidence/`, antes/después `antes-despues.png`; informe `C:/tmp/fase2/informe-1470-r6.md`.
+P1/P2/P3 no implementados; sin V1 horario real, V2 DPI125, LMU live/rendimiento/OBS/Mac. plan.md ausente en la base; no se crea roadmap alternativo.
+Entrega local en este commit, sin push/PR/CI remota/merge/promoción/release; checkout principal y trabajo ajeno preservados. Pendiente revisión del orquestador.
+
+### #1470 — candidato beta unión 2, primer merge local (2026-10-07)
+Base 1c26b898; worktree C:/tmp/vw3-candidato; rama vantareapp/isa-1470-candidato-beta.
+Ronda 6 e60d955f combinada sin conflictos. Gates por cola/-j2/target propio: fmt/check/clippy PASS; Nextest 1207/1207 PASS (6 skips; ACC 432,873 s); lifecycle PASS.
+Evidencia externa C:/tmp/candidato-evidence/union2-m1-*. Informe C:/tmp/fase2/informe-candidato-union2.md.
+Pendientes zoom394720b9, Standings6faa25d4, lifecycle127bf564 y feed810709e7 (5.º merge añadido por nota); luego QA, paridad, alfa, packaging y Release externo.
+plan.md ausente en esta base; Notion exceptuado por cabecera-sol. Solo integración local autorizada; sin push/PR/CI remota/promoción/publicación.
+
+### #1470 — Spike de zoom del backend: presupuesto excedido (2026-10-07)
+
+Brief `C:/tmp/beta/r4/brief-1470-zoom-spike.md`; worktree nuevo
+`C:/tmp/vw3-1470-zoom`, rama `vantareapp/isa-1470-zoom-backend`, base
+`dae60712778a2f44fa0604b155916b279c067eda`, inicialmente limpio.
+Parada preventiva por el límite de ~6 archivos: el recorrido identificado
+requiere 9 con las fronteras actuales o 7 concentrando persistencia/atajos en
+shell.rs. El backend requiere window.rs y events.rs; el Hub necesita acceso
+al HWND (hwnd_of existe, pero el módulo overlay de ui es privado), carga/aplicación,
+control, persistencia y atajos, además del README vendor y este handoff.
+El callback resize actual permite releer escala/viewport/ratón; Direct Manipulation
+requiere sincronizar su escala. No se demuestra inviabilidad técnica del zoom.
+No se modifica producción, GPUI upstream, dependencias, overlays ni Workshop;
+no existe setter nuevo. No se crea un parche parcial ni se integra al candidato.
+Informe `C:/tmp/fase2/informe-1470-zoom-spike.md`; evidencia estática
+`C:/tmp/1470-zoom-spike-evidence/fuentes.txt`. Diff-check y revisión documental;
+sin gates/build/capturas/paridad/ interacción/nitidez porque no hay implementación.
+Notas específicas ausentes; #1470 abierta; roadmap plan.md ausente en la base.
+Siguiente: orquestador revisa el inventario y decide el presupuesto del experimento.
+Sin push, PR, CI remoto, merge, promoción o release; checkout principal preservado.
+
+
+### #1470 — Zoom backend, ronda 2: parada por resize (2026-10-07)
+
+Presupuesto ampliado explícitamente a los nueve archivos del inventario.
+Rama `vantareapp/isa-1470-zoom-backend`, worktree `C:/tmp/vw3-1470-zoom`,
+HEAD inicial/final `9f39fa55e3617acd2cefa93fdae295643048aab6`, base original
+`dae60712778a2f44fa0604b155916b279c067eda`. Nueve archivos modificados sin commit;
+no se considera entrega aceptada ni se integra al candidato.
+
+Implementación experimental: multiplicador por HWND en window/events del vendor,
+puente PostMessageW dirigido en ui/lib.rs, carga en shell.rs, atajos en chrome.rs,
+persistencia `hub-zoom.json` en appearance.rs y control 90/100/110/125 en view.rs.
+README vendor y este handoff completan el inventario. Sin dependencias, global
+mutable, GPUI externo, overlays ni Workshop modificados. Búsqueda de llamadas:
+solo Hub/restauración/controles; overlays y Workshop no llaman al setter.
+
+Se activa el LÍMITE del usuario: a125, capture-desktop pide cliente1920×1080
+mediante MoveWindow y mide2400×1350 aDPI96. GetClientRect independiente confirma
+2400×1350, outer2416×1358; PNG real guardado y MIRADO. La escena QA fija su tamaño
+pedido como mínimo lógico (shell.rs); WM_GETMINMAXINFO lo escala por el factor
+efectivo. El mínimo normal1280×800 también pasaría a1600×1000 a125 según el código
+(inferencia, no prueba de ventana Normal). No se concluye inviabilidad del
+backend; requiere decisión sobre mínimo físico frente a zoom antes de reanudar.
+No se corrigió ni se amplió la implementación tras activar el límite.
+
+PASS fmt workspace y vendor/check completos/build QA por cola y -j2. Clippy
+-Dwarnings FAIL: shell_key101/100 líneas y orden del constructor Store.
+Nextest/lifecycle no ejecutados: parada y flujo de gates detenido en Clippy.
+Los errores iniciales de compilación se corrigieron y conservaron en logs;
+el build QA conserva el warning heredado unused cx de analysis/view.rs:989.
+No se debilita ningún test ni lint; no hay commit con gates fallidos.
+
+Capturas MIRADAS: seis referencias base a1920/1440 (Inicio/Launcher/General),
+General1920 a90 y125, y cliente real2400×1350 tras resize. Atajos Ctrl−/Ctrl+
+procesados y preferencias90/125 verificadas. Texto inicial nítido; sin certificación
+de toda la matriz18, paridad100/Standings0px, clic, scroll, reset/reapertura física,
+ventana Normal, LMU/OBS/Mac/DPI físico/performance o servicios reales.
+El clic no llegó a ejecutarse porque la herramienta verifica resize antes de él.
+Capturador externo adaptado para enviar atajos antes del PNG; falso fallo previo
+por PID reutilizado/carpeta antigua corregido seleccionando la carpeta más reciente.
+
+Informe `C:/tmp/fase2/informe-1470-zoom-spike.md`, patch/logs/fuentes/capturas en
+`C:/tmp/1470-zoom-spike-evidence/`. Verificar manualmente resize-failure.txt/PNG y
+reproducir con capture.ps1 General1920 a125 e Interactive, seguido de
+capture-desktop.ps1 pidiendo1920×1080 al PID propio. Sin tocar escala global.
+Roadmap plan.md ausente en esta base; no se crea una fuente alternativa.
+#1470 sigue abierta para revisión del orquestador. Sin push, PR, CI remota, merge,
+promoción, release ni acción externa fuera del seguimiento autorizado de la issue.
+### #1470 — Zoom backend, ronda 3: unidades corregidas y QA completa (2026-10-07)
+
+Reanudación explícita del orquestador; preservados los nueve cambios sin commit de
+ronda2. Rama vantareapp/isa-1470-zoom-backend, worktree C:/tmp/vw3-1470-zoom, base
+original dae60712 y HEAD inicial9f39fa55. Commit local final en el informe externo.
+WM_GETMINMAXINFO y resize usan DPI puro: scale_factor/(zoom/100). La ventana nace
+antes de restaurar zoom; el mensaje conserva cliente/swap chain y solo recalcula
+contenido. Origen, ratón, viewport y rasterizado siguen usando DPI×zoom.
+Sin GPUI externo, dependencias ni archivos productivos nuevos. Solo nueve archivos:
+vendor/window.rs y events.rs, ui/lib.rs, hub/shell.rs, shell/chrome.rs,
+settings/appearance.rs y view.rs, README vendor y este handoff.
+Atajos extraídos a shell_zoom_key, constructor Store ordenado; Clippy sin excepciones.
+
+PASS por cola/-j2/target propio: fmt workspace/vendor, check/all-targets,
+clippy-Dwarnings, nextest1186/1186 (6 skips existentes; ACC y neumáticos incluidos),
+lifecycle17/17, build QA. Warning QA heredado unused cx analysis/view.rs989 conservado.
+Matriz18/18 a1920×1080/1440×900 y90/100/125 MIRADA; tamaño físico posterior al zoom
+exacto aDPI96. Inicio/Launcher100=0px; General100 solo3743px de los dos textos
+nuevos, fuera de bbox(321,233)-(722,267)=0px. Standings0/292160px a tolerancia0;
+referencia, captura y mapa MIRADOS. Solo Hub llama al setter; Workshop/overlays no.
+Clic real(850,362) en «−» a125 aplica110 y persiste. Rueda6 pasos en General a125
+muestra Overlays. Resize1440→1920→1440 a125 y Ctrl0 conservan tamaño; preferencias
+reabren a125 sin enviar atajos, en shell QA aislada con rutas estables.
+
+Arnés externo enlaza las MISMAS librerías QA. WindowKind::Normal, mínimo1280×800:
+a90/100/125 rechaza solicitud1000×600 y mide1280×800 físicos; capturas MIRADAS.
+La shell comercial sin supervisor muestra acceso, por lo que no se autentica:
+reset/reapertura se prueban en PopUp QA y el mínimoNormal en ventana diagnóstica
+Normal del backend. No se confunde con validación de cuenta/servicios reales.
+Capturador externo de escritorio corregido para alinear cliente y reiniciar POINT
+antes de ClientToScreen; se conservan los intentos con8 columnas fuera del monitor.
+No es un cambio de producción ni un fallo de escala, hit-testing o nitidez.
+Límite visual: Inicio/Launcher1440 a125 envuelven/recortan contenido en tarjetas
+con altura fija; no se rediseña fuera del spike. Sin LMUlive, OBS, Mac, DPI125/150
+ni rendimiento. Sin Go/frontend por alcance; plan.md ausente en esta base.
+Informe C:/tmp/fase2/informe-1470-zoom-spike.md; capturas/logs/scripts/sellos r3-* en
+C:/tmp/1470-zoom-spike-evidence. Verificación: r3-matrix.ps1, r3-probe-build.ps1,
+r3-normal-shell-control.ps1 y r3-normal-verify.ps1; Native Normal con control/verify
+r3-backend-normal-*. Siguiente: revisión del orquestador. Sin push, PR, CI remoto,
+merge, promoción, release ni integración al candidato; checkout principal preservado.
+
+### #1470 — Zoom backend, ronda 4: límite de diseño (2026-10-07)
+
+Encargo explícito del orquestador; rama `vantareapp/isa-1470-zoom-backend`,
+worktree `C:/tmp/vw3-1470-zoom`, HEAD inicial `12f610d1`, base original `dae60712`.
+Se conserva la elección persistida y el DPI separado del zoom efectivo por HWND.
+Cada resize limita el zoom a 1280×800 lógicos con suelo 90 % del DPI; solo el Hub
+activa ese límite mediante el mensaje existente. A 1440×900/DPI96 limita a 112,5 %;
+a 1920×1080 el 125 % elegido queda intacto. Ajustes informa del límite bajo el
+control; +/Ctrl+ no aumentan por encima y − busca el paso inferior al zoom efectivo.
+Cinco archivos de código: vendor/window.rs, events.rs, ui/lib.rs,
+settings/appearance.rs y view.rs. README vendor y este handoff completan siete.
+Sin dependencia, global mutable, GPUI externo ni renderer alternativo. Roadmap
+plan.md ausente como en rondas anteriores; no se crea otra fuente para el spike.
+
+PASS fmt workspace/vendor, check/all-targets, Clippy -D warnings y build QA,
+por cola/-j2/target propio. Nextest 1186/1186 PASS (6 skips existentes;
+ACC 598,868 s, neumáticos 151,009 s); lifecycle 17/17 PASS (5 Engineer + 12 supervisor).
+Check/Clippy/build QA finales también PASS tras el ajuste cfg no-Windows para evitar
+un argumento no usado; ruta Windows intacta, General final 0 px respecto al primer
+build r4. Captura final y hoja r4-live-sheet MIRADAS. No se ejecuta gate Mac/DPI físico.
+Matriz de 18 capturas MIRADA: a 1920 las nueve combinaciones son 0 px respecto a
+r3; a 1440 las seis de 90/100 también. Elegido 125 limita a 112,5 y conserva 125.
+Standings 0/292160 px: referencia, captura y mapa MIRADOS. Resize vivo
+1920→1440→1920 recupera 125→112,5→125, PNG antes/después 0 px. Ctrl+ y clic+
+bloqueados en 110; Ctrl− desde 125 limitado elige 110 y clic− pasa 110→100;
+preferencias verificadas y capturas MIRADAS.
+
+**Aceptación visual NO alcanzada:** a 112,5 Inicio aún tapa parte de Abrir Studio
+(CTA envuelta bajo el hero); Launcher corta el borde inferior de los pasos.
+Recortes r4-crop-* MIRADOS. Diagnóstico 110 también tapa Abrir Studio en Inicio;
+Launcher a 110 cabe. El mínimo solicitado 1280×800 no basta para ese layout.
+No se amplía a home/launcher ni se cambia la fórmula para ocultar este resultado.
+Siguiente: revisión del orquestador del mínimo/layout, sin integrar al candidato.
+Informe `C:/tmp/fase2/informe-1470-zoom-spike.md`; evidencia externa r4-* en
+`C:/tmp/1470-zoom-spike-evidence`. Sin push, PR, CI remoto, merge, promoción o release.
+
+Commit local de ronda 4: consultar el SHA definitivo en el informe externo.
+El commit conserva el spike revisable; no significa aceptación visual ni integración.
+
+### #1470 — candidato beta unión 2, zoom combinado (2026-10-07)
+Segundo merge incorpora394720b9 tras43851186. Conflictos: handoff conserva ambas entradas; chrome conserva atajos zoom y rail compacto de r6, sin restaurar el helper antiguo de foco.
+Gates por cola/-j2/target propio PASS: fmt/check/clippy -D warnings, Nextest1208/1208 (6 skips; ACC431,878s), lifecycle17 escenarios.
+Capturas nuevas con zoom y aceptación visual siguen pendientes. Evidencia union2-m2-*; sin push/PR/promoción/release.
+
+### #1470/#1475 — candidato beta unión 2, Standings (2026-10-07)
+Tercer merge incorpora6faa25d4 tras6b7f8ee5 sin conflictos. Regresiones de VM visible por pipe y pista visible/oculta PASS.
+Gates por cola/-j2/target propio: fmt/check/clippy PASS, Nextest1210/1210 (6 skips; ACC432,872s), lifecycle17 PASS.
+Paridad visual0px nueva todavía pendiente, sin evidencia de rendimiento live. Logs union2-m3-*; sin push/PR/promoción/release.
+
+### #1476 — Observador de lifecycle Windows (2026-10-07, entrega aislada)
+
+Worker en `C:/tmp/vw3-1476/vantare-v2`, rama
+`vantareapp/isa-1476-lifecycle-windows`, base `dd90b49c9fa2244fb8fa881a44ff094f71bd4b11`.
+Solo se modifica `native/runtime/tests/lifecycle.rs` y este handoff. El supervisor,
+los presupuestos de reinicio, las aserciones de cierre y sus plazos permanecen intactos.
+Los hijos sintéticos registran su tiempo de creación antes de terminar. El observador
+Windows abre un handle, compara PID + creación y consulta el estado con una espera
+no bloqueante. Un PID reutilizado no cuenta como el hijo original; un proceso
+terminado tampoco cuenta como vivo aunque conserve handles abiertos. Errores de
+consulta distintos de PID inexistente hacen fallar el escenario.
+
+Regresión con proceso real: identidad actual viva, otra creación con el mismo PID
+rechazada y proceso terminado con handle retenido. RED con `tasklist` anterior
+(`regression-red-1.log`); GREEN con el arreglo (`regression-fixed-1.log`). Antes:
+50/50 pasadas originales en tandas de 25, sin fallo espontáneo. Después: 50/50.
+La regresión reproduce de forma controlada la confusión de identidad; NO demuestra
+que esa fuera la causa del PID39296 histórico ni un defecto del supervisor.
+
+Gates por la cola, -j 2 y target propio `native/target/gates`: fmt/check/clippy PASS,
+Nextest 1185/1185 PASS (6 skips existentes; ACC completo PASS en 639,385 s), lifecycle
+5 Hub + 13 runtime PASS. Standings Prueba: 0/292160 px, umbral 0/delta máximo 0;
+candidata, referencia y mapa MIRADOS. Dos capturas Debug idénticas conservaron
+1 px/delta 1 en (41,48); se repitió con el perfil Prueba usado por las validaciones
+previas, sin modificar UI, referencia ni tolerancia. EXE SHA256 en
+`C:/tmp/1476-evidence/prueba-workshop.sha256`.
+
+Primer Nextest falló en IPC (`put_wakes_a_waiting_reader_and_close_releases_it`):
+486 PASS, 1 FAIL, 698 sin ejecutar. El test usa dos pausas de 20 ms que no aseguran
+que el lector observe `put` antes de `close`. Hallazgo separado en
+[#1478](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1478),
+Project Vantare/Backlog; IPC idéntico a la base. Log `final-test.log` conservado;
+repetición completa `repeat-test.log` PASS sin cambios en IPC.
+
+Evidencia externa `C:/tmp/1476-evidence/`; informe de 10 líneas y SHA final en
+`C:/tmp/fase2/informe-1476.md`. Solo entrega local para revisión del orquestador:
+sin push, PR, CI remota, merge, promoción ni release. Sin dependencias nuevas.
+`docs/roadmap/plan.md` no existe en la base asignada; esta corrección de QA no
+cambia alcance público ni entrega una feature pendiente del roadmap.
+Sin certificación LMU live, OBS, DPI mixto ni macOS; no se ejecutan suites globales
+Go/TS porque solo cambia QA Rust Windows.
+
+### #1470/#1476 — candidato beta unión 2, lifecycle Windows (2026-10-07)
+Cuarto merge incorpora127bf564 tras5d64a300. Conflicto solo de handoff: ambas entradas completas conservadas.
+fmt/check/clippy PASS; Nextest1210/1210 PASS (6 skips; ACC488,713s); lifecycle PASS, incluye regresión process_observer_distinguishes_identity_and_terminated_processes.
+QA beta.1/testers compilado y hashes de fuentes guardados; 36 capturas1920 y36 a1440 MIRADAS,1280 en curso. Focal1280/100 y1440/125 elegido MIRADAS: botones Inicio y cuatro pasos Launcher caben; General confirma límite112,5% sin cambiar elección125.
+Elipsis y contenido inferior con scroll preexistentes conservados. Escenas Workshop/Telemetría/Licencias redirigen a Inicio; Cuenta sí cubre licencias. Warning QA preexistente analysis/view.rs:989 conservado.
+Sin push/PR/CI remota/promoción/release; falta merge feed, packaging, paridad/alfa y Release externo. Evidencia union2-*.
+
+### #1470/#1472 — candidato beta unión 2, feed vacío (2026-10-07)
+Quinto merge810709e7 tras e8f6661b añadido por nota prioritaria: feed vacío/igual/anterior/inválido muestra current/Estás al día; fallos de transporte conservan error.
+remote-feed-tests.ps1 PASS9/9 en PS5.1 yPS7; firma real con clave exclusivamente TEST, transporte simulado, sin modificación de instalación activa.
+No cambia Rust/UI respecto al cuarto merge ya validado; no se repiten gates de código intacto. Conflictos ninguno; diff-check PASS.
+36 capturas por tamaño1920/1440/1280 MIRADAS; matriz completa en union2-resumen-*.png, focales zoom125→112,5 confirmadas. Quedan paridad/alfa y empaquetado/Release externo.
+Sin push/PR/CI remota/promoción/publicación; solo cinco merges locales autorizados. Logs union2-feed-ps51/ps7 ycapturas externas.
+
+### #1470 — cierre local de candidato unión 2 (2026-10-07)
+Cinco merges locales autorizados: 43851186 (r6), 6b7f8ee5 (zoom), 5d64a300 (#1475), e8f6661b (#1476), cc3437dc (#1472). Base 1c26b898. Solo conflictos de handoff y chrome; sin dependencias nuevas.
+Gates finales de código PASS: fmt/check/clippy -D warnings, Nextest1210/1210 (6 skips existentes, ACC488,713s), lifecycle18/18. Feed9/9 en PS5.1 y PS7; packaging beta174/174 en PS5.1. El intento PS7 falla por powershell.exe ausente en PSHOME; no se altera el test.
+QA beta.1/testers y Release externos compilados por cola/-j2. Hashes de fuentes QA coinciden con código final. Release generado desde cc3437dc, source_dirty=false; arranque responsive/cierre exit0 fuera del repo, pantalla de acceso inspeccionada. No prueba autenticación.
+111 capturas MIRADAS:36 por tamaño1920/1440/1280 y3 focales1440/125 elegido. Inicio Abrir Studio y cadena Launcher caben1280/100; General conserva125 elegido y limita112,5 a1440. Elipsis y scroll presentes. Workshop/Telemetría/Licencias redirigen a Inicio en estas escenas; no certifican módulos activos.
+Standings0/292160px (umbral0/delta0) contra captura del candidato previo, ambas imágenes y mapa inspeccionados. La referencia histórica del repositorio difiere85,3666%; log conservado, no se cambia referencia ni tolerancia.
+ALFA FALLA:110/111 opacas; shell-paleta-busqueda1280 reproduce1 píxel RGBA0,0,0,0 en(912,503). Guard255/254/0 funciona. Sin normalizar imagen ni debilitar gate; causa renderer/PrintWindow sin determinar. Hallazgo fuera de alcance #1479: https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1479 . Aceptación de candidata pendiente de revisión/corrección del alfa.
+Evidencia C:/tmp/candidato-evidence/union2-*; informe C:/tmp/fase2/informe-candidato-union2.md. Sin push/PR/CI remota/promoción/publicación. Sin certificación LMU live, OBS, DPI mixto o macOS. docs/roadmap/plan.md ausente en base; no se inventa otro roadmap. Siguiente: orquestador revisa evidencia y #1479 antes de aceptar candidata.
+
+### #1479 — alfa de paleta a 1280, causa GDI+ (2026-10-07)
+Entrega local para revisión: `C:/tmp/vw3-1479`, rama `vantareapp/isa-1479-alfa-paleta`, base candidata `145b6702`. No cambia UI, renderer ni dependencias.
+Causa demostrada: render target D3D11 conserva alfa255 en(912,503) en806 lecturas de2 frames, último BGRA[12,11,13,255]; `Graphics.GetHdc/ReleaseHdc` interpreta RGB(13,11,12) como centinela sin pintar y lo deja RGBA0. Instrumentación temporal retirada; código diagnóstico y logs fuera del repo.
+Corrección en origen: `PrintWindow` escribe a DIB top-down32 y se guarda su BGRA original; `GdiFlush` sincroniza antes de leer la memoria conforme al [contrato CreateDIBSection](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-createdibsection). Sin fondo añadido ni normalización de alfa. Test sin GPUI reproduce el centinela, verifica que SetPixel escribió y conserva RGB/alfa255/254/0; guard rechaza254/0. PS5.1 yPS7 PASS.
+fmt/check/clippy -D warnings PASS; Nextest1210/1210 PASS (6 skips existentes; ACC489,143s), lifecycle18/18 PASS. Build QA beta.1/testers por cola/-j2, binarios congelados fuera del repo. Warning QA preexistente `analysis/view.rs:989` conservado; clippy normal sin warnings.
+Batería versionada `capture-alpha.ps1`/`alpha-scenes.json`:36 escenas por tamaño1920/1440/1280, turno exclusivo, helper dueño del mutex y timeout90s. Binario final108/108 opacas, dimensiones y hashes auditados por PIL;9 galerías inspeccionadas. Paleta1280: exactamente1 píxel cambia frente a candidata, RGBA0→13,11,12,255 en(912,503), resto idéntico; imagen y ampliación inspeccionadas. Las escenas Workshop/Telemetría/Licencias redirigen a Inicio como en la base; no certifican módulos activos.
+Standings final0/292160 con umbral0/delta0 contra `C:/tmp/candidato-evidence/union2-standings/standings.png`; captura, referencia y diff inspeccionados. Referencia histórica del repo conserva deuda85,3666% registrada en candidata; no se actualiza ni se cambia tolerancia.
+Primer intento de matriz: PNG de diagnóstico1440 opaco pero cierre del helper excedió10s; log `alpha-first.log` conservado. Repetición1440/1280 PASS y matriz completa final108/108 PASS sin fallos de cierre. Arranque Hidden inicial no abrió HWND y excedió90s; batería usa ventana Normal para captura física.
+Evidencia `C:/tmp/1479-evidence/`; informe y SHA en `C:/tmp/fase2/informe-1479.md`; manual `pwsh -File C:/tmp/1479-evidence/manual.ps1`. Issue actualizada; siguiente: orquestador revisa diff/evidencia antes de integrar. Sin push/PR/CI remota/merge/promoción/release ni acciones externas fuera del seguimiento autorizado. QA Windows DPI96; sin LMU live/OBS/DPI mixto/macOS; no Go/TS al no cambiar su código. `docs/roadmap/plan.md` no existe en la base y esta corrección de QA no cambia alcance público.
+
+### #1482 — Studio instalado, inicialización compartida (2026-10-07, entrega aislada)
+
+Worker `C:/tmp/vw3-1482-studio/vantare-v2`, rama `vantareapp/isa-1482-studio-instalado`,
+base candidata `7be121744fb477090995d28d009fc08fc1cb9666`, limpia al empezar.
+Issue [#1482](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1482);
+brief `C:/tmp/beta/r4/brief-studio-instalado.md`. Sin subagentes ni dependencias nuevas.
+Ambos hosts resuelven `data/Vantare/native/layout.json`: la causa era la revisión,
+no otra ruta. PreparedStudio podía abrir el archivo ausente antes del primer frame
+de overlays; su creación posterior dejaba Editor con bytes=None y layout vacío.
+La siguiente edición disparaba el guard de conflicto. `Document::initialize`
+compartido crea/adopta el layout inicial antes de pintar en Studio y overlays,
+respetando el vacío explícito y los conflictos de ediciones posteriores.
+
+Regresiones: adopción tardía, inicialización concurrente sin sleep y vacío deliberado;
+proceso hijo Windows con raíz de generación limpia, cuatro widgets, guardado,
+recarga en pista, añadir y reabrir. El padre exige que el archivo se haya creado.
+Gates por cola/-j2/target propio: fmt/check/Clippy -D warnings PASS,
+Nextest1220/1220 PASS (6 skips existentes; ACC500,619s), lifecycle18/18 PASS.
+Refuerzo final del test subprocess: fmt/Clippy y arquitectura7/7 PASS.
+Packaging beta174/174 PASS sobre el paquete0.0.951 utilizado en la reproducción.
+Standings0/292160px contra candidata union2, umbral0/delta0; captura, referencia y
+mapa inspeccionados. Renderer, referencias y tolerancia intactos.
+
+Copia portable aislada en `C:/tmp/studio-instalado`; instalación de Isaac intacta,
+solo lectura del resumen: generación de7f1ef9, cuatro widgets. Hub productivo
+corregido sin demo/capture crea cuatro instancias en datos nuevos ANTES de overlays.
+Login aislado exige sesión; no se copian credenciales ni se certifica autenticación.
+Harness externo QA (fuente temporal retirada del repo) recorre1440×900/DPI96:
+cuatro widgets/Guardado verde, Ejemplo/En vivo, selección, drag persistido,
+inspector filas/cabecera, visibilidad4→3→4, añadir/undo/redo5→4→5 y reapertura.
+Capturas originales y hoja inspeccionadas; JSON y recarga del mismo HWND verificados.
+Mostrar en pista/Publicar en OBS están disabled Próximamente en la base;
+captura qa-track-disabled.png. No se habilitan fuera de esta causa.
+Árbol QA con EXE Prueba sustituidos y hashes externos: no es paquete publicable.
+No prueba login empaquetado autenticado, LMU live, OBS, rendimiento, DPI mixto o Mac.
+
+Evidencia `C:/tmp/studio-instalado-evidence/`; informe≤15 líneas/SHA definitivo en
+`C:/tmp/fase2/informe-studio-instalado.md`. Manual `manual.ps1` preparado (no ejecutado,
+requiere sesión propia) con instancia aislada isa1482-manual; cierre incluido.
+Siguiente: revisión del orquestador y smoke autenticado antes de aceptar/integrar.
+Solo commit local; sin push/PR/CI remota/merge/promoción/release ni acciones externas
+fuera del seguimiento GitHub autorizado. Go/TS no ejecutados: solo cambia Rust/UI.
+Roadmap plan.md ausente en esta base; no se crea otra fuente ni se cambia alcance público.
+
+### #1468 — H2H sectores, opción 1 (continuación 2026-10-08)
+
+Worker C:/tmp/vw3-1468-h2h/vantare-v2, rama vantareapp/isa-1468-h2h-sectores,
+base aa8ba9e18e057426e65d1595c17727080e8a08b7. Se conservan los tres cambios
+Rust del intento interrumpido por disco lleno. Handoff vacío recuperado íntegro
+de HEAD antes de añadir esta entrada; no se elimina documentación histórica.
+Opción 1 aprobada: 388×158, rivales 48 px y jugador 62 px, tipografía Inter 14.
+Rivales conservan nombre/clase/rótulo/gap y añaden S1/S2/S3 de última vuelta y MEJ.
+Solo tiempos Reliable positivos finitos; ausencia o calidad no fiable → —.
+Demanda LapTimes/Sectors 250 ms bajo showSectors; Positions/Relative 33 ms.
+Studio usa wanted_size compartido; regresión de Editor::add comprueba tamaño
+388×158 y colocación dentro del canvas. Sin adquisición/DTO/dependencias nuevas.
+Hashes ACC/LMU47 intactos, máximo tres sectores en ambos corpus. Gates finales PASS:
+fmt + módulos explícitos, check, Clippy -D warnings, Nextest 1236/1236 (6 skips),
+lifecycle 18/18, build Prueba/parity-capture. Evidencia C:/tmp/1468-h2h-evidence.
+Toda compilación por C:/tmp/fase2/compilar.ps1, -j 2, target propio de este worktree
+(restaurado a C: con espacio disponible). No se reutilizan gates del intento previo.
+plan.md ausente en base y origin/nightly; no se recrea. Usuario/brief fijan GitHub
+como tracker frente a instrucciones históricas Notion del checkout.
+Sin push/PR/merge/promoción/release. No certifica conducción live, OBS, Mac ni DPI.
+Capturas ACC/LMU47 MIRADAS: sectores ACC 37.860/41.505/38.987 y MEJ 1:58.352;
+LMU47 sectores —, MEJ 4:40.566. Textos originales conservados, sin recortes.
+Studio: catálogo real Añadir widget → Cara a cara; inspector 388×158, x20/y20,
+marco dentro del canvas. Escena Ejemplo QA aislada; hay superposición inicial
+con widgets existentes en esa zona. No certifica autoordenación ni drag/resize.
+Primer Studio --demo/--studio mostró Comprobando sesión: PNG conservado como
+diagnóstico, repetido con --capture studio-base y controles reales. Harness
+PowerShell temporal externo mantuvo abierta esa escena; no cambió binario ni acceso
+productivo. Cambio de Objetivo a Detrás inspeccionado; proceso QA cerrado.
+Standings 0/292160 px, umbral 0/delta 0 contra candidata union2; imágenes/diff MIRADOS.
+Alfa capture-alpha.ps1 108/108 opacas a 1920/1440/1280; nueve hojas MIRADAS.
+Falló una compilación Nextest lexical-core vía sccache sin diagnóstico adicional;
+repetición local RUSTC_WRAPPER vacío PASS sin cambiar config/repo/tests. Logs intactos.
+Warning heredado de build parity-capture analysis/view.rs (cx) conservado;
+Clippy normal PASS. Solo entrega y commit locales para review del orquestador.
+Sin rama remota/PR verificado, sin CI remota, push, merge, promoción ni release.
+
+### #1496 — UI r10, ronda 3 Studio (2026-10-08, implementación aislada)
+
+Worktree Git C:/tmp/vw3-ui-r1; producto vantare-v2; rama
+vantareapp/isa-1496-ui-r3-studio; base R2 66ba1d45afd01266053065e2e17164c92bad3687.
+Brief autorizado C:/tmp/ui-r10/brief-r3-studio.md prevalece sobre referencias
+históricas Notion y el cuerpo R0 de GitHub1496. Sin delegación ni otras ramas.
+Hito 1: barra de widget con kit compartido, botón principal44 y selector local
+sin opciones inventadas. Lienzo16:9 centrado, máximo que cabe, sin tarjeta
+exterior ni límite100% al ajustar; zoom manual conserva scroll espacial.
+Renderer Overlay productivo, documento y motor de drag intactos. Check PASS
+basal y tras el hito; fmt/diff-check PASS. Pantalla ocupada: ninguna ventana
+ni captura. Tamaño libre/estilo/acento global/Hz por instancia no existen en
+el documento nativo; se preparan como pendientes, sin schema ni renderer nuevo.
+Siguiente: barra inferior, tira/escenas, inspector, anclaje y cruceta, gates.
+Sin push/PR/merge/promoción/release; evidencia C:/tmp/ui-r10/r3-evidence/.
+Hito 2: barra inferior con zoom y x/y/ancho/alto reales del renderer; Hz sin
+medición muestra —. Tira horizontal con selección/visibilidad documental.
+Carrera activa las muestras existentes (todas Race); demás escenas pendientes,
+vuelta leída de la foto actual, sin slider ni reproducción ficticia. Check/fmt
+PASS. Continúa pantalla ocupada, sin capturas. Siguiente: inspector acoplado.
+Hito 3: inspector usa secciones Orbit sin cajas, cabecera de selección y OBS
+fijo; controles tipados existentes preservados y filas adaptadas al ancho320.
+La contracción se delega al estado global del panel derecho (Ctrl Alt B), sin
+segunda preferencia local. Estilo y URL OBS pendientes; color solo donde lo
+soporta RacingFlags. Check/fmt/diff-check PASS; pantalla sigue ocupada.
+Hito 4: anclaje3×3 y cruceta documental (1px/Mayús8px/centro), sin números en
+el inspector ni anchor persistido nuevo. Tests cubren nueve posiciones,
+movimientos, límites, recarga y undo. Tamaño −/+ deshabilitado; Rendimiento
+como sección pendiente: no se promete nivel4Hz ni frecuencia no soportada.
+Check y fmt PASS; pendiente suite/gates finales y QA si queda libre la pantalla.
+Hito 5 y cierre local: geometría máxima16:9 sin padding extra, centrado explícito
+del viewport medido y scroll espacial al ampliar; tests a siete tamaños y ambos
+paneles. Selectores/filas/celdas usan el kit común; docs y fragmento conservan R2.
+Gates finales PASS por cola: fmt/check/Clippy-Dwarnings; Nextest1257/1257,
+6 skips previos; lifecycle18/18; build prueba con beta-dev-clerk, exit0.
+Clippy detectó inicialmente función larga y nombres similares: corregidos
+separando rejilla/cruceta y renombrando, sin excepciones nuevas ni gates débiles.
+Core drag/cancel/commit/teclado4/4 idéntico a R2 (hashes en drag-core.json).
+Pantalla-ocupada existe al cierre: cero ventanas y cero capturas, también del
+mockup. QA visual/adaptación física y fluidez antes/después NO verificadas.
+El único benchmark encontrado es del frontend histórico, no certifica GPUI;
+no se ejecutó ni se sustituyó por una métrica sintética. Pendiente review visual.
+Controles sin contrato siguen pendientes: tamaño libre, estilo/acento general,
+frecuencia por instancia, otras escenas/slider, OBS y Mostrar en pista.
+README y evidencia incluyen pasos manuales y script de captura con guardia/mutex;
+QA parity-capture no compilado ni ejecutado por pantalla ocupada. Go/TS no aplican.
+plan.md ausente en la base; no recreado ni roadmap.json editado. Diff completo
+revisado; sin cambios runtime/domain/ipc/ui/frontend/locks/dependencias.
+Sin push/PR/CI remota/merge/promoción/release, rama remota y PR ausentes verificados.
+Caché target/gates y marcador de pantalla intactos. Única acción externa:
+seguimiento autorizado en GitHub1496; no se cierra la issue ni se amplía su cuerpo.
+Informe≤15líneas, HEAD final, logs y preguntas: C:/tmp/ui-r10/informe-r3.md y
+C:/tmp/ui-r10/r3-evidence/VERIFICACION.md. Siguiente: revisión de Isaac/orquestador
+y tanda visual + medida nativa cuando esté libre la pantalla, antes de aceptación.
+
+### #1496 / #1504 — continuación e integración local (2026-10-08)
+
+Foco del Launcher completado en e597a009; R5 integrado a3307eb0 y R6 5797308f
+con merge no-ff, kit único y Adapt por ventana. Wordmark cafe8fd3 incorporado
+conservando icono contraído #D80000, Ajustes R4 y los siete arreglos.
+Conflictos de sidebar/handoff resueltos conservando marca y toda la evidencia.
+PresentMon previo mide intervalos de presentación, no latencia de entrada
+(cero muestras msSinceInput): arrastre pendiente explícito, sin afirmar fluidez.
+Gates/capturas del conjunto en curso. Sin push/PR/CI remoto/promoción/release.
+
+Verificación del conjunto calidad/70e15d11 (2026-10-08): fmt/check/Clippy
+-D warnings PASS; Nextest1272/1272 (6 skips previos + microbenchmark ignorado),
+lifecycle18/18 y builds prueba/QA PASS por la cola, target propio -j2.
+QA conserva warning heredado analysis/view.rs:989. Capturas del conjunto en
+curso; primer intento oculto falló por HWND no visible, repetido correctamente
+por ruta nativa prevista. Logs/manifiesto: calidad-1-evidence/reanudacion.
+Latencia de entrada sigue pendiente (PresentMon msSinceInput=0); no se
+certifica fluidez, DPI físico, LMU live, OBS, login ni Mac. Solo local.
+
+Cierre de la tanda de calidad (código70e15d11): 144/144 PNG en 1920×1080 y
+1280×720, Vantare/DeepSeek, hashes y dimensiones comprobados. Doce hojas
+y originales de casos principales inspeccionados; sin regresión de conflictos
+observada en la muestra. Ventanas y helpers QA cerrados; mutex libre.
+Tres aliases históricos Workshop/Telemetría/Licencias muestran Inicio/cargando
+y no acreditan esos módulos; R0–R6 sí cubiertos. No paridad exacta ni latencia.
+Informe≤15 líneas C:/tmp/ui-r10/informe-calidad-1.md; logs/diff/manifiestos/manual
+en calidad-1-evidence/reanudacion/VERIFICACION.md. Instalación real intacta.
+Siguiente: revisión del orquestador/Isaac; latencia de entrada pendiente.
+Solo commits/merges locales autorizados y seguimiento GitHub; sin push/PR/
+CI remota/promoción/release. No se afirma aceptación ≥9 ni publicación.
+
+### #1496 — calidad vuelta 2 (2026-10-08, rama aislada)
+Base 80c0d910 en C:/tmp/vw3-ui-calidad; brief/revisión externos autorizan
+D1–D3, V1 y evidencia E1–E3 del conjunto R0–R6. Sin delegación/push/PR.
+Grupo compartido D1/D2: primary_button conserva pareja AA normal/hover,
+feedback por borde; Layer Popover aplica cristal a ambos stops del fondo,
+Choice conserva el mismo alfa y modal opaco queda explícito en la ayuda.
+Regresión efectiva nueve paletas × claro/oscuro × cristal50/100 con
+persistencia; Nextest seleccionado2/2 y Clippy workspace-Dwarnings PASS.
+Evidencia C:/tmp/ui-r10/calidad-2-evidence/logs/shared-*.log.
+Pendiente capturas/interacciones, D3/V1, layout físico e input→Present;
+no se atribuye nota ≥9, fluidez, live ni promoción a estos tests.
+D3 heredado corregido: búsqueda/filtros siempre montados, Limpiar restaura
+Todos y consulta vacía con foco en búsqueda. Cero eventos y cero coincidencias
+usan mensajes distintos. Regresión del recorrido filtrar→vacío→limpiar PASS;
+Nextest seleccionado4/4, runtime UI pendiente en tanda final. D1/D2 5f85c7cd.
+V1 Agenda: cabecera semanal fuera del scroll interior; apertura/reapertura
+prioriza la hora local actual con ScrollHandle real, sin eliminar ocurrencias
+ni reordenar días. Se conserva la posición al redimensionar/actualizar el reloj.
+Nextest calendario22/22 PASS (recurrencias/DST/seguimiento/conflictos/cache).
+Clippy workspace-Dwarnings PASS tras simplificar el estado a Option<ScrollHandle>.
+Pendiente inspección de densidad y navegación al principio/final del día.
+D3 c59e02a2, D1/D2 5f85c7cd; siguiente tanda QA/E1–E3 aislada.
+Banco E2: ejemplo ui-quality requiere parity-capture, root absoluto y replies.json;
+se copia como vantare.exe solo en carpeta QA para que Client valide la imagen
+del peer real. IPC/protocolo/controladores/shell productivos; replies de contrato
+locales, sin red, backend, credenciales ni servicios/instalación personales.
+Pipe por PID, hilo cancelable y cerrado al salir; draft guardado en root propio.
+El recorrido real detectó espera sin feedback: Testing muestra ahora operación
+en curso conservando el borrador. Clippy normal-Dwarnings y Nextest22/22 PASS.
+Tanda QA en curso (logs/capturas/requests.jsonl en calidad-2-evidence); no se
+presentan los intentos fallidos del harness por timeout corto como fallos de app.
+V1 4a2584f1; siguiente: cerrar interacciones, bounds y traza QPC release.
+E2 reintento: el recorrido real detectó casilla marcada tras consumir el permiso
+(sin segundo envío admitido). clear_approval sincroniza permiso y casilla;
+preview nueva, error, captura, reintento, envío y recibo invalidan la marca.
+Clippy-Dwarnings y Nextest Testing22/22 PASS; regresión UI final en curso.
+No cambia protocolo, consentimiento persistido ni autorización del servicio.
+Banco/espera ca238d0f; artefactos de intentos QA conservados y diferenciados.
+E3 af5b69be: seis muestras release instrumentadas, alternadas antes66ba1d45/
+finalaf5b69be,1920×1080,DPI96,UI/canvas100%,cuatro widgets y dos arrastres
+reales por muestra. QPC inyección→WM_MOUSEMOVE→preview→render→Present;
+1432/1440 movimientos enlazados,8 no enlazados/coalescidos declarados.
+p95 evento→Present antes11,42–12,56ms/final11,66–12,46ms; inyección→Present
+final14,18–20,20ms. No se demuestra regresión del tramo app ni mejora causal.
+Trazas, binarios/hashes, inyecciones y analizador en calidad-2-evidence/performance.
+Instrumentación solo en copias externas; no añade logging a producción.
+PresentMon1.10 exit0 sin CSV/eventos utilizables en esta sesión sin privilegio;
+la medida usa la traza equivalente del Present real, no intervalo/API time.
+No acredita dispositivo físico→fotón, scanout,18 widgets ni LMU/OBS.
+E1/E2 barra: el recorrido con ratón reprodujo pestañas/campana/carril sin acción;
+la zona Drag de la barra alcanzaba sus hijos. Occlude acotado a las acciones
+seccionales, campana y carril; conserva drag en espacio libre y no altera GPUI.
+Regresión runtime QA: clics Carteles→Tiempos con aria_selected comprobado,
+contraer carril y abrir notificaciones PASS; capturas header-mouse-* inspeccionadas.
+Clippy-Dwarnings PASS. La prueba es por HWND/input nativo, no un test del estilo.
+E3 traza 4193684c; E2 consentimiento af5b69be. Gates/matriz final continúan.
+E1/E2 Roadmap: fixture Publication local poblada (24 hitos, títulos/cuerpos largos)
+reprodujo desborde del titular y error oculto como caché. Titular Rajdhani con
+wrap/límite2 líneas y tooltip completo; status conserva el mensaje del servicio.
+Regresión runtime: Circuito/Tablero/Temporada seleccionadas con ratón y capturas
+roadmap-final-*; error IPC de carga1280×720 visible, sin inventar publicación.
+Clippy-Dwarnings PASS; límites del titular inspeccionados en PNG, no atribuidos
+al dump UIA (el backend no expone ese texto como control medible).
+Barra b9433fdb; E3 4193684c. Lista poblada/error a ampliar en matriz final.
+E1/E2 Launcher: Tab→Avanzado→JSON→guardar/reabrir verificado en root propio;
+Escape y Cancelar conservan bytes guardados. Cadena productiva sobre dos archivos
+QA inválidos: confirmar confianza→fallo→continuar→reintentar→cancelar, sin procesos
+personales. Se corrigió fila de reintentos: flex_wrap evita cortar la segunda acción.
+Bounds reales de ambas acciones1920×1080 y1280×720 PASS, PNG inspeccionados.
+Clippy-Dwarnings PASS. Capturas launcher-real/advanced/reopen/discard/retry/wrap.
+Los primeros1280 del harness no reducían el mínimo QA1920; se repitieron con
+mínimo1280 y tamaño cliente comprobado, sin contar el intento como prueba.
+### ISA-1496 · Segunda vuelta: ancho efectivo del inspector
+- La interacción nativa mostró controles de 168 px dentro de una columna de 140 px: Filas alcanzaba x=1932 en cliente de 1920. La columna reserva ahora 168 px y 196 para Opacidad con su porcentaje; no se modifica el tamaño mínimo del kit.
+- Build QA y Clippy `-D warnings` PASS. UI Automation del binario recompilado: Filas x=1736, ancho=168, extremo=1904; Opacidad x=1708, ancho=176, ambos dentro del panel. Capturas/recorridos en `C:/tmp/ui-r10/calidad-2-evidence`; matriz completa y gates finales aún en curso.
+### ISA-1496 · Segunda vuelta: espera en el consumidor real del redactor
+- La inspección del PNG descartó la primera prueba de busy: el redactor R5 llamaba directamente a `editor.render` y no consumía `Remote::testing`. Ahora llama a ese método compartido con el ancho compacto de su columna; el aviso de espera queda encima del formulario productivo.
+- Clippy `-D warnings` y build QA PASS. `testing-busy-final.png` del binario recompilado muestra «Procesando el informe… Conservamos tu borrador.» durante una respuesta IPC local demorada seis segundos. No se atribuye el aviso a las capturas anteriores. Repetición del recorrido completo y gates finales en curso.
+### ISA-1496 · Segunda vuelta: gates completos del código final
+- Código nativo `937fe794`, árbol nativo `9fbaabfa9195addec7c25d9ba1189451a9dbeee4`: fmt, Clippy workspace `-D warnings`, Nextest 1.274/1.274 (dos lentos, siete omisiones declaradas) y lifecycle 18/18 PASS. La última ejecución de Nextest duró 532,090 s; no se atribuyen a este código las ejecuciones anteriores.
+- Build QA PASS; SHA256 del example copiado como `vantare.exe`: `6F52E7075EDC04E8DD90C50D22770E7485BC3381CCBDFC0EDE3F1BEE04C20EB7`. QA/parity conserva el warning heredado de `cx` en `analysis/view.rs`; el Clippy normal no tiene warnings. El binario estándar QA y los logs/manifiestos viven fuera del repo.
+- La matriz ampliada y la repetición final de latencia continúan; todavía no se certifican aceptación visual ≥9, CI remota ni promoción. Sin push ni PR.
+### ISA-1496 · Segunda vuelta: matriz integrada y DPI físico cerrados
+- Código `937fe794` y EXE `6F52E7075EDC04E8DD90C50D22770E7485BC3381CCBDFC0EDE3F1BEE04C20EB7`: 1.386 capturas (33 escenas × 3 temas × 7 tamaños × 2 carriles), 42 adicionales de notificaciones y 32 al 125% físico. `audit-final.json` verifica hashes, dimensiones, 4.662 bounds de la matriz principal y estados de carril. Dos HWND/PID reales acreditan geometría independiente.
+- Windows 125% comprobado por monitor y `GetDpiForWindow=120`; a 1920×1080 la UI efectiva es 100%, a 1600×900 aplica el ajuste automático existente a 90%. Ratón, Tab y foco observados en ocho páginas. Windows restaurado al 100% y ventana propia de Ajustes cerrada, también en los intentos fallidos.
+- Controlador UIA con contexto DPI consciente: se descartaron los primeros clics virtualizados. El formulario usa su scroll interior real; tres capturas a 1366 y una al 125% se repitieron descontando el recorte del contenedor, no solo el tamaño de ventana. Las acciones completas se inspeccionaron después del scroll; no se promete que todo el formulario quepa simultáneamente.
+- Hojas de contacto y originales seleccionados inspeccionados (incluidas las ocho páginas al 125%, notificaciones de los tres temas y botones del redactor corregidos). La auditoría de 1.460 PNG no equivale a inspección humana individual de todos. El viewport 2560 es nativo/PrintWindow, no un monitor físico QHD.
+- Evidencia y controladores reproducibles en `C:/tmp/ui-r10/calidad-2-evidence`; los gates de `937fe794` siguen vigentes porque el árbol nativo no cambió. Continúan la repetición adicional de E2 y las trazas release finales de E3; aceptación independiente ≥9 pendiente. Sin push/PR/promoción.
+### ISA-1496 · Segunda vuelta: recorridos de interacción cerrados
+- E2 con código `937fe794`: Cuenta tiene prueba nueva de espera (Poll demorado 5 s), error visible, reintento, vuelta y logout en raíz `account-proof-final`; no se cuenta el PNG anterior que aún mostraba el estado inicial. Las cuatro vistas de Testing se recorrieron con flechas y selección UIA comprobada en `testing-keyboard-final.json`.
+- Redactor final: `roots/testing-aceptacion/flow-final.json`, busy real, validación/error, consentimiento retirado al reintentar, recibo/detalle, borrador conservado y doble clic con un único envío por intento. `requests.jsonl` conserva las siete operaciones de ese recorrido; sin envíos remotos reales.
+- Ajustes/Diagnóstico repetidos sobre el binario final: persistencia, conflicto de documento/preferencias sin sobrescribir, búsqueda imposible con controles conservados y limpiar con foco/eventos recuperados. Shared: Choice y Layer a 50/100, Escape/clic exterior/foco; hover real de Nuevo informe e Inicio en Claro/Oscuro, además de los 18 pares efectivos de colores del test.
+- Calendario: tres vistas/filtros, favorita y campana guardadas y reflejadas tras recarga, raíces independientes sin publicación y con semilla caducada (validUntil 2026-09-01). Se observa el ID realmente elegido; no se presume una posición fija en tarjetas ordenadas por próxima salida. Roadmap: Publication local larga de 24 hitos, tres vistas seleccionadas y error visible.
+- Studio/Inicio (opacidad 0/0,25/1, visibilidad/orden/anclajes/nudge/undo/redo/recarga/arrastre/Escape) y Launcher (Tab/Avanzado/guardar/reabrir/descarte/cadena/error/reintento/cancelación) conservan los recorridos del código `d8401c22`: `interaction-provenance.json` verifica sus fuentes idénticas en `937fe794`. E1 vuelve a ejercitar sus controles/tamaños con el binario final.
+- Los scripts externos usan UTF-8 y esperan estados observables. UIA compara el sentinel NotSupported por identidad, evitando convertir la selección true en null; los dumps antiguos con ese null no se usan como prueba de selección. Foco/bounds/carril y PNG de E1 no dependían de ese campo.
+- Hojas/originales críticos inspeccionados y evidencia en `C:/tmp/ui-r10/calidad-2-evidence/VERIFICACION.md`. E3 final continúa; gates vigentes por árbol nativo idéntico. Sin push/PR/promoción; revisión independiente ≥9 pendiente.
+### ISA-1496 · Segunda vuelta: latencia real de la entrega final
+- E3 medido en release optimizado antes `66ba1d45` y entrega `937fe794`: seis muestras alternadas, cuatro widgets, 1920×1080/DPI96 y UI/canvas100%. Cada raíz QA es nueva; dos arrastres de 120 movimientos a 60 Hz, hit test nativo antes de pulsar y punto final mantenido 250 ms antes de soltar. Desplazamiento documental 240×120 px confirmado 1:1 en las seis muestras.
+- QPC real inyección→WM_MOUSEMOVE→preview cambiado→render de ese preview→primera Present posterior: 1.419/1.440 movimientos enlazados; 21 no enlazados/coalescidos declarados. p95 evento→Present antes 10,95–11,10 ms, entrega 11,83–13,22 ms; inyección→Present entrega 14,37–14,94 ms. No es intervalo entre presents.
+- La entrega tiene p95 superior en esta muestra (aprox. +0,7 a +2,3 ms al comparar extremos); no se acredita mejora ni una causa. Desglose: evento→preview p95 antes 0,075–0,076 ms/final 0,077–0,089 ms; render→Present antes 9,03–9,18 ms/final 9,84–10,94 ms. La señal de ese tramo queda explícita para revisión; no justifica un caché/refactor sin diagnóstico.
+- Las composiciones y el recorte visual difieren entre versiones (el canvas anterior recorta parte del widget): se controlan viewport/escala/documento/input, no píxeles ni área visible idénticos. Se mide la ruta de arrastre del Hub completo, no el coste aislado de un widget.
+- Los dos lotes incompletos se archivaron y excluyeron: uno soltó antes de procesarse el punto final y otro reutilizó raíces tras fallo. Binarios/hashes, paridad de 1.006/1.007 archivos (cinco excepciones de instrumentación, cero diferencias inesperadas), inyecciones, muestras, desglose y analizador en `performance/`. Instrumentación simétrica solo en copias externas; producción no añade logging.
+- PresentMon1.10 termina exit0 sin CSV ETW utilizable: se usa la traza equivalente del Present real. No se miden dispositivo físico→fotón/scanout, LMU/OBS, macOS ni 18 widgets. Los PNG anteriores con alfa DIB no significativo se inspeccionan conservando sus RGB; no se confunde captura con latencia.
+- Gates de `937fe794` vigentes, árbol nativo idéntico. Arreglos/pruebas solicitados realizados; reevaluación ≥9 y valoración de la señal de rendimiento pendientes. Sin push/PR/CI remota/merge/promoción/release.
+
+### ISA-1496 · Integración autorizada del arreglo ISA-1525
+- Por instrucción explícita de Isaac se aplica `4aa5254e` mediante cherry-pick sobre `f674cecf`: commit local `a335badb`, sin conflictos. La sidebar de esta rama ya tenía avatar estático; el patrón pendiente estaba en `orbit::summary_row`, compartido por Inicio y Launcher.
+- `list_row_content` conserva la cara visual y separa el contenido estático de las filas con acciones. `summary_row` usa un grupo accesible sin Click/Focus/selección; `list_row` mantiene su rol de botón. Tres archivos del commit original, sin dependencia ni cambios en la sidebar.
+- Fmt, Clippy workspace/all-targets `-D warnings`, Nextest 1.275/1.275 (dos lentos, siete skips declarados), lifecycle 18/18 y build QA PASS. Regresión `summary_accessibility_describes_content_without_button_actions` incluida; Nextest duró 499,684 s, corpus ACC 419,961 s. Todo por la cola indicada. Evidencia aislada en `C:/tmp/ui-r10/calidad-2-evidence/avatar-1525`; no se sobrescriben los binarios/PNG/trazas anteriores de `937fe794`.
+- Código `a335badb`, árbol nativo `55d68fbe14edeb584d47af64081a323bc28aa558`, binario QA SHA256 `F169A27102DD237BDAB6CC951FE6E890430EF155B298394AF7155077FE44942E`: 36 PNG de Inicio normal/vacío y Launcher, tres temas, 1920×1080/1280×720 y ambos carriles; tres PNG adicionales de Cuenta tras Ctrl B/Tab/clic del avatar. Grupo estático observado en UIA; hashes/dimensiones comprobados y hojas/originales críticos inspeccionados. Nueve ventanas del lote completo cerradas exit 0; driver terminado y mutex liberado. Windows sigue al 100%.
+- Dos intentos incompletos del controlador archivados/excluidos: selector del avatar incluía perfiles y comprobación de Cuenta esperaba Iniciar sesión en modo demo. La navegación funcionó y el selector final comprueba los controles reales de Cuenta; no se retocó producto para satisfacer el harness. Sin login/licencia reales. Warning heredado de `cx` en QA/parity documentado, no suprimido.
+- Sin delegación/push/PR/merge/promoción/release. Continúan pendientes la revisión independiente ≥9 y valoración de la latencia medida antes de este arreglo; no se atribuyen esas trazas a `a335badb`.
+
+## #1496 — Studio: arrastre y vista previa, auditoría práctica (2026-10-09)
+
+Encargo posterior a vuelta2 y #1525; baseline release c1575ed0 (código a335badb),
+SHA256 19325172E0E9FBBBD6162FE9E96DB28474FF34FED2BC4BA765ECAF4F2EDC7BDC.
+Contratos de arrastre/preview leídos; banco aislado sin --demo, capturas originales
+con coordenadas y documentos en calidad-2-evidence/studio-drag-preview/hallazgos.md.
+Reproducidos: flechas inertes, salto al redimensionar/recoger carril, selección
+borrada por opacidad, congelación al salir de Studio y datos Workshop en En vivo.
+Tamaño libre y cuatro escenarios siguen pendientes de sus contratos/escenas;
+no se inventan datos ni campos persistidos. Sin delegación ni acciones remotas.
+S1: flechas 1px/Mayús8px conectadas al editor con foco del lienzo; selección en
+lista devuelve ese foco, campos conservan el suyo. Dos regresiones PASS por cola,
+persistencia y Undo comprobados; revalidación física release y gates finales pendientes.
+S2: cualquier cambio de Adapt/viewport o desplazamiento del lienzo cancela el gesto;
+Fit y zoom manual conservan el documento y evitan mezclar coordenadas. Reproducción
+release del salto guardada; regresión física con asserts pendiente del build final.
+No se añade test de geometría simulado: la regresión requiere hit-testing y ventana real.
+S3: opacidad solo en el contenido Overlay compartido; borde y etiqueta de selección
+permanecen opacos incluso al 0%. No cambia el alfa persistido ni el renderer de pista.
+Regresión visual 0/25/100 con ratón y teclado se ejecutará en release; sin test
+headless que simule composición: se comparan los píxeles de selección reales.
+S4: movimiento del gesto observado en captura de ventana, no solo dentro del hitbox
+de Studio; mantiene invalidación de CanvasFrame y una única escritura al soltar.
+Ratón fuera del centro y fuera de ventana se revalidarán físicamente en release;
+regresión de eventos nativos, no una simulación de hitboxes.
+S5: Studio empieza con Snapshot vacío y recibe las fotos reales en Hub.tick; se
+elimina la observación de Workshop. Banco ui-quality permite --qa-telemetry con
+fixture explícita en su root: productor IPC propio, revisión y errores registrados,
+stop/join al cerrar. Prueba física de ausencia/cambio de foto/pause durante gesto
+pendiente; no se afirma conexión LMU ni se fabrica telemetría de producto.
+S7: escenarios sin implementar se presentan como rótulos sin Click/Focus, con
+Próximamente accesible y tooltip real. Carrera mantiene su acción. Regresión del
+elemento productivo en GPUI headless PASS; las cuatro escenas siguen pendientes.
+Regresiones adicionales de entidades/elementos productivos en GPUI headless:
+geometría cancela Fit/100/150 sin persistir ni añadir Undo; selección opaca0/25/100
+y tamaño estable; En vivo vacío hasta foto IPC y conserva la más reciente durante
+el gesto. Suite Studio18/18 PASS, incluidas seis nuevas; capturas siguen siendo
+necesarias para validar eventos/hitboxes/composición física.
+
+S8 reproducido en release471e8395: a1280×720/Windows125, Fuel queda fuera del
+clip y ambos sentidos de rueda horizontal mantienen sus bounds (x686) bajo el
+botón Añadir. La lista encogía su ancho aunque las filas no encogen; el scroll
+medía ese hijo directo y no veía overflow. Reserva ahora el ancho de las filas
+filtradas y sus huecos. Regresión nativa de selección+flecha+Undo y filtros pendiente
+de build; no se añade un test de estilo que solo refleje la fórmula.
+
+### Studio: cierre de evidencia del código final4fae991b
+- S1–S5 y S8 arreglados; S7 presentación corregida. S6 escala/resize libre y las cuatro escenas siguen pendientes del contrato/escenas de producto, verificados contra fuente4fae991b; sin campos/datos inventados.
+- Árbol nativo85dfaefb31edfaf74f1532146b314cdcd83ce7c3: fmt, Clippy workspace/all-targets-Dwarnings, Nextest1281/1281 (dos lentos/siete skips;594,868s, ACC501,911s), lifecycle18/18 y release PASS. Studio18 incluye seis regresiones nuevas; #1525a335badb retenido. Warning QA/parity heredado cx documentado.
+- EXE funcional13B24E60FADAFE7F43F95BB72E11002D969436435634CDF28E8291ED921103D4:24 combinaciones1920/1280 × carril abierto/recogido × Fit/100/150 × Windows100/125 físicos;19 checks principales,5 adicionales,40 extras,8 selecciones125 con clic/flecha/Undo y3 filtros PASS.292 PNG auditados; hojas de matriz/extras y originales críticos inspeccionados. No se reutilizan matrices471 como evidencia del arreglo S8: se repitió todo con4fae991b.
+- Fuente IPC real desde productor QA privado y fixtures explícitas; vacío sin productor, última foto tras cancelar, pausa96→118→96 y separación Carrera/Ejemplo. No se acredita LMU/OBS en vivo. Resize de contenido364→394 y Undo probado; libre por esquina sigue fuera del contrato.
+- Latencia: doce tandas antesc1575ed0/después4fae991b,2880 inyecciones,2845 con evento/render/Present corroborado ETW. A60Hz p95 inyección→Present antes13,48–15,97/final16,26–18,12ms; evento→Present antes10,60–13,77/final10,26–12,08ms. Repetición59Hz evita fijar fase: total antes18,15–18,56/final18,25–19,04ms, cola igualada8,2–8,3ms, estimación DWM desde evento≈24,8ms ambas. Sin mejora ni empeoramiento estable acreditado; no es scanout. Coalescencia/exclusiones y primera presentación Dropped separados de frames estimados mostrados; sin trazas en producto.
+- Evidencia detallada, límites, instrucciones manuales, cada SHA y controladores en C:/tmp/ui-r10/calidad-2-evidence/studio-drag-preview/VERIFICACION.md y hallazgos.md. Banco terminó sin apps propias, mouse liberado, mutex comprobado y Windows100/restauración/cierre de Ajustes propios verificados. Gates/latencia no solaparon; durante funcional sí había Nextest, no se usa su timing como fluidez.
+- Reporte compacto12 líneas actualizado; fuente de verdad de la vuelta2 anterior se conserva y cita con sus propios SHA/binarios. Revisión independiente≥9 y valoración de señal histórica937fe794 pendientes. No delegación/push/PR/CI remota/merge/promoción/release; la documentación de cierre no cambia el árbol nativo probado.
+
+### Pendientes de Studio: hito de geometría (#1496)
+Autorización del orquestador2026-10-09: completar resize/escala y escenarios de corpus
+real, medir release, sin delegación/push/PR. Base3eb404c7 limpia. Geometry opcional
+en UI.layout, frame común en Overlay, ocho tiradores e inspector/Alt+flechas; preview
+independiente y commit único. Defaults conservan layouts anteriores; máximos/mínimos
+y proporción definidos en arrastre-y-resize.md. Pruebas/gates/capturas en curso.
+Plan.md ausente también en origin/nightly; no se recrea ni se publica roadmap.
+
+Resize guardado en b69c9224; Clippy PASS y Studio20/20. UI178/179 (dos ignorados):
+dos tests Cargo del mismo proceso colisionaron en su pipe PID/kind/index; el caso
+fallido aislado PASS. Nextest ejecuta cada caso en proceso propio; no se debilita.
+Escenas: fotos reales completas de LMU47/ACC en Boxes, selector Vuelta y foto
+sin inventar laps; el corpus solo observa vuelta0. Salida/Carrera/Lluvia/Noche
+Próximamente por señales ausentes, Practice, lluvia0 y ausencia de hora del día.
+Regresiones comparan el Snapshot íntegro parseado y su foto, reserializados con
+el mismo codec, y ninguna escritura al cambiar foto, selección o En vivo. No se
+afirma roundtrip JSON byte a byte: ACC conserva17 diferencias heredadas de1ULP.
+Capturas/gates/latencia aún en curso en este hito; cierre actualizado más abajo.
+
+### Pendientes de Studio: cierre local c932ff12 (#1496)
+- S6 HECHO b69c9224: Geometry opcional compartida, ocho tiradores, proporción libre/bloqueada,64×32–3840×2160, Ancho/Alto/escala±10%, Alt+flechas1/8 y una edición/Undo/Redo al soltar. Preview/foto fuera del documento; cancelar restaura sin historial. El ancho escala el renderer canónico; altura libre recorta/añade espacio sin deformar letra. Los defaults conservan layouts antiguos; clientes estrictos antiguos no leen Geometry no predeterminada.
+- S7 Boxes/foto/vuelta HECHOS3daefca1:12 Snapshot LMU47+1ACC íntegros, mismo dato para todos los widgets y vuelta0. Salida/Carrera/Lluvia/Noche PENDIENTES por corpus (sin Preparing, solo Practice, lluvia0, sin hora/señal de noche), deshabilitadas Próximamente con motivo. Ningún JSON real modificado ni una vuelta inventada; Ejemplo de diseño y En vivo IPC/vacío permanecen separados. La igualdad se refiere al DTO parseado con el mismo codec, no al JSON bruto reserializado;17 diferencias ACC de1ULP heredadas documentadas.
+- Fallos release arreglados:723f102f no-op que añadía historial;f434ec79 foco Ancho/Alto al deshacer;8c04c330 foco de proporción;80768614 decimales fuera del inspector;c7a033a0 recorte adicional del tamaño natural. Caption5f1001dc se completa con1de20596/c932ff12: también12/12 cabe en menú/trigger a1280 y125. Repros/pasos/PNG por SHA en C:/tmp/ui-r10/calidad-2-evidence/studio-pendientes/hallazgos.md.
+- Código finalc932ff129d21e73ceb05c9f7c63900c0290a4b0c, árbol nativof3a1ab1fd6e70585fd3bf61747995ea795d4dfc7, limpio antes/después de gates. PASS fmt, Clippy workspace/all-targets-Dwarnings, Nextest1292/1292 (dos lentos/siete skips;514,279s, ACC425,386s), lifecycle18/18 y release. #1525a335badb retenido. Warning QA/parity cx heredado conservado; sin cambios Go/frontend ni dependencias. Todo compilado por compilar.ps1.
+- Fuentes visuales separadas:80768614 recorrido completo328 checks únicos,24 combinaciones1920/1280 × panel abierto/recogido × Fit/100/150 × Windows100/125 físicos,16 clics de escenas deshabilitadas y16 resizes de los cuatro tipos. c7a033a0 repite24 combinaciones natural/custom/Undo,16 resizes y4 casos de píxeles alfa0/recorte32. c932ff12 selector primera/última/ACC en12 casos, menú/trigger y En vivo.445 PNG con fuente/hash/dimensiones (pilotos aparte); hojas y originales críticos inspeccionados. El resize físico explícito distingue QA lógico de DPI120 real.
+- Latencia final:12 tandas alternadas,2880/2880 entradas→preview→render→Present corroboradas ETW,59Hz, perdidos del logger0. P95 evento→ETW Present base3eb10,03–11,04/final drag10,68–12,29/resize bloqueado13,97–14,42/libre13,59–13,84ms; total inyección→Present18,03–18,30/18,57–19,43/21,36–22,32/21,31–21,44ms. Present-Dropped aparte; no scanout/hardware ni mejora estable acreditada. Baseline y final reconstruidos con logger try_send65536/escritura en otro hilo, exactamente5 archivos instrumentados externos por fuente; marca Present difiere de ETW≤0,0247ms. La repetición síncrona con pausa336,7ms antes de DXGI y las tandas807 se conservan; no se atribuye esa pausa al resize ni se ocultan sus outliers.
+- Evidencia completa/manual/binarios/gates/fuentes en studio-pendientes/VERIFICACION.md; informe compacto12 líneas con bloque Pendientes de Studio de8. Driver/UIA/apps propios cerrados con exit0, mouse libre, mutex liberado y reacquirido, Windows100 y cierre del Ajustes propio confirmados. Gates/compilación no solaparon esta latencia. Rama vantareapp/isa-1496-ui-calidad, base3eb404c7; local, sin delegación/push/PR/CI remota de la entrega/merge/promoción/release. Roadmap plan.md ausente: no recreado. Issue1496 abierta; aceptación independiente≥9 y señal histórica937fe794 siguen pendientes. Este cierre documental no cambia el árbol nativo probado.
+
+### Revisión v3: A1, primer grupo (#1496)
+Autorización2026-10-09: cerrar A1 después de Studio; lectura de revision-v3-r0-r6.md
+83–93. Las caras compartidas de botones/iconos/reproducción ahora se construyen
+sin foco ni rol de acción para pendientes permanentes; botones activos conservan
+Button/Click/Focus. Selectores sin opciones exponen etiqueta/valor/motivo, no ComboBox.
+Migrados Inicio, Launcher, Studio y Testing; regresión productiva static_content2/2
+PASS por cola. Estado temporal disabled efectivo y UIA/capturas/gates completos aún
+pendientes. La revisión no cita refactors concretos de legibilidad R1/R2/R4/R5/R6:
+no se amplía composición ni se cambia el motor; miniaturas R4 son pulido opcional.
+
+### Revisión v3: A1, inactividad temporal (#1496)
+Roles activos preservados; disabled temporal ahora modifica el nodo AccessKit
+original con set_disabled/clear_actions mediante callback público tras prepaint.
+Aplicado a helper disabled, toggles y caras compartidas Choice/Checkbox/Number,
+filas y avatar; handlers conservan sus guardas. No se introduce renderer, dependencia
+ni cambio de arquitectura. Clippy workspace/all-targets-Dwarnings PASS por cola;
+primer intento falló solo doc_markdown por backticks, log retenido y corregido.
+La comprobación de disabled efectivo requiere el árbol tras prepaint: pendiente
+UIA release, además de gates completos/capturas antes del cierre.
+
+### Revisión v3: nombre accesible verificado en Windows (#1496)
+Release91777a97/UIA reproduce caras permanentes sin nombre: AccessKit Windows
+obtiene Name de value para Role::Label; label/description del nodo unitario no
+bastaban. Las caras pendientes y escenas indisponibles usan Group descriptivo,
+sin acciones; el selector incluye nombre y valor en el nombre UIA, conserva value
+y description. Input temporalmente deshabilitado incorpora el mismo callback.
+Regresión productiva static_content2/2 PASS; UIA final y gates completos pendientes.
+Evidencia del fallo conservada en revision-v3-cierre/interactive/a1-studio-first.
+
+### Revisión v3: banco de caras compartidas (#1496)
+El kit productivo --kit fallaba antes de mostrar controles (release642efc28):
+no state of type vantare_ui::theme::Tokens exists. La entrada aislada ahora instala
+el mismo tema, fuentes y assets de la shell, antes de construir Specimen. Es el
+banco del kit R0, sin IPC ni datos del usuario; verificación de arranque real y
+estados deshabilitados se repite en release, no se sustituye por un test de estilo.
+Fuente642efc28 antes de este ajuste: fmt/Clippy/Nextest1293/1293 (533,261s; ACC442,514s)
+y lifecycle18/18 PASS. Gates finales de esta inicialización y capturas aún pendientes.
+
+### Revisión v3: cierre local del código572f4b33 (#1496)
+- A1 HECHO afbd7e43/91777a97/642efc28: caras compartidas separan contenido e interacción; pendientes permanentes Group con nombre/valor/motivo y sin Click/Focus. Group no es acción habilitada aunque UIA declare enabled=true como contenido. Temporales conservan rol y exponen disabled efectivo/sin acciones tras prepaint; sus handlers siguen protegidos. UIA de Windows detectó que Label tomaba Name de value; se corrigió y se verificó su FullDescription mediante COM, no un campo inexistente del cliente .NET.
+- Banco del kit HECHO da62b8a3+572f4b33: --kit no arrancaba por Tokens ausente; instala el mismo tema/fuentes antes de Specimen y reutiliza assets de shell. Primer build da62 falló por ruta/visibilidad del módulo;572 lo corrige, logs conservados. Ninguna dependencia ni segundo renderer. Regresión de arranque y estados realizada con release y ventanas reales.
+- Legibilidad R1/R2/R4/R5/R6 REVISADA: revisión-v3:35/103–116 no identifica un microarreglo concreto y desaconseja refactor general. Se extrae solo la cara necesaria para A1. Miniaturas R4: mejora visual opcional, no otro requisito inventado. No se reabre motor/persistencia ni se quitan eventos de Agenda.
+- Árbol nativo fd4bc124df05f4c03ead6de578274f6ac6e87603, código572f4b3316e78de1957b1f31ef3c2cf56d93c4a5: PASS fmt, Clippy workspace/all-targets-Dwarnings, Nextest1293/1293 (dos lentos/siete skips;531,202s, ACC440,163s), lifecycle18/18 y release QA/kit. #1525a335badb retenido. Gates siempre por compilar.ps1; warning QA/parity heredado analysis/view.rs:989, Clippy canónico limpio. Fuente642 anterior también pasó todos los gates; se repitieron completos tras el ajuste del kit.
+- Código final:86 comprobaciones prácticas PASS (84 rótulos únicos, Descartar probado antes/después),30PNG a1920×1080/1280×720, Windows100/DPI96; diez sesiones principales y dos extras. Roles, enabled, Focus, Invoke, Name/Value/FullDescription obtenidos por UIA COM de HWND/PID propios. Los pendientes de Studio son inertes; Boxes/En vivo/Editar overlay/Cancelar/checkbox activo responden. Descartar pasa disabled→activo→disabled y Tab sale de él; Input conserva valor pese a clic/escritura; Home/End comprueban límites numéricos, opciones Archivo/Português y avatar vacío disabled. Boxes mantiene su MouseDown previo, no se afirma añadir Invoke a toda acción existente. Pilotos con expectativas del test corregidas se conservan separados.
+- Capturas finales con fuente/hash/dimensiones en captures-final.json. Originales de Inicio1920, Launcher1280, Testing1280, Studio1280 y kit1280 inspeccionados. Apps/driver/UIA propios0, mutex liberado/reacquirido y DPI96 comprobados; sin ventanas de Ajustes ni cambio DPI en esta tanda. No se repite la matriz histórica/DPI125 ni latencia: adaptación/gesto no cambian; mediciones de Studio mantienen fuentec932 y sus límites, sin garantía histórica E3 nueva.
+- Evidencia y pasos manuales en C:/tmp/ui-r10/calidad-2-evidence/revision-v3-cierre/VERIFICACION.md; informe conserva12 líneas totales, bloque Studio6 y v3 de4, previo archivado. Modificados kit/consumidores de Inicio/Launcher/Studio/Testing, static_content y este handoff; ningún Go/TS, corpus o dependencia. Checks Go/TS independientes no ejecutados por ausencia de cambios; oráculos Go nativos sí pasan. No prueba nueva de backend/login real/LMU/OBS/macOS/lector hablado/hardware.
+- Base de continuación ba27963d limpia; rama vantareapp/isa-1496-ui-calidad. v3 acredita9,05 conjunto/todas rondas>9 sobre3eb404c7; nuevo SHA y aceptación de Isaac siguen requiriendo revisión propia. Issue1496 abierta; plan.md ausente, no recreado. gh pr list[] y git ls-remote sin esta rama al cierre. Sin delegación/push/PR/CI remota/merge/promoción/release. Este cierre documental conserva el árbol nativo probado.
+
+### #1496 — integración de prueba aislada, preparación (2026-10-09)
+Autorización directa de Isaac: base aprobada 55e97390, worktree C:/tmp/vw3-integracion/vantare-v2,
+rama vantareapp/isa-1496-integracion-prueba. Seis merges no-ff locales en orden:
+81b81d51→103dfac4; 3212e5ac→c5d7ebac; 71575916→5bb68705;
+80abb251→33d3010c; 046d3e72→37958208; aacd1e4d→77be7e91.
+Conflictos: prevalece la UI aprobada en sidebar, transparencia, geometría y accesibilidad;
+se conservan lógica de consentimiento/catálogo, ambas historias de handoff y regresiones.
+Consentimiento usa neo_card y skin; candados usan skin y preservan opacidad/ajustes del widget.
+#1514 se integra sin conflicto en services/access.rs, sin editar su implementación ni su rama;
+config-tests conserva casos de portal de #1507 y entorno de billing de #1514.
+Gates en curso por compilar.ps1, target propio E:/tmp/integracion-prueba; suites desde Bash/PS5.1.
+Build local 0.0.970 prevista E:/tmp/beta-local/0.0.970 mediante copia del build-local.ps1,
+configuración de desarrollo indicada por Isaac, sin firma/manifiesto/publicación.
+QA condicionada a pantalla libre: identidad QA1492, nunca registro/accesos/procesos reales.
+GitHub es la autoridad del encargo frente al texto Notion histórico de esta base;
+plan.md ausente también en origin/nightly, no se recrea. No hay push/PR/CI remota ni promoción.
+Evidencia y scripts externos: C:/tmp/ui-r10/integracion-prueba-evidence; cierre verificado debajo.
+
+### #1496 — integración de prueba aislada, cierre local (2026-10-09)
+- Los seis merges anteriores están completos, en orden y con dos padres. Fuente del instalador y gates: a7cefc562266c4d17c9398f3e4fee9b73a410752, árbol nativo 4e250bfc96d9dbb0648d7284acb9d82522c24a2d. El cierre documental conserva ese árbol; base 55e97390 y rama vantareapp/isa-1496-integracion-prueba. #1514 permanece intacta en aacd1e4d; no hubo conflicto en access.rs ni exclusión de una rama.
+- PASS fmt, Clippy workspace/all-targets -D warnings, Nextest 1293/1293 (7 skips heredados), lifecycle 18/18 y telemetria 21/21. Deno de identidad/autorización 51/51; generación de iconos 20 assets y 2 tests PASS. Compilación exclusiva por compilar.ps1, con targets propios en E. Primeros fallos de token/importación/argumentos están conservados; no se debilitaron gates. El banco parity tiene un warning heredado de analysis/view.rs:989; Clippy canónico limpio.
+- Packaging desde Git Bash con powershell -NoProfile -ExecutionPolicy Bypass: general 175, beta 99, Setup 50, configuración 24, feed 9, uninstall 2, guardas 2 y MSIX negativo/sintaxis 12 PASS. Los argumentos originales probaron primero artefactos viejos: general falló porque 0.0.961 carece del Register nuevo; general/beta/Setup se repitieron con 0.0.970 y pasaron. El wrapper PS5 inicial trató stderr negativo esperado como fatal; la invocación directa desde Bash preserva el resultado real de cada suite. MSIX real no construido.
+- E:/tmp/beta-local/0.0.970/VantareSetup.exe, SHA256 07B507AC08206D600C53269933D7F1BBD60E05E3DD88DE08A46968CAB70D8D6B, versión 0.0.970, Release Windows x64, source_dirty=false. Copia externa de build-local.ps1, original intacto; configuración dev indicada por Isaac importada mediante allowlist. Existe manifest.json local de inventario; ningún manifiesto de distribución firmado/publicado. Instaladores normal y QA NotSigned; ZIP/payload/portable disponibles. No se cambió a configuración de producción.
+- Setup real aislado QA1492 confirmó hub-ready, registro Vantare 0.0.970 y primer consentimiento con neo_card/skin. Captura de consentimiento del binario instalado; Inicio, Studio, Ajustes y Cuenta del banco QA con respuestas de contrato locales, sin login/compra reales ni derechos inventados. Cinco PNG inspeccionados, 1920×1080/DPI96. No se acredita nota visual nueva ≥9, DPI125/macOS, lectores hablados, sesión real LE ni checkout.
+- QA desinstalada conservando sus datos; registro/accesos QA ausentes, ventanas propias cerradas y mutex reacquirido/liberado. real-before.json y real-after.json son idénticos (SHA256 C8E36EF7A93905E8EFBF96A2BEA0FF947FABFA75951E09F77C89AFC694AAEC6D): instalación, registro, shortcuts y procesos reales preservados. Los fallos auxiliares de ruta NSIS/variable root/metadatos no escribieron en la instalación real; quedaron registrados y corregidos.
+- Informe de hasta 12 líneas: C:/tmp/ui-r10/informe-integracion-prueba.md; detalle/manual/lista de 101 archivos/manifest de capturas/logs en integracion-prueba-evidence. Sin cambios Go/React ni sus checks independientes; los oráculos Go nativos sí pasan. Roadmap plan.md sigue ausente, no recreado. Pendientes: revisión de Isaac, login/compra/recuperación reales y CI remota; no hay equivalencia con habilitación comercial o release.
+- Alcance exclusivamente local, sin delegación, push, PR nuevo, CI remota, promoción de canal, firma, release, despliegue ni publicación del instalador. GitHub #1496 registra la evidencia técnica y permanece abierta; PR #1523 pertenece a otro worker y no se modifica.
+
+### #1496 — cierres revisión v4, catálogo de Inicio (2026-10-09)
+Base 25d9e6bd, misma rama/worktree aislados. F1: Inicio y Studio comparten
+Access::widget_lock y placeholder Orbit; caché de miniatura depende también del
+catálogo, respeta geometría y omite ingest/pintado del contenido denegado.
+Regresión Pro→LE sin editar el layout añadida; gates y matriz QA en curso.
+Clippy inicial detectó únicamente orden del helper respecto al módulo de tests;
+corregido sin debilitar el gate. plan.md ausente, no recreado; sin promoción.
+
+### #1496 — v4: banco QA integrado
+Banco ui-quality existente: --qa-catalog free/launch/pro y fresh_policy explícito
+para replies locales del contrato. VANTARE_CAPTURE_POLICY=ipc permite probar
+actualizaciones reales de Remote en la shell de captura; otras capturas congeladas
+conservan su excepción. Ninguna fixture crea derechos comerciales. F1 final4272ce46,
+F28a919220 y F3c1172111; regresiones enfocadas5/5. Matriz y gates finales en curso.
+
+### #1496 — v4: solicitud de Roadmap durante sondeo
+QA del consumidor detecta una guarda busy residual en ensure_roadmap. Se usa
+working y la cola existente, sin ocupar ni sustituir otra acción pendiente; la
+composición alternativa llama al mismo método. Regresión del reply demorado y
+publicación encolada añadida. Gates y binarios anteriores se conservan como
+checkpoint a3b4723f; se repetirán sobre el código final. Sin cambio de IPC/arquitectura.
+
+### #1496 — v4: reintento durable tras reinicio
+E2: el test HTTP de compra incierta ahora destruye Account/Store y reabre el root
+DPAPI antes de reintentar: mismo payload/intento y entorno/producto. Solo cambia
+la regresión de servicios, no código comercial ni identidad. Gates finales f39:
+fmt/Clippy/Nextest1298 y lifecycle18 PASS; telemetría en curso. Se repetirán
+los checks de servicios y se reconstruirá el artefacto con el SHA final.
+
+### #1496 — v4: cierre verificado de los arreglos integrados (2026-10-09)
+- Fuente final09f640ed91ef43486b476c3e728b1f0e59f04954, árbol nativo cd14ee9ea9bf4509098db5ec64757c30b8f4640a. Base de continuación25d9e6bd, integración55e97390, misma rama/worktree aislados; este cierre documental conserva el árbol probado. Commits por grupo: F14272ce46, F28a919220, F3bec513e0 (sustituye el checkpoint c117 citado arriba), banco QAa3b4723f, Roadmapf39e923a y regresión durable09f640ed. Diff completo revisado; sin dependencias, Go/React/backend, packaging productivo ni cambios en la rama #1514.
+- Gates finales sobre09f limpio PASS: fmt, Clippy workspace/all-targets-Dwarnings, Nextest1298/1298 (7 skips heredados), lifecycle18/18 y telemetria21/21 (0 skips). Logs final09/; targets propios en E, Cargo y Setup definitivos por compilar.ps1. Piloto NSIS QA invocado directamente por error conservado; ambos Setup finales repetidos por cola. QA/parity conserva warning heredado analysis/view.rs:989; Clippy canónico limpio. Packaging Bash general175/beta99/Setup50 PASS contra0.0.971.
+- E1:344PNG de7tamaños/DPI96,3temas/carriles/controles claros;72PNG compactos a125% físico/DPI120; consentimiento productivo instalado24PNG/DPI96+6/DPI120. Hashes/dimensiones/bounds446/446 PASS; extremos y originales representativos inspeccionados. Matriz fuentea3, físico9b, gesto/Launcherf39, recorridos finales y consentimiento09: procedencia explícita, no toda la matriz recapturada en09. Producción f39→09 idéntica; a3→09 solo cambia solicitud Roadmap.
+- F1/F3/E2: catálogo Free/LE/Pro abierto, política cambiante y premium retenido; mouse/teclado no añaden denegado; mover/guardar/reabrir/undo preservan settings/opacidad. UIA tres SKU disabled/sin Invoke/motivo por estado; click/Enter/Espacio hacen una solicitud del producto correcto. Consentimiento Enter rechaza inicialmente; Tab/Shift+Tab acepta, rechazo/aceptación persisten al reiniciar; guardado fallido mantiene diálogo y recuperación funciona. Solo contratos QA, sin derechos comerciales ni envío real.
+- F2/R2/R5/R6/E3: replies de compra demorados no ocupan otras páginas; informe preparado/enviado una vez, recibo y borrador conservados; Calendario/Roadmap resultado/error al consumidor correcto, favoritas/campanas persistidas. Confirmación/cancelación/logout terminan sondeo; renovación manual mantiene working. Gesto con2sondeos conserva persistencia al soltar/undo; Launcher QA lanzar/cancelar con5sondeos sin ejecutar juego. Plazo10min por reloj controlado; trazas previas y reserva de latencia general conservadas. Piloto Agenda densa con IPC demorado no completado; cierre R6 PASS con2series explícitas, sin cambiar TTL2s ni atribuir causa no probada.
+- E:/tmp/beta-local/0.0.971/VantareSetup.exe, SHA2567C4E295EDA24D09DBA1BD5B7EBD5010665002532AA67EBB5C99AEC04DEA5478E. Release/windows-x64/dev, manifest fuente09f/source_dirty=false, normal/QA NotSigned; ZIP/payload disponibles. Procedimiento0.0.970 copiado externamente, originales intactos. QA1492 instalada/hub-ready/consentimiento y retirada conservando datos; registro/accesos QA ausentes, procesos propios cerrados, mutex libre y escala100% restaurada. Snapshot real anterior/posterior idéntico SHA256C8E36EF7A93905E8EFBF96A2BEA0FF947FABFA75951E09F77C89AFC694AAEC6D; instalación real preservada.
+- Informe≤10líneas C:/tmp/ui-r10/informe-integracion-arreglos.md; detalle/manual/logs/procedencia en C:/tmp/ui-r10/integracion-arreglos-evidence/VERIFICACION.md. Sin Go/React/Deno nuevos al no cambiar sus fuentes; MSIX real/macOS/OBS/LMU/lector hablado, login/compra/refund/disputa/offline/recovery reales y CI remota pendientes. plan.md sigue ausente, no recreado. La nota≥9 requiere nueva revisión, no se autoacredita.
+- PR1523 recibió comentarios de cada defecto con archivo/línea/causa/arreglo: issuecomment-6076735890,6077213533,6077519034; rama del worker intacta. Issue1496 registra cierre y permanece abierta. Sin delegación/push/PR nuevo/CI remota/merge/promoción/release/deploy/firma/publicación; solo comentarios remotos autorizados. Siguiente: nueva revisión de cierres, aceptación de Isaac y traslado de correcciones #1514 por su worker.
+
+### #1496 — vuelta v5: F4 y borde lento (2026-10-09)
+Continuación limpia02441013; v5 da8,94 y conserva F1/F3 cerrados. El Hub reutiliza
+Feed autenticado del núcleo, separado del worker HTTP. Sus fotos frescas alimentan
+Access aun con renovación en vuelo; el reply tardío no pisa esa fuente. TTL2s,
+sesión/logout, revocación y cierre/cancelación del lector preservados. No otro
+verificador ni cambios en firma/UUID/grants. Regresión de reloj3500/8000ms sin sleep
+y peer IPC QA independiente de solo lectura añadidos; fmt/Clippy piloto PASS.
+E4 y recorridos lentos de gesto/Launcher/Testing/Calendario/Roadmap en curso;
+gates finales, Setup0.0.972 y QA aislada pendientes. Sin delegación/promoción.
+
+
+### #1496 — cierre v5 verificado (2026-10-09)
+
+- Fuente 5b86fbc34b1f3375ddceef69fa0f5987ceb60f9c; árbol nativo ce76ecd8c5169a9f76bd7de4604a4c4c293c874e, base v5 02441013/integración55e97390, misma rama aislada. Este bloque cierra los pendientes v5 anteriores; documentación posterior conserva el árbol probado. Diff completo revisado.
+- F4: Feed autenticado de solo lectura independiente de LicenseRenew; reply tardío no pisa derechos; confirmación desde núcleo detiene la espera. Sesión/logout/TTL2s/revocación/ausencia siguen cerrados, sin retocar checked_at/grants. Regresión3500/8000ms con reloj, sin sleep; Hub real con ambas demoras PASS.
+- Gates PASS: fmt, Clippy -Dwarnings, Nextest1299 (7 skips), lifecycle18 y telemetria21 (0 skips); packaging Bash175/99/50. Cargo y ambos Setup finales v5 solo por cola. QA/parity conserva warning heredado, Clippy canónico limpio; pilotos fallidos conservados y explicados.
+- E4:48PNG compactos DPI96 (checkpoint337),12 a125% Windows/DPI120 (5b), tres estados/ambos carriles/mensaje largo/claro.60 hashes/dimensiones y400 bounds PASS; originales representativos y regiones medidas. Scroll interno existente muestra Ingeniero con acciones inmóviles; sin cambio de layout. Delta337→5b no cambia esta composición Free. Windows restaurado100%.
+- E3: gesto8s/settings/persistencia al soltar/undo, Launcher QA lanzar/cancelar, catálogo LE→Pro→LE→Free→Pro/save/reopen, Testing fixture una vez/recibo/borrador, Calendario/Roadmap resultados/errores y favoritas/campanas PASS. Agenda densa11series QA completada. No acredita latencia general/input→Present ni18instancias.
+- Setup0.0.972 E:/tmp/beta-local/0.0.972/VantareSetup.exe, fuente5b limpia/Release/dev/NotSigned; SHA256E78741E2450750759A637DF59C6C077F03281301D73EB314D5E95BAAAB9E9807. QA1492 instalada/retirada, primer consentimiento y rechazo/reapertura/puerta de sesión sin servicio; no login comercial. Inventario real nuevo idéntico C8E36EF7A93905E8EFBF96A2BEA0FF947FABFA75951E09F77C89AFC694AAEC6D, mutex libre; datos QA retenidos.
+- F4 notificado en comentario PR1523#6078461742 con archivo/líneas/motivo/arreglo de fuente native aacd1e4d; #1514 intacta. Remoto33be660d/draft no publica el Hub: pendiente traslado por su worker. Evidencia/manual/archivos/omisiones en C:/tmp/ui-r10/integracion-v5-evidence/VERIFICACION.md; bloque v5≤6líneas en C:/tmp/ui-r10/informe-integracion-arreglos.md.
+- Pendientes: nueva review≥9, aceptación, traslado#1514, CI remota y matriz comercial real. Sin delegación/push/PR nuevo/merge/promoción/release/deploy/firma/pago; solo comentarios autorizados. plan.md ausente en base, no se inventa otro roadmap.
+
+
+### Integración #1496 · vuelta v6 · implementación en verificación (2026-10-09)
+
+F5: Cuenta conserva navegación y composición como ruta de recuperación con política revocada, caducada o ausente; el gate de sesión y las herramientas protegidas mantienen sus guardas. access.rs presenta el motivo del núcleo sin copiar mensajes sensibles. Se añaden regresiones de rutas/teclado, consulta/reintento, reply antiguo y logout, sin sleep.
+V1: en densidades B/Xs, Módulos usa dos filas completas de 32 px, sin descripción secundaria, scroll interno y sobrante dentro de su tarjeta; los carriles y acciones no se desplazan. Piloto local espera/error/ocupado 1280/1366, claro, ambos carriles: 12 capturas PASS; originales inspeccionados. Nextest piloto: 1301 PASS, 7 skips; Clippy piloto PASS. Etiquetas de motivo posteriores aún pendientes de gates finales.
+Siguiente: gates finales por compilar.ps1, candidato local dev/NotSigned 0.0.973, matriz F5 y muestra física 125 %, instalación/desinstalación QA e inventario real. Publicación/CI/promoción/login o compra comerciales no acreditados. No se modifica la rama #1514 ni se concede acceso por respuestas HTTP.
+
+### Integración #1496 · v6 · cierre local verificado (2026-10-09)
+
+Fuente compilada `73f60e9d01d74e9f31c5e663349dbdbf3885f7e8`, árbol nativo `cdfc2e9d40f41f9a14dc33d04df522795f831deb`: F5 deja Cuenta como recuperación sin dar derechos a herramientas; V1 presenta dos filas completas compactas y conserva scroll/carriles/acciones. Tests de navegación/gate y consumidor sin sleep; fmt, Clippy-Dwarnings, Nextest1301/7skips, lifecycle18 y telemetría21/0skips PASS. Builds por compilar.ps1; packaging Bash175/99/50 PASS.
+QA IPC:12 recorridos completos desde Cuenta/Studio, revocación/caducidad/ausencia, 1280/1366;3 muestras físicas125%/DPI120. Renovación manual/error/reintento, reply viejo sin derechos, cancelación sin nuevos sondeos, logout único, Feed fresco restaura Studio y documento intacto. V1:24 capturas espera/error/ocupado/dos compactos/carriles (12 físicas); scroll llega a Ingeniero con acciones fijas.94 PNG/hashes/dimensiones/opacidad y250 bounds PASS; originales representativos inspeccionados, no se atribuye inspección individual a los94. Feed descarta políticas inválidas: Cuenta muestra «Sin política vigente», sin inventar una causa remota.
+Setup0.0.973 local dev/Release/NotSigned en E:/tmp/beta-local/0.0.973/, fuente limpia73f; SHA256 F47EE74C983C5F4DA2648E29E32C1206D893326898CF2EB6205D1425C741BDFA. QA1492 instalada en raíz propia, rechazo del consentimiento, gate sin núcleo, cierre/reapertura y desinstalación PASS; datos QA retenidos/registro y accesos retirados, inventario real idéntico C8E36EF7…, Windows100%, mutex libre. No es login/compra comercial ni muerte de un núcleo comercial.
+Detalle/manual/límites/pilotos: C:/tmp/ui-r10/integracion-v6-evidence/VERIFICACION.md. Fallos piloto de selectores/texto UIA/redimensionado físico conservados; Clippy canónico PASS separado del warning heredado parity analysis/view.rs:989. Informe añade seis líneas v6 sin sustituir v4/v5. Plan.md ausente también en origin/nightly; no se inventa roadmap ni se cambia roadmap.json.
+F5 notificado en PR1523#6079995712, validación#6080347894; issue1496#6080348259 actualizada. Fuente #1514 incorporadaaacd1e4d conserva la guarda heredada; HEAD remoto33be660d draft/open sin Hub, rama intacta. Integración local sin ref/PR remoto ni CI acreditada; revisión ≥9 por bloque, traslado #1514 y gates comerciales externos pendientes. Sin delegación/push/PR nuevo/merge/promoción/release/deploy/pago; únicas escrituras remotas, comentarios autorizados.
+
+
+### Feedback 09-oct #1496 · shell · verificación retomada tras reinicio
+Base e55a43b3, worktree C:/tmp/vw3-fb-shell/vantare-v2, rama vantareapp/isa-1496-fb-shell. Brief C:/tmp/feedback-0910/shell.md; sin delegacion ni push/PR/merge/release. Las instrucciones directas de Isaac prevalecen sobre el seguimiento Notion historico. plan.md ausente; no se recrea ni se modifica publicacion remota.
+1. `999d1268`: bootstrap arranca overlays ocultos mediante --start-hidden. Mostrar en pista emite una solicitud local atomica separada del layout; reabrir no repite solicitudes anteriores. Prueba con supervisor/core/overlays productivos y replay QA aislado: arranque, edición y reapertura = 0 ventanas; solicitud nueva y lanzamiento explícito = 1 ventana. Un perfil real y LMU físico siguen sin probarse. El supervisor cerró sus hijos, usando su plazo de cierre y fallback de terminación en overlays.
+2. `a3d65333`: wordmark C2 a 14 px (107 px de ancho), centrado en cabecera de 52 px con margen horizontal, junto a contraer; contraída solo símbolo. Capturas inspeccionadas: 1440×900 expandida oscura/clara y 1280×800 contraída.
+3. `644e3096`: ICO oficial ID 1 en Hub, UI/Workshop y Admin; NSIS usa el mismo ICO para instalador/desinstalador. Windows carga los cuatro recursos y el del Setup; comprobado HICON real de la clase HWND del Hub productivo. Sin captura física de barra de tareas ni instalación real. El Setup de evidencia usa payload 0.0.973 intacto: acredita recursos NSIS, no empaquetado completo de las correcciones.
+4. `e0e08055`: geometría compartida, thumb dentro de pista y redondeo hasta 120/100. Banco GPUI aislado, operado con mensajes Win32: preview 120 sin escribir apariencia; soltar fuera del control guarda 120. Opacidad 50 también se aplica al soltar. Se inspeccionaron preview/aplicación; no se mide FPS físico ni input→Present.
+5. `13ddecc9`: Choice compartido l2 opaco (alfa 255 independiente de cristal), anchored/deferred fuera del flujo/clipping y prioridad MODAL_Z + MENU_Z. Regresión de todas las paletas/esquemas/opacidades; desplegable de fuente abierto e inspeccionado con cristal 50 %, sin superposición de texto.
+6. `46ec903b`: Reducir animaciones persistido y accesible; política pura detiene 8 renderers animados y carrusel, conserva datos y caducidad discreta de avisos. Switch activado por mensajes Win32, guardado y comprobado tras reabrir el banco GPUI; regresiones de persistencia, defaults, avisos y ausencia de Wake::Frame. Polls de servicios/datos permanecen activos.
+Evidencia de continuación: C:/tmp/feedback-0910/shell-resume-*.log y shell-evidence; informe final C:/tmp/feedback-0910/informe-shell.md. Código de los seis commits revisado sin cambios adicionales. Fmt, check, Clippy -D warnings, build QA, lifecycle 18/18 y Nextest 1308/1308 pasan (7 skips configurados, sin cambios). Incidentes conservados: .exe abierto durante recompilación, comparación C:/E: por junction y timeout de hidratación inicial en source.rs no modificado; este último pasa aislado y en la suite completa repetida en target físico con un proceso de tests. No se debilitan ni excluyen tests. Build parity-capture conserva un warning previo de Analysis fuera de alcance; el gate Clippy productivo pasa. Telemetría no aplica: runtime/domain/ipc/testdata intactos. Siguiente acción: revisión de Isaac e integración por el orquestador solo con autorización; no promoción desde este worktree.
+
+### #1496 — feedback de shell, punto 7 de Isaac (2026-10-09)
+
+Misma base, rama y worktree aislados. El encargo directo de Isaac añade el intercambio de los dos temas al alcance de shell. Vantare es ahora grafito con acento oficial #D80000 y el predeterminado; Vantare clásico conserva el carmín intenso R9. La primera tarjeta y la selección por defecto corresponden a grafito; orbes y miniaturas de esquema se resuelven a partir de la misma identidad que el tema aplicado. El kit conserva la separación entre relleno de marca y texto AA (mínimo 4,5:1 para texto normal y botones, oscuro/claro).
+
+Migración local en Store: sin paletteVersion, la clave explícita antigua vantare pasa a classic y classic a vantare; las demás permanecen. La lectura no escribe. El siguiente guardado atómico añade paletteVersion:1, evitando volver a intercambiar al reiniciar y conservando el resto de preferencias y la detección de conflictos. Sin archivo o sin clave palette se usa grafito. Límite del formato histórico: guardaba palette incluso al cambiar solo otras preferencias y no marcaba la elección explícita; esos dos historiales son indistinguibles. Se conserva el aspecto de toda clave guardada, sin inventar una decisión del usuario ni modificar perfiles reales para verificarla.
+
+Tres regresiones nuevas cubren ambas migraciones, guardado/reinicio, ausencia de paleta, identidad/orden y predeterminado. Se conservan todas las aserciones de la paleta R9 anterior bajo Classic y todos los colores de la instantánea congelada; en el fixture solo cambian sus dos claves de identidad. La primera suite detectó una prueba histórica que usaba el predeterminado para comprobar píxeles R9: ahora elige explícitamente Classic y mantiene todas sus aserciones. La nueva regresión comprueba grafito como predeterminado. Evidencia y SHA de la entrega puntual: C:/tmp/feedback-0910/informe-shell.md y shell-p7-*.log; se conservan los logs intermedios.
+
+Validación final del punto 7: fmt, check, Clippy -D warnings, Nextest 1311/1311 (7 skips configurados), lifecycle 18/18 y build Hub/banco QA PASS; todo Cargo por cola y -j 2. Tres capturas productivas 1440×900 inspeccionadas: predeterminado oscuro, Vantare claro y clásico carmín. Banco GPUI 1536×1080 con fixtures locales de las dos claves antiguas: tarjeta/paleta correctas al cargar, lectura sin escritura, guardado versionado correcto y reapertura idéntica (hash del PNG igual en cada pareja). Pruebas por mensajes Win32; todos los procesos/ventanas QA cerrados. Orbes y miniaturas comparten Skin con el tema aplicado. Fuente de siete archivos: seis del Hub (incluido fixture) y este handoff; sin movimientos ni dependencias. Build QA conserva el warning previo de Analysis; Clippy productivo limpio. Telemetría/Go/React independientes no se repiten porque sus fuentes no cambian; los oráculos Go de la suite nativa sí pasan. Solo entrega local y seguimiento autorizado de la issue abierta; sin push/PR/CI remota, merge, promoción, release ni instalación real. Persiste el pendiente documental de plan.md ausente en base/origin/nightly; no se inventa un roadmap.
+### Feedback Studio 9-oct · integración #1497 local (#1496)
+Worktree C:/tmp/vw3-fb-studio, rama vantareapp/isa-1496-fb-studio, base e55a43b3.
+Fetch directo del worktree Mac vw-1497-widgets: aafc266d (26 commits). Merge no-ff sin conflictos; Hub conserva UI r10 y widgets usan el kit Vantare compartido. Studio expone Neo/Neutro y acentos para los cuatro widgets portados; sin renderer alternativo.
+Siguiente: puntos 11-18 y 20 del brief C:/tmp/feedback-0910/studio.md, regresiones y gates por cola, medición Release antes/después. No push, PR, promoción ni release. Instrucciones del brief/GitHub prevalecen sobre Notion histórico. plan.md ausente también en origin/nightly; no se recrea ni se edita roadmap.json.
+
+
+### Feedback Studio 9-oct · continuación Mac para review de Claude (#1496)
+
+- Tarea [VAN-780 / GitHub #1496](https://app.notion.com/p/3f4e51695c6581c59e8aff089fc7cef7), proyecto Overlay Studio. Notion leído/escrito y releído; este encargo sigue AGENTS explícito de Isaac. Origin/nightly consultado `2148bf7e` y el histórico Asana difieren en tracker; se conserva la discrepancia sin sustituir el seguimiento actual. Plan.md ausente en base y nightly; no recreado.
+- Worktree `/Users/isaacalbala/vw-fb-studio/vantare-v2`, rama `vantareapp/isa-1496-fb-studio`, base conservada `e55a43b3`, recibido `0eb44808`. #1497 ya integrado en `1108dd35` (`aafc266d`, ancestry confirmado). No nuevo merge, rebase, push, PR ni promoción. Worker Codex sin subagentes; Claude recoge y revisa el diff por Git.
+- Implementaciones heredadas:11 `e599dc22`,12 `656b0b5d`,13 `13e9d0b3`,14 `6937548e`,15 `22f97b6e`,16 `9dd4eca8`,17 `a55bc65b`,18 `498868dc`/`e9d77843`,20 `610a7b91`. Continuación: `44f93c5c` normaliza clase al cambiar Clasificación; `fa7e007b` verifica rivales visibles de clase propia y actualiza las pruebas de catálogo multiclase; `13ab1587` alinea el golden de importación con referencia Delta ya introducida por #1497. Sin nuevos contratos de núcleo ni dependencias productivas.
+- Mac UI productiva, banco externo aislado: clic dentro del widget mantiene archivo idéntico; teclado1,8s x30→179 y botón sostenido x30→203, un undo restaura30. Standings Multiclase/8 filas =3+3+2; Relative1 delante/5 detrás responde; Delta Óptima/Ampliado expone sectores/barra. Última vuelta y mejor absoluta de sesión **pendientes**: no tienen señal independiente del núcleo. No se declara punto20 completo ni LMU/OBS/Windows certificado.
+- Checks: fmt y Clippy Hub/UI/domain/ipc/all-targets-Dwarnings PASS con feature existente `vantare-services/network`; UI210 PASS/2ignored, inspector10, Relative20, golden1 PASS; domain146+2 e IPC47+15 PASS. Telemetría21/21 y lifecycle10/10 disponibles Mac PASS; Clippy runtime/all-targets-Dwarnings PASS. Los casos exclusivos Windows de lifecycle no se ejecutan en macOS. Suite completa por crates conserva Hub23 fallos (19 main-thread GPUI macOS,3 fixtures Windows,1 storage no construido),3 integraciones main-thread; import retry pasa5/5 con TMPDIR real (fallo /var symlink inicial conservado). No se debilitan tests ni guardas. Gates Windows completos, parity-capture Win32/DuckDB/NSIS/DPI/OBS y CI remota pendientes; no Go/React al no cambiar sus fuentes.
+- Profiler GPUI Release externo, fuente Boxes LMU V0 1/12 y layout iguales, cuatro widgets; tres tandas20 gestos por acción. Present/s observados opacidad2,57→2,74 y drag4,58→2,89; p95 Draw16,79→16,26ms y15,70→16,36ms. **Resultado inconcluso para FPS sostenidos**: entrada CUA corta/variable y dibujo bajo demanda; no autoriza afirmar mejora ni regresión. Fotos contienen un coche visible, ventanas maximizadas difieren1 punto lógico de alto. Trazas/markers/analizador/piloto y límites en `~/evidence/fb-studio/VERIFICACION.md`; falta entrada continua controlada y carga real.
+- Evidencia local `~/evidence/fb-studio/`, informe≤12 líneas y capturas revisadas. README del Hub actualizado al contrato actual; el banco no se distribuye, no usa servicios/datos reales ni añade profiler al producto. Siguiente: review de Claude, gates/gestos continuos Windows, decisión de referencias Delta núcleo y aceptación de Isaac. Entrega aislada para revisión; sin push/PR/merge/release/acciones comerciales; únicas escrituras externas, seguimiento Notion autorizado.
+
+### #1496 · cierre de integración del feedback 9-oct en Windows
+
+Base `e55a43b3`, rama `vantareapp/isa-1496-integracion-prueba`, worktree
+`C:/tmp/vw3-integracion/vantare-v2`. Fuente de binarios/gates `5b950d79`;
+árbol native `84a5cf7526c6a056c92705f471e4c341527f1ed4`. El siguiente commit
+solo actualiza los tres handoffs. GitHub #1496 es el tracker: no se escribió en
+Notion; las entradas Mac previas quedan como historial. plan.md no existe en la
+base ni en origin/nightly consultado; no se recrea ni se publica roadmap.
+
+Cinco merges locales no-ff, en orden: `377f8b99` (shell `38d24188`), `db3e56d0`
+(Relative `15aa2964`), `84511395` (calroad `188069d2`), `e8d28eb4` (Ajustes
+`ae7d1f4b`), `3c8c4edf` (Studio `f59e405f`, incluye #1497). Kit único Orbit;
+changelog/handoffs acumulados y conflictos de UI resueltos conservando cada área.
+Correcciones de integración: identidad QA distinta para Run/toasts, reducción de
+movimiento aplicada también a los nuevos widgets, y regresión del borde de
+selección absoluto fuera de la geometría/opacidad del contenido. Este último test
+estaba desalineado con #1497: primer nextest falló ahí; logs originales conservados.
+
+Gates Windows por cola, targets propios en E: fmt y clippy workspace/all-targets
+-D warnings PASS; nextest 1397/1397 PASS, siete skips configurados; lifecycle
+5 tests + 13 escenarios PASS; telemetría 21/21 PASS. Los fallos Mac de Hub/UI
+import-profile/Services PNG no se reproducen en la ejecución completa final.
+Go completo PASS tras construir frontend/dist (primera ejecución sin embed
+conservada); frontend build/typecheck PASS; Python calendario 3 y ClickUp 7 PASS.
+Packaging desde Bash: general175, beta99, instalador50, configuración24,
+remote-feed9, uninstall2, build-guards2 y MSIX12 PASS. MSIX real, pgTAP/DB,
+CI remota, juego/OBS/LMU físicos y logout/login Windows no ejecutados.
+
+Setup beta local 0.0.974 en `E:/tmp/beta-local/0.0.974/`, sin firma Authenticode,
+fuente limpia `5b950d79`; SHA256 Setup normal
+`9AF854DBC05FBAC1F4F045D1450DDDA9674F752AB0FC839A27C8A0177CDC3712`.
+Instalación QA1492 bajo carpeta propia: NSIS/consentimiento/bootstrap/minimizado
+PASS, cero ventanas de widgets al arrancar. RegisterHotKey detecta conflicto
+externo, registra al liberarlo, ejecuta una vez un helper QA con Hub cerrado y
+libera al salir; no se arrancó ningún juego. Run se creó/leyó/retiró en un valor
+QA usando las funciones Win32 productivas incluidas sin cambios en un helper;
+bootstrap instalado comprobado aparte, sin simular inicio real de sesión.
+Recursos HICON ID1/NSIS y captura física del icono de taskbar instalados verificados.
+Notificación nativa: Hub solicita el toast bajo AUMID QA; Windows devuelve
+`DisabledForUser`, History0 y sin banner. Entrega visible pendiente con avisos
+habilitados por Isaac; no se alteraron sus preferencias globales. No se declara
+la notificación entregada. Banco OS sin capture compilado como experimento
+externo, nunca ejecutado ni distribuido; ejemplo temporal retirado.
+
+Studio QA: ruido de clic no escribe, opacidad guarda al soltar/un undo, flecha
+sostenida acelera/se detiene/un undo, controles y ejemplos de Standings/Relative
+así como referencias/formato/estilo Delta PASS; capturas reales inspeccionadas.
+PresentMon2.6.0: 1920x1080, cuatro widgets, entrada física59Hz, dos tandas por
+acción/versión. Mediana DXGI Present/s: drag116.98(base)→114.24(integración),
+opacidad6.6916→6.6919 (paso5puntos/dibujo bajo demanda). API Present medida;
+seguimiento completo no produjo frames propios. FPS mostrados en pantalla,
+input→Present y rendimiento con juego/OBS siguen sin prueba. No se afirma mejora
+ni regresión causal con dos tandas y una base cuyos widgets difieren.
+
+QA desinstalada, registros/accesos retirados y datos QA conservados; ningún proceso
+QA ni mutex de captura retenido. Huella de instalación real anterior/posterior
+idéntica `D0EF194546F35BF4B0AA745883B5D8FDE88AF326AFA2BAFAF18F8B6D8D4AF7ED`.
+Evidencia `C:/tmp/feedback-0910/integracion-evidence/`; inventario completo en
+archivos.json/archivos.md y resumen corto en informe-integracion.md. Revisión
+manual: capturas Studio/consentimiento/taskbar, hotkeys/results.json,
+installed-boot.json, run-registration.json, toast-status.json y packaging-current.
+Pendientes funcionales ya declarados por las áreas: idioma Hub completo/Automático,
+Delta última vuelta/mejor absoluta sin señal independiente, prueba real de datos
+Relative y despliegue/calendario-roadmap Supabase no aplicados aquí.
+
+Entrega local para revisión/aceptación de Isaac u orquestador. Sin delegación,
+push, PR, CI remota, promoción a nightly/testers/master, release, deploy ni acción
+comercial. Acciones externas: lectura SSH Mac y comentarios de seguimiento en
+GitHub #1496. Solo merges locales de las cinco ramas autorizadas.
+
+### #1496 · ajuste de lienzo solicitado por Isaac el 9 de octubre
+
+Isaac amplía el feedback en la misma rama de integración: R10.3 conserva un único marco,
+maximiza y centra el lienzo; reemplaza 16:9 fijo por la resolución lógica del monitor que
+contiene los overlays o por la elegida en la barra. La elección pertenece al layout v1,
+se conserva al reabrir y admite deshacer; los layouts anteriores siguen el monitor.
+Las posiciones globales, tamaños, contenido y orden de widgets no cambian al elegir
+resolución. El inspector ancla y centra dentro del cliente elegido, incluido su origen
+en un monitor secundario. Sin dependencias nuevas ni renderer alternativo.
+Archivos previstos: native/ui/src/layout.rs, native/hub/src/{document,inspector,studio}.rs
+y fragmento ISA-1496. Implementación b635ea67, cierre del harness headless be751010
+(faltaba cx.quit tras las comprobaciones) y etiqueta de selección visible en 32:9 00f37fef.
+El marco exterior ya desaparecía con el merge de Studio; el viewport no añade borde,
+fondo ni panel. Solo el propio lienzo dibuja su marco. No se mueve ningún widget.
+No existe docs/roadmap/plan.md en esta base ni origin/nightly; no se crea un roadmap paralelo.
+
+Verificación final Windows, fuente productiva 00f37fef:
+- Por cola, fmt y clippy workspace/all-targets -D warnings PASS; nextest 1402/1402,
+  7 skips previstos; lifecycle 5+13 PASS. Telemetría 21/21 PASS (521,76 s);
+  runtime/domain/ipc/testdata idénticos entre be751010 y 00f37fef.
+- Banco productivo de UI: ocho casos 1920×1080/1280×720 con 16:9, 21:9,
+  16:10 y 32:9; coordenadas, documento, deshacer/rehacer y reapertura PASS.
+  Capturas finales canvas-{1920,1280}-{16-9,21-9,16-10,32-9}.png inspeccionadas:
+  un único marco, tamaño máximo y centrado. La selección no recorta su etiqueta.
+- Instalador 0.0.974 reconstruido por cola, Release local sin firma/publicación;
+  manifest source_dirty=false y 91 archivos verificados. SHA256 VantareSetup.exe:
+  A63C30A6F5DCBA886754A80E0ADE813B129BAA47BB88C0F306C1239F06F7166B.
+  Este artefacto sustituye el de la integración inicial; anteriores archivados bajo
+  E:/tmp/beta-local/0.0.974-pre-* con su evidencia y datos, sin modificar la instalación real.
+- NSIS QA1492 real: instalación, arranque/primer consentimiento y hub-ready PASS;
+  QA retirada, datos retenidos, instalación de Isaac con huella D0EF1945…D4AF7ED idéntica.
+- Suites desde Bash: packaging 175, beta 99, instalador 50, config 24, feed 9,
+  uninstall 2, guards 2 y MSIX sintaxis 12 PASS. MSIX real/pgTAP/DB no ejecutados.
+- PresentMon 2.6.0 en el binario QA final DDB1A14C…6DC0368, cuatro widgets,
+  puntero físico a 59 Hz, dos tandas: medianas API Present/s drag 115,12 y opacidad 6,69.
+  Opacidad avanza en pasos de cinco puntos y redibuja al cambiar; no son FPS mostrados
+  ni latencia input→Present. Sigue pendiente acreditar ambas magnitudes.
+- Se mantienen las comprobaciones Win32 previas de RegisterHotKey, conflicto 1409,
+  liberación, Run QA/minimizado, cero widgets al arrancar e iconos de taskbar/NSIS:
+  estas rutas no cambian con el lienzo. No se ejecutó reinicio/login real de Windows.
+  Toast nativo sigue DisabledForUser/History 0: banner no acreditado; configuración
+  global del usuario intacta. No se inventa una entrega visible de notificación.
+Evidencia: C:/tmp/feedback-0910/integracion-evidence/canvas-*.json, *.log e interactive/.
+Informe breve: C:/tmp/feedback-0910/informe-integracion.md. GitHub #1496 sigue abierto;
+sin push, PR, CI remota, promoción, release, deploy o Notion. Aceptación de Isaac pendiente.
+
+## #1532 · Tests de contrato de catálogo y canal Hub→overlays (2026-10-09)
+
+Entrega aislada en C:/tmp/vw3-1532/vantare-v2, rama
+vantareapp/isa-1532-tests-contrato, base de integración 5e1da3f6.
+Hitos: 66256d5a (catálogo) y 4ded9f7d (canal por ficheros).
+El contrato fija los nombres Free y LaunchV1 contra Kind::ALL; comprueba
+unicidad, ida/vuelta del identificador y acceso Pro a todos los registrados.
+El Editor real del Hub escribe los 18 kinds con posiciones, visibilidad,
+opacidad, geometría, resolución, formato y cadencias; Document de overlays
+los recibe por poll, reapertura y undo/redo con igualdad completa del Layout.
+Store de apariencia escribe todas las paletas y alterna reducedMotion;
+MotionPolicy::load es el seam mínimo público del mismo lector productivo.
+Overlays solo consume reducedMotion: el resto de apariencia pertenece al Hub
+cuyo round-trip completo también se comprueba. No se añade watcher ni adapter paralelo.
+Por cola: fmt PASS, clippy workspace/all-targets -D warnings PASS;
+Nextest 1405/1405 PASS, 7 skips previstos, 281,268 s; lifecycle 5+13 PASS.
+Logs externos C:/tmp/auditoria-arquitectura-v2/1532-{fmt,clippy,test,lifecycle}.log.
+Telemetría no aplica: runtime/domain/ipc/testdata sin cambios. Sin QA visual,
+juego/OBS, build de distribución ni CI remoto: la entrega prueba el contrato de disco.
+Verificación manual: cambiar movimiento reducido en Hub y observar el overlay;
+editar/guardar layout, comprobar posición/tamaño/visibilidad y reabrir ambos hosts.
+plan.md ausente en esta base y origin/nightly; corrección de gobernanza en #1530.
+Sin dependencia nueva, delegación, Notion, push, PR, merge, promoción o release.
+Siguiente acción: revisión del orquestador e integración solo tras autorización de Isaac.

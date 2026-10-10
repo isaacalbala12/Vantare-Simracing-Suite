@@ -194,3 +194,49 @@ Deno.test("mapping v2: resolves exact product and price ids", () => {
   assertEquals(unknown.ok, false);
   if (!unknown.ok) assertEquals(unknown.code, "mapping_price_id_unknown");
 });
+
+Deno.test("mapping v2: sandbox annual trial requires provider proof even without monthly trial", async () => {
+  const { default: catalog } = await import(
+    "../scripts/polar-product-map.sandbox.json",
+    { with: { type: "json" } }
+  );
+  const raw = structuredClone(catalog);
+  raw.checkout_keys.pro_monthly.trial = {
+    enabled: false,
+  } as typeof raw.checkout_keys.pro_monthly.trial;
+  const denied = loadPolarProductMap(JSON.stringify(raw), {
+    environment: "sandbox",
+    trialAntiAbuseConfirmed: false,
+  });
+  assertEquals(denied.ok, false);
+  if (!denied.ok) assertEquals(denied.code, "mapping_trial_unverified");
+  assertEquals(
+    loadPolarProductMap(JSON.stringify(raw), {
+      environment: "sandbox",
+      trialAntiAbuseConfirmed: true,
+    }).ok,
+    true,
+  );
+});
+Deno.test("mapping v2: live sandbox catalogue is complete and cannot target production", async () => {
+  const { default: catalog } = await import(
+    "../scripts/polar-product-map.sandbox.json",
+    { with: { type: "json" } }
+  );
+  const result = loadPolarProductMap(JSON.stringify(catalog), {
+    environment: "sandbox",
+    trialAntiAbuseConfirmed: true,
+  });
+  assertEquals(result.ok, true);
+  if (result.ok) {
+    assertEquals(Object.keys(result.map.checkout_keys).length, 3);
+    assertEquals(resolveCheckoutKey(result.map, "pro_annual").ok, true);
+  }
+  assertEquals(
+    loadPolarProductMap(JSON.stringify(catalog), {
+      environment: "production",
+      trialAntiAbuseConfirmed: true,
+    }).ok,
+    false,
+  );
+});

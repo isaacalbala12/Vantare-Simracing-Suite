@@ -301,7 +301,8 @@ def load_manifest(path: str) -> dict[str, Any]:
 
 # The card is the app's face on Discord, so it speaks Command Orbit's visual
 # language rather than a look invented for the announcement: the values below
-# are copied from vantare-v2/frontend/src/styles/orbit.tokens.css. The brand
+# are copied from the historical orbit.tokens.css, retained in
+# vantare-v2/native/retirement/legacy-evidence/. The brand
 # carmine is #d52f49 — the old #ff3b3b was never a Vantare colour.
 ORBIT_TOKENS = """
 :root{

@@ -4,29 +4,43 @@
 //! Un único escritor (`&mut Core`, sin cerrojos ni I/O) funde, deriva y numera;
 //! los consumidores leen con [`Reader`] sin bloquearlo.
 //!
-//! Eventos ordenados y series por vuelta (flujos 2 y 3 de la ADR) no están en
-//! esta fase. Cuando lleguen, se alimentarán aquí mismo: `Core::observe`
-//! compara el snapshot previo con el nuevo (ya tiene ambos) y encola en su
-//! propio módulo hermano, con la misma `epoch`/`sequence` como punto de corte.
+//! El journal hermano compara aquí la foto previa con la nueva, con la misma
+//! `epoch`/`sequence`. Observar no escribe en disco; el propietario persiste
+//! explícitamente fuera del hilo de adquisición si activa recording.
+//! Series consume la misma foto publicada, también su degradación a obsoleto.
 
+mod delta;
 mod derive;
+mod fuel;
 mod merge;
 mod publish;
+mod stint;
+mod trend;
 
 use std::sync::Arc;
 use std::time::Duration;
+use std::{io, path::Path};
 
-use vantare_domain::{Adapter, AdapterError, Observation, Snapshot};
+use vantare_domain::{Adapter, AdapterError, Observation, Snapshot, SourceState, degrade};
 
 pub use merge::Reject;
 pub use publish::Reader;
 
-use merge::{degrade, merge, stale};
+use crate::flows::{Cursor, Journal, Series};
+use merge::{Trackers, merge_validated, stale};
 use publish::Publisher;
 
 /// Sin avance del reloj de la fuente durante este tiempo, el snapshot se
 /// publica como obsoleto (mismo límite que el `FreshnessGate` de ISA-1403).
 pub const STALL_LIMIT: Duration = Duration::from_millis(500);
+
+fn same_scope(a: &Snapshot, b: &Snapshot) -> bool {
+    a.origin.source == b.origin.source
+        && a.state.session.id == b.state.session.id
+        && a.state.session.track_name == b.state.session.track_name
+        && a.state.session.kind == b.state.session.kind
+        && a.state.player.as_ref().map(|p| p.car) == b.state.player.as_ref().map(|p| p.car)
+}
 
 #[derive(Debug)]
 pub enum Error {
@@ -43,17 +57,37 @@ impl std::fmt::Display for Error {
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for Error {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            Self::Adapter(error) => Some(error),
+            Self::Reject(error) => Some(error),
+        }
+    }
+}
 
+#[allow(clippy::struct_excessive_bools)] // Interruptores de diagnóstico, apagados por defecto.
 pub struct Core {
     epoch: u64,
+    demand: vantare_ipc::Demand,
+    demand_pending: bool,
     current: Arc<Snapshot>,
+    /// Última foto viva, para no reconstruir ni reordenar datos durante pausa.
+    last_live: Option<Arc<Snapshot>>,
     publisher: Publisher,
     /// `received_at` de la última observación en que el reloj de la fuente
     /// avanzó (o la fuente no expone reloj).
     last_advance: Duration,
     last_source_time: Option<Duration>,
     stale: bool,
+    freshness_reason: &'static str,
+    /// Memoria entre fotos de las derivaciones (combustible y delta); fuera de
+    /// `domain`, porque no es una señal publicada.
+    trackers: Trackers,
+    events: Journal,
+    series: Series,
+    measurement_skip_flows: bool,
+    measurement_skip_validation: bool,
 }
 
 impl Core {
@@ -67,12 +101,82 @@ impl Core {
         });
         Self {
             epoch,
+            demand: vantare_ipc::Demand::all(),
+            demand_pending: false,
             publisher: Publisher::new(Arc::clone(&current)),
             current,
+            last_live: None,
             last_advance: Duration::ZERO,
             last_source_time: None,
             stale: false,
+            freshness_reason: "sin sesión admitida",
+            trackers: Trackers::default(),
+            events: Journal::volatile(epoch),
+            series: Series::default(),
+            measurement_skip_flows: false,
+            measurement_skip_validation: false,
         }
+    }
+
+    /// Configuración de la prueba de frontera. Recording desactivado con `None`.
+    /// Abrir y recuperar el fichero ocurre antes del bucle de adquisición.
+    pub fn with_flows(epoch: u64, retention: usize, recording: Option<&Path>) -> io::Result<Self> {
+        let events = Journal::open(epoch, retention, recording)?;
+        Ok(Self {
+            events,
+            ..Self::new(epoch)
+        })
+    }
+
+    /// Base recuperada por el dueño I/O antes de adquisición. Sin abrir disco.
+    pub fn with_event_base(base: Cursor) -> io::Result<Self> {
+        if base.index == u64::MAX {
+            return Err(io::Error::new(io::ErrorKind::InvalidInput, "base agotada"));
+        }
+        Ok(Self {
+            events: Journal::at(base),
+            ..Self::new(base.epoch)
+        })
+    }
+
+    pub fn events(&self) -> &Journal {
+        &self.events
+    }
+
+    /// Ablación de diagnóstico: solo se configura al arrancar el banco, nunca
+    /// por IPC. La ruta normal conserva validación y los tres flujos.
+    #[cfg(any(windows, test))]
+    pub(crate) fn set_measurement_mode(&mut self, mode: &str) -> io::Result<()> {
+        let (flows, validation) = match mode {
+            "normal" => (false, false),
+            "no-flows" => (true, false),
+            "no-validation" => (false, true),
+            "no-both" => (true, true),
+            _ => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    "modo de medición desconocido",
+                ));
+            }
+        };
+        self.measurement_skip_flows = flows;
+        self.measurement_skip_validation = validation;
+        Ok(())
+    }
+
+    pub fn series(&self) -> &Series {
+        &self.series
+    }
+
+    /// Configurar entrega acotada antes de adquirir, o publicar un parcial.
+    /// No escribe disco ni espera a almacenamiento/análisis.
+    pub fn series_mut(&mut self) -> &mut Series {
+        &mut self.series
+    }
+
+    /// `persist` puede hacer I/O: llamarlo fuera de adquisición.
+    pub fn events_mut(&mut self) -> &mut Journal {
+        &mut self.events
     }
 
     /// Último snapshot publicado (el del propio escritor; los consumidores usan un [`Reader`]).
@@ -80,8 +184,42 @@ impl Core {
         Arc::clone(&self.current)
     }
 
+    pub fn freshness_reason(&self) -> &'static str {
+        self.freshness_reason
+    }
+
     pub fn subscribe(&mut self) -> Reader {
         self.publisher.subscribe()
+    }
+
+    /// Notifica una nueva suscripción: el IPC exige una revisión posterior
+    /// a su registro, incluso sin adquisición nueva. No altera las derivaciones.
+    pub fn set_demand(&mut self, demand: vantare_ipc::Demand) {
+        if self.demand != demand {
+            self.demand = demand;
+            self.demand_pending = true;
+        }
+    }
+
+    /// Evita reservar un mapa de demanda en cada vuelta del bucle de adquisición.
+    pub fn set_demand_mask(&mut self, mask: u64) {
+        if self.demand.mask() != mask {
+            self.set_demand(vantare_ipc::Demand::from_mask(mask));
+        }
+        // También una reconexión con la misma unión necesita una primera foto.
+        self.demand_pending = true;
+    }
+
+    fn refresh_demand(&mut self) {
+        if !self.demand_pending || self.current.sequence == 0 {
+            return;
+        }
+        self.demand_pending = false;
+        let mut snapshot = (*self.current).clone();
+        snapshot.sequence += 1;
+        // Notificar una suscripción no es una adquisición: no añade muestras a series ni hechos.
+        self.current = Arc::new(snapshot);
+        self.publisher.publish(Arc::clone(&self.current));
     }
 
     /// Un ciclo del bucle del propietario: lee el adaptador, publica y vigila el
@@ -92,17 +230,23 @@ impl Core {
     /// # Errors
     /// El error del adaptador o el rechazo de su observación.
     pub fn step(&mut self, adapter: &mut dyn Adapter, now: Duration) -> Result<(), Error> {
-        let result = match adapter.poll(now) {
+        let polled = {
+            #[cfg(feature = "paint-stats")]
+            let _span = crate::profiling::begin(crate::profiling::Stage::Poll);
+            adapter.poll(now)
+        };
+        let result = match polled {
             Ok(Some(observation)) => self.observe(observation).map_err(Error::Reject),
             Ok(None) => Ok(()),
             Err(error) => {
                 if error == AdapterError::Disconnected {
-                    self.publish_stale();
+                    self.publish_stale("adaptador desconectado; degradación inmediata");
                 }
                 Err(Error::Adapter(error))
             }
         };
         self.tick(now);
+        self.refresh_demand();
         result
     }
 
@@ -111,17 +255,48 @@ impl Core {
     /// # Errors
     /// [`Reject`] si no se admite; entonces no se publica nada ni cambia la revisión.
     pub fn observe(&mut self, observation: Observation) -> Result<(), Reject> {
+        #[cfg(feature = "paint-stats")]
+        let _span = crate::profiling::begin(crate::profiling::Stage::Observe);
         let origin = observation.origin;
-        let mut snapshot = merge(Some(&self.current), observation, self.epoch)?;
-        if origin.source_time.is_none() || origin.source_time != self.last_source_time {
+        let paused = observation.state.source_state == SourceState::Paused;
+        let advanced = origin.source_time.is_none() || origin.source_time != self.last_source_time;
+        let mut snapshot = merge_validated(
+            Some(&self.current),
+            observation,
+            self.epoch,
+            &mut self.trackers,
+            !self.measurement_skip_validation,
+        )?;
+        self.demand_pending = false;
+        if paused || advanced {
             self.last_advance = origin.received_at;
         }
         self.last_source_time = origin.source_time;
-        // Si el reloj de la fuente está parado (juego en pausa, adaptador que
-        // sigue entregando la misma muestra), lo declarado fresco ya no lo es.
+        if paused
+            && let Some(live) = &self.last_live
+            && same_scope(live, &snapshot)
+        {
+            snapshot.state = live.state.clone();
+            snapshot.state.source_state = SourceState::Paused;
+        }
+        // Paused exige confirmaciones periódicas del adaptador. Su silencio
+        // vuelve a caducar a los mismos 500 ms; no cambia el límite del núcleo.
         self.stale = self.is_stale_at(origin.received_at);
+        self.freshness_reason = match snapshot.state.source_state {
+            SourceState::Paused => {
+                "SHM mCurrentET sin avance >=500ms; proceso vivo y REST de sesión <500ms"
+            }
+            SourceState::Stale if advanced && origin.source_time.is_some() => {
+                "adaptador: reloj SHM avanzando en recuperación de 2000ms tras caducar a 500ms"
+            }
+            SourceState::Stale => "adaptador: reloj SHM mCurrentET >=500ms sin pausa confirmada",
+            SourceState::Live => "reloj de fuente avanzando",
+            SourceState::Waiting | SourceState::Lost => "sin sesión admitida",
+        };
         if self.stale {
             degrade(&mut snapshot.state);
+            snapshot.state.source_state = SourceState::Stale;
+            self.freshness_reason = "núcleo: origin.source_time sin avance >=500ms";
         }
         self.publish(snapshot);
         Ok(())
@@ -130,25 +305,71 @@ impl Core {
     /// Publica un snapshot obsoleto si la fuente lleva callada [`STALL_LIMIT`].
     pub fn tick(&mut self, now: Duration) {
         if self.is_stale_at(now) {
-            self.publish_stale();
+            let reason = if self.current.state.source_state == SourceState::Paused {
+                "núcleo: confirmación de pausa ausente >=500ms"
+            } else {
+                "núcleo: origin.source_time sin avance >=500ms"
+            };
+            self.publish_stale(reason);
         }
+    }
+
+    /// Plazo ya vigente: el servicio no debe dormir más allá de la degradación.
+    pub(crate) fn freshness_deadline(&self) -> Option<Duration> {
+        (!self.stale && self.current.sequence != 0)
+            .then(|| self.last_advance.saturating_add(STALL_LIMIT))
     }
 
     fn is_stale_at(&self, now: Duration) -> bool {
         now.saturating_sub(self.last_advance) >= STALL_LIMIT
     }
 
-    fn publish_stale(&mut self) {
+    fn publish_stale(&mut self, reason: &'static str) {
         if self.stale || self.current.sequence == 0 {
             return; // ya obsoleto, o nada que degradar
         }
         self.stale = true;
+        self.freshness_reason = reason;
         let snapshot = stale(&self.current);
         self.publish(snapshot);
     }
 
     fn publish(&mut self, snapshot: Snapshot) {
+        if !self.measurement_skip_flows {
+            {
+                #[cfg(feature = "paint-stats")]
+                let _span = crate::profiling::begin(crate::profiling::Stage::Journal);
+                self.events.observe(&self.current, &snapshot);
+            }
+            if snapshot.state.source_state != SourceState::Paused {
+                #[cfg(feature = "paint-stats")]
+                let _span = crate::profiling::begin(crate::profiling::Stage::Series);
+                self.series.observe(&snapshot);
+            }
+        }
         self.current = Arc::new(snapshot);
+        if self.current.state.source_state == SourceState::Live {
+            let mut live = Arc::clone(&self.current);
+            // Los relojes de scoring y jugador no caducan en la misma vuelta.
+            // Guardar el scoring más reciente y el último jugador válido, sin
+            // publicar como frescas sus señales realmente caducadas en Live.
+            if self.current.state.capabilities.driver_inputs == vantare_domain::Capability::WithData
+                && let Some(previous) = &self.last_live
+                && same_scope(previous, &self.current)
+            {
+                let mut retained = (*self.current).clone();
+                retained.state.player.clone_from(&previous.state.player);
+                let from = &previous.state.capabilities;
+                let to = &mut retained.state.capabilities;
+                to.driver_inputs = from.driver_inputs;
+                to.powertrain = from.powertrain;
+                to.fuel = from.fuel;
+                to.delta = from.delta;
+                to.damage = from.damage;
+                live = Arc::new(retained);
+            }
+            self.last_live = Some(live);
+        }
         self.publisher.publish(Arc::clone(&self.current));
     }
 }
@@ -164,6 +385,27 @@ mod tests {
     };
 
     use super::*;
+
+    #[test]
+    fn wrapped_errors_preserve_their_source_and_display() {
+        use std::error::Error as _;
+        let adapter = Error::Adapter(AdapterError::Disconnected);
+        assert_eq!(adapter.to_string(), AdapterError::Disconnected.to_string());
+        assert_eq!(
+            adapter
+                .source()
+                .expect("causa")
+                .downcast_ref::<AdapterError>(),
+            Some(&AdapterError::Disconnected)
+        );
+        let reject = Reject::DuplicateCar(CarId(7));
+        let error = Error::Reject(reject);
+        assert_eq!(error.to_string(), reject.to_string());
+        assert_eq!(
+            error.source().expect("causa").downcast_ref::<Reject>(),
+            Some(&reject)
+        );
+    }
 
     /// Adaptador de prueba: entrega lo que se le encoló, sin ningún simulador.
     #[derive(Default)]
@@ -184,6 +426,7 @@ mod tests {
             id: CarId(id),
             number: id.to_string(),
             position: Quality::Reliable(position),
+            in_pits: Quality::Reliable(false),
             pose: Quality::Reliable(Pose {
                 x_m,
                 y_m: 0.0,
@@ -200,6 +443,7 @@ mod tests {
         cars[2].gap_leader = Quality::Reliable(Gap::Time { seconds: 5.0 });
         let mut obs = Observation {
             state: State {
+                source_state: SourceState::Live,
                 capabilities: Capabilities {
                     positions: Capability::Fresh,
                     gaps: Capability::Fresh,
@@ -214,6 +458,7 @@ mod tests {
                         throttle: Quality::Reliable(throttle),
                         ..Telemetry::default()
                     },
+                    ..Player::default()
                 }),
                 ..State::default()
             },
@@ -226,10 +471,71 @@ mod tests {
     }
 
     #[test]
+    fn measurement_modes_preserve_standings_for_valid_observations() {
+        let obs = observation(ms(0), ms(0), 0.25);
+        let mut baseline = Core::new(3);
+        baseline.observe(obs.clone()).unwrap();
+        let expected = standings::project(&baseline.snapshot(), Preferences::default());
+        for mode in ["normal", "no-flows", "no-validation", "no-both"] {
+            let mut core = Core::new(3);
+            core.set_measurement_mode(mode).unwrap();
+            core.observe(obs.clone()).unwrap();
+            assert_eq!(
+                standings::project(&core.snapshot(), Preferences::default()),
+                expected,
+                "{mode}"
+            );
+        }
+    }
+
+    #[test]
+    fn measurement_modes_isolate_flows_and_validation_but_keep_photos_and_staleness() {
+        for (mode, flows, validation) in [
+            ("normal", true, true),
+            ("no-flows", false, true),
+            ("no-validation", true, false),
+            ("no-both", false, false),
+        ] {
+            let mut core = Core::new(3);
+            core.set_measurement_mode(mode).unwrap();
+            let mut obs = observation(ms(0), ms(0), 0.25);
+            obs.state.cars[1].laps = Quality::Reliable(1);
+            obs.state.session.remaining_s = Quality::Reliable(f64::INFINITY);
+            core.observe(obs.clone()).unwrap();
+            assert_eq!(core.series().active().is_some(), flows, "{mode}");
+            assert_eq!(
+                core.snapshot().state.session.remaining_s == Quality::Unavailable,
+                validation,
+                "{mode}"
+            );
+            let tail = core.events().tail();
+            obs.origin.source_time = Some(ms(100));
+            obs.origin.received_at = ms(100);
+            obs.state.cars[1].in_pits = Quality::Reliable(true);
+            core.observe(obs.clone()).unwrap();
+            assert_eq!(core.events().tail().index > tail.index, flows, "{mode}");
+            obs.state.cars[2].id = obs.state.cars[0].id;
+            assert_eq!(core.observe(obs).is_err(), validation, "{mode}");
+            core.tick(ms(700));
+            assert_eq!(
+                core.snapshot().state.source_state,
+                SourceState::Stale,
+                "{mode}"
+            );
+            assert!(core.snapshot().sequence >= 3);
+        }
+        let mut core = Core::new(3);
+        assert!(core.set_measurement_mode("typo").is_err());
+        assert!(!core.measurement_skip_flows);
+        assert!(!core.measurement_skip_validation);
+    }
+
+    #[test]
     fn photo_flow_from_adapter_to_the_three_view_models() {
         let mut core = Core::new(3);
         let reader = core.subscribe();
         assert_eq!(reader.latest().sequence, 0, "vacío antes de observar");
+        assert_eq!(reader.latest().state.source_state, SourceState::Waiting);
 
         let mut adapter = Script::default();
         adapter
@@ -242,6 +548,7 @@ mod tests {
         core.step(&mut adapter, ms(100)).unwrap();
 
         let snapshot = reader.wait(Duration::ZERO).unwrap();
+        assert_eq!(snapshot.state.source_state, SourceState::Live);
         assert_eq!((snapshot.epoch, snapshot.sequence), (3, 2));
 
         let table = standings::project(&snapshot, Preferences::default());
@@ -262,9 +569,168 @@ mod tests {
         assert_eq!(pedals.throttle, Some(0.75));
     }
 
+    /// La foto base con la vuelta del jugador: combustible, distancia y tiempo.
+    fn lap_photo(
+        at: Duration,
+        lap: u32,
+        level_l: f64,
+        distance_m: f64,
+        elapsed_s: f64,
+    ) -> Observation {
+        let mut obs = observation(at, at, 0.5);
+        let car = &mut obs.state.cars[1];
+        car.laps = Quality::Reliable(lap);
+        car.lap_distance_m = Quality::Reliable(distance_m);
+        car.lap_elapsed_s = Quality::Reliable(elapsed_s);
+        obs.state.player.as_mut().unwrap().fuel.level_l = Quality::Reliable(level_l);
+        obs.state.session.track_length_m = Quality::Reliable(100.0);
+        obs
+    }
+
+    #[test]
+    fn fuel_consumption_is_measured_across_photos_in_the_core() {
+        let mut core = Core::new(1);
+        core.observe(lap_photo(ms(0), 0, 100.0, 50.0, 0.25))
+            .unwrap();
+        let reader = core.subscribe();
+        let mut adapter = Script::default();
+        adapter
+            .0
+            .push_back(Ok(Some(lap_photo(ms(0), 1, 100.0, 0.0, 0.0))));
+        adapter
+            .0
+            .push_back(Ok(Some(lap_photo(ms(100), 2, 96.0, 10.0, 0.1))));
+        core.step(&mut adapter, ms(0)).unwrap();
+        core.step(&mut adapter, ms(100)).unwrap();
+        let snapshot = reader.latest();
+        let player = snapshot.state.player.as_ref().unwrap();
+        assert_eq!(player.fuel.per_lap_l, Quality::Estimated(4.0));
+        assert_eq!(player.fuel.laps_left, Quality::Estimated(24.0));
+    }
+
+    #[test]
+    fn delta_backup_is_built_across_photos_in_the_core() {
+        let mut core = Core::new(1);
+        core.observe(lap_photo(ms(0), 0, 100.0, 100.0, 0.5))
+            .unwrap();
+        let reader = core.subscribe();
+        let mut adapter = Script::default();
+        // Vuelta 1: 0,5 s en 100 m; la 2 llega a 50 m en 0,15 s.
+        for (at, lap, distance_m, elapsed_s) in [
+            (0, 1, 0.0, 0.0),
+            (100, 1, 100.0, 0.5),
+            (200, 2, 0.0, 0.0),
+            (300, 2, 50.0, 0.15),
+        ] {
+            adapter.0.push_back(Ok(Some(lap_photo(
+                ms(at),
+                lap,
+                100.0,
+                distance_m,
+                elapsed_s,
+            ))));
+        }
+        for at in [0, 100, 200, 300] {
+            core.step(&mut adapter, ms(at)).unwrap();
+        }
+        let snapshot = reader.latest();
+        let delta = snapshot
+            .state
+            .player
+            .as_ref()
+            .unwrap()
+            .delta_best_s
+            .current()
+            .copied()
+            .unwrap();
+        assert!((delta + 0.1).abs() < 1e-9, "delta = {delta}");
+    }
+
+    #[test]
+    fn confirmed_pause_adds_no_lap_samples_and_does_not_create_a_gap() {
+        let mut core = Core::new(1);
+        core.observe(lap_photo(ms(0), 1, 100.0, 10.0, 0.1)).unwrap();
+        let samples = core.series().active().unwrap().samples.clone();
+        for at in (250..=6000).step_by(250) {
+            let mut paused = lap_photo(ms(at), 1, 100.0, 10.0, 0.1);
+            paused.origin.source_time = Some(ms(0));
+            paused.state.source_state = SourceState::Paused;
+            core.observe(paused).unwrap();
+            let block = core.series().active().unwrap();
+            assert_eq!(block.samples, samples);
+            assert!(!block.gap);
+        }
+    }
+
+    #[test]
+    fn pause_restores_the_last_live_photo_but_never_inherits_another_session() {
+        let mut core = Core::new(1);
+        core.observe(observation(ms(0), ms(0), 0.5)).unwrap();
+        let live = core.snapshot();
+        core.tick(ms(500));
+        assert_eq!(core.snapshot().state.source_state, SourceState::Stale);
+        let mut paused = observation(ms(600), ms(0), 0.9);
+        paused.state.source_state = SourceState::Paused;
+        core.observe(paused.clone()).unwrap();
+        let mut retained = core.snapshot().state.clone();
+        retained.source_state = SourceState::Live;
+        assert_eq!(retained, live.state);
+        paused.origin.received_at = ms(700);
+        paused.state.session.id = vantare_domain::SessionId(2);
+        core.observe(paused).unwrap();
+        let current = core.snapshot();
+        assert_eq!(current.state.session.id, vantare_domain::SessionId(2));
+        assert_eq!(
+            current.state.player.as_ref().unwrap().telemetry.throttle,
+            Quality::Reliable(0.9)
+        );
+        core.tick(ms(1200));
+        assert_eq!(core.snapshot().state.source_state, SourceState::Stale);
+    }
+
+    #[test]
+    fn unchanged_pedals_with_advancing_source_stay_fresh_beyond_pipe_timeout() {
+        let mut demand = vantare_ipc::Demand::default();
+        demand.request(vantare_ipc::Signal::Pedals, 5000);
+        let mut core = Core::new(1);
+        core.set_demand(demand);
+        for millis in (0..=6000).step_by(100) {
+            core.observe(observation(ms(millis), ms(millis), 0.0))
+                .expect("fuente viva, pedales constantes");
+            core.tick(ms(millis));
+            let photo = core.snapshot();
+            assert_eq!(photo.state.source_state, SourceState::Live);
+            assert_eq!(
+                photo
+                    .state
+                    .player
+                    .as_ref()
+                    .expect("jugador")
+                    .telemetry
+                    .throttle,
+                Quality::Reliable(0.0)
+            );
+        }
+        core.tick(ms(6499));
+        assert_eq!(core.snapshot().state.source_state, SourceState::Live);
+        core.tick(ms(6500));
+        assert_eq!(core.snapshot().state.source_state, SourceState::Stale);
+        assert_eq!(
+            core.snapshot()
+                .state
+                .player
+                .as_ref()
+                .expect("jugador")
+                .telemetry
+                .throttle,
+            Quality::Stale(0.0)
+        );
+    }
+
     #[test]
     fn silence_and_frozen_clock_go_stale_then_recover_with_one_revision_counter() {
         let mut core = Core::new(1);
+        assert_eq!(core.freshness_deadline(), None);
         let reader = core.subscribe();
         let mut adapter = Script::default();
         adapter
@@ -275,8 +741,10 @@ mod tests {
 
         // Sin nada nuevo: fresco hasta el límite, obsoleto en él, una sola vez.
         core.step(&mut adapter, ms(499)).unwrap();
+        assert_eq!(core.freshness_deadline(), Some(ms(500)));
         assert_eq!(reader.latest().sequence, 1);
         core.step(&mut adapter, ms(500)).unwrap();
+        assert_eq!(core.freshness_deadline(), None);
         core.step(&mut adapter, ms(900)).unwrap();
         let old = reader.latest();
         assert_eq!(old.sequence, 2);
@@ -351,5 +819,146 @@ mod tests {
         let old = reader.latest();
         assert_eq!(old.sequence, 2);
         assert_eq!(old.state.cars[0].position, Quality::Stale(1));
+    }
+
+    fn measured_core() -> Core {
+        let mut core = Core::new(1);
+        for (at, lap, level, distance, elapsed) in [
+            (0, 0, 100.0, 100.0, 0.5),
+            (100, 1, 100.0, 0.0, 0.0),
+            (200, 1, 98.0, 100.0, 0.5),
+            (300, 2, 96.0, 0.0, 0.0),
+        ] {
+            core.observe(lap_photo(ms(at), lap, level, distance, elapsed))
+                .expect("referencia");
+        }
+        core
+    }
+
+    #[test]
+    fn demand_changes_preserve_fuel_history_and_measure_hidden_laps() {
+        use vantare_ipc::{Demand, Signal};
+        let mut without_fuel = Demand::default();
+        without_fuel.request(Signal::Delta, 100);
+        for demand in [Demand::default(), without_fuel] {
+            let mut core = measured_core();
+            let before = core.snapshot().state.player.as_ref().expect("jugador").fuel;
+            assert_eq!(before.per_lap_l, Quality::Estimated(4.0));
+            core.set_demand(demand);
+            core.observe(lap_photo(ms(400), 2, 94.0, 50.0, 0.25))
+                .expect("oculto");
+            let hidden = core.snapshot();
+            let fuel = &hidden.state.player.as_ref().expect("jugador").fuel;
+            assert_eq!(fuel.per_lap_l, before.per_lap_l);
+            assert_eq!(fuel.history, before.history);
+            core.observe(lap_photo(ms(450), 3, 90.0, 0.0, 0.0))
+                .expect("meta oculta");
+            core.set_demand_mask(Demand::all().mask());
+            core.observe(lap_photo(ms(500), 3, 89.0, 10.0, 0.1))
+                .expect("visible");
+            let photo = core.snapshot();
+            let fuel = &photo.state.player.as_ref().expect("jugador").fuel;
+            assert_eq!(fuel.per_lap_l, Quality::Estimated(5.0));
+            assert_eq!(&fuel.history[..2], &[Some((1, 4.0)), Some((2, 6.0))]);
+        }
+    }
+
+    #[test]
+    fn demand_changes_preserve_delta_reference() {
+        let mut core = measured_core();
+        core.set_demand_mask(0);
+        core.observe(lap_photo(ms(400), 2, 95.0, 50.0, 0.15))
+            .expect("oculto");
+        let delta = core
+            .snapshot()
+            .state
+            .player
+            .as_ref()
+            .expect("jugador")
+            .delta_best_s;
+        assert!((delta.current().expect("referencia conservada") + 0.1).abs() < 1e-9);
+        core.set_demand_mask(vantare_ipc::Demand::all().mask());
+        core.observe(lap_photo(ms(450), 2, 94.0, 60.0, 0.2))
+            .expect("visible");
+        let delta = core
+            .snapshot()
+            .state
+            .player
+            .as_ref()
+            .expect("jugador")
+            .delta_best_s;
+        assert!((delta.current().expect("referencia al volver") + 0.1).abs() < 1e-9);
+    }
+
+    #[test]
+    fn event_consumer_receives_derivations_without_overlay_demand() {
+        use crate::flows::wire::{self, Frame};
+        use vantare_domain::{Class, ClassId};
+        let mut core = Core::new(1);
+        core.set_demand_mask(0);
+        for (at, lap, level, distance, elapsed) in [
+            (0, 0, 100.0, 100.0, 0.5),
+            (100, 1, 100.0, 0.0, 0.0),
+            (200, 1, 98.0, 100.0, 0.5),
+            (300, 2, 96.0, 0.0, 0.0),
+            (400, 2, 95.0, 50.0, 0.15),
+        ] {
+            let mut obs = lap_photo(ms(at), lap, level, distance, elapsed);
+            obs.state.session.laps_total = Quality::Reliable(10);
+            for car in &mut obs.state.cars {
+                car.class = Some(Class {
+                    id: ClassId(1),
+                    name: "GT".into(),
+                });
+                car.laps = Quality::Reliable(lap);
+                car.lap_distance_m = Quality::Reliable(distance);
+                car.lap_elapsed_s = Quality::Reliable(elapsed);
+            }
+            obs.state.cars[1].best_lap_s = Quality::Reliable(0.5);
+            obs.state.cars[2].lap_elapsed_s = Quality::Reliable(elapsed + 0.1);
+            core.observe(obs).expect("adquisición sin widgets");
+        }
+        let frame = Frame::capture(&core.snapshot(), core.events(), None).expect("frame");
+        let mut bytes = Vec::new();
+        wire::write_frame(&mut bytes, &frame).expect("canal de eventos");
+        let frame = wire::read_frame(&mut bytes.as_slice())
+            .expect("consumidor")
+            .expect("frame recibido");
+        let state = frame.snapshot.state;
+        assert_eq!(state.session.laps_remaining, Quality::Estimated(8));
+        assert_eq!(state.cars[1].class_position, Quality::Estimated(2));
+        assert_eq!(
+            state.cars[1].gap_ahead,
+            Quality::Estimated(Gap::Time { seconds: 2.0 })
+        );
+        assert_eq!(
+            state.cars[1].gap_class_leader,
+            Quality::Estimated(Gap::Time { seconds: 2.0 })
+        );
+        assert!((state.cars[2].relative_s.current().expect("relative") - 0.1).abs() < 1e-9);
+        let player = state.player.expect("jugador");
+        assert_eq!(player.fuel.per_lap_l, Quality::Estimated(4.0));
+        assert_eq!(player.fuel.history[0], Some((1, 4.0)));
+        assert!((player.delta_best_s.current().expect("delta") + 0.1).abs() < 1e-9);
+    }
+    #[test]
+    fn reconnecting_the_same_demand_refreshes_photo_without_fabricating_series_samples() {
+        let mut core = Core::new(1);
+        core.observe(lap_photo(ms(0), 1, 100.0, 0.0, 0.0))
+            .expect("foto");
+        let samples = core.series().active().expect("vuelta").samples.len();
+        let before = core.snapshot();
+        let tail = core.events().tail();
+        core.set_demand_mask(vantare_ipc::Demand::all().mask());
+        core.step(&mut Script::default(), ms(10))
+            .expect("siguiente tick");
+        assert_eq!(core.snapshot().sequence, 2);
+        assert_eq!(core.snapshot().state, before.state);
+        assert_eq!(core.snapshot().origin, before.origin);
+        assert_eq!(core.events().tail(), tail);
+        assert_eq!(
+            core.series().active().expect("vuelta").samples.len(),
+            samples
+        );
     }
 }

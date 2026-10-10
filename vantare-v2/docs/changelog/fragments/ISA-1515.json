@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1515",
+  "type": "fix",
+  "summary": "Los informes de fallos permanecen desactivados hasta que aceptas enviarlos.",
+  "technicalNotes": ["El primer arranque pregunta antes del acceso al Hub y guarda aceptar o rechazar. Las instalaciones antiguas sin una decisión registrada también reciben la pregunta.", "Ajustes › Privacidad permite cambiar la decisión y borrar los informes pendientes al desactivar. Los datos de uso siguen desactivados por defecto."],
+  "testing": ["En una raíz QA nueva, rechaza y reinicia: no debe volver a preguntar ni crear informes de fallos. Repite aceptando y comprueba el interruptor de Ajustes › Privacidad.", "Migra una raíz QA con privacy.json antiguo y cola pendiente: debe preguntar con fallos desactivados y descartar los informes anteriores."],
+  "knownLimitations": ["La publicación de la política de privacidad en la web requiere revisión y despliegue por Isaac."]
+}

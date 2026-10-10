@@ -1,0 +1,73 @@
+{
+  "version": 9,
+  "epoch": 1,
+  "sequence": 1,
+  "origin": {
+    "simulator": "unknown",
+    "kind": "replay",
+    "source_time": null,
+    "received_at": {
+      "secs": 0,
+      "nanos": 0
+    }
+  },
+  "state": {
+    "capabilities": {
+      "session_clock": "fresh",
+      "positions": "unsupported",
+      "lap_times": "unsupported",
+      "gaps": "unsupported",
+      "pit_status": "unsupported",
+      "flags": "unsupported",
+      "spatial": "unsupported",
+      "driver_inputs": "unsupported",
+      "powertrain": "unsupported",
+      "fuel": "unsupported",
+      "delta": "unsupported",
+      "sectors": "unsupported",
+      "lap_progress": "unsupported",
+      "weather": "fresh",
+      "damage": "unsupported"
+    },
+    "session": {
+      "id": 0,
+      "kind": {
+        "reliable": "race"
+      },
+      "state": "unavailable",
+      "elapsed_s": "unavailable",
+      "remaining_s": {
+        "reliable": 7198
+      },
+      "track_name": {
+        "reliable": "Sebring"
+      },
+      "laps_remaining": "unavailable",
+      "laps_total": "unavailable",
+      "track_length_m": "unavailable",
+      "weather_air_temperature_k": {
+        "reliable": 294.15
+      },
+      "weather_track_temperature_k": {
+        "reliable": 301.15
+      },
+      "weather_wind_speed_mps": {
+        "reliable": 3.888888888888889
+      },
+      "weather_wind_direction_rad": {
+        "reliable": 5.497787143782138
+      },
+      "weather_rain": {
+        "reliable": 0.0
+      },
+      "weather_track_wetness": {
+        "reliable": 0.0
+      },
+      "weather_pressure_pa": "unavailable"
+    },
+    "flags": "unavailable",
+    "cars": [],
+    "player": null,
+    "source_state": "live"
+  }
+}

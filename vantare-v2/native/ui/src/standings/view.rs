@@ -4,12 +4,15 @@
 //! (`parity/SPEC.md`): la tabla, los pies y el rail PIT se posicionan con las
 //! mismas cifras que mide el widget Wails, sin depender del layout flex de GPUI.
 
-use super::model::{self, Align, Config, Labels, Metric, Plan, ROW_HEIGHT, Row, Status, Vm};
+use super::model::{self, Align, Config, Labels, Metric, Plan, Row, Status, Vm};
 use super::motion::{Frame, RowVis};
-use crate::text::{self, Ink};
+use super::style::Style;
+use crate::efficiency::preview::PaintWindow as Window;
+use crate::efficiency::text;
+use crate::efficiency::{self, paint_rect, rect};
 use gpui::{
-    App, BorderStyle, Bounds, BoxShadow, ContentMask, Corners, Edges, Hsla, PathBuilder, Pixels,
-    Point, Rgba, Window, fill, linear_color_stop, linear_gradient, point, px, quad, size,
+    App, BorderStyle, BoxShadow, ContentMask, Corners, Edges, Hsla, PathBuilder, Pixels, Point,
+    fill, linear_color_stop, linear_gradient, point, px, quad,
 };
 use std::{
     cell::{Cell, RefCell},
@@ -25,9 +28,6 @@ pub struct Scene {
     pub plan: Plan,
     pub frame: Frame,
     pub language: Language,
-    /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
-    #[cfg(feature = "parity-capture")]
-    pub backdrop: Option<Hsla>,
     pub height: f32,
 }
 
@@ -47,35 +47,12 @@ fn with_opacity<R>(value: f32, f: impl FnOnce() -> R) -> R {
     result
 }
 
-pub fn col(hex: u32, alpha: f32) -> Hsla {
-    Rgba {
-        r: ((hex >> 16) & 0xff) as f32 / 255.0,
-        g: ((hex >> 8) & 0xff) as f32 / 255.0,
-        b: (hex & 0xff) as f32 / 255.0,
-        a: alpha * opacity(),
-    }
-    .into()
+fn col(hex: u32, alpha: f32) -> Hsla {
+    efficiency::col(hex, alpha * opacity())
 }
 
 fn transparent() -> Hsla {
     col(0x000000, 0.0)
-}
-
-/// Chrome ajusta a pixel redondeando la mitad hacia arriba; GPUI la redondea
-/// hacia cero (10,5 -> 10), asi que los bordes se ajustan aqui.
-fn snap(value: f32) -> f32 {
-    (value + 0.5).floor()
-}
-
-pub(crate) fn rect(x: f32, y: f32, w: f32, h: f32) -> Bounds<Pixels> {
-    let (ox, oy) = text::origin();
-    let (x, y) = (x + ox, y + oy);
-    let (left, top) = (snap(x), snap(y));
-    let (right, bottom) = (snap(x + w).max(left), snap(y + h).max(top));
-    Bounds::new(
-        point(px(left), px(top)),
-        size(px(right - left), px(bottom - top)),
-    )
 }
 
 fn pt(x: f32, y: f32) -> Point<Pixels> {
@@ -83,28 +60,22 @@ fn pt(x: f32, y: f32) -> Point<Pixels> {
     point(px(x + ox), px(y + oy))
 }
 
-fn flag_rgb(flag: Option<&FlagKind>) -> u32 {
+fn flag_rgb(style: &Style, flag: Option<&FlagKind>) -> u32 {
     match flag {
-        None | Some(FlagKind::Other(_)) => 0xb1b4bc,
-        Some(FlagKind::Green) => 0x29c36f,
-        Some(FlagKind::Yellow) => 0xffd03d,
-        Some(FlagKind::Blue) => 0x4391ff,
-        Some(FlagKind::Red) => 0xef303e,
-        Some(FlagKind::White) => 0xffffff,
-        Some(FlagKind::Black) => 0x0c0c0e,
-        Some(FlagKind::Checkered) => 0xd1d1d6,
+        None | Some(FlagKind::Other(_)) => style.colors.flag_unknown.0,
+        Some(FlagKind::Green) => style.colors.flag_green.0,
+        Some(FlagKind::Yellow) => style.colors.flag_yellow.0,
+        Some(FlagKind::Blue) => style.colors.flag_blue.0,
+        Some(FlagKind::Red) => style.colors.flag_red.0,
+        Some(FlagKind::White) => style.colors.white.0,
+        Some(FlagKind::Black) => style.colors.flag_black.0,
+        Some(FlagKind::Checkered) => style.colors.flag_checkered.0,
     }
 }
 
 // ---------------------------------------------------------------------------
 // Primitivas
 // ---------------------------------------------------------------------------
-
-pub(crate) fn paint_rect(window: &mut Window, x: f32, y: f32, w: f32, h: f32, color: Hsla) {
-    if w > 0.0 && h > 0.0 {
-        window.paint_quad(fill(rect(x, y, w, h), color));
-    }
-}
 
 /// Recorta un poligono convexo por el semiplano `nx*x + ny*y >= d`.
 fn clip_half_plane(poly: &[(f32, f32)], nx: f32, ny: f32, d: f32) -> Vec<(f32, f32)> {
@@ -141,7 +112,7 @@ fn paint_polygon(window: &mut Window, poly: &[(f32, f32)], color: Hsla) {
 /// Cola de la sombra en el hueco del rail: alfa = 0,48 * borde gaussiano en x
 /// (sigma 12,5 = blur/2) * ventana gaussiana en y del rectangulo reducido
 /// (`spread -12`, desplazado 14 px hacia abajo).
-fn shadow_strip(height: u32) -> Vec<u8> {
+fn shadow_strip(style: &Style, width: f32, height: u32) -> Vec<u8> {
     fn phi(x: f32) -> f32 {
         // Abramowitz-Stegun 7.1.26 (error < 1,5e-7).
         let z = x.abs() / std::f32::consts::SQRT_2;
@@ -152,65 +123,112 @@ fn shadow_strip(height: u32) -> Vec<u8> {
         let erf = 1.0 - poly * (-z * z).exp();
         0.5 * (1.0 + erf.copysign(x))
     }
-    let (sigma, edge_x, top, bottom) = (12.5f32, 428.0f32, 26.0f32, height as f32 - 12.0 + 14.0);
-    let mut pixels = Vec::with_capacity((model::PIT_RAIL_WIDTH as u32 * height * 4) as usize);
+    let (sigma, edge_x, top, bottom) = (
+        style.shadow.sigma,
+        width + style.shadow.spread,
+        -style.shadow.spread + style.shadow.offset_y,
+        height as f32 + style.shadow.spread + style.shadow.offset_y,
+    );
+    let mut pixels =
+        Vec::with_capacity((style.geometry.pit_rail_width as u32 * height * 4) as usize);
     for y in 0..height {
         let gy = phi((y as f32 + 0.5 - top) / sigma) - phi((y as f32 + 0.5 - bottom) / sigma);
-        for x in 0..model::PIT_RAIL_WIDTH as u32 {
-            let gx = phi((edge_x - (440.0 + x as f32 + 0.5)) / sigma);
-            let alpha = (0.48 * gx * gy * 255.0).round().clamp(0.0, 255.0) as u8;
+        for x in 0..style.geometry.pit_rail_width as u32 {
+            let gx = phi((edge_x - (width + x as f32 + 0.5)) / sigma);
+            let alpha = (style.shadow.alpha * gx * gy * 255.0)
+                .round()
+                .clamp(0.0, 255.0) as u8;
             pixels.extend_from_slice(&[0, 0, 0, alpha]);
         }
     }
     pixels
 }
 
-fn paint_shadow_strip(window: &mut Window, cx: &mut App, width: f32, height: f32) {
+fn paint_shadow_strip(style: &Style, window: &mut Window, cx: &mut App, width: f32, height: f32) {
+    type ShadowKey = (u32, u32, u32, super::style::Shadow);
     thread_local! {
-        static STRIP: RefCell<Option<(u32, Arc<gpui::RenderImage>)>> = const { RefCell::new(None) };
+        static STRIP: RefCell<Option<(ShadowKey, Arc<gpui::RenderImage>)>> = const { RefCell::new(None) };
     }
     let h = height as u32;
+    let key = (
+        h,
+        width.to_bits(),
+        style.geometry.pit_rail_width.to_bits(),
+        style.shadow.clone(),
+    );
     let cached = STRIP.with(|s| {
         s.borrow()
             .as_ref()
-            .filter(|(ch, _)| *ch == h)
+            .filter(|(cached, _)| *cached == key)
             .map(|(_, i)| i.clone())
     });
     let image = cached.or_else(|| {
         let mut png_bytes = Vec::new();
         {
-            let mut encoder = png::Encoder::new(&mut png_bytes, model::PIT_RAIL_WIDTH as u32, h);
+            let mut encoder =
+                png::Encoder::new(&mut png_bytes, style.geometry.pit_rail_width as u32, h);
             encoder.set_color(png::ColorType::Rgba);
             encoder.set_depth(png::BitDepth::Eight);
             let mut writer = encoder.write_header().ok()?;
-            writer.write_image_data(&shadow_strip(h)).ok()?;
+            writer
+                .write_image_data(&shadow_strip(style, width, h))
+                .ok()?;
         }
         let image = gpui::Image::from_bytes(gpui::ImageFormat::Png, png_bytes)
             .to_image_data(cx.svg_renderer())
             .ok()?;
-        STRIP.with(|s| *s.borrow_mut() = Some((h, image.clone())));
+        STRIP.with(|s| *s.borrow_mut() = Some((key, image.clone())));
         Some(image)
     });
     if let Some(image) = image {
-        let bounds = rect(width, 0.0, model::PIT_RAIL_WIDTH, height);
+        let bounds = rect(width, 0.0, style.geometry.pit_rail_width, height);
         let _ = window.paint_image(bounds, bounds, Corners::all(px(0.0)), image, 0, false);
     }
 }
 
 /// Franja de bandera (`.vf-standings::before`): 130 x 50 arriba a la derecha,
 /// `linear-gradient(131deg, ... 37%-54% a 28 %, 62%-79% a 17 %)`.
-fn paint_flag_ribbon(window: &mut Window, flag: Option<&FlagKind>, width: f32) {
-    let (bw, bh) = (130.0f32, 50.0f32);
+fn paint_flag_ribbon(
+    style: &Style,
+    window: &mut Window,
+    flag: Option<&FlagKind>,
+    width: f32,
+    broadcast: bool,
+) {
+    let (bw, bh) = if broadcast {
+        ((width - 250.0).clamp(0.0, 180.0), 46.0)
+    } else {
+        (130.0f32, 50.0f32)
+    };
     let (x0, y0) = (width - bw, 0.0f32);
     let angle = 131.0f32.to_radians();
     let (dx, dy) = (angle.sin(), -angle.cos());
     let length = (bw * angle.sin()).abs() + (bh * angle.cos()).abs();
     let (cx, cy) = (x0 + bw / 2.0, y0 + bh / 2.0);
     let base = [(x0, y0), (x0 + bw, y0), (x0 + bw, y0 + bh), (x0, y0 + bh)];
-    let rgb = flag_rgb(flag);
+    let rgb = if broadcast {
+        style.colors.broadcast_accent.0
+    } else {
+        flag_rgb(style, flag)
+    };
+    if broadcast {
+        window.paint_quad(fill(
+            rect(x0, y0, bw, bh),
+            linear_gradient(
+                110.0,
+                linear_color_stop(col(rgb, 0.0), 0.55),
+                linear_color_stop(col(rgb, 0.16), 1.0),
+            ),
+        ));
+    }
     // t = ((p - centro) . dir) / L + 0.5  =>  p . dir = (t - 0.5) L + centro . dir
     let centre = cx * dx + cy * dy;
-    for (from, to, alpha) in [(0.37f32, 0.54f32, 0.28f32), (0.62, 0.79, 0.17)] {
+    let bands = if broadcast {
+        [(0.34f32, 0.48f32, 0.30f32), (0.57, 0.76, 0.23)]
+    } else {
+        [(0.37f32, 0.54f32, 0.28f32), (0.62, 0.79, 0.17)]
+    };
+    for (from, to, alpha) in bands {
         let low = (from - 0.5) * length + centre;
         let high = (to - 0.5) * length + centre;
         let poly = clip_half_plane(&base, dx, dy, low);
@@ -222,15 +240,6 @@ fn paint_flag_ribbon(window: &mut Window, flag: Option<&FlagKind>, width: f32) {
 // ---------------------------------------------------------------------------
 // Texto de celdas
 // ---------------------------------------------------------------------------
-
-fn ink(size: f32, weight: f32, tracking_em: f32, color: Hsla) -> Ink {
-    Ink {
-        size,
-        weight,
-        tracking: tracking_em * size,
-        color,
-    }
-}
 
 /// Coloca un texto de una linea `line_height` dentro de una caja alineada en
 /// horizontal; devuelve el x del borde izquierdo del texto.
@@ -247,29 +256,19 @@ fn aligned_x(align: Align, left: f32, width: f32, text_width: f32) -> f32 {
 // ---------------------------------------------------------------------------
 
 pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
+    let style = &*scene.config.style;
     let Scene {
         config, vm, plan, ..
     } = scene;
     let labels = model::labels(scene.language);
     let width = config.width;
     let height = scene.height;
-    #[cfg(feature = "parity-capture")]
-    if let Some(backdrop) = scene.backdrop {
-        let canvas_w = width
-            + if plan.pit_enabled {
-                model::PIT_RAIL_WIDTH
-            } else {
-                0.0
-            };
-        paint_rect(window, 0.0, 0.0, canvas_w, height, backdrop);
-    }
-
     // Sombra exterior (`0 14px 25px -12px rgb(0 0 0/48%)`): solo se ve en el hueco
     // derecho del rail. El culling de GPUI descarta las sombras con mascara fuera
     // de su rectangulo y bajo el panel translucido sumaria alfa, asi que se pinta
     // la cola gaussiana ya calculada como imagen (ver `shadow_strip`).
     if plan.pit_enabled {
-        paint_shadow_strip(window, cx, width, height);
+        paint_shadow_strip(style, window, cx, width, height);
     }
 
     // Panel: fondo + degradado de 120 grados (solo el primer tramo, el resto
@@ -277,26 +276,52 @@ pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
     let panel = rect(0.0, 0.0, width, height);
     window.paint_quad(quad(
         panel,
-        Corners::all(px(6.0)),
-        col(0x101113, 0.87),
+        Corners::all(px(style.geometry.radius)),
+        col(style.colors.panel.0, style.opacity.panel),
         Edges::all(px(0.0)),
         transparent(),
         BorderStyle::default(),
     ));
     window.paint_quad(quad(
         panel,
-        Corners::all(px(6.0)),
+        Corners::all(px(style.geometry.radius)),
         linear_gradient(
             120.0,
-            linear_color_stop(col(0xffffff, 0.03), 0.0),
-            linear_color_stop(col(0xffffff, 0.0), 0.38),
+            linear_color_stop(col(style.colors.white.0, 0.03), 0.0),
+            linear_color_stop(col(style.colors.white.0, 0.0), 0.38),
         ),
         Edges::all(px(0.0)),
         transparent(),
         BorderStyle::default(),
     ));
-    if plan.has_header {
-        paint_flag_ribbon(window, vm.flag.as_ref(), width);
+    if plan.brand_band > 0.0 {
+        paint_rect(
+            window,
+            0.0,
+            0.0,
+            width,
+            style.geometry.brand_band_height,
+            col(style.colors.black.0, 0.10),
+        );
+        paint_rect(
+            window,
+            0.0,
+            style.geometry.brand_band_height - 1.0,
+            width,
+            1.0,
+            col(style.colors.ink.0, 0.10),
+        );
+        paint_logo_size(window, cx, 10.0, 2.0, style.geometry.brand_logo_size);
+        let brand = style.ink(
+            style.fonts.brand_size,
+            style.fonts.bold_weight,
+            0.075,
+            col(style.colors.ink.0, 1.0),
+        );
+        text::draw(window, cx, "VANTARE", 34.0, 15.0, &brand);
+    }
+    if plan.has_header && config.study != "v2-focus" {
+        paint_flag_ribbon(style, window, vm.flag.as_ref(), width, config.broadcast);
     }
 
     if matches!(vm.status, Status::Ready | Status::Stale) && !vm.rows.is_empty() {
@@ -309,17 +334,17 @@ pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
     // Marco interior (::after): 1 px blanco 12 %, arriba 24 %.
     window.paint_quad(quad(
         panel,
-        Corners::all(px(6.0)),
+        Corners::all(px(style.geometry.radius)),
         transparent(),
         Edges::all(px(1.0)),
-        col(0xffffff, 0.12),
+        col(style.colors.white.0, style.opacity.frame),
         BorderStyle::default(),
     ));
     window.paint_quad(quad(
-        rect(0.0, 0.0, width, 6.0),
+        rect(0.0, 0.0, width, style.geometry.radius),
         Corners {
-            top_left: px(6.0),
-            top_right: px(6.0),
+            top_left: px(style.geometry.radius),
+            top_right: px(style.geometry.radius),
             bottom_right: px(0.0),
             bottom_left: px(0.0),
         },
@@ -330,7 +355,7 @@ pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
             bottom: px(0.0),
             left: px(0.0),
         },
-        col(0xffffff, 0.136),
+        col(style.colors.white.0, style.opacity.top_frame),
         BorderStyle::default(),
     ));
 
@@ -340,6 +365,7 @@ pub fn paint(scene: &Scene, window: &mut Window, cx: &mut App) {
 }
 
 fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App) {
+    let style = &*scene.config.style;
     let Scene {
         config, vm, plan, ..
     } = scene;
@@ -349,7 +375,7 @@ fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App
     }
     // Fila de cabecera (thead).
     let head_top = plan.table_top;
-    let integrated = plan.identity_span > 0 && !plan.external_header;
+    let integrated = !config.broadcast && plan.identity_span > 0 && !plan.external_header;
     let head_height = plan.head_row;
     // Fondo y borde de cada th.
     let mut x = 0.0;
@@ -372,8 +398,8 @@ fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App
             rect(tx, head_top, tw, head_height),
             linear_gradient(
                 180.0,
-                linear_color_stop(col(0xffffff, 0.02), 0.0),
-                linear_color_stop(col(0xffffff, 0.0), 1.0),
+                linear_color_stop(col(style.colors.white.0, 0.02), 0.0),
+                linear_color_stop(col(style.colors.white.0, 0.0), 1.0),
             ),
         ));
         paint_rect(
@@ -382,12 +408,29 @@ fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App
             head_top + head_height - 1.0,
             tw,
             1.0,
-            col(0xf5f5f5, 0.10),
+            col(style.colors.ink.0, 0.10),
         );
     }
     for &(first, span, tx, tw) in &th {
         if integrated && first == 0 && span == plan.identity_span {
-            paint_session_header(scene, labels, tx, head_top, window, cx);
+            if plan.has_header {
+                paint_session_header(scene, labels, tx, head_top, window, cx);
+            } else {
+                let font = style.ink(
+                    style.fonts.column_label_size,
+                    style.fonts.semibold_weight,
+                    0.025,
+                    col(style.colors.muted.0, 1.0),
+                );
+                text::draw(
+                    window,
+                    cx,
+                    labels.driver_name,
+                    tx + 8.0,
+                    head_top + 18.0,
+                    &font,
+                );
+            }
             continue;
         }
         let column = plan.columns[first];
@@ -404,14 +447,57 @@ fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App
         );
     }
 
-    // Filas.
+    // Bandas del modo multiclase, fuera de las filas de pilotos.
     let body_top = head_top + head_height;
+    for (top, class) in &plan.class_bands {
+        let y = body_top + top;
+        let id = class.trim().to_uppercase();
+        let color = if id.contains("HYPER") || ["HYP", "DP"].contains(&id.as_str()) {
+            style.colors.hypercar.0
+        } else if id.contains("LMP") || id == "P2" {
+            style.colors.lmp.0
+        } else if id.contains("GTE") || id.contains("GT3") {
+            style.colors.gold.0
+        } else {
+            style.colors.muted.0
+        };
+        let alpha = if color == style.colors.muted.0 {
+            0.05
+        } else {
+            0.11
+        };
+        window.paint_quad(fill(
+            rect(0.0, y, width, style.geometry.class_band_height),
+            linear_gradient(
+                180.0,
+                linear_color_stop(col(color, alpha), 0.0),
+                linear_color_stop(col(color, 0.0), 1.0),
+            ),
+        ));
+        paint_rect(window, 0.0, y, width, 1.0, col(style.colors.ink.0, 0.10));
+        paint_rect(
+            window,
+            0.0,
+            y + (style.geometry.class_band_height - 1.0),
+            width,
+            1.0,
+            col(style.colors.ink.0, 0.10),
+        );
+        paint_rect(window, 10.0, y + 7.0, 2.0, 14.0, col(color, 1.0));
+        let font = style.ink(
+            style.fonts.badge_size,
+            style.fonts.bold_weight,
+            0.14,
+            col(color, 1.0),
+        );
+        text::draw(window, cx, &id, 20.0, y + 18.0, &font);
+    }
     for ghost in &scene.frame.ghosts {
         // Los fantasmas guardan el top relativo al cuerpo de la tabla.
         paint_row(
             scene,
             &ghost.row,
-            body_top + ghost.top,
+            body_top + ghost.top * style.geometry.row_height / model::ROW_HEIGHT,
             &ghost.vis,
             true,
             body_top,
@@ -422,7 +508,7 @@ fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App
     for (index, row) in vm.rows.iter().take(plan.visible_rows).enumerate() {
         let vis = scene.frame.row(&row.id);
         let last = index + 1 == plan.visible_rows;
-        let top = body_top + index as f32 * ROW_HEIGHT;
+        let top = body_top + plan.row_tops[index];
         paint_row(scene, row, top, &vis, last, body_top, window, cx);
     }
     let _ = width;
@@ -436,15 +522,46 @@ fn paint_session_header(
     window: &mut Window,
     cx: &mut App,
 ) {
-    let Scene { vm, plan, .. } = scene;
+    let style = &*scene.config.style;
+    let Scene {
+        config, vm, plan, ..
+    } = scene;
     let mut x = left + 10.0;
-    let mid = top + model::SESSION_HEADER_HEIGHT / 2.0;
+    let mid = top
+        + if scene.config.broadcast {
+            style.geometry.broadcast_header_height
+        } else {
+            style.geometry.session_header_height
+        } / 2.0;
     if plan.brand_visible {
-        paint_logo(window, cx, x, mid - 12.0);
-        let brand = ink(12.0, 700.0, 0.075, col(0xf5f5f5, 1.0));
-        let base = text::baseline(mid - 6.0, 12.0, 12.0).round();
-        text::draw(window, cx, "VANTARE", x + 24.0 + 6.0, base, &brand);
-        x += 24.0 + 6.0 + text::width(window, "VANTARE", &brand) + 8.0;
+        paint_logo_size(
+            window,
+            cx,
+            x,
+            mid - style.geometry.logo_size / 2.0,
+            style.geometry.logo_size,
+        );
+        let brand = style.ink(
+            style.fonts.brand_size,
+            style.fonts.bold_weight,
+            0.075,
+            col(style.colors.ink.0, 1.0),
+        );
+        let base = text::baseline(
+            mid - style.fonts.brand_size / 2.0,
+            style.fonts.brand_size,
+            style.fonts.brand_size,
+        )
+        .round();
+        text::draw(
+            window,
+            cx,
+            "VANTARE",
+            x + style.geometry.logo_size + 6.0,
+            base,
+            &brand,
+        );
+        x += style.geometry.logo_size + 6.0 + text::width(window, "VANTARE", &brand) + 8.0;
     }
     // Contexto de sesion: filete + tipo (7px) + reloj (15px).
     let session_label = if vm.status == Status::Stale {
@@ -452,55 +569,101 @@ fn paint_session_header(
     } else {
         vm.session_label.clone()
     };
-    let type_ink = ink(
-        7.0,
-        600.0,
+    let type_ink = style.ink(
+        style.fonts.session_label_size,
+        style.fonts.semibold_weight,
         0.16,
         if vm.status == Status::Stale {
-            col(0xe2c568, 1.0)
+            col(style.colors.gold.0, 1.0)
         } else {
-            col(0xb8bac0, 1.0)
+            col(style.colors.session.0, 1.0)
         },
     );
-    let clock_ink = ink(
-        15.0,
-        650.0,
+    let clock_ink = style.ink(
+        style.fonts.clock_size,
+        style.fonts.metric_weight,
         -0.025,
         col(
             if vm.status == Status::Stale {
-                0xb9b9bd
+                style.colors.muted.0
             } else {
-                0xf5f5f5
+                style.colors.ink.0
             },
             1.0,
         ),
     );
-    let type_text = text::fit(window, &session_label, &type_ink, 68.0);
-    let clock_w = text::width(window, &vm.remaining_text, &clock_ink);
-    let type_w = text::width(window, &type_text, &type_ink);
-    let context_w = 10.0 + type_w.max(clock_w);
-    let context_h = 7.0 + 4.0 + text::css_normal_line(15.0);
-    let context_top = mid - context_h / 2.0;
-    paint_rect(window, x, context_top, 1.0, context_h, col(0xf5f5f5, 0.23));
-    let text_x = x + 1.0 + 10.0;
-    text::draw(
-        window,
-        cx,
-        &type_text,
-        text_x,
-        text::baseline(context_top, 7.0, 7.0).round(),
-        &type_ink,
-    );
-    let clock_top = context_top + 7.0 + 4.0;
-    text::draw(
-        window,
-        cx,
-        &vm.remaining_text,
-        text_x,
-        text::baseline(clock_top, text::css_normal_line(15.0), 15.0).round(),
-        &clock_ink,
-    );
-    x += 1.0 + context_w + 8.0;
+    if plan.brand_visible {
+        let type_text = text::fit(window, &session_label, &type_ink, 68.0);
+        let clock_w = text::width(window, &vm.remaining_text, &clock_ink);
+        let type_w = text::width(window, &type_text, &type_ink);
+        let context_w = 10.0 + type_w.max(clock_w);
+        let context_h =
+            style.fonts.session_label_size + 4.0 + text::css_normal_line(style.fonts.clock_size);
+        let context_top = mid - context_h / 2.0;
+        paint_rect(
+            window,
+            x,
+            context_top,
+            1.0,
+            context_h,
+            col(
+                style.colors.ink.0,
+                if config.study == "v2-focus" {
+                    0.10
+                } else {
+                    0.23
+                },
+            ),
+        );
+        let text_x = x + 1.0 + 10.0;
+        text::draw(
+            window,
+            cx,
+            &type_text,
+            text_x,
+            text::baseline(
+                context_top,
+                style.fonts.session_label_size,
+                style.fonts.session_label_size,
+            )
+            .round(),
+            &type_ink,
+        );
+        let clock_top = context_top + style.fonts.session_label_size + 4.0;
+        text::draw(
+            window,
+            cx,
+            &vm.remaining_text,
+            text_x,
+            text::baseline(
+                clock_top,
+                text::css_normal_line(style.fonts.clock_size),
+                style.fonts.clock_size,
+            )
+            .round(),
+            &clock_ink,
+        );
+        x += 1.0 + context_w + 8.0;
+    } else {
+        let kind = style.ink(
+            style.fonts.footer_value_size,
+            style.fonts.semibold_weight,
+            0.09,
+            type_ink.color,
+        );
+        let clock = style.ink(
+            style.fonts.plain_clock_size,
+            style.fonts.bold_weight,
+            -0.025,
+            clock_ink.color,
+        );
+        let line = text::css_normal_line(style.fonts.plain_clock_size);
+        let base = text::baseline(mid - line / 2.0, line, style.fonts.plain_clock_size).round();
+        text::draw(window, cx, &session_label, x, base, &kind);
+        x += text::width(window, &session_label, &kind) + 7.0;
+        text::draw(window, cx, &vm.remaining_text, x, base, &clock);
+        x += text::width(window, &vm.remaining_text, &clock) + 8.0;
+    }
     // Chip de clase.
     let class_text: String = vm
         .active_class
@@ -508,26 +671,68 @@ fn paint_session_header(
         .take(3)
         .collect::<String>()
         .to_uppercase();
-    let class_ink = ink(9.0, 700.0, 0.02, col(0xffffff, 1.0));
+    let class_ink = style.ink(
+        style.fonts.badge_size,
+        style.fonts.bold_weight,
+        0.02,
+        col(
+            if scene.config.study == "v2-focus" {
+                0xd6d6da
+            } else {
+                style.colors.white.0
+            },
+            1.0,
+        ),
+    );
     let chip_text_w = text::width(window, &class_text, &class_ink);
     let chip_w = chip_text_w + 12.0;
-    let chip_h = 5.0 + text::css_normal_line(9.0) + 5.0;
+    let chip_h = 5.0 + text::css_normal_line(style.fonts.badge_size) + 5.0;
     let chip_top = mid - chip_h / 2.0;
     window.paint_quad(quad(
         rect(x, chip_top, chip_w, chip_h),
         Corners {
-            top_left: px(4.0),
-            top_right: px(1.0),
-            bottom_right: px(4.0),
-            bottom_left: px(4.0),
+            top_left: px(style.geometry.chip_radius),
+            top_right: px(style.geometry.chip_cut_radius),
+            bottom_right: px(style.geometry.chip_radius),
+            bottom_left: px(style.geometry.chip_radius),
         },
         linear_gradient(
             145.0,
-            linear_color_stop(col(0xe32530, 1.0), 0.0),
-            linear_color_stop(col(0xba0f1b, 1.0), 1.0),
+            linear_color_stop(
+                col(
+                    style.colors.class_start.0,
+                    if scene.config.study == "v2-focus" {
+                        0.0
+                    } else {
+                        1.0
+                    },
+                ),
+                0.0,
+            ),
+            linear_color_stop(
+                col(
+                    style.colors.class_end.0,
+                    if scene.config.study == "v2-focus" {
+                        0.0
+                    } else {
+                        1.0
+                    },
+                ),
+                1.0,
+            ),
         ),
-        Edges::all(px(0.0)),
-        transparent(),
+        Edges::all(px(if scene.config.study == "v2-focus" {
+            1.0
+        } else {
+            0.0
+        })),
+        // GPUI mezcla el color de borde en el antialias aunque su ancho sea cero.
+        // Signature conserva el borde transparente; Focus sí muestra su borde.
+        if scene.config.study == "v2-focus" {
+            col(style.colors.ink.0, 0.22)
+        } else {
+            transparent()
+        },
         BorderStyle::default(),
     ));
     text::draw(
@@ -535,7 +740,12 @@ fn paint_session_header(
         cx,
         &class_text,
         x + 6.0,
-        text::baseline(chip_top + 5.0, text::css_normal_line(9.0), 9.0).round(),
+        text::baseline(
+            chip_top + 5.0,
+            text::css_normal_line(style.fonts.badge_size),
+            style.fonts.badge_size,
+        )
+        .round(),
         &class_ink,
     );
 }
@@ -599,7 +809,7 @@ fn logo_24() -> Option<Vec<u8>> {
     Some(encoded)
 }
 
-fn paint_logo(window: &mut Window, cx: &mut App, x: f32, y: f32) {
+fn paint_logo_size(window: &mut Window, cx: &mut App, x: f32, y: f32, size: f32) {
     static IMAGE: OnceLock<Option<Arc<gpui::RenderImage>>> = OnceLock::new();
     let image = IMAGE.get_or_init(|| {
         gpui::Image::from_bytes(gpui::ImageFormat::Png, logo_24()?)
@@ -607,7 +817,7 @@ fn paint_logo(window: &mut Window, cx: &mut App, x: f32, y: f32) {
             .ok()
     });
     if let Some(image) = image {
-        let bounds = rect(x, y, 24.0, 24.0);
+        let bounds = rect(x, y, size, size);
         let _ = window.paint_image(
             bounds,
             bounds,
@@ -631,14 +841,60 @@ fn paint_column_label(
     window: &mut Window,
     cx: &mut App,
 ) {
+    let style = &*scene.config.style;
     let vm = &scene.vm;
     let label = labels.metric(column.metric, vm.pace_session);
+    if scene.config.broadcast {
+        paint_rect(window, tx, head_top, tw, head_height, col(0, 0.13));
+        let font = style.ink(
+            style.fonts.column_label_size,
+            style.fonts.semibold_weight,
+            0.025,
+            col(style.colors.column_label.0, 1.0),
+        );
+        let align = match column.metric {
+            Metric::Position | Metric::DriverNumber | Metric::Gap => Align::Center,
+            Metric::DriverName => Align::Left,
+            _ => Align::Right,
+        };
+        let pad = if column.metric == Metric::DriverName {
+            style.geometry.broadcast_name_padding
+        } else {
+            style.geometry.cell_padding
+        };
+        let x = aligned_x(
+            align,
+            tx + pad,
+            tw - pad - style.geometry.cell_padding,
+            text::width(window, label, &font),
+        );
+        let line = text::css_normal_line(style.fonts.column_label_size);
+        text::draw(
+            window,
+            cx,
+            label,
+            x,
+            text::baseline(
+                head_top + (head_height - line) / 2.0,
+                line,
+                style.fonts.column_label_size,
+            )
+            .round(),
+            &font,
+        );
+        return;
+    }
     let color = if vm.pace_session && column.metric == Metric::BestLap {
-        col(0xf5f5f5, 1.0)
+        col(style.colors.ink.0, 1.0)
     } else {
-        col(0xbdbfc4, 1.0)
+        col(style.colors.column_label.0, 1.0)
     };
-    let label_ink = ink(8.0, 600.0, 0.14, color);
+    let label_ink = style.ink(
+        style.fonts.column_label_size,
+        style.fonts.semibold_weight,
+        0.14,
+        color,
+    );
     let label_w = text::width(window, label, &label_ink);
     let align = match column.metric {
         Metric::Gap => Align::Center,
@@ -646,10 +902,10 @@ fn paint_column_label(
         _ => column.align.unwrap_or(Align::Right),
     };
     let content_h = head_height - 1.0;
-    let label_h = text::css_normal_line(8.0) + 4.0;
+    let label_h = text::css_normal_line(style.fonts.column_label_size) + 4.0;
     let label_top = (content_h - label_h) / 2.0 + 2.0 + head_top;
-    let inner = tw - 16.0;
-    let lx = aligned_x(align, tx + 8.0, inner, label_w);
+    let inner = tw - (2.0 * style.geometry.cell_padding);
+    let lx = aligned_x(align, tx + style.geometry.cell_padding, inner, label_w);
     // th con overflow hidden y elipsis: aqui basta recortar por el th.
     window.with_content_mask(
         Some(ContentMask {
@@ -661,9 +917,17 @@ fn paint_column_label(
                 cx,
                 label,
                 lx,
-                text::baseline(label_top, text::css_normal_line(8.0), 8.0).round(),
+                text::baseline(
+                    label_top,
+                    text::css_normal_line(style.fonts.column_label_size),
+                    style.fonts.column_label_size,
+                )
+                .round(),
                 &label_ink,
             );
+            if scene.config.study == "v2-focus" {
+                return;
+            }
             // Subrayado de 17 x 1 (centrado bajo la etiqueta en gap).
             let ux = if column.metric == Metric::Gap {
                 lx + label_w / 2.0 - 8.5
@@ -676,7 +940,7 @@ fn paint_column_label(
                 label_top + label_h - 1.0,
                 17.0,
                 1.0,
-                col(0xf5f5f5, 0.35),
+                col(style.colors.ink.0, 0.35),
             );
         },
     );
@@ -693,58 +957,106 @@ fn paint_row(
     window: &mut Window,
     cx: &mut App,
 ) {
+    let style = &*scene.config.style;
     let Scene {
         config, vm, plan, ..
     } = scene;
-    let top = top + vis.dy;
+    let top = top + vis.dy * style.geometry.row_height / model::ROW_HEIGHT;
     let width = config.width;
     let pace = vm.pace_session;
     let opacity = vis.alpha;
     let paint = |window: &mut Window, cx: &mut App| {
-        // Fondo de fila (jugador) y flash de subida/bajada.
-        if row.is_player {
-            paint_rect(window, 0.0, top, width, ROW_HEIGHT, col(0xbfc2ca, 0.17));
-            window.paint_quad(fill(
-                rect(0.0, top, width, ROW_HEIGHT),
-                linear_gradient(
-                    180.0,
-                    linear_color_stop(col(0xffffff, 0.04), 0.0),
-                    linear_color_stop(col(0xffffff, 0.0), 0.6),
-                ),
-            ));
-        }
-        if vis.flash > 0.0 {
-            let base = if vis.flash_up { 0x7fb686 } else { 0xd95360 };
+        if config.study == "default"
+            && !config.multiclass
+            && !row.is_player
+            && vm
+                .rows
+                .iter()
+                .take(3)
+                .any(|candidate| candidate.id == row.id)
+        {
             paint_rect(
                 window,
                 0.0,
                 top,
                 width,
-                ROW_HEIGHT,
+                style.geometry.row_height,
+                col(style.colors.white.0, 0.03),
+            );
+        }
+        // Fondo de fila (jugador) y flash de subida/bajada.
+        if row.is_player {
+            if config.broadcast {
+                window.paint_quad(quad(
+                    rect(0.0, top, width, style.geometry.row_height),
+                    Corners::all(px(style.geometry.radius)),
+                    col(style.colors.player.0, style.opacity.broadcast_player),
+                    Edges::all(px(0.0)),
+                    transparent(),
+                    BorderStyle::default(),
+                ));
+            } else {
+                paint_rect(
+                    window,
+                    0.0,
+                    top,
+                    width,
+                    style.geometry.row_height,
+                    col(style.colors.player.0, style.opacity.player),
+                );
+            }
+            window.paint_quad(fill(
+                rect(0.0, top, width, style.geometry.row_height),
+                linear_gradient(
+                    180.0,
+                    linear_color_stop(col(style.colors.white.0, 0.04), 0.0),
+                    linear_color_stop(col(style.colors.white.0, 0.0), 0.6),
+                ),
+            ));
+        }
+        if vis.flash > 0.0 {
+            let base = if vis.flash_up {
+                style.colors.gain.0
+            } else {
+                style.colors.loss.0
+            };
+            paint_rect(
+                window,
+                0.0,
+                top,
+                width,
+                style.geometry.row_height,
                 col(base, 0.12 * vis.flash),
             );
         }
         // Separadores (inset box-shadow). `tr:last-child td { box-shadow: none }`
         // gana al resalte del jugador: la ultima fila no lleva ninguno.
-        if !last {
+        if !last && config.study != "v2-focus" {
             if row.is_player {
-                paint_rect(window, 0.0, top, width, 1.0, col(0xffffff, 0.13));
                 paint_rect(
                     window,
                     0.0,
-                    top + ROW_HEIGHT - 1.0,
+                    top,
                     width,
                     1.0,
-                    col(0xffffff, 0.08),
+                    col(style.colors.white.0, 0.13),
+                );
+                paint_rect(
+                    window,
+                    0.0,
+                    top + style.geometry.row_height - 1.0,
+                    width,
+                    1.0,
+                    col(style.colors.white.0, 0.08),
                 );
             } else {
                 paint_rect(
                     window,
                     0.0,
-                    top + ROW_HEIGHT - 1.0,
+                    top + style.geometry.row_height - 1.0,
                     width,
                     1.0,
-                    col(0xf5f5f5, 0.10),
+                    col(style.colors.ink.0, 0.10),
                 );
             }
         }
@@ -755,15 +1067,15 @@ fn paint_row(
             paint_cell(scene, row, *column, x, cw, top, vis, pace, window, cx);
             x += cw;
         }
-        if row.is_player {
+        if row.is_player && !config.broadcast {
             // Barra roja de 2 x 20 en la primera celda.
             paint_rect(
                 window,
                 3.0,
-                top + ROW_HEIGHT / 2.0 - 10.0,
-                2.0,
-                20.0,
-                col(0xed2431, 1.0),
+                top + (style.geometry.row_height - style.geometry.player_marker_height) / 2.0,
+                style.geometry.player_marker_width,
+                style.geometry.player_marker_height,
+                col(style.colors.player_marker.0, 1.0),
             );
         }
     };
@@ -787,11 +1099,18 @@ fn paint_cell(
     window: &mut Window,
     cx: &mut App,
 ) {
+    let style = &*scene.config.style;
     let vm = &scene.vm;
     let line = |size: f32| text::css_normal_line(size);
     // td: contenido centrado en vertical dentro de 30 px.
-    let base_for =
-        |size: f32| text::baseline(top + (ROW_HEIGHT - line(size)) / 2.0, line(size), size).round();
+    let base_for = |size: f32| {
+        text::baseline(
+            top + (style.geometry.row_height - line(size)) / 2.0,
+            line(size),
+            size,
+        )
+        .round()
+    };
     let is_best = vm
         .session_best
         .as_ref()
@@ -804,43 +1123,103 @@ fn paint_cell(
                 "—".into()
             };
             let color = if row.is_player {
-                col(0xffffff, 1.0)
+                col(style.colors.white.0, 1.0)
             } else {
-                col(0xb9bbc1, 1.0)
+                col(style.colors.position.0, 1.0)
             };
-            let i = ink(14.0, 600.0, -0.02, color);
+            let i = style.ink(
+                style.fonts.body_size,
+                style.fonts.semibold_weight,
+                -0.02,
+                color,
+            );
             let w = text::width(window, &value, &i);
-            let tx = aligned_x(Align::Center, x + 4.0, cw - 8.0, w);
-            text::draw(window, cx, &value, tx, base_for(14.0), &i);
+            let tx = aligned_x(
+                column.align.unwrap_or(Align::Center),
+                x + style.geometry.position_padding,
+                cw - style.geometry.cell_padding,
+                w,
+            );
+            text::draw(window, cx, &value, tx, base_for(style.fonts.body_size), &i);
         }
         Metric::DriverNumber => {
-            let i = ink(11.0, 600.0, -0.025, col(0xa5a5ab, 1.0));
+            let i = style.ink(
+                style.fonts.number_size,
+                style.fonts.semibold_weight,
+                -0.025,
+                col(style.colors.number.0, 1.0),
+            );
             let w = text::width(window, &row.driver_number, &i);
-            let tx = aligned_x(Align::Center, x + 8.0, cw - 16.0, w);
-            text::draw(window, cx, &row.driver_number, tx, base_for(11.0), &i);
+            let tx = aligned_x(
+                column.align.unwrap_or(Align::Center),
+                x + style.geometry.cell_padding,
+                cw - (2.0 * style.geometry.cell_padding),
+                w,
+            );
+            text::draw(
+                window,
+                cx,
+                &row.driver_number,
+                tx,
+                base_for(style.fonts.number_size),
+                &i,
+            );
         }
         Metric::DriverName => {
-            let i = ink(14.0, 700.0, -0.025, col(0xf5f5f5, 1.0));
-            let name = row.driver_name.to_uppercase();
-            let avail = cw - 16.0 - 19.0 - 7.0;
+            let i = style.ink(
+                style.fonts.body_size,
+                style.fonts.bold_weight,
+                -0.025,
+                col(style.colors.ink.0, 1.0),
+            );
+            let name = vantare_domain::standings::driver_name(
+                &row.driver_name,
+                column.name_mode.as_str(),
+                column.max_chars,
+            )
+            .to_uppercase();
+            let pad = if scene.config.broadcast {
+                style.geometry.broadcast_name_padding
+            } else {
+                style.geometry.cell_padding
+            };
+            let avail = cw - pad - style.geometry.cell_padding - 19.0 - 7.0;
             let shown = text::fit(window, &name, &i, avail);
-            text::draw(window, cx, &shown, x + 8.0, base_for(14.0), &i);
+            let name_x = aligned_x(
+                column.align.unwrap_or(Align::Left),
+                x + pad,
+                avail,
+                text::width(window, &shown, &i),
+            );
+            text::draw(
+                window,
+                cx,
+                &shown,
+                name_x,
+                base_for(style.fonts.body_size),
+                &i,
+            );
             // Chip de cambio de posicion (+n / -n).
             if let Some((chip, alpha)) = &vis.chip {
-                let ci = ink(9.0, 700.0, -0.039, col(0xf5f5f5, *alpha));
+                let ci = style.ink(
+                    style.fonts.badge_size,
+                    style.fonts.bold_weight,
+                    -0.039,
+                    col(style.colors.ink.0, *alpha),
+                );
                 let w = text::width(window, chip, &ci);
-                let cx0 = x + 8.0 + avail + 7.0 + 19.0 - w;
-                text::draw(window, cx, chip, cx0, base_for(9.0), &ci);
+                let cx0 = x + style.geometry.cell_padding + avail + 7.0 + 19.0 - w;
+                text::draw(window, cx, chip, cx0, base_for(style.fonts.badge_size), &ci);
             }
             if vis.battle > 0.0 {
-                let bx = x + 8.0;
-                let bw = cw - 16.0;
+                let bx = x + style.geometry.cell_padding;
+                let bw = cw - (2.0 * style.geometry.cell_padding);
                 window.paint_quad(fill(
-                    rect(bx, top + ROW_HEIGHT - 3.0, bw, 2.0),
+                    rect(bx, top + style.geometry.row_height - 3.0, bw, 2.0),
                     linear_gradient(
                         90.0,
-                        linear_color_stop(col(0xe2c568, 0.55 * vis.battle), 0.0),
-                        linear_color_stop(col(0xe2c568, 0.10 * vis.battle), 0.8),
+                        linear_color_stop(col(style.colors.gold.0, 0.55 * vis.battle), 0.0),
+                        linear_color_stop(col(style.colors.gold.0, 0.10 * vis.battle), 0.8),
                     ),
                 ));
             }
@@ -848,24 +1227,39 @@ fn paint_cell(
         Metric::Gap => {
             let value = row.gap_text.clone();
             let (weight, color) = if pace {
-                (500.0, col(0xbdbdc2, 1.0))
+                (style.fonts.medium_weight, col(style.colors.pace_gap.0, 1.0))
             } else {
-                (650.0, col(0xf5f5f5, 1.0))
+                (style.fonts.metric_weight, col(style.colors.ink.0, 1.0))
             };
-            let i = ink(14.0, weight, -0.025, color);
+            let i = style.ink(style.fonts.body_size, weight, -0.025, color);
             if let Some((number, unit)) = split_seconds(&value) {
-                let unit_ink = ink(9.0, 500.0, 0.0, col(0xaaa9af, 1.0));
+                let unit_ink = style.ink(
+                    style.fonts.badge_size,
+                    style.fonts.medium_weight,
+                    0.0,
+                    col(style.colors.unit.0, 1.0),
+                );
                 let nw = text::width(window, number, &i);
                 let uw = text::width(window, unit, &unit_ink);
                 let total = nw + 2.0 + uw;
-                let tx = aligned_x(Align::Center, x + 8.0, cw - 16.0, total);
-                let base = base_for(14.0);
+                let tx = aligned_x(
+                    Align::Center,
+                    x + style.geometry.cell_padding,
+                    cw - (2.0 * style.geometry.cell_padding),
+                    total,
+                );
+                let base = base_for(style.fonts.body_size);
                 text::draw(window, cx, number, tx, base, &i);
                 text::draw(window, cx, unit, tx + nw + 2.0, base, &unit_ink);
             } else {
                 let w = text::width(window, &value, &i);
-                let tx = aligned_x(Align::Center, x + 8.0, cw - 16.0, w);
-                text::draw(window, cx, &value, tx, base_for(14.0), &i);
+                let tx = aligned_x(
+                    Align::Center,
+                    x + style.geometry.cell_padding,
+                    cw - (2.0 * style.geometry.cell_padding),
+                    w,
+                );
+                text::draw(window, cx, &value, tx, base_for(style.fonts.body_size), &i);
             }
         }
         Metric::BestLap
@@ -881,42 +1275,72 @@ fn paint_cell(
                 _ => (row.vehicle_class.clone(), false),
             };
             let (weight, color) = if is_lap && pace && column.metric == Metric::BestLap {
-                (650.0, col(0xf5f5f5, 1.0))
+                (style.fonts.metric_weight, col(style.colors.ink.0, 1.0))
             } else if is_lap {
-                (600.0, col(0xe6e5e9, 1.0))
+                (style.fonts.semibold_weight, col(style.colors.lap.0, 1.0))
             } else {
-                (650.0, col(0xf5f5f5, 1.0))
+                (style.fonts.metric_weight, col(style.colors.ink.0, 1.0))
             };
             let color = if column.metric == Metric::BestLap && is_best {
-                col(0xc9b1e9, 1.0)
+                col(style.colors.best_lap.0, 1.0)
             } else {
                 color
             };
-            let i = ink(14.0, weight, -0.025, color);
+            let i = style.ink(style.fonts.body_size, weight, -0.025, color);
             let w = text::width(window, &value, &i);
-            let align = column.align.unwrap_or(Align::Right);
-            let tx = aligned_x(align, x + 8.0, cw - 16.0, w);
+            let align = column
+                .align
+                .unwrap_or(if column.metric == Metric::VehicleClass {
+                    Align::Center
+                } else {
+                    Align::Right
+                });
+            let pad = if scene.config.broadcast && is_lap {
+                11.0
+            } else {
+                style.geometry.cell_padding
+            };
+            let tx = aligned_x(align, x + pad, cw - 2.0 * pad, w);
             if column.metric == Metric::BestLap {
                 // Barrido de mejora de vuelta bajo el texto y rombo de mejor de sesion.
                 if let Some((session, alpha, frac)) = vis.sweep {
                     let base = if session {
-                        col(0xb990e8, 0.45)
+                        col(style.colors.best_sweep.0, 0.45)
                     } else {
-                        col(0x7fb686, 0.35)
+                        col(style.colors.gain.0, 0.35)
                     };
-                    paint_sweep(window, x, cw, top, base, alpha, frac);
+                    paint_sweep(style, window, x, cw, top, base, alpha, frac);
                 }
             }
-            text::draw(window, cx, &value, tx, base_for(14.0), &i);
+            if scene.config.broadcast && is_lap {
+                window.paint_quad(quad(
+                    rect(x + 6.0, top + 2.0, cw - 12.0, 26.0),
+                    Corners::all(px(style.geometry.radius)),
+                    linear_gradient(
+                        145.0,
+                        linear_color_stop(col(style.colors.white.0, 0.09), 0.0),
+                        linear_color_stop(col(style.colors.white.0, 0.03), 0.65),
+                    ),
+                    Edges::all(px(0.0)),
+                    transparent(),
+                    BorderStyle::default(),
+                ));
+            }
+            text::draw(window, cx, &value, tx, base_for(style.fonts.body_size), &i);
             if column.metric == Metric::BestLap && vis.best_marker > 0.0 {
-                let mi = ink(6.0, 400.0, 0.0, col(0xbd9be8, vis.best_marker));
+                let mi = style.ink(
+                    style.fonts.marker_size,
+                    style.fonts.regular_weight,
+                    0.0,
+                    col(style.colors.best_marker.0, vis.best_marker),
+                );
                 let mw = text::width(window, "◆", &mi);
                 text::draw(
                     window,
                     cx,
                     "◆",
                     x + cw - 3.0 - mw,
-                    top + 3.0 + text::css_ascent(6.0),
+                    top + 3.0 + text::css_ascent(style.fonts.marker_size),
                     &mi,
                 );
             }
@@ -938,9 +1362,18 @@ fn split_seconds(value: &str) -> Option<(&str, &str)> {
     ok.then_some((body, "s"))
 }
 
-fn paint_sweep(window: &mut Window, x: f32, cw: f32, top: f32, base: Hsla, alpha: f32, frac: f32) {
+fn paint_sweep(
+    style: &Style,
+    window: &mut Window,
+    x: f32,
+    cw: f32,
+    top: f32,
+    base: Hsla,
+    alpha: f32,
+    frac: f32,
+) {
     // El barrido ocupa toda la celda (inset 1px 0) y se desplaza frac * ancho.
-    let (y, h) = (top + 1.0, ROW_HEIGHT - 2.0);
+    let (y, h) = (top + 1.0, style.geometry.row_height - 2.0);
     window.with_content_mask(
         Some(ContentMask {
             bounds: rect(x, y, cw, h),
@@ -979,18 +1412,56 @@ fn paint_sweep(window: &mut Window, x: f32, cw: f32, top: f32, base: Hsla, alpha
 }
 
 fn paint_footer(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App) {
+    let style = &*scene.config.style;
     let Scene { config, vm, .. } = scene;
     if !config.show_session_footer {
         return;
     }
     let width = config.width;
     let height = scene.height;
+    if !config.footer_slots.is_empty()
+        || config
+            .footer_ids
+            .iter()
+            .any(|id| !["none", "track", "estimatedLaps"].contains(&id.as_str()))
+    {
+        paint_styled_info_cells(
+            &config.style,
+            &vm.footer_cells,
+            width,
+            height,
+            config.footer_height(),
+            !config.footer_slots.is_empty(),
+            1.0,
+            width,
+            window,
+            cx,
+        );
+        return;
+    }
     // El flex del producto deja el pie en 342,06 (0,94 px solapado con la tabla).
-    let top = height - 21.94;
-    paint_rect(window, 0.0, top, width, 21.94, col(0x000000, 0.15));
-    paint_rect(window, 0.0, top, width, 1.0, col(0xf5f5f5, 0.10));
-    let label_ink = ink(7.0, 600.0, 0.055, col(0xa7a9b0, 1.0));
-    let value_ink = ink(10.0, 600.0, -0.015, col(0xe8e8ed, 1.0));
+    let top = height - (style.geometry.footer_height - 0.06);
+    paint_rect(
+        window,
+        0.0,
+        top,
+        width,
+        style.geometry.footer_height - 0.06,
+        col(style.colors.black.0, style.opacity.footer),
+    );
+    paint_rect(window, 0.0, top, width, 1.0, col(style.colors.ink.0, 0.10));
+    let label_ink = style.ink(
+        style.fonts.session_label_size,
+        style.fonts.semibold_weight,
+        0.055,
+        col(style.colors.footer_label.0, 1.0),
+    );
+    let value_ink = style.ink(
+        style.fonts.footer_value_size,
+        style.fonts.semibold_weight,
+        -0.015,
+        col(style.colors.footer_value.0, 1.0),
+    );
     let mut items = Vec::new();
     for metric in [config.footer_first, config.footer_second] {
         if metric == model::InfoMetric::None {
@@ -1008,20 +1479,160 @@ fn paint_footer(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut Ap
     }
     let total: f32 = items
         .iter()
-        .map(|(_, _, lw, vw)| lw + 5.0 + vw)
+        .map(|(_, _, lw, vw)| lw + style.geometry.footer_pair_gap + vw)
         .sum::<f32>()
-        + 16.0 * items.len().saturating_sub(1) as f32;
+        + style.geometry.footer_gap * items.len().saturating_sub(1) as f32;
     let mut x = 10.0 + (width - 20.0 - total) / 2.0;
-    let info_top = top + 1.0 + (20.94 - 12.0) / 2.0;
+    let info_top = top + 1.0 + ((style.geometry.footer_height - 1.06) - 12.0) / 2.0;
     let base = (info_top + 10.0).round();
     for (label, value, lw, _) in &items {
         text::draw(window, cx, label, x, base, &label_ink);
-        text::draw(window, cx, value, x + lw + 5.0, base, &value_ink);
-        x += lw + 5.0 + text::width(window, value, &value_ink) + 16.0;
+        text::draw(
+            window,
+            cx,
+            value,
+            x + lw + style.geometry.footer_pair_gap,
+            base,
+            &value_ink,
+        );
+        x += lw
+            + style.geometry.footer_pair_gap
+            + text::width(window, value, &value_ink)
+            + style.geometry.footer_gap;
+    }
+}
+
+/// El mismo pie recibe celdas puras; no lee señales ni persistencia al pintar.
+fn paint_styled_info_cells(
+    style: &Style,
+    cells: &[vantare_domain::standings::InfoCell],
+    width: f32,
+    height: f32,
+    reserve: f32,
+    slots: bool,
+    unit: f32,
+    layout_width: f32,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let estimated = cells
+        .iter()
+        .map(|cell| {
+            cell.label.chars().count() as f32 * 5.5 + cell.value.chars().count() as f32 * 7.5 + 12.0
+        })
+        .sum::<f32>()
+        + 14.0 * cells.len().saturating_sub(1) as f32;
+    let factor = if slots && cells.len() <= 5 {
+        ((layout_width - 24.0).max(80.0) * 0.97 / estimated.max(1.0)).min(1.0)
+    } else {
+        1.0
+    };
+    let label_size = if slots {
+        (width / unit * 0.02).clamp(7.0, 9.0)
+    } else {
+        style.fonts.session_label_size
+    } * factor
+        * unit;
+    let value_size = if slots {
+        (width / unit * 0.029).clamp(9.0, 11.0)
+    } else {
+        style.fonts.footer_value_size
+    } * factor
+        * unit;
+    let pair_gap = if slots {
+        6.0
+    } else {
+        style.geometry.footer_pair_gap
+    } * unit;
+    let gap = if slots {
+        14.0
+    } else {
+        style.geometry.footer_gap
+    } * unit;
+    let mut lines: Vec<Vec<(&vantare_domain::standings::InfoCell, f32)>> = vec![Vec::new()];
+    let mut used = 0.0;
+    for cell in cells {
+        let w = text::width(
+            window,
+            &cell.label,
+            &style.ink(
+                label_size,
+                style.fonts.semibold_weight,
+                if slots { 0.1 } else { 0.055 },
+                col(style.colors.muted.0, 1.0),
+            ),
+        ) + pair_gap
+            + text::width(
+                window,
+                &cell.value,
+                &style.ink(
+                    value_size,
+                    style.fonts.metric_weight,
+                    -0.01,
+                    col(style.colors.ink.0, 1.0),
+                ),
+            );
+        if slots && cells.len() > 5 && used > 0.0 && used + gap + w > width - 24.0 * unit {
+            lines.push(Vec::new());
+            used = 0.0;
+        }
+        if let Some(line) = lines.last_mut() {
+            line.push((cell, w));
+        }
+        used += w + if used > 0.0 { gap } else { 0.0 };
+    }
+    let physical_height = if slots {
+        16.0 * unit + value_size + lines.len().saturating_sub(1) as f32 * (value_size + 4.0 * unit)
+    } else {
+        reserve
+    };
+    let top = height - physical_height;
+    if !slots {
+        paint_rect(
+            window,
+            0.0,
+            top,
+            width,
+            physical_height,
+            col(style.colors.black.0, style.opacity.footer),
+        );
+    }
+    paint_rect(window, 0.0, top, width, unit, col(style.colors.ink.0, 0.10));
+    let first_baseline = top
+        + if slots {
+            8.0 * unit + text::css_ascent(value_size)
+        } else {
+            15.0 * unit
+        };
+    for (index, line) in lines.iter().enumerate() {
+        let total =
+            line.iter().map(|(_, w)| w).sum::<f32>() + gap * line.len().saturating_sub(1) as f32;
+        let mut x = (width - total) / 2.0;
+        let y = first_baseline + index as f32 * (value_size + 4.0 * unit);
+        for (cell, w) in line {
+            let alpha = if cell.stale { 0.6 } else { 1.0 };
+            let label = style.ink(
+                label_size,
+                style.fonts.semibold_weight,
+                if slots { 0.1 } else { 0.055 },
+                col(style.colors.muted.0, alpha),
+            );
+            let value = style.ink(
+                value_size,
+                style.fonts.metric_weight,
+                -0.01,
+                col(style.colors.ink.0, alpha),
+            );
+            text::draw(window, cx, &cell.label, x, y, &label);
+            let offset = text::width(window, &cell.label, &label) + pair_gap;
+            text::draw(window, cx, &cell.value, x + offset, y, &value);
+            x += w + gap;
+        }
     }
 }
 
 fn paint_unavailable(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App) {
+    let style = &*scene.config.style;
     let Scene { vm, plan, .. } = scene;
     let message = match vm.status {
         Status::Disconnected => labels.disconnected,
@@ -1030,19 +1641,30 @@ fn paint_unavailable(scene: &Scene, labels: &Labels, window: &mut Window, cx: &m
     if plan.has_header {
         paint_session_header(scene, labels, 0.0, plan.brand_band, window, cx);
     }
-    let status_ink = ink(12.0, 700.0, 0.0, col(0xe2c568, 1.0));
+    let status_ink = style.ink(
+        style.fonts.brand_size,
+        style.fonts.bold_weight,
+        0.0,
+        col(style.colors.gold.0, 1.0),
+    );
     let top = plan.table_top + plan.loose_header + 10.0;
     text::draw(
         window,
         cx,
         message,
         12.0,
-        text::baseline(top, text::css_normal_line(12.0), 12.0).round(),
+        text::baseline(
+            top,
+            text::css_normal_line(style.fonts.brand_size),
+            style.fonts.brand_size,
+        )
+        .round(),
         &status_ink,
     );
 }
 
 fn paint_pit_rail(scene: &Scene, window: &mut Window, cx: &mut App) {
+    let style = &*scene.config.style;
     let Scene {
         config, vm, plan, ..
     } = scene;
@@ -1050,28 +1672,38 @@ fn paint_pit_rail(scene: &Scene, window: &mut Window, cx: &mut App) {
     let rail_top = plan.table_top;
     // El hueco parte de la altura de cabecera declarada (42), no de la real (43).
     let origin = rail_top + plan.table_header;
-    let label_ink = ink(8.0, 800.0, 0.08, col(0x151517, 1.0));
+    let label_ink = style.ink(
+        style.fonts.column_label_size,
+        style.fonts.heavy_weight,
+        0.08,
+        col(style.colors.pit_ink.0, 1.0),
+    );
     let draw_one = |row: &Row, top: f32, vis: &RowVis, window: &mut Window, cx: &mut App| {
         let (alpha, dx) = (vis.pit_alpha * vis.alpha, vis.pit_dx);
         if alpha <= 0.001 {
             return;
         }
-        let cy = top + ROW_HEIGHT / 2.0;
-        let (lx, ly, lw, lh) = (x0 + dx, cy - 13.0, 34.0, 26.0);
+        let cy = top + style.geometry.row_height / 2.0;
+        let (lx, ly, lw, lh) = (
+            x0 + dx,
+            cy - (style.geometry.pit_badge_height / 2.0),
+            style.geometry.pit_rail_width,
+            style.geometry.pit_badge_height,
+        );
         with_opacity(alpha, || {
             // Brillo 0 0 8px rgb(226 197 104 / 22 %).
             window.paint_drop_shadows(
                 rect(lx, ly, lw, lh),
                 Corners {
                     top_left: px(0.0),
-                    top_right: px(3.0),
-                    bottom_right: px(3.0),
+                    top_right: px(style.geometry.pit_radius),
+                    bottom_right: px(style.geometry.pit_radius),
                     bottom_left: px(0.0),
                 },
                 &[BoxShadow {
-                    color: col(0xe2c568, 0.22),
-                    offset: pt(0.0, 0.0),
-                    blur_radius: px(4.0),
+                    color: col(style.colors.gold.0, style.opacity.pit_glow),
+                    offset: point(px(0.0), px(0.0)),
+                    blur_radius: px(style.geometry.pit_glow_blur),
                     spread_radius: px(0.0),
                     inset: false,
                 }],
@@ -1080,45 +1712,92 @@ fn paint_pit_rail(scene: &Scene, window: &mut Window, cx: &mut App) {
                 rect(lx, ly, lw, lh),
                 Corners {
                     top_left: px(0.0),
-                    top_right: px(3.0),
-                    bottom_right: px(3.0),
+                    top_right: px(style.geometry.pit_radius),
+                    bottom_right: px(style.geometry.pit_radius),
                     bottom_left: px(0.0),
                 },
-                col(0xe2c568, 1.0),
+                col(style.colors.gold.0, 1.0),
                 Edges {
                     top: px(2.0),
                     right: px(2.0),
                     bottom: px(2.0),
                     left: px(1.0),
                 },
-                col(0x151517, 1.0),
+                col(style.colors.pit_ink.0, 1.0),
                 BorderStyle::default(),
             ));
             let w = text::width(window, "PIT", &label_ink);
             let inner_left = lx + 1.0;
-            let inner_w = lw - 3.0;
+            let inner_w = lw - style.geometry.pit_radius;
             let tx = inner_left + (inner_w - w) / 2.0;
-            let base = text::baseline(ly + (lh - 8.0) / 2.0, 8.0, 8.0).round();
+            let base = text::baseline(
+                ly + (lh - style.fonts.column_label_size) / 2.0,
+                style.fonts.column_label_size,
+                style.fonts.column_label_size,
+            )
+            .round();
             text::draw(window, cx, "PIT", tx, base, &label_ink);
         });
         let _ = row;
     };
     for ghost in &scene.frame.ghosts {
         if ghost.row.pit_active {
-            let top = origin + ghost.top;
+            let top = origin + ghost.top * style.geometry.row_height / model::ROW_HEIGHT;
             draw_one(&ghost.row, top, &ghost.vis, window, cx);
         }
     }
     for (index, row) in vm.rows.iter().take(plan.visible_rows).enumerate() {
         let vis = scene.frame.row(&row.id);
-        let top = origin + index as f32 * ROW_HEIGHT + vis.dy;
+        let top =
+            origin + plan.row_tops[index] + vis.dy * style.geometry.row_height / model::ROW_HEIGHT;
         draw_one(row, top, &vis, window, cx);
     }
+}
+
+/// Pie compartido con Relative: mantiene su estilo compilado.
+#[allow(clippy::too_many_arguments)]
+pub(crate) fn paint_info_cells(
+    cells: &[vantare_domain::standings::InfoCell],
+    width: f32,
+    height: f32,
+    reserve: f32,
+    slots: bool,
+    unit: f32,
+    layout_width: f32,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    paint_styled_info_cells(
+        &Style::compiled(),
+        cells,
+        width,
+        height,
+        reserve,
+        slots,
+        unit,
+        layout_width,
+        window,
+        cx,
+    );
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::efficiency::tokens;
+
+    #[test]
+    fn row_opacity_multiplies_alpha_without_affecting_other_widgets() {
+        with_opacity(0.5, || {
+            assert_eq!(col(tokens::INK, 0.8).a, 0.4);
+            with_opacity(0.5, || {
+                assert_eq!(col(tokens::INK, 0.8).a, 0.2);
+            });
+            assert_eq!(col(tokens::INK, 0.8).a, 0.4);
+            assert_eq!(efficiency::col(tokens::INK, 0.8).a, 0.8);
+        });
+        assert_eq!(col(tokens::INK, 0.8).a, 0.8);
+    }
 
     #[test]
     fn split_seconds_matches_the_production_regex() {
@@ -1138,7 +1817,7 @@ mod tests {
     #[test]
     fn shadow_tail_matches_the_reference_alpha_profile() {
         // Referencia (Wails, y = 100): alfa 19 en x = 440, 17 en 441, 10 en 445 y 0 desde 460.
-        let strip = shadow_strip(364);
+        let strip = shadow_strip(&Style::default(), 440.0, 364);
         let alpha =
             |x: usize, y: usize| i32::from(strip[(y * model::PIT_RAIL_WIDTH as usize + x) * 4 + 3]);
         assert!((alpha(0, 100) - 19).abs() <= 1);

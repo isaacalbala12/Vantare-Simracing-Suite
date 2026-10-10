@@ -65,6 +65,12 @@ pub trait Adapter {
     /// [`AdapterError::Disconnected`] si la fuente no está; [`AdapterError::Rejected`]
     /// si su dato no se puede admitir. Ambos permiten volver a llamar.
     fn poll(&mut self, now: Duration) -> Result<Option<Observation>, AdapterError>;
+
+    /// Próximo instante útil en el mismo reloj de `poll`. `None` conserva el
+    /// sondeo del consumidor para fuentes que no conocen su próxima lectura.
+    fn next_poll(&self) -> Option<Duration> {
+        None
+    }
 }
 
 #[cfg(test)]

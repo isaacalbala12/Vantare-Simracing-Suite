@@ -2,6 +2,13 @@
 
 Guia obligatoria para agentes que trabajen en este repo.
 
+La aplicación es **Rust + GPUI** en `native/`, conforme a
+[ADR 0099](docs/adr/0099-arquitectura-rust-nativa.md). #1533 retira el código de
+la app Wails/React de este checkout; esto no publica un corte ni una release.
+Lee `native/README.md`, los README de los crates afectados y sus gates.
+Los corpus y referencias se conservan en `native/retirement`; los oráculos
+Go históricos se reproducen opcionalmente desde `tools/frozen-go`.
+
 ## Contexto del usuario
 
 - El usuario no revisa codigo complejo linea por linea.
@@ -23,6 +30,9 @@ y simplifica antes de ampliarla.
   conservan su titulo `ISA-N · ...` y las labels `state:*` y `migrated:linear`.
 - Las ramas siguen la convencion `vantareapp/isa-N-slug`.
 - El tablero es el GitHub Project **Vantare**.
+
+Las instrucciones antiguas de seguimiento en Notion en otros documentos
+son históricas: estas reglas y #1503 fijan GitHub como autoridad operativa.
 
 ## Fuentes de verdad y lectura obligatoria
 
@@ -69,14 +79,6 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 - No delegues una tarea trivial cuando ejecutarla directamente sea mas clara y
   barata. El orquestador sigue siendo responsable de revisar el diff, la
   evidencia y el handoff; el reporte del worker no basta por si solo.
-- Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta ADR 0003 y el plan maestro V3.
-- `WidgetVisualHost` es la frontera compartida de renderizado para Studio,
-  Desktop, OBS y Workshop. En el flujo aprobado de autoria visual se edita el
-  TSX/CSS productivo y Workshop debe reflejarlo mediante HMR: no crees un renderer duplicado, DSL,
-  compilador HTML, scaffolder o registro generico salvo una decision nueva.
-  Los HTML son contratos visuales; el fondo del escenario no forma parte del
-  widget ni de sus capturas de paridad.
-- Si tocas drag/resize del canvas V3, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
 - El alcance, las dependencias y el estado operativo viven en la issue de GitHub.
   El roadmap público es una publicación compartida en Supabase; Isaac indica
   los cambios a Codex por chat y la app solo lee. Consulta
@@ -180,50 +182,44 @@ Para y pide revision si:
 - La base, rama o SHA no coincide con la issue.
 - La accion requiere una autorizacion reservada a Isaac.
 
-## Go
+## Ruta nativa
 
-- Usa Go simple e idiomatico.
-- Ejecuta `gofmt` en archivos Go modificados.
-- Ejecuta `go test ./...` si tocaste Go o contratos compartidos.
-- Maneja errores siempre; no uses `_` para ignorarlos salvo justificacion clara.
-- Envuelve errores con contexto usando `%w` cuando propagas errores.
-- No uses `panic` salvo casos muy justificados o tests.
-- No uses `log.Fatal` fuera de `main`.
-- Usa `context.Context` en I/O, red, DB, procesos largos o tareas cancelables.
-- Evita interfaces prematuras; define interfaces en el consumidor cuando hagan falta.
-- Evita paquetes `utils` genericos.
-- No metas goroutines/channels sin razon clara.
-- Toda goroutine debe tener cancelacion o camino de cierre.
-- Preferir tests table-driven para logica.
-- Usa `testdata/` para fixtures reales.
+La decisión vigente es ADR 0099 y su
+[plan por fases](docs/superpowers/plans/2026-09-29-arquitectura-rust-nativa.md).
+Mapa actual de `native/Cargo.toml` (los README por crate detallan contratos):
 
-## TypeScript / React
+- `launcher` / `profiling` / `build-support`: motor y archivos locales / contadores por proceso / icono Win32.
+- `domain`: modelo neutral, derivaciones, ViewModels y formato; puro, sin I/O ni GPUI.
+- `runtime`: adaptadores privados, núcleo, flujos y supervisor de procesos.
+- `ipc`: DTO versionados y transporte autenticado entre procesos.
+- `ui` / `hub`: widgets, overlays y Workshop GPUI / aplicación Hub y Studio GPUI.
+- `engineer` / `storage`: eventos y voz bajo demanda / propietario único de series DuckDB.
+- `services`: cuenta, licencia y llamadas remotas bajo demanda, sin UI.
+- `strategy` / `admin`: documento y cálculo Strategy / miniapp privada del owner, fuera del instalador público.
 
-- Mantener TypeScript estricto segun la configuracion existente.
-- Ejecuta `pnpm --dir frontend test` si tocaste frontend.
-- Ejecuta `pnpm --dir frontend build` antes de cerrar cambios frontend relevantes.
-- Ejecuta `pnpm --dir frontend lint` si tocaste patrones que ESLint cubre.
-- Ejecuta `pnpm --dir frontend typecheck` para comprobar tipos sin construir.
+`domain` y `ui` no dependen de `runtime`, tampoco transitivamente; conserva el
+test de arquitectura descrito en `native/README.md`. Usa Rust concreto,
+funciones puras y `Result`, y GPUI directamente conforme a ADR 0099.
 
-### Typecheck: usa `pnpm typecheck` o `pnpm build`, nunca `-p tsconfig.json`
+Desde `native/`, formato: `cargo fmt --all -- --check`. Para iterar:
+`./gates.ps1 check`; antes de entregar cambios Rust:
+`./gates.ps1 clippy`, `./gates.ps1 test` y `./gates.ps1 lifecycle`.
+Según `native/gates.ps1`, ejecutan check/Clippy del workspace y todos los
+targets (Clippy con `-D warnings`), Nextest del workspace y el test lifecycle
+por separado, con `--locked --offline -j 2`. Requieren DuckDB oficial instalado
+mediante `./setup-duckdb.ps1`; conservan los defaults ajenos a storage y usan
+el target propio `target/gates`. No compartas targets entre worktrees.
+Esta variante de desarrollo no sustituye el build de distribución con DuckDB
+bundled; para compilación, plataformas y empaquetado lee `native/README.md`.
+Una entrega solo documental puede omitir compilación si su brief lo autoriza;
+registra los checks omitidos y el motivo.
 
-`frontend/tsconfig.json` es solution-style: tiene `"files": []` y delega en
-`references` (`tsconfig.app.json` y `tsconfig.node.json`). Por eso:
+## Código retirado
 
-- **VALIDO:** `pnpm --dir frontend typecheck` (`tsc -b --noEmit`) o
-  `pnpm --dir frontend build` (`tsc -b && vite build`). Ambos recorren los
-  proyectos referenciados y comprueban los ficheros de verdad.
-- **NO COMPRUEBA NADA:** `tsc --noEmit -p tsconfig.json`. Con `"files": []` no
-  typechequea ni un solo fichero y sale con codigo 0 en vacio, aunque el
-  codigo tenga errores de tipos. Ya provoco que un error de tipos real
-  llegara a CI sin ser detectado. No lo uses como gate.
-
-- No anadas librerias UI sin aprobacion.
-- No dupliques estado si ya existe una fuente clara.
-- Mantener logica de negocio fuera de componentes React cuando sea razonable.
-- Componentes pequenos, con nombres claros.
-- No mezcles UI con persistencia o logica core sin necesidad.
-- No cambies configuracion de build salvo que la tarea lo pida.
+No hay gates Go ni pnpm de la app nativa. Los archivos de oráculos Go son
+referencia histórica inerte, no otra aplicación; no reintroducir Wails/React.
+Validar las fuentes y fixtures conservadas con `python native/retirement/verify.py`.
+Los otros proyectos del monorepo conservan sus instrucciones propias.
 
 ## Compilacion Rust (`native/`)
 
@@ -250,6 +246,8 @@ Con varios workers en paralelo el disco se llena y los corta (ISA-1494).
 
 ## Testing
 
+- Si tocas runtime, domain, ipc o testdata, pasa también el gate telemetria (#1498).
+
 - Todo cambio de comportamiento necesita test o explicacion de por que no.
 - Bugs corregidos necesitan test de regresion cuando sea viable.
 - Antes de refactorizar comportamiento existente, crea o identifica tests que lo protejan.
@@ -271,7 +269,7 @@ Con varios workers en paralelo el disco se llena y los corta (ISA-1494).
 
 - Grandes rewrites.
 - Microservicios prematuros.
-- Rust como base principal sin decision explicita.
+- Cambios de arquitectura fuera de ADR 0099 y sus fases autorizadas.
 - Abstracciones enormes.
 - Interfaces con una sola implementacion sin justificacion.
 - Factories/providers/managers innecesarios.

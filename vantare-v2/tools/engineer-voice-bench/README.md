@@ -9,10 +9,9 @@ inference for one short Engineer phrase in `en`, `es`, `it` and `pt-BR`. It
 writes PCM WAV fixtures and one JSON result. `whisper_probe.ps1` measures the
 first and warm requests of a resident `whisper-server` process against those
 fixtures. `score_transcripts.py` computes a transparent word-error rate for
-transcripts produced by an external STT engine. `isolation_probe.go` measures
-forced cancellation and a concurrent high-frequency heartbeat around an
-isolated engine process. The probes are intentionally small and do not claim
-perceptual voice quality.
+transcripts produced by an external STT engine. The Go isolation probe and
+Go fake-server test runner were retired in #1533. Independent Python and
+PowerShell research probes remain; they do not claim perceptual voice quality.
 
 Run the dependency-free checks:
 

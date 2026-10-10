@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Roadmap manual del Hub",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "updatedAt", "currentPhase", "phases", "areas", "items"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "updatedAt": { "$ref": "#/$defs/date" },
+    "currentPhase": { "$ref": "#/$defs/text" },
+    "phases": {
+      "type": "array", "minItems": 1, "maxItems": 8,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "title", "body", "progress"],
+        "properties": {
+          "id": { "$ref": "#/$defs/text" },
+          "title": { "$ref": "#/$defs/text" },
+          "body": { "$ref": "#/$defs/text" },
+          "progress": { "$ref": "#/$defs/progress" }
+        }
+      }
+    },
+    "areas": {
+      "type": "array", "minItems": 1, "maxItems": 12,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "title", "progress"],
+        "properties": {
+          "id": { "$ref": "#/$defs/text" },
+          "title": { "$ref": "#/$defs/text" },
+          "progress": { "$ref": "#/$defs/progress" }
+        }
+      }
+    },
+    "items": {
+      "type": "array", "maxItems": 100,
+      "items": {
+        "type": "object", "additionalProperties": false,
+        "required": ["id", "section", "title", "body", "area"],
+        "properties": {
+          "id": { "$ref": "#/$defs/text" },
+          "section": { "enum": ["now", "next", "later", "done"] },
+          "title": { "$ref": "#/$defs/localized" },
+          "body": { "$ref": "#/$defs/localized" },
+          "area": { "$ref": "#/$defs/text" },
+          "progress": { "anyOf": [{ "$ref": "#/$defs/progress" }, { "type": "null" }] },
+          "date": { "anyOf": [{ "$ref": "#/$defs/date" }, { "type": "null" }] }
+        },
+        "if": { "properties": { "section": { "const": "done" } } },
+        "then": { "required": ["date"], "properties": { "date": { "$ref": "#/$defs/date" } } }
+      }
+    }
+  },
+  "$defs": {
+    "text": { "type": "string", "minLength": 1, "maxLength": 800, "pattern": "\\S" },
+    "progress": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "date": { "type": "string", "format": "date", "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}$" },
+    "localized": {
+      "type": "object", "additionalProperties": false,
+      "required": ["es", "en", "pt", "it"],
+      "properties": {
+        "es": { "$ref": "#/$defs/text" },
+        "en": { "$ref": "#/$defs/text" },
+        "pt": { "$ref": "#/$defs/text" },
+        "it": { "$ref": "#/$defs/text" }
+      }
+    }
+  },
+  "description": "El parser Rust también valida IDs únicos, referencias de fase/área y límites en bytes UTF-8 (128 KiB total, 800 bytes por texto)."
+}

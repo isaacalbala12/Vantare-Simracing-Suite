@@ -1,5 +1,7 @@
 # Documentación vigente de Vantare
 
+> La app vigente del checkout es [Rust + GPUI](../native/README.md). #1533 retira Wails/React; las guías y evidencias antiguas permanecen como historia, con enlaces a sus fuentes congeladas. No ejecutar comandos del legado.
+
 Este índice es la entrada de lectura. El [inventario](documentation-inventory.md) separa guías actuales, contratos, planes y evidencia histórica. No hay que leer todo el archivo para empezar.
 
 ## Uso de una build

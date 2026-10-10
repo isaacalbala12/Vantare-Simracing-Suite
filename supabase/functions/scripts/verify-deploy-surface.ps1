@@ -1,7 +1,7 @@
 $ErrorActionPreference = "Stop"
 
 $functionsRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$production = @("billing-checkout", "billing-portal", "billing-webhook", "license-credential")
+$production = @("billing-checkout", "billing-portal", "billing-webhook", "license-credential", "native-billing-checkout", "native-billing-portal", "native-license", "native-account-authorize", "native-admin")
 $testingPilot = @("testing-center-feedback", "testing-center-linear-webhook", "testing-center-linear-worker")
 $allowed = $production + $testingPilot
 $testingAutomation = @("testing-center-agent-dispatch", "testing-center-agent-callback")

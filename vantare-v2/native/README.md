@@ -1,32 +1,68 @@
 # native — aplicación Rust (ADR 0099)
 
+Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
+cola de `AGENTS.md` (en esta ola, `C:/tmp/fase2/compilar.ps1`; normalmente,
+`native/scripts/compilar.ps1`). Usar target aislado y `-j 2`.
+
+El workspace tiene 13 crates; `default-members` excluye storage y admin.
+
 | Crate | Contiene |
 | --- | --- |
-| `domain` | Modelo común (`Snapshot`, `State`, `Quality`, capacidades, banderas), contrato del adaptador (`Adapter`, `Observation`), ViewModels (`standings`, `radar`, `pedals`) y formateador. Puro: sin simuladores, GPUI ni I/O; `unsafe` prohibido. |
-| `runtime` | Adaptadores de simulador (módulos privados), núcleo, flujos y ciclo de vida. |
-| `ipc` | DTO versionados (serde) y transporte entre procesos. |
-| `ui` | Biblioteca visual y binarios de overlays y Hub. |
+| `domain` | Modelo neutral, Adapter, proyecciones/ViewModels y formato; puro, sin I/O ni GPUI. |
+| `ipc` | Fotos DTO v9, demanda, transporte, derechos/control v4, contratos Engineer/Services y versión de producto. |
+| `runtime` | Adapters LMU/ACC privados, núcleo, flujos y supervisor `vantare`. |
+| `engineer` | Eventos, radio, spotter y voz local bajo demanda. |
+| `storage` | Propietario único de series DuckDB (`SeriesChunk`, contrato independiente del DTO de fotos). |
+| `services` | Cuenta Clerk, licencia, billing Polar, calendario/roadmap/reportes; protocolo v5, sin UI. |
+| `ui` | 18 widgets, hosts de overlays/Workshop GPUI, kits Eficiencia y Vantare. |
+| `hub` | Hub, Studio, presentación del Launcher, análisis, Testing Center y páginas de producto GPUI. |
+| `launcher` | Motor de perfiles, discovery, procesos y archivos locales; sin GPUI. |
+| `profiling` | Contadores compartidos por proceso, sin dependencias externas. |
+| `build-support` | Recurso Win32 compartido; icono en `native/assets/icon.ico`. |
+| `strategy` | Documento JSON y solver; miembro del mismo workspace. |
+| `admin` | Herramienta privada del owner, fuera del instalador público. |
+
+`packaging/` contiene scripts de distribución; versión y contratos viven en ipc,
+el recurso Win32 vive en build-support. No es un crate.
 
 ## Dependencias permitidas
 
 ```text
-runtime → domain, ipc      ipc → domain      ui → domain, ipc
+runtime → domain, ipc      ipc → domain, profiling      ui → domain, ipc
+engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
 ```
 
 `domain` no depende de nada del workspace; `domain` y `ui` **nunca** dependen de
 `runtime`, ni transitivamente. Lo comprueba `domain/tests/architecture.rs`
 (`cargo tree`) dentro de `cargo test`.
 
+## Contrato de fotos y datos guardados
+
+El pipe Core→Hub/overlays negocia solo DTO v9; rechaza peers v7/v8.
+El host muestra una sola vez «Componentes incompatibles. Reinstala la misma
+versión de Vantare», conserva el aviso durante los reintentos y lo retira al
+recibir una foto compatible. No es una comprobación de versión de producto:
+binarios distintos con el mismo contrato pueden interoperar.
+Servicios usa protocolo v5 (#1529); derechos/control conserva v4, independiente del DTO v9.
+El Hub distingue errores de versión de servicios y conserva su aviso de conexión.
+`snapshot_from_json` es estricto; `snapshot_from_saved_json` conserva escenas
+Studio/Workshop/exportaciones v7/v8/v9 sin reescribir originales.
+`snapshot_from_fixture_json` es el helper explícito para fixtures históricas.
+No usar esos lectores de compatibilidad en pipes live ni eventos live.
+Fixtures actuales: DTO v9; `.scene.json` contiene fases con fotos/captions,
+no un protocolo alternativo. Ver [ui/README.md](ui/README.md).
+
 ## Contrato adaptador ↔ núcleo
 
 `Adapter::poll(now) -> Result<Option<Observation>, AdapterError>` (sin bloquear,
 reloj inyectado). Una `Observation` es `Origin` (simulador, reloj de origen y de
 recepción) más `State`, con las capacidades que declara el adaptador. El núcleo
-implementa `merge(previous: Option<&Snapshot>, Observation, epoch: u64) ->
-Result<Snapshot, Reject>` (validación, derivaciones, numeración; la frescura la
-vigila `Core`); ver `domain/src/adapter.rs`. Los widgets solo
-ven `standings::project(&Snapshot, Preferences)`, `radar::project(&Snapshot)` y
-`pedals::project(&Snapshot, Preferences)`.
+fusiona mediante `runtime::core::merge_validated` (validación, saneado,
+derivaciones y numeración; recibe los trackers de combustible/delta/stint/
+tendencia; la frescura la vigila `Core`); ver `domain/src/adapter.rs`.
+Los widgets consumen las proyecciones puras de domain y pintan sus ViewModels.
+La unificación de Standings, Relative, Delta y Fuel a una proyección/estado
+por widget con N Looks está **en curso, #1531**; esta base aún tiene vías duplicadas.
 
 ## Arrancar el esqueleto
 
@@ -70,17 +106,34 @@ escena LMU fija y la recompila al guardar (ver `ui/README.md`, «Workshop»).
 
 `vantare` (`runtime/src/bin/vantare/`) es el propietario del arranque y el
 cierre: lanza `vantare-core` y `vantare-overlays` como procesos hijos y los
-supervisa.
+supervisa. `--engineer <checkpoint>` añade `vantare-engineer` bajo demanda:
+mismo supervisor/Job, reinicios independientes y cierre antes de overlays.
+No nace sin esa opción. El checkpoint tiene un único dueño; no compartirlo
+entre instancias. Véase [`engineer/README.md`](engineer/README.md).
 
 ```powershell
-vantare [--core-bin R] [--overlays-bin R] [--plazo MS] [--reinicios N] [--instancia S] `
-        [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS]]
+vantare [--core-bin R] [--overlays-bin R] [--engineer CURSOR] [--engineer-bin R] `
+        [--plazo MS] [--reinicios N] [--instancia S] `
+        [-- ARGS-DEL-NÚCLEO [-- ARGS-DE-OVERLAYS [-- ARGS-DE-ENGINEER]]]
 vantare --parar        # pide el cierre ordenado a la instancia en marcha
 ```
 
 Los binarios hijos se buscan junto a `vantare.exe` salvo `--core-bin` /
 `--overlays-bin`. Los argumentos tras el primer `--` son del núcleo y los tras
 el segundo, de overlays (`vantare -- --replay carrera.jsonl -- 4 --fuente pipe`).
+El tercer grupo es de Engineer (requiere `--engineer`). Pipe e imágenes se
+comparten automáticamente para autenticar ambos extremos del canal de eventos.
+Ejemplo sin audio, desde `native/` con los binarios compilados:
+
+```powershell
+target/debug/vantare.exe --engineer C:/tmp/vantare-cursor.json -- `
+    --replay ../testdata/lmu-fixture.bin --build 1.3.0.0 -- 4
+```
+
+`vantare-core --recording <JSONL>` activa recording al arrancar; sin opción
+no abre fichero. Foto y eventos usan pipes distintos, misma ACL/primitivos:
+`<pipe>-events` sirve cursor, hecho o hueco y ACK; su dueño I/O confirma disco
+fuera de adquisición. El servicio mantiene ambos ciclos hasta cancelación.
 
 - **Muerte conjunta.** El launcher se mete en un Job Object con
   `KILL_ON_JOB_CLOSE` y los hijos nacen dentro: si el launcher muere (incluso
@@ -98,7 +151,7 @@ el segundo, de overlays (`vantare -- --replay carrera.jsonl -- 4 --fuente pipe`)
   propósito (overlays cerrado por el usuario, replay acabado): se cierra todo y
   se sale con 0.
 - **Cierre ordenado.** Ctrl+C, cierre de consola o `vantare --parar`: primero
-  overlays y después el núcleo. A cada hijo se le pide que termine
+  Engineer habilitado, overlays y después el núcleo. A cada hijo se le pide que termine
   (`WM_CLOSE` a sus ventanas y fin de su stdin) y, si sigue vivo pasado
   `--plazo` (3 s), se le mata. **Contrato para procesos sin ventana:** leer
   stdin hasta EOF y terminar.
@@ -106,7 +159,8 @@ el segundo, de overlays (`vantare -- --replay carrera.jsonl -- 4 --fuente pipe`)
 Las pruebas de caída (`runtime/tests/lifecycle.rs`, procesos de verdad sobre un
 pipe real) cubren: núcleo muerto (overlays sigue vivo, reconecta y acepta la
 época nueva), overlays muerto o colgado (el núcleo sigue publicando), segunda
-instancia, orden de cierre, presupuesto agotado y muerte conjunta.
+instancia, orden de cierre, presupuesto agotado y muerte conjunta, también
+para Engineer: caída aislada, presupuesto exacto, colgado y cierre por Job.
 
 ## Topología
 
@@ -114,18 +168,158 @@ Núcleo y overlays en procesos separados unidos por el pipe (topología B de la
 ADR 0099). La variante con todo en un proceso (A) se midió en la fase 0 y se
 retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 
+## Desarrollar en Linux y macOS
+
+La base Unix (#1437) permite compilar y probar en Linux y macOS el workspace
+completo:
+los 13 crates listados arriba, incluido `strategy` en el mismo workspace. IPC usa los mismos DTO,
+cursores, límites y nonce que Windows, mediante sockets de dominio Unix 0600 en
+un directorio 0700 por UID dentro de `$XDG_RUNTIME_DIR` o del temporal (`/tmp`
+en macOS, para no superar el límite de longitud del socket). Verifica UID, PID e
+imagen del par; retira el socket al cerrar y recupera sockets huérfanos tras una
+caída. Los ficheros `.lock` quedan para evitar carreras al reutilizar nombres.
+
+En Ubuntu, además de Rust fijado por `rust-toolchain.toml`, instala las
+herramientas y bibliotecas usadas por la revisión de GPUI y DuckDB:
+
+```sh
+sudo apt-get install build-essential clang cmake pkg-config libasound2-dev \
+  libfontconfig-dev libgit2-dev libglib2.0-dev libssl-dev libva-dev libvulkan1 \
+  libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev libzstd-dev
+cd vantare-v2/native
+cargo fmt --check
+cargo check --workspace --all-targets -j 4
+cargo clippy --workspace --all-targets -j 4 -- -D warnings
+cargo test --workspace --no-fail-fast -j 4
+cargo test --workspace --test lifecycle -j 4
+# Workshop con escena grabada, sin núcleo ni telemetría live:
+cargo run -p vantare-ui --bin vantare-workshop
+```
+
+La sesión gráfica es necesaria para abrir Hub, Studio o Workshop. Para comprobar
+el arranque del núcleo con el Hub en modo demo sobre el mismo IPC Unix, desde
+`native/` ejecuta `./scripts/smoke-linux-ipc.sh`. La prueba automatizada del
+replay del núcleo usa `../testdata/lmu-fixture.bin` y un `Subscriber` real. El
+smoke funciona en Linux y macOS; en macOS confirma la conexión con `lsof`.
+
+GPUI necesita una sesión gráfica X11/Wayland y un driver Vulkan en Linux; en
+macOS, las herramientas de desarrollo de Xcode. #1437 verifica el workspace
+completo en ambos sistemas con esos gates y el smoke IPC. Las ventanas
+Unix son de desarrollo: telemetría live LMU/ACC, overlays sobre juego/OBS, MSIX
+y paridad por píxeles contra Wails siguen siendo exclusivamente Windows.
+
 ## Compilar y probar
 
 ```powershell
 cd vantare-v2/native
 cargo fmt --check
-cargo clippy --workspace --all-targets -- -D warnings
-cargo test --workspace
+cargo clippy --workspace --all-targets --offline -j 2 -- -D warnings
+cargo test --workspace --offline -j 2
 ```
 
 `runtime/tests/core_e2e.rs` arranca el binario `vantare-core` con el fixture de
 44 coches y con el corpus de 47 y comprueba, con un `Subscriber` de `ipc`, que
 llegan fotos con revisión creciente y el número de coches de la captura.
 
-`rust-toolchain.toml` fija 1.95.0. El workflow `native.yml` ejecuta lo mismo en
-Windows para los PR que tocan `vantare-v2/native/**`.
+`rust-toolchain.toml` fija 1.95.0. `.github/workflows/quality.yml` ejecuta los
+gates del workspace en Ubuntu; #1437 no cambia los jobs ni el código de
+Windows, cuya validación se ejecuta en el entorno Windows del orquestador.
+
+## DuckDB precompilado para desarrollo (#1465)
+
+El build habitual conserva `bundled-duckdb` por defecto: distribución no necesita
+una DLL adicional. Para gates/workers se puede enlazar el binario oficial de
+**DuckDB 1.5.5**, correspondiente a `duckdb = 1.10505.0`, sin compilar C++.
+No se cambia la versión de la dependencia ni se descargan bibliotecas al compilar.
+
+Desde `native/`, instala una vez por usuario el archivo oficial
+[`libduckdb-windows-amd64.zip`](https://github.com/duckdb/duckdb/releases/tag/v1.5.5)
+en el directorio compartido fuera del repo:
+
+```powershell
+.\setup-duckdb.ps1 # Una vez por usuario/PC; zip oficial y SHA-256 fijado.
+.\gates.ps1 clippy
+.\gates.ps1 test
+.\gates.ps1 lifecycle
+```
+
+La ubicación compartida por defecto es `$env:LOCALAPPDATA/Vantare/duckdb-1.5.5`.
+También admite un archivo oficial ya descargado con `setup-duckdb.ps1 -ArchivePath`;
+siempre verifica el mismo hash antes de extraer únicamente la DLL y la biblioteca.
+Para una ubicación distinta, usa `gates.ps1 -DuckDbDirectory` o `DUCKDB_LIB_DIR`.
+
+El script reactiva `/default` de todos los miembros excepto storage, incluidos
+los crates futuros: así no se apagan silenciosamente otros defaults. Si cambia
+el default de storage, falla y pide revisar la selección. `DUCKDB_LIB_DIR` por sí
+sola no desactiva `bundled`. Usa exclusivamente `native/target/gates`, dentro del
+worktree, para no mezclar artefactos de features distintas con el build habitual.
+Restaura el entorno al terminar; ese subdirectorio también cuenta en el disco del
+worktree. Los ejecutables que usen
+DuckDB necesitan esa DLL en `PATH` o junto al `.exe`. Para distribuir se sigue
+usando `cargo build --workspace --bins --release -j 2`. Candidate y MSIX rechazan
+un entorno con `DUCKDB_LIB_DIR` definida antes de compilar o crear artefactos;
+retírala con `Remove-Item Env:DUCKDB_LIB_DIR` en la terminal de distribución.
+En Linux/macOS, la biblioteca oficial equivalente debe estar también en la ruta
+de bibliotecas del cargador de su sistema; esta variante se verificó en Windows.
+
+## Workers: caché y limpieza (#1465)
+
+Dev/test omiten símbolos de las dependencias (`profile.dev.package."*".debug = 0`).
+Los crates propios conservan fichero y línea en sus trazas; depurar internamente
+una dependencia requiere volver a activar sus símbolos. Release no cambia.
+
+Sccache es opcional y se configura por terminal del worker, sin compartir `target/`
+ni imponerlo al ciclo interactivo de Isaac. Cada worktree conserva su target propio;
+la caché de sccache puede compartir resultados de dependencias. Gates usa la ruta
+relativa estable `target/gates`: sccache 0.18 incluye `CARGO_TARGET_DIR` en su clave
+([implementación fijada](https://github.com/mozilla/sccache/blob/v0.18.0/src/compiler/rust.rs)).
+
+```powershell
+$env:RUSTC_WRAPPER = (Get-Command sccache -ErrorAction Stop).Source
+$env:CARGO_INCREMENTAL = '0'
+sccache --show-stats
+.\setup-duckdb.ps1 # Una vez por usuario/PC.
+.\gates.ps1 clippy
+.\gates.ps1 test
+.\gates.ps1 lifecycle
+sccache --show-stats
+```
+
+Los binarios, proc macros y build scripts no tienen por qué ser cacheables; cuenta
+los hits reales. La primera compilación llena la caché. Para editar widgets con el
+watcher de Workshop conserva incremental (`$env:CARGO_INCREMENTAL = '1'`): sccache
+no cachea compilación incremental. No fijes `CARGO_TARGET_DIR` a un target común.
+
+Para retirar artefactos antiguos del target del worker, desde **su** `native/`,
+cuando no haya un build en curso:
+
+```powershell
+cargo sweep --time 7 --dry-run .
+cargo sweep --time 7 .
+```
+
+Revisa primero el dry-run. Esto elimina artefactos regenerables, no reduce el
+conjunto mínimo requerido por un build. No limpies targets de otros worktrees.
+
+## Build para probar con Isaac (#1465)
+
+Desde `native/`, con la configuración pública real cargada por el mismo loader
+del empaquetado (se valida como datos; nunca se ejecuta ni se imprimen valores):
+
+```powershell
+.\gates.ps1 prueba -BuildConfig C:/tmp/beta/build-config/beta-dev-clerk.env
+```
+
+Produce los once binarios públicos en `target/gates/prueba/`, excluye admin y
+copia la DLL oficial de DuckDB junto a los ejecutables. Dev/test y prueba tienen
+perfiles distintos; el target de gates sigue separado del Release de distribución.
+El perfil hereda Release, sin LTO, con optimización baja e incremental en el código
+propio; GPUI/dependencias y Strategy conservan optimización alta. El script restaura
+configuración, PATH, target e incremental incluso si falla. Sccache es opcional;
+su primera carga para este perfil no sustituye el build en frío.
+
+Para arrancar el Hub: `./target/gates/prueba/vantare-hub.exe`. Conserva esta copia
+caliente para pruebas de producto. No distribuyas este perfil ni lo uses para
+comparar CPU, memoria o fluidez: para ello sigue usando Release con DuckDB bundled.
+Las reglas de herencia y overrides son las estándar de
+[Cargo](https://doc.rust-lang.org/cargo/reference/profiles.html).

@@ -429,10 +429,9 @@ class SafetyTests(unittest.TestCase):
         self.assertIn("google-chrome", development)
         self.assertIn("--image", development)
         self.assertIn("render-discord-card", tester)
-        self.assertIn("Render Discord cards", release)
-        self.assertIn("--prerelease", release)
-        self.assertIn("(\\.[0-9]+)?-${PUBLISH_CHANNEL}", release)
-        self.assertIn("origin/master", release)
+        self.assertIn("exit 1", release)
+        self.assertNotIn("gh release", release)
+        self.assertNotIn("DISCORD_", release)
         self.assertNotIn("secrets.DISCORD_WEBHOOK_URL", tester + development + release)
 
 
@@ -491,7 +490,7 @@ class OrbitSkinTests(unittest.TestCase):
     """The card must keep speaking the hub's visual language, not its own."""
 
     TOKENS_CSS = (pathlib.Path(__file__).parents[3]
-                  / "vantare-v2/frontend/src/styles/orbit.tokens.css")
+                  / "vantare-v2/native/retirement/legacy-evidence/orbit.tokens.css")
 
     def _outputs(self):
         return {
@@ -519,8 +518,7 @@ class OrbitSkinTests(unittest.TestCase):
                 self.assertIn("var(--orbit-radius-featured)", output)
                 self.assertIn("var(--orbit-shadow-featured)", output)
 
-    @unittest.skipUnless(TOKENS_CSS.is_file(), "frontend tokens not in this checkout")
-    def test_token_values_match_the_frontend_stylesheet(self):
+    def test_token_values_match_the_frozen_stylesheet(self):
         source = self.TOKENS_CSS.read_text(encoding="utf-8")
         for token in ("--orbit-canvas", "--orbit-carmine", "--orbit-red",
                       "--orbit-ink", "--orbit-ink-2", "--orbit-wine"):

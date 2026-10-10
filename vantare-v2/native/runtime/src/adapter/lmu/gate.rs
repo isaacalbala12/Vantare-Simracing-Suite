@@ -17,11 +17,15 @@ pub(super) struct Gate {
 
 impl Gate {
     /// Caducado en `now` aunque nadie haya observado desde entonces.
+    #[cfg(any(windows, test))]
     pub(super) fn is_stale_at(&self, now: Duration) -> bool {
-        self.stale
-            || self
-                .unchanged_since
-                .is_some_and(|since| now.saturating_sub(since) >= STALL_LIMIT)
+        self.stale || self.is_stalled_at(now)
+    }
+
+    /// Distingue reloj detenido de la ventana de recuperación tras un fallo.
+    pub(super) fn is_stalled_at(&self, now: Duration) -> bool {
+        self.unchanged_since
+            .is_some_and(|since| now.saturating_sub(since) >= STALL_LIMIT)
     }
 
     /// `now` es monotónico dentro de una ejecución; si retrocede (otro origen
@@ -32,6 +36,12 @@ impl Gate {
         if source.is_some() {
             self.previous_source = source;
         }
+        self.observe_change(now, advanced)
+    }
+
+    /// Cuando el corpus borró el reloj de un bloque, solo podemos observar
+    /// cambios de contenido. Una señal constante no demuestra avance.
+    pub(super) fn observe_change(&mut self, now: Duration, advanced: bool) -> bool {
         let rewound = self.unchanged_since.is_some_and(|since| now < since);
         if advanced || self.unchanged_since.is_none() || rewound {
             self.unchanged_since = Some(now);

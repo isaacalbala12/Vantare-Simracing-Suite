@@ -12,7 +12,7 @@ create table public.testing_questionnaires (
 );
 create table public.testing_answers (
   questionnaire_id uuid not null references public.testing_questionnaires(id) on delete cascade,
-  account_id uuid not null references auth.users(id) on delete cascade,
+  account_id uuid not null references public.profiles(id) on delete cascade,
   score smallint not null check (score between 1 and 5),
   note text not null default '' check (length(note) <= 1000),
   updated_at timestamptz not null default now(),
@@ -20,7 +20,7 @@ create table public.testing_answers (
 );
 create table public.testing_contributions (
   id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references auth.users(id) on delete cascade,
+  account_id uuid not null references public.profiles(id) on delete cascade,
   channel text not null check (channel in ('nightly','testers')),
   title text not null check (length(trim(title)) between 1 and 120),
   body text not null check (length(trim(body)) between 1 and 1000),

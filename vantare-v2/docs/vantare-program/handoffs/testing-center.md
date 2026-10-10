@@ -1,3 +1,10 @@
+## #1535 · corrección Sol/Opus de identidad (2026-10-10)
+
+Las FKs de respuestas/contribuciones ahora apuntan a profiles(id), cascade.
+Fixture pgTAP 20 casos: perfiles + identidades + membership sin auth.users,
+guardado/actualización/reintento, dos cuentas aisladas y membership revocada.
+SQL preparado, no aplicado; runner y comprobación ACL/TLS en curso.
+
 ## #1535 · destino aprobado para repositorio privado (2026-10-10)
 
 El orquestador descarta raw/assets/rama GitHub y aprueba Supabase existente.

@@ -861,12 +861,16 @@ impl Render for Workshop {
                     ),
                 );
         } else if self.kind == Kind::Pedals {
-            panel = panel.child(group("Presentación del widget").child(self.setting(
-                "transparentBackground",
-                "Fondo del widget",
-                options(&[("false", "Con panel"), ("true", "Transparente")]),
-                cx,
-            )));
+            panel = panel.child(
+                group("Presentación del widget")
+                    .child(self.setting(
+                        "transparentBackground",
+                        "Fondo del widget",
+                        options(&[("false", "Con panel"), ("true", "Transparente")]),
+                        cx,
+                    ))
+                    .child(self.setting("gap", "Separación (px)", numbers(0..=12), cx)),
+            );
         } else if self.kind == Kind::FastestLap {
             panel = panel.child(
                 group("Avisos")

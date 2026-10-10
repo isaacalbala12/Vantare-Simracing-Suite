@@ -1,3 +1,5 @@
+> Evidencia histórica de #1427; contrato vigente en [README nativo](../../README.md). Estados, versiones DTO y gates siguientes describen su corte, no la base actual.
+
 # Familia Relative — candidato parcial de ISA-1427
 
 Worker Codex, 2026-09-30. Referencia técnica:

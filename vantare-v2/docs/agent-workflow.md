@@ -206,7 +206,7 @@ Debe buscar:
 14. Solo una aprobación final de Isaac permite `testers` a `master`.
 15. Verificar el SHA en el canal remoto y registrar aceptación, PR y canal real
     en GitHub Issues. Releer la escritura; no equiparar merge a publicación.
-    El roadmap se actualiza únicamente cuando Isaac lo solicita. `docs/current-plan.md` y
+    El roadmap se actualiza únicamente cuando Isaac lo solicita. la issue de GitHub vigente y
     `docs/roadmap-execution-board.md` son históricos y no se actualizan como
     parte del flujo normal.
 

@@ -1,3 +1,5 @@
+> Evidencia histórica de #1427; contrato vigente en [README nativo](../../README.md). Estados, versiones DTO y gates siguientes describen su corte, no la base actual.
+
 # Variantes Eficiencia — worker A, GitHub #1427
 
 Entrega aislada para revisión de Claude Opus 5.5. Solo se modifican los módulos

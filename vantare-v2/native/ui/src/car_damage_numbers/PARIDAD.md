@@ -1,3 +1,5 @@
+> Evidencia histórica de #1427; contrato vigente en [README nativo](../../README.md). Estados, versiones DTO y gates siguientes describen su corte, no la base actual.
+
 # Evidencia de paridad — car-damage-numbers (ISA-1427)
 
 Fecha: 2026-09-30. Issue: https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427.

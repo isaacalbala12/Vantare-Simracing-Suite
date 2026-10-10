@@ -1,8 +1,7 @@
 # native — aplicación Rust (ADR 0099)
 
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
-cola de `AGENTS.md` (en esta ola, `C:/tmp/fase2/compilar.ps1`; normalmente,
-`native/scripts/compilar.ps1`). Usar target aislado y `-j 2`.
+cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. Usar target aislado y `-j 2`.
 
 El workspace tiene 13 crates; `default-members` excluye storage y admin.
 
@@ -62,7 +61,7 @@ derivaciones y numeración; recibe los trackers de combustible/delta/stint/
 tendencia; la frescura la vigila `Core`); ver `domain/src/adapter.rs`.
 Los widgets consumen las proyecciones puras de domain y pintan sus ViewModels.
 La unificación de Standings, Relative, Delta y Fuel a una proyección/estado
-por widget con N Looks está **en curso, #1531**; esta base aún tiene vías duplicadas.
+por widget con N Looks está integrada (#1531); ambos pintores comparten Board y Motion.
 
 ## Arrancar el esqueleto
 

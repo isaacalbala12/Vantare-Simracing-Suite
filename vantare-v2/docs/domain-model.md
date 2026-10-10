@@ -1,19 +1,19 @@
-# Modelo de dominio
+# Modelo de dominio nativo
 
 | Concepto | Significado y fuente |
 |---|---|
-| Perfil | Documento persistido que reúne configuración y composición del overlay; ver [pkg/config](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/pkg/config) |
-| Widget | Instancia de un tipo funcional con configuración de contenido, comportamiento y apariencia |
-| Layout | Geometría y composición del perfil. Se edita en el mismo Studio que las propiedades del widget |
-| Overlay Studio | Editor único de perfiles; [StudioRoute](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/hub/overlay-studio/StudioRoute.tsx) |
-| Recomendado | Perfil propuesto por Vantare del que se crea una copia propia para editar |
-| Sistema visual | Renderizadores y configuración de apariencia resueltos por [WidgetVisualHost](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/overlay/core/WidgetVisualHost.tsx) |
-| Workshop | Entorno de desarrollo que renderiza el TSX/CSS productivo; no es otro editor de perfiles ni una exportación |
-| Telemetry Core | Núcleo que adquiere y normaliza observaciones de las fuentes; conserva calidad, presencia y procedencia |
-| Proyección | Contrato de datos específico para un consumidor. Overlay V2 no es la versión del perfil ni de la aplicación |
-| Analysis | Análisis post-sesión; consulta histórico autorizado, con sus propios contratos |
-| Engineer/Spotter | Consumidor live que produce mensajes y audio conforme a sus capacidades y política |
-| Strategy Planner | Documento y cálculo de estrategia; el [handoff](vantare-program/handoffs/strategy-planner.md) resuelve los contratos vigentes |
-| Desconectado | Sin fuente live disponible. No significa mock, cero ni una vuelta real |
+| Snapshot | Hechos neutrales, calidad y procedencia; [domain/model.rs](../native/domain/src/model.rs). El DTO de [IPC](../native/ipc/src/dto.rs) es el formato del transporte, no el dominio. |
+| Board | Proyección común a los Looks de un widget; [Standings](../native/domain/src/standings.rs), Relative, Delta y Fuel proyectan sus hechos en domain. |
+| Widget | Tipo funcional del [registro UI](../native/ui/src/registry.rs), con Settings y estado de presentación. |
+| Look | Apariencia Eficiencia/Vantare en [look.rs](../native/ui/src/look.rs); no cambia los hechos ni crea otra proyección. `standings::Look` aún denomina la variante Neo/Neutro; su renombrado pertenece a PR-3 de #1561. |
+| Layout / Document | Composición, posiciones, opciones y persistencia UI en [layout.rs](../native/ui/src/layout.rs), versión propia v1. |
+| Editor | Historial y edición del documento en [Hub/document.rs](../native/hub/src/document.rs); Studio presenta lienzo e inspector. |
+| Policy | Derechos de módulos, widgets y canales en [IPC/control.rs](../native/ipc/src/control.rs); no es el estado de sesión ni la geometría. |
+| Workshop | Host de desarrollo GPUI del renderer productivo; [UI/README](../native/ui/README.md). |
+| Analysis | Consultas post-sesión; [storage](../native/storage/README.md) posee DuckDB. |
+| Engineer/Spotter | Consumidor de eventos/radio/voz bajo demanda; [Engineer](../native/engineer/README.md). |
+| Strategy | Documento y cálculo con procedencia; [strategy/document.rs](../native/strategy/src/document.rs). |
+| Desconectado | Sin fuente live disponible; no implica datos sintéticos ni una vuelta real. |
 
-`WidgetStudio`, `LayoutStudio` y los productos Strategy A/B/C son nombres históricos. No usarlos para inventar pantallas o dominios nuevos. Consultar [arquitectura](architecture.md) y el [mapa de proyectos](vantare-program/project-map.md).
+[Arquitectura](architecture.md) · [fronteras y handoffs](vantare-program/project-map.md).
+[Modelo anterior por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/domain-model.md): nombres y rutas del legado, conservados como historia.

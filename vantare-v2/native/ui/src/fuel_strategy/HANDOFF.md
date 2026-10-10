@@ -1,3 +1,5 @@
+> Evidencia histórica de #1427; contrato vigente en [README nativo](../../README.md). Estados, versiones DTO y gates siguientes describen su corte, no la base actual.
+
 > **Actualización 2026-09-30:** [entrega de continuación ISA-1427](PARIDAD-1427.md).
 > El informe siguiente conserva el histórico del primer porte; sus señales
 > ausentes y porcentajes quedan sustituidos por esa entrega.

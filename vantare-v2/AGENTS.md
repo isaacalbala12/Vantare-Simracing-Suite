@@ -9,30 +9,18 @@ Lee `native/README.md`, los README de los crates afectados y sus gates.
 Los corpus y referencias se conservan en `native/retirement`; los oráculos
 Go históricos se reproducen opcionalmente desde `tools/frozen-go`.
 
-## Contexto del usuario
+## Criterio de trabajo
 
-- El usuario no revisa codigo complejo linea por linea.
-- El usuario si sabe dirigir agentes, modelos, prompts, revisiones y verificaciones.
-- El repo debe protegerse con cambios pequenos, tests, builds, documentacion viva y checklists claras.
-- Explica los resultados en espanol sencillo: que cambio, que archivos tocaste, que checks pasaron y como puede verificarlo manualmente.
-
-Regla central: implementar la solucion correcta mas sencilla, legible y segura.
-Menos codigo es preferible cuando mantiene o mejora claridad, seguridad,
-pruebas y rendimiento. Si la complejidad supera claramente al problema, revisa
-y simplifica antes de ampliarla.
+Isaac dirige y verifica agentes; explica en español sencillo qué cambió,
+la evidencia y cómo comprobarlo. Implementa la solución correcta más sencilla,
+legible y segura; simplifica si la complejidad supera al problema.
 
 ## Issues
 
-- El tracker es **GitHub Issues de este mismo repositorio**. Linear fue
-  retirado el 2026-08-20 y no queda ninguna dependencia operativa suya.
-- Los identificadores `ISA-N` corresponden al numero de issue de GitHub: una
-  issue nueva ya nace con su ISA-N. Los `ISA-N` migrados desde Linear
-  conservan su titulo `ISA-N · ...` y las labels `state:*` y `migrated:linear`.
-- Las ramas siguen la convencion `vantareapp/isa-N-slug`.
-- El tablero es el GitHub Project **Vantare**.
-
-Las instrucciones antiguas de seguimiento en Notion en otros documentos
-son históricas: estas reglas y #1503 fijan GitHub como autoridad operativa.
+GitHub Issues y el Project Vantare son la autoridad operativa (#1503).
+`ISA-N` es el número GitHub para issues nuevas; los IDs migrados conservan
+su título e identificadores históricos. Usar `vantareapp/isa-N-slug`.
+Las instrucciones de Notion en otros documentos son históricas.
 
 ## Fuentes de verdad y lectura obligatoria
 
@@ -107,21 +95,9 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 
 ## Orquestación y roles de modelos
 
-Cada modelo tiene un rol. Detalle, criterios de elección, modo ahorro y
-plantilla de encargo en la skill
-[`.claude/skills/orquestacion/SKILL.md`](.claude/skills/orquestacion/SKILL.md);
-léela antes de planificar o delegar.
-
-- **Advisors: Fable 5.1 (razonamiento medio) y GPT 6 Astra (max).** Solo si es
-  estrictamente necesario o para fijar la dirección al inicio de un plan.
-- **Orquestador y optimizador: Opus 5.5 (medio).** Planifica, reparte, optimiza,
-  hace el diseño visual nuevo y revisa todo lo que entregan los workers.
-- **Ejecutor principal: Sonnet 5.5 (medio).** Código a gran escala y réplicas o
-  paridad de diseños existentes; no diseño visual nuevo.
-- **Worker barato: DeepSeek V4.1 Flash** (DeepSeek Harness / opencode-go) **y
-  Muse Spark 1.3** (free y, al agotarse, contributor), **ambos en max.** Tareas
-  repetitivas o sencillas, y más carga cuando quede menos del 50 % de la cuota
-  de uso del plan.
+Los roles, criterios de elección y encargos viven en
+[la skill de orquestación](.claude/skills/orquestacion/SKILL.md).
+Leerla antes de planificar o delegar; respetar el modelo autorizado en el encargo.
 
 ## Preautorización inerte de la rama automática (ISA-318)
 
@@ -154,142 +130,71 @@ Requieren autorizacion explicita de Isaac:
 - borrar masivamente datos de forma irreversible;
 - eliminar cuentas o datos reales de usuarios.
 
-## Flujo esperado
-
-1. Revisa `git status --short`.
-2. Lee los docs relevantes.
-3. Declara objetivo, alcance y archivos esperados.
-4. Haz un cambio pequeno.
-5. Anade o actualiza tests si cambia comportamiento.
-6. Ejecuta los checks aplicables.
-7. Resume evidencia y verificacion manual.
-8. Revisa el diff completo y la evidencia; no confies solo en el resumen de un worker.
-9. Actualiza el handoff y la issue de GitHub después de cada worker o cambio
-   material. Si Isaac pide cambiar el roadmap público, sigue
-   `docs/roadmap-maintenance.md`.
-
 ## Stop conditions
 
-Para y pide revision si:
-
-- Necesitas tocar muchos mas archivos de los previstos.
-- Necesitas una dependencia nueva.
-- Necesitas cambiar arquitectura.
-- Los tests fallan por una causa que no entiendes.
-- Encuentras cambios previos que chocan con tu tarea.
-- No sabes como verificar el resultado.
-- Hay contradicciones entre documentos.
-- La base, rama o SHA no coincide con la issue.
-- La accion requiere una autorizacion reservada a Isaac.
+Para y pide revisión si la base/rama/SHA no coincide con la issue, hay cambios
+ajenos en conflicto, se exceden las rutas previstas, falta una dependencia
+aprobada, hay que cambiar arquitectura, no se entiende un fallo o no se sabe
+verificar, los documentos vigentes se contradicen o la acción está reservada a Isaac.
 
 ## Ruta nativa
 
-La decisión vigente es ADR 0099 y su
-[plan por fases](docs/superpowers/plans/2026-09-29-arquitectura-rust-nativa.md).
-Mapa actual de `native/Cargo.toml` (los README por crate detallan contratos):
-
-- `launcher` / `profiling` / `build-support`: motor y archivos locales / contadores por proceso / icono Win32.
-- `domain`: modelo neutral, derivaciones, ViewModels y formato; puro, sin I/O ni GPUI.
-- `runtime`: adaptadores privados, núcleo, flujos y supervisor de procesos.
-- `ipc`: DTO versionados y transporte autenticado entre procesos.
-- `ui` / `hub`: widgets, overlays y Workshop GPUI / aplicación Hub y Studio GPUI.
-- `engineer` / `storage`: eventos y voz bajo demanda / propietario único de series DuckDB.
-- `services`: cuenta, licencia y llamadas remotas bajo demanda, sin UI.
-- `strategy` / `admin`: documento y cálculo Strategy / miniapp privada del owner, fuera del instalador público.
+La decisión vigente es ADR 0099 y su [plan por fases](docs/superpowers/plans/2026-09-29-arquitectura-rust-nativa.md).
+El mapa de crates y la topología viven en [native/README.md](native/README.md).
 
 `domain` y `ui` no dependen de `runtime`, tampoco transitivamente; conserva el
 test de arquitectura descrito en `native/README.md`. Usa Rust concreto,
 funciones puras y `Result`, y GPUI directamente conforme a ADR 0099.
 
-Desde `native/`, formato: `cargo fmt --all -- --check`. Para iterar:
-`./gates.ps1 check`; antes de entregar cambios Rust:
-`./gates.ps1 clippy`, `./gates.ps1 test` y `./gates.ps1 lifecycle`.
-Según `native/gates.ps1`, ejecutan check/Clippy del workspace y todos los
-targets (Clippy con `-D warnings`), Nextest del workspace y el test lifecycle
-por separado, con `--locked --offline -j 2`. Requieren DuckDB oficial instalado
-mediante `./setup-duckdb.ps1`; conservan los defaults ajenos a storage y usan
-el target propio `target/gates`. No compartas targets entre worktrees.
-Esta variante de desarrollo no sustituye el build de distribución con DuckDB
-bundled; para compilación, plataformas y empaquetado lee `native/README.md`.
-Una entrega solo documental puede omitir compilación si su brief lo autoriza;
+Desde `native/`, `cargo fmt --all -- --check`; gates check, clippy
+(`-D warnings`), test (Nextest) y lifecycle, por la cola del repo.
+La configuración exacta, DuckDB de desarrollo/distribución, targets propios,
+plataformas, caché y limpieza están en [native/README.md](native/README.md).
+Una entrega documental puede omitir compilación si el brief lo autoriza;
 registra los checks omitidos y el motivo.
 
 ## Código retirado
 
-No hay gates Go ni pnpm de la app nativa. Los archivos de oráculos Go son
-referencia histórica inerte, no otra aplicación; no reintroducir Wails/React.
-Validar las fuentes y fixtures conservadas con `python native/retirement/verify.py`.
-Los otros proyectos del monorepo conservan sus instrucciones propias.
+No hay gates Go ni pnpm de la app nativa. Los oráculos son referencia histórica
+inerte: no reintroducir Wails/React. Validar sus huellas con
+`python native/retirement/verify.py`. Los otros proyectos del monorepo
+conservan sus instrucciones propias.
 
-## Compilacion Rust (`native/`)
+## Compilación Rust (`native/`)
 
-Cada worktree compila el workspace entero en su propio `target/` (~8 GB).
-Con varios workers en paralelo el disco se llena y los corta (ISA-1494).
-
-- Compila siempre a traves de la cola:
-  `pwsh -File native/scripts/compilar.ps1 <comando> [args...]`
-  (p. ej. `... compilar.ps1 cargo nextest run --workspace`). La cola limita
-  las compilaciones simultaneas (`VANTARE_CARGO_SLOTS`, 4 por defecto) y
-  espera si hay menos RAM libre que `VANTARE_CARGO_MIN_GB` (5 por defecto).
-- La cola activa `sccache` (`RUSTC_WRAPPER`) si esta instalado: las
-  dependencias ya compiladas en otro worktree se reutilizan. Ahorra tiempo,
-  no disco: cada `target/` sigue guardando su copia. Instalalo una vez con
-  `scoop install sccache`. Si una compilacion falla sin diagnostico del
-  compilador, repitela con `$env:VANTARE_SCCACHE='0'` y anota el caso en la
-  evidencia; no lo trates como fallo del codigo.
-- Al entregar el trabajo de un worktree, o si lleva dias sin usarse, borra su
-  `native/target/`; es cache y se regenera. Para podar sin borrarlo todo:
-  `cargo sweep --time 3` (artefactos sin usar en 3 dias).
-- Si la maquina tiene un segundo disco, deja alli los artefactos grandes que no
-  son cache (instaladores, builds de prueba, capturas pesadas). No guardes
-  copias de `target/` en carpetas de evidencia.
+Desde `vantare-v2/`, compilar siempre mediante
+`pwsh -NoProfile -File native/scripts/compilar.ps1 <comando> [args...]`,
+con target propio y `-j 2`. La cola limita slots y RAM; usa sccache si está
+instalado. Si falla sin diagnóstico del compilador, repetir con
+`VANTARE_SCCACHE=0` y conservar el fallo en la evidencia (#1465).
+No compartir targets ni copiar su caché a carpetas de evidencia.
 
 ## Testing
 
-- Si tocas runtime, domain, ipc o testdata, pasa también el gate telemetria (#1498).
-
+- Si tocas código/fixtures de runtime, domain, ipc o testdata, pasa también telemetría (#1498).
 - Todo cambio de comportamiento necesita test o explicacion de por que no.
 - Bugs corregidos necesitan test de regresion cuando sea viable.
 - Antes de refactorizar comportamiento existente, crea o identifica tests que lo protejan.
 - No escribas tests complacientes que solo prueban detalles internos del cambio.
-- No uses `time.Sleep` en tests salvo justificacion.
+- Usa reloj inyectado o sincronización explícita; las esperas temporizadas en tests necesitan justificación.
 - No compares strings de error si puedes usar errores tipados o comportamiento observable.
 
-## Dependencias
+## Dependencias y patrones prohibidos
 
-- Preferir standard library en Go.
-- Preferir herramientas ya instaladas en frontend.
-- Si propones una dependencia, explica:
-  - por que hace falta,
-  - por que lo existente no basta,
-  - riesgo que introduce,
-  - alternativa mas simple.
+Preferir la biblioteca estándar de Rust y herramientas instaladas. Una nueva
+dependencia necesita aprobación y justificación: necesidad, alternativa
+existente, riesgo y solución más simple.
 
-## Patrones prohibidos
-
-- Grandes rewrites.
-- Microservicios prematuros.
-- Cambios de arquitectura fuera de ADR 0099 y sus fases autorizadas.
-- Abstracciones enormes.
-- Interfaces con una sola implementacion sin justificacion.
-- Factories/providers/managers innecesarios.
-- Estado global mutable.
-- Goroutines sin cancelacion.
-- Channels para trabajo secuencial.
-- Mocks innecesarios.
-- Secretos hardcodeados.
-- "Mejoras generales" sin alcance.
-- Renderizadores alternativos o pipelines paralelos que dupliquen una fuente de verdad.
+Prohibidos: grandes rewrites, microservicios prematuros, arquitectura fuera
+de fases autorizadas de ADR 0099, abstracciones enormes, interfaces de una
+implementación sin justificación, factories/providers/managers innecesarios,
+estado global mutable, tareas/hilos sin cancelación y cierre, canales para
+trabajo secuencial sin justificación, mocks innecesarios, secretos hardcodeados,
+limpieza sin alcance y renderizadores/pipelines que dupliquen la fuente de verdad.
 
 ## Evidencia final obligatoria
 
-Al terminar, informa:
-
-- URL/número de la issue GitHub, proyecto, estado y última actualización verificada.
-- Archivos creados/modificados/movidos.
-- Tests o checks ejecutados y resultado.
-- Checks no ejecutados y motivo.
-- Riesgos restantes.
-- Como verificar manualmente.
-- Rama, base, HEAD, commit, push, PR, CI y nivel de promocion realmente alcanzado.
-- Confirmacion de que no hubo merge, release o accion externa fuera del alcance.
+Revisa el diff completo. Informa issue/URL, proyecto, estado y última actualización verificada;
+archivos y checks con resultados/omisiones; riesgos y verificación manual;
+rama, base, HEAD, commits, push, PR, CI y canal realmente alcanzado.
+Confirma si hubo merge, release o acción externa y su autorización.

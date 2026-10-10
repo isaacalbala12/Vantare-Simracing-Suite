@@ -190,7 +190,7 @@ coordinada con el supervisor para cubrir el requisito inicial de logs.
 
 El inventario previo del conector apuntaba a otro ref (`ombjshwzqgeisazijduq`):
 no constituye evidencia del proyecto fijado en el contrato. Este cambio no afirma
-haber verificado el deploy actual. Notion no disponible por excepción explícita;
+Histórico: haber verificado el deploy actual. Notion no disponible por excepción explícita;
 seguimiento allí pendiente. Evidencia local en `C:/tmp/isa-1452-evidence/`.
 Las capturas del Hub con adjunto usan un fixture de QA y el renderer productivo:
 demuestran composición de UI, no Storage/Clerk/validación reales.

@@ -124,7 +124,7 @@ con el multiplicador inicial 100. El Hub persiste `hub-zoom.json` junto a
 La interfaz ofrece −/+ y reset en el porcentaje; Ctrl +/−/0 aplica lo mismo.
 
 Evidencia, gates y límites de este spike: informe externo
-`C:/tmp/fase2/informe-1470-zoom-spike.md` y handoff canónico
+Histórico: `C:/tmp/fase2/informe-1470-zoom-spike.md` y handoff canónico
 `docs/vantare-program/handoffs/overlays-launcher-hub.md`. Al actualizar Zed,
 revisar el protocolo y volver a verificar clic, scroll, resize, nitidez y
 paridad 100 antes de aceptar este parche. Los tests del workspace protegen

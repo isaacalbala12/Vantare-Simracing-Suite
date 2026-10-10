@@ -6432,3 +6432,22 @@ editar/guardar layout, comprobar posición/tamaño/visibilidad y reabrir ambos h
 plan.md ausente en esta base y origin/nightly; corrección de gobernanza en #1530.
 Sin dependencia nueva, delegación, Notion, push, PR, merge, promoción o release.
 Siguiente acción: revisión del orquestador e integración solo tras autorización de Isaac.
+
+## #1540 · Overlays UI: escala por ejes, persistencia concurrente y recarga fiable (2026-10-10)
+
+Entrega aislada en C:/tmp/vw3-1540/vantare-v2, rama
+vantareapp/isa-1540-ui-overlays, base 70170613, HEAD e7f97169.
+P1 preview.rs: paths/sombras ya comprueban ambos ejes y el offset de sombra escala por eje
+(commits 01db532c, tests height_only_* que fallaban antes del arreglo).
+P1 workshop/state.rs: guardado en serie con json.lock, temporal unico pid+contador con
+create_new (+reintento), sync_all y limpieza de restos (commit aa58f9e1; stress
+concurrent_saves fallaba en base con rename imposible/fichero a medias).
+P2 layout.rs: Document verifica bytes cada 20 polls sin cambio de mtime (~10 s a 500 ms)
+y test de escritor externo demuestra Conflict sin perdida (commit e7f97169).
+No reproducidos sin tocar produccion: layout-441 ya cubierto por doble lectura+lock;
+motion_policy TOCTOU sin diferencia observable en test; racing_flags (pulso amarillo 920 ms,
+shaping cacheado) y broadcast_tower (<=20 clones de Row/foto, filas acotadas 3..=10) sin
+harness de medicion de pintado; efficiency/text sin fallo de texto forzable headless.
+Por cola: fmt PASS, clippy workspace -D warnings PASS, Nextest 1417 PASS + 7 skips,
+lifecycle PASS; telemetria no aplica (solo ui). Sin push, PR, merge, promocion o release.
+Siguiente accion: revision del orquestador e integracion solo tras autorizacion de Isaac.

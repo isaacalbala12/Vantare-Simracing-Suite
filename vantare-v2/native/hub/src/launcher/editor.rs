@@ -1330,6 +1330,7 @@ fn move_step<T>(steps: &mut [T], index: usize, delta: isize) {
     }
 }
 
+#[allow(clippy::fn_params_excessive_bools)] // Cinco banderas excluyentes del drawer; agruparlas oscurece el título.
 fn form_title(
     pending_decision: bool,
     pending_app_removal: bool,

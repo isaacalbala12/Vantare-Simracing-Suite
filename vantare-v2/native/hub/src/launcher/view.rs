@@ -664,14 +664,11 @@ impl Launcher {
     fn refresh_resident_status(&mut self) -> Option<vantare_ipc::launcher::Status> {
         let signature = resident_signature(&self.store.path);
         if signature == self.resident_status_sig {
-            return self
-                .resident_status
-                .clone()
-                .filter(|status| resident_is_fresh(status));
+            return self.resident_status.clone().filter(resident_is_fresh);
         }
         let status = vantare_ipc::launcher::read_status(&self.store.path);
         self.resident_status_sig = signature;
-        self.resident_status = status.clone();
+        self.resident_status.clone_from(&status);
         status
     }
     pub(crate) fn global_hotkey_status(&self, id: &str) -> String {

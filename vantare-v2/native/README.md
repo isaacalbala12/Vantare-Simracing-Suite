@@ -46,6 +46,12 @@ conservan sus responsabilidades. Son impls parciales del mismo Studio;
 sin entidades ni tipos nuevos. Visibilidad interna mínima `pub(super)`
 solo para comunicación entre esos módulos y tests.
 
+`hub/tests/architecture.rs` cuenta las líneas físicas de todo `hub/src/**/*.rs`
+y falla sobre 2000. Solo conservan techos de trinquete los cuatro archivos
+preexistentes: analysis/view.rs 2069, launcher/showcase.rs 2139,
+services/view.rs 1750 y settings/view.rs 2145. Studio no tiene excepción;
+bajar un techo es libre, subirlo exige un plan de partición en el mismo PR.
+
 ## Contrato de fotos y datos guardados
 
 El pipe Core→Hub/overlays negocia solo DTO v10; rechaza peers v7/v8/v9.

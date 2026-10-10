@@ -21,7 +21,6 @@ pub(super) struct State {
     pub navigation_notice: Option<String>,
     notification_subscription: Option<gpui::Subscription>,
     query: Entity<Input>,
-    context_query: Entity<Input>,
     last_query: String,
     cursor: usize,
     palette_focus: FocusHandle,
@@ -44,10 +43,7 @@ impl State {
             .unwrap_or_default();
         let query =
             cx.new(|cx| Input::new(query_text.clone(), "Busca una sección o una acción…", cx));
-        let context_query = cx.new(|cx| Input::new(String::new(), "Buscar en el contexto", cx));
-        for input in [&query, &context_query] {
-            cx.observe(input, |_, _, cx| cx.notify()).detach();
-        }
+        cx.observe(&query, |_, _, cx| cx.notify()).detach();
         let rail_sections = navigation::BETA_RAIL.to_vec();
         let rail_focus = rail_sections.iter().map(|_| cx.focus_handle()).collect();
         Self {
@@ -59,7 +55,6 @@ impl State {
             navigation_notice: None,
             notification_subscription: None,
             query,
-            context_query,
             last_query: query_text,
             cursor: 0,
             palette_focus: cx.focus_handle(),
@@ -95,7 +90,6 @@ impl Hub {
             self.shell.navigation_notice = Some(format!("{} · {reason}", section.label()));
         } else {
             self.shell.navigation_notice = None;
-            self.shell.context_query.update(cx, Input::clear);
         }
         cx.notify();
     }

@@ -26,7 +26,8 @@ No certifica simuladores/OBS físicos; replay LMU sin señal verificada permanec
 #1564: mismo comportamiento Studio, helper aislado y filtro de sesión combinado Y, sin código anticipado.
 AlwaysVisible no debe saltarse el filtro de sesión futuro.
 
-Entrega local lista; tras FIN, PR a nightly autorizado. Issue OPEN/In Review; sin merge/promoción/release.
+FIN local escrito; PR [#1576](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1576) abierto a nightly. Issue OPEN/In Review; sin merge del PR/promoción/release.
+Nightly0cf38ed2 integrada localmente en dc4a9d70: solo iconos/scripts/docs; Rust/Cargo/gates idénticos. Conflicto retirementREADME conserva ambos expedientes; retirement456/456, test-brand-icons y anti-slop PASS.
 Limpieza de cache propia native/target pendiente: Remove-Item fue rechazado por revisión automática «blocked by policy»; no se elude.
 
 ## #1536 · destino real de accesos directos en CI Windows (2026-10-10)

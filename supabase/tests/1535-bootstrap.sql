@@ -92,4 +92,3 @@ revoke all on function public.testing_center_current_role() from public, anon;
 revoke all on function public.testing_center_can_view_channel(text) from public, anon;
 grant execute on function public.testing_center_current_role() to authenticated;
 grant execute on function public.testing_center_can_view_channel(text) to authenticated;
-

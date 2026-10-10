@@ -333,3 +333,21 @@ oficiales), lifecycle 5+13 y telemetría 21/21 PASS. Reproducción anterior y
 logs completos separados en evidence-1531/fuel-range-1539. No se repiten
 capturas ni A/B por este arreglo de sumas: no toca pintores/geometría y los
 tests de valores normales, catálogo, animación/cache e historial siguen PASS.
+
+## Preparación de fuente y defaults (ronda 2)
+
+Fuel conserva un OnceLock de textos ajustados en cada presentación, Eficiencia
+y Vantare. GPUI entrega Window en el closure: prepare inicializa las métricas
+una sola vez, sin cambiar Board, Motion ni historial de consumo. Board/opciones,
+idioma o estilo invalidan la preparación; los siguientes paint solo leen.
+Relative Eficiencia usa el mismo seam: formato y mayúsculas en ingest/cambio de
+presentación, y una primera preparación de medidas con Window. No se vuelve a
+formatear ni ajustar texto por frame; los fantasmas activos conservan etiquetas.
+
+Los valores base viven una sola vez en Settings::for_look de cada widget.
+Default y eficiencia delegan ahí; los presets de Workshop parten de ese mismo
+constructor y solo ajustan su composición de preview. look.rs publica datos de
+apariencia, columnas editables y geometría de preview; Hub/Workshop no clasifican
+Looks con legacy/has_variants. El pie Eficiencia comparte una estimación de filas.
+Antes de cambiar Look se normaliza el contenido con el Look anterior: Delta v0
+no recupera una reference antes ignorada. Ambos guardados normalizan ajustes.

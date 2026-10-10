@@ -249,7 +249,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             ));
             rows
         }
-        Settings::Delta(value) if value.design_system.has_variants() => {
+        Settings::Delta(value) if settings.appearance().is_some() => {
             let mut rows = vec![
                 choice(
                     "Formato Delta",
@@ -641,14 +641,7 @@ pub fn appearance(
     vantare_ui::standings::Look,
     vantare_ui::standings::Accent,
 )> {
-    match settings {
-        Settings::Standings(s) => Some((s.design_system, s.style, s.accent)),
-        Settings::Relative(s) => Some((s.design_system, s.style, s.accent)),
-        Settings::Delta(s) => Some((s.design_system, s.style, s.accent)),
-        Settings::FuelStrategy(s) => Some((s.design_system, s.style, s.accent)),
-        _ => None,
-    }
-    .filter(|(system, _, _)| system.has_variants())
+    settings.appearance()
 }
 /// Capacidades publicadas por ui; una opción persistida pero ignorada no recibe manejador.
 pub fn pending(settings: &Settings) -> Vec<String> {
@@ -716,29 +709,7 @@ pub fn columns(settings: &Settings) -> Option<Vec<vantare_ui::standings::options
 pub fn columns_mut(
     settings: &mut Settings,
 ) -> Option<&mut Vec<vantare_ui::standings::options::ColumnSetting>> {
-    match settings {
-        Settings::Standings(s) => {
-            if s.design_system.has_variants() {
-                Some(
-                    s.columns
-                        .get_or_insert_with(|| vantare_ui::standings::vantare_template("standard")),
-                )
-            } else {
-                s.columns.as_mut()
-            }
-        }
-        Settings::Relative(s) => {
-            if s.design_system.has_variants() {
-                Some(
-                    s.columns
-                        .get_or_insert_with(|| vantare_ui::relative::vantare_template("standard")),
-                )
-            } else {
-                s.columns.as_mut()
-            }
-        }
-        _ => None,
-    }
+    settings.editable_columns()
 }
 pub fn valid_color(value: &str) -> bool {
     let bytes = value.as_bytes();

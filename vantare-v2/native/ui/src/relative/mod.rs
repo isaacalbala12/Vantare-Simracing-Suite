@@ -52,20 +52,7 @@ pub struct Settings {
 }
 impl Default for Settings {
     fn default() -> Self {
-        Self {
-            design_system: crate::standings::DesignSystem::Vantare,
-            content_version: 1,
-            style: crate::standings::Look::Neo,
-            accent: crate::standings::Accent::Red,
-            columns: None,
-            range_ahead: 3,
-            range_behind: 3,
-            class_scope: "sameClass".into(),
-            include_player: true,
-            row_height_mode: "compact".into(),
-            footer_slots: Vec::new(),
-            brand_visible: None,
-        }
+        Self::for_look(crate::look::Look::default())
     }
 }
 /// Métricas de Relative Vantare que ocupan un hueco propio (el punto de clase
@@ -154,13 +141,42 @@ pub fn shift_column(
 }
 
 impl Settings {
+    pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
+        let mut s = Self::for_look(look);
+        match look {
+            crate::look::Look::Vantare => {
+                s.columns = Some(vantare_template("standard"));
+                s.brand_visible = Some(true);
+            }
+            crate::look::Look::Eficiencia => {
+                s.columns = Some(crate::workshop::default_columns(crate::Kind::Relative));
+            }
+        }
+        s
+    }
+    /// Única fuente de los ajustes base: el Look cambia solo la presentación.
+    #[must_use]
+    pub fn for_look(design_system: crate::look::Look) -> Self {
+        Self {
+            design_system,
+            content_version: 1,
+            style: crate::standings::Look::Neo,
+            accent: crate::standings::Accent::Red,
+            columns: None,
+            range_ahead: 3,
+            range_behind: 3,
+            class_scope: "sameClass".into(),
+            include_player: true,
+            row_height_mode: "compact".into(),
+            footer_slots: Vec::new(),
+            brand_visible: None,
+        }
+    }
+
     /// Relative del sistema Eficiencia heredado.
     #[must_use]
     pub fn eficiencia() -> Self {
-        Self {
-            design_system: crate::standings::DesignSystem::Eficiencia,
-            ..Self::default()
-        }
+        Self::for_look(crate::look::Look::Eficiencia)
     }
 
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
@@ -379,10 +395,10 @@ impl Widget {
         }
         match &mut self.presentation {
             Presentation::Eficiencia { visual, motion } => {
-                visual.attach(std::sync::Arc::make_mut(motion))
+                visual.attach(std::sync::Arc::make_mut(motion));
             }
             Presentation::Vantare { visual, motion } => {
-                visual.attach(self.board.clone(), std::sync::Arc::make_mut(motion))
+                visual.attach(self.board.clone(), std::sync::Arc::make_mut(motion));
             }
         }
     }
@@ -566,10 +582,10 @@ mod tests {
             );
             match &mut widget.presentation {
                 Presentation::Eficiencia { motion: m, .. } => {
-                    std::sync::Arc::make_mut(m).restore_notices(&[notice])
+                    std::sync::Arc::make_mut(m).restore_notices(&[notice]);
                 }
                 Presentation::Vantare { motion: m, .. } => {
-                    std::sync::Arc::make_mut(m).rows.restore_notices(&[notice])
+                    std::sync::Arc::make_mut(m).rows.restore_notices(&[notice]);
                 }
             }
             for &next in crate::look::Look::ALL

@@ -408,13 +408,7 @@ impl Render for Workshop {
         } else {
             "es"
         };
-        let vantare = match &self.settings {
-            Settings::Standings(s) => s.design_system.has_variants(),
-            Settings::Relative(s) => s.design_system.has_variants(),
-            Settings::FuelStrategy(s) => s.design_system.has_variants(),
-            Settings::Delta(s) => s.design_system.has_variants(),
-            _ => false,
-        };
+        let appearance = self.settings.appearance().is_some();
         let relative = self.kind == Kind::Relative;
         let system = if matches!(
             self.kind,
@@ -422,8 +416,10 @@ impl Render for Workshop {
         ) {
             Self::segments(
                 Control::Setting("designSystem"),
-                if vantare { "vantare" } else { "eficiencia" },
-                &[("vantare", "Vantare"), ("eficiencia", "Eficiencia")],
+                self.settings
+                    .look()
+                    .map_or("eficiencia", crate::look::Look::name),
+                &crate::look::Look::choices(),
                 cx,
             )
         } else {
@@ -452,7 +448,7 @@ impl Render for Workshop {
                     .mb(px(6.0))
                     .text_size(px(28.0))
                     .font_family("Inter W700")
-                    .child(if vantare { "Vantare." } else { "Eficiencia." }),
+                    .child(format!("{}.", self.settings.look().map_or("Eficiencia", crate::look::Look::label))),
             )
             .child(
                 div()
@@ -461,7 +457,7 @@ impl Render for Workshop {
                     .child(format!(
                         "{} · Sistema {}",
                         widget_label(self.kind),
-                        if vantare { "Vantare" } else { "Eficiencia" }
+                        self.settings.look().map_or("Eficiencia", crate::look::Look::label)
                     )),
             )
             .child(group("Idioma del widget").child(self.picker(
@@ -515,7 +511,7 @@ impl Render for Workshop {
                 ],
                 cx,
             )));
-        if vantare && self.kind == Kind::FuelStrategy {
+        if appearance && self.kind == Kind::FuelStrategy {
             let size = match &self.settings {
                 Settings::FuelStrategy(s) => s.size.clone(),
                 _ => String::new(),
@@ -532,7 +528,7 @@ impl Render for Workshop {
                     cx,
                 )))
                 .children(self.vantare_look(cx));
-        } else if vantare && self.kind == Kind::Delta {
+        } else if appearance && self.kind == Kind::Delta {
             let (size, reference) = match &self.settings {
                 Settings::Delta(s) => (s.size.clone(), s.reference.clone()),
                 _ => (String::new(), String::new()),
@@ -559,7 +555,7 @@ impl Render for Workshop {
                     cx,
                 )))
                 .children(self.vantare_look(cx));
-        } else if vantare {
+        } else if appearance {
             let current = |key: &str| {
                 serde_json::to_value(&self.settings)
                     .ok()
@@ -770,7 +766,7 @@ impl Render for Workshop {
             )));
         }
 
-        if !vantare && matches!(self.kind, Kind::Standings | Kind::Relative) {
+        if !appearance && matches!(self.kind, Kind::Standings | Kind::Relative) {
             if self.kind == Kind::Standings {
                 panel = panel.child(group("Posición del jugador").child(self.picker(
                     Control::Player,
@@ -1047,7 +1043,7 @@ impl Render for Workshop {
                             "Ancho",
                             self.dimensions.map_or(
                                 preview_size(
-                                    self.eficiencia_relative(),
+                                    self.fixed_relative_preview(),
                                     self.overlay.read(cx).wanted_size(),
                                 )
                                 .0,
@@ -1062,7 +1058,7 @@ impl Render for Workshop {
                             "Alto",
                             self.dimensions.map_or(
                                 preview_size(
-                                    self.eficiencia_relative(),
+                                    self.fixed_relative_preview(),
                                     self.overlay.read(cx).wanted_size(),
                                 )
                                 .1,
@@ -1124,7 +1120,7 @@ impl Render for Workshop {
                     })),
             );
         let wanted = preview_size(
-            self.eficiencia_relative(),
+            self.fixed_relative_preview(),
             self.overlay.read(cx).wanted_size(),
         );
         let dimensions = self.dimensions.unwrap_or(wanted);

@@ -190,16 +190,16 @@ pub struct Frame {
 }
 
 impl Frame {
-    pub fn row(&self, id: &CarId) -> RowVis {
-        self.vis.get(id).cloned().unwrap_or_default()
+    pub fn row(&self, id: CarId) -> RowVis {
+        self.vis.get(&id).cloned().unwrap_or_default()
     }
 }
 
-fn is_session_best(content_plan: &ContentPlan, id: &CarId) -> bool {
+fn is_session_best(content_plan: &ContentPlan, id: CarId) -> bool {
     content_plan
         .session_best
         .as_ref()
-        .is_some_and(|(best, _)| best == id)
+        .is_some_and(|(best, _)| *best == id)
 }
 
 // ---------------------------------------------------------------------------
@@ -612,7 +612,7 @@ impl Motion {
                     if lowest_priority >= priority {
                         continue;
                     }
-                    self.clear_notice(&id);
+                    self.clear_notice(id);
                 }
             }
             if self
@@ -622,7 +622,7 @@ impl Motion {
             {
                 continue;
             }
-            self.clear_notice(&event.row_id);
+            self.clear_notice(event.row_id);
             self.notices.insert(
                 event.row_id,
                 Notice {
@@ -673,7 +673,7 @@ impl Motion {
         animate: bool,
     ) {
         for row in rows {
-            let target = if is_session_best(content_plan, &row.id) {
+            let target = if is_session_best(content_plan, row.id) {
                 1.0
             } else {
                 0.0
@@ -700,10 +700,10 @@ impl Motion {
         }
     }
 
-    fn clear_notice(&mut self, id: &CarId) {
-        self.notices.remove(id);
-        self.flash_tw.remove(id);
-        self.chip_tw.remove(id);
+    fn clear_notice(&mut self, id: CarId) {
+        self.notices.remove(&id);
+        self.flash_tw.remove(&id);
+        self.chip_tw.remove(&id);
     }
 
     /// Un frame quieto no vuelve a asignar mapas de filas; update/restaurar avisos lo invalida.
@@ -728,7 +728,7 @@ impl Motion {
         self.notices.retain(|_, n| {
             now.saturating_duration_since(n.start) < Duration::from_millis(NOTICE_MS)
         });
-        let ids: HashSet<CarId> = self.notices.keys().cloned().collect();
+        let ids: HashSet<CarId> = self.notices.keys().copied().collect();
         self.flash_tw.retain(|id, _| ids.contains(id));
         self.chip_tw.retain(|id, _| ids.contains(id));
         self.exits.retain(|_, e| e.fade.running(now));
@@ -1119,7 +1119,7 @@ mod tests {
         motion.update(&next, 1, true, now + Duration::from_millis(100));
         let changed = motion.frame_shared(&next, 1, now + Duration::from_millis(100));
         assert!(!std::sync::Arc::ptr_eq(&first, &changed));
-        assert!(changed.row(&id("a")).chip.is_some());
+        assert!(changed.row(id("a")).chip.is_some());
     }
 
     #[test]
@@ -1148,11 +1148,11 @@ mod tests {
         let next = content_plan(vec![row("b", 1), row("a", 2)], 2);
         motion.update(&next, 2, true, t0);
         let frame = motion.frame(&next, 2, t0);
-        assert_eq!(frame.row(&id("b")).dy, 30.0);
-        assert_eq!(frame.row(&id("a")).dy, -30.0);
+        assert_eq!(frame.row(id("b")).dy, 30.0);
+        assert_eq!(frame.row(id("a")).dy, -30.0);
         let done = t0 + Duration::from_millis(1300);
         let frame = motion.frame(&next, 2, done);
-        assert_eq!(frame.row(&id("b")).dy, 0.0);
+        assert_eq!(frame.row(id("b")).dy, 0.0);
         assert!(!motion.animating(done));
     }
 
@@ -1165,11 +1165,11 @@ mod tests {
         assert!(!motion.animating(t0));
         let second = content_plan(vec![row("a", 1), row("b", 2)], 2);
         motion.update(&second, 2, true, t0);
-        assert_eq!(motion.frame(&second, 2, t0).row(&id("b")).alpha, 0.0);
+        assert_eq!(motion.frame(&second, 2, t0).row(id("b")).alpha, 0.0);
         assert!(
             (motion
                 .frame(&second, 2, t0 + Duration::from_millis(300))
-                .row(&id("b"))
+                .row(id("b"))
                 .alpha
                 - 1.0)
                 .abs()
@@ -1213,15 +1213,15 @@ mod tests {
         let next = content_plan(vec![row("b", 1), row("a", 2)], 2);
         motion.update(&next, 2, true, t0);
         let frame = motion.frame(&next, 2, t0 + Duration::from_millis(600));
-        let b = frame.row(&id("b"));
+        let b = frame.row(id("b"));
         assert!(b.flash > 0.99 && b.flash_up);
         assert_eq!(b.chip.as_ref().map(|c| c.0.as_str()), Some("+1"));
         assert_eq!(
-            frame.row(&id("a")).chip.as_ref().map(|c| c.0.as_str()),
+            frame.row(id("a")).chip.as_ref().map(|c| c.0.as_str()),
             Some("−1")
         );
         let frame = motion.frame(&next, 2, t0 + Duration::from_millis(1300));
-        assert!(frame.row(&id("b")).chip.is_none() && frame.row(&id("b")).flash == 0.0);
+        assert!(frame.row(id("b")).chip.is_none() && frame.row(id("b")).flash == 0.0);
     }
 
     #[test]
@@ -1243,7 +1243,7 @@ mod tests {
         motion.update(&next, 8, true, t0);
         let frame = motion.frame(&next, 8, t0);
         let chips = (1..=8)
-            .filter(|i| frame.row(&id(&format!("c{i}"))).chip.is_some())
+            .filter(|i| frame.row(id(&format!("c{i}"))).chip.is_some())
             .count();
         assert_eq!(chips, 3);
     }
@@ -1257,11 +1257,11 @@ mod tests {
         std::sync::Arc::make_mut(&mut pit.row).in_pits = true;
         let next = content_plan(vec![pit], 2);
         motion.update(&next, 1, true, t0);
-        let start = motion.frame(&next, 1, t0).row(&id("a"));
+        let start = motion.frame(&next, 1, t0).row(id("a"));
         assert_eq!((start.pit_alpha, start.pit_dx), (0.0, -5.0));
         let end = motion
             .frame(&next, 1, t0 + Duration::from_millis(250))
-            .row(&id("a"));
+            .row(id("a"));
         assert_eq!((end.pit_alpha, end.pit_dx), (1.0, 0.0));
     }
 
@@ -1302,7 +1302,7 @@ mod tests {
         let mut next = content_plan(vec![row("b", 1), row("a", 2)], 6);
         next.identity = "other:2".into();
         motion.update(&next, 2, true, t0);
-        assert_eq!(motion.frame(&next, 2, t0).row(&id("b")).dy, 0.0);
+        assert_eq!(motion.frame(&next, 2, t0).row(id("b")).dy, 0.0);
     }
 
     #[test]

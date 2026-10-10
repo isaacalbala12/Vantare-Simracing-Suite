@@ -691,10 +691,7 @@ fn row(
             .is_none_or(|c| Some(c.id) == context.selected_class);
     let leader = car.class_position.current() == Some(&1);
     let best = rich_positive(&car.best_lap_s);
-    let gained = match (car.grid_position.current(), car.position.current()) {
-        (Some(&grid), Some(&now)) => Some(i64::from(grid) - i64::from(now)),
-        _ => None,
-    };
+    let gained = positions_gained(car);
     let (classification_gap, classification_leader) = if content.class_gaps {
         (car.gap_class_leader, car.class.is_some() && leader)
     } else {
@@ -713,21 +710,7 @@ fn row(
         in_pits: car.in_pits.current() == Some(&true),
         last_lap_s: car.last_lap_s.current().copied(),
         best_lap_s: car.best_lap_s.current().copied(),
-        battle_gap_seconds: if kind == Some(&SessionKind::Race)
-            && car.position.current().is_some_and(|p| *p > 0)
-            && car.in_pits.current() != Some(&true)
-        {
-            if classification_leader {
-                Some(0.0)
-            } else {
-                match classification_gap.current() {
-                    Some(Gap::Time { seconds }) => format::to_fixed(*seconds, 2).parse().ok(),
-                    _ => None,
-                }
-            }
-        } else {
-            None
-        },
+        battle_gap_seconds: battle_gap(car, kind, classification_gap, classification_leader),
         last_lap_column: content
             .last_lap_format
             .map(|f| lap_time_column(car.last_lap_s.current().copied(), f.compact, f.decimals)),
@@ -792,6 +775,33 @@ fn row(
         gap: gap(car.gap_class_leader, leader, prefs),
         interval: gap(car.gap_class_ahead, leader, prefs),
         is_player: player == Some(car.id),
+    }
+}
+
+fn positions_gained(car: &Car) -> Option<i64> {
+    Some(i64::from(*car.grid_position.current()?) - i64::from(*car.position.current()?))
+}
+
+fn battle_gap(
+    car: &Car,
+    kind: Option<&SessionKind>,
+    classification_gap: Quality<Gap>,
+    classification_leader: bool,
+) -> Option<f64> {
+    if kind == Some(&SessionKind::Race)
+        && car.position.current().is_some_and(|p| *p > 0)
+        && car.in_pits.current() != Some(&true)
+    {
+        if classification_leader {
+            Some(0.0)
+        } else {
+            match classification_gap.current() {
+                Some(Gap::Time { seconds }) => format::to_fixed(*seconds, 2).parse().ok(),
+                _ => None,
+            }
+        }
+    } else {
+        None
     }
 }
 

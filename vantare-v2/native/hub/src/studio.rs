@@ -1244,7 +1244,7 @@ impl Studio {
         if self.example
             && self.real_photo.is_none()
             && let Settings::Standings(value) = settings
-            && value.design_system.has_variants()
+            && settings.appearance().is_some()
             && value.classification_mode == "multiclass"
         {
             std::borrow::Cow::Owned(examples::multiclass(photo, value.row_count))

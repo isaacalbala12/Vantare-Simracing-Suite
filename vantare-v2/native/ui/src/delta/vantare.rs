@@ -294,7 +294,7 @@ impl Visual {
         Duration::from_secs_f32(self.style.delta.ease_ms.max(0.0) / 1000.0)
     }
 
-    fn bar_value(&self, movement: &Movement, now: Instant) -> f32 {
+    fn bar_value(movement: &Movement, now: Instant) -> f32 {
         movement.bar_value(now)
     }
 
@@ -319,7 +319,7 @@ impl Visual {
         }
         let to = bar_target(Some(&board), &self.style);
         let from = if self.board.is_some() {
-            self.bar_value(movement, now)
+            Self::bar_value(movement, now)
         } else {
             to
         };
@@ -410,7 +410,7 @@ impl Visual {
             kit,
             options: &self.options,
             board: self.board.as_deref(),
-            bar: self.bar_value(movement, now),
+            bar: Self::bar_value(movement, now),
             flash: self.flash(movement, now),
         };
         if self.options.size == Size::Pill {

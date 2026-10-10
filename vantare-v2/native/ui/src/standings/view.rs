@@ -519,7 +519,7 @@ fn paint_table(scene: &Scene, labels: &Labels, window: &mut Window, cx: &mut App
         );
     }
     for (index, row) in content_plan.rows.iter().take(plan.visible_rows).enumerate() {
-        let vis = scene.frame.row(&row.id);
+        let vis = scene.frame.row(row.id);
         let last = index + 1 == plan.visible_rows;
         let top = body_top + plan.row_tops[index];
         paint_row(scene, row, top, &vis, last, body_top, window, cx);
@@ -609,8 +609,8 @@ fn paint_session_header(
         ),
     );
     if plan.brand_visible {
-        let type_text = text::fit(window, &session_label, &type_ink, 68.0);
-        let clock_w = text::width(window, &content_plan.remaining_text(), &clock_ink);
+        let type_text = text::fit(window, session_label, &type_ink, 68.0);
+        let clock_w = text::width(window, content_plan.remaining_text(), &clock_ink);
         let type_w = text::width(window, &type_text, &type_ink);
         let context_w = 10.0 + type_w.max(clock_w);
         let context_h =
@@ -649,7 +649,7 @@ fn paint_session_header(
         text::draw(
             window,
             cx,
-            &content_plan.remaining_text(),
+            content_plan.remaining_text(),
             text_x,
             text::baseline(
                 clock_top,
@@ -675,10 +675,10 @@ fn paint_session_header(
         );
         let line = text::css_normal_line(style.fonts.plain_clock_size);
         let base = text::baseline(mid - line / 2.0, line, style.fonts.plain_clock_size).round();
-        text::draw(window, cx, &session_label, x, base, &kind);
-        x += text::width(window, &session_label, &kind) + 7.0;
-        text::draw(window, cx, &content_plan.remaining_text(), x, base, &clock);
-        x += text::width(window, &content_plan.remaining_text(), &clock) + 8.0;
+        text::draw(window, cx, session_label, x, base, &kind);
+        x += text::width(window, session_label, &kind) + 7.0;
+        text::draw(window, cx, content_plan.remaining_text(), x, base, &clock);
+        x += text::width(window, content_plan.remaining_text(), &clock) + 8.0;
     }
     // Chip de clase.
     let class_text: String = content_plan
@@ -1306,7 +1306,7 @@ fn paint_cell(
                 color
             };
             let i = style.ink(style.fonts.body_size, weight, -0.025, color);
-            let w = text::width(window, &value, &i);
+            let w = text::width(window, value, &i);
             let align = column
                 .align
                 .unwrap_or(if column.metric == Metric::VehicleClass {
@@ -1345,7 +1345,7 @@ fn paint_cell(
                     BorderStyle::default(),
                 ));
             }
-            text::draw(window, cx, &value, tx, base_for(style.fonts.body_size), &i);
+            text::draw(window, cx, value, tx, base_for(style.fonts.body_size), &i);
             if column.metric == Metric::BestLap && vis.best_marker > 0.0 {
                 let mi = style.ink(
                     style.fonts.marker_size,
@@ -1780,7 +1780,7 @@ fn paint_pit_rail(scene: &Scene, window: &mut Window, cx: &mut App) {
         }
     }
     for (index, row) in content_plan.rows.iter().take(plan.visible_rows).enumerate() {
-        let vis = scene.frame.row(&row.id);
+        let vis = scene.frame.row(row.id);
         let top =
             origin + plan.row_tops[index] + vis.dy * style.geometry.row_height / model::ROW_HEIGHT;
         draw_one(row, top, &vis, window, cx);

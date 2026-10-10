@@ -408,8 +408,8 @@ fn default_path(kind: Kind) -> PathBuf {
 
 /// Tamaño de la vista previa: el Relative Eficiencia heredado se muestra con su
 /// ancho fijo de 470 px; el resto (Vantare incluido) con su tamaño real.
-fn preview_size(eficiencia_relative: bool, size: (f32, f32)) -> (f32, f32) {
-    if eficiencia_relative {
+fn preview_size(fixed_relative_preview: bool, size: (f32, f32)) -> (f32, f32) {
+    if fixed_relative_preview {
         (
             crate::relative::SIZE.0,
             size.1 * crate::relative::SIZE.0 / size.0,
@@ -421,9 +421,8 @@ fn preview_size(eficiencia_relative: bool, size: (f32, f32)) -> (f32, f32) {
 
 impl Workshop {
     /// El widget es el Relative Eficiencia heredado (vista previa a 470 px).
-    fn eficiencia_relative(&self) -> bool {
-        matches!(&self.settings, Settings::Relative(s)
-            if s.design_system.legacy())
+    fn fixed_relative_preview(&self) -> bool {
+        self.settings.fixed_relative_preview()
     }
 
     fn edit_number(&mut self, key: &str, cx: &mut Context<Self>) -> bool {
@@ -509,13 +508,11 @@ impl Workshop {
     fn snapshot(&self, index: usize) -> Snapshot {
         let mut snapshot = self.scene.snapshots[index].clone();
         // «Pilotos totales» es un control de Eficiencia; Vantare elige sus filas.
-        if let Settings::Standings(settings) = &self.settings
-            && settings.design_system.legacy()
-        {
+        if let Some(row_count) = self.settings.preview_row_limit() {
             snapshot.state.cars.retain(|car| {
                 car.position
                     .current()
-                    .is_some_and(|position| *position <= settings.row_count as u32)
+                    .is_some_and(|position| *position <= row_count as u32)
             });
         }
         if let Some(position) = self.player_position {
@@ -594,7 +591,7 @@ impl Workshop {
         let scale = self.scale * self.fit;
         let dimensions = self.dimensions;
         let study = self.study.clone();
-        let legacy = self.eficiencia_relative();
+        let legacy = self.fixed_relative_preview();
         let make = |cx: &mut Context<Overlay>| {
             let mut overlay = Overlay::configured(&settings, prefs);
             overlay.workshop_layout();
@@ -640,7 +637,7 @@ impl Workshop {
         let size = self.overlay.read(cx).wanted_size();
         let target = self
             .dimensions
-            .unwrap_or(preview_size(self.eficiencia_relative(), size));
+            .unwrap_or(preview_size(self.fixed_relative_preview(), size));
         let scale = self.scale * self.fit;
         (scale * target.0 / size.0, scale * target.1 / size.1)
     }
@@ -703,17 +700,7 @@ impl Workshop {
     fn vantare_columns_mut(
         &mut self,
     ) -> Option<&mut Vec<crate::standings::options::ColumnSetting>> {
-        match &mut self.settings {
-            Settings::Standings(s) if s.design_system.has_variants() => Some(
-                s.columns
-                    .get_or_insert_with(|| crate::standings::vantare_template("standard")),
-            ),
-            Settings::Relative(s) if s.design_system.has_variants() => Some(
-                s.columns
-                    .get_or_insert_with(|| crate::relative::vantare_template("standard")),
-            ),
-            _ => None,
-        }
+        self.settings.style_columns_mut()
     }
 
     fn shift_vantare_column(&mut self, metric: &str, step: i32) -> bool {
@@ -740,7 +727,7 @@ impl Workshop {
         let (scale, dimensions, legacy) = (
             self.scale * self.fit,
             self.dimensions,
-            self.eficiencia_relative(),
+            self.fixed_relative_preview(),
         );
         for view in std::iter::once(&self.overlay).chain(self.comparison.as_ref()) {
             view.update(cx, |overlay, cx| {
@@ -883,7 +870,7 @@ impl Workshop {
                 Control::Location => self.in_pits = Some(value == "pits"),
                 Control::Width | Control::Height => {
                     let wanted = preview_size(
-                        self.eficiencia_relative(),
+                        self.fixed_relative_preview(),
                         self.overlay.read(cx).wanted_size(),
                     );
                     let mut size = self.dimensions.unwrap_or(wanted);
@@ -988,6 +975,10 @@ impl Workshop {
                     } else {
                         Some(self.overlay.clone())
                     };
+                }
+                Control::Setting("designSystem") => {
+                    let look = crate::look::Look::from_name(value).ok_or("Look inválido")?;
+                    self.settings.set_look(look);
                 }
                 Control::Setting(key) => {
                     let mut settings =

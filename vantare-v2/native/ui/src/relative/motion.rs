@@ -112,7 +112,7 @@ impl Default for Motion {
                 scale: 1.0,
                 ..Rows::default()
             },
-            dots: Default::default(),
+            dots: crate::vantare::motion::Motion::default(),
             started: Instant::now(),
         }
     }
@@ -512,14 +512,13 @@ impl Rows {
 }
 
 #[cfg(test)]
+type RowClocks = Vec<(CarId, Instant, Instant, Option<(Flash, Instant)>)>;
+#[cfg(test)]
+type ClockSignature = (Instant, RowClocks, crate::vantare::motion::ClockSignature);
+
+#[cfg(test)]
 impl Motion {
-    pub(super) fn clock_signature(
-        &self,
-    ) -> (
-        Instant,
-        Vec<(CarId, Instant, Instant, Option<(Flash, Instant)>)>,
-        Vec<(CarId, Instant, Option<Instant>, Option<(Flash, Instant)>)>,
-    ) {
+    pub(super) fn clock_signature(&self) -> ClockSignature {
         let mut rows = self
             .rows
             .transitions

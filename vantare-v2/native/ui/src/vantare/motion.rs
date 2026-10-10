@@ -259,10 +259,11 @@ impl Motion {
 }
 
 #[cfg(test)]
+pub(crate) type ClockSignature = Vec<(CarId, Instant, Option<Instant>, Option<(Flash, Instant)>)>;
+
+#[cfg(test)]
 impl Motion {
-    pub(crate) fn clock_signature(
-        &self,
-    ) -> Vec<(CarId, Instant, Option<Instant>, Option<(Flash, Instant)>)> {
+    pub(crate) fn clock_signature(&self) -> ClockSignature {
         let mut rows = self
             .rows
             .iter()

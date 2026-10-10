@@ -1,5 +1,8 @@
 //! Textos derivados del Board en ingest; medidas de fuente una vez por presentación.
-use super::*;
+use super::{
+    Arc, EDGES, Ink, Language, RowVisual, SCALE, SIZE, Settings, Side, ViewModel, Window, col, ink,
+    item_width, text, tokens,
+};
 use std::{collections::HashMap, sync::OnceLock};
 use vantare_domain::{CarId, relative::Row};
 
@@ -105,7 +108,7 @@ impl Labels {
             .collect();
         let total = selected
             .iter()
-            .map(|c| c.relative_width())
+            .map(crate::standings::options::ColumnSetting::relative_width)
             .sum::<f32>()
             .max(1.0);
         let has_position = selected.iter().any(|c| c.metric_id == "position");
@@ -353,7 +356,8 @@ impl Labels {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{Arc, Labels, Language, Settings, Side};
+    use vantare_domain::format::Preferences;
     #[test]
     fn row_texts_are_prepared_including_badges_and_configured_names() {
         let prefs = Preferences::default();

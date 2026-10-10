@@ -216,6 +216,9 @@ impl std::ops::Deref for Labels {
     }
 }
 impl Labels {
+    /// Window aporta las métricas de fuente: `OnceLock` las fija en la primera
+    /// preparación de este Board/presentación. Rebuild/nuevas etiquetas invalidan
+    /// la caché; después paint solo lee. No modifica datos, historial ni Motion.
     pub(crate) fn prepare(&self, window: &Window) {
         self.fitted.get_or_init(|| {
             let values = ink(14.0, 650.0, 0.0, col(tokens::INK, 1.0));

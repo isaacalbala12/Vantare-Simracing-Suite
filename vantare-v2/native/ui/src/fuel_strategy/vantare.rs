@@ -1080,6 +1080,9 @@ impl Visual {
             Wake::Idle
         }
     }
+    /// Window aporta las métricas de fuente: `OnceLock` las fija en la primera
+    /// preparación de este Board/presentación. Rebuild/nuevas etiquetas invalidan
+    /// la caché; después paint solo lee. No modifica datos, historial ni Motion.
     pub(crate) fn prepare(&self, window: &Window) {
         self.fitted_tiles.get_or_init(|| {
             let f = &self.style.fuel;

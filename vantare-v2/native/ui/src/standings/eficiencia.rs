@@ -31,18 +31,7 @@ impl Visual {
         config.footer_rows = 1;
         if config.footer_slots.len() > 5 {
             let inner = (config.width - 24.0).max(80.0);
-            let total = next
-                .board
-                .footer_cells
-                .iter()
-                .map(|cell| {
-                    cell.label.chars().count() as f32 * 5.5
-                        + cell.value.chars().count() as f32 * 7.5
-                        + 12.0
-                        + 14.0
-                })
-                .sum::<f32>();
-            config.footer_rows = (total / inner).ceil() as usize;
+            config.footer_rows = crate::efficiency::footer_rows(&next.board.footer_cells, inner);
         }
         config.fit(config.row_count);
         if config.multiclass {

@@ -204,8 +204,34 @@ pub fn vantare_template(name: &str) -> Vec<options::ColumnSetting> {
 
 impl Default for Settings {
     fn default() -> Self {
+        Self::for_look(crate::look::Look::default())
+    }
+}
+
+impl Settings {
+    pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
+        let mut s = Self::for_look(look);
+        s.brand_visible = Some(true);
+        match look {
+            crate::look::Look::Vantare => {
+                s.row_count = 8;
+                s.columns = Some(vantare_template("standard"));
+            }
+            crate::look::Look::Eficiencia => {
+                s.row_count = 10;
+                s.columns = Some(crate::workshop::default_columns(crate::Kind::Standings));
+                s.player_window = true;
+                s.class_scope = "all-classes".into();
+            }
+        }
+        s
+    }
+
+    /// Única fuente de los ajustes base: el Look cambia solo la presentación.
+    #[must_use]
+    pub fn for_look(design_system: crate::look::Look) -> Self {
         Self {
-            design_system: DesignSystem::Vantare,
+            design_system,
             content_version: 1,
             style: Look::Neo,
             accent: Accent::Red,
@@ -227,9 +253,7 @@ impl Default for Settings {
             footer_slots: None,
         }
     }
-}
 
-impl Settings {
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
         (
             "headerFirst/headerSecond",
@@ -243,10 +267,7 @@ impl Settings {
     /// Standings del sistema Eficiencia heredado (Signature por defecto).
     #[must_use]
     pub fn eficiencia() -> Self {
-        Self {
-            design_system: DesignSystem::Eficiencia,
-            ..Self::default()
-        }
+        Self::for_look(crate::look::Look::Eficiencia)
     }
 
     #[must_use]
@@ -371,8 +392,7 @@ impl Presentation {
         i64,
     )> {
         match self {
-            Self::Eficiencia { motion: m, .. } => m.notices(),
-            Self::Vantare { motion: m, .. } => m.notices(),
+            Self::Eficiencia { motion: m, .. } | Self::Vantare { motion: m, .. } => m.notices(),
         }
     }
     fn restore_notices(
@@ -385,10 +405,9 @@ impl Presentation {
         )],
     ) {
         match self {
-            Self::Eficiencia { motion: m, .. } => {
-                std::sync::Arc::make_mut(m).restore_notices(notices)
+            Self::Eficiencia { motion: m, .. } | Self::Vantare { motion: m, .. } => {
+                std::sync::Arc::make_mut(m).restore_notices(notices);
             }
-            Self::Vantare { motion: m, .. } => std::sync::Arc::make_mut(m).restore_notices(notices),
         }
     }
 }
@@ -546,7 +565,7 @@ impl Widget {
                     std::sync::Arc::make_mut(motion).resume_content(&content);
                 }
                 Presentation::Vantare { visual, motion } => {
-                    visual.attach(board, std::sync::Arc::make_mut(motion))
+                    visual.attach(board, std::sync::Arc::make_mut(motion));
                 }
             }
         }

@@ -53,17 +53,8 @@ impl Visual {
             &motion.sample(&self.vm, Instant::now()),
         ));
         if self.vm.footer_cells.len() > 5 {
-            let total = self
-                .vm
-                .footer_cells
-                .iter()
-                .map(|cell| {
-                    cell.label.chars().count() as f32 * 5.5
-                        + cell.value.chars().count() as f32 * 7.5
-                        + 26.0
-                })
-                .sum::<f32>();
-            self.footer_rows = (total / (SIZE.0 - 24.0)).ceil().max(1.0) as usize;
+            self.footer_rows =
+                crate::efficiency::footer_rows(&self.vm.footer_cells, SIZE.0 - 24.0).max(1);
         }
     }
     pub(super) fn workshop_layout(&mut self) {
@@ -105,16 +96,8 @@ impl Visual {
         let changed = !same_visible(&self.vm, &next, &self.settings) || interrupted;
         self.footer_rows = 1;
         if next.footer_cells.len() > 5 {
-            let total = next
-                .footer_cells
-                .iter()
-                .map(|cell| {
-                    cell.label.chars().count() as f32 * 5.5
-                        + cell.value.chars().count() as f32 * 7.5
-                        + 26.0
-                })
-                .sum::<f32>();
-            self.footer_rows = (total / (SIZE.0 - 24.0)).ceil().max(1.0) as usize;
+            self.footer_rows =
+                crate::efficiency::footer_rows(&next.footer_cells, SIZE.0 - 24.0).max(1);
         }
         self.labels = Arc::new(Labels::new(
             &next,
@@ -642,7 +625,7 @@ fn paint_row(
     text::draw(
         window,
         cx,
-        &value,
+        value,
         edges[3],
         text::baseline(y, row_height, name.size),
         &name,
@@ -660,7 +643,7 @@ fn paint_row(
         text::draw(
             window,
             cx,
-            &value,
+            value,
             x + 5.0 * SCALE,
             y + 17.0 * SCALE,
             &badge_font,
@@ -799,7 +782,7 @@ fn paint_configured_row(
                 text::draw(
                     window,
                     cx,
-                    &badge,
+                    badge,
                     bx + 5.0 * SCALE,
                     by + 10.0 * SCALE,
                     &badge_font,

@@ -28,28 +28,40 @@ pub struct Settings {
 }
 impl Default for Settings {
     fn default() -> Self {
+        Self::for_look(crate::look::Look::default())
+    }
+}
+
+impl Settings {
+    pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
+        let mut s = Self::for_look(look);
+        if look == crate::look::Look::Vantare {
+            s.brand_visible = Some(true);
+        }
+        s
+    }
+
+    /// Única fuente de los ajustes base: el Look cambia solo la presentación.
+    #[must_use]
+    pub fn for_look(design_system: crate::look::Look) -> Self {
         Self {
-            design_system: crate::standings::DesignSystem::Vantare,
+            design_system,
             style: crate::standings::Look::Neo,
             accent: crate::standings::Accent::Red,
             size: "standard".into(),
             brand_visible: None,
             content_version: 1,
-            history_rows: 4,
-            show_projection: true,
+            history_rows: fuel_strategy::Config::default().history_rows,
+            show_projection: fuel_strategy::Config::default().show_projection,
             source: "fuel".into(),
             units: "liters".into(),
         }
     }
-}
-impl Settings {
+
     /// Ajustes por defecto del sistema Eficiencia heredado.
     #[must_use]
     pub fn eficiencia() -> Self {
-        Self {
-            design_system: crate::standings::DesignSystem::Eficiencia,
-            ..Self::default()
-        }
+        Self::for_look(crate::look::Look::Eficiencia)
     }
 
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(

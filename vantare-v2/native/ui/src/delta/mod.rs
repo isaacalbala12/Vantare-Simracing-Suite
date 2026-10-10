@@ -35,8 +35,24 @@ pub struct Settings {
 }
 impl Default for Settings {
     fn default() -> Self {
+        Self::for_look(crate::look::Look::default())
+    }
+}
+
+impl Settings {
+    pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
+        let mut s = Self::for_look(look);
+        if look == crate::look::Look::Vantare {
+            s.brand_visible = Some(true);
+        }
+        s
+    }
+
+    /// Única fuente de los ajustes base: el Look cambia solo la presentación.
+    #[must_use]
+    pub fn for_look(design_system: crate::look::Look) -> Self {
         Self {
-            design_system: crate::standings::DesignSystem::Vantare,
+            design_system,
             content_version: 1,
             style: crate::standings::Look::Neo,
             accent: crate::standings::Accent::Red,
@@ -48,15 +64,11 @@ impl Default for Settings {
             template_id: "instrument".into(),
         }
     }
-}
-impl Settings {
+
     /// Ajustes por defecto del sistema Eficiencia heredado.
     #[must_use]
     pub fn eficiencia() -> Self {
-        Self {
-            design_system: crate::standings::DesignSystem::Eficiencia,
-            ..Self::default()
-        }
+        Self::for_look(crate::look::Look::Eficiencia)
     }
 
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[
@@ -94,7 +106,9 @@ impl Settings {
                 "bar" | "expanded" => self.size.clone(),
                 _ => "pill".into(),
             },
-            reference: match if self.content_version == 0 && self.design_system.legacy() {
+            reference: match if self.content_version == 0
+                && self.design_system == crate::look::Look::Eficiencia
+            {
                 "best"
             } else {
                 self.reference.as_str()
@@ -400,10 +414,8 @@ mod tests {
                 .checked_sub(std::time::Duration::from_millis(200))
                 .expect("reloj de aviso");
             match &mut widget.presentation {
-                Presentation::Eficiencia { motion: m, .. } => Arc::make_mut(m)
-                    .notices
-                    .notify(at, delta::Event::PersonalBest),
-                Presentation::Vantare { motion: m, .. } => Arc::make_mut(m)
+                Presentation::Eficiencia { motion: m, .. }
+                | Presentation::Vantare { motion: m, .. } => Arc::make_mut(m)
                     .notices
                     .notify(at, delta::Event::PersonalBest),
             }
@@ -413,8 +425,8 @@ mod tests {
                 assert!(Arc::ptr_eq(&board, &widget.board));
                 assert_eq!(calls.get(), 1, "cambiar Look no proyecta");
                 let clock = match &widget.presentation {
-                    Presentation::Eficiencia { motion: m, .. } => m.notices.record(),
-                    Presentation::Vantare { motion: m, .. } => m.notices.record(),
+                    Presentation::Eficiencia { motion: m, .. }
+                    | Presentation::Vantare { motion: m, .. } => m.notices.record(),
                 };
                 assert_eq!(clock, Some(at));
             }
@@ -433,7 +445,7 @@ mod tests {
             "Eficiencia histórico ignoraba referencia"
         );
         assert_eq!(settings.template_id, "capsule");
-        assert!(settings.design_system.legacy());
+        assert!(settings.design_system == crate::look::Look::Eficiencia);
         for &look in crate::look::Look::ALL {
             settings.design_system = look;
             assert_eq!(settings.normalized().reference, "best");

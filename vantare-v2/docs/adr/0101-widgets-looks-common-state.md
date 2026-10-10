@@ -35,6 +35,9 @@ el fallback Vantare. La migración es en memoria, sin reescribir el archivo al a
 `contentVersion` distingue contenido normalizado del layout histórico: aplica una
 vez el filtro que antes imponía Vantare; después el filtro es independiente del Look.
 Guardar y recargar conserva el Look y ese contenido, también después de alternarlos.
+Pedales (#1566) es el primer widget que gana Look después de existir solo en
+Eficiencia: sin `designSystem` guardado sigue en Eficiencia y solo las
+instancias nuevas nacen en Vantare (decisión de Isaac).
 
 ## Cómo añadir un Look
 

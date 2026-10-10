@@ -528,6 +528,19 @@ los sectores de la vuelta en curso y si la vuelta cuenta (`mCountLapFlag`); con
 ellos el núcleo deriva los deltas frente a óptima y líder escalando la
 referencia de la mejor vuelta propia (exactos en meta, `Estimated`).
 
+## Pedales Vantare (#1566)
+
+Mismo ViewModel (`domain::pedals`) y una sola proyección; `pedals/vantare.rs`
+pinta tres columnas con el kit Vantare en la misma huella que Eficiencia
+(`width_for_gap(gap)` × 160), así alternar Look no recoloca el layout. Valores en
+Space Mono, rótulos Rajdhani localizados (EMB/FRE/ACE, CLU/BRK/THR), pistas
+`fuel.track`, embrague azul, freno rojo y acelerador verde; estilo Neo/Neutro y
+acento como los demás. La separación ajustable de #1563 (0–12, por defecto 2)
+rige en ambos Looks. El aviso de estado es una franja ámbar centrada que se
+reduce si no cabe. Sin marcha ni velocidad. Layouts guardados sin `designSystem`
+siguen en Eficiencia; las instancias nuevas nacen en Vantare. La captura de
+paridad (`reference/pedals.png`) sigue siendo Eficiencia y no cambia.
+
 ### Harness anterior y mediciones históricas
 
 `vantare-workshop` abre la misma ventana por monitor con uno o varios widgets

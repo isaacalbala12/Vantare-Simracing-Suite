@@ -1,8 +1,10 @@
-//! Pedales en el sistema de diseño Vantare (#1566). Mismo ViewModel que
-//! Eficiencia; solo cambia el pintado con el kit `ui/src/vantare/`.
+//! Pedales en el sistema de diseño Vantare (#1566): tres columnas con la
+//! misma huella que Eficiencia (`width_for_gap` x 160), pintadas con el kit
+//! `ui/src/vantare/`. Mismo ViewModel; solo cambia el pintado.
 
+use super::{SIZE, width_for_gap};
 use crate::efficiency::preview::PaintWindow as Window;
-use crate::efficiency::text;
+use crate::efficiency::{rect, text};
 use crate::standings::{Accent, Look};
 use crate::vantare::paint::{Face, Kit, round_rect, transparent};
 use crate::vantare::style::{Color, Style, Variant};
@@ -11,11 +13,21 @@ use std::sync::Arc;
 use vantare_domain::format::Language;
 use vantare_domain::pedals::ViewModel;
 
+/// Margen lateral y ancho de columna iguales a Eficiencia: misma huella.
+const PAD_X: f32 = 10.0;
+const COLUMN_W: f32 = 28.0;
+const TRACK_W: f32 = 10.0;
+const VALUE_TOP: f32 = 10.0;
+const VALUE_H: f32 = 14.0;
+const LABEL_H: f32 = 14.0;
+const PAD_BOTTOM: f32 = 8.0;
+/// Opacidad del extremo inferior del relleno; el que avanza es opaco.
+const FILL_FROM: f32 = 0.55;
+
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Options {
     pub look: Look,
     pub accent: Accent,
-    pub brand: bool,
     pub gap: f32,
 }
 
@@ -24,7 +36,6 @@ impl Options {
         Self {
             look: settings.style,
             accent: settings.accent,
-            brand: settings.brand_visible == Some(true),
             gap: settings.gap,
         }
     }
@@ -44,16 +55,23 @@ impl Options {
     }
 }
 
-// ponytail: prototipo de las dos direcciones para elegir (#1566); tras la
-// elección queda solo una y desaparece la variable.
-fn horizontal() -> bool {
-    std::env::var("VANTARE_PEDALS_PROTO").is_ok_and(|v| v == "b")
-}
-
 #[derive(Clone)]
 pub(crate) struct Visual {
     options: Options,
     style: Arc<Style>,
+}
+
+/// Rótulos localizados: embrague, freno y acelerador.
+fn labels(language: Language) -> [&'static str; 3] {
+    match language {
+        Language::Es => ["EMB", "FRE", "ACE"],
+        Language::En => ["CLU", "BRK", "THR"],
+    }
+}
+
+/// Altura del relleno: el porcentaje redondeado como el texto que lo acompaña.
+fn fill_height(value: f64, track_h: f32) -> f32 {
+    (value.clamp(0.0, 1.0) * 100.0).round() as f32 / 100.0 * track_h
 }
 
 impl Visual {
@@ -67,12 +85,7 @@ impl Visual {
         self.style = style;
     }
     pub(crate) fn size(&self) -> (f32, f32) {
-        let gap = self.options.gap;
-        if horizontal() {
-            (250.0, 92.0 + 2.0 * gap)
-        } else {
-            (2.0 * 12.0 + 3.0 * 28.0 + 2.0 * gap, 168.0)
-        }
+        (width_for_gap(self.options.gap), SIZE.1)
     }
 
     pub(crate) fn paint(
@@ -94,101 +107,48 @@ impl Visual {
             kit.panel(window, height);
         }
         let c = &self.style.colors;
-        let es = kit.es();
-        let pedals = [
-            (
-                if es { "EMB" } else { "CLU" },
-                vm.clutch,
-                &vm.clutch_text,
-                c.compound_wet,
-            ),
-            (
-                if es { "FRE" } else { "BRK" },
-                vm.brake,
-                &vm.brake_text,
-                c.flash_loss,
-            ),
-            (
-                if es { "ACE" } else { "THR" },
-                vm.throttle,
-                &vm.throttle_text,
-                c.green,
-            ),
-        ];
-        let mut top = 0.0;
-        if let Some(status) = vm.status_text {
-            kit.band(
-                window,
-                cx,
-                c.yellow_fill,
-                c.yellow_text,
-                status,
-                None,
-                false,
-                Some(c.yellow_line),
-            );
-            top = self.style.geometry.banner_height;
-        }
-        if horizontal() {
-            self.paint_rows(&kit, &pedals, vm, top, window, cx);
-        } else {
-            self.paint_columns(&kit, &pedals, top, height, window, cx);
-        }
-    }
-
-    fn paint_columns(
-        &self,
-        kit: &Kit<'_>,
-        pedals: &[(&str, Option<f64>, &String, Color); 3],
-        top: f32,
-        height: f32,
-        window: &mut Window,
-        cx: &mut App,
-    ) {
-        let c = &self.style.colors;
         let f = &self.style.fonts;
-        let pad = 12.0;
-        let col = 28.0;
-        let track_w = 10.0;
-        let value_top = top + 10.0;
-        let track_top = value_top + 18.0;
-        let label_h = 16.0;
-        let track_h = height - track_top - 8.0 - label_h - 6.0;
+        let top = match vm.status_text {
+            Some(status) => self.status(&kit, status, window, cx),
+            None => 0.0,
+        };
+        let value_top = top + VALUE_TOP;
+        let track_top = value_top + VALUE_H + 6.0;
+        let track_h = height - track_top - 6.0 - LABEL_H - PAD_BOTTOM;
         let value_ink = kit.ink(Face::Mono, f.mono_small, 0.0, c.text.hsla());
         let label_ink = kit.ink(Face::Display, 12.0, 0.8, c.muted.hsla());
-        for (index, (label, value, text_value, color)) in pedals.iter().enumerate() {
-            let mid = pad + index as f32 * (col + self.options.gap) + col / 2.0;
-            let x = mid - track_w / 2.0;
+        let pedals = [
+            (vm.clutch, &vm.clutch_text, c.compound_wet),
+            (vm.brake, &vm.brake_text, c.flash_loss),
+            (vm.throttle, &vm.throttle_text, c.green),
+        ];
+        for (index, ((value, value_text, color), label)) in
+            pedals.into_iter().zip(labels(language)).enumerate()
+        {
+            let mid = PAD_X + index as f32 * (COLUMN_W + self.options.gap) + COLUMN_W / 2.0;
+            let x = mid - TRACK_W / 2.0;
             round_rect(
                 window,
                 x,
                 track_top,
-                track_w,
+                TRACK_W,
                 track_h,
-                track_w / 2.0,
+                TRACK_W / 2.0,
                 self.style.fuel.track.hsla(),
             );
-            if let Some(v) = value {
-                let fill = (*v as f32).clamp(0.0, 1.0) * track_h;
-                fill_quad(
-                    window,
-                    x,
-                    track_top + track_h - fill,
-                    track_w,
-                    fill,
-                    *color,
-                    true,
-                );
+            if let Some(value) = value {
+                let fill = fill_height(value, track_h);
+                fill_bar(window, x, track_top + track_h - fill, fill, color);
             }
-            let w = text::width(window, text_value, &value_ink);
+            let w = text::width(window, value_text, &value_ink);
             kit.label(
                 window,
                 cx,
-                text_value,
+                value_text,
                 mid - w / 2.0,
                 None,
                 value_top,
-                14.0,
+                VALUE_H,
                 Face::Mono,
                 &value_ink,
             );
@@ -200,152 +160,113 @@ impl Visual {
                 mid - w / 2.0,
                 None,
                 track_top + track_h + 6.0,
-                label_h,
+                LABEL_H,
                 Face::Display,
                 &label_ink,
             );
         }
     }
 
-    fn paint_rows(
-        &self,
-        kit: &Kit<'_>,
-        pedals: &[(&str, Option<f64>, &String, Color); 3],
-        vm: &ViewModel,
-        top: f32,
-        window: &mut Window,
-        cx: &mut App,
-    ) {
+    /// Franja de aviso arriba, centrada y reducida si no cabe en el ancho.
+    /// Devuelve su altura.
+    fn status(&self, kit: &Kit<'_>, status: &str, window: &mut Window, cx: &mut App) -> f32 {
         let c = &self.style.colors;
         let f = &self.style.fonts;
-        let v = kit.variant;
-        let pad = v.padding_x;
-        let mut y = top + v.padding_y;
-        let header = kit.ink(
-            Face::Body,
-            v.header_size,
-            v.header_tracking,
-            v.header_color.hsla(),
-        );
-        kit.label(
-            window,
-            cx,
-            if kit.es() { "PEDALES" } else { "PEDALS" },
-            pad,
-            None,
-            y,
-            v.header_height,
-            Face::Body,
-            &header,
-        );
-        if self.options.brand {
-            kit.brand(window, cx, kit.width - pad, y, v.header_height);
-        }
-        y += v.header_height + v.header_gap;
-        // Bloque de marcha: número grande en Rajdhani y velocidad en mono.
-        let block = 54.0;
-        let rows_h = 3.0 * 16.0 + 2.0 * self.options.gap;
-        let gear = kit.ink(Face::Display, 38.0, 0.0, c.text.hsla());
-        let w = text::width(window, &vm.gear, &gear);
-        kit.label(
-            window,
-            cx,
-            &vm.gear,
-            pad + (block - w) / 2.0,
-            None,
-            y,
-            rows_h - 14.0,
-            Face::Display,
-            &gear,
-        );
-        let speed = kit.ink(Face::Mono, f.mono_small - 1.0, 0.0, c.muted.hsla());
-        let w = text::width(window, &vm.speed, &speed);
-        kit.label(
-            window,
-            cx,
-            &vm.speed,
-            pad + (block - w) / 2.0,
-            None,
-            y + rows_h - 14.0,
-            14.0,
-            Face::Mono,
-            &speed,
-        );
+        let h = self.style.geometry.banner_height;
+        let radius = (kit.variant.radius - 1.0).max(0.0);
+        window.paint_quad(quad(
+            rect(0.0, 0.0, kit.width, h),
+            Corners {
+                top_left: px(radius),
+                top_right: px(radius),
+                bottom_right: px(0.0),
+                bottom_left: px(0.0),
+            },
+            c.yellow_fill.hsla(),
+            Edges::all(px(0.0)),
+            transparent(),
+            BorderStyle::default(),
+        ));
         round_rect(
             window,
-            pad + block + 6.0,
-            y,
-            1.0,
-            rows_h,
             0.0,
-            c.line.hsla(),
+            h - 1.0,
+            kit.width,
+            1.0,
+            0.0,
+            c.yellow_line.hsla(),
         );
-        let left = pad + block + 14.0;
-        let label_w = 30.0;
-        let value_w = 36.0;
-        let label_ink = kit.ink(Face::Display, 12.0, 0.8, c.muted.hsla());
-        let value_ink = kit.ink(Face::Mono, f.mono_small, 0.0, c.text.hsla());
-        let track_x = left + label_w;
-        let track_w = kit.width - pad - value_w - track_x;
-        for (index, (label, value, text_value, color)) in pedals.iter().enumerate() {
-            let row = y + index as f32 * (16.0 + self.options.gap);
-            kit.label(
-                window,
-                cx,
-                label,
-                left,
-                None,
-                row,
-                16.0,
-                Face::Display,
-                &label_ink,
-            );
-            let bar = 6.0;
-            let by = row + (16.0 - bar) / 2.0;
-            round_rect(
-                window,
-                track_x,
-                by,
-                track_w,
-                bar,
-                bar / 2.0,
-                self.style.fuel.track.hsla(),
-            );
-            if let Some(v) = value {
-                let fill = (*v as f32).clamp(0.0, 1.0) * track_w;
-                fill_quad(window, track_x, by, fill, bar, *color, false);
-            }
-            kit.label(
-                window,
-                cx,
-                text_value,
-                0.0,
-                Some(kit.width - pad),
-                row,
-                16.0,
-                Face::Mono,
-                &value_ink,
-            );
+        let mut ink = kit.ink(Face::Display, f.banner, 0.6, c.yellow_text.hsla());
+        let room = kit.width - 2.0 * PAD_X;
+        let w = text::width(window, status, &ink);
+        if w > room {
+            ink.size *= room / w;
         }
+        let w = text::width(window, status, &ink);
+        kit.label(
+            window,
+            cx,
+            status,
+            (kit.width - w) / 2.0,
+            None,
+            0.0,
+            h,
+            Face::Display,
+            &ink,
+        );
+        h
     }
 }
 
-/// Relleno con degradado: opaco en el extremo que avanza.
-fn fill_quad(window: &mut Window, x: f32, y: f32, w: f32, h: f32, color: Color, vertical: bool) {
-    if w <= 0.0 || h <= 0.0 {
+/// Relleno vertical anclado abajo, más intenso en el extremo que avanza.
+fn fill_bar(window: &mut Window, x: f32, y: f32, h: f32, color: Color) {
+    if h <= 0.0 {
         return;
     }
-    let radius = if vertical { w } else { h } / 2.0;
     window.paint_quad(quad(
-        crate::efficiency::rect(x, y, w, h),
-        Corners::all(px(radius)),
+        rect(x, y, TRACK_W, h),
+        // Valores bajos: radio limitado al alto, sin óvalo aplastado.
+        Corners::all(px(TRACK_W.min(h) / 2.0)),
         linear_gradient(
-            if vertical { 0.0 } else { 90.0 },
-            linear_color_stop(color.alpha(0.55), 0.0),
+            0.0,
+            linear_color_stop(color.alpha(FILL_FROM), 0.0),
             linear_color_stop(color.alpha(1.0), 1.0),
         ),
         Edges::all(px(0.0)),
         transparent(),
         BorderStyle::default(),
     ));
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keeps_the_eficiencia_footprint_for_every_gap() {
+        for gap in [0.0, super::super::DEFAULT_GAP, 8.0, 12.0] {
+            let settings = super::super::Settings {
+                gap,
+                ..super::super::Settings::for_look(crate::look::Look::Vantare)
+            };
+            let visual = Visual::new(Options::from_settings(&settings));
+            assert_eq!(visual.size(), (width_for_gap(gap), 160.0));
+            // La última columna termina en el margen derecho de 10 px.
+            let right = PAD_X + 2.0 * (COLUMN_W + gap) + COLUMN_W;
+            assert_eq!(right, visual.size().0 - PAD_X);
+        }
+    }
+
+    #[test]
+    fn fill_matches_the_rounded_percent_and_clamps() {
+        assert!((fill_height(0.125, 100.0) - 13.0).abs() < 0.001);
+        assert!(fill_height(-0.2, 100.0).abs() < f32::EPSILON);
+        assert!((fill_height(1.4, 100.0) - 100.0).abs() < f32::EPSILON);
+    }
+
+    #[test]
+    fn labels_follow_the_language() {
+        assert_eq!(labels(Language::Es), ["EMB", "FRE", "ACE"]);
+        assert_eq!(labels(Language::En), ["CLU", "BRK", "THR"]);
+    }
 }

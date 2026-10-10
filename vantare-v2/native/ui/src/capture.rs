@@ -371,9 +371,7 @@ pub fn run_sequence(kind: Kind, snapshots: &[Snapshot], path: PathBuf) -> ExitCo
             crate::Settings::FuelStrategy(crate::fuel_strategy::Settings::eficiencia())
         }
         Kind::Delta => crate::Settings::Delta(crate::delta::Settings::eficiencia()),
-        Kind::Pedals => crate::Settings::Pedals(crate::pedals::Settings::for_look(
-            crate::look::Look::Eficiencia,
-        )),
+        Kind::Pedals => crate::Settings::Pedals(crate::pedals::Settings::eficiencia()),
         _ => crate::Settings::default_for(kind),
     };
     run_configured_sequence(settings, Preferences::default(), snapshots, path)

@@ -1,7 +1,8 @@
 //! Pedales en diseño Eficiencia (`PedalsFunctional.tsx`): tres barras
 //! (embrague, freno, acelerador) con su rótulo y su valor. Geometría y colores
 //! del CSS de producción para el tamaño por defecto (108 x 160, separación de
-//! 2 px); con el ajuste histórico de 8 px el ancho es 120 px.
+//! 2 px); con el ajuste histórico de 8 px el ancho es 120 px. El Look Vantare
+//! (`pedals/vantare.rs`, #1566) pinta el mismo ViewModel con la misma huella.
 
 use crate::efficiency::preview::PaintWindow as Window;
 use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
@@ -214,6 +215,12 @@ impl Settings {
         }
     }
 
+    /// Ajustes del sistema Eficiencia (captura de paridad y layouts anteriores).
+    #[must_use]
+    pub fn eficiencia() -> Self {
+        Self::for_look(eficiencia())
+    }
+
     /// Única fuente de los ajustes base: el Look cambia solo la presentación.
     #[must_use]
     pub fn for_look(design_system: crate::look::Look) -> Self {
@@ -391,7 +398,8 @@ mod tests {
             assert_eq!(value.gap, 2.0);
         }
         let settings: Settings = serde_json::from_str("{}").expect("opciones parciales");
-        assert_eq!(settings, Settings::default());
+        // Sin `designSystem` (layouts anteriores a #1566) sigue en Eficiencia.
+        assert_eq!(settings, Settings::for_look(crate::look::Look::Eficiencia));
         let explicit: Settings =
             serde_json::from_str(r#"{"gap":8.0}"#).expect("separación guardada");
         assert_eq!(explicit.gap, 8.0);
@@ -447,6 +455,63 @@ mod tests {
             }
             let right = PAD_X + 2.0 * (COLUMN_W + gap) + COLUMN_W;
             assert_eq!(right, width - PAD_X);
+        }
+    }
+
+    #[test]
+    fn saved_layouts_stay_eficiencia_and_new_ones_are_vantare() {
+        use crate::look::Look;
+        let saved: crate::Settings =
+            serde_json::from_str(r#"{"kind":"pedals","gap":5}"#).expect("layout guardado");
+        assert_eq!(saved.look(), Some(Look::Eficiencia));
+        assert_eq!(
+            crate::Settings::default_for(crate::Kind::Pedals).look(),
+            Some(Look::Vantare)
+        );
+        let crate::Settings::Pedals(studio) = Look::Vantare.workshop_defaults(crate::Kind::Pedals)
+        else {
+            panic!("pedales");
+        };
+        assert_eq!(studio.brand_visible, Some(true));
+        // Alternar y guardar conserva el Look y la separación.
+        for look in Look::ALL.iter().copied() {
+            let mut settings = saved.clone();
+            settings.set_look(look);
+            assert_eq!(
+                saved.look_change(&settings),
+                (look != Look::Eficiencia).then_some(look)
+            );
+            let json = serde_json::to_string(&settings).expect("guardar");
+            let restored: crate::Settings = serde_json::from_str(&json).expect("recargar");
+            assert_eq!(restored, settings);
+            let crate::Settings::Pedals(value) = restored else {
+                panic!("pedales");
+            };
+            assert_eq!((value.design_system, value.gap), (look, 5.0));
+        }
+    }
+
+    #[test]
+    fn look_change_keeps_the_view_model_and_the_footprint() {
+        let prefs = Preferences::default();
+        let settings = Settings {
+            gap: 6.0,
+            ..Settings::for_look(crate::look::Look::Eficiencia)
+        };
+        let mut widget = Widget::new(&settings, prefs);
+        assert!(widget.ingest(&source::synthetic(300), prefs));
+        let before = widget.vm.clone();
+        for look in crate::look::Look::ALL.iter().copied() {
+            widget.set_look(look, prefs);
+            assert!(matches!(
+                (&widget.presentation, look),
+                (Presentation::Eficiencia, crate::look::Look::Eficiencia)
+                    | (Presentation::Vantare(_), crate::look::Look::Vantare)
+            ));
+            // Sin reproyectar: mismo ViewModel y misma foto no repinta.
+            assert_eq!(widget.vm, before);
+            assert!(!widget.ingest(&source::synthetic(300), prefs));
+            assert_eq!(widget.size(), (width_for_gap(6.0), 160.0));
         }
     }
 }

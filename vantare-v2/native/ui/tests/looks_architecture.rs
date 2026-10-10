@@ -28,7 +28,8 @@ fn violations(source: &str) -> Vec<String> {
 }
 fn allowed(path: &Path, ui: &Path) -> bool {
     path == ui.join("look.rs")
-        || ["standings", "relative", "delta", "fuel_strategy"]
+        || path == ui.join("pedals.rs")
+        || ["standings", "relative", "delta", "fuel_strategy", "pedals"]
             .iter()
             .any(|widget| path.starts_with(ui.join(widget)))
 }

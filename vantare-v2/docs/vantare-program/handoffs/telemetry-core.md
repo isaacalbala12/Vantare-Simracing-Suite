@@ -1,13 +1,27 @@
 # Handoff vivo — Telemetry Core
 
-## #1562 · implementación aislada en validación (2026-10-10)
+## #1562 · código validado, entrega aislada (2026-10-10)
 
-Rama `vantareapp/isa-1562-ocultar-fuera-de-pista`, base `ca17545f607b85f5d47dc9d060721b69e6a6a158` (origin/nightly).
-Brief `C:/tmp/ola2/brief-1562.md`; informe `C:/tmp/ola2/informe-1562.md`; buzón `C:/tmp/buzon/1562.md`.
-Situación central, DTO v10, 250 ms, ajuste global + excepciones, previews siempre visibles.
-Paridad: frontend antiguo solo tenía reglas inPit/sessionTypes, sin opción global ni pausa/replay.
-Sin señal LMU replay verificada: no se inventa. Tests por capturas reales y mutaciones explícitas.
-Hitos 2d392341 y f108631d; QA del coste cerrada. Fmt/Clippy -D warnings PASS, Nextest final1588/1588 (7 skips heredados,298,526 s), lifecycle18/18 y retirement456/456 PASS. Telemetría24/25, pendiente replay ACC largo. Medida local aceptada sin A/B: 4096 observaciones ACC ×30, valor central19,922 ns/call y cero alloc/realloc; no mide frame completo. Situación estable no añade notify ni ingest adelantado (18 tipos). Gates Windows finales por cola; sin PR/merge/promoción. Siguiente paso: completar gates y push aislado. #1564 añadirá filtro por sesión en la misma sección En pista, combinado Y; sin código anticipado.
+Rama `vantareapp/isa-1562-ocultar-fuera-de-pista`, base `ca17545f607b85f5d47dc9d060721b69e6a6a158`.
+Código validado `31d389e00eca285b3029e51dee631e83f3d251e3`; hitos previos `2d392341` y `f108631d`.
+Informe `C:/tmp/ola2/informe-1562.md`; buzón `C:/tmp/buzon/1562.md`; brief `C:/tmp/ola2/brief-1562.md`.
+
+Situación central, DTO live10 estricto/guardados7..10, histeresis250ms y Unknown siempre visible.
+Ajuste global + excepciones Studio; previews nunca ocultos; pit lane en movimiento visible.
+Paridad histórica solo inPit/sessionTypes. Replay LMU sin señal verificada permanece visible.
+Tests con capturas reales y mutaciones explícitas; no certifica simuladores/OBS físicos.
+
+Fmt/Clippy -D warnings PASS; Nextest1588/1588 (7 skips heredados,298.526s), lifecycle18/18 PASS.
+Telemetría25/25 (0 skips,1043.052s; ACC920.677s); retirement456/456 y anti-slop PASS.
+Medida local aceptada sin A/B: 4096 observaciones ACC ×30, central19.922ns/call, cero alloc/realloc.
+Situación/política estable no añade asignaciones por frame, notify ni ingest adelantado;
+las transiciones y los repintados originales de telemetría conservan su coste. No mide frame completo.
+Capturas Ajustes1440/1100 y Studio1440 inspeccionadas; logs y límites en informe.
+
+#1564: añadir filtro de sesión en la misma sección En pista, combinado Y; helper aislado,
+sin código anticipado. AlwaysVisible no debe saltarse el futuro filtro de sesión.
+Siguiente paso: integración/revisión por el orquestador; prueba física según informe.
+Entrega mediante push de esta rama autorizado; sin PR, merge, promoción ni release.
 
 ## #1536 · destino real de accesos directos en CI Windows (2026-10-10)
 

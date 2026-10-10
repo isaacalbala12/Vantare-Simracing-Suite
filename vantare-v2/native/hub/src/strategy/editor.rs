@@ -316,6 +316,9 @@ impl Strategy {
                         if let Err(error) = this.ensure_clean_form() {
                             this.error = Some(error);
                         } else {
+                            if item == EditorTab::Revisiones {
+                                this.load_revisions(cx);
+                            }
                             this.page = Page::Editor(item);
                             this.edit_mode = false;
                             this.error = None;
@@ -440,6 +443,9 @@ impl Strategy {
                             button("strategy-save-draft", "Guardar borrador", cx).on_click(
                                 cx.listener(|this, _, _, cx| {
                                     this.error = this.save_application_draft().err();
+                                    if this.error.is_none() {
+                                        this.load_revisions(cx);
+                                    }
                                     cx.notify();
                                 }),
                             )

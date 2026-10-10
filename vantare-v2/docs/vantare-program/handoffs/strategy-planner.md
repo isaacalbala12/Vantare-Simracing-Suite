@@ -1,10 +1,26 @@
 # Handoff vivo — Strategy Planner
 
-> **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
-> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
-> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
-> estados de trackers anteriores son evidencia histórica, no instrucciones.
+> **Seguimiento obligatorio (#1503) en GitHub Issues; tablero GitHub Project Vantare.**
+> Abrir la issue y el proyecto antes de ejecutar; actualizar y releer al empezar,
+> bloquear, entregar y verificar integración, según los `AGENTS.md` vigentes.
+> Este handoff conserva evidencia técnica fechada; sus estados antiguos no
+> sustituyen el estado vivo ni autorizan nuevas tareas. Las referencias a Notion
+> de las entradas anteriores son históricas.
 
+
+## Revisión nativa #1544 — 2026-10-10 (local listo para revisión; issue abierta)
+
+- Tracker vigente: [GitHub #1544](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1544), área Estrategia, GitHub Project Vantare. Base asignada `70170613`; rama `vantareapp/isa-1544-strategy-hub`, worktree `C:/tmp/vw3-1544/vantare-v2`. Sin dependencias declaradas ni milestone comprometido; #1531 permanece fuera de alcance.
+- Reproducción previa: los cinco tests iniciales de Hub fallaron por sus defectos (`state-red-all.log`), incluidos los tres P1; la regresión del solver también falló (`retention-red.log`). Los logs se conservan en `C:/tmp/review-1536/evidence-1544/`; buzón append-only `C:/tmp/buzon/1544.md`.
+- P1 06#1: confirmación atómica de salida/equipo/piloto/iniciales (campos 24–27), preservando ausencia y evidencia de valores sin cambios. Test de confirmar/guardar/reabrir y test de fecha inválida sin mutación parcial PASS.
+- P1 07#1 y 07#2: Restablecer cancela e invalida callbacks tardíos; Cancelar un recálculo conserva ajustes, entradas y baselines. Tests de estado con entrega determinista del callback real PASS.
+- P2 07#5: Revisiones carga el repositorio en background al entrar/guardar y renderiza un snapshot; generación descarta cargas antiguas. Tests de render sin I/O y error/callback obsoleto PASS.
+- P2 14#2 reproducido: 240 vueltas/20 s alcanzaba 29.858 estados/59.716 elementos; 960 vueltas/2 s alcanzaba 6.011/12.022. La cota existente ahora cubre todas las APIs públicas, también por vueltas: ambos casos terminan con 4.096 estados/8.192 elementos, razón `frontier_memory_budget_exhausted` y `NotProven`. Son contadores de retención, sin medición de bytes ni afirmación de OOM.
+- El primer guard cortaba los oráculos `weather-driver`/`tyres-reuse`; se corrigió conservando el modo exhaustivo sin deadline, exclusivo de `cfg(test)`. Ninguna aserción ni fixture de paridad cambió. Ambos tests y el test público de retención PASS; detalle en `test-retention-regression.log`, `parity-green.log`, `retention-green.log`.
+- P3 06#7: preparación automática cacheada por entradas, sin clonar la proyección en cada render; invalidate vacía la caché. Test de preparación única y nueva preparación al cambiar entradas PASS, sin cifra general de impacto.
+- Validación final por `C:/tmp/fase2/compilar.ps1` y target propio `native/target/gates`: fmt PASS; Clippy workspace/all-targets `-D warnings` PASS; Nextest 1.419/1.419 PASS (7 omitidos por perfil); lifecycle 18/18 PASS. Los 7 tests de estado Hub y la regresión pública de retención pasan también en la suite completa. Telemetría adicional no aplica: runtime/domain/ipc/testdata intactos.
+- Commits de código locales: `8717910d` (Hub, cinco hallazgos), `4231d0c7` (solver; sustituye el commit local intermedio `cc3758fa`). Informe de 10 líneas: `C:/tmp/review-1536/informe-1544.md`. Canal local, sin push, PR, merge, CI remota, promoción ni release; tests de estado headless, sin revisión visual acreditada.
+- Siguiente paso: revisión de la entrega aislada. Comprobar edición de metadatos→confirmar→guardar→reabrir; editar un plan→recalcular→Restablecer y esperar callback; repetir con Cancelar y verificar que los ajustes siguen pendientes. Issue e hilo permanecen abiertos.
 
 ## Resultado
 

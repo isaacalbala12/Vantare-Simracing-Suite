@@ -509,9 +509,7 @@ impl Strategy {
                 .child(button("strategy-calculate", if self.running { "Calculando…" } else { "Confirmar entradas y calcular" }, cx)
                     .on_click(cx.listener(|this, _, _, cx| this.calculate(cx))))
                 .child(button("strategy-cancel", "Cancelar cálculo", cx).on_click(cx.listener(|this, _, _, cx| {
-                    this.invalidate();
-                    this.status = "Cálculo cancelado; no se conserva resultado parcial".into();
-                    cx.notify();
+                    this.cancel_calculation(cx);
                 }))))
             .child(self.result_card( cx)).child(Self::document_actions(cx))
     }

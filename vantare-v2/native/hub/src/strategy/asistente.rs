@@ -2,6 +2,11 @@
 use super::*;
 use gpui::{div, px, rgb, rgba};
 
+#[cfg(test)]
+thread_local! {
+    pub(super) static AUTOMATIC_PREPARATIONS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(super) enum AssistantStep {
     Inicio,
@@ -57,6 +62,8 @@ impl Strategy {
     pub(super) fn prepare_automatic(
         &self,
     ) -> Result<Option<application::AutomaticPreparation>, String> {
+        #[cfg(test)]
+        AUTOMATIC_PREPARATIONS.set(AUTOMATIC_PREPARATIONS.get() + 1);
         let Some(event) = self.current_event() else {
             return Ok(None);
         };
@@ -1376,10 +1383,14 @@ impl Strategy {
             .child(cards)
     }
 
-    fn session_sources(&self, cx: &mut Context<Self>) -> gpui::Div {
+    pub(super) fn session_sources(&self, cx: &mut Context<Self>) -> gpui::Div {
         let preparation = match &self.automatic_preparation {
-            Some(prepared) => Ok(Some(prepared.clone())),
-            None if self.automatic => self.prepare_automatic(),
+            Some(prepared) => Ok(Some(prepared)),
+            None if self.automatic => self
+                .automatic_preview
+                .get_or_init(|| self.prepare_automatic())
+                .as_ref()
+                .map(Option::as_ref),
             None => Ok(None),
         };
         let linked_sessions = self.current_event().map_or(0, |event| {
@@ -1398,7 +1409,7 @@ impl Strategy {
             .and_then(Option::as_ref)
             .map_or(linked_sessions, |prepared| prepared.source_revisions.len());
         let status = preparation.as_ref().map_or_else(
-            |error| Some(error.clone()),
+            |error| Some((*error).clone()),
             |prepared| match prepared {
                 Some(prepared) if prepared.blockers.is_empty() => {
                     Some("Preparación completa".to_owned())

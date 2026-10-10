@@ -134,6 +134,7 @@ impl Strategy {
     }
 
     pub(super) fn reset_plan_edit(&mut self, cx: &mut Context<Self>) {
+        self.cancel_pending_calculation();
         if let (Some(result), Some(edited)) = (
             self.baseline_result.clone(),
             self.baseline_edited_plan.clone(),
@@ -196,37 +197,60 @@ impl Strategy {
         cx.spawn(async move |this, cx| {
             let result = task.await;
             let _ = this.update(cx, |this, cx| {
-                    if this.generation == generation {
-                        this.running = false;
-                        match result {
-                            Ok((outcome, edited)) => {
-                                this.edit_cost_seconds = outcome.cost_seconds;
-                                if outcome.result.feasible {
-                                    this.baseline_result = Some(outcome.clone());
-                                    this.baseline_edited_plan = Some(edited.clone());
-                                    this.edit_error = None;
-                                    this.status = "Plan editado y recalculado.".into();
-                                } else {
-                                    this.edit_error = Some(
-                                        "No hay una solución factible para este calendario. Ajusta los stints o las paradas y vuelve a calcular.".into(),
-                                    );
-                                    this.status = "El calendario editado no tiene solución factible.".into();
-                                }
-                                this.result = Some(outcome);
-                                this.edited_plan = Some(edited);
-                                this.edit_dirty = false;
-                            }
-                            Err(error) => {
-                                this.edit_error = Some(error);
-                                this.status = "No se pudo recalcular el plan editado.".into();
-                            }
-                        }
-                        cx.notify();
-                    }
-                });
+                this.finish_plan_recalculation(generation, result, cx);
+            });
         })
         .detach();
         cx.notify();
+    }
+
+    pub(super) fn cancel_calculation(&mut self, cx: &mut Context<Self>) {
+        if !self.running {
+            return;
+        }
+        if self.edit_dirty && self.edited_plan.is_some() {
+            self.cancel_pending_calculation();
+            self.status = "Recálculo cancelado; los ajustes del plan siguen pendientes.".into();
+        } else {
+            self.invalidate();
+            self.status = "Cálculo cancelado; no se conserva resultado parcial.".into();
+        }
+        cx.notify();
+    }
+
+    pub(super) fn finish_plan_recalculation(
+        &mut self,
+        generation: u64,
+        result: Result<(SolverOutcome, super::EditedPlan), String>,
+        cx: &mut Context<Self>,
+    ) {
+        if self.generation == generation {
+            self.running = false;
+            match result {
+                Ok((outcome, edited)) => {
+                    self.edit_cost_seconds = outcome.cost_seconds;
+                    if outcome.result.feasible {
+                        self.baseline_result = Some(outcome.clone());
+                        self.baseline_edited_plan = Some(edited.clone());
+                        self.edit_error = None;
+                        self.status = "Plan editado y recalculado.".into();
+                    } else {
+                        self.edit_error = Some(
+                                        "No hay una solución factible para este calendario. Ajusta los stints o las paradas y vuelve a calcular.".into(),
+                                    );
+                        self.status = "El calendario editado no tiene solución factible.".into();
+                    }
+                    self.result = Some(outcome);
+                    self.edited_plan = Some(edited);
+                    self.edit_dirty = false;
+                }
+                Err(error) => {
+                    self.edit_error = Some(error);
+                    self.status = "No se pudo recalcular el plan editado.".into();
+                }
+            }
+            cx.notify();
+        }
     }
 
     pub(super) fn plan_page(&self, cx: &mut Context<Self>) -> gpui::AnyElement {
@@ -514,8 +538,7 @@ cálculo",
                     )
                     .on_click(cx.listener(move |this, _, _, cx| {
                         if loading {
-                            this.invalidate();
-                            cx.notify();
+                            this.cancel_calculation(cx);
                         } else {
                             this.calculate(cx);
                         }
@@ -774,7 +797,7 @@ cálculo",
                         secondary_action(reset_id, "Restablecer", cx)
                             .rounded(px(14.0))
                             .h(px(40.0))
-                            .when(!self.can_reset_plan_edit() || self.running, |button| {
+                            .when(!self.can_reset_plan_edit(), |button| {
                                 button.opacity(orbit::DISABLED)
                             })
                             .on_click(cx.listener(|this, _, _, cx| this.reset_plan_edit(cx))),

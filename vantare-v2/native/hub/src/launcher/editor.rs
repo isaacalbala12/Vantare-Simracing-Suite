@@ -543,24 +543,21 @@ impl Launcher {
             FormHost(launcher.downgrade())
         });
         let targets = self.form_targets(cx);
-        let label = if self.pending_decision.is_some() {
-            "Decisión de lanzamiento"
-        } else if self.pending_app_removal.is_some() || self.pending_profile_removal.is_some() {
-            "Eliminar aplicación"
-        } else if self.app_draft.is_some() {
-            "Editar aplicación"
-        } else if self.profile_draft.as_ref().is_some_and(|draft| {
+        let is_new_profile = self.profile_draft.as_ref().is_some_and(|draft| {
             !self
                 .store
                 .document
                 .profiles
                 .iter()
                 .any(|profile| profile.id == draft.profile.id)
-        }) {
-            "Nuevo perfil"
-        } else {
-            "Editar perfil"
-        };
+        });
+        let label = form_title(
+            self.pending_decision.is_some(),
+            self.pending_app_removal.is_some(),
+            self.pending_profile_removal.is_some(),
+            self.app_draft.is_some(),
+            is_new_profile,
+        );
         let footer = if self.pending_decision.is_some() {
             None
         } else if self.pending_app_removal.is_some() || self.pending_profile_removal.is_some() {
@@ -1333,9 +1330,55 @@ fn move_step<T>(steps: &mut [T], index: usize, delta: isize) {
     }
 }
 
+fn form_title(
+    pending_decision: bool,
+    pending_app_removal: bool,
+    pending_profile_removal: bool,
+    app_draft: bool,
+    is_new_profile: bool,
+) -> &'static str {
+    if pending_decision {
+        "Decisión de lanzamiento"
+    } else if pending_profile_removal {
+        "Eliminar perfil"
+    } else if pending_app_removal {
+        "Eliminar aplicación"
+    } else if app_draft {
+        "Editar aplicación"
+    } else if is_new_profile {
+        "Nuevo perfil"
+    } else {
+        "Editar perfil"
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn removal_drawer_titles_name_the_pending_deletion() {
+        assert_eq!(
+            form_title(true, false, false, false, false),
+            "Decisión de lanzamiento"
+        );
+        assert_eq!(
+            form_title(false, true, false, false, false),
+            "Eliminar aplicación"
+        );
+        assert_eq!(
+            form_title(false, false, true, false, false),
+            "Eliminar perfil"
+        );
+        assert_eq!(
+            form_title(false, false, false, true, false),
+            "Editar aplicación"
+        );
+        assert_eq!(form_title(false, false, false, false, true), "Nuevo perfil");
+        assert_eq!(
+            form_title(false, false, false, false, false),
+            "Editar perfil"
+        );
+    }
     #[test]
     fn step_limit_reports_instead_of_silently_ignoring() {
         assert_eq!(Launcher::append_limit_message(0), None);

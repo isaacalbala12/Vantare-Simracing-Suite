@@ -244,29 +244,6 @@ Con varios workers en paralelo el disco se llena y los corta (ISA-1494).
   son cache (instaladores, builds de prueba, capturas pesadas). No guardes
   copias de `target/` en carpetas de evidencia.
 
-## Compilacion Rust (`native/`)
-
-Cada worktree compila el workspace entero en su propio `target/` (~8 GB).
-Con varios workers en paralelo el disco se llena y los corta (ISA-1494).
-
-- Compila siempre a traves de la cola:
-  `pwsh -File native/scripts/compilar.ps1 <comando> [args...]`
-  (p. ej. `... compilar.ps1 cargo nextest run --workspace`). La cola limita
-  las compilaciones simultaneas (`VANTARE_CARGO_SLOTS`, 4 por defecto) y
-  espera si hay menos RAM libre que `VANTARE_CARGO_MIN_GB` (5 por defecto).
-- La cola activa `sccache` (`RUSTC_WRAPPER`) si esta instalado: las
-  dependencias ya compiladas en otro worktree se reutilizan. Ahorra tiempo,
-  no disco: cada `target/` sigue guardando su copia. Instalalo una vez con
-  `scoop install sccache`. Si una compilacion falla sin diagnostico del
-  compilador, repitela con `$env:VANTARE_SCCACHE='0'` y anota el caso en la
-  evidencia; no lo trates como fallo del codigo.
-- Al entregar el trabajo de un worktree, o si lleva dias sin usarse, borra su
-  `native/target/`; es cache y se regenera. Para podar sin borrarlo todo:
-  `cargo sweep --time 3` (artefactos sin usar en 3 dias).
-- Si la maquina tiene un segundo disco, deja alli los artefactos grandes que no
-  son cache (instaladores, builds de prueba, capturas pesadas). No guardes
-  copias de `target/` en carpetas de evidencia.
-
 ## Testing
 
 - Si tocas runtime, domain, ipc o testdata, pasa también el gate telemetria (#1498).

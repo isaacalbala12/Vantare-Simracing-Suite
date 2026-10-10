@@ -225,13 +225,9 @@ impl State {
             Reply::Closed => self.invalidate(),
             Reply::Error { message } if account => {
                 self.login_requested = false;
-                if self.transition == Transition::Login {
-                    self.transition = Transition::Renewal;
-                }
+                // Un error genérico no confirma el fin del callback. Solo
+                // Account sin pending o un cierre definitivo consume el login.
                 self.error = Some(format!("No se pudo completar el acceso: {message}"));
-            }
-            Reply::Error { .. } if self.transition == Transition::Login => {
-                self.transition = Transition::Renewal;
             }
             _ => {}
         }
@@ -570,6 +566,47 @@ mod tests {
             message: String::new(),
             error,
         }
+    }
+
+    #[test]
+    fn isa1548_unrelated_ipc_error_during_login_does_not_consume_renewal() {
+        // app::tests verifies that an unconfigured non-account request returns
+        // Error while the OAuth listener survives and its next callback signs in.
+        let mut state = State::from_build();
+        state.requested(&Command::AccountBegin);
+        for (sequence, reply) in [
+            Reply::Error {
+                message: "servicio no configurado".into(),
+            },
+            account_reply(false, true, None),
+            account_reply(true, false, None),
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            let response = vantare_ipc::services_protocol::Response {
+                version: vantare_ipc::services_protocol::VERSION,
+                sequence: u64::try_from(sequence + 1).expect("sequence"),
+                reply,
+            };
+            let mut wire = Vec::new();
+            vantare_ipc::services_protocol::write(&mut wire, &response).expect("IPC write");
+            let decoded: vantare_ipc::services_protocol::Response =
+                vantare_ipc::services_protocol::read(&mut wire.as_slice()).expect("IPC read");
+            state.observe(&decoded.reply, sequence != 0);
+            let next = state.next_command(&decoded.reply, &mut false);
+            match sequence {
+                0 => assert!(next.is_none()),
+                1 => assert!(matches!(next, Some(Command::AccountPoll))),
+                _ => assert!(matches!(next, Some(Command::LicenseRenew))),
+            }
+            assert!(!state.navigation(true, 1000).verified);
+        }
+        assert!(
+            state
+                .next_command(&account_reply(true, false, None), &mut false)
+                .is_none()
+        );
     }
 
     #[test]

@@ -747,6 +747,108 @@ mod tests {
     }
 
     #[test]
+    fn isa1548_nonaccount_ipc_error_keeps_callback_alive_until_success() {
+        use std::sync::Arc;
+        use vantare_ipc::transport::{Event, Listener};
+        let server = crate::test_http::Server::start(vec![
+            (200, r#"{"access_token":"fixture-access","refresh_token":"fixture-refresh","expires_in":60,"token_type":"Bearer"}"#.into()),
+            (200, r#"{"sub":"user_fixture"}"#.into()),
+        ]);
+        let (root, store) = crate::test_store("nonaccount-login-error");
+        let mut account = crate::account::fixture(&server.base, &store);
+        account.logout(&store).expect("signed out");
+        let login = account.begin_login().expect("login without browser");
+        let params: std::collections::HashMap<_, _> = login
+            .query_pairs()
+            .map(|(key, value)| (key.into_owned(), value.into_owned()))
+            .collect();
+        let redirect = url::Url::parse(&params["redirect_uri"]).expect("redirect");
+        let config = BuildConfig {
+            supabase: None,
+            anon_key: None,
+            license_keys: None,
+            channel: None,
+            native_oauth: None,
+        };
+        let mut app = App::new(config, root.clone());
+        app.account = Some(account);
+        app.store = Some(store);
+        let name = format!("login-error-{}", crate::random_id().expect("pipe id"));
+        let stop = Arc::new(Event::new().expect("event"));
+        let mut listener = Listener::new(&name, Arc::clone(&stop), Duration::from_secs(5))
+            .expect("local IPC listener");
+        let mut server_pipe = listener.instance().expect("pipe instance");
+        let worker = std::thread::spawn(move || {
+            server_pipe.accept().expect("local IPC connection");
+            for _ in 0..3 {
+                let request: crate::protocol::Request =
+                    crate::protocol::read(&mut server_pipe).expect("IPC request");
+                let response = crate::protocol::Response {
+                    version: crate::protocol::VERSION,
+                    sequence: request.sequence,
+                    reply: app.handle(request.command),
+                };
+                crate::protocol::write(&mut server_pipe, &response).expect("IPC response");
+            }
+            drop(app);
+        });
+        let mut client = vantare_ipc::control::connect_ready(&name, &stop, Duration::from_secs(5))
+            .expect("IPC client");
+        let mut wire_reply = |sequence, command| {
+            let request = crate::protocol::Request {
+                version: crate::protocol::VERSION,
+                sequence,
+                nonce: "1".repeat(64),
+                command,
+            };
+            crate::protocol::write(&mut client, &request).expect("IPC write");
+            crate::protocol::read::<crate::protocol::Response>(&mut client)
+                .expect("IPC read")
+                .reply
+        };
+        assert!(matches!(
+            wire_reply(1, Command::LicenseStatus),
+            Reply::Error { .. }
+        ));
+        assert!(matches!(
+            wire_reply(2, Command::AccountPoll),
+            Reply::Account {
+                signed_in: false,
+                pending: true,
+                error: None,
+                ..
+            }
+        ));
+        let mut socket = TcpStream::connect(("127.0.0.1", redirect.port().expect("port")))
+            .expect("callback survived");
+        write!(
+            socket,
+            "GET /callback?state={}&code=fixture HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            params["state"]
+        )
+        .expect("request");
+        assert!(matches!(
+            wire_reply(3, Command::AccountPoll),
+            Reply::Account {
+                signed_in: true,
+                pending: false,
+                error: None,
+                ..
+            }
+        ));
+        for _ in 0..2 {
+            server
+                .requests
+                .recv_timeout(Duration::from_secs(3))
+                .expect("OAuth loopback only");
+        }
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        worker.join().expect("IPC worker closed");
+        crate::cleanup_store(&root, "nonaccount-login-error", &[]);
+    }
+
+    #[test]
     fn report_without_bridge_fails_visibly_before_storage_or_network() {
         let mut app = App::new(BuildConfig::load(), std::env::temp_dir());
         for command in [

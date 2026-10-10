@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1548",
+  "type": "fix",
+  "summary": "Recuperación de acceso, informes con adjuntos y diagnósticos locales más robustos.",
+  "technicalNotes": [
+    "Un error IPC genérico durante el login conserva la renovación pendiente; el acceso sigue dependiendo de la política verificada del núcleo.",
+    "Los crashes se publican completos antes de ocupar un slot; los documentos parciales heredados se descartan sin enviarlos.",
+    "Tres JPEG de hasta 400 KiB se guardan en el presupuesto de 2 MiB, incluyendo base64 y protección local.",
+    "Launcher puede migrar desde APPDATA local aunque el portable esté en UNC, y avisa de lecturas fallidas y escaneos Steam truncados.",
+    "Admin limita y rota su log; los tiempos de render requieren trace explícito. Los callbacks de más de 8192 bytes reciben HTTP 413."
+  ],
+  "testing": [
+    "Ejecutar las regresiones isa1548: usan archivos temporales, un pipe local y OAuth loopback, sin servicios reales.",
+    "En una raíz de prueba, comprobar la migración local y los avisos del Launcher; en Admin comprobar que RUST_LOG=warn no crea el log y que trace rota a 1 MiB."
+  ],
+  "knownLimitations": [
+    "La evidencia local no valida Clerk, Supabase, licencias remotas, una instalación real ni una publicación de canal.",
+    "Un índice Steam truncado conserva el presupuesto acotado: el aviso indica una búsqueda incompleta; los manifests siguen ofreciendo su fallback."
+  ]
+}

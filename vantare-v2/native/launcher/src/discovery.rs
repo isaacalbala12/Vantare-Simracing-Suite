@@ -267,6 +267,13 @@ impl Discovery {
                 &mut budget,
                 &mut result.warnings,
             );
+            if budget == 0 {
+                result.warnings.push(format!(
+                    "scan truncado a 20000 entradas: {}",
+                    library.join("steamapps/common").display()
+                ));
+                break;
+            }
         }
         for app in apps {
             result.apps.push(detect_app(

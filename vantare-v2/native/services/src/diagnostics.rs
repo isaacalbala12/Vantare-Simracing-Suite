@@ -209,21 +209,34 @@ fn queue(root: &Path, folder: &str, value: &impl Serialize) -> Result<()> {
     }
     let dir = root.join(folder);
     fs::create_dir_all(&dir).map_err(|_| Error::Storage)?;
-    // Slots create_new: límite compartido entre todos los procesos, sin lock global.
-    for slot in 0..QUEUE_LIMIT {
-        let path = dir.join(format!("{slot:02}.json"));
-        match OpenOptions::new().write(true).create_new(true).open(&path) {
-            Ok(mut file) => {
-                return file
-                    .write_all(&bytes)
-                    .and_then(|()| file.sync_all())
-                    .map_err(|_| Error::Storage);
+    // Publicar solo bytes completos; hard_link reserva cada slot sin reemplazar
+    // el de otro productor. El sender puede descartar JSON parcial heredado.
+    let temporary = dir.join(format!("{}.tmp", crate::random_id()?));
+    let mut file = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&temporary)
+        .map_err(|_| Error::Storage)?;
+    let result = (|| {
+        file.write_all(&bytes)
+            .and_then(|()| file.sync_all())
+            .map_err(|_| Error::Storage)?;
+        drop(file);
+        for slot in 0..QUEUE_LIMIT {
+            match fs::hard_link(&temporary, dir.join(format!("{slot:02}.json"))) {
+                Ok(()) => return Ok(()),
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {}
+                Err(_) => return Err(Error::Storage),
             }
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => {}
-            Err(_) => return Err(Error::Storage),
         }
+        Err(Error::TooLarge)
+    })();
+    if let Err(error) = fs::remove_file(temporary)
+        && error.kind() != std::io::ErrorKind::NotFound
+    {
+        eprintln!("diagnóstico: limpiar temporal de cola: {error}");
     }
-    Err(Error::TooLarge)
+    result
 }
 fn write_crash(root: &Path, _binary: &str, _message: &str, _backtrace: &str) -> Result<()> {
     if !Privacy::load(root)?.crashes {

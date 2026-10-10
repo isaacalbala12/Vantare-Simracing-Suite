@@ -30,6 +30,30 @@ Siguiente: revisión del orquestador y aceptación de Isaac antes de integrar.
 Sin secretos/.env*, servicios reales de auth/billing, push, PR, merge, CI remota,
 promoción, release, deploy, migración de datos reales ni ventanas.
 
+## #1548 · robustez de Services/Launcher/Admin (10-oct, entrega local para revisión)
+
+Worktree `C:/tmp/vw3-1548/vantare-v2`, rama
+`vantareapp/isa-1548-services-robustez`, base autorizada `70170613`.
+Seis CONF y dos PLAUS de #1536: callback HTTP excesivo, slots de crash parcial,
+adjuntos, migración UNC, avisos de shortcuts, timings Admin y licencia/índice
+Steam. Todos reproducidos: nueve regresiones FAIL antes del arreglo (dos Admin
+en `1548-red.log`; siete restantes en `1548-red-all.log`). App real por pipe local
+demuestra que un Error de LicenseStatus conserva el callback hasta completar
+OAuth loopback; el Hub consumía su renovación. Arreglos mínimos aplicados.
+Clippy workspace/all-targets -D warnings, Nextest 1422/1422 (7 skips del perfil,
+un slow) y lifecycle 18/18 PASS. fmt final y once regresiones focales PASS,
+incluido el guard de publicación completa con 32 productores concurrentes.
+Commits locales: acceso f747bb74, adjuntos 33b53806, callback 6daf337d,
+Launcher a5dd1f20, Admin 74f28897 y diagnósticos 3174eef2; sin dependencias nuevas.
+#1542 comparte sender/diagnostics y App: cambios limitados a la rama de crashes,
+la función queue y un test IPC, sin alterar usage ni metadata OAuth/checkout.
+Tracker: GitHub #1548, Project Vantare, area:plataforma, abierto/para revisión;
+sin milestone comprometido. Buzón `C:/tmp/buzon/1548.md`; informe de ocho hallazgos
+en `C:/tmp/review-1536/informe-1548.md` y logs/evidencia en el mismo directorio.
+Siguiente: revisión e integración con #1542, preservando ambas ramas y repitiendo
+gates en el árbol integrado. No se acredita backend, licencia remota ni canal.
+Sin `.env*`, secretos, servicios reales, subagentes, push, PR, merge o promoción.
+
 ## #1496 — integración local de arquitectura, ola 1 (2026-10-09)
 
 Integradas en orden #1534, #1533, #1530, #1529 y #1532 sobre `5e1da3f6`,

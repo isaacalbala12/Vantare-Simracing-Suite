@@ -2,11 +2,13 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-pub const VERSION: u32 = 5;
+pub const VERSION: u32 = 6;
 #[path = "services_protocol/report_document.rs"]
 pub mod report_document;
 #[path = "services_protocol/roadmap_document.rs"]
 pub mod roadmap_document;
+#[path = "services_protocol/testing_document.rs"]
+pub mod testing_document;
 // Tres miniaturas + preview JSON del texto (con escape doble). Nunca JPEG completos.
 pub const MAX_FRAME: usize = 128 * 1024;
 
@@ -29,6 +31,17 @@ pub enum Command {
     CalendarRefresh,
     RoadmapCached,
     RoadmapRefresh,
+    TestingRefresh,
+    TestingAnswer {
+        id: String,
+        score: u8,
+        note: String,
+    },
+    TestingContribute {
+        id: String,
+        title: String,
+        body: String,
+    },
     DraftLoad,
     DraftSave {
         fields: report_document::Fields,
@@ -94,6 +107,9 @@ pub enum Reply {
     },
     Calendar {
         schedule: Option<String>,
+    },
+    Testing {
+        data: testing_document::Participation,
     },
     Roadmap {
         publication: Option<roadmap_document::Publication>,

@@ -21,13 +21,31 @@ fn validate(publication: &Publication) -> Result<()> {
     if !uuid(&publication.id)
         || publication.published_at.chars().count() > MAX_TIMESTAMP_CHARS
         || chrono::DateTime::parse_from_rfc3339(&publication.published_at).is_err()
-        || publication.document.schema_version != 1
+        || !matches!(publication.document.schema_version, 1 | 2)
         || publication.document.items.len() > 40
     {
         return Err(Error::Version);
     }
     let mut ids = HashSet::new();
     for item in &publication.document.items {
+        if item
+            .area
+            .as_ref()
+            .is_some_and(|v| v.trim().is_empty() || v.chars().count() > 60 || v.contains('\0'))
+            || (publication.document.schema_version == 2 && item.area.is_none())
+            || item.version.as_ref().is_some_and(|v| {
+                v.is_empty()
+                    || v.len() > 60
+                    || !v
+                        .bytes()
+                        .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'.' | b'-'))
+            })
+            || item.due_date.as_ref().is_some_and(|v| {
+                v.len() != 10 || chrono::NaiveDate::parse_from_str(v, "%Y-%m-%d").is_err()
+            })
+        {
+            return Err(Error::Protocol);
+        }
         if !uuid(&item.id)
             || !ids.insert(&item.id)
             || !matches!(item.section.as_str(), "now" | "next" | "later" | "done")
@@ -145,6 +163,28 @@ mod tests {
     use crate::test_http::Server;
     use std::time::Duration;
     #[test]
+    fn clickup_metadata_requires_area_and_valid_calendar_without_breaking_v1() {
+        let mut publication: Publication = serde_json::from_value(serde_json::json!({
+            "id":"550e8400-e29b-41d4-a716-446655440000", "published_at":"2026-10-10T10:00:00Z",
+            "document":{"schemaVersion":2,"items":[{
+                "id":"15350000-0000-0000-0000-000000000001","section":"next",
+                "title":{"es":"Testing","en":"","pt":"","it":""},
+                "body":{"es":"","en":"","pt":"","it":""},
+                "area":"Hub","version":"1.2.3","dueDate":"2026-10-31"
+            }]}
+        }))
+        .expect("public v2");
+        validate(&publication).expect("real metadata");
+        publication.document.items[0].due_date = Some("2026-02-30".into());
+        assert!(validate(&publication).is_err());
+        publication.document.items[0].due_date = None;
+        publication.document.items[0].area = None;
+        assert!(validate(&publication).is_err());
+        publication.document.schema_version = 1;
+        publication.document.items[0].version = None;
+        validate(&publication).expect("old cache remains valid");
+    }
+    #[test]
     fn a_corrupt_document_is_quarantined_and_the_service_still_starts() {
         let (root, store) = crate::test_store("roadmap-quarantine");
         // Publicacion con id que no es uuid: JSON valido, contenido invalido.
@@ -186,7 +226,7 @@ mod tests {
     fn last_valid_publication_survives_offline_future_schema_empty_and_restart() {
         let publication = serde_json::json!({"id":"550e8400-e29b-41d4-a716-446655440000","published_at":"2026-09-30T10:00:00Z","document":{"schemaVersion":1,"items":[]}});
         let mut incompatible = publication.clone();
-        incompatible["document"]["schemaVersion"] = serde_json::json!(2);
+        incompatible["document"]["schemaVersion"] = serde_json::json!(3);
         let server = Server::start(vec![
             (200, serde_json::json!([publication]).to_string()),
             (503, "{}".into()),
@@ -254,6 +294,9 @@ mod tests {
         let item = crate::protocol::roadmap_document::Item {
             id: "550e8400-e29b-41d4-a716-446655440001".into(),
             section: "now".into(),
+            area: None,
+            version: None,
+            due_date: None,
             title: text.clone(),
             body: text,
         };
@@ -296,6 +339,9 @@ mod tests {
             .map(|index| crate::protocol::roadmap_document::Item {
                 id: format!("550e8400-e29b-41d4-a716-4466554400{index:02}"),
                 section: "now".into(),
+                area: None,
+                version: None,
+                due_date: None,
                 title: texto(30),
                 body: texto(180),
             })

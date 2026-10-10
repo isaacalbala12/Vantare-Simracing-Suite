@@ -16,6 +16,12 @@ pub struct Item {
     pub section: String,
     pub title: Localized,
     pub body: Localized,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub area: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    #[serde(default, rename = "dueDate", skip_serializing_if = "Option::is_none")]
+    pub due_date: Option<String>,
 }
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

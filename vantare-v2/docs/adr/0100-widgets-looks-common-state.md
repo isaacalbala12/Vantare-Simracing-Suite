@@ -315,3 +315,21 @@ Nextest 1432/1432 (7 skips oficiales), lifecycle 5+13 y telemetría 21/21
 PASS por cola y targets aislados. No se modifican IPC ni fixtures; los
 diagnósticos iniciales se conservan en la evidencia, sin fallos pendientes.
 Capturas finales fijadas al único Release C9E36342; entrega local sin push/PR/merge.
+
+## Contadores Fuel fuera de rango (#1539)
+
+La proyección común usa `checked_add` para vuelta actual, número de stint,
+cierre de parada, total derivado de vueltas y sector visible. Un resultado
+no representable queda ausente (`None` o `Plan::Unknown`), sin panic en
+debug ni vuelta del contador en release. El total derivado solo se calcula
+si no existe un total explícito; `unwrap_or` evaluaba antes la suma aunque
+su resultado no se utilizara. Datos normales e historial único se conservan.
+Los tests cubren u32::MAX en laps/pit_stops, sector 255, sumas cercanas al
+límite y un DTO extremo que pasa por ingest con ambos Looks; IPC intacto.
+
+Validación de esta corrección: 30/30 tests enfocados tanto en debug como en
+release; fmt/check/Clippy workspace -D warnings, Nextest 1436/1436 (7 skips
+oficiales), lifecycle 5+13 y telemetría 21/21 PASS. Reproducción anterior y
+logs completos separados en evidence-1531/fuel-range-1539. No se repiten
+capturas ni A/B por este arreglo de sumas: no toca pintores/geometría y los
+tests de valores normales, catálogo, animación/cache e historial siguen PASS.

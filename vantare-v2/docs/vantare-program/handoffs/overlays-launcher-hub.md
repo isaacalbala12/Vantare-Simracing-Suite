@@ -1,3 +1,9 @@
+## #1531 · Fuel: contadores extremos de #1539 corregidos y gates PASS (2026-10-10)
+
+Commit productivo 0a4e08a1. Cinco sumas de fuel_strategy protegidas con checked_add: vuelta, stint, parada, total derivado y sector. Overflow produce None/Plan::Unknown; el fallback del total solo se evalúa cuando hace falta. Historial único, pintores, IPC, dependencias y fixtures intactos.
+Cuatro tests nuevos: extremos aislados/combinados, parada que desborda aunque la vuelta actual quepa, fallback/total explícito, y DTO real modificado con ambos Looks. Antes: dos FAIL por overflow y dos no ejecutados por fail-fast; diagnóstico preservado.
+Enfocados 30/30 PASS en debug y release; fmt/check/Clippy -D warnings, Nextest 1436/1436 (7 skips oficiales), lifecycle 5+13 y telemetría 21/21 PASS por cola. Entrega aislada completa, revisión de Isaac pendiente. Evidencia: evidence-1531/fuel-range-1539; sin push/PR/merge/promoción.
+
 ## #1531 · Ampliación P1.1/P1.4 y frescura Relative completa; gates PASS (2026-10-10)
 
 Standings be505e8f corrige ambos sorts históricos y preserva —/None; Relative d595fac8 añade HeaderStale con siete marcas y tinta Eficiencia al 60 % por valor. Vantare no dibuja esos metadatos. Misma rama/base/worktree; IPC intacto.

@@ -232,7 +232,12 @@ fn actual_lnk_is_read_without_modification_or_execution() {
     assert!(output.status.success());
     let original = fs::read(&link).expect("actual lnk");
     let paths = shortcuts::resolve(std::slice::from_ref(&link)).expect("read via OS COM");
-    assert_eq!(paths.as_slice(), std::slice::from_ref(&target));
+    assert_eq!(paths.len(), 1);
+    // COM expande alias 8.3 (RUNNER~1 en CI): exigir el mismo destino real.
+    assert_eq!(
+        fs::canonicalize(&paths[0]).expect("resolved target exists"),
+        fs::canonicalize(&target).expect("fixture target exists")
+    );
     assert_eq!(fs::read(&link).expect("unchanged"), original);
     assert!(!marker.exists());
     assert!(

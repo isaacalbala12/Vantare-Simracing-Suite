@@ -4,13 +4,31 @@ Aceptado por Isaac para #1531. Base: 5e1da3f6. Aplicación incremental: Standing
 
 ## Estado de la ronda 2
 
-Los siete puntos de la revisión se implementan en commits separados. La entrega
-sigue bloqueada para cierre: 366 pares RGBA=0 y pruebas completas PASS, pero cinco
-A/B de Standings fallan p99 Vantare ACC en ingest (+11,85% sobre máximo baseline)
-y frame (+11,39%), límite +5%. Todos los p50 pasan, incluido Efi LMU frame +1,07%
-(límite +3%). No se atribuye el resultado a ruido ni a diseño sin perfilarlo.
-Las demás A/B y el frío nuevo se detienen según la condición de parada de Isaac;
-las cifras anteriores son evidencia histórica. Tandas completas en round2/performance.
+Los siete puntos de la revisión se implementan en commits separados. La repetición
+autorizada tras perfilar Standings pasa sus ocho costes; el cierre sigue bloqueado
+por Relative Eficiencia ACC ingest p99: 8,4 frente a máximo baseline 7,2 µs
+(+16,67%, límite +5%). Todos los p50 de ambos widgets pasan. Se detienen Delta,
+Fuel y frío nuevo; las cifras anteriores permanecen como evidencia histórica.
+El gate no cambia: mediana p50 ≤ 1,03 × máximo baseline y p99 ≤ 1,05 × máximo.
+Tandas iniciales y su FAIL conservados en round2/performance; repetición y
+perfil en round2/hot-path. No se repiten tandas para estabilizar ruido.
+
+Standings ACC estable no reconstruye Plan/Presentation/Motion ni notifica.
+Perfil antes/después de ronda 2: asignaciones Vantare ingest/preparación/paint
+0/1/181, bytes 0/48/11192, idénticos en las 600 muestras de cada etapa.
+Se elimina el recorrido de filas y tres mapas vacíos en wake_rows/pose cuando
+no existen canales de movimiento; las animaciones activas conservan su camino.
+El test retiene Paint anterior y exige identidad de Board, Plan y Motion tras
+doce fotos/frames repetidos por Look. Ajuste 5ec8e28a; QA explícita 569fa5ef.
+No se atribuye el p99 de ingest al ajuste de frame: apenas varía 15,1→15,2 µs;
+el rango baseline del mismo fefe pasa de 4,9–13,5 a 9,8–24,2 µs. Dispersión
+completa comunicada como DUDA; Standings PASS según el criterio vigente.
+Paridad nueva Standings 57/57 RGBA=0; los 366 pares previos permanecen archivados.
+La repetición de Relative autorizada después de ese bloqueo espera a cero Cargo,
+reserva todos los mutex de la cola y aborta si Cargo aparece entre procesos.
+Su revisión de ingest no encuentra heap ni reconstrucciones nuevas en ACC estable;
+el perfil y cinco A/B se registran separadamente en round2/hot-path/quiet.
+Si vuelve a fallar sin causa demostrada, se comunicará DUDA y se detendrá.
 
 ## Decisión
 

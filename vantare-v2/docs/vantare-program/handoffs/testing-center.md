@@ -1,3 +1,24 @@
+## #1535 · cierre de correcciones Sol/Opus (2026-10-10)
+
+Hitos 9918c539 (identidad), a4ffdd3a (ACL/lectura dual/guardas/runner).
+PASS pgTAP 20+29 en PostgreSQL 18 local desechable; LOGIN adversarial,
+lectura authenticated, trigger real, gate de DEFINER desconocido y rol repetido.
+PASS fmt/Clippy, Nextest 1579/1579 (7 skips, 247.531 s), lifecycle 18,
+ClickUp 11, Discord 57, web 3, YAML y 456 huellas. Sin cambios UI/runtime/IPC:
+no repetidas capturas/telemetría (25 PASS en entrega anterior).
+CA pública versionada y verify-full: pruebas reales OpenSSL/libpq contra pooler
+público, negativas CA system/hostname falso PASS. Host CI concreto por configurar;
+workflow verifica su PGHOST antes de escribir. Sin credenciales ni SQL remotos.
+GitHub Free privado: schedule/dispatch solo rama por defecto, sin environments;
+colaboradores con push siguen pudiendo leer secretos desde otro workflow.
+P3-9 cuota diferida; rollback documentado con workflow desactivado primero,
+restauración administrativa v1/v2 y retirada de rol/esquema solo con export previo.
+P3-8 preserva validación v1 por caracteres. P3-10 runner ejecutado.
+Nada aplicado/configurado en producción; revisión del SQL corregido y auditoría
+con esquema LOCAL completo del proyecto antes de aplicar/activar. Lector web
+externo aún por integrar. Push de rama autorizado; sin PR/merge/deploy.
+Detalle por hallazgo en C:/tmp/ola2/informe-1535.md y buzón 1535.
+
 ## #1535 · ACL, compatibilidad y protección de publicación (2026-10-10)
 
 Sol #1/Opus P3-5: PUBLIC cerrado para draft, is_active_owner y trigger;

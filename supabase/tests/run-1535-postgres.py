@@ -75,6 +75,29 @@ def main():
                           name='authenticated-draft.log')
             if 'LOCAL PRIVATE DRAFT' not in allowed:
                 raise RuntimeError('authenticated owner lost private draft read')
+            triggered = run('psql', *connection, '-At', '-c', """
+                grant insert on auth.users to service_role;
+                set role service_role;
+                insert into auth.users(id,raw_user_meta_data)
+                  values('15350000-0000-0000-0000-000000000098','{}');
+                reset role;
+                select count(*) from public.profiles where id='15350000-0000-0000-0000-000000000098';
+                select count(*) from public.licenses where user_id='15350000-0000-0000-0000-000000000098';
+                """, name='trigger-preserved.log')
+            if triggered.splitlines()[-2:] != ['1', '1']:
+                raise RuntimeError('PUBLIC closure broke the existing auth trigger')
+            # Prove that a new default-PUBLIC DEFINER fails the exact migration gate.
+            run('psql', *connection, '-c', """
+                create function public.unreviewed_ci_fixture() returns text
+                language sql security definer as $$select 'LOCAL PRIVATE VALUE'::text$$;
+                """, name='unknown-definer-seed.log')
+            migration = (root / 'supabase/migrations/20261010001000_visual_roadmap_clickup.sql').read_text()
+            audit = migration[migration.index('do $$\ndeclare unexpected text;'):migration.rindex('commit;')]
+            rejected = run('psql', *connection, '-c', audit, name='unknown-definer-denied.log', expected=1)
+            if 'unreviewed_ci_definers' not in rejected or 'unreviewed_ci_fixture' not in rejected:
+                raise RuntimeError('unknown DEFINER audit did not reject the new function')
+            run('psql', *connection, '-c', 'drop function public.unreviewed_ci_fixture();', name='unknown-definer-cleanup.log')
+            run('psql', *connection, '-c', audit, name='acl-audit.log')
             run('psql', *connection, '-c', """
                 do $$ begin create role vantare_roadmap_publisher;
                 exception when duplicate_object then null; end $$;

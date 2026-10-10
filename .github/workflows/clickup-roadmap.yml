@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: false
 jobs:
   publish:
-    # Schedule runs from master; manual runs may validate the accepted nightly code.
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/nightly'
+    # Private GitHub Free: default branch only; this is not a secrets boundary.
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -34,10 +34,12 @@ jobs:
           PGUSER: ${{ secrets.ROADMAP_PGUSER }}
           PGPASSWORD: ${{ secrets.ROADMAP_PGPASSWORD }}
           PGSSLMODE: verify-full
-          PGSSLROOTCERT: system
+          PGSSLROOTCERT: ${{ github.workspace }}/.github/certs/supabase-prod-ca-2021.crt
         run: |
           python vantare-v2/scripts/publish_clickup_roadmap.py --sql-from "$RUNNER_TEMP/roadmap.json" --output "$RUNNER_TEMP/publish.sql"
           test -n "$PGHOST" && test -n "$PGUSER" && test -n "$PGPASSWORD"
+          # Credential-free CA/hostname diagnostic before the authenticated write.
+          python vantare-v2/scripts/verify_roadmap_tls.py --host "$PGHOST" --port "$PGPORT" --ca "$PGSSLROOTCERT"
           # No credentials in arguments, no SQL/server response in public logs.
           if ! psql -X --no-password -q -v ON_ERROR_STOP=1 -f "$RUNNER_TEMP/publish.sql" > /dev/null 2>&1; then
             echo 'Roadmap publication failed; inspect database before retrying.'

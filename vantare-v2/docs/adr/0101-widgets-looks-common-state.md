@@ -20,7 +20,10 @@ Ronda 2 APROBADA por Opus con 8/10; integración autorizada sobre el HEAD de
 #1557 tras sus dos checks obligatorios SUCCESS y su FIN, sin fusionar ese PR.
 El gate no cambia: mediana p50 ≤ 1,03 × máximo baseline y p99 ≤ 1,05 × máximo.
 Tandas iniciales y su FAIL conservados en round2/performance; repetición y
-perfil en round2/hot-path. La integración repetirá A/B con más tandas y afinidad fija, conservando los umbrales y los resultados históricos.
+perfil en round2/hot-path. Isaac confirma que la matriz A/B pertenece al gate
+de la rama #1531, ya aprobado; la integración no debe repetirla completa.
+La comprobación adicional de integración compara exclusivamente asignaciones
+y trabajo de Standings ACC contra la entrega aprobada 8da5394e.
 
 Standings ACC estable no reconstruye Plan/Presentation/Motion ni notifica.
 Perfil antes/después de ronda 2: asignaciones Vantare ingest/preparación/paint
@@ -43,7 +46,9 @@ y bytes 0/32/3024, iguales en todas las muestras; trabajo e invalidaciones cero.
 Ingest estable retorna antes de Arc/Labels/Motion; pintor Eficiencia sin diff.
 Motion común añade indirection/selección de interpolación, pero no hay evidencia
 suficiente para atribuirle esos p99. La DUDA con diff y cifras se resolvió con
-la aceptación anterior; no se repiten tandas ni se cambia código sin causa.
+la aceptación anterior; en aquella entrega no se repitieron tandas ni se cambió
+código sin causa. En la integración se conserva esta aceptación y se aplica
+la comprobación acotada de Standings ACC indicada por Isaac.
 Perfil, revisión y tandas en round2/hot-path/quiet; gate intacto.
 Fuel también conserva el perfil completo, muestra a muestra, en los cuatro
 casos LMU/ACC × Eficiencia/Vantare. ACC work/notify son cero en ambos binarios;
@@ -56,7 +61,8 @@ original→nuevo en µs, LMU/ACC: Standings 97,900→114,728 / 44,268→53,168;
 Relative 2,456→3,150 / 2,200→2,878; Delta 0,040→0,046 / 0,025→0,037;
 Fuel 0,131→0,112 / 0,112→0,100. Ratios 1,172/1,201; 1,283/1,308;
 1,150/1,480; 0,855/0,893. Cronómetro sin contador, 32 llamadas independientes
-por muestra; 12.000 muestras LMU y 1.000 ACC. No se cambia el gate ni se repite.
+por muestra; 12.000 muestras LMU y 1.000 ACC. Gate histórico conservado;
+no se repite la matriz de frío en la integración por indicación de Isaac.
 Perfil frío separado contra fefe870f: 1.200/100 muestras, ninguna nueva llamada
 de asignación en los ocho casos; Relative/Delta/Fuel conservan también los bytes.
 Standings conserva 1.088/469 asignaciones y añade 3.008/2.048 bytes solicitados:
@@ -75,7 +81,13 @@ información común: el footer de Relative y los slots del footer de Standings
 pueden mostrar las vueltas disponibles donde antes mostraban «—». Se mantienen
 la ausencia y la calidad Stale del dato; no se inventan vueltas. Es un cambio
 visible aceptado y una excepción explícita a la paridad de píxeles en esos
-slots. La integración añade evidencia de captura de este caso.
+slots. La integración lo verifica con ocho capturas ES/EN de Relative/Standings
+en ambos Looks: las cuatro Eficiencia cambian exclusivamente en el footer frente
+al baseline (608/720 y 634/730 píxeles), mostrando 79/38 de un fixture QA existente.
+Vantare conserva sus píxeles en estos casos; los ocho coinciden exactamente con
+569fa5ef. Además, 366 pares históricos tienen 0 diferencias RGBA crudas y
+premultiplicadas, sin máscaras, y hay 32 capturas de los fixtures v9 actuales.
+No se modifican goldens; evidencia en C:/tmp/review-1531-integracion.
 
 Delta Eficiencia ACC en modo alto pasó de p99 51.8/50.9 us a 60.6/58.0 us en
 las tandas pareadas (+17/+14 %). No hay trabajo nuevo: ingest tiene 0
@@ -85,8 +97,33 @@ préstamo de Motion por Arc y la interpolación mediante enum son un mecanismo
 plausible, sin causalidad demostrada. El resultado es **no concluyente;
 aceptado por magnitud**: p50 permanece igual y el coste absoluto adicional
 es de 6–9 us frente al presupuesto de 16.6 ms. El FAIL numérico histórico
-se conserva; no se relajan umbrales. La integración repite A/B con más
-tandas y afinidad fija y registra sus resultados por separado.
+se conserva; no se relajan umbrales. La matriz A/B ya aprobada en la rama
+de #1531 no se repite como gate de integración.
+
+## Comprobación acotada de integración
+
+Standings ACC coincide exactamente con #1531 en asignaciones, bytes y trabajo,
+incluidas las 600 muestras crudas de las tres etapas y 60 de warmup por Look.
+Vantare conserva ingest/preparación/paint 0/1/181 asignaciones y 0/48/11192
+bytes; Eficiencia conserva 0/1/330 y 0/40/37313. Plan/Labels/Motion e
+invalidaciones son cero en ambos binarios y ambos Looks.
+La referencia es el binario profile SHA-256
+d0f71a0f9cab9014a098979ea22c81b181a019074d06d10512e74852d080e4b0
+de 569fa5ef, cuyo árbol native es idéntico al de la entrega 8da5394e.
+El código Standings integrado también coincide con esa entrega. Procedimiento:
+misma entrada ACC y layout, release, afinidad 0xFF00, cuatro mutex de cola
+reservados y mutex de captura; pantalla-ocupada comprobada antes de cada perfil.
+Evidencia y comparación muestra a muestra: C:/tmp/review-1531-integracion/profile-comparison.
+
+Observación temporal conservada: la repetición parcial dio ingest Vantare ACC
+p50 mediano 3,0 us frente al máximo baseline 2,8 us (rango 2,2–2,8; p99 PASS).
+Su FAIL numérico original permanece en la evidencia; la matriz se detuvo por
+indicación de Isaac. Al coincidir el perfil con la rama aprobada, no se acredita
+una regresión de la fusión ni se convierte esta repetición en un gate nuevo.
+No se añade código, se ajustan umbrales ni se amplía la excepción Delta.
+Gates de integración PASS: fmt, Clippy -D warnings, Nextest 1574/1574 (7 skips
+heredados), lifecycle 18/18, telemetría 25/25 (0 skips) y RGBA, además de check
+y verificación de las 456 huellas de retirada. recovery/status_process sin flake.
 
 Las sugerencias P3 sobre battle_gap y la normalización de clase, así como
 los 64 bytes por fila, quedan aceptadas sin optimizaciones adicionales

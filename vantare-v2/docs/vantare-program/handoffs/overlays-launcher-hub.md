@@ -13,8 +13,29 @@
   disponibles con slots=true y Delta Eficiencia ACC alto p99 +14–17 %.
   Este último es no concluyente y aceptado por magnitud; el préstamo de Motion
   por Arc es un mecanismo plausible, sin causalidad demostrada.
-- Gates completos por la cola, telemetría, paridad RGBA y A/B con más tandas
-  y afinidad fija: pendientes sobre esta integración. Sin renovar goldens.
+- Compatibilidad de tests (#1537): 47932598 adapta el replay de 104 coches
+  al Board/Plan común. Mantiene jugador único/posición 104 en ambos recorridos
+  y exige 104 filas del Plan; no se elimina ninguna aserción ni se cambia el corpus.
+- Check, fmt y Clippy -D warnings PASS por la cola; calidad de retirada PASS
+  (456 SHA-256). Nextest 1574/1574 (7 skips heredados), lifecycle 18/18;
+  recovery/status_process sin flake ni reintentos. Telemetría 25/25, 0 skips.
+- RGBA 366/366 sin diferencias crudas/premultiplicadas, umbral 0 y sin máscaras;
+  32 capturas actuales v9 y 8 de slots. Los slots coinciden con 569fa5ef;
+  Eficiencia ES/EN cambia solo su footer frente al baseline, con valores 79/38
+  de un fixture QA preexistente. Inspección visual documentada en la evidencia.
+  Sin renovar goldens; pantalla-ocupada y mutex de captura respetados.
+- DUDA resuelta por la comprobación indicada por Isaac: Standings ACC coincide
+  con la entrega 8da5394e en las 600 muestras de asignaciones/bytes por etapa
+  y Look. Vantare ingest/preparación/paint 0/1/181 y 0/48/11192 bytes;
+  Eficiencia 0/1/330 y 0/40/37313. Plan/Labels/Motion e invalidaciones cero.
+  Referencia profile aprobado de 569fa5ef (native idéntico a 8da5394e),
+  SHA-256 d0f71a0f9cab9014a098979ea22c81b181a019074d06d10512e74852d080e4b0.
+  Misma entrada/layout, afinidad 0xFF00 y cuatro mutex de cola reservados.
+- Observación: p50 Vantare ACC ingest 3,0 us frente a máximo baseline 2,8 us
+  (rango 2,2–2,8; p99 PASS). El FAIL numérico parcial 7/8 queda conservado.
+  Isaac confirma que A/B es el gate ya aprobado de la rama #1531; se detiene
+  la matriz completa y, con el perfil idéntico, no bloquea esta integración.
+  Sin código adicional, cambio de umbrales ni extensión de la excepción Delta.
 - PR draft pendiente con base vantareapp/isa-1536-arreglos-revision; Isaac
   cambiará su base a nightly después de fusionar #1557.
 - Sin otros arreglos, subagentes, merge del PR ni release.

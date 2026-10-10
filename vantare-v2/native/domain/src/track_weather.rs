@@ -1,7 +1,7 @@
 //! Proyección pura de `TrackWeatherFunctional`. Las ausencias son guiones;
 //! las unidades y los puntos cardinales pertenecen al formateador común.
 
-use crate::format::{self, Language, Preferences};
+use crate::format::{self, Language, Preferences, Units};
 use crate::{Capability, Quality, Snapshot, SourceState};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -76,7 +76,18 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
             Language::En => ["TRACK", "AIR", "WIND", "RAIN", "WET", "DRY", "PRESS"],
         };
         let [track, air, wind, direction, rain, wetness, pressure] = current;
-        let mut wind_text = format::speed(wind, prefs);
+        // El productivo usa Math.round: se prerredondea en la unidad visible
+        // para que el formato al par no deje 2,5 km/h en 2 (ver pedals).
+        let mut wind_text = format::speed(
+            wind.map(|v| {
+                let factor = match prefs.units {
+                    Units::Metric => 3.6,
+                    Units::Imperial => 2.236_936_292_054_4,
+                };
+                (v * factor).round() / factor
+            }),
+            prefs,
+        );
         if wind.is_some() && direction.is_some() {
             wind_text.push(' ');
             wind_text.push_str(&format::wind_direction(direction, prefs));
@@ -275,6 +286,25 @@ mod tests {
                 Some("1013 hPa")
             );
         }
+    }
+
+    #[test]
+    fn regression_1556_half_wind_rounds_up_like_pedals() {
+        let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = crate::SourceState::Live;
+        snapshot.state.capabilities.weather = Capability::Fresh;
+        snapshot.state.session.weather = Weather {
+            air_temperature_k: Quality::Reliable(295.15),
+            wind_speed_mps: Quality::Reliable(2.5 / 3.6),
+            wind_direction_rad: Quality::Reliable(0.0),
+            rain: Quality::Reliable(0.0),
+            track_wetness: Quality::Reliable(0.0),
+            pressure_pa: Quality::Reliable(101_325.0),
+            ..Weather::default()
+        };
+        let vm = project(&snapshot, Preferences::default());
+        assert_eq!(vm.status, Status::Ready);
+        assert_eq!(vm.metrics[2].value, "3 km/h N");
     }
 
     #[test]

@@ -6,10 +6,16 @@ Aceptado por Isaac para #1531. Base: 5e1da3f6. Aplicación incremental: Standing
 
 Los siete puntos de la revisión se implementan en commits separados. Standings
 pasa ocho costes tras perfilar; Relative pasa ocho en la repetición autorizada
-con cola libre. El cierre sigue bloqueado por Delta Eficiencia ACC p99: ingest
+con cola libre. Delta Eficiencia ACC conserva el FAIL numérico p99: ingest
 5,2 frente a máximo baseline 4,6 µs (+13,04%); frame 58,0 frente a 51,8
 (+11,97%, límite +5%). Los otros seis costes Delta y todos sus p50 pasan.
-Fuel y frío nuevo se detienen; las cifras anteriores son evidencia histórica.
+Isaac acepta Delta como «p99 fuera de margen por ruido; perfil de asignaciones
+y trabajo idéntico». Las tandas son bimodales en ambos binarios: ingest baseline
+1,3–4,6 frente a nuevo 1,3–5,6 µs; frame baseline 22,9–51,8 frente a 24,7–60,6.
+No se cambian cifras ni umbrales. La excepción solo se aplica cuando coinciden
+el perfil de asignaciones/bytes y el trabajo, sin trabajo nuevo demostrado.
+Fuel pasa los ocho costes en cinco A/B con cola libre, sin márgenes ni excepción;
+frío y su perfil nuevo quedan pendientes en este checkpoint.
 El gate no cambia: mediana p50 ≤ 1,03 × máximo baseline y p99 ≤ 1,05 × máximo.
 Tandas iniciales y su FAIL conservados en round2/performance; repetición y
 perfil en round2/hot-path. No se repiten tandas para estabilizar ruido.
@@ -34,9 +40,14 @@ Delta también mide con esa reserva. Perfil antes/después 0/1/42 asignaciones
 y bytes 0/32/3024, iguales en todas las muestras; trabajo e invalidaciones cero.
 Ingest estable retorna antes de Arc/Labels/Motion; pintor Eficiencia sin diff.
 Motion común añade indirection/selección de interpolación, pero no hay evidencia
-suficiente para atribuirle esos p99. Sin causa corregible demostrada, DUDA con
-diff y cifras de cinco tandas; parada sin otra A/B ni cambio arbitrario de código.
+suficiente para atribuirle esos p99. La DUDA con diff y cifras se resolvió con
+la aceptación anterior; no se repiten tandas ni se cambia código sin causa.
 Perfil, revisión y tandas en round2/hot-path/quiet; gate intacto.
+Fuel también conserva el perfil completo, muestra a muestra, en los cuatro
+casos LMU/ACC × Eficiencia/Vantare. ACC work/notify son cero en ambos binarios;
+LMU cambia Labels o Plan cien veces en ambos, sin trabajo añadido. Ingest,
+preparación y paint conservan asignaciones y bytes. La documentación de OnceLock
+describe la preparación ya existente; Presentation no añade trabajo estable.
 
 ## Decisión
 

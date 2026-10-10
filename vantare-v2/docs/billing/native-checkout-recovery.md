@@ -2,7 +2,7 @@
 
 Un UUID inválido, JSON/blob corrupto o error de lectura no demuestra que la
 compra anterior haya fallado. El cliente conserva el intento y pide contactar
-con soporte; no envía HTTP ni genera una nueva clave de idempotencia.
+con soporte; no envía el checkout ni genera una nueva clave de idempotencia.
 Esta recuperación es manual: no hay borrado ni reset automático en el Hub.
 
 1. Cerrar la app y services. Conservar el archivo del intento en su namespace

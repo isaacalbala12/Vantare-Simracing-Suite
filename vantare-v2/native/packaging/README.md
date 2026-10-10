@@ -82,7 +82,7 @@ diagnóstica; para recibir actualizaciones utiliza el acceso instalado.
 ## Actualización automática
 
 El feed anónimo consulta las 100 Releases más recientes de
-`isaacalbala12/Vantare-Simracing-Suite`, selecciona la mayor versión numérica
+`isaacalbala12/Vantare-Downloads` (repo publico creado en #1565; sin releases nuevas todavia), selecciona la mayor versión numérica
 `native-beta-vMAJOR.MINOR.PATCH` con asset `vantare-native-beta.json`
 (incluidas prereleases, excluidos drafts). El repositorio debe ser público.
 La comprobación anónima dio HTTP 200 en el desarrollo local; no certifica una
@@ -97,7 +97,7 @@ Contrato cerrado del manifiesto:
   "product": "vantare-native",
   "channel": "beta",
   "version": "0.1.1",
-  "url": "https://github.com/isaacalbala12/Vantare-Simracing-Suite/releases/download/native-beta-v0.1.1/vantare-native-amd64-package.zip",
+  "url": "https://github.com/isaacalbala12/Vantare-Downloads/releases/download/native-beta-v0.1.1/vantare-native-amd64-package.zip",
   "sha256": "<64 hex minúsculas>",
   "notes": "Cambios de la beta"
 }
@@ -433,3 +433,22 @@ instalar la anterior en una cuenta de prueba, ejecutar Check sin LocalManifest,
 verificar versión/notas, reiniciar y confirmar Apply/arranque y datos conservados.
 Guardar tags, hashes, log y capturas; desinstalar esa instalación de prueba.
 No publicar una versión inválida para simular el ataque en el feed real.
+
+## #1565 · transición del feed antes de privatizar
+
+El destino propuesto es un repositorio NUEVO público `isaacalbala12/Vantare-Downloads`,
+sin importar historia ni código. Cada release `native-beta-vX.Y.Z` lleva solo
+`VantareSetup.exe`, su `.sha256`, `vantare-native-amd64-package.zip`, su `.sha256`
+y `vantare-native-beta.json` con sobre Ed25519. Los source archives automáticos de
+GitHub contendrán únicamente un README editorial mínimo. No incluir claves,
+configuración privada, credenciales ni la miniapp admin. El repo ya fue creado con autorizacion y contiene solo README. Publicar releases
+queda prohibido hasta integrar/publicar una version que lea y verifique el feed nuevo.
+
+Setup copia el nuevo beta.ps1 raíz conservando datos. El ZIP de actualización no
+lo copia: **la transición exige ejecutar el instalador nuevo sobre la instalación
+existente, con Vantare cerrado**. Probar primero en raíz QA aislada con instaladores
+anterior/nuevo; confirmar feed destino, perfiles y rollback. Mantener el repo
+antiguo público hasta la aceptación de Isaac y avisar de reinstalación manual a
+rezagados/legado Go. No prometer que esperar una versión de binarios cambia el feed.
+No privatizar desde scripts. Firma/verificador Ed25519 productivo intactos; no
+se ha usado la clave del USB, construido instalador ni publicado release aquí.

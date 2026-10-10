@@ -392,7 +392,7 @@ fn supervise(
 }
 
 fn shutdown(services: &mut [Service], grace: Duration) -> io::Result<()> {
-    shutdown_with_kill(services, grace, |child| child.kill())
+    shutdown_with_kill(services, grace, std::process::Child::kill)
 }
 
 fn shutdown_with_kill(

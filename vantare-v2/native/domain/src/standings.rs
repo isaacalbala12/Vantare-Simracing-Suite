@@ -1323,8 +1323,17 @@ pub fn information(
         .map(|id| {
             let metric = if slots
                 && ![
-                    "time", "lap", "position", "gap", "bestLap", "lastLap", "track", "ambient",
+                    "time",
+                    "lap",
+                    "position",
+                    "gap",
+                    "bestLap",
+                    "lastLap",
+                    "track",
+                    "ambient",
                     "wind",
+                    "estimatedLaps",
+                    "totalLaps",
                 ]
                 .contains(&id.as_str())
             {

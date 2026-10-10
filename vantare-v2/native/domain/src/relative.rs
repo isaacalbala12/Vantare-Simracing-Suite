@@ -212,6 +212,8 @@ struct ProjectionKey {
     kind: Quality<SessionKind>,
     track: Quality<String>,
     remaining: Quality<f64>,
+    laps_remaining: Quality<u32>,
+    laps_total: Quality<u32>,
     weather: crate::Weather,
     flags: Quality<Vec<crate::Flag>>,
     player: Option<PlayerFacts>,
@@ -234,6 +236,8 @@ impl ProjectionKey {
             kind: state.session.kind.clone(),
             track: state.session.track_name.clone(),
             remaining: state.session.remaining_s,
+            laps_remaining: state.session.laps_remaining,
+            laps_total: state.session.laps_total,
             weather: state.session.weather,
             flags: state.flags.clone(),
             player: PlayerFacts::from_state(state, car),
@@ -249,6 +253,8 @@ impl ProjectionKey {
             && self.kind == state.session.kind
             && self.track == state.session.track_name
             && self.remaining == state.session.remaining_s
+            && self.laps_remaining == state.session.laps_remaining
+            && self.laps_total == state.session.laps_total
             && self.weather == state.session.weather
             && self.flags == state.flags
             && self.player == PlayerFacts::from_state(state, state.player_car())
@@ -1027,6 +1033,39 @@ mod tests {
         assert!(!std::sync::Arc::ptr_eq(&no_player_row, &pits));
         assert!(pits.player_in_pits);
         assert_eq!(*pits, project_configured(&s, prefs, hidden, &[]));
+    }
+
+    #[test]
+    fn footer_lap_facts_and_quality_invalidate_the_cache_without_a_new_sequence() {
+        let mut s = scene();
+        s.state.session.kind = Quality::Reliable(SessionKind::Race);
+        let prefs = Preferences::default();
+        let content = Content::default();
+        let ids = ["estimatedLaps".into(), "totalLaps".into()];
+        s.state.session.laps_remaining = Quality::Reliable(10);
+        s.state.session.laps_total = Quality::Reliable(20);
+        let first = project_cached(&s, prefs, content, &ids, None);
+        assert!(std::sync::Arc::ptr_eq(
+            &first,
+            &project_cached(&s, prefs, content, &ids, Some(&first))
+        ));
+        s.state.session.laps_remaining = Quality::Reliable(15);
+        let remaining = project_cached(&s, prefs, content, &ids, Some(&first));
+        assert!(!std::sync::Arc::ptr_eq(&first, &remaining));
+        assert_eq!(remaining.footer_cells[0].value, "15");
+        s.state.session.laps_total = Quality::Reliable(30);
+        let total = project_cached(&s, prefs, content, &ids, Some(&remaining));
+        assert!(!std::sync::Arc::ptr_eq(&remaining, &total));
+        assert_eq!(total.footer_cells[1].value, "30");
+        s.state.session.laps_total = Quality::Stale(30);
+        let stale = project_cached(&s, prefs, content, &ids, Some(&total));
+        assert!(!std::sync::Arc::ptr_eq(&total, &stale));
+        assert!(stale.footer_cells[1].stale);
+        assert_eq!(*stale, project_configured(&s, prefs, content, &ids));
+        assert_eq!(
+            s.sequence, 0,
+            "el pie invalida por hechos, no por secuencia"
+        );
     }
 
     #[test]

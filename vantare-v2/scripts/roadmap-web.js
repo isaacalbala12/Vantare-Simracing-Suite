@@ -1,13 +1,19 @@
 // Public-site integration: call mountRoadmap(element). Uses textContent only.
-export const ROADMAP_URL = 'https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/refs/heads/roadmap-data/roadmap.json';
-export async function mountRoadmap(element, language = 'es') {
+export async function mountRoadmap(element, { supabaseUrl, anonKey, language = 'es' }) {
   element.textContent = language === 'es' ? 'Cargando roadmap…' : 'Loading roadmap…';
   try {
-    const response = await fetch(ROADMAP_URL, { credentials: 'omit', signal: AbortSignal.timeout(8000) });
+    const url = new URL(supabaseUrl);
+    if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !anonKey) throw new Error('Unconfigured');
+    const response = await fetch(new URL('/rest/v1/rpc/visual_roadmap_current', url), {
+      method: 'POST', body: '{}', headers: { 'Content-Type': 'application/json', apikey: anonKey, Authorization: `Bearer ${anonKey}` },
+      credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(8000)
+    });
     if (!response.ok) throw new Error('Unavailable');
     const raw = await response.text();
     if (new TextEncoder().encode(raw).length > 56 * 1024) throw new Error('Too large');
-    const publication = JSON.parse(raw);
+    const rows = JSON.parse(raw);
+    if (!Array.isArray(rows) || rows.length !== 1) throw new Error("No publication");
+    const publication = rows[0];
     if (publication.document.schemaVersion !== 2 || !Array.isArray(publication.document.items) || publication.document.items.length > 40) throw new Error('Invalid');
     const fragment = document.createDocumentFragment();
     for (const item of publication.document.items) {

@@ -6,7 +6,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: clickup-roadmap-data
+  group: clickup-roadmap-publication
   cancel-in-progress: false
 jobs:
   publish:
@@ -14,20 +14,32 @@ jobs:
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/nightly'
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
       - name: Test source transformation without network
-        run: python -m unittest discover -s vantare-v2/scripts -p 'test*roadmap*.py'
+        run: |
+          python -m unittest discover -s vantare-v2/scripts -p 'test*roadmap*.py'
+          node --test vantare-v2/scripts/test_roadmap_web.mjs
       - name: Prepare public document
         env:
           CLICKUP_API_TOKEN: ${{ secrets.CLICKUP_API_TOKEN }}
         run: python vantare-v2/scripts/publish_clickup_roadmap.py --output "$RUNNER_TEMP/roadmap.json"
-      - name: Atomically update data branch only
+      - name: Publish to existing Supabase storage
         env:
-          GH_TOKEN: ${{ github.token }}
-          REPOSITORY: ${{ github.repository }}
-        run: python .github/scripts/roadmap_data_branch.py --publication "$RUNNER_TEMP/roadmap.json"
+          PGHOST: ${{ secrets.ROADMAP_PGHOST }}
+          PGPORT: ${{ secrets.ROADMAP_PGPORT }}
+          PGDATABASE: ${{ secrets.ROADMAP_PGDATABASE }}
+          PGUSER: ${{ secrets.ROADMAP_PGUSER }}
+          PGPASSWORD: ${{ secrets.ROADMAP_PGPASSWORD }}
+          PGSSLMODE: verify-full
+          PGSSLROOTCERT: system
+        run: |
+          python vantare-v2/scripts/publish_clickup_roadmap.py --sql-from "$RUNNER_TEMP/roadmap.json" --output "$RUNNER_TEMP/publish.sql"
+          test -n "$PGHOST" && test -n "$PGUSER" && test -n "$PGPASSWORD"
+          # No credentials in arguments, no SQL/server response in public logs.
+          if ! psql -X --no-password -q -v ON_ERROR_STOP=1 -f "$RUNNER_TEMP/publish.sql" > /dev/null 2>&1; then
+            echo 'Roadmap publication failed; inspect database before retrying.'
+            exit 1
+          fi

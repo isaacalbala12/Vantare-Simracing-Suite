@@ -14,6 +14,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import urllib.parse
 import uuid
 from typing import Any, Callable, Iterable, Sequence
 
@@ -816,18 +817,25 @@ def publish(
             raise RuntimeError(f"Discord returned status {error.code}") from error
 
 
-ROADMAP_URL = "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/refs/heads/roadmap-data/roadmap.json"
+ROADMAP_RPC = "/rest/v1/rpc/visual_roadmap_current"
 
 
-def resolve_development_projects(*, token="", repository="", opener=urllib.request.urlopen):
+def resolve_development_projects(*, token="", repository="", supabase_url="", anon_key="", opener=urllib.request.urlopen):
     """Read the same public artifact as Hub/web. Failure never invents progress."""
     try:
-        request = urllib.request.Request(ROADMAP_URL, headers={"User-Agent": USER_AGENT})
+        parsed = urllib.parse.urlparse(supabase_url)
+        if parsed.scheme != "https" or not parsed.hostname or parsed.username or parsed.password or parsed.query or parsed.fragment or not anon_key:
+            raise ValueError("Public backend unconfigured")
+        url = supabase_url.rstrip("/") + ROADMAP_RPC
+        request = urllib.request.Request(url, data=b"{}", method="POST",
+            headers={"User-Agent": USER_AGENT, "Content-Type":"application/json", "apikey":anon_key, "Authorization":"Bearer " + anon_key})
         with opener(request, timeout=20) as response:
             raw = response.read(56 * 1024 + 1)
         if len(raw) > 56 * 1024:
             raise ValueError("Publication too large")
-        publication = json.loads(raw)
+        rows = json.loads(raw)
+        if not isinstance(rows, list) or len(rows) != 1: raise ValueError("No publication")
+        publication = rows[0]
         document = publication["document"]
         if document["schemaVersion"] != 2 or not isinstance(document["items"], list) or len(document["items"]) > 40:
             raise ValueError("Invalid publication")
@@ -840,7 +848,7 @@ def resolve_development_projects(*, token="", repository="", opener=urllib.reque
         projects = []
         for name, items in sorted(groups.items()):
             done = sum(item["section"] == "done" for item in items)
-            projects.append({"name": sanitize_public_text(name), "url": ROADMAP_URL,
+            projects.append({"name": sanitize_public_text(name), "url": "",
                 "progress": done / len(items), "updatedAt": publication["published_at"],
                 "update": sanitize_public_text(f"{done}/{len(items)} tareas completadas. " + "; ".join(item["title"]["es"] for item in items if item["section"] != "done"))})
         return projects, DEVELOPMENT_SOURCE_CLICKUP
@@ -920,6 +928,8 @@ def main() -> int:
             selected_projects, source = resolve_development_projects(
                 token=os.environ.get("GITHUB_TOKEN", ""),
                 repository=os.environ.get("GITHUB_REPOSITORY", ""),
+                supabase_url=os.environ.get("VANTARE_SUPABASE_URL", ""),
+                anon_key=os.environ.get("VANTARE_SUPABASE_ANON_KEY", ""),
             )
             print(f"development digest source: {source}", file=sys.stderr)
         if args.snapshot_output:

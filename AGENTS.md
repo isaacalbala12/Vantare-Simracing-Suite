@@ -15,7 +15,7 @@ el GitHub Project Vantare.** Linear fue retirado el 2026-08-20.
    Cada issue pertenece a su proyecto (`area:*`, GitHub Project Vantare) y,
    si está comprometida para una versión, a su milestone de GitHub.
 
-ClickUp es la única fuente del roadmap público, publicado como JSON de solo lectura según
+ClickUp es la única fuente del roadmap público, publicado en Supabase como documento de solo lectura según
 [vantare-v2/docs/roadmap-maintenance.md](vantare-v2/docs/roadmap-maintenance.md).
 No se exige el retirado `plan.md` ni su generador.
 

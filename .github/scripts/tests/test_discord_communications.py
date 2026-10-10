@@ -128,7 +128,7 @@ class DevelopmentDigestSourceTests(unittest.TestCase):
             status = 200
 
             def read(self, limit):
-                return json.dumps(publication).encode("utf-8")
+                return json.dumps([publication]).encode("utf-8")
 
             def __enter__(self):
                 return self
@@ -137,19 +137,19 @@ class DevelopmentDigestSourceTests(unittest.TestCase):
                 return False
 
         projects, source = communications.resolve_development_projects(
-            token="t", repository="owner/repo",
+            token="t", repository="owner/repo", supabase_url="https://fixture.supabase.co", anon_key="public-fixture",
             opener=lambda *args, **kwargs: _Response(),
         )
         self.assertEqual(source, communications.DEVELOPMENT_SOURCE_CLICKUP)
         self.assertAlmostEqual(projects[0]["progress"], 0.2)
-        self.assertEqual(projects[0]["url"], communications.ROADMAP_URL)
+        self.assertEqual(projects[0]["url"], "")
 
     def test_a_failing_milestone_lookup_degrades_to_no_news(self):
         def _boom(*args, **kwargs):
             raise urllib.error.URLError("offline")
 
         projects, source = communications.resolve_development_projects(
-            token="t", repository="owner/repo", opener=_boom,
+            token="t", repository="owner/repo", supabase_url="https://fixture.supabase.co", anon_key="public-fixture", opener=_boom,
         )
         self.assertEqual((projects, source), ([], communications.DEVELOPMENT_SOURCE_NONE))
 

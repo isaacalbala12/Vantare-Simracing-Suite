@@ -2,7 +2,7 @@ import copy
 import json
 from pathlib import Path
 import unittest
-from publish_clickup_roadmap import publication, WORKSPACE, source
+from publish_clickup_roadmap import publication, publication_sql, WORKSPACE, source
 
 
 class PublicRoadmapTests(unittest.TestCase):
@@ -42,6 +42,15 @@ class PublicRoadmapTests(unittest.TestCase):
         cases[3]['tasks'][0]['due_date'] = '999999999999999999999999999999'
         for case in cases:
             with self.assertRaises((ValueError, OverflowError, OSError)): publication(case, 'date')
+
+    def test_ci_sql_uses_only_dedicated_sync_and_quotes_public_text(self):
+        sql = publication_sql({'schemaVersion':2, 'items':[{'title':"'); drop table x; --"}]})
+        self.assertIn("''); drop table x; --", sql)
+        self.assertIn('public.visual_roadmap_sync', sql)
+        self.assertNotIn('visual_roadmap_publish', sql)
+        self.assertNotIn('lock table', sql) # lock belongs to the restricted function
+        self.assertTrue(sql.startswith('begin;'))
+        self.assertTrue(sql.endswith('commit;\n'))
 
 
 if __name__ == '__main__': unittest.main()

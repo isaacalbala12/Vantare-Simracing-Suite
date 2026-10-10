@@ -35,22 +35,9 @@ engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
 `runtime`, ni transitivamente. Lo comprueba `domain/tests/architecture.rs`
 (`cargo tree`) dentro de `cargo test`.
 
-## Estructura de Studio (#1561 PR-4)
-
-`hub/src/studio.rs` conserva Studio, Prepared, estado, API pública y composición.
-`studio/canvas.rs`: marco, geometría, zoom, drag/resize y nudges;
-`studio/inspector_panel.rs`: inspector y controles;
-`studio/catalog.rs`: preparación, ejemplos/fotos y catálogo/tira;
-`studio/tests.rs`: tests movidos. examples/scenes/sessions y session_acceptance
-conservan sus responsabilidades. Son impls parciales del mismo Studio;
-sin entidades ni tipos nuevos. Visibilidad interna mínima `pub(super)`
-solo para comunicación entre esos módulos y tests.
-
-`hub/tests/architecture.rs` cuenta las líneas físicas de todo `hub/src/**/*.rs`
-y falla sobre 2000. Solo conservan techos de trinquete los cuatro archivos
-preexistentes: analysis/view.rs 2069, launcher/showcase.rs 2139,
-services/view.rs 1750 y settings/view.rs 2145. Studio no tiene excepción;
-bajar un techo es libre, subirlo exige un plan de partición en el mismo PR.
+La estructura de Studio vive en [hub/README.md](hub/README.md).
+`hub/tests/architecture.rs` vigila los techos de tamaño del Hub; subir un techo
+exige un plan de partición en el mismo PR.
 
 ## Contrato de fotos y datos guardados
 

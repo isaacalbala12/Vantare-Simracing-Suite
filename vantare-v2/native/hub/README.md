@@ -16,7 +16,7 @@ Deshacer/Rehacer, y se combinan en overlays live. La preview siempre se ve.
 El módulo nuevo `studio/sessions.rs` conserva el renderer compartido;
 la partición #1561 PR-4 conserva Studio y Prepared en `studio.rs`.
 `studio/canvas.rs`: marco, geometría y gestos; `studio/inspector_panel.rs`:
-inspector y controles; `studio/catalog.rs`: preparación, fotos y catálogo;
+inspector y controles; `studio/catalog.rs`: preparación, fotos/ejemplos, catálogo, tira y controles de navegación;
 `studio/tests.rs`: tests existentes. Mismos tipos, lógica y firmas públicas.
 
 Captura aislada con el harness existente, mutex y pantalla-ocupada:
@@ -139,7 +139,7 @@ espacialmente el widget en el lienzo.
 Delta Vantare admite Cápsula/Barra/Ampliado y referencias Mejor propia/Óptima/
 Líder de clase. Barra y sectores se editan cuando el formato los representa.
 Última vuelta y mejor absoluta de sesión siguen pendientes: el núcleo no
-pública señales independientes para ellas. Neo/Neutro y los acentos del kit
+publica señales independientes para ellas. Neo/Neutro y los acentos del kit
 Vantare están disponibles en los widgets portados de #1497. Las opciones que
 el renderer no aplica permanecen pendientes y se conservan al editar otra
 propiedad; fuente: constructores de `ui` y `ui/layout-evidence.md`.
@@ -207,7 +207,7 @@ No hay publicación, Discord, zonas distintas de UTC ni recordatorios.
 
 El proceso Engineer pertenece al supervisor y sigue independiente del Hub.
 Estas rutas implementadas no prueban login/envío remoto, juego, OBS o empaquetado.
-El worker de servicios pública su evento de cancelación antes de conectar o leer
+El worker de servicios publica su evento de cancelación antes de conectar o leer
 el saludo. El cierre lo señala y espera el join en el ejecutor de fondo; no bloquea
 el hilo UI durante el join. GPUI limita las futures de cierre a 200 ms; señalar
 el evento y cerrar el sender despierta también connect/hello y recv pendientes.
@@ -256,7 +256,7 @@ validada y guardada atómicamente; se restaura al arrancar. Una respuesta invál
 un fallo de red o de escritura conserva el horario anterior. La ventana es
 `[validFrom, validUntil)`; cuando no hay uno vigente, todas las vistas muestran
 «Aún no hay horario publicado para esta semana» sin carreras caducadas.
-No pública horarios ni activa recordatorios.
+No publica horarios ni activa recordatorios.
 
 ## #1562 · Ocultar fuera de pista
 

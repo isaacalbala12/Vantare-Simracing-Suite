@@ -530,7 +530,7 @@ impl Studio {
         cx.notify();
     }
 
-    pub(super) fn zoom(&mut self, step: usize, cx: &mut Context<Self>) {
+    fn zoom(&mut self, step: usize, cx: &mut Context<Self>) {
         self.zoom_step = step.min(ZOOM_STEPS.len() - 1);
         self.rescale_preview(cx);
     }

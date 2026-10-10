@@ -13,6 +13,10 @@ use crate::{
         NumberFinished, NumberKind, NumberRange, OptionItem, button,
     },
 };
+use canvas::{CanvasFrame, HeldNudge, client_monitor};
+use catalog::catalog_options;
+#[cfg(feature = "parity-capture")]
+use catalog::{capture_name, capture_session, studio_demo_capture};
 use gpui::{
     Context, Entity, EventEmitter, FocusHandle, IntoElement, MouseButton, MouseMoveEvent,
     PathBuilder, Pixels, Point, Render, SharedString, Window, div, linear_color_stop,
@@ -640,13 +644,3 @@ impl Render for Studio {
 mod session_acceptance;
 #[cfg(test)]
 mod tests;
-use canvas::CanvasFrame;
-use canvas::HeldNudge;
-use canvas::client_monitor;
-#[cfg(feature = "parity-capture")]
-use catalog::capture_name;
-#[cfg(feature = "parity-capture")]
-use catalog::capture_session;
-use catalog::catalog_options;
-#[cfg(feature = "parity-capture")]
-use catalog::studio_demo_capture;

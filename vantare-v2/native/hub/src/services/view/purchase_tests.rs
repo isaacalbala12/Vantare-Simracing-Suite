@@ -2,6 +2,40 @@ use super::super::protocol::{BillingProduct, DraftState, report_document::Receip
 use super::*;
 
 #[test]
+fn participation_can_retry_after_background_busy_or_failed_ipc_dispatch() {
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        remote.update(cx, |remote, cx| {
+            remote.account.signed_in = true;
+            remote.inflight = Inflight::Background;
+            remote.queued = Some(Command::DraftLoad);
+            remote.participation_request(Command::TestingRefresh, cx);
+            assert!(remote.participation_pending.is_none());
+            assert!(matches!(remote.queued, Some(Command::DraftLoad)));
+            assert!(requests.try_recv().is_err());
+            remote.inflight = Inflight::Idle;
+            remote.queued = None;
+            remote.account.pending = true;
+            remote.participation_request(Command::TestingRefresh, cx);
+            assert!(remote.participation_pending.is_none());
+            assert!(requests.try_recv().is_err());
+            remote.account.pending = false;
+            drop(requests);
+            remote.participation_request(Command::TestingRefresh, cx);
+            assert!(remote.participation_pending.is_none());
+            assert_ne!(remote.participation_message, "Consultando el servicio…");
+            assert!(
+                remote.participation_ready(),
+                "failed dispatch remains retryable"
+            );
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
 fn participation_is_cleared_on_logout_and_delayed_reply_cannot_restore_private_data() {
     gpui_platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();

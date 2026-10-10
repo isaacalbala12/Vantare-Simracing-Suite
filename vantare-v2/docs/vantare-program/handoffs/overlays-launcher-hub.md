@@ -11,14 +11,14 @@ Tests con capturas reales y mutaciones explícitas; no certifica simuladores/OBS
 
 Fmt/Clippy -D warnings PASS; Nextest1588/1588 (7 skips heredados,298.526s), lifecycle18/18 PASS.
 Telemetría25/25 (0 skips,1043.052s; ACC920.677s); retirement456/456 y anti-slop PASS.
-Medida local aceptada sin A/B: 4096 observaciones ACC ×30, central19.922ns/call, cero alloc/realloc.
+Instrumento puntual de medida retirado del repo por revisión #1534; evidencia y comando solo en informe.
 Situación/política estable no añade asignaciones por frame, notify ni ingest adelantado;
 las transiciones y los repintados originales de telemetría conservan su coste. No mide frame completo.
 Capturas Ajustes1440/1100 y Studio1440 inspeccionadas; logs y límites en informe.
 
 #1564: añadir filtro de sesión en la misma sección En pista, combinado Y; helper aislado,
 sin código anticipado. AlwaysVisible no debe saltarse el futuro filtro de sesión.
-Siguiente paso: integración/revisión por el orquestador; prueba física según informe.
+Decisión de producto pendiente de Isaac: Garage actual también incluye parada de carrera y cola parada en pit lane. Esperar su respuesta antes de cambiar la regla; no abrir PR.
 Entrega mediante push de esta rama autorizado; sin PR, merge, promoción ni release.
 
 ## #1531 · Actualización de #1558 tras Linux verde y squash #1557

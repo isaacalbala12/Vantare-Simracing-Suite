@@ -1,18 +1,22 @@
-## #1531 · Delta WIP; perfil y corrección común en ejecución, Fuel pendiente (2026-10-10)
+## #1531 · Entrega aislada completa; cuatro widgets y gates PASS (2026-10-10)
 
-Rama vantareapp/isa-1531-widgets-looks, base 5e1da3f6, worktree C:/tmp/vw3-1531/vantare-v2.
-Standings c5c2f1d5/eb21ae33 y Relative a210c983 cerrados; Delta no cerrado.
-Delta tiene Board/proyección únicos sin caché, pintor/Motion activos, avisos con reloj original y migración de referencia.
-Plan/textos por Board/presentación; frame presta Arcs. Demand union 16 ms; IPC intacto, dos consumidores de tests domain adaptados.
-Paridad Delta 89 pares RGBA=0, capturas por Look inspeccionadas; golden previo difiere 81,71 %, sin renovar.
-Frío LMU 43→50 ns (1,16x), ACC 25→37 ns (1,48x); muestra de 32 llamadas independientes, resolución de reloj 100 ns.
-Cinco A/B intercaladas FAIL: Efi LMU frame p50 33,3→43,2 µs; p99 89,5 > máximo baseline 82,6 (+8,35 %).
-V frame p50 LMU 18,4→28,8 y ACC 23,6→28,4; ingest falla LMU ambos y ACC Vantare. No se atribuye una causa sin perfil.
-Clippy UI/domain/all-targets -D warnings PASS y Nextest 395/395 PASS, 2 skipped. Gates workspace/lifecycle/telemetria pendientes.
-Isaac ordena perfilar/corregir el patrón común antes de Fuel; perfil por etapas y asignaciones completado, corrección y nuevas A/B en curso.
-Fuel no implementado: baseline Release de 92 configuraciones capturado; pulso bajo no termina en el capturador previo, pendiente de reloj QA.
-Evidencia: C:/tmp/auditoria-arquitectura-v2/evidence-1531/performance/delta-gate-five-rounds.{json,md}; buzón BLOQUEO actualizado.
-Trabajo local WIP; sin push/PR/merge/release/promoción. Gate nuevo de los tres: p50 ingest/frame dentro o bajo rango baseline; p99 dentro o hasta +5 % documentado. Fuel después.
+Rama vantareapp/isa-1531-widgets-looks, base 5e1da3f6, código productivo 746c2cc4, tests runtime 79cbc6eb/607941c7 y Studio 0d58f187; Fuel inicial 2cb3a6e3; corrección común a849296f; worktree C:/tmp/vw3-1531/vantare-v2.
+Standings c5c2f1d5/eb21ae33, Relative a210c983, Delta 41445297 y Fuel 2cb3a6e3/746c2cc4; corrección común a849296f. Los cuatro quedan revalidados con el gate vigente de Isaac.
+Delta tiene Board/proyección/Motion únicos, avisos con reloj y migración; IPC intacto. Cinco A/B anteriores FAIL conservadas.
+Perfil 600 muestras/caso LMU: Plan/etiquetas/Motion 0/0/0 e invalidaciones 0; no aparecen asignaciones nuevas respecto al original.
+Corrección común: Content de Standings memorizado; filas Relative/Frame Delta Idle reutilizados; consulta de shape sin claves String en hit.
+Asignaciones ingest/preparación/paint: Stand Efi 46/33/343→0/1/311, V 917/482/241→0/1/179; Rel Efi 20/20/181→0/1/161, V 11/16/91→0/1/65; Delta Efi 3/4/65→0/1/57, V 0/1/37→0/1/30.
+Nuevo Standings tras Scalars prestados: cinco A/B PASS en los ocho costes; Efi LMU ingest p50 28,6 µs dentro de 24,1–37,0, p99 65,0 vs máximo 63,4 (+2,52 % documentado). Tandas previas FAIL preservadas.
+Nuevo Relative: cinco A/B PASS en ocho costes, p99 dentro/bajo rango sin usar +5 %. Delta PASS: V LMU ingest 5,3 vs 5,2 µs (+1,92 %) aceptado; gate vigente p50 +3 % / p99 +5 % sobre máximo baseline.
+Snapshot/State/Car/DTO no ofrecen revisión por señal o coche; Lost puede conservar epoch/sequence. No se introduce atajo global inseguro ni cambio IPC.
+Fmt/check/Clippy workspace -D warnings PASS; Nextest 1425/1425 PASS (7 skipped oficiales), lifecycle 5+13 PASS; telemetria 21/21 PASS, 0 skipped. UI/domain previo 402/402 PASS, 2 skipped. Importación/default Fuel sigue Default1/JSON histórico0. Adaptaciones de tests runtime 79cbc6eb/607941c7 y Studio 0d58f187; aserciones intactas. EOF Engineer inicial no reproducido en repetición completa, causa no demostrada.
+Paridad final tras kit común: 53/85/89/99 pares (326), RGBA original=0. Goldens históricos intactos. Copias QA UTF8 recapturadas y validadas, con v0 archivado.
+Frío conservado: Standings 1,18x/1,24x; Relative 1,29x/1,42x; Delta 1,16x/1,48x. No hay Board previo en medición fría.
+Fuel/stint: Board/historial únicos, pintor/Motion activos; migración y project una vez probados. Release/99 pares/cinco A/B PASS. Frame p50 Efi LMU/ACC 28,5/45,8 µs, V 59,0/64,2; ocho costes dentro/bajo rango sin márgenes. Frío 0,93x/1,00x. Perfil Fuel PASS: ACC estable Plan/textos/Motion e invalidaciones 0; LMU conserva 100 invalidaciones V por cambios Board; paint Efi 27→0, V ACC 99→55. Gates workspace completos PASS.
+Evidencia externa performance/{widget}-gate-pattern-five-rounds.{json,md}, pattern-profile.md y profile-pattern-*.json. Buzón actualizado.
+Trabajo local; sin push/PR/merge/release/promoción. No se declara una causa microarquitectónica ni una regresión inevitable sin evidencia.
+Riesgos: unión de demanda Delta 16/Fuel 250 ms puede cambiar frecuencia Efi; CPU por ingest/frame no acredita carga total del juego, GPU/Present, latencia OBS o RSS. EOF Engineer inicial no reproducido, causa sin demostrar; conservar evidencia. Integración IPC v9/fixtures #1530 corresponde al orquestador.
+Inventario y verificación manual: evidence-1531/source-inventory.txt y manual-1531.md; informe externo de 10 líneas. Próxima acción: revisión aislada de Isaac, sin promoción autorizada.
 
 ## #1531 · Relative corregido y validado; Delta siguiente (2026-10-10)
 
@@ -5248,7 +5252,7 @@ generó paquete distribuible. Ambos binarios/hashes conservados externamente.
 Tests de filtrado por canal y rango semanal mes/año PASS. QA prueba con
 parity-capture 0.1.0-beta.1/testers PASS; warning cx heredado solo en captura.
 40 capturas 20 nombres x1920/1440, detalles y hojas MIRADOS, 18 pares antes/
-después y mapas MIRADOS. Standings F1 0/292160px, umbral0/delta0, captura/
+después y mapas MIRADOS. Standings F1 0/292160px, umbral 0/delta0, captura/
 referencia/mapa MIRADOS. Una captura falló al cerrar ventana tras guardar PNG;
 reintento PASS, logs conservados. Clippy inicial unused_self/match_same_arms
 corregido; log conservado. Build propio simultáneo cancelado y serializado.
@@ -5293,7 +5297,7 @@ no distribuible ni apto para demostrar rendimiento. Warning previo
 Fmt/check/clippy-Dwarnings PASS; nextest1184/1184 PASS en712,270s (ACC578,928s, seis skips configurados). Lifecycle5Hub+12UI PASS al primer intento.
 72 capturas finales,36 escenas×1920x1080/1440x900, con turno y mutex;
 18 hojas detalle,2 resúmenes y principales/diffs MIRADOS. Alfa<255=0 en72/72;
-autotest255 aceptado,254/0 rechazados. Standings0/292160px, umbral0/delta0,
+autotest255 aceptado,254/0 rechazados. Standings0/292160px, umbral 0/delta0,
 referencia/captura/mapa MIRADOS. `source-seal.json` acredita mismo código.
 Evidencia externa `C:/tmp/1470-union5-evidence/`, informe
 `C:/tmp/fase2/informe-1470-union5.md`.
@@ -5719,7 +5723,7 @@ Cinco merges locales autorizados: 43851186 (r6), 6b7f8ee5 (zoom), 5d64a300 (#147
 Gates finales de código PASS: fmt/check/clippy -D warnings, Nextest1210/1210 (6 skips existentes, ACC488,713s), lifecycle18/18. Feed9/9 en PS5.1 y PS7; packaging beta174/174 en PS5.1. El intento PS7 falla por powershell.exe ausente en PSHOME; no se altera el test.
 QA beta.1/testers y Release externos compilados por cola/-j2. Hashes de fuentes QA coinciden con código final. Release generado desde cc3437dc, source_dirty=false; arranque responsive/cierre exit0 fuera del repo, pantalla de acceso inspeccionada. No prueba autenticación.
 111 capturas MIRADAS:36 por tamaño1920/1440/1280 y3 focales1440/125 elegido. Inicio Abrir Studio y cadena Launcher caben1280/100; General conserva125 elegido y limita112,5 a1440. Elipsis y scroll presentes. Workshop/Telemetría/Licencias redirigen a Inicio en estas escenas; no certifican módulos activos.
-Standings0/292160px (umbral0/delta0) contra captura del candidato previo, ambas imágenes y mapa inspeccionados. La referencia histórica del repositorio difiere85,3666%; log conservado, no se cambia referencia ni tolerancia.
+Standings0/292160px (umbral 0/delta0) contra captura del candidato previo, ambas imágenes y mapa inspeccionados. La referencia histórica del repositorio difiere85,3666%; log conservado, no se cambia referencia ni tolerancia.
 ALFA FALLA:110/111 opacas; shell-paleta-busqueda1280 reproduce1 píxel RGBA0,0,0,0 en(912,503). Guard255/254/0 funciona. Sin normalizar imagen ni debilitar gate; causa renderer/PrintWindow sin determinar. Hallazgo fuera de alcance #1479: https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1479 . Aceptación de candidata pendiente de revisión/corrección del alfa.
 Evidencia C:/tmp/candidato-evidence/union2-*; informe C:/tmp/fase2/informe-candidato-union2.md. Sin push/PR/CI remota/promoción/publicación. Sin certificación LMU live, OBS, DPI mixto o macOS. docs/roadmap/plan.md ausente en base; no se inventa otro roadmap. Siguiente: orquestador revisa evidencia y #1479 antes de aceptar candidata.
 
@@ -5729,7 +5733,7 @@ Causa demostrada: render target D3D11 conserva alfa255 en(912,503) en806 lectura
 Corrección en origen: `PrintWindow` escribe a DIB top-down32 y se guarda su BGRA original; `GdiFlush` sincroniza antes de leer la memoria conforme al [contrato CreateDIBSection](https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-createdibsection). Sin fondo añadido ni normalización de alfa. Test sin GPUI reproduce el centinela, verifica que SetPixel escribió y conserva RGB/alfa255/254/0; guard rechaza254/0. PS5.1 yPS7 PASS.
 fmt/check/clippy -D warnings PASS; Nextest1210/1210 PASS (6 skips existentes; ACC489,143s), lifecycle18/18 PASS. Build QA beta.1/testers por cola/-j2, binarios congelados fuera del repo. Warning QA preexistente `analysis/view.rs:989` conservado; clippy normal sin warnings.
 Batería versionada `capture-alpha.ps1`/`alpha-scenes.json`:36 escenas por tamaño1920/1440/1280, turno exclusivo, helper dueño del mutex y timeout90s. Binario final108/108 opacas, dimensiones y hashes auditados por PIL;9 galerías inspeccionadas. Paleta1280: exactamente1 píxel cambia frente a candidata, RGBA0→13,11,12,255 en(912,503), resto idéntico; imagen y ampliación inspeccionadas. Las escenas Workshop/Telemetría/Licencias redirigen a Inicio como en la base; no certifican módulos activos.
-Standings final0/292160 con umbral0/delta0 contra `C:/tmp/candidato-evidence/union2-standings/standings.png`; captura, referencia y diff inspeccionados. Referencia histórica del repo conserva deuda85,3666% registrada en candidata; no se actualiza ni se cambia tolerancia.
+Standings final0/292160 con umbral 0/delta0 contra `C:/tmp/candidato-evidence/union2-standings/standings.png`; captura, referencia y diff inspeccionados. Referencia histórica del repo conserva deuda85,3666% registrada en candidata; no se actualiza ni se cambia tolerancia.
 Primer intento de matriz: PNG de diagnóstico1440 opaco pero cierre del helper excedió10s; log `alpha-first.log` conservado. Repetición1440/1280 PASS y matriz completa final108/108 PASS sin fallos de cierre. Arranque Hidden inicial no abrió HWND y excedió90s; batería usa ventana Normal para captura física.
 Evidencia `C:/tmp/1479-evidence/`; informe y SHA en `C:/tmp/fase2/informe-1479.md`; manual `pwsh -File C:/tmp/1479-evidence/manual.ps1`. Issue actualizada; siguiente: orquestador revisa diff/evidencia antes de integrar. Sin push/PR/CI remota/merge/promoción/release ni acciones externas fuera del seguimiento autorizado. QA Windows DPI96; sin LMU live/OBS/DPI mixto/macOS; no Go/TS al no cambiar su código. `docs/roadmap/plan.md` no existe en la base y esta corrección de QA no cambia alcance público.
 
@@ -5753,7 +5757,7 @@ Gates por cola/-j2/target propio: fmt/check/Clippy -D warnings PASS,
 Nextest1220/1220 PASS (6 skips existentes; ACC500,619s), lifecycle18/18 PASS.
 Refuerzo final del test subprocess: fmt/Clippy y arquitectura7/7 PASS.
 Packaging beta174/174 PASS sobre el paquete0.0.951 utilizado en la reproducción.
-Standings0/292160px contra candidata union2, umbral0/delta0; captura, referencia y
+Standings0/292160px contra candidata union2, umbral 0/delta0; captura, referencia y
 mapa inspeccionados. Renderer, referencias y tolerancia intactos.
 
 Copia portable aislada en `C:/tmp/studio-instalado`; instalación de Isaac intacta,

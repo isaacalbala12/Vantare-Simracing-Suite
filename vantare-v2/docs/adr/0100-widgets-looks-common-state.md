@@ -57,7 +57,12 @@ contenido, preferencias, sesión/fuente, clima/banderas y hechos por CarId. No g
 Snapshot ni clave de Look; secuencia/inputs ajenos a la clasificación no invalidan.
 Un cambio de hechos o de referencia global invalida y produce el mismo Board que
 una proyección en frío. Hay tests de ambas invalidaciones y de una llamada por ingest.
-Gate aprobado: cinco tandas A/B intercaladas en procesos separados con el corpus
+## Hitos históricos de validación
+
+Estos checkpoints conservan gates y fallos anteriores. El gate vigente y el cierre
+están en las secciones posteriores; WIP/FAIL aquí describe ese momento.
+
+Gate inicial aprobado: cinco tandas A/B intercaladas en procesos separados con el corpus
 real y el Look activo. La mediana de p50 no empeora y la mediana de p99 del nuevo
 queda dentro o por debajo de mín–máx de los p99 del baseline; no se afinan umbrales ni máscaras.
 Proyección fría como máximo 1,5× Vantare anterior. Cifras y tandas en la evidencia externa.
@@ -140,3 +145,89 @@ por frame en los casos medidos. No se declara inevitable una regresión por dise
 Corrección común en curso: contenido Standings estable, frame Idle de Relative/
 Delta memorizado y consulta prestada del caché de texto, manteniendo fuente,
 color y límite de 4096 entradas. Se vuelven a medir y capturar los tres widgets.
+
+
+## Perfil común y gate vigente (10-10-2026)
+
+Cinco tandas A/B intercaladas en procesos distintos, corpus real: mediana p50 de
+frame e ingest hasta +3 % sobre el máximo de las tandas baseline; mediana p99
+hasta +5 % sobre ese máximo, con exceso documentado. No se ajusta más el ruido.
+Relative PASS en los ocho costes; Delta PASS, con ingest Vantare LMU 5,3 frente
+a máximo 5,2 µs (+1,92 %, aceptado por Isaac). Standings PASS tras comparar
+sus Scalars prestados: ingest Efi LMU p99 65,0 frente a máximo 63,4 µs (+2,52 %);
+los restantes costes dentro/bajo rango. Delta presta Player y memoriza referencia.
+Snapshot/State/Car no ofrecen revisión por coche/señal; Lost conserva la revisión
+global en IPC. No se usa epoch/sequence como atajo que omita cambios de hechos.
+Perfil estable: no aparecen Plan/etiquetas/Motion ni invalidaciones nuevos.
+Costes heredados retirados: Content copiado, filas/Frame Idle y claves de shape
+con Strings nuevos por hit. No se afirma una causa microarquitectónica del ruido.
+
+## Fuel y stint
+
+`fuel_strategy::Board` combina los hechos de ambos Looks, con calidad y estado
+explícitos. Un único `Vec<HistoryEntry { lap, consumed: Option<f64> }>` mantiene
+el orden canónico; conserva las posiciones inválidas para recortar como antes.
+No se guarda Fuel/Snapshot ni otra colección de consumos. Eficiencia prepara
+únicamente etiquetas de las filas visibles; Vantare deriva puntos del gráfico,
+Plan y etiquetas del mismo historial. Ninguno reproyecta el Snapshot.
+El Widget posee ese Board en Arc, Config memorizada, preferencias, un pintor y
+Motion activos; el reloj del pulso es común y sobrevive al cambio de Look.
+`contentVersion` migra una vez controles ignorados por layouts Vantare antiguos;
+los layouts Eficiencia conservan su contenido. Después el contenido y la demanda
+unida a 250 ms son independientes del Look. Identidad/registro JSON permanecen.
+El reloj de capturas de pulso bajo se fija solo en `parity-capture`; el producto
+mantiene su reloj, interpolación cúbica, duración y cadencia de 50 ms existentes.
+Se conserva la fuente original congelada para comparar la misma fase del pulso.
+Fuel: 99 pares RGBA originales exactos y cinco A/B reales PASS en ocho costes;
+medianas p50/p99 dentro o bajo rango baseline, sin usar márgenes +3/+5.
+Frame p50 Efi LMU/ACC 28,5/45,8 µs; Vantare 59,0/64,2. Frío Vantare original
+LMU 134→125 ns (0,93×), ACC 112→112 ns (1,00×); 12000 muestras, sin Board previo.
+Agregado de los cuatro widgets: 326 pares, 0 diferencias RGBA sin máscaras.
+Recaptura UTF8 QA completada y validada; capturas/snapshots v0 archivados.
+Gates workspace completos PASS (detalle en el cierre siguiente).
+
+Perfil Fuel (ambos corpus, 600 muestras + 60 warmup): ACC estable no reconstruye
+Plan/textos/Motion; LMU reconstruye por los 100 cambios de Board y conserva las
+mismas 100 invalidaciones Vantare. Paint Efi 27→0 asignaciones, V ACC 99→55
+y V LMU 108→64; ingest V conserva una asignación de clase como antes.
+No se equiparan bytes solicitados con RSS ni con memoria viva máxima.
+Adaptación adicional mínima: cuatro lecturas rows() en tests runtime (79cbc6eb)
+y Preferences::default() explícito en tres tests Studio; aserciones intactas.
+Los fallos iniciales de workspace check/Clippy se conservan y se reejecutan los gates.
+
+El golden versionado Fuel ya tiene geometría distinta (680×204 frente al baseline
+nativo 523×272). No se renueva: el par original/nuevo 523×272 da 0 RGBA.
+Las deudas previas Standings (85,37 %), Relative (304×285 frente a 470×277)
+y Delta (81,71 %) también permanecen documentadas y sin modificar referencias.
+
+En los tests runtime, el intervalo global antiguo se verifica con
+`classification_interval`; `interval` conserva la semántica de clase del pintor
+Vantare. La aserción de flujo sigue exigiendo +2.00s/+3.00s y la de stale exige
+—; el fallo inicial de adaptación se conserva. Los pintores ya leían el campo
+correcto, por lo que esta corrección no cambia producto, capturas o rendimiento.
+
+## Cierre local de #1531 (10-10-2026)
+
+Los cuatro widgets quedan implementados y validados en la rama aislada
+`vantareapp/isa-1531-widgets-looks`, base 5e1da3f6. Código productivo 746c2cc4;
+contratos adicionales runtime 79cbc6eb/607941c7 y Studio 0d58f187.
+Fmt/check/Clippy workspace -D warnings PASS; Nextest 1425/1425 PASS, 7 skipped
+del perfil oficial; lifecycle 5+13 PASS; telemetría real 21/21 PASS, 0 skipped.
+Todos por compilar.ps1/gates.ps1, -j2, Nextest2 y DuckDB oficial; defaults ajenos
+a storage conservados. No se debilitan aserciones ni se excluyen tests nuevos.
+Un EOF inicial de Engineer antes del saludo no se reprodujo en la única
+repetición íntegra de la suite; causa exacta no demostrada, fuente Engineer
+intacta. Se conservan fallos, correcciones y resultados sin declarar ese fallo resuelto.
+
+326 pares RGBA originales exactos, inspeccionados por Look, con umbral 0 y sin
+máscaras. Cinco A/B por caso/Look: 32 costes ingest/frame PASS; frío ≤1,5x
+Vantare original en ambos corpus. Excesos aprobados: Standings p99 +2,52 %,
+Delta p50 +1,92 %; Fuel no necesita márgenes. Tandas y perfiles anteriores
+permanecen en C:/tmp/auditoria-arquitectura-v2/evidence-1531/performance.
+
+La demanda común de Delta 16 ms/Fuel 250 ms puede incrementar frecuencia frente
+a Eficiencia antigua; el gate por ingest/frame no mide carga total del juego.
+Asignaciones/bytes del hilo UI no prueban RSS ni GPU/Present/latencia OBS.
+IPC, registro y dependencias permanecen intactos; integrar DTO v9 de #1530 y
+revalidar sus fixtures corresponde al orquestador. No hay push, PR, merge,
+release, CI remoto ni promoción; entrega local pendiente de revisión de Isaac.

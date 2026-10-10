@@ -91,7 +91,10 @@ fn compact_rpm(rad_s: Option<f64>) -> String {
         return format::PLACEHOLDER.into();
     }
     if rpm < 1000.0 {
-        return format::rpm(Some(rad_s));
+        // El productivo usa Math.round: se prerredondea para que el formato
+        // al par no deje 2,5 rpm en 2 (ver input_telemetry).
+        let factor = 30.0 / std::f64::consts::PI;
+        return format::rpm(Some((rad_s * factor).round() / factor));
     }
     // toFixed(1) de JS: empate exacto hacia arriba, resto al más cercano.
     // Candidato a domain::format cuando haya un segundo consumidor nativo.
@@ -161,7 +164,16 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         (Status::Disconnected, Language::En) => "DISCONNECTED",
     };
     // La conversión y las unidades siguen perteneciendo al formateador común.
-    let formatted_speed = format::speed(speed, prefs);
+    // El productivo usa Math.round: se prerredondea en la unidad visible
+    // para que el formato al par no deje 2,5 km/h en 2 (ver input_telemetry).
+    let speed_factor = match prefs.units {
+        format::Units::Metric => 3.6,
+        format::Units::Imperial => 2.236_936_292_054_4,
+    };
+    let formatted_speed = format::speed(
+        speed.map(|v| (v * speed_factor).round() / speed_factor),
+        prefs,
+    );
     let unit = match prefs.units {
         format::Units::Metric => "km/h",
         format::Units::Imperial => "mph",
@@ -392,6 +404,17 @@ mod tests {
             assert_eq!(vm.pedals[1], expected);
             assert_eq!(vm.status, status);
         }
+    }
+
+    #[test]
+    fn regression_1549_half_speed_rounds_up_like_input_telemetry() {
+        let mut data = snapshot();
+        let player = data.state.player.as_mut().expect("jugador");
+        player.telemetry.speed_mps = Quality::Reliable(2.5 / 3.6);
+        player.telemetry.engine_speed_rad_s = Quality::Reliable(2.5 * std::f64::consts::PI / 30.0);
+        let vm = project(&data, Preferences::default());
+        assert_eq!((vm.speed.as_str(), vm.speed_unit.as_str()), ("3", "km/h"));
+        assert_eq!(vm.rpm, "3");
     }
 
     #[test]

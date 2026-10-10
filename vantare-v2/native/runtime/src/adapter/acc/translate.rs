@@ -1,6 +1,6 @@
 //! Fusión por señal. Los relojes de physics, graphics y cada coche UDP son
 //! independientes; recibir un datagrama nunca refresca una página SHM vieja.
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::f64::consts::{FRAC_PI_2, TAU};
 use std::io;
 use std::time::Duration;
@@ -43,6 +43,8 @@ struct Rival {
 }
 
 pub(super) struct Translator {
+    #[cfg(test)]
+    pub(super) observations: usize,
     kind: SourceKind,
     pages: [Option<Page>; 3],
     physics_zero: bool,
@@ -62,6 +64,8 @@ pub(super) struct Translator {
     // La grabadora se registró seis veces antes de recibir las listas.
     // Respuestas tardías de conexiones admitidas siguen siendo válidas.
     registered: Vec<i32>,
+    positions: Vec<(CarId, Option<ClassId>, u32, Option<u32>)>,
+    positions_at: Duration,
     pub(super) request_entries: bool,
     pub(super) request_track: bool,
 }
@@ -69,6 +73,8 @@ pub(super) struct Translator {
 impl Translator {
     pub(super) fn new(kind: SourceKind) -> Self {
         Self {
+            #[cfg(test)]
+            observations: 0,
             kind,
             pages: [None, None, None],
             physics_zero: false,
@@ -86,6 +92,8 @@ impl Translator {
             floor: Duration::ZERO,
             connection: None,
             registered: Vec::new(),
+            positions: Vec::new(),
+            positions_at: Duration::ZERO,
             request_entries: false,
             request_track: false,
         }
@@ -95,6 +103,7 @@ impl Translator {
         self.epoch += 1;
         self.floor = at;
         self.cars.clear();
+        self.positions.clear();
         self.entries.clear();
         self.list = None;
         self.player_laps = None;
@@ -370,7 +379,36 @@ impl Translator {
         Some((&p.bytes, stale))
     }
 
+    /// Sin nueva fuente, solo las fronteras de frescura pueden cambiar la foto.
+    /// Comprobar relojes y velocidades evita construir páginas, coches y nombres.
+    #[cfg(windows)]
+    pub(super) fn needs_refresh(&self, previous: Duration, now: Duration) -> bool {
+        if now < previous {
+            return true;
+        }
+        let expired = |at: Duration, ttl: Duration| {
+            (now.saturating_sub(at) >= ttl) != (previous.saturating_sub(at) >= ttl)
+        };
+        self.pages[..2]
+            .iter()
+            .flatten()
+            .any(|p| p.at >= self.floor && expired(p.at, SHM_TTL))
+            || self
+                .session
+                .as_ref()
+                .is_some_and(|s| expired(s.at, UDP_TTL))
+            || self.player_velocity.quality(previous) != self.player_velocity.quality(now)
+            || self.cars.values().any(|car| {
+                expired(car.update.at, UDP_TTL)
+                    || car.velocity.quality(previous) != car.velocity.quality(now)
+            })
+    }
+
     pub(super) fn observe(&mut self, now: Duration) -> Option<Observation> {
+        #[cfg(test)]
+        {
+            self.observations += 1;
+        }
         let s = self.pages[2].as_ref()?.bytes.clone();
         let graphics = self.page(1, now).map(|(b, stale)| (b.to_vec(), stale));
         let (g, gs) = graphics
@@ -391,10 +429,7 @@ impl Translator {
         };
         let mut cars = Vec::with_capacity(self.cars.len());
         if active || (g.is_empty() && self.session.is_some()) {
-            let indices: Vec<u16> = self.cars.keys().copied().collect();
-            for index in indices {
-                cars.push(self.car(index, now));
-            }
+            cars = self.observed_cars(now);
         }
         if let Some(id) = player_id {
             if !cars.iter().any(|c| c.id == id) {
@@ -431,6 +466,7 @@ impl Translator {
                 }
             }
         }
+        self.coherent_positions(&mut cars, now);
         let state = State {
             source_state: if !active && (!g.is_empty() || self.session.is_none()) {
                 vantare_domain::SourceState::Waiting
@@ -471,6 +507,14 @@ impl Translator {
         })
     }
 
+    fn observed_cars(&mut self, now: Duration) -> Vec<Car> {
+        let indices: Vec<u16> = self.cars.keys().copied().collect();
+        indices
+            .into_iter()
+            .map(|index| self.car(index, now))
+            .collect()
+    }
+
     fn driver(&mut self, name: &str) -> Driver {
         // Tope de identidades recordadas: los nombres vienen de los datagramas,
         // asi que sin cota el mapa crece durante toda la vida del proceso. Al
@@ -488,6 +532,84 @@ impl Translator {
         Driver {
             id,
             name: name.to_owned(),
+        }
+    }
+
+    /// Los datagramas por coche y graphics no forman una transacción de tabla.
+    /// Mientras llega la segunda mitad de un adelantamiento, conservar el último
+    /// orden completo observado; solo el rango contradictorio es estimado.
+    fn coherent_positions(&mut self, cars: &mut [Car], now: Duration) {
+        let mut ordered: Vec<_> = cars.iter().collect();
+        ordered.sort_by_key(|car| car.position.current().copied());
+        let mut positions = HashSet::new();
+        let mut classes = HashMap::new();
+        let coherent = ordered.iter().all(|car| {
+            let Some(position) = car.position.current() else {
+                return true;
+            };
+            if !positions.insert(*position) {
+                return false;
+            }
+            if let (Some(class), Some(rank)) = (&car.class, car.class_position.current()) {
+                let previous = classes.insert(class.id, *rank);
+                if previous.is_some_and(|previous| previous >= *rank) {
+                    return false;
+                }
+            }
+            true
+        });
+        if coherent {
+            if cars.iter().any(|car| car.position.current().is_none()) {
+                return;
+            }
+            self.positions = cars
+                .iter()
+                .filter_map(|car| {
+                    Some((
+                        car.id,
+                        car.class.as_ref().map(|class| class.id),
+                        *car.position.current()?,
+                        car.class_position.current().copied(),
+                    ))
+                })
+                .collect();
+            // Observar otra señal no rejuvenece los rangos UDP recordados.
+            self.positions_at = self
+                .cars
+                .values()
+                .map(|car| car.update.at)
+                .min()
+                .unwrap_or(now);
+            return;
+        }
+        // No heredar de otra parrilla, sesión o fuente caducada. Un coche nuevo
+        // no tiene rango anterior que podamos afirmar sin inventarlo.
+        let same_grid = self.positions.len() == cars.len()
+            && cars.iter().all(|car| {
+                self.positions.iter().any(|(id, class, _, _)| {
+                    *id == car.id && *class == car.class.as_ref().map(|class| class.id)
+                })
+            })
+            && now.saturating_sub(self.positions_at) < UDP_TTL;
+        for car in cars {
+            let previous = same_grid
+                .then(|| self.positions.iter().find(|(id, _, _, _)| *id == car.id))
+                .flatten();
+            if car.position.current().is_some()
+                && car.position.current().copied() != previous.map(|(_, _, rank, _)| *rank)
+            {
+                car.position = previous.map_or(Quality::Unavailable, |(_, _, rank, _)| {
+                    Quality::Estimated(*rank)
+                });
+            }
+            if car.class_position.current().is_some()
+                && car.class_position.current().copied()
+                    != previous.and_then(|(_, _, _, rank)| *rank)
+            {
+                car.class_position = previous
+                    .and_then(|(_, _, _, rank)| *rank)
+                    .map_or(Quality::Unavailable, Quality::Estimated);
+            }
         }
     }
 

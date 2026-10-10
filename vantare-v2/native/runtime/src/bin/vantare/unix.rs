@@ -392,34 +392,50 @@ fn supervise(
 }
 
 fn shutdown(services: &mut [Service], grace: Duration) -> io::Result<()> {
+    shutdown_with_kill(services, grace, std::process::Child::kill)
+}
+
+fn shutdown_with_kill(
+    services: &mut [Service],
+    grace: Duration,
+    mut kill: impl FnMut(&mut super::Child) -> io::Result<()>,
+) -> io::Result<()> {
+    let mut first_error = None;
     for service in services.iter_mut().rev() {
         let Some(child) = service.child.as_mut() else {
             continue;
         };
-        drop(child.stdin.take());
-        let deadline = Instant::now() + grace;
-        let mut exited = child.try_wait()?.is_some();
-        while !exited && Instant::now() < deadline {
-            let remaining = deadline.saturating_duration_since(Instant::now());
-            thread::sleep(remaining.min(CLOSE_POLL));
-            exited = child.try_wait()?.is_some();
-        }
-        if !exited {
-            log(format_args!(
-                "{} no terminó en {grace:?}: se le mata",
-                service.name
-            ));
-            match child.kill() {
-                Ok(()) => {
-                    child.wait()?;
-                }
-                Err(_) if child.try_wait()?.is_some() => {}
-                Err(error) => return Err(error),
+        let result = (|| {
+            drop(child.stdin.take());
+            let deadline = Instant::now() + grace;
+            let mut exited = child.try_wait()?.is_some();
+            while !exited && Instant::now() < deadline {
+                let remaining = deadline.saturating_duration_since(Instant::now());
+                thread::sleep(remaining.min(CLOSE_POLL));
+                exited = child.try_wait()?.is_some();
             }
+            if !exited {
+                log(format_args!(
+                    "{} no terminó en {grace:?}: se le mata",
+                    service.name
+                ));
+                match kill(child) {
+                    Ok(()) => {
+                        child.wait()?;
+                    }
+                    Err(_) if child.try_wait()?.is_some() => {}
+                    Err(error) => return Err(error),
+                }
+            }
+            log(format_args!("{} cerrado", service.name));
+            Ok(())
+        })();
+        if let Err(error) = result {
+            log(format_args!("{} no se pudo cerrar: {error}", service.name));
+            first_error.get_or_insert(error);
         }
-        log(format_args!("{} cerrado", service.name));
     }
-    Ok(())
+    first_error.map_or(Ok(()), Err)
 }
 
 #[cfg(test)]
@@ -625,5 +641,45 @@ mod tests {
                 .expect("estado del hijo")
                 .is_some_and(|status| status.success())
         );
+    }
+
+    #[test]
+    fn shutdown_continues_after_a_kill_error_on_a_still_running_child() {
+        let mut services = [
+            shell(&["-c", "exec sleep 30"], 0),
+            shell(&["-c", "exec sleep 30"], 0),
+        ];
+        for service in &mut services {
+            service.spawn().expect("hijo real");
+        }
+        let mut visited = Vec::new();
+        let failed_pid = services[1].child.as_ref().expect("primero en cierre").id();
+        let result = shutdown_with_kill(&mut services, Duration::ZERO, |child| {
+            visited.push(child.id());
+            if child.id() == failed_pid {
+                Err(io::ErrorKind::PermissionDenied.into())
+            } else {
+                child.kill()
+            }
+        });
+        let other_exited = services[0]
+            .child
+            .as_mut()
+            .expect("segundo hijo")
+            .try_wait()
+            .expect("estado")
+            .is_some();
+        // Limpiar todos los hijos propios incluso si la regresión falla.
+        for service in &mut services {
+            let child = service.child.as_mut().expect("hijo propio");
+            let _killed = child.kill();
+            let _reaped = child.wait();
+        }
+        assert_eq!(
+            result.expect_err("conservar error").kind(),
+            io::ErrorKind::PermissionDenied
+        );
+        assert_eq!(visited.len(), 2, "el error no omite los demás servicios");
+        assert!(other_exited, "el otro servicio fue cerrado y recogido");
     }
 }

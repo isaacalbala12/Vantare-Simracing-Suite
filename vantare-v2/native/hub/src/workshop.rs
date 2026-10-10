@@ -67,6 +67,7 @@ pub struct Workshop {
     saved: Option<Vec<u8>>,
     pub status: String,
     stamp: Option<(SystemTime, u64)>,
+    failed: FailedReload,
     next_poll: Instant,
     next_frame: Instant,
     background: usize,
@@ -78,6 +79,56 @@ pub struct Workshop {
 fn stamp(path: &Path) -> Option<(SystemTime, u64)> {
     let meta = std::fs::metadata(path).ok()?;
     Some((meta.modified().ok()?, meta.len()))
+}
+
+/// Reintentos de lectura ante una escena inválida: una escritura externa
+/// parcial puede completarse enseguida, pero un JSON roto no se relee sin cota.
+const INVALID_SCENE_RETRIES: u32 = 3;
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum Reload {
+    Valid,
+    Invalid,
+    Skipped,
+}
+
+/// Recuerda el último stamp inválido para no releerlo ni repintarlo cada 150 ms.
+#[derive(Default)]
+struct FailedReload {
+    inner: Option<FailedAttempt>,
+}
+
+struct FailedAttempt {
+    stamp: Option<(SystemTime, u64)>,
+    attempts: u32,
+}
+
+impl FailedReload {
+    fn poll(
+        &mut self,
+        modified: Option<(SystemTime, u64)>,
+        reload: impl FnOnce() -> bool,
+    ) -> Reload {
+        if matches!(&self.inner, Some(failed) if failed.stamp == modified && failed.attempts >= INVALID_SCENE_RETRIES)
+        {
+            return Reload::Skipped;
+        }
+        if reload() {
+            self.inner = None;
+            Reload::Valid
+        } else {
+            let attempts = self
+                .inner
+                .as_ref()
+                .filter(|failed| failed.stamp == modified)
+                .map_or(0, |failed| failed.attempts);
+            self.inner = Some(FailedAttempt {
+                stamp: modified,
+                attempts: attempts.saturating_add(1),
+            });
+            Reload::Invalid
+        }
+    }
 }
 
 fn restarts_renderer(previous: (u64, u64), next: (u64, u64)) -> bool {
@@ -462,6 +513,7 @@ impl Workshop {
             saved,
             status: "Sin cambios guardados en esta sesión".into(),
             stamp,
+            failed: FailedReload::default(),
             next_poll: Instant::now(),
             next_frame: Instant::now(),
             background,
@@ -583,6 +635,7 @@ impl Workshop {
         if self.scene.replace(self.scenes[chosen].clone()) {
             self.chosen_scene = chosen;
             self.stamp = stamp(&self.scene.path);
+            self.failed = FailedReload::default();
             self.rebuild(cx);
             if let Err(error) = self.persist() {
                 self.status = error;
@@ -596,11 +649,16 @@ impl Workshop {
             self.next_poll = now + Duration::from_millis(150);
             let modified = stamp(&self.scene.path);
             if modified != self.stamp {
-                if self.scene.replace(self.scene.path.clone()) {
-                    self.stamp = modified;
-                    self.rebuild(cx);
-                } else {
-                    cx.notify();
+                match self
+                    .failed
+                    .poll(modified, || self.scene.replace(self.scene.path.clone()))
+                {
+                    Reload::Valid => {
+                        self.stamp = modified;
+                        self.rebuild(cx);
+                    }
+                    Reload::Invalid => cx.notify(),
+                    Reload::Skipped => {}
                 }
             }
         }
@@ -1419,5 +1477,49 @@ mod tests {
         );
 
         std::fs::remove_dir(dir).expect("limpiar");
+    }
+
+    #[test]
+    fn broken_scene_stops_rereading_after_bounded_retries_and_recovers_on_change() {
+        use std::cell::Cell;
+        let dir =
+            std::env::temp_dir().join(format!("vantare-workshop-invalid-{}", std::process::id()));
+        std::fs::create_dir(&dir).expect("directorio propio");
+        let scene_path = dir.join("external.snapshot.json");
+        let valid =
+            std::fs::read(Path::new(scene::FIXTURES).join("lmu47.snapshot.json")).expect("fixture");
+        std::fs::write(&scene_path, &valid).expect("escena válida");
+        let mut scene = Scene::open(scene_path.clone()).expect("abrir");
+        let frames = scene.len();
+        std::fs::write(&scene_path, "{").expect("JSON roto externo");
+        let stamp = |path: &Path| {
+            let meta = std::fs::metadata(path).ok()?;
+            Some((meta.modified().ok()?, meta.len()))
+        };
+        let mut failed = FailedReload::default();
+        let reads = Cell::new(0u32);
+        let mut outcomes = Vec::new();
+        for _ in 0..6 {
+            let modified = stamp(&scene_path);
+            outcomes.push(failed.poll(modified, || {
+                reads.set(reads.get() + 1);
+                scene.replace(scene_path.clone())
+            }));
+        }
+        // Reintento acotado ante escrituras parciales y después silencio.
+        assert_eq!(reads.get(), 3);
+        assert!(outcomes[..3].iter().all(|o| matches!(o, Reload::Invalid)));
+        assert!(outcomes[3..].iter().all(|o| matches!(o, Reload::Skipped)));
+        // La escena válida anterior sigue intacta.
+        assert_eq!(scene.len(), frames);
+        // Al cambiar el stamp (el editor termina de escribir) se reintenta.
+        std::fs::write(&scene_path, &valid).expect("escena reparada");
+        let modified = stamp(&scene_path);
+        assert!(matches!(
+            failed.poll(modified, || scene.replace(scene_path.clone())),
+            Reload::Valid
+        ));
+        assert_eq!(scene.len(), frames);
+        std::fs::remove_dir_all(dir).expect("limpiar");
     }
 }

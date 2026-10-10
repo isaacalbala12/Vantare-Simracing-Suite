@@ -192,7 +192,7 @@ fn short_name(name: &str) -> String {
     let words: Vec<_> = cleaned.split_whitespace().collect();
     match words.as_slice() {
         [] => PLACEHOLDER.into(),
-        [_] => name.into(),
+        [single] => (*single).into(),
         [first, rest @ ..] => format!(
             "{}. {}",
             first.chars().next().unwrap_or('—'),
@@ -310,6 +310,11 @@ mod tests {
         ] {
             assert_eq!(class_accent(class), expected);
         }
+    }
+
+    #[test]
+    fn regression_1549_single_word_drops_the_parenthetical_suffix() {
+        assert_eq!(short_name("Speedy(PRO)"), "Speedy");
     }
 
     #[test]

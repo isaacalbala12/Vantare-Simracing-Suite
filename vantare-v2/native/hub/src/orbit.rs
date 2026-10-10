@@ -563,6 +563,12 @@ pub fn eyebrow(content: impl Into<SharedString>, cx: &gpui::App) -> Div {
     text(content, 12.0, 600, ink_3(cx), cx)
 }
 
+/// Ruta de la barra superior: `None` cuando no hay nada que mostrar.
+pub fn trail_eyebrow(trail: &str) -> Option<&str> {
+    let trail = trail.trim();
+    (!trail.is_empty()).then_some(trail)
+}
+
 /// Columna de contexto: título con versión y lista de secciones.
 pub fn column(title: &str, version: &str, cx: &gpui::App) -> Div {
     column_with_collapse(
@@ -625,7 +631,7 @@ pub fn topbar(trail: &str, title: &str, action: impl IntoElement, cx: &gpui::App
 /// Acciones opcionales de la sección junto al título y los controles comunes.
 /// La sección conserva su estado, eventos y persistencia; Orbit solo compone.
 pub fn topbar_with_actions(
-    _trail: &str,
+    trail: &str,
     title: &str,
     section_actions: Option<gpui::AnyElement>,
     common_actions: impl IntoElement,
@@ -633,6 +639,7 @@ pub fn topbar_with_actions(
     cx: &gpui::App,
 ) -> Div {
     let wrap_actions = compact && section_actions.is_some();
+    let trail = trail_eyebrow(trail);
     div()
         .h(px(cx
             .try_global::<design::Tokens>()
@@ -651,9 +658,12 @@ pub fn topbar_with_actions(
         .child(
             div()
                 .flex()
+                .flex_col()
+                .justify_center()
                 .when(compact, gpui::Styled::flex_none)
-                .items_baseline()
-                .gap(px(10.0))
+                .when_some(trail, |column, trail| {
+                    column.child(eyebrow(trail.to_owned(), cx))
+                })
                 .child(
                     text(title.to_owned(), 16.0, 650, ink(cx), cx)
                         .font_weight(face_weight(650, cx))
@@ -1035,5 +1045,13 @@ mod shell_tests {
         ] {
             assert!((super::column_width(viewport) - width).abs() < f32::EPSILON);
         }
+    }
+
+    #[test]
+    fn topbar_trail_is_shown_and_blank_trails_are_ignored() {
+        assert_eq!(super::trail_eyebrow("KIT ORBIT"), Some("KIT ORBIT"));
+        assert_eq!(super::trail_eyebrow("  Lanzar  "), Some("Lanzar"));
+        assert_eq!(super::trail_eyebrow(""), None);
+        assert_eq!(super::trail_eyebrow("   "), None);
     }
 }

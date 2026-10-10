@@ -1,7 +1,7 @@
 //! Proyección pura de `TrackWeatherFunctional`. Las ausencias son guiones;
 //! las unidades y los puntos cardinales pertenecen al formateador común.
 
-use crate::format::{self, Language, Preferences};
+use crate::format::{self, Language, Preferences, Units};
 use crate::{Capability, Quality, Snapshot, SourceState};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -76,20 +76,35 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
             Language::En => ["TRACK", "AIR", "WIND", "RAIN", "WET", "DRY", "PRESS"],
         };
         let [track, air, wind, direction, rain, wetness, pressure] = current;
-        let mut wind_text = format::speed(wind, prefs);
+        // El productivo usa Math.round: se prerredondea en la unidad visible
+        // para que el formato al par no deje 2,5 km/h en 2 (ver pedals).
+        let mut wind_text = format::speed(
+            wind.map(|v| {
+                let factor = match prefs.units {
+                    Units::Metric => 3.6,
+                    Units::Imperial => 2.236_936_292_054_4,
+                };
+                (v * factor).round() / factor
+            }),
+            prefs,
+        );
         if wind.is_some() && direction.is_some() {
             wind_text.push(' ');
             wind_text.push_str(&format::wind_direction(direction, prefs));
         }
         // El productivo separa " %" en lluvia/humedad y omite SECO sin humedad.
-        let percent = |value| format::percent(value).replace('%', " %");
+        // Math.round del producto redondea los empates hacia arriba, como en
+        // pedales y danos: sin prerredondeo, 0,125 daria 12 % en vez de 13 %.
+        let percent = |value: Option<f64>| {
+            format::percent(value.map(|v| (v * 100.0).round() / 100.0)).replace('%', " %")
+        };
         let values = [
             format::temperature(track, prefs),
             format::temperature(air, prefs),
             wind_text,
             percent(rain),
             percent(wetness),
-            format::percent(wetness.map(|v| 1.0 - v)),
+            format::percent(wetness.map(|v| ((1.0 - v) * 100.0).round() / 100.0)),
             format::pressure(pressure),
         ];
         metrics = labels
@@ -271,5 +286,48 @@ mod tests {
                 Some("1013 hPa")
             );
         }
+    }
+
+    #[test]
+    fn regression_1556_half_wind_rounds_up_like_pedals() {
+        let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = crate::SourceState::Live;
+        snapshot.state.capabilities.weather = Capability::Fresh;
+        snapshot.state.session.weather = Weather {
+            air_temperature_k: Quality::Reliable(295.15),
+            wind_speed_mps: Quality::Reliable(2.5 / 3.6),
+            wind_direction_rad: Quality::Reliable(0.0),
+            rain: Quality::Reliable(0.0),
+            track_wetness: Quality::Reliable(0.0),
+            pressure_pa: Quality::Reliable(101_325.0),
+            ..Weather::default()
+        };
+        let vm = project(&snapshot, Preferences::default());
+        assert_eq!(vm.status, Status::Ready);
+        assert_eq!(vm.metrics[2].value, "3 km/h N");
+    }
+
+    #[test]
+    fn regression_1549_half_percent_rounds_up_like_other_projections() {
+        let mut snapshot = Snapshot::default();
+        snapshot.state.source_state = crate::SourceState::Live;
+        snapshot.state.capabilities.weather = Capability::Fresh;
+        snapshot.state.session.weather = Weather {
+            air_temperature_k: Quality::Reliable(295.15),
+            wind_direction_rad: Quality::Reliable(0.0),
+            rain: Quality::Reliable(0.125),
+            track_wetness: Quality::Reliable(0.875),
+            pressure_pa: Quality::Reliable(101_325.0),
+            ..Weather::default()
+        };
+        let vm = project(&snapshot, Preferences::default());
+        assert_eq!(vm.metrics[3].value, "13 %");
+        assert_eq!(
+            vm.metrics
+                .iter()
+                .find(|m| m.label == "SECO")
+                .map(|m| m.value.as_str()),
+            Some("13%")
+        );
     }
 }

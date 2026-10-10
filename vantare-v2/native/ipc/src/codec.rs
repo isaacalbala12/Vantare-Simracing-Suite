@@ -405,6 +405,318 @@ pub(crate) mod tests {
         }
     }
 
+    /// Valores distintos para cada campo y calidad rotada: `(n + shift) % kinds`
+    /// elige Reliable, Estimated, Stale y, con `kinds == 4`, Unavailable. Los
+    /// literales no usan `..Default`: un campo nuevo del modelo no compila
+    /// hasta entrar aquí. Intercambiar dos campos del mismo tipo en el DTO
+    /// cambia el valor o la calidad y rompe la ida y vuelta (#1537).
+    pub(crate) struct Distinct {
+        n: u32,
+        shift: u32,
+        kinds: u32,
+    }
+
+    impl Distinct {
+        pub(crate) fn new(base: u32, shift: u32, kinds: u32) -> Self {
+            Self {
+                n: base,
+                shift,
+                kinds,
+            }
+        }
+        fn q<T>(&mut self, value: impl FnOnce(u32) -> T) -> Quality<T> {
+            self.n += 1;
+            match (self.n + self.shift) % self.kinds {
+                0 => Quality::Reliable(value(self.n)),
+                1 => Quality::Estimated(value(self.n)),
+                2 => Quality::Stale(value(self.n)),
+                _ => Quality::Unavailable,
+            }
+        }
+        fn f(&mut self) -> Quality<f64> {
+            self.q(|n| f64::from(n) + 0.123_456_789)
+        }
+        fn u(&mut self) -> Quality<u32> {
+            self.q(|n| n)
+        }
+        fn byte(&mut self) -> Quality<u8> {
+            self.q(|n| (n % 251) as u8)
+        }
+        fn yes(&mut self) -> Quality<bool> {
+            self.q(|n| n % 2 == 0)
+        }
+        fn gap(&mut self) -> Quality<Gap> {
+            self.q(|n| {
+                if n % 2 == 0 {
+                    Gap::Time {
+                        seconds: f64::from(n) + 0.25,
+                    }
+                } else {
+                    Gap::Laps { count: n }
+                }
+            })
+        }
+        fn text(&mut self, prefix: &str) -> String {
+            self.n += 1;
+            format!("{prefix}-{}", self.n)
+        }
+
+        fn car(&mut self, id: u32) -> Car {
+            Car {
+                id: CarId(id),
+                number: self.text("número"),
+                vehicle: self.text("vehículo"),
+                driver: Driver {
+                    id: DriverId(self.n + 1000),
+                    name: self.text("piloto"),
+                },
+                class: Some(Class {
+                    id: ClassId(self.n),
+                    name: self.text("clase"),
+                }),
+                position: self.u(),
+                class_position: self.u(),
+                laps: self.u(),
+                last_lap_s: self.f(),
+                best_lap_s: self.f(),
+                estimated_lap_s: self.f(),
+                last_sectors_s: vec![self.f(), self.f(), self.f()],
+                gap_leader: self.gap(),
+                gap_ahead: self.gap(),
+                gap_class_leader: self.gap(),
+                gap_class_ahead: self.gap(),
+                relative_s: self.f(),
+                relative_laps: self.q(|n| -i32::try_from(n).expect("contador pequeño")),
+                lap_distance_m: self.f(),
+                lap_elapsed_s: self.f(),
+                current_sector: self.byte(),
+                in_pits: self.yes(),
+                pose: self.q(|n| Pose {
+                    x_m: f64::from(n),
+                    y_m: -f64::from(n),
+                    yaw_rad: f64::from(n) / 100.0,
+                }),
+                velocity_mps: self.q(|n| [f64::from(n), -f64::from(n) - 0.5]),
+                pending_penalties: self.u(),
+                grid_position: self.u(),
+                pit_stops: self.u(),
+                tyre_compound: self.q(|n| {
+                    [
+                        TyreCompound::Soft,
+                        TyreCompound::Medium,
+                        TyreCompound::Hard,
+                        TyreCompound::Wet,
+                    ][n as usize % 4]
+                }),
+                best_sectors_s: vec![self.f(), self.f(), self.f()],
+                current_sectors_s: vec![self.f(), self.f()],
+                driver_rating: self.q(|n| {
+                    [
+                        DriverRating::Bronze,
+                        DriverRating::Silver,
+                        DriverRating::Gold,
+                        DriverRating::Platinum,
+                    ][n as usize % 4]
+                }),
+                safety_rating: self.f(),
+                relative_trend_s_per_lap: self.f(),
+            }
+        }
+
+        fn player(&mut self, car: u32) -> Player {
+            let mut history = [None; 10];
+            for slot in &mut history {
+                self.n += 1;
+                *slot = Some((self.n, f64::from(self.n) + 0.5));
+            }
+            Player {
+                car: CarId(car),
+                telemetry: Telemetry {
+                    throttle: self.f(),
+                    brake: self.f(),
+                    clutch: self.f(),
+                    steering: self.f(),
+                    gear: self.q(|n| -((n % 100) as i8)),
+                    speed_mps: self.f(),
+                    engine_speed_rad_s: self.f(),
+                },
+                fuel: Fuel {
+                    level_l: self.f(),
+                    capacity_l: self.f(),
+                    per_lap_l: self.f(),
+                    laps_left: self.f(),
+                    history,
+                    energy: self.f(),
+                    energy_per_lap: self.f(),
+                    lap_projection_l: self.f(),
+                },
+                damage: Damage {
+                    aero: self.f(),
+                    body: self.f(),
+                    suspension: self.f(),
+                    tyre_wear: [self.f(), self.f(), self.f(), self.f()],
+                },
+                delta_best_s: self.f(),
+                // Booleanos consecutivos: calidades distintas entre sí.
+                pit_limiter_active: self.yes(),
+                pit_stop_stopped: self.yes(),
+                lap_invalid: self.yes(),
+                pit_loss_s: self.f(),
+                pit_service: PitService {
+                    refuel_target_l: self.f(),
+                    refuel_added_l: self.f(),
+                    remaining_s: self.f(),
+                    tyres: self.byte(),
+                },
+                stint: Stint {
+                    laps: self.u(),
+                    elapsed_s: self.f(),
+                },
+                delta_optimal_s: self.f(),
+                delta_leader_s: self.f(),
+            }
+        }
+
+        pub(crate) fn snapshot(&mut self) -> Snapshot {
+            let shift = self.shift;
+            let capabilities = capabilities(shift);
+            let session = Session {
+                id: SessionId(u64::from(shift) + 7),
+                kind: self.q(|n| SessionKind::Other(format!("tipo-{n}"))),
+                state: self.q(|n| {
+                    [
+                        SessionState::Preparing,
+                        SessionState::Running,
+                        SessionState::Interrupted,
+                        SessionState::Finished,
+                    ][n as usize % 4]
+                }),
+                elapsed_s: self.f(),
+                remaining_s: self.f(),
+                track_name: self.q(|n| format!("pista-{n}")),
+                laps_remaining: self.u(),
+                laps_total: self.u(),
+                track_length_m: self.f(),
+                weather: Weather {
+                    air_temperature_k: self.f(),
+                    track_temperature_k: self.f(),
+                    wind_speed_mps: self.f(),
+                    wind_direction_rad: self.f(),
+                    rain: self.f(),
+                    track_wetness: self.f(),
+                    pressure_pa: self.f(),
+                },
+            };
+            let flags = self.q(|n| {
+                vec![
+                    Flag {
+                        kind: FlagKind::Blue,
+                        scope: FlagScope::Car(CarId(n)),
+                    },
+                    Flag {
+                        kind: FlagKind::Other(format!("bandera-{n}")),
+                        scope: FlagScope::Sector((n % 3) as u8),
+                    },
+                    Flag {
+                        kind: FlagKind::Checkered,
+                        scope: FlagScope::Session,
+                    },
+                ]
+            });
+            let cars = vec![self.car(11), self.car(12), self.car(13)];
+            let player = Some(self.player(12));
+            Snapshot {
+                epoch: u64::from(shift) + 3,
+                sequence: u64::from(self.n),
+                origin: Origin {
+                    source: Source {
+                        simulator: ["lmu", "acc"][shift as usize % 2],
+                        kind: [SourceKind::Live, SourceKind::Replay][shift as usize % 2],
+                    },
+                    source_time: Some(Duration::new(u64::from(shift), 5)),
+                    received_at: Duration::from_micros(u64::from(shift) + 9),
+                },
+                state: State {
+                    source_state: [
+                        vantare_domain::SourceState::Live,
+                        vantare_domain::SourceState::Paused,
+                        vantare_domain::SourceState::Stale,
+                        vantare_domain::SourceState::Lost,
+                    ][shift as usize % 4],
+                    capabilities,
+                    session,
+                    flags,
+                    cars,
+                    player,
+                },
+            }
+        }
+    }
+
+    /// Cada par de capacidades difiere en la pasada par o en la impar.
+    fn capabilities(shift: u32) -> Capabilities {
+        let mut index = 0;
+        let mut next = || {
+            index += 1;
+            let bits = if shift.is_multiple_of(2) {
+                index
+            } else {
+                index >> 2
+            };
+            [
+                Capability::Unsupported,
+                Capability::Supported,
+                Capability::WithData,
+                Capability::Fresh,
+            ][bits % 4]
+        };
+        Capabilities {
+            session_clock: next(),
+            positions: next(),
+            lap_times: next(),
+            gaps: next(),
+            pit_status: next(),
+            flags: next(),
+            spatial: next(),
+            driver_inputs: next(),
+            powertrain: next(),
+            fuel: next(),
+            delta: next(),
+            sectors: next(),
+            lap_progress: next(),
+            weather: next(),
+            damage: next(),
+        }
+    }
+
+    #[test]
+    fn every_field_keeps_its_own_value_and_quality_through_the_wire() {
+        for shift in 0..4 {
+            let original = Distinct::new(0, shift, 4).snapshot();
+            assert_eq!(round_trip(&original), original, "pasada {shift}");
+        }
+    }
+
+    /// 104 coches (máximo de LMU/ACC) con todas las señales y nombres largos:
+    /// el marco debe caber holgado en `MAX_MESSAGE` (#1537).
+    #[test]
+    fn a_full_104_car_photo_fits_the_frame_with_margin() {
+        let mut distinct = Distinct::new(0, 0, 3);
+        let mut snapshot = distinct.snapshot();
+        snapshot.state.cars = (1..=104).map(|id| distinct.car(id)).collect();
+        for car in &mut snapshot.state.cars {
+            car.driver.name = "Ñandú Pérez-Álvarez de la Fuente \"Rápido\"".into();
+            car.vehicle = "Oreca 07 Gibson LMP2 (Pro-Am) — #104".into();
+        }
+        let len = frame(&Message::Snapshot(SnapshotDto::from(&snapshot))).len();
+        eprintln!("foto de 104 coches: {len} bytes");
+        assert!(
+            len < MAX_MESSAGE / 2,
+            "{len} bytes: menos del doble de margen"
+        );
+        assert_eq!(round_trip(&snapshot), snapshot);
+    }
+
     fn frame(message: &Message) -> Vec<u8> {
         let mut bytes = Vec::new();
         write_message(&mut bytes, message).unwrap();

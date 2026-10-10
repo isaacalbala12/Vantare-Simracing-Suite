@@ -7,6 +7,7 @@ use std::time::Duration;
 use vantare_domain::{Adapter, AdapterError, Observation, SourceKind};
 
 use super::{
+    protocol::{self, Message},
     shm::{Page, config_path},
     translate::{PAGE_SIZES, Translator},
     udp,
@@ -116,20 +117,52 @@ impl Acc {
         Ok(())
     }
 
-    fn receive(&mut self, now: Duration) -> io::Result<bool> {
+    // El segundo valor pide revisar el estado sin presentar el rechazo como muestra.
+    fn receive(&mut self, now: Duration) -> io::Result<(bool, bool)> {
         let Some(socket) = &self.socket else {
-            return Ok(false);
+            return Ok((false, false));
         };
         let mut changed = false;
+        let mut rejected = 0;
+        let mut registration_rejected = false;
         for _ in 0..256 {
             match socket.recv(&mut self.buffer) {
                 Ok(n) => {
-                    self.last_udp = Some(now);
-                    changed |= self.translator.udp(&self.buffer[..n], now)?;
+                    let connection = self.translator.connection;
+                    match self.translator.udp(&self.buffer[..n], now) {
+                        Ok(received) => {
+                            self.last_udp = Some(now);
+                            changed |= received;
+                            // Otro registro retira velocidades aunque no sea una muestra.
+                            changed |= connection != self.translator.connection;
+                            if connection != self.translator.connection {
+                                self.next_register = now + Duration::from_secs(2);
+                            }
+                        }
+                        Err(error) if error.kind() == io::ErrorKind::InvalidData => {
+                            if matches!(
+                                protocol::parse(&self.buffer[..n]),
+                                Ok(Message::Registration { success: false, .. })
+                            ) {
+                                registration_rejected = true;
+                                // Causa sanitizada: nunca imprimir el mensaje del servidor.
+                                self.next_register = now + Duration::from_secs(10);
+                                eprintln!(
+                                    "broadcasting ACC: registro UDP ACC rechazado; revisa connectionPassword y la configuración broadcasting del juego; reintento en 10 s"
+                                );
+                            } else {
+                                rejected += 1;
+                            }
+                        }
+                        Err(error) => return Err(error),
+                    }
                 }
                 Err(e) if e.kind() == io::ErrorKind::WouldBlock => break,
                 Err(e) => return Err(e),
             }
+        }
+        if rejected > 0 {
+            eprintln!("broadcasting ACC: {rejected} datagramas inválidos descartados");
         }
         if now >= self.next_register {
             if self.translator.connection.is_none() {
@@ -141,7 +174,7 @@ impl Acc {
                 .is_none_or(|at| now.saturating_sub(at) >= Duration::from_secs(2))
             {
                 self.disconnect();
-                return Ok(changed);
+                return Ok((changed, rejected > 0 || registration_rejected));
             }
         }
         if let Some(id) = self.translator.connection {
@@ -155,7 +188,7 @@ impl Acc {
                 self.next_track = now + Duration::from_secs(1);
             }
         }
-        Ok(changed)
+        Ok((changed, rejected > 0 || registration_rejected))
     }
 
     fn disconnect(&mut self) {
@@ -188,33 +221,55 @@ impl Adapter for Acc {
             self.disconnect();
         }
         let mut changed = false;
+        let mut rejected_page = false;
         // static primero en vivo: no publicar una página sin versión inicializada.
         for i in [2, 0, 1] {
             if let Some(page) = &self.pages[i] {
                 match page.stable(i != 2) {
                     Ok(bytes) => {
-                        changed |= self
-                            .translator
-                            .shm(
-                                u8::try_from(i).map_err(|_| AdapterError::Disconnected)?,
-                                bytes,
-                                now,
-                            )
-                            .map_err(|_| {
-                                AdapterError::Rejected("página ACC sin layout admitido".into())
-                            })?;
+                        if let Ok(updated) = self.translator.shm(
+                            u8::try_from(i).map_err(|_| AdapterError::Disconnected)?,
+                            bytes,
+                            now,
+                        ) {
+                            changed |= updated;
+                        } else {
+                            rejected_page = true;
+                            break; // Static desconocida: no interpretar physics/graphics.
+                        }
                     }
                     Err(e) if e.kind() == io::ErrorKind::WouldBlock => {}
                     Err(_) => self.pages[i] = None,
                 }
             }
         }
-        match self.receive(now) {
-            Ok(received) => changed |= received,
+        let receive_needs_refresh = match self.receive(now) {
+            Ok((received, rejected)) => {
+                changed |= received;
+                // Un ACK negativo puede retirar velocidades antes de devolver
+                // InvalidData. Reconstruir conserva esa retirada sin desconectar.
+                rejected
+            }
             Err(error) => {
                 eprintln!("broadcasting ACC: {error}; reconectando");
                 self.disconnect(); // SHM sigue operativa y UDP envejece por señal.
+                true // Puede haber cambios aceptados antes del error.
             }
+        };
+        if rejected_page {
+            self.latest = None; // La recuperación debe publicar también UDP recibido aquí.
+            return Err(AdapterError::Rejected(
+                "página ACC sin layout admitido".into(),
+            ));
+        }
+        if !changed
+            && !receive_needs_refresh
+            && self
+                .latest
+                .as_ref()
+                .is_some_and(|old| !self.translator.needs_refresh(old.origin.received_at, now))
+        {
+            return Ok(None);
         }
         let Some(observation) = self.translator.observe(now) else {
             return Err(AdapterError::Disconnected);
@@ -228,6 +283,11 @@ impl Adapter for Acc {
             self.latest = Some(observation.clone());
             Ok(Some(observation))
         } else {
+            // Se cruzó una caducidad sin efecto visible (p. ej. una fuente no
+            // usada). Confirmarla también evita reconstruir en cada poll futuro.
+            if let Some(latest) = &mut self.latest {
+                latest.origin.received_at = now;
+            }
             Ok(None)
         }
     }

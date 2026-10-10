@@ -1,5 +1,227 @@
 # Handoff vivo — Telemetry Core
 
+## #1536 · destino real de accesos directos en CI Windows (2026-10-10)
+
+El check obligatorio de b6b778c falla en el test .lnk real: COM devuelve
+runneradmin mientras el temporal usa RUNNER~1. Ambos nombres apuntan al
+mismo fichero. d7c6cd175ebcfdca392afc06747a29b40d3e44a3 exige un único destino y compara ambas rutas
+canonicalizadas en actual_lnk_is_read_without_modification_or_execution.
+Mantiene lectura COM real, existencia del ejecutable concreto, bytes del
+enlace intactos, marcador ausente, proceso no ejecutado, discovery y rechazo
+UNC. No se permiten otros destinos ni se omite ningún caso. Producción intacta.
+
+Árbol native 7d45bae6c85412bdceb963d58f325b805e151737; check/fmt/Clippy -D warnings, Nextest 1526/1526
+(7 skips heredados) y lifecycle 18/18 repetidos PASS por cola en Windows.
+Recovery/status_process sin flake ni reintentos; logs windows-lnk-*.log.
+Adaptadores/Core, domain/IPC/UI, corpus y goldens idénticos a telemetría
+25/25 (0 skips) de d3ff5919; no se repite por cambio sólo del test Launcher.
+Auditoría R3: 22 archivos idénticos a origen y 17 tests nuevos preservados.
+La nueva CI verificará los gates Windows y los arreglos Linux anteriores.
+
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557,
+sin merge, #1531 fuera. FIN tras los dos checks obligatorios PASS con estado
+de cada check. GitGuardian conocido no bloqueante, pendiente de Isaac.
+
+## #1536 · fixtures de captura portables del PR #1557 (2026-10-10)
+
+La CI Linux de b6b778c supera fmt/check/Clippy y llega a Nextest: falla
+launcher_showcase_scenes_use_isolated_valid_profiles por C:/QA/vantare-hub.exe.
+df215d69eb94158b8fdc1ab1542a299b016a7812 adapta únicamente las rutas C:/QA/ de las dos fixtures visuales
+del Launcher a /QA/ al cargar capturas fuera de Windows. No modifica JSON,
+validador de producción, descubrimiento, lanzamientos ni aserciones/tests.
+Windows conserva exactamente sus rutas. Las otras escenas Inicio que usan
+la misma fixture quedan cubiertas por la corrección y sus tests existentes.
+Árbol native 20259fe6e9c4ca25435992a00aa92a950bc23116; check/fmt/Clippy -D warnings, Nextest 1526/1526
+(7 skips heredados) y lifecycle 18/18 repetidos PASS por cola en Windows.
+Recovery/status_process sin flake ni reintentos. Logs linux-demo-*.log.
+Adaptadores/Core, domain/IPC/UI, corpus y goldens siguen idénticos al PASS
+telemetría 25/25 (0 skips) de d3ff5919; no se repite por cambio exclusivo Hub.
+Auditoría R3: 22 archivos idénticos a origen y 17 tests nuevos preservados.
+Linux pendiente de la CI de esta revisión; no afirmar que sus tests pasan.
+
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557,
+sin merge, #1531 fuera. FIN tras los dos checks obligatorios PASS con estado
+de cada check. GitGuardian conocido no bloqueante, pendiente de Isaac.
+
+## #1536 · corrección Clippy Unix del PR #1557 (2026-10-10)
+
+La nueva CI Linux superó cargo check y detectó redundant_closure_for_method_calls
+en el cierre Unix. d340285eed8d49012f473b388ce6dfb4ccbd0770 sustituye sólo la closure child.kill()
+por std::process::Child::kill; lógica y tests de cierre intactos, sin allows.
+Árbol native 9c0dd5b107dc8444052ac7c95b24286c41da130e; check/fmt/Clippy Windows PASS por cola.
+La compilación y ejecución del backend Unix se acreditarán en la nueva CI.
+Nextest 1526 y lifecycle 18 Windows del código 38c35eca permanecen válidos:
+este cambio es exclusivo del backend Unix. Adaptadores/Core, domain/IPC/UI,
+corpus y goldens siguen idénticos al PASS de telemetría 25/25 (0 skips) d3ff5919.
+Auditoría R3: 22 archivos y 17 tests nuevos conservados; logs linux-lint-*.log.
+
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557
+abierto, sin merge, #1531 fuera. FIN tras Validate promotion path y Validate
+Vantare blocking gates PASS; registrar todos los estados. GitGuardian conocido
+no bloqueante y pendiente de Isaac. Estado vigente de CI consultable en el PR.
+
+## #1536 · corrección de compilación Linux del PR #1557 (2026-10-10)
+
+La CI sobre b386b522 detectó E0433 en engineer/tests/recovery.rs: Duration
+estaba importado sólo bajo cfg(windows), aunque photo() es un helper compartido.
+Corrección 38c35eca4babf12cef46d4ec094c63da59354eeb: se retira únicamente esa guarda del import;
+aserciones y guardas de fixtures/tests DPAPI intactas. Árbol native 6c5bdebbc2863d717343c87e3ea6b50a5d54e291.
+Check/fmt/Clippy -D warnings PASS por cola; Nextest 1526/1526 (7 skips
+heredados) y lifecycle 18/18 repetidos PASS, recovery/status_process sin flake.
+Telemetría 25/25 (0 skips) acreditada en d3ff5919; runtime/domain/IPC/UI,
+corpus y goldens siguen byte a byte idénticos tras esta corrección de import.
+Linux pendiente de la CI de esta nueva revisión; logs linux-import-*.log.
+
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557,
+sin merge; #1531 fuera. Según Isaac, sólo Validate promotion path y Validate
+Vantare blocking gates son obligatorios para FIN. GitGuardian es el falso
+positivo histórico de #1550, no bloqueante, que clasificará Isaac. El estado
+vigente de cada check se consulta en el PR; buzón/informe conservan resultados.
+
+## #1536 · sincronización con nightly para PR (2026-10-10)
+
+Las tres rondas y la auditoría de telemetría están integradas en
+vantareapp/isa-1536-arreglos-revision. Tras los cuatro merges --no-ff de R3
+(#1556/#1554/#1555/#1553), se fusionó origin/nightly por merge normal
+185404a6c3696c716af6e4b886c818772578a0e7, con segundo padre
+f49d71f4f1ab9d1a424d2bba18895ddcdf87b601, squash publicado de #1550.
+Los 108 conflictos de historial se resolvieron conservando nuestro contenido,
+según instrucción de Isaac. Tras ello se recuperó el cierre diferido headless de #1550 en tres casos del Hub, sin cambiar aserciones, para evitar bloquear Calloop/Linux; ambos archivos de tests quedan idénticos a nightly.
+La auditoría confirma los 22 archivos y los 17 tests nuevos de R3 intactos;
+corpus/goldens y archivos reservados a #1531 no cambian por esta sincronización.
+
+El gate de integridad detectó diez pins pendientes de la entrega revisada
+6094472e (#1551/#1552). El manifiesto registra sus SHA-256 actuales, los
+anteriores y la procedencia; conserva source_sha256 y la migración #1530.
+Verificador, tests, corpus fuente y baselines históricos intactos: 456/456
+huellas y 31 tests de tooling PASS. Gates nativos tras nightly: fmt PASS; Clippy -D warnings PASS; Nextest 1526/1526 (7 skips heredados de la suite general); lifecycle 18/18; telemetría 25/25 (0 skips). Recovery/status_process sin fallos ni reintentos. Fmt, Clippy y Nextest se repitieron tras recuperar el harness headless. Código/harness probado d3ff5919e3e819b92ec563f90364eabbb076439d; árbol native cbc10c77dca49a6122e6cdc4798dd4aea8271ab3.
+
+Canal actual: rama de issue publicada; PR draft a nightly https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557. El estado vigente de CI se consulta en los checks del PR; no fusionar. Autorizados push y PR;
+esperar CI y dejar el PR abierto sin fusionarlo. #1531 sigue aparte hasta su
+revisión. Buzón C:/tmp/buzon/integracion-r2.md; informe y logs en
+C:/tmp/review-full/. Sin delegación, release ni QA visual nueva; se respeta
+pantalla-ocupada. Las entradas siguientes conservan el historial anterior.
+
+## #1536 · ronda 3 integrada localmente (2026-10-10)
+
+Cuatro merges --no-ff en orden #1556/#1554/#1555/#1553 sobre a410cb46, sin conflictos; 4/4 checks por cola PASS. Código integrado 42a14e166e3eb30f87365693f6145de19fac6d65; árbol native 3cba75c6574625a7435bd8906261a8b2aaa44f80. Gates finales por cola: fmt y Clippy -D warnings PASS; Nextest 1526/1526 (7 skips heredados del perfil), lifecycle 18/18 y telemetría 25/25 (0 skips). Engineer recovery/status_process pasa sin fallos ni reintentos. 22 archivos nativos idénticos a las ramas aceptadas, 17 tests nuevos conservados; corpus/goldens y archivos excluidos #1531 intactos.
+
+#1554: rechazo de registro ACC con aviso sanitizado y backoff de 10 s, rechazo de --pipe repetido y conservación de la marca de sesión durante Paused; #1556: viento half-up.
+
+Rama vantareapp/isa-1536-arreglos-revision; tracker #1536 abierto en Vantare/In Progress, cuatro issues R3 abiertas en Vantare/In Review. Evidencia C:/tmp/review-full/r3-*.log, merges-r3.tsv y tests-preservados-r3.json; buzón C:/tmp/buzon/integracion-r2.md. Siguiente: esperar la revisión de #1531 antes de integrarlo; gates e integración R3 cerrados localmente. Sin delegación, push, PR, nightly ni release; #1550 intacto, pantalla-ocupada respetada. Windows es la plataforma ejecutada; sin QA visual, sesiones físicas ni CI remoto. Las entradas siguientes conservan el historial anterior.
+
+## #1554 · correcciones runtime R3 validadas localmente (2026-10-10)
+
+Rama `vantareapp/isa-1554-runtime-r3`, worktree `C:/tmp/vw3-1554`, base exacta
+`a410cb461c3606ae1992c1c819e08b8c87720afc`, limpia al entrar. Código validado:
+`2a6a6ed68b6ce5eab6aac1d449c29d531778f5eb`. Issue abierta, area:telemetria-core,
+GitHub Project Vantare; entrega al orquestador para revisión, sin integración.
+
+- 09#1: `3df3bc7f`, registro ACC rechazado separado de datagramas corruptos;
+  aviso sanitizado que indica revisar broadcasting/connectionPassword y espera
+  de 10 s. Conserva socket y retirada de velocidades, admite ACK posterior y
+  restaura plazo normal al recuperar conexión. No imprime texto del servidor.
+- 10#1: `f7db5708`, rechaza `--pipe` repetido antes de cablear consumidores;
+  validación común anterior a las ramas Windows/Unix, con o sin Engineer.
+- 11#3: `2a6a6ed6`, Paused conserva la marca de uso igual que Stale; sesión/época
+  nuevas y Waiting siguen permitiendo un evento nuevo.
+
+RED 3/3 antes de producción (`C:/tmp/review-r3/1554-red.log`), GREEN focal 14/14
+(`1554-green.log`). Regresiones: rejected_registration_backs_off_without_losing_socket_and_recovers,
+duplicate_core_pipe_is_rejected_before_wiring_consumers y
+paused_session_resumes_without_duplicate_usage_and_new_session_still_counts.
+Fmt, Clippy -D warnings, Nextest 1512/1512 (7 excluidos por perfil), lifecycle
+18/18 y telemetría 25/25 (0 skips) PASS por cola, locked/offline y target propio.
+Logs `C:/tmp/review-r3/1554-{fmt,clippy-final,test-final,lifecycle-final,telemetria-final}.log`.
+Clippy inicial detectó parse 107/100 líneas: validación extraída a helper mínimo
+sin allow y consolidada en el commit de 10#1; fallo conservado en 1554-clippy.log.
+Diff revisado; cuatro archivos runtime y este handoff, sin modificar #1531,
+fixtures, dependencias ni tests existentes. Evidencia local y loopback, sin
+acreditar sesiones ACC/LMU físicas ni CI remoto; sin capturas ni ventanas manuales.
+
+Comprobación: ejecutar las tres regresiones por cola desde native/ con
+`cargo nextest run -p vantare-runtime --lib --bin vantare --locked --offline -j 2`
+y filtro por sus nombres. Launcher con `-- --live --pipe a --pipe b` debe salir
+con error antes de arrancar hijos. Informe `C:/tmp/review-r3/informe-1554.md`
+(máximo 10 líneas), buzón `C:/tmp/buzon/1554.md`. Siguiente: revisión del
+orquestador e integración solo con autorización. Sin delegación, push, PR,
+merge, promoción, release ni CI remoto. Limpieza de native/target rechazada por revisión automática (blocked by policy); caché conservada.
+
+## #1536 · continuación #1551/#1552 integrada y validada (2026-10-10)
+
+Merge --no-ff caa6dfb8b04f7dbf12b9106a84ff5d4d44580f86 de 6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6, tras los 13 merges R2. Código probado a1aadd4038a749207ae62e98515a37ea237d17db; árbol native 29f3e82249be7eef8095d61763f0888e2cdce013. Check, fmt y Clippy -D warnings PASS; Nextest 1509/1509 (7 skips heredados del perfil), lifecycle 18/18 y telemetría 25/25 (0 skips) PASS por cola. Ambas regresiones #1551/#1552 activadas, sin #[ignore]; Engineer recovery/status_process pasa a la primera.
+
+Conflicto LMU: conserva numeración monotónica y poda anticipada de #1547, incorporando race/gaps ausentes fuera de carrera de #1551; evita restaurar IDs basados en longitud del mapa. ACC combina orden coherente con correcciones anteriores; extrae observed_cars para cumplir el límite de Clippy sin excepciones ni cambio semántico. Handoff conserva las dos entregas. 94 tests R2 presentes: solo las dos regresiones ahora fortalecidas con cuenta exacta; siete tests nuevos y un oráculo renombrado #1551 idénticos a origen. Goldens/oracle actualizados con las pruebas de inversión de #1551/#1552 que restringen el cambio a gaps LMU y rangos ACC.
+
+Evidencia C:/tmp/review-full/1551-*.log, tests-preservados-1551.json y conflictos-r2.md; informe vivo C:/tmp/review-full/informe-integracion-r2.md, buzón C:/tmp/buzon/integracion-r2.md. Rama vantareapp/isa-1536-arreglos-revision, tracker #1536 abierto. Siguiente: esperar revisión de #1531 para integración explícita; todavía sin push, PR, nightly ni release y #1550 intacto. Las pruebas no acreditan sesiones físicas ni CI remoto. La entrada R2 siguiente conserva la evidencia anterior a #1551/#1552.
+
+## #1536 · integración R2 local validada (2026-10-10)
+
+13 merges --no-ff en orden autorizado sobre 026c1207, con 13/13 checks por cola PASS. Código validado ca8afd7205e3820d38341a2559002ac56004428c; árbol native 9c57fd70fda86dc7b0c494cfed1c2aa1cc4b9d1f. Fmt y Clippy -D warnings PASS; Nextest 1502/1502 (7 skips del perfil), lifecycle 18/18 y telemetría 23/23 (2 ignorados de #1537) PASS. 94 tests nuevos conservados con cuerpos idénticos. Engineer recovery/status_process pasa sin flake ni reintento.
+
+Integra #1537/#1538/#1547/#1539/#1549. ACC combina rechazo UDP tolerante y detección de conexión; Nextest inicial detectó que un ACK negativo retira velocidades antes de InvalidData. El ajuste de integración separa cambios de muestras y necesidad de reconstruir: conserva socket/liveness y no publica un rechazo sin diferencias. Nueve focales ACC en serie PASS. El test heredado de transporte adapta assert!(changed) a .0, con idéntica exigencia. Los dos tests ignorados de #1537 (gaps LMU práctica y posiciones ACC transitorias) siguen pendientes; corpus/goldens intactos.
+
+Rama vantareapp/isa-1536-arreglos-revision. Tracker: [GitHub #1536](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1536), area:plataforma, Project Vantare, issue abierta. Buzón vivo C:/tmp/buzon/integracion-r2.md; informe C:/tmp/review-full/informe-integracion-r2.md (12 líneas), detalles conflictos-r2.md y logs final-*.log. Siguiente: petición explícita del PR a nightly; hilo/issue abiertos. Sin delegación, push, PR, promoción ni release; #1550 intacto.
+
+## #1538 — correcciones runtime LMU/ACC de la revisión #1536 — 2026-10-10
+
+Worktree `C:/tmp/vw3-1538/vantare-v2`, rama `vantareapp/isa-1538-runtime`,
+base exacta `701706130765a1653a914aa8a2c91a23c5d0c02e`, limpia al empezar.
+Brief `C:/tmp/review-1536/brief-fix.md`; alcance: los cinco hallazgos de #1538.
+RED: cinco regresiones ejecutadas y fallidas antes de arreglar, sin fail-fast.
+LMU: varios procesos se distinguen como `Rejected` durante la espera de reapertura;
+UTC exige tres componentes y rangos de hora/minuto/segundo antes de operar;
+el teleport controlado reproduce la alineación sin cota, ahora rechazada fuera
+de ±500 ms (presupuesto existente de frescura), conservando poses scoring.
+ACC: static desconocida conserva el diagnóstico y drena UDP sin leer las otras
+páginas; al inicializarse publica de nuevo. El poll quieto evita reconstruir
+la foto y mantiene los relojes independientes SHM/UDP/velocidad y los cambios
+de registro. Caducidades sin efecto visible solo se reconstruyen una vez.
+Commits LMU locales: `c5822828` (UTC) y `2bdc9e69` (rechazo/alineación, también compatible con grabadora).
+GREEN: adaptadores 129/129 y focal 11/11 PASS. Fmt/Clippy global -D warnings PASS;
+Nextest global 1419/1419 (7 skipped), lifecycle 18/18 y telemetría 21/21 PASS. Fallos iniciales propios
+de build de grabadora y Clippy corregidos sin excepciones, conservados en logs;
+evidencia externa `C:/tmp/review-1536/evidence-1538/` (RED y GREEN).
+Corpus, goldens, DTO, dependencias y módulos excluidos #1531 intactos.
+Los PLAUS se reproducen con vectores/loopback; no acreditan captura física,
+fluidez/latencia, desborde UDP real ni QA LMU/ACC/macOS/OBS.
+Entrega: tres commits locales (el último agrupa ACC y este handoff); los seis Rust
+verificados constan en source-sha256.txt. Siguiente: review del orquestador,
+sin integración automática. Informe externo C:/tmp/review-1536/informe-1538.md.
+Sin push, PR, CI remota, merge, promoción o release. Seguimiento GitHub,
+según AGENTS.md vigente; plan.md ausente, no se recrea ni publica roadmap.
+
+## #1551 / #1552 — calidad LMU y adelantamientos ACC — 2026-10-10
+
+Encargo local sobre `ec743de8` (#1537), rama `vantareapp/isa-1551-telemetria-calidad`,
+worktree `C:/tmp/vw3-1551`; sin delegación, push, PR, merge ni promoción.
+Commit local #1551 (incluye extra de saneado): `20ca0d5583cfb0f604b6d077a14227bc9b7f9553`.
+SHA final de #1552 en su [comentario de entrega](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1552#issuecomment-6092420392).
+RED confirmado: LMU47 7.678 violaciones; ACC 27 fotos generales y 6 de clase.
+LMU usa gaps de progreso en práctica: P11 sí tiene mejor vuelta, pero gap 0.
+Se retiran esos gaps fuera de carrera; no se fabrican diferencias de tiempo.
+ACC recibe las dos mitades de adelantamientos por datagramas independientes
+(5.100 y 58.800 ns en el corpus): el adapter conserva el último orden coherente
+estimando solo el rango contradictorio, con TTL del dato UDP y protección de
+parrilla/clase/sesión. Las 6 fotos de clase se solapan con las 27 generales.
+Núcleo productivo intacto; solo tests nuevos de límites en `merge.rs`.
+LMU dirigido 20/20 y ACC 3/3 PASS, incluidas las regresiones designoradas.
+Mutantes solo `merge.rs`, selección `core::`: 44 cazados/1 vivo (Display);
+`sanitize`/`sanitize_player` 20/20 cazados, frente a 12 vivos en #1537.
+La auditoría incluía `core_invariants`; esta corrida selecciona `core::`:
+no se presenta como la misma suite. Cero inviables/timeouts en la corrida válida.
+Goldens revisados: 3.849 fotos LMU solo cambian gaps/capability; ACC solo
+rangos en 27 fotos. Inversión completa reproduce hashes originales v9/v8;
+los otros campos, las otras 190.281 fotos, ocho cortes y UI ACC son idénticos.
+Gates de la entrega conjunta por la cola: fmt, clippy -D warnings PASS;
+nextest 1.425/1.425 (7 skips del perfil), lifecycle 5+13 PASS;
+telemetría 25/25, cero skips, incluidas ambas regresiones activadas.
+Siguiente: revisión local de los dos commits; integración/promoción no autorizadas.
+Evidencia externa `C:/tmp/1551-evidence/`; buzón `C:/tmp/buzon/1551.md`.
+Informe de entrega (máximo 10 líneas): `C:/tmp/review-1536/informe-1551.md`.
+Issues abiertas, `area:telemetria-core`, Project Vantare; sin milestone comprometido.
+No acredita sesiones/simuladores físicos ni CI remoto.
+
 ## #1496 — feedback Relative: prioridad nativa y fuente pendiente — 2026-10-09
 
 Encargo: `C:/tmp/feedback-0910/comun.md` y `relative.md`; worker sin delegación.
@@ -3418,3 +3640,50 @@ be751010→00f37fef solo afectan etiqueta de Studio: runtime/domain/ipc/testdata
 Nextest final 1402/1402, lifecycle PASS. El instalador local 0.0.974 usa fuente 00f37fef.
 No supone telemetría física nueva ni FPS mostrados medidos. Evidencia canvas-final-telemetria.log;
 estado completo y límites en overlays-launcher-hub.md, seguimiento GitHub #1496.
+
+### #1547 · robustez del runtime — entrega local validada (10-oct)
+
+Worktree `C:/tmp/vw3-1547/vantare-v2`; rama `vantareapp/isa-1547-runtime-robustez`;
+base autorizada `701706130765a1653a914aa8a2c91a23c5d0c02e`, fuente validada
+`95cbd3f95dcd2e3b6378991e06579e16602d6ba6`. Se leyó `origin/nightly` tras fetch;
+se conserva la base explícita de `C:/tmp/review-1536/brief-fix.md`.
+
+Ocho hallazgos de [#1547](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1547)
+corregidos con reproducciones rojas antes del arreglo:
+
+- 09#2: ACC descarta `InvalidData` y drena el datagrama siguiente, conservando socket/conexión y sin refrescar `last_udp` por bytes inválidos. Commit `b13c3aff`; source y regresión `runtime/{src/adapter,tests}/acc/live.rs`.
+- 10#1: LMU poda identidades antes de construir la observación, conserva las activas y asigna IDs monotónicos por sesión; rechaza agotamiento sin envolver. Commit `519ed387`; solo `runtime/src/adapter/lmu/translate.rs` y sus tests.
+- 10#2: cierre Unix continúa con los demás hijos tras un error y devuelve el primero. Commit `e82b4c2b`; `runtime/src/bin/vantare/unix.rs`, regresión con dos hijos reales y kill fallido inyectado.
+- 10#4: Launcher deriva ausencia y bytes del mismo resultado de metadata; eliminación concurrente vuelve a defaults sin falso JSON inválido. Commit `7a2460dc`; `runtime/src/bin/vantare/resident.rs`, test elimina el archivo entre existencia y metadata.
+- 10#6: retirada la entrada Unix inalcanzable de la implementación Windows de `vantare-grabar-acc`; wrapper intacto y regresión estructural. Commit `c185be73`; `runtime/src/bin/vantare-grabar-acc/{implementation,main}.rs`.
+- 11#1 y 11#2: rights/services conservan sus rechazos y registran solo `ErrorKind`, sin nonce ni payload. Commit `147b69bf`; `runtime/src/{rights/host,services}.rs`, nueva `runtime/tests/ipc_diagnostics.rs` con pipes reales y captura de stderr.
+- 12#5: cleanup E2E conserva el fallo fuera de unwind; durante unwind evita un segundo panic y mantiene el original. Commit `95cbd3f9`; `runtime/tests/core_e2e.rs`, regresiones en subproceso y fuera de unwind.
+
+Gates finales por `C:/tmp/fase2/compilar.ps1`, target propio `native/target/gates`,
+`--locked --offline -j 2`: fmt y Clippy `-D warnings` PASS; Nextest 1419/1419 PASS
+(7 skips previstos); lifecycle 18/18 PASS; **telemetria 21/21 PASS**, 0 skips.
+ACC golden terminó en 709,130 s; goldens y todo `testdata` idénticos a la base.
+Sin dependencias, allowances, baselines, gates ni rutas excluidas por #1531 modificados.
+
+Límite Unix: función exacta extraída del source, compilada por cola y probada con dos
+procesos Windows reales; rojo visita 1/2, verde visita 2/2 y cierra el restante.
+El error kill es inyectado. No se ejecutó el backend completo Linux/macOS.
+Cross-check Linux adicional bloqueado porque falta `x86_64-linux-gnu-gcc` para `ring`;
+no equivale a una validación Linux. No hay prueba física LMU/ACC, UI o rendimiento nueva.
+
+#1538 modifica adaptadores en paralelo: aquí ACC toca únicamente `receive` y LMU
+únicamente `translate.rs`; no se modifica `lmu/live.rs`, frame/open ni ACC translate.
+Siguiente: revisión e integración autorizada junto a #1538, conservando ambos cambios
+y repitiendo los gates sobre el árbol integrado. No se ha realizado esa integración.
+
+Tracker verificado: issue OPEN, Project Vantare In Progress,
+`area:telemetria-core` y `state:in-progress`; sin milestone de versión comprometida.
+Entrega exclusivamente local: sin push, PR, CI remota, merge, promoción ni release.
+Issue e hilo abiertos. Informe `C:/tmp/review-1536/informe-1547.md`, buzón append-only
+`C:/tmp/buzon/1547.md`; logs y SHAs en `C:/tmp/review-1536/evidence-1547`.
+Repetición desde `native/`: `pwsh -NoProfile -File C:/tmp/fase2/compilar.ps1 pwsh -NoProfile -File C:/tmp/review-1536/evidence-1547/run-gates.ps1`.
+Revisar `gates.json` y logs por gate; el cross-check opcional se registra por separado.
+`native/target` queda conservado: la revisión automática rechazó su borrado (blocked by policy), incluso con ruta literal propia verificada; no se intenta eludir el bloqueo.
+
+### #1536 · integración R2 local de #1537/#1538/#1547 (2026-10-10)
+Base 026c1207, rama vantareapp/isa-1536-arreglos-revision. #1537 y #1538: check PASS por cola. Conflicto ACC receive: conserva detección de cambio de conexión (#1538) y descarte InvalidData sin desconexión ni liveness nueva (#1547); ambos conjuntos de tests intactos. Check #1547 y gates finales pendientes. Buzón vivo C:/tmp/buzon/integracion-r2.md, logs C:/tmp/review-full. Sin push/PR/promoción/release; #1550 intacto.

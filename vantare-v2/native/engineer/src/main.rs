@@ -149,7 +149,17 @@ fn run_stream(
     let expected =
         core_image.unwrap_or(std::env::current_exe()?.with_file_name("vantare-core.exe"));
     let rights = vantare_ipc::control::Feed::connect(&name, expected)?;
-    rights.wait_initial(Duration::from_secs(1));
+    // Sincronizar con el primer resultado del Feed antes de decidir: un
+    // arranque lento no es una denegación. El plazo explícito cubre un ciclo
+    // de lectura (IO_TIMEOUT) más el arranque del publicador; el timeout se
+    // diagnostica como tal en vez de confundirse con falta de licencia.
+    if !rights.wait_initial(vantare_ipc::transport::IO_TIMEOUT + Duration::from_secs(5)) {
+        return Err(io::Error::new(
+            io::ErrorKind::TimedOut,
+            "derechos sin respuesta inicial en 10 s; reintentar con el núcleo visible",
+        )
+        .into());
+    }
     require_stream_rights(&rights)?;
     let mut engineer = Engineer::resume(checkpoint)?;
     let mut output = io::stdout().lock();

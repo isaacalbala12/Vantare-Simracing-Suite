@@ -35,6 +35,8 @@ mod overlay;
 pub mod paths;
 #[cfg(feature = "paint-stats")]
 pub use vantare_profiling as profiling;
+#[cfg(test)]
+mod replay_tests;
 mod rights;
 pub mod source;
 #[cfg(feature = "paint-stats")]

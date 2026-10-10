@@ -2,7 +2,7 @@
 #![allow(clippy::unwrap_used)] // Solo helpers del banco; producción sigue prohibiéndolo.
 use std::fs;
 #[cfg(windows)]
-use std::io::{self, Read as _};
+use std::io::{self, BufRead as _};
 use std::path::PathBuf;
 #[cfg(windows)]
 use std::process::{Child, ChildStdin};
@@ -10,6 +10,8 @@ use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
 #[cfg(windows)]
 use std::sync::mpsc::{self, Receiver};
+#[cfg(windows)]
+use std::sync::{Arc, Mutex};
 #[cfg(windows)]
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -84,22 +86,32 @@ fn photo(tick: u64, in_pits: bool) -> Observation {
 
 #[cfg(windows)]
 struct Worker {
-    rights: rights::Fixture,
+    rights: Option<rights::Fixture>,
     child: Child,
     input: Option<ChildStdin>,
     hello: Option<Cursor>,
+    hello_rx: Option<Receiver<io::Result<Option<Cursor>>>>,
     acknowledgements: Receiver<io::Result<Cursor>>,
     reader: Option<JoinHandle<()>>,
+    stderr_log: Arc<Mutex<String>>,
+    stderr_drain: Option<JoinHandle<()>>,
 }
 #[cfg(windows)]
 impl Worker {
     fn start(files: &Files) -> Self {
         let name = format!("engineer-stream-{}", vantare_services::random_id().unwrap());
         let rights = rights::Fixture::new(&name);
+        let mut worker = Self::spawn(files, &name, Some(rights));
+        worker.hello = worker.recv_hello();
+        worker
+    }
+    /// Hijo sin autoridad previa: la prueba la instala después para demostrar
+    /// que el arranque espera el primer resultado del Feed en vez de negar.
+    fn spawn(files: &Files, name: &str, rights: Option<rights::Fixture>) -> Self {
         let mut child = Command::new(env!("CARGO_BIN_EXE_vantare-engineer"))
             .args(["--stream", "--cursor"])
             .arg(files.cursor())
-            .args(["--pipe-name", &name, "--core-image"])
+            .args(["--pipe-name", name, "--core-image"])
             .arg(std::env::current_exe().unwrap())
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -107,7 +119,28 @@ impl Worker {
             .spawn()
             .unwrap();
         let mut output = child.stdout.take().unwrap();
-        let (hello_sender, hello_receiver) = mpsc::sync_channel(1);
+        let stderr = child.stderr.take().unwrap();
+        // Drenar el diagnóstico del hijo: sin lector el pipe se llena y el
+        // hijo se detiene, lo que bajo carga parece un timeout del banco.
+        let stderr_log = Arc::new(Mutex::new(String::new()));
+        let stderr_drain = thread::spawn({
+            let stderr_log = Arc::clone(&stderr_log);
+            move || {
+                let mut pipe = io::BufReader::new(stderr);
+                let mut line = String::new();
+                loop {
+                    line.clear();
+                    match pipe.read_line(&mut line) {
+                        Ok(0) | Err(_) => return,
+                        Ok(_) => stderr_log
+                            .lock()
+                            .unwrap_or_else(std::sync::PoisonError::into_inner)
+                            .push_str(&line),
+                    }
+                }
+            }
+        });
+        let (hello_sender, hello_rx) = mpsc::sync_channel(1);
         let (sender, acknowledgements) = mpsc::sync_channel(1);
         let reader = thread::spawn(move || {
             if hello_sender.send(wire::read_hello(&mut output)).is_err() {
@@ -122,37 +155,107 @@ impl Worker {
             }
         });
         // Drop mata/espera al hijo incluso si falla el saludo o un deadline.
-        let mut worker = Self {
+        Self {
             rights,
             input: child.stdin.take(),
             child,
             hello: None,
+            hello_rx: Some(hello_rx),
             acknowledgements,
             reader: Some(reader),
-        };
-        worker.hello = hello_receiver
-            .recv_timeout(Duration::from_secs(10))
-            .unwrap()
-            .unwrap();
-        worker
+            stderr_log,
+            stderr_drain: Some(stderr_drain),
+        }
+    }
+    /// Últimas líneas del diagnóstico del hijo para explicar un timeout en
+    /// vez de limitarse a esperar más.
+    fn stderr_tail(&self) -> String {
+        const TAIL: usize = 4000;
+        let log = self
+            .stderr_log
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone();
+        if log.len() > TAIL {
+            format!("…{}", &log[log.len() - TAIL..])
+        } else {
+            log
+        }
+    }
+    /// Texto completo del diagnóstico tras la muerte del hijo (une el drenaje
+    /// para no competir con sus últimas líneas).
+    fn stderr_joined(&mut self) -> String {
+        if let Some(drain) = self.stderr_drain.take() {
+            drain.join().unwrap();
+        }
+        self.stderr_log
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .clone()
+    }
+    /// El saludo (o el cierre) es un evento del hijo, no un plazo a ciegas:
+    /// supera el plazo explícito de arranque de producción (10 s) para que el
+    /// diagnóstico del hijo gane al tope del banco.
+    fn recv_hello(&mut self) -> Option<Cursor> {
+        match self
+            .hello_rx
+            .take()
+            .expect("un solo saludo")
+            .recv_timeout(Duration::from_secs(30))
+        {
+            Ok(Ok(hello)) => hello,
+            Ok(Err(error)) => {
+                let status = self.child.wait().ok();
+                panic!(
+                    "el stream cerró sin HELLO ({error}); salida={status:?}; stderr={}",
+                    self.stderr_tail()
+                );
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                let alive = self.child.try_wait().is_ok_and(|status| status.is_none());
+                panic!(
+                    "sin HELLO en 30 s (hijo vivo: {alive}); stderr={}",
+                    self.stderr_tail()
+                );
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                panic!("el lector del saludo murió; stderr={}", self.stderr_tail());
+            }
+        }
     }
     fn send(&mut self, frame: &Frame) -> Cursor {
         wire::write_frame(self.input.as_mut().unwrap(), frame).unwrap();
-        self.acknowledgements
-            .recv_timeout(Duration::from_secs(10))
-            .unwrap()
-            .unwrap()
+        match self.acknowledgements.recv_timeout(Duration::from_secs(10)) {
+            Ok(Ok(cursor)) => cursor,
+            Ok(Err(error)) => {
+                let status = self.child.wait().ok();
+                panic!(
+                    "el stream cerró sin ACK ({error}); salida={status:?}; stderr={}",
+                    self.stderr_tail()
+                );
+            }
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                panic!("sin ACK en 10 s; stderr={}", self.stderr_tail())
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                panic!("el lector de ACK murió; stderr={}", self.stderr_tail())
+            }
+        }
     }
     fn eof(&mut self) {
         drop(self.input.take());
         // El lector ve EOF después de que el proceso termine; el plazo evita
         // colgar la suite si se rompe el contrato de cierre.
-        assert!(
-            self.acknowledgements
-                .recv_timeout(Duration::from_secs(10))
-                .unwrap()
-                .is_err()
-        );
+        match self.acknowledgements.recv_timeout(Duration::from_secs(10)) {
+            Ok(Err(_)) => {}
+            Ok(Ok(cursor)) => panic!("ACK inesperado al cerrar: {cursor:?}"),
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                panic!("sin cierre en 10 s; stderr={}", self.stderr_tail())
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                panic!("el lector de ACK murió; stderr={}", self.stderr_tail())
+            }
+        }
         assert!(self.child.wait().unwrap().success());
     }
 }
@@ -167,7 +270,31 @@ impl Drop for Worker {
         if let Some(reader) = self.reader.take() {
             reader.join().unwrap();
         }
+        if let Some(drain) = self.stderr_drain.take() {
+            drain.join().unwrap();
+        }
     }
+}
+
+#[test]
+#[cfg(windows)]
+fn stream_waits_for_slow_rights_before_deciding() {
+    let files = Files::new();
+    let name = format!(
+        "engineer-stream-slow-rights-{}",
+        vantare_services::random_id().unwrap()
+    );
+    // El hijo arranca sin autoridad: su primer ciclo del Feed no puede
+    // completarse en 1 s. Debe esperar el resultado inicial (plazo explícito
+    // de 10 s) en vez de negar con "licencia" antes del primer HELLO.
+    let mut worker = Worker::spawn(&files, &name, None);
+    // La espera es el mecanismo de reproducción (autoridad tras el antiguo
+    // plazo), no un margen contra la carga.
+    thread::sleep(Duration::from_secs(2));
+    worker.rights = Some(rights::Fixture::new(&name));
+    worker.hello = worker.recv_hello();
+    assert_eq!(worker.hello, None);
+    worker.eof();
 }
 
 #[test]
@@ -332,7 +459,7 @@ fn stream_with_signed_rights_emits_radio_and_stops_when_authority_is_lost() {
     core.observe(lap(2, 1)).unwrap();
     let frame = Frame::capture(&core.snapshot(), core.events(), Some(&mut consumer)).unwrap();
     assert_eq!(worker.send(&frame), core.events().tail());
-    drop(worker.rights.host.take());
+    drop(worker.rights.as_mut().expect("derechos").host.take());
     assert!(
         worker
             .acknowledgements
@@ -342,14 +469,7 @@ fn stream_with_signed_rights_emits_radio_and_stops_when_authority_is_lost() {
         "sin autoridad el stream debe terminar incluso sin más fotos"
     );
     assert!(!worker.child.wait().unwrap().success());
-    let mut presentation = String::new();
-    worker
-        .child
-        .stderr
-        .take()
-        .unwrap()
-        .read_to_string(&mut presentation)
-        .unwrap();
+    let presentation = worker.stderr_joined();
     assert!(presentation.contains("laps.completed"), "{presentation}");
     assert!(presentation.contains("licencia"), "{presentation}");
 }

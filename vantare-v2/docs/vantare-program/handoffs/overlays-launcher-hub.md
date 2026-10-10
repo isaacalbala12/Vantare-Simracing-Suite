@@ -1,5 +1,210 @@
 ## #1496 — promoción a nightly autorizada el 2026-10-10
 
+## #1536 · reproducción completa y cierre de los harness restantes (#1557)
+
+Run 38038591143 de c70a46e6 cancelado por encargo de Isaac tras 85 min.
+El log acredita los ocho purchase_tests PASS (dos originales 0,128/0,024 s).
+Los dos nuevos bloqueos fueron Home catalog y Strategy isa1544 automatic (>3900 s).
+La corrección previa cubrió purchase_tests pero dejó incompleta la
+recuperación de986b026a y no cubrió los harness nuevos de las rondas.
+
+Antes de editar se compiló la copia archivada de c70 en WSL Ubuntu26.04:
+purchase_tests 8/8 PASS. El comando aislado requiere activar
+vantare-services/network para igualar la unificación del workspace de CI;
+sin esa feature no compila Hub, observación fuera de este arreglo.
+Se reprodujeron los dos bloqueos con los tests reales. gdb -p 3073/3074,
+thread apply all bt, muestra ambos hilos de test esperando en epoll_wait,
+Calloop::run y LinuxPlatform::run; ninguna espera de canal o del solver.
+La primera pila de Strategy también conserva la carga inicial de imagen
+antes de alcanzar la espera. Logs y pilas en C:/tmp/review-1557-linux.
+SSH 192.168.1.57 timeout; WSL accesible, Rust 1.95.0/Nextest 0.9.146 y target
+propios. La reproducción agotó su plazo externo de 180 s: ambos tests
+fallaron por SIGTERM tras 178,9 s, después de capturar las pilas.
+
+Home perdió el helper diferido de 986b026a al resolver nightly; Studio perdió
+quince llamadas del mismo cambio. Blame de with_strategy identifica 8717910d
+(#1544), ausente en nightly, con cierre síncrono. Se restablece el helper
+existente en Home, los dieciséis tests de Studio (incluido el nuevo) y el
+harness común de seis tests de Strategy: 18 llamadas, 23 casos headless.
+Calloop reinicia stop=false al entrar; el cierre debe llegar desde el bucle.
+Cambios solo cfg(test), sin alterar aserciones, producto, dependencias,
+ignores, filtros, corpus, goldens ni CI. Hub Linux 400/400 PASS en 34,422 s,
+Home 0,032 s y Strategy automatic 9,128 s. #1558 espera native-linux SUCCESS
+antes de merge normal/push; sin merge de PR ni release.
+
+La comprobación adicional del workspace Linux detectó dos diferencias:
+RUST_TEST_THREADS=1 heredado del runbook Windows cambia la línea IPC_READY
+del hijo; se reproduce CI con NEXTEST_TEST_THREADS=1 y sin aquella variable,
+y el test de identidad IPC pasa sin cambios. En WSL con XDG_RUNTIME_DIR
+/run/user/1000, el nuevo test de callback de #1548 usa un nombre de socket
+que excede sockaddr_un. Se acorta únicamente su prefijo login-error- a le-,
+conservando random_id completo (256 bits), el listener real, las tres
+respuestas IPC, el callback HTTP y todas las aserciones. El caso falla antes
+y pasa en 0,012 s después. No se cambia transporte ni autenticación de producto.
+Logs fallidos conservados. Workspace Linux en serie como CI: 1381/1381 PASS
+en 167,363 s, 3 skips heredados; lifecycle 10/10 aplicables a Linux PASS.
+Check/fmt/Clippy -D warnings Windows repetidos PASS. El primer enlace de
+Nextest chocó con telemetry_golden.exe todavía activo en el mismo target:
+falló antes de ejecutar tests. Tras terminar telemetría se repitieron en
+serie Nextest 1526/1526 (7 skips heredados; 208,854 s) y lifecycle 18/18 PASS.
+Recovery/status_process sin flake ni reintentos. Telemetría 25/25, 0 skips,
+820,760 s; runtime/domain/IPC/UI/fixtures idénticos antes/después del cambio
+del prefijo cfg(test). Retirada 456 SHA-256 PASS. Árbol native final
+69ba43abb3fb5e052bbc9c492db8ba17426a487d; evidencia C:/tmp/review-1557-linux.
+Publicación en el draft #1557 sobre nightly; nueva CI pendiente. Tras
+native-linux SUCCESS, merge normal a #1558 y push. No se fusionan PRs.
+
+## #1536 · cierre headless de purchase_tests en Linux (#1557)
+
+El run 38031923823 se canceló a los 90 minutos con dos purchase_tests por
+encima de 4.140 s. Ambos existen desde 73f60e9d (#1496), antes de las rondas
+#1546/#1548/#1555/#1553. Nightly f49d71f4 incluye 986b026a; native-linux de
+#1550 pasó en 38024162372, con estos tests en 0,097 y 0,024 s. Los dos archivos
+afectados son idénticos entre aquella entrega y su squash en nightly.
+
+La resolución con nuestro contenido del merge 185404a6 perdió 986b026a.
+d3ff5919 recuperó tres casos externos, pero faltaron los siete purchase_tests.
+Sus fixtures usan canales en memoria, sin worker ni Feed: no se cuelga recv.
+GPUI Linux ejecuta el callback de lanzamiento antes de Calloop::run; run
+reinicia stop=false y pierde el quit síncrono emitido antes de entrar.
+
+Se restaura exactamente el helper cfg(test) de 986b026a y sus siete llamadas:
+quit se despacha desde el bucle con cx.spawn. Todas las aserciones intactas;
+sin cambios de producto, dependencias, ignores, filtros ni CI.
+SSH a isaac@192.168.1.57 no respondió (timeout). Reproducción mínima en Linux
+WSL, Calloop 0.14.4 igual al lock: cierre previo a run timeout 3 s/exit 124;
+cierre diferido desde el bucle exit 0. Es prueba de la causa, no ejecución
+completa del Hub en WSL. Evidencia C:/tmp/review-1557-linux.
+
+Código a73f425672d022ed593e9bc8c3c4cf276e45fe0b; native tree
+201e7311b522c9718a4ece4490b7e6f68fa588f9. Gates completos repetidos por cola:
+check/fmt/Clippy -D warnings PASS; Nextest 1526/1526 (7 skips heredados),
+lifecycle 18/18, telemetría 25/25 (0 skips; corpus ACC 759,133 s).
+Recovery/status_process sin flake/reintentos; retirada 456 SHA-256 PASS.
+Los cuerpos de los dos tests coinciden con 70170613 en las cuatro ramas
+señaladas y nightly, normalizando únicamente la llamada de cierre.
+#1557 pendiente de nueva CI native-linux sobre el arreglo publicado.
+Tras native-linux SUCCESS se incorpora esta corrección con merge normal a
+#1558 y push. No se fusionan PRs ni se publica release; #1531 sigue aparte.
+
+## #1536 · destino real de accesos directos en CI Windows (2026-10-10)
+
+El check obligatorio de b6b778c falla en el test .lnk real: COM devuelve
+runneradmin mientras el temporal usa RUNNER~1. Ambos nombres apuntan al
+mismo fichero. d7c6cd175ebcfdca392afc06747a29b40d3e44a3 exige un único destino y compara ambas rutas
+canonicalizadas en actual_lnk_is_read_without_modification_or_execution.
+Mantiene lectura COM real, existencia del ejecutable concreto, bytes del
+enlace intactos, marcador ausente, proceso no ejecutado, discovery y rechazo
+UNC. No se permiten otros destinos ni se omite ningún caso. Producción intacta.
+
+Árbol native 7d45bae6c85412bdceb963d58f325b805e151737; check/fmt/Clippy -D warnings, Nextest 1526/1526
+(7 skips heredados) y lifecycle 18/18 repetidos PASS por cola en Windows.
+Recovery/status_process sin flake ni reintentos; logs windows-lnk-*.log.
+Adaptadores/Core, domain/IPC/UI, corpus y goldens idénticos a telemetría
+25/25 (0 skips) de d3ff5919; no se repite por cambio sólo del test Launcher.
+Auditoría R3: 22 archivos idénticos a origen y 17 tests nuevos preservados.
+La nueva CI verificará los gates Windows y los arreglos Linux anteriores.
+
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557,
+sin merge, #1531 fuera. FIN tras los dos checks obligatorios PASS con estado
+de cada check. GitGuardian conocido no bloqueante, pendiente de Isaac.
+
+## #1536 · fixtures de captura portables del PR #1557 (2026-10-10)
+
+La CI Linux de b6b778c supera fmt/check/Clippy y llega a Nextest: falla
+launcher_showcase_scenes_use_isolated_valid_profiles por C:/QA/vantare-hub.exe.
+df215d69eb94158b8fdc1ab1542a299b016a7812 adapta únicamente las rutas C:/QA/ de las dos fixtures visuales
+del Launcher a /QA/ al cargar capturas fuera de Windows. No modifica JSON,
+validador de producción, descubrimiento, lanzamientos ni aserciones/tests.
+Windows conserva exactamente sus rutas. Las otras escenas Inicio que usan
+la misma fixture quedan cubiertas por la corrección y sus tests existentes.
+Árbol native 20259fe6e9c4ca25435992a00aa92a950bc23116; check/fmt/Clippy -D warnings, Nextest 1526/1526
+(7 skips heredados) y lifecycle 18/18 repetidos PASS por cola en Windows.
+Recovery/status_process sin flake ni reintentos. Logs linux-demo-*.log.
+Adaptadores/Core, domain/IPC/UI, corpus y goldens siguen idénticos al PASS
+telemetría 25/25 (0 skips) de d3ff5919; no se repite por cambio exclusivo Hub.
+Auditoría R3: 22 archivos idénticos a origen y 17 tests nuevos preservados.
+Linux pendiente de la CI de esta revisión; no afirmar que sus tests pasan.
+
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557,
+sin merge, #1531 fuera. FIN tras los dos checks obligatorios PASS con estado
+de cada check. GitGuardian conocido no bloqueante, pendiente de Isaac.
+
+## #1536 · corrección Clippy Unix del PR #1557 (2026-10-10)
+
+La nueva CI Linux superó cargo check y detectó redundant_closure_for_method_calls
+en el cierre Unix. d340285eed8d49012f473b388ce6dfb4ccbd0770 sustituye sólo la closure child.kill()
+por std::process::Child::kill; lógica y tests de cierre intactos, sin allows.
+Árbol native 9c0dd5b107dc8444052ac7c95b24286c41da130e; check/fmt/Clippy Windows PASS por cola.
+La compilación y ejecución del backend Unix se acreditarán en la nueva CI.
+Nextest 1526 y lifecycle 18 Windows del código 38c35eca permanecen válidos:
+este cambio es exclusivo del backend Unix. Adaptadores/Core, domain/IPC/UI,
+corpus y goldens siguen idénticos al PASS de telemetría 25/25 (0 skips) d3ff5919.
+Auditoría R3: 22 archivos y 17 tests nuevos conservados; logs linux-lint-*.log.
+
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557
+abierto, sin merge, #1531 fuera. FIN tras Validate promotion path y Validate
+Vantare blocking gates PASS; registrar todos los estados. GitGuardian conocido
+no bloqueante y pendiente de Isaac. Estado vigente de CI consultable en el PR.
+
+## #1536 · corrección de compilación Linux del PR #1557 (2026-10-10)
+
+La CI sobre b386b522 detectó E0433 en engineer/tests/recovery.rs: Duration
+estaba importado sólo bajo cfg(windows), aunque photo() es un helper compartido.
+Corrección 38c35eca4babf12cef46d4ec094c63da59354eeb: se retira únicamente esa guarda del import;
+aserciones y guardas de fixtures/tests DPAPI intactas. Árbol native 6c5bdebbc2863d717343c87e3ea6b50a5d54e291.
+Check/fmt/Clippy -D warnings PASS por cola; Nextest 1526/1526 (7 skips
+heredados) y lifecycle 18/18 repetidos PASS, recovery/status_process sin flake.
+Telemetría 25/25 (0 skips) acreditada en d3ff5919; runtime/domain/IPC/UI,
+corpus y goldens siguen byte a byte idénticos tras esta corrección de import.
+Linux pendiente de la CI de esta nueva revisión; logs linux-import-*.log.
+
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557,
+sin merge; #1531 fuera. Según Isaac, sólo Validate promotion path y Validate
+Vantare blocking gates son obligatorios para FIN. GitGuardian es el falso
+positivo histórico de #1550, no bloqueante, que clasificará Isaac. El estado
+vigente de cada check se consulta en el PR; buzón/informe conservan resultados.
+
+## #1536 · sincronización con nightly para PR (2026-10-10)
+
+Las tres rondas y la auditoría de telemetría están integradas en
+vantareapp/isa-1536-arreglos-revision. Tras los cuatro merges --no-ff de R3
+(#1556/#1554/#1555/#1553), se fusionó origin/nightly por merge normal
+185404a6c3696c716af6e4b886c818772578a0e7, con segundo padre
+f49d71f4f1ab9d1a424d2bba18895ddcdf87b601, squash publicado de #1550.
+Los 108 conflictos de historial se resolvieron conservando nuestro contenido,
+según instrucción de Isaac. Tras ello se recuperó el cierre diferido headless de #1550 en tres casos del Hub, sin cambiar aserciones, para evitar bloquear Calloop/Linux; ambos archivos de tests quedan idénticos a nightly.
+La auditoría confirma los 22 archivos y los 17 tests nuevos de R3 intactos;
+corpus/goldens y archivos reservados a #1531 no cambian por esta sincronización.
+
+El gate de integridad detectó diez pins pendientes de la entrega revisada
+6094472e (#1551/#1552). El manifiesto registra sus SHA-256 actuales, los
+anteriores y la procedencia; conserva source_sha256 y la migración #1530.
+Verificador, tests, corpus fuente y baselines históricos intactos: 456/456
+huellas y 31 tests de tooling PASS. Gates nativos tras nightly: fmt PASS; Clippy -D warnings PASS; Nextest 1526/1526 (7 skips heredados de la suite general); lifecycle 18/18; telemetría 25/25 (0 skips). Recovery/status_process sin fallos ni reintentos. Fmt, Clippy y Nextest se repitieron tras recuperar el harness headless. Código/harness probado d3ff5919e3e819b92ec563f90364eabbb076439d; árbol native cbc10c77dca49a6122e6cdc4798dd4aea8271ab3.
+
+Canal actual: rama de issue publicada; PR draft a nightly https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557. El estado vigente de CI se consulta en los checks del PR; no fusionar. Autorizados push y PR;
+esperar CI y dejar el PR abierto sin fusionarlo. #1531 sigue aparte hasta su
+revisión. Buzón C:/tmp/buzon/integracion-r2.md; informe y logs en
+C:/tmp/review-full/. Sin delegación, release ni QA visual nueva; se respeta
+pantalla-ocupada. Las entradas siguientes conservan el historial anterior.
+
+## #1536 · ronda 3 integrada localmente (2026-10-10)
+
+Cuatro merges --no-ff en orden #1556/#1554/#1555/#1553 sobre a410cb46, sin conflictos; 4/4 checks por cola PASS. Código integrado 42a14e166e3eb30f87365693f6145de19fac6d65; árbol native 3cba75c6574625a7435bd8906261a8b2aaa44f80. Gates finales por cola: fmt y Clippy -D warnings PASS; Nextest 1526/1526 (7 skips heredados del perfil), lifecycle 18/18 y telemetría 25/25 (0 skips). Engineer recovery/status_process pasa sin fallos ni reintentos. 22 archivos nativos idénticos a las ramas aceptadas, 17 tests nuevos conservados; corpus/goldens y archivos excluidos #1531 intactos.
+
+#1553: idiomas de voz it/pt, título de borrado de perfil, caché resident, ruta en topbar, límite JSON, paginación, cabeceras de paleta e inspector; #1556: aviso de accesos directos truncados.
+
+Rama vantareapp/isa-1536-arreglos-revision; tracker #1536 abierto en Vantare/In Progress, cuatro issues R3 abiertas en Vantare/In Review. Evidencia C:/tmp/review-full/r3-*.log, merges-r3.tsv y tests-preservados-r3.json; buzón C:/tmp/buzon/integracion-r2.md. Siguiente: esperar la revisión de #1531 antes de integrarlo; gates e integración R3 cerrados localmente. Sin delegación, push, PR, nightly ni release; #1550 intacto, pantalla-ocupada respetada. Windows es la plataforma ejecutada; sin QA visual, sesiones físicas ni CI remoto. Las entradas siguientes conservan el historial anterior.
+
+## #1536 · integración R2 local validada (2026-10-10)
+
+13 merges --no-ff en orden autorizado sobre 026c1207, con 13/13 checks por cola PASS. Código validado ca8afd7205e3820d38341a2559002ac56004428c; árbol native 9c57fd70fda86dc7b0c494cfed1c2aa1cc4b9d1f. Fmt y Clippy -D warnings PASS; Nextest 1502/1502 (7 skips del perfil), lifecycle 18/18 y telemetría 23/23 (2 ignorados de #1537) PASS. 94 tests nuevos conservados con cuerpos idénticos. Engineer recovery/status_process pasa sin flake ni reintento.
+
+Integra #1540/#1545/#1541/#1546 y el Hub de #1544/#1548. Los conflictos de tests conservan cierre de todos los perfiles y aviso de reintento. Workshop mantiene persistencia concurrente/recarga acotada y ambos ejes de preview; Studio conserva captura vacía y omisión de frames ocultos. La recepción/proyección de replays de #1537 participa en Nextest. Sin QA visual nueva; pantalla-ocupada respetada.
+
+Rama vantareapp/isa-1536-arreglos-revision. Tracker: [GitHub #1536](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1536), area:plataforma, Project Vantare, issue abierta. Buzón vivo C:/tmp/buzon/integracion-r2.md; informe C:/tmp/review-full/informe-integracion-r2.md (12 líneas), detalles conflictos-r2.md y logs final-*.log. Siguiente: petición explícita del PR a nightly; hilo/issue abiertos. Sin delegación, push, PR, promoción ni release; #1550 intacto.
+
 Isaac autoriza expresamente PR, push, squash a nightly y prerelease nativa <0.1.
 Base local 8e844c9d y origen nightly 2148bf7e: se incorpora la base sin perder
 la integración. Conflictos solo documentales: AGENTS conserva Rust/GitHub y la
@@ -20,18 +225,6 @@ la fixture DPAPI de runtime::rights sin cfg(windows). La corrección acota solo
 esa fixture, auxiliares y escenarios de procesos con autoridad a Windows;
 checkpoint puro y rechazo de stream sin licencia siguen activos en Linux.
 No cambia código de producto, asserts, deadlines ni gates. Revalidación Windows por cola: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados) y lifecycle18/18 PASS. CI Linux debe repetirse y pasar antes del squash.
-Segundo fallo Linux E0433: Duration se había acotado en exceso y también es usado por photo/checkpoint puro. Se conserva el import en todas las plataformas; fixture DPAPI y procesos autenticados siguen solo Windows. Revalidación Windows por cola PASS: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados) y lifecycle18/18; CI Linux completa pendiente.
-Linux ya pasa compilación/Clippy y los tests compartidos de Engineer; Nextest detectó que demo de Launcher valida C:/QA como ruta absoluta en Unix. Helper solo de tests clona la fixture y adapta las rutas C:/QA en memoria a temp_dir del host; perfiles/catálogo, validación de ruta local y referencias/pins permanecen intactos. No escribe ni ejecuta archivos. CI Linux usa --no-fail-fast para recopilar todos los fallos de plataforma en una ronda; mantiene suite completa y resultado bloqueante ante cualquier fallo. Revalidación Windows por cola PASS: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados), lifecycle18/18; quality31 y456pins PASS. CI Linux completa pendiente.
-CI Linux 8c657ac: el job agotó90min dentro de Nextest; no fue cancelación manual. Calloop0.14.4 reinicia stop al entrar en run(), después del callback de lanzamiento GPUI; quit síncrono del harness se pierde. Helper solo de tests programa quit como tarea foreground para los26 escenarios headless de Cuenta, catálogo, Studio y accesibilidad. Sin cambios productivos, pins, asserts ni exclusiones. Revalidación Windows por cola PASS: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados;239,844s), lifecycle18/18; quality31 y456pins PASS. Telemetría previa21/21 válida sobre idéntico código productivo. CI Linux completa pendiente.
-CI Windows anterior detectó alias 8.3 de TEMP: COM devuelve runneradmin mientras
-la fixture usa RUNNER~1. Test LNK compara cardinalidad y destinos canónicos,
-conservando byte a byte el enlace y las comprobaciones de no ejecución.
-Revalidación Windows por cola: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados) y lifecycle18/18 PASS; no cambia código de producto.
-GitGuardian incidente37742164 señala manifest.json:289 de frozen-go como alta
-entropía: SHA-256 del archivo credentials_store.go recalculado en ambos tar.gz,
-coincide con sus pins, no es credencial. Prueba/nota en evidencia externa y PR.
-Dashboard exige sesión para clasificar false_positive; Isaac lo clasificará después. El usuario verificó el 2026-10-10 que el archivo archivado no contiene secretos escritos en código y que GitGuardian no es obligatorio de nightly; autoriza continuar con los checks obligatorios verdes. BLOQUEO anterior revocado para la promoción.
-No se cambia conclusión del scanner, pins, historia ni reglas de ignorar.
 Isaac confirma USB Ventoy conectado: al firmar, comprobar existencia y pasar
 ruta directa, sin esperar nueva autorización ni acceder al contenido de la semilla.
 Evidencia externa promocion-nightly-1528-evidence/; firma/publicación aún pendientes.
@@ -6683,3 +6876,22 @@ editar/guardar layout, comprobar posición/tamaño/visibilidad y reabrir ambos h
 plan.md ausente en esta base y origin/nightly; corrección de gobernanza en #1530.
 Sin dependencia nueva, delegación, Notion, push, PR, merge, promoción o release.
 Siguiente acción: revisión del orquestador e integración solo tras autorización de Isaac.
+
+## #1540 · Overlays UI: escala por ejes, persistencia concurrente y recarga fiable (2026-10-10)
+
+Entrega aislada en C:/tmp/vw3-1540/vantare-v2, rama
+vantareapp/isa-1540-ui-overlays, base 70170613, HEAD e7f97169.
+P1 preview.rs: paths/sombras ya comprueban ambos ejes y el offset de sombra escala por eje
+(commits 01db532c, tests height_only_* que fallaban antes del arreglo).
+P1 workshop/state.rs: guardado en serie con json.lock, temporal unico pid+contador con
+create_new (+reintento), sync_all y limpieza de restos (commit aa58f9e1; stress
+concurrent_saves fallaba en base con rename imposible/fichero a medias).
+P2 layout.rs: Document verifica bytes cada 20 polls sin cambio de mtime (~10 s a 500 ms)
+y test de escritor externo demuestra Conflict sin perdida (commit e7f97169).
+No reproducidos sin tocar produccion: layout-441 ya cubierto por doble lectura+lock;
+motion_policy TOCTOU sin diferencia observable en test; racing_flags (pulso amarillo 920 ms,
+shaping cacheado) y broadcast_tower (<=20 clones de Row/foto, filas acotadas 3..=10) sin
+harness de medicion de pintado; efficiency/text sin fallo de texto forzable headless.
+Por cola: fmt PASS, clippy workspace -D warnings PASS, Nextest 1417 PASS + 7 skips,
+lifecycle PASS; telemetria no aplica (solo ui). Sin push, PR, merge, promocion o release.
+Siguiente accion: revision del orquestador e integracion solo tras autorizacion de Isaac.

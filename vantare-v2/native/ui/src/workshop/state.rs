@@ -1,7 +1,9 @@
 use crate::Settings;
 use std::{
     hash::{Hash, Hasher},
+    io::Write as _,
     path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
@@ -71,14 +73,62 @@ impl Saved {
     }
 
     pub fn save(&self, path: &Path) -> Result<(), String> {
+        // Temporal único por intento con create_new: ni el otro escritor ni un
+        // resto huérfano de un PID reutilizado pueden sobrescribirlo.
+        static NEXT: AtomicU64 = AtomicU64::new(0);
         self.validate()?;
         let bytes = serde_json::to_vec(self).map_err(|error| error.to_string())?;
         if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
             std::fs::create_dir_all(parent).map_err(|error| format!("crear ajustes: {error}"))?;
         }
-        let temporary = path.with_extension("json.tmp");
-        std::fs::write(&temporary, bytes).map_err(|error| format!("guardar ajustes: {error}"))?;
-        std::fs::rename(&temporary, path).map_err(|error| format!("reemplazar ajustes: {error}"))
+        // Exclusión entre escritores: dos Workshop guardan en serie; el
+        // segundo espera en vez de truncar o renombrar el temporal del primero.
+        let lock = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path.with_extension("json.lock"))
+            .map_err(|error| format!("bloquear ajustes: {error}"))?;
+        lock.lock()
+            .map_err(|error| format!("bloquear ajustes: {error}"))?;
+        let mut attempt = NEXT.fetch_add(1, Ordering::Relaxed);
+        let mut pending = loop {
+            let candidate =
+                path.with_extension(format!("json.{}.{}.tmp", std::process::id(), attempt));
+            match std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .open(&candidate)
+            {
+                Ok(file) => {
+                    break PendingFile {
+                        path: candidate,
+                        file,
+                    };
+                }
+                Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                    attempt = NEXT.fetch_add(1, Ordering::Relaxed);
+                }
+                Err(error) => return Err(format!("guardar ajustes: {error}")),
+            }
+        };
+        let failed = |error: std::io::Error| format!("guardar ajustes: {error}");
+        pending.file.write_all(&bytes).map_err(failed)?;
+        pending.file.sync_all().map_err(failed)?;
+        // rename reemplaza el destino sin borrar primero los ajustes válidos.
+        std::fs::rename(&pending.path, path).map_err(|error| format!("reemplazar ajustes: {error}"))
+    }
+}
+
+/// Temporal en curso: al salir sin renombrar no deja restos que otro
+/// escritor pueda confundir con un guardado válido.
+struct PendingFile {
+    path: PathBuf,
+    file: std::fs::File,
+}
+impl Drop for PendingFile {
+    fn drop(&mut self) {
+        let _ = std::fs::remove_file(&self.path);
     }
 }
 
@@ -86,6 +136,25 @@ impl Saved {
 mod tests {
     use super::*;
     use crate::Kind;
+
+    fn sample(frame: usize, background: &str) -> Saved {
+        Saved {
+            version: 1,
+            settings: super::super::default_settings(Kind::Relative),
+            scene: super::super::default_path(Kind::Relative),
+            frame,
+            background: background.into(),
+            scale: 1.0,
+            dimensions: None,
+            study: "default".into(),
+            preset: "1080p".into(),
+            surface: "studio".into(),
+            comparison: None,
+            language: "es".into(),
+            player_position: None,
+            name_mode: "surname".into(),
+        }
+    }
 
     #[test]
     fn reopen_restores_selection_settings_background_scale_and_rejects_invalid_state() {
@@ -125,5 +194,54 @@ mod tests {
         std::fs::write(&path, b"{").expect("invalid json");
         assert!(Saved::load(&path).is_err());
         std::fs::remove_file(path).expect("cleanup");
+    }
+
+    /// Dos Workshop guardando el mismo estado a la vez nunca dejan un fichero
+    /// a medias: cada lectura ve un guardado completo de uno de ellos (#1540).
+    #[test]
+    fn concurrent_saves_never_leave_torn_state() {
+        static NEXT: AtomicU64 = AtomicU64::new(0);
+        let dir = std::env::temp_dir().join(format!(
+            "vantare-workshop-race-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        std::fs::create_dir_all(&dir).expect("directorio temporal");
+        let path = dir.join("workshop.json");
+        sample(1, "solid").save(&path).expect("semilla");
+        let path = std::sync::Arc::new(path);
+        let stop = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let savers: Vec<_> = [(1, "solid"), (2, "grid")]
+            .into_iter()
+            .map(|(frame, background)| {
+                let path = path.clone();
+                let stop = stop.clone();
+                std::thread::spawn(move || {
+                    let saved = sample(frame, background);
+                    let mut rounds = 0;
+                    while !stop.load(Ordering::Relaxed) && rounds < 300 {
+                        saved.save(&path).expect("guardado concurrente");
+                        rounds += 1;
+                    }
+                    rounds
+                })
+            })
+            .collect();
+        for _ in 0..600 {
+            match Saved::load(&path) {
+                Ok(Some(saved)) => assert!(
+                    (saved.frame == 1 && saved.background == "solid")
+                        || (saved.frame == 2 && saved.background == "grid"),
+                    "guardado a medias visible en el fichero"
+                ),
+                Ok(None) => panic!("el fichero desapareció durante guardados concurrentes"),
+                Err(error) => panic!("fichero a medias durante guardados concurrentes: {error}"),
+            }
+        }
+        stop.store(true, Ordering::Relaxed);
+        for saver in savers {
+            saver.join().expect("hilo de guardado");
+        }
+        std::fs::remove_dir_all(dir).expect("limpiar");
     }
 }

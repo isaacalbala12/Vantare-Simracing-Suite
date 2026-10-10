@@ -6,6 +6,36 @@ use vantare_engineer::{
 };
 
 #[test]
+fn play_without_configured_voice_returns_none_on_any_platform() {
+    let mut silent = Voice::new(None).expect("sin voz");
+    assert_eq!(
+        silent
+            .play(Locale::Es, Intent::FuelOne, Duration::ZERO)
+            .expect("sin voz configurada"),
+        None
+    );
+}
+
+// Plataforma sin audio: la voz solicitada se rechaza antes de resolver los
+// clips. Con la carpeta ausente, resolver haría I/O y devolvería NotFound;
+// debe devolver Unsupported sin tocar el sistema de ficheros.
+#[cfg(not(windows))]
+#[test]
+fn play_without_audio_support_returns_unsupported_before_touching_clips() {
+    let missing = std::env::temp_dir().join(format!("vantare-voz-ausente-{}", std::process::id()));
+    assert!(!missing.exists());
+    let mut voice = Voice::new(Some(&missing)).expect("la carpeta ausente no aborta");
+    assert_eq!(
+        voice
+            .play(Locale::Es, Intent::FuelOne, Duration::ZERO)
+            .expect_err("sin audio debe rechazar")
+            .kind(),
+        io::ErrorKind::Unsupported
+    );
+    assert!(!missing.exists(), "rechazar no debe crear ni leer nada");
+}
+
+#[test]
 fn keys_match_frozen_go_cache_key_vectors_including_utf8() {
     // Obtenidos 2026-09-30 con go run, importando internal/tts y llamando
     // (&tts.Cache{}).Key(locale, voice, text); vector externo congelado.
@@ -185,12 +215,19 @@ fn cache_resolution_is_read_only_exact_and_missing_preserves_catalog() {
     fs::remove_dir(&wav_path).expect("quitar directorio");
     let missing_root = cache.0.join("sin-carpeta");
     let mut player = Voice::new(Some(&missing_root)).expect("no abortar por cache ausente");
+    // En Unix play rechaza con Unsupported antes de canonicalizar (voice.rs:50-56);
+    // el caso Unix ya lo cubre play_without_audio_support_returns_unsupported_before_touching_clips.
+    let expected_kind = if cfg!(windows) {
+        io::ErrorKind::NotFound
+    } else {
+        io::ErrorKind::Unsupported
+    };
     assert_eq!(
         player
             .play(Locale::Es, Intent::FuelOne, Duration::ZERO)
             .expect_err("ausente")
             .kind(),
-        io::ErrorKind::NotFound
+        expected_kind
     );
     assert!(!missing_root.exists());
 }

@@ -1,6 +1,17 @@
 use super::*;
 
 #[test]
+fn regression_1542_published_id_survives_temporary_cleanup_failure() {
+    let root = root();
+    let first = anonymous_id_with_cleanup(&root, |_| {
+        Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+    });
+    let saved = anonymous_id(&root).expect("publicación durable");
+    fs::remove_dir_all(root).expect("cleanup QA");
+    assert_eq!(first, Ok(saved));
+}
+
+#[test]
 fn isolated_data_root_child() {
     if let Some(base) = std::env::var_os("VANTARE_TEST_DIAGNOSTICS_ROOT") {
         let base = PathBuf::from(base);
@@ -36,6 +47,49 @@ pub(super) fn consent(root: &Path) {
         br#"{"crashes":true,"usage":false,"crashes_decided":true}"#,
     )
     .expect("explicit consent");
+}
+
+#[test]
+fn isa1548_atomic_crash_queue_preserves_all_concurrent_producers() {
+    let root = root();
+    std::thread::scope(|scope| {
+        let writers: Vec<_> = (0..QUEUE_LIMIT)
+            .map(|index| {
+                let root = &root;
+                scope.spawn(move || {
+                    queue(
+                        root,
+                        "crashes",
+                        &Crash {
+                            binary: "native".into(),
+                            version: crate::product::VERSION.into(),
+                            message: "native_panic".into(),
+                            backtrace: String::new(),
+                            timestamp: 1,
+                            frames: vec![u64::try_from(index).expect("index")],
+                        },
+                    )
+                    .expect("one document per producer");
+                })
+            })
+            .collect();
+        for writer in writers {
+            writer.join().expect("writer finished");
+        }
+    });
+    let mut frames = Vec::new();
+    for entry in fs::read_dir(root.join("crashes")).expect("queue") {
+        let entry = entry.expect("slot");
+        let crash: Crash = serde_json::from_slice(&fs::read(entry.path()).expect("complete bytes"))
+            .expect("complete JSON");
+        frames.extend(crash.frames);
+    }
+    frames.sort_unstable();
+    assert_eq!(
+        frames,
+        (0..u64::try_from(QUEUE_LIMIT).expect("count")).collect::<Vec<_>>()
+    );
+    fs::remove_dir_all(root).expect("cleanup");
 }
 
 #[test]

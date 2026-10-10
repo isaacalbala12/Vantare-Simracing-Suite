@@ -109,10 +109,9 @@ fn the_44_car_practice_fixture_becomes_the_expected_observation() {
         Some("LMP2_ELMS")
     );
     assert!(matches!(first.best_lap_s, Quality::Unavailable));
-    assert!(matches!(
-        first.gap_leader,
-        Quality::Reliable(vantare_domain::Gap::Time { seconds }) if (seconds - 82.575_340_27).abs() < 1e-6
-    ));
+    // Práctica sin mejor vuelta: el progreso en pista no es un gap de tabla.
+    assert_eq!(first.gap_leader, Quality::Unavailable);
+    assert_eq!(first.gap_ahead, Quality::Unavailable);
     assert!(first.number.is_empty(), "sin REST no hay número de carrera");
     assert!(state.cars.iter().all(|car| car.pose.current().is_some()));
 
@@ -159,7 +158,6 @@ fn the_44_car_practice_fixture_becomes_the_expected_observation() {
         caps.session_clock,
         caps.positions,
         caps.lap_times,
-        caps.gaps,
         caps.pit_status,
         caps.spatial,
         caps.driver_inputs,
@@ -170,6 +168,7 @@ fn the_44_car_practice_fixture_becomes_the_expected_observation() {
     ] {
         assert_eq!(fresh, Capability::Fresh);
     }
+    assert_eq!(caps.gaps, Capability::Supported);
     assert_eq!(caps.delta, Capability::Supported);
     assert_eq!(
         caps.flags,

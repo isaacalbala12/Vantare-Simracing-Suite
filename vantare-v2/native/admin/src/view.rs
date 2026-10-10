@@ -503,7 +503,9 @@ impl Admin {
     }
     fn record_render(&mut self, started: Instant, window: &Window) {
         if let Some(worker) = &self.worker {
-            if let Some(request) = self.render_pending.take() {
+            if let Some(request) = self.render_pending.take()
+                && crate::diagnostics::render_enabled()
+            {
                 // Timings go to the services thread; no file I/O during render.
                 let _ = worker.send.send(Command::Timing(
                     "request_to_render",

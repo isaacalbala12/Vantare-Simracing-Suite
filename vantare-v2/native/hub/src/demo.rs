@@ -328,6 +328,16 @@ impl DemoData {
                 include_str!("../reference/fixtures/launcher-r7.json")
             })
             .map_err(|error| format!("fixture visual Inicio: {error}"))?;
+            // Las rutas QA de estas fixtures son Windows; la captura Unix usa su raíz local.
+            #[cfg(not(windows))]
+            for app in &mut self.launcher.apps {
+                if let Some(path) = &mut app.executable_path
+                    && let Some(relative) =
+                        path.to_str().and_then(|text| text.strip_prefix("C:/QA/"))
+                {
+                    *path = std::path::Path::new("/QA").join(relative);
+                }
+            }
             if self.launcher.profiles.iter().any(|profile| {
                 profile
                     .last_ready_steps
@@ -542,12 +552,8 @@ pub enum CaptureStrategyPage {
 
 fn strategy_capture_page(name: &str) -> Option<CaptureStrategyPage> {
     match name {
-        "strategy-asistente-origen" | "strategy-v5-asistente-inicio" => {
-            Some(CaptureStrategyPage::AssistantInicio)
-        }
-        "strategy-asistente-equipo" | "strategy-v5-asistente-combinacion" => {
-            Some(CaptureStrategyPage::AssistantCombinacion)
-        }
+        "strategy-v5-asistente-inicio" => Some(CaptureStrategyPage::AssistantInicio),
+        "strategy-v5-asistente-combinacion" => Some(CaptureStrategyPage::AssistantCombinacion),
         "strategy-v5-asistente-reglas" => Some(CaptureStrategyPage::AssistantReglas),
         "strategy-v5-asistente-pilotos" => Some(CaptureStrategyPage::AssistantPilotos),
         "strategy-v5-asistente-sesiones" => Some(CaptureStrategyPage::AssistantSesiones),
@@ -734,27 +740,6 @@ impl CaptureState {
 mod tests {
     use super::*;
 
-    fn launcher_store_on_host(
-        name: &str,
-        demo: &DemoData,
-    ) -> Result<crate::launcher::Store, String> {
-        let mut local = demo.clone();
-        // Las referencias congeladas usan C:/QA. Solo la copia del banco
-        // adapta sus rutas a Unix; no se escribe ni ejecuta ningún archivo.
-        if !cfg!(windows) {
-            for app in &mut local.launcher.apps {
-                if let Some(path) = &mut app.executable_path {
-                    assert!(path.to_string_lossy().starts_with("C:/QA/"));
-                    let filename = path.file_name().expect("fixture con nombre de ejecutable");
-                    *path = std::env::temp_dir()
-                        .join("vantare-capture-qa")
-                        .join(filename);
-                }
-            }
-        }
-        crate::launcher::demo_store(std::env::temp_dir().join(name), &local)
-    }
-
     #[test]
     fn home_capture_states_are_explicit_and_empty_scenes_have_no_profiles() {
         for name in [
@@ -939,6 +924,21 @@ mod tests {
     }
 
     #[test]
+    fn retired_aliases_have_no_strategy_capture_page() {
+        // Parse ya los rechaza; sus brazos serían inalcanzables.
+        assert!(strategy_capture_page("strategy-asistente-origen").is_none());
+        assert!(strategy_capture_page("strategy-asistente-equipo").is_none());
+        assert_eq!(
+            strategy_capture_page("strategy-v5-asistente-inicio"),
+            Some(CaptureStrategyPage::AssistantInicio)
+        );
+        assert_eq!(
+            strategy_capture_page("strategy-v5-asistente-combinacion"),
+            Some(CaptureStrategyPage::AssistantCombinacion)
+        );
+    }
+
+    #[test]
     fn retired_strategy_scenes_are_not_capture_targets() {
         for name in [
             "strategy-base",
@@ -1018,7 +1018,7 @@ mod tests {
         assert_eq!(home.launcher.profiles.len(), 3);
         assert_eq!(home.launcher.profiles[0].name, "Carrera LMU");
         assert_eq!(home.launcher.profiles[0].last_ready_steps, Some(4));
-        launcher_store_on_host("launcher.json", &home)?;
+        crate::launcher::demo_store(std::path::PathBuf::from("C:/QA/launcher.json"), &home)?;
         Ok(())
     }
 
@@ -1037,7 +1037,10 @@ mod tests {
             demo.apply_capture(&capture)?;
             assert!(demo.overlay_profile().is_some());
             assert_eq!(demo.launcher.profiles.len(), 3);
-            launcher_store_on_host("home-quality.json", &demo)?;
+            crate::launcher::demo_store(
+                std::path::PathBuf::from("C:/QA/home-quality.json"),
+                &demo,
+            )?;
             assert_eq!(
                 demo.user.full_name.starts_with("PilotoConNombre"),
                 name == "inicio-nombre-largo"
@@ -1094,7 +1097,7 @@ mod tests {
             assert!(demo.overlay_profile().is_none());
             assert_eq!(demo.launcher.profiles[0].name, "Carrera LMU");
             assert_eq!(demo.launcher.profiles[0].steps.len(), 4);
-            launcher_store_on_host("showcase.json", &demo)?;
+            crate::launcher::demo_store(std::path::PathBuf::from("C:/QA/showcase.json"), &demo)?;
         }
         Ok(())
     }

@@ -6,7 +6,57 @@ use gpui::{
     px,
 };
 
+#[derive(Default)]
+pub(super) struct State {
+    pub(super) snapshot: Option<Result<application::repository::RepositorySnapshot, String>>,
+    pub(super) generation: u64,
+}
+
+#[cfg(test)]
+thread_local! {
+    pub(super) static REPOSITORY_READS: std::cell::Cell<usize> = const { std::cell::Cell::new(0) };
+}
+
+fn read_repository(
+    directory: &std::path::Path,
+) -> Result<application::repository::RepositorySnapshot, String> {
+    #[cfg(test)]
+    REPOSITORY_READS.set(REPOSITORY_READS.get() + 1);
+    application::repository::LocalRepository::open(directory)
+        .and_then(|repository| repository.load())
+}
+
 impl Strategy {
+    pub(super) fn load_revisions(&mut self, cx: &mut gpui::Context<Self>) {
+        self.revisions.generation = self.revisions.generation.wrapping_add(1);
+        self.revisions.snapshot = None;
+        let generation = self.revisions.generation;
+        let directory = self.directory.clone();
+        let task = cx
+            .background_executor()
+            .spawn(async move { read_repository(&directory) });
+        cx.spawn(async move |this, cx| {
+            let snapshot = task.await;
+            let _ = this.update(cx, |this, cx| {
+                this.finish_revisions_load(generation, snapshot, cx);
+            });
+        })
+        .detach();
+        cx.notify();
+    }
+
+    pub(super) fn finish_revisions_load(
+        &mut self,
+        generation: u64,
+        snapshot: Result<application::repository::RepositorySnapshot, String>,
+        cx: &mut gpui::Context<Self>,
+    ) {
+        if self.revisions.generation == generation {
+            self.revisions.snapshot = Some(snapshot);
+            cx.notify();
+        }
+    }
+
     pub(super) fn save_application_draft(&self) -> Result<(), String> {
         let document = self
             .editor
@@ -39,8 +89,17 @@ impl Strategy {
 
     #[allow(clippy::too_many_lines)] // Mantiene juntas las dos columnas de la pestaña.
     pub(super) fn revisions_page(&self, cx: &gpui::App) -> gpui::Div {
-        let repository = application::repository::LocalRepository::open(&self.directory)
-            .and_then(|repository| repository.load());
+        let Some(repository) = &self.revisions.snapshot else {
+            return orbit::card("Revisiones locales", cx).child(orbit::card_body().child(
+                orbit::text(
+                    "Cargando revisiones…",
+                    orbit::BODY,
+                    400,
+                    orbit::ink_2(cx),
+                    cx,
+                ),
+            ));
+        };
         match repository {
             Ok(snapshot) => {
                 let mut revision_rows = div().flex().flex_col().gap(px(8.0));
@@ -377,7 +436,7 @@ Consulta una revisión anterior para recuperar sus correcciones." } else { "Una 
                     )
             }
             Err(error) => orbit::card("Revisiones locales", cx)
-                .child(orbit::card_body().child(orbit::callout(error, cx))),
+                .child(orbit::card_body().child(orbit::callout(error.clone(), cx))),
         }
     }
 

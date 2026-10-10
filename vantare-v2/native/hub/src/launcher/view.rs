@@ -12,8 +12,8 @@ use gpui::{
 };
 use std::{
     collections::HashMap,
-    path::PathBuf,
-    time::{Duration, Instant},
+    path::{Path, PathBuf},
+    time::{Duration, Instant, SystemTime},
 };
 
 struct AppDraft {
@@ -74,6 +74,8 @@ pub struct Launcher {
     resident_decision: Option<u64>,
     resident_answered: Option<u64>,
     resident_error: Option<String>,
+    resident_status: Option<vantare_ipc::launcher::Status>,
+    resident_status_sig: Option<(SystemTime, u64)>,
     exit_answer: Option<Action>,
     exit_cancelled: bool,
     discovered: Discovery,
@@ -107,6 +109,38 @@ fn args_json(args: &[String]) -> String {
 fn parse_args(value: &str) -> Result<Vec<String>, String> {
     serde_json::from_str(value)
         .map_err(|error| format!("argumentos: usa un array JSON de strings: {error}"))
+}
+
+/// Firma del fichero de estado resident: solo cambia al escribirse.
+fn resident_signature(settings: &Path) -> Option<(SystemTime, u64)> {
+    let metadata = std::fs::metadata(vantare_ipc::launcher::status_path(settings)).ok()?;
+    Some((metadata.modified().ok()?, metadata.len()))
+}
+
+/// Frescura exigida por `read_status`: versión 1 y menos de 3 s.
+fn resident_is_fresh(status: &vantare_ipc::launcher::Status) -> bool {
+    status.version == 1
+        && vantare_ipc::launcher::now_ms()
+            .checked_sub(status.updated_ms)
+            .is_some_and(|age| age < 3_000)
+}
+
+fn hotkey_status_text(status: Option<&vantare_ipc::launcher::Status>, id: &str) -> String {
+    status
+        .filter(|status| resident_is_fresh(status))
+        .and_then(|status| status.profiles.iter().find(|profile| profile.profile == id))
+        .map_or_else(
+            || "Registro no confirmado · abre Vantare desde el instalador".into(),
+            |registration| {
+                registration.error.clone().unwrap_or_else(|| {
+                    if registration.registered {
+                        "Registrado en Windows".into()
+                    } else {
+                        "Sin registro activo".into()
+                    }
+                })
+            },
+        )
 }
 #[path = "editor.rs"]
 mod editor;
@@ -203,6 +237,8 @@ impl Launcher {
             resident_decision: None,
             resident_answered: None,
             resident_error: None,
+            resident_status: None,
+            resident_status_sig: None,
             exit_answer: None,
             exit_cancelled: false,
             discovered: discovery.unwrap_or_default(),
@@ -316,15 +352,16 @@ impl Launcher {
             .processes
             .lock()
             .map_err(|e| format!("procesos Launcher: {e}"))?;
+        let mut targets = Vec::new();
         for profile in &self.store.document.profiles {
             let policy = profile.effective_policy();
             if policy.exit == Close::Started
                 || policy.exit == Close::Ask && self.exit_answer == Some(Action::CloseStarted)
             {
-                processes.close_profile(&profile.id)?;
+                targets.push(profile.id.clone());
             }
         }
-        Ok(())
+        close_exit_targets(&targets, |id| processes.close_profile(id))
     }
 
     pub fn take_exit_cancelled(&mut self) -> bool {
@@ -438,7 +475,7 @@ impl Launcher {
     }
 
     fn poll_resident(&mut self, cx: &mut Context<Self>) {
-        if let Some(status) = vantare_ipc::launcher::read_status(&self.store.path) {
+        if let Some(status) = self.refresh_resident_status() {
             let error = status.error.or_else(|| {
                 status
                     .profiles
@@ -622,26 +659,20 @@ impl Launcher {
             .collect::<Vec<_>>()
             .join(" → ")
     }
+    /// Estado resident cacheado: `poll_resident` reparsea solo al cambiar el
+    /// fichero; la vista de Ajustes sirve desde aquí sin abrir el disco.
+    fn refresh_resident_status(&mut self) -> Option<vantare_ipc::launcher::Status> {
+        let signature = resident_signature(&self.store.path);
+        if signature == self.resident_status_sig {
+            return self.resident_status.clone().filter(resident_is_fresh);
+        }
+        let status = vantare_ipc::launcher::read_status(&self.store.path);
+        self.resident_status_sig = signature;
+        self.resident_status.clone_from(&status);
+        status
+    }
     pub(crate) fn global_hotkey_status(&self, id: &str) -> String {
-        vantare_ipc::launcher::read_status(&self.store.path)
-            .and_then(|status| {
-                status
-                    .profiles
-                    .into_iter()
-                    .find(|profile| profile.profile == id)
-            })
-            .map_or_else(
-                || "Registro no confirmado · abre Vantare desde el instalador".into(),
-                |registration| {
-                    registration.error.unwrap_or_else(|| {
-                        if registration.registered {
-                            "Registrado en Windows".into()
-                        } else {
-                            "Sin registro activo".into()
-                        }
-                    })
-                },
-            )
+        hotkey_status_text(self.resident_status.as_ref(), id)
     }
     pub(crate) fn global_hotkey_error(&self) -> Option<&str> {
         self.resident_error.as_deref()
@@ -741,8 +772,17 @@ impl Launcher {
         }
     }
 
+    /// Aviso cuando el reintento no puede arrancar: el panel final conserva
+    /// sus botones durante el escaneo y antes se retornaba en silencio.
+    fn retry_wait_message(chain: bool, scanning: bool) -> Option<&'static str> {
+        (!chain && scanning).then_some("Escaneo local en curso; reintenta al terminar.")
+    }
     fn retry(&mut self, scope: super::chain::RetryScope, cx: &mut Context<Self>) {
         if self.chain.is_some() || self.scanning {
+            if let Some(message) = Self::retry_wait_message(self.chain.is_some(), self.scanning) {
+                self.status = message.into();
+                cx.notify();
+            }
             return;
         }
         let Some(profile) = self.last_profile.clone() else {
@@ -954,5 +994,144 @@ impl Launcher {
                     ))
                 },
             )
+    }
+}
+
+/// Cierra todos los objetivos aunque alguno falle; el primer error ya no
+/// interrumpe el cierre de los perfiles restantes al salir.
+fn close_exit_targets(
+    targets: &[String],
+    mut close: impl FnMut(&str) -> Result<(), String>,
+) -> Result<(), String> {
+    let mut errors = Vec::new();
+    for target in targets {
+        if let Err(error) = close(target) {
+            errors.push(error);
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
+    }
+}
+
+#[cfg(test)]
+mod close_tests {
+    use super::*;
+    use std::cell::RefCell;
+
+    #[test]
+    fn exit_close_attempts_every_profile_and_reports_all_failures() {
+        let attempted = RefCell::new(Vec::new());
+        let result = close_exit_targets(&["a".into(), "b".into()], |id: &str| {
+            attempted.borrow_mut().push(id.to_owned());
+            if id == "a" {
+                Err("falla A".to_owned())
+            } else {
+                Ok(())
+            }
+        });
+        assert_eq!(result, Err("falla A".to_owned()));
+        // El fallo de A no debe impedir intentar cerrar B.
+        assert_eq!(*attempted.borrow(), vec!["a".to_owned(), "b".to_owned()]);
+    }
+
+    #[test]
+    fn exit_close_succeeds_only_when_every_profile_closes() {
+        let result = close_exit_targets(&[], |_: &str| Ok(()));
+        assert_eq!(result, Ok(()));
+        let result = close_exit_targets(&["a".into(), "b".into()], |id: &str| {
+            if id == "b" {
+                Err("falla B".to_owned())
+            } else {
+                Ok(())
+            }
+        });
+        assert_eq!(result, Err("falla B".to_owned()));
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use vantare_ipc::launcher::{Registration, Status};
+    #[test]
+    fn retry_during_scan_reports_instead_of_silently_returning() {
+        assert_eq!(Launcher::retry_wait_message(false, false), None);
+        assert_eq!(Launcher::retry_wait_message(true, false), None);
+        assert_eq!(Launcher::retry_wait_message(true, true), None);
+        assert_eq!(
+            Launcher::retry_wait_message(false, true),
+            Some("Escaneo local en curso; reintenta al terminar.")
+        );
+    }
+
+    fn resident_test_status(updated_ms: u64, profile: &str, registered: bool) -> Status {
+        Status {
+            version: 1,
+            updated_ms,
+            profiles: vec![Registration {
+                profile: profile.into(),
+                hotkey: "Ctrl+Alt+L".into(),
+                registered,
+                error: None,
+            }],
+            ..Status::default()
+        }
+    }
+
+    fn resident_test_settings(name: &str) -> PathBuf {
+        std::env::temp_dir().join(format!(
+            "launcher-resident-cache-{name}-{}.json",
+            std::process::id()
+        ))
+    }
+
+    #[test]
+    fn resident_signature_tracks_file_changes() {
+        let settings = resident_test_settings("sig");
+        let path = vantare_ipc::launcher::status_path(&settings);
+        let _ = std::fs::remove_file(&path);
+        assert_eq!(resident_signature(&settings), None);
+        let status = resident_test_status(vantare_ipc::launcher::now_ms(), "a", true);
+        std::fs::write(&path, serde_json::to_vec(&status).expect("JSON")).expect("estado");
+        let first = resident_signature(&settings).expect("firma tras escribir");
+        assert_eq!(resident_signature(&settings), Some(first));
+        let mut longer = status.clone();
+        longer.progress = "una descripción más larga para cambiar el tamaño".into();
+        std::fs::write(&path, serde_json::to_vec(&longer).expect("JSON")).expect("reescribir");
+        assert_ne!(resident_signature(&settings), Some(first));
+        std::fs::remove_file(&path).expect("limpiar");
+    }
+
+    #[test]
+    fn cached_resident_status_serves_hotkeys_without_reparsing() {
+        assert!(!resident_is_fresh(&resident_test_status(0, "a", true)));
+        let fresh = resident_test_status(vantare_ipc::launcher::now_ms(), "a", true);
+        assert!(resident_is_fresh(&fresh));
+        assert_eq!(
+            hotkey_status_text(Some(&fresh), "a"),
+            "Registrado en Windows"
+        );
+        let mut unregistered = fresh.clone();
+        unregistered.profiles[0].registered = false;
+        assert_eq!(
+            hotkey_status_text(Some(&unregistered), "a"),
+            "Sin registro activo"
+        );
+        assert_eq!(
+            hotkey_status_text(Some(&fresh), "otra"),
+            "Registro no confirmado · abre Vantare desde el instalador"
+        );
+        assert_eq!(
+            hotkey_status_text(None, "a"),
+            "Registro no confirmado · abre Vantare desde el instalador"
+        );
+        let stale = resident_test_status(0, "a", true);
+        assert_eq!(
+            hotkey_status_text(Some(&stale), "a"),
+            "Registro no confirmado · abre Vantare desde el instalador"
+        );
     }
 }

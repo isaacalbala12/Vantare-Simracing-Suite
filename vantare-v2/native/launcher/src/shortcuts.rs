@@ -23,29 +23,82 @@ fn hint(name: &str) -> bool {
         })
 }
 
-fn gather(root: &Path, depth: u8, budget: &mut usize, paths: &mut Vec<PathBuf>) {
+fn gather(
+    root: &Path,
+    depth: u8,
+    budget: &mut usize,
+    paths: &mut Vec<PathBuf>,
+    warnings: &mut Vec<String>,
+) {
     if !is_local_path(root) || fs::symlink_metadata(root).is_ok_and(|m| m.file_type().is_symlink())
     {
         return;
     }
-    let Ok(entries) = fs::read_dir(root) else {
-        return;
+    let entries = match fs::read_dir(root) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return,
+        Err(error) => {
+            warnings.push(format!(
+                "leer accesos directos de {}: {error}",
+                root.display()
+            ));
+            return;
+        }
     };
-    let mut entries: Vec<_> = entries.take(*budget).flatten().collect();
+    let mut entries: Vec<_> = entries
+        .take(budget.saturating_add(1))
+        .filter_map(|entry| match entry {
+            Ok(entry) => Some(entry),
+            Err(error) => {
+                warnings.push(format!(
+                    "entrada de accesos directos de {}: {error}",
+                    root.display()
+                ));
+                None
+            }
+        })
+        .collect();
+    // `take(budget)` truncaría entradas sin aviso: detectar el desborde con
+    // una entrada extra, como el aviso de truncamiento de discovery.
+    if entries.len() > *budget {
+        warnings.push(format!(
+            "scan truncado a 20000 entradas: {}",
+            root.display()
+        ));
+        entries.truncate(*budget);
+    }
     entries.sort_by_key(std::fs::DirEntry::file_name);
     for entry in entries {
-        if *budget == 0 || paths.len() == 128 {
+        if *budget == 0 {
+            warnings.push(format!(
+                "scan truncado a 20000 entradas: {}",
+                root.display()
+            ));
+            return;
+        }
+        if paths.len() == 128 {
+            warnings.push(format!(
+                "accesos directos truncados a 128 enlaces: {}",
+                root.display()
+            ));
             return;
         }
         *budget -= 1;
-        let Ok(kind) = entry.file_type() else {
-            continue;
+        let kind = match entry.file_type() {
+            Ok(kind) => kind,
+            Err(error) => {
+                warnings.push(format!(
+                    "tipo de acceso directo {}: {error}",
+                    entry.path().display()
+                ));
+                continue;
+            }
         };
         if kind.is_symlink() {
             continue;
         }
         if kind.is_dir() && depth > 0 {
-            gather(&entry.path(), depth - 1, budget, paths);
+            gather(&entry.path(), depth - 1, budget, paths, warnings);
         }
         if kind.is_file()
             && entry
@@ -74,6 +127,7 @@ pub fn system(warnings: &mut Vec<String>) -> Vec<PathBuf> {
                 depth,
                 &mut budget,
                 &mut links,
+                warnings,
             );
         }
     }
@@ -85,6 +139,66 @@ pub fn system(warnings: &mut Vec<String>) -> Vec<PathBuf> {
         }
     }
     result
+}
+
+#[cfg(test)]
+mod warning_tests {
+    use super::*;
+
+    #[test]
+    fn isa1548_unreadable_shortcut_directory_reports_cause() {
+        let root = std::env::temp_dir().join(format!(
+            "shortcut-read-error-{}",
+            vantare_services::random_id().expect("test id")
+        ));
+        fs::write(&root, b"not a directory").expect("fixture");
+        let mut warnings = Vec::new();
+        let mut links = Vec::new();
+        gather(&root, 2, &mut 20_000, &mut links, &mut warnings);
+        fs::remove_file(&root).expect("cleanup");
+        assert!(links.is_empty());
+        assert!(
+            warnings
+                .iter()
+                .any(|warning| warning.contains(&root.display().to_string()))
+        );
+    }
+
+    #[test]
+    fn isa1556_truncation_reports_warning_when_budget_or_link_cap_exhausted() {
+        let base = std::env::temp_dir().join(format!(
+            "shortcut-truncate-{}",
+            vantare_services::random_id().expect("test id")
+        ));
+        fs::create_dir_all(&base).expect("base");
+        for name in ["obs studio a.lnk", "obs studio b.lnk", "obs studio c.lnk"] {
+            fs::write(base.join(name), b"fixture").expect("fixture");
+        }
+        // Presupuesto: 3 enlaces con presupuesto 2 deben avisar.
+        let mut warnings = Vec::new();
+        let mut links = Vec::new();
+        let mut budget = 2;
+        gather(&base, 0, &mut budget, &mut links, &mut warnings);
+        assert_eq!(budget, 0);
+        assert!(links.len() <= 2);
+        assert!(
+            warnings.iter().any(|warning| warning.contains("truncad")),
+            "presupuesto agotado debe avisar: {warnings:?}"
+        );
+        // Tope de 128 enlaces: con la lista llena debe avisar sin crecer.
+        let mut warnings = Vec::new();
+        let mut links: Vec<PathBuf> = (0..128)
+            .map(|index| base.join(format!("dummy-{index}.lnk")))
+            .collect();
+        let mut budget = 20_000;
+        gather(&base, 0, &mut budget, &mut links, &mut warnings);
+        assert_eq!(links.len(), 128);
+        assert!(
+            warnings.iter().any(|warning| warning.contains("truncad")),
+            "tope de 128 debe avisar: {warnings:?}"
+        );
+        fs::remove_dir_all(&base).expect("cleanup");
+    }
 }
 
 #[cfg(windows)]

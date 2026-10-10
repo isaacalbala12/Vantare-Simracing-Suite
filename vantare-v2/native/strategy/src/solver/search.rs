@@ -498,7 +498,10 @@ pub(super) fn solve(
                                         }
                                         *target = retained;
                                         let items = decision_items(&next);
-                                        if m.dims.race_duration_seconds.is_some()
+                                        // Public APIs always supply a deadline budget. Keep the
+                                        // test-only lap oracle without a deadline exhaustive.
+                                        if (deadline_millis.is_some()
+                                            || m.dims.race_duration_seconds.is_some())
                                             && (retained_states >= MAX_FRONTIER_STATES
                                                 || retained_items + items
                                                     > MAX_FRONTIER_DECISION_ITEMS)

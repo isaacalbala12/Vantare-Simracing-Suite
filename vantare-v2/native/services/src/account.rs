@@ -432,16 +432,24 @@ impl Account {
             socket.read_exact(&mut byte).map_err(|_| Error::Protocol)?;
             bytes.push(byte[0]);
             if bytes.len() > 8192 {
-                return Err(Error::TooLarge);
+                break;
             }
         }
-        let request = std::str::from_utf8(&bytes).map_err(|_| Error::Protocol);
+        let request = if bytes.len() > 8192 {
+            Err(Error::TooLarge)
+        } else {
+            std::str::from_utf8(&bytes).map_err(|_| Error::Protocol)
+        };
         let code = request.and_then(|request| callback_code(request, attempt, &self.oauth.issuer));
         // El navegador siempre recibe una página; sin respuesta muestra ERR_EMPTY_RESPONSE.
         let (status, body) = match &code {
             Ok(_) => (
                 "200 OK",
                 "Sesión iniciada en Vantare. Puede cerrar esta ventana.",
+            ),
+            Err(Error::TooLarge) => (
+                "413 Payload Too Large",
+                "La solicitud de acceso es demasiado grande. Vuelva a la aplicación e inténtelo de nuevo.",
             ),
             Err(_) => (
                 "400 Bad Request",

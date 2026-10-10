@@ -709,7 +709,14 @@ fn local_clips_fail_visibly_without_fallback_and_validate_media_without_playing(
         .ingest(&snapshot, &Applied::default(), Duration::ZERO, &mut output)
         .unwrap();
     let presented = lines(&output);
-    assert_eq!(presented[1]["voice"], "missing");
+    // En Unix Voice::play rechaza con Unsupported antes de resolver clips
+    // (voice.rs:50-56) y el worker lo publica como unavailable, no missing.
+    let expected_voice = if cfg!(windows) {
+        "missing"
+    } else {
+        "unavailable"
+    };
+    assert_eq!(presented[1]["voice"], expected_voice);
     assert_eq!(presented[1]["text"], "Queda un litro");
     assert!(
         presented[1]

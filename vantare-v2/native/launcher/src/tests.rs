@@ -14,6 +14,66 @@ use std::{
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn isa1548_unc_portable_does_not_block_local_first_run_migration() {
+    let tree = Tree::new();
+    let settings = tree.file("roaming/configs/app-settings.json", b"{}");
+    let found = migration::source_in(&[
+        PathBuf::from(r"\\server\portable\configs"),
+        settings.parent().expect("configs").to_path_buf(),
+    ])
+    .expect("local fallback");
+    assert_eq!(found, Some(settings.clone()));
+    let native = tree.0.join("launcher.json");
+    Store::load_with_wails(native.clone(), found.as_deref()).expect("first migration");
+    assert!(native.is_file());
+    assert!(migration::read(std::path::Path::new(r"\\server\portable\app-settings.json")).is_err());
+}
+
+#[test]
+fn isa1548_global_steam_budget_warns_when_manifest_fallback_is_unavailable() {
+    let tree = Tree::new();
+    let filler = tree.0.join("a/steamapps/common");
+    fs::create_dir_all(&filler).expect("first library");
+    for number in 0..20_000 {
+        fs::write(filler.join(format!("{number:05}.dat")), b"").expect("budget fixture");
+    }
+    tree.file("b/steamapps/common/LMU.exe", b"fixture");
+    let app = Document::default().apps.remove(0);
+    let sources = Sources {
+        steam_roots: vec![tree.0.join("a"), tree.0.join("b")],
+        ..Sources::default()
+    };
+    let result = Discovery::scan(&[app], sources);
+    assert!(!result.app("lmu").expect("LMU").availability.launchable);
+    assert!(
+        result
+            .warnings
+            .iter()
+            .any(|warning| warning.contains("scan truncado"))
+    );
+    tree.file(
+        "b/steamapps/appmanifest_2399420.acf",
+        br#""AppState" { "appid" "2399420" "StateFlags" "4" "installdir" "Game" }"#,
+    );
+    let expected = tree.file("b/steamapps/common/Game/LMU.exe", b"fixture");
+    let result = Discovery::scan(
+        &Document::default().apps,
+        Sources {
+            steam_roots: vec![tree.0.join("a"), tree.0.join("b")],
+            ..Sources::default()
+        },
+    );
+    assert_eq!(
+        result
+            .app("lmu")
+            .expect("manifest fallback")
+            .executable
+            .as_ref(),
+        Some(&expected)
+    );
+}
+
+#[test]
 fn legacy_import_keeps_its_origin_when_duplicated_without_marking_local_profiles() {
     let tree = Tree::new();
     let path = tree.0.join("launcher.json");
@@ -172,12 +232,11 @@ fn actual_lnk_is_read_without_modification_or_execution() {
     assert!(output.status.success());
     let original = fs::read(&link).expect("actual lnk");
     let paths = shortcuts::resolve(std::slice::from_ref(&link)).expect("read via OS COM");
-    // COM expande alias 8.3 (p. ej. RUNNER~1): comprobar el archivo resuelto,
-    // no la grafía de TEMP del runner, manteniendo cardinalidad y destino.
     assert_eq!(paths.len(), 1);
+    // COM expande alias 8.3 (RUNNER~1 en CI): exigir el mismo destino real.
     assert_eq!(
-        fs::canonicalize(&paths[0]).expect("resolved target"),
-        fs::canonicalize(&target).expect("fixture target")
+        fs::canonicalize(&paths[0]).expect("resolved target exists"),
+        fs::canonicalize(&target).expect("fixture target exists")
     );
     assert_eq!(fs::read(&link).expect("unchanged"), original);
     assert!(!marker.exists());

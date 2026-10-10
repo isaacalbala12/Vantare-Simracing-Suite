@@ -18,34 +18,22 @@ pub fn legacy_fingerprint() -> Result<String> {
     {
         windows::fingerprint()
     }
-    #[cfg(unix)]
+    #[cfg(not(windows))]
     {
-        unix_fingerprint()
-    }
-    #[cfg(not(any(windows, unix)))]
-    {
-        Err(Error::Unsupported)
+        unsupported_legacy_binding()
     }
 }
 
-#[cfg(unix)]
-fn unix_fingerprint() -> Result<String> {
-    use std::os::unix::ffi::OsStrExt;
+#[cfg(any(not(windows), test))]
+fn unsupported_legacy_binding() -> Result<String> {
+    // HOME|GOOS colisiona entre máquinas. No acuñar otra huella sin migración.
+    Err(Error::Unsupported)
+}
 
-    let home = std::env::var_os("HOME")
-        .filter(|home| !home.is_empty())
-        .ok_or(Error::Storage)?;
-    if !std::path::Path::new(&home).is_absolute() {
-        return Err(Error::Storage);
-    }
-    let mut identity = home.as_os_str().as_bytes().to_vec();
-    identity.push(b'|');
-    identity.extend_from_slice(if cfg!(target_os = "macos") {
-        b"darwin"
-    } else {
-        std::env::consts::OS.as_bytes()
-    });
-    Ok(format!("{:x}", Sha256::digest(identity)))
+#[cfg(test)]
+#[test]
+fn regression_1542_unix_legacy_binding_is_unsupported() {
+    assert_eq!(unsupported_legacy_binding(), Err(Error::Unsupported));
 }
 #[derive(Serialize, Deserialize, Zeroize, ZeroizeOnDrop)]
 #[serde(deny_unknown_fields)]

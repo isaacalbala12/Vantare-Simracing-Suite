@@ -7,6 +7,19 @@ el hash anterior, `sha256` fija el archivo migrado. Los JSON y los gzip
 se compararon contra la base cambiando únicamente la etiqueta de versión;
 `acc-all-v8.sha256` y la regresión de telemetría conservan el pin ACC original.
 Se conservan corpus LMU/ACC, oráculos Strategy, referencias visuales y assets.
+
+La entrega revisada `6094472e` (#1551/#1552), integrada por #1536, corrige
+gaps de práctica LMU y posiciones ACC durante adelantamientos. Sus diez
+artefactos derivados/documentales actualizan el pin actual: dos gzip LMU,
+el pin ACC, cuatro fixtures/documentos UI y tres documentos/lista de
+excepciones del oráculo/goldens. `revisions` registra commit, issues y hash
+anterior; `source_sha256` y la migración previa #1530 se conservan. No cambia
+el corpus fuente, los goldens Go ni el resto de los 456 archivos fijados.
+Los tests de telemetría activados exigen la inversión estricta de estos
+campos frente a las referencias anteriores y rechazan cualquier otro cambio;
+ACC conserva también su pin y recorte de posiciones previos. El verificador
+sigue exigiendo SHA-256 exacto para cada entrada, sin ampliar tolerancias.
+
 Los catálogos Go de Engineer son texto de referencia inerte; los tests Rust
 siguen comparando sus frases/voces. El seed de calendario vive en `hub/data`,
 su fuente textual en `scripts/testdata` y el perfil legado en `packaging/fixtures`.

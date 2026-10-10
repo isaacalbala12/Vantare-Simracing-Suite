@@ -6,6 +6,38 @@ const TRACK_1420: &[u8] = include_bytes!("../../../../../testdata/lmu-1.4.2.0-tr
 const PLAYER: usize = 128_468 + 43 * 1_888;
 
 #[test]
+fn scoring_gaps_only_describe_race_order_and_keep_their_freshness() {
+    for kind in [1_i32, 5, 9, 0, 10] {
+        let mut bytes = REAL_44.to_vec();
+        bytes[1696..1700].copy_from_slice(&kind.to_le_bytes());
+        let mut translator = Translator::new(SourceKind::Replay);
+        for now in [Duration::ZERO, Duration::from_millis(500)] {
+            let observation = translator.observe(&bytes, "1.3.0.0", now).expect("fixture");
+            for car in &observation.state.cars {
+                if kind != 10 {
+                    assert_eq!(car.gap_leader, Quality::Unavailable);
+                    assert_eq!(car.gap_ahead, Quality::Unavailable);
+                }
+            }
+            if kind == 10 {
+                let car = &observation.state.cars[0];
+                let expected = Gap::Time {
+                    seconds: 82.575_340_270_996_1,
+                };
+                assert_eq!(
+                    car.gap_leader,
+                    if now.is_zero() {
+                        Quality::Reliable(expected)
+                    } else {
+                        Quality::Stale(expected)
+                    }
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn scoring_velocity_rotates_into_pose_axes_and_penalties_are_pending_counts() {
     // La captura sin modificar conserva contador nativo cero: no es ausencia.
     assert_eq!(

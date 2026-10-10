@@ -188,13 +188,33 @@ impl Store {
         }
     }
 
+    /// Recuperación explícita: conservar cada copia y no seguir si no se pudo apartar.
+    #[cfg(any(feature = "network", test))]
+    pub fn quarantine_preserving(&self, name: &str) -> Result<()> {
+        let path = self.path(name)?;
+        let aside = self
+            .root
+            .join(format!("{name}-{}.corrupto", crate::random_id()?));
+        fs::rename(path, aside).map_err(|_| Error::Storage)
+    }
+
     pub fn save(&self, name: &str, value: &impl Serialize) -> Result<()> {
         let path = self.path(name)?;
         let bytes = Zeroizing::new(serde_json::to_vec(value).map_err(|_| Error::Storage)?);
-        if bytes.len() as u64 > MAX_BLOB / 2 {
+        // Base64 de tres JPEG de 400 KiB, miniaturas y JSON caben en 2 MiB.
+        // Reservar margen para DPAPI sin ampliar los demás documentos.
+        let limit = if matches!(name, "report-images" | "report-attempt") {
+            MAX_BLOB - 64 * 1024
+        } else {
+            MAX_BLOB / 2
+        };
+        if bytes.len() as u64 > limit {
             return Err(Error::TooLarge);
         }
         let stored = Zeroizing::new(protect(&bytes, &self.context)?);
+        if stored.len() as u64 > MAX_BLOB {
+            return Err(Error::TooLarge);
+        }
         let temporary = self.root.join(format!("{}.tmp", crate::random_id()?));
         let result = (|| {
             let mut options = OpenOptions::new();
@@ -258,6 +278,54 @@ pub fn unprotect(bytes: &[u8], _: &str) -> Result<Zeroizing<Vec<u8>>> {
 #[cfg(all(test, windows))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn metadata_quarantine_preserves_copies_and_stops_on_a_move_failure() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let (root, store) = crate::test_store("metadata-quarantine");
+        store.save("oauth-metadata", &1).expect("metadata fixture");
+        let path = store.path("oauth-metadata").expect("path");
+        let original = fs::read(&path).expect("protected fixture");
+        let lock = OpenOptions::new()
+            .read(true)
+            .share_mode(1)
+            .open(&path)
+            .expect("deny rename");
+        assert_eq!(
+            store.quarantine_preserving("oauth-metadata"),
+            Err(Error::Storage)
+        );
+        assert!(fs::read(&path).expect("preserved") == original);
+        drop(lock);
+        store
+            .quarantine_preserving("oauth-metadata")
+            .expect("first copy");
+        store
+            .save("oauth-metadata", &2)
+            .expect("next metadata fixture");
+        store
+            .quarantine_preserving("oauth-metadata")
+            .expect("second copy");
+        let copies: Vec<_> = fs::read_dir(&store.root)
+            .expect("namespace")
+            .flatten()
+            .filter(|entry| {
+                entry
+                    .path()
+                    .extension()
+                    .is_some_and(|extension| extension == "corrupto")
+            })
+            .collect();
+        assert_eq!(copies.len(), 2);
+        assert!(
+            copies
+                .iter()
+                .any(|entry| fs::read(entry.path()).expect("saved copy") == original)
+        );
+        assert!(!path.exists());
+        drop(store);
+        fs::remove_dir_all(root).expect("cleanup QA");
+    }
 
     #[test]
     fn restore_quarantines_invalid_json_but_preserves_documents_on_io_errors() {

@@ -36,6 +36,11 @@ pub(super) fn capture_photos() -> Result<[Snapshot; 5], String> {
         load("delta")?,
     ])
 }
+/// Rango de plantillas que se proyectan en cada ingest: la vista solo pinta
+/// los índices 1–4 y la primaria usa sus propias instancias.
+fn template_ingest_range(count: usize) -> std::ops::Range<usize> {
+    1.min(count)..count
+}
 fn thumbnail_items(layout: &vantare_ui::layout::Layout) -> Vec<&vantare_ui::layout::Instance> {
     layout
         .instances
@@ -112,7 +117,7 @@ impl Previews {
                     .update(cx, |overlay, cx| overlay.ingest(snapshot, cx));
             }
         }
-        for preview in &self.templates {
+        for preview in &self.templates[template_ingest_range(self.templates.len())] {
             preview
                 .view
                 .update(cx, |preview, cx| preview.ingest(snapshot, cx));
@@ -1480,6 +1485,12 @@ impl Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn template_ingest_skips_the_unpainted_first_slot() {
+        assert_eq!(template_ingest_range(5), 1..5);
+        assert_eq!(template_ingest_range(1), 1..1);
+        assert_eq!(template_ingest_range(0), 0..0);
+    }
     #[test]
     fn states_follow_service_facts_and_error_precedes_loading() {
         for (pending, error, profiles, expected) in [

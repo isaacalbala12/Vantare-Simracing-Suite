@@ -70,6 +70,8 @@ El acceso de Escritorio activa `RUST_LOG=vantare_admin=info`: tiempos sanitizado
 en `data/Vantare/native/services/admin-timings.log`, sin consultas, datos de cuenta,
 tokens ni URLs. `vantare_admin=trace` añade duración de construcción de la vista y
 espera hasta el siguiente frame GPUI (no mide presentación física DWM/GPU).
+Los tiempos de render solo se registran con ese trace explícito; `RUST_LOG=warn`
+no crea el archivo. El log rota al llegar a 1 MiB y conserva una sola copia.
 `--diagnose-owner`, con Admin cerrada y su raíz aislada configurada, prueba lecturas
 reales de páginas y búsqueda por el nombre/correo de la propia cuenta: solo imprime
 tiempos, recuentos y booleanos. No modifica roles, módulos ni reportes.

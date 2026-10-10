@@ -1,6 +1,292 @@
 //! Prueba de transporte en loopback; el servidor es un vector, no ACC real.
 use super::*;
 
+fn idle_acc() -> Acc {
+    let mut acc = Acc::new();
+    acc.retry = Duration::MAX; // Solo fuentes propias: nunca abrir ACC/config real.
+    acc.next_register = Duration::MAX;
+    let mut s = vec![0; PAGE_SIZES[2]];
+    for (offset, text) in [(0, "1.9"), (30, "1.7")] {
+        for (i, unit) in text.encode_utf16().enumerate() {
+            s[offset + i * 2..offset + i * 2 + 2].copy_from_slice(&unit.to_le_bytes());
+        }
+    }
+    acc.translator
+        .shm(2, s, Duration::ZERO)
+        .expect("static propia");
+    acc
+}
+
+fn car_in(observation: &Observation, id: u32) -> &vantare_domain::Car {
+    observation
+        .state
+        .cars
+        .iter()
+        .find(|car| car.id == vantare_domain::CarId(id))
+        .expect("coche de test")
+}
+
+#[test]
+fn unchanged_live_poll_skips_reconstruction_but_publishes_shm_expiry_once() {
+    let mut acc = idle_acc();
+    for (kind, size, at) in [(0, 800, 0), (1, 1588, 100)] {
+        let mut bytes = vec![0; size];
+        bytes[..4].copy_from_slice(&1_i32.to_le_bytes());
+        if kind == 0 {
+            bytes[4..8].copy_from_slice(&0.75_f32.to_le_bytes());
+        } else {
+            bytes[4..8].copy_from_slice(&2_i32.to_le_bytes());
+        }
+        acc.translator
+            .shm(kind, bytes, Duration::from_millis(at))
+            .expect("página propia");
+    }
+    assert!(acc.poll(Duration::from_millis(100)).unwrap().is_some());
+    for ms in [105, 200, 495] {
+        assert!(acc.poll(Duration::from_millis(ms)).unwrap().is_none());
+    }
+    assert_eq!(
+        acc.translator.observations, 1,
+        "no reconstruir cada poll quieto"
+    );
+    let expired = acc.poll(Duration::from_millis(500)).unwrap().unwrap();
+    assert_eq!(
+        expired.state.player.unwrap().telemetry.throttle,
+        vantare_domain::Quality::Stale(0.75)
+    );
+    assert!(acc.poll(Duration::from_millis(505)).unwrap().is_none());
+    assert_eq!(acc.translator.observations, 2);
+    assert!(acc.poll(Duration::from_millis(600)).unwrap().is_some());
+    assert!(acc.poll(Duration::from_millis(605)).unwrap().is_none());
+    assert_eq!(
+        acc.translator.observations, 3,
+        "graphics caduca por su propio reloj"
+    );
+}
+
+#[test]
+fn invisible_expiry_is_not_reconstructed_forever() {
+    let mut acc = idle_acc();
+    let mut p = vec![0; 800]; // Sin graphics/jugador; temperaturas ausentes.
+    p[..4].copy_from_slice(&1_i32.to_le_bytes());
+    for at in [288, 292] {
+        p[at..at + 4].copy_from_slice(&f32::NAN.to_le_bytes());
+    }
+    acc.translator.shm(0, p, Duration::ZERO).unwrap();
+    assert!(acc.poll(Duration::ZERO).unwrap().is_some());
+    for ms in [500, 505, 600] {
+        assert!(acc.poll(Duration::from_millis(ms)).unwrap().is_none());
+    }
+    assert_eq!(
+        acc.translator.observations, 2,
+        "la caducidad invisible se confirma una vez"
+    );
+}
+
+#[test]
+fn live_fast_path_preserves_udp_velocity_and_each_car_expiry() {
+    use vantare_domain::Quality;
+    let mut acc = idle_acc();
+    let mut g = vec![0; 1588];
+    g[..4].copy_from_slice(&1_i32.to_le_bytes());
+    g[4..8].copy_from_slice(&2_i32.to_le_bytes());
+    g[1216..1220].copy_from_slice(&1005_i32.to_le_bytes());
+    acc.translator.shm(1, g, Duration::ZERO).unwrap();
+    // Vector v4 con tres laps de tres splits (25 bytes cada una).
+    let mut car = vec![3, 0, 0, 0, 0, 1, 4];
+    for v in [0.0_f32, 0.0, 0.0] {
+        car.extend_from_slice(&v.to_le_bytes());
+    }
+    car.push(1); // Track.
+    for n in [144_u16, 1, 1, 0] {
+        car.extend_from_slice(&n.to_le_bytes());
+    }
+    car.extend_from_slice(&0.5_f32.to_le_bytes());
+    car.extend_from_slice(&2_u16.to_le_bytes());
+    car.extend_from_slice(&0_i32.to_le_bytes());
+    for time in [90_000_i32, 90_000, 1000] {
+        car.extend_from_slice(&time.to_le_bytes());
+        car.extend_from_slice(&[0, 0, 0, 0, 3]);
+        for n in [30_000_i32; 3] {
+            car.extend_from_slice(&n.to_le_bytes());
+        }
+        car.extend_from_slice(&[0, 1, 0, 0]);
+    }
+    car[1..3].copy_from_slice(&8_u16.to_le_bytes());
+    for (ms, time, x) in [(0, 1000_i32, 0.0_f32), (100, 1100, 4.0), (200, 1200, 8.0)] {
+        car[7..11].copy_from_slice(&x.to_le_bytes());
+        car[11..15].copy_from_slice(&0.0_f32.to_le_bytes());
+        car[88..92].copy_from_slice(&time.to_le_bytes());
+        acc.translator.udp(&car, Duration::from_millis(ms)).unwrap();
+    }
+    car[1..3].copy_from_slice(&9_u16.to_le_bytes());
+    acc.translator
+        .udp(&car, Duration::from_millis(250))
+        .unwrap();
+    let first = acc.poll(Duration::from_millis(250)).unwrap().unwrap();
+    assert!(matches!(
+        car_in(&first, 8).velocity_mps,
+        Quality::Estimated(_)
+    ));
+    assert!(acc.poll(Duration::from_millis(495)).unwrap().is_none());
+    let stale_velocity = acc.poll(Duration::from_millis(500)).unwrap().unwrap();
+    let rival = car_in(&stale_velocity, 8);
+    assert!(matches!(rival.velocity_mps, Quality::Stale(_)));
+    assert!(matches!(rival.pose, Quality::Reliable(_)));
+    assert!(acc.poll(Duration::from_millis(505)).unwrap().is_none());
+    let stale_car = acc.poll(Duration::from_millis(1200)).unwrap().unwrap();
+    assert!(matches!(car_in(&stale_car, 8).pose, Quality::Stale(_)));
+    assert!(matches!(car_in(&stale_car, 9).pose, Quality::Reliable(_)));
+    assert!(acc.poll(Duration::from_millis(1205)).unwrap().is_none());
+    let second = acc.poll(Duration::from_millis(1250)).unwrap().unwrap();
+    assert!(matches!(car_in(&second, 9).pose, Quality::Stale(_)));
+    assert!(acc.poll(Duration::from_millis(1255)).unwrap().is_none());
+    assert_eq!(acc.translator.observations, 4);
+    // Un poll puede aceptar un coche y fallar después: no perder el cambio
+    // anterior al error ni la retirada de velocidades por un registro fallido.
+    let server = UdpSocket::bind("127.0.0.1:0").unwrap();
+    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    socket.connect(server.local_addr().unwrap()).unwrap();
+    socket.set_nonblocking(true).unwrap();
+    let peer = socket.local_addr().unwrap();
+    acc.socket = Some(socket);
+    car[1..3].copy_from_slice(&10_u16.to_le_bytes());
+    server.send_to(&car, peer).unwrap();
+    server.send_to(&[1, 42, 0, 0, 0, 0, 0, 0, 0], peer).unwrap();
+    let recovered = acc.poll(Duration::from_millis(1260)).unwrap().unwrap();
+    assert!(matches!(car_in(&recovered, 10).pose, Quality::Reliable(_)));
+    assert_eq!(car_in(&recovered, 8).velocity_mps, Quality::Unavailable);
+    assert_eq!(acc.translator.observations, 5);
+    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    socket.connect(server.local_addr().unwrap()).unwrap();
+    socket.set_nonblocking(true).unwrap();
+    let peer = socket.local_addr().unwrap();
+    acc.socket = Some(socket);
+    server.send_to(&[1, 42, 0, 0, 0, 0, 0, 0, 0], peer).unwrap();
+    // El error por sí solo exige comprobar el estado, pero no es una muestra.
+    assert!(acc.poll(Duration::from_millis(1265)).unwrap().is_none());
+    assert_eq!(acc.translator.observations, 6);
+}
+
+#[test]
+#[allow(unsafe_code)] // Mapping Win32 privado; no escribir en el mapping del simulador.
+fn rejected_static_page_still_drains_udp_and_recovers_when_initialized() {
+    use std::os::windows::io::{AsRawHandle, FromRawHandle, OwnedHandle};
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    use windows_sys::Win32::System::Memory::{
+        CreateFileMappingW, FILE_MAP_WRITE, MapViewOfFile, PAGE_READWRITE, UnmapViewOfFile,
+    };
+    let name = format!("Local\\vantare-acc-invalid-static-{}", std::process::id());
+    let wide: Vec<u16> = name.encode_utf16().chain([0]).collect();
+    // SAFETY: nombre NUL válido y mapping anónimo propio del tamaño de static.
+    let raw = unsafe {
+        CreateFileMappingW(
+            INVALID_HANDLE_VALUE,
+            std::ptr::null(),
+            PAGE_READWRITE,
+            0,
+            820,
+            wide.as_ptr(),
+        )
+    };
+    assert!(!raw.is_null());
+    // SAFETY: handle nuevo, único dueño.
+    let owner = unsafe { OwnedHandle::from_raw_handle(raw) };
+    // SAFETY: owner conserva mapping vivo de 820 bytes.
+    let view = unsafe { MapViewOfFile(owner.as_raw_handle(), FILE_MAP_WRITE, 0, 0, 820) };
+    assert!(!view.Value.is_null());
+    let server = UdpSocket::bind("127.0.0.1:0").unwrap();
+    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    socket.connect(server.local_addr().unwrap()).unwrap();
+    socket.set_nonblocking(true).unwrap();
+    let peer = socket.local_addr().unwrap();
+    let mut acc = idle_acc();
+    acc.socket = Some(socket);
+    acc.pages[2] = Some(Page::open(&name, 820).unwrap());
+    let mut initialized = vec![0; 820];
+    for (offset, text) in [(0, "1.9"), (30, "1.7")] {
+        for (i, unit) in text.encode_utf16().enumerate() {
+            initialized[offset + i * 2..offset + i * 2 + 2].copy_from_slice(&unit.to_le_bytes());
+        }
+    }
+    for (ms, version) in [(0, None), (5, Some("9.9")), (10, Some("1.9"))] {
+        let mut bytes = initialized.clone();
+        bytes[..30].fill(0);
+        if let Some(version) = version {
+            for (i, unit) in version.encode_utf16().enumerate() {
+                bytes[i * 2..i * 2 + 2].copy_from_slice(&unit.to_le_bytes());
+            }
+        }
+        // SAFETY: vista propia de 820 bytes, sin escritor concurrente.
+        unsafe {
+            std::ptr::copy_nonoverlapping(bytes.as_ptr(), view.Value.cast::<u8>(), 820);
+        }
+        server.send_to(&[1, 42, 0, 0, 0, 1, 0, 0, 0], peer).unwrap();
+        let result = acc.poll(Duration::from_millis(ms));
+        if ms < 10 {
+            assert!(matches!(result, Err(AdapterError::Rejected(_))));
+        } else {
+            assert!(result.is_ok(), "static reparada");
+        }
+        assert_eq!(
+            acc.last_udp,
+            Some(Duration::from_millis(ms)),
+            "UDP debe drenarse incluso con static rechazada"
+        );
+        assert_eq!(acc.translator.connection, Some(42));
+    }
+    // SAFETY: vista propia, ya no se utilizará.
+    assert_ne!(unsafe { UnmapViewOfFile(view) }, 0);
+}
+
+#[test]
+fn malformed_udp_preserves_the_connection_and_drains_the_next_valid_packet() {
+    let server = UdpSocket::bind("127.0.0.1:0").expect("vector UDP");
+    let socket = UdpSocket::bind("127.0.0.1:0").expect("adaptador");
+    socket
+        .connect(server.local_addr().expect("servidor"))
+        .expect("peer");
+    socket.set_nonblocking(true).expect("no bloquear");
+    let peer = socket.local_addr().expect("puerto original");
+    let mut acc = Acc::new();
+    acc.socket = Some(socket);
+    acc.retry = Duration::MAX;
+    acc.next_register = Duration::MAX;
+    acc.next_entries = Duration::MAX;
+    acc.next_track = Duration::MAX;
+    acc.translator.connection = Some(42);
+    acc.last_udp = Some(Duration::ZERO);
+    server.send_to(&[1], peer).expect("ACK truncado");
+    let now = Duration::from_millis(100);
+    acc.poll(now).expect_err("no hay SHM en este vector");
+    assert_eq!(
+        acc.translator.connection,
+        Some(42),
+        "un datagrama no desconecta"
+    );
+    assert_eq!(
+        acc.last_udp,
+        Some(Duration::ZERO),
+        "bytes inválidos no refrescan UDP"
+    );
+    assert_eq!(
+        acc.socket
+            .as_ref()
+            .expect("socket conservado")
+            .local_addr()
+            .expect("puerto"),
+        peer
+    );
+
+    server.send_to(&[1], peer).expect("otro ACK truncado");
+    server
+        .send_to(&[1, 43, 0, 0, 0, 1, 0, 0, 0], peer)
+        .expect("ACK válido detrás");
+    acc.receive(now).expect("drenaje continúa");
+    assert_eq!(acc.translator.connection, Some(43));
+    assert_eq!(acc.last_udp, Some(now));
+}
+
 #[test]
 #[allow(unsafe_code)] // Mappings Win32 propios, igual que tests/acc/shm.rs.
 fn broken_broadcasting_configuration_does_not_skip_shared_memory() {
@@ -145,6 +431,7 @@ fn udp_registration_requests_unknown_car_throttling_and_reconnect() {
     assert!(
         acc.receive(Duration::from_millis(100))
             .expect("actualización")
+            .0
     );
     assert!(
         acc.translator.request_entries,
@@ -236,5 +523,40 @@ fn unchanged_udp_values_still_advance_reception_in_live_poll() {
             .expect("poll")
             .expect("una muestra nueva aunque no cambien los valores");
         assert_eq!(observation.origin.received_at, Duration::from_millis(ms));
+    }
+}
+
+#[test]
+fn rejected_registration_backs_off_without_losing_socket_and_recovers() {
+    let server = UdpSocket::bind("127.0.0.1:0").unwrap();
+    server.set_nonblocking(true).unwrap();
+    let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+    socket.connect(server.local_addr().unwrap()).unwrap();
+    socket.set_nonblocking(true).unwrap();
+    let peer = socket.local_addr().unwrap();
+    let mut acc = idle_acc();
+    acc.socket = Some(socket);
+    acc.registration = vec![1, 4];
+    acc.next_register = Duration::from_secs(2);
+    server.send_to(&[1, 42, 0, 0, 0, 0, 0, 0, 0], peer).unwrap();
+    assert_eq!(acc.receive(Duration::ZERO).unwrap(), (false, true));
+    assert_eq!(acc.next_register, Duration::from_secs(10));
+    assert!(acc.socket.is_some());
+    acc.receive(Duration::from_secs(2)).unwrap();
+    let mut buffer = [0; 32];
+    assert_eq!(
+        server.recv(&mut buffer).unwrap_err().kind(),
+        io::ErrorKind::WouldBlock
+    );
+    acc.receive(Duration::from_secs(10)).unwrap();
+    let (n, repeated) = server.recv_from(&mut buffer).unwrap();
+    assert_eq!(&buffer[..n], &[1, 4]);
+    assert_eq!(repeated, peer);
+    server.send_to(&[1, 42, 0, 0, 0, 1, 0, 0, 0], peer).unwrap();
+    acc.receive(Duration::from_secs(10)).unwrap();
+    assert_eq!(acc.translator.connection, Some(42));
+    for kind in [10, 11] {
+        let n = server.recv(&mut buffer).unwrap();
+        assert_eq!(&buffer[..n], &[kind, 42, 0, 0, 0]);
     }
 }

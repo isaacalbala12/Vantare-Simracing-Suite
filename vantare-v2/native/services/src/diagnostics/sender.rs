@@ -57,10 +57,13 @@ fn flush_until(
                 continue;
             }
             let (event, properties) = if folder == "crashes" {
-                let crash: Crash = match serde_json::from_slice(&bytes) {
-                    Ok(crash) => crash,
-                    // Puede estar escribiendo otro proceso: conservar para el siguiente ciclo.
-                    Err(_) => continue,
+                let crash: Crash = if let Ok(crash) = serde_json::from_slice(&bytes) {
+                    crash
+                } else {
+                    // queue publica un documento completo de forma atómica.
+                    // Retirar escrituras parciales heredadas libera su slot.
+                    fs::remove_file(path).map_err(|_| Error::Storage)?;
+                    continue;
                 };
                 // También los archivos antiguos pasan por esta proyección cerrada.
                 let version = if crash.version == crate::product::VERSION {
@@ -71,12 +74,15 @@ fn flush_until(
                 let properties = serde_json::json!({"code": "native_panic", "version": version, "os": std::env::consts::OS, "stack": crash.frames.into_iter().take(64).collect::<Vec<_>>()});
                 ("crash".to_owned(), properties)
             } else {
-                let usage: Usage = match serde_json::from_slice(&bytes) {
-                    Ok(usage) => usage,
-                    Err(_) => continue,
+                let usage: Usage = if let Ok(usage) = serde_json::from_slice(&bytes) {
+                    usage
+                } else {
+                    fs::remove_file(&path).map_err(|_| Error::Storage)?;
+                    continue;
                 };
                 if !usage.valid() {
-                    return Err(Error::Protocol);
+                    fs::remove_file(&path).map_err(|_| Error::Storage)?;
+                    continue;
                 }
                 let value = serde_json::to_value(usage).map_err(|_| Error::Protocol)?;
                 (
@@ -168,6 +174,115 @@ mod tests {
     use super::*;
     use crate::diagnostics::{PRIVACY_FILE, enqueue_usage, write_crash};
     use crate::test_http::Server;
+
+    #[test]
+    fn regression_1555_partial_usage_releases_all_slots_without_sending() {
+        let root = super::super::tests::root();
+        fs::write(
+            root.join(PRIVACY_FILE),
+            br#"{"crashes":false,"usage":true,"crashes_decided":true}"#,
+        )
+        .expect("consent");
+        fs::create_dir(root.join("usage")).expect("queue");
+        for slot in 0..QUEUE_LIMIT {
+            fs::write(
+                root.join("usage").join(format!("{slot:02}.json")),
+                b"{\"binary\":",
+            )
+            .expect("partial");
+        }
+        let server = Server::start(vec![]);
+        flush(&root, &Http::default(), &server.base, Some("public-test")).expect("flush");
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        assert_eq!(fs::read_dir(root.join("usage")).expect("queue").count(), 0);
+        enqueue_usage(
+            &root,
+            &Usage::LiveSessionStarted {
+                simulator: "lmu".into(),
+            },
+        )
+        .expect("slot reusable");
+        fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[test]
+    fn regression_1542_invalid_usage_does_not_block_later_slots() {
+        let root = super::super::tests::root();
+        fs::write(
+            root.join(PRIVACY_FILE),
+            br#"{"crashes":false,"usage":true,"crashes_decided":true}"#,
+        )
+        .expect("consent");
+        fs::create_dir_all(root.join("usage")).expect("queue");
+        for (slot, usage) in [
+            Usage::LayoutWidgets {
+                widget_types: vec!["unknown-private-widget".into()],
+            },
+            Usage::AppStarted {
+                version: "1.0.0".into(),
+                channel: "invalid-channel".into(),
+            },
+        ]
+        .iter()
+        .enumerate()
+        {
+            fs::write(
+                root.join("usage").join(format!("{slot:02}.json")),
+                serde_json::to_vec(usage).expect("json"),
+            )
+            .expect("invalid slot");
+        }
+        enqueue_usage(
+            &root,
+            &Usage::LiveSessionStarted {
+                simulator: "lmu".into(),
+            },
+        )
+        .expect("valid slot");
+        let server = Server::start(vec![(200, r#"{"status":1}"#.into())]);
+        let result = flush(&root, &Http::default(), &server.base, Some("public-test"));
+        assert!(
+            result.is_ok(),
+            "invalid usage must not stop queue: {result:?}"
+        );
+        let request = server
+            .requests
+            .recv_timeout(Duration::from_secs(3))
+            .expect("valid event");
+        assert!(request.contains("live_session_started"));
+        assert!(
+            !request.contains("unknown-private-widget") && !request.contains("invalid-channel")
+        );
+        assert!(!root.join("usage/00.json").exists() && !root.join("usage/01.json").exists());
+        assert!(!root.join("usage/02.json").exists());
+        server.finish();
+        fs::remove_dir_all(root).expect("cleanup QA");
+    }
+
+    #[test]
+    fn isa1548_partial_crashes_release_all_slots_without_sending() {
+        let root = super::super::tests::root();
+        super::super::tests::consent(&root);
+        fs::create_dir(root.join("crashes")).expect("queue");
+        for slot in 0..QUEUE_LIMIT {
+            fs::write(
+                root.join("crashes").join(format!("{slot:02}.json")),
+                b"{\"binary\":",
+            )
+            .expect("interrupted write fixture");
+        }
+        let server = Server::start(vec![]);
+        flush(&root, &Http::default(), &server.base, Some("public-test")).expect("flush");
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        assert_eq!(
+            fs::read_dir(root.join("crashes")).expect("queue").count(),
+            0
+        );
+        write_crash(&root, "core", "panic", "trace").expect("slot reusable");
+        fs::remove_dir_all(root).expect("cleanup");
+    }
 
     #[test]
     fn default_legacy_and_rejected_privacy_discard_pending_without_http() {

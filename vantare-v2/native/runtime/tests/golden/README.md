@@ -1,5 +1,37 @@
 # Goldens de telemetría (#1463)
 
+## Correcciones de calidad #1551 / #1552 (2026-10-10)
+
+Base de auditoría `ec743de8`. LMU scoring entrega progreso, que en práctica
+no corresponde al orden por mejores vueltas: en LMU47 P11 tiene 239,289 s
+de mejor vuelta, pero gap 0 tras P10 con gap 0,921 s. El adapter retira
+`gap_leader` y `gap_ahead` fuera de carrera; el núcleo conserva únicamente
+el cero del líder por identidad y los gaps de clase que pueda justificar.
+La capability deja de afirmar datos nativos de gaps en esas sesiones.
+
+Se revisaron las **3.849 fotos LMU** contra los originales: solo cambian
+los cuatro campos de gaps y `capabilities.gaps`. Posiciones, tiempos,
+inputs, poses, revisiones y todo otro campo son idénticos. Los snapshots
+UI y las doce fotos de la secuencia se copian de esos mismos replays.
+La regresión con sesión de carrera explícita conserva los gaps nativos,
+incluidos los déficits de vueltas y la caducidad. No es captura de carrera.
+
+ACC intercala actualizaciones UDP por coche: los dos adelantamientos
+generales del corpus se completan con 5.100 y 58.800 ns entre datagramas.
+El adapter conserva el último orden coherente, estimando solo el rango
+contradictorio y manteniendo la autoridad nativa de los demás. El respaldo
+vence a 1 s desde el dato UDP, para la misma parrilla/clase/sesión. No renumera por ID,
+no reordena el vector de coches ni llama fiable a una actualización parcial.
+Las 6 fotos con incoherencia de clase están dentro de las 27 generales.
+`acc-positions-before.jsonl.gz` conserva esas 27 fotos originales; invertir
+exclusivamente sus rangos debe reproducir `acc-all-before-1552.sha256` y el
+hash v8 original. Los ocho cortes ACC y el snapshot UI no cambian.
+El test de corpus protege todos los bytes de las otras 190.281 fotos y exige
+que cada rango estimado coincida con la última foto coherente.
+
+Evidencia y comparación externa: `C:/tmp/1551-evidence/`. Goldens revisados
+por campo, sin modo automático de aprobación o tolerancias nuevas.
+
 Salida congelada con el código productivo de
 `0ad4052254f947f5234d30418d5f7b334ce4a55c`, antes de recuperar las
 simplificaciones. Época fija 1463 y reloj del corpus, sin reloj de pared.

@@ -450,6 +450,16 @@ pub struct Prepared {
     editor: Editor,
     examples: Vec<(Kind, Snapshot)>,
 }
+
+/// Escena QA `studio-oculto`: sin selección (documento vacío sin --demo) es un
+/// no-op explícito en lugar de fallar antes de inicializar el editor.
+#[cfg(any(test, feature = "parity-capture"))]
+fn hide_selected_for_capture(editor: &mut Editor) -> Result<(), String> {
+    if editor.selected.is_some() {
+        editor.edit_selected(|item| item.visible = false)?;
+    }
+    Ok(())
+}
 impl Prepared {
     pub fn load(path: PathBuf) -> Result<Self, String> {
         #[cfg(feature = "parity-capture")]
@@ -493,7 +503,7 @@ impl Prepared {
                     editor.remove()?;
                 }
             } else if name == "studio-oculto" {
-                editor.edit_selected(|item| item.visible = false)?;
+                hide_selected_for_capture(&mut editor)?;
             } else if name == "inicio-opacidad" {
                 let ids: Vec<_> = editor
                     .layout()
@@ -1276,6 +1286,11 @@ impl Studio {
             }
         }
     }
+    /// Las instancias ocultas no se pintan (`preview_stage`) y tampoco deben
+    /// proyectarse en cada `ingest`: antes solo se omitían los bloqueos.
+    fn ingest_skips_frame(locked: bool, visible: bool) -> bool {
+        locked || !visible
+    }
     pub fn ingest(&mut self, snapshot: &Snapshot, cx: &mut Context<Self>) {
         if self.snapshot == *snapshot {
             return;
@@ -1286,7 +1301,8 @@ impl Studio {
             return;
         }
         for (_, frame) in &self.frames {
-            if frame.read(cx).lock.is_some() {
+            let state = frame.read(cx);
+            if Self::ingest_skips_frame(state.lock.is_some(), state.item.visible) {
                 continue;
             }
             frame
@@ -1324,6 +1340,10 @@ impl Studio {
     fn history(&mut self, redo: bool, cx: &mut Context<Self>) {
         self.reset_fields();
         self.edit(if redo { Editor::redo } else { Editor::undo }, cx);
+    }
+    fn toggle_visibility_from_strip(&mut self, id: &str, cx: &mut Context<Self>) {
+        self.edit(|editor| toggle_visibility(editor, id), cx);
+        self.reset_fields();
     }
     fn cancel_drag(&mut self, cx: &mut Context<Self>) {
         self.nudge_task = None;
@@ -1972,7 +1992,7 @@ impl Studio {
                     .tab_index(0)
                     .child(visibility_icon(item.visible))
                     .on_click(cx.listener(move |this, _, _, cx| {
-                        this.edit(|editor| toggle_visibility(editor, &visibility_id), cx);
+                        this.toggle_visibility_from_strip(&visibility_id, cx);
                         cx.stop_propagation();
                     })),
             )
@@ -3154,6 +3174,34 @@ impl Render for Studio {
 mod tests {
     use super::*;
     #[test]
+    fn hidden_frames_are_not_projected_without_repainting() {
+        assert!(Studio::ingest_skips_frame(true, true));
+        assert!(Studio::ingest_skips_frame(true, false));
+        assert!(!Studio::ingest_skips_frame(false, true));
+        assert!(Studio::ingest_skips_frame(false, false));
+    }
+    #[test]
+    fn strip_visibility_toggle_resets_the_inspector() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let id = studio.editor.layout().instances[0].id.clone();
+                assert!(studio.editor.layout().instances[0].visible);
+                studio.select(id.clone(), cx);
+                studio.inspector_selection = Some(id.clone());
+                studio.toggle_visibility_from_strip(&id, cx);
+                assert!(!studio.editor.layout().instances[0].visible);
+                assert!(
+                    studio.inspector_selection.is_none(),
+                    "el inspector debe reconstruirse tras ocultar desde la tira"
+                );
+            });
+            crate::quit_headless_test(cx);
+        });
+    }
+    #[test]
     fn document_shortcuts_use_exact_modifiers() {
         for (stroke, expected) in [
             ("ctrl-z", Some(DocumentKey::History(false))),
@@ -4177,6 +4225,17 @@ mod tests {
         };
         assert!(drag.update((30.0, 25.0)));
         assert_eq!(drag.preview, (780.0, 50.0));
+    }
+    #[test]
+    fn hidden_capture_without_selection_is_an_explicit_noop() {
+        let file = crate::document::tests::File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor vacío");
+        assert!(editor.selected.is_none());
+        hide_selected_for_capture(&mut editor).expect("no-op sin selección");
+        assert!(editor.layout().instances.is_empty());
+        editor.add(Kind::Standings).expect("widget");
+        hide_selected_for_capture(&mut editor).expect("ocultar");
+        assert!(!editor.layout().instances[0].visible);
     }
 }
 

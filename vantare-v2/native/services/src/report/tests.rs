@@ -3,6 +3,73 @@ use crate::{account, bridge::Config, http::Http, test_http::Server};
 use std::os::windows::fs::OpenOptionsExt;
 use std::time::Duration;
 
+#[test]
+fn isa1548_three_full_size_jpegs_persist_images_and_durable_attempt() {
+    use base64::{Engine, engine::general_purpose::STANDARD};
+    let (root, store) = crate::test_store("three-large-jpegs");
+    for size in [300 * 1024, screenshots::MAX_BYTES] {
+        let mut images = Vec::new();
+        for _ in 0..3 {
+            let image = screenshots::Screenshot::encode(&image::DynamicImage::new_rgb8(32, 32))
+                .expect("JPEG");
+            let mut value = serde_json::to_value(image).expect("JSON");
+            let mut jpeg = STANDARD
+                .decode(value["data"].as_str().expect("base64"))
+                .expect("JPEG bytes");
+            // Valid JPEG with permitted trailing padding, at the exact attachment bound.
+            jpeg.resize(size, 0);
+            image::load_from_memory(&jpeg).expect("decodable JPEG");
+            value["data"] = STANDARD.encode(jpeg).into();
+            value["preview"]["byte_size"] = size.into();
+            images.push(serde_json::from_value::<screenshots::Screenshot>(value).expect("image"));
+        }
+        screenshots::validate(&images).expect("attachment budget");
+        let mut draft = save_draft(&store, fields()).expect("draft");
+        draft.screenshots = images.iter().map(|image| image.preview.clone()).collect();
+        store
+            .save("report-images", &images)
+            .expect("three images persist");
+        store.save("report-draft", &draft).expect("draft previews");
+        let restored = screenshots::load(&store, &draft).expect("images reload");
+        for (expected, actual) in images.iter().zip(&restored) {
+            assert_eq!(
+                expected.digest().expect("digest"),
+                actual.digest().expect("digest")
+            );
+        }
+        let attempt = Attempt {
+            version: 1,
+            identity: Identity {
+                issuer: "https://fixture.test/".into(),
+                subject: "user_fixture".into(),
+            },
+            account_id: "550e8400-e29b-41d4-a716-446655440000".into(),
+            payload: Submission::new(draft, environment()).expect("payload"),
+            phase: Phase::InFlight,
+            images,
+            installation: None,
+        };
+        store
+            .save("report-attempt", &attempt)
+            .expect("durable attempt with attachments");
+        let reports = Reports::restore(&store).expect("restore without HTTP");
+        assert_eq!(
+            reports
+                .attempt
+                .expect("attempt retained")
+                .digest()
+                .expect("digest"),
+            attempt.digest().expect("digest")
+        );
+    }
+    assert!(matches!(
+        store.save("account", &"x".repeat(1024 * 1024)),
+        Err(Error::TooLarge)
+    ));
+    drop(store);
+    crate::cleanup_store(&root, "three-large-jpegs", &[]);
+}
+
 fn hold_draft(root: &std::path::Path) -> std::fs::File {
     let namespace = root.join(format!("{:x}", Sha256::digest(b"report-retry")));
     std::fs::OpenOptions::new()

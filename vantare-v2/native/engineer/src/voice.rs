@@ -45,6 +45,15 @@ impl Voice {
         let Some(root) = &self.root else {
             return Ok(None);
         };
+        // Sin audio en esta plataforma: rechazar antes de tocar los clips
+        // (canonicalizar, leer o validar sería I/O inútil).
+        if !cfg!(windows) {
+            let _ = (root, locale, intent, now);
+            return Err(io::Error::new(
+                io::ErrorKind::Unsupported,
+                "reproducción de audio no disponible en esta plataforma",
+            ));
+        }
         let (path, duration) = resolve_clip(root, locale, intent)?;
         self.stop()?;
         #[cfg(windows)]

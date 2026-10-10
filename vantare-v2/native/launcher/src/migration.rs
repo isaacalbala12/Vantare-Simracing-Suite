@@ -72,7 +72,9 @@ pub fn source() -> Result<Option<PathBuf>, String> {
 pub(crate) fn source_in(directories: &[PathBuf]) -> Result<Option<PathBuf>, String> {
     for directory in directories {
         if !is_local_path(directory) {
-            return Err("la configuración Wails debe estar en disco local".into());
+            // Un Hub portable en UNC no impide encontrar APPDATA local.
+            // read sigue rechazando cualquier importación no local.
+            continue;
         }
         match std::fs::metadata(directory) {
             Ok(meta) if meta.is_dir() => {

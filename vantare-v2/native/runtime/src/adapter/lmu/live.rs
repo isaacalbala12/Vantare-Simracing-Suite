@@ -171,7 +171,7 @@ impl Adapter for Lmu {
 }
 
 fn open_running() -> Result<Running, AdapterError> {
-    let source = RunningSource::open().map_err(|_| AdapterError::Disconnected)?;
+    let source = RunningSource::open().map_err(|error| open_error(error.kind()))?;
     let build = source
         .build
         .exact_supported_build()
@@ -188,6 +188,16 @@ fn open_running() -> Result<Running, AdapterError> {
     })
 }
 
+fn open_error(kind: io::ErrorKind) -> AdapterError {
+    if kind == io::ErrorKind::AlreadyExists {
+        AdapterError::Rejected(
+            "hay varios procesos LMU; no se puede elegir una fuente única".into(),
+        )
+    } else {
+        AdapterError::Disconnected
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -196,6 +206,24 @@ mod tests {
     const REAL_44: &[u8] = include_bytes!("../../../../../testdata/lmu-fixture.bin");
     const MENU: &[u8] = include_bytes!("../../../../../testdata/lmu-menu-fixture.bin");
     const MS: fn(u64) -> Duration = Duration::from_millis;
+
+    #[test]
+    fn ambiguous_lmu_processes_are_rejected_and_keep_the_diagnosis_during_retry() {
+        let mut lmu = Lmu::with_source(
+            Box::new(|| Err(open_error(io::ErrorKind::AlreadyExists))),
+            None,
+        );
+        for now in [MS(0), MS(10), MS(1_000)] {
+            let error = lmu.poll(now).expect_err("varios procesos no son ausencia");
+            assert!(
+                matches!(error, AdapterError::Rejected(ref cause) if cause.contains("varios procesos LMU"))
+            );
+        }
+        assert_eq!(
+            open_error(io::ErrorKind::NotFound),
+            AdapterError::Disconnected
+        );
+    }
 
     /// Fuente simulada: `next` es el frame que devolverá la próxima lectura, o
     /// el error con que fallará.

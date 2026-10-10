@@ -1,5 +1,42 @@
 # Handoff vivo — Telemetry Core
 
+## #1554 · correcciones runtime R3 validadas localmente (2026-10-10)
+
+Rama `vantareapp/isa-1554-runtime-r3`, worktree `C:/tmp/vw3-1554`, base exacta
+`a410cb461c3606ae1992c1c819e08b8c87720afc`, limpia al entrar. Código validado:
+`2a6a6ed68b6ce5eab6aac1d449c29d531778f5eb`. Issue abierta, area:telemetria-core,
+GitHub Project Vantare; entrega al orquestador para revisión, sin integración.
+
+- 09#1: `3df3bc7f`, registro ACC rechazado separado de datagramas corruptos;
+  aviso sanitizado que indica revisar broadcasting/connectionPassword y espera
+  de 10 s. Conserva socket y retirada de velocidades, admite ACK posterior y
+  restaura plazo normal al recuperar conexión. No imprime texto del servidor.
+- 10#1: `f7db5708`, rechaza `--pipe` repetido antes de cablear consumidores;
+  validación común anterior a las ramas Windows/Unix, con o sin Engineer.
+- 11#3: `2a6a6ed6`, Paused conserva la marca de uso igual que Stale; sesión/época
+  nuevas y Waiting siguen permitiendo un evento nuevo.
+
+RED 3/3 antes de producción (`C:/tmp/review-r3/1554-red.log`), GREEN focal 14/14
+(`1554-green.log`). Regresiones: rejected_registration_backs_off_without_losing_socket_and_recovers,
+duplicate_core_pipe_is_rejected_before_wiring_consumers y
+paused_session_resumes_without_duplicate_usage_and_new_session_still_counts.
+Fmt, Clippy -D warnings, Nextest 1512/1512 (7 excluidos por perfil), lifecycle
+18/18 y telemetría 25/25 (0 skips) PASS por cola, locked/offline y target propio.
+Logs `C:/tmp/review-r3/1554-{fmt,clippy-final,test-final,lifecycle-final,telemetria-final}.log`.
+Clippy inicial detectó parse 107/100 líneas: validación extraída a helper mínimo
+sin allow y consolidada en el commit de 10#1; fallo conservado en 1554-clippy.log.
+Diff revisado; cuatro archivos runtime y este handoff, sin modificar #1531,
+fixtures, dependencias ni tests existentes. Evidencia local y loopback, sin
+acreditar sesiones ACC/LMU físicas ni CI remoto; sin capturas ni ventanas manuales.
+
+Comprobación: ejecutar las tres regresiones por cola desde native/ con
+`cargo nextest run -p vantare-runtime --lib --bin vantare --locked --offline -j 2`
+y filtro por sus nombres. Launcher con `-- --live --pipe a --pipe b` debe salir
+con error antes de arrancar hijos. Informe `C:/tmp/review-r3/informe-1554.md`
+(máximo 10 líneas), buzón `C:/tmp/buzon/1554.md`. Siguiente: revisión del
+orquestador e integración solo con autorización. Sin delegación, push, PR,
+merge, promoción, release ni CI remoto. Limpieza de native/target rechazada por revisión automática (blocked by policy); caché conservada.
+
 ## #1536 · continuación #1551/#1552 integrada y validada (2026-10-10)
 
 Merge --no-ff caa6dfb8b04f7dbf12b9106a84ff5d4d44580f86 de 6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6, tras los 13 merges R2. Código probado a1aadd4038a749207ae62e98515a37ea237d17db; árbol native 29f3e82249be7eef8095d61763f0888e2cdce013. Check, fmt y Clippy -D warnings PASS; Nextest 1509/1509 (7 skips heredados del perfil), lifecycle 18/18 y telemetría 25/25 (0 skips) PASS por cola. Ambas regresiones #1551/#1552 activadas, sin #[ignore]; Engineer recovery/status_process pasa a la primera.

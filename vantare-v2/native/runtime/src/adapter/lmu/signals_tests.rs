@@ -18,19 +18,27 @@ fn garage_stall_is_explicit_not_pit_state_and_legacy_zero_is_absent() {
         .expect("scoring jugador");
     let mut bytes = REAL_44.to_vec();
     // Mutaciones declaradas del byte SDK sobre la captura real; no una captura
-    // física de garaje/servicio. La captura positiva original sigue pendiente de aportar.
+    // física de garaje/servicio. La comprobación física positiva original sigue pendiente de aportar.
     bytes[PLAYER + 12..PLAYER + 20].copy_from_slice(&1.0_f64.to_le_bytes());
     for pit in [0, 3] {
         bytes[scoring + 457] = pit;
         for (garage, expected) in [(0, S::OnTrack), (1, S::Garage), (2, S::Unknown)] {
             bytes[scoring + 507] = garage;
             let mut t = Translator::new(SourceKind::Replay);
+            let first = t.observe(&bytes, "1.3.0.0", Duration::ZERO).expect("frame");
+            assert_eq!(first.state.driving_situation, expected);
+            let mut core = crate::core::Core::new(1562);
+            core.observe(first).expect("primera");
+            let second = t
+                .observe(&bytes, "1.3.0.0", Duration::from_millis(250))
+                .expect("frame vigente");
+            core.observe(second).expect("confirmación");
+            if garage != 2 {
+                assert_eq!(core.snapshot().state.driving_situation, expected);
+            }
             assert_eq!(
-                t.observe(&bytes, "1.3.0.0", Duration::ZERO)
-                    .expect("frame")
-                    .state
-                    .driving_situation,
-                expected
+                core.snapshot().state.driving_situation.off_track(),
+                garage == 1
             );
             let stale = t
                 .observe(&bytes, "1.3.0.0", Duration::from_millis(500))

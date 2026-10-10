@@ -29,6 +29,8 @@ logs RED/verde completos en esa carpeta. Informe `C:/tmp/ola2/informe-1564-impl.
 buzón `C:/tmp/buzon/1564.md`. README UI/Hub y changelog actualizados.
 D12 aclarada por el orquestador: ancho por sesión solo en tamaño automático;
 frames explícitos respetan el tamaño del usuario. Ancla fija en ambos casos.
+Test Studio ampliado en `63bead05`: frame 800×400, documento y ancla
+conservados por las tres pestañas PASS; log geometry-explicit.log, 0.19s.
 Ejemplo sigue la pestaña; fotos reales/En vivo mantienen su sesión.
 Sin prueba física LMU/ACC/OBS, integración, promoción ni release; CI remoto aparte.
 #1561 P1-A mantiene el plan de partición del Studio preexistente >2000 LOC;

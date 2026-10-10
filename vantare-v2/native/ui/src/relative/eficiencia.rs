@@ -23,6 +23,38 @@ impl Visual {
             idle_rows: None,
         }
     }
+    pub(super) fn attach(&mut self, motion: &mut Motion) {
+        let samples = self
+            .vm
+            .slots
+            .iter()
+            .enumerate()
+            .filter_map(|(i, row)| {
+                row.as_ref().map(|row| crate::vantare::motion::Sample {
+                    id: row.id,
+                    y: i as f32,
+                    position: 0,
+                    fastest: false,
+                    in_pits: row.in_pits,
+                    leader: false,
+                })
+            })
+            .collect::<Vec<_>>();
+        motion.rows.relayout(&self.vm, &samples, 1.0, 0.0);
+        if self.vm.footer_cells.len() > 5 {
+            let total = self
+                .vm
+                .footer_cells
+                .iter()
+                .map(|cell| {
+                    cell.label.chars().count() as f32 * 5.5
+                        + cell.value.chars().count() as f32 * 7.5
+                        + 26.0
+                })
+                .sum::<f32>();
+            self.footer_rows = (total / (SIZE.0 - 24.0)).ceil().max(1.0) as usize;
+        }
+    }
     pub(super) fn workshop_layout(&mut self) {
         self.workshop = true;
     }

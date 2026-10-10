@@ -54,6 +54,21 @@ impl Bezier {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+enum Curve {
+    Bezier(Bezier),
+    Linear,
+    CubicOut,
+}
+impl Curve {
+    fn at(self, t: f32) -> f32 {
+        match self {
+            Self::Bezier(b) => b.at(t),
+            Self::Linear => t,
+            Self::CubicOut => 1.0 - (1.0 - t).powi(3),
+        }
+    }
+}
 /// Transicion de un escalar; al cambiar de objetivo parte del valor actual.
 #[derive(Clone, Copy, Debug)]
 pub struct Tween {
@@ -61,17 +76,26 @@ pub struct Tween {
     to: f32,
     start: Instant,
     duration: Duration,
-    ease: Bezier,
+    ease: Curve,
 }
 
 impl Tween {
+    fn policy(from: f32, to: f32, start: Instant, duration: Duration, ease: Curve) -> Self {
+        Self {
+            from,
+            to,
+            start,
+            duration,
+            ease,
+        }
+    }
     pub fn fixed(value: f32, now: Instant) -> Self {
         Self {
             from: value,
             to: value,
             start: now,
             duration: Duration::ZERO,
-            ease: EASE,
+            ease: Curve::Bezier(EASE),
         }
     }
 
@@ -96,7 +120,7 @@ impl Tween {
         self.to = to;
         self.start = now;
         self.duration = Duration::from_millis(duration_ms);
-        self.ease = ease;
+        self.ease = Curve::Bezier(ease);
     }
 
     pub fn animate(from: f32, to: f32, now: Instant, duration_ms: u64, ease: Bezier) -> Self {
@@ -105,7 +129,7 @@ impl Tween {
             to,
             start: now,
             duration: Duration::from_millis(duration_ms),
-            ease,
+            ease: Curve::Bezier(ease),
         }
     }
 }
@@ -364,6 +388,7 @@ pub fn select_battle(
 // Motor
 // ---------------------------------------------------------------------------
 
+#[derive(Clone)]
 struct Notice {
     priority: u8,
     kind: EventKind,
@@ -371,14 +396,16 @@ struct Notice {
     places: i64,
 }
 
+#[derive(Clone)]
 struct ExitRow {
     row: Row,
     top: f32,
     fade: Tween,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct Motion {
+    seeded: bool,
     prev: Option<ContentPlan>,
     /// Resultado derivado reutilizable solo mientras no hay animacion ni nueva ingestion.
     idle_frame: Option<std::sync::Arc<Frame>>,
@@ -402,6 +429,7 @@ impl Motion {
         Self::default()
     }
 
+    #[cfg(test)]
     pub(super) fn notices(
         &self,
     ) -> Vec<(
@@ -675,6 +703,7 @@ impl Motion {
     }
 
     fn seed(&mut self, rows: &[&Row], now: Instant) {
+        self.seeded = true;
         for (index, row) in rows.iter().enumerate() {
             self.tops
                 .insert(row.id.clone(), index as f32 * super::model::ROW_HEIGHT);
@@ -816,6 +845,240 @@ impl Motion {
     #[cfg(any(test, feature = "parity-capture"))]
     pub fn animating(&self, now: Instant) -> bool {
         self.wake(now) != Wake::Idle
+    }
+}
+
+impl Motion {
+    /// El mismo historial y los mismos canales sirven a ambos pintores.
+    pub(super) fn update_rows(
+        &mut self,
+        board: &std::sync::Arc<vantare_domain::standings::Board>,
+        samples: &[crate::vantare::motion::Sample],
+        timing: crate::vantare::motion::Timing,
+        now: Instant,
+    ) {
+        use crate::vantare::motion::Flash;
+        self.idle_frame = None;
+        let first = !self.seeded;
+        self.seeded = true;
+        for sample in samples {
+            let id = sample.id.0.to_string();
+            let old = self.presence.get(&id);
+            let known = self.tops.get(&id).copied();
+            let current =
+                known.unwrap_or(sample.y) + self.flips.get(&id).map_or(0.0, |t| t.value(now));
+            if known.is_some() && (current - sample.y).abs() > 0.01 {
+                self.flips.insert(
+                    id.clone(),
+                    Tween::policy(
+                        current - sample.y,
+                        0.0,
+                        now,
+                        timing.reorder,
+                        Curve::CubicOut,
+                    ),
+                );
+            } else if known.is_none() {
+                self.flips.remove(&id);
+            }
+            self.tops.insert(id.clone(), sample.y);
+            if known.is_none() && !first {
+                self.fades.insert(
+                    id.clone(),
+                    Tween::policy(0.0, 1.0, now, timing.fade, Curve::Linear),
+                );
+            }
+            let flash = old.and_then(|old| {
+                let old_leader = matches!(old.gap.as_str(), "Líder" | "Leader");
+                if sample.in_pits && !old.in_pits {
+                    Some(Flash::Pit)
+                } else if sample.leader && !old_leader {
+                    Some(Flash::Lead)
+                } else if i64::from(sample.position) < old.position {
+                    Some(Flash::Gain)
+                } else if i64::from(sample.position) > old.position {
+                    Some(Flash::Loss)
+                } else if sample.fastest
+                    && old.best_mark != vantare_domain::standings::Mark::Fastest
+                {
+                    Some(Flash::Best)
+                } else {
+                    None
+                }
+            });
+            if !first && let Some(flash) = flash {
+                let places = old.map_or(0, |old| old.position - i64::from(sample.position));
+                self.restore_notices(&[(sample.id, flash, now, places)]);
+            }
+            if let Some(row) = board.row(sample.id) {
+                self.presence.insert(
+                    id.clone(),
+                    Row {
+                        row: row.clone(),
+                        id,
+                        position: i64::from(sample.position),
+                        class_position: row.class_position.map_or(0, i64::from),
+                    },
+                );
+            }
+        }
+        let visible: HashSet<_> = samples.iter().map(|s| s.id.0.to_string()).collect();
+        self.tops.retain(|id, _| visible.contains(id));
+        self.presence.retain(|id, _| visible.contains(id));
+        // El Plan anterior es una caché derivada; el historial por coche sigue en presence.
+        self.prev = None;
+    }
+    pub(super) fn resume_content(&mut self, content: &ContentPlan) {
+        self.idle_frame = None;
+        self.prev = Some(content.clone());
+        for (i, row) in content.rows.iter().enumerate() {
+            self.tops
+                .insert(row.id.clone(), i as f32 * super::model::ROW_HEIGHT);
+            self.presence.insert(row.id.clone(), row.clone());
+        }
+    }
+    pub(super) fn relayout(
+        &mut self,
+        board: &std::sync::Arc<vantare_domain::standings::Board>,
+        samples: &[crate::vantare::motion::Sample],
+    ) {
+        for sample in samples {
+            let id = sample.id.0.to_string();
+            self.tops.insert(id.clone(), sample.y);
+            if let Some(row) = board.row(sample.id) {
+                self.presence.insert(
+                    id.clone(),
+                    Row {
+                        row: row.clone(),
+                        id,
+                        position: i64::from(sample.position),
+                        class_position: row.class_position.map_or(0, i64::from),
+                    },
+                );
+            }
+        }
+    }
+    pub(super) fn snap(&mut self, samples: &[crate::vantare::motion::Sample]) {
+        let now = Instant::now();
+        for s in samples {
+            let id = s.id.0.to_string();
+            self.tops.insert(id.clone(), s.y);
+            self.flips.insert(id, Tween::fixed(0.0, now));
+        }
+    }
+    pub(super) fn settle(&mut self) {
+        let now = Instant::now();
+        for tween in self.flips.values_mut() {
+            *tween = Tween::fixed(0.0, now);
+        }
+        for tween in self.fades.values_mut() {
+            *tween = Tween::fixed(1.0, now);
+        }
+        self.notices.clear();
+        self.flash_tw.clear();
+        self.chip_tw.clear();
+        self.exits.clear();
+        self.idle_frame = None;
+    }
+    pub(super) fn pose(
+        &self,
+        id: vantare_domain::CarId,
+        timing: crate::vantare::motion::Timing,
+        now: Instant,
+    ) -> crate::vantare::motion::Pose {
+        use crate::vantare::motion::{Flash, Pose};
+        let id = id.0.to_string();
+        let flash = self.notices.get(&id).and_then(|n| {
+            if timing.flash.is_zero() {
+                return None;
+            }
+            let p = (now.saturating_duration_since(n.start).as_secs_f32()
+                / timing.flash.as_secs_f32())
+            .clamp(0.0, 1.0);
+            (p < 1.0).then_some((
+                match n.kind {
+                    EventKind::Position if n.places > 0 => Flash::Gain,
+                    EventKind::Position => Flash::Loss,
+                    EventKind::Lead => Flash::Lead,
+                    EventKind::SessionBest => Flash::Best,
+                    EventKind::PersonalBest => Flash::PersonalBest,
+                    EventKind::Pit => Flash::Pit,
+                },
+                1.0 - p,
+            ))
+        });
+        Pose {
+            offset: self.flips.get(&id).map_or(0.0, |t| t.value(now)),
+            alpha: self.fades.get(&id).map_or(1.0, |t| t.value(now)),
+            flash,
+        }
+    }
+    pub(super) fn wake_rows(&self, timing: crate::vantare::motion::Timing, now: Instant) -> Wake {
+        if self.tops.keys().any(|id| {
+            self.flips.get(id).is_some_and(|t| t.running(now))
+                || self.fades.get(id).is_some_and(|t| t.running(now))
+                || self
+                    .notices
+                    .get(id)
+                    .is_some_and(|n| now.saturating_duration_since(n.start) < timing.flash)
+        }) {
+            Wake::Frame
+        } else {
+            Wake::Idle
+        }
+    }
+}
+
+#[cfg(test)]
+impl Motion {
+    pub(super) fn clock_signature(&self) -> Vec<(String, Instant, Duration)> {
+        let mut clocks = Vec::new();
+        clocks.extend(
+            self.flips
+                .iter()
+                .map(|(id, t)| (format!("flips:{id}"), t.start, t.duration)),
+        );
+        clocks.extend(
+            self.fades
+                .iter()
+                .map(|(id, t)| (format!("fades:{id}"), t.start, t.duration)),
+        );
+        clocks.extend(
+            self.battle_tw
+                .iter()
+                .map(|(id, t)| (format!("battle_tw:{id}"), t.start, t.duration)),
+        );
+        clocks.extend(
+            self.best_tw
+                .iter()
+                .map(|(id, t)| (format!("best_tw:{id}"), t.start, t.duration)),
+        );
+        clocks.extend(
+            self.chip_tw
+                .iter()
+                .map(|(id, t)| (format!("chip_tw:{id}"), t.start, t.duration)),
+        );
+        clocks.extend(
+            self.flash_tw
+                .iter()
+                .map(|(id, t)| (format!("flash_tw:{id}"), t.start, t.duration)),
+        );
+        for (id, (a, b)) in &self.pit_tw {
+            clocks.push((format!("pit-alpha:{id}"), a.start, a.duration));
+            clocks.push((format!("pit-dx:{id}"), b.start, b.duration));
+        }
+        clocks.extend(
+            self.exits
+                .iter()
+                .map(|(id, t)| (format!("exit:{id}"), t.fade.start, t.fade.duration)),
+        );
+        clocks.extend(
+            self.notices
+                .iter()
+                .map(|(id, t)| (format!("notice:{id}"), t.start, Duration::ZERO)),
+        );
+        clocks.sort_by(|a, b| a.0.cmp(&b.0));
+        clocks
     }
 }
 

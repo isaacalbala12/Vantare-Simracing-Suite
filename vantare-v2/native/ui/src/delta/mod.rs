@@ -107,20 +107,22 @@ impl Settings {
     }
 }
 
-enum Painter {
-    Eficiencia(Arc<eficiencia::Labels>),
-    Vantare(vantare::Visual),
+enum Presentation {
+    Eficiencia {
+        visual: Arc<eficiencia::Labels>,
+        motion: Arc<Motion>,
+    },
+    Vantare {
+        visual: vantare::Visual,
+        motion: Arc<Motion>,
+    },
 }
-enum Engine {
-    Eficiencia(Motion),
-    Vantare(Arc<vantare::Movement>),
-}
+
 pub(crate) struct Widget {
     settings: Settings,
     reference: delta::Reference,
     board: Arc<delta::Board>,
-    visual: Painter,
-    motion: Engine,
+    presentation: Presentation,
     prefs: Preferences,
     idle_frame: Option<motion::Frame>,
 }
@@ -129,52 +131,50 @@ impl Widget {
         settings: &Settings,
         prefs: Preferences,
         board: &Arc<delta::Board>,
-    ) -> (Painter, Engine) {
+        motion: Arc<Motion>,
+    ) -> Presentation {
         match settings.design_system {
-            crate::look::Look::Eficiencia => (
-                Painter::Eficiencia(Arc::new(eficiencia::Labels::new(
+            crate::look::Look::Eficiencia => Presentation::Eficiencia {
+                visual: Arc::new(eficiencia::Labels::new(
                     board,
                     prefs,
                     settings.template_id == "capsule",
-                ))),
-                Engine::Eficiencia(Motion::default()),
-            ),
-            crate::look::Look::Vantare => (
-                Painter::Vantare(vantare::Visual::new(vantare::Options::from_settings(
-                    settings,
-                ))),
-                Engine::Vantare(Arc::new(vantare::Movement::default())),
-            ),
+                )),
+                motion,
+            },
+            crate::look::Look::Vantare => Presentation::Vantare {
+                visual: vantare::Visual::new(vantare::Options::from_settings(settings)),
+                motion,
+            },
         }
     }
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
         let settings = settings.normalized();
         let board = Arc::new(settings.project(&Snapshot::default(), prefs));
-        let (visual, motion) = Self::presentation(&settings, prefs, &board);
+        let presentation = Self::presentation(&settings, prefs, &board, Arc::default());
         Self {
             reference: settings.reference(),
             settings,
             board,
-            visual,
-            motion,
+            presentation,
             prefs,
             idle_frame: None,
         }
     }
     pub(crate) fn settle(&mut self) {
-        if let Engine::Vantare(m) = &mut self.motion {
+        if let Presentation::Vantare { motion: m, .. } = &mut self.presentation {
             Arc::make_mut(m).settle();
         }
     }
     pub(crate) fn set_vantare_style(&mut self, style: Arc<crate::vantare::style::Style>) {
-        if let Painter::Vantare(v) = &mut self.visual {
+        if let Presentation::Vantare { visual: v, .. } = &mut self.presentation {
             v.set_style(style);
         }
     }
     pub(crate) fn size(&self) -> (f32, f32) {
-        match &self.visual {
-            Painter::Eficiencia(_) => (280.0, 96.0),
-            Painter::Vantare(v) => v.size(),
+        match &self.presentation {
+            Presentation::Eficiencia { visual: _, .. } => (280.0, 96.0),
+            Presentation::Vantare { visual: v, .. } => v.size(),
         }
     }
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
@@ -193,13 +193,17 @@ impl Widget {
         self.idle_frame = None;
         let next = Arc::new(next);
         let now = Instant::now();
-        let changed = match (&mut self.visual, &mut self.motion) {
-            (Painter::Vantare(v), Engine::Vantare(m)) => {
-                v.ingest_shared(next.clone(), Arc::make_mut(m))
-            }
-            (Painter::Eficiencia(labels), Engine::Eficiencia(m)) => {
+        let changed = match &mut self.presentation {
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => v.ingest_shared(next.clone(), Arc::make_mut(m)),
+            Presentation::Eficiencia {
+                visual: labels,
+                motion: m,
+            } => {
                 let active = m.wake(now) != Wake::Idle;
-                m.update(&self.board, &next, now);
+                Arc::make_mut(m).update(&self.board, &next, now);
                 let labels_next =
                     eficiencia::Labels::new(&next, prefs, self.settings.template_id == "capsule");
                 let changed = labels.delta_text != labels_next.delta_text
@@ -212,7 +216,6 @@ impl Widget {
                 *labels = Arc::new(labels_next);
                 changed
             }
-            _ => unreachable!("un solo pintor y Motion activos"),
         };
         self.board = next;
         self.prefs = prefs;
@@ -223,19 +226,15 @@ impl Widget {
             return;
         }
         self.idle_frame = None;
-        let notices = match &self.motion {
-            Engine::Eficiencia(m) => m.notices.clone(),
-            Engine::Vantare(m) => m.notices.clone(),
+        let motion = match &self.presentation {
+            Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                motion.clone()
+            }
         };
         self.settings.design_system = look;
-        (self.visual, self.motion) = Self::presentation(&self.settings, prefs, &self.board);
-        match (&mut self.visual, &mut self.motion) {
-            (Painter::Vantare(v), Engine::Vantare(m)) => {
-                v.ingest_shared(self.board.clone(), Arc::make_mut(m));
-                Arc::make_mut(m).notices = notices;
-            }
-            (Painter::Eficiencia(_), Engine::Eficiencia(m)) => m.notices = notices,
-            _ => unreachable!(),
+        self.presentation = Self::presentation(&self.settings, prefs, &self.board, motion);
+        if let Presentation::Vantare { visual, .. } = &mut self.presentation {
+            visual.attach(self.board.clone());
         }
     }
     pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
@@ -243,8 +242,11 @@ impl Widget {
     }
     pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let now = Instant::now();
-        match (&mut self.visual, &mut self.motion) {
-            (Painter::Vantare(v), Engine::Vantare(m)) => {
+        match &mut self.presentation {
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => {
                 v.presentation(prefs.language);
                 if reduced {
                     Arc::make_mut(m).settle();
@@ -257,7 +259,10 @@ impl Widget {
                     wake,
                 )
             }
-            (Painter::Eficiencia(labels), Engine::Eficiencia(m)) => {
+            Presentation::Eficiencia {
+                visual: labels,
+                motion: m,
+            } => {
                 let (frame, wake) = if reduced {
                     m.reduced_frame(&self.board, now)
                 } else {
@@ -278,15 +283,19 @@ impl Widget {
                     wake,
                 )
             }
-            _ => unreachable!(),
         }
     }
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
-        match (&self.visual, &self.motion) {
-            (Painter::Eficiencia(_), Engine::Eficiencia(m)) => m.wake(Instant::now()) != Wake::Idle,
-            (Painter::Vantare(v), Engine::Vantare(m)) => v.wake(m, Instant::now()) != Wake::Idle,
-            _ => unreachable!(),
+        match &self.presentation {
+            Presentation::Eficiencia {
+                visual: _,
+                motion: m,
+            } => m.wake(Instant::now()) != Wake::Idle,
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => v.wake(m, Instant::now()) != Wake::Idle,
         }
     }
 }
@@ -314,6 +323,42 @@ impl Settings {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn look_switch_moves_the_complete_interpolation_and_notices() {
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(&Settings::eficiencia(), prefs);
+        widget.ingest(&crate::source::fixed(), prefs);
+        let now = Instant::now();
+        let motion = match &mut widget.presentation {
+            Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                Arc::make_mut(motion)
+            }
+        };
+        motion.retarget_bar(-0.5, 0.7, now, std::time::Duration::from_millis(400));
+        motion.notices.notify(now, delta::Event::PersonalBest);
+        let shared = match &widget.presentation {
+            Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                motion.clone()
+            }
+        };
+        let at = now + std::time::Duration::from_millis(50);
+        let before = shared.frame(&widget.board, at);
+        for look in [
+            crate::look::Look::Vantare,
+            crate::look::Look::Eficiencia,
+            crate::look::Look::Vantare,
+        ] {
+            widget.set_look(look, prefs);
+            let after = match &widget.presentation {
+                Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                    motion
+                }
+            };
+            assert!(Arc::ptr_eq(&shared, after));
+            assert_eq!(before, after.frame(&widget.board, at));
+        }
+    }
+
     #[test]
     fn idle_motion_frame_is_reused_until_facts_change() {
         let prefs = Preferences::default();
@@ -354,9 +399,11 @@ mod tests {
             let at = Instant::now()
                 .checked_sub(std::time::Duration::from_millis(200))
                 .expect("reloj de aviso");
-            match &mut widget.motion {
-                Engine::Eficiencia(m) => m.notices.notify(at, delta::Event::PersonalBest),
-                Engine::Vantare(m) => Arc::make_mut(m)
+            match &mut widget.presentation {
+                Presentation::Eficiencia { motion: m, .. } => Arc::make_mut(m)
+                    .notices
+                    .notify(at, delta::Event::PersonalBest),
+                Presentation::Vantare { motion: m, .. } => Arc::make_mut(m)
                     .notices
                     .notify(at, delta::Event::PersonalBest),
             }
@@ -365,9 +412,9 @@ mod tests {
                 widget.set_look(next, prefs);
                 assert!(Arc::ptr_eq(&board, &widget.board));
                 assert_eq!(calls.get(), 1, "cambiar Look no proyecta");
-                let clock = match &widget.motion {
-                    Engine::Eficiencia(m) => m.notices.record(),
-                    Engine::Vantare(m) => m.notices.record(),
+                let clock = match &widget.presentation {
+                    Presentation::Eficiencia { motion: m, .. } => m.notices.record(),
+                    Presentation::Vantare { motion: m, .. } => m.notices.record(),
                 };
                 assert_eq!(clock, Some(at));
             }
@@ -445,7 +492,7 @@ mod tests {
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.ingest(&snapshot, prefs));
         assert!(
-            matches!(&widget.motion, Engine::Eficiencia(m) if m.wake(Instant::now()) == Wake::Idle)
+            matches!(&widget.presentation, Presentation::Eficiencia { motion: m, .. } if m.wake(Instant::now()) == Wake::Idle)
         );
     }
 

@@ -102,42 +102,41 @@ impl Settings {
     }
 }
 
-enum Painter {
-    Eficiencia(Arc<eficiencia::Labels>),
-    Vantare(vantare::Visual),
+enum Presentation {
+    Eficiencia {
+        visual: Arc<eficiencia::Labels>,
+        motion: Arc<vantare::Movement>,
+    },
+    Vantare {
+        visual: vantare::Visual,
+        motion: Arc<vantare::Movement>,
+    },
 }
-enum Engine {
-    Eficiencia,
-    Vantare(Arc<vantare::Movement>),
-}
+
 pub(crate) struct Widget {
     settings: Settings,
     content: fuel_strategy::Config,
     board: Arc<fuel_strategy::Board>,
-    visual: Painter,
-    motion: Engine,
+    presentation: Presentation,
     prefs: Preferences,
-    // Common pulse clock survives Look changes; no inactive animation engine.
-    started: Instant,
 }
 impl Widget {
     fn presentation(
         settings: &Settings,
         prefs: Preferences,
         board: &Arc<fuel_strategy::Board>,
-        started: Instant,
-    ) -> (Painter, Engine) {
+        mut motion: Arc<vantare::Movement>,
+    ) -> Presentation {
         match settings.design_system {
-            crate::look::Look::Eficiencia => (
-                Painter::Eficiencia(Arc::new(eficiencia::Labels::new(board, prefs))),
-                Engine::Eficiencia,
-            ),
+            crate::look::Look::Eficiencia => Presentation::Eficiencia {
+                visual: Arc::new(eficiencia::Labels::new(board, prefs)),
+                motion,
+            },
             crate::look::Look::Vantare => {
                 let mut visual = vantare::Visual::new(vantare::Options::from_settings(settings));
-                let mut motion = vantare::Movement::new(started);
-                visual.ingest_shared(board.clone(), &mut motion);
+                visual.ingest_shared(board.clone(), Arc::make_mut(&mut motion));
                 visual.presentation(prefs.language);
-                (Painter::Vantare(visual), Engine::Vantare(Arc::new(motion)))
+                Presentation::Vantare { visual, motion }
             }
         }
     }
@@ -150,37 +149,40 @@ impl Widget {
             content,
         ));
         let started = Instant::now();
-        let (visual, motion) = Self::presentation(&settings, prefs, &board, started);
+        let presentation = Self::presentation(
+            &settings,
+            prefs,
+            &board,
+            Arc::new(vantare::Movement::new(started)),
+        );
         Self {
             settings,
             content,
             board,
-            visual,
-            motion,
+            presentation,
             prefs,
-            started,
         }
     }
     #[cfg(feature = "parity-capture")]
     pub(crate) fn freeze_for_capture(&mut self) {
-        if let Engine::Vantare(m) = &mut self.motion {
+        if let Presentation::Vantare { motion: m, .. } = &mut self.presentation {
             Arc::make_mut(m).freeze_for_capture();
         }
     }
     pub(crate) fn settle(&mut self) {
-        if let Engine::Vantare(m) = &mut self.motion {
+        if let Presentation::Vantare { motion: m, .. } = &mut self.presentation {
             Arc::make_mut(m).settle();
         }
     }
     pub(crate) fn set_vantare_style(&mut self, style: Arc<crate::vantare::style::Style>) {
-        if let Painter::Vantare(v) = &mut self.visual {
+        if let Presentation::Vantare { visual: v, .. } = &mut self.presentation {
             v.set_style(style);
         }
     }
     pub(crate) fn size(&self) -> (f32, f32) {
-        match &self.visual {
-            Painter::Eficiencia(_) => eficiencia::SIZE,
-            Painter::Vantare(v) => v.size(),
+        match &self.presentation {
+            Presentation::Eficiencia { visual: _, .. } => eficiencia::SIZE,
+            Presentation::Vantare { visual: v, .. } => v.size(),
         }
     }
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
@@ -197,12 +199,18 @@ impl Widget {
             return false;
         }
         let next = Arc::new(next);
-        let changed = match (&mut self.visual, &mut self.motion) {
-            (Painter::Vantare(v), Engine::Vantare(m)) => {
+        let changed = match &mut self.presentation {
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => {
                 let changed = v.ingest_shared(next.clone(), Arc::make_mut(m));
                 changed | v.presentation(prefs.language)
             }
-            (Painter::Eficiencia(labels), Engine::Eficiencia) => {
+            Presentation::Eficiencia {
+                visual: labels,
+                motion: _,
+            } => {
                 let next_labels = eficiencia::Labels::new(&next, prefs);
                 let changed = **labels != next_labels;
                 if changed {
@@ -210,7 +218,6 @@ impl Widget {
                 }
                 changed
             }
-            _ => unreachable!("un solo pintor y Motion activos"),
         };
         self.board = next;
         self.prefs = prefs;
@@ -220,13 +227,20 @@ impl Widget {
         if self.settings.design_system == look {
             return;
         }
+        let motion = match &self.presentation {
+            Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                motion.clone()
+            }
+        };
         self.settings.design_system = look;
-        (self.visual, self.motion) =
-            Self::presentation(&self.settings, prefs, &self.board, self.started);
+        self.presentation = Self::presentation(&self.settings, prefs, &self.board, motion);
     }
     pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        match (&mut self.visual, &self.motion) {
-            (Painter::Eficiencia(labels), Engine::Eficiencia) => {
+        match &mut self.presentation {
+            Presentation::Eficiencia {
+                visual: labels,
+                motion: _,
+            } => {
                 let labels = labels.clone();
                 (
                     Box::new(move |w, cx| {
@@ -236,7 +250,10 @@ impl Widget {
                     Wake::Idle,
                 )
             }
-            (Painter::Vantare(v), Engine::Vantare(m)) => {
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => {
                 v.presentation(prefs.language);
                 let wake = v.wake(m, Instant::now());
                 let v = v.clone();
@@ -249,13 +266,15 @@ impl Widget {
                     wake,
                 )
             }
-            _ => unreachable!(),
         }
     }
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
-        match (&self.visual, &self.motion) {
-            (Painter::Vantare(v), Engine::Vantare(m)) => v.wake(m, Instant::now()) != Wake::Idle,
+        match &self.presentation {
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => v.wake(m, Instant::now()) != Wake::Idle,
             _ => false,
         }
     }
@@ -282,6 +301,57 @@ impl Settings {
 }
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn look_switch_preserves_all_bar_interpolations_and_pulse_state() {
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(
+            &Settings {
+                size: "expanded".into(),
+                ..Settings::default()
+            },
+            prefs,
+        );
+        let mut photo =
+            vantare_ipc::snapshot_from_json(include_str!("scenes/eight-laps.snapshot.json"))
+                .expect("escena existente con capacidad e historial");
+        widget.ingest(&photo, prefs);
+        photo
+            .state
+            .player
+            .as_mut()
+            .expect("jugador de la escena")
+            .fuel
+            .level_l = vantare_domain::Quality::Reliable(30.0);
+        photo.sequence += 1;
+        widget.ingest(&photo, prefs);
+        let state = match &widget.presentation {
+            Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                motion.state_signature()
+            }
+        };
+        assert!(
+            state.1.iter().any(|b| b.1 != b.2),
+            "interpolación de barra activa"
+        );
+        for look in [
+            crate::look::Look::Eficiencia,
+            crate::look::Look::Vantare,
+            crate::look::Look::Eficiencia,
+            crate::look::Look::Vantare,
+        ] {
+            widget.set_look(look, prefs);
+            let after = match &widget.presentation {
+                Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                    motion.state_signature()
+                }
+            };
+            assert_eq!(
+                state, after,
+                "se conservan from, to, start y reloj del pulso"
+            );
+        }
+    }
+
     use super::*;
     #[test]
     fn every_look_projects_once_and_switches_without_a_second_history_or_clock_reset() {
@@ -302,7 +372,11 @@ mod tests {
             });
             assert_eq!(calls, 1);
             let board = widget.board.clone();
-            let started = widget.started;
+            let started = match &widget.presentation {
+                Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                    motion.started
+                }
+            };
             let history = widget.board.history.as_ptr();
             let content = widget.content;
             let demand = widget.settings.demand();
@@ -314,10 +388,14 @@ mod tests {
                 widget.set_look(next, prefs);
                 assert!(Arc::ptr_eq(&board, &widget.board));
                 assert_eq!(history, widget.board.history.as_ptr());
-                assert_eq!(started, widget.started);
+                let actual_started = match &widget.presentation {
+                    Presentation::Eficiencia { motion, .. }
+                    | Presentation::Vantare { motion, .. } => motion.started,
+                };
+                assert_eq!(started, actual_started);
                 assert_eq!(content, widget.content);
                 assert_eq!(demand, widget.settings.demand());
-                if let Engine::Vantare(m) = &widget.motion {
+                if let Presentation::Vantare { motion: m, .. } = &widget.presentation {
                     assert_eq!(m.started, started);
                 }
             }
@@ -367,21 +445,21 @@ mod tests {
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::default(), prefs);
         widget.ingest(&photo, prefs);
-        let Painter::Vantare(v) = &widget.visual else {
+        let Presentation::Vantare { visual: v, .. } = &widget.presentation else {
             unreachable!()
         };
         let saved = v.clone();
         for _ in 0..3 {
             drop(widget.frame(prefs));
         }
-        let Painter::Vantare(v) = &widget.visual else {
+        let Presentation::Vantare { visual: v, .. } = &widget.presentation else {
             unreachable!()
         };
         assert!(v.reuses_preparation(&saved));
         let mut changed = photo.clone();
         changed.state.source_state = vantare_domain::SourceState::Lost;
         assert!(widget.ingest(&changed, prefs));
-        let Painter::Vantare(v) = &widget.visual else {
+        let Presentation::Vantare { visual: v, .. } = &widget.presentation else {
             unreachable!()
         };
         assert!(!v.reuses_preparation(&saved));

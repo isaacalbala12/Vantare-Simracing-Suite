@@ -7,7 +7,7 @@ const FADE: Duration = Duration::from_millis(180);
 const CROSS: Duration = Duration::from_millis(700);
 const CROSS_FADE: Duration = Duration::from_millis(350);
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub(super) struct Frame {
     pub fill: [f32; 2],
     pub event: Option<Event>,
@@ -22,9 +22,23 @@ pub(super) struct Notices {
     pub(super) cross: Option<(Instant, Tone)>,
     pub(super) last_side: Option<Tone>,
 }
-#[derive(Default)]
-pub(super) struct Motion {
-    fill: Option<(Instant, [f32; 2], [f32; 2])>,
+#[derive(Clone, Copy)]
+enum Interpolation {
+    Fill {
+        start: Instant,
+        from: [f32; 2],
+        to: [f32; 2],
+    },
+    Bar {
+        start: Instant,
+        from: f32,
+        to: f32,
+        duration: Duration,
+    },
+}
+#[derive(Clone, Default)]
+pub(crate) struct Motion {
+    interpolation: Option<Interpolation>,
     pub(super) notices: Notices,
 }
 
@@ -97,6 +111,62 @@ impl Notices {
 }
 
 impl Motion {
+    pub(super) fn retarget_bar(&mut self, from: f32, to: f32, start: Instant, duration: Duration) {
+        self.interpolation = Some(Interpolation::Bar {
+            start,
+            from,
+            to,
+            duration,
+        });
+    }
+    pub(super) fn bar_value(&self, now: Instant) -> f32 {
+        match self.interpolation {
+            Some(Interpolation::Bar {
+                start,
+                from,
+                to,
+                duration,
+            }) => {
+                if duration.is_zero() {
+                    return to;
+                }
+                let t = fraction(now.saturating_duration_since(start), duration);
+                from + (to - from) * (1.0 - (1.0 - t).powi(3))
+            }
+            Some(Interpolation::Fill { start, from, to }) => {
+                let t = fraction(now.saturating_duration_since(start), FILL);
+                let left = from[0] + (to[0] - from[0]) * t;
+                let width = from[1] + (to[1] - from[1]) * t;
+                if left < 0.5 {
+                    -2.0 * width
+                } else {
+                    2.0 * width
+                }
+            }
+            None => 0.0,
+        }
+    }
+    pub(super) fn moving(&self, now: Instant) -> bool {
+        match self.interpolation {
+            Some(Interpolation::Fill { start, .. }) => now.saturating_duration_since(start) < FILL,
+            Some(Interpolation::Bar {
+                start,
+                from,
+                to,
+                duration,
+            }) => from != to && now.saturating_duration_since(start) < duration,
+            None => false,
+        }
+    }
+    pub(super) fn settle(&mut self) {
+        if let Some(interpolation) = &mut self.interpolation {
+            match interpolation {
+                Interpolation::Fill { from, to, .. } => *from = *to,
+                Interpolation::Bar { from, to, .. } => *from = *to,
+            }
+        }
+        self.notices.clear_record();
+    }
     pub fn update(&mut self, prev: &Board, next: &Board, now: Instant) {
         #[cfg(feature = "parity-capture")]
         crate::benchmark::mark(crate::benchmark::Work::Motion);
@@ -115,19 +185,30 @@ impl Motion {
             return;
         }
         if prev.progress != next.progress {
-            self.fill = Some((now, self.frame(prev, now).fill, geometry(next)));
+            self.interpolation = Some(Interpolation::Fill {
+                start: now,
+                from: self.frame(prev, now).fill,
+                to: geometry(next),
+            });
         }
         self.notices.observe(prev, next, now);
     }
 
-    pub fn frame(&self, vm: &Board, now: Instant) -> Frame {
+    pub(super) fn frame(&self, vm: &Board, now: Instant) -> Frame {
         let mut fill = geometry(vm);
-        if let Some((start, from, to)) = self.fill {
-            let t = fraction(now.saturating_duration_since(start), FILL);
-            fill = [
-                from[0] + (to[0] - from[0]) * t,
-                from[1] + (to[1] - from[1]) * t,
-            ];
+        match self.interpolation {
+            Some(Interpolation::Fill { start, from, to }) => {
+                let t = fraction(now.saturating_duration_since(start), FILL);
+                fill = [
+                    from[0] + (to[0] - from[0]) * t,
+                    from[1] + (to[1] - from[1]) * t,
+                ];
+            }
+            Some(Interpolation::Bar { .. }) => {
+                let bar = self.bar_value(now);
+                fill = [0.5 + bar.min(0.0) * 0.5, bar.abs() * 0.5];
+            }
+            None => {}
         }
         let mut frame = Frame {
             fill,
@@ -167,7 +248,7 @@ impl Motion {
     }
 
     /// Conserva los avisos, pero cambia de estado de golpe y solo despierta al caducar.
-    pub fn reduced_frame(&self, vm: &Board, now: Instant) -> (Frame, Wake) {
+    pub(super) fn reduced_frame(&self, vm: &Board, now: Instant) -> (Frame, Wake) {
         let event = self
             .notices
             .latest()
@@ -196,10 +277,7 @@ impl Motion {
 
     pub fn wake(&self, now: Instant) -> Wake {
         let mut wake_at: Option<Duration> = None;
-        if self
-            .fill
-            .is_some_and(|(start, _, _)| now.saturating_duration_since(start) < FILL)
-        {
+        if self.moving(now) {
             return Wake::Frame;
         }
         for (start, hold, fade, entrance) in self

@@ -188,33 +188,26 @@ impl Motion {
         self.rows = next;
     }
 
-    /// Avisos semánticos con su reloj original; se mueven al cambiar Look.
-    pub(crate) fn notices(&self) -> Vec<(CarId, Flash, Instant, i64)> {
-        self.rows
-            .iter()
-            .filter_map(|(id, t)| t.flash.map(|(kind, at)| (*id, kind, at, t.places)))
-            .collect()
-    }
-    pub(crate) fn restore_notices(&mut self, notices: &[(CarId, Flash, Instant, i64)]) {
-        for &(id, kind, at, places) in notices {
-            let t = self.rows.entry(id).or_insert(Track {
-                from: 0.0,
-                to: 0.0,
-                moved: at,
+    /// Añade canales al nuevo layout sin reiniciar los relojes ya activos.
+    pub(crate) fn attach(&mut self, samples: &[Sample]) {
+        let now = Instant::now();
+        for s in samples {
+            self.rows.entry(s.id).or_insert(Track {
+                from: s.y,
+                to: s.y,
+                moved: now,
                 born: None,
                 flash: None,
-                position: 0,
-                fastest: false,
-                in_pits: false,
-                leader: false,
+                position: s.position,
+                fastest: s.fastest,
+                in_pits: s.in_pits,
+                leader: s.leader,
                 places: 0,
-                visible: false,
+                visible: true,
             });
-            t.flash = Some((kind, at));
-            t.places = places;
         }
+        self.started = true;
     }
-
     /// Recoloca sin animar (cambio de estilo o de tamaño).
     pub(crate) fn snap(&mut self, rows: &[Sample]) {
         for sample in rows {
@@ -262,6 +255,21 @@ impl Motion {
         } else {
             Wake::Idle
         }
+    }
+}
+
+#[cfg(test)]
+impl Motion {
+    pub(crate) fn clock_signature(
+        &self,
+    ) -> Vec<(CarId, Instant, Option<Instant>, Option<(Flash, Instant)>)> {
+        let mut rows = self
+            .rows
+            .iter()
+            .map(|(&id, t)| (id, t.moved, t.born, t.flash))
+            .collect::<Vec<_>>();
+        rows.sort_by_key(|r| r.0.0);
+        rows
     }
 }
 

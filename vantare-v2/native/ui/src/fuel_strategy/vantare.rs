@@ -900,6 +900,18 @@ impl Movement {
         }
     }
 }
+#[cfg(test)]
+impl Movement {
+    pub(super) fn state_signature(&self) -> (Instant, Vec<(u8, f32, f32, Instant)>) {
+        (
+            self.started,
+            self.bars
+                .iter()
+                .map(|b| (b.bar as u8, b.from, b.to, b.start))
+                .collect(),
+        )
+    }
+}
 // Normalized spark geometry derives from the one Board history; no second consumption list.
 #[derive(Default)]
 struct Spark {
@@ -1017,21 +1029,26 @@ impl Visual {
         self.rebuild();
         let now = Instant::now();
         let duration = self.duration();
-        motion.bars = targets(&self.lines)
-            .map(|(bar, to)| {
-                let from = motion
-                    .bars
-                    .iter()
-                    .find(|e| e.bar == bar)
-                    .map_or(to, |e| e.value(now, duration));
-                Ease {
+        for (bar, to) in targets(&self.lines) {
+            if let Some(ease) = motion.bars.iter_mut().find(|e| e.bar == bar) {
+                // Un cambio de Look no reinicia el reloj ni descarta canales ocultos.
+                if ease.to != to {
+                    *ease = Ease {
+                        bar,
+                        from: ease.value(now, duration),
+                        to,
+                        start: now,
+                    };
+                }
+            } else {
+                motion.bars.push(Ease {
                     bar,
-                    from,
+                    from: to,
                     to,
                     start: now,
-                }
-            })
-            .collect();
+                });
+            }
+        }
         true
     }
     pub(crate) fn set_style(&mut self, style: Arc<Style>) {

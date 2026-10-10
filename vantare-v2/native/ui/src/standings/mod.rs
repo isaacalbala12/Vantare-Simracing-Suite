@@ -346,20 +346,22 @@ pub(crate) struct Widget {
     content: standings::Content,
     board: Option<std::sync::Arc<standings::Board>>,
     boundary: (u64, u64, u64),
-    visual: Visual,
-    motion: Motion,
+    presentation: Presentation,
 }
 
-enum Visual {
-    Eficiencia(Box<eficiencia::Visual>),
-    Vantare(vantare::Visual),
+/// Un solo pintor activo conserva el Motion común completo.
+enum Presentation {
+    Eficiencia {
+        visual: Box<eficiencia::Visual>,
+        motion: std::sync::Arc<motion::Motion>,
+    },
+    Vantare {
+        visual: vantare::Visual,
+        motion: std::sync::Arc<motion::Motion>,
+    },
 }
-/// La política visual cambia; nunca quedan dos historiales dormidos.
-enum Motion {
-    Eficiencia(Box<motion::Motion>),
-    Vantare(std::sync::Arc<crate::vantare::motion::Motion>),
-}
-impl Motion {
+#[cfg(test)]
+impl Presentation {
     fn notices(
         &self,
     ) -> Vec<(
@@ -369,8 +371,8 @@ impl Motion {
         i64,
     )> {
         match self {
-            Self::Eficiencia(m) => m.notices(),
-            Self::Vantare(m) => m.notices(),
+            Self::Eficiencia { motion: m, .. } => m.notices(),
+            Self::Vantare { motion: m, .. } => m.notices(),
         }
     }
     fn restore_notices(
@@ -383,8 +385,10 @@ impl Motion {
         )],
     ) {
         match self {
-            Self::Eficiencia(m) => m.restore_notices(notices),
-            Self::Vantare(m) => std::sync::Arc::make_mut(m).restore_notices(notices),
+            Self::Eficiencia { motion: m, .. } => {
+                std::sync::Arc::make_mut(m).restore_notices(notices)
+            }
+            Self::Vantare { motion: m, .. } => std::sync::Arc::make_mut(m).restore_notices(notices),
         }
     }
 }
@@ -434,30 +438,31 @@ impl Settings {
     }
 }
 impl Widget {
-    fn presentation(settings: &Settings, prefs: Preferences) -> (Visual, Motion) {
+    fn presentation(
+        settings: &Settings,
+        prefs: Preferences,
+        motion: std::sync::Arc<motion::Motion>,
+    ) -> Presentation {
         match settings.design_system {
-            DesignSystem::Eficiencia => (
-                Visual::Eficiencia(Box::new(eficiencia::Visual::new(settings, prefs))),
-                Motion::Eficiencia(Box::new(motion::Motion::new())),
-            ),
-            DesignSystem::Vantare => (
-                Visual::Vantare(vantare::Visual::new(vantare::Options::from_settings(
-                    settings,
-                ))),
-                Motion::Vantare(std::sync::Arc::default()),
-            ),
+            DesignSystem::Eficiencia => Presentation::Eficiencia {
+                visual: Box::new(eficiencia::Visual::new(settings, prefs)),
+                motion,
+            },
+            DesignSystem::Vantare => Presentation::Vantare {
+                visual: vantare::Visual::new(vantare::Options::from_settings(settings)),
+                motion,
+            },
         }
     }
     pub(crate) fn new(settings: &Settings, prefs: Preferences) -> Self {
         let settings = settings.normalized();
-        let (visual, motion) = Self::presentation(&settings, prefs);
+        let presentation = Self::presentation(&settings, prefs, std::sync::Arc::default());
         Self {
             content: settings.content(),
             settings,
             board: None,
             boundary: (0, 0, 0),
-            visual,
-            motion,
+            presentation,
         }
     }
     fn content(&self) -> &standings::Content {
@@ -499,19 +504,22 @@ impl Widget {
         changed
     }
     fn present(&mut self, board: std::sync::Arc<standings::Board>, _prefs: Preferences) -> bool {
-        match (&mut self.visual, &mut self.motion) {
-            (Visual::Eficiencia(v), Motion::Eficiencia(m)) => {
+        match &mut self.presentation {
+            Presentation::Eficiencia {
+                visual: v,
+                motion: m,
+            } => {
                 let content = std::sync::Arc::new(standings::Plan::new(
                     board,
                     format!("{}:{}", self.boundary.1, self.boundary.0),
                     self.boundary.2,
                 ));
-                v.ingest(content, m)
+                v.ingest(content, Some(std::sync::Arc::make_mut(m)))
             }
-            (Visual::Vantare(v), Motion::Vantare(m)) => {
-                v.ingest_shared(board, std::sync::Arc::make_mut(m))
-            }
-            _ => unreachable!("pintor y política se seleccionan juntos"),
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => v.ingest_shared(board, std::sync::Arc::make_mut(m)),
         }
     }
     /// Cambiar Look conserva la foto, `CarIds` y el reloj de los avisos; no proyecta.
@@ -519,33 +527,53 @@ impl Widget {
         if self.settings.design_system == look {
             return;
         }
-        let notices = self.motion.notices();
+        let motion = match &self.presentation {
+            Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                motion.clone()
+            }
+        };
         self.settings.design_system = look;
-        (self.visual, self.motion) = Self::presentation(&self.settings, prefs);
+        self.presentation = Self::presentation(&self.settings, prefs, motion);
         if let Some(board) = self.board.clone() {
-            self.present(board, prefs);
+            match &mut self.presentation {
+                Presentation::Eficiencia { visual, motion } => {
+                    let content = std::sync::Arc::new(standings::Plan::new(
+                        board,
+                        format!("{}:{}", self.boundary.1, self.boundary.0),
+                        self.boundary.2,
+                    ));
+                    visual.ingest(content.clone(), None);
+                    std::sync::Arc::make_mut(motion).resume_content(&content);
+                }
+                Presentation::Vantare { visual, motion } => {
+                    visual.attach(board, std::sync::Arc::make_mut(motion))
+                }
+            }
         }
-        self.motion.restore_notices(&notices);
     }
     pub(crate) fn size(&self) -> (f32, f32) {
-        match &self.visual {
-            Visual::Eficiencia(v) => v.size(),
-            Visual::Vantare(v) => v.size(),
+        match &self.presentation {
+            Presentation::Eficiencia { visual: v, .. } => v.size(),
+            Presentation::Vantare { visual: v, .. } => v.size(),
         }
     }
     pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
         self.frame_with_motion(prefs, false)
     }
     pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
-        match (&mut self.visual, &mut self.motion) {
-            (Visual::Eficiencia(v), Motion::Eficiencia(m)) => {
-                v.frame_with_motion(prefs, reduced, m)
-            }
-            (Visual::Vantare(v), Motion::Vantare(m)) => {
+        match &mut self.presentation {
+            Presentation::Eficiencia {
+                visual: v,
+                motion: m,
+            } => v.frame_with_motion(prefs, reduced, std::sync::Arc::make_mut(m)),
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => {
                 if reduced {
                     std::sync::Arc::make_mut(m).settle();
                 }
-                let wake = m.wake(v.style.motion.timing(), Instant::now());
+                let wake = m.wake_rows(v.style.motion.timing(), Instant::now());
                 let visual = v.clone();
                 let motion = m.clone();
                 (
@@ -553,21 +581,20 @@ impl Widget {
                     wake,
                 )
             }
-            _ => unreachable!("pintor y política se seleccionan juntos"),
         }
     }
     pub(crate) fn settle(&mut self) {
-        if let Motion::Vantare(m) = &mut self.motion {
+        if let Presentation::Vantare { motion: m, .. } = &mut self.presentation {
             std::sync::Arc::make_mut(m).settle();
         }
     }
     pub(crate) fn set_study(&mut self, study: &str) {
-        if let Visual::Eficiencia(v) = &mut self.visual {
+        if let Presentation::Eficiencia { visual: v, .. } = &mut self.presentation {
             v.set_study(study);
         }
     }
     pub(crate) fn set_style(&mut self, style: std::sync::Arc<style::Style>) {
-        if let Visual::Eficiencia(v) = &mut self.visual {
+        if let Presentation::Eficiencia { visual: v, .. } = &mut self.presentation {
             v.set_style(style);
         }
     }
@@ -575,24 +602,28 @@ impl Widget {
         &mut self,
         style: std::sync::Arc<crate::vantare::style::Style>,
     ) {
-        if let (Visual::Vantare(v), Motion::Vantare(m)) = (&mut self.visual, &mut self.motion) {
+        if let Presentation::Vantare {
+            visual: v,
+            motion: m,
+        } = &mut self.presentation
+        {
             v.set_style(style, std::sync::Arc::make_mut(m));
         }
     }
     pub(crate) fn vantare_columns(&self) -> Option<crate::vantare::columns::ColumnBoxes> {
-        match &self.visual {
-            Visual::Eficiencia(_) => None,
-            Visual::Vantare(v) => v.columns(),
+        match &self.presentation {
+            Presentation::Eficiencia { visual: _, .. } => None,
+            Presentation::Vantare { visual: v, .. } => v.columns(),
         }
     }
     #[cfg(feature = "parity-capture")]
     pub(crate) fn animating(&self) -> bool {
-        match (&self.visual, &self.motion) {
-            (_, Motion::Eficiencia(m)) => m.animating(Instant::now()),
-            (Visual::Vantare(v), Motion::Vantare(m)) => {
-                m.wake(v.style.motion.timing(), Instant::now()) != Wake::Idle
-            }
-            _ => unreachable!("pintor y política se seleccionan juntos"),
+        match &self.presentation {
+            Presentation::Eficiencia { motion: m, .. } => m.animating(Instant::now()),
+            Presentation::Vantare {
+                visual: v,
+                motion: m,
+            } => m.wake_rows(v.style.motion.timing(), Instant::now()) != Wake::Idle,
         }
     }
 }
@@ -602,9 +633,9 @@ impl Widget {
 impl std::ops::Deref for Widget {
     type Target = eficiencia::Visual;
     fn deref(&self) -> &Self::Target {
-        match &self.visual {
-            Visual::Eficiencia(v) => v,
-            Visual::Vantare(_) => panic!("test Eficiencia sobre otro Look"),
+        match &self.presentation {
+            Presentation::Eficiencia { visual: v, .. } => v,
+            Presentation::Vantare { visual: _, .. } => panic!("test Eficiencia sobre otro Look"),
         }
     }
 }
@@ -687,6 +718,47 @@ impl Settings {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn look_switch_preserves_all_motion_channels_and_their_clocks() {
+        let prefs = Preferences::default();
+        let mut photo = crate::source::fixed();
+        let mut widget = Widget::new(
+            &Settings {
+                class_scope: "all-classes".into(),
+                ..Settings::eficiencia()
+            },
+            prefs,
+        );
+        widget.ingest(&photo, prefs);
+        let p0 = photo.state.cars[0].position;
+        photo.state.cars[0].position = photo.state.cars[1].position;
+        photo.state.cars[1].position = p0;
+        photo.state.cars[0].in_pits = vantare_domain::Quality::Reliable(true);
+        photo.sequence += 1;
+        widget.ingest(&photo, prefs);
+        let clocks = match &widget.presentation {
+            Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                motion.clock_signature()
+            }
+        };
+        assert!(clocks.iter().any(|c| c.0.starts_with("flips:")));
+        assert!(clocks.iter().any(|c| c.0.starts_with("pit-alpha:")));
+        for look in [
+            DesignSystem::Vantare,
+            DesignSystem::Eficiencia,
+            DesignSystem::Vantare,
+            DesignSystem::Eficiencia,
+        ] {
+            widget.set_look(look, prefs);
+            let after = match &widget.presentation {
+                Presentation::Eficiencia { motion, .. } | Presentation::Vantare { motion, .. } => {
+                    motion.clock_signature()
+                }
+            };
+            assert_eq!(clocks, after, "todos los canales, no solo los avisos");
+        }
+    }
+
     use super::*;
     use crate::source;
 
@@ -709,7 +781,10 @@ mod tests {
         .expect("foto real ACC");
         let prefs = Preferences::default();
         let mut widget = Widget::new(&Settings::default(), prefs);
-        assert!(matches!(widget.visual, Visual::Vantare(_)));
+        assert!(matches!(
+            widget.presentation,
+            Presentation::Vantare { visual: _, .. }
+        ));
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.ingest(&snapshot, prefs), "misma foto, mismo dibujo");
         assert!(widget.board.is_some(), "las filas sustituyen al esqueleto");
@@ -723,8 +798,8 @@ mod tests {
             (DesignSystem::Vantare, Look::Neo)
         );
         assert!(matches!(
-            Widget::new(&Settings::eficiencia(), prefs).visual,
-            Visual::Eficiencia(_)
+            Widget::new(&Settings::eficiencia(), prefs).presentation,
+            Presentation::Eficiencia { visual: _, .. }
         ));
     }
 
@@ -786,7 +861,9 @@ mod tests {
                 notice.2,
                 0,
             );
-            widget.motion.restore_notices(&[notice, personal, hidden]);
+            widget
+                .presentation
+                .restore_notices(&[notice, personal, hidden]);
             for &next in crate::look::Look::ALL
                 .iter()
                 .rev()
@@ -800,15 +877,15 @@ mod tests {
                 assert_eq!(widget.content(), &content);
                 assert_eq!(widget.settings.demand(), demand);
                 assert!(
-                    widget.motion.notices().contains(&notice),
+                    widget.presentation.notices().contains(&notice),
                     "no reiniciar reloj del aviso"
                 );
                 assert!(
-                    widget.motion.notices().contains(&personal),
+                    widget.presentation.notices().contains(&personal),
                     "conservar tipo personal y reloj"
                 );
                 assert!(
-                    widget.motion.notices().contains(&hidden),
+                    widget.presentation.notices().contains(&hidden),
                     "avisos de filas fuera del Look activo"
                 );
             }
@@ -834,7 +911,7 @@ mod tests {
                 ..
             } = match &layout.instances[0].settings {
                 crate::Settings::Standings(s) => s.clone(),
-                _ => unreachable!(),
+                _ => panic!("layout Standings"),
             };
             assert_eq!(class_scope, "player-class");
             assert_eq!(content_version, 1);

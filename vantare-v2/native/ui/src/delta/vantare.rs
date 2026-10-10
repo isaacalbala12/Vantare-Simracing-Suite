@@ -295,14 +295,7 @@ impl Visual {
     }
 
     fn bar_value(&self, movement: &Movement, now: Instant) -> f32 {
-        let (from, to, start) = movement.bar;
-        let ease = self.ease();
-        if ease.is_zero() {
-            return to;
-        }
-        let t = (now.saturating_duration_since(start).as_secs_f32() / ease.as_secs_f32())
-            .clamp(0.0, 1.0);
-        from + (to - from) * (1.0 - (1.0 - t).powi(3))
+        movement.bar_value(now)
     }
 
     pub(crate) fn ingest_shared(&mut self, board: Arc<Board>, movement: &mut Movement) -> bool {
@@ -330,11 +323,17 @@ impl Visual {
         } else {
             to
         };
-        movement.bar = (from, to, now);
+        movement.retarget_bar(from, to, now, self.ease());
         self.board = Some(board);
         self.layout = Arc::new(layout(self.board.as_deref(), &self.options, &self.style));
         self.relabel(self.labels.language);
         true
+    }
+    /// Reconstruye el pintor al cambiar Look sin observar otra foto ni reiniciar Motion.
+    pub(crate) fn attach(&mut self, board: Arc<Board>) {
+        self.board = Some(board);
+        self.layout = Arc::new(layout(self.board.as_deref(), &self.options, &self.style));
+        self.relabel(self.labels.language);
     }
     pub(crate) fn set_style(&mut self, style: Arc<Style>) {
         self.style = style;
@@ -367,8 +366,7 @@ impl Visual {
     }
 
     pub(crate) fn wake(&self, movement: &Movement, now: Instant) -> Wake {
-        let moving = movement.bar.0 != movement.bar.1
-            && now.saturating_duration_since(movement.bar.2) < self.ease();
+        let moving = movement.moving(now);
         if moving || self.flash(movement, now).is_some() {
             Wake::Frame
         } else {
@@ -433,25 +431,7 @@ impl Visual {
     }
 }
 
-#[derive(Clone)]
-pub(crate) struct Movement {
-    bar: (f32, f32, Instant),
-    pub(super) notices: super::motion::Notices,
-}
-impl Default for Movement {
-    fn default() -> Self {
-        Self {
-            bar: (0.0, 0.0, Instant::now()),
-            notices: super::motion::Notices::default(),
-        }
-    }
-}
-impl Movement {
-    pub(crate) fn settle(&mut self) {
-        self.bar.0 = self.bar.1;
-        self.notices.clear_record();
-    }
-}
+pub(crate) use super::motion::Motion as Movement;
 fn same_visible(a: &Board, b: &Board) -> bool {
     (
         a.source_state,

@@ -4,11 +4,12 @@
 //! decide la geometría y se pinta con el kit Vantare (`crate::vantare`). Los
 //! valores visuales viven en `styles/vantare.json`.
 
+use super::motion::Motion;
 use super::{Accent, Look};
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::{rect, text};
 use crate::vantare::columns::ColumnBoxes;
-use crate::vantare::motion::{Flash, Motion, Sample};
+use crate::vantare::motion::{Flash, Sample};
 use crate::vantare::paint::{BOX, Face, Kit, WHITE, estimate, round_rect, transparent};
 use crate::vantare::style::{ClassColors, Color, Style, Variant, with_opacity};
 use gpui::{App, BorderStyle, Corners, Edges, px, quad};
@@ -599,7 +600,8 @@ impl Visual {
         self.board = Some(board);
         self.plan = Arc::new(plan(self.board.as_deref(), &self.options, &self.style));
         let samples = self.samples();
-        motion.update(
+        motion.update_rows(
+            self.board.as_ref().expect("Board adjunto"),
             &samples,
             self.style.motion.timing(),
             std::time::Instant::now(),
@@ -607,6 +609,11 @@ impl Visual {
         true
     }
 
+    pub(super) fn attach(&mut self, board: Arc<Board>, motion: &mut Motion) {
+        self.board = Some(board);
+        self.plan = Arc::new(plan(self.board.as_deref(), &self.options, &self.style));
+        motion.relayout(self.board.as_ref().expect("Board adjunto"), &self.samples());
+    }
     pub(crate) fn set_style(&mut self, style: Arc<Style>, motion: &mut Motion) {
         self.style = style;
         self.plan = Arc::new(plan(self.board.as_deref(), &self.options, &self.style));
@@ -678,7 +685,7 @@ impl State {
         self.visual.set_style(style, &mut self.motion);
     }
     fn wake(&self, now: std::time::Instant) -> crate::app::Wake {
-        self.motion.wake(self.style.motion.timing(), now)
+        self.motion.wake_rows(self.style.motion.timing(), now)
     }
 }
 

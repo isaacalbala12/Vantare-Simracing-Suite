@@ -198,6 +198,11 @@ pub fn project_classification(
 }
 
 impl Board {
+    pub fn row(&self, id: CarId) -> Option<&std::sync::Arc<Row>> {
+        self.row_index
+            .get(&id)
+            .map(|&(g, r)| &self.groups[g].rows[r])
+    }
     /// Una colección; la vista global solo presta las filas, sin clonarlas.
     pub fn rows(&self) -> Vec<&Row> {
         let mut rows: Vec<_> = self

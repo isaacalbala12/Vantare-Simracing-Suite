@@ -25,7 +25,7 @@ impl Visual {
         }
     }
 
-    pub(crate) fn ingest(&mut self, next: Arc<ContentPlan>, motion: &mut Motion) -> bool {
+    pub(crate) fn ingest(&mut self, next: Arc<ContentPlan>, motion: Option<&mut Motion>) -> bool {
         let config = Arc::make_mut(&mut self.config);
         // Capacidad reservada del layout, independiente de la selección común.
         config.footer_rows = 1;
@@ -67,7 +67,9 @@ impl Visual {
                 model::plan(config, &next)
             };
             let lap_visible = plan.columns.iter().any(|c| c.metric == Metric::BestLap);
-            motion.update(&next, plan.visible_rows, lap_visible, Instant::now());
+            if let Some(motion) = motion {
+                motion.update(&next, plan.visible_rows, lap_visible, Instant::now());
+            }
             self.content_plan = next;
             self.plan = Arc::new(plan);
         }

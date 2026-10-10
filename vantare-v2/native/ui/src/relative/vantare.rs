@@ -665,12 +665,29 @@ impl Visual {
         let timing = self.style.motion.timing();
         let now = Instant::now();
         let rows = self.row_samples();
-        movement.rows.update(&rows, timing, now);
+        movement.rows.update_rows(
+            self.board.as_deref().expect("Board adjunto"),
+            &rows,
+            timing,
+            now,
+        );
         let dots = self.dot_samples();
         movement.dots.update(&dots, timing, now);
         true
     }
 
+    pub(super) fn attach(&mut self, board: Arc<Board>, motion: &mut Movement) {
+        self.board = Some(board);
+        self.plan = Arc::new(plan(self.board.as_deref(), &self.options, &self.style));
+        self.relabel(self.labels.language);
+        motion.rows.relayout(
+            self.board.as_deref().expect("Board adjunto"),
+            &self.row_samples(),
+            self.style.geometry.row_height,
+            self.plan.rows.0,
+        );
+        motion.dots.attach(&self.dot_samples());
+    }
     pub(crate) fn set_style(&mut self, style: Arc<Style>, movement: &mut Movement) {
         self.style = style;
         self.plan = Arc::new(plan(self.board.as_deref(), &self.options, &self.style));
@@ -768,28 +785,7 @@ impl Visual {
     }
 }
 
-/// Movimiento del Look activo: avisos en filas, coordenadas de la tira y su reloj.
-#[derive(Clone)]
-pub(crate) struct Movement {
-    pub(crate) rows: Motion,
-    dots: Motion,
-    started: Instant,
-}
-impl Default for Movement {
-    fn default() -> Self {
-        Self {
-            rows: Motion::default(),
-            dots: Motion::default(),
-            started: Instant::now(),
-        }
-    }
-}
-impl Movement {
-    pub(crate) fn settle(&mut self) {
-        self.rows.settle();
-        self.dots.settle();
-    }
-}
+pub(crate) use super::motion::Motion as Movement;
 fn same_visible(a: &Board, b: &Board) -> bool {
     (
         a.source_state,
@@ -932,7 +928,7 @@ struct Painter<'a> {
     plan: &'a Plan,
     labels: &'a Labels,
     fitted: &'a [Option<Fitted>],
-    rows: &'a Motion,
+    rows: &'a super::motion::Rows,
     dots: &'a Motion,
     now: Instant,
     started: Instant,

@@ -1,5 +1,6 @@
 //! Testing Center: envío de texto revisado y diagnóstico local separado.
 pub(super) mod diagnostic;
+mod participation;
 pub(crate) mod recovery;
 mod store;
 mod view;

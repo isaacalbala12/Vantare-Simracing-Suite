@@ -369,6 +369,11 @@ impl App {
             Command::RoadmapCached | Command::RoadmapRefresh => {
                 return self.roadmap_reply(matches!(command, Command::RoadmapRefresh));
             }
+            Command::TestingRefresh
+            | Command::TestingAnswer { .. }
+            | Command::TestingContribute { .. } => {
+                return self.testing_reply(command);
+            }
             Command::TransferRights => return self.transfer_rights(),
             Command::Purchase { product } => {
                 let time = now()?;
@@ -445,6 +450,25 @@ impl App {
             ),
             error: error.map(|error| error.to_string()),
         }
+    }
+
+    fn testing_reply(&mut self, command: Command) -> Result<Reply> {
+        let time = now()?;
+        self.ensure_data(time)?;
+        let request = self
+            .data_session
+            .as_ref()
+            .ok_or(Error::Authentication)?
+            .request(
+                &self.http,
+                self.bridge.as_ref().ok_or(Error::BridgeUnconfigured)?,
+                self.account.as_ref().ok_or(Error::Authentication)?,
+                time,
+            );
+        let channel = crate::report::rpc_channel(self.config.channel.ok_or(Error::Unconfigured)?);
+        Ok(Reply::Testing {
+            data: crate::testing::execute(&request, channel, command)?,
+        })
     }
 
     fn roadmap_reply(&mut self, refresh: bool) -> Result<Reply> {

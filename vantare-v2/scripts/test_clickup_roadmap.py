@@ -113,12 +113,11 @@ class RoadmapTests(unittest.TestCase):
                 with patch("sys.argv", args), self.assertRaises(SystemExit):
                     module.main()
                 execute.assert_not_called()
-                execute.return_value.returncode = 0
-                execute.return_value.stdout = "local-test-receipt"
-                with patch("sys.argv", args + ["--approved-sql-sha256", digest]):
+                # Even previously approved SQL can no longer create a second source.
+                with patch("sys.argv", args + ["--approved-sql-sha256", digest]), self.assertRaises(SystemExit):
                     module.main()
-                self.assertNotIn("private-test", repr(execute.call_args))
-                self.assertEqual(execute.call_args.kwargs["input"], sql)
+                execute.assert_not_called()
+
 
 
 if __name__ == "__main__":

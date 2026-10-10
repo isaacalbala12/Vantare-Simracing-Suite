@@ -1,3 +1,6 @@
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](roadmap-maintenance.md).
+
 # Versionado y gates de release
 
 Vantare usa cuatro segmentos `major.phase.feature.patch`, con prefijo `v` en los tags. Las pre-releases añaden `-nightly.N` o `-testers.N`. Ejemplos de formato: `v0.4.2.0`, `v0.4.2.0-nightly.1`. No son instrucciones para publicar esas versiones.

@@ -8,7 +8,7 @@
   {
    "caption": "Vuelta 14 · stint 2",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 1,
     "origin": {
@@ -260,7 +260,7 @@
   {
    "caption": "Vuelta 15",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 2,
     "origin": {
@@ -512,7 +512,7 @@
   {
    "caption": "FCY · ahorras combustible",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 3,
     "origin": {
@@ -767,7 +767,7 @@
   {
    "caption": "Vuelta 17 · bandera verde",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 4,
     "origin": {
@@ -1019,7 +1019,7 @@
   {
    "caption": "Vuelta 22 · combustible bajo",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 5,
     "origin": {
@@ -1271,7 +1271,7 @@
   {
    "caption": "Repostando · 20 de 58 L",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 6,
     "origin": {
@@ -1535,7 +1535,7 @@
   {
    "caption": "Repostando · casi listo",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 7,
     "origin": {
@@ -1799,7 +1799,7 @@
   {
    "caption": "Stint 3 · llegas a meta",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 8,
     "origin": {

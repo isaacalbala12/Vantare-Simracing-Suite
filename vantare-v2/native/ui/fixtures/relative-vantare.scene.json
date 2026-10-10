@@ -8,7 +8,7 @@
   {
    "caption": "Carrera · ±3 con tu Ferrari #50",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 1,
     "origin": {
@@ -672,7 +672,7 @@
   {
    "caption": "Si corres en LMGT3 · Hypercar por detrás",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 2,
     "origin": {
@@ -1224,7 +1224,7 @@
   {
    "caption": "En boxes · estimación de salida",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 3,
     "origin": {
@@ -1891,7 +1891,7 @@
   {
    "caption": "FCY · sin flechas de acercamiento",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 4,
     "origin": {
@@ -2555,7 +2555,7 @@
   {
    "caption": "Sin datos · esperando al simulador",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 5,
     "origin": {

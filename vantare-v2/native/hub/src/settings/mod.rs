@@ -89,7 +89,7 @@ impl Page {
     fn matches(self, query: &str) -> bool {
         let titles = match self {
             Self::Application => {
-                "aplicación zoom idioma densidad inicio windows minimizado avisos notificaciones widgets unidades métrico imperial"
+                "aplicación zoom idioma densidad inicio windows minimizado avisos notificaciones widgets unidades métrico imperial overlays ocultar fuera de pista garaje boxes pausa replay"
             }
             Self::Appearance => {
                 "paleta grafito carmín harness noche le mans piedra cálida contraste opacidad cristal fuentes"
@@ -113,7 +113,7 @@ impl Page {
 
 pub(super) struct State {
     general: Result<general::Store, String>,
-    general_focus: [FocusHandle; 6],
+    general_focus: [FocusHandle; 7],
     global_hotkeys_focus: FocusHandle,
     zoom_focus: [FocusHandle; 3],
     update_focus: FocusHandle,
@@ -498,6 +498,14 @@ impl Hub {
             }
         }
         self.sync_settings_preferences(cx);
+        cx.notify();
+    }
+    fn settings_hide_off_track(&mut self, cx: &mut Context<Self>) {
+        let enabled = !self.studio.read(cx).hide_off_track();
+        self.settings.status = self
+            .studio
+            .update(cx, |studio, cx| studio.set_hide_off_track(enabled, cx))
+            .err();
         cx.notify();
     }
     fn sync_settings_preferences(&self, cx: &mut Context<Self>) {

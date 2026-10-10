@@ -414,7 +414,7 @@ impl Translator {
         let (g, gs) = graphics
             .as_ref()
             .map_or((&[][..], true), |(b, stale)| (b.as_slice(), *stale));
-        let active = !g.is_empty() && i32_at(g, 4) != 0;
+        let active = !g.is_empty() && matches!(i32_at(g, 4), 1..=3);
         let paused = !g.is_empty() && i32_at(g, 4) == 3;
         let player_id = active
             .then(|| i32_at(g, 1216))
@@ -468,22 +468,12 @@ impl Translator {
         }
         self.coherent_positions(&mut cars, now);
         let state = State {
-            source_state: if !active && (!g.is_empty() || self.session.is_none()) {
-                vantare_domain::SourceState::Waiting
-            } else if (gs || paused)
-                && self
-                    .session
-                    .as_ref()
-                    .is_none_or(|u| now.saturating_sub(u.at) >= UDP_TTL)
-                && self
-                    .cars
-                    .values()
-                    .all(|car| now.saturating_sub(car.update.at) >= UDP_TTL)
-            {
-                vantare_domain::SourceState::Stale
+            driving_situation: if !gs && i32_at(g, 4) == 1 {
+                vantare_domain::DrivingSituation::Replay
             } else {
-                vantare_domain::SourceState::Live
+                vantare_domain::DrivingSituation::Unknown
             },
+            source_state: self.source_state(g, gs, now),
             session,
             flags,
             cars,
@@ -505,6 +495,36 @@ impl Translator {
                 ..state
             },
         })
+    }
+
+    fn source_state(
+        &self,
+        graphics: &[u8],
+        stale: bool,
+        now: Duration,
+    ) -> vantare_domain::SourceState {
+        use vantare_domain::SourceState;
+        let status = (!graphics.is_empty()).then(|| i32_at(graphics, 4));
+        if !status.is_some_and(|v| (1..=3).contains(&v))
+            && (status.is_some() || self.session.is_none())
+        {
+            SourceState::Waiting
+        } else if !stale && status == Some(3) {
+            SourceState::Paused
+        } else if stale
+            && self
+                .session
+                .as_ref()
+                .is_none_or(|u| now.saturating_sub(u.at) >= UDP_TTL)
+            && self
+                .cars
+                .values()
+                .all(|car| now.saturating_sub(car.update.at) >= UDP_TTL)
+        {
+            SourceState::Stale
+        } else {
+            SourceState::Live
+        }
     }
 
     fn observed_cars(&mut self, now: Duration) -> Vec<Car> {

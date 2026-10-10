@@ -965,6 +965,7 @@ mod look_data_tests {
     fn snapshot(cars: Vec<Car>) -> Snapshot {
         Snapshot {
             state: State {
+                driving_situation: crate::DrivingSituation::Unknown,
                 source_state: SourceState::Live,
                 session: Session {
                     kind: Quality::Reliable(SessionKind::Race),
@@ -1564,6 +1565,7 @@ mod classification_tests {
     fn snapshot(kind: SessionKind, cars: Vec<Car>) -> Snapshot {
         Snapshot {
             state: State {
+                driving_situation: crate::DrivingSituation::Unknown,
                 source_state: crate::SourceState::Live,
                 capabilities: Capabilities {
                     positions: Capability::Fresh,

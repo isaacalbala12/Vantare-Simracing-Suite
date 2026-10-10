@@ -298,6 +298,7 @@ pub(crate) mod tests {
             },
             state: State {
                 source_state: vantare_domain::SourceState::Live,
+                driving_situation: vantare_domain::DrivingSituation::Unknown,
                 capabilities: Capabilities {
                     session_clock: Capability::Fresh,
                     positions: Capability::WithData,
@@ -637,6 +638,7 @@ pub(crate) mod tests {
                     received_at: Duration::from_micros(u64::from(shift) + 9),
                 },
                 state: State {
+                    driving_situation: vantare_domain::DrivingSituation::Unknown,
                     source_state: [
                         vantare_domain::SourceState::Live,
                         vantare_domain::SourceState::Paused,
@@ -888,7 +890,7 @@ pub(crate) mod tests {
         assert_eq!(negotiate(1, dto::VERSION - 1), None);
         assert!(!supports(dto::VERSION - 1));
         assert!(supports(dto::VERSION));
-        assert_eq!(negotiate(1, 9), Some(dto::VERSION));
+        assert_eq!(negotiate(1, dto::VERSION), Some(dto::VERSION));
         assert_eq!(negotiate(dto::VERSION + 1, dto::VERSION + 2), None);
         assert_eq!(negotiate(0, 0), None);
     }

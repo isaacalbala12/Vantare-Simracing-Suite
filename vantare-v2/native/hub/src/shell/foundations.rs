@@ -1509,6 +1509,7 @@ mod tests {
         let mut layout = vantare_ui::layout::Layout::default();
         assert!(visible_settings(&layout).is_empty());
         layout.instances.push(vantare_ui::layout::Instance {
+            off_track: vantare_ui::layout::OffTrack::default(),
             geometry: vantare_ui::geometry::Geometry::default(),
             id: "real-pedals".into(),
             x: 0.0,
@@ -1518,6 +1519,7 @@ mod tests {
             settings: Settings::default_for(Kind::Pedals),
         });
         layout.instances.push(vantare_ui::layout::Instance {
+            off_track: vantare_ui::layout::OffTrack::default(),
             geometry: vantare_ui::geometry::Geometry::default(),
             id: "hidden-standings".into(),
             x: 0.0,
@@ -1607,6 +1609,7 @@ mod thumbnail_host_tests {
         let mut layout = vantare_ui::layout::Layout::default();
         for (index, opacity) in [0.0, 0.25, 1.0].into_iter().enumerate() {
             layout.instances.push(vantare_ui::layout::Instance {
+                off_track: vantare_ui::layout::OffTrack::default(),
                 geometry: vantare_ui::geometry::Geometry::default(),
                 id: format!("test-{index}"),
                 settings: Settings::default_for(Kind::Delta),
@@ -1647,6 +1650,7 @@ mod catalog_tests {
             let mut layout = vantare_ui::layout::Layout::default();
             for kind in [Kind::Standings, Kind::Radar] {
                 layout.instances.push(vantare_ui::layout::Instance {
+                    off_track: vantare_ui::layout::OffTrack::default(),
                     id: kind.name().into(),
                     settings: Settings::default_for(kind),
                     x: 40.0,

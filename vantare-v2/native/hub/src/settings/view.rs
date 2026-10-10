@@ -138,8 +138,8 @@ fn section_surface(
         | "Canal"
         | "Diagnóstico local"
         | "Qué cambia en cada nivel" => 2,
-        "Avisos" | "En Studio" | "Notas de versión" | "Registro observado" => 3,
-        "Widgets" | "Movimiento" => 4,
+        "Overlays" | "En Studio" | "Notas de versión" | "Registro observado" => 3,
+        "Avisos" | "Widgets" | "Movimiento" => 4,
         _ => 1,
     };
     section_numbered(number, title, meta, body, padding, cx)
@@ -923,6 +923,35 @@ impl Hub {
                 cx,
             ))
             .child(section_surface("Inicio", None, start, 0.0, cx))
+            .child(section_surface(
+                "Overlays",
+                None,
+                section_body().child(section_row(
+                    "Ocultar fuera de pista",
+                    "Garaje, pausa y replay. Paradas y colas en boxes siguen visibles; Studio también.",
+                    orbit::toggle(
+                        "settings-hide-off-track",
+                        "Ocultar fuera de pista",
+                        self.studio.read(cx).hide_off_track(),
+                        true,
+                        cx,
+                    )
+                    .track_focus(&self.settings.general_focus[6])
+                    .on_click(cx.listener(|hub, _, _, cx| hub.settings_hide_off_track(cx)))
+                    .on_key_down(cx.listener(
+                        |hub, event: &gpui::KeyDownEvent, _, cx| {
+                            if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                                hub.settings_hide_off_track(cx);
+                                cx.stop_propagation();
+                            }
+                        },
+                    )),
+                    self.shell.adapt,
+                    cx,
+                )),
+                0.0,
+                cx,
+            ))
             .child(section_surface("Avisos", None, notices, 0.0, cx))
     }
     #[allow(clippy::too_many_lines)] // Composición declarativa R4; solo añade Adapt explícito.

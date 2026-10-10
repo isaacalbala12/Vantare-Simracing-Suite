@@ -593,3 +593,17 @@ Sin un número de campaña, `vantare-overlays` vigila `%LOCALAPPDATA%\Vantare\na
 `layout::Document::{open,save,poll}` limita la lectura a 1 MiB, normaliza entradas y compara bytes del último documento leído. `save` usa bloqueo cooperativo liberado al cerrar el fichero, temporal local con `write_all`/`sync_all`, copia `.bak` y `rename` sin borrar antes. Un conflicto requiere releer. `LiveScreens` conserva cada widget por ID mientras sus Settings sigan iguales, al moverlo, cambiar opacidad, ocultarlo o cambiar de monitor. Oculto conserva estado sin ingerir fotos; al volver visible recibe la última foto solo si su demanda está cubierta. Las preferencias reproyectan esa foto sin recrear la entidad; nuevos IDs o cambios de tipo/Settings crean otra. Borrar libera la entidad y su temporizador. Las ventanas se reutilizan por monitor ocupado.
 
 Los Settings de todos los widgets están junto a su renderer; el registro genera `Settings::{kind,default_for,normalized}`. Las variantes implementadas incluyen Delta capsule, transparencia de pedales, carrusel, volante específico, color de banderas, target behind y Standings broadcast, marca y métricas del pie. El host solo avisa de las claves legacy `headerFirst/headerSecond`, que persiste pero no usa en la cabecera; los límites de cada Settings se presentan en el inspector del Hub mediante `UNSUPPORTED`. Evidencia de paridad y QA: [layout-evidence.md](layout-evidence.md).
+
+## #1562 · Ocultar fuera de pista
+
+`Layout.hideOffTrack` (false) y `Instance.offTrack` (inherit/always_visible/hide)
+controlan LiveScreens. Los valores por defecto se omiten al guardar; documentos
+v1 anteriores siguen legibles. Un binario anterior puede rechazar un documento
+con los nuevos campos activados: conservar su copia .bak.
+El host aplica la situación central incluso antes de la cadencia del widget,
+sin borrar entidades ni cerrar ventanas. Studio/Workshop nunca la activan;
+la demanda y la licencia no cambian. Ver [contrato](../runtime/README.md).
+El cálculo de política y el booleano de visibilidad no asignan memoria por foto.
+Una situación estable no solicita `notify` ni fuerza `ingest`: mantiene la cadencia
+existente. La regresión cubre los 18 widgets, 100 repeticiones visibles y ocultas;
+no elimina repintados necesarios por cambios de telemetría o por sus historiales.

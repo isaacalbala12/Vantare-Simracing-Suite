@@ -8,7 +8,7 @@
   {
    "caption": "Más rápido · −0.214 en el S2",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 1,
     "origin": {
@@ -313,7 +313,7 @@
   {
    "caption": "Más lento · +0.382",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 2,
     "origin": {
@@ -618,7 +618,7 @@
   {
    "caption": "Vuelta invalidada · límites de pista",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 3,
     "origin": {
@@ -923,7 +923,7 @@
   {
    "caption": "Sin referencia · primera vuelta",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 4,
     "origin": {
@@ -1202,7 +1202,7 @@
   {
    "caption": "En boxes · delta en pausa",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 5,
     "origin": {
@@ -1507,7 +1507,7 @@
   {
    "caption": "FCY · delta en pausa",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 6,
     "origin": {
@@ -1812,7 +1812,7 @@
   {
    "caption": "Sin datos · esperando al simulador",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 7,
     "origin": {
@@ -2117,7 +2117,7 @@
   {
    "caption": "Sin coche propio · espectador",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 8,
     "origin": {

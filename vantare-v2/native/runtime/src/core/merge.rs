@@ -151,6 +151,7 @@ pub(super) fn stale(previous: &Snapshot) -> Snapshot {
 fn sanitize(state: &mut State) {
     let State {
         source_state: _,
+        driving_situation: _,
         capabilities: _,
         session,
         flags: _,

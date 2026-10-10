@@ -46,6 +46,9 @@ pub struct Layout {
         skip_serializing_if = "crate::performance::Preferences::is_default"
     )]
     pub performance: crate::performance::Preferences,
+    /// Opt-in global; los layouts anteriores conservan overlays visibles.
+    #[serde(default, skip_serializing_if = "disabled")]
+    pub hide_off_track: bool,
 }
 
 impl Default for Layout {
@@ -56,6 +59,7 @@ impl Default for Layout {
             canvas_resolution: None,
             preferences: Preferences::default(),
             performance: crate::performance::Preferences::default(),
+            hide_off_track: false,
         }
     }
 }
@@ -129,6 +133,44 @@ pub struct Instance {
     #[serde(default, skip_serializing_if = "crate::geometry::Geometry::is_default")]
     pub geometry: crate::geometry::Geometry,
     pub settings: Settings,
+    #[serde(default, skip_serializing_if = "OffTrack::is_default")]
+    pub off_track: OffTrack,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OffTrack {
+    #[default]
+    Inherit,
+    AlwaysVisible,
+    Hide,
+}
+
+impl OffTrack {
+    #[allow(clippy::trivially_copy_pass_by_ref)] // Firma requerida por serde.
+    fn is_default(&self) -> bool {
+        *self == Self::Inherit
+    }
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)] // Firma requerida por serde.
+fn disabled(value: &bool) -> bool {
+    !*value
+}
+
+impl Instance {
+    pub fn hidden_off_track(
+        &self,
+        global: bool,
+        situation: vantare_domain::DrivingSituation,
+    ) -> bool {
+        situation.off_track()
+            && match self.off_track {
+                OffTrack::Inherit => global,
+                OffTrack::AlwaysVisible => false,
+                OffTrack::Hide => true,
+            }
+    }
 }
 
 const fn visible() -> bool {
@@ -596,6 +638,39 @@ mod tests {
         });
         assert!(layout.normalized().is_err());
     }
+    #[test]
+    fn off_track_policy_defaults_roundtrip_and_missing_data_never_hide() {
+        use vantare_domain::DrivingSituation as S;
+        let mut layout = Layout::from_json(FIXTURE).expect("layout antiguo");
+        assert!(!layout.hide_off_track);
+        let item = &mut layout.instances[0];
+        assert_eq!(item.off_track, OffTrack::Inherit);
+        for policy in [OffTrack::Inherit, OffTrack::AlwaysVisible, OffTrack::Hide] {
+            item.off_track = policy;
+            for global in [false, true] {
+                for situation in [S::Unknown, S::OnTrack, S::Garage, S::Paused, S::Replay] {
+                    assert_eq!(
+                        item.hidden_off_track(global, situation),
+                        situation.off_track()
+                            && match policy {
+                                OffTrack::Inherit => global,
+                                OffTrack::AlwaysVisible => false,
+                                OffTrack::Hide => true,
+                            }
+                    );
+                }
+            }
+        }
+        layout.hide_off_track = true;
+        assert_eq!(
+            Layout::from_json(&serde_json::to_vec(&layout).expect("guardar")).expect("releer"),
+            layout
+        );
+        assert!(
+            Layout::from_json(br#"{"version":1,"instances":[],"hideOffTrack":"yes"}"#).is_err()
+        );
+    }
+
     #[test]
     fn frozen_document_roundtrip_preserves_order_and_options() {
         let layout = Layout::from_json(FIXTURE).expect("fixture");

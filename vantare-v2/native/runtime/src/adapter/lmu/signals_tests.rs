@@ -6,6 +6,67 @@ const TRACK_1420: &[u8] = include_bytes!("../../../../../testdata/lmu-1.4.2.0-tr
 const PLAYER: usize = 128_468 + 43 * 1_888;
 
 #[test]
+fn garage_stall_is_explicit_not_pit_state_and_legacy_zero_is_absent() {
+    use vantare_domain::DrivingSituation as S;
+    assert_eq!(
+        observe(REAL_44, "1.3.0.0").state.driving_situation,
+        S::Unknown
+    );
+    let scoring = (0..44)
+        .map(|i| 2192 + i * 584)
+        .find(|r| REAL_44[*r + 196] == 1)
+        .expect("scoring jugador");
+    let mut bytes = REAL_44.to_vec();
+    // Mutaciones declaradas del byte SDK sobre la captura real; no una captura
+    // física de garaje/servicio. La comprobación física positiva original sigue pendiente de aportar.
+    bytes[PLAYER + 12..PLAYER + 20].copy_from_slice(&1.0_f64.to_le_bytes());
+    // Carrera y coche parado en pits: la señal de servicio no es Garage.
+    bytes[1696..1700].copy_from_slice(&10_i32.to_le_bytes());
+    bytes[scoring + 198] = 1;
+    bytes[PLAYER + 184..PLAYER + 208].fill(0);
+    for pit in [0, 3] {
+        bytes[scoring + 457] = pit;
+        for (garage, expected) in [(0, S::OnTrack), (1, S::Garage), (2, S::Unknown)] {
+            bytes[scoring + 507] = garage;
+            let mut t = Translator::new(SourceKind::Replay);
+            let first = t.observe(&bytes, "1.3.0.0", Duration::ZERO).expect("frame");
+            assert_eq!(first.state.driving_situation, expected);
+            assert_eq!(
+                first.state.session.kind,
+                Quality::Reliable(SessionKind::Race)
+            );
+            assert_eq!(
+                first
+                    .state
+                    .player
+                    .as_ref()
+                    .expect("jugador")
+                    .telemetry
+                    .speed_mps,
+                Quality::Reliable(0.0)
+            );
+            let mut core = crate::core::Core::new(1562);
+            core.observe(first).expect("primera");
+            let second = t
+                .observe(&bytes, "1.3.0.0", Duration::from_millis(250))
+                .expect("frame vigente");
+            core.observe(second).expect("confirmación");
+            if garage != 2 {
+                assert_eq!(core.snapshot().state.driving_situation, expected);
+            }
+            assert_eq!(
+                core.snapshot().state.driving_situation.off_track(),
+                garage == 1
+            );
+            let stale = t
+                .observe(&bytes, "1.3.0.0", Duration::from_millis(500))
+                .expect("stale");
+            assert_eq!(stale.state.driving_situation, S::Unknown);
+        }
+    }
+}
+
+#[test]
 fn scoring_gaps_only_describe_race_order_and_keep_their_freshness() {
     for kind in [1_i32, 5, 9, 0, 10] {
         let mut bytes = REAL_44.to_vec();

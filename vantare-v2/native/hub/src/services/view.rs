@@ -1974,7 +1974,7 @@ mod purchase_tests {
                     "sin renovación ni bucle del perfil"
                 );
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -2078,7 +2078,7 @@ mod purchase_tests {
                 assert!(remote.account.avatar.is_none());
                 assert!(!remote.navigation_access().verified);
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -2155,7 +2155,7 @@ mod purchase_tests {
                     remote.cancel();
                 });
             }
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -2249,7 +2249,7 @@ mod purchase_tests {
                 }
                 remote.cancel();
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -2335,7 +2335,7 @@ mod purchase_tests {
                     "renovación manual relee OAuth con feedback"
                 );
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -2367,7 +2367,7 @@ mod purchase_tests {
                 );
                 assert_eq!(remote.roadmap_status(), "QA error de publicación encolada");
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -2465,7 +2465,7 @@ mod purchase_tests {
                 assert!(remote.editor.dirty);
                 assert!(!remote.working());
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
 }

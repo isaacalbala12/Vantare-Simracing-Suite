@@ -1,5 +1,31 @@
 ## #1496 — promoción a nightly autorizada el 2026-10-10
 
+## #1536 · cierre headless de purchase_tests en Linux (#1557)
+
+El run 38031923823 se canceló a los 90 minutos con dos purchase_tests por
+encima de 4.140 s. Ambos existen desde 73f60e9d (#1496), antes de las rondas
+#1546/#1548/#1555/#1553. Nightly f49d71f4 incluye 986b026a; native-linux de
+#1550 pasó en 38024162372, con estos tests en 0,097 y 0,024 s. Los dos archivos
+afectados son idénticos entre aquella entrega y su squash en nightly.
+
+La resolución con nuestro contenido del merge 185404a6 perdió 986b026a.
+d3ff5919 recuperó tres casos externos, pero faltaron los siete purchase_tests.
+Sus fixtures usan canales en memoria, sin worker ni Feed: no se cuelga recv.
+GPUI Linux ejecuta el callback de lanzamiento antes de Calloop::run; run
+reinicia stop=false y pierde el quit síncrono emitido antes de entrar.
+
+Se restaura exactamente el helper cfg(test) de 986b026a y sus siete llamadas:
+quit se despacha desde el bucle con cx.spawn. Todas las aserciones intactas;
+sin cambios de producto, dependencias, ignores, filtros ni CI.
+SSH a isaac@192.168.1.57 no respondió (timeout). Reproducción mínima en Linux
+WSL, Calloop 0.14.4 igual al lock: cierre previo a run timeout 3 s/exit 124;
+cierre diferido desde el bucle exit 0. Es prueba de la causa, no ejecución
+completa del Hub en WSL. Evidencia C:/tmp/review-1557-linux.
+
+Gates completos por cola en curso; #1557 pendiente de nueva CI native-linux.
+Tras native-linux SUCCESS se incorpora esta corrección con merge normal a
+#1558 y push. No se fusionan PRs ni se publica release; #1531 sigue aparte.
+
 ## #1536 · destino real de accesos directos en CI Windows (2026-10-10)
 
 El check obligatorio de b6b778c falla en el test .lnk real: COM devuelve

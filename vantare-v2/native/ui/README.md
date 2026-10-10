@@ -59,7 +59,10 @@ Los elementos propios de Standings siguen en `standings/`. Pedales conserva su f
 
 `src/vantare/{style,paint,motion,columns}.rs` y `styles/vantare.json` contienen
 el kit compartido Vantare. Standings, Relative, Delta y Fuel ofrecen
-`DesignSystem` Eficiencia/Vantare. Workshop recarga el estilo sin otro renderer.
+`look::Look` Eficiencia/Vantare. `look::Tone` (Neo/Neutro) y `look::Accent`
+son compartidos: ningún widget importa su apariencia de Standings. Los campos
+guardados `designSystem`, `style` y `accent` conservan nombres y valores.
+Workshop recarga el estilo sin otro renderer.
 Una proyección y un estado por widget con N Looks están integrados (#1531):
 Board y Motion comunes, con una sola presentación activa. No duplicar proyecciones al portar.
 `registry.rs` aún adapta manualmente `frame_with_motion(prefs, reduced)` y la

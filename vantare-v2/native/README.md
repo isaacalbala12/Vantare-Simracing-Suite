@@ -62,6 +62,8 @@ tendencia; la frescura la vigila `Core`); ver `domain/src/adapter.rs`.
 Los widgets consumen las proyecciones puras de domain y pintan sus ViewModels.
 La unificación de Standings, Relative, Delta y Fuel a una proyección/estado
 por widget con N Looks está integrada (#1531); ambos pintores comparten Board y Motion.
+La apariencia compartida vive en `ui::look::{Look, Tone, Accent}` (#1561 PR-3);
+los nombres de los campos guardados no cambian.
 
 ## Arrancar el esqueleto
 

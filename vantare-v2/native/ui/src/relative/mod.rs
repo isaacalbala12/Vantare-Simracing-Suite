@@ -33,11 +33,11 @@ const EDGES: [f32; 7] = [0.0, 30.0, 38.0, 68.0, 300.0, 364.0, 470.0];
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
-    pub design_system: crate::standings::DesignSystem,
+    pub design_system: crate::look::Look,
     #[serde(default)]
     pub content_version: u8,
-    pub style: crate::standings::Look,
-    pub accent: crate::standings::Accent,
+    pub style: crate::look::Tone,
+    pub accent: crate::look::Accent,
     pub columns: Option<Vec<crate::standings::options::ColumnSetting>>,
     pub range_ahead: usize,
     pub range_behind: usize,
@@ -160,8 +160,8 @@ impl Settings {
         Self {
             design_system,
             content_version: 1,
-            style: crate::standings::Look::Neo,
-            accent: crate::standings::Accent::Red,
+            style: crate::look::Tone::Neo,
+            accent: crate::look::Accent::Red,
             columns: None,
             range_ahead: 3,
             range_behind: 3,
@@ -199,9 +199,7 @@ impl Settings {
         value.range_ahead = value.range_ahead.min(8);
         value.range_behind = value.range_behind.min(8);
         value.include_player = true;
-        if value.content_version == 0
-            && value.design_system == crate::standings::DesignSystem::Vantare
-        {
+        if value.content_version == 0 && value.design_system == crate::look::Look::Vantare {
             value.class_scope = "sameClass".into();
         } else if value.class_scope != "sameClass" {
             value.class_scope = "all".into();
@@ -211,7 +209,7 @@ impl Settings {
         }
         value.footer_slots.truncate(9);
         if value.content_version == 0
-            && value.design_system == crate::standings::DesignSystem::Eficiencia
+            && value.design_system == crate::look::Look::Eficiencia
             && let Some(columns) = &mut value.columns
         {
             columns.truncate(7);
@@ -273,11 +271,11 @@ impl Widget {
         motion: std::sync::Arc<Motion>,
     ) -> Presentation {
         match settings.design_system {
-            crate::standings::DesignSystem::Eficiencia => Presentation::Eficiencia {
+            crate::look::Look::Eficiencia => Presentation::Eficiencia {
                 visual: Box::new(eficiencia::Visual::new(settings, board)),
                 motion,
             },
-            crate::standings::DesignSystem::Vantare => Presentation::Vantare {
+            crate::look::Look::Vantare => Presentation::Vantare {
                 visual: vantare::Visual::new(vantare::Options::from_settings(settings)),
                 motion,
             },
@@ -631,8 +629,8 @@ mod tests {
             assert_eq!(s.class_scope, "sameClass");
             assert_eq!(s.content_version, 1);
             assert_eq!(s.columns.as_ref().expect("columnas").len(), 2);
-            assert_eq!(s.style, crate::standings::Look::Neutro);
-            assert_eq!(s.accent, crate::standings::Accent::Amber);
+            assert_eq!(s.style, crate::look::Tone::Neutro);
+            assert_eq!(s.accent, crate::look::Accent::Amber);
             assert_eq!(layout.instances[0].geometry, original.instances[0].geometry);
         }
     }

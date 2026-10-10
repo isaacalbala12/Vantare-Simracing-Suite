@@ -8,11 +8,11 @@ Hub/Studio GPUI editan el layout único y los widgets del registro. Launcher gob
 
 ## 2. Autoridad y lectura verificada
 
-GitHub Issues y Project Vantare. #1564/area:ui, In Review, sin milestone comprometida; issue y escritura verificadas. Dependencias contrastadas: #1562/PR #1576 MERGED, #1563/PR #1572 y #1567/PR #1575 integradas; #1573 acceso y #1570 documentación presentes en nightly. PR de esta entrega: [#1577](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1577). README [UI](../../../native/ui/README.md)/[Hub](../../../native/hub/README.md) y plantilla activa leídos.
+GitHub #1561, area:plataforma, Project Vantare In Progress, sin milestone. Esta entrega cubre exactamente PR-3/PR-5 de `C:/tmp/ola2/plan-1561.md`; #1531/#1532/#1534 cerradas. Leídos AGENTS, README nativo/UI, ADR 0101 y contrato de producto. No incluye Studio, telemetría ni ports.
 
 ## 3. Estado real y canal
 
-Rama `vantareapp/isa-1564-widgets-por-sesion-impl`. Base original #1562 `cdcc2bf7`; entrega anterior `8c6e83f9`. Incorporado `origin/nightly@acff350d740d33ae8901291b63d69da004912fbc` mediante merge, sin rebase. Resolución local validada; commit/HEAD de entrega y push se verifican en #1564 y buzón. El merge conserva ambos padres. Auto-merge de #1577 ya activo por el orquestador. Esta rama todavía no acredita integración de #1564 en nightly, promoción ni release.
+Rama aislada `vantareapp/isa-1561-looks-frame`, base nightly `b2186f82746424b4844a5909efd31530c5bbe5b3`, checkout inicialmente limpio. Guardias `22fe7490` antes del refactor; PR-3 local validado: fmt/Clippy -D warnings PASS, Nextest 1615/1615 (7 skips), lifecycle 18/18. Paridad PR-3: Standings 0/292160 y Delta 0/26880 píxeles, umbral 0. PR-5 pendiente. Sin push/PR todavía, sin merge, promoción ni release. Las entregas #1562/#1563/#1564/#1567 y documentación #1570 ya forman parte de la base.
 
 ## 4. Decisiones cerradas
 
@@ -25,7 +25,7 @@ Rama `vantareapp/isa-1564-widgets-por-sesion-impl`. Base original #1562 `cdcc2bf
 
 ## 5. Arquitectura y ownership
 
-Domain proyecta; UI guarda settings y pinta; Hub edita documento/historial. [Registro](../../../native/ui/src/registry.rs), [layout](../../../native/ui/src/layout.rs), [Studio](../../../native/hub/src/studio.rs), [sesiones](../../../native/hub/src/studio/sessions.rs). UI/domain no dependen de runtime. Sin deps nuevas ni transporte/permiso en pintores. #1561 P1-A mantiene la partición coordinada del Studio preexistente >2000 LOC; PR-3/PR-5 de #1561 no se afirman integradas. `frame_with_motion` sigue vigente.
+Domain proyecta; UI guarda settings y pinta; Hub edita documento/historial. [Registro](../../../native/ui/src/registry.rs), [layout](../../../native/ui/src/layout.rs), [Studio](../../../native/hub/src/studio.rs), [sesiones](../../../native/hub/src/studio/sessions.rs). UI/domain no dependen de runtime. Sin deps nuevas ni transporte/permiso en pintores. #1561 P1-A mantiene la partición coordinada del Studio preexistente >2000 LOC; PR-3/PR-5 de #1561 no se afirman integradas. PR-3 de esta rama mueve la apariencia a `ui::look::{Look, Tone, Accent}`, sin cambiar nombres serde. PR-5 sigue pendiente; `frame_with_motion` sigue vigente hasta ese hito.
 
 ## 6. Evidencia y límites
 
@@ -33,21 +33,23 @@ Entrega anterior #1564: RED `9c218b38`; código/capturas `c8401b50`; test D12 am
 Logs y revisión/hashes: `C:/tmp/ola2/evidence-1564`; informe `C:/tmp/ola2/informe-1564-impl.md`; buzón `C:/tmp/buzon/1564.md`. No convierte fixtures/replays en LMU/ACC/OBS físicos, DPI/macOS ni input→Present. Present/s no mide latencia. Históricos/goldens se conservan sin recalibrar.
 **#1536 · Launcher:** test COM compara destinos canonicalizados, conserva ejecutable/bytes, no ejecuta y rechaza UNC; arreglo `d7c6cd17`, histórico enlazado arriba.
 
+Guardias #1561 `22fe7490`: layout Eficiencia/Neutro/acentos de cuatro widgets, transiciones activas de Banderas/FastestLap/Input/PedalsTelemetry y replay: 8/8 PASS antes del refactor. Capturas base de 18 widgets por `compare.ps1` guardadas e inspeccionadas; diferencias con goldens históricos registradas sin recalibración. Cuatro pintores equivalentes tras renombrado de imports/tipos; PR-3 reduce 4 líneas Rust. Evidencia nueva: `C:/tmp/ola2/evidence-1561-ui`; buzón `C:/tmp/buzon/1561-ui.md`.
+
 ## 7. Riesgos y deuda
 
-- CI de #1577 tras push pendiente; ambos flujos de pista/sesión conservados en Studio/app/layout y gates locales aprobados.
+- #1561: comparar contra esta base; los goldens históricos ya difieren en dimensiones/píxeles antes del refactor. No se recalibran. CI de esta rama pendiente hasta el push.
 - P2: Studio compartido con #1569; no partir durante entregas concurrentes. #1524 sigue pendiente: autoría no acredita fuente live.
 - #1527 debe partir del DTO live v10 realmente integrado y mantener lectores persistidos compatibles.
 - Evidencia física/plataforma y deuda de paridad de ADR 0101 conservadas en el histórico; no elevar severidad sin nueva prueba.
 
 ## 8. Issues terminadas, activas y pendientes
 
-Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. Activa de esta rama: #1564/PR #1577. Pendientes coordinadas: #1561 PR-3/PR-5, #1566, #1569 y #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
+Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. #1564/PR #1577 integrada en la base. Activa de esta rama: #1561 PR-3/PR-5. Pendientes coordinadas: #1566, #1569 y #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
 
 ## 9. Siguiente acción exacta
 
-Commit de merge y push de la rama, tras gates locales completos y diff revisado frente a ambos padres; verificar SHA remoto y FIN en buzón/issue. Comprobar CI y estado real de #1577: gates locales no acreditan aún su integración en nightly. Conservar auto-merge autorizado; no promover testers/master ni publicar release.
+Commit de PR-3 con docs; después PR-5 con firma uniforme, gates y paridad exacta de los 18 widgets contra las capturas base. Push y PR draft a nightly, verificar SHA remoto y FIN en buzón/issue. Sin merge, testers/master ni release.
 
 ## 10. Última actualización
 
-2026-10-10 · GitHub #1564 · Codex. Dependencias y nightly leídos; resolución local autorizada por el orquestador. Estado y diario en #1564, sin entradas por worker/ronda aquí.
+2026-10-11 · GitHub #1561 · Codex. Estado y diario en la issue; alcance PR-3/PR-5 verificado, sin entradas por worker/ronda aquí.

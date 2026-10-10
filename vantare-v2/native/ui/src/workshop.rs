@@ -357,7 +357,7 @@ fn system_defaults(kind: Kind, system: crate::look::Look) -> Settings {
 }
 
 fn default_settings(kind: Kind) -> Settings {
-    system_defaults(kind, crate::standings::DesignSystem::default())
+    system_defaults(kind, crate::look::Look::default())
 }
 
 pub(crate) fn default_columns(kind: Kind) -> Vec<crate::standings::options::ColumnSetting> {
@@ -1231,7 +1231,7 @@ mod tests {
 
     #[test]
     fn workshop_relative_uses_react_columns_and_compact_height() {
-        let settings = system_defaults(Kind::Relative, crate::standings::DesignSystem::Eficiencia);
+        let settings = system_defaults(Kind::Relative, crate::look::Look::Eficiencia);
         let Settings::Relative(relative) = &settings else {
             panic!("Relative");
         };

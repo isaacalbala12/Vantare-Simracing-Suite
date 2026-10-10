@@ -38,11 +38,9 @@ fn violations(source: &str) -> Vec<String> {
     let production = compact(source.split("#[cfg(test)]").next().expect("fuente"));
     let mut violations = Vec::new();
     for look in vantare_ui::look::Look::ALL {
-        for type_name in ["DesignSystem", "Look"] {
-            let token = format!("{type_name}::{look:?}");
-            if production.contains(&token) {
-                violations.push(token);
-            }
+        let token = format!("Look::{look:?}");
+        if production.contains(&token) {
+            violations.push(token);
         }
     }
     // Prohibidos también tras un módulo de tests: quitar cfg(test) no permite

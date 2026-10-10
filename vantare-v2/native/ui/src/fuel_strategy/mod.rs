@@ -11,9 +11,9 @@ pub(crate) mod vantare;
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     /// Sistema de diseño: Vantare (principal) o Eficiencia (heredado).
-    pub design_system: crate::standings::DesignSystem,
-    pub style: crate::standings::Look,
-    pub accent: crate::standings::Accent,
+    pub design_system: crate::look::Look,
+    pub style: crate::look::Tone,
+    pub accent: crate::look::Accent,
     /// Tamaño Vantare: `compact` (230), `standard` (300) o `expanded` (460).
     pub size: String,
     /// Marca Vantare: decisión inyectada por el host según la licencia.
@@ -46,8 +46,8 @@ impl Settings {
     pub fn for_look(design_system: crate::look::Look) -> Self {
         Self {
             design_system,
-            style: crate::standings::Look::Neo,
-            accent: crate::standings::Accent::Red,
+            style: crate::look::Tone::Neo,
+            accent: crate::look::Accent::Red,
             size: "standard".into(),
             brand_visible: None,
             content_version: 1,

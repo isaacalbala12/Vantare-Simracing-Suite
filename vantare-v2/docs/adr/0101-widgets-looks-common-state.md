@@ -14,8 +14,10 @@ y trabajo idéntico». Las tandas son bimodales en ambos binarios: ingest baseli
 1,3–4,6 frente a nuevo 1,3–5,6 µs; frame baseline 22,9–51,8 frente a 24,7–60,6.
 No se cambian cifras ni umbrales. La excepción solo se aplica cuando coinciden
 el perfil de asignaciones/bytes y el trabajo, sin trabajo nuevo demostrado.
-Fuel pasa los ocho costes en cinco A/B con cola libre, sin márgenes ni excepción;
-frío y su perfil nuevo quedan pendientes en este checkpoint.
+Fuel pasa los ocho costes en cinco A/B con cola libre, sin márgenes ni excepción.
+Frío pasa los ocho casos frente al Vantare original: máximo 1,480×, límite 1,5×.
+Ronda 2 completa para la revisión independiente de Opus; aceptación e integración
+posteriores pertenecen al orquestador.
 El gate no cambia: mediana p50 ≤ 1,03 × máximo baseline y p99 ≤ 1,05 × máximo.
 Tandas iniciales y su FAIL conservados en round2/performance; repetición y
 perfil en round2/hot-path. No se repiten tandas para estabilizar ruido.
@@ -48,6 +50,23 @@ casos LMU/ACC × Eficiencia/Vantare. ACC work/notify son cero en ambos binarios;
 LMU cambia Labels o Plan cien veces en ambos, sin trabajo añadido. Ingest,
 preparación y paint conservan asignaciones y bytes. La documentación de OnceLock
 describe la preparación ya existente; Presentation no añade trabajo estable.
+
+Frío nuevo con cola libre (08:43:05 +02:00), sin caché ni Board previo: p50
+original→nuevo en µs, LMU/ACC: Standings 97,900→114,728 / 44,268→53,168;
+Relative 2,456→3,150 / 2,200→2,878; Delta 0,040→0,046 / 0,025→0,037;
+Fuel 0,131→0,112 / 0,112→0,100. Ratios 1,172/1,201; 1,283/1,308;
+1,150/1,480; 0,855/0,893. Cronómetro sin contador, 32 llamadas independientes
+por muestra; 12.000 muestras LMU y 1.000 ACC. No se cambia el gate ni se repite.
+Perfil frío separado contra fefe870f: 1.200/100 muestras, ninguna nueva llamada
+de asignación en los ocho casos; Relative/Delta/Fuel conservan también los bytes.
+Standings conserva 1.088/469 asignaciones y añade 3.008/2.048 bytes solicitados:
+64 por cada una de las 47/32 filas, exactamente los tres campos de Row subidos
+al Board por P1 (dos Option<String> y un Option<f64>). Con formatos opcionales
+desactivados no crea nuevos textos; se elimina la VM paralela fuera de project.
+Son bytes solicitados, no RSS. El perfil cuenta solo project, excluye entrada,
+setup, JSON y UI/Plan/Motion. Fuentes QA, hashes y builds antes/después archivados;
+el checkout temporal de mi worktree se restaura sin cambios productivos.
+Tablas, muestras y perfiles: round2/hot-path/quiet/performance/cold-*.{json,md}.
 
 ## Decisión
 

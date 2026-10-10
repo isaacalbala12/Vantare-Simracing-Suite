@@ -465,6 +465,8 @@ impl Motion {
     /// Registra un nuevo ViewModel. `visible` = filas pintadas (prefijo de `vm.rows`);
     /// `lap_visible` = columna de mejor vuelta activa.
     pub fn update(&mut self, vm: &Vm, visible: usize, lap_visible: bool, now: Instant) {
+        #[cfg(feature = "parity-capture")]
+        crate::benchmark::mark(crate::benchmark::Work::Motion);
         self.idle_frame = None;
         if vm.status != Status::Ready {
             self.reset();
@@ -669,9 +671,15 @@ impl Motion {
     }
 
     /// Un frame quieto no vuelve a asignar mapas de filas; update/restaurar avisos lo invalida.
-    pub(super) fn frame_shared(&mut self, vm: &Vm, visible: usize, now: Instant) -> std::sync::Arc<Frame> {
+    pub(super) fn frame_shared(
+        &mut self,
+        vm: &Vm,
+        visible: usize,
+        now: Instant,
+    ) -> std::sync::Arc<Frame> {
         if self.wake(now) == Wake::Idle
-            && let Some(frame) = &self.idle_frame {
+            && let Some(frame) = &self.idle_frame
+        {
             return frame.clone();
         }
         let frame = std::sync::Arc::new(self.frame(vm, visible, now));

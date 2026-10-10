@@ -76,14 +76,47 @@ pub fn ink(size: f32, weight: f32, tracking_em: f32, color: Hsla) -> Ink {
     }
 }
 
-/// (texto, tamano, peso, color) -> linea modelada.
-type Key = (String, u32, u32, [u32; 4], Option<String>);
+/// Claves numéricas por tipografía/color. Texto y familia se consultan prestados.
+type Key = (u32, u32, [u32; 4]);
+type Lines = HashMap<Key, HashMap<String, ShapedLine>>;
+#[derive(Default)]
+struct ShapeCache {
+    fallback: Lines,
+    families: HashMap<String, Lines>,
+    count: usize,
+}
+impl ShapeCache {
+    fn get(&self, family: Option<&str>, key: &Key, text: &str) -> Option<&ShapedLine> {
+        let lines = match family {
+            None => &self.fallback,
+            Some(family) => self.families.get(family)?,
+        };
+        lines.get(key)?.get(text)
+    }
+    fn insert(&mut self, family: Option<&str>, key: Key, text: &str, line: ShapedLine) {
+        if self.count > 4096 {
+            *self = Self::default();
+        }
+        let lines = match family {
+            None => &mut self.fallback,
+            Some(family) => self.families.entry(family.to_owned()).or_default(),
+        };
+        if lines
+            .entry(key)
+            .or_default()
+            .insert(text.to_owned(), line)
+            .is_none()
+        {
+            self.count += 1;
+        }
+    }
+}
 
 thread_local! {
     /// Esquina del widget en la ventana: los widgets pintan en coordenadas propias
     /// (0, 0) y quien los aloja en una ventana compartida fija aquí su posición.
     static ORIGIN: Cell<(f32, f32)> = const { Cell::new((0.0, 0.0)) };
-    static CACHE: RefCell<HashMap<Key, ShapedLine>> = RefCell::new(HashMap::new());
+    static CACHE: RefCell<ShapeCache> = RefCell::new(ShapeCache::default());
 }
 
 fn font(weight: f32) -> Font {
@@ -103,14 +136,8 @@ fn shape(window: &Window, text: &str, ink: &TextInk<'_>) -> ShapedLine {
         ink.color.l.to_bits(),
         ink.color.a.to_bits(),
     ];
-    let key = (
-        text.to_string(),
-        ink.size.to_bits(),
-        ink.weight.to_bits(),
-        color,
-        ink.family.map(str::to_owned),
-    );
-    let cached = CACHE.with(|c| c.borrow().get(&key).cloned());
+    let key = (ink.size.to_bits(), ink.weight.to_bits(), color);
+    let cached = CACHE.with(|c| c.borrow().get(ink.family, &key, text).cloned());
     // El color va en las runs del ShapedLine, asi que forma parte de la clave.
     cached.unwrap_or_else(|| {
         let run = TextRun {
@@ -135,11 +162,7 @@ fn shape(window: &Window, text: &str, ink: &TextInk<'_>) -> ShapedLine {
             None,
         );
         CACHE.with(|c| {
-            let mut cache = c.borrow_mut();
-            if cache.len() > 4096 {
-                cache.clear();
-            }
-            cache.insert(key, line.clone());
+            c.borrow_mut().insert(ink.family, key, text, line.clone());
         });
         line
     })

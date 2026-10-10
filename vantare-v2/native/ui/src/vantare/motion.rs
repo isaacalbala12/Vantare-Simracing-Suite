@@ -111,6 +111,8 @@ pub(crate) struct Motion {
 impl Motion {
     /// Nueva disposición tras un cambio del ViewModel.
     pub(crate) fn update(&mut self, rows: &[Sample], timing: Timing, now: Instant) {
+        #[cfg(feature = "parity-capture")]
+        crate::benchmark::mark(crate::benchmark::Work::Motion);
         let first = !self.started;
         self.started = true;
         let mut next = HashMap::with_capacity(rows.len());

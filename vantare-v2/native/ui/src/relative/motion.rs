@@ -74,6 +74,8 @@ impl Motion {
         self.transferred = notices.to_vec();
     }
     pub fn update(&mut self, old: &ViewModel, next: &ViewModel, now: Instant) {
+        #[cfg(feature = "parity-capture")]
+        crate::benchmark::mark(crate::benchmark::Work::Motion);
         self.transferred
             .retain(|n| now.saturating_duration_since(n.2).as_millis() < 480);
         let structure = |vm: &ViewModel| {

@@ -341,6 +341,7 @@ impl Settings {
 /// Un Board y un Motion activo; los pintores no poseen historial.
 pub(crate) struct Widget {
     settings: Settings,
+    content: standings::Content,
     board: Option<std::sync::Arc<standings::Board>>,
     boundary: (u64, u64, u64),
     visual: Visual,
@@ -385,6 +386,21 @@ impl Motion {
         }
     }
 }
+impl Settings {
+    fn content(&self) -> standings::Content {
+        standings::Content {
+            player_class: self.class_scope != "all-classes",
+            class_gaps: self.class_scope != "all-classes"
+                || self.classification_mode == "multiclass",
+            footer_ids: if self.footer_slots.as_ref().is_some_and(|s| !s.is_empty()) {
+                self.footer_slots.clone().unwrap_or_default()
+            } else {
+                vec![self.footer_first.clone(), self.footer_second.clone()]
+            },
+            footer_slots: self.footer_slots.as_ref().is_some_and(|s| !s.is_empty()),
+        }
+    }
+}
 impl Widget {
     fn presentation(settings: &Settings, prefs: Preferences) -> (Visual, Motion) {
         match settings.design_system {
@@ -404,6 +420,7 @@ impl Widget {
         let settings = settings.normalized();
         let (visual, motion) = Self::presentation(&settings, prefs);
         Self {
+            content: settings.content(),
             settings,
             board: None,
             boundary: (0, 0, 0),
@@ -411,30 +428,8 @@ impl Widget {
             motion,
         }
     }
-    fn content(&self) -> standings::Content {
-        standings::Content {
-            player_class: self.settings.class_scope != "all-classes",
-            class_gaps: self.settings.class_scope != "all-classes"
-                || self.settings.classification_mode == "multiclass",
-            footer_ids: if self
-                .settings
-                .footer_slots
-                .as_ref()
-                .is_some_and(|s| !s.is_empty())
-            {
-                self.settings.footer_slots.clone().unwrap_or_default()
-            } else {
-                vec![
-                    self.settings.footer_first.clone(),
-                    self.settings.footer_second.clone(),
-                ]
-            },
-            footer_slots: self
-                .settings
-                .footer_slots
-                .as_ref()
-                .is_some_and(|s| !s.is_empty()),
-        }
+    fn content(&self) -> &standings::Content {
+        &self.content
     }
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
         self.ingest_using(snapshot, prefs, standings::project_cached)
@@ -450,7 +445,7 @@ impl Widget {
             Option<&std::sync::Arc<standings::Board>>,
         ) -> std::sync::Arc<standings::Board>,
     ) -> bool {
-        let next = project(snapshot, prefs, &self.content(), self.board.as_ref());
+        let next = project(snapshot, prefs, self.content(), self.board.as_ref());
         let boundary = (
             snapshot.epoch,
             snapshot.state.session.id.0,
@@ -481,7 +476,9 @@ impl Widget {
                 self.boundary.2,
                 m,
             ),
-            (Visual::Vantare(v), Motion::Vantare(m)) => v.ingest_shared(board, std::sync::Arc::make_mut(m)),
+            (Visual::Vantare(v), Motion::Vantare(m)) => {
+                v.ingest_shared(board, std::sync::Arc::make_mut(m))
+            }
             _ => unreachable!("pintor y política se seleccionan juntos"),
         }
     }
@@ -737,7 +734,7 @@ mod tests {
             );
             widget.ingest(&snapshot, prefs);
             let board = widget.board.clone().expect("foto");
-            let content = widget.content();
+            let content = widget.content().clone();
             let demand = widget.settings.demand();
             let notice = (
                 board.groups[0].rows[0].id,
@@ -768,7 +765,7 @@ mod tests {
                     &board,
                     widget.board.as_ref().expect("misma foto")
                 ));
-                assert_eq!(widget.content(), content);
+                assert_eq!(widget.content(), &content);
                 assert_eq!(widget.settings.demand(), demand);
                 assert!(
                     widget.motion.notices().contains(&notice),

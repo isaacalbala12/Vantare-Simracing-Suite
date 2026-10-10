@@ -11,6 +11,7 @@ pub(crate) struct Visual {
     settings: Arc<Settings>,
     footer_rows: usize,
     workshop: bool,
+    idle_rows: Option<Arc<Vec<RowVisual>>>,
 }
 impl Visual {
     pub(super) fn new(settings: &Settings, board: Arc<ViewModel>) -> Self {
@@ -19,6 +20,7 @@ impl Visual {
             settings: Arc::new(settings.clone()),
             footer_rows: 1,
             workshop: false,
+            idle_rows: None,
         }
     }
     pub(super) fn workshop_layout(&mut self) {
@@ -45,6 +47,7 @@ impl Visual {
         motion: &mut Motion,
         continuous: bool,
     ) -> bool {
+        self.idle_rows = None;
         if continuous && same_visible(&self.vm, &next, &self.settings) {
             self.vm = next;
             return false;
@@ -80,16 +83,22 @@ impl Visual {
         motion: &Motion,
     ) -> (Paint, Wake) {
         let now = Instant::now();
-        let rows = if reduced {
-            Motion::default().sample(&self.vm, now)
+        let active = !reduced && motion.animating(now);
+        let rows = if active {
+            self.idle_rows = None;
+            Arc::new(motion.sample(&self.vm, now))
         } else {
-            motion.sample(&self.vm, now)
+            self.idle_rows
+                .get_or_insert_with(|| {
+                    Arc::new(if reduced {
+                        Motion::default().sample(&self.vm, now)
+                    } else {
+                        motion.sample(&self.vm, now)
+                    })
+                })
+                .clone()
         };
-        let wake = if !reduced && motion.animating(now) {
-            Wake::Frame
-        } else {
-            Wake::Idle
-        };
+        let wake = if active { Wake::Frame } else { Wake::Idle };
         let vm = self.vm.clone();
         let settings = self.settings.clone();
         let size = self.size();
@@ -831,4 +840,38 @@ fn cell(
         right - 6.0 * SCALE - width
     };
     text::draw(window, cx, &fitted, x, baseline, font);
+}
+
+#[cfg(test)]
+mod idle_tests {
+    use super::*;
+    #[test]
+    fn idle_frame_reuses_rows_and_new_facts_invalidate_them() {
+        let prefs = Preferences::default();
+        let snapshot = crate::source::fixed();
+        let board = Arc::new(vantare_domain::relative::project(&snapshot, prefs));
+        let mut visual = Visual::new(&Settings::eficiencia(), board);
+        let mut motion = Motion::default();
+        assert_eq!(visual.frame(prefs, false, &motion).1, Wake::Idle);
+        let idle = visual.idle_rows.clone().expect("filas quietas");
+        assert!(!idle.is_empty());
+        assert_eq!(visual.frame(prefs, false, &motion).1, Wake::Idle);
+        assert!(Arc::ptr_eq(
+            &idle,
+            visual.idle_rows.as_ref().expect("misma presentación")
+        ));
+        let mut next = snapshot;
+        next.state.source_state = vantare_domain::SourceState::Lost;
+        visual.ingest(
+            Arc::new(vantare_domain::relative::project(&next, prefs)),
+            &mut motion,
+            true,
+        );
+        assert!(visual.idle_rows.is_none());
+        drop(visual.frame(prefs, false, &motion));
+        assert!(!Arc::ptr_eq(
+            &idle,
+            visual.idle_rows.as_ref().expect("nuevo estado")
+        ));
+    }
 }

@@ -335,6 +335,8 @@ fn waiting(board: Option<&Board>) -> bool {
 }
 
 fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
+    #[cfg(feature = "parity-capture")]
+    crate::benchmark::mark(crate::benchmark::Work::Plan);
     let variant = options.variant(style);
     let g = &style.geometry;
     let shown = board.filter(|b| !waiting(Some(b)));
@@ -453,6 +455,8 @@ struct Fitted {
 }
 impl Labels {
     fn new(board: Option<&Board>, options: &Options, language: Language) -> Self {
+        #[cfg(feature = "parity-capture")]
+        crate::benchmark::mark(crate::benchmark::Work::Labels);
         let es = language == Language::Es;
         let range = format!("±{}", options.ahead.max(options.behind));
         Self {

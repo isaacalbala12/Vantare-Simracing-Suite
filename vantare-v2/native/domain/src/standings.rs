@@ -191,6 +191,23 @@ struct Scalars {
     class_interval: Quality<Gap>,
 }
 impl Scalars {
+    /// Compara hechos prestados, sin materializar un Scalars temporal por fila.
+    fn matches(&self, c: &Car) -> bool {
+        self.position == c.position
+            && self.class_position == c.class_position
+            && self.laps == c.laps
+            && self.grid == c.grid_position
+            && self.stops == c.pit_stops
+            && self.last == c.last_lap_s
+            && self.best == c.best_lap_s
+            && self.estimated == c.estimated_lap_s
+            && self.pits == c.in_pits
+            && self.compound == c.tyre_compound
+            && self.gap == c.gap_leader
+            && self.interval == c.gap_ahead
+            && self.class_gap == c.gap_class_leader
+            && self.class_interval == c.gap_class_ahead
+    }
     fn new(c: &Car) -> Self {
         Self {
             position: c.position,
@@ -233,7 +250,7 @@ impl Row {
             && self.vehicle == c.vehicle
             && self.class_id == c.class.as_ref().map(|v| v.id)
             && self.class.as_ref() == c.class.as_ref().map_or("", |v| v.name.as_str())
-            && self.facts.scalars == Scalars::new(c)
+            && self.facts.scalars.matches(c)
             && self.facts.current == c.current_sectors_s
             && self.facts.best == c.best_sectors_s
     }
@@ -914,6 +931,37 @@ mod look_data_tests {
         };
         let changed = project_cached(&s, prefs, &filtered, Some(&weather));
         assert!(!Arc::ptr_eq(&weather, &changed));
+    }
+
+    #[test]
+    fn cached_scalar_changes_preserve_the_cold_projection() {
+        use std::sync::Arc;
+        let changes: [fn(&mut Car); 14] = [
+            |c| c.position = Quality::Reliable(4),
+            |c| c.class_position = Quality::Reliable(3),
+            |c| c.laps = Quality::Reliable(8),
+            |c| c.grid_position = Quality::Reliable(6),
+            |c| c.pit_stops = Quality::Reliable(2),
+            |c| c.last_lap_s = Quality::Reliable(91.0),
+            |c| c.best_lap_s = Quality::Reliable(90.0),
+            |c| c.estimated_lap_s = Quality::Reliable(89.0),
+            |c| c.in_pits = Quality::Reliable(true),
+            |c| c.tyre_compound = Quality::Reliable(TyreCompound::Wet),
+            |c| c.gap_leader = Quality::Reliable(Gap::Time { seconds: 2.0 }),
+            |c| c.gap_ahead = Quality::Reliable(Gap::Time { seconds: 1.0 }),
+            |c| c.gap_class_leader = Quality::Reliable(Gap::Laps { count: 2 }),
+            |c| c.gap_class_ahead = Quality::Reliable(Gap::Laps { count: 1 }),
+        ];
+        let prefs = Preferences::default();
+        let content = Content::default();
+        for change in changes {
+            let mut s = snapshot(vec![car(2, (0, "GT3"), 1, 1)]);
+            let before = project_cached(&s, prefs, &content, None);
+            change(&mut s.state.cars[0]);
+            let after = project_cached(&s, prefs, &content, Some(&before));
+            assert!(!Arc::ptr_eq(&before, &after), "hechos nuevos invalidan");
+            assert_eq!(*after, project_content(&s, prefs, &content));
+        }
     }
 
     #[test]

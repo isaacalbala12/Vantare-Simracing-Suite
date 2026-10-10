@@ -585,6 +585,8 @@ pub(crate) struct Plan {
 }
 
 pub(crate) fn plan(config: &Config, vm: &Vm) -> Plan {
+    #[cfg(feature = "parity-capture")]
+    crate::benchmark::mark(crate::benchmark::Work::Plan);
     let columns: Vec<Column> = config
         .columns
         .iter()

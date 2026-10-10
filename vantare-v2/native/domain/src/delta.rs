@@ -176,16 +176,16 @@ pub fn project_reference(snapshot: &Snapshot, _prefs: Preferences, reference: Re
         _ => None,
     };
 
-    let delta =
-        state
-            .player
-            .filter(|_| available)
-            .map_or(Quality::Unavailable, |p| match reference {
-                Reference::PersonalBest => p.delta_best_s,
-                Reference::Optimal => p.delta_optimal_s,
-                Reference::Leader => p.delta_leader_s,
-                Reference::SessionBest | Reference::PreviousLap => Quality::Unavailable,
-            });
+    let delta = state
+        .player
+        .as_ref()
+        .filter(|_| available)
+        .map_or(Quality::Unavailable, |p| match reference {
+            Reference::PersonalBest => p.delta_best_s,
+            Reference::Optimal => p.delta_optimal_s,
+            Reference::Leader => p.delta_leader_s,
+            Reference::SessionBest | Reference::PreviousLap => Quality::Unavailable,
+        });
     let last = observed.map_or(Quality::Unavailable, |c| c.last_lap_s);
     let best = observed.map_or(Quality::Unavailable, |c| c.best_lap_s);
     let seconds = displayed(delta);
@@ -199,7 +199,7 @@ pub fn project_reference(snapshot: &Snapshot, _prefs: Preferences, reference: Re
         identity: (
             snapshot.epoch,
             state.session.id,
-            state.player.map(|p| p.car),
+            state.player.as_ref().map(|p| p.car),
         ),
         status,
         tone: match seconds {

@@ -115,6 +115,7 @@ enum Engine {
 }
 pub(crate) struct Widget {
     settings: Settings,
+    reference: delta::Reference,
     board: Arc<delta::Board>,
     visual: Painter,
     motion: Engine,
@@ -149,6 +150,7 @@ impl Widget {
         let board = Arc::new(settings.project(&Snapshot::default(), prefs));
         let (visual, motion) = Self::presentation(&settings, prefs, &board);
         Self {
+            reference: settings.reference(),
             settings,
             board,
             visual,
@@ -182,7 +184,7 @@ impl Widget {
         prefs: Preferences,
         project: impl FnOnce(&Snapshot, Preferences, delta::Reference) -> delta::Board,
     ) -> bool {
-        let next = project(snapshot, prefs, self.settings.reference());
+        let next = project(snapshot, prefs, self.reference);
         if next == *self.board && prefs == self.prefs {
             return false;
         }

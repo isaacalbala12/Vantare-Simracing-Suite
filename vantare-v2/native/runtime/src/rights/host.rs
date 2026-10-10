@@ -229,18 +229,25 @@ fn serve(
     mutator: bool,
     start: Instant,
 ) -> io::Result<()> {
-    let request: Request = control::read(pipe)?;
-    if request.version != control::VERSION || request.sequence != 1 {
-        return Err(io::ErrorKind::InvalidData.into());
+    let result = (|| {
+        let request: Request = control::read(pipe)?;
+        if request.version != control::VERSION || request.sequence != 1 {
+            return Err(io::ErrorKind::InvalidData.into());
+        }
+        if !matches!(request.command, Command::Read)
+            && (!mutator || nonce.is_none_or(|n| n.is_empty() || n != request.nonce))
+        {
+            return Err(io::ErrorKind::PermissionDenied.into());
+        }
+        respond(request, state, latest, start, |response| {
+            control::write(pipe, response)
+        })
+    })();
+    if let Err(error) = &result {
+        // Solo categoría local: nunca nonce ni contenido del peer.
+        eprintln!("vantare: canal de derechos cerrado: {:?}", error.kind());
     }
-    if !matches!(request.command, Command::Read)
-        && (!mutator || nonce.is_none_or(|n| n.is_empty() || n != request.nonce))
-    {
-        return Err(io::ErrorKind::PermissionDenied.into());
-    }
-    respond(request, state, latest, start, |response| {
-        control::write(pipe, response)
-    })
+    result
 }
 
 fn respond(

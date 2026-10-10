@@ -59,6 +59,8 @@ pub(super) struct Translator {
     next_car: u32,
     drivers: HashMap<String, DriverId>,
     classes: HashMap<String, ClassId>,
+    next_driver: u32,
+    next_class: u32,
 }
 
 impl Translator {
@@ -81,6 +83,8 @@ impl Translator {
             next_car: 0,
             drivers: HashMap::new(),
             classes: HashMap::new(),
+            next_driver: 0,
+            next_class: 0,
         }
     }
 
@@ -141,6 +145,7 @@ impl Translator {
         self.emitted_paused = paused;
         let stale = stale && !paused;
         let telemetry_stale = telemetry_stale && !paused;
+        self.prepare_identities(&frame)?;
         self.frame_count += 1;
         let cars: Vec<Car> = frame
             .vehicles
@@ -268,7 +273,30 @@ impl Translator {
             // nombres nuevos por fotograma, a 60 Hz.
             self.drivers.clear();
             self.classes.clear();
+            self.next_driver = 0;
+            self.next_class = 0;
         }
+    }
+
+    fn prepare_identities(&mut self, frame: &Frame) -> Result<(), Rejection> {
+        let incoming =
+            u32::try_from(frame.vehicles.len()).map_err(|_| Rejection::InvalidActiveGrid)?;
+        if self.next_driver.checked_add(incoming).is_none()
+            || self.next_class.checked_add(incoming).is_none()
+        {
+            return Err(Rejection::InvalidActiveGrid);
+        }
+        // Recortar antes de construir la foto, conservando las identidades
+        // presentes. Nunca vaciar un mapa a mitad de una Observation.
+        if self.drivers.len() + frame.vehicles.len() > IDENTITY_BUDGET {
+            self.drivers
+                .retain(|name, _| frame.vehicles.iter().any(|car| car.driver == *name));
+        }
+        if self.classes.len() + frame.vehicles.len() > IDENTITY_BUDGET {
+            self.classes
+                .retain(|name, _| frame.vehicles.iter().any(|car| car.class == *name));
+        }
+        Ok(())
     }
 
     fn car_id(&mut self, vehicle: &Vehicle) -> CarId {
@@ -301,32 +329,25 @@ impl Translator {
     }
 
     fn car(&mut self, vehicle: &Vehicle, id: CarId, number: String, stale: bool) -> Car {
-        // Tope de identidades recordadas. Una carrera legitima no pasa de
-        // `frame::MAX_VEHICLES` pilotos; el margen absorbe entradas y salidas.
-        // Sin tope, quien escriba la memoria del simulador acuna un nombre
-        // nuevo por coche y fotograma y el mapa crece durante toda la sesion.
-        // Al agotarse se vacia: solo pierde estabilidad de id quien esta
-        // excediendo el maximo de coches de una carrera real.
-        if self.drivers.len() >= IDENTITY_BUDGET && !self.drivers.contains_key(&vehicle.driver) {
-            self.drivers.clear();
-        }
-        let next_driver = self.drivers.len();
+        // La numeración es por sesión, independiente de la poda del mapa.
         let driver = *self
             .drivers
             .entry(vehicle.driver.clone())
-            .or_insert(DriverId(u32::try_from(next_driver).unwrap_or(u32::MAX)));
-        let class = (!vehicle.class.is_empty()).then(|| {
-            if self.classes.len() >= IDENTITY_BUDGET && !self.classes.contains_key(&vehicle.class) {
-                self.classes.clear();
-            }
-            let next_class = self.classes.len();
-            Class {
-                id: *self
-                    .classes
-                    .entry(vehicle.class.clone())
-                    .or_insert(ClassId(u32::try_from(next_class).unwrap_or(u32::MAX))),
-                name: vehicle.class.clone(),
-            }
+            .or_insert_with(|| {
+                let id = DriverId(self.next_driver);
+                self.next_driver += 1;
+                id
+            });
+        let class = (!vehicle.class.is_empty()).then(|| Class {
+            id: *self
+                .classes
+                .entry(vehicle.class.clone())
+                .or_insert_with(|| {
+                    let id = ClassId(self.next_class);
+                    self.next_class += 1;
+                    id
+                }),
+            name: vehicle.class.clone(),
         });
         let gap = |seconds: Option<f64>, laps: u32| {
             if laps > 0 {
@@ -642,6 +663,74 @@ mod tests {
 
     fn translator() -> Translator {
         Translator::new(SourceKind::Replay)
+    }
+
+    #[test]
+    fn identity_budget_preserves_active_drivers_and_classes_without_aliasing() {
+        let mut t = translator();
+        let first = observe(&mut t, REAL_44, ms(0));
+        for index in t.drivers.len()..IDENTITY_BUDGET {
+            t.drivers.insert(
+                format!("retired-driver-{index}"),
+                DriverId(u32::try_from(index).unwrap()),
+            );
+        }
+        for index in t.classes.len()..IDENTITY_BUDGET {
+            t.classes.insert(
+                format!("retired-class-{index}"),
+                ClassId(u32::try_from(index).unwrap()),
+            );
+        }
+        let mut frame = with_time(first.origin.source_time.unwrap().as_secs_f64() + 1.0);
+        // Segundo coche: el primero ya habrá conservado su identidad en la foto.
+        let second = SCORING_BASE + 584;
+        for (at, size, name) in [
+            (second + 4, 32, "new-driver"),
+            (second + 200, 32, "new-class"),
+        ] {
+            frame[at..at + size].fill(0);
+            frame[at..at + name.len()].copy_from_slice(name.as_bytes());
+        }
+        let after = observe(&mut t, &frame, ms(16));
+        assert_eq!(after.state.cars[0].driver.id, first.state.cars[0].driver.id);
+        assert_eq!(
+            after.state.cars[0].class.as_ref().unwrap().id,
+            first.state.cars[0].class.as_ref().unwrap().id
+        );
+        for car in &after.state.cars[2..] {
+            assert_ne!(
+                after.state.cars[1].driver.id, car.driver.id,
+                "nombres distintos requieren IDs distintos"
+            );
+            assert_ne!(
+                after.state.cars[1].class.as_ref().unwrap().id,
+                car.class.as_ref().unwrap().id
+            );
+        }
+        assert_ne!(after.state.cars[0].driver.id, after.state.cars[1].driver.id);
+        assert_ne!(
+            after.state.cars[0].class.as_ref().unwrap().id,
+            after.state.cars[1].class.as_ref().unwrap().id
+        );
+        assert!(t.drivers.len() <= IDENTITY_BUDGET && t.classes.len() <= IDENTITY_BUDGET);
+    }
+
+    #[test]
+    fn exhausted_identity_counters_reject_the_frame_without_wrapping() {
+        let mut t = translator();
+        let first = observe(&mut t, REAL_44, ms(0));
+        let frame = with_time(first.origin.source_time.unwrap().as_secs_f64() + 1.0);
+        t.next_driver = u32::MAX;
+        assert_eq!(
+            t.observe(&frame, BUILD, ms(16)).unwrap_err(),
+            Rejection::InvalidActiveGrid
+        );
+        t.next_driver = 0;
+        t.next_class = u32::MAX;
+        assert_eq!(
+            t.observe(&frame, BUILD, ms(32)).unwrap_err(),
+            Rejection::InvalidActiveGrid
+        );
     }
 
     fn observe(translator: &mut Translator, frame: &[u8], at: Duration) -> Observation {

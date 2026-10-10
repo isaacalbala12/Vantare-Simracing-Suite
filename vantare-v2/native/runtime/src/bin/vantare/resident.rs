@@ -130,16 +130,22 @@ impl Owner {
     }
 
     fn reload(&mut self) {
-        let missing = !self.path.exists();
-        let bytes = match std::fs::metadata(&self.path) {
+        self.reload_with_metadata(|path| std::fs::metadata(path));
+    }
+
+    fn reload_with_metadata(
+        &mut self,
+        metadata: impl FnOnce(&std::path::Path) -> std::io::Result<std::fs::Metadata>,
+    ) {
+        let (missing, bytes) = match metadata(&self.path) {
             Ok(_) => match files::read(&self.path, files::MAX_DOCUMENT) {
-                Ok(bytes) => bytes,
+                Ok(bytes) => (false, bytes),
                 Err(error) => {
                     self.status.error = Some(error);
                     return;
                 }
             },
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => vec![],
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => (true, vec![]),
             Err(error) => {
                 self.status.error = Some(format!("leer Launcher: {error}"));
                 return;
@@ -387,6 +393,28 @@ impl Owner {
 mod tests {
     use super::*;
     use std::{fs, sync::mpsc};
+
+    #[test]
+    fn removal_between_existence_and_metadata_is_a_missing_document() {
+        let dir =
+            std::env::temp_dir().join(format!("vantare-resident-remove-{}", std::process::id()));
+        fs::create_dir(&dir).expect("directorio propio");
+        let path = dir.join("launcher.json");
+        fs::write(&path, b"{}").expect("archivo propio");
+        let mut owner = Owner::new(path, false);
+        owner.reload_with_metadata(|path| {
+            fs::remove_file(path).expect("eliminación concurrente controlada");
+            fs::metadata(path)
+        });
+        let error = owner.status.error.clone();
+        let empty = owner.document.profiles.is_empty();
+        fs::remove_dir_all(dir).expect("limpiar directorio propio");
+        assert!(
+            error.is_none(),
+            "un archivo ausente no es JSON corrupto: {error:?}"
+        );
+        assert!(empty);
+    }
 
     #[test]
     fn ipc_launch_consumes_request_and_runs_the_shared_chain_without_hub() {

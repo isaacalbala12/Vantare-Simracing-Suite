@@ -101,8 +101,12 @@ impl Host {
                         {
                             continue;
                         }
-                        let _served =
-                            serve(&mut pipe, &state, &stop, &cancellation, &signing, &options);
+                        if let Err(error) =
+                            serve(&mut pipe, &state, &stop, &cancellation, &signing, &options)
+                        {
+                            // No imprimir nonce, comandos ni datos del Hub.
+                            eprintln!("vantare: canal de servicios cerrado: {:?}", error.kind());
+                        }
                         set_signing_in(&signing, false);
                         if let Ok(mut state) = state.lock() {
                             finish(&mut state);

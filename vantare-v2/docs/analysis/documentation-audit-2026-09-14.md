@@ -31,7 +31,7 @@ Las revisiones independientes detectaron y motivaron correcciones de orden build
 
 ## Consolidación y conservación
 
-**21 documentos** sustituidos se reducen a referencias actuales con enlace al original completo por SHA. No se pierde el historial: el [inventario](../documentation-inventory.md) enumera cada documento y sucesor; el [TSV por archivo](documentation-audit-2026-09-14.tsv) conserva tratamiento, motivo, nivel de revisión y hash de la base.
+**21 documentos** sustituidos se reducen a referencias actuales con enlace al original completo por SHA. No se pierde el historial: el [inventario (histórico)](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/documentation-inventory.md) enumera cada documento y sucesor; el [TSV por archivo](documentation-audit-2026-09-14.tsv) conserva tratamiento, motivo, nivel de revisión y hash de la base.
 
 Solo se retiran dos logs generados sin referencias (`vite-output.txt`, `frontend/test_output.txt`) y la skill `vantare-core` explícitamente desautorizada por AGENTS. No se elimina código, licencias, fixtures, contratos de rollback ni evidencia original. No cambian workflows, dependencias ni gates; el único JSON modificado es el roadmap editorial derivado.
 

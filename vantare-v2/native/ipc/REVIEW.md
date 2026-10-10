@@ -1,3 +1,5 @@
+> Evidencia histórica de #1428; contrato vigente en [README nativo](../README.md). Estados, versiones DTO y gates siguientes describen su corte, no la base actual.
+
 # Segunda ronda de señales — #1428 / #1427
 
 Worker Codex; revisión pendiente de Claude Opus 5.5. Rama

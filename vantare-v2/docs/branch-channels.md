@@ -124,7 +124,7 @@ fase de activación y autorización expresa de Isaac.
 El lint de archivos cambiados y el visual de Testing Center son bloqueantes
 solo en el PR automático `tc-*`, calculados contra el primer padre real del
 merge sintético. El evento `merge_group` no expone la rama fuente original:
-revalida Go, frontend y Windows/Wails, mientras la futura activación deberá
+revalida Go, frontend y Windows/Wails (revalidación histórica del stack retirado; gates actuales en `native/README.md`), mientras la futura activación deberá
 exigir los checks exactos ya emitidos sobre el `head_sha` atestado antes de
 encolar. El lint global de los canales humanos continúa advisory por su deuda
 inventariada.

@@ -18,7 +18,7 @@ y guardarse los documentos: un formulario Strategy sin confirmar, un conflicto
 o un error de escritura mantiene el Hub abierto y muestra el error. La preservación
 de datos tiene prioridad incluso si el juego ya está activo; tras resolverlo,
 se puede cerrar manualmente. El Hub no es hijo del launcher. Live exige origen `SourceKind::Live` **y**
-`state.source_state == SourceState::Live` (DTO v4). Waiting, Stale, Lost y
+`state.source_state == SourceState::Live` (DTO v9). Waiting, Stale, Lost y
 Replay no cierran; primera foto Live establece referencia y tampoco cierra.
 El cierre cancela el Subscriber, sin parar núcleo, overlays ni Engineer.
 La escena del Workshop no participa en esta decisión. La entrada física
@@ -210,7 +210,7 @@ por usuario de IPC. Desde native, después de construir el binario:
 Usa una copia y datos temporales propios más un pipe sin productor para
 comprobar proceso vivo, guardado y salida total por EOF. No lanza núcleo ni
 juego ni demuestra entrada al juego, paridad, DPI/OBS o presupuesto de memoria.
-La condición de cierre usa DTO v4 y el Studio usa la API común de layout.
+La condición de cierre usa DTO v9 y el Studio usa la API común de layout.
 El smoke usa una ruta de layout aislada y no lee el layout personal.
 
 ## Kit visual

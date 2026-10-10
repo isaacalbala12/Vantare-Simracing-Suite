@@ -454,5 +454,8 @@ fn game_exit_still_cancels_unprotected_io_before_waiting_for_the_supervisor() {
     let cancelled = event.wait(Duration::from_secs(5));
     drop(guard);
     assert!(worker.join().expect("game closer"));
-    assert!(cancelled, "unprotected remote I/O must still be interrupted");
+    assert!(
+        cancelled,
+        "unprotected remote I/O must still be interrupted"
+    );
 }

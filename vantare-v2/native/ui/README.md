@@ -1,8 +1,7 @@
 # ui — overlays GPUI
 
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
-cola de `AGENTS.md` (en esta ola, `C:/tmp/fase2/compilar.ps1`; normalmente,
-`native/scripts/compilar.ps1`). Usar target aislado y `-j 2`.
+cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. Usar target aislado y `-j 2`.
 
 GPUI de Zed (rev `72d28c32`, la del prototipo de paridad ISA-1410) usado
 directamente; el crate añade la integración Win32 (`overlay.rs`: transparencia,
@@ -37,8 +36,8 @@ Los elementos propios de Standings siguen en `standings/`. Pedales conserva su f
 `src/vantare/{style,paint,motion,columns}.rs` y `styles/vantare.json` contienen
 el kit compartido Vantare. Standings, Relative, Delta y Fuel ofrecen
 `DesignSystem` Eficiencia/Vantare. Workshop recarga el estilo sin otro renderer.
-El seam de una proyección y un estado por widget con N Looks está **en curso,
-#1531**; esta base todavía mantiene dos vías. No duplicar proyecciones al portar.
+Una proyección y un estado por widget con N Looks están integrados (#1531):
+Board y Motion comunes, con una sola presentación activa. No duplicar proyecciones al portar.
 `registry.rs` aún adapta manualmente `frame_with_motion(prefs, reduced)` y la
 cadencia de widgets con movimiento; justificar cambios en ese seam, no extenderlo
 silenciosamente. La política de movimiento la decide el host.
@@ -173,7 +172,7 @@ nativo por instancia; `Vm::from_domain` conserva el cálculo histórico de posic
 de clase por orden y la lectura de números desde texto para las animaciones.
 La paridad de estas fotos no demuestra telemetría live, OBS, DPI mixto ni estados
 en movimiento. Estos aspectos requieren la revisión y pruebas del orquestador.
-Notion no está disponible según el encargo: reconciliación pendiente por el
+Histórico: Notion no está disponible según el encargo: reconciliación pendiente por el
 orquestador. Entrega local en `vantareapp/isa-1427-w-standings2`, base `13dc3b22`,
 sin push, PR, CI remoto, integración ni promoción.
 
@@ -186,7 +185,7 @@ fase 2 se corrige en la entrega anterior del 2026-09-30; los valores de este
 registro corresponden a la base de infraestructura.
 
 Seguimiento de este lote: [GitHub #1427](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427),
-base `c0cd37e7`, rama `vantareapp/isa-1427-f2-infra`. Notion no disponible según
+Histórico: base `c0cd37e7`, rama `vantareapp/isa-1427-f2-infra`. Notion no disponible según
 el encargo de Isaac del 2026-09-29; queda pendiente su reconciliación por el
 orquestador. Este worker solo entrega commits locales, sin push/PR/promoción.
 
@@ -574,7 +573,7 @@ o Desktop. Las escenas con varias fases tienen anterior/siguiente, pausa,
 bucle y deslizador; cambiar de fase reconstruye el estado desde el principio.
 Guardar `styles/standings.json` sigue recargando el estilo en el mismo proceso.
 
-`fixtures/*.scene.json` son 43 demostraciones exportadas del Workshop React,
+`fixtures/*.scene.json` son 43 demostraciones exportadas del Workshop React histórico,
 no telemetría real. `workshop-sources.json` registra procedencia y límites.
 El exportador React se retiró en #1533. Las escenas y su procedencia siguen
 congeladas; el Workshop nativo usa estos documentos. La herramienta Python de

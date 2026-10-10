@@ -15,14 +15,10 @@ sigue vigente y conserva evidencia técnica. El estado operativo vive en GitHub 
 
 ## Orden de lectura obligatorio
 
-1. Issue de GitHub y proyecto Vantare, con acceso comprobado.
-2. `AGENTS.md` actualizado desde origin/nightly, este documento.
-3. `product-contract.md`.
-4. `project-map.md`.
-5. `execution-policy.md`.
-6. `../branch-channels.md` cuando haya ramas, promociones o releases.
-7. El handoff del proyecto asignado en `handoffs/`.
-8. La issue vigente, el ADR, `../roadmap-maintenance.md` y el plan vigente.
+1. AGENTS de `origin/nightly` actualizado, issue GitHub y GitHub Project Vantare.
+2. Contrato de producto y políticas aplicables; canales si hay Git/CI/releases.
+3. `native/README.md`, README del crate y ADR/plan adoptado por la issue.
+4. Único handoff del área, contrastado con la issue y el código.
 
 Si dos documentos se contradicen:
 
@@ -36,9 +32,6 @@ Si dos documentos se contradicen:
 No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad.
 
 ## Documentos
-
-- `notion-transition.md`: histórico, sustituido por GitHub Issues (#1503).
-- `notion-document-audit.md`: auditoría histórica del tracker anterior.
 
 - `product-contract.md`: alcance, experiencia, licencias, privacidad e idiomas.
 - `project-map.md`: módulos, fronteras y caminos de datos; el estado operativo vive en GitHub Issues.
@@ -84,3 +77,7 @@ No se usa la skill `vantare-core`: está desactualizada y no es fuente de verdad
   el estado operativo; Codex actualiza el roadmap público cuando Isaac lo solicita.
 - Testing Center es un proyecto independiente y no se mezcla con la
   orquestacion de los modulos de producto salvo que una issue lo indique.
+
+## Histórico del tracker
+
+Retirado con autorización en #1561: [transición](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/notion-transition.md) y [auditoría](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/notion-document-audit.md). GitHub Issues es la autoridad operativa.

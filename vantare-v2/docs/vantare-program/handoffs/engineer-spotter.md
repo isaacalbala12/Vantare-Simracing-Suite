@@ -1,5 +1,13 @@
 # Handoff vivo — Engineer/Spotter
 
+## #1536 · integración R2 local validada (2026-10-10)
+
+13 merges --no-ff en orden autorizado sobre 026c1207, con 13/13 checks por cola PASS. Código validado ca8afd7205e3820d38341a2559002ac56004428c; árbol native 9c57fd70fda86dc7b0c494cfed1c2aa1cc4b9d1f. Fmt y Clippy -D warnings PASS; Nextest 1502/1502 (7 skips del perfil), lifecycle 18/18 y telemetría 23/23 (2 ignorados de #1537) PASS. 94 tests nuevos conservados con cuerpos idénticos. Engineer recovery/status_process pasa sin flake ni reintento.
+
+Integra #1543: checkpoint con temporales únicos, rechazo de voz Unsupported antes de I/O y primer resultado de autoridad con plazo explícito. Conflicto recovery resuelto conservando guardias Windows/DPAPI de 026c1207 y arnés con stderr drenado/diagnóstico; test de autoridad lenta activo en Windows. recovery/status_process pasó tanto antes como después del ajuste ACC; no hizo falta repetición serial por flake. Linux/macOS no ejecutados.
+
+Rama vantareapp/isa-1536-arreglos-revision. Tracker: [GitHub #1536](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1536), area:plataforma, Project Vantare, issue abierta. Buzón vivo C:/tmp/buzon/integracion-r2.md; informe C:/tmp/review-full/informe-integracion-r2.md (12 líneas), detalles conflictos-r2.md y logs final-*.log. Siguiente: petición explícita del PR a nightly; hilo/issue abiertos. Sin delegación, push, PR, promoción ni release; #1550 intacto.
+
 > **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
 > Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
 > cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y

@@ -1,5 +1,13 @@
 ## #1496 — promoción a nightly autorizada el 2026-10-10
 
+## #1536 · integración R2 local validada (2026-10-10)
+
+13 merges --no-ff en orden autorizado sobre 026c1207, con 13/13 checks por cola PASS. Código validado ca8afd7205e3820d38341a2559002ac56004428c; árbol native 9c57fd70fda86dc7b0c494cfed1c2aa1cc4b9d1f. Fmt y Clippy -D warnings PASS; Nextest 1502/1502 (7 skips del perfil), lifecycle 18/18 y telemetría 23/23 (2 ignorados de #1537) PASS. 94 tests nuevos conservados con cuerpos idénticos. Engineer recovery/status_process pasa sin flake ni reintento.
+
+Integra #1540/#1545/#1541/#1546 y el Hub de #1544/#1548. Los conflictos de tests conservan cierre de todos los perfiles y aviso de reintento. Workshop mantiene persistencia concurrente/recarga acotada y ambos ejes de preview; Studio conserva captura vacía y omisión de frames ocultos. La recepción/proyección de replays de #1537 participa en Nextest. Sin QA visual nueva; pantalla-ocupada respetada.
+
+Rama vantareapp/isa-1536-arreglos-revision. Tracker: [GitHub #1536](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1536), area:plataforma, Project Vantare, issue abierta. Buzón vivo C:/tmp/buzon/integracion-r2.md; informe C:/tmp/review-full/informe-integracion-r2.md (12 líneas), detalles conflictos-r2.md y logs final-*.log. Siguiente: petición explícita del PR a nightly; hilo/issue abiertos. Sin delegación, push, PR, promoción ni release; #1550 intacto.
+
 Isaac autoriza expresamente PR, push, squash a nightly y prerelease nativa <0.1.
 Base local 8e844c9d y origen nightly 2148bf7e: se incorpora la base sin perder
 la integración. Conflictos solo documentales: AGENTS conserva Rust/GitHub y la

@@ -1,5 +1,13 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1536 · integración R2 local validada (2026-10-10)
+
+13 merges --no-ff en orden autorizado sobre 026c1207, con 13/13 checks por cola PASS. Código validado ca8afd7205e3820d38341a2559002ac56004428c; árbol native 9c57fd70fda86dc7b0c494cfed1c2aa1cc4b9d1f. Fmt y Clippy -D warnings PASS; Nextest 1502/1502 (7 skips del perfil), lifecycle 18/18 y telemetría 23/23 (2 ignorados de #1537) PASS. 94 tests nuevos conservados con cuerpos idénticos. Engineer recovery/status_process pasa sin flake ni reintento.
+
+Integra #1542/#1548. Conserva ambas entregas, los dos tests de sender y recuperación OAuth/checkout, cuarentena y límite específico de adjuntos. Publicación atómica de crashes y descarte de slots inválidos coexisten. Unix legacy binding y discovery mantienen Unsupported; Windows es la plataforma acreditada por estos gates. Sin servicios reales auth/billing ni migración real.
+
+Rama vantareapp/isa-1536-arreglos-revision. Tracker: [GitHub #1536](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1536), area:plataforma, Project Vantare, issue abierta. Buzón vivo C:/tmp/buzon/integracion-r2.md; informe C:/tmp/review-full/informe-integracion-r2.md (12 líneas), detalles conflictos-r2.md y logs final-*.log. Siguiente: petición explícita del PR a nightly; hilo/issue abiertos. Sin delegación, push, PR, promoción ni release; #1550 intacto.
+
 ## #1542 — recuperación Services/Launcher (2026-10-10)
 
 Worktree `C:/tmp/vw3-1542/vantare-v2`, rama `vantareapp/isa-1542-services`,

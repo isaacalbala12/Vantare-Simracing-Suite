@@ -1,5 +1,13 @@
 # Handoff vivo — Telemetry Core
 
+## #1536 · integración R2 local validada (2026-10-10)
+
+13 merges --no-ff en orden autorizado sobre 026c1207, con 13/13 checks por cola PASS. Código validado ca8afd7205e3820d38341a2559002ac56004428c; árbol native 9c57fd70fda86dc7b0c494cfed1c2aa1cc4b9d1f. Fmt y Clippy -D warnings PASS; Nextest 1502/1502 (7 skips del perfil), lifecycle 18/18 y telemetría 23/23 (2 ignorados de #1537) PASS. 94 tests nuevos conservados con cuerpos idénticos. Engineer recovery/status_process pasa sin flake ni reintento.
+
+Integra #1537/#1538/#1547/#1539/#1549. ACC combina rechazo UDP tolerante y detección de conexión; Nextest inicial detectó que un ACK negativo retira velocidades antes de InvalidData. El ajuste de integración separa cambios de muestras y necesidad de reconstruir: conserva socket/liveness y no publica un rechazo sin diferencias. Nueve focales ACC en serie PASS. El test heredado de transporte adapta assert!(changed) a .0, con idéntica exigencia. Los dos tests ignorados de #1537 (gaps LMU práctica y posiciones ACC transitorias) siguen pendientes; corpus/goldens intactos.
+
+Rama vantareapp/isa-1536-arreglos-revision. Tracker: [GitHub #1536](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1536), area:plataforma, Project Vantare, issue abierta. Buzón vivo C:/tmp/buzon/integracion-r2.md; informe C:/tmp/review-full/informe-integracion-r2.md (12 líneas), detalles conflictos-r2.md y logs final-*.log. Siguiente: petición explícita del PR a nightly; hilo/issue abiertos. Sin delegación, push, PR, promoción ni release; #1550 intacto.
+
 ## #1538 — correcciones runtime LMU/ACC de la revisión #1536 — 2026-10-10
 
 Worktree `C:/tmp/vw3-1538/vantare-v2`, rama `vantareapp/isa-1538-runtime`,

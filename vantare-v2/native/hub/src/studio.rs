@@ -3198,7 +3198,7 @@ mod tests {
                     "el inspector debe reconstruirse tras ocultar desde la tira"
                 );
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -3273,7 +3273,7 @@ mod tests {
                     &layout
                 );
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -3348,7 +3348,7 @@ mod tests {
                     "no history during preview"
                 );
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -3394,7 +3394,7 @@ mod tests {
                 assert_eq!(studio.size_fields, controls);
                 assert!((controls[0].1.read(cx).range.value - f64::from(size.0)).abs() < 0.001);
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -3428,7 +3428,7 @@ mod tests {
                 studio.editor.undo().expect("undo adding");
                 assert!(studio.editor.layout().instances.is_empty());
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -3480,7 +3480,7 @@ mod tests {
                 studio.finish_drag(gpui::point(px(500.0), px(500.0)), cx);
                 assert_eq!(studio.editor.layout(), &initial);
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -3513,7 +3513,7 @@ mod tests {
                     });
                 }
             }
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -3539,7 +3539,7 @@ mod tests {
                 });
             }
             assert!(sizes.windows(2).all(|pair| pair[0] == pair[1]));
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -3583,7 +3583,7 @@ mod tests {
                     });
                 }
             }
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -3612,7 +3612,7 @@ mod tests {
                 studio.example = true;
                 assert_eq!(studio.preview_snapshot(Kind::Standings), &photo);
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -3636,7 +3636,7 @@ mod tests {
                 assert!(!node.supports_action(gpui::AccessibleAction::Click));
                 assert!(!node.supports_action(gpui::AccessibleAction::Focus));
             }
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -3806,7 +3806,7 @@ mod tests {
                     assert_eq!(studio.frames[0].1.read(cx).item, instances[0]);
                 }
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -4069,7 +4069,7 @@ mod tests {
                 studio.editor.undo().expect("añadir");
                 assert!(studio.editor.layout().instances.is_empty());
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -4114,7 +4114,7 @@ mod tests {
                 studio.editor.undo().expect("añadir");
                 assert!(studio.editor.layout().instances.is_empty());
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -4132,7 +4132,7 @@ mod tests {
                 assert_eq!(studio.editor.layout(), &original);
                 assert!(studio.frames[0].1.read(cx).opacity_preview.is_none());
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]
@@ -4164,7 +4164,7 @@ mod tests {
                 studio.editor.undo().expect("solo deshace añadir");
                 assert!(studio.editor.layout().instances.is_empty());
             });
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
     #[test]

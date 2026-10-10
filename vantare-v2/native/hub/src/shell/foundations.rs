@@ -1677,7 +1677,7 @@ mod catalog_tests {
             }
             previews.ingest(&Snapshot::default(), cx);
             assert_eq!(layout, original);
-            cx.quit();
+            crate::quit_headless_test(cx);
         });
     }
 }

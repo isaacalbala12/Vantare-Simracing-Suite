@@ -1,5 +1,59 @@
 ## #1496 — promoción a nightly autorizada el 2026-10-10
 
+## #1536 · reproducción completa y cierre de los harness restantes (#1557)
+
+Run 38038591143 de c70a46e6 cancelado por encargo de Isaac tras 85 min.
+El log acredita los ocho purchase_tests PASS (dos originales 0,128/0,024 s).
+Los dos nuevos bloqueos fueron Home catalog y Strategy isa1544 automatic (>3900 s).
+La corrección previa cubrió purchase_tests pero dejó incompleta la
+recuperación de986b026a y no cubrió los harness nuevos de las rondas.
+
+Antes de editar se compiló la copia archivada de c70 en WSL Ubuntu26.04:
+purchase_tests 8/8 PASS. El comando aislado requiere activar
+vantare-services/network para igualar la unificación del workspace de CI;
+sin esa feature no compila Hub, observación fuera de este arreglo.
+Se reprodujeron los dos bloqueos con los tests reales. gdb -p 3073/3074,
+thread apply all bt, muestra ambos hilos de test esperando en epoll_wait,
+Calloop::run y LinuxPlatform::run; ninguna espera de canal o del solver.
+La primera pila de Strategy también conserva la carga inicial de imagen
+antes de alcanzar la espera. Logs y pilas en C:/tmp/review-1557-linux.
+SSH 192.168.1.57 timeout; WSL accesible, Rust 1.95.0/Nextest 0.9.146 y target
+propios. La reproducción agotó su plazo externo de 180 s: ambos tests
+fallaron por SIGTERM tras 178,9 s, después de capturar las pilas.
+
+Home perdió el helper diferido de 986b026a al resolver nightly; Studio perdió
+quince llamadas del mismo cambio. Blame de with_strategy identifica 8717910d
+(#1544), ausente en nightly, con cierre síncrono. Se restablece el helper
+existente en Home, los dieciséis tests de Studio (incluido el nuevo) y el
+harness común de seis tests de Strategy: 18 llamadas, 23 casos headless.
+Calloop reinicia stop=false al entrar; el cierre debe llegar desde el bucle.
+Cambios solo cfg(test), sin alterar aserciones, producto, dependencias,
+ignores, filtros, corpus, goldens ni CI. Hub Linux 400/400 PASS en 34,422 s,
+Home 0,032 s y Strategy automatic 9,128 s. #1558 espera native-linux SUCCESS
+antes de merge normal/push; sin merge de PR ni release.
+
+La comprobación adicional del workspace Linux detectó dos diferencias:
+RUST_TEST_THREADS=1 heredado del runbook Windows cambia la línea IPC_READY
+del hijo; se reproduce CI con NEXTEST_TEST_THREADS=1 y sin aquella variable,
+y el test de identidad IPC pasa sin cambios. En WSL con XDG_RUNTIME_DIR
+/run/user/1000, el nuevo test de callback de #1548 usa un nombre de socket
+que excede sockaddr_un. Se acorta únicamente su prefijo login-error- a le-,
+conservando random_id completo (256 bits), el listener real, las tres
+respuestas IPC, el callback HTTP y todas las aserciones. El caso falla antes
+y pasa en 0,012 s después. No se cambia transporte ni autenticación de producto.
+Logs fallidos conservados. Workspace Linux en serie como CI: 1381/1381 PASS
+en 167,363 s, 3 skips heredados; lifecycle 10/10 aplicables a Linux PASS.
+Check/fmt/Clippy -D warnings Windows repetidos PASS. El primer enlace de
+Nextest chocó con telemetry_golden.exe todavía activo en el mismo target:
+falló antes de ejecutar tests. Tras terminar telemetría se repitieron en
+serie Nextest 1526/1526 (7 skips heredados; 208,854 s) y lifecycle 18/18 PASS.
+Recovery/status_process sin flake ni reintentos. Telemetría 25/25, 0 skips,
+820,760 s; runtime/domain/IPC/UI/fixtures idénticos antes/después del cambio
+del prefijo cfg(test). Retirada 456 SHA-256 PASS. Árbol native final
+69ba43abb3fb5e052bbc9c492db8ba17426a487d; evidencia C:/tmp/review-1557-linux.
+Publicación en el draft #1557 sobre nightly; nueva CI pendiente. Tras
+native-linux SUCCESS, merge normal a #1558 y push. No se fusionan PRs.
+
 ## #1536 · cierre headless de purchase_tests en Linux (#1557)
 
 El run 38031923823 se canceló a los 90 minutos con dos purchase_tests por

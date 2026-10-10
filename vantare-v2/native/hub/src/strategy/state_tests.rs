@@ -11,7 +11,7 @@ fn with_strategy(name: &str, test: impl FnOnce(&mut Strategy, &mut Context<Strat
         );
         let strategy = cx.new(|cx| Strategy::new(directory, cx));
         strategy.update(cx, test);
-        cx.quit();
+        crate::quit_headless_test(cx);
     });
 }
 

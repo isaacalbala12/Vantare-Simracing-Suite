@@ -773,7 +773,7 @@ mod tests {
         let mut app = App::new(config, root.clone());
         app.account = Some(account);
         app.store = Some(store);
-        let name = format!("login-error-{}", crate::random_id().expect("pipe id"));
+        let name = format!("le-{}", crate::random_id().expect("pipe id"));
         let stop = Arc::new(Event::new().expect("event"));
         let mut listener = Listener::new(&name, Arc::clone(&stop), Duration::from_secs(5))
             .expect("local IPC listener");

@@ -18,7 +18,7 @@ anteriores y la procedencia; conserva source_sha256 y la migración #1530.
 Verificador, tests, corpus fuente y baselines históricos intactos: 456/456
 huellas y 31 tests de tooling PASS. Gates nativos tras nightly: fmt PASS; Clippy -D warnings PASS; Nextest 1526/1526 (7 skips heredados de la suite general); lifecycle 18/18; telemetría 25/25 (0 skips). Recovery/status_process sin fallos ni reintentos. Fmt, Clippy y Nextest se repitieron tras recuperar el harness headless. Código/harness probado d3ff5919e3e819b92ec563f90364eabbb076439d; árbol native cbc10c77dca49a6122e6cdc4798dd4aea8271ab3.
 
-Canal actual: rama de issue, PR a nightly PENDIENTE. Autorizados push y PR;
+Canal actual: rama de issue publicada; PR draft a nightly https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557. El estado vigente de CI se consulta en los checks del PR; no fusionar. Autorizados push y PR;
 esperar CI y dejar el PR abierto sin fusionarlo. #1531 sigue aparte hasta su
 revisión. Buzón C:/tmp/buzon/integracion-r2.md; informe y logs en
 C:/tmp/review-full/. Sin delegación, release ni QA visual nueva; se respeta

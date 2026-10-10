@@ -144,8 +144,8 @@ fn real_corpus_conformance_and_neutral_projections() {
                 core.observe(o.clone()).expect("núcleo neutral acepta ACC");
                 let snapshot = core.snapshot();
                 let vm = standings::project(&snapshot, Preferences::default());
-                assert_eq!(vm.rows.len(), 32);
-                assert_eq!(vm.rows.iter().filter(|r| r.is_player).count(), 1);
+                assert_eq!(vm.rows().len(), 32);
+                assert_eq!(vm.rows().iter().filter(|r| r.is_player).count(), 1);
                 assert_eq!(vm.flag, Some(FlagKind::Green));
                 let pedals = pedals::project(&snapshot, Preferences::default());
                 assert_eq!(pedals.throttle, Some(0.0));

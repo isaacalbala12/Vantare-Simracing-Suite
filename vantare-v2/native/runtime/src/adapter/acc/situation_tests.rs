@@ -62,7 +62,7 @@ fn feed(t: &mut Translator, core: &mut Core, pages: &[Vec<u8>; 3], at: u64, pack
 }
 
 #[test]
-fn real_acc_live_and_explicit_pause_replay_pit_stop_moving_and_absence_transitions() {
+fn real_acc_stopped_pit_lane_stays_visible_and_pause_replay_need_explicit_status() {
     let mut p = pages();
     assert_eq!(
         i32::from_le_bytes(p[1][4..8].try_into().expect("status")),
@@ -74,8 +74,8 @@ fn real_acc_live_and_explicit_pause_replay_pit_stop_moving_and_absence_transitio
     assert_eq!(feed(&mut t, &mut core, &p, 0, 1), S::Unknown);
     assert_eq!(
         feed(&mut t, &mut core, &p, 250, 250),
-        S::Garage,
-        "corpus real: parado en pit lane"
+        S::Unknown,
+        "corpus real: parado en pit lane no acredita garaje"
     );
     for (status, expected, start) in [(3_i32, S::Paused, 260), (1, S::Replay, 520)] {
         p[1][4..8].copy_from_slice(&status.to_le_bytes());
@@ -106,8 +106,8 @@ fn real_acc_live_and_explicit_pause_replay_pit_stop_moving_and_absence_transitio
         "pit lane conduciendo"
     );
     p[0][28..32].copy_from_slice(&0.0_f32.to_le_bytes());
-    assert_eq!(feed(&mut t, &mut core, &p, 790, 790), S::OnTrack);
-    assert_eq!(feed(&mut t, &mut core, &p, 1040, 1040), S::Garage);
+    assert_eq!(feed(&mut t, &mut core, &p, 790, 790), S::Unknown);
+    assert_eq!(feed(&mut t, &mut core, &p, 1040, 1040), S::Unknown);
     p[0][28..32].copy_from_slice(&f32::NAN.to_le_bytes());
     assert_eq!(
         feed(&mut t, &mut core, &p, 1050, 1050),

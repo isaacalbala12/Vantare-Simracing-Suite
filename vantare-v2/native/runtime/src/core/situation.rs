@@ -49,17 +49,23 @@ impl Tracker {
         let candidate = match state.source_state {
             SourceState::Waiting | SourceState::Stale | SourceState::Lost => Situation::Unknown,
             SourceState::Paused => Situation::Paused,
-            SourceState::Live if state.driving_situation == Situation::Replay => Situation::Replay,
+            SourceState::Live
+                if matches!(
+                    state.driving_situation,
+                    Situation::Garage | Situation::Replay | Situation::OnTrack
+                ) =>
+            {
+                state.driving_situation
+            }
             SourceState::Live => {
                 let pit = state.player_car().and_then(|car| reliable(&car.in_pits));
                 let player = state.player.as_ref();
                 let speed = player.and_then(|p| reliable(&p.telemetry.speed_mps));
-                let stopped = player.and_then(|p| reliable(&p.pit_stop_stopped));
-                match (pit, speed, stopped) {
-                    (_, Some(speed), _) if speed > 0.5 => Situation::OnTrack,
-                    (Some(true), Some(speed), _) if speed <= 0.5 => Situation::Garage,
-                    (Some(true), None, Some(true)) => Situation::Garage,
-                    (Some(false), _, _) => Situation::OnTrack,
+                // Pits y velocidad no distinguen garaje de servicio/cola parada.
+                // Solo el adapter puede aportar evidencia explícita de Garage.
+                match (pit, speed) {
+                    (_, Some(speed)) if speed > 0.5 => Situation::OnTrack,
+                    (Some(false), _) => Situation::OnTrack,
                     _ => Situation::Unknown,
                 }
             }
@@ -116,18 +122,19 @@ mod tests {
     }
 
     #[test]
-    fn stop_settles_and_moving_pit_lane_restores_immediately() {
+    fn only_explicit_garage_settles_and_absence_restores_immediately() {
         let mut t = Tracker::default();
-        for (at, speed, expected) in [
-            (0, 0.0, Situation::Unknown),
-            (249, 0.0, Situation::Unknown),
-            (250, 0.0, Situation::Garage),
-            (251, 5.0, Situation::OnTrack),
-            (252, 0.0, Situation::OnTrack),
-            (501, 0.0, Situation::OnTrack),
-            (502, 0.0, Situation::Garage),
+        for (at, evidence, expected) in [
+            (0, Situation::Garage, Situation::Unknown),
+            (249, Situation::Garage, Situation::Unknown),
+            (250, Situation::Garage, Situation::Garage),
+            (251, Situation::OnTrack, Situation::OnTrack),
+            (252, Situation::Garage, Situation::OnTrack),
+            (501, Situation::Garage, Situation::OnTrack),
+            (502, Situation::Garage, Situation::Garage),
         ] {
-            let mut s = photo(at, Quality::Reliable(true), Quality::Reliable(speed));
+            let mut s = photo(at, Quality::Reliable(true), Quality::Reliable(0.0));
+            s.state.driving_situation = evidence;
             t.update(&mut s);
             assert_eq!(s.state.driving_situation, expected);
         }
@@ -139,6 +146,20 @@ mod tests {
             let mut s = photo(503, missing, Quality::Reliable(0.0));
             t.update(&mut s);
             assert_eq!(s.state.driving_situation, Situation::Unknown);
+        }
+    }
+
+    #[test]
+    fn stopped_pit_service_or_queue_without_garage_signal_never_hides() {
+        let mut t = Tracker::default();
+        for stopped in [Quality::Reliable(true), Quality::Unavailable] {
+            for at in [0, 250, 500] {
+                let mut s = photo(at, Quality::Reliable(true), Quality::Reliable(0.0));
+                s.state.player.as_mut().expect("player").pit_stop_stopped = stopped;
+                t.update(&mut s);
+                assert_eq!(s.state.driving_situation, Situation::Unknown);
+                assert!(!s.state.driving_situation.off_track());
+            }
         }
     }
 

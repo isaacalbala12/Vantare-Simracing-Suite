@@ -1,17 +1,17 @@
 # Handoff vivo — Telemetry Core
 
-## #1562 · código validado, entrega aislada (2026-10-10)
+## #1562 · garaje explícito, nueva validación en curso (2026-10-10)
 
 Rama `vantareapp/isa-1562-ocultar-fuera-de-pista`, base `ca17545f607b85f5d47dc9d060721b69e6a6a158`.
-Código validado `31d389e00eca285b3029e51dee631e83f3d251e3`; hitos previos `2d392341` y `f108631d`.
+Validación histórica `31d389e00eca285b3029e51dee631e83f3d251e3`; hitos previos `2d392341`, `f108631d`; retirada del instrumento `de85139d`. Hito de garaje explícito preparado; nuevo gate pendiente.
 Informe `C:/tmp/ola2/informe-1562.md`; buzón `C:/tmp/buzon/1562.md`; brief `C:/tmp/ola2/brief-1562.md`.
 
 Situación central, DTO live10 estricto/guardados7..10, histeresis250ms y Unknown siempre visible.
-Ajuste global + excepciones Studio; previews nunca ocultos; pit lane en movimiento visible.
+Ajuste global + excepciones Studio; previews nunca ocultos. Paradas de carrera y colas de pits visibles. Garage exige señal explícita, LMU mInGarageStall scoring+507; cero legacy borrado es ausencia.
 Paridad histórica solo inPit/sessionTypes. Replay LMU sin señal verificada permanece visible.
 Tests con capturas reales y mutaciones explícitas; no certifica simuladores/OBS físicos.
 
-Fmt/Clippy -D warnings PASS; Nextest1588/1588 (7 skips heredados,298.526s), lifecycle18/18 PASS.
+Pasada anterior: fmt/Clippy -D warnings PASS; Nextest1588/1588 (7 skips heredados,298.526s), lifecycle18/18 PASS.
 Telemetría25/25 (0 skips,1043.052s; ACC920.677s); retirement456/456 y anti-slop PASS.
 Instrumento puntual de medida retirado del repo por revisión #1534; evidencia y comando solo en informe.
 Situación/política estable no añade asignaciones por frame, notify ni ingest adelantado;
@@ -20,8 +20,8 @@ Capturas Ajustes1440/1100 y Studio1440 inspeccionadas; logs y límites en inform
 
 #1564: añadir filtro de sesión en la misma sección En pista, combinado Y; helper aislado,
 sin código anticipado. AlwaysVisible no debe saltarse el futuro filtro de sesión.
-Decisión de producto pendiente de Isaac: Garage actual también incluye parada de carrera y cola parada en pit lane. Esperar su respuesta antes de cambiar la regla; no abrir PR.
-Entrega mediante push de esta rama autorizado; sin PR, merge, promoción ni release.
+Isaac resolvió: no ocultar servicio/colas. Regla corregida: focused288+4 PASS, fmt/Clippy -D warnings y lifecycle18/18 PASS. Telemetría24/25 en ejecución; Nextest pendiente al terminar telemetría por bloqueo Windows del exe. Medida externa central9.277ns/call,0 asignaciones; Ajustes1440/1100 actualizados e inspeccionados. Pendiente evidencia positiva LMU no sanitizada solicitada: fixtures actuales borraron+507. Tras gates, FIN y luego PR a nightly autorizados.
+Push de rama autorizado; PR a nightly después de gates y FIN, sin merge/promoción/release.
 
 ## #1536 · destino real de accesos directos en CI Windows (2026-10-10)
 

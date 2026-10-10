@@ -16,10 +16,11 @@ fn fixture(name: &str) -> Observation {
 }
 
 #[test]
-fn real_lmu_garage_pit_outlap_and_missing_session() {
+fn real_lmu_sanitized_garage_and_pit_are_visible_without_an_explicit_signal() {
     for (name, expected) in [
-        ("lmu-1.4-garage-fixture.bin", S::Garage),
-        ("lmu-1.4-pit-fixture.bin", S::Garage),
+        // Ambos fixtures borraron mInGarageStall: no adivinar por el nombre.
+        ("lmu-1.4-garage-fixture.bin", S::Unknown),
+        ("lmu-1.4-pit-fixture.bin", S::Unknown),
         ("lmu-1.4-outlap-fixture.bin", S::OnTrack),
         ("lmu-1.4-menu-fixture.bin", S::Unknown),
     ] {
@@ -43,6 +44,9 @@ fn real_lmu_garage_pit_outlap_and_missing_session() {
 fn lmu_real_scope_does_not_carry_hiding_into_reconnect_or_another_session() {
     let mut core = Core::new(1562);
     let mut garage = fixture("lmu-1.4-garage-fixture.bin");
+    // Mutación explícita del modelo para probar solo el ámbito del núcleo;
+    // no acredita mInGarageStall en esta captura sanitizada.
+    garage.state.driving_situation = S::Garage;
     core.observe(garage.clone()).expect("garaje");
     garage.origin.received_at = Duration::from_millis(250);
     core.observe(garage.clone()).expect("confirmar");

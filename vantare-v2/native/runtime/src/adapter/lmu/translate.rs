@@ -32,6 +32,18 @@ const IDENTITY_BUDGET: usize = 512;
 const CLOCK_WRAP_FROM: Duration = Duration::from_hours(24);
 const CLOCK_WRAP_TO: Duration = Duration::from_mins(1);
 
+fn driving_situation(frame: &Frame, stale: bool) -> vantare_domain::DrivingSituation {
+    use vantare_domain::DrivingSituation;
+    if stale {
+        return DrivingSituation::Unknown;
+    }
+    match frame.player.and_then(|i| frame.vehicles[i].in_garage_stall) {
+        Some(true) => DrivingSituation::Garage,
+        Some(false) => DrivingSituation::OnTrack,
+        None => DrivingSituation::Unknown,
+    }
+}
+
 struct Slot {
     car: CarId,
     driver: String,
@@ -181,7 +193,7 @@ impl Translator {
                 received_at: now,
             },
             state: State {
-                driving_situation: vantare_domain::DrivingSituation::Unknown,
+                driving_situation: driving_situation(&frame, stale),
                 source_state: if frame.vehicles.is_empty() {
                     vantare_domain::SourceState::Waiting
                 } else if paused {

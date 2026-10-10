@@ -358,6 +358,7 @@ pub enum DrivingSituation {
     #[default]
     Unknown,
     OnTrack,
+    /// Señal explícita de garaje/stall; una parada o cola en pits no basta.
     Garage,
     Paused,
     Replay,

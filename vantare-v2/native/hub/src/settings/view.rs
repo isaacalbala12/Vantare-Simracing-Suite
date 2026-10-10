@@ -928,7 +928,7 @@ impl Hub {
                 None,
                 section_body().child(section_row(
                     "Ocultar fuera de pista",
-                    "Garaje/boxes parado, pausa y replay. Studio permanece visible.",
+                    "Garaje, pausa y replay. Paradas y colas en boxes siguen visibles; Studio también.",
                     orbit::toggle(
                         "settings-hide-off-track",
                         "Ocultar fuera de pista",

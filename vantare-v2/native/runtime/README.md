@@ -9,13 +9,16 @@ por DTO v10, también con demanda vacía. Una grabación `SourceKind::Replay` no
 significa replay del juego. Ocultar exige 250 ms de evidencia continua; un status congelado se confirma por
 el reloj del núcleo dentro de su vigencia, sin nueva muestra para series/journal. Movimiento,
 señal ausente/caducada, silencio de 500 ms y cambio de sesión restablecen visibilidad.
-Boxes exige jugador en pits y velocidad fiable <=0,5 m/s, o parada nativa confirmada
-sin velocidad. Con velocidad >0,5 m/s el pit lane permanece visible.
+Garage exige una señal explícita de garaje/stall vigente del simulador. Pits,
+velocidad <=0,5 m/s y parada nativa no bastan: servicio en carrera y colas paradas
+del pit lane permanecen visibles. Señal ausente nunca se infiere del movimiento.
 
-LMU aporta pits/velocidad/parada y la pausa ya confirmada por SHM detenido + REST
-reciente/proceso vivo. No existe señal de replay del juego verificada en este adapter;
+LMU lee mInGarageStall (scoring +507) y la pausa ya confirmada por SHM detenido + REST
+reciente/proceso vivo. Un cero borrado en fixtures legacy sin reloj de telemetría
+conservado es ausencia, no false. No existe señal de replay del juego verificada en este adapter;
 no se infiere de `inRealtime` ni del transporte. ACC usa graphics.status: 1 replay,
-2 Live, 3 pausa, con su frescura propia; physics aporta velocidad y graphics/UDP pits.
+2 Live, 3 pausa, con su frescura propia. Sin una señal de garaje verificada no se
+oculta ACC por estar parado en pits; physics/graphics/UDP no sustituyen esa señal.
 Sin evidencia positiva el resultado es Unknown y nunca oculta.
 
 Ajustes ofrece un único opt-in global, `Layout.hideOffTrack` (false por defecto).

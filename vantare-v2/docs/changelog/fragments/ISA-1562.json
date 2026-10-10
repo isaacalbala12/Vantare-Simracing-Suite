@@ -5,11 +5,12 @@
   "summary": "Ocultar los overlays fuera de pista con una opción global y excepciones por widget.",
   "technicalNotes": [
     "Situación central con confirmación de 250 ms; dato ausente mantiene visibilidad.",
+    "Garage exige señal explícita de garaje/stall: paradas de carrera y colas en pit lane siguen visibles.",
     "DTO v10; datos guardados v7/v8/v9 siguen legibles.",
     "Previews de Studio/Workshop siempre visibles."
   ],
   "testing": [
-    "Activar Ocultar fuera de pista en Ajustes. Parar en boxes, pausar, reanudar y conducir por pit lane.",
+    "Activar Ocultar fuera de pista. Paradas de servicio y colas en pits siguen visibles; garaje solo con señal explícita, pausa y replay pueden ocultar.",
     "En Studio elegir Siempre visible para Fuel y comprobar que no se oculta.",
     "ACC: comprobar replay; abrir una escena antigua y verificar preview visible."
   ],

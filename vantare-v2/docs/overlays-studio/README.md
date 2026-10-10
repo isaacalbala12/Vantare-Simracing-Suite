@@ -74,7 +74,8 @@ Config y trazas: `benchmarks/arrastre-y-resize.benchmark.json`, `benchmarks/trac
 Ajustes → General → Ocultar fuera de pista controla el opt-in global.
 Studio → En pista → Fuera de pista ofrece Heredar global / Siempre
 visible / Ocultar por instancia, con guardado y Deshacer/Rehacer.
-El preview nunca se oculta. En pit lane conduciendo los overlays siguen visibles;
+El preview nunca se oculta. Paradas de carrera y colas paradas en pit lane siguen visibles;
+Garage exige señal explícita de garaje/stall, no pits más velocidad baja.
 con señal ausente no se oculta. Ver [contrato](../../native/runtime/README.md).
 
 Para #1564, el control de #1562 está aislado en `Studio::off_track_control`

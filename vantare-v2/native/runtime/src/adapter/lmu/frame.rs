@@ -109,6 +109,8 @@ pub(super) struct Vehicle {
     /// el jugador y con reloj de telemetría: el sanitizador borra el byte. #1497.
     pub lap_time_counts: Option<bool>,
     pub pit_stop_stopped: Option<bool>,
+    /// mInGarageStall: no equivale a mInPits ni a una parada de servicio.
+    pub in_garage_stall: Option<bool>,
     pub time_behind_next_s: Option<f64>,
     pub laps_behind_next: u32,
     pub time_behind_leader_s: Option<f64>,
@@ -305,6 +307,7 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
             1..=4 => Some(buffer[base + 457] == 3),
             _ => None,
         },
+        in_garage_stall: garage_stall(buffer[base + 507], inputs.as_ref()),
         time_behind_next_s: (time_next >= 0.0).then_some(time_next),
         laps_behind_next,
         time_behind_leader_s: (time_leader >= 0.0).then_some(time_leader),
@@ -317,6 +320,16 @@ fn vehicle(buffer: &[u8], base: usize, telemetry: &[(i32, usize)]) -> Result<Veh
         pending_penalties: u32::try_from(read_i16(buffer, base + 194)).map_err(|_| invalid)?,
         inputs,
     })
+}
+
+// SDK pack(4), scoring +507. Los fixtures legacy borraron este byte:
+// su cero sin reloj de telemetría conservado no acredita fuera de garaje.
+fn garage_stall(value: u8, inputs: Option<&Inputs>) -> Option<bool> {
+    match value {
+        1 => Some(true),
+        0 if inputs.is_some_and(|i| i.source_time.is_some()) => Some(false),
+        _ => None,
+    }
 }
 
 fn positive(value: f64) -> Option<f64> {

@@ -36,6 +36,36 @@ sin integración automática. Informe externo C:/tmp/review-1536/informe-1538.md
 Sin push, PR, CI remota, merge, promoción o release. Seguimiento GitHub,
 según AGENTS.md vigente; plan.md ausente, no se recrea ni publica roadmap.
 
+## #1551 / #1552 — calidad LMU y adelantamientos ACC — 2026-10-10
+
+Encargo local sobre `ec743de8` (#1537), rama `vantareapp/isa-1551-telemetria-calidad`,
+worktree `C:/tmp/vw3-1551`; sin delegación, push, PR, merge ni promoción.
+Commit local #1551 (incluye extra de saneado): `20ca0d5583cfb0f604b6d077a14227bc9b7f9553`.
+SHA final de #1552 en su [comentario de entrega](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1552#issuecomment-6092420392).
+RED confirmado: LMU47 7.678 violaciones; ACC 27 fotos generales y 6 de clase.
+LMU usa gaps de progreso en práctica: P11 sí tiene mejor vuelta, pero gap 0.
+Se retiran esos gaps fuera de carrera; no se fabrican diferencias de tiempo.
+ACC recibe las dos mitades de adelantamientos por datagramas independientes
+(5.100 y 58.800 ns en el corpus): el adapter conserva el último orden coherente
+estimando solo el rango contradictorio, con TTL del dato UDP y protección de
+parrilla/clase/sesión. Las 6 fotos de clase se solapan con las 27 generales.
+Núcleo productivo intacto; solo tests nuevos de límites en `merge.rs`.
+LMU dirigido 20/20 y ACC 3/3 PASS, incluidas las regresiones designoradas.
+Mutantes solo `merge.rs`, selección `core::`: 44 cazados/1 vivo (Display);
+`sanitize`/`sanitize_player` 20/20 cazados, frente a 12 vivos en #1537.
+La auditoría incluía `core_invariants`; esta corrida selecciona `core::`:
+no se presenta como la misma suite. Cero inviables/timeouts en la corrida válida.
+Goldens revisados: 3.849 fotos LMU solo cambian gaps/capability; ACC solo
+rangos en 27 fotos. Inversión completa reproduce hashes originales v9/v8;
+los otros campos, las otras 190.281 fotos, ocho cortes y UI ACC son idénticos.
+Gates de la entrega conjunta por la cola: fmt, clippy -D warnings PASS;
+nextest 1.425/1.425 (7 skips del perfil), lifecycle 5+13 PASS;
+telemetría 25/25, cero skips, incluidas ambas regresiones activadas.
+Siguiente: revisión local de los dos commits; integración/promoción no autorizadas.
+Evidencia externa `C:/tmp/1551-evidence/`; buzón `C:/tmp/buzon/1551.md`.
+Informe de entrega (máximo 10 líneas): `C:/tmp/review-1536/informe-1551.md`.
+Issues abiertas, `area:telemetria-core`, Project Vantare; sin milestone comprometido.
+No acredita sesiones/simuladores físicos ni CI remoto.
 
 ## #1496 — feedback Relative: prioridad nativa y fuente pendiente — 2026-10-09
 

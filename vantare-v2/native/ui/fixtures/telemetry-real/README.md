@@ -1,5 +1,12 @@
 # Fotos reales para el contrato de demanda (#1474)
 
+#1551 actualiza las fotos LMU y su secuencia desde el replay productivo:
+solo los campos de gaps y su capability cambian, por retirar progreso en
+pista que no describe la clasificación de práctica. Los tiempos/inputs y
+todo otro campo conservan el corpus. ACC y el menú permanecen idénticos.
+Las afirmaciones históricas sobre conservación de datos inferiores se
+refieren a sus respectivos cortes; `telemetry_golden` protege el corte actual.
+
 DTO v9 (#1530): solo se cambia la etiqueta de versión respecto a 5e1da3f6;
 los datos, calidad, números y separadores originales se conservan byte a byte.
 
@@ -9,9 +16,9 @@ estas copias contra el replay real, además de conservar los goldens originales.
 
 | Foto | Origen | Corte | SHA-256 de la copia |
 | --- | --- | --- | --- |
-| `lmu47.snapshot.json` | `runtime/tests/golden/lmu47.jsonl.gz` | 1 de 3839 | `3fe5acef6f332dd01fd1afee64d419ec5250f415117fba71585a456e6fd92630` |
+| `lmu47.snapshot.json` | `runtime/tests/golden/lmu47.jsonl.gz` | 1 de 3839 | `23b1f8ff3e8fef1a56c322b308f80eb07e71e1dfb85b23fe4e8d82bdf648185b` |
 | `acc.snapshot.json` | `runtime/tests/golden/acc.jsonl.gz` | 8, observación 190308 | `11500cb34cbb795957de2a43171d5668f7fde6cfed1a258cad099f294f3638d1` |
-| `lmu-stale.snapshot.json` | `runtime/tests/golden/lmu.jsonl.gz` | 2: fixture real de 44 coches degradado a 500 ms | `5a08189e04e16d82689075a324d5223ec7c7a7880dbd3bf4e4a635bd319a0ca9` |
+| `lmu-stale.snapshot.json` | `runtime/tests/golden/lmu.jsonl.gz` | 2: fixture real de 44 coches degradado a 500 ms | `d65148b339431d644cbb4077737a86407189be5d19a03baf9d57d43bec1f9ddd` |
 | `lmu-menu.snapshot.json` | `runtime/tests/golden/lmu.jsonl.gz` | 3: menú real sin parrilla | `49df511d1ad8d53beae3ba7935b5ffa55d15ab2a58a0036c75f724dc6f5f9c9a` |
 
 Corpus originales y hashes: `runtime/tests/golden/README.md`. Extracción desde

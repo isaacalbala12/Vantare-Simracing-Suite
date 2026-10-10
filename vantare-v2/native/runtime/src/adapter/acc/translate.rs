@@ -1,6 +1,6 @@
 //! Fusión por señal. Los relojes de physics, graphics y cada coche UDP son
 //! independientes; recibir un datagrama nunca refresca una página SHM vieja.
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::f64::consts::{FRAC_PI_2, TAU};
 use std::io;
 use std::time::Duration;
@@ -64,6 +64,8 @@ pub(super) struct Translator {
     // La grabadora se registró seis veces antes de recibir las listas.
     // Respuestas tardías de conexiones admitidas siguen siendo válidas.
     registered: Vec<i32>,
+    positions: Vec<(CarId, Option<ClassId>, u32, Option<u32>)>,
+    positions_at: Duration,
     pub(super) request_entries: bool,
     pub(super) request_track: bool,
 }
@@ -90,6 +92,8 @@ impl Translator {
             floor: Duration::ZERO,
             connection: None,
             registered: Vec::new(),
+            positions: Vec::new(),
+            positions_at: Duration::ZERO,
             request_entries: false,
             request_track: false,
         }
@@ -99,6 +103,7 @@ impl Translator {
         self.epoch += 1;
         self.floor = at;
         self.cars.clear();
+        self.positions.clear();
         self.entries.clear();
         self.list = None;
         self.player_laps = None;
@@ -464,6 +469,7 @@ impl Translator {
                 }
             }
         }
+        self.coherent_positions(&mut cars, now);
         let state = State {
             source_state: if !active && (!g.is_empty() || self.session.is_none()) {
                 vantare_domain::SourceState::Waiting
@@ -521,6 +527,84 @@ impl Translator {
         Driver {
             id,
             name: name.to_owned(),
+        }
+    }
+
+    /// Los datagramas por coche y graphics no forman una transacción de tabla.
+    /// Mientras llega la segunda mitad de un adelantamiento, conservar el último
+    /// orden completo observado; solo el rango contradictorio es estimado.
+    fn coherent_positions(&mut self, cars: &mut [Car], now: Duration) {
+        let mut ordered: Vec<_> = cars.iter().collect();
+        ordered.sort_by_key(|car| car.position.current().copied());
+        let mut positions = HashSet::new();
+        let mut classes = HashMap::new();
+        let coherent = ordered.iter().all(|car| {
+            let Some(position) = car.position.current() else {
+                return true;
+            };
+            if !positions.insert(*position) {
+                return false;
+            }
+            if let (Some(class), Some(rank)) = (&car.class, car.class_position.current()) {
+                let previous = classes.insert(class.id, *rank);
+                if previous.is_some_and(|previous| previous >= *rank) {
+                    return false;
+                }
+            }
+            true
+        });
+        if coherent {
+            if cars.iter().any(|car| car.position.current().is_none()) {
+                return;
+            }
+            self.positions = cars
+                .iter()
+                .filter_map(|car| {
+                    Some((
+                        car.id,
+                        car.class.as_ref().map(|class| class.id),
+                        *car.position.current()?,
+                        car.class_position.current().copied(),
+                    ))
+                })
+                .collect();
+            // Observar otra señal no rejuvenece los rangos UDP recordados.
+            self.positions_at = self
+                .cars
+                .values()
+                .map(|car| car.update.at)
+                .min()
+                .unwrap_or(now);
+            return;
+        }
+        // No heredar de otra parrilla, sesión o fuente caducada. Un coche nuevo
+        // no tiene rango anterior que podamos afirmar sin inventarlo.
+        let same_grid = self.positions.len() == cars.len()
+            && cars.iter().all(|car| {
+                self.positions.iter().any(|(id, class, _, _)| {
+                    *id == car.id && *class == car.class.as_ref().map(|class| class.id)
+                })
+            })
+            && now.saturating_sub(self.positions_at) < UDP_TTL;
+        for car in cars {
+            let previous = same_grid
+                .then(|| self.positions.iter().find(|(id, _, _, _)| *id == car.id))
+                .flatten();
+            if car.position.current().is_some()
+                && car.position.current().copied() != previous.map(|(_, _, rank, _)| *rank)
+            {
+                car.position = previous.map_or(Quality::Unavailable, |(_, _, rank, _)| {
+                    Quality::Estimated(*rank)
+                });
+            }
+            if car.class_position.current().is_some()
+                && car.class_position.current().copied()
+                    != previous.and_then(|(_, _, _, rank)| *rank)
+            {
+                car.class_position = previous
+                    .and_then(|(_, _, _, rank)| *rank)
+                    .map_or(Quality::Unavailable, Quality::Estimated);
+            }
         }
     }
 

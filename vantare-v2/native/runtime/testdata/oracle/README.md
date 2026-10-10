@@ -1,5 +1,19 @@
 # Oráculo Go de Standings — ISA-1425
 
+## Contrato corregido en #1551 (2026-10-10)
+
+Las entradas Go, manifest y hashes originales siguen congelados. Go conserva
+el error histórico de tratar progreso como gap de clasificación en práctica.
+La comparación nativa exige ahora `gap_ahead` ausente y `gap_leader` ausente
+fuera de carrera, salvo el cero por identidad de P1. Estos campos se comparan
+con valores y calidad exactos; no se omiten ni se amplía la tolerancia.
+Los 120 permisos históricos para el intervalo cero de P2 dejan de aplicar.
+Quedan 68 excepciones originales ajenas a gaps; SHA-256 de `exceptions.json`:
+`e1fdcde7b43602eb46ab89364caf817cfda0e9b257d52b6462d7865f8d00a133`.
+La prueba de déficits usa el fixture original de práctica (ausencia) y una
+mutación explícita del tipo a carrera (conservación de `Laps(1)`).
+La sección de 2026-09-29 inferior describe exclusivamente aquella revisión.
+
 Go congelado: `3ced668f22aa79819aefae059d28b15d52452274`.
 
 Manifest SHA-256: `b53373be4ebe61ded864c63f860998e5f40dff9340e81dee68c02cf58cd0f6b9`.

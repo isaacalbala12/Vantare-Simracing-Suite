@@ -1,21 +1,30 @@
 //! Observaciones sintéticas explícitas; procesos reales y checkpoints reales.
 #![allow(clippy::unwrap_used)] // Solo helpers del banco; producción sigue prohibiéndolo.
 use std::fs;
+#[cfg(windows)]
 use std::io::{self, Read as _};
 use std::path::PathBuf;
-use std::process::{Child, ChildStdin, Command, Stdio};
+#[cfg(windows)]
+use std::process::{Child, ChildStdin};
+use std::process::{Command, Stdio};
 use std::sync::atomic::{AtomicU64, Ordering};
+#[cfg(windows)]
 use std::sync::mpsc::{self, Receiver};
+#[cfg(windows)]
 use std::thread::{self, JoinHandle};
+#[cfg(windows)]
 use std::time::Duration;
 
 use vantare_domain::{Car, CarId, Observation, Player, Quality, State};
-use vantare_engineer::{Engineer, load_cursor};
+use vantare_engineer::Engineer;
+#[cfg(windows)]
+use vantare_engineer::load_cursor;
 use vantare_runtime::core::Core;
-use vantare_runtime::flows::{
-    Consumer, Cursor, Delivery, GapReason,
-    wire::{self, Frame},
-};
+use vantare_runtime::flows::{Consumer, GapReason, wire::Frame};
+#[cfg(windows)]
+use vantare_runtime::flows::{Cursor, Delivery, wire};
+// La fixture de autoridad usa DPAPI y el host de derechos de Windows.
+#[cfg(windows)]
 mod rights;
 
 struct Files(PathBuf);
@@ -33,6 +42,7 @@ impl Files {
     fn cursor(&self) -> PathBuf {
         self.0.join("cursor.json")
     }
+    #[cfg(windows)]
     fn journal(&self) -> PathBuf {
         self.0.join("events.jsonl")
     }
@@ -73,6 +83,7 @@ fn photo(tick: u64, in_pits: bool) -> Observation {
     }
 }
 
+#[cfg(windows)]
 struct Worker {
     rights: rights::Fixture,
     child: Child,
@@ -81,6 +92,7 @@ struct Worker {
     acknowledgements: Receiver<io::Result<Cursor>>,
     reader: Option<JoinHandle<()>>,
 }
+#[cfg(windows)]
 impl Worker {
     fn start(files: &Files) -> Self {
         let name = format!("engineer-stream-{}", vantare_services::random_id().unwrap());
@@ -145,6 +157,7 @@ impl Worker {
         assert!(self.child.wait().unwrap().success());
     }
 }
+#[cfg(windows)]
 impl Drop for Worker {
     fn drop(&mut self) {
         drop(self.input.take());
@@ -159,6 +172,7 @@ impl Drop for Worker {
 }
 
 #[test]
+#[cfg(windows)]
 fn engineer_process_restart_recovers_exact_checkpoint_and_deduplicates_redelivery() {
     let files = Files::new();
     let mut core = Core::new(10);
@@ -189,6 +203,7 @@ fn engineer_process_restart_recovers_exact_checkpoint_and_deduplicates_redeliver
 }
 
 #[test]
+#[cfg(windows)]
 fn process_recovers_all_durable_events_and_declares_volatile_restart_and_slow_consumer_gaps() {
     let files = Files::new();
     let mut core = Core::with_flows(20, 2, Some(&files.journal())).unwrap();
@@ -302,6 +317,7 @@ fn stream_without_rights_is_rejected_before_hello_or_checkpoint() {
 }
 
 #[test]
+#[cfg(windows)]
 fn stream_with_signed_rights_emits_radio_and_stops_when_authority_is_lost() {
     let files = Files::new();
     let mut core = Core::new(1);

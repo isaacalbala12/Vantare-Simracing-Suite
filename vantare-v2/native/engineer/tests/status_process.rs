@@ -1,4 +1,5 @@
 //! Proceso stream real: heartbeat aun sin fotos, cierre y muerte sin cleanup.
+#![cfg(windows)] // La autoridad firmada de la fixture requiere DPAPI.
 use std::{
     fs, io,
     path::PathBuf,

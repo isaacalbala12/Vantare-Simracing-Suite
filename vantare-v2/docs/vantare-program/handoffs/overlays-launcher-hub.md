@@ -15,6 +15,13 @@ repetición íntegra con idéntico código/configuración/plazos PASS, sin repro
 Causa no acreditada; ambos logs conservados. Quality 31 tests y 456 pins PASS.
 Residuos ignorados frontend/dist y node_modules apartados fuera del checkout.
 PR #1550 abierto a nightly: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1550. CI pendiente; squash solo con checks verdes.
+CI Linux en PR #1550 detectó E0432/E0433: tests recovery/status_process importaban
+la fixture DPAPI de runtime::rights sin cfg(windows). La corrección acota solo
+esa fixture, auxiliares y escenarios de procesos con autoridad a Windows;
+checkpoint puro y rechazo de stream sin licencia siguen activos en Linux.
+No cambia código de producto, asserts, deadlines ni gates. Revalidación Windows por cola: fmt, Clippy -D warnings, Nextest1415/1415 (7 skips heredados) y lifecycle18/18 PASS. CI Linux debe repetirse y pasar antes del squash.
+Isaac confirma USB Ventoy conectado: al firmar, comprobar existencia y pasar
+ruta directa, sin esperar nueva autorización ni acceder al contenido de la semilla.
 Evidencia externa promocion-nightly-1528-evidence/; firma/publicación aún pendientes.
 
 ## #1496 — integración local de #1528 e instalador 0.0.975 (2026-10-10)

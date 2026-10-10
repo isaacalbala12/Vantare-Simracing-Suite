@@ -1,3 +1,49 @@
+## #1531 · Actualización de #1558 tras Linux verde y squash #1557
+
+- #1557, HEAD f03f69c1918cb53a361bacd8da623c3b3fb5ec5e: Validate promotion
+  path, Validate Vantare blocking gates, native-linux y quality-check SUCCESS.
+  GitGuardian FAILURE es el falso positivo conocido/no obligatorio que marcará
+  Isaac. FIN verificado en el buzón y en la issue #1536.
+- Isaac fusionó #1557 en nightly como squash d175fd7448059538cfb3f4ae8c61632799eafedd
+  el 2026-10-10 a las 11:14:37Z y cambió la base de #1558 a nightly.
+- Merge normal 9a5e7d4c de f03f69c1 en vantareapp/isa-1531-integracion:
+  incorpora el helper de cierre asíncrono y todos los harness headless del Hub,
+  además del prefijo corto del fixture IPC de #1548, con la misma entropía.
+  Solo cambian tests; permanecen sus aserciones y las decisiones de #1531.
+- Merge normal 506f5d9f de origin/nightly d175fd74, con preferencia por nuestro
+  contenido (-X ours). La fusión fue automática, sin conflictos pendientes.
+  El preview y el resultado conservaron byte a byte el árbol native
+  a8f137b5d33855ee90191f1a26b44081d6101048; los gates corren sobre ese árbol.
+- Gates por la cola, target propio y en serie: check/fmt/Clippy -D warnings
+  PASS; Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría
+  25/25 (0 skips, 803,734 s; corpus ACC 760,575 s). Recovery/status_process
+  sin flake ni reintentos; retirada 456 SHA-256 PASS.
+- La primera compilación Nextest falló antes de ejecutar tests por un socket
+  de sccache (os error 10048). Log conservado y reintento conforme al runbook
+  con VANTARE_SCCACHE=0: la suite completa pasó. Ningún cambio de código o
+  de tests por ese fallo.
+- UI/domain/runtime/IPC/testdata y configuración siguen idénticos al HEAD
+  7709a496 validado de #1558. Conservan vigencia RGBA 366/366, las 32 capturas
+  v9, los ocho slots ES/EN y el perfil Standings ACC de 600 muestras por etapa
+  y Look. No se repite la matriz A/B por decisión de Isaac.
+- RGBA conservada reverificada sobre los PNG: 366/366 pares y los ocho slots
+  aprobados, cero diferencias; entradas y binarios mantienen sus SHA-256.
+  Umbral cero y sin máscaras/goldens nuevos ni nuevas capturas.
+- PR #1558 a nightly, listo para revisión tras el push autorizado. CI del nuevo
+  HEAD documental pendiente, incluidos Validate promotion path, Validate
+  Vantare blocking gates y native-linux; FIN conjunto cuando termine esa CI.
+  El agente no fusiona PRs ni publica releases.
+  Evidencia nueva: C:/tmp/review-1558-linux; estado vivo en issue #1531/buzón.
+- #1537, #1538–#1549 y #1551–#1556: 19 issues consultadas con gh issue view,
+  todas OPEN antes de cerrarlas y CLOSED después; comentario exacto «entró en
+  nightly con #1557, d175fd74». #1536 y #1531 siguen OPEN e In Review en el
+  GitHub Project Vantare; no se cambia su alcance.
+- Las 19 issues cerradas figuran en Vantare/Nightly; diez carecían de área y
+  proyecto, completados según el alcance de su entrega. Se retiraron labels
+  de estado previo; cierres, comentarios, áreas y columna verificados de nuevo.
+
+### Historial de la primera integración #1531
+
 ## #1531 · Integración aprobada por Opus (ronda 2, 8/10)
 
 - Revisión completa: C:/tmp/auditoria-arquitectura-v2/review-1531-r2.md.

@@ -1,3 +1,5 @@
+> Evidencia histórica de #1427; contrato vigente en [README nativo](../../README.md). Estados, versiones DTO y gates siguientes describen su corte, no la base actual.
+
 # Pulido acotado de paridad — ISA-1427
 
 2026-09-30. [GitHub #1427](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427).

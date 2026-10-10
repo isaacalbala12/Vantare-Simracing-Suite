@@ -14,7 +14,7 @@ Nextest 1415/1415 (7 skips heredados), lifecycle 18/18 y telemetría 21/21
 repetición íntegra con idéntico código/configuración/plazos PASS, sin reproducirlo.
 Causa no acreditada; ambos logs conservados. Quality 31 tests y 456 pins PASS.
 Residuos ignorados frontend/dist y node_modules apartados fuera del checkout.
-Siguiente: PR a nightly y CI; squash solo con checks verdes.
+PR #1550 abierto a nightly: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1550. CI pendiente; squash solo con checks verdes.
 Evidencia externa promocion-nightly-1528-evidence/; firma/publicación aún pendientes.
 
 ## #1496 — integración local de #1528 e instalador 0.0.975 (2026-10-10)

@@ -106,6 +106,30 @@ struct Visual {
     appearance_overrides: Map<String, Value>,
 }
 
+/// `visibleWhen.sessionTypes` de la app anterior. Lista vacía = todas; un valor
+/// desconocido deja la regla sin traducir (se importa oculto, como antes).
+fn show_in(value: &Value) -> Option<vantare_ui::session::ShowIn> {
+    let types = value.as_array()?;
+    if types.is_empty() {
+        return Some(vantare_ui::session::ShowIn::default());
+    }
+    let mut show_in = vantare_ui::session::ShowIn {
+        practice: false,
+        qualifying: false,
+        race: false,
+    };
+    for kind in types {
+        let flag = match kind.as_str()?.to_ascii_lowercase().as_str() {
+            "practice" | "warmup" => &mut show_in.practice,
+            "qualifying" | "qual" => &mut show_in.qualifying,
+            "race" | "endurance" => &mut show_in.race,
+            _ => return None,
+        };
+        *flag = true;
+    }
+    Some(show_in)
+}
+
 fn notice(notices: &mut Vec<Notice>, path: impl Into<String>, reason: &str) {
     notices.push(Notice {
         path: path.into(),
@@ -155,11 +179,13 @@ fn convert_widget(
         );
         return Ok(None);
     }
-    let conditional = widget
-        .behavior
-        .visible_when
-        .as_ref()
-        .is_some_and(|rule| !rule.is_empty());
+    let mut rule = widget.behavior.visible_when.unwrap_or_default();
+    let show_in = rule.get("sessionTypes").and_then(show_in);
+    if show_in.is_some() {
+        rule.remove("sessionTypes");
+    }
+    let show_in = show_in.unwrap_or_default();
+    let conditional = !rule.is_empty();
     if conditional {
         notice(
             notices,
@@ -208,6 +234,7 @@ fn convert_widget(
         x: origin.0 + widget.layout.x * scale,
         y: origin.1 + widget.layout.y * scale,
         visible: widget.behavior.enabled && !conditional,
+        show_in,
         opacity,
         settings: normalized,
     }))
@@ -406,6 +433,36 @@ mod tests {
         assert!(first.visible, "visibleWhen vacío no impone una condición");
         assert!((first.x - 244.0).abs() < 0.01);
         assert!((first.y + 948.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn session_types_become_show_in_and_other_conditions_still_hide() {
+        let mut profile: Value = serde_json::from_slice(PROFILE).expect("fixture");
+        let rule = &mut profile["layouts"]["general"]["widgets"][0]["behavior"]["visibleWhen"];
+        *rule = serde_json::json!({ "sessionTypes": ["qualifying"] });
+        let (layout, report) =
+            convert(&serde_json::to_vec(&profile).expect("JSON"), monitor()).expect("convertir");
+        let first = &layout.instances[0];
+        assert!(first.visible, "ya no se importa oculto");
+        assert_eq!(
+            first.show_in,
+            vantare_ui::session::ShowIn {
+                practice: false,
+                qualifying: true,
+                race: false,
+            }
+        );
+        assert!(
+            !report
+                .notices
+                .iter()
+                .any(|n| n.path == "layouts.general.widgets[standings].behavior.visibleWhen")
+        );
+        profile["layouts"]["general"]["widgets"][0]["behavior"]["visibleWhen"] =
+            serde_json::json!({ "sessionTypes": ["race"], "inPit": true });
+        let (layout, _) =
+            convert(&serde_json::to_vec(&profile).expect("JSON"), monitor()).expect("convertir");
+        assert!(!layout.instances[0].visible, "inPit sigue sin soporte");
     }
 
     #[test]

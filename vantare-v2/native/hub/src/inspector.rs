@@ -2,6 +2,7 @@
 use crate::orbit::NumberRange;
 use vantare_ui::{
     Settings,
+    session::Session,
     standings::{Accent, Look},
 };
 
@@ -695,9 +696,13 @@ pub fn column_label(metric: &str) -> &'static str {
         _ => "Columna",
     }
 }
-pub fn columns(settings: &Settings) -> Option<Vec<vantare_ui::standings::options::ColumnSetting>> {
+/// Columnas de la pestaña `session`; solo Standings distingue sesiones (#1564).
+pub fn columns(
+    settings: &Settings,
+    session: Session,
+) -> Option<Vec<vantare_ui::standings::options::ColumnSetting>> {
     match settings {
-        Settings::Standings(s) => s.columns.clone().or_else(|| {
+        Settings::Standings(s) => s.session_columns(session).cloned().or_else(|| {
             appearance(settings).map(|_| vantare_ui::standings::vantare_template("standard"))
         }),
         Settings::Relative(s) => s.columns.clone().or_else(|| {
@@ -708,8 +713,14 @@ pub fn columns(settings: &Settings) -> Option<Vec<vantare_ui::standings::options
 }
 pub fn columns_mut(
     settings: &mut Settings,
+    session: Session,
 ) -> Option<&mut Vec<vantare_ui::standings::options::ColumnSetting>> {
-    settings.editable_columns()
+    let vantare = appearance(settings).is_some();
+    match settings {
+        Settings::Standings(s) => (vantare || s.session_columns(session).is_some())
+            .then(|| s.session_columns_mut(session)),
+        _ => settings.editable_columns(),
+    }
 }
 pub fn valid_color(value: &str) -> bool {
     let bytes = value.as_bytes();
@@ -725,16 +736,16 @@ mod tests {
             Settings::Standings(vantare_ui::standings::Settings::default()),
             Settings::Relative(vantare_ui::relative::Settings::default()),
         ] {
-            let default = columns(&settings).expect("columnas por defecto");
+            let default = columns(&settings, Session::Race).expect("columnas por defecto");
             assert!(default.iter().any(|c| c.metric_id == "gap" && c.enabled));
-            let gap = columns_mut(&mut settings)
+            let gap = columns_mut(&mut settings, Session::Race)
                 .expect("columnas editables")
                 .iter_mut()
                 .find(|c| c.metric_id == "gap")
                 .expect("gap");
             gap.enabled = false;
             assert!(
-                columns(&settings)
+                columns(&settings, Session::Race)
                     .expect("columnas")
                     .iter()
                     .any(|c| c.metric_id == "gap" && !c.enabled)
@@ -750,8 +761,8 @@ mod tests {
                 set(&mut settings, key);
                 let normalized = settings.normalized();
                 assert_eq!(
-                    columns(&normalized),
-                    columns(&settings),
+                    columns(&normalized, Session::Race),
+                    columns(&settings, Session::Race),
                     "no truncar gap de Vantare"
                 );
             }

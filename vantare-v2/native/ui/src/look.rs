@@ -173,6 +173,7 @@ mod tests {
                 x: 0.0,
                 y: 0.0,
                 visible: true,
+                show_in: crate::session::ShowIn::default(),
                 opacity: 1.0,
                 geometry: crate::geometry::Geometry::default(),
                 settings,

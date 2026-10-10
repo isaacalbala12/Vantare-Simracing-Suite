@@ -180,6 +180,10 @@ impl Editor {
     }
     pub fn add(&mut self, kind: Kind) -> Result<(), String> {
         let id = self.next_id()?;
+        let mut settings = Settings::default_for(kind);
+        if let Settings::Standings(standings) = &mut settings {
+            standings.apply_session_presets();
+        }
         self.change(|layout| {
             layout.instances.push(Instance {
                 geometry: vantare_ui::geometry::Geometry::default(),
@@ -187,8 +191,9 @@ impl Editor {
                 x: 20.0,
                 y: 20.0,
                 visible: true,
+                show_in: vantare_ui::session::ShowIn::default(),
                 opacity: 1.0,
-                settings: Settings::default_for(kind),
+                settings,
             });
             Ok(())
         })?;

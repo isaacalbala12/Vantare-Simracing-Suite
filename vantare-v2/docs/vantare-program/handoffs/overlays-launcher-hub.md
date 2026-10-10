@@ -22,7 +22,14 @@ WSL, Calloop 0.14.4 igual al lock: cierre previo a run timeout 3 s/exit 124;
 cierre diferido desde el bucle exit 0. Es prueba de la causa, no ejecución
 completa del Hub en WSL. Evidencia C:/tmp/review-1557-linux.
 
-Gates completos por cola en curso; #1557 pendiente de nueva CI native-linux.
+Código a73f425672d022ed593e9bc8c3c4cf276e45fe0b; native tree
+201e7311b522c9718a4ece4490b7e6f68fa588f9. Gates completos repetidos por cola:
+check/fmt/Clippy -D warnings PASS; Nextest 1526/1526 (7 skips heredados),
+lifecycle 18/18, telemetría 25/25 (0 skips; corpus ACC 759,133 s).
+Recovery/status_process sin flake/reintentos; retirada 456 SHA-256 PASS.
+Los cuerpos de los dos tests coinciden con 70170613 en las cuatro ramas
+señaladas y nightly, normalizando únicamente la llamada de cierre.
+#1557 pendiente de nueva CI native-linux sobre el arreglo publicado.
 Tras native-linux SUCCESS se incorpora esta corrección con merge normal a
 #1558 y push. No se fusionan PRs ni se publica release; #1531 sigue aparte.
 

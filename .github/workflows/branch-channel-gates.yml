@@ -23,7 +23,8 @@ env:
 jobs:
   policy:
     name: Validate promotion path
-    runs-on: ubuntu-latest
+    if: '!github.event.repository.private || github.event_name != ''pull_request'' || github.event.pull_request.head.repo.full_name == github.repository'
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","X64","vantare-1565"]') || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -83,12 +84,18 @@ jobs:
   product:
     name: Validate Vantare blocking gates
     needs: policy
-    runs-on: windows-latest
+    if: '!github.event.repository.private || github.event_name != ''pull_request'' || github.event.pull_request.head.repo.full_name == github.repository'
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Windows","X64","vantare-1565"]') || 'windows-latest' }}
     defaults:
       run:
         shell: pwsh
         working-directory: ${{ env.VANTARE_DIR }}
     steps:
+      - name: Wait until Windows screen is available
+        working-directory: ${{ runner.temp }}
+        run: |
+          while (Test-Path 'C:/tmp/fase2/pantalla-ocupada') { Start-Sleep -Seconds 10 }
+
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           fetch-depth: 0

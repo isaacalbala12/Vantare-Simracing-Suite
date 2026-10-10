@@ -10,7 +10,8 @@ concurrency:
 jobs:
   quality-check:
     name: quality-check (ratchet)
-    runs-on: ubuntu-latest
+    if: '!github.event.repository.private || github.event_name != ''pull_request'' || github.event.pull_request.head.repo.full_name == github.repository'
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","X64","vantare-1565"]') || 'ubuntu-latest' }}
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
@@ -22,7 +23,8 @@ jobs:
 
   native-linux:
     name: native-linux
-    runs-on: ubuntu-latest
+    if: '!github.event.repository.private || github.event_name != ''pull_request'' || github.event.pull_request.head.repo.full_name == github.repository'
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted","Linux","X64","vantare-1565"]') || 'ubuntu-latest' }}
     timeout-minutes: 90
     defaults:
       run:
@@ -32,6 +34,7 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
       - name: Install native Linux dependencies
+        if: runner.environment != 'self-hosted'
         run: |
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \

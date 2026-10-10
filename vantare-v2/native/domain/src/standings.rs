@@ -414,7 +414,8 @@ fn project_with_previous(
     let state = &snapshot.state;
     let available = !matches!(state.source_state, SourceState::Waiting | SourceState::Lost);
     let session = &state.session;
-    let kind = session.kind.current().filter(|_| available);
+    // Un tipo obsoleto conserva la última sesión conocida (#1564).
+    let kind = session.kind.last_known().filter(|_| available);
     let race = kind == Some(&SessionKind::Race);
 
     let class = state
@@ -479,7 +480,7 @@ fn project_with_previous(
         flag: (state.source_state == SourceState::Live)
             .then(|| session_flag(snapshot))
             .flatten(),
-        gap_to_best_lap: matches!(kind, Some(SessionKind::Practice | SessionKind::Qualifying)),
+        gap_to_best_lap: kind.is_some_and(SessionKind::ranks_by_best_lap),
         track: session
             .track_name
             .current()
@@ -719,7 +720,7 @@ fn row(
             .map(|f| lap_time_column(car.best_lap_s.current().copied(), f.compact, f.decimals)),
         classification_gap: if !classified {
             String::new()
-        } else if matches!(kind, Some(SessionKind::Practice | SessionKind::Qualifying)) {
+        } else if kind.is_some_and(SessionKind::ranks_by_best_lap) {
             best_lap_gap(
                 car,
                 if content.class_gaps {
@@ -1431,7 +1432,7 @@ pub fn information(
                 ),
                 _ => (PLACEHOLDER.into(), false),
             };
-            let label = information_label(id, prefs.language, session.kind.current());
+            let label = information_label(id, prefs.language, session.kind.last_known());
             InfoCell {
                 id: id.clone(),
                 label: label.to_uppercase(),
@@ -1460,9 +1461,7 @@ fn information_label<'a>(
         "position" => ("POS", "POS"),
         "bestLap" => ("MEJOR V.", "BEST LAP"),
         "lastLap" => ("ÚLT. VUELTA", "LAST LAP"),
-        "gap" if matches!(kind, Some(SessionKind::Practice | SessionKind::Qualifying)) => {
-            ("AL MEJOR", "TO BEST")
-        }
+        "gap" if kind.is_some_and(SessionKind::ranks_by_best_lap) => ("AL MEJOR", "TO BEST"),
         "gap" => ("AL LÍDER", "TO LEADER"),
         _ => (id, id),
     };
@@ -1801,5 +1800,21 @@ mod classification_tests {
         assert_eq!(vm.rows()[1].classification_gap, "+0.80s");
         assert_eq!(vm.rows()[2].classification_gap, PLACEHOLDER);
         assert_eq!(vm.laps_remaining, PLACEHOLDER, "solo se muestra en carrera");
+    }
+
+    #[test]
+    fn warmup_compares_best_laps_and_stale_kind_keeps_the_last_session() {
+        let mut fast = car(1, 1, "Ana");
+        fast.best_lap_s = Reliable(100.0);
+        let mut slow = car(2, 2, "Ben");
+        slow.best_lap_s = Reliable(100.8);
+        let mut warmup = snapshot(SessionKind::Other("warmup".into()), vec![fast, slow]);
+        assert!(project(&warmup, Preferences::default()).gap_to_best_lap);
+        warmup.state.session.kind = Quality::Stale(SessionKind::Qualifying);
+        let vm = project(&warmup, Preferences::default());
+        assert!(vm.gap_to_best_lap, "Stale no salta a carrera");
+        assert_eq!(vm.rows()[1].classification_gap, "+0.80s");
+        warmup.state.session.kind = Quality::Unavailable;
+        assert!(!project(&warmup, Preferences::default()).gap_to_best_lap);
     }
 }

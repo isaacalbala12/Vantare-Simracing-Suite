@@ -1514,6 +1514,7 @@ mod tests {
             x: 0.0,
             y: 0.0,
             visible: true,
+            show_in: vantare_ui::session::ShowIn::default(),
             opacity: 1.0,
             settings: Settings::default_for(Kind::Pedals),
         });
@@ -1523,6 +1524,7 @@ mod tests {
             x: 0.0,
             y: 0.0,
             visible: false,
+            show_in: vantare_ui::session::ShowIn::default(),
             opacity: 1.0,
             settings: Settings::default_for(Kind::Standings),
         });
@@ -1613,6 +1615,7 @@ mod thumbnail_host_tests {
                 x: 100.0,
                 y: 100.0,
                 visible: true,
+                show_in: vantare_ui::session::ShowIn::default(),
                 opacity,
             });
         }
@@ -1652,6 +1655,7 @@ mod catalog_tests {
                     x: 40.0,
                     y: 20.0,
                     visible: true,
+                    show_in: vantare_ui::session::ShowIn::default(),
                     opacity: 0.25,
                     geometry: vantare_ui::geometry::Geometry::default(),
                 });

@@ -1,3 +1,22 @@
+## #1564 · Widgets por tipo de sesión (implementación)
+
+- Rama vantareapp/isa-1564-widgets-por-sesion desde origin/nightly ca17545f.
+  Decisiones D1–D18 de Isaac (grill-me 2026-10-10) en el comentario de #1564.
+- domain: `Quality::last_known` y `SessionKind::ranks_by_best_lap`; Standings
+  trata warmup/`Other` como práctica y un tipo `Stale` conserva la última sesión.
+- ui: `session.rs` (`Session`, `ShowIn`). `Instance.showIn` (se omite si son las
+  tres) oculta el overlay en vivo fuera de sus sesiones; sin dato se ve.
+  Standings guarda `practiceColumns`/`qualifyingColumns` (`None` hereda
+  `columns`, que es Carrera); el widget cambia de pestaña al cambiar la sesión
+  y la demanda une las tres. Widgets nuevos y layout inicial: presets D7.
+  `profile_import` traduce `visibleWhen.sessionTypes`; `inPit` sigue oculto.
+- hub: `studio/sessions.rs` (pestañas, «Restablecer preset», «Mostrar en»);
+  el ejemplo de diseño de Standings adopta la sesión de la pestaña.
+  studio.rs sigue >2000 LOC: partición planificada en #1561 (P1-A); este
+  cambio añade el código nuevo en un submódulo.
+- Gates locales: fmt, Clippy -D warnings y Nextest 1582/1582 (7 skips
+  heredados), lifecycle y telemetría 25/25 PASS. Sin capturas visuales.
+
 ## #1531 · Actualización de #1558 tras Linux verde y squash #1557
 
 - #1557, HEAD f03f69c1918cb53a361bacd8da623c3b3fb5ec5e: Validate promotion

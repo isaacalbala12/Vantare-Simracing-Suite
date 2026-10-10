@@ -969,6 +969,7 @@ mod resource_tests {
                             x: 0.0,
                             y: 0.0,
                             visible: true,
+                            show_in: vantare_ui::session::ShowIn::default(),
                             opacity: 1.0,
                             settings: vantare_ui::Settings::default_for(kind),
                         }

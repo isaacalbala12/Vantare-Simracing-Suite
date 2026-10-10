@@ -7,7 +7,7 @@ Brief `C:/tmp/ola2/brief-1562.md`; informe `C:/tmp/ola2/informe-1562.md`; buzón
 Situación central, DTO v10, 250 ms, ajuste global + excepciones, previews siempre visibles.
 Paridad: frontend antiguo solo tenía reglas inPit/sessionTypes, sin opción global ni pausa/replay.
 Sin señal LMU replay verificada: no se inventa. Tests por capturas reales y mutaciones explícitas.
-Gates Windows por cola en curso; sin PR/merge/promoción. Siguiente paso: completar gates y push aislado.
+Hitos 2d392341 y f108631d; QA del coste cerrada. Fmt/Clippy -D warnings PASS, Nextest final1588/1588 (7 skips heredados,298,526 s), lifecycle18/18 y retirement456/456 PASS. Telemetría24/25, pendiente replay ACC largo. Medida local aceptada sin A/B: 4096 observaciones ACC ×30, valor central19,922 ns/call y cero alloc/realloc; no mide frame completo. Situación estable no añade notify ni ingest adelantado (18 tipos). Gates Windows finales por cola; sin PR/merge/promoción. Siguiente paso: completar gates y push aislado. #1564 añadirá filtro por sesión en la misma sección En pista, combinado Y; sin código anticipado.
 
 - #1557, HEAD f03f69c1918cb53a361bacd8da623c3b3fb5ec5e: Validate promotion
   path, Validate Vantare blocking gates, native-linux y quality-check SUCCESS.

@@ -140,6 +140,11 @@ pub struct Overlay {
 }
 
 impl Overlay {
+    /// La situación estable no añade notify ni fuerza ingest fuera de su cadencia.
+    fn update_off_track_visibility(&mut self, hidden: bool) -> bool {
+        replace_if_changed(&mut self.hidden_off_track, hidden)
+    }
+
     /// Solo Workshop suministra un estilo de desarrollo; producto usa valores compilados.
     pub(crate) fn standings_style(
         &mut self,
@@ -957,9 +962,8 @@ impl LiveScreens {
                     i.hidden_off_track(self.layout.hide_off_track, snapshot.state.driving_situation)
                 });
             let visibility_changed = widget.view.update(cx, |overlay, cx| {
-                let changed = overlay.hidden_off_track != hidden;
+                let changed = overlay.update_off_track_visibility(hidden);
                 if changed {
-                    overlay.hidden_off_track = hidden;
                     cx.notify();
                 }
                 changed
@@ -1367,6 +1371,30 @@ mod tests {
                 .filter(|_| overlay.project_snapshot(&snapshot))
                 .count();
             assert_eq!(repaints, 0, "{}: misma muestra", kind.name());
+        }
+    }
+
+    #[test]
+    fn stable_off_track_visibility_adds_no_repaint_for_all_widgets() {
+        for &kind in Kind::ALL {
+            let path = format!(
+                "{}/fixtures/{}.snapshot.json",
+                env!("CARGO_MANIFEST_DIR"),
+                kind.name()
+            );
+            let snapshot = vantare_ipc::snapshot_from_json(
+                &std::fs::read_to_string(path).expect("escena del widget"),
+            )
+            .expect("foto");
+            let mut overlay = Overlay::new(kind, Preferences::default());
+            overlay.project_snapshot(&snapshot);
+            for hidden in [false, true] {
+                assert_eq!(overlay.update_off_track_visibility(hidden), hidden);
+                for _ in 0..100 {
+                    assert!(!overlay.update_off_track_visibility(hidden), "{kind:?}");
+                    assert!(!overlay.project_snapshot(&snapshot), "{kind:?}");
+                }
+            }
         }
     }
 

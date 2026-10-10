@@ -604,3 +604,7 @@ con los nuevos campos activados: conservar su copia .bak.
 El host aplica la situación central incluso antes de la cadencia del widget,
 sin borrar entidades ni cerrar ventanas. Studio/Workshop nunca la activan;
 la demanda y la licencia no cambian. Ver [contrato](../runtime/README.md).
+El cálculo de política y el booleano de visibilidad no asignan memoria por foto.
+Una situación estable no solicita `notify` ni fuerza `ingest`: mantiene la cadencia
+existente. La regresión cubre los 18 widgets, 100 repeticiones visibles y ocultas;
+no elimina repintados necesarios por cambios de telemetría o por sus historiales.

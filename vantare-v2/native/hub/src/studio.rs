@@ -1761,9 +1761,9 @@ impl Studio {
                 "Fuera de pista",
                 ChoiceKind::Dropdown,
                 ["Heredar global", "Siempre visible", "Ocultar"]
-                .into_iter()
-                .map(OptionItem::new)
-                .collect(),
+                    .into_iter()
+                    .map(OptionItem::new)
+                    .collect(),
                 options.iter().position(|value| *value == item.off_track),
                 window,
                 cx,

@@ -182,9 +182,7 @@ fn lmu_real_fixtures_match_frozen_dtos() {
         );
         if name == "lmu-menu-fixture.bin" {
             assert_eq!(
-                vantare_ipc::snapshot_to_json(&core.snapshot())
-                    .expect("DTO menú")
-                    .as_bytes(),
+                legacy_dto(&core.snapshot()).as_bytes(),
                 legacy_fixture(include_str!(
                     "../../ui/fixtures/telemetry-real/lmu-menu.snapshot.json"
                 ))

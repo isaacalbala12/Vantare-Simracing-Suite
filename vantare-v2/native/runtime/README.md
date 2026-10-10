@@ -31,3 +31,11 @@ Las fixtures UI migran únicamente la etiqueta 9→10. Los goldens v9 originales
 hashes se conservan: la comparación elimina exclusivamente la nueva metadata y
 restablece esa etiqueta, manteniendo cada byte del resto. Tests independientes
 protegen situación, transiciones, política y preview. No certifica juego/OBS físicos.
+
+Medida local sin dependencias nuevas: `cargo run -p vantare-runtime --example
+situation-cost --release --features vantare-services/network --locked --offline -j 2`
+(por la cola, con target aislado). Precarga 4096 observaciones originales ACC y mide
+30 vueltas de `Tracker::update`, con contador de alloc/alloc_zeroed/realloc del hilo.
+Lectura, traducción, clones y preparación quedan fuera del intervalo. Informa ns por
+llamada (bucle/black_box incluidos) y solicita cero asignaciones en ese cálculo.
+No mide adquisición, IPC, pintado, latencia física ni compara versiones A/B.

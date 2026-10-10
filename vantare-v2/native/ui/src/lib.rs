@@ -24,6 +24,8 @@ mod motion_policy;
 pub use motion_policy::MotionPolicy;
 
 mod app;
+#[cfg(test)]
+mod board_contracts;
 #[cfg(feature = "parity-capture")]
 pub mod capture;
 mod demand;

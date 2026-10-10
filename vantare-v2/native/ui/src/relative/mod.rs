@@ -1,5 +1,7 @@
 //! Relative común: un Board y Motion activos, con pintores por Look.
 
+#[cfg(test)]
+mod contract_tests;
 mod eficiencia;
 mod motion;
 pub(crate) mod vantare;

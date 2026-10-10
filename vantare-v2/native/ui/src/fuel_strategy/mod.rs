@@ -3,6 +3,8 @@ use crate::app::{Paint, Wake};
 use std::sync::Arc;
 use std::time::Instant;
 use vantare_domain::{Snapshot, format::Preferences, fuel_strategy};
+#[cfg(test)]
+mod contract_tests;
 mod eficiencia;
 pub(crate) mod vantare;
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]

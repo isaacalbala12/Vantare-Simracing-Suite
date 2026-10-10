@@ -19,6 +19,8 @@
 //! let _ = (Settings::default(), ColumnSetting::default(), Format::default(), PIT_RAIL_WIDTH);
 //! ```
 
+#[cfg(test)]
+mod contract_tests;
 mod eficiencia;
 pub mod model;
 pub(crate) mod motion;

@@ -1,6 +1,8 @@
 //! Instrumento Delta Eficiencia: geometría congelada 280 × 96.
 //! Con el sistema Vantare (por defecto) pinta `vantare.rs` (#1497).
 
+#[cfg(test)]
+mod contract_tests;
 mod eficiencia;
 mod motion;
 pub(crate) mod vantare;

@@ -206,7 +206,7 @@ Vantare. La aserción de flujo sigue exigiendo +2.00s/+3.00s y la de stale exige
 —; el fallo inicial de adaptación se conserva. Los pintores ya leían el campo
 correcto, por lo que esta corrección no cambia producto, capturas o rendimiento.
 
-## Cierre local de #1531 (10-10-2026)
+## Cierre local inicial de #1531 (10-10-2026)
 
 Los cuatro widgets quedan implementados y validados en la rama aislada
 `vantareapp/isa-1531-widgets-looks`, base 5e1da3f6. Código productivo 746c2cc4;
@@ -231,3 +231,38 @@ Asignaciones/bytes del hilo UI no prueban RSS ni GPU/Present/latencia OBS.
 IPC, registro y dependencias permanecen intactos; integrar DTO v9 de #1530 y
 revalidar sus fixtures corresponde al orquestador. No hay push, PR, merge,
 release, CI remoto ni promoción; entrega local pendiente de revisión de Isaac.
+
+## Calidad y orden histórico: contratos reales de #1537
+
+P1.1 confirmado con `ui/fixtures/telemetry-real/lmu-stale.snapshot.json`:
+44 coches, tres clases, jugador CarId 44. La clasificación salía por slot
+(IDs 1..44) porque ambos sorts descartaban la posición Stale. Standings usa
+ahora la posición Reliable/Estimated/Stale como clave de orden, con ausencia
+al final. Esa clave se lee de los Scalars existentes; no crea otra colección,
+no añade estado y no convierte el último dato conocido en actual. Las celdas
+siguen usando `current()`: posición global/de clase obsoletas son `—`/None.
+
+Los tests pasan por `Widget::ingest`, no se limitan a repetir `project` ni a
+observar su booleano. Comparan el Board completo entre todos los Looks y la
+identidad Arc al cambiar de Look. Cubren cuatro fotos reales (lmu47, ACC,
+stale, menú), los cinco SourceState y una copia degradada por Core de cada
+foto, sin inventar valores. Incluyen ambos ámbitos de clase, las tres
+referencias Delta y los dos recursos Fuel. Protegen jugador/clase, calidad,
+ausencia, orden y el historial único. La transición live→stale invalida la
+caché aunque epoch/sequence no cambien y conserva el orden conocido.
+
+Orden por posición corresponde a Standings global y a sus grupos. Relative
+conserva su contrato de vecinos por gap firmado al jugador (delante lejos→
+cerca, jugador, detrás cerca→lejos), además de posición/clase correctas. Sus
+valores históricos llevan marcas stale explícitas. Delta y Fuel no tienen
+filas de clasificación: se comprueba identidad del jugador, referencia de
+líder de su clase en Delta y clase/recurso/stint en Fuel; datos crudos
+conservan Quality y no alimentan valores actuales desde Stale.
+
+La corrección del orden stale justifica una diferencia visual localizada
+respecto al baseline que contenía el bug; las referencias históricas no se
+renuevan. Evidencia adicional separada en
+`C:/tmp/auditoria-arquitectura-v2/evidence-1531/stale-contract-1537`, incluida
+la reproducción anterior (dos tests FAIL, los otros tres PASS). El cierre
+inicial de arriba conserva sus cifras históricas; esta corrección se revalida
+con capturas y el mismo gate de rendimiento y gates oficiales.

@@ -168,8 +168,17 @@ impl Board {
                     || row.class_id.is_none_or(|id| Some(id) == self.player_class)
             })
             .collect();
-        rows.sort_by_key(|row| row.position.parse::<u32>().unwrap_or(u32::MAX));
+        rows.sort_by_key(|row| classification_order(row.facts.scalars.position));
         rows
+    }
+}
+
+/// Conserva el orden de clasificación durante una pausa. El valor obsoleto
+/// solo sirve de clave: las celdas siguen usando `current()` y muestran `—`.
+fn classification_order(position: Quality<u32>) -> u32 {
+    match position {
+        Quality::Reliable(value) | Quality::Estimated(value) | Quality::Stale(value) => value,
+        Quality::Unavailable => u32::MAX,
     }
 }
 
@@ -504,7 +513,7 @@ fn project_groups(
             old_best == session_best
         }
     });
-    cars.sort_by_key(|car| car.position.current().copied().unwrap_or(u32::MAX));
+    cars.sort_by_key(|car| classification_order(car.position));
 
     // Grupos en orden de su mejor posición; los coches sin clase van juntos.
     let mut groups: Vec<(Option<u32>, Vec<&Car>)> = Vec::new();

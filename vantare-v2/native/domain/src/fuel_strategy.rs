@@ -255,7 +255,7 @@ pub fn project_with_config(snapshot: &Snapshot, _prefs: Preferences, content: Co
     let laps_left = limiting.laps;
 
     let completed = car.and_then(|c| c.laps.current().copied());
-    let lap = completed.map(|laps| laps + 1);
+    let lap = completed.and_then(|laps| laps.checked_add(1));
     let remaining = state
         .session
         .laps_remaining
@@ -273,15 +273,13 @@ pub fn project_with_config(snapshot: &Snapshot, _prefs: Preferences, content: Co
         .and_then(|p| service(&fuel, p, car?));
     let finish = finish(&fuel, remaining);
     let window = match (plan, lap, completed, remaining) {
-        (Plan::Stop(close), Some(lap), Some(done), Some(remaining)) => {
-            let total = state
-                .session
-                .laps_total
-                .current()
-                .copied()
-                .unwrap_or(done + remaining);
-            Some(window(&limiting, finish, lap, close, total))
-        }
+        (Plan::Stop(close), Some(lap), Some(done), Some(remaining)) => state
+            .session
+            .laps_total
+            .current()
+            .copied()
+            .or_else(|| done.checked_add(remaining))
+            .map(|total| window(&limiting, finish, lap, close, total)),
         _ => None,
     };
 
@@ -303,7 +301,7 @@ pub fn project_with_config(snapshot: &Snapshot, _prefs: Preferences, content: Co
         banner,
         class: car.map_or_else(String::new, class_name),
         stint: player.map_or_else(Stint::default, |p| Stint {
-            number: car.and_then(|c| c.pit_stops.current().map(|stops| stops + 1)),
+            number: car.and_then(|c| c.pit_stops.current().and_then(|stops| stops.checked_add(1))),
             laps: p.stint.laps.current().copied(),
             elapsed_s: value(&p.stint.elapsed_s),
         }),
@@ -369,7 +367,9 @@ fn plan(limiting: &Tank, remaining: Option<u32>, completed: Option<u32>) -> Plan
                 Plan::Finish(level - per_lap * f64::from(remaining))
             }),
         (Some(left), _) if left < LOW_LAPS => Plan::Now,
-        (Some(left), _) => completed.map_or(Plan::Unknown, |done| Plan::Stop(done + whole(left))),
+        (Some(left), _) => completed
+            .and_then(|done| done.checked_add(whole(left)))
+            .map_or(Plan::Unknown, Plan::Stop),
         (None, _) => Plan::Unknown,
     }
 }
@@ -469,7 +469,8 @@ fn banner(snapshot: &Snapshot, in_pits: bool) -> Option<Banner> {
         FlagScope::Sector(n) => Some(*n),
         _ => None,
     })
-    .map(|sector| Banner::LocalYellow(sector + 1))
+    .and_then(|sector| sector.checked_add(1))
+    .map(Banner::LocalYellow)
 }
 
 impl Board {
@@ -1041,6 +1042,68 @@ mod rich_tests {
 
     fn player(s: &mut Snapshot) -> &mut Player {
         s.state.player.as_mut().expect("jugador")
+    }
+
+    #[test]
+    fn extreme_counters_and_sector_are_absent_without_hiding_valid_fuel() {
+        for (laps, stops, sector) in [
+            (13, 1, 0),
+            (u32::MAX, 1, 0),
+            (13, u32::MAX, 0),
+            (13, 1, u8::MAX),
+            (u32::MAX, u32::MAX, u8::MAX),
+        ] {
+            let mut s = snapshot();
+            s.state.cars[0].laps = Quality::Reliable(laps);
+            s.state.cars[0].pit_stops = Quality::Reliable(stops);
+            s.state.flags = Quality::Reliable(vec![Flag {
+                kind: FlagKind::Yellow,
+                scope: FlagScope::Sector(sector),
+            }]);
+            let board = project(&s);
+            assert_eq!(board.lap, if laps == u32::MAX { None } else { Some(14) });
+            assert_eq!(
+                board.stint.number,
+                if stops == u32::MAX { None } else { Some(2) }
+            );
+            assert_eq!(
+                board.banner,
+                if sector == u8::MAX {
+                    None
+                } else {
+                    Some(Banner::LocalYellow(1))
+                }
+            );
+            assert_eq!(board.fuel.level, Some(42.6));
+            if laps == u32::MAX {
+                assert_eq!(board.plan, Plan::Unknown);
+                assert!(board.window.is_none());
+            }
+        }
+    }
+
+    #[test]
+    fn stop_lap_overflow_is_unknown_even_when_current_lap_fits() {
+        let mut s = snapshot();
+        s.state.cars[0].laps = Quality::Reliable(u32::MAX - 1);
+        let board = project(&s);
+        assert_eq!(board.lap, Some(u32::MAX));
+        assert_eq!(board.plan, Plan::Unknown);
+        assert!(board.window.is_none());
+    }
+
+    #[test]
+    fn overflowing_window_total_is_absent_but_unused_fallback_is_not_evaluated() {
+        let mut s = snapshot();
+        s.state.cars[0].laps = Quality::Reliable(u32::MAX - 20);
+        // El total explícito no necesita sumar el contador y las vueltas restantes.
+        let board = project(&s);
+        assert_eq!(board.plan, Plan::Stop(u32::MAX - 9));
+        assert!(board.window.is_some());
+        s.state.session.laps_total = Quality::Unavailable;
+        assert!(project(&s).window.is_none());
+        s.state.session.laps_remaining = Quality::Reliable(20);
+        assert_eq!(project(&s).window.unwrap().total, u32::MAX);
     }
 
     #[test]

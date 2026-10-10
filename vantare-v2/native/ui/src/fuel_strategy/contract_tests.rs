@@ -3,6 +3,47 @@ use crate::board_contracts::{STATES, cases};
 use vantare_domain::{Quality, SourceState};
 
 #[test]
+fn extreme_dto_counters_and_sector_project_safely_for_every_look() {
+    let mut dto: serde_json::Value = serde_json::from_str(include_str!(
+        "../../fixtures/telemetry-real/lmu47.snapshot.json"
+    ))
+    .unwrap();
+    let player_id = dto["state"]["player"]["car"].clone();
+    let car = dto["state"]["cars"]
+        .as_array_mut()
+        .unwrap()
+        .iter_mut()
+        .find(|c| c["id"] == player_id)
+        .unwrap();
+    car["laps"] = serde_json::json!({"reliable": u32::MAX});
+    car["pit_stops"] = serde_json::json!({"reliable": u32::MAX});
+    // El coche real está en boxes: aislar la bandera de sector de ese aviso prioritario.
+    car["in_pits"] = serde_json::json!({"reliable": false});
+    dto["state"]["flags"] =
+        serde_json::json!({"reliable": [{"kind": "yellow", "scope": {"sector": 255}}]});
+    let photo = vantare_ipc::snapshot_from_json(&dto.to_string()).unwrap();
+    let prefs = Preferences::default();
+    let mut common = None;
+    for &look in crate::look::Look::ALL {
+        let mut widget = Widget::new(
+            &Settings {
+                design_system: look,
+                ..Settings::default()
+            },
+            prefs,
+        );
+        widget.ingest(&photo, prefs);
+        assert!(widget.board.lap.is_none());
+        assert!(widget.board.stint.number.is_none());
+        assert!(widget.board.banner.is_none());
+        if let Some(previous) = &common {
+            assert_eq!(previous, &widget.board);
+        }
+        common = Some(widget.board.clone());
+    }
+}
+
+#[test]
 fn real_board_contract_for_every_source_state_and_look() {
     let prefs = Preferences::default();
     for (name, original) in cases() {

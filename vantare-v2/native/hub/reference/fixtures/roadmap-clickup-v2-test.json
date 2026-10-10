@@ -6,7 +6,7 @@
         "id": "ebbc41e5-2c43-5ffb-b8c6-f93d75562c5f",
         "section": "now",
         "title": {
-          "es": "Feature Â· Calendario",
+          "es": "Feature · Calendario",
           "en": "",
           "pt": "",
           "it": ""
@@ -31,7 +31,7 @@
           "it": ""
         },
         "body": {
-          "es": "Estado: por revisar\nSubtarea de: Feature Â· Calendario",
+          "es": "Estado: por revisar\nSubtarea de: Feature · Calendario",
           "en": "",
           "pt": "",
           "it": ""
@@ -50,7 +50,7 @@
           "it": ""
         },
         "body": {
-          "es": "Estado: testers\nSubtarea de: Feature Â· Calendario â†’ Revisar favoritas",
+          "es": "Estado: testers\nSubtarea de: Feature · Calendario → Revisar favoritas",
           "en": "",
           "pt": "",
           "it": ""
@@ -63,7 +63,7 @@
         "id": "8c99e411-bf51-5d98-b5be-d92c07a11285",
         "section": "later",
         "title": {
-          "es": "Idea Â· Agenda",
+          "es": "Idea · Agenda",
           "en": "",
           "pt": "",
           "it": ""
@@ -82,7 +82,7 @@
         "id": "29650cd2-083e-535b-8b64-49a80112ff18",
         "section": "done",
         "title": {
-          "es": "Fix Â· Cuenta atrÃ¡s",
+          "es": "Fix · Cuenta atrás",
           "en": "",
           "pt": "",
           "it": ""

@@ -266,3 +266,52 @@ renuevan. Evidencia adicional separada en
 la reproducción anterior (dos tests FAIL, los otros tres PASS). El cierre
 inicial de arriba conserva sus cifras históricas; esta corrección se revalida
 con capturas y el mismo gate de rendimiento y gates oficiales.
+
+Cinco A/B intercaladas en procesos distintos tras el arreglo: ocho costes
+Standings PASS sin usar los márgenes +3 %/+5 %. Frame p50 Efi LMU/ACC
+139,1/148,6 µs dentro de rangos baseline 95,4–223,7/99,3–162,4; Vantare
+117,4/90,3 dentro de 89,6–135,9/83,8–121,0. Todos los p99 dentro o por debajo
+del rango baseline; la carga concurrente queda reflejada en las tandas, sin
+buscar estabilización adicional. Frío Vantare LMU 97,781→116,893 µs (1,195x),
+ACC 44,378→54,671 (1,232x), sin Board anterior: límite 1,5x PASS. El JSON
+conserva cada tanda y muestras frías (12 000 LMU / 1 000 ACC por proceso).
+
+Relative publica `HeaderStale` en el Board: circuito, badge del jugador,
+tipo de sesión, reloj, aire, pista y viento tienen marcas independientes.
+Se calculan una vez al proyectar, a partir de Quality, sin Look ni estado
+adicional. La clave existente compara la calidad y la comparación visible
+de Eficiencia incluye las marcas: una transición fresco→Stale repinta aunque
+el texto sea idéntico. Cambiar Look conserva el mismo Arc y sus marcas.
+
+Eficiencia reutiliza exactamente la tinta al 60 % de sus filas Stale, solo
+en el valor afectado; etiquetas estáticas y valores frescos conservan su
+tinta. Sesión y reloj se atenúan por separado. Footer configurable conserva
+las marcas InfoCell existentes. Vantare no dibuja estos metadatos de
+cabecera/pie; mantiene su presentación existente sin inventar un tratamiento.
+Las capturas Live sin señales Stale deben seguir siendo idénticas. Una foto
+SourceState::Live con campos Stale sí requiere marcar esos campos: el estado
+global no sustituye la calidad individual.
+
+Validación visual adicional de Relative: 121 pares ES/EN, catálogo, estados,
+cuatro fotos reales por Look y siete degradaciones de calidad aisladas por
+Look/idioma. 106 pares idénticos; 15 cambios exclusivamente Stale, todos en
+cabecera/pie de Eficiencia (14 campos aislados + foto real stale). Las 91
+entradas sin señales Stale y todo Vantare conservan RGBA exacto=0. Filas y
+aviso de fuente no cambian; goldens intactos. Pares antes/después y regiones:
+`stale-contract-1537/relative-freshness/captures.md` y `changed-regions.json`.
+
+Cinco A/B adicionales de Relative: ocho costes PASS sin márgenes +3 %/+5 %.
+Frame p50 Eficiencia LMU/ACC 52,0/84,2 µs frente a rangos baseline
+52,4–91,3/77,2–129,5; Vantare 37,3/45,8 frente a 32,9–95,8/37,0–95,9.
+Ingest mediano 3,2/1,9 µs Eficiencia y 3,8/2,9 Vantare, por debajo de sus
+rangos baseline. Todos los p99 dentro o por debajo del rango baseline.
+Frío Vantare LMU 2,453→3,137 µs (1,279x), ACC 2,137→2,850 (1,334x):
+límite 1,5x PASS, sin Board anterior. Las tandas reflejan la carga concurrente
+y no se repiten para afinar ruido; el gate usa el rango aprobado por Isaac.
+
+Cierre adicional: Standings `be505e8f`, Relative `d595fac8`; siete tests
+nuevos. Fmt/check/Clippy workspace -D warnings PASS; enfocados 123/123,
+Nextest 1432/1432 (7 skips oficiales), lifecycle 5+13 y telemetría 21/21
+PASS por cola y targets aislados. No se modifican IPC ni fixtures; los
+diagnósticos iniciales se conservan en la evidencia, sin fallos pendientes.
+Capturas finales fijadas al único Release C9E36342; entrega local sin push/PR/merge.

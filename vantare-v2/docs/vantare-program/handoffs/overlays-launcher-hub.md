@@ -1,3 +1,12 @@
+## #1531 · Ampliación P1.1/P1.4 y frescura Relative completa; gates PASS (2026-10-10)
+
+Standings be505e8f corrige ambos sorts históricos y preserva —/None; Relative d595fac8 añade HeaderStale con siete marcas y tinta Eficiencia al 60 % por valor. Vantare no dibuja esos metadatos. Misma rama/base/worktree; IPC intacto.
+Siete tests nuevos: cuatro fotos reales × cinco SourceState + degradación Core, Boards y Arcs por Look, jugador/clase, calidad, orden/cache; transición Relative sin cambiar texto y cambio de Look. 123/123 enfocados PASS.
+Fmt/check/Clippy -D warnings PASS; Nextest 1432/1432 PASS (7 skips oficiales), lifecycle 5+13 PASS. Telemetría 21/21 PASS (09771afb-98fc-47bc-8fe2-af3a521b723d). Entrega aislada completa, revisión de Isaac pendiente.
+Capturas Standings 57: 53 anteriores RGBA=0 + cuatro stale con orden corregido. Relative 121: 106 idénticas, 15 cambios solo Stale en cabecera/pie Eficiencia; 91 sin señales Stale y todo Vantare RGBA=0, filas y aviso intactos. Goldens intactos; pares inspeccionados ES/EN.
+Cinco A/B adicionales por widget: Standings y Relative 16 costes PASS sin márgenes; frío LMU/ACC Standings 1,195x/1,232x y Relative 1,279x/1,334x (límite 1,5x). Tandas y pruebas en evidence-1531/stale-contract-1537 y relative-freshness.
+DTO v9 de #1530 queda al orquestador; no cambia el contrato espacial de Relative. Sin push/PR/merge/release/promoción/CI remoto. Cierre inicial de abajo conserva su evidencia histórica.
+
 ## #1531 · Entrega aislada completa; cuatro widgets y gates PASS (2026-10-10)
 
 Rama vantareapp/isa-1531-widgets-looks, base 5e1da3f6, código productivo 746c2cc4, tests runtime 79cbc6eb/607941c7 y Studio 0d58f187; Fuel inicial 2cb3a6e3; corrección común a849296f; worktree C:/tmp/vw3-1531/vantare-v2.

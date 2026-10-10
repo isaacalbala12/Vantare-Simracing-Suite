@@ -141,7 +141,7 @@ Leídas issues [#909](https://github.com/isaacalbala12/Vantare-Simracing-Suite/i
 [#915](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/915),
 PR [#1173](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1173) y
 [#1187](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1187), más
-[notion-transition](../../vantare-program/notion-transition.md). Las dos PR
+[notion-transition (histórico)](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/notion-transition.md). Las dos PR
 estaban abiertas al leerlas; no se presupone integración ni despliegue.
 
 | Camino | Ventaja | Límite | Decisión |

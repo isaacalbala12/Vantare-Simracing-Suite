@@ -1,42 +1,17 @@
-# Mapa de módulos y fronteras
+# Fronteras y continuidad por área
 
-Revisión documental contra nightly del 2026-09-14. GitHub Issues contiene alcance, dependencias de trabajo y estado. Este mapa describe responsabilidades; los handoffs conservan evidencia fechada y no son una segunda cola de tareas.
+El mapa de crates y la topología de procesos tienen un único dueño: [native/README.md](../../native/README.md), «Dependencias permitidas», «Ciclo de vida» y «Topología». Este índice conduce al handoff técnico; GitHub Issues contiene alcance, dependencias y siguiente trabajo.
 
-## Caminos de datos
+| Área | Continuidad |
+|---|---|
+| Telemetría live, adapters y núcleo | [Telemetry Core](handoffs/telemetry-core.md) |
+| Series y análisis post-sesión | [Analysis](handoffs/telemetry-analysis.md) |
+| Eventos, radio y voz bajo demanda | [Engineer/Spotter](handoffs/engineer-spotter.md) |
+| Documento y cálculo Strategy | [Strategy](handoffs/strategy-planner.md) |
+| Widgets, overlays, Studio, Launcher y Hub | [Hub/Studio](handoffs/overlays-launcher-hub.md) |
+| Identidad, Billing, servicios y distribución | [Plataforma](handoffs/platform-commercial.md) |
+| Informes y flujos de soporte | [Testing Center](handoffs/testing-center.md) |
 
-```text
-Fuentes LMU → Telemetry Core / TelemetryEngine
-  ├─ Overlay V2 → Studio / Desktop / OBS
-  └─ proyección Engineer → Engineer / Spotter / radio
+Los consumidores usan contratos versionados; no leen el almacenamiento privado ni la UI de otra área. Una frontera no demuestra disponibilidad pública, aceptación física ni release. La ausencia de datos no se sustituye por datos inventados.
 
-Archivos históricos LMU → Telemetry Analysis / SessionCatalog
-  └─ StrategyInputProjectionV2 → documento y cálculo Strategy
-
-Cuenta / Billing → permisos de módulos y canales
-Launcher → discovery, perfiles y procesos
-Calendario → agenda y recordatorios
-Roadmap editorial + manifiestos → app y comunicaciones verificadas
-```
-
-El camino live Strategy conserva `projection/strategy.SnapshotV1`, pero su construcción está condicionada por `StrategyPublicTransport`, desactivado por defecto en la composición de la app. No representa un consumidor live Strategy activo por defecto. La existencia del motor live no demuestra que esté conectado. Ver [runtime](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/app/telemetry_core_runtime.go) y [composición](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/cmd/vantare/main.go).
-
-El backend histórico de Analysis alimenta Strategy; la pantalla de Telemetría tiene su propia integración pendiente. Ver [fuente de la pantalla](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/hub/telemetry-orbit/telemetry-orbit-source.ts) y [handoff Analysis](handoffs/telemetry-analysis.md).
-
-## Responsabilidades y entrada por módulo
-
-| Módulo | Responsabilidad | Referencia técnica |
-|---|---|---|
-| Telemetry Core | Adquisición, tiempo, validez, fusión y proyecciones; sin UI ni recomendaciones | [Core](../telemetry-core/README.md) |
-| Telemetry Analysis | Lectura/importación histórica, catálogo, métricas y proyecciones post-sesión; sin decisiones live | [Handoff](handoffs/telemetry-analysis.md) |
-| Strategy Planner | Documento por evento, planificación y cálculo sobre inputs con procedencia | [Documento V2](../strategy-planner/f1-3-contrato-documento-v2.md), [handoff](handoffs/strategy-planner.md) |
-| Engineer/Spotter | Hechos live, familias, prioridades, radio y voz según capacidades; sin reader LMU propio | [Handoff](handoffs/engineer-spotter.md) |
-| Studio/Overlays | Editor único y render compartido; canvas espacial, inspector documental, visuales con ViewModels | [Studio](../overlays-studio/README.md) |
-| Launcher | Catálogo, discovery, perfiles y ciclo de procesos | [Launcher](../launcher-v3-architecture.md) |
-| Cuenta y Billing | Identidad, credenciales firmadas, acceso comercial y operativo separados | [Billing](../billing/README.md) |
-| Hub, Calendario y ajustes | Navegación, agenda y configuración dentro de sus servicios | [Handoff plataforma](handoffs/platform-commercial.md), [Hub/Studio](handoffs/overlays-launcher-hub.md) |
-| Distribución y roadmap | Versionado, artefactos, canales, notas de release y planning público | [Release](../release-beta-operations-runbook.md), [roadmap](../roadmap-maintenance.md) |
-| Testing Center | Diagnóstico y flujos de soporte según su contrato y autorizaciones | [Handoff](handoffs/testing-center.md) |
-
-Los módulos se integran mediante contratos versionados, sin leer el almacenamiento privado ni la UI de otro. Una flecha no declara disponibilidad pública ni aceptación en Windows. Contenido y marketing requieren una petición específica.
-
-[Snapshot completo del 21 de agosto](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/vantare-program/project-map.md): conserva tablas de issues, bloqueos y orden de ejecución de aquel corte. No se mantienen como estado actual.
+[Mapa anterior completo](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/project-map.md): conserva la topología del legado y sus límites; no es el mapa operativo nativo.

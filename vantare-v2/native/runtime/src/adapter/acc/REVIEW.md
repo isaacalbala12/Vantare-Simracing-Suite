@@ -1,3 +1,5 @@
+> Evidencia histórica de #1425; contrato vigente en [README nativo](../../../../README.md). Estados, versiones DTO y gates siguientes describen su corte, no la base actual.
+
 # ACC — revisión y evidencia (ISA-1425)
 
 ## Spotter con velocidad estimada — #1428 (2026-09-30)

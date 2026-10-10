@@ -125,7 +125,7 @@ rollout con aviso global; filtrar reportes, abrir detalle/capturas y cambiar est
 
 Capturas físicas demo a 1280×800: `./admin/capture-demo.ps1` (binario debug ya
 compilado). Espera la reserva de pantalla y toma `Global\VantareParityCapture`.
-Lee/aplica primero `C:/tmp/fase2/notas-1456.md`; si existe, pasa su SHA256 en
+Histórico: Lee/aplica primero `C:/tmp/fase2/notas-1456.md`; si existe, pasa su SHA256 en
 `-ReviewedNotesHash`. Conserva cada primera captura como `primera-<pantalla>.png`.
 No existe referencia Wails de esta miniapp nueva: se revisa estructura y
 legibilidad sobre Orbit; no se declara paridad por porcentaje.
@@ -134,7 +134,7 @@ Cliente contrastado con el código desplegado. Pendientes de prueba contra produ
 Demo y servidor local no demuestran eso. Ante una captura caducada vuelve a
 seleccionar el reporte para obtener URLs nuevas. Solo paginación hacia delante
 en reportes; búsquedas de usuarios limitadas a 50, afinar query si hay más.
-No hay borrado de cuentas/datos ni edición del rol owner. Sin Notion en este
+Histórico: No hay borrado de cuentas/datos ni edición del rol owner. Sin Notion en este
 encargo por indicación de Isaac: seguimiento operativo pendiente de reconciliar
 por el orquestador en la tarea existente, sin duplicarla.
 

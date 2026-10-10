@@ -429,10 +429,7 @@ impl Translator {
         };
         let mut cars = Vec::with_capacity(self.cars.len());
         if active || (g.is_empty() && self.session.is_some()) {
-            let indices: Vec<u16> = self.cars.keys().copied().collect();
-            for index in indices {
-                cars.push(self.car(index, now));
-            }
+            cars = self.observed_cars(now);
         }
         if let Some(id) = player_id {
             if !cars.iter().any(|c| c.id == id) {
@@ -508,6 +505,14 @@ impl Translator {
                 ..state
             },
         })
+    }
+
+    fn observed_cars(&mut self, now: Duration) -> Vec<Car> {
+        let indices: Vec<u16> = self.cars.keys().copied().collect();
+        indices
+            .into_iter()
+            .map(|index| self.car(index, now))
+            .collect()
     }
 
     fn driver(&mut self, name: &str) -> Driver {

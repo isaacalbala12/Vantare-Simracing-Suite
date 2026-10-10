@@ -52,7 +52,6 @@ fn attempt(
     let name = attempt_name(identity, product, environment)?;
     match store.load::<Attempt>(&name) {
         Ok(value) if crate::license::uuid(&value.id) => Ok(value),
-        Ok(_) => Err(Error::Storage),
         Err(Error::NotFound) => {
             let hex = crate::random_id()?;
             let value = Attempt {
@@ -68,7 +67,8 @@ fn attempt(
             store.save(&name, &value)?;
             Ok(value)
         }
-        Err(error) => Err(error),
+        // Conservar evidencia y la barrera de idempotencia hasta recuperación explícita.
+        _ => Err(Error::CheckoutRecovery),
     }
 }
 
@@ -137,6 +137,145 @@ pub fn purchase(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn regression_1542_corrupt_checkout_preserves_attempt_and_offers_recovery() {
+        let (root, store) = crate::test_store("billing-corrupt");
+        let identity = Identity {
+            issuer: "https://clerk.example".into(),
+            subject: "user_fixture".into(),
+        };
+        let name = attempt_name(&identity, BillingProduct::ProMonthly, "sandbox").expect("name");
+        for value in [
+            serde_json::json!({"id":"invalid-uuid"}),
+            serde_json::json!({"bad":"schema"}),
+        ] {
+            store.save(&name, &value).expect("corrupt fixture");
+            for _ in 0..2 {
+                let error = attempt(&store, &identity, BillingProduct::ProMonthly, "sandbox")
+                    .err()
+                    .expect("blocked");
+                assert_eq!(
+                    store.load::<serde_json::Value>(&name).expect("preserved"),
+                    value
+                );
+                assert!(
+                    error.to_string().contains("recuperación"),
+                    "explicit recovery required: {error}"
+                );
+            }
+        }
+        drop(store);
+        crate::cleanup_store(&root, "billing-corrupt", &[]);
+    }
+    #[test]
+    fn regression_1542_unreadable_checkout_keeps_bytes_and_never_sends_http() {
+        let server = crate::test_http::Server::start(vec![]);
+        let (root, store) = crate::test_store("billing-unreadable");
+        let account = crate::account::fixture(&server.base, &store);
+        let name = attempt_name(
+            account.identity().expect("identity"),
+            BillingProduct::ProMonthly,
+            "sandbox",
+        )
+        .expect("name");
+        let namespace = std::fs::read_dir(&root)
+            .expect("root")
+            .next()
+            .expect("namespace")
+            .expect("entry")
+            .path();
+        let path = namespace.join(format!(
+            "{name}.{}",
+            if cfg!(windows) { "dpapi" } else { "json" }
+        ));
+        std::fs::write(&path, b"not-readable-json-or-dpapi").expect("bad bytes QA");
+        let config = BuildConfig {
+            supabase: Some(server.base.clone()),
+            anon_key: Some("public-fixture"),
+            license_keys: None,
+            channel: None,
+            native_oauth: None,
+        };
+        let error = purchase(
+            &Http::default(),
+            &config,
+            &account,
+            100,
+            &store,
+            BillingProduct::ProMonthly,
+            "sandbox",
+        )
+        .expect_err("blocked");
+        assert_eq!(
+            std::fs::read(&path).expect("preserved"),
+            b"not-readable-json-or-dpapi"
+        );
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        drop(store);
+        crate::cleanup_store(&root, "billing-unreadable", &[]);
+        assert!(
+            error.to_string().contains("recuperación"),
+            "explicit recovery required: {error}"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn checkout_read_lock_offers_recovery_and_reuses_uuid_after_unlock() {
+        use std::os::windows::fs::OpenOptionsExt;
+        let server = crate::test_http::Server::start(vec![]);
+        let (root, store) = crate::test_store("billing-io-lock");
+        let account = crate::account::fixture(&server.base, &store);
+        let identity = account.identity().expect("identity");
+        let original =
+            attempt(&store, identity, BillingProduct::ProMonthly, "sandbox").expect("attempt");
+        let name = attempt_name(identity, BillingProduct::ProMonthly, "sandbox").expect("name");
+        let namespace = std::fs::read_dir(&root)
+            .expect("root")
+            .next()
+            .expect("namespace")
+            .expect("entry")
+            .path();
+        let path = namespace.join(format!("{name}.dpapi"));
+        let bytes = std::fs::read(&path).expect("protected fixture");
+        let lock = std::fs::OpenOptions::new()
+            .read(true)
+            .share_mode(0)
+            .open(&path)
+            .expect("read lock");
+        let config = BuildConfig {
+            supabase: Some(server.base.clone()),
+            anon_key: None,
+            license_keys: None,
+            channel: None,
+            native_oauth: None,
+        };
+        assert_eq!(
+            purchase(
+                &Http::default(),
+                &config,
+                &account,
+                100,
+                &store,
+                BillingProduct::ProMonthly,
+                "sandbox"
+            ),
+            Err(Error::CheckoutRecovery)
+        );
+        assert!(server.requests.try_recv().is_err());
+        drop(lock);
+        assert!(std::fs::read(&path).expect("preserved") == bytes);
+        assert_eq!(
+            attempt(&store, identity, BillingProduct::ProMonthly, "sandbox")
+                .expect("unlocked retry")
+                .id,
+            original.id
+        );
+        server.finish();
+        drop(store);
+        crate::cleanup_store(&root, "billing-io-lock", &[]);
+    }
     #[test]
     fn attempt_survives_retry_and_uses_only_the_selected_product() {
         let (root, store) = crate::test_store("billing-attempt");

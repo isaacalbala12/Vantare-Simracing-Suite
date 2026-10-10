@@ -1,6 +1,17 @@
 use super::*;
 
 #[test]
+fn regression_1542_published_id_survives_temporary_cleanup_failure() {
+    let root = root();
+    let first = anonymous_id_with_cleanup(&root, |_| {
+        Err(std::io::Error::from(std::io::ErrorKind::PermissionDenied))
+    });
+    let saved = anonymous_id(&root).expect("publicación durable");
+    fs::remove_dir_all(root).expect("cleanup QA");
+    assert_eq!(first, Ok(saved));
+}
+
+#[test]
 fn isolated_data_root_child() {
     if let Some(base) = std::env::var_os("VANTARE_TEST_DIAGNOSTICS_ROOT") {
         let base = PathBuf::from(base);

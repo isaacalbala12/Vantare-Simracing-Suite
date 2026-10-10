@@ -61,11 +61,29 @@ local, mismo nonce, límites, PID e imagen del par. La sesión y demás datos de
 JSON: los permisos protegen frente a otros usuarios, pero no frente a procesos
 del mismo usuario, administrador/root, ni acceso al disco fuera del sistema.
 
-El contrato v1 conserva el fingerprint heredado como SHA-256 de `HOME|GOOS`
-(`linux`/`darwin`). La clave Ed25519 de instalación
-conserva su ID RFC 7638 y prueba de enrollment; queda en el `Store` privado.
-El backend v2 aún no está desplegado, por lo que la renovación v1 sigue usando
-el fingerprint heredado también en Unix.
+El binding de licencia v1 queda expresamente deshabilitado fuera de Windows
+(#1542): `HOME|GOOS` colisiona entre máquinas y no acredita un dispositivo.
+`legacy_fingerprint`, renovación v1 y reset de dispositivo devuelven
+`Unsupported`; renovación/reset lo hacen antes de OAuth, red o revocación local.
+El núcleo rechaza v1 cuando no existe huella local. Los formatos guardados,
+la huella Windows y la clave Ed25519 de instalación (ID RFC 7638/enrollment)
+se conservan. No se migran credenciales reales ni se sustituye la huella por
+otro hash que invalidaría credenciales sin una migración. Habilitar licencias
+Unix exige enrollment/backend v2 y una migración autenticada posterior.
+
+### Recuperación local de cuenta y compra — #1542
+
+Si cambia solo el redirect OAuth, la metadata incompatible se aparta en una
+copia `.corrupto` única y se redescubre con la configuración compilada. Un
+fallo al moverla detiene la operación; la sesión y las credenciales no cambian.
+Los errores de lectura no se convierten en permiso para sobrescribir datos.
+
+Un intento de compra ilegible se conserva y muestra recuperación asistida;
+reintentar no crea otra clave. Procedimiento y límite del resultado incierto:
+[recuperación de checkout](../../docs/billing/native-checkout-recovery.md).
+Los slots de uso semánticamente inválidos se descartan sin enviarlos y se
+continúa con el resto de la cola. Un fallo al limpiar un temporal de
+`anonymous-id` se diagnostica aparte y no invalida su publicación ya durable.
 
 ### Testing Center beta — #1452
 

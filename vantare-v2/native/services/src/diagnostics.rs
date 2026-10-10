@@ -131,6 +131,13 @@ fn valid_uuid(id: &str) -> bool {
 
 /// UUID v4 estable por namespace; Testing usa otro. Publicación atómica entre procesos.
 pub fn anonymous_id(root: &Path) -> Result<String> {
+    anonymous_id_with_cleanup(root, |path| fs::remove_file(path))
+}
+
+fn anonymous_id_with_cleanup(
+    root: &Path,
+    cleanup: impl FnOnce(&Path) -> std::io::Result<()>,
+) -> Result<String> {
     fs::create_dir_all(root).map_err(|_| Error::Storage)?;
     let path = root.join("anonymous-id");
     if !path.exists() {
@@ -152,8 +159,10 @@ pub fn anonymous_id(root: &Path) -> Result<String> {
             }
         })();
         drop(file);
-        let cleanup = fs::remove_file(temp).map_err(|_| Error::Storage);
-        publish.and(cleanup)?;
+        if cleanup(&temp).is_err() {
+            eprintln!("diagnóstico: limpieza de anonymous-id temporal pendiente");
+        }
+        publish?;
     }
     let id = String::from_utf8(read_bounded(&path, 36)?).map_err(|_| Error::Protocol)?;
     if !valid_uuid(&id) {

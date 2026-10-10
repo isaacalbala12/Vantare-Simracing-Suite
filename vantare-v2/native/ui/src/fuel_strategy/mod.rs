@@ -17,6 +17,7 @@ pub struct Settings {
     /// Marca Vantare: decisión inyectada por el host según la licencia.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub brand_visible: Option<bool>,
+    #[serde(default)]
     pub content_version: u8,
     pub history_rows: u8,
     pub show_projection: bool,
@@ -31,7 +32,7 @@ impl Default for Settings {
             accent: crate::standings::Accent::Red,
             size: "standard".into(),
             brand_visible: None,
-            content_version: 0,
+            content_version: 1,
             history_rows: 4,
             show_projection: true,
             source: "fuel".into(),
@@ -228,7 +229,7 @@ impl Widget {
                 (
                     Box::new(move |w, cx| {
                         labels.prepare(w);
-                        eficiencia::paint(&labels, w, cx)
+                        eficiencia::paint(&labels, w, cx);
                     }),
                     Wake::Idle,
                 )
@@ -241,7 +242,7 @@ impl Widget {
                 (
                     Box::new(move |w, cx| {
                         v.prepare(w);
-                        v.paint(&m, prefs.language, w, cx)
+                        v.paint(&m, prefs.language, w, cx);
                     }),
                     wake,
                 )
@@ -328,6 +329,7 @@ mod tests {
     #[test]
     fn saved_content_migrates_once_and_then_survives_look_changes() {
         let old = Settings {
+            content_version: 0,
             history_rows: 8,
             show_projection: false,
             source: "virtual-energy".into(),
@@ -368,7 +370,7 @@ mod tests {
         };
         let saved = v.clone();
         for _ in 0..3 {
-            widget.frame(prefs);
+            drop(widget.frame(prefs));
         }
         let Painter::Vantare(v) = &widget.visual else {
             unreachable!()

@@ -2,7 +2,7 @@
 //!
 //! Todo se dibuja en un unico lienzo a partir de la geometria CSS del producto
 //! (`parity/SPEC.md`): la tabla, los pies y el rail PIT se posicionan con las
-//! mismas cifras que mide el widget Wails, sin depender del layout flex de GPUI.
+//! mismas cifras de la referencia visual original, sin depender del layout flex de GPUI.
 
 use super::model::{self, Align, Config, ContentPlan, Labels, Metric, Plan, Row, Status};
 use super::motion::{Frame, RowVis};
@@ -1849,7 +1849,7 @@ mod tests {
 
     #[test]
     fn shadow_tail_matches_the_reference_alpha_profile() {
-        // Referencia (Wails, y = 100): alfa 19 en x = 440, 17 en 441, 10 en 445 y 0 desde 460.
+        // Referencia original (y = 100): alfa 19 en x = 440, 17 en 441, 10 en 445 y 0 desde 460.
         let strip = shadow_strip(&Style::default(), 440.0, 364);
         let alpha =
             |x: usize, y: usize| i32::from(strip[(y * model::PIT_RAIL_WIDTH as usize + x) * 4 + 3]);

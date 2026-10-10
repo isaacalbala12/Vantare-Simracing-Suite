@@ -1,6 +1,16 @@
-# ADR 0100 · Widgets: una proyección, un estado, varios Looks
+# ADR 0101 · Widgets: una proyección, un estado, varios Looks
 
 Aceptado por Isaac para #1531. Base: 5e1da3f6. Aplicación incremental: Standings, Relative, Delta, Fuel.
+
+## Estado de la ronda 2
+
+Los siete puntos de la revisión se implementan en commits separados. La entrega
+sigue bloqueada para cierre: 366 pares RGBA=0 y pruebas completas PASS, pero cinco
+A/B de Standings fallan p99 Vantare ACC en ingest (+11,85% sobre máximo baseline)
+y frame (+11,39%), límite +5%. Todos los p50 pasan, incluido Efi LMU frame +1,07%
+(límite +3%). No se atribuye el resultado a ruido ni a diseño sin perfilarlo.
+Las demás A/B y el frío nuevo se detienen según la condición de parada de Isaac;
+las cifras anteriores son evidencia histórica. Tandas completas en round2/performance.
 
 ## Decisión
 
@@ -13,11 +23,16 @@ conserva una entrada por widget; Desktop, Studio y Workshop consumen esa misma A
 
 Cada módulo UI tiene pintores Eficiencia/Vantare. Reciben Board y presentación;
 no reciben Snapshot ni acceden a IPC, persistencia, permisos o posición de pantalla.
-Solo existe el pintor activo en un enum. El Motion común selecciona la política
-visual activa: no retiene el motor del Look anterior. Al cambiar Look toma sus
-CarIds y avisos, recompone la geometría sobre el mismo Board y transfiere los avisos
-con el instante original. Cambiar presentación no invoca project ni reinicia un aviso.
+Solo existe el pintor activo en `Presentation::{Eficiencia { visual, motion },
+Vantare { visual, motion }}`. Ambos brazos poseen el mismo tipo de Motion común,
+con una política de interpolación por Look. Al cambiar Look se conserva el Arc
+completo: historial por CarId, avisos, interpolaciones, fades, tira y sus relojes.
+La geometría se recompone sobre el mismo Board sin reiniciar los tiempos ni
+invocar project. No hay un segundo motor dormido ni enums visual/Motion emparejados.
 Las copias efímeras de un Frame/cache de pintado no son otra fuente de datos.
+Standings Eficiencia lee el Plan común del dominio, con filas Arc del Board y CarId:
+ventana del jugador, truncado, bandas multiclase, posiciones y vueltas son contenido
+común. El pintor no construye otra VM ni vuelve a ordenar las filas.
 
 ## Layouts guardados
 
@@ -37,8 +52,8 @@ Guardar y recargar conserva el Look y ese contenido, también después de altern
    Las pruebas por `Look::ALL` exigen una proyección por ingest y cambio sin reset.
 
 No añadir ramas sobre estilos concretos a Hub, Studio, registry ni domain. El test
-arquitectónico recorre fuentes y limita referencias concretas a look.rs y cada módulo
-UI de widget. Si el Look necesita un hecho nuevo, ampliarlo en la proyección común;
+arquitectónico recorre UI/Hub/domain, prohíbe has_variants()/legacy() y limita
+referencias concretas a look.rs y cada módulo UI de widget. Si el Look necesita un hecho nuevo, ampliarlo en la proyección común;
 no crear otra proyección ni historia. No se introduce un registro genérico o un trait.
 
 ## Verificación y riesgos

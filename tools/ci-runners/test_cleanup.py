@@ -1,4 +1,6 @@
 import pathlib
+import os
+import subprocess
 import tempfile
 import unittest
 from cleanup import clean
@@ -23,6 +25,21 @@ class CleanupTests(unittest.TestCase):
             for target in [runner, runner / '_work', runner / '_work/repo', runner / 'outside/repo/repo']:
                 with self.assertRaises(ValueError):
                     clean(target, runner)
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows junction integration')
+    def test_junction_cannot_delete_outside_evidence(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            runner = pathlib.Path(tmp) / 'runner'
+            evidence = pathlib.Path(tmp) / 'evidence'
+            evidence.mkdir()
+            marker = evidence / 'keep.txt'
+            marker.write_text('preserve')
+            target = runner / '_work/repo/repo'
+            target.parent.mkdir(parents=True)
+            subprocess.run(['cmd', '/c', 'mklink', '/J', str(target), str(evidence)], check=True, capture_output=True)
+            with self.assertRaises(ValueError):
+                clean(target, runner)
+            self.assertEqual(marker.read_text(), 'preserve')
 
 
 if __name__ == '__main__':

@@ -85,7 +85,8 @@ El feed anónimo consulta las 100 Releases más recientes de
 `isaacalbala12/Vantare-Downloads` (repo publico creado en #1565; sin releases nuevas todavia), selecciona la mayor versión numérica
 `native-beta-vMAJOR.MINOR.PATCH` con asset `vantare-native-beta.json`
 (incluidas prereleases, excluidos drafts). El repositorio debe ser público.
-La comprobación anónima dio HTTP 200 en el desarrollo local; no certifica una
+El destino nuevo está creado sin releases; no hay descarga firmada nueva acreditada.
+La disponibilidad de una release se comprobará tras publicación autorizada; no certifica una
 release beta publicada. Rate limit, falta de red o manifiesto ausente se muestran
 en Ajustes; no bloquean el uso de la versión instalada.
 

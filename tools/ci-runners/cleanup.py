@@ -2,13 +2,15 @@
 import os
 import pathlib
 import shutil
+import stat
 
 
 def clean(workspace: pathlib.Path, runner_root: pathlib.Path) -> None:
     root = runner_root / '_work'
     # Verificar todas las rutas antes de una eliminación recursiva en Windows/Linux.
     for path in [root, workspace, *workspace.parents, *root.parents]:
-        if path.is_symlink() or (hasattr(path, 'is_junction') and path.is_junction()):
+        reparse = path.exists() and getattr(path.lstat(), 'st_file_attributes', 0) & getattr(stat, 'FILE_ATTRIBUTE_REPARSE_POINT', 0x400)
+        if path.is_symlink() or reparse:
             raise ValueError('No limpiar enlaces/junctions')
     target = workspace.resolve()
     boundary = root.resolve()

@@ -1,41 +1,51 @@
-# Mantenimiento del roadmap público
+# Roadmap público · #1535
 
-Isaac comunica los cambios a Codex por chat. Codex actualiza una única
-publicación compartida en Supabase; la app solo la muestra como línea temporal,
-tablero por estado y gráfico de distribución. No hay editor en la app, archivo
-de contenido ni generador en la app. El feedback del 9-oct (#1496) añade una
-herramienta externa para preparar la sincronización manual desde ClickUp;
-consultar [runbook y límites de activación](clickup-roadmap-sync.md). No ha
-sido activada en producción.
+**ClickUp es la única fuente**: workspace `90151421613`, espacio Vantare,
+lista Desarrollo. Títulos «Tipo · Nombre». GitHub Issues es seguimiento interno.
+No hay editor en Hub, plan.md ni generador desde GitHub. La publicación Supabase
+anterior es historial inerte; nuevos lectores no usan visual_roadmap_current.
 
-## Actualización solicitada por Isaac
+La Action `.github/workflows/clickup-roadmap.yml` consulta cada seis horas y
+admite dispatch. Isaac configura CLICKUP_API_TOKEN como secreto de GitHub;
+solo se usa al preparar el JSON. Ausencia de secreto, fuente ambigua/incompleta,
+estado desconocido o límites excedidos falla sin sustituir datos anteriores.
 
-1. Leer la publicación vigente con `visual_roadmap_current` y comprobar el
-   proyecto Supabase de destino. Si no hay publicación, comenzar con
-   `{"schemaVersion":1,"items":[]}`.
-2. Preparar los cambios solicitados conservando los identificadores de hitos
-   existentes. Cada hito tiene `id` UUID, `section` (`done`, `now`, `next` o
-   `later` tras aplicar la migración y verificar consumidores),
-   `title` y `body` en `es`, `en`, `pt`, `it`. El título español es obligatorio;
-   las demás traducciones pueden quedar vacías y la app mostrará español.
-   El orden de los hitos dentro de cada estado es el orden de `items`.
-3. Si el contenido o el destino es ambiguo, aclararlo con Isaac. No derivar
-   automáticamente estados o fechas de GitHub ni inventar porcentajes.
-4. Comprobar `visual_roadmap_valid(document)` y publicar mediante la conexión
-   SQL privilegiada con `visual_roadmap_publish(document)`. La función conserva
-   la versión anterior como `superseded` y publica la nueva de forma atómica.
-   Los clientes `anon` y `authenticated` no tienen permiso para publicar.
-5. Releer `visual_roadmap_current` y comprobar ID, texto, orden y estado.
-   Verificar en una sesión lectora que aparece al recargar Roadmap. Registrar
-   el cambio en la tarea GitHub Issues aplicable.
+Destino: **rama de datos roadmap-data**, con un único archivo roadmap.json.
+Commit raíz sin código/workflows; actualizaciones posteriores sin force push.
+El padre del commit evita perder cambios concurrentes. Nunca escribe nightly.
+Se elige frente a un asset porque no publica releases y raw HTTPS no requiere
+redirects ni token. Antes de activar, comprobar que el repo es público y que
+los rulesets permiten la rama de datos sin rebajar la protección de nightly.
 
-El seguimiento interno, las dependencias y los canales siguen en GitHub Issues. Publicar un hito no cambia el estado de una tarea, PR, canal o release.
+URL común a Hub/web/digest:
+`https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/refs/heads/roadmap-data/roadmap.json`.
+Hub conserva caché válida y muestra error; Recargar hace GET manual sin bearer.
+Lector web: `scripts/roadmap-web.js`. El sitio publicado está fuera del checkout
+y debe incorporarlo en su propio PR; este trabajo no cambia producción.
 
-## Primera activación
+## Contrato
 
-La migración `supabase/migrations/20260924000000_visual_roadmap.sql` crea el
-almacenamiento y las funciones de lectura y publicación. Probar primero en un
-entorno de prueba con una sesión lectora; después de integrar la PR y validar
-su despliegue, aplicar la migración al entorno elegido. La migración no importa
-ni publica el plan histórico. Hasta la primera publicación, la pantalla muestra
-un estado vacío.
+Envelope `{id, published_at, document}`, ID UUID por hash del contenido.
+schemaVersion 2 conserva items, UUID v5 de tarea, section, title/body es/en/pt/it.
+Añade area (Tipo del título), version (una etiqueta semver explícita) y dueDate
+(due_date UTC). Ausencia = null. No copia descripciones, comentarios, usuarios
+ni campos personalizados. Renombrar/cambiar estado mantiene la identidad.
+Hub acepta caché v1/v2; services IPC v6 exige recompilar el conjunto.
+
+idea → later; en progreso/por revisar → now; testers → next; complete → done.
+Texto conserva estado y ancestros. Progreso por Tipo = complete / tareas
+publicadas; cada subtarea cuenta independientemente. No mide esfuerzo,
+aceptación ni releases. Fechas son previstas y una etiqueta no acredita release.
+40 tareas, documento 40 KB y publicación 56 KB. No truncar.
+
+## Validación y activación
+
+Tests offline de scripts ClickUp, rama de datos y comunicaciones. Fixtures son
+solo prueba y no se publican. Programación y dispatch requieren workflow en
+**master**, rama por defecto: integrarlo solo en nightly no los activa.
+Referencia: [eventos GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
+El orquestador coordina la promoción autorizada, secreto y verificación real.
+No dispatch, publicación ni promoción desde este worker.
+
+Rollback: nuevo commit normal restaurando JSON anterior en roadmap-data.
+No recuperar plan.md ni la publicación manual Supabase.

@@ -1,3 +1,6 @@
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](../roadmap-maintenance.md).
+
 # #1474 — Revisión de datos nativos LMU/ACC
 
 Base local `13ae6945524b1b33dbd73b8df1ee2ae758707e7b`, rama

@@ -1,0 +1,33 @@
+name: ClickUp public roadmap
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: clickup-roadmap-data
+  cancel-in-progress: false
+jobs:
+  publish:
+    # Schedule runs from master; manual runs may validate the accepted nightly code.
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/nightly'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Test source transformation without network
+        run: python -m unittest discover -s vantare-v2/scripts -p 'test*roadmap*.py'
+      - name: Prepare public document
+        env:
+          CLICKUP_API_TOKEN: ${{ secrets.CLICKUP_API_TOKEN }}
+        run: python vantare-v2/scripts/publish_clickup_roadmap.py --output "$RUNNER_TEMP/roadmap.json"
+      - name: Atomically update data branch only
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPOSITORY: ${{ github.repository }}
+        run: python .github/scripts/roadmap_data_branch.py --publication "$RUNNER_TEMP/roadmap.json"

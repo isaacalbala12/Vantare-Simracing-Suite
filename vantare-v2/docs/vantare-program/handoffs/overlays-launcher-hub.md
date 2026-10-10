@@ -1,3 +1,6 @@
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](../../roadmap-maintenance.md).
+
 ## #1531 · Actualización de #1558 tras Linux verde y squash #1557
 
 - #1557, HEAD f03f69c1918cb53a361bacd8da623c3b3fb5ec5e: Validate promotion

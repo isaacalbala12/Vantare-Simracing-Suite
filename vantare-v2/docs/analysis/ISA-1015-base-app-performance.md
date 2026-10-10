@@ -1,3 +1,6 @@
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](../roadmap-maintenance.md).
+
 # ISA-1015 — rendimiento de la base de Vantare
 
 Estado a 2026-09-08: inventario, perfiles legibles y tres capturas reales de Inicio junto a LMU completados. Isaac amplía el objetivo a rapidez de pantallas e interacción.

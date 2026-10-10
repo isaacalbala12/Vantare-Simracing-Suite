@@ -1,3 +1,13 @@
+## #1535 · participación real preparada (2026-10-10)
+
+Base ca17545f; rama vantareapp/isa-1535-roadmap-testing, local en curso.
+Cuestionarios por versión, respuestas UUID privadas y contribuciones propias;
+RPC bugs reutilizada sin cambios. Migración/RLS preparada, NO aplicada.
+Services IPC v6 usa puente de identidad existente; sin dependencia nueva.
+Revisión Sol + Opus y pgTAP local pendientes; máquina sin Docker/psql.
+Gates/capturas pendientes. Buzón C:/tmp/buzon/1535.md; informe ola2.
+Sin subagentes, secretos, producción, publicación, PR ni merge.
+
 # Handoff vivo — Testing Center
 
 ## #1536 · destino real de accesos directos en CI Windows (2026-10-10)

@@ -1,3 +1,6 @@
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](roadmap-maintenance.md).
+
 # Widget Architecture
 
 > **Ámbito documental (2026-09-14):** Contrato de la etapa previa a Studio V3; sus reglas WidgetStudio/LayoutStudio y fuentes antiguas no gobiernan la UI actual.

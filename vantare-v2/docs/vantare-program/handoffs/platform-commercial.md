@@ -1,3 +1,17 @@
+## #1535 · ClickUp único origen (2026-10-10)
+
+Base ca17545f; rama vantareapp/isa-1535-roadmap-testing, trabajo local.
+Action programada/dispatch y publicación JSON v2 en rama roadmap-data sin
+push nightly. Hub GET sin token/caché v1-v2; digest misma publicación.
+Web fuera del checkout: lector reutilizable preparado, integración pendiente.
+Plan/generador históricos retirados; citas marcadas históricas. Tests offline
+ClickUp 10, rama datos 3 y comunicaciones 57 PASS. Gates nativos en curso.
+Sin token real, publicación, dispatch, migración, deploy, push, PR ni merge.
+Activación exige workflow en master; ver roadmap-maintenance.md.
+
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](../../roadmap-maintenance.md).
+
 # Handoff vivo — plataforma, cuenta, releases y migración
 
 ## #1536 · destino real de accesos directos en CI Windows (2026-10-10)

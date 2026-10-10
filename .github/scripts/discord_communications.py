@@ -28,9 +28,8 @@ REQUIRED_FRAGMENT_FIELDS = {
     "knownLimitations": list,
 }
 USER_AGENT = "Vantare-GitHub-Actions/1.0"
-# The development digest uses open GitHub milestones; the editable roadmap is
-# published separately by its owner from the desktop app.
-DEVELOPMENT_SOURCE_MILESTONES = "milestones"
+# The public digest and Hub read the same ClickUp publication; no GitHub fallback.
+DEVELOPMENT_SOURCE_CLICKUP = "clickup"
 DEVELOPMENT_SOURCE_NONE = "none"
 # The embed's accent stripe sits right beside the card image, so it uses the
 # same brand carmine as the app (--orbit-carmine in orbit.tokens.css).
@@ -817,48 +816,37 @@ def publish(
             raise RuntimeError(f"Discord returned status {error.code}") from error
 
 
-def fetch_open_milestones(
-    token: str,
-    repository: str,
-    *,
-    opener: Callable[..., Any] = urllib.request.urlopen,
-) -> list[dict[str, Any]]:
-    """List the repository's open milestones, newest activity first.
-
-    A failure here is not fatal: the caller degrades to the honest "no news"
-    embed rather than skipping the daily announcement altogether.
-    """
-    if not repository:
-        return []
-    headers = {"Accept": "application/vnd.github+json", "User-Agent": USER_AGENT}
-    if token:
-        headers["Authorization"] = f"Bearer {token}"
-    request = urllib.request.Request(
-        f"https://api.github.com/repos/{repository}/milestones"
-        "?state=open&sort=updated&direction=desc&per_page=20",
-        headers=headers,
-        method="GET",
-    )
-    with opener(request, timeout=20) as response:
-        payload = json.loads(response.read().decode("utf-8") or "[]")
-    return payload if isinstance(payload, list) else []
+ROADMAP_URL = "https://raw.githubusercontent.com/isaacalbala12/Vantare-Simracing-Suite/refs/heads/roadmap-data/roadmap.json"
 
 
-def resolve_development_projects(
-    *,
-    token: str = "",
-    repository: str = "",
-    opener: Callable[..., Any] = urllib.request.urlopen,
-) -> tuple[list[dict[str, Any]], str]:
-    """Pick open milestones or an honest empty state for the daily digest."""
+def resolve_development_projects(*, token="", repository="", opener=urllib.request.urlopen):
+    """Read the same public artifact as Hub/web. Failure never invents progress."""
     try:
-        milestones = milestones_to_projects(fetch_open_milestones(token, repository, opener=opener))
-    except (urllib.error.URLError, OSError, ValueError, json.JSONDecodeError) as error:
-        print(f"warning: milestone lookup failed: {error}", file=sys.stderr)
-        milestones = []
-    if milestones:
-        return milestones, DEVELOPMENT_SOURCE_MILESTONES
-    return [], DEVELOPMENT_SOURCE_NONE
+        request = urllib.request.Request(ROADMAP_URL, headers={"User-Agent": USER_AGENT})
+        with opener(request, timeout=20) as response:
+            raw = response.read(56 * 1024 + 1)
+        if len(raw) > 56 * 1024:
+            raise ValueError("Publication too large")
+        publication = json.loads(raw)
+        document = publication["document"]
+        if document["schemaVersion"] != 2 or not isinstance(document["items"], list) or len(document["items"]) > 40:
+            raise ValueError("Invalid publication")
+        groups = {}
+        for item in document["items"]:
+            if item["section"] not in ("now", "next", "later", "done"):
+                raise ValueError("Invalid phase")
+            name = item.get("area") or "Sin área"
+            groups.setdefault(name, []).append(item)
+        projects = []
+        for name, items in sorted(groups.items()):
+            done = sum(item["section"] == "done" for item in items)
+            projects.append({"name": sanitize_public_text(name), "url": ROADMAP_URL,
+                "progress": done / len(items), "updatedAt": publication["published_at"],
+                "update": sanitize_public_text(f"{done}/{len(items)} tareas completadas. " + "; ".join(item["title"]["es"] for item in items if item["section"] != "done"))})
+        return projects, DEVELOPMENT_SOURCE_CLICKUP
+    except (urllib.error.URLError, OSError, ValueError, KeyError, TypeError):
+        print("warning: public ClickUp publication unavailable", file=sys.stderr)
+        return [], DEVELOPMENT_SOURCE_NONE
 
 
 def main() -> int:

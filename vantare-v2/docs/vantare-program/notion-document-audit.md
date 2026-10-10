@@ -1,3 +1,6 @@
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](../roadmap-maintenance.md).
+
 > Auditoría histórica del tracker anterior; no es un contrato operativo desde #1503.
 
 # Revisión documental de Notion primero — VAN-724

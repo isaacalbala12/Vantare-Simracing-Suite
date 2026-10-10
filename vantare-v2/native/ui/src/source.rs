@@ -278,6 +278,7 @@ pub fn fixed() -> Snapshot {
         epoch: 1,
         sequence: 1,
         state: State {
+            driving_situation: vantare_domain::DrivingSituation::Unknown,
             source_state: vantare_domain::SourceState::Live,
             capabilities: Capabilities {
                 positions: Capability::Fresh,
@@ -404,6 +405,7 @@ fn race(tick: u64, realistic: bool) -> Snapshot {
         state: State {
             source_state: vantare_domain::SourceState::Live,
             capabilities: all_fresh(),
+            driving_situation: vantare_domain::DrivingSituation::Unknown,
             session: Session {
                 kind: Reliable(SessionKind::Race),
                 remaining_s: Reliable((3600.0 - t).max(0.0)),

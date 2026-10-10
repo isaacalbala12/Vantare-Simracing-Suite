@@ -28,4 +28,11 @@ impl<T> Quality<T> {
             Self::Stale(_) | Self::Unavailable => None,
         }
     }
+    /// Último valor conocido, aunque esté obsoleto. Solo `Unavailable` devuelve `None`.
+    pub fn last_known(&self) -> Option<&T> {
+        match self {
+            Self::Reliable(value) | Self::Estimated(value) | Self::Stale(value) => Some(value),
+            Self::Unavailable => None,
+        }
+    }
 }

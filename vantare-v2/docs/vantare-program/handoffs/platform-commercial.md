@@ -13,20 +13,20 @@ Leídos [#1568](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
-Base incorporada mediante merge (sin rebase): `origin/nightly@661149b07565137a2450580169fd608ebeb2bd42`,
+Base incorporada mediante merge (sin rebase): `origin/nightly@b2186f82746424b4844a5909efd31530c5bbe5b3`,
 que contiene #1570 (handoffs de estado), #1572 (#1563 pedales) y #1573 (#1568 acceso).
 Rama `vantareapp/isa-1535-roadmap-testing`, entrega #1535 `3d762e8b`, PR
 [#1578](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1578) a nightly.
 SHA del merge/push y CI se registran en la issue y `C:/tmp/buzon/1535.md`.
 Auto-merge activo por el orquestador; esta escritura no acredita fusion remota ni release.
-Servicios IPC v6, DTO v9 y control/derechos v4 son contratos independientes.
+Servicios IPC v6, DTO v10 y control/derechos v4 son contratos independientes.
 #1568 conserva admision protegida, cancelacion serializada y revalidacion;
 la correlacion del incidente humano sigue pendiente. SQL #1535 no aplicado.
 
 ## 4. Decisiones cerradas
 
 - ClickUp es la unica fuente del roadmap, publicado en Supabase con lectura anon y compatibilidad v1/v2; no depende del repositorio publico. Clerk identifica; Polar cobra; Supabase conserva UUID interno/datos. No atribuir compras por email, metadata editable o `sub` aislado; identidad ambigua se rechaza/cuarentena.
-- DTO de fotos v9, servicios v6 y control/derechos v4 son contratos independientes en esta base.
+- DTO de fotos v10, servicios v6 y control/derechos v4 son contratos independientes en esta base.
 - Account conserva recuperación aun con herramientas denegadas; negar derechos no inventa un login ni un pago.
 - Venta pública exige matriz monetaria/reconciliación y autorización. Implementado, integrado, publicado y validado en producción son estados distintos.
 
@@ -50,7 +50,7 @@ configuracion del host de CI, OAuth, pagos, entorno fisico ni produccion.
 
 - P1: acceso al abrir LMU (#1568); no dar la causa real por confirmada solo con RED local.
 - P1: readiness comercial, identidad y pagos (#1514/#1506/#1507/#1499/#1501); no abrir venta desde docs.
-- P2: SQL #1535 corregido y probado localmente; esquema completo, aplicacion y activacion pendientes. P2-4 queda para Isaac.
+- P2: SQL #1535 corregido y probado localmente; esquema completo, aplicacion y activacion pendientes. P2-4 aceptado por Isaac en #1535.
 - Login/logout físico, expiración, recuperación, instalación/upgrade y QA remota requieren evidencia propia.
 
 ## 8. Issues terminadas, activas y pendientes
@@ -62,12 +62,12 @@ antes de actuar. IDs migrados y evidencia previa permanecen en el historico.
 
 ## 9. Siguiente acción exacta
 
-Resolver/push de PR #1578 conservando el estado de #1570 y ambos cambios
-nativos entrantes; verificar CI del SHA resultante. Antes de aplicar SQL #1535:
-revision y copia LOCAL del esquema completo/ACL. Antes de activar: Isaac decide
-P2-4 (secretos de repo), configura credencial minima y verifica host/CA con
-autorizacion. No aplicar migraciones, cargar secretos ni desplegar desde esta tarea.
-#1568 mantiene su reproduccion humana pendiente; gates comerciales en #1514.
+Verificar CI/auto-merge de #1578. Cuando figure MERGED en nightly, ejecutar
+SOLO LECTURA contra produccion la consulta previa (DEFINER alcanzables, ACL y
+registro de migraciones) usando acceso ya configurado, sin imprimir secretos.
+Escribir DUDA con resultado y comando exacto para las dos migraciones. Si falta
+acceso, preparar pasos para Isaac. No aplicar nada hasta respuesta expresa.
+P2-4 aceptado por Isaac en #1535; no implica configurar credenciales ni desplegar.
 
 ## 10. Última actualización
 

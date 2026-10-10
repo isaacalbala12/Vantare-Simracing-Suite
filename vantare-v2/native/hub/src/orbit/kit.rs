@@ -964,11 +964,13 @@ mod resource_tests {
                     .map(|index| {
                         let kind = vantare_ui::Kind::ALL[index % vantare_ui::Kind::ALL.len()];
                         vantare_ui::layout::Instance {
+                            off_track: vantare_ui::layout::OffTrack::default(),
                             geometry: vantare_ui::geometry::Geometry::default(),
                             id: kind.name().to_owned(),
                             x: 0.0,
                             y: 0.0,
                             visible: true,
+                            show_in: vantare_ui::session::ShowIn::default(),
                             opacity: 1.0,
                             settings: vantare_ui::Settings::default_for(kind),
                         }

@@ -10,6 +10,20 @@ use vantare_domain::{Adapter, AdapterError, Observation};
 use vantare_runtime::adapter::{open_acc_replay, open_replay};
 use vantare_runtime::core::Core;
 
+// #1562: v10 adds situation metadata. Preserve all v9 telemetry bytes and
+// hashes without rewriting the frozen oracle. Situation has independent tests.
+fn legacy_fixture(text: &str) -> String {
+    text.replace("\"version\":10", "\"version\":9")
+}
+fn legacy_dto(snapshot: &vantare_domain::Snapshot) -> String {
+    let dto = vantare_ipc::snapshot_to_json(snapshot).expect("DTO v10");
+    let start = dto.find(",\"driving_situation\":").expect("situation v10");
+    let end = start + 1 + dto[start + 1..].find(',').expect("metadata siguiente");
+    let mut old = dto;
+    old.replace_range(start..end, "");
+    legacy_fixture(&old)
+}
+
 struct Once(Option<Observation>);
 impl Adapter for Once {
     fn poll(&mut self, _: Duration) -> Result<Option<Observation>, AdapterError> {
@@ -129,8 +143,8 @@ fn every_golden_dto_survives_the_reader_byte_for_byte() {
         for line in golden.lines() {
             let line = line.expect("gzip íntegro");
             count += 1;
-            let snapshot = vantare_ipc::snapshot_from_json(&line).expect("DTO vigente");
-            let again = vantare_ipc::snapshot_to_json(&snapshot).expect("DTO");
+            let snapshot = vantare_ipc::snapshot_from_saved_json(&line).expect("DTO vigente");
+            let again = legacy_dto(&snapshot);
             assert!(again == line, "{name}: foto {count} cambia al releerla");
         }
         assert_eq!(count, photos, "{name}: corpus completo");
@@ -141,11 +155,7 @@ fn append(core: &mut Core, observation: Observation, output: &mut Vec<u8>) {
     let now = observation.origin.received_at;
     core.step(&mut Once(Some(observation)), now)
         .expect("foto válida");
-    output.extend_from_slice(
-        vantare_ipc::snapshot_to_json(&core.snapshot())
-            .expect("DTO")
-            .as_bytes(),
-    );
+    output.extend_from_slice(legacy_dto(&core.snapshot()).as_bytes());
     output.push(b'\n');
 }
 
@@ -172,20 +182,24 @@ fn lmu_real_fixtures_match_frozen_dtos() {
         );
         if name == "lmu-menu-fixture.bin" {
             assert_eq!(
-                vantare_ipc::snapshot_to_json(&core.snapshot())
-                    .expect("DTO menú")
-                    .as_bytes(),
-                include_bytes!("../../ui/fixtures/telemetry-real/lmu-menu.snapshot.json"),
+                legacy_dto(&core.snapshot()).as_bytes(),
+                legacy_fixture(include_str!(
+                    "../../ui/fixtures/telemetry-real/lmu-menu.snapshot.json"
+                ))
+                .as_bytes(),
                 "escena de menú procedente de la captura real sin campos inventados"
             );
         }
         core.step(&mut Once(None), Duration::from_millis(500))
             .expect("caducidad");
-        let dto = vantare_ipc::snapshot_to_json(&core.snapshot()).expect("DTO");
+        let dto = legacy_dto(&core.snapshot());
         if name == "lmu-fixture.bin" {
             assert_eq!(
                 dto.as_bytes(),
-                include_bytes!("../../ui/fixtures/telemetry-real/lmu-stale.snapshot.json"),
+                legacy_fixture(include_str!(
+                    "../../ui/fixtures/telemetry-real/lmu-stale.snapshot.json"
+                ))
+                .as_bytes(),
                 "escena stale: captura real degradada por el núcleo a 500 ms"
             );
         }
@@ -210,7 +224,10 @@ fn lmu_real_temporal_corpus_matches_frozen_dtos() {
             if count == 1 {
                 assert_eq!(
                     &output[..output.len() - 1],
-                    include_bytes!("../../ui/fixtures/telemetry-real/lmu47.snapshot.json"),
+                    legacy_fixture(include_str!(
+                        "../../ui/fixtures/telemetry-real/lmu47.snapshot.json"
+                    ))
+                    .as_bytes(),
                     "la escena UI debe proceder del corpus real sin editar campos"
                 );
             }
@@ -252,7 +269,7 @@ fn check_acc_corrected_positions(
     before: &str,
     count: usize,
 ) {
-    let baseline = vantare_ipc::snapshot_from_json(before).expect("DTO original");
+    let baseline = vantare_ipc::snapshot_from_saved_json(before).expect("DTO original");
     let mut restored = snapshot.clone();
     for ((car, old), previous) in restored
         .state
@@ -288,7 +305,7 @@ fn check_acc_corrected_positions(
         car.class_position = old.class_position;
     }
     assert_eq!(
-        vantare_ipc::snapshot_to_json(&restored).expect("DTO invertido"),
+        legacy_dto(&restored),
         before,
         "foto {count}: solo pueden cambiar los rangos"
     );
@@ -320,11 +337,14 @@ fn acc_real_corpus_matches_frozen_dtos() {
             let now = observation.origin.received_at;
             core.step(&mut Once(Some(observation)), now)
                 .expect("foto válida");
-            let dto = vantare_ipc::snapshot_to_json(&core.snapshot()).expect("DTO");
+            let dto = legacy_dto(&core.snapshot());
             if count == 190_308 {
                 assert_eq!(
                     dto.as_bytes(),
-                    include_bytes!("../../ui/fixtures/telemetry-real/acc.snapshot.json"),
+                    legacy_fixture(include_str!(
+                        "../../ui/fixtures/telemetry-real/acc.snapshot.json"
+                    ))
+                    .as_bytes(),
                     "la escena UI debe proceder del corpus real sin editar campos"
                 );
             }
@@ -397,12 +417,15 @@ fn input_sequence_matches_real_lmu47_replay_with_observed_clock() {
         while let Some(observation) = replay.poll(now).expect("replay valido") {
             core.step(&mut Once(Some(observation)), now)
                 .expect("foto valida");
-            rows.push(vantare_ipc::snapshot_to_json(&core.snapshot()).expect("DTO"));
+            rows.push(legacy_dto(&core.snapshot()));
             if rows.len() == 12 {
                 let actual = format!("[\n{}\n]\n", rows.join(",\n"));
                 assert_eq!(
                     actual.as_bytes(),
-                    include_bytes!("../../ui/fixtures/telemetry-real/lmu47-input.sequence.json")
+                    legacy_fixture(include_str!(
+                        "../../ui/fixtures/telemetry-real/lmu47-input.sequence.json"
+                    ))
+                    .as_bytes()
                 );
                 return;
             }

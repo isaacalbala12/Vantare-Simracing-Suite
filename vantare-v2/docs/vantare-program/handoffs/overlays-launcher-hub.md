@@ -1,72 +1,63 @@
 # Handoff vivo — Overlays, Studio, Launcher y Hub
 
-Estado de la base indicada; releer la issue antes de ejecutar.
-[Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
+[Histórico previo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/8c6e83f977c8d2245a04266cdaaf896ed8c1b131/vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md). El diario y avances están en las issues; este documento conserva el estado actual.
 
 ## 1. Resultado
 
-Hub y Studio GPUI, edición del layout único, widgets del registro y hosts Desktop/Workshop. Launcher presenta perfiles/discovery y gobierna procesos mediante el motor propio. N Looks sobre Board/Motion comunes en Standings, Relative, Delta y Fuel; no hay otra aplicación Wails/React en esta base.
+Hub/Studio GPUI editan el layout único y los widgets del registro. Launcher gobierna procesos mediante el motor propio. Standings tiene columnas/formatos por Práctica, Qualy y Carrera; todos los widgets filtran por sesión. Pedales conserva separación ajustable; el botón de pista alterna mostrar/dejar de mostrar mediante la solicitud compartida.
 
 ## 2. Autoridad y lectura verificada
 
-GitHub Issues y Project Vantare. Leídos [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y decisiones de Isaac, [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1562), [#1563](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1563), [#1564](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1564), [#1566](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1566) y [#1569](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1569). Entradas: [UI](../../../native/ui/README.md), [Hub](../../../native/hub/README.md), [ADR 0101](../../adr/0101-widgets-looks-common-state.md). Escritura operativa verificada en #1561; no se modifican las issues de otros workers.
+GitHub Issues y Project Vantare. #1564/area:ui, In Review, sin milestone comprometida; issue y escritura verificadas. Dependencias contrastadas: #1562/PR #1576 MERGED, #1563/PR #1572 y #1567/PR #1575 integradas; #1573 acceso y #1570 documentación presentes en nightly. PR de esta entrega: [#1577](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1577). README [UI](../../../native/ui/README.md)/[Hub](../../../native/hub/README.md) y plantilla activa leídos.
 
 ## 3. Estado real y canal
 
-Base incorporada mediante merge (sin rebase): `origin/nightly@661149b07565137a2450580169fd608ebeb2bd42`,
-que contiene #1570 (handoffs de estado), #1572 (#1563 pedales) y #1573 (#1568 acceso).
-Rama `vantareapp/isa-1535-roadmap-testing`, entrega #1535 `3d762e8b`, PR
-[#1578](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1578) a nightly.
-SHA del merge/push y CI se registran en la issue y `C:/tmp/buzon/1535.md`.
-Auto-merge activo por el orquestador; esta escritura no acredita fusion remota ni release.
-Servicios IPC v6, DTO v9 y control/derechos v4 son contratos independientes.
-#1568 conserva admision protegida, cancelacion serializada y revalidacion;
-la correlacion del incidente humano sigue pendiente. SQL #1535 no aplicado.
+#1564/PR #1577 MERGED en nightly b2186f82746424b4844a5909efd31530c5bbe5b3.
+Esa base se incorpora una sola vez, sin rebase, a vantareapp/isa-1535-roadmap-testing
+(PR #1578). Ambos contratos se conservan: DTO live v10 y servicios IPC v6;
+derechos/control v4 independiente. #1535 aporta Roadmap ClickUp/Supabase y
+participacion Testing; SQL no aplicado. SHA del merge/push y CI en #1535/buzon.
+Auto-merge #1578 activo; no acredita integracion remota ni release.
 
 ## 4. Decisiones cerradas
 
-- Una entrada de registro y una proyección/estado por widget; cambiar Look conserva Motion y no reproyecta.
-- Layout v1 conserva nombres persistidos y migración de contenido en memoria; archivo inválido/conflicto no se sobrescribe.
-- PR-3 y PR-5 de #1561 quedan para otra entrega. Studio se parte solo en ventana coordinada sin cambios concurrentes; sin entidades nuevas.
-- Isaac quiere los otros 14 Looks en una versión siguiente, uno a uno. Pedales necesita Look Vantare antes de vender (#1566), con separacion ajustable (#1563) ya integrada.
-- Canvas e inspector comparten documento/historial; preview no sustituye datos live.
+- Una proyección/estado por widget; N Looks sobre Board/Motion, sin otra aplicación Wails/React.
+- Standings: tres listas/formatos; filas, Look, clase/gaps, pie y ventana del jugador comunes. Presets D7 solo nuevos/reset; reset afecta una pestaña. Legacy conserva columnas, también al editar Carrera primero; orden del simulador e intervalo sin cambios.
+- Other/warmup = Práctica; columnas sin tipo inicial = Carrera; Stale conserva tipo. Mostrar en sin tipo = visible; AND con fuera de pista, incluso durante pausa. AlwaysVisible evita solo fuera de pista. Importación sessionTypes respetada.
+- D12 aclarada: ancho por sesión solo automático; tamaño explícito del usuario respetado, ancla fija en ambos. Ejemplo sigue pestaña; fotos reales/En vivo conservan su sesión.
+- #1562: garaje solo con señal explícita LMU, servicio/colas visibles, previews visibles; DTO live v10 estricto y lectores guardados separados.
+- #1567: mostrar/dejar de mostrar sigue show.json, sin duplicar estado ni alterar filtros por sesión. Layout v1 conserva campos y migración; archivo inválido/conflicto no se sobrescribe.
 
 ## 5. Arquitectura y ownership
 
-[Registro](../../../native/ui/src/registry.rs), [Looks](../../../native/ui/src/look.rs), [layout/documento](../../../native/ui/src/layout.rs), [editor Hub](../../../native/hub/src/document.rs) y [Studio](../../../native/hub/src/studio.rs). Pintores consumen Board/presentación; domain/UI no dependen de runtime. Permisos, transporte y persistencia no viven en el pintor. La cadencia/movimiento reducido aún usa `frame_with_motion`: no documentar PR-5 como integrado.
+Domain proyecta; UI guarda settings y pinta; Hub edita documento/historial. [Registro](../../../native/ui/src/registry.rs), [layout](../../../native/ui/src/layout.rs), [Studio](../../../native/hub/src/studio.rs), [sesiones](../../../native/hub/src/studio/sessions.rs). UI/domain no dependen de runtime. Sin deps nuevas ni transporte/permiso en pintores. #1561 P1-A mantiene la partición coordinada del Studio preexistente >2000 LOC; PR-3/PR-5 de #1561 no se afirman integradas. `frame_with_motion` sigue vigente.
 
 ## 6. Evidencia y límites
 
-Merge #1535 sin conflictos de codigo; cambios entrantes nativos identicos a
-nightly. Gates Rust no repetidos por la condicion del encargo. Testing/Roadmap
-conserva los checks de su rama y SQL local; no se acredita CI remota del merge.
-
-Evidencia registrada en la base, no reejecutada por esta entrega documental: integración #1531, fmt/check/Clippy `-D warnings`, Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría 25/25. No convierte fixtures/replays en prueba física LMU/ACC, OBS, DPI, audio ni latencia de entrada.
-RGBA #1531: 366 pares históricos exactos y 32 capturas DTO v9; ocho slots ES/EN de Standings/Relative con cambio de footer aceptado. Perfil Standings ACC coincide con la entrega aprobada. Delta Eficiencia ACC conserva FAIL p99 aceptado por magnitud, sin causalidad de ruido demostrada (ADR 0101).
-**#1536 · destino real de accesos directos en CI Windows:** el test COM compara destinos canonicalizados, mantiene ejecutable existente, bytes intactos, no ejecución y rechazo UNC. Arreglo `d7c6cd17`; histórico completo enlazado arriba. Este detalle pertenece solo a Launcher, no a seis handoffs.
+Entrega anterior #1564: RED `9c218b38`; código/capturas `c8401b50`; test D12 ampliado `63bead05`. Fmt/Clippy PASS, Nextest 1601/1601 (7 skips), lifecycle 18/18, telemetría 25/25, anti-slop 456 huellas PASS. Cuatro capturas Studio 1440×900 inspeccionadas: Práctica/Qualy 537,3345 de ancho natural y Carrera 579,3345, x=48/y=62 constante. Frame explícito 800×400/documento/ancla por tres pestañas PASS. Post-merge final: fmt/Clippy -D warnings PASS (22.43s), Nextest 1613/1613 (7 skips, 266.205s), lifecycle 18/18 y telemetría 25/25 PASS; anti-slop 456 huellas PASS. Cuatro capturas nuevas merge-studio-*.png abiertas e inspeccionadas, hashes idénticos a las anteriores. Botón de pista/tray y preview por sesión con tamaño explícito pasan los tests.
+Logs y revisión/hashes: `C:/tmp/ola2/evidence-1564`; informe `C:/tmp/ola2/informe-1564-impl.md`; buzón `C:/tmp/buzon/1564.md`. No convierte fixtures/replays en LMU/ACC/OBS físicos, DPI/macOS ni input→Present. Present/s no mide latencia. Históricos/goldens se conservan sin recalibrar.
+**#1536 · Launcher:** test COM compara destinos canonicalizados, conserva ejecutable/bytes, no ejecuta y rechaza UNC; arreglo `d7c6cd17`, histórico enlazado arriba.
 
 ## 7. Riesgos y deuda
 
-- P1: #1562 toca situación/DTO y widgets; su DTO v10 está en rama separada, aquí sigue v9. Coordinar cualquier campo nuevo de #1527 sobre la base realmente integrada.
-- P2: #1564/#1569 comparten Studio; no partirlo durante esas entregas. #1524 sigue abierta: autoría no acredita fuente live.
-- Evidencia pendiente: input→Present, juego/OBS, DPI físico y macOS. Present/s no mide latencia de entrada.
-- Históricos de paridad y goldens se conservan, no se recalibran para cerrar deuda.
+- #1577 fusionada con checks SUCCESS; #1578 pendiente de su propio CI tras resolver conflictos documentales. Ambos flujos pista/sesion preservados.
+- P2: Studio compartido con #1569; no partir durante entregas concurrentes. #1524 sigue pendiente: autoría no acredita fuente live.
+- #1527 debe partir del DTO live v10 realmente integrado y mantener lectores persistidos compatibles.
+- Evidencia física/plataforma y deuda de paridad de ADR 0101 conservadas en el histórico; no elevar severidad sin nueva prueba.
 
 ## 8. Issues terminadas, activas y pendientes
 
-Cerradas y presentes en la base: #1530–#1534 y #1536; contrastadas con código e historial de integración. Abierta principal: #1561. Integrada #1563 por #1572. Pendientes/ramas separadas: #1562, #1564, #1566, #1567, #1569 y [#1527](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1527). #1496/#1497 siguen abiertas aunque tengan entregas integradas: no cerrarlas por este resumen. IDs ISA/VAN previos permanecen en el histórico por SHA.
+Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. Integrada #1564/PR #1577. Activa de esta rama: #1535/PR #1578. Pendientes coordinadas: #1561 PR-3/PR-5, #1566, #1569 y #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
 
 ## 9. Siguiente acción exacta
 
-Resolver/push de #1578 con el formato de estado de #1570. Preservar #1563
-(separacion persistida 0-12 px, defecto 2 px y ancho proporcional) y #1568
-(admision/cancelacion de acceso), ya integrados en la base. #1535 conserva
-Roadmap ClickUp/Supabase y participacion Testing IPC v6 sin activar backend.
-El orquestador coordina Studio/#1564/#1569 y los PR-3/PR-5 restantes de #1561;
-no ampliar esta resolucion. Verificar CI remoto antes de acreditar integracion.
+Push del merge documental de #1578 y verificar CI/auto-merge. Sin conflictos de
+codigo: no repetir gates Rust innecesarios. Una vez #1578 MERGED, consulta
+previa SOLO LECTURA en Supabase produccion (DEFINER/ACL/migraciones) y DUDA
+con resultado/comandos. No aplicar SQL hasta respuesta expresa del orquestador.
+Mantener coordinacion Studio #1569; sin promocion testers/master ni release.
 
 ## 10. Última actualización
 
-2026-10-10 · GitHub #1535 · Codex. PR #1578, base nightly y cambios
-#1570/#1572/#1573 contrastados. Estado sustituido segun plantilla; diario,
-SHA, push y checks en la issue/buzon. Sin autorizacion de produccion.
+2026-10-11 · GitHub #1535 · Codex. #1577 MERGED y base nightly verificados;
+formato solo estado conservado. Diario/SHA/checks en issue y buzon.

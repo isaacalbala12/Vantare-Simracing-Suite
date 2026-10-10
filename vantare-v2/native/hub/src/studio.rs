@@ -1,6 +1,7 @@
 //! Editor espacial sobre el documento y el renderer compartidos.
 mod examples;
 mod scenes;
+mod sessions;
 use crate::{
     document::Editor,
     inspector::{self, Control, Tab},
@@ -277,8 +278,25 @@ fn capture_settings(kind: Kind) -> Settings {
     };
     if let Settings::Standings(settings) = &mut settings {
         settings.row_count = 8;
+        #[cfg(feature = "parity-capture")]
+        if capture_session().is_some() {
+            settings.apply_session_preview();
+        }
     }
     settings
+}
+
+#[cfg(feature = "parity-capture")]
+fn capture_session() -> Option<vantare_ui::session::Session> {
+    if !capture_name().is_some_and(|name| name.starts_with("studio-")) {
+        return None;
+    }
+    match std::env::var("VANTARE_CAPTURE_SESSION").as_deref() {
+        Ok("practice") => Some(vantare_ui::session::Session::Practice),
+        Ok("qualifying") => Some(vantare_ui::session::Session::Qualifying),
+        Ok("race") => Some(vantare_ui::session::Session::Race),
+        _ => None,
+    }
 }
 
 // El peso ya está en las fuentes Inter estáticas del kit.
@@ -567,6 +585,9 @@ pub struct Studio {
     example: bool,
     photos: Vec<scenes::Photo>,
     real_photo: Option<usize>,
+    /// Pestaña de columnas de Standings en edición y escena de su vista previa.
+    session_tab: vantare_ui::session::Session,
+    session_column: String,
     photo_choice: Option<Entity<Choice>>,
     resolution_choice: Option<Entity<Choice>>,
     monitor: (f32, f32, f32, f32),
@@ -877,11 +898,30 @@ impl Studio {
         }
     }
 
-    /// Refresco barato del estado de pista: solo reparsea show.json si cambia
-    /// su firma (mtime, len), como el estado resident del Launcher (#1553).
-    /// Devuelve si cambió el estado. El clic lo invoca en el acto y el
-    /// temporizador de Studio lo invoca cada 500 ms; el render solo lee la
-    /// caché y nunca toca disco.
+    /// Sincroniza la solicitud de pista por firma; el render no toca disco.
+    fn watch_track_showing(cx: &mut Context<Self>) {
+        cx.spawn(async move |this, cx| {
+            loop {
+                cx.background_executor()
+                    .timer(Duration::from_millis(500))
+                    .await;
+                if this
+                    .update(cx, |this, cx| {
+                        if this.refresh_track_showing() {
+                            cx.notify();
+                        }
+                    })
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        })
+        .detach();
+    }
+
+    /// Solo reparsea show.json al cambiar su firma (mtime, len). El clic
+    /// refresca en el acto y el temporizador comprueba cada 500 ms.
     fn refresh_track_showing(&mut self) -> bool {
         let signature = Presentation::signature(self.editor.layout_path());
         if signature == self.track_showing_sig {
@@ -1004,6 +1044,19 @@ impl Studio {
     pub fn preferences(&self) -> Preferences {
         self.editor.layout().preferences
     }
+    pub(crate) fn hide_off_track(&self) -> bool {
+        self.editor.layout().hide_off_track
+    }
+    pub(crate) fn set_hide_off_track(
+        &mut self,
+        enabled: bool,
+        cx: &mut Context<Self>,
+    ) -> Result<(), String> {
+        let result = self.editor.set_hide_off_track(enabled);
+        self.status.clone_from(&result);
+        cx.notify();
+        result
+    }
     pub fn set_preferences(
         &mut self,
         prefs: Preferences,
@@ -1070,6 +1123,8 @@ impl Studio {
             example: true,
             photos: prepared.photos,
             real_photo: None,
+            session_tab: vantare_ui::session::Session::Race,
+            session_column: "driverName".into(),
             photo_choice: None,
             resolution_choice: None,
             monitor,
@@ -1093,34 +1148,17 @@ impl Studio {
             track_showing,
             track_showing_sig,
         };
-        // Refresco barato y poco frecuente del estado de pista, con la misma
-        // firma (mtime, len) que el estado resident del Launcher (#1553):
-        // solo reparsea show.json al cambiar la firma y solo repinta al
-        // cambiar el estado. El render nunca toca disco.
-        cx.spawn(async move |this, cx| {
-            loop {
-                cx.background_executor()
-                    .timer(Duration::from_millis(500))
-                    .await;
-                if this
-                    .update(cx, |this, cx| {
-                        if this.refresh_track_showing() {
-                            cx.notify();
-                        }
-                    })
-                    .is_err()
-                {
-                    break;
-                }
-            }
-        })
-        .detach();
+        Self::watch_track_showing(cx);
         #[cfg(feature = "parity-capture")]
         match capture_name().as_deref() {
             Some("studio-error-largo" | "studio-error-largo-sin-carril") => studio.status = Err("No se pudo guardar el documento de QA: otra aplicación modificó el archivo en una ruta extensa. Recarga el diseño para revisar los cambios antes de reintentar. ".repeat(3)),
             Some("studio-manual") => studio.zoom_step = 3,
             Some("studio-en-vivo") => studio.example = false,
             _ => {}
+        }
+        #[cfg(feature = "parity-capture")]
+        if let Some(session) = capture_session() {
+            studio.session_tab = session;
         }
         studio.rebuild(cx);
         studio
@@ -1319,7 +1357,7 @@ impl Studio {
     }
     fn settings_snapshot(&self, settings: &Settings) -> std::borrow::Cow<'_, Snapshot> {
         let photo = self.preview_snapshot(settings.kind());
-        if self.example
+        let mut snapshot = if self.example
             && self.real_photo.is_none()
             && let Settings::Standings(value) = settings
             && settings.appearance().is_some()
@@ -1328,7 +1366,14 @@ impl Studio {
             std::borrow::Cow::Owned(examples::multiclass(photo, value.row_count))
         } else {
             std::borrow::Cow::Borrowed(photo)
+        };
+        // El ejemplo de diseño de Standings adopta la sesión de la pestaña (#1564);
+        // las fotos reales y En vivo conservan la suya.
+        if self.example && self.real_photo.is_none() && matches!(settings, Settings::Standings(_)) {
+            snapshot.to_mut().state.session.kind =
+                vantare_domain::Quality::Reliable(self.session_tab.kind());
         }
+        snapshot
     }
 
     fn rescale_preview(&mut self, cx: &mut Context<Self>) {
@@ -1788,16 +1833,61 @@ impl Studio {
         .detach();
         self.fields
             .push((Tab::Behavior, "Visible", visible.into(), false));
-        for field in inspector::fields(&item.settings) {
+        self.off_track_control(&item, window, cx);
+        self.push_show_in_fields(&item, cx);
+        self.push_session_column_formats(&item, window, cx);
+        let fields_settings = match &item.settings {
+            Settings::Standings(settings) => {
+                Settings::Standings(settings.for_session(self.session_tab))
+            }
+            settings => settings.clone(),
+        };
+        for field in inspector::fields(&fields_settings) {
             let (tab, title) = (field.tab, field.title);
             let label = !matches!(&field.control, Control::Boolean { .. });
-            let view = Self::setting_control(item.id.clone(), field, window, cx);
+            let view = Self::setting_control(item.id.clone(), field, self.session_tab, window, cx);
             self.fields.push((tab, title, view, label));
         }
+    }
+    fn off_track_control(&mut self, item: &Instance, window: &mut Window, cx: &mut Context<Self>) {
+        let options = [
+            vantare_ui::layout::OffTrack::Inherit,
+            vantare_ui::layout::OffTrack::AlwaysVisible,
+            vantare_ui::layout::OffTrack::Hide,
+        ];
+        let off_track = cx.new(|cx| {
+            Choice::new(
+                "Fuera de pista",
+                ChoiceKind::Dropdown,
+                ["Heredar global", "Siempre visible", "Ocultar"]
+                    .into_iter()
+                    .map(OptionItem::new)
+                    .collect(),
+                options.iter().position(|value| *value == item.off_track),
+                window,
+                cx,
+            )
+        });
+        let id = item.id.clone();
+        cx.subscribe(&off_track, move |this, _, event: &ChoiceChanged, cx| {
+            if this.editor.selected.as_ref() == Some(&id)
+                && let Some(value) = options.get(event.0)
+            {
+                this.reset_fields();
+                this.edit(
+                    |editor| editor.edit_selected(|item| item.off_track = *value),
+                    cx,
+                );
+            }
+        })
+        .detach();
+        self.fields
+            .push((Tab::Behavior, "Fuera de pista", off_track.into(), true));
     }
     fn setting_control(
         id: String,
         field: inspector::Field,
+        session: vantare_ui::session::Session,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> gpui::AnyView {
@@ -1820,6 +1910,7 @@ impl Studio {
                 selected,
                 set,
             } => {
+                let table_columns = field.title == "Formato de tabla";
                 let control = cx.new(|cx| {
                     Choice::new(
                         field.title,
@@ -1839,7 +1930,18 @@ impl Studio {
                     {
                         this.reset_fields();
                         this.edit(
-                            |editor| editor.edit_selected(|item| set(&mut item.settings, key)),
+                            |editor| {
+                                editor.edit_selected(|item| {
+                                    if table_columns
+                                        && let Settings::Standings(settings) = &mut item.settings
+                                    {
+                                        *settings.session_columns_mut(session) =
+                                            vantare_ui::standings::vantare_template(key);
+                                    } else {
+                                        set(&mut item.settings, key);
+                                    }
+                                })
+                            },
                             cx,
                         );
                     }
@@ -2242,11 +2344,12 @@ impl Studio {
     fn column_settings(
         item: &Instance,
         tab: Tab,
+        session: vantare_ui::session::Session,
         mut panel: gpui::Div,
         cx: &mut Context<Self>,
     ) -> gpui::Div {
         if tab == Tab::Content
-            && let Some(columns) = inspector::columns(&item.settings)
+            && let Some(columns) = inspector::columns(&item.settings, session)
         {
             panel = panel.child(orbit::eyebrow("Columnas", cx));
             for (index, column) in columns.iter().enumerate() {
@@ -2275,7 +2378,7 @@ impl Studio {
                             |editor| {
                                 editor.edit_selected(|item| {
                                     if let Some(columns) =
-                                        inspector::columns_mut(&mut item.settings)
+                                        inspector::columns_mut(&mut item.settings, session)
                                         && let Some(column) = columns.get_mut(index)
                                     {
                                         column.enabled = !column.enabled;
@@ -2766,7 +2869,7 @@ impl Studio {
                     }
                 }
                 panel = self.color_settings(tab, panel, cx);
-                panel = Self::column_settings(item, tab, panel, cx);
+                panel = Self::column_settings(item, tab, self.session_tab, panel, cx);
 
                 if tab == Tab::Content && !inspector::pending(&item.settings).is_empty() {
                     panel = panel.child(text(
@@ -2832,6 +2935,20 @@ impl Studio {
                     ),
             );
             for tab in Tab::ALL {
+                #[cfg(feature = "parity-capture")]
+                if capture_session().is_some() {
+                    let behavior =
+                        std::env::var("VANTARE_CAPTURE_INSPECTOR").as_deref() == Ok("behavior");
+                    if tab
+                        != if behavior {
+                            Tab::Behavior
+                        } else {
+                            Tab::Content
+                        }
+                    {
+                        continue;
+                    }
+                }
                 if tab == Tab::Layout {
                     panel = panel.child(self.performance_settings(cx));
                 }
@@ -2847,6 +2964,9 @@ impl Studio {
                     cx,
                 );
                 let mut body = div().flex().flex_col().gap(px(10.0));
+                if tab == Tab::Content {
+                    body = body.children(Self::session_tabs(item, self.session_tab, cx));
+                }
                 for (field_tab, label, control, show_label) in &self.fields {
                     if *field_tab == tab {
                         body =
@@ -3259,6 +3379,18 @@ mod tests {
         assert!(Studio::ingest_skips_frame(true, false));
         assert!(!Studio::ingest_skips_frame(false, true));
         assert!(Studio::ingest_skips_frame(false, false));
+    }
+    #[test]
+    fn preview_mode_toolbar_builds_without_duplicate_hover_styles() {
+        gpui_platform::headless().run(|cx| {
+            cx.set_global(orbit::theme::Theme::default());
+            let file = crate::document::tests::File::new();
+            let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+            studio.update(cx, |studio, cx| {
+                let _ = studio.toolbar_preview_mode(cx);
+            });
+            crate::quit_headless_test(cx);
+        });
     }
     #[test]
     fn strip_visibility_toggle_resets_the_inspector() {
@@ -4360,3 +4492,7 @@ mod toolbar_status_tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "studio/session_acceptance.rs"]
+mod session_acceptance;

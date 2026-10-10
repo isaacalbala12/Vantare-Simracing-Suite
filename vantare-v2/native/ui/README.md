@@ -1,5 +1,29 @@
 # ui — overlays GPUI
 
+## #1564 · Sesiones y columnas de Standings
+
+Las instancias guardan `showIn` (practice/qualifying/race, todas por defecto).
+Solo LiveScreens lo aplica y lo combina con Y con #1562, incluso si fuera de
+pista está en AlwaysVisible. Studio/Workshop siguen mostrando la instancia.
+Sin tipo conocido se ve; un tipo Stale conserva la última sesión conocida.
+
+Standings guarda Carrera en `columns`, Práctica en `practiceColumns` y Qualy
+en `qualifyingColumns`. Los campos nuevos ausentes heredan las columnas
+anteriores. Antes de editar Carrera se independizan las otras pestañas;
+se preservan orden, activación, anchuras y formatos en el round-trip.
+Los presets D7 se aplican al crear una instancia en Studio/layout inicial o
+al restablecer una pestaña; no reemplazan los settings guardados.
+Practice y Other (warmup incluido) usan Práctica, Qualifying usa Qualy y
+Race usa Carrera; al arrancar sin tipo las columnas son las de Carrera.
+En tamaño automático el ancho natural cambia con las columnas. El tamaño
+explícito del usuario se respeta; el ancla no cambia en ninguno de los dos casos.
+La demanda reúne las señales de las tres pestañas, sin cambiar su cadencia.
+
+`profile_import` traduce sessionTypes practice/warmup, qualifying/qual y
+race/endurance. Otras condiciones no soportadas siguen importando oculto con
+aviso. Los valores de telemetría y el orden por posición conservan su contrato;
+solo warmup/Other pasan a comparar mejor vuelta como Práctica.
+
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
 cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. Usar target aislado y `-j 2`.
 
@@ -593,3 +617,17 @@ Sin un número de campaña, `vantare-overlays` vigila `%LOCALAPPDATA%\Vantare\na
 `layout::Document::{open,save,poll}` limita la lectura a 1 MiB, normaliza entradas y compara bytes del último documento leído. `save` usa bloqueo cooperativo liberado al cerrar el fichero, temporal local con `write_all`/`sync_all`, copia `.bak` y `rename` sin borrar antes. Un conflicto requiere releer. `LiveScreens` conserva cada widget por ID mientras sus Settings sigan iguales, al moverlo, cambiar opacidad, ocultarlo o cambiar de monitor. Oculto conserva estado sin ingerir fotos; al volver visible recibe la última foto solo si su demanda está cubierta. Las preferencias reproyectan esa foto sin recrear la entidad; nuevos IDs o cambios de tipo/Settings crean otra. Borrar libera la entidad y su temporizador. Las ventanas se reutilizan por monitor ocupado.
 
 Los Settings de todos los widgets están junto a su renderer; el registro genera `Settings::{kind,default_for,normalized}`. Las variantes implementadas incluyen Delta capsule, transparencia de pedales, carrusel, volante específico, color de banderas, target behind y Standings broadcast, marca y métricas del pie. El host solo avisa de las claves legacy `headerFirst/headerSecond`, que persiste pero no usa en la cabecera; los límites de cada Settings se presentan en el inspector del Hub mediante `UNSUPPORTED`. Evidencia de paridad y QA: [layout-evidence.md](layout-evidence.md).
+
+## #1562 · Ocultar fuera de pista
+
+`Layout.hideOffTrack` (false) y `Instance.offTrack` (inherit/always_visible/hide)
+controlan LiveScreens. Los valores por defecto se omiten al guardar; documentos
+v1 anteriores siguen legibles. Un binario anterior puede rechazar un documento
+con los nuevos campos activados: conservar su copia .bak.
+El host aplica la situación central incluso antes de la cadencia del widget,
+sin borrar entidades ni cerrar ventanas. Studio/Workshop nunca la activan;
+la demanda y la licencia no cambian. Ver [contrato](../runtime/README.md).
+El cálculo de política y el booleano de visibilidad no asignan memoria por foto.
+Una situación estable no solicita `notify` ni fuerza `ingest`: mantiene la cadencia
+existente. La regresión cubre los 18 widgets, 100 repeticiones visibles y ocultas;
+no elimina repintados necesarios por cambios de telemetría o por sus historiales.

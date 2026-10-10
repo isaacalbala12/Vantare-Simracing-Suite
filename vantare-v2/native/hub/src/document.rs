@@ -85,6 +85,12 @@ impl Editor {
             Ok(())
         })
     }
+    pub(crate) fn set_hide_off_track(&mut self, enabled: bool) -> Result<(), String> {
+        self.change(|layout| {
+            layout.hide_off_track = enabled;
+            Ok(())
+        })
+    }
     pub(crate) fn set_performance(
         &mut self,
         preferences: vantare_ui::performance::Preferences,
@@ -200,15 +206,21 @@ impl Editor {
     }
     pub fn add(&mut self, kind: Kind) -> Result<(), String> {
         let id = self.next_id()?;
+        let mut settings = Settings::default_for(kind);
+        if let Settings::Standings(standings) = &mut settings {
+            standings.apply_session_presets();
+        }
         self.change(|layout| {
             layout.instances.push(Instance {
+                off_track: vantare_ui::layout::OffTrack::default(),
                 geometry: vantare_ui::geometry::Geometry::default(),
                 id: id.clone(),
                 x: 20.0,
                 y: 20.0,
                 visible: true,
+                show_in: vantare_ui::session::ShowIn::default(),
                 opacity: 1.0,
-                settings: Settings::default_for(kind),
+                settings,
             });
             Ok(())
         })?;
@@ -342,6 +354,40 @@ pub(crate) mod tests {
                 .expect("reiniciar")
                 .layout(),
             &before
+        );
+    }
+
+    #[test]
+    fn global_and_widget_off_track_policy_share_durable_undo_and_reload() {
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
+        editor.add(Kind::FuelStrategy).expect("widget");
+        let mut overlay = Document::open(file.path.clone()).expect("overlays");
+        editor.set_hide_off_track(true).expect("global");
+        editor
+            .edit_selected(|item| item.off_track = vantare_ui::layout::OffTrack::AlwaysVisible)
+            .expect("excepción");
+        assert!(overlay.poll().expect("recarga"));
+        assert_eq!(overlay.layout(), editor.layout());
+        assert!(overlay.layout().hide_off_track);
+        assert_eq!(
+            overlay.layout().instances[0].off_track,
+            vantare_ui::layout::OffTrack::AlwaysVisible
+        );
+        editor.undo().expect("deshacer excepción");
+        assert_eq!(
+            editor.layout().instances[0].off_track,
+            vantare_ui::layout::OffTrack::Inherit
+        );
+        editor.undo().expect("deshacer global");
+        assert!(!editor.layout().hide_off_track);
+        editor.redo().expect("rehacer global");
+        editor.redo().expect("rehacer excepción");
+        assert_eq!(
+            Document::open(file.path.clone())
+                .expect("reiniciar")
+                .layout(),
+            editor.layout()
         );
     }
 

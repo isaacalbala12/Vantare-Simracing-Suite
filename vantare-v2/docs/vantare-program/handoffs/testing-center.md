@@ -16,13 +16,13 @@ Leídos [#1452](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
-Base incorporada mediante merge (sin rebase): `origin/nightly@661149b07565137a2450580169fd608ebeb2bd42`,
+Base incorporada mediante merge (sin rebase): `origin/nightly@b2186f82746424b4844a5909efd31530c5bbe5b3`,
 que contiene #1570 (handoffs de estado), #1572 (#1563 pedales) y #1573 (#1568 acceso).
 Rama `vantareapp/isa-1535-roadmap-testing`, entrega #1535 `3d762e8b`, PR
 [#1578](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1578) a nightly.
 SHA del merge/push y CI se registran en la issue y `C:/tmp/buzon/1535.md`.
 Auto-merge activo por el orquestador; esta escritura no acredita fusion remota ni release.
-Servicios IPC v6, DTO v9 y control/derechos v4 son contratos independientes.
+Servicios IPC v6, DTO v10 y control/derechos v4 son contratos independientes.
 #1568 conserva admision protegida, cancelacion serializada y revalidacion;
 la correlacion del incidente humano sigue pendiente. SQL #1535 no aplicado.
 
@@ -55,7 +55,7 @@ Capturas y gates previos no prueban Clerk/Storage, instalacion o produccion.
 ## 7. Riesgos y deuda
 
 - SQL no aplicado: conservar revision y validacion con copia LOCAL del esquema completo antes de produccion.
-- P2-4 secretos de repo: decision pendiente de Isaac, sin cambios en este merge.
+- P2-4 secretos de repo: riesgo aceptado por Isaac en #1535; sin configuracion en este merge.
 - Cuota de contribuciones diferida (P3-9); no inventar un limite aprobado.
 - Envio real, bearer/rol, expiracion, logout y replies tardios requieren QA autorizada; no hay historial remoto demostrado.
 - Bots/workflows inertes; infraestructura, permisos y despliegues fuera de esta tarea.
@@ -66,11 +66,12 @@ Activa #1535 para cuestionarios/reportes/comunidad; #1452 abierta para puente/en
 
 ## 9. Siguiente acción exacta
 
-Push de la resolucion de PR #1578 y comprobar CI del SHA resultante.
-SQL #1535 corregido con pgTAP local PASS; revisar y repetir en copia LOCAL del
-esquema completo antes de aplicar. Isaac decide/configura activacion y secretos.
-#1452 requiere QA remota autorizada (texto, imagen, rol ausente, bearer vencido,
-reconexion). No enviar reportes ni aplicar SQL desde esta entrega.
+Verificar CI/auto-merge de #1578. Cuando figure MERGED en nightly, ejecutar
+SOLO LECTURA contra produccion la consulta previa (DEFINER alcanzables, ACL y
+registro de migraciones) usando acceso ya configurado, sin imprimir secretos.
+Escribir DUDA con resultado y comando exacto para las dos migraciones. Si falta
+acceso, preparar pasos para Isaac. No aplicar nada hasta respuesta expresa.
+P2-4 aceptado por Isaac en #1535; no implica configurar credenciales ni desplegar.
 
 ## 10. Última actualización
 

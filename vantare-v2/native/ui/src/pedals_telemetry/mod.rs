@@ -76,7 +76,7 @@ impl Settings {
 
 #[derive(Default)]
 struct WheelArtwork {
-    key: Option<(u64, bool, &'static str)>,
+    key: Option<(i64, bool, &'static str)>,
     image: Option<Arc<gpui::RenderImage>>,
 }
 
@@ -189,6 +189,34 @@ impl Widget {
     }
 }
 
+/// Paso de cuantización del giro del volante en grados de SVG. 0,5° desplaza
+/// el borde ≈0,3 px a 72 px (indistinguible) y evita rasterizar un SVG por cada
+/// f64 distinto de la telemetría: la caché solo cambia de paso visible.
+const ANGLE_STEP_DEG: f64 = 0.5;
+
+fn wheel_quantum(steering: f64) -> i64 {
+    (steering * 450.0 / ANGLE_STEP_DEG).round() as i64
+}
+
+fn wheel_key(
+    steering: Option<f64>,
+    stale: bool,
+    selected: &'static str,
+) -> (i64, bool, &'static str) {
+    (wheel_quantum(steering.unwrap_or(0.0)), stale, selected)
+}
+
+fn wheel_svg(selected: &str, angle_deg: f64, stale: bool) -> String {
+    wheels::svg(selected).replacen(
+        "<g>",
+        &format!(
+            "<g transform=\"rotate({angle_deg} 32 32)\" opacity=\"{}\">",
+            if stale { 0.55 } else { 1.0 }
+        ),
+        1,
+    )
+}
+
 fn wheel(
     cache: &RefCell<WheelArtwork>,
     window: &mut Window,
@@ -197,19 +225,12 @@ fn wheel(
     stale: bool,
     selected: &'static str,
 ) {
-    let angle = steering.unwrap_or(0.0) * 450.0;
-    let key = (angle.to_bits(), stale, selected);
+    let key = wheel_key(steering, stale, selected);
     let mut artwork = cache.borrow_mut();
     if artwork.key != Some(key) {
         artwork.key = Some(key);
-        let svg = wheels::svg(selected).replacen(
-            "<g>",
-            &format!(
-                "<g transform=\"rotate({angle} 32 32)\" opacity=\"{}\">",
-                if stale { 0.55 } else { 1.0 }
-            ),
-            1,
-        );
+        let angle = key.0 as f64 * ANGLE_STEP_DEG;
+        let svg = wheel_svg(selected, angle, stale);
         artwork.image = match cx.svg_renderer().render_single_frame(svg.as_bytes(), 1.0) {
             Ok(image) => Some(image),
             Err(error) => {
@@ -493,6 +514,63 @@ mod tests {
         assert!(
             !widget.ingest(&snapshot, prefs),
             "misma escena quieta, sin repintado"
+        );
+    }
+
+    #[test]
+    fn steering_sweep_rasterizes_once_per_visible_step() {
+        // Barrido 0.0..=0.1 en 601 muestras con ruido f64 realista. Cada clave
+        // distinta ejecuta sustitución + rasterización SVG dentro de paint, así
+        // que contar cambios de clave es contar rasterizaciones por frame.
+        // Solo ~91 pasos de 0,5° son visibles en ese barrido.
+        let sweep: Vec<f64> = (0..=600).map(|i| f64::from(i) * 0.1 / 600.0).collect();
+        let mut rasterizations = 0usize;
+        let mut previous = None;
+        for steering in sweep {
+            let key = wheel_key(Some(steering), false, "generic");
+            if previous != Some(key) {
+                previous = Some(key);
+                rasterizations += 1;
+            }
+        }
+        assert!(
+            rasterizations <= 120,
+            "barrido de 601 muestras rasterizó {rasterizations} SVG"
+        );
+    }
+
+    #[test]
+    fn quantized_angle_keeps_visual_parity() {
+        for steering in [0.0, 0.08, -0.37, 1.0, -1.0] {
+            let (quantum, _, _) = wheel_key(Some(steering), false, "generic");
+            let rendered = quantum as f64 * ANGLE_STEP_DEG;
+            // El ángulo pintado se desvía como mucho medio paso (0,25°).
+            assert!(
+                (rendered - steering * 450.0).abs() <= ANGLE_STEP_DEG / 2.0,
+                "steering {steering}: error visible mayor de 0,25°"
+            );
+            // Ruido f64 dentro del paso no cambia ni la clave ni el SVG:
+            // paint reutiliza el raster sin sustitución ni rasterización.
+            let noisy = steering + 0.0002;
+            let (noisy_quantum, _, _) = wheel_key(Some(noisy), false, "generic");
+            assert_eq!(noisy_quantum, quantum);
+            assert_eq!(
+                wheel_svg("generic", rendered, false),
+                wheel_svg(
+                    "generic",
+                    noisy_quantum as f64 * ANGLE_STEP_DEG,
+                    false
+                )
+            );
+        }
+        // Stale y modelo de volante siguen invalidando la caché.
+        assert_ne!(
+            wheel_key(Some(0.08), false, "generic"),
+            wheel_key(Some(0.08), true, "generic")
+        );
+        assert_ne!(
+            wheel_key(Some(0.08), false, "generic"),
+            wheel_key(Some(0.08), false, "ferrari-499p")
         );
     }
 

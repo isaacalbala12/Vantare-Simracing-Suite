@@ -1267,6 +1267,11 @@ impl Studio {
             }
         }
     }
+    /// Las instancias ocultas no se pintan (`preview_stage`) y tampoco deben
+    /// proyectarse en cada `ingest`: antes solo se omitían los bloqueos.
+    fn ingest_skips_frame(locked: bool, visible: bool) -> bool {
+        locked || !visible
+    }
     pub fn ingest(&mut self, snapshot: &Snapshot, cx: &mut Context<Self>) {
         if self.snapshot == *snapshot {
             return;
@@ -1277,7 +1282,8 @@ impl Studio {
             return;
         }
         for (_, frame) in &self.frames {
-            if frame.read(cx).lock.is_some() {
+            let state = frame.read(cx);
+            if Self::ingest_skips_frame(state.lock.is_some(), state.item.visible) {
                 continue;
             }
             frame
@@ -3134,6 +3140,13 @@ impl Render for Studio {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn hidden_frames_are_not_projected_without_repainting() {
+        assert!(Studio::ingest_skips_frame(true, true));
+        assert!(Studio::ingest_skips_frame(true, false));
+        assert!(!Studio::ingest_skips_frame(false, true));
+        assert!(Studio::ingest_skips_frame(false, false));
+    }
     #[test]
     fn document_shortcuts_use_exact_modifiers() {
         for (stroke, expected) in [

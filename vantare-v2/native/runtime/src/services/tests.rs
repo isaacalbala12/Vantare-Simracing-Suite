@@ -399,3 +399,27 @@ fn heartbeat_delivers_definitive_revocation_instead_of_a_transient_error() {
     drop(core);
     std::fs::remove_dir_all(root).expect("cleanup fixture");
 }
+
+#[test]
+fn game_exit_rechecks_access_started_after_the_live_decision() {
+    let state = Mutex::new(State { client: None });
+    let signing: SigningIn = Arc::new(Mutex::new(None));
+    let event = Arc::new(Event::new().expect("event"));
+    let cancellation: Cancellation = Arc::new(Mutex::new(Some(Arc::clone(&event))));
+    let policy = control::Policy {
+        live: true,
+        overlays_advanced: true,
+        ..control::Policy::default()
+    };
+    assert!(closes_for_game(&policy, signing_in(&signing)));
+    // Exact interleaving: timer has read live/idle, then AccountBegin or
+    // LicenseRenew takes the supervisor state and marks access in progress.
+    set_signing_in(&signing, true);
+    assert!(!finish_for_game(&state, &cancellation, &signing));
+    assert!(cancellation.lock().expect("slot").is_some());
+    assert!(!event.is_set());
+    // Once the protected operation ends, normal game shutdown remains enabled.
+    set_signing_in(&signing, false);
+    assert!(finish_for_game(&state, &cancellation, &signing));
+    assert!(cancellation.lock().expect("slot").is_none());
+}

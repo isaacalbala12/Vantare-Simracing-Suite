@@ -318,6 +318,20 @@ fn cancel(cancellation: &Cancellation) {
         event.set();
     }
 }
+fn finish_for_game(state: &Mutex<State>, cancellation: &Cancellation, _signing: &SigningIn) -> bool {
+    match state.try_lock() {
+        Ok(mut state) => finish(&mut state),
+        Err(TryLockError::WouldBlock) => {
+            cancel(cancellation);
+            if let Ok(mut state) = state.lock() {
+                finish(&mut state);
+            }
+        }
+        Err(TryLockError::Poisoned(_)) => return false,
+    }
+    clear_cancellation(cancellation);
+    true
+}
 fn spawn_timer(
     state: Arc<Mutex<State>>,
     stop: Arc<Event>,
@@ -338,17 +352,7 @@ fn spawn_timer(
                 let live = control::request_cancelled(&core, control::Command::Read, &stop)
                     .is_ok_and(|p| p.current() && closes_for_game(&p, signing_in(&signing)));
                 if live {
-                    match state.try_lock() {
-                        Ok(mut state) => finish(&mut state),
-                        Err(TryLockError::WouldBlock) => {
-                            cancel(&cancellation);
-                            if let Ok(mut state) = state.lock() {
-                                finish(&mut state);
-                            }
-                        }
-                        Err(TryLockError::Poisoned(_)) => break,
-                    }
-                    clear_cancellation(&cancellation);
+                    finish_for_game(&state, &cancellation, &signing);
                 }
             }
         })

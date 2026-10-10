@@ -1,6 +1,7 @@
 //! Pedales en diseño Eficiencia (`PedalsFunctional.tsx`): tres barras
 //! (embrague, freno, acelerador) con su rótulo y su valor. Geometría y colores
-//! del CSS de producción para el tamaño por defecto (120 x 160).
+//! del CSS de producción para el tamaño por defecto (108 x 160, separación de
+//! 2 px); con el ajuste histórico de 8 px el ancho es 120 px.
 
 use crate::efficiency::preview::PaintWindow as Window;
 use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
@@ -9,17 +10,32 @@ use vantare_domain::pedals::ViewModel;
 use crate::efficiency::text::{self, ink};
 use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
 
-pub const SIZE: (f32, f32) = (120.0, 160.0);
+/// Tamaño por defecto, con la separación casi pegada de 2 px (ISA-1563); el
+/// ancho real para otro ajuste lo da `width_for_gap`.
+pub const SIZE: (f32, f32) = (108.0, 160.0);
 const PAD_X: f32 = 10.0;
 const PAD_TOP: f32 = 8.0;
 const PAD_BOTTOM: f32 = 10.0;
-const GAP: f32 = 8.0;
+/// Ancho de cada columna con el `GAP = 8.0` original: se conserva y solo varía
+/// la separación, así el widget se estrecha en proporción.
+const COLUMN_W: f32 = 28.0;
+/// Separación por defecto entre barras: casi pegadas.
+pub const DEFAULT_GAP: f32 = 2.0;
+/// Rango del ajuste en Studio: de pegadas (0) a más aire que el 8 original.
+pub const GAP_MIN: f32 = 0.0;
+pub const GAP_MAX: f32 = 12.0;
 const TRACK_W: f32 = 14.0;
 const LABEL_H: f32 = 11.0;
 const VALUE_H: f32 = 11.0;
 
-pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
-    let (width, height) = SIZE;
+/// Ancho del widget para una separación dada (las columnas no cambian).
+#[must_use]
+pub fn width_for_gap(gap: f32) -> f32 {
+    2.0 * PAD_X + 3.0 * COLUMN_W + 2.0 * gap
+}
+
+pub fn paint(vm: &ViewModel, gap: f32, window: &mut Window, cx: &mut App) {
+    let (width, height) = (width_for_gap(gap), SIZE.1);
     if !vm.transparent_background {
         paint_panel(window, width, height, 0.90);
         window.paint_quad(quad(
@@ -40,10 +56,10 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
         ("B", vm.brake, &vm.brake_text, tokens::LOSS),
         ("T", vm.throttle, &vm.throttle_text, 0x6fae7d),
     ];
-    let column_w = (width - 2.0 * PAD_X - GAP * 2.0) / 3.0;
+    let column_w = COLUMN_W;
     let status_height = if let Some(message) = vm.status_text {
         let mut status_ink = ink(14.0, 700.0, 0.0, col(0xe2c568, 1.0));
-        // El productivo permite envolver el aviso en la columna de 120 px.
+        // El productivo permite envolver el aviso en el ancho del widget.
         let lines: Vec<_> = match message {
             "DATOS ANTIGUOS" => vec!["DATOS", "ANTIGUOS"],
             "DATA OUT OF DATE" => vec!["DATA OUT OF", "DATE"],
@@ -77,7 +93,7 @@ pub fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
     let label_ink = ink(11.0, 600.0, 0.18, col(tokens::MUTED, 0.78));
     let value_ink = ink(11.0, 700.0, 0.0, col(tokens::INK, 1.0));
     for (index, (label, value, text_value, color)) in columns.into_iter().enumerate() {
-        let left = PAD_X + index as f32 * (column_w + GAP);
+        let left = PAD_X + index as f32 * (column_w + gap);
         let mid = left + column_w / 2.0;
         let track_x = mid - TRACK_W / 2.0;
         window.paint_quad(quad(
@@ -166,10 +182,19 @@ fn fill_height(value: f64, inner_h: f32) -> f32 {
 use crate::app::{Paint, Wake, replace_if_changed};
 use vantare_domain::{Snapshot, format::Preferences};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
     pub transparent_background: bool,
+    pub gap: f32,
+}
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            transparent_background: false,
+            gap: DEFAULT_GAP,
+        }
+    }
 }
 impl Settings {
     pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
@@ -181,7 +206,14 @@ impl Settings {
 
     #[must_use]
     pub fn normalized(&self) -> Self {
-        self.clone()
+        Self {
+            gap: if self.gap.is_finite() {
+                self.gap.clamp(GAP_MIN, GAP_MAX)
+            } else {
+                DEFAULT_GAP
+            },
+            ..self.clone()
+        }
     }
 }
 
@@ -199,10 +231,9 @@ impl Widget {
         }
     }
 
-    // Firma común del registro: este widget tiene tamaño fijo.
-    #[allow(clippy::unused_self)]
+    // Tamaño intrínseco: depende de la separación entre barras.
     pub(crate) fn size(&self) -> (f32, f32) {
-        SIZE
+        (width_for_gap(self.settings.gap), SIZE.1)
     }
 
     pub(crate) fn ingest(&mut self, snapshot: &Snapshot, prefs: Preferences) -> bool {
@@ -211,8 +242,9 @@ impl Widget {
 
     pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
         let vm = self.vm.clone();
+        let gap = self.settings.gap;
         (
-            Box::new(move |window, cx| paint(&vm, window, cx)),
+            Box::new(move |window, cx| paint(&vm, gap, window, cx)),
             Wake::Idle,
         )
     }
@@ -241,6 +273,7 @@ mod tests {
                 .expect("escena");
         let settings = Settings {
             transparent_background: true,
+            ..Settings::default()
         };
         let mut vm = settings.project(&snapshot, Preferences::default());
         assert!(vm.transparent_background);
@@ -267,5 +300,78 @@ mod tests {
         assert!(widget.ingest(&source::synthetic(0), Preferences::default()));
         assert!(!widget.ingest(&source::synthetic(0), Preferences::default()));
         assert!(widget.ingest(&source::synthetic(300), Preferences::default()));
+    }
+
+    #[test]
+    fn old_layouts_without_gap_default_to_almost_touching() {
+        // La app anterior no tenía este ajuste (gap fijo de 8 px en el CSS):
+        // los layouts guardados cargan con el 2 por defecto, casi pegadas.
+        for json in [r#"{"kind":"pedals"}"#, r#"{"kind":"pedals","transparentBackground":true}"#] {
+            let settings: crate::Settings =
+                serde_json::from_str(json).expect("layout antiguo");
+            let crate::Settings::Pedals(value) = settings.normalized() else {
+                panic!("pedales");
+            };
+            assert_eq!(value.gap, DEFAULT_GAP);
+            assert_eq!(value.gap, 2.0);
+        }
+        let settings: Settings = serde_json::from_str("{}").expect("opciones parciales");
+        assert_eq!(settings, Settings::default());
+        let explicit: Settings =
+            serde_json::from_str(r#"{"gap":8.0}"#).expect("separación guardada");
+        assert_eq!(explicit.gap, 8.0);
+        assert_eq!(explicit.normalized(), explicit);
+        // Workshop envía enteros (u64) para este f32: deben convertirse.
+        let integer: Settings = serde_json::from_str(r#"{"gap":5}"#).expect("entero de Studio");
+        assert_eq!(integer.gap, 5.0);
+        assert_eq!(integer.normalized(), integer);
+    }
+
+    #[test]
+    fn gap_normalization_clamps_and_recovers_a_finite_default() {
+        for (input, expected) in [
+            (f32::NAN, DEFAULT_GAP),
+            (f32::INFINITY, DEFAULT_GAP),
+            (-4.0, GAP_MIN),
+            (0.0, 0.0),
+            (2.0, 2.0),
+            (8.0, 8.0),
+            (12.0, 12.0),
+            (99.0, GAP_MAX),
+        ] {
+            let settings = Settings {
+                gap: input,
+                ..Settings::default()
+            }
+            .normalized();
+            assert_eq!(settings.gap, expected, "gap {input}");
+            assert_eq!(settings.normalized(), settings, "idempotente con {input}");
+        }
+    }
+
+    #[test]
+    fn width_follows_gap_and_keeps_the_old_column_width() {
+        // Con el 8 original el ancho es el histórico de 120 px; por defecto
+        // (2 px, casi pegadas) el widget se estrecha a 108 px.
+        assert_eq!(width_for_gap(8.0), 120.0);
+        assert_eq!(width_for_gap(DEFAULT_GAP), 108.0);
+        assert_eq!(SIZE, (108.0, 160.0));
+        for gap in [GAP_MIN, DEFAULT_GAP, 8.0, GAP_MAX] {
+            let settings = Settings {
+                gap,
+                ..Settings::default()
+            };
+            let widget = Widget::new(&settings, Preferences::default());
+            let width = width_for_gap(gap);
+            assert_eq!(widget.size(), (width, 160.0));
+            // Tres columnas de 28 px con la separación entre ellas y el
+            // margen de 10 px a cada lado, como el productivo original.
+            for index in 0..3 {
+                let left = PAD_X + index as f32 * (COLUMN_W + gap);
+                assert_eq!(left, PAD_X + index as f32 * (28.0 + gap));
+            }
+            let right = PAD_X + 2.0 * (COLUMN_W + gap) + COLUMN_W;
+            assert_eq!(right, width - PAD_X);
+        }
     }
 }

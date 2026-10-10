@@ -36,8 +36,12 @@
   Isaac confirma que A/B es el gate ya aprobado de la rama #1531; se detiene
   la matriz completa y, con el perfil idéntico, no bloquea esta integración.
   Sin código adicional, cambio de umbrales ni extensión de la excepción Delta.
-- PR draft pendiente con base vantareapp/isa-1536-arreglos-revision; Isaac
-  cambiará su base a nightly después de fusionar #1557.
+- Push realizado de vantareapp/isa-1531-integracion; PR draft #1558:
+  https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1558
+  Base vantareapp/isa-1536-arreglos-revision. Isaac cambiará su base a nightly
+  después de fusionar #1557; CI del draft y promoción a nightly pendientes.
+  Código validado 47932598, native tree 5fefde7df3c4fbb2a745fcf26109599f200c1337;
+  los commits posteriores de cierre solo actualizan documentación.
 - Sin otros arreglos, subagentes, merge del PR ni release.
 - Evidencia: C:/tmp/review-1531-integracion; buzón C:/tmp/buzon/integracion-r2.md.
 

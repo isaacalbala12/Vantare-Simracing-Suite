@@ -1,6 +1,6 @@
 //! ViewModel de pedales: entradas del jugador y estado del tren motriz.
 
-use crate::format::{self, Language, Preferences};
+use crate::format::{self, Language, Preferences, Units};
 use crate::{Capability, Quality, Snapshot, SourceState};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -64,8 +64,22 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         brake_text: percent(brake),
         clutch_text: percent(clutch),
         gear: format::gear(telemetry.gear.current().copied()),
-        speed: format::speed(telemetry.speed_mps.current().copied(), prefs),
-        rpm: format::rpm(telemetry.engine_speed_rad_s.current().copied()),
+        // El productivo usa Math.round: se prerredondea en la unidad visible
+        // para que el formato al par no deje 2,5 km/h en 2 (ver input_telemetry).
+        speed: format::speed(
+            telemetry.speed_mps.current().copied().map(|v| {
+                let factor = match prefs.units {
+                    Units::Metric => 3.6,
+                    Units::Imperial => 2.236_936_292_054_4,
+                };
+                (v * factor).round() / factor
+            }),
+            prefs,
+        ),
+        rpm: format::rpm(telemetry.engine_speed_rad_s.current().copied().map(|v| {
+            let factor = 30.0 / std::f64::consts::PI;
+            (v * factor).round() / factor
+        })),
     }
 }
 
@@ -193,5 +207,31 @@ mod tests {
         let vm = project(&snapshot, Preferences::default());
         assert_eq!(vm.gear.as_str(), format::PLACEHOLDER);
         assert_eq!(vm.status_text, Some("DATOS ANTIGUOS"));
+    }
+
+    #[test]
+    fn regression_1549_half_speed_rounds_up_like_input_telemetry() {
+        let snapshot = Snapshot {
+            state: State {
+                source_state: crate::SourceState::Live,
+                player: Some(Player {
+                    telemetry: Telemetry {
+                        steering: Reliable(0.0),
+                        throttle: Reliable(0.5),
+                        brake: Reliable(0.5),
+                        clutch: Reliable(0.5),
+                        gear: Reliable(3),
+                        speed_mps: Reliable(2.5 / 3.6),
+                        engine_speed_rad_s: Reliable(2.5 * std::f64::consts::PI / 30.0),
+                    },
+                    ..Player::default()
+                }),
+                ..State::default()
+            },
+            ..Snapshot::default()
+        };
+        let vm = project(&snapshot, Preferences::default());
+        assert_eq!(vm.speed, "3 km/h");
+        assert_eq!(vm.rpm, "3");
     }
 }

@@ -27,8 +27,12 @@ pub fn is_invisible(ch: char) -> bool {
         ch,
         // Overrides, embeddings e isolates bidireccionales.
         '\u{202a}'..='\u{202e}'
+        // Marca de letra arabe: direccional invisible como las anteriores.
+        | '\u{061c}'
         // Anchura cero y marcas direccionales.
         | '\u{200b}'..='\u{200f}'
+        // Operadores invisibles (word joiner y matematicos).
+        | '\u{2060}'..='\u{2064}'
         | '\u{2066}'..='\u{2069}'
         | '\u{feff}'
     )
@@ -106,5 +110,20 @@ mod tests {
     fn result_is_never_longer_than_the_input() {
         let raw = "a\u{202e}b\u{200b}c\td";
         assert!(sanitize_display(raw).chars().count() <= raw.chars().count());
+    }
+
+    #[test]
+    fn regression_1549_arabic_mark_and_invisible_operators_are_removed() {
+        assert!(is_invisible('\u{061c}'));
+        for ch in ['\u{2060}', '\u{2061}', '\u{2062}', '\u{2063}', '\u{2064}'] {
+            assert!(
+                is_invisible(ch),
+                "U+{:04X} debe ser invisible",
+                u32::from(ch)
+            );
+        }
+        assert_eq!(sanitize_display("a\u{061c}bc"), "abc");
+        assert_eq!(sanitize_display("No\u{2060}mbre"), "Nombre");
+        assert_eq!(sanitize_display("a\u{2062}b\u{2063}c"), "abc");
     }
 }

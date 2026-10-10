@@ -2,7 +2,7 @@
 //! (embrague, freno, acelerador) con su rótulo y su valor. Geometría y colores
 //! del CSS de producción para el tamaño por defecto (108 x 160, separación de
 //! 2 px); con el ajuste histórico de 8 px el ancho es 120 px. El Look Vantare
-//! (`pedals/vantare.rs`, #1566) pinta el mismo ViewModel con la misma huella.
+//! (`pedals/vantare.rs`, #1566) pinta el mismo ViewModel en columnas más juntas.
 
 use crate::efficiency::preview::PaintWindow as Window;
 use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
@@ -440,9 +440,10 @@ mod tests {
         assert_eq!(width_for_gap(DEFAULT_GAP), 108.0);
         assert_eq!(SIZE, (108.0, 160.0));
         for gap in [GAP_MIN, DEFAULT_GAP, 8.0, GAP_MAX] {
+            // Geometría de Eficiencia; Vantare tiene la suya en `pedals/vantare.rs`.
             let settings = Settings {
                 gap,
-                ..Settings::default()
+                ..Settings::eficiencia()
             };
             let widget = Widget::new(&settings, Preferences::default());
             let width = width_for_gap(gap);
@@ -511,7 +512,12 @@ mod tests {
             // Sin reproyectar: mismo ViewModel y misma foto no repinta.
             assert_eq!(widget.vm, before);
             assert!(!widget.ingest(&source::synthetic(300), prefs));
-            assert_eq!(widget.size(), (width_for_gap(6.0), 160.0));
+            // Cada Look tiene su ancho, pero ambos siguen la separación guardada.
+            let expected = match look {
+                crate::look::Look::Eficiencia => width_for_gap(6.0),
+                crate::look::Look::Vantare => 92.0 + 12.0,
+            };
+            assert_eq!(widget.size(), (expected, 160.0));
         }
     }
 }

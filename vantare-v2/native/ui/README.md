@@ -531,11 +531,11 @@ referencia de la mejor vuelta propia (exactos en meta, `Estimated`).
 ## Pedales Vantare (#1566)
 
 Mismo ViewModel (`domain::pedals`) y una sola proyección; `pedals/vantare.rs`
-pinta tres columnas con el kit Vantare en la misma huella que Eficiencia
-(`width_for_gap(gap)` × 160), así alternar Look no recoloca el layout. Valores en
-Space Mono, rótulos Rajdhani localizados (EMB/FRE/ACE, CLU/BRK/THR), pistas
-`fuel.track`, embrague azul, freno rojo y acelerador verde; estilo Neo/Neutro y
-acento como los demás. La separación ajustable de #1563 (0–12, por defecto 2)
+pinta tres columnas juntas con el kit Vantare (columna 24, barra 16: 8 px de
+aire más la separación; 96 × 160 por defecto). Sin rótulos: el color identifica
+cada pedal (embrague azul, freno rojo, acelerador verde). Porcentaje encima en
+Space Mono 10 («100%» cabe en la columna), pistas `fuel.track`, estilo
+Neo/Neutro y acento como los demás. La separación ajustable de #1563 (0–12, por defecto 2)
 rige en ambos Looks. El aviso de estado es una franja ámbar centrada que se
 reduce si no cabe. Sin marcha ni velocidad. Layouts guardados sin `designSystem`
 siguen en Eficiencia; las instancias nuevas nacen en Vantare. La captura de

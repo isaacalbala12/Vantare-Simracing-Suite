@@ -1,8 +1,9 @@
-//! Pedales en el sistema de diseño Vantare (#1566): tres columnas con la
-//! misma huella que Eficiencia (`width_for_gap` x 160), pintadas con el kit
-//! `ui/src/vantare/`. Mismo ViewModel; solo cambia el pintado.
+//! Pedales en el sistema de diseño Vantare (#1566): tres columnas juntas,
+//! sin rótulos (el color identifica cada pedal), con el porcentaje encima,
+//! pintadas con el kit `ui/src/vantare/`. Mismo ViewModel y separación
+//! ajustable (#1563); solo cambia el pintado.
 
-use super::{SIZE, width_for_gap};
+use super::SIZE;
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::{rect, text};
 use crate::standings::{Accent, Look};
@@ -13,14 +14,14 @@ use std::sync::Arc;
 use vantare_domain::format::Language;
 use vantare_domain::pedals::ViewModel;
 
-/// Margen lateral y ancho de columna iguales a Eficiencia: misma huella.
 const PAD_X: f32 = 10.0;
-const COLUMN_W: f32 = 28.0;
-const TRACK_W: f32 = 10.0;
+/// Columna justa para «100%» en mono 10; barras anchas y poco hueco entre ellas.
+const COLUMN_W: f32 = 24.0;
+const TRACK_W: f32 = 16.0;
+const VALUE_SIZE: f32 = 10.0;
 const VALUE_TOP: f32 = 10.0;
 const VALUE_H: f32 = 14.0;
-const LABEL_H: f32 = 14.0;
-const PAD_BOTTOM: f32 = 8.0;
+const PAD_BOTTOM: f32 = 10.0;
 /// Opacidad del extremo inferior del relleno; el que avanza es opaco.
 const FILL_FROM: f32 = 0.55;
 
@@ -61,12 +62,9 @@ pub(crate) struct Visual {
     style: Arc<Style>,
 }
 
-/// Rótulos localizados: embrague, freno y acelerador.
-fn labels(language: Language) -> [&'static str; 3] {
-    match language {
-        Language::Es => ["EMB", "FRE", "ACE"],
-        Language::En => ["CLU", "BRK", "THR"],
-    }
+/// Ancho del widget para una separación dada: tres columnas y dos huecos.
+fn width_for_gap(gap: f32) -> f32 {
+    2.0 * PAD_X + 3.0 * COLUMN_W + 2.0 * gap
 }
 
 /// Altura del relleno: el porcentaje redondeado como el texto que lo acompaña.
@@ -107,24 +105,20 @@ impl Visual {
             kit.panel(window, height);
         }
         let c = &self.style.colors;
-        let f = &self.style.fonts;
         let top = match vm.status_text {
             Some(status) => self.status(&kit, status, window, cx),
             None => 0.0,
         };
         let value_top = top + VALUE_TOP;
         let track_top = value_top + VALUE_H + 6.0;
-        let track_h = height - track_top - 6.0 - LABEL_H - PAD_BOTTOM;
-        let value_ink = kit.ink(Face::Mono, f.mono_small, 0.0, c.text.hsla());
-        let label_ink = kit.ink(Face::Display, 12.0, 0.8, c.muted.hsla());
+        let track_h = height - track_top - PAD_BOTTOM;
+        let value_ink = kit.ink(Face::Mono, VALUE_SIZE, 0.0, c.text.hsla());
         let pedals = [
             (vm.clutch, &vm.clutch_text, c.compound_wet),
             (vm.brake, &vm.brake_text, c.flash_loss),
             (vm.throttle, &vm.throttle_text, c.green),
         ];
-        for (index, ((value, value_text, color), label)) in
-            pedals.into_iter().zip(labels(language)).enumerate()
-        {
+        for (index, (value, value_text, color)) in pedals.into_iter().enumerate() {
             let mid = PAD_X + index as f32 * (COLUMN_W + self.options.gap) + COLUMN_W / 2.0;
             let x = mid - TRACK_W / 2.0;
             round_rect(
@@ -151,18 +145,6 @@ impl Visual {
                 VALUE_H,
                 Face::Mono,
                 &value_ink,
-            );
-            let w = text::width(window, label, &label_ink);
-            kit.label(
-                window,
-                cx,
-                label,
-                mid - w / 2.0,
-                None,
-                track_top + track_h + 6.0,
-                LABEL_H,
-                Face::Display,
-                &label_ink,
             );
         }
     }
@@ -243,14 +225,17 @@ mod tests {
     use super::*;
 
     #[test]
-    fn keeps_the_eficiencia_footprint_for_every_gap() {
+    fn columns_stay_together_and_follow_the_adjustable_gap() {
         for gap in [0.0, super::super::DEFAULT_GAP, 8.0, 12.0] {
             let settings = super::super::Settings {
                 gap,
                 ..super::super::Settings::for_look(crate::look::Look::Vantare)
             };
             let visual = Visual::new(Options::from_settings(&settings));
-            assert_eq!(visual.size(), (width_for_gap(gap), 160.0));
+            assert_eq!(visual.size(), (92.0 + 2.0 * gap, 160.0));
+            // Más juntas que Eficiencia: 8 px de aire entre barras más la separación.
+            assert_eq!(COLUMN_W - TRACK_W, 8.0);
+            assert!(visual.size().0 < super::super::width_for_gap(gap));
             // La última columna termina en el margen derecho de 10 px.
             let right = PAD_X + 2.0 * (COLUMN_W + gap) + COLUMN_W;
             assert_eq!(right, visual.size().0 - PAD_X);
@@ -262,11 +247,5 @@ mod tests {
         assert!((fill_height(0.125, 100.0) - 13.0).abs() < 0.001);
         assert!(fill_height(-0.2, 100.0).abs() < f32::EPSILON);
         assert!((fill_height(1.4, 100.0) - 100.0).abs() < f32::EPSILON);
-    }
-
-    #[test]
-    fn labels_follow_the_language() {
-        assert_eq!(labels(Language::Es), ["EMB", "FRE", "ACE"]);
-        assert_eq!(labels(Language::En), ["CLU", "BRK", "THR"]);
     }
 }

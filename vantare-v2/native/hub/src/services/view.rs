@@ -289,9 +289,6 @@ fn core_feed(pipe: &str) -> Option<vantare_ipc::control::Feed> {
     }
 }
 
-const HUB_CONTENT_MIN_HEIGHT: f32 = 830.0;
-const SHELL_HEADER_OVERLAP: f32 = 162.0;
-
 const ACCOUNT_MODULES: [(Section, &str); 6] = [
     (Section::Studio, "Editor de overlays"),
     (Section::Launcher, "Lanzador"),
@@ -762,6 +759,14 @@ impl Remote {
     pub fn request(&mut self, command: Command, cx: &mut Context<Self>) {
         self.request_with_kind(command, None, cx);
     }
+    /// Aviso cuando una acción se descarta porque el refresco automático ocupa
+    /// el hueco reservado: antes se perdía sin mensaje con `queued` ocupado.
+    fn background_discard_message(
+        queued: Option<&Command>,
+        command: &Command,
+    ) -> Option<&'static str> {
+        (queued.is_some() && !matches!(command, Command::Logout)).then_some("Operación en curso")
+    }
     fn request_with_kind(
         &mut self,
         command: Command,
@@ -777,6 +782,16 @@ impl Remote {
         if self.inflight.background() {
             if self.queued.is_none() || matches!(command, Command::Logout) {
                 self.queued = Some(command);
+            } else if let Some(message) =
+                Self::background_discard_message(self.queued.as_ref(), &command)
+            {
+                self.message = message.into();
+                self.access.observe(
+                    &Reply::Error {
+                        message: self.message.clone(),
+                    },
+                    matches!(self.active, Area::Account),
+                );
             }
             return cx.notify();
         }
@@ -1605,114 +1620,6 @@ impl Remote {
         }
     }
 
-    #[allow(clippy::too_many_lines)] // Composición visual; crece al migrar a accesores de tema (#1430).
-    pub fn published_roadmap(&mut self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
-        self.ensure_roadmap(cx);
-        let mut body = div().flex().flex_col().flex_1().min_h_0().gap(px(16.0));
-        if let Some(publication) = &self.publication {
-            body = body.child(orbit::text(
-                format!(
-                    "Publicada: {}{}",
-                    publication.published_at,
-                    if self.stale { " · guardada" } else { "" }
-                ),
-                12.0,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ));
-            if publication.document.items.is_empty() {
-                body = body.child(orbit::text(
-                    "Esta publicación no contiene entradas",
-                    13.5,
-                    400,
-                    orbit::ink_2(cx),
-                    cx,
-                ));
-            }
-            for section in ["now", "next", "done"] {
-                for item in publication
-                    .document
-                    .items
-                    .iter()
-                    .filter(|item| item.section == section)
-                {
-                    body = body
-                        .child(orbit::eyebrow(
-                            match section {
-                                "now" => "Ahora",
-                                "next" => "Después",
-                                _ => "Completado",
-                            },
-                            cx,
-                        ))
-                        .child(orbit::text(
-                            item.title.es.clone(),
-                            15.0,
-                            700,
-                            orbit::ink(cx),
-                            cx,
-                        ))
-                        .child(orbit::text(
-                            item.body.es.clone(),
-                            13.5,
-                            400,
-                            orbit::ink_2(cx),
-                            cx,
-                        ));
-                }
-            }
-        } else if self.working() {
-            body = body.child(orbit::text(
-                "Cargando roadmap...",
-                13.5,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ));
-        } else {
-            body = body.child(orbit::text(
-                &self.roadmap_message,
-                13.5,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ));
-        }
-        div()
-            .id("roadmap")
-            .w_full()
-            .min_h(px(HUB_CONTENT_MIN_HEIGHT))
-            .mt(px(-SHELL_HEADER_OVERLAP))
-            .flex_1()
-            .min_w_0()
-            .flex()
-            .flex_col()
-            .gap(px(15.0))
-            .pt(px(24.0))
-            .pb(px(20.0))
-            .bg(rgb(orbit::canvas(cx)))
-            .child(orbit::page_header(
-                "Dirección del producto",
-                "Novedades",
-                "Explora los hitos en una línea temporal, por estado o como gráfico de distribución.",
-             cx))
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .flex_1()
-                    .min_h_0()
-                    .px(px(20.0))
-                    .py(px(24.0))
-                    .bg(rgb(orbit::surface_1(cx)))
-                    .border_1()
-                    .border_color(rgba(orbit::line(cx)))
-                    .rounded(px(orbit::RADIUS))
-                    .child(body),
-            )
-    }
-
     pub fn licenses(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {
         self.account(window, cx)
     }
@@ -1727,6 +1634,21 @@ impl Drop for Remote {
 #[cfg(test)]
 mod account_tests {
     use super::*;
+    #[test]
+    fn second_action_during_automatic_refresh_reports_instead_of_dropping() {
+        assert_eq!(
+            Remote::background_discard_message(None, &Command::LicenseRenew),
+            None
+        );
+        assert_eq!(
+            Remote::background_discard_message(Some(&Command::AccountPoll), &Command::Logout),
+            None
+        );
+        assert_eq!(
+            Remote::background_discard_message(Some(&Command::AccountPoll), &Command::LicenseRenew),
+            Some("Operación en curso")
+        );
+    }
     #[test]
     fn calendar_waits_for_heartbeat_without_losing_queued_user_actions() {
         let mut queued = Some(Command::Logout);

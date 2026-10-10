@@ -2,7 +2,7 @@
 use super::{Hub, State};
 use crate::orbit::theme::{self, AppearanceSettings, InterfaceFont, MonoFont};
 use gpui::{Context, Window};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 /// Versión de las claves: Vantare = grafito, Classic = carmín desde el feedback 7.
 #[derive(serde::Serialize)]
@@ -43,6 +43,25 @@ pub(crate) struct Store {
     zoom_observed: Option<Vec<u8>>,
 }
 impl Store {
+    fn defaults(path: &Path) -> Self {
+        Self {
+            settings: AppearanceSettings::default(),
+            path: path.to_path_buf(),
+            observed: None,
+            zoom_percent: 100,
+            zoom_path: path.with_file_name("hub-zoom.json"),
+            zoom_observed: None,
+        }
+    }
+    /// Carga tolerante para el arranque: un `appearance.json` ilegible no
+    /// puede tumbar la ventana; se usan valores por defecto y el error queda
+    /// visible en Ajustes, como los ajustes generales.
+    pub fn load_or_default(path: &Path) -> (Self, Option<String>) {
+        match Self::load(path.to_path_buf()) {
+            Ok(store) => (store, None),
+            Err(error) => (Self::defaults(path), Some(error)),
+        }
+    }
     pub fn load(path: PathBuf) -> Result<Self, String> {
         let observed = match std::fs::metadata(&path) {
             Ok(_) => Some(crate::files::read(&path, 16 * 1024)?),
@@ -297,6 +316,25 @@ fn zoom_step_limited(percent: u16, direction: i8, limit: f32) -> u16 {
 mod tests {
     use super::*;
     use crate::orbit::theme::Scheme;
+    #[test]
+    fn corrupt_appearance_falls_back_to_defaults_with_a_visible_error() {
+        let dir = directory("corrupt-fallback");
+        std::fs::create_dir_all(&dir).expect("directorio");
+        let path = dir.join("appearance.json");
+        // Sin archivo: primer arranque, sin error.
+        let (store, error) = Store::load_or_default(&path);
+        assert!(error.is_none());
+        assert_eq!(store.zoom_percent, 100);
+        // Archivo ilegible: la ventana debe abrir con valores por defecto y el
+        // motivo visible en Ajustes, en lugar de propagar el error al arranque.
+        std::fs::write(&path, b"{ apariencia rota").expect("fixture corrupta");
+        assert!(Store::load(path.clone()).is_err());
+        let (store, error) = Store::load_or_default(&path);
+        assert_eq!(store.settings, AppearanceSettings::default());
+        assert_eq!(store.zoom_percent, 100);
+        assert!(error.is_some(), "el error debe quedar visible en Ajustes");
+        std::fs::remove_dir_all(dir).expect("limpiar");
+    }
     #[test]
     fn legacy_choices_keep_their_visual_palette_and_migrate_only_once() {
         use theme::Palette;

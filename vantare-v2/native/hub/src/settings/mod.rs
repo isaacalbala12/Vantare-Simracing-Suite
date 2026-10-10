@@ -145,7 +145,7 @@ pub(super) struct State {
     data: PathBuf,
     diagnostic: Option<Diagnostic>,
     busy: bool,
-    status: Option<String>,
+    pub(super) status: Option<String>,
     update: updates::LocalUpdate,
     update_busy: bool,
     beta_status: Option<updates::BetaStatus>,

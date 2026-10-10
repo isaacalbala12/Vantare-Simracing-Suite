@@ -162,6 +162,10 @@ fn serve(
         }
         sequence = request.sequence;
         let closed = matches!(request.command, Command::Shutdown);
+        // Protect admission before waiting for the state held by the game timer.
+        if access_command(&request.command) {
+            set_signing_in(signing, true);
+        }
         let reply = match state.lock() {
             Ok(mut state) => handle(
                 &mut state,
@@ -192,6 +196,16 @@ fn failure(message: &str) -> Reply {
         message: message.into(),
     }
 }
+fn access_command(command: &Command) -> bool {
+    matches!(
+        command,
+        Command::Status
+            | Command::AccountBegin
+            | Command::AccountPoll
+            | Command::AccountRenew
+            | Command::LicenseRenew
+    )
+}
 fn handle(
     state: &mut State,
     options: &Options,
@@ -200,17 +214,7 @@ fn handle(
     signing: &SigningIn,
     stop: &Arc<Event>,
 ) -> Reply {
-    let access = matches!(
-        command,
-        Command::Status
-            | Command::AccountBegin
-            | Command::AccountPoll
-            | Command::AccountRenew
-            | Command::LicenseRenew
-    );
-    if access {
-        set_signing_in(signing, true);
-    }
+    let access = access_command(&command);
     let reply = serve_command(state, options, command, cancellation, signing, stop);
     if access {
         // Solo un OAuth pendiente (callback esperando) sigue reteniendo los servicios.
@@ -318,17 +322,34 @@ fn cancel(cancellation: &Cancellation) {
         event.set();
     }
 }
-fn finish_for_game(state: &Mutex<State>, cancellation: &Cancellation, _signing: &SigningIn) -> bool {
-    match state.try_lock() {
-        Ok(mut state) => finish(&mut state),
+/// The game decision can precede a new access request. Protect cancellation
+/// with the admission lock, then recheck after acquiring the supervisor state.
+fn finish_for_game(state: &Mutex<State>, cancellation: &Cancellation, signing: &SigningIn) -> bool {
+    let mut state = match state.try_lock() {
+        Ok(state) => state,
         Err(TryLockError::WouldBlock) => {
-            cancel(cancellation);
-            if let Ok(mut state) = state.lock() {
-                finish(&mut state);
+            {
+                let Ok(until) = signing.lock() else {
+                    return false;
+                };
+                if until.is_some_and(|until| Instant::now() < until) {
+                    return false;
+                }
+                // Access admission cannot race this cancellation. Other remote
+                // operations still stop on game entry, preserving their durable intent.
+                cancel(cancellation);
             }
+            let Ok(state) = state.lock() else {
+                return false;
+            };
+            state
         }
         Err(TryLockError::Poisoned(_)) => return false,
+    };
+    if signing_in(signing) {
+        return false;
     }
+    finish(&mut state);
     clear_cancellation(cancellation);
     true
 }

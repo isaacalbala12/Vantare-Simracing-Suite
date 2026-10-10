@@ -423,3 +423,36 @@ fn game_exit_rechecks_access_started_after_the_live_decision() {
     assert!(finish_for_game(&state, &cancellation, &signing));
     assert!(cancellation.lock().expect("slot").is_none());
 }
+
+#[test]
+fn game_exit_does_not_cancel_an_access_request_holding_the_supervisor() {
+    let state = Mutex::new(State { client: None });
+    let signing: SigningIn = Arc::new(Mutex::new(None));
+    let event = Arc::new(Event::new().expect("event"));
+    let cancellation: Cancellation = Arc::new(Mutex::new(Some(Arc::clone(&event))));
+    set_signing_in(&signing, true);
+    let guard = state.lock().expect("access request in flight");
+    assert!(!finish_for_game(&state, &cancellation, &signing));
+    assert!(
+        !event.is_set(),
+        "access I/O must not be cancelled by the game timer"
+    );
+    assert!(cancellation.lock().expect("slot").is_some());
+    drop(guard);
+}
+
+#[test]
+fn game_exit_still_cancels_unprotected_io_before_waiting_for_the_supervisor() {
+    let state = Arc::new(Mutex::new(State { client: None }));
+    let signing: SigningIn = Arc::new(Mutex::new(None));
+    let event = Arc::new(Event::new().expect("event"));
+    let cancellation: Cancellation = Arc::new(Mutex::new(Some(Arc::clone(&event))));
+    let guard = state.lock().expect("remote request in flight");
+    let worker_state = Arc::clone(&state);
+    let worker = thread::spawn(move || finish_for_game(&worker_state, &cancellation, &signing));
+    // A bounded event wait verifies actual cancellation; no sleeps or scheduler assumptions.
+    let cancelled = event.wait(Duration::from_secs(5));
+    drop(guard);
+    assert!(worker.join().expect("game closer"));
+    assert!(cancelled, "unprotected remote I/O must still be interrupted");
+}

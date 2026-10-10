@@ -90,6 +90,7 @@ pub struct Row {
 #[derive(Clone, Debug, PartialEq)]
 pub struct Board {
     key: ProjectionKey,
+    pub header_stale: HeaderStale,
     pub track: String,
     pub player_badge: String,
     pub session: String,
@@ -113,6 +114,19 @@ pub struct Board {
     pub footer_cells: Vec<crate::standings::InfoCell>,
 }
 pub type ViewModel = Board;
+
+/// Calidad de cada valor histórico de cabecera y pie, independiente del Look.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[allow(clippy::struct_excessive_bools)] // Calidad independiente por campo, igual que Row.
+pub struct HeaderStale {
+    pub track: bool,
+    pub player_badge: bool,
+    pub session: bool,
+    pub remaining: bool,
+    pub air: bool,
+    pub track_temperature: bool,
+    pub wind: bool,
+}
 
 /// Nombres de la sesión y hechos de entrada: no son una segunda colección de filas.
 #[derive(Clone, Debug, PartialEq)]
@@ -448,6 +462,7 @@ pub fn project_configured(
         .and_then(|me| pit_exit(&state.cars, me.id, state.player.as_ref()?.pit_loss_s));
 
     let Header {
+        stale,
         track,
         player_badge,
         session,
@@ -468,6 +483,7 @@ pub fn project_configured(
     );
     let mut board = Board {
         key,
+        header_stale: stale,
         track,
         player_badge,
         session,
@@ -599,6 +615,7 @@ fn class_paces(cars: &[Car]) -> std::collections::BTreeMap<Option<u32>, f64> {
     class_pace
 }
 struct Header {
+    stale: HeaderStale,
     track: String,
     player_badge: String,
     session: String,
@@ -626,6 +643,16 @@ fn header(snapshot: &Snapshot, prefs: Preferences, header_player: Option<&Car>) 
         }
     });
     Header {
+        stale: HeaderStale {
+            track: matches!(session.track_name, Quality::Stale(_)),
+            player_badge: header_player
+                .is_some_and(|car| matches!(car.position, Quality::Stale(_))),
+            session: matches!(session.kind, Quality::Stale(_)),
+            remaining: matches!(session.remaining_s, Quality::Stale(_)),
+            air: matches!(session.weather.air_temperature_k, Quality::Stale(_)),
+            track_temperature: matches!(session.weather.track_temperature_k, Quality::Stale(_)),
+            wind: matches!(session.weather.wind_speed_mps, Quality::Stale(_)),
+        },
         track: displayed(&session.track_name).map_or_else(String::new, |v| v.to_uppercase()),
         player_badge,
         session: displayed(&session.kind)

@@ -41,6 +41,19 @@ fn check_board(photo: &Snapshot, board: &relative::Board, same_class: bool) {
     let player = photo.state.player_car();
     assert_eq!(board.source_state, photo.state.source_state);
     assert_eq!(board.player_present, live && player.is_some());
+    let session = &photo.state.session;
+    assert_eq!(
+        board.header_stale,
+        relative::HeaderStale {
+            track: matches!(session.track_name, Quality::Stale(_)),
+            player_badge: player.is_some_and(|p| matches!(p.position, Quality::Stale(_))),
+            session: matches!(session.kind, Quality::Stale(_)),
+            remaining: matches!(session.remaining_s, Quality::Stale(_)),
+            air: matches!(session.weather.air_temperature_k, Quality::Stale(_)),
+            track_temperature: matches!(session.weather.track_temperature_k, Quality::Stale(_)),
+            wind: matches!(session.weather.wind_speed_mps, Quality::Stale(_)),
+        }
+    );
     let rows: Vec<_> = board.slots.iter().flatten().collect();
     if !live || player.is_none() {
         assert!(rows.is_empty());
@@ -103,4 +116,86 @@ fn check_board(photo: &Snapshot, board: &relative::Board, same_class: bool) {
     }
     // Orden espacial firmado, no posición de carrera: un doblado sigue siendo vecino.
     assert!(offsets.windows(2).all(|p| p[0] <= p[1]));
+}
+
+#[test]
+fn header_quality_changes_without_text_changes_invalidate_and_survive_look_switch() {
+    fn stale<T: Clone>(field: &mut Quality<T>) {
+        *field = Quality::Stale(field.current().expect("campo fresco del corpus").clone());
+    }
+    let prefs = Preferences::default();
+    let original =
+        vantare_ipc::snapshot_from_json(include_str!("../../fixtures/relative.snapshot.json"))
+            .unwrap();
+    for field in 0..7 {
+        let mut photo = original.clone();
+        let settings = Settings::eficiencia();
+        let mut widget = Widget::new(&settings, prefs);
+        widget.ingest(&photo, prefs);
+        let before = widget.board.clone();
+        match field {
+            0 => stale(&mut photo.state.session.track_name),
+            1 => {
+                let id = photo.state.player.as_ref().unwrap().car;
+                stale(
+                    &mut photo
+                        .state
+                        .cars
+                        .iter_mut()
+                        .find(|c| c.id == id)
+                        .unwrap()
+                        .position,
+                );
+            }
+            2 => stale(&mut photo.state.session.kind),
+            3 => stale(&mut photo.state.session.remaining_s),
+            4 => stale(&mut photo.state.session.weather.air_temperature_k),
+            5 => stale(&mut photo.state.session.weather.track_temperature_k),
+            _ => stale(&mut photo.state.session.weather.wind_speed_mps),
+        }
+        assert!(
+            widget.ingest(&photo, prefs),
+            "campo {field}: repintar cambio de calidad"
+        );
+        let after = widget.board.clone();
+        assert!(!std::sync::Arc::ptr_eq(&before, &after));
+        assert_eq!(
+            (
+                &before.track,
+                &before.player_badge,
+                &before.session,
+                &before.remaining,
+                &before.air,
+                &before.track_temperature,
+                &before.wind
+            ),
+            (
+                &after.track,
+                &after.player_badge,
+                &after.session,
+                &after.remaining,
+                &after.air,
+                &after.track_temperature,
+                &after.wind
+            )
+        );
+        let flags = after.header_stale;
+        assert_eq!(
+            [
+                flags.track,
+                flags.player_badge,
+                flags.session,
+                flags.remaining,
+                flags.air,
+                flags.track_temperature,
+                flags.wind
+            ],
+            std::array::from_fn::<_, 7, _>(|i| i == field)
+        );
+        for &look in crate::look::Look::ALL {
+            widget.set_look(look, prefs);
+            assert!(std::sync::Arc::ptr_eq(&after, &widget.board));
+        }
+        assert!(!widget.ingest(&photo, prefs));
+    }
 }

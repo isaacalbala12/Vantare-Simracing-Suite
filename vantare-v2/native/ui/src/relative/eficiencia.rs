@@ -129,6 +129,7 @@ fn same_visible(a: &ViewModel, b: &ViewModel, settings: &Settings) -> bool {
             .flatten()
             .any(|c| c.enabled && c.metric_id == "lastLap");
     a.track == b.track
+        && a.header_stale == b.header_stale
         && a.player_badge == b.player_badge
         && a.session == b.session
         && a.remaining == b.remaining
@@ -230,7 +231,19 @@ fn paint(
     if has_meta {
         line(window, BAND - SCALE, tokens::INK, 0.1);
         let (label, _) = labels(prefs.language);
-        let font = ink(14.0 * SCALE, 650.0, -0.01, col(tokens::INK, 1.0));
+        let font = ink(
+            14.0 * SCALE,
+            650.0,
+            -0.01,
+            col(
+                tokens::INK,
+                if vm.header_stale.player_badge {
+                    0.6
+                } else {
+                    1.0
+                },
+            ),
+        );
         let badge_width = text::width(window, &vm.player_badge, &font);
         let label_width = text::width(
             window,
@@ -243,7 +256,13 @@ fn paint(
             &font,
             (width - badge_width - label_width - 42.0).max(0.0),
         );
-        item(window, cx, 12.0 * SCALE, 0.0, label, &track);
+        item(
+            window,
+            cx,
+            12.0 * SCALE,
+            0.0,
+            (label, &track, vm.header_stale.track),
+        );
         let x = width - 12.0 * SCALE - badge_width;
         text::draw(
             window,
@@ -308,14 +327,18 @@ fn paint(
         .join(" ");
     let (_, weather) = labels(prefs.language);
     let fields = [
-        ("", session.as_str()),
-        (weather[0], vm.air.as_str()),
-        (weather[1], vm.track_temperature.as_str()),
-        (weather[2], vm.wind.as_str()),
+        ("", session.as_str(), false),
+        (weather[0], vm.air.as_str(), vm.header_stale.air),
+        (
+            weather[1],
+            vm.track_temperature.as_str(),
+            vm.header_stale.track_temperature,
+        ),
+        (weather[2], vm.wind.as_str(), vm.header_stale.wind),
     ];
     let visible = fields
         .iter()
-        .filter(|(_, value)| !value.is_empty())
+        .filter(|(_, value, _)| !value.is_empty())
         .collect::<Vec<_>>();
     if !footer.is_empty() && vm.status.is_none() {
         crate::standings::view::paint_info_cells(
@@ -334,13 +357,30 @@ fn paint(
         line(window, y, tokens::INK, 0.1);
         let widths = visible
             .iter()
-            .map(|(label, value)| item_width(window, label, value))
+            .map(|(label, value, _)| item_width(window, label, value))
             .collect::<Vec<_>>();
         let gap = 16.0 * SCALE;
         let total = widths.iter().sum::<f32>() + gap * (visible.len() - 1) as f32;
         let mut x = (width - total) / 2.0;
-        for ((label, value), w) in visible.into_iter().zip(widths) {
-            item(window, cx, x, y, label, value);
+        for ((label, value, stale), w) in visible.into_iter().zip(widths) {
+            if label.is_empty() && (vm.header_stale.session || vm.header_stale.remaining) {
+                // Solo el valor obsoleto se atenúa; el texto fresco conserva su tinta.
+                item(window, cx, x, y, ("", &vm.session, vm.header_stale.session));
+                let advance = if vm.session.is_empty() || vm.remaining.is_empty() {
+                    0.0
+                } else {
+                    item_width(window, "", &vm.session) + item_width(window, "", " ")
+                };
+                item(
+                    window,
+                    cx,
+                    x + advance,
+                    y,
+                    ("", &vm.remaining, vm.header_stale.remaining),
+                );
+            } else {
+                item(window, cx, x, y, (label, value, *stale));
+            }
             x += w + gap;
         }
     }
@@ -411,12 +451,23 @@ fn item_width(window: &Window, label: &str, value: &str) -> f32 {
         }
 }
 
-fn item(window: &mut Window, cx: &mut App, x: f32, y: f32, label: &str, value: &str) {
+fn item(
+    window: &mut Window,
+    cx: &mut App,
+    x: f32,
+    y: f32,
+    (label, value, stale): (&str, &str, bool),
+) {
     if value.is_empty() {
         return;
     }
     let label_font = ink(11.0 * SCALE, 600.0, 0.1, col(tokens::MUTED, 1.0));
-    let font = ink(14.0 * SCALE, 650.0, -0.01, col(tokens::INK, 1.0));
+    let font = ink(
+        14.0 * SCALE,
+        650.0,
+        -0.01,
+        col(tokens::INK, if stale { 0.6 } else { 1.0 }),
+    );
     let advance = if label.is_empty() {
         0.0
     } else {

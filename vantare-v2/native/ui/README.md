@@ -1,8 +1,31 @@
 # ui — overlays GPUI
 
+## #1564 · Sesiones y columnas de Standings
+
+Las instancias guardan `showIn` (practice/qualifying/race, todas por defecto).
+Solo LiveScreens lo aplica y lo combina con Y con #1562, incluso si fuera de
+pista está en AlwaysVisible. Studio/Workshop siguen mostrando la instancia.
+Sin tipo conocido se ve; un tipo Stale conserva la última sesión conocida.
+
+Standings guarda Carrera en `columns`, Práctica en `practiceColumns` y Qualy
+en `qualifyingColumns`. Los campos nuevos ausentes heredan las columnas
+anteriores. Antes de editar Carrera se independizan las otras pestañas;
+se preservan orden, activación, anchuras y formatos en el round-trip.
+Los presets D7 se aplican al crear una instancia en Studio/layout inicial o
+al restablecer una pestaña; no reemplazan los settings guardados.
+Practice y Other (warmup incluido) usan Práctica, Qualifying usa Qualy y
+Race usa Carrera; al arrancar sin tipo las columnas son las de Carrera.
+En tamaño automático el ancho natural cambia con las columnas. El tamaño
+explícito del usuario se respeta; el ancla no cambia en ninguno de los dos casos.
+La demanda reúne las señales de las tres pestañas, sin cambiar su cadencia.
+
+`profile_import` traduce sessionTypes practice/warmup, qualifying/qual y
+race/endurance. Otras condiciones no soportadas siguen importando oculto con
+aviso. Los valores de telemetría y el orden por posición conservan su contrato;
+solo warmup/Other pasan a comparar mejor vuelta como Práctica.
+
 Los ejemplos Cargo muestran el comando interior: ejecutarlo siempre por la
-cola de `AGENTS.md` (en esta ola, `C:/tmp/fase2/compilar.ps1`; normalmente,
-`native/scripts/compilar.ps1`). Usar target aislado y `-j 2`.
+cola de `AGENTS.md`: `native/scripts/compilar.ps1` desde `vantare-v2/`. Usar target aislado y `-j 2`.
 
 GPUI de Zed (rev `72d28c32`, la del prototipo de paridad ISA-1410) usado
 directamente; el crate añade la integración Win32 (`overlay.rs`: transparencia,
@@ -37,8 +60,8 @@ Los elementos propios de Standings siguen en `standings/`. Pedales conserva su f
 `src/vantare/{style,paint,motion,columns}.rs` y `styles/vantare.json` contienen
 el kit compartido Vantare. Standings, Relative, Delta y Fuel ofrecen
 `DesignSystem` Eficiencia/Vantare. Workshop recarga el estilo sin otro renderer.
-El seam de una proyección y un estado por widget con N Looks está **en curso,
-#1531**; esta base todavía mantiene dos vías. No duplicar proyecciones al portar.
+Una proyección y un estado por widget con N Looks están integrados (#1531):
+Board y Motion comunes, con una sola presentación activa. No duplicar proyecciones al portar.
 `registry.rs` aún adapta manualmente `frame_with_motion(prefs, reduced)` y la
 cadencia de widgets con movimiento; justificar cambios en ese seam, no extenderlo
 silenciosamente. La política de movimiento la decide el host.
@@ -173,7 +196,7 @@ nativo por instancia; `Vm::from_domain` conserva el cálculo histórico de posic
 de clase por orden y la lectura de números desde texto para las animaciones.
 La paridad de estas fotos no demuestra telemetría live, OBS, DPI mixto ni estados
 en movimiento. Estos aspectos requieren la revisión y pruebas del orquestador.
-Notion no está disponible según el encargo: reconciliación pendiente por el
+Histórico: Notion no está disponible según el encargo: reconciliación pendiente por el
 orquestador. Entrega local en `vantareapp/isa-1427-w-standings2`, base `13dc3b22`,
 sin push, PR, CI remoto, integración ni promoción.
 
@@ -186,7 +209,7 @@ fase 2 se corrige en la entrega anterior del 2026-09-30; los valores de este
 registro corresponden a la base de infraestructura.
 
 Seguimiento de este lote: [GitHub #1427](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1427),
-base `c0cd37e7`, rama `vantareapp/isa-1427-f2-infra`. Notion no disponible según
+Histórico: base `c0cd37e7`, rama `vantareapp/isa-1427-f2-infra`. Notion no disponible según
 el encargo de Isaac del 2026-09-29; queda pendiente su reconciliación por el
 orquestador. Este worker solo entrega commits locales, sin push/PR/promoción.
 
@@ -574,7 +597,7 @@ o Desktop. Las escenas con varias fases tienen anterior/siguiente, pausa,
 bucle y deslizador; cambiar de fase reconstruye el estado desde el principio.
 Guardar `styles/standings.json` sigue recargando el estilo en el mismo proceso.
 
-`fixtures/*.scene.json` son 43 demostraciones exportadas del Workshop React,
+`fixtures/*.scene.json` son 43 demostraciones exportadas del Workshop React histórico,
 no telemetría real. `workshop-sources.json` registra procedencia y límites.
 El exportador React se retiró en #1533. Las escenas y su procedencia siguen
 congeladas; el Workshop nativo usa estos documentos. La herramienta Python de
@@ -594,3 +617,17 @@ Sin un número de campaña, `vantare-overlays` vigila `%LOCALAPPDATA%\Vantare\na
 `layout::Document::{open,save,poll}` limita la lectura a 1 MiB, normaliza entradas y compara bytes del último documento leído. `save` usa bloqueo cooperativo liberado al cerrar el fichero, temporal local con `write_all`/`sync_all`, copia `.bak` y `rename` sin borrar antes. Un conflicto requiere releer. `LiveScreens` conserva cada widget por ID mientras sus Settings sigan iguales, al moverlo, cambiar opacidad, ocultarlo o cambiar de monitor. Oculto conserva estado sin ingerir fotos; al volver visible recibe la última foto solo si su demanda está cubierta. Las preferencias reproyectan esa foto sin recrear la entidad; nuevos IDs o cambios de tipo/Settings crean otra. Borrar libera la entidad y su temporizador. Las ventanas se reutilizan por monitor ocupado.
 
 Los Settings de todos los widgets están junto a su renderer; el registro genera `Settings::{kind,default_for,normalized}`. Las variantes implementadas incluyen Delta capsule, transparencia de pedales, carrusel, volante específico, color de banderas, target behind y Standings broadcast, marca y métricas del pie. El host solo avisa de las claves legacy `headerFirst/headerSecond`, que persiste pero no usa en la cabecera; los límites de cada Settings se presentan en el inspector del Hub mediante `UNSUPPORTED`. Evidencia de paridad y QA: [layout-evidence.md](layout-evidence.md).
+
+## #1562 · Ocultar fuera de pista
+
+`Layout.hideOffTrack` (false) y `Instance.offTrack` (inherit/always_visible/hide)
+controlan LiveScreens. Los valores por defecto se omiten al guardar; documentos
+v1 anteriores siguen legibles. Un binario anterior puede rechazar un documento
+con los nuevos campos activados: conservar su copia .bak.
+El host aplica la situación central incluso antes de la cadencia del widget,
+sin borrar entidades ni cerrar ventanas. Studio/Workshop nunca la activan;
+la demanda y la licencia no cambian. Ver [contrato](../runtime/README.md).
+El cálculo de política y el booleano de visibilidad no asignan memoria por foto.
+Una situación estable no solicita `notify` ni fuerza `ingest`: mantiene la cadencia
+existente. La regresión cubre los 18 widgets, 100 repeticiones visibles y ocultas;
+no elimina repintados necesarios por cambios de telemetría o por sus historiales.

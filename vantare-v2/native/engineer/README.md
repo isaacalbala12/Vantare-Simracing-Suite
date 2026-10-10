@@ -14,7 +14,7 @@ y su error visible hasta el próximo intento, sin repetir E/S por cada tick.
 ## Ejecución de producto
 
 `vantare-engineer --pipe --cursor R [--pipe-name N] [--locale es|en|it|pt-BR] [--clips CARPETA] [--settings RUTA]`
-consume foto DTO v6 y journal por `<pipe-de-fotos>-events`. Windows usa pipes
+consume foto DTO v9 y journal por `<pipe-de-fotos>-events`. Windows usa pipes
 con ACL y filtra la imagen de Core esperada. Aunque `vantare-ipc` ya tiene
 sockets Unix, `runtime::flows::host` y `client` siguen exportados solo en Windows;
 por eso el modo `--pipe` de producto aún no está disponible en Linux/macOS.
@@ -61,7 +61,7 @@ validación acústica, ni presupuesto de CPU/latencia/frame time.
 
 ### Señales de tercera ronda — #1428 (2026-09-30)
 
-DTO v6 añade `Car.estimated_lap_s`, `Player.pit_limiter_active` y
+La ronda histórica DTO v6 incorporó campos presentes en DTO v9: `Car.estimated_lap_s`, `Player.pit_limiter_active` y
 `Player.pit_stop_stopped`, con ida/vuelta de las cuatro calidades y campos
 obligatorios. Las capacidades de familia ya existentes siguen vigentes;
 la presencia/frescura de cada nueva señal la determina su `Quality`.
@@ -122,8 +122,8 @@ Migración mecánica de fixtures y `src/*/scenes/*.json`: 247 snapshots en
 conserva cada valor anterior, incluidas preferencias y secuencias; renderer y
 ViewModels no se modifican. No se declara nueva campaña de capturas de píxeles.
 
-Notion no disponible: excepción expresa del encargo del 2026-09-30. Evidencia
-local para revisión de Opus; sin actualización Notion, push, PR ni integración.
+Histórico: Notion no disponible: excepción expresa del encargo del 2026-09-30. Evidencia
+Histórico: local para revisión de Opus; sin actualización Notion, push, PR ni integración.
 
 ## Consumo y recuperación
 
@@ -355,7 +355,7 @@ distinta mediante named pipe real en Windows. No corre en Unix mientras el host
 y cliente del journal sigan limitados a Windows. `services/tests/process.rs` sí
 ejercita el proceso de servicios sobre IPC Unix. Ninguna prueba sustituye Core
 empaquetado ni demuestra LMU/OBS, acústica o rendimiento.
-Notion no disponible en este encargo; no hay push, PR o merge.
+Histórico: Notion no disponible en este encargo; no hay push, PR o merge.
 
 Verificación previa de Windows (#1428), 2026-09-30, con los comandos anteriores:
 
@@ -413,8 +413,8 @@ cargo test --workspace -j 4
 Rama `vantareapp/isa-1428-w-voz-engineer`, entrada limpia en
 `e8b0927a3e8f63b8e89d2043b18c57ac1753c0fd`. Issue
 [#1428](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1428),
-proyecto Rust nativo, fase 3. Notion no disponible; Isaac autoriza explícitamente
-trabajar solo con GitHub en este encargo. No se declara seguimiento Notion
+Histórico: proyecto Rust nativo, fase 3. Notion no disponible; Isaac autoriza explícitamente
+Histórico: trabajar solo con GitHub en este encargo. No se declara seguimiento Notion
 completado; el orquestador actualizará el handoff común al revisar el diff.
 Se conserva la base de integración asignada, sin rebase ni cambios ajenos.
 `origin/nightly` leído tras fetch: `f29b5fee04022756f9ae59f19bf153f91eebe4ed`;

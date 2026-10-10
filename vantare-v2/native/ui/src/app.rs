@@ -5,6 +5,8 @@
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+#[cfg(windows)]
+use std::path::Path;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
@@ -102,13 +104,21 @@ pub(crate) fn starter_layout(monitor: (f32, f32, f32, f32)) -> crate::layout::La
         instances: placed
             .into_iter()
             .map(|(id, kind, (x, y))| crate::layout::Instance {
+                off_track: crate::layout::OffTrack::default(),
                 geometry: crate::geometry::Geometry::default(),
                 id: id.into(),
                 x: x.round(),
                 y: y.round(),
                 visible: true,
+                show_in: crate::session::ShowIn::default(),
                 opacity: 1.0,
-                settings: Settings::default_for(kind),
+                settings: {
+                    let mut settings = Settings::default_for(kind);
+                    if let Settings::Standings(standings) = &mut settings {
+                        standings.apply_session_presets();
+                    }
+                    settings
+                },
             })
             .collect(),
         ..crate::layout::Layout::default()
@@ -129,6 +139,11 @@ pub struct Overlay {
     preview_scale_y: f32,
     paused: bool,
     live_projection: bool,
+    /// Solo `LiveScreens` aplica la política; Studio/Workshop nunca la activan.
+    hidden_off_track: bool,
+    /// «Mostrar en» de la instancia y última sesión vista (#1564).
+    show_in: crate::session::ShowIn,
+    session: Option<crate::session::Session>,
     #[cfg(feature = "paint-stats")]
     profile_photo: Option<(u64, u64)>,
     /// Fondo opaco para la captura con alfa (dos pasadas negro/blanco).
@@ -137,6 +152,11 @@ pub struct Overlay {
 }
 
 impl Overlay {
+    /// La situación estable no añade notify ni fuerza ingest fuera de su cadencia.
+    fn update_off_track_visibility(&mut self, hidden: bool) -> bool {
+        replace_if_changed(&mut self.hidden_off_track, hidden)
+    }
+
     /// Solo Workshop suministra un estilo de desarrollo; producto usa valores compilados.
     pub(crate) fn standings_style(
         &mut self,
@@ -212,8 +232,11 @@ impl Overlay {
             frame_size: None,
             preview_scale: 1.0,
             preview_scale_y: 1.0,
+            hidden_off_track: false,
             paused: false,
             live_projection: false,
+            show_in: crate::session::ShowIn::default(),
+            session: None,
             #[cfg(feature = "paint-stats")]
             profile_photo: None,
             #[cfg(feature = "parity-capture")]
@@ -284,6 +307,21 @@ impl Overlay {
         self.frame_size = size;
     }
 
+    /// Solo los overlays en vivo lo aplican; Studio siempre dibuja la instancia.
+    pub(crate) fn set_show_in(&mut self, show_in: crate::session::ShowIn) {
+        self.show_in = show_in;
+    }
+
+    fn shown_in_session(&self) -> bool {
+        self.show_in.allows(self.session)
+    }
+
+    fn update_session_visibility(&mut self, snapshot: &Snapshot) -> bool {
+        let shown = self.shown_in_session();
+        self.session = crate::session::Session::of(&snapshot.state.session.kind);
+        shown != self.shown_in_session()
+    }
+
     /// Solo el host de preview reduce/amplía el renderer. Las ventanas reales
     /// conservan el factor 1; tamaño lógico y ViewModel permanecen iguales.
     pub fn set_preview_scale(&mut self, scale: f32) -> Result<(), &'static str> {
@@ -339,10 +377,11 @@ impl Overlay {
     /// puede proyectar la foto conservada, sin tratarla como desconectada.
     fn project_snapshot(&mut self, snapshot: &Snapshot) -> bool {
         let paused = snapshot.state.source_state == vantare_domain::SourceState::Paused;
+        let session_changed = self.update_session_visibility(snapshot);
         if paused && self.paused {
-            return false;
+            return session_changed;
         }
-        let changed = self.paused != paused;
+        let changed = self.paused != paused || session_changed;
         self.paused = paused;
         if paused && self.live_projection {
             return changed;
@@ -393,8 +432,10 @@ impl Render for Overlay {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         #[cfg(feature = "paint-stats")]
         let _span = crate::profiling::begin(crate::profiling::Stage::Render);
-        if crate::rights::denied(self.kind, cx) {
+        if self.hidden_off_track || crate::rights::denied(self.kind, cx) || !self.shown_in_session()
+        {
             // Sin licencia el widget queda vacío: el aviso único lo pinta `Screen`.
+            // Fuera de sus sesiones (#1564) tampoco pinta nada.
             return div()
                 .w(px(self.frame_size().0 * self.preview_scale))
                 .h(px(self.frame_size().1 * self.preview_scale_y))
@@ -705,8 +746,11 @@ fn window_action(existing: bool, occupied: bool) -> WindowAction {
 struct LiveScreens {
     cadences: HashMap<String, crate::performance::Cadence>,
     usage_widgets: Option<Vec<String>>,
-    /// Último layout aplicado y su ocultación desde la bandeja.
+    /// Último layout aplicado y su ocultación (bandeja o Studio).
     layout: crate::layout::Layout,
+    /// Ruta del layout: la bandeja comparte el canal de pista con Studio (#1567).
+    #[cfg(windows)]
+    path: PathBuf,
     hidden: bool,
     screens: Vec<(DisplayId, WindowHandle<Screen>)>,
     widgets: HashMap<String, LiveWidget<Entity<Overlay>>>,
@@ -753,12 +797,24 @@ fn reconcile_widgets<T>(
 
 impl LiveScreens {
     /// «Mostrar/Ocultar overlays» de la bandeja: vacía las pantallas sin
-    /// tocar el documento ni el estado de cada widget.
+    /// tocar el documento ni el estado de cada widget. Ocultar retira por el
+    /// mismo canal la solicitud vigente de Studio (#1567).
     #[cfg(windows)]
     fn toggle(&mut self, cx: &mut App) {
         self.hidden = !self.hidden;
+        Self::sync_track_request(&self.path, self.hidden);
         let layout = self.layout.clone();
         self.apply(&layout, cx);
+    }
+
+    /// La bandeja y Studio usan el mismo estado/canal: ocultar desde la
+    /// bandeja retira la solicitud vigente de mostrar en pista; mostrar
+    /// desde la bandeja no crea ninguna solicitud.
+    #[cfg(windows)]
+    fn sync_track_request(layout: &Path, now_hidden: bool) {
+        if now_hidden && let Err(error) = crate::layout::Presentation::hide(layout) {
+            eprintln!("bandeja: retirar solicitud de pista: {error}");
+        }
     }
 
     fn apply(&mut self, layout: &crate::layout::Layout, cx: &mut App) {
@@ -815,8 +871,23 @@ impl LiveScreens {
         // incluso oculta o fuera de un monitor; preferencias reproyectan sin reset.
         for (id, widget) in &self.widgets {
             widget.view.update(cx, |overlay, cx| {
+                overlay.hidden_off_track = layout
+                    .instances
+                    .iter()
+                    .find(|i| &i.id == id)
+                    .is_some_and(|i| {
+                        self.last.as_ref().is_some_and(|s| {
+                            i.hidden_off_track(layout.hide_off_track, s.state.driving_situation)
+                        })
+                    });
                 let reproject = overlay.prefs != self.prefs || !look_changes.contains(id);
                 overlay.prefs = self.prefs;
+                if let Some(instance) = layout.instances.iter().find(|i| &i.id == id) {
+                    overlay.set_show_in(instance.show_in);
+                }
+                if let Some(snapshot) = &self.last {
+                    overlay.update_session_visibility(snapshot);
+                }
                 if let Some(look) = widget.settings.look() {
                     overlay.set_look(look);
                 }
@@ -936,16 +1007,45 @@ impl LiveScreens {
         let snapshot = photo.snapshot;
         self.last_demand = photo.demand;
         let now = Instant::now();
+        let mut width_changed = false;
         for (id, widget) in self.widgets.iter().filter(|(_, widget)| widget.visible) {
+            let hidden = self
+                .layout
+                .instances
+                .iter()
+                .find(|i| &i.id == id)
+                .is_some_and(|i| {
+                    i.hidden_off_track(self.layout.hide_off_track, snapshot.state.driving_situation)
+                });
+            let visibility_changed = widget.view.update(cx, |overlay, cx| {
+                let off_track_changed = overlay.update_off_track_visibility(hidden);
+                let session_changed = overlay.update_session_visibility(&snapshot);
+                let changed = off_track_changed || session_changed;
+                if changed {
+                    cx.notify();
+                }
+                changed
+            });
             let hz = self.layout.performance.hz(id, widget.settings.kind());
-            if self.cadences.entry(id.clone()).or_default().due(
-                hz,
-                (snapshot.epoch, snapshot.state.source_state),
-                now,
-            ) {
-                widget
-                    .view
-                    .update(cx, |overlay, cx| overlay.ingest(&snapshot, cx));
+            if visibility_changed
+                || self.cadences.entry(id.clone()).or_default().due(
+                    hz,
+                    (snapshot.epoch, snapshot.state.source_state),
+                    now,
+                )
+            {
+                width_changed |= widget.view.update(cx, |overlay, cx| {
+                    let width = overlay.frame_size().0;
+                    overlay.ingest(&snapshot, cx);
+                    width != overlay.frame_size().0
+                });
+            }
+        }
+        // El tamaño cacheado de Screen debe seguir el ancho de la sesión activa;
+        // las fotos con el mismo ancho conservan la invalidación por widget.
+        if width_changed {
+            for (_, screen) in &self.screens {
+                let _ = screen.update(cx, |_, _, cx| cx.notify());
             }
         }
         self.last = Some(snapshot);
@@ -1003,6 +1103,8 @@ fn run_layout_feed<T: Send + 'static>(
     demand: Option<crate::source::DemandHandle>,
     start_hidden: bool,
 ) -> Result<(), crate::layout::Error> {
+    #[cfg(windows)]
+    let track_path = path.clone();
     let mut presentation = crate::layout::Presentation::watch(&path)?;
     let mut document = crate::layout::Document::open(path)?;
     gpui_platform::application().run(move |cx: &mut App| {
@@ -1035,6 +1137,8 @@ fn run_layout_feed<T: Send + 'static>(
             cadences: HashMap::new(),
             usage_widgets: None,
             layout: crate::layout::Layout::default(),
+            #[cfg(windows)]
+            path: track_path,
             hidden: start_hidden,
             screens: Vec::new(),
             widgets: HashMap::new(),
@@ -1077,14 +1181,14 @@ fn run_layout_feed<T: Send + 'static>(
                     .timer(Duration::from_millis(500))
                     .await;
                 match presentation.poll() {
-                    Ok(true) => cx.update(|cx| {
+                    Ok(Some(showing)) => cx.update(|cx| {
                         let mut screens = screens.borrow_mut();
-                        screens.hidden = false;
+                        screens.hidden = !showing;
                         let layout = screens.layout.clone();
                         screens.apply(&layout, cx);
                     }),
-                    Ok(false) => {}
-                    Err(error) => eprintln!("solicitud de mostrar en pista: {error}"),
+                    Ok(None) => {}
+                    Err(error) => eprintln!("solicitud de pista: {error}"),
                 }
                 match document.poll() {
                     Ok(true) => {
@@ -1342,6 +1446,30 @@ mod tests {
     }
 
     #[test]
+    fn stable_off_track_visibility_adds_no_repaint_for_all_widgets() {
+        for &kind in Kind::ALL {
+            let path = format!(
+                "{}/fixtures/{}.snapshot.json",
+                env!("CARGO_MANIFEST_DIR"),
+                kind.name()
+            );
+            let snapshot = vantare_ipc::snapshot_from_json(
+                &std::fs::read_to_string(path).expect("escena del widget"),
+            )
+            .expect("foto");
+            let mut overlay = Overlay::new(kind, Preferences::default());
+            overlay.project_snapshot(&snapshot);
+            for hidden in [false, true] {
+                assert_eq!(overlay.update_off_track_visibility(hidden), hidden);
+                for _ in 0..100 {
+                    assert!(!overlay.update_off_track_visibility(hidden), "{kind:?}");
+                    assert!(!overlay.project_snapshot(&snapshot), "{kind:?}");
+                }
+            }
+        }
+    }
+
+    #[test]
     fn new_samples_with_unchanged_values_request_no_repaint_without_histories() {
         for &kind in Kind::ALL {
             if matches!(kind, Kind::InputTelemetry | Kind::DeltaTrace) {
@@ -1396,6 +1524,88 @@ mod tests {
     }
 
     #[test]
+    fn show_in_hides_the_overlay_outside_its_sessions_but_never_without_data() {
+        use vantare_domain::{Quality, SessionKind};
+        let mut overlay = Overlay::new(Kind::Standings, Preferences::default());
+        overlay.set_show_in(crate::session::ShowIn {
+            practice: false,
+            qualifying: false,
+            race: true,
+        });
+        let mut snapshot = crate::source::fixed();
+        for (kind, shown) in [
+            (Quality::Reliable(SessionKind::Practice), false),
+            (
+                Quality::Reliable(SessionKind::Other("warmup".into())),
+                false,
+            ),
+            (Quality::Reliable(SessionKind::Qualifying), false),
+            (Quality::Reliable(SessionKind::Race), true),
+            (Quality::Stale(SessionKind::Practice), false),
+            (Quality::Unavailable, true),
+        ] {
+            snapshot.state.session.kind = kind.clone();
+            snapshot.sequence += 1;
+            overlay.project_snapshot(&snapshot);
+            assert_eq!(overlay.shown_in_session(), shown, "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn every_widget_combines_sessions_with_off_track_even_during_pause() {
+        use vantare_domain::{DrivingSituation, Quality, SessionKind, SourceState};
+        let mut photo = crate::source::fixed();
+        for &kind in Kind::ALL {
+            let mut overlay = Overlay::new(kind, Preferences::default());
+            overlay.set_show_in(crate::session::ShowIn {
+                practice: false,
+                qualifying: false,
+                race: true,
+            });
+            for off_track in [
+                crate::layout::OffTrack::Inherit,
+                crate::layout::OffTrack::AlwaysVisible,
+                crate::layout::OffTrack::Hide,
+            ] {
+                for situation in [
+                    DrivingSituation::Unknown,
+                    DrivingSituation::OnTrack,
+                    DrivingSituation::Garage,
+                    DrivingSituation::Paused,
+                    DrivingSituation::Replay,
+                ] {
+                    let instance: crate::layout::Instance = serde_json::from_value(serde_json::json!({"id":"test", "x":10, "y":20, "settings":Settings::default_for(kind), "offTrack":off_track})).unwrap();
+                    for session in [
+                        Some(SessionKind::Practice),
+                        Some(SessionKind::Qualifying),
+                        Some(SessionKind::Race),
+                        Some(SessionKind::Other("warmup".into())),
+                        None,
+                    ] {
+                        photo.state.source_state = SourceState::Paused;
+                        photo.state.session.kind = session
+                            .clone()
+                            .map_or(Quality::Unavailable, Quality::Reliable);
+                        overlay.update_off_track_visibility(
+                            instance.hidden_off_track(true, situation),
+                        );
+                        overlay.project_snapshot(&photo);
+                        let visible = !overlay.hidden_off_track && overlay.shown_in_session();
+                        assert_eq!(
+                            visible,
+                            !instance.hidden_off_track(true, situation)
+                                && session
+                                    .as_ref()
+                                    .is_none_or(|session| *session == SessionKind::Race),
+                            "{kind:?}/{off_track:?}/{situation:?}/{session:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn layout_spatial_edits_and_visibility_preserve_the_same_widget_state() {
         let prefs = Preferences::default();
         let snapshots = crate::workshop::snapshots_from_json(include_str!(
@@ -1403,11 +1613,13 @@ mod tests {
         ))
         .expect("historia observada");
         let mut instance = crate::layout::Instance {
+            off_track: crate::layout::OffTrack::default(),
             geometry: crate::geometry::Geometry::default(),
             id: "inputs".into(),
             x: 20.0,
             y: 30.0,
             visible: true,
+            show_in: crate::session::ShowIn::default(),
             opacity: 1.0,
             settings: Settings::default_for(Kind::InputTelemetry),
         };
@@ -1462,11 +1674,13 @@ mod tests {
             Kind::FuelStrategy,
         ] {
             let mut instance = crate::layout::Instance {
+                off_track: crate::layout::OffTrack::default(),
                 geometry: crate::geometry::Geometry::default(),
                 id: "board".into(),
                 x: 20.0,
                 y: 30.0,
                 visible: true,
+                show_in: crate::session::ShowIn::default(),
                 opacity: 1.0,
                 settings: Settings::default_for(kind).normalized(),
             };
@@ -1490,11 +1704,13 @@ mod tests {
     #[test]
     fn layout_recreates_only_changed_settings_types_new_ids_and_deleted_widgets() {
         let mut instance = crate::layout::Instance {
+            off_track: crate::layout::OffTrack::default(),
             geometry: crate::geometry::Geometry::default(),
             id: "inputs".into(),
             x: 20.0,
             y: 30.0,
             visible: true,
+            show_in: crate::session::ShowIn::default(),
             opacity: 1.0,
             settings: Settings::default_for(Kind::InputTelemetry),
         };
@@ -1601,6 +1817,29 @@ mod tests {
                 "quita aviso al reanudar {kind:?}"
             );
             assert_eq!(overlay.wanted_size(), normal_size);
+        }
+    }
+
+    #[test]
+    fn studio_and_workshop_preview_never_hide_for_any_situation_or_widget() {
+        let mut snapshot =
+            vantare_ipc::snapshot_from_json(include_str!("../fixtures/pedals.snapshot.json"))
+                .expect("foto");
+        for &kind in Kind::ALL {
+            for situation in [
+                vantare_domain::DrivingSituation::Garage,
+                vantare_domain::DrivingSituation::Paused,
+                vantare_domain::DrivingSituation::Replay,
+            ] {
+                snapshot.state.driving_situation = situation;
+                let mut preview = Overlay::with_snapshot(
+                    &Settings::default_for(kind),
+                    Preferences::default(),
+                    Some(&snapshot),
+                );
+                preview.project_snapshot(&snapshot);
+                assert!(!preview.hidden_off_track, "preview {kind:?}/{situation:?}");
+            }
         }
     }
 
@@ -1924,5 +2163,37 @@ mod tests {
         );
         assert_eq!(parts[1], [(Kind::Radar, (80.0, 50.0))]);
         assert!(parts[2].is_empty(), "sin widgets no hay ventana");
+    }
+
+    /// La bandeja y Studio usan el mismo estado/canal: ocultar desde la
+    /// bandeja retira la solicitud vigente de mostrar en pista; mostrar
+    /// desde la bandeja no crea ninguna (#1567).
+    #[cfg(windows)]
+    #[test]
+    fn tray_hide_retires_studio_track_request() {
+        let dir = std::env::temp_dir().join(format!(
+            "vantare-tray-track-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .expect("reloj")
+                .as_nanos()
+        ));
+        let layout = dir.join("layout.json");
+        // Sin solicitud vigente, ocultar es idempotente y mostrar no crea nada.
+        LiveScreens::sync_track_request(&layout, true);
+        assert!(!crate::layout::Presentation::is_showing(&layout));
+        LiveScreens::sync_track_request(&layout, false);
+        assert!(!crate::layout::Presentation::is_showing(&layout));
+        // Solicitud vigente de Studio: ocultar desde la bandeja la retira y
+        // el observador del overlay lo ve como dejar de mostrar.
+        crate::layout::Presentation::show(&layout).expect("mostrar");
+        assert!(crate::layout::Presentation::is_showing(&layout));
+        let mut watcher = crate::layout::Presentation::watch(&layout).expect("vigilar");
+        assert_eq!(watcher.poll().expect("sin cambios"), None);
+        LiveScreens::sync_track_request(&layout, true);
+        assert!(!crate::layout::Presentation::is_showing(&layout));
+        assert_eq!(watcher.poll().expect("dejar de mostrar"), Some(false));
+        std::fs::remove_dir_all(&dir).expect("limpiar");
     }
 }

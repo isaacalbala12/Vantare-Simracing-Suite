@@ -1,5 +1,27 @@
 # Hub nativo (ISA-1430)
 
+## #1564 · Widgets por sesión
+
+Standings → Contenido abre Práctica / Qualy / Carrera, con columnas y formatos
+de nombre/tiempo independientes; Restablecer preset afecta solo a la pestaña
+activa. Filas, Look, filtro y gaps de clase, pie y ventana del jugador son comunes.
+Formato de tabla también modifica solo las columnas de la pestaña activa.
+Cambiar pestaña reconstruye sus controles y el ejemplo de diseño usa esa sesión;
+las fotos reales y En vivo conservan la sesión de su fuente. La pestaña es estado
+de autoría, no un cambio del layout ni de posición/ancla.
+
+En pista reúne Mostrar en práctica/qualy/carrera con Fuera de pista de #1562
+para todos los widgets. Ambas reglas se guardan mediante Editor, con
+Deshacer/Rehacer, y se combinan en overlays live. La preview siempre se ve.
+El módulo nuevo `studio/sessions.rs` conserva el renderer compartido;
+la partición del Studio preexistente >2000 LOC sigue en #1561 P1-A.
+
+Captura aislada con el harness existente, mutex y pantalla-ocupada:
+`--capture studio-base --demo --size 1440x900 --out <PNG>`. Solo en
+`parity-capture`, `VANTARE_CAPTURE_SESSION=practice|qualifying|race` selecciona
+la pestaña y presets D7; `VANTARE_CAPTURE_INSPECTOR=behavior` enfoca En pista.
+Estas escenas son QA declarada, no telemetría ni interacción física en juego.
+
 Proceso GPUI independiente, misma revisión y kit Eficiencia que `vantare-ui`.
 No usa Wails ni importa el runtime. Consume DTO/IPC del supervisor para cuenta,
 licencias, roadmap y reportes; el supervisor posee la red y las credenciales.
@@ -18,7 +40,7 @@ y guardarse los documentos: un formulario Strategy sin confirmar, un conflicto
 o un error de escritura mantiene el Hub abierto y muestra el error. La preservación
 de datos tiene prioridad incluso si el juego ya está activo; tras resolverlo,
 se puede cerrar manualmente. El Hub no es hijo del launcher. Live exige origen `SourceKind::Live` **y**
-`state.source_state == SourceState::Live` (DTO v4). Waiting, Stale, Lost y
+`state.source_state == SourceState::Live` (DTO v9). Waiting, Stale, Lost y
 Replay no cierran; primera foto Live establece referencia y tampoco cierra.
 El cierre cancela el Subscriber, sin parar núcleo, overlays ni Engineer.
 La escena del Workshop no participa en esta decisión. La entrada física
@@ -210,7 +232,7 @@ por usuario de IPC. Desde native, después de construir el binario:
 Usa una copia y datos temporales propios más un pipe sin productor para
 comprobar proceso vivo, guardado y salida total por EOF. No lanza núcleo ni
 juego ni demuestra entrada al juego, paridad, DPI/OBS o presupuesto de memoria.
-La condición de cierre usa DTO v4 y el Studio usa la API común de layout.
+La condición de cierre usa DTO v9 y el Studio usa la API común de layout.
 El smoke usa una ruta de layout aislada y no lee el layout personal.
 
 ## Kit visual
@@ -232,3 +254,10 @@ un fallo de red o de escritura conserva el horario anterior. La ventana es
 `[validFrom, validUntil)`; cuando no hay uno vigente, todas las vistas muestran
 «Aún no hay horario publicado para esta semana» sin carreras caducadas.
 No publica horarios ni activa recordatorios.
+
+## #1562 · Ocultar fuera de pista
+
+Ajustes → General ofrece Ocultar fuera de pista (opt-in). Studio → En pista
+ofrece heredar / siempre visible / ocultar por instancia. Se guardan en el único
+layout mediante el Editor existente, con conflictos y Deshacer/Rehacer. Studio
+no aplica ocultación a sus previews. Ver [contrato](../runtime/README.md).

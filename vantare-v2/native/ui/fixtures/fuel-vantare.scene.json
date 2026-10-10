@@ -8,7 +8,7 @@
   {
    "caption": "LMGT3 · solo combustible",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 1,
     "origin": {
@@ -254,7 +254,7 @@
   {
    "caption": "Hypercar · limita la energía virtual",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 2,
     "origin": {
@@ -506,7 +506,7 @@
   {
    "caption": "Combustible bajo · entra esta vuelta",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 3,
     "origin": {
@@ -752,7 +752,7 @@
   {
    "caption": "Repostando · 34.1 de 58.0 L",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 4,
     "origin": {
@@ -1010,7 +1010,7 @@
   {
    "caption": "FCY · el consumo cae",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 5,
     "origin": {
@@ -1259,7 +1259,7 @@
   {
    "caption": "Última vuelta · llegas",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 6,
     "origin": {
@@ -1505,7 +1505,7 @@
   {
    "caption": "Sin datos · esperando al simulador",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 7,
     "origin": {
@@ -1751,7 +1751,7 @@
   {
    "caption": "Sin coche propio · espectador",
    "snapshot": {
-    "version": 9,
+    "version": 10,
     "epoch": 3,
     "sequence": 8,
     "origin": {

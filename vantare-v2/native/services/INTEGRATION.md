@@ -81,6 +81,15 @@ local y obtiene ACK del núcleo. Tras renovar, vuelve a transferirlo. Al detecta
 live (vigilancia local cada 250 ms) se transfiere otra vez y se cierra/recolecta
 el hijo. Si había E/S remota en vuelo, se cancela; sobreviven los últimos derechos
 confirmados y el candidate/intento durable, sin autoenvío ni reintento de red.
+
+#1568 protege la admisión de Status, login, sondeo y renovación antes de esperar
+el estado del supervisor. El timer vuelve a comprobar esa protección al obtener
+el estado; si hay E/S en vuelo, serializa su cancelación con la admisión. Una
+decisión de cierre anterior no cancela ni cierra una operación de acceso nueva.
+La excepción conserva la ventana acotada existente de diez minutos para OAuth
+pendiente; las demás operaciones remotas siguen cancelándose al entrar en juego.
+No renueva tokens/derechos por detectar LMU ni cambia el TTL o la caducidad.
+
 La transferencia final fallida se registra solo como clase genérica. Cierre/EOF
 del Hub o del supervisor también cierra al auxiliar. El siguiente arranque
 requiere otra acción manual fuera de juego. No hay HTTP residente en carrera.

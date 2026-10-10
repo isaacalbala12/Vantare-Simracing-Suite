@@ -1,3 +1,5 @@
+> Evidencia histórica de #1403; contrato vigente en [README nativo](../../../../README.md). Estados, versiones DTO y gates siguientes describen su corte, no la base actual.
+
 # Revisión del port LMU (ISA-1403 `db524bf7` → `native/runtime`)
 
 ## Señales de tercera ronda — #1428 (2026-09-30)

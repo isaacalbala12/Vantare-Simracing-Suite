@@ -46,6 +46,9 @@ pub struct Layout {
         skip_serializing_if = "crate::performance::Preferences::is_default"
     )]
     pub performance: crate::performance::Preferences,
+    /// Opt-in global; los layouts anteriores conservan overlays visibles.
+    #[serde(default, skip_serializing_if = "disabled")]
+    pub hide_off_track: bool,
 }
 
 impl Default for Layout {
@@ -56,6 +59,7 @@ impl Default for Layout {
             canvas_resolution: None,
             preferences: Preferences::default(),
             performance: crate::performance::Preferences::default(),
+            hide_off_track: false,
         }
     }
 }
@@ -124,11 +128,52 @@ pub struct Instance {
     pub y: f32,
     #[serde(default = "visible")]
     pub visible: bool,
+    /// Sesiones en las que se dibuja (#1564); todas si falta.
+    #[serde(default, skip_serializing_if = "crate::session::ShowIn::is_all")]
+    pub show_in: crate::session::ShowIn,
     #[serde(default = "opaque")]
     pub opacity: f32,
     #[serde(default, skip_serializing_if = "crate::geometry::Geometry::is_default")]
     pub geometry: crate::geometry::Geometry,
     pub settings: Settings,
+    #[serde(default, skip_serializing_if = "OffTrack::is_default")]
+    pub off_track: OffTrack,
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum OffTrack {
+    #[default]
+    Inherit,
+    AlwaysVisible,
+    Hide,
+}
+
+impl OffTrack {
+    #[allow(clippy::trivially_copy_pass_by_ref)] // Firma requerida por serde.
+    fn is_default(&self) -> bool {
+        *self == Self::Inherit
+    }
+}
+
+#[allow(clippy::trivially_copy_pass_by_ref)] // Firma requerida por serde.
+fn disabled(value: &bool) -> bool {
+    !*value
+}
+
+impl Instance {
+    pub fn hidden_off_track(
+        &self,
+        global: bool,
+        situation: vantare_domain::DrivingSituation,
+    ) -> bool {
+        situation.off_track()
+            && match self.off_track {
+                OffTrack::Inherit => global,
+                OffTrack::AlwaysVisible => false,
+                OffTrack::Hide => true,
+            }
+    }
 }
 
 const fn visible() -> bool {
@@ -143,6 +188,9 @@ impl Layout {
         let mut demand = vantare_ipc::Demand::default();
         for instance in self.instances.iter().filter(|instance| instance.visible) {
             demand.union(&instance.settings.demand());
+            if !instance.show_in.is_all() {
+                demand.request(vantare_ipc::Signal::SessionInfo, 250);
+            }
         }
         demand
     }
@@ -363,6 +411,7 @@ impl Document {
 
 /// Solicitud explícita de presentación, separada del diseño persistido.
 /// Cada proceso toma el valor inicial como referencia: reabrir no repite solicitudes viejas.
+/// El fichero existe mientras la solicitud de mostrar está vigente; borrarlo es dejar de mostrar.
 pub struct Presentation {
     path: PathBuf,
     observed: Option<Vec<u8>>,
@@ -372,6 +421,14 @@ impl Presentation {
         let path = layout.with_extension("show.json");
         let observed = read(&path)?;
         Ok(Self { path, observed })
+    }
+    /// Firma del fichero de solicitud (mtime, tamaño): solo cambia al
+    /// escribirse o borrarse. Patrón compartido con el estado resident del
+    /// Launcher (#1553): la vista cachea el estado y solo reparsea al
+    /// cambiar la firma, sin E/S en el render.
+    pub fn signature(layout: &Path) -> Option<(SystemTime, u64)> {
+        let metadata = fs::metadata(layout.with_extension("show.json")).ok()?;
+        Some((metadata.modified().ok()?, metadata.len()))
     }
     pub fn show(layout: &Path) -> Result<(), Error> {
         let watcher = Self::watch(layout)?;
@@ -391,17 +448,49 @@ impl Presentation {
             || Ok(()),
         )
     }
-    pub fn poll(&mut self) -> Result<bool, Error> {
+    /// Deja de mostrar: retira por el mismo canal la solicitud vigente.
+    /// Sin solicitud vigente no hace nada.
+    pub fn hide(layout: &Path) -> Result<(), Error> {
+        let path = layout.with_extension("show.json");
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            fs::create_dir_all(parent)?;
+        }
+        let lock = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path.with_extension("json.lock"))?;
+        match lock.try_lock() {
+            Ok(()) => {}
+            Err(std::fs::TryLockError::WouldBlock) => return Err(Error::Conflict),
+            Err(std::fs::TryLockError::Error(error)) => return Err(error.into()),
+        }
+        for stale in [path, layout.with_extension("show.json.bak")] {
+            match fs::remove_file(&stale) {
+                Ok(()) => {}
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            }
+        }
+        drop(lock);
+        Ok(())
+    }
+    /// Estado real compartido: hay una solicitud vigente de mostrar en pista.
+    pub fn is_showing(layout: &Path) -> bool {
+        matches!(read(&layout.with_extension("show.json")), Ok(Some(_)))
+    }
+    /// `None` sin cambios; `Some(true)` mostrar; `Some(false)` dejar de mostrar.
+    pub fn poll(&mut self) -> Result<Option<bool>, Error> {
         let bytes = read(&self.path)?;
         if bytes == self.observed {
-            return Ok(false);
+            return Ok(None);
         }
         if let Some(bytes) = &bytes {
             let _: u64 = serde_json::from_slice(bytes).map_err(Error::Json)?;
         }
         let requested = bytes.is_some();
         self.observed = bytes;
-        Ok(requested)
+        Ok(Some(requested))
     }
 }
 
@@ -555,6 +644,39 @@ mod tests {
         });
         assert!(layout.normalized().is_err());
     }
+    #[test]
+    fn off_track_policy_defaults_roundtrip_and_missing_data_never_hide() {
+        use vantare_domain::DrivingSituation as S;
+        let mut layout = Layout::from_json(FIXTURE).expect("layout antiguo");
+        assert!(!layout.hide_off_track);
+        let item = &mut layout.instances[0];
+        assert_eq!(item.off_track, OffTrack::Inherit);
+        for policy in [OffTrack::Inherit, OffTrack::AlwaysVisible, OffTrack::Hide] {
+            item.off_track = policy;
+            for global in [false, true] {
+                for situation in [S::Unknown, S::OnTrack, S::Garage, S::Paused, S::Replay] {
+                    assert_eq!(
+                        item.hidden_off_track(global, situation),
+                        situation.off_track()
+                            && match policy {
+                                OffTrack::Inherit => global,
+                                OffTrack::AlwaysVisible => false,
+                                OffTrack::Hide => true,
+                            }
+                    );
+                }
+            }
+        }
+        layout.hide_off_track = true;
+        assert_eq!(
+            Layout::from_json(&serde_json::to_vec(&layout).expect("guardar")).expect("releer"),
+            layout
+        );
+        assert!(
+            Layout::from_json(br#"{"version":1,"instances":[],"hideOffTrack":"yes"}"#).is_err()
+        );
+    }
+
     #[test]
     fn frozen_document_roundtrip_preserves_order_and_options() {
         let layout = Layout::from_json(FIXTURE).expect("fixture");
@@ -812,14 +934,67 @@ mod presentation_tests {
         ));
         let path = dir.join("layout.json");
         let mut watcher = Presentation::watch(&path).expect("watch");
-        assert!(!watcher.poll().expect("idle"));
+        assert_eq!(watcher.poll().expect("idle"), None);
         Presentation::show(&path).expect("show");
-        assert!(watcher.poll().expect("request"));
-        assert!(!watcher.poll().expect("consumed"));
+        assert_eq!(watcher.poll().expect("request"), Some(true));
+        assert_eq!(watcher.poll().expect("consumed"), None);
         let mut reopened = Presentation::watch(&path).expect("reopen");
-        assert!(!reopened.poll().expect("old request"));
+        assert_eq!(reopened.poll().expect("old request"), None);
         Presentation::show(&path).expect("show again");
-        assert!(reopened.poll().expect("new request"));
+        assert_eq!(reopened.poll().expect("new request"), Some(true));
+        fs::remove_dir_all(dir).expect("cleanup");
+    }
+
+    #[test]
+    fn hide_clears_the_request_and_reports_both_directions() {
+        let dir = std::env::temp_dir().join(format!(
+            "presentation-hide-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        ));
+        let path = dir.join("layout.json");
+        assert!(!Presentation::is_showing(&path));
+        // Sin solicitud vigente, ocultar es idempotente y no emite nada.
+        let mut watcher = Presentation::watch(&path).expect("watch");
+        Presentation::hide(&path).expect("hide idle");
+        assert_eq!(watcher.poll().expect("sigue idle"), None);
+        Presentation::show(&path).expect("show");
+        assert!(Presentation::is_showing(&path));
+        assert_eq!(watcher.poll().expect("mostrar"), Some(true));
+        assert_eq!(watcher.poll().expect("consumido"), None);
+        Presentation::hide(&path).expect("hide");
+        assert!(!Presentation::is_showing(&path));
+        assert_eq!(watcher.poll().expect("dejar de mostrar"), Some(false));
+        assert_eq!(watcher.poll().expect("consumido"), None);
+        // Reabrir tras ocultar no repite la solicitud vieja.
+        let mut reopened = Presentation::watch(&path).expect("reopen");
+        assert_eq!(reopened.poll().expect("sin solicitud"), None);
+        fs::remove_dir_all(dir).expect("cleanup");
+    }
+
+    #[test]
+    fn signature_tracks_show_requests_without_reparsing() {
+        let dir = std::env::temp_dir().join(format!(
+            "presentation-signature-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        ));
+        let path = dir.join("layout.json");
+        assert_eq!(Presentation::signature(&path), None);
+        Presentation::show(&path).expect("show");
+        let first = Presentation::signature(&path).expect("firma tras mostrar");
+        // Sin cambios la firma es estable: la vista sirve la caché sin releer.
+        assert_eq!(Presentation::signature(&path), Some(first));
+        Presentation::hide(&path).expect("hide");
+        assert_eq!(Presentation::signature(&path), None);
+        Presentation::show(&path).expect("show again");
+        assert!(Presentation::signature(&path).is_some());
         fs::remove_dir_all(dir).expect("cleanup");
     }
 }

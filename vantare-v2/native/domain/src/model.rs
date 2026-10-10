@@ -38,6 +38,14 @@ pub enum SessionKind {
     Other(String),
 }
 
+impl SessionKind {
+    /// Todo lo que no es carrera (warmup y tipos desconocidos incluidos) se
+    /// mide por mejor vuelta, como en la app anterior (#1564).
+    pub fn ranks_by_best_lap(&self) -> bool {
+        !matches!(self, Self::Race)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SessionState {
     /// Antes de la salida (parrilla, formación).
@@ -351,12 +359,32 @@ pub enum SourceState {
     Lost,
 }
 
+/// Situación de conducción confirmada por el núcleo. Unknown nunca oculta.
+/// `SourceKind::Replay` identifica una grabación, no el modo replay del juego.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum DrivingSituation {
+    #[default]
+    Unknown,
+    OnTrack,
+    /// Señal explícita de garaje/stall; una parada o cola en pits no basta.
+    Garage,
+    Paused,
+    Replay,
+}
+
+impl DrivingSituation {
+    pub fn off_track(self) -> bool {
+        matches!(self, Self::Garage | Self::Paused | Self::Replay)
+    }
+}
+
 /// Contenido neutral de un instante. Lo produce el adaptador (en una
 /// `Observation`) y lo publica el núcleo tras fusionarlo y derivar (en un
 /// `Snapshot`); añadir una señal es añadir un campo aquí y en ningún otro sitio.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct State {
     pub source_state: SourceState,
+    pub driving_situation: DrivingSituation,
     pub capabilities: Capabilities,
     pub session: Session,
     /// Banderas activas en cualquier ámbito.
@@ -391,12 +419,14 @@ pub struct Snapshot {
 pub fn degrade(state: &mut State) {
     let State {
         source_state: _,
+        driving_situation,
         capabilities,
         session,
         flags,
         cars,
         player,
     } = state;
+    *driving_situation = DrivingSituation::Unknown;
     let Capabilities {
         session_clock,
         positions,

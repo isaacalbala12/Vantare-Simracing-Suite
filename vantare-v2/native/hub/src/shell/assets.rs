@@ -117,6 +117,10 @@ const ASSETS: &[(&str, &[u8])] = &[
         include_bytes!("../../assets/pit/star.svg"),
     ),
     (
+        "icons/stop.svg",
+        include_bytes!("../../assets/pit/stop.svg"),
+    ),
+    (
         "icons/track.svg",
         include_bytes!("../../assets/pit/track.svg"),
     ),

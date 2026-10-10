@@ -1,5 +1,34 @@
 # Handoff vivo — Telemetry Core
 
+## #1538 — correcciones runtime LMU/ACC de la revisión #1536 — 2026-10-10
+
+Worktree `C:/tmp/vw3-1538/vantare-v2`, rama `vantareapp/isa-1538-runtime`,
+base exacta `701706130765a1653a914aa8a2c91a23c5d0c02e`, limpia al empezar.
+Brief `C:/tmp/review-1536/brief-fix.md`; alcance: los cinco hallazgos de #1538.
+RED: cinco regresiones ejecutadas y fallidas antes de arreglar, sin fail-fast.
+LMU: varios procesos se distinguen como `Rejected` durante la espera de reapertura;
+UTC exige tres componentes y rangos de hora/minuto/segundo antes de operar;
+el teleport controlado reproduce la alineación sin cota, ahora rechazada fuera
+de ±500 ms (presupuesto existente de frescura), conservando poses scoring.
+ACC: static desconocida conserva el diagnóstico y drena UDP sin leer las otras
+páginas; al inicializarse publica de nuevo. El poll quieto evita reconstruir
+la foto y mantiene los relojes independientes SHM/UDP/velocidad y los cambios
+de registro. Caducidades sin efecto visible solo se reconstruyen una vez.
+Commits LMU locales: `c5822828` (UTC) y `2bdc9e69` (rechazo/alineación, también compatible con grabadora).
+GREEN: adaptadores 129/129 y focal 11/11 PASS. Fmt/Clippy global -D warnings PASS;
+Nextest global 1419/1419 (7 skipped), lifecycle 18/18 y telemetría 21/21 PASS. Fallos iniciales propios
+de build de grabadora y Clippy corregidos sin excepciones, conservados en logs;
+evidencia externa `C:/tmp/review-1536/evidence-1538/` (RED y GREEN).
+Corpus, goldens, DTO, dependencias y módulos excluidos #1531 intactos.
+Los PLAUS se reproducen con vectores/loopback; no acreditan captura física,
+fluidez/latencia, desborde UDP real ni QA LMU/ACC/macOS/OBS.
+Entrega: tres commits locales (el último agrupa ACC y este handoff); los seis Rust
+verificados constan en source-sha256.txt. Siguiente: review del orquestador,
+sin integración automática. Informe externo C:/tmp/review-1536/informe-1538.md.
+Sin push, PR, CI remota, merge, promoción o release. Seguimiento GitHub,
+según AGENTS.md vigente; plan.md ausente, no se recrea ni publica roadmap.
+
+
 ## #1496 — feedback Relative: prioridad nativa y fuente pendiente — 2026-10-09
 
 Encargo: `C:/tmp/feedback-0910/comun.md` y `relative.md`; worker sin delegación.

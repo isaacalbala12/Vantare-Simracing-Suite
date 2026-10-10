@@ -43,6 +43,8 @@ struct Rival {
 }
 
 pub(super) struct Translator {
+    #[cfg(test)]
+    pub(super) observations: usize,
     kind: SourceKind,
     pages: [Option<Page>; 3],
     physics_zero: bool,
@@ -69,6 +71,8 @@ pub(super) struct Translator {
 impl Translator {
     pub(super) fn new(kind: SourceKind) -> Self {
         Self {
+            #[cfg(test)]
+            observations: 0,
             kind,
             pages: [None, None, None],
             physics_zero: false,
@@ -370,7 +374,36 @@ impl Translator {
         Some((&p.bytes, stale))
     }
 
+    /// Sin nueva fuente, solo las fronteras de frescura pueden cambiar la foto.
+    /// Comprobar relojes y velocidades evita construir páginas, coches y nombres.
+    #[cfg(windows)]
+    pub(super) fn needs_refresh(&self, previous: Duration, now: Duration) -> bool {
+        if now < previous {
+            return true;
+        }
+        let expired = |at: Duration, ttl: Duration| {
+            (now.saturating_sub(at) >= ttl) != (previous.saturating_sub(at) >= ttl)
+        };
+        self.pages[..2]
+            .iter()
+            .flatten()
+            .any(|p| p.at >= self.floor && expired(p.at, SHM_TTL))
+            || self
+                .session
+                .as_ref()
+                .is_some_and(|s| expired(s.at, UDP_TTL))
+            || self.player_velocity.quality(previous) != self.player_velocity.quality(now)
+            || self.cars.values().any(|car| {
+                expired(car.update.at, UDP_TTL)
+                    || car.velocity.quality(previous) != car.velocity.quality(now)
+            })
+    }
+
     pub(super) fn observe(&mut self, now: Duration) -> Option<Observation> {
+        #[cfg(test)]
+        {
+            self.observations += 1;
+        }
         let s = self.pages[2].as_ref()?.bytes.clone();
         let graphics = self.page(1, now).map(|(b, stale)| (b.to_vec(), stale));
         let (g, gs) = graphics

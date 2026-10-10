@@ -1,3 +1,9 @@
+## Participación #1535
+
+Cuestionarios por versión y contribuciones mediante services IPC v6; ver
+[contrato y límites](../../../../docs/testing-participation.md). No se aplicó
+la migración ni se envió feedback real. Bugs conservan la RPC existente.
+
 # Testing Center — editor de envío y diagnóstico local
 
 La sección actual incorpora el editor del servicio nativo de envío de texto.

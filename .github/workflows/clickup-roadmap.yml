@@ -1,0 +1,47 @@
+name: ClickUp public roadmap
+on:
+  schedule:
+    - cron: '17 */6 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: clickup-roadmap-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    # Private GitHub Free: default branch only; this is not a secrets boundary.
+    if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          persist-credentials: false
+      - name: Test source transformation without network
+        run: |
+          python -m unittest discover -s vantare-v2/scripts -p 'test*roadmap*.py'
+          node --test vantare-v2/scripts/test_roadmap_web.mjs
+      - name: Prepare public document
+        env:
+          CLICKUP_API_TOKEN: ${{ secrets.CLICKUP_API_TOKEN }}
+        run: python vantare-v2/scripts/publish_clickup_roadmap.py --output "$RUNNER_TEMP/roadmap.json"
+      - name: Publish to existing Supabase storage
+        env:
+          PGHOST: ${{ secrets.ROADMAP_PGHOST }}
+          PGPORT: ${{ secrets.ROADMAP_PGPORT }}
+          PGDATABASE: ${{ secrets.ROADMAP_PGDATABASE }}
+          PGUSER: ${{ secrets.ROADMAP_PGUSER }}
+          PGPASSWORD: ${{ secrets.ROADMAP_PGPASSWORD }}
+          PGSSLMODE: verify-full
+          PGSSLROOTCERT: ${{ github.workspace }}/.github/certs/supabase-prod-ca-2021.crt
+        run: |
+          python vantare-v2/scripts/publish_clickup_roadmap.py --sql-from "$RUNNER_TEMP/roadmap.json" --output "$RUNNER_TEMP/publish.sql"
+          test -n "$PGHOST" && test -n "$PGUSER" && test -n "$PGPASSWORD"
+          # Credential-free CA/hostname diagnostic before the authenticated write.
+          python vantare-v2/scripts/verify_roadmap_tls.py --host "$PGHOST" --port "$PGPORT" --ca "$PGSSLROOTCERT"
+          # No credentials in arguments, no SQL/server response in public logs.
+          if ! psql -X --no-password -q -v ON_ERROR_STOP=1 -f "$RUNNER_TEMP/publish.sql" > /dev/null 2>&1; then
+            echo 'Roadmap publication failed; inspect database before retrying.'
+            exit 1
+          fi

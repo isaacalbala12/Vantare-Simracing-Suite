@@ -117,10 +117,10 @@ impl App {
             {
                 return Err(Error::Unconfigured);
             }
+            let device = crate::license::installation::legacy_fingerprint()?;
             let time = now()?;
             self.ensure_oauth(time)?;
             self.candidate_store()?;
-            let device = crate::license::installation::legacy_fingerprint()?;
             crate::license_remote::renew(
                 &self.http,
                 &self.config,
@@ -134,10 +134,10 @@ impl App {
         if !matches!(command, Command::DeviceReset) {
             return Err(Error::Protocol);
         }
+        let device = crate::license::installation::legacy_fingerprint()?;
         self.revoke_local()?;
         let time = now()?;
         self.ensure_data(time)?;
-        let device = crate::license::installation::legacy_fingerprint()?;
         self.candidate_store()?;
         let request = self
             .data_session
@@ -235,22 +235,29 @@ impl App {
             self.config.supabase.as_ref().map_or("", url::Url::as_str)
         );
         let store = Store::open(&self.root, &context)?;
-        let oauth = match store.load::<OAuth>("oauth-metadata") {
+        let cached = match store.load::<OAuth>("oauth-metadata") {
             Ok(oauth) if oauth.matches(&config.issuer, &config.client_id, &config.redirect_uri) => {
-                oauth
+                Some(oauth)
             }
-            Ok(_) => return Err(Error::Storage),
-            Err(Error::NotFound) => {
-                let oauth = OAuth::discover(
-                    &self.http,
-                    config.issuer.clone(),
-                    config.client_id.clone(),
-                    config.redirect_uri.clone(),
-                )?;
-                store.save("oauth-metadata", &oauth)?;
-                oauth
+            Ok(_) => {
+                // Solo metadata pública incompatible; no migrar ni borrar la sesión.
+                store.quarantine_preserving("oauth-metadata")?;
+                None
             }
+            Err(Error::NotFound) => None,
             Err(error) => return Err(error),
+        };
+        let oauth = if let Some(oauth) = cached {
+            oauth
+        } else {
+            let oauth = OAuth::discover(
+                &self.http,
+                config.issuer.clone(),
+                config.client_id.clone(),
+                config.redirect_uri.clone(),
+            )?;
+            store.save("oauth-metadata", &oauth)?;
+            oauth
         };
         let account = Account::restore(oauth, &store)?;
         self.store = Some(store);
@@ -642,6 +649,103 @@ mod tests {
     use super::*;
     use std::{io::Write, net::TcpStream, time::Duration};
 
+    #[cfg(unix)]
+    #[test]
+    fn unix_v1_renew_and_reset_stop_before_storage_oauth_or_core() {
+        let server = crate::test_http::Server::start(vec![]);
+        let config = BuildConfig {
+            supabase: Some(server.base.clone()),
+            anon_key: Some("public-fixture"),
+            license_keys: Some("unused-fixture"),
+            channel: Some("nightly"),
+            native_oauth: None,
+        };
+        // Una raíz inaccesible y ningún core revelan cualquier acceso prematuro.
+        let mut app = App::new(config, std::path::PathBuf::from("/qa-unavailable-root"));
+        for command in [Command::LicenseRenew, Command::DeviceReset] {
+            assert!(matches!(app.execute(command), Err(Error::Unsupported)));
+        }
+        assert!(app.store.is_none() && app.license_store.is_none());
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+    }
+
+    #[test]
+    fn regression_1542_redirect_change_rediscovers_oauth_in_same_namespace() {
+        let server = crate::test_http::Server::start_with(|base| {
+            vec![(200, serde_json::json!({
+            "issuer":base, "authorization_endpoint":base.join("authorize").expect("url"),
+            "token_endpoint":base.join("token").expect("url"), "userinfo_endpoint":base.join("userinfo").expect("url"),
+            "code_challenge_methods_supported":["S256"]
+        }).to_string())]
+        });
+        let context = format!("v1|{}|public-fixture|nightly|{}", server.base, server.base);
+        let (root, store) = crate::test_store(&context);
+        let old: OAuth = serde_json::from_value(serde_json::json!({
+            "issuer":server.base, "client_id":"public-fixture", "redirect":"http://127.0.0.1:0/old-callback",
+            "authorization":server.base.join("authorize").expect("url"), "token":server.base.join("token").expect("url"),
+            "userinfo":server.base.join("userinfo").expect("url")
+        })).expect("old metadata");
+        store.save("oauth-metadata", &old).expect("save");
+        let _account = crate::account::fixture(&server.base, &store);
+        let namespace = std::fs::read_dir(&root)
+            .expect("root")
+            .next()
+            .expect("namespace")
+            .expect("entry")
+            .path();
+        let session_path = namespace.join(if cfg!(windows) {
+            "account.dpapi"
+        } else {
+            "account.json"
+        });
+        let session_bytes = std::fs::read(&session_path).expect("session fixture");
+        drop(store);
+        let redirect = url::Url::parse("http://127.0.0.1:0/callback").expect("redirect");
+        let config = BuildConfig {
+            supabase: Some(server.base.clone()),
+            anon_key: None,
+            license_keys: None,
+            channel: Some("nightly"),
+            native_oauth: Some(crate::config::OAuthBuild {
+                issuer: server.base.clone(),
+                client_id: "public-fixture".into(),
+                redirect_uri: redirect.clone(),
+            }),
+        };
+        let mut app = App::new(config, root.clone());
+        app.ensure_account().expect("redirect recovery");
+        assert!(app.account.as_ref().expect("account").identity().is_some());
+        assert!(std::fs::read(&session_path).expect("preserved session") == session_bytes);
+        assert!(
+            std::fs::read_dir(&namespace)
+                .expect("namespace")
+                .any(|entry| entry
+                    .expect("entry")
+                    .file_name()
+                    .to_string_lossy()
+                    .ends_with(".corrupto"))
+        );
+        assert!(
+            app.store
+                .as_ref()
+                .expect("store")
+                .load::<OAuth>("oauth-metadata")
+                .expect("new metadata")
+                .matches(&server.base, "public-fixture", &redirect)
+        );
+        app.ensure_account().expect("cached recovery");
+        let request = server
+            .requests
+            .recv_timeout(Duration::from_secs(3))
+            .expect("discovery");
+        assert!(request.starts_with("GET /.well-known/openid-configuration "));
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        drop(app);
+        crate::cleanup_store(&root, &context, &[]);
+    }
+
     #[test]
     fn report_without_bridge_fails_visibly_before_storage_or_network() {
         let mut app = App::new(BuildConfig::load(), std::env::temp_dir());
@@ -727,8 +831,10 @@ mod tests {
     }
 
     enum CoreStep {
+        #[cfg(windows)]
         Install,
         Invalidate,
+        #[cfg(windows)]
         RejectInstall,
         RejectInvalidate,
     }
@@ -775,8 +881,13 @@ mod tests {
                         .expect("signed v1");
                     assert!(proof.grants().is_empty());
                 }
-                let error = matches!(step, CoreStep::RejectInstall | CoreStep::RejectInvalidate)
-                    .then_some("fixture rejection".to_owned());
+                let rejected = match step {
+                    CoreStep::RejectInvalidate => true,
+                    #[cfg(windows)]
+                    CoreStep::RejectInstall => true,
+                    _ => false,
+                };
+                let error = rejected.then_some("fixture rejection".to_owned());
                 // Fixture de transporte: no acredita grants ni runtime real.
                 control::write(
                     &mut pipe,
@@ -798,6 +909,7 @@ mod tests {
         (link, core)
     }
 
+    #[cfg(windows)]
     #[test]
     fn oauth_refresh_native_license_and_core_ack_precede_ipc_success_and_logout() {
         let device = crate::license::installation::legacy_fingerprint().expect("local fingerprint");
@@ -898,6 +1010,7 @@ mod tests {
         crate::cleanup_store(&root, "app-native-license-ack", &[]);
     }
 
+    #[cfg(windows)]
     #[test]
     fn a_device_limit_reaches_ipc_as_its_own_reply_and_not_as_generic_text() {
         let device = crate::license::installation::legacy_fingerprint().expect("huella local");
@@ -975,7 +1088,7 @@ mod tests {
     #[test]
     fn switching_identity_revokes_before_saving_and_rejection_preserves_the_old_session() {
         for rejected in [false, true] {
-            let device = crate::license::installation::legacy_fingerprint().expect("fingerprint");
+            let device = "identity-change-fixture".to_owned();
             let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
             let server = crate::test_http::Server::start(vec![
                 (200, serde_json::json!({"access_token":"new-local-access","refresh_token":"new-local-refresh","token_type":"Bearer","expires_in":3600}).to_string()),

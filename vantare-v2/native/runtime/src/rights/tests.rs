@@ -938,10 +938,14 @@ fn cached_credential_keeps_overlays_and_modules_during_unreachable_server_hours(
 }
 
 #[test]
-fn unreadable_installation_preserves_the_legacy_device() {
+fn unreadable_installation_preserves_only_a_supported_legacy_device() {
     let root = test_root();
     let installation = root.join("rights");
-    let expected = vantare_services::license::installation::legacy_fingerprint().expect("legacy");
+    let expected = match vantare_services::license::installation::legacy_fingerprint() {
+        Ok(device) => device,
+        Err(Error::Unsupported) => String::new(),
+        Err(error) => panic!("unexpected legacy identity error: {error}"),
+    };
     let healthy = local_devices(&installation);
     assert_eq!(healthy.legacy, expected);
     assert!(!healthy.installation.is_empty());
@@ -972,6 +976,7 @@ fn unreadable_installation_preserves_the_legacy_device() {
     assert_eq!(unreadable.legacy, expected);
     assert!(malformed.installation.is_empty() && unreadable.installation.is_empty());
     let start = 1_790_770_000;
+    let legacy_supported = !expected.is_empty();
     let (credential, keys) = signed_v1_device(start - 1, beta_grants(None, start), expected);
     let mut owner = Owner::open(
         &root.join("rights"),
@@ -981,13 +986,16 @@ fn unreadable_installation_preserves_the_legacy_device() {
         wall(start),
     )
     .expect("owner");
-    owner
-        .install(credential, wall(start), Duration::ZERO)
-        .expect("legacy license");
+    let installed = owner.install(credential, wall(start), Duration::ZERO);
+    if legacy_supported {
+        installed.expect("legacy license");
+    } else {
+        assert!(matches!(installed, Err(Error::InvalidCredential)));
+    }
     let policy = owner
         .advance(&Snapshot::default(), wall(start), Duration::ZERO)
         .expect("policy");
-    assert!(policy.overlays_advanced);
+    assert_eq!(policy.overlays_advanced, legacy_supported);
     drop(owner);
     clean(&root);
 }

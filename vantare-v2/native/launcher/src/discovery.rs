@@ -440,7 +440,17 @@ pub fn running_all(path: &Path) -> Result<Vec<u32>, String> {
     }
     #[cfg(not(windows))]
     {
-        let _ = path;
-        Ok(vec![])
+        non_windows_running_all(path)
     }
+}
+
+#[cfg(any(not(windows), test))]
+fn non_windows_running_all(_path: &Path) -> Result<Vec<u32>, String> {
+    Err("Unsupported: detección de procesos no implementada en esta plataforma".into())
+}
+
+#[cfg(test)]
+#[test]
+fn regression_1542_process_discovery_never_claims_empty_without_inspection() {
+    assert!(non_windows_running_all(Path::new("/qa/app")).is_err());
 }

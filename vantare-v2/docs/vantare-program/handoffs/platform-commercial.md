@@ -1,5 +1,35 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1542 — recuperación Services/Launcher (2026-10-10)
+
+Worktree `C:/tmp/vw3-1542/vantare-v2`, rama `vantareapp/isa-1542-services`,
+base `70170613`, código `50660e2be6891f5fba38492666c7a37dc5f105ba`.
+Seis CONF de #1536; reproducción previa FAIL y nueve regresiones nuevas
+PASS en `C:/tmp/review-1536/evidence-1542/`.
+OAuth aparta metadata incompatible en copia única comprobada, redescubre y
+conserva sesión; checkout conserva intento ilegible, no envía la compra y muestra
+recuperación asistida ([procedimiento](../../billing/native-checkout-recovery.md)).
+Uso inválido se descarta sin envío y continúa; publicación de anonymous-id
+conserva éxito aunque limpiar el temporal falle, con diagnóstico separado.
+Launcher devuelve Unsupported fuera de Windows. Binding v1 Unix deshabilitado
+antes de OAuth/red/reset; no cambia formatos ni migra credenciales reales.
+Tests de Runtime adaptados a rechazo v1 Unix; exige también gate telemetría.
+Fmt y Clippy workspace/all-targets -D warnings PASS; Nextest 1420/1420,
+7 skips heredados, 1 slow, sin reintentos; lifecycle 18/18 PASS.
+Telemetría 21/21 sin omisiones, 1 slow (ACC: 190.308 fotos, 753,857 s), PASS.
+Clippy de la biblioteca Services sin network PASS; tres avisos propios de estilo
+corregidos sin allows, logs originales conservados. Árbol native validado:
+`e939addf18f08d721db6587ad4238b9b4750aeae`.
+FallBacks no Windows probados desde Windows; Linux/macOS nativos no ejecutados:
+solo está instalado el target Windows. Checkout incierto exige soporte;
+enrollment/migración de licencias Unix queda fuera de esta corrección mínima.
+Diff y evidencia revisados; informe `C:/tmp/review-1536/informe-1542.md` (10 líneas)
+y verificación manual con fixtures en `evidence-1542/verificacion.md`.
+GitHub #1542 sigue OPEN (sin labels, milestone ni proyecto asignados en consulta).
+Siguiente: revisión del orquestador y aceptación de Isaac antes de integrar.
+Sin secretos/.env*, servicios reales de auth/billing, push, PR, merge, CI remota,
+promoción, release, deploy, migración de datos reales ni ventanas.
+
 ## #1496 — integración local de arquitectura, ola 1 (2026-10-09)
 
 Integradas en orden #1534, #1533, #1530, #1529 y #1532 sobre `5e1da3f6`,

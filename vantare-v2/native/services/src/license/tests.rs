@@ -448,30 +448,8 @@ fn installation_key_is_stable_and_signs_only_enrollment_domain() {
 
 #[cfg(unix)]
 #[test]
-fn legacy_fingerprint_is_stable_and_hashed() {
-    use sha2::{Digest, Sha256};
-    use std::os::unix::ffi::OsStrExt;
-
-    let first = installation::legacy_fingerprint().expect("identidad local");
-    assert_eq!(first.len(), 64);
-    assert!(first.bytes().all(|byte| byte.is_ascii_hexdigit()));
-    let goos = if cfg!(target_os = "macos") {
-        "darwin"
-    } else {
-        std::env::consts::OS
-    };
-    let mut input = std::env::var_os("HOME")
-        .expect("HOME")
-        .as_os_str()
-        .as_bytes()
-        .to_vec();
-    input.extend_from_slice(format!("|{goos}").as_bytes());
-    let expected = format!("{:x}", Sha256::digest(input));
-    assert_eq!(first, expected);
-    assert_eq!(
-        installation::legacy_fingerprint().expect("misma identidad"),
-        first
-    );
+fn unix_legacy_fingerprint_requires_a_future_migration() {
+    assert_eq!(installation::legacy_fingerprint(), Err(Error::Unsupported));
 }
 
 #[test]

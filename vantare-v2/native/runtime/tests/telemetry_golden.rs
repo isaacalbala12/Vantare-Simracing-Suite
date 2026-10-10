@@ -226,6 +226,74 @@ fn lmu_real_temporal_corpus_matches_frozen_dtos() {
     check_lmu47(&output);
 }
 
+fn acc_original_positions() -> std::collections::BTreeMap<usize, String> {
+    BufReader::new(GzDecoder::new(
+        fs::File::open(
+            Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join("tests/golden/acc-positions-before.jsonl.gz"),
+        )
+        .expect("fotos originales del bug"),
+    ))
+    .lines()
+    .map(|line| {
+        let value: serde_json::Value =
+            serde_json::from_str(&line.expect("gzip íntegro")).expect("registro");
+        (
+            usize::try_from(value["photo"].as_u64().expect("foto")).expect("índice"),
+            value["dto"].as_str().expect("DTO").to_owned(),
+        )
+    })
+    .collect()
+}
+
+fn check_acc_corrected_positions(
+    snapshot: &vantare_domain::Snapshot,
+    previous: &vantare_domain::Snapshot,
+    before: &str,
+    count: usize,
+) {
+    let baseline = vantare_ipc::snapshot_from_json(before).expect("DTO original");
+    let mut restored = snapshot.clone();
+    for ((car, old), previous) in restored
+        .state
+        .cars
+        .iter_mut()
+        .zip(&baseline.state.cars)
+        .zip(&previous.state.cars)
+    {
+        assert_eq!((car.id, old.id), (previous.id, previous.id));
+        assert_eq!(
+            car.position.current(),
+            previous.position.current(),
+            "orden general estable"
+        );
+        assert_eq!(
+            car.class_position.current(),
+            previous.class_position.current(),
+            "orden de clase estable"
+        );
+        if old.position.current() != previous.position.current() {
+            assert!(
+                matches!(car.position, vantare_domain::Quality::Estimated(_)),
+                "rango contradictorio estimado"
+            );
+        }
+        if old.class_position.current() != previous.class_position.current() {
+            assert!(
+                matches!(car.class_position, vantare_domain::Quality::Estimated(_)),
+                "rango de clase contradictorio estimado"
+            );
+        }
+        car.position = old.position;
+        car.class_position = old.class_position;
+    }
+    assert_eq!(
+        vantare_ipc::snapshot_to_json(&restored).expect("DTO invertido"),
+        before,
+        "foto {count}: solo pueden cambiar los rangos"
+    );
+}
+
 #[test]
 fn acc_real_corpus_matches_frozen_dtos() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
@@ -235,7 +303,14 @@ fn acc_real_corpus_matches_frozen_dtos() {
     let mut output = Vec::new();
     let mut count = 0;
     let mut hash = Sha256::new();
+    // Las 27 fotos incoherentes de ec743de8 quedan congeladas como evidencia
+    // del bug. Invertir exclusivamente sus rangos debe reproducir ambos hashes
+    // originales: ningún otro campo/foto puede cambiar al corregir #1552.
+    let mut corrections = acc_original_positions();
+    assert_eq!(corrections.len(), 27);
+    let mut original_hash = Sha256::new();
     let mut previous_version_hash = Sha256::new();
+    let mut previous_coherent = None;
     for _ in 0..190_471 {
         if let Some(observation) = replay
             .poll(Duration::from_secs(121))
@@ -253,9 +328,23 @@ fn acc_real_corpus_matches_frozen_dtos() {
                     "la escena UI debe proceder del corpus real sin editar campos"
                 );
             }
-            // La migración #1530 solo cambia la etiqueta, incluso en las fotos
-            // fuera de los ocho cortes congelados. Conservamos el hash v8.
-            let unchanged = dto.strip_prefix(r#"{"version":9,"#).expect("DTO v9");
+            let original = if let Some(before) = corrections.remove(&count) {
+                check_acc_corrected_positions(
+                    &core.snapshot(),
+                    previous_coherent
+                        .as_ref()
+                        .expect("tabla coherente anterior"),
+                    &before,
+                    count,
+                );
+                before
+            } else {
+                previous_coherent = Some(core.snapshot().as_ref().clone());
+                dto.clone()
+            };
+            original_hash.update(original.as_bytes());
+            original_hash.update(b"\n");
+            let unchanged = original.strip_prefix(r#"{"version":9,"#).expect("DTO v9");
             previous_version_hash.update(br#"{"version":8,"#);
             previous_version_hash.update(unchanged.as_bytes());
             previous_version_hash.update(b"\n");
@@ -268,6 +357,7 @@ fn acc_real_corpus_matches_frozen_dtos() {
         }
     }
     assert_eq!(count, 190_308, "no pasar con corpus vacío o parcial");
+    assert!(corrections.is_empty(), "no saltar ninguna foto del bug");
     assert_eq!(replay.discarded_frames(), 3);
     assert!(
         replay
@@ -277,6 +367,12 @@ fn acc_real_corpus_matches_frozen_dtos() {
     );
     // Los ocho cortes permiten revisar valores; el hash protege los bytes de
     // las 190.308 fotos, sin guardar gigabytes de JSON casi idéntico.
+    check("acc", &output);
+    assert_eq!(
+        format!("{:x}", original_hash.finalize()),
+        include_str!("golden/acc-all-before-1552.sha256").trim(),
+        "#1552 cambia exclusivamente los rangos de las 27 fotos incoherentes"
+    );
     assert_eq!(
         format!("{:x}", hash.finalize()),
         include_str!("golden/acc-all.sha256").trim(),
@@ -287,7 +383,6 @@ fn acc_real_corpus_matches_frozen_dtos() {
         include_str!("golden/acc-all-v8.sha256").trim(),
         "migración v9: todos los bytes salvo la etiqueta conservan el golden v8"
     );
-    check("acc", &output);
 }
 
 #[test]
@@ -476,9 +571,9 @@ fn lmu_practice_gaps_follow_the_position() {
 
 /// ACC: en 27 fotos (de la 94.528 a la 131.593) dos coches comparten posición
 /// general Reliable y falta otra (p. ej. dos P5 sin P6), y en 6 se repite la
-/// posición de clase: el núcleo publica a medias un adelantamiento (#1537).
+/// posición de clase: datagramas independientes completan el adelantamiento
+/// a medias. El adapter debe publicar un orden coherente (#1552).
 #[test]
-#[ignore = "posible bug: ACC publica posiciones duplicadas Reliable; issue propuesta en el informe de #1537"]
 fn acc_native_positions_stay_unique_during_overtakes() {
-    check_invariants("acc", true, false, acc_photos());
+    assert_eq!(check_invariants("acc", true, false, acc_photos()), 190_308);
 }

@@ -1,6 +1,137 @@
 //! Vectores de regresión; NO son capturas ni evidencia de ACC en marcha.
 use super::*;
 
+#[test]
+fn split_overtakes_keep_the_last_coherent_table_estimated_until_complete() {
+    let mut t = setup();
+    let mut second = car(2, 0.5, 1, 90000);
+    second[22..24].copy_from_slice(&2_u16.to_le_bytes());
+    second[24..26].copy_from_slice(&2_u16.to_le_bytes());
+    t.udp(&car(1, 0.5, 1, 90000), ms(1)).expect("P1");
+    t.udp(&second, ms(1)).expect("P2");
+    let before = t.observe(ms(1)).expect("tabla inicial");
+    second[22..24].copy_from_slice(&1_u16.to_le_bytes());
+    t.udp(&second, ms(2)).expect("primera mitad general");
+    for now in [ms(2), ms(3)] {
+        let split = t.observe(now).expect("adelantamiento incompleto");
+        for (car, old) in split.state.cars.iter().zip(&before.state.cars) {
+            assert_eq!(car.id, old.id);
+            assert_eq!(
+                car.position,
+                if car.id == CarId(2) {
+                    Quality::Estimated(2)
+                } else {
+                    old.position
+                }
+            );
+        }
+    }
+    let mut first = car(1, 0.5, 1, 90000);
+    first[22..24].copy_from_slice(&2_u16.to_le_bytes());
+    t.udp(&first, ms(4)).expect("segunda mitad general");
+    let after = t.observe(ms(4)).expect("tabla coherente");
+    assert_eq!(after.state.cars[0].position, Quality::Reliable(2));
+    assert_eq!(after.state.cars[1].position, Quality::Reliable(1));
+}
+
+#[test]
+fn class_conflicts_do_not_reorder_the_table_or_inherit_across_grid_ttl_and_session() {
+    let class = |id| {
+        Some(Class {
+            id: ClassId(id),
+            name: String::new(),
+        })
+    };
+    let initial = vec![
+        Car {
+            id: CarId(1),
+            position: Quality::Reliable(1),
+            class_position: Quality::Reliable(1),
+            class: class(7),
+            ..Car::default()
+        },
+        Car {
+            id: CarId(2),
+            position: Quality::Reliable(2),
+            class_position: Quality::Reliable(2),
+            class: class(7),
+            ..Car::default()
+        },
+        Car {
+            id: CarId(3),
+            position: Quality::Reliable(3),
+            class_position: Quality::Reliable(1),
+            class: class(8),
+            ..Car::default()
+        },
+    ];
+    for failure in [
+        "duplicate",
+        "reversed",
+        "new-car",
+        "class-change",
+        "ttl",
+        "source-ttl",
+        "session",
+    ] {
+        let mut t = setup();
+        if failure == "source-ttl" {
+            t.udp(&car(1, 0.5, 1, 90000), ms(0))
+                .expect("rango UDP original");
+        }
+        t.coherent_positions(
+            &mut initial.clone(),
+            if failure == "source-ttl" {
+                ms(999)
+            } else {
+                ms(1)
+            },
+        );
+        let mut cars = initial.clone();
+        cars[1].class_position = Quality::Reliable(1);
+        match failure {
+            "reversed" => {
+                cars[0].class_position = Quality::Reliable(2);
+            }
+            "new-car" => {
+                cars[1].id = CarId(4);
+            }
+            "class-change" => {
+                cars[0].class = class(8);
+            }
+            "session" => t.reset_session(ms(2)),
+            _ => {}
+        }
+        let native = cars.clone();
+        let now = if matches!(failure, "ttl" | "source-ttl") {
+            ms(1001)
+        } else {
+            ms(2)
+        };
+        t.coherent_positions(&mut cars, now);
+        for ((car, old), native) in cars.iter().zip(&initial).zip(&native) {
+            if matches!(
+                failure,
+                "new-car" | "class-change" | "ttl" | "source-ttl" | "session"
+            ) {
+                assert_eq!(car.position, Quality::Unavailable);
+                assert_eq!(car.class_position, Quality::Unavailable);
+            } else {
+                assert_eq!(car.id, old.id);
+                assert_eq!(car.position, old.position);
+                assert_eq!(
+                    car.class_position,
+                    if native.class_position == old.class_position {
+                        old.class_position
+                    } else {
+                        Quality::Estimated(*old.class_position.current().expect("clase"))
+                    }
+                );
+            }
+        }
+    }
+}
+
 #[path = "weather.rs"]
 mod weather_tests;
 

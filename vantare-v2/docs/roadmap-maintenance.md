@@ -31,19 +31,30 @@ y mensaje de error; todos reciben la misma publicación, no un JSON privado.
 
 La migración crea vantare_roadmap_publisher LOGIN sin contraseña, NOINHERIT,
 NOSUPERUSER, NOCREATEDB, NOCREATEROLE, NOREPLICATION, NOBYPASSRLS y límite 2.
-Grant único: USAGE schema public y EXECUTE visual_roadmap_sync(jsonb).
-No puede leer/escribir tablas ni ejecutar visual_roadmap_publish directamente.
+Grants propios: USAGE schema public y EXECUTE visual_roadmap_sync(jsonb).
+No se le concede lectura/DML de tablas ni EXECUTE visual_roadmap_publish.
 Revisar también privilegios heredados de PUBLIC en el proyecto elegido: si
-PUBLIC concede DML o funciones sensibles, no activar CI hasta revisarlo.
-Comprobar rol/tabla/function ACL con SQL local y una conexión real del rol.
+PUBLIC concede CREATE en schemas, DML o funciones sensibles, no activar CI
+hasta revisarlo. NOINHERIT no elimina los privilegios implícitos de PUBLIC.
+El rol no debe pertenecer a otros roles: NOINHERIT por sí solo no impide SET ROLE.
+Comprobar rol/memberships/schema/tabla/function ACL con SQL local y una conexión
+real del rol. No revocar grants globales de PUBLIC sin revisión de consumidores.
 
 Después de aprobación, Isaac fija contraseña mediante prompt protegido
 (psql \password vantare_roadmap_publisher), nunca en SQL versionado, logs o chat.
 Guardar secretos GitHub ROADMAP_PGHOST, ROADMAP_PGPORT, ROADMAP_PGDATABASE,
-ROADMAP_PGUSER (exactamente vantare_roadmap_publisher), ROADMAP_PGPASSWORD.
+ROADMAP_PGUSER y ROADMAP_PGPASSWORD del rol dedicado.
+Para CI IPv4, usar el pooler compartido existente en modo sesión (puerto 5432):
+PGUSER = vantare_roadmap_publisher.<project-ref>. Con conexión directa, PGUSER
+= vantare_roadmap_publisher y la red debe admitir la dirección del proyecto.
+El SQL exige current_user = vantare_roadmap_publisher en ambos transportes;
+no permite usar postgres como sustituto. Host/ref se toman del Dashboard del
+proyecto revisado; no contratar IPv4 ni crear infraestructura desde esta entrega.
+Referencia: [conexiones y roles personalizados Supabase](https://supabase.com/docs/guides/database/connecting-to-postgres).
 CLICKUP_API_TOKEN es un secreto separado; solo el paso de lectura lo recibe.
-El runner necesita psql/libpq con raíz TLS system y verify-full; si no está
+El runner necesita psql/libpq 16+ con raíz TLS system y verify-full; si no está
 disponible se falla, no se rebaja TLS ni se instala infraestructura nueva.
+Referencia: [conexión TLS libpq](https://www.postgresql.org/docs/16/libpq-connect.html#LIBPQ-CONNECT-SSLROOTCERT).
 Credentials por entorno de proceso, no argv, artefactos ni .env. El workflow
 tiene contents:read y no escribe GitHub. No imprime SQL/respuestas de servidor.
 Para Discord, variables públicas VANTARE_SUPABASE_URL/ANON_KEY del proyecto

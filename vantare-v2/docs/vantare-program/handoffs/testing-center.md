@@ -1,3 +1,22 @@
+## #1535 · destino aprobado para repositorio privado (2026-10-10)
+
+El orquestador descarta raw/assets/rama GitHub y aprueba Supabase existente.
+Action → visual_roadmap_sync, rol dedicado vantare_roadmap_publisher (sin
+service_role/superusuario/DML directo); Hub/web/digest → RPC pública anon.
+Migración v1/v2 y Testing/RLS preparadas, revisión Sol+Opus pendiente; nada
+aplicado ni configurado. Runbook de secretos mínimos en roadmap-maintenance.md.
+aca87035 sustituye el destino GitHub preparado en 5f2659fc.
+Pruebas Python 11+57 y web 3 PASS; oráculos 456/456 intactos.
+7900e08e incorpora Testing/IPC v6 y vistas Roadmap; 102ff8be corrige
+reintentos/login pendiente y cfg network. 0ba617a6 corrige solo fixture QA UTF-8.
+fmt/Clippy finales PASS; Nextest 1579/1579 (7 skips, 298.564 s) PASS. Lifecycle 18 y
+telemetría 25 PASS; Python 11+57, web 3 y 456 huellas conservadas PASS.
+QA Testing/Roadmap 1440/1100 inspeccionada; fixtures rotuladas, sin backend/envío.
+pgTAP 14+14 preparado, no ejecutado (sin psql/Docker). PUBLIC/memberships
+del rol deben verificarse antes de activar CI; runbook incluye pooler y TLS.
+Web fuente fuera del checkout: módulo lector preparado, integración pendiente.
+Sin producción, deploy, secretos, subagentes, push, PR o merge.
+
 ## #1535 · participación real preparada (2026-10-10)
 
 Base ca17545f; rama vantareapp/isa-1535-roadmap-testing, local en curso.
@@ -5,7 +24,7 @@ Cuestionarios por versión, respuestas UUID privadas y contribuciones propias;
 RPC bugs reutilizada sin cambios. Migración/RLS preparada, NO aplicada.
 Services IPC v6 usa puente de identidad existente; sin dependencia nueva.
 Revisión Sol + Opus y pgTAP local pendientes; máquina sin Docker/psql.
-Gates/capturas pendientes. Buzón C:/tmp/buzon/1535.md; informe ola2.
+Gates y capturas cerrados en el bloque de arriba. Buzón C:/tmp/buzon/1535.md; informe C:/tmp/ola2/informe-1535.md.
 Sin subagentes, secretos, producción, publicación, PR ni merge.
 
 # Handoff vivo — Testing Center

@@ -2,9 +2,13 @@ use std::{env, path::PathBuf};
 
 #[cfg(windows)]
 pub fn default_data_dir() -> Result<PathBuf, &'static str> {
+    // Un override vacío o relativo resolvería los layouts desde el CWD de cada
+    // proceso (Hub y overlays podrían usar documentos distintos): solo vale
+    // una ruta absoluta, igual que XDG_DATA_HOME en Linux.
     env::var_os("VANTARE_NATIVE_DATA_ROOT")
-        .or_else(|| env::var_os("LOCALAPPDATA"))
         .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
+        .or_else(|| env::var_os("LOCALAPPDATA").map(PathBuf::from))
         .ok_or("LOCALAPPDATA no está definido")
 }
 
@@ -33,6 +37,38 @@ pub fn default_data_dir() -> Result<PathBuf, &'static str> {
 mod tests {
     use super::default_data_dir;
     use std::{env, path::PathBuf};
+
+    #[test]
+    fn empty_or_relative_overrides_fall_back_to_the_platform_location() {
+        let saved = env::var_os("VANTARE_NATIVE_DATA_ROOT");
+        let local = PathBuf::from(env::var_os("LOCALAPPDATA").expect("LOCALAPPDATA"));
+        // SAFETY: este es el único test que escribe esta variable y la restaura.
+        unsafe {
+            env::set_var("VANTARE_NATIVE_DATA_ROOT", "");
+            assert_eq!(
+                default_data_dir().expect("override vacío"),
+                local,
+                "un override vacío no debe resolver layouts desde el CWD"
+            );
+            env::set_var("VANTARE_NATIVE_DATA_ROOT", "relativo\\vantare");
+            assert_eq!(
+                default_data_dir().expect("override relativo"),
+                local,
+                "un override relativo no debe resolver layouts desde el CWD"
+            );
+            let absolute = std::env::temp_dir().join("vantare-override-absoluto");
+            env::set_var("VANTARE_NATIVE_DATA_ROOT", &absolute);
+            assert_eq!(
+                default_data_dir().expect("override absoluto"),
+                absolute,
+                "un override absoluto válido debe respetarse"
+            );
+            match saved {
+                Some(value) => env::set_var("VANTARE_NATIVE_DATA_ROOT", value),
+                None => env::remove_var("VANTARE_NATIVE_DATA_ROOT"),
+            }
+        }
+    }
 
     #[test]
     fn default_data_dir_uses_the_platform_location() {

@@ -1,5 +1,27 @@
 # Handoff vivo — plataforma, cuenta, releases y migración
 
+## #1536 · destino real de accesos directos en CI Windows (2026-10-10)
+
+El check obligatorio de b6b778c falla en el test .lnk real: COM devuelve
+runneradmin mientras el temporal usa RUNNER~1. Ambos nombres apuntan al
+mismo fichero. d7c6cd175ebcfdca392afc06747a29b40d3e44a3 exige un único destino y compara ambas rutas
+canonicalizadas en actual_lnk_is_read_without_modification_or_execution.
+Mantiene lectura COM real, existencia del ejecutable concreto, bytes del
+enlace intactos, marcador ausente, proceso no ejecutado, discovery y rechazo
+UNC. No se permiten otros destinos ni se omite ningún caso. Producción intacta.
+
+Árbol native 7d45bae6c85412bdceb963d58f325b805e151737; check/fmt/Clippy -D warnings, Nextest 1526/1526
+(7 skips heredados) y lifecycle 18/18 repetidos PASS por cola en Windows.
+Recovery/status_process sin flake ni reintentos; logs windows-lnk-*.log.
+Adaptadores/Core, domain/IPC/UI, corpus y goldens idénticos a telemetría
+25/25 (0 skips) de d3ff5919; no se repite por cambio sólo del test Launcher.
+Auditoría R3: 22 archivos idénticos a origen y 17 tests nuevos preservados.
+La nueva CI verificará los gates Windows y los arreglos Linux anteriores.
+
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557,
+sin merge, #1531 fuera. FIN tras los dos checks obligatorios PASS con estado
+de cada check. GitGuardian conocido no bloqueante, pendiente de Isaac.
+
 ## #1536 · fixtures de captura portables del PR #1557 (2026-10-10)
 
 La CI Linux de b6b778c supera fmt/check/Clippy y llega a Nextest: falla

@@ -35,6 +35,8 @@ mod parada;
 mod plan;
 #[path = "strategy/revisiones.rs"]
 mod revisions_view;
+#[cfg(test)]
+mod state_tests;
 mod stint;
 #[path = "strategy/view.rs"]
 mod view;
@@ -182,6 +184,9 @@ pub struct Strategy {
     demo_car: Option<String>,
     capture_demo: Option<crate::demo::StrategyCaptureDemo>,
     automatic_preparation: Option<application::AutomaticPreparation>,
+    automatic_preview:
+        std::cell::OnceCell<Result<Option<application::AutomaticPreparation>, String>>,
+    revisions: revisions_view::State,
     duration: Option<Entity<orbit::Choice>>,
     event: usize,
     variant: usize,
@@ -274,6 +279,9 @@ impl Strategy {
         match crate::demo::StrategyCaptureDemo::load() {
             Ok(demo) => strategy.capture_demo = Some(demo),
             Err(error) => strategy.error = Some(error),
+        }
+        if page == crate::demo::CaptureStrategyPage::Revisions {
+            strategy.load_revisions(cx);
         }
         strategy.manual_source_status = SourceStatus::Open;
         strategy.automatic = false;
@@ -438,6 +446,8 @@ impl Strategy {
             demo_car: None,
             capture_demo: None,
             automatic_preparation: None,
+            automatic_preview: std::cell::OnceCell::new(),
+            revisions: revisions_view::State::default(),
             duration: None,
             event: 0,
             variant: 0,
@@ -474,10 +484,14 @@ impl Strategy {
         self.error = result.err();
         cx.notify();
     }
-    fn invalidate(&mut self) {
+    fn cancel_pending_calculation(&mut self) {
         self.cancellation.store(true, Ordering::Relaxed);
         self.generation = self.generation.wrapping_add(1);
         self.running = false;
+    }
+
+    fn invalidate(&mut self) {
+        self.cancel_pending_calculation();
         self.result = None;
         self.last_input = None;
         self.edited_plan = None;
@@ -487,6 +501,7 @@ impl Strategy {
         self.edit_cost_seconds = None;
         self.edit_error = None;
         self.automatic_preparation = None;
+        self.automatic_preview.take();
     }
 
     pub(super) fn set_review_source(
@@ -1138,6 +1153,34 @@ fn confirm_metadata(
         };
         if next.value().pointer(&format!("{pointer}/value")) != Some(&value) {
             next.edit_sourced(&pointer, &value)?;
+        }
+    }
+    for (index, key) in [(24, "startAt"), (25, "team"), (26, "name"), (27, "ini")] {
+        let pointer = if index < 26 {
+            format!("/events/{event}/{key}")
+        } else {
+            format!("/events/{event}/drivers/0/{key}")
+        };
+        let entered = fields[index].trim();
+        let previous = next.value().pointer(&format!("{pointer}/value"));
+        if previous.is_none() && entered.is_empty() {
+            continue;
+        }
+        let value = if index == 24 && entered.is_empty() {
+            Value::Null
+        } else {
+            if index == 24 {
+                chrono::DateTime::parse_from_rfc3339(entered)
+                    .map_err(|_| "Salida requerida en RFC 3339 con zona horaria")?;
+            }
+            json!(entered)
+        };
+        if previous != Some(&value) {
+            if previous.is_some() {
+                next.edit_sourced(&pointer, &value)?;
+            } else {
+                next.put(&pointer, &vantare_strategy::document::manual(value))?;
+            }
         }
     }
     *doc = next;

@@ -1,25 +1,31 @@
-## #1562 · garaje explícito, nueva validación en curso (2026-10-10)
+## #1562 · garaje explícito, gates locales PASS (2026-10-10)
 
 Rama `vantareapp/isa-1562-ocultar-fuera-de-pista`, base `ca17545f607b85f5d47dc9d060721b69e6a6a158`.
-Validación histórica `31d389e00eca285b3029e51dee631e83f3d251e3`; hitos previos `2d392341`, `f108631d`; retirada del instrumento `de85139d`. Hito de garaje explícito preparado; nuevo gate pendiente.
+Código final `0049c87d70dbc8086d4b320ad8632587d5aa47b9`; regla `5691fa65`, prueba integrada `6c516a11`; retirada de medida puntual `de85139d`.
 Informe `C:/tmp/ola2/informe-1562.md`; buzón `C:/tmp/buzon/1562.md`; brief `C:/tmp/ola2/brief-1562.md`.
 
-Situación central, DTO live10 estricto/guardados7..10, histeresis250ms y Unknown siempre visible.
-Ajuste global + excepciones Studio; previews nunca ocultos. Paradas de carrera y colas de pits visibles. Garage exige señal explícita, LMU mInGarageStall scoring+507; cero legacy borrado es ausencia.
-Paridad histórica solo inPit/sessionTypes. Replay LMU sin señal verificada permanece visible.
-Tests con capturas reales y mutaciones explícitas; no certifica simuladores/OBS físicos.
+Garage solo con señal explícita fiable, LMU mInGarageStall scoring+507; pits/velocidad/pit_state stopped no bastan.
+Servicio de carrera y colas paradas visibles. ACC sin garaje acreditado permanece visible; pausa/replay usan status explícito.
+Unknown siempre visible, confirmación250ms, recuperación inmediata y caducidad500ms. DTO live10 estricto/guardados7..10.
+Ajuste global y excepciones Studio; previews nunca ocultos. No modifica demanda ni derechos.
 
-Pasada anterior: fmt/Clippy -D warnings PASS; Nextest1588/1588 (7 skips heredados,298.526s), lifecycle18/18 PASS.
-Telemetría25/25 (0 skips,1043.052s; ACC920.677s); retirement456/456 y anti-slop PASS.
-Instrumento puntual de medida retirado del repo por revisión #1534; evidencia y comando solo en informe.
-Situación/política estable no añade asignaciones por frame, notify ni ingest adelantado;
-las transiciones y los repintados originales de telemetría conservan su coste. No mide frame completo.
-Capturas Ajustes1440/1100 y Studio1440 inspeccionadas; logs y límites en informe.
+Fmt/Clippy -D warnings PASS (Clippy3.94s); Nextest1590/1590,7skips heredados,268.255s (build2.65s).
+Lifecycle18/18 PASS (build1.36s, engineer5=2.02s, launcher13 sin total).
+Telemetría25/25,0skips,982.265s (build37.91s; ACC922.561s). Retirement456/456 y anti-slop PASS.
+Nextest anterior falló en2 recovery Engineer; diagnóstico serie6/6 y reintento completo normal PASS sin cambiar ese código.
+Tiempos tal cual, sin atribución. Medida externa central9.277ns/call (min9.155/max23.804),122880 llamadas,0 asignaciones.
+Instrumento fuera del repo. Situación/política estable no añade asignaciones por frame, notify ni ingest adelantado;
+transiciones y repintados originales conservan su coste. Regresión18 widgets PASS.
+Capturas Ajustes1440/1100 actualizadas y Studio1440 inspeccionadas.
 
-#1564: añadir filtro de sesión en la misma sección En pista, combinado Y; helper aislado,
-sin código anticipado. AlwaysVisible no debe saltarse el futuro filtro de sesión.
-Isaac resolvió: no ocultar servicio/colas. Regla corregida: focused288+4 PASS, fmt/Clippy -D warnings y lifecycle18/18 PASS. Telemetría24/25 en ejecución; Nextest pendiente al terminar telemetría por bloqueo Windows del exe. Medida externa central9.277ns/call,0 asignaciones; Ajustes1440/1100 actualizados e inspeccionados. Pendiente evidencia positiva LMU no sanitizada solicitada: fixtures actuales borraron+507. Tras gates, FIN y luego PR a nightly autorizados.
-Push de rama autorizado; PR a nightly después de gates y FIN, sin merge/promoción/release.
+Tests parten de fixtures reales con mutaciones declaradas para estados: carrera parada stall0 visible, stall1 oculto tras250ms.
+El fixture LMU sanitizado borró stall; captura positiva original solicitada y no disponible. No se presenta mutación como prueba física.
+No certifica simuladores/OBS físicos; replay LMU sin señal verificada permanece visible.
+#1564: mismo comportamiento Studio, helper aislado y filtro de sesión combinado Y, sin código anticipado.
+AlwaysVisible no debe saltarse el filtro de sesión futuro.
+
+Entrega local lista; tras FIN, PR a nightly autorizado. Issue OPEN/In Review; sin merge/promoción/release.
+Limpieza de cache propia native/target pendiente: Remove-Item fue rechazado por revisión automática «blocked by policy»; no se elude.
 
 ## #1531 · Actualización de #1558 tras Linux verde y squash #1557
 

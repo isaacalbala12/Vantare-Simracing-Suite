@@ -7,7 +7,7 @@ Adaptadores LMU/ACC privados, validación y derivaciones centrales; publicación
 El núcleo publica `state.driving_situation` (Unknown/OnTrack/Garage/Paused/Replay)
 por DTO v10, también con demanda vacía. Una grabación `SourceKind::Replay` no
 significa replay del juego. Ocultar exige 250 ms de evidencia continua; un status congelado se confirma por
-el reloj del núcleo dentro de su vigencia, sin nueva muestra para series/journal. Movimiento,
+el reloj del núcleo dentro de su vigencia, sin nueva muestra para series/journal. Estado OnTrack explícito,
 señal ausente/caducada, silencio de 500 ms y cambio de sesión restablecen visibilidad.
 Garage exige una señal explícita de garaje/stall vigente del simulador. Pits,
 velocidad <=0,5 m/s y parada nativa no bastan: servicio en carrera y colas paradas

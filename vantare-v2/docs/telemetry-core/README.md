@@ -21,6 +21,6 @@ SQLite local y el reader DuckDB post-sesión tienen papeles distintos. No inferi
 - [Diagnóstico y exportación sanitizada](inspector-privacy-diagnostic-export-isa-104.md).
 - [Analysis post-sesión](../vantare-program/research/telemetry-analysis/README.md).
 
-`evidence/`, los baselines y las entregas ISA fechadas conservan observaciones de su build, no una certificación de la actual. [Inventario documental](../documentation-inventory.md).
+`evidence/`, los baselines y las entregas ISA fechadas conservan observaciones de su build, no una certificación de la actual. [Inventario documental (histórico)](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/documentation-inventory.md).
 
 [Contrato histórico completo](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/telemetry-core/README.md). Sus resultados y su wiring corresponden al corte que declara.

@@ -1,6 +1,6 @@
 # Tablero histórico
 
-Este documento ha sido consolidado. Consulta [la referencia vigente](vantare-program/notion-transition.md) y la tarea/proyecto en [Notion](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192).
+Este documento ha sido consolidado. Consulta [la referencia vigente](vantare-program/README.md) y la tarea/proyecto en [GitHub Issues](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues).
 
 El [contenido completo anterior](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/roadmap-execution-board.md) queda conservado en una revisión inmutable de Git, con sus decisiones, evidencias y fechas. No usar sus pendientes, comandos, estados o cifras como descripción del runtime actual.
 

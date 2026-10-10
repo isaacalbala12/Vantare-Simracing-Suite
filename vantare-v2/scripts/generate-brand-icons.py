@@ -55,6 +55,16 @@ def symbol(size, variant="color", small=None):
     return result
 
 
+def plated(size):
+    """Símbolo plano sobre la placa oscura del appicon (degradado 26 → 10)."""
+    result = Image.new("RGBA", (size, size))
+    for y in range(size):
+        shade = round(26 - 16 * y / max(1, size - 1))
+        for x in range(size):
+            result.putpixel((x, y), (shade, shade, shade, 255))
+    return Image.alpha_composite(result, symbol(size))
+
+
 def unplated(size, variant="color"):
     result = symbol(size, variant)
     if variant == "color" and size >= 48:
@@ -78,7 +88,7 @@ def png(image):
 def generated():
     with Image.open(ROOT / "native/assets/appicon.png") as original:
         gradient = original.convert("RGBA")
-    icons = {size: symbol(size) if size <= 32 else gradient.resize((size, size), Image.Resampling.LANCZOS) for size in SIZES}
+    icons = {size: plated(size) if size <= 32 else gradient.resize((size, size), Image.Resampling.LANCZOS) for size in SIZES}
     # Escribir cada frame explícitamente: Pillow.save(ICO) puede derivar los
     # pequeños del frame mayor y perder las variantes ópticas de 16/24 px.
     frames = [png(icons[size]) for size in SIZES]
@@ -91,7 +101,7 @@ def generated():
     msix = {}
     for name, size in (("StoreLogo", 50), ("Square44x44Logo", 44), ("Square150x150Logo", 150)):
         # 44 px es tamaño de manifiesto, no la variante targetsize-48.
-        msix[f"{name}.png"] = symbol(size) if size < 48 else gradient.resize((size, size), Image.Resampling.LANCZOS)
+        msix[f"{name}.png"] = plated(size) if size < 48 else gradient.resize((size, size), Image.Resampling.LANCZOS)
     for size in (16, 24, 32, 48, 256):
         msix[f"Square44x44Logo.targetsize-{size}.png"] = icons[size]
         msix[f"Square44x44Logo.targetsize-{size}_altform-unplated.png"] = unplated(size)

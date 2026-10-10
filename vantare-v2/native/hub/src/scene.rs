@@ -53,6 +53,9 @@ fn decode(text: &str, jsonl: bool) -> Result<Vec<Snapshot>, String> {
     } else if text.trim_start().starts_with('[') {
         let values: Vec<serde_json::Value> =
             serde_json::from_str(text).map_err(|e| format!("secuencia JSON inválida: {e}"))?;
+        if values.len() > MAX_FRAMES {
+            return Err("escena supera 512 fotos".into());
+        }
         values.into_iter().map(|value| value.to_string()).collect()
     } else {
         vec![text.to_owned()]
@@ -231,6 +234,22 @@ pub fn confined_to(path: &Path, directory: &Path) -> bool {
 mod tests {
     use super::*;
 
+    #[test]
+    fn oversized_json_arrays_fail_on_the_frame_limit_before_expanding_elements() {
+        let oversized = format!("[{}]", vec!["null"; MAX_FRAMES + 1].join(","));
+        assert_eq!(
+            decode(&oversized, false).expect_err("supera 512 fotos"),
+            "escena supera 512 fotos"
+        );
+        let oversized = format!("[{}]", vec!["1"; MAX_FRAMES + 40].join(","));
+        assert_eq!(
+            decode(&oversized, false).expect_err("supera 512 fotos"),
+            "escena supera 512 fotos"
+        );
+        let at_limit = format!("[{}]", vec!["null"; MAX_FRAMES].join(","));
+        let error = decode(&at_limit, false).expect_err("foto inválida");
+        assert!(error.starts_with("foto 1:"), "{error}");
+    }
     #[test]
     fn json_arrays_use_the_current_dto_and_reject_invalid_order_limits_or_version() {
         let original =

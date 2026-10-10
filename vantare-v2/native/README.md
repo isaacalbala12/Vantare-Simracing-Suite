@@ -35,6 +35,17 @@ engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
 `runtime`, ni transitivamente. Lo comprueba `domain/tests/architecture.rs`
 (`cargo tree`) dentro de `cargo test`.
 
+## Estructura de Studio (#1561 PR-4)
+
+`hub/src/studio.rs` conserva Studio, Prepared, estado, API pública y composición.
+`studio/canvas.rs`: marco, geometría, zoom, drag/resize y nudges;
+`studio/inspector_panel.rs`: inspector y controles;
+`studio/catalog.rs`: preparación, ejemplos/fotos y catálogo/tira;
+`studio/tests.rs`: tests movidos. examples/scenes/sessions y session_acceptance
+conservan sus responsabilidades. Son impls parciales del mismo Studio;
+sin entidades ni tipos nuevos. Visibilidad interna mínima `pub(super)`
+solo para comunicación entre esos módulos y tests.
+
 ## Contrato de fotos y datos guardados
 
 El pipe Core→Hub/overlays negocia solo DTO v10; rechaza peers v7/v8/v9.

@@ -1,0 +1,96 @@
+{
+  "version": 1,
+  "instances": [
+    {
+      "id": "standings",
+      "x": 20.0,
+      "y": 30.0,
+      "visible": true,
+      "opacity": 1.0,
+      "settings": {
+        "kind": "standings",
+        "designSystem": "eficiencia",
+        "contentVersion": 1,
+        "style": "neutro",
+        "accent": "amber",
+        "rowCount": 20,
+        "columns": null,
+        "classScope": "player-class",
+        "classificationMode": "normal",
+        "playerWindow": false,
+        "windowAround": 4,
+        "showSessionHeader": true,
+        "templateId": "signature",
+        "headerFirst": "none",
+        "headerSecond": "none",
+        "showSessionFooter": true,
+        "footerFirst": "track",
+        "footerSecond": "estimatedLaps",
+        "showBrand": false
+      }
+    },
+    {
+      "id": "relative",
+      "x": 40.0,
+      "y": 50.0,
+      "visible": true,
+      "opacity": 1.0,
+      "settings": {
+        "kind": "relative",
+        "designSystem": "eficiencia",
+        "contentVersion": 1,
+        "style": "neutro",
+        "accent": "green",
+        "columns": null,
+        "rangeAhead": 3,
+        "rangeBehind": 3,
+        "classScope": "sameClass",
+        "includePlayer": true,
+        "rowHeightMode": "compact",
+        "footerSlots": []
+      }
+    },
+    {
+      "id": "delta",
+      "x": 60.0,
+      "y": 70.0,
+      "visible": true,
+      "opacity": 1.0,
+      "settings": {
+        "kind": "delta",
+        "designSystem": "eficiencia",
+        "contentVersion": 1,
+        "style": "neutro",
+        "accent": "white",
+        "size": "pill",
+        "reference": "best",
+        "showBar": true,
+        "showSectors": true,
+        "templateId": "instrument"
+      }
+    },
+    {
+      "id": "fuel",
+      "x": 80.0,
+      "y": 90.0,
+      "visible": true,
+      "opacity": 1.0,
+      "settings": {
+        "kind": "fuel-strategy",
+        "designSystem": "eficiencia",
+        "style": "neutro",
+        "accent": "amber",
+        "size": "standard",
+        "contentVersion": 1,
+        "historyRows": 4,
+        "showProjection": true,
+        "source": "fuel",
+        "units": "liters"
+      }
+    }
+  ],
+  "preferences": {
+    "units": "metric",
+    "language": "es"
+  }
+}

@@ -117,11 +117,14 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
 3. Añadir **una línea** al bloque `widgets!` al final de `ui/src/registry.rs`:
    `FuelStrategy => fuel_strategy: "fuel-strategy",`. No editar `app.rs`,
    `lib.rs`, los binarios ni los contadores. El nombre CLI debe coincidir con
-   `reference/<nombre>.png`; el módulo Rust usa guiones bajos.
+   `reference/<nombre>.png`; el módulo Rust usa guiones bajos. Al dar de alta un
+   tipo, añadir también su etiqueta en `Kind::label`; el despacho de
+   `Widget::frame` sí se genera.
 4. Crear `ui/fixtures/<nombre>.snapshot.json` en el DTO vigente de
-   `ipc::snapshot_from_json` (DTO v9, `version: 9`); partir de una de las escenas
-   versionadas. Reproducir **los datos de ese widget** de
-   `tools/widget-reference/scene.tsx`: Workshop `default/race/track/ready`.
+   `ipc::snapshot_from_json` (DTO v10, `version: 10`); partir de las fixtures actuales de
+   `ui/fixtures/` y sus escenas versionadas. Reproducir los datos y la geometría
+   conservados de ese widget; las referencias son oráculos históricos del
+   Workshop `default/race/track/ready`, no un pipeline Wails activo.
    `ui/reference/<nombre>.geometry.json` conserva su `runtime.overlayV2Frame`,
    layout, configuración y texto congelados. Traducir identidad, unidades SI,
    calidad y capacidades a `Snapshot`: `fresh` con valor → `{"reliable": valor}`;
@@ -129,8 +132,8 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
    sin representación y coordinar su extensión con el propietario de domain/IPC.
    Estas escenas son demostraciones reconstruidas, **no** capturas LMU reales.
    Para animaciones, `.scene.json` añade `label`, `frameMs` (50–60000),
-   `watchFor` y `frames: [{caption, snapshot}]`; cada snapshot usa DTO v9.
-   El cargador guardado permite v7/v8/v9; el pipe live nunca migra fixtures.
+   `watchFor` y `frames: [{caption, snapshot}]`; cada snapshot usa DTO v10.
+   El cargador guardado permite v7/v8/v9/v10; el pipe live nunca migra fixtures.
    Preferencias y geometría viven en el documento de layout, fuera del ViewModel.
 5. Medir desde `native/`, con escritorio visible, sin ventanas encima y DPI
    al 100 % (la captura rechaza otro DPI y rectángulos mayores que el monitor):

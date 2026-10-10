@@ -316,15 +316,16 @@ impl Launcher {
             .processes
             .lock()
             .map_err(|e| format!("procesos Launcher: {e}"))?;
+        let mut targets = Vec::new();
         for profile in &self.store.document.profiles {
             let policy = profile.effective_policy();
             if policy.exit == Close::Started
                 || policy.exit == Close::Ask && self.exit_answer == Some(Action::CloseStarted)
             {
-                processes.close_profile(&profile.id)?;
+                targets.push(profile.id.clone());
             }
         }
-        Ok(())
+        close_exit_targets(&targets, |id| processes.close_profile(id))
     }
 
     pub fn take_exit_cancelled(&mut self) -> bool {
@@ -954,5 +955,60 @@ impl Launcher {
                     ))
                 },
             )
+    }
+}
+
+/// Cierra todos los objetivos aunque alguno falle; el primer error ya no
+/// interrumpe el cierre de los perfiles restantes al salir.
+fn close_exit_targets(
+    targets: &[String],
+    mut close: impl FnMut(&str) -> Result<(), String>,
+) -> Result<(), String> {
+    let mut errors = Vec::new();
+    for target in targets {
+        if let Err(error) = close(target) {
+            errors.push(error);
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
+    }
+}
+
+#[cfg(test)]
+mod close_tests {
+    use super::*;
+    use std::cell::RefCell;
+
+    #[test]
+    fn exit_close_attempts_every_profile_and_reports_all_failures() {
+        let attempted = RefCell::new(Vec::new());
+        let result = close_exit_targets(&["a".into(), "b".into()], |id: &str| {
+            attempted.borrow_mut().push(id.to_owned());
+            if id == "a" {
+                Err("falla A".to_owned())
+            } else {
+                Ok(())
+            }
+        });
+        assert_eq!(result, Err("falla A".to_owned()));
+        // El fallo de A no debe impedir intentar cerrar B.
+        assert_eq!(*attempted.borrow(), vec!["a".to_owned(), "b".to_owned()]);
+    }
+
+    #[test]
+    fn exit_close_succeeds_only_when_every_profile_closes() {
+        let result = close_exit_targets(&[], |_: &str| Ok(()));
+        assert_eq!(result, Ok(()));
+        let result = close_exit_targets(&["a".into(), "b".into()], |id: &str| {
+            if id == "b" {
+                Err("falla B".to_owned())
+            } else {
+                Ok(())
+            }
+        });
+        assert_eq!(result, Err("falla B".to_owned()));
     }
 }

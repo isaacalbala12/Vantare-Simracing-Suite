@@ -450,6 +450,16 @@ pub struct Prepared {
     editor: Editor,
     examples: Vec<(Kind, Snapshot)>,
 }
+
+/// Escena QA `studio-oculto`: sin selección (documento vacío sin --demo) es un
+/// no-op explícito en lugar de fallar antes de inicializar el editor.
+#[cfg(any(test, feature = "parity-capture"))]
+fn hide_selected_for_capture(editor: &mut Editor) -> Result<(), String> {
+    if editor.selected.is_some() {
+        editor.edit_selected(|item| item.visible = false)?;
+    }
+    Ok(())
+}
 impl Prepared {
     pub fn load(path: PathBuf) -> Result<Self, String> {
         #[cfg(feature = "parity-capture")]
@@ -493,7 +503,7 @@ impl Prepared {
                     editor.remove()?;
                 }
             } else if name == "studio-oculto" {
-                editor.edit_selected(|item| item.visible = false)?;
+                hide_selected_for_capture(&mut editor)?;
             } else if name == "inicio-opacidad" {
                 let ids: Vec<_> = editor
                     .layout()
@@ -4177,6 +4187,17 @@ mod tests {
         };
         assert!(drag.update((30.0, 25.0)));
         assert_eq!(drag.preview, (780.0, 50.0));
+    }
+    #[test]
+    fn hidden_capture_without_selection_is_an_explicit_noop() {
+        let file = crate::document::tests::File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor vacío");
+        assert!(editor.selected.is_none());
+        hide_selected_for_capture(&mut editor).expect("no-op sin selección");
+        assert!(editor.layout().instances.is_empty());
+        editor.add(Kind::Standings).expect("widget");
+        hide_selected_for_capture(&mut editor).expect("ocultar");
+        assert!(!editor.layout().instances[0].visible);
     }
 }
 

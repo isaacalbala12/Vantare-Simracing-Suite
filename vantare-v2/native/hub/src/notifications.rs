@@ -204,13 +204,14 @@ impl Center {
             .iter()
             .position(|item| item.dedupe_key == record.dedupe_key)
         {
-            let old = self.records.remove(index);
-            if old.same_signature(&record) {
-                record = old;
-            } else {
-                record.id = old.id;
-                record.unread = !muted;
+            // Misma firma: no se modifica ni se notifica; fecha, orden y
+            // revisión quedan intactos aunque el error persista.
+            if self.records[index].same_signature(&record) {
+                return Ok(());
             }
+            let old = self.records.remove(index);
+            record.id = old.id;
+            record.unread = !muted;
         } else {
             self.sequence = self.sequence.checked_add(1).ok_or("identidad agotada")?;
             record.id = format!("n-{}", self.sequence);
@@ -1195,15 +1196,29 @@ mod tests {
         assert_eq!(time(0).len(), 5);
     }
     #[test]
+    fn identical_republish_changes_neither_date_nor_order_nor_revision() {
+        let mut center = Center::default();
+        let record = Record::local_error("save", "error uno".into());
+        center.publish(record.clone(), 1, false).expect("publicar");
+        let revision = center.revision;
+        let id = center.records[0].id.clone();
+        center.publish(record, 2, false).expect("repetir idéntico");
+        assert_eq!(center.records.len(), 1);
+        assert_eq!(center.records[0].id, id);
+        assert_eq!(center.records[0].occurred_at, 1);
+        assert_eq!(center.revision, revision);
+        assert_eq!(center.unread(), 1);
+    }
+    #[test]
     fn repetitions_stay_read_changed_occurrences_resurface_and_retention_is_bounded() {
         let mut center = Center::default();
         let record = Record::local_error("save", "error uno".into());
         center.publish(record.clone(), 1, false).expect("publicar");
         let id = center.records[0].id.clone();
         center.mark_read(&id);
-        center.publish(record, 2, false).expect("repetir");
+        center.publish(record, 2, false).expect("repetir idéntico");
         assert_eq!(center.unread(), 0);
-        assert_eq!(center.records[0].occurred_at, 2);
+        assert_eq!(center.records[0].occurred_at, 1);
         center
             .publish(Record::local_error("save", "error dos".into()), 3, false)
             .expect("otro");

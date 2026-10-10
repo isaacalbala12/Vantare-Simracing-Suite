@@ -1428,3 +1428,6 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod session_tests;

@@ -2008,4 +2008,31 @@ mod tests {
         assert_eq!(parts[1], [(Kind::Radar, (80.0, 50.0))]);
         assert!(parts[2].is_empty(), "sin widgets no hay ventana");
     }
+    #[test]
+    fn show_in_hides_the_overlay_outside_its_sessions_but_never_without_data() {
+        use vantare_domain::{Quality, SessionKind};
+        let mut overlay = Overlay::new(Kind::Standings, Preferences::default());
+        overlay.set_show_in(crate::session::ShowIn {
+            practice: false,
+            qualifying: false,
+            race: true,
+        });
+        let mut snapshot = crate::source::fixed();
+        for (kind, shown) in [
+            (Quality::Reliable(SessionKind::Practice), false),
+            (
+                Quality::Reliable(SessionKind::Other("warmup".into())),
+                false,
+            ),
+            (Quality::Reliable(SessionKind::Qualifying), false),
+            (Quality::Reliable(SessionKind::Race), true),
+            (Quality::Stale(SessionKind::Practice), false),
+            (Quality::Unavailable, true),
+        ] {
+            snapshot.state.session.kind = kind.clone();
+            snapshot.sequence += 1;
+            overlay.project_snapshot(&snapshot);
+            assert_eq!(overlay.shown_in_session(), shown, "{kind:?}");
+        }
+    }
 }

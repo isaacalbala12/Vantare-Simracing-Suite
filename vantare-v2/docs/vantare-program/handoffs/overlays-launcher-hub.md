@@ -1,3 +1,28 @@
+## #1564 · Widgets por sesión, entrega sobre #1562
+
+Resultado: en curso, tests de aceptación antes de implementar D1–D18.
+Autoridad: [GitHub #1564](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1564),
+area:ui y GitHub Project Vantare/In Progress; escritura y lectura verificadas.
+Rama `vantareapp/isa-1564-widgets-por-sesion-impl`; base `cdcc2bf72333df74357aa44c998e076f11a9919b`
+(#1562 / PR #1576). La candidata anterior #1574/38344a79 se revisa y adapta;
+no se modifica su rama ni se afirma que sus gates validen esta entrega.
+Decisiones: columnas por sesión solo Standings; resto común. Warmup/Other = Práctica,
+Unavailable inicial = Carrera, Stale conserva tipo. Visibilidad sin tipo = visible;
+reglas de sesión y fuera de pista combinadas con Y, incluso AlwaysVisible.
+Ownership: domain proyecta, ui guarda settings y pinta, hub edita el documento;
+sin dependencias nuevas ni runtime/IPC nuevos, sin subagentes.
+Evidencia: RED de dominio para warmup confirmado; UI/Hub RED en compilación,
+capturas Studio 1440 y gates completos pendientes. Logs externos en
+`C:/tmp/ola2/evidence-1564`; reporte `C:/tmp/buzon/1564.md`.
+Riesgos: independencia de pestañas al editar Carrera de un layout legacy; orden D7;
+visibilidad combinada y transiciones bajo pausa; ancla y cambio de ancho.
+#1561 P1-A conserva el plan de partición del Studio preexistente >2000 LOC;
+el código nuevo va en módulo de sesiones. #1562 pendiente de merge en nightly;
+cuando entre se incorpora origin/nightly mediante merge, sin rebase.
+Siguiente: RED criterios 1–8, implementación mínima, gates y capturas inspeccionadas;
+commits por hito, push de rama impl y PR draft a nightly. Sin promoción/release.
+Última actualización: 2026-10-10, #1564, Codex.
+
 ## #1562 · garaje explícito, gates locales PASS (2026-10-10)
 
 Rama `vantareapp/isa-1562-ocultar-fuera-de-pista`, base `ca17545f607b85f5d47dc9d060721b69e6a6a158`.

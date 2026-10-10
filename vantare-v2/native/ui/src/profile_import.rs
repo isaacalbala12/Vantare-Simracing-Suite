@@ -433,4 +433,33 @@ mod tests {
             );
         }
     }
+    #[test]
+    fn session_types_become_show_in_and_other_conditions_still_hide() {
+        let mut profile: Value = serde_json::from_slice(PROFILE).expect("fixture");
+        let rule = &mut profile["layouts"]["general"]["widgets"][0]["behavior"]["visibleWhen"];
+        *rule = serde_json::json!({ "sessionTypes": ["qualifying"] });
+        let (layout, report) =
+            convert(&serde_json::to_vec(&profile).expect("JSON"), monitor()).expect("convertir");
+        let first = &layout.instances[0];
+        assert!(first.visible, "ya no se importa oculto");
+        assert_eq!(
+            first.show_in,
+            vantare_ui::session::ShowIn {
+                practice: false,
+                qualifying: true,
+                race: false,
+            }
+        );
+        assert!(
+            !report
+                .notices
+                .iter()
+                .any(|n| n.path == "layouts.general.widgets[standings].behavior.visibleWhen")
+        );
+        profile["layouts"]["general"]["widgets"][0]["behavior"]["visibleWhen"] =
+            serde_json::json!({ "sessionTypes": ["race"], "inPit": true });
+        let (layout, _) =
+            convert(&serde_json::to_vec(&profile).expect("JSON"), monitor()).expect("convertir");
+        assert!(!layout.instances[0].visible, "inPit sigue sin soporte");
+    }
 }

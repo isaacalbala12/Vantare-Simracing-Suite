@@ -4337,3 +4337,7 @@ mod toolbar_status_tests {
         }
     }
 }
+
+#[cfg(test)]
+#[path = "studio/session_acceptance.rs"]
+mod session_acceptance;

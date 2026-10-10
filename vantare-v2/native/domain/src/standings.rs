@@ -1804,4 +1804,19 @@ mod classification_tests {
         assert_eq!(vm.rows()[2].classification_gap, PLACEHOLDER);
         assert_eq!(vm.laps_remaining, PLACEHOLDER, "solo se muestra en carrera");
     }
+    #[test]
+    fn warmup_compares_best_laps_and_stale_kind_keeps_the_last_session() {
+        let mut fast = car(1, 1, "Ana");
+        fast.best_lap_s = Reliable(100.0);
+        let mut slow = car(2, 2, "Ben");
+        slow.best_lap_s = Reliable(100.8);
+        let mut warmup = snapshot(SessionKind::Other("warmup".into()), vec![fast, slow]);
+        assert!(project(&warmup, Preferences::default()).gap_to_best_lap);
+        warmup.state.session.kind = Quality::Stale(SessionKind::Qualifying);
+        let vm = project(&warmup, Preferences::default());
+        assert!(vm.gap_to_best_lap, "Stale no salta a carrera");
+        assert_eq!(vm.rows()[1].classification_gap, "+0.80s");
+        warmup.state.session.kind = Quality::Unavailable;
+        assert!(!project(&warmup, Preferences::default()).gap_to_best_lap);
+    }
 }

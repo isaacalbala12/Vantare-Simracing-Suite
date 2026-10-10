@@ -38,6 +38,14 @@ pub enum SessionKind {
     Other(String),
 }
 
+impl SessionKind {
+    /// Todo lo que no es carrera (warmup y tipos desconocidos incluidos) se
+    /// mide por mejor vuelta, como en la app anterior (#1564).
+    pub fn ranks_by_best_lap(&self) -> bool {
+        !matches!(self, Self::Race)
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SessionState {
     /// Antes de la salida (parrilla, formación).

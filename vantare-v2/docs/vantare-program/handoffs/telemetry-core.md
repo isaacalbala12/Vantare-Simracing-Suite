@@ -13,12 +13,12 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
-Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. PR [#1570](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1570) contra nightly, con auto-merge autorizado por el orquestador. Nightly `0cf38ed2` incorporada mediante merge `dbee0c18`; sin promoción ni release. #1562 en `vantareapp/isa-1562-ocultar-fuera-de-pista` (`0049c87d`): situación central con DTO live v10, garaje solo ante señal explícita y servicio/colas visibles; fmt/Clippy, Nextest 1590/1590, lifecycle 18/18, telemetría 25/25 y retirement 456/456 PASS; captura positiva LMU original pendiente. No cambiar aquí la versión documentada del código base.
+Base incorporada: `origin/nightly@acff350d740d33ae8901291b63d69da004912fbc`, con #1562/PR #1576 integrada. Resolución de merge de #1564/PR #1577 en `vantareapp/isa-1564-widgets-por-sesion-impl`, validación local completada: fmt/Clippy, Nextest 1613/1613 (7 skips), lifecycle 18/18 y telemetría 25/25 PASS. #1562 introduce situación neutral y DTO live v10; #1573 conserva admisión de acceso frente al cierre por juego. Sin promoción ni release. Evidencia anterior #1562: Nextest 1590/1590, lifecycle 18/18 y telemetría 25/25; el resultado post-merge se acredita con logs merge-*.log en C:/tmp/ola2/evidence-1564, separado del resultado anterior.
 
 ## 4. Decisiones cerradas
 
 - `Adapter::poll` no bloquea y recibe reloj; Origin conserva tiempo de origen/recepción. Capacidades y calidad explícitas, sin fallbacks sintéticos.
-- Live negocia solo DTO v9 en esta base; fotos guardadas v7/v8 pasan por lectores explícitos, nunca por el lector live.
+- Live negocia solo DTO v10 en esta base; versiones guardadas anteriores pasan por lectores explícitos, nunca por el lector live.
 - Fotos latest-wins no sustituyen journal/cursor/ACK de eventos. Época nueva invalida estado previo.
 - Demand no autoriza inventar datos ni poner reglas del simulador en widgets; adapters privados y ViewModels puros.
 - Catálogo de señales único descartado en #1561: no habría ahorrado ficheros en los cambios observados. Reconsiderar ante un adapter/señal nuevos con coste medido.
@@ -29,7 +29,7 @@ Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a
 
 ## 6. Evidencia y límites
 
-Evidencia registrada en la base, no reejecutada por esta entrega documental: integración #1531, fmt/check/Clippy `-D warnings`, Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría 25/25. No convierte fixtures/replays en prueba física LMU/ACC, OBS, DPI, audio ni latencia de entrada. #1474 conserva informe `C:/tmp/fase2/informe-1473-integracion.md` y goldens ACC/LMU; su issue sigue abierta pendiente aceptación. Huellas de retirada y fixtures conservan procedencia; no alterar oráculos para pasar gates. #1562 reporta retirement 456/456 e inversión exacta de pins, con gates finales aún pendientes.
+Evidencia registrada en la base, no reejecutada por esta entrega documental: integración #1531, fmt/check/Clippy `-D warnings`, Nextest 1574/1574 (7 skips heredados), lifecycle 18/18 y telemetría 25/25. No convierte fixtures/replays en prueba física LMU/ACC, OBS, DPI, audio ni latencia de entrada. #1474 conserva informe `C:/tmp/fase2/informe-1473-integracion.md` y goldens ACC/LMU; su issue sigue abierta pendiente aceptación. Huellas de retirada y fixtures conservan procedencia; no alterar oráculos para pasar gates. #1562 reporta retirement 456/456 e inversión exacta de pins; la validación del merge #1564 queda separada: Nextest 1613/1613, lifecycle 18/18, telemetría 25/25 y retirement 456/456 PASS, sin QA física nueva.
 
 ## 7. Riesgos y deuda
 
@@ -44,8 +44,8 @@ Cerradas en la base: #1530 (DTO), #1532 (contratos de catálogo/disk), #1534 (cr
 
 ## 9. Siguiente acción exacta
 
-Completar gates de #1562 sobre su árbol: fmt/Clippy/Nextest/lifecycle y telemetría, fixtures LMU/ACC, ausencia de señal, pit lane y previews. Su issue exige paridad histórica primero y no ocultar por datos ausentes. #1527 necesita señales independientes para última vuelta/sesión, con calidad y gate de telemetría; coordinar con DTO v10 de #1562 antes de implementar. No ejecutar esas features desde la rama docs.
+Publicar el merge #1564 ya validado localmente y comprobar CI/SHA remoto, conservando señales/fixtures y reglas de #1562. #1527 necesita señales independientes para última vuelta/sesión: releer su issue antes de implementar, coordinar sobre el DTO live v10 integrado y conservar compatibilidad de archivos. QA física de #1562 y paridad histórica se siguen en su issue.
 
 ## 10. Última actualización
 
-2026-10-10 · GitHub #1561 · Codex. Código, README del área e issues leídos; seguimiento #1561 escrito y releído. Las siguientes acciones de área proceden de las issues abiertas, sin nuevas autorizaciones implícitas. El diario y los avances por ronda se escriben en la issue; aquí se sustituye el estado.
+2026-10-10 · GitHub #1564 · Codex. Nightly/#1576 y contrato DTO leídos; resolución autorizada de merge con plantilla de estado actual. Diario y checks en #1564; no ejecutar features de otras issues desde este handoff.

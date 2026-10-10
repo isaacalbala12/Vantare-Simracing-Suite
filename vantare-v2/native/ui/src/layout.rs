@@ -128,6 +128,9 @@ pub struct Instance {
     pub y: f32,
     #[serde(default = "visible")]
     pub visible: bool,
+    /// Sesiones en las que se dibuja (#1564); todas si falta.
+    #[serde(default, skip_serializing_if = "crate::session::ShowIn::is_all")]
+    pub show_in: crate::session::ShowIn,
     #[serde(default = "opaque")]
     pub opacity: f32,
     #[serde(default, skip_serializing_if = "crate::geometry::Geometry::is_default")]
@@ -185,6 +188,9 @@ impl Layout {
         let mut demand = vantare_ipc::Demand::default();
         for instance in self.instances.iter().filter(|instance| instance.visible) {
             demand.union(&instance.settings.demand());
+            if !instance.show_in.is_all() {
+                demand.request(vantare_ipc::Signal::SessionInfo, 250);
+            }
         }
         demand
     }

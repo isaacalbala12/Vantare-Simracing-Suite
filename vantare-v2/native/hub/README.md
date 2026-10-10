@@ -1,5 +1,27 @@
 # Hub nativo (ISA-1430)
 
+## #1564 · Widgets por sesión
+
+Standings → Contenido abre Práctica / Qualy / Carrera, con columnas y formatos
+de nombre/tiempo independientes; Restablecer preset afecta solo a la pestaña
+activa. Filas, Look, filtro y gaps de clase, pie y ventana del jugador son comunes.
+Formato de tabla también modifica solo las columnas de la pestaña activa.
+Cambiar pestaña reconstruye sus controles y el ejemplo de diseño usa esa sesión;
+las fotos reales y En vivo conservan la sesión de su fuente. La pestaña es estado
+de autoría, no un cambio del layout ni de posición/ancla.
+
+En pista reúne Mostrar en práctica/qualy/carrera con Fuera de pista de #1562
+para todos los widgets. Ambas reglas se guardan mediante Editor, con
+Deshacer/Rehacer, y se combinan en overlays live. La preview siempre se ve.
+El módulo nuevo `studio/sessions.rs` conserva el renderer compartido;
+la partición del Studio preexistente >2000 LOC sigue en #1561 P1-A.
+
+Captura aislada con el harness existente, mutex y pantalla-ocupada:
+`--capture studio-base --demo --size 1440x900 --out <PNG>`. Solo en
+`parity-capture`, `VANTARE_CAPTURE_SESSION=practice|qualifying|race` selecciona
+la pestaña y presets D7; `VANTARE_CAPTURE_INSPECTOR=behavior` enfoca En pista.
+Estas escenas son QA declarada, no telemetría ni interacción física en juego.
+
 Proceso GPUI independiente, misma revisión y kit Eficiencia que `vantare-ui`.
 No usa Wails ni importa el runtime. Consume DTO/IPC del supervisor para cuenta,
 licencias, roadmap y reportes; el supervisor posee la red y las credenciales.

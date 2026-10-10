@@ -363,6 +363,7 @@ impl Document {
 
 /// Solicitud explícita de presentación, separada del diseño persistido.
 /// Cada proceso toma el valor inicial como referencia: reabrir no repite solicitudes viejas.
+/// El fichero existe mientras la solicitud de mostrar está vigente; borrarlo es dejar de mostrar.
 pub struct Presentation {
     path: PathBuf,
     observed: Option<Vec<u8>>,
@@ -391,17 +392,49 @@ impl Presentation {
             || Ok(()),
         )
     }
-    pub fn poll(&mut self) -> Result<bool, Error> {
+    /// Deja de mostrar: retira por el mismo canal la solicitud vigente.
+    /// Sin solicitud vigente no hace nada.
+    pub fn hide(layout: &Path) -> Result<(), Error> {
+        let path = layout.with_extension("show.json");
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            fs::create_dir_all(parent)?;
+        }
+        let lock = OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(path.with_extension("json.lock"))?;
+        match lock.try_lock() {
+            Ok(()) => {}
+            Err(std::fs::TryLockError::WouldBlock) => return Err(Error::Conflict),
+            Err(std::fs::TryLockError::Error(error)) => return Err(error.into()),
+        }
+        for stale in [path, layout.with_extension("show.json.bak")] {
+            match fs::remove_file(&stale) {
+                Ok(()) => {}
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error.into()),
+            }
+        }
+        drop(lock);
+        Ok(())
+    }
+    /// Estado real compartido: hay una solicitud vigente de mostrar en pista.
+    pub fn is_showing(layout: &Path) -> bool {
+        matches!(read(&layout.with_extension("show.json")), Ok(Some(_)))
+    }
+    /// `None` sin cambios; `Some(true)` mostrar; `Some(false)` dejar de mostrar.
+    pub fn poll(&mut self) -> Result<Option<bool>, Error> {
         let bytes = read(&self.path)?;
         if bytes == self.observed {
-            return Ok(false);
+            return Ok(None);
         }
         if let Some(bytes) = &bytes {
             let _: u64 = serde_json::from_slice(bytes).map_err(Error::Json)?;
         }
         let requested = bytes.is_some();
         self.observed = bytes;
-        Ok(requested)
+        Ok(Some(requested))
     }
 }
 
@@ -812,14 +845,44 @@ mod presentation_tests {
         ));
         let path = dir.join("layout.json");
         let mut watcher = Presentation::watch(&path).expect("watch");
-        assert!(!watcher.poll().expect("idle"));
+        assert_eq!(watcher.poll().expect("idle"), None);
         Presentation::show(&path).expect("show");
-        assert!(watcher.poll().expect("request"));
-        assert!(!watcher.poll().expect("consumed"));
+        assert_eq!(watcher.poll().expect("request"), Some(true));
+        assert_eq!(watcher.poll().expect("consumed"), None);
         let mut reopened = Presentation::watch(&path).expect("reopen");
-        assert!(!reopened.poll().expect("old request"));
+        assert_eq!(reopened.poll().expect("old request"), None);
         Presentation::show(&path).expect("show again");
-        assert!(reopened.poll().expect("new request"));
+        assert_eq!(reopened.poll().expect("new request"), Some(true));
+        fs::remove_dir_all(dir).expect("cleanup");
+    }
+
+    #[test]
+    fn hide_clears_the_request_and_reports_both_directions() {
+        let dir = std::env::temp_dir().join(format!(
+            "presentation-hide-{}-{}",
+            std::process::id(),
+            SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .expect("clock")
+                .as_nanos()
+        ));
+        let path = dir.join("layout.json");
+        assert!(!Presentation::is_showing(&path));
+        // Sin solicitud vigente, ocultar es idempotente y no emite nada.
+        let mut watcher = Presentation::watch(&path).expect("watch");
+        Presentation::hide(&path).expect("hide idle");
+        assert_eq!(watcher.poll().expect("sigue idle"), None);
+        Presentation::show(&path).expect("show");
+        assert!(Presentation::is_showing(&path));
+        assert_eq!(watcher.poll().expect("mostrar"), Some(true));
+        assert_eq!(watcher.poll().expect("consumido"), None);
+        Presentation::hide(&path).expect("hide");
+        assert!(!Presentation::is_showing(&path));
+        assert_eq!(watcher.poll().expect("dejar de mostrar"), Some(false));
+        assert_eq!(watcher.poll().expect("consumido"), None);
+        // Reabrir tras ocultar no repite la solicitud vieja.
+        let mut reopened = Presentation::watch(&path).expect("reopen");
+        assert_eq!(reopened.poll().expect("sin solicitud"), None);
         fs::remove_dir_all(dir).expect("cleanup");
     }
 }

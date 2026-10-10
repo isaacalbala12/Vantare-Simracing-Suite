@@ -39,6 +39,21 @@ impl Editor {
     pub fn show_on_track(&self) -> Result<(), String> {
         vantare_ui::layout::Presentation::show(&self.path).map_err(|error| error.to_string())
     }
+    pub fn hide_from_track(&self) -> Result<(), String> {
+        vantare_ui::layout::Presentation::hide(&self.path).map_err(|error| error.to_string())
+    }
+    /// Estado real compartido (solicitud vigente en show.json), sin duplicar estado.
+    pub fn is_showing_on_track(&self) -> bool {
+        vantare_ui::layout::Presentation::is_showing(&self.path)
+    }
+    /// Alterna mostrar/dejar de mostrar según el estado real vigente.
+    pub fn toggle_on_track(&self) -> Result<(), String> {
+        if self.is_showing_on_track() {
+            self.hide_from_track()
+        } else {
+            self.show_on_track()
+        }
+    }
     pub fn layout(&self) -> &Layout {
         self.document.layout()
     }
@@ -272,6 +287,9 @@ pub(crate) mod tests {
                 &self.path,
                 &self.path.with_extension("json.lock"),
                 &self.path.with_extension("json.bak"),
+                &self.path.with_extension("show.json"),
+                &self.path.with_extension("show.json.lock"),
+                &self.path.with_extension("show.json.bak"),
             ] {
                 if path.exists() {
                     fs::remove_file(path).expect("limpiar archivo propio");
@@ -631,5 +649,22 @@ pub(crate) mod tests {
                 .canvas_resolution,
             None
         );
+    }
+    #[test]
+    fn track_toggle_follows_the_shared_request_without_duplicating_state() {
+        let file = File::new();
+        let editor = Editor::open(file.path.clone()).expect("editor");
+        assert!(!editor.is_showing_on_track());
+        editor.toggle_on_track().expect("mostrar");
+        assert!(editor.is_showing_on_track());
+        editor.toggle_on_track().expect("dejar de mostrar");
+        assert!(!editor.is_showing_on_track());
+        editor.show_on_track().expect("mostrar explícito");
+        assert!(editor.is_showing_on_track());
+        editor.hide_from_track().expect("ocultar explícito");
+        assert!(!editor.is_showing_on_track());
+        // Ocultar sin solicitud vigente es idempotente.
+        editor.hide_from_track().expect("ocultar idle");
+        assert!(!editor.is_showing_on_track());
     }
 }

@@ -900,16 +900,20 @@ impl Studio {
                 cx,
             )
         };
-        let show = orbit::play_button(
+        let showing = self.editor.is_showing_on_track();
+        let show = orbit::track_toggle_button(
             "studio-show-track",
-            if compact { "" } else { "Mostrar en pista" },
+            if compact {
+                ""
+            } else {
+                orbit::track_toggle_text(showing)
+            },
+            showing,
             44.0,
-            false,
             cx,
         )
-        .aria_label("Mostrar en pista")
         .on_click(cx.listener(|studio, _, _, cx| {
-            studio.status = studio.editor.show_on_track();
+            studio.status = studio.editor.toggle_on_track();
             cx.notify();
         }));
         div()

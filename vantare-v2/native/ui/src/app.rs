@@ -703,7 +703,7 @@ fn window_action(existing: bool, occupied: bool) -> WindowAction {
 struct LiveScreens {
     cadences: HashMap<String, crate::performance::Cadence>,
     usage_widgets: Option<Vec<String>>,
-    /// Último layout aplicado y su ocultación desde la bandeja.
+    /// Último layout aplicado y su ocultación (bandeja o Studio).
     layout: crate::layout::Layout,
     hidden: bool,
     screens: Vec<(DisplayId, WindowHandle<Screen>)>,
@@ -1075,14 +1075,14 @@ fn run_layout_feed<T: Send + 'static>(
                     .timer(Duration::from_millis(500))
                     .await;
                 match presentation.poll() {
-                    Ok(true) => cx.update(|cx| {
+                    Ok(Some(showing)) => cx.update(|cx| {
                         let mut screens = screens.borrow_mut();
-                        screens.hidden = false;
+                        screens.hidden = !showing;
                         let layout = screens.layout.clone();
                         screens.apply(&layout, cx);
                     }),
-                    Ok(false) => {}
-                    Err(error) => eprintln!("solicitud de mostrar en pista: {error}"),
+                    Ok(None) => {}
+                    Err(error) => eprintln!("solicitud de pista: {error}"),
                 }
                 match document.poll() {
                     Ok(true) => {

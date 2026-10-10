@@ -1,5 +1,22 @@
 # Handoff vivo — Engineer/Spotter
 
+## #1536 · corrección Clippy Unix del PR #1557 (2026-10-10)
+
+La nueva CI Linux superó cargo check y detectó redundant_closure_for_method_calls
+en el cierre Unix. d340285eed8d49012f473b388ce6dfb4ccbd0770 sustituye sólo la closure child.kill()
+por std::process::Child::kill; lógica y tests de cierre intactos, sin allows.
+Árbol native 9c0dd5b107dc8444052ac7c95b24286c41da130e; check/fmt/Clippy Windows PASS por cola.
+La compilación y ejecución del backend Unix se acreditarán en la nueva CI.
+Nextest 1526 y lifecycle 18 Windows del código 38c35eca permanecen válidos:
+este cambio es exclusivo del backend Unix. Adaptadores/Core, domain/IPC/UI,
+corpus y goldens siguen idénticos al PASS de telemetría 25/25 (0 skips) d3ff5919.
+Auditoría R3: 22 archivos y 17 tests nuevos conservados; logs linux-lint-*.log.
+
+PR draft https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1557
+abierto, sin merge, #1531 fuera. FIN tras Validate promotion path y Validate
+Vantare blocking gates PASS; registrar todos los estados. GitGuardian conocido
+no bloqueante y pendiente de Isaac. Estado vigente de CI consultable en el PR.
+
 ## #1536 · corrección de compilación Linux del PR #1557 (2026-10-10)
 
 La CI sobre b386b522 detectó E0433 en engineer/tests/recovery.rs: Duration

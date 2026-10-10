@@ -89,7 +89,7 @@ mod tests {
         for (ahead, behind) in [(0, 0), (1, 5), (8, 8)] {
             let board = vantare_domain::relative::project_content(
                 &photo,
-                Default::default(),
+                vantare_domain::format::Preferences::default(),
                 vantare_domain::relative::Content {
                     range_ahead: ahead,
                     range_behind: behind,
@@ -102,7 +102,7 @@ mod tests {
         }
         let own = vantare_domain::relative::project_content(
             &photo,
-            Default::default(),
+            vantare_domain::format::Preferences::default(),
             vantare_domain::relative::Content {
                 range_ahead: 8,
                 range_behind: 8,
@@ -112,7 +112,7 @@ mod tests {
         );
         let all = vantare_domain::relative::project_content(
             &photo,
-            Default::default(),
+            vantare_domain::format::Preferences::default(),
             vantare_domain::relative::Content {
                 range_ahead: 8,
                 range_behind: 8,

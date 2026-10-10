@@ -1,35 +1,40 @@
-## #1564 · Widgets por sesión, entrega sobre #1562
+## #1564 · Widgets por sesión, entrega draft sobre #1562
 
-Resultado: D1–D18 implementadas en esta rama, validación final en curso.
+Resultado: Standings guarda columnas/formatos por sesión; todos los widgets
+permiten Mostrar en, combinado con Y con Ocultar fuera de pista de #1562.
 Autoridad: [GitHub #1564](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1564),
-area:ui y GitHub Project Vantare/In Progress; escritura y lectura verificadas.
-Rama `vantareapp/isa-1564-widgets-por-sesion-impl`; base `cdcc2bf72333df74357aa44c998e076f11a9919b`
-(#1562 / PR #1576). La candidata anterior #1574/38344a79 se revisa y adapta;
-no se modifica su rama ni se afirma que sus gates validen esta entrega.
-Decisiones: columnas por sesión solo Standings; resto común. Warmup/Other = Práctica,
-Unavailable inicial = Carrera, Stale conserva tipo. Visibilidad sin tipo = visible;
-reglas de sesión y fuera de pista combinadas con Y, incluso AlwaysVisible.
-Ownership: domain proyecta, ui guarda settings y pinta, hub edita el documento;
-sin dependencias nuevas ni runtime/IPC nuevos, sin subagentes.
-Evidencia: RED de dominio y APIs UI/Hub confirmado en 9c218b38.
-Selección de aceptación 29/29 PASS (10.983s), fmt y Clippy workspace/all-targets
--D warnings PASS (13.69s); lifecycle 18/18 PASS. Cuatro capturas Studio 1440 inspeccionadas; Nextest/telemetría en curso. Logs externos en
-`C:/tmp/ola2/evidence-1564`; reporte `C:/tmp/buzon/1564.md`.
-Migración: editar Carrera primero independiza Práctica/Qualy, también si el
-layout legacy omitía columnas; round-trip conserva formatos. Presets en orden D7.
-Visibilidad: sesión + fuera de pista con Y para los 18 widgets y durante pausa;
-layouts filtrados piden SessionInfo aunque solo contengan Pedales.
-Solo cambio de ancho natural invalida Screen; ninguna coordenada cambia.
-Riesgos: falta cerrar Nextest/telemetría y CI. Sin prueba física LMU/ACC/OBS.
+area:ui y GitHub Project Vantare/In Review; sin milestone comprometida.
+PR draft a nightly: https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1577.
+Rama `vantareapp/isa-1564-widgets-por-sesion-impl`;
+base autorizada `cdcc2bf72333df74357aa44c998e076f11a9919b` (#1562 / #1576).
+Código y corrección final `c8401b50af6c621774ab67d5c30618231bee09c6`;
+RED previo `9c218b38`. Candidata anterior #1574/38344a79 adaptada sin tocar su rama.
+Ownership: domain proyecta, ui guarda settings/pinta, hub edita el documento;
+sin dependencias nuevas, runtime/IPC nuevos ni subagentes.
+Contratos: Other/warmup = Práctica; columnas iniciales sin tipo = Carrera,
+Stale conserva tipo; ausencia no oculta. AlwaysVisible solo evita fuera de pista.
+Migración: editar Carrera primero independiza las otras pestañas, incluidas
+columnas omitidas en legacy; round-trip conserva formatos. Presets en orden D7;
+reset solo de pestaña activa. Comunes D3 conservados; orden/interval sin cambios.
+Layouts filtrados piden SessionInfo incluso si solo contienen Pedales;
+visibilidad comprobada en 18 widgets y durante pausa. Importación D16 traducida.
+Validación local: fmt y Clippy workspace/all-targets -D warnings PASS;
+Nextest 1601/1601 PASS (7 skips del perfil), lifecycle 18/18 PASS,
+telemetría 25/25 PASS. Anti-slop doctor/check: 456 huellas PASS.
+Cuatro capturas Studio 1440×900 finales abiertas e inspeccionadas:
+Práctica/Qualy ancho natural 537,3345; Carrera 579,3345; x=48/y=62 constante.
+Build parity-capture PASS; warning heredado de analysis/view.rs fuera de alcance.
+Procedencia, hashes y revisión: `C:/tmp/ola2/evidence-1564/visual-review.md`;
+logs RED/verde completos en esa carpeta. Informe `C:/tmp/ola2/informe-1564-impl.md`;
+buzón `C:/tmp/buzon/1564.md`. README UI/Hub y changelog actualizados.
 D12 aclarada por el orquestador: ancho por sesión solo en tamaño automático;
-el tamaño explícito del usuario se respeta y el ancla permanece fija en ambos.
-Test de Studio explícito 800×400 por tres pestañas PASS; fmt/Clippy PASS (8.27s).
-#1561 P1-A conserva el plan de partición del Studio preexistente >2000 LOC;
-el código nuevo va en módulo de sesiones. #1562 pendiente de merge en nightly;
-cuando entre se incorpora origin/nightly mediante merge, sin rebase.
-Corrección de arquitectura: el ajuste del Look de captura queda dentro de UI/Standings; no se debilita el gate. Revisión visual y hashes en evidence-1564/visual-review.md.
-Siguiente: cerrar Nextest/telemetría;
-commits por hito, push de rama impl y PR draft a nightly. Sin promoción/release.
+frames explícitos respetan el tamaño del usuario. Ancla fija en ambos casos.
+Ejemplo sigue la pestaña; fotos reales/En vivo mantienen su sesión.
+Sin prueba física LMU/ACC/OBS, integración, promoción ni release; CI remoto aparte.
+#1561 P1-A mantiene el plan de partición del Studio preexistente >2000 LOC;
+el inspector nuevo está en studio/sessions.rs. #1576 sigue OPEN al entregar;
+cuando entre se incorporará origin/nightly mediante merge, sin rebase.
+Siguiente: revisión de la PR y CI; no fusionar/promocionar sin nueva autorización.
 Última actualización: 2026-10-10, #1564, Codex.
 
 ## #1562 · garaje explícito, gates locales PASS (2026-10-10)

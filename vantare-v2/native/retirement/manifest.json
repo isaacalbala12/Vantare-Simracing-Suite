@@ -295,7 +295,8 @@
     },
     "native/assets/icon.ico": {
       "source": "build/windows/icon.ico",
-      "sha256": "51c4427df220bb7e04d5c53b2023e217e5a3b2bef18ba213bd19daa6b49f4260"
+      "source_sha256": "51c4427df220bb7e04d5c53b2023e217e5a3b2bef18ba213bd19daa6b49f4260",
+      "sha256": "ac0702300b75559d609e3a2be7c5da7419d6e918f1f94410a89c7810833c9f23"
     },
     "native/engineer/testdata/go-reference/config.go.txt": {
       "source": "internal/engineer/audio/config.go",

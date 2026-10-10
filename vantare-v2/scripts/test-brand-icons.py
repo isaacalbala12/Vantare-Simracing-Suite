@@ -26,14 +26,12 @@ class BrandIcons(unittest.TestCase):
                 self.assertEqual(image.size, (size, size))
                 rgba = image.convert("RGBA")
                 if size <= 32:
-                    self.assertEqual(rgba.getpixel((0, 0))[3], 0)
-                    colors = {p[:3] for p in rgba.get_flattened_data() if p[3] == 255}
-                    self.assertEqual(colors, {(216, 0, 0)})
-                    # El hueco permanece abierto a tamaño real.
-                    # Lanczos deja un halo de alfa en el borde diagonal; el
-                    # centro del hueco debe seguir prácticamente transparente.
-                    self.assertLessEqual(rgba.getpixel((size // 2, size * 3 // 4))[3], 8)
-                    self.assertEqual(min(rgba.getpixel((size // 2, y))[3] for y in range(size * 3 // 4, size * 7 // 8)), 0)
+                    # Logo con fondo (#1559): placa oscura opaca y símbolo rojo plano.
+                    self.assertEqual(rgba.getextrema()[3], (255, 255))
+                    self.assertLessEqual(max(rgba.getpixel((0, 0))[:3]), 26)
+                    self.assertIn((216, 0, 0, 255), set(rgba.get_flattened_data()))
+                    # El hueco permanece abierto a tamaño real: placa, no rojo.
+                    self.assertLessEqual(rgba.getpixel((size // 2, size * 3 // 4))[0], 40)
                 else:
                     self.assertEqual(rgba.getextrema()[3], (255, 255))
                     self.assertGreater(len(set(rgba.get_flattened_data())), 20)

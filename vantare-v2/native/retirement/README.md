@@ -29,3 +29,5 @@ Los tokens CSS de Discord y sondas/editorial Go/React se conservan como evidenci
 inactiva en `legacy-evidence` (scripts con extensión `.txt`). No ejecutar sus
 comandos históricos: requieren el checkout retirado. Los scripts independientes
 de calendario, voz, marca y medición continúan activos. Supabase permanece íntegro.
+
+#1559 regenera `native/assets/icon.ico` con el logo con fondo en todos los tamaños: `source_sha256` conserva el pin anterior y `sha256` fija el ICO nuevo.

@@ -683,11 +683,35 @@
     },
     "native/runtime/testdata/oracle/README.md": {
       "source": "native/runtime/testdata/oracle/README.md",
-      "sha256": "ee4386a5e2ac9db94d0ca73e9ac26c544b3e8fc0205330636c65ae378dba241e"
+      "sha256": "742daf18cc6625d7631b619fe7b1bf481afcb8832a0631202d02726a2e6c6123",
+      "source_sha256": "ee4386a5e2ac9db94d0ca73e9ac26c544b3e8fc0205330636c65ae378dba241e",
+      "revisions": [
+        {
+          "commit": "6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6",
+          "issues": [
+            "#1551",
+            "#1552"
+          ],
+          "previous_sha256": "ee4386a5e2ac9db94d0ca73e9ac26c544b3e8fc0205330636c65ae378dba241e",
+          "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        }
+      ]
     },
     "native/runtime/testdata/oracle/exceptions.json": {
       "source": "native/runtime/testdata/oracle/exceptions.json",
-      "sha256": "dbf34205236ee51a039846b4c4212affc3171205cbaf1ea7af2dcc67d5eaf665"
+      "sha256": "e1fdcde7b43602eb46ab89364caf817cfda0e9b257d52b6462d7865f8d00a133",
+      "source_sha256": "dbf34205236ee51a039846b4c4212affc3171205cbaf1ea7af2dcc67d5eaf665",
+      "revisions": [
+        {
+          "commit": "6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6",
+          "issues": [
+            "#1551",
+            "#1552"
+          ],
+          "previous_sha256": "dbf34205236ee51a039846b4c4212affc3171205cbaf1ea7af2dcc67d5eaf665",
+          "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        }
+      ]
     },
     "native/runtime/testdata/oracle/lmu-1.4-garage-fixture.json": {
       "source": "native/runtime/testdata/oracle/lmu-1.4-garage-fixture.json",
@@ -987,15 +1011,37 @@
     },
     "native/runtime/tests/golden/README.md": {
       "source": "native/runtime/tests/golden/README.md",
-      "sha256": "1294dda26bd2e0acc2286b2cb956d13f7fe7e030d99595f5c59acf48ddd8ffe1",
+      "sha256": "3a02fc9495fb74ac02ed09cdfd3cb1fc29b62dd7c18e0abb01cc592aa672dd96",
       "source_sha256": "b74cd322a978bafc3d96f65699be199561f2841659f66ad51c86aa0996da839b",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "commit": "6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6",
+          "issues": [
+            "#1551",
+            "#1552"
+          ],
+          "previous_sha256": "1294dda26bd2e0acc2286b2cb956d13f7fe7e030d99595f5c59acf48ddd8ffe1",
+          "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        }
+      ]
     },
     "native/runtime/tests/golden/acc-all.sha256": {
       "source": "native/runtime/tests/golden/acc-all.sha256",
-      "sha256": "38e10a785d3a262def656b17eb212cde7e3ad14e0901eeaa5c9445540aa51409",
+      "sha256": "3181133874acfa011b195b9e7fa5d28f123e963ab7d6dde0e79daac6785b07b7",
       "source_sha256": "e8eb52bf9e4992069e51bcea71533fdf22010922f57cb22a241dfab8d68219a6",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "commit": "6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6",
+          "issues": [
+            "#1551",
+            "#1552"
+          ],
+          "previous_sha256": "38e10a785d3a262def656b17eb212cde7e3ad14e0901eeaa5c9445540aa51409",
+          "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        }
+      ]
     },
     "native/runtime/tests/golden/acc.jsonl.gz": {
       "source": "native/runtime/tests/golden/acc.jsonl.gz",
@@ -1005,15 +1051,37 @@
     },
     "native/runtime/tests/golden/lmu.jsonl.gz": {
       "source": "native/runtime/tests/golden/lmu.jsonl.gz",
-      "sha256": "6dea5326f992006f8f6e0afc44ad588d0f30ea6580ea9d0b3f7ebbc578329173",
+      "sha256": "ab746165a747e6fca25a8196ede5ad841476a0ad0fde27f31ad390bca68025b5",
       "source_sha256": "2f7b481fc726b58051fcbae17b45ea45fae191cada7be667657392f9d5368a76",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "commit": "6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6",
+          "issues": [
+            "#1551",
+            "#1552"
+          ],
+          "previous_sha256": "6dea5326f992006f8f6e0afc44ad588d0f30ea6580ea9d0b3f7ebbc578329173",
+          "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        }
+      ]
     },
     "native/runtime/tests/golden/lmu47.jsonl.gz": {
       "source": "native/runtime/tests/golden/lmu47.jsonl.gz",
-      "sha256": "f631edc2d61454db1058ae1a418e487521d856bd09b8ea8ddf444f0a722e7bcd",
+      "sha256": "72a9b69ba34b84ff810452eec524d8c32380e5c6f24f9bd2a5c7eb5ad7014007",
       "source_sha256": "32f68cc6e71bf3032554012495ec4c0f6a415e17350fb38702e2a9ed144dedb4",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "commit": "6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6",
+          "issues": [
+            "#1551",
+            "#1552"
+          ],
+          "previous_sha256": "f631edc2d61454db1058ae1a418e487521d856bd09b8ea8ddf444f0a722e7bcd",
+          "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        }
+      ]
     },
     "native/strategy/testdata/fuji-1450-input.json": {
       "source": "native/strategy/testdata/fuji-1450-input.json",
@@ -1543,9 +1611,20 @@
     },
     "native/ui/fixtures/telemetry-real/README.md": {
       "source": "native/ui/fixtures/telemetry-real/README.md",
-      "sha256": "2cc11f0cf3855e7a972be431f49ba958f4c39e465a034cdcd704a4ede36059da",
+      "sha256": "db32494dab8177b0eb3817ac33192c5ca5ac179af65d3945253c449930b4e158",
       "source_sha256": "ed06489271e1d960c04fb8cd2da067c63b959772900f63d5945cbf8e0797385e",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "commit": "6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6",
+          "issues": [
+            "#1551",
+            "#1552"
+          ],
+          "previous_sha256": "2cc11f0cf3855e7a972be431f49ba958f4c39e465a034cdcd704a4ede36059da",
+          "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        }
+      ]
     },
     "native/ui/fixtures/telemetry-real/acc.snapshot.json": {
       "source": "native/ui/fixtures/telemetry-real/acc.snapshot.json",
@@ -1561,21 +1640,54 @@
     },
     "native/ui/fixtures/telemetry-real/lmu-stale.snapshot.json": {
       "source": "native/ui/fixtures/telemetry-real/lmu-stale.snapshot.json",
-      "sha256": "5a08189e04e16d82689075a324d5223ec7c7a7880dbd3bf4e4a635bd319a0ca9",
+      "sha256": "d65148b339431d644cbb4077737a86407189be5d19a03baf9d57d43bec1f9ddd",
       "source_sha256": "e4244ab9c21f4774125fe38d0d688c0c089bcddd640f4deb674a83c6db0b95b8",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "commit": "6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6",
+          "issues": [
+            "#1551",
+            "#1552"
+          ],
+          "previous_sha256": "5a08189e04e16d82689075a324d5223ec7c7a7880dbd3bf4e4a635bd319a0ca9",
+          "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        }
+      ]
     },
     "native/ui/fixtures/telemetry-real/lmu47-input.sequence.json": {
       "source": "native/ui/fixtures/telemetry-real/lmu47-input.sequence.json",
-      "sha256": "a7eedbcd4e301a422cd89a3b2965f7d2ea17ab93fe027d520fba0a6962c2f43d",
+      "sha256": "bcd2466c5b619f0ac72d9165d02b07e3f9a91cc64cb19cfc4691658d55dc34a9",
       "source_sha256": "4d2d002ba0dac11a36005e2582f648ecd85dae4c6194d3eb4cbb1a2a4b7c1071",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "commit": "6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6",
+          "issues": [
+            "#1551",
+            "#1552"
+          ],
+          "previous_sha256": "a7eedbcd4e301a422cd89a3b2965f7d2ea17ab93fe027d520fba0a6962c2f43d",
+          "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        }
+      ]
     },
     "native/ui/fixtures/telemetry-real/lmu47.snapshot.json": {
       "source": "native/ui/fixtures/telemetry-real/lmu47.snapshot.json",
-      "sha256": "3fe5acef6f332dd01fd1afee64d419ec5250f415117fba71585a456e6fd92630",
+      "sha256": "23b1f8ff3e8fef1a56c322b308f80eb07e71e1dfb85b23fe4e8d82bdf648185b",
       "source_sha256": "23dc883f111fe11817116358f8d25a343b2b341fe3da171385c93070bfb24d5a",
-      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated"
+      "migration": "#1530: DTO v9; data preserved, documentation and ACC v9 pin updated",
+      "revisions": [
+        {
+          "commit": "6094472ebc12d7c6fb2dbe4568a2ccefbfc29fc6",
+          "issues": [
+            "#1551",
+            "#1552"
+          ],
+          "previous_sha256": "3fe5acef6f332dd01fd1afee64d419ec5250f415117fba71585a456e6fd92630",
+          "reason": "Reviewed telemetry quality correction: LMU race-only gaps and ACC coherent overtaking positions; strict inverse migration tests preserve all other data."
+        }
+      ]
     },
     "native/ui/fixtures/track-map-default.scene.json": {
       "source": "native/ui/fixtures/track-map-default.scene.json",

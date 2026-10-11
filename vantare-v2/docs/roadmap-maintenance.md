@@ -5,17 +5,24 @@ lista Desarrollo. Títulos «Tipo · Nombre». GitHub Issues es seguimiento inte
 No hay editor en Hub, plan.md ni generador desde GitHub. Supabase conserva el
 historial de publicaciones: visual_roadmap_current_v2 sirve el documento completo;
 visual_roadmap_current conserva la lectura v1 para las apps instaladas;
-la Action sustituye la publicación manual como único escritor del roadmap.
+el publicador del servidor es el único escritor del roadmap.
 
-La Action `.github/workflows/clickup-roadmap.yml` consulta cada seis horas y
-admite dispatch. Isaac configura CLICKUP_API_TOKEN como secreto de GitHub;
-solo se usa al preparar el JSON. Ausencia de secreto, fuente ambigua/incompleta,
+**Publicador en el servidor Vantare** (192.168.1.57, distro WSL `vantare-svc`,
+usuario Linux `roadmap`): timer systemd `vantare-roadmap.timer` cada seis horas
+(minuto 17) ejecuta `tools/server/roadmap/vantare-roadmap-publish.sh` con los
+mismos pasos que la antigua Action. Sustituye a `.github/workflows/clickup-roadmap.yml`
+(retirada): los secretos de BD/ClickUp ya no viven en GitHub (riesgo P2-4).
+Lee el repo con una deploy key de solo lectura y publica desde `master`.
+Secretos en `C:\VantareServer\secrets\roadmap.env` del servidor (ACL
+Administradores + vantare-svc), cargados por EnvironmentFile; nunca en argv/logs.
+Ejecución manual: `sudo systemctl start vantare-roadmap` dentro de la distro.
+CLICKUP_API_TOKEN solo se usa al preparar el JSON. Ausencia de secreto, fuente ambigua/incompleta,
 estado desconocido o límites excedidos falla sin sustituir datos anteriores.
 
 Destino aprobado por el orquestador: **visual_roadmap en Supabase existente**.
 Funciona con el repositorio privado. Hub, web y digest leen únicamente la RPC
 visual_roadmap_current_v2 con URL/anon key públicas del build/sitio; ninguna
-lectura depende de GitHub. La Action usa una conexión SQL con rol dedicado,
+lectura depende de GitHub. El publicador usa una conexión SQL con rol dedicado,
 sin service_role ni superusuario. No hay bucket, Pages, release o rama de datos.
 
 Migración preparada: supabase/migrations/20261010001000_visual_roadmap_clickup.sql.
@@ -43,8 +50,8 @@ real del rol. No revocar grants globales de PUBLIC sin revisión de consumidores
 
 Después de aprobación, Isaac fija contraseña mediante prompt protegido
 (psql \password vantare_roadmap_publisher), nunca en SQL versionado, logs o chat.
-Guardar secretos GitHub ROADMAP_PGHOST, ROADMAP_PGPORT, ROADMAP_PGDATABASE,
-ROADMAP_PGUSER y ROADMAP_PGPASSWORD del rol dedicado.
+Guardar PGHOST, PGPORT, PGDATABASE, PGUSER y PGPASSWORD del rol dedicado en
+`roadmap.env` del servidor (plantilla `roadmap.env.example`); no en GitHub.
 Para CI IPv4, usar el pooler compartido existente en modo sesión (puerto 5432):
 PGUSER = vantare_roadmap_publisher.<project-ref>. Con conexión directa, PGUSER
 = vantare_roadmap_publisher y la red debe admitir la dirección del proyecto.
@@ -71,13 +78,13 @@ falla por hostname. Nunca se autenticó una cuenta ni se ejecutó SQL remoto.
 Logs tls-libpq-* y tls-review.log en evidencia #1535.
 El host concreto de CI aún no está configurado; repetir allí antes de activar:
 `python scripts/verify_roadmap_tls.py --host <pooler> --port 5432 --ca <certificado>`.
-El workflow ejecuta ese diagnóstico contra PGHOST antes de psql, que conserva
+El publicador ejecuta ese diagnóstico contra PGHOST antes de psql, que conserva
 verify-full. La prueba no envía StartupMessage, usuario ni contraseña. No prueba
 el tramo interno pooler→DB, ni pg_stat_ssl acredita el tramo cliente→pooler.
 Si CA, host o herramientas no validan se falla; nunca rebajar TLS.
 Referencia: [conexión TLS libpq](https://www.postgresql.org/docs/16/libpq-connect.html#LIBPQ-CONNECT-SSLROOTCERT).
-Credentials por entorno de proceso, no argv, artefactos ni .env. El workflow
-tiene contents:read y no escribe GitHub. No imprime SQL/respuestas de servidor.
+Credentials por entorno de proceso, no argv, artefactos ni .env. El publicador
+lee el repo con deploy key de solo lectura y no escribe GitHub. No imprime SQL/respuestas de servidor.
 Para Discord, variables públicas VANTARE_SUPABASE_URL/ANON_KEY del proyecto
 fijado; no sustituir la anon key por una credencial privilegiada.
 
@@ -103,9 +110,8 @@ aceptación ni releases. Fechas son previstas y una etiqueta no acredita release
 ## Validación y activación
 
 Tests offline de scripts ClickUp y comunicaciones; pgTAP local de rol/RLS. Fixtures son
-solo prueba y no se publican. Programación y dispatch requieren workflow en
-**master**, rama por defecto: integrarlo solo en nightly no los activa.
-Referencia: [eventos GitHub Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows).
+solo prueba y no se publican. El publicador del servidor usa `master`: los
+scripts deben estar promovidos allí; mientras no lo estén falla sin escribir.
 El orquestador coordina la promoción autorizada, secreto y verificación real.
 No dispatch, publicación ni promoción desde este worker.
 
@@ -146,18 +152,12 @@ objetos externos, defaults de grants, CONNECT/TEMP, tablas y futuras migraciones
 
 ## GitHub Free privado
 
-Sin environments disponibles, los secretos son de repositorio. Este workflow
-admite solo schedule/dispatch en la rama por defecto usando el nombre del evento,
-no una lista master/nightly; dispatch de nightly/ramas de issue queda omitido.
-Ese `if` NO aísla los secretos: cualquier colaborador con push puede añadir otro
-workflow que los lea. En repo privado solo los colaboradores pueden pushear;
-todos deben ser de confianza para esta credencial. Revisar accesos, workflows y
-cambios de ramas antes de activar, quitar write a bots/personas que no deban
-publicar y rotar credenciales al retirarlos. GitHub Free no ofrece aquí la barrera
-de environments; el riesgo residual aceptable lo decide Isaac. El rol SQL reduce
-el daño a reemplazar roadmap válido y usar sus conexiones, sin datos privados.
-No se configura un environment inexistente ni se afirma aislamiento por ramas.
-[Disponibilidad de environments/secrets en GitHub Free](https://docs.github.com/en/actions/reference/workflows-and-actions/deployments-and-environments).
+Los secretos del roadmap ya no están en GitHub: tras la primera publicación
+correcta desde el servidor, Isaac borra CLICKUP_API_TOKEN y ROADMAP_PG* de los
+secretos del repositorio. Colaboradores con push no pueden leerlos desde un
+workflow. El riesgo pasa a quien administra el servidor (cuenta Administrator,
+SSH solo con clave desde la LAN); el rol SQL sigue limitando el daño a
+reemplazar un roadmap válido.
 
 ## Pruebas SQL locales
 

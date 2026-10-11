@@ -271,14 +271,7 @@ impl Widget {
         replace_if_changed(&mut self.vm, vm)
     }
 
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        self.frame_with_motion(prefs, false)
-    }
-    pub(crate) fn frame_with_motion(
-        &mut self,
-        _prefs: Preferences,
-        reduced: bool,
-    ) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, _prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let elapsed = self.yellow_since.map(|start| start.elapsed());
         let (pulse, wake) = if reduced {
             (0.0, Wake::Idle)
@@ -436,7 +429,7 @@ mod tests {
         }]);
         assert!(widget.ingest(&snapshot, Preferences::default()));
         widget.yellow_since = Instant::now().checked_sub(PULSE * 2);
-        let (_, wake) = widget.frame(Preferences::default());
+        let (_, wake) = widget.frame(Preferences::default(), false);
         assert!(matches!(wake, Wake::Idle));
         assert!(!widget.ingest(&snapshot, Preferences::default()));
         assert!(widget.yellow_since.is_none());

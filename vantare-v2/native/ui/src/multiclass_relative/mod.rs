@@ -228,7 +228,7 @@ impl Widget {
         )
     }
 
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         let size = self.size();
         (
@@ -368,6 +368,6 @@ mod tests {
             .driver
             .name = "Piloto nuevo".into();
         assert!(widget.ingest(&snapshot, prefs));
-        assert!(matches!(widget.frame(prefs).1, Wake::Idle));
+        assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
     }
 }

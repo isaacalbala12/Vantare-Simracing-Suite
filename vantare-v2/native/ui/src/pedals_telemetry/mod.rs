@@ -157,14 +157,7 @@ impl Widget {
         })
     }
 
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        self.frame_with_motion(prefs, false)
-    }
-    pub(crate) fn frame_with_motion(
-        &mut self,
-        _prefs: Preferences,
-        reduced: bool,
-    ) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, _prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let now = Instant::now();
         let moving = !reduced && self.moving_at(now);
         let bars = if reduced {
@@ -452,7 +445,7 @@ mod tests {
         let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.size(), (300.0, 112.0));
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         assert!(!widget.ingest(&snapshot, prefs));
     }
 
@@ -483,12 +476,12 @@ mod tests {
             assert_eq!(widget.moving_at(at), moving);
         }
         widget.started = Some(now.checked_sub(TRANSITION).expect("reloj del test"));
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         player.telemetry.throttle = Quality::Unavailable;
         snapshot.state.player = Some(player);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.vm.pedals[2], None);
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
     }
 
     #[test]
@@ -508,7 +501,7 @@ mod tests {
         player.telemetry.throttle = Quality::Reliable(1.0);
         snapshot.state.player = Some(player);
         assert!(widget.ingest(&snapshot, prefs));
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         assert_eq!(widget.bars_at(Instant::now())[2], Some(1.0));
         snapshot.epoch = 2;
         assert!(
@@ -556,11 +549,7 @@ mod tests {
             assert_eq!(noisy_quantum, quantum);
             assert_eq!(
                 wheel_svg("generic", rendered, false),
-                wheel_svg(
-                    "generic",
-                    noisy_quantum as f64 * ANGLE_STEP_DEG,
-                    false
-                )
+                wheel_svg("generic", noisy_quantum as f64 * ANGLE_STEP_DEG, false)
             );
         }
         // Stale y modelo de volante siguen invalidando la caché.

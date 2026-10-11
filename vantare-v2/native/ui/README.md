@@ -59,12 +59,16 @@ Los elementos propios de Standings siguen en `standings/`. Pedales conserva su f
 
 `src/vantare/{style,paint,motion,columns}.rs` y `styles/vantare.json` contienen
 el kit compartido Vantare. Standings, Relative, Delta y Fuel ofrecen
-`DesignSystem` Eficiencia/Vantare. Workshop recarga el estilo sin otro renderer.
+`look::Look` Eficiencia/Vantare. `look::Tone` (Neo/Neutro) y `look::Accent`
+son compartidos: ningún widget importa su apariencia de Standings. Los campos
+guardados `designSystem`, `style` y `accent` conservan nombres y valores.
+Workshop recarga el estilo sin otro renderer.
 Una proyección y un estado por widget con N Looks están integrados (#1531):
 Board y Motion comunes, con una sola presentación activa. No duplicar proyecciones al portar.
-`registry.rs` aún adapta manualmente `frame_with_motion(prefs, reduced)` y la
-cadencia de widgets con movimiento; justificar cambios en ese seam, no extenderlo
-silenciosamente. La política de movimiento la decide el host.
+El registro genera el despacho uniforme `frame(prefs, reduced)` para los 18
+widgets; cada widget aplica movimiento reducido o acepta `_reduced` si es estático.
+Fuel asienta su movimiento dentro de `frame`. La política la decide el host;
+la cadencia sigue en `Level::hz` y cualquier cambio necesita justificación.
 
 ## Preview de Studio (ISA-1430)
 
@@ -103,7 +107,7 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
    | `new(settings: &Settings, prefs: Preferences)` | `Self`, estado inicial sin datos |
    | `size(&self)` | `(f32, f32)`, rectángulo completo con sombras/rail |
    | `ingest(&mut self, snapshot: &Snapshot, prefs: Preferences)` | `bool`, cambia solo si el dibujo cambió |
-   | `frame(&mut self, prefs: Preferences)` (o seam actual `frame_with_motion`) | `(crate::app::Paint, crate::app::Wake)`, escena propia clonada en la closure de pintado |
+   | `frame(&mut self, prefs: Preferences, reduced: bool)` | `(crate::app::Paint, crate::app::Wake)`, escena propia clonada en la closure; aplicar movimiento reducido (estático: `_reduced`) |
    | `animating(&self)` con `#[cfg(feature = "parity-capture")]` | `bool`, hasta terminar movimientos **y** avisos temporales |
 
    `Paint` es `Box<dyn Fn(&mut gpui::Window, &mut gpui::App)>`; para un widget
@@ -113,11 +117,14 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
 3. Añadir **una línea** al bloque `widgets!` al final de `ui/src/registry.rs`:
    `FuelStrategy => fuel_strategy: "fuel-strategy",`. No editar `app.rs`,
    `lib.rs`, los binarios ni los contadores. El nombre CLI debe coincidir con
-   `reference/<nombre>.png`; el módulo Rust usa guiones bajos.
+   `reference/<nombre>.png`; el módulo Rust usa guiones bajos. Al dar de alta un
+   tipo, añadir también su etiqueta en `Kind::label`; el despacho de
+   `Widget::frame` sí se genera.
 4. Crear `ui/fixtures/<nombre>.snapshot.json` en el DTO vigente de
-   `ipc::snapshot_from_json` (DTO v9, `version: 9`); partir de una de las escenas
-   versionadas. Reproducir **los datos de ese widget** de
-   `tools/widget-reference/scene.tsx`: Workshop `default/race/track/ready`.
+   `ipc::snapshot_from_json` (DTO v10, `version: 10`); partir de las fixtures actuales de
+   `ui/fixtures/` y sus escenas versionadas. Reproducir los datos y la geometría
+   conservados de ese widget; las referencias son oráculos históricos del
+   Workshop `default/race/track/ready`, no un pipeline Wails activo.
    `ui/reference/<nombre>.geometry.json` conserva su `runtime.overlayV2Frame`,
    layout, configuración y texto congelados. Traducir identidad, unidades SI,
    calidad y capacidades a `Snapshot`: `fresh` con valor → `{"reliable": valor}`;
@@ -125,8 +132,8 @@ es idéntica a la anterior: 0 px distintos con umbral 0, sin máscaras.
    sin representación y coordinar su extensión con el propietario de domain/IPC.
    Estas escenas son demostraciones reconstruidas, **no** capturas LMU reales.
    Para animaciones, `.scene.json` añade `label`, `frameMs` (50–60000),
-   `watchFor` y `frames: [{caption, snapshot}]`; cada snapshot usa DTO v9.
-   El cargador guardado permite v7/v8/v9; el pipe live nunca migra fixtures.
+   `watchFor` y `frames: [{caption, snapshot}]`; cada snapshot usa DTO v10.
+   El cargador guardado permite v7/v8/v9/v10; el pipe live nunca migra fixtures.
    Preferencias y geometría viven en el documento de layout, fuera del ViewModel.
 5. Medir desde `native/`, con escritorio visible, sin ventanas encima y DPI
    al 100 % (la captura rechaza otro DPI y rectángulos mayores que el monitor):

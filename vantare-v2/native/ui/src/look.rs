@@ -7,6 +7,45 @@ pub enum Look {
     #[serde(other)]
     Vantare,
 }
+/// Estilo Vantare del catálogo r10b.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Tone {
+    /// Neo con fondos en escala de grises, sin subtono rojo.
+    Neutro,
+    #[default]
+    #[serde(other)]
+    Neo,
+}
+
+impl Tone {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Neo => "neo",
+            Self::Neutro => "neutro",
+        }
+    }
+    pub fn from_name(name: &str) -> Self {
+        if name == "neutro" {
+            Self::Neutro
+        } else {
+            Self::Neo
+        }
+    }
+}
+
+/// Acento Vantare: fila propia, bordes y énfasis.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum Accent {
+    Amber,
+    Green,
+    White,
+    #[default]
+    #[serde(other)]
+    Red,
+}
+
 impl Look {
     pub const ALL: &'static [Self] = &[Self::Eficiencia, Self::Vantare];
 }
@@ -57,7 +96,7 @@ impl Look {
 }
 impl crate::Settings {
     /// Controles de apariencia disponibles; los consumidores no clasifican Looks.
-    pub fn appearance(&self) -> Option<(Look, crate::standings::Look, crate::standings::Accent)> {
+    pub fn appearance(&self) -> Option<(Look, Tone, Accent)> {
         let a = match self {
             Self::Standings(s) => (s.design_system, s.style, s.accent),
             Self::Relative(s) => (s.design_system, s.style, s.accent),

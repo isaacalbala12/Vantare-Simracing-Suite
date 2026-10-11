@@ -128,14 +128,7 @@ impl Widget {
             && self.vm.pedals.iter().any(Option::is_some)
     }
 
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        self.frame_with_motion(prefs, false)
-    }
-    pub(crate) fn frame_with_motion(
-        &mut self,
-        _prefs: Preferences,
-        reduced: bool,
-    ) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, _prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         let now = Instant::now();
         let pedals = if reduced {
@@ -605,7 +598,7 @@ mod tests {
         assert!(!widget.ingest(&snapshot, prefs));
         widget.started = Instant::now().checked_sub(TRANSITION);
         assert!(!widget.moving(Instant::now()));
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         snapshot.state.player = None;
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.moving(Instant::now()));

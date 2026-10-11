@@ -8,7 +8,7 @@
 use crate::app::Wake;
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::text;
-use crate::standings::{Accent, Look};
+use crate::look::Accent;
 use crate::vantare::paint::{Face, Kit, round_rect};
 use crate::vantare::style::{Color, Style, Variant};
 use gpui::{App, BorderStyle, Corners, Edges, PathBuilder, point, px, quad};
@@ -42,7 +42,7 @@ impl Size {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Options {
-    pub look: Look,
+    pub look: crate::look::Tone,
     pub accent: Accent,
     pub size: Size,
     /// Marca Vantare en la cabecera (`brandVisible`, decidido por la licencia).
@@ -61,8 +61,8 @@ impl Options {
 
     fn variant<'a>(&self, style: &'a Style) -> &'a Variant {
         match self.look {
-            Look::Neo => &style.styles.neo,
-            Look::Neutro => &style.styles.neutro,
+            crate::look::Tone::Neo => &style.styles.neo,
+            crate::look::Tone::Neutro => &style.styles.neutro,
         }
     }
 
@@ -1885,7 +1885,7 @@ mod tests {
 
     fn options(size: Size) -> Options {
         Options {
-            look: Look::Neo,
+            look: crate::look::Tone::Neo,
             accent: Accent::Red,
             size,
             brand: false,

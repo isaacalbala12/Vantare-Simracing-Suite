@@ -78,7 +78,7 @@ impl Widget {
         replace_if_changed(&mut self.vm, track_weather::project(snapshot, prefs))
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, _prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         (
             Box::new(move |window, cx| paint(&vm, window, cx)),
@@ -212,7 +212,7 @@ mod tests {
         snapshot.state.session.weather.air_temperature_k = Quality::Stale(295.16);
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.vm.status, Status::Stale);
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         snapshot.state.session.weather.air_temperature_k = Quality::Unavailable;
         assert!(widget.ingest(&snapshot, prefs));
         assert_eq!(widget.vm.status, Status::Missing);
@@ -243,7 +243,7 @@ mod tests {
             ["28 °C", "21 °C", "14 km/h NO", "0 %", "0 %", "100%", "—"]
         );
         assert_eq!(widget.size(), SIZE);
-        assert_eq!(widget.frame(prefs).1, Wake::Idle);
+        assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
     }

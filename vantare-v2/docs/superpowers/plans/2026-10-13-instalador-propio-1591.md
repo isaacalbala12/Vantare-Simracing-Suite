@@ -1,6 +1,6 @@
 # #1591 — Plan de implementación del instalador propio
 
-> FASE 1 entregada para revisión. La FASE 2 NO está autorizada hasta que Isaac responda. Ejecución directa, por hitos, sin subagentes. Este documento fija trabajo futuro; no acredita implementación, build, instalación, firma, CI ni release.
+> FASE 2 autorizada por Isaac el 2026-10-13 tras revisar FASE 1. Ejecución directa, por hitos, sin subagentes. Al terminar: push y PR draft a nightly, enlazada en T3, y FIN en buzón; revisión independiente antes de integrar. No autoriza merge, firma real ni release.
 
 **Objetivo:** reemplazar la interfaz NSIS de `VantareSetup.exe` y su desinstalador por Rust/GPUI, copiando el diseño aprobado y conservando instalación, actualizaciones, reparación, rollback, datos e identidad técnica.
 
@@ -88,10 +88,10 @@ Conservar `Uninstall.exe /S _?=<raíz>` para el harness heredado: `_?` se acepta
 
 ## 4. Diferencias del HTML: decisiones visibles antes de implementar
 
-La paridad visual aprobada no debe ocultar estos cambios de comportamiento. Propuesta conservadora, pendiente de la respuesta de Isaac:
+Decisiones cerradas por Isaac/orquestador el 2026-10-13:
 
-1. **Escritorio/Windows.** El HTML nace con escritorio ON y autostart OFF; NSIS no ofrece escritorio ni inicio con Windows. Recomendación: conservar filas/toggles del diseño, ambos OFF en instalación nueva, opt-in interactivo; /S siempre mantiene el comportamiento NSIS (ninguno nuevo). Si Isaac exige escritorio ON como el HTML, registrar expresamente esa diferencia. Accesos opcionales mediante WScript.Shell existente; autostart usa Startup del usuario apuntando al mismo bootstrap, sin tocar la clave Run real del Hub. Persistir opciones en `installer-ui.json`, preservarlas en reinstalación y quitar solo accesos propios al desinstalar. QA usa nombres QA exclusivos, exige hashes/propiedad y conserva cualquier acceso ajeno.
-2. **Conservar datos.** La orden actual y NSIS conservan SIEMPRE. El HTML permite desmarcar y promete borrar todo. Recomendación: conservar el mismo control, marcado y desactivado, con explicación accesible de que se conservan. No implementar ni insinuar borrado de perfil/cuenta/remoto. Habilitar borrado requeriría otra autorización/alcance; aceptar el diseño visual no lo concede.
+1. **Escritorio/Windows.** Interactivo: escritorio ON/autostart OFF en instalación nueva, como el HTML. `/S`: ninguno nuevo por defecto, como NSIS. Accesos opcionales mediante WScript.Shell existente; autostart usa Startup del usuario apuntando al mismo bootstrap, sin tocar la clave Run real del Hub. Persistir opciones en `installer-ui.json`, preservarlas en reinstalación y quitar solo accesos propios al desinstalar. QA usa nombres QA exclusivos, exige hashes/propiedad y conserva cualquier acceso ajeno.
+2. **Conservar datos.** SIEMPRE. Quitar la casilla y mostrar «Tus datos se conservan en <ruta real>». No implementar borrado ni prometer borrar datos locales/remotos. Cualquier borrado futuro requiere otra issue.
 3. **Reparar 0.9.3 con Setup 0.9.4.** El HTML ofrece eso, pero el motor actual exige paquete de la MISMA versión para Repair. No inventar un ZIP ni descargar una reparación sin contrato. Recomendación: mantener ambos cards; Actualizar habilitado solo si payload > instalada y Reparar solo si payload == instalada. Si es menor, error 3; explicar que para reparar una versión anterior hace falta su Setup. Reparación de versión vigente después de feed requiere el Setup de esa versión. Elegir Repair nunca instala otra versión por debajo del mismo título.
 4. **Valores demostrativos.** Sustituir 0.9.3/0.9.4, 180 MB, PID y ruta de log por versión/tamaño/raíz/log observados. No copiar `%LOCALAPPDATA%/Vantare/native` como ubicación de ajustes instalada ni usar progreso aleatorio del JS. §5 demuestra rutas. «Nada ha cambiado» se mantiene solo donde sea cierto; tras activación o fallo de accesos mostrar «Tus datos se conservan» y estado real con la misma composición.
 

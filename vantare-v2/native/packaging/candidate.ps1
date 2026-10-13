@@ -593,7 +593,7 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
     Push-Location $native
     try {
         # La miniapp owner se construye aparte y nunca entra en el paquete público.
-        $cargoArgs = @('build', '--offline', '--locked', '--workspace', '--exclude', 'vantare-admin', '--bins', '-j', '2')
+        $cargoArgs = @('build', '--offline', '--locked', '--workspace', '--exclude', 'vantare-admin', '--exclude', 'vantare-installer', '--bins', '-j', '2')
         if ($Profile -eq 'Release') { $cargoArgs += '--release' }
         $oldVersion = $env:VANTARE_VERSION
         $oldChannel = $env:VANTARE_BUILD_CHANNEL
@@ -610,8 +610,10 @@ function Build-NativeCandidate([string]$Destination, [string]$CandidateVersion, 
         if ($LASTEXITCODE) { throw 'Falló la compilación offline.' }
         $metadata = (& cargo metadata --offline --locked --format-version 1 --filter-platform x86_64-pc-windows-msvc | ConvertFrom-Json)
         if ($LASTEXITCODE) { throw 'Falló la lectura del grafo fijado.' }
-        $bins = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members -and $_.name -cne 'vantare-admin' } | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
+        $bins = @($metadata.packages | Where-Object { $_.id -cin $metadata.workspace_members -and $_.name -cnotin @('vantare-admin', 'vantare-installer') } | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
         if (@(Compare-Object $script:NativeBuildBins $bins -CaseSensitive).Count) { throw 'El inventario de binarios no coincide con cargo metadata; actualizarlo antes de empaquetar.' }
+        $installerBins = @($metadata.packages | Where-Object name -CEQ 'vantare-installer' | ForEach-Object { $_.targets | Where-Object { 'bin' -cin $_.kind } | ForEach-Object { $_.name } })
+        if (@(Compare-Object @('vantare-setup','vantare-uninstall') $installerBins -CaseSensitive).Count) { throw 'Inventario del instalador propio incorrecto.' }
     } finally { Pop-Location }
     $payload = Join-Path $destination 'payload'
     [IO.Directory]::CreateDirectory((Join-Path $payload 'bin')) | Out-Null

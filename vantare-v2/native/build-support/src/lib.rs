@@ -43,3 +43,87 @@ pub fn embed() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rustc-link-arg-bins={}", resource.display());
     Ok(())
 }
+
+/// Installer version resources without changing resources of application binaries.
+pub fn embed_installer(version: &str) -> Result<(), Box<dyn std::error::Error>> {
+    embed()?;
+    if !env::var("TARGET")?.ends_with("windows-msvc") {
+        return Ok(());
+    }
+    let parts = version
+        .split('.')
+        .map(str::parse::<u16>)
+        .collect::<Result<Vec<_>, _>>()?;
+    if parts.len() != 3 {
+        return Err("installer version requires major.minor.patch".into());
+    }
+    let sdk = env::var_os("WindowsSdkDir")
+        .map(PathBuf::from)
+        .or_else(|| {
+            env::var_os("ProgramFiles(x86)").map(|p| PathBuf::from(p).join("Windows Kits/10"))
+        })
+        .ok_or("Windows SDK absent")?;
+    let mut compilers = fs::read_dir(sdk.join("bin"))?
+        .map(|entry| entry.map(|e| e.path().join("x64/rc.exe")))
+        .collect::<Result<Vec<_>, _>>()?;
+    compilers.sort();
+    let compiler = compilers
+        .into_iter()
+        .rev()
+        .find(|p| p.is_file())
+        .ok_or("rc.exe absent")?;
+    let out = PathBuf::from(env::var_os("OUT_DIR").ok_or("OUT_DIR absent")?);
+    for (bin, description) in [
+        ("vantare-setup", "Instalador Vantare"),
+        ("vantare-uninstall", "Desinstalador Vantare"),
+    ] {
+        let source = out.join(format!("{bin}.rc"));
+        let resource = out.join(format!("{bin}.res"));
+        fs::write(
+            &source,
+            format!(
+                r#"
+#pragma code_page(65001)
+1 VERSIONINFO
+FILEVERSION {a},{b},{c},0
+PRODUCTVERSION {a},{b},{c},0
+FILEOS 0x40004
+FILETYPE 1
+BEGIN
+ BLOCK "StringFileInfo"
+ BEGIN
+  BLOCK "0c0a04b0"
+  BEGIN
+   VALUE "ProductName", "Vantare\0"
+   VALUE "ProductVersion", "{version}\0"
+   VALUE "FileVersion", "{version}\0"
+   VALUE "FileDescription", "{description}\0"
+   VALUE "InternalName", "{bin}\0"
+   VALUE "LegalCopyright", "Vantare 2026\0"
+  END
+ END
+ BLOCK "VarFileInfo"
+ BEGIN
+  VALUE "Translation", 0x0c0a, 1200
+ END
+END
+"#,
+                a = parts[0],
+                b = parts[1],
+                c = parts[2]
+            ),
+        )?;
+        let status = Command::new(&compiler)
+            .args(["/nologo", "/fo"])
+            .arg(&resource)
+            .arg(&source)
+            .status()?;
+        if !status.success() {
+            return Err(format!("installer resource: {status}").into());
+        }
+        println!("cargo:rustc-link-arg-bin={bin}={}", resource.display());
+        println!("cargo:rustc-link-arg-bin={bin}=/MANIFEST:EMBED");
+        println!("cargo:rustc-link-arg-bin={bin}=/MANIFESTUAC:level='asInvoker' uiAccess='false'");
+    }
+    Ok(())
+}

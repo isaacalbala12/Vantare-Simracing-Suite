@@ -197,3 +197,9 @@ esquema Authorization a helper; sin supresiÛn de lint ni cambio de conducta.
 Evidencia local E:/tmp/isa1594-review-evidence/ con manifest SHA256.
 Hash SQL/rollback idÈnticos; no nuevas acciones de producciÛn ni Intake real.
 STOP merge prevalece: PR abierto, auto-merge apagado; Isaac coordina re-review.
+
+CI remoto: GitGuardian FAILURE por 6 apariciones de fixtures sint√©ticas:
+Base64 Basic Authentication en b8a2289a (Rust/Python) y PostgreSQL Credentials
+en b580ed6b (Python). El reporte solo se√±ala tests; passwords/host son fixtures,
+no conexiones reales. Buz√≥n BLOQUEO y PR reflejan ese check; no se certifica CI
+remoto verde. Isaac clasificar√° el falso positivo durante la re-review.

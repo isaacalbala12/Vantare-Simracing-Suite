@@ -57,3 +57,11 @@ verificados de nuevo: 0fd573956731e5ebc66b690a9c36bc9f51bf92d59327d0251311cdf051
 / 206dd6353bbb6cfa9d195b29d0c0776127627e0fccb3aea15ca5d51dfcf4e621.
 Se conserva el postcheck original ACL/RLS 25/25; no hay cron, LOGIN/password,
 activación del proveedor ni despliegue nuevos.
+
+## Estado de CI remoto al entregar
+
+GitGuardian Security Checks: FAILURE, seis apariciones de las fixtures sintéticas
+Basic/PostgreSQL de esta suite; reporte vinculado a b8a2289a y b580ed6b en
+los archivos de tests Rust/Python. No son credenciales reales. Los gates locales
+anteriores siguen PASS; CI remoto no se declara verde. Incidentes pendientes de
+clasificación durante la re-review de Isaac. STOP merge/auto-merge apagado.

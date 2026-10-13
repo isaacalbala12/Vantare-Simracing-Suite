@@ -1,0 +1,36 @@
+{
+  "collected_at": "2026-10-14T00:52:36.511281+02:00",
+  "launches": 0,
+  "artifacts": [
+    {
+      "product": "TinyPedal",
+      "version": "2.51.0",
+      "file": "TinyPedal-2.51.0-windows.zip",
+      "url": "https://github.com/TinyPedal/TinyPedal/releases/download/v2.51.0/TinyPedal-2.51.0-windows.zip",
+      "sha256": "d3bda2d87888ed0b7633c7e183c6e21277c76850ea2ab47fd80461107817147b",
+      "published_sha256": "d3bda2d87888ed0b7633c7e183c6e21277c76850ea2ab47fd80461107817147b",
+      "status": "extracted_not_launched"
+    },
+    {
+      "product": "RaceLab",
+      "version": null,
+      "file": "RacelabApps-installer.exe",
+      "url": "https://download.racelab.app/RacelabApps-installer.exe",
+      "sha256": "ce7df8c1aab9f04653462f8aa61d271f2b0849ad34a3fbbd172b6d714dcb2eb0",
+      "authenticode_status": "Valid",
+      "publisher": "Pace Engineering GmbH",
+      "status": "downloaded_not_installed_not_launched"
+    },
+    {
+      "product": "Vantare",
+      "version": "0.0.976",
+      "file": "vantare-native-amd64-package.zip",
+      "sha256": "d79ba8e2b7a401be6bd4776523169ded3469b4be7ee82baca14b8214737d2c7e",
+      "source_sha": "bc89c8b8400a0a7915e7496b6f339d8e8231359b",
+      "source_dirty": false,
+      "channel": "beta",
+      "build_profile": "release",
+      "status": "isolated_copy_extracted_not_launched"
+    }
+  ]
+}

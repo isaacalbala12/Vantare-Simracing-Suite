@@ -1,0 +1,31 @@
+{
+  "consulted_at": "2026-10-14T00:52:36.983179+02:00",
+  "url": "https://racelab.app/",
+  "verification": "DOM comparison cells: green check path versus cross, plus Basic tooltip",
+  "basic_examples": [
+    "Relative",
+    "Input Telemetry",
+    "Standings"
+  ],
+  "prices_eur": {
+    "monthly": 4.9,
+    "annual": 49.9,
+    "lifetime": 399,
+    "commercial_per_seat_annual": 299
+  },
+  "free": {
+    "basic_overlays": true,
+    "full_customization": false,
+    "smart_layouts": false,
+    "layout_library": "limited",
+    "driver_tags": 5,
+    "series": "limited",
+    "fuel_sharing": false,
+    "race_briefing": false,
+    "tools_manager_max": 3,
+    "vr": false,
+    "multi_sim": true
+  },
+  "faq_url": "https://racelab.app/faq/",
+  "faq_without_sim": "Open overlays have no data and do not render; preview mode not ruled out by this answer."
+}

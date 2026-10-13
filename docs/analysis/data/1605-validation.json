@@ -1,0 +1,15 @@
+{
+  "json_files": 8,
+  "planned_measurements": 27,
+  "executed_measurements": 0,
+  "local_links_checked": 21,
+  "native_evidence_hashes": 6,
+  "catalog_counts": {
+    "racelab": 30,
+    "tinypedal": 78,
+    "vantare": 18
+  },
+  "recommendations": 5,
+  "result": "PASS",
+  "limits": "Document consistency only; no app/live/performance validation."
+}

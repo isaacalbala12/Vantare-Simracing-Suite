@@ -12,6 +12,20 @@ GitHub Issues y Project Vantare; #1561/area:plataforma, In Progress, sin milesto
 
 ## 3. Estado real y canal
 
+**#1605 / Plane VANTA-12 · 14/10/2026:** comparativa documental de RaceLab y
+TinyPedal contra `nightly@69fa2d65`, en rama aislada
+`vantareapp/isa-1605-comparativa-racelab-tinypedal`, sin cambios de código.
+Informe y datos en `docs/analysis/comparativa-racelab-tinypedal-2026-10.md`
+y `docs/analysis/data/1605-*` desde la raíz Git. Las 27 tomas de consumo
+siguen pendientes: no se acredita un FIN de #1565 posterior a las 00:00 del
+14/10 requerido por las reglas nocturnas. No se abrieron apps ni se adquirió
+lock. Copias/descargas oficiales preparadas en `C:/tmp/1605-research/`;
+Vantare 0.0.976 viene de nightly `bc89c8b8`, no de toda la base actual.
+Sin ranking de rendimiento ni prueba live; PR draft, SHA, checks y siguiente
+paso se registran en [#1605](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1605).
+Siguiente: revisar documentación parcial y desbloquear señal horaria,
+verificación de escritorio y acceso gratuito antes de medir; no cerrar issue.
+
 [#1581](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1581) MERGED en nightly `707514e2` (squash de `vantareapp/isa-1561-studio-split`, que incorporó `origin/nightly@1dfdd6f1` mediante merge). PR-4 `1fc35e0e`, PR-6 `0efeeab5` y correcciones `51ef00e5`. El split conserva lógica y firmas públicas; visibilidad mínima pub(super), zoom privado, imports en cabecera y excepciones con existencia obligatoria. SHA final/checks se verifican en #1561 y `C:/tmp/buzon/1561-hub.md`.
 
 #1579 MERGED en nightly `6ce09c69`: PR-3/PR-5, guardias 22fe7490, PR-3 abc22332, PR-5 7a646ac8 y revisión d2710f4e; entrega original en `vantareapp/isa-1561-looks-frame`. Gates reconciliados con #1578: fmt/Clippy PASS, Nextest 1621/1621 (7 skips), lifecycle 18/18 y telemetría 25/25. Sin promoción/release.

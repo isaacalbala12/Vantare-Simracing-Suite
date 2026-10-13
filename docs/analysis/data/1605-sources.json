@@ -1,0 +1,112 @@
+[
+  {
+    "id": "R1",
+    "url": "https://racelab.app/",
+    "final_url": "https://racelab.app/",
+    "consulted_at": "2026-10-14T00:48:52.408369+02:00",
+    "http_status": 200,
+    "sha256": "6e27f071aa4a7a593b052890990adddc0bc6b062f90b5b6c441ab22f070d30b5",
+    "bytes": 2985942,
+    "relevance": "Catálogo, plataformas, precios y tabla Free/Pro; verificación adicional por DOM con iconos."
+  },
+  {
+    "id": "R2",
+    "url": "https://garage.racelab.app/docs/faq/layout-vs-overlay/",
+    "final_url": "https://garage.racelab.app/docs/faq/layout-vs-overlay/",
+    "consulted_at": "2026-10-14T00:48:52.408369+02:00",
+    "http_status": 200,
+    "sha256": "6d5903d634da3f05e0a391a3ca68ede42e9eb225c2deeadd43764c04f2eb215b",
+    "bytes": 17860,
+    "relevance": "Ventanas individuales, canvas y cambio de layout por coche/serie."
+  },
+  {
+    "id": "R3",
+    "url": "https://garage.racelab.app/docs/first-steps/lmu/",
+    "final_url": "https://garage.racelab.app/docs/first-steps/lmu/",
+    "consulted_at": "2026-10-14T00:48:52.408369+02:00",
+    "http_status": 200,
+    "sha256": "956ed4df95aab6cf5d15eb46a77867f9a86fa2bb7faaca0879e07925972651b4",
+    "bytes": 22074,
+    "relevance": "Instalación del plugin LMU y configuración del juego."
+  },
+  {
+    "id": "R4",
+    "url": "https://garage.racelab.app/docs/advanced-features/tools-manager/",
+    "final_url": "https://garage.racelab.app/docs/advanced-features/tools-manager/",
+    "consulted_at": "2026-10-14T00:48:52.408369+02:00",
+    "http_status": 200,
+    "sha256": "48ff859df9c040e84b8c68b9904065472dc685cff4dd8817ed9ad24d798e555e",
+    "bytes": 38391,
+    "relevance": "Lanzamiento y cierre de aplicaciones externas."
+  },
+  {
+    "id": "R5",
+    "url": "https://garage.racelab.app/docs/vr/compatibility/",
+    "final_url": "https://garage.racelab.app/docs/vr/compatibility/",
+    "consulted_at": "2026-10-14T00:48:52.408369+02:00",
+    "http_status": 200,
+    "sha256": "8ac56096f50dbd989165ae0cfb22a4ebe5db57ff653ed07555566557bff2604a",
+    "bytes": 22368,
+    "relevance": "Compatibilidad VR condicionada por juego/runtime."
+  },
+  {
+    "id": "R6",
+    "url": "https://racelab.app/faq/",
+    "final_url": "https://racelab.app/faq/",
+    "consulted_at": "2026-10-14T00:48:52.408369+02:00",
+    "http_status": 200,
+    "sha256": "318dcf2454718246933281e70fbc31b64a9050e438edae266e7d3f7711c2916d",
+    "bytes": 101298,
+    "relevance": "FAQ: sin simulador los overlays abiertos no muestran datos; respuesta comprobada en navegador."
+  },
+  {
+    "id": "R7",
+    "url": "https://garage.racelab.app/release-notes/",
+    "final_url": "https://garage.racelab.app/release-notes/",
+    "consulted_at": "2026-10-14T00:48:52.408369+02:00",
+    "http_status": 200,
+    "sha256": "8d5027d46c12fb1d3121d5bd436bcbd47579c17a39140ad6e748f3e46bab7ace",
+    "bytes": 66055,
+    "relevance": "Última nota visible: 8.2.0, 2026-09-03; no acredita versión instalada."
+  },
+  {
+    "id": "R8",
+    "url": "https://garage.racelab.app/docs/faq/performance_guide/",
+    "final_url": "https://garage.racelab.app/docs/faq/performance_guide/",
+    "consulted_at": "2026-10-14T00:48:52.408369+02:00",
+    "http_status": 200,
+    "sha256": "37b97d3db591ae109de8d318eefbdc244d58ddd1b07f8db7ffe711f888054a0a",
+    "bytes": 67519,
+    "relevance": "Composición Windows y propuesta de comparación con mismo replay."
+  },
+  {
+    "id": "T1",
+    "url": "https://raw.githubusercontent.com/TinyPedal/TinyPedal/v2.51.0/README.md",
+    "final_url": "https://raw.githubusercontent.com/TinyPedal/TinyPedal/v2.51.0/README.md",
+    "consulted_at": "2026-10-14T00:48:52.408369+02:00",
+    "http_status": 200,
+    "sha256": "a45a99c7f80078eb3868b42a2da83d73f05a1c744ffdac59b54257c9209413d2",
+    "bytes": 12788,
+    "relevance": "ACC/LMU/rF2, Windows/Linux, instalación ZIP, GPL-3.0-or-later."
+  },
+  {
+    "id": "T2",
+    "url": "https://raw.githubusercontent.com/wiki/TinyPedal/TinyPedal/User-Guide.md",
+    "final_url": "https://raw.githubusercontent.com/wiki/TinyPedal/TinyPedal/User-Guide.md",
+    "consulted_at": "2026-10-14T00:48:52.408369+02:00",
+    "http_status": 200,
+    "sha256": "56d9f38c1b9d49bb17b449e40266dbdfc3e5a06fed9e4d54e2bfd6042dcd156b",
+    "bytes": 237209,
+    "relevance": "Widgets, combustible, neumáticos, notas de audio y actualización manual; wiki mutable."
+  },
+  {
+    "id": "T3",
+    "url": "https://api.github.com/repos/TinyPedal/TinyPedal/releases/latest",
+    "final_url": "https://api.github.com/repos/TinyPedal/TinyPedal/releases/latest",
+    "consulted_at": "2026-10-14T00:48:52.408369+02:00",
+    "http_status": 200,
+    "sha256": "11c6240a626250e79fc303a6700e0bc3404cad3796d4c734efca5b99c86442e6",
+    "bytes": 10956,
+    "relevance": "v2.51.0, publicado 2026-10-03; digest de ZIP Windows."
+  }
+]

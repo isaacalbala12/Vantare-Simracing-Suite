@@ -1,0 +1,20 @@
+{
+  "collected_at": "2026-10-14T00:49:31.0589002+02:00",
+  "rules_sha256": "d9a2a00bfd03ddf48510b30d0212d6dd02a822c5e6a30f5fb7510fc61703769e",
+  "gate_file_last_write": "2026-10-13T23:16:08.5701341+02:00",
+  "gate_file_sha256": "cc27dbebe363f4cda6642fb429494506eddac06ca0c24a6598b6254dce3653a3",
+  "fin_after_required_cutoff_verified": false,
+  "required_cutoff": "2026-10-14T00:00:00+02:00",
+  "lock_exists": false,
+  "lock_acquired": false,
+  "apps_launched_by_this_task": [],
+  "measurement_count": 0,
+  "measurement_status": "BLOCKED",
+  "vantare_test_package_source_sha": "bc89c8b8400a0a7915e7496b6f339d8e8231359b",
+  "test_package_source_is_ancestor_of_nightly": true,
+  "native_desktop_ui_tools_available": false,
+  "racelab_installer_run": false,
+  "tinypedal_portable_extracted": true,
+  "registry_installed_app_matches": [],
+  "registry_check_scope": "HKCU/HKLM uninstall entries RaceLab/TinyPedal only; not an exhaustive portable search"
+}

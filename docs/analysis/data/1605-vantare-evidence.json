@@ -1,0 +1,59 @@
+{
+  "source_sha": "69fa2d650c85df4184d5821ae4c032201789a1c1",
+  "evidence": [
+    {
+      "path": "vantare-v2/native/ui/src/registry.rs",
+      "sha256": "fd2c1734c73cde70526d57748762a51339c8eb2c3d3709911eb1b329bca04c45",
+      "lines": [
+        138,
+        156
+      ],
+      "claim": "18 widget kinds"
+    },
+    {
+      "path": "vantare-v2/native/runtime/src/adapter/mod.rs",
+      "sha256": "d5f5f9db64c12621669dd1ffda8f2add734d47a629a5469ef847b8aeea419174",
+      "lines": [
+        7,
+        8
+      ],
+      "claim": "Only ACC and LMU adapter modules"
+    },
+    {
+      "path": "vantare-v2/native/runtime/src/bin/vantare-core.rs",
+      "sha256": "75c51013ebc1e47a4710eae0c375e882ec797377d82a41b759a7fd1ec84929b2",
+      "lines": [
+        67,
+        69
+      ],
+      "claim": "CLI rejects simulators other than lmu/acc"
+    },
+    {
+      "path": "vantare-v2/native/hub/README.md",
+      "sha256": "cc6f888ebded3161757463265db4085c6e8d1bc6b2d4d6259703876289162012",
+      "lines": [
+        3,
+        34
+      ],
+      "claim": "Studio undo/session visibility and add-widget catalog"
+    },
+    {
+      "path": "vantare-v2/native/strategy/README.md",
+      "sha256": "fb6529bcc0d215492e1c80d08bdf83efbcbed2e2850ab2af3787fdec1d680196",
+      "lines": [
+        21,
+        36
+      ],
+      "claim": "Local strategy solver and proof limits"
+    },
+    {
+      "path": "vantare-v2/docs/vantare-program/product-contract.md",
+      "sha256": "99cee9fd34aa2b1a21c713a0f88ca2265e28ca3c13d81aef011072d13284f989",
+      "lines": [
+        72,
+        102
+      ],
+      "claim": "Commercial decisions; not commercial availability"
+    }
+  ]
+}

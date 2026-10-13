@@ -68,13 +68,24 @@ Cambio puntual aprobado por Isaac en #1591: bienvenida y Opciones muestran
 Gates Rust por cola: fmt/check/Clippy PASS, Nextest 1646/1646 (7 skips), lifecycle
 18/18 (`1591-copy-*.log`, lifecycle-r2). SHA en issue/PR #1600; revisión en curso.
 
-### Estado previo de plataforma (su base propia)
-
 Correcciones de revisión #1600 autorizadas: P1 y P2-2 a P2-5. P1 reproduce
 carga previa a Rust y pasa tras restringir imports estáticos a System32:
 2 PE y 4 probes con DLL inocua (con/sin /S). [Evidencia de correcciones](../../reviews/2026-10-13-1600-correcciones.md).
-Resto en curso; P2-5 requiere bootstrap realmente anterior. SHA de cada hito
-en la issue, gates finales pendientes; no integrar ni publicar una release.
+P2-2 y P2-3: reparación e2e (2 casos/8 checks) y reintentos en 7 fronteras PASS,
+manteniendo hashes/datos y retirando solo accesos propios. P2-4: contratos y
+CLI real de /D y _?=, incluidos Unicode/espacios repetidos, PASS.
+P2-5 RED con NSIS/base verdaderamente pre-PR `298abc33` limpia: Register de A
+tras rollback vuelve a PowerShell. El orquestador acepta esa limitación y
+resuelve la DUDA: no se reescribe A. Dos recuperaciones PASS: reinstalar B
+tras rollback, y desinstalar desde la entrada antigua antes de reinstalar B
+con metadatos huérfanos. Restauran GPUI/accesos/preferencias y datos exactos;
+Register B es real, readiness es fixture. README y PR documentan el escenario.
+Gates locales 1650/1650 (7 skips), lifecycle 18/18, fmt/check/Clippy, matriz
+Release 68, shell 23 y beta 99 PASS. SHA/canal final en issue/PR; sigue draft
+para revisión independiente, sin integración ni acreditación live/Windows limpio.
+SHA por hito en la issue; no integrar, firmar ni publicar una release.
+
+### Estado previo de plataforma (su base propia)
 
 Base incorporada mediante merge (sin rebase): `origin/nightly@b2186f82746424b4844a5909efd31530c5bbe5b3`,
 que contiene #1570 (handoffs de estado), #1572 (#1563 pedales) y #1573 (#1568 acceso).

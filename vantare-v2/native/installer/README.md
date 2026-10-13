@@ -55,3 +55,25 @@ ni comparten IPC con Isaac. Live, Windows limpio y escalas físicas 125/150/200 
 deben acreditarse en una cuenta/VM de pruebas; no se deducen de estos fixtures.
 No usar publisher ni semillas reales para QA. Authenticode no se implementa
 en esta issue; firma Ed25519 del feed sigue obligatoria e inalterada.
+
+## Limitación aceptada: rollback a una generación anterior al instalador GPUI
+
+Si A usa el instalador anterior, se instala B con GPUI y B falla al arrancar,
+el rollback restaura A. Su `Register` original puede sustituir el registro y
+el acceso de desinstalación GPUI por la entrada PowerShell antigua. No se
+reescribe la generación A; los datos siempre se conservan. P2-5 de la revisión
+de #1600 queda aceptado por el orquestador con este alcance.
+
+Un Setup B o posterior restaura su Uninstall.exe, el registro GPUI y los accesos
+propios conservando las opciones. Esto funciona aunque encuentre la entrada
+PowerShell y los metadatos del instalador anterior. Si se desinstala desde esa
+entrada antigua, pueden quedar `installer-ui.json` y `installer-notices.txt`
+huérfanos: una reinstalación B o posterior los reutiliza/renueva sin bloquearse
+por la ausencia del EXE anterior y conserva los datos. Las actualizaciones por
+feed de generaciones B o posteriores usan el Register que respeta GPUI.
+
+`packaging/installer-legacy-register-tests.ps1` prueba A → B → rollback A →
+reinstalar B, tanto directamente como después de desinstalar desde la entrada
+antigua. Usa NSIS y candidate de la base pre-PR limpia `298abc33`, comprueba
+registro/accesos/hash/preferencias y datos exactos, y ejecuta Register real de B.
+La señal de readiness es una fixture; el arranque live requiere otro SID/VM.

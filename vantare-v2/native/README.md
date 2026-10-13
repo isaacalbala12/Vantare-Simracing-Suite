@@ -35,6 +35,10 @@ engineer → domain, ipc, runtime (flujos neutrales y cierre; sin adaptadores)
 `runtime`, ni transitivamente. Lo comprueba `domain/tests/architecture.rs`
 (`cargo tree`) dentro de `cargo test`.
 
+La estructura de Studio vive en [hub/README.md](hub/README.md).
+`hub/tests/architecture.rs` vigila los techos de tamaño del Hub; subir un techo
+exige un plan de partición en el mismo PR.
+
 ## Contrato de fotos y datos guardados
 
 El pipe Core→Hub/overlays negocia solo DTO v10; rechaza peers v7/v8/v9.

@@ -15,7 +15,9 @@ El mapa de crates y sus fronteras viven en [README.md](README.md),
    El pipe live es estricto; compatibilidad guardada usa un lector explícito.
 4. Ningún #[path] nuevo entre crates; reutilizar la interfaz del crate dueño.
 5. Ningún commit en internal/, cmd/, pkg/ o frontend/ salvo hotfix autorizado.
-6. Ningún fichero hub/src >2000 LOC sin plan de partición en el mismo PR.
+6. `hub/tests/architecture.rs` vigila los techos de tamaño de los archivos Rust
+   de hub/src y define sus excepciones (#1561). Bajar un techo es libre;
+   subirlo exige un plan de partición en el mismo PR. Studio no tiene excepción.
 7. Adapter neutral: reglas del simulador dentro de su adapter; widgets reciben
    ViewModels, sin persistencia, permisos, red ni posición espacial.
 

@@ -20,6 +20,7 @@ Rama `vantareapp/isa-1561-studio-split`, worktree `C:/tmp/vw-1561-hub`; incorpor
 
 ## 4. Decisiones cerradas
 
+- #1569 (Isaac, ronda 4 opción 1): sin selección, el carril del inspector es el catálogo «Añadir widget»; el lienzo no cede ancho. Clic = primer hueco libre, arrastre con imán de 7 px, un paso de historial; Pro con candado y «Ver planes» a Licencias.
 - #1566 (Isaac): Pedales Vantare = opción A, tres columnas juntas (columna 24, barra 16; 96 × 160 con separación 2), sin rótulos (color por pedal), con porcentaje encima, sin marcha ni velocidad; separación #1563 en ambos Looks. Guardados sin `designSystem` → Eficiencia; nuevos → Vantare. `reference/pedals.png` intacta.
 - Una proyección/estado por widget; N Looks sobre Board/Motion, sin otra aplicación Wails/React.
 - Standings: tres listas/formatos; filas, Look, clase/gaps, pie y ventana del jugador comunes. Presets D7 solo nuevos/reset; reset afecta una pestaña. Legacy conserva columnas, también al editar Carrera primero; orden del simulador e intervalo sin cambios.
@@ -45,8 +46,12 @@ Logs y revisión/hashes: `C:/tmp/ola2/evidence-1564`; informe `C:/tmp/ola2/infor
 
 Guardias #1561 `22fe7490`: layout Eficiencia/Neutro/acentos de cuatro widgets, transiciones activas de Banderas/FastestLap/Input/PedalsTelemetry y replay: 8/8 PASS antes del refactor. Capturas base de 18 widgets por `compare.ps1` guardadas e inspeccionadas; diferencias con goldens históricos registradas sin recalibración. Cuatro pintores equivalentes tras renombrado de imports/tipos; PR-3 reduce 6 líneas Rust (13321→13315 en 12 fuentes, incluidos tests; 22fe7490→abc22332). PR-5 reduce 72 líneas Rust (12945→12873 en 24 fuentes); registro 175→157, wrappers 8→0 y sitios de API de movimiento por widget animado 2→1. Cuerpos de frame conservados 18/18. Gates anteriores al merge de #1578 por la cola: fmt/Clippy -D warnings PASS, Nextest 1615/1615 (7 skips), lifecycle 18/18; build parity-capture/paint-stats y guardias con ambas features 5/5 PASS. Paridad final inspeccionada: 18/18 hashes PNG idénticos, 0/1720978 píxeles distintos, umbral 0 sin máscaras. Verificación retenida 456 huellas PASS. Revisión #1579: JSON canónico fijado desde 22fe7490/b2186f82; cuatro instancias y nombres/defaults/fallbacks guardados 4/4 PASS. Mutación real del orden style/accent rechazada por bytes; restauración 4/4 PASS. Receta DTO v10, guardados v7–v10 y alta de Kind::label corregidas. Gates tras reconciliar #1578: fmt/Clippy PASS, Nextest 1621/1621 (234.263 s, 7 skips), lifecycle 18/18 y telemetría 25/25 (851.768 s; ACC 804.035 s). Fixtures vigentes y lectores guardados IPC PASS. Sin nuevas modificaciones a fuentes/fixtures/referencias de widgets; paridad previa conservada, no recapturada. Evidencia nueva: `C:/tmp/ola2/evidence-1561-ui`; buzón `C:/tmp/buzon/1561-ui.md`.
 
+**#1569 · Añadir widget:** rama `vantareapp/isa-1569-anadir-widget` sobre #1581 + `origin/nightly@1dfdd6f1` (merge, sin rebase). `studio/add_widget.rs` (catálogo, agrupación, hueco libre, imán, arrastre, aviso) y `Editor::add_at`. Gates locales tras el merge: fmt/Clippy -D warnings PASS, Nextest 1633/1633 (7 skips), lifecycle 18/18. Capturas reales 1920×1080 (política LaunchV1) frente al HTML aprobado en cinco estados: `C:/tmp/ola2/evidence-1569/hoja-antes-despues.png`. El arrastre real con ratón no se automatizó: lo cubren tests de imán/hueco y el flujo headless de clic.
+
 ## 7. Riesgos y deuda
 
+- #1569 depende de #1581, que está DIRTY frente a nightly (conflicto del handoff, resuelto en la rama #1569). Su PR arrastra #1581 hasta que esta se integre.
+- `cargo build -p vantare-hub` aislado falla sin `vantare-services/network` (`services/access.rs` usa `config`); los gates de workspace no lo ven.
 - CI de #1581 tras el merge local pendiente; los gates locales no acreditan los remotos.
 - #1561: comparar contra esta base; los goldens históricos ya difieren en dimensiones/píxeles antes del refactor y no se recalibran.
 - #1535: SQL no aplicado; producción/ref/DEFINER/ACL/migraciones sin verificar. Requiere confirmar destino y respuesta expresa del orquestador.
@@ -56,7 +61,7 @@ Guardias #1561 `22fe7490`: layout Eficiencia/Neutro/acentos de cuatro widgets, t
 
 ## 8. Issues terminadas, activas y pendientes
 
-Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. #1564/PR #1577, #1535/PR #1578, #1561 PR-3/PR-5 (#1579) y #1566/PR #1580 integradas en la base; #1535 sigue abierta por la previa/SQL bloqueados. Activa: #1561 PR-4/PR-6 (#1581) y #1569 sobre ella. Pendiente coordinada: #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
+Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. #1564/PR #1577, #1535/PR #1578, #1561 PR-3/PR-5 (#1579) y #1566/PR #1580 integradas en la base; #1535 sigue abierta por la previa/SQL bloqueados. Activa: #1561 PR-4/PR-6 (#1581) y #1569 sobre ella (PR draft a nightly). Pendiente coordinada: #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
 
 ## 9. Siguiente acción exacta
 
@@ -64,5 +69,6 @@ Gates del árbol reconciliado PASS; publicar el merge local en #1581 y verificar
 
 ## 10. Última actualización
 
+2026-10-13 · GitHub #1569 · Claude (Opus 5.5): catálogo «Añadir widget» en el carril; §3 (evidencia), §4, §7 y §8.
 2026-10-13 · GitHub #1561 · Codex. Reconciliación de #1579 con PR-4/PR-6 mediante merge; estado y diario en issue/buzón.
 2026-10-13 · GitHub #1566 · Claude (Opus 5.5): §1, §4, §6 y §8 por Pedales Vantare; merge de nightly con #1578 y #1579 conservados.

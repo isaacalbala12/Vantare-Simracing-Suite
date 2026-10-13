@@ -118,7 +118,10 @@ impl Translator {
     ) -> Result<Observation, Rejection> {
         let frame = frame::admit(buffer, build)?;
         // Reanudar una pausa confirmada no es recuperarse de una fuente colgada.
-        if self.emitted_paused && frame.source_time != self.last_source_time {
+        if self.emitted_paused
+            && frame.source_time.is_some()
+            && frame.source_time != self.last_source_time
+        {
             self.gate = Gate::default();
             let inputs = frame
                 .player
@@ -1194,6 +1197,30 @@ mod tests {
         );
     }
 
+    #[test]
+    fn missing_source_clock_cannot_resume_a_confirmed_pause() {
+        let mut t = Translator::new(SourceKind::Live);
+        t.observe(REAL_44, BUILD, ms(0)).unwrap();
+        t.rest
+            .accept_session(br#"{"session":"PRACTICE1"}"#, ms(500))
+            .unwrap();
+        assert_eq!(
+            t.observe(REAL_44, BUILD, ms(500))
+                .unwrap()
+                .state
+                .source_state,
+            vantare_domain::SourceState::Paused
+        );
+        let mut bytes = REAL_44.to_vec();
+        bytes[1700..1708].copy_from_slice(&f64::NAN.to_le_bytes());
+        assert_eq!(
+            t.observe(&bytes, BUILD, ms(520))
+                .unwrap()
+                .state
+                .source_state,
+            vantare_domain::SourceState::Stale
+        );
+    }
     #[test]
     fn changing_classes_with_fixed_drivers_are_bounded_independently() {
         let mut translator = translator();

@@ -119,6 +119,20 @@ explícita del documento exacto. No quitar la guarda ni cambiar ACL.
 
 ## 4. Primera publicación y timer (cada acción autorizada)
 
+Antes de escribir, Isaac desactiva cualquier escritor ClickUp restante. En su
+terminal GitHub autorizada (no con la deploy key de solo lectura del servidor):
+
+```powershell
+gh workflow list --repo isaacalbala12/Vantare-Simracing-Suite --all --json path,state --jq '.[] | select(.path == ".github/workflows/clickup-roadmap.yml") | .state'
+gh workflow disable clickup-roadmap.yml --repo isaacalbala12/Vantare-Simracing-Suite
+```
+
+Repetir la consulta y exigir `disabled_manually`; si ya se retiró de la rama
+predeterminada, confirmar su ausencia y no ejecutar disable. Mantener parado el
+timer anterior del servidor. No basta que esta PR lo borre solo de nightly.
+Detener también ejecuciones ClickUp ya en curso y verificar que terminaron antes
+de aprobar el candidato. Después, en `vantare-svc` como root:
+
 ```bash
 systemctl start vantare-roadmap.service
 systemctl show vantare-roadmap.service -p Result -p ExecMainStatus

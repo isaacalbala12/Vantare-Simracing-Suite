@@ -23,7 +23,9 @@ class ServerTests(unittest.TestCase):
 tool=$(basename "$0")
 echo "$tool $*" >> "$TEST_LOG"
 case "$tool" in
-  git) if [[ "$1" = rev-parse ]]; then echo "$ROADMAP_REF"; fi ;;
+  git)
+    [[ -z "${PLANE_API_KEY:-}" && -z "${PGPASSWORD:-}" ]] || exit 1
+    if [[ "$1" = rev-parse ]]; then echo "$ROADMAP_REF"; fi ;;
   python3)
     if [[ "$*" = *unittest* && ( -n "${PLANE_API_KEY:-}" || -n "${PGPASSWORD:-}" ) ]]; then exit 1; fi
     if [[ "$*" = *publish_plane_roadmap.py* && ( -z "${PLANE_API_KEY:-}" || -n "${PGPASSWORD:-}" ) ]]; then exit 1; fi

@@ -8,11 +8,11 @@ repo=${ROADMAP_REPO:-$HOME/repo}
 : "${PLANE_URL:?}" "${PLANE_WORKSPACE:?}" "${PLANE_PROJECT_ID:?}" "${PLANE_API_KEY:?}"
 : "${PGHOST:?}" "${PGPORT:?}" "${PGDATABASE:?}" "${PGUSER:?}" "${PGPASSWORD:?}"
 export GIT_SSH_COMMAND="ssh -i $HOME/.ssh/vantare_deploy -o IdentitiesOnly=yes -o StrictHostKeyChecking=yes"
-[ -d "$repo/.git" ] || git clone -q --no-checkout git@github.com:isaacalbala12/Vantare-Simracing-Suite.git "$repo"
+[ -d "$repo/.git" ] || env -u PLANE_API_KEY -u PGPASSWORD git clone -q --no-checkout git@github.com:isaacalbala12/Vantare-Simracing-Suite.git "$repo"
 cd "$repo"
-git fetch -q --depth 1 origin "$ROADMAP_REF"
-git checkout -q --detach FETCH_HEAD
-[ "$(git rev-parse HEAD)" = "$ROADMAP_REF" ] || { echo 'Unexpected publisher SHA'; exit 1; }
+env -u PLANE_API_KEY -u PGPASSWORD git fetch -q --depth 1 origin "$ROADMAP_REF"
+env -u PLANE_API_KEY -u PGPASSWORD git checkout -q --detach FETCH_HEAD
+[ "$(env -u PLANE_API_KEY -u PGPASSWORD git rev-parse HEAD)" = "$ROADMAP_REF" ] || { echo 'Unexpected publisher SHA'; exit 1; }
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 env -u PLANE_API_KEY -u PGPASSWORD python3 -B -m unittest discover -s vantare-v2/scripts -p 'test*roadmap*.py' >"$tmp/tests.log" 2>&1 || { echo 'Roadmap offline tests failed'; exit 1; }

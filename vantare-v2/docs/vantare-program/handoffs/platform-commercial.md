@@ -1,6 +1,20 @@
 # Handoff vivo — Plataforma, cuenta, servicios y distribución
 
 Estado de la base indicada; releer la issue antes de ejecutar.
+
+## #1609 / VANTA-22 · Analítica consentida (14/10/2026)
+
+Rama `vantareapp/isa-1609-posthog-uso-embudo`, base nightly `69fa2d65`.
+En curso: catálogo y límites en `docs/analytics/eventos.md`, integración web para
+Marketing en `web-snippet.md` y ocho insights en `paneles.md`. Script de paneles
+inerte por defecto en `tools/analytics/posthog_paneles.py`; nunca ejecutado con
+`--apply`. Consentimiento de uso separado y apagado; no reusar el sí heredado.
+Pendientes coordinados: casilla #1591/PR #1600, atribución web→app, registro y
+pago exactos con consentimiento durable backend. No alterar auth/billing para
+inventar esas señales. Se preparan observaciones nativas explícitamente etiquetadas.
+Clave personal pendiente por ventana privada del orquestador; no buscar/pedir
+por chat. Sin cambios en producción, deploy, merge, release ni PostHog real.
+Gates y entrega/PR se registrarán aquí y en la issue tras completarlos.
 [Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/platform-commercial.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 
 ## #1601 / VANTA-10 · Plane, fase de implementación (13/10/2026)

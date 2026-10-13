@@ -1,6 +1,7 @@
 """Adversarial review regressions. Synthetic fixtures, no provider or network."""
 import json
 import copy
+import hashlib
 import re
 from pathlib import Path
 import tempfile
@@ -16,6 +17,7 @@ class Tests(unittest.TestCase):
     def pipeline(self, body):
         r=report();r['title']=body;r['body']=body+' steps expected actual '*15
         r['attachments'][0]['content']='ERROR '+body
+        r['attachments'][0]['sha256']=hashlib.sha256(r['attachments'][0]['content'].encode()).hexdigest()
         r['context']['telemetry_summary']['errors']=[{'type':'Fixture','message':body,'first_line':body,'fingerprint':'review-fixture'}]
         captured=[];sent=[];proposal=response();proposal["evidence_refs"]=["log:L1-L1"]
         with tempfile.TemporaryDirectory() as root:

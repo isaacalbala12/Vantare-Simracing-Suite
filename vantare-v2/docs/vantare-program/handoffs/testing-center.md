@@ -1,7 +1,8 @@
 # Handoff vivo â€” Testing Center
 
 Estado #1594 / VANTA-38: migraciÃ³n aplicada en producciÃ³n; cliente y worker
-inerte implementados, todos los gates locales PASS. Plane Por revisar verificado con PR.
+inerte implementados; siete hallazgos de #1602 corregidos con RED/GREEN,
+commits separados y gates finales PASS. Plane Por revisar con PR para re-review.
 Cron, LOGIN/contraseÃ±a, proveedor y despliegue siguen pendientes de su OK.
 
 [HistÃ³rico anterior por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/testing-center.md).
@@ -184,3 +185,15 @@ y tres regresiones de privacidad ampliadas al prepare/RPC preview real.
    RED A confirma tras B y queda perdido; GREEN A se descubre una vez.
    Test adicional con 205 vistos delante de 20 nuevos evita starvation.
    Ensayo de visibilidad con State real/psql mock, sin consulta a producciÃ³n.
+
+## Cierre de correcciones #1602
+
+Commits P1 b8a2289a / 92f88d5c / ae18c39f; P2 9bf5cd69 / 3a5112dc /
+fdb891a3 / b580ed6b. Captura adicional 9e6a352a, necesaria para probar prepare.
+Gates finales fmt/check/Clippy PASS, Nextest 1656/1656 (7 skips), lifecycle
+18/18, Python 36/36 y quality 456 PASS. Clippy exigió extraer el consumo del
+esquema Authorization a helper; sin supresión de lint ni cambio de conducta.
+[Tabla y evidencia de cada RED/GREEN](../../../../tools/triage/review-1602-regressions.md).
+Evidencia local E:/tmp/isa1594-review-evidence/ con manifest SHA256.
+Hash SQL/rollback idénticos; no nuevas acciones de producción ni Intake real.
+STOP merge prevalece: PR abierto, auto-merge apagado; Isaac coordina re-review.

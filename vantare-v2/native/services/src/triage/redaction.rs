@@ -75,6 +75,30 @@ fn unc_paths(text: &str) -> String {
     }
     out
 }
+// Skip only a recognized unquoted Authorization scheme; the caller then
+// consumes the credential too instead of stopping at the scheme's first space.
+fn authorization_credential_start(text: &str, lower: &str, mut start: usize) -> usize {
+    for scheme in ["basic", "bearer"] {
+        let end = start + scheme.len();
+        if lower[start..].starts_with(scheme)
+            && text
+                .as_bytes()
+                .get(end)
+                .is_some_and(u8::is_ascii_whitespace)
+        {
+            start = end;
+            while text
+                .as_bytes()
+                .get(start)
+                .is_some_and(u8::is_ascii_whitespace)
+            {
+                start += 1;
+            }
+            break;
+        }
+    }
+    start
+}
 fn labeled_secrets(text: &str) -> String {
     let lower = text.to_ascii_lowercase();
     let labels = [
@@ -137,26 +161,9 @@ fn labeled_secrets(text: &str) -> String {
                 }
                 // An unquoted Authorization value includes the scheme AND credential.
                 if *label == "authorization" && quote.is_none() {
-                    for scheme in ["basic", "bearer"] {
-                        let end = start + scheme.len();
-                        if lower[start..].starts_with(scheme)
-                            && text
-                                .as_bytes()
-                                .get(end)
-                                .is_some_and(u8::is_ascii_whitespace)
-                        {
-                            start = end;
-                            while text
-                                .as_bytes()
-                                .get(start)
-                                .is_some_and(u8::is_ascii_whitespace)
-                            {
-                                start += 1;
-                            }
-                            break;
-                        }
-                    }
+                    start = authorization_credential_start(text, &lower, start);
                 }
+
                 let end = start
                     + text[start..]
                         .chars()

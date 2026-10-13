@@ -195,7 +195,7 @@ Con el OK de despliegue del worker y el procedimiento de Isaac:
 Tests sin red: mock reproduce POST que ignora metadata, PATCH con UUID asociado,
 lookup objeto/404, activar/denegar Intake, respuesta perdida/paginación,
 aceptación en Plane sin RPC, ACK independientes, expiración y upgrade SQLite.
-28/28 (16 existentes + 12 Intake) PASS; socket real prohibido en tests de Intake.
+36/36 (16 existentes + 12 Intake + 8 review) PASS; socket real prohibido en tests de Intake.
 No se ha ejecutado ningún POST de informe en el Plane real.
 
 ### Recuperación y descubrimiento tras la review #1602

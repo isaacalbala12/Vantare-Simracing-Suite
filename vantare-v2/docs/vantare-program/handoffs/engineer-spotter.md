@@ -16,7 +16,9 @@ Leídos [#1485](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
-#1595 en `vantareapp/isa-1595-engineer-recovery-flaky`, base nightly `38b59434`:
+#1595 en `vantareapp/isa-1595-engineer-recovery-flaky`, base actual nightly
+`a0f8569b` tras rebase sin conflictos; validación iniciada en `38b59434` y
+código Engineer idéntico al validado:
 el run 38421121953 demuestra denegación antes de HELLO, no timeout de 2 s.
 La fixture abre Host antes del ACK durable Install; el Read del hijo puede
 observar la política denegada intermedia. Se bloquean los Read hasta instalar

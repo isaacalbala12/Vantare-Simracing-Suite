@@ -51,7 +51,9 @@ $desktop = -not [bool]$request.silent
 $autostart = $false
 $optionsFile = Join-Path $root 'installer-ui.json'
 if (Test-Path -LiteralPath $optionsFile) {
-    $options = Read-NativeInstallerUi $root
+    # Setup reads validated preferences, then restores its embedded uninstaller.
+    # Executing/removing an installed uninstaller retains the strict PE/hash check.
+    $options = Read-NativeInstallerUi $root ([bool]$request.uninstall)
     $desktop = [bool]$options.desktop; $autostart = [bool]$options.autostart
 }
 if ($request.operation -ceq 'Probe') {
@@ -95,13 +97,12 @@ try {
         'Uninstall' {
             if($null -eq $registration){
                 if(-not (Test-Path -LiteralPath (Join-Path $root 'installer-cleanup.json'))){throw 'La instalación no está registrada.'}
-            } else {
-                Send-InstallerProgress 'copy' 12
-                Uninstall-Beta $root | Out-Null
-                Send-InstallerProgress 'shortcuts' 72
-                Uninstall-NativeRegistration $root $true
-                Send-InstallerProgress 'register' 88
             }
+            Send-InstallerProgress 'copy' 12
+            if(Test-Path -LiteralPath (Join-Path $root 'state.json')){Uninstall-Beta $root | Out-Null}
+            Send-InstallerProgress 'shortcuts' 72
+            Uninstall-NativeRegistration $root $true $identity $folder
+            Send-InstallerProgress 'register' 88
         }
         'Cleanup' {
             try{$parent=[Diagnostics.Process]::GetProcessById([int]$request.processId)}catch [ArgumentException]{$parent=$null}

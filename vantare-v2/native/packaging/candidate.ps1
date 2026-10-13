@@ -256,7 +256,7 @@ function Expand-NativePackage([string]$ZipPath, [string]$Hash, [string]$Destinat
     Read-NativeManifest $Destination $ExpectedChannel
 }
 
-function Read-NativeInstallerUi([string]$Directory) {
+function Read-NativeInstallerUi([string]$Directory,[bool]$VerifyUninstaller=$true) {
     $path=Join-Path (Assert-NativePath $Directory) 'installer-ui.json'
     if(-not (Test-Path -LiteralPath $path)){return $null}
     if((Get-Item -LiteralPath $path).Length -gt 4096){throw 'Opciones del instalador demasiado grandes.'}
@@ -265,8 +265,10 @@ function Read-NativeInstallerUi([string]$Directory) {
     if(@(Compare-Object $fields @($ui.PSObject.Properties.Name) -CaseSensitive).Count -or
        $ui.schema -ne 1 -or $ui.kind -cne 'rust-gpui' -or $ui.uninstaller -cne 'Uninstall.exe' -or
        $ui.sha256 -cnotmatch '^[a-f0-9]{64}$' -or $ui.desktop -isnot [bool] -or $ui.autostart -isnot [bool]){throw 'Opciones del instalador inválidas.'}
-    if((Get-NativeHash (Join-Path $Directory 'Uninstall.exe')) -cne $ui.sha256){throw 'Desinstalador propio alterado.'}
-    Assert-NativePe (Join-Path $Directory 'Uninstall.exe')
+    if($VerifyUninstaller){
+        if((Get-NativeHash (Join-Path $Directory 'Uninstall.exe')) -cne $ui.sha256){throw 'Desinstalador propio alterado.'}
+        Assert-NativePe (Join-Path $Directory 'Uninstall.exe')
+    }
     $ui
 }
 
@@ -391,16 +393,32 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version) {
     Set-ItemProperty -LiteralPath $key -Name UninstallString -Value ('"' + $uninstallTarget + '" ' + $uninstallArgs)
 }
 
-function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller=$false) {
+function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller=$false,[string]$KnownIdentity='', [string]$KnownFolder='') {
     $directory = Open-NativeRoot $Directory
     $identityFile = Join-Path $directory 'registration-identity.txt'
     $external = Test-Path -LiteralPath $identityFile
-    $identity = if ($external) { [IO.File]::ReadAllText($identityFile).Trim() } else { 'VantareNativeBeta' }
+    $identity = if ($KnownIdentity) { $KnownIdentity } elseif ($external) { [IO.File]::ReadAllText($identityFile).Trim() } else { 'VantareNativeBeta' }
+    if($external -and ([IO.File]::ReadAllText($identityFile).Trim()) -cne $identity){throw 'La identidad de desinstalación no coincide.'}
     if ($identity -cnotmatch '^[A-Za-z0-9]{1,64}$') { throw 'Identidad de registro inválida.' }
     $key = "HKCU:/Software/Microsoft/Windows/CurrentVersion/Uninstall/$identity"
-    $registration = Get-ItemProperty -LiteralPath $key
-    if ((Assert-NativePath $registration.InstallLocation) -ne $directory) { throw 'El registro pertenece a otra instalación.' }
-    $folder = if ($external) { $registration.ShortcutFolder } else { 'Vantare' }
+    $registration = Get-ItemProperty -LiteralPath $key -ErrorAction SilentlyContinue
+    $marker=Join-Path $directory 'installer-cleanup.json'
+    $cleanup=$null
+    if(Test-Path -LiteralPath $marker){
+        if((Get-Item -LiteralPath $marker).Length -gt 1024){throw 'Marker de limpieza inválido.'}
+        $cleanup=[IO.File]::ReadAllText($marker)|ConvertFrom-Json
+        if($cleanup.schema -ne 1 -or $cleanup.sha256 -cnotmatch '^[a-f0-9]{64}$' -or
+           (Get-NativeHash (Join-Path $directory 'Uninstall.exe')) -cne $cleanup.sha256){throw 'Marker de limpieza no pertenece al desinstalador.'}
+    }
+    if($null -eq $registration){
+        # Resume only an already-started, hash-bound cleanup, with the identity
+        # and folder supplied by the installer (the identity file may be gone).
+        if(-not $DeferUninstaller -or -not $KnownIdentity -or -not $KnownFolder -or $null -eq $cleanup){throw 'La instalación no está registrada.'}
+        $folder=$KnownFolder
+    } else {
+        if ((Assert-NativePath $registration.InstallLocation) -ne $directory) { throw 'El registro pertenece a otra instalación.' }
+        $folder = if ($external -or ($KnownIdentity -and $KnownIdentity -cne 'VantareNativeBeta')) { $registration.ShortcutFolder } else { 'Vantare' }
+    }
     if ($folder -cnotmatch '^[A-Za-z0-9][A-Za-z0-9 -]{0,63}$') { throw 'Carpeta de accesos inválida.' }
     $installerUi=Read-NativeInstallerUi $directory
     if (Test-Path -LiteralPath (Join-Path $directory 'state.json')) {
@@ -414,9 +432,13 @@ function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller
         if ((Test-Path -LiteralPath $path) -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $directory)) { Remove-Item -LiteralPath $path }
     }
     if ((Test-Path -LiteralPath $target) -and -not @(Get-ChildItem -LiteralPath $target -Force).Count) { Remove-Item -LiteralPath $target }
-    Sync-NativeOptionalShortcuts $directory $folder $installerUi $true
-    if($DeferUninstaller -and $null -ne $installerUi){Write-NativeJson (Join-Path $directory 'installer-cleanup.json') @{schema=1; sha256=$installerUi.sha256}}
-    Remove-Item -LiteralPath $key
+    $optionalUi=if($null -ne $installerUi){$installerUi}elseif($null -ne $cleanup){@{desktop=$false;autostart=$false}}else{$null}
+    Sync-NativeOptionalShortcuts $directory $folder $optionalUi $true
+    if($DeferUninstaller -and $null -ne $installerUi){
+        if($null -ne $cleanup){if($cleanup.sha256 -cne $installerUi.sha256){throw 'La limpieza corresponde a otro desinstalador.'}}
+        else{Write-NativeJson $marker @{schema=1; sha256=$installerUi.sha256}}
+    }
+    if($null -ne $registration){Remove-Item -LiteralPath $key}
     foreach ($name in @('beta.ps1', 'candidate.ps1', 'registration-identity.txt', 'Uninstall.exe', 'uninstall-vantare.ps1','installer-ui.json','installer-notices.txt')) {
         if($name -ceq 'Uninstall.exe' -and $DeferUninstaller){continue}
         $path = Join-Path $directory $name

@@ -13,6 +13,23 @@ Leídos [#1568](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1591 — instalador propio, FASE 1 (2026-10-13)
+
+Plan local para revisión, sin implementación: [plan versionado](../../superpowers/plans/2026-10-13-instalador-propio-1591.md), copia exacta solicitada `C:/tmp/ola2/plan-1591.md`.
+Issue [#1591](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1591), rama `vantareapp/isa-1591-instalador-propio`, worktree T3 propio,
+base/HEAD de entrada `cec4364a5b4fc03f111dde6073c01e5fb36dad68` = origin/nightly obtenido.
+Diseño aprobado `instalador-r3.html`, ventana #E; SHA-256 `ca1e9bd31ba76fda1031e1b93ba6a090ef889b911cf20d58f30e0181867ad841`.
+Propuesta: crate `vantare-installer`, GPUI fijado y ZIP/scripts embebidos; motor PowerShell existente, sin dependencias externas nuevas.
+Mantiene identidad VantareNativeBeta, QA TEST_INSTALLER, datos por generación, códigos 0–4 y bootstrap renovado solo por Setup.
+Issue #1565/PR #1592 aún abierta al leer: no sustituir su feed Downloads, no retrasar 0.0.976/NSIS ni publicar desde #1591.
+Pendiente resolver §4 del plan: defaults escritorio/autostart, Conservar datos marcado sin borrado y Repair solo con paquete de igual versión.
+Gates de FASE 1: revisión documental/diff/integridad; Rust, install/feed e2e, firma y CI omitidos por encargo PLAN.
+Sin instalación real, secretos, firma real, build, promoción ni release. SHA del hito documental se registra en issue/buzón.
+**Siguiente paso #1591: escribir DUDA en `C:/tmp/buzon/1591.md` y PARAR. FASE 2 solo tras respuesta de Isaac; sin subagentes.**
+QA futura bajo `C:/tmp/ola2/1591-qa`; arranque live solo en cuenta/VM de prueba por el SID/instancia compartida, capturas con pantalla libre y mutex.
+
+### Estado previo de plataforma (su base propia)
+
 Base incorporada mediante merge (sin rebase): `origin/nightly@b2186f82746424b4844a5909efd31530c5bbe5b3`,
 que contiene #1570 (handoffs de estado), #1572 (#1563 pedales) y #1573 (#1568 acceso).
 Rama `vantareapp/isa-1535-roadmap-testing`, entrega #1535 `3d762e8b`, PR
@@ -70,6 +87,9 @@ acceso, preparar pasos para Isaac. No aplicar nada hasta respuesta expresa.
 P2-4 aceptado por Isaac en #1535; no implica configurar credenciales ni desplegar.
 
 ## 10. Última actualización
+
+2026-10-13 · GitHub #1591 · Codex: hito de planificación y DUDA; no cambia
+el estado remoto de las entregas anteriores. Plan/issue/metadata verificados al cerrar FASE 1.
 
 2026-10-10 · GitHub #1535 · Codex. PR #1578, base nightly y cambios
 #1570/#1572/#1573 contrastados. Estado sustituido segun plantilla; diario,

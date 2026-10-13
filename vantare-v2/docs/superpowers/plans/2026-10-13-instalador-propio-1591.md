@@ -202,3 +202,9 @@ FASE 1: entregar este plan, copiarlo byte a byte a `C:/tmp/ola2/plan-1591.md`, r
 ## Cierre local de FASE 2 (2026-10-13)
 
 Código, QA headless/UI y hoja de seis capturas entregados para review independiente. Gates y evidencia exactos en docs/reviews/2026-10-13-1591-instalador-qa.md. H5 mantiene pendientes arranque live/Windows limpio/DPI físicos por falta de cuenta o VM identificada. La rama se publica como PR draft a nightly, enlazado en T3; no hay integración, firma real ni release. Targets/copia de evidencia propios pasaron a E por disco lleno, manteniendo los logs/mapas y todos los datos fixture.
+
+Reanudación y convivencia con #1565: merge local `8389ca8d020eaf24b7c189f2f78a431d025bb7dd`
+incorpora nightly `298abc335da7d09d62917d3954bd63fb69e5389d` y conserva Downloads/sidecars.
+Gates finales por cola: fmt/check/Clippy, Nextest 1646/1646 (7 skips), lifecycle 18/18,
+matriz propia Release 68 y feed remoto simulado 9 PASS. PR draft #1600; la QA live
+y Windows limpio siguen pendientes y bloquean la integración.

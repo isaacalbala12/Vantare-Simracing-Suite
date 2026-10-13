@@ -52,7 +52,9 @@ H5 local: NSIS actual→propio 50 PASS; interacción final 22 PASS y seis
 comparativas HTML/GPUI revisadas, en `C:/tmp/ola2/1591-qa/visual/comparativa-1591.html`.
 [Informe de QA y límites](../../reviews/2026-10-13-1591-instalador-qa.md).
 PR draft [#1600](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1600)
-a nightly, enlazado en T3. Setup/Uninstall Release construidos con payload
+a nightly, enlazado en T3. Implementación y base validadas en el merge local
+`8389ca8d020eaf24b7c189f2f78a431d025bb7dd`; el HEAD documental de entrega
+queda registrado en la issue y la PR. Setup/Uninstall Release construidos con payload
 Debug QA, sin firma real ni publicación; no certifica una release completa.
 **Siguiente paso #1591: revisión independiente y acreditar el entorno
 live/Windows limpio; sin subagentes, sin integración.**

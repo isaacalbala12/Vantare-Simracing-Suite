@@ -1,7 +1,5 @@
 //! Only whitelisted hardware fields and known process names; never paths/IDs.
-#[cfg(windows)]
-use crate::Error;
-use crate::Result;
+use crate::{Error, Result};
 use serde::Deserialize;
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -11,7 +9,7 @@ pub(super) struct Observed {
     pub game_version: Option<String>,
 }
 #[cfg(windows)]
-pub(super) fn capture(system: bool) -> Result<Observed> {
+fn observe(system: bool) -> Result<Observed> {
     use std::{
         io::{Read, Write},
         os::windows::process::CommandExt,
@@ -66,7 +64,32 @@ pub(super) fn capture(system: bool) -> Result<Observed> {
     if bytes.len() > 8192 {
         return Err(Error::TooLarge);
     }
-    let result: Observed = serde_json::from_slice(&bytes).map_err(|_| Error::Protocol)?;
+    serde_json::from_slice(&bytes).map_err(|_| Error::Protocol)
+}
+#[cfg(not(windows))]
+fn observe(include_system: bool) -> Observed {
+    // No invented PC measurements on unsupported platforms.
+    let system = if include_system {
+        serde_json::json!({"os":{"name":std::env::consts::OS}})
+    } else {
+        serde_json::json!({})
+    };
+    Observed {
+        system,
+        game: "none".into(),
+        game_version: None,
+    }
+}
+
+pub(super) fn capture(system: bool) -> Result<Observed> {
+    #[cfg(windows)]
+    let result = observe(system)?;
+    #[cfg(not(windows))]
+    let result = observe(system);
+    validate(result)
+}
+
+fn validate(result: Observed) -> Result<Observed> {
     if !matches!(result.game.as_str(), "lmu" | "acc" | "none")
         || serde_json::to_vec(&result.system)
             .map_err(|_| Error::Protocol)?
@@ -81,17 +104,28 @@ pub(super) fn capture(system: bool) -> Result<Observed> {
     }
     Ok(result)
 }
-#[cfg(not(windows))]
-pub(super) fn capture(include_system: bool) -> Result<Observed> {
-    // No invented PC measurements on unsupported platforms.
-    let system = if include_system {
-        serde_json::json!({"os":{"name":std::env::consts::OS}})
-    } else {
-        serde_json::json!({})
-    };
-    Ok(Observed {
-        system,
-        game: "none".into(),
-        game_version: None,
-    })
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    fn value() -> Observed {
+        Observed {
+            system: serde_json::json!({}),
+            game: "none".into(),
+            game_version: None,
+        }
+    }
+    #[test]
+    fn capture_contract_rejects_unknown_games_and_oversized_context_on_every_platform() {
+        assert!(validate(value()).is_ok());
+        let mut unknown = value();
+        unknown.game = "private-process".into();
+        assert!(matches!(validate(unknown), Err(Error::Protocol)));
+        let mut large = value();
+        large.system = serde_json::json!({"os":{"name":"x".repeat(4096)}});
+        assert!(matches!(validate(large), Err(Error::Protocol)));
+        let mut version = value();
+        version.game_version = Some("x".repeat(121));
+        assert!(matches!(validate(version), Err(Error::Protocol)));
+    }
 }

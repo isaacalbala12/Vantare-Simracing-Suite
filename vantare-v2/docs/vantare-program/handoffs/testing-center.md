@@ -161,3 +161,8 @@ registrados en runbook/buzón; entrega de cliente/worker y gates finales locales
 Adicional: captura Windows con stdout vacío reproducida RED. Último objeto
 PowerShell en una sola línea permite ejecutar la expresión por stdin; GREEN
 y tres regresiones de privacidad ampliadas al prepare/RPC preview real.
+
+4. P2-4: presupuesto HTTP 64 KiB del JSON RPC completo antes de preview;
+   recorte UTF-8 de cola y SHA recalculado. RED 96.400 bytes; GREEN transporte
+   real loopback con logs/resumen, comillas, controles y Unicode; payload idéntico
+   al aprobado. El límite de otras RPC permanece 64 KiB.

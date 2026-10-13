@@ -137,7 +137,7 @@ impl Triage {
                 .ok_or(Error::Clock)?
                 .to_rfc3339();
         let id = crate::random_id()?;
-        let packet = Packet {
+        let mut packet = Packet {
             id: format!(
                 "{}-{}-{}-{}-{}",
                 &id[..8],
@@ -155,6 +155,7 @@ impl Triage {
                 "consent":{"version":"triage-v2","items":items,"accepted_at":accepted}}),
             attachments,
         };
+        fit_http_budget(&mut packet, channel)?;
         let preview = Preview {
             id: crate::random_id()?,
             channel: channel.into(),
@@ -194,6 +195,43 @@ impl Triage {
         self.prepared = None;
         Ok(data)
     }
+}
+// Size the complete serialized RPC, including JSON escaping, before consented
+// preview. HTTP keeps its existing limit for every caller and exact retry.
+fn fit_http_budget(packet: &mut Packet, channel: &str) -> Result<()> {
+    fn fits(packet: &Packet, channel: &str) -> Result<bool> {
+        Ok(serde_json::to_vec(&packet.rpc_payload(channel))
+            .map_err(|_| Error::Protocol)?
+            .len()
+            <= crate::http::REQUEST_LIMIT)
+    }
+    if fits(packet, channel)? {
+        return Ok(());
+    }
+    for index in 0..packet.attachments.len() {
+        let original = std::mem::take(&mut packet.attachments[index].content);
+        packet.attachments[index].sha256 = crate::content_hash(b"");
+        if !fits(packet, channel)? {
+            continue;
+        }
+        let (mut low, mut high) = (0, original.len());
+        while low < high {
+            let mid = low + (high - low).div_ceil(2);
+            let attachment = &mut packet.attachments[index];
+            attachment.content = tail(&original, mid);
+            attachment.sha256 = crate::content_hash(attachment.content.as_bytes());
+            if fits(packet, channel)? {
+                low = mid;
+            } else {
+                high = mid - 1;
+            }
+        }
+        let attachment = &mut packet.attachments[index];
+        attachment.content = tail(&original, low);
+        attachment.sha256 = crate::content_hash(attachment.content.as_bytes());
+        return Ok(());
+    }
+    Err(Error::TooLarge)
 }
 fn clean_strings(value: &mut serde_json::Value, names: &[String]) {
     match value {

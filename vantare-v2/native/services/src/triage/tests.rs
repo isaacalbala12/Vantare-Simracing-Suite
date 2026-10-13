@@ -212,3 +212,95 @@ fn prepared_text(raw: &str) -> String {
         .expect("synthetic preparation");
     serde_json::to_string(&preview.packet.rpc_payload("testers")).expect("RPC JSON")
 }
+
+#[test]
+fn review_p2_4_full_escaped_preview_fits_http_and_sends_exact_hashed_tail() {
+    for operation in ["participation", "participation \"quoted\" \\ sesión \u{1}"] {
+        let now = 100;
+        let mut triage = Triage::default();
+        for _ in 0..2000 {
+            triage.record(now, true, operation);
+        }
+        let preview = triage
+            .prepare(
+                "15940000-0000-0000-0000-000000000001",
+                "testers",
+                Input {
+                    title: &"é".repeat(120),
+                    body: &"\u{1}".repeat(1000),
+                    selection: Selection {
+                        items: [Item::AppLog, Item::Session].into_iter().collect(),
+                    },
+                    consent: true,
+                    private_names: &[],
+                },
+                now,
+            )
+            .expect("large valid preparation");
+        let expected = serde_json::to_vec(&preview.packet.rpc_payload("testers")).expect("JSON");
+        assert!(
+            expected.len() <= 65536,
+            "offered preview exceeds HTTP budget: {}",
+            expected.len()
+        );
+        assert!(
+            expected.len() >= 65520,
+            "keep the largest escaped UTF-8 tail that fits"
+        );
+        let log = &preview.packet.attachments[0];
+        assert_eq!(log.sha256, crate::content_hash(log.content.as_bytes()));
+        assert!(log.content.ends_with(operation));
+        let server=Server::start(vec![
+            (200,serde_json::json!({"version":1,"account_id":"15940000-0000-0000-0000-000000000001","data_access_token":"data-fixture","expires_at":now+60}).to_string()),
+            (200,"null".into()),(200,"{\"questionnaires\":[],\"contributions\":[]}".into())]);
+        let (root, store) = crate::test_store("triage-budget");
+        let account = account::fixture(&server.base, &store);
+        let http = Http::default();
+        let config = Config {
+            authorize: server
+                .base
+                .join("functions/v1/native-account-authorize")
+                .expect("URL"),
+            supabase: server.base.clone(),
+            anon_key: "public-fixture".into(),
+        };
+        let session = config.authorize(&http, &account, now).expect("account");
+        triage
+            .send(
+                &session.request(&http, &config, &account, now),
+                "testers",
+                &preview.id,
+                now,
+            )
+            .expect("real HTTP submission");
+        let captured: Vec<_> = (0..3)
+            .map(|_| {
+                server
+                    .requests
+                    .recv_timeout(std::time::Duration::from_secs(3))
+                    .expect("request")
+            })
+            .collect();
+        assert_eq!(
+            captured[1]
+                .split("\r\n\r\n")
+                .nth(1)
+                .expect("body")
+                .as_bytes(),
+            expected
+        );
+        server.finish();
+        drop(store);
+        crate::cleanup_store(&root, "triage-budget", &[]);
+    }
+    let oversized = serde_json::json!({"unrelated":"x".repeat(65536)});
+    assert!(matches!(
+        Http::default().post_json(
+            &url::Url::parse("http://127.0.0.1:9/").expect("fixture URL"),
+            &oversized,
+            None,
+            None
+        ),
+        Err(Error::TooLarge)
+    ));
+}

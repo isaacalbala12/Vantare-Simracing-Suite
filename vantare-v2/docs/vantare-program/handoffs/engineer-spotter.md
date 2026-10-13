@@ -36,8 +36,11 @@ Target propio y temporales restaurados a C:; sin junction, sin modificar
 permisos/plazos/aserciones/retries. Evidencia: `C:/tmp/1595-evidence/`.
 Gates finales PASS: fmt/check/Clippy `-D warnings`, Nextest **1642/1642**
 (7 skips heredados) y lifecycle **18/18**. Integridad: 456 huellas PASS.
-Telemetría no aplica: no cambia runtime/domain/IPC/testdata. Pendientes push y PR a nightly
-con auto-merge expresamente autorizado por Isaac. Seguimiento en la issue.
+Telemetría no aplica: no cambia runtime/domain/IPC/testdata. Push publicado;
+PR [#1597](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1597)
+a nightly, enlazado en T3. Auto-merge expresamente autorizado por Isaac;
+CI, SHA remoto y estado de integración se verifican en #1595. Sin release
+ni promoción a testers/master.
 
 Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. PR [#1570](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1570) contra nightly, con auto-merge autorizado por el orquestador. Nightly `0cf38ed2` incorporada mediante merge `dbee0c18`; sin promoción ni release. El binario nativo y supervisor están presentes; antiguos wiring Wails/voice-host test-only y sus estados no son el runtime actual. #1485/#1477/#1491 permanecen abiertas.
 

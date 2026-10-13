@@ -21,8 +21,17 @@ el run 38421121953 demuestra denegación antes de HELLO, no timeout de 2 s.
 La fixture abre Host antes del ACK durable Install; el Read del hijo puede
 observar la política denegada intermedia. Se bloquean los Read hasta instalar
 y la prueba sustituye sleep(2 s) por petición pendiente/liberación explícita.
-Sin cambios de producto, permisos ni deadlines. Validación inicial recovery
-en curso; pendientes 200 repeticiones, carga con gates, push y PR a nightly
+Sin cambios funcionales de producto, permisos ni deadlines. La espera inicial
+se extrae para probar con reloj virtual respuesta a 2 s (regresión del antiguo
+1 s), timeout sin decisión de licencia y denegación definitiva: 3/3 PASS.
+Tanda focal bajo gates: 200/200 PASS. Reloj virtual: 200/200 vueltas (600
+assertions/tests); mutación a 1 s provoca los dos fallos esperados y se revierte.
+Suite final: 150 vueltas completas PASS, últimas 50 en curso. Las tandas
+fallidas se conservan: BrokenPipe distinto (#1596), después error explícito
+de disco 112. Artefactos propios de gates trasladados a E: y repetición con
+temporales aislados allí; sin relajar permisos/plazos ni retries del test.
+Gates previos: fmt/check/Clippy, Nextest 1639/1639 y lifecycle PASS; se repiten
+sobre la extracción final. Pendientes gates finales, push y PR a nightly
 con auto-merge expresamente autorizado por Isaac. Seguimiento en la issue.
 
 Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. PR [#1570](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1570) contra nightly, con auto-merge autorizado por el orquestador. Nightly `0cf38ed2` incorporada mediante merge `dbee0c18`; sin promoción ni release. El binario nativo y supervisor están presentes; antiguos wiring Wails/voice-host test-only y sus estados no son el runtime actual. #1485/#1477/#1491 permanecen abiertas.

@@ -940,6 +940,18 @@ async function processClaimedWebhook(
   const processingDeps = { ...deps, runEffect };
   try {
     const result = await applyPolarWebhookEvent(event, processingDeps);
+    // Delivery order is not an attribution conflict. Keep redelivery alive
+    // until the order arrives, bounded by the existing retry limit/backoff.
+    if (
+      result.status === "ignored" &&
+      ["missing_order", "order_refund_ledger_missing_order"].includes(
+        result.reason,
+      )
+    ) {
+      throw Object.assign(new Error("Order awaiting delivery"), {
+        code: "order_refund_ledger_missing_order",
+      });
+    }
     const unsafeReason = quarantineReason(result);
     if (unsafeReason) {
       await inbox.quarantine(inboxId, leaseToken, unsafeReason);

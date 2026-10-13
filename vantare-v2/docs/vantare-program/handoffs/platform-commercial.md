@@ -101,6 +101,24 @@ los scripts exactos, 2 PE con 0x800/CRT estático, paquete Debug de aplicación
 idéntico. SHA/push final en issue/PR/buzón; sigue draft para revisión, sin live,
 integración, firma ni release.
 
+Ronda 3 de Sol: **APTO** sobre `ea7b782c`, sin P1/P2 abiertos, conforme a
+`C:/tmp/ola2/review-1600-sol-r3.md`; no acredita Windows limpio/live/DPI.
+Prueba manual de Isaac preparada en `C:/tmp/1591-prueba-isaac/`: Setup QA
+0.0.978, paquete y ambos instaladores Release desde ese SHA **limpio**, con
+`beta-dev-clerk.env` cargado por el validador público, sin mostrar/copiar sus
+valores y sin USB/firma de feed. Target de paquete propio en C; installer en E.
+SHA-256 del Setup: `5198a0a5aa81e8eae0463c4ab90c4034c282b6d18d2976526930a2aa68ef37a7`.
+`PROCEDENCIA.json` identifica fuente/configuración/hash; 10 EXE de aplicación
+reales, sin admin/installer ni imports VC Redist. Ambos instaladores mantienen
+0x800/CRT estático y scripts/ZIP/Uninstall embebidos exactos; NotSigned y
+probe --version exit 0. Evidencia `1591-manual-build-r2.log`/verify/version.
+`PRUEBA.md` tiene 8 pasos para VM limpia, DPI 100/125/150, abrir, reparar,
+desinstalar/reinstalar y conservación/borrado manual de datos solo en la VM.
+`INSTALAR.cmd` pasa la raíz QA explícita; su helper bloquea el PC de origen y
+otra instalación real existente. Bloqueo del origen comprobado sin abrir UI.
+El producto sigue conservando siempre datos; no se añade borrado ni cambia
+código. **Siguiente: Isaac prueba en VM y decide; no merge ni release.**
+
 ### Estado previo de plataforma (su base propia)
 
 Base incorporada mediante merge (sin rebase): `origin/nightly@b2186f82746424b4844a5909efd31530c5bbe5b3`,

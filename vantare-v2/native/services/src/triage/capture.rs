@@ -26,11 +26,12 @@ fn observe(system: bool) -> Result<Observed> {
         .stderr(Stdio::null())
         .spawn()
         .map_err(|_| Error::Unsupported)?;
-    let sent = child
-        .stdin
-        .take()
-        .ok_or(Error::Offline)?
-        .write_all(include_bytes!("capture.ps1"));
+    let mut stdin = child.stdin.take().ok_or(Error::Offline)?;
+    // -Command - terminates a multiline block on an empty line, not EOF.
+    let sent = stdin
+        .write_all(include_bytes!("capture.ps1"))
+        .and_then(|()| stdin.write_all(b"\n"));
+    drop(stdin);
     if sent.is_err() {
         let _ = child.kill();
         let _ = child.wait();
@@ -128,4 +129,12 @@ mod tests {
         version.game_version = Some("x".repeat(121));
         assert!(matches!(validate(version), Err(Error::Protocol)));
     }
+}
+
+#[cfg(all(test, windows))]
+#[test]
+fn windows_capture_without_hardware_emits_the_typed_document() {
+    let observed = capture(false).expect("typed Windows capture");
+    assert_eq!(observed.system, serde_json::json!({}));
+    assert!(matches!(observed.game.as_str(), "none" | "lmu" | "acc"));
 }

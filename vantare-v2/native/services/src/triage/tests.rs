@@ -148,7 +148,7 @@ fn review_p1_1_basic_and_sk_hyphen_are_removed_before_preview() {
         ),
     ] {
         // The same cleaner runs over title, body, hardware and attachment before preview.
-        let packet = redaction::clean(raw, &[]);
+        let packet = prepared_text(raw);
         assert!(
             !packet.contains(secret),
             "synthetic credential survived preview"
@@ -162,7 +162,7 @@ fn review_p1_2_account_label_variants_are_removed_before_preview() {
     for label in ["accountId", "AccountID", "account-id", "account_id"] {
         let raw = serde_json::json!({label:secret}).to_string();
         assert!(
-            !redaction::clean(&raw, &[]).contains(secret),
+            !prepared_text(&raw).contains(secret),
             "account label: {label}"
         );
     }
@@ -179,12 +179,36 @@ fn review_p1_3_foreign_unc_profile_is_removed_before_preview() {
         "ERROR //LAB/Profiles/SyntheticOther/log.txt",
         r#"ERROR "\\LAB\Profiles\Synthetic Other\log.txt""#,
     ] {
-        let value = redaction::clean(raw, &[]);
+        let value = prepared_text(raw);
         assert!(
             !value.contains("SyntheticOther") && !value.contains("Synthetic Other"),
             "foreign UNC profile survived"
         );
         assert!(value.contains("ERROR"));
-        assert_eq!(redaction::clean(&value, &[]), value);
+        let clean = redaction::clean(raw, &[]);
+        assert_eq!(redaction::clean(&clean, &[]), clean);
     }
+}
+
+// Integration boundary: prepare the exact RPC preview without collecting PC data.
+fn prepared_text(raw: &str) -> String {
+    let mut triage = Triage::default();
+    triage.record(100, true, raw);
+    let preview = triage
+        .prepare(
+            "15940000-0000-0000-0000-000000000001",
+            "testers",
+            Input {
+                title: raw,
+                body: raw,
+                selection: Selection {
+                    items: [Item::AppLog].into_iter().collect(),
+                },
+                consent: true,
+                private_names: &[],
+            },
+            100,
+        )
+        .expect("synthetic preparation");
+    serde_json::to_string(&preview.packet.rpc_payload("testers")).expect("RPC JSON")
 }

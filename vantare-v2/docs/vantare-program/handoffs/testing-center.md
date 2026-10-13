@@ -157,3 +157,7 @@ registrados en runbook/buzón; entrega de cliente/worker y gates finales locales
 
 3. P1-3: se omiten rutas UNC completas, incluso perfiles ajenos y rutas
    entre comillas con espacios. RED/GREEN Rust/Python; contexto ERROR conservado.
+
+Adicional: captura Windows con stdout vacío reproducida RED. Último objeto
+PowerShell en una sola línea permite ejecutar la expresión por stdin; GREEN
+y tres regresiones de privacidad ampliadas al prepare/RPC preview real.

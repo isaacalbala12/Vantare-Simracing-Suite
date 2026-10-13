@@ -118,6 +118,7 @@ impl DataSession {
                 | "rest/v1/rpc/testing_participation_current"
                 | "rest/v1/rpc/testing_answer_save"
                 | "rest/v1/rpc/testing_contribution_submit"
+                | "rest/v1/rpc/testing_contribution_submit_v2"
         ) {
             return Err(Error::Protocol);
         }

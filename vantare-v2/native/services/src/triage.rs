@@ -47,6 +47,42 @@ impl Triage {
             self.logs.pop_front();
         }
     }
+    fn summary(&self, now: u64) -> serde_json::Value {
+        let recent: Vec<_> = self
+            .logs
+            .iter()
+            .filter(|(at, _)| now.saturating_sub(*at) <= 1800)
+            .collect();
+        if recent.is_empty() {
+            return serde_json::Value::Null;
+        }
+        let mut errors: Vec<_> = recent
+            .iter()
+            .rev()
+            .filter(|(_, line)| line.starts_with("ERROR "))
+            .take(20)
+            .map(|(_, line)| {
+                serde_json::json!({
+                    "type":"ServicesCommandFailure", "message":line,
+                    "first_line":line, "fingerprint":crate::content_hash(line.as_bytes())
+                })
+            })
+            .collect();
+        errors.reverse();
+        let mut events: Vec<_> = recent
+            .iter()
+            .rev()
+            .take(50)
+            .filter_map(|(at, line)| {
+                let at = chrono::DateTime::from_timestamp(i64::try_from(*at).ok()?, 0)?;
+                Some(serde_json::json!({"name":line,"at":at.to_rfc3339()}))
+            })
+            .collect();
+        events.reverse();
+        // These are actual service operation outcomes, independent of PostHog.
+        // There is no source of measured overlay percentiles in this service.
+        serde_json::json!({"errors":errors,"events":events})
+    }
     pub(crate) fn prepare(
         &mut self,
         account: &str,
@@ -115,7 +151,7 @@ impl Triage {
             context: serde_json::json!({"app_version":crate::product::VERSION,"app_channel":channel,
                 "game":observed.game,"game_version":observed.game_version.filter(|v|v.bytes().all(|b|b.is_ascii_digit() || b==b'.')),
                 "system":if selection.items.contains(&Item::System) {system} else {serde_json::json!({})},
-                "telemetry_summary":null,"posthog_session_id":null,
+                "telemetry_summary":if selection.items.contains(&Item::Session) {self.summary(now)} else {serde_json::Value::Null},"posthog_session_id":null,
                 "consent":{"version":"triage-v2","items":items,"accepted_at":accepted}}),
             attachments,
         };

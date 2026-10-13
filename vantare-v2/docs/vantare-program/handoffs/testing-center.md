@@ -1,126 +1,115 @@
 # Handoff vivo — Testing Center
 
-Estado vigente #1594: migración aprobada, aplicada y postcheck PASS;
-cliente y worker inerte preparados, gates finales/PR pendientes.
-Cron/proveedor/credencial/despliegue cerrados.
-Releer issue y buzón antes de ejecutar.
-[Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/testing-center.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
+Estado #1594 / VANTA-38: migración aplicada en producción; cliente y worker
+inerte implementados, gates finales en ejecución. Plane En curso verificado.
+Cron, LOGIN/contraseña, proveedor y despliegue siguen pendientes de su OK.
+
+[Histórico anterior por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/testing-center.md).
+[Contrato y runbook de esta entrega](../../runbooks/testing-contribution-triage.md).
 
 ## 1. Resultado
 
-#1594 / VANTA-38 prepara contexto, adjuntos, revisiones y RPC de confirmación
-owner para DeepSeek V4.1 Flash. Cliente/worker preparados. Migración aplicada
-en ombjshwzqgeisazijduq, history 20261013160000 tras OK explícito del orquestador.
-SQL completo en C:/tmp/buzon/1594.md. Sin PR, push, merge o despliegue.
-[Contrato y runbook](../../runbooks/testing-contribution-triage.md).
+Cliente IPC v7: informe de texto con juego/build, app/canal, CPU/GPU/RAM/Windows,
+log reciente acotado y resumen de errores/eventos reales de servicios. Cinco
+casillas, consentimiento externo desmarcado, vista previa del mismo payload y
+reintento con UUID/bytes idénticos. Editar invalida preview/consentimiento;
+logout/cambio de cuenta cancela la preparación. Capturas conservan su flujo.
+PostHog ausente queda NULL. Displays, percentiles y fragmento sin fuente no se
+inventan; el resumen local funciona sin PostHog. DTO v10 y derechos v4 no cambian.
 
-Diagnostico local y reportes con borrador, vista previa, consentimiento y
-recibos de sesion. #1535 implementa cuestionarios por version y contribuciones
-por cuenta; bugs reutiliza la RPC existente. Cliente y SQL preparado no prueban
-activacion del backend: ausencia y errores se presentan sin datos inventados.
+Worker Python estándar en tools/triage, disabled por defecto antes de leer
+credenciales o iniciar red/modelo. Lee columnas autorizadas, minimiza y redacta,
+invoca DeepSeek V4.1 Flash por OpenCode sin tools y valida la propuesta.
+Reintentos de entrega HMAC no reanalizan; SQLite solo contiene metadata.
+No instalado, sin timer/webhook/credenciales creados. Solo un owner autenticado,
+tras orden humana expresa, confirma con review; el modelo no acepta informes.
 
-## 2. Autoridad y lectura verificada
+## 2. Autoridad
 
-#1594 y dependencia comercial #1593 leídas. Manda diseño r2 completo
-C:/tmp/ola2/diseno-1594-opus.md y encargo del 2026-10-13: DeepSeek vía OpenCode,
-PostHog opcional ausente, worker solo propone, owner confirma; descuento fuera.
-La condición 2 se cumplió: SQL completo en DUDA, parada y OK posterior
-del orquestador sobre SQL 0fd57395...cf6c9 y rollback 206dd635...4e621.
+Manda el diseño r2 completo C:/tmp/ola2/diseno-1594-opus.md y el encargo de Isaac.
+Leídas #1594/#1593 y el paquete mínimo #1535. SQL completo, rollback y hashes se
+entregaron como DUDA/PARA en C:/tmp/buzon/1594.md. OK posterior del orquestador:
+SQL 0fd57395...cf6c9, rollback 206dd635...4e621, cuarto parámetro snapshot,
+topes UTC, purga sin cron y rol sin contraseña. Condiciones escritas de
+privacidad y despliegue requieren autorización aparte.
 
-Leídos [#1452](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1452) y [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535) con decisiones/avances actuales. GitHub/Project Vantare contiene alcance. [Testing nativo](../../../native/hub/src/testing/README.md), [servicios](../../../native/services/README.md) y [canales](../../branch-channels.md) fijan contratos. #1561 registra/relee compactación, sin enviar informes reales.
+Plane es el tracker de trabajo según nightly vigente; GitHub conserva código,
+issue y PR. #1599 faltaba al inicio (buzón), incorporado después; En curso
+actualizado y verificado con su script oficial. GitHub area:testing-center,
+Project Vantare, sin milestone de versión inventado.
 
-## 3. Estado real y canal
+## 3. Canal y hitos
 
-#1594: worktree/branch vantareapp/isa-1594-triaje-informes, base exacta
-origin/nightly@a0f8569b6ee0228b924ea528c4309b41ecaeddb2. Hito SQL/tests/runbook
-1358eb71e97696ed6eae98be6f97ed0510e3f016 (local). Hito ensayo/prueba de
-producción 91e2f1af247e3287b696f319816fc2ffa6367500. No PR ni promoción.
-GitHub: area:testing-center, state:in-progress y Project Vantare. Intento
-Plane En curso falló: script ausente y PR #1599 aún abierto al inicio.
-
-Contexto de la entrega anterior #1535 (no estado remoto refrescado aquí):
-
-Base incorporada mediante merge (sin rebase): `origin/nightly@b2186f82746424b4844a5909efd31530c5bbe5b3`,
-que contiene #1570 (handoffs de estado), #1572 (#1563 pedales) y #1573 (#1568 acceso).
-Rama `vantareapp/isa-1535-roadmap-testing`, entrega #1535 `3d762e8b`, PR
-[#1578](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1578) a nightly.
-SHA del merge/push y CI se registran en la issue y `C:/tmp/buzon/1535.md`.
-Auto-merge activo por el orquestador; esta escritura no acredita fusion remota ni release.
-Servicios IPC v6, DTO v10 y control/derechos v4 son contratos independientes.
-#1568 conserva admision protegida, cancelacion serializada y revalidacion;
-la correlacion del incidente humano sigue pendiente. El registro archivado
-C:/tmp/ola2/1535-backup-cli/FIN-production-applied.md declara aplicado #1535
-el 2026-10-13 con gate cerrado. Previa fresca de #1594 confirma gate cerrado.
+Rama vantareapp/isa-1594-triaje-informes; base inicial nightly a0f8569b.
+Nightly bc89c8b8 incorporado mediante merge 1f8721eb, con #1595/#1599.
+Hitos locales: SQL/tests 1358eb71, prueba de producción 91e2f1af,
+cliente/worker 2b520e1f. PR y CI remotos pendientes de gates finales.
+Nightly no equivale a master/release. No se ha desplegado el worker.
 
 ## 4. Decisiones cerradas
 
-- El editor remoto y diagnóstico local tienen borradores distintos; el texto privado no entra al diagnóstico.
-- Borrador local se recupera sin consentimiento/revisión; preparar una nueva revisión antes del envío.
-- Recibido al enviar no implica conversación, seguimiento ni historial remoto. Recibos deduplicados por ID y limitados a sesión.
-- Imagen usa prepare/upload/finalize/attach; privacidad y autorización de tester/owner no se omiten.
-- Automatización de soporte/testing sigue inerte: no rulesets, auto-merge, dispatch ni tokens por mantener docs.
-- Cuestionarios/contribuciones ausentes se declaran como tales; no métricas o comunidad inventadas.
+- El worker propone; review(uuid,text,text,jsonb) exige owner, nota y snapshot.
+- Ventana comercial de 45 días y pérdida del tramo por spam quedan en #1593.
+- Purga preparada, sin instalar ni registrar pg_cron. Rol NOLOGIN sin password.
+- Proveedor bloqueado hasta condiciones escritas de pasarela/subencargado,
+  región, retención, entrenamiento y contrato; no se afirma ZDR.
+- No emails/tokens/rutas de usuario sin anonimizar. Doble redacción y extracto
+  mínimo; account_id y posthog_session_id no llegan al proveedor.
+- Datos ausentes y errores se muestran sin inventar contexto o éxito remoto.
 
 ## 5. Arquitectura y ownership
 
-[Testing Hub](../../../native/hub/src/testing/README.md) presenta editor/diagnóstico/recibos; services posee red/configuración del puente. RPC/Storage/Clerk y RLS se validan por separado en entorno autorizado. No incluir identidad o texto privado en logs/paquetes sin consentimiento, ni dar permiso a un agente por texto de un payload.
+Hub presenta el editor; services captura/prepara y posee puente/red; IPC limita
+el frame ampliado a TriagePreview. Supabase guarda contexto/adjuntos/revisiones
+con RLS forzada y RPC autorizadas. Worker tiene SELECT limitado a 30 días,
+sin account_id ni revisiones. anon/service_role no acceden a tablas nuevas.
+El orquestador verifica HMAC/caducidad/dedupe y solicita decisión humana.
+[Despliegue preparado](../../../../tools/triage/README.md), requiere otro OK.
 
-## 6. Evidencia y límites
+## 6. Evidencia
 
-#1594: ensayo de esquema vigente 83/83 pgTAP y restore completo sin red
-con 73 conteos exactos. Postcheck local y de producción 25/25 PASS. 73 conteos
-originales preservados salvo history +1; tres tablas nuevas vacías. Evidencia
-protegida C:/tmp/ola2/1594-backup-cli/, copias detenidas con datos retenidos.
-Sin URI/password/filas impresos. También 83/83 pgTAP sobre PostgreSQL local
-temporal con fixtures sintéticas;
-actor de aplicación NOSUPERUSER+BYPASSRLS. Dos sesiones comprueban tope
-concurrente; login real del rol de lectura, rechazo de snapshot obsoleto,
-rollback atómico por rol preexistente, rollback con datos denegado, rollback
-vacío con preservación legacy y reaplicación PASS. Quality 456 huellas PASS;
-git diff --check PASS. Evidencia C:/tmp/ola2/1594-sql-evidence/summary.json.
-Rust/Go/frontend no aplican en este hito SQL; no cambiados. Esto no demuestra
-Supabase completo, PostgREST/JWT/UI, worker ni proveedor.
+SQL local 83/83 pgTAP PASS: consentimiento, aislamiento, idempotencia, hash,
+retención, topes UTC, dos sesiones concurrentes, login real del rol de lectura,
+rollback con datos denegado, rollback vacío y reaplicación. Ensayo sobre esquema
+vigente 83/83 PASS. Backup protegido y restore completo sin red: 73 conteos
+exactos. Aplicación autorizada ombjshwzqgeisazijduq, history 20261013160000;
+postcheck local y producción 25/25 PASS (anon/authenticated/service_role/triage).
+73 conteos originales preservados salvo history +1; tres tablas nuevas vacías.
+Gate nativo cerrado, cron ausente, NOLOGIN. Sin rollback ejecutado.
+Evidencia protegida C:/tmp/ola2/1594-backup-cli/; hashes SQL intactos.
 
-Evidencia previa #1535:
+Worker 14/14 tests offline PASS; quality 456 huellas PASS. Captura real de PC
+verificada sin imprimir valores personales. Regresiones de envío incierto,
+consentimiento GPUI y frame escapado preparadas. fmt/check/Clippy PASS; Nextest 1650/1650 PASS (7 skips), incluido el
+reintento por submit_v2 y el resumen local. Lifecycle/telemetría pendientes.
+Primer build se interrumpió por disco C lleno; target propio copiado a E,
+original conservado. Wrapper cambia solo cwd/output, mismos flags/features/checks,
+compilar.ps1 obligatorio. Logs E:/tmp/isa1594-final-*.log.
 
-#1535 entrega aislada: fmt/Clippy PASS; Nextest 1579/1579 (7 skips),
-lifecycle 18/18 y telemetria 25/25. Ronda SQL corregida: pgTAP local 20+31,
-fixtures profiles+account_identities+membership sin auth.users, aislamiento y
-revocacion, LOGIN real adversarial, gate EXECUTE+USAGE sin ampliar allowlist.
-Dos sesiones comprueban caducidad tras BEGIN antiguo y espera de bloqueo;
-restaurar solo now() detecta el defecto. Quality 456 huellas PASS.
-Evidencia en `C:/tmp/ola2/1535-evidence/`; informe `C:/tmp/ola2/informe-1535.md`.
-Merge actual sin conflictos de codigo: no repetidos gates Rust por el encargo.
-Bootstrap es subconjunto; no acredita Supabase completo ni envio remoto real.
-Capturas y gates previos no prueban Clerk/Storage, instalacion o produccion.
+## 7. Límites y riesgos
 
-## 7. Riesgos y deuda
+No prueba JWT/PostgREST/UI de producción, sesión física LMU/ACC, proveedor,
+webhook T3 ni instalación del servidor. Membresías nuevas vacías y gate cerrado;
+no se abre RLS ni se crea credencial para resolver ausencia. Retención requiere
+activar el mecanismo de purga por separado. No hay fuente de percentiles,
+displays ni fragmento de simulador en este corte. Informe con capturas conserva
+RPC/Storage existentes y su propia autorización. No descuento ni llamadas Polar.
 
-- SQL #1594 aplicado tras OK, previa fresca, backup recuperable y ensayo
-  de esquema vigente. No prueba login/JWT/UI; gates de cliente pendientes.
-- Aprobados cuarto parámetro de review (snapshot), topes por fecha/semana UTC
-  de envío y purga preparada sin cron. Ventana comercial 45 días/pérdida del tramo
-  por dos spams queda en #1593, sin inventar origen de suscripción.
-- pg_cron no registrado; rol NOLOGIN sin password. Proveedor pendiente de
-  condiciones escritas de privacidad antes de activar. Cliente/worker pendientes.
-- P2-4 secretos de repo: riesgo aceptado por Isaac en #1535; sin configuracion en este merge.
-- Cuota de contribuciones diferida (P3-9); no inventar un limite aprobado.
-- Envio real, bearer/rol, expiracion, logout y replies tardios requieren QA autorizada; no hay historial remoto demostrado.
-- Bots/workflows inertes; infraestructura, permisos y despliegues fuera de esta tarea.
+## 8. Trabajo relacionado
 
-## 8. Issues terminadas, activas y pendientes
+#1594 triaje; #1593 elegibilidad comercial; #1535 cuestionarios/contribuciones;
+#1452 puente/envío real y QA de identidad; #1521 bot de guardia separado.
+Contratos de [Testing Hub](../../../native/hub/src/testing/README.md),
+[servicios](../../../native/services/README.md) y [canales](../../branch-channels.md).
 
-Activa #1594 para triaje (SQL aplicado, cliente/worker pendientes). Contexto #1535 para cuestionarios/reportes/comunidad; #1452 abierta para puente/envío real. #1521 diseño de bot de guardia es otro alcance. #1496 UI sigue abierta con entregas en base; #1536 y arreglos cerrados. IDs TC/ISA migrados quedan en histórico sin renumeración ni segundo tracker.
+## 9. Siguiente acción
 
-## 9. Siguiente acción exacta
+Terminar gates sobre los últimos cambios, commit, push y PR a nightly con
+Closes #1594 y auto-merge squash; Plane Por revisar con PR y FIN en buzón.
+Activación del proveedor y despliegue permanecen bloqueados por autorización
+separada. No activar cron ni LOGIN/password sin su autorización específica.
 
-Cliente con contexto real/redacción/vista previa/consentimiento, IPC v7;
-worker Python inerte con 13 tests offline PASS y consentimiento GUI PASS.
-Incorporar nightly vigente, completar gates y PR con auto-merge squash. Por revisar/FIN solo al
-completar. No activar cron, LOGIN/password, proveedor ni despliegue del worker.
+## 10. Actualización
 
-## 10. Última actualización
-
-2026-10-13 · GitHub #1594 / VANTA-38 · Codex. Hito SQL 1358eb71, base nightly
-verificada, sin PR/push. Migración aplicada tras OK, postcheck 25/25 PASS,
-backup+restore protegidos y gate nativo cerrado. Hito de evidencia 91e2f1af.
+2026-10-13 · Codex · #1594 / VANTA-38. Estado de aplicación y hashes aprobados
+registrados en runbook/buzón; entrega de cliente/worker y gates finales local.

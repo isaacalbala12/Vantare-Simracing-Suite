@@ -99,8 +99,8 @@ reales verifican el bloqueo por cuenta; un login real verifica los permisos
 del worker. Rollback con datos se rechaza; vacío preserva el informe legacy;
 reaplicación pasa. Evidencia local: `summary.json` y logs en la carpeta output.
 
-Este hito no cambia Rust, Go ni frontend: no son aplicables sus compilaciones
-y tests. No acredita JWT/PostgREST, UI, proveedor, webhook ni producción.
+Estas pruebas SQL no acreditan JWT/PostgREST, UI, proveedor ni webhook.
+Los gates Rust se ejecutan aparte; no se han tocado Go ni frontend.
 
 ## Aplicación verificada en producción
 
@@ -161,10 +161,12 @@ Cliente IPC v7: informes/contribuciones de texto por submit_v2, datos del PC
 reales desde CIM y procesos conocidos, log real reciente de services, redacción,
 vista previa del payload y cinco casillas. Cambios de texto/opciones revocan
 preview/consentimiento; send usa el mismo packet/UUID al reintentar. PostHog y
-fragmento sin fuente quedan NULL/ausentes. Capturas mantienen su ruta existente.
+fragmento sin fuente quedan NULL/ausentes. El resumen local incluye hasta
+20 fallos y 50 eventos observados de servicios de los últimos 30 minutos,
+sin depender de PostHog; no añade percentiles sin fuente. Capturas mantienen su ruta existente.
 En este corte no hay fuente de displays/percentiles de overlays: no se inventan.
 
-Worker en `tools/triage/`, biblioteca estándar, 13 tests offline PASS. No instalado,
+Worker en `tools/triage/`, biblioteca estándar, 14 tests offline PASS. No instalado,
 sin schedule/credenciales, ejemplo disabled. Runbook concreto de despliegue en
 [tools/triage/README.md](../../../tools/triage/README.md). Requiere otro OK y
 condiciones de privacidad escritas. Controles preparados del diseño r2:

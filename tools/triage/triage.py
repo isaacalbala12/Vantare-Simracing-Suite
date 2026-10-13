@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from analysis import MODEL, extract, validate, utc
-from privacy import redact
+from privacy import redact, clean_tree
 from state import State
 import model
 
@@ -130,7 +130,7 @@ def pass_once(state, reports, history, versions, analyze, send, now):
         base={'delivery_id':id,'sent_at':datetime.fromtimestamp(now,timezone.utc).isoformat(),
               'contribution':{'id':id,'channel':report['channel'],'created_at':report['created_at'],
                   'title':redact(report['title']),'body_redacted':redact(report['body']),
-                  **{k:(report.get('context') or {}).get(k) for k in ('app_version','game','game_version')}}}
+                  **{k:clean_tree((report.get('context') or {}).get(k)) for k in ('app_version','game','game_version')}}}
         started=time.monotonic()
         invoked=False
         try:

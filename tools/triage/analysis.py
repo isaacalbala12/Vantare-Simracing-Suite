@@ -30,7 +30,7 @@ def candidates(report, history):
         same = ctx.get('game') == oc.get('game') and ctx.get('app_version') == oc.get('app_version')
         similar = SequenceMatcher(None, report['title'].casefold(), other['title'].casefold()).ratio() >= .7
         if same or fingerprints & of or similar:
-            result.append({'id': other['id'], 'title': redact(other['title']), 'app_version': oc.get('app_version'), 'game': oc.get('game')})
+            result.append({'id': other['id'], 'title': redact(other['title']), 'app_version': clean_tree(oc.get('app_version')), 'game': oc.get('game')})
     return result[:15]
 
 
@@ -111,8 +111,8 @@ def extract(report, history, versions):
             evidence |= bool(stats)
     duplicate = candidates(report, history)
     value = {'title': redact(report['title']), 'body': redact(report['body']),
-             'app_version': ctx.get('app_version'), 'app_channel': ctx.get('app_channel'),
-             'game': ctx.get('game'), 'game_version': ctx.get('game_version'),
+             'app_version': clean_tree(ctx.get('app_version')), 'app_channel': ctx.get('app_channel'),
+             'game': ctx.get('game'), 'game_version': clean_tree(ctx.get('game_version')),
              'system': system(ctx.get('system') or {}) if 'system' in items else {},
              'errors': clean_tree(errors), 'performance': clean_tree(performance),
              'events': clean_tree(events), 'log': logs, 'fragment_statistics': stats, 'duplicate_candidates': duplicate}

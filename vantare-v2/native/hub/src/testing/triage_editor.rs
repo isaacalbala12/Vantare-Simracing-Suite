@@ -21,71 +21,6 @@ pub struct Editor {
     preparing: Option<u64>,
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::services::protocol::triage_document::Packet;
-    #[test]
-    fn editing_private_report_revokes_preview_and_consent_before_send() {
-        use std::sync::{
-            Arc,
-            atomic::{AtomicU8, Ordering},
-        };
-        let observed = Arc::new(AtomicU8::new(0));
-        let result = Arc::clone(&observed);
-        gpui_platform::headless().run(move |cx| {
-            let file = crate::document::tests::File::new();
-            let (send, _requests) = std::sync::mpsc::sync_channel(8);
-            let remote = cx.new(|cx| {
-                crate::services::view::purchase_tests::fixture(
-                    cx,
-                    send,
-                    file.path.parent().expect("root"),
-                )
-            });
-            remote.update(cx, |r, cx| {
-                r.triage.preparing = Some(r.triage.revision);
-                r.triage.receive(Preview {
-                    id: "a".repeat(64),
-                    channel: "testers".into(),
-                    packet: Packet {
-                        id: "15940000-0000-0000-0000-000000000001".into(),
-                        title: "QA".into(),
-                        body: "Private fixture".into(),
-                        context: serde_json::json!({}),
-                        attachments: vec![],
-                    },
-                });
-                r.triage.consent.update(cx, |c, cx| {
-                    c.checked = true;
-                    cx.notify();
-                });
-                assert!(r.triage.preview.is_some());
-                r.triage.inputs[0]
-                    .update(cx, |input, cx| input.set_value("Changed report".into(), cx));
-            });
-            // Foreground task runs after queued notifications. Always quit;
-            // assert outside the UI loop so an assertion cannot strand it.
-            cx.spawn(async move |cx| {
-                cx.update(|cx| {
-                    let flags = remote.update(cx, |r, cx| {
-                        u8::from(r.triage.preview.is_none())
-                            | (u8::from(!r.triage.consent.read(cx).checked) << 1)
-                            | (u8::from(r.triage.values[0] == "Changed report") << 2)
-                    });
-                    result.store(flags, Ordering::Release);
-                    cx.quit();
-                });
-            })
-            .detach();
-        });
-        assert_eq!(
-            observed.load(Ordering::Acquire),
-            7,
-            "edit must revoke preview/consent and update the text"
-        );
-    }
-}
 impl Editor {
     pub(crate) fn new(cx: &mut Context<Remote>) -> Self {
         let inputs = [
@@ -107,7 +42,7 @@ impl Editor {
             "Enlazar sesión de analítica",
         ];
         let choices = std::array::from_fn(|i| cx.new(|cx| Checkbox::new(labels[i], true, cx)));
-        let consent=cx.new(|cx|Checkbox::new("Un asistente de IA externo (DeepSeek vía OpenCode) preclasifica el informe con estos datos; la decisión la toma una persona. Se borran a los 90 días.",false,cx));
+        let consent=cx.new(|cx|Checkbox::new("Un asistente de IA externo (DeepSeek vía OpenCode) preclasifica el informe con estos datos; la decisión la toma una persona. Los adjuntos y el resumen se retienen hasta 90 días desde la decisión.",false,cx));
         for (i, input) in inputs.iter().enumerate() {
             cx.observe(input, move |this, entity, cx| {
                 if entity.entity_id() != this.triage.inputs[i].entity_id()
@@ -209,7 +144,7 @@ impl Editor {
         for checkbox in &self.choices {
             form = form.child(checkbox.clone());
         }
-        form=form.child(orbit::text("Analítica y fragmento quedan vacíos si no hay datos disponibles. El log incluye solo actividad real reciente de servicios; las capturas se envían desde Informe con capturas.",12.0,400,orbit::ink_3(cx),cx))
+        form=form.child(orbit::text("PostHog y el fragmento quedan vacíos si no hay datos disponibles. El log incluye solo actividad real reciente de servicios; las capturas se envían desde Informe con capturas.",12.0,400,orbit::ink_3(cx),cx))
             .child(self.consent.clone())
             .child(orbit::small_button("triage-preview","Ver lo que se envía",cx).tab_stop(valid)
                 .when(!valid,|b|orbit::disabled(b,"Revisa el texto, acepta el consentimiento e inicia sesión"))
@@ -253,5 +188,71 @@ impl Editor {
                 );
         }
         form
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::protocol::triage_document::Packet;
+    #[test]
+    fn editing_private_report_revokes_preview_and_consent_before_send() {
+        use std::sync::{
+            Arc,
+            atomic::{AtomicU8, Ordering},
+        };
+        let observed = Arc::new(AtomicU8::new(0));
+        let result = Arc::clone(&observed);
+        gpui_platform::headless().run(move |cx| {
+            let file = crate::document::tests::File::new();
+            let (send, _requests) = std::sync::mpsc::sync_channel(8);
+            let remote = cx.new(|cx| {
+                crate::services::view::purchase_tests::fixture(
+                    cx,
+                    send,
+                    file.path.parent().expect("root"),
+                )
+            });
+            remote.update(cx, |r, cx| {
+                r.triage.preparing = Some(r.triage.revision);
+                r.triage.receive(Preview {
+                    id: "a".repeat(64),
+                    channel: "testers".into(),
+                    packet: Packet {
+                        id: "15940000-0000-0000-0000-000000000001".into(),
+                        title: "QA".into(),
+                        body: "Private fixture".into(),
+                        context: serde_json::json!({}),
+                        attachments: vec![],
+                    },
+                });
+                r.triage.consent.update(cx, |c, cx| {
+                    c.checked = true;
+                    cx.notify();
+                });
+                assert!(r.triage.preview.is_some());
+                r.triage.inputs[0]
+                    .update(cx, |input, cx| input.set_value("Changed report".into(), cx));
+            });
+            // Foreground task runs after queued notifications. Always quit;
+            // assert outside the UI loop so an assertion cannot strand it.
+            cx.spawn(async move |cx| {
+                cx.update(|cx| {
+                    let flags = remote.update(cx, |r, cx| {
+                        u8::from(r.triage.preview.is_none())
+                            | (u8::from(!r.triage.consent.read(cx).checked) << 1)
+                            | (u8::from(r.triage.values[0] == "Changed report") << 2)
+                    });
+                    result.store(flags, Ordering::Release);
+                    cx.quit();
+                });
+            })
+            .detach();
+        });
+        assert_eq!(
+            observed.load(Ordering::Acquire),
+            7,
+            "edit must revoke preview/consent and update the text"
+        );
     }
 }

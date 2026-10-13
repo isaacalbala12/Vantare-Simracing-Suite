@@ -25,4 +25,3 @@ ReadWritePaths=/var/lib/vantare-triage
 KillMode=control-group
 RestrictSUIDSGID=true
 LockPersonality=true
-

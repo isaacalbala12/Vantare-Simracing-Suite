@@ -106,3 +106,27 @@ fn cancel_and_retention_clear_private_preparations_without_fabricated_logs() {
     assert!(triage.prepared.is_none());
     assert_eq!(tail("ééé", 3), "é");
 }
+
+#[test]
+fn session_summary_uses_only_recent_observed_failures_and_events_without_posthog() {
+    let mut triage = Triage::default();
+    assert!(triage.summary(100).is_null());
+    triage.record(100, true, "report-send");
+    for at in 1900..2000 {
+        triage.record(at, at % 2 == 0, "refresh");
+    }
+    let summary = triage.summary(2000);
+    let errors = summary["errors"].as_array().expect("errors");
+    let events = summary["events"].as_array().expect("events");
+    assert_eq!(errors.len(), 20);
+    assert_eq!(events.len(), 50);
+    assert_eq!(errors[0]["message"], "ERROR services:refresh");
+    assert_eq!(
+        errors[0]["fingerprint"],
+        crate::content_hash(b"ERROR services:refresh")
+    );
+    assert_eq!(events[0]["at"], "1970-01-01T00:32:30+00:00");
+    assert!(!summary.to_string().contains("report-send"));
+    assert!(summary.get("performance").is_none());
+    assert!(triage.summary(4000).is_null());
+}

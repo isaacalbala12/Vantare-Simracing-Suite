@@ -593,7 +593,7 @@ pub fn run(args: Args) -> Result<u8, String> {
             #[cfg(feature = "parity-capture")]
             if let Some(path) = &args.capture {
                 let native_fonts=cx.text_system().all_font_names().into_iter().filter(|name|name.contains("Installer")||name.contains("Rajdhani")||name.contains("Space Mono")).collect::<Vec<_>>();
-                let widths=serde_json::json!({"fonts":native_fonts,"rajdhani_width":crate::style::text_width("Herramientas de","Rajdhani",27.,window),"inter_width":crate::style::text_width("Overlays, launcher y perfiles en una sola app. Tarda alrededor","Installer Inter W400",13.5,window)});
+                let widths=serde_json::json!({"fonts":native_fonts,"rajdhani_width":crate::style::text_width("Vantare,","Rajdhani",27.,window),"inter_width":crate::style::text_width("Overlays, launcher y perfiles en una sola app. Tarda alrededor","Installer Inter W400",13.5,window)});
                 let _=std::fs::write(path.with_extension("fonts.json"),widths.to_string());
                 let ready = path.with_extension("ready");
                 cx.spawn(async move |cx| {

@@ -63,6 +63,11 @@ pendientes de entorno; no se infieren de las capturas ni de los tests headless.
 Push/PR draft a nightly y enlace T3 autorizados al finalizar; no integración antes de review independiente.
 QA futura bajo `C:/tmp/ola2/1591-qa`; arranque live solo en cuenta/VM de prueba por el SID/instancia compartida, capturas con pantalla libre y mutex.
 
+Cambio puntual aprobado por Isaac en #1591: bienvenida y Opciones muestran
+«Vantare, creado por y para pilotos»; medición QA y comparativa actualizadas.
+Gates Rust por cola: fmt/check/Clippy PASS, Nextest 1646/1646 (7 skips), lifecycle
+18/18 (`1591-copy-*.log`, lifecycle-r2). SHA en issue/PR #1600; revisión en curso.
+
 ### Estado previo de plataforma (su base propia)
 
 Base incorporada mediante merge (sin rebase): `origin/nightly@b2186f82746424b4844a5909efd31530c5bbe5b3`,

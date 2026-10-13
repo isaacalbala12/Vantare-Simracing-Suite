@@ -82,11 +82,11 @@ fn progress(view: &Installer) -> Div {
 fn claim(view: &Installer) -> Div {
     let (bright, muted, symbol, bright_lines, muted_lines) = match view.screen {
         Screen::Welcome => (
-            "Herramientas de\nsimracing".to_owned(),
-            "que funcionan.".to_owned(),
+            "Vantare,".to_owned(),
+            "creado por y\npara pilotos".to_owned(),
             None,
-            2.,
             1.,
+            2.,
         ),
         Screen::Installed => (
             "Ya lo tienes.".to_owned(),

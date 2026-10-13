@@ -15,6 +15,7 @@ use crate::{
     },
 };
 pub(crate) use add_widget::OpenPlans;
+use add_widget::widget_icon;
 use canvas::{CanvasFrame, HeldNudge, client_monitor};
 #[cfg(feature = "parity-capture")]
 use catalog::{capture_name, capture_session, studio_demo_capture};

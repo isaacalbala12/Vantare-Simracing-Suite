@@ -494,11 +494,11 @@ impl Studio {
                     .justify_center()
                     .rounded(px(orbit::skin(cx).radius.sm))
                     .bg(rgb(orbit::surface_3(cx)))
-                    .child(orbit::icon(
-                        if lock.is_some() { "v-lock" } else { "v-studio" },
-                        16.0,
-                        orbit::ink_2(cx),
-                    )),
+                    .child(if lock.is_some() {
+                        orbit::icon("v-lock", 16.0, orbit::ink_2(cx))
+                    } else {
+                        widget_icon(item.settings.kind(), 16.0, orbit::ink_2(cx))
+                    }),
             )
             .aria_selected(selected)
             .child(

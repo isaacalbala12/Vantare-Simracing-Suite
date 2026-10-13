@@ -414,7 +414,7 @@ impl Studio {
                     .p(px(16.0))
                     .border_b_1()
                     .border_color(orbit::alpha(orbit::skin(cx).line1))
-                    .child(orbit::icon("v-studio", 28.0, orbit::carmine(cx)))
+                    .child(widget_icon(item.settings.kind(), 28.0, orbit::carmine(cx)))
                     .child(
                         text(item.settings.kind().label(), 18.0, 600, orbit::ink(cx), cx)
                             .flex_1()

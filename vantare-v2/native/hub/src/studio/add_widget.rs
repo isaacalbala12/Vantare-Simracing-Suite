@@ -354,6 +354,15 @@ const THUMB_H: f32 = 78.0;
 const CARD_GAP: f32 = 10.0;
 const LIST_PAD: f32 = 20.0;
 
+/// Icono monocromo propio del widget (`assets/widgets/w-<kind>.svg`).
+pub(super) fn widget_icon(kind: Kind, size: f32, color: u32) -> gpui::Svg {
+    gpui::svg()
+        .path(format!("icons/w-{}.svg", kind.name()))
+        .size(px(size))
+        .flex_none()
+        .text_color(rgb(color))
+}
+
 impl Studio {
     pub(super) fn show_catalog(&mut self, cx: &mut Context<Self>) {
         self.cancel_drag(cx);
@@ -885,13 +894,9 @@ impl Studio {
     }
 
     /// Miniatura fiel con insignia «En el diseño» o candado Pro.
-    fn card_thumb(&self, kind: Kind, locked: bool, placed: usize, cx: &gpui::App) -> gpui::Div {
+    fn card_thumb(kind: Kind, locked: bool, placed: usize, cx: &gpui::App) -> gpui::Div {
         let skin = orbit::skin(cx).clone();
         let lock = locked.then_some(());
-        let preview = self
-            .catalog_previews
-            .iter()
-            .find(|preview| preview.kind == kind);
         let badge = |label: String, cx: &gpui::App| {
             div()
                 .absolute()
@@ -930,15 +935,11 @@ impl Studio {
                     .items_center()
                     .justify_center()
                     .when(lock.is_some(), |thumb| thumb.opacity(0.42))
-                    .when_some(preview, |thumb, preview| {
-                        thumb.child(
-                            div()
-                                .flex_none()
-                                .w(px(preview.size.0 * preview.scale))
-                                .h(px(preview.size.1 * preview.scale))
-                                .child(preview.overlay.clone()),
-                        )
-                    }),
+                    .child(
+                        gpui::img(format!("widgets/{}.svg", kind.name()))
+                            .w(px(THUMB_H * 2.0))
+                            .h(px(THUMB_H)),
+                    ),
             )
             .when(lock.is_some(), |thumb| {
                 thumb.child(
@@ -955,6 +956,55 @@ impl Studio {
                     } else {
                         "En el diseño".into()
                     },
+                    cx,
+                ))
+            })
+    }
+
+    fn card_title(
+        kind: Kind,
+        locked: bool,
+        preview: Option<&CatalogPreview>,
+        cx: &gpui::App,
+    ) -> gpui::Div {
+        let skin = orbit::skin(cx);
+        let lock = locked.then_some(());
+        div()
+            .flex()
+            .items_center()
+            .gap(px(6.0))
+            .child(widget_icon(
+                kind,
+                14.0,
+                if lock.is_some() {
+                    skin.text3
+                } else {
+                    skin.accent_bright
+                },
+            ))
+            .child(
+                text(
+                    kind.label(),
+                    13.0,
+                    600,
+                    if lock.is_some() {
+                        skin.text3
+                    } else {
+                        skin.text1
+                    },
+                    cx,
+                )
+                .flex_1()
+                .min_w_0()
+                .whitespace_nowrap()
+                .overflow_hidden()
+                .text_ellipsis(),
+            )
+            .when_some(preview.filter(|_| lock.is_none()), |row, preview| {
+                row.child(orbit::mono_text(
+                    format!("{:.0}×{:.0}", preview.size.0, preview.size.1),
+                    11.0,
+                    skin.cap,
                     cx,
                 ))
             })
@@ -979,44 +1029,13 @@ impl Studio {
             .iter()
             .find(|preview| preview.kind == kind);
         let (description, ..) = about(kind);
-        let thumb = self.card_thumb(kind, lock.is_some(), placed, cx);
+        let thumb = Self::card_thumb(kind, lock.is_some(), placed, cx);
         let body = div()
             .px(px(10.0))
             .pt(px(8.0))
             .pb(px(10.0))
             .min_w_0()
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(6.0))
-                    .child(
-                        text(
-                            kind.label(),
-                            13.0,
-                            600,
-                            if lock.is_some() {
-                                skin.text3
-                            } else {
-                                skin.text1
-                            },
-                            cx,
-                        )
-                        .flex_1()
-                        .min_w_0()
-                        .whitespace_nowrap()
-                        .overflow_hidden()
-                        .text_ellipsis(),
-                    )
-                    .when_some(preview.filter(|_| lock.is_none()), |row, preview| {
-                        row.child(orbit::mono_text(
-                            format!("{:.0}×{:.0}", preview.size.0, preview.size.1),
-                            11.0,
-                            skin.cap,
-                            cx,
-                        ))
-                    }),
-            )
+            .child(Self::card_title(kind, lock.is_some(), preview, cx))
             .child(
                 text(description, 12.0, 400, skin.text3, cx)
                     .mt(px(3.0))

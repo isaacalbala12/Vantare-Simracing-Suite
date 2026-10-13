@@ -78,3 +78,42 @@ class Tests(unittest.TestCase):
                 self.assertEqual(state.db.execute('select status from reports where id=?',(r['id'],)).fetchone()[0],'delivered')
                 self.assertEqual(state.db.execute('select status from reports where id=?',(expired['id'],)).fetchone()[0],'delivery_expired')
             finally:state.close()
+
+    def test_review_p2_6_restart_recovers_interrupted_attempts_without_a_fourth_call(self):
+        for count,legacy in ((1,False),(2,False),(3,False),(3,True)):
+            with self.subTest(count=count,legacy=legacy),tempfile.TemporaryDirectory() as root:
+                state=State(root);r=report();state.discover(r,NOW)
+                for previous in range(count-1):
+                    self.assertEqual(state.attempt(r['id']),previous+1);state.analysis_failed(r['id'])
+                self.assertEqual(state.attempt(r['id']),count)
+                if legacy:state.analysis_failed(r['id'])
+                partial=state.root/(r['id']+'.'+'a'*32+'.tmp')
+                partial.write_text('fixture partial redacted spool',encoding='utf-8')
+                state.close()  # Persisted increment, no result: crash/restart boundary.
+                state=State(root);calls=[];sent=[]
+                try:
+                    triage.pass_once(state,[r],[],{},lambda value:(calls.append(value) or response()),sent.append,NOW+120)
+                    self.assertEqual(len(sent),1,'restart must produce a proposal or terminal failure')
+                    self.assertFalse(partial.exists())
+                    self.assertEqual(sent[0]['type'],'triage.failed' if count==3 else 'triage.proposal')
+                    self.assertEqual(len(calls),0 if count==3 else 1)
+                    self.assertEqual(state.db.execute('select attempt from reports where id=?',(r['id'],)).fetchone()[0],3 if count==3 else count+1)
+                    self.assertEqual(state.pending_ids(),[])
+                    triage.pass_once(state,[r],[],{},lambda _:self.fail('fourth or duplicate analysis'),sent.append,NOW+240)
+                    self.assertEqual(len(sent),1)
+                finally:state.close()
+
+    def test_review_p2_6_restart_reuses_spool_persisted_before_sqlite_result(self):
+        with tempfile.TemporaryDirectory() as root:
+            state=State(root);r=report();sent=[]
+            def offline(_):raise OSError('fixture offline')
+            triage.pass_once(state,[r],[],{},lambda _:response(),offline,NOW,intake=lambda *_:None)
+            payload=state.payload(r['id'])
+            # Durable state of SIGKILL after atomic spool replace, before SQL ACK.
+            state.db.execute("update reports set status='analyzing',attempt=3,delivery_until=null,intake_pending=0 where id=?",(r['id'],));state.db.commit();state.close()
+            state=State(root);plane=[]
+            try:
+                triage.pass_once(state,[r],[],{},lambda _:self.fail('persisted proposal reanalyzed'),sent.append,NOW+120,intake=lambda p,_:plane.append(p))
+                self.assertEqual(sent,[payload]);self.assertEqual(plane,[payload])
+                self.assertFalse((state.root/(r['id']+'.json')).exists())
+            finally:state.close()

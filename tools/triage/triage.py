@@ -119,6 +119,8 @@ def verify_delivery(body, signature, secret, now, seen):
 
 
 def pass_once(state, reports, history, versions, analyze, send, now, intake=None, retry_pending=True):
+    if retry_pending:
+        state.recover_interrupted(now,intake=intake is not None)
     for id in state.purge(now):
         print(json.dumps({'id':id,'status':'intake_expired'}))
     def intake_send(id, payload):

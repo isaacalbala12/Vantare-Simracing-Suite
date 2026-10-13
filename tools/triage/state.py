@@ -49,8 +49,43 @@ class State:
         row=self.db.execute('select status,attempt from reports where id=?',(id,)).fetchone()
         if row is None or row[0] not in ('new','analysis_failed') or row[1]>=3:
             return None
-        self.db.execute('update reports set attempt=attempt+1 where id=?',(id,));self.db.commit()
+        self.db.execute("update reports set status='analyzing',attempt=attempt+1 where id=?",(id,));self.db.commit()
         return row[1]+1
+
+    def recover_interrupted(self, now, intake=False):
+        """Called under worker.lock before polling. Never refund a model attempt."""
+        from analysis import utc
+        from datetime import datetime, timezone
+        # SIGKILL before replace can leave a partial spool. No active writer exists
+        # while holding the exclusive worker lock; remove only our own temp names.
+        for path in self.root.glob('*.tmp'):
+            parts=path.name.split('.')
+            if len(parts)==3 and len(parts[1])==32 and all(c in '0123456789abcdef' for c in parts[1]):
+                try:
+                    if str(uuid.UUID(parts[0]))==parts[0]:path.unlink(missing_ok=True)
+                except ValueError:pass
+        rows=list(self.db.execute("select id,attempt from reports where status='analyzing' or (status in ('new','analysis_failed') and attempt>=3)"))
+        for id,attempt in rows:
+            try:
+                payload=self.payload(id)
+                if payload['delivery_id']!=id or payload['contribution']['id']!=id or payload['type'] not in ('triage.proposal','triage.failed'):
+                    raise ValueError('invalid_recovery_spool')
+                until=int(utc(payload['sent_at']).timestamp())+86400
+                pending=int(intake and payload['type']=='triage.proposal' and payload['contribution'].get('channel')=='testers')
+                self.db.execute('update reports set status=?,delivery_until=?,intake_pending=? where id=?',
+                    ('failed' if payload['type']=='triage.failed' else 'analyzed',until,pending,id));self.db.commit()
+                continue  # Preserve the exact durable payload, even on attempt 3.
+            except (OSError,ValueError,TypeError,KeyError):
+                pass
+            if attempt<3:
+                self.analysis_failed(id)
+            else:
+                # Only metadata survived: no invented report text, diagnosis or timing.
+                payload={'delivery_id':id,'sent_at':datetime.fromtimestamp(now,timezone.utc).isoformat(),
+                    'type':'triage.failed','contribution':{'id':id},'triage':None,
+                    'engine':{'model':None,'prompt':'triage-v2','duration_ms':None,'attempt':attempt},
+                    'reason':'analysis_interrupted_or_exhausted'}
+                self.analyzed(id,payload,now,failed=True)
 
     def analyzed(self, id, payload, now, failed=False, intake=False):
         path=self.root/(id+'.json')

@@ -170,3 +170,10 @@ y tres regresiones de privacidad ampliadas al prepare/RPC preview real.
 5. P2-5: main drena/purga spool bajo lock antes de sondear; segunda fase
    evita doble reintento inmediato. RED sin entrega, GREEN con State real y
    polling OSError mock: ACK pendiente y caducado purgado sin modelo ni red.
+
+6. P2-6: estado analyzing persistido y recuperación bajo lock antes de polling.
+   Tercer intento interrumpido (incluido estado legacy) produce triage.failed
+   durable con ID/contador, sin inventar diagnóstico ni cuarto análisis. Intentos
+   1/2 conservan contador; spool fsync previo al commit SQL se reutiliza exacto
+   con ambos ACK y TTL original; temporales huérfanos se purgan. RED/GREEN real
+   SQLite cerrada/reabierta, sin red.

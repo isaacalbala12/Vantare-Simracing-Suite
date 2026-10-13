@@ -62,6 +62,7 @@ def read_reports(config, state, credential):
         from public.testing_contribution_attachments a where a.contribution_id=c.id),'[]'::jsonb))'''
     history_projection = '''jsonb_build_object('id',c.id,'created_at',c.created_at,'title',c.title,
       'context',(select jsonb_build_object('app_version',x.app_version,'game',x.game,
+        'consent',jsonb_build_object('version',x.consent->'version'),
         'telemetry_summary',jsonb_build_object('errors',coalesce((select jsonb_agg(jsonb_build_object('fingerprint',e->'fingerprint'))
           from jsonb_array_elements(coalesce(x.telemetry_summary->'errors','[]'::jsonb)) e),'[]'::jsonb)))
       from public.testing_contribution_context x where x.contribution_id=c.id))'''
@@ -70,7 +71,9 @@ def read_reports(config, state, credential):
         from public.testing_contributions c where c.state='received' and ({cursor_clause} or {pending_clause})
         order by c.created_at,c.id limit 20) q),'[]'::jsonb),
         'history',coalesce((select jsonb_agg(v) from (select {history_projection} v from public.testing_contributions c
-        where c.created_at > statement_timestamp()-interval '14 days' order by c.created_at desc limit 500) h),'[]'::jsonb)); rollback;'''
+        where c.created_at > statement_timestamp()-interval '14 days'
+        and exists(select 1 from public.testing_contribution_context x where x.contribution_id=c.id and x.consent->>'version'='triage-v2')
+        order by c.created_at desc limit 500) h),'[]'::jsonb)); rollback;'''
     result = subprocess.run(['psql','-X','-qAt','-v','ON_ERROR_STOP=1'],env=env,input=query.encode(),capture_output=True,timeout=25)
     if result.returncode or len(result.stdout)>32*1024*1024:
         raise ValueError('readonly_poll_failed')

@@ -21,6 +21,9 @@ Worker Python estándar en tools/triage, disabled por defecto antes de leer
 credenciales o iniciar red/modelo. Lee columnas autorizadas, minimiza y redacta,
 invoca DeepSeek V4.1 Flash por OpenCode sin tools y valida la propuesta.
 Reintentos de entrega HMAC no reanalizan; SQLite solo contiene metadata.
+Los candidatos duplicados también requieren consentimiento IA; títulos legacy
+sin triage-v2 no entran al proveedor. Percentiles medidos pueden ser evidencia
+sin exigir un adjunto de log.
 No instalado, sin timer/webhook/credenciales creados. Solo un owner autenticado,
 tras orden humana expresa, confirma con review; el modelo no acepta informes.
 
@@ -78,10 +81,10 @@ postcheck local y producción 25/25 PASS (anon/authenticated/service_role/triage
 Gate nativo cerrado, cron ausente, NOLOGIN. Sin rollback ejecutado.
 Evidencia protegida C:/tmp/ola2/1594-backup-cli/; hashes SQL intactos.
 
-Worker 14/14 tests offline PASS; quality 456 huellas PASS. Captura real de PC
+Worker 14/16 tests offline PASS; quality 456 huellas PASS. Captura real de PC
 verificada sin imprimir valores personales. Regresiones de envío incierto,
 consentimiento GPUI y frame escapado preparadas. fmt/check/Clippy PASS; Nextest 1650/1650 PASS (7 skips), incluido el
-reintento por submit_v2 y el resumen local. Lifecycle/telemetría pendientes.
+reintento por submit_v2 y el resumen local. Lifecycle 18/18 PASS; telemetría en ejecución.
 Primer build se interrumpió por disco C lleno; target propio copiado a E,
 original conservado. Wrapper cambia solo cwd/output, mismos flags/features/checks,
 compilar.ps1 obligatorio. Logs E:/tmp/isa1594-final-*.log.

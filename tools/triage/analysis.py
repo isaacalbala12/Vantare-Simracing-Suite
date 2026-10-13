@@ -26,6 +26,8 @@ def candidates(report, history):
         if other['id'] == report['id'] or not 0 <= age <= 14 * 86400:
             continue
         oc = other.get('context') or {}
+        if (oc.get('consent') or {}).get('version') != 'triage-v2':
+            continue
         of = {e.get('fingerprint') for e in (oc.get('telemetry_summary') or {}).get('errors', []) if isinstance(e, dict)}
         same = ctx.get('game') == oc.get('game') and ctx.get('app_version') == oc.get('app_version')
         similar = SequenceMatcher(None, report['title'].casefold(), other['title'].casefold()).ratio() >= .7
@@ -93,7 +95,7 @@ def extract(report, history, versions):
             refs.update(f'perf:{metric}_{p}' for p in ('p50','p95') if p in values)
     logs = []
     stats = {}
-    evidence = bool(errors)
+    evidence = bool(errors or performance)
     for attachment in report.get('attachments') or []:
         content = attachment.get('content') or ''
         if attachment.get('kind') not in items:

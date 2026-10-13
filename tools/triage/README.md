@@ -46,6 +46,9 @@ El receptor debe persistir `seen` en el hilo/almacenamiento del orquestador.
 Ni el worker ni la recepción del webhook aceptan informes: una persona u
 orquestador por orden expresa de Isaac confirma vía RPC owner.
 
+Los candidatos duplicados también requieren consentimiento triage-v2; los
+títulos legacy sin ese consentimiento no entran al proveedor.
+
 ## Runbook de despliegue: ejecutar solo tras otro OK
 
 Destino aprobado del diseño: .57, WSL `vantare-svc`. **No ejecutar estos pasos

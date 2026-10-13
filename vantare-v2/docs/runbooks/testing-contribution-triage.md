@@ -166,7 +166,7 @@ fragmento sin fuente quedan NULL/ausentes. El resumen local incluye hasta
 sin depender de PostHog; no añade percentiles sin fuente. Capturas mantienen su ruta existente.
 En este corte no hay fuente de displays/percentiles de overlays: no se inventan.
 
-Worker en `tools/triage/`, biblioteca estándar, 14 tests offline PASS. No instalado,
+Worker en `tools/triage/`, biblioteca estándar, 16 tests offline PASS. No instalado,
 sin schedule/credenciales, ejemplo disabled. Runbook concreto de despliegue en
 [tools/triage/README.md](../../../tools/triage/README.md). Requiere otro OK y
 condiciones de privacidad escritas. Controles preparados del diseño r2:

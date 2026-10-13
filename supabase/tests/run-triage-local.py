@@ -24,7 +24,7 @@ def concurrent_confirmation(run, pg_bin, connection, env, output_dir):
     proposal = ''''{"schema":"vantare.triage.v2","verdict":"valido","confidence":0.9,"criteria":{"contenido_minimo":"si","evidencia":"si","no_duplicado":"si"},"duplicate_of":null,"severity":"media","area":"telemetria","evidence_refs":[],"summary":"Synthetic","preliminary_fix":null,"reasons":[],"trazable":"si"}'::jsonb'''
     run('psql', *connection, '-c', f"""
       insert into public.profiles(id) values ('{author}'),('{owner}');
-      insert into public.testing_center_memberships(user_id,role) values ('{owner}','owner');
+      insert into public.testing_center_memberships(user_id,actor_id,role) values ('{owner}','1594-concurrent-owner','owner');
       insert into public.testing_contributions(id,account_id,channel,title,body) values
         ('{first}','{author}','testers','first','synthetic'),('{second}','{author}','testers','second','synthetic');
     """, name='concurrent-fixtures.log')

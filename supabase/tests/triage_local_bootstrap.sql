@@ -19,6 +19,7 @@ create table public.profiles(id uuid primary key);
 alter table public.profiles owner to postgres;
 create table public.testing_center_memberships (
   user_id uuid primary key references public.profiles(id) on delete cascade,
+  actor_id text not null unique,
   role text not null check (role in ('tester', 'primary_tester', 'owner')),
   active boolean not null default true
 );

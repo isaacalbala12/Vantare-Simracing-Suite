@@ -21,8 +21,11 @@ siguen pendientes: no se acredita un FIN de #1565 posterior a las 00:00 del
 14/10 requerido por las reglas nocturnas. No se abrieron apps ni se adquirió
 lock. Copias/descargas oficiales preparadas en `C:/tmp/1605-research/`;
 Vantare 0.0.976 viene de nightly `bc89c8b8`, no de toda la base actual.
-Sin ranking de rendimiento ni prueba live; PR draft, SHA, checks y siguiente
-paso se registran en [#1605](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1605).
+Sin ranking de rendimiento ni prueba live. [PR #1613](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1613)
+draft OPEN a nightly, investigación `6c1fc442` publicada. Validación documental
+local PASS; CI remoto en curso al abrir el draft. Plane Por revisar verificado
+para esta entrega parcial; [#1605](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1605)
+permanece abierta. SHA final/checks actualizados en issue/buzón.
 Siguiente: revisar documentación parcial y desbloquear señal horaria,
 verificación de escritorio y acceso gratuito antes de medir; no cerrar issue.
 

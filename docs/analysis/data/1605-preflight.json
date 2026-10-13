@@ -16,5 +16,7 @@
   "racelab_installer_run": false,
   "tinypedal_portable_extracted": true,
   "registry_installed_app_matches": [],
-  "registry_check_scope": "HKCU/HKLM uninstall entries RaceLab/TinyPedal only; not an exhaustive portable search"
+  "registry_check_scope": "HKCU/HKLM uninstall entries RaceLab/TinyPedal only; not an exhaustive portable search",
+  "final_gate_check_at": "2026-10-14T00:55:39.9038247+02:00",
+  "final_gate_file_last_write": "2026-10-13T23:16:08.5701341+02:00"
 }

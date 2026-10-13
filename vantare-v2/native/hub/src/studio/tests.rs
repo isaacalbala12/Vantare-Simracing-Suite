@@ -1,3 +1,4 @@
+//! Tests unitarios de Studio (gestos, escala, catálogo, capturas, inspector). Mapa: `README.md`.
 use super::canvas::keyboard_nudge;
 use super::canvas::{
     CANVAS_PRESETS, Drag, Resize, fitted_scale, held_nudge_distance, overlay_monitor,

@@ -1,3 +1,4 @@
+//! Inspector del widget seleccionado: controles, pestañas y su sincronización con `Editor`. Mapa: `README.md`.
 use super::*;
 
 impl Studio {

@@ -13,10 +13,10 @@ icacls C:\VantareServer\secrets /inheritance:r /grant:r '*S-1-5-32-544:(OI)(CI)F
 @('# Copiar a roadmap.env (mismo directorio) y rellenar EN LOCAL. Nunca por chat.',
   'CLICKUP_API_TOKEN=', 'PGHOST=', 'PGPORT=5432', 'PGDATABASE=postgres', 'PGUSER=vantare_roadmap_publisher.<project-ref>', 'PGPASSWORD=') |
   Set-Content C:\VantareServer\secrets\roadmap.env.example -Encoding ascii
-# Hyper-V firewall: Plane (WSL mirrored) solo desde la LAN
+# Hyper-V firewall: Plane (WSL mirrored) solo desde la LAN y Tailscale
 $wsl = '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}'
 if (-not (Get-NetFirewallHyperVRule -Name VantarePlaneLAN -ErrorAction SilentlyContinue)) {
-  New-NetFirewallHyperVRule -Name VantarePlaneLAN -DisplayName 'Vantare Plane LAN (WSL)' -Direction Inbound -VMCreatorId $wsl -Protocol TCP -LocalPorts 8088 -RemoteAddresses 192.168.1.0/24 -Action Allow | Out-Null }
+  New-NetFirewallHyperVRule -Name VantarePlaneLAN -DisplayName 'Vantare Plane LAN (WSL)' -Direction Inbound -VMCreatorId $wsl -Protocol TCP -LocalPorts 8088 -RemoteAddresses 192.168.1.0/24, 100.64.0.0/10 -Action Allow | Out-Null }
 Get-NetFirewallHyperVVMSetting -PolicyStore ActiveStore -Name $wsl | % { "hyperv-fw in=$($_.DefaultInboundAction) enabled=$($_.Enabled)" }
 # Runner Windows: carpetas, hooks no editables por jobs, variables de SO
 New-Item -ItemType Directory -Force C:\VantareCI\runner, C:\VantareCI\hooks | Out-Null

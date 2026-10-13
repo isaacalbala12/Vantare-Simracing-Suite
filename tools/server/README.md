@@ -3,7 +3,7 @@
 Runbook del PC dedicado: runners propios (#1565), Plane CE (#1571) y publicador
 del roadmap (#1535, script en `tools/server/roadmap/`). Windows 11 Pro 22631
 SapphireOS (build recortada), Ryzen 5 1500X, 16 GB. Acceso: `ssh Administrator@192.168.1.57`,
-solo con clave y solo desde 192.168.1.0/24. Sin secretos en este directorio.
+solo con clave y solo desde 192.168.1.0/24 y Tailscale (ver abajo). Sin secretos en este directorio.
 
 ## Piezas
 
@@ -60,7 +60,7 @@ Secretos de Plane: `/opt/plane/plane.env` (600, generado en el servidor). Roadma
 - Restaurar: `tar --zstd -xf plane-*.tar.zst` → `plane.dump` (`pg_restore -c`), `uploads.tar`
   (volumen `vantare-plane_uploads`), `plane.env`.
 - Pausar runner Windows: `C:\VantareCI\ops\control-windows.ps1 -Operation Pause`.
-- IP por DHCP sin reserva: si cambia, actualizar `APP_DOMAIN`/`WEB_URL`/`CORS_ALLOWED_ORIGINS`
+- IP por DHCP sin reserva: si cambia, actualizar la IP LAN de `CORS_ALLOWED_ORIGINS`
   de `plane.env` y el host de la tarea del PC principal.
 
 ## Medidas (2026-10-11, nightly ee372540, ambos smokes a la vez, en frío)

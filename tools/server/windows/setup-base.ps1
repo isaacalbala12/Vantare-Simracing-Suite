@@ -4,7 +4,7 @@ New-Item -ItemType Directory -Force C:\VantareServer\ops, C:\VantareServer\logs,
 Get-NetConnectionProfile -InterfaceAlias Ethernet | Set-NetConnectionProfile -NetworkCategory Private
 foreach ($r in @(@('Vantare SSH LAN', 22), @('Vantare Plane LAN', 8088))) {
   if (-not (Get-NetFirewallRule -DisplayName $r[0] -ErrorAction SilentlyContinue)) {
-    New-NetFirewallRule -DisplayName $r[0] -Direction Inbound -Protocol TCP -LocalPort $r[1] -RemoteAddress 192.168.1.0/24 -Action Allow -Profile Any | Out-Null }
+    New-NetFirewallRule -DisplayName $r[0] -Direction Inbound -Protocol TCP -LocalPort $r[1] -RemoteAddress 192.168.1.0/24, 100.64.0.0/10 -Action Allow -Profile Any | Out-Null }
 }
 Get-NetFirewallRule -Direction Inbound | ? { $_.DisplayName -match 'ssh' -and $_.DisplayName -ne 'Vantare SSH LAN' } | Disable-NetFirewallRule
 Set-NetFirewallProfile -All -DefaultInboundAction Block -DefaultOutboundAction Allow -Enabled True

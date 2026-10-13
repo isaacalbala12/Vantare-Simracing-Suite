@@ -1,7 +1,7 @@
 # Handoff vivo — Testing Center
 
 Estado #1594 / VANTA-38: migración aplicada en producción; cliente y worker
-inerte implementados, todos los gates locales PASS. Plane En curso verificado.
+inerte implementados, todos los gates locales PASS. Plane Por revisar verificado con PR.
 Cron, LOGIN/contraseña, proveedor y despliegue siguen pendientes de su OK.
 
 [Histórico anterior por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/testing-center.md).
@@ -47,7 +47,8 @@ Rama vantareapp/isa-1594-triaje-informes; base inicial nightly a0f8569b.
 Nightly bc89c8b8 incorporado mediante merge 1f8721eb, con #1595/#1599.
 Hitos locales: SQL/tests 1358eb71, prueba de producción 91e2f1af,
 cliente/worker 2b520e1f. Corrección del puente/resumen 1bb104ac y privacidad del worker 1f4ef175.
-PR y CI remotos pendientes de publicación.
+PR [#1602](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1602) a nightly, enlazado a este hilo T3.
+Push publicado; CI/merge remotos se verifican en PR e issue, no son gates locales.
 Nightly no equivale a master/release. No se ha desplegado el worker.
 
 ## 4. Decisiones cerradas
@@ -108,8 +109,9 @@ Contratos de [Testing Hub](../../../native/hub/src/testing/README.md),
 
 ## 9. Siguiente acción
 
-Publicar PR a nightly con
-Closes #1594 y auto-merge squash; Plane Por revisar con PR y FIN en buzón.
+Orquestador: revisar PR #1602 (Closes #1594), privacidad/runbook y QA pendiente.
+Auto-merge squash solicitado por Isaac; Plane Por revisar con comentario del PR.
+Worker terminado; FIN/SHA/estado remoto verificado en buzón e issue.
 Activación del proveedor y despliegue permanecen bloqueados por autorización
 separada. No activar cron ni LOGIN/password sin su autorización específica.
 

@@ -1,7 +1,7 @@
 # Triaje de contribuciones · #1594 / VANTA-38
 
 Estado: migración aplicada y verificada el 2026-10-13; cliente/worker preparados,
-gates finales PASS, PR pendiente de publicación.
+gates finales PASS; PR [#1602](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1602) a nightly, Plane Por revisar.
 Cron, LOGIN/contraseña, proveedor y despliegue siguen inactivos. Diseño r2 completo
 `C:/tmp/ola2/diseno-1594-opus.md` y encargo de Isaac del 2026-10-13.
 DeepSeek `opencode-go/deepseek-v4.1-flash`; el worker propone y un owner

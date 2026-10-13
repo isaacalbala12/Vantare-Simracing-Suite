@@ -44,7 +44,11 @@ real 22 PASS, feed remoto simulado 9 PASS, shell 23 y uninstall 2 PASS.
 Gates generales: check/Clippy PASS; Nextest 1630/1630 (7 skips), lifecycle 18/18.
 Target de gates propio trasladado a E por disco lleno en C; parámetro de ruta
 sin cambiar expectativas. Fallos previos y mapa de evidencia archivada conservados.
-**Siguiente paso #1591: H5 capturas finales/NSIS→propio y cierre draft; sin subagentes.**
+H5 local: NSIS actual→propio 50 PASS; interacción final 22 PASS y seis
+comparativas HTML/GPUI revisadas, en `C:/tmp/ola2/1591-qa/visual/comparativa-1591.html`.
+[Informe de QA y límites](../../reviews/2026-10-13-1591-instalador-qa.md).
+**Siguiente paso #1591: PR draft/entrega para revisión independiente y acreditar
+el entorno live/Windows limpio; sin subagentes, sin integración.**
 VM/cuenta con otro SID, arranque live, Windows limpio y DPI físicos siguen
 pendientes de entorno; no se infieren de las capturas ni de los tests headless.
 Push/PR draft a nightly y enlace T3 autorizados al finalizar; no integración antes de review independiente.

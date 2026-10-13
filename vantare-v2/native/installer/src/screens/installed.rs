@@ -117,13 +117,15 @@ fn choice(
         ));
     if mode == Mode::Update {
         row = row.child(
-            style::at(120., 13., 105., 16.)
-                .rounded(px(4.))
-                .bg(rgb(0x4a_0012))
-                .child(
-                    style::body(7., 1., 94., 14., "RECOMENDADO", 10., 0xffb3_b8ff)
-                        .font_family("Installer Inter W700"),
-                ),
+            style::at(
+                44. + style::text_width("Actualizar", "Installer Inter W600", 13., window) + 7.,
+                12.,
+                105.,
+                16.,
+            )
+            .rounded(px(4.))
+            .bg(rgb(0x4a_0012))
+            .child(style::badge_label()),
         );
     }
     let previous = view.info.installed_version.as_deref().unwrap_or("—");

@@ -67,7 +67,7 @@ fn progress(view: &Installer) -> Div {
         .child(
             style::mono(
                 0.,
-                190.,
+                182.25,
                 172.,
                 60.,
                 view.percent.to_string(),
@@ -76,8 +76,8 @@ fn progress(view: &Installer) -> Div {
             )
             .line_height(px(54.)),
         )
-        .child(style::mono(small, 215., 40., 25., "%", 20., style::FAINT))
-        .child(style::body(0., 260., 191., 40., cap, 12., style::MUTED).line_height(px(18.)))
+        .child(style::mono(small, 207.25, 40., 30., "%", 20., style::FAINT).line_height(px(20.)))
+        .child(style::body(0., 246.25, 191., 40., cap, 12., style::MUTED).line_height(px(18.)))
 }
 fn claim(view: &Installer) -> Div {
     let (bright, muted, symbol, bright_lines, muted_lines) = match view.screen {

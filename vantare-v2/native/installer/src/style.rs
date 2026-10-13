@@ -236,6 +236,43 @@ pub fn wordmark() -> AnyElement {
     .h(px(21.))
     .into_any_element()
 }
+pub fn badge_label() -> AnyElement {
+    canvas(
+        |_, _, _| (),
+        |bounds, (), window, cx| {
+            let mut x = bounds.origin.x;
+            for character in "RECOMENDADO".chars() {
+                let value = character.to_string();
+                let run = gpui::TextRun {
+                    len: value.len(),
+                    font: gpui::font("Installer Inter W700"),
+                    color: rgba(0xffb3_b8ff).into(),
+                    background_color: None,
+                    underline: None,
+                    strikethrough: None,
+                };
+                let line = window
+                    .text_system()
+                    .shape_line(value.into(), px(10.), &[run], None);
+                let _ = line.paint(
+                    point(x, bounds.origin.y),
+                    px(12.),
+                    gpui::TextAlign::Left,
+                    None,
+                    window,
+                    cx,
+                );
+                x += line.width + px(1.);
+            }
+        },
+    )
+    .absolute()
+    .left(px(7.))
+    .top(px(2.))
+    .w(px(91.))
+    .h(px(12.))
+    .into_any_element()
+}
 pub fn swatch(x: f32, y: f32, w: f32, h: f32, radius: f32, color: Hsla) -> Div {
     at(x, y, w, h).rounded(px(radius)).bg(color)
 }

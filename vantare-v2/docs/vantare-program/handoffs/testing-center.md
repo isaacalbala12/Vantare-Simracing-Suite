@@ -83,7 +83,7 @@ postcheck local y producción 25/25 PASS (anon/authenticated/service_role/triage
 Gate nativo cerrado, cron ausente, NOLOGIN. Sin rollback ejecutado.
 Evidencia protegida C:/tmp/ola2/1594-backup-cli/; hashes SQL intactos.
 
-Worker 14/16 tests offline PASS; quality 456 huellas PASS. Captura real de PC
+Worker inicial 16/16 tests offline PASS; quality 456 huellas PASS. Captura real de PC
 verificada sin imprimir valores personales. Regresiones de envío incierto,
 consentimiento GPUI y frame escapado preparadas. fmt/check/Clippy PASS; Nextest 1650/1650 PASS (7 skips), incluido el
 reintento por submit_v2 y el resumen local. Lifecycle 18/18 y telemetría 25/25 PASS (corpus ACC completo).
@@ -106,6 +106,29 @@ RPC/Storage existentes y su propia autorización. No descuento ni llamadas Polar
 #1452 puente/envío real y QA de identidad; #1521 bot de guardia separado.
 Contratos de [Testing Hub](../../../native/hub/src/testing/README.md),
 [servicios](../../../native/services/README.md) y [canales](../../branch-channels.md).
+
+## Hito Intake · VANTA-49 (posterior al PR principal)
+
+VANTA-49 creada, hija de VANTA-38, módulo Infraestructura; En curso verificado.
+API v1 de CE 1.4.2: publicar cada propuesta de tester, antes de T3, con título,
+canal, juego/versión, veredicto/confianza/resumen redactados e ID de contribución.
+Sin account_id/email/cuerpo/logs/hardware. Token propio de servidor pendiente
+(DUDA); token personal de tracker no se copia ni reutiliza en worker.
+Intake VANTA ya activado según lectura API 2026-10-13; no se cambió ajuste.
+
+Metadata externa en el work item asociado (POST CE la ignora); PATCH anidado
+seguido de lectura verificada. Ledger antes de POST y marcador paginado para
+recuperar respuesta perdida; no repetir POST incierto. ACK de Plane/T3
+independientes, spool hasta ambos ACK o 24 h; intake_expired avisa por ID.
+Aceptar en Intake NO acepta para descuento: solo RPC review con owner humano.
+No despliegue/token/cron/activación nuevos. Runbook en tools/triage/README.md.
+28/28 Python PASS sin red (12 mock Plane + 16 regresiones); quality 456 PASS.
+
+CI Linux principal falló por unnecessary_wraps en captura no Windows.
+Corrección separada 4b84da01: validación compartida, ningún lint suprimido.
+fmt/check/Clippy y Nextest 1651/1651 (7 skips), lifecycle 18/18 PASS;
+telemetría previa 25/25 mantiene ámbito (no runtime/domain/ipc/testdata nuevos).
+PR #1602 abierto al consultar; resultado remoto del nuevo SHA pendiente.
 
 ## 9. Siguiente acción
 

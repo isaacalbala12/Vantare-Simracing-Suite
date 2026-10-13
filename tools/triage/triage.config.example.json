@@ -7,5 +7,11 @@
   "ca": "/etc/vantare-triage/supabase-prod-ca-2021.crt",
   "known_versions": {},
   "provider": {},
-  "webhook_url": null
+  "webhook_url": null,
+  "plane_intake": {
+    "enabled": true,
+    "base_url": "http://sapphireos.tail357eab.ts.net:8088",
+    "workspace": "vantare-simracing-suite",
+    "project_id": "89da40f4-ae2a-443d-9e3e-6024e01247c9"
+  }
 }

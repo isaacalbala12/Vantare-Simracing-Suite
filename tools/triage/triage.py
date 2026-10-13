@@ -16,6 +16,7 @@ from analysis import MODEL, extract, validate, utc
 from privacy import redact, clean_tree
 from state import State
 import model
+import plane_intake
 
 PROJECT = 'ombjshwzqgeisazijduq'
 
@@ -117,8 +118,19 @@ def verify_delivery(body, signature, secret, now, seen):
     return value
 
 
-def pass_once(state, reports, history, versions, analyze, send, now):
-    state.purge(now)
+def pass_once(state, reports, history, versions, analyze, send, now, intake=None):
+    for id in state.purge(now):
+        print(json.dumps({'id':id,'status':'intake_expired'}))
+    def intake_send(id, payload):
+        try:
+            intake(payload,state);state.intake_delivered(id)
+        except plane_intake.PlaneError as error:
+            print(json.dumps({'id':id,'status':'intake_pending','reason':error.code}))
+        except Exception:
+            print(json.dumps({'id':id,'status':'intake_pending'}))
+    if intake is not None:
+        for id in state.intake_deliveries(now):
+            intake_send(id,state.payload(id))
     # Retry delivery before polling/model work. Persisted spool prevents reanalysis.
     for id in state.deliveries(now):
         try:
@@ -142,13 +154,17 @@ def pass_once(state, reports, history, versions, analyze, send, now):
             proposal=validate(analyze(minimal),facts)
             payload={**base,'type':'triage.proposal','triage':proposal,
                      'engine':{'model':MODEL,'prompt':'triage-v2','duration_ms':int((time.monotonic()-started)*1000),'attempt':attempt}}
-            state.analyzed(id,payload,now)
+            publish_intake=intake is not None and report['channel']=='testers'
+            state.analyzed(id,payload,now,intake=publish_intake)
         except Exception:
             if attempt<3:
                 state.analysis_failed(id);print(json.dumps({'id':id,'status':'analysis_retry'}));continue
             payload={**base,'type':'triage.failed','triage':None,
                      'engine':{'model':MODEL if invoked else None,'prompt':'triage-v2','duration_ms':int((time.monotonic()-started)*1000),'attempt':attempt}}
             state.analyzed(id,payload,now,failed=True)
+            publish_intake=False
+        if publish_intake:
+            intake_send(id,payload)
         try:
             send(payload);state.delivered(id,now)
             print(json.dumps({'id':id,'status':'delivered'}))
@@ -171,9 +187,14 @@ def main():
                 fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
                 reports,history=read_reports(config,state,credentials/'supabase-url')
                 key=(credentials/'t3-hmac').read_bytes().strip()
+                intake_config=config.get('plane_intake') or {}
+                intake=None
+                if intake_config.get('enabled') is True:
+                    client=plane_intake.Intake(intake_config,plane_intake.read_token(credentials/'plane-token'))
+                    intake=client.publish
                 pass_once(state,reports,history,config['known_versions'],
                     lambda v:model.run(v,credentials/'opencode-go-auth',config['provider']),
-                    lambda p:deliver(p,config['webhook_url'],key),int(time.time()))
+                    lambda p:deliver(p,config['webhook_url'],key),int(time.time()),intake=intake)
         finally:
             state.close()
     except Exception:

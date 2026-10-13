@@ -99,3 +99,101 @@ del rol sin su autorización separada. La configuración sigue disabled.
 Parada/rollback operativo: deshabilitar timer/webhook y cerrar consumidores;
 conservar state/spool protegido para diagnóstico. No revertir la migración
 con datos ni abrir RLS para solucionar un fallo de permisos.
+
+
+## Hito Intake · VANTA-49, hija de VANTA-38
+
+Preparado después del PR principal #1602, en commit separado. No desplegado.
+Intake VANTA se comprobó activado el 2026-10-13; no hizo falta cambiarlo.
+El worker publica cada propuesta **de testers** inmediatamente después de
+persistir el análisis, antes de enviar a T3. Nightly y triage.failed no reciben
+un veredicto inventado en Intake. Un fallo de Plane no bloquea la propuesta T3,
+y un fallo de T3 no impide publicar en Intake. Se reintenta entrega, no modelo.
+
+La entrada contiene solo título redactado, canal, juego/versión, veredicto,
+confianza/resumen redactado e ID de contribución. No se envían account_id,
+email, cuerpo del informe, hardware, tokens, candidatos ni logs (ni siquiera
+la primera línea). HTML escapado. El token de autenticación va solo en
+X-API-Key hacia el destino privado configurado; redirects y proxy ambiental
+están desactivados. Nunca se imprime el token ni el cuerpo de errores remotos.
+
+**Aceptar en Intake NO acepta el informe para el descuento.** No hay listener
+que traduzca estados de Plane a Supabase. Solo testing_contribution_review,
+autenticada como owner y tras confirmación humana, puede aceptarlo. Esta
+integración no invoca esa RPC ni modifica billing o elegibilidad #1593.
+
+### Contrato exacto de CE 1.4.2 / API v1
+
+Base: /api/v1/workspaces/vantare-simracing-suite/projects/
+89da40f4-ae2a-443d-9e3e-6024e01247c9/ (sin salto de línea).
+
+1. GET proyecto. Si intake_view=false, PATCH {"intake_view":true} y volver a
+   leer. Si no se puede, log sanitizado intake_pending/reason, sin crear fuera
+   del Intake ni cambiar otros ajustes. No convertirlo en un work item normal.
+2. GET work-items/?external_id=<UUID>&external_source=vantare-testing-contribution.
+   En v1 devuelve un objeto, o 404 si no existe; no es una lista paginada.
+3. POST intake-issues/ con {"issue":{"name":...,"description_html":...,"priority":"none"}}.
+   CE 1.4.2 ignora los external_id/source en ese POST. El cuerpo lleva marcadores
+   visibles de fuente/ID, para recuperar una respuesta incierta.
+4. PATCH intake-issues/<UUID del work item, NO el UUID de la fila Intake>/ con
+   {"issue":{"external_id":<UUID de contribución>,"external_source":"vantare-testing-contribution"}}.
+   Son los campos del **work item asociado al Intake**: el serializer anidado
+   permite guardarlos. No se escribe status ni source_email del Intake.
+5. Releer por los dos campos externos y comprobar UUID antes de guardar ACK.
+   Una entrada ya aceptada en Plane sigue deduplicada por esos campos.
+
+Referencias fijadas, independientes de la documentación v2 actual:
+[URLs v1.4.2](https://github.com/makeplane/plane/blob/v1.4.2/apps/api/plane/api/urls/intake.py),
+[creación/PATCH de Intake](https://github.com/makeplane/plane/blob/v1.4.2/apps/api/plane/api/views/intake.py),
+[lookup externo](https://github.com/makeplane/plane/blob/v1.4.2/apps/api/plane/api/views/issue.py),
+[activar Intake](https://github.com/makeplane/plane/blob/v1.4.2/apps/api/plane/api/views/project.py).
+
+SQLite conserva únicamente ID, fase e ID de work item para esta entrega.
+Se registra intención antes del POST; después se guarda el UUID antes del PATCH.
+En una respuesta perdida/crash se busca el marcador en todas las páginas de
+Intake y se termina el PATCH sin crear otra entrada. Si hay intención incierta
+y no aparece la fila, **no se repite el POST automáticamente**: avisar DUDA con
+el ID; un operador debe reconciliar el registro/orfandad en Plane antes de
+permitir reintento. CE v1 no ofrece creación atómica con clave idempotente.
+Un error confirmado 400/401/403/404/429 permite reintentar después de corregirlo.
+
+El spool redactado se conserva hasta los dos ACK (Plane y T3), o 24 horas.
+Al expirar, se registra intake_expired con ID; avisar al orquestador. Para
+recuperación manual usar la propuesta ya entregada a T3 y reconciliar primero
+por external_id/source/marcador; no borrar el ledger ni volver a analizar sin
+revisión. Metadata: 90 días; el sondeo solo lee 30 días. No se amplía retención
+ni se guardan cuerpos en SQLite. No se realiza backfill de antiguos análisis
+ya entregados sin spool; revisar un backfill aparte si fuera necesario.
+
+### Token y despliegue, pendientes de OK
+
+Crear/confirmar con Isaac una identidad/token de Plane **propio del worker**,
+miembro únicamente del proyecto necesario. Usar el menor permiso que permita
+leer/crear/PATCH de Intake; activar intake_view requiere permiso de proyecto,
+pero VANTA ya está activado. No reutilizar ~/.vantare/plane-token ni el token
+personal de plane-estado.py. DUDA en C:/tmp/buzon/1594.md: procedimiento/archivo
+pendiente de confirmar; no se ha creado ni copiado ningún token al servidor.
+
+Con el OK de despliegue del worker y el procedimiento de Isaac:
+
+1. Guardar el token dedicado como archivo restringido, por ejemplo
+   C:\VantareServer\ops\credentials\triage-plane-token, siguiendo ACL de ops.
+   No .env, argumentos, chat, logs o Git. Isaac proporciona el procedimiento.
+2. Importar únicamente ese token al archivo privado de WSL
+   /etc/vantare-triage/credentials/plane-token (root, 0600). systemd usa
+   LoadCredential=plane-token y entrega el archivo privado al usuario del worker.
+   El lector rechaza symlink y permisos de grupo/otros. No acceder a /mnt desde
+   el worker. La copia/importación queda para el despliegue autorizado.
+3. Copiar código/config/unidad bajo el runbook principal; revisar plane_intake
+   (proyecto VANTA y URL privada). El ejemplo habilita el sink, pero mantiene
+   worker enabled=false y privacy_approved=false, antes de credenciales/red.
+4. Prueba QA autorizada: crear una contribución sintética de tester, verificar
+   campos mínimos en Intake, metadata externa, dos ACK/reintento y ausencia de
+   cambio en testing_contributions.state. Solo después habilitar lo autorizado.
+   No enviar datos reales para probar token/SDK/routing. No se hace esta prueba ahora.
+
+Tests sin red: mock reproduce POST que ignora metadata, PATCH con UUID asociado,
+lookup objeto/404, activar/denegar Intake, respuesta perdida/paginación,
+aceptación en Plane sin RPC, ACK independientes, expiración y upgrade SQLite.
+28/28 (16 existentes + 12 Intake) PASS; socket real prohibido en tests de Intake.
+No se ha ejecutado ningún POST de informe en el Plane real.

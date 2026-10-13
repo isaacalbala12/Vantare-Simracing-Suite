@@ -210,3 +210,23 @@ huellas y diff --check PASS. Logs E:/tmp/isa1594-final-*.log; worker-tests.log.
 Código nativo validado 1bb104ac; endurecimiento del worker 1f4ef175.
 SQL/rollback en Git coinciden byte a byte con los hashes aprobados.
 No prueba ejecución del proveedor o despliegue del servidor.
+
+
+## Hito posterior: Intake VANTA · VANTA-49
+
+Pedido adicional de Isaac tras PR #1602, hija de VANTA-38, módulo Infraestructura.
+El worker prepara publicación mínima de cada propuesta de tester en Intake,
+con external_id/source en el work item asociado, dedupe persistente y recuperación
+sin repetir creación incierta. Intake activado ya en la consulta de 2026-10-13.
+Aceptar en Intake **NO** acepta para descuento: solo review owner tras orden
+humana. No webhook de aceptación Plane→Supabase ni RPC nueva.
+
+[Contrato v1 CE 1.4.2, token propio y runbook](../../../tools/triage/README.md#hito-intake--vanta-49-hija-de-vanta-38).
+28/28 tests Python sin red, incluyendo mock Plane. Token dedicado pendiente
+(DUDA), sin copia de token personal ni instalación. Despliegue con el OK del
+worker, no ahora. SQL/rollback/cron/gate de identidad sin cambios.
+
+Corrección separada de CI Linux: 4b84da01, validación de captura común sin
+suprimir lint. fmt/check/Clippy, Nextest 1651/1651 (7 skips) y lifecycle 18/18
+PASS por compilar.ps1. No cambios en runtime/domain/ipc/testdata; telemetría
+25/25 previa conserva su ámbito. CI remoto requiere su propio resultado.

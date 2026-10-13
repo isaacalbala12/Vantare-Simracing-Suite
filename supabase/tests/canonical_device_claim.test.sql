@@ -1,0 +1,18 @@
+begin;
+create extension if not exists pgtap;
+select plan(8);
+set local role authenticated;
+select set_config('request.jwt.claims','{"iss":"https://clerk.1608.invalid","sub":"user_aaaaaaaaaaaaaaaaaaaaaaaaaaa","role":"authenticated"}',true);
+select throws_ok($$select public.claim_active_device(repeat('A',64))$$,'P0001','invalid_identity','uppercase fingerprint cannot claim device');
+select throws_ok($$select public.claim_active_device('short')$$,'P0001','invalid_identity','short fingerprint cannot claim device');
+select throws_ok($$select public.claim_active_device(' ' || repeat('a',64))$$,'P0001','invalid_identity','padded fingerprint cannot claim device');
+reset role;
+select is((select count(*)::integer from public.account_identities where issuer='https://clerk.1608.invalid'),0,'invalid fingerprint does not bootstrap an account');
+set local role authenticated;
+select lives_ok($$select public.claim_active_device(repeat('a',64))$$,'canonical fingerprint claims device');
+select throws_ok($$select public.reset_active_device(repeat('A',64))$$,'P0001','invalid_identity','uppercase fingerprint cannot reset device');
+select throws_ok($$select public.reset_active_device('short')$$,'P0001','invalid_identity','short fingerprint cannot reset device');
+select throws_ok($$select public.reset_active_device(' ' || repeat('a',64))$$,'P0001','invalid_identity','padded fingerprint cannot reset device');
+reset role;
+select * from finish();
+rollback;

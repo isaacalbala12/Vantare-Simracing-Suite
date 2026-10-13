@@ -22,6 +22,7 @@ mod windows;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum Page {
+    Account,
     #[default]
     Application,
     Appearance,
@@ -37,7 +38,8 @@ enum Action {
     CopyDiagnostic,
 }
 impl Page {
-    const ALL: [Self; 7] = [
+    const ALL: [Self; 8] = [
+        Self::Account,
         Self::Application,
         Self::Appearance,
         Self::Performance,
@@ -48,6 +50,7 @@ impl Page {
     ];
     fn label(self) -> &'static str {
         match self {
+            Self::Account => "Cuenta",
             Self::Application => "General",
             Self::Appearance => "Apariencia",
             Self::Performance => "Rendimiento en pista",
@@ -59,6 +62,7 @@ impl Page {
     }
     fn subtitle(self) -> &'static str {
         match self {
+            Self::Account => "Tu perfil de piloto",
             Self::Application => "Interfaz y sistema",
             Self::Appearance => "Colores, contraste y fuentes",
             Self::Performance => "Nivel y frecuencia de tus widgets",
@@ -77,6 +81,7 @@ impl Page {
     }
     fn description(self) -> &'static str {
         match self {
+            Self::Account => "Tu perfil de piloto. Por ahora es privado: solo lo ves tú.",
             Self::Application => "Interfaz, sistema y comportamiento de la ventana.",
             Self::Appearance => "Personaliza colores, contraste y tipografía de Vantare.",
             Self::Performance => "Nivel y frecuencia de tus widgets",
@@ -88,6 +93,9 @@ impl Page {
     }
     fn matches(self, query: &str) -> bool {
         let titles = match self {
+            Self::Account => {
+                "perfil piloto nombre público foto descripción país bandera simuladores coche equipo favorito sesión plan"
+            }
             Self::Application => {
                 "aplicación zoom idioma densidad inicio windows minimizado avisos notificaciones widgets unidades métrico imperial overlays ocultar fuera de pista garaje boxes pausa replay"
             }
@@ -125,6 +133,7 @@ pub(super) struct State {
     privacy_policy_focus: FocusHandle,
     consent_focus: [FocusHandle; 3],
     pub(super) appearance: appearance::Store,
+    pilot: Entity<crate::pilot::view::PilotEditor>,
     appearance_focus: [FocusHandle; 15],
     appearance_bounds: [Option<gpui::Bounds<gpui::Pixels>>; 2],
     appearance_dragging: [bool; 2],
@@ -335,6 +344,7 @@ impl State {
                 cx,
             ),
             appearance,
+            pilot: Self::pilot_editor(window, cx),
             appearance_focus: std::array::from_fn(|_| cx.focus_handle()),
             appearance_bounds: [None, None],
             appearance_dragging: [false, false],
@@ -353,6 +363,30 @@ impl State {
         appearance::wire(&state, window, cx);
         general::wire(&state, cx);
         state
+    }
+
+    /// Perfil del piloto. Pendiente (#1612, Sol): leer `services::pilot`,
+    /// guardar/sincronizar y procesar la foto; hasta entonces no simula guardados.
+    fn pilot_editor(
+        window: &mut Window,
+        cx: &mut Context<Hub>,
+    ) -> Entity<crate::pilot::view::PilotEditor> {
+        use crate::pilot::view::{PilotEditor, PilotEvent};
+        let editor = cx.new(|cx| PilotEditor::new(crate::pilot::Draft::default(), window, cx));
+        cx.subscribe(&editor, |hub, editor, event: &PilotEvent, cx| {
+            if *event == PilotEvent::OpenAccount {
+                hub.navigate(crate::Section::Account, cx);
+            } else {
+                editor.update(cx, |editor, cx| {
+                    editor.set_status(
+                        Some("El guardado del perfil aún no está conectado.".into()),
+                        cx,
+                    );
+                });
+            }
+        })
+        .detach();
+        editor
     }
 
     fn theme_control(

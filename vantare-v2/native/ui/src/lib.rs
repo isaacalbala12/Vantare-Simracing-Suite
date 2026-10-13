@@ -36,6 +36,7 @@ pub mod layout;
 pub mod look;
 mod overlay;
 pub mod paths;
+pub mod pilot_flag;
 pub mod session;
 #[cfg(feature = "paint-stats")]
 pub use vantare_profiling as profiling;

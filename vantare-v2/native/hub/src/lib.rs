@@ -18,6 +18,7 @@ pub mod launcher;
 pub mod lifecycle;
 pub mod notifications;
 pub mod orbit;
+pub mod pilot;
 pub use vantare_ipc::product;
 
 /// Identidad instalada compartida por todas las pantallas del Hub.

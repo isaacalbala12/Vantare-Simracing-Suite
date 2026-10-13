@@ -415,6 +415,11 @@ impl Hub {
     ) -> Vec<orbit::RailSection> {
         let mut rail = Vec::new();
         let (title, icon, note) = match self.settings.page {
+            Page::Account => (
+                "Perfil privado",
+                "v-helmet",
+                "Tu perfil solo lo ves tú. Cuando lleguen los equipos podrás decidir qué compartes.",
+            ),
             Page::Appearance => (
                 "Estilo de los overlays",
                 "v-studio",
@@ -539,6 +544,11 @@ impl Hub {
                     "Si no llegan datos, comprueba que el simulador esté abierto y en pista. Para un fallo repetido, adjunta un informe.",
                 ),
             ],
+            Page::Account => &[(
+                "Bandera en los widgets",
+                "flag",
+                "Con un país elegido, los widgets podrán mostrar su bandera junto a tu nombre.",
+            )],
             Page::Performance | Page::Appearance | Page::Application => &[],
         };
         for (title, icon, note) in sections {
@@ -649,6 +659,7 @@ impl Hub {
             })
             .child(
                 match self.settings.page {
+                    Page::Account => stack().child(self.settings.pilot.clone()),
                     Page::Application => self.settings_application(true, window, cx),
                     Page::Appearance => self.settings_appearance(cx),
                     Page::Performance => self.settings_performance(true, cx),

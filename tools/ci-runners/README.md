@@ -29,11 +29,26 @@ No se habilitan workflows inertes del Testing Center.
 1. Aislar VM/red del runner de datos personales, USB de firma, credenciales SSH
    y producción. Cuenta exclusiva y firewall sin acceso a la LAN innecesario.
 2. Crear carpeta/cuenta por el operador; instalar prerequisitos aprobados.
-3. Linux: copiar estos scripts al directorio aprobado, ejecutar
-   `bash register-linux.sh` **como vantare-ci**, con `gh` autenticado temporalmente
-   por el operador; después cerrar sesión de `gh` y retirar sus credenciales.
-   El operador instala servicio con `sudo ./svc.sh install vantare-ci`,
-   `sudo ./svc.sh start`. No dar sudo permanente al usuario del runner.
+3. Linux, en este orden (el servicio arranca lo último):
+   1. Como operador, copiar cleanup.py, job-guard.py, job-start.sh y job-end.sh
+      a `/opt/vantare-hooks`, propiedad de root y no editables por `vantare-ci`.
+   2. Ejecutar `bash register-linux.sh` **como vantare-ci**, con `gh` autenticado
+      temporalmente por el operador; después cerrar sesión de `gh` y retirar sus
+      credenciales.
+   3. Desde `/opt/vantare-runner`, `sudo ./svc.sh install vantare-ci` (instala y
+      habilita la unidad, no la arranca). Su nombre está en `.service`.
+   4. Drop-in `sudo systemctl edit "$(cat .service)"` con:
+      ```ini
+      [Service]
+      Environment=ACTIONS_RUNNER_HOOK_JOB_STARTED=/opt/vantare-hooks/job-start.sh
+      Environment=ACTIONS_RUNNER_HOOK_JOB_COMPLETED=/opt/vantare-hooks/job-end.sh
+      ```
+      y `sudo systemctl daemon-reload`.
+   5. Verificar antes de admitir jobs: `systemctl show "$(cat .service)" -p Environment`
+      lista ambas variables, y
+      `GITHUB_EVENT_PATH=fork-event.json python3 /opt/vantare-hooks/job-guard.py`
+      (un evento `pull_request` cuyo head es un fork) termina con error.
+   6. Solo entonces, `sudo ./svc.sh start`. No dar sudo permanente al usuario del runner.
 4. Windows: en el PC 192.168.1.57, desde PowerShell administrador, ejecutar `register-windows.ps1`
    con `-ExpectedComputerName <nombre-del-PC-reinstalado>` y
    con `-ServiceCredential (Get-Credential '.\vantare-ci')`. La contraseña se
@@ -43,10 +58,10 @@ No se habilitan workflows inertes del Testing Center.
 5. Preparar hooks ANTES del primer servicio desde copia administrativa:
    cleanup.py, job-guard.py y wrappers job-start/job-end en `C:/VantareCI/hooks`
    o `/opt/vantare-hooks`, fuera de la aplicación runner y no editables por jobs.
-   Configurar variables de SO ACTIONS_RUNNER_HOOK_JOB_STARTED/COMPLETED a esos
-   wrappers. Windows: reiniciar antes de config, que inicia servicio automáticamente;
-   el script verifica variables/archivos. Linux: Environment en drop-in systemd
-   antes de svc.sh start. No leer ni escribir .env. Hook start rechaza público/forks
+   Windows: configurar las variables de SO ACTIONS_RUNNER_HOOK_JOB_STARTED/COMPLETED
+   a esos wrappers y reiniciar antes de config, que inicia el servicio
+   automáticamente; el script verifica variables/archivos. Linux: ver paso 3.
+   No leer ni escribir .env. Hook start rechaza público/forks
    y limpia _work/repo/repo; hook end limpia tras finalizar. No sustituye VM.
 6. Verificar jobs con SHA conocido y comprobar que el usuario no puede leer
    secretos del host. Esta preparación no acredita aislamiento ni CI real.

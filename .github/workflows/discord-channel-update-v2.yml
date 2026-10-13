@@ -15,6 +15,8 @@ on:
 
 permissions:
   contents: read
+  # #1565: el preflight de artifacts lo exige en privado; sin él la preview se omite.
+  actions: read
 
 jobs:
   preview:

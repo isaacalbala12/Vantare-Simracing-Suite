@@ -56,6 +56,9 @@ configuracion del host de CI, OAuth, pagos, entorno fisico ni produccion.
 Setup 0.0.976 de la rama: 4/4 datos idénticos, bootstrap renovado, Check solo a
 Downloads; instalación real intacta). Paquete QA = binarios 0.0.975 con
 `manifest.version` 0.0.976. Evidencia: `C:/tmp/1565-qa/ev/`, `C:/tmp/1565-b/`.
+Revisión Sol (`C:/tmp/ola2/review-1592-sol.md`): actualizador y datos OK;
+P1 limpieza Windows (cwd bloqueado), P2 `actions: read` y P2 orden Linux
+corregidos con regresión; tests de runner/budget/origen conectados a gates.
 
 ## 7. Riesgos y deuda
 

@@ -1158,11 +1158,28 @@ fn catalog_click_adds_selected_in_a_free_spot_and_locked_widgets_only_warn() {
                 .selected()
                 .expect("el nuevo queda seleccionado");
             assert_eq!(added.settings.kind(), Kind::Pedals);
-            let standings = &studio.editor.layout().instances[0];
-            assert_ne!(
-                (added.x, added.y),
-                (standings.x, standings.y),
-                "no se apila en x 20 · y 20"
+            // Rectángulos pintados de cada marco, sin pasar por `taken()`.
+            let rect = |id: &str| {
+                let frame = studio
+                    .frames
+                    .iter()
+                    .map(|(_, frame)| frame.read(cx))
+                    .find(|frame| frame.item.id == id)
+                    .expect("marco");
+                let (w, h) = frame.renderer.read(cx).painted_size();
+                let (w, h) = (w * frame.content_scale, h * frame.content_scale);
+                (
+                    frame.item.x,
+                    frame.item.y,
+                    frame.item.x + w,
+                    frame.item.y + h,
+                )
+            };
+            let standings = studio.editor.layout().instances[0].id.clone();
+            let (a, b) = (rect(&standings), rect(&added.id.clone()));
+            assert!(
+                a.2 <= b.0 || b.2 <= a.0 || a.3 <= b.1 || b.3 <= a.1,
+                "el hueco libre no solapa Standings: {a:?} · {b:?}"
             );
             assert_eq!(studio.toast, Some(Toast::Added(Kind::Pedals)));
             studio.history(false, cx);
@@ -1171,6 +1188,155 @@ fn catalog_click_adds_selected_in_a_free_spot_and_locked_widgets_only_warn() {
                 1,
                 "Ctrl Z retira el widget"
             );
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+#[test]
+fn escape_in_a_field_keeps_the_selection_and_only_the_canvas_returns_to_catalog() {
+    use super::canvas::escape_returns_to_catalog;
+    assert!(escape_returns_to_catalog(true, true), "Esc en el lienzo");
+    assert!(
+        !escape_returns_to_catalog(true, false),
+        "Esc en un campo del inspector no deselecciona"
+    );
+    assert!(
+        !escape_returns_to_catalog(false, true),
+        "sin selección no hay nada que cerrar"
+    );
+}
+#[test]
+fn unverified_or_blocked_access_never_sells_pro() {
+    use super::add_widget::{lock_badge, locked_note, locked_title, sells_pro};
+    use crate::shell::navigation::Access;
+    use vantare_ipc::control::CatalogAccess;
+    for access in [
+        Access::default(),
+        Access {
+            verified: true,
+            blocked: true,
+            catalog: CatalogAccess::Pro,
+            ..Access::default()
+        },
+    ] {
+        let reason = widget_lock(Some(access), Kind::Radar).expect("todo bloqueado");
+        assert_eq!(reason, "Acceso sin verificar");
+        assert!(!sells_pro(Some(access)), "sin «Ver planes»");
+        assert_eq!(locked_title(Some(access)), "Pendiente de verificar acceso");
+        assert_ne!(lock_badge(reason), "Pro");
+        assert!(
+            !locked_note(Some(access)).contains("Pro"),
+            "{}",
+            locked_note(Some(access))
+        );
+    }
+    let launch = Access {
+        verified: true,
+        catalog: CatalogAccess::LaunchV1,
+        ..Access::default()
+    };
+    assert!(sells_pro(Some(launch)));
+    assert_eq!(locked_title(Some(launch)), "Con Vantare Pro");
+    assert_eq!(lock_badge("Incluida en Pro"), "Pro");
+    assert_eq!(
+        locked_note(Some(launch)),
+        "Tu acceso de lanzamiento incluye 4 widgets. Pro desbloquea los 14 restantes."
+    );
+    let free = Access {
+        verified: true,
+        catalog: CatalogAccess::Free,
+        ..Access::default()
+    };
+    assert_eq!(
+        locked_note(Some(free)),
+        "Tu plan Gratis incluye Standings y Pedales. Pro desbloquea los 16 restantes."
+    );
+}
+#[test]
+fn ver_planes_reaches_the_plans_section_with_any_access() {
+    use super::PLANS;
+    use crate::Section;
+    use crate::shell::navigation::Access;
+    use vantare_ipc::control::CatalogAccess;
+    for access in [
+        Access::default(),
+        Access {
+            verified: true,
+            catalog: CatalogAccess::Free,
+            ..Access::default()
+        },
+        Access {
+            verified: true,
+            catalog: CatalogAccess::LaunchV1,
+            ..Access::default()
+        },
+    ] {
+        let mut section = Section::Studio;
+        access
+            .beta_navigate(&mut section, PLANS)
+            .expect("«Ver planes» siempre navega");
+        assert_eq!(section, PLANS);
+    }
+}
+#[test]
+fn drop_adds_only_with_its_ghost_and_enter_adds_the_first_unlocked_match() {
+    use super::add_widget::{Ghost, Snap};
+    use crate::shell::navigation::Access;
+    use vantare_ipc::control::CatalogAccess;
+    gpui_platform::headless().run(|cx| {
+        cx.set_global(orbit::theme::Theme::default());
+        let file = crate::document::tests::File::new();
+        let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+        studio.update(cx, |studio, cx| {
+            studio.set_access(
+                Access {
+                    verified: true,
+                    catalog: CatalogAccess::LaunchV1,
+                    ..Access::default()
+                },
+                cx,
+            );
+            studio.show_catalog(cx);
+            let count = |studio: &Studio| studio.editor.layout().instances.len();
+            assert!(!studio.drop_ghost(Kind::Pedals, cx), "fuera del lienzo");
+            assert_eq!(count(studio), 1);
+            let ghost = |kind, studio: &Studio, cx: &mut Context<Studio>| Ghost {
+                kind,
+                snap: Snap {
+                    at: (600.0, 300.0),
+                    guides: (None, None),
+                },
+                overlay: studio.catalog_overlay(kind, 1.0, cx),
+            };
+            studio.ghost = Some(ghost(Kind::Delta, studio, cx));
+            assert!(
+                !studio.drop_ghost(Kind::Pedals, cx),
+                "silueta de otro widget"
+            );
+            assert!(studio.ghost.is_none());
+            studio.ghost = Some(ghost(Kind::Pedals, studio, cx));
+            assert!(studio.drop_ghost(Kind::Pedals, cx));
+            let added = studio.editor.selected().expect("seleccionado");
+            assert_eq!(
+                (added.settings.kind(), added.x, added.y),
+                (
+                    Kind::Pedals,
+                    600.0 + studio.monitor.0,
+                    300.0 + studio.monitor.1
+                ),
+                "punto con imán en coordenadas del monitor"
+            );
+            assert!(studio.ghost.is_none());
+            for (query, expected) in [
+                ("ped", Some(Kind::Pedals)),
+                ("radar", None),
+                ("", Some(Kind::Relative)),
+            ] {
+                studio
+                    .search
+                    .update(cx, |search, cx| search.set_value(query.into(), cx));
+                assert_eq!(studio.first_addable(cx), expected, "Intro con «{query}»");
+            }
         });
         crate::quit_headless_test(cx);
     });

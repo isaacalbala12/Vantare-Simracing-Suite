@@ -337,7 +337,7 @@ pub(super) struct CatalogPreview {
 pub(super) struct Ghost {
     pub(super) kind: Kind,
     pub(super) snap: Snap,
-    overlay: Entity<Overlay>,
+    pub(super) overlay: Entity<Overlay>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -346,8 +346,10 @@ pub(super) enum Toast {
     Locked(Kind, &'static str),
 }
 
-/// Pide a la shell abrir Licencias («Ver planes»).
+/// Pide a la shell abrir los planes («Ver planes»). En la navegación beta
+/// Licencias está oculta: el plan y la compra viven en Cuenta.
 pub(crate) struct OpenPlans;
+pub(crate) const PLANS: crate::Section = crate::Section::Account;
 impl EventEmitter<OpenPlans> for Studio {}
 
 const THUMB_H: f32 = 78.0;
@@ -363,6 +365,55 @@ pub(super) fn widget_icon(kind: Kind, size: f32, color: u32) -> gpui::Svg {
         .text_color(rgb(color))
 }
 
+type Access = crate::shell::navigation::Access;
+
+/// Solo un acceso verificado puede ofrecer Pro: sin verificar, el candado no es comercial.
+pub(super) fn sells_pro(access: Option<Access>) -> bool {
+    access.is_none_or(|access| access.verified && !access.blocked)
+}
+
+pub(super) fn locked_title(access: Option<Access>) -> &'static str {
+    if sells_pro(access) {
+        "Con Vantare Pro"
+    } else {
+        "Pendiente de verificar acceso"
+    }
+}
+
+pub(super) fn lock_badge(reason: &str) -> &'static str {
+    if reason == "Incluida en Pro" {
+        "Pro"
+    } else {
+        "Sin verificar"
+    }
+}
+
+pub(super) fn locked_note(access: Option<Access>) -> String {
+    let locked = ORDER
+        .iter()
+        .filter(|&&kind| widget_lock(access, kind).is_some())
+        .count();
+    let Some(access) = access.filter(|&access| sells_pro(Some(access))) else {
+        return "Verifica tu acceso para añadir widgets.".into();
+    };
+    // Del catálogo real del plan: si cambia, el texto no miente.
+    let included: Vec<&str> = ORDER
+        .iter()
+        .filter(|kind| access.catalog.allows_widget(kind.name()))
+        .map(|kind| kind.label())
+        .collect();
+    let plan = match access.catalog {
+        vantare_ipc::control::CatalogAccess::Free => "Tu plan Gratis",
+        vantare_ipc::control::CatalogAccess::LaunchV1 => "Tu acceso de lanzamiento",
+        vantare_ipc::control::CatalogAccess::Pro => "Tu plan Pro",
+    };
+    let what = match included.as_slice() {
+        [one, two] => format!("{one} y {two}"),
+        all => format!("{} widgets", all.len()),
+    };
+    format!("{plan} incluye {what}. Pro desbloquea los {locked} restantes.")
+}
+
 impl Studio {
     pub(super) fn show_catalog(&mut self, cx: &mut Context<Self>) {
         self.cancel_drag(cx);
@@ -375,7 +426,7 @@ impl Studio {
         self.search.read(cx).value.clone()
     }
 
-    fn catalog_groups(&self, cx: &gpui::App) -> Vec<Group> {
+    pub(super) fn catalog_groups(&self, cx: &gpui::App) -> Vec<Group> {
         let placed: Vec<Kind> = self
             .editor
             .layout()
@@ -419,7 +470,12 @@ impl Studio {
         }
     }
 
-    fn catalog_overlay(&self, kind: Kind, scale: f32, cx: &mut Context<Self>) -> Entity<Overlay> {
+    pub(super) fn catalog_overlay(
+        &self,
+        kind: Kind,
+        scale: f32,
+        cx: &mut Context<Self>,
+    ) -> Entity<Overlay> {
         let settings = Editor::new_settings(kind);
         let mut overlay = Overlay::configured(&settings, self.preferences());
         let _ = overlay.set_preview_scale(scale);
@@ -464,8 +520,10 @@ impl Studio {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.insert_widget(kind, at, cx);
-        self.focus.focus(window, cx);
+        // Un candado solo avisa: el foco sigue en la tarjeta.
+        if self.insert_widget(kind, at, cx) {
+            self.focus.focus(window, cx);
+        }
     }
 
     pub(super) fn insert_widget(
@@ -473,10 +531,10 @@ impl Studio {
         kind: Kind,
         at: Option<(f32, f32)>,
         cx: &mut Context<Self>,
-    ) {
+    ) -> bool {
         if let Some(reason) = widget_lock(self.access, kind) {
             self.show_toast(Toast::Locked(kind, reason), cx);
-            return;
+            return false;
         }
         self.ensure_catalog_previews(cx);
         let size = self.catalog_size(kind).unwrap_or((320.0, 200.0));
@@ -489,6 +547,7 @@ impl Studio {
         if self.status.is_ok() {
             self.show_toast(Toast::Added(kind), cx);
         }
+        self.status.is_ok()
     }
 
     /// Escenas QA del catálogo; solo `parity-capture`.
@@ -497,7 +556,10 @@ impl Studio {
         let query = match capture_name().as_deref() {
             Some("studio-catalogo-busqueda") => "combustible",
             Some("studio-catalogo-sin-resultados") => "neumáticos",
-            Some("studio-anadido") => return self.insert_widget(Kind::Pedals, None, cx),
+            Some("studio-anadido") => {
+                self.insert_widget(Kind::Pedals, None, cx);
+                return;
+            }
             _ => return,
         };
         self.search
@@ -655,11 +717,26 @@ impl Studio {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if let Some(ghost) = self.ghost.take()
-            && ghost.kind == drag.0
-        {
-            self.add_widget(drag.0, Some(ghost.snap.at), window, cx);
+        if self.drop_ghost(drag.0, cx) {
+            self.focus.focus(window, cx);
         }
+    }
+
+    /// Soltar sin silueta (fuera del lienzo) no añade; con ella, en su punto con imán.
+    pub(super) fn drop_ghost(&mut self, kind: Kind, cx: &mut Context<Self>) -> bool {
+        match self.ghost.take() {
+            Some(ghost) if ghost.kind == kind => self.insert_widget(kind, Some(ghost.snap.at), cx),
+            _ => false,
+        }
+    }
+
+    /// Intro en el buscador: el primer resultado que se puede añadir.
+    pub(super) fn first_addable(&self, cx: &gpui::App) -> Option<Kind> {
+        self.catalog_groups(cx)
+            .into_iter()
+            .filter(|group| group.kind != GroupKind::Locked)
+            .flat_map(|group| group.kinds)
+            .next()
     }
 
     /// Silueta a tamaño real y guías de ajuste, en píxeles del lienzo.
@@ -756,13 +833,7 @@ impl Studio {
                 }
             }
             "enter" => {
-                let first = self
-                    .catalog_groups(cx)
-                    .into_iter()
-                    .filter(|group| group.kind != GroupKind::Locked)
-                    .flat_map(|group| group.kinds)
-                    .next();
-                if let Some(kind) = first {
+                if let Some(kind) = self.first_addable(cx) {
                     self.add_widget(kind, None, window, cx);
                 }
             }
@@ -894,9 +965,13 @@ impl Studio {
     }
 
     /// Miniatura fiel con insignia «En el diseño» o candado Pro.
-    fn card_thumb(kind: Kind, locked: bool, placed: usize, cx: &gpui::App) -> gpui::Div {
+    fn card_thumb(
+        kind: Kind,
+        lock: Option<&'static str>,
+        placed: usize,
+        cx: &gpui::App,
+    ) -> gpui::Div {
         let skin = orbit::skin(cx).clone();
-        let lock = locked.then_some(());
         let badge = |label: String, cx: &gpui::App| {
             div()
                 .absolute()
@@ -941,12 +1016,12 @@ impl Studio {
                             .h(px(THUMB_H)),
                     ),
             )
-            .when(lock.is_some(), |thumb| {
+            .when_some(lock, |thumb, reason| {
                 thumb.child(
                     badge(String::new(), cx)
                         .gap(px(0.0))
                         .child(orbit::icon("lock", 10.0, skin.text2).mr(px(4.0)))
-                        .child(text("Pro", 10.5, 600, skin.text2, cx)),
+                        .child(text(lock_badge(reason), 10.5, 600, skin.text2, cx)),
                 )
             })
             .when(lock.is_none() && placed > 0, |thumb| {
@@ -1029,7 +1104,7 @@ impl Studio {
             .iter()
             .find(|preview| preview.kind == kind);
         let (description, ..) = about(kind);
-        let thumb = Self::card_thumb(kind, lock.is_some(), placed, cx);
+        let thumb = Self::card_thumb(kind, lock, placed, cx);
         let body = div()
             .px(px(10.0))
             .pt(px(8.0))
@@ -1093,7 +1168,7 @@ impl Studio {
             GroupKind::Suggested => "Sugeridos para esta carrera",
             GroupKind::Plan if pro => "Todos los widgets",
             GroupKind::Plan => "En tu plan",
-            GroupKind::Locked => "Con Vantare Pro",
+            GroupKind::Locked => locked_title(self.access),
         };
         div()
             .col_span_full()
@@ -1109,38 +1184,20 @@ impl Studio {
                 skin.text3,
                 cx,
             ))
-            .when(group.kind == GroupKind::Locked, |row| {
-                row.child(div().flex_1()).child(
-                    div()
-                        .id("studio-catalog-plans")
-                        .role(gpui::Role::Link)
-                        .tab_index(0)
-                        .cursor_pointer()
-                        .child(text("Ver planes", 12.0, 500, skin.accent_bright, cx))
-                        .on_click(cx.listener(|_, _, _, cx| cx.emit(OpenPlans))),
-                )
-            })
-    }
-
-    fn locked_note(&self, cx: &gpui::App) -> String {
-        let locked = ORDER
-            .iter()
-            .filter(|&&kind| widget_lock(self.access, kind).is_some())
-            .count();
-        let plan = match self
-            .access
-            .map(|access| (access.verified && !access.blocked, access.catalog))
-        {
-            Some((true, vantare_ipc::control::CatalogAccess::Free)) => {
-                "Tu plan Gratis incluye Standings y Pedales."
-            }
-            Some((true, vantare_ipc::control::CatalogAccess::LaunchV1)) => {
-                "Tu acceso de lanzamiento incluye 4 widgets."
-            }
-            _ => "Verifica tu acceso para añadir widgets.",
-        };
-        let _ = cx;
-        format!("{plan} Pro desbloquea los {locked} restantes.")
+            .when(
+                group.kind == GroupKind::Locked && sells_pro(self.access),
+                |row| {
+                    row.child(div().flex_1()).child(
+                        div()
+                            .id("studio-catalog-plans")
+                            .role(gpui::Role::Link)
+                            .tab_index(0)
+                            .cursor_pointer()
+                            .child(text("Ver planes", 12.0, 500, skin.accent_bright, cx))
+                            .on_click(cx.listener(|_, _, _, cx| cx.emit(OpenPlans))),
+                    )
+                },
+            )
     }
 
     /// Sin coincidencias: sugerencias y «Limpiar búsqueda».
@@ -1250,7 +1307,7 @@ impl Studio {
             );
             if group.kind == GroupKind::Locked {
                 grid = grid.child(
-                    text(self.locked_note(cx), 12.0, 400, skin.text3, cx)
+                    text(locked_note(self.access), 12.0, 400, skin.text3, cx)
                         .col_span_full()
                         .mt(px(-4.0))
                         .line_height(px(17.0)),

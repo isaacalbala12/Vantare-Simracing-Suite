@@ -699,7 +699,13 @@ impl Studio {
         if key.key == "escape" && (self.drag.is_some() || self.held_nudge.is_some()) {
             self.cancel_drag(cx);
             cx.stop_propagation();
-        } else if key.key == "escape" && plain && self.editor.selected.is_some() {
+        } else if key.key == "escape"
+            && plain
+            && escape_returns_to_catalog(
+                self.editor.selected.is_some(),
+                self.focus.is_focused(window),
+            )
+        {
             self.show_catalog(cx);
             self.focus.focus(window, cx);
             cx.stop_propagation();
@@ -1165,4 +1171,10 @@ impl Studio {
             )
             .child(self.widget_strip(cx))
     }
+}
+
+/// Esc vuelve al catálogo solo desde el lienzo; en un campo del inspector es
+/// «salir del campo» y no debe tirar lo escrito ni la selección (#1569).
+pub(super) fn escape_returns_to_catalog(selected: bool, canvas_focused: bool) -> bool {
+    selected && canvas_focused
 }

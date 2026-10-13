@@ -1125,7 +1125,7 @@ impl Hub {
         })
         .detach();
         cx.subscribe(&studio, |this, _, _: &crate::studio::OpenPlans, cx| {
-            this.navigate(Section::Licenses, cx);
+            this.navigate(crate::studio::PLANS, cx);
         })
         .detach();
         let notifications = cx.new(|cx| {

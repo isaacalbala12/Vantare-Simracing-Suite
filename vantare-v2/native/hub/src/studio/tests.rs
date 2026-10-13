@@ -690,7 +690,8 @@ fn general_examples_remain_explicit_design_samples_for_every_widget() {
     }
 }
 #[test]
-fn launch_catalog_shows_disabled_pro_entries_and_preserves_free_widgets() {
+fn catalog_groups_locked_widgets_under_pro_and_keeps_plan_widgets_addable() {
+    use super::add_widget::{GroupKind, groups};
     use crate::shell::navigation::Access;
     use vantare_ipc::control::CatalogAccess;
     for catalog in [
@@ -698,42 +699,44 @@ fn launch_catalog_shows_disabled_pro_entries_and_preserves_free_widgets() {
         CatalogAccess::LaunchV1,
         CatalogAccess::Pro,
     ] {
-        let access = Access {
+        let access = Some(Access {
             verified: true,
             catalog,
             ..Access::default()
-        };
-        let options = catalog_options(Some(access));
-        assert_eq!(options.len(), Kind::ALL.len());
-        for (&kind, option) in Kind::ALL.iter().zip(&options) {
-            assert_eq!(option.enabled, catalog.allows_widget(kind.name()));
-            assert_eq!(option.lock_reason, widget_lock(Some(access), kind));
-            if !option.enabled {
-                assert_eq!(option.lock_reason, Some("Incluida en Pro"));
+        });
+        let shown = groups("", None, |kind| widget_lock(access, kind).is_some(), &[]);
+        let total: usize = shown.iter().map(|group| group.kinds.len()).sum();
+        assert_eq!(total, Kind::ALL.len(), "cada widget aparece una vez");
+        for group in &shown {
+            for &kind in &group.kinds {
+                assert_eq!(
+                    group.kind == GroupKind::Locked,
+                    !catalog.allows_widget(kind.name()),
+                    "{kind:?} en {catalog:?}"
+                );
+                if group.kind == GroupKind::Locked {
+                    assert_eq!(widget_lock(access, kind), Some("Incluida en Pro"));
+                }
             }
         }
-        let mut choice = orbit::ChoiceState::new(options, Some(0));
-        let radar = Kind::ALL
-            .iter()
-            .position(|kind| *kind == Kind::Radar)
-            .expect("Radar");
-        if catalog != CatalogAccess::Pro {
-            assert!(!choice.choose(radar), "el ratón no selecciona lo bloqueado");
-            choice.open();
-            choice.active = Some(radar);
-            assert!(
-                !choice.key("enter", false),
-                "el teclado no selecciona lo bloqueado"
-            );
-            assert_eq!(choice.selected, Some(0));
-        }
     }
+    // Sin verificar, nada se puede añadir; Workshop y capturas (None) no bloquean.
+    let unverified = Some(Access::default());
     assert!(
-        catalog_options(Some(Access::default()))
-            .iter()
-            .all(|option| !option.enabled)
+        groups(
+            "",
+            None,
+            |kind| widget_lock(unverified, kind).is_some(),
+            &[]
+        )
+        .iter()
+        .all(|group| group.kind == GroupKind::Locked)
     );
-    assert!(catalog_options(None).iter().all(|option| option.enabled));
+    assert!(
+        groups("", None, |kind| widget_lock(None, kind).is_some(), &[])
+            .iter()
+            .all(|group| group.kind != GroupKind::Locked)
+    );
 }
 #[test]
 fn examples_cover_all_widgets_and_live_never_uses_a_sample() {
@@ -1123,4 +1126,225 @@ mod toolbar_status_tests {
             assert_eq!(host.style().overflow.x, Some(gpui::Overflow::Hidden));
         }
     }
+}
+#[test]
+fn catalog_click_adds_selected_in_a_free_spot_and_locked_widgets_only_warn() {
+    use super::add_widget::Toast;
+    use crate::shell::navigation::Access;
+    use vantare_ipc::control::CatalogAccess;
+    gpui_platform::headless().run(|cx| {
+        cx.set_global(orbit::theme::Theme::default());
+        let file = crate::document::tests::File::new();
+        let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+        studio.update(cx, |studio, cx| {
+            studio.set_access(
+                Access {
+                    verified: true,
+                    catalog: CatalogAccess::LaunchV1,
+                    ..Access::default()
+                },
+                cx,
+            );
+            studio.show_catalog(cx);
+            assert_eq!(studio.editor.selected, None, "sin selección: catálogo");
+            studio.insert_widget(Kind::Radar, None, cx);
+            assert_eq!(studio.editor.layout().instances.len(), 1, "Pro no se añade");
+            assert_eq!(
+                studio.toast,
+                Some(Toast::Locked(Kind::Radar, "Incluida en Pro"))
+            );
+            studio.insert_widget(Kind::Pedals, None, cx);
+            let added = studio
+                .editor
+                .selected()
+                .expect("el nuevo queda seleccionado");
+            assert_eq!(added.settings.kind(), Kind::Pedals);
+            // Rectángulos pintados de cada marco, sin pasar por `taken()`.
+            let rect = |id: &str| {
+                let frame = studio
+                    .frames
+                    .iter()
+                    .map(|(_, frame)| frame.read(cx))
+                    .find(|frame| frame.item.id == id)
+                    .expect("marco");
+                let (w, h) = frame.renderer.read(cx).painted_size();
+                let (w, h) = (w * frame.content_scale, h * frame.content_scale);
+                (
+                    frame.item.x,
+                    frame.item.y,
+                    frame.item.x + w,
+                    frame.item.y + h,
+                )
+            };
+            let standings = studio.editor.layout().instances[0].id.clone();
+            let (a, b) = (rect(&standings), rect(&added.id.clone()));
+            assert!(
+                a.2 <= b.0 || b.2 <= a.0 || a.3 <= b.1 || b.3 <= a.1,
+                "el hueco libre no solapa Standings: {a:?} · {b:?}"
+            );
+            assert_eq!(studio.toast, Some(Toast::Added(Kind::Pedals)));
+            studio.edit(|editor| editor.edit_selected(|item| item.x += 10.0), cx);
+            assert_eq!(
+                studio.toast, None,
+                "otra edición cierra el aviso y su «Deshacer»"
+            );
+            studio.history(false, cx);
+            studio.history(false, cx);
+            assert_eq!(
+                studio.editor.layout().instances.len(),
+                1,
+                "Ctrl Z retira el widget"
+            );
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+#[test]
+fn escape_in_a_field_keeps_the_selection_and_only_the_canvas_returns_to_catalog() {
+    use super::canvas::escape_returns_to_catalog;
+    assert!(escape_returns_to_catalog(true, true), "Esc en el lienzo");
+    assert!(
+        !escape_returns_to_catalog(true, false),
+        "Esc en un campo del inspector no deselecciona"
+    );
+    assert!(
+        !escape_returns_to_catalog(false, true),
+        "sin selección no hay nada que cerrar"
+    );
+}
+#[test]
+fn unverified_or_blocked_access_never_sells_pro() {
+    use super::add_widget::{lock_badge, locked_note, locked_title, sells_pro};
+    use crate::shell::navigation::Access;
+    use vantare_ipc::control::CatalogAccess;
+    for access in [
+        Access::default(),
+        Access {
+            verified: true,
+            blocked: true,
+            catalog: CatalogAccess::Pro,
+            ..Access::default()
+        },
+    ] {
+        let reason = widget_lock(Some(access), Kind::Radar).expect("todo bloqueado");
+        assert_eq!(reason, "Acceso sin verificar");
+        assert!(!sells_pro(Some(access)), "sin «Ver planes»");
+        assert_eq!(locked_title(Some(access)), "Pendiente de verificar acceso");
+        assert_ne!(lock_badge(reason), "Pro");
+        assert!(
+            !locked_note(Some(access)).contains("Pro"),
+            "{}",
+            locked_note(Some(access))
+        );
+    }
+    let launch = Access {
+        verified: true,
+        catalog: CatalogAccess::LaunchV1,
+        ..Access::default()
+    };
+    assert!(sells_pro(Some(launch)));
+    assert_eq!(locked_title(Some(launch)), "Con Vantare Pro");
+    assert_eq!(lock_badge("Incluida en Pro"), "Pro");
+    assert_eq!(
+        locked_note(Some(launch)),
+        "Tu acceso de lanzamiento incluye 4 widgets. Pro desbloquea los 14 restantes."
+    );
+    let free = Access {
+        verified: true,
+        catalog: CatalogAccess::Free,
+        ..Access::default()
+    };
+    assert_eq!(
+        locked_note(Some(free)),
+        "Tu plan Gratis incluye Standings y Pedales. Pro desbloquea los 16 restantes."
+    );
+}
+#[test]
+fn ver_planes_reaches_the_plans_section_with_any_access() {
+    use super::PLANS;
+    use crate::Section;
+    use crate::shell::navigation::Access;
+    use vantare_ipc::control::CatalogAccess;
+    for access in [
+        Access::default(),
+        Access {
+            verified: true,
+            catalog: CatalogAccess::Free,
+            ..Access::default()
+        },
+        Access {
+            verified: true,
+            catalog: CatalogAccess::LaunchV1,
+            ..Access::default()
+        },
+    ] {
+        let mut section = Section::Studio;
+        access
+            .beta_navigate(&mut section, PLANS)
+            .expect("«Ver planes» siempre navega");
+        assert_eq!(section, PLANS);
+    }
+}
+#[test]
+fn drop_adds_only_with_its_ghost_and_enter_adds_the_first_unlocked_match() {
+    use super::add_widget::{Ghost, Snap};
+    use crate::shell::navigation::Access;
+    use vantare_ipc::control::CatalogAccess;
+    gpui_platform::headless().run(|cx| {
+        cx.set_global(orbit::theme::Theme::default());
+        let file = crate::document::tests::File::new();
+        let studio = cx.new(|cx| Studio::new(prepared_widget(file.path.clone()), cx));
+        studio.update(cx, |studio, cx| {
+            studio.set_access(
+                Access {
+                    verified: true,
+                    catalog: CatalogAccess::LaunchV1,
+                    ..Access::default()
+                },
+                cx,
+            );
+            studio.show_catalog(cx);
+            let count = |studio: &Studio| studio.editor.layout().instances.len();
+            assert!(!studio.drop_ghost(Kind::Pedals, cx), "fuera del lienzo");
+            assert_eq!(count(studio), 1);
+            let ghost = |kind, studio: &Studio, cx: &mut Context<Studio>| Ghost {
+                kind,
+                snap: Snap {
+                    at: (600.0, 300.0),
+                    guides: (None, None),
+                },
+                overlay: studio.catalog_overlay(kind, 1.0, cx),
+            };
+            studio.ghost = Some(ghost(Kind::Delta, studio, cx));
+            assert!(
+                !studio.drop_ghost(Kind::Pedals, cx),
+                "silueta de otro widget"
+            );
+            assert!(studio.ghost.is_none());
+            studio.ghost = Some(ghost(Kind::Pedals, studio, cx));
+            assert!(studio.drop_ghost(Kind::Pedals, cx));
+            let added = studio.editor.selected().expect("seleccionado");
+            assert_eq!(
+                (added.settings.kind(), added.x, added.y),
+                (
+                    Kind::Pedals,
+                    600.0 + studio.monitor.0,
+                    300.0 + studio.monitor.1
+                ),
+                "punto con imán en coordenadas del monitor"
+            );
+            assert!(studio.ghost.is_none());
+            for (query, expected) in [
+                ("ped", Some(Kind::Pedals)),
+                ("radar", None),
+                ("", Some(Kind::Relative)),
+            ] {
+                studio
+                    .search
+                    .update(cx, |search, cx| search.set_value(query.into(), cx));
+                assert_eq!(studio.first_addable(cx), expected, "Intro con «{query}»");
+            }
+        });
+        crate::quit_headless_test(cx);
+    });
 }

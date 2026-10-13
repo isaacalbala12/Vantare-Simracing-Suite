@@ -415,7 +415,7 @@ impl Studio {
                     .p(px(16.0))
                     .border_b_1()
                     .border_color(orbit::alpha(orbit::skin(cx).line1))
-                    .child(orbit::icon("v-studio", 28.0, orbit::carmine(cx)))
+                    .child(widget_icon(item.settings.kind(), 28.0, orbit::carmine(cx)))
                     .child(
                         text(item.settings.kind().label(), 18.0, 600, orbit::ink(cx), cx)
                             .flex_1()
@@ -425,19 +425,19 @@ impl Studio {
                             .text_ellipsis(),
                     )
                     .child(
-                        orbit::icon_button(
-                            "studio-clear-selection",
-                            "x",
-                            "Deseleccionar widget",
-                            28.0,
-                            cx,
-                        )
-                        .on_click(cx.listener(|this, _, _, cx| {
-                            this.cancel_drag(cx);
-                            this.editor.selected = None;
-                            this.reset_fields();
-                            this.rebuild(cx);
-                        })),
+                        // Volver al catálogo (#1569): deselecciona, como Esc o clic en lienzo vacío.
+                        orbit::ghost_button("studio-clear-selection", "", cx)
+                            .h(px(30.0))
+                            .pl(px(9.0))
+                            .pr(px(12.0))
+                            .gap(px(6.0))
+                            .flex_none()
+                            .aria_label("Deseleccionar y volver al catálogo (Esc)")
+                            .child(orbit::icon("plus", 14.0, orbit::skin(cx).accent_bright))
+                            .child(text("Añadir", 12.5, 500, orbit::ink_2(cx), cx))
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.focus_catalog_search(window, cx);
+                            })),
                     ),
             );
             for tab in Tab::ALL {

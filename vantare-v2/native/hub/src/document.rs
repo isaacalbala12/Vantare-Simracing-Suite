@@ -204,19 +204,28 @@ impl Editor {
             Ok(())
         })
     }
-    pub fn add(&mut self, kind: Kind) -> Result<(), String> {
-        let id = self.next_id()?;
+    /// Ajustes con los que nace un widget nuevo; el catálogo los mide igual.
+    pub(crate) fn new_settings(kind: Kind) -> Settings {
         let mut settings = Settings::default_for(kind);
         if let Settings::Standings(standings) = &mut settings {
             standings.apply_session_presets();
         }
+        settings
+    }
+    pub fn add(&mut self, kind: Kind) -> Result<(), String> {
+        self.add_at(kind, (20.0, 20.0))
+    }
+    /// Un solo paso de historial: Deshacer retira el widget, no solo su posición.
+    pub fn add_at(&mut self, kind: Kind, (x, y): (f32, f32)) -> Result<(), String> {
+        let id = self.next_id()?;
+        let settings = Self::new_settings(kind);
         self.change(|layout| {
             layout.instances.push(Instance {
                 off_track: vantare_ui::layout::OffTrack::default(),
                 geometry: vantare_ui::geometry::Geometry::default(),
                 id: id.clone(),
-                x: 20.0,
-                y: 20.0,
+                x,
+                y,
                 visible: true,
                 show_in: vantare_ui::session::ShowIn::default(),
                 opacity: 1.0,
@@ -315,6 +324,20 @@ pub(crate) mod tests {
             fs::remove_dir(self.path.parent().expect("directorio propio"))
                 .expect("limpiar directorio propio");
         }
+    }
+    #[test]
+    fn add_at_places_and_selects_in_one_undoable_step() {
+        let file = File::new();
+        let mut editor = Editor::open(file.path.clone()).expect("editor");
+        editor.add_at(Kind::Radar, (640.0, 300.0)).expect("añadir");
+        let item = editor.selected().expect("el nuevo queda seleccionado");
+        assert_eq!(
+            (item.x, item.y, item.settings.kind()),
+            (640.0, 300.0, Kind::Radar)
+        );
+        editor.undo().expect("deshacer");
+        assert!(editor.layout().instances.is_empty());
+        assert_eq!(editor.selected, None);
     }
     #[test]
     fn shared_document_roundtrip_and_undo_redo_are_durable() {

@@ -1,6 +1,11 @@
 use std::{env, fs, path::PathBuf};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    if matches!(env::var("CARGO_CFG_TARGET_OS").as_deref(), Ok("windows")) {
+        // Static imports resolve before entry(), including /S. Both installer
+        // binaries only import OS DLLs: do not search the download/current dir.
+        println!("cargo:rustc-link-arg-bins=/DEPENDENTLOADFLAG:0x800");
+    }
     println!("cargo:rerun-if-env-changed=VANTARE_VERSION");
     let version = env::var("VANTARE_VERSION").unwrap_or_else(|_| "0.0.0".into());
     println!("cargo:rustc-env=VANTARE_INSTALLER_VERSION={version}");

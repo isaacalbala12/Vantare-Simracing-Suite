@@ -70,6 +70,12 @@ Gates Rust por cola: fmt/check/Clippy PASS, Nextest 1646/1646 (7 skips), lifecyc
 
 ### Estado previo de plataforma (su base propia)
 
+Correcciones de revisión #1600 autorizadas: P1 y P2-2 a P2-5. P1 reproduce
+carga previa a Rust y pasa tras restringir imports estáticos a System32:
+2 PE y 4 probes con DLL inocua (con/sin /S). [Evidencia de correcciones](../../reviews/2026-10-13-1600-correcciones.md).
+Resto en curso; P2-5 requiere bootstrap realmente anterior. SHA de cada hito
+en la issue, gates finales pendientes; no integrar ni publicar una release.
+
 Base incorporada mediante merge (sin rebase): `origin/nightly@b2186f82746424b4844a5909efd31530c5bbe5b3`,
 que contiene #1570 (handoffs de estado), #1572 (#1563 pedales) y #1573 (#1568 acceso).
 Rama `vantareapp/isa-1535-roadmap-testing`, entrega #1535 `3d762e8b`, PR

@@ -366,7 +366,7 @@ mod tests {
         assert_eq!(Icons.list("brand/").expect("brand list").len(), 1);
         assert_eq!(
             Icons.list("icons/").expect("list").len(),
-            ASSETS.len() - 1 + 18
+            ASSETS.len() - 1 + vantare_ui::Kind::ALL.len()
         );
     }
 

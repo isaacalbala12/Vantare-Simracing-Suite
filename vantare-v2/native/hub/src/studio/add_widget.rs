@@ -146,13 +146,26 @@ pub(super) fn about(kind: Kind) -> (&'static str, Category, &'static str) {
     }
 }
 
+/// Minúsculas sin tildes: «telemetria» encuentra «Telemetría».
+fn fold(text: &str) -> String {
+    text.to_lowercase()
+        .chars()
+        .map(|c| match c {
+            'á' | 'à' | 'ä' => 'a',
+            'é' | 'è' | 'ë' => 'e',
+            'í' | 'ì' | 'ï' => 'i',
+            'ó' | 'ò' | 'ö' => 'o',
+            'ú' | 'ù' | 'ü' => 'u',
+            'ñ' => 'n',
+            c => c,
+        })
+        .collect()
+}
+
 pub(super) fn matches(kind: Kind, query: &str) -> bool {
-    let query = query.trim().to_lowercase();
+    let query = fold(query.trim());
     let (description, _, tags) = about(kind);
-    query.is_empty()
-        || format!("{} {description} {tags}", kind.label())
-            .to_lowercase()
-            .contains(&query)
+    query.is_empty() || fold(&format!("{} {description} {tags}", kind.label())).contains(&query)
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -329,9 +342,7 @@ impl Render for NoDragImage {
 
 pub(super) struct CatalogPreview {
     kind: Kind,
-    overlay: Entity<Overlay>,
     size: (f32, f32),
-    scale: f32,
 }
 
 pub(super) struct Ghost {
@@ -442,30 +453,13 @@ impl Studio {
         )
     }
 
-    /// Miniaturas fieles: el renderer productivo con su ejemplo, encajado en la tarjeta.
+    /// Tamaño real de cada widget (renderer productivo con su ejemplo), para el
+    /// rótulo, el hueco libre y la silueta. La tarjeta pinta su SVG.
     pub(super) fn ensure_catalog_previews(&mut self, cx: &mut Context<Self>) {
         if self.catalog_previews.is_empty() {
             for kind in ORDER {
-                let overlay = self.catalog_overlay(kind, 1.0, cx);
-                let size = overlay.read(cx).wanted_size();
-                self.catalog_previews.push(CatalogPreview {
-                    kind,
-                    overlay,
-                    size,
-                    scale: 1.0,
-                });
-            }
-        }
-        let card = ((self.catalog_width - 2.0 * LIST_PAD - CARD_GAP) / 2.0).max(80.0);
-        let room = (card - 12.0 - 18.0, THUMB_H - 14.0);
-        for preview in &mut self.catalog_previews {
-            let scale = (room.0 / preview.size.0).min(room.1 / preview.size.1);
-            if scale.is_finite() && scale > 0.0 && (scale - preview.scale).abs() > 0.0001 {
-                preview.scale = scale;
-                preview.overlay.update(cx, |overlay, cx| {
-                    let _ = overlay.set_preview_scale(scale);
-                    cx.notify();
-                });
+                let size = self.catalog_overlay(kind, 1.0, cx).read(cx).wanted_size();
+                self.catalog_previews.push(CatalogPreview { kind, size });
             }
         }
     }
@@ -494,12 +488,13 @@ impl Studio {
             .map(|preview| preview.size)
     }
 
-    /// Widgets visibles en coordenadas del lienzo.
-    fn taken(&self, cx: &gpui::App) -> Vec<Rect> {
+    /// Widgets en coordenadas del lienzo. El hueco libre cuenta también los
+    /// ocultos (al mostrarlos no deben solaparse); el imán, solo los visibles.
+    fn taken(&self, hidden: bool, cx: &gpui::App) -> Vec<Rect> {
         self.frames
             .iter()
             .map(|(_, frame)| frame.read(cx))
-            .filter(|frame| frame.item.visible)
+            .filter(|frame| hidden || frame.item.visible)
             .map(|frame| {
                 let (width, height) = frame.renderer.read(cx).painted_size();
                 (
@@ -539,8 +534,9 @@ impl Studio {
         self.ensure_catalog_previews(cx);
         let size = self.catalog_size(kind).unwrap_or((320.0, 200.0));
         let canvas = self.canvas_resolution();
-        let (x, y) =
-            at.unwrap_or_else(|| free_spot(&self.taken(cx), size, (canvas.width, canvas.height)));
+        let (x, y) = at.unwrap_or_else(|| {
+            free_spot(&self.taken(true, cx), size, (canvas.width, canvas.height))
+        });
         let at = ((x + self.monitor.0).round(), (y + self.monitor.1).round());
         self.reset_fields();
         self.edit(|editor| editor.add_at(kind, at), cx);
@@ -661,14 +657,6 @@ impl Studio {
         )
     }
 
-    pub(super) fn set_catalog_width(&mut self, width: f32, cx: &mut Context<Self>) {
-        if width.is_finite() && (width - self.catalog_width).abs() > 0.5 {
-            self.catalog_width = width;
-            self.ensure_catalog_previews(cx);
-            cx.notify();
-        }
-    }
-
     pub(super) fn catalog_drag_move(
         &mut self,
         event: &DragMoveEvent<CatalogDrag>,
@@ -696,7 +684,7 @@ impl Studio {
             pointer,
             size,
             (canvas.width, canvas.height),
-            &self.taken(cx),
+            &self.taken(false, cx),
             7.0 / scale,
         );
         let overlay = match self.ghost.take() {
@@ -767,7 +755,12 @@ impl Studio {
                         cx,
                     )
                     .absolute()
-                    .top(px(-24.0))
+                    // Pegada arriba, la etiqueta va dentro para no recortarse.
+                    .top(px(if ghost.snap.at.1 * scale < 24.0 {
+                        4.0
+                    } else {
+                        -24.0
+                    }))
                     .left(px(-1.0))
                     .px(px(8.0))
                     .line_height(px(20.0))
@@ -910,10 +903,15 @@ impl Studio {
             )
     }
 
-    fn category_chips(&self, cx: &mut Context<Self>) -> gpui::Div {
+    fn category_chips(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         let skin = orbit::skin(cx).clone();
         let query = self.catalog_query(cx);
-        let mut row = div().flex().flex_wrap().gap(px(4.0));
+        let mut row = div()
+            .id("studio-catalog-categories")
+            .role(gpui::Role::TabList)
+            .flex()
+            .flex_wrap()
+            .gap(px(4.0));
         for (index, (category, label)) in CATEGORIES.into_iter().enumerate() {
             let count = ORDER
                 .iter()
@@ -1119,9 +1117,9 @@ impl Studio {
                     .line_clamp(2),
             );
         let hover_ring = if lock.is_some() {
-            skin.line3
+            orbit::alpha(skin.line3)
         } else {
-            0xe14a_5480
+            orbit::tint(orbit::carmine(cx), 0.5)
         };
         let card = div()
             .id(("studio-catalog-card", index))
@@ -1140,7 +1138,7 @@ impl Studio {
             .border_color(orbit::alpha(skin.line1))
             .when(lock.is_none(), |card| card.bg(orbit::ramp(skin.neo, 180.0)))
             .cursor_pointer()
-            .hover(move |s| s.border_color(orbit::alpha(hover_ring)))
+            .hover(move |s| s.border_color(hover_ring))
             .focus_visible(move |s| s.border_color(rgb(skin.accent)))
             .child(thumb)
             .child(body)
@@ -1201,10 +1199,12 @@ impl Studio {
     }
 
     /// Sin coincidencias: sugerencias y «Limpiar búsqueda».
-    fn no_results(query: &str, cx: &mut Context<Self>) -> gpui::Div {
+    fn no_results(query: &str, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         let skin = orbit::skin(cx).clone();
         let shown = query.trim().to_owned();
         div()
+            .id("studio-catalog-no-results")
+            .role(gpui::Role::Status)
             .col_span_full()
             .flex()
             .flex_col()
@@ -1278,11 +1278,11 @@ impl Studio {
                     .py(px(12.0))
                     .rounded(px(skin.radius.md))
                     .border_1()
-                    .border_color(orbit::tint(0x00e1_4a54, 0.22))
+                    .border_color(orbit::tint(orbit::carmine(cx), 0.22))
                     .bg(linear_gradient(
                         180.0,
-                        linear_color_stop(orbit::tint(0x00e1_4a54, 0.10), 0.0),
-                        linear_color_stop(orbit::tint(0x00e1_4a54, 0.03), 1.0),
+                        linear_color_stop(orbit::tint(orbit::carmine(cx), 0.10), 0.0),
+                        linear_color_stop(orbit::tint(orbit::carmine(cx), 0.03), 1.0),
                     ))
                     .child(text("Tu diseño está vacío", 13.5, 600, skin.text1, cx).mb(px(2.0)))
                     .child(
@@ -1324,20 +1324,6 @@ impl Studio {
     pub(super) fn widget_catalog(&mut self, cx: &mut Context<Self>) -> gpui::Div {
         self.ensure_catalog_previews(cx);
         let skin = orbit::skin(cx).clone();
-        let studio = cx.entity().downgrade();
-        let measure = gpui::canvas(
-            move |bounds, _, cx| {
-                let width = f32::from(bounds.size.width);
-                cx.defer(move |cx| {
-                    let _ = studio.update(cx, |this, cx| this.set_catalog_width(width, cx));
-                });
-            },
-            |_, (), _, _| {},
-        )
-        .absolute()
-        .top_0()
-        .left_0()
-        .size_full();
         let hint = |keys: &[&'static str], label: &'static str, cx: &gpui::App| {
             let mut row = div().flex().items_center().gap(px(2.0));
             for key in keys {
@@ -1352,7 +1338,6 @@ impl Studio {
             .min_w_0()
             .flex()
             .flex_col()
-            .child(measure)
             .child(
                 div()
                     .px(px(LIST_PAD))
@@ -1423,6 +1408,12 @@ mod tests {
         };
         assert_eq!(found("combustible"), [Kind::FuelStrategy]);
         assert_eq!(found("  RADAR "), [Kind::Radar]);
+        assert!(
+            found("vuelta rapida").contains(&Kind::FastestLap),
+            "sin tildes"
+        );
+        assert!(found("TELEMETRIA").contains(&Kind::PedalsTelemetry));
+        assert!(found("clasificacion").contains(&Kind::Standings));
         assert!(
             found("neumáticos").is_empty(),
             "sin resultados → estado vacío"

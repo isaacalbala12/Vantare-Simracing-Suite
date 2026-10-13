@@ -158,7 +158,6 @@ pub struct Studio {
     search: Entity<orbit::Input>,
     catalog_category: usize,
     catalog_previews: Vec<add_widget::CatalogPreview>,
-    catalog_width: f32,
     catalog_focus: Vec<FocusHandle>,
     ghost: Option<add_widget::Ghost>,
     toast: Option<add_widget::Toast>,
@@ -481,7 +480,6 @@ impl Studio {
             search,
             catalog_category: 0,
             catalog_previews: vec![],
-            catalog_width: 360.0,
             catalog_focus: add_widget::ORDER
                 .iter()
                 .map(|_| cx.focus_handle())
@@ -579,6 +577,7 @@ impl Studio {
         cx: &mut Context<Self>,
     ) {
         self.cancel_drag(cx);
+        self.toast = None; // «Deshacer» del aviso solo vale para su alta.
         self.status = edit(&mut self.editor);
         if self.status.is_err() {
             self.reset_fields();

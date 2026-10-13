@@ -558,7 +558,7 @@ impl Studio {
             .aria_selected(open)
             .when(open, |button| {
                 button
-                    .border_color(orbit::tint(0x00e1_4a54, 0.6))
+                    .border_color(orbit::tint(orbit::carmine(cx), 0.6))
                     .bg(orbit::alpha(skin.hover))
             })
             .child(orbit::icon(

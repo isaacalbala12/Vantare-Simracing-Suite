@@ -1182,6 +1182,12 @@ fn catalog_click_adds_selected_in_a_free_spot_and_locked_widgets_only_warn() {
                 "el hueco libre no solapa Standings: {a:?} · {b:?}"
             );
             assert_eq!(studio.toast, Some(Toast::Added(Kind::Pedals)));
+            studio.edit(|editor| editor.edit_selected(|item| item.x += 10.0), cx);
+            assert_eq!(
+                studio.toast, None,
+                "otra edición cierra el aviso y su «Deshacer»"
+            );
+            studio.history(false, cx);
             studio.history(false, cx);
             assert_eq!(
                 studio.editor.layout().instances.len(),

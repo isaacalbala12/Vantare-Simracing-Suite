@@ -9,7 +9,8 @@ OK de Isaac/orquestador al plan `C:/tmp/ola2/plan-1601.md`: Plane → Supabase
 cada 5 min, tres columnas; archivos antiguos retirados, JSON manual del Hub inerte.
 Rama propia `vantareapp/isa-1601-roadmap-plane`, base inicial nightly `298abc33`, actualizada con #1599 (`bc89c8b8`).
 Implementación inicial `076531ab`; merge documental `162ba486` preservando
-reglas de orquestador/estados y autoridad del roadmap Plane. SHA final/CI en el PR.
+reglas de orquestador/estados y autoridad del roadmap Plane. Corte de código `7edf33e6`; SHA final/CI en el PR
+[#1603](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1603) a nightly.
 Issue [#1601](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1601),
 `area:plataforma`, añadida al GitHub Project Vantare; sin versión comprometida.
 
@@ -34,8 +35,9 @@ Runbook: [plane-roadmap-runbook.md](../../plane-roadmap-runbook.md).
 Credenciales/token/roadmap.env, despliegue, timer y primera escritura NO autorizados
 ni ejecutados. Cantidad/tamaño del tablero real pendientes de lectura autorizada;
 exceso exige parar y preguntar. Cambio de IDs puede exigir aprobación exacta SQL.
-Siguiente: PR nightly `Closes #1601` con auto-merge y CI remota; VANTA-10 Por
-revisar y FIN en buzón. El orquestador revisa y gestiona #1582, sustituido por
+Entrega: PR #1603 (`Closes #1601`), auto-merge solicitado por el orquestador;
+CI remota en cola al abrir, no validada aún. VANTA-10 pasa a Por revisar con el
+enlace del PR y FIN en buzón. No se afirma merge ni publicación. El orquestador revisa y gestiona #1582, sustituido por
 este publicador. QA GUI y tablero real pendientes: las pruebas son locales con
 fixtures/corpus; no hay publicación real, deploy ni release.
 

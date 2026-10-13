@@ -215,6 +215,7 @@ No prueba ejecución del proveedor o despliegue del servidor.
 ## Hito posterior: Intake VANTA · VANTA-49
 
 Pedido adicional de Isaac tras PR #1602, hija de VANTA-38, módulo Infraestructura.
+Commit separado 8dbcf827, publicado en PR #1602; VANTA-49 Por revisar verificado.
 El worker prepara publicación mínima de cada propuesta de tester en Intake,
 con external_id/source en el work item asociado, dedupe persistente y recuperación
 sin repetir creación incierta. Intake activado ya en la consulta de 2026-10-13.

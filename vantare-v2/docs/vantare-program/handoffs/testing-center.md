@@ -109,7 +109,9 @@ Contratos de [Testing Hub](../../../native/hub/src/testing/README.md),
 
 ## Hito Intake · VANTA-49 (posterior al PR principal)
 
-VANTA-49 creada, hija de VANTA-38, módulo Infraestructura; En curso verificado.
+VANTA-49 creada, hija de VANTA-38, módulo Infraestructura; Por revisar
+verificado con plane-estado.py y comentario de PR #1602. Hito separado
+8dbcf8273066cbd76c1063cf4726c110d6d610ee, publicado en la rama del PR.
 API v1 de CE 1.4.2: publicar cada propuesta de tester, antes de T3, con título,
 canal, juego/versión, veredicto/confianza/resumen redactados e ID de contribución.
 Sin account_id/email/cuerpo/logs/hardware. Token propio de servidor pendiente

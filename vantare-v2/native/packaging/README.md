@@ -101,10 +101,11 @@ diagnóstica; para recibir actualizaciones utiliza el acceso instalado.
 ## Actualización automática
 
 El feed anónimo consulta las 100 Releases más recientes de
-`isaacalbala12/Vantare-Simracing-Suite`, selecciona la mayor versión numérica
+`isaacalbala12/Vantare-Downloads` (repo publico creado en #1565; sin releases nuevas todavia), selecciona la mayor versión numérica
 `native-beta-vMAJOR.MINOR.PATCH` con asset `vantare-native-beta.json`
 (incluidas prereleases, excluidos drafts). El repositorio debe ser público.
-La comprobación anónima dio HTTP 200 en el desarrollo local; no certifica una
+El destino nuevo está creado sin releases; no hay descarga firmada nueva acreditada.
+La disponibilidad de una release se comprobará tras publicación autorizada; no certifica una
 release beta publicada. Rate limit, falta de red o manifiesto ausente se muestran
 en Ajustes; no bloquean el uso de la versión instalada.
 
@@ -116,7 +117,7 @@ Contrato cerrado del manifiesto:
   "product": "vantare-native",
   "channel": "beta",
   "version": "0.1.1",
-  "url": "https://github.com/isaacalbala12/Vantare-Simracing-Suite/releases/download/native-beta-v0.1.1/vantare-native-amd64-package.zip",
+  "url": "https://github.com/isaacalbala12/Vantare-Downloads/releases/download/native-beta-v0.1.1/vantare-native-amd64-package.zip",
   "sha256": "<64 hex minúsculas>",
   "notes": "Cambios de la beta"
 }
@@ -452,3 +453,33 @@ instalar la anterior en una cuenta de prueba, ejecutar Check sin LocalManifest,
 verificar versión/notas, reiniciar y confirmar Apply/arranque y datos conservados.
 Guardar tags, hashes, log y capturas; desinstalar esa instalación de prueba.
 No publicar una versión inválida para simular el ataque en el feed real.
+
+## #1565 · feed en `Vantare-Downloads` (cambio en seco)
+
+Decisión 2026-10-13: el feed y las descargas viven solo en el repo público
+`isaacalbala12/Vantare-Downloads` (sin código; solo README). Cada release
+`native-beta-vX.Y.Z` lleva `VantareSetup.exe`, `vantare-native-amd64-package.zip`,
+sus `.sha256` y `vantare-native-beta.json` con sobre Ed25519. Firma, clave
+pública y verificador no cambian. No hay feed doble ni renovación automática
+del bootstrap: con ~3 instalaciones no compensa ese código.
+
+El repo del feed vive en el `beta.ps1` raíz, que solo renueva Setup; el ZIP no
+lo copia y su inventario estricto impide añadirlo. Por eso **la 0.0.976 se
+publica solo en Downloads y cada instalación pasa a ella reinstalando con su
+Setup** (Vantare cerrado). El repo antiguo conserva la 0.0.975 hasta el cambio
+a privado; las instalaciones que no reinstalen se quedarán sin feed después.
+
+QA aislada (2026-10-13, identidad `TEST_INSTALLER`, raíz `C:/tmp/1565-qa/root`):
+Setup TEST 0.0.975 con bootstrap y ZIP reales de la release (bootstrap idéntico
+al tag `native-beta-v0.0.975`) → datos sembrados → Check consulta
+`Vantare-Simracing-Suite` → Setup TEST 0.0.976 con el bootstrap de esta rama →
+4/4 archivos de datos con hash idéntico, generación anterior como `previous`,
+`beta.ps1`/`candidate.ps1` raíz iguales a la rama → Check consulta solo
+`Vantare-Downloads` (0 releases: «Estás al día», sin error). Instalación real
+intacta y QA desinstalada. Límite: el paquete 0.0.976 de la QA reutiliza los
+binarios 0.0.975 con `manifest.version` 0.0.976; el build real lo hace Isaac.
+Reinstalar dos veces sin abrir Vantare devuelve el código 4 (arranque
+pendiente): abrir y cerrar Vantare y repetir.
+
+Runbook de firma, publicación y reinstalación:
+[repo-privado-1565.md](../../docs/repo-privado-1565.md#runbook-de-isaac-00976-en-vantare-downloads).

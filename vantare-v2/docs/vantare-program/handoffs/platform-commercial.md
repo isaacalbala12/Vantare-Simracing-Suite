@@ -21,7 +21,9 @@ base/HEAD de entrada `cec4364a5b4fc03f111dde6073c01e5fb36dad68` = origin/nightly
 Diseño aprobado `instalador-r3.html`, ventana #E; SHA-256 `ca1e9bd31ba76fda1031e1b93ba6a090ef889b911cf20d58f30e0181867ad841`.
 Propuesta: crate `vantare-installer`, GPUI fijado y ZIP/scripts embebidos; motor PowerShell existente, sin dependencias externas nuevas.
 Mantiene identidad VantareNativeBeta, QA TEST_INSTALLER, datos por generación, códigos 0–4 y bootstrap renovado solo por Setup.
-Issue #1565/PR #1592 aún abierta al leer: no sustituir su feed Downloads, no retrasar 0.0.976/NSIS ni publicar desde #1591.
+#1565/PR #1592 ya está integrado en nightly al cierre. Se incorpora esa base
+localmente (`298abc335da7d09d62917d3954bd63fb69e5389d`) conservando Downloads,
+orígenes, sidecars y CI; 0.0.976 mantiene NSIS. No se publica desde #1591.
 §4 cerrado: escritorio ON/autostart OFF en interactivo, ninguno nuevo en /S;
 datos SIEMPRE conservados, sin casilla; Repair solo con igual versión; valores reales.
 H1: crate/CLI/puente/payload/builder y recurso PE. Tests Rust 4/4, shell 9,
@@ -41,14 +43,19 @@ Paquetes reales 0.0.977/0.0.978; bootstrap refrescado conservando hashes de todo
 los EXE de aplicación (QA-PROVENANCE.json). Regresión del fallback PowerShell
 corregida: Beta 99 PASS, packaging 175 PASS, matriz propia 68 PASS, interacción
 real 22 PASS, feed remoto simulado 9 PASS, shell 23 y uninstall 2 PASS.
-Gates generales: check/Clippy PASS; Nextest 1630/1630 (7 skips), lifecycle 18/18.
+Gates finales tras incorporar nightly: fmt/check/Clippy PASS; Nextest
+1646/1646 (7 skips), lifecycle 18/18 (`1591-merge-*.log`). Matriz Release
+68 PASS, feed remoto Downloads 9 PASS y origen exacto + 8 rechazos PASS.
 Target de gates propio trasladado a E por disco lleno en C; parámetro de ruta
 sin cambiar expectativas. Fallos previos y mapa de evidencia archivada conservados.
 H5 local: NSIS actual→propio 50 PASS; interacción final 22 PASS y seis
 comparativas HTML/GPUI revisadas, en `C:/tmp/ola2/1591-qa/visual/comparativa-1591.html`.
 [Informe de QA y límites](../../reviews/2026-10-13-1591-instalador-qa.md).
-**Siguiente paso #1591: PR draft/entrega para revisión independiente y acreditar
-el entorno live/Windows limpio; sin subagentes, sin integración.**
+PR draft [#1600](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1600)
+a nightly, enlazado en T3. Setup/Uninstall Release construidos con payload
+Debug QA, sin firma real ni publicación; no certifica una release completa.
+**Siguiente paso #1591: revisión independiente y acreditar el entorno
+live/Windows limpio; sin subagentes, sin integración.**
 VM/cuenta con otro SID, arranque live, Windows limpio y DPI físicos siguen
 pendientes de entorno; no se infieren de las capturas ni de los tests headless.
 Push/PR draft a nightly y enlace T3 autorizados al finalizar; no integración antes de review independiente.
@@ -66,12 +73,18 @@ Servicios IPC v6, DTO v10 y control/derechos v4 son contratos independientes.
 #1568 conserva admision protegida, cancelacion serializada y revalidacion;
 la correlacion del incidente humano sigue pendiente. SQL #1535 no aplicado.
 
+#1565 (repo privado): rama `vantareapp/isa-1565-descargas-publicas` sobre
+`origin/nightly@707514e2`; feed en seco a `Vantare-Downloads`, runners
+`self-hosted` solo en privado y presupuesto de artifacts. PR, SHA y checks en la
+issue y `C:/tmp/buzon/1565.md`. Sin release, firma ni cambio de visibilidad.
+
 ## 4. Decisiones cerradas
 
 - ClickUp es la unica fuente del roadmap, publicado en Supabase con lectura anon y compatibilidad v1/v2; no depende del repositorio publico. Clerk identifica; Polar cobra; Supabase conserva UUID interno/datos. No atribuir compras por email, metadata editable o `sub` aislado; identidad ambigua se rechaza/cuarentena.
 - DTO de fotos v10, servicios v6 y control/derechos v4 son contratos independientes en esta base.
 - Account conserva recuperación aun con herramientas denegadas; negar derechos no inventa un login ni un pago.
 - Venta pública exige matriz monetaria/reconciliación y autorización. Implementado, integrado, publicado y validado en producción son estados distintos.
+- #1565: descargas y feed solo en el repo público `Vantare-Downloads`; sin feed doble ni renovación automática del bootstrap. La 0.0.976 se publica solo allí y cada instalación reinstala con Setup. Free privado: sin branch protection aplicada; deploy de Functions manual sin mover secretos ([repo-privado-1565](../../repo-privado-1565.md)).
 
 ## 5. Arquitectura y ownership
 
@@ -89,12 +102,21 @@ El merge actual tuvo conflictos solo documentales; no repetidos gates Rust
 por la condicion del encargo. No acredita esquema Supabase completo, CI remota,
 configuracion del host de CI, OAuth, pagos, entorno fisico ni produccion.
 
+#1565: QA aislada `TEST_INSTALLER` PASS (Setup 0.0.975 real → datos →
+Setup 0.0.976 de la rama: 4/4 datos idénticos, bootstrap renovado, Check solo a
+Downloads; instalación real intacta). Paquete QA = binarios 0.0.975 con
+`manifest.version` 0.0.976. Evidencia: `C:/tmp/1565-qa/ev/`, `C:/tmp/1565-b/`.
+Revisión Sol (`C:/tmp/ola2/review-1592-sol.md`): actualizador y datos OK;
+P1 limpieza Windows (cwd bloqueado), P2 `actions: read` y P2 orden Linux
+corregidos con regresión; tests de runner/budget/origen conectados a gates.
+
 ## 7. Riesgos y deuda
 
 - P1: acceso al abrir LMU (#1568); no dar la causa real por confirmada solo con RED local.
 - P1: readiness comercial, identidad y pagos (#1514/#1506/#1507/#1499/#1501); no abrir venta desde docs.
 - P2: SQL #1535 corregido y probado localmente; esquema completo, aplicacion y activacion pendientes. P2-4 aceptado por Isaac en #1535.
 - Login/logout físico, expiración, recuperación, instalación/upgrade y QA remota requieren evidencia propia.
+- P2 #1565: instalaciones que no reinstalen con Setup 0.0.976 antes de privatizar se quedan sin feed; app Go retirada sin actualización.
 
 ## 8. Issues terminadas, activas y pendientes
 
@@ -102,6 +124,7 @@ configuracion del host de CI, OAuth, pagos, entorno fisico ni produccion.
 #1535 en PR #1578; #1568 mantiene correlacion humana pendiente. Abiertas
 #1514/#1506/#1507/#1510/#1511/#1515 y gates comerciales: consultar su estado
 antes de actuar. IDs migrados y evidencia previa permanecen en el historico.
+#1565 abierta: PR de feed/CI a nightly en revisión; runners en #1583.
 
 ## 9. Siguiente acción exacta
 
@@ -112,6 +135,10 @@ Escribir DUDA con resultado y comando exacto para las dos migraciones. Si falta
 acceso, preparar pasos para Isaac. No aplicar nada hasta respuesta expresa.
 P2-4 aceptado por Isaac en #1535; no implica configurar credenciales ni desplegar.
 
+#1565: revisión independiente del PR. Tras integrarlo, Isaac sigue el runbook
+(firma única, publicar solo en Downloads, reinstalar, avisar al tester) antes
+de cambiar la visibilidad.
+
 ## 10. Última actualización
 
 2026-10-13 · GitHub #1591 · Codex: hito de planificación y DUDA; no cambia
@@ -120,3 +147,6 @@ el estado remoto de las entregas anteriores. Plan/issue/metadata verificados al 
 2026-10-10 · GitHub #1535 · Codex. PR #1578, base nightly y cambios
 #1570/#1572/#1573 contrastados. Estado sustituido segun plantilla; diario,
 SHA, push y checks en la issue/buzon. Sin autorizacion de produccion.
+
+2026-10-13 · GitHub #1565 · Claude. Feed en seco, CI privada y QA aislada;
+PR a nightly sin merge ni release.

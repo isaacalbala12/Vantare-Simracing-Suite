@@ -1,4 +1,5 @@
 //! Editor espacial sobre el documento y el renderer compartidos.
+mod add_widget;
 mod canvas;
 mod catalog;
 mod examples;
@@ -13,8 +14,9 @@ use crate::{
         NumberFinished, NumberKind, NumberRange, OptionItem, button,
     },
 };
+use add_widget::widget_icon;
+pub(crate) use add_widget::{OpenPlans, PLANS};
 use canvas::{CanvasFrame, HeldNudge, client_monitor};
-use catalog::catalog_options;
 #[cfg(feature = "parity-capture")]
 use catalog::{capture_name, capture_session, studio_demo_capture};
 use gpui::{
@@ -152,9 +154,14 @@ pub struct Studio {
     held_nudge: Option<HeldNudge>,
     nudge_task: Option<gpui::Task<()>>,
     focus: FocusHandle,
-    catalog: Option<Entity<Choice>>,
-    catalog_open: bool,
+    /// Catálogo del carril (#1569): búsqueda, categoría, miniaturas, foco y arrastre.
     search: Entity<orbit::Input>,
+    catalog_category: usize,
+    catalog_previews: Vec<add_widget::CatalogPreview>,
+    catalog_focus: Vec<FocusHandle>,
+    ghost: Option<add_widget::Ghost>,
+    toast: Option<add_widget::Toast>,
+    toast_task: Option<gpui::Task<()>>,
     color: Option<Entity<orbit::Input>>,
     inspector_selection: Option<String>,
     size_fields: Vec<(&'static str, Entity<NumberControl>)>,
@@ -177,6 +184,12 @@ impl Render for StudioSidebar {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         match self.studio.update(cx, |studio, cx| {
             studio.init_controls(window, cx);
+            if studio.editor.selected.is_none() {
+                // Sin selección el carril es el catálogo y ocupa toda su altura.
+                return studio
+                    .widget_catalog(cx)
+                    .on_key_down(cx.listener(Studio::handle_key));
+            }
             div()
                 .h_full()
                 .min_h_0()
@@ -408,7 +421,11 @@ impl Studio {
                 f32::from(bounds.size.height),
             ))
         });
-        let search = cx.new(|cx| orbit::Input::new(String::new(), "Buscar widget…", cx));
+        let search = cx.new(|cx| {
+            orbit::Input::new(String::new(), "Buscar widget", cx)
+                .with_height(px(38.0))
+                .with_inset(36.0, 40.0)
+        });
         cx.observe(&search, |_, _, cx| cx.notify()).detach();
         let parent = cx.entity();
         let sidebar = cx.new(|cx| {
@@ -460,9 +477,16 @@ impl Studio {
             held_nudge: None,
             nudge_task: None,
             focus: cx.focus_handle(),
-            catalog: None,
-            catalog_open: false,
             search,
+            catalog_category: 0,
+            catalog_previews: vec![],
+            catalog_focus: add_widget::ORDER
+                .iter()
+                .map(|_| cx.focus_handle())
+                .collect(),
+            ghost: None,
+            toast: None,
+            toast_task: None,
             color: None,
             inspector_selection: None,
             fields: vec![],
@@ -487,6 +511,8 @@ impl Studio {
             studio.session_tab = session;
         }
         studio.rebuild(cx);
+        #[cfg(feature = "parity-capture")]
+        studio.apply_catalog_capture(cx);
         studio
     }
     pub(crate) fn set_access(
@@ -501,13 +527,6 @@ impl Studio {
         for (_, frame) in &self.frames {
             frame.update(cx, |frame, cx| {
                 frame.lock = widget_lock(Some(access), frame.item.settings.kind());
-                cx.notify();
-            });
-        }
-        if let Some(catalog) = &self.catalog {
-            catalog.update(cx, |catalog, cx| {
-                catalog.state =
-                    orbit::ChoiceState::new(catalog_options(Some(access)), catalog.state.selected);
                 cx.notify();
             });
         }
@@ -558,6 +577,7 @@ impl Studio {
         cx: &mut Context<Self>,
     ) {
         self.cancel_drag(cx);
+        self.toast = None; // «Deshacer» del aviso solo vale para su alta.
         self.status = edit(&mut self.editor);
         if self.status.is_err() {
             self.reset_fields();

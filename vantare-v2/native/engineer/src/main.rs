@@ -153,14 +153,10 @@ fn run_stream(
     // arranque lento no es una denegación. El plazo explícito cubre un ciclo
     // de lectura (IO_TIMEOUT) más el arranque del publicador; el timeout se
     // diagnostica como tal en vez de confundirse con falta de licencia.
-    if !rights.wait_initial(vantare_ipc::transport::IO_TIMEOUT + Duration::from_secs(5)) {
-        return Err(io::Error::new(
-            io::ErrorKind::TimedOut,
-            "derechos sin respuesta inicial en 10 s; reintentar con el núcleo visible",
-        )
-        .into());
-    }
-    require_stream_rights(&rights)?;
+    require_initial_stream_rights(
+        |timeout| rights.wait_initial(timeout),
+        || require_stream_rights(&rights),
+    )?;
     let mut engineer = Engineer::resume(checkpoint)?;
     let mut output = io::stdout().lock();
     wire::write_hello(&mut output, engineer.cursor())?;
@@ -219,6 +215,21 @@ fn run_stream(
         }
     }
     Ok(())
+}
+
+/// Separa la espera de la decisión para probar respuestas lentas con un reloj
+/// virtual, sin cambiar el plazo ni la autoridad del Feed de producción.
+fn require_initial_stream_rights(
+    wait_initial: impl FnOnce(Duration) -> bool,
+    authorize: impl FnOnce() -> io::Result<()>,
+) -> io::Result<()> {
+    if !wait_initial(vantare_ipc::transport::IO_TIMEOUT + Duration::from_secs(5)) {
+        return Err(io::Error::new(
+            io::ErrorKind::TimedOut,
+            "derechos sin respuesta inicial en 10 s; reintentar con el núcleo visible",
+        ));
+    }
+    authorize()
 }
 
 fn require_stream_rights(rights: &vantare_ipc::control::Feed) -> io::Result<()> {
@@ -354,6 +365,44 @@ fn run_pipe(
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn initial_rights_waits_for_a_two_second_response_on_a_virtual_clock() {
+        let now = std::cell::Cell::new(Duration::ZERO);
+        let response_at = Duration::from_secs(2);
+        require_initial_stream_rights(
+            |timeout| {
+                now.set(response_at.min(timeout));
+                response_at <= timeout
+            },
+            || {
+                assert_eq!(now.get(), response_at, "autorizar solo tras la respuesta");
+                Ok(())
+            },
+        )
+        .expect("un arranque lento no es una denegación");
+    }
+
+    #[test]
+    fn initial_rights_timeout_never_queries_permission() {
+        let error = require_initial_stream_rights(
+            |timeout| {
+                assert_eq!(timeout, Duration::from_secs(10));
+                false
+            },
+            || panic!("sin respuesta inicial no hay decisión de licencia"),
+        )
+        .expect_err("plazo inicial agotado");
+        assert_eq!(error.kind(), io::ErrorKind::TimedOut);
+    }
+
+    #[test]
+    fn initial_rights_definitive_denial_is_preserved() {
+        let error =
+            require_initial_stream_rights(|_| true, || Err(io::ErrorKind::PermissionDenied.into()))
+                .expect_err("esperar no concede derechos");
+        assert_eq!(error.kind(), io::ErrorKind::PermissionDenied);
+    }
+
     fn parse(args: &[&str]) -> Result<Options, &'static str> {
         options(args.iter().map(OsString::from))
     }

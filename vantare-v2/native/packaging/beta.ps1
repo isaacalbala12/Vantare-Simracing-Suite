@@ -13,7 +13,8 @@ $ErrorActionPreference = 'Stop'
 $betaOperation = $Operation
 . (Join-Path $PSScriptRoot 'candidate.ps1') -Root $Root -Archive $Archive -ExpectedSha256 $ExpectedSha256 -Channel beta
 $Operation = $betaOperation
-$script:BetaRepository = 'isaacalbala12/Vantare-Simracing-Suite'
+# #1565: repo publico de descargas; cero releases hasta version integrada/verificada.
+$script:BetaRepository = 'isaacalbala12/Vantare-Downloads'
 
 function Read-BetaVersion([string]$Value) {
     if ($Value -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})$') { throw 'Versión beta inválida: use major.minor.patch.' }
@@ -53,6 +54,13 @@ function Invoke-BetaManifestTool([string]$Executable, [string]$Json, [string]$Ke
     } finally { $process.Dispose() }
 }
 
+function Assert-BetaPackageUrl([string]$Value, [string]$Version, [bool]$Local = $false) {
+    $null = Read-BetaVersion $Version
+    $url = [uri]$Value
+    $expected = "https://github.com/$script:BetaRepository/releases/download/native-beta-v$Version/vantare-native-amd64-package.zip"
+    if ($Value -cne $expected -and -not ($Local -and $url.IsFile)) { throw 'URL de paquete fuera de la release beta declarada.' }
+}
+
 function Read-BetaManifest([string]$Json, [bool]$Local = $false, [string]$Verifier = '') {
     if ($Json.Length -gt 65536) { throw 'Manifiesto remoto demasiado grande.' }
     $Json = Invoke-BetaManifestTool $Verifier $Json
@@ -65,9 +73,7 @@ function Read-BetaManifest([string]$Json, [bool]$Local = $false, [string]$Verifi
     if (($manifest.schema -isnot [int] -and $manifest.schema -isnot [long]) -or $manifest.schema -ne 1 -or $manifest.product -cne 'vantare-native' -or $manifest.channel -cne 'beta' -or
         $manifest.sha256 -cnotmatch '^[a-f0-9]{64}$' -or [Text.Encoding]::UTF8.GetByteCount($manifest.notes) -gt 8192) { throw 'Manifiesto beta inválido.' }
     $null = Read-BetaVersion $manifest.version
-    $url = [uri]$manifest.url
-    $expected = "https://github.com/$script:BetaRepository/releases/download/native-beta-v$($manifest.version)/vantare-native-amd64-package.zip"
-    if ($manifest.url -cne $expected -and -not ($Local -and $url.IsFile)) { throw 'URL de paquete fuera de la release beta declarada.' }
+    Assert-BetaPackageUrl $manifest.url $manifest.version $Local
     $manifest
 }
 

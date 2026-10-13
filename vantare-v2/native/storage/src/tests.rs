@@ -90,6 +90,19 @@ use std::sync::atomic::{AtomicU64, Ordering};
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn windows_sharing_violation_is_locked_and_preserves_diagnostic() {
+    let detail = "IO Error: Cannot open file \"recording.duckdb\": The process cannot access the file because it is being used by another process.";
+    let error = duckdb::Error::DuckDBFailure(
+        duckdb::ffi::Error::new(duckdb::ffi::DuckDBError),
+        Some(detail.to_owned()),
+    );
+    assert_eq!(
+        inspection::open_error(&error),
+        json!(["error", "locked", detail])
+    );
+}
+
+#[test]
 fn hub_inspection_uses_canonical_summary_and_read_only_pages() {
     let not_a_lock = inspection::open_error(&io::Error::other("DB corrupta: clock.duckdb"));
     assert_eq!(not_a_lock[1], "unreadable");

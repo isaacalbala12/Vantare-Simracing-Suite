@@ -11,6 +11,7 @@ pub(super) fn open_error(error: &(dyn std::error::Error + Send + Sync)) -> Value
     let code = if lower.contains("could not set lock")
         || lower.contains("conflicting lock")
         || lower.contains("file is already open in")
+        || lower.contains("being used by another process")
     {
         "locked"
     } else if lower.contains("versión") || lower.contains("series_meta") {

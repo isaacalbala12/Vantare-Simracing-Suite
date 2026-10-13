@@ -13,6 +13,19 @@ Issue abierta [#1429](https://github.com/isaacalbala12/Vantare-Simracing-Suite/i
 
 ## 3. Estado real y canal
 
+#1584 (2026-10-13), rama `vantareapp/isa-1584-duckdb-locked-windows` desde
+`origin/nightly@707514e296bdd3dcc07e14bfffa92b4171fa9749`: `open_error` reconoce
+«being used by another process» como `locked`. El binding DuckDB 1.10505.0
+conserva estado genérico y diagnóstico, sin código Win32 específico al abrir.
+Regresión con `DuckDBFailure`: falla antes (`unreadable`) y pasa después
+(`locked`), conservando el diagnóstico completo. Smoke Hub existente intacto.
+Fmt/check/Clippy PASS; Nextest 1627/1627 (7 skips) y lifecycle PASS por
+`C:/tmp/fase2/compilar.ps1`; integridad anti-slop/retirement PASS (456 huellas).
+PR a nightly con auto-merge autorizado por Isaac;
+SHA/PR/CI finales en [#1584](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1584)
+y `C:/tmp/buzon/1584.md`. No activa el runner Windows de #1565 ni acredita
+una nueva ejecución en SapphireOS.
+
 Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. PR [#1570](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1570) contra nightly, con auto-merge autorizado por el orquestador. Nightly `0cf38ed2` incorporada mediante merge `dbee0c18`; sin promoción ni release. Storage y Analysis nativos están presentes en el código; #1429 sigue OPEN. El estado antiguo TA-03E/TA-03F no describe la aplicación de esta base ni certifica su aceptación actual.
 
 ## 4. Decisiones cerradas
@@ -48,4 +61,4 @@ Reconciliar #1429 con los criterios de fase 4: comprobar recording explícito, p
 
 ## 10. Última actualización
 
-2026-10-10 · GitHub #1561 · Codex. Código, README del área e issues leídos; seguimiento #1561 escrito y releído. Las siguientes acciones de área proceden de las issues abiertas, sin nuevas autorizaciones implícitas. El diario y los avances por ronda se escriben en la issue; aquí se sustituye el estado.
+2026-10-13 · GitHub #1584 · Codex. Corrección mínima del diagnóstico Windows y regresión antes/después; gates locales y límites en §3. PR/SHA/CI se registran en la issue y el buzón. El diario y los avances por ronda se escriben en la issue; aquí se sustituye el estado.

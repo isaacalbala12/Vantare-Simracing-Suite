@@ -33,6 +33,8 @@ pub mod roadmap;
 pub mod storage;
 #[cfg(feature = "network")]
 mod testing;
+#[cfg(feature = "network")]
+pub(crate) mod triage;
 pub mod update_manifest;
 
 pub use error::{Error, Result};

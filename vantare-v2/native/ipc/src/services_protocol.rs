@@ -2,15 +2,18 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-pub const VERSION: u32 = 6;
+pub const VERSION: u32 = 7;
 #[path = "services_protocol/report_document.rs"]
 pub mod report_document;
 #[path = "services_protocol/roadmap_document.rs"]
 pub mod roadmap_document;
 #[path = "services_protocol/testing_document.rs"]
 pub mod testing_document;
-// Tres miniaturas + preview JSON del texto (con escape doble). Nunca JPEG completos.
+#[path = "services_protocol/triage_document.rs"]
+pub mod triage_document;
 pub const MAX_FRAME: usize = 128 * 1024;
+// Only exact triage previews allow two 256 KiB attachments with JSON escaping.
+pub const MAX_TRIAGE_FRAME: usize = 4 * 1024 * 1024;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "command", deny_unknown_fields)]
@@ -41,6 +44,15 @@ pub enum Command {
         id: String,
         title: String,
         body: String,
+    },
+    TriagePrepare {
+        title: String,
+        body: String,
+        selection: triage_document::Selection,
+        consent: bool,
+    },
+    TriageSend {
+        preview_id: String,
     },
     DraftLoad,
     DraftSave {
@@ -110,6 +122,9 @@ pub enum Reply {
     },
     Testing {
         data: testing_document::Participation,
+    },
+    TriagePreview {
+        preview: triage_document::Preview,
     },
     Roadmap {
         publication: Option<roadmap_document::Publication>,
@@ -185,17 +200,23 @@ pub fn read<T: DeserializeOwned>(reader: &mut impl Read) -> io::Result<T> {
     reader.read_exact(&mut prefix)?;
     let len =
         usize::try_from(u32::from_le_bytes(prefix)).map_err(|_| io::ErrorKind::InvalidData)?;
-    if len == 0 || len > MAX_FRAME {
+    if len == 0 || len > MAX_TRIAGE_FRAME {
         return Err(io::ErrorKind::InvalidData.into());
     }
     let mut bytes = vec![0; len];
     reader.read_exact(&mut bytes)?;
-    serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData.into())
+    let value: serde_json::Value =
+        serde_json::from_slice(&bytes).map_err(|_| io::ErrorKind::InvalidData)?;
+    if len > frame_limit(&value) {
+        return Err(io::ErrorKind::InvalidData.into());
+    }
+    serde_json::from_value(value).map_err(|_| io::ErrorKind::InvalidData.into())
 }
 
 pub fn write(writer: &mut impl Write, value: &impl Serialize) -> io::Result<()> {
-    let bytes = serde_json::to_vec(value).map_err(|_| io::ErrorKind::InvalidData)?;
-    if bytes.len() > MAX_FRAME {
+    let value = serde_json::to_value(value).map_err(|_| io::ErrorKind::InvalidData)?;
+    let bytes = serde_json::to_vec(&value).map_err(|_| io::ErrorKind::InvalidData)?;
+    if bytes.len() > frame_limit(&value) {
         return Err(io::ErrorKind::InvalidData.into());
     }
     let len = u32::try_from(bytes.len()).map_err(|_| io::ErrorKind::InvalidData)?;
@@ -203,10 +224,65 @@ pub fn write(writer: &mut impl Write, value: &impl Serialize) -> io::Result<()> 
     writer.write_all(&bytes)?;
     writer.flush()
 }
+fn frame_limit(value: &serde_json::Value) -> usize {
+    if value
+        .get("result")
+        .or_else(|| value.get("reply").and_then(|r| r.get("result")))
+        .and_then(serde_json::Value::as_str)
+        == Some("TriagePreview")
+    {
+        MAX_TRIAGE_FRAME
+    } else {
+        MAX_FRAME
+    }
+}
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn large_escaped_triage_preview_does_not_expand_other_command_limits() {
+        let packet = triage_document::Packet {
+            id: "15940000-0000-0000-0000-000000000001".into(),
+            title: "test".into(),
+            body: "test".into(),
+            context: serde_json::json!({}),
+            attachments: (0..2)
+                .map(|i| triage_document::Attachment {
+                    kind: if i == 0 {
+                        "app_log"
+                    } else {
+                        "telemetry_fragment"
+                    }
+                    .into(),
+                    content: "\u{1}".repeat(262_144),
+                    sha256: "a".repeat(64),
+                })
+                .collect(),
+        };
+        let response = Response {
+            version: VERSION,
+            sequence: 1,
+            reply: Reply::TriagePreview {
+                preview: triage_document::Preview {
+                    id: "a".repeat(64),
+                    channel: "testers".into(),
+                    packet,
+                },
+            },
+        };
+        let mut bytes = Vec::new();
+        write(&mut bytes, &response).expect("bounded worst-case preview");
+        assert!(bytes.len() > MAX_FRAME && bytes.len() <= MAX_TRIAGE_FRAME + 4);
+        read::<Response>(&mut bytes.as_slice()).expect("typed preview");
+        let normal = Request {
+            version: VERSION,
+            sequence: 1,
+            nonce: "x".repeat(MAX_FRAME),
+            command: Command::Status,
+        };
+        assert!(write(&mut Vec::new(), &normal).is_err());
+    }
     #[test]
     fn three_thumbnails_and_escaped_preview_fit_the_bounded_ipc_frame() {
         let preview = report_document::Preview {

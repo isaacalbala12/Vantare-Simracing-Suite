@@ -24,6 +24,7 @@ pub struct App {
     data_session: Option<crate::bridge::DataSession>,
     report_store: Option<Store>,
     reports: Option<crate::report::Reports>,
+    triage: crate::triage::Triage,
 }
 
 impl App {
@@ -42,6 +43,7 @@ impl App {
             data_session: None,
             report_store: None,
             reports: None,
+            triage: crate::triage::Triage::default(),
         }
     }
 
@@ -162,6 +164,7 @@ impl App {
             self.revoke_local()?;
         }
         self.data_session = None;
+        self.triage.cancel();
         if let Some(reports) = self.reports.as_mut() {
             reports.cancel_preview();
         }
@@ -275,6 +278,9 @@ impl App {
             let changed = account
                 .identity()
                 .is_some_and(|old| old != completion.identity());
+            if changed {
+                self.triage.cancel();
+            }
             // Otra identidad no hereda el candidate ni la autoridad anteriores.
             // Revocar antes de persistir la nueva sesión; si falla, no sustituirla.
             if changed && self.core.is_some() {
@@ -292,7 +298,19 @@ impl App {
     }
 
     pub fn handle(&mut self, command: Command) -> Reply {
-        let report_send = matches!(command, Command::ReportSend { .. });
+        let report_send = matches!(
+            command,
+            Command::ReportSend { .. } | Command::TriageSend { .. }
+        );
+        let operation = match &command {
+            Command::TriagePrepare { .. } => "triage-prepare",
+            Command::TriageSend { .. } => "triage-send",
+            Command::TestingRefresh
+            | Command::TestingAnswer { .. }
+            | Command::TestingContribute { .. } => "participation",
+            Command::ReportSend { .. } => "report-send",
+            _ => "request",
+        };
         let account_action = matches!(
             command,
             Command::AccountBegin
@@ -301,7 +319,11 @@ impl App {
                 | Command::AccountProfileRefresh
                 | Command::Logout
         );
-        match self.execute(command) {
+        let outcome = self.execute(command);
+        if let Ok(time) = now() {
+            self.triage.record(time, outcome.is_err(), operation);
+        }
+        match outcome {
             Ok(reply) => reply,
             Err(error) => {
                 if report_send && error == Error::Authentication {
@@ -373,6 +395,9 @@ impl App {
             | Command::TestingAnswer { .. }
             | Command::TestingContribute { .. } => {
                 return self.testing_reply(command);
+            }
+            Command::TriagePrepare { .. } | Command::TriageSend { .. } => {
+                return self.triage_reply(command);
             }
             Command::TransferRights => return self.transfer_rights(),
             Command::Purchase { product } => {
@@ -469,6 +494,52 @@ impl App {
         Ok(Reply::Testing {
             data: crate::testing::execute(&request, channel, command)?,
         })
+    }
+
+    fn triage_reply(&mut self, command: Command) -> Result<Reply> {
+        let time = now()?;
+        self.ensure_data(time)?;
+        let session = self.data_session.as_ref().ok_or(Error::Authentication)?;
+        let channel = crate::report::rpc_channel(self.config.channel.ok_or(Error::Unconfigured)?);
+        match command {
+            Command::TriagePrepare {
+                title,
+                body,
+                selection,
+                consent,
+            } => {
+                let names = self
+                    .account
+                    .as_ref()
+                    .and_then(|a| a.profile())
+                    .map(|p| vec![p.name.clone()])
+                    .unwrap_or_default();
+                let input = crate::triage::Input {
+                    title: &title,
+                    body: &body,
+                    selection,
+                    consent,
+                    private_names: &names,
+                };
+                Ok(Reply::TriagePreview {
+                    preview: self
+                        .triage
+                        .prepare(session.account_id(), channel, input, time)?,
+                })
+            }
+            Command::TriageSend { preview_id } => {
+                let request = session.request(
+                    &self.http,
+                    self.bridge.as_ref().ok_or(Error::BridgeUnconfigured)?,
+                    self.account.as_ref().ok_or(Error::Authentication)?,
+                    time,
+                );
+                Ok(Reply::Testing {
+                    data: self.triage.send(&request, channel, &preview_id, time)?,
+                })
+            }
+            _ => Err(Error::Protocol),
+        }
     }
 
     fn roadmap_reply(&mut self, refresh: bool) -> Result<Reply> {

@@ -16,3 +16,5 @@ mod tests;
 mod editor;
 mod model;
 pub use editor::{Editor, empty_fields};
+mod triage_editor;
+pub use triage_editor::Editor as TriageEditor;

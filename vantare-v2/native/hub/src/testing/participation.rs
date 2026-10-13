@@ -10,9 +10,6 @@ pub(super) struct Form {
     pub(super) questionnaire_id: Option<String>,
     pub(super) score: u8,
     pub(super) answer_note: Entity<Input>,
-    pub(super) contribution_title: Entity<Input>,
-    pub(super) contribution_body: Entity<Input>,
-    pub(super) contribution_attempt: Option<(String, String, String)>,
     pub(super) generation: u64,
 }
 impl Form {
@@ -21,12 +18,7 @@ impl Form {
             questionnaire_id,
             score: 3,
             generation: 0,
-            contribution_attempt: None,
             answer_note: cx.new(|cx| Input::multiline(String::new(), "Comentario opcional", cx)),
-            contribution_title: cx
-                .new(|cx| Input::new(String::new(), "Título de la contribución", cx)),
-            contribution_body: cx
-                .new(|cx| Input::multiline(String::new(), "Propuesta o contribución", cx)),
         }
     }
 }
@@ -193,6 +185,7 @@ impl Testing {
                 "received" => "Recibida",
                 "reviewing" => "En revisión",
                 "accepted" => "Aceptada",
+                "spam" => "Marcada como spam",
                 _ => "No aceptada",
             };
             list = list
@@ -205,40 +198,17 @@ impl Testing {
                 ))
                 .child(orbit::text(c.body.clone(), 12.0, 400, orbit::ink_2(cx), cx));
         }
-        div().flex_1().min_h_0().flex().flex_col().gap(px(self.adapt.gap()))
+        div()
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .gap(px(self.adapt.gap()))
             .child(self.participation_header("Ayúdanos a mejorar Vantare", cx))
-            .child(orbit::neo_card(cx).flex_none().gap(px(10.0))
-                .child(self.participation_form.contribution_title.clone()).child(self.participation_form.contribution_body.clone())
-                .child(orbit::primary_button("testing-contribution-send", "Enviar contribución", cx).tab_stop(ready)
-                    .when(!ready, |b| orbit::disabled(b, "Servicio ocupado o sesión requerida"))
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        let title = this.participation_form.contribution_title.read(cx).value.clone();
-                        let body = this.participation_form.contribution_body.read(cx).value.clone();
-                        if title.trim().is_empty() || body.trim().is_empty() { return; }
-                        let attempt = match this.participation_form.contribution_attempt.as_ref() {
-                            Some((id, old_title, old_body)) if *old_title == title && *old_body == body => Some(id.clone()),
-                            _ => new_uuid(),
-                        };
-                        if let Some(id) = attempt {
-                            this.participation_form.contribution_attempt = Some((id.clone(), title.clone(), body.clone()));
-                            this.remote.update(cx, |remote, cx| remote.participation_request(Command::TestingContribute { id, title, body }, cx));
-                        }
-                    })))
-                .child(orbit::text("Propuestas, documentación y pruebas. Tu texto se envía al equipo; evita datos personales. No se publica tu identidad ni se asignan niveles o insignias.", 12.0, 400, orbit::ink_3(cx), cx)))
+            .child(
+                self.remote
+                    .update(cx, |remote, cx| remote.triage.render(ready, cx)),
+            )
             .child(list)
     }
-}
-
-fn new_uuid() -> Option<String> {
-    let id = vantare_services::random_id().ok()?;
-    (id.len() == 64).then(|| {
-        format!(
-            "{}-{}-{}-{}-{}",
-            &id[..8],
-            &id[8..12],
-            &id[12..16],
-            &id[16..20],
-            &id[20..32]
-        )
-    })
 }

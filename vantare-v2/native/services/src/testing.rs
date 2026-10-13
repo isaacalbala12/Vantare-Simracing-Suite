@@ -33,7 +33,7 @@ pub(crate) fn validate(data: &Participation) -> Result<()> {
             || !text(&c.body, 1000, true)
             || !matches!(
                 c.state.as_str(),
-                "received" | "reviewing" | "accepted" | "declined"
+                "received" | "reviewing" | "accepted" | "declined" | "spam"
             )
         {
             return Err(Error::Protocol);

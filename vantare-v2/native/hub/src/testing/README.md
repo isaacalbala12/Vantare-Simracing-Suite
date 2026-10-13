@@ -1,8 +1,20 @@
 ## Participación #1535
 
-Cuestionarios por versión y contribuciones mediante services IPC v6; ver
+Cuestionarios por versión y contribuciones mediante services IPC v7; ver
 [contrato y límites](../../../../docs/testing-participation.md). No se aplicó
 la migración ni se envió feedback real. Bugs conservan la RPC existente.
+
+## Triaje #1594
+
+Nuevo informe prepara título/texto, juego/versión observados, hardware de lista
+blanca y log reciente real de services. Vista previa del mismo payload de
+submit_v2, cinco casillas opcionales y consentimiento obligatorio DeepSeek.
+Texto/casillas invalidan vista previa y consentimiento; logout elimina contenido
+y rechaza respuestas tardías. PostHog/fragmento no disponibles quedan vacíos.
+Informe con capturas conserva la ruta previa; las imágenes no van al modelo.
+La migración #1594 sí fue aplicada tras OK, con backup/restore y ACL/RLS 25/25;
+no se acredita login/envío real ni proveedor. Worker, cron y credenciales siguen
+inactivos. Véase [runbook](../../../../docs/runbooks/testing-contribution-triage.md).
 
 # Testing Center — editor de envío y diagnóstico local
 

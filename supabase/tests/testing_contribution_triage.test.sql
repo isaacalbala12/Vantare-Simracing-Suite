@@ -59,7 +59,7 @@ select throws_ok($$select public.testing_contribution_submit_v2('15940000-0000-0
 select lives_ok($$select public.testing_contribution_submit_v2('15940000-0000-0000-0000-000000000011','testers','No evidence',repeat('x',210),jsonb_set(jsonb_set(pg_temp.ctx(),'{consent,items}','[]'),'{system}','{}'),'[]')$$,'all optional evidence can be unchecked');
 select lives_ok($$select public.testing_contribution_submit('15940000-0000-0000-0000-000000000012','testers','Legacy','text')$$,'legacy RPC preserved');
 select is((select count(*)::integer from public.testing_contribution_context),2,'legacy report has no invented context');
-select throws_ok($$select public.testing_contribution_submit_v2('15940000-0000-0000-0000-000000000013','testers','Oversize',repeat('x',210),pg_temp.ctx(),jsonb_build_array(jsonb_build_object('kind','app_log','content',repeat('ÃƒÂ©',131073),'sha256',encode(sha256(convert_to(repeat('ÃƒÂ©',131073),'UTF8')),'hex'))))$$,'23514',null,'attachment limit measured in UTF8 bytes');
+select throws_ok($$select public.testing_contribution_submit_v2('15940000-0000-0000-0000-000000000013','testers','Oversize',repeat('x',210),pg_temp.ctx(),jsonb_build_array(jsonb_build_object('kind','app_log','content',repeat('é',131073),'sha256',encode(sha256(convert_to(repeat('é',131073),'UTF8')),'hex'))))$$,'23514',null,'attachment limit measured in UTF8 bytes');
 select throws_ok($$select public.testing_contribution_submit_v2('15940000-0000-0000-0000-000000000013','testers','Duplicate',repeat('x',210),pg_temp.ctx(),pg_temp.att()||pg_temp.att())$$,'23505',null,'duplicate attachment kinds denied atomically');
 
 set local request.jwt.claim.sub = '15940000-0000-0000-0000-000000000002';

@@ -1,14 +1,15 @@
 # Handoff vivo — Testing Center
 
 Estado vigente #1594: migración aprobada, aplicada y postcheck PASS;
-continúa cliente y worker inerte. Cron/proveedor/credencial/despliegue cerrados.
+cliente y worker inerte preparados, gates finales/PR pendientes.
+Cron/proveedor/credencial/despliegue cerrados.
 Releer issue y buzón antes de ejecutar.
 [Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/testing-center.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 
 ## 1. Resultado
 
 #1594 / VANTA-38 prepara contexto, adjuntos, revisiones y RPC de confirmación
-owner para DeepSeek V4.1 Flash. Cliente/worker pendientes. Migración aplicada
+owner para DeepSeek V4.1 Flash. Cliente/worker preparados. Migración aplicada
 en ombjshwzqgeisazijduq, history 20261013160000 tras OK explícito del orquestador.
 SQL completo en C:/tmp/buzon/1594.md. Sin PR, push, merge o despliegue.
 [Contrato y runbook](../../runbooks/testing-contribution-triage.md).
@@ -109,13 +110,13 @@ Capturas y gates previos no prueban Clerk/Storage, instalacion o produccion.
 
 ## 8. Issues terminadas, activas y pendientes
 
-Activa #1594 para triaje (PARADO tras SQL). Contexto #1535 para cuestionarios/reportes/comunidad; #1452 abierta para puente/envío real. #1521 diseño de bot de guardia es otro alcance. #1496 UI sigue abierta con entregas en base; #1536 y arreglos cerrados. IDs TC/ISA migrados quedan en histórico sin renumeración ni segundo tracker.
+Activa #1594 para triaje (SQL aplicado, cliente/worker pendientes). Contexto #1535 para cuestionarios/reportes/comunidad; #1452 abierta para puente/envío real. #1521 diseño de bot de guardia es otro alcance. #1496 UI sigue abierta con entregas en base; #1536 y arreglos cerrados. IDs TC/ISA migrados quedan en histórico sin renumeración ni segundo tracker.
 
 ## 9. Siguiente acción exacta
 
-Implementar cliente con contexto real, redacción/vista previa/consentimiento;
-worker Python inerte DeepSeek, extracto mínimo, propuestas y doble confirmación.
-Completar gates y PR a nightly con auto-merge squash. Por revisar/FIN solo al
+Cliente con contexto real/redacción/vista previa/consentimiento, IPC v7;
+worker Python inerte con 13 tests offline PASS y consentimiento GUI PASS.
+Incorporar nightly vigente, completar gates y PR con auto-merge squash. Por revisar/FIN solo al
 completar. No activar cron, LOGIN/password, proveedor ni despliegue del worker.
 
 ## 10. Última actualización

@@ -11,6 +11,7 @@ use std::{path::PathBuf, time::Instant};
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ReportView {
+    Triage,
     Compose,
     List,
 }
@@ -59,7 +60,7 @@ impl Testing {
             ReportView::Compose
         };
         #[cfg(not(feature = "parity-capture"))]
-        let report_view = ReportView::Compose;
+        let report_view = ReportView::Triage;
         let channel_label = super::model::channel_label(Some(crate::product::CHANNEL));
         let tabs = cx.new(|cx| {
             orbit::Choice::new(
@@ -499,6 +500,29 @@ impl Testing {
     }
     fn reports_panel(&self, cx: &mut Context<Self>) -> gpui::Div {
         let rows = self.receipt_rows(cx);
+        let remote = self.remote.read(cx);
+        let triage_rows = remote
+            .participation
+            .contributions
+            .iter()
+            .map(|c| {
+                let state = match c.state.as_str() {
+                    "received" => "Recibido",
+                    "reviewing" => "En revisión",
+                    "accepted" => "Aceptado",
+                    "spam" => "Spam",
+                    _ => "No aceptado",
+                };
+                orbit::text(
+                    format!("{} · {state}", c.title),
+                    13.0,
+                    400,
+                    orbit::ink_2(cx),
+                    cx,
+                )
+            })
+            .collect::<Vec<_>>();
+        let ready = remote.participation_ready();
         orbit::neo_card(cx)
             .flex_1()
             .min_h_0()
@@ -516,6 +540,16 @@ impl Testing {
                 cx,
             ))
             .child(rows)
+            .children(triage_rows)
+            .child(
+                orbit::small_button("testing-triage-refresh", "Recargar informes", cx)
+                    .tab_stop(ready)
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.remote.update(cx, |r, cx| {
+                            r.participation_request(Command::TestingRefresh, cx);
+                        });
+                    })),
+            )
             .child(orbit::text(
                 "Recibos de esta sesión. Estado al enviar; seguimiento posterior próximamente.",
                 11.0,
@@ -528,18 +562,18 @@ impl Testing {
         let adapt = self.adapt;
         let action = orbit::button(
             "testing-compose",
-            if self.report_view == ReportView::Compose {
-                "Ver mis informes"
-            } else {
+            if self.report_view == ReportView::List {
                 "Nuevo informe"
+            } else {
+                "Ver mis informes"
             },
             cx,
         )
         .on_click(cx.listener(|this, _, _, cx| {
-            this.report_view = if this.report_view == ReportView::Compose {
-                ReportView::List
+            this.report_view = if this.report_view == ReportView::List {
+                ReportView::Triage
             } else {
-                ReportView::Compose
+                ReportView::List
             };
             cx.notify();
         }));
@@ -557,9 +591,26 @@ impl Testing {
                     .justify_between()
                     .gap(px(10.0))
                     .child(orbit::text("Informes", 18.0, 600, orbit::ink(cx), cx))
-                    .child(action),
+                    .child(action)
+                    .child(
+                        orbit::small_button("testing-legacy-captures", "Informe con capturas", cx)
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.report_view = ReportView::Compose;
+                                cx.notify();
+                            })),
+                    ),
             );
-        if self.report_view == ReportView::Compose {
+        if self.report_view == ReportView::Triage {
+            let ready = self.remote.read(cx).participation_ready();
+            body = body.child(
+                div()
+                    .id("testing-triage-scroll")
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_y_scroll()
+                    .child(self.remote.update(cx, |r, cx| r.triage.render(ready, cx))),
+            );
+        } else if self.report_view == ReportView::Compose {
             body = body.child(
                 div()
                     .id("testing-composer-scroll")
@@ -821,7 +872,7 @@ impl Testing {
                 .when(adapt.show_optional(), |hero| hero.child(orbit::text("Consulta los cuestionarios publicados y comparte una contribución. Tus respuestas son privadas.", 14.0, 400, orbit::ink_2(cx), cx)))
                 .child(orbit::primary_button("testing-summary-report", "Nuevo informe", cx).self_start()
                     .on_click(cx.listener(|this, _, _, cx| {
-                        this.report_view = ReportView::Compose;
+                        this.report_view = ReportView::Triage;
                         this.local_open = false;
                         this.tabs.update(cx, |tabs, cx| { tabs.state.selected = Some(2); cx.notify(); });
                         cx.notify();

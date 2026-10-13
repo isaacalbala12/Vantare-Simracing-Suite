@@ -435,21 +435,32 @@ verificar versión/notas, reiniciar y confirmar Apply/arranque y datos conservad
 Guardar tags, hashes, log y capturas; desinstalar esa instalación de prueba.
 No publicar una versión inválida para simular el ataque en el feed real.
 
-## #1565 · transición del feed antes de privatizar
+## #1565 · feed en `Vantare-Downloads` (cambio en seco)
 
-El destino propuesto es un repositorio NUEVO público `isaacalbala12/Vantare-Downloads`,
-sin importar historia ni código. Cada release `native-beta-vX.Y.Z` lleva solo
-`VantareSetup.exe`, su `.sha256`, `vantare-native-amd64-package.zip`, su `.sha256`
-y `vantare-native-beta.json` con sobre Ed25519. Los source archives automáticos de
-GitHub contendrán únicamente un README editorial mínimo. No incluir claves,
-configuración privada, credenciales ni la miniapp admin. El repo ya fue creado con autorizacion y contiene solo README. Publicar releases
-queda prohibido hasta integrar/publicar una version que lea y verifique el feed nuevo.
+Decisión 2026-10-13: el feed y las descargas viven solo en el repo público
+`isaacalbala12/Vantare-Downloads` (sin código; solo README). Cada release
+`native-beta-vX.Y.Z` lleva `VantareSetup.exe`, `vantare-native-amd64-package.zip`,
+sus `.sha256` y `vantare-native-beta.json` con sobre Ed25519. Firma, clave
+pública y verificador no cambian. No hay feed doble ni renovación automática
+del bootstrap: con ~3 instalaciones no compensa ese código.
 
-Setup copia el nuevo beta.ps1 raíz conservando datos. El ZIP de actualización no
-lo copia: **la transición exige ejecutar el instalador nuevo sobre la instalación
-existente, con Vantare cerrado**. Probar primero en raíz QA aislada con instaladores
-anterior/nuevo; confirmar feed destino, perfiles y rollback. Mantener el repo
-antiguo público hasta la aceptación de Isaac y avisar de reinstalación manual a
-rezagados/legado Go. No prometer que esperar una versión de binarios cambia el feed.
-No privatizar desde scripts. Firma/verificador Ed25519 productivo intactos; no
-se ha usado la clave del USB, construido instalador ni publicado release aquí.
+El repo del feed vive en el `beta.ps1` raíz, que solo renueva Setup; el ZIP no
+lo copia y su inventario estricto impide añadirlo. Por eso **la 0.0.976 se
+publica solo en Downloads y cada instalación pasa a ella reinstalando con su
+Setup** (Vantare cerrado). El repo antiguo conserva la 0.0.975 hasta el cambio
+a privado; las instalaciones que no reinstalen se quedarán sin feed después.
+
+QA aislada (2026-10-13, identidad `TEST_INSTALLER`, raíz `C:/tmp/1565-qa/root`):
+Setup TEST 0.0.975 con bootstrap y ZIP reales de la release (bootstrap idéntico
+al tag `native-beta-v0.0.975`) → datos sembrados → Check consulta
+`Vantare-Simracing-Suite` → Setup TEST 0.0.976 con el bootstrap de esta rama →
+4/4 archivos de datos con hash idéntico, generación anterior como `previous`,
+`beta.ps1`/`candidate.ps1` raíz iguales a la rama → Check consulta solo
+`Vantare-Downloads` (0 releases: «Estás al día», sin error). Instalación real
+intacta y QA desinstalada. Límite: el paquete 0.0.976 de la QA reutiliza los
+binarios 0.0.975 con `manifest.version` 0.0.976; el build real lo hace Isaac.
+Reinstalar dos veces sin abrir Vantare devuelve el código 4 (arranque
+pendiente): abrir y cerrar Vantare y repetir.
+
+Runbook de firma, publicación y reinstalación:
+[repo-privado-1565.md](../../docs/repo-privado-1565.md#runbook-de-isaac-00976-en-vantare-downloads).

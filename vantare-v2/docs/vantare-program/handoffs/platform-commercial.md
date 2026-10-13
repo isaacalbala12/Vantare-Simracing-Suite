@@ -23,12 +23,18 @@ Servicios IPC v6, DTO v10 y control/derechos v4 son contratos independientes.
 #1568 conserva admision protegida, cancelacion serializada y revalidacion;
 la correlacion del incidente humano sigue pendiente. SQL #1535 no aplicado.
 
+#1565 (repo privado): rama `vantareapp/isa-1565-descargas-publicas` sobre
+`origin/nightly@707514e2`; feed en seco a `Vantare-Downloads`, runners
+`self-hosted` solo en privado y presupuesto de artifacts. PR, SHA y checks en la
+issue y `C:/tmp/buzon/1565.md`. Sin release, firma ni cambio de visibilidad.
+
 ## 4. Decisiones cerradas
 
 - ClickUp es la unica fuente del roadmap, publicado en Supabase con lectura anon y compatibilidad v1/v2; no depende del repositorio publico. Clerk identifica; Polar cobra; Supabase conserva UUID interno/datos. No atribuir compras por email, metadata editable o `sub` aislado; identidad ambigua se rechaza/cuarentena.
 - DTO de fotos v10, servicios v6 y control/derechos v4 son contratos independientes en esta base.
 - Account conserva recuperación aun con herramientas denegadas; negar derechos no inventa un login ni un pago.
 - Venta pública exige matriz monetaria/reconciliación y autorización. Implementado, integrado, publicado y validado en producción son estados distintos.
+- #1565: descargas y feed solo en el repo público `Vantare-Downloads`; sin feed doble ni renovación automática del bootstrap. La 0.0.976 se publica solo allí y cada instalación reinstala con Setup. Free privado: sin branch protection aplicada; deploy de Functions manual sin mover secretos ([repo-privado-1565](../../repo-privado-1565.md)).
 
 ## 5. Arquitectura y ownership
 
@@ -46,12 +52,18 @@ El merge actual tuvo conflictos solo documentales; no repetidos gates Rust
 por la condicion del encargo. No acredita esquema Supabase completo, CI remota,
 configuracion del host de CI, OAuth, pagos, entorno fisico ni produccion.
 
+#1565: QA aislada `TEST_INSTALLER` PASS (Setup 0.0.975 real → datos →
+Setup 0.0.976 de la rama: 4/4 datos idénticos, bootstrap renovado, Check solo a
+Downloads; instalación real intacta). Paquete QA = binarios 0.0.975 con
+`manifest.version` 0.0.976. Evidencia: `C:/tmp/1565-qa/ev/`, `C:/tmp/1565-b/`.
+
 ## 7. Riesgos y deuda
 
 - P1: acceso al abrir LMU (#1568); no dar la causa real por confirmada solo con RED local.
 - P1: readiness comercial, identidad y pagos (#1514/#1506/#1507/#1499/#1501); no abrir venta desde docs.
 - P2: SQL #1535 corregido y probado localmente; esquema completo, aplicacion y activacion pendientes. P2-4 aceptado por Isaac en #1535.
 - Login/logout físico, expiración, recuperación, instalación/upgrade y QA remota requieren evidencia propia.
+- P2 #1565: instalaciones que no reinstalen con Setup 0.0.976 antes de privatizar se quedan sin feed; app Go retirada sin actualización.
 
 ## 8. Issues terminadas, activas y pendientes
 
@@ -59,6 +71,7 @@ configuracion del host de CI, OAuth, pagos, entorno fisico ni produccion.
 #1535 en PR #1578; #1568 mantiene correlacion humana pendiente. Abiertas
 #1514/#1506/#1507/#1510/#1511/#1515 y gates comerciales: consultar su estado
 antes de actuar. IDs migrados y evidencia previa permanecen en el historico.
+#1565 abierta: PR de feed/CI a nightly en revisión; runners en #1583.
 
 ## 9. Siguiente acción exacta
 
@@ -69,8 +82,15 @@ Escribir DUDA con resultado y comando exacto para las dos migraciones. Si falta
 acceso, preparar pasos para Isaac. No aplicar nada hasta respuesta expresa.
 P2-4 aceptado por Isaac en #1535; no implica configurar credenciales ni desplegar.
 
+#1565: revisión independiente del PR. Tras integrarlo, Isaac sigue el runbook
+(firma única, publicar solo en Downloads, reinstalar, avisar al tester) antes
+de cambiar la visibilidad.
+
 ## 10. Última actualización
 
 2026-10-10 · GitHub #1535 · Codex. PR #1578, base nightly y cambios
 #1570/#1572/#1573 contrastados. Estado sustituido segun plantilla; diario,
 SHA, push y checks en la issue/buzon. Sin autorizacion de produccion.
+
+2026-10-13 · GitHub #1565 · Claude. Feed en seco, CI privada y QA aislada;
+PR a nightly sin merge ni release.

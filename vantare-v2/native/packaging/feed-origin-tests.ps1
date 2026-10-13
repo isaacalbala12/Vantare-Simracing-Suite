@@ -17,8 +17,8 @@ foreach($bad in @(
 )) {
     $failed=$false
     try { Assert-BetaPackageUrl $bad $version } catch { $failed=$true }
-    if(-not $failed){throw 'Se aceptÃ³ un origen fuera del contrato.'}
+    if(-not $failed){throw 'Se aceptó un origen fuera del contrato.'}
     $rejected++
 }
 Assert-BetaPackageUrl 'file:///C:/tmp/fixture.zip' $version $true
-"PASS: origen exacto, modo local explÃ­cito y $rejected rechazos. Firma no sustituida."
+"PASS: origen exacto, modo local explícito y $rejected rechazos. Firma no sustituida."

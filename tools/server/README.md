@@ -15,7 +15,7 @@ solo con clave y solo desde 192.168.1.0/24. Sin secretos en este directorio.
 | Roadmap | `vantare-svc`, usuario `roadmap`, `vantare-roadmap.timer` (cada 6 h, min 17) | systemd |
 | Copias | `vantare-plane-backup.timer` 03:30 → `/var/backups/plane` y `C:\VantareServer\backups\plane` (14 días) | systemd |
 | Copia externa | PC principal: tarea `Vantare-PullServerBackups` 04:00 → `%USERPROFILE%\Backups\VantareServer\plane` (30 días) | al iniciar sesión si se perdió |
-| Supervisión Plane | `vantare-plane-health.timer` (5 min): 3 fallos → reinicia la stack; latido `C:\VantareServer\heartbeat\plane.txt` | systemd |
+| Supervisión Plane | `vantare-plane-health.timer` (5 min) comprueba `/api/instances/` (la web da 200 aunque el backend caiga): 3 fallos → reinicia la stack; latido `C:\VantareServer\heartbeat\plane.txt` | systemd |
 | Supervisión | tarea `\Vantare\Health` (SYSTEM, cada 5 min): distros, latido, runner (prioridad BelowNormal), disco → `C:\VantareServer\logs\health-AAAA-MM.log` | al arrancar |
 | Pantalla | SapphireOS abre sesión de Administrator al arrancar (svchost, no Winlogon); `\Vantare\LockAtLogon` la bloquea al instante | al iniciar sesión |
 
@@ -81,3 +81,13 @@ used by another process») y `storage/src/inspection.rs::open_error` solo recono
 «could not set lock», «conflicting lock» y «File is already open in». El Hub mostraría
 «ilegible» en lugar de «bloqueada» en equipos así. Arreglo propuesto (issue aparte): tratar
 también ERROR_SHARING_VIOLATION / ese texto como `locked`.
+
+## Incidente 2026-10-13: backend 502 tras corte de luz
+
+Apagado inesperado el 12/10 04:19 (evento 6008). La VM WSL murió sin volcar
+`static-assets/collected-static/staticfiles.json` en la capa del contenedor `api` (0 bytes);
+`docker-entrypoint-api.sh` ejecuta `collectstatic` en cada arranque y fallaba en bucle
+(«Couldn't load manifest»), con `/` y `/god-mode/` en 200 pero `/api/*` en 502. Arreglo:
+`vantare-plane.service` usa `up -d --force-recreate` (capas nuevas en cada arranque; datos en
+volúmenes) y la supervisión mira `/api/instances/`. Verificado con reinicio: API 200.
+Sigue pendiente la BIOS «Restore after AC Power Loss».

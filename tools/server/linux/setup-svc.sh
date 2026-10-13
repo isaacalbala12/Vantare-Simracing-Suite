@@ -53,7 +53,9 @@ After=docker.service network-online.target
 Type=oneshot
 RemainAfterExit=yes
 WorkingDirectory=/opt/plane
-ExecStart=/usr/bin/docker compose -p vantare-plane --env-file plane.env up -d --remove-orphans
+# Contenedores efímeros: cada arranque parte de la imagen (datos en volúmenes). Un apagado brusco
+# dejó staticfiles.json a 0 bytes en la capa del contenedor api y collectstatic fallaba en bucle.
+ExecStart=/usr/bin/docker compose -p vantare-plane --env-file plane.env up -d --force-recreate --remove-orphans
 ExecStop=/usr/bin/docker compose -p vantare-plane --env-file plane.env stop
 TimeoutStartSec=900
 [Install]

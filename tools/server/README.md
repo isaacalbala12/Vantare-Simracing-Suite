@@ -91,3 +91,22 @@ Apagado inesperado el 12/10 04:19 (evento 6008). La VM WSL murió sin volcar
 `vantare-plane.service` usa `up -d --force-recreate` (capas nuevas en cada arranque; datos en
 volúmenes) y la supervisión mira `/api/instances/`. Verificado con reinicio: API 200.
 Sigue pendiente la BIOS «Restore after AC Power Loss».
+
+## Acceso remoto por Tailscale (2026-10-13)
+
+- Tailscale 1.104.1 (MSI oficial de pkgs.tailscale.com, SHA256 `6da8bcdb…b0b4` y firma de Tailscale Inc.),
+  instalado con `TS_UNATTENDEDMODE=always`: servicio `Tailscale` automático, `ForceDaemon=true`; funciona
+  sin sesión iniciada. Isaac aprobó el login de `tailscale up --unattended` con su cuenta. La caducidad de la
+  clave está desactivada. Sin Funnel ni Serve, sin compartir la máquina, sin exit node ni rutas anunciadas.
+- SapphireOS traía deshabilitados `iphlpsvc` y `WinHttpAutoProxySvc`, que el MSI exige: se reactivaron
+  (anotado en `services-reenabled.txt`) y hubo que reiniciar para que el SCM los viera.
+- Máquina `sapphireos` · IP `100.79.77.56` · MagicDNS `sapphireos.tail357eab.ts.net`.
+- Cortafuegos (Windows y Hyper-V): TCP 22 y 8088 solo desde `192.168.1.0/24` y `100.64.0.0/10`.
+  WSL mirrored ya escucha en la interfaz de Tailscale; no hace falta un portproxy.
+- Plane: `WEB_URL` es un único origen (`base_host()` redirige ahí tras el login), así que el canónico pasa a
+  ser **http://sapphireos.tail357eab.ts.net:8088**, que funciona en casa y fuera para cualquier equipo con
+  Tailscale. `CORS_ALLOWED_ORIGINS` (y con él `CSRF_TRUSTED_ORIGINS`) incluye el nombre, `100.79.77.56` y
+  `192.168.1.57`. Por la IP LAN se carga, pero un equipo **sin** Tailscale acabará redirigido al nombre al
+  iniciar sesión. Copia previa: `/opt/plane/plane.env.bak-20261013-1718`.
+- SSH: `ssh Administrator@sapphireos.tail357eab.ts.net` (misma clave de host que por LAN, verificada).
+- Si la IP LAN cambia, Plane sigue funcionando por Tailscale; solo hay que tocar la regla CORS de la IP LAN.

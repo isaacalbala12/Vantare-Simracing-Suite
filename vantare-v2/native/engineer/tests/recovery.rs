@@ -284,14 +284,23 @@ fn stream_waits_for_slow_rights_before_deciding() {
         "engineer-stream-slow-rights-{}",
         vantare_services::random_id().unwrap()
     );
-    // El hijo arranca sin autoridad: su primer ciclo del Feed no puede
-    // completarse en 1 s. Debe esperar el resultado inicial (plazo explícito
-    // de 10 s) en vez de negar con "licencia" antes del primer HELLO.
-    let mut worker = Worker::spawn(&files, &name, None);
-    // La espera es el mecanismo de reproducción (autoridad tras el antiguo
-    // plazo), no un margen contra la carga.
-    thread::sleep(Duration::from_secs(2));
-    worker.rights = Some(rights::Fixture::new(&name));
+    let (requested_tx, requested) = mpsc::channel();
+    let rights = rights::Fixture::with_pending_reads(&name, move || {
+        requested_tx.send(()).unwrap();
+    });
+    let mut worker = Worker::spawn(&files, &name, Some(rights));
+    let rights = worker.rights.as_ref().unwrap();
+    // Watchdog de un hijo roto; el canal, no el reloj, fija el orden.
+    requested.recv_timeout(Duration::from_secs(30)).unwrap();
+    assert!(
+        matches!(
+            worker.hello_rx.as_ref().unwrap().try_recv(),
+            Err(mpsc::TryRecvError::Empty)
+        ),
+        "no HELLO ni cierre mientras la autoridad está pendiente"
+    );
+    assert!(!files.cursor().exists(), "no checkpoint sin derechos");
+    rights.release_reads();
     worker.hello = worker.recv_hello();
     assert_eq!(worker.hello, None);
     worker.eof();

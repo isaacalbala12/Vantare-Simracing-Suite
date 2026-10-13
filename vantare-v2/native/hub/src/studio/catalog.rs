@@ -21,15 +21,6 @@ pub(super) fn unavailable_scenario(
         .tooltip(move |_, cx| cx.new(|_| orbit::Tooltip(reason.to_owned())).into())
 }
 
-pub(super) fn catalog_options(access: Option<crate::shell::navigation::Access>) -> Vec<OptionItem> {
-    Kind::ALL
-        .iter()
-        .map(|&kind| match widget_lock(access, kind) {
-            Some(reason) => OptionItem::locked(kind.label(), reason),
-            None => OptionItem::new(kind.label()),
-        })
-        .collect()
-}
 #[cfg(any(test, feature = "parity-capture"))]
 pub(super) fn demo_standings_settings() -> Settings {
     use vantare_ui::standings::{
@@ -292,7 +283,13 @@ impl Prepared {
                     })?;
                 }
             }
-            if name == "studio-sin-seleccion" {
+            if matches!(
+                name.as_str(),
+                "studio-sin-seleccion"
+                    | "studio-catalogo-busqueda"
+                    | "studio-catalogo-sin-resultados"
+                    | "studio-anadido"
+            ) {
                 editor.selected = None;
             }
         }
@@ -354,24 +351,13 @@ impl Studio {
         snapshot
     }
     pub(super) fn init_navigation_controls(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.catalog.is_none() {
+        if self.photo_choice.is_none() {
             cx.observe_window_activation(window, |this, window, cx| {
                 if !window.is_window_active() {
                     this.cancel_drag(cx);
                 }
             })
             .detach();
-            let catalog = cx.new(|cx| {
-                Choice::new(
-                    "Tipo de widget",
-                    ChoiceKind::Dropdown,
-                    catalog_options(self.access),
-                    Some(0),
-                    window,
-                    cx,
-                )
-            });
-            self.catalog = Some(catalog);
             let photo_choice = cx.new(|cx| {
                 let mut choice = Choice::new(
                     "Vuelta y foto real",
@@ -450,30 +436,16 @@ impl Studio {
         }
     }
     fn widget_list(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let query = self.search.read(cx).value.to_lowercase();
         let mut list = div().flex().gap(px(8.0));
-        let mut matches = 0;
-        let mut content_width = 0.0;
-        for (index, item) in self.editor.layout().instances.iter().enumerate() {
-            if format!("{} {}", item.id, item.settings.kind().label())
-                .to_lowercase()
-                .contains(&query)
-            {
-                if matches > 0 {
-                    content_width += 8.0;
-                }
-                content_width += 180.0;
-                matches += 1;
-                list = list.child(self.widget_row(index, item, cx));
-            }
+        let instances = &self.editor.layout().instances;
+        #[allow(clippy::cast_precision_loss)] // Pocas decenas de filas.
+        let content_width = (instances.len() as f32 * 188.0 - 8.0).max(0.0);
+        for (index, item) in instances.iter().enumerate() {
+            list = list.child(self.widget_row(index, item, cx));
         }
-        if matches == 0 {
+        if instances.is_empty() {
             list = list.child(text(
-                if query.is_empty() {
-                    "Añade tu primer widget"
-                } else {
-                    "Sin resultados"
-                },
+                "Añade tu primer widget",
                 13.0,
                 400,
                 orbit::ink_3(cx),
@@ -573,53 +545,35 @@ impl Studio {
                 this.focus.focus(window, cx);
             }))
     }
-    fn widget_actions(&self, cx: &mut Context<Self>) -> gpui::Div {
-        div()
-            .flex()
-            .flex_col()
+    /// Mismo sitio y tamaño que antes; ahora lleva al catálogo del carril (#1569).
+    fn widget_actions(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+        let skin = orbit::skin(cx);
+        let open = self.editor.selected.is_none();
+        button("add-widget", "", cx)
             .w(px(170.0))
             .flex_none()
+            .justify_center()
             .gap(px(6.0))
-            .when(self.catalog_open, |body| {
-                body.child(text(
-                    "Filtrar widgets del diseño",
-                    12.0,
-                    500,
-                    orbit::ink_2(cx),
-                    cx,
-                ))
-                .child(self.search.clone())
-                .when_some(self.catalog.clone(), gpui::ParentElement::child)
+            .aria_label("Añadir widget")
+            .aria_selected(open)
+            .when(open, |button| {
+                button
+                    .border_color(orbit::tint(0x00e1_4a54, 0.6))
+                    .bg(orbit::alpha(skin.hover))
             })
-            .child(
-                button("add-widget", "", cx)
-                    .w_full()
-                    .child(text("+  Añadir widget", 12.0, 600, orbit::ink_3(cx), cx))
-                    .aria_label("Añadir widget")
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        if !this.catalog_open {
-                            this.catalog_open = true;
-                            cx.notify();
-                            return;
-                        }
-                        let kind = this
-                            .catalog
-                            .as_ref()
-                            .and_then(|catalog| catalog.read(cx).state.selected)
-                            .and_then(|index| Kind::ALL.get(index))
-                            .copied();
-                        if let Some(kind) = kind {
-                            if let Some(reason) = widget_lock(this.access, kind) {
-                                this.status = Err(reason.into());
-                                cx.notify();
-                                return;
-                            }
-                            this.catalog_open = false;
-                            this.reset_fields();
-                            this.edit(|editor| editor.add(kind), cx);
-                        }
-                    })),
-            )
+            .child(orbit::icon(
+                "plus",
+                16.0,
+                if open { skin.text1 } else { skin.text3 },
+            ))
+            .child(text(
+                "Añadir widget",
+                12.0,
+                600,
+                if open { skin.text1 } else { skin.text3 },
+                cx,
+            ))
+            .on_click(cx.listener(|this, _, window, cx| this.focus_catalog_search(window, cx)))
     }
     pub(super) fn toolbar_preview_mode(&self, cx: &mut Context<Self>) -> gpui::Div {
         let mut row = div()

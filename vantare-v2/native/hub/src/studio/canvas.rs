@@ -240,6 +240,8 @@ impl CanvasFrame {
                 cx.listener(|this, event: &gpui::MouseDownEvent, window, cx| {
                     this.focus.focus(window, cx);
                     cx.emit(Started(event.position, None));
+                    // El lienzo vacío vuelve al catálogo; un widget no.
+                    cx.stop_propagation();
                 }),
             )
             .when(self.lock.is_none(), |frame| {
@@ -644,6 +646,10 @@ impl Studio {
         }
     }
     pub(super) fn finish_drag(&mut self, pointer: Point<Pixels>, cx: &mut Context<Self>) {
+        // Soltar fuera del lienzo descarta la silueta del catálogo (on_drop va antes).
+        if self.ghost.take().is_some() {
+            cx.notify();
+        }
         let Some(frame) = self.drag.take() else {
             return;
         };
@@ -689,8 +695,17 @@ impl Studio {
         cx: &mut Context<Self>,
     ) {
         let key = &event.keystroke;
+        let plain = !key.modifiers.control && !key.modifiers.alt && !key.modifiers.platform;
         if key.key == "escape" && (self.drag.is_some() || self.held_nudge.is_some()) {
             self.cancel_drag(cx);
+            cx.stop_propagation();
+        } else if key.key == "escape" && plain && self.editor.selected.is_some() {
+            self.show_catalog(cx);
+            self.focus.focus(window, cx);
+            cx.stop_propagation();
+        } else if key.key == "/" && plain && self.focus.is_focused(window) {
+            // Solo desde el lienzo: en un campo, «/» es texto.
+            self.focus_catalog_search(window, cx);
             cx.stop_propagation();
         } else if let Some(action) = document_key(key) {
             // Los campos conservan Supr y sus atajos de edición de texto.
@@ -962,7 +977,7 @@ impl Studio {
         );
     }
 
-    pub(super) fn preview_stage(&self, cx: &mut Context<Self>) -> gpui::Div {
+    pub(super) fn preview_stage(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         let (left, top) = preview_origin(
             self.canvas_size.0,
             self.canvas_size.1,
@@ -990,6 +1005,24 @@ impl Studio {
                 stage = stage.child(frame.clone());
             }
         }
+        let accent = orbit::skin(cx).accent;
+        let stage = stage
+            .id("studio-stage")
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _, window, cx| {
+                    this.focus.focus(window, cx);
+                    if this.editor.selected.is_some() {
+                        this.show_catalog(cx);
+                    }
+                }),
+            )
+            .on_drag_move(cx.listener(Self::catalog_drag_move))
+            .on_drop(cx.listener(Self::catalog_drop))
+            .drag_over::<super::add_widget::CatalogDrag>(move |style, _, _, _| {
+                style.border_color(rgb(accent))
+            })
+            .children(self.ghost_elements(cx));
         stage.child(
             text(
                 format!(
@@ -1108,7 +1141,8 @@ impl Studio {
             .overflow_scroll()
             .on_scroll_wheel(cx.listener(|this, _, _, cx| this.cancel_drag(cx)))
             .child(measure)
-            .child(stage);
+            .child(stage)
+            .children(self.toast_element(cx));
         div()
             .flex_1()
             .min_w_0()

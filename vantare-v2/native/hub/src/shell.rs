@@ -1124,6 +1124,10 @@ impl Hub {
                 .update(cx, |workshop, cx| workshop.set_preferences(prefs, cx));
         })
         .detach();
+        cx.subscribe(&studio, |this, _, _: &crate::studio::OpenPlans, cx| {
+            this.navigate(Section::Licenses, cx);
+        })
+        .detach();
         let notifications = cx.new(|cx| {
             let mut notifications = Notifications::from_center(notification_center);
             notifications.set_tester(access.beta_visible(Section::Testing), cx);

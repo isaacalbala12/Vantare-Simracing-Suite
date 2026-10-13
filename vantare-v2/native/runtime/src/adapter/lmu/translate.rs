@@ -299,10 +299,15 @@ impl Translator {
     fn prepare_identities(&mut self, frame: &Frame) -> Result<(), Rejection> {
         let incoming =
             u32::try_from(frame.vehicles.len()).map_err(|_| Rejection::InvalidActiveGrid)?;
-        if self.next_driver.checked_add(incoming).is_none()
+        if self.next_car.checked_add(incoming).is_none()
+            || self.next_driver.checked_add(incoming).is_none()
             || self.next_class.checked_add(incoming).is_none()
         {
             return Err(Rejection::InvalidActiveGrid);
+        }
+        if self.slots.len() + frame.vehicles.len() > IDENTITY_BUDGET {
+            self.slots
+                .retain(|slot, _| frame.vehicles.iter().any(|car| car.slot == *slot));
         }
         // Recortar antes de construir la foto, conservando las identidades
         // presentes. Nunca vaciar un mapa a mitad de una Observation.
@@ -1149,6 +1154,46 @@ mod tests {
         );
         assert!(translator.classes.len() <= IDENTITY_BUDGET);
     }
+
+    #[test]
+    fn rotating_scoring_slots_stays_bounded_and_preserves_present_car_ids() {
+        let mut t = translator();
+        let mut stable = None;
+        for round in 0..600_u32 {
+            let mut bytes = REAL_44.to_vec();
+            bytes[1700..1708].copy_from_slice(&f64::from(round).to_le_bytes());
+            let slot = i32::try_from(1000 + round).unwrap();
+            bytes[SCORING_BASE..SCORING_BASE + 4].copy_from_slice(&slot.to_le_bytes());
+            // Scoring y telemetría declaran el mismo id, mutación explícita.
+            let old_slot =
+                i32::from_le_bytes(REAL_44[SCORING_BASE..SCORING_BASE + 4].try_into().unwrap());
+            for index in 0..44 {
+                let at = 128_468 + index * 1_888;
+                if i32::from_le_bytes(bytes[at..at + 4].try_into().unwrap()) == old_slot {
+                    bytes[at..at + 4].copy_from_slice(&slot.to_le_bytes());
+                }
+            }
+            let observation = t.observe(&bytes, BUILD, ms(u64::from(round) * 16)).unwrap();
+            let current = observation.state.cars[1].id;
+            assert_eq!(*stable.get_or_insert(current), current);
+        }
+        assert!(
+            t.slots.len() <= IDENTITY_BUDGET,
+            "slots sin cota: {}",
+            t.slots.len()
+        );
+    }
+
+    #[test]
+    fn exhausted_car_counter_rejects_before_assigning_a_wrapped_id() {
+        let mut t = translator();
+        t.next_car = u32::MAX;
+        assert_eq!(
+            t.observe(REAL_44, BUILD, ms(0)).unwrap_err(),
+            Rejection::InvalidActiveGrid
+        );
+    }
+
     #[test]
     fn changing_classes_with_fixed_drivers_are_bounded_independently() {
         let mut translator = translator();

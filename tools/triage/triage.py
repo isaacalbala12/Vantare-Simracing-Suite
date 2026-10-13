@@ -52,10 +52,33 @@ def read_reports(config, state, credential):
     env = {k:v for k,v in os.environ.items() if not k.startswith('PG')}
     env.update(PGHOST=parsed.hostname,PGPORT='5432',PGDATABASE='postgres',PGUSER=urllib.parse.unquote(parsed.username),
                PGPASSWORD=urllib.parse.unquote(parsed.password),PGSSLMODE='verify-full',PGSSLROOTCERT=config['ca'],PGCONNECT_TIMEOUT='15')
-    pending = [canonical_id(id) for id in state.pending_ids()]
-    pending_clause = 'c.id in ('+','.join("'"+id+"'::uuid" for id in pending)+')' if pending else 'false'
-    cursor = state.cursor()
-    cursor_clause = 'true' if cursor is None else "(c.created_at,c.id) > (timestamptz '"+utc(cursor[0]).isoformat()+"','"+canonical_id(cursor[1])+"'::uuid)"
+    def poll(query):
+        result=subprocess.run(['psql','-X','-qAt','-v','ON_ERROR_STOP=1'],env=env,input=query.encode(),capture_output=True,timeout=25)
+        if result.returncode or len(result.stdout)>32*1024*1024:
+            raise ValueError('readonly_poll_failed')
+        return json.loads(result.stdout)
+
+    # Reconcile the complete RLS-visible received window on every invocation.
+    # Creation time orders a page, but is NOT a commit/visibility high-water mark.
+    # Only metadata is paged; up to 20 unseen/retryable bodies are fetched below.
+    ids=[];scan=None
+    while len(ids)<20:
+        after='true' if scan is None else "(c.created_at,c.id) > (timestamptz '"+utc(scan[0]).isoformat()+"','"+canonical_id(scan[1])+"'::uuid)"
+        page=poll(f"""begin read only; set local statement_timeout='10s';
+            select coalesce(jsonb_agg(v),'[]'::jsonb) from (select
+            jsonb_build_object('id',c.id,'created_at',c.created_at) v
+            from public.testing_contributions c where c.state='received' and ({after})
+            order by c.created_at,c.id limit 200) q; rollback;""")
+        for entry in page:
+            id=canonical_id(entry['id']);utc(entry['created_at'])
+            if state.needs_analysis(id):ids.append(id)
+            if len(ids)==20:break
+        if len(page)<200 or len(ids)==20:break
+        current=(page[-1]['created_at'],page[-1]['id'])
+        if scan is not None and (utc(current[0]),current[1]) <= (utc(scan[0]),scan[1]):
+            raise ValueError('readonly_page_not_advancing')
+        scan=current
+    selected='c.id in ('+','.join("'"+id+"'::uuid" for id in ids)+')' if ids else 'false'
     projection = '''jsonb_build_object('id',c.id,'channel',c.channel,'created_at',c.created_at,'title',c.title,'body',c.body,
       'context',(select jsonb_build_object('app_version',x.app_version,'app_channel',x.app_channel,'game',x.game,'game_version',x.game_version,
         'system',x.system,'telemetry_summary',x.telemetry_summary,'consent',x.consent) from public.testing_contribution_context x where x.contribution_id=c.id),
@@ -69,16 +92,13 @@ def read_reports(config, state, credential):
       from public.testing_contribution_context x where x.contribution_id=c.id))'''
     query = f'''begin read only; set local statement_timeout='10s';
       select jsonb_build_object('queue',coalesce((select jsonb_agg(v) from (select {projection} v
-        from public.testing_contributions c where c.state='received' and ({cursor_clause} or {pending_clause})
+        from public.testing_contributions c where c.state='received' and ({selected})
         order by c.created_at,c.id limit 20) q),'[]'::jsonb),
         'history',coalesce((select jsonb_agg(v) from (select {history_projection} v from public.testing_contributions c
         where c.created_at > statement_timestamp()-interval '14 days'
         and exists(select 1 from public.testing_contribution_context x where x.contribution_id=c.id and x.consent->>'version'='triage-v2')
         order by c.created_at desc limit 500) h),'[]'::jsonb)); rollback;'''
-    result = subprocess.run(['psql','-X','-qAt','-v','ON_ERROR_STOP=1'],env=env,input=query.encode(),capture_output=True,timeout=25)
-    if result.returncode or len(result.stdout)>32*1024*1024:
-        raise ValueError('readonly_poll_failed')
-    value=json.loads(result.stdout)
+    value=poll(query)
     for report in value['queue']+value['history']:
         canonical_id(report['id'])
         for attachment in report.get('attachments') or []:

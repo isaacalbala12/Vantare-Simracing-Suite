@@ -177,3 +177,10 @@ y tres regresiones de privacidad ampliadas al prepare/RPC preview real.
    1/2 conservan contador; spool fsync previo al commit SQL se reutiliza exacto
    con ambos ACK y TTL original; temporales huérfanos se purgan. RED/GREEN real
    SQLite cerrada/reabierta, sin red.
+
+7. P2-7: reconciliación received en toda la ventana RLS de 30 días, metadata
+   en páginas de 200 y hasta 20 cuerpos no vistos/reintentables. Se reinicia
+   la paginación en cada pasada; cursor histórico solo informa progreso.
+   RED A confirma tras B y queda perdido; GREEN A se descubre una vez.
+   Test adicional con 205 vistos delante de 20 nuevos evita starvation.
+   Ensayo de visibilidad con State real/psql mock, sin consulta a producción.

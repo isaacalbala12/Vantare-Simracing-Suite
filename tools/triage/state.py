@@ -42,6 +42,10 @@ class State:
             self.db.execute('insert into cursor values (1,?,?) on conflict(singleton) do update set created_at=excluded.created_at,id=excluded.id',current)
         self.db.commit()
 
+    def needs_analysis(self,id):
+        row=self.db.execute('select status,attempt from reports where id=?',(id,)).fetchone()
+        return row is None or (row[0] in ('new','analysis_failed') and row[1]<3)
+
     def pending_ids(self):
         return [x[0] for x in self.db.execute("select id from reports where status in ('new','analysis_failed') and attempt<3 order by seen_at limit 20")]
 

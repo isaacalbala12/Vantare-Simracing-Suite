@@ -1,5 +1,7 @@
 """Adversarial review regressions. Synthetic fixtures, no provider or network."""
 import json
+import copy
+import re
 from pathlib import Path
 import tempfile
 import unittest
@@ -116,4 +118,64 @@ class Tests(unittest.TestCase):
                 triage.pass_once(state,[r],[],{},lambda _:self.fail('persisted proposal reanalyzed'),sent.append,NOW+120,intake=lambda p,_:plane.append(p))
                 self.assertEqual(sent,[payload]);self.assertEqual(plane,[payload])
                 self.assertFalse((state.root/(r['id']+'.json')).exists())
+            finally:state.close()
+
+    def polling_fixture(self, visible, state, credential):
+        # Minimal read-only SQL fixture models visibility and tuple predicates,
+        # not producer/model code. No subprocess or network leaves this process.
+        def psql(args,**options):
+            sql=options['input'].decode();rows=copy.deepcopy(visible)
+            self.assertIn('begin read only',sql.lower());self.assertNotIn('account_id',sql)
+            cursor=re.search(r"\(c.created_at,c.id\) > \(timestamptz '([^']+)','([^']+)'::uuid\)",sql)
+            if cursor:
+                point=(triage.utc(cursor[1]),cursor[2])
+                rows=[r for r in rows if (triage.utc(r['created_at']),r['id'])>point or r['id'] in state.pending_ids()]
+            rows.sort(key=lambda r:(triage.utc(r['created_at']),r['id']))
+            if "'queue'" in sql:
+                selected=re.search(r"c.id in \(([^)]+)\)",sql)
+                if selected and not cursor:rows=[r for r in rows if r['id'] in selected[1]]
+                if re.search(r"c.state='received' and \(false\)",sql):rows=[]
+                value={'queue':rows[:20],'history':[]}
+            else:
+                value=[{k:r[k] for k in ('id','created_at')} for r in rows[:200]]
+            return SimpleNamespace(returncode=0,stdout=json.dumps(value).encode())
+        with patch.object(triage.subprocess,'run',side_effect=psql):
+            return triage.read_reports({'ca':'fixture-only'},state,credential)
+
+    def test_review_p2_7_late_visible_report_behind_persisted_cursor_is_discovered_once(self):
+        with tempfile.TemporaryDirectory() as root:
+            state=State(Path(root)/'state');credential=Path(root)/'fixture-connection'
+            credential.write_text('postgresql://vantare_triage.'+triage.PROJECT+':fixture@fixture.pooler.supabase.com:5432/postgres',encoding='utf-8')
+            a=report();a['created_at']='2026-10-13T00:00:01Z'
+            b=copy.deepcopy(a);b['id']='15940000-0000-0000-0000-000000000011';b['created_at']='2026-10-13T00:00:02Z'
+            sent=[];calls=[]
+            def analyze(value):calls.append(value);return response()
+            try:
+                reports,history=self.polling_fixture([b],state,credential)
+                triage.pass_once(state,reports,history,{},analyze,sent.append,NOW+120)
+                self.assertEqual(state.cursor()[1],b['id'])
+                # A commits after B was discovered/ACKed, with an earlier creation.
+                reports,history=self.polling_fixture([a,b],state,credential)
+                self.assertIn(a['id'],[r['id'] for r in reports],'late commit excluded forever by cursor')
+                triage.pass_once(state,reports,history,{},analyze,sent.append,NOW+240)
+                reports,history=self.polling_fixture([a,b],state,credential)
+                self.assertEqual(reports,[])
+                triage.pass_once(state,reports,history,{},analyze,sent.append,NOW+360)
+                self.assertEqual([p['delivery_id'] for p in sent],[b['id'],a['id']])
+                self.assertEqual(len(calls),2)
+            finally:state.close()
+
+    def test_review_p2_7_seen_first_page_does_not_starve_later_unseen_reports(self):
+        with tempfile.TemporaryDirectory() as root:
+            state=State(Path(root)/'state');credential=Path(root)/'fixture-connection'
+            credential.write_text('postgresql://vantare_triage.'+triage.PROJECT+':fixture@fixture.pooler.supabase.com:5432/postgres',encoding='utf-8')
+            visible=[]
+            try:
+                for index in range(225):
+                    r=report();r['id']='15940000-0000-0000-0000-'+format(index,'012x');visible.append(r)
+                    if index<205:
+                        state.discover(r,NOW)
+                        state.db.execute("update reports set status='delivered' where id=?",(r['id'],));state.db.commit()
+                reports,_=self.polling_fixture(visible,state,credential)
+                self.assertEqual([r['id'] for r in reports],[r['id'] for r in visible[205:]])
             finally:state.close()

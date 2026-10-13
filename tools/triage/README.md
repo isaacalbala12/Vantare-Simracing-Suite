@@ -197,3 +197,27 @@ lookup objeto/404, activar/denegar Intake, respuesta perdida/paginación,
 aceptación en Plane sin RPC, ACK independientes, expiración y upgrade SQLite.
 28/28 (16 existentes + 12 Intake) PASS; socket real prohibido en tests de Intake.
 No se ha ejecutado ningún POST de informe en el Plane real.
+
+### Recuperación y descubrimiento tras la review #1602
+
+Bajo worker.lock, el worker recupera intentos interrumpidos, purga spool y
+reintenta las dos entregas antes de consultar Supabase. Un error de polling
+conserva su salida de fallo, pero ya no impide entregar/purgar lo pendiente.
+Estado analyzing diferencia un intento persistido de su resultado. No se
+restituye cuota: después del tercer intento sin resultado se envía triage.failed
+con ID/contador, diagnóstico/timing desconocidos y sin cuarto análisis.
+Una propuesta reemplazada/fsync antes del commit SQLite se recupera exacta,
+con el TTL original y ambos sinks; se borran temporales propios huérfanos.
+
+El cursor de creación se conserva como dato de progreso, sin excluir informes.
+Cada sondeo pagina IDs/created_at de todos los received visibles en la ventana
+RLS de 30 días y consulta State; solo obtiene hasta 20 cuerpos nuevos/reintentables.
+No amplía RLS/retención. A que confirma detrás del cursor vuelve a aparecer;
+si confirma detrás de una página ya leída, se encuentra en el siguiente sondeo.
+Las páginas ya vistas no bloquean las posteriores. No hay lectura de account_id.
+
+Regresiones de review: tools/triage/test_review_1602.py (sin red, modelos,
+PostgreSQL ni Plane reales); Rust prepara preview y usa HTTP loopback sintético.
+STOP al merge: Isaac encargará re-review y merge; no reactivar auto-merge.
+Token propio de Plane se crea al desplegar con autorización; no bloquea código.
+Ahora no se despliega ni se envía ningún informe a Intake.

@@ -23,7 +23,7 @@ QA aislada: [packaging/README.md](../native/packaging/README.md#1565--feed-en-va
 | Discord legacy en `master` | Los cuatro workflows están deshabilitados. |
 | Latido Supabase | Enlaza runs de Actions; tras el corte solo los abre Isaac. |
 | Testing Center / Functions | Llaman a la API con token: verificar permisos sobre el repo privado tras el corte. |
-| GitGuardian | Sin check-run en commits recientes; Isaac confirma cobertura en su dashboard. |
+| GitGuardian | Corre como check en los PR (GitHub App). Isaac confirma en su dashboard que la App sigue cubriendo el repo privado. |
 | Badges / enlaces en la app | No hay. |
 
 ## CI en Free privado

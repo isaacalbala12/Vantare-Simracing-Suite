@@ -57,6 +57,7 @@ impl Request {
 
 pub struct Session {
     directory: PathBuf,
+    transferred: bool,
 }
 
 impl Session {
@@ -74,7 +75,10 @@ impl Session {
             ));
             match fs::create_dir(&directory) {
                 Ok(()) => {
-                    let session = Self { directory };
+                    let session = Self {
+                        directory,
+                        transferred: false,
+                    };
                     for (name, bytes) in [
                         ("candidate.ps1", payload::CANDIDATE),
                         ("beta.ps1", payload::BETA),
@@ -134,6 +138,29 @@ impl Session {
             command.creation_flags(0x0800_0000);
         }
         Ok(command)
+    }
+
+    /// The cleanup process owns its private temporary directory after spawning.
+    pub fn schedule_cleanup(args: &Args) -> Result<(), String> {
+        let mut session = Self::new()?;
+        let request = Request::new(args, "Cleanup");
+        session.write(
+            "request.json",
+            &serde_json::to_vec(&request).map_err(|e| e.to_string())?,
+        )?;
+        let log = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(log_path()?)
+            .map_err(|e| e.to_string())?;
+        session
+            .command(&session.directory.join("request.json"))?
+            .stdout(Stdio::null())
+            .stderr(Stdio::from(log))
+            .spawn()
+            .map_err(|e| e.to_string())?;
+        session.transferred = true;
+        Ok(())
     }
 
     pub fn run(
@@ -234,7 +261,7 @@ impl Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
-        if reject_links(&self.directory).is_ok() {
+        if !self.transferred && reject_links(&self.directory).is_ok() {
             let _ = fs::remove_dir_all(&self.directory);
         }
     }
@@ -283,5 +310,14 @@ pub fn headless(args: &Args) -> Result<u8, String> {
     request.root = Some(info.root);
     request.desktop = info.desktop;
     request.autostart = info.autostart;
-    session.run(&request, &Arc::new(AtomicBool::new(false)), |_| {})
+    let code = session.run(&request, &Arc::new(AtomicBool::new(false)), |_| {})?;
+    if code == 0 && args.uninstall {
+        Session::schedule_cleanup(&Args {
+            silent: true,
+            uninstall: true,
+            root: request.root.clone(),
+            ..Args::default()
+        })?;
+    }
+    Ok(code)
 }

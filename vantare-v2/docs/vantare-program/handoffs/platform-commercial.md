@@ -26,8 +26,11 @@ Issue #1565/PR #1592 aún abierta al leer: no sustituir su feed Downloads, no re
 datos SIEMPRE conservados, sin casilla; Repair solo con igual versión; valores reales.
 H1: crate/CLI/puente/payload/builder y recurso PE. Tests Rust 4/4, shell 9,
 Clippy sin UI y comparación del lock PASS; solo nuevo paquete local, cero dependencias externas.
+H2: Register conserva la UI propia, opciones/accesos exclusivos y limpieza
+diferida validada por hash. Shell 23 PASS y uninstall interrumpido 2 PASS;
+son fixtures, no acreditan instalación completa ni equipo limpio.
 Sin instalación real, secretos, firma real, promoción ni release. Hitos/SHA en la issue.
-**Siguiente paso #1591: H2 registro/opciones/desinstalador, luego GPUI/QA; sin subagentes.**
+**Siguiente paso #1591: H3 GPUI/capturas y H4/H5 QA/gates; sin subagentes.**
 Push/PR draft a nightly y enlace T3 autorizados al finalizar; no integración antes de review independiente.
 QA futura bajo `C:/tmp/ola2/1591-qa`; arranque live solo en cuenta/VM de prueba por el SID/instancia compartida, capturas con pantalla libre y mutex.
 

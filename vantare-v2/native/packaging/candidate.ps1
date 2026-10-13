@@ -149,6 +149,7 @@ function Write-NativeJson([string]$Path, $Value) {
 
 # Punto sin efectos para que las pruebas corten un proceso real en cada frontera.
 function Invoke-NativeCheckpoint([string]$Point) { }
+function Write-NativeProgress([string]$Step,[int]$Percent) { }
 
 function Open-NativeRoot([string]$Path, [switch]$Initialize) {
     $full = Assert-NativePath $Path
@@ -255,6 +256,47 @@ function Expand-NativePackage([string]$ZipPath, [string]$Hash, [string]$Destinat
     Read-NativeManifest $Destination $ExpectedChannel
 }
 
+function Read-NativeInstallerUi([string]$Directory) {
+    $path=Join-Path (Assert-NativePath $Directory) 'installer-ui.json'
+    if(-not (Test-Path -LiteralPath $path)){return $null}
+    if((Get-Item -LiteralPath $path).Length -gt 4096){throw 'Opciones del instalador demasiado grandes.'}
+    $ui=[IO.File]::ReadAllText($path)|ConvertFrom-Json
+    $fields=@('schema','kind','uninstaller','sha256','desktop','autostart')
+    if(@(Compare-Object $fields @($ui.PSObject.Properties.Name) -CaseSensitive).Count -or
+       $ui.schema -ne 1 -or $ui.kind -cne 'rust-gpui' -or $ui.uninstaller -cne 'Uninstall.exe' -or
+       $ui.sha256 -cnotmatch '^[a-f0-9]{64}$' -or $ui.desktop -isnot [bool] -or $ui.autostart -isnot [bool]){throw 'Opciones del instalador inválidas.'}
+    if((Get-NativeHash (Join-Path $Directory 'Uninstall.exe')) -cne $ui.sha256){throw 'Desinstalador propio alterado.'}
+    Assert-NativePe (Join-Path $Directory 'Uninstall.exe')
+    $ui
+}
+
+function Test-NativeShortcutOwned($Link,[string]$Directory) {
+    $hostPath=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+    ($Link.TargetPath -eq $hostPath -and $Link.Arguments.Contains('-Root "'+$Directory+'"') -and
+     $Link.Arguments.Contains('-File "'+(Join-Path $Directory 'beta.ps1')+'"')) -or
+    ($Link.TargetPath -eq (Join-Path $Directory 'Uninstall.exe'))
+}
+
+function Sync-NativeOptionalShortcuts([string]$Directory,[string]$Folder,$Ui,[bool]$Remove=$false) {
+    if($null -eq $Ui){return}
+    $shell=New-Object -ComObject WScript.Shell
+    $targets=@(
+        @{parent=[Environment]::GetFolderPath('DesktopDirectory'); enabled=$Ui.desktop},
+        @{parent=[Environment]::GetFolderPath('Startup'); enabled=$Ui.autostart}
+    )
+    foreach($target in $targets){
+        $path=Join-Path $target.parent ($Folder+'.lnk')
+        $exists=Test-Path -LiteralPath $path
+        $owned=$exists -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $Directory)
+        if($Remove -or -not $target.enabled){if($owned){Remove-Item -LiteralPath $path}; continue}
+        if($exists -and -not $owned){throw 'El acceso opcional pertenece a otra instalación; se conserva.'}
+        $link=$shell.CreateShortcut($path)
+        $link.TargetPath=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
+        $link.Arguments='-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+(Join-Path $Directory 'beta.ps1')+'" -Root "'+$Directory+'"'
+        $link.Save()
+    }
+}
+
 # La clave estable permite que el bootstrap antiguo siga corrigiendo la versión
 # tras rollback. Solo cambia la identidad visible; nunca se trasladan datos.
 function Sync-NativeRegistration([string]$Directory, [string]$Version) {
@@ -291,6 +333,12 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version) {
     $uninstaller = Join-Path $directory 'uninstall-vantare.ps1'
     $powershell = Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
     $uninstallArgs = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $uninstaller + '" -Operation UninstallInstalled -Root "' + $directory + '"'
+    $installerUi=Read-NativeInstallerUi $directory
+    $uninstallTarget=$powershell
+    if($null -ne $installerUi){
+        $uninstallTarget=Join-Path $directory 'Uninstall.exe'
+        $uninstallArgs='/D="'+$directory+'"'
+    }
     $programs = [Environment]::GetFolderPath('Programs')
     $target = Join-Path $programs $folder
     $shell = New-Object -ComObject WScript.Shell
@@ -316,7 +364,7 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version) {
     $link.Arguments = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + (Join-Path $directory 'beta.ps1') + '" -Root "' + $directory + '"'
     $link.Save()
     $link = $shell.CreateShortcut((Join-Path $target 'Desinstalar.lnk'))
-    $link.TargetPath = $powershell
+    $link.TargetPath = $uninstallTarget
     $link.Arguments = $uninstallArgs
     $link.Save()
     $legacy = Join-Path $programs $legacyFolder
@@ -337,10 +385,11 @@ function Sync-NativeRegistration([string]$Directory, [string]$Version) {
     }
     Set-ItemProperty -LiteralPath $key -Name DisplayName -Value 'Vantare'
     Set-ItemProperty -LiteralPath $key -Name DisplayVersion -Value $Version
-    Set-ItemProperty -LiteralPath $key -Name UninstallString -Value ('"' + $powershell + '" ' + $uninstallArgs)
+    Sync-NativeOptionalShortcuts $directory $folder $installerUi
+    Set-ItemProperty -LiteralPath $key -Name UninstallString -Value ('"' + $uninstallTarget + '" ' + $uninstallArgs)
 }
 
-function Uninstall-NativeRegistration([string]$Directory) {
+function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller=$false) {
     $directory = Open-NativeRoot $Directory
     $identityFile = Join-Path $directory 'registration-identity.txt'
     $external = Test-Path -LiteralPath $identityFile
@@ -351,6 +400,7 @@ function Uninstall-NativeRegistration([string]$Directory) {
     if ((Assert-NativePath $registration.InstallLocation) -ne $directory) { throw 'El registro pertenece a otra instalación.' }
     $folder = if ($external) { $registration.ShortcutFolder } else { 'Vantare' }
     if ($folder -cnotmatch '^[A-Za-z0-9][A-Za-z0-9 -]{0,63}$') { throw 'Carpeta de accesos inválida.' }
+    $installerUi=Read-NativeInstallerUi $directory
     if (Test-Path -LiteralPath (Join-Path $directory 'state.json')) {
         & (Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe') -NoProfile -ExecutionPolicy Bypass -File (Join-Path $directory 'beta.ps1') -Operation Uninstall -Root $directory
         if ($LASTEXITCODE) { throw 'Cierra Vantare antes de desinstalar. Tus datos se conservan.' }
@@ -359,11 +409,14 @@ function Uninstall-NativeRegistration([string]$Directory) {
     $shell = New-Object -ComObject WScript.Shell
     foreach ($name in @('Vantare.lnk', 'Desinstalar.lnk')) {
         $path = Join-Path $target $name
-        if ((Test-Path -LiteralPath $path) -and ($shell.CreateShortcut($path)).Arguments.Contains('-Root "' + $directory + '"')) { Remove-Item -LiteralPath $path }
+        if ((Test-Path -LiteralPath $path) -and (Test-NativeShortcutOwned ($shell.CreateShortcut($path)) $directory)) { Remove-Item -LiteralPath $path }
     }
     if ((Test-Path -LiteralPath $target) -and -not @(Get-ChildItem -LiteralPath $target -Force).Count) { Remove-Item -LiteralPath $target }
+    Sync-NativeOptionalShortcuts $directory $folder $installerUi $true
+    if($DeferUninstaller -and $null -ne $installerUi){Write-NativeJson (Join-Path $directory 'installer-cleanup.json') @{schema=1; sha256=$installerUi.sha256}}
     Remove-Item -LiteralPath $key
-    foreach ($name in @('beta.ps1', 'candidate.ps1', 'registration-identity.txt', 'Uninstall.exe', 'uninstall-vantare.ps1')) {
+    foreach ($name in @('beta.ps1', 'candidate.ps1', 'registration-identity.txt', 'Uninstall.exe', 'uninstall-vantare.ps1','installer-ui.json')) {
+        if($name -ceq 'Uninstall.exe' -and $DeferUninstaller){continue}
         $path = Join-Path $directory $name
         if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }
     }

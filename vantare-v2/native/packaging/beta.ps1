@@ -273,6 +273,7 @@ function Install-Beta([string]$Directory, [string]$Zip, [string]$Hash) {
             $state = Read-NativeState $directory $false
             $current = Read-NativeManifest (Join-Path $directory "generations/$($state.active.generation)") 'beta' $false
             if ($version -lt (Read-BetaVersion $current.version)) { Throw-BetaInstallError 3 'Ya tienes una versión más reciente de Vantare. Este instalador es anterior; descarga el más reciente.' }
+            Write-NativeProgress 'copy' 54
             Activate-BetaPackage $directory $Zip $Hash $incoming.version '' ($version -eq (Read-BetaVersion $current.version))
         } else {
             $source = ''
@@ -299,6 +300,7 @@ function Install-Beta([string]$Directory, [string]$Zip, [string]$Hash) {
             $handles = @{}
             try {
                 if (Test-Path -LiteralPath (Join-Path $directory 'generations')) { $handles = Open-NativeBinaryGuard $directory }
+                Write-NativeProgress 'copy' 54
                 $null = Install-NativeCandidate $directory $Zip $Hash 'beta' $source
             } finally { foreach ($handle in $handles.Values) { $handle.Dispose() } }
         }

@@ -4,7 +4,7 @@
 
 ## 1. Resultado
 
-Hub/Studio GPUI editan el layout único y los widgets del registro. Launcher gobierna procesos mediante el motor propio. Standings tiene columnas/formatos por Práctica, Qualy y Carrera; todos los widgets filtran por sesión. Pedales conserva separación ajustable y gana Look Vantare en columnas (#1566, en review); el botón de pista alterna mostrar/dejar de mostrar mediante la solicitud compartida.
+Hub/Studio GPUI editan el layout único y los widgets del registro. Launcher gobierna procesos mediante el motor propio. Standings tiene columnas/formatos por Práctica, Qualy y Carrera; todos los widgets filtran por sesión. Pedales conserva separación ajustable y gana Look Vantare en columnas (#1566, integrada en nightly); el botón de pista alterna mostrar/dejar de mostrar mediante la solicitud compartida.
 
 ## 2. Autoridad y lectura verificada
 
@@ -12,7 +12,7 @@ GitHub Issues y Project Vantare; #1561/area:plataforma, In Progress, sin milesto
 
 ## 3. Estado real y canal
 
-Rama `vantareapp/isa-1561-studio-split`, worktree `C:/tmp/vw-1561-hub`; incorpora `origin/nightly@6ce09c69` mediante merge, sin rebase. PR-4 `1fc35e0e`, PR-6 `0efeeab5` y correcciones `51ef00e5` en [#1581](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1581) a nightly, auto-merge autorizado por Isaac. El split conserva lógica y firmas públicas; visibilidad mínima pub(super), zoom privado, imports en cabecera y excepciones con existencia obligatoria. SHA final/checks se verifican en #1561 y `C:/tmp/buzon/1561-hub.md`.
+[#1581](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1581) MERGED en nightly `707514e2` (squash de `vantareapp/isa-1561-studio-split`, que incorporó `origin/nightly@1dfdd6f1` mediante merge). PR-4 `1fc35e0e`, PR-6 `0efeeab5` y correcciones `51ef00e5`. El split conserva lógica y firmas públicas; visibilidad mínima pub(super), zoom privado, imports en cabecera y excepciones con existencia obligatoria. SHA final/checks se verifican en #1561 y `C:/tmp/buzon/1561-hub.md`.
 
 #1579 MERGED en nightly `6ce09c69`: PR-3/PR-5, guardias 22fe7490, PR-3 abc22332, PR-5 7a646ac8 y revisión d2710f4e; entrega original en `vantareapp/isa-1561-looks-frame`. Gates reconciliados con #1578: fmt/Clippy PASS, Nextest 1621/1621 (7 skips), lifecycle 18/18 y telemetría 25/25. Sin promoción/release.
 
@@ -20,7 +20,7 @@ Rama `vantareapp/isa-1561-studio-split`, worktree `C:/tmp/vw-1561-hub`; incorpor
 
 ## 4. Decisiones cerradas
 
-- #1569 (Isaac, ronda 4 opción 1): sin selección, el carril del inspector es el catálogo «Añadir widget»; el lienzo no cede ancho. Clic = primer hueco libre, arrastre con imán de 7 px, un paso de historial; Pro con candado y «Ver planes» a Licencias.
+- #1569 (Isaac, ronda 4 opción 1): sin selección, el carril del inspector es el catálogo «Añadir widget»; el lienzo no cede ancho. Clic = primer hueco libre, arrastre con imán de 7 px, un paso de historial; Pro con candado y «Ver planes» a Cuenta (Licencias está oculta en beta); sin acceso verificado no se vende Pro.
 - #1566 (Isaac): Pedales Vantare = opción A, tres columnas juntas (columna 24, barra 16; 96 × 160 con separación 2), sin rótulos (color por pedal), con porcentaje encima, sin marcha ni velocidad; separación #1563 en ambos Looks. Guardados sin `designSystem` → Eficiencia; nuevos → Vantare. `reference/pedals.png` intacta.
 - Una proyección/estado por widget; N Looks sobre Board/Motion, sin otra aplicación Wails/React.
 - Standings: tres listas/formatos; filas, Look, clase/gaps, pie y ventana del jugador comunes. Presets D7 solo nuevos/reset; reset afecta una pestaña. Legacy conserva columnas, también al editar Carrera primero; orden del simulador e intervalo sin cambios.
@@ -35,12 +35,14 @@ Domain proyecta; UI guarda settings y pinta; Hub edita documento/historial. [Reg
 
 ## 6. Evidencia y límites
 
+Reconciliación con nightly 1dfdd6f1 (#1580): fmt/Clippy -D warnings PASS, Nextest 1626/1626 (7 skips, 231.034 s, dos hilos), lifecycle 18/18 PASS por la cola. Código upstream de Pedales íntegro; presupuestos y excepciones sin cambios. Logs: `C:/tmp/ola2/evidence-1581-merge-1580`.
+
 Árbol reconciliado con nightly 6ce09c69: fmt/Clippy -D warnings PASS; Nextest 1622/1622 (7 skips, 209.427 s), lifecycle 18/18 PASS por la cola. Primer Nextest falló en Engineer `stream_waits_for_slow_rights_before_deciding`; repetición completa con dos hilos PASS, sin modificar ni excluir tests. Presupuestos y cuatro excepciones sin cambios. Logs: `C:/tmp/ola2/evidence-1581-merge`.
 
 #1561 PR-4, gates de la base previa b2186f82: fmt/Clippy -D warnings PASS; Nextest workspace 1613/1613, 7 skips (267,435 s); lifecycle 18/18. studio.rs 4498→652; canvas 1130, inspector 897, catalog 745, tests 1125. Definiciones y 20 fixtures conservados; listado Hub 412/Studio 42, incluidos 39 tests movidos. Color-moved revisado; diferencias estructurales/visibilidad/formato documentadas en buzón. Check parity-capture PASS; Clippy adicional de esa feature falla con 21 diagnósticos en archivos intactos. Sin QA manual física/capturas nuevas; headless no acredita LMU/OBS/DPI. PR-6, gates de la base previa b2186f82: fmt/Clippy PASS y Nextest Hub 413/413 (1 skip). RED con +1 en los cuatro techos y Studio por encima del techo general; restauración de cinco archivos byte por byte/SHA-256 y GREEN. El primer run limitado omitió PATH DuckDB y falló el writer del smoke de análisis; repetido con el entorno de gates, pasó. Revalidación completa sobre ee372540: fmt/Clippy -D warnings PASS, Nextest workspace 1619/1619 (7 skips, 231,321 s), lifecycle 18/18; check parity-capture PASS. RED/GREEN repetido con services/view y los otros cuatro casos; bytes/SHA-256 restaurados. Logs iniciales: `C:/tmp/ola2/evidence-1561-hub`. Correcciones de revisión #1581: fmt/Clippy -D warnings PASS, Nextest 1619/1619 (7 skips), lifecycle 18/18. RED/GREEN de excepción inexistente y cinco casos de crecimiento, restauración byte por byte/SHA-256; evidencia en `C:/tmp/ola2/evidence-1581-review`. Siguiente paso: revisión del mismo draft y QA manual pendiente, sin merge.
 
 Entrega anterior #1564: RED `9c218b38`; código/capturas `c8401b50`; test D12 ampliado `63bead05`. Fmt/Clippy PASS, Nextest 1601/1601 (7 skips), lifecycle 18/18, telemetría 25/25, anti-slop 456 huellas PASS. Cuatro capturas Studio 1440×900 inspeccionadas: Práctica/Qualy 537,3345 de ancho natural y Carrera 579,3345, x=48/y=62 constante. Frame explícito 800×400/documento/ancla por tres pestañas PASS. Post-merge final: fmt/Clippy -D warnings PASS (22.43s), Nextest 1613/1613 (7 skips, 266.205s), lifecycle 18/18 y telemetría 25/25 PASS; anti-slop 456 huellas PASS. Cuatro capturas nuevas merge-studio-*.png abiertas e inspeccionadas, hashes idénticos a las anteriores. Botón de pista/tray y preview por sesión con tamaño explícito pasan los tests.
-**#1566 · Pedales Vantare** (rama `vantareapp/isa-1566-pedales-look-vantare`, PR #1580 a nightly, aprobada por Isaac): columnas juntas y sin rótulos: fmt/Clippy -D warnings PASS, Nextest 1617/1617 (7 skips; un timeout ajeno de `engineer::recovery` en un intento, verde al repetir), lifecycle 18/18. Captura Eficiencia 108×160 idéntica (0/17280 px, umbral 0) a la de #1563; `reference/pedals.png` legacy 120×160 de nightly conservada sin tocar. Capturas antes/después en `C:/tmp/ola2/1566/`; buzón `C:/tmp/buzon/1566.md`. Sin cambios en domain/IPC: telemetría no aplica.
+**#1566 · Pedales Vantare** (rama `vantareapp/isa-1566-pedales-look-vantare`, PR #1580 integrada en nightly 1dfdd6f1, aprobada por Isaac): columnas juntas y sin rótulos: fmt/Clippy -D warnings PASS, Nextest 1617/1617 (7 skips; un timeout ajeno de `engineer::recovery` en un intento, verde al repetir), lifecycle 18/18. Captura Eficiencia 108×160 idéntica (0/17280 px, umbral 0) a la de #1563; `reference/pedals.png` legacy 120×160 de nightly conservada sin tocar. Capturas antes/después en `C:/tmp/ola2/1566/`; buzón `C:/tmp/buzon/1566.md`. Sin cambios en domain/IPC: telemetría no aplica.
 Logs y revisión/hashes: `C:/tmp/ola2/evidence-1564`; informe `C:/tmp/ola2/informe-1564-impl.md`; buzón `C:/tmp/buzon/1564.md`. No convierte fixtures/replays en LMU/ACC/OBS físicos, DPI/macOS ni input→Present. Present/s no mide latencia. Históricos/goldens se conservan sin recalibrar.
 **#1536 · Launcher:** test COM compara destinos canonicalizados, conserva ejecutable/bytes, no ejecuta y rechaza UNC; arreglo `d7c6cd17`, histórico enlazado arriba.
 
@@ -50,9 +52,8 @@ Guardias #1561 `22fe7490`: layout Eficiencia/Neutro/acentos de cuatro widgets, t
 
 ## 7. Riesgos y deuda
 
-- #1569 depende de #1581, que está DIRTY frente a nightly (conflicto del handoff, resuelto en la rama #1569). Su PR arrastra #1581 hasta que esta se integre.
-- `cargo build -p vantare-hub` aislado falla sin `vantare-services/network` (`services/access.rs` usa `config`); los gates de workspace no lo ven.
-- CI de #1581 tras el merge local pendiente; los gates locales no acreditan los remotos.
+- `cargo build -p vantare-hub` aislado falla sin `vantare-services/network` (`services/access.rs` usa `config`); los gates de workspace no lo ven. Issue #1586, fuera de alcance de #1569.
+- CI remota de #1585 tras el merge de nightly@707514e2 pendiente; los gates locales no acreditan los remotos.
 - #1561: comparar contra esta base; los goldens históricos ya difieren en dimensiones/píxeles antes del refactor y no se recalibran.
 - #1535: SQL no aplicado; producción/ref/DEFINER/ACL/migraciones sin verificar. Requiere confirmar destino y respuesta expresa del orquestador.
 - El split cambia rutas internas de tests y puede generar conflictos con ramas de Studio; #1569 sigue fuera de alcance y requiere coordinación. #1524: autoría no acredita fuente live.
@@ -61,16 +62,17 @@ Guardias #1561 `22fe7490`: layout Eficiencia/Neutro/acentos de cuatro widgets, t
 
 ## 8. Issues terminadas, activas y pendientes
 
-Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. #1564/PR #1577, #1535/PR #1578, #1561 PR-3/PR-5 (#1579) y #1566/PR #1580 integradas en la base; #1535 sigue abierta por la previa/SQL bloqueados. Activa: #1561 PR-4/PR-6 (#1581) y #1569 sobre ella (PR draft a nightly). Pendiente coordinada: #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
+Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. #1564/PR #1577, #1535/PR #1578, #1561 PR-3/PR-5 (#1579), #1566/PR #1580 (aprobada por Isaac, sin rótulos, adaptada a `look::{Tone, Accent}`) y #1561 PR-4/PR-6 (#1581, `707514e2`) integradas en nightly; #1535 sigue abierta por la previa/SQL bloqueados. Activa: #1569 (PR #1585 a nightly, con `origin/nightly@707514e2` fusionado). Pendiente coordinada: #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
 
 ## 9. Siguiente acción exacta
 
-Gates del árbol reconciliado PASS; publicar el merge local en #1581 y verificar MERGEABLE con auto-merge activo. Consultar SHA/checks/FIN en issue y buzón. QA manual física pendiente, solo sin pantalla-ocupada y con mutex del harness. Sin promoción testers/master ni release. #1535 conserva como siguiente paso confirmar proyecto/acceso y la previa SOLO LECTURA; no aplicar SQL sin respuesta expresa del orquestador.
+#1569: esperar los checks remotos de #1585 tras el merge de nightly@707514e2 y activar auto-merge solo con todos en verde (autorizado por Isaac). QA manual del arrastre con ratón: la hace Isaac. Decisiones abiertas de la revisión: filtro de la tira (P3-5) y sección OBS sin selección (P3-6). QA manual física pendiente, solo sin pantalla-ocupada y con mutex del harness. Sin promoción testers/master ni release. #1535 conserva como siguiente paso confirmar proyecto/acceso y la previa SOLO LECTURA; no aplicar SQL sin respuesta expresa del orquestador.
 
 ## 10. Última actualización
 
 2026-10-13 · GitHub #1569 · Claude (Opus 5.5): catálogo «Añadir widget» en el carril; §3 (evidencia), §4, §7 y §8.
 2026-10-13 · GitHub #1569 · Claude (Opus 5.5): SVG propios de miniatura e icono de los 18 widgets; §3.
 2026-10-13 · GitHub #1569 · Claude (Opus 5.5): correcciones de la revisión de #1585; §3.
-2026-10-13 · GitHub #1561 · Codex. Reconciliación de #1579 con PR-4/PR-6 mediante merge; estado y diario en issue/buzón.
+2026-10-13 · GitHub #1569 · Claude (Opus 5.5): merge de nightly@707514e2 (#1581 integrada); §3, §7, §8 y §9.
+2026-10-13 · GitHub #1561 · Codex. Merge de nightly con #1579 y #1580 conservados junto con PR-4/PR-6; estado y diario en issue/buzón.
 2026-10-13 · GitHub #1566 · Claude (Opus 5.5): §1, §4, §6 y §8 por Pedales Vantare; merge de nightly con #1578 y #1579 conservados.

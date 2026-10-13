@@ -698,6 +698,10 @@ Deno.test("credential loader reads rollout with admin and propagates query failu
       rejected = true;
     }
     assert(rejected === fail);
+    assert(
+      queried.includes("billing_access_grants"),
+      "credential loader queried an absent relation instead of versioned grants",
+    );
     assert(queried.includes("module_rollout"));
   }
 });

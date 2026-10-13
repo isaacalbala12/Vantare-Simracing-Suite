@@ -1,6 +1,8 @@
-#![forbid(unsafe_code)]
+#![deny(unsafe_code)]
 //! Setup transports the package; PowerShell retains ownership of generations and data.
 pub mod args;
+#[cfg(windows)]
+mod command_line;
 #[cfg(all(windows, feature = "ui"))]
 mod controls;
 pub mod engine;
@@ -19,7 +21,7 @@ pub const VERSION: &str = env!("VANTARE_INSTALLER_VERSION");
 pub const QA: bool = cfg!(feature = "test-installer");
 
 pub fn entry(uninstall: bool) -> u8 {
-    let mut args = match args::Args::parse(std::env::args_os().skip(1), uninstall) {
+    let mut args = match args::Args::from_process(uninstall) {
         Ok(args) => args,
         Err(error) => {
             eprintln!("{error}");

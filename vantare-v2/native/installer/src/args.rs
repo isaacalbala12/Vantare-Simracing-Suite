@@ -15,6 +15,22 @@ pub struct Args {
 }
 
 impl Args {
+    pub fn from_process(uninstall: bool) -> Result<Self, String> {
+        let parsed = Self::parse(std::env::args_os().skip(1), uninstall)?;
+        #[cfg(windows)]
+        {
+            let mut parsed = parsed;
+            if parsed.root.is_some()
+                && let Some(root) = crate::command_line::unquoted_root()?
+            {
+                parsed.root = Some(root);
+            }
+            Ok(parsed)
+        }
+        #[cfg(not(windows))]
+        Ok(parsed)
+    }
+
     pub fn parse(
         values: impl IntoIterator<Item = OsString>,
         uninstall: bool,
@@ -23,7 +39,8 @@ impl Args {
             uninstall,
             ..Self::default()
         };
-        for value in values {
+        let mut values = values.into_iter();
+        while let Some(value) = values.next() {
             let text = value.to_str().ok_or("Argumento no Unicode")?;
             match text {
                 "/S" => parsed.silent = true,
@@ -35,7 +52,21 @@ impl Args {
                     if text.starts_with("_?=") && !uninstall {
                         return Err("_? solo corresponde al desinstalador".into());
                     }
-                    parsed.root = Some(PathBuf::from(&text[3..]));
+                    let mut root = OsString::from(&text[3..]);
+                    // NSIS /D (and legacy _?=) consumes the terminal suffix.
+                    // Switches must precede it, never become directory names.
+                    for tail in values.by_ref() {
+                        let text = tail.to_str().ok_or("Argumento no Unicode")?;
+                        if text.starts_with('/')
+                            || text.starts_with("--")
+                            || text.starts_with("_?=")
+                        {
+                            return Err("La ruta debe ir al final, después de las opciones".into());
+                        }
+                        root.push(" ");
+                        root.push(tail);
+                    }
+                    parsed.root = Some(PathBuf::from(root));
                 }
                 #[cfg(feature = "parity-capture")]
                 _ if text.starts_with("--capture=") => {

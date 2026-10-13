@@ -65,3 +65,30 @@ fn invalid_versions_and_typed_errors_are_not_confused() {
     assert_ne!(error_text(2), error_text(3));
     assert_ne!(error_text(3), error_text(4));
 }
+
+#[test]
+fn nsis_terminal_directory_accepts_unquoted_spaces_and_unicode() {
+    let args = parse(
+        &["/S", "/D=C:\\QA", "instalación", "con", "espacios"],
+        false,
+    )
+    .expect("NSIS takes the terminal directory suffix");
+    assert_eq!(
+        args.root,
+        Some(PathBuf::from("C:\\QA instalación con espacios"))
+    );
+    assert!(args.silent);
+}
+
+#[test]
+fn terminal_directory_does_not_reinterpret_switches_as_path() {
+    for tail in [
+        "/S",
+        "--version",
+        "/D=C:/second",
+        "_?=C:/second",
+        "--unknown",
+    ] {
+        assert!(parse(&["/D=C:/first", tail], false).is_err(), "{tail}");
+    }
+}

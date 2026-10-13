@@ -1,3 +1,4 @@
+//! Carga, catálogo «Añadir widget», tira de widgets y fotos/ejemplos de la preview. Mapa: `README.md`.
 use super::*;
 
 pub(super) fn unavailable_scenario(

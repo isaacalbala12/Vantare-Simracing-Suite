@@ -150,3 +150,7 @@ registrados en runbook/buzÃ³n; entrega de cliente/worker y gates finales locales
 1. P1-1: Basic completo y prefijos sk-/sk_ en ambas capas. Regresión sintética
    RED observada en Rust y Python antes del cambio; GREEN tras la corrección.
    No proveedores, Intake ni credenciales reales en las pruebas.
+
+2. P1-2: accountId/AccountID/account-id/account_id dentro de JSON, ambas capas.
+   RED por UUID filtrado, GREEN tras reconocer etiquetas completas; sin borrar
+   accountIdentity ni datos pÃºblicos similares.

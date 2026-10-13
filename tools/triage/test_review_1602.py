@@ -30,3 +30,10 @@ class Tests(unittest.TestCase):
             with self.subTest(raw=raw):
                 model,delivery=self.pipeline(raw)
                 self.assertNotIn(secret,model);self.assertNotIn(secret,delivery)
+
+    def test_review_p1_2_account_label_variants_never_reach_model_or_delivery(self):
+        secret='abcdefab-cdef-abcd-efab-abcdefabcdef'
+        for label in ('accountId','AccountID','account-id','account_id'):
+            with self.subTest(label=label):
+                model,delivery=self.pipeline(json.dumps({label:secret}))
+                self.assertNotIn(secret,model);self.assertNotIn(secret,delivery)

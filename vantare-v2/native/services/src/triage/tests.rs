@@ -155,3 +155,19 @@ fn review_p1_1_basic_and_sk_hyphen_are_removed_before_preview() {
         );
     }
 }
+
+#[test]
+fn review_p1_2_account_label_variants_are_removed_before_preview() {
+    let secret = "abcdefab-cdef-abcd-efab-abcdefabcdef";
+    for label in ["accountId", "AccountID", "account-id", "account_id"] {
+        let raw = serde_json::json!({label:secret}).to_string();
+        assert!(
+            !redaction::clean(&raw, &[]).contains(secret),
+            "account label: {label}"
+        );
+    }
+    assert_eq!(
+        redaction::clean("accountIdentity=public-context", &[]),
+        "accountIdentity=public-context"
+    );
+}

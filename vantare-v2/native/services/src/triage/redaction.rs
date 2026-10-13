@@ -47,6 +47,8 @@ fn labeled_secrets(text: &str) -> String {
         "access_token",
         "refresh_token",
         "account_id",
+        "accountid",
+        "account-id",
         "hostname",
         "computername",
         "username",

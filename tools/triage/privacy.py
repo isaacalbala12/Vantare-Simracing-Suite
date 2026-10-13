@@ -8,8 +8,9 @@ REDACTED = '<redacted>'
 def redact(text):
     text = re.sub(r'(?i)(?:[a-z]:[\\/]+users[\\/]+|/(?:home|users)/)[^\\/\r\n]+', '<user>', str(text))
     for pattern in [
+        r'(?i)\bauthorization["\']?\s*[:=]\s*["\']?\s*(?:basic|bearer)\s+[^\s"\'<>;,]+',
         r'(?i)\bbearer\s+["\']?[^\s"\'<>;,]+', r'\beyJ[A-Za-z0-9_./+=-]+',
-        r'\bsk_[A-Za-z0-9_-]+', r'(?i)\b(?:access[_-]?token|refresh[_-]?token|account_id|token|api[_-]?key|license[_-]?key|license|password|authorization|key)["\']?\s*[=:]\s*["\']?[^\s"\',;]+',
+        r'\bsk[_-][A-Za-z0-9_-]+', r'(?i)\b(?:access[_-]?token|refresh[_-]?token|account_id|token|api[_-]?key|license[_-]?key|license|password|authorization|key)["\']?\s*[=:]\s*["\']?[^\s"\',;]+',
         r'[\w.!#$%&*+/?^`{|}~-]+@[\w.-]+', r'7656119\d{10}',
         r'(?i)\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b',
         r'(?i)\b(?:hostname|computername|username|gamertag)\s*[=:]\s*[^\s,;]+',

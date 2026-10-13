@@ -130,3 +130,28 @@ fn session_summary_uses_only_recent_observed_failures_and_events_without_posthog
     assert!(summary.get("performance").is_none());
     assert!(triage.summary(4000).is_null());
 }
+
+#[test]
+fn review_p1_1_basic_and_sk_hyphen_are_removed_before_preview() {
+    for (raw, secret) in [
+        (
+            "Authorization: Basic c3ludGhldGljOmZpeHR1cmU=",
+            "c3ludGhldGljOmZpeHR1cmU=",
+        ),
+        (
+            r#"{"Authorization":"bAsIc c3ludGhldGljOmZpeHR1cmU="}"#,
+            "c3ludGhldGljOmZpeHR1cmU=",
+        ),
+        (
+            "sk-proj-FixtureOpaqueCredential",
+            "sk-proj-FixtureOpaqueCredential",
+        ),
+    ] {
+        // The same cleaner runs over title, body, hardware and attachment before preview.
+        let packet = redaction::clean(raw, &[]);
+        assert!(
+            !packet.contains(secret),
+            "synthetic credential survived preview"
+        );
+    }
+}

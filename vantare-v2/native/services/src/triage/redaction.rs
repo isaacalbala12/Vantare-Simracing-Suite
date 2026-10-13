@@ -21,6 +21,7 @@ pub(super) fn clean(text: &str, private_names: &[String]) -> String {
         let word = part.trim_end_matches(char::is_whitespace);
         let lower = word.to_ascii_lowercase();
         let private = lower.contains("sk_")
+            || lower.contains("sk-")
             || lower.contains("vantare-key")
             || lower.contains("license_key=")
             || lower.contains("token=")
@@ -97,6 +98,28 @@ fn labeled_secrets(text: &str) -> String {
                     .filter(|b| matches!(b, b'\"' | b'\''));
                 if quote.is_some() {
                     start += 1;
+                }
+                // An unquoted Authorization value includes the scheme AND credential.
+                if *label == "authorization" && quote.is_none() {
+                    for scheme in ["basic", "bearer"] {
+                        let end = start + scheme.len();
+                        if lower[start..].starts_with(scheme)
+                            && text
+                                .as_bytes()
+                                .get(end)
+                                .is_some_and(u8::is_ascii_whitespace)
+                        {
+                            start = end;
+                            while text
+                                .as_bytes()
+                                .get(start)
+                                .is_some_and(u8::is_ascii_whitespace)
+                            {
+                                start += 1;
+                            }
+                            break;
+                        }
+                    }
                 }
                 let end = start
                     + text[start..]

@@ -114,8 +114,8 @@ verificado con plane-estado.py y comentario de PR #1602. Hito separado
 8dbcf8273066cbd76c1063cf4726c110d6d610ee, publicado en la rama del PR.
 API v1 de CE 1.4.2: publicar cada propuesta de tester, antes de T3, con tÃ­tulo,
 canal, juego/versiÃ³n, veredicto/confianza/resumen redactados e ID de contribuciÃ³n.
-Sin account_id/email/cuerpo/logs/hardware. Token propio de servidor pendiente
-(DUDA); token personal de tracker no se copia ni reutiliza en worker.
+Sin account_id/email/cuerpo/logs/hardware. Token propio de servidor se creará
+al desplegar, con autorización; no bloquea código. Token de tracker no se reutiliza.
 Intake VANTA ya activado segÃºn lectura API 2026-10-13; no se cambiÃ³ ajuste.
 
 Metadata externa en el work item asociado (POST CE la ignora); PATCH anidado
@@ -144,3 +144,9 @@ separada. No activar cron ni LOGIN/password sin su autorizaciÃ³n especÃ­fica.
 
 2026-10-13 Â· Codex Â· #1594 / VANTA-38. Estado de aplicaciÃ³n y hashes aprobados
 registrados en runbook/buzÃ³n; entrega de cliente/worker y gates finales locales PASS.
+
+## Correcciones de review #1602
+
+1. P1-1: Basic completo y prefijos sk-/sk_ en ambas capas. Regresión sintética
+   RED observada en Rust y Python antes del cambio; GREEN tras la corrección.
+   No proveedores, Intake ni credenciales reales en las pruebas.

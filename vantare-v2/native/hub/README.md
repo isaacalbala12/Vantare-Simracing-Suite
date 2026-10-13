@@ -19,6 +19,19 @@ la partición #1561 PR-4 conserva Studio y Prepared en `studio.rs`.
 inspector y controles; `studio/catalog.rs`: preparación, fotos/ejemplos, catálogo, tira y controles de navegación;
 `studio/tests.rs`: tests existentes. Mismos tipos, lógica y firmas públicas.
 
+## #1569 · Añadir widget
+
+Sin selección, el carril del inspector es el catálogo (`studio/add_widget.rs`);
+el lienzo conserva su ancho. Buscador por nombre o uso, categorías con recuento,
+sugeridos que faltan y el plan permite, grupo Pro con candado y «Ver planes»
+(Licencias). Miniaturas y tamaño salen del renderer productivo con su ejemplo.
+Clic o Intro: primer hueco libre; arrastrar: silueta a tamaño real e imán de 7 px
+a centro, márgenes y otros widgets. Un único paso de historial (`Editor::add_at`):
+el nuevo queda seleccionado y el aviso ofrece Deshacer/Ctrl Z. «+ Añadir» del
+inspector, el botón de la tira, Esc y clic en lienzo vacío vuelven al catálogo;
+`/` busca desde el lienzo. Escenas QA: `studio-sin-seleccion`, `studio-vacio`,
+`studio-catalogo-busqueda`, `studio-catalogo-sin-resultados`, `studio-anadido`.
+
 Captura aislada con el harness existente, mutex y pantalla-ocupada:
 `--capture studio-base --demo --size 1440x900 --out <PNG>`. Solo en
 `parity-capture`, `VANTARE_CAPTURE_SESSION=practice|qualifying|race` selecciona

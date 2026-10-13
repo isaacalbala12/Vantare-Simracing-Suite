@@ -513,16 +513,7 @@ impl Studio {
         }
         studio.rebuild(cx);
         #[cfg(feature = "parity-capture")]
-        match capture_name().as_deref() {
-            Some("studio-catalogo-busqueda") => studio
-                .search
-                .update(cx, |search, cx| search.set_value("combustible".into(), cx)),
-            Some("studio-catalogo-sin-resultados") => studio
-                .search
-                .update(cx, |search, cx| search.set_value("neumáticos".into(), cx)),
-            Some("studio-anadido") => studio.insert_widget(Kind::Pedals, None, cx),
-            _ => {}
-        }
+        studio.apply_catalog_capture(cx);
         studio
     }
     pub(crate) fn set_access(

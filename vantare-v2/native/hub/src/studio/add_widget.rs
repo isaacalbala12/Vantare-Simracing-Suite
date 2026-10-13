@@ -482,6 +482,19 @@ impl Studio {
         }
     }
 
+    /// Escenas QA del catálogo; solo `parity-capture`.
+    #[cfg(feature = "parity-capture")]
+    pub(super) fn apply_catalog_capture(&mut self, cx: &mut Context<Self>) {
+        let query = match capture_name().as_deref() {
+            Some("studio-catalogo-busqueda") => "combustible",
+            Some("studio-catalogo-sin-resultados") => "neumáticos",
+            Some("studio-anadido") => return self.insert_widget(Kind::Pedals, None, cx),
+            _ => return,
+        };
+        self.search
+            .update(cx, |search, cx| search.set_value(query.into(), cx));
+    }
+
     pub(super) fn show_toast(&mut self, toast: Toast, cx: &mut Context<Self>) {
         self.toast = Some(toast);
         #[cfg(feature = "parity-capture")]
@@ -522,7 +535,7 @@ impl Studio {
         };
         let (icon, color, message) = match toast {
             Toast::Added(kind) => ("check", skin.ok, format!("{} añadido", kind.label())),
-            Toast::Locked(kind, reason) if reason == "Incluida en Pro" => (
+            Toast::Locked(kind, "Incluida en Pro") => (
                 "lock",
                 skin.text3,
                 format!("{} está incluido en Vantare Pro", kind.label()),
@@ -629,7 +642,7 @@ impl Studio {
 
     pub(super) fn catalog_drop(
         &mut self,
-        drag: &CatalogDrag,
+        drag: CatalogDrag,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
@@ -807,7 +820,7 @@ impl Studio {
                             .on_click(cx.listener(
                                 |this, _, window, cx| {
                                     this.search.update(cx, |search, cx| {
-                                        search.set_value(String::new(), cx)
+                                        search.set_value(String::new(), cx);
                                     });
                                     this.search.read(cx).focus_handle().focus(window, cx);
                                 },
@@ -836,10 +849,10 @@ impl Studio {
                 .aria_label(format!("{label} · {count}"))
                 .tab_index(0)
                 .h(px(28.0))
-                .px(px(8.0))
+                .px(px(6.0))
                 .flex()
                 .items_center()
-                .gap(px(4.0))
+                .gap(px(3.0))
                 .rounded_full()
                 .cursor_pointer()
                 .child(text(
@@ -871,25 +884,14 @@ impl Studio {
         row
     }
 
-    fn catalog_card(&self, kind: Kind, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+    /// Miniatura fiel con insignia «En el diseño» o candado Pro.
+    fn card_thumb(&self, kind: Kind, locked: bool, placed: usize, cx: &gpui::App) -> gpui::Div {
         let skin = orbit::skin(cx).clone();
-        let index = ORDER
-            .iter()
-            .position(|candidate| *candidate == kind)
-            .unwrap_or(0);
-        let lock = widget_lock(self.access, kind);
-        let placed = self
-            .editor
-            .layout()
-            .instances
-            .iter()
-            .filter(|item| item.settings.kind() == kind)
-            .count();
+        let lock = locked.then_some(());
         let preview = self
             .catalog_previews
             .iter()
             .find(|preview| preview.kind == kind);
-        let (description, ..) = about(kind);
         let badge = |label: String, cx: &gpui::App| {
             div()
                 .absolute()
@@ -906,7 +908,7 @@ impl Studio {
                 .border_color(orbit::alpha(skin.line2))
                 .child(text(label, 10.5, 600, skin.text2, cx))
         };
-        let thumb = div()
+        div()
             .relative()
             .h(px(THUMB_H))
             .mx(px(6.0))
@@ -941,7 +943,8 @@ impl Studio {
             .when(lock.is_some(), |thumb| {
                 thumb.child(
                     badge(String::new(), cx)
-                        .child(orbit::icon("lock", 10.0, skin.text2))
+                        .gap(px(0.0))
+                        .child(orbit::icon("lock", 10.0, skin.text2).mr(px(4.0)))
                         .child(text("Pro", 10.5, 600, skin.text2, cx)),
                 )
             })
@@ -954,7 +957,29 @@ impl Studio {
                     },
                     cx,
                 ))
-            });
+            })
+    }
+
+    fn catalog_card(&self, kind: Kind, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
+        let skin = orbit::skin(cx).clone();
+        let index = ORDER
+            .iter()
+            .position(|candidate| *candidate == kind)
+            .unwrap_or(0);
+        let lock = widget_lock(self.access, kind);
+        let placed = self
+            .editor
+            .layout()
+            .instances
+            .iter()
+            .filter(|item| item.settings.kind() == kind)
+            .count();
+        let preview = self
+            .catalog_previews
+            .iter()
+            .find(|preview| preview.kind == kind);
+        let (description, ..) = about(kind);
+        let thumb = self.card_thumb(kind, lock.is_some(), placed, cx);
         let body = div()
             .px(px(10.0))
             .pt(px(8.0))
@@ -1099,6 +1124,61 @@ impl Studio {
         format!("{plan} Pro desbloquea los {locked} restantes.")
     }
 
+    /// Sin coincidencias: sugerencias y «Limpiar búsqueda».
+    fn no_results(query: &str, cx: &mut Context<Self>) -> gpui::Div {
+        let skin = orbit::skin(cx).clone();
+        let shown = query.trim().to_owned();
+        div()
+            .col_span_full()
+            .flex()
+            .flex_col()
+            .items_center()
+            .gap(px(8.0))
+            .py(px(28.0))
+            .px(px(16.0))
+            .child(
+                div()
+                    .size(px(44.0))
+                    .rounded_full()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .bg(rgb(skin.l2))
+                    .child(orbit::icon("search", 20.0, skin.text3)),
+            )
+            .child(
+                text(
+                    format!("Ningún widget coincide con «{shown}»"),
+                    13.5,
+                    600,
+                    skin.text1,
+                    cx,
+                )
+                .text_center(),
+            )
+            .child(
+                text(
+                    "Prueba con «tiempos», «combustible» o «posiciones».",
+                    12.5,
+                    400,
+                    skin.text3,
+                    cx,
+                )
+                .text_center(),
+            )
+            .child(
+                orbit::small_button("studio-catalog-reset", "Limpiar búsqueda", cx).on_click(
+                    cx.listener(|this, _, window, cx| {
+                        this.catalog_category = 0;
+                        this.search.update(cx, |search, cx| {
+                            search.set_value(String::new(), cx);
+                        });
+                        this.search.read(cx).focus_handle().focus(window, cx);
+                    }),
+                ),
+            )
+    }
+
     fn catalog_list(&self, cx: &mut Context<Self>) -> gpui::Stateful<gpui::Div> {
         let skin = orbit::skin(cx).clone();
         let query = self.catalog_query(cx);
@@ -1142,59 +1222,7 @@ impl Studio {
             );
         }
         if groups.is_empty() {
-            let shown = query.trim().to_owned();
-            return list.child(
-                grid.child(
-                    div()
-                        .col_span_full()
-                        .flex()
-                        .flex_col()
-                        .items_center()
-                        .gap(px(8.0))
-                        .py(px(28.0))
-                        .px(px(16.0))
-                        .child(
-                            div()
-                                .size(px(44.0))
-                                .rounded_full()
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .bg(rgb(skin.l2))
-                                .child(orbit::icon("search", 20.0, skin.text3)),
-                        )
-                        .child(
-                            text(
-                                format!("Ningún widget coincide con «{shown}»"),
-                                13.5,
-                                600,
-                                skin.text1,
-                                cx,
-                            )
-                            .text_center(),
-                        )
-                        .child(
-                            text(
-                                "Prueba con «tiempos», «combustible» o «posiciones».",
-                                12.5,
-                                400,
-                                skin.text3,
-                                cx,
-                            )
-                            .text_center(),
-                        )
-                        .child(
-                            orbit::small_button("studio-catalog-reset", "Limpiar búsqueda", cx)
-                                .on_click(cx.listener(|this, _, window, cx| {
-                                    this.catalog_category = 0;
-                                    this.search.update(cx, |search, cx| {
-                                        search.set_value(String::new(), cx)
-                                    });
-                                    this.search.read(cx).focus_handle().focus(window, cx);
-                                })),
-                        ),
-                ),
-            );
+            return list.child(grid.child(Self::no_results(&query, cx)));
         }
         for (index, group) in groups.iter().enumerate() {
             grid = grid.child(
@@ -1299,6 +1327,7 @@ impl Studio {
 }
 
 #[cfg(test)]
+#[allow(clippy::float_cmp)] // Imán y márgenes devuelven valores exactos por construcción.
 mod tests {
     use super::*;
 

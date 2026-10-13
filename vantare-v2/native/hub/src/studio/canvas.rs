@@ -1018,7 +1018,11 @@ impl Studio {
                 }),
             )
             .on_drag_move(cx.listener(Self::catalog_drag_move))
-            .on_drop(cx.listener(Self::catalog_drop))
+            .on_drop(
+                cx.listener(|this, drag: &super::add_widget::CatalogDrag, window, cx| {
+                    this.catalog_drop(*drag, window, cx);
+                }),
+            )
             .drag_over::<super::add_widget::CatalogDrag>(move |style, _, _, _| {
                 style.border_color(rgb(accent))
             })

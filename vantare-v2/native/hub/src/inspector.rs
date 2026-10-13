@@ -579,6 +579,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                         Settings::Relative(s) => s.style = value,
                         Settings::Delta(s) => s.style = value,
                         Settings::FuelStrategy(s) => s.style = value,
+                        Settings::Pedals(s) => s.style = value,
                         _ => {}
                     }
                 },
@@ -610,6 +611,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                         Settings::Relative(s) => s.accent = value,
                         Settings::Delta(s) => s.accent = value,
                         Settings::FuelStrategy(s) => s.accent = value,
+                        Settings::Pedals(s) => s.accent = value,
                         _ => {}
                     }
                 },

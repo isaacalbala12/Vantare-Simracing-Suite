@@ -1,7 +1,7 @@
 # Triaje de contribuciones · #1594 / VANTA-38
 
 Estado: migración aplicada y verificada el 2026-10-13; cliente/worker preparados,
-gates finales y PR pendientes.
+gates finales PASS, PR pendiente de publicación.
 Cron, LOGIN/contraseña, proveedor y despliegue siguen inactivos. Diseño r2 completo
 `C:/tmp/ola2/diseno-1594-opus.md` y encargo de Isaac del 2026-10-13.
 DeepSeek `opencode-go/deepseek-v4.1-flash`; el worker propone y un owner
@@ -201,3 +201,12 @@ Según r2, antes de activar faltan confirmar por escrito pasarela/subencargado,
 región, retención, entrenamiento y condiciones contractuales del proveedor.
 No se afirma ZDR ni ubicación a partir de referencias de terceros. Este hito
 no envía informes a ningún modelo ni despliega componentes del servidor.
+
+## Gates finales (2026-10-13)
+
+fmt/check/Clippy PASS; Nextest 1650/1650 (7 skips), lifecycle 18/18,
+telemetría 25/25 (corpus ACC completo), worker 16/16 offline, quality 456
+huellas y diff --check PASS. Logs E:/tmp/isa1594-final-*.log; worker-tests.log.
+Código nativo validado 1bb104ac; endurecimiento del worker 1f4ef175.
+SQL/rollback en Git coinciden byte a byte con los hashes aprobados.
+No prueba ejecución del proveedor o despliegue del servidor.

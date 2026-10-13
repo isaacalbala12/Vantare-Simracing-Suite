@@ -1,7 +1,7 @@
 # Handoff vivo — Testing Center
 
 Estado #1594 / VANTA-38: migración aplicada en producción; cliente y worker
-inerte implementados, gates finales en ejecución. Plane En curso verificado.
+inerte implementados, todos los gates locales PASS. Plane En curso verificado.
 Cron, LOGIN/contraseña, proveedor y despliegue siguen pendientes de su OK.
 
 [Histórico anterior por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/testing-center.md).
@@ -46,7 +46,8 @@ Project Vantare, sin milestone de versión inventado.
 Rama vantareapp/isa-1594-triaje-informes; base inicial nightly a0f8569b.
 Nightly bc89c8b8 incorporado mediante merge 1f8721eb, con #1595/#1599.
 Hitos locales: SQL/tests 1358eb71, prueba de producción 91e2f1af,
-cliente/worker 2b520e1f. PR y CI remotos pendientes de gates finales.
+cliente/worker 2b520e1f. Corrección del puente/resumen 1bb104ac y privacidad del worker 1f4ef175.
+PR y CI remotos pendientes de publicación.
 Nightly no equivale a master/release. No se ha desplegado el worker.
 
 ## 4. Decisiones cerradas
@@ -84,7 +85,7 @@ Evidencia protegida C:/tmp/ola2/1594-backup-cli/; hashes SQL intactos.
 Worker 14/16 tests offline PASS; quality 456 huellas PASS. Captura real de PC
 verificada sin imprimir valores personales. Regresiones de envío incierto,
 consentimiento GPUI y frame escapado preparadas. fmt/check/Clippy PASS; Nextest 1650/1650 PASS (7 skips), incluido el
-reintento por submit_v2 y el resumen local. Lifecycle 18/18 PASS; telemetría en ejecución.
+reintento por submit_v2 y el resumen local. Lifecycle 18/18 y telemetría 25/25 PASS (corpus ACC completo).
 Primer build se interrumpió por disco C lleno; target propio copiado a E,
 original conservado. Wrapper cambia solo cwd/output, mismos flags/features/checks,
 compilar.ps1 obligatorio. Logs E:/tmp/isa1594-final-*.log.
@@ -107,7 +108,7 @@ Contratos de [Testing Hub](../../../native/hub/src/testing/README.md),
 
 ## 9. Siguiente acción
 
-Terminar gates sobre los últimos cambios, commit, push y PR a nightly con
+Publicar PR a nightly con
 Closes #1594 y auto-merge squash; Plane Por revisar con PR y FIN en buzón.
 Activación del proveedor y despliegue permanecen bloqueados por autorización
 separada. No activar cron ni LOGIN/password sin su autorización específica.
@@ -115,4 +116,4 @@ separada. No activar cron ni LOGIN/password sin su autorización específica.
 ## 10. Actualización
 
 2026-10-13 · Codex · #1594 / VANTA-38. Estado de aplicación y hashes aprobados
-registrados en runbook/buzón; entrega de cliente/worker y gates finales local.
+registrados en runbook/buzón; entrega de cliente/worker y gates finales locales PASS.

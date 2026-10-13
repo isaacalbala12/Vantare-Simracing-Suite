@@ -15,9 +15,7 @@ para todos los widgets. Ambas reglas se guardan mediante Editor, con
 Deshacer/Rehacer, y se combinan en overlays live. La preview siempre se ve.
 El módulo nuevo `studio/sessions.rs` conserva el renderer compartido;
 la partición #1561 PR-4 conserva Studio y Prepared en `studio.rs`.
-`studio/canvas.rs`: marco, geometría y gestos; `studio/inspector_panel.rs`:
-inspector y controles; `studio/catalog.rs`: preparación, fotos/ejemplos, catálogo, tira y controles de navegación;
-`studio/tests.rs`: tests existentes. Mismos tipos, lógica y firmas públicas.
+Qué vive en cada archivo de Studio y dónde tocar: [`src/studio/README.md`](src/studio/README.md).
 
 Captura aislada con el harness existente, mutex y pantalla-ocupada:
 `--capture studio-base --demo --size 1440x900 --out <PNG>`. Solo en

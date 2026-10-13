@@ -17,10 +17,40 @@ legible y segura; simplifica si la complejidad supera al problema.
 
 ## Issues
 
-GitHub Issues y el Project Vantare son la autoridad operativa (#1503).
+Plane es el tablero de Isaac: http://sapphireos.tail357eab.ts.net:8088,
+workspace `vantare-simracing-suite`, proyecto `VANTA`. Todo trabajo pasa por el
+orquestador. Un worker solo trabaja en lo que este le encarga y en una tarea
+`VANTA-N` concreta; si falta, avisa al orquestador y no la crea por su cuenta.
+GitHub Issues y el Project Vantare se mantienen para código, ramas y PRs (#1503).
+La tarea Plane enlaza la issue GitHub y el PR.
 `ISA-N` es el número GitHub para issues nuevas; los IDs migrados conservan
 su título e identificadores históricos. Usar `vantareapp/isa-N-slug`.
 Las instrucciones de Notion en otros documentos son históricas.
+
+Flujo de estados:
+
+- Isaac → «Para Claude»: la recibe el **orquestador**, que hace a Isaac las
+  preguntas necesarias hasta que el alcance quede 100 % claro: qué entra,
+  qué no y cómo se verifica. Después crea o enlaza la issue GitHub y reparte
+  la tarea al worker adecuado según el rol del modelo.
+- Worker → «En curso» solo al empezar el encargo asignado; ningún worker
+  coge tareas directamente de «Para Claude».
+- Worker → «Por revisar» al terminar, con el comentario del PR.
+- Orquestador → «Por testear» tras revisar y fusionar en `nightly`.
+- Isaac → «Entregado».
+- Cualquiera → «Cancelado», explicándolo en un comentario.
+
+Desde la raíz Git, usar `python tools/plane/plane-estado.py VANTA-N "En curso"`,
+`python tools/plane/plane-estado.py VANTA-N "Por revisar" --comentario "PR https://..."`
+o `python tools/plane/plane-estado.py VANTA-N --ver`. El token se lee de
+`PLANE_API_TOKEN` o `~/.vantare/plane-token`, nunca se imprime. Si el worker
+no tiene token (por ejemplo, en otro PC), avisa en su buzón al orquestador,
+que mueve el estado. «Entregado» y «Para Claude» se rechazan salvo `--isaac`,
+flag que solo usa el orquestador cuando Isaac lo pide. «Por hacer» es el estado
+inicial previo a «Para Claude».
+
+Las tareas se llaman «Tipo - Nombre». Tipos: Feature, Rework, Bug, Review,
+Investigar, Documento, Marketing, Medición, Optimizar. Module obligatorio.
 
 ## Fuentes de verdad y lectura obligatoria
 
@@ -67,7 +97,8 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 - No delegues una tarea trivial cuando ejecutarla directamente sea mas clara y
   barata. El orquestador sigue siendo responsable de revisar el diff, la
   evidencia y el handoff; el reporte del worker no basta por si solo.
-- El alcance, las dependencias y el estado operativo viven en la issue de GitHub.
+- El alcance y las dependencias de código viven en la issue de GitHub;
+  Plane refleja el encargo y sus estados según la sección «Issues».
   Plane (proyecto Vantare) es la única fuente del roadmap público (#1601).
   El publicador del servidor sincroniza `visual_roadmap` en Supabase; Hub, web y
   digest leen la RPC pública sin credenciales Plane. Funciona con GitHub privado. Consulta

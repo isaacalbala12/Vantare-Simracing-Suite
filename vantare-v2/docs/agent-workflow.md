@@ -1,7 +1,7 @@
 # Workflow de agentes
 
-> **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
-> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
+> **Seguimiento vigente (#1598): Plane es el tablero de Isaac; GitHub Issues
+> y Project Vantare se mantienen para código, ramas y PRs.** Leer la issue y actualizarla junto con el handoff tras
 > cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
 > estados de trackers anteriores son evidencia histórica, no instrucciones.
 
@@ -24,7 +24,10 @@
 
 ## Fuente operativa y aislamiento
 
-- GitHub Issues define alcance, dependencias, prioridades y estado. Leer la issue
+- Plane organiza los encargos del orquestador y sus estados; GitHub Issues
+  define el alcance y las dependencias de código. La tarea `VANTA-N` enlaza issue y PR.
+  Ningún worker toma tareas directamente de «Para Claude» ni crea tareas Plane.
+  Si falta `VANTA-N`, avisa al orquestador. Leer la issue
   antes de editar. Las labels `state:*`, `area:*`, los milestones y el GitHub
   Project Vantare organizan el trabajo vigente.
 - Una issue ejecutable con cambios equivale a una rama, un worktree y un
@@ -46,7 +49,8 @@
 
 ## Roadmap público
 
-- La issue GitHub conserva alcance, decisiones y estado operativo.
+- La issue GitHub conserva alcance, decisiones y evidencia de código;
+  Plane refleja el estado del encargo.
 - Plane es la fuente del contenido; el servidor sincroniza Supabase según
   `docs/roadmap-maintenance.md` (#1601). App/web solo leen la misma RPC pública.
 - Credenciales, despliegue, timer y primera publicación requieren autorización
@@ -183,16 +187,19 @@ Debe buscar:
 
 ## Flujo normal
 
-1. Usuario debate con orquestador cuando hacen falta decisiones.
-2. Orquestador lee la tarea y el proyecto en GitHub Issues, las instrucciones actualizadas
+1. Isaac pasa la tarea a «Para Claude» para el orquestador. Este le hace las
+   preguntas necesarias hasta aclarar al 100 % qué entra, qué no y cómo se verifica;
+   después crea o enlaza la issue GitHub y asigna al worker según el rol del modelo.
+2. Orquestador lee la tarea Plane y el proyecto en GitHub Issues, las instrucciones actualizadas
    de nightly, `docs/vantare-program/` y el handoff técnico. Registra agente,
-   Estado `En curso`, rama/base y siguiente paso en GitHub Issues.
+   rama/base y siguiente paso en GitHub Issues. Solo el worker asignado pasa
+   a «En curso» al empezar.
 3. GitHub Issues define el alcance. El roadmap público comunica una selección editorial
    publicada en Supabase; los planes históricos solo se consultan como contexto.
 4. Orquestador crea o identifica el miniplan vigente.
 5. Orquestador crea prompt worker.
 6. Worker implementa.
-7. Worker reporta evidencia.
+7. Worker reporta evidencia y pasa a «Por revisar», con el comentario del PR.
 8. Reviewer audita sin editar.
 9. Orquestador recomienda aceptar, corregir, dividir o revertir.
 10. Se hace commit pequeño cuando el contrato de la issue GitHub lo permite.
@@ -202,7 +209,8 @@ Debe buscar:
     cambia alcance o plan futuro, actualizar GitHub Issues. Isaac decide cuándo
     publicar un cambio en el roadmap visual. El worker no promociona por su cuenta.
 12. Tras la aprobación inicial de Isaac, la tarea de integración promueve la
-    entrega a `nightly`.
+    entrega a `nightly`. El orquestador pasa a «Por testear» tras revisar y fusionar.
+    Isaac decide «Entregado». Cualquiera puede cancelar explicándolo.
 13. Después del feedback y sus correcciones, otra promoción lleva el conjunto
     de `nightly` a `testers`.
 14. Solo una aprobación final de Isaac permite `testers` a `master`.
@@ -211,6 +219,11 @@ Debe buscar:
     El roadmap se actualiza únicamente cuando Isaac lo solicita. la issue de GitHub vigente y
     `docs/roadmap-execution-board.md` son históricos y no se actualizan como
     parte del flujo normal.
+
+Los estados se mueven con `tools/plane/plane-estado.py` desde la raíz Git,
+según [AGENTS.md](../AGENTS.md#issues). Si falta token, el worker avisa en su
+buzón y el orquestador mueve el estado. `--isaac` solo lo usa el orquestador
+cuando Isaac lo pide. Tareas «Tipo - Nombre», con los tipos de AGENTS y Module obligatorio.
 
 ## Comunicación de cambios visibles
 

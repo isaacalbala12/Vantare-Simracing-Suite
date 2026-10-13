@@ -1,7 +1,17 @@
 # Instrucciones de entrada para agentes
 
-**El tracker obligatorio es GitHub Issues de este repositorio; el tablero es
-el GitHub Project Vantare.** Linear fue retirado el 2026-08-20.
+**Plane es el tablero de Isaac**: http://sapphireos.tail357eab.ts.net:8088,
+workspace `vantare-simracing-suite`, proyecto `VANTA`. Todo trabajo pasa por el
+orquestador y una tarea `VANTA-N`; GitHub Issues se mantiene para código, ramas
+y PRs, con GitHub Project Vantare. Linear fue retirado el 2026-08-20.
+
+Isaac mueve a «Para Claude» para el **orquestador**, que le hace las preguntas
+necesarias hasta aclarar al 100 % qué entra, qué no y cómo se verifica. Después
+crea o enlaza la issue GitHub y asigna al worker adecuado según el rol del modelo.
+Solo entonces el worker mueve a «En curso»; ningún worker toma tareas directamente
+de «Para Claude» ni crea tareas Plane por su cuenta. Si falta `VANTA-N`, avisa al
+orquestador. El flujo, script y nombres obligatorios están en
+[Issues](vantare-v2/AGENTS.md#issues).
 
 1. Verificar raíz Git, rama, HEAD, worktree y `git status --short`.
 2. Leer la issue, sus dependencias y el plan vigente antes de editar.

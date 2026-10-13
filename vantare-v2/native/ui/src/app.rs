@@ -180,6 +180,7 @@ impl Overlay {
             Widget::Relative(widget) => widget.set_vantare_style(style),
             Widget::FuelStrategy(widget) => widget.set_vantare_style(style),
             Widget::Delta(widget) => widget.set_vantare_style(style),
+            Widget::Pedals(widget) => widget.set_vantare_style(style),
             _ => return,
         }
         cx.notify();
@@ -250,6 +251,7 @@ impl Overlay {
             Widget::Relative(w) => w.set_look(look, self.prefs),
             Widget::Delta(w) => w.set_look(look, self.prefs),
             Widget::FuelStrategy(w) => w.set_look(look, self.prefs),
+            Widget::Pedals(w) => w.set_look(look, self.prefs),
             _ => {}
         }
     }
@@ -2054,10 +2056,13 @@ mod tests {
         for &kind in Kind::ALL {
             let parsed: Settings = serde_json::from_value(serde_json::json!({"kind": kind.name()}))
                 .expect("opciones parciales");
-            assert_eq!(
-                parsed.normalized(),
-                Settings::default_for(kind).normalized()
-            );
+            // Pedales sin `designSystem` es un layout anterior a #1566: sigue en
+            // Eficiencia; solo las instancias nuevas nacen en Vantare.
+            let expected = match kind {
+                Kind::Pedals => Settings::Pedals(crate::pedals::Settings::eficiencia()),
+                _ => Settings::default_for(kind),
+            };
+            assert_eq!(parsed.normalized(), expected.normalized());
             assert_eq!(parsed.normalized().normalized(), parsed.normalized());
             assert!(settings_limit(&parsed).is_none());
         }

@@ -34,10 +34,10 @@ PLANE_URL=http://192.168.1.57:8088
 PLANE_WORKSPACE=<slug verificado>
 PLANE_PROJECT_ID=<UUID verificado>
 PLANE_API_KEY=<token privado>
-PGHOST=<host Supabase aprobado>
+PGHOST=aws-1-eu-west-2.pooler.supabase.com
 PGPORT=5432
 PGDATABASE=<base aprobada>
-PGUSER=<rol dedicado; con project-ref si usa pooler>
+PGUSER=vantare_roadmap_publisher.ombjshwzqgeisazijduq
 PGPASSWORD=<contraseña privada>
 ROADMAP_REF=<40 caracteres hex del commit aprobado y accesible remotamente>
 ```

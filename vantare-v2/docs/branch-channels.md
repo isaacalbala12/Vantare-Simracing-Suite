@@ -50,8 +50,9 @@ aplicable. Solo Isaac puede autorizar `testers` a `master`.
 
 ### Roadmap público
 
-El contenido se edita visualmente en la app: Owner guarda un borrador privado
-y lo publica para todos. No hay rama automática ni gate de archivos de roadmap.
+El contenido procede de Plane; el publicador del servidor sincroniza Supabase
+y app/web leen la RPC pública (#1601). No hay editor en la app ni rama de datos.
+Credenciales, despliegue, timer y primera escritura requieren autorización separada.
 Las ramas de código siguen las validaciones de canal descritas aquí.
 
 La proteccion efectiva requiere que el check `Validate promotion path` siga

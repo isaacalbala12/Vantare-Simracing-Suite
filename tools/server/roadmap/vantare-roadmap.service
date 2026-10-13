@@ -1,0 +1,19 @@
+[Unit]
+Description=Plane to Vantare public roadmap
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/mnt/c/VantareServer/secrets/roadmap.env
+
+[Service]
+Type=oneshot
+User=roadmap
+Group=roadmap
+EnvironmentFile=/mnt/c/VantareServer/secrets/roadmap.env
+ExecStart=/home/roadmap/repo/tools/server/roadmap/vantare-roadmap-publish.sh
+TimeoutStartSec=240
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/roadmap/repo
+PrivateTmp=true

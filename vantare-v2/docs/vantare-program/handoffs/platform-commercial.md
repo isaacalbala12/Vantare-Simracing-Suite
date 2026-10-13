@@ -3,6 +3,36 @@
 Estado de la base indicada; releer la issue antes de ejecutar.
 [Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/platform-commercial.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 
+## #1601 / VANTA-10 · Plane, fase de implementación (13/10/2026)
+
+OK de Isaac/orquestador al plan `C:/tmp/ola2/plan-1601.md`: Plane → Supabase
+cada 5 min, tres columnas; archivos antiguos retirados, JSON manual del Hub inerte.
+Rama propia `vantareapp/isa-1601-roadmap-plane`, base inicial nightly `298abc33`. #1599 ha avanzado nightly a `bc89c8b8`;
+se incorpora esa actualización documental antes del PR.
+Issue [#1601](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1601),
+`area:plataforma`, añadida al GitHub Project Vantare; sin versión comprometida.
+
+Implementación local: API v1 CE con páginas completas y memberships, filtro
+Infraestructura/Negocio/canceladas, nombres literales, IDs estables y límites
+40 tareas/40 KB sin truncar. Mismo documento/rol/RPC v2/v1; sin cambio de esquema.
+Hub carga caché y refresca cada 300 s usando el heartbeat y worker IPC existentes;
+acciones explícitas conservan prioridad. Tres columnas con later legado en Planeado.
+Web preparada aquí; no se edita otro repo. Action/scripts ClickUp retirados localmente.
+
+RED: test de tres columnas perdía later; los cinco tests web fallaban sin polling.
+GREEN focal: 18 Python, 6 web, 8 Hub + 6 services roadmap; 57 digest y 45 canal.
+Clippy final PASS; Nextest completo 1646 PASS/7 skips, lifecycle PASS; se repite
+Nextest tras regresión de envío de caché RED→GREEN. Telemetría 24/25, ACC en curso.
+SQL PostgreSQL 18.6 local desechable PASS: idempotencia, cambio único, lectura
+v1/v2, vaciado/retirada rechazados. Unidades systemd verificadas en copia temporal
+con ExecStart=/bin/true; no prueba despliegue. Quality 456 huellas PASS.
+Runbook: [plane-roadmap-runbook.md](../../plane-roadmap-runbook.md).
+Credenciales/token/roadmap.env, despliegue, timer y primera escritura NO autorizados
+ni ejecutados. Cantidad/tamaño del tablero real pendientes de lectura autorizada;
+exceso exige parar y preguntar. Cambio de IDs puede exigir aprobación exacta SQL.
+Siguiente: cerrar gates/revisión local, PR nightly `Closes #1601` con auto-merge,
+VANTA-10 Por revisar y FIN en buzón. No release ni activación de producción.
+
 ## 1. Resultado
 
 Servicios remotos de cuenta/licencia, Billing, calendario, reportes y distribución; Hub presenta su estado. La existencia del cliente/backend no certifica apertura comercial, producción ni release.

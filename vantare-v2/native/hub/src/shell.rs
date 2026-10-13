@@ -101,6 +101,10 @@ impl Hub {
         }
         self.poll_beta_update(cx);
         self.refresh_access(cx);
+        let roadmap_visible = self.section == Section::Roadmap && self.capture.is_none();
+        self.remote.update(cx, |remote, cx| {
+            remote.poll_roadmap(roadmap_visible, Instant::now(), cx);
+        });
         self.notifications.update(cx, |notifications, cx| {
             notifications.set_tester(self.shell.access.beta_visible(Section::Testing), cx);
         });

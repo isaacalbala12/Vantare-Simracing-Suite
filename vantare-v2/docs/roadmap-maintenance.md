@@ -1,4 +1,53 @@
-# Roadmap público · #1535
+# Roadmap público · Plane (#1601 / VANTA-10)
+
+Plane es la única fuente. El publicador del servidor consulta su API v1 cada
+cinco minutos y prepara un documento v2 público para `visual_roadmap_sync` en
+Supabase existente. No publica si el contenido no cambió. App, web y digest
+leen `visual_roadmap_current_v2`; la RPC v1 conserva builds instalados.
+La app/web nunca acceden a Plane ni reciben su token. No depende de GitHub público.
+
+Solo se publican tareas con modules de producto. Infraestructura y Negocio
+se excluyen, incluso con otra pertenencia; canceladas y tareas sin module se
+ocultan. No hay descripciones, comentarios, usuarios ni campos privados.
+Nombre exacto, incluido el tipo: «Rework - Roadmap» no se reformatea ni traduce.
+
+| Estado Plane | Columna app/web | section |
+| --- | --- | --- |
+| Por hacer | Planeado | next |
+| Para Claude, En curso, Por revisar, Por testear | En marcha | now |
+| Entregado | Hecho | done |
+
+`later` legado se agrupa en Planeado. IDs estables del UUID Plane, orden por
+sequence_id/UUID. area contiene los modules de producto; version/dueDate quedan
+null si no hay datos aprobados. La compatibilidad IPC v6/JSON v1-v2 no cambia.
+
+Límite estricto: 40 tareas y 40.000 bytes. Si se excede, **parar y preguntar a
+Isaac**, sin truncar ni ampliar esquema. Lectura incompleta, estado desconocido,
+resultado vacío o fallo de red preservan la publicación anterior. La guarda SQL
+contra retirada de >=50% sigue vigente; cambiar IDs de ClickUp a Plane puede
+requerir aprobación del candidato exacto, no un bypass del publicador.
+
+El lector del Hub carga la caché y solicita refresco automático al abrir Roadmap,
+y cada 300 s mientras esa página está visible. Reutiliza heartbeat y worker IPC,
+sin bloquear las acciones del usuario ni el cierre. La web preparada refresca
+cada 300 s con cancelación al desmontar, sin cookies ni peticiones simultáneas.
+
+Los antiguos plan.md, docs/roadmap/roadmap.json y roadmap_digest.py siguen retirados.
+`native/hub/roadmap/roadmap.json` y fixtures legacy son referencia inerte; no editar
+ni volver a publicarlos. GitHub Issues/Project Vantare conservan seguimiento interno.
+
+**Activación pendiente:** credenciales, roadmap.env, despliegue, timer y primera
+escritura requieren autorización separada. No hay migración nueva. Pasos exactos,
+verificación/rollback y cambios de la web externa: [runbook](plane-roadmap-runbook.md).
+El retiro de la Action en esta rama no prueba que se haya desactivado en master.
+
+## Histórico de #1535: ClickUp y preparación del contrato v2
+
+Lo siguiente conserva evidencia, ACL y restricciones de la entrega anterior.
+Las instrucciones de Action/secretos ClickUp ya no son el procedimiento vigente;
+el runbook Plane anterior es el único camino de activación de #1601.
+
+### Documento anterior · #1535
 
 **ClickUp es la única fuente**: workspace `90151421613`, espacio Vantare,
 lista Desarrollo. Títulos «Tipo · Nombre». GitHub Issues es seguimiento interno.

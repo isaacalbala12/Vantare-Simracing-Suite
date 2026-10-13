@@ -1,4 +1,4 @@
-//! Carga, catálogo «Añadir widget», tira de widgets y fotos/ejemplos de la preview. Mapa: `README.md`.
+//! Carga, tira de widgets y fotos/ejemplos de la preview; el catálogo «Añadir widget» está en `add_widget.rs`. Mapa: `README.md`.
 use super::*;
 
 pub(super) fn unavailable_scenario(

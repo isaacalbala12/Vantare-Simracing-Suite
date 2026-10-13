@@ -180,6 +180,7 @@ pub struct Input {
     line_height: Pixels,
     dragging: bool,
     preferred_height: Option<Pixels>,
+    inset: Option<(f32, f32)>,
 }
 impl Deref for Input {
     type Target = TextState;
@@ -203,12 +204,19 @@ impl Input {
             line_height: gpui::px(FIELD_TEXT * 1.5),
             dragging: false,
             preferred_height: None,
+            inset: None,
         }
     }
     /// Ajusta la altura visual sin cambiar texto, selección ni modo multilínea.
     #[must_use]
     pub fn with_height(mut self, height: Pixels) -> Self {
         self.preferred_height = Some(height.max(gpui::px(CONTROL_H)));
+        self
+    }
+    /// Reserva sitio a los lados para iconos o atajos superpuestos por el consumidor.
+    #[must_use]
+    pub fn with_inset(mut self, left: f32, right: f32) -> Self {
+        self.inset = Some((left, right));
         self
     }
     pub fn focus_handle(&self) -> FocusHandle {
@@ -512,6 +520,9 @@ impl Render for Input {
             .cursor(gpui::CursorStyle::IBeam)
             .when(multiline, |s| s.h(gpui::px(TEXTAREA_H)))
             .when_some(self.preferred_height, gpui::Styled::h)
+            .when_some(self.inset, |s, (left, right)| {
+                s.pl(gpui::px(left)).pr(gpui::px(right))
+            })
             .when(!self.enabled, |s| super::inactive(s).opacity(DISABLED))
             .overflow_hidden()
             .on_mouse_down(

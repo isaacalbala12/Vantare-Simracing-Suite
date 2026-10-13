@@ -26,7 +26,8 @@ archivo y dónde tocar. Léelo antes de abrir los archivos grandes.
 | `../studio.rs` | `Studio` (estado completo), `Prepared` y `StudioSidebar`, que es la columna que enlaza la shell. Constructor `new`, `ingest` (frames en vivo), `render` raíz (ratón y teclado globales), barra superior (`topbar_actions`), estado de guardado y «Mostrar en pista» cacheado (#1567). | Añadir estado nuevo a `Studio`, cambiar la API que usa la shell (`set_access`, `handle_shell_key`, preferencias, rendimiento) o la barra superior. |
 | `canvas.rs` | Escenario y gestos: `CanvasFrame` (cada widget en el canvas, con tiradores de resize), `Drag`/`Resize`, zoom, escala que encaja, resolución del canvas, anclas, nudge con teclado (`held_nudge_distance`, `keyboard_nudge`), opacidad en vivo y `editor_workspace`, que monta canvas + inspector + tira. | Arrastrar, redimensionar, zoom, teclado del canvas o el pie de la preview. **Antes**, lee `docs/overlays-studio/canvas-drag-imperative-preview.md`. |
 | `inspector_panel.rs` | Panel derecho para el widget seleccionado: pestañas (`tab_settings`), color, columnas, posición (rejilla de anclas y pad de nudge), rendimiento por widget, «Fuera de pista» (#1562), OBS, y la creación y sincronización de controles (`init_controls`, `reset_fields`, `sync_size_fields`). | Añadir o cambiar un control del inspector. Patrón: crear el control en `init_controls`, pintarlo en `setting_control`/`tab_settings` y aplicar el cambio vía `Editor`. |
-| `catalog.rs` | Carga (`Prepared::load`), catálogo «Añadir widget», tira de widgets (`widget_strip` con fila y acciones), fotos y ejemplos para la preview (`preview_snapshot`, `example_snapshots`), selector de escena y controles de navegación. También los ajustes de demo y captura (`parity-capture`). | Catálogo, lista de widgets, elegir qué `Snapshot` ve la preview o las capturas de paridad. |
+| `add_widget.rs` | Catálogo «Añadir widget» (#1569): con nada seleccionado ocupa el carril del inspector. Buscador, categorías, grupos (sugeridos, plan, Pro), tarjetas con miniatura e icono SVG (`assets/widgets/`), hueco libre (`free_spot`), imán (`snap`), arrastre con silueta (`catalog_drag_move`, `drop_ghost`), aviso con Deshacer y `OpenPlans` («Ver planes» → Cuenta). | Añadir un widget al catálogo (`ORDER`, `about`, su SVG), cambiar cómo se coloca o los textos de candado. |
+| `catalog.rs` | Carga (`Prepared::load`), tira de widgets (`widget_strip` con fila y acciones), fotos y ejemplos para la preview (`preview_snapshot`, `example_snapshots`), selector de escena y controles de navegación. También los ajustes de demo y captura (`parity-capture`). | Lista de widgets del diseño, elegir qué `Snapshot` ve la preview o las capturas de paridad. «Catálogo» aquí es el de fotos y ejemplos; el de añadir widgets está en `add_widget.rs`. |
 | `sessions.rs` | Widgets por tipo de sesión (#1564): pestañas práctica/qualy/carrera de las columnas de Standings y «Mostrar en» de cualquier instancia. | Reglas o controles por tipo de sesión. |
 | `scenes.rs` | Fotos reales (`Scenario`: Salida, Carrera, Boxes, Lluvia, Noche), cargadas de `ui/fixtures/telemetry-real`. Conserva el `Snapshot` completo, sin alterar señales. | Añadir o cambiar una foto real. |
 | `examples.rs` | Escenas sintéticas de «Ejemplo» (30 pilotos por clase, ±8 rivales) para probar límites. Son muestras rotuladas, no sesión real. | Datos de ejemplo de un widget. |
@@ -48,6 +49,10 @@ comparte entre archivos es `pub(super)`. No lo subas a `pub` sin necesidad.
   1. `CanvasFrame` emite `Started`.
   2. `move_drag` mueve solo la preview, sin tocar el documento.
   3. `finish_drag` confirma la posición en `Editor`.
+- **Se añade un widget:** clic o Intro en una tarjeta → `insert_widget` busca
+  el primer hueco libre y llama a `Editor::add_at` (un paso de historial). Al
+  soltar un arrastre, `drop_ghost` usa el punto con imán. Esc desde el lienzo o
+  clic en el lienzo vacío deseleccionan y vuelven al catálogo.
 - **Llega telemetría en vivo:** `ingest` cambia `snapshot`, salvo en modo
   «Ejemplo» o con una foto fija.
 

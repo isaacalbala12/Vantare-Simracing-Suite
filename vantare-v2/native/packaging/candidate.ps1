@@ -273,7 +273,9 @@ function Read-NativeInstallerUi([string]$Directory) {
 function Test-NativeShortcutOwned($Link,[string]$Directory) {
     $hostPath=Join-Path $env:WINDIR 'System32/WindowsPowerShell/v1.0/powershell.exe'
     ($Link.TargetPath -eq $hostPath -and $Link.Arguments.Contains('-Root "'+$Directory+'"') -and
-     $Link.Arguments.Contains('-File "'+(Join-Path $Directory 'beta.ps1')+'"')) -or
+     ($Link.Arguments.Contains('-File "'+(Join-Path $Directory 'beta.ps1')+'"') -or
+      ($Link.Arguments.Contains('-File "'+(Join-Path $Directory 'uninstall-vantare.ps1')+'"') -and
+       $Link.Arguments.Contains('-Operation UninstallInstalled')))) -or
     ($Link.TargetPath -eq (Join-Path $Directory 'Uninstall.exe'))
 }
 

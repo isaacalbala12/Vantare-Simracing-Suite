@@ -86,7 +86,7 @@ pub fn error_text(code: u8) -> (&'static str, &'static str) {
             "Vantare sigue abierto y no se pueden cambiar sus archivos mientras se usa. Si estás en carrera, termina primero.",
         ),
         3 => (
-            "Necesitas un instalador más reciente",
+            "Necesitas un Setup más reciente",
             "Ya tienes una versión más reciente de Vantare o de tus datos. Descarga el instalador adecuado. Tus datos se conservan.",
         ),
         4 => (
@@ -94,7 +94,7 @@ pub fn error_text(code: u8) -> (&'static str, &'static str) {
             "Abre Vantare y ciérralo antes de volver a instalar. Hay un arranque pendiente de comprobar. Tus datos se conservan.",
         ),
         _ => (
-            "No se pudo completar la operación",
+            "No se pudo completar",
             "Consulta los detalles y vuelve a intentarlo. Tus datos se conservan.",
         ),
     }

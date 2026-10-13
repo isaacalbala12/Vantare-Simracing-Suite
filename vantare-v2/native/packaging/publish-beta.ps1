@@ -8,7 +8,8 @@ param(
     [Parameter(Mandatory)][string]$SigningKeyFile,
     [string]$NsisCompiler = "${env:ProgramFiles(x86)}\NSIS\makensis.exe",
     [ValidateSet('Debug', 'Release')][string]$BuildProfile = 'Release',
-    [switch]$AllowDirty
+    [switch]$AllowDirty,
+    [switch]$LegacyNsis
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -25,7 +26,8 @@ $AllowDirty = $publishAllowDirty
 $OutputDirectory = $publishOutput
 $null = Read-BetaVersion $Version
 $output = Assert-NativePath $OutputDirectory
-$compiler = Get-Command $NsisCompiler -ErrorAction Stop
+$useLegacyNsis = [bool]$LegacyNsis -or $Version -ceq '0.0.976'
+if ($useLegacyNsis) { $compiler = Get-Command $NsisCompiler -ErrorAction Stop }
 $previousConfig = @{}
 try {
     if ($publishConfigFile) { $previousConfig = Import-NativeBuildConfig $publishConfigFile }
@@ -40,8 +42,14 @@ $verifier = Join-Path $output 'payload/bin/vantare-services.exe'
 $json = Invoke-BetaManifestTool $verifier (ConvertTo-Json $manifest) $SigningKeyFile
 $null = Read-BetaManifest $json $false $verifier
 [IO.File]::WriteAllText((Join-Path $output 'vantare-native-beta.json'), $json, [Text.UTF8Encoding]::new($false))
-& $compiler.Source "/DOUTPUT=$output" "/DBOOTSTRAP=$PSScriptRoot" "/DVERSION=$Version" "/DPACKAGE_SHA=$($artifacts.sha256)" (Join-Path $PSScriptRoot 'beta-installer.nsi')
-if ($LASTEXITCODE) { throw 'Falló NSIS; no hay instalador listo.' }
+if ($useLegacyNsis) {
+    # #1565 conserva su corte 0.0.976; también sirve como rollback explícito.
+    & $compiler.Source "/DOUTPUT=$output" "/DBOOTSTRAP=$PSScriptRoot" "/DVERSION=$Version" "/DPACKAGE_SHA=$($artifacts.sha256)" (Join-Path $PSScriptRoot 'beta-installer.nsi')
+    if ($LASTEXITCODE) { throw 'Falló NSIS; no hay instalador listo.' }
+} else {
+    & (Join-Path $PSScriptRoot 'build-installer.ps1') -Version $Version -OutputDirectory $output -BuildProfile $BuildProfile
+    if (-not $?) { throw 'Falló el instalador propio; no hay Setup listo.' }
+}
 $setup = Join-Path $output 'VantareSetup.exe'
 [IO.File]::WriteAllText("$setup.sha256", "$(Get-NativeHash $setup)  VantareSetup.exe`n")
 # Solo imprime el comando; la publicación pertenece al orquestador.

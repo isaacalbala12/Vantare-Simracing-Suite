@@ -3,7 +3,8 @@
 param(
     [Parameter(Mandatory)][ValidateSet('check', 'clippy', 'test', 'telemetria', 'lifecycle', 'prueba')][string]$Gate,
     [string]$DuckDbDirectory = $env:DUCKDB_LIB_DIR,
-    [string]$BuildConfig
+    [string]$BuildConfig,
+    [string]$TargetDirectory = 'target/gates'
 )
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -25,7 +26,7 @@ try {
     $env:DUCKDB_LIB_DIR = $directory
     $env:PATH = "$directory;$env:PATH"
     # Ruta relativa estable: sccache incluye CARGO_TARGET_DIR en su clave.
-    $env:CARGO_TARGET_DIR = 'target/gates'
+    $env:CARGO_TARGET_DIR = $TargetDirectory
     if ($Gate -eq 'prueba') {
         . (Join-Path $PSScriptRoot 'packaging/build-config.ps1')
         $previousConfig = Import-NativeBuildConfig $BuildConfig
@@ -57,8 +58,8 @@ try {
     & cargo @arguments
     if ($LASTEXITCODE) { throw "Gate $Gate falló (código $LASTEXITCODE)." }
     if ($Gate -eq 'prueba') {
-        Copy-Item -LiteralPath (Join-Path $directory 'duckdb.dll') -Destination 'target/gates/prueba/duckdb.dll' -Force
-        'Binarios públicos de prueba en native/target/gates/prueba; no distribuir ni medir rendimiento con este perfil.'
+        Copy-Item -LiteralPath (Join-Path $directory 'duckdb.dll') -Destination (Join-Path $TargetDirectory 'prueba/duckdb.dll') -Force
+        "Binarios públicos de prueba en $TargetDirectory/prueba; no distribuir ni medir rendimiento con este perfil."
     }
 } finally {
     if ($null -ne $previousConfig) { Restore-NativeBuildConfig $previousConfig }

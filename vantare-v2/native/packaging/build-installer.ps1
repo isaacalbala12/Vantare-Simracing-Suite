@@ -17,27 +17,40 @@ if ($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9
 $output=Assert-NativePath $OutputDirectory
 if ($TestInstaller -and -not $output.StartsWith([IO.Path]::GetFullPath('C:/tmp/ola2/1591-qa/'),[StringComparison]::OrdinalIgnoreCase)) { throw 'Build QA fuera de la raíz aislada.' }
 $archive=Join-Path $output 'vantare-native-amd64-package.zip'
-$checked=Join-Path $output 'installer-checked-payload'
-$package=Expand-NativePackage $archive (Get-NativeHash $archive) $checked 'beta'
-if($package.version -cne $Version){throw 'La versión del ZIP no coincide con el Setup.'}
-if((Get-NativeHash (Join-Path $checked 'candidate.ps1')) -cne (Get-NativeHash (Join-Path $PSScriptRoot 'candidate.ps1'))){throw 'El bootstrap del ZIP y el del Setup deben ser idénticos.'}
+$checked=Join-Path $output ('.installer-check-'+[guid]::NewGuid().ToString('N'))
+try {
+    $package=Expand-NativePackage $archive (Get-NativeHash $archive) $checked 'beta'
+    if($package.version -cne $Version){throw 'La versión del ZIP no coincide con el Setup.'}
+    if((Get-NativeHash (Join-Path $checked 'candidate.ps1')) -cne (Get-NativeHash (Join-Path $PSScriptRoot 'candidate.ps1'))){throw 'El bootstrap del ZIP y el del Setup deben ser idénticos.'}
+} finally {
+    $checked=[IO.Path]::GetFullPath($checked)
+    if(-not $checked.StartsWith($output+[IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or [IO.Path]::GetFileName($checked) -cnotmatch '^\.installer-check-[a-f0-9]{32}$'){throw 'Temporal del builder fuera de su raíz.'}
+    if(Test-Path -LiteralPath $checked){Assert-NativeTree $checked;Remove-Item -LiteralPath $checked -Recurse -Force}
+}
 if ($null -ne (Get-Item -LiteralPath (Join-Path $output 'VantareSetup.exe') -ErrorAction SilentlyContinue)) { throw 'No sobrescribir un Setup existente.' }
 $native=Split-Path $PSScriptRoot
 $saved=@{}
-$names=@('VANTARE_VERSION','VANTARE_INSTALLER_ARCHIVE','VANTARE_INSTALLER_UNINSTALLER','VANTARE_INSTALLER_SHA256','CARGO_TARGET_DIR')
+$names=@('VANTARE_VERSION','VANTARE_INSTALLER_ARCHIVE','VANTARE_INSTALLER_UNINSTALLER','VANTARE_INSTALLER_SHA256','VANTARE_INSTALLER_QA_OWNER_SID','CARGO_ENCODED_RUSTFLAGS','CARGO_TARGET_DIR')
 foreach($name in $names){$saved[$name]=[Environment]::GetEnvironmentVariable($name,'Process')}
 Push-Location $native
 try {
     if(-not $env:CARGO_TARGET_DIR){$env:CARGO_TARGET_DIR=Join-Path $output 'target-installer'}
     $env:VANTARE_VERSION=$Version
+    # Setup debe abrirse antes de instalar el payload, también sin VC Redist.
+    # CRT estático del toolchain ya existente; no redistribuye otra dependencia.
+    $staticFlags='-C'+[char]31+'target-feature=+crt-static'
+    if($env:CARGO_ENCODED_RUSTFLAGS){$env:CARGO_ENCODED_RUSTFLAGS+=[char]31+$staticFlags}
+    else{$env:CARGO_ENCODED_RUSTFLAGS=$staticFlags}
+    if($TestInstaller){$env:VANTARE_INSTALLER_QA_OWNER_SID=[Security.Principal.WindowsIdentity]::GetCurrent().User.Value}
+    else{Remove-Item Env:VANTARE_INSTALLER_QA_OWNER_SID -ErrorAction SilentlyContinue}
     $features=if($TestInstaller){'test-installer'}else{''}
-    $base=@('build','-p','vantare-installer','--locked','--offline','-j','2')
+    $base=@('build','-p','vantare-installer','--target','x86_64-pc-windows-msvc','--locked','--offline','-j','2')
     if($BuildProfile -ceq 'Release'){$base+='--release'}
     $uninstallArgs=$base+@('--bin','vantare-uninstall')
     if($features){$uninstallArgs+=@('--features',$features)}
     & cargo @uninstallArgs
     if($LASTEXITCODE){throw 'Falló build del desinstalador.'}
-    $target=[IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)
+    $target=Join-Path ([IO.Path]::GetFullPath($env:CARGO_TARGET_DIR)) 'x86_64-pc-windows-msvc'
     $uninstaller=Join-Path $output 'Uninstall.exe'
     Copy-Item -LiteralPath (Join-Path $target ($BuildProfile.ToLowerInvariant()+'/vantare-uninstall.exe')) -Destination $uninstaller
     Assert-NativePe $uninstaller

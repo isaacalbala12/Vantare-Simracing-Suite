@@ -75,7 +75,7 @@ fn choice(
             .track_focus(focus)
             .focusable()
             .hover(|s| s.border_color(rgba(0xffff_ff24)))
-            .focus_visible(|s| s.border_2().border_color(rgb(style::RED)))
+            .focus_visible(|s| s.shadow(style::focus_ring(0x0c_0c0d)))
             .on_click(cx.listener(move |view, _, window, cx| view.action(action, window, cx)))
             .on_key_down(
                 cx.listener(move |view, event: &gpui::KeyDownEvent, window, cx| {
@@ -133,14 +133,17 @@ fn choice(
         previous.into()
     };
     let width = style::text_width(&value, "Space Mono", 11., window);
-    row = row.child(style::mono(
-        383. - width,
-        21.,
-        width,
-        18.,
-        value,
-        11.,
-        if selected { style::MUTED } else { style::FAINT },
-    ));
+    row = row.child(
+        style::mono(
+            383. - width,
+            21.,
+            width,
+            18.,
+            value,
+            11.,
+            if selected { style::MUTED } else { style::FAINT },
+        )
+        .whitespace_nowrap(),
+    );
     row
 }

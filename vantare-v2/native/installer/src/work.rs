@@ -56,15 +56,35 @@ impl Drop for Work {
 }
 
 pub fn open(root: PathBuf) -> Result<(), String> {
-    if crate::QA {
-        return Err(
-            "Abrir el Hub QA requiere la cuenta/VM de pruebas; usa su bootstrap allí.".into(),
-        );
-    }
     let windows = std::env::var_os("WINDIR").ok_or("Windows no está disponible")?;
-    let mut command = std::process::Command::new(
-        PathBuf::from(windows).join("System32/WindowsPowerShell/v1.0/powershell.exe"),
-    );
+    let host = PathBuf::from(windows).join("System32/WindowsPowerShell/v1.0/powershell.exe");
+    if crate::QA {
+        let owner = env!("VANTARE_INSTALLER_QA_OWNER_SID");
+        let mut probe = std::process::Command::new(&host);
+        probe.args([
+            "-NoProfile",
+            "-Command",
+            "[Security.Principal.WindowsIdentity]::GetCurrent().User.Value",
+        ]);
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            probe.creation_flags(0x0800_0000);
+        }
+        let output = probe.output().map_err(|e| e.to_string())?;
+        let current = String::from_utf8_lossy(&output.stdout);
+        if owner.is_empty()
+            || !output.status.success()
+            || !current.trim().starts_with("S-1-")
+            || current.trim() == owner
+        {
+            return Err(
+                "Abrir el Hub QA requiere una cuenta/VM con SID distinto al de origen del paquete."
+                    .into(),
+            );
+        }
+    }
+    let mut command = std::process::Command::new(host);
     command
         .args([
             "-NoProfile",

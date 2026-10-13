@@ -640,6 +640,7 @@ impl Installer {
             }
             "installing" => {
                 self.percent = 40;
+                self.can_cancel = true;
                 self.copied_bytes = self.info.size;
                 self.step = "verify".into();
                 Screen::Installing

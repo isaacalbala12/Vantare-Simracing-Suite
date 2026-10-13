@@ -54,42 +54,21 @@ pub fn button(
         } else {
             8.
         }));
-    item = match kind {
-        Kind::Primary => item
-            .bg(style::red_gradient())
-            .border_1()
-            .border_color(rgba(0xffff_ff1a))
-            .hover(|s| s.border_color(rgba(0xff3b_3b73)))
-            .active(|s| s.opacity(0.86)),
-        Kind::Ghost => item
-            .border_1()
-            .border_color(rgba(0xffff_ff24))
-            .hover(|s| s.bg(rgba(0xffff_ff0d)).border_color(rgba(0xffff_ff38)))
-            .active(|s| s.bg(rgba(0xffff_ff17))),
-        Kind::Danger => item
-            .bg(rgb(0xc1_121f))
-            .border_1()
-            .border_color(rgba(0xffff_ff1a))
-            .hover(|s| s.bg(rgb(0xd8_141f)))
-            .active(|s| s.bg(rgb(0x9b_2226))),
-        Kind::Link => item
-            .text_color(rgba(style::MUTED))
-            .hover(|s| s.text_color(rgb(style::TEXT))),
-        Kind::Window => item.text_color(rgba(style::FAINT)).hover(move |s| {
-            s.bg(if action == Action::Close {
-                rgb(0xc4_2b1c)
-            } else {
-                rgba(0xffff_ff0f)
-            })
-            .text_color(rgb(style::TEXT))
-        }),
-    };
+    item = appearance(item, kind, action);
     if enabled {
         item = item
             .cursor_pointer()
             .track_focus(focus)
             .focusable()
-            .focus_visible(|s| s.border_2().border_color(rgb(style::RED)))
+            .focus_visible(move |s| {
+                s.shadow(style::focus_ring(if action == Action::Change {
+                    0x14_1415
+                } else if matches!(kind, Kind::Window) {
+                    0x0c_0c0d
+                } else {
+                    0x0f_0f10
+                }))
+            })
             .on_click(cx.listener(move |view, _, window, cx| view.action(action, window, cx)))
             .on_key_down(
                 cx.listener(move |view, event: &gpui::KeyDownEvent, window, cx| {
@@ -148,7 +127,7 @@ pub fn toggle(
         .track_focus(focus)
         .focusable()
         .hover(move |s| s.bg(rgb(if on { 0xd8_141f } else { 0x35_3538 })))
-        .focus_visible(|s| s.border_2().border_color(rgb(style::RED)))
+        .focus_visible(|s| s.shadow(style::focus_ring(0x14_1415)))
         .on_click(cx.listener(move |view, _, window, cx| view.action(action, window, cx)))
         .on_key_down(
             cx.listener(move |view, event: &gpui::KeyDownEvent, window, cx| {
@@ -167,4 +146,62 @@ pub fn toggle(
             rgb(if on { 0xff_ffff } else { 0x8a_8a8a }).into(),
         ))
         .into_any_element()
+}
+
+fn appearance(
+    item: gpui::Stateful<gpui::Div>,
+    kind: Kind,
+    action: Action,
+) -> gpui::Stateful<gpui::Div> {
+    match kind {
+        Kind::Primary => item
+            .text_color(rgb(0xff_ffff))
+            .bg(style::red_gradient())
+            .border_1()
+            .border_color(rgba(0xffff_ff1a))
+            .hover(|s| {
+                s.shadow(vec![
+                    gpui::BoxShadow::new(px(0.), px(0.), rgba(0xff3b_3b73).into())
+                        .spread_radius(px(1.)),
+                    gpui::BoxShadow::new(px(0.), px(6.), rgba(0xc112_1f66).into())
+                        .blur_radius(px(22.)),
+                ])
+            })
+            .active(|s| {
+                s.bg(gpui::linear_gradient(
+                    135.,
+                    gpui::linear_color_stop(rgb(0xdb_3232), 0.),
+                    gpui::linear_color_stop(rgb(0x84_0505), 1.),
+                ))
+                .text_color(rgb(0xdb_dbdb))
+                .shadow(Vec::new())
+            }),
+        Kind::Ghost => item
+            .border_1()
+            .border_color(rgba(0xffff_ff24))
+            .hover(|s| s.bg(rgba(0xffff_ff0d)).border_color(rgba(0xffff_ff38)))
+            .active(|s| s.bg(rgba(0xffff_ff17))),
+        Kind::Danger => item
+            .text_color(rgb(0xff_ffff))
+            .bg(rgb(0xc1_121f))
+            .border_1()
+            .border_color(rgba(0xffff_ff1a))
+            .hover(|s| s.bg(rgb(0xd8_141f)))
+            .active(|s| s.bg(rgb(0x9b_2226))),
+        Kind::Link => item.text_color(rgba(style::MUTED)).hover(move |s| {
+            s.text_color(rgb(if action == Action::Remove {
+                style::RED
+            } else {
+                style::TEXT
+            }))
+        }),
+        Kind::Window => item.text_color(rgba(style::FAINT)).hover(move |s| {
+            s.bg(if action == Action::Close {
+                rgb(0xc4_2b1c)
+            } else {
+                rgba(0xffff_ff0f)
+            })
+            .text_color(rgb(style::TEXT))
+        }),
+    }
 }

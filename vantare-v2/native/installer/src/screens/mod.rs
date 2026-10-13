@@ -26,7 +26,7 @@ fn card(x: f32, y: f32, w: f32, h: f32) -> Div {
         .rounded(px(10.))
 }
 fn heading(value: impl Into<gpui::SharedString>) -> Div {
-    style::display(280., 96., 398., 62., value, 28., 0xf5f5_f5ff)
+    style::display(280., 96., 398., 62., value, 28., 0xf5f5_f5ff).text_ellipsis()
 }
 fn lead(value: impl Into<gpui::SharedString>, window: &Window) -> Div {
     // GPUI's approximate wrapper can break earlier than the full shaped line.

@@ -35,7 +35,18 @@ fuentes del HTML convertidas sin dependencias nuevas. Capturas nativas iniciales
 de seis pantallas más opciones/desinstalado a 720x460, DPI 96, revisadas en
 `C:/tmp/ola2/1591-qa/visual/gpui-h3/`; todavía usan un snapshot fixture 0.0.0.
 Clippy UI y contratos Rust se registran con el SHA del hito en la issue.
-**Siguiente paso #1591: H4/H5 paquetes reales, QA/gates y comparativa final; sin subagentes.**
+H4: publisher construye Setup propio con CRT estático y firma de feed intacta;
+0.0.976/`-LegacyNsis` conserva NSIS. Scripts de QA headless/interacción añadidos.
+Paquetes reales 0.0.977/0.0.978; bootstrap refrescado conservando hashes de todos
+los EXE de aplicación (QA-PROVENANCE.json). Regresión del fallback PowerShell
+corregida: Beta 99 PASS, packaging 175 PASS, matriz propia 68 PASS, interacción
+real 22 PASS, feed remoto simulado 9 PASS, shell 23 y uninstall 2 PASS.
+Gates generales: check/Clippy PASS; Nextest 1630/1630 (7 skips), lifecycle 18/18.
+Target de gates propio trasladado a E por disco lleno en C; parámetro de ruta
+sin cambiar expectativas. Fallos previos y mapa de evidencia archivada conservados.
+**Siguiente paso #1591: H5 capturas finales/NSIS→propio y cierre draft; sin subagentes.**
+VM/cuenta con otro SID, arranque live, Windows limpio y DPI físicos siguen
+pendientes de entorno; no se infieren de las capturas ni de los tests headless.
 Push/PR draft a nightly y enlace T3 autorizados al finalizar; no integración antes de review independiente.
 QA futura bajo `C:/tmp/ola2/1591-qa`; arranque live solo en cuenta/VM de prueba por el SID/instancia compartida, capturas con pantalla libre y mutex.
 

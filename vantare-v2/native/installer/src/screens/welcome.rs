@@ -10,10 +10,15 @@ pub(super) fn render(view: &Installer, window: &Window, cx: &mut Context<Install
         "Overlays, launcher y perfiles en una sola app. Tarda alrededor de un minuto.",
         window,
     ));
-    options(content, view, cx)
+    options(content, view, window, cx)
 }
 
-fn options(mut content: Div, view: &Installer, cx: &mut Context<Installer>) -> Div {
+fn options(
+    mut content: Div,
+    view: &Installer,
+    window: &Window,
+    cx: &mut Context<Installer>,
+) -> Div {
     if view.options {
         content = content.child(card(280., 199., 398., 134.));
         for y in [243., 287.] {
@@ -103,12 +108,14 @@ fn options(mut content: Div, view: &Installer, cx: &mut Context<Installer>) -> D
                 cx,
             ));
     } else {
-        content = destination(content, view);
+        content = destination(content, view, window);
     }
     content
 }
 
-fn destination(mut content: Div, view: &Installer) -> Div {
+fn destination(mut content: Div, view: &Installer, window: &Window) -> Div {
+    let size = format!("{} MB", view.info.size.div_ceil(1_048_576));
+    let size_width = style::text_width(&size, "Space Mono", 11., window);
     content = content.child(
         card(280., 199., 398., 60.)
             .child(style::body(
@@ -124,7 +131,7 @@ fn destination(mut content: Div, view: &Installer) -> Div {
                 style::mono(
                     14.,
                     29.,
-                    275.,
+                    356. - size_width,
                     18.,
                     view.info.root.display().to_string(),
                     11.,
@@ -134,11 +141,11 @@ fn destination(mut content: Div, view: &Installer) -> Div {
             )
             .child(
                 style::mono(
-                    310.,
+                    382. - size_width,
                     22.,
-                    72.,
+                    size_width,
                     18.,
-                    format!("{} MB", view.info.size.div_ceil(1_048_576)),
+                    size,
                     11.,
                     style::FAINT,
                 )

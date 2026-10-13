@@ -4,6 +4,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("cargo:rerun-if-env-changed=VANTARE_VERSION");
     let version = env::var("VANTARE_VERSION").unwrap_or_else(|_| "0.0.0".into());
     println!("cargo:rustc-env=VANTARE_INSTALLER_VERSION={version}");
+    println!("cargo:rerun-if-env-changed=VANTARE_INSTALLER_QA_OWNER_SID");
+    let sid = env::var("VANTARE_INSTALLER_QA_OWNER_SID").unwrap_or_default();
+    if !sid.is_empty()
+        && (!sid.starts_with("S-1-")
+            || !sid
+                .bytes()
+                .all(|b| b == b'S' || b == b'-' || b.is_ascii_digit()))
+    {
+        return Err("SID de origen QA inválido".into());
+    }
+    println!("cargo:rustc-env=VANTARE_INSTALLER_QA_OWNER_SID={sid}");
     vantare_build_support::embed_installer(&version)?;
     let out = PathBuf::from(env::var_os("OUT_DIR").ok_or("OUT_DIR ausente")?);
     let mut source = String::from(

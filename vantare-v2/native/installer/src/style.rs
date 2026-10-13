@@ -81,6 +81,12 @@ pub fn red_gradient() -> Background {
         linear_color_stop(rgb(0x9a_0606), 1.),
     )
 }
+pub fn focus_ring(background: u32) -> Vec<gpui::BoxShadow> {
+    vec![
+        gpui::BoxShadow::new(px(0.), px(0.), rgb(background).into()).spread_radius(px(2.)),
+        gpui::BoxShadow::new(px(0.), px(0.), rgb(RED).into()).spread_radius(px(4.)),
+    ]
+}
 pub fn fonts(cx: &App) -> Result<(), String> {
     cx.text_system()
         .add_fonts(vec![

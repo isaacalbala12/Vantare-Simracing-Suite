@@ -59,17 +59,26 @@ if ($request.operation -ceq 'Probe') {
     [ordered]@{ root=$root; version=$request.version; installed_version=$current; data_path=$data; desktop=$desktop; autostart=$autostart; size=$request.size; reduced_motion=($null -ne $motion -and $motion.MinAnimate -ceq '0') } | ConvertTo-Json -Compress
     exit 0
 }
-function Send-InstallerProgress([string]$Step, [int]$Percent, [long]$Done=0, [long]$Total=0) {
-    [Console]::WriteLine(([ordered]@{step=$Step; percent=$Percent; done=$Done; total=$Total; can_cancel=$false} | ConvertTo-Json -Compress))
+function Send-InstallerProgress([string]$Step, [int]$Percent, [long]$Done=0, [long]$Total=0,[bool]$CanCancel=$false) {
+    [Console]::WriteLine(([ordered]@{step=$Step; percent=$Percent; done=$Done; total=$Total; can_cancel=$CanCancel} | ConvertTo-Json -Compress))
 }
-function Write-NativeProgress([string]$Step,[int]$Percent){Send-InstallerProgress $Step $Percent}
+function Write-NativeProgress([string]$Step,[int]$Percent){
+    if($Step -ceq 'copy'){
+        # Ack del worker antes de escribir el marcador/activar/copiar. Permite
+        # cancelar durante la verificación sin matar el host ni la aplicación.
+        Send-InstallerProgress $Step $Percent 0 0 $true
+        $decision=[Console]::ReadLine()
+        if($decision -cne 'continue'){Throw-BetaInstallError 5 'Instalación cancelada antes de copiar.'}
+    }
+    Send-InstallerProgress $Step $Percent
+}
 try {
-    Send-InstallerProgress 'prepare' 0
+    Send-InstallerProgress 'prepare' 0 0 0 ($request.operation -ceq 'Install')
     switch ($request.operation) {
         'Install' {
             if(Test-Path -LiteralPath (Join-Path $root 'installer-cleanup.json')){Throw-BetaInstallError 2 'Espera a que termine la limpieza del desinstalador anterior.'}
             if ($request.mode -ceq 'repair' -and $current -cne $request.version) { Throw-BetaInstallError 3 'Reparar exige el Setup de la misma versión.' }
-            Send-InstallerProgress 'verify' 40
+            Send-InstallerProgress 'verify' 40 0 0 $true
             Install-Beta $root (Join-Path $PSScriptRoot 'package.zip') $request.packageSha | Out-Null
             Send-InstallerProgress 'shortcuts' 84
             if ($request.qa) { [IO.File]::WriteAllText((Join-Path $root 'registration-identity.txt'), $identity) }

@@ -168,39 +168,49 @@ impl Session {
         Ok(())
     }
 
+    fn extract(
+        &self,
+        request: &Request,
+        cancel: &AtomicBool,
+        progress: &mut impl FnMut(Progress),
+    ) -> Result<u8, String> {
+        if payload::ARCHIVE.is_empty() || payload::UNINSTALLER.is_empty() {
+            return Err("Esta build no contiene el paquete de instalación".into());
+        }
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(self.directory.join("package.zip"))
+            .map_err(|e| e.to_string())?;
+        let mut written = 0_u64;
+        for block in payload::ARCHIVE.chunks(65536) {
+            if cancel.load(Ordering::Acquire) {
+                return Ok(5);
+            }
+            file.write_all(block).map_err(|e| e.to_string())?;
+            written += block.len() as u64;
+            progress(Progress {
+                step: "extract".into(),
+                percent: 6 + u8::try_from(written * 34 / request.size.max(1))
+                    .map_err(|e| e.to_string())?,
+                done: written,
+                total: request.size,
+                can_cancel: true,
+            });
+        }
+        file.sync_all().map_err(|e| e.to_string())?;
+        self.write("Uninstall.exe", payload::UNINSTALLER)?;
+        Ok(0)
+    }
+
     pub fn run(
         &self,
         request: &Request,
         cancel: &AtomicBool,
         mut progress: impl FnMut(Progress),
     ) -> Result<u8, String> {
-        if request.operation == "Install" {
-            if payload::ARCHIVE.is_empty() || payload::UNINSTALLER.is_empty() {
-                return Err("Esta build no contiene el paquete de instalación".into());
-            }
-            let mut file = fs::OpenOptions::new()
-                .write(true)
-                .create_new(true)
-                .open(self.directory.join("package.zip"))
-                .map_err(|e| e.to_string())?;
-            let mut written = 0_u64;
-            for block in payload::ARCHIVE.chunks(65536) {
-                if cancel.load(Ordering::Acquire) {
-                    return Ok(5);
-                }
-                file.write_all(block).map_err(|e| e.to_string())?;
-                written += block.len() as u64;
-                progress(Progress {
-                    step: "extract".into(),
-                    percent: 6 + u8::try_from(written * 34 / request.size.max(1))
-                        .map_err(|e| e.to_string())?,
-                    done: written,
-                    total: request.size,
-                    can_cancel: true,
-                });
-            }
-            file.sync_all().map_err(|e| e.to_string())?;
-            self.write("Uninstall.exe", payload::UNINSTALLER)?;
+        if request.operation == "Install" && self.extract(request, cancel, &mut progress)? == 5 {
+            return Ok(5);
         }
         if cancel.load(Ordering::Acquire) {
             return Ok(5);
@@ -217,11 +227,13 @@ impl Session {
             .map_err(|e| e.to_string())?;
         let mut child = self
             .command(&self.directory.join("request.json"))?
+            .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::from(stderr))
             .spawn()
             .map_err(|e| e.to_string())?;
         let stdout = child.stdout.take().ok_or("Falta salida del host")?;
+        let mut input = child.stdin.take().ok_or("Falta entrada del host")?;
         let mut reader = BufReader::new(stdout);
         let mut bytes = Vec::new();
         let mut protocol_error = false;
@@ -241,6 +253,20 @@ impl Session {
             }
             if let Ok(event) = serde_json::from_slice::<Progress>(&bytes) {
                 if event.percent <= 100 && event.done <= event.total {
+                    if event.step == "copy" && event.can_cancel {
+                        let decision = if cancel.load(Ordering::Acquire) {
+                            b"cancel\n".as_slice()
+                        } else {
+                            b"continue\n".as_slice()
+                        };
+                        if input
+                            .write_all(decision)
+                            .and_then(|()| input.flush())
+                            .is_err()
+                        {
+                            protocol_error = true;
+                        }
+                    }
                     progress(event);
                 } else {
                     protocol_error = true;
@@ -249,6 +275,7 @@ impl Session {
                 protocol_error = true;
             }
         }
+        drop(input);
         let status = child.wait().map_err(|e| e.to_string())?;
         let code = status
             .code()

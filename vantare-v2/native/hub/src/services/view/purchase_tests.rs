@@ -64,7 +64,11 @@ fn participation_is_cleared_on_logout_and_delayed_reply_cannot_restore_private_d
         crate::quit_headless_test(cx);
     });
 }
-fn fixture(cx: &mut Context<Remote>, send: SyncSender<Command>, data: &std::path::Path) -> Remote {
+pub(super) fn fixture(
+    cx: &mut Context<Remote>,
+    send: SyncSender<Command>,
+    data: &std::path::Path,
+) -> Remote {
     let recovery = crate::testing::recovery::Recovery::load(data);
     let editor = crate::testing::Editor::new(crate::testing::empty_fields(), cx);
     let mut remote = Remote {
@@ -100,6 +104,7 @@ fn fixture(cx: &mut Context<Remote>, send: SyncSender<Command>, data: &std::path
         publication: None,
         roadmap_message: "No hay una publicación válida guardada".into(),
         roadmap_requested: false,
+        roadmap_polled_at: None,
         manual_roadmap: crate::roadmap::State::load(),
         stale: true,
     };

@@ -99,9 +99,9 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   evidencia y el handoff; el reporte del worker no basta por si solo.
 - El alcance y las dependencias de código viven en la issue de GitHub;
   Plane refleja el encargo y sus estados según la sección «Issues».
-  ClickUp (Vantare / Desarrollo) es la única fuente del roadmap público.
-  La Action sincroniza `visual_roadmap` en Supabase; Hub, web y
-  digest leen la RPC pública sin credenciales ClickUp. Funciona con GitHub privado. Consulta
+  Plane (proyecto Vantare) es la única fuente del roadmap público (#1601).
+  El publicador del servidor sincroniza `visual_roadmap` en Supabase; Hub, web y
+  digest leen la RPC pública sin credenciales Plane. Funciona con GitHub privado. Consulta
   `docs/roadmap-maintenance.md`. No hay editor en la app ni requisito de
   modificar el roadmap en cada PR. `docs/roadmap/plan.md` y
   `.github/scripts/roadmap_digest.py` fueron retirados de nightly; no se recrean.

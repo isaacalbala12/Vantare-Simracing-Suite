@@ -3,6 +3,62 @@
 Estado de la base indicada; releer la issue antes de ejecutar.
 [Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/platform-commercial.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 
+## #1601 / VANTA-10 · Plane, fase de implementación (13/10/2026)
+
+OK de Isaac/orquestador al plan `C:/tmp/ola2/plan-1601.md`: Plane → Supabase
+cada 5 min, tres columnas; archivos antiguos retirados, JSON manual del Hub inerte.
+Rama propia `vantareapp/isa-1601-roadmap-plane`, base inicial nightly `298abc33`, actualizada con #1599 (`bc89c8b8`).
+Implementación inicial `076531ab`; merge documental `162ba486` preservando
+reglas de orquestador/estados y autoridad del roadmap Plane. Corte de código `7edf33e6`; SHA final/CI en el PR
+[#1603](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1603) a nightly.
+Issue [#1601](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1601),
+`area:plataforma`, añadida al GitHub Project Vantare; sin versión comprometida.
+
+Implementación local: API v1 CE con páginas completas y memberships, filtro
+Infraestructura/Negocio/canceladas, nombres literales, IDs estables y límites
+40 tareas/40 KB sin truncar. Mismo documento/rol/RPC v2/v1; sin cambio de esquema.
+Hub carga caché y refresca cada 300 s usando el heartbeat y worker IPC existentes;
+acciones explícitas conservan prioridad. Tres columnas con later legado en Planeado.
+Web preparada aquí; no se edita otro repo. Action/scripts ClickUp retirados localmente.
+
+RED: test de tres columnas perdía later; los cinco tests web fallaban sin polling.
+GREEN final: 18 Python, 6 web, 8 Hub + 6 services roadmap; 57 digest, 45 canal
+y 26 release-notes; fragmento ISA-1601 validado; script Plane 9 tests PASS.
+fmt/Clippy PASS; Nextest completo final 1646 PASS/7 skips; lifecycle 18 PASS;
+telemetría 25 PASS (ACC 832 s). Regresión de reintento de caché RED→GREEN.
+La repetición de Nextest chocó con el .exe de telemetría abierto; tras terminar
+ACC se repitió en serie y pasó. Evidencia `C:/tmp/ola2/1601-*.log`.
+SQL PostgreSQL 18.6 local desechable PASS: idempotencia, cambio único, lectura
+v1/v2, vaciado/retirada rechazados. Unidades systemd verificadas en copia temporal
+con ExecStart=/bin/true; no prueba despliegue. Quality 456 huellas PASS.
+Runbook: [plane-roadmap-runbook.md](../../plane-roadmap-runbook.md).
+Credenciales/token/roadmap.env, despliegue, timer y primera escritura NO autorizados
+ni ejecutados. Cantidad/tamaño del tablero real pendientes de lectura autorizada;
+exceso exige parar y preguntar. Cambio de IDs puede exigir aprobación exacta SQL.
+Entrega: PR #1603 (`Closes #1601`), auto-merge desactivado por Isaac tras la
+revisión independiente; no reactivarlo. CI remota del nuevo SHA pendiente.
+VANTA-10 pasa a Por revisar con el
+enlace del PR y FIN en buzón. No se afirma merge ni publicación. El orquestador revisa y gestiona #1582, sustituido por
+este publicador. QA GUI y tablero real pendientes: las pruebas son locales con
+fixtures/corpus; no hay publicación real, deploy ni release.
+
+Corrección de revisión #1603: revisión Sol leída completa y tres regresiones
+RED antes del arreglo. Privacidad: 10 subcasos fallaban; ahora exige recuento
+`total_issues` entero y coherente en cada module, rechaza privados vacíos
+incluso con cero declarado y conserva JSON/SQL anteriores al abortar.
+Paginación: 8 subcasos aceptaban respuestas dudosas; ahora rechaza listas
+desnudas y metadatos ausentes. Web: `pagehide` con `persisted=true` conserva
+controlador/timer; test de dos restauraciones, sin intervalos duplicados,
+y cierre definitivo que cancela y retira el listener.
+GREEN de esta ronda: 21 Python, 7 web, check/Clippy/fmt, Nextest 1646 PASS
+con 7 skips, lifecycle 18 PASS; SQL local, quality 456 huellas, canal 45,
+release-notes 26, digest 57 y bash -n PASS. Telemetría no repetida: no se
+tocan runtime/domain/ipc/testdata; los 25 PASS anteriores siguen siendo
+evidencia de la implementación inicial. Bfcache probado con eventos simulados;
+QA web real pendiente. Logs `C:/tmp/ola2/1603-*.log`, tabla RED→GREEN en
+`C:/tmp/ola2/fix-1603-results.md`; SHA del push en issue/PR/buzón.
+El runbook documenta estas guardas. Sin nuevas acciones de producción.
+
 ## 1. Resultado
 
 Servicios remotos de cuenta/licencia, Billing, calendario, reportes y distribución; Hub presenta su estado. La existencia del cliente/backend no certifica apertura comercial, producción ni release.
@@ -30,7 +86,7 @@ issue y `C:/tmp/buzon/1565.md`. Sin release, firma ni cambio de visibilidad.
 
 ## 4. Decisiones cerradas
 
-- ClickUp es la unica fuente del roadmap, publicado en Supabase con lectura anon y compatibilidad v1/v2; no depende del repositorio publico. Clerk identifica; Polar cobra; Supabase conserva UUID interno/datos. No atribuir compras por email, metadata editable o `sub` aislado; identidad ambigua se rechaza/cuarentena.
+- Plane es la única fuente del roadmap desde #1601, publicado en Supabase con lectura anon y compatibilidad v1/v2; no depende del repositorio publico. Clerk identifica; Polar cobra; Supabase conserva UUID interno/datos. No atribuir compras por email, metadata editable o `sub` aislado; identidad ambigua se rechaza/cuarentena.
 - DTO de fotos v10, servicios v6 y control/derechos v4 son contratos independientes en esta base.
 - Account conserva recuperación aun con herramientas denegadas; negar derechos no inventa un login ni un pago.
 - Venta pública exige matriz monetaria/reconciliación y autorización. Implementado, integrado, publicado y validado en producción son estados distintos.

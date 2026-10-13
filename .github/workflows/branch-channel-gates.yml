@@ -48,6 +48,11 @@ jobs:
       - name: Test branch topology policy
         run: python .github/scripts/test_validate_branch_channels.py
 
+      - name: Test public roadmap contracts offline
+        run: |
+          python -B -m unittest discover -s vantare-v2/scripts -p 'test*roadmap*.py'
+          node --test vantare-v2/scripts/test_roadmap_web.mjs
+
       - name: Test Testing Center deterministic diff gate
         run: python .github/scripts/test_testing_center_diff_gate.py
 

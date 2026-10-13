@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1601",
+  "type": "change",
+  "summary": "El roadmap muestra Planeado, En marcha y Hecho y consulta actualizaciones automáticamente cada cinco minutos.",
+  "technicalNotes": [
+    "Publicador de Plane preparado para la misma fuente pública de Supabase; excluye Infraestructura, Negocio y canceladas y conserva los títulos literales.",
+    "El Hub conserva su caché ante fallos y comparte el worker IPC existente. El lector web queda preparado para integrar en su propio repositorio."
+  ],
+  "testing": [
+    "Comprobar las tres columnas, la actualización periódica y la conservación de la última publicación al perder conexión.",
+    "Fixtures y pruebas locales cubren estados, modules, paginación, límites, nombres y datos comunes de app/web."
+  ],
+  "knownLimitations": [
+    "Credenciales, despliegue, timer y primera publicación en producción están pendientes de autorización. La lectura del tablero real aún no se ha validado.",
+    "Máximo 40 tareas y 40.000 bytes; si no cabe, se conserva la publicación anterior y se pide una decisión."
+  ]
+}

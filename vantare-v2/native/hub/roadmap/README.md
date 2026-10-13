@@ -1,6 +1,6 @@
 # Roadmap manual del Hub (#1470)
 
-Referencia histórica inerte; no editar como fuente pública. ClickUp es la única fuente (#1535). Antes, Isaac editaba `roadmap.json`. Se incorpora al compilar el Hub; reiniciar una build
+Referencia histórica inerte; no editar como fuente pública. Plane es la única fuente (#1601), vía la RPC pública de Supabase. Lo siguiente describe el lector manual retirado. Antes, Isaac editaba `roadmap.json`. Se incorporaba al compilar el Hub; reiniciar una build
 antigua no cambia sus datos. La fuente no requiere servicios ni red; la pantalla
 está disponible para todos los usuarios del Hub, sin rol tester ni módulo
 comprado adicional. Conserva el login y la política de acceso existentes.

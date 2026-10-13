@@ -14,6 +14,18 @@ class Element {
   setAttribute(name, value) { this[name] = value; }
 }
 const timers = new Map();
+const listeners = new Map();
+globalThis.addEventListener = (type, callback, options = {}) => {
+  if (!listeners.has(type)) listeners.set(type, new Map());
+  listeners.get(type).set(callback, options);
+};
+globalThis.removeEventListener = (type, callback) => listeners.get(type)?.delete(callback);
+const dispatch = event => {
+  for (const [callback, options] of [...(listeners.get(event.type) ?? [])]) {
+    if (options.once) listeners.get(event.type).delete(callback);
+    callback(event);
+  }
+};
 let serial = 0;
 globalThis.setInterval = (callback, milliseconds) => {
   assert.equal(milliseconds, 300000);
@@ -114,6 +126,41 @@ test('remount cancels an old request; late old reply cannot replace new content'
   assert.equal(element.children[0].children[2].children[1].children.length, 2);
   dispose();
   assert.equal(timers.size, 0);
+});
+
+test('bfcache restores polling with one interval and final pagehide still disposes', async () => {
+  const element = new Element();
+  let requests = 0, signal;
+  globalThis.fetch = async (_url, request) => {
+    requests++;
+    signal = request.signal;
+    return response(publication([item(requests === 1 ? 'next' : 'done')]));
+  };
+  const dispose = await mountRoadmap(element, config);
+  try {
+    for (let cycle = 0; cycle < 2; cycle++) {
+      document.hidden = true;
+      dispatch({ type: 'pagehide', persisted: true });
+      assert.equal(signal.aborted, false);
+      await tick();
+      assert.equal(requests, cycle + 1);
+      document.hidden = false;
+      dispatch({ type: 'pageshow', persisted: true });
+      assert.equal(timers.size, 1);
+      await tick();
+      assert.equal(requests, cycle + 2);
+      assert.equal(element.children[0].children[2].children[1].children.length, 2);
+    }
+    dispatch({ type: 'pagehide', persisted: false });
+    assert.equal(signal.aborted, true);
+    assert.equal(timers.size, 0);
+    await tick();
+    assert.equal(requests, 3);
+    assert.equal(listeners.get('pagehide').size, 0);
+  } finally {
+    document.hidden = false;
+    dispose();
+  }
 });
 
 test('invalid documents, limits and configuration fail closed without partial DOM', async () => {

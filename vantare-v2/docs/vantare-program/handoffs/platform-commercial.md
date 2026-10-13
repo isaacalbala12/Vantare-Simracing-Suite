@@ -35,11 +35,29 @@ Runbook: [plane-roadmap-runbook.md](../../plane-roadmap-runbook.md).
 Credenciales/token/roadmap.env, despliegue, timer y primera escritura NO autorizados
 ni ejecutados. Cantidad/tamaño del tablero real pendientes de lectura autorizada;
 exceso exige parar y preguntar. Cambio de IDs puede exigir aprobación exacta SQL.
-Entrega: PR #1603 (`Closes #1601`), auto-merge solicitado por el orquestador;
-CI remota en cola al abrir, no validada aún. VANTA-10 pasa a Por revisar con el
+Entrega: PR #1603 (`Closes #1601`), auto-merge desactivado por Isaac tras la
+revisión independiente; no reactivarlo. CI remota del nuevo SHA pendiente.
+VANTA-10 pasa a Por revisar con el
 enlace del PR y FIN en buzón. No se afirma merge ni publicación. El orquestador revisa y gestiona #1582, sustituido por
 este publicador. QA GUI y tablero real pendientes: las pruebas son locales con
 fixtures/corpus; no hay publicación real, deploy ni release.
+
+Corrección de revisión #1603: revisión Sol leída completa y tres regresiones
+RED antes del arreglo. Privacidad: 10 subcasos fallaban; ahora exige recuento
+`total_issues` entero y coherente en cada module, rechaza privados vacíos
+incluso con cero declarado y conserva JSON/SQL anteriores al abortar.
+Paginación: 8 subcasos aceptaban respuestas dudosas; ahora rechaza listas
+desnudas y metadatos ausentes. Web: `pagehide` con `persisted=true` conserva
+controlador/timer; test de dos restauraciones, sin intervalos duplicados,
+y cierre definitivo que cancela y retira el listener.
+GREEN de esta ronda: 21 Python, 7 web, check/Clippy/fmt, Nextest 1646 PASS
+con 7 skips, lifecycle 18 PASS; SQL local, quality 456 huellas, canal 45,
+release-notes 26, digest 57 y bash -n PASS. Telemetría no repetida: no se
+tocan runtime/domain/ipc/testdata; los 25 PASS anteriores siguen siendo
+evidencia de la implementación inicial. Bfcache probado con eventos simulados;
+QA web real pendiente. Logs `C:/tmp/ola2/1603-*.log`, tabla RED→GREEN en
+`C:/tmp/ola2/fix-1603-results.md`; SHA del push en issue/PR/buzón.
+El runbook documenta estas guardas. Sin nuevas acciones de producción.
 
 ## 1. Resultado
 

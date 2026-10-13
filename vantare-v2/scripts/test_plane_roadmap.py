@@ -1,6 +1,7 @@
 """Offline Plane v1 contract, including complete pages and private-field rejection."""
 import copy
 import json
+import os
 import unittest
 import uuid
 import tempfile
@@ -138,14 +139,18 @@ def page(rows, cursor=None, total=None):
 class FetchTests(unittest.TestCase):
     def api(self):
         data = snapshot()
+        for n, module in [(20, 202), (21, 203)]:
+            data['tasks'].append(dict(data['tasks'][0], id=uid(n), sequence_id=n, modules=[uid(module)]))
+        for module in data['modules']:
+            module['total_issues'] = sum(module['id'] in task['modules'] for task in data['tasks'])
         prefix = 'workspaces/vantare/projects/' + uid(500) + '/'
         responses = {(prefix + 'states/', None): page(data['states']),
                      (prefix + 'modules/', None): page(data['modules']),
-                     (prefix + 'issues/', None): page(data['tasks'][:3], 'next:1', 7),
-                     (prefix + 'issues/', 'next:1'): page(data['tasks'][3:], total=7)}
+                     (prefix + 'issues/', None): page(data['tasks'][:3], 'next:1', 9),
+                     (prefix + 'issues/', 'next:1'): page(data['tasks'][3:], total=9)}
         for module in data['modules']:
             responses[(prefix + 'modules/' + module['id'] + '/module-issues/', None)] = page(
-                data['tasks'] if module['name'] == 'Hub' else [])
+                [task for task in data['tasks'] if module['id'] in task['modules']])
         return prefix, Pages(responses)
 
     def test_fetch_completes_every_page_and_membership(self):
@@ -153,7 +158,71 @@ class FetchTests(unittest.TestCase):
         result = fetch(api, 'vantare', uid(500))
         self.assertEqual(len(document(result)['items']), 6)
         self.assertIn((prefix + 'issues/', {'per_page': 100, 'cursor': 'next:1'}), api.calls)
-        self.assertTrue(all(task['modules'] == [uid(201)] for task in result['tasks']))
+        self.assertTrue(all(task['modules'] == [uid(201)] for task in result['tasks'][:7]))
+
+    def assert_preparation_rejected(self, api):
+        with tempfile.TemporaryDirectory() as temporary:
+            output, sql = Path(temporary) / 'roadmap.json', Path(temporary) / 'publish.sql'
+            output.write_bytes(b'previous publication')
+            sql.write_bytes(b'previous SQL')
+            with patch('sys.argv', ['publisher', '--output', str(output), '--sql-output', str(sql)]), \
+                    patch('publish_plane_roadmap.Plane', return_value=api), \
+                    patch.dict(os.environ, {'PLANE_WORKSPACE': 'vantare', 'PLANE_PROJECT_ID': uid(500)}):
+                with self.assertRaises(SystemExit) as error:
+                    main()
+            self.assertEqual(error.exception.code, 1)
+            self.assertEqual(output.read_bytes(), b'previous publication')
+            self.assertEqual(sql.read_bytes(), b'previous SQL')
+
+    def test_private_membership_uncertainty_preserves_publication_and_sql(self):
+        for private in [202, 203]:
+            for failure in ['empty', 'empty-zero', 'partial', 'missing-count', 'invalid-count']:
+                with self.subTest(private=private, failure=failure):
+                    prefix, api = self.api()
+                    module = api.responses[(prefix + 'modules/', None)]['results'][private - 201]
+                    key = (prefix + 'modules/' + uid(private) + '/module-issues/', None)
+                    # The private task also belongs to Hub: omission would expose its name.
+                    api.responses[(prefix + 'modules/' + uid(201) + '/module-issues/', None)]['results'].append(
+                        api.responses[key]['results'][0])
+                    hub = api.responses[(prefix + 'modules/' + uid(201) + '/module-issues/', None)]
+                    hub['total_results'] = 8
+                    api.responses[(prefix + 'modules/', None)]['results'][0]['total_issues'] = 8
+                    if failure.startswith('empty'):
+                        api.responses[key] = page([])
+                        if failure == 'empty-zero':
+                            module['total_issues'] = 0
+                    elif failure == 'partial':
+                        module['total_issues'] = 2
+                    elif failure == 'missing-count':
+                        del module['total_issues']
+                    else:
+                        module['total_issues'] = True
+                    self.assert_preparation_rejected(api)
+
+    def test_confirmed_private_memberships_are_hidden_even_with_public_module(self):
+        prefix, api = self.api()
+        hub = api.responses[(prefix + 'modules/' + uid(201) + '/module-issues/', None)]
+        for private in [202, 203]:
+            hub['results'].extend(api.responses[(prefix + 'modules/' + uid(private) + '/module-issues/', None)]['results'])
+        hub['total_results'] = 9
+        api.responses[(prefix + 'modules/', None)]['results'][0]['total_issues'] = 9
+        result = document(fetch(api, 'vantare', uid(500)))
+        self.assertEqual(len(result['items']), 6)
+        self.assertEqual({item['id'] for item in result['items']}, {item['id'] for item in document(snapshot())['items']})
+
+    def test_unpaginated_or_missing_metadata_preserves_publication_and_sql(self):
+        for endpoint in ['states/', 'modules/', 'issues/', 'modules/' + uid(201) + '/module-issues/',
+                         'modules/' + uid(202) + '/module-issues/']:
+            for failure in ['bare-list', 'no-total', 'no-next-page', 'no-cursor']:
+                with self.subTest(endpoint=endpoint, failure=failure):
+                    prefix, api = self.api()
+                    key = (prefix + endpoint, None)
+                    if failure == 'bare-list':
+                        api.responses[key] = api.responses[key]['results']
+                    else:
+                        del api.responses[key][{'no-total': 'total_results', 'no-next-page': 'next_page_results',
+                                               'no-cursor': 'next_cursor'}[failure]]
+                    self.assert_preparation_rejected(api)
 
     def test_incomplete_repeated_cursor_duplicate_and_drift_fail_closed(self):
         for failure in ['incomplete', 'loop', 'duplicate', 'membership']:

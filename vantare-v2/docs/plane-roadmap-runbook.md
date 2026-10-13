@@ -91,6 +91,13 @@ sin canceladas ni tareas sin module, seis estados mapeados, títulos literales.
 Comparar con el tablero Plane. Si supera **40 tareas o 40.000 bytes**, o queda
 vacío, **PARAR y preguntar a Isaac**; no truncar ni ampliar contrato/esquema.
 Fallo/paginación incompleta no deben reemplazar la publicación anterior.
+Todas las listas deben traer `results`, `total_results`, `next_page_results` y
+`next_cursor`; una lista desnuda no demuestra una lectura completa. El número
+de pertenencias de cada module debe coincidir con su `total_issues` entero.
+Si falta ese recuento o no cuadra, se aborta antes de preparar JSON/SQL.
+Infraestructura y Negocio vacíos también abortan, incluso con recuento cero:
+Isaac debe verificar esa situación en Plane; no se interpreta como ausencia
+confirmada de tareas privadas ni se quita la guarda para publicar.
 El programa descarta descripciones, comentarios, usuarios y campos privados.
 
 Antes de autorizar la primera escritura, guardar y verificar un respaldo del

@@ -75,20 +75,16 @@ def rows(api, path):
         if cursor is not None:
             query['cursor'] = cursor
         page = api.get(path, **query)
-        if isinstance(page, list):
-            if cursor is not None:
-                raise SyncError('Paginación Plane cambió de formato')
-            batch, more = page, False
-        elif isinstance(page, dict) and isinstance(page.get('results'), list):
+        if isinstance(page, dict) and isinstance(page.get('results'), list):
             batch, more = page['results'], page.get('next_page_results')
             count = page.get('total_results')
-            if type(more) is not bool or type(count) is not int or count < 0:
+            if type(more) is not bool or type(count) is not int or count < 0 or 'next_cursor' not in page:
                 raise SyncError('Paginación Plane incompleta')
             if total is not None and total != count:
                 raise SyncError('Recuento Plane cambió durante lectura')
             total = count
         else:
-            raise SyncError('Respuesta Plane inválida')
+            raise SyncError('Respuesta Plane sin paginación verificable')
         for row in batch:
             key = identifier(row['id'])
             if key in seen:
@@ -116,7 +112,15 @@ def fetch(api, workspace, project):
     by_id = {identifier(task['id']): dict(task, modules=[]) for task in tasks}
     for module in modules:
         module_id = identifier(module['id'])
-        for member in rows(api, prefix + f'modules/{module_id}/module-issues/'):
+        members = rows(api, prefix + f'modules/{module_id}/module-issues/')
+        count = module.get('total_issues')
+        if type(count) is not int or count < 0 or count != len(members):
+            raise SyncError('Recuento de module Plane incompleto; no publicar')
+        # Private classification must be proven before any task can reach SQL.
+        # An empty private module requires manual verification, even if its count is zero.
+        if normalized(module['name']) in EXCLUDED and not members:
+            raise SyncError('Module privado vacío; verificar en Plane antes de publicar')
+        for member in members:
             task = by_id.get(identifier(member['id']))
             if task is None or any(member[key] != task[key] for key in ('name', 'state', 'sequence_id') if key in member):
                 raise SyncError('Tareas/modules cambiaron durante lectura; reintentar')

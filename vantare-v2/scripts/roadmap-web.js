@@ -65,15 +65,17 @@ export async function mountRoadmap(element, { supabaseUrl, anonKey, language = '
   const controller = new AbortController();
   const status = document.createElement('p');
   status.setAttribute('role', 'status');
+  // A bfcache navigation freezes this mount; restoration keeps its existing timer.
+  const onPageHide = event => { if (!event.persisted) dispose(); };
   const dispose = () => {
     disposed = true;
     clearInterval(timer);
     controller.abort();
-    globalThis.removeEventListener?.('pagehide', dispose);
+    globalThis.removeEventListener?.('pagehide', onPageHide);
     if (mounts.get(element) === dispose) mounts.delete(element);
   };
   mounts.set(element, dispose);
-  globalThis.addEventListener?.('pagehide', dispose, { once: true });
+  globalThis.addEventListener?.('pagehide', onPageHide);
   element.textContent = 'Cargando roadmap…';
   let url;
   try {

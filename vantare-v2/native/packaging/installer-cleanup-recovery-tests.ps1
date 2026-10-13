@@ -89,6 +89,37 @@ try {
     if((Test-Path -LiteralPath $exe) -or -not (Test-Path -LiteralPath $marker) -or (Get-NativeHash $marker) -cne $markerHash){throw 'Orphaned marker frontier not reproduced'}
     if((Get-NativeDataIndex $data) -cne $index -or (Get-NativeHash $retained) -cne $retainedHash){throw 'Cleanup frontier changed data'}
     Write-Output "PASS ${Boundary}: EXE absent, exact marker orphaned, exact retained data"
+    # Unsafe lookalikes must not consume metadata or start a new generation.
+    $invalid=@{schema=2;sha256=('0'*64)}
+    Write-BetaJson $marker $invalid;$invalidHash=Get-NativeHash $marker
+    Invoke-PublicSetup 'invalid-marker' -1
+    if((Get-NativeHash $marker) -cne $invalidHash){throw 'Setup consumed invalid cleanup metadata'}
+    [IO.File]::WriteAllBytes($marker,$markerBytes)
+    Write-Output "PASS ${Boundary}: invalid marker is conserved and rejected"
+    $owner=Join-Path $root '.vantare-native';$ownerBytes=[IO.File]::ReadAllBytes($owner)
+    [IO.File]::WriteAllText($owner,'TEST ONLY unrecognized owner')
+    Invoke-PublicSetup 'foreign-root' -1
+    if((Get-NativeHash $marker) -cne $markerHash){throw 'Setup consumed marker from unrecognized root'}
+    [IO.File]::WriteAllBytes($owner,$ownerBytes)
+    Write-Output "PASS ${Boundary}: root ownership guard preserves marker"
+    $identityFile=Join-Path $root 'registration-identity.txt'
+    [IO.File]::WriteAllText($identityFile,'TESTForeignIdentity')
+    Invoke-PublicSetup 'foreign-identity' -1
+    if((Get-NativeHash $marker) -cne $markerHash -or [IO.File]::ReadAllText($identityFile) -cne 'TESTForeignIdentity'){throw 'Setup overwrote foreign identity or marker'}
+    Remove-Item -LiteralPath $identityFile
+    Write-Output "PASS ${Boundary}: foreign identity is conserved and rejected"
+    Copy-Item -LiteralPath (Join-Path $VersionDirectory 'Uninstall.exe') -Destination $exe
+    Invoke-PublicSetup 'pending-exe' 2
+    if((Get-NativeHash $marker) -cne $markerHash -or (Get-NativeHash $exe) -cne (Get-NativeHash (Join-Path $VersionDirectory 'Uninstall.exe'))){throw 'Setup changed pending uninstaller'}
+    Remove-Item -LiteralPath $exe
+    Write-Output "PASS ${Boundary}: pending EXE cannot be reclaimed"
+    New-Item -Path $key -Force|Out-Null
+    Set-ItemProperty -LiteralPath $key -Name InstallLocation -Value $root
+    Invoke-PublicSetup 'registered-root' 2
+    if((Get-NativeHash $marker) -cne $markerHash -or (Get-ItemProperty -LiteralPath $key).InstallLocation -cne $root){throw 'Setup changed registered root'}
+    Remove-Item -LiteralPath $key
+    if((Test-Path -LiteralPath (Join-Path $root 'state.json')) -or (Test-Path -LiteralPath $exe) -or (Get-NativeDataIndex $data) -cne $index -or (Get-NativeHash $retained) -cne $retainedHash){throw 'Guard probes changed orphaned installation or data'}
+    Write-Output "PASS ${Boundary}: registration guard rejects recovery without touching data"
     # The PUBLIC Setup must recover; no manual removal of the orphaned marker.
     Invoke-PublicSetup 'recover'
     $state=Read-NativeState $root

@@ -89,8 +89,17 @@ Ronda 2 sobre `5f53b34c`: revisión confirma P1/P2-2/3/4 y aceptación P2-5,
 pero abre P2-6 (Cleanup retira EXE y deja marker huérfano). Regresión nueva
 `installer-cleanup-recovery-tests.ps1`: handle real FileShare.Read e interrupción
 sincronizada en copia privada del helper; ambos dejan datos exactos y Setup
-público devuelve 2 al reinstalar (RED). Sigue pendiente el arreglo mínimo,
-recuperación pública/guardas de instalación renovada, gates y push; sin live.
+público devuelve 2 al reinstalar (RED, hito `2fe91323`). Arreglo mínimo del
+driver validado localmente: Setup reclama solo marker
+sin EXE/state/registro, con raíz/identidad/metadatos válidos. Ambas variantes
+GREEN (16 checks) restauran GPUI y datos exactos; rechazan raíces/identidades
+ajenas, marker inválido y limpieza pendiente, y conservan instalación renovada
+ante helper antiguo. Gates por cola: fmt/check/Clippy, Nextest 1650/1650 (7
+skips), lifecycle 18/18, matriz 68, shell 23 e integridad 456 PASS. AST 25
+scripts y lock sin dependencias nuevas; EXE Release TEST `review-b-r4` embeben
+los scripts exactos, 2 PE con 0x800/CRT estático, paquete Debug de aplicación
+idéntico. SHA/push final en issue/PR/buzón; sigue draft para revisión, sin live,
+integración, firma ni release.
 
 ### Estado previo de plataforma (su base propia)
 

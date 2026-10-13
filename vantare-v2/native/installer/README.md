@@ -27,6 +27,15 @@ y valida la identidad/hash del uninstaller; Register conserva esa UI. Su
 autoeliminación sucede en un helper temporal acotado que espera al proceso,
 valida hash/raíz y conserva datos y cualquier instalación renovada.
 
+Si Cleanup se interrumpe después de retirar Uninstall.exe y queda su marker,
+el Setup público puede reinstalar sin limpieza manual. Solo retira ese marker
+si faltan EXE/state/registro, reconoce la raíz nativa y valida identidad
+residual y schema/hash/tamaño de los metadatos. Un marker con EXE pendiente o
+instalación renovada sigue bloqueando Setup; el helper antiguo conserva la
+instalación renovada. Los datos conservados se adoptan por el motor habitual.
+`packaging/installer-cleanup-recovery-tests.ps1` cubre handle real del marker,
+interrupción sincronizada, reinstalación pública y estas guardas.
+
 ## Build y QA
 
 Desde native, siempre mediante `C:/tmp/fase2/compilar.ps1`:

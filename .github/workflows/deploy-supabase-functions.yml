@@ -20,6 +20,8 @@ concurrency:
 
 jobs:
   deploy:
+    # #1565: Free privado no tiene approvals de environment; despliegue manual.
+    if: ${{ !github.event.repository.private }}
     name: Guard and deploy approved Functions
     runs-on: windows-latest
     environment: supabase-production

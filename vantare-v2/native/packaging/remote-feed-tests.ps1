@@ -9,9 +9,11 @@ $payload=@{schema=1;product='vantare-native';channel='beta';version='0.1.1';url=
 $signed=Invoke-BetaManifestTool $TestVerifier $payload $SigningKeyFile
 [IO.File]::WriteAllText("$script:feedRoot/valid.json",$signed,[Text.UTF8Encoding]::new($false))
 $script:releases=@()
-foreach($version in @('0.1.1','65535.0.0','99999.0.0','2.0.0')) {
+foreach($version in @('0.1.1','65535.0.0','99999.0.0','2.0.0','3.0.0')) {
  $url="https://github.com/$script:BetaRepository/releases/download/native-beta-v$version/vantare-native-beta.json"
  if($version -eq '2.0.0'){$url='https://example.invalid/asset.json'}
+ # Asset del repo de código antiguo: se ignora aunque la release sea mayor.
+ if($version -eq '3.0.0'){$url=$url.Replace('Vantare-Downloads','Vantare-Simracing-Suite')}
  $script:releases+=@{draft=$false;tag_name="native-beta-v$version";assets=@(@{name='vantare-native-beta.json';size=512;browser_download_url=$url})}
 }
 # Feed simulado desde fichero: solo el transporte es sustituido; firma real.
@@ -19,6 +21,8 @@ $script:networkFailure=$false
 $script:assetNetworkFailure=$false
 function Invoke-RestMethod {
  param($Uri,$Headers,$TimeoutSec)
+ # #1565: el feed solo consulta el repo público de descargas.
+ if($Uri -cne 'https://api.github.com/repos/isaacalbala12/Vantare-Downloads/releases?per_page=100'){throw "Feed fuera de Vantare-Downloads: $Uri"}
  if($script:networkFailure){throw [Net.WebException]::new('Red no disponible (prueba)')}
  $script:releases
 }

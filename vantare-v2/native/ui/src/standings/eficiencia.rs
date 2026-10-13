@@ -100,7 +100,7 @@ impl Visual {
         )
     }
 
-    pub(crate) fn frame_with_motion(
+    pub(crate) fn frame(
         &mut self,
         prefs: Preferences,
         reduced: bool,

@@ -127,7 +127,7 @@ impl Widget {
         replace_if_changed(&mut self.vm, vantare_domain::radar::project(snapshot))
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, _prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         (
             Box::new(move |window, cx| paint(&vm, window, cx)),

@@ -8,7 +8,7 @@
 use crate::app::Wake;
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::text;
-use crate::standings::{Accent, Look};
+use crate::look::{Accent, Tone};
 use crate::vantare::paint::{Face, Kit, round_rect};
 use crate::vantare::style::{Color, Style, Variant};
 use gpui::{App, BorderStyle, Corners, Edges, Hsla, linear_color_stop, linear_gradient, px, quad};
@@ -32,7 +32,7 @@ pub(crate) enum Size {
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Options {
-    pub look: Look,
+    pub look: Tone,
     pub accent: Accent,
     pub size: Size,
     pub reference: Reference,
@@ -65,8 +65,8 @@ impl Options {
 
     fn variant<'a>(&self, style: &'a Style) -> &'a Variant {
         match self.look {
-            Look::Neo => &style.styles.neo,
-            Look::Neutro => &style.styles.neutro,
+            Tone::Neo => &style.styles.neo,
+            Tone::Neutro => &style.styles.neutro,
         }
     }
 
@@ -1062,7 +1062,7 @@ mod tests {
 
     fn options(size: Size, reference: Reference) -> Options {
         Options {
-            look: Look::Neo,
+            look: Tone::Neo,
             accent: Accent::Red,
             size,
             reference,

@@ -5,9 +5,9 @@
 //! valores visuales viven en `styles/vantare.json`.
 
 use super::motion::Motion;
-use super::{Accent, Look};
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::{rect, text};
+use crate::look::{Accent, Tone};
 use crate::vantare::columns::ColumnBoxes;
 use crate::vantare::motion::{Flash, Sample};
 use crate::vantare::paint::{BOX, Face, Kit, WHITE, estimate, round_rect, transparent};
@@ -155,7 +155,7 @@ pub(crate) struct Placed {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Options {
-    pub look: Look,
+    pub look: Tone,
     pub accent: Accent,
     pub mode: Mode,
     pub cols: Cols,
@@ -197,8 +197,8 @@ impl Options {
 
     fn variant<'a>(&self, style: &'a Style) -> &'a Variant {
         match self.look {
-            Look::Neo => &style.styles.neo,
-            Look::Neutro => &style.styles.neutro,
+            Tone::Neo => &style.styles.neo,
+            Tone::Neutro => &style.styles.neutro,
         }
     }
 

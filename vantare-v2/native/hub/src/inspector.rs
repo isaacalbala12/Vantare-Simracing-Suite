@@ -2,8 +2,8 @@
 use crate::orbit::NumberRange;
 use vantare_ui::{
     Settings,
+    look::{Accent, Tone},
     session::Session,
-    standings::{Accent, Look},
 };
 
 /// Acciones de posición sobre el lienzo lógico. No añade anclajes al documento.
@@ -573,7 +573,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 look.name(),
                 &[("Neo", "neo"), ("Neutro", "neutro")],
                 |settings, next| {
-                    let value = Look::from_name(next);
+                    let value = Tone::from_name(next);
                     match settings {
                         Settings::Standings(s) => s.style = value,
                         Settings::Relative(s) => s.style = value,
@@ -648,9 +648,9 @@ fn table_template(
 pub fn appearance(
     settings: &Settings,
 ) -> Option<(
-    vantare_ui::standings::DesignSystem,
-    vantare_ui::standings::Look,
-    vantare_ui::standings::Accent,
+    vantare_ui::look::Look,
+    vantare_ui::look::Tone,
+    vantare_ui::look::Accent,
 )> {
     settings.appearance()
 }

@@ -8,11 +8,15 @@ Hub/Studio GPUI editan el layout único y los widgets del registro. Launcher gob
 
 ## 2. Autoridad y lectura verificada
 
-GitHub Issues y Project Vantare; #1561/area:plataforma, In Progress, sin milestone comprometido. Plan `C:/tmp/ola2/plan-1561.md`: solo PR-4 y PR-6. #1562/#1564 ya presentes en la base; #1569 conserva su issue independiente. #1535/PR #1578 integrado en ee372540; servicios IPC v6, DTO live v10 y derechos/control v4. SQL no aplicado; su ejecución continúa exclusivamente en #1535.
+GitHub Issues y Project Vantare; #1561/area:plataforma, In Progress, sin milestone comprometido. Plan `C:/tmp/ola2/plan-1561.md`: esta rama cubre PR-4/PR-6; PR-3/PR-5 ya integradas por #1579 en nightly. #1562/#1564 presentes en la base; #1569 conserva su issue independiente. #1531/#1532/#1534 cerradas. Leídos AGENTS, README nativo/UI, ADR 0101 y contrato de producto.
 
 ## 3. Estado real y canal
 
-Rama `vantareapp/isa-1561-studio-split`, worktree `C:/tmp/vw-1561-hub`, base actualizada por rebase `origin/nightly@ee3725407bd4ff7b4fb40083094e2152365d1857` (Studio idéntico a b2186f82). PR-4 mueve bloques sin cambiar lógica ni firmas públicas; visibilidad mínima `pub(super)` autorizada por Isaac. PR-4 `1fc35e0ef8373f24a271e651fabafd6b6d0cbf5e` publicado en [draft #1581](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1581) a nightly. PR-6 añade el test recursivo de tamaño. Revisión #1581: erratas ajenas a Studio restauradas, zoom privado, imports en cabecera, docs sin techos duplicados y excepciones con existencia obligatoria; SHA final y checks se verifican en #1561 y `C:/tmp/buzon/1561-hub.md`; sin merge, promoción ni release.
+Rama `vantareapp/isa-1561-studio-split`, worktree `C:/tmp/vw-1561-hub`; incorpora `origin/nightly@6ce09c69` mediante merge, sin rebase. PR-4 `1fc35e0e`, PR-6 `0efeeab5` y correcciones `51ef00e5` en [#1581](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1581) a nightly, auto-merge autorizado por Isaac. El split conserva lógica y firmas públicas; visibilidad mínima pub(super), zoom privado, imports en cabecera y excepciones con existencia obligatoria. SHA final/checks se verifican en #1561 y `C:/tmp/buzon/1561-hub.md`.
+
+#1579 MERGED en nightly `6ce09c69`: PR-3/PR-5, guardias 22fe7490, PR-3 abc22332, PR-5 7a646ac8 y revisión d2710f4e; entrega original en `vantareapp/isa-1561-looks-frame`. Gates reconciliados con #1578: fmt/Clippy PASS, Nextest 1621/1621 (7 skips), lifecycle 18/18 y telemetría 25/25. Sin promoción/release.
+
+#1564/PR #1577 y #1535/PR #1578 MERGED en nightly (b2186f82 y ee372540). Se conservan DTO live v10, servicios IPC v6 y derechos/control v4 independiente. #1535 aporta Roadmap ClickUp/Supabase y participación Testing; SQL no aplicado. La previa de producción está bloqueada por timeout/proyectos INACTIVE y destino sin confirmar, según #1535; no se acredita DEFINER/ACL/migraciones ni se restaura/enlaza/aplica SQL en esta entrega.
 
 ## 4. Decisiones cerradas
 
@@ -25,9 +29,11 @@ Rama `vantareapp/isa-1561-studio-split`, worktree `C:/tmp/vw-1561-hub`, base act
 
 ## 5. Arquitectura y ownership
 
-Domain proyecta; UI guarda settings y pinta; Hub edita documento/historial. [Registro](../../../native/ui/src/registry.rs), [layout](../../../native/ui/src/layout.rs), [Studio](../../../native/hub/src/studio.rs), [sesiones](../../../native/hub/src/studio/sessions.rs). UI/domain no dependen de runtime. Sin deps nuevas ni transporte/permiso en pintores. #1561 PR-4 divide Studio en canvas (marco/geometría/gestos), inspector_panel (controles/inspector), catalog (preparación/fotos/tira) y tests; mismo estado, tipos y renderer; PR-6 vigila los techos de tamaño y sus excepciones en `hub/tests/architecture.rs`, sin excepción para Studio; subir un techo exige un plan de partición en el mismo PR. PR-3/PR-5 de #1561 no se afirman integradas. `frame_with_motion` sigue vigente.
+Domain proyecta; UI guarda settings y pinta; Hub edita documento/historial. [Registro](../../../native/ui/src/registry.rs), [layout](../../../native/ui/src/layout.rs), [Studio](../../../native/hub/src/studio.rs), [sesiones](../../../native/hub/src/studio/sessions.rs). UI/domain no dependen de runtime. Sin deps nuevas ni transporte/permiso en pintores. #1561 PR-4 divide Studio en canvas (marco/geometría/gestos), inspector_panel (controles/inspector), catalog (preparación/fotos/tira) y tests; mismo estado, tipos y renderer. PR-6 vigila techos y excepciones en `hub/tests/architecture.rs`, sin excepción para Studio; subir un techo exige un plan de partición en el mismo PR. PR-3 integrada mueve la apariencia a `ui::look::{Look, Tone, Accent}`, sin cambiar nombres serde. PR-5 integrada usa `frame(prefs, reduced)` en los 18 widgets: despacho generado, Fuel asienta en su propio frame, estáticos aceptan `_reduced`. Cadencia/etiquetas/catálogo sin cambios.
 
 ## 6. Evidencia y límites
+
+Árbol reconciliado con nightly 6ce09c69: fmt/Clippy -D warnings PASS; Nextest 1622/1622 (7 skips, 209.427 s), lifecycle 18/18 PASS por la cola. Primer Nextest falló en Engineer `stream_waits_for_slow_rights_before_deciding`; repetición completa con dos hilos PASS, sin modificar ni excluir tests. Presupuestos y cuatro excepciones sin cambios. Logs: `C:/tmp/ola2/evidence-1581-merge`.
 
 #1561 PR-4, gates de la base previa b2186f82: fmt/Clippy -D warnings PASS; Nextest workspace 1613/1613, 7 skips (267,435 s); lifecycle 18/18. studio.rs 4498→652; canvas 1130, inspector 897, catalog 745, tests 1125. Definiciones y 20 fixtures conservados; listado Hub 412/Studio 42, incluidos 39 tests movidos. Color-moved revisado; diferencias estructurales/visibilidad/formato documentadas en buzón. Check parity-capture PASS; Clippy adicional de esa feature falla con 21 diagnósticos en archivos intactos. Sin QA manual física/capturas nuevas; headless no acredita LMU/OBS/DPI. PR-6, gates de la base previa b2186f82: fmt/Clippy PASS y Nextest Hub 413/413 (1 skip). RED con +1 en los cuatro techos y Studio por encima del techo general; restauración de cinco archivos byte por byte/SHA-256 y GREEN. El primer run limitado omitió PATH DuckDB y falló el writer del smoke de análisis; repetido con el entorno de gates, pasó. Revalidación completa sobre ee372540: fmt/Clippy -D warnings PASS, Nextest workspace 1619/1619 (7 skips, 231,321 s), lifecycle 18/18; check parity-capture PASS. RED/GREEN repetido con services/view y los otros cuatro casos; bytes/SHA-256 restaurados. Logs iniciales: `C:/tmp/ola2/evidence-1561-hub`. Correcciones de revisión #1581: fmt/Clippy -D warnings PASS, Nextest 1619/1619 (7 skips), lifecycle 18/18. RED/GREEN de excepción inexistente y cinco casos de crecimiento, restauración byte por byte/SHA-256; evidencia en `C:/tmp/ola2/evidence-1581-review`. Siguiente paso: revisión del mismo draft y QA manual pendiente, sin merge.
 
@@ -35,21 +41,25 @@ Entrega anterior #1564: RED `9c218b38`; código/capturas `c8401b50`; test D12 am
 Logs y revisión/hashes: `C:/tmp/ola2/evidence-1564`; informe `C:/tmp/ola2/informe-1564-impl.md`; buzón `C:/tmp/buzon/1564.md`. No convierte fixtures/replays en LMU/ACC/OBS físicos, DPI/macOS ni input→Present. Present/s no mide latencia. Históricos/goldens se conservan sin recalibrar.
 **#1536 · Launcher:** test COM compara destinos canonicalizados, conserva ejecutable/bytes, no ejecuta y rechaza UNC; arreglo `d7c6cd17`, histórico enlazado arriba.
 
+Guardias #1561 `22fe7490`: layout Eficiencia/Neutro/acentos de cuatro widgets, transiciones activas de Banderas/FastestLap/Input/PedalsTelemetry y replay: 8/8 PASS antes del refactor. Capturas base de 18 widgets por `compare.ps1` guardadas e inspeccionadas; diferencias con goldens históricos registradas sin recalibración. Cuatro pintores equivalentes tras renombrado de imports/tipos; PR-3 reduce 6 líneas Rust (13321→13315 en 12 fuentes, incluidos tests; 22fe7490→abc22332). PR-5 reduce 72 líneas Rust (12945→12873 en 24 fuentes); registro 175→157, wrappers 8→0 y sitios de API de movimiento por widget animado 2→1. Cuerpos de frame conservados 18/18. Gates anteriores al merge de #1578 por la cola: fmt/Clippy -D warnings PASS, Nextest 1615/1615 (7 skips), lifecycle 18/18; build parity-capture/paint-stats y guardias con ambas features 5/5 PASS. Paridad final inspeccionada: 18/18 hashes PNG idénticos, 0/1720978 píxeles distintos, umbral 0 sin máscaras. Verificación retenida 456 huellas PASS. Revisión #1579: JSON canónico fijado desde 22fe7490/b2186f82; cuatro instancias y nombres/defaults/fallbacks guardados 4/4 PASS. Mutación real del orden style/accent rechazada por bytes; restauración 4/4 PASS. Receta DTO v10, guardados v7–v10 y alta de Kind::label corregidas. Gates tras reconciliar #1578: fmt/Clippy PASS, Nextest 1621/1621 (234.263 s, 7 skips), lifecycle 18/18 y telemetría 25/25 (851.768 s; ACC 804.035 s). Fixtures vigentes y lectores guardados IPC PASS. Sin nuevas modificaciones a fuentes/fixtures/referencias de widgets; paridad previa conservada, no recapturada. Evidencia nueva: `C:/tmp/ola2/evidence-1561-ui`; buzón `C:/tmp/buzon/1561-ui.md`.
+
 ## 7. Riesgos y deuda
 
-- CI del nuevo PR draft pendiente; la evidencia de #1564 citada arriba corresponde a la entrega anterior.
-- El split cambia rutas internas de tests y puede generar conflictos con ramas de Studio; #1569 sigue fuera de alcance. #1524: autoría no acredita fuente live.
+- CI de #1581 tras el merge local pendiente; los gates locales no acreditan los remotos.
+- #1561: comparar contra esta base; los goldens históricos ya difieren en dimensiones/píxeles antes del refactor y no se recalibran.
+- #1535: SQL no aplicado; producción/ref/DEFINER/ACL/migraciones sin verificar. Requiere confirmar destino y respuesta expresa del orquestador.
+- El split cambia rutas internas de tests y puede generar conflictos con ramas de Studio; #1569 sigue fuera de alcance y requiere coordinación. #1524: autoría no acredita fuente live.
 - #1527 debe partir del DTO live v10 realmente integrado y mantener lectores persistidos compatibles.
 - Evidencia física/plataforma y deuda de paridad de ADR 0101 conservadas en el histórico; no elevar severidad sin nueva prueba.
 
 ## 8. Issues terminadas, activas y pendientes
 
-Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. Integrada en esta base: #1564/PR #1577. Activa de esta rama: #1561 PR-4/PR-6. Pendientes coordinadas: #1561 PR-3/PR-5, #1566, #1569 y #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
+Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. #1564/PR #1577, #1535/PR #1578 y #1561 PR-3/PR-5 (#1579) integradas en la base; #1535 sigue abierta por la previa/SQL bloqueados. Activa de esta rama: #1561 PR-4/PR-6 (#1581). Pendientes coordinadas: #1566, #1569 y #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
 
 ## 9. Siguiente acción exacta
 
-Revisar CI y QA manual física de draft #1581 antes de aceptar; SHA remoto y FIN se verifican en #1561/buzón. No merge ni promoción. QA manual solo sin pantalla-ocupada y con el mutex del harness.
+Gates del árbol reconciliado PASS; publicar el merge local en #1581 y verificar MERGEABLE con auto-merge activo. Consultar SHA/checks/FIN en issue y buzón. QA manual física pendiente, solo sin pantalla-ocupada y con mutex del harness. Sin promoción testers/master ni release. #1535 conserva como siguiente paso confirmar proyecto/acceso y la previa SOLO LECTURA; no aplicar SQL sin respuesta expresa del orquestador.
 
 ## 10. Última actualización
 
-2026-10-11 · GitHub #1561 · Codex. Alcance PR-4/PR-6 y dos DUDA resueltas por Isaac; base actual y estructura verificadas. Diario y SHA en issue/buzón.
+2026-10-13 · GitHub #1561 · Codex. Reconciliación de #1579 con PR-4/PR-6 mediante merge; estado y diario en issue/buzón.

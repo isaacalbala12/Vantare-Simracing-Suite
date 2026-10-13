@@ -126,14 +126,7 @@ impl Widget {
         changed
     }
 
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        self.frame_with_motion(prefs, false)
-    }
-    pub(crate) fn frame_with_motion(
-        &mut self,
-        _prefs: Preferences,
-        reduced: bool,
-    ) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, _prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         if cfg!(feature = "parity-capture") {
             // El harness productivo previsualiza el récord sin crear un aviso live.
             let vm = self.vm.clone();
@@ -436,13 +429,13 @@ mod tests {
         let mut widget = Widget::new(&Settings::default(), prefs);
         let mut snapshot = reference_scene();
         assert!(widget.ingest(&snapshot, prefs));
-        assert!(matches!(widget.frame(prefs).1, Wake::Idle));
+        assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
         assert!(!widget.animating());
         snapshot.sequence += 1;
         assert!(!widget.ingest(&snapshot, prefs));
         assert!(widget.ingest(&Snapshot::default(), prefs));
         assert!(!widget.vm.ready);
-        assert!(matches!(widget.frame(prefs).1, Wake::Idle));
+        assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
         assert!(!widget.animating());
     }
 
@@ -476,15 +469,15 @@ mod tests {
         });
         let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(!widget.ingest(&snapshot, prefs));
-        assert!(matches!(widget.frame(prefs).1, Wake::Idle));
+        assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
         snapshot.sequence = 2;
         snapshot.state.cars[0].best_lap_s = Quality::Reliable(89.0);
         assert!(widget.ingest(&snapshot, prefs));
         assert!(!widget.ingest(&snapshot, prefs));
-        assert!(matches!(widget.frame(prefs).1, Wake::Frame));
+        assert!(matches!(widget.frame(prefs, false).1, Wake::Frame));
         widget.notice.as_mut().expect("notice").started =
             Instant::now().checked_sub(LIFETIME).expect("clock");
-        assert!(matches!(widget.frame(prefs).1, Wake::Idle));
+        assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
         assert!(widget.notice.is_none());
         snapshot.sequence = 3;
         snapshot.state.cars[0].best_lap_s = Quality::Reliable(88.0);

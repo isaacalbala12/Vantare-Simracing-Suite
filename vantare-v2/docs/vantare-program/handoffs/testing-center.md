@@ -166,3 +166,7 @@ y tres regresiones de privacidad ampliadas al prepare/RPC preview real.
    recorte UTF-8 de cola y SHA recalculado. RED 96.400 bytes; GREEN transporte
    real loopback con logs/resumen, comillas, controles y Unicode; payload idéntico
    al aprobado. El límite de otras RPC permanece 64 KiB.
+
+5. P2-5: main drena/purga spool bajo lock antes de sondear; segunda fase
+   evita doble reintento inmediato. RED sin entrega, GREEN con State real y
+   polling OSError mock: ACK pendiente y caducado purgado sin modelo ni red.

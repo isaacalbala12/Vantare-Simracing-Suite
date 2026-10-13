@@ -3,6 +3,8 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 from state import State
 import triage
 from test_triage import report, response, NOW
@@ -47,3 +49,32 @@ class Tests(unittest.TestCase):
                 for output in (model,delivery):
                     self.assertNotIn('SyntheticOther',output);self.assertNotIn('Synthetic Other',output)
                     self.assertIn('ERROR',output)
+
+    def test_review_p2_5_main_drains_and_purges_spool_before_failed_poll(self):
+        with tempfile.TemporaryDirectory() as root:
+            root=Path(root);state=State(root/'state');r=report();events=[];sent=[]
+            def offline(_):raise OSError('fixture offline')
+            triage.pass_once(state,[r],[],{},lambda _:response(),offline,NOW)
+            expired=dict(r,id='15940000-0000-0000-0000-000000000011')
+            state.discover(expired,NOW)
+            state.analyzed(expired['id'],{'delivery_id':expired['id']},NOW-86401)
+            state.close()
+            credentials=root/'credentials';credentials.mkdir()
+            (credentials/'t3-hmac').write_bytes(b'fixture-hmac')
+            config={'state_dir':str(root/'state'),'known_versions':{},'provider':{},'webhook_url':'https://fixture.invalid'}
+            def poll(*_):events.append('poll');raise OSError('fixture polling failure')
+            def send(payload,*_):events.append('deliver');sent.append(payload)
+            with patch.object(triage,'load_config',return_value=config),patch.object(triage,'read_reports',side_effect=poll), \
+                 patch.object(triage,'deliver',side_effect=send),patch.object(triage.model,'run',side_effect=AssertionError('unexpected model')), \
+                 patch.dict(triage.os.environ,{'CREDENTIALS_DIRECTORY':str(credentials)}), \
+                 patch.dict('sys.modules',{'fcntl':SimpleNamespace(flock=lambda *args:None,LOCK_EX=1,LOCK_NB=2)}), \
+                 patch('sys.argv',['triage','--config','fixture']),patch.object(triage.time,'time',return_value=NOW+120):
+                self.assertEqual(triage.main(),1)
+            self.assertEqual(len(sent),1,'polling failure must not block prepared delivery')
+            self.assertEqual(events,['deliver','poll'])
+            self.assertFalse((root/'state'/(expired['id']+'.json')).exists(),'expired spool must purge during polling outage')
+            state=State(root/'state')
+            try:
+                self.assertEqual(state.db.execute('select status from reports where id=?',(r['id'],)).fetchone()[0],'delivered')
+                self.assertEqual(state.db.execute('select status from reports where id=?',(expired['id'],)).fetchone()[0],'delivery_expired')
+            finally:state.close()

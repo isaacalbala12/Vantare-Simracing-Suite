@@ -118,7 +118,7 @@ def verify_delivery(body, signature, secret, now, seen):
     return value
 
 
-def pass_once(state, reports, history, versions, analyze, send, now, intake=None):
+def pass_once(state, reports, history, versions, analyze, send, now, intake=None, retry_pending=True):
     for id in state.purge(now):
         print(json.dumps({'id':id,'status':'intake_expired'}))
     def intake_send(id, payload):
@@ -128,11 +128,11 @@ def pass_once(state, reports, history, versions, analyze, send, now, intake=None
             print(json.dumps({'id':id,'status':'intake_pending','reason':error.code}))
         except Exception:
             print(json.dumps({'id':id,'status':'intake_pending'}))
-    if intake is not None:
+    if intake is not None and retry_pending:
         for id in state.intake_deliveries(now):
             intake_send(id,state.payload(id))
     # Retry delivery before polling/model work. Persisted spool prevents reanalysis.
-    for id in state.deliveries(now):
+    for id in state.deliveries(now) if retry_pending else []:
         try:
             send(state.payload(id));state.delivered(id,now)
         except Exception:
@@ -185,16 +185,20 @@ def main():
             import fcntl
             with (state.root/'worker.lock').open('a') as lock:
                 fcntl.flock(lock,fcntl.LOCK_EX|fcntl.LOCK_NB)
-                reports,history=read_reports(config,state,credentials/'supabase-url')
                 key=(credentials/'t3-hmac').read_bytes().strip()
                 intake_config=config.get('plane_intake') or {}
                 intake=None
                 if intake_config.get('enabled') is True:
                     client=plane_intake.Intake(intake_config,plane_intake.read_token(credentials/'plane-token'))
                     intake=client.publish
+                # Existing redacted spool needs neither polling nor provider auth.
+                # Both phases remain under the same exclusive worker lock.
+                analyze=lambda v:model.run(v,credentials/'opencode-go-auth',config['provider'])
+                send=lambda p:deliver(p,config['webhook_url'],key)
+                pass_once(state,[],[],config['known_versions'],analyze,send,int(time.time()),intake=intake)
+                reports,history=read_reports(config,state,credentials/'supabase-url')
                 pass_once(state,reports,history,config['known_versions'],
-                    lambda v:model.run(v,credentials/'opencode-go-auth',config['provider']),
-                    lambda p:deliver(p,config['webhook_url'],key),int(time.time()),intake=intake)
+                    analyze,send,int(time.time()),intake=intake,retry_pending=False)
         finally:
             state.close()
     except Exception:

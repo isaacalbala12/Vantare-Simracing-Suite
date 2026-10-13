@@ -1,3 +1,4 @@
+//! Escenario de Studio: marco de cada widget, arrastre, resize, zoom y teclado. Mapa: `README.md`.
 #[cfg(feature = "parity-capture")]
 use super::catalog::demo_content_scale;
 use super::*;

@@ -26,7 +26,9 @@ def current():
 
 def post(url, t):
     body = json.dumps({"tarea": f"{t['key']}-{t['seq']}", "nombre": t["name"], "id": t["id"]}).encode()
-    req = urllib.request.Request(url, body, {"Content-Type": "application/json"}, method="POST")
+    # Cloudflare (relay) responde 403 al User-Agent por defecto de urllib
+    headers = {"Content-Type": "application/json", "User-Agent": "vantare-plane-para-claude/1"}
+    req = urllib.request.Request(url, body, headers, method="POST")
     with urllib.request.urlopen(req, timeout=20) as r:
         return r.status
 

@@ -1,15 +1,16 @@
 # Handoff vivo — Testing Center
 
-Estado vigente #1594: hito SQL local validado, PARADO para revisión obligatoria
-del orquestador antes de continuar. Releer issue y buzón antes de ejecutar.
+Estado vigente #1594: migración aprobada, aplicada y postcheck PASS;
+continúa cliente y worker inerte. Cron/proveedor/credencial/despliegue cerrados.
+Releer issue y buzón antes de ejecutar.
 [Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/testing-center.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 
 ## 1. Resultado
 
 #1594 / VANTA-38 prepara contexto, adjuntos, revisiones y RPC de confirmación
-owner para DeepSeek V4.1 Flash. No se ha implementado aún cliente/worker ni
-aplicado la migración en producción. SQL completo en C:/tmp/buzon/1594.md,
-DUDA pendiente de OK. Sin PR, push, merge o despliegue de este hito.
+owner para DeepSeek V4.1 Flash. Cliente/worker pendientes. Migración aplicada
+en ombjshwzqgeisazijduq, history 20261013160000 tras OK explícito del orquestador.
+SQL completo en C:/tmp/buzon/1594.md. Sin PR, push, merge o despliegue.
 [Contrato y runbook](../../runbooks/testing-contribution-triage.md).
 
 Diagnostico local y reportes con borrador, vista previa, consentimiento y
@@ -22,7 +23,8 @@ activacion del backend: ausencia y errores se presentan sin datos inventados.
 #1594 y dependencia comercial #1593 leídas. Manda diseño r2 completo
 C:/tmp/ola2/diseno-1594-opus.md y encargo del 2026-10-13: DeepSeek vía OpenCode,
 PostHog opcional ausente, worker solo propone, owner confirma; descuento fuera.
-La condición 2 del encargo exige entregar SQL completo en DUDA y PARAR.
+La condición 2 se cumplió: SQL completo en DUDA, parada y OK posterior
+del orquestador sobre SQL 0fd57395...cf6c9 y rollback 206dd635...4e621.
 
 Leídos [#1452](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1452) y [#1535](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1535) con decisiones/avances actuales. GitHub/Project Vantare contiene alcance. [Testing nativo](../../../native/hub/src/testing/README.md), [servicios](../../../native/services/README.md) y [canales](../../branch-channels.md) fijan contratos. #1561 registra/relee compactación, sin enviar informes reales.
 
@@ -30,7 +32,8 @@ Leídos [#1452](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 #1594: worktree/branch vantareapp/isa-1594-triaje-informes, base exacta
 origin/nightly@a0f8569b6ee0228b924ea528c4309b41ecaeddb2. Hito SQL/tests/runbook
-1358eb71e97696ed6eae98be6f97ed0510e3f016 (local). No PR ni promoción.
+1358eb71e97696ed6eae98be6f97ed0510e3f016 (local). Hito ensayo/prueba de
+producción 91e2f1af247e3287b696f319816fc2ffa6367500. No PR ni promoción.
 GitHub: area:testing-center, state:in-progress y Project Vantare. Intento
 Plane En curso falló: script ausente y PR #1599 aún abierto al inicio.
 
@@ -46,7 +49,7 @@ Servicios IPC v6, DTO v10 y control/derechos v4 son contratos independientes.
 #1568 conserva admision protegida, cancelacion serializada y revalidacion;
 la correlacion del incidente humano sigue pendiente. El registro archivado
 C:/tmp/ola2/1535-backup-cli/FIN-production-applied.md declara aplicado #1535
-el 2026-10-13 con gate cerrado; esta tarea no ha consultado producción.
+el 2026-10-13 con gate cerrado. Previa fresca de #1594 confirma gate cerrado.
 
 ## 4. Decisiones cerradas
 
@@ -63,14 +66,19 @@ el 2026-10-13 con gate cerrado; esta tarea no ha consultado producción.
 
 ## 6. Evidencia y límites
 
-#1594: 83/83 pgTAP sobre PostgreSQL local temporal con fixtures sintéticas;
+#1594: ensayo de esquema vigente 83/83 pgTAP y restore completo sin red
+con 73 conteos exactos. Postcheck local y de producción 25/25 PASS. 73 conteos
+originales preservados salvo history +1; tres tablas nuevas vacías. Evidencia
+protegida C:/tmp/ola2/1594-backup-cli/, copias detenidas con datos retenidos.
+Sin URI/password/filas impresos. También 83/83 pgTAP sobre PostgreSQL local
+temporal con fixtures sintéticas;
 actor de aplicación NOSUPERUSER+BYPASSRLS. Dos sesiones comprueban tope
 concurrente; login real del rol de lectura, rechazo de snapshot obsoleto,
 rollback atómico por rol preexistente, rollback con datos denegado, rollback
 vacío con preservación legacy y reaplicación PASS. Quality 456 huellas PASS;
 git diff --check PASS. Evidencia C:/tmp/ola2/1594-sql-evidence/summary.json.
 Rust/Go/frontend no aplican en este hito SQL; no cambiados. Esto no demuestra
-Supabase completo, PostgREST/JWT/UI, worker, proveedor ni producción.
+Supabase completo, PostgREST/JWT/UI, worker ni proveedor.
 
 Evidencia previa #1535:
 
@@ -87,10 +95,10 @@ Capturas y gates previos no prueban Clerk/Storage, instalacion o produccion.
 
 ## 7. Riesgos y deuda
 
-- SQL #1594 no aplicado: OK del orquestador, previa fresca, backup recuperable
-  y ensayo local con esquema vigente antes de producción.
-- Revisar cuarto parámetro de review (snapshot), topes por fecha/semana UTC
-  de envío y fechas de retención. Ventana comercial 45 días/pérdida del tramo
+- SQL #1594 aplicado tras OK, previa fresca, backup recuperable y ensayo
+  de esquema vigente. No prueba login/JWT/UI; gates de cliente pendientes.
+- Aprobados cuarto parámetro de review (snapshot), topes por fecha/semana UTC
+  de envío y purga preparada sin cron. Ventana comercial 45 días/pérdida del tramo
   por dos spams queda en #1593, sin inventar origen de suscripción.
 - pg_cron no registrado; rol NOLOGIN sin password. Proveedor pendiente de
   condiciones escritas de privacidad antes de activar. Cliente/worker pendientes.
@@ -105,14 +113,13 @@ Activa #1594 para triaje (PARADO tras SQL). Contexto #1535 para cuestionarios/re
 
 ## 9. Siguiente acción exacta
 
-Orquestador: revisar DUDA y SQL completo en C:/tmp/buzon/1594.md, hashes,
-rollback, decisiones y pruebas. PARAR hasta OK. Después, continuar cliente y
-worker inerte según r2; completar gates aplicables y preparar PR a nightly.
-Migración de producción exige autorización del SQL concreto, copia previa
-restaurable y verificación de permisos. Despliegue necesita su propio OK.
-No poner Plane Por revisar ni Closes #1594 hasta entrega completa en verde.
+Implementar cliente con contexto real, redacción/vista previa/consentimiento;
+worker Python inerte DeepSeek, extracto mínimo, propuestas y doble confirmación.
+Completar gates y PR a nightly con auto-merge squash. Por revisar/FIN solo al
+completar. No activar cron, LOGIN/password, proveedor ni despliegue del worker.
 
 ## 10. Última actualización
 
 2026-10-13 · GitHub #1594 / VANTA-38 · Codex. Hito SQL 1358eb71, base nightly
-verificada, sin PR/push ni acceso a producción; DUDA obligatoria pendiente.
+verificada, sin PR/push. Migración aplicada tras OK, postcheck 25/25 PASS,
+backup+restore protegidos y gate nativo cerrado. Hito de evidencia 91e2f1af.

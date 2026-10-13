@@ -24,14 +24,17 @@ y la prueba sustituye sleep(2 s) por petición pendiente/liberación explícita.
 Sin cambios funcionales de producto, permisos ni deadlines. La espera inicial
 se extrae para probar con reloj virtual respuesta a 2 s (regresión del antiguo
 1 s), timeout sin decisión de licencia y denegación definitiva: 3/3 PASS.
-Tanda focal bajo gates: 200/200 PASS. Reloj virtual: 200/200 vueltas (600
-assertions/tests); mutación a 1 s provoca los dos fallos esperados y se revierte.
-Suite final: 150 vueltas completas PASS, últimas 50 en curso. Las tandas
-fallidas se conservan: BrokenPipe distinto (#1596), después error explícito
-de disco 112. Artefactos propios de gates trasladados a E: y repetición con
-temporales aislados allí; sin relajar permisos/plazos ni retries del test.
-Gates previos: fmt/check/Clippy, Nextest 1639/1639 y lifecycle PASS; se repiten
-sobre la extracción final. Pendientes gates finales, push y PR a nightly
+Sobre código `fc9667b8`: suite recovery **200 vueltas completas PASS** en
+cuatro bloques de 50 (**1200/1200 tests**); tanda focal adicional bajo gates
+**200/200 PASS**. Reloj virtual: 200 vueltas de tres tests (**600/600 PASS**);
+mutación a 1 s provoca los dos fallos esperados y se revierte.
+Los runs fallidos se conservan y no se cuentan como verdes: disco 112 y
+BrokenPipe/TimedOut en otros tests de recovery/status_process (#1596).
+Target propio y temporales restaurados a C:; sin junction, sin modificar
+permisos/plazos/aserciones/retries. Evidencia: `C:/tmp/1595-evidence/`.
+Gates finales PASS: fmt/check/Clippy `-D warnings`, Nextest **1642/1642**
+(7 skips heredados) y lifecycle **18/18**. Integridad: 456 huellas PASS.
+Telemetría no aplica: no cambia runtime/domain/IPC/testdata. Pendientes push y PR a nightly
 con auto-merge expresamente autorizado por Isaac. Seguimiento en la issue.
 
 Base de código contrastada: `origin/nightly@ca17545f607b85f5d47dc9d060721b69e6a6a158`. Esta compactación vive en `vantareapp/isa-1561-docs`; no cambia producto ni acredita integración de las ramas de ola 2. SHA final y push en [#1561](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1561) y `C:/tmp/buzon/1561-docs.md`. PR [#1570](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1570) contra nightly, con auto-merge autorizado por el orquestador. Nightly `0cf38ed2` incorporada mediante merge `dbee0c18`; sin promoción ni release. El binario nativo y supervisor están presentes; antiguos wiring Wails/voice-host test-only y sus estados no son el runtime actual. #1485/#1477/#1491 permanecen abiertas.
@@ -70,4 +73,7 @@ Evidencia registrada en la base: integración #1531, fmt/check/Clippy `-D warnin
 
 ## 10. Última actualización
 
-2026-10-10 · GitHub #1561 · Codex. Código, README del área e issues leídos; seguimiento #1561 escrito y releído. Las siguientes acciones de área proceden de las issues abiertas, sin nuevas autorizaciones implícitas. El diario y los avances por ronda se escriben en la issue; aquí se sustituye el estado.
+2026-10-13 · GitHub #1595 · Codex. Causa, código, prueba y gates contrastados;
+200 vueltas de recovery y tanda focal bajo carga verificadas. Runs fallidos
+conservados en #1596; push/PR/canal se actualizan en #1595. El diario por ronda
+vive en la issue; aquí se conserva el estado técnico y los límites.

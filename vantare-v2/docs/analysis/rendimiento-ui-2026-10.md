@@ -2,7 +2,7 @@
 
 Issue [#1607](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1607), Plane VANTA-45.
 Base: `69fa2d650c85df4184d5821ae4c032201789a1c1`, `origin/nightly` verificado el 14/10/2026.
-Rama: `vantareapp/isa-1607-rendimiento-ui`. Documento de trabajo: campaña pendiente.
+Rama: `vantareapp/isa-1607-rendimiento-ui`. [PR draft #1611](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1611) a nightly. Entrega incompleta: campaña y arreglos bloqueados.
 
 ## Resumen para Isaac (10 líneas)
 
@@ -15,7 +15,7 @@ Rama: `vantareapp/isa-1607-rendimiento-ui`. Documento de trabajo: campaña pendi
 7. Hay clones de estado resident sin cambios y proyecciones de previews ocultas.
 8. Sus costes todavía no están medidos: no se presentan como ganancias demostradas.
 9. Las mediciones necesitan el FIN de #1565 posterior al 14/10 a las 00:00 y el lock exclusivo.
-10. Se prepara una Release aislada con dos jobs; las correcciones se admitirán con antes/después y gates.
+10. Release aislada PASS con dos jobs; las correcciones se admitirán con antes/después y gates.
 
 ## Condiciones y bloqueo de medición
 
@@ -69,6 +69,19 @@ Hub y overlays con `vantare-services/network,vantare-ui/paint-stats`. El primer
 intento omitió `--manifest-path native/Cargo.toml` y falló antes de compilar;
 se corrigió la invocación. Log: `C:/tmp/1607-evidence/build-baseline.log`.
 No se usa el perfil `prueba` para comparar rendimiento.
+
+Build Release terminada con exit 0 en 9 min 46 s; comprobación 14/10/2026
+00:54, sin abrir los binarios. Código nativo idéntico a la base `69fa2d65`;
+durante la build solo se escribió/commiteó este hito documental (`299234c8`).
+
+| Binario en `C:/tmp/1607-release-target/release/` | SHA-256 |
+|---|---|
+| `vantare-hub.exe` | `301297ec24adc152ecbdc1475a6d9390a48f40cb7c19be081dfce5737a2b8fd7` |
+| `vantare-overlays.exe` | `d6a3fa6e188c503948fc8ba615232d58ebe6e354f9693bd066f279a6e4a85c4c` |
+
+Hashes crudos: `C:/tmp/1607-evidence/baseline-hashes.json`.
+La build es de diagnóstico sin configuración pública leída de `.env*`; no
+certifica servicios conectados, acceso autenticado ni un paquete de distribución.
 
 Antes de abrir cualquier proceso, reservar atómicamente `pc-medicion.lock`
 (issue y hora; respetar locks de menos de dos horas) y comprobar ausencia de
@@ -173,8 +186,15 @@ Checks documentales ejecutados sobre este árbol:
 ## Pendientes y límites de la entrega
 
 - Análisis Muse y revisión propia terminados; validación dinámica pendiente.
-- Completar Release y registrar resultado y hashes.
+- Release y hashes completos; no se ha ejecutado la app.
 - Obtener señal de #1565 válida, reservar PC y ejecutar toda la campaña.
 - Corregir hallazgos aceptados, medir cada cambio y ejecutar gates.
 - Actualizar este informe, handoff, issue y PR draft con el SHA/checks reales.
 - No hay prueba de navegación manual, scroll, LMU/ACC, OBS ni instalación de Isaac.
+
+Canal alcanzado: rama publicada y PR draft abierta; no integrado en nightly.
+CI de `299234c8`: promotion, quality y GitGuardian PASS; blocking gates y
+native-linux en curso al consultarlos. No se afirma CI completa; consultar
+el SHA final del PR antes de revisar. Plane VANTA-45 permanece En curso
+porque el objetivo de rendimiento no se ha completado. La issue tiene
+`area:ui` y pertenece al GitHub Project Vantare; sin milestone comprometido.

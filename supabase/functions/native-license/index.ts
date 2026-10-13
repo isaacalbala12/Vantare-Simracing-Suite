@@ -13,6 +13,7 @@ import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
 import {
   type NativeConfig,
   NativeError,
+  requireUnblocked,
   verifyNativeOAuth,
 } from "../_shared/native-auth.ts";
 
@@ -77,6 +78,14 @@ export async function handleNativeLicenseRequest(
     }
 
     const verified = await verifyNativeOAuth(token, deps);
+    try {
+      await requireUnblocked(verified.subject, deps);
+    } catch (error) {
+      if (error instanceof NativeError && error.status === 404) {
+        throw new NativeError(401, "unauthorized");
+      }
+      throw error;
+    }
     const { issuer, now } = verified;
 
     const loaded = await (deps.load ?? loadNativeCredentialAccount)(

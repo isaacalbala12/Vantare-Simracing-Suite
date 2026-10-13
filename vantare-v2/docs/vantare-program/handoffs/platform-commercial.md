@@ -85,6 +85,13 @@ Release 68, shell 23 y beta 99 PASS. SHA/canal final en issue/PR; sigue draft
 para revisión independiente, sin integración ni acreditación live/Windows limpio.
 SHA por hito en la issue; no integrar, firmar ni publicar una release.
 
+Ronda 2 sobre `5f53b34c`: revisión confirma P1/P2-2/3/4 y aceptación P2-5,
+pero abre P2-6 (Cleanup retira EXE y deja marker huérfano). Regresión nueva
+`installer-cleanup-recovery-tests.ps1`: handle real FileShare.Read e interrupción
+sincronizada en copia privada del helper; ambos dejan datos exactos y Setup
+público devuelve 2 al reinstalar (RED). Sigue pendiente el arreglo mínimo,
+recuperación pública/guardas de instalación renovada, gates y push; sin live.
+
 ### Estado previo de plataforma (su base propia)
 
 Base incorporada mediante merge (sin rebase): `origin/nightly@b2186f82746424b4844a5909efd31530c5bbe5b3`,

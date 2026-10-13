@@ -46,6 +46,7 @@ fn repair_requires_the_exact_version_and_update_requires_a_newer_payload() {
         desktop: true,
         autostart: false,
         size: 1,
+        reduced_motion: false,
     };
     assert!(info.allows(Mode::Update));
     assert!(!info.allows(Mode::Repair));

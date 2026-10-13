@@ -32,6 +32,8 @@ pub struct Info {
     pub desktop: bool,
     pub autostart: bool,
     pub size: u64,
+    #[serde(default)]
+    pub reduced_motion: bool,
 }
 
 #[derive(Clone, Debug, Deserialize)]

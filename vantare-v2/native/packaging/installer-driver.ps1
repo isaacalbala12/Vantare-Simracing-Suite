@@ -55,7 +55,8 @@ if (Test-Path -LiteralPath $optionsFile) {
     $desktop = [bool]$options.desktop; $autostart = [bool]$options.autostart
 }
 if ($request.operation -ceq 'Probe') {
-    [ordered]@{ root=$root; version=$request.version; installed_version=$current; data_path=$data; desktop=$desktop; autostart=$autostart; size=$request.size } | ConvertTo-Json -Compress
+    $motion=Get-ItemProperty -LiteralPath 'HKCU:/Control Panel/Desktop/WindowMetrics' -Name MinAnimate -ErrorAction SilentlyContinue
+    [ordered]@{ root=$root; version=$request.version; installed_version=$current; data_path=$data; desktop=$desktop; autostart=$autostart; size=$request.size; reduced_motion=($null -ne $motion -and $motion.MinAnimate -ceq '0') } | ConvertTo-Json -Compress
     exit 0
 }
 function Send-InstallerProgress([string]$Step, [int]$Percent, [long]$Done=0, [long]$Total=0) {
@@ -77,6 +78,7 @@ try {
             foreach ($name in @('NoModify','NoRepair')) { New-ItemProperty -LiteralPath $key -Name $name -PropertyType DWord -Value 1 -Force | Out-Null }
             if ($request.qa) { Set-ItemProperty -LiteralPath $key -Name ShortcutFolder -Value $folder; Set-ItemProperty -LiteralPath $key -Name LegacyShortcutFolder -Value $legacy }
             Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Uninstall.exe') -Destination (Join-Path $root 'Uninstall.exe') -Force
+            Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'installer-notices.txt') -Destination (Join-Path $root 'installer-notices.txt') -Force
             Write-BetaJson $optionsFile @{schema=1; kind='rust-gpui'; uninstaller='Uninstall.exe'; sha256=(Get-NativeHash (Join-Path $root 'Uninstall.exe')); desktop=[bool]$request.desktop; autostart=[bool]$request.autostart}
             Send-InstallerProgress 'register' 93
             Sync-NativeRegistration $root $request.version

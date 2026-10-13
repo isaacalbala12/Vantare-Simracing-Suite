@@ -30,7 +30,12 @@ H2: Register conserva la UI propia, opciones/accesos exclusivos y limpieza
 diferida validada por hash. Shell 23 PASS y uninstall interrumpido 2 PASS;
 son fixtures, no acreditan instalación completa ni equipo limpio.
 Sin instalación real, secretos, firma real, promoción ni release. Hitos/SHA en la issue.
-**Siguiente paso #1591: H3 GPUI/capturas y H4/H5 QA/gates; sin subagentes.**
+H3: seis pantallas GPUI, controles, opciones y worker conectado al motor;
+fuentes del HTML convertidas sin dependencias nuevas. Capturas nativas iniciales
+de seis pantallas más opciones/desinstalado a 720x460, DPI 96, revisadas en
+`C:/tmp/ola2/1591-qa/visual/gpui-h3/`; todavía usan un snapshot fixture 0.0.0.
+Clippy UI y contratos Rust se registran con el SHA del hito en la issue.
+**Siguiente paso #1591: H4/H5 paquetes reales, QA/gates y comparativa final; sin subagentes.**
 Push/PR draft a nightly y enlace T3 autorizados al finalizar; no integración antes de review independiente.
 QA futura bajo `C:/tmp/ola2/1591-qa`; arranque live solo en cuenta/VM de prueba por el SID/instancia compartida, capturas con pantalla libre y mutex.
 

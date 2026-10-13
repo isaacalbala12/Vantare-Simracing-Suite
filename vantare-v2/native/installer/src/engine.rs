@@ -34,6 +34,7 @@ pub struct Request {
     pub desktop: bool,
     pub autostart: bool,
     pub process_id: u32,
+    pub log_file: PathBuf,
 }
 
 impl Request {
@@ -51,6 +52,9 @@ impl Request {
             desktop: !args.silent,
             autostart: false,
             process_id: std::process::id(),
+            log_file: log_path().unwrap_or_else(|_| {
+                std::env::temp_dir().join(format!("VantareSetup-{}.log", std::process::id()))
+            }),
         }
     }
 }
@@ -83,6 +87,7 @@ impl Session {
                         ("candidate.ps1", payload::CANDIDATE),
                         ("beta.ps1", payload::BETA),
                         ("installer-driver.ps1", payload::DRIVER),
+                        ("installer-notices.txt", payload::FONT_LICENSES.as_bytes()),
                     ] {
                         session.write(name, bytes)?;
                     }
@@ -204,7 +209,7 @@ impl Session {
             "request.json",
             &serde_json::to_vec(request).map_err(|e| e.to_string())?,
         )?;
-        let log = log_path()?;
+        let log = request.log_file.clone();
         let stderr = fs::OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -222,11 +227,11 @@ impl Session {
         let mut protocol_error = false;
         loop {
             bytes.clear();
-            let count = reader
-                .by_ref()
-                .take(8193)
-                .read_until(b'\n', &mut bytes)
-                .map_err(|e| e.to_string())?;
+            let read = reader.by_ref().take(8193).read_until(b'\n', &mut bytes);
+            let Ok(count) = read else {
+                protocol_error = true;
+                break;
+            };
             if count == 0 {
                 break;
             }

@@ -10,6 +10,8 @@ pub struct Args {
     pub capture: Option<PathBuf>,
     #[cfg(feature = "parity-capture")]
     pub screen: Option<String>,
+    #[cfg(feature = "parity-capture")]
+    pub snapshot: Option<PathBuf>,
 }
 
 impl Args {
@@ -37,10 +39,14 @@ impl Args {
                 }
                 #[cfg(feature = "parity-capture")]
                 _ if text.starts_with("--capture=") => {
-                    parsed.capture = Some(PathBuf::from(&text[10..]))
+                    parsed.capture = Some(PathBuf::from(&text[10..]));
                 }
                 #[cfg(feature = "parity-capture")]
                 _ if text.starts_with("--screen=") => parsed.screen = Some(text[9..].into()),
+                #[cfg(feature = "parity-capture")]
+                _ if text.starts_with("--snapshot=") => {
+                    parsed.snapshot = Some(PathBuf::from(&text[11..]));
+                }
                 _ => return Err(format!("Argumento no reconocido: {text}")),
             }
         }

@@ -17,7 +17,10 @@ if ($Version -cnotmatch '^(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9]{0,4})\.(0|[1-9][0-9
 $output=Assert-NativePath $OutputDirectory
 if ($TestInstaller -and -not $output.StartsWith([IO.Path]::GetFullPath('C:/tmp/ola2/1591-qa/'),[StringComparison]::OrdinalIgnoreCase)) { throw 'Build QA fuera de la raíz aislada.' }
 $archive=Join-Path $output 'vantare-native-amd64-package.zip'
-$null=Expand-NativePackage $archive (Get-NativeHash $archive) (Join-Path $output 'installer-checked-payload') 'beta'
+$checked=Join-Path $output 'installer-checked-payload'
+$package=Expand-NativePackage $archive (Get-NativeHash $archive) $checked 'beta'
+if($package.version -cne $Version){throw 'La versión del ZIP no coincide con el Setup.'}
+if((Get-NativeHash (Join-Path $checked 'candidate.ps1')) -cne (Get-NativeHash (Join-Path $PSScriptRoot 'candidate.ps1'))){throw 'El bootstrap del ZIP y el del Setup deben ser idénticos.'}
 if ($null -ne (Get-Item -LiteralPath (Join-Path $output 'VantareSetup.exe') -ErrorAction SilentlyContinue)) { throw 'No sobrescribir un Setup existente.' }
 $native=Split-Path $PSScriptRoot
 $saved=@{}

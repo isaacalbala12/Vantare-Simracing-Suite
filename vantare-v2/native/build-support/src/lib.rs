@@ -122,8 +122,8 @@ END
             return Err(format!("installer resource: {status}").into());
         }
         println!("cargo:rustc-link-arg-bin={bin}={}", resource.display());
-        println!("cargo:rustc-link-arg-bin={bin}=/MANIFEST:EMBED");
-        println!("cargo:rustc-link-arg-bin={bin}=/MANIFESTUAC:level='asInvoker' uiAccess='false'");
+        // GPUI already embeds its asInvoker/PerMonitorV2 manifest in gpui.lib.
+        // A second /MANIFEST:EMBED produces a duplicate resource at link time.
     }
     Ok(())
 }

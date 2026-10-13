@@ -415,7 +415,7 @@ function Uninstall-NativeRegistration([string]$Directory,[bool]$DeferUninstaller
     Sync-NativeOptionalShortcuts $directory $folder $installerUi $true
     if($DeferUninstaller -and $null -ne $installerUi){Write-NativeJson (Join-Path $directory 'installer-cleanup.json') @{schema=1; sha256=$installerUi.sha256}}
     Remove-Item -LiteralPath $key
-    foreach ($name in @('beta.ps1', 'candidate.ps1', 'registration-identity.txt', 'Uninstall.exe', 'uninstall-vantare.ps1','installer-ui.json')) {
+    foreach ($name in @('beta.ps1', 'candidate.ps1', 'registration-identity.txt', 'Uninstall.exe', 'uninstall-vantare.ps1','installer-ui.json','installer-notices.txt')) {
         if($name -ceq 'Uninstall.exe' -and $DeferUninstaller){continue}
         $path = Join-Path $directory $name
         if (Test-Path -LiteralPath $path) { Remove-Item -LiteralPath $path }

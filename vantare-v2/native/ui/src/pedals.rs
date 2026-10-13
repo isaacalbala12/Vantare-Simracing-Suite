@@ -191,8 +191,8 @@ pub struct Settings {
     /// Look: los layouts anteriores a #1566 no lo guardan y siguen en Eficiencia.
     #[serde(default = "eficiencia")]
     pub design_system: crate::look::Look,
-    pub style: crate::standings::Look,
-    pub accent: crate::standings::Accent,
+    pub style: crate::look::Tone,
+    pub accent: crate::look::Accent,
     /// Marca Vantare: decisión inyectada por el host según la licencia.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub brand_visible: Option<bool>,
@@ -226,8 +226,8 @@ impl Settings {
     pub fn for_look(design_system: crate::look::Look) -> Self {
         Self {
             design_system,
-            style: crate::standings::Look::Neo,
-            accent: crate::standings::Accent::Red,
+            style: crate::look::Tone::Neo,
+            accent: crate::look::Accent::Red,
             brand_visible: None,
             transparent_background: false,
             gap: DEFAULT_GAP,
@@ -314,7 +314,7 @@ impl Widget {
         replace_if_changed(&mut self.vm, self.settings.project(snapshot, prefs))
     }
 
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         let paint: Paint = match &self.presentation {
             Presentation::Eficiencia => {

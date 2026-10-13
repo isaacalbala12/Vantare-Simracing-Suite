@@ -8,16 +8,13 @@ Hub/Studio GPUI editan el layout único y los widgets del registro. Launcher gob
 
 ## 2. Autoridad y lectura verificada
 
-GitHub Issues y Project Vantare. #1564/area:ui, In Review, sin milestone comprometida; issue y escritura verificadas. Dependencias contrastadas: #1562/PR #1576 MERGED, #1563/PR #1572 y #1567/PR #1575 integradas; #1573 acceso y #1570 documentación presentes en nightly. PR de esta entrega: [#1577](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1577). README [UI](../../../native/ui/README.md)/[Hub](../../../native/hub/README.md) y plantilla activa leídos.
+GitHub #1561, area:plataforma, Project Vantare In Progress, sin milestone. Esta entrega cubre exactamente PR-3/PR-5 de `C:/tmp/ola2/plan-1561.md`; #1531/#1532/#1534 cerradas. Leídos AGENTS, README nativo/UI, ADR 0101 y contrato de producto. No incluye Studio, telemetría ni ports.
 
 ## 3. Estado real y canal
 
-#1564/PR #1577 MERGED en nightly b2186f82746424b4844a5909efd31530c5bbe5b3.
-Esa base se incorpora una sola vez, sin rebase, a vantareapp/isa-1535-roadmap-testing
-(PR #1578). Ambos contratos se conservan: DTO live v10 y servicios IPC v6;
-derechos/control v4 independiente. #1535 aporta Roadmap ClickUp/Supabase y
-participacion Testing; SQL no aplicado. SHA del merge/push y CI en #1535/buzon.
-Auto-merge #1578 activo; no acredita integracion remota ni release.
+Rama aislada `vantareapp/isa-1561-looks-frame`: PR-3/PR-5 en draft [#1579](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1579) a nightly. Base inicial b2186f82; guardias 22fe7490, PR-3 abc22332, PR-5 7a646ac8 y correcciones de revisión d2710f4e. Se incorpora origin/nightly ee372540 mediante merge, sin rebase; SHA final/push y checks en issue/buzón. Gates del árbol reconciliado PASS: fmt/Clippy -D warnings, Nextest 1621/1621 (7 skips), lifecycle 18/18 y telemetría 25/25. La PR no está integrada ni hay promoción/release.
+
+#1564/PR #1577 y #1535/PR #1578 MERGED en nightly (b2186f82 y ee372540 respectivamente). Se conservan DTO live v10, servicios IPC v6 y derechos/control v4 independiente. #1535 aporta Roadmap ClickUp/Supabase y participación Testing; SQL no aplicado. La previa de producción está bloqueada por timeout/proyectos INACTIVE y destino sin confirmar, según #1535; no se acredita DEFINER/ACL/migraciones ni se restaura/enlaza/aplica SQL en esta entrega.
 
 ## 4. Decisiones cerradas
 
@@ -31,7 +28,7 @@ Auto-merge #1578 activo; no acredita integracion remota ni release.
 
 ## 5. Arquitectura y ownership
 
-Domain proyecta; UI guarda settings y pinta; Hub edita documento/historial. [Registro](../../../native/ui/src/registry.rs), [layout](../../../native/ui/src/layout.rs), [Studio](../../../native/hub/src/studio.rs), [sesiones](../../../native/hub/src/studio/sessions.rs). UI/domain no dependen de runtime. Sin deps nuevas ni transporte/permiso en pintores. #1561 P1-A mantiene la partición coordinada del Studio preexistente >2000 LOC; PR-3/PR-5 de #1561 no se afirman integradas. `frame_with_motion` sigue vigente.
+Domain proyecta; UI guarda settings y pinta; Hub edita documento/historial. [Registro](../../../native/ui/src/registry.rs), [layout](../../../native/ui/src/layout.rs), [Studio](../../../native/hub/src/studio.rs), [sesiones](../../../native/hub/src/studio/sessions.rs). UI/domain no dependen de runtime. Sin deps nuevas ni transporte/permiso en pintores. #1561 P1-A mantiene la partición coordinada del Studio preexistente >2000 LOC; PR-3/PR-5 de #1561 se entregan en draft #1579, sin integración. PR-3 de esta rama mueve la apariencia a `ui::look::{Look, Tone, Accent}`, sin cambiar nombres serde. PR-5 usa `frame(prefs, reduced)` en los 18 widgets: despacho generado, Fuel asienta en su propio frame, estáticos aceptan `_reduced`. Cadencia/etiquetas/catálogo sin cambios.
 
 ## 6. Evidencia y límites
 
@@ -40,27 +37,25 @@ Entrega anterior #1564: RED `9c218b38`; código/capturas `c8401b50`; test D12 am
 Logs y revisión/hashes: `C:/tmp/ola2/evidence-1564`; informe `C:/tmp/ola2/informe-1564-impl.md`; buzón `C:/tmp/buzon/1564.md`. No convierte fixtures/replays en LMU/ACC/OBS físicos, DPI/macOS ni input→Present. Present/s no mide latencia. Históricos/goldens se conservan sin recalibrar.
 **#1536 · Launcher:** test COM compara destinos canonicalizados, conserva ejecutable/bytes, no ejecuta y rechaza UNC; arreglo `d7c6cd17`, histórico enlazado arriba.
 
+Guardias #1561 `22fe7490`: layout Eficiencia/Neutro/acentos de cuatro widgets, transiciones activas de Banderas/FastestLap/Input/PedalsTelemetry y replay: 8/8 PASS antes del refactor. Capturas base de 18 widgets por `compare.ps1` guardadas e inspeccionadas; diferencias con goldens históricos registradas sin recalibración. Cuatro pintores equivalentes tras renombrado de imports/tipos; PR-3 reduce 6 líneas Rust (13321→13315 en 12 fuentes, incluidos tests; 22fe7490→abc22332). PR-5 reduce 72 líneas Rust (12945→12873 en 24 fuentes); registro 175→157, wrappers 8→0 y sitios de API de movimiento por widget animado 2→1. Cuerpos de frame conservados 18/18. Gates anteriores al merge de #1578 por la cola: fmt/Clippy -D warnings PASS, Nextest 1615/1615 (7 skips), lifecycle 18/18; build parity-capture/paint-stats y guardias con ambas features 5/5 PASS. Paridad final inspeccionada: 18/18 hashes PNG idénticos, 0/1720978 píxeles distintos, umbral 0 sin máscaras. Verificación retenida 456 huellas PASS. Revisión #1579: JSON canónico fijado desde 22fe7490/b2186f82; cuatro instancias y nombres/defaults/fallbacks guardados 4/4 PASS. Mutación real del orden style/accent rechazada por bytes; restauración 4/4 PASS. Receta DTO v10, guardados v7–v10 y alta de Kind::label corregidas. Gates tras reconciliar #1578: fmt/Clippy PASS, Nextest 1621/1621 (234.263 s, 7 skips), lifecycle 18/18 y telemetría 25/25 (851.768 s; ACC 804.035 s). Fixtures vigentes y lectores guardados IPC PASS. Sin nuevas modificaciones a fuentes/fixtures/referencias de widgets; paridad previa conservada, no recapturada. Evidencia nueva: `C:/tmp/ola2/evidence-1561-ui`; buzón `C:/tmp/buzon/1561-ui.md`.
+
 ## 7. Riesgos y deuda
 
-- #1577 fusionada con checks SUCCESS; #1578 pendiente de su propio CI tras resolver conflictos documentales. Ambos flujos pista/sesion preservados.
+- #1561: comparar contra esta base; los goldens históricos ya difieren en dimensiones/píxeles antes del refactor. No se recalibran. CI remoto del draft pendiente de revisión; no se acredita con los gates locales.
+- #1535: SQL no aplicado; producción/ref/DEFINER/ACL/migraciones sin verificar. Requiere confirmar destino y respuesta expresa del orquestador; no lo resuelve #1579.
 - P2: Studio compartido con #1569; no partir durante entregas concurrentes. #1524 sigue pendiente: autoría no acredita fuente live.
 - #1527 debe partir del DTO live v10 realmente integrado y mantener lectores persistidos compatibles.
 - Evidencia física/plataforma y deuda de paridad de ADR 0101 conservadas en el histórico; no elevar severidad sin nueva prueba.
 
 ## 8. Issues terminadas, activas y pendientes
 
-Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. Integrada #1564/PR #1577. Activa de esta rama: #1535/PR #1578. #1566/PR #1580 aprobada por Isaac (sin rótulos), ready con auto-merge tras merge de nightly. Pendientes coordinadas: #1561 PR-3/PR-5, #1569 y #1527; si PR-3 entra antes que #1580, #1566 hace merge de nightly (`standings::{Look, Accent}` → `look.rs`). #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
+Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576, #1563 PR #1572 y #1567 PR #1575. Sus issues pueden seguir abiertas; integración no implica cierre. #1564/PR #1577, #1535/PR #1578 y #1561 PR-3/PR-5 (#1579) integradas en la base; #1535 sigue abierta por la previa/SQL bloqueados. #1566/PR #1580 aprobada por Isaac (sin rótulos), ready con auto-merge; adaptada a `look::{Tone, Accent}` de #1579. Pendientes coordinadas: #1569 y #1527. #1496/#1497 no se cierran por este resumen. IDs ISA/VAN históricos en permalink anterior.
 
 ## 9. Siguiente acción exacta
 
-Push del merge documental de #1578 y verificar CI/auto-merge. Sin conflictos de
-codigo: no repetir gates Rust innecesarios. Una vez #1578 MERGED, consulta
-previa SOLO LECTURA en Supabase produccion (DEFINER/ACL/migraciones) y DUDA
-con resultado/comandos. No aplicar SQL hasta respuesta expresa del orquestador.
-Mantener coordinacion Studio #1569; sin promocion testers/master ni release.
+Revisar los cuatro arreglos y los checks remotos del draft #1579; #1561 sigue abierta para el resto de la ola. Consultar SHA final y FIN en buzón/issue. Sin integrar #1579, promocionar testers/master ni release. #1535 conserva como siguiente paso confirmar proyecto/acceso y la previa SOLO LECTURA; no aplicar SQL sin respuesta expresa del orquestador.
 
 ## 10. Última actualización
 
-2026-10-11 · GitHub #1535 · Codex. #1577 MERGED y base nightly verificados;
-formato solo estado conservado. Diario/SHA/checks en issue y buzon.
-2026-10-11 · GitHub #1566 · Claude (Opus 5.5): §1, §4, §6 y §8 por Pedales Vantare; merge de nightly con #1578 conservado.
+2026-10-11 · GitHub #1561 · Codex. Estado y diario en la issue; alcance PR-3/PR-5 verificado, sin entradas por worker/ronda aquí.
+2026-10-13 · GitHub #1566 · Claude (Opus 5.5): §1, §4, §6 y §8 por Pedales Vantare; merge de nightly con #1578 y #1579 conservados.

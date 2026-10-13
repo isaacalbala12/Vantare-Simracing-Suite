@@ -41,7 +41,7 @@ instancias nuevas nacen en Vantare (decisión de Isaac).
 
 ## Cómo añadir un Look
 
-1. Añadir variante y metadatos en `ui/src/look.rs` (incluido `ALL`).
+1. Añadir variante y metadatos en `ui/src/look.rs` (incluido `ALL`); compartir `Tone`/`Accent` desde ese módulo.
 2. Añadir un archivo de pintor por widget en `ui/src/<widget>/`; conectar el enum
    local de presentación y su política visual. Reutilizar Board y Motion comunes.
 3. Añadir un test/caso de estilo con geometría, animación y captura de referencia.
@@ -76,8 +76,9 @@ un solo historial canónico `HistoryEntry { lap, consumed: Option<f64> }`;
 las entradas inválidas conservan posición y ambos pintores derivan del mismo
 historial. Un overflow devuelve ausencia/Plan::Unknown, nunca envuelve contadores.
 Los formatos opcionales y la demanda no crean contenido dependiente del Look.
-La API actual conserva `standings::Look` (Neo/Neutro) y el alias `DesignSystem`;
-su renombrado pertenece a PR-3 de #1561, sin cambiar nombres serde.
+La API común es `look::{Look, Tone, Accent}`: Look elige Eficiencia/Vantare,
+Tone elige Neo/Neutro. No importar apariencia desde otro widget; los nombres
+serde `designSystem`, `style` y `accent` permanecen iguales (#1561 PR-3).
 
 ### Gate y límites aceptados
 

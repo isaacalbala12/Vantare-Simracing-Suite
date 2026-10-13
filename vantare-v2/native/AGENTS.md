@@ -10,7 +10,7 @@ El mapa de crates y sus fronteras viven en [README.md](README.md),
 
 1. Widget nuevo o portado: una proyección en domain, un módulo en ui y una
    línea en registry.rs. N Looks sobre un estado, integrado para los cuatro widgets de #1531.
-2. Justificar cambios en frame_with_motion, Level::hz o allows_widget.
+2. Justificar cambios en Level::hz; cada widget recibe frame(prefs, reduced).
 3. Campo nuevo en SnapshotDto: subir VERSION o explicar por qué no.
    El pipe live es estricto; compatibilidad guardada usa un lector explícito.
 4. Ningún #[path] nuevo entre crates; reutilizar la interfaz del crate dueño.

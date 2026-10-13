@@ -30,6 +30,7 @@ pub(crate) mod vantare;
 pub(crate) mod view;
 
 use crate::app::Paint;
+use crate::look::{Accent, Look, Tone};
 use crate::session::Session;
 use model::{Config, Metric};
 use motion::Wake;
@@ -40,11 +41,11 @@ use vantare_domain::{Snapshot, format::Preferences, standings};
 #[serde(default, rename_all = "camelCase")]
 #[allow(clippy::struct_excessive_bools)] // Opciones productivas independientes, no estados excluyentes.
 pub struct Settings {
-    pub design_system: DesignSystem,
+    pub design_system: Look,
     /// V1: contenido normalizado antes de separar su Look (layouts antiguos migran en memoria).
     #[serde(default)]
     pub content_version: u8,
-    pub style: Look,
+    pub style: Tone,
     pub accent: Accent,
     pub row_count: usize,
     /// Columnas de carrera y, en layouts anteriores a #1564, de todas las sesiones.
@@ -70,48 +71,6 @@ pub struct Settings {
     pub brand_visible: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub footer_slots: Option<Vec<String>>,
-}
-
-/// Alias público para layouts/inspector anteriores; los Looks viven en UI.
-pub use crate::look::Look as DesignSystem;
-
-/// Estilo Vantare del catálogo r10b.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Look {
-    /// Neo con fondos en escala de grises, sin subtono rojo.
-    Neutro,
-    #[default]
-    #[serde(other)]
-    Neo,
-}
-
-impl Look {
-    pub fn name(self) -> &'static str {
-        match self {
-            Self::Neo => "neo",
-            Self::Neutro => "neutro",
-        }
-    }
-    pub fn from_name(name: &str) -> Self {
-        if name == "neutro" {
-            Self::Neutro
-        } else {
-            Self::Neo
-        }
-    }
-}
-
-/// Acento Vantare: fila propia, bordes y énfasis.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum Accent {
-    Amber,
-    Green,
-    White,
-    #[default]
-    #[serde(other)]
-    Red,
 }
 
 /// Métricas de Standings Vantare que ocupan un hueco propio (P es fija).
@@ -256,7 +215,7 @@ impl Settings {
     /// Ejemplo nativo del inspector con los presets de sesión.
     #[cfg(feature = "parity-capture")]
     pub fn apply_session_preview(&mut self) {
-        self.design_system = DesignSystem::Vantare;
+        self.design_system = Look::Vantare;
         self.apply_session_presets();
     }
 
@@ -301,7 +260,7 @@ impl Settings {
     }
 
     fn legacy_columns(&self) -> Vec<options::ColumnSetting> {
-        if self.design_system == DesignSystem::Vantare {
+        if self.design_system == Look::Vantare {
             return vantare_template("standard");
         }
         // Eficiencia Signature without explicit columns: the existing config.
@@ -369,7 +328,7 @@ impl Settings {
         Self {
             design_system,
             content_version: 1,
-            style: Look::Neo,
+            style: Tone::Neo,
             accent: Accent::Red,
             row_count: 20,
             columns: None,
@@ -412,7 +371,7 @@ impl Settings {
         if settings.classification_mode != "multiclass" {
             settings.classification_mode = "normal".into();
         }
-        if settings.content_version == 0 && settings.design_system == DesignSystem::Vantare {
+        if settings.content_version == 0 && settings.design_system == Look::Vantare {
             settings.class_scope = if settings.classification_mode == "multiclass" {
                 "all-classes"
             } else {
@@ -605,11 +564,11 @@ impl Widget {
         motion: std::sync::Arc<motion::Motion>,
     ) -> Presentation {
         match settings.design_system {
-            DesignSystem::Eficiencia => Presentation::Eficiencia {
+            Look::Eficiencia => Presentation::Eficiencia {
                 visual: Box::new(eficiencia::Visual::new(settings, prefs)),
                 motion,
             },
-            DesignSystem::Vantare => Presentation::Vantare {
+            Look::Vantare => Presentation::Vantare {
                 visual: vantare::Visual::new(vantare::Options::from_settings(settings)),
                 motion,
             },
@@ -743,15 +702,12 @@ impl Widget {
             Presentation::Vantare { visual: v, .. } => v.size(),
         }
     }
-    pub(crate) fn frame(&mut self, prefs: Preferences) -> (Paint, Wake) {
-        self.frame_with_motion(prefs, false)
-    }
-    pub(crate) fn frame_with_motion(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         match &mut self.presentation {
             Presentation::Eficiencia {
                 visual: v,
                 motion: m,
-            } => v.frame_with_motion(prefs, reduced, std::sync::Arc::make_mut(m)),
+            } => v.frame(prefs, reduced, std::sync::Arc::make_mut(m)),
             Presentation::Vantare {
                 visual: v,
                 motion: m,
@@ -936,10 +892,10 @@ mod tests {
         assert!(clocks.iter().any(|c| c.0.starts_with("flips:")));
         assert!(clocks.iter().any(|c| c.0.starts_with("pit-alpha:")));
         for look in [
-            DesignSystem::Vantare,
-            DesignSystem::Eficiencia,
-            DesignSystem::Vantare,
-            DesignSystem::Eficiencia,
+            Look::Vantare,
+            Look::Eficiencia,
+            Look::Vantare,
+            Look::Eficiencia,
         ] {
             widget.set_look(look, prefs);
             let after = match &widget.presentation {
@@ -987,7 +943,7 @@ mod tests {
             .expect("valores desconocidos");
         assert_eq!(
             (unknown.design_system, unknown.style),
-            (DesignSystem::Vantare, Look::Neo)
+            (Look::Vantare, Tone::Neo)
         );
         assert!(matches!(
             Widget::new(&Settings::eficiencia(), prefs).presentation,
@@ -1108,7 +1064,7 @@ mod tests {
             assert_eq!(class_scope, "player-class");
             assert_eq!(content_version, 1);
             assert_eq!(columns.as_ref().expect("columnas").len(), 2);
-            assert_eq!(style, Look::Neutro);
+            assert_eq!(style, Tone::Neutro);
             assert_eq!(accent, Accent::Green);
             assert_eq!(layout.instances[0].geometry, original.instances[0].geometry);
         }

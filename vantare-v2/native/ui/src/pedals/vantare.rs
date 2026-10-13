@@ -6,7 +6,7 @@
 use super::SIZE;
 use crate::efficiency::preview::PaintWindow as Window;
 use crate::efficiency::{rect, text};
-use crate::standings::{Accent, Look};
+use crate::look::{Accent, Tone};
 use crate::vantare::paint::{Face, Kit, round_rect, transparent};
 use crate::vantare::style::{Color, Style, Variant};
 use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
@@ -27,7 +27,7 @@ const FILL_FROM: f32 = 0.55;
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) struct Options {
-    pub look: Look,
+    pub look: Tone,
     pub accent: Accent,
     pub gap: f32,
 }
@@ -42,8 +42,8 @@ impl Options {
     }
     fn variant<'a>(&self, style: &'a Style) -> &'a Variant {
         match self.look {
-            Look::Neo => &style.styles.neo,
-            Look::Neutro => &style.styles.neutro,
+            Tone::Neo => &style.styles.neo,
+            Tone::Neutro => &style.styles.neutro,
         }
     }
     fn accent(&self, style: &Style) -> Color {

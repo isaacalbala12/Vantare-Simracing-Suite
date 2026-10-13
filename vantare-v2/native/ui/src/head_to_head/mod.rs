@@ -252,7 +252,7 @@ impl Widget {
         )
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, _prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         let show_sectors = self.show_sectors;
         (
@@ -495,7 +495,7 @@ mod tests {
         assert!(widget.ingest(&snapshot, prefs));
         snapshot.state.cars[0].driver.name = "Rival".into();
         assert!(widget.ingest(&snapshot, prefs));
-        assert!(matches!(widget.frame(prefs).1, Wake::Idle));
+        assert!(matches!(widget.frame(prefs, false).1, Wake::Idle));
         #[cfg(feature = "parity-capture")]
         assert!(!widget.animating());
     }

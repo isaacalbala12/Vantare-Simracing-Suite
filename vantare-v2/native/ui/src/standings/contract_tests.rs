@@ -29,10 +29,10 @@ fn unchanged_acc_keeps_board_plan_and_motion_with_previous_paint_alive() {
             )
         };
         let saved = identity(&widget);
-        let mut previous_paint = widget.frame(prefs).0;
+        let mut previous_paint = widget.frame(prefs, false).0;
         for _ in 0..12 {
             assert!(!widget.ingest(&photo, prefs), "foto repetida no notifica");
-            let next_paint = widget.frame(prefs).0;
+            let next_paint = widget.frame(prefs, false).0;
             assert_eq!(
                 identity(&widget),
                 saved,

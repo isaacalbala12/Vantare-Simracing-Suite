@@ -171,3 +171,20 @@ fn review_p1_2_account_label_variants_are_removed_before_preview() {
         "accountIdentity=public-context"
     );
 }
+
+#[test]
+fn review_p1_3_foreign_unc_profile_is_removed_before_preview() {
+    for raw in [
+        r"ERROR \\LAB\Profiles\SyntheticOther\log.txt",
+        "ERROR //LAB/Profiles/SyntheticOther/log.txt",
+        r#"ERROR "\\LAB\Profiles\Synthetic Other\log.txt""#,
+    ] {
+        let value = redaction::clean(raw, &[]);
+        assert!(
+            !value.contains("SyntheticOther") && !value.contains("Synthetic Other"),
+            "foreign UNC profile survived"
+        );
+        assert!(value.contains("ERROR"));
+        assert_eq!(redaction::clean(&value, &[]), value);
+    }
+}

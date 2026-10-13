@@ -1,6 +1,6 @@
 //! Additional report redaction on top of the existing diagnostics cleaner.
 pub(super) fn clean(text: &str, private_names: &[String]) -> String {
-    let mut text = crate::diagnostics::clean_paths(text);
+    let mut text = crate::diagnostics::clean_paths(&unc_paths(text));
     text = labeled_secrets(&text);
     for name in private_names.iter().filter(|n| !n.is_empty()) {
         for form in [name.clone(), name.to_lowercase(), name.to_uppercase()] {
@@ -40,6 +40,40 @@ pub(super) fn clean(text: &str, private_names: &[String]) -> String {
         out.push_str(&part[word.len()..]);
     }
     phones(&out)
+}
+// Redact before diagnostics normalizes escaped separators. Unknown shares do
+// not provide a trustworthy way to distinguish a user name from a directory.
+fn unc_paths(text: &str) -> String {
+    let mut out = String::new();
+    let mut i = 0;
+    while i < text.len() {
+        let before = i
+            .checked_sub(1)
+            .and_then(|at| text.as_bytes().get(at))
+            .copied();
+        if (text[i..].starts_with("\\\\") || text[i..].starts_with("//"))
+            && !before.is_some_and(|b| matches!(b, b':' | b'\\' | b'/'))
+        {
+            let quote = before.filter(|b| matches!(b, b'"' | b'\''));
+            let end = i + text[i..]
+                .chars()
+                .take_while(|c| {
+                    !matches!(c, '\r' | '\n')
+                        && quote.map_or(!c.is_whitespace() && !"\"'<>;,".contains(*c), |q| {
+                            *c != char::from(q)
+                        })
+                })
+                .map(char::len_utf8)
+                .sum::<usize>();
+            out.push_str("<ruta>");
+            i = end;
+        } else {
+            let c = text[i..].chars().next().expect("boundary");
+            out.push(c);
+            i += c.len_utf8();
+        }
+    }
+    out
 }
 fn labeled_secrets(text: &str) -> String {
     let lower = text.to_ascii_lowercase();

@@ -37,3 +37,13 @@ class Tests(unittest.TestCase):
             with self.subTest(label=label):
                 model,delivery=self.pipeline(json.dumps({label:secret}))
                 self.assertNotIn(secret,model);self.assertNotIn(secret,delivery)
+
+    def test_review_p1_3_foreign_unc_profile_never_reaches_model_or_delivery(self):
+        for raw in (r'ERROR \\LAB\Profiles\SyntheticOther\log.txt',
+                    'ERROR //LAB/Profiles/SyntheticOther/log.txt',
+                    r'ERROR "\\LAB\Profiles\Synthetic Other\log.txt"'):
+            with self.subTest(raw=raw):
+                model,delivery=self.pipeline(raw)
+                for output in (model,delivery):
+                    self.assertNotIn('SyntheticOther',output);self.assertNotIn('Synthetic Other',output)
+                    self.assertIn('ERROR',output)

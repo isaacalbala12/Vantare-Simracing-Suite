@@ -154,3 +154,6 @@ registrados en runbook/buzón; entrega de cliente/worker y gates finales locales
 2. P1-2: accountId/AccountID/account-id/account_id dentro de JSON, ambas capas.
    RED por UUID filtrado, GREEN tras reconocer etiquetas completas; sin borrar
    accountIdentity ni datos públicos similares.
+
+3. P1-3: se omiten rutas UNC completas, incluso perfiles ajenos y rutas
+   entre comillas con espacios. RED/GREEN Rust/Python; contexto ERROR conservado.

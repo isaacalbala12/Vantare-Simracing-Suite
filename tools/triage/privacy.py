@@ -6,6 +6,9 @@ REDACTED = '<redacted>'
 
 
 def redact(text):
+    # UNC shares may contain foreign profile names: omit the entire path.
+    text = re.sub(r'(["\'])(?:\\\\|//)[^"\'\r\n]+\1', REDACTED, str(text))
+    text = re.sub(r'(?<![:\\/])(?:\\\\|//)[^\s"\'<>;,]+', REDACTED, text)
     text = re.sub(r'(?i)(?:[a-z]:[\\/]+users[\\/]+|/(?:home|users)/)[^\\/\r\n]+', '<user>', str(text))
     for pattern in [
         r'(?i)\bauthorization["\']?\s*[:=]\s*["\']?\s*(?:basic|bearer)\s+[^\s"\'<>;,]+',

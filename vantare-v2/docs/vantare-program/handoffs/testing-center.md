@@ -1,16 +1,43 @@
 # Handoff vivo — Testing Center
 
-## Reanudación CLI · r3 F4 · 14/10/2026
+## R3 F4 · 14/10/2026 · entrega CLI
 
-#1594 / VANTA-38/49 En curso, PR #1602 draft a nightly, STOP merge y
-auto-merge OFF. HEAD inicial 87950380 y worktree limpio. F4 reproduce en
-Python y Rust la fuga de una cola privada tras una comilla interna JSON.
-Se sustituye la normalización de escapes por parser estándar/serde_json,
-recorrido por claves/valores y serialización nueva; strings JSON anidados
-siguen el mismo recorrido. Texto ambiguo se omite conservadoramente.
-Corpus compartido de 43 casos y recorrido modelo/T3/Intake mock sin sockets.
-Gates finales pendientes; sin proveedores, envíos reales ni producción.
-Evidencia local E:/tmp/isa1594-r3-evidence/.
+#1594 / VANTA-38/49 **Por revisar**, actualizado y releído mediante el
+script oficial; proyecto Vantare, area:testing-center. PR #1602 draft a
+nightly, auto-merge OFF y STOP merge. Hito F4 publicado en
+**6b41d9ff2ee6b19e29f71342388012164f1d4520**. Worktree inicial limpio en
+87950380; todos los commits heredados se conservan.
+
+F4: se elimina la normalización de comillas escapadas. Python/Rust parsean
+JSON, redactan por clave/valor y vuelven a serializar, incluidos strings
+JSON anidados. Claves normalizadas, presupuesto de 32 niveles y omisión
+conservadora ante JSON inválido o fragmento ambiguo. Hardware y resumen de
+sesión nativos pasan por el mismo recorrido. Orden canónico explícito con
+sort_all_objects para mantener paridad con preserve_order del workspace.
+
+43 casos compartidos: F4 exacto, escapes/Unicode, grafías de claves,
+anidación/strings JSON, valores numéricos y varios campos privados en texto.
+Python cubre 24 recorridos modelo/T3/Intake mock con summary limpio/generado;
+Rust cubre título, cuerpo, adjunto y resumen de sesión del preview RPC.
+RED original Python/Rust conservado; primer Nextest falló por orden de
+claves, corregido sin tocar expectativas/features ni suprimir lint.
+
+Gates finales locales: fmt/check/Clippy PASS, Nextest **1659/1659** (7 skips,
+1 lento PASS), lifecycle **18/18**, Python **42/42** con sockets prohibidos,
+quality 456 huellas y diff-check PASS. Cola original, jobs=2, timeout 3600 s,
+target exclusivo E:/tmp/isa1594-native-gates; wrapper comparado con el
+versionado, solo cwd/target distintos. Evidencia RED/GREEN y comandos en
+E:/tmp/isa1594-r3-evidence/; [reproducción r3](../../../../tools/triage/review-1602-r3-regressions.md).
+
+Base común bc89c8b8400a0a7915e7496b6f339d8e8231359b; origin/nightly
+consultado 0807fbd0d3d8e354706c580f1bc5f60469b202b4. GitGuardian FAILURE y
+PR DIRTY verificados sobre 6b41d9ff; CI remoto no verde. Orquestador: re-review,
+clasificación del check y resolución de conflictos/integración autorizada.
+Sin merge, promoción, release, proveedor, deploy ni informes reales enviados.
+Sin cambios SQL ni nuevas acciones Supabase prod; SQL/pgTAP/telemetría y QA
+visual/física no repetidos por el ámbito de esta corrección. Los resultados
+anteriores son históricos. La omisión conservadora puede quitar contexto
+público; no se certifica anonimización universal de texto libre.
 
 Historico r2 #1594 / VANTA-38/49: F1 (P1), F2/F3 (P2) de la re-review r2
 corregidos y publicados. VANTA-38/49 Por revisar verificado el 14/10/2026.

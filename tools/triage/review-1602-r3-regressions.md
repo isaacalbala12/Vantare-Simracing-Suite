@@ -46,7 +46,10 @@ el mismo limpiador de estructura para hardware y resumen de sesión.
   `serde_json/preserve_order`; se ordenan explícitamente todos los objetos
   antes de serializar, sin cambiar las expectativas ni desactivar features.
   El log `test-first-parity-fail.log` se conserva y los gates se repiten.
-- Gates finales y SHA: ver el handoff vivo y el cierre del PR.
+- Hito F4: **6b41d9ff2ee6b19e29f71342388012164f1d4520**, publicado.
+- Gates finales: fmt/check/Clippy PASS; Nextest **1659/1659** (7 skips,
+  1 lento PASS); lifecycle **18/18**; Python **42/42** con sockets prohibidos;
+  quality 456 huellas y diff-check PASS. Todas las regresiones r1/r2 se conservan.
 - Evidencia local: `E:/tmp/isa1594-r3-evidence/`, comandos con timeout 600 s
   Python / 3600 s Rust, dos jobs y target exclusivo de este worktree.
   El wrapper de gates se compara con el versionado: solo cambia cwd/target.
@@ -66,3 +69,8 @@ pwsh -NoProfile -File native/scripts/compilar.ps1 cargo test --manifest-path nat
 Sin dependencias nuevas, tests debilitados, cambios SQL, proveedor, despliegue
 o envíos reales. No se certifica anonimización universal de texto libre, QA
 visual, hardware/juegos, CI remoto verde, merge, promoción o release.
+SQL/pgTAP y telemetría no se repiten porque no se toca SQL ni
+runtime/domain/ipc/testdata; la evidencia anterior se conserva como histórica.
+VANTA-38/49 Por revisar verificado; PR #1602 draft a nightly, auto-merge OFF.
+GitGuardian FAILURE y conflicto con nightly sobre 6b41d9ff quedan para el
+orquestador; los gates locales no certifican ese check remoto.

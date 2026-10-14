@@ -184,6 +184,31 @@ pub mod sync;
 mod tests {
     use super::*;
     #[test]
+    fn multiline_description_saves_and_reopens_but_rejects_other_controls() {
+        let root = std::env::temp_dir().join(crate::random_id().expect("id"));
+        let profile = PilotProfile {
+            public_name: "Piloto".into(),
+            description: "Piloto de GT\nCarreras de resistencia".into(),
+            ..Default::default()
+        };
+        let mut local = Local::open(&root, None, None).expect("local");
+        local.save(profile.clone(), 0).expect("guardar dos líneas");
+        drop(local);
+        let local = Local::open(&root, None, None).expect("reabrir");
+        assert_eq!(local.state().profile, profile);
+        for control in ['\r', '\t', '\u{001b}', '\u{007f}', '\u{0085}'] {
+            assert_eq!(
+                validate(&PilotProfile {
+                    description: format!("GT{control}Carreras"),
+                    ..profile.clone()
+                }),
+                Err(Error::Protocol)
+            );
+        }
+        drop(local);
+        std::fs::remove_dir_all(root).expect("limpieza");
+    }
+    #[test]
     fn valid_detailed_photo_fits_storage_budget() {
         let mut image = image::RgbImage::new(256, 256);
         let mut seed = 1_u32;

@@ -53,7 +53,11 @@ impl Draft {
     pub fn trimmed(&self) -> Self {
         Self {
             public_name: self.public_name.trim().into(),
-            description: self.description.trim().into(),
+            description: self
+                .description
+                .trim()
+                .replace("\r\n", "\n")
+                .replace('\r', "\n"),
             country: self.country.clone(),
             simulators: self.simulators.clone(),
             favorite_car: self.favorite_car.trim().into(),
@@ -278,6 +282,25 @@ mod tests {
         assert_eq!(draft.problem(), None, "cuenta caracteres, no bytes");
         draft.description.push('x');
         assert!(draft.problem().is_some());
+    }
+
+    #[test]
+    fn description_normalizes_windows_line_endings_for_multiline_save() {
+        let draft = Draft {
+            public_name: "Piloto".into(),
+            description: "GT\r\nResistencia\rLMU".into(),
+            ..Default::default()
+        }
+        .trimmed();
+        assert_eq!(draft.description, "GT\nResistencia\nLMU");
+        assert!(draft.problem().is_none());
+        assert!(
+            vantare_ipc::services_protocol::pilot_document::PilotProfile {
+                description: draft.description,
+                ..Default::default()
+            }
+            .validate()
+        );
     }
 
     #[test]

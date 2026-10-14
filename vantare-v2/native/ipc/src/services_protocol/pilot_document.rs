@@ -39,7 +39,11 @@ impl PilotProfile {
             value.chars().count() <= limit && !value.chars().any(char::is_control)
         }
         text(&self.public_name, 64)
-            && text(&self.description, 280)
+            && self.description.chars().count() <= 280
+            && !self
+                .description
+                .chars()
+                .any(|c| c.is_control() && c != '\n')
             && text(&self.favorite_car, 120)
             && text(&self.favorite_team, 120)
             && self.country.as_deref().is_none_or(country_valid)

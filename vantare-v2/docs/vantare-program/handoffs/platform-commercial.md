@@ -1,3 +1,20 @@
+## #1620 / PR #1621 · correcciones de sandbox (14/10/2026)
+
+Encargo explícito al worker Codex macOS, sin subagentes ni acceso GitHub/Plane,
+sin servicios reales ni push. Base local `92e383d3`, nightly ya incorporado
+`953f041c`; rama `vantareapp/isa-1620-precios-polar`, Project Vantare/area:licencias.
+VANTA-N omitido por autorización anterior: el orquestador actualiza trackers y
+recoge los commits locales. No se hereda CI ni se afirma integración de estos fixes.
+
+Arreglo 1: tokens de organización como único modo soportado; POST de productos,
+descuentos y enlaces sin `organization_id`. GET de organización siempre valida
+el ID esperado; guarda del portal conservada. Dos regresiones RED (payload e
+identidad sin creador) antes del cambio; GREEN del catálogo registrado en
+`~/evidence/1620/sandbox-fix/01-green.log`. La prueba recorre draft, publicación
+simulada, enlace y rerun sin escrituras. No acredita ejecución contra Polar.
+Siguiente: salida recuperable tras fallo y diagnóstico 4xx, suite Deno completa,
+revisión del orquestador y sandbox real por su vía autorizada.
+
 ## #1608 · Integración de nightly (14/10/2026)
 
 Encargo explícito tras review r3 APTA: nightly → rama de issue, con merge,

@@ -147,26 +147,28 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   const creator = creatorCode(options.creator);
   const products = await list(http, "products", map.organization_id);
   const discounts = await list(http, "discounts", map.organization_id);
+  // Organization tokens scope POSTs implicitly; verify their expected organization.
+  const organization = await http(
+    "GET",
+    `/organizations/${map.organization_id}`,
+  ) as {
+    id?: string;
+    customer_portal_settings?: { subscription?: { update_plan?: boolean } };
+  } | null;
+  if (organization?.id !== map.organization_id) {
+    throw Error("Unexpected Polar organization");
+  }
   // Product scope limits redemption, not an already attached subscription discount.
   if (
-    creator ||
-    discounts.some((d) => d.metadata?.vantare_offer_key?.startsWith("creator:"))
+    (creator ||
+      discounts.some((d) =>
+        d.metadata?.vantare_offer_key?.startsWith("creator:")
+      )) &&
+    organization.customer_portal_settings?.subscription?.update_plan !== false
   ) {
-    const organization = await http(
-      "GET",
-      `/organizations/${map.organization_id}`,
-    ) as {
-      id?: string;
-      customer_portal_settings?: { subscription?: { update_plan?: boolean } };
-    } | null;
-    if (
-      organization?.id !== map.organization_id ||
-      organization.customer_portal_settings?.subscription?.update_plan !== false
-    ) {
-      throw Error(
-        "Creator offers require portal plan changes disabled; review organization settings",
-      );
-    }
+    throw Error(
+      "Creator offers require portal plan changes disabled; review organization settings",
+    );
   }
   const links = creator
     ? await list(http, "checkout-links", map.organization_id)
@@ -340,7 +342,6 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       for (const p of product?.prices ?? []) priceIds.add(p.id);
       if (!product) {
         product = await http("POST", "/products/", {
-          organization_id: map.organization_id,
           name: `Vantare ${key}`,
           visibility: "draft",
           recurring_interval: plan.interval,
@@ -390,7 +391,6 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   if (creator) {
     if (!discount) {
       discount = await http("POST", "/discounts/", {
-        organization_id: map.organization_id,
         name: `Vantare ${creator}`,
         type: "percentage",
         basis_points: PRICES.creator_discount_basis_points,

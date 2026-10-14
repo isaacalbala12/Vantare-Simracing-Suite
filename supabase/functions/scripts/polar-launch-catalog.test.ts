@@ -762,3 +762,40 @@ for (const launch of [false, true]) {
     assertEquals((await syncCatalog(f.http, recovered, options)).writes, 0);
   });
 }
+
+Deno.test("sandbox: organization-token POSTs omit organization_id in every resource", async () => {
+  const f = fake();
+  const posted = new Set<string>();
+  let verified = false;
+  const http: Http = async (method, path, body) => {
+    if (
+      method === "GET" && path === `/organizations/${sandbox.organization_id}`
+    ) {
+      verified = true;
+    }
+    if (method === "POST") {
+      assertEquals(verified, true);
+      assertEquals(Object.hasOwn(body as object, "organization_id"), false);
+      posted.add(path);
+    }
+    return await f.http(method, path, body);
+  };
+  const first = await syncCatalog(http, sandbox, options);
+  for (const product of f.products) product.visibility = "public";
+  const linked = await syncCatalog(http, first, options);
+  assertEquals([...posted].sort(), [
+    "/checkout-links/",
+    "/discounts/",
+    "/products/",
+  ]);
+  assertEquals((await syncCatalog(http, linked, options)).writes, 0);
+});
+
+Deno.test("sandbox: organization identity is checked even without creator offers", async () => {
+  const f = fake();
+  f.organization.id = "foreign";
+  await assertRejects(() =>
+    syncCatalog(f.http, sandbox, { environment: "sandbox" })
+  );
+  assertEquals(f.writes.length, 0);
+});

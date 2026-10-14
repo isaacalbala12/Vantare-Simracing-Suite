@@ -161,10 +161,16 @@ Un solo operador por organización; no garantiza concurrencia.
 
 ## Comandos desde raíz Git (PowerShell)
 
+Solo se soportan **tokens de organización**; los tokens personales no están
+soportados ni se detectan por prefijos. Ningún POST de productos, descuentos
+o checkout links envía `organization_id`: la organización procede del token.
+El GET de organización comprueba siempre el ID esperado antes de mutar,
+también sin ofertas de creador. La guarda del portal se conserva cuando aplica.
+
 Token solo mediante `POLAR_ACCESS_TOKEN` en sesión privada del operador, nunca
 argumentos/archivos/logs. Offline no lee tokens. Scopes posteriores: products,
 discounts y checkout_links read/write, y organizations:read para verificar la
-guarda del portal. Header `Polar-Version: 2026-10`.
+identidad de organización y la guarda del portal. Header `Polar-Version: 2026-10`.
 Entrada y salida distintas; salida inexistente. Los `--apply` están preparados,
 **no ejecutados** en esta ronda.
 

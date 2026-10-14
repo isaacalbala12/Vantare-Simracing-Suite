@@ -118,6 +118,10 @@ probado con verify-full: CA correcta llega al rechazo de routing esperado con
 usuario ficticio sin tenant; CA system falla y PGHOST falso con PGHOSTADDR real
 falla por hostname. Nunca se autenticó una cuenta ni se ejecutó SQL remoto.
 Logs tls-libpq-* y tls-review.log en evidencia #1535.
+Ese host no es el pooler del proyecto: responde «tenant/user not found» para
+`vantare_roadmap_publisher.ombjshwzqgeisazijduq`. El pooler real es
+`aws-1-eu-west-2.pooler.supabase.com:5432` (comprobado el 2026-10-13: con
+verify-full y la CA del repo llega a «password authentication failed»; sin login ni SQL).
 El host concreto de CI aún no está configurado; repetir allí antes de activar:
 `python scripts/verify_roadmap_tls.py --host <pooler> --port 5432 --ca <certificado>`.
 El workflow ejecuta ese diagnóstico contra PGHOST antes de psql, que conserva

@@ -59,6 +59,9 @@ inicial previo a «Para Claude».
 
 Las tareas se llaman «Tipo - Nombre». Tipos: Feature, Rework, Bug, Review,
 Investigar, Documento, Marketing, Medición, Optimizar. Module obligatorio.
+Los hilos de T3 Code de una tarea se titulan igual que ella:
+«VANTA-N · Tipo - Nombre» (por ejemplo, «VANTA-51 · Feature - Onboarding
+personalizado»). Quien crea o reutiliza el hilo lo renombra al empezar.
 
 ## Fuentes de verdad y lectura obligatoria
 

@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1606",
+  "type": "fix",
+  "summary": "Correcciones de telemetría: cierre de grabación, pausas y parrilla LMU, tendencias por vuelta, historial de pedales y replay de medianoche.",
+  "technicalNotes": [
+    "El cierre ordenado conserva el último evento publicado; las identidades LMU tienen límite y las posiciones duplicadas se rechazan.",
+    "Reanudar una pausa exige un reloj válido. Señales numéricas inválidas dejan ausencia y huecos en las series.",
+    "Saltar o retroceder vueltas reinicia la tendencia estimada. Elegir 4 segundos conserva toda esa ventana de pedales.",
+    "Las capturas LMU admiten cruzar medianoche UTC sin cambiar el formato ni las dependencias."
+  ],
+  "testing": [
+    "Con una copia portable y grabación de prueba, cerrar tras un evento de pits y comprobar su recuperación.",
+    "Probar pausa/reanudar LMU y saltos de vuelta; comprobar que los datos ausentes no aparecen como lecturas frescas.",
+    "Elegir 4 segundos en Input Telemetry y comprobar el tramo completo; reproducir una captura que cruce medianoche."
+  ],
+  "knownLimitations": [
+    "Validación física LMU/ACC pendiente; las regresiones y corpus no la sustituyen.",
+    "Persistir el último evento exige cierre ordenado y disco operativo; no garantiza recuperación tras muerte forzada.",
+    "La revisión no activa grabación automática de series ni modifica las instalaciones o datos reales del usuario."
+  ]
+}

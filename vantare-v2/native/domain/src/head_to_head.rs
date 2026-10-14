@@ -2,7 +2,7 @@
 //! El gap viene de `relative_s`; nunca de `gap_leader` ni `gap_ahead`.
 //! Sectores y mejor vuelta solo usan tiempos fiables del contrato neutral.
 
-use crate::format::{Language, PLACEHOLDER, Preferences};
+use crate::format::{self, Language, PLACEHOLDER, Preferences};
 use crate::{Car, Quality, Snapshot, SourceState, relative::relative_seconds};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -33,6 +33,7 @@ pub struct ViewModel {
     pub no_rival: String,
     /// Vacío si falta el jugador o el rival seleccionado; nunca fabrica filas.
     pub rows: Vec<Row>,
+    pub duel: Option<Duel>,
 }
 
 pub fn project(snapshot: &Snapshot, prefs: Preferences, target: Target) -> ViewModel {
@@ -50,6 +51,7 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences, target: Target) -> ViewM
         }
         .into(),
         rows: Vec::new(),
+        duel: None,
     };
     if snapshot.state.source_state != SourceState::Live {
         return vm;
@@ -100,7 +102,118 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences, target: Target) -> ViewM
         vm.rows
             .push(row(car, *position, false, target == Target::Behind, prefs));
     }
+    vm.duel = duel(snapshot, &vm.rows, prefs);
     vm
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Duel {
+    pub left: Row,
+    pub right: Row,
+    pub laps: [String; 2],
+    pub sectors: [String; 3],
+    pub gap: String,
+    pub trend: String,
+    pub catch: String,
+    pub good: bool,
+}
+fn duel(snapshot: &Snapshot, rows: &[Row], prefs: Preferences) -> Option<Duel> {
+    let es = prefs.language == Language::Es;
+    let player = rows.iter().find(|r| r.is_player)?;
+    let rival = rows.iter().find(|r| r.selected)?;
+    let player_car = snapshot.state.player_car()?;
+    let rival_car = snapshot.state.cars.iter().find(|c| {
+        c.position.current().map(u32::to_string).as_deref() == Some(rival.place.as_str())
+    })?;
+    let player_left = player.place.parse::<u32>().ok()? < rival.place.parse::<u32>().ok()?;
+    let best = snapshot
+        .state
+        .session
+        .kind
+        .current()
+        .is_some_and(crate::SessionKind::ranks_by_best_lap);
+    let lap = |car: &Car| {
+        reliable_time(Some(if best {
+            &car.best_lap_s
+        } else {
+            &car.last_lap_s
+        }))
+    };
+    let (left, right, left_car, right_car) = if player_left {
+        (player, rival, player_car, rival_car)
+    } else {
+        (rival, player, rival_car, player_car)
+    };
+    let advantage = lap(rival_car).zip(lap(player_car)).map(|(a, b)| a - b);
+    let (trend, catch) = advantage.map_or_else(
+        || (String::new(), String::new()),
+        |adv| {
+            let closing = if player_left { -adv } else { adv };
+            let trend = if player_left {
+                if closing > 0.0 {
+                    format!(
+                        "{} {closing:.2} {}",
+                        if es { "te recorta" } else { "closing on you" },
+                        if es { "s/v" } else { "s/lap" }
+                    )
+                } else {
+                    format!(
+                        "{} {:.2} {}",
+                        if es { "te alejas" } else { "pulling away" },
+                        closing.abs(),
+                        if es { "s/v" } else { "s/lap" }
+                    )
+                }
+            } else if closing > 0.0 {
+                format!(
+                    "{} {closing:.2} {}",
+                    if es { "recortas" } else { "you gain" },
+                    if es { "s/v" } else { "s/lap" }
+                )
+            } else {
+                format!(
+                    "{} {:.2} {}",
+                    if es { "se aleja" } else { "rival pulls away" },
+                    closing.abs(),
+                    if es { "s/v" } else { "s/lap" }
+                )
+            };
+            let catch = crate::relative::relative_seconds(rival_car)
+                .filter(|_| closing > 0.01)
+                .map(|gap| (gap.abs() / closing).ceil())
+                .filter(|n| n.is_finite() && *n <= 999.0)
+                .map_or_else(String::new, |n| {
+                    format!(
+                        "{} ~{n:.0} {}",
+                        match (player_left, es) {
+                            (true, true) => "te alcanza en",
+                            (true, false) => "catches you in",
+                            (false, true) => "le alcanzas en",
+                            (false, false) => "catch in",
+                        },
+                        if es { "v" } else { "laps" }
+                    )
+                });
+            (trend, catch)
+        },
+    );
+    Some(Duel {
+        left: left.clone(),
+        right: right.clone(),
+        gap: rival.gap.clone(),
+        laps: [
+            format::lap_time(lap(left_car)),
+            format::lap_time(lap(right_car)),
+        ],
+        sectors: std::array::from_fn(|i| {
+            reliable_time(player_car.last_sectors_s.get(i))
+                .zip(reliable_time(rival_car.last_sectors_s.get(i)))
+                .map_or_else(|| PLACEHOLDER.into(), |(a, b)| format!("{:+.2}", a - b))
+        }),
+        trend,
+        catch,
+        good: advantage.is_some_and(|v| v > 0.0),
+    })
 }
 
 fn row(car: &Car, position: u32, is_player: bool, selected: bool, prefs: Preferences) -> Row {
@@ -199,6 +312,37 @@ mod tests {
             },
             ..Snapshot::default()
         }
+    }
+
+    #[test]
+    fn duel_uses_observed_last_laps_and_never_extrapolates_missing_pace() {
+        let mut snapshot = scene(2);
+        snapshot.state.cars[1].last_lap_s = Reliable(208.19);
+        snapshot.state.cars[2].last_lap_s = Reliable(207.904);
+        snapshot.state.cars[1].relative_s = Reliable(-1.284);
+        let vm = project(&snapshot, Preferences::default(), Target::Ahead);
+        let duel = vm.duel.expect("pareja");
+        assert_eq!(duel.laps, ["3:28.190", "3:27.904"]);
+        assert_eq!(duel.catch, "le alcanzas en ~5 v");
+        assert!(duel.good);
+        let english = project(
+            &snapshot,
+            Preferences {
+                language: Language::En,
+                ..Preferences::default()
+            },
+            Target::Ahead,
+        )
+        .duel
+        .expect("English duel");
+        assert_eq!(english.catch, "catch in ~5 laps");
+        assert_eq!(english.trend, "you gain 0.29 s/lap");
+        snapshot.state.cars[2].last_lap_s = Unavailable;
+        let duel = project(&snapshot, Preferences::default(), Target::Ahead)
+            .duel
+            .expect("pareja sin ritmo");
+        assert!(duel.trend.is_empty());
+        assert!(duel.catch.is_empty());
     }
 
     #[test]

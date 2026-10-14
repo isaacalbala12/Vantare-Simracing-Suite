@@ -446,9 +446,9 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             number(
                 "Filas",
                 value.row_count as f64,
-                3.0,
                 7.0,
-                1.0,
+                9.0,
+                2.0,
                 set!(MulticlassRelative.row_count as usize),
             ),
             choice(

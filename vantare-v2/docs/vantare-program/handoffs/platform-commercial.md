@@ -1,3 +1,32 @@
+## #1608 · Cierre comercial ronda 3 local (14/10/2026)
+
+Review `C:/tmp/ola2/review-1622-sol-r2.md` entera: R2-P1-1 único hallazgo,
+sin P2/P3 adicional confirmado. Inicio limpio `c30e7c4c`, misma rama/worktree
+`vantareapp/isa-1608-cierre-comercial` / `C:/tmp/1608-cierre-comercial`, base
+`e5c90be5`. Dos transacciones SQL reales: update de alias bloqueado por el UUID,
+borrado confirma primero y update restaura email aun con evento anterior;
+retry de borrado no reparaba. RED16/40, cuatro casos (ambos subjects y tiempos).
+B03 relee identidad FOR UPDATE bajo lock del UUID y comprueba tombstones antes
+de escribir: GREEN40/40, PII/versiones/tombstones y trazabilidad/Storage intactos.
+Regresión Python en runner normal y `--concurrency`, sin dependencia nueva.
+
+Gates nuevos: pgTAP317 + upgrades48 + concurrencia40 = 405 PASS; JWT/PostgREST
+y Ed25519/SQL real PASS; Deno551 PASS/1 ignored; calidad456, deploy surface,
+check scripts y diff--check PASS. Logs `C:/tmp/1608-comercial-r3/`; primer gate
+HTTP con ruta Deno inexistente conservado y corregido solo en invocación.
+Sin native/TS nuevos: gates Rust/telemetría/lint TS omitidos por alcance.
+Detalle y comando en [informe](../../analysis/review-cuentas-pagos-2026-10.md).
+
+Encargo **solo local/tests**: un commit por hallazgo; HEAD final en buzón1608.
+No push ni cambio remoto de issue/PR/Plane/CI. Última lectura #1608 OPEN/
+in-review, area:plataforma, Project Vantare/sin milestone, updatedAt11:40:15Z;
+VANTA-16/17/15 Por revisar, draft#1622 a nightly/auto-merge OFF en `c30e7c4c`.
+Siguiente: orquestador revisa nuevo HEAD y actualiza seguimiento; no atribuir
+la CI antigua al arreglo local. Migración corregida aún no desplegada; no
+actualiza automáticamente un esquema que ya hubiese aplicado el cuerpo viejo.
+Sin producción, datos/cuentas/compras reales, merge/promoción/release/deploy;
+activación/confianza y aceptación comercial real siguen pendientes separadas.
+
 ## #1608 · Cierre comercial ronda 2 (14/10/2026)
 
 Review independiente `C:/tmp/ola2/review-1622-sol.md` completa: dos P1 de

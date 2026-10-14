@@ -1,3 +1,63 @@
+## #1608 · Cierre comercial ronda 3 (14/10/2026)
+
+Review `C:/tmp/ola2/review-1622-sol-r2.md` leída **entera**. R2-P1-1 es el
+único hallazgo nuevo confirmado; la review no añade P2/P3. Encargo de Isaac:
+solo local/tests, commit por hallazgo y FIN en buzón. Se continúa el worktree
+limpio `C:/tmp/1608-cierre-comercial`, rama `vantareapp/isa-1608-cierre-comercial`,
+HEAD inicial `c30e7c4c47aefdb6fec34b757ef467d5a465fab3`, base/merge-base
+`e5c90be5f63347fa4d50b4110e1946201c1957c0`; historia r1/r2 conservada.
+
+**RED exacto:** dos transacciones reales de PostgreSQL18. La transacción de
+borrado retiene el lock del UUID; la actualización por otro subject lee el
+alias vivo y queda bloqueada. `pg_stat_activity`/`pg_blocking_pids` comprueban
+la barrera, sin elegir la carrera por una espera fija. El borrado anonimiza y
+confirma antes de liberar la actualización. Esta devolvía `applied`, restauraba
+el email y alteraba su versión; el retry de borrado devolvía `unchanged` y
+dejaba PII restaurada. **16/40 comprobaciones RED**, en cuatro escenarios:
+borrado por cada uno de los dos subjects y update anterior (10:00) o posterior
+(12:00) al borrado (11:00). Derechos permanecían revocados en el RED.
+
+**Corrección mínima:** B03 relee `identity FOR UPDATE` después de obtener el
+lock del UUID y comprueba tombstones de ese UUID antes de escribir PII/versiones.
+No usa el registro leído antes de esperar. **GREEN 40/40**: los cuatro updates
+devuelven `ignored`; PII sigue NULL, UUID/aliases/versiones conservan tombstone,
+grants/hashes/historial revocados y cola/bytes Storage permanecen. Reentregar
+el borrado y el update devuelve `unchanged` sin restaurar PII.
+
+Regresión persistente `supabase/tests/commercial_tombstone_race.py`, integrada
+en `run-commercial-local.py`: se ejecuta por defecto en el gate completo y
+`--concurrency` permite aislarla. Sin drivers, dependencias o DSN externos.
+Repetir desde raíz Git:
+
+```powershell
+wsl --exec python3 -B /mnt/c/tmp/1608-cierre-comercial/supabase/tests/run-commercial-local.py --pg-bin /usr/lib/postgresql/18/bin --output /mnt/c/tmp/1608-comercial-r3/recheck --concurrency
+```
+
+Gates nuevos: **317 pgTAP + 48 upgrade + 40 concurrencia = 405 comprobaciones
+PASS**, JWT del handler → PostgREST real (reset204/RLS/nueve denegaciones,
+incluido bearer tombstone), Ed25519 sobre SQL real, **551 Deno PASS/0 FAIL/
+1 ignored histórico**, calidad/retirada456, guarda deploy, check scripts HTTP
+y diff--check PASS. Evidencia `C:/tmp/1608-comercial-r3/`: `red/`, `green/`,
+`sql-final/`, tres `upgrade-*/`, `deno.log`, `quality.log`, `surface.log`.
+Primer gate HTTP falló por una ruta Deno supuesta inexistente; log conservado
+en `sql-console.log`, invocación corregida a la ruta instalada, sin tocar tests.
+
+Solo cambian B03, runner, regresión Python y estos documentos. Rust fmt/check/
+Clippy/Nextest/lifecycle/telemetría y lint TS omitidos por alcance: sin fuentes
+nativas ni TS nuevas. Migración aún no desplegada; esta corrección de su cuerpo
+no actualiza instalaciones donde ya se hubiese aplicado el corte anterior.
+Activación/confianza/gateway/servicios gestionados y aceptación comercial real
+siguen separados; no autoriza venta. Queda review independiente del nuevo HEAD.
+
+Lectura remota: #1608 OPEN/in-review, area:plataforma, Project Vantare, sin
+milestone, updatedAt `2026-10-14T11:40:15Z`; VANTA-16/17/15 Por revisar.
+PR [#1622](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1622)
+OPEN/draft a nightly, auto-merge OFF, HEAD remoto `c30e7c4c`. Esos estados
+pertenecen a r2: **esta ronda queda solo local**, sin push, escritura de PR/
+issue/Plane, nueva CI, merge, promoción, release, deploy ni datos reales.
+SHA final y petición al orquestador para actualizar seguimiento en
+`C:/tmp/buzon/1608.md`; no se atribuye CI de r2 al commit local nuevo.
+
 ## #1608 · Cierre comercial ronda 2 (14/10/2026)
 
 Review `C:/tmp/ola2/review-1622-sol.md` leída entera: **dos P1 confirmados;

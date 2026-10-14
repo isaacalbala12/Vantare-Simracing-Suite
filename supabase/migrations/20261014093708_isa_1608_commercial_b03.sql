@@ -216,6 +216,12 @@ begin
   if identity.deleted_at is not null then return 'ignored'; end if;
   account := private.resolve_account_identity(p_issuer, p_subject);
   perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(account::text, 1608));
+  -- Another subject of this UUID may have deleted it while this event waited.
+  -- Re-read under the account lock; never use the pre-wait PII/version state.
+  select * into identity from public.account_identities i
+    where i.issuer = p_issuer and i.subject = p_subject for update;
+  if exists (select 1 from public.account_identities i
+    where i.account_id = account and i.deleted_at is not null) then return 'ignored'; end if;
   if p_event_type = 'user.deleted' then
     update public.account_identities set deleted_at = p_event_at, user_event_at = greatest(user_event_at,p_event_at)
       where account_id = account;

@@ -1,5 +1,6 @@
 """Disposable loopback PostgreSQL only. Run under WSL; never accepts a DSN."""
 import argparse, os, pathlib, socket, subprocess, tempfile, json, time, urllib.request, urllib.error
+from commercial_tombstone_race import run_tombstone_race
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
 parser.add_argument('--output', required=True)
@@ -9,6 +10,7 @@ parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
 parser.add_argument('--signer-module')
 parser.add_argument('--upgrade', choices=['identity', 'identity-conflict', 'refunds'])
+parser.add_argument('--concurrency', action='store_true', help='Only the two-transaction tombstone regression')
 args=parser.parse_args()
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 OUT=pathlib.Path(args.output).resolve(); OUT.mkdir(parents=True,exist_ok=True)
@@ -65,6 +67,10 @@ $$;
    (OUT/'upgrade-results.log').write_text(result)
    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
    print(args.upgrade+' historical upgrade PASS',flush=True)
+   raise SystemExit(0)
+  if not args.baseline:
+   run_tombstone_race(BIN,conn,ENV,run,OUT/'concurrency-results.log')
+  if args.concurrency:
    raise SystemExit(0)
   if args.postgrest_bin:
    run('psql',*conn,'-c',"create role bridge_fixture login noinherit; grant anon,authenticated,service_role to bridge_fixture;")

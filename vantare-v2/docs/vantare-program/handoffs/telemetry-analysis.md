@@ -13,6 +13,17 @@ Issue abierta [#1429](https://github.com/isaacalbala12/Vantare-Simracing-Suite/i
 
 ## 3. Estado real y canal
 
+#1606 / VANTA-46 En curso, ronda 2, mismo PR draft #1616 a nightly:
+Sol confirma F5 parcial en gráficos. N3 reproduce seq1 fiable, seq2 omitida
+y seq3 fiable dentro de un chunk: DuckDB real→plot-page→Reader→proyección
+une ambos extremos (RED segmentos 1/1). Arreglo mínimo en Reader: aislar los
+puntos de chunks marcados gap, porque v1 no localiza el corte. Mantiene datos
+fiables, formato y límite de 1.000.000 incluyendo separadores; no cambia pintor
+ni diseño. Hub analysis 11/11 y Core/feed/codec 9/9 GREEN; gates finales pendientes.
+La curva puede quedar como puntos aislados en todo chunk con gap, incluidos
+chunks posteriores si el flag sigue activo. No se inventa continuidad.
+Logs C:/tmp/1606-evidence/r2-*. Sin datos reales ni merge/promoción/release.
+
 #1584 (2026-10-13), rama `vantareapp/isa-1584-duckdb-locked-windows` desde
 `origin/nightly@707514e296bdd3dcc07e14bfffa92b4171fa9749`: `open_error` reconoce
 «being used by another process» como `locked`. El binding DuckDB 1.10505.0

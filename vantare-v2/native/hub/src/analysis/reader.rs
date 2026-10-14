@@ -190,7 +190,12 @@ impl Reader {
                     return Err("Página de series fuera de orden/límites".into());
                 }
                 let gap = chunk.gap || chunk.index != after + 1 || chunk.offset != offset;
-                if samples.len() + chunk.samples.len() + usize::from(gap) > MAX_SAMPLES {
+                // plot-page v1 no localiza el hueco dentro del chunk. Conservar
+                // sus puntos fiables aislados, sin interpolar continuidad.
+                let internal_breaks = if chunk.gap { chunk.samples.len() } else { 0 };
+                if samples.len() + chunk.samples.len() + usize::from(gap) + internal_breaks
+                    > MAX_SAMPLES
+                {
                     return Err("Vuelta demasiado grande para esta vista (máximo 1.000.000 muestras); sin truncamiento silencioso".into());
                 }
                 if gap {
@@ -198,7 +203,12 @@ impl Reader {
                 }
                 after = chunk.index;
                 offset = chunk.offset + chunk.samples.len();
-                samples.extend(chunk.samples.into_iter().map(Some));
+                for sample in chunk.samples {
+                    samples.push(Some(sample));
+                    if chunk.gap {
+                        samples.push(None);
+                    }
+                }
             }
         }
         Ok(samples)

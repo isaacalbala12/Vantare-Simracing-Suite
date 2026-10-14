@@ -65,6 +65,50 @@ fn negative_native_lmu_lap_clock_does_not_break_the_series_codec() {
 }
 
 #[test]
+fn invalid_lap_clock_between_reliable_samples_keeps_the_internal_chunk_gap() {
+    let mut core = Core::new(1);
+    let receiver = core.series_mut().subscribe(2).unwrap();
+    for (index, distance, elapsed, speed) in [
+        (1, 100.0, 10.0, 50.0),
+        (2, 200.0, -2.0, 40.0),
+        (3, 300.0, 12.0, 20.0),
+    ] {
+        let mut observation = photo(index, 5);
+        observation.state.cars[0].lap_distance_m = Quality::Reliable(distance);
+        observation.state.cars[0].lap_elapsed_s = Quality::Reliable(elapsed);
+        observation
+            .state
+            .player
+            .as_mut()
+            .unwrap()
+            .telemetry
+            .speed_mps = Quality::Reliable(speed);
+        core.observe(observation).unwrap();
+    }
+    core.series_mut().flush();
+    let chunk = receiver.try_recv().unwrap();
+    let decoded = SeriesChunk::from_bytes(&chunk.to_bytes().unwrap()).unwrap();
+    assert!(decoded.block.gap);
+    assert_eq!(
+        decoded
+            .block
+            .samples
+            .iter()
+            .map(|s| s.sequence)
+            .collect::<Vec<_>>(),
+        [1, 3]
+    );
+    assert_eq!(
+        decoded.block.samples[0].distance_m,
+        Quality::Reliable(100.0)
+    );
+    assert_eq!(
+        decoded.block.samples[1].distance_m,
+        Quality::Reliable(300.0)
+    );
+}
+
+#[test]
 fn invalid_numeric_signals_cannot_poison_the_recording_feed() {
     let mut core = Core::new(1);
     let receiver = core.series_mut().subscribe(2).unwrap();

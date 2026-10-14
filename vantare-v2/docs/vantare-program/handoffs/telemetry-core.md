@@ -21,7 +21,10 @@ exactos en Rust (`r2-n12-red`, C:/tmp/1606-evidence). N1 recupera muestras
 tras retroceso solo de distancia; reloj regresivo sigue esperando contador.
 GREEN de series 10/10, incluido contador retrasado. N2 descarta candidata
 tras retroceso menor y conserva la referencia previa; GREEN delta 13/13.
-N3 y gates completos pendientes. Misma rama/PR draft #1616, sin merge ni promoción.
+N3 RED real DuckDB→plot-page→Reader→gráficos (segmentos 1/1), GREEN Hub
+analysis 11/11. Reader aísla puntos de chunks con gap; codec/storage v1 sin
+cambio. Feed 9/9 GREEN, incluido reloj inválido entre fiables antes de flush.
+Gates completos pendientes. Misma rama/PR draft #1616, sin merge ni promoción.
 
 Revisión #1606 / Plane VANTA-46 Por revisar (verificado), 2026-10-14: rama
 `vantareapp/isa-1606-review-pipeline-telemetria` desde `nightly@69fa2d65`.

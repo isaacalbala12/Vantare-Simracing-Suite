@@ -564,6 +564,8 @@ fn circuit_key(name: Option<&str>) -> Option<&'static str> {
         ("americas", "cota"),
         ("losail", "losail"),
         ("lusail", "losail"),
+        ("qatar", "losail"),
+        ("silverstone", "silverstone"),
         ("paul ricard", "paulricard"),
         ("barcelona", "barcelona"),
         ("catalunya", "barcelona"),

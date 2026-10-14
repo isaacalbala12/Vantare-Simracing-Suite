@@ -76,13 +76,6 @@ fn demo_races(
         .collect()
 }
 
-fn target<'a>(races: &'a [Race], following: &[String]) -> Option<&'a Race> {
-    races
-        .iter()
-        .find(|race| following.contains(&race.id))
-        .or_else(|| races.first())
-}
-
 // Las fuentes Inter del kit son estáticas: pedir otra vez el peso sintetiza negrita.
 fn text(
     content: impl Into<SharedString>,
@@ -259,55 +252,88 @@ fn command(cx: &gpui::App) -> Stateful<Div> {
         )
 }
 
+/// Tarjeta «Tu próxima carrera»: la salida más cercana de tus favoritas.
 fn next_race(
-    race: Option<&Race>,
+    hero: Option<&super::rows::Hero<'_>>,
+    now: DateTime<Utc>,
     navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
     cx: &gpui::App,
 ) -> Div {
-    let mut view = div()
-        .w(px(300.0))
+    let mut card = div()
+        .w(px(380.0))
         .flex_none()
         .flex()
         .flex_col()
-        .items_center()
-        .justify_center()
-        .gap(px(8.0));
-    if let Some(race) = race {
-        view = view.child(
-            div()
-                .flex()
-                .items_center()
-                .gap(px(8.0))
-                .child(orbit::status_dot(orbit::Tone::Success, 8.0, cx))
-                .child(orbit::eyebrow("Próximas carreras", cx)),
-        );
-        view = view
-            .child(text(race.name.clone(), 14.0, 600, orbit::ink_2(cx), cx))
-            .child(text(
-                format!(
-                    "{} · {}",
-                    race.track,
-                    race.at.with_timezone(&Local).format("%H:%M")
-                ),
-                12.0,
-                400,
-                orbit::ink_3(cx),
-                cx,
-            ))
-            .child(navigate(
-                orbit::button("home-next", "Abrir en Calendario", cx).h(px(36.0)),
-                Section::Calendar,
-            ));
-    } else {
-        view = view.child(text(
-            "Sin salidas próximas en el calendario",
+        .gap(px(6.0))
+        .p(px(18.0))
+        .rounded(px(14.0))
+        .bg(orbit::alpha(0x0000_0040))
+        .border_1()
+        .border_color(orbit::alpha(0xffff_ff1f));
+    let Some(hero) = hero else {
+        return card.child(text(
+            "Sin salidas próximas entre tus favoritas",
             12.0,
             400,
             orbit::ink_3(cx),
             cx,
         ));
-    }
-    view
+    };
+    let at = hero.at.with_timezone(&Local);
+    let when = if at.date_naive() == now.with_timezone(&Local).date_naive() {
+        format!("hoy {}", at.format("%H:%M"))
+    } else {
+        at.format("%d/%m %H:%M").to_string()
+    };
+    card = card
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(8.0))
+                .child(orbit::eyebrow("Tu próxima carrera", cx))
+                .child(super::chrome::tier(hero.series, cx))
+                .child(div().flex_1())
+                .when(hero.alert, |row| {
+                    row.child(text("con aviso", 12.0, 400, orbit::ink_3(cx), cx))
+                }),
+        )
+        .child(
+            div()
+                .flex()
+                .items_end()
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .child(text(
+                            hero.series.name.clone(),
+                            20.0,
+                            600,
+                            orbit::ink_2(cx),
+                            cx,
+                        ))
+                        .child(text(
+                            format!("{} · {when}", hero.series.track_short()),
+                            12.0,
+                            400,
+                            orbit::ink_3(cx),
+                            cx,
+                        )),
+                )
+                .child(orbit::mono_text(
+                    super::clock::countdown(hero.at - now),
+                    30.0,
+                    orbit::ink_2(cx),
+                    cx,
+                )),
+        );
+    card.child(navigate(
+        orbit::button("home-next", "Ver en Calendario", cx)
+            .h(px(36.0))
+            .mt(px(6.0)),
+        Section::Calendar,
+    ))
 }
 
 fn hero(
@@ -651,7 +677,7 @@ fn lists(
                     .min_h(px(362.0))
                     .when(compact, gpui::Styled::flex_none)
                     .child(
-                        orbit::card_header("Próximas carreras", cx).child(
+                        orbit::card_header("En tu calendario", cx).child(
                             div()
                                 .flex()
                                 .items_center()
@@ -757,7 +783,12 @@ pub fn render(
         .ml(px(-1.0))
         .mr(px(-1.0))
         .child(hero(
-            races_visible.then(|| next_race(target(&starts, calendar.favorites()), &navigate, cx)),
+            races_visible.then(|| {
+                let next = calendar.schedule().and_then(|schedule| {
+                    super::rows::hero(schedule, now, calendar.favorites(), &calendar.alerts)
+                });
+                next_race(next.as_ref(), now, &navigate, cx)
+            }),
             access.lock(Section::Strategy).is_none(),
             salute,
             &navigate,
@@ -810,8 +841,7 @@ mod tests {
     }
 
     #[test]
-    fn calendar_includes_unfollowed_series_orders_rows_and_prefers_followed_target()
-    -> Result<(), String> {
+    fn calendar_includes_unfollowed_series_and_orders_rows() -> Result<(), String> {
         let schedule = Schedule::parse(SCHEDULE)?;
         let (from, to) = schedule.window()?;
         assert!(races(&schedule, from - Duration::seconds(1))?.is_empty());
@@ -827,24 +857,6 @@ mod tests {
                 .iter()
                 .all(|race| race.at >= from && race.at < from + Duration::days(1) && race.at < to)
         );
-        assert_eq!(
-            target(&starts, &[]).map(|race| race.at),
-            starts.first().map(|race| race.at)
-        );
-        let followed = &starts.last().ok_or("sin carreras")?.id;
-        let followed_race = starts
-            .iter()
-            .find(|race| &race.id == followed)
-            .ok_or("serie sin salida en 24 h")?;
-        assert_eq!(
-            target(&starts, std::slice::from_ref(followed)).map(|race| (&race.id, race.at)),
-            Some((followed, followed_race.at))
-        );
-        assert_eq!(
-            target(&starts, &["serie-desconocida".into()]).map(|race| (&race.id, race.at)),
-            starts.first().map(|race| (&race.id, race.at))
-        );
-        assert!(target(&[], &[]).is_none());
         Ok(())
     }
     #[test]

@@ -1,6 +1,135 @@
+## #1608 · Integración de nightly (14/10/2026)
+
+Encargo explícito tras review r3 APTA: nightly → rama de issue, con merge,
+sin rebase ni promoción. Worktree limpio `8fecf307`, fast-forward al remoto
+`812ed8ec` conservado. Merge probado `eca5155f6a51aad620e5af5d4ad51368edcaaa83`,
+padres `812ed8ec` + `origin/nightly@5b781964`, incluye #1611/#1617/#1618.
+Conflicto único `native/services/src/app.rs`: rechazo definitivo conserva
+revocación/ACK y éxito conserva analytics consentido tras transferir derechos.
+Los otros 66 archivos entrantes son idénticos a nightly. Sin política nueva,
+UI nueva, dependencias o tests relajados; B01/B02/B03 permanecen No-Go comercial.
+
+Gates nuevos GREEN: fmt/check/Clippy; Nextest 1697 PASS/12 skips heredados
+(cinco bancos manuales #1611 más los siete previos); lifecycle 18 PASS;
+telemetría 25 PASS/0 skips (ACC 814.150 s); Deno534 PASS/1 ignored PostgREST;
+SQL230 y followup35+F1/F1IP/F2/F3/F4/concurrencia/rollback PASS. Integridad456,
+138 tests scripts GitHub, paneles8, followup4, snippet y guardas de superficie PASS.
+Logs `C:/tmp/1608-merge/`, target propio, cola/dos jobs y QA aislada. Fuente Rust
+sin cambios tras la prueba; cierre posterior documental. Fallos de entorno
+Deno y sonda conservados/corregidos en invocación; cache anterior de Functions
+apartada y conservada fuera del repo, sin editar dependencias. B01 RED separado.
+
+Misma PR #1615 ready a nightly; auto-merge preexistente desactivado reversiblemente
+antes del push porque no se autoriza promoción. HEAD final/push/CI y Plane
+VANTA-16/17/15 Por revisar por escritura/lectura en issue/buzón al publicar;
+no se hereda CI anterior. Informe actualizado. Siguiente: revisión del nuevo
+SHA y decisión del orquestador sobre integración. Sin producción, compras,
+datos reales, QA GUI física, promoción ni release.
+
+## #1608 · Revisión cuentas y pagos (14/10/2026)
+
+Ronda 3 sobre `b5be4303`, rama `vantareapp/isa-1608-cuentas-y-pagos`,
+base nightly `69fa2d65`; misma PR draft [#1615](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1615).
+Entrega para revisión de Plane VANTA-16/17/15; escritura/lectura final tras el push en issue/buzón; GitHub #1608 OPEN/in-review,
+area:plataforma, Project Vantare y sin milestone. Sin merge, producción ni compras.
+
+Review Sol r2 `C:/tmp/ola2/review-1615-sol-r2.md` leída completa. R2-N1
+reproducido: dos RED en AccountPoll detached con candidato previo, con/sin
+identidad restaurada. Arreglo mínimo: identidad distinta o ausente exige
+`revoke_local` antes de guardar la sesión. Sin núcleo se rechaza el cambio y
+se conserva la cuenta anterior; el reintento gestionado exige ACK durable.
+Misma ruta de revocación que logout y rechazo definitivo de OAuth; services
+no escribe el binding del núcleo. Fix `64e9eec5`, tests/código probado `04cfe8df`;
+GREEN focal 49/49. fmt/check/Clippy PASS; Nextest nuevo 1654 PASS/7 exclusiones
+existentes; lifecycle 18 PASS. Quality/retirada 456 huellas, canal 45 y notes 26
+tests PASS; fragmento válido. Logs `C:/tmp/1608-r3/`, fallo inicial de tamaño
+Clippy conservado y resuelto con callback común, sin allow ni tests relajados.
+Login/candidato/ACK con fixture IPC; Owner real/Launch/reinicio Free se valida
+por separado en la regresión existente. Sin promesa de login comercial real.
+No hay consumidor nuevo de borrado: B03 conserva su plan y No-Go.
+Deno/SQL/telemetría conservan evidencia de ronda 2, no repetida porque solo cambia
+services/documentos. HEAD/push/PR/CI finales tras publicar en issue/buzón;
+combinación con nightly actual/#1612/#1523 y aceptación comercial pendientes.
+
+Los arreglos de las rondas anteriores se conservan:
+
+- N1/F08/F02 `d6aec3ca`: auxiliar sin CoreLink no confirma logout ni inicia
+  renovación HTTP; devuelve error y conserva estado para reintento gestionado.
+  Con núcleo exige Invalidate ACK durable antes de retirar candidato/sesión.
+  RED→GREEN con Owner real; Launch v1 perpetua reforzada con RED contrafactual,
+  logout gestionado vía host y reapertura en Free. El almacén del núcleo sigue
+  bajo su único propietario; no se promete revocación autónoma sin él.
+- N2/F02 `381bee42`: HTTP 400 OAuth invalid_grant es Authentication. Refresh
+  automático/explicito de licencia/cuenta/perfil comparte ACK, retirada del
+  candidato y tombstone de sesión. 400 genérico/malformado y 429/503 conservan
+  derechos. RED→GREEN 6 focales, sin userinfo/native-license después del rechazo.
+- N3/F04 `5b5ab24c`: lectura/firma reciben el entorno del servidor; loader filtra
+  grants por entorno sin relajar el normalizador ni perder soporte. RED 409 con
+  production+sandbox → GREEN 67 tests emisor/handler.
+- Atribución `71388711`: binding durable Polar/entorno/customer prevalece sobre
+  external_customer_id contradictorio. RED→GREEN 52 tests procesador.
+
+Evidencia anterior de ronda 2 `C:/tmp/1608-r2/`: fmt/check/Clippy PASS; Deno completo 524 PASS/
+1 ignored PostgREST; SQL desechable 230 GREEN, B01 1 RED; B02 4 RED separados.
+Nextest nuevo 1652 PASS/7 skips; lifecycle 18 PASS; telemetría 25 PASS. Cola y target propio, APPDATA/
+LOCALAPPDATA aislados. Fallos iniciales de fixture/mtime/permisos/lint conservados.
+Sin baselines recalibrados ni tests debilitados. Código de ronda 2 probado `03fb0dea`; cierre posterior documental. SHA/push/CI de esa ronda
+verificados en issue/buzón, sin heredar verde de ba02b093. Nueve fixes de ronda 1 se
+conservan; sus SHAs/evidencia y los planes actuales están en el
+[informe](../../analysis/review-cuentas-pagos-2026-10.md).
+
+No-Go comercial: B01 bearer/reset requiere corte JWT/RLS; B02 refunds
+ordinario/Pro/parcial/agregado requiere ledger SQL/reconciliación; B03 requiere
+retención/tombstones/guardas de datos. Plan por bloqueo con archivos, riesgos,
+pruebas y decisiones de Isaac en el informe. #1523 OPEN/draft `33be660d` leído,
+sin integrar ni trasplantar fragmentos. El fallback external ID sin binding
+sigue bajo ese corte. Coordinar `account.rs` (Exchange) y `app.rs` (refresh/logout)
+con #1612 al integrar. Aceptación comercial/GUI/servidor pendiente de autorización.
+
 # Handoff vivo — Plataforma, cuenta, servicios y distribución
 
 Estado de la base indicada; releer la issue antes de ejecutar.
+
+## #1620 / PR #1621 · merge local de nightly (14/10/2026)
+
+Encargo del orquestador al worker Codex en macOS arm64: incorporar nightly
+mediante merge, sin rebase ni push. Padres: versión revisada
+`27caa91e1470032da2bc577d85b1377f8dd56d0f` y `origin/nightly` obtenido por
+fetch `953f041c5034d12648c4e23463dd953dc04a0e19`; base común `8194c949`.
+Rama `vantareapp/isa-1620-precios-polar`, Project Vantare/area:licencias.
+Issue/PR y estado remoto conservan la última referencia de ronda 5;
+no hay acceso GitHub desde este worker ni verificación remota de CI actual.
+Falta VANTA-N conforme a la omisión anterior: avisado en buzón al orquestador,
+que recoge la rama y actualiza issue/Plane después de revisar.
+
+Dos conflictos resueltos conservando ambos lados:
+`supabase/functions/billing-webhook/process.test.ts` concatena los tests de
+Pro anual/lanzamiento de #1620 y los de reembolsos/atribución de nightly,
+con cierre independiente de cada test; formateado el bloque entrante de
+binding, sin cambiar aserciones. Este handoff conserva las entradas de
+#1620 y #1612, además de las entradas #1608/#1609 fusionadas automáticamente.
+Los otros 76 archivos modificados respecto a la base común coinciden byte
+a byte con su padre correspondiente. Lógica revisada de catálogo/mapping
+intacta; sin modificaciones propias de Rust/SQL ni dependencias declaradas.
+
+Gates del merge: Deno completo **577 PASS, 0 FAIL, 1 ignored** (PostgREST
+local sin configurar); check de 8 TS y JSON, lint de 8 TS con la regla
+existente `no-import-prefix` excluida, fmt de 9 archivos PASS. Integridad y
+retirada **456 huellas**, superficie deploy y planes offline sandbox/production
+PASS. Tests ejecutados con entorno vacío, sin permiso de red;
+`--node-modules-dir=none`, sin artefactos node_modules en el checkout.
+Primera suite `--cached-only` bloqueada por standardwebhooks ya declarado
+sin caché; se descargó esa dependencia de tests existente sin cambiar
+manifiestos. Fallo inicial de fmt conservado y corregido solo en el test.
+
+Evidencia `~/evidence/1620/`, HEAD final y resumen por conflicto en
+`~/orq/1620.buzon.md`. pgTAP/PostgREST/Rust/UI/telemetría nativa omitidos:
+el encargo pide Deno y gates del área; cambios entrantes Rust/SQL idénticos
+a nightly, sin resolución propia. El merge no acredita esos gates ni el
+sandbox Polar real. Siguiente: orquestador revisa diff/evidencia y recoge
+commit local; promoción a nightly requiere su circuito autorizado.
+Sin push, deploy, servicios reales, secretos, release, pagos ni gasto.
+Canal alcanzado: rama de issue local, con nightly incorporada como padre.
 
 ## #1620 · respuesta ronda 5 independiente (14/10/2026)
 
@@ -169,6 +298,227 @@ a nightly; código `83da120e`, runbook `97db909a`. #1500 cerrada como sustituida
 sin merge. Push de rama verificado; CI del candidato se consulta en #1621.
 Notion VAN-782 pasa a En revisión con evidencia y anuales/sandbox/pgTAP pendientes.
 
+## #1612 / VANTA-9 · Perfil privado y Ajustes (14/10/2026)
+
+Ronda 7 terminada en rama, fix/código validado `376181f2885f032126264a2f27584d0466dca9be`,
+base integrada `e5c90be5`, PR draft #1619. Review R6 completa: P2-1 local
+(editar durante primera carga conservaba controles vacíos y borraba campos guardados).
+RED exacto nombre/simuladores; GREEN con editor GPUI real, Local protegido y reapertura,
+sin sleeps. Guardar bloqueado hasta primera carga, incluso tras error/logout/Descartar;
+mezcla por campo conserva datos no tocados y respeta borrados explícitos.
+Caso adicional Descartar antes de cargar también RED→GREEN; conserva el bloqueo inicial.
+Sin P3 nuevos en R6; P2/P3 de R5 siguen inertes y pendientes antes de reactivar sync.
+
+Gates de `376181f2`: fmt/check/Clippy -D warnings PASS; Nextest **1751/1751**,
+12 skips existentes (paridad 96,547 s); lifecycle **18/18**. QA con TMP/TEMP
+exclusivos `C:/tmp/1612-r7-final-tests`, target propio native/target/gates, cola/dos jobs.
+Se conserva el fallo de la primera pasada final en Strategy: fixture por PID sin
+limpieza colisiona con un destino anterior. Reproducción controlada exit101 y
+caso aislado PASS; [#1623](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1623)
+registra el hallazgo, sin cambiar Strategy ni debilitar tests. La primera pasada
+amplia anterior sobre `95aee8a2` también pasó 1751/1751 y lifecycle18.
+Quality/456 huellas y fragmento PASS. Telemetría/SQL/Deno omitidos en r7:
+solo Hub/documentos, sin runtime/domain/IPC/testdata ni SQL.
+
+Evidencia `C:/tmp/ola7/1612/report.md`, RED/GREEN y fallos iniciales conservados.
+Cierre posterior solo documental; HEAD/push/CI y Plane Por revisar verificados
+al publicar en issue/PR y FIN del buzón. Sin merge/promoción/release/producción,
+dependencias nuevas, subagentes, capturas nuevas ni instalación/datos reales tocados.
+Siguiente: review del nuevo SHA y QA física del recorrido worker/IPC con primera
+carga retenida, guardar/reabrir y Descartar. La ventana oculta prueba editor y
+persistencia, no toda la app instalada. Sync sigue APAGADA.
+
+La decisión de perfil local y evidencia de la entrega anterior se conservan debajo.
+
+Decisión recibida de Isaac el 14/10: entrega de perfil guardado en el PC y
+arreglos de Ajustes; **sync de perfil apagada y pendiente**. Un único interruptor
+`PILOT_SYNC_ENABLED = false` en `native/services/src/app/pilot.rs` corta tanto
+la preparación OAuth como las llamadas al puente/RPC/Storage desde los tres
+comandos de perfil. Backend y pruebas preparados, sin activar ni borrar.
+P2-1 y P3-1 de review r5 quedan inertes; deben resolverse antes de reactivar.
+RED: PilotLoad abre conexión. GREEN: guardar texto multilínea/foto, cargar,
+PilotSync y reabrir conservan la copia local y no abren conexiones, con/sin
+identidad restaurada. Evidencia `C:/tmp/1612-local-sync-off`.
+Entrega local validada sobre `414474ca39dac7532d6b5d115e0002c8263f9658`.
+Corte cliente `6fab68b8`; primera integración nightly8194c949 en `685d4d63`
+(gates completos verdes), seguida de nightly@`e5c90be5f63347fa4d50b4110e1946201c1957c0`
+con #1608 en `db52700e`. Conflictos iniciales conservan ambos bloques del handoff,
+todos los tests de privacidad y Services v8 + DTO piloto aditivo. Segundo merge
+sin conflictos, con arreglos de cuenta intactos. La fixture de sync preparada
+falló al no adjuntar CoreLink (final-test.log); se comparte el helper existente
+solo cfg(test), sin relajar producción. fixture-green 2/2 PASS, incluido perfil
+local sin red; fallo y explicación conservados.
+
+Gates finales de `414474ca`: fmt/check/Clippy -D warnings PASS; Nextest
+**1747/1747** (12 skips, paridad lenta 91 s), lifecycle **18/18** y telemetría
+**25/25** (ACC 773 s; suite 818 s) PASS. quality/456 huellas y fragmento PASS.
+Target propio native/target/gates, CARGO_BUILD_JOBS=2, datos aislados y plazo
+1800 s por gate. pnpm no aplica (Rust/GPUI); sin cambios propios nuevos en SQL,
+sin repetir pgTAP/Deno ni consultar producción. Cierre posterior solo documental.
+HEAD/push, CI y VANTA-9 Por revisar se verifican en issue/PR y FIN del buzón.
+Sin merge de PR #1619, auto-merge, promoción ni release. Únicos merges del worker:
+nightly hacia esta rama de issue, autorizados por Isaac.
+Siguiente: review de entrega local y QA física en portable aislado (guardar y
+reabrir nombre/descripción con Enter/foto; Guardar/Descartar). Integración nativa
+#1608 compilada; API OAuth/Storage reales y colocación de bandera pendientes.
+Reactivar sync exige otra decisión y resolver P2-1/P3-1 r5 antes del cambio.
+
+El roadmap público sigue en Plane; plan.md está retirado y el estado público
+del encargo sigue En marcha (no Entregado). Las rondas siguientes son historia
+de la preparación de sync, no el comportamiento activo de esta entrega.
+
+Rama `vantareapp/isa-1612-perfil-y-ajustes`, base `origin/nightly@0807fbd0`.
+[Issue #1612](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1612),
+[PR draft #1619 a nightly](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1619),
+Plane VANTA-9 / GitHub Project Vantare / area:plataforma.
+
+Ronda 5 CLI: fixes publicados en `82c8340fb05f013381b8da00d0c3f7b7f9de7b0b`,
+tras review r4 de `37ced450` (P2=3/P3=1). Base aprobada conservada.
+
+| Hallazgo | Commit | RED y GREEN |
+|---|---|---|
+| P2-1 recibo histórico | `f00f3607` | RED R1 != R2; una llamada carga C/R2, la siguiente edición usa CAS R2; B pendiente conserva la negativa |
+| P2-2 rechazo definitivo | `11a5511c` | RED A retenido tras 22023 y presupuesto incompatible; preflight impide nueva A, retiro durable conserva borrador/reancla y B corregido confirma tras reinicio |
+| P2-3 conflicto HTTP | `c50a7b5f` | RED HTTP500/40001 => Offline y SQLSTATE40001 != PT409; GREEN PT409 y compatibilidad anterior, App muestra conflicto, R2 durable sin reenviar B al reiniciar |
+| P3-1 duplicado de foto | `f63c9fc1` | POST duplicado -> GET JPEG/SHA -> recibo A -> B/CAS1 -> reapertura sin pendiente, con/sin reinicio |
+
+HTTP incierto y recibos ilegibles/distintos conservan A. El pendiente sin
+operación exige revisar/corregir y guardar; solo formatos locales anteriores
+crean una operación durante su conversión. Un rechazo retira A antes del
+refresco: si este falla, conserva la última revisión conocida y no resucita A.
+Una sola llamada PilotLoad de App carga C/R2 tras recibo o muestra conflicto
+real, con borrador/revisión persistidos. Preparación de tests compartida en
+`ddda32dc`/`82c8340f` para cumplir Clippy sin reducir comprobaciones.
+
+17/17 piloto PASS; fmt/check/Clippy -D warnings, quality/456 huellas y fragmento
+PASS. Nextest 1681/1681 (7 skips existentes, paridad lenta 101 s) y lifecycle
+18/18 PASS sobre `82c8340f`, con target propio native/target/gates, dos jobs,
+datos aislados y plazo 1800 s por comando. Telemetría omitida en r5: sin cambios
+en runtime/domain/IPC/testdata. Cierre posterior solo documental.
+SQL 90 pgTAP, concurrencia/PT409 y retirada 10 postchecks/cuatro negativas PASS,
+también sin SUPERUSER. PostgreSQL 18.6 y pgTAP 1.3.4 instalados desde Ubuntu
+oficial en WSL; cluster nuevo 18/main detenido y arranque manual verificado.
+Las pruebas se ejecutaron únicamente en bases desechables de loopback.
+Evidencia `C:/tmp/ola5/1612`; fallos iniciales conservados y explicados allí.
+Backend solo preparado, sin producción. P3 cerrado, sin cambios visuales,
+login/Storage reales, QA física, integración #1608, merge/promoción/release.
+PR draft a nightly DIRTY; CI solo GitGuardian PASS visible, sin CI completa
+verde. Cierre/push final, estado Por revisar de VANTA-9 y última actualización
+verificada constan en issue/PR y buzón. Sin merge/rebase, promoción ni release.
+Siguiente: review del SHA final e integración compilada con #1608 por el
+orquestador; API login/Storage y QA física pendientes. Activar el backend
+requiere autorización separada de Isaac.
+
+Ronda 4 CLI terminada en rama tras review r3 `8eadf36e` NO APTO (P2-1=1).
+Corte Rust/SQL validado y publicado `d9df6b17256f31bc9499772b3aafe3069fe134fa`.
+RED exacto: A aún en curso, load ve R, B reemplaza el intento y termina en
+Conflict. GREEN: UUID v4 durable con contenido/foto y CAS inmutables; B conserva
+su copia local y solo recibe otra clave después de confirmar A. Eliminadas
+huellas y reconciliación por SELECT. Servidor preparado: `last_op_id`, recibos
+privados por cuenta/op_id y lock transaccional; duplicado devuelve el resultado
+original incluso después de un guardado de otro dispositivo.
+
+fmt/check/Clippy `-D warnings` PASS; Nextest 1679/1679 (7 skips existentes,
+paridad lenta 125 s), lifecycle 18/18 PASS. Los 15 tests de piloto pasan:
+texto/foto, reinicio, confirmación de A/B perdida, edición intermedia, dos
+dispositivos y negativas de documento/hash/revisión. Ambos formatos locales
+anteriores preservan el pendiente; no recuperan retroactivamente confirmaciones
+sin op_id. SQL 90 pgTAP, concurrencia real por barreras, aborto/reintento con la
+misma clave, diez postchecks y cuatro negativas de retirada PASS también sin
+SUPERUSER. Quality/456 huellas y fragmento PASS. Telemetría no repetida: no hay
+cambios en runtime/domain/IPC/testdata. Datos de pruebas aislados, target propio
+`native/target/gates`, dos jobs y plazo de 1800 s por gate.
+
+PR draft #1619 actualizada, push d9df6b17 y VANTA-9 Por revisar verificados
+14/10/2026 06:27 CEST. Cierre posterior solo handoff/changelog; HEAD final y CI en
+issue/PR y buzón. No se declara CI completa verde. Origin/nightly `5a796e89`,
+base aprobada `0807fbd0`, PR DIRTY: falta review del SHA nuevo e integración
+compilada con #1608 por el orquestador. Sin merge/rebase, promoción ni release.
+Evidencia `C:/tmp/ola4/1612`: RED Conflict y GREEN, gates y SQL; conserva también
+un primer fixture RED que devolvía Protocol y un fixture antiguo con load extra,
+corregidos antes de los gates finales. No son fallos omitidos del gate final.
+
+Backend solo preparado, sin consulta/aplicación de Supabase real. Recibos sin
+poda automática: cualquier retención futura debe conservar idempotencia.
+Sin diseño/capturas nuevas, login/Storage HTTP reales, juego físico ni validación
+integrada. Las fotos del fixture no certifican la API completa de Storage.
+Bandera sigue pendiente de colocación diseñada. Sin instalación/datos reales
+tocados, herramientas/dependencias nuevas ni subagentes. Siguiente: review del
+orquestador; activación backend requiere autorización separada de Isaac.
+
+Histórico ronda 3 CLI tras review r2 `daa2ca20` NO APTO (P2=1/P3=1):
+P2-1 reproducido: A confirmado sin respuesta, Guardar B antes de reconciliar
+y reiniciar devuelve Conflict. Arreglo `98429184` + `c2a59c4e` (Clippy), GREEN 11/11 servicios:
+huella durable del CAS enviado separada del pendiente, reconciliación de R+1
+antes de enviar B con revisión real; documento/hash distintos siguen Conflict.
+La matriz cubre texto/foto, con/sin reinicio y conflicto real; se prueba también
+lectura/edición/reapertura del formato local previo. P3-1 `db7a3783` RED al
+cambiar las coordenadas ya enviadas, GREEN 11/11 Hub: zoom/nudge y arrastre
+congelados durante busy; respuesta libera la edición. Sin diseño nuevo.
+Rust `c2a59c4e`: fmt/check/Clippy -D warnings PASS; Nextest 1675/1675
+(7 skips existentes, paridad lenta 114 s), lifecycle 18/18 PASS. Quality y
+456 huellas, más fragmento de changelog PASS. Telemetría y pgTAP no repetidos:
+esta ronda solo modifica servicios/Hub, sin runtime/domain/IPC/testdata ni SQL;
+la evidencia de ronda 2 se conserva como histórica. Datos de tests aislados,
+target propio `native/target/gates`, dos jobs y plazo de 1800 s por comando.
+Push `c2a59c4e` y PR draft a nightly verificados. VANTA-9 Por revisar verificado
+14/10/2026 05:48 CEST. El cierre posterior solo cambia handoff/changelog;
+HEAD final y CI constan en issue/PR y buzón. CI final pendiente de ejecución.
+Nightly remoto `5a796e89` ha avanzado; GitHub marca DIRTY/conflicto de integración.
+La base aprobada permanece `0807fbd0`: review e integración del conjunto con
+#1608 pendientes del orquestador, sin merge/rebase, promoción ni release.
+Evidencia `C:/tmp/ola3/1612`: también conserva el fallo del test Hub sin
+network y el intento de ventana incompatible con Windows headless. La prueba
+final ejercita los puntos del modelo que comparten las entradas; no acredita
+interacción física ni un worker UI real. No hay capturas nuevas.
+
+Diseño Opus `3aaa3961` conservado: perfil privado local primero, DPAPI por
+issuer/subject, foto JPEG 256×256 ≤24 KiB y recorte circular. Puente UUID
+existente y CAS; sin cambios en account.rs/account/*, login, pagos ni licencias.
+Revisión de ocho páginas en [matriz](../../pilot-settings-review.md). El painter
+compartido de bandera/fallback ISO está preparado; falta diseño aprobado de
+colocación por widget. No se inventa composición.
+
+Ronda 2 CLI corrige la review Sol (0 P1/4 P2):
+
+| Hallazgo | Commit | Resultado probado |
+|---|---|---|
+| H1 confirmación perdida | `9a3d3b3f` + `03068639` | Reintento tras HTTP ilegible y reinicio; recupera solo documento/hash idénticos en R+1, otro hash conserva Conflict |
+| H2 SQL acepta perfil ilegible | `ae586434` | Tipos/límites/controles/ISO/simuladores y campos futuros legibles; máximos válidos conservados |
+| H3 DML elude CAS | `4db253ad` + `5e380ef0` | DML directo denegado; RPC pública INVOKER y escritor CAS privado NOLOGIN/NOBYPASSRLS, sujeto a RLS |
+| H4 descripción con Enter | `b487e334` | Guardado/reapertura de dos líneas; UI normaliza CRLF/CR a LF y rechaza otros controles en IPC/SQL |
+| H5 cancelar recorte ocupado | `27133332` | Guardia de acciones y botón deshabilitan Cancelar mientras procesa; regresión de la guardia, sin prueba física de worker UI |
+| H6 fotos inmutables | `b28cdb4c` + `4e92dbd2` | UPDATE/movimientos y DELETE+INSERT denegados ante policy global adversarial |
+| H7 retirada QA | `df21f8c6` + `63b232bc` | Niega falta de consentimiento/perfiles/fotos; retira paquete vacío y conserva cuentas/policies ajenas |
+
+RED→GREEN y logs de esta ronda en `C:/tmp/ola2/1612`. Rust validado
+`03068639`: fmt/check/Clippy PASS, Nextest 1672/1672 (7 skips existentes, una
+paridad lenta de 123 s), lifecycle 18/18 PASS. Telemetría 25/25 PASS
+(corpus largo ACC 898 s, tres tests lentos esperados). Quality y 456 huellas
+PASS. SQL `5e380ef0`: 68/68 pgTAP + 9 postchecks de retirada y tres negativas
+PASS, PostgreSQL desechable loopback con administrador habitual y con
+CREATEROLE sin SUPERUSER. El grant del escritor al administrador permite
+transferir ownership; retirada QA con el mismo grantor. [Runbook](../../pilot-profile-backend.md).
+Paquete solo preparado, sin aplicar en Supabase. Presupuesto SQL conservador
+reserva el máximo de foto dentro de 48 KiB; puede rechazar extensiones cerca del
+límite aunque una foto pequeña cupiera, preservando la copia local.
+
+Capturas anteriores y QA de las ocho páginas: `C:/tmp/1612-evidence` (código
+`6a5fb75a`); no acreditan el estado ocupado nuevo ni son capturas del HEAD
+actual. Sin login/Storage HTTP real, Run/toasts, upgrade ni LMU/ACC físicos;
+sin validación compilada del conjunto con #1608. Conserva la separación de
+`services/view.rs` y su techo 1750 al integrar ambos PR.
+
+Histórico de ronda 2: push `5e380ef0` verificado; VANTA-9 Por revisar verificado el 14/10/2026
+a las 05:10 CEST. El commit de cierre solo cambia handoff/changelog; SHA final
+en la issue/PR y buzón `C:/tmp/buzon/1612.md`.
+CI se consulta por HEAD final: no se declara verde completa. Nightly remoto
+ha avanzado a `552c0d52` por #1607; esta rama conserva la base aprobada
+`0807fbd0`, sin merge/rebase ni validación del conjunto nuevo.
+Canal alcanzado: rama de issue y PR draft. Sin merge, promoción, release,
+producción, instalación/datos reales modificados, herramientas nuevas ni
+subagentes. Siguiente: revisión del orquestador; integración y activación backend requieren su
+validación/autorización correspondiente de Isaac.
 ## #1609 / VANTA-22 · Analítica consentida (14/10/2026)
 
 Ronda 3 publicada para revisión desde `f56156e3`; review Sol r2 completa.

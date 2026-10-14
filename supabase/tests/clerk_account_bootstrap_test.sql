@@ -52,7 +52,7 @@ set role authenticated;
 select set_config('request.jwt.claims',
   '{"iss":"https://local.supabase.test/auth/v1","sub":"00000000-0000-4000-8000-000000000901","role":"authenticated"}', true);
 create temporary table isa909_legacy as
-select public.claim_active_device('isa909-legacy-device') as account_id;
+select public.claim_active_device('e5411ce5bcea0b1a08dd85aa3d350d9fe12c631e93c7b2f5f935105bdc6e20c0') as account_id;
 reset role;
 
 select is((select account_id from isa909_legacy),
@@ -63,7 +63,7 @@ set role authenticated;
 select set_config('request.jwt.claims',
   '{"iss":"https://clerk.isa909.test","sub":"user_isa909_a","role":"authenticated","email":"shared-isa909@example.invalid"}', true);
 create temporary table isa909_clerk_first as
-select public.claim_active_device('isa909-clerk-device') as account_id;
+select public.claim_active_device('79e112100134bc50b575c6e94d48dce6b6111a73f4b4dffcce0caca144c0f5de') as account_id;
 reset role;
 
 select ok((select account_id::text from isa909_clerk_first) ~
@@ -83,7 +83,7 @@ set role authenticated;
 select set_config('request.jwt.claims',
   '{"iss":"https://clerk.isa909.test","sub":"user_isa909_a","role":"authenticated"}', true);
 create temporary table isa909_clerk_repeat as
-select public.claim_active_device('isa909-clerk-device') as account_id;
+select public.claim_active_device('79e112100134bc50b575c6e94d48dce6b6111a73f4b4dffcce0caca144c0f5de') as account_id;
 reset role;
 
 select is((select account_id from isa909_clerk_repeat),
@@ -100,7 +100,7 @@ set role authenticated;
 select set_config('request.jwt.claims',
   '{"iss":"https://clerk.isa909.test","sub":"user_isa909_b","role":"authenticated"}', true);
 create temporary table isa909_clerk_second as
-select public.claim_active_device('isa909-clerk-second-device') as account_id;
+select public.claim_active_device('c4deb4ad0dad20d091878db6ee3f6c66f31d508781f2f67b9dfc1fc81f0ec5f8') as account_id;
 reset role;
 
 select isnt((select account_id from isa909_clerk_second),
@@ -111,7 +111,7 @@ set role authenticated;
 select set_config('request.jwt.claims',
   '{"iss":"https://clerk.isa909.test","sub":"00000000-0000-4000-8000-000000000901","role":"authenticated"}', true);
 create temporary table isa909_external_uuid as
-select public.claim_active_device('isa909-external-uuid-device') as account_id;
+select public.claim_active_device('dc1d0304298ee1c3a7e6115b8d12aad076625a8f1253e2463d72f67eeaf3f2d1') as account_id;
 reset role;
 
 select isnt((select account_id from isa909_external_uuid),
@@ -126,7 +126,7 @@ set role authenticated;
 select set_config('request.jwt.claims',
   '{"iss":"https://local.supabase.test/auth/v1","sub":"00000000-0000-4000-8000-000000000902","role":"authenticated"}', true);
 select throws_ok(
-  $$ select public.claim_active_device('isa909-deleted-legacy') $$,
+  $$ select public.claim_active_device('1df57f4b5731e3c3e7b59085daf06421f9f65916eb6a13f0b418965d43744f0f') $$,
   'P0001', 'not_authenticated',
   'a deleted Supabase Auth user cannot be remapped as an external identity');
 reset role;
@@ -138,31 +138,31 @@ select is((select user_id from public.read_account_entitlements()),
   (select account_id from isa909_clerk_first),
   'entitlement reads use the mapped account instead of auth.uid()');
 select ok((select user_id = (select account_id from isa909_clerk_first) and device_ok
-  from public.get_account_entitlements('isa909-clerk-device')),
+  from public.get_account_entitlements('79e112100134bc50b575c6e94d48dce6b6111a73f4b4dffcce0caca144c0f5de')),
   'the compatibility read uses the mapped account and device');
 select lives_ok(
-  $$ select public.reset_active_device('isa909-clerk-reset-device') $$,
+  $$ select public.reset_active_device('be13f9047602d33c0fca5d9cad16b034340056ffa97c2cefff55ed01d1e37ba1') $$,
   'device reset accepts Clerk claims without casting auth.uid()');
 reset role;
 
 select is((select fingerprint_hash from public.devices
   where user_id = (select account_id from isa909_clerk_first)),
-  'isa909-clerk-reset-device', 'device reset mutates only the mapped account');
+  'be13f9047602d33c0fca5d9cad16b034340056ffa97c2cefff55ed01d1e37ba1', 'device reset mutates only the mapped account');
 
 set role authenticated;
 select set_config('request.jwt.claims', '{}', true);
 select throws_ok(
-  $$ select public.claim_active_device('isa909-missing-identity') $$,
+  $$ select public.claim_active_device('d93fe3ae0b21b34947bf23f61a9a0f5993bf918bc5a12921db8b21d722a9d757') $$,
   'P0001', 'not_authenticated', 'missing identity claims fail closed');
 select set_config('request.jwt.claims',
   '{"iss":"https://clerk.isa909.test","sub":"","role":"authenticated"}', true);
 select throws_ok(
-  $$ select public.claim_active_device('isa909-empty-subject') $$,
+  $$ select public.claim_active_device('4bee5f67cb62ee768b36176798d8b19b47d3983a820a5adcba78762a45eb852d') $$,
   'P0001', 'not_authenticated', 'an empty subject fails closed');
 select set_config('request.jwt.claims',
   '{"iss":"","sub":"user_isa909_missing_issuer","role":"authenticated"}', true);
 select throws_ok(
-  $$ select public.claim_active_device('isa909-empty-issuer') $$,
+  $$ select public.claim_active_device('3fffe8492d687315b6def97657bb46c906ebe92483a4855be78ad2abc08c24c1') $$,
   'P0001', 'not_authenticated', 'an empty issuer fails closed');
 reset role;
 

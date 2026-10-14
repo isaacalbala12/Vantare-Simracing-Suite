@@ -4,19 +4,33 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## #1609 / VANTA-22 · Analítica consentida (14/10/2026)
 
-Ronda 3 en curso desde `f56156e3`, review Sol r2 completa. RED Rust A/B:
-lectura suspendida restaura Some(0); cola conserva/admite dos eventos revocados.
-P2-1 `86fa6aa8`, services 130 + 2 procesos PASS. Corrección local de permiso monotónico y cola revocable bajo mutex en memoria;
-callbacks usan try_lock sin espera, generación comprobada al admitir. Acumuladores
-revalidan antes de cerrar y el Hub los vacía al guardar revocación.
-P2-2 `6b177190`: RED con consent.lock retenido; GREEN de los 7 tests de Store (carga ocupada,
-limpieza de fallos diferida, revocación sin reiniciar y persistencia). Limpieza Busy
-con worker cancelable; permisos aceptados no toman lock sin trabajo. P3: el error ya no afirma que los fallos estén desactivados al fallar la decisión
-de uso; indica que no se pudo confirmar la decisión y permite reintentar. Cambio de texto, sin diseño
-nuevo ni test que copie la cadena. Gates finales pendientes.
-VANTA-22 En curso. Sin subagentes ni nuevo diseño. Evidencia C:/tmp/1609-r3.
-Entre procesos la invalidación depende del refresco de disco del worker; no se
-promete retirada instantánea de memoria en otra UI. DUDA en buzón al orquestador.
+Ronda 3 publicada para revisión desde `f56156e3`; review Sol r2 completa.
+P2-1 `86fa6aa8`: RED A/B → GREEN, caché monotónica, admisión por generación,
+cola revocable de 32 entradas y acumuladores descartados/revalidados al retirar/cerrar.
+Callbacks try_lock sin I/O ni espera; worker persiste fuera del hilo UI.
+P2-2 `6b177190`: carga con consent.lock retenido, controles disponibles y limpieza
+Busy diferida en worker cancelable; revocación sin reiniciar GREEN.
+P3 `88ddc324`: error de decisión no confirmada/reintentar, sin afirmar que fallos
+estén apagados. `beb68c4f` cierra Clippy y refuerza la barrera del test heredado:
+la cancelación al cerrar no puede sustituir su comprobación final de consentimiento.
+Gates locales: fmt/check/Clippy, Nextest 1673/1673 (7 skips), lifecycle 18/18,
+services 130 + 2 procesos, Store 7 e integridad 456 huellas PASS. Errores iniciales
+conservados en C:/tmp/1609-r3; [informe](../../analytics/informe-1609.md).
+Código publicado `beb68c4ff58573376302614136e1499cf3741adb`, base `69fa2d65`;
+HEAD documental final y CI en issue/buzón. PR #1617 draft a nightly, sin auto-merge
+ni merge; VANTA-22 Por revisar verificado el 14/10 a las 03:15:20 UTC.
+Origin/nightly consultado `552c0d52`; sin integración con ese tip ni promoción.
+**Criterio estricto pendiente:** la invalidación en otra UI depende del refresco
+Privacy del worker (espera normal 250 ms, mayor con I/O ocupado). Descarte al
+refrescar probado, sin garantía de retirada instantánea de memoria entre procesos.
+DUDA al orquestador: frontera compartida requiere review; no se declara APTO ese
+criterio. Próxima acción: revisar diff/evidencia y resolver ese límite antes de integrar.
+Sin subagentes, diseño/dependencias nuevos, QA GUI física, PostHog real, producción,
+datos/instalación reales de Isaac, merge ni release. Telemetría dedicada no requerida
+(sin cambios runtime/domain/ipc/testdata); paneles/snippet sin cambios, no repetidos.
+Pendientes iniciales de clave/panel real, Marketing/Setup, atribución y registro/pago
+backend conservados en informe/contrato. Acciones externas autorizadas: commits,
+push, actualización PR/issue y estado Plane. Última comprobación local: 03:15 UTC.
 
 ### Ronda 2 (evidencia anterior)
 

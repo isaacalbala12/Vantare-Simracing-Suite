@@ -1,5 +1,62 @@
 # Entrega #1609 / VANTA-22 · PostHog consentido
 
+## Ronda 3 · correcciones de review Sol r2 (14/10/2026)
+
+1. Worktree limpio en `f56156e3`; reglas nocturnas, buzón y review leídos completos.
+2. P2-1 `86fa6aa8`: generación monotónica; una lectura suspendida no restaura permiso revocado.
+3. La admisión compara la generación vigente y revocar vacía la cola local en memoria.
+4. Cola revocable de 32 entradas bajo mutex breve; callbacks try_lock sin I/O ni espera.
+5. Hub vacía acumuladores al guardar y páginas/widgets revalidan antes del cierre/muestreo.
+6. P2-2 `6b177190`: Busy de limpieza no elimina controles; worker cancelable reintenta.
+7. Carga con cerrojo retenido, limpieza diferida y revocación sin reiniciar: GREEN.
+8. P3 `88ddc324`: el error no inventa que los informes estén desactivados; indica decisión no confirmada.
+9. Services 130 + 2 procesos, Store 7, Nextest 1673/1673 (7 skips), lifecycle 18/18; fmt/check/Clippy PASS.
+10. Código publicado beb68c4f; PR draft #1617, VANTA-22 Por revisar (03:15 UTC). Sin producción/merge/release.
+
+Review: C:/tmp/ola2/review-1617-sol-r2.md; evidencia nueva C:/tmp/1609-r3.
+RED services: A restauraba Some(0); B conservaba/admitía dos observaciones tras revocar.
+RED Hub: consent.lock ocupado hacía fallar Store::load incluso con ambos permisos habilitados.
+Regresiones con señales en load/store, cierre anterior al siguiente sample, cola vacía,
+refresco autoritativo tras una retirada externa y liberación del cerrojo antes del
+reintento. Se conserva la frontera de disco/HTTP de ronda 2. La prueba heredada de
+revocar/reaceptar espera ahora la siguiente lectura posterior al intento de escritura:
+Drop no puede convertirla en verde cancelando antes de la comprobación final.
+
+**Límite sin cerrar:** la retirada en otra UI se detecta al refrescar privacy.json
+por el worker (espera normal 250 ms, más si su I/O queda ocupado). Se prueba descarte
+al refrescar, pero no se garantiza cero recogida/conservación instantánea en memoria
+entre procesos. Resolver eso requiere una frontera de invalidación compartida;
+DUDA al orquestador en buzón. No se da por cerrado ese criterio estricto de review.
+Los escenarios A/B del mismo proceso y disponibilidad de los controles sí están corregidos.
+
+El texto P3 es una corrección estática sin nuevo test de copia de cadenas; los tests
+de persistencia verifican que Busy no confirma una decisión. Primer comando Hub
+reducido falló por faltar la feature network: corregido solo el runner, conservado
+hub-red-first-err.txt. El hook inicial de reproducción tuvo un error de compilación
+Option::ok: corregido antes del RED válido; pasos/resultados registrados.
+Gates por compilar.ps1, timeout externo 1800/3600 s, target propio
+native/target/gates y dos jobs. Logs clippy-first/second-err.txt conservan las dos
+simplificaciones exigidas (if let y nombre/cierre explícito del worker); sin allows
+ni relajación. Nextest: 1673 PASS en 257,612 s, 7 skips del perfil; la prueba lenta
+go_physical_tyre_parity pasó en 121,645 s. Lifecycle: 5 Engineer + 13 Runtime PASS.
+Fmt/check/Clippy completos PASS; services 130 + 2 procesos, Store 7 PASS.
+Diff y marcadores de conflicto revisados; diff --check PASS. Sin nuevos cambios de código
+tras los gates; el commit de cierre es documental.
+Raíces de datos temporales, captura desactivada al compilar pruebas, HTTP loopback.
+Sin QA GUI física ni validación LMU/ACC; telemetría dedicada no requerida porque
+no se toca runtime/domain/ipc/testdata. Paneles/snippet intactos: no repetidos.
+Quality de integridad: 456 huellas PASS. Base conservada 69fa2d65, origin/nightly
+consultado 552c0d52; no se integra ese tip. PR #1617 sigue draft a nightly.
+Código final `beb68c4ff58573376302614136e1499cf3741adb` publicado y verificado
+con ls-remote y gh pr view. PR #1617 draft a nightly, sin auto-merge ni mergeCommit.
+VANTA-22 Por revisar verificado desde raíz Git el 14/10 a las 03:15:20 UTC;
+GitHub Project Vantare, area:plataforma, sin milestone. HEAD documental final y
+CI del mismo HEAD se verifican en la issue y en FIN del buzón, sin afirmar CI verde.
+Un commit por hallazgo y un cierre de gates/sincronización; no hay promoción.
+Pendientes iniciales de panel real, Marketing/Setup, atribución y registro/pago
+backend siguen en la sección inferior; esta ronda no los activa.
+
+
 ## Ronda 2 · revisión Sol corregida (14/10/2026)
 
 1. Se conservó el worktree limpio en `b453254e` y la base `69fa2d65`; review completa leída.

@@ -475,28 +475,33 @@ impl Launcher {
     }
 
     fn poll_resident(&mut self, cx: &mut Context<Self>) {
-        if let Some(status) = self.refresh_resident_status() {
-            let error = status.error.or_else(|| {
+        self.refresh_resident_status();
+        if let Some(status) = self
+            .resident_status
+            .as_ref()
+            .filter(|status| resident_is_fresh(status))
+        {
+            let error = status.error.as_ref().or_else(|| {
                 status
                     .profiles
                     .iter()
-                    .find_map(|profile| profile.error.clone())
+                    .find_map(|profile| profile.error.as_ref())
             });
-            if error != self.resident_error || self.error.is_none() && error.is_some() {
+            if error != self.resident_error.as_ref() || self.error.is_none() && error.is_some() {
                 if self.error.is_none() || self.error == self.resident_error {
-                    self.error.clone_from(&error);
+                    self.error = error.cloned();
                 }
-                self.resident_error = error;
+                self.resident_error = error.cloned();
                 cx.notify();
             }
             if self.chain.is_none() && !status.progress.is_empty() && self.status != status.progress
             {
-                self.status = status.progress;
+                self.status.clone_from(&status.progress);
                 cx.notify();
             }
             if self.pending_decision.is_none()
                 && self.chain.is_none()
-                && let Some(decision) = status.decision
+                && let Some(decision) = &status.decision
                 && self.resident_answered != Some(decision.id)
             {
                 let actions = [
@@ -515,7 +520,7 @@ impl Launcher {
                 .collect();
                 self.pending_decision = Some(Decision {
                     id: decision.id,
-                    message: decision.message,
+                    message: decision.message.clone(),
                     actions,
                 });
                 self.resident_decision = Some(decision.id);
@@ -661,15 +666,15 @@ impl Launcher {
     }
     /// Estado resident cacheado: `poll_resident` reparsea solo al cambiar el
     /// fichero; la vista de Ajustes sirve desde aquí sin abrir el disco.
-    fn refresh_resident_status(&mut self) -> Option<vantare_ipc::launcher::Status> {
+    fn refresh_resident_status(&mut self) -> Option<&vantare_ipc::launcher::Status> {
         let signature = resident_signature(&self.store.path);
-        if signature == self.resident_status_sig {
-            return self.resident_status.clone().filter(resident_is_fresh);
+        if signature != self.resident_status_sig {
+            self.resident_status = vantare_ipc::launcher::read_status(&self.store.path);
+            self.resident_status_sig = signature;
         }
-        let status = vantare_ipc::launcher::read_status(&self.store.path);
-        self.resident_status_sig = signature;
-        self.resident_status.clone_from(&status);
-        status
+        self.resident_status
+            .as_ref()
+            .filter(|status| resident_is_fresh(status))
     }
     pub(crate) fn global_hotkey_status(&self, id: &str) -> String {
         hotkey_status_text(self.resident_status.as_ref(), id)
@@ -1062,6 +1067,124 @@ mod close_tests {
 mod tests {
     use super::*;
     use vantare_ipc::launcher::{Registration, Status};
+
+    #[test]
+    fn unchanged_resident_poll_keeps_the_cached_profile_storage() {
+        let settings = resident_test_settings("borrow");
+        let path = vantare_ipc::launcher::status_path(&settings);
+        let status = resident_test_status(vantare_ipc::launcher::now_ms(), "a", true);
+        std::fs::write(&path, serde_json::to_vec(&status).expect("JSON")).expect("estado");
+        gpui_platform::headless().run(move |cx| {
+            let store = Store::load(settings).expect("Launcher aislado");
+            let view = cx.new(|cx| Launcher::build(store, Some(Discovery::default()), cx));
+            view.update(cx, |launcher, _| {
+                assert!(launcher.refresh_resident_status().is_some());
+                let storage = launcher
+                    .resident_status
+                    .as_ref()
+                    .expect("cache")
+                    .profiles
+                    .as_ptr();
+                let observed = launcher.refresh_resident_status().expect("estado fresco");
+                assert_eq!(
+                    observed.profiles.as_ptr(),
+                    storage,
+                    "un tick sin cambios no debe copiar los perfiles resident"
+                );
+            });
+            crate::quit_headless_test(cx);
+        });
+        std::fs::remove_file(path).expect("limpiar estado");
+    }
+
+    #[test]
+    fn cached_resident_keeps_errors_decisions_and_freshness() {
+        let settings = resident_test_settings("semantics");
+        let path = vantare_ipc::launcher::status_path(&settings);
+        gpui_platform::headless().run(move |cx| {
+            let store = Store::load(settings).expect("Launcher aislado");
+            let view = cx.new(|cx| Launcher::build(store, Some(Discovery::default()), cx));
+            view.update(cx, |launcher, cx| {
+                let mut status = resident_test_status(vantare_ipc::launcher::now_ms(), "a", true);
+                status.profiles[0].error = Some("registro denegado".into());
+                status.progress = "Esperando decisión".into();
+                status.decision = Some(vantare_ipc::launcher::Decision {
+                    id: 7,
+                    message: "¿Reutilizar?".into(),
+                    actions: vec![Action::Reuse.label().into()],
+                });
+                std::fs::write(&path, serde_json::to_vec(&status).expect("JSON")).expect("estado");
+                launcher.poll_resident(cx);
+                assert_eq!(launcher.error.as_deref(), Some("registro denegado"));
+                assert_eq!(launcher.status, "Esperando decisión");
+                assert_eq!(launcher.pending_decision.as_ref().expect("decisión").id, 7);
+                launcher.pending_decision = None;
+                launcher.resident_answered = Some(7);
+                launcher.poll_resident(cx);
+                assert!(
+                    launcher.pending_decision.is_none(),
+                    "no repetir una decisión respondida"
+                );
+                launcher.resident_status.as_mut().expect("cache").updated_ms = 0;
+                assert!(
+                    launcher.refresh_resident_status().is_none(),
+                    "la firma igual no elude expiración"
+                );
+                status.updated_ms = vantare_ipc::launcher::now_ms();
+                status.progress = "Estado nuevo y más largo".into();
+                std::fs::write(&path, serde_json::to_vec(&status).expect("JSON"))
+                    .expect("actualizar");
+                assert_eq!(
+                    launcher
+                        .refresh_resident_status()
+                        .expect("refresco")
+                        .progress,
+                    status.progress
+                );
+                std::fs::remove_file(&path).expect("retirar estado");
+                assert!(launcher.refresh_resident_status().is_none());
+            });
+            crate::quit_headless_test(cx);
+        });
+    }
+
+    #[test]
+    #[ignore = "Banco Release exclusivo #1607; requiere pc-medicion.lock"]
+    fn measure_resident_unchanged_polls() {
+        let settings = resident_test_settings("measure");
+        let path = vantare_ipc::launcher::status_path(&settings);
+        let mut status = resident_test_status(vantare_ipc::launcher::now_ms(), "a", true);
+        status.profiles = (0..128)
+            .map(|index| Registration {
+                profile: format!("perfil-{index}"),
+                hotkey: "Ctrl+Alt+L".into(),
+                registered: true,
+                error: None,
+            })
+            .collect();
+        std::fs::write(&path, serde_json::to_vec(&status).expect("JSON")).expect("estado");
+        gpui_platform::headless().run(move |cx| {
+            let store = Store::load(settings).expect("Launcher aislado");
+            let view = cx.new(|cx| Launcher::build(store, Some(Discovery::default()), cx));
+            view.update(cx, |launcher, _| {
+                launcher.refresh_resident_status();
+                for run in 1..=3 {
+                    launcher.resident_status.as_mut().expect("cache").updated_ms =
+                        vantare_ipc::launcher::now_ms();
+                    let start = Instant::now();
+                    for _ in 0..20_000 {
+                        std::hint::black_box(launcher.refresh_resident_status());
+                    }
+                    println!(
+                        "ISA1607 resident run={run} iterations=20000 profiles=128 elapsed_us={}",
+                        start.elapsed().as_micros()
+                    );
+                }
+            });
+            crate::quit_headless_test(cx);
+        });
+        std::fs::remove_file(path).expect("limpiar estado");
+    }
     #[test]
     fn retry_during_scan_reports_instead_of_silently_returning() {
         assert_eq!(Launcher::retry_wait_message(false, false), None);

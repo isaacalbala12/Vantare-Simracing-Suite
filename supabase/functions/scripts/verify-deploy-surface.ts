@@ -17,6 +17,8 @@ const testingAutomationFunctions = new Set([
   "testing-center-agent-callback",
 ]);
 const recognizedFunctions = new Set([
+  // Review candidate, absent from all deploy wrappers.
+  "testing-report-submit",
   ...productionFunctions,
   ...testingPilotFunctions,
   ...testingAutomationFunctions,

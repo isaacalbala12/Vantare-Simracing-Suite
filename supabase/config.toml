@@ -38,3 +38,8 @@ verify_jwt = false
 verify_jwt = false
 [functions.native-billing-portal]
 verify_jwt = false
+
+# #1610 review candidate only. Handler verifies the native bridge JWT itself.
+# Not included in any deployment wrapper; activation needs separate approval.
+[functions.testing-report-submit]
+verify_jwt = false

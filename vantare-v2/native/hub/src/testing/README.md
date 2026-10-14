@@ -1,3 +1,15 @@
+# Testing Center — corte #1610 / VANTA-29
+
+IPC services v8. Informes de texto para cuentas verificadas normales, con
+consentimiento separado; historial privado, avisos y crédito opt-in. La lista
+remota omite el cuerpo privado y muestra título/estado/versión. Recibos legacy
+con capturas se conservan aparte. Sin producción ni transporte Plane real.
+Intake/capturas públicas dependen de #1602 y referencia PostHog de #1609.
+Ver [runbook vigente](../../../../docs/runbooks/testing-report-followup.md) y
+[handoff](../../../../docs/vantare-program/handoffs/testing-center.md).
+
+Las secciones siguientes conservan la evidencia y los límites de cortes anteriores.
+
 ## Participación #1535
 
 Cuestionarios por versión y contribuciones mediante services IPC v6; ver

@@ -1,5 +1,6 @@
 //! Testing Center: envío de texto revisado y diagnóstico local separado.
 pub(super) mod diagnostic;
+mod followup;
 mod participation;
 pub(crate) mod recovery;
 mod store;
@@ -15,4 +16,5 @@ mod tests;
 
 mod editor;
 mod model;
+mod screenshots;
 pub use editor::{Editor, empty_fields};

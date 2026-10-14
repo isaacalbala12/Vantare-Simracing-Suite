@@ -407,6 +407,8 @@ impl App {
             }
             Command::TestingRefresh
             | Command::TestingAnswer { .. }
+            | Command::TestingCredit { .. }
+            | Command::TestingNoticeRead { .. }
             | Command::TestingContribute { .. } => {
                 return self.testing_reply(command);
             }

@@ -1,3 +1,20 @@
+## #1608 · Ronda 5 local · R4-P2-1 (14/10/2026)
+
+Inicio autorizado `e66c6c90`, rama/worktree de #1608, sin trackers/GitHub/push.
+Review r4 completa: dos P1 y dos P2; ningún P3 adicional confirmado.
+R4-P2-1: migración aditiva resuelve `owner_id text` por UUID o identidad
+Clerk durable sin casts arbitrarios, conserva owner histórico y manifest.
+Subject ambiguo entre UUID se rechaza incluso con claims: Storage no conserva
+issuer en la fila y no sería seguro atribuirla después. Cleanup encola sujetos
+textuales solo cuando son inequívocos; no bloquea por owners ajenos desconocidos.
+RED exacto 22P02 → GREEN INSERT/UPDATE/DELETE, borrado, cola y DELETE de
+limpieza con el esquema Storage v1.70.3 y rol supabase_storage_admin.
+Evidencia `~/evidence/1608-r5/owner-{red,green-3}`; primer intento PL/pgSQL
+fallido conservado. Runner exige dump del stack local real, no el bootstrap UUID.
+Pendientes en esta ronda: multipart, reconciliador y orden UUID→fila.
+Seguimiento #1608/#1622/VANTA-16/17/15 exclusivamente por el orquestador;
+no se afirma estado remoto nuevo, CI, merge, canal promovido ni producción.
+
 ## #1608 · Cierre comercial ronda 4 local · Mac arm64 (14/10/2026)
 
 Review `~/orq/review-1622-sol-r3.md` entera, R3-P1-1: reset concurrente

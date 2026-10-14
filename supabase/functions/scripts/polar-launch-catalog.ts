@@ -165,6 +165,10 @@ function sameProducts(resource: Resource, ids: string[]) {
   return actual.length === ids.length && new Set(actual).size === ids.length &&
     ids.every((id) => actual.includes(id));
 }
+function noTrial(resource: Resource) {
+  return resource.trial_interval == null &&
+    resource.trial_interval_count == null;
+}
 function discountMatches(resource: Resource, ids: string[], code: string) {
   return resource.type === "percentage" && resource.basis_points === 2000 &&
     resource.duration === "repeating" && resource.duration_in_months === 2 &&
@@ -172,9 +176,9 @@ function discountMatches(resource: Resource, ids: string[], code: string) {
     !resource.starts_at && !resource.ends_at && !resource.max_redemptions;
 }
 function linkMatches(resource: Resource, ids: string[], discountId: string) {
-  // A shared link must inherit each product's trial: Pro seven days, Plus none.
+  // The shared link inherits launch products, all without a trial (decision B).
   return sameProducts(resource, ids) && resource.discount_id === discountId &&
-    resource.trial_interval == null && resource.trial_interval_count == null &&
+    noTrial(resource) &&
     resource.allow_discount_codes === false && !!resource.url;
 }
 
@@ -280,8 +284,10 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       ) {
         throw Error(`Invalid product interval/status ${key}`);
       }
+      // Launch trial drift is repairable below; normal Pro retains its trial.
       if (
-        product && (config?.trial.enabled
+        product && !launch &&
+        (config?.trial.enabled
           ? product.trial_interval !== "day" ||
             product.trial_interval_count !== 7
           : !!product.trial_interval || !!product.trial_interval_count)
@@ -411,13 +417,26 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       let product = selected.get(key);
       // Snapshot before PATCH may omit replaced/archived prices.
       for (const p of product?.prices ?? []) priceIds.add(p.id);
+      if (product && launch && !noTrial(product)) {
+        // Clear both fields, including partial configurations. Never send prices.
+        const productId = product.id;
+        product = await http("PATCH", `/products/${product.id}`, {
+          trial_interval: null,
+          trial_interval_count: null,
+        }) as Resource;
+        writes++;
+        if (
+          product.id !== productId ||
+          product.organization_id !== map.organization_id || !noTrial(product)
+        ) throw Error(`Launch product trial response mismatch ${key}`);
+      }
       if (!product) {
         product = await http("POST", "/products/", {
           ...copy,
           visibility: "draft",
           recurring_interval: plan.interval,
           recurring_interval_count: 1,
-          ...(config.trial.enabled
+          ...(!launch && config.trial.enabled
             ? { trial_interval: "day", trial_interval_count: 7 }
             : {}),
           prices: [fixedPrice(cents)],
@@ -435,6 +454,11 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       if (!copyMatches(product, copy)) {
         product = await patchProductCopy(http, product, copy);
         writes++;
+      }
+      // Link preflight: every launch product must be trial-free after all writes,
+      // before any creator discount/link is created or an existing link exported.
+      if (launch && !noTrial(product)) {
+        throw Error(`Launch product trial response mismatch ${key}`);
       }
       const price = currentPrice(product, cents);
       if (!price || product.organization_id !== map.organization_id) {

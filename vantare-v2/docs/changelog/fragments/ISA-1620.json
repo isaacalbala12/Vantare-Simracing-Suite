@@ -2,14 +2,16 @@
   "schemaVersion": 1,
   "issue": "ISA-1620",
   "type": "fix",
-  "summary": "El catálogo prepara nombres claros y descripciones de cada plan; los enlaces de creador exportados abren el checkout en tema oscuro.",
+  "summary": "El catálogo prepara nombres claros y checkout oscuro; los precios de lanzamiento y creador no incluyen prueba gratis. Los siete días son solo para Pro a precio normal.",
   "technicalNotes": [
-    "Los productos existentes se corrigen mediante PATCH solo de nombre y descripción, sin enviar precios ni alterar metadata, trial o visibilidad. Las claves técnicas permanecen en metadata/mapa.",
-    "Pro y Pro Plus distinguen la oferta por «Precio de lanzamiento» y el ciclo en el precio. Launch Edition conserva su ID, precio único y alcance de módulos existentes; el tema oscuro se fija en la URL exportada."
+    "El PATCH cosmético solo envía nombre y descripción, sin precios, metadata, trial o visibilidad; la retirada del trial de lanzamiento usa un PATCH separado. Las claves técnicas permanecen en metadata/mapa.",
+    "Pro y Pro Plus distinguen la oferta por «Precio de lanzamiento» y el ciclo en el precio. Launch Edition conserva su ID, precio único y alcance de módulos existentes; el tema oscuro se fija en la URL exportada.",
+    "Decisión B: POST de lanzamiento sin trial y PATCH separado idempotente que limpia ambos campos existentes. Antes de entregar un enlace de creador se comprueba que ningún producto de lanzamiento ni el enlace tengan trial."
   ],
   "testing": [
     "Tests locales sin red de creación, reparación de nueve productos, retención de precios históricos y cero escrituras al repetir; comprobación de tema y parámetros en enlaces nuevos/reutilizados.",
-    "Tras una aplicación sandbox autorizada, revisar nombres, Markdown, mensual/anual y oscuro con sistema claro, en escritorio y móvil; comparar IDs, precios y trial antes/después."
+    "Regresiones RED→GREEN de creación sin trial, reparación aislada, cero escrituras al repetir y rechazo de respuestas con trial antes de crear o devolver enlaces; reintento tras PATCH confirmado con respuesta perdida.",
+    "Tras una aplicación sandbox autorizada, revisar nombres, Markdown, mensual/anual y oscuro con sistema claro; comparar IDs/precios/trials y comprobar cobro hoy en creador, manteniendo siete días en Pro normal."
   ],
   "knownLimitations": [
     "Preparado en rama: no se ha aplicado a Polar ni verificado visualmente un checkout real. Los enlaces antiguos distribuidos requieren sustituirse por la URL exportada con tema.",

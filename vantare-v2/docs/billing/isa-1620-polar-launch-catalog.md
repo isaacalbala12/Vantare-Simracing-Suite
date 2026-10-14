@@ -75,8 +75,11 @@ abortan antes de mutar.
 Mes 3 mensual: termina el −20 % y se paga **la base de lanzamiento**, no la
 normal. En anual, 2 meses es duración calendario, no dos facturas anuales:
 primera factura rebajada, renovación a 39,90/69,90 €. No se promete una segunda
-factura anual rebajada. Conserva el trial Pro configurado de 7 días en normal
-y lanzamiento; Plus no gana trial. Validar fechas/antiabuso en sandbox.
+factura anual rebajada. **Decisión B de Isaac (14/10/2026, tras compra sandbox):
+ningún producto de lanzamiento tiene prueba gratis**, tampoco por enlace/código
+de creador. Los siete días quedan solo para Pro a precio normal, mensual/anual;
+Plus normal tampoco tiene trial. Sustituye la decisión anterior de heredarlo
+en Pro lanzamiento. Validar fechas/antiabuso del Pro normal en sandbox.
 
 Comisión contable sobre lo que paga el cliente: 30 % mes 1, 10 % meses 2–12
 mientras siga suscrito; renegociar después. `creator_commission` conserva ambos
@@ -95,14 +98,44 @@ no existe en el payload de Checkout Links. Distribuir la URL de salida; los
 enlaces antiguos sin parámetro conservan su tema anterior.
 [Parámetro oficial](https://polar.sh/docs/features/checkout/links).
 
-R2 P2 Sol B: el enlace compartido debe tener `trial_interval` y
-`trial_interval_count` ausentes o null para heredar el trial de cada producto:
-Pro conserva siete días y Plus no tiene trial. Cualquier override, incluso
-siete días iguales a Pro o un campo aislado, aborta el preflight antes de
-escribir. No se corrige el enlace automáticamente; revisar y retirar el
+El enlace compartido debe tener `trial_interval` y `trial_interval_count`
+ausentes o null: hereda los cuatro productos de lanzamiento **sin trial**.
+Cualquier override, incluso siete días o un campo aislado, aborta el preflight
+antes de escribir. No se corrige el enlace automáticamente; revisar y retirar el
 override en un paso autorizado antes de reintentar. La misma validación
 comprueba la respuesta al crear el enlace.
 Fuente: [prioridad del trial del checkout sobre el producto](https://github.com/polarsource/polar/blob/71ea1871ce9d3e7bada94d0e1e4f66f91d1e7b59/server/polar/models/checkout.py#L475).
+
+### Quitar el trial de lanzamiento existente (decisión B)
+
+Los POST de lanzamiento omiten ambos campos de trial. Los productos de
+lanzamiento existentes con cualquiera de esos campos informado, incluso
+una configuración parcial, reciben un PATCH separado con
+`{"trial_interval": null, "trial_interval_count": null}`. No envía precios,
+metadata, visibilidad, beneficios ni suscripciones; mantiene IDs e historial.
+Pro normal conserva la comprobación de siete días del mapa. La configuración
+`trial` del mapa describe el producto normal; no autoriza trial en su ID de
+lanzamiento. [Product Update admite ambos campos null](https://polar.sh/docs/api-reference/2026-10/products/update-product).
+
+Se usa el mismo apply, con o sin `--creator`; no hace falta retirar ni recrear
+productos/descuentos/enlaces. El preflight general mantiene sus guardas antes
+de mutar y admite el trial de lanzamiento como desvío reparable.
+Tras reconciliar los productos, el preflight del enlace exige que **los cuatro**
+queden sin trial antes de crear descuento/enlace o devolver un enlace existente.
+Verifica también cada respuesta de POST/PATCH, y el ID/organización del PATCH
+de trial: si queda cualquier campo, aborta sin entregar una salida de éxito.
+Pueden haberse confirmado PATCH anteriores: inspeccionar y repetir con el mapa
+guardado; una reparación confirmada con respuesta perdida no se repite. Un
+rerun ya corregido escribe cero (salvo el enlace pendiente de publicación).
+
+Operación posterior, solo por vía autorizada del orquestador: guardar el mapa
+observado y ejecutar apply con salida nueva, comprobar ambos campos vacíos en
+los cuatro productos y en el enlace, IDs/precios intactos y rerun sin escrituras.
+Abrir de nuevo el enlace de creador y verificar que cobra **hoy** 3,19/5,59 EUR
+en mensual o 31,92/55,92 EUR en anual, sin «0 EUR hoy» ni siete días gratis.
+Verificar aparte Pro normal con siete días y Plus normal sin trial. Los checkouts
+o suscripciones iniciados antes del cambio no se migran ni se cancela su trial:
+revisarlos por separado, sin modificar compras existentes automáticamente.
 
 ### Cambios de plan con descuento de creador (R1 P2 Sol A)
 
@@ -194,7 +227,7 @@ siguen recuperables por metadata; concurrencia ajena queda fuera del contrato
 de un solo operador. No se recupera retrospectivamente un histórico ya perdido
 por ejecuciones anteriores: inspección autorizada de suscripciones/precios.
 
-Preflight antes de mutar: entorno/organización, intervalos/trials, duplicados
+Preflight antes de mutar: entorno/organización, intervalos/trials normales, duplicados
 paginados, propiedad de precios, duración/porcentaje/ámbito y enlace. Si hay
 descuentos v1 de lanzamiento/creador compuesto, aborta para revisión manual;
 no los modifica ni borra. Metadata permite recuperar ejecuciones parciales.
@@ -277,7 +310,8 @@ compra identificada/grant según #1514/#1506; no se levanta su no-go comercial.
 Sandbox: cuatro normales y cuatro lanzamiento; código exacto y segundo
 creador; scope restringido; enlace fijo; facturas mensuales 1/2 rebajadas y
 mes 3 a 3,99/6,99; primera anual rebajada y renovación 39,90/69,90; trial/antiabuso,
-enlace sin override (Pro siete días, Plus sin trial),
+enlace sin override y cuatro productos de lanzamiento sin trial (cobro hoy);
+Pro normal siete días y Plus normal sin trial,
 cancelación/refund, derechos/canales, entorno, histórico y rerun cero escrituras.
 Al fin de mes: web sin ofertas generales de lanzamiento y enlaces de creador
 operativos, productos conservados. Fixtures no prueban facturas reales.

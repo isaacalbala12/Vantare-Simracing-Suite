@@ -381,6 +381,213 @@ Deno.test("catalog: decided annual launch prices are created without a confirmat
   assertEquals(f.discounts.length, 1);
 });
 
+Deno.test("decision B: new launch products have no trial; only normal Pro keeps seven days", async () => {
+  const f = fake();
+  const result = await syncCatalog(f.http, sandbox, options);
+  for (const plan of PRICES.plans) {
+    const config = result.map.checkout_keys[plan.key]!;
+    const normal = f.products.find((p) => p.id === config.polar_product_id)!;
+    const launch = f.products.find((p) =>
+      p.id === config.polar_launch_product_id
+    )!;
+    assertEquals(launch.trial_interval ?? null, null);
+    assertEquals(launch.trial_interval_count ?? null, null);
+    assertEquals(
+      normal.trial_interval ?? null,
+      plan.key.startsWith("pro_plus_") ? null : "day",
+    );
+    assertEquals(
+      normal.trial_interval_count ?? null,
+      plan.key.startsWith("pro_plus_") ? null : 7,
+    );
+    assertEquals(config.trial.enabled, !plan.key.startsWith("pro_plus_"));
+  }
+  const posts = f.writes as { path: string; body: Resource }[];
+  for (
+    const post of posts.filter((p) =>
+      p.path === "/products/" && p.body.metadata?.vantare_catalog_key
+    )
+  ) {
+    assertEquals(post.body.trial_interval, undefined);
+    assertEquals(post.body.trial_interval_count, undefined);
+  }
+  assertEquals((await syncCatalog(f.http, result, options)).writes, 0);
+});
+
+Deno.test("decision B: repairs every launch trial with isolated idempotent PATCH before creating or reusing creator links", async () => {
+  for (const mode of ["new-link", "existing-link", "no-creator"]) {
+    const f = fake();
+    let saved = await syncCatalog(f.http, sandbox, options);
+    for (const p of f.products) p.visibility = "public";
+    if (mode === "existing-link") {
+      saved = await syncCatalog(f.http, saved, options);
+    }
+    const overrides = [
+      { trial_interval: "day", trial_interval_count: 7 },
+      { trial_interval: "month", trial_interval_count: 2 },
+      { trial_interval: "day", trial_interval_count: null },
+      { trial_interval: null, trial_interval_count: 7 },
+    ];
+    const launch = PRICES.plans.map((plan, i) => {
+      const config = saved.map.checkout_keys[plan.key]!;
+      const product = f.products.find((p) =>
+        p.id === config.polar_launch_product_id
+      )!;
+      Object.assign(product, overrides[i]);
+      const archived = {
+        ...product.prices![0],
+        id: `00000000-0000-4000-8000-00000000090${i}`,
+        is_archived: true,
+      };
+      product.prices!.push(archived);
+      config.polar_price_ids.push(archived.id);
+      saved.map.price_id_to_checkout_key[archived.id] = plan.key;
+      return product;
+    });
+    const before = structuredClone(f.products);
+    const start = f.writes.length;
+    const http: Http = (method, path, body) => {
+      if (method === "POST" && path === "/checkout-links/") {
+        for (const p of launch) {
+          assertEquals(p.trial_interval, null);
+          assertEquals(p.trial_interval_count, null);
+        }
+      }
+      return f.http(method, path, body);
+    };
+    const opts = mode === "no-creator"
+      ? { environment: "sandbox" as const }
+      : options;
+    const repaired = await syncCatalog(http, saved, opts);
+    assertEquals(repaired.writes, mode === "new-link" ? 5 : 4);
+    const patches = f.writes.slice(start, start + 4) as {
+      method: string;
+      path: string;
+      body: unknown;
+    }[];
+    assertEquals(
+      patches.map((p) => p.path).sort(),
+      launch.map((p) => `/products/${p.id}`).sort(),
+    );
+    for (const patch of patches) {
+      assertEquals(patch.method, "PATCH");
+      assertEquals(patch.body, {
+        trial_interval: null,
+        trial_interval_count: null,
+      });
+    }
+    for (let i = 0; i < before.length; i++) {
+      const expected = structuredClone(before[i]);
+      if (launch.some((p) => p.id === expected.id)) {
+        expected.trial_interval = null;
+        expected.trial_interval_count = null;
+      }
+      assertEquals(f.products[i], expected);
+    }
+    assertEquals(repaired.map, saved.map);
+    if (mode === "existing-link") {
+      assertEquals(repaired.creator_link, saved.creator_link);
+    }
+    const after = f.writes.length;
+    assertEquals((await syncCatalog(http, repaired, opts)).writes, 0);
+    assertEquals(f.writes.length, after);
+  }
+});
+
+Deno.test("decision B: creator preflight rejects residual trials from every launch product POST or PATCH", async () => {
+  for (const plan of PRICES.plans) {
+    for (
+      const boundary of ["create", "trial-patch", "price-patch", "copy-patch"]
+    ) {
+      for (
+        const existingLink of boundary === "create" ? [false] : [false, true]
+      ) {
+        const f = fake();
+        let input: unknown = sandbox;
+        let targetId: string | undefined;
+        if (boundary !== "create") {
+          let saved = await syncCatalog(f.http, sandbox, options);
+          for (const p of f.products) p.visibility = "public";
+          if (existingLink) saved = await syncCatalog(f.http, saved, options);
+          input = saved;
+          targetId = saved.map.checkout_keys[plan.key]!.polar_launch_product_id;
+          const target = f.products.find((p) => p.id === targetId)!;
+          if (boundary === "trial-patch") target.trial_interval = "day";
+          if (boundary === "price-patch") target.prices![0].price_amount = 1;
+          if (boundary === "copy-patch") target.name = "Nombre antiguo";
+        }
+        const start = f.writes.length;
+        const http: Http = async (method, path, body) => {
+          const result = await f.http(method, path, body);
+          const isTarget = boundary === "create"
+            ? method === "POST" &&
+              (body as Resource)?.metadata?.vantare_catalog_key ===
+                `${plan.key}:launch`
+            : method === "PATCH" && path === `/products/${targetId}`;
+          // Simulate a successful response that still carries a trial (even one field).
+          if (isTarget) {
+            return {
+              ...(result as Resource),
+              trial_interval: null,
+              trial_interval_count: 7,
+            };
+          }
+          return result;
+        };
+        await assertRejects(
+          () => syncCatalog(http, input, options),
+          /Launch product trial/,
+        );
+        assertEquals(f.links.length, existingLink ? 1 : 0);
+        const writes = f.writes.slice(start) as { path: string }[];
+        assertEquals(
+          writes.every((w) => w.path.startsWith("/products/")),
+          true,
+        );
+      }
+    }
+  }
+});
+
+Deno.test("decision B: trial repair checks identity and safely retries a committed PATCH with lost response", async () => {
+  for (const failure of ["id", "organization", "timeout"]) {
+    const f = fake();
+    const saved = await syncCatalog(f.http, sandbox, options);
+    for (const p of f.products) p.visibility = "public";
+    const target = f.products.find((p) =>
+      p.id === saved.map.checkout_keys.pro_annual!.polar_launch_product_id
+    )!;
+    target.trial_interval = "day";
+    target.trial_interval_count = 7;
+    const before = structuredClone(target);
+    const start = f.writes.length;
+    const http: Http = async (method, path, body) => {
+      const result = await f.http(method, path, body);
+      if (method === "PATCH" && path === `/products/${target.id}`) {
+        if (failure === "timeout") throw Error("Simulated lost response");
+        return {
+          ...(result as Resource),
+          [failure === "id" ? "id" : "organization_id"]:
+            "00000000-0000-4000-8000-000000000999",
+        };
+      }
+      return result;
+    };
+    await assertRejects(() => syncCatalog(http, saved, options));
+    assertEquals(f.writes.length - start, 1);
+    assertEquals(f.links.length, 0);
+    assertEquals(target, {
+      ...before,
+      trial_interval: null,
+      trial_interval_count: null,
+    });
+    const retried = await syncCatalog(f.http, saved, options);
+    assertEquals(retried.writes, 1); // only the creator link, trial repair already committed
+    assertEquals(retried.map, saved.map);
+    assertEquals((await syncCatalog(f.http, retried, options)).writes, 0);
+  }
+});
+
 Deno.test("catalog: replacing the base price keeps old price IDs mapped", async () => {
   const f = fake();
   f.products[0].prices![0].price_amount = 499;
@@ -680,11 +887,11 @@ for (
       )!;
       assertEquals(
         product.trial_interval ?? null,
-        plan.key.startsWith("pro_plus_") ? null : "day",
+        null,
       );
       assertEquals(
         product.trial_interval_count ?? null,
-        plan.key.startsWith("pro_plus_") ? null : 7,
+        null,
       );
     }
     Object.assign(f.links[0], override);
@@ -697,7 +904,7 @@ for (
   });
 }
 
-Deno.test("R2 P2: absent or null creator link trials inherit product trials on rerun", async () => {
+Deno.test("decision B: absent or null creator link trials inherit launch products without trial on rerun", async () => {
   const f = fake();
   const draft = await syncCatalog(f.http, sandbox, options);
   for (const p of f.products) p.visibility = "public";

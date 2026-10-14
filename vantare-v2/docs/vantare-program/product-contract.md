@@ -98,6 +98,10 @@ Un código exacto por creador (ISAAC), -20 % porcentual, repeating 2 meses,
 solo sobre esos cuatro productos; luego vuelve a la base de lanzamiento.
 Mensual: 3,19/5,59 EUR los dos primeros meses, 3,99/6,99 desde mes 3.
 Anual: primera factura 31,92/55,92 EUR, renovación 39,90/69,90.
+Decisión B de Isaac del 14/10/2026: los cuatro productos de lanzamiento,
+incluidos los accesos por enlace/código de creador, **no tienen prueba gratis**;
+el primer cobro ocurre al comprar. Los siete días gratis son exclusivos de
+Pro a precio normal, mensual/anual; Pro Plus normal tampoco tiene trial.
 Tras el mes de lanzamiento se retiran sus ofertas de la web y se conservan
 los productos accesibles por enlace de creador propio. Activación y cambio
 web pendientes; el catálogo no publica ni certifica venta. El checkout de la
@@ -127,7 +131,8 @@ demás widgets no gratuitos requieren licencia.
 - Polar es la autoridad comercial.
 - Supabase permanece como backend de cuenta/licencia endurecido.
 - Stripe se retira cuando Polar esté operativo y reconciliado.
-- Trial de siete días con método de pago y recordatorio.
+- Trial de siete días con método de pago y recordatorio solo para Pro a precio
+  normal (mensual/anual); sin trial en lanzamiento, creador ni Pro Plus.
 - Tras un fallo existe recuperación técnica máxima de tres días; después se
   baja al modo gratuito.
 - Cancelar conserva acceso hasta la fecha pagada.

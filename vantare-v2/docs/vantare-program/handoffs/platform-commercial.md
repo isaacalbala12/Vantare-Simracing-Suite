@@ -1,3 +1,46 @@
+## #1620 / PR #1621 · lanzamiento sin trial, decisión B (14/10/2026)
+
+Encargo explícito al worker Codex macOS arm64; base limpia `c6739de8`, rama
+`vantareapp/isa-1620-precios-polar`, nightly `953f041c` ya incorporado.
+Project Vantare/area:licencias; VANTA-N omitido conforme a autorización previa.
+GitHub/Plane/PR/CI y última actualización remota no verificables desde este Mac:
+el orquestador los actualiza al recoger/revisar el commit local.
+
+Isaac decide B tras su compra sandbox: ningún producto de lanzamiento tiene
+prueba gratis, tampoco por enlace/código de creador. Siete días solo para
+Pro normal mensual/anual; Plus normal sigue sin trial. Sustituye la decisión
+anterior de heredar trial Pro en lanzamiento. POST de lanzamiento sin campos
+de trial; existentes con cualquier campo informado reciben PATCH separado
+`trial_interval: null, trial_interval_count: null`, sin precios ni otros campos.
+Se conservan IDs, precios activos/archivados, mapa, derechos y productos normales.
+
+El preflight general conserva guardas y admite ese desvío reparable. El del
+enlace exige los cuatro productos de lanzamiento sin trial tras reconciliar,
+antes de crear descuento/enlace o devolver un enlace existente. Cada respuesta
+de producto de lanzamiento debe quedar sin trial; el PATCH valida también ID y
+organización. El enlace sigue rechazando cualquier override antes de escribir.
+Mismo apply con/sin creador; reparación idempotente y reintento tras PATCH
+confirmado con respuesta perdida. No se migran suscripciones/checkouts previos.
+Runbook, contrato de producto y fragmento ISA-1620 actualizados.
+
+Tres ciclos de comportamiento RED→GREEN: creación (44 PASS), reparación
+(45 PASS), rechazo de respuesta con trial (46 PASS); catálogo final **47 PASS**
+con identidad/reintento y enlaces nuevos/existentes, cuatro planes/configuración
+parcial. Suite Deno completa **590 PASS/0 FAIL/1 ignored** (PostgREST no
+configurado), tipos/lint/fmt, quality/retirada **456 huellas**, superficie deploy
+y validador del fragmento PASS. Lint conserva exclusión existente no-import-prefix.
+Primera suite lanzada desde subdirectorio: cuatro NotFound de fixtures .github;
+log conservado, repetida correctamente desde raíz Git sin tocar tests ajenos.
+Tests con entorno vacío, sin red, caché instalada y escritura solo en /tmp.
+Rust/UI/telemetría/SQL omitidos: ningún cambio en esas áreas ni Edge desplegado.
+
+Evidencia `~/evidence/1620/no-launch-trial/RESUMEN.md`; SHA final en
+`~/orq/1620.buzon.md`. Solo rama local, sin push/merge/promoción/release/deploy,
+servicios reales, secretos, dependencias nuevas o subagentes. Diff revisado.
+Siguiente: revisión del orquestador y actualización de issue/PR; por su vía
+autorizada aplicar en sandbox, confirmar cobro hoy en enlaces de creador y
+siete días solo en Pro normal, revisar checkouts/compras previos por separado.
+
 ## #1620 / PR #1621 · nombres de cliente (14/10/2026)
 
 Worker Codex macOS, encargo explícito sin subagentes, GitHub/Plane ni push.

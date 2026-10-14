@@ -158,13 +158,15 @@ impl Triage {
                 .ok_or(Error::Clock)?
                 .to_rfc3339();
         let id = crate::random_id()?;
+        let variant = u8::from_str_radix(&id[16..17], 16).map_err(|_| Error::Protocol)?;
         let mut packet = Packet {
             id: format!(
-                "{}-{}-{}-{}-{}",
+                "{}-{}-4{}-{:x}{}-{}",
                 &id[..8],
                 &id[8..12],
-                &id[12..16],
-                &id[16..20],
+                &id[13..16],
+                (variant & 3) | 8,
+                &id[17..20],
                 &id[20..32]
             ),
             // F7=C: SQL still requires text columns, but tester prose is local.
@@ -207,7 +209,7 @@ impl Triage {
         }
         request
             .post(
-                "rest/v1/rpc/testing_contribution_submit_v2",
+                "functions/v1/testing-report-submit",
                 &p.preview.packet.rpc_payload(channel),
             )?
             .success()?;

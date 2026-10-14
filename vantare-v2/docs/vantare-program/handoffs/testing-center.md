@@ -1,3 +1,32 @@
+## R7 F8 · 14/10/2026 · hito local, gates completos en curso
+
+#1594 / VANTA-38/49 En curso verificado. Inicio limpio bb1d7bb3; nightly
+e5c90be5 vigente y ancestro. Review r6 entera: F8/P1 y F9/P2, sin P3 nuevos.
+Cliente de triaje → Edge #1610 → RPC server-only nueva, conserva paquete exacto
+y follow-up. V2 directa cerrada, también en la allowlist nativa. UUID v4
+compatible con Edge. F7=C intacto: ningún texto libre exportado.
+
+Migración candidata 20261014115717_testing_triage_admitted, posterior a
+admisión IP #1610; down preserva datos/cuotas y no reabre v2. Cuenta resuelta
+por JWT verificado, IP gateway/HMAC, presupuestos durables antes del cuerpo,
+consentimiento/items/hashes/membresía y reintento exacto conservados.
+SQL original aprobado #1594 intacto. Sin SQL remoto nuevo.
+
+RED/GREEN: ruta/UUID nativos, Edge 400 y adaptador SQL inexistente. GREEN:
+23 pruebas triaje; focales r7/retry 3/3; Edge 15/15; SQL combinado 27 checks
+con preview nativo enviado por HTTP loopback y envelope del handler Edge
+idénticos; F1 17/F1IP 26/F2 6/F3 8 sin grants sintéticos. #1594 aislada
+83/83, concurrencia/login/rollback PASS. Python 57/57 sin connect y mocks
+followup 4/4, quality/retirement 456 PASS. Gates workspace en ejecución.
+Sin runtime/domain/ipc/testdata cambiado: telemetría dedicada no repetida.
+
+F9 RED (fixed + recibo legacy → No aceptado); ajuste local GREEN → Arreglado,
+pendiente de su commit propio/gates. [Reproducción r7](../../../../tools/triage/review-1602-r7-regressions.md).
+Evidencia E:/tmp/isa1594-r7-evidence/. Sin subagentes/deps, producción/envíos
+reales, proveedor/deploy/tokens, auto-merge, merge, promoción o release.
+PR #1602 draft a nightly. Próximo paso: gates, commit F9, push y re-review.
+Límites de gateway/activación #1610 pendientes. Snapshots inferiores históricos.
+
 ## F7=C · 14/10/2026 · entrega CLI por revisar
 
 #1594 / VANTA-38/49 Por revisar; proyecto Vantare/In Review,

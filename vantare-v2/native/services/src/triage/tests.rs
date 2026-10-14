@@ -154,7 +154,7 @@ fn uncertain_submission_retries_exact_payload_and_never_selects_identity() {
                 .expect("request")
         })
         .collect();
-    assert!(captured[1].starts_with("POST /rest/v1/rpc/testing_contribution_submit_v2 "));
+    assert!(captured[1].starts_with("POST /functions/v1/testing-report-submit "));
     let first = captured[1].split("\r\n\r\n").nth(1).expect("body");
     let retried = captured[2].split("\r\n\r\n").nth(1).expect("body");
     assert_eq!(first, retried);
@@ -166,6 +166,78 @@ fn uncertain_submission_retries_exact_payload_and_never_selects_identity() {
     server.finish();
     drop(store);
     crate::cleanup_store(&root, "triage-retry", &[]);
+}
+
+#[test]
+fn review_r7_f8_real_preview_is_preserved_for_combined_sql_admission() {
+    let server = Server::start(vec![
+        (200, serde_json::json!({"version":1,"account_id":"15940000-0000-4000-8000-000000000001","data_access_token":"data-fixture","expires_at":160}).to_string()),
+        (200, "null".into()),
+        (200, "{\"questionnaires\":[],\"contributions\":[]}".into()),
+    ]);
+    let (root, store) = crate::test_store("triage-admission");
+    let account = account::fixture(&server.base, &store);
+    let http = Http::default();
+    let config = Config {
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("URL"),
+        supabase: server.base.clone(),
+        anon_key: "public-fixture".into(),
+    };
+    let session = config
+        .authorize(&http, &account, 100)
+        .expect("verified account");
+    let request = session.request(&http, &config, &account, 100);
+    let mut triage = Triage::default();
+    triage.record(99, true, "report-send");
+    let preview = triage
+        .prepare(
+            "15940000-0000-4000-8000-000000000001",
+            "testers",
+            Input {
+                title: "OrdinaryPrivateTesterNote",
+                body: "OrdinaryPrivateTesterNote",
+                selection: Selection {
+                    items: [Item::Session, Item::AppLog].into_iter().collect(),
+                },
+                consent: true,
+                private_names: &[],
+            },
+            100,
+        )
+        .expect("actual preview");
+    let payload = preview.packet.rpc_payload("testers");
+    let bytes = serde_json::to_vec(&payload).expect("preview bytes");
+    assert!(!String::from_utf8_lossy(&bytes).contains("OrdinaryPrivateTesterNote"));
+    assert_eq!(preview.packet.attachments.len(), 1);
+    triage
+        .send(&request, "testers", &preview.id, 100)
+        .expect("send actual preview");
+    let captured: Vec<_> = (0..3)
+        .map(|_| {
+            server
+                .requests
+                .recv_timeout(std::time::Duration::from_secs(3))
+                .expect("request")
+        })
+        .collect();
+    assert!(captured[1].starts_with("POST /functions/v1/testing-report-submit "));
+    let sent = captured[1].split("\r\n\r\n").nth(1).expect("body");
+    assert_eq!(sent.as_bytes(), bytes);
+    // Optional local evidence consumed by the disposable combined SQL runner.
+    if let Some(path) = std::env::var_os("VANTARE_TRIAGE_TEST_PREVIEW") {
+        std::fs::write(path, &bytes).expect("synthetic preview evidence");
+    }
+    assert_eq!(preview.packet.id.as_bytes()[14], b'4');
+    assert!(matches!(
+        preview.packet.id.as_bytes()[19],
+        b'8' | b'9' | b'a' | b'b'
+    ));
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "triage-admission", &[]);
 }
 #[test]
 fn cancel_and_retention_clear_private_preparations_without_fabricated_logs() {

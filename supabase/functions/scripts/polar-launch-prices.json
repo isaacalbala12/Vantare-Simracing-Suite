@@ -1,0 +1,41 @@
+{
+  "catalog_version": "isa-1620-launch-v1",
+  "currency": "eur",
+  "tax_behavior": "inclusive",
+  "creator_discount_basis_points": 2000,
+  "creator_commission_basis_points": 3000,
+  "plans": [
+    {
+      "key": "pro_monthly",
+      "interval": "month",
+      "normal_cents": 599,
+      "launch_cents": 399,
+      "launch_confirmed": true,
+      "code_suffix": "PROM"
+    },
+    {
+      "key": "pro_annual",
+      "interval": "year",
+      "normal_cents": 5990,
+      "launch_cents": 3990,
+      "launch_confirmed": false,
+      "code_suffix": "PROA"
+    },
+    {
+      "key": "pro_plus_monthly",
+      "interval": "month",
+      "normal_cents": 999,
+      "launch_cents": 699,
+      "launch_confirmed": true,
+      "code_suffix": "PLUSM"
+    },
+    {
+      "key": "pro_plus_annual",
+      "interval": "year",
+      "normal_cents": 9990,
+      "launch_cents": 6990,
+      "launch_confirmed": false,
+      "code_suffix": "PLUSA"
+    }
+  ]
+}

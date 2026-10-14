@@ -3,6 +3,7 @@ export const CHECKOUT_KEYS = [
   "pro_monthly",
   "pro_annual",
   "pro_plus_monthly",
+  "pro_plus_annual",
 ] as const;
 
 export const REQUIRED_CONFIGURED_CHECKOUT_KEYS = [
@@ -126,6 +127,18 @@ const EXPECTED_KEY_META: Record<
   },
   pro_plus_monthly: {
     plan_sku: "pro_plus_monthly",
+    billing_type: "subscription",
+    lifetime: false,
+    capabilities: [
+      "vantare.plan.pro",
+      "vantare.channel.testers",
+      "vantare.channel.nightly",
+    ],
+    channels: ["stable", "testers", "nightly"],
+    launch_scope_version: null,
+  },
+  pro_plus_annual: {
+    plan_sku: "pro_plus_annual",
     billing_type: "subscription",
     lifetime: false,
     capabilities: [

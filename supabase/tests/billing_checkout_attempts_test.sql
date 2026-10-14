@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap;
-select plan(19);
+select plan(20);
 
 select has_table('public', 'billing_checkout_attempts', 'checkout attempts table exists');
 select col_is_pk('public', 'billing_checkout_attempts', array['user_id', 'attempt_id'], 'attempt identity is scoped to the account');
@@ -138,6 +138,16 @@ select is(
   )),
   'claimed',
   'Pro annual is an accepted checkout key (ISA-1499)'
+);
+
+select is(
+  (select outcome from public.claim_billing_checkout_attempt(
+    '00000000-0000-4000-8000-000000000010',
+    '00000000-0000-4000-8000-000000000026',
+    'pro_plus_annual', 'sandbox', 'catalog-v2'
+  )),
+  'claimed',
+  'Pro Plus annual is an accepted checkout key (ISA-1620)'
 );
 
 select * from finish();

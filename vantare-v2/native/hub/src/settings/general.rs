@@ -86,6 +86,13 @@ impl Store {
         self.observed = Some(bytes);
         Ok(())
     }
+    pub fn onboarding_needed(&mut self, layout_preexisted: bool) -> bool {
+        if self.observed.is_none() && layout_preexisted {
+            // Un layout anterior acredita una instalación existente, aunque nunca guardara General.
+            self.value.onboarding_completed = true;
+        }
+        !self.value.onboarding_completed
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -200,6 +207,34 @@ pub(super) fn wire(state: &super::State, cx: &mut gpui::Context<super::Hub>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn existing_layout_without_general_skips_onboarding_but_interrupted_setup_resumes() {
+        let root = std::env::temp_dir().join(format!(
+            "vantare-onboarding-migration-{}",
+            std::process::id()
+        ));
+        std::fs::create_dir_all(&root).expect("root");
+        let mut legacy = Store::load(&root).expect("legacy without General");
+        assert!(!legacy.onboarding_needed(true));
+        legacy.save(legacy.value).expect("later settings edit");
+        assert!(
+            !Store::load(&root)
+                .expect("legacy restart")
+                .onboarding_needed(true)
+        );
+        std::fs::remove_file(root.join("general.json")).expect("new installation case");
+        let mut fresh = Store::load(&root).expect("fresh");
+        assert!(fresh.onboarding_needed(false));
+        fresh
+            .save(fresh.value)
+            .expect("persist pending before opening wizard");
+        assert!(
+            Store::load(&root)
+                .expect("interrupted wizard")
+                .onboarding_needed(true)
+        );
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
     #[test]
     fn onboarding_runs_only_on_new_installations_and_completion_survives_restart() {
         let root =

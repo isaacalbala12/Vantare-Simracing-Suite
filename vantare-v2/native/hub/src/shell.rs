@@ -1064,6 +1064,7 @@ fn create_engineer(engineer: Engineer, cx: &mut App) -> Entity<Engineer> {
 
 /// Entradas ya cargadas y validadas antes de abrir la ventana.
 struct Loaded {
+    layout_preexisted: bool,
     preview_fixtures: Option<[vantare_domain::Snapshot; 5]>,
     appearance: settings::appearance::Store,
     appearance_error: Option<String>,
@@ -1098,6 +1099,7 @@ impl Hub {
             Section::Home
         };
         let Loaded {
+            layout_preexisted,
             preview_fixtures,
             appearance,
             appearance_error,
@@ -1222,10 +1224,19 @@ impl Hub {
             && capture.is_none()
             && settings
                 .general
-                .as_ref()
-                .is_ok_and(|store| !store.value.onboarding_completed);
-        let onboarding =
+                .as_mut()
+                .is_ok_and(|store| store.onboarding_needed(layout_preexisted));
+        if first_run
+            && let Ok(store) = &mut settings.general
+            && let Err(error) = store.save(store.value)
+        {
+            settings.status = Some(error);
+        }
+        let mut onboarding =
             (first_run || onboarding_capture).then(|| onboarding::State::new(capture.as_ref(), cx));
+        if let Some(state) = &mut onboarding {
+            state.error.clone_from(&settings.status);
+        }
         if first_run {
             Self::animate_onboarding(cx);
         }
@@ -1370,6 +1381,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
         }
     };
     let loaded = Loaded {
+        layout_preexisted: options.layout.exists(),
         preview_fixtures: options
             .capture
             .as_ref()

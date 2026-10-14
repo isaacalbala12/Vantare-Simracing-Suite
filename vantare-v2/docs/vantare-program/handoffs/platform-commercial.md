@@ -1,3 +1,50 @@
+## #1608 · Cierre comercial ronda 4 local · Mac arm64 (14/10/2026)
+
+Review `~/orq/review-1622-sol-r3.md` entera, R3-P1-1: reset concurrente
+reinserta dispositivo. Encargo recibido de Claude/Isaac, sin subagentes ni
+GitHub/push. Inicio limpio `3ce0eadc`, misma rama
+`vantareapp/isa-1608-cierre-comercial`, worktree
+`/Users/isaacalbala/vw-isa-1608-cierre-comercial`, base local `e5c90be5`.
+
+Migración nueva `20261014140000_isa_1608_account_write_barrier.sql`:
+helper único lock UUID→tombstone y trigger en **74 tablas**, incluidas rutas
+FK indirectas/composites, aliases, PII, devices, grants, Storage/manifest,
+Testing, admin e inbox vinculado. OLD/NEW, propietarios ordenados y releídos,
+identidad durable, snapshots antiguos rechazados. Cleanup bajo UUID y marca
+final en misma transacción; sin bypass. Grants/entitlements/operacional solo
+revocados; los otros writers tardíos se rechazan. Reset adquiere UUID antes
+de fila, claim antes de conflicto; resolvers nativos/bootstrap releen.
+No se reescriben migraciones históricas ni se activa infraestructura.
+
+Inventario completo de **87 tablas / 50 migraciones y entradas Edge**, con
+protegida sí/no y test, en [informe](../../analysis/review-cuentas-pagos-2026-10.md).
+94 rutas con dos transacciones reales y control válido observado por tabla:
+**RED189 → GREEN559**; 74 tablas con cobertura real, catálogo/FK y ACL verificados.
+Regresión anterior aliases **40/40 PASS**; Edge con tipos **551 PASS/1 ignored**;
+retirada456 PASS. Evidencia `~/evidence/1608-r4/checked-{red,green}/`,
+`aliases-green/`, `deno-functions.log`, manifest final y logs de intentos.
+Runner `--writers` sin pgTAP; integrado también al final del gate normal.
+
+Límites nuevos expresos: pgTAP317/upgrades48 no repetidos por extensión ausente
+(0A000 conservado); HTTP/PostgREST/Ed25519→SQL no repetido por binario ausente.
+Invocación extra con todos los tests históricos Supabase falla TS2353 ajeno al
+diff; suite Edge551 con tipos sí pasa, sin --no-check. Sin Rust/TS modificados:
+gates nativos/telemetría/lint TS omitidos. No instalar dependencias nuevas;
+solo caché de paquetes Deno ya declarados. Sin herramientas nuevas.
+
+Última lectura es la **copia de review r3**, 12:13 UTC: #1608 OPEN/in-review,
+area:plataforma/Project Vantare/sin milestone, updatedAt11:40:15Z;
+VANTA-16/17/15 Por revisar y draft#1622 a nightly en `3ce0eadc`.
+No consultado ni actualizado desde este Mac; sin CI del nuevo HEAD.
+Commit/SHA final local en `~/orq/1608.buzon.md`; orquestador recoge la rama,
+revisa, repite pgTAP/upgrades/HTTP, y actualiza seguimiento. Canal: rama de issue.
+Sin merge/promoción/release/deploy/producción/servicios/cuentas/datos reales.
+Activación y esquema/Storage gestionado requieren revisión separada; no venta.
+Política conservadora de rechazo de writers tardíos; filas/advisory pueden
+abortar por deadlock bajo otro orden DML. No se promete ausencia global de
+contención: nunca se acepta el writer omitiendo la relectura. Perfil remoto
+apagado; registry/reconciliación inertes; historial previo privado conservado.
+
 ## #1608 · Cierre comercial ronda 3 local (14/10/2026)
 
 Review `C:/tmp/ola2/review-1622-sol-r2.md` entera: R2-P1-1 único hallazgo,

@@ -1,3 +1,279 @@
+## #1608 · Cierre comercial ronda 4 · Mac arm64 (14/10/2026)
+
+Review `~/orq/review-1622-sol-r3.md` leída **entera**: NO APTO por R3-P1-1,
+reset concurrente que reinserta el dispositivo tras el borrado irreversible.
+Encargo del orquestador: abarcar todas las escrituras SQL/Edge ligadas a UUID;
+solo local/tests, sin subagentes, GitHub, push ni servicios reales.
+Inicio limpio `3ce0eadc5bcd04a557fe94b994dccd5ffb9005b2`, rama
+`vantareapp/isa-1608-cierre-comercial`, worktree
+`/Users/isaacalbala/vw-isa-1608-cierre-comercial`, base/merge-base local
+`e5c90be5f63347fa4d50b4110e1946201c1957c0`. No fetch, rebase ni integración.
+
+### Regla única y diseño aplicado
+
+Nueva migración **`20261014140000_isa_1608_account_write_barrier.sql`**;
+no se reescriben migraciones anteriores. `private.lock_account_write(uuid)`
+toma `pg_advisory_xact_lock(hashtextextended(uuid::text,1608))` y **después**
+consulta todos los tombstones del UUID. Función VOLATILE, ACL privada, índice
+por `account_id`; no flags/GUC que permitan saltarse la protección.
+Rechaza snapshots REPEATABLE READ/SERIALIZABLE con SQLSTATE 25001.
+
+Un trigger común BEFORE INSERT/UPDATE/DELETE protege **74 tablas**. La migración
+compila los caminos de FK directos/indirectos/composites a `profiles`, más raíces
+explícitas sin FK: auditoría operacional, admisión por UUID, Storage, agregados
+Testing, inbox Polar y objetivos/resultados del admin. Los joins de runtime
+usan las claves tipadas; no recorren el catálogo ni comparan filas enteras como
+JSON. Comprueba propietarios OLD/NEW, los bloquea en orden UUID, relee los
+propietarios tras esperar y rechaza cambios concurrentes (40001). No permite
+desasociar propietarios, cambiar claves de identidad ni eliminar físicamente
+perfiles/aliases. Una FK a un padre todavía invisible se rechaza (23503),
+con reintento comprobado después del commit del padre.
+
+Tras tombstone, las escrituras ligadas al UUID se rechazan (28000), excepto
+las tres proyecciones ya existentes de grants/entitlements/acceso operacional:
+solo persisten **revocado**, metadata vacía o campos de revocación completos.
+DELETE de datos/ACK de Storage sigue permitido bajo la misma barrera; UUID y
+aliases son durables. Historial previo privado se conserva. El borrado borra/
+anonimiza bajo el lock y **marca los tombstones al final de la misma transacción**;
+no necesita excepciones de privilegios ni un bypass de limpieza.
+Los webhooks tardíos por otro alias siguen devolviendo `ignored`.
+
+Reset obtiene la barrera desde `resolve_current_account` **antes** del lock de
+fila de dispositivo. Claim entra por INSERT y el mismo trigger antes de tomar
+filas; la resolución nativa/bootstrap también relee el tombstone bajo el lock.
+Se retira la guarda anterior limitada a tres tablas. Los consumidores Edge
+reciben la protección en SQL, incluidos sus upserts con service_role.
+
+### Inventario SQL: ruta → protegida → test
+
+Inventario sobre las **50 migraciones reales** y los writers Edge activos;
+87 tablas public/private/storage en el bootstrap local. `Sí` significa el
+trigger común en las tres operaciones, también para service_role/DEFINER.
+Las 13 filas `No` son catálogo, configuración o auditoría técnica sin UUID de
+cuenta; no se fabrica una identidad para bloquear operaciones globales.
+Las políticas y ACL originales siguen aplicándose además del trigger.
+
+Cada nombre de test identifica una fila de `commercial_write_cases.py`,
+ejecutada por `commercial_write_race.py`. `coverage.json` registra las tablas
+**realmente escritas** por cada control válido mediante un AFTER de fixture;
+ese observador se retira al terminar y no reemplaza las funciones ni guardas.
+El gate falla si una tabla protegida carece de escritura válida/carrera, si falta
+un trigger o si sus argumentos compilados omiten una columna FK actual.
+
+| Ruta SQL / tabla destino | Protegida | Test de dos transacciones / clasificación |
+| --- | --- | --- |
+| `private.billing_reconciliation_cursor` | No (no aplica UUID) | Cursor/lease global por entorno; no UUID. |
+| `private.clerk_deleted_objects` — INSERT/UPDATE/DELETE | Sí | `deletion-queue` |
+| `private.clerk_issuers` | No (no aplica UUID) | Registry de confianza por issuer; no cuenta. |
+| `private.clerk_user_events` | No (no aplica UUID) | Inbox mínimo event_id/hash/tipo, sin subject/PII ni UUID. |
+| `private.native_admin_rate` — INSERT/UPDATE/DELETE | Sí | `admin-rate` |
+| `private.testing_report_attempts` — INSERT/UPDATE/DELETE | Sí | `admission-account` |
+| `public.account_identities` — INSERT/UPDATE/DELETE | Sí | `alias-insert`, `alias-clear` |
+| `public.admin_audit_log` — INSERT/UPDATE/DELETE | Sí | `admin-audit`, `admin-target`, `admin-search-result` |
+| `public.billing_access_blocks` — INSERT/UPDATE/DELETE | Sí | `access-block` |
+| `public.billing_access_grants` — INSERT/UPDATE/DELETE | Sí | `grant` |
+| `public.billing_checkout_attempts` — INSERT/UPDATE/DELETE | Sí | `checkout-claim`, `checkout-complete`, `checkout-uncertain` |
+| `public.billing_checkout_bindings` — INSERT/UPDATE/DELETE | Sí | `checkout-complete`, `checkout-binding` |
+| `public.billing_commercial_resources` — INSERT/UPDATE/DELETE | Sí | `resource` |
+| `public.billing_customers` — INSERT/UPDATE/DELETE | Sí | `customer-upsert` |
+| `public.billing_orders` — INSERT/UPDATE/DELETE | Sí | `order` |
+| `public.billing_reconciliation_runs` — INSERT/UPDATE/DELETE | Sí | `reconciliation` |
+| `public.billing_refunds` — INSERT/UPDATE/DELETE | Sí | `refund` |
+| `public.billing_subscription_recovery_cycles` — INSERT/UPDATE/DELETE | Sí | `recovery` |
+| `public.billing_subscriptions` — INSERT/UPDATE/DELETE | Sí | `billing-subscription` |
+| `public.billing_webhook_effects` — INSERT/UPDATE/DELETE | Sí | `inbox-effect` |
+| `public.billing_webhook_inbox` — INSERT/UPDATE/DELETE | Sí | `inbox`, `inbox-checkout`, `inbox-order`, `inbox-refund`, `inbox-subscription`, `inbox-nested-customer` |
+| `public.billing_webhook_replay_audit` — INSERT/UPDATE/DELETE | Sí | `inbox-replay` |
+| `public.devices` — INSERT/UPDATE/DELETE | Sí | `device-insert`, `reset-clerk`, `claim-clerk`, `reset-native`, `native-claim` |
+| `public.hwid_changes` — INSERT/UPDATE/DELETE | Sí | `hwid-change` |
+| `public.license_events` — INSERT/UPDATE/DELETE | Sí | `license-event` |
+| `public.license_validations` — INSERT/UPDATE/DELETE | Sí | `validation` |
+| `public.licenses` — INSERT/UPDATE/DELETE | Sí | `license-insert`, `license-update` |
+| `public.module_rollout` | No (no aplica UUID) | Configuración global de módulos; el actor se audita en admin_audit_log. |
+| `public.operational_access_assignments` — INSERT/UPDATE/DELETE | Sí | `operational` |
+| `public.operational_access_audit` — INSERT/UPDATE/DELETE | Sí | `operational-audit` |
+| `public.operational_legacy_grant_retirements` — INSERT/UPDATE/DELETE | Sí | `operational-retirement` |
+| `public.profiles` — INSERT/UPDATE/DELETE | Sí | `profile-update` |
+| `public.race_schedule_publications` — INSERT/UPDATE/DELETE | Sí | `calendar`, `calendar-publisher` |
+| `public.rate_limits` — INSERT/UPDATE/DELETE | Sí | `rate-limit-user`, `rate-limit-license` |
+| `public.subscriptions` — INSERT/UPDATE/DELETE | Sí | `legacy-subscription` |
+| `public.supabase_heartbeat` | No (no aplica UUID) | Heartbeat global, sin cuenta. |
+| `public.testing_answers` — INSERT/UPDATE/DELETE | Sí | `answer` |
+| `public.testing_center_agent_audit` — INSERT/UPDATE/DELETE | Sí | `agent-audit` |
+| `public.testing_center_agent_callbacks` — INSERT/UPDATE/DELETE | Sí | `agent-callback` |
+| `public.testing_center_agent_effect_outbox` — INSERT/UPDATE/DELETE | Sí | `agent-effect` |
+| `public.testing_center_agent_jobs` — INSERT/UPDATE/DELETE | Sí | `agent-job` |
+| `public.testing_center_agent_phase_callbacks` — INSERT/UPDATE/DELETE | Sí | `agent-phase` |
+| `public.testing_center_agent_reservations` — INSERT/UPDATE/DELETE | Sí | `agent-reservation` |
+| `public.testing_center_audit` — INSERT/UPDATE/DELETE | Sí | `tc-audit` |
+| `public.testing_center_build_identities` | No (no aplica UUID) | Build/SHA/canal y actor técnico de registro; no UUID de cuenta. |
+| `public.testing_center_candidate_builds` — INSERT/UPDATE/DELETE | Sí | `candidate` |
+| `public.testing_center_codex_dossier_snapshots` — INSERT/UPDATE/DELETE | Sí | `dossier` |
+| `public.testing_center_codex_execution_control` — INSERT/UPDATE/DELETE | Sí | `codex-control` |
+| `public.testing_center_codex_runs` — INSERT/UPDATE/DELETE | Sí | `codex-run` |
+| `public.testing_center_effect_outbox` — INSERT/UPDATE/DELETE | Sí | `effect-outbox` |
+| `public.testing_center_effect_supersessions` — INSERT/UPDATE/DELETE | Sí | `supersession` |
+| `public.testing_center_evidence` — INSERT/UPDATE/DELETE | Sí | `report-evidence` |
+| `public.testing_center_evidence_batches` — INSERT/UPDATE/DELETE | Sí | `evidence-batch` |
+| `public.testing_center_evidence_outbox` — INSERT/UPDATE/DELETE | Sí | `evidence-outbox` |
+| `public.testing_center_github_deliveries` | No (no aplica UUID) | Digest y metadatos de entrega GitHub; sin cuerpo/PII/UUID. |
+| `public.testing_center_idempotency` — INSERT/UPDATE/DELETE | Sí | `tc-idempotency` |
+| `public.testing_center_issue_destinations` — INSERT/UPDATE/DELETE | Sí | `destination` |
+| `public.testing_center_issue_occurrences` — INSERT/UPDATE/DELETE | Sí | `occurrence` |
+| `public.testing_center_linear_issue_bindings` — INSERT/UPDATE/DELETE | Sí | `linear-binding` |
+| `public.testing_center_linear_migration_metadata` | No (no aplica UUID) | Snapshot técnico de función heredada, sin cuenta. |
+| `public.testing_center_linear_projection_snapshots` — INSERT/UPDATE/DELETE | Sí | `linear-projection` |
+| `public.testing_center_linear_reconciliations` — INSERT/UPDATE/DELETE | Sí | `linear-reconciliation` |
+| `public.testing_center_linear_state_mappings` | No (no aplica UUID) | Configuración organización/estado y actor técnico, no UUID de cuenta. |
+| `public.testing_center_linear_webhook_deliveries` — INSERT/UPDATE/DELETE | Sí | `linear-webhook` |
+| `public.testing_center_memberships` — INSERT/UPDATE/DELETE | Sí | `membership` |
+| `public.testing_center_owner_dispositions` — INSERT/UPDATE/DELETE | Sí | `owner-disposition` |
+| `public.testing_center_pauses` — INSERT/UPDATE/DELETE | Sí | `pause` |
+| `public.testing_center_posthog_consent_events` — INSERT/UPDATE/DELETE | Sí | `consent` |
+| `public.testing_center_posthog_evidence` — INSERT/UPDATE/DELETE | Sí | `posthog-evidence` |
+| `public.testing_center_promotions` — INSERT/UPDATE/DELETE | Sí | `promotion` |
+| `public.testing_center_report_events` — INSERT/UPDATE/DELETE | Sí | `report-event` |
+| `public.testing_center_report_payloads` — INSERT/UPDATE/DELETE | Sí | `report-payload` |
+| `public.testing_center_report_submission_keys` — INSERT/UPDATE/DELETE | Sí | `report-key` |
+| `public.testing_center_reports` — INSERT/UPDATE/DELETE | Sí | `report` |
+| `public.testing_center_screenshot_evidence` — INSERT/UPDATE/DELETE | Sí | `screenshot` |
+| `public.testing_center_technical_issues` — INSERT/UPDATE/DELETE | Sí | `technical-issue` |
+| `public.testing_center_triage_results` — INSERT/UPDATE/DELETE | Sí | `triage` |
+| `public.testing_center_validation_snapshots` — INSERT/UPDATE/DELETE | Sí | `validation-snapshot` |
+| `public.testing_center_validations` — INSERT/UPDATE/DELETE | Sí | `candidate-validation` |
+| `public.testing_contributions` — INSERT/UPDATE/DELETE | Sí | `contribution` |
+| `public.testing_questionnaires` | No (no aplica UUID) | Catálogo global de preguntas; respuestas separadas y protegidas. |
+| `public.testing_report_followup` — INSERT/UPDATE/DELETE | Sí | `followup` |
+| `public.user_entitlements` — INSERT/UPDATE/DELETE | Sí | `entitlement` |
+| `public.visual_roadmap` | No (no aplica UUID) | Documento público global; no cuenta. |
+| `public.visual_roadmap_sync_approvals` | No (no aplica UUID) | Aprobación de documento global; no cuenta. |
+| `storage.buckets` | No (no aplica UUID) | Configuración de buckets; objetos separados y protegidos. |
+| `storage.objects` — INSERT/UPDATE/DELETE | Sí | `storage-owner`, `storage-manifest` |
+
+Los vínculos de inbox se derivan de customer/checkout/order/refund/subscription
+**durables** y del entorno/proveedor. No usan email, metadata.user_id ni external
+UUID como autoridad. Sin vínculo canónico aún no existe un UUID que bloquear:
+se conserva el transporte minimizado previo (sin email/nombre/cuerpo completo),
+no se crea cuenta ni se conceden permisos. `scope=ip` en admisión tampoco es un
+UUID; `scope=account` sí pasa por la barrera. Storage comprueba tanto owner_id
+como el propietario del manifest, incluso si owner_id es NULL.
+
+### Inventario Edge y RPC consumidoras
+
+| Ruta Edge / entrada SQL | Protegida | Test / destino |
+| --- | --- | --- |
+| `clerk-webhook` → `apply_clerk_user_event` | Sí | Aliases/PII, cola Storage y borrado real en las 94 carreras; cuatro carreras previas por alias/tiempo. |
+| `native-license` → `native_claim_license_device` → `claim_account_device` | Sí | `native-claim`, `device-insert`; emisión/normalización en Deno. |
+| `_shared/native-auth` → `native_resolve_account`; `clerk_bootstrap_account` | Sí | `native-resolve`, `bootstrap`, barrera aun cuando solo resuelven la identidad existente. |
+| `native-account-authorize` → bearer de datos; `claim_active_device` / `reset_active_device` | Sí en resolución/consumo SQL | `claim-clerk`, `reset-clerk`, `reset-native`; JWT no se guarda en SQL. Firma/handler en Deno, sin nuevo gate HTTP firmado. |
+| `native-billing-checkout`, `billing-checkout` → claim/complete/uncertain/bindings | Sí | `checkout-claim`, `checkout-complete`, `checkout-uncertain`, `checkout-binding`. |
+| `native-billing-portal`, `billing-portal` | Resolución Sí; sin writer propio | Mismo resolver; llamada al proveedor fuera de esta QA local. |
+| `billing-webhook` / `billing-reconcile` → snapshots/orders/refunds/subscriptions/proyección | Sí | `order`, `refund`, `resource`, `billing-subscription`, `recovery`, `access-block`, `grant`, `entitlement`, `reconciliation`. |
+| `billing-webhook/process.ts` → upsert clientes / insert license_events | Sí | `customer-upsert`, `license-event`. No depende de un precheck Edge separado de la escritura. |
+| Inbox/effects/replay Polar | Sí para UUID vinculado | `inbox`, `inbox-checkout`, `inbox-order`, `inbox-refund`, `inbox-subscription`, `inbox-nested-customer`, `inbox-effect`, `inbox-replay`. |
+| `native-admin` / `operational_access_set` / calendario | Sí en tablas y auditoría | `membership`, `operational`, `operational-audit`, `operational-retirement`, `admin-rate`, `admin-audit`, `admin-target`, `admin-search-result`, `calendar`, `calendar-publisher`. |
+| `testing-report-submit` → admit/submit/admitted/followup/notice/consent/answer | Sí | `admission-account`, `contribution`, `followup`, `answer`; sin sync de perfil. |
+| `testing-center-feedback`, report submission/validation/owner disposition | Sí | `report`, `report-payload`, `report-key`, `report-event`, `candidate-validation`, `validation-snapshot`, `owner-disposition`, `dossier`, `consent`, `posthog-evidence`. |
+| `testing-center-linear-worker/webhook`, agent dispatch/callback; RPC históricas conservadas | Sí en cada destino ligado a UUID | Casos `linear-*`, `agent-*`, `effect-outbox`, `destination`, `supersession`, `technical-issue`, `codex-*`, `promotion`, `tc-audit`, `tc-idempotency`, `pause`, `triage`, `occurrence`. No se envía ningún efecto externo. |
+| Preparación/finalización screenshot y Storage API | Sí en metadatos | `evidence-batch`, `screenshot`, `evidence-outbox`, `report-evidence`, `storage-owner`, `storage-manifest`; bytes/API gestionada no ejecutados. |
+| `clerk_deletion_objects` / `clerk_deletion_completed` | Sí; lectura/retirada permitidas | `deletion-queue`, cola preservada en alias40 y ACK service_role positivo tras tombstone; sin recreación del UUID. |
+| `_deprecated/validate-license`, `_deprecated/stripe-webhook` | Destinos SQL Sí; handlers retirados | `licenses`, validaciones, HWID, rate limits, clientes, subscripciones y entitlements cubiertos en tabla. No se reactivan ni invocan los handlers. |
+| Perfil/foto remoto de #1612 | Sin nueva ruta activa | Sync permanece APAGADA. Un futuro writer SQL hacia perfiles/Storage hereda la guarda; no se añade uploader ni servicio. |
+
+La firma de un bearer/licencia es una respuesta, no un registro SQL; esta
+corrección no afirma que firma y borrado constituyan una sola transacción de red.
+La resolución y las escrituras/consumos SQL sí verifican el UUID. Se conserva
+la política offline firmada hasta expiración/reconexión ya aceptada.
+
+### RED → GREEN y evidencia reproducible
+
+`~/evidence/1608-r4/checked-red/`: el runner aplica las 49 migraciones previas
+y omite **solo** la nueva con `--before-write-barrier`. Los controles válidos
+pasan y las carreras detectan **189 comprobaciones FAIL**. Incluye reset
+Clerk/nativo que restaura dispositivo, PII/alias y otros writers que no esperan
+o escriben tras confirmar el borrado. No se deshabilita ni sustituye ninguna
+función/trigger productivo para fabricar el RED.
+
+`checked-green/`: las **50 migraciones reales** + **94 rutas / 559 checks PASS**
+en PostgreSQL17 local macOS arm64. Cada caso hace control válido con rollback,
+ejecuta un `user.deleted` real hasta dejar pendiente su commit, lanza el writer
+en otra conexión, comprueba el bloqueo real mediante `pg_stat_activity` y
+`pg_blocking_pids`, confirma el borrado y verifica SQLSTATE/revocación/no filas.
+Después comprueba PII, aliases, dispositivos, accesos, contribuciones, respuestas,
+objetos y payloads, y reentrega el mismo borrado. Incluye claims Clerk y claims
+nativos completos con TTL300, rol authenticated/service_role y guardas SQL
+invocadas por RPC reales. Las pausas de 10 ms son sondeo del lock observado;
+no deciden el orden de la carrera. Una prueba adicional con padre sin commit
+rechaza la FK antes de escribir, y el reintento válido confirma tras el padre.
+Los guards rechazan aislamiento con snapshot antiguo, reinserción del perfil,
+borrado/renombrado/reasignación de aliases y exposición directa de helpers.
+
+La cobertura se ejecuta con `--writers` y también al final del runner normal,
+tras los gates existentes. `--concurrency` conserva aislada la regresión r3.
+Desde la raíz Git, con PostgreSQL existente (sin instalar paquetes):
+
+```sh
+python3 -B supabase/tests/run-commercial-local.py --pg-bin /opt/homebrew/opt/postgresql@17/bin --output "$HOME/evidence/1608-r4/recheck-red" --writers --before-write-barrier
+python3 -B supabase/tests/run-commercial-local.py --pg-bin /opt/homebrew/opt/postgresql@17/bin --output "$HOME/evidence/1608-r4/recheck-green" --writers
+python3 -B supabase/tests/run-commercial-local.py --pg-bin /opt/homebrew/opt/postgresql@17/bin --output "$HOME/evidence/1608-r4/recheck-aliases" --concurrency
+```
+
+El primer comando **debe fallar**. Cada ejecución crea PGDATA/puerto loopback
+propios y los detiene en `finally`; no admite DSN ni toca DB existente.
+En Windows se puede ejecutar el mismo Python bajo WSL con `--pg-bin` de allí.
+
+| Check nuevo | Resultado / evidencia bajo `~/evidence/1608-r4` |
+| --- | --- |
+| Nuevo inventario/carreras por tabla y RPC | 94 rutas, 74 tablas, **559 PASS**, `checked-green/write-races.log`, `coverage.json`, `inventory.json`; RED189 en `checked-red/`. |
+| Regresión previa de aliases | **40/40 PASS**, `aliases-green/concurrency-results.log`. Primer intento cambió ignored por excepción; corregido en el consumidor, sin debilitar el test. |
+| Edge completo con tipos | **551 PASS / 0 FAIL / 1 ignored histórico**, `deno-functions.log`. Entorno sin credenciales, red de tests limitada a loopback. |
+| Oráculos retirados | **456 huellas PASS**, `retirement.log`. |
+| Python parse / diff / revisión completa | PASS; fuente verificada y manifest de SHA256 en evidencia al entregar. |
+| pgTAP317 y upgrades48 previos | **No repetidos**: pgTAP no está instalado. Intento real aborta bootstrap con 0A000, `pgtap-unavailable-console.log`. No se simula ni instala extensión. |
+| HTTP PostgREST / Ed25519 leyendo SQL real | **No repetido**: PostgREST no instalado. Las carreras usan PostgreSQL real y claims de fixture, no HTTP/OAuth real. No se heredan los PASS de r3. |
+| Invocación adicional `supabase/functions supabase/tests` | **FAIL preexistente TS2353**: `evidenceSanitization` en fixture histórica `testing-center-codex-adversarial.test.ts:65`; `deno-fetch-existing.log`. Ningún TS modificado, no se oculta con --no-check. |
+| Rust fmt/check/Clippy/Nextest/lifecycle/telemetría; lint TS | Omitidos por alcance SQL/Python/docs; sin native/runtime/domain/ipc/testdata/TS nuevos. |
+
+Primer Deno cached-only no tenía `standardwebhooks@1.0.0`; se descargó la
+**dependencia ya declarada** a la caché local, sin modificar manifests/locks ni
+añadir dependencias. Se conservan `deno.log`, intentos de fixtures/esquema y
+primeras iteraciones de la guarda (`42P21`, nombres cualificados, columnas de
+record genérico); no se presentan como RED de producto. La evidencia RED válida
+es exclusivamente `checked-red/` frente a la misma suite GREEN.
+
+### Entrega, riesgos y seguimiento
+
+Diff revisado completo. Seis archivos: migración nueva, runner, dos módulos
+Python de regresión, este informe y handoff vivo. Commit local en español con
+coautor requerido; SHA final en `~/orq/1608.buzon.md` y evidencia. Rama y canal
+alcanzado: **rama de issue local**. Sin push, PR nuevo, CI nueva, merge,
+promoción, release, deploy, subagentes ni escrituras al tracker.
+
+Último estado **copiado de la review r3**, no consultado en este Mac: issue
+[#1608](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1608)
+OPEN/in-review, area:plataforma, Project Vantare, sin milestone, updatedAt
+`2026-10-14T11:40:15Z`; lectura del revisor 12:13 UTC. VANTA-16/17/15 Por revisar.
+Draft [#1622](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1622)
+a nightly, HEAD publicado `3ce0eadc`; no se afirma estado remoto actual.
+Orquestador: recoger la rama por git, revisar el diff y repetir pgTAP/upgrades/
+HTTP con sus herramientas; después actualizar issue/Plane/PR/CI del nuevo SHA.
+
+Antes de activar: comprobar el esquema Storage/FK completo del entorno objetivo
+(el bootstrap local es explícito), repetir gates omitidos y medir volumen de
+joins/locks. Una futura tabla/FK necesita regenerar las guardas y añadir un
+control válido: los gates de catálogo/cobertura lo exigen. Escrituras DML que
+entran directamente por UPDATE pueden participar de un deadlock normal de
+filas/advisory; PostgreSQL aborta la transacción, nunca se acepta un writer
+sin releer el tombstone. Reset/claim conservan el orden UUID→fila. La prueba
+no afirma ausencia global de deadlocks ni aceptación de servicios gestionados.
+
+La política es conservadora: una mutación comercial/Testing tardía del UUID
+borrado puede rechazarse; historial previo privado y revocaciones se conservan.
+No habilitar procesamiento que eluda esta guarda para resolver un retry.
+Registry/reconciliación y sync de perfil permanecen inertes. Sin producción,
+Clerk/Polar/Storage reales, secretos, compras/refunds/cuentas/datos reales,
+precios ni datos/instalación del Mac. No se autoriza venta ni activación.
+
 ## #1608 · Cierre comercial ronda 3 (14/10/2026)
 
 Review `C:/tmp/ola2/review-1622-sol-r2.md` leída **entera**. R2-P1-1 es el

@@ -54,6 +54,34 @@ creador del enlace. El código exacto también sirve en un checkout de esos
 productos que admita códigos; no sirve en normales ni Launch Edition. La
 salida exporta solo ID/URL/código del enlace, nunca el `client_secret`.
 
+### Cambios de plan con descuento de creador (R1 P2 Sol A)
+
+El scope limita la aplicación inicial del código. Polar conserva un descuento
+ya asociado al cambiar de producto; no garantiza su retirada al salir de
+lanzamiento. Antes de aplicar/publicar ofertas de creador, el operador debe
+deshabilitar cambios de plan del portal en un paso autorizado:
+`customer_portal_settings.subscription.update_plan: false`. El script comprueba
+ese valor mediante GET de la organización y aborta antes de escribir si está
+habilitado, falta, no es booleano o la organización no coincide. También lo
+exige sin `--creator` si ya existen descuentos con metadata `creator:*`.
+No cambia ajustes de organización automáticamente. Este bloqueo es global
+para los cambios de plan del portal, incluidos planes sin código.
+
+Mantener ese ajuste mientras se distribuyan ofertas de creador. El operador
+debe **bloquear todo cambio de producto por Dashboard/API administrativa mientras
+el descuento de creador esté vigente**, incluidos cambios programados. Antes
+de distribuir enlaces, revisar que no haya transiciones ya programadas en esas
+suscripciones. Después de su vencimiento, verificar que ninguna transición
+retenga/aplique descuento antes de permitir el cambio. Este catálogo no cambia
+suscripciones ni controla una API administrativa usada fuera del procedimiento.
+No basta con el scope ni con inspeccionar un webhook después del cobro.
+
+Fuentes oficiales: [portal y su guarda](https://github.com/polarsource/polar/blob/main/server/polar/customer_portal/service/subscription.py),
+[ajuste de organización](https://github.com/polarsource/polar/blob/main/server/polar/models/organization.py),
+[descuento heredado](https://github.com/polarsource/polar/blob/main/server/polar/models/subscription_update.py).
+Sandbox posterior debe demostrar portal bloqueado y ausencia de cambios
+administrativos/programados con descuento activo; esta ronda no configura Polar.
+
 Durante el mes la web muestra lanzamiento. Al terminar, **retirar sus precios,
 botones y enlaces generales de la web**, conservar productos en Polar y
 mantener solo la distribución por enlaces de creador. No archivarlos ni
@@ -107,7 +135,8 @@ Un solo operador por organización; no garantiza concurrencia.
 
 Token solo mediante `POLAR_ACCESS_TOKEN` en sesión privada del operador, nunca
 argumentos/archivos/logs. Offline no lee tokens. Scopes posteriores: products,
-discounts y checkout_links read/write. Header `Polar-Version: 2026-10`.
+discounts y checkout_links read/write, y organizations:read para verificar la
+guarda del portal. Header `Polar-Version: 2026-10`.
 Entrada y salida distintas; salida inexistente. Los `--apply` están preparados,
 **no ejecutados** en esta ronda.
 

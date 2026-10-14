@@ -3,6 +3,10 @@
   "currency": "eur",
   "tax_behavior": "inclusive",
   "creator_discount_basis_points": 2000,
+  "creator_plan_changes": {
+    "customer_portal": "disabled",
+    "administrator": "blocked_while_creator_discount_active"
+  },
   "creator_commission": {
     "basis": "amount_paid_by_customer",
     "requires_active_subscription": true,

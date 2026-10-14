@@ -39,6 +39,10 @@ Deno.test("launch table: issue #1620 and creator extra 20% rounded to cents", ()
 });
 
 function fake() {
+  const organization = {
+    id: sandbox.organization_id,
+    customer_portal_settings: { subscription: { update_plan: false } },
+  };
   let next = 100;
   const id = () =>
     `00000000-0000-4000-8000-${String(next++).padStart(12, "0")}`;
@@ -67,6 +71,9 @@ function fake() {
   const links: Resource[] = [];
   const writes: unknown[] = [];
   const http: Http = (method, path, body) => {
+    if (method === "GET" && path.startsWith("/organizations/")) {
+      return Promise.resolve(structuredClone(organization));
+    }
     const collection = path.startsWith("/products/")
       ? products
       : path.startsWith("/discounts/")
@@ -118,7 +125,7 @@ function fake() {
     resource.prices = data.prices?.map((p) => ({ ...p, id: id() }));
     return Promise.resolve(structuredClone(resource));
   };
-  return { http, products, discounts, links, writes };
+  return { http, products, discounts, links, writes, organization };
 }
 const options = {
   environment: "sandbox" as const,
@@ -591,4 +598,49 @@ Deno.test("R1 P1: a remaining draft launch product keeps creator link pending", 
   assertEquals(partial.creator_link, null);
   assertEquals(partial.writes, 0);
   assertEquals(f.links.length, 0);
+});
+
+Deno.test("R1 P2 scope: enabled portal plan changes block creator setup before writes", async () => {
+  const f = fake();
+  f.organization.customer_portal_settings.subscription.update_plan = true;
+  await assertRejects(() => syncCatalog(f.http, sandbox, options));
+  assertEquals(f.writes.length, 0);
+});
+
+Deno.test("R1 P2 scope: absent, malformed or foreign portal settings fail closed", async () => {
+  for (
+    const response of [
+      {},
+      { id: sandbox.organization_id },
+      { id: sandbox.organization_id, customer_portal_settings: {} },
+      {
+        id: sandbox.organization_id,
+        customer_portal_settings: { subscription: { update_plan: "false" } },
+      },
+      {
+        id: "foreign",
+        customer_portal_settings: { subscription: { update_plan: false } },
+      },
+    ]
+  ) {
+    const f = fake();
+    const http: Http = (method, path, body) =>
+      method === "GET" && path.startsWith("/organizations/")
+        ? Promise.resolve(response)
+        : f.http(method, path, body);
+    await assertRejects(() => syncCatalog(http, sandbox, options));
+    assertEquals(f.writes.length, 0);
+  }
+});
+
+Deno.test("R1 P2 scope: existing creator discounts require portal guard even without creator option", async () => {
+  const f = fake();
+  const first = await syncCatalog(f.http, sandbox, options);
+  f.organization.customer_portal_settings.subscription.update_plan = true;
+  f.products[0].prices![0].price_amount = 499;
+  const writes = f.writes.length;
+  await assertRejects(() =>
+    syncCatalog(f.http, first, { environment: "sandbox" })
+  );
+  assertEquals(f.writes.length, writes);
 });

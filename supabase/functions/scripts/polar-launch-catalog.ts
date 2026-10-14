@@ -145,6 +145,27 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   const creator = creatorCode(options.creator);
   const products = await list(http, "products", map.organization_id);
   const discounts = await list(http, "discounts", map.organization_id);
+  // Product scope limits redemption, not an already attached subscription discount.
+  if (
+    creator ||
+    discounts.some((d) => d.metadata?.vantare_offer_key?.startsWith("creator:"))
+  ) {
+    const organization = await http(
+      "GET",
+      `/organizations/${map.organization_id}`,
+    ) as {
+      id?: string;
+      customer_portal_settings?: { subscription?: { update_plan?: boolean } };
+    } | null;
+    if (
+      organization?.id !== map.organization_id ||
+      organization.customer_portal_settings?.subscription?.update_plan !== false
+    ) {
+      throw Error(
+        "Creator offers require portal plan changes disabled; review organization settings",
+      );
+    }
+  }
   const links = creator
     ? await list(http, "checkout-links", map.organization_id)
     : [];
@@ -414,6 +435,7 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       ? "publish_launch_products_then_rerun"
       : null,
     distribution: PRICES.distribution,
+    creator_plan_changes: PRICES.creator_plan_changes,
     creator_commission: PRICES.creator_commission,
   };
 }

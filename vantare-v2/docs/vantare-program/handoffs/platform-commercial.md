@@ -7,7 +7,14 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 P1 Sol A/B confirmado: `published` no existe. Enum y gate usan `public`/
 `private`; draft sigue pendiente. Dos regresiones RED → GREEN y control de
 activación parcial; catálogo 24 PASS. Logs `C:/tmp/polar-loop/r1-p1-*`.
-Los dos P2 siguen en verificación. Muse no completa review ni añade hallazgos.
+P2 Sol A confirmado: Polar conserva descuento al cambiar producto. Preflight
+exige `customer_portal_settings.subscription.update_plan: false` con GET de
+organización; bloquea configuración habilitada/ausente/inválida/ajena antes
+de escribir, también sin creador si hay descuentos existentes. No cambia
+ajustes automáticamente. Runbook bloquea cambios administrativos/programados
+mientras siga vigente el descuento; configuración/verificación real pendientes.
+Tres regresiones RED→GREEN, catálogo 27 PASS; logs `r1-p2-scope-*`. El P2 de
+histórico sigue en verificación. Muse no completa review ni añade hallazgos.
 Rama/PR #1621 draft a nightly conservados; sin API Polar, secretos ni deploy.
 
 ## #1620 · ronda 3 P2-2 (14/10/2026)

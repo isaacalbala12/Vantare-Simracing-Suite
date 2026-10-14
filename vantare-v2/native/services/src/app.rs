@@ -122,8 +122,8 @@ impl App {
             // inicia red ni se anuncia una limpieza parcial como revocación.
             self.core.as_ref().ok_or(Error::Unconfigured)?;
             let time = now()?;
+            self.ensure_oauth(time)?;
             let renewal = (|| {
-                self.ensure_oauth(time)?;
                 self.candidate_store()?;
                 crate::license_remote::renew(
                     &self.http,
@@ -222,17 +222,41 @@ impl App {
 
     fn ensure_oauth(&mut self, now: u64) -> Result<()> {
         self.ensure_account()?;
-        let account = self.account.as_mut().ok_or(Error::Authentication)?;
+        let account = self.account.as_ref().ok_or(Error::Authentication)?;
         if account
             .expires_at()
             .is_some_and(|expires| expires <= now.saturating_add(60))
         {
-            account.complete(
-                account.refresh()?.run(&self.http, now)?,
-                self.store.as_ref().ok_or(Error::Storage)?,
-            )?;
+            self.refresh_oauth(now)?;
         }
         Ok(())
+    }
+
+    fn refresh_oauth(&mut self, now: u64) -> Result<()> {
+        // Toda entrada de refresh comparte el mismo ACK/retiro de sesión.
+        self.core.as_ref().ok_or(Error::Unconfigured)?;
+        let exchange = self
+            .account
+            .as_ref()
+            .ok_or(Error::Authentication)?
+            .refresh()?;
+        let completion = match exchange.run(&self.http, now) {
+            Ok(completion) => completion,
+            Err(error @ (Error::Authentication | Error::Denied)) => {
+                self.revoke_local()?;
+                self.data_session = None;
+                self.account
+                    .as_mut()
+                    .ok_or(Error::Authentication)?
+                    .logout(self.store.as_ref().ok_or(Error::Storage)?)?;
+                return Err(error);
+            }
+            Err(error) => return Err(error),
+        };
+        self.account
+            .as_mut()
+            .ok_or(Error::Authentication)?
+            .complete(completion, self.store.as_ref().ok_or(Error::Storage)?)
     }
 
     fn ensure_account(&mut self) -> Result<()> {
@@ -411,6 +435,14 @@ impl App {
             }
             Command::Logout => return self.logout_reply(),
             Command::AccountPoll => return self.poll_account(),
+            Command::AccountRenew => {
+                self.ensure_account()?;
+                self.refresh_oauth(now()?)?;
+                return Ok(Self::account_reply(
+                    self.account.as_ref().ok_or(Error::Authentication)?,
+                    None,
+                ));
+            }
             Command::AccountProfileRefresh => {
                 let time = now()?;
                 self.ensure_oauth(time)?;
@@ -425,7 +457,6 @@ impl App {
             _ => self.ensure_account()?,
         }
         let account = self.account.as_mut().ok_or(Error::Unconfigured)?;
-        let store = self.store.as_ref().ok_or(Error::Storage)?;
         match command {
             Command::AccountBegin => {
                 let url = account.begin_login()?;
@@ -436,9 +467,6 @@ impl App {
                     account.cancel_login()?;
                     return Err(error);
                 }
-            }
-            Command::AccountRenew => {
-                account.complete(account.refresh()?.run(&self.http, now()?)?, store)?;
             }
             _ => return Err(Error::Protocol),
         }
@@ -959,6 +987,8 @@ mod tests {
         let mut app = App::new(BuildConfig::load(), root.clone());
         app.account = Some(account);
         app.store = Some(store);
+        let (link, core) = core_fixture(String::new(), "unused", vec![CoreStep::Invalidate]);
+        app.attach_core(link);
         app.ensure_oauth(100).expect("current token needs no HTTP");
         assert!(server.requests.try_recv().is_err());
         assert_eq!(app.ensure_oauth(1000), Err(Error::Authentication));
@@ -968,6 +998,7 @@ mod tests {
             .expect("refresh");
         assert!(request.starts_with("POST /token "));
         assert!(server.requests.try_recv().is_err());
+        core.join().expect("refresh rejection invalidation ACK");
         server.finish();
         drop(app);
         crate::cleanup_store(&root, "app-refresh-failure", &["account"]);
@@ -1016,6 +1047,127 @@ mod tests {
         server.finish();
         drop(app);
         crate::cleanup_store(&root, "app-detached-logout", &[]);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn oauth_invalid_grant_revokes_before_native_license_and_drops_session() {
+        let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
+        let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        for command in [
+            Command::LicenseRenew,
+            Command::AccountRenew,
+            Command::AccountProfileRefresh,
+        ] {
+            let server =
+                crate::test_http::Server::start(vec![(400, r#"{"error":"invalid_grant"}"#.into())]);
+            let (root, store) = crate::test_store("app-invalid-grant");
+            let account = crate::account::fixture(&server.base, &store);
+            let mut config = BuildConfig::load();
+            config.supabase = Some(server.base.clone());
+            config.anon_key = Some("public-test-key");
+            config.license_keys = Some(keys);
+            let mut app = App::new(config, root.clone());
+            app.account = Some(account);
+            app.store = Some(store);
+            app.candidate_store()
+                .expect("store")
+                .save(
+                    "license-candidate",
+                    &crate::license_remote::Candidate {
+                        credential: credential.clone(),
+                        account_id: credential.claims.subject.clone(),
+                        device: device.clone(),
+                    },
+                )
+                .expect("previous signed candidate");
+            let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Invalidate]);
+            app.attach_core(link);
+            assert!(
+                matches!(app.execute(command), Err(Error::Authentication)),
+                "invalid_grant is a definitive OAuth rejection"
+            );
+            assert!(matches!(
+                app.candidate_store()
+                    .expect("store")
+                    .load::<crate::license_remote::Candidate>("license-candidate"),
+                Err(Error::NotFound)
+            ));
+            assert!(app.account.as_ref().expect("account").identity().is_none());
+            assert!(app.data_session.is_none());
+            assert!(
+                server
+                    .requests
+                    .recv_timeout(Duration::from_secs(3))
+                    .expect("refresh")
+                    .starts_with("POST /token ")
+            );
+            assert!(
+                server.requests.try_recv().is_err(),
+                "never call userinfo or native-license after rejection"
+            );
+            core.join().expect("durable invalidation ACK");
+            server.finish();
+            drop(app);
+            crate::cleanup_store(&root, "app-invalid-grant", &[]);
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn generic_and_transient_oauth_errors_preserve_previous_rights_and_session() {
+        let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
+        let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        for (status, body, expected) in [
+            (400, r#"{"error":"invalid_request"}"#, Error::Protocol),
+            (400, "malformed", Error::Protocol),
+            (429, r#"{"error":"invalid_grant"}"#, Error::Offline),
+            (503, "{}", Error::Offline),
+        ] {
+            let server = crate::test_http::Server::start(vec![(status, body.into())]);
+            let (root, store) = crate::test_store("app-oauth-transient");
+            let account = crate::account::fixture(&server.base, &store);
+            let mut config = BuildConfig::load();
+            config.supabase = Some(server.base.clone());
+            config.anon_key = Some("public-test-key");
+            config.license_keys = Some(keys);
+            let mut app = App::new(config, root.clone());
+            app.account = Some(account);
+            app.store = Some(store);
+            app.candidate_store()
+                .expect("store")
+                .save(
+                    "license-candidate",
+                    &crate::license_remote::Candidate {
+                        credential: credential.clone(),
+                        account_id: credential.claims.subject.clone(),
+                        device: device.clone(),
+                    },
+                )
+                .expect("previous candidate");
+            let (link, core) = core_fixture(device.clone(), keys, vec![]);
+            app.attach_core(link);
+            assert!(matches!(app.execute(Command::LicenseRenew), Err(error) if error == expected));
+            assert!(
+                app.candidate_store()
+                    .expect("store")
+                    .load::<crate::license_remote::Candidate>("license-candidate")
+                    .is_ok()
+            );
+            assert!(app.account.as_ref().expect("account").identity().is_some());
+            assert!(
+                server
+                    .requests
+                    .recv_timeout(Duration::from_secs(3))
+                    .expect("refresh")
+                    .starts_with("POST /token ")
+            );
+            assert!(server.requests.try_recv().is_err());
+            core.join().expect("no invalidation");
+            server.finish();
+            drop(app);
+            crate::cleanup_store(&root, "app-oauth-transient", &[]);
+        }
     }
 
     #[cfg(windows)]

@@ -12,10 +12,18 @@ F02/F04/F08 quedan corregidos o limitados por esta sección.
 | N3 / F04 | El loader recibe el entorno fijado por servidor y filtra `billing_access_grants.environment`. Handler nativo y ruta legacy pasan el mismo entorno a lectura y firma. El normalizador sigue rechazando filas ajenas; soporte del entorno solicitado se conserva. RED: mezcla production/sandbox → 409. GREEN: 67 tests emisor/handler; credencial con Pro+calendar de producción, sin Launch sandbox. Logs `C:/tmp/1608-r2/N3-{red,green-corrected}.log`. |
 | Atribución residual | `resolveUserId` consulta primero el binding Polar+entorno+customer; ese UUID prevalece sobre external_customer_id raíz/anidado contradictorio. Sin binding conserva el contrato de external ID existente; no se presenta como cierre de checkout/atribución completo. RED: cliente A + external B devuelve B. GREEN: 52 tests procesador, incluyendo entornos distintos y metadata no autoritativa. Logs `attribution-{red,green}.log`. |
 | N1 / F08 / parte F02 | Opción mínima de la review: sin CoreLink no se confirma logout ni se inicia renovación HTTP, porque no se puede revocar el binding del propietario. Se devuelve Unconfigured y se conserva estado para reintento gestionado. Con núcleo se exige Invalidate durable antes de borrar candidato/sesión. RED: dos tests fallan por falso éxito del auxiliar con binding Owner previamente instalado. GREEN: cuatro focales; el test real arranca host, hace logout gestionado, cierra/reabre Owner y demuestra ausencia de derechos. Logs `N1-{red,green}.log`. No se escribe el almacén del núcleo desde services ni se cambia formato/protocolo. |
+| N2 / F02 | Solo HTTP 400 con JSON OAuth `error=invalid_grant` se clasifica Authentication (RFC 6749 §5.2). Refresh explícito y automático comparten ACK Invalidate, retirada de candidato, tombstone de cuenta y descarte de bearer de datos. Sin núcleo el refresh se detiene antes de HTTP. RED: invalid_grant era Protocol. GREEN: 6 focales, incluida renovación de licencia/cuenta/perfil, cero llamadas a userinfo/native-license tras rechazo; 400 genérico/malformado y 429/503 conservan derechos/sesión. Logs `N2-{red,green-corrected}.log`; N1 verifica la durabilidad del mismo Invalidate con Owner real. |
 
-Ronda en curso: N1/F08 y N2/F02 requieren gates Rust nuevos; los bloqueos
-B01/B02/B03 se revisan con planes concretos si exigen el corte de identidad,
-ledger SQL o política de conservación. No se eleva evidencia previa a verde nuevo.
+Los cuatro arreglos están en commits separados. Los gates Rust completos siguen
+en curso. B01/B02/B03 permanecen abiertos con los planes siguientes.
+No se eleva evidencia previa a verde nuevo. `N2-green.log` conserva un primer
+intento interrumpido: el fixture hacía join del core antes de solicitar refresh;
+se corrigió la sincronización y el GREEN final no tiene ese bloqueo ni warnings.
+Dos ejecuciones Deno completas iniciales fallaron por permisos de lectura
+estrechos de scripts/código público; se ampliaron únicamente esas rutas, sin
+acceso a `.env*`, cambios de tests ni permisos de red. Final: 524 PASS/1 ignored.
+PostgreSQL 18 desechable repetido: 230 assertions GREEN; B01 sigue 1 RED
+`not_authenticated`. B02 repetido: cuatro RED (incluido agregado), sin skips.
 
 ### Plan concreto de los bloqueos (sin ejecución de producción)
 

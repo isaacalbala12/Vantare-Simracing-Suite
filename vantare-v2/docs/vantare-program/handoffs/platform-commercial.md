@@ -14,6 +14,13 @@ revocación ni inicia renovación HTTP. Reintento desde ejecución gestionada ex
 ACK durable. RED dos regresiones → GREEN cuatro focales, incluyendo binding
 real Owner, logout por host y reapertura sin derechos. El almacenamiento del
 núcleo sigue bajo su único propietario. No se promete logout autónomo sin él.
+N2/F02: HTTP 400 invalid_grant es rechazo Authentication; refresh de cuenta,
+perfil/licencia comparten Invalidate ACK, borrado de candidato y tombstone de
+sesión. 400 desconocido/malformado y 429/503 preservan offline. RED→GREEN 6
+focales; Deno completo 524 PASS/1 ignored, SQL aislado 230 GREEN + B01 1 RED,
+B02 4 RED. Plan por bloqueo en el informe, con archivos/riesgos/decisión Isaac.
+Gate Rust completo nuevo en curso. Coordinar `account.rs` (Exchange) y `app.rs`
+(refresh/logout) con las extensiones de perfil de #1612 al integrar.
 
 Por revisar en `vantareapp/isa-1608-cuentas-y-pagos`, base nightly `69fa2d65`.
 Plane VANTA-16/17/15 Por revisar verificado. Reanudado por Codex CLI tras caída

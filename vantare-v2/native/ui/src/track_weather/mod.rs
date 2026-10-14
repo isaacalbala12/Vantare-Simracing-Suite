@@ -1,8 +1,8 @@
-//! Track weather Eficiencia: rejilla de dos columnas a 240 × 164.
+//! Tiempo en pista: columna fija de 132 × 440.
 //! Sin efectos temporales en el productivo: el host solo despierta por datos.
 
 use crate::efficiency::preview::PaintWindow as Window;
-use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
+use gpui::App;
 use vantare_domain::{
     Snapshot,
     format::Preferences,
@@ -10,13 +10,11 @@ use vantare_domain::{
 };
 
 use crate::app::{Paint, Wake, replace_if_changed};
-use crate::efficiency::text::{self, ink};
-use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
-
-const SIZE: (f32, f32) = (240.0, 164.0);
-const SLOT_HEIGHT: f32 = 29.0;
-const ROW_GAP: f32 = 7.0;
-const COLUMN_WIDTH: f32 = 101.0;
+use crate::vantare::{
+    paint::{Face, Kit, round_rect},
+    style::{Color, Style},
+};
+const SIZE: (f32, f32) = (132.0, 440.0);
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -78,10 +76,10 @@ impl Widget {
         replace_if_changed(&mut self.vm, track_weather::project(snapshot, prefs))
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         (
-            Box::new(move |window, cx| paint(&vm, window, cx)),
+            Box::new(move |window, cx| paint(&vm, prefs, window, cx)),
             Wake::Idle,
         )
     }
@@ -93,84 +91,226 @@ impl Widget {
     }
 }
 
-fn paint(vm: &ViewModel, window: &mut Window, cx: &mut App) {
-    let (width, height) = SIZE;
-    paint_panel(window, width, height, 0.87);
-    // ponytail: como Standings, primer tramo 120°; el resto es ≤ 1 %.
-    // Completar los stops si una referencia exige ese brillo para la paridad.
-    // Pendiente para el kit: panel con degradado y borde superior al 24 %.
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, height),
-        Corners::all(px(tokens::RADIUS)),
-        linear_gradient(
-            120.0,
-            linear_color_stop(col(0xffffff, 0.03), 0.0),
-            linear_color_stop(col(0xffffff, 0.0), 0.38),
-        ),
-        Edges::all(px(0.0)),
-        col(0, 0.0),
-        BorderStyle::default(),
-    ));
-
-    if vm.status == Status::Ready {
-        let rows = vm.metrics.len().div_ceil(2) as f32;
-        let top = (height - (rows * SLOT_HEIGHT + (rows - 1.0) * ROW_GAP)) / 2.0;
-        let label_ink = ink(11.0, 600.0, 0.12, col(tokens::MUTED, 1.0));
-        let value_ink = ink(14.0, 650.0, 0.0, col(tokens::INK, 1.0));
-        for (index, metric) in vm.metrics.iter().enumerate() {
-            let x = 12.0 + (index % 2) as f32 * 115.0;
-            let y = top + (index / 2) as f32 * (SLOT_HEIGHT + ROW_GAP);
-            text::draw(
-                window,
-                cx,
-                metric.label,
-                x,
-                text::baseline(y, 12.0, 11.0).round(),
-                &label_ink,
-            );
-            let value = text::fit(window, &metric.value, &value_ink, COLUMN_WIDTH);
-            text::draw(
-                window,
-                cx,
-                &value,
-                x,
-                text::baseline(y + 14.0, 15.0, 14.0).round(),
-                &value_ink,
-            );
+fn paint(vm: &ViewModel, prefs: Preferences, window: &mut Window, cx: &mut App) {
+    let style = Style::compiled();
+    let kit = Kit {
+        style: &style,
+        variant: &style.styles.neo,
+        accent: style.accents.red,
+        language: prefs.language,
+        width: SIZE.0,
+    };
+    kit.panel(window, SIZE.1);
+    let metric = |i: usize| vm.metrics.get(i).map_or("—", |m| m.value.as_str());
+    let wet = metric(4)
+        .split_whitespace()
+        .next()
+        .and_then(|s| s.parse::<f32>().ok());
+    let banner = if vm.status != Status::Ready {
+        vm.status_text
+    } else if wet.is_some_and(|v| v > 0.0) {
+        if kit.es() {
+            "PISTA MOJADA"
+        } else {
+            "WET TRACK"
         }
     } else {
-        // .vf-status conserva padding propio dentro del panel centrado.
-        let status_ink = ink(14.0, 700.0, 0.0, col(0xe2c568, 1.0));
-        text::draw(
+        if kit.es() { "SECO" } else { "DRY" }
+    };
+    round_rect(
+        window,
+        1.0,
+        1.0,
+        130.0,
+        22.0,
+        8.0,
+        Color(
+            if wet.is_some_and(|v| v > 0.0) {
+                0x20334f
+            } else {
+                0x2b2527
+            },
+            1.0,
+        )
+        .hsla(),
+    );
+    let heading = kit.ink(Face::Display, 11.0, 0.5, style.colors.text.hsla());
+    kit.label(
+        window,
+        cx,
+        banner,
+        12.0,
+        None,
+        3.0,
+        18.0,
+        Face::Display,
+        &heading,
+    );
+    let muted = kit.ink(Face::Body, 10.0, 0.4, style.colors.muted.hsla());
+    kit.label(
+        window,
+        cx,
+        if kit.es() { "TIEMPO" } else { "WEATHER" },
+        12.0,
+        None,
+        30.0,
+        18.0,
+        Face::Body,
+        &muted,
+    );
+    let big = kit.ink(Face::Display, 40.0, 0.0, Color(0xfaf7f7, 1.0).hsla());
+    let track = metric(0)
+        .split_whitespace()
+        .next()
+        .filter(|s| *s != "—")
+        .map_or_else(|| "--°".into(), |s| format!("{s}°"));
+    kit.label(
+        window,
+        cx,
+        &track,
+        12.0,
+        None,
+        52.0,
+        40.0,
+        Face::Display,
+        &big,
+    );
+    kit.label(
+        window,
+        cx,
+        if kit.es() { "PISTA" } else { "TRACK" },
+        83.0,
+        None,
+        68.0,
+        14.0,
+        Face::Body,
+        &muted,
+    );
+    for (row, (label, value)) in [
+        (if kit.es() { "AIRE" } else { "AIR" }, metric(1)),
+        (if kit.es() { "VIENTO" } else { "WIND" }, metric(2)),
+        (if kit.es() { "AGUA" } else { "WATER" }, metric(4)),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let y = 98.0 + row as f32 * 24.0;
+        round_rect(
+            window,
+            12.0,
+            y,
+            108.0,
+            1.0,
+            0.0,
+            Color(0xffffff, 0.05).hsla(),
+        );
+        kit.label(
             window,
             cx,
-            vm.status_text,
-            24.0,
-            text::baseline((height - 29.0) / 2.0, 29.0, 14.0).round(),
-            &status_ink,
+            label,
+            12.0,
+            None,
+            y + 3.0,
+            20.0,
+            Face::Body,
+            &muted,
+        );
+        let ink = kit.ink(
+            Face::Mono,
+            if row == 1 { 9.0 } else { 13.0 },
+            0.0,
+            style.colors.text.hsla(),
+        );
+        let value = if row == 0 {
+            value.replace(" °C", "°").replace(" °F", "°")
+        } else {
+            value.into()
+        };
+        kit.label(
+            window,
+            cx,
+            &value,
+            0.0,
+            Some(120.0),
+            y + 3.0,
+            20.0,
+            Face::Mono,
+            &ink,
         );
     }
-
-    paint_frame(window, width, height);
-    // Refuerzo del marco del kit: arriba el ::after productivo usa 24 %.
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, tokens::RADIUS),
-        Corners {
-            top_left: px(tokens::RADIUS),
-            top_right: px(tokens::RADIUS),
-            bottom_left: px(0.0),
-            bottom_right: px(0.0),
-        },
-        col(0, 0.0),
-        Edges {
-            top: px(1.0),
-            right: px(0.0),
-            bottom: px(0.0),
-            left: px(0.0),
-        },
-        col(0xffffff, 0.136),
-        BorderStyle::default(),
-    ));
+    round_rect(
+        window,
+        12.0,
+        174.0,
+        108.0,
+        5.0,
+        2.5,
+        Color(0xffffff, 0.08).hsla(),
+    );
+    if let Some(wet) = wet {
+        round_rect(
+            window,
+            12.0,
+            174.0,
+            108.0 * wet.clamp(0.0, 100.0) / 100.0,
+            5.0,
+            2.5,
+            Color(0x4f8ef7, 1.0).hsla(),
+        );
+    }
+    for (i, label) in [
+        if kit.es() { "Ahora" } else { "Now" },
+        "+15",
+        "+30",
+        "+45",
+        "+60",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let y = 189.0 + i as f32 * 47.5;
+        round_rect(
+            window,
+            12.0,
+            y,
+            108.0,
+            46.5,
+            3.0,
+            Color(if i == 0 { 0x2a2426 } else { 0x110f10 }, 0.98).hsla(),
+        );
+        kit.label(
+            window,
+            cx,
+            label,
+            20.0,
+            None,
+            y + 15.0,
+            16.0,
+            Face::Body,
+            &muted,
+        );
+        round_rect(
+            window,
+            64.0,
+            y + 16.0,
+            14.0,
+            14.0,
+            7.0,
+            Color(0xffffff, 0.06).hsla(),
+        );
+        let ink = kit.ink(Face::Mono, 11.0, 0.0, style.colors.text.hsla());
+        kit.label(
+            window,
+            cx,
+            if i == 0 { metric(3) } else { "—" },
+            0.0,
+            Some(113.0),
+            y + 15.0,
+            16.0,
+            Face::Mono,
+            &ink,
+        );
+    }
 }
 
 impl Settings {

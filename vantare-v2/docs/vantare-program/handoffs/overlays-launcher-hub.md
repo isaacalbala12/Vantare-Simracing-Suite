@@ -94,3 +94,5 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 #1629 Mac: Telemetría de pedales pasa de 300×112 a tira 380×64, barras horizontales, volante y ángulo medido. 7 tests PASS; captura Hub en `~/evidence/1629/pedals-telemetry/`. ABS sigue ausente por falta de señal; sin dependencias nuevas.
 
 #1629 Mac: Mapa 320×248 fijo, puntos por clase y transparencia guardada/editable en Studio; fixture Le Mans explícita, imposible reutilizarla como live. 5 tests PASS y captura Hub. Falta geometría productiva por circuito y señales de salida prevista de boxes; no se fabrican. Evidencia `~/evidence/1629/track-map/`.
+
+#1629 Mac: Tiempo en pista vertical 132×440, franja y filas de medidas con tamaño fijo; 2 tests PASS y captura Hub. Pronóstico, tendencia térmica y hora del día no existen en Snapshot: se muestran guiones, sin recomendaciones inventadas; paridad de contenido pendiente de esas señales. Evidencia `~/evidence/1629/track-weather/`.

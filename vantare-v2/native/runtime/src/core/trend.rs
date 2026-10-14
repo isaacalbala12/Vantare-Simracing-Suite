@@ -31,7 +31,7 @@ impl Tracker {
             .find(|c| c.id == player)
             .and_then(|c| c.laps.current().copied());
         if lap.is_some() && lap != self.lap {
-            let crossed = self.lap.is_some();
+            let crossed = self.lap.and_then(|previous| previous.checked_add(1)) == lap;
             self.lap = lap;
             let mut gaps = HashMap::with_capacity(cars.len());
             let mut trends = HashMap::new();
@@ -102,5 +102,19 @@ mod tests {
             during[1].relative_trend_s_per_lap,
             Quality::Estimated(trend)
         );
+    }
+
+    #[test]
+    fn skipped_or_rewound_laps_do_not_become_a_one_lap_trend() {
+        for next_lap in [3, 7] {
+            let mut tracker = Tracker::default();
+            tracker.derive(&mut cars(5, &[(2, 10.0)]), CarId(1));
+            let mut resumed = cars(next_lap, &[(2, 4.0)]);
+            tracker.derive(&mut resumed, CarId(1));
+            assert_eq!(resumed[1].relative_trend_s_per_lap, Quality::Unavailable);
+            let mut next = cars(next_lap + 1, &[(2, 3.0)]);
+            tracker.derive(&mut next, CarId(1));
+            assert_eq!(next[1].relative_trend_s_per_lap, Quality::Estimated(-1.0));
+        }
     }
 }

@@ -229,7 +229,8 @@ impl Strategy {
             match result {
                 Ok((outcome, edited)) => {
                     if self.capture_demo.is_none() {
-                        vantare_services::diagnostics::record_usage(
+                        vantare_ui::analytics::record(
+                            cx,
                             &vantare_services::diagnostics::Usage::FeatureUsed {
                                 feature: "strategy_recalculated".into(),
                             },

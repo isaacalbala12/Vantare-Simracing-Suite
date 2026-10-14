@@ -107,6 +107,7 @@ impl super::Hub {
             }
             self.settings.status = store.save(next).err();
             if self.settings.status.is_none() {
+                vantare_ui::analytics::consent(cx, store.value);
                 self.focus.focus(window, cx);
             }
         }
@@ -225,6 +226,9 @@ impl super::Hub {
                 next.crashes_decided = true;
             }
             self.settings.status = store.save(next).err();
+            if self.settings.status.is_none() {
+                vantare_ui::analytics::consent(cx, store.value);
+            }
         }
         cx.notify();
     }

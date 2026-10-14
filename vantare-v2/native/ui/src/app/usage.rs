@@ -4,7 +4,7 @@ use std::{
     collections::{BTreeMap, BTreeSet},
     time::{Duration, Instant},
 };
-use vantare_services::diagnostics::{self, Usage, activity::Activity};
+use vantare_services::diagnostics::{Usage, activity::Activity};
 
 pub(super) struct State {
     epoch: Instant,
@@ -41,12 +41,12 @@ impl State {
             duration_seconds: elapsed.as_secs().min(60),
         })
     }
-    pub fn finish(&mut self) {
+    pub fn finish(&mut self, cx: &gpui::App) {
         for (kind, elapsed) in std::mem::take(&mut self.pending) {
             if let Some(event) = Self::event(&kind, elapsed)
                 && let Some(generation) = self.generation
             {
-                diagnostics::record_usage_in_generation(&event, generation);
+                crate::analytics::record_in_generation(cx, &event, generation);
             }
         }
     }
@@ -89,15 +89,7 @@ impl LiveScreens {
             return;
         }
         self.usage.sampled = now;
-        let generation = diagnostics::configured()
-            .then(|| {
-                diagnostics::data_root()
-                    .and_then(|root| diagnostics::Privacy::load(&root))
-                    .ok()
-                    .filter(|privacy| privacy.usage)
-                    .map(|privacy| privacy.generation)
-            })
-            .flatten();
+        let generation = crate::analytics::generation(cx);
         self.usage.consent(generation);
         let allowed = generation.is_some();
         if !allowed {
@@ -125,7 +117,7 @@ impl LiveScreens {
             .observe(now.duration_since(self.usage.epoch), allowed, visible)
         {
             if let Some(generation) = generation {
-                diagnostics::record_usage_in_generation(&event, generation);
+                crate::analytics::record_in_generation(cx, &event, generation);
             }
         }
     }

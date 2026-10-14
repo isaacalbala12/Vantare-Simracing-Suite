@@ -13,6 +13,8 @@ const QUEUE_LIMIT: usize = 32;
 pub const PRIVACY_FILE: &str = "privacy.json";
 pub mod activity;
 pub mod installer;
+mod recorder;
+pub use recorder::Recorder;
 mod redaction;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -518,16 +520,6 @@ pub fn record_usage(event: &Usage) {
     let result = data_root().and_then(|root| enqueue_usage(&root, event));
     if let Err(error) = result {
         eprintln!("diagnóstico local: {error}");
-    }
-}
-
-/// Acumuladores: nunca autorizar tiempo antiguo con un permiso recién aceptado.
-pub fn record_usage_in_generation(event: &Usage, generation: u64) {
-    if !configured() {
-        return;
-    }
-    if let Err(error) = data_root().and_then(|root| enqueue_authorized(&root, event, generation)) {
-        eprintln!("uso local: {error}");
     }
 }
 

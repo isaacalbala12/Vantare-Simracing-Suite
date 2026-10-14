@@ -2,7 +2,7 @@
 use super::Hub;
 use crate::Section;
 use std::time::{Duration, Instant};
-use vantare_services::diagnostics::{self, Usage, activity::Activity};
+use vantare_services::diagnostics::{Usage, activity::Activity};
 
 pub(super) struct State {
     epoch: Instant,
@@ -106,15 +106,7 @@ impl Hub {
             return;
         }
         self.analytics.sampled = now;
-        let generation = diagnostics::configured()
-            .then(|| {
-                diagnostics::data_root()
-                    .and_then(|root| diagnostics::Privacy::load(&root))
-                    .ok()
-                    .filter(|privacy| privacy.usage)
-                    .map(|privacy| privacy.generation)
-            })
-            .flatten();
+        let generation = vantare_ui::analytics::generation(cx);
         self.analytics.consent(generation);
         let available = self.demo.is_none()
             && self.capture.is_none()
@@ -123,7 +115,7 @@ impl Hub {
             && self.shell.access.beta_lock(self.section).is_none();
         let enabled = generation.is_some() && available;
         if enabled {
-            diagnostics::record_usage_once(&Usage::InstallationObserved {});
+            vantare_ui::analytics::record_once(cx, &Usage::InstallationObserved {});
         }
         for event in self.analytics.observe(
             now.duration_since(self.analytics.epoch),
@@ -131,16 +123,16 @@ impl Hub {
             self.section,
         ) {
             if let Some(generation) = generation {
-                diagnostics::record_usage_in_generation(&event, generation);
+                vantare_ui::analytics::record_in_generation(cx, &event, generation);
             }
         }
     }
 
-    pub(super) fn finish_usage(&mut self) {
+    pub(super) fn finish_usage(&mut self, cx: &gpui::App) {
         if let Some(event) = self.analytics.flush()
             && let Some(generation) = self.analytics.generation
         {
-            diagnostics::record_usage_in_generation(&event, generation);
+            vantare_ui::analytics::record_in_generation(cx, &event, generation);
         }
     }
 }

@@ -35,7 +35,7 @@ eventos desconocidos se rechaza antes de persistir y otra vez antes de enviar.
 | `page_usage` | `page`, `duration_seconds`: entero 1..60 | Tiempo observado con ventana activa, por intervalos y al cambiar/salir. |
 | `widget_usage` | `widget_type`, `duration_seconds`: entero 1..60 | Tipo efectivamente visible en overlays; una vez por tipo aunque haya duplicados. |
 | `feature_used` | `feature` | Acción explícita completada; no contenido de la acción. |
-| `installation_observed` | ninguna | Primera observación consentida de esta instalación; no acredita que Setup acabara. |
+| `installation_observed` | ninguna | Primera observación de esta identidad consentida de instalación; se reinicia al reaceptar. No acredita que Setup acabara. |
 | `account_signed_in` | ninguna | Sesión confirmada por services; **no demuestra creación de cuenta**. |
 | `commercial_license_observed` | ninguna | Credencial verificada con derecho comercial vigente; **no es recibo de una compra nueva**, puede proceder de una concesión. |
 
@@ -68,7 +68,8 @@ devuelve `Result<Option<String>>`: `None` sin `usage && usage_decided`, también
 tras revocar; configuración inválida devuelve error y se omite el vínculo.
 No crea ni lee `anonymous-id` mientras el permiso está apagado. Con permiso,
 devuelve el mismo UUID v4 local (36 caracteres minúsculos) usado como
-`distinct_id` por el emisor. Se conserva entre arranques mientras hay permiso. Revocar borra el ID y los
+`distinct_id` por el emisor. Se conserva entre arranques mientras hay permiso.
+Revocar borra el ID y los
 marcadores locales; reaceptar crea otro UUID y observaciones nuevas. No
 identifica cuentas ni equipos entre sí. No copiarlo al namespace Testing.
 #1610 debe revalidarlo en el momento de enviar cada informe; aceptar el informe
@@ -106,6 +107,23 @@ durable en backend; no se cambia el esquema ni producción en esta entrega.
 Polar sigue siendo autoridad monetaria. Pendientes y fuentes en `informe-1609.md`.
 
 ## Verificación
+
+Ronda 2 #1609: `privacy.json` guarda una generación que aumenta al revocar.
+Cada evento local conserva la generación que lo autorizó; no se envía ese contador
+a PostHog. Publicación, revocación y autorización final del POST comparten
+`consent.lock` del SO. El emisor mantiene la frontera durante el POST acotado a
+8 s. Guardar con esa frontera ocupada devuelve error: hay que reintentar, y la
+UI no comunica una revocación completada. Una petición iniciada antes de revocar
+no se retira del transporte. Los slots de uso antiguos sin generación se descartan.
+
+Los productores GPUI solo validan el catálogo y entregan a un canal en memoria
+de 32 entradas mediante `try_send`; lleno o cerrado, se descarta. Un `Recorder`
+de services, propiedad del `App`, lee el permiso, persiste fuera del callback y
+revalida la generación bajo la frontera común. El emisor HTTP sigue viviendo en
+el proceso services. El guardado manual del consentimiento conserva la ruta
+atómica existente y los conflictos por bytes observados. No hay estado estático
+ni nuevos clientes HTTP en UI. Los acumuladores descartan tiempo al rotar la
+generación; instalación/cuenta/licencia empiezan observaciones nuevas por UUID.
 
 Tests de services con HTTP loopback: sin permiso explícito ningún request;
 revocación descarta cola; payload exacto permitido; campos/valores intrusivos

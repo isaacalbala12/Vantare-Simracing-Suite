@@ -1194,7 +1194,7 @@ impl Hub {
         })
         .detach();
         cx.on_app_quit(move |this, cx| {
-            this.finish_usage();
+            this.finish_usage(cx);
             this.analysis.update(cx, |analysis, _| analysis.cancel());
             if let Err(error) = this.launcher.update(cx, |launcher, _| launcher.shutdown()) {
                 eprintln!("cerrar Launcher: {error}");
@@ -1361,6 +1361,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
     gpui_platform::application()
         .with_assets(assets::Icons)
         .run(move |cx: &mut App| {
+            vantare_ui::analytics::init(cx);
             cx.set_global(orbit::theme::Theme::default());
             let identity = match crate::installation::hub_identity() {
                 Ok(identity) => identity,

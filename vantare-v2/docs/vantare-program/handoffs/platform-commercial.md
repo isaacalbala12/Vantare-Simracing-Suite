@@ -4,13 +4,18 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## #1609 / VANTA-22 · Analítica consentida (14/10/2026)
 
-Ronda 2 en curso por Codex CLI, sin subagentes: review Sol sobre `b453254e`
-NO APTO (P1 revocación concurrente, P2 conservación de ID, P2 I/O en callbacks).
-Encargo de Isaac: generación persistida, frontera común publicación/POST,
-ID y marcadores borrados al revocar; UI entrega por canal acotado sin espera.
-Regresiones con señales A/B y revocar/reaceptar preparadas; RED en ejecución
-por la cola. Logs `C:/tmp/1609-r2/`. VANTA-22 «En curso» verificado.
-Los gates siguientes corresponden a la entrega anterior, no a esta corrección.
+Ronda 2 en curso por Codex CLI, sin subagentes; review Sol leída completa.
+P1 `58d0a735`: RED A/B → GREEN services 124 tests + 2 procesos. Generación
+persistida y cerrojo SO común hasta terminar cada POST (timeout 8 s); guardar
+con envío activo devuelve ocupado, nunca éxito falso de revocación.
+P2 identidad `f40bc343`: RED UUID conservado → GREEN services 125 + 2 procesos.
+Revocar elimina UUID/marcadores; reaceptar crea UUID distinto. Acumuladores
+reinician al cambiar generación; tests añadidos, gates workspace pendientes.
+P2 UI: RED con persistencia detenida → GREEN; productor acotado try_send y
+worker de services, propiedad del App. Services 127 + 2 procesos; Nextest
+1666/1666 PASS (7 skips), lifecycle 18/18; fmt/check/Clippy y quality PASS.
+Regresiones de acumuladores PASS. Logs `C:/tmp/1609-r2/`.
+VANTA-22 «En curso» verificado. Gates siguientes: entrega anterior.
 
 Rama `vantareapp/isa-1609-posthog-uso-embudo`, base nightly `69fa2d65`.
 Entrega local: catálogo y límites en `docs/analytics/eventos.md`, integración web para

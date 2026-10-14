@@ -758,7 +758,8 @@ impl Launcher {
             selected,
         ) {
             Ok(chain) => {
-                vantare_services::diagnostics::record_usage(
+                vantare_ui::analytics::record(
+                    cx,
                     &vantare_services::diagnostics::Usage::FeatureUsed {
                         feature: "launch_profile".into(),
                     },

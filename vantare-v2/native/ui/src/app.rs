@@ -835,7 +835,8 @@ impl LiveScreens {
         widget_types.sort();
         widget_types.dedup();
         if self.usage_widgets.as_ref() != Some(&widget_types) {
-            vantare_services::diagnostics::record_usage(
+            crate::analytics::record(
+                cx,
                 &vantare_services::diagnostics::Usage::LayoutWidgets {
                     widget_types: widget_types.clone(),
                 },
@@ -1110,6 +1111,7 @@ fn run_layout_feed<T: Send + 'static>(
     let mut presentation = crate::layout::Presentation::watch(&path)?;
     let mut document = crate::layout::Document::open(path)?;
     gpui_platform::application().run(move |cx: &mut App| {
+        crate::analytics::init(cx);
         if !init(cx) {
             return;
         }
@@ -1155,8 +1157,8 @@ fn run_layout_feed<T: Send + 'static>(
         }
         screens.borrow_mut().apply(document.layout(), cx);
         let quit_screens = screens.clone();
-        cx.on_app_quit(move |_| {
-            quit_screens.borrow_mut().usage.finish();
+        cx.on_app_quit(move |cx| {
+            quit_screens.borrow_mut().usage.finish(cx);
             async {}
         })
         .detach();

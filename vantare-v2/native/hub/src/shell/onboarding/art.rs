@@ -658,7 +658,7 @@ impl Hub {
                     .flex()
                     .justify_between()
                     .child(heading("PRECIO DE LANZAMIENTO", 30.0 * s, cx))
-                    .child(text("HASTA EL 19 NOV", 10.0 * s, 700, 0x00ff_ffff, cx)),
+                    .child(text("HASTA EL 26 NOV", 10.0 * s, 700, 0x00ff_ffff, cx)),
             )
             .child(plans)
             .child(

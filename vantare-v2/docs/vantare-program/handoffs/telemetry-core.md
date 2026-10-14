@@ -22,7 +22,7 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 `vantareapp/isa-1638-telemetria-lanzamiento`, base `nightly@79a1ace6`.
 Excepción expresa: seguimiento por orquestador/buzón, sin Plane/Notion ni
 subagentes; push al finalizar, sin PR/merge. Auditoría `98482e92`; implementación
-`7ae70eeb`. [Tabla de cobertura y límites](../../telemetria/cobertura-lanzamiento.md).
+`7ae70eeb`; demanda/host QA `6dab6930`. [Tabla de cobertura y límites](../../telemetria/cobertura-lanzamiento.md).
 
 REST LMU añade flags locales/personales y paradas, SHM entrega el modelo que
 antes se omitía; energía virtual Hypercar y media estimada por vueltas limpias.
@@ -48,8 +48,13 @@ sin alterar contrato IPC ni pedir pedales. GREEN por pipe real; gates UI finales
 
 El buzón incorpora fase 4 de #1630/VANTA-20. Arnés QA copiado a esta rama;
 scripts/resultados `C:/tmp/1638-perf`, worktree #1630 intacto. Release y Clippy UI
-PASS; 321 tests UI PASS tras la regresión de demanda. No medidas/lock aún:
-hay otros workers/Hub usando el PC. Se espera exclusividad sin cerrarlos.
+PASS; 321 tests UI PASS tras la regresión de demanda. Cuatro tomas basales
+invalidadas por compilaciones/QA ajenas: **0 válidas, 0 intentos de optimización,
+0 mejoras**. Diagnostic-03 validó lectura/pintores y árbol de cuatro procesos,
+incluido conhost.exe de System32, cuyo coste se incluye; 10 s con profiling
+no son baseline ni prueba de mejora. No se cerró ningún proceso ajeno.
+Se liberaron todos los slots/locks/marcadores propios y no queda campaña activa.
+Se espera coordinación del PC, con consulta de prioridad pendiente.
 Baseline seis tomas; tres pares por candidato, ruido medido, diez sin mejora
 consecutivos para terminar; cada mejora necesita su commit y antes/después.
 
@@ -57,8 +62,15 @@ DUDA ya comunicada: daños exactos/zonas/reparación, forecast actual 15 min,
 ABS/TC/FFB y tipos/plazos DT/SG no tienen fuente/equivalencia acreditada. Dents
 ordinales no son integridad porcentual; presets weather no son forecast live.
 Entrega global **parcial** hasta resolverlos. Sin push, CI remota, merge,
-promoción ni release en este hito. Siguiente: cerrar demanda de flags, medir
-con el arnés aislado y mantener este estado y el buzón con resultados reales.
+promoción ni release en este hito. Siguiente: obtener un tramo exclusivo de PC
+y ejecutar `python -I C:/tmp/1638-perf/campaign_baseline.py` (60 s + 180 s,
+seis válidas). Scripts compilados con py_compile; reservas por la cola y pantalla
+se liberan al salir. Nunca contar las tomas inválidas como diez sin mejora.
+Después, profiling separado y tres pares por candidato. Scripts/CSV/JSON y
+binarios de control hasheados: `C:/tmp/1638-perf`, control `baseline-6dab6930`.
+Push de la entrega parcial al finalizar este turno; remoto/CI se verifican en
+el buzón, sin PR/merge ni promoción. Mantener issue abierta hasta resolver
+fuentes/decisiones y mediciones, con seguimiento del orquestador.
 
 ### Evidencia anterior de #1606 conservada
 

@@ -246,3 +246,13 @@ Mejora: reducción mayor que ruido en CPU o memoria y ninguna métrica empeora
 más que su ruido. Cada mejora necesita tests, antes/después y commit propio;
 se termina tras diez intentos consecutivos sin mejora. Campañas inválidas y
 preparación no cuentan como intentos. Sin PR/merge, push solo al final del encargo.
+
+Continuación al cerrar este turno: **0 tomas basales válidas / 0 candidatos / 0
+mejoras**. Cuatro tomas descartadas al aparecer builds/QA #1634. Diagnostic-03
+validó el arnés y el árbol completo (incluye conhost.exe de System32), pero solo
+duró 10 s con profiling y no se acepta como baseline. Ningún proceso ajeno fue
+cerrado. Slots/locks/reserva de pantalla propios liberados; sin campaña activa.
+La prioridad del PC está consultada. `campaign_baseline.py`, `measure.py`,
+`lmu_probe.py`, `summarize.py`, protocolo y resultados quedan en `C:/tmp/1638-perf`;
+control hasheado `builds/baseline-6dab6930`. No se afirma bucle terminado ni mejora
+CPU/RAM. Este pendiente es coordinación del PC, no falta de IA ni de sesión LMU.

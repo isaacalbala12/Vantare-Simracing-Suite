@@ -9,7 +9,8 @@ do $$begin
 end$$;
 drop trigger testing_report_limit on public.testing_contributions;
 drop trigger testing_report_status on public.testing_contributions;
-drop function private.testing_report_limit(),private.testing_report_status();
+drop trigger testing_report_acceptance_limit on public.testing_contributions;
+drop function private.testing_report_limit(),private.testing_report_status(),private.testing_report_acceptance_limit();
 drop function public.testing_report_submit(uuid,text,text,text,boolean),public.testing_report_credit(uuid,boolean),
  public.testing_report_notice_read(uuid,timestamptz),public.testing_participation_current_v2(text),
  public.testing_report_fixed(uuid,text,text,text),public.testing_report_patch_candidates(text);

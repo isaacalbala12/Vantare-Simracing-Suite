@@ -70,6 +70,29 @@ revoke all on function private.testing_report_status() from public,anon,authenti
 create trigger testing_report_status after update of state on public.testing_contributions
   for each row execute function private.testing_report_status();
 
+-- #1602 counts accepted rows. A subsequent fix still consumes that human
+-- acceptance; enforce the same UTC budgets at the shared state boundary.
+create function private.testing_report_acceptance_limit() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+  if new.state='accepted' and old.state is distinct from 'accepted' then
+    if current_setting('transaction_isolation') <> 'read committed' then
+      raise exception 'testing_review_read_committed_required' using errcode='25000'; end if;
+    perform pg_advisory_xact_lock(hashtextextended(new.account_id::text,1594));
+    if exists(select 1 from public.testing_contributions x
+      where x.account_id=new.account_id and x.id<>new.id and x.state in ('accepted','fixed')
+        and (x.created_at at time zone 'UTC')::date=(new.created_at at time zone 'UTC')::date)
+      or (select count(*) from public.testing_contributions x
+        where x.account_id=new.account_id and x.id<>new.id and x.state in ('accepted','fixed')
+          and date_trunc('week',x.created_at at time zone 'UTC')=date_trunc('week',new.created_at at time zone 'UTC'))>=2 then
+      raise exception 'testing_acceptance_limit' using errcode='23514'; end if;
+  end if;
+  return new;
+end $$;
+revoke all on function private.testing_report_acceptance_limit() from public,anon,authenticated,service_role;
+create trigger testing_report_acceptance_limit before update of state on public.testing_contributions
+  for each row execute function private.testing_report_acceptance_limit();
+
 create function public.testing_report_submit(p_id uuid,p_channel text,p_title text,p_body text,p_consent boolean)
 returns void language plpgsql security definer set search_path='' as $$
 begin

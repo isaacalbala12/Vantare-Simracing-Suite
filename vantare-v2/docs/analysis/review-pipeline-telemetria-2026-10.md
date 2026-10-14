@@ -7,14 +7,14 @@ Isaac amplió el alcance: P1/P2 confirmado exige RED → arreglo → GREEN y un 
 ## Resumen de diez líneas para Isaac
 
 1. La revisión cubre lectura LMU/ACC, Core, eventos, series, DuckDB y consumidores.
-2. Se confirmaron ocho fallos P2; no se confirmó ningún P1.
+2. Se confirmaron once fallos P2 entre ambas rondas; no se confirmó ningún P1.
 3. El cierre podía perder el último evento ya publicado; ahora lo persiste.
 4. Las identidades de slots LMU crecían sin cota; ahora respetan el presupuesto.
 5. Un reloj ausente tras pausa podía devolver Live; ahora exige reloj válido.
 6. LMU admitía posiciones duplicadas; ahora rechaza esa parrilla incoherente.
-7. Un reloj de vuelta negativo podía romper la grabación de series; ahora deja un hueco.
+7. Un reloj negativo podía romper series; F5 sanea la entrada y N3 completa el corte de las curvas.
 8. Saltar o retroceder vueltas fabricaba una tendencia por vuelta; ahora la reinicia.
-9. La ventana elegida de 4 s perdía muestras y el replay fallaba en medianoche; ambos tienen arreglo mínimo.
+9. Se corrigen 4 s de historial, medianoche, pérdida tras marcha atrás y referencia delta incoherente.
 10. La entrega sigue aislada para revisión: pruebas locales y fixtures, sin juego físico, merge ni release.
 
 ## Mapa de archivos y flujo
@@ -57,7 +57,7 @@ Solo se usan fixtures versionadas y archivos temporales; no ajustes/DB del usuar
 
 ## Hallazgos
 
-Ocho P2 confirmados. Las rutas siguientes son relativas a `native/`;
+Ocho P2 de la primera ronda. La segunda ronda documenta tres P2 adicionales abajo. Las rutas siguientes son relativas a `native/`;
 el número corresponde al código de la entrega. Las mutaciones de fixtures
 son fronteras declaradas en tests, no nuevas capturas reales. Los logs están
 en `C:/tmp/1606-evidence`. GREEN conjunto final: 18/18 focales PASS
@@ -70,7 +70,7 @@ ocho protecciones existentes del historial. Gates completos PASS.
 | F2 | P2 · Rotación prolongada de slots LMU conserva identidades antiguas sin límite. | `runtime/src/adapter/lmu/translate.rs:302`; `slots-red.log`: 643 entradas con presupuesto 512. `car-counter-red.log`: overflow al forzar el contador máximo. | Recortar ausentes antes de construir la foto y preservar IDs presentes; comprobar next_car antes de sumar. `rotating_scoring_slots_stays_bounded_and_preserves_present_car_ids` y `exhausted_car_counter_rejects_before_assigning_a_wrapped_id`; commit `baf4c861`. El agotamiento u32 es defensa de frontera, no incidencia física observada. |
 | F3 | P2 · Una lectura NaN del reloj después de una pausa confirmada rejuvenece la fuente como Live. | `runtime/src/adapter/lmu/translate.rs:122`; `pause-clock-red.log`: Live frente a Stale. | Exigir `Some` nuevo para reanudar. `missing_source_clock_cannot_resume_a_confirmed_pause`; commit `a4d124ab`, GREEN previo `pause-clock-green.log`. |
 | F4 | P2 · Dos filas LMU con igual posición se publican como parrilla válida. | `runtime/src/adapter/lmu/frame.rs:174`; `positions-red.log`: frame admitido frente a InvalidActiveGrid al duplicar el byte +199. | Rechazar posiciones duplicadas junto con slots duplicados. `duplicated_native_positions_are_rejected_before_publishing_two_leaders`; GREEN en `focus-mixed.log`. No inventa un orden alternativo. |
-| F5 | P2 · mLapProgress negativo finito pasa del adapter LMU a Core y al feed; el codec rechaza el chunk y el worker no puede grabarlo. | `runtime/src/core/merge.rs:228`, `adapter/lmu/frame.rs:289`, `flows/series_worker.rs:145`; `signals-native-red.stderr.log`: falla to_bytes desde frame real con +464=-2. `signals-red.log`: señales neutrales inválidas llegan a muestras. | Saneamiento antes de derivar/grabar: tiempo/distancia/velocidad/RPM no negativos, pedales [0,1], invalidación a Unavailable sin clamp. `negative_native_lmu_lap_clock_does_not_break_the_series_codec` y `invalid_numeric_signals_cannot_poison_the_recording_feed`. Hueco preservado. |
+| F5 | P2 · mLapProgress negativo finito pasa del adapter LMU a Core y al feed; el codec rechaza el chunk y el worker no puede grabarlo. | `runtime/src/core/merge.rs:228`, `adapter/lmu/frame.rs:289`, `flows/series_worker.rs:145`; `signals-native-red.stderr.log`: falla to_bytes desde frame real con +464=-2. `signals-red.log`: señales neutrales inválidas llegan a muestras. | Saneamiento antes de derivar/grabar: tiempo/distancia/velocidad/RPM no negativos, pedales [0,1], invalidación a Unavailable sin clamp. `negative_native_lmu_lap_clock_does_not_break_the_series_codec` y `invalid_numeric_signals_cannot_poison_the_recording_feed`. El flag gap se conserva; N3 completa su proyección sin continuidad falsa. |
 | F6 | P2 · Saltar 5→7 o retroceder 5→3 calcula una diferencia de gaps como si fuera una sola vuelta. | `runtime/src/core/trend.rs:34`; `trend-red.log`: Estimated(-6) frente a Unavailable. | Solo derivar al pasar exactamente a la siguiente vuelta; volver a medir desde esa base. `skipped_or_rewound_laps_do_not_become_a_one_lap_trend`; GREEN en `focus-mixed.log`. |
 | F7 | P2 · Elegir 4 s en Input Telemetry a 20 ms conserva solo 120 puntos, unos 2,38 s. | `domain/src/input_telemetry.rs:47`; `focus-mixed.log`: 120 frente a 201 en `selected_windows_retain_the_full_span_at_native_cadence`. El widget llama push_with_window en `ui/src/input_telemetry/mod.rs:100`. | Ventana explícita conserva hasta 401 muestras para 8 s, incluso al elegir 4 s. `push` heredado sigue con 120, preservando su referencia/test. Sin diseño ni pintor nuevo. |
 | F8 | P2 · Una captura válida cruzando medianoche UTC deja de reproducirse tras el primer frame. | `runtime/src/adapter/lmu/open.rs:185`; `midnight-red.log`: "el corpus no debe cruzar de día". | Delta de fecha UTC real con chrono ya existente. `captured_lmu_frames_replay_across_utc_midnight`: cambio de día/año y 29 de febrero, frames intactos y manifiesto de frontera. Fechas inválidas siguen rechazadas; GREEN en `focus-mixed.log`. |
@@ -81,7 +81,7 @@ Tras usar la reexportación pública, el RED se produce en el codec, y se restau
 el saneamiento mínimo para GREEN. La pasada mixta de reanudación dio 8/9:
 su único fallo era F7, que aún no estaba arreglado.
 
-## Validación, publicación y pendiente
+## Primera ronda: validación, publicación y pendiente
 
 - Commits por hallazgo: F1 `bafe4849`, F2 `baf4c861`, F3 `a4d124ab`,
   F4 `33f9a87a`, F5 `e53fcf49`, F6 `3172ce9f`, F7 `830e8fad`, F8 `606bcf31`.
@@ -104,7 +104,7 @@ su único fallo era F7, que aún no estaba arreglado.
   Probar cierre opt-in con evento al final, pausa/reanudar, cambios de parrilla,
   saltos de vueltas y ventanas de historial; comprobar que captura/replay de
   medianoche mantiene tiempos. Usar portable/datos de prueba separados.
-- No se ha confirmado otro P1/P2 en ACC, storage, IPC o Hub en esta revisión.
+- En la primera ronda no se confirmó otro P1/P2 en ACC, storage, IPC o Hub; N2/N3 de la review posterior amplían ese resultado.
   Los candidatos sin escenario probado están contrastados abajo; no equivalen
   a certificación física ni a ausencia de todos los bugs posibles.
 
@@ -150,10 +150,10 @@ el piloto. Un test ausente o una preferencia de producto no es un fallo probado.
 | Core velocidad replay cero/NaN | CLI valida velocidad finita, positiva y <=1000 antes de llamar al servicio. No hay entrada pública de pausa por speed=0; el ejemplo propuesto no reproduce un fallo del producto. |
 | Delta Nordschleife supera 18k a 60 Hz | El tracker muestrea cada 0,1 s, no cada foto: 18k son aproximadamente 30 minutos de vuelta. La cuenta de 600 s ×60 Hz del candidato es incorrecta. |
 | Fuel calcula a través de un frame ausente; stint al entrar tarde | No conocer el comienzo impide afirmar consumo completo o duración del stint. La ausencia/Estimated conserva el contrato; no se inventa un inicio en la conexión. |
-| Series espera contador tras retroceso | Distancia/tiempo reiniciado puede preceder al contador. Insertar de nuevo bajo la misma vuelta violaría el codec monotónico. Recuperación de un glitch sin evidencia de identidad necesita diseño, no un assert de más muestras. |
+| Series espera contador tras retroceso | Descarte inicial demasiado amplio, corregido por N1 de Sol: con tiempo creciente y distancia recuperada sí hay muestras válidas. Un reloj regresivo sigue esperando al contador; el test de contador retrasado permanece. |
 | Estimated confirma OnTrack y journal PitEvent | `Unknown` conserva overlays visibles; no los oculta. Los eventos exigen observaciones Reliable para evitar anunciar una entrada inferida como hecho. |
 | Reader falla con coches intercalados | El productor actual serializa bloques del jugador, sin vueltas/coches intercalados. El resumen delimita identidad y next_chunk. No se inventa soporte multicoches de otra DB. |
-| thin borra huecos y une la curva | Los IDs de segmento crecen al detectar hueco; descartar puntos intermedios no vuelve iguales los segmentos de ambos extremos. Puede perder un tramo pequeño, pero no demuestra la unión falsa alegada. |
+| thin borra huecos y une la curva | El submuestreo conserva IDs de segmento, pero N3 prueba un corte perdido antes de thin: el Reader solo separaba el inicio del chunk, aunque el hueco estaba dentro. Se corrige la reconstrucción conservadora del Reader. |
 | Delta trace vacía al cambiar referencia | Los valores relativos a dos referencias diferentes no son comparables; cortar conserva la semántica. |
 | Demanda parcial retiene foto previa 1–2 ticks | La negociación hidrata la demanda antes de ingest; sin demostrar que supera el plazo de frescura no se cuenta un fallo P2. |
 | Epoch 0 y resuscripción de series | Contrato de arranque usa época de reloj de pared positiva y feed único configurado antes de adquirir. Resuscribir mitad de stream sin nueva identidad/prefijo viola la recuperación documentada. |
@@ -162,6 +162,42 @@ el piloto. Un test ausente o una preferencia de producto no es un fallo probado.
 El revisor de flows leyó el test de cierre mientras estaba en RED y lo llamó
 "falso positivo". Ese test era nuevo de esta revisión, aún no se había presentado
 como PASS; se conserva la evidencia ejecutada antes/después.
+
+## Segunda ronda · review Sol de #1616
+
+Review íntegra: `C:/tmp/ola2/review-1616-sol.md`, HEAD revisado `cdf2e631`.
+Ningún cambio local pendiente al reanudar. Los ocho arreglos y sus commits
+se conservan. Sol confirma F1/F2/F3/F4/F6/F7/F8 y considera F5 parcial:
+sanea el codec, pero el flag global no localizaba el corte al dibujar.
+N1/N2/N3 son raíces anteriores a la PR, no tres regresiones introducidas.
+
+| Hallazgo | RED exacto ejecutado | Arreglo / GREEN / commit |
+| --- | --- | --- |
+| N1 · P2 · pierde resto de vuelta tras marcha atrás | `native/runtime/src/flows/series.rs:170`. Vuelta 5: 100/10, 99/11, 100.5/13, 990/99. Rust retiene secuencias [1] vs [1,3,4]; `r2-n12-red`. | Solo el reloj regresivo espera contador; distancia regresiva omite hasta recuperar último punto. Series 10/10 PASS, codec acepta recuperación, contador retrasado intacto. `bb377104`. |
+| N2 · P2 · referencia delta desordenada | `native/runtime/src/core/delta.rs:118`. Cruce 0/990→1/0; vuelta 1: 0/0,100/10,99/11,99.5/12,100.5/13,990/99; cerrar 2/0. Rust acredita referencia indebida; `r2-n12-red`. | Retroceso menor descarta candidata y apertura acreditada, preservando referencia previa. Delta 13/13 PASS; regresión prueba ausencia de primera referencia y conservación de una previa de 120 s. `93230224`. |
+| N3 · P2 · curvas cruzan hueco interno | `native/hub/src/analysis/reader.rs:195`. Seq1 100/10/50, seq2 reloj inválido, seq3 300/12/20 antes de flush. Fixture Core→codec y writer DuckDB→plot-page→Reader→gráficos. RED real: segmentos 1/1 en `r2-n3-red`. | Reader aísla extremos fiables, sin localizar cortes que v1 no conserva. Analysis 11/11 y feed 9/9 PASS. `5a399f4b`. |
+
+Estado final verificado: VANTA-46 Por revisar y Project Vantare In Review;
+misma rama/PR draft #1616 a nightly. Push de los tres commits de arreglo releído
+en remoto; documentación de cierre en la misma rama.
+
+Los tres hallazgos tienen RED→GREEN y commit separado: 43/43 focales PASS
+(series 10, delta 13, analysis 11, feed 9). F5 queda completado para gráficos
+por N3. Fmt/check/Clippy PASS, Nextest 1660/1660 PASS (7 skips heredados),
+lifecycle 18/18 PASS y telemetría 25/25 PASS, 0 skips (3 slow). ACC completo
+termina PASS en 901,336 s. Código probado `5a399f4b`, árbol native
+`567bbc347c7308a2c5892cdeac5dc0dae6791dfb`, igual tras el hito documental.
+HEAD publicado/CI actuales se releen en #1606 y el buzón después del último
+push; no se afirma CI remota completa verde. Logs nuevos con prefijo `r2-`
+en `C:/tmp/1606-evidence`; se conservan los de la primera ronda.
+
+Clippy inicial falla por float_cmp en el test N2 (`r2-clippy-initial-float-cmp`). Se comparan los bits de los valores exactos guardados, como las protecciones existentes, sin allow ni rebajar warnings. La corrección queda dentro del commit N2; N3 también usa esa comparación. Se incorporó el ajuste a los commits propios antes de publicarlos, manteniendo un commit por hallazgo.
+
+El comando focal Hub inicial omitía `vantare-services/default` y falló al compilar `config`; log `r2-n3-command-feature-error`. Se corrigió la selección de features para igualar los gates; no se cambió código fuera de alcance y ese intento no cuenta como RED. El RED válido ejecuta el writer/reader real y falla en los segmentos iguales.
+
+La separación es conservadora: se conservan puntos aislados en cada chunk con gap, incluso posteriores si el flag persiste. No se descartan sus valores ni se reconstruye la ubicación de un corte ausente del protocolo. El límite de 1.000.000 cuenta también los separadores. La regresión real comprueba los tres canales, ausencia de delta e integridad byte a byte de la DB read-only; el test de Core prueba recuperación tras el reloj inválido antes de flush.
+
+Sin subagentes nuevos, dependencias, diseño, datos reales, merge ni promoción.
 
 ## Límites
 

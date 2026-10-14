@@ -106,6 +106,12 @@ mismos derechos por plan/ciclo; Plus mensual y anual comparten canales.
 Comisión contable sobre lo pagado: 30 % mes 1, 10 % meses 2–12 mientras siga
 suscrito; después se renegocia. Sin payouts automáticos.
 
+Protección de #1620 R1: las ofertas de creador requieren cambios de plan del
+portal deshabilitados y bloqueo operativo de cambios administrativos/programados
+mientras siga vigente el descuento. El scope solo restringe su aplicación
+inicial; no elimina descuentos heredados al cambiar producto. Configuración
+y verificación real pendientes, según el runbook enlazado.
+
 ### Launch Edition — 30 EUR una vez
 
 - Acceso de por vida a los módulos existentes al comprar y sus mejoras.

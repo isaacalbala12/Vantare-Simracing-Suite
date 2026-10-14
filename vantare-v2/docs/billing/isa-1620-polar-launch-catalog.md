@@ -225,6 +225,18 @@ sin POST ciegos ni imprimir cuerpos HTTP/client_secret.
 
 ## Evidencia y canal
 
+Respuesta R1 independiente: P1 Sol A/B, P2 Sol A y P2 Sol B confirmados y
+corregidos con un commit por hallazgo único; Muse no completa una review.
+Siete regresiones RED→GREEN y control draft; catálogo 29 PASS, suite completa
+566 PASS/0 FAIL/1 ignorado. Tipos/lint/fmt, quality 456, planes offline y diff
+PASS; deploy surface PASS tras retirar solo node_modules generado por tests
+(preview Git; Remove-Item rechazado automáticamente, limpieza Git permitida).
+Logs `C:/tmp/polar-loop/r1-*`, respuesta/HEAD y estado remoto en
+`C:/tmp/polar-loop/r1-respuesta.md` y comentario de entrega #1620/#1621.
+pgTAP/Rust/UI/telemetría omitidos por las razones anteriores; no API, secretos,
+deploy, merge ni publicación. El bloqueo administrativo es un procedimiento
+operativo, no control técnico de llamadas fuera del catálogo.
+
 Ronda 3: cuatro regresiones P2-2 RED→GREEN; tests adicionales de scope/drift,
 sin creador, recuperación, draft→activación→enlace; webhook de alta, renovación
 y cancelación en cuatro planes con mismos derechos. Logs `C:/tmp/ola2/1620-r3-*`.

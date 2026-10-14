@@ -135,6 +135,7 @@ mod roadmap;
 
 enum Area {
     Account,
+    Pilot,
     Licenses { renew: bool },
     Roadmap,
     Calendar,
@@ -279,6 +280,10 @@ pub struct Remote {
     roadmap_polled_at: Option<std::time::Instant>,
     pub(crate) manual_roadmap: crate::roadmap::State,
     stale: bool,
+    pub(crate) pilot: Option<super::protocol::pilot_document::PilotState>,
+    pub(crate) pilot_message: String,
+    pub(crate) pilot_succeeded: bool,
+    pub(crate) pilot_generation: u64,
 }
 
 // Margen para el cache de 1 s del núcleo, el tick de shell y la entrega IPC;
@@ -403,6 +408,10 @@ impl Remote {
         .detach();
         let rights = core_feed(&pipe);
         let mut remote = Self {
+            pilot: None,
+            pilot_message: String::new(),
+            pilot_succeeded: false,
+            pilot_generation: 0,
             adapt: orbit::Adapt::default(),
             pipe,
             send: None,
@@ -582,7 +591,7 @@ impl Remote {
         self.working()
     }
 
-    fn busy(&self) -> bool {
+    pub(crate) fn busy(&self) -> bool {
         self.inflight != Inflight::Idle
     }
 
@@ -725,6 +734,7 @@ impl Remote {
         }
         if !background {
             self.active = match command {
+                Command::PilotLoad | Command::PilotSave { .. } | Command::PilotSync => Area::Pilot,
                 Command::CalendarRefresh => Area::Calendar,
                 Command::RoadmapCached | Command::RoadmapRefresh => Area::Roadmap,
                 Command::LicenseRenew => Area::Licenses { renew: true },
@@ -794,6 +804,9 @@ impl Remote {
     ) {
         self.access.requested(&command);
         if matches!(command, Command::Logout | Command::AccountBegin) {
+            self.pilot = None;
+            self.pilot_message.clear();
+            self.pilot_generation = self.pilot_generation.wrapping_add(1);
             self.clear_participation();
         }
         if matches!(command, Command::Logout) {
@@ -975,6 +988,16 @@ impl Remote {
             self.calendar_reply(reply.clone(), cx);
         }
         match reply {
+            Reply::Pilot { state, message } => {
+                // Logout puede llegar durante el IPC: no restaurar el perfil
+                // privado con esa respuesta anterior a la salida.
+                if matches!(self.active, Area::Pilot) && !matches!(next, Some(Command::Logout)) {
+                    self.pilot_succeeded = true;
+                    self.pilot = Some(state);
+                    self.pilot_message = message;
+                    self.pilot_generation = self.pilot_generation.wrapping_add(1);
+                }
+            }
             Reply::Checkout { url } => {
                 if let Some(product) = self.purchase_product.take() {
                     self.purchase_wait = Some(PurchaseWait {
@@ -995,6 +1018,10 @@ impl Remote {
                 } else if matches!(self.active, Area::Roadmap) {
                     self.roadmap_message = message;
                     self.stale = true;
+                } else if matches!(self.active, Area::Pilot) {
+                    self.pilot_succeeded = false;
+                    self.pilot_message = message;
+                    self.pilot_generation = self.pilot_generation.wrapping_add(1);
                 } else if matches!(self.active, Area::Report) {
                     self.editor.clear_approval(cx);
                     self.editor.error = failed;
@@ -1064,6 +1091,11 @@ impl Remote {
                         self.purchase_message = None;
                         self.report_receipts.clear();
                         self.clear_participation();
+                    }
+                    if self.account.signed_in != signed_in {
+                        self.pilot = None;
+                        self.pilot_message.clear();
+                        self.pilot_generation = self.pilot_generation.wrapping_add(1);
                     }
                     self.account.signed_in = signed_in;
                 }

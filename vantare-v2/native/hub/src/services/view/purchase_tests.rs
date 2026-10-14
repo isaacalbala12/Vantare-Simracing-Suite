@@ -2,6 +2,40 @@ use super::super::protocol::{BillingProduct, DraftState, report_document::Receip
 use super::*;
 
 #[test]
+fn pilot_reply_during_logout_cannot_restore_private_profile() {
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        remote.update(cx, |remote, cx| {
+            remote.request(Command::PilotLoad, cx);
+            assert!(matches!(requests.try_recv(), Ok(Command::PilotLoad)));
+            remote.request(Command::Logout, cx);
+            assert!(remote.pilot.is_none());
+            remote.complete(
+                Reply::Pilot {
+                    state: crate::services::protocol::pilot_document::PilotState {
+                        profile: crate::services::protocol::pilot_document::PilotProfile {
+                            public_name: "Privado".into(),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                    message: "fixture".into(),
+                },
+                cx,
+            );
+            assert!(
+                remote.pilot.is_none(),
+                "late load must not restore private data after logout"
+            );
+            assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
 fn participation_can_retry_after_background_busy_or_failed_ipc_dispatch() {
     gpui_platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();
@@ -72,6 +106,10 @@ pub(super) fn fixture(
     let recovery = crate::testing::recovery::Recovery::load(data);
     let editor = crate::testing::Editor::new(crate::testing::empty_fields(), cx);
     let mut remote = Remote {
+        pilot: None,
+        pilot_message: String::new(),
+        pilot_succeeded: false,
+        pilot_generation: 0,
         adapt: orbit::Adapt::default(),
         pipe: "qa-in-memory".into(),
         send: Some(send),

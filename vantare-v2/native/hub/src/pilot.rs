@@ -5,6 +5,8 @@
 //! límites y la sincronización son de servicios: el propietario convierte su
 //! perfil en [`Draft`] y recibe [`view::PilotEvent`]. Ver `pilot/README.md`.
 
+#[cfg(feature = "parity-capture")]
+pub(crate) mod capture;
 pub mod view;
 
 /// Máximo de caracteres del nombre público (propuesta de UI; manda servicios).

@@ -11,6 +11,7 @@ use vantare_domain::format::{Language, Preferences, Units};
 
 pub(super) mod appearance;
 pub(in crate::shell) mod general;
+mod pilot;
 mod privacy;
 pub(crate) mod releases;
 #[cfg(test)]
@@ -134,6 +135,11 @@ pub(super) struct State {
     consent_focus: [FocusHandle; 3],
     pub(super) appearance: appearance::Store,
     pilot: Entity<crate::pilot::view::PilotEditor>,
+    pilot_state: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
+    pilot_source: Option<Vec<u8>>,
+    pilot_photo: Option<Option<vantare_ipc::services_protocol::pilot_document::PilotPhoto>>,
+    pilot_generation: u64,
+    pilot_requested: bool,
     appearance_focus: [FocusHandle; 15],
     appearance_bounds: [Option<gpui::Bounds<gpui::Pixels>>; 2],
     appearance_dragging: [bool; 2],
@@ -198,6 +204,7 @@ impl State {
     pub(super) fn select_demo_page(&mut self, page: crate::demo::CaptureSettingsPage) {
         self.privacy = privacy::Store::load(&self.data);
         self.page = match page {
+            crate::demo::CaptureSettingsPage::Account => Page::Account,
             crate::demo::CaptureSettingsPage::Application => Page::Application,
             crate::demo::CaptureSettingsPage::Appearance => Page::Appearance,
             crate::demo::CaptureSettingsPage::Performance => Page::Performance,
@@ -302,8 +309,7 @@ impl State {
             update_focus: cx.focus_handle(),
             custom_performance_focus: cx.focus_handle(),
             performance_focus: std::array::from_fn(|_| cx.focus_handle()),
-            privacy: privacy::root(&data)
-                .and_then(|root| privacy::Store::load(&root)),
+            privacy: privacy::root(&data).and_then(|root| privacy::Store::load(&root)),
             privacy_focus: std::array::from_fn(|_| cx.focus_handle()),
             privacy_policy_focus: cx.focus_handle(),
             consent_focus: std::array::from_fn(|_| cx.focus_handle()),
@@ -345,6 +351,11 @@ impl State {
             ),
             appearance,
             pilot: Self::pilot_editor(window, cx),
+            pilot_state: None,
+            pilot_source: None,
+            pilot_photo: None,
+            pilot_generation: 0,
+            pilot_requested: false,
             appearance_focus: std::array::from_fn(|_| cx.focus_handle()),
             appearance_bounds: [None, None],
             appearance_dragging: [false, false],
@@ -373,19 +384,13 @@ impl State {
     ) -> Entity<crate::pilot::view::PilotEditor> {
         use crate::pilot::view::{PilotEditor, PilotEvent};
         let editor = cx.new(|cx| PilotEditor::new(crate::pilot::Draft::default(), window, cx));
-        cx.subscribe(&editor, |hub, editor, event: &PilotEvent, cx| {
-            if *event == PilotEvent::OpenAccount {
-                hub.navigate(crate::Section::Account, cx);
-            } else {
-                editor.update(cx, |editor, cx| {
-                    editor.set_status(
-                        Some("El guardado del perfil aún no está conectado.".into()),
-                        cx,
-                    );
-                });
-            }
+        cx.subscribe_in(&editor, window, |hub, _, event: &PilotEvent, window, cx| {
+            hub.pilot_event(event.clone(), window, cx);
         })
         .detach();
+        #[cfg(feature = "parity-capture")]
+        crate::pilot::capture::configure(&editor, window, cx);
+        cx.observe_self(Hub::observe_pilot).detach();
         editor
     }
 
@@ -647,6 +652,9 @@ impl Hub {
         cx.notify();
     }
     fn select_settings_page(&mut self, page: Page, cx: &mut Context<Self>) {
+        if page == Page::Account && self.settings.pilot_state.is_none() {
+            self.settings.pilot_requested = false;
+        }
         self.settings.page = page;
         self.settings.panel_scroll = gpui::ScrollHandle::new();
         self.settings.status = None;

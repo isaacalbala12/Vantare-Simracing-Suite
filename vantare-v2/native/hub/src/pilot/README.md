@@ -9,7 +9,7 @@ favoritos, con una tarjeta «Así te ves» y un acceso a la sección Cuenta
 `view.rs` contiene `PilotEditor`, que compone Orbit y emite `PilotEvent`.
 No lee disco, red ni sesión.
 
-## Contrato con servicios (pendiente de conectar)
+## Contrato con servicios (#1612)
 
 | Editor → propietario | Qué hace el propietario |
 | --- | --- |
@@ -19,16 +19,23 @@ No lee disco, red ni sesión.
 | `RemovePhoto` | Borra la foto y llama a `set_photo(None)`. |
 | `OpenAccount` | Ya conectado: navega a la sección Cuenta. |
 
-Al abrir Ajustes o tras sincronizar, el propietario llama a `load(draft)` y a
-`set_photo`. Hoy `settings::State::pilot_editor` crea el editor vacío y
-responde a todo salvo `OpenAccount` con «El guardado del perfil aún no está
-conectado»: no simula guardados.
+El propietario `settings/pilot.rs` carga mediante el worker IPC existente, conserva
+foto y campos futuros al guardar y muestra los errores reales. Services protege la
+copia local con DPAPI y separa namespaces por issuer/subject; la cuenta local
+permanece separada. Guardar y abrir con sesión intentan sincronizar mediante el
+puente UUID ya verificado. Un fallo remoto conserva el perfil local y su marca
+pendiente; CAS impide sobrescribir otro dispositivo. No se cambia el login.
+
+El selector valida JPEG/PNG ≤ 5 MiB y ≤ 4096 px fuera del hilo de UI. Solo el
+JPEG de 256×256 (≤24 KiB) puede salir del PC; la original se conserva en memoria
+hasta aplicar/descartar. El círculo lo pinta GPUI. Cambiar/quitar foto forma parte
+del borrador y requiere Guardar; Descartar restaura la foto anterior.
 
 `Crop` es normalizado: `x`, `y` son la esquina en fracción del ancho y del alto;
 `side` es el lado en fracción del lado corto (cuadrado en píxeles).
 
 Los límites `NAME_MAX` (32), `DESCRIPTION_MAX` (160) y `FAVORITE_MAX` (48)
-son una propuesta de UI: si el modelo fija otros, se cambian aquí.
+son límites del formulario; el protocolo acepta 64/280/120 para conservar datos de lectores futuros.
 
 ## Bandera
 

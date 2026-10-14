@@ -8,6 +8,7 @@ parser.add_argument('--before-b01', action='store_true')
 parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
 parser.add_argument('--signer-module')
+parser.add_argument('--upgrade', choices=['identity', 'identity-conflict'])
 args=parser.parse_args()
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 OUT=pathlib.Path(args.output).resolve(); OUT.mkdir(parents=True,exist_ok=True)
@@ -23,7 +24,7 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
  data=pathlib.Path(tmp)/'data'
  run('initdb','-D',data,'-U','postgres','--auth-local=trust','--auth-host=trust','--encoding=UTF8','--no-locale')
  run('pg_ctl','-D',data,'-l',OUT/'postgres.log','-o',f'-h 127.0.0.1 -p {port} -k {tmp}','-w','start')
- conn=['-X','-h','127.0.0.1','-p',str(port),'-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-At']
+ conn=['-X','-h','127.0.0.1','-p',str(port),'-U','postgres','-d','postgres','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose','-At']
  try:
   runner=(ROOT/'supabase/tests/run-supabase-hardening-postgres.ps1').read_text()
   bootstrap=runner.split("Write-Utf8NoBom $bootstrap @'",1)[1].split("'@",1)[0]
@@ -42,9 +43,29 @@ $$;
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
    if args.baseline and 'isa_1608_commercial' in m.name: continue
    if args.before_b01 and 'commercial_b01' in m.name: continue
+   cutover = 'commercial_b03' in m.name and args.upgrade
+   if cutover:
+    result=run('psql',*conn,'-f',ROOT/'supabase/tests'/('commercial_'+args.upgrade.replace('-', '_')+'_upgrade.before.sql'))
+    (OUT/'upgrade-before.log').write_text(result)
    try: result=run('psql',*conn,'-f',m)
-   except Exception as e: raise RuntimeError(m.name+': '+str(e))
+   except Exception as e:
+    (OUT/(m.name+'.log')).write_text(str(e))
+    if cutover and args.upgrade=='identity-conflict' and '23505' in str(e) and 'account_alias_conflict' in str(e):
+     result=run('psql',*conn,'-f',ROOT/'supabase/tests/commercial_identity_conflict_upgrade.test.sql')
+     (OUT/'upgrade-results.log').write_text(result)
+     if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
+     print('identity-conflict upgrade: rejected atomically PASS',flush=True)
+     raise SystemExit(0)
+    raise RuntimeError(m.name+': '+str(e))
+   if cutover and args.upgrade=='identity-conflict':
+    raise AssertionError('ambiguous historical issuer aliases were not rejected by B03')
    (OUT/(m.name+'.log')).write_text(result)
+  if args.upgrade:
+   result=run('psql',*conn,'-f',ROOT/'supabase/tests'/('commercial_'+args.upgrade+'_upgrade.test.sql'))
+   (OUT/'upgrade-results.log').write_text(result)
+   if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
+   print(args.upgrade+' historical upgrade PASS',flush=True)
+   raise SystemExit(0)
   if args.postgrest_bin:
    run('psql',*conn,'-c',"create role bridge_fixture login noinherit; grant anon,authenticated,service_role to bridge_fixture;")
    if not args.baseline:

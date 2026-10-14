@@ -1,3 +1,18 @@
+## #1608 · Cierre comercial ronda 2 (14/10/2026)
+
+Review independiente `C:/tmp/ola2/review-1622-sol.md` completa: dos P1 de
+datos históricos, ningún P2/P3 adicional confirmado. Misma rama/PR draft
+#1622 y base `e5c90be5`; inicio limpio `76c1b948`. VANTA-16/17/15 En curso.
+P1-1 RED de upgrade: 10/18 aserciones fallan (UUID/compras/PII/tombstone/Storage)
+y la migración acepta aliases de UUID distintos. B03 añade el vínculo canónico
+al UUID original sin borrar aliases; conflicto 23505 aborta toda la transacción.
+Pruebas pre-B03 reproducibles por `run-commercial-local.py --upgrade identity`
+y `--upgrade identity-conflict`. Evidencia `C:/tmp/1608-comercial-r2/`.
+GREEN 18/18 y conflicto/rollback 4/4 sobre PostgreSQL18 desechable.
+P1-2 pendiente: backfill de restricciones desde ledger anterior y refresh del
+read model en la misma migración. Solo local/tests; sin prod/servicios reales,
+secretos/dependencias/promoción. SHAs y gates finales se verificarán en issue/buzón.
+
 ## #1608 · Cierre comercial B03 → B01 → B02 (14/10/2026)
 
 Encargo explícito de Isaac: implementar los tres planes en rama nueva, solo

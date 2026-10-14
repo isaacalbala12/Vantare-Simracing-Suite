@@ -46,6 +46,24 @@ alter table public.account_identities add constraint account_identities_account_
   foreign key(account_id) references public.profiles(id) on delete restrict;
 alter table public.account_identities add column if not exists deleted_at timestamptz;
 alter table public.account_identities add column if not exists user_event_at timestamptz;
+-- The old resolver accepted an origin and that same origin with one trailing
+-- slash. Preserve those existing UUIDs before switching to exact lookup.
+-- Keep the original rows for audit/tombstones; never merge ambiguous accounts.
+do $$
+begin
+  if exists (
+    select 1 from public.account_identities
+    where issuer ~ '^https://[a-zA-Z0-9.-]+/?$'
+    group by rtrim(issuer, '/'), subject
+    having count(distinct account_id) > 1
+  ) then
+    raise sqlstate '23505' using message = 'account_alias_conflict';
+  end if;
+  insert into public.account_identities(issuer,subject,account_id,created_at,deleted_at,user_event_at)
+    select rtrim(issuer, '/'),subject,account_id,created_at,deleted_at,user_event_at
+    from public.account_identities where issuer ~ '^https://[a-zA-Z0-9.-]+/$'
+    on conflict(issuer,subject) do nothing;
+end $$;
 alter table public.account_identities enable row level security;
 revoke all on public.account_identities from public, anon, authenticated, service_role;
 

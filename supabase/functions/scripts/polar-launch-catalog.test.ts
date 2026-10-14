@@ -860,3 +860,119 @@ Deno.test("sandbox output: failed apply leaves no file and same path can be retr
     await Deno.remove(dir, { recursive: true });
   }
 });
+
+Deno.test("sandbox diagnostics: 4xx exposes only type/loc/msg with token redacted", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "catalog-1620-" });
+  const input = `${dir}/input.json`;
+  const output = `${dir}/output.json`;
+  const token = "fixture-organization-token";
+  const tokenBefore = Deno.env.get("POLAR_ACCESS_TOKEN");
+  Deno.env.set("POLAR_ACCESS_TOKEN", token);
+  const validation = {
+    type: "organization_token",
+    loc: ["body", "organization_id"],
+    msg:
+      "Setting organization_id is disallowed when using an organization token.",
+  };
+  try {
+    await Deno.writeTextFile(input, JSON.stringify(sandbox));
+    const args = [
+      "--environment",
+      "sandbox",
+      "--map",
+      input,
+      "--output",
+      output,
+      "--apply",
+    ];
+    for (const status of [400, 401, 403, 422, 429]) {
+      const f = fake();
+      const fetcher: typeof fetch = async (url, init) => {
+        if (init?.method === "GET") {
+          const parsed = new URL(String(url));
+          return Response.json(
+            await f.http(
+              "GET",
+              parsed.pathname.replace(/^\/v1/, "") + parsed.search,
+            ),
+          );
+        }
+        return Response.json({
+          detail: [{
+            ...validation,
+            input: token,
+            ctx: { Authorization: `Bearer ${token}` },
+          }],
+          headers: { Authorization: `Bearer ${token}` },
+          client_secret: "fixture-private-body",
+        }, { status, headers: { "X-Private": "fixture-private-header" } });
+      };
+      await assertRejects(() => runCatalog(args, fetcher), (error: unknown) => {
+        const message = (error as Error).message;
+        assertEquals(
+          message.startsWith(`Polar HTTP ${status} (POST); validation: `),
+          true,
+        );
+        assertEquals(JSON.parse(message.split("; validation: ")[1]), [
+          validation,
+        ]);
+        for (
+          const hidden of [
+            token,
+            "Authorization",
+            "fixture-private-body",
+            "fixture-private-header",
+            "input",
+            "ctx",
+          ]
+        ) assertEquals(message.includes(hidden), false);
+        return true;
+      });
+    }
+    // Even allowlisted values may echo the credential; never print it.
+    const echoed = {
+      type: token,
+      loc: ["body", token, 0],
+      msg: `Invalid Bearer ${token}`,
+    };
+    await assertRejects(
+      () =>
+        runCatalog(
+          args,
+          () => Promise.resolve(Response.json(echoed, { status: 422 })),
+        ),
+      (error: unknown) => {
+        const message = (error as Error).message;
+        assertEquals(message.includes(token), false);
+        assertEquals(JSON.parse(message.split("; validation: ")[1]), [{
+          type: "[REDACTED]",
+          loc: ["body", "[REDACTED]", 0],
+          msg: "Invalid Bearer [REDACTED]",
+        }]);
+        return true;
+      },
+    );
+    for (
+      const [status, body] of [
+        [422, "not JSON"],
+        [400, '{"detail":"fixture-private-body"}'],
+        [422, '{"detail":[null,{"type":{},"loc":[],"msg":"bad"}]}'],
+        [500, JSON.stringify({ detail: [validation] })],
+      ] as const
+    ) {
+      await assertRejects(
+        () =>
+          runCatalog(
+            args,
+            () => Promise.resolve(new Response(body, { status })),
+          ),
+        { message: `Polar HTTP ${status} (GET); response body withheld` },
+      );
+    }
+    await assertRejects(() => Deno.stat(output), Deno.errors.NotFound);
+  } finally {
+    if (tokenBefore === undefined) Deno.env.delete("POLAR_ACCESS_TOKEN");
+    else Deno.env.set("POLAR_ACCESS_TOKEN", tokenBefore);
+    await Deno.remove(dir, { recursive: true });
+  }
+});

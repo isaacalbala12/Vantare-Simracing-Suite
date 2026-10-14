@@ -245,7 +245,11 @@ Rollback de nuevas altas: retirar enlaces y caducar descuento solo autorizado;
 conservar productos/mapas para suscripciones vigentes. Archivar productos solo
 tras revisar su efecto. No borrar IDs ni revertir SQL con filas existentes.
 Timeout puede dejar escrituras parciales: inspeccionar y recuperar por metadata,
-sin POST ciegos ni imprimir cuerpos HTTP/client_secret.
+sin POST ciegos ni imprimir cuerpos HTTP/client_secret. En errores 4xx, el
+script muestra exclusivamente `type`, `loc` y `msg` de validaciones Polar
+(`detail` o validación directa). Omite input, ctx y headers, y sustituye el
+token de la sesión por `[REDACTED]` si aparece en esos campos. JSON ilegible,
+validación no reconocida y errores 5xx mantienen el mensaje genérico.
 
 ## Evidencia y canal
 

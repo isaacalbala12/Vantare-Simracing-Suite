@@ -19,8 +19,23 @@ produce JSON completo y salida existente falla antes de HTTP sin sobrescribir.
 Creación exclusiva al final, sync y retirada si falla escritura; preflight
 requiere lectura de salida (comandos actualizados). Catálogo 37 PASS; logs
 `02-red.log`/`02-green.log`. Sin garantía ante kill durante escritura.
-Siguiente: diagnóstico 4xx, suite Deno completa,
-revisión del orquestador y sandbox real por su vía autorizada.
+Arreglo 3: diagnóstico 4xx proyecta solo `type`/`loc`/`msg` válidos, con token
+de sesión redactado incluso dentro de esos campos. Nunca vuelca headers,
+input, ctx ni cuerpo completo; 5xx/JSON ilegible/formato desconocido genéricos.
+RED→GREEN con 400/401/403/422/429, validación directa y envoltorio detail,
+ecos del token y respuestas inválidas; catálogo 38 PASS, `03-red.log` y
+`03-green.log`.
+Gates finales: suite Deno completa **581 PASS, 0 FAIL, 1 ignored** (PostgREST
+no configurado); catálogo 38 PASS. Tipos, lint (exclusión existente
+`no-import-prefix`), fmt del área, superficie deploy, planes offline
+sandbox/production, quality y retirada **456 huellas** PASS. Entorno vacío,
+sin permiso de red, escritura solo temporal `/tmp`; sin dependencias nuevas.
+Rust/UI/telemetría y SQL omitidos: ningún cambio en native, runtime, domain,
+IPC, testdata o SQL. Diff completo revisado; sin push, merge adicional,
+promoción, release, deploy, pagos ni servicios reales. Solo rama local;
+SHA final y lista de commits en `~/orq/1620.buzon.md` y resumen de evidencia.
+Siguiente: revisión del diff por el orquestador, actualización GitHub/Plane
+y repetición sandbox real por su vía autorizada.
 
 ## #1608 · Integración de nightly (14/10/2026)
 

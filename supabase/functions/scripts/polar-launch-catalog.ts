@@ -527,6 +527,41 @@ export function parseArgs(args: string[]) {
   return { values, flags, environment: environment as BillingEnvironment };
 }
 
+// Never dump validation input, context, headers or the raw response body.
+async function validationDetails(response: Response, token: string) {
+  if (response.status < 400 || response.status >= 500) return "";
+  try {
+    const data: unknown = await response.json();
+    const detail = data && typeof data === "object" && "detail" in data
+      ? data.detail
+      : data;
+    const errors = (Array.isArray(detail) ? detail : [detail]).flatMap(
+      (entry) => {
+        if (!entry || typeof entry !== "object") return [];
+        const { type, loc, msg } = entry;
+        if (
+          typeof type !== "string" || typeof msg !== "string" ||
+          !Array.isArray(loc) ||
+          !loc.every((part) =>
+            typeof part === "string" || typeof part === "number"
+          )
+        ) return [];
+        const redact = (value: string) => value.replaceAll(token, "[REDACTED]");
+        return [{
+          type: redact(type),
+          loc: loc.map((part) =>
+            typeof part === "string" ? redact(part) : part
+          ),
+          msg: redact(msg),
+        }];
+      },
+    );
+    return errors.length ? `validation: ${JSON.stringify(errors)}` : "";
+  } catch {
+    return "";
+  }
+}
+
 export async function runCatalog(
   args: string[],
   fetcher: typeof fetch = fetch,
@@ -575,7 +610,9 @@ export async function runCatalog(
       }
       if (!response.ok) {
         throw Error(
-          `Polar HTTP ${response.status} (${method}); response body withheld`,
+          `Polar HTTP ${response.status} (${method}); ${
+            await validationDetails(response, token) || "response body withheld"
+          }`,
         );
       }
       try {

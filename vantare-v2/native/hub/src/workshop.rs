@@ -140,6 +140,9 @@ fn workshop_overlay(kind: Kind, prefs: Preferences) -> Overlay {
         standings.class_scope = "all-classes".into();
         standings.columns = Some(vantare_ui::standings::vantare_template("standard"));
     }
+    if let WidgetSettings::Relative(relative) = &mut settings {
+        relative.class_scope = "all".into();
+    }
     Overlay::configured(&settings, prefs)
 }
 
@@ -325,8 +328,7 @@ impl Workshop {
                         this.rebuild(cx);
                     }
                     1 => {
-                        this.kind = Kind::ALL[event.0];
-                        this.rebuild(cx);
+                        this.select_widget(Kind::ALL[event.0], cx);
                         if let Err(error) = this.persist() {
                             this.status = error;
                             this.tools_open = true;
@@ -599,14 +601,29 @@ impl Workshop {
         cx.notify();
     }
 
+    fn select_widget(&mut self, kind: Kind, cx: &mut Context<Self>) {
+        self.kind = kind;
+        let approved = format!("{}-design-system.sequence.json", kind.name());
+        let fallback = format!("{}.snapshot.json", kind.name());
+        let scene = [approved, fallback].iter().find_map(|name| {
+            self.scenes
+                .iter()
+                .position(|path| path.file_name().is_some_and(|file| file == name.as_str()))
+        });
+        if let Some(index) = scene {
+            self.select_scene(index, cx);
+        } else {
+            self.rebuild(cx);
+        }
+    }
+
     fn widget(&mut self, forward: bool, cx: &mut Context<Self>) {
         let index = Kind::ALL
             .iter()
             .position(|kind| *kind == self.kind)
             .unwrap_or(0);
         let step = if forward { 1 } else { Kind::ALL.len() - 1 };
-        self.kind = Kind::ALL[(index + step) % Kind::ALL.len()];
-        self.rebuild(cx);
+        self.select_widget(Kind::ALL[(index + step) % Kind::ALL.len()], cx);
         if let Err(error) = self.persist() {
             self.status = error;
         }

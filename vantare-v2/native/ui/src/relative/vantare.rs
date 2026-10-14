@@ -11,7 +11,7 @@ use crate::efficiency::text;
 use crate::look::{Accent, Tone};
 use crate::vantare::columns::ColumnBoxes;
 use crate::vantare::motion::{Flash, Motion, Sample};
-use crate::vantare::paint::{BOX, Face, Kit, WHITE, estimate, estimate_mono, round_rect};
+use crate::vantare::paint::{BOX, Face, Kit, WHITE, round_rect};
 use crate::vantare::style::{Color, Style, Variant, with_opacity};
 use gpui::{App, BorderStyle, Corners, Edges, px, quad};
 use std::sync::{Arc, OnceLock};
@@ -259,43 +259,6 @@ fn driver_text(driver: &str, options: &Options) -> String {
     }
 }
 
-/// Piloto ajustado al nombre más largo de la sesión, sin pasar del preset.
-fn driver_width(board: Option<&Board>, options: &Options, style: &Style) -> f32 {
-    let max = options.driver_max(style);
-    let widest = board
-        .into_iter()
-        .flat_map(|b| &b.names)
-        .filter(|name| name.visible)
-        .map(|name| {
-            let (driver, vehicle, number) = (&name.driver, &name.vehicle, &name.number);
-            estimate(&driver_text(driver, options), style.fonts.body)
-                + estimate(
-                    &vehicle_detail(vehicle, number, &options.cols),
-                    style.fonts.small,
-                )
-        })
-        .fold(0.0_f32, f32::max);
-    if widest <= 0.0 {
-        return max;
-    }
-    (widest + 4.0).clamp(style.geometry.driver_xs.min(max), max)
-}
-
-/// Gap ajustado al valor más ancho de las filas visibles (`+10.0` ocupa más
-/// que `-3.8`), sin pasar del ancho del estilo.
-fn gap_width(board: Option<&Board>, style: &Style) -> f32 {
-    let max = style.relative.col_gap;
-    let widest = board
-        .into_iter()
-        .flat_map(|b| b.slots.iter().flatten())
-        .map(|row| estimate_mono(&row.rich_gap, style.fonts.mono))
-        .fold(0.0_f32, f32::max);
-    if widest <= 0.0 {
-        return max;
-    }
-    (widest + 2.0).min(max)
-}
-
 // ---------------------------------------------------------------------------
 // Layout (puro)
 // ---------------------------------------------------------------------------
@@ -340,39 +303,27 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
     let variant = options.variant(style);
     let g = &style.geometry;
     let shown = board.filter(|b| !waiting(Some(b)));
-    // Vueltas de diferencia y tendencia suelen ir vacías: no ocupan sitio
-    // mientras ningún coche visible tenga dato (la tendencia no se pinta en FCY).
-    let order: Vec<Kind> = options
-        .cols
-        .order
-        .iter()
-        .copied()
-        .filter(|kind| {
-            let rows = || shown.into_iter().flat_map(|b| b.slots.iter().flatten());
-            match kind {
-                Kind::Laps => rows().any(|row| row.lap_delta.is_some_and(|v| v != 0)),
-                Kind::Trend => {
-                    shown.is_some_and(|b| b.banner != Some(Banner::FullCourseYellow))
-                        && rows().any(|row| row.trend.is_some())
-                }
-                _ => true,
-            }
-        })
-        .collect();
+    // Las columnas habilitadas conservan su espacio aunque el dato falte.
     let (columns, width) = options.layout(
         style,
-        driver_width(shown, options, style),
-        gap_width(shown, style),
-        &order,
+        options.driver_max(style),
+        style.relative.col_gap,
+        &options.cols.order,
     );
     let mut items = Vec::new();
-    let mut y = variant.padding_y;
+    let mut y = variant.padding_y + 1.0;
     if shown.is_some_and(|b| b.banner.is_some()) {
         items.push((0.0, Item::Banner));
-        y = g.banner_height + g.banner_gap;
+    } else {
+        items.push((y, Item::Header));
     }
-    items.push((y, Item::Header));
     y += variant.header_height + variant.header_gap;
+    if options.cols.strip {
+        if shown.is_some() {
+            items.push((y, Item::Strip));
+        }
+        y += style.relative.strip_height + style.relative.strip_gap;
+    }
     let top;
     let bottom;
     match shown {
@@ -383,43 +334,57 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
                 y += g.row_height;
             }
             bottom = y;
-            y += g.footer_gap;
-            items.push((y, Item::Footer(Footer::Waiting)));
-            y += 1.0 + g.footer_gap + g.footer_height;
+            items.retain(|(_, item)| *item != Item::Header);
+            items.push((
+                variant.padding_y - g.footer_gap - 1.0,
+                Item::Footer(Footer::Waiting),
+            ));
         }
         Some(board) => {
-            if options.cols.strip {
-                items.push((y, Item::Strip));
-                y += style.relative.strip_height + style.relative.strip_gap;
-            }
             top = y;
-            // Solo los huecos con coche: el panel se ajusta a los que hay.
-            for (index, _) in board.slots.iter().enumerate().filter(|(_, s)| s.is_some()) {
+            // Mantener también los huecos ausentes: el jugador no se desplaza.
+            for index in 0..options.slots() {
                 items.push((y, Item::Slot(index)));
                 y += g.row_height;
             }
             bottom = y;
-            let mut footers = Vec::new();
-            if board.player_in_pits && board.pit_exit.is_some() {
-                footers.push(Footer::Pits);
-            }
-            if board.traffic.is_some() {
-                footers.push(Footer::Traffic);
+            if board.banner.is_none()
+                && ((board.player_in_pits && board.pit_exit.is_some()) || board.traffic.is_some())
+            {
+                items.retain(|(_, item)| *item != Item::Header);
+                items.push((
+                    variant.padding_y - g.footer_gap - 1.0,
+                    Item::Footer(if board.player_in_pits {
+                        Footer::Pits
+                    } else {
+                        Footer::Traffic
+                    }),
+                ));
             }
             if options.cols.has(Kind::Trend) {
-                footers.push(Footer::Legend);
-            }
-            for footer in footers {
                 y += g.footer_gap;
-                items.push((y, Item::Footer(footer)));
-                y += 1.0 + g.footer_gap + g.footer_height;
+                items.push((y, Item::Footer(Footer::Legend)));
             }
         }
     }
     let rows = (top, bottom.max(top + g.row_height));
     Plan {
         width,
-        height: y + variant.padding_y,
+        height: 2.0
+            + 2.0 * variant.padding_y
+            + variant.header_height
+            + variant.header_gap
+            + options.slots() as f32 * g.row_height
+            + if options.cols.strip {
+                style.relative.strip_height + style.relative.strip_gap
+            } else {
+                0.0
+            }
+            + if options.cols.has(Kind::Trend) {
+                2.0 * g.footer_gap + 1.0 + g.footer_height
+            } else {
+                0.0
+            },
         items,
         columns,
         rows,
@@ -509,7 +474,11 @@ impl Labels {
                         } else {
                             format!("#{}", row.number)
                         },
-                        driver: driver_text(&row.driver, options),
+                        driver: if row.side == Side::Player {
+                            if es { "Tú" } else { "You" }.into()
+                        } else {
+                            driver_text(&row.driver, options)
+                        },
                         detail: vehicle_detail(&row.vehicle, &row.number, &options.cols),
                         laps: row
                             .lap_delta
@@ -1586,6 +1555,41 @@ mod tests {
     }
 
     #[test]
+    fn approved_relative_keeps_player_slot_and_size_when_neighbors_disappear() {
+        let photos = frames(include_str!("../../fixtures/relative-vantare.scene.json"));
+        for name in ["compact", "standard", "expanded"] {
+            let options = options(name);
+            let style = Style::compiled();
+            let state = State::new(options.clone());
+            let expected = plan(None, &options, &style);
+            for photo in &photos {
+                let mut board = state.project(photo);
+                // Missing neighbors keep their actual slots, not a compressed list.
+                if !board.slots.is_empty() {
+                    board.slots[0] = None;
+                }
+                let plan = plan(Some(&board), &options, &style);
+                assert_eq!((plan.width, plan.height), (expected.width, expected.height));
+                let slots: Vec<_> = plan
+                    .items
+                    .iter()
+                    .filter_map(|(y, item)| match item {
+                        Item::Slot(i) => Some((*i, *y)),
+                        _ => None,
+                    })
+                    .collect();
+                if board.player_present {
+                    assert_eq!(slots.len(), options.slots());
+                    assert_eq!(
+                        slots[options.ahead].1 - slots[0].1,
+                        options.ahead as f32 * style.geometry.row_height
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
     fn templates_reproduce_the_catalogue_widths() {
         let style = Style::compiled();
         for (name, width) in [("compact", 280.0), ("standard", 420.0), ("expanded", 600.0)] {
@@ -1641,27 +1645,27 @@ mod tests {
     }
 
     #[test]
-    fn empty_lap_and_trend_columns_take_no_space_until_some_car_has_data() {
+    fn missing_lap_and_trend_data_preserve_enabled_columns_and_box() {
         let photos = frames(include_str!("../../fixtures/relative-vantare.scene.json"));
         let mut options = options("expanded");
         options.same_class = true;
         let mut state = State::new(options);
         state.ingest(state.project(&photos[0]));
         let metrics: Vec<_> = state.plan.columns.iter().map(|c| c.kind).collect();
-        assert!(!metrics.contains(&Kind::Laps), "ningún Hypercar doblado");
+        assert!(
+            metrics.contains(&Kind::Laps),
+            "columna reservada aunque no haya doblados"
+        );
         assert!(metrics.contains(&Kind::Trend));
         let narrow = state.size().0;
         Arc::make_mut(&mut state.visual.options).same_class = false;
         state.ingest(state.project(&photos[0]));
         assert!(state.plan.columns.iter().any(|c| c.kind == Kind::Laps));
-        assert!(
-            state.size().0 > narrow,
-            "aparece la columna y el panel se ensancha"
-        );
+        assert!(state.size().0 == narrow, "el alcance no cambia la caja");
         state.ingest(state.project(&photos[3]));
         assert!(
-            !state.plan.columns.iter().any(|c| c.kind == Kind::Trend),
-            "sin tendencia en FCY"
+            state.plan.columns.iter().any(|c| c.kind == Kind::Trend),
+            "FCY conserva el espacio de tendencia"
         );
     }
 
@@ -1706,8 +1710,10 @@ mod tests {
         state.ingest(far);
         let wide = gap(&state);
         state.ingest(board);
-        assert!(gap(&state) < wide, "sin decenas la columna se estrecha");
-        assert!(gap(&state) >= estimate_mono("+3.8", state.style.fonts.mono));
+        assert_eq!(gap(&state), wide, "columna estable con o sin decenas");
+        assert!(
+            gap(&state) >= crate::vantare::paint::estimate_mono("+3.8", state.style.fonts.mono)
+        );
     }
 
     #[test]

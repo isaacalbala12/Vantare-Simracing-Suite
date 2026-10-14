@@ -146,6 +146,7 @@ impl Settings {
         match look {
             crate::look::Look::Vantare => {
                 s.columns = Some(vantare_template("standard"));
+                s.class_scope = "all".into();
                 s.brand_visible = Some(true);
             }
             crate::look::Look::Eficiencia => {

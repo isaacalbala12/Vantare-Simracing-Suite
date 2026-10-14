@@ -598,7 +598,11 @@ impl Studio {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if document_key(&event.keystroke).is_some() {
+        let damage_shortcut = self.editor.selected().is_some_and(|item| {
+            matches!(&item.settings, Settings::CarDamageVisual(settings)
+                if settings.key_matches(&event.keystroke))
+        });
+        if document_key(&event.keystroke).is_some() || damage_shortcut {
             self.focus.focus(window, cx);
             self.handle_key(event, window, cx);
         }

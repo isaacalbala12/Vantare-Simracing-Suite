@@ -9,6 +9,8 @@ macro_rules! widgets {
 
         impl Kind {
             pub const ALL: &'static [Self] = &[$(Self::$kind),+];
+            pub const CATALOG:&'static[Self]=&[Self::Standings,Self::Relative,Self::Delta,Self::Pedals,Self::MulticlassRelative,Self::Radar,Self::InputTelemetry,Self::DeltaTrace,Self::PedalsTelemetry,Self::TrackMap,Self::TrackWeather,Self::RacingFlags,Self::FastestLap,Self::HeadToHead,Self::BroadcastTower,Self::CarDamageVisual,Self::FuelStrategy];
+
 
             /// Nombre de producto; los identificadores de persistencia no cambian.
             pub fn label(self) -> &'static str {

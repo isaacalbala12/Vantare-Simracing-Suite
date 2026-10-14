@@ -20,7 +20,7 @@ pub(super) const CATEGORIES: [(Option<Category>, &str); 5] = [
 ];
 
 /// Orden del catálogo: por categoría y, dentro de ella, de lo general a lo concreto.
-pub(super) const ORDER: [Kind; 18] = [
+pub(super) const ORDER: [Kind; 17] = [
     Kind::Standings,
     Kind::Relative,
     Kind::MulticlassRelative,
@@ -35,7 +35,6 @@ pub(super) const ORDER: [Kind; 18] = [
     Kind::InputTelemetry,
     Kind::Radar,
     Kind::CarDamageVisual,
-    Kind::CarDamageNumbers,
     Kind::FuelStrategy,
     Kind::TrackMap,
     Kind::TrackWeather,
@@ -1402,8 +1401,8 @@ mod tests {
 
     #[test]
     fn catalog_lists_every_registered_widget_once() {
-        assert_eq!(ORDER.len(), Kind::ALL.len());
-        assert!(Kind::ALL.iter().all(|kind| ORDER.contains(kind)));
+        assert_eq!(ORDER.len(), Kind::CATALOG.len());
+        assert!(Kind::CATALOG.iter().all(|kind| ORDER.contains(kind)));
     }
 
     #[test]
@@ -1432,14 +1431,7 @@ mod tests {
         // Con categoría no hay sugeridos; solo los suyos.
         let car = groups("", Some(Category::Car), |_| false, &[]);
         assert_eq!(car.len(), 1);
-        assert_eq!(
-            car[0].kinds,
-            [
-                Kind::CarDamageVisual,
-                Kind::CarDamageNumbers,
-                Kind::FuelStrategy
-            ]
-        );
+        assert_eq!(car[0].kinds, [Kind::CarDamageVisual, Kind::FuelStrategy]);
     }
 
     #[test]

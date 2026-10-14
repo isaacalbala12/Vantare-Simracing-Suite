@@ -361,12 +361,42 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             value.show_tyres,
             set!(CarDamageNumbers.show_tyres),
         )],
-        Settings::CarDamageVisual(value) => vec![boolean(
-            "Aerodinámica",
-            Tab::Content,
-            value.show_aero,
-            set!(CarDamageVisual.show_aero),
-        )],
+        Settings::CarDamageVisual(value) => vec![
+            choice(
+                "Vista",
+                Tab::Content,
+                &value.view,
+                &[("Coche", "car"), ("Cifras", "numbers")],
+                set!(CarDamageVisual.view string),
+            ),
+            choice(
+                "Atajo de vista",
+                Tab::Behavior,
+                &value.toggle_key,
+                &[
+                    ("Sin tecla", ""),
+                    ("F1", "f1"),
+                    ("F2", "f2"),
+                    ("F3", "f3"),
+                    ("F4", "f4"),
+                    ("F5", "f5"),
+                    ("F6", "f6"),
+                    ("F7", "f7"),
+                    ("F8", "f8"),
+                    ("F9", "f9"),
+                    ("F10", "f10"),
+                    ("F11", "f11"),
+                    ("F12", "f12"),
+                ],
+                set!(CarDamageVisual.toggle_key string),
+            ),
+            boolean(
+                "Aerodinámica",
+                Tab::Content,
+                value.show_aero,
+                set!(CarDamageVisual.show_aero),
+            ),
+        ],
         Settings::DeltaTrace(value) => vec![number(
             "Ventana (segundos)",
             value.window_seconds,
@@ -529,7 +559,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 set!(Relative.range_behind as usize),
             ),
         ],
-        _ => vec![],
+        Settings::TrackWeather(_) => vec![],
     };
     if let Some(look) = settings.look() {
         let options: Vec<_> = vantare_ui::look::Look::ALL

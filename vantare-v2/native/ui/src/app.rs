@@ -219,6 +219,16 @@ impl Overlay {
     }
 
     /// Renderer compartido por Studio y overlays; posición y persistencia viven fuera.
+    #[cfg(windows)]
+    fn poll_damage_shortcut(&mut self, cx: &mut Context<Self>) {
+        if let Widget::CarDamageVisual(widget) = &mut self.widget {
+            let down = crate::overlay::function_key_down(widget.shortcut_key());
+            if widget.handle_shortcut(down) {
+                cx.notify();
+            }
+        }
+    }
+
     pub fn configured(settings: &Settings, prefs: Preferences) -> Self {
         if let Some(limit) = settings_limit(settings) {
             eprintln!("{}: {limit}", settings.kind().name());
@@ -745,6 +755,8 @@ fn window_action(existing: bool, occupied: bool) -> WindowAction {
 }
 
 struct LiveScreens {
+    #[cfg(windows)]
+    _shortcut_task: Option<gpui::Task<()>>,
     usage: usage::State,
     cadences: HashMap<String, crate::performance::Cadence>,
     usage_widgets: Option<Vec<String>>,
@@ -1138,6 +1150,8 @@ fn run_layout_feed<T: Send + 'static>(
             cx,
         );
         let screens = Rc::new(RefCell::new(LiveScreens {
+            #[cfg(windows)]
+            _shortcut_task: None,
             usage: usage::State::default(),
             cadences: HashMap::new(),
             usage_widgets: None,
@@ -1156,6 +1170,33 @@ fn run_layout_feed<T: Send + 'static>(
             demand.set(document.layout().demand());
         }
         screens.borrow_mut().apply(document.layout(), cx);
+        #[cfg(windows)]
+        {
+            let weak = Rc::downgrade(&screens);
+            let task = cx.spawn(async move |cx| {
+                let mut delay = Duration::from_millis(500);
+                loop {
+                    cx.background_executor().timer(delay).await;
+                    let Some(screens) = weak.upgrade() else { break };
+                    let active = cx.update(|cx| {
+                        let screens = screens.borrow();
+                        let mut active = false;
+                        for live in screens.widgets.values().filter(|widget| widget.visible) {
+                            if matches!(&live.settings, Settings::CarDamageVisual(settings)
+                                if !settings.toggle_key.is_empty())
+                            {
+                                active = true;
+                                live.view
+                                    .update(cx, |overlay, cx| overlay.poll_damage_shortcut(cx));
+                            }
+                        }
+                        active
+                    });
+                    delay = Duration::from_millis(if active { 32 } else { 500 });
+                }
+            });
+            screens.borrow_mut()._shortcut_task = Some(task);
+        }
         let quit_screens = screens.clone();
         cx.on_app_quit(move |cx| {
             quit_screens.borrow_mut().usage.finish(cx);

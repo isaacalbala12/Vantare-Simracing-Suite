@@ -6,6 +6,8 @@ use crate::{Capability, Quality, Snapshot, SourceState};
 #[derive(Clone, Debug, PartialEq)]
 pub struct ViewModel {
     pub show_aero: bool,
+    pub integrity: [Option<f64>; 3],
+    pub tyres: [Option<f64>; 4],
     pub status: Option<&'static str>,
     /// Aero, carrocería, suspensión. `None` conserva la ausencia del dato.
     pub damage: [Option<f64>; 3],
@@ -42,6 +44,18 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
     };
     ViewModel {
         show_aero: true,
+        integrity: if status.is_none() {
+            player.map_or([None; 3], |p| {
+                [p.damage.aero, p.damage.body, p.damage.suspension].map(integrity)
+            })
+        } else {
+            [None; 3]
+        },
+        tyres: if status.is_none() {
+            player.map_or([None; 4], |p| p.damage.tyre_wear.map(integrity))
+        } else {
+            [None; 4]
+        },
         status,
         damage,
         labels: match prefs.language {
@@ -51,6 +65,13 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
         // Math.round del renderer productivo redondea .5 hacia arriba.
         percentages: damage.map(|v| format::percent(v.map(|v| (v * 100.0).round() / 100.0))),
     }
+}
+
+fn integrity(value: Quality<f64>) -> Option<f64> {
+    value
+        .current()
+        .copied()
+        .filter(|v| v.is_finite() && (0.0..=1.0).contains(v))
 }
 
 fn damage_fraction(integrity: Quality<f64>) -> Option<f64> {

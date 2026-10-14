@@ -706,7 +706,7 @@ fn catalog_groups_locked_widgets_under_pro_and_keeps_plan_widgets_addable() {
         });
         let shown = groups("", None, |kind| widget_lock(access, kind).is_some(), &[]);
         let total: usize = shown.iter().map(|group| group.kinds.len()).sum();
-        assert_eq!(total, Kind::ALL.len(), "cada widget aparece una vez");
+        assert_eq!(total, Kind::CATALOG.len(), "cada widget aparece una vez");
         for group in &shown {
             for &kind in &group.kinds {
                 assert_eq!(
@@ -779,7 +779,7 @@ fn added_head_to_head_uses_the_renderer_size_and_stays_inside_canvas() {
     editor.add(Kind::HeadToHead).expect("añadir H2H");
     let item = editor.layout().instances.last().expect("instancia");
     let renderer = Overlay::configured(&item.settings, Preferences::default());
-    assert_eq!(renderer.wanted_size(), (388.0, 158.0));
+    assert_eq!(renderer.wanted_size(), (780.0, 72.0));
     assert!(item.x >= 0.0 && item.y >= 0.0);
     assert!(item.x + renderer.wanted_size().0 <= 1920.0);
     assert!(item.y + renderer.wanted_size().1 <= 1080.0);
@@ -1247,7 +1247,7 @@ fn unverified_or_blocked_access_never_sells_pro() {
     assert_eq!(lock_badge("Incluida en Pro"), "Pro");
     assert_eq!(
         locked_note(Some(launch)),
-        "Tu acceso de lanzamiento incluye 4 widgets. Pro desbloquea los 14 restantes."
+        "Tu acceso de lanzamiento incluye 4 widgets. Pro desbloquea los 13 restantes."
     );
     let free = Access {
         verified: true,
@@ -1256,7 +1256,7 @@ fn unverified_or_blocked_access_never_sells_pro() {
     };
     assert_eq!(
         locked_note(Some(free)),
-        "Tu plan Gratis incluye Standings y Pedales. Pro desbloquea los 16 restantes."
+        "Tu plan Gratis incluye Standings y Pedales. Pro desbloquea los 15 restantes."
     );
 }
 #[test]

@@ -9,7 +9,7 @@ use vantare_hub::{
 
 fn main() -> Result<(), String> {
     let args: Vec<_> = std::env::args().skip(1).collect();
-    let [directory, kind, frame] = args.as_slice() else {
+    let [directory, kind, frame, rest @ ..] = args.as_slice() else {
         return Err("uso: widget-workshop DIRECTORIO-AISLADO WIDGET FOTO".into());
     };
     let kind: vantare_ui::Kind = kind.parse().map_err(|()| "widget desconocido")?;
@@ -23,7 +23,16 @@ fn main() -> Result<(), String> {
         fixtures.join(format!("{}.snapshot.json", kind.name()))
     };
     let frame: usize = frame.parse().map_err(|_| "foto inválida")?;
-    let selection = serde_json::json!({"version":1,"widget":kind.name(),"scene":scene,"frame":frame,"looping":false,"comparison":"hidden","background":1});
+    let mut selection = serde_json::json!({"version":1,"widget":kind.name(),"scene":scene,"frame":frame,"looping":false,"comparison":"hidden","background":1});
+    if let Some(json) = rest.first() {
+        let settings: vantare_ui::Settings =
+            serde_json::from_str(json).map_err(|e| e.to_string())?;
+        if settings.kind() != kind {
+            return Err("ajustes de otro widget".into());
+        }
+        selection["settings"] =
+            serde_json::to_value(settings.normalized()).map_err(|e| e.to_string())?;
+    }
     fs::write(root.join("workshop-selection.json"), selection.to_string())
         .map_err(|e| e.to_string())?;
     let capture = CaptureState::parse("workshop-base")?;

@@ -20,6 +20,8 @@ use crate::{
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Selection {
+    #[serde(default)]
+    settings: Option<WidgetSettings>,
     version: u32,
     widget: String,
     scene: PathBuf,
@@ -47,6 +49,7 @@ enum Mode {
 }
 
 pub struct Workshop {
+    widget_settings: Option<WidgetSettings>,
     pub scene: Scene,
     kind: Kind,
     scenes: Vec<PathBuf>,
@@ -147,6 +150,7 @@ fn workshop_overlay(kind: Kind, prefs: Preferences) -> Overlay {
 }
 
 pub struct Prepared {
+    widget_settings: Option<WidgetSettings>,
     scene: Scene,
     kind: Kind,
     scenes: Vec<PathBuf>,
@@ -215,6 +219,10 @@ impl Prepared {
             .position(|p| *p == scene.path)
             .ok_or("escena no está en catálogo")?;
         Ok(Self {
+            widget_settings: selection
+                .as_ref()
+                .and_then(|s| s.settings.clone())
+                .filter(|s| s.kind() == kind),
             scene,
             kind,
             scenes,
@@ -238,7 +246,7 @@ impl Workshop {
             (0, usize::from(self.prefs.language == Language::En)),
             (
                 1,
-                Kind::ALL
+                Kind::CATALOG
                     .iter()
                     .position(|kind| *kind == self.kind)
                     .unwrap_or(0),
@@ -266,11 +274,11 @@ impl Workshop {
             self.sync_controls(cx);
             return;
         }
-        let widgets = Kind::ALL
+        let widgets = Kind::CATALOG
             .iter()
             .map(|kind| orbit::OptionItem::new(widget_label(*kind)))
             .collect();
-        let widget = Kind::ALL
+        let widget = Kind::CATALOG
             .iter()
             .position(|kind| *kind == self.kind)
             .unwrap_or(0);
@@ -328,7 +336,7 @@ impl Workshop {
                         this.rebuild(cx);
                     }
                     1 => {
-                        this.select_widget(Kind::ALL[event.0], cx);
+                        this.select_widget(Kind::CATALOG[event.0], cx);
                         if let Err(error) = this.persist() {
                             this.status = error;
                             this.tools_open = true;
@@ -464,6 +472,7 @@ impl Workshop {
     }
     pub fn new(prepared: Prepared, cx: &mut Context<Self>) -> Self {
         let Prepared {
+            widget_settings,
             scene,
             kind,
             scenes,
@@ -475,7 +484,10 @@ impl Workshop {
             background,
         } = prepared;
         let overlay = cx.new(|cx| {
-            let mut overlay = workshop_overlay(kind, prefs);
+            let mut overlay = widget_settings.as_ref().map_or_else(
+                || workshop_overlay(kind, prefs),
+                |s| Overlay::configured(&s.normalized(), prefs),
+            );
             for photo in scene.observed() {
                 overlay.ingest(photo, cx);
             }
@@ -486,6 +498,7 @@ impl Workshop {
         let mut reference_cache = comparison::Reference::default();
         let reference = reference_cache.load(&comparison::reference(kind));
         Self {
+            widget_settings,
             scene,
             kind,
             scenes,
@@ -516,6 +529,7 @@ impl Workshop {
 
     pub fn persist(&mut self) -> Result<(), String> {
         let selection = Selection {
+            settings: self.widget_settings.clone(),
             version: 1,
             widget: self.kind.name().into(),
             scene: self.scene.path.clone(),
@@ -538,7 +552,10 @@ impl Workshop {
     fn rebuild(&mut self, cx: &mut Context<Self>) {
         self.rendered_photo = (self.scene.snapshot().epoch, self.scene.snapshot().sequence);
         self.overlay = cx.new(|cx| {
-            let mut overlay = workshop_overlay(self.kind, self.prefs);
+            let mut overlay = self.widget_settings.as_ref().map_or_else(
+                || workshop_overlay(self.kind, self.prefs),
+                |s| Overlay::configured(&s.normalized(), self.prefs),
+            );
             for photo in self.scene.observed() {
                 overlay.ingest(photo, cx);
             }
@@ -606,6 +623,7 @@ impl Workshop {
     }
 
     fn select_widget(&mut self, kind: Kind, cx: &mut Context<Self>) {
+        self.widget_settings = None;
         self.kind = kind;
         let approved = format!("{}-design-system.sequence.json", kind.name());
         let fallback = format!("{}.snapshot.json", kind.name());
@@ -622,12 +640,12 @@ impl Workshop {
     }
 
     fn widget(&mut self, forward: bool, cx: &mut Context<Self>) {
-        let index = Kind::ALL
+        let index = Kind::CATALOG
             .iter()
             .position(|kind| *kind == self.kind)
             .unwrap_or(0);
-        let step = if forward { 1 } else { Kind::ALL.len() - 1 };
-        self.select_widget(Kind::ALL[(index + step) % Kind::ALL.len()], cx);
+        let step = if forward { 1 } else { Kind::CATALOG.len() - 1 };
+        self.select_widget(Kind::CATALOG[(index + step) % Kind::CATALOG.len()], cx);
         if let Err(error) = self.persist() {
             self.status = error;
         }
@@ -1374,6 +1392,7 @@ mod tests {
         )
         .expect("escena de test");
         let selection = Selection {
+            settings: None,
             version: 1,
             widget: Kind::Pedals.name().into(),
             scene: scene.clone(),
@@ -1439,6 +1458,7 @@ mod tests {
             bad_scene,
         ] {
             let selection = Selection {
+                settings: None,
                 version: 1,
                 widget: "standings".into(),
                 scene,

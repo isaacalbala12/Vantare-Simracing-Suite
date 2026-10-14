@@ -12,6 +12,7 @@ pub enum Source {
     Launcher,
     System,
     Beta,
+    Report,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -34,6 +35,7 @@ impl Action {
         match self.target.as_str() {
             "launcher" => Ok(Section::Launcher),
             "settings:updates" => Ok(Section::Settings),
+            "testing:reports" => Ok(Section::Testing),
             _ => Err("destino no permitido".into()),
         }
     }
@@ -277,6 +279,7 @@ impl Center {
 }
 #[derive(Default)]
 pub struct Notifications {
+    report_generation: u64,
     center: Center,
     pub destination: Option<Section>,
     pub error: Option<String>,
@@ -306,6 +309,7 @@ enum Filter {
     Unread,
     Launcher,
     Beta,
+    Report,
     System,
 }
 impl Filter {
@@ -315,6 +319,7 @@ impl Filter {
             Self::Unread => "Sin leer",
             Self::Launcher => "Launcher",
             Self::Beta => "Beta",
+            Self::Report => "Informes",
             Self::System => "Sistema",
         }
     }
@@ -324,6 +329,7 @@ impl Filter {
             Self::Unread => record.unread,
             Self::Launcher => record.source == Source::Launcher,
             Self::Beta => record.source == Source::Beta,
+            Self::Report => record.source == Source::Report,
             Self::System => matches!(record.source, Source::System | Source::Updater),
         }
     }
@@ -377,6 +383,10 @@ fn severity(record: &Record, cx: &gpui::App) -> (&'static str, orbit::Tone) {
 fn message(key: &str, params: &BTreeMap<String, String>) -> String {
     let template = match key {
         "hub.local.error" => "Error local del Hub",
+        "report.accepted.title" => "Informe aceptado",
+        "report.accepted.text" => "Hemos aceptado tu informe. Gracias por avisar.",
+        "report.fixed.title" => "Informe arreglado",
+        "report.fixed.text" => "Tu informe está arreglado en {{version}}.",
         "notifications.record.launcher.finished.title" => "Perfil listo",
         "notifications.record.launcher.finished.text" => "{{profile}} se inició correctamente.",
         "notifications.record.launcher.failed.title" => "El perfil falló",
@@ -425,6 +435,7 @@ impl Notifications {
                     Severity::Info => match record.source {
                         Source::Launcher => ("Launcher", orbit::Tone::Success),
                         Source::Beta => ("Beta", orbit::Tone::Accent),
+                        Source::Report => ("Informes", orbit::Tone::Accent),
                         Source::Updater => ("Actualización", orbit::Tone::Accent),
                         Source::System => ("Sistema", orbit::Tone::Neutral),
                     },
@@ -450,6 +461,73 @@ impl Notifications {
             if !tester && self.filter == Filter::Beta {
                 self.filter = Filter::All;
             }
+            cx.notify();
+        }
+    }
+    pub(crate) fn sync_reports(
+        &mut self,
+        generation: u64,
+        reports: &[crate::services::protocol::testing_document::Contribution],
+        cx: &mut Context<Self>,
+    ) {
+        let revision = self.center.revision;
+        if self.report_generation != generation {
+            self.center
+                .records
+                .retain(|record| record.source != Source::Report);
+            self.center.revision = self.center.revision.saturating_add(1);
+            self.report_generation = generation;
+        }
+        for record in &mut self.center.records {
+            if record.source == Source::Report
+                && record.unread
+                && reports.iter().any(|report| {
+                    !report.notice
+                        && record.dedupe_key.split(':').nth(1) == Some(report.id.as_str())
+                })
+            {
+                record.unread = false;
+                self.center.revision = self.center.revision.saturating_add(1);
+            }
+        }
+        for report in reports.iter().filter(|report| report.notice) {
+            if !matches!(report.state.as_str(), "accepted" | "fixed") {
+                continue;
+            }
+            let mut params = BTreeMap::new();
+            if let Some(version) = &report.fixed_version {
+                params.insert("version".into(), version.clone());
+            }
+            let prefix = if report.state == "fixed" {
+                "report.fixed"
+            } else {
+                "report.accepted"
+            };
+            if let Err(error) = self.center.publish(
+                Record {
+                    v: 1,
+                    id: String::new(),
+                    source: Source::Report,
+                    severity: Severity::Info,
+                    occurred_at: 0,
+                    dedupe_key: format!("report:{}:{}", report.id, report.state),
+                    title_key: format!("{prefix}.title"),
+                    text_key: format!("{prefix}.text"),
+                    params,
+                    concrete_cause: String::new(),
+                    action: Some(Action {
+                        kind: "navigate".into(),
+                        target: "testing:reports".into(),
+                    }),
+                    unread: true,
+                },
+                chrono::Utc::now().timestamp_millis(),
+                false,
+            ) {
+                self.error = Some(error);
+            }
+        }
+        if self.center.revision != revision {
             cx.notify();
         }
     }
@@ -687,7 +765,7 @@ impl Notifications {
         let icon = match record.source {
             Source::Launcher => "v-launch",
             Source::Updater => "v-download",
-            Source::Beta => "v-testing",
+            Source::Beta | Source::Report => "v-testing",
             Source::System => "v-bell",
         };
         let detail = [
@@ -827,6 +905,7 @@ impl Notifications {
             ("unread", Filter::Unread),
             ("launcher", Filter::Launcher),
             ("beta", Filter::Beta),
+            ("reports", Filter::Report),
             ("system", Filter::System),
         ] {
             if filter == Filter::Beta && !self.tester {
@@ -1259,6 +1338,59 @@ mod tests {
 #[cfg(test)]
 mod home_tests {
     use super::*;
+    #[test]
+    fn report_notices_acknowledge_and_clear_on_account_change() {
+        gpui_platform::headless().run(|cx| {
+            let notifications = cx.new(|_| Notifications::default());
+            let mut report = crate::services::protocol::testing_document::Contribution {
+                id: "16100000-0000-0000-0000-000000000010".into(),
+                title: "Private user title".into(),
+                body: "Private user body".into(),
+                state: "accepted".into(),
+                credit: false,
+                updated_at: Some("2026-10-14T00:00:00Z".into()),
+                fixed_version: None,
+                notice: true,
+            };
+            notifications.update(cx, |this, cx| {
+                this.sync_reports(1, std::slice::from_ref(&report), cx);
+                this.sync_reports(1, std::slice::from_ref(&report), cx);
+                assert_eq!(this.center.records.len(), 1);
+                assert_eq!(this.center.unread(), 1);
+                assert!(
+                    !serde_json::to_string(&this.center.records)
+                        .unwrap()
+                        .contains("Private")
+                );
+                assert_eq!(
+                    this.center.records[0]
+                        .action
+                        .as_ref()
+                        .unwrap()
+                        .destination(),
+                    Ok(Section::Testing)
+                );
+                report.notice = false;
+                this.sync_reports(1, std::slice::from_ref(&report), cx);
+                assert_eq!(
+                    this.center.unread(),
+                    0,
+                    "server acknowledgement clears the local badge"
+                );
+                report.state = "fixed".into();
+                report.fixed_version = Some("1.2.3".into());
+                report.notice = true;
+                this.sync_reports(1, std::slice::from_ref(&report), cx);
+                assert_eq!(this.center.unread(), 1);
+                this.sync_reports(2, &[], cx);
+                assert!(
+                    this.center.records.is_empty(),
+                    "logout cannot expose another account's notices"
+                );
+            });
+            crate::quit_headless_test(cx);
+        });
+    }
     #[test]
     fn home_is_empty_without_events_and_beta_requires_tester() {
         let mut notifications = Notifications::default();

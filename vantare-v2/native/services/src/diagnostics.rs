@@ -11,18 +11,89 @@ use std::{
 const FILE_LIMIT: u64 = 24 * 1024;
 const QUEUE_LIMIT: usize = 32;
 pub const PRIVACY_FILE: &str = "privacy.json";
+pub mod activity;
+pub mod installer;
+mod recorder;
+pub use recorder::Recorder;
 mod redaction;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+// Dos decisiones independientes y su registro explícito; contrato JSON existente.
+#[allow(clippy::struct_excessive_bools)]
 pub struct Privacy {
+    /// Invalida eventos autorizados antes de retirar cualquiera de los permisos.
+    #[serde(default)]
+    pub generation: u64,
     pub crashes: bool,
     pub usage: bool,
     /// Solo una decisión explícita de la nueva pregunta o de Ajustes habilita fallos.
     #[serde(default)]
     pub crashes_decided: bool,
+    /// Decisión independiente de uso; ningún sí heredado habilita analítica.
+    #[serde(default)]
+    pub usage_decided: bool,
+}
+
+#[derive(Debug)]
+pub enum ConsentSaveError {
+    Busy,
+    Failed(String),
+}
+impl From<Error> for ConsentSaveError {
+    fn from(error: Error) -> Self {
+        match error {
+            Error::Busy => Self::Busy,
+            error => Self::Failed(error.to_string()),
+        }
+    }
+}
+impl std::fmt::Display for ConsentSaveError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Busy => std::fmt::Display::fmt(&Error::Busy, formatter),
+            Self::Failed(message) => formatter.write_str(message),
+        }
+    }
 }
 impl Privacy {
+    /// La UI conserva su guardado atómico y control de conflictos por bytes.
+    pub fn save_with(
+        root: &Path,
+        next: Self,
+        persist: impl FnOnce(Self) -> std::result::Result<(), String>,
+    ) -> std::result::Result<Self, String> {
+        Self::try_save_with(root, next, persist).map_err(|error| error.to_string())
+    }
+
+    /// Busy tipado para reintentar sin comparar mensajes ni ocultar otros errores.
+    pub fn try_save_with(
+        root: &Path,
+        mut next: Self,
+        persist: impl FnOnce(Self) -> std::result::Result<(), String>,
+    ) -> std::result::Result<Self, ConsentSaveError> {
+        let _guard = consent_lock(root).map_err(ConsentSaveError::from)?;
+        let previous = Self::load(root).map_err(ConsentSaveError::from)?;
+        next.generation = previous.generation;
+        if (previous.usage && !next.usage) || (previous.crashes && !next.crashes) {
+            next.generation = next
+                .generation
+                .checked_add(1)
+                .filter(|generation| *generation < u64::MAX)
+                .ok_or_else(|| {
+                    ConsentSaveError::Failed("generación de consentimiento agotada".into())
+                })?;
+        }
+        // No reactivar slots recogidos sin permiso. El conflicto se comprueba
+        // antes de limpiar, en el guardado atómico del llamador.
+        persist(next).map_err(ConsentSaveError::Failed)?;
+        previous
+            .discard_disabled_locked(root)
+            .map_err(ConsentSaveError::from)?;
+        next.discard_disabled_locked(root)
+            .map_err(ConsentSaveError::from)?;
+        Ok(next)
+    }
     pub fn load(root: &Path) -> Result<Self> {
         match read_bounded(&root.join(PRIVACY_FILE), 1024) {
             Ok(bytes) => {
@@ -31,6 +102,9 @@ impl Privacy {
                 // Los archivos antiguos no distinguen el sí implícito del consentimiento.
                 if !privacy.crashes_decided {
                     privacy.crashes = false;
+                }
+                if !privacy.usage_decided {
+                    privacy.usage = false;
                 }
                 Ok(privacy)
             }
@@ -41,9 +115,30 @@ impl Privacy {
 
     /// Borra únicamente los slots de diagnóstico sin permiso; nunca datos del usuario.
     pub fn discard_disabled(self, root: &Path) -> Result<()> {
+        if self.crashes && self.crashes_decided && self.usage && self.usage_decided {
+            return Ok(());
+        }
+        let _guard = consent_lock(root)?;
+        Self::load(root)?.discard_disabled_locked(root)
+    }
+    fn discard_disabled_locked(self, root: &Path) -> Result<()> {
+        if !self.usage || !self.usage_decided {
+            for name in [
+                "anonymous-id",
+                "installation-observed-v1",
+                "account-observed-v1",
+                "commercial-license-observed-v1",
+            ] {
+                match fs::remove_file(root.join(name)) {
+                    Ok(()) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(_) => return Err(Error::Storage),
+                }
+            }
+        }
         for (folder, allowed) in [
             ("crashes", self.crashes && self.crashes_decided),
-            ("usage", self.usage),
+            ("usage", self.usage && self.usage_decided),
         ] {
             if allowed {
                 continue;
@@ -58,6 +153,21 @@ impl Privacy {
         }
         Ok(())
     }
+}
+
+// Mismo cerrojo del SO para revocar, publicar y autorizar el POST, entre procesos.
+// try_lock mantiene la UI sin espera: Busy nunca se presenta como revocación completa.
+fn consent_lock(root: &Path) -> Result<File> {
+    fs::create_dir_all(root).map_err(|_| Error::Storage)?;
+    let guard = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(root.join("consent.lock"))
+        .map_err(|_| Error::Storage)?;
+    guard.try_lock().map_err(|_| Error::Busy)?;
+    Ok(guard)
 }
 
 /// Igual raíz que layout.json; no depende de UI, identidad ni licencia.
@@ -134,6 +244,16 @@ pub fn anonymous_id(root: &Path) -> Result<String> {
     anonymous_id_with_cleanup(root, |path| fs::remove_file(path))
 }
 
+/// Contrato #1610: ausencia sin consentimiento de uso vigente, sin crear un ID.
+/// El informe voluntario no concede consentimiento de analítica.
+pub fn consented_usage_id(root: &Path) -> Result<Option<String>> {
+    let _guard = consent_lock(root)?;
+    if !Privacy::load(root)?.usage {
+        return Ok(None);
+    }
+    anonymous_id(root).map(Some)
+}
+
 fn anonymous_id_with_cleanup(
     root: &Path,
     cleanup: impl FnOnce(&Path) -> std::io::Result<()>,
@@ -194,6 +314,8 @@ fn timestamp() -> Result<u64> {
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Crash {
+    #[serde(default)]
+    generation: u64,
     binary: String,
     version: String,
     message: String,
@@ -239,13 +361,20 @@ fn queue(root: &Path, folder: &str, value: &impl Serialize) -> Result<()> {
     result
 }
 fn write_crash(root: &Path, _binary: &str, _message: &str, _backtrace: &str) -> Result<()> {
-    if !Privacy::load(root)?.crashes {
+    let privacy = Privacy::load(root)?;
+    if !privacy.crashes {
+        return Ok(());
+    }
+    let _guard = consent_lock(root)?;
+    let current = Privacy::load(root)?;
+    if !current.crashes || current.generation != privacy.generation {
         return Ok(());
     }
     queue(
         root,
         "crashes",
         &Crash {
+            generation: privacy.generation,
             binary: "native".into(),
             version: bounded(crate::product::VERSION, 64),
             message: "native_panic".into(),
@@ -303,7 +432,7 @@ pub fn configured() -> bool {
     option_env!("VANTARE_POSTHOG_KEY").is_some_and(|key| !key.trim().is_empty())
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(tag = "event", content = "properties", deny_unknown_fields)]
 pub enum Usage {
     #[serde(rename = "app_started")]
@@ -312,6 +441,30 @@ pub enum Usage {
     LiveSessionStarted { simulator: String },
     #[serde(rename = "layout_widgets")]
     LayoutWidgets { widget_types: Vec<String> },
+    #[serde(rename = "page_viewed")]
+    PageViewed { page: String },
+    #[serde(rename = "page_usage")]
+    PageUsage { page: String, duration_seconds: u64 },
+    #[serde(rename = "widget_usage")]
+    WidgetUsage {
+        widget_type: String,
+        duration_seconds: u64,
+    },
+    #[serde(rename = "feature_used")]
+    FeatureUsed { feature: String },
+    #[serde(rename = "installation_observed")]
+    InstallationObserved {},
+    #[serde(rename = "account_signed_in")]
+    AccountSignedIn {},
+    #[serde(rename = "commercial_license_observed")]
+    CommercialLicenseObserved {},
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PendingUsage {
+    generation: u64,
+    usage: Usage,
 }
 impl Usage {
     fn valid(&self) -> bool {
@@ -334,9 +487,47 @@ impl Usage {
                         .iter()
                         .all(|t| WIDGET_TYPES.contains(&t.as_str()))
             }
+            Self::PageViewed { page } => PAGES.contains(&page.as_str()),
+            Self::PageUsage {
+                page,
+                duration_seconds,
+            } => PAGES.contains(&page.as_str()) && (1..=60).contains(duration_seconds),
+            Self::WidgetUsage {
+                widget_type,
+                duration_seconds,
+            } => {
+                WIDGET_TYPES.contains(&widget_type.as_str()) && (1..=60).contains(duration_seconds)
+            }
+            Self::FeatureUsed { feature } => FEATURES.contains(&feature.as_str()),
+            Self::InstallationObserved {}
+            | Self::AccountSignedIn {}
+            | Self::CommercialLicenseObserved {} => true,
         }
     }
 }
+const PAGES: &[&str] = &[
+    "home",
+    "workshop",
+    "studio",
+    "launcher",
+    "calendar",
+    "strategy",
+    "engineer",
+    "analysis",
+    "testing",
+    "roadmap",
+    "account",
+    "licenses",
+    "notifications",
+    "settings",
+];
+const FEATURES: &[&str] = &[
+    "widget_added",
+    "launch_profile",
+    "strategy_recalculated",
+    "report_sent",
+    "checkout_opened",
+];
 // Solo nombres del catálogo; nunca IDs libres, layout, posiciones ni datos del piloto.
 const WIDGET_TYPES: &[&str] = &[
     "standings",
@@ -367,14 +558,87 @@ pub fn record_usage(event: &Usage) {
         eprintln!("diagnóstico local: {error}");
     }
 }
+
+/// Una observación consentida por instalación; nunca un recibo monetario.
+pub fn record_usage_once(event: &Usage) {
+    if !configured() {
+        return;
+    }
+    if let Err(error) = data_root().and_then(|root| enqueue_once(&root, event)) {
+        eprintln!("uso local: {error}");
+    }
+}
+
+fn enqueue_once(root: &Path, event: &Usage) -> Result<()> {
+    let privacy = Privacy::load(root)?;
+    if !privacy.usage {
+        return Ok(());
+    }
+    enqueue_once_authorized(root, event, privacy.generation)
+}
+fn enqueue_once_authorized(root: &Path, event: &Usage, generation: u64) -> Result<()> {
+    let _guard = consent_lock(root)?;
+    let privacy = Privacy::load(root)?;
+    if !privacy.usage || privacy.generation != generation {
+        return Ok(());
+    }
+    let marker = match event {
+        Usage::InstallationObserved {} => "installation-observed-v1",
+        Usage::AccountSignedIn {} => "account-observed-v1",
+        Usage::CommercialLicenseObserved {} => "commercial-license-observed-v1",
+        _ => return Err(Error::Protocol),
+    };
+    if root.join(marker).exists() {
+        return Ok(());
+    }
+    // Services puede confirmar cuenta/licencia antes de que el Hub se abra.
+    // Reservar la primera observación bajo el mismo lock conserva el orden.
+    let installation = root.join("installation-observed-v1");
+    if !matches!(event, Usage::InstallationObserved {}) && !installation.exists() {
+        queue_usage(root, &Usage::InstallationObserved {}, generation)?;
+        File::create(installation)
+            .and_then(|file| file.sync_all())
+            .map_err(|_| Error::Storage)?;
+    }
+    queue_usage(root, event, generation)?;
+    File::create(root.join(marker))
+        .and_then(|file| file.sync_all())
+        .map_err(|_| Error::Storage)
+}
 fn enqueue_usage(root: &Path, event: &Usage) -> Result<()> {
-    if !Privacy::load(root)?.usage {
+    enqueue_usage_after_check(root, event, || {})
+}
+fn enqueue_usage_after_check(root: &Path, event: &Usage, checked: impl FnOnce()) -> Result<()> {
+    let privacy = Privacy::load(root)?;
+    if !privacy.usage {
         return Ok(());
     }
     if !event.valid() {
         return Err(Error::Protocol);
     }
-    queue(root, "usage", event)
+    checked();
+    enqueue_authorized(root, event, privacy.generation)
+}
+fn enqueue_authorized(root: &Path, event: &Usage, generation: u64) -> Result<()> {
+    let _guard = consent_lock(root)?;
+    let current = Privacy::load(root)?;
+    if !current.usage || current.generation != generation {
+        return Ok(());
+    }
+    queue_usage(root, event, generation)
+}
+fn queue_usage(root: &Path, event: &Usage, generation: u64) -> Result<()> {
+    if !event.valid() {
+        return Err(Error::Protocol);
+    }
+    queue(
+        root,
+        "usage",
+        &PendingUsage {
+            generation,
+            usage: event.clone(),
+        },
+    )
 }
 
 #[cfg(feature = "network")]
@@ -382,5 +646,7 @@ mod sender;
 #[cfg(feature = "network")]
 pub use sender::Worker;
 
+#[cfg(test)]
+mod consent_tests;
 #[cfg(test)]
 mod tests;

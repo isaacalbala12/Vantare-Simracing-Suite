@@ -1,5 +1,26 @@
 # Revisión de cuentas y pagos · #1608 · 14/10/2026
 
+## Integración autorizada tras review r3 APTA
+
+Se reanuda el worktree limpio en `8fecf307` y se avanza sin reescribir historia
+al merge remoto publicado `812ed8ec`. Se fusiona `origin/nightly@5b781964`
+(#1611/#1617/#1618) en `vantareapp/isa-1608-cuentas-y-pagos`, con merge.
+Único archivo en conflicto: `native/services/src/app.rs`. La resolución mantiene
+la revocación con ACK al rechazar definitivamente la renovación; el candidato
+correcto se transfiere al núcleo antes de registrar las observaciones consentidas
+de cuenta/licencia comercial de #1609. No se decide ni cambia comportamiento.
+
+Evidencia nueva `C:/tmp/1608-merge/`: fmt/check/Clippy PASS; Deno 534 PASS/
+1 ignored existente; SQL cuentas/pagos 230 PASS; Testing Center 35 pgTAP más
+concurrencia/rollback y F1/F1IP/F2/F3/F4 PASS. Integridad 456 huellas, 138 tests
+de scripts GitHub, 8 de paneles y 4 de followup, snippet Node PASS.
+Nextest/lifecycle/telemetría en curso por cola, target propio y QA aislada.
+Los fallos Deno por resolución de tipos, cwd y permisos quedan en logs; se
+corrige la invocación sin editar tests. B01/B02/B03 siguen No-Go comercial;
+su sonda RED SQL se conserva fuera del recuento de gates GREEN.
+Último SHA/push/CI/estados se actualizan al cierre. Sin promoción a nightly,
+producción, compras/refunds, datos reales, UI nueva, subagentes ni release.
+
 ## Ronda 3 · R2-N1, cambio de identidad sin CoreLink
 
 Review completa: `C:/tmp/ola2/review-1615-sol-r2.md`, NO APTO en `b5be4303`.

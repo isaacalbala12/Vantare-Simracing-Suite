@@ -119,16 +119,36 @@ impl App {
             }
             let device = crate::license::installation::legacy_fingerprint()?;
             let time = now()?;
-            self.ensure_oauth(time)?;
-            self.candidate_store()?;
-            crate::license_remote::renew(
-                &self.http,
-                &self.config,
-                self.account.as_ref().ok_or(Error::Authentication)?,
-                time,
-                &device,
-                self.license_store.as_ref().ok_or(Error::Storage)?,
-            )?;
+            let renewal = (|| {
+                self.ensure_oauth(time)?;
+                self.candidate_store()?;
+                crate::license_remote::renew(
+                    &self.http,
+                    &self.config,
+                    self.account.as_ref().ok_or(Error::Authentication)?,
+                    time,
+                    &device,
+                    self.license_store.as_ref().ok_or(Error::Storage)?,
+                )
+            })();
+            if let Err(error) = renewal {
+                if matches!(
+                    error,
+                    Error::Authentication
+                        | Error::Denied
+                        | Error::Conflict
+                        | Error::DeviceLimit
+                        | Error::InvalidCredential
+                ) {
+                    // Rechazo definitivo: ACK durable antes de limpiar la caché.
+                    if self.core.is_some() {
+                        self.revoke_local()?;
+                    } else {
+                        self.candidate_store()?.remove("license-candidate")?;
+                    }
+                }
+                return Err(error);
+            }
             return self.transfer_rights();
         }
         if !matches!(command, Command::DeviceReset) {
@@ -954,6 +974,103 @@ mod tests {
         server.finish();
         drop(app);
         crate::cleanup_store(&root, "app-refresh-failure", &["account"]);
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn definitive_online_license_rejection_removes_the_previous_candidate() {
+        let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
+        let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        for status in [401, 403, 409] {
+            let server = crate::test_http::Server::start(vec![
+                (200, serde_json::json!({"access_token":"fixture-rotated", "refresh_token":"fixture-refresh", "token_type":"Bearer", "expires_in":3600}).to_string()),
+                (200, serde_json::json!({"sub":"user_fixture"}).to_string()),
+                (status, serde_json::json!({"error": if status == 409 { "device_limit" } else { "unauthorized" }}).to_string()),
+            ]);
+            let (root, store) = crate::test_store("app-online-denial");
+            let account = crate::account::fixture(&server.base, &store);
+            let mut config = BuildConfig::load();
+            config.supabase = Some(server.base.clone());
+            config.anon_key = Some("public-test-key");
+            config.license_keys = Some(keys);
+            let mut app = App::new(config, root.clone());
+            app.account = Some(account);
+            app.store = Some(store);
+            app.candidate_store()
+                .expect("store")
+                .save(
+                    "license-candidate",
+                    &crate::license_remote::Candidate {
+                        credential: credential.clone(),
+                        account_id: credential.claims.subject.clone(),
+                        device: device.clone(),
+                    },
+                )
+                .expect("previous signed candidate");
+            let (link, core) = core_fixture(device.clone(), keys, vec![CoreStep::Invalidate]);
+            app.attach_core(link);
+            assert!(app.execute(Command::LicenseRenew).is_err());
+            assert!(
+                matches!(
+                    app.candidate_store()
+                        .expect("store")
+                        .load::<crate::license_remote::Candidate>("license-candidate"),
+                    Err(Error::NotFound)
+                ),
+                "online rejection retained the previous license"
+            );
+            core.join().expect("revocation ACK");
+            server.finish();
+            drop(app);
+            crate::cleanup_store(&root, "app-online-denial", &[]);
+        }
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn transient_online_license_failures_preserve_the_previous_candidate() {
+        let device = crate::license::installation::legacy_fingerprint().expect("fixture device");
+        let (credential, keys) = crate::license_remote::tests::signed_fixture(&device);
+        for status in [429, 503] {
+            let server = crate::test_http::Server::start(vec![
+                (200, serde_json::json!({"access_token":"fixture-rotated", "refresh_token":"fixture-refresh", "token_type":"Bearer", "expires_in":3600}).to_string()),
+                (200, serde_json::json!({"sub":"user_fixture"}).to_string()),
+                (status, "{}".into()),
+            ]);
+            let (root, store) = crate::test_store("app-transient-license");
+            let account = crate::account::fixture(&server.base, &store);
+            let mut config = BuildConfig::load();
+            config.supabase = Some(server.base.clone());
+            config.anon_key = Some("public-test-key");
+            config.license_keys = Some(keys);
+            let mut app = App::new(config, root.clone());
+            app.account = Some(account);
+            app.store = Some(store);
+            app.candidate_store()
+                .expect("store")
+                .save(
+                    "license-candidate",
+                    &crate::license_remote::Candidate {
+                        credential: credential.clone(),
+                        account_id: credential.claims.subject.clone(),
+                        device: device.clone(),
+                    },
+                )
+                .expect("previous signed candidate");
+            assert!(matches!(
+                app.execute(Command::LicenseRenew),
+                Err(Error::Offline)
+            ));
+            assert!(
+                app.candidate_store()
+                    .expect("store")
+                    .load::<crate::license_remote::Candidate>("license-candidate")
+                    .is_ok()
+            );
+            server.finish();
+            drop(app);
+            crate::cleanup_store(&root, "app-transient-license", &[]);
+        }
     }
 
     enum CoreStep {

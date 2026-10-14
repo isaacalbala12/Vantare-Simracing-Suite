@@ -211,8 +211,7 @@ def main():
                 intake_config=config.get('plane_intake') or {}
                 intake=None
                 if intake_config.get('enabled') is True:
-                    client=plane_intake.Intake(intake_config,plane_intake.read_token(credentials/'plane-token'))
-                    intake=client.publish
+                    intake=plane_intake.lazy_publish(intake_config,credentials/'plane-token')
                 # Existing redacted spool needs neither polling nor provider auth.
                 # Both phases remain under the same exclusive worker lock.
                 analyze=lambda v:model.run(v,credentials/'opencode-go-auth',config['provider'])

@@ -213,3 +213,16 @@ Base64 Basic Authentication en b8a2289a (Rust/Python) y PostgreSQL Credentials
 en b580ed6b (Python). El reporte solo señala tests; passwords/host son fixtures,
 no conexiones reales. Buzón BLOQUEO y PR reflejan ese check; no se certifica CI
 remoto verde. Isaac clasificará el falso positivo durante la re-review.
+
+
+### F2 · token de Plane independiente
+
+Inicialización diferida del sink configurado: fallo de token conserva pending,
+no bloquea recuperación/purga/T3 ni reanaliza. RED main devolvía 1; GREEN
+con SQLite real, token ausente, vacío, permisos inválidos/denegados y spool
+interrumpido; reintento siguiente crea un POST mock y solo entonces retira
+spool. Regresiones review_r2_f2_* PASS Windows y POSIX (Ubuntu local).
+LoadCredential usa nombre dedicado de credstore, sin ruta obligatoria.
+Unidad temporal de prueba systemd 259 PASS sin credencial, /bin/true y collect;
+no se instaló la unidad del worker. Runbook actualizado para futura activación.
+Evidencia E:/tmp/isa1594-r2-evidence/f2-*. F3/gates finales siguen pendientes.

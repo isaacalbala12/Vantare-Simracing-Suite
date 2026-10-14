@@ -14,7 +14,8 @@ UMask=0077
 LoadCredential=supabase-url:/etc/vantare-triage/credentials/supabase-url
 LoadCredential=opencode-go-auth:/etc/vantare-triage/credentials/opencode-go-auth
 LoadCredential=t3-hmac:/etc/vantare-triage/credentials/t3-hmac
-LoadCredential=plane-token:/etc/vantare-triage/credentials/plane-token
+# Named credstore credential: absence is non-fatal; Python retains the sink ACK.
+LoadCredential=plane-token:vantare-triage.plane-token
 MemoryMax=2G
 TimeoutStartSec=70min
 ProtectSystem=strict

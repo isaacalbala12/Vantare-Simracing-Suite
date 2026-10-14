@@ -180,8 +180,13 @@ Con el OK de despliegue del worker y el procedimiento de Isaac:
    C:\VantareServer\ops\credentials\triage-plane-token, siguiendo ACL de ops.
    No .env, argumentos, chat, logs o Git. Isaac proporciona el procedimiento.
 2. Importar únicamente ese token al archivo privado de WSL
-   /etc/vantare-triage/credentials/plane-token (root, 0600). systemd usa
-   LoadCredential=plane-token y entrega el archivo privado al usuario del worker.
+   /etc/credstore/vantare-triage.plane-token (root, 0600). systemd usa
+   LoadCredential=plane-token:vantare-triage.plane-token y entrega el archivo
+   privado al usuario del worker. El nombre de credstore, sin ruta absoluta,
+   permite arrancar si falta: solo Intake queda pendiente; T3/purga continúan.
+   No se buscan credenciales personales. La inicialización se reintenta en las
+   siguientes entregas/pasadas, sin borrar el ACK pendiente ni volver al modelo.
+   [Contrato systemd v257: credencial por nombre ausente no fatal](https://github.com/systemd/systemd/blob/v257/man/systemd.exec.xml).
    El lector rechaza symlink y permisos de grupo/otros. No acceder a /mnt desde
    el worker. La copia/importación queda para el despliegue autorizado.
 3. Copiar código/config/unidad bajo el runbook principal; revisar plane_intake

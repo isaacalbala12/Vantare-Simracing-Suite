@@ -38,6 +38,20 @@ def read_token(path):
     return token
 
 
+def lazy_publish(config, path):
+    """A configured sink stays pending even if its credential cannot load."""
+    client = None
+    def publish(payload, state):
+        nonlocal client
+        if client is None:
+            try:
+                client = Intake(config, read_token(path))
+            except (OSError, ValueError):
+                raise PlaneError('credential_unavailable') from None
+        client.publish(payload, state)
+    return publish
+
+
 def identifier(value):
     if str(uuid.UUID(value)) != value:
         raise PlaneError('invalid_identifier')

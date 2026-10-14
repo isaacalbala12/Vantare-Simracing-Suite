@@ -83,12 +83,12 @@ class Tests(unittest.TestCase):
         post=next(c[2] for c in self.api.calls if c[0]=='POST');text=json.dumps(post)
         for private in ('PRIVATE-ACCOUNT','account_id','user@example','PRIVATE-BODY','PRIVATE-LOG','private-token-value','source_email'):
             self.assertNotIn(private,text)
-        self.assertEqual(post['issue']['name'],'[contenido retirado por privacidad]')
+        self.assertEqual(post['issue']['name'],'Informe de tester')
         self.assertNotIn('<script>',post['issue']['description_html'])
         safe=payload();safe['contribution']['title']='Error <script>';safe['triage']['summary']='Falló <script>'
         _,entry=plane.content(safe)
-        self.assertEqual(entry['issue']['name'],'Error <script>')  # Plain title, HTML escaped body.
-        self.assertIn('&lt;script&gt;',entry['issue']['description_html'])
+        self.assertEqual(entry['issue']['name'],'Informe de tester')
+        self.assertNotIn('script',entry['issue']['description_html'])
         for value in ('testers','lmu','1.0.0','válido','0.900',ID):self.assertIn(value,text if value!='válido' else post['issue']['description_html'])
         self.assertEqual(self.state.intake_record(ID),('published',ISSUE))
         self.assertEqual(self.api.rows[0]['status'],-2)

@@ -18,7 +18,8 @@ impl Form {
             questionnaire_id,
             score: 3,
             generation: 0,
-            answer_note: cx.new(|cx| Input::multiline(String::new(), "Comentario opcional", cx)),
+            answer_note: cx
+                .new(|cx| Input::multiline(String::new(), "Nota local · no se envía", cx)),
         }
     }
 }
@@ -155,10 +156,10 @@ impl Testing {
                 .child(orbit::primary_button("testing-answer-save", "Guardar respuesta", cx).tab_stop(ready)
                     .when(!ready, |b| orbit::disabled(b, "Servicio ocupado o sesión requerida"))
                     .on_click(cx.listener(move |this, _, _, cx| {
-                        let note = this.participation_form.answer_note.read(cx).value.clone();
+                        let note = String::new();
                         this.remote.update(cx, |remote, cx| remote.participation_request(Command::TestingAnswer { id: id.clone(), score: this.participation_form.score, note }, cx));
                     })))
-                .child(orbit::text("Respuesta privada ligada a tu cuenta. Solo se envía al pulsar Guardar respuesta; puedes actualizarla.", 12.0, 400, orbit::ink_3(cx), cx));
+                .child(orbit::text("Solo se envía la puntuación al pulsar Guardar respuesta. La nota es local y no se envía.", 12.0, 400, orbit::ink_3(cx), cx));
         form
     }
     pub(super) fn community(&self, cx: &mut Context<Self>) -> Div {

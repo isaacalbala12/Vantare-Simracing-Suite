@@ -2,6 +2,47 @@ use super::*;
 use crate::{account, bridge::Config, http::Http, test_http::Server};
 
 #[test]
+fn f7_tester_free_text_never_reaches_the_rpc_preview() {
+    for raw in [
+        r"account\u0049d=SyntheticOtherPerson",
+        r"accountId\u003aSyntheticOtherPerson",
+        r"Authorization\x3a Basic OpaqueTailSecret",
+        r#"{"account id":"SyntheticOtherPerson"}"#,
+        r#"{"user.name":"SyntheticOtherPerson"}"#,
+        "épassword=OpaqueTailSecret",
+        "OrdinaryPrivateTesterNote",
+    ] {
+        let payload = prepared_text(raw);
+        for private in [
+            "SyntheticOtherPerson",
+            "OpaqueTailSecret",
+            "OrdinaryPrivateTesterNote",
+        ] {
+            assert!(
+                !payload.contains(private),
+                "tester prose survived: {private}"
+            );
+        }
+    }
+}
+
+#[test]
+fn f7_system_projection_keeps_numbers_and_closed_values_only() {
+    let raw = serde_json::json!({
+        "cpu":{"model":"OrdinaryPrivateTesterNote","cores":8},
+        "os":{"name":"OrdinaryPrivateTesterNote","version":"OrdinaryPrivateTesterNote","build":"OrdinaryPrivateTesterNote"},
+        "gpu":[{"model":"OrdinaryPrivateTesterNote","driver_version":"OrdinaryPrivateTesterNote"}],
+        "displays":[{"width":"OrdinaryPrivateTesterNote","height":1080,"primary":true}],
+        "ram_gb":32,"overlays_active":["OBS","OrdinaryPrivateTesterNote"],"obs_active":true
+    });
+    let value = evidence::system(&raw);
+    assert!(!value.to_string().contains("OrdinaryPrivateTesterNote"));
+    assert_eq!(value["cpu"]["cores"], 8);
+    assert_eq!(value["ram_gb"], 32);
+    assert_eq!(value["overlays_active"], serde_json::json!(["OBS"]));
+}
+
+#[test]
 fn uncertain_submission_retries_exact_payload_and_never_selects_identity() {
     let server=Server::start(vec![
         (200,serde_json::json!({"version":1,"account_id":"15940000-0000-0000-0000-000000000001","data_access_token":"data-fixture","expires_at":160}).to_string()),
@@ -137,7 +178,7 @@ fn session_summary_uses_only_recent_observed_failures_and_events_without_posthog
         evidence::error_record(&serde_json::json!({"type":"ServicesCommandFailure"}))["fingerprint"]
     );
     assert_eq!(events[0]["at"], "1970-01-01T00:32:30+00:00");
-    assert_eq!(events[0]["name"], "ERROR services:refresh");
+    assert_eq!(events[0]["name"], "ServicesCommandFailure");
     for event in events {
         assert_eq!(event.as_object().expect("event").len(), 2);
         assert!(event["name"].is_string() && event["at"].is_string());
@@ -351,7 +392,7 @@ fn review_p1_3_foreign_unc_profile_is_removed_before_preview() {
             !value.contains("SyntheticOther") && !value.contains("Synthetic Other"),
             "foreign UNC profile survived"
         );
-        assert!(value.contains("ERROR"));
+        assert!(value.contains("ServicesCommandFailure"));
         let clean = redaction::clean(raw, &[]);
         assert_eq!(redaction::clean(&clean, &[]), clean);
     }
@@ -494,13 +535,17 @@ fn review_p2_4_full_escaped_preview_fits_http_and_sends_exact_hashed_tail() {
             "offered preview exceeds HTTP budget: {}",
             expected.len()
         );
-        assert!(
-            expected.len() >= 65520,
-            "keep the largest escaped UTF-8 tail that fits"
-        );
         let log = &preview.packet.attachments[0];
         assert_eq!(log.sha256, crate::content_hash(log.content.as_bytes()));
-        assert!(log.content.ends_with(operation));
+        let records: Vec<serde_json::Value> =
+            serde_json::from_str(&log.content).expect("whole structured log");
+        assert_eq!(records.len(), 300);
+        assert!(
+            records
+                .iter()
+                .all(|r| r["module"] == "services" && r["level"] == "ERROR")
+        );
+        assert!(!log.content.contains(operation));
         let server=Server::start(vec![
             (200,serde_json::json!({"version":1,"account_id":"15940000-0000-0000-0000-000000000001","data_access_token":"data-fixture","expires_at":now+60}).to_string()),
             (200,"null".into()),(200,"{\"questionnaires\":[],\"contributions\":[]}".into())]);

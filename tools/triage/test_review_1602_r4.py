@@ -81,7 +81,7 @@ class Tests(unittest.TestCase):
         r['attachments'][0]['content']='ERROR arbitrary raw text'
         r['context']['telemetry_summary']={}
         value,facts=analysis.extract(r,[],{'testers':['1.2.3']})
-        self.assertEqual(value['body'],privacy.REMOVED)
+        self.assertNotIn('body',value)
         self.assertFalse(facts['content_minimum']);self.assertFalse(facts['evidence'])
         self.assertEqual(facts['lines'],set())
         proposal=response();proposal['evidence_refs']=[]
@@ -107,6 +107,6 @@ class Tests(unittest.TestCase):
                 for value in (sent,next(c[2] for c in api.calls if c[0]=='POST')):
                     self.assertNotIn('OpaqueTailSecret',json.dumps(value))
                     self.assertNotIn('logs',json.dumps(value))
-                self.assertEqual(sent[0]['contribution']['title'],privacy.REMOVED)
+                self.assertNotIn('title',sent[0]['contribution'])
             finally:
                 state.close()

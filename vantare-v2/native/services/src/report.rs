@@ -241,16 +241,6 @@ struct Submission {
 impl Submission {
     fn new(draft: Draft, env: Environment) -> Result<Self> {
         draft_valid(&draft, true)?;
-        let mut context = draft.fields.context_text.trim().to_owned();
-        if let Some(installation) = &env.installation {
-            if !context.is_empty() {
-                context.push_str("\n\n");
-            }
-            context.push_str(installation);
-        }
-        if context.len() > 4096 || context.contains('\0') {
-            return Err(Error::TooLarge);
-        }
         if !matches!(env.channel.as_str(), "nightly" | "testers")
             || env.app_version.is_empty()
             || env.app_version.len() > 32
@@ -262,10 +252,11 @@ impl Submission {
         Ok(Self {
             contract_version: "testing-center.v1".into(),
             channel: env.channel,
-            action_text: draft.fields.action_text.trim().into(),
-            expected_text: draft.fields.expected_text.trim().into(),
-            observed_text: draft.fields.observed_text.trim().into(),
-            context_text: context,
+            // Existing SQL columns require text. F7=C keeps tester notes local.
+            action_text: "Informe estructurado".into(),
+            expected_text: "Revisión humana pendiente".into(),
+            observed_text: "Revisión humana pendiente".into(),
+            context_text: String::new(),
             app_version: env.app_version,
             os_family: OS_FAMILY.into(),
             os_version: env.os_version,
@@ -284,6 +275,10 @@ impl Submission {
             || self.include_logs
             || self.diagnostic_payload.is_some()
             || self.diagnostic_digest.is_some()
+            || self.action_text != "Informe estructurado"
+            || self.expected_text != "Revisión humana pendiente"
+            || self.observed_text != "Revisión humana pendiente"
+            || !self.context_text.is_empty()
         {
             return Err(Error::Protocol);
         }
@@ -361,6 +356,7 @@ struct Consent {
     generation: u128,
     deadline: Instant,
     attempt: Attempt,
+    local_draft_digest: Option<String>,
 }
 pub struct Reports {
     attempt: Option<Attempt>,
@@ -425,6 +421,8 @@ impl Reports {
         {
             return Err(Error::Protocol);
         }
+        let local_draft_digest =
+            crate::content_hash(&serde_json::to_vec(&draft).map_err(|_| Error::Protocol)?);
         let installation = environment.installation.clone();
         let payload = Submission::new(draft, environment)?;
         let candidate = Attempt {
@@ -453,7 +451,7 @@ impl Reports {
                 return Err(Error::Conflict);
             }
         }
-        self.preview(request, candidate, false)
+        self.preview(request, candidate, false, Some(local_draft_digest))
     }
 
     pub fn prepare_retry(&mut self, request: &DataRequest<'_>, channel: &str) -> Result<Preview> {
@@ -468,7 +466,7 @@ impl Reports {
         {
             return Err(Error::Authentication);
         }
-        self.preview(request, attempt, true)
+        self.preview(request, attempt, true, None)
     }
 
     fn preview(
@@ -476,6 +474,7 @@ impl Reports {
         request: &DataRequest<'_>,
         attempt: Attempt,
         retry: bool,
+        local_draft_digest: Option<String>,
     ) -> Result<Preview> {
         let preview = Preview {
             id: crate::random_id()?,
@@ -503,6 +502,7 @@ impl Reports {
             generation: request.binding().1,
             deadline: Instant::now() + Duration::from_mins(3),
             attempt,
+            local_draft_digest,
         });
         Ok(preview)
     }
@@ -526,6 +526,13 @@ impl Reports {
         }
         if !consent.preview.retry {
             let draft = load_draft(store)?.ok_or(Error::Canceled)?;
+            if consent.local_draft_digest.as_ref()
+                != Some(&crate::content_hash(
+                    &serde_json::to_vec(&draft).map_err(|_| Error::Protocol)?,
+                ))
+            {
+                return Err(Error::Canceled);
+            }
             if draft.screenshots.iter().map(|p| &p.id).ne(consent
                 .attempt
                 .images
@@ -611,6 +618,7 @@ impl Reports {
     }
 }
 fn submit_attempt(request: &DataRequest<'_>, attempt: &Attempt) -> Result<Receipt> {
+    attempt.payload.validate()?;
     let response = if attempt.images.is_empty() {
         request.post("rest/v1/rpc/testing_center_submit_report", &attempt.payload)
     } else {

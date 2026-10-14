@@ -79,8 +79,13 @@ impl Triage {
             .take(50)
             .filter_map(|(at, line)| {
                 let at = chrono::DateTime::from_timestamp(i64::try_from(*at).ok()?, 0)?;
-                // These remain owner-only; legacy name/at never enter extract.
-                Some(serde_json::json!({"name":line,"at":at.to_rfc3339()}))
+                let name = if line.starts_with("ERROR ") {
+                    "ServicesCommandFailure"
+                } else {
+                    "ServicesCommandSuccess"
+                };
+                // Legacy SQL shape, with a closed event name instead of prose.
+                Some(serde_json::json!({"name":name,"at":at.to_rfc3339()}))
             })
             .collect();
         events.reverse();
@@ -106,9 +111,7 @@ impl Triage {
         if !consent || !matches!(channel, "testers" | "nightly") {
             return Err(Error::Denied);
         }
-        if title.trim().is_empty()
-            || title.chars().count() > 120
-            || body.trim().is_empty()
+        if title.chars().count() > 120
             || body.chars().count() > 1000
             || title.contains('\0')
             || body.contains('\0')
@@ -116,8 +119,7 @@ impl Triage {
             return Err(Error::Protocol);
         }
         let observed = capture::capture(selection.items.contains(&Item::System))?;
-        let mut system = observed.system;
-        redaction::clean_tree(&mut system, private_names);
+        let system = evidence::system(&observed.system);
         let mut summary = if selection.items.contains(&Item::Session) {
             self.summary(now)
         } else {
@@ -127,15 +129,19 @@ impl Triage {
         let items: Vec<_> = selection.items.iter().map(|item| item.key()).collect();
         let mut attachments = Vec::new();
         if selection.items.contains(&Item::AppLog) {
-            let log = self
+            let log: Vec<_> = self
                 .logs
                 .iter()
+                .rev()
                 .filter(|(t, _)| now.saturating_sub(*t) <= 1800)
-                .map(|(t, line)| format!("{t} {line}"))
-                .collect::<Vec<_>>()
-                .join("\n");
-            let content = tail(&redaction::clean(&log, private_names), 262_144);
-            if !content.is_empty() {
+                .take(300)
+                .map(|(t, line)| serde_json::json!({
+                    "level":if line.starts_with("ERROR ") {"ERROR"} else {"INFO"},
+                    "module":"services", "relative_ms":now.saturating_sub(*t).saturating_mul(1000)
+                }))
+                .collect();
+            if !log.is_empty() {
+                let content = serde_json::to_string(&log).map_err(|_| Error::Protocol)?;
                 attachments.push(Attachment {
                     kind: "app_log".into(),
                     sha256: crate::content_hash(content.as_bytes()),
@@ -157,10 +163,9 @@ impl Triage {
                 &id[16..20],
                 &id[20..32]
             ),
-            // Redaction can expand short secrets. Bound the final SQL text
-            // before preview so consent and every retry use these same values.
-            title: redaction::external_text(title, private_names, 120),
-            body: redaction::external_text(body, private_names, 1000),
+            // F7=C: SQL still requires text columns, but tester prose is local.
+            title: redaction::REMOVED.into(),
+            body: redaction::REMOVED.into(),
             context: serde_json::json!({"app_version":evidence::version(&serde_json::json!(crate::product::VERSION)),"app_channel":channel,
                 "game":observed.game,"game_version":observed.game_version.map(|v|evidence::version(&serde_json::json!(v))),
                 "system":if selection.items.contains(&Item::System) {system} else {serde_json::json!({})},

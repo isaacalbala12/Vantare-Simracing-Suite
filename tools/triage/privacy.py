@@ -2,6 +2,7 @@
 import ipaddress
 import hashlib
 import json
+import math
 import re
 from pathlib import Path
 
@@ -179,18 +180,32 @@ def _clean_tree(value, depth):
 
 
 def system(source):
-    """Project whitelist, independently of whether an old client enforced it."""
+    """Closed scalar values, including reports from old/modified clients."""
     output = {}
-    for key, fields in [('os', ('name', 'version', 'build')), ('cpu', ('model', 'cores'))]:
-        if isinstance(source.get(key), dict):
-            output[key] = {k: source[key][k] for k in fields if k in source[key]}
-    for key, fields, limit in [('gpu', ('model', 'driver_version'), 8),
-                              ('displays', ('width', 'height', 'hz', 'dpi_scale', 'primary'), 16)]:
-        if isinstance(source.get(key), list):
-            output[key] = [{k: item[k] for k in fields if k in item} for item in source[key][:limit] if isinstance(item, dict)]
-    for key in ['ram_gb', 'obs_active']:
-        if isinstance(source.get(key), (int, float, bool)):
+    def number(value):
+        return type(value) in (int, float) and 0 <= value <= 1_000_000_000 and math.isfinite(value)
+    if isinstance(source.get('os'), dict):
+        os = source['os']; output['os'] = {}
+        if 'name' in os:
+            output['os']['name'] = os['name'] if os['name'] in ('Windows','Linux','macOS') else 'otro'
+        if 'version' in os:
+            output['os']['version'] = version(os['version'])
+        if 'build' in os:
+            value = os['build']
+            output['os']['build'] = value if isinstance(value,str) and re.fullmatch(r'[0-9]{1,6}',value) else 'otro'
+    if isinstance(source.get('cpu'), dict):
+        output['cpu'] = {k:v for k,v in source['cpu'].items() if k == 'cores' and type(v) is int and 0 <= v <= 1_000_000_000}
+    if isinstance(source.get('gpu'), list):
+        output['gpu'] = [{'driver_version':version(g['driver_version'])} for g in source['gpu'][:8] if isinstance(g,dict) and 'driver_version' in g]
+    if isinstance(source.get('displays'), list):
+        output['displays'] = [{k:v for k,v in d.items() if
+            (k in ('width','height','hz','dpi_scale') and number(v)) or
+            (k == 'primary' and type(v) is bool)} for d in source['displays'][:16] if isinstance(d,dict)]
+    for key in ['ram_gb']:
+        if number(source.get(key)):
             output[key] = source[key]
+    if type(source.get('obs_active')) is bool:
+        output['obs_active'] = source['obs_active']
     if isinstance(source.get('overlays_active'), list):
         output['overlays_active'] = [v for v in source['overlays_active'] if v in ('OBS', 'Streamlabs', 'SimHub', 'CrewChief', 'Vantare')][:5]
-    return clean_tree(output)
+    return output

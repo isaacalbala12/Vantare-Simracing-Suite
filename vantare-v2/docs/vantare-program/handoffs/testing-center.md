@@ -1,3 +1,9 @@
+## F7=C · 14/10/2026 · en curso
+
+Decisión explícita de Isaac: el texto libre del tester nunca se envía. #1594 / VANTA-38 en curso; VANTA-49 conserva su hito de Intake. PR #1602 draft a nightly, sin auto-merge ni merge. Título/cuerpo/notas locales; etiquetas SQL fijas, log/eventos/hardware estructurados y cerrados; proveedor/T3/Intake/replay excluyen prosa. Las rutas TestingAnswer/TestingContribute/Report tampoco envían los campos escritos. Sin texto no se acredita el requisito anterior de 200 caracteres: revisión humana pendiente, sin aceptación inventada. Las capturas históricas no entran en triaje.
+
+RED Python/nativo conservados y GREEN focal; suite/gates en ejecución. Siguiente: commit F7, merge de origin/nightly en esta rama, resolver conflictos, gates afectados, push y actualizar PR. Evidencia E:/tmp/isa1594-f7-evidence/; regresiones tools/triage/review-1602-f7-regressions.md. R5 y rondas anteriores de abajo son evidencia histórica; F7 pendiente queda reemplazado por esta decisión.
+
 # Handoff vivo — Testing Center
 
 ## R5 F6 · 14/10/2026 · entrega CLI

@@ -9,7 +9,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from privacy import external_text, version
+from privacy import version
 
 SOURCE = 'vantare-testing-contribution'
 WORKSPACE = 'vantare-simracing-suite'
@@ -70,11 +70,11 @@ def content(payload):
         raise PlaneError('invalid_confidence')
     if contribution.get('game') not in ('lmu','acc','none'):
         raise PlaneError('invalid_game')
-    title = external_text(contribution['title'],120).strip() or 'Informe de tester'
+    title = 'Informe de tester'
     rows = [('Canal','testers'),('Juego',contribution['game']),
             ('Versión',version(contribution.get('game_version'))),
             ('Veredicto',verdict),('Confianza',format(confidence,'.3f')),
-            ('Resumen',external_text(proposal['summary'],200)),
+            ('Resumen','Informe estructurado; revisión humana pendiente'),
             ('Contribución',id),('Fuente externa',SOURCE)]
     # Fixed text markers also reconcile a POST whose response was lost before
     # CE v1's second step could persist the work item's external identifiers.

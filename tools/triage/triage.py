@@ -14,7 +14,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from analysis import MODEL, extract, validate, utc
-from privacy import external_text, version
+from privacy import version
 from state import State
 import model
 import plane_intake
@@ -120,9 +120,6 @@ def external_payload(payload):
     value = {k:payload[k] for k in ('delivery_id','sent_at','type','engine','reason') if k in payload}
     contribution = payload['contribution']
     value['contribution'] = {k:contribution[k] for k in ('id','channel','created_at') if k in contribution}
-    for key, limit in (('title',120),('body_redacted',1000)):
-        if key in contribution:
-            value['contribution'][key] = external_text(contribution[key],limit)
     for key in ('app_version','game_version'):
         if key in contribution:
             value['contribution'][key] = version(contribution[key])
@@ -133,9 +130,8 @@ def external_payload(payload):
     if isinstance(proposal,dict):
         value['triage'] = {k:proposal[k] for k in ('schema','verdict','criteria','duplicate_of','severity','area',
                           'evidence_refs','confidence','trazable') if k in proposal}
-        value['triage'].update(summary=external_text(proposal['summary'],200),
-            preliminary_fix=external_text(proposal['preliminary_fix'],600) if proposal.get('preliminary_fix') is not None else None,
-            reasons=[external_text(r,200) for r in proposal.get('reasons',[])])
+        value['triage'].update(summary='Informe estructurado; revisión humana pendiente',
+            preliminary_fix=None, reasons=[])
         # Old spools predate derived fingerprints. Even hash-shaped legacy
         # strings are not evidence we calculated; discard their error refs.
         current = payload.get('evidence_contract') == EVIDENCE_CONTRACT
@@ -202,7 +198,6 @@ def pass_once(state, reports, history, versions, analyze, send, now, intake=None
             continue
         base={'delivery_id':id,'sent_at':datetime.fromtimestamp(now,timezone.utc).isoformat(),
               'contribution':{'id':id,'channel':report['channel'],'created_at':report['created_at'],
-                  'title':external_text(report['title'],120),'body_redacted':external_text(report['body'],1000),
                   **{k:version((report.get('context') or {}).get(k)) for k in ('app_version','game_version')},
                   'game':(report.get('context') or {}).get('game') if (report.get('context') or {}).get('game') in ('lmu','acc','none') else 'otro'}}
         started=time.monotonic()

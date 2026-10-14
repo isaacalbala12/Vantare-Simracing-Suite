@@ -103,3 +103,114 @@ pub(super) fn error_record(value: &Value) -> Value {
     }
     out
 }
+
+pub(super) fn system(value: &Value) -> Value {
+    fn numeric(value: &Value) -> bool {
+        value
+            .as_f64()
+            .is_some_and(|v| v.is_finite() && (0.0..=1_000_000_000.0).contains(&v))
+    }
+    let mut out = Map::new();
+    if let Some(os) = value["os"].as_object() {
+        let mut fields = Map::new();
+        if let Some(name) = os.get("name") {
+            fields.insert(
+                "name".into(),
+                if matches!(name.as_str(), Some("Windows" | "Linux" | "macOS")) {
+                    name.clone()
+                } else {
+                    Value::from("otro")
+                },
+            );
+        }
+        if let Some(v) = os.get("version") {
+            fields.insert("version".into(), version(v));
+        }
+        if let Some(v) = os.get("build") {
+            fields.insert(
+                "build".into(),
+                if v.as_str().is_some_and(|s| {
+                    !s.is_empty() && s.len() <= 6 && s.bytes().all(|b| b.is_ascii_digit())
+                }) {
+                    v.clone()
+                } else {
+                    Value::from("otro")
+                },
+            );
+        }
+        out.insert("os".into(), Value::Object(fields));
+    }
+    if let Some(cpu) = value["cpu"].as_object() {
+        let mut fields = Map::new();
+        if let Some(cores) = cpu
+            .get("cores")
+            .filter(|v| v.as_u64().is_some_and(|v| v <= 1_000_000_000))
+        {
+            fields.insert("cores".into(), cores.clone());
+        }
+        out.insert("cpu".into(), Value::Object(fields));
+    }
+    if let Some(gpus) = value["gpu"].as_array() {
+        out.insert(
+            "gpu".into(),
+            Value::Array(
+                gpus.iter()
+                    .take(8)
+                    .filter_map(|g| {
+                        g.get("driver_version")
+                            .map(|v| serde_json::json!({"driver_version":version(v)}))
+                    })
+                    .collect(),
+            ),
+        );
+    }
+    if let Some(displays) = value["displays"].as_array() {
+        out.insert(
+            "displays".into(),
+            Value::Array(
+                displays
+                    .iter()
+                    .take(16)
+                    .filter_map(|d| d.as_object())
+                    .map(|d| {
+                        Value::Object(
+                            d.iter()
+                                .filter(|(k, v)| {
+                                    (matches!(k.as_str(), "width" | "height" | "hz" | "dpi_scale")
+                                        && numeric(v))
+                                        || (k.as_str() == "primary" && v.is_boolean())
+                                })
+                                .map(|(k, v)| (k.clone(), v.clone()))
+                                .collect(),
+                        )
+                    })
+                    .collect(),
+            ),
+        );
+    }
+    if let Some(ram) = value.get("ram_gb").filter(|v| numeric(v)) {
+        out.insert("ram_gb".into(), ram.clone());
+    }
+    if let Some(obs) = value.get("obs_active").filter(|v| v.is_boolean()) {
+        out.insert("obs_active".into(), obs.clone());
+    }
+    if let Some(overlays) = value["overlays_active"].as_array() {
+        out.insert(
+            "overlays_active".into(),
+            Value::Array(
+                overlays
+                    .iter()
+                    .filter(|v| {
+                        matches!(
+                            v.as_str(),
+                            Some("OBS" | "Streamlabs" | "SimHub" | "CrewChief" | "Vantare")
+                        )
+                    })
+                    .take(5)
+                    .cloned()
+                    .collect(),
+            ),
+        );
+    }
+    Value::Object(out)
+}

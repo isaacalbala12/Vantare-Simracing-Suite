@@ -41,7 +41,7 @@ class Tests(unittest.TestCase):
                         post=next(c[2] for c in api.calls if c[0]=='POST')
                         for value in (captured,sent,post):
                             self.assertNotIn(secret,json.dumps(value))
-                            self.assertIn('[contenido retirado por privacidad]',json.dumps(value))
+                            self.assertNotIn('body_redacted',json.dumps(value))
                         self.assertEqual(redact(redact(text)),redact(text))
                     finally:state.close()
         self.assertEqual(redact(r'ERROR unicode=\u00e9 public="session"'),r'ERROR unicode=\u00e9 public="session"')
@@ -84,7 +84,7 @@ class Tests(unittest.TestCase):
                 model,delivery=self.pipeline(raw)
                 for output in (model,delivery):
                     self.assertNotIn('SyntheticOther',output);self.assertNotIn('Synthetic Other',output)
-                    self.assertIn('[contenido retirado por privacidad]',output)
+                    self.assertNotIn('body_redacted',output)
 
     def test_review_p2_5_main_drains_and_purges_spool_before_failed_poll(self):
         with tempfile.TemporaryDirectory() as root:

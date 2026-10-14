@@ -5,8 +5,7 @@ import io
 import json
 import math
 import re
-from difflib import SequenceMatcher
-from privacy import clean_tree, system, external_text, log_fields, log_record, error_record, version
+from privacy import clean_tree, system, log_fields, log_record, error_record, version
 
 MODEL = 'opencode-go/deepseek-v4.1-flash'
 AREAS = {'overlays','ingeniero','estrategia','launcher','calendario','testing-center','telemetria','plataforma','licencias','studio','otro'}
@@ -30,9 +29,8 @@ def candidates(report, history):
             continue
         of = {e.get('fingerprint') for e in (oc.get('telemetry_summary') or {}).get('errors', []) if isinstance(e, dict)}
         same = ctx.get('game') == oc.get('game') and ctx.get('app_version') == oc.get('app_version')
-        similar = SequenceMatcher(None, report['title'].casefold(), other['title'].casefold()).ratio() >= .7
-        if same or fingerprints & of or similar:
-            result.append({'id': other['id'], 'title': external_text(other['title'], 120), 'app_version': version(oc.get('app_version')), 'game': oc.get('game') if oc.get('game') in ('lmu','acc','none') else 'otro'})
+        if same or fingerprints & of:
+            result.append({'id': other['id'], 'app_version': version(oc.get('app_version')), 'game': oc.get('game') if oc.get('game') in ('lmu','acc','none') else 'otro'})
     return result[:15]
 
 
@@ -114,8 +112,7 @@ def extract(report, history, versions):
             stats = fragment_stats(content)
             evidence |= bool(stats)
     duplicate = candidates(report, history)
-    value = {'title': external_text(report['title'], 120), 'body': external_text(report['body'], 1000),
-             'app_version': version(ctx.get('app_version')), 'app_channel': ctx.get('app_channel') if ctx.get('app_channel') in ('testers','nightly') else 'otro',
+    value = {'app_version': version(ctx.get('app_version')), 'app_channel': ctx.get('app_channel') if ctx.get('app_channel') in ('testers','nightly') else 'otro',
              'game': ctx.get('game') if ctx.get('game') in ('lmu','acc','none') else 'otro', 'game_version': version(ctx.get('game_version')),
              'system': system(ctx.get('system') or {}) if 'system' in items else {},
              'errors': errors, 'performance': performance,
@@ -130,8 +127,6 @@ def extract(report, history, versions):
             value['errors'].pop(0)
         elif value['duplicate_candidates']:
             value['duplicate_candidates'].pop()
-        elif len(value['body']) > 200:
-            value['body'] = value['body'][:-100]
         else:
             raise ValueError('extract_too_large')
     # References can only address data that survived the final budget.
@@ -140,7 +135,9 @@ def extract(report, history, versions):
     traceable = bool(value['app_version'] != 'otro' and value['game_version'] != 'otro'
                      and ctx.get('app_version') in versions.get(report['channel'], [])
                      and ctx.get('game') in ('lmu','acc'))
-    return value, {'traceable': traceable, 'evidence': evidence, 'content_minimum': len(value['body'].strip()) >= 200,
+    # F7=C removes prose, so the old 200-character criterion cannot be proven.
+    # Never count a fixed SQL compatibility label as tester content.
+    return value, {'traceable': traceable, 'evidence': evidence, 'content_minimum': False,
                    'refs': refs, 'lines': {x['line'] for x in value['log']}, 'candidates': {x['id'] for x in value['duplicate_candidates']}}
 
 
@@ -177,9 +174,10 @@ def validate(raw, facts):
     # IDs and schema/criteria stay exact; only free model text is redacted again.
     for k in ('schema','verdict','criteria','duplicate_of','severity','area','evidence_refs','confidence'):
         result[k] = raw[k]
-    result['summary'] = external_text(raw['summary'], 200)
-    result['preliminary_fix'] = external_text(raw['preliminary_fix'], 600) if raw['preliminary_fix'] is not None else None
-    result['reasons'] = [external_text(r, 200) for r in raw['reasons']]
+    # Only closed model classifications leave the worker; no generated echo.
+    result['summary'] = 'Informe estructurado; revisión humana pendiente'
+    result['preliminary_fix'] = None
+    result['reasons'] = []
     result['criteria'] = dict(criteria)
     if not facts['content_minimum']:
         result['criteria']['contenido_minimo'] = 'no'

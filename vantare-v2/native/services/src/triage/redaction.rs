@@ -5,6 +5,7 @@ const REDACTED: &str = "<redacted>";
 pub(super) const REMOVED: &str = "[contenido retirado por privacidad]";
 const MAX_DEPTH: usize = 32;
 
+#[cfg(test)]
 pub(super) fn external_text(text: &str, names: &[String], limit: usize) -> String {
     if text == REMOVED {
         return text.chars().take(limit).collect();
@@ -26,6 +27,7 @@ pub(super) fn external_text(text: &str, names: &[String], limit: usize) -> Strin
         .collect()
 }
 
+#[cfg(test)]
 pub(super) fn clean(text: &str, private_names: &[String]) -> String {
     clean_depth(text, private_names, 0)
 }

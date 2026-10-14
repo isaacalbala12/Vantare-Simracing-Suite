@@ -1,4 +1,27 @@
 use super::*;
+
+#[test]
+fn f7_report_notes_are_local_and_old_text_attempts_are_rejected() {
+    let mut private = fields();
+    private.action_text = "OrdinaryPrivateTesterNote".into();
+    private.expected_text = "OrdinaryPrivateTesterNote".into();
+    private.observed_text = "OrdinaryPrivateTesterNote".into();
+    private.context_text = "OrdinaryPrivateTesterNote".into();
+    let draft = Draft {
+        schema_version: 1,
+        idempotency_key: format!("draft_{}", "a".repeat(64)),
+        fields: private,
+        screenshots: Vec::new(),
+    };
+    let mut submission = Submission::new(draft, environment()).expect("submission");
+    assert!(
+        !serde_json::to_string(&submission)
+            .expect("JSON")
+            .contains("OrdinaryPrivateTesterNote")
+    );
+    submission.action_text = "OrdinaryPrivateTesterNote".into();
+    assert_eq!(submission.validate(), Err(crate::Error::Protocol));
+}
 use crate::{account, bridge::Config, http::Http, test_http::Server};
 use std::os::windows::fs::OpenOptionsExt;
 use std::time::Duration;
@@ -128,17 +151,15 @@ fn environment() -> Environment {
 }
 
 #[test]
-fn installation_metadata_respects_context_limit_without_changing_the_draft() {
+fn local_context_limit_and_installation_never_enter_the_submission() {
     let (root, store) = crate::test_store("report-context-limit");
     let mut fields = fields();
     fields.context_text = "x".repeat(4096);
     let draft = save_draft(&store, fields.clone()).expect("draft at limit");
     let mut environment = environment();
     environment.installation = Some(installation_context(&root, "beta").expect("installation"));
-    assert!(matches!(
-        Submission::new(draft, environment),
-        Err(Error::TooLarge)
-    ));
+    let submission = Submission::new(draft, environment).expect("local notes are not payload");
+    assert!(submission.context_text.is_empty());
     assert_eq!(
         load_draft(&store).expect("load").expect("draft").fields,
         fields
@@ -203,10 +224,7 @@ fn screenshots_upload_then_finalize_then_attach_and_retry_after_validation() {
     assert_eq!(preview.screenshots.len(), 1);
     assert_eq!(preview.channel, "testers");
     let payload: serde_json::Value = serde_json::from_str(&preview.payload).expect("JSON");
-    assert_eq!(
-        payload["reporte"]["p_context_text"],
-        format!("Tras reiniciar\n\n{installation}")
-    );
+    assert_eq!(payload["reporte"]["p_context_text"], "");
     assert_eq!(payload["reporte"]["p_app_version"], crate::product::VERSION);
     assert_eq!(
         load_draft(&store)

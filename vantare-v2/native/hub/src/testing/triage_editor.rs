@@ -24,11 +24,11 @@ pub struct Editor {
 impl Editor {
     pub(crate) fn new(cx: &mut Context<Remote>) -> Self {
         let inputs = [
-            cx.new(|cx| Input::new(String::new(), "Título del informe", cx)),
+            cx.new(|cx| Input::new(String::new(), "Título local · no se envía", cx)),
             cx.new(|cx| {
                 Input::multiline(
                     String::new(),
-                    "Pasos, resultado esperado y lo que ocurrió (hasta 1.000 caracteres)",
+                    "Notas locales · no se envían (hasta 1.000 caracteres)",
                     cx,
                 )
                 .with_height(px(96.0))
@@ -129,12 +129,7 @@ impl Editor {
     }
     pub(crate) fn render(&self, ready: bool, cx: &mut Context<Remote>) -> Div {
         let consent = self.consent.read(cx).checked;
-        let valid = ready
-            && consent
-            && !self.values[0].trim().is_empty()
-            && !self.values[1].trim().is_empty()
-            && self.values[0].chars().count() <= 120
-            && self.values[1].chars().count() <= 1000;
+        let valid = ready && consent;
         let mut form = orbit::neo_card(cx)
             .gap(px(10.0))
             .flex_none()
@@ -144,13 +139,13 @@ impl Editor {
         for checkbox in &self.choices {
             form = form.child(checkbox.clone());
         }
-        form=form.child(orbit::text("PostHog y el fragmento quedan vacíos si no hay datos disponibles. El log incluye solo actividad real reciente de servicios; las capturas se envían desde Informe con capturas.",12.0,400,orbit::ink_3(cx),cx))
+        form=form.child(orbit::text("El título y las notas son locales y no se envían. Solo se envían los campos estructurados permitidos. PostHog y el fragmento quedan vacíos si no hay datos disponibles.",12.0,400,orbit::ink_3(cx),cx))
             .child(self.consent.clone())
             .child(orbit::small_button("triage-preview","Ver lo que se envía",cx).tab_stop(valid)
-                .when(!valid,|b|orbit::disabled(b,"Revisa el texto, acepta el consentimiento e inicia sesión"))
+                .when(!valid,|b|orbit::disabled(b,"Acepta el consentimiento e inicia sesión"))
                 .on_click(cx.listener(|this,_,_,cx|{
                     if !this.triage.consent.read(cx).checked || !this.participation_ready() {return;}
-                    let command=Command::TriagePrepare {title:this.triage.values[0].clone(),body:this.triage.values[1].clone(),selection:this.triage.selection(cx),consent:true};
+                    let command=Command::TriagePrepare {title:String::new(),body:String::new(),selection:this.triage.selection(cx),consent:true};
                     this.triage.preparing=Some(this.triage.revision);
                     this.participation_request(command,cx);
                 })));

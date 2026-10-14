@@ -1,0 +1,343 @@
+{
+  "collected_at": "2026-10-14T03:09:31.633688+02:00",
+  "executed": 18,
+  "blocked": 9,
+  "conclusion": "Descriptive only. No matched live workload, no ranking. Startup is first visible window, not ready/data. GPU missing PID instances remains null.",
+  "summary": [
+    {
+      "product": "Vantare",
+      "scenario": "idle",
+      "executed_repetitions": 3,
+      "planned_repetitions": 3,
+      "median_of_repetitions": {
+        "cpu_percent_total_pc": 0.05941229999253381,
+        "working_set_mib": 55.87109375,
+        "private_bytes_mib": 93.1171875,
+        "gpu_engine_percent": 0.0,
+        "threads": 24,
+        "startup_first_window_ms": null
+      },
+      "range_of_repetitions": {
+        "cpu_percent_total_pc": [
+          0.05634997086250823,
+          0.06937067374668893
+        ],
+        "working_set_mib": [
+          55.69921875,
+          55.9375
+        ],
+        "private_bytes_mib": [
+          93.03125,
+          93.171875
+        ],
+        "gpu_engine_percent": [
+          0.0,
+          0.0
+        ],
+        "threads": [
+          24.0,
+          24.0
+        ],
+        "startup_first_window_ms": null
+      },
+      "host_cpu_mean_range": [
+        59.78135593220339,
+        90.77627118644068
+      ],
+      "build_sample_fraction_range": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "product": "Vantare",
+      "scenario": "four_overlays",
+      "executed_repetitions": 3,
+      "planned_repetitions": 3,
+      "median_of_repetitions": {
+        "cpu_percent_total_pc": 0.3223736558342074,
+        "working_set_mib": 56.8203125,
+        "private_bytes_mib": 94.59375,
+        "gpu_engine_percent": 0.12056604814301401,
+        "threads": 26,
+        "startup_first_window_ms": null
+      },
+      "range_of_repetitions": {
+        "cpu_percent_total_pc": [
+          0.2425296428828871,
+          0.3414106536094471
+        ],
+        "working_set_mib": [
+          56.697265625,
+          57.015625
+        ],
+        "private_bytes_mib": [
+          94.529296875,
+          94.734375
+        ],
+        "gpu_engine_percent": [
+          0.09781450095442472,
+          0.12676056788380236
+        ],
+        "threads": [
+          26.0,
+          26.0
+        ],
+        "startup_first_window_ms": null
+      },
+      "host_cpu_mean_range": [
+        62.891525423728815,
+        89.76379310344828
+      ],
+      "build_sample_fraction_range": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "product": "Vantare",
+      "scenario": "startup",
+      "executed_repetitions": 3,
+      "planned_repetitions": 3,
+      "median_of_repetitions": {
+        "cpu_percent_total_pc": 5.445231871642228,
+        "working_set_mib": 37.76953125,
+        "private_bytes_mib": 30.30859375,
+        "gpu_engine_percent": null,
+        "threads": 21,
+        "startup_first_window_ms": 346.6199999966193
+      },
+      "range_of_repetitions": {
+        "cpu_percent_total_pc": [
+          5.014979784745174,
+          5.706193730936899
+        ],
+        "working_set_mib": [
+          37.75390625,
+          37.88671875
+        ],
+        "private_bytes_mib": [
+          30.0703125,
+          30.328125
+        ],
+        "gpu_engine_percent": null,
+        "threads": [
+          20,
+          21
+        ],
+        "startup_first_window_ms": [
+          332.1412000004784,
+          398.5465999940061
+        ]
+      },
+      "host_cpu_mean_range": [
+        80.3,
+        95.65
+      ],
+      "build_sample_fraction_range": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "product": "RaceLab",
+      "scenario": "idle",
+      "executed_repetitions": 0,
+      "planned_repetitions": 3,
+      "median_of_repetitions": {
+        "cpu_percent_total_pc": null,
+        "working_set_mib": null,
+        "private_bytes_mib": null,
+        "gpu_engine_percent": null,
+        "threads": null,
+        "startup_first_window_ms": null
+      },
+      "range_of_repetitions": {
+        "cpu_percent_total_pc": null,
+        "working_set_mib": null,
+        "private_bytes_mib": null,
+        "gpu_engine_percent": null,
+        "threads": null,
+        "startup_first_window_ms": null
+      }
+    },
+    {
+      "product": "RaceLab",
+      "scenario": "four_overlays",
+      "executed_repetitions": 0,
+      "planned_repetitions": 3,
+      "median_of_repetitions": {
+        "cpu_percent_total_pc": null,
+        "working_set_mib": null,
+        "private_bytes_mib": null,
+        "gpu_engine_percent": null,
+        "threads": null,
+        "startup_first_window_ms": null
+      },
+      "range_of_repetitions": {
+        "cpu_percent_total_pc": null,
+        "working_set_mib": null,
+        "private_bytes_mib": null,
+        "gpu_engine_percent": null,
+        "threads": null,
+        "startup_first_window_ms": null
+      }
+    },
+    {
+      "product": "RaceLab",
+      "scenario": "startup",
+      "executed_repetitions": 0,
+      "planned_repetitions": 3,
+      "median_of_repetitions": {
+        "cpu_percent_total_pc": null,
+        "working_set_mib": null,
+        "private_bytes_mib": null,
+        "gpu_engine_percent": null,
+        "threads": null,
+        "startup_first_window_ms": null
+      },
+      "range_of_repetitions": {
+        "cpu_percent_total_pc": null,
+        "working_set_mib": null,
+        "private_bytes_mib": null,
+        "gpu_engine_percent": null,
+        "threads": null,
+        "startup_first_window_ms": null
+      }
+    },
+    {
+      "product": "TinyPedal",
+      "scenario": "idle",
+      "executed_repetitions": 3,
+      "planned_repetitions": 3,
+      "median_of_repetitions": {
+        "cpu_percent_total_pc": 0.014858541386061536,
+        "working_set_mib": 86.44140625,
+        "private_bytes_mib": 49.35546875,
+        "gpu_engine_percent": null,
+        "threads": 21,
+        "startup_first_window_ms": null
+      },
+      "range_of_repetitions": {
+        "cpu_percent_total_pc": [
+          0.011569156548380016,
+          0.01983227598595566
+        ],
+        "working_set_mib": [
+          86.37109375,
+          88.19140625
+        ],
+        "private_bytes_mib": [
+          48.98828125,
+          49.5078125
+        ],
+        "gpu_engine_percent": null,
+        "threads": [
+          21,
+          21
+        ],
+        "startup_first_window_ms": null
+      },
+      "host_cpu_mean_range": [
+        82.69661016949152,
+        88.45593220338984
+      ],
+      "build_sample_fraction_range": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "product": "TinyPedal",
+      "scenario": "four_overlays",
+      "executed_repetitions": 3,
+      "planned_repetitions": 3,
+      "median_of_repetitions": {
+        "cpu_percent_total_pc": 0.008265418259698757,
+        "working_set_mib": 89.98828125,
+        "private_bytes_mib": 52.25390625,
+        "gpu_engine_percent": null,
+        "threads": 21,
+        "startup_first_window_ms": null
+      },
+      "range_of_repetitions": {
+        "cpu_percent_total_pc": [
+          0.008264588236259468,
+          0.016535617038839538
+        ],
+        "working_set_mib": [
+          89.77734375,
+          90.39453125
+        ],
+        "private_bytes_mib": [
+          51.95703125,
+          52.48046875
+        ],
+        "gpu_engine_percent": null,
+        "threads": [
+          21,
+          24
+        ],
+        "startup_first_window_ms": null
+      },
+      "host_cpu_mean_range": [
+        70.10677966101694,
+        91.59491525423729
+      ],
+      "build_sample_fraction_range": [
+        1.0,
+        1.0
+      ]
+    },
+    {
+      "product": "TinyPedal",
+      "scenario": "startup",
+      "executed_repetitions": 3,
+      "planned_repetitions": 3,
+      "median_of_repetitions": {
+        "cpu_percent_total_pc": 4.51953011140734,
+        "working_set_mib": 64.796875,
+        "private_bytes_mib": 37.94921875,
+        "gpu_engine_percent": null,
+        "threads": 25,
+        "startup_first_window_ms": 1167.4330000023474
+      },
+      "range_of_repetitions": {
+        "cpu_percent_total_pc": [
+          2.977991937002025,
+          4.7151428618106195
+        ],
+        "working_set_mib": [
+          64.71484375,
+          67.921875
+        ],
+        "private_bytes_mib": [
+          37.6875,
+          39.84375
+        ],
+        "gpu_engine_percent": null,
+        "threads": [
+          25.0,
+          25.0
+        ],
+        "startup_first_window_ms": [
+          1152.524800003448,
+          1811.3060999967274
+        ]
+      },
+      "host_cpu_mean_range": [
+        81.8125,
+        87.11818181818182
+      ],
+      "build_sample_fraction_range": [
+        1.0,
+        1.0
+      ]
+    }
+  ],
+  "product_scopes": {
+    "Vantare": "QA overlay host only, no Hub/core/Engineer; full suite not measured",
+    "TinyPedal": "GUI and LMU API waiting, without simulator data",
+    "RaceLab": "No usable measurements; firewall permission not granted, account access not verified"
+  }
+}

@@ -2,7 +2,7 @@
 
 Para Isaac · [GitHub #1605](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1605) · Plane VANTA-12 · consulta: 14/10/2026.
 
-**Entrega parcial: investigación contrastada; mediciones del PC bloqueadas.** Este documento no permite declarar qué aplicación consume menos. Se entrega en una PR draft a `nightly`, sin modificar código ni publicar producto.
+**Investigación contrastada y medición parcial real en este PC.** RaceLab queda pendiente por Firewall/acceso sin cuenta; las cargas sin juego de TinyPedal y de demo de Vantare no permiten declarar qué aplicación consume menos en pista. Se entrega en una PR draft a `nightly`, sin modificar código ni publicar producto.
 
 ## Resumen para Isaac en diez líneas
 
@@ -14,14 +14,14 @@ Para Isaac · [GitHub #1605](https://github.com/isaacalbala12/Vantare-Simracing-
 6. RaceLab Pro cuesta 4,90 €/mes o 49,90 €/año; Vantare Pro tiene decidido 4,99 €/mes, pendiente de apertura comercial.
 7. RaceLab también ofrece pago único de 399 €; TinyPedal no cobra; Vantare prevé Launch Edition de 30 € con límites distintos.
 8. Nuestra oportunidad es unir overlays, análisis, estrategia y radio en un flujo sencillo que funcione en pista.
-9. El consumo sigue sin medir: las reglas nocturnas exigen un FIN de #1565 posterior a medianoche y esa señal no está verificada.
+9. TinyPedal y el host QA de Vantare se midieron tres veces; RaceLab y el consumo de la suite Vantare completa quedan pendientes.
 10. Conviene lanzar por calidad demostrable en LMU/ACC y facilidad de uso; aún no anunciar superioridad de rendimiento.
 
 ## Cómo leer la comparación
 
 **Documentado** significa que una fuente oficial lo declara. **Código** significa que existe en el checkout de Vantare; no certifica que lo haya probado en una carrera. **Propuesta** significa una decisión comercial o una recomendación, no una función entregada. La ausencia de documentación se expresa como «no acreditado», sin convertirla en una prueba de inexistencia.
 
-Para Vantare se revisó `nightly@69fa2d650c85df4184d5821ae4c032201789a1c1`. La build preparada, pero no abierta, es 0.0.976, canal técnico `beta`, perfil Release, fuente `bc89c8b8400a0a7915e7496b6f339d8e8231359b`, limpio según su manifiesto y antecesor de esa nightly. No contiene necesariamente todos los cambios de la nightly actual. TinyPedal: release **2.51.0 del 03/10/2026**. RaceLab: última nota oficial visible **8.2.0 del 03/09/2026**; no es una comprobación de versión instalada. [Release TinyPedal](https://github.com/TinyPedal/TinyPedal/releases/tag/v2.51.0), [notas RaceLab](https://garage.racelab.app/release-notes/).
+Para Vantare se revisó `nightly@69fa2d650c85df4184d5821ae4c032201789a1c1`. La build de prueba medida es 0.0.976, canal técnico `beta`, perfil Release, fuente `bc89c8b8400a0a7915e7496b6f339d8e8231359b`, limpio según su manifiesto y antecesor de esa nightly. No contiene necesariamente todos los cambios de la nightly actual. TinyPedal: release **2.51.0 del 03/10/2026**. RaceLab: binario instalado por T3 **8.4.4**; la nota oficial visible al investigar era 8.2.0 del 03/09/2026 y estaba atrasada respecto al instalador. [Release TinyPedal](https://github.com/TinyPedal/TinyPedal/releases/tag/v2.51.0), [notas RaceLab](https://garage.racelab.app/release-notes/).
 
 ## Tabla de funciones
 
@@ -93,47 +93,47 @@ La diferencia mensual entre Pro de Vantare y RaceLab es solo **0,09 €**. No ba
 
 Fuentes: [packaging Vantare](../../vantare-v2/native/packaging/README.md), [instalador RaceLab](https://download.racelab.app/RacelabApps-installer.exe), [configuración LMU RaceLab](https://garage.racelab.app/docs/first-steps/lmu/), [README TinyPedal](https://github.com/TinyPedal/TinyPedal/blob/v2.51.0/README.md), [actualizaciones TinyPedal](https://github.com/TinyPedal/TinyPedal/wiki/User-Guide#application). ACC necesita configurar UDP para datos adicionales; LMU exige activar plugins del juego. No se cambiaron los simuladores del PC.
 
-Preparación real en este PC: no aparecieron RaceLab/TinyPedal en la búsqueda acotada de entradas de desinstalación de Windows; eso no descarta portables en otras carpetas. Se extrajo TinyPedal oficial y una copia de prueba de Vantare en `C:/tmp/1605-research/`. Se descargó RaceLab allí: firma Authenticode válida de Pace Engineering GmbH. **No se ejecutó el instalador ni se abrió ninguna de las tres aplicaciones.** No se instalaron herramientas adicionales ni dependencias en el repo. [Artefactos y hashes](data/1605-artifacts.json).
+Preparación real en este PC: no aparecieron RaceLab/TinyPedal en la búsqueda acotada de entradas de desinstalación de Windows; eso no descarta portables en otras carpetas. Se extrajo TinyPedal oficial y una copia de prueba de Vantare en `C:/tmp/1605-research/`. Se descargó RaceLab allí: firma Authenticode válida de Pace Engineering GmbH. T3 instaló RaceLab 8.4.4 y abrió las apps tras la corrección 01:05, pero no dejó muestras. La reanudación CLI conservó la investigación, cerró el árbol RaceLab propio y ejecutó el banco TinyPedal/host QA de Vantare sin conceder el permiso de Firewall de Windows. TinyPedal se configuró en su portable propio y APPDATA aislado; Vantare usó copia, datos, layout y pipe exclusivos bajo C:/tmp. Se desactivó únicamente la comprobación de actualizaciones de la copia de TinyPedal para evitar diálogos durante el banco. No se instalaron herramientas adicionales ni dependencias en el repo. [Artefactos y hashes](data/1605-artifacts.json).
 
-## Tabla de consumo: medición pendiente
+## Consumo medido: cargas permitidas y límites
 
-**N/M = no medido; no significa cero.** Ninguna mediana se puede calcular con cero repeticiones ejecutadas.
+**18/27 tomas ejecutadas, nueve RaceLab pendientes.** La tabla muestra la mediana de tres repeticiones. N/M significa ausencia de medida, no cero. Las tomas son descriptivas de este PC bajo carga; no constituyen una comparación de rendimiento con la misma telemetría.
 
-| Aplicación | Escenario solicitado | Tomas ejecutadas / previstas | CPU % PC | RAM MiB | GPU % motor | Hilos | Arranque hasta listo, ms |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Vantare | Reposo | 0/3 | N/M | N/M | N/M | N/M | — |
-| Vantare | 3–4 overlays equivalentes | 0/3 | N/M | N/M | N/M | N/M | — |
-| Vantare | Arranque | 0/3 | N/M | N/M | N/M | N/M | N/M |
-| RaceLab | Reposo | 0/3 | N/M | N/M | N/M | N/M | — |
-| RaceLab | 3–4 overlays equivalentes | 0/3 | N/M | N/M | N/M | N/M | — |
-| RaceLab | Arranque | 0/3 | N/M | N/M | N/M | N/M | N/M |
-| TinyPedal | Reposo | 0/3 | N/M | N/M | N/M | N/M | — |
-| TinyPedal | 3–4 overlays equivalentes | 0/3 | N/M | N/M | N/M | N/M | — |
-| TinyPedal | Arranque | 0/3 | N/M | N/M | N/M | N/M | N/M |
+| Aplicación | Escenario | Tomas | CPU % PC | Working set MiB | Privados MiB | GPU % motor | Hilos | Primera ventana, ms |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Vantare host QA | Residente, layout vacío | 3/3 | 0.059 | 55.9 | 93.1 | 0.000 | 24 | — |
+| Vantare host QA | 4 widgets demo, sin Hub | 3/3 | 0.322 | 56.8 | 94.6 | 0.121 | 26 | — |
+| Vantare host QA | Arranque hasta primera ventana visible | 3/3 | 5.445 | 37.8 | 30.3 | N/M | 21 | 347 |
+| RaceLab | Reposo pendiente | 0/3 | N/M | N/M | N/M | N/M | N/M | — |
+| RaceLab | 4 overlays pendientes | 0/3 | N/M | N/M | N/M | N/M | N/M | — |
+| RaceLab | Arranque hasta primera ventana visible | 0/3 | N/M | N/M | N/M | N/M | N/M | N/M |
+| TinyPedal | GUI sin overlays | 3/3 | 0.015 | 86.4 | 49.4 | N/M | 21 | — |
+| TinyPedal | 4 overlays sin juego + GUI | 3/3 | 0.008 | 90.0 | 52.3 | N/M | 21 | — |
+| TinyPedal | Arranque hasta primera ventana visible | 3/3 | 4.520 | 64.8 | 37.9 | N/M | 25 | 1167 |
 
-Equipo inventariado, sin pruebas de carga: Ryzen 7 3700X, 8 núcleos/16 procesadores lógicos; RAM utilizable reportada 31,93 GiB; Radeon RX 7800 XT, driver 32.0.31041.1004; Windows 11 Pro build 26200. [Hardware crudo sanitizado](data/1605-hardware.json).
+Los rangos por repetición están en [resumen calculado](data/1605-summary.json), las 27 filas en [CSV](data/1605-measurements.csv) y las muestras enlazadas desde cada fila en `data/1605-raw/`. Fecha del resumen: 2026-10-14T03:09:31.633688+02:00. CPU de las cargas estables integra tiempo CPU del árbol sobre intervalos reales y los 16 procesadores lógicos; RAM/privados/hilos son medianas temporales. Después se calcula la mediana de las tres repeticiones. Working set compartido puede contarse más de una vez entre procesos; no equivale a RAM física exclusiva.
 
-### Qué impidió medir
+Equipo: Ryzen 7 3700X, 8 núcleos/16 procesadores lógicos; RAM utilizable 31,93 GiB; Radeon RX 7800 XT, driver 32.0.31041.1004; Windows 11 Pro build 26200. [Inventario sanitizado](data/1605-hardware.json).
 
-`C:/tmp/buzon/REGLAS-NOCHE-1014.md` ordena: «No midas mientras C:/tmp/buzon/1565.md no tenga una línea FIN posterior a las 00:00 del 14/10». En las comprobaciones realizadas, el archivo de #1565 tenía FIN sin fecha en la línea y última escritura **13/10/2026 23:16:08**. No acredita el FIN exigido para esta noche. Se registró BLOQUEO en el buzón propio y se continuó con lo permitido. No se creó ni borró `pc-medicion.lock`. [Preflight con fecha y hashes](data/1605-preflight.json).
+### Qué se abrió y qué carga tuvo
 
-Además, esta sesión no expone controles de escritorio nativo para comprobar e interactuar con las ventanas; el navegador colaborativo sirve para webs. La shell sí accede al PC y permitió el inventario y las descargas. No se presenta una captura web como prueba de overlays visibles. La reanudación necesita una vía de interacción/verificación de escritorio disponible.
+- **TinyPedal 2.51.0:** portable propio, APPDATA/LOCALAPPDATA/TEMP aislados. Reposo: GUI con 0 widgets. Carga: Standings, Relative, Fuel y Flag habilitados, Auto Hide desactivado. Cuatro ventanas de overlay más GUI enumeradas en las tres tomas; API LMU sin simulador/datos, no demo animada. [Captura propia: 4/78 y API LMU n/a](data/1605-tinypedal-four-enabled.png). Se conservaron los módulos por defecto del preset. No se cambiaron plugins ni ajustes de juegos.
+- **Vantare 0.0.976, solo host QA:** copia Release de nightly bc89c8b8 en C:/tmp. Se probó el Hub con `--demo`, rutas/pipe propios y se descartó: sin supervisor permanece en acceso, no es reposo usable de la suite. La medición válida usa únicamente `vantare-overlays --layout <layout propio> --fuente local`, ruta de QA documentada en native/ui/README.md. Reposo: layout vacío, host residente sin widgets; el feed sintético sigue activo. Carga: Standings, Relative, Fuel y stint, y Banderas, fuente local 30 Hz en una ventana por monitor. Sin Hub, núcleo live, Engineer, servicios de cuenta ni grabación. Se midió su árbol completo y se verificó la [demo de cuatro widgets en captura propia](data/1605-vantare-qa-four.png). Las cifras son del componente y **no equivalen al consumo de Vantare instalado ni de la suite completa**.
+- **RaceLab 8.4.4:** instalación realizada por T3, versión FileVersion/ProductVersion comprobada al reanudar. Su sesión encontró una solicitud de Firewall Windows; no se concedió. Se cerró el árbol propio de ocho procesos de T3, incluidos KeyBindings/conhost, sin volver a abrirlo para repetir el diálogo. Acceso sin cuenta/demo/overlays no acreditado; se conservan nueve filas bloqueadas. No se midió una pantalla de permiso/login como reposo usable.
 
-Hay límites adicionales que deben resolverse al abrir las apps: RaceLab pide cuenta en su flujo documentado y se prohíbe crear una; no se usó una identidad de Isaac. Su FAQ explica que sin juego los overlays abiertos no renderizan datos; no acredita que no exista preview, pero obliga a verificarlo. TinyPedal permite desactivar Auto Hide, lo que no demuestra una demo con telemetría móvil. Vantare sí documenta fuente sintética local a 30 Hz. **No se utilizó demo ni simulador para ninguna toma.** [FAQ RaceLab](https://racelab.app/faq/), [guía TinyPedal](https://github.com/TinyPedal/TinyPedal/wiki/User-Guide#overlay), [fuente local Vantare](../../vantare-v2/native/ui/README.md).
+**Las cargas de overlays no son equivalentes:** TinyPedal esperaba datos y Vantare movía su demo. Coinciden cuatro familias, pero no tamaño/filas/cadencia/fuente ni oclusión. Las ventanas pueden compartir pantalla con apps ajenas; no se ocultaron ni cerraron esas apps. No convertir las diferencias de la tabla en una ventaja competitiva ni extrapolar a LMU/ACC en pista.
 
-### Protocolo para completar las 27 tomas
+**PC ocupado:** había builds/tests de otros workers durante el lock. En las 12 tomas estables, la media de CPU global por toma osciló entre 59.8 % y 91.6 %; había procesos de build en el 100 % de las muestras de esas tomas. Cada muestra conserva contexto global, RAM disponible y nombres de build, sin argumentos/rutas ajenos. El lock serializó las apps de #1605/#1607; no garantizó que el resto del PC estuviera quieto. No se cerraron procesos ajenos.
 
-1. Verificar un FIN nuevo con fecha posterior al corte; reservar `pc-medicion.lock` con #1605 y hora. Respetar locks menores de dos horas. Mantener la exclusividad con #1607 y comprobar que no hay builds pesadas.
-2. Abrir solo copias propias. En Vantare, fijar datos, raíz y nombre de pipe únicos bajo `C:/tmp`; usar `--data-dir`, `VANTARE_NATIVE_DATA_ROOT` y `VANTARE_BETA_ROOT` según el modo. Nunca ejecutar el Setup normal sobre la instalación de Isaac. Verificar rutas efectivas y permisos antes de abrir.
-3. Comprobar acceso gratuito sin registrar cuenta ni pagar. Si RaceLab no deja pasar sin login, registrar bloqueo de ese producto. No medir una pantalla de login como si fueran overlays.
-4. Preferir **tres** overlays compartidos: clasificación, rivales y entradas de pedales; mismos tamaños, filas, pantalla y refresco cuando sea configurable. Vantare: Standings/Relative/Input Telemetry; RaceLab: Standings/Relative/Input Telemetry básico; TinyPedal: Standings/Relative y la traza de entradas equivalente. Un cuarto solo si está gratis en los tres. Confirmar visualmente el contenido antes de medir.
-5. Reposo: app lista sin overlays visibles. Overlays: 30 s de calentamiento y 60 s de muestras a 1 Hz. Arranque: medir desde lanzamiento hasta interfaz utilizable; conservar también CPU/RAM/GPU/hilos durante esa ventana. Sin simulador, usar demo oficial si existe y etiquetar fuente/cadencia; no comparar demo animada contra ventanas vacías como carga equivalente.
-6. Incluir todos los procesos hijos atribuibles a cada app, incluidos renderers y servicios. CPU: tiempo de CPU consumido dividido por tiempo real y 16 procesadores lógicos; 100 % significa todo el PC. RAM: suma de working set, junto a bytes privados para advertir memoria compartida. Hilos: suma por árbol. No sumar memoria de procesos ajenos.
-7. GPU: contadores Windows por PID, adaptador y motor; informar el motor más ocupado, sin sumar indiscriminadamente motores que corren a la vez. Conservar valores por motor y procesos; si no hay contador, N/M. La composición de DWM y la pérdida de FPS requieren una prueba adicional y no se deducen de ese porcentaje.
-8. Repetir tres veces cada escenario con cierre confirmado entre repeticiones; rotar orden de productos. Para reposo/overlays, resumir cada ventana con media CPU/GPU y mediana RAM/hilos; dar la mediana de los tres resúmenes. Arranque: mediana de tres tiempos, indicar caché templada y no llamarlo arranque frío.
-9. Guardar muestras con tiempo relativo, métricas, versión/hash, tamaño/configuración y modo, evitando nombres/rutas/telemetría personal. Capturar solo ventanas de prueba con datos ficticios. Cerrar exclusivamente PIDs propios y liberar el lock al acabar o abortar.
+### Método y ausencias
 
-Los [27 registros previstos](data/1605-measurements.csv) tienen estado `NOT_RUN` y métricas vacías. Son un registro de pendientes, **no datos de consumo**. La [guía de rendimiento RaceLab](https://garage.racelab.app/docs/faq/performance_guide/) también propone comparar el mismo replay con/sin overlays; eso sería una segunda campaña para comprobar efecto en el juego.
+Se hicieron tres repeticiones por escenario y tres lanzamientos específicos para arranque, sin borrar cachés del sistema; son arranques con Windows y archivos ya calientes, no tres cold boots. Arranque desde Popen hasta el primer HWND propio visible, con sondeo cercano a 100 ms y timeout de 90 s. Se repitieron las seis tomas de arranque con una sonda sin PDH para evitar que sus consultas retrasasen la detección; GPU de arranque no medida. Los probes iniciales se excluyeron. En Vantare el arranque es del host QA con cuatro widgets, no del Hub. La captura/comprobación de la configuración y ventanas se hizo aparte; el cronómetro no acredita interfaz completamente usable ni primeros datos. CPU/RAM/hilos de esa fila corresponden a ese intervalo corto. Reposo y overlays: 30 s de calentamiento y 60 s con cadencia objetivo de 1 Hz; las consultas PDH pueden alargar algún intervalo y el recuento real consta en cada crudo. El programa cerró sus árboles en finally y verificó PID/fecha de creación para evitar reutilización.
+
+GPU mediante PDH English `\GPU Engine(*)\Utilization Percentage`: atribución por PID/adaptador/motor, suma de procesos en un mismo motor y máximo entre motores; media temporal por toma. TinyPedal no publicó una instancia de motor atribuible en estas tomas: GPU N/M. No se confundió ausencia con 0 %. No hay FPS, tiempos de frame ni prueba de impacto en el juego. Fórmulas, esquema y SHA de colectores externos: [README de datos](data/README-1605.md) y [preflight actual](data/1605-preflight.json).
+
+El bloqueo inicial por #1565 está conservado como [preflight histórico](data/1605-preflight-t3-initial.json); la corrección expresa 01:05 lo dio por cumplido. CLI renovó el lock propio antes de lanzar apps, mantuvo las copias/datos de Vantare bajo C:/tmp y liberó el lock tras cerrar todos los procesos propios. No aceptó Firewall, inició sesión, compró ni creó cuentas.
+
+Para completar RaceLab: Isaac decide personalmente sobre Firewall y provee una vía autorizada de acceso gratuito. Para un benchmark comparable: ventana sin builds ajenas, mismo simulador/replay, fuente, cantidad de filas, tamaño y refresco; tres repeticiones y repetición A/B si se habla de efecto en FPS. [Guía oficial RaceLab](https://garage.racelab.app/docs/faq/performance_guide/).
 
 ## Qué tienen ellos que nosotros no
 
@@ -171,10 +171,10 @@ Se consultaron [reseñas públicas de LMU](https://www.reddit.com/r/LeMansUltima
 
 Se abrió la [invitación oficial del Discord de RaceLab](https://discord.com/invite/h4Sc4M7). La respuesta pública consultada no expone mensajes de canales; no se inició sesión, se unió un usuario ni se consultó el Discord privado del PC. No se pudo revisar conversaciones de Discord. Para TinyPedal se usaron documentación, releases y fuentes públicas de su proyecto; no se identificó aquí un Discord oficial público verificable.
 
-El subagente Muse autorizado se lanzó con `xhigh`, máximo permitido por su catálogo; `max` fue rechazado. Su resultado terminal fue un mensaje de progreso sin URLs/conclusiones verificables. No se usó como fuente. La investigación incluida se contrastó directamente. [Índice de fuentes con fechas, HTTP y hashes](data/1605-sources.json); los hashes fijan las respuestas descargadas, no permiten reconstruir contenido si cambia una web.
+En la fase T3 previa, el subagente Muse autorizado se lanzó con `xhigh`, máximo permitido por su catálogo; `max` fue rechazado. Su resultado terminal fue un mensaje de progreso sin URLs/conclusiones verificables. No se usó como fuente. La reanudación CLI no usó subagentes. La investigación incluida se contrastó directamente. [Índice de fuentes con fechas, HTTP y hashes](data/1605-sources.json); los hashes fijan las respuestas descargadas, no permiten reconstruir contenido si cambia una web.
 
 ## Qué queda pendiente y cierre de la entrega
 
-Pendientes: señal horaria válida de #1565, acceso/verificación de escritorio, instalación efectiva de RaceLab sin cuenta, demos/carga comparable, 27 mediciones y medianas. No hay capturas de apps, pruebas live ni efectos sobre FPS. Los instaladores/portables preparados permanecen en `C:/tmp/1605-research/`; ninguna app de prueba quedó abierta porque ninguna se lanzó. Se cerró únicamente la pestaña web propia al entregar. No se tocaron instalación/datos de Vantare de Isaac, cuentas, pagos, secretos ni USB.
+Quedan pendientes las nueve tomas RaceLab, el consumo de la suite Vantare completa con acceso autorizado y una campaña con la misma telemetría y PC sin builds. La investigación y el banco permitido están entregados; la issue continúa abierta para revisión de esos límites. No hay prueba live ni efecto sobre FPS. Se cerraron los procesos propios TinyPedal/Vantare y el árbol RaceLab heredado, y se liberó el lock para #1607. Portables, instalación gratuita RaceLab y colectores permanecen en C:/tmp/1605-research o la instalación RaceLab creada por T3; no se desinstalaron ni se tocó Vantare real. Sin cuentas, pagos, secretos, USB, cambios de seguridad o código de producto.
 
-Checks locales de esta entrega documental: JSON/CSV y enlaces locales, consistencia de catálogo, revisión de diff y `git diff --check`. No se recompiló ni ejecutaron gates Rust locales: no cambió código y la campaña de carga está bloqueada. [PR #1613](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1613) draft OPEN a `nightly`, investigación publicada en `6c1fc442`; CI remoto se inició al publicar, sin resultado global acreditado al abrir. No hay merge, release ni promoción. Plane VANTA-12 pasó a «Por revisar», verificado el 14/10; la issue permanece abierta. Ese estado significa revisión de esta entrega parcial, no finalización de la comparativa medida.
+Checks locales: quality check/retirement (456 huellas) PASS, parseo JSON/CSV, recálculo independiente desde muestras, 27 combinaciones únicas (18 medidas/9 bloqueadas), catálogos, hashes, enlaces, revisión completa de diff y `git diff --check`. Gates Rust locales omitidos: entrega documental con datos, sin modificar fuentes, fixtures ni comportamiento del producto. La [PR #1613](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1613) sigue draft OPEN a nightly, en rama `vantareapp/isa-1605-comparativa-racelab-tinypedal`, base original 69fa2d65. Commits/push/SHA final y checks remotos se verifican en el comentario final de [#1605](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1605). Plane VANTA-12 pasa a «Por revisar» para este informe con sus mediciones permitidas. No merge, release ni promoción; Por revisar no acredita que RaceLab ni el benchmark completo estén terminados.

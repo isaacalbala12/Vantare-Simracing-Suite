@@ -12,22 +12,29 @@ GitHub Issues y Project Vantare; #1561/area:plataforma, In Progress, sin milesto
 
 ## 3. Estado real y canal
 
-**#1605 / Plane VANTA-12 · 14/10/2026:** comparativa documental de RaceLab y
-TinyPedal contra `nightly@69fa2d65`, en rama aislada
-`vantareapp/isa-1605-comparativa-racelab-tinypedal`, sin cambios de código.
-Informe y datos en `docs/analysis/comparativa-racelab-tinypedal-2026-10.md`
-y `docs/analysis/data/1605-*` desde la raíz Git. Las 27 tomas de consumo
-siguen pendientes: no se acredita un FIN de #1565 posterior a las 00:00 del
-14/10 requerido por las reglas nocturnas. No se abrieron apps ni se adquirió
-lock. Copias/descargas oficiales preparadas en `C:/tmp/1605-research/`;
-Vantare 0.0.976 viene de nightly `bc89c8b8`, no de toda la base actual.
-Sin ranking de rendimiento ni prueba live. [PR #1613](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1613)
-draft OPEN a nightly, investigación `6c1fc442` publicada. Validación documental
-local PASS; CI remoto en curso al abrir el draft. Plane Por revisar verificado
-para esta entrega parcial; [#1605](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1605)
-permanece abierta. SHA final/checks actualizados en issue/buzón.
-Siguiente: revisar documentación parcial y desbloquear señal horaria,
-verificación de escritorio y acceso gratuito antes de medir; no cerrar issue.
+**#1605 / Plane VANTA-12 · entrega CLI 14/10/2026:** investigación previa
+ca455a6b conservada; base original 69fa2d65, rama aislada
+`vantareapp/isa-1605-comparativa-racelab-tinypedal`.
+[Informe y datos](../../../../docs/analysis/comparativa-racelab-tinypedal-2026-10.md)
+desde raíz Git: **18 tomas, 757 muestras**, tres repeticiones por escenario,
+medianas/rangos y dos capturas propias. TinyPedal: GUI/4 overlays sin juego;
+Vantare 0.0.976 de bc89c8b8: **solo host QA local** (vacío/4 widgets/arranque),
+sin Hub/core/Engineer. El Hub probado quedó en acceso sin supervisor y se
+excluyó; la suite completa queda sin medir. RaceLab 8.4.4 instalado por T3:
+nueve tomas pendientes de decisión de Isaac sobre Firewall/acceso gratis;
+no se concedió permiso ni se creó cuenta. Fuentes/cadencia/tamaño distintos,
+PC bajo carga de builds: no ranking ni benchmark quieto/live/FPS.
+Corrección 01:05 aplicada; lock propio liberado y todos los procesos propios
+cerrados, verificado 03:09:31 +02:00. Instalación/datos de Vantare real intactos.
+Validación de datos/recálculo/enlaces/hashes y quality/456 huellas/diff-check
+PASS. Gates Rust locales omitidos: sin código/fixtures de producto.
+[PR #1613](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1613)
+draft a nightly; commit/push/SHA/checks finales en
+[#1605](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1605).
+Plane pasa a Por revisar para este resultado parcial; issue abierta.
+Siguiente: revisión del informe; acceso autorizado y PC quieto para medir
+RaceLab y suite completa, luego telemetría equivalente. Sin merge/release/
+promoción ni diseño nuevo; no cerrar issue como benchmark completado.
 
 [#1581](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1581) MERGED en nightly `707514e2` (squash de `vantareapp/isa-1561-studio-split`, que incorporó `origin/nightly@1dfdd6f1` mediante merge). PR-4 `1fc35e0e`, PR-6 `0efeeab5` y correcciones `51ef00e5`. El split conserva lógica y firmas públicas; visibilidad mínima pub(super), zoom privado, imports en cabecera y excepciones con existencia obligatoria. SHA final/checks se verifican en #1561 y `C:/tmp/buzon/1561-hub.md`.
 
@@ -93,3 +100,5 @@ Integradas: #1530–#1534, #1536; documentación #1561 PR #1570, #1562 PR #1576,
 2026-10-13 · GitHub #1569 · Claude (Opus 5.5): merge de nightly@707514e2 (#1581 integrada); §3, §7, §8 y §9.
 2026-10-13 · GitHub #1561 · Codex. Merge de nightly con #1579 y #1580 conservados junto con PR-4/PR-6; estado y diario en issue/buzón.
 2026-10-13 · GitHub #1566 · Claude (Opus 5.5): §1, §4, §6 y §8 por Pedales Vantare; merge de nightly con #1578 y #1579 conservados.
+
+2026-10-14 · GitHub #1605 · Codex CLI: reanudación, banco permitido 18 tomas/757 muestras y límites; SHA/checks finales en issue.

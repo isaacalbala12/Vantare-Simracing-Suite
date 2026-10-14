@@ -129,6 +129,9 @@ begin
 end;
 $$;
 grant create on schema pilot_private to pilot_profile_writer;
+-- El administrador que prepara el paquete debe poder transferir ownership
+-- también sin SUPERUSER. Nunca se concede este rol a authenticated/anon.
+grant pilot_profile_writer to current_user;
 alter function pilot_private.pilot_profile_save(jsonb,text,bigint) owner to pilot_profile_writer;
 revoke create on schema pilot_private from pilot_profile_writer;
 revoke all on function pilot_private.pilot_profile_save(jsonb,text,bigint) from public,anon;

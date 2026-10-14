@@ -20,7 +20,9 @@ concede SELECT a authenticated. Guardar llama a una función SECURITY DEFINER
 en `pilot_private`, con search_path vacío y owner `pilot_profile_writer`
 NOLOGIN/NOINHERIT/NOBYPASSRLS; tiene únicamente SELECT/INSERT/UPDATE del perfil,
 lectura de Storage y acceso a auth.uid(). No es owner de la tabla: RLS sigue
-aplicándose. El esquema privado no puede estar expuesto por Data API.
+aplicándose. Solo el administrador que ejecuta la migración recibe membresía
+del escritor para transferir ownership sin requerir SUPERUSER; nunca los roles
+de API. El esquema privado no puede estar expuesto por Data API.
 Storage admite fotos
 inmutables bajo `<UUID>/<SHA256>.jpg`; no hay upsert ni permisos de UPDATE.
 Una policy restrictiva evita que una policy global de Storage permita leer o
@@ -38,11 +40,15 @@ posterior, sin borrados de usuarios desde este encargo.
 crea y cierra un PostgreSQL desechable en loopback, con pgTAP instalado. No acepta
 DSN ni base existente. El bootstrap reproduce los contratos mínimos de
 profiles/Auth/Storage; no demuestra el esquema completo de Supabase ni su API
-HTTP de Storage. Los 67 checks cubren RLS, ACL, CAS, aislamiento entre cuentas,
+HTTP de Storage. Los 68 checks cubren RLS, ACL, CAS, aislamiento entre cuentas,
 rechazo del DML directo, contrato nativo, foto propia/ausente e inmutabilidad
 ante una policy global permisiva adversarial. El runner comprueba además tres
 rechazos de reversión y nueve postchecks del paquete QA retirado, conservando
 las cuentas y policies ajenas al paquete.
+`--non-superuser-migration` repite el paquete con un administrador CREATEROLE
+sin SUPERUSER en el mismo entorno desechable. No certifica los privilegios
+reales de la instancia de Supabase. Para transferir ownership, el administrador
+debe poder asumir el rol receptor ([PostgreSQL ALTER FUNCTION](https://www.postgresql.org/docs/current/sql-alterfunction.html)).
 
 El servidor valida tipos, límites, controles, ISO y simuladores como el cliente;
 la descripción admite LF (la UI normaliza CRLF/CR). Los campos futuros siguen
@@ -67,7 +73,8 @@ antes de considerar una restauración. No borrar tabla, bucket ni objetos con
 perfiles reales como rollback automático. La copia local permanece disponible.
 
 Para retirar una activación de **QA desechable en loopback y sin datos**, usar
-`supabase/rollback/pilot-profile-empty-qa.sql` en una conexión administrativa:
+`supabase/rollback/pilot-profile-empty-qa.sql` con el mismo rol administrativo
+que aplicó el paquete (los REVOKE deben retirar los grants de ese grantor):
 primero `SET vantare.pilot_qa_rollback='empty-disposable'`, después el archivo.
 El script exige 127.0.0.1 y bloquea las tablas mientras verifica que no existen
 perfiles ni objetos del bucket. Si existen, aborta conservando todo: cerrar el

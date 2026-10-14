@@ -18,6 +18,7 @@ select ok((select relrowsecurity from pg_class where oid='public.pilot_profiles'
 select ok(not has_table_privilege('anon','public.pilot_profiles','select'),'anon has no table access');
 select ok(not has_function_privilege('anon','public.pilot_profile_load()','execute'),'anon cannot load');
 select ok(not (select rolcanlogin or rolbypassrls from pg_roles where rolname='pilot_profile_writer'),'private writer cannot login or bypass RLS');
+select ok(not pg_has_role('authenticated','pilot_profile_writer','MEMBER') and not pg_has_role('anon','pilot_profile_writer','MEMBER'),'API roles never inherit private writer');
 select ok((select proowner='pilot_profile_writer'::regrole and prosecdef and proconfig=array['search_path=""'] from pg_proc where oid='pilot_private.pilot_profile_save(jsonb,text,bigint)'::regprocedure),'private CAS uses narrow owner and empty search_path');
 select ok(not has_function_privilege('anon','pilot_private.pilot_profile_save(jsonb,text,bigint)','execute'),'anon cannot call private CAS');
 select ok(not (select prosecdef from pg_proc where oid='public.pilot_profile_save(jsonb,text,bigint)'::regprocedure),'save is invoker');

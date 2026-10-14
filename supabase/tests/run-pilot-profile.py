@@ -12,6 +12,8 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pg-bin', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--non-superuser-migration', action='store_true',
+                        help='Apply as a disposable CREATEROLE administrator without SUPERUSER')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     root = Path(__file__).resolve().parents[2]
@@ -39,23 +41,27 @@ def main():
             connection = ['-X', '-h', '127.0.0.1', '-p', str(port), '-d', 'postgres',
                           '-U', 'postgres', '-v', 'ON_ERROR_STOP=1', '-At']
             run('psql', *connection, '-c', 'create extension pgtap;', name='pgtap.log')
+            if args.non_superuser_migration:
+                run('psql', *connection, '-c', 'create role pilot_qa_migrator nologin nosuperuser createrole; grant create on database postgres to pilot_qa_migrator; grant usage,create on schema public to pilot_qa_migrator with grant option;', name='non-superuser-setup.log')
             for path in ('supabase/tests/pilot-profile-bootstrap.sql',
                          'supabase/migrations/20261013225839_pilot_profile_private.sql',
                          'supabase/tests/pilot-profile.test.sql'):
-                output = run('psql', *connection, '-f', root / path, name=Path(path).name + '.log')
+                role = ['-c', 'set role pilot_qa_migrator;'] if args.non_superuser_migration and path != 'supabase/tests/pilot-profile.test.sql' else []
+                output = run('psql', *connection, *role, '-f', root / path, name=Path(path).name + '.log')
             count = re.search(r'^1\.\.(\d+)$', output, re.MULTILINE)
             if 'not ok ' in output or count is None or f'ok {count[1]} ' not in output:
                 raise RuntimeError('pilot pgTAP failed')
             print(f'PASS {count[1]} local PostgreSQL profile/storage/RLS checks')
             down = root / 'supabase/rollback/pilot-profile-empty-qa.sql'
-            run('psql', *connection, '-f', down, name='rollback-no-authorization.log', expected=3)
+            rollback_role = ['-c', 'set role pilot_qa_migrator;'] if args.non_superuser_migration else []
+            run('psql', *connection, *rollback_role, '-f', down, name='rollback-no-authorization.log', expected=3)
             run('psql', *connection, '-c', "insert into public.pilot_profiles(account_id) values('16120000-0000-0000-0000-000000000001');", name='rollback-profile-fixture.log')
             setting = "set vantare.pilot_qa_rollback='empty-disposable';"
-            run('psql', *connection, '-c', setting, '-f', down, name='rollback-profile-refused.log', expected=3)
+            run('psql', *connection, *rollback_role, '-c', setting, '-f', down, name='rollback-profile-refused.log', expected=3)
             run('psql', *connection, '-c', "select 1 / count(*) from public.pilot_profiles; delete from public.pilot_profiles; insert into storage.objects(bucket_id,name) values('pilot-photos','qa-object');", name='rollback-photo-fixture.log')
-            run('psql', *connection, '-c', setting, '-f', down, name='rollback-photo-refused.log', expected=3)
+            run('psql', *connection, *rollback_role, '-c', setting, '-f', down, name='rollback-photo-refused.log', expected=3)
             run('psql', *connection, '-c', "select 1 / count(*) from storage.objects where bucket_id='pilot-photos'; delete from storage.objects where bucket_id='pilot-photos';", name='rollback-fixture-cleanup.log')
-            run('psql', *connection, '-c', setting, '-f', down, name='rollback-empty.log')
+            run('psql', *connection, *rollback_role, '-c', setting, '-f', down, name='rollback-empty.log')
             output = run('psql', *connection, '-f', root / 'supabase/tests/pilot-profile-rollback.test.sql', name='rollback-postcheck.log')
             if 'not ok ' in output or '1..9' not in output or 'ok 9 ' not in output:
                 raise RuntimeError('rollback pgTAP failed')

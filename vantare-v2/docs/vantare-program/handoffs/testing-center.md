@@ -226,3 +226,16 @@ LoadCredential usa nombre dedicado de credstore, sin ruta obligatoria.
 Unidad temporal de prueba systemd 259 PASS sin credencial, /bin/true y collect;
 no se instaló la unidad del worker. Runbook actualizado para futura activación.
 Evidencia E:/tmp/isa1594-r2-evidence/f2-*. F3/gates finales siguen pendientes.
+
+
+### F3 · contrato SQL tras expansión de redacción
+
+RED nativo con título "::1 " x30 y cuerpo trim("::1 " x250): prepare
+ofrecía título de 359 caracteres, incompatible con SQL. GREEN limita los
+valores ya redactados a 120/1000 caracteres Unicode antes de preview.
+review_r2_f3_expanded_redaction_fits_sql_and_retries_exact_preview PASS:
+longitudes finales conformes, sin IPv6 original, primer POST loopback 500 y
+reintento con bytes idénticos al preview. Incluye presupuesto HTTP/reintento
+existentes: 4/4 PASS. Suite Python final 39/39 PASS. Evidencia f3-*.
+No SQL/pgTAP nuevos: contrato de longitud contrastado con CHECK versionado;
+no conexión ni cambio a Supabase. Gates completos nativos pendientes.

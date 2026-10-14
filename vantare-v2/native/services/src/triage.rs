@@ -146,8 +146,16 @@ impl Triage {
                 &id[16..20],
                 &id[20..32]
             ),
-            title: redaction::clean(title, private_names),
-            body: redaction::clean(body, private_names),
+            // Redaction can expand short secrets. Bound the final SQL text
+            // before preview so consent and every retry use these same values.
+            title: redaction::clean(title, private_names)
+                .chars()
+                .take(120)
+                .collect(),
+            body: redaction::clean(body, private_names)
+                .chars()
+                .take(1000)
+                .collect(),
             context: serde_json::json!({"app_version":crate::product::VERSION,"app_channel":channel,
                 "game":observed.game,"game_version":observed.game_version.filter(|v|v.bytes().all(|b|b.is_ascii_digit() || b==b'.')),
                 "system":if selection.items.contains(&Item::System) {system} else {serde_json::json!({})},

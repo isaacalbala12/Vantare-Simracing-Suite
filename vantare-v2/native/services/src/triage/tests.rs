@@ -240,6 +240,90 @@ fn prepared_text(raw: &str) -> String {
 }
 
 #[test]
+fn review_r2_f3_expanded_redaction_fits_sql_and_retries_exact_preview() {
+    let title = "::1 ".repeat(30);
+    let body = "::1 ".repeat(250).trim().to_owned();
+    assert_eq!(title.chars().count(), 120);
+    assert_eq!(body.chars().count(), 999);
+    let mut triage = Triage::default();
+    let preview = triage
+        .prepare(
+            "15940000-0000-0000-0000-000000000001",
+            "testers",
+            Input {
+                title: &title,
+                body: &body,
+                selection: Selection {
+                    items: Default::default(),
+                },
+                consent: true,
+                private_names: &[],
+            },
+            100,
+        )
+        .expect("UI-admitted text");
+    let payload = preview.packet.rpc_payload("testers");
+    for (field, max) in [("p_title", 120), ("p_body", 1000)] {
+        let value = payload[field].as_str().expect("text");
+        assert!(
+            (1..=max).contains(&value.trim().chars().count()),
+            "SQL rejects {field}: {} characters",
+            value.trim().chars().count()
+        );
+        assert!(!value.contains("::1"));
+        assert!(value.contains("<redactado>"));
+    }
+    let expected = serde_json::to_vec(&payload).expect("JSON");
+    let server=Server::start(vec![
+        (200,serde_json::json!({"version":1,"account_id":"15940000-0000-0000-0000-000000000001","data_access_token":"data-fixture","expires_at":160}).to_string()),
+        (500,"{}".into()),(200,"null".into()),
+        (200,"{\"questionnaires\":[],\"contributions\":[]}".into())]);
+    let (root, store) = crate::test_store("triage-expanded");
+    let account = account::fixture(&server.base, &store);
+    let http = Http::default();
+    let config = Config {
+        authorize: server
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("URL"),
+        supabase: server.base.clone(),
+        anon_key: "public-fixture".into(),
+    };
+    let session = config.authorize(&http, &account, 100).expect("account");
+    let request = session.request(&http, &config, &account, 100);
+    assert_eq!(
+        triage
+            .send(&request, "testers", &preview.id, 100)
+            .unwrap_err(),
+        Error::Offline
+    );
+    triage
+        .send(&request, "testers", &preview.id, 100)
+        .expect("exact retry");
+    let captured: Vec<_> = (0..4)
+        .map(|_| {
+            server
+                .requests
+                .recv_timeout(std::time::Duration::from_secs(3))
+                .expect("request")
+        })
+        .collect();
+    for index in [1, 2] {
+        assert_eq!(
+            captured[index]
+                .split("\r\n\r\n")
+                .nth(1)
+                .expect("body")
+                .as_bytes(),
+            expected
+        );
+    }
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "triage-expanded", &[]);
+}
+
+#[test]
 fn review_p2_4_full_escaped_preview_fits_http_and_sends_exact_hashed_tail() {
     for operation in ["participation", "participation \"quoted\" \\ sesión \u{1}"] {
         let now = 100;

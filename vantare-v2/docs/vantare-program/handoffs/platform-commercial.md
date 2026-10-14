@@ -31,6 +31,11 @@ release ni publicación. El checkout de la app aún no autoaplica los descuentos
 usar Checkout Links/API de Polar tras la validación autorizada. `plan.md` retirado
 por #1601: no recreado, sin cambio público de disponibilidad.
 
+Entrega publicada: [PR draft #1621](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1621)
+a nightly; código `83da120e`, runbook `97db909a`. #1500 cerrada como sustituida,
+sin merge. Push de rama verificado; CI del candidato se consulta en #1621.
+Notion VAN-782 pasa a En revisión con evidencia y anuales/sandbox/pgTAP pendientes.
+
 ## #1609 / VANTA-22 · Analítica consentida (14/10/2026)
 
 Ronda 3 publicada para revisión desde `f56156e3`; review Sol r2 completa.

@@ -96,3 +96,5 @@ Rama publicada y PR draft #1618. HEAD final/CI en la PR, #1610 y buzón.
 F2 reproducido con #1602: historial owner devolvía 3 informes y una página global desplazaba el propio (5/6 RED). Filtro explícito de cuenta antes de LIMIT: 6/6 GREEN sobre #1602@87950380. Se conserva SELECT owner para administración. Evidencia C:/tmp/1610-evidence/r2/F2-{red,green}. PR #1618 sigue draft; F1/F3/F4 en curso. No Plane real ni producción en ronda 2.
 
 F3: aceptar A → arreglar A → aceptar B del mismo día y dos arreglados → tercera aceptación semanal: 6/8 RED, 8/8 GREEN sobre #1602@87950380. Trigger en frontera de estado cuenta accepted/fixed y conserva lock 1594 y UTC; el rechazo revierte también la review insertada por #1602. No se modifica su rama ni reemplaza su RPC.
+
+F4: legacy sembrado antes de apply bloqueaba down inmediato (RED). Flag de actividad persistente distingue backfill inerte de seguimiento usado. GREEN conserva fila legacy completa y bloquea seis clones independientes: crédito off/on/off, acuse, cambio de estado, consentimiento, nuevo informe y fixed. Ningún dato de seguimiento activo se elimina; rollback sigue cerrado ante datos no reversibles.

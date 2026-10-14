@@ -3,14 +3,19 @@ begin;
 set local lock_timeout='5s';
 lock table public.testing_contributions,public.testing_report_followup in access exclusive mode;
 do $$begin
- if exists(select 1 from public.testing_report_followup) or exists(select 1 from public.testing_contributions where channel='master' or state='fixed') then
+ if exists(select 1 from public.testing_report_followup where activity or consent or credit
+     or notice_read_at is not null or fixed_version is not null
+     or reviewed_title is not null or reviewed_summary is not null)
+   or exists(select 1 from public.testing_contributions where channel='master' or state='fixed') then
    raise exception 'testing_followup_rollback_requires_data_preservation' using errcode='55000';
  end if;
 end$$;
 drop trigger testing_report_limit on public.testing_contributions;
 drop trigger testing_report_status on public.testing_contributions;
 drop trigger testing_report_acceptance_limit on public.testing_contributions;
+drop trigger testing_report_activity on public.testing_report_followup;
 drop function private.testing_report_limit(),private.testing_report_status(),private.testing_report_acceptance_limit();
+drop function private.testing_report_activity();
 drop function public.testing_report_submit(uuid,text,text,text,boolean),public.testing_report_credit(uuid,boolean),
  public.testing_report_notice_read(uuid,timestamptz),public.testing_participation_current_v2(text),
  public.testing_report_fixed(uuid,text,text,text),public.testing_report_patch_candidates(text);

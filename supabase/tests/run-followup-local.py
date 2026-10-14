@@ -14,7 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pg-bin', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--regression', choices=['F1', 'F2', 'F3'], help='Run one review regression, then stop')
+    parser.add_argument('--regression', choices=['F1', 'F2', 'F3', 'F4'], help='Run one review regression, then stop')
     dependency = parser.add_mutually_exclusive_group()
     dependency.add_argument('--dependency-ref', help='Read-only git ref of #1602 for combined local SQL validation')
     dependency.add_argument('--dependency-dir', type=Path, help='Reviewed #1602 SQL extracted from git (Windows worktree/WSL)')
@@ -127,6 +127,44 @@ def main():
             run('psql', *actor, '-f', root / 'supabase/migrations/20261010000000_testing_participation.sql', log='participation.log')
             if args.dependency_ref or args.dependency_dir:
                 run('psql', *actor, '-f', dependency_file('migrations/20261013160000_testing_contribution_triage.sql'), log='triage-dependency.log')
+            if args.regression == 'F4':
+                # Seed BEFORE apply, unlike the original rollback smoke test.
+                run('psql', *connection, '-c', """insert into public.profiles(id) values('16100000-0000-0000-0000-000000000001');
+                  insert into public.testing_contributions(id,account_id,channel,title,body,state) values
+                  ('16100000-0000-0000-0000-000000000011','16100000-0000-0000-0000-000000000001','nightly','Legacy','Synthetic','accepted');
+                """, log='legacy-before-apply.log')
+                original = run('psql', *connection, '-c', 'select to_jsonb(c) from public.testing_contributions c;', log='legacy-original.log')
+                migration = root / 'supabase/migrations/20261013225629_testing_reports_followup.sql'
+                rollback = root / 'supabase/rollbacks/20261013225629_testing_reports_followup.down.sql'
+                run('psql', *actor, '-f', migration, log='legacy-apply.log')
+                run('psql', *actor, '-f', rollback, log='legacy-immediate-down.log')
+                preserved = run('psql', *connection, '-c', 'select to_jsonb(c) from public.testing_contributions c;', log='legacy-preserved.log')
+                if original != preserved:
+                    raise RuntimeError('rollback modified a legacy contribution')
+                # A cloned pre-apply DB isolates each activity case. No reused
+                # dirty flag or hand-reset metadata can make a guard test pass.
+                cases = {
+                    'credit-off-on-off': "select public.testing_report_credit('16100000-0000-0000-0000-000000000011',true); select public.testing_report_credit('16100000-0000-0000-0000-000000000011',false);",
+                    'notice': "select public.testing_report_notice_read('16100000-0000-0000-0000-000000000011',(select updated_at from public.testing_report_followup limit 1));",
+                    'status': "reset role; update public.testing_contributions set state='reviewing'; update public.testing_contributions set state='accepted';",
+                    'consent': "select public.testing_report_submit('16100000-0000-0000-0000-000000000011','nightly','Legacy','Synthetic',true);",
+                    'new-report': "select public.testing_report_submit('16100000-0000-0000-0000-000000000012','nightly','New','Synthetic',true);",
+                    'fixed': "reset role; insert into public.testing_center_memberships(user_id,actor_id,role) values('16100000-0000-0000-0000-000000000001','owner-f4','owner'); set role authenticated; select public.testing_report_fixed('16100000-0000-0000-0000-000000000011','1.2.3','Reviewed','Summary');",
+                }
+                for index, (label, sql) in enumerate(cases.items()):
+                    database = f'activity_{index}'
+                    run('psql', *connection, '-c', f'create database {database} template postgres;', log=f'{label}-clone.log')
+                    case_conn = connection.copy()
+                    case_conn[case_conn.index('-d') + 1] = database
+                    case_actor = actor.copy()
+                    case_actor[case_actor.index('-d') + 1] = database
+                    run('psql', *case_actor, '-f', migration, log=f'{label}-apply.log')
+                    run('psql', *case_conn, '-c', "set role authenticated; set request.jwt.claim.sub='16100000-0000-0000-0000-000000000001';" + sql, log=f'{label}-activity.log')
+                    result = run('psql', *case_actor, '-f', rollback, log=f'{label}-protected.log', expected=3)
+                    if 'testing_followup_rollback_requires_data_preservation' not in result:
+                        raise RuntimeError(f'{label}: wrong rollback rejection')
+                print(f'PASS: F4 legacy-before-apply immediate rollback preserves exact row; {len(cases)} isolated activity rollbacks blocked')
+                return
             run('psql', *actor, '-f', root / 'supabase/migrations/20261013225629_testing_reports_followup.sql', log='followup.log')
             if args.regression:
                 output = run('psql', *connection, '-f', root / f'supabase/tests/testing_followup_{args.regression}.test.sql', log='regression.log')

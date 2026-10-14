@@ -12,6 +12,7 @@ alter table public.testing_contributions add constraint testing_contributions_st
   check(state in ('received','reviewing','accepted','declined','spam','fixed'));
 create table public.testing_report_followup (
   contribution_id uuid primary key references public.testing_contributions(id) on delete cascade,
+  activity boolean not null default true,
   credit boolean not null default false,
   consent boolean not null default false,
   updated_at timestamptz not null default clock_timestamp(),
@@ -29,7 +30,15 @@ grant select on public.testing_report_followup to authenticated;
 create policy testing_report_followup_own on public.testing_report_followup for select to authenticated
   using(exists(select 1 from public.testing_contributions c where c.id=contribution_id and c.account_id=auth.uid()));
 -- Existing accepted reports need an acknowledgeable durable record too.
-insert into public.testing_report_followup(contribution_id) select id from public.testing_contributions;
+insert into public.testing_report_followup(contribution_id,activity) select id,false from public.testing_contributions;
+-- Baseline rows can be removed by an immediate down; once touched, even an
+-- off/on/off revocation must be preserved. No user can write this flag.
+create function private.testing_report_activity() returns trigger
+language plpgsql set search_path='' as $$
+begin new.activity:=true; return new; end $$;
+revoke all on function private.testing_report_activity() from public,anon,authenticated,service_role;
+create trigger testing_report_activity before update on public.testing_report_followup
+  for each row execute function private.testing_report_activity();
 drop policy testing_contributions_read on public.testing_contributions;
 create policy testing_contributions_read on public.testing_contributions for select to authenticated
   using(account_id=auth.uid());

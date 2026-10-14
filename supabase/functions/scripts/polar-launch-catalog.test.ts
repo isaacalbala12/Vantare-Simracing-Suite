@@ -628,6 +628,39 @@ Deno.test("P2-2: own creator link selects only launch products and pins its disc
   assertEquals(f.writes.length, writes);
 });
 
+Deno.test("checkout theme: new and reused creator URLs force dark without API writes or losing parameters", async () => {
+  const f = fake();
+  const draft = await syncCatalog(f.http, sandbox, options);
+  for (const product of f.products) product.visibility = "public";
+  const created = await syncCatalog(f.http, draft, options);
+  assertEquals(
+    new URL(created.creator_link!.url!).searchParams.get("theme"),
+    "dark",
+  );
+  assertEquals(f.links[0].url, "https://sandbox.polar.sh/checkout/fixture");
+  const body = (f.writes.at(-1) as { body: Record<string, unknown> }).body;
+  assertEquals(body.theme, undefined); // not a CheckoutLinkCreate field
+  f.links[0].url =
+    "https://sandbox.polar.sh/checkout/fixture?product_id=chosen&utm_source=ISAAC&locale=en&theme=light#plans";
+  const before = f.writes.length;
+  const reused = await syncCatalog(f.http, created, options);
+  const url = new URL(reused.creator_link!.url!);
+  assertEquals(url.searchParams.getAll("theme"), ["dark"]);
+  assertEquals(url.searchParams.get("product_id"), "chosen");
+  assertEquals(url.searchParams.get("utm_source"), "ISAAC");
+  assertEquals(url.searchParams.get("locale"), "en");
+  assertEquals(url.hash, "#plans");
+  assertEquals(reused.creator_link!.id, created.creator_link!.id);
+  assertEquals(reused.creator_link!.code, "ISAAC");
+  assertEquals(reused.writes, 0);
+  assertEquals(f.writes.length, before);
+  assertEquals(new URL(f.links[0].url).searchParams.get("theme"), "light");
+  assertEquals(
+    (await syncCatalog(f.http, reused, options)).creator_link,
+    reused.creator_link,
+  );
+});
+
 for (
   const override of [
     { trial_interval: "month", trial_interval_count: 2 },

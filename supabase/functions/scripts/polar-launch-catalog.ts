@@ -178,6 +178,14 @@ function linkMatches(resource: Resource, ids: string[], discountId: string) {
     resource.allow_discount_codes === false && !!resource.url;
 }
 
+function darkCheckoutUrl(raw: string) {
+  // Polar supports theme as a URL parameter, not a persisted Checkout Link field.
+  // https://polar.sh/docs/features/checkout/links#query-parameters
+  const url = new URL(raw);
+  url.searchParams.set("theme", "dark");
+  return url.toString();
+}
+
 /** Reuses configured IDs or owned metadata; never guesses product names. */
 export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   const source = typeof raw === "object" && raw !== null && "map" in raw
@@ -515,7 +523,9 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
     writes,
     map,
     offers,
-    creator_link: link ? { id: link.id, url: link.url, code: creator } : null,
+    creator_link: link
+      ? { id: link.id, url: darkCheckoutUrl(link.url!), code: creator }
+      : null,
     creator_link_pending: creator && !link
       ? "publish_launch_products_then_rerun"
       : null,

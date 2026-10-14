@@ -22,7 +22,25 @@ Una primera ejecución GREEN falló por un UUID histórico inválido en el test;
 se corrigió el dato sintético, conservando el log `01-green.log`.
 
 Sin servicios reales, secretos, dependencias, push, merge, promoción o release.
-Pendiente hito de tema/informe oficial y gates completos. SHAs finales en
+Hito 1 local `b4605025`; hito 2 añade `theme=dark` a URLs nuevas/reutilizadas,
+sin PATCH del enlace ni campo theme en POST. Query/fragmento/locale/ID/código
+se conservan, cero writes en rerun: 1 RED → catálogo **43 PASS/0 FAIL**,
+`02-red.log`/`02-green.log`. Investigación oficial del 14/10 en
+[personalización Polar](../../billing/isa-1620-polar-checkout-personalizacion.md)
+y `~/orq/polar-checkout-personalizacion.md`: logo/avatar, medias, tema,
+color, textos, campos, idioma y dominio, con scopes y pasos del operador.
+No hay controles de carmín/CSS/dominio alojado documentados; propuesta de
+logo y medias con acento Orbit, y embed como entrega web separada.
+Localización ES/EN del formulario exige feature beta; no traduce productos.
+Gates finales de esta ronda: **586 PASS/0 FAIL/1 ignored** en la suite Deno
+completa (PostgREST no configurado), incluyendo catálogo 43 PASS; tipos,
+lint (exclusión no-import-prefix ya existente), fmt, quality/retirada456,
+superficie deploy, fragmento ISA-1620 y planes offline sandbox/production PASS.
+Tests con entorno vacío, sin permiso de red, ficheros solo /tmp.
+Rust/UI/telemetría y SQL omitidos: ningún archivo de esas áreas cambia.
+Informe/evidencia en `~/evidence/1620/checkout-names/RESUMEN.md`.
+Diff completo revisado, sin nuevas dependencias ni cambios de precios de tabla,
+gates o workflows. SHAs finales en
 `~/orq/1620.buzon.md`. Siguiente: orquestador revisa diff y actualiza issue/PR,
 aplica solo por su vía autorizada y verifica aspecto real en sandbox.
 

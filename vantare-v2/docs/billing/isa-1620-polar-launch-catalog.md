@@ -41,6 +41,11 @@ Los tests usan HTTP inyectado sin red: no certifican el aspecto del checkout
 real. El orquestador debe revisar/aplicar en sandbox por su vía autorizada y
 comprobar los nueve nombres, Markdown, mensual/anual y conservación de IDs.
 
+La investigación de logo, medias, tema, color, textos, campos, idioma y
+dominio propio está en [personalización Polar](isa-1620-polar-checkout-personalizacion.md)
+y en `~/orq/polar-checkout-personalizacion.md`. Logo, imágenes, beta de
+localización y eventual embed son pasos del operador; no se ejecutan aquí.
+
 ## Tabla y duración
 
 Fuente: `supabase/functions/scripts/polar-launch-prices.json`, versión
@@ -84,6 +89,11 @@ lanzamiento y su único `discount_id`. `allow_discount_codes: false` fija el
 creador del enlace. El código exacto también sirve en un checkout de esos
 productos que admita códigos; no sirve en normales ni Launch Edition. La
 salida exporta solo ID/URL/código del enlace, nunca el `client_secret`.
+La URL exportada fija `theme=dark` y conserva el resto de query y fragmento.
+No manda un campo `theme` a Polar ni modifica el enlace persistido: ese campo
+no existe en el payload de Checkout Links. Distribuir la URL de salida; los
+enlaces antiguos sin parámetro conservan su tema anterior.
+[Parámetro oficial](https://polar.sh/docs/features/checkout/links).
 
 R2 P2 Sol B: el enlace compartido debe tener `trial_interval` y
 `trial_interval_count` ausentes o null para heredar el trial de cada producto:

@@ -1,3 +1,21 @@
+## #1608 · Ronda 6 local · R5-P3-1 (14/10/2026)
+
+`storage.buckets.owner uuid` y `owner_id text` reciben la barrera común:
+propietarios UUID/Clerk, OLD/NEW e inmutabilidad, INSERT/UPDATE tras tombstone
+rechazados; DELETE autorizado sigue permitido. Buckets globales sin propietario
+conservan configuración. Inventario real con ambas columnas y trigger activo.
+RED exacto INSERT de supabase_storage_admin permitido → GREEN 17 checks.
+Objetos/uploads/partes heredan el propietario del bucket y rechazan padre
+invisible; el borrado encola también objetos/uploads con owner propio NULL.
+Bootstrap reproduce owner/owner_id reales; cinco nuevas rutas de carreras,
+102 rutas/603 checks, sin debilitar el gate de cobertura FK.
+Runner `--storage-buckets --storage-schema <dump local>`; RED con
+`--before-storage-buckets`. Evidencia `~/evidence/1608/r6/buckets-{red-exact,inherited-green}/`.
+Dump del stack real elimina solo triggers/policy de la app para cargarlos después
+mediante las migraciones originales; errores de preparación conservados.
+No se afirma API de buckets de usuario ni se borran buckets/datos instalados.
+R5-P1-1 sigue en preparación; solo local, sin push/merge/promoción/deploy/release.
+
 ## #1608 · Ronda 6 · R5-P2-1 local (14/10/2026)
 
 La review r5 refuta el cierre global de locks de r5. La entrada administrativa
@@ -296,7 +314,7 @@ un trigger o si sus argumentos compilados omiten una columna FK actual.
 | `public.user_entitlements` — INSERT/UPDATE/DELETE | Sí | `entitlement` |
 | `public.visual_roadmap` | No (no aplica UUID) | Documento público global; no cuenta. |
 | `public.visual_roadmap_sync_approvals` | No (no aplica UUID) | Aprobación de documento global; no cuenta. |
-| `storage.buckets` | No (no aplica UUID) | Configuración de buckets; objetos separados y protegidos. |
+| `storage.buckets` | Sí (r6) | `owner uuid`/`owner_id text` protegidos; configuración global sin propietario permitida. |
 | `storage.objects` — INSERT/UPDATE/DELETE | Sí | `storage-owner`, `storage-manifest` |
 
 Los vínculos de inbox se derivan de customer/checkout/order/refund/subscription

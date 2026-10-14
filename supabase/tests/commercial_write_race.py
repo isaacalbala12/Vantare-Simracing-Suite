@@ -64,6 +64,10 @@ end $$;
             sql(SETUP.format(**values))
             sql(INDIRECT_SETUP.format(**values))
             sql("insert into public.profiles(id) values('{other}'); insert into public.billing_webhook_inbox(id,provider,environment,provider_event_id,event_type,payload_hash,payload) values('{inbox}','polar','sandbox','seed-{case}','order.paid','{h}','{{\"data\":{{\"customer_id\":\"{case}\"}}}}')".format(**values))
+            if name.startswith('storage-bucket-child-'):
+                sql("insert into storage.buckets(id,name,owner_id) values('{case}','{case}','{a}')".format(**values))
+                if name == 'storage-bucket-child-part':
+                    sql("insert into storage.s3_multipart_uploads(id,upload_signature,bucket_id,key,version) values('{case}','fixture','{case}','{case}','fixture')".format(**values))
             values['job'] = sql("select job_key from public.testing_center_agent_jobs where technical_issue_id='issue_{h}'".format(**values))
             if name == 'codex-control':
                 sql("insert into public.testing_center_codex_runs(run_id,technical_issue_id,attempt,state,origin) values('{case}','issue_{h}',1,'queued','orchestrator')".format(**values))
@@ -181,7 +185,7 @@ select count(*)=0 from public.billing_webhook_inbox where provider_event_id='new
         missing = sql("""
 with recursive expected(rel) as (
  select unnest(array['public.profiles'::regclass,'public.operational_access_audit',
- 'public.operational_legacy_grant_retirements','storage.objects','storage.s3_multipart_uploads','private.testing_report_attempts',
+ 'public.operational_legacy_grant_retirements','storage.buckets','storage.objects','storage.s3_multipart_uploads','private.testing_report_attempts',
  'public.billing_webhook_inbox','public.testing_center_idempotency','public.testing_center_audit',
  'public.admin_audit_log']::regclass[])::oid
  union select c.conrelid from expected e join pg_constraint c on c.confrelid=e.rel

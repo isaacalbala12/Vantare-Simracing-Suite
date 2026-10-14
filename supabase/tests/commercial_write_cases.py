@@ -160,3 +160,15 @@ CASES += [
  ('storage-multipart-part', "insert into storage.s3_multipart_uploads_parts(upload_id,part_number,bucket_id,key,etag,version,owner_id) values('{case}',1,'testing-center-evidence','{case}','fixture','fixture','{a}')"),
  ('storage-abort-queue', "insert into private.clerk_deleted_uploads(issuer,subject,bucket_id,name,upload_id) values('{issuer}','{subject}','testing-center-evidence','{case}','{case}')"),
 ]
+
+# R6: buckets also persist account ownership in the real Storage schema.
+CASES += [
+ ('storage-bucket-owner', "insert into storage.buckets(id,name,owner) values('{case}','{case}','{a}')"),
+ ('storage-bucket-owner-id', "insert into storage.buckets(id,name,owner_id) values('{case}','{case}','{a}')"),
+]
+
+CASES += [
+ ('storage-bucket-child-object', "insert into storage.objects(bucket_id,name) values('{case}','{case}')"),
+ ('storage-bucket-child-upload', "insert into storage.s3_multipart_uploads(id,upload_signature,bucket_id,key,version) values('{case}','fixture','{case}','{case}','fixture')"),
+ ('storage-bucket-child-part', "insert into storage.s3_multipart_uploads_parts(upload_id,part_number,bucket_id,key,etag,version) values('{case}',1,'{case}','{case}','fixture','fixture')"),
+]

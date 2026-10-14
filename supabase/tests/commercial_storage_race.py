@@ -6,6 +6,57 @@ import uuid
 from commercial_tombstone_race import read_marker
 
 
+def run_storage_buckets(bin_path, conn, env, run, out):
+    log, failures = [], []
+    def check(ok, label):
+        log.append(('PASS ' if ok else 'FAIL ') + label)
+        if not ok:
+            failures.append(label)
+    def sql(statement):
+        r = subprocess.run([str(bin_path/'psql'), *conn, '-q', '-c', statement],
+            env=env, text=True, capture_output=True, timeout=30)
+        log.append(r.stdout + r.stderr)
+        return r
+    try:
+        account, other = str(uuid.uuid4()), str(uuid.uuid4())
+        issuer, subject = 'https://buckets.clerk.invalid', 'user_bucket_owner'
+        run('psql', *conn, '-c', f"""insert into private.clerk_issuers(issuer,authorized_parties,enabled)
+values('{issuer}',array['https://app.invalid'],true);
+insert into public.profiles(id) values('{account}'),('{other}');
+insert into public.account_identities(issuer,subject,account_id) values('{issuer}','{subject}','{account}');""")
+        columns = run('psql', *conn, '-c', "select column_name||':'||data_type from information_schema.columns where table_schema='storage' and table_name='buckets' and column_name in ('owner','owner_id') order by column_name").strip().splitlines()
+        check(columns == ['owner:uuid', 'owner_id:text'], 'inventory uses real buckets.owner/owner_id')
+        for column, owner in [('owner_id', account), ('owner_id', subject), ('owner', account)]:
+            name = 'buckets-' + column + '-' + owner
+            result = sql(f"begin; set local role supabase_storage_admin; insert into storage.buckets(id,name,{column}) values('{name}','{name}','{owner}'); commit;")
+            check(result.returncode == 0, 'live bucket ' + column + '/' + owner)
+        run('psql', *conn, '-c', f"insert into storage.objects(bucket_id,name) values('buckets-owner_id-{account}','bucket-null-owner'); insert into storage.s3_multipart_uploads(id,upload_signature,bucket_id,key,version) values('bucket-null-upload','fixture','buckets-owner_id-{account}','bucket-null-upload','fixture');")
+        result = sql(f"begin; set local role supabase_storage_admin; update storage.buckets set owner_id='{other}' where id='buckets-owner_id-{account}'; rollback;")
+        check(result.returncode != 0 and '28000' in result.stderr, 'bucket ownership immutable')
+        run('psql', *conn, '-c', f"select public.apply_clerk_user_event('bucket-delete',repeat('a',64),'{issuer}','{subject}','user.deleted',now(),null)")
+        check(run('psql', *conn, '-c', f"select count(*) from public.clerk_deletion_objects('{issuer}','{subject}') where name='bucket-null-owner'; select count(*) from public.clerk_deletion_uploads('{issuer}','{subject}') where upload_id='bucket-null-upload';").strip().splitlines() == ['1', '1'], 'bucket-owned ownerless object/upload queued for API cleanup')
+        # SQL-only fixtures have no backend bytes; real byte cleanup has its own HTTP test.
+        run('psql', *conn, '-c', "begin; set local storage.allow_delete_query='true'; delete from storage.objects where name='bucket-null-owner'; delete from storage.s3_multipart_uploads where id='bucket-null-upload'; commit;")
+        for column, owner in [('owner_id', account), ('owner_id', subject), ('owner', account)]:
+            name = 'buckets-' + column + '-' + owner
+            result = sql(f"begin; set local role supabase_storage_admin; insert into storage.buckets(id,name,{column}) values('late-{name}','late-{name}','{owner}'); rollback;")
+            check(result.returncode != 0 and '28000' in result.stderr, 'tombstoned bucket INSERT denied ' + column + '/' + owner)
+            result = sql(f"begin; set local role supabase_storage_admin; update storage.buckets set public=true where id='{name}'; rollback;")
+            check(result.returncode != 0 and '28000' in result.stderr, 'tombstoned bucket UPDATE denied ' + column + '/' + owner)
+            result = sql(f"begin; set local role supabase_storage_admin; set local storage.allow_delete_query='true'; delete from storage.buckets where id='{name}'; commit;")
+            check(result.returncode == 0, 'tombstoned bucket cleanup DELETE allowed ' + column + '/' + owner)
+        result = sql("begin; set local role supabase_storage_admin; set local storage.allow_delete_query='true'; insert into storage.buckets(id,name) values('global-fixture','global-fixture'); update storage.buckets set public=false where id='global-fixture'; delete from storage.buckets where id='global-fixture'; commit;")
+        check(result.returncode == 0, 'global ownerless buckets keep configuration writes')
+        inventory = run('psql', *conn, '-c', "select jsonb_build_object('relation','storage.buckets','owners',array['owner uuid','owner_id text'],'protected',exists(select 1 from pg_trigger where tgrelid='storage.buckets'::regclass and tgname='a_account_write_barrier' and tgenabled='O'))")
+        (out/'bucket-inventory.json').write_text(inventory)
+        check(json.loads(inventory)['protected'], 'real bucket root protected in inventory')
+    finally:
+        (out/'storage-buckets.log').write_text('\n'.join(log) + '\n')
+    if failures:
+        raise AssertionError('\n'.join(failures))
+    print('Storage buckets owner UUID/text and global configuration: PASS', flush=True)
+
+
 def run_storage_owners(bin_path, conn, env, run, out):
     log, failures = [], []
     def check(ok, label):

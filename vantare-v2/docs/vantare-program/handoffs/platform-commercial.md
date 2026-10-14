@@ -1,3 +1,21 @@
+## #1608 · Ronda 6 local · R5-P3-1 (14/10/2026)
+
+`storage.buckets.owner uuid` y `owner_id text` reciben la barrera común:
+propietarios UUID/Clerk, OLD/NEW e inmutabilidad, INSERT/UPDATE tras tombstone
+rechazados; DELETE autorizado sigue permitido. Buckets globales sin propietario
+conservan configuración. Inventario real con ambas columnas y trigger activo.
+RED exacto INSERT de supabase_storage_admin permitido → GREEN 17 checks.
+Objetos/uploads/partes heredan el propietario del bucket y rechazan padre
+invisible; el borrado encola también objetos/uploads con owner propio NULL.
+Bootstrap reproduce owner/owner_id reales; cinco nuevas rutas de carreras,
+102 rutas/603 checks, sin debilitar el gate de cobertura FK.
+Runner `--storage-buckets --storage-schema <dump local>`; RED con
+`--before-storage-buckets`. Evidencia `~/evidence/1608/r6/buckets-{red-exact,inherited-green}/`.
+Dump del stack real elimina solo triggers/policy de la app para cargarlos después
+mediante las migraciones originales; errores de preparación conservados.
+No se afirma API de buckets de usuario ni se borran buckets/datos instalados.
+R5-P1-1 sigue en preparación; solo local, sin push/merge/promoción/deploy/release.
+
 ## #1608 · Ronda 6 local · R5-P2-1 (14/10/2026)
 
 Inicio autorizado `0a8e794f`, rama/worktree indicados, review r5 completa.

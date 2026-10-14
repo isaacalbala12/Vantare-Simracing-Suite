@@ -93,6 +93,8 @@ $$;
 create table if not exists storage.buckets (
   id text primary key,
   name text not null unique,
+  owner uuid,
+  owner_id text,
   public boolean not null default false,
   file_size_limit bigint,
   allowed_mime_types text[]

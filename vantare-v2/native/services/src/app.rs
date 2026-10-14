@@ -491,20 +491,7 @@ impl App {
                 return self.triage_reply(command);
             }
             Command::TransferRights => return self.transfer_rights(),
-            Command::Purchase { product } => {
-                let time = now()?;
-                self.ensure_oauth(time)?;
-                let url = crate::billing::purchase(
-                    &self.http,
-                    &self.config,
-                    self.account.as_ref().ok_or(Error::Authentication)?,
-                    time,
-                    self.store.as_ref().ok_or(Error::Storage)?,
-                    product,
-                    option_env!("VANTARE_BILLING_ENVIRONMENT").ok_or(Error::Unconfigured)?,
-                )?;
-                return Ok(Reply::Checkout { url });
-            }
+            Command::Purchase { product } => return self.purchase_reply(product),
             Command::LicenseStatus | Command::LicenseRenew | Command::DeviceReset => {
                 return self.license_reply(&command);
             }
@@ -546,6 +533,21 @@ impl App {
             _ => return Err(Error::Protocol),
         }
         Ok(Self::account_reply(account, None))
+    }
+
+    fn purchase_reply(&mut self, product: crate::protocol::BillingProduct) -> Result<Reply> {
+        let time = now()?;
+        self.ensure_oauth(time)?;
+        let url = crate::billing::purchase(
+            &self.http,
+            &self.config,
+            self.account.as_ref().ok_or(Error::Authentication)?,
+            time,
+            self.store.as_ref().ok_or(Error::Storage)?,
+            product,
+            option_env!("VANTARE_BILLING_ENVIRONMENT").ok_or(Error::Unconfigured)?,
+        )?;
+        Ok(Reply::Checkout { url })
     }
 
     fn account_reply(account: &Account, error: Option<Error>) -> Reply {

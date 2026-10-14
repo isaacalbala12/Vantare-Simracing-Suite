@@ -27,6 +27,7 @@
     "EvidencePending",
     "TooLarge",
     "Conflict",
+    "PilotRejected",
     "Version",
     "NotFound",
     "ServicesCommandFailure"

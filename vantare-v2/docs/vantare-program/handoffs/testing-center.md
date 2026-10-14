@@ -1,3 +1,36 @@
+## #1594 / PR #1602 · corregir dos gates tras merge · Mac · 14/10/2026
+
+Encargo acotado del orquestador sobre `521f13fa`, rama
+`vantareapp/isa-1594-triaje-informes`, inicio limpio. Solo rama local por revisar;
+seguimiento/issue/PR a cargo del orquestador por excepción explícita.
+
+- Catálogo común Python/Rust: añade `PilotRejected` existente en nightly;
+  igualdad exhaustiva intacta. Python triaje 56/57 → 57/57, connect prohibido.
+- `App::execute`: extrae `purchase_reply`, conservando el cuerpo de compra,
+  orden, reloj y errores; Clippy 102/100 → PASS, sin allow. No cambia billing.
+- F7=C/F8/F9 conservados: 55 de los 56 archivos de entrega siguen idénticos
+  al HEAD revisado; la única diferencia es el catálogo. `triage_reply` intacto.
+
+Checks repetidos PASS: fmt; Cargo Domain 164/IPC 79/Profiling 2/Services 155
+(400); Clippy mismos crates/all-targets/-D warnings; preview F8 real sintético;
+Edge 15/15 + fmt/lint/check; SQL aislado 83/83 + concurrencia/login/snapshot/
+rollback/reapply, admisión 27 + F1 17/F1IP 26/F2 6/F3 8; Python followup 4/4;
+retirement 456; diff-check. Harnesses/tests del repo sin cambios, SQL en Docker
+propio sin red/TCP, contenedor eliminado; preview/envelope/storage idénticos.
+
+No deps, secretos, servicios reales, trackers, GitHub, push, CI remoto,
+subagentes, merge/promoción/release ni deploy. Cargo directo, locked/offline,
+target propio `native/target/isa1594-mac`, jobs=2 y secuencial: `pwsh` ausente y
+cola Win32 incompatible; se conserva la excepción del encargo Mac anterior.
+Pendiente Windows: gates completos/check/Nextest/lifecycle/telemetría,
+Hub/F9 y capturas/DPAPI/pipes/ACL, QA visual/física. No se acredita producción.
+
+Evidencia actual `~/evidence/1594/INFORME.md`, logs y prueba de conservación en
+`~/evidence/1594/fix/`; informe anterior conservado como `INFORME-merge.md`.
+SHA final y FIN en `~/orq/1594.buzon.md`. Orquestador: recoger commit local,
+revisar diff/evidencia, ejecutar gates Windows y actualizar #1594/PR #1602.
+Estados inferiores históricos.
+
 ## #1594 / PR #1602 · merge local de nightly en Mac · 14/10/2026
 
 Encargo explícito: revisión r7 APTA; fusionar nightly sin cambiar la lógica.

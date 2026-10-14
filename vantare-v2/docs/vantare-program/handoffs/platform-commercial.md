@@ -11,7 +11,10 @@ Drift de duración falla antes de mutar. Logs `C:/tmp/ola2/1620-r2-P1-1-*.log`.
 P2-1: regresión RED por calendario ausente → GREEN; tabla/plan/resultado con
 base sobre lo pagado, 30 % mes 1, 10 % meses 2–12 mientras siga suscrito,
 renegociar después. Sin tasa única ambigua ni payouts. Log P2-1 separado.
-Pendientes P2-2 y P2-3; sin llamadas Polar, secretos, deploy ni promoción.
+P2-3: dos regresiones RED → GREEN. Conserva IDs activos/archivados observados
+antes del PATCH, IDs de entrada y nuevo precio; conflicto de propietario falla
+antes de escribir. Reejecución conserva el mapa con cero escrituras. Logs P2-3.
+Pendiente P2-2; sin llamadas Polar, secretos, deploy ni promoción.
 Falta identificador Plane VANTA-N en el encargo/#1620; se avisa en el buzón al
 orquestador sin crear tarea ni reutilizar el tracker Notion histórico.
 

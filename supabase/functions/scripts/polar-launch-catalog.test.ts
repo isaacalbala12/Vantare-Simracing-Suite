@@ -214,6 +214,38 @@ Deno.test("catalog: replacing the base price keeps old price IDs mapped", async 
   );
 });
 
+Deno.test("P2-3: stale input recovers observed active and archived price IDs before PATCH", async () => {
+  const f = fake();
+  const active = "00000000-0000-4000-8000-000000000900";
+  const archived = "00000000-0000-4000-8000-000000000901";
+  const original = f.products[0].prices![0];
+  f.products[0].prices = [
+    { ...original, id: active, price_amount: 799 },
+    { ...original, id: archived, price_amount: 499, is_archived: true },
+  ];
+  const result = await syncCatalog(f.http, sandbox, options);
+  for (const id of [active, archived, original.id]) {
+    assertEquals(result.map.price_id_to_checkout_key[id], "pro_monthly");
+    assertEquals(
+      result.map.checkout_keys.pro_monthly!.polar_price_ids.includes(id),
+      true,
+    );
+    assertEquals(resolveCheckoutKeyByPriceId(result.map, id).ok, true);
+  }
+  const second = await syncCatalog(f.http, result, options);
+  assertEquals(second.writes, 0);
+  assertEquals(second.map, result.map);
+});
+
+Deno.test("P2-3: observed price already owned by another plan aborts before writes", async () => {
+  const f = fake();
+  f.products[0].prices![0].id =
+    sandbox.checkout_keys.pro_annual.polar_price_ids[0];
+  f.products[0].prices![0].price_amount = 799;
+  await assertRejects(() => syncCatalog(f.http, sandbox, options));
+  assertEquals(f.writes.length, 0);
+});
+
 Deno.test("catalog: discount drift or code collision abort before any writes", async () => {
   for (const collision of [false, true]) {
     const f = fake();

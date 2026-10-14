@@ -148,6 +148,7 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   const products = await list(http, "products", map.organization_id);
   const discounts = await list(http, "discounts", map.organization_id);
   const selected = new Map<CheckoutKey, Resource | undefined>();
+  const priceOwners = new Map(Object.entries(map.price_id_to_checkout_key));
   // Preflight the whole catalogue before the first mutation.
   for (const plan of PRICES.plans) {
     const config = map.checkout_keys[plan.key];
@@ -173,6 +174,13 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       product && !config &&
       (product.trial_interval || product.trial_interval_count)
     ) throw Error(`Unconfigured trial ${plan.key}`);
+    for (const price of product?.prices ?? []) {
+      const owner = priceOwners.get(price.id);
+      if (owner && owner !== plan.key) {
+        throw Error(`Observed price belongs to another plan ${plan.key}`);
+      }
+      priceOwners.set(price.id, plan.key);
+    }
     selected.set(plan.key, product);
     if (!plan.launch_confirmed && !options.confirmAnnualLaunch) continue;
     for (const who of creator ? [undefined, creator] : [undefined]) {
@@ -205,6 +213,8 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   const pending: string[] = [];
   for (const plan of PRICES.plans) {
     let product = selected.get(plan.key);
+    // Snapshot before PATCH: the response may omit replaced/archived prices.
+    const observedPriceIds = (product?.prices ?? []).map((p) => p.id);
     if (!product) {
       product = await http("POST", "/products/", {
         organization_id: map.organization_id,
@@ -252,7 +262,13 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
     map.checkout_keys[plan.key] = {
       ...config,
       channels: [...config.channels],
-      polar_price_ids: [...new Set([...config.polar_price_ids, price.id])],
+      polar_price_ids: [
+        ...new Set([
+          ...config.polar_price_ids,
+          ...observedPriceIds,
+          price.id,
+        ]),
+      ],
     };
     map.product_id_to_checkout_key[product.id] = plan.key;
     for (const id of map.checkout_keys[plan.key]!.polar_price_ids) {

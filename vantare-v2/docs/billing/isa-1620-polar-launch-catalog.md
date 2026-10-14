@@ -82,7 +82,11 @@ no se modifica auth, identidad, licencias ni el UUID comercial (ADR 0100).
 
 El resultado incluye `map`, `offers`, `writes`, `pending` y el dato de comisión.
 `map` conserva todos los price IDs históricos aunque el precio activo se
-sustituya. Los suscriptores existentes no se migran. Segunda ejecución con
+sustituya: une los IDs de entrada con todos los precios observados del producto,
+activos y archivados, **antes del PATCH**, y el nuevo ID de respuesta. Un ID
+observado que ya pertenece a otra clave aborta antes de mutar. Así una ejecución
+parcial o un cambio de panel no pierde el precio reemplazado cuando el mapa de
+entrada aún no lo contiene. Los suscriptores existentes no se migran. Segunda ejecución con
 el resultado guardado como entrada: mismos IDs, `writes: 0`. La salida se abre
 con `createNew`: una ruta ya existente se rechaza antes de llamar a Polar.
 

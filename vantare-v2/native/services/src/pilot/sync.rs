@@ -53,14 +53,10 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
                     "p_expected_revision": operation.remote_revision, "p_op_id": operation.op_id,
                 }),
             )?;
-            if response.status == 400
-                && response
-                    .json::<serde_json::Value>()
-                    .is_ok_and(|v| v["code"] == "22023")
-            {
+            if let Some(error) = definitive_error(&response) {
                 local.reject_operation()?;
                 refresh(local, request)?;
-                return Err(Error::PilotRejected);
+                return Err(error);
             }
             let saved: Remote = response.success()?.json()?;
             if saved.revision
@@ -82,6 +78,16 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
         refresh(local, request)?;
     }
     Ok(())
+}
+
+fn definitive_error(response: &crate::http::Response) -> Option<Error> {
+    let body: serde_json::Value = response.json().ok()?;
+    match (response.status, body["code"].as_str()?) {
+        (400, "22023") => Some(Error::PilotRejected),
+        // Compatibilidad con el paquete QA anterior: 40* se traduce a HTTP 500.
+        (500, "40001") | (409, "PT409") => Some(Error::Conflict),
+        _ => None,
+    }
 }
 
 fn refresh(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {

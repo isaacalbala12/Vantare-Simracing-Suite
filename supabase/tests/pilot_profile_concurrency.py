@@ -75,7 +75,8 @@ def check(pg_bin, connection, env, output, run):
         assert result(text) == first
         text = run('psql', *connection, '-c', prefix + 'select public.pilot_profile_load();', name='concurrency-current-preserved.log')
         assert result(text) == {'profile': {'description': 'C'}, 'revision': 3, 'photo_hash': None}
-        run('psql', *connection, '-c', prefix + save('D', 2, '16120000-0000-4000-8000-000000000023'), name='concurrency-new-cas-conflict.log', expected=1)
+        conflict = run('psql', *connection, '--set=VERBOSITY=verbose', '-c', prefix + save('D', 2, '16120000-0000-4000-8000-000000000023'), name='concurrency-new-cas-conflict.log', expected=1)
+        assert 'PT409' in conflict, 'CAS must map to HTTP 409 in PostgREST'
         print('PASS concurrent SQL: stale load R0, duplicate waits for A commit, one apply, B/R2, C/R3, original receipt preserved, new stale CAS rejected')
     finally:
         for process in (retry, original):

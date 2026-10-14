@@ -147,7 +147,8 @@ begin
       where account_id=auth.uid() and revision=p_expected_revision
       returning jsonb_build_object('profile',profile,'revision',revision,'photo_hash',photo_hash) into v_result;
   end if;
-  if v_result is null then raise exception 'revision conflict' using errcode='40001'; end if;
+  -- PostgREST traduce PT409 a HTTP 409; 40001 se traducía a HTTP 500.
+  if v_result is null then raise exception 'revision conflict' using errcode='PT409'; end if;
   insert into pilot_private.operations(account_id,op_id,result) values(v_account,p_op_id,v_result);
   return v_result;
 end;

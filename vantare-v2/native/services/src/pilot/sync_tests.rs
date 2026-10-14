@@ -62,11 +62,15 @@ fn sync_uses_verified_bridge_and_cas_and_preserves_local_on_conflict_or_offline(
     for (status, body, expected) in [
         (200, String::new(), Ok(())),
         (
-            409,
+            500,
             serde_json::json!({"code":"40001"}).to_string(),
             Err(Error::Conflict),
         ),
+        (409, r#"{"code":"PT409"}"#.to_owned(), Err(Error::Conflict)),
         (503, "{}".to_owned(), Err(Error::Offline)),
+        (500, "invalid JSON".to_owned(), Err(Error::Offline)),
+        (500, r#"{"code":"XX000"}"#.to_owned(), Err(Error::Offline)),
+        (400, "invalid JSON".to_owned(), Err(Error::Protocol)),
     ] {
         let profile = PilotProfile {
             public_name: "Piloto".into(),
@@ -88,6 +92,13 @@ fn sync_uses_verified_bridge_and_cas_and_preserves_local_on_conflict_or_offline(
             responses.push((
                 200,
                 serde_json::json!({"profile":profile,"revision":1,"photo_hash":null}).to_string(),
+            ));
+        }
+        if expected == Err(Error::Conflict) {
+            responses.push((
+                200,
+                serde_json::json!({"profile":{"description":"C"},"revision":2,"photo_hash":null})
+                    .to_string(),
             ));
         }
         let server = Server::start(responses);
@@ -114,6 +125,10 @@ fn sync_uses_verified_bridge_and_cas_and_preserves_local_on_conflict_or_offline(
         if expected.is_ok() {
             assert!(!local.state().pending);
             assert_eq!(local.state().remote_revision, 1);
+        } else if expected == Err(Error::Conflict) {
+            assert_eq!(local.state().remote_revision, 2);
+            assert!(local.state().pending);
+            assert!(local.operation.is_none());
         } else {
             assert_eq!(*local.state(), before);
         }

@@ -54,7 +54,7 @@ impl Backend {
             .as_ref()
             .map_or(0, |v| v["revision"].as_u64().expect("revision"));
         if request["p_expected_revision"] != revision {
-            return (409, r#"{"code":"40001"}"#.into());
+            return (409, r#"{"code":"PT409"}"#.into());
         }
         let result = serde_json::json!({"profile":request["p_profile"],
             "photo_hash":request["p_photo_hash"], "revision":revision+1});
@@ -440,12 +440,13 @@ fn second_device_between_commit_and_retry_cannot_erase_receipt_or_be_overwritten
             synchronize(&mut first, &request),
             if edited { Err(Error::Conflict) } else { Ok(()) }
         );
-        assert_eq!(first.state().remote_revision, if edited { 1 } else { 2 });
+        assert_eq!(first.state().remote_revision, 2);
         assert_eq!(
             first.state().profile.description,
             if edited { "B" } else { "C" }
         );
         assert_eq!(first.state().pending, edited);
+        assert!(first.operation.is_none(), "conflict must retire stale CAS");
         let backend = fixture.backend.lock().expect("state");
         assert_eq!(
             backend.current.as_ref().expect("current")["profile"]["description"],
@@ -458,6 +459,16 @@ fn second_device_between_commit_and_retry_cannot_erase_receipt_or_be_overwritten
             assert_eq!(backend.saves[3]["p_expected_revision"], 1);
         }
         drop(backend);
+        if edited {
+            drop(first);
+            first = Local::open(&root.join("device-1"), None, None).expect("reopen conflict");
+            assert!(first.operation.is_none());
+            let count = fixture.backend.lock().expect("state").saves.len();
+            assert_eq!(synchronize(&mut first, &request), Err(Error::PilotRejected));
+            assert_eq!(fixture.backend.lock().expect("state").saves.len(), count);
+            assert_eq!(first.state().profile.description, "B");
+            assert_eq!(first.state().remote_revision, 2);
+        }
         if !edited {
             first
                 .save(

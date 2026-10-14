@@ -34,7 +34,7 @@ set local role authenticated;
 set local request.jwt.claim.sub='16120000-0000-0000-0000-000000000001';
 select is(public.pilot_profile_load(),null::jsonb,'empty account');
 select is((public.pilot_profile_save('{"public_name":"A","team_future":true}',null,0,gen_random_uuid())->>'revision')::bigint,1::bigint,'first revision');
-select throws_ok($$select public.pilot_profile_save('{}',null,0,gen_random_uuid())$$,'40001','revision conflict','stale insert rejected');
+select throws_ok($$select public.pilot_profile_save('{}',null,0,gen_random_uuid())$$,'PT409','revision conflict','stale insert rejected');
 select is((public.pilot_profile_save('{"public_name":"B","team_future":true}',null,1,gen_random_uuid())->>'revision')::bigint,2::bigint,'CAS update');
 select is(public.pilot_profile_load()->'profile'->'team_future','true'::jsonb,'future fields survive');
 -- Cada intento inválido mantiene intactos el documento y su revisión.
@@ -107,7 +107,7 @@ select is(public.pilot_profile_save('{"description":"ignored"}',repeat('b',64),-
   '{"profile":{"description":"A"},"photo_hash":null,"revision":6}'::jsonb,'older op_id returns original state despite later device and different payload/CAS');
 select is(public.pilot_profile_load()->'profile'->>'description','C','old retry never replaces second device');
 select is((public.pilot_profile_load()->>'revision')::bigint,7::bigint,'old retry never increments later revision');
-select throws_ok($$select public.pilot_profile_save('{"description":"B"}',null,6,'16120000-0000-4000-8000-000000000012')$$,'40001','revision conflict','new edit cannot overwrite second device');
+select throws_ok($$select public.pilot_profile_save('{"description":"B"}',null,6,'16120000-0000-4000-8000-000000000012')$$,'PT409','revision conflict','new edit cannot overwrite second device');
 select throws_ok($$select pg_temp.abort_operation()$$,'P0001','rollback fixture','aborted operation rolls back profile and receipt atomically');
 select is((public.pilot_profile_load()->>'revision')::bigint,7::bigint,'aborted operation preserves revision');
 select is((public.pilot_profile_save('{"description":"D"}',null,7,'16120000-0000-4000-8000-000000000013')->>'revision')::bigint,8::bigint,'retry after rollback applies once with same op_id');

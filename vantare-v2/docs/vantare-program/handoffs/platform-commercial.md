@@ -18,6 +18,14 @@ de foto permite crear A incompatible. GREEN 16/16: preflight del presupuesto,
 retiro durable de A rechazado, borrador conservado y revisión actual cargada;
 reabrir no resucita A y B corregido se confirma tras otro reinicio. HTTP incierto
 y recibos inválidos conservan A. P2-3 y P3-1 pendientes; gates completos pendientes.
+P2-2 committed en `11a5511c`. P2-3 RED HTTP500/40001 => Offline y SQLSTATE
+40001 != PT409; GREEN: SQL PT409 explícito, clasificación compatible del 500
+anterior, retiro del CAS obsoleto y reanclaje R2 sin enviar B automáticamente.
+Un único PilotLoad de App carga C/R2 tras recibo y muestra conflicto real; el
+borrador/revisión sobreviven al reinicio. SQL 90 pgTAP, concurrencia/PT409 y
+retirada 10 postchecks/cuatro negativas PASS, también sin SUPERUSER. PostgreSQL
+18/pgTAP instalados desde Ubuntu oficial en WSL; cluster creado por el instalador
+detenido, pruebas solo en instancias desechables. P3-1 y gates finales pendientes.
 Evidencia `C:/tmp/ola5/1612`, sin cambios visuales, backend solo preparado.
 
 Ronda 4 CLI terminada en rama tras review r3 `8eadf36e` NO APTO (P2-1=1).

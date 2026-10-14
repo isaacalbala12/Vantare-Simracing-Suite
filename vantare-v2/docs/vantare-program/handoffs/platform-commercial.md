@@ -1,7 +1,63 @@
 # Handoff vivo — Plataforma, cuenta, servicios y distribución
 
 Estado de la base indicada; releer la issue antes de ejecutar.
-[Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/platform-commercial.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
+
+## #1609 / VANTA-22 · Analítica consentida (14/10/2026)
+
+Ronda 3 publicada para revisión desde `f56156e3`; review Sol r2 completa.
+P2-1 `86fa6aa8`: RED A/B → GREEN, caché monotónica, admisión por generación,
+cola revocable de 32 entradas y acumuladores descartados/revalidados al retirar/cerrar.
+Callbacks try_lock sin I/O ni espera; worker persiste fuera del hilo UI.
+P2-2 `6b177190` + `4357a6a5`: carga con consent.lock retenido, controles disponibles,
+limpieza/importación Setup Busy diferidas en worker cancelable y revocación sin reiniciar.
+Busy tipado, wrapper save_with String conservado; resultado al heartbeat por memoria.
+Respuesta atrasada descartada si hubo decisión manual: test worker terminado →
+revocación → recibir respuesta, sin sleeps. No borra otros avisos de Ajustes.
+P3 `88ddc324`: error de decisión no confirmada/reintentar, sin afirmar que fallos
+estén apagados. `beb68c4f` cierra Clippy y refuerza la barrera del test heredado:
+la cancelación al cerrar no puede sustituir su comprobación final de consentimiento.
+Gates finales: fmt/check/Clippy, Nextest 1675/1675 (7 skips), lifecycle 18/18,
+services 130 + 2 procesos, Store 9 e integridad 456 huellas PASS. RED y errores
+iniciales conservados en C:/tmp/1609-r3; [informe](../../analytics/informe-1609.md).
+Código publicado `4357a6a58d66f5648a9d02befc8a0c5b9f5a4dbc`, base `69fa2d65`;
+HEAD documental final y CI en issue/buzón. PR #1617 draft a nightly, sin auto-merge
+ni merge; VANTA-22 Por revisar verificado el 14/10 a las 04:03:53 UTC.
+Origin/nightly consultado `552c0d52`; sin integración con ese tip ni promoción.
+**Criterio estricto pendiente:** la invalidación en otra UI depende del refresco
+Privacy del worker (espera normal 250 ms, mayor con I/O ocupado). Descarte al
+refrescar probado, sin garantía de retirada instantánea de memoria entre procesos.
+DUDA al orquestador: frontera compartida requiere review; no se declara APTO ese
+criterio. Próxima acción: revisar diff/evidencia y resolver ese límite antes de integrar.
+Sin subagentes, diseño/dependencias nuevos, QA GUI física, PostHog real, producción,
+datos/instalación reales de Isaac, merge ni release. Telemetría dedicada no requerida
+(sin cambios runtime/domain/ipc/testdata); paneles/snippet sin cambios, no repetidos.
+Pendientes iniciales de clave/panel real, Marketing/Setup, atribución y registro/pago
+backend conservados en informe/contrato. Acciones externas autorizadas: commits,
+push, actualización PR/issue y estado Plane. Última comprobación local: 04:03 UTC.
+
+### Ronda 2 (evidencia anterior)
+
+Ronda 2 completada por Codex CLI; review Sol leída completa, sin subagentes.
+P1 `58d0a735`: RED A/B → GREEN. Generación persistida y cerrojo SO común
+publicación/revocación/POST; con POST activo (8 s), guardar devuelve ocupado
+sin éxito falso. P2 `f40bc343`: ID/marcadores borrados; UUID nuevo al reaceptar,
+tiempos reiniciados por generación. P2 `55531cc4`: instrumentación GPUI solo
+try_send (32 entradas); worker de services persiste, emisor HTTP en services.
+Guardado manual del consentimiento conserva su ruta atómica existente.
+Gates locales: services 127 + 2 procesos, Nextest 1666/1666 (7 skips), lifecycle
+18/18, fmt/check/Clippy/quality PASS (456 huellas). RED y GREEN conservados en
+`C:/tmp/1609-r2/`; detalle, límites y omisiones en [informe](../../analytics/informe-1609.md).
+Base `69fa2d65`, código publicado `55531cc4`; HEAD documental en issue/buzón.
+PR draft [#1617](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1617)
+a nightly, sin auto-merge; VANTA-22 «Por revisar» verificado 14/10 02:36 UTC.
+CI del nuevo HEAD pendiente; no afirmar integración/release. Nightly consultado
+`0807fbd0`; esta entrega no integra ese tip ni promociona canales.
+Catálogo/ID en `docs/analytics/eventos.md`; snippet/paneles preparados, sin --apply.
+Pendientes: clave/panel real por vía privada del orquestador, Marketing/Setup
+(#1591/PR #1600), atribución y registro/pago exactos backend, QA visual/review.
+Telemetría dedicada omitida: no se toca runtime/domain/ipc/testdata. Sin diseño
+nuevo, producción/PostHog real, datos/instalación reales de Isaac, dependencias,
+merge ni release. Evidencia inicial y contratos conservados en el informe y Git.
 
 ## #1601 / VANTA-10 · Plane, fase de implementación (13/10/2026)
 

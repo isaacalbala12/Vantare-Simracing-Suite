@@ -220,6 +220,7 @@ pub(crate) struct Widget {
     settings: Settings,
     vm: ViewModel,
     trace: Trace,
+    paint_samples: Option<std::sync::Arc<Vec<Sample>>>,
 }
 
 impl Widget {
@@ -229,6 +230,7 @@ impl Widget {
             settings: settings.clone(),
             vm: vantare_domain::delta_trace::project(&Snapshot::default(), prefs),
             trace: Trace::default(),
+            paint_samples: None,
         }
     }
 
@@ -242,16 +244,27 @@ impl Widget {
             snapshot,
             std::time::Duration::from_secs_f64(self.settings.window_seconds),
         );
+        if changed {
+            self.paint_samples = None;
+        }
         replace_if_changed(&mut self.vm, self.trace.project(snapshot, prefs)) || changed
     }
 
     pub(crate) fn frame(&mut self, _prefs: Preferences, _reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
-        let samples: Vec<_> = self.trace.samples().iter().copied().collect();
+        let samples = self.paint_samples();
         (
             Box::new(move |window, cx| paint(&vm, &samples, window, cx)),
             Wake::Idle,
         )
+    }
+
+    fn paint_samples(&mut self) -> std::sync::Arc<Vec<Sample>> {
+        self.paint_samples
+            .get_or_insert_with(|| {
+                std::sync::Arc::new(self.trace.samples().iter().copied().collect())
+            })
+            .clone()
     }
 
     #[cfg(feature = "parity-capture")]
@@ -260,6 +273,9 @@ impl Widget {
         false
     }
 }
+
+#[cfg(test)]
+mod performance_tests;
 
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.

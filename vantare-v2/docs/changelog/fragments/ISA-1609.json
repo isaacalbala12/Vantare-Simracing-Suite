@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1609",
+  "type": "feature",
+  "summary": "Puedes aceptar o rechazar por separado compartir datos de uso y retirar el permiso desde Ajustes de privacidad.",
+  "technicalNotes": [
+    "La analítica permanece apagada por defecto y no hereda aceptaciones antiguas. Solo registra páginas, funciones, tipos de widgets y tiempo observado mediante un catálogo cerrado.",
+    "Identificador aleatorio local de instalación, sin cuenta, contenido, rutas, nombres de pilotos ni telemetría. PostHog UE y paneles preparados para activación posterior."
+  ],
+  "testing": [
+    "En una copia aislada, continuar sin marcar la casilla y comprobar que no aparecen eventos de uso ni peticiones de captura.",
+    "Aceptar, visitar páginas y usar widgets; retirar el permiso en Ajustes y comprobar que se eliminan pendientes y no se recogen nuevas observaciones."
+  ],
+  "knownLimitations": [
+    "El instalador y el sitio web requieren integración separada. El embudo exacto descarga, instalación, cuenta creada y compra necesita fuentes backend y atribución consentida.",
+    "Paneles reales, configuración de producción y verificación visual del consentimiento pendientes del orquestador. La cola puede perder observaciones y no representa todos los usuarios."
+  ]
+}

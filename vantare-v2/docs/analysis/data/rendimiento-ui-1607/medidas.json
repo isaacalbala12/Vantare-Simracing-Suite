@@ -1,0 +1,1778 @@
+{
+  "issue": 1607,
+  "plane": "VANTA-45",
+  "base": "69fa2d650c85df4184d5821ae4c032201789a1c1",
+  "profile": "release",
+  "features": [
+    "vantare-services/network",
+    "vantare-ui/paint-stats"
+  ],
+  "cargo_build_jobs": 2,
+  "data": "isolated C:/tmp/1607-evidence; no real installation",
+  "bench_initial_before": [
+    {
+      "phase": "before",
+      "line": "ISA1607 resident run=1 iterations=20000 profiles=128 elapsed_us=1192667",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:11:09.7367606+02:00",
+      "compilerProcesses": 15
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 resident run=2 iterations=20000 profiles=128 elapsed_us=1221430",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:11:09.8213807+02:00",
+      "compilerProcesses": 13
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 resident run=3 iterations=20000 profiles=128 elapsed_us=1333813",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:11:09.8829343+02:00",
+      "compilerProcesses": 13
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 screenshot run=1 iterations=3000 bytes=24576 elapsed_us=60210",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:11:10.1934395+02:00",
+      "compilerProcesses": 13
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 screenshot run=2 iterations=3000 bytes=24576 elapsed_us=61159",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:11:10.2573289+02:00",
+      "compilerProcesses": 13
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 screenshot run=3 iterations=3000 bytes=24576 elapsed_us=60009",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:11:10.3183302+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 reference run=1 iterations=300 elapsed_us=947362",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:11:13.3594370+02:00",
+      "compilerProcesses": 13
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 reference run=2 iterations=300 elapsed_us=823524",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:11:13.6746832+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 reference run=3 iterations=300 elapsed_us=1048907",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:11:13.8979800+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 input_telemetry unchanged run=1 iterations=50000 samples=120 elapsed_us=209650",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:11:15.3036425+02:00",
+      "compilerProcesses": 15
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 input_telemetry changed run=1 iterations=10000 elapsed_us=192719",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:11:15.3894327+02:00",
+      "compilerProcesses": 15
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 input_telemetry unchanged run=2 iterations=50000 samples=120 elapsed_us=194022",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:11:15.4500002+02:00",
+      "compilerProcesses": 15
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 input_telemetry changed run=2 iterations=10000 elapsed_us=181104",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:11:15.6439652+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 input_telemetry unchanged run=3 iterations=50000 samples=120 elapsed_us=24189",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:11:15.7055379+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 input_telemetry changed run=3 iterations=10000 elapsed_us=173995",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:11:15.8281033+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 delta_trace unchanged run=1 iterations=50000 samples=67 elapsed_us=17086",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:11:17.0644186+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 delta_trace changed run=1 iterations=10000 elapsed_us=174100",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:11:17.1320261+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 delta_trace unchanged run=2 iterations=50000 samples=67 elapsed_us=11739",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:11:17.2098208+02:00",
+      "compilerProcesses": 15
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 delta_trace changed run=2 iterations=10000 elapsed_us=239351",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:11:17.2759844+02:00",
+      "compilerProcesses": 15
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 delta_trace unchanged run=3 iterations=50000 samples=67 elapsed_us=23109",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:11:17.3394488+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 delta_trace changed run=3 iterations=10000 elapsed_us=179566",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:11:17.3960638+02:00",
+      "compilerProcesses": 14
+    }
+  ],
+  "bench_initial_after": [
+    {
+      "phase": "after",
+      "line": "ISA1607 resident run=1 iterations=20000 profiles=128 elapsed_us=715588",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:11:20.7535502+02:00",
+      "compilerProcesses": 13
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 resident run=2 iterations=20000 profiles=128 elapsed_us=704103",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:11:20.8395326+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 resident run=3 iterations=20000 profiles=128 elapsed_us=668395",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:11:20.9180543+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 screenshot run=1 iterations=3000 bytes=24576 elapsed_us=78",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:11:21.0951781+02:00",
+      "compilerProcesses": 13
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 screenshot run=2 iterations=3000 bytes=24576 elapsed_us=25",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:11:21.1817500+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 screenshot run=3 iterations=3000 bytes=24576 elapsed_us=26",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:11:21.2459642+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 reference run=1 iterations=300 elapsed_us=39122",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:11:21.5119512+02:00",
+      "compilerProcesses": 12
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 reference run=2 iterations=300 elapsed_us=40488",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:11:21.5877840+02:00",
+      "compilerProcesses": 13
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 reference run=3 iterations=300 elapsed_us=39937",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:11:21.6484865+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 input_telemetry unchanged run=1 iterations=50000 samples=120 elapsed_us=426",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:11:22.4052858+02:00",
+      "compilerProcesses": 12
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 input_telemetry changed run=1 iterations=10000 elapsed_us=158982",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:11:22.4660355+02:00",
+      "compilerProcesses": 13
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 input_telemetry unchanged run=2 iterations=50000 samples=120 elapsed_us=436",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:11:22.5280466+02:00",
+      "compilerProcesses": 13
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 input_telemetry changed run=2 iterations=10000 elapsed_us=166897",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:11:22.5899558+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 input_telemetry unchanged run=3 iterations=50000 samples=120 elapsed_us=433",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:11:22.6416449+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 input_telemetry changed run=3 iterations=10000 elapsed_us=172457",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:11:22.6929028+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 delta_trace unchanged run=1 iterations=50000 samples=67 elapsed_us=426",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:11:23.3599452+02:00",
+      "compilerProcesses": 13
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 delta_trace changed run=1 iterations=10000 elapsed_us=175826",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:11:23.4098050+02:00",
+      "compilerProcesses": 14
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 delta_trace unchanged run=2 iterations=50000 samples=67 elapsed_us=460",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:11:23.4608506+02:00",
+      "compilerProcesses": 12
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 delta_trace changed run=2 iterations=10000 elapsed_us=167536",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:11:23.5144089+02:00",
+      "compilerProcesses": 12
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 delta_trace unchanged run=3 iterations=50000 samples=67 elapsed_us=432",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:11:23.5619939+02:00",
+      "compilerProcesses": 12
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 delta_trace changed run=3 iterations=10000 elapsed_us=177676",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:11:23.6100355+02:00",
+      "compilerProcesses": 14
+    }
+  ],
+  "bench_confirmation_before": [
+    {
+      "phase": "before",
+      "line": "ISA1607 resident run=1 iterations=20000 profiles=128 elapsed_us=889861",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:36:18.2911512+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 resident run=2 iterations=20000 profiles=128 elapsed_us=1406221",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:36:18.3636544+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 resident run=3 iterations=20000 profiles=128 elapsed_us=1420779",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:36:18.4165969+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 screenshot run=1 iterations=3000 bytes=24576 elapsed_us=55091",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:36:18.6973431+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 screenshot run=2 iterations=3000 bytes=24576 elapsed_us=60332",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:36:18.7542865+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 screenshot run=3 iterations=3000 bytes=24576 elapsed_us=58580",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:36:18.8094846+02:00",
+      "compilerProcesses": 8
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 reference run=1 iterations=300 elapsed_us=712056",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:36:20.9085651+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 reference run=2 iterations=300 elapsed_us=670476",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:36:20.9770587+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 reference run=3 iterations=300 elapsed_us=606799",
+      "hash": "90914FDCE4AE949C600DD04A21D5E5D145DC94A7925CFE6C65A0D8D05223723B",
+      "at": "2026-10-14T03:36:21.0359602+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 input_telemetry unchanged run=1 iterations=50000 samples=120 elapsed_us=15165",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:36:22.0617188+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 input_telemetry changed run=1 iterations=10000 elapsed_us=140633",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:36:22.1084061+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 input_telemetry unchanged run=2 iterations=50000 samples=120 elapsed_us=142031",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:36:22.1551568+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 input_telemetry changed run=2 iterations=10000 elapsed_us=160293",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:36:22.2063787+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 input_telemetry unchanged run=3 iterations=50000 samples=120 elapsed_us=165606",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:36:22.2593413+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 input_telemetry changed run=3 iterations=10000 elapsed_us=170137",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:36:22.3184915+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 delta_trace unchanged run=1 iterations=50000 samples=67 elapsed_us=11074",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:36:22.8666586+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 delta_trace changed run=1 iterations=10000 elapsed_us=164748",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:36:22.9151822+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 delta_trace unchanged run=2 iterations=50000 samples=67 elapsed_us=9733",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:36:22.9534948+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 delta_trace changed run=2 iterations=10000 elapsed_us=122914",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:36:22.9896627+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 delta_trace unchanged run=3 iterations=50000 samples=67 elapsed_us=9234",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:36:23.0292958+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "before",
+      "line": "ISA1607 delta_trace changed run=3 iterations=10000 elapsed_us=116357",
+      "hash": "0E941874C914FF67304CC96A77E9E51E0C10B2C0D633C8BC1F583FB0D0193C15",
+      "at": "2026-10-14T03:36:23.0670081+02:00",
+      "compilerProcesses": 9
+    }
+  ],
+  "bench_confirmation_after": [
+    {
+      "phase": "after",
+      "line": "ISA1607 resident run=1 iterations=20000 profiles=128 elapsed_us=632524",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:36:26.3619139+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 resident run=2 iterations=20000 profiles=128 elapsed_us=651253",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:36:26.4316811+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 resident run=3 iterations=20000 profiles=128 elapsed_us=652839",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:36:26.4824719+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 screenshot run=1 iterations=3000 bytes=24576 elapsed_us=26",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:36:26.5882965+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 screenshot run=2 iterations=3000 bytes=24576 elapsed_us=26",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:36:26.6405711+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 screenshot run=3 iterations=3000 bytes=24576 elapsed_us=26",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:36:26.6937204+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 reference run=1 iterations=300 elapsed_us=34642",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:36:26.9083211+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 reference run=2 iterations=300 elapsed_us=36381",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:36:26.9757865+02:00",
+      "compilerProcesses": 8
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 reference run=3 iterations=300 elapsed_us=34248",
+      "hash": "1261F3E9B1592E709B543C71A661B9F9B4469A0804387D9709A042FDA3515451",
+      "at": "2026-10-14T03:36:27.0368059+02:00",
+      "compilerProcesses": 8
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 input_telemetry unchanged run=1 iterations=50000 samples=120 elapsed_us=442",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:36:27.6144267+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 input_telemetry changed run=1 iterations=10000 elapsed_us=134226",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:36:27.6598307+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 input_telemetry unchanged run=2 iterations=50000 samples=120 elapsed_us=430",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:36:27.6986437+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 input_telemetry changed run=2 iterations=10000 elapsed_us=124836",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:36:27.7466727+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 input_telemetry unchanged run=3 iterations=50000 samples=120 elapsed_us=430",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:36:27.7952658+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 input_telemetry changed run=3 iterations=10000 elapsed_us=123028",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:36:27.8343602+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 delta_trace unchanged run=1 iterations=50000 samples=67 elapsed_us=445",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:36:28.4375374+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 delta_trace changed run=1 iterations=10000 elapsed_us=162204",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:36:28.4908990+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 delta_trace unchanged run=2 iterations=50000 samples=67 elapsed_us=574",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:36:28.5359231+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 delta_trace changed run=2 iterations=10000 elapsed_us=159274",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:36:28.5773035+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 delta_trace unchanged run=3 iterations=50000 samples=67 elapsed_us=427",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:36:28.6186659+02:00",
+      "compilerProcesses": 9
+    },
+    {
+      "phase": "after",
+      "line": "ISA1607 delta_trace changed run=3 iterations=10000 elapsed_us=164610",
+      "hash": "FBA1EF3929C57EF56664876D498B9E26BE2D641F55A7331EE6E2C2775F3847B5",
+      "at": "2026-10-14T03:36:28.6604840+02:00",
+      "compilerProcesses": 9
+    }
+  ],
+  "delta_paired": [
+    {
+      "pair": 1,
+      "phase": "before",
+      "processCpuSeconds": 0.34375,
+      "wallSeconds": 0.3859108,
+      "lines": [
+        "ISA1607 delta_trace unchanged run=1 iterations=50000 samples=67 elapsed_us=7233",
+        "ISA1607 delta_trace changed run=1 iterations=10000 elapsed_us=99187",
+        "ISA1607 delta_trace unchanged run=2 iterations=50000 samples=67 elapsed_us=7557",
+        "ISA1607 delta_trace changed run=2 iterations=10000 elapsed_us=101604",
+        "ISA1607 delta_trace unchanged run=3 iterations=50000 samples=67 elapsed_us=6702",
+        "ISA1607 delta_trace changed run=3 iterations=10000 elapsed_us=105942"
+      ]
+    },
+    {
+      "pair": 1,
+      "phase": "after",
+      "processCpuSeconds": 0.3125,
+      "wallSeconds": 0.3560019,
+      "lines": [
+        "ISA1607 delta_trace unchanged run=1 iterations=50000 samples=67 elapsed_us=430",
+        "ISA1607 delta_trace changed run=1 iterations=10000 elapsed_us=105101",
+        "ISA1607 delta_trace unchanged run=2 iterations=50000 samples=67 elapsed_us=439",
+        "ISA1607 delta_trace changed run=2 iterations=10000 elapsed_us=95249",
+        "ISA1607 delta_trace unchanged run=3 iterations=50000 samples=67 elapsed_us=429",
+        "ISA1607 delta_trace changed run=3 iterations=10000 elapsed_us=94415"
+      ]
+    },
+    {
+      "pair": 2,
+      "phase": "before",
+      "processCpuSeconds": 0.328125,
+      "wallSeconds": 0.343314,
+      "lines": [
+        "ISA1607 delta_trace unchanged run=1 iterations=50000 samples=67 elapsed_us=6604",
+        "ISA1607 delta_trace changed run=1 iterations=10000 elapsed_us=95217",
+        "ISA1607 delta_trace unchanged run=2 iterations=50000 samples=67 elapsed_us=6606",
+        "ISA1607 delta_trace changed run=2 iterations=10000 elapsed_us=97062",
+        "ISA1607 delta_trace unchanged run=3 iterations=50000 samples=67 elapsed_us=6434",
+        "ISA1607 delta_trace changed run=3 iterations=10000 elapsed_us=96572"
+      ]
+    },
+    {
+      "pair": 2,
+      "phase": "after",
+      "processCpuSeconds": 0.296875,
+      "wallSeconds": 0.3170641,
+      "lines": [
+        "ISA1607 delta_trace unchanged run=1 iterations=50000 samples=67 elapsed_us=430",
+        "ISA1607 delta_trace changed run=1 iterations=10000 elapsed_us=95501",
+        "ISA1607 delta_trace unchanged run=2 iterations=50000 samples=67 elapsed_us=436",
+        "ISA1607 delta_trace changed run=2 iterations=10000 elapsed_us=92260",
+        "ISA1607 delta_trace unchanged run=3 iterations=50000 samples=67 elapsed_us=429",
+        "ISA1607 delta_trace changed run=3 iterations=10000 elapsed_us=95344"
+      ]
+    },
+    {
+      "pair": 3,
+      "phase": "before",
+      "processCpuSeconds": 0.375,
+      "wallSeconds": 0.3931089,
+      "lines": [
+        "ISA1607 delta_trace unchanged run=1 iterations=50000 samples=67 elapsed_us=6692",
+        "ISA1607 delta_trace changed run=1 iterations=10000 elapsed_us=96006",
+        "ISA1607 delta_trace unchanged run=2 iterations=50000 samples=67 elapsed_us=35171",
+        "ISA1607 delta_trace changed run=2 iterations=10000 elapsed_us=96868",
+        "ISA1607 delta_trace unchanged run=3 iterations=50000 samples=67 elapsed_us=9132",
+        "ISA1607 delta_trace changed run=3 iterations=10000 elapsed_us=114242"
+      ]
+    },
+    {
+      "pair": 3,
+      "phase": "after",
+      "processCpuSeconds": 0.34375,
+      "wallSeconds": 0.361327,
+      "lines": [
+        "ISA1607 delta_trace unchanged run=1 iterations=50000 samples=67 elapsed_us=433",
+        "ISA1607 delta_trace changed run=1 iterations=10000 elapsed_us=103766",
+        "ISA1607 delta_trace unchanged run=2 iterations=50000 samples=67 elapsed_us=437",
+        "ISA1607 delta_trace changed run=2 iterations=10000 elapsed_us=107918",
+        "ISA1607 delta_trace unchanged run=3 iterations=50000 samples=67 elapsed_us=450",
+        "ISA1607 delta_trace changed run=3 iterations=10000 elapsed_us=114491"
+      ]
+    }
+  ],
+  "desktop": [
+    {
+      "label": "before-hub-home",
+      "run": 1,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-hub.exe",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7",
+      "at": "2026-10-14T03:13:04.4651998+02:00",
+      "pid": 14076,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/before-hub-home-1/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/before-hub-home-1/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/before-hub-home-1/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/before-hub-home-1/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 921.9036,
+      "cpuOneCorePercent": 2.739619435461492,
+      "workingMiB": 104.646875,
+      "privateMiB": 120.740625,
+      "compilerProcesses": 14
+    },
+    {
+      "label": "before-hub-home",
+      "run": 2,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-hub.exe",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7",
+      "at": "2026-10-14T03:13:23.9928993+02:00",
+      "pid": 26956,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/before-hub-home-2/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/before-hub-home-2/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/before-hub-home-2/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/before-hub-home-2/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 391.5675,
+      "cpuOneCorePercent": 2.1397645908762275,
+      "workingMiB": 104.66015625,
+      "privateMiB": 120.94921875,
+      "compilerProcesses": 14
+    },
+    {
+      "label": "before-hub-home",
+      "run": 3,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-hub.exe",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7",
+      "at": "2026-10-14T03:13:41.9358237+02:00",
+      "pid": 36708,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/before-hub-home-3/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/before-hub-home-3/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/before-hub-home-3/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/before-hub-home-3/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 697.7534,
+      "cpuOneCorePercent": 3.1959670572621355,
+      "workingMiB": 102.4375,
+      "privateMiB": 120.66796875,
+      "compilerProcesses": 14
+    },
+    {
+      "label": "before-hub-launcher",
+      "run": 1,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-hub.exe",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7",
+      "at": "2026-10-14T03:13:58.9164201+02:00",
+      "pid": 32044,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/before-hub-launcher-1/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/before-hub-launcher-1/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/before-hub-launcher-1/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/before-hub-launcher-1/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated",
+        "--launcher"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 309.531,
+      "cpuOneCorePercent": 2.4331279598150033,
+      "workingMiB": 98.446484375,
+      "privateMiB": 115.184765625,
+      "compilerProcesses": 15
+    },
+    {
+      "label": "before-hub-launcher",
+      "run": 2,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-hub.exe",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7",
+      "at": "2026-10-14T03:14:17.2209995+02:00",
+      "pid": 32100,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/before-hub-launcher-2/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/before-hub-launcher-2/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/before-hub-launcher-2/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/before-hub-launcher-2/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated",
+        "--launcher"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 324.9923,
+      "cpuOneCorePercent": 4.865714976284359,
+      "workingMiB": 98.242578125,
+      "privateMiB": 114.995703125,
+      "compilerProcesses": 14
+    },
+    {
+      "label": "before-hub-launcher",
+      "run": 3,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-hub.exe",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7",
+      "at": "2026-10-14T03:14:34.2072918+02:00",
+      "pid": 12576,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/before-hub-launcher-3/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/before-hub-launcher-3/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/before-hub-launcher-3/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/before-hub-launcher-3/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated",
+        "--launcher"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 332.7804,
+      "cpuOneCorePercent": 3.2080503120058075,
+      "workingMiB": 98.478515625,
+      "privateMiB": 115.185546875,
+      "compilerProcesses": 14
+    },
+    {
+      "label": "before-hub-studio",
+      "run": 1,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-hub.exe",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7",
+      "at": "2026-10-14T03:14:51.9362641+02:00",
+      "pid": 12580,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/before-hub-studio-1/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/before-hub-studio-1/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/before-hub-studio-1/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/before-hub-studio-1/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated",
+        "--studio"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 1104.039,
+      "cpuOneCorePercent": 2.888398339800686,
+      "workingMiB": 133.3203125,
+      "privateMiB": 189.37109375,
+      "compilerProcesses": 14
+    },
+    {
+      "label": "before-hub-studio",
+      "run": 2,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-hub.exe",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7",
+      "at": "2026-10-14T03:15:10.0056374+02:00",
+      "pid": 31608,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/before-hub-studio-2/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/before-hub-studio-2/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/before-hub-studio-2/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/before-hub-studio-2/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated",
+        "--studio"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 349.236,
+      "cpuOneCorePercent": 3.3540489806091376,
+      "workingMiB": 133.539453125,
+      "privateMiB": 189.930078125,
+      "compilerProcesses": 14
+    },
+    {
+      "label": "before-hub-studio",
+      "run": 3,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-hub.exe",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7",
+      "at": "2026-10-14T03:15:27.1803518+02:00",
+      "pid": 37008,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/before-hub-studio-3/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/before-hub-studio-3/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/before-hub-studio-3/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/before-hub-studio-3/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated",
+        "--studio"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 431.0615,
+      "cpuOneCorePercent": 0.7679688994467478,
+      "workingMiB": 133.382421875,
+      "privateMiB": 189.433203125,
+      "compilerProcesses": 14
+    },
+    {
+      "label": "before-hub-minimized",
+      "run": 1,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-hub.exe",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7",
+      "at": "2026-10-14T03:15:48.0046010+02:00",
+      "pid": 29636,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/before-hub-minimized-1/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/before-hub-minimized-1/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/before-hub-minimized-1/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/before-hub-minimized-1/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 283.4663,
+      "cpuOneCorePercent": 3.9496505835274536,
+      "workingMiB": 99.750390625,
+      "privateMiB": 139.637109375,
+      "compilerProcesses": 14
+    },
+    {
+      "label": "before-hub-minimized",
+      "run": 2,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-hub.exe",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7",
+      "at": "2026-10-14T03:16:05.7579127+02:00",
+      "pid": 34444,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/before-hub-minimized-2/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/before-hub-minimized-2/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/before-hub-minimized-2/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/before-hub-minimized-2/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 478.7597,
+      "cpuOneCorePercent": 4.212012470868759,
+      "workingMiB": 99.612890625,
+      "privateMiB": 139.533984375,
+      "compilerProcesses": 8
+    },
+    {
+      "label": "before-hub-minimized",
+      "run": 3,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-hub.exe",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7",
+      "at": "2026-10-14T03:16:22.7552112+02:00",
+      "pid": 30252,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/before-hub-minimized-3/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/before-hub-minimized-3/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/before-hub-minimized-3/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/before-hub-minimized-3/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 312.9607,
+      "cpuOneCorePercent": 2.7603854952690527,
+      "workingMiB": 99.715625,
+      "privateMiB": 139.65703125,
+      "compilerProcesses": 10
+    },
+    {
+      "label": "before-overlays-4",
+      "run": 1,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-overlays.exe",
+      "hash": "D6A3FA6E188C503948FC8BA615232D58EBE6E354F9693BD066F279A6E4A85C4C",
+      "at": "2026-10-14T03:16:39.6797883+02:00",
+      "pid": 26344,
+      "arguments": [
+        "4",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 475.3211,
+      "cpuOneCorePercent": 8.625223402365304,
+      "workingMiB": 57.130859375,
+      "privateMiB": 87.744921875,
+      "compilerProcesses": 8
+    },
+    {
+      "label": "before-overlays-4",
+      "run": 2,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-overlays.exe",
+      "hash": "D6A3FA6E188C503948FC8BA615232D58EBE6E354F9693BD066F279A6E4A85C4C",
+      "at": "2026-10-14T03:16:56.1755077+02:00",
+      "pid": 23996,
+      "arguments": [
+        "4",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 228.8034,
+      "cpuOneCorePercent": 7.959107525926365,
+      "workingMiB": 57.092578125,
+      "privateMiB": 87.714453125,
+      "compilerProcesses": 8
+    },
+    {
+      "label": "before-overlays-4",
+      "run": 3,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-overlays.exe",
+      "hash": "D6A3FA6E188C503948FC8BA615232D58EBE6E354F9693BD066F279A6E4A85C4C",
+      "at": "2026-10-14T03:17:12.6757516+02:00",
+      "pid": 37676,
+      "arguments": [
+        "4",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 236.0487,
+      "cpuOneCorePercent": 7.058681809856034,
+      "workingMiB": 57.23203125,
+      "privateMiB": 87.837890625,
+      "compilerProcesses": 8
+    },
+    {
+      "label": "before-overlays-22",
+      "run": 1,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-overlays.exe",
+      "hash": "D6A3FA6E188C503948FC8BA615232D58EBE6E354F9693BD066F279A6E4A85C4C",
+      "at": "2026-10-14T03:17:29.3023923+02:00",
+      "pid": 31124,
+      "arguments": [
+        "22",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 361.6284,
+      "cpuOneCorePercent": 28.562138461679833,
+      "workingMiB": 71.531640625,
+      "privateMiB": 104.416015625,
+      "compilerProcesses": 8
+    },
+    {
+      "label": "before-overlays-22",
+      "run": 2,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-overlays.exe",
+      "hash": "D6A3FA6E188C503948FC8BA615232D58EBE6E354F9693BD066F279A6E4A85C4C",
+      "at": "2026-10-14T03:17:45.7788341+02:00",
+      "pid": 21540,
+      "arguments": [
+        "22",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 245.6803,
+      "cpuOneCorePercent": 24.578126776691338,
+      "workingMiB": 71.846484375,
+      "privateMiB": 104.659765625,
+      "compilerProcesses": 8
+    },
+    {
+      "label": "before-overlays-22",
+      "run": 3,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-overlays.exe",
+      "hash": "D6A3FA6E188C503948FC8BA615232D58EBE6E354F9693BD066F279A6E4A85C4C",
+      "at": "2026-10-14T03:18:02.2168146+02:00",
+      "pid": 33700,
+      "arguments": [
+        "22",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 231.4126,
+      "cpuOneCorePercent": 26.176731930929968,
+      "workingMiB": 71.698046875,
+      "privateMiB": 104.546484375,
+      "compilerProcesses": 10
+    },
+    {
+      "label": "before-overlays-history",
+      "run": 1,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-overlays.exe",
+      "hash": "D6A3FA6E188C503948FC8BA615232D58EBE6E354F9693BD066F279A6E4A85C4C",
+      "at": "2026-10-14T03:18:18.7410954+02:00",
+      "pid": 34620,
+      "arguments": [
+        "--layout",
+        "C:/tmp/1607-evidence/history-layout.json",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 258.1094,
+      "cpuOneCorePercent": 10.899600966775324,
+      "workingMiB": 52.544140625,
+      "privateMiB": 83.437890625,
+      "compilerProcesses": 10
+    },
+    {
+      "label": "before-overlays-history",
+      "run": 2,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-overlays.exe",
+      "hash": "D6A3FA6E188C503948FC8BA615232D58EBE6E354F9693BD066F279A6E4A85C4C",
+      "at": "2026-10-14T03:18:40.4608264+02:00",
+      "pid": 17524,
+      "arguments": [
+        "--layout",
+        "C:/tmp/1607-evidence/history-layout.json",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 379.516,
+      "cpuOneCorePercent": 9.350968837877339,
+      "workingMiB": 52.66171875,
+      "privateMiB": 83.55234375,
+      "compilerProcesses": 6
+    },
+    {
+      "label": "before-overlays-history",
+      "run": 3,
+      "executable": "C:/tmp/1607-evidence/baseline-bins/vantare-overlays.exe",
+      "hash": "D6A3FA6E188C503948FC8BA615232D58EBE6E354F9693BD066F279A6E4A85C4C",
+      "at": "2026-10-14T03:19:02.1318290+02:00",
+      "pid": 12148,
+      "arguments": [
+        "--layout",
+        "C:/tmp/1607-evidence/history-layout.json",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 337.4688,
+      "cpuOneCorePercent": 9.791143742077619,
+      "workingMiB": 52.568359375,
+      "privateMiB": 83.450390625,
+      "compilerProcesses": 11
+    },
+    {
+      "label": "after-hub-home",
+      "run": 1,
+      "executable": "C:/tmp/1607-release-target/release/vantare-hub.exe",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F",
+      "at": "2026-10-14T03:21:45.3460693+02:00",
+      "pid": 28680,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/after-hub-home-1/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/after-hub-home-1/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/after-hub-home-1/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/after-hub-home-1/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 447.3238,
+      "cpuOneCorePercent": 2.2095057760511128,
+      "workingMiB": 104.934375,
+      "privateMiB": 120.9484375,
+      "compilerProcesses": 11
+    },
+    {
+      "label": "after-hub-home",
+      "run": 2,
+      "executable": "C:/tmp/1607-release-target/release/vantare-hub.exe",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F",
+      "at": "2026-10-14T03:22:04.3741675+02:00",
+      "pid": 29236,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/after-hub-home-2/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/after-hub-home-2/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/after-hub-home-2/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/after-hub-home-2/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 318.9768,
+      "cpuOneCorePercent": 1.3706494769304318,
+      "workingMiB": 105.16015625,
+      "privateMiB": 121.23046875,
+      "compilerProcesses": 10
+    },
+    {
+      "label": "after-hub-home",
+      "run": 3,
+      "executable": "C:/tmp/1607-release-target/release/vantare-hub.exe",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F",
+      "at": "2026-10-14T03:22:21.4821176+02:00",
+      "pid": 32872,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/after-hub-home-3/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/after-hub-home-3/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/after-hub-home-3/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/after-hub-home-3/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 710.262,
+      "cpuOneCorePercent": 3.5288506604835015,
+      "workingMiB": 102.485546875,
+      "privateMiB": 120.8046875,
+      "compilerProcesses": 10
+    },
+    {
+      "label": "after-hub-launcher",
+      "run": 1,
+      "executable": "C:/tmp/1607-release-target/release/vantare-hub.exe",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F",
+      "at": "2026-10-14T03:22:38.7622465+02:00",
+      "pid": 35864,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/after-hub-launcher-1/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/after-hub-launcher-1/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/after-hub-launcher-1/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/after-hub-launcher-1/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated",
+        "--launcher"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 326.1869,
+      "cpuOneCorePercent": 2.1618749417677363,
+      "workingMiB": 98.5984375,
+      "privateMiB": 115.33671875,
+      "compilerProcesses": 9
+    },
+    {
+      "label": "after-hub-launcher",
+      "run": 2,
+      "executable": "C:/tmp/1607-release-target/release/vantare-hub.exe",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F",
+      "at": "2026-10-14T03:22:56.4028364+02:00",
+      "pid": 34928,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/after-hub-launcher-2/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/after-hub-launcher-2/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/after-hub-launcher-2/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/after-hub-launcher-2/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated",
+        "--launcher"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 267.3568,
+      "cpuOneCorePercent": 0.9195114593931725,
+      "workingMiB": 98.672265625,
+      "privateMiB": 115.414453125,
+      "compilerProcesses": 11
+    },
+    {
+      "label": "after-hub-launcher",
+      "run": 3,
+      "executable": "C:/tmp/1607-release-target/release/vantare-hub.exe",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F",
+      "at": "2026-10-14T03:23:13.1791431+02:00",
+      "pid": 37804,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/after-hub-launcher-3/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/after-hub-launcher-3/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/after-hub-launcher-3/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/after-hub-launcher-3/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated",
+        "--launcher"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 279.8202,
+      "cpuOneCorePercent": 2.256041057088384,
+      "workingMiB": 98.5015625,
+      "privateMiB": 115.2109375,
+      "compilerProcesses": 10
+    },
+    {
+      "label": "after-hub-studio",
+      "run": 1,
+      "executable": "C:/tmp/1607-release-target/release/vantare-hub.exe",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F",
+      "at": "2026-10-14T03:23:29.9191620+02:00",
+      "pid": 23960,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/after-hub-studio-1/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/after-hub-studio-1/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/after-hub-studio-1/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/after-hub-studio-1/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated",
+        "--studio"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 268.7239,
+      "cpuOneCorePercent": 1.374841216227215,
+      "workingMiB": 133.33671875,
+      "privateMiB": 190.0828125,
+      "compilerProcesses": 14
+    },
+    {
+      "label": "after-hub-studio",
+      "run": 2,
+      "executable": "C:/tmp/1607-release-target/release/vantare-hub.exe",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F",
+      "at": "2026-10-14T03:23:47.7543870+02:00",
+      "pid": 14304,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/after-hub-studio-2/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/after-hub-studio-2/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/after-hub-studio-2/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/after-hub-studio-2/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated",
+        "--studio"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 314.0456,
+      "cpuOneCorePercent": 2.58183049172088,
+      "workingMiB": 133.1015625,
+      "privateMiB": 189.79296875,
+      "compilerProcesses": 14
+    },
+    {
+      "label": "after-hub-studio",
+      "run": 3,
+      "executable": "C:/tmp/1607-release-target/release/vantare-hub.exe",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F",
+      "at": "2026-10-14T03:24:05.0950972+02:00",
+      "pid": 26552,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/after-hub-studio-3/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/after-hub-studio-3/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/after-hub-studio-3/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/after-hub-studio-3/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated",
+        "--studio"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 402.025,
+      "cpuOneCorePercent": 1.6814353348340623,
+      "workingMiB": 133.3203125,
+      "privateMiB": 189.9765625,
+      "compilerProcesses": 12
+    },
+    {
+      "label": "after-hub-minimized",
+      "run": 1,
+      "executable": "C:/tmp/1607-release-target/release/vantare-hub.exe",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F",
+      "at": "2026-10-14T03:24:22.2755565+02:00",
+      "pid": 21848,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/after-hub-minimized-1/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/after-hub-minimized-1/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/after-hub-minimized-1/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/after-hub-minimized-1/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 329.4198,
+      "cpuOneCorePercent": 2.1210225300782324,
+      "workingMiB": 99.637109375,
+      "privateMiB": 139.629296875,
+      "compilerProcesses": 11
+    },
+    {
+      "label": "after-hub-minimized",
+      "run": 2,
+      "executable": "C:/tmp/1607-release-target/release/vantare-hub.exe",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F",
+      "at": "2026-10-14T03:24:39.2576268+02:00",
+      "pid": 22968,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/after-hub-minimized-2/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/after-hub-minimized-2/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/after-hub-minimized-2/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/after-hub-minimized-2/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 271.4932,
+      "cpuOneCorePercent": 3.8203279215941275,
+      "workingMiB": 99.777734375,
+      "privateMiB": 139.72734375,
+      "compilerProcesses": 13
+    },
+    {
+      "label": "after-hub-minimized",
+      "run": 3,
+      "executable": "C:/tmp/1607-release-target/release/vantare-hub.exe",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F",
+      "at": "2026-10-14T03:24:56.3017514+02:00",
+      "pid": 22392,
+      "arguments": [
+        "--demo",
+        "--data-dir",
+        "C:/tmp/1607-evidence/isolated/after-hub-minimized-3/hub",
+        "--layout",
+        "C:/tmp/1607-evidence/isolated/after-hub-minimized-3/layout.json",
+        "--engineer-settings",
+        "C:/tmp/1607-evidence/isolated/after-hub-minimized-3/engineer.json",
+        "--launcher-file",
+        "C:/tmp/1607-evidence/isolated/after-hub-minimized-3/launcher.json",
+        "--pipe",
+        "vantare-1607-isolated"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 276.2898,
+      "cpuOneCorePercent": 2.30022681046031,
+      "workingMiB": 99.6765625,
+      "privateMiB": 139.641015625,
+      "compilerProcesses": 13
+    },
+    {
+      "label": "after-overlays-4",
+      "run": 1,
+      "executable": "C:/tmp/1607-release-target/release/vantare-overlays.exe",
+      "hash": "44536126C50C74AB3B83898C2E9ED5B4942777BE68888691684996598446A29A",
+      "at": "2026-10-14T03:25:22.1717028+02:00",
+      "pid": 21152,
+      "arguments": [
+        "4",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 600.8533,
+      "cpuOneCorePercent": 7.2151101418064005,
+      "workingMiB": 57.129296875,
+      "privateMiB": 87.71953125,
+      "compilerProcesses": 9
+    },
+    {
+      "label": "after-overlays-4",
+      "run": 2,
+      "executable": "C:/tmp/1607-release-target/release/vantare-overlays.exe",
+      "hash": "44536126C50C74AB3B83898C2E9ED5B4942777BE68888691684996598446A29A",
+      "at": "2026-10-14T03:25:38.6721451+02:00",
+      "pid": 29844,
+      "arguments": [
+        "4",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 223.1062,
+      "cpuOneCorePercent": 7.828332034055344,
+      "workingMiB": 57.111328125,
+      "privateMiB": 87.72421875,
+      "compilerProcesses": 12
+    },
+    {
+      "label": "after-overlays-4",
+      "run": 3,
+      "executable": "C:/tmp/1607-release-target/release/vantare-overlays.exe",
+      "hash": "44536126C50C74AB3B83898C2E9ED5B4942777BE68888691684996598446A29A",
+      "at": "2026-10-14T03:25:55.2608628+02:00",
+      "pid": 27312,
+      "arguments": [
+        "4",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 302.8579,
+      "cpuOneCorePercent": 7.059453861005615,
+      "workingMiB": 57.465234375,
+      "privateMiB": 88.066015625,
+      "compilerProcesses": 11
+    },
+    {
+      "label": "after-overlays-22",
+      "run": 1,
+      "executable": "C:/tmp/1607-release-target/release/vantare-overlays.exe",
+      "hash": "44536126C50C74AB3B83898C2E9ED5B4942777BE68888691684996598446A29A",
+      "at": "2026-10-14T03:26:11.8035498+02:00",
+      "pid": 3288,
+      "arguments": [
+        "22",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 239.6247,
+      "cpuOneCorePercent": 22.52830695561814,
+      "workingMiB": 70.63671875,
+      "privateMiB": 103.447265625,
+      "compilerProcesses": 9
+    },
+    {
+      "label": "after-overlays-22",
+      "run": 2,
+      "executable": "C:/tmp/1607-release-target/release/vantare-overlays.exe",
+      "hash": "44536126C50C74AB3B83898C2E9ED5B4942777BE68888691684996598446A29A",
+      "at": "2026-10-14T03:26:28.2972630+02:00",
+      "pid": 12316,
+      "arguments": [
+        "22",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 252.3719,
+      "cpuOneCorePercent": 21.17555256358433,
+      "workingMiB": 71.968359375,
+      "privateMiB": 104.7046875,
+      "compilerProcesses": 9
+    },
+    {
+      "label": "after-overlays-22",
+      "run": 3,
+      "executable": "C:/tmp/1607-release-target/release/vantare-overlays.exe",
+      "hash": "44536126C50C74AB3B83898C2E9ED5B4942777BE68888691684996598446A29A",
+      "at": "2026-10-14T03:26:44.8666865+02:00",
+      "pid": 24412,
+      "arguments": [
+        "22",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 329.7772,
+      "cpuOneCorePercent": 24.27989184646957,
+      "workingMiB": 71.986328125,
+      "privateMiB": 104.85078125,
+      "compilerProcesses": 11
+    },
+    {
+      "label": "after-overlays-history",
+      "run": 1,
+      "executable": "C:/tmp/1607-release-target/release/vantare-overlays.exe",
+      "hash": "44536126C50C74AB3B83898C2E9ED5B4942777BE68888691684996598446A29A",
+      "at": "2026-10-14T03:27:01.3938519+02:00",
+      "pid": 27956,
+      "arguments": [
+        "--layout",
+        "C:/tmp/1607-evidence/history-layout.json",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 250.0835,
+      "cpuOneCorePercent": 8.276083921285952,
+      "workingMiB": 52.583984375,
+      "privateMiB": 83.463671875,
+      "compilerProcesses": 10
+    },
+    {
+      "label": "after-overlays-history",
+      "run": 2,
+      "executable": "C:/tmp/1607-release-target/release/vantare-overlays.exe",
+      "hash": "44536126C50C74AB3B83898C2E9ED5B4942777BE68888691684996598446A29A",
+      "at": "2026-10-14T03:27:22.8831185+02:00",
+      "pid": 33980,
+      "arguments": [
+        "--layout",
+        "C:/tmp/1607-evidence/history-layout.json",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 240.8286,
+      "cpuOneCorePercent": 9.059616121498811,
+      "workingMiB": 52.616015625,
+      "privateMiB": 83.437109375,
+      "compilerProcesses": 10
+    },
+    {
+      "label": "after-overlays-history",
+      "run": 3,
+      "executable": "C:/tmp/1607-release-target/release/vantare-overlays.exe",
+      "hash": "44536126C50C74AB3B83898C2E9ED5B4942777BE68888691684996598446A29A",
+      "at": "2026-10-14T03:27:44.4774409+02:00",
+      "pid": 29276,
+      "arguments": [
+        "--layout",
+        "C:/tmp/1607-evidence/history-layout.json",
+        "--fuente",
+        "local"
+      ],
+      "dpi": 96,
+      "startupWindowMs": 267.5168,
+      "cpuOneCorePercent": 8.995310183128268,
+      "workingMiB": 52.62890625,
+      "privateMiB": 83.44375,
+      "compilerProcesses": 12
+    }
+  ],
+  "scroll": [
+    {
+      "phase": "before",
+      "case": "studio-catalog-scroll",
+      "run": 1,
+      "cpuOneCorePercent": 6.40004453358226,
+      "method": "50 wheel events at 200 ms, alternating; catalog movement verified by capture",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7"
+    },
+    {
+      "phase": "before",
+      "case": "studio-catalog-scroll",
+      "run": 2,
+      "cpuOneCorePercent": 6.850732980443328,
+      "method": "50 wheel events at 200 ms, alternating; catalog movement verified by capture",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7"
+    },
+    {
+      "phase": "before",
+      "case": "studio-catalog-scroll",
+      "run": 3,
+      "cpuOneCorePercent": 2.9080964146979285,
+      "method": "50 wheel events at 200 ms, alternating; catalog movement verified by capture",
+      "hash": "301297EC24ADC152ECBDC1475A6D9390A48F40CB7C19BE081DFCE5737A2B8FD7"
+    },
+    {
+      "phase": "after",
+      "case": "studio-catalog-scroll",
+      "run": 1,
+      "cpuOneCorePercent": 4.745432934112817,
+      "method": "50 wheel events at 200 ms, alternating; catalog movement verified by capture",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F"
+    },
+    {
+      "phase": "after",
+      "case": "studio-catalog-scroll",
+      "run": 2,
+      "cpuOneCorePercent": 3.2132078810801383,
+      "method": "50 wheel events at 200 ms, alternating; catalog movement verified by capture",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F"
+    },
+    {
+      "phase": "after",
+      "case": "studio-catalog-scroll",
+      "run": 3,
+      "cpuOneCorePercent": 5.038156370401251,
+      "method": "50 wheel events at 200 ms, alternating; catalog movement verified by capture",
+      "hash": "E182C1D8DAC84B0E46589D36C1D9F00FC7F827A97B82C6DF2A776E87EE38025F"
+    }
+  ],
+  "navigation": "Unavailable: clicking Launcher in demo is denied by unverified access; no policy injected",
+  "parity": {
+    "screens": [
+      "home",
+      "launcher",
+      "studio"
+    ],
+    "width": 1280,
+    "height": 720,
+    "dpi": 96,
+    "different_pixels": 0,
+    "total_pixels": 2764800,
+    "threshold": 0,
+    "masks": []
+  },
+  "gates": {
+    "fmt": "PASS",
+    "check": "PASS",
+    "clippy": "PASS -D warnings",
+    "nextest": "1657/1657, 12 skipped",
+    "lifecycle": "18/18",
+    "retirement": "456/456",
+    "quality": "PASS"
+  }
+}

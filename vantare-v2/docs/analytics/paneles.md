@@ -12,7 +12,7 @@ en [eventos.md](eventos.md). El panel explica su población consentida y sus lí
 | Funciones usadas | `feature_used` por `feature` | 30 días |
 | Uso de widgets | Suma segundos de `widget_usage` por `widget_type` | 30 días |
 | Retención | Primera visita y vuelta a `page_viewed`, intervalos diarios | 14 días |
-| Embudo nativo observado | `installation_observed` → `account_signed_in` → `paid_license_observed` | Ordenado, conversión hasta 30 días |
+| Embudo nativo observado | `installation_observed` → `account_signed_in` → `commercial_license_observed` | Ordenado, conversión hasta 30 días |
 | Descargas web | UUID distintos de `download_requested`, por `platform` | 30 días; separado |
 
 No hay cohortes con email, revenue inventado ni conversiones web→app sin puente.

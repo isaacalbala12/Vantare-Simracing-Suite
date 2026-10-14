@@ -40,6 +40,7 @@ function vantareDownloads(publicCaptureKey) {
       if (!consent || !installationCandidate || !publicCaptureKey ||
           !["windows", "linux", "macos"].includes(platform)) return;
       const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
       pending.add(controller);
       try {
         await fetch("https://eu.i.posthog.com/i/v0/e/", {
@@ -54,7 +55,7 @@ function vantareDownloads(publicCaptureKey) {
           })
         });
       } catch { /* No bloquear la descarga ni reintentar después de revocar. */ }
-      finally { pending.delete(controller); }
+      finally { clearTimeout(timeout); pending.delete(controller); }
     }
   };
 }

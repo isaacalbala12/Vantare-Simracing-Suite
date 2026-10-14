@@ -37,7 +37,7 @@ eventos desconocidos se rechaza antes de persistir y otra vez antes de enviar.
 | `feature_used` | `feature` | Acción explícita completada; no contenido de la acción. |
 | `installation_observed` | ninguna | Primera observación consentida de esta instalación; no acredita que Setup acabara. |
 | `account_signed_in` | ninguna | Sesión confirmada por services; **no demuestra creación de cuenta**. |
-| `paid_license_observed` | ninguna | Credencial verificada con derecho comercial pagado; **no es recibo de una compra nueva**. |
+| `commercial_license_observed` | ninguna | Credencial verificada con derecho comercial vigente; **no es recibo de una compra nueva**, puede proceder de una concesión. |
 
 Páginas: `home`, `workshop`, `studio`, `launcher`, `calendar`, `strategy`,
 `engineer`, `analysis`, `testing`, `roadmap`, `account`, `licenses`,
@@ -46,6 +46,11 @@ Páginas: `home`, `workshop`, `studio`, `launcher`, `calendar`, `strategy`,
 Widgets: los 18 nombres de `WIDGET_TYPES` en `diagnostics.rs`; mismo catálogo
 validado del emisor existente. No se mandan IDs ni nombres de instancias.
 
+El catálogo web separado admite exclusivamente `download_requested` con
+`platform` en `windows`/`linux`/`macos` (snippet de Marketing). No es un evento
+admitido por la cola nativa. Cuenta creada/compra completada siguen sin productor
+aprobado; no se aceptan esos nombres como sustitutos de las observaciones.
+
 Propiedades técnicas fijas añadidas por el emisor:
 `$process_person_profile=false`, `$ip=null`, `$geoip_disable=true`.
 `distinct_id` es un UUID v4 aleatorio local, nunca huella de dispositivo/licencia,
@@ -53,6 +58,19 @@ OAuth subject, email, nombre ni UUID de backend. No se vinculan perfiles persona
 ni cuentas entre equipos. Identificador de cuenta **omitido**: no es necesario
 para estas métricas. La IP es visible al servidor de transporte; no se incorpora
 a propiedades ni se usa para geolocalización. Esto no convierte los datos en anónimos.
+
+### Contrato de ID para #1610
+
+`vantare_services::diagnostics::consented_usage_id(&diagnostics::data_root()?)`
+devuelve `Result<Option<String>>`: `None` sin `usage && usage_decided`, también
+tras revocar; configuración inválida devuelve error y se omite el vínculo.
+No crea ni lee `anonymous-id` mientras el permiso está apagado. Con permiso,
+devuelve el mismo UUID v4 local (36 caracteres minúsculos) usado como
+`distinct_id` por el emisor. Se conserva entre arranques y revocaciones; no
+identifica cuentas ni equipos entre sí. No copiarlo al namespace Testing.
+#1610 debe revalidarlo en el momento de enviar cada informe; aceptar el informe
+voluntario o sus capturas no concede permiso de uso. Ausencia/error: omitir
+el campo opcional. Nunca sustituirlo por cuenta, licencia, huella ni UUID web.
 
 No texto, rutas, URL, contenido, telemetría, nombres de pilotos, credenciales,
 capturas, importe, pedido o ID de producto libre. Duraciones usan reloj monotónico:

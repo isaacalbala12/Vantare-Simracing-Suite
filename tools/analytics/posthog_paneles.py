@@ -18,7 +18,7 @@ def event(name, **fields):
 
 def definitions():
     def insight(name, source, description):
-        return {"name": name, "description": description, "tags": [TAG],
+        return {"name": name, "description": description, "tags": [TAG], "saved": True,
                 "query": {"kind": "InsightVizNode", "source": source}}
 
     def trends(series, breakdown=None):
@@ -32,18 +32,18 @@ def definitions():
     funnel = {"kind": "FunnelsQuery", "dateRange": {"date_from": "-30d"},
               "filterTestAccounts": True,
               "series": [event(name) for name in (
-                  "installation_observed", "account_signed_in", "paid_license_observed")],
+                  "installation_observed", "account_signed_in", "commercial_license_observed")],
               "funnelsFilter": {"funnelWindowInterval": 30, "funnelWindowIntervalUnit": "day",
                                 "funnelOrderType": "ordered", "funnelVizType": "steps"}}
     retention = {"kind": "RetentionQuery", "dateRange": {"date_from": "-30d"},
                  "filterTestAccounts": True,
-                 "retentionFilter": {"targetEntity": event("page_viewed"),
-                                     "returningEntity": event("page_viewed"),
+                 "retentionFilter": {"targetEntity": {"id":"page_viewed","type":"events"},
+                                     "returningEntity": {"id":"page_viewed","type":"events"},
                                      "retentionType": "retention_first_time",
                                      "retentionReference": "total",
                                      "period": "Day", "totalIntervals": 14}}
     return {
-        "dashboard": {"name": NAME, "tags": [TAG], "pinned": True,
+        "dashboard": {"name": NAME, "tags": [TAG], "pinned": True, "is_shared": False,
                       "description": "Solo quienes aceptan. Uso observado; no ingresos. "
                       "Descarga separada: sin atribución web→app. Registro/pago exactos pendientes."},
         "insights": [
@@ -57,7 +57,7 @@ def definitions():
                     "Una vez por tipo simultáneo; excluye ocultos por sesión, bandeja, fuera de pista y licencia."),
             insight("Retención de instalaciones (14 días)", retention, "Regreso a páginas; UUID local, sin cuentas entre equipos."),
             insight("Embudo nativo observado (30 días)", funnel,
-                    "Primer uso consentido → sesión disponible → derecho pagado verificado. NO registro ni compra nuevos."),
+                    "Primer uso consentido → sesión disponible → derecho comercial verificado. NO registro ni compra nuevos."),
             insight("Descargas solicitadas (web, separado)", trends([event("download_requested", math="dau")], "platform"),
                     "Clic consentido en web; requiere PR Marketing. No porcentaje descarga→instalación."),
         ],
@@ -122,12 +122,14 @@ def apply(api, specification):
     dashboard = owned(dashboards, specification["dashboard"]["name"])
     existing = [(definition, owned(insights, definition["name"]))
                 for definition in specification["insights"]]
+    for definition, found in existing:
+        if found and (dashboard is None or dashboard["id"] not in found.get("dashboards", [])
+                      or found.get("query") != definition["query"]):
+            raise RuntimeError("Insight existente divergente o sin asociación: revisar; no se sobrescribe")
     if dashboard is None:
         dashboard = api.request("POST", "dashboards/", specification["dashboard"])
     for definition, found in existing:
         if found:
-            if dashboard["id"] not in found.get("dashboards", []):
-                raise RuntimeError("Insight existente sin asociación: revisar manualmente; no se sobrescribe")
             continue
         api.request("POST", "insights/", {**definition, "dashboards": [dashboard["id"]]})
     return f"{HOST}/project/{api.base.split('/')[-2]}/dashboard/{dashboard['id']}"

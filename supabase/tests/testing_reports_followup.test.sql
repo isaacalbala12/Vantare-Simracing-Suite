@@ -1,9 +1,11 @@
 begin;
-select plan(33);
+select plan(35);
 insert into public.profiles(id) values('16100000-0000-0000-0000-000000000001'),('16100000-0000-0000-0000-000000000002');
 set local role authenticated;
 set local request.jwt.claim.sub='16100000-0000-0000-0000-000000000001';
 select throws_ok($$select public.testing_report_submit('16100000-0000-0000-0000-000000000010','master','Informe','Texto',false)$$,'22023',null,'consent required');
+select throws_ok($$select public.testing_report_submit('16100000-0000-0000-0000-000000000007','master',repeat(' ',120)||'A','Texto',true)$$,'22023',null,'padding cannot bypass title character cap');
+select throws_ok($$select public.testing_report_submit('16100000-0000-0000-0000-000000000008','master','Informe',repeat(' ',1000)||'A',true)$$,'22023',null,'padding cannot bypass body character cap');
 select lives_ok($$select public.testing_report_submit('16100000-0000-0000-0000-000000000010','master','Informe','Texto',true)$$,'non tester can submit');
 select lives_ok($$select public.testing_report_submit('16100000-0000-0000-0000-000000000010','master','Informe','Texto',true)$$,'retry does not duplicate');
 select is((select count(*)::integer from public.testing_contributions),1,'one private row');

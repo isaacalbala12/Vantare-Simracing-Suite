@@ -45,7 +45,8 @@ begin
   -- now() is the transaction start: an old transaction must not age new reports.
   t:=clock_timestamp();
   new.created_at:=t;
-  if octet_length(new.title)>480 or octet_length(new.body)>4000 then
+  if length(new.title)>120 or length(new.body)>1000
+    or octet_length(new.title)>480 or octet_length(new.body)>4000 then
     raise exception 'testing_report_size' using errcode='22023'; end if;
   if (select count(*) from public.testing_contributions where account_id=new.account_id and created_at>t-interval '1 day')>=5
     or (select count(*) from public.testing_contributions where account_id=new.account_id and created_at>t-interval '7 days')>=20 then

@@ -22,6 +22,9 @@ const statuses = [
   "duplicate_linked",
   "incomplete",
   "closed",
+  "in_review",
+  "rejected",
+  "fixed",
 ];
 type ObjectValue = Record<string, unknown>;
 export type AdminDeps = NativeAuthDeps & {
@@ -59,7 +62,7 @@ export function validateAdminRequest(
     set_rollout: ["module", "enabled_for_all"],
     list_reports: ["status", "limit", "cursor"],
     get_report: ["report_id"],
-    set_report_status: ["report_id", "status"],
+    set_report_status: ["report_id", "status", "fixed_in_version", "reason"],
   };
   if (
     !Object.hasOwn(fields, action) ||
@@ -102,7 +105,14 @@ export function validateAdminRequest(
         return boundedText(params.report_id, 256);
       case "set_report_status":
         return boundedText(params.report_id, 256) &&
-          statuses.includes(params.status as string);
+          statuses.includes(params.status as string) &&
+          (params.reason === undefined || boundedText(params.reason, 500)) &&
+          (params.fixed_in_version === undefined ||
+            (boundedText(params.fixed_in_version, 60) &&
+              /^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?(-[a-z0-9.-]+)?$/.test(
+                String(params.fixed_in_version),
+              ))) &&
+          (params.status !== "fixed" || params.fixed_in_version !== undefined);
       default:
         return false;
     }

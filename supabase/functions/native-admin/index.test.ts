@@ -424,3 +424,21 @@ Deno.test("Clerk/Storage failures remain unavailable, not successful empty data"
   );
   assert(response.status === 503);
 });
+
+Deno.test("r1: report review accepts the closed request and forwards status", async () => {
+  const response = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "set_report_status",
+      report_id: reportId,
+      status: "in_review",
+    }),
+    deps({
+      execute: (_a, _i, action, params) => {
+        assert(action === "set_report_status" && params.status === "in_review");
+        return Promise.resolve({});
+      },
+    }),
+  );
+  assert(response.status === 200);
+});

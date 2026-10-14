@@ -43,8 +43,8 @@ def parse_args(argv=None):
     if args.ver:
         if args.estado or args.comentario is not None or args.isaac:
             parser.error("--ver no admite cambios")
-    elif args.estado is None:
-        parser.error("Falta estado")
+    elif args.estado is None and args.resumen is None:
+        parser.error("Falta estado o --resumen")
     elif args.estado in ISAAC_STATES and not args.isaac:
         parser.exit(2, "Error: Entregado y Para Claude están reservados a Isaac; requieren --isaac.\n")
     return args

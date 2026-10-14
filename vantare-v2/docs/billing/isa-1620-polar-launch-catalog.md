@@ -171,7 +171,15 @@ Token solo mediante `POLAR_ACCESS_TOKEN` en sesión privada del operador, nunca
 argumentos/archivos/logs. Offline no lee tokens. Scopes posteriores: products,
 discounts y checkout_links read/write, y organizations:read para verificar la
 identidad de organización y la guarda del portal. Header `Polar-Version: 2026-10`.
-Entrada y salida distintas; salida inexistente. Los `--apply` están preparados,
+Entrada y salida distintas; salida inexistente. Se comprueba antes de HTTP
+y se crea exclusivamente al terminar la sincronización con éxito; un fallo
+HTTP no deja archivo, y un fallo de escritura retira su salida incompleta.
+Hace falta permiso de lectura también sobre la ruta de salida para el preflight.
+Una salida existente nunca se sobrescribe, aunque esté vacía. Para recuperar el
+archivo de 0 bytes de la versión anterior, usar otra ruta o retirar ese archivo
+solo tras comprobar que es la salida vacía fallida. No garantiza persistencia
+ante terminación forzosa del proceso durante la escritura.
+Los `--apply` están preparados,
 **no ejecutados** en esta ronda.
 
 Planes offline sin permisos ni red:
@@ -184,20 +192,20 @@ deno run --no-lock supabase/functions/scripts/polar-launch-catalog.ts --environm
 Sandbox etapa 1, draft y descuento:
 
 ```powershell
-deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=supabase/functions/scripts/polar-product-map.sandbox.json --allow-write=C:/tmp/1620-sandbox-r3-draft.json --allow-net=sandbox-api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --map supabase/functions/scripts/polar-product-map.sandbox.json --output C:/tmp/1620-sandbox-r3-draft.json --creator ISAAC --apply
+deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=supabase/functions/scripts/polar-product-map.sandbox.json,C:/tmp/1620-sandbox-r3-draft.json --allow-write=C:/tmp/1620-sandbox-r3-draft.json --allow-net=sandbox-api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --map supabase/functions/scripts/polar-product-map.sandbox.json --output C:/tmp/1620-sandbox-r3-draft.json --creator ISAAC --apply
 ```
 
 Después de verificar IDs/precios, desplegar runtime/mapping por el pipeline
 autorizado y activar los cuatro productos de lanzamiento; etapa 2, enlace:
 
 ```powershell
-deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-sandbox-r3-draft.json --allow-write=C:/tmp/1620-sandbox-r3-links.json --allow-net=sandbox-api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --map C:/tmp/1620-sandbox-r3-draft.json --output C:/tmp/1620-sandbox-r3-links.json --creator ISAAC --apply
+deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-sandbox-r3-draft.json,C:/tmp/1620-sandbox-r3-links.json --allow-write=C:/tmp/1620-sandbox-r3-links.json --allow-net=sandbox-api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --map C:/tmp/1620-sandbox-r3-draft.json --output C:/tmp/1620-sandbox-r3-links.json --creator ISAAC --apply
 ```
 
 Idempotencia después del enlace, debe dar `writes: 0`:
 
 ```powershell
-deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-sandbox-r3-links.json --allow-write=C:/tmp/1620-sandbox-r3-rerun.json --allow-net=sandbox-api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --map C:/tmp/1620-sandbox-r3-links.json --output C:/tmp/1620-sandbox-r3-rerun.json --creator ISAAC --apply
+deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-sandbox-r3-links.json,C:/tmp/1620-sandbox-r3-rerun.json --allow-write=C:/tmp/1620-sandbox-r3-rerun.json --allow-net=sandbox-api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --map C:/tmp/1620-sandbox-r3-links.json --output C:/tmp/1620-sandbox-r3-rerun.json --creator ISAAC --apply
 ```
 
 Otro creador: entrada del último resultado, otra salida nueva y `--creator MARIA`;
@@ -207,13 +215,13 @@ Producción tras sandbox y OK final de Isaac; mapa propio con IDs reales de esa
 organización y `environment: production`, nunca IDs sandbox:
 
 ```powershell
-deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-production-map.json --allow-write=C:/tmp/1620-production-r3-draft.json --allow-net=api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment production --map C:/tmp/1620-production-map.json --output C:/tmp/1620-production-r3-draft.json --creator ISAAC --apply --confirm-production
+deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-production-map.json,C:/tmp/1620-production-r3-draft.json --allow-write=C:/tmp/1620-production-r3-draft.json --allow-net=api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment production --map C:/tmp/1620-production-map.json --output C:/tmp/1620-production-r3-draft.json --creator ISAAC --apply --confirm-production
 ```
 
 Tras activar los cuatro productos de lanzamiento en paso autorizado:
 
 ```powershell
-deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-production-r3-draft.json --allow-write=C:/tmp/1620-production-r3-links.json --allow-net=api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment production --map C:/tmp/1620-production-r3-draft.json --output C:/tmp/1620-production-r3-links.json --creator ISAAC --apply --confirm-production
+deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-production-r3-draft.json,C:/tmp/1620-production-r3-links.json --allow-write=C:/tmp/1620-production-r3-links.json --allow-net=api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment production --map C:/tmp/1620-production-r3-draft.json --output C:/tmp/1620-production-r3-links.json --creator ISAAC --apply --confirm-production
 ```
 
 ## Verificación manual y rollback (posteriores, autorizados)

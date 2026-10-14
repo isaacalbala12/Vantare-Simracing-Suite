@@ -527,82 +527,102 @@ export function parseArgs(args: string[]) {
   return { values, flags, environment: environment as BillingEnvironment };
 }
 
+export async function runCatalog(
+  args: string[],
+  fetcher: typeof fetch = fetch,
+) {
+  const { values, flags, environment } = parseArgs(args);
+  const creator = values["--creator"];
+  const plan = planOffline(creator);
+  if (!flags.has("--apply")) {
+    console.log(
+      JSON.stringify({ environment, offline: true, ...plan }, null, 2),
+    );
+  } else {
+    // Check before HTTP, but create only after successful synchronization.
+    try {
+      await Deno.lstat(values["--output"]);
+      throw new Deno.errors.AlreadyExists(
+        "Output already exists; use a new path",
+      );
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) throw error;
+    }
+    const raw = JSON.parse(await Deno.readTextFile(values["--map"]));
+    const token = Deno.env.get("POLAR_ACCESS_TOKEN");
+    if (!token) throw Error("POLAR_ACCESS_TOKEN not set");
+    const base = environment === "sandbox"
+      ? "https://sandbox-api.polar.sh/v1"
+      : "https://api.polar.sh/v1";
+    const http: Http = async (method, path, body) => {
+      let response: Response;
+      try {
+        response = await fetcher(`${base}${path}`, {
+          method,
+          redirect: "error",
+          signal: AbortSignal.timeout(30000),
+          headers: {
+            "Polar-Version": "2026-10",
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+          body: body ? JSON.stringify(body) : undefined,
+        });
+      } catch {
+        throw Error(
+          `Polar transport failed (${method}); inspect catalogue before retrying`,
+        );
+      }
+      if (!response.ok) {
+        throw Error(
+          `Polar HTTP ${response.status} (${method}); response body withheld`,
+        );
+      }
+      try {
+        return await response.json();
+      } catch {
+        throw Error("Invalid Polar JSON response; body withheld");
+      }
+    };
+    const result = await syncCatalog(http, raw, {
+      environment,
+      creator,
+    });
+    const bytes = new TextEncoder().encode(
+      JSON.stringify(result, null, 2) + "\n",
+    );
+    // Exclusive creation also protects an output created since the preflight.
+    const output = await Deno.open(values["--output"], {
+      write: true,
+      createNew: true,
+    });
+    let complete = false;
+    try {
+      let offset = 0;
+      while (offset < bytes.length) {
+        offset += await output.write(bytes.subarray(offset));
+      }
+      await output.sync();
+      complete = true;
+    } finally {
+      output.close();
+      if (!complete) await Deno.remove(values["--output"]);
+    }
+    console.log(
+      JSON.stringify({
+        environment,
+        writes: result.writes,
+        creator_link_id: result.creator_link?.id ?? null,
+        creator_link_pending: result.creator_link_pending,
+        output: values["--output"],
+      }),
+    );
+  }
+}
+
 if (import.meta.main) {
   try {
-    const { values, flags, environment } = parseArgs(Deno.args);
-    const creator = values["--creator"];
-    const plan = planOffline(creator);
-    if (!flags.has("--apply")) {
-      console.log(
-        JSON.stringify({ environment, offline: true, ...plan }, null, 2),
-      );
-    } else {
-      // Create output exclusively before any HTTP call. Never overwrite evidence.
-      const output = await Deno.open(values["--output"], {
-        write: true,
-        createNew: true,
-      });
-      try {
-        const raw = JSON.parse(await Deno.readTextFile(values["--map"]));
-        const token = Deno.env.get("POLAR_ACCESS_TOKEN");
-        if (!token) throw Error("POLAR_ACCESS_TOKEN not set");
-        const base = environment === "sandbox"
-          ? "https://sandbox-api.polar.sh/v1"
-          : "https://api.polar.sh/v1";
-        const http: Http = async (method, path, body) => {
-          let response: Response;
-          try {
-            response = await fetch(`${base}${path}`, {
-              method,
-              redirect: "error",
-              signal: AbortSignal.timeout(30000),
-              headers: {
-                "Polar-Version": "2026-10",
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-              },
-              body: body ? JSON.stringify(body) : undefined,
-            });
-          } catch {
-            throw Error(
-              `Polar transport failed (${method}); inspect catalogue before retrying`,
-            );
-          }
-          if (!response.ok) {
-            throw Error(
-              `Polar HTTP ${response.status} (${method}); response body withheld`,
-            );
-          }
-          try {
-            return await response.json();
-          } catch {
-            throw Error("Invalid Polar JSON response; body withheld");
-          }
-        };
-        const result = await syncCatalog(http, raw, {
-          environment,
-          creator,
-        });
-        const bytes = new TextEncoder().encode(
-          JSON.stringify(result, null, 2) + "\n",
-        );
-        let offset = 0;
-        while (offset < bytes.length) {
-          offset += await output.write(bytes.subarray(offset));
-        }
-        console.log(
-          JSON.stringify({
-            environment,
-            writes: result.writes,
-            creator_link_id: result.creator_link?.id ?? null,
-            creator_link_pending: result.creator_link_pending,
-            output: values["--output"],
-          }),
-        );
-      } finally {
-        output.close();
-      }
-    }
+    await runCatalog(Deno.args);
   } catch (error) {
     console.error(error instanceof Error ? error.message : "Catalogue failed");
     Deno.exit(1);

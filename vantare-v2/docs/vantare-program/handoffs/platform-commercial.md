@@ -12,7 +12,14 @@ el ID esperado; guarda del portal conservada. Dos regresiones RED (payload e
 identidad sin creador) antes del cambio; GREEN del catálogo registrado en
 `~/evidence/1620/sandbox-fix/01-green.log`. La prueba recorre draft, publicación
 simulada, enlace y rerun sin escrituras. No acredita ejecución contra Polar.
-Siguiente: salida recuperable tras fallo y diagnóstico 4xx, suite Deno completa,
+Arreglo 2: CLI exportada como `runCatalog` con fetch inyectable para probarla
+sin red y con archivos temporales reales. RED: el 422 dejaba un archivo vacío;
+GREEN: no hay salida durante HTTP ni tras fallar, reintento en la misma ruta
+produce JSON completo y salida existente falla antes de HTTP sin sobrescribir.
+Creación exclusiva al final, sync y retirada si falla escritura; preflight
+requiere lectura de salida (comandos actualizados). Catálogo 37 PASS; logs
+`02-red.log`/`02-green.log`. Sin garantía ante kill durante escritura.
+Siguiente: diagnóstico 4xx, suite Deno completa,
 revisión del orquestador y sandbox real por su vía autorizada.
 
 ## #1608 · Integración de nightly (14/10/2026)

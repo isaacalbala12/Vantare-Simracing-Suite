@@ -9,6 +9,7 @@ import {
   planOffline,
   PRICES,
   type Resource,
+  runCatalog,
   syncCatalog,
 } from "./polar-launch-catalog.ts";
 import sandbox from "./polar-product-map.sandbox.json" with { type: "json" };
@@ -798,4 +799,64 @@ Deno.test("sandbox: organization identity is checked even without creator offers
     syncCatalog(f.http, sandbox, { environment: "sandbox" })
   );
   assertEquals(f.writes.length, 0);
+});
+
+Deno.test("sandbox output: failed apply leaves no file and same path can be retried", async () => {
+  const dir = await Deno.makeTempDir({ prefix: "catalog-1620-" });
+  const input = `${dir}/input.json`;
+  const output = `${dir}/output.json`;
+  const tokenBefore = Deno.env.get("POLAR_ACCESS_TOKEN");
+  Deno.env.set("POLAR_ACCESS_TOKEN", "fixture-organization-token");
+  try {
+    await Deno.writeTextFile(input, JSON.stringify(sandbox));
+    const args = [
+      "--environment",
+      "sandbox",
+      "--map",
+      input,
+      "--output",
+      output,
+      "--creator",
+      "ISAAC",
+      "--apply",
+    ];
+    const f = fake();
+    let fail = true;
+    let requests = 0;
+    const fetcher: typeof fetch = async (url, init) => {
+      requests++;
+      await assertRejects(() => Deno.stat(output), Deno.errors.NotFound);
+      if (fail && init?.method === "POST") {
+        return new Response("{}", { status: 422 });
+      }
+      const path = new URL(String(url)).pathname.replace(/^\/v1/, "") +
+        new URL(String(url)).search;
+      return Response.json(
+        await f.http(
+          init?.method as "GET" | "POST" | "PATCH",
+          path,
+          init?.body ? JSON.parse(String(init.body)) : undefined,
+        ),
+      );
+    };
+    await assertRejects(() => runCatalog(args, fetcher));
+    await assertRejects(() => Deno.stat(output), Deno.errors.NotFound);
+    fail = false;
+    await runCatalog(args, fetcher);
+    const saved = JSON.parse(await Deno.readTextFile(output));
+    assertEquals(saved.map.catalog_version, "isa-1620-launch-v2");
+    assertEquals(saved.writes, 7);
+    const before = requests;
+    const contents = await Deno.readTextFile(output);
+    await assertRejects(
+      () => runCatalog(args, fetcher),
+      Deno.errors.AlreadyExists,
+    );
+    assertEquals(requests, before);
+    assertEquals(await Deno.readTextFile(output), contents);
+  } finally {
+    if (tokenBefore === undefined) Deno.env.delete("POLAR_ACCESS_TOKEN");
+    else Deno.env.set("POLAR_ACCESS_TOKEN", tokenBefore);
+    await Deno.remove(dir, { recursive: true });
+  }
 });

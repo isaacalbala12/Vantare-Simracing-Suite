@@ -2,6 +2,28 @@ use super::super::protocol::{BillingProduct, DraftState, report_document::Receip
 use super::*;
 
 #[test]
+fn pilot_dispatch_failure_releases_editor_and_can_retry() {
+    gpui_platform::headless().run(|cx| {
+        let file = crate::document::tests::File::new();
+        let (send, requests) = mpsc::sync_channel(8);
+        let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+        drop(requests);
+        remote.update(cx, |remote, cx| {
+            let generation = remote.pilot_generation;
+            remote.request(Command::PilotSave { profile: Default::default(), expected_revision: 0 }, cx);
+            assert!(!remote.busy());
+            assert_ne!(remote.pilot_generation, generation, "failed dispatch must notify the editor");
+            assert!(!remote.pilot_succeeded);
+            let (send, retry) = mpsc::sync_channel(8);
+            remote.send = Some(send);
+            remote.request(Command::PilotLoad, cx);
+            assert!(matches!(retry.try_recv(), Ok(Command::PilotLoad)));
+        });
+        crate::quit_headless_test(cx);
+    });
+}
+
+#[test]
 fn pilot_reply_during_logout_cannot_restore_private_profile() {
     gpui_platform::headless().run(|cx| {
         let file = crate::document::tests::File::new();

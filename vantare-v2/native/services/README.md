@@ -1,5 +1,12 @@
 # Servicios nativos — ISA-1430
 
+**Corte #1610:** protocolo services v8 (DTO v10/derechos v4 independientes).
+RPCs de seguimiento permitidas por rutas cerradas: current_v2, submit con
+consentimiento, crédito y acuse por fecha. Historial sin cuerpo privado; arreglado
+requiere versión válida. No hay cliente Plane ni referencia PostHog productiva.
+SQL y dependencias #1602/#1609 siguen sujetos a revisión e integración:
+[contrato vigente](../../docs/runbooks/testing-report-followup.md).
+
 `vantare-services` es miembro de `native/`: un workspace, `Cargo.lock`, edición
 y lints compartidas. Proceso de usuario bajo demanda, sin GPUI/simuladores.
 El supervisor `vantare` posee el auxiliar; el Hub solo manda comandos IPC.

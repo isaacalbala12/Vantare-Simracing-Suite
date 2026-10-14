@@ -106,7 +106,18 @@ impl Hub {
             remote.poll_roadmap(roadmap_visible, Instant::now(), cx);
         });
         self.notifications.update(cx, |notifications, cx| {
-            notifications.set_tester(self.shell.access.beta_visible(Section::Testing), cx);
+            notifications.set_tester(
+                self.shell.access.verified
+                    && !self.shell.access.blocked
+                    && self.shell.access.tester,
+                cx,
+            );
+        });
+        let remote = self.remote.read(cx);
+        let generation = remote.participation_generation;
+        let reports = remote.participation.contributions.clone();
+        self.notifications.update(cx, |notifications, cx| {
+            notifications.sync_reports(generation, &reports, cx);
         });
         if self
             .launcher
@@ -468,7 +479,7 @@ impl Hub {
             ),
             Section::Testing if self.shell.access.beta_lock(self.section).is_none() => Some(
                 self.testing
-                    .update(cx, |_, cx| Testing::page_header(self.shell.adapt, cx)),
+                    .update(cx, |testing, cx| testing.page_header(self.shell.adapt, cx)),
             ),
             Section::Calendar if self.shell.access.beta_lock(self.section).is_none() => {
                 Some(self.calendar.update(cx, |calendar, cx| {
@@ -559,7 +570,9 @@ impl Hub {
                 launcher.topbar_tabs(cx).into_any_element()
             })),
             Section::Settings => Some(self.settings_tabs(cx).into_any_element()),
-            Section::Testing => Some(self.testing.read(cx).topbar_controls().into_any_element()),
+            Section::Testing if self.shell.access.tester => {
+                Some(self.testing.read(cx).topbar_controls().into_any_element())
+            }
             Section::Calendar => Some(
                 self.calendar
                     .update(cx, |calendar, cx| calendar.topbar_controls(cx))
@@ -949,6 +962,9 @@ fn wire_sections(
     .detach();
     cx.observe(notifications, |this, center, cx| {
         if let Some(destination) = center.update(cx, |center, _| center.destination.take()) {
+            if destination == Section::Testing {
+                this.testing.update(cx, Testing::show_reports);
+            }
             this.navigate(destination, cx);
         }
     })
@@ -1134,7 +1150,7 @@ impl Hub {
         .detach();
         let notifications = cx.new(|cx| {
             let mut notifications = Notifications::from_center(notification_center);
-            notifications.set_tester(access.beta_visible(Section::Testing), cx);
+            notifications.set_tester(access.verified && !access.blocked && access.tester, cx);
             #[cfg(feature = "parity-capture")]
             if capture.is_some()
                 && let Some(demo) = &demo
@@ -1162,7 +1178,12 @@ impl Hub {
                 this.studio
                     .update(cx, |studio, cx| studio.set_access(this.shell.access, cx));
                 this.notifications.update(cx, |notifications, cx| {
-                    notifications.set_tester(this.shell.access.beta_visible(Section::Testing), cx);
+                    notifications.set_tester(
+                        this.shell.access.verified
+                            && !this.shell.access.blocked
+                            && this.shell.access.tester,
+                        cx,
+                    );
                 });
             }
             cx.notify();

@@ -2307,6 +2307,33 @@ Deno.test("refund delivered before its order retries and revokes without manual 
   );
   assertEquals(deps.inbox.replayAudit.length, 0);
 });
+Deno.test("untrusted user_id metadata cannot attribute a purchase without a server binding", async () => {
+  const mock = createMockSupabase();
+  assertEquals(
+    await resolveUserId(
+      mock.client,
+      { metadata: { user_id: USER_ID } },
+      "sandbox",
+    ),
+    null,
+  );
+  const bound = createMockSupabase({
+    billing_customers: [{
+      user_id: USER_ID,
+      provider: "polar",
+      environment: "sandbox",
+      provider_customer_id: "customer-bound",
+    }],
+  });
+  assertEquals(
+    await resolveUserId(bound.client, {
+      customer_id: "customer-bound",
+      metadata: { user_id: PRODUCTION_USER_ID },
+    }, "sandbox"),
+    USER_ID,
+  );
+});
+
 Deno.test("missing order retry remains bounded and never grants access", async () => {
   const deps = processDeps(createMockSupabase());
   const refund = {

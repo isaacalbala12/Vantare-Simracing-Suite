@@ -123,12 +123,6 @@ export function extractExternalCustomerId(
     if (fromCustomer) return fromCustomer;
   }
 
-  const metadata = nestedRecord(data.metadata);
-  if (metadata) {
-    const fromMeta = asString(metadata.user_id);
-    if (fromMeta) return fromMeta;
-  }
-
   return null;
 }
 

@@ -618,6 +618,102 @@ export async function applyPolarWebhookEvent(
   const nowIso = now.toISOString();
   const environment = mapping.map.environment;
   if (
+    ["refund.created", "refund.updated"].includes(event.type) &&
+    event.data.currency === "eur"
+  ) {
+    const amount = asNonNegativeInteger(event.data.amount);
+    const modified = parseIsoTimestamp(
+      event.data.modified_at ?? event.data.updated_at,
+    );
+    if (
+      asString(event.data.id) && asString(event.data.order_id) && amount &&
+      amount <= 100000000 && refundStatus(event.data.status) && modified &&
+      Number.isFinite(Date.parse(modified))
+    ) {
+      const { data, error } = await deps.supabase.rpc(
+        "native_admin_record_refund",
+        {
+          p_environment: environment,
+          p_refund: {
+            refund_id: event.data.id,
+            payment_id: event.data.order_id,
+            amount_cents: amount,
+            currency: "eur",
+            status: event.data.status,
+            modified_at: modified,
+          },
+        },
+      );
+      if (error) throw databaseWriteError("admin_refund_receipt", error);
+      if (data === true) {
+        return { status: "processed", action: "admin_refund_receipt" };
+      }
+    }
+  }
+  if (
+    ["order.paid", "order.refunded"].includes(event.type) &&
+    asString(event.data.subscription_id)
+  ) {
+    const productId = extractProductId(event.data);
+    const resolved = productId
+      ? resolveCheckoutKeyByProductId(mapping.map, productId)
+      : null;
+    if (resolved?.ok && resolved.config.billing_type === "subscription") {
+      const userId = await resolveUserId(
+        deps.supabase,
+        event.data,
+        environment,
+      );
+      const amount = asNonNegativeInteger(event.data.total_amount);
+      const refunded = asNonNegativeInteger(event.data.refunded_amount);
+      const paidAt = parseIsoTimestamp(
+        event.data.paid_at ?? event.data.created_at,
+      );
+      const modified = parseIsoTimestamp(
+        event.data.modified_at ?? event.data.updated_at,
+      );
+      if (
+        !userId || !asString(event.data.id) || !amount || amount > 100000000 ||
+        refunded === null || refunded > amount || event.data.paid !== true ||
+        !paidAt || !modified || !Number.isFinite(Date.parse(paidAt)) ||
+        !Number.isFinite(Date.parse(modified)) || event.data.currency !== "eur"
+      ) {
+        return applyOrderRefundEvent({
+          event,
+          deps,
+          productMap: mapping.map,
+          environment,
+          nowIso,
+        });
+      }
+      await applyEffect(deps, "admin_payment_receipt", async () => {
+        const { error } = await deps.supabase.rpc(
+          "native_admin_record_payment",
+          {
+            p_environment: environment,
+            p_payment: {
+              payment_id: event.data.id,
+              account_id: userId,
+              subscription_id: event.data.subscription_id,
+              product:
+                (resolved.key.startsWith("pro_plus") ? "Pro Plus" : "Pro") +
+                (resolved.key.endsWith("annual") ? " anual" : " mensual"),
+              paid_at: paidAt,
+              modified_at: modified,
+              amount_cents: amount,
+              currency: "eur",
+              refunded_cents: refunded,
+              discount_id: asString(event.data.discount_id),
+              refund_pending: event.data.refund_pending === true,
+            },
+          },
+        );
+        if (error) throw databaseWriteError("admin_payment_receipt", error);
+      });
+      return { status: "processed", action: "admin_payment_receipt" };
+    }
+  }
+  if (
     event.type === "order.paid" || event.type === "order.refunded" ||
     event.type === "refund.created" || event.type === "refund.updated"
   ) {
@@ -806,6 +902,11 @@ const REPLAY_DATA_KEYS = [
   "cancel_at_period_end",
   "paid",
   "net_amount",
+  "total_amount",
+  "discount_id",
+  "created_at",
+  "paid_at",
+  "refund_pending",
   "applied_balance_amount",
   "refunded_amount",
   "amount",

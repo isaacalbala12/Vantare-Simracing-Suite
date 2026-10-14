@@ -1,3 +1,5 @@
+import { VALID_POLAR_PRODUCT_MAP_JSON } from "../_shared/test-fixtures.ts";
+import { type PolarProductMap } from "../_shared/mapping.ts";
 import { type AdminDeps, handleNativeAdmin } from "./index.ts";
 import { NativeError } from "../_shared/native-auth.ts";
 import {
@@ -593,4 +595,109 @@ Deno.test("r1: delete checks the current primary Clerk email before the pending 
           : "deletion_barrier_unavailable"),
     );
   }
+});
+Deno.test("r1: creator creation reserves a stable id before Polar and activates after ACK", async () => {
+  let called = 0;
+  const response = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "create_creator",
+      name: "Carlos GT",
+      email: "carlos@example.invalid",
+      code: "CARLOSGT",
+    }),
+    deps({
+      environment: "sandbox",
+      execute: (_a, _i, action, params) => {
+        called++;
+        assert(action === "create_creator");
+        assert(params.code === "CARLOSGT");
+        return Promise.resolve({
+          creator: { creator_id: target, status: "active", code: "CARLOSGT" },
+        });
+      },
+    }),
+  );
+  assert(response.status === 200 && called === 1);
+});
+
+Deno.test("r1: owner can read creators through the existing boundary", async () => {
+  const response = await handleNativeAdmin(
+    request({ version: 1, action: "list_creators" }),
+    deps({ execute: () => Promise.resolve({ creators: [], totals: {} }) }),
+  );
+  assert(response.status === 200);
+});
+
+Deno.test("r1: miniapp creates a scoped Polar discount and retries it without duplication", async () => {
+  const raw = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON);
+  for (
+    const [i, key] of [
+      "pro_monthly",
+      "pro_annual",
+      "pro_plus_monthly",
+      "pro_plus_annual",
+    ].entries()
+  ) {
+    raw.checkout_keys[key] = {
+      ...raw.checkout_keys.pro_monthly,
+      plan_sku: key,
+      polar_launch_product_id: `launch-${i}`,
+    };
+  }
+  const map = raw as PolarProductMap;
+  let active = false;
+  let created = 0;
+  let stored: Record<string, unknown> | null = null;
+  const fake = deps({
+    environment: "sandbox",
+    productMap: map,
+    execute: (_a, _i, action, params) => {
+      if (action === "activate_creator") {
+        assert(params.discount_id === "discount-created");
+        active = true;
+      }
+      return Promise.resolve({
+        creator: {
+          creator_id: target,
+          code: "CARLOSGT",
+          status: active ? "active" : "pending",
+        },
+      });
+    },
+    polar: {
+      getAccessToken: () => "fake",
+      fetchFn: (_url, init) => {
+        if (init?.method === "GET") {
+          return Promise.resolve(
+            Response.json({
+              items: stored ? [stored] : [],
+              pagination: { max_page: 1 },
+            }),
+          );
+        }
+        created++;
+        stored = { ...JSON.parse(String(init?.body)), id: "discount-created" };
+        return Promise.resolve(Response.json(stored));
+      },
+    },
+  });
+  const input = {
+    version: 1,
+    action: "create_creator",
+    name: "Carlos GT",
+    email: "carlos@example.invalid",
+    code: "CARLOSGT",
+  };
+  assert(
+    (await handleNativeAdmin(request(input), fake)).status === 200 && active,
+  );
+  // Re-simulate the lost DB ACK: reconciliation reads the matching remote code.
+  active = false;
+  assert((await handleNativeAdmin(request(input), fake)).status === 200);
+  assert(
+    created === 1 &&
+      (stored as Record<string, unknown> | null)?.basis_points === 2000 &&
+      (stored as Record<string, unknown> | null)?.duration_in_months === 2,
+  );
 });

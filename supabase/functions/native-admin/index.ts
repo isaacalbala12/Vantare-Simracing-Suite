@@ -1,3 +1,5 @@
+import { ensureCreatorCode } from "./creator-code.ts";
+import type { PolarProductMap } from "../_shared/mapping.ts";
 import {
   clerkGet,
   type ClerkUser,
@@ -44,6 +46,7 @@ export type AdminDeps = NativeAuthDeps & {
   signUrl?: (path: string, seconds: number) => Promise<string>;
   environment?: "production" | "sandbox";
   polar?: PolarClientDeps;
+  productMap?: PolarProductMap;
 };
 
 function boundedText(value: unknown, max: number): value is string {
@@ -65,6 +68,10 @@ export function validateAdminRequest(
     delete_account: ["account_id", "confirm_email"],
     set_tester: ["account_id", "enabled"],
     set_module: ["account_id", "module", "enabled"],
+    list_creators: [],
+    get_creator: ["creator_id"],
+    record_creator_payout: ["creator_id", "amount_cents", "paid_at"],
+    create_creator: ["name", "email", "code"],
     get_rollout: [],
     set_rollout: ["module", "enabled_for_all"],
     list_reports: ["status", "limit", "cursor"],
@@ -101,6 +108,23 @@ export function validateAdminRequest(
           MODULE_CAPABILITIES.includes(
             params.module as typeof MODULE_CAPABILITIES[number],
           );
+      case "record_creator_payout":
+        return isUuid(params.creator_id) &&
+          Number.isSafeInteger(params.amount_cents) &&
+          Number(params.amount_cents) > 0 &&
+          (params.paid_at === undefined ||
+            (boundedText(params.paid_at, 40) &&
+              Number.isFinite(Date.parse(String(params.paid_at)))));
+      case "get_creator":
+        return isUuid(params.creator_id);
+      case "list_creators":
+        return true;
+      case "create_creator":
+        return boundedText(params.name, 120) &&
+          boundedText(params.email, 320) &&
+          /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(params.email)) &&
+          typeof params.code === "string" &&
+          /^[A-Z0-9]{3,32}$/.test(params.code);
       case "get_rollout":
         return true;
       case "set_rollout":
@@ -211,7 +235,7 @@ async function enrich(
   users: Map<string, ClerkUser>,
   deps: NativeAuthDeps,
 ): Promise<void> {
-  const rows = result.accounts ?? result.reports ??
+  const rows = result.accounts ?? result.reports ?? result.lines ??
     [result.account ?? result.report].filter(Boolean);
   if (!Array.isArray(rows)) throw new NativeError(503, "bridge_unavailable");
   const objects = rows.map(objectValue);
@@ -253,6 +277,7 @@ export async function handleNativeAdmin(
   const started = performance.now();
   const phases: Record<string, number> = {};
   let timingAction = "rejected";
+  let partialChange = false;
   async function timed<T>(phase: string, work: () => Promise<T>): Promise<T> {
     const at = performance.now();
     try {
@@ -350,6 +375,32 @@ export async function handleNativeAdmin(
         arguments_,
         environment,
       );
+    if (action === "create_creator") {
+      if (environment !== "sandbox") {
+        throw new NativeError(503, "admin_sandbox_required");
+      }
+      const reserved = await run(action, params);
+      const creator = objectValue(reserved.creator);
+      if (creator.status === "active") {
+        return respond({ ...reserved, ok: true });
+      }
+      if (typeof creator.creator_id !== "string") {
+        throw new NativeError(503, "bridge_unavailable");
+      }
+      const discount_id = await ensureCreatorCode(
+        creator.creator_id,
+        String(params.code),
+        deps.productMap,
+        deps.polar,
+      );
+      return respond({
+        ...await run("activate_creator", {
+          creator_id: creator.creator_id,
+          discount_id,
+        }),
+        ok: true,
+      });
+    }
     if (["set_blocked", "delete_account"].includes(action)) {
       if (environment !== "sandbox") {
         throw new NativeError(503, "admin_sandbox_required");
@@ -381,7 +432,10 @@ export async function handleNativeAdmin(
         // #1622 is still under review; connect its approved RPC in the final handoff.
         throw new NativeError(503, "deletion_barrier_unavailable");
       }
-      if (params.blocked === true) await run("set_blocked", params);
+      if (params.blocked === true) {
+        await run("set_blocked", params);
+        partialChange = true;
+      }
       const response = await (deps.fetch ?? fetch)(
         `https://api.clerk.com/v1/users/${encodeURIComponent(subject)}/${
           params.blocked ? "ban" : "unban"
@@ -427,7 +481,13 @@ export async function handleNativeAdmin(
         ),
     );
     if (
-      ["search_accounts", "get_account", "list_reports", "get_report"].includes(
+      [
+        "search_accounts",
+        "get_account",
+        "list_reports",
+        "get_report",
+        "get_creator",
+      ].includes(
         action,
       )
     ) await timed("enrich_clerk", () => enrich(result, users, deps));
@@ -469,6 +529,9 @@ export async function handleNativeAdmin(
       if (error.message === "native_admin_owner_conflict") {
         failure = new NativeError(409, "account_conflict");
       }
+    }
+    if (partialChange && failure.status >= 500) {
+      failure = new NativeError(503, "account_change_incomplete");
     }
     return respond({ ok: false, error: failure.code }, failure.status);
   } finally {

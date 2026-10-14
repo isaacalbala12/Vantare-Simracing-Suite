@@ -1,3 +1,53 @@
+## #1594 / PR #1602 · merge local de nightly en Mac · 14/10/2026
+
+Encargo explícito: revisión r7 APTA; fusionar nightly sin cambiar la lógica.
+Rama `vantareapp/isa-1594-triaje-informes`, inicio limpio
+`f88af91ecda47711f0e2a16ac65369d769abdf82`, fetch y base nightly
+`b9ec75ed5435fb95130946cd207a4fa1ce8b8a64`. Entrega local para revisión,
+con dos checks fallidos; no se certifican gates verdes ni estado remoto.
+Seguimiento a cargo del orquestador; sin trackers, GitHub, push ni subagentes.
+
+Conflictos resueltos combinando ambos contratos:
+
+- `hub/src/services/view.rs`: `clear_pilot()` de nightly junto a
+  `clear_participation(cx)` de #1594; invalidación de sesión y editor conservados.
+- `ipc/src/services_protocol.rs`: versión 9 de #1594/#1610 junto al módulo
+  `pilot_document` de nightly; variantes de ambos contratos conservadas.
+- `services/src/app.rs`: `triage` y su inicialización junto a
+  `pilot`/`pilot_identity` y sus inicializaciones; despacho combinado conservado.
+
+F7=C intacto (prosa local), F8 conserva admisión/preview/retry exactos y F9
+fixed → Arreglado. 56 archivos de SQL/rollback/Edge/worker/fixtures/servicio de
+triaje/UI de Testing idénticos byte a byte al HEAD revisado.
+
+Mac arm64: fmt/diff-check/retirement PASS. Cargo locked/offline, target propio
+`native/target/isa1594-mac`, jobs=2: Domain 164, IPC 79, Profiling 2 y Services
+155 PASS (400 total, sin contar otra vez dos ejecuciones hijas). Preview nativo
+F8 sintético → Edge 15/15 y fmt/lint/check PASS. SQL en Docker existente, sin red,
+socket interno y actor NOSUPERUSER: triaje 83/83 + concurrencia/login/snapshot/
+rollback/reapply; admisión 27 checks + F1 17/F1IP 26/F2 6/F3 8 PASS; preview,
+envelope Edge y storage idénticos. Contenedor propio eliminado. Python followup
+4/4 PASS; Python triaje 56/57 con connect prohibido.
+
+Fallos conservados sin modificar catálogo/tests/lints/lógica: nightly añade
+`PilotRejected`, ausente del catálogo cerrado y detectado por igualdad exhaustiva
+en Python. Clippy `-D warnings`: `App::execute` pasa a 102/100 líneas al combinar
+piloto y triaje. Primer SQL falló por permisos de socket en volumen macOS;
+repetición con socket interno PASS, harness/SQL del repo sin modificar.
+
+Sin `pwsh` en Mac; cola versionada Win32 no disponible. Los `cargo test -p`
+solicitados se ejecutaron directamente, secuenciales, target propio/jobs=2.
+Pendientes Windows: gates completos por cola (check/Clippy/Nextest/lifecycle/
+telemetría), Hub/F9, capturas/DPAPI/pipes/ACL y QA visual/física. No deps nuevas,
+CI remoto, merge de PR, promoción, release, deploy, proveedor, servicios reales,
+credenciales ni informes reales. Único merge: nightly dentro de esta rama local,
+autorizado por el encargo.
+
+Evidencia `~/evidence/1594/INFORME.md`, inventario `merge-files.tsv` y prueba de
+identidad `reviewed-logic.json`; SHA y FIN en `~/orq/1594.buzon.md`.
+Orquestador: recoger/revisar merge, decidir ajustes de catálogo/dispatcher,
+ejecutar gates Windows y actualizar #1594/PR #1602. Estados inferiores históricos.
+
 ## R7 F8/F9 · 14/10/2026 · entrega CLI por revisar
 
 #1594 / VANTA-38/49 Por revisar, actualizado y releído con script oficial.

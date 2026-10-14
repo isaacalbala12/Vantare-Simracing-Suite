@@ -11,6 +11,7 @@ use vantare_domain::format::{Language, Preferences, Units};
 
 pub(super) mod appearance;
 pub(in crate::shell) mod general;
+mod pilot;
 mod privacy;
 pub(crate) mod releases;
 #[cfg(test)]
@@ -22,6 +23,7 @@ mod windows;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum Page {
+    Account,
     #[default]
     Application,
     Appearance,
@@ -37,7 +39,8 @@ enum Action {
     CopyDiagnostic,
 }
 impl Page {
-    const ALL: [Self; 7] = [
+    const ALL: [Self; 8] = [
+        Self::Account,
         Self::Application,
         Self::Appearance,
         Self::Performance,
@@ -48,6 +51,7 @@ impl Page {
     ];
     fn label(self) -> &'static str {
         match self {
+            Self::Account => "Cuenta",
             Self::Application => "General",
             Self::Appearance => "Apariencia",
             Self::Performance => "Rendimiento en pista",
@@ -59,6 +63,7 @@ impl Page {
     }
     fn subtitle(self) -> &'static str {
         match self {
+            Self::Account => "Tu perfil de piloto",
             Self::Application => "Interfaz y sistema",
             Self::Appearance => "Colores, contraste y fuentes",
             Self::Performance => "Nivel y frecuencia de tus widgets",
@@ -77,6 +82,7 @@ impl Page {
     }
     fn description(self) -> &'static str {
         match self {
+            Self::Account => "Tu perfil de piloto. Por ahora es privado: solo lo ves tú.",
             Self::Application => "Interfaz, sistema y comportamiento de la ventana.",
             Self::Appearance => "Personaliza colores, contraste y tipografía de Vantare.",
             Self::Performance => "Nivel y frecuencia de tus widgets",
@@ -88,6 +94,9 @@ impl Page {
     }
     fn matches(self, query: &str) -> bool {
         let titles = match self {
+            Self::Account => {
+                "perfil piloto nombre público foto descripción país bandera simuladores coche equipo favorito sesión plan"
+            }
             Self::Application => {
                 "aplicación zoom idioma densidad inicio windows minimizado avisos notificaciones widgets unidades métrico imperial overlays ocultar fuera de pista garaje boxes pausa replay"
             }
@@ -126,6 +135,12 @@ pub(super) struct State {
     consent_focus: [FocusHandle; 4],
     usage_choice: Entity<orbit::Checkbox>,
     pub(super) appearance: appearance::Store,
+    pilot: Entity<crate::pilot::view::PilotEditor>,
+    pilot_saved: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
+    pilot_source: Option<Vec<u8>>,
+    pilot_photo: pilot::PhotoEdit,
+    pilot_generation: u64,
+    pilot_load: pilot::Load,
     appearance_focus: [FocusHandle; 15],
     appearance_bounds: [Option<gpui::Bounds<gpui::Pixels>>; 2],
     appearance_dragging: [bool; 2],
@@ -190,6 +205,7 @@ impl State {
     pub(super) fn select_demo_page(&mut self, page: crate::demo::CaptureSettingsPage) {
         self.privacy = privacy::Store::load(&self.data);
         self.page = match page {
+            crate::demo::CaptureSettingsPage::Account => Page::Account,
             crate::demo::CaptureSettingsPage::Application => Page::Application,
             crate::demo::CaptureSettingsPage::Appearance => Page::Appearance,
             crate::demo::CaptureSettingsPage::Performance => Page::Performance,
@@ -302,9 +318,7 @@ impl State {
             update_focus: cx.focus_handle(),
             custom_performance_focus: cx.focus_handle(),
             performance_focus: std::array::from_fn(|_| cx.focus_handle()),
-            privacy: vantare_services::diagnostics::data_root()
-                .map_err(|error| error.to_string())
-                .and_then(|root| privacy::Store::load(&root)),
+            privacy: privacy::root(&data).and_then(|root| privacy::Store::load(&root)),
             privacy_focus: std::array::from_fn(|_| cx.focus_handle()),
             privacy_policy_focus: cx.focus_handle(),
             consent_focus,
@@ -346,6 +360,12 @@ impl State {
                 cx,
             ),
             appearance,
+            pilot: Self::pilot_editor(window, cx),
+            pilot_saved: None,
+            pilot_source: None,
+            pilot_photo: pilot::PhotoEdit::Unchanged,
+            pilot_generation: 0,
+            pilot_load: pilot::Load::New,
             appearance_focus: std::array::from_fn(|_| cx.focus_handle()),
             appearance_bounds: [None, None],
             appearance_dragging: [false, false],
@@ -364,6 +384,24 @@ impl State {
         appearance::wire(&state, window, cx);
         general::wire(&state, cx);
         state
+    }
+
+    /// Perfil del piloto. Pendiente (#1612, Sol): leer `services::pilot`,
+    /// guardar/sincronizar y procesar la foto; hasta entonces no simula guardados.
+    fn pilot_editor(
+        window: &mut Window,
+        cx: &mut Context<Hub>,
+    ) -> Entity<crate::pilot::view::PilotEditor> {
+        use crate::pilot::view::{PilotEditor, PilotEvent};
+        let editor = cx.new(|cx| PilotEditor::new(crate::pilot::Draft::default(), window, cx));
+        cx.subscribe_in(&editor, window, |hub, _, event: &PilotEvent, window, cx| {
+            hub.pilot_event(event.clone(), window, cx);
+        })
+        .detach();
+        #[cfg(feature = "parity-capture")]
+        crate::pilot::capture::configure(&editor, window, cx);
+        cx.observe_self(Hub::observe_pilot).detach();
+        editor
     }
 
     fn theme_control(
@@ -624,6 +662,9 @@ impl Hub {
         cx.notify();
     }
     fn select_settings_page(&mut self, page: Page, cx: &mut Context<Self>) {
+        if page == Page::Account && self.settings.pilot_saved.is_none() {
+            self.settings.pilot_load = pilot::Load::New;
+        }
         self.settings.page = page;
         self.settings.panel_scroll = gpui::ScrollHandle::new();
         self.settings.status = None;

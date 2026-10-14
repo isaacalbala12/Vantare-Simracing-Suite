@@ -4,6 +4,8 @@ use std::io::{self, Read, Write};
 
 // Combined #1594 triage and #1610 follow-up contract; reject either older peer.
 pub const VERSION: u32 = 9;
+#[path = "services_protocol/pilot_document.rs"]
+pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
 pub mod report_document;
 #[path = "services_protocol/roadmap_document.rs"]
@@ -19,6 +21,12 @@ pub const MAX_TRIAGE_FRAME: usize = 4 * 1024 * 1024;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "command", deny_unknown_fields)]
 pub enum Command {
+    PilotLoad,
+    PilotSave {
+        profile: pilot_document::PilotProfile,
+        expected_revision: u64,
+    },
+    PilotSync,
     Status,
     TransferRights,
     AccountBegin,
@@ -104,6 +112,10 @@ pub struct Request {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(tag = "result", deny_unknown_fields)]
 pub enum Reply {
+    Pilot {
+        state: pilot_document::PilotState,
+        message: String,
+    },
     Checkout {
         url: String,
     },

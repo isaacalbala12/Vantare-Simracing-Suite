@@ -326,6 +326,9 @@ impl App {
     fn poll_account(&mut self) -> Result<Reply> {
         self.ensure_account()?;
         let account = self.account.as_mut().ok_or(Error::Authentication)?;
+        if account.email_pending() {
+            return Ok(account.email_reply(now()?, None));
+        }
         if account.login_pending()
             && let Some(ticket) = account.poll_login()?
         {
@@ -352,6 +355,9 @@ impl App {
 
     pub fn handle(&mut self, command: Command) -> Reply {
         let report_send = matches!(command, Command::ReportSend { .. });
+        if let Command::AccountEmail { action } = command {
+            return self.email_account(action);
+        }
         let account_action = matches!(
             command,
             Command::AccountBegin
@@ -416,6 +422,56 @@ impl App {
         }
     }
 
+    fn email_account(&mut self, action: crate::protocol::EmailAction) -> Reply {
+        let result = (|| {
+            self.ensure_account()?;
+            let time = now()?;
+            let ticket = self
+                .account
+                .as_mut()
+                .ok_or(Error::Authentication)?
+                .email_action(&self.http, action, time)?;
+            if let Some(ticket) = ticket {
+                let completion = ticket.run(&self.http, time)?;
+                if self
+                    .account
+                    .as_ref()
+                    .and_then(Account::identity)
+                    .is_none_or(|old| old != completion.identity())
+                {
+                    self.revoke_local()?;
+                }
+                self.account
+                    .as_mut()
+                    .ok_or(Error::Authentication)?
+                    .complete(completion, self.store.as_ref().ok_or(Error::Storage)?)?;
+                crate::diagnostics::record_usage_once(
+                    &crate::diagnostics::Usage::AccountSignedIn {},
+                );
+                return Ok(Self::account_reply(
+                    self.account.as_ref().ok_or(Error::Authentication)?,
+                    None,
+                ));
+            }
+            Ok(self
+                .account
+                .as_ref()
+                .ok_or(Error::Authentication)?
+                .email_reply(time, None))
+        })();
+        result.unwrap_or_else(|error| {
+            self.account.as_ref().map_or_else(
+                || Reply::Email {
+                    stage: crate::protocol::EmailStage::Form,
+                    retry_after_seconds: 0,
+                    message: error.to_string(),
+                    error: Some(error.to_string()),
+                },
+                |account| account.email_reply(now().unwrap_or(0), Some(error)),
+            )
+        })
+    }
+
     fn execute(&mut self, command: Command) -> Result<Reply> {
         match command {
             Command::PilotLoad | Command::PilotSave { .. } | Command::PilotSync => {
@@ -432,6 +488,7 @@ impl App {
                     .into(),
                 });
             }
+            Command::AccountEmail { .. } => return Err(Error::Protocol),
             Command::Shutdown => return Ok(Reply::Closed),
             Command::DraftLoad
             | Command::DraftSave { .. }

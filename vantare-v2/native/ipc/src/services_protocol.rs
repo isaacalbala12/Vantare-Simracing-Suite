@@ -1,8 +1,8 @@
-//! DTO públicos sin secretos; también se compilan en el Hub sin dependencia HTTP.
+//! DTO/IPC: respuestas sin tokens. Solo AccountEmail lleva credenciales de entrada redactadas.
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-pub const VERSION: u32 = 8;
+pub const VERSION: u32 = 9;
 #[path = "services_protocol/pilot_document.rs"]
 pub mod pilot_document;
 #[path = "services_protocol/report_document.rs"]
@@ -26,6 +26,9 @@ pub enum Command {
     Status,
     TransferRights,
     AccountBegin,
+    AccountEmail {
+        action: EmailAction,
+    },
     AccountPoll,
     AccountRenew,
     AccountProfileRefresh,
@@ -77,6 +80,51 @@ pub enum Command {
         preview_id: String,
     },
     Shutdown,
+}
+
+/// Solo credenciales introducidas por el usuario; nunca tokens del proveedor.
+/// Debug redactado porque Command puede aparecer en diagnósticos.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(tag = "action", deny_unknown_fields)]
+pub enum EmailAction {
+    Begin {
+        mode: EmailMode,
+        email: String,
+        password: String,
+    },
+    Verify {
+        code: String,
+    },
+    Reset {
+        password: String,
+        sign_out_of_other_sessions: bool,
+    },
+    Resend,
+    Finish,
+    Cancel,
+}
+impl std::fmt::Debug for EmailAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("EmailAction([redacted])")
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EmailMode {
+    SignInCode,
+    SignInPassword,
+    SignUpCode,
+    SignUpPassword,
+    Recovery,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum EmailStage {
+    Form,
+    Code,
+    NewPassword,
+    Consent,
+    HostedRequired,
 }
 
 // Bootstrap privado: no Debug para evitar registrar el nonce.
@@ -137,6 +185,12 @@ pub enum Reply {
         fetched_at: Option<u64>,
         stale: bool,
         message: String,
+    },
+    Email {
+        stage: EmailStage,
+        retry_after_seconds: u64,
+        message: String,
+        error: Option<String>,
     },
     Account {
         signed_in: bool,
@@ -272,5 +326,43 @@ mod tests {
             Command::Status
         ));
         assert!(serde_json::from_str::<Command>("{\"command\":\"SetEntitlements\"}").is_err());
+    }
+}
+
+#[cfg(test)]
+mod email_tests {
+    use super::*;
+    #[test]
+    fn credentials_roundtrip_but_debug_and_replies_never_expose_them() {
+        let command = Command::AccountEmail {
+            action: EmailAction::Begin {
+                mode: EmailMode::SignUpPassword,
+                email: "fixture@example.invalid".into(),
+                password: "fixture-password".into(),
+            },
+        };
+        let debug = format!("{command:?}");
+        assert!(!debug.contains("fixture-password") && !debug.contains("fixture@example.invalid"));
+        let mut frame = Vec::new();
+        write(&mut frame, &command).expect("write");
+        let Command::AccountEmail {
+            action:
+                EmailAction::Begin {
+                    mode,
+                    email,
+                    password,
+                },
+        } = read::<Command>(&mut frame.as_slice()).expect("read")
+        else {
+            panic!("expected email command");
+        };
+        assert_eq!(mode, EmailMode::SignUpPassword);
+        assert_eq!(email, "fixture@example.invalid");
+        assert_eq!(password, "fixture-password");
+        let forged = r#"{"command":"AccountEmail","action":{"action":"Finish","user_code":"external-code"}}"#;
+        assert!(
+            serde_json::from_str::<Command>(forged).is_err(),
+            "client cannot approve arbitrary device code"
+        );
     }
 }

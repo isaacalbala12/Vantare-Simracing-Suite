@@ -22,6 +22,9 @@ fn fresh_generation() -> Result<u128> {
 pub struct Secret(String);
 
 impl Secret {
+    pub(crate) fn new(value: String) -> Self {
+        Self(value)
+    }
     pub(crate) fn expose(&self) -> &str {
         &self.0
     }
@@ -156,6 +159,7 @@ pub struct Account {
     profile: Option<crate::protocol::AccountProfile>,
     attempt: Option<Attempt>,
     generation: u128,
+    email: Option<email::Login>,
 }
 
 // Tickets carry secrets inside the service process, never over IPC or Debug.
@@ -172,6 +176,7 @@ enum Grant {
         redirect: Url,
     },
     Refresh(Secret),
+    Device(Secret),
 }
 pub struct Completion {
     generation: u128,
@@ -211,6 +216,7 @@ struct UserInfo {
     image_url: Option<String>,
 }
 
+pub(crate) mod email;
 #[path = "account/profile.rs"]
 mod profile;
 
@@ -227,6 +233,11 @@ impl Exchange {
                 ("code", code.expose()),
                 ("code_verifier", verifier.expose()),
                 ("redirect_uri", redirect.as_str()),
+            ],
+            Grant::Device(code) => vec![
+                ("grant_type", "urn:ietf:params:oauth:grant-type:device_code"),
+                ("client_id", &self.oauth.client_id),
+                ("device_code", code.expose()),
             ],
             Grant::Refresh(refresh) => vec![
                 ("grant_type", "refresh_token"),
@@ -320,6 +331,7 @@ impl Account {
             profile,
             attempt: None,
             generation: fresh_generation()?,
+            email: None,
         })
     }
 
@@ -411,6 +423,7 @@ impl Account {
 
     pub(crate) fn cancel_login(&mut self) -> Result<()> {
         self.attempt = None;
+        self.email = None;
         self.generation = self.generation.checked_add(1).ok_or(Error::Protocol)?;
         Ok(())
     }
@@ -514,6 +527,7 @@ impl Account {
         let Saved::SignedIn { session, .. } = store.load("account")? else {
             return Err(Error::Storage);
         };
+        self.email = None;
         self.session = Some(session);
         self.profile = Some(completion.profile);
         self.generation = self.generation.checked_add(1).ok_or(Error::Protocol)?;

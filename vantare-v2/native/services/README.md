@@ -1,6 +1,18 @@
+## #1631 · Login propio (implementación pendiente de gates)
+
+El protocolo services v9 añade AccountEmail y respuestas Email sin tokens.
+Hub/supervisor/servicios deben compilarse juntos. Entrada con código/contraseña,
+alta con verificación de email y recuperación usan FAPI nativa sin cookies.
+La sesión FAPI es temporal; la aprobación explícita de Device Grant obtiene la
+misma sesión OAuth v1 guardada por Account.complete. Supabase/Polar no cambian.
+Google/Discord mantienen authorize alojado + PKCE + callback loopback.
+Requisitos de desarrollo, seguridad y límites: [login propio](../../docs/auth/login-propio.md).
+Esta rama todavía no acredita compilación, tests ni login real: falta resolver
+la cola Windows en el worker macOS sin pwsh. No promover antes de gates y review.
+
 # Servicios nativos — ISA-1430
 
-**Corte #1610:** protocolo services v8 (DTO v10/derechos v4 independientes).
+**Corte #1610 (histórico):** protocolo services v8 (DTO v10/derechos v4 independientes).
 Rutas cerradas: current_v2, envío consentido por Edge `testing-report-submit`,
 crédito y acuse por fecha. La RPC directa no está permitida. Historial sin cuerpo
 privado; arreglado requiere versión válida. No hay cliente Plane ni referencia PostHog productiva.

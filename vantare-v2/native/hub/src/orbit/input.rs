@@ -8,7 +8,6 @@ use std::ops::{Deref, Range};
 
 const MAX_BYTES: usize = 16 * 1024;
 
-#[derive(Debug)]
 pub struct TextState {
     pub value: String,
     pub enabled: bool,
@@ -181,6 +180,7 @@ pub struct Input {
     dragging: bool,
     preferred_height: Option<Pixels>,
     inset: Option<(f32, f32)>,
+    masked: bool,
 }
 impl Deref for Input {
     type Target = TextState;
@@ -191,6 +191,11 @@ impl Deref for Input {
 impl Input {
     pub fn new(value: String, label: &'static str, cx: &mut Context<Self>) -> Self {
         Self::create(value, label, false, cx)
+    }
+    pub fn password(label: &'static str, cx: &mut Context<Self>) -> Self {
+        let mut input = Self::new(String::new(), label, cx);
+        input.masked = true;
+        input
     }
     pub fn multiline(value: String, label: &'static str, cx: &mut Context<Self>) -> Self {
         Self::create(value, label, true, cx)
@@ -205,6 +210,7 @@ impl Input {
             dragging: false,
             preferred_height: None,
             inset: None,
+            masked: false,
         }
     }
     /// Ajusta la altura visual sin cambiar texto, selección ni modo multilínea.
@@ -253,7 +259,7 @@ impl Input {
                 }
             }
             "c" | "x" if ctrl => {
-                if !self.selection.is_empty() {
+                if !self.masked && !self.selection.is_empty() {
                     cx.write_to_clipboard(gpui::ClipboardItem::new_string(
                         self.value[self.selection.clone()].into(),
                     ));
@@ -319,7 +325,11 @@ impl EntityInputHandler for Input {
     ) -> Option<String> {
         let range = self.range_from_utf16(range);
         *adjusted = Some(self.to_utf16(range.clone()));
-        Some(self.value[range].into())
+        if self.masked {
+            None
+        } else {
+            Some(self.value[range].into())
+        }
     }
     fn selected_text_range(
         &mut self,
@@ -402,7 +412,13 @@ impl Input {
         } else {
             bounds.top() + (bounds.size.height - self.line_height) / 2.0
         };
-        for text in self.value.split('\n') {
+        // ASCII mask preserves byte offsets used by the existing editor/IME.
+        let display = if self.masked {
+            "*".repeat(self.value.len())
+        } else {
+            self.value.clone()
+        };
+        for text in display.split('\n') {
             let run = gpui::TextRun {
                 len: text.len(),
                 font: style.font(),

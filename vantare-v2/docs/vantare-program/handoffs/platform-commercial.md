@@ -1,3 +1,45 @@
+## #1631 / VANTA-70 · Login propio — trabajo local pendiente de gates (14/10/2026)
+
+Encargo explícito del orquestador al worker Codex macOS arm64, sin subagentes,
+GitHub, push ni servicios reales. Proyecto Vantare, rama aislada
+`vantareapp/isa-1631-login-propio`, base nightly local `b9ec75ed` verificada y
+checkout inicialmente limpio. GitHub #1631/PR/CI remotos no verificables en Mac.
+La excepción inicial de seguimiento se concreta en la instrucción posterior
+que autoriza exclusivamente `~/orq/plane-estado.py`: VANTA-70 «En curso»
+verificado al empezar; no se busca ningún tracker ni se usa Notion.
+
+Fase 1 commit `3f74eb58`: [investigación y diseño](../../auth/login-propio.md).
+Google requiere navegador o sesión web del sistema; Discord no tiene una vía
+embebida confirmada, ambos conservan navegador. FAPI nativa usa client API token
+por Authorization/_is_native, distinto del OAuth access/refresh del almacén.
+La composición documentada FAPI → aprobación de Device Grant → OAuth permite
+conservar contrato Supabase/Polar y Account.complete v1. Habilitación de Native
+API y Device Grant del OAuth client público en development pendiente del operador;
+no se ha configurado ningún servicio real ni se acredita compatibilidad en vivo.
+
+Fase 2 escrita, **sin compilar todavía**: protocolo services v9 con credenciales
+de entrada y Debug redactado; servicios manejan cinco flujos email, reenvío,
+cancelación, estados incompletos y consentimiento. Tokens FAPI efímeros;
+intercambio OAuth compara identidad y generación. El Hub usa Orbit, contraseña
+oculta/sin copiar y renovación de licencia solo después del OAuth confirmado.
+El supervisor preserva la ventana de acceso para pasos de email. Almacén v1,
+puente, licencia y billing servidor intactos; sin dependencias nuevas.
+Tests loopback preparados para cinco flujos, errores, cooldown/rate limit,
+rotación de header, tareas/MFA/requisitos, origen, identidad distinta, respuesta
+OAuth pendiente y cancelación; tests de IPC y transición del Hub preparados.
+**No se presentan como PASS:** check/Clippy/Nextest/lifecycle/telemetría y QA
+pendientes. `cargo fmt` y `git diff --check` PASS; huellas **456 PASS**.
+
+Bloqueo de entorno: Mac no tiene pwsh y `native/scripts/compilar.ps1` consulta
+Win32_OperatingSystem; gates.ps1 exige además DuckDB Windows. Solicitada a Isaac
+excepción para Cargo local con target propio y dos jobs. No se instala tooling,
+no se altera la cola y no se compila mientras esa autorización está pendiente.
+Evidencia/documentación pública en `~/evidence/1631/`; AVANCE en
+`~/orq/1631.buzon.md`. No FIN ni «Por revisar» antes de verificar.
+Siguiente: resolver ejecución de gates, corregir lo que fallen, QA de formularios,
+commit de cierre y review del orquestador; luego validar Clerk development real
+sin anunciar producción. Sin merge, release, deploy, pagos ni promoción.
+
 ## #1620 / PR #1621 · lanzamiento sin trial, decisión B (14/10/2026)
 
 Encargo explícito al worker Codex macOS arm64; base limpia `c6739de8`, rama

@@ -1,3 +1,12 @@
+## #1631 · Formularios de email (pendientes de gates/QA)
+
+El acceso ofrece email con código o contraseña, alta y recuperación en Orbit.
+Los inputs no se guardan; la contraseña se dibuja oculta y no permite copiar.
+Tras verificación hay una aprobación explícita de acceso a identidad/perfil.
+Google/Discord siguen abriendo la página alojada de Clerk en el navegador.
+Protocolo services v9: Hub, supervisor y servicios se actualizan juntos.
+Compilación/tests/QA aún pendientes en este worker macOS; no certifica Clerk real.
+
 # Hub nativo (ISA-1430)
 
 ## #1564 · Widgets por sesión

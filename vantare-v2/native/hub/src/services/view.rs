@@ -130,6 +130,8 @@ fn account_value(label: &str, value: &str, active: bool, cx: &gpui::App) -> gpui
 
 #[path = "access.rs"]
 mod access;
+#[path = "login.rs"]
+mod login;
 #[path = "view/roadmap.rs"]
 mod roadmap;
 
@@ -254,6 +256,7 @@ pub struct Remote {
     queued: Option<Command>,
     account: AccountState,
     access: access::State,
+    email: Option<login::Form>,
     /// El servicio distinguió un límite de dispositivos (`Reply::DeviceLimit`):
     /// la salida es liberar el activo, no reintentar a ciegas.
     device_limit: bool,
@@ -420,6 +423,7 @@ impl Remote {
             queued: None,
             account: AccountState::default(),
             access: access::State::from_build(),
+            email: None,
             device_limit: false,
             license_polled_at: None,
             purchase_product: None,
@@ -512,6 +516,7 @@ impl Remote {
 
     /// Feed autenticado independiente de la cola HTTP; TTL y autoridad del núcleo intactos.
     pub(crate) fn refresh_license(&mut self, cx: &mut Context<Self>) {
+        self.email_tick(cx);
         let now = std::time::Instant::now();
         if self
             .license_polled_at
@@ -797,9 +802,15 @@ impl Remote {
         cx: &mut Context<Self>,
     ) {
         self.access.requested(&command);
-        if matches!(command, Command::Logout | Command::AccountBegin) {
+        if matches!(
+            command,
+            Command::Logout | Command::AccountBegin | Command::AccountEmail { .. }
+        ) {
             self.clear_pilot();
             self.clear_participation();
+        }
+        if matches!(command, Command::Logout | Command::AccountBegin) {
+            self.email = None;
         }
         if matches!(command, Command::Logout) {
             self.purchase_wait = None;
@@ -1039,6 +1050,14 @@ impl Remote {
                 message,
                 ..
             } => self.roadmap_reply(publication, stale, message),
+            Reply::Email {
+                stage,
+                retry_after_seconds,
+                message,
+                error,
+            } => {
+                self.email_observe(stage, retry_after_seconds, message, error, cx);
+            }
             Reply::Account {
                 signed_in,
                 profile,
@@ -1046,6 +1065,9 @@ impl Remote {
                 message,
                 ..
             } => {
+                if signed_in && !pending {
+                    self.email = None;
+                }
                 if !pending {
                     missing_profile =
                         signed_in && profile.is_none() && self.account.profile.is_none();
@@ -1232,7 +1254,7 @@ impl Remote {
                 })
                 .on_click(cx.listener(|this, _, _, cx| {
                     if this.requires_access() && !this.working() {
-                        this.request(Command::AccountBegin, cx);
+                        this.select_email(super::protocol::EmailMode::SignInCode, cx);
                     }
                 }))
             })

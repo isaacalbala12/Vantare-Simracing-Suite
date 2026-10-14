@@ -43,3 +43,7 @@ verify_jwt = false
 # Not included in any deployment wrapper; activation needs separate approval.
 [functions.testing-report-submit]
 verify_jwt = false
+
+# #1608 local review candidate; absent from deploy wrappers. Svix verified in handler.
+[functions.clerk-webhook]
+verify_jwt = false

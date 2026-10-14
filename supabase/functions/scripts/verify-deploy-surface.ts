@@ -18,7 +18,7 @@ const testingAutomationFunctions = new Set([
 ]);
 const recognizedFunctions = new Set([
   // Review candidate, absent from all deploy wrappers.
-  "testing-report-submit",
+  "testing-report-submit", "clerk-webhook",
   ...productionFunctions,
   ...testingPilotFunctions,
   ...testingAutomationFunctions,

@@ -141,7 +141,10 @@ export async function handleNativeAccountAuthorize(
     });
   } catch (error) {
     // Never log upstream errors, JWTs, OAuth tokens, names or account UUIDs.
-    const failure = error instanceof NativeError
+    const failure = error && typeof error === "object" && "code" in error &&
+        error.code === "28000"
+      ? new NativeError(401, "unauthorized")
+      : error instanceof NativeError
       ? error
       : new NativeError(503, "bridge_unavailable");
     return respond({

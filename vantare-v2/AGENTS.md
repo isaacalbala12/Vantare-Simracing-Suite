@@ -36,12 +36,20 @@ Flujo de estados:
 - Worker → «En curso» solo al empezar el encargo asignado; ningún worker
   coge tareas directamente de «Para Claude».
 - Worker → «Por revisar» al terminar, con el comentario del PR.
+- Al terminar y tras cada arreglo, quien hizo el trabajo actualiza la
+  **descripción** de la tarea con un resumen en viñetas, en lenguaje muy
+  simple, de lo que se ha hecho: qué cambia para Isaac o el usuario, con los
+  datos medidos si los hay (antes → después) y qué queda pendiente. Sin jerga.
+  Se hace con `--resumen` (una viñeta por línea), que sustituye la sección
+  «Qué se ha hecho» sin tocar el resto de la descripción.
 - Orquestador → «Por testear» tras revisar y fusionar en `nightly`.
 - Isaac → «Entregado».
 - Cualquiera → «Cancelado», explicándolo en un comentario.
 
 Desde la raíz Git, usar `python tools/plane/plane-estado.py VANTA-N "En curso"`,
 `python tools/plane/plane-estado.py VANTA-N "Por revisar" --comentario "PR https://..."`
+`python tools/plane/plane-estado.py VANTA-N --resumen "- Viñeta 1
+- Viñeta 2"`
 o `python tools/plane/plane-estado.py VANTA-N --ver`. El token se lee de
 `PLANE_API_TOKEN` o `~/.vantare/plane-token`, nunca se imprime. Si el worker
 no tiene token (por ejemplo, en otro PC), avisa en su buzón al orquestador,
@@ -51,6 +59,9 @@ inicial previo a «Para Claude».
 
 Las tareas se llaman «Tipo - Nombre». Tipos: Feature, Rework, Bug, Review,
 Investigar, Documento, Marketing, Medición, Optimizar. Module obligatorio.
+Los hilos de T3 Code de una tarea se titulan igual que ella:
+«VANTA-N · Tipo - Nombre» (por ejemplo, «VANTA-51 · Feature - Onboarding
+personalizado»). Quien crea o reutiliza el hilo lo renombra al empezar.
 
 ## Fuentes de verdad y lectura obligatoria
 

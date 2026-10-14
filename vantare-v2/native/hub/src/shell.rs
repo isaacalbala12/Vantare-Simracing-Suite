@@ -27,6 +27,7 @@ use crate::{
 };
 
 use crate::testing::{self, Testing, diagnostic::Module as TestingModule};
+mod analytics;
 pub(crate) mod assets;
 mod chrome;
 mod foundations;
@@ -57,6 +58,7 @@ pub struct Options {
 }
 
 struct Hub {
+    analytics: analytics::State,
     section: Section,
     shell: chrome::State,
     demo: Option<crate::demo::DemoData>,
@@ -93,6 +95,8 @@ impl Hub {
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
+        self.poll_privacy(cx);
+        self.poll_usage(cx, false);
         let incompatible = self.subscriber.connection().incompatible()
             || self.remote.read(cx).connection_incompatible();
         if incompatible != self.connection_incompatible {
@@ -1206,7 +1210,13 @@ impl Hub {
         }
         let testing = cx.new(|cx| Testing::new(testing_dir, remote.clone(), window, cx));
         wire_strategy(&strategy, cx);
+        cx.observe_window_activation(window, |this, window, cx| {
+            this.analytics.active = window.is_window_active();
+            this.poll_usage(cx, true);
+        })
+        .detach();
         cx.on_app_quit(move |this, cx| {
+            this.finish_usage(cx);
             this.analysis.update(cx, |analysis, _| analysis.cancel());
             if let Err(error) = this.launcher.update(cx, |launcher, _| launcher.shutdown()) {
                 eprintln!("cerrar Launcher: {error}");
@@ -1220,6 +1230,7 @@ impl Hub {
         })
         .detach();
         Hub {
+            analytics: analytics::State::new(window.is_window_active()),
             section,
             shell: chrome::State::new(access, capture.as_ref(), cx),
             demo,
@@ -1372,6 +1383,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
     gpui_platform::application()
         .with_assets(assets::Icons)
         .run(move |cx: &mut App| {
+            vantare_ui::analytics::init(cx);
             cx.set_global(orbit::theme::Theme::default());
             let identity = match crate::installation::hub_identity() {
                 Ok(identity) => identity,

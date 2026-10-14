@@ -1789,7 +1789,7 @@ impl Hub {
                         1,
                         true,
                         "Enviar datos de uso",
-                        "Inicio de la app, simulador al entrar en una sesión y tipos de widgets activos. Sin posiciones ni telemetría.",
+                        "Páginas, funciones, tipos de widgets y tiempo de uso; instalación, sesión y licencia observadas. Sin contenido, rutas, nombres ni telemetría. Identificador aleatorio de instalación.",
                         store.value.usage,
                     ),
                 ] {

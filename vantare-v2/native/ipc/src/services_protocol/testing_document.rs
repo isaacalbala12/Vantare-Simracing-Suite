@@ -24,4 +24,12 @@ pub struct Contribution {
     pub title: String,
     pub body: String,
     pub state: String,
+    #[serde(default)]
+    pub credit: bool,
+    #[serde(default)]
+    pub updated_at: Option<String>,
+    #[serde(default)]
+    pub fixed_version: Option<String>,
+    #[serde(default)]
+    pub notice: bool,
 }

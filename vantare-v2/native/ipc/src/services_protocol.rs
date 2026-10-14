@@ -2,7 +2,7 @@
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use std::io::{self, Read, Write};
 
-pub const VERSION: u32 = 6;
+pub const VERSION: u32 = 8;
 #[path = "services_protocol/report_document.rs"]
 pub mod report_document;
 #[path = "services_protocol/roadmap_document.rs"]
@@ -41,6 +41,15 @@ pub enum Command {
         id: String,
         title: String,
         body: String,
+        consent: bool,
+    },
+    TestingCredit {
+        id: String,
+        consent: bool,
+    },
+    TestingNoticeRead {
+        id: String,
+        updated_at: String,
     },
     DraftLoad,
     DraftSave {

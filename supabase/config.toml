@@ -47,3 +47,7 @@ verify_jwt = false
 # #1608 local review candidate; absent from deploy wrappers. Svix verified in handler.
 [functions.clerk-webhook]
 verify_jwt = false
+
+# #1608 local-only reconciliation; no scheduler or deploy wrapper.
+[functions.billing-reconcile]
+verify_jwt = false

@@ -34,6 +34,8 @@ import {
   SupabaseOrderRefundLedger,
 } from "./order-refund-ledger.ts";
 
+import { isUuid } from "../_shared/request.ts";
+
 export const POLAR_PROVIDER = "polar";
 
 export type PolarWebhookEvent = {
@@ -73,6 +75,7 @@ export type WebhookProcessorDeps = {
   projection?: CommercialProjection;
   lifecycle?: SubscriptionLifecycleStore;
   orderRefundLedger?: OrderRefundLedger;
+  resolveIdentity?: typeof resolveUserId;
 };
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -201,22 +204,40 @@ export async function resolveUserId(
   data: Record<string, unknown>,
   environment: BillingEnvironment,
 ): Promise<string | null> {
-  const externalId = extractExternalCustomerId(data);
-  const polarCustomerId = extractPolarCustomerId(data);
-  if (!polarCustomerId) return externalId;
-
-  const { data: row, error } = await supabase
-    .from("billing_customers")
-    .select("user_id")
-    .eq("provider", POLAR_PROVIDER)
-    .eq("environment", environment)
-    .eq("provider_customer_id", polarCustomerId)
-    .maybeSingle();
-
-  if (error) throw error;
-  // El vínculo durable de este cliente/entorno es autoridad; un campo externo
-  // contradictorio nunca puede mover una compra a otro UUID.
-  return asString(row?.user_id) ?? externalId;
+  let boundUser: string | null = null;
+  const checkoutId = asString(data.checkout_id);
+  if (checkoutId) {
+    const { data: binding, error } = await supabase.from(
+      "billing_checkout_bindings",
+    )
+      .select("user_id").eq("environment", environment).eq(
+        "provider_checkout_id",
+        checkoutId,
+      ).maybeSingle();
+    if (error) throw error;
+    if (!isUuid(binding?.user_id)) return null;
+    boundUser = binding.user_id;
+  }
+  const customerId = extractPolarCustomerId(data);
+  if (customerId) {
+    const { data: row, error } = await supabase.from("billing_customers")
+      .select("user_id")
+      .eq("provider", POLAR_PROVIDER).eq("environment", environment).eq(
+        "provider_customer_id",
+        customerId,
+      ).maybeSingle();
+    if (error) throw error;
+    if (row) {
+      if (
+        !isUuid(row.user_id) ||
+        (boundUser !== null && boundUser !== row.user_id)
+      ) return null;
+      boundUser = row.user_id;
+    }
+  }
+  // Only server-owned checkout/customer bindings prove ownership. Preserve F09:
+  // contradictory editable external IDs never move a registered customer's UUID.
+  return boundUser;
 }
 
 export async function recordWebhookEvent(
@@ -381,11 +402,11 @@ async function parseOrderLedgerInput(args: {
   );
   const currency = normalizedCurrency(args.data.currency);
   const modifiedAt = parseIsoTimestamp(
-    args.data.modified_at ?? args.data.updated_at,
+    args.data.modified_at ?? args.data.updated_at ?? args.data.created_at,
   );
   if (
-    args.data.billing_reason !== "purchase" ||
-    asString(args.data.subscription_id) !== null
+    args.data.billing_reason !== "purchase" &&
+    asString(args.data.subscription_id) === null
   ) return "order_not_one_time_purchase";
   if (!orderId) return "missing_order_id";
   if (!status || args.data.paid !== true) return "unconfirmed_order_status";
@@ -415,6 +436,7 @@ async function parseOrderLedgerInput(args: {
     userId: args.userId,
     productId: args.productId,
     checkoutId: asString(args.data.checkout_id),
+    subscriptionId: asString(args.data.subscription_id),
     status,
     paid: true as const,
     netAmount,
@@ -439,11 +461,10 @@ async function parseRefundLedgerInput(args: {
   const amount = asNonNegativeInteger(args.data.amount);
   const currency = normalizedCurrency(args.data.currency);
   const modifiedAt = parseIsoTimestamp(
-    args.data.modified_at ?? args.data.updated_at,
+    args.data.modified_at ?? args.data.updated_at ?? args.data.created_at,
   );
   if (!refundId) return "missing_refund_id";
   if (!orderId) return "missing_order_id";
-  if (!paymentId) return "missing_payment_id";
   if (!status) return "unconfirmed_refund_status";
   if (amount === null || amount === 0) return "missing_refund_amount";
   if (!currency) return "missing_refund_currency";
@@ -490,7 +511,7 @@ async function applyOrderRefundEvent(args: {
   let decision: OrderAccessDecision | null;
 
   if (args.event.type.startsWith("order.")) {
-    const userId = await resolveUserId(
+    const userId = await (args.deps.resolveIdentity ?? resolveUserId)(
       args.deps.supabase,
       args.event.data,
       args.environment,
@@ -503,10 +524,10 @@ async function applyOrderRefundEvent(args: {
       return { status: "ignored", reason: "unknown_product_id" };
     }
     if (
-      resolved.key !== "launch_lifetime" ||
-      resolved.config.billing_type !== "one_time"
+      resolved.config.billing_type === "subscription" &&
+      !asString(args.event.data.subscription_id)
     ) {
-      return { status: "ignored", reason: "order_not_lifetime_product" };
+      return { status: "ignored", reason: "missing_subscription_id" };
     }
     const parsed = await parseOrderLedgerInput({
       data: args.event.data,
@@ -564,9 +585,8 @@ async function applyOrderRefundEvent(args: {
     decision.order.productId,
   );
   if (
-    !resolved.ok || resolved.key !== "launch_lifetime" ||
-    resolved.config.billing_type !== "one_time"
-  ) return { status: "ignored", reason: "order_not_lifetime_product" };
+    !resolved.ok
+  ) return { status: "ignored", reason: "unknown_product_id" };
 
   await applyEffect(
     args.deps,
@@ -579,6 +599,14 @@ async function applyOrderRefundEvent(args: {
       ),
   );
 
+  if (decision.order.subscriptionId && args.deps.projection?.restrictSource) {
+    await args.deps.projection.restrictSource({
+      environment: args.environment,
+      sourceId: decision.order.subscriptionId,
+      causeId: orderId,
+      blocked: decision.accessState === "revoked",
+    });
+  }
   if (writeOutcome === "duplicate") {
     return { status: "processed", action: "resource_duplicate" };
   }
@@ -587,7 +615,15 @@ async function applyOrderRefundEvent(args: {
   }
 
   if (decision.accessState === "revoked") {
-    return { status: "processed", action: "revoked_lifetime_order" };
+    return {
+      status: "processed",
+      action: decision.order.subscriptionId
+        ? "blocked_subscription_refund"
+        : "revoked_lifetime_order",
+    };
+  }
+  if (decision.order.subscriptionId) {
+    return { status: "processed", action: "recorded_subscription_order" };
   }
   if (decision.succeededRefundAmount > 0) {
     return { status: "processed", action: "recorded_partial_refund" };
@@ -629,7 +665,11 @@ export async function applyPolarWebhookEvent(
       nowIso,
     });
   }
-  const userId = await resolveUserId(deps.supabase, event.data, environment);
+  const userId = await (deps.resolveIdentity ?? resolveUserId)(
+    deps.supabase,
+    event.data,
+    environment,
+  );
 
   const productId = extractProductId(event.data);
   if (!productId) {
@@ -670,7 +710,7 @@ export async function applyPolarWebhookEvent(
     return { status: "ignored", reason: "missing_resource_id" };
   }
   const modifiedAt = parseIsoTimestamp(
-    event.data.modified_at ?? event.data.updated_at,
+    event.data.modified_at ?? event.data.updated_at ?? event.data.created_at,
   );
   if (!modifiedAt || !Number.isFinite(Date.parse(modifiedAt))) {
     return { status: "ignored", reason: "missing_resource_modified_at" };
@@ -799,6 +839,7 @@ const REPLAY_DATA_KEYS = [
   "order_id",
   "subscription_id",
   "modified_at",
+  "created_at",
   "updated_at",
   "status",
   "current_period_start",
@@ -961,7 +1002,11 @@ async function processClaimedWebhook(
         deps.supabase,
         event.type,
         webhookId,
-        await resolveUserId(deps.supabase, event.data, environment),
+        await (deps.resolveIdentity ?? resolveUserId)(
+          deps.supabase,
+          event.data,
+          environment,
+        ),
         {
           provider: POLAR_PROVIDER,
           provider_event_id: webhookId,

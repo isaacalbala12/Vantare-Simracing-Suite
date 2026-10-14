@@ -1,18 +1,18 @@
-## #1608 · Cierre B01–B03 en curso (14/10/2026)
+## #1608 · Cierre comercial B03 → B01 → B02 (14/10/2026)
 
-Nueva rama `vantareapp/isa-1608-cierre-comercial`, base #1615 `7aab0699`.
-B03 `2b523b66`: consumidor Svix firmado, inbox idempotente y tombstone irreversible.
-RLS/RPC consultan identidad activa; grants posteriores quedan revocados. Perfil
-anonimizado y datos personales de Testing retirados; trazabilidad privada conservada.
-Storage usa API, cola durable y reintentos con ACK; nunca borrado SQL de bytes.
-RED basal registry/consumidor ausentes; GREEN SQL 23+17 y Deno focal 99.
-B01: JWT dedicado HS256, issuer native-data/v1 y aud vantare-native-data,
-sin fallback al secreto Auth. Registry vacío/inactivo en migración.
-PostgREST real RED reset 403 → GREEN 204, lectura propia RLS y nueve denegaciones
-incluyendo bearer previo al tombstone. Deno emisor/Testing 44 PASS/1 ignored
-histórico (el nuevo gate HTTP real sí se ejecutó). Logs C:/tmp/1608-comercial.
-B02 pendiente. Sin cambios Rust/protocolo, producción, datos reales ni deploy.
-VANTA-16/17/15 En curso. Rebase cuando #1615 se integre; cierre push/PR draft.
+Encargo explícito de Isaac: implementar los tres planes en rama nueva, solo
+local/tests. Worktree `C:/tmp/1608-cierre-comercial`, rama
+`vantareapp/isa-1608-cierre-comercial`, arranque #1615 `7aab0699`.
+#1615 entró en nightly `e5c90be5`; rebase de **solo los commits de cierre** a
+esa base antes del push. El HEAD/PR/checks finales están en issue/buzón.
+
+B03/B01/B02 implementados con RED→GREEN por bloqueo; detalle/decisiones/riesgos
+en `docs/analysis/review-cuentas-pagos-2026-10.md`. 551 Deno PASS/1 ignored,
+316 pgTAP PASS + JWT/PostgREST real y emisión nativa Ed25519 sobre SQL real.
+Se preservan los fixes de #1615; nuevo registry/trust y reconciliador vacíos/
+inertes. Sin Rust nuevo. Queda review/CI y activación/aceptación real separadas,
+sin producción/secretos/precios/datos reales/merge/promoción/release.
+HEAD/PR/estados verificados finales en issue/buzón. Siguiente: review del cierre.
 
 ## #1608 · Integración de nightly (14/10/2026)
 

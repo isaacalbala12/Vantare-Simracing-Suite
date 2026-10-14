@@ -77,7 +77,7 @@ Deno.test("order/refund reconciliation: unordered API pages converge and preserv
   assertEquals(ledger.grants.get("sandbox:order-b:vantare.plan.pro"), "active");
 });
 
-Deno.test("order/refund reconciliation: order aggregate alone remains active", async () => {
+Deno.test("order/refund reconciliation: aggregate without refund event converges to revoked", async () => {
   const ledger = new MemoryOrderRefundLedger();
   const result = await reconcileOrderRefundLedger({
     environment: "sandbox",
@@ -91,7 +91,10 @@ Deno.test("order/refund reconciliation: order aggregate alone remains active", a
   });
 
   assertEquals(result.safe, true);
-  assertEquals(ledger.grants.get("sandbox:order-a:vantare.plan.pro"), "active");
+  assertEquals(
+    ledger.grants.get("sandbox:order-a:vantare.plan.pro"),
+    "revoked",
+  );
 });
 
 Deno.test("order/refund reconciliation: missing order is quarantined and never synced", async () => {

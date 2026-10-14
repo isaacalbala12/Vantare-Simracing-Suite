@@ -27,6 +27,15 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
  try:
   runner=(ROOT/'supabase/tests/run-supabase-hardening-postgres.ps1').read_text()
   bootstrap=runner.split("Write-Utf8NoBom $bootstrap @'",1)[1].split("'@",1)[0]
+  # Supabase normally provisions service_role table privileges via defaults.
+  # Reproduce that contract in plain PG; each migration still revokes its ACLs.
+  bootstrap += "\nalter default privileges in schema public grant all on tables to service_role;\n"
+  # Modern PostgREST sends the JSON GUC; preserve the legacy GUC for old fixtures.
+  bootstrap += """
+create or replace function auth.uid() returns uuid language sql stable as $$
+ select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),auth.jwt()->>'sub')::uuid
+$$;
+"""
   (OUT/'bootstrap.sql').write_text(bootstrap)
   run('psql',*conn,'-c',"alter database postgres set timezone='UTC'")
   run('psql',*conn,'-f',OUT/'bootstrap.sql')
@@ -37,17 +46,21 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
    except Exception as e: raise RuntimeError(m.name+': '+str(e))
    (OUT/(m.name+'.log')).write_text(result)
   if args.postgrest_bin:
-   run('psql',*conn,'-c',"create role bridge_fixture login noinherit; grant anon,authenticated to bridge_fixture;")
-   run('psql',*conn,'-c',"insert into private.clerk_issuers(issuer,authorized_parties,enabled) values('https://fixture.clerk.invalid',array['https://app.invalid'],true)")
+   run('psql',*conn,'-c',"create role bridge_fixture login noinherit; grant anon,authenticated,service_role to bridge_fixture;")
+   if not args.baseline:
+    run('psql',*conn,'-c',"insert into private.clerk_issuers(issuer,authorized_parties,enabled) values('https://fixture.clerk.invalid',array['https://app.invalid'],true)")
+   else:
+    # Original managed profiles SELECT is a Supabase default privilege.
+    run('psql',*conn,'-c','grant select on public.profiles to authenticated')
    account=run('psql',*conn,'-c',"select public.native_resolve_account('https://fixture.clerk.invalid','user_aaaaaaaaaaaaaaaaaaaaaaaaaaa')").strip()
-   if not args.before_b01:
+   if not args.before_b01 and not args.baseline:
     run('psql',*conn,'-c',"update private.clerk_issuers set native_data_issuer='http://127.0.0.1:54321/native-data/v1' where issuer='https://fixture.clerk.invalid'")
    with socket.socket() as probe:
     probe.bind(('127.0.0.1',0)); http_port=probe.getsockname()[1]
    env=ENV|{'PGRST_DB_URI':f'postgres://bridge_fixture@127.0.0.1:{port}/postgres',
      'PGRST_DB_SCHEMAS':'public','PGRST_DB_ANON_ROLE':'anon','PGRST_SERVER_HOST':'127.0.0.1','PGRST_SERVER_PORT':str(http_port),
      'GHCRTS':'-N2', 'PGRST_DB_POOL':'2', 'PGRST_JWT_SECRET':'commercial-fixture-signing-material-local-only-32-bytes',
-     'PGRST_JWT_AUD':'authenticated' if args.before_b01 else 'vantare-native-data'}
+     'PGRST_JWT_AUD':'authenticated' if args.before_b01 or args.baseline else 'vantare-native-data'}
    with (OUT/'postgrest.log').open('w') as log:
     proc=subprocess.Popen([args.postgrest_bin],env=env,stdout=log,stderr=log)
     try:
@@ -71,6 +84,18 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
      tokens_result=subprocess.run(generator,env=ENV,capture_output=True,text=True,timeout=30)
      if tokens_result.returncode: raise RuntimeError('Bearer fixture generation failed: '+tokens_result.stderr)
      tokens=json.loads(tokens_result.stdout)
+     if args.baseline:
+      def old_profile():
+       req=urllib.request.Request(f'http://127.0.0.1:{http_port}/profiles?select=id',headers={'Authorization':'Bearer '+tokens['valid']})
+       with urllib.request.urlopen(req,timeout=5) as r: return json.load(r)
+      assert old_profile()==[{'id':account}], 'B03 baseline bearer must work before deletion'
+      try:
+       run('psql',*conn,'-c',"select public.apply_clerk_user_event('baseline-deleted',repeat('e',64),'https://fixture.clerk.invalid','user_aaaaaaaaaaaaaaaaaaaaaaaaaaa','user.deleted',now(),null)")
+      except RuntimeError as failure:
+       assert 'apply_clerk_user_event' in str(failure) and 'does not exist' in str(failure), 'unexpected baseline database failure'
+      leaked=old_profile()
+      (OUT/'jwt-results.log').write_text('B03 signed prior bearer own profile before user.deleted: 1; after deletion delivery: '+str(len(leaked))+'\n')
+      assert leaked==[], 'B03: historical valid bearer still reads profile after user.deleted'
      def reset(token):
       req=urllib.request.Request(f'http://127.0.0.1:{http_port}/rpc/reset_active_device',data=b'{"device_fingerprint":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}',headers={'Content-Type':'application/json','Authorization':'Bearer '+token})
       try:
@@ -93,6 +118,23 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
       if name=='valid': continue
       code=reset(token); assert code>=400, f'{name} unexpectedly authorized'
       results.append(name+': denied '+str(code))
+     has_b02=run('psql',*conn,'-c',"select to_regclass('public.billing_access_blocks') is not null").strip()=='t'
+     if has_b02:
+      fixture=f"""
+        select public.billing_record_order_snapshot('sandbox','native-pro','{account}','fixture-pro',null,'paid',true,100,'eur',0,now(),repeat('a',64),'native-subscription');
+        insert into public.billing_access_grants(user_id,provider,environment,source_type,source_id,capability,status,valid_until,resource_modified_at,snapshot_hash)
+         values('{account}','polar','sandbox','subscription','native-subscription','vantare.plan.pro','active',now()+interval '1 day',now(),repeat('a',64)),
+          ('{account}','polar','sandbox','order','native-independent-launch','vantare.edition.launch_v1','active',null,now(),repeat('b',64));
+        select public.billing_record_refund_snapshot('sandbox','native-refund','native-pro',null,'pending',10,'eur',now()+interval '1 second',repeat('c',64));
+        select public.billing_sync_order_access('sandbox','native-pro','["vantare.plan.pro"]');
+      """
+      run('psql',*conn,'-c',fixture)
+      license_script=ROOT/'supabase/tests/commercial-license.ts'
+      if args.deno_bin.endswith('.exe'): license_script=wp(license_script)
+      issued=subprocess.run([args.deno_bin,'run','--cached-only','--no-lock','--config',str(config),'--allow-net=127.0.0.1:'+str(http_port),str(license_script),f'http://127.0.0.1:{http_port}',account],env=ENV,capture_output=True,text=True,timeout=30)
+      if issued.returncode: raise RuntimeError('Native SQL emission fixture failed: '+issued.stderr)
+      (OUT/'native-issuance.log').write_text(issued.stdout)
+      print(issued.stdout.strip(),flush=True)
      run('psql',*conn,'-c',"select public.apply_clerk_user_event('jwt-delete',repeat('d',64),'https://fixture.clerk.invalid','user_aaaaaaaaaaaaaaaaaaaaaaaaaaa','user.deleted',now(),null)")
      code=reset(tokens['valid']); assert code>=400,'previous bearer survived deletion'
      assert profiles(tokens['valid'])==[], 'previous bearer read profile after deletion'
@@ -101,7 +143,10 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
      print('PostgREST real signed bridge JWT: own reset + 9 denials PASS',flush=True)
     finally:
      proc.terminate(); proc.wait(timeout=10)
-  suites=['clerk_identity_cutover_test.sql']
+  suites=['clerk_identity_cutover_test.sql',
+   'billing_webhook_inbox.test.sql','billing_commercial_projection.test.sql',
+   'billing_reconciliation.test.sql','billing_subscription_lifecycle.test.sql',
+   'billing_observability.test.sql','operational_access.test.sql']
   for optional in ['commercial_tombstone.test.sql','commercial_data_boundary.test.sql','commercial_refunds.test.sql']:
    if (ROOT/'supabase/tests'/optional).exists(): suites.append(optional)
   for name in suites:

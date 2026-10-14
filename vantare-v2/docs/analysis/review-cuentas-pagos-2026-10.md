@@ -1,3 +1,105 @@
+## #1608 · Cierre comercial B03 → B01 → B02 (14/10/2026)
+
+Encargo explícito de Isaac: implementar los tres planes en rama nueva, solo
+local/tests. Worktree `C:/tmp/1608-cierre-comercial`, rama
+`vantareapp/isa-1608-cierre-comercial`, arranque #1615 `7aab0699`.
+#1615 entró en nightly `e5c90be5`; rebase de **solo los commits de cierre** a
+esa base antes del push. El HEAD/PR/checks finales están en issue/buzón.
+
+### Diez líneas para Isaac
+
+1. B03 recibe borrados Clerk firmados y conserva un tombstone irreversible del UUID.
+2. Un update tardío, otra identidad histórica o un evento Polar no devuelve acceso.
+3. Perfil/datos personales de Testing se anonimizan o retiran; el historial comercial queda privado.
+4. Storage elimina archivos por su API con cola durable; un fallo pide reintento sin perder pendientes.
+5. B01 firma el bearer de datos con issuer/audiencia propios, TTL ≤300 y vínculo exacto Clerk/UUID.
+6. Una cuenta Clerk-only puede resetear su equipo; tokens falsos, legacy o de otra identidad se rechazan.
+7. B02 acepta refunds ordinarios sin payment ID, incluye Pro y retira la fuente incluso con parcial/pending.
+8. Una renovación tardía no levanta la restricción; failed/canceled restaura solo la fuente vigente.
+9. Agregados y eventos perdidos convergen por reconciliación; otra compra/suscripción y otro entorno permanecen.
+10. Código preparado/probado en local; activar confianza/backend y aceptar la matriz real sigue separado.
+
+### Decisiones por defecto autorizadas
+
+Registradas como DUDA en `C:/tmp/buzon/1608.md`; sin esperar respuestas.
+Firmante HS256 dedicado `NATIVE_DATA_JWT_SECRET`, sin fallback Auth; issuer
+`<SUPABASE_URL>/native-data/v1`, audiencia `vantare-native-data`.
+El registry se crea vacío, sin habilitar instancias o confianza del gateway.
+La configuración de claves/confianza en Supabase gestionado requiere revisión
+y autorización propias: PostgREST loopback no demuestra ese gateway.
+
+El UUID/issuer/subject borrado no se recrea automáticamente. Se preservan
+identificadores comerciales, hashes y auditoría privada; no se inventa un plazo
+legal ni una purga automática. Perfil, dispositivo, diagnósticos y contribuciones
+personales del contrato actual se anonimizan/retiran. La cola de Storage queda
+privada y se drena mediante API antes de ACK; no se borra storage.objects por SQL.
+Offline conserva la política firmada hasta reconexión/expiración; no hay promesa
+de revocación instantánea sin red.
+
+Pro se vincula a su factura y subscription ID inmutable. Refund partial/pending/
+succeeded o agregado positivo bloquea esa suscripción y su recovery. Otra fuente
+legítima permanece. Failed/canceled conserva paid-through, no lo extiende; una
+renovación tardía no borra el bloqueo. Disputa se procesa desde la API Polar,
+con su propia restricción/versionado. La política BIL-13 restaura al ganar el
+cliente, conservando cualquier restricción independiente de refund. No se ejecuta
+ninguna operación monetaria. El agregado se registra por su fuente real, sin
+fabricar refund ID ni payment ID; la reconciliación recorre páginas sin truncar.
+
+### RED → GREEN y cobertura
+
+| Bloqueo | RED conservado | GREEN local |
+| --- | --- | --- |
+| B03 | Base sin registry/consumidor: el escenario de borrado no se puede aplicar (`B03-red`). | 23 cutover + 18 tombstone: duplicate/hash conflict, delete→late update, delete-before-create, UUID histórico/alias, PII, RLS/reset, grants Polar posteriores, Storage queue y ACK/retry. Svix firma real/tampering/caducidad/reintento Deno. |
+| B01 | Issuer basal incorrecto en Deno; JWT del handler anterior, firma validada por PostgREST, devuelve reset403 en vez de204 (`B01-red-http4`). | Handler actual→JWT firmado→PostgREST real reset204, perfil propio RLS; firma alterada, UUID/issuer/audiencia falsos, legacy, TTL>300, expired/future y bearer anterior al tombstone denegados. |
+| B02 | Cuatro RED exactos `B02-red-deno.log`: ordinary sin payment_id, Pro, parcial y agregado sin refund.updated. SQL basal carece de contrato order/subscription nullable (`B02-red-sql`). | Los cuatro GREEN, más pending→failed/canceled, late renewal, binding durable/entornos, otra fuente y reconciliación; SQL 34 aserciones del contrato monetario. |
+
+Gates locales finales: **551 Deno PASS / 1 ignored histórico**, con typecheck;
+**316 pgTAP PASS** (23+54+43+17+51+20+56+18+34), incluyendo inbox/concurrencia,
+proyección, reconciliación, lifecycle, observabilidad y acceso operacional.
+El nuevo gate HTTP sí ejecuta PostgREST real y no está omitido: admin SDK lee
+SQL real y el handler native-license firma Ed25519; se verifica la firma y que
+Pro refundado no aparece mientras Launch independiente sí permanece.
+Clerk OAuth y los datos monetarios son fixtures inyectadas, no servicios reales.
+Lint de Functions tocadas PASS; retirada/calidad 456 huellas PASS y diff --check PASS.
+Los gates finales se repiten tras rebase; resultados finales en issue/buzón.
+
+No cambios Rust, runtime/domain/ipc/testdata: fmt/check/Clippy/Nextest/lifecycle/
+telemetría nativos omitidos por alcance. No se atribuye a este cierre el verde
+Rust anterior de #1615. El cliente trata el bearer como opaco: protocolo intacto.
+Los tests históricos de autoridad Supabase legacy y refunds BIL-07 no sustituyen
+el contrato nuevo: sus escenarios aplicables se cubren por cutover/BIL-13. Se
+conservan sus archivos históricos; las suites activas Deno se adaptan a la
+política más restrictiva sin quitar escenarios o asserts de aislamiento.
+
+Fallos de entorno y primeros intentos conservados en `C:/tmp/1608-comercial/`:
+readiness OpenAPI de PostgREST, permiso de import dinámico, prefijo /rest/v1 del
+SDK en el servidor standalone y bootstrap de grants service_role. El runner usa
+DSN generado solo en loopback, base nueva, puerto aleatorio y limpieza propia;
+nunca recibe DSN remoto. Dos fixtures SQL heredadas se hacen portables: dblink
+usa el puerto real y la proyección evalúa su reloj inyectado en agosto en lugar
+de depender de la fecha del PC. No se cambia producto ni se relajan asserts.
+Los errores SQL del paquete #1523 (CASE y nombre de variable ambiguo) se reparan
+al verificarlo aquí. No se importa/preaprueba #1523 entero: solo los contratos
+de estos tres bloqueos; se preservan F01–F09 y el binding prioritario de #1615.
+
+### Entrega y límites
+
+VANTA-16/17/15 En curso durante ejecución; al cierre Por revisar con PR draft a
+nightly, GitHub #1608/area:plataforma/Project Vantare y handoff actualizados.
+No hay deploy/migración remota, scheduler activo, Clerk/Polar reales, precios,
+secrets, nuevas dependencias, compras/refunds, UI, datos/instalación de Isaac,
+merge de esta rama, promoción ni release. PostgREST v16.4 gratuito de GitHub
+oficial se descarga solo como herramienta bajo C:/tmp; no dependencia del repo.
+
+**B01/B02/B03 cerrados en implementación y pruebas locales; no constituyen
+autorización ni prueba de venta activa.** Queda review independiente del nuevo
+SHA, CI, configuración/despliegue separados y aceptación monetaria/Clerk/
+Storage/gateway gestionado reales con autorización. Rollback seguro: deshabilitar
+handlers/trust/scheduler y parar activación; no restaurar la autoridad legacy ni
+borrar tombstones/ledger para forzar un downgrade. Las migraciones se aplican
+en transacción sobre el esquema completo local; cualquier ambiguity de FK,
+ownership o versión aborta/quarantina, no se resuelve borrando historial.
+
 # Revisión de cuentas y pagos · #1608 · 14/10/2026
 
 ## Integración autorizada tras review r3 APTA

@@ -156,6 +156,8 @@ select is(
   'apply',
   'Pro root capability applies independently'
 );
+-- Evaluate within this fixture's paid period, independent of the machine date.
+select public.billing_refresh_entitlement_read_model_at('00000000-0000-4000-8000-000000000503','2026-08-02T11:00:00Z');
 select is((select status from public.user_entitlements where user_id = '00000000-0000-4000-8000-000000000503' and product_key = 'bundle'), 'active', 'Pro root capability grants bundle access');
 select is(
   (select outcome from public.billing_apply_resource_snapshot(

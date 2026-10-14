@@ -108,7 +108,7 @@ begin
     'questionnaires',case when public.testing_center_can_view_channel(p_channel)
       then public.testing_participation_current(p_channel)->'questionnaires' else '[]'::jsonb end,
     'contributions',coalesce((select jsonb_agg(to_jsonb(t)) from (
-      select c.id,c.title,c.body,c.state,coalesce(f.credit,false) as credit,
+      select c.id,c.title,''::text as body,c.state,coalesce(f.credit,false) as credit,
         coalesce(f.updated_at,c.created_at) as updated_at,f.fixed_version,
         c.state in ('accepted','fixed') and (f.notice_read_at is null or f.notice_read_at<f.updated_at) as notice
       from public.testing_contributions c left join public.testing_report_followup f on f.contribution_id=c.id

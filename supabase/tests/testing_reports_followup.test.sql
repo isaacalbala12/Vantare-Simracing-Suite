@@ -1,5 +1,5 @@
 begin;
-select plan(32);
+select plan(33);
 insert into public.profiles(id) values('16100000-0000-0000-0000-000000000001'),('16100000-0000-0000-0000-000000000002');
 set local role authenticated;
 set local request.jwt.claim.sub='16100000-0000-0000-0000-000000000001';
@@ -9,6 +9,7 @@ select lives_ok($$select public.testing_report_submit('16100000-0000-0000-0000-0
 select is((select count(*)::integer from public.testing_contributions),1,'one private row');
 select throws_ok($$select public.testing_report_submit('16100000-0000-0000-0000-000000000010','master','Otro','Texto',true)$$,'23505',null,'different retry rejected');
 select is(jsonb_array_length(public.testing_participation_current_v2('master')->'contributions'),1,'own history');
+select is(public.testing_participation_current_v2('master')->'contributions'->0->>'body','','history omits private body not displayed by UI');
 select lives_ok($$select public.testing_report_credit('16100000-0000-0000-0000-000000000010',true)$$,'credit opt in');
 select is((public.testing_participation_current_v2('master')->'contributions'->0->>'credit')::boolean,true,'credit persisted');
 set local request.jwt.claim.sub='16100000-0000-0000-0000-000000000002';

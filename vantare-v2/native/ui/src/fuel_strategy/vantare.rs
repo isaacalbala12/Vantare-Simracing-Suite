@@ -829,7 +829,11 @@ fn layout_lines(lines: &[Line], options: &Options, style: &Style) -> Plan2 {
     }
     Plan2 {
         width: options.width(style),
-        height: y + variant.padding_y,
+        height: match options.size {
+            Size::Compact => 128.0,
+            Size::Standard => 204.0,
+            Size::Expanded => 440.0,
+        },
         tops,
     }
 }
@@ -1894,6 +1898,28 @@ mod tests {
 
     fn texts(lines: &[Line]) -> String {
         format!("{lines:?}")
+    }
+
+    #[test]
+    fn every_fuel_state_keeps_its_frame_and_all_lines_fit() {
+        let photos = frames(include_str!("../../fixtures/fuel-vantare.scene.json"));
+        let style = Style::compiled();
+        for size in [Size::Compact, Size::Standard, Size::Expanded] {
+            let options = options(size);
+            let initial = layout(None, &options, &style);
+            for photo in &photos {
+                let board = State::project(photo);
+                let lines = lines(Some(&board), &options, true);
+                let plan = layout_lines(&lines, &options, &style);
+                assert_eq!((plan.width, plan.height), (initial.width, initial.height));
+                for (line, top) in lines.iter().zip(&plan.tops) {
+                    assert!(
+                        *top + height(line, &style, options.variant(&style)) <= plan.height,
+                        "{size:?}: línea fuera de marco {line:?}"
+                    );
+                }
+            }
+        }
     }
 
     #[test]

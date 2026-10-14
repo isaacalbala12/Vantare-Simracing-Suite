@@ -8,10 +8,11 @@ esa base antes del push. El HEAD/PR/checks finales están en issue/buzón.
 
 B03/B01/B02 implementados con RED→GREEN por bloqueo; detalle/decisiones/riesgos
 en `docs/analysis/review-cuentas-pagos-2026-10.md`. 551 Deno PASS/1 ignored,
-316 pgTAP PASS + JWT/PostgREST real y emisión nativa Ed25519 sobre SQL real.
+317 pgTAP PASS + JWT/PostgREST real y emisión nativa Ed25519 sobre SQL real.
 Se preservan los fixes de #1615; nuevo registry/trust y reconciliador vacíos/
 inertes. Sin Rust nuevo. Queda review/CI y activación/aceptación real separadas,
 sin producción/secretos/precios/datos reales/merge/promoción/release.
+Código probado `05e79d1a1cb68c48f07213aaa89a7d0a69e2b43a`, base `e5c90be5f63347fa4d50b4110e1946201c1957c0`.
 HEAD/PR/estados verificados finales en issue/buzón. Siguiente: review del cierre.
 
 ## #1608 · Integración de nightly (14/10/2026)

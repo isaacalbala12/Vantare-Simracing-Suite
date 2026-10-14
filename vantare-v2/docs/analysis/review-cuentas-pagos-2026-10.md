@@ -49,12 +49,12 @@ fabricar refund ID ni payment ID; la reconciliación recorre páginas sin trunca
 
 | Bloqueo | RED conservado | GREEN local |
 | --- | --- | --- |
-| B03 | Base sin registry/consumidor: el escenario de borrado no se puede aplicar (`B03-red`). | 23 cutover + 18 tombstone: duplicate/hash conflict, delete→late update, delete-before-create, UUID histórico/alias, PII, RLS/reset, grants Polar posteriores, Storage queue y ACK/retry. Svix firma real/tampering/caducidad/reintento Deno. |
+| B03 | Bearer firmado del handler basal por HTTP: perfil propio visible antes y después de entregar user.deleted, porque falta consumidor; expected 0, obtuvo 1 (`B03-red-http`). También se conserva el RED de registry ausente. | 23 cutover + 19 tombstone: duplicate/hash conflict, delete→late update, delete-before-create, UUID histórico/alias, PII, RLS/reset, grants Polar posteriores, Storage queue y ACK/retry. Svix firma real/tampering/caducidad/reintento Deno. |
 | B01 | Issuer basal incorrecto en Deno; JWT del handler anterior, firma validada por PostgREST, devuelve reset403 en vez de204 (`B01-red-http4`). | Handler actual→JWT firmado→PostgREST real reset204, perfil propio RLS; firma alterada, UUID/issuer/audiencia falsos, legacy, TTL>300, expired/future y bearer anterior al tombstone denegados. |
 | B02 | Cuatro RED exactos `B02-red-deno.log`: ordinary sin payment_id, Pro, parcial y agregado sin refund.updated. SQL basal carece de contrato order/subscription nullable (`B02-red-sql`). | Los cuatro GREEN, más pending→failed/canceled, late renewal, binding durable/entornos, otra fuente y reconciliación; SQL 34 aserciones del contrato monetario. |
 
 Gates locales finales: **551 Deno PASS / 1 ignored histórico**, con typecheck;
-**316 pgTAP PASS** (23+54+43+17+51+20+56+18+34), incluyendo inbox/concurrencia,
+**317 pgTAP PASS** (23+54+43+17+51+20+56+19+34), incluyendo inbox/concurrencia,
 proyección, reconciliación, lifecycle, observabilidad y acceso operacional.
 El nuevo gate HTTP sí ejecuta PostgREST real y no está omitido: admin SDK lee
 SQL real y el handler native-license firma Ed25519; se verifica la firma y que
@@ -81,6 +81,30 @@ de depender de la fecha del PC. No se cambia producto ni se relajan asserts.
 Los errores SQL del paquete #1523 (CASE y nombre de variable ambiguo) se reparan
 al verificarlo aquí. No se importa/preaprueba #1523 entero: solo los contratos
 de estos tres bloqueos; se preservan F01–F09 y el binding prioritario de #1615.
+
+### Verificación final del cierre local
+
+Código probado `05e79d1a1cb68c48f07213aaa89a7d0a69e2b43a`, base rebasada `e5c90be5f63347fa4d50b4110e1946201c1957c0`. Rebase sin conflictos;
+árbol de #1615 y nightly eran idénticos antes de aplicar los tres bloqueos.
+
+```
+05e79d1a fix(1608): reconcile refund restrictions and durable ownership (B02)
+2b675292 fix(1608): bind native data bearer to active Clerk UUID (B01)
+df527462 fix(1608): tombstone Clerk accounts and prevent resurrection (B03)
+```
+
+En este SHA: Deno completo 551 PASS/1 ignored; SQL 317 PASS; JWT/PostgREST
+real y emisor nativo Ed25519 sobre SQL real PASS. Los 25 TypeScript tocados
+pasan lint; los dos scripts del gate HTTP pasan check. Calidad/retirada 456
+huellas y diff --check PASS. Logs delivery-deno.log, delivery-sql-console.log,
+delivery-sql/, check-scripts.log y lint-all-final.log en C:/tmp/1608-comercial.
+El check inicial usó un flag Deno retirado; se corrigió la invocación y una
+anotación de tipos de la fixture dinámica, sin cambiar producto. El paquete
+standardwebhooks ya existía fijado a 1.0.0: se usa esa misma versión, sin nueva
+dependencia ni cambio de lock. Commit posterior solo de documentación.
+
+Push/PR draft/CI y Por revisar se verifican al publicar y quedan en issue/buzón;
+no se atribuye a esta rama la integración de #1615 hecha por otro actor.
 
 ### Entrega y límites
 

@@ -43,7 +43,7 @@ class Tests(unittest.TestCase):
                         r['context']['telemetry_summary']['errors'] = [{'type': 'Fixture', 'message': text,
                                                                        'first_line': text, 'fingerprint': 'fixture'}]
                         proposal = response()
-                        proposal['evidence_refs'] = ['log:L1-L1']
+                        proposal['evidence_refs'] = ['error:fixture']
                         if generated:
                             proposal['summary'] = text
                             proposal['preliminary_fix'] = text

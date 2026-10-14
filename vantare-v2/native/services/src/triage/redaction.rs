@@ -2,7 +2,29 @@
 use serde_json::Value;
 
 const REDACTED: &str = "<redacted>";
+pub(super) const REMOVED: &str = "[contenido retirado por privacidad]";
 const MAX_DEPTH: usize = 32;
+
+pub(super) fn external_text(text: &str, names: &[String], limit: usize) -> String {
+    if text == REMOVED {
+        return text.chars().take(limit).collect();
+    }
+    let cleaned = clean(text, names);
+    if cleaned != text
+        || [REDACTED, "<redactado>", "<user>", "<ruta>", "<persona>"]
+            .iter()
+            .any(|mark| text.contains(mark))
+        || text.chars().any(|c| c < ' ' && !"\t\r\n".contains(c))
+    {
+        return REMOVED.chars().take(limit).collect();
+    }
+    text.split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .chars()
+        .take(limit)
+        .collect()
+}
 
 pub(super) fn clean(text: &str, private_names: &[String]) -> String {
     clean_depth(text, private_names, 0)
@@ -83,37 +105,26 @@ fn clean_depth(text: &str, names: &[String], depth: usize) -> String {
         }
         return REDACTED.into();
     }
-    // Invalid/embedded/escaped JSON is ambiguous: keep only the free-text
-    // prefix per line. Never erase escapes before identifying private fields.
-    text.split('\n')
-        .map(|line| {
-            let start = [
-                line.find('{'),
-                line.find('['),
-                line.find(r#"\""#),
-                line.find(r"\u0022"),
-            ]
-            .into_iter()
-            .flatten()
-            .min();
-            if let Some(start) = start {
-                let prefix = free_text(&line[..start], names);
-                if prefix.ends_with(REDACTED) {
-                    prefix
-                } else {
-                    format!("{prefix}{REDACTED}")
-                }
-            } else if line.trim_start().starts_with(['[', '"'])
-                || line.trim_start().starts_with(r#"\""#)
-                || line.trim_start().starts_with(r"\u0022")
-            {
-                REDACTED.into()
-            } else {
-                free_text(line, names)
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n")
+    // Embedded fragments have no trustworthy end, including across lines.
+    let start = [
+        text.find('{'),
+        text.find('['),
+        text.find(r#"\""#),
+        text.find(r"\u0022"),
+    ]
+    .into_iter()
+    .flatten()
+    .min();
+    if let Some(start) = start {
+        let prefix = free_text(&text[..start], names);
+        if prefix.ends_with(REDACTED) {
+            prefix
+        } else {
+            format!("{prefix}{REDACTED}")
+        }
+    } else {
+        free_text(text, names)
+    }
 }
 
 fn free_text(text: &str, private_names: &[String]) -> String {
@@ -254,28 +265,17 @@ fn labeled_secrets(text: &str) -> String {
                 {
                     start += 1;
                 }
-                // Only bare scalars have a trustworthy whitespace delimiter.
-                // Quotes/escapes or Authorization consume the rest of the line.
-                let line_end = start
-                    + text[start..]
-                        .find(['\r', '\n'])
-                        .unwrap_or(text.len() - start);
-                let token = text[start..line_end]
-                    .split_whitespace()
-                    .next()
-                    .unwrap_or_default();
-                let end = if *label == "authorization"
-                    || text[start..line_end].contains(['\\', '"', '\''])
+                // Never resume copying a continuation of an ambiguous value.
+                let token = text[start..].split_whitespace().next().unwrap_or_default();
+                let end = if *label == "authorization" || text[start..].contains(['\\', '"', '\''])
                 {
-                    line_end
+                    text.len()
                 } else {
                     start + token.len()
                 };
-                if end > start {
-                    out.push_str(REDACTED);
-                    i = end;
-                    continue;
-                }
+                out.push_str(REDACTED);
+                i = end;
+                continue;
             }
         }
         let c = text[i..].chars().next().expect("boundary");

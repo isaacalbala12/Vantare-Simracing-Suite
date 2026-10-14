@@ -18,7 +18,10 @@ NOW=1791849600
 
 
 def report():
-    log='INFO start\nERROR overlay stalled user@example.invalid C:\\Users\\PrivateTester\\a\nINFO end'
+    log=json.dumps([{'level':'INFO','module':'services'},
+                    {'level':'ERROR','error_type':'Timeout','module':'overlay',
+                     'message':r'overlay stalled user@example.invalid C:\Users\PrivateTester\a'},
+                    {'level':'INFO','module':'services'}])
     return {'id':ID,'channel':'testers','created_at':'2026-10-13T00:00:00Z','title':'Overlay stalls',
         'body':'steps expected actual '*15,'context':{'app_version':'1.2.3','app_channel':'testers','game':'lmu','game_version':'1.0',
         'system':{'cpu':{'model':'CPU','cores':8},'username':'private','gpu':[{'model':'GPU','serial':'private'}]},

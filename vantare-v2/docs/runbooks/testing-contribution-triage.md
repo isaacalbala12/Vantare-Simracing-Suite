@@ -190,7 +190,14 @@ condiciones de privacidad escritas. Controles preparados del diseño r2:
 El proveedor externo será DeepSeek vía OpenCode Go. Recibirá únicamente un
 extracto redactado de hasta 24.000 caracteres: título/cuerpo, versiones y juego,
 hardware de lista blanca, errores/huellas, percentiles, los 20 últimos eventos,
-WARN/ERROR con contexto hasta 300 líneas y estadísticas del fragmento.
+solo campos de log estructurados permitidos (hasta 300 registros) y estadísticas
+del fragmento. El texto crudo del log queda solo para el owner: nunca modelo,
+T3 ni Intake. R4 #1594 sustituye el extracto por líneas por lista blanca;
+message/first_line/payload y nombres libres de eventos se descartan. Los
+timestamps de eventos son relativos. Título/cuerpo son una línea, 120/1000
+caracteres; un marcador sospechoso retira el campo entero antes de truncarlo.
+Contrato exacto y regresiones en `tools/triage/README.md` y
+`tools/triage/review-1602-r4-regressions.md` desde la raíz Git.
 No recibirá email, tokens, account_id, posthog_session_id, consentimiento,
 rutas con usuario identificable, lista completa de procesos, logs completos
 ni muestras del simulador. Redacción local antes de vista previa y otra en el

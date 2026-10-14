@@ -120,12 +120,16 @@ fn session_summary_uses_only_recent_observed_failures_and_events_without_posthog
     let events = summary["events"].as_array().expect("events");
     assert_eq!(errors.len(), 20);
     assert_eq!(events.len(), 50);
-    assert_eq!(errors[0]["message"], "ERROR services:refresh");
+    assert_eq!(errors[0]["error_type"], "ServicesCommandFailure");
+    assert!(errors[0].get("message").is_none());
+    assert!(errors[0].get("first_line").is_none());
     assert_eq!(
         errors[0]["fingerprint"],
         crate::content_hash(b"ERROR services:refresh")
     );
-    assert_eq!(events[0]["at"], "1970-01-01T00:32:30+00:00");
+    assert_eq!(events[0]["relative_ms"], 50_000);
+    assert!(events[0].get("name").is_none());
+    assert!(events[0].get("at").is_none());
     assert!(!summary.to_string().contains("report-send"));
     assert!(summary.get("performance").is_none());
     assert!(triage.summary(4000).is_null());
@@ -157,6 +161,68 @@ fn review_r3_f4_structural_json_before_preview() {
                 );
             }
         }
+    }
+}
+
+#[test]
+fn review_r4_f5_shared_export_fields_and_secret_property() {
+    let cases: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../../tools/triage/export-cases.json"
+    ))
+    .expect("shared F5 fixtures");
+    for case in cases.as_array().expect("cases") {
+        let raw = case["input"].as_str().expect("input");
+        let clean = redaction::external_text(raw, &[], 120);
+        assert_eq!(
+            clean,
+            case["expected"].as_str().expect("expected"),
+            "{}",
+            case["name"]
+        );
+        assert_eq!(redaction::external_text(&clean, &[], 120), clean);
+        for secret in case["secrets"].as_array().expect("secrets") {
+            let secret = secret.as_str().expect("secret");
+            assert!(!clean.contains(secret), "{}", case["name"]);
+            if raw.chars().count() <= 120 {
+                assert!(!prepared_text(raw).contains(secret), "{}", case["name"]);
+            }
+        }
+    }
+    assert_eq!(redaction::external_text("a\n b\r\n c", &[], 4), "a b ");
+    assert_eq!(
+        redaction::external_text(&"x".repeat(500), &[], 120),
+        "x".repeat(120)
+    );
+}
+
+#[test]
+fn review_r4_structured_log_scalar_parity() {
+    let cases: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../../tools/triage/log-field-cases.json"
+    ))
+    .expect("shared structured fixtures");
+    for case in cases.as_array().expect("cases") {
+        // Parsing a whole log is worker-only; Rust produces structured records
+        // directly from observed service outcomes. Test the shared projection.
+        let input =
+            serde_json::from_str::<serde_json::Value>(case["input"].as_str().expect("input"));
+        let values = match input {
+            Ok(serde_json::Value::Array(values)) => values,
+            Ok(value) => vec![value],
+            Err(_) => Vec::new(),
+        };
+        let records: Vec<_> = values
+            .iter()
+            .take(300)
+            .map(evidence::record)
+            .filter(|v| !v.as_object().expect("record").is_empty())
+            .collect();
+        assert_eq!(
+            serde_json::json!(records),
+            case["expected"],
+            "{}",
+            case["name"]
+        );
     }
 }
 
@@ -300,7 +366,7 @@ fn review_r2_f3_expanded_redaction_fits_sql_and_retries_exact_preview() {
             value.trim().chars().count()
         );
         assert!(!value.contains("::1"));
-        assert!(value.contains("<redactado>"));
+        assert_eq!(value, redaction::REMOVED);
     }
     let expected = serde_json::to_vec(&payload).expect("JSON");
     let server=Server::start(vec![

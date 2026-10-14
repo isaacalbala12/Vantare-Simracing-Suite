@@ -13,7 +13,7 @@ import urllib.parse
 import urllib.request
 import uuid
 from analysis import MODEL, extract, validate, utc
-from privacy import redact, clean_tree
+from privacy import external_text, atom
 from state import State
 import model
 import plane_intake
@@ -113,8 +113,30 @@ class NoRedirect(urllib.request.HTTPRedirectHandler):
         raise ValueError('webhook_redirect_denied')
 
 
+def external_payload(payload):
+    """Apply today's closed export contract to old durable spools as well."""
+    value = {k:payload[k] for k in ('delivery_id','sent_at','type','engine','reason') if k in payload}
+    contribution = payload['contribution']
+    value['contribution'] = {k:contribution[k] for k in ('id','channel','created_at') if k in contribution}
+    for key, limit in (('title',120),('body_redacted',1000)):
+        if key in contribution:
+            value['contribution'][key] = external_text(contribution[key],limit)
+    for key in ('app_version','game','game_version'):
+        if key in contribution:
+            value['contribution'][key] = atom(contribution[key])
+    proposal = payload.get('triage')
+    value['triage'] = None
+    if isinstance(proposal,dict):
+        value['triage'] = {k:proposal[k] for k in ('schema','verdict','criteria','duplicate_of','severity','area',
+                          'evidence_refs','confidence','trazable') if k in proposal}
+        value['triage'].update(summary=external_text(proposal['summary'],200),
+            preliminary_fix=external_text(proposal['preliminary_fix'],600) if proposal.get('preliminary_fix') is not None else None,
+            reasons=[external_text(r,200) for r in proposal.get('reasons',[])])
+    return value
+
+
 def deliver(payload, url, secret):
-    body=json.dumps(payload,ensure_ascii=False,separators=(',',':')).encode('utf-8')
+    body=json.dumps(external_payload(payload),ensure_ascii=False,separators=(',',':')).encode('utf-8')
     signature='sha256='+hmac.new(secret,body,hashlib.sha256).hexdigest()
     request=urllib.request.Request(url,data=body,headers={'Content-Type':'application/json','X-Hub-Signature-256':signature},method='POST')
     with urllib.request.build_opener(NoRedirect()).open(request,timeout=10) as response:
@@ -145,7 +167,7 @@ def pass_once(state, reports, history, versions, analyze, send, now, intake=None
         print(json.dumps({'id':id,'status':'intake_expired'}))
     def intake_send(id, payload):
         try:
-            intake(payload,state);state.intake_delivered(id)
+            intake(external_payload(payload),state);state.intake_delivered(id)
         except plane_intake.PlaneError as error:
             print(json.dumps({'id':id,'status':'intake_pending','reason':error.code}))
         except Exception:
@@ -156,7 +178,7 @@ def pass_once(state, reports, history, versions, analyze, send, now, intake=None
     # Retry delivery before polling/model work. Persisted spool prevents reanalysis.
     for id in state.deliveries(now) if retry_pending else []:
         try:
-            send(state.payload(id));state.delivered(id,now)
+            send(external_payload(state.payload(id)));state.delivered(id,now)
         except Exception:
             print(json.dumps({'id':id,'status':'delivery_pending'}))
     for report in reports[:20]:
@@ -166,8 +188,8 @@ def pass_once(state, reports, history, versions, analyze, send, now, intake=None
             continue
         base={'delivery_id':id,'sent_at':datetime.fromtimestamp(now,timezone.utc).isoformat(),
               'contribution':{'id':id,'channel':report['channel'],'created_at':report['created_at'],
-                  'title':redact(report['title']),'body_redacted':redact(report['body']),
-                  **{k:clean_tree((report.get('context') or {}).get(k)) for k in ('app_version','game','game_version')}}}
+                  'title':external_text(report['title'],120),'body_redacted':external_text(report['body'],1000),
+                  **{k:atom((report.get('context') or {}).get(k)) for k in ('app_version','game','game_version')}}}
         started=time.monotonic()
         invoked=False
         try:
@@ -188,7 +210,7 @@ def pass_once(state, reports, history, versions, analyze, send, now, intake=None
         if publish_intake:
             intake_send(id,payload)
         try:
-            send(payload);state.delivered(id,now)
+            send(external_payload(payload));state.delivered(id,now)
             print(json.dumps({'id':id,'status':'delivered'}))
         except Exception:
             print(json.dumps({'id':id,'status':'delivery_pending'}))

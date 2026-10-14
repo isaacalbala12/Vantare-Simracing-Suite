@@ -4,6 +4,7 @@ import json
 import re
 
 REDACTED = '<redacted>'
+REMOVED = '[contenido retirado por privacidad]'
 MAX_DEPTH = 32
 PRIVATE_KEYS = {'accesstoken', 'refreshtoken', 'accountid', 'hostname', 'computername',
                 'username', 'gamertag', 'token', 'apikey', 'licensekey', 'license',
@@ -29,19 +30,63 @@ def redact(text, depth=0):
             return clean
         except (ValueError, RecursionError, UnicodeError):
             return REDACTED
-    # Embedded, truncated or multiply escaped JSON is ambiguous. Keep only
-    # the free-text prefix of each line; never normalize JSON quote escapes.
-    lines = []
-    for line in text.split('\n'):
-        starts = [line.find(mark) for mark in ('{', '[', r'\"', r'\u0022') if mark in line]
-        if starts:
-            prefix = free_text(line[:min(starts)])
-            lines.append(prefix if prefix.endswith(REDACTED) else prefix + REDACTED)
-        elif line.lstrip().startswith(('[', '"', r'\"', r'\u0022')):
-            lines.append(REDACTED)
-        else:
-            lines.append(free_text(line))
-    return '\n'.join(lines)
+    # An embedded fragment has no trustworthy end, including across lines.
+    starts = [text.find(mark) for mark in ('{', '[', r'\"', r'\u0022') if mark in text]
+    if starts:
+        prefix = free_text(text[:min(starts)])
+        return prefix if prefix.endswith(REDACTED) else prefix + REDACTED
+    return free_text(text)
+
+
+def external_text(text, limit):
+    """Inspect the complete field before flattening/truncating. Fail closed."""
+    text = str(text)
+    if text == REMOVED:
+        return text[:limit]
+    cleaned = redact(text)
+    if cleaned != text or any(mark in text for mark in
+                              (REDACTED, '<redactado>', '<user>', '<ruta>', '<persona>')):
+        return REMOVED[:limit]
+    if any(ord(c) < 32 and c not in '\t\r\n' for c in text):
+        return REMOVED[:limit]
+    return ' '.join(text.split())[:limit]
+
+
+def atom(value):
+    return value if isinstance(value, str) and re.fullmatch(r'[A-Za-z0-9_.:-]{1,64}', value) else None
+
+
+def log_record(value):
+    """Closed scalar projection. No message, payload, identity or arbitrary keys."""
+    if not isinstance(value, dict):
+        return {}
+    result = {}
+    if value.get('level') in ('TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'):
+        result['level'] = value['level']
+    for key in ('error_code', 'error_type', 'module', 'version'):
+        if atom(value.get(key)) is not None:
+            result[key] = value[key]
+    for key in ('count', 'relative_ms'):
+        if type(value.get(key)) is int and 0 <= value[key] <= 1_000_000_000:
+            result[key] = value[key]
+    return result
+
+
+def log_fields(content):
+    """Parse a whole JSON document; legacy/free-text logs are owner-only."""
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('duplicate_log_key')
+            result[key] = value
+        return result
+    try:
+        value = json.loads(content, object_pairs_hook=unique)
+    except (ValueError, TypeError, RecursionError):
+        return []
+    values = value if isinstance(value, list) else [value]
+    return [record for v in values[:300] if (record := log_record(v))]
 
 
 def free_text(text):

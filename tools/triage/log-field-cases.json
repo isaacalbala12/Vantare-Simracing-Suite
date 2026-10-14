@@ -1,0 +1,41 @@
+[
+  {
+    "name": "allowlist",
+    "input": "[{\"level\": \"ERROR\", \"error_code\": \"E_TIMEOUT\", \"error_type\": \"Timeout\", \"module\": \"services\", \"version\": \"1.2.3\", \"count\": 2, \"relative_ms\": 500, \"message\": \"OpaqueTailSecret\", \"password\": \"OpaqueTailSecret\"}]",
+    "expected": [
+      {
+        "level": "ERROR",
+        "error_code": "E_TIMEOUT",
+        "error_type": "Timeout",
+        "module": "services",
+        "version": "1.2.3",
+        "count": 2,
+        "relative_ms": 500
+      }
+    ]
+  },
+  {
+    "name": "no-legacy-lines",
+    "input": "ERROR module=services\nOpaqueTailSecret",
+    "expected": []
+  },
+  {
+    "name": "invalid-values",
+    "input": "{\"level\": \"secret\", \"module\": \"a b\", \"error_code\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\", \"error_type\": \"a/b\", \"version\": \"user@example.invalid\", \"count\": true, \"relative_ms\": -1, \"message\": \"OpaqueTailSecret\"}",
+    "expected": []
+  },
+  {
+    "name": "bounds",
+    "input": "[{\"level\": \"WARN\", \"module\": \"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\", \"count\": 1000000000, \"relative_ms\": 1000000001}, {\"level\": \"INFO\", \"count\": 2.5}]",
+    "expected": [
+      {
+        "level": "WARN",
+        "module": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "count": 1000000000
+      },
+      {
+        "level": "INFO"
+      }
+    ]
+  }
+]

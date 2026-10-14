@@ -40,7 +40,7 @@ class Tests(unittest.TestCase):
                         post=next(c[2] for c in api.calls if c[0]=='POST')
                         for value in (captured,sent,post):
                             self.assertNotIn(secret,json.dumps(value))
-                            self.assertIn('ERROR',json.dumps(value))
+                            self.assertIn('[contenido retirado por privacidad]',json.dumps(value))
                         self.assertEqual(redact(redact(text)),redact(text))
                     finally:state.close()
         self.assertEqual(redact(r'ERROR unicode=\u00e9 public="session"'),r'ERROR unicode=\u00e9 public="session"')
@@ -50,7 +50,7 @@ class Tests(unittest.TestCase):
         r['attachments'][0]['content']='ERROR '+body
         r['attachments'][0]['sha256']=hashlib.sha256(r['attachments'][0]['content'].encode()).hexdigest()
         r['context']['telemetry_summary']['errors']=[{'type':'Fixture','message':body,'first_line':body,'fingerprint':'review-fixture'}]
-        captured=[];sent=[];proposal=response();proposal["evidence_refs"]=["log:L1-L1"]
+        captured=[];sent=[];proposal=response();proposal["evidence_refs"]=["error:review-fixture"]
         with tempfile.TemporaryDirectory() as root:
             state=State(root)
             try:
@@ -83,7 +83,7 @@ class Tests(unittest.TestCase):
                 model,delivery=self.pipeline(raw)
                 for output in (model,delivery):
                     self.assertNotIn('SyntheticOther',output);self.assertNotIn('Synthetic Other',output)
-                    self.assertIn('ERROR',output)
+                    self.assertIn('[contenido retirado por privacidad]',output)
 
     def test_review_p2_5_main_drains_and_purges_spool_before_failed_poll(self):
         with tempfile.TemporaryDirectory() as root:

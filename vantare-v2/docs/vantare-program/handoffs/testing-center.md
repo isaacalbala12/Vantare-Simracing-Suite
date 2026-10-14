@@ -1,5 +1,37 @@
 # Handoff vivo — Testing Center
 
+## R4 F5 · 14/10/2026 · CLI, gates en curso
+
+#1594 / VANTA-38/49 En curso. PR #1602 draft a nightly; STOP merge y sin envíos
+reales. Reanudación en 5d62f624, worktree limpio, commits heredados preservados.
+Encargo explícito de Isaac: cambiar a lista blanca de logs. El worker admite
+únicamente campos cerrados y acotados de registros JSON completos; omite texto
+crudo, messages/first_line/nombres libres/payload. Adjuntos privados del owner
+conservan almacenamiento y retención. Rust genera metadata de sesión sin
+mensajes, con timestamps relativos; Python revalida la misma proyección.
+No cambia SQL ni persistencia.
+
+Título/descripción y textos generados: si el filtro detecta marcador, campo
+completo sustituido por `[contenido retirado por privacidad]`; una línea y
+límites después de inspeccionar el original completo. Fallback por líneas
+eliminado en Python/Rust. También protege duplicados y spools antiguos antes de
+exportarlos, sin reanálisis. Fixtures de log ahora estructuradas y referencias
+al registro permitido; el texto de log ya no es evidencia externa. Se conserva
+la prueba HTML sobre texto limpio y se exige retirada completa ante marcador.
+
+RED Python en E:/tmp/isa1594-r4-evidence/python-red.log. Suite final Python
+47/47 PASS con sockets prohibidos, Rust focal inicial 17/17 PASS. Corpus
+compartido: 40 F5/campo vacío y 43 previos, límites/idempotencia y cuatro
+proyecciones escalares. Propiedad offline: 166 recorridos modelo/T3/POST Intake
+mock con resumen limpio/generado, más replay sin reanálisis. F5 cubre LF/CRLF/CR,
+JSON prefijado/completo/truncado/anidado, Authorization y asignación multilínea.
+fmt/check/Clippy y quality PASS; Nextest/lifecycle en curso por cola, jobs=2,
+timeout 3600 s y target exclusivo. Fallo inicial Clippy doc_markdown conservado;
+corregido con backticks, sin allow.
+Sin dependencias, diseño visual, proveedor, despliegue o envíos reales nuevos.
+Revisión externa pendiente; estado r3 de debajo es histórico.
+
+
 ## R3 F4 · 14/10/2026 · entrega CLI
 
 #1594 / VANTA-38/49 **Por revisar**, actualizado y releído mediante el

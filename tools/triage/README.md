@@ -14,16 +14,33 @@ despliegue: todavía no hay autorización ni condiciones de privacidad escritas.
 Los tests usan únicamente fixtures y un subprocess simulado; nunca llaman al
 proveedor, al webhook ni a producción.
 
-`privacy.py` repite redacción y proyección de hardware. Python/Rust parsean
-JSON y redactan por clave/valor antes de serializar; strings con JSON vuelven
-al mismo recorrido. No se normalizan comillas escapadas. JSON inválido,
-demasiado profundo o fragmentos ambiguos se omiten conservadoramente; los
-filtros de texto libre pueden retirar contexto público junto al privado.
-[Regresiones F4 y paridad](review-1602-r3-regressions.md).
+`privacy.py` aplica una lista blanca al log: **ningún log crudo llega al modelo,
+T3 o Intake**. Los adjuntos privados del owner conservan su almacenamiento y
+retención actuales. El worker solo admite un documento JSON completo (objeto o
+lista); rechaza texto libre, prefijos, JSON inválido y claves duplicadas. De los
+primeros 300 registros conserva únicamente level (TRACE/DEBUG/INFO/WARN/ERROR/
+FATAL), error_code/error_type/module/version (ASCII `[A-Za-z0-9_.:-]{1,64}`),
+count/relative_ms (enteros 0..1.000.000.000, sin bool). No copia message,
+first_line, payload ni claves arbitrarias. El resumen de sesión usa la misma
+proyección; type/fingerprint de errores también están acotados a 64 caracteres.
+Los eventos no llevan nombres libres ni horas absolutas. Rust genera registros
+estructurados desde resultados observados; Python los vuelve a validar.
+
+Título/descripción: una sola línea, máximos 120/1000 caracteres. Se inspecciona
+el campo **completo antes de truncar o normalizar whitespace**. Si la redacción
+actual cambia algo o encuentra un marcador de privacidad, se sustituye todo el
+campo por `[contenido retirado por privacidad]`. También se aplica a títulos de
+duplicados y texto generado (resumen 200, solución 600, razones 200). JSON se
+inspecciona por estructura sin borrar escapes; el fallback por líneas fue
+eliminado. Las propuestas pendientes de versiones anteriores pasan por el
+contrato actual al exportarse, sin reanálisis ni incluir claves de logs.
+[Regresiones F5, propiedad y paridad](review-1602-r4-regressions.md).
 `analysis.py` calcula
 trazabilidad con catálogo de versiones aprobado, candidatos de 14 días (≤15),
-presencia de evidencia y extracto JSON ≤24.000 caracteres. Logs WARN/ERROR con
-cinco líneas de contexto (≤300); del fragmento solo estadísticas, nunca muestras.
+presencia de evidencia y extracto JSON ≤24.000 caracteres. `log:Lx-Ly` identifica
+registros proyectados (índices 1..300), nunca líneas del log original. Un log
+descartado no aporta evidencia ni referencias. Del fragmento solo estadísticas,
+nunca muestras.
 Comprueba referencias reales y duplicados entre candidatos, valida JSON cerrado
 y rebaja a dudoso cuando faltan los criterios, la trazabilidad o hay evidencia
 débil; spam de confianza <0,7 también se rebaja.

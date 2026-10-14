@@ -6,7 +6,7 @@ import json
 import math
 import re
 from difflib import SequenceMatcher
-from privacy import redact, clean_tree, system
+from privacy import clean_tree, system, external_text, log_fields, log_record, atom
 
 MODEL = 'opencode-go/deepseek-v4.1-flash'
 AREAS = {'overlays','ingeniero','estrategia','launcher','calendario','testing-center','telemetria','plataforma','licencias','studio','otro'}
@@ -32,7 +32,7 @@ def candidates(report, history):
         same = ctx.get('game') == oc.get('game') and ctx.get('app_version') == oc.get('app_version')
         similar = SequenceMatcher(None, report['title'].casefold(), other['title'].casefold()).ratio() >= .7
         if same or fingerprints & of or similar:
-            result.append({'id': other['id'], 'title': redact(other['title']), 'app_version': clean_tree(oc.get('app_version')), 'game': oc.get('game')})
+            result.append({'id': other['id'], 'title': external_text(other['title'], 120), 'app_version': atom(oc.get('app_version')), 'game': oc.get('game') if oc.get('game') in ('lmu','acc','none') else None})
     return result[:15]
 
 
@@ -81,9 +81,20 @@ def extract(report, history, versions):
         raise ValueError('external_ai_consent_missing')
     items = set(consent.get('items') or [])
     summary = ctx.get('telemetry_summary') or {}
-    errors = [{k:e[k] for k in ('type','message','first_line','fingerprint') if k in e}
-              for e in summary.get('errors', [])[:20] if isinstance(e,dict)] if 'telemetry_summary' in items else []
-    events = [{k:e[k] for k in ('name','at') if k in e} for e in summary.get('events', [])[-20:] if isinstance(e,dict)] if 'telemetry_summary' in items else []
+    errors = []
+    events = []
+    if 'telemetry_summary' in items:
+        for e in summary.get('errors', [])[:20]:
+            if not isinstance(e, dict):
+                continue
+            error = log_record(e)
+            if atom(e.get('type')) is not None:
+                error['type'] = e['type']
+            if isinstance(e.get('fingerprint'), str) and re.fullmatch(r'[A-Za-z0-9_-]{1,64}', e['fingerprint']):
+                error['fingerprint'] = e['fingerprint']
+            if error:
+                errors.append(error)
+        events = [record for e in summary.get('events', [])[-20:] if (record := log_record(e))]
     performance = {k:{p:v[p] for p in ('p50','p95') if p in v and type(v[p]) in (int,float) and math.isfinite(v[p])}
                    for k,v in summary.get('performance', {}).items() if k in ('overlay_fps','cpu_percent','memory_mb','telemetry_latency_ms') and isinstance(v,dict)} if 'telemetry_summary' in items else {}
     refs = set()
@@ -101,23 +112,18 @@ def extract(report, history, versions):
         if attachment.get('kind') not in items:
             continue
         if attachment['kind'] == 'app_log':
-            lines = content.splitlines()[-2000:]
-            wanted = set()
-            for i, line in enumerate(lines):
-                if re.search(r'\b(?:WARN|ERROR)\b', line):
-                    wanted.update(range(max(0, i-5), min(len(lines), i+6)))
-            logs = [{'line': i+1, 'text': redact(lines[i])} for i in sorted(wanted)[:300]]
-            evidence |= bool(content.strip())
+            logs = [{'line': i+1, **record} for i, record in enumerate(log_fields(content))]
+            evidence |= bool(logs)
         elif attachment['kind'] == 'telemetry_fragment':
             stats = fragment_stats(content)
             evidence |= bool(stats)
     duplicate = candidates(report, history)
-    value = {'title': redact(report['title']), 'body': redact(report['body']),
-             'app_version': clean_tree(ctx.get('app_version')), 'app_channel': ctx.get('app_channel'),
-             'game': ctx.get('game'), 'game_version': clean_tree(ctx.get('game_version')),
+    value = {'title': external_text(report['title'], 120), 'body': external_text(report['body'], 1000),
+             'app_version': atom(ctx.get('app_version')), 'app_channel': ctx.get('app_channel') if ctx.get('app_channel') in ('testers','nightly') else None,
+             'game': ctx.get('game') if ctx.get('game') in ('lmu','acc','none') else None, 'game_version': atom(ctx.get('game_version')),
              'system': system(ctx.get('system') or {}) if 'system' in items else {},
-             'errors': clean_tree(errors), 'performance': clean_tree(performance),
-             'events': clean_tree(events), 'log': logs, 'fragment_statistics': stats, 'duplicate_candidates': duplicate}
+             'errors': errors, 'performance': performance,
+             'events': events, 'log': logs, 'fragment_statistics': stats, 'duplicate_candidates': duplicate}
     # Preserve valid JSON while trimming evidence, never slice serialized JSON.
     while len(json.dumps(value, ensure_ascii=False)) > 24000:
         if value['log']:
@@ -136,7 +142,7 @@ def extract(report, history, versions):
     refs = {f"error:{e['fingerprint']}" for e in value['errors'] if isinstance(e.get('fingerprint'), str)} | {
         f'perf:{m}_{p}' for m,v in value['performance'].items() for p in ('p50','p95') if p in v}
     traceable = bool(ctx.get('app_version') in versions.get(report['channel'], []) and ctx.get('game') in ('lmu','acc') and ctx.get('game_version'))
-    return value, {'traceable': traceable, 'evidence': evidence, 'content_minimum': len(report['body'].strip()) >= 200,
+    return value, {'traceable': traceable, 'evidence': evidence, 'content_minimum': len(value['body'].strip()) >= 200,
                    'refs': refs, 'lines': {x['line'] for x in value['log']}, 'candidates': {x['id'] for x in value['duplicate_candidates']}}
 
 
@@ -173,9 +179,9 @@ def validate(raw, facts):
     # IDs and schema/criteria stay exact; only free model text is redacted again.
     for k in ('schema','verdict','criteria','duplicate_of','severity','area','evidence_refs','confidence'):
         result[k] = raw[k]
-    result['summary'] = result['summary'][:200]
-    result['preliminary_fix'] = result['preliminary_fix'][:600] if result['preliminary_fix'] is not None else None
-    result['reasons'] = [r[:200] for r in result['reasons']]
+    result['summary'] = external_text(raw['summary'], 200)
+    result['preliminary_fix'] = external_text(raw['preliminary_fix'], 600) if raw['preliminary_fix'] is not None else None
+    result['reasons'] = [external_text(r, 200) for r in raw['reasons']]
     result['criteria'] = dict(criteria)
     if not facts['content_minimum']:
         result['criteria']['contenido_minimo'] = 'no'

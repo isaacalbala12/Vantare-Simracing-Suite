@@ -1,5 +1,6 @@
 //! Local preparation and exact retries. The model never runs on the tester's PC.
 mod capture;
+mod evidence;
 mod redaction;
 use crate::{
     Error, Result,
@@ -62,10 +63,12 @@ impl Triage {
             .filter(|(_, line)| line.starts_with("ERROR "))
             .take(20)
             .map(|(_, line)| {
-                serde_json::json!({
-                    "type":"ServicesCommandFailure", "message":line,
-                    "first_line":line, "fingerprint":crate::content_hash(line.as_bytes())
-                })
+                let mut record = evidence::record(&serde_json::json!({
+                    "level":"ERROR", "error_type":"ServicesCommandFailure", "module":"services"
+                }));
+                record["type"] = "ServicesCommandFailure".into();
+                record["fingerprint"] = crate::content_hash(line.as_bytes()).into();
+                record
             })
             .collect();
         errors.reverse();
@@ -73,9 +76,9 @@ impl Triage {
             .iter()
             .rev()
             .take(50)
-            .filter_map(|(at, line)| {
-                let at = chrono::DateTime::from_timestamp(i64::try_from(*at).ok()?, 0)?;
-                Some(serde_json::json!({"name":line,"at":at.to_rfc3339()}))
+            .map(|(at, line)| {
+                evidence::record(&serde_json::json!({"level": if line.starts_with("ERROR ") {"ERROR"} else {"INFO"},
+                    "module":"services", "relative_ms":now.saturating_sub(*at).saturating_mul(1000)}))
             })
             .collect();
         events.reverse();
@@ -154,14 +157,8 @@ impl Triage {
             ),
             // Redaction can expand short secrets. Bound the final SQL text
             // before preview so consent and every retry use these same values.
-            title: redaction::clean(title, private_names)
-                .chars()
-                .take(120)
-                .collect(),
-            body: redaction::clean(body, private_names)
-                .chars()
-                .take(1000)
-                .collect(),
+            title: redaction::external_text(title, private_names, 120),
+            body: redaction::external_text(body, private_names, 1000),
             context: serde_json::json!({"app_version":crate::product::VERSION,"app_channel":channel,
                 "game":observed.game,"game_version":observed.game_version.filter(|v|v.bytes().all(|b|b.is_ascii_digit() || b==b'.')),
                 "system":if selection.items.contains(&Item::System) {system} else {serde_json::json!({})},

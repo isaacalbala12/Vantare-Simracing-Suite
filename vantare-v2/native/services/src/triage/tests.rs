@@ -132,6 +132,32 @@ fn session_summary_uses_only_recent_observed_failures_and_events_without_posthog
 }
 
 #[test]
+fn review_r2_f1_json_representations_are_removed_before_preview() {
+    let basic = ["c3ludGhldGlj", "OmZpeHR1cmU="].concat();
+    for (label, secret, prefix) in [
+        ("accountId", "abcdefab-cdef-abcd-efab-abcdefabcdef", ""),
+        ("Authorization", basic.as_str(), "Basic "),
+        ("username", "SyntheticOther", ""),
+    ] {
+        for depth in 0..4 {
+            let raw = serde_json::json!({label:format!("{prefix}{secret}")})
+                .to_string()
+                .replace('"', &format!("{}\"", "\\".repeat(depth)));
+            assert!(
+                !prepared_text(&raw).contains(secret),
+                "label {label}, depth {depth}"
+            );
+            let clean = redaction::clean(&raw, &[]);
+            assert_eq!(redaction::clean(&clean, &[]), clean);
+        }
+    }
+    assert_eq!(
+        redaction::clean(r"ERROR unicode=\u00e9 public=context", &[]),
+        r"ERROR unicode=\u00e9 public=context"
+    );
+}
+
+#[test]
 fn review_p1_1_basic_and_sk_hyphen_are_removed_before_preview() {
     for (raw, secret) in [
         (

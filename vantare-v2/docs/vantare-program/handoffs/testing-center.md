@@ -1,9 +1,19 @@
 # Handoff vivo — Testing Center
 
-Estado #1594 / VANTA-38: migración aplicada en producción; cliente y worker
-inerte implementados; siete hallazgos de #1602 corregidos con RED/GREEN,
-commits separados y gates finales PASS. Plane Por revisar con PR para re-review.
-Cron, LOGIN/contraseña, proveedor y despliegue siguen pendientes de su OK.
+Estado #1594 / VANTA-38/49: reanudado por CLI sobre 197547a1 limpio.
+Re-review r2: F1 (P1), F2/F3 (P2), correcciones en esta rama sin activación.
+Migración aplicada anteriormente; worker inerte. PR #1602 a nightly,
+auto-merge apagado; no integrado ni desplegado.
+
+## Re-review r2 · 14/10/2026
+
+F1: RED Python reproduce fuga de JSON normal/escapado en modelo/propuesta/T3/
+POST mock Intake. RED Rust falla en prepare/preview para accountId escapado.
+Normalización acotada de comillas escapadas, sin decodificar JSON/Unicode;
+username JSON entra al mismo filtro. Regresiones review_r2_f1_json_representations_*
+cubren profundidad 0–3, resumen generado e idempotencia. Evidencia local
+E:/tmp/isa1594-r2-evidence/f1-*. Gates completos pendientes al cerrar F3.
+
 
 [Histórico anterior por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/testing-center.md).
 [Contrato y runbook de esta entrega](../../runbooks/testing-contribution-triage.md).

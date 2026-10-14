@@ -11,9 +11,40 @@ from unittest.mock import patch
 from state import State
 import triage
 from test_triage import report, response, NOW
+from test_plane_intake import MockPlane, CONFIG
+from privacy import redact
+import plane_intake
 
 
 class Tests(unittest.TestCase):
+    def test_review_r2_f1_json_representations_never_reach_any_sink(self):
+        account='abcdefab-cdef-abcd-efab-abcdefabcdef'
+        basic='c3ludGhldGlj'+'OmZpeHR1cmU='
+        fixtures=[(json.dumps({'accountId':account}),account),
+                  (json.dumps({'Authorization':'Basic '+basic}),basic),
+                  (json.dumps({'username':'SyntheticOther'}),'SyntheticOther')]
+        for raw,secret in fixtures:
+            for depth in range(4):
+                with self.subTest(label=raw.split(':')[0],depth=depth),tempfile.TemporaryDirectory() as root:
+                    text=raw.replace('"','\\'*depth+'"')
+                    r=report();r['title']=text;r['body']=text+' steps expected actual '*15
+                    proposal=response();proposal['summary']='ERROR '+text
+                    captured=[];sent=[];api=MockPlane()
+                    client=plane_intake.Intake(CONFIG,'test-sink-token',api)
+                    state=State(root)
+                    try:
+                        with patch('socket.socket',side_effect=AssertionError('network forbidden')):
+                            triage.pass_once(state,[r],[],{},lambda value:(captured.append(value) or proposal),
+                                             sent.append,NOW,intake=client.publish)
+                        self.assertEqual(len(captured),1);self.assertEqual(len(sent),1)
+                        post=next(c[2] for c in api.calls if c[0]=='POST')
+                        for value in (captured,sent,post):
+                            self.assertNotIn(secret,json.dumps(value))
+                            self.assertIn('ERROR',json.dumps(value))
+                        self.assertEqual(redact(redact(text)),redact(text))
+                    finally:state.close()
+        self.assertEqual(redact(r'ERROR unicode=\u00e9 public="session"'),r'ERROR unicode=\u00e9 public="session"')
+
     def pipeline(self, body):
         r=report();r['title']=body;r['body']=body+' steps expected actual '*15
         r['attachments'][0]['content']='ERROR '+body

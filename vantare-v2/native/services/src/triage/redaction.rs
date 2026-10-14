@@ -1,6 +1,6 @@
 //! Additional report redaction on top of the existing diagnostics cleaner.
 pub(super) fn clean(text: &str, private_names: &[String]) -> String {
-    let mut text = crate::diagnostics::clean_paths(&unc_paths(text));
+    let mut text = crate::diagnostics::clean_paths(&unc_paths(&plain_quotes(text)));
     text = labeled_secrets(&text);
     for name in private_names.iter().filter(|n| !n.is_empty()) {
         for form in [name.clone(), name.to_lowercase(), name.to_uppercase()] {
@@ -40,6 +40,27 @@ pub(super) fn clean(text: &str, private_names: &[String]) -> String {
         out.push_str(&part[word.len()..]);
     }
     phones(&out)
+}
+// Normalize escaped quote delimiters only, at any serialization depth in one
+// pass. Never decode arbitrary JSON/Unicode escapes into unredacted data.
+fn plain_quotes(text: &str) -> String {
+    let mut out = String::new();
+    let mut chars = text.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '\\' {
+            let mut count = 1;
+            while chars.peek() == Some(&'\\') {
+                chars.next();
+                count += 1;
+            }
+            if !chars.peek().is_some_and(|c| matches!(c, '"' | '\'')) {
+                out.extend(std::iter::repeat_n('\\', count));
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
 }
 // Redact before diagnostics normalizes escaped separators. Unknown shares do
 // not provide a trustworthy way to distinguish a user name from a directory.

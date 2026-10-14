@@ -6,6 +6,9 @@ REDACTED = '<redacted>'
 
 
 def redact(text):
+    # Normalize only escaped quotes, in one bounded pass. Do not decode JSON,
+    # Unicode escapes or paths: decoded data must never bypass the cleaner.
+    text = re.sub(r'\\+(["\'])', r'\1', str(text))
     # UNC shares may contain foreign profile names: omit the entire path.
     text = re.sub(r'(["\'])(?:\\\\|//)[^"\'\r\n]+\1', REDACTED, str(text))
     text = re.sub(r'(?<![:\\/])(?:\\\\|//)[^\s"\'<>;,]+', REDACTED, text)
@@ -13,10 +16,9 @@ def redact(text):
     for pattern in [
         r'(?i)\bauthorization["\']?\s*[:=]\s*["\']?\s*(?:basic|bearer)\s+[^\s"\'<>;,]+',
         r'(?i)\bbearer\s+["\']?[^\s"\'<>;,]+', r'\beyJ[A-Za-z0-9_./+=-]+',
-        r'\bsk[_-][A-Za-z0-9_-]+', r'(?i)\b(?:access[_-]?token|refresh[_-]?token|account[_-]?id|token|api[_-]?key|license[_-]?key|license|password|authorization|key)["\']?\s*[=:]\s*["\']?[^\s"\',;]+',
+        r'\bsk[_-][A-Za-z0-9_-]+', r'(?i)\b(?:access[_-]?token|refresh[_-]?token|account[_-]?id|hostname|computername|username|gamertag|token|api[_-]?key|license[_-]?key|license|password|authorization|key)["\']?\s*[=:]\s*(?:"[^"\r\n]*"|\'[^\'\r\n]*\'|[^\s"\',;]+)',
         r'[\w.!#$%&*+/?^`{|}~-]+@[\w.-]+', r'7656119\d{10}',
         r'(?i)\b(?:[0-9a-f]{2}[:-]){5}[0-9a-f]{2}\b',
-        r'(?i)\b(?:hostname|computername|username|gamertag)\s*[=:]\s*[^\s,;]+',
         r'(?<!\w)\+?\d[\d ()-]{5,}\d(?!\w)',
     ]:
         text = re.sub(pattern, REDACTED, text)

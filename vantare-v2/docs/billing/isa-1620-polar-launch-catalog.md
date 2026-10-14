@@ -30,12 +30,15 @@ y [API 2026-10](https://polar.sh/docs/api-reference/2026-10/discounts/create-dis
 El script fija `Polar-Version: 2026-10`, conforme a su
 [contrato de versiones](https://polar.sh/docs/api-reference/2026-10/versioning).
 
-Decisión operativa propuesta: `duration: forever` mantiene el importe contratado
-en renovaciones. No hay fecha de fin decidida para la campaña en #1620; no se
-inventa. Cerrar nuevas altas de campaña requiere retirar el descuento del
-Checkout Link/API o fijar su caducidad; no cambia suscripciones existentes.
-Isaac debe revisar esta duración antes de aplicar. El script detectará la
-caducidad u otros cambios como drift y exigirá revisión manual.
+Decisión confirmada en el último comentario de #1620: el descuento compuesto
+de creador usa `duration: repeating`, `duration_in_months: 2`. Pro cobra 3,19 €
+y Plus 5,59 € los meses 1 y 2, tanto durante como fuera del lanzamiento;
+desde el mes 3 vuelve el precio normal de 5,99/9,99 €. No hay stacking.
+El descuento de lanzamiento sin creador conserva `duration: forever`.
+La duración individual de creador no depende de una fecha de fin de campaña.
+Descuentos existentes con otra duración abortan como drift antes de escribir;
+requieren revisión manual, no una sustitución automática sobre suscripciones.
+Los importes anuales siguen pendientes de confirmación.
 
 `--creator ISAAC` genera códigos alfanuméricos por plan: `ISAACPROM`,
 `ISAACPROA`, `ISAACPLUSM`, `ISAACPLUSA`. Cada código pertenece a un solo
@@ -140,7 +143,7 @@ ejemplos operativos: usar el acordado con cada creador.
    el ID/código compuesto, no sumar ambos. Esta entrega no cambia el paywall
    ni habilita la campaña en la app.
 4. Probar cada plan sin descuento, con lanzamiento y con creador usando tarjetas
-   sandbox; comprobar primera factura y renovación, cancelación y refund,
+   sandbox; comprobar facturas de los meses 1, 2 y 3 (fin de creador), cancelación y refund,
    capabilities Pro/Plus y aislamiento de entornos. Probar que un código de Pro
    no sirve en Plus ni en Launch. Conservar evidencia sanitizada y actualizar
    Notion; esto no levanta por sí solo el no-go comercial de #1514/#1506.

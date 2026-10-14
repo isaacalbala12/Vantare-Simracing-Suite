@@ -2,6 +2,16 @@
 
 Estado de la base indicada; releer la issue antes de ejecutar.
 
+## #1620 · ronda 2 de review (14/10/2026)
+
+PR #1621 draft a nightly, review `C:/tmp/ola2/review-1621-sol.md` leída entera.
+P1-1: dos regresiones RED (forever aceptado y reconciliación incorrecta), luego
+GREEN. Creador repite solo dos meses; lanzamiento sin creador conserva forever.
+Drift de duración falla antes de mutar. Logs `C:/tmp/ola2/1620-r2-P1-1-*.log`.
+Pendientes P2-1, P2-2 y P2-3; sin llamadas Polar, secretos, deploy ni promoción.
+Falta identificador Plane VANTA-N en el encargo/#1620; se avisa en el buzón al
+orquestador sin crear tarea ni reutilizar el tracker Notion histórico.
+
 ## #1620 / VAN-782 · catálogo Polar preparado (14/10/2026)
 
 [Tarea Notion](https://app.notion.com/p/3f9e51695c6581229de0e11deabcd9ab), proyecto

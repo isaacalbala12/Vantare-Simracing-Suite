@@ -34,6 +34,7 @@ export type Resource = {
   trial_interval_count?: number | null;
   type?: string;
   duration?: string;
+  duration_in_months?: number | null;
   amounts?: Record<string, number>;
   code?: string | null;
   products?: { id: string }[];
@@ -114,8 +115,13 @@ function discountMatches(
   product: string,
   amount: number,
   code: string | null,
+  creator: boolean,
 ) {
-  return resource.type === "fixed" && resource.duration === "forever" &&
+  return resource.type === "fixed" &&
+    resource.duration === (creator ? "repeating" : "forever") &&
+    (creator
+      ? resource.duration_in_months === 2
+      : !resource.duration_in_months) &&
     resource.amounts?.eur === amount &&
     Object.keys(resource.amounts).length === 1 &&
     (resource.code ?? null) === code && resource.products?.length === 1 &&
@@ -186,7 +192,8 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
         (who ? creatorPrice(plan.launch_cents) : plan.launch_cents);
       if (
         matches[0] &&
-        (!product || !discountMatches(matches[0], product.id, amount, code))
+        (!product ||
+          !discountMatches(matches[0], product.id, amount, code, !!who))
       ) throw Error(`Discount drift ${key}; review manually`);
     }
   }
@@ -267,7 +274,8 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
           organization_id: map.organization_id,
           name: `Vantare ${key}`,
           type: "fixed",
-          duration: "forever",
+          duration: who ? "repeating" : "forever",
+          ...(who ? { duration_in_months: 2 } : {}),
           amounts: { eur: plan.normal_cents - final },
           products: [product.id],
           code,
@@ -276,7 +284,13 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
         writes++;
       }
       if (
-        !discountMatches(discount, product.id, plan.normal_cents - final, code)
+        !discountMatches(
+          discount,
+          product.id,
+          plan.normal_cents - final,
+          code,
+          !!who,
+        )
       ) throw Error(`Discount response mismatch ${key}`);
       offers[key] = { discount_id: discount.id, code, final_cents: final };
     }

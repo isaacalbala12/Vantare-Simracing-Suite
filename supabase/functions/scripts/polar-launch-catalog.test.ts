@@ -98,6 +98,40 @@ const options = {
   confirmAnnualLaunch: true,
 };
 
+Deno.test("P1-1: creator discounts repeat for two months and reconcile without writes", async () => {
+  const f = fake();
+  const first = await syncCatalog(f.http, sandbox, options);
+  const creatorDiscounts = f.discounts.filter((d) =>
+    d.metadata?.vantare_offer_key.includes(":creator:")
+  );
+  assertEquals(creatorDiscounts.length, 4);
+  for (const d of creatorDiscounts) {
+    assertEquals(d.duration, "repeating");
+    assertEquals(d.duration_in_months, 2);
+  }
+  for (const d of f.discounts.filter((d) => !creatorDiscounts.includes(d))) {
+    assertEquals(d.duration, "forever");
+  }
+  assertEquals((await syncCatalog(f.http, first, options)).writes, 0);
+});
+
+Deno.test("P1-1: unlimited or wrong-length creator discount fails before mutations", async () => {
+  for (const duration of ["forever", "repeating"]) {
+    const f = fake();
+    const first = await syncCatalog(f.http, sandbox, options);
+    const d = f.discounts.find((d) =>
+      d.metadata?.vantare_offer_key.includes(":creator:")
+    )!;
+    d.duration = duration;
+    Object.assign(d, {
+      duration_in_months: duration === "repeating" ? 3 : null,
+    });
+    const writes = f.writes.length;
+    await assertRejects(() => syncCatalog(f.http, first, options));
+    assertEquals(f.writes.length, writes);
+  }
+});
+
 Deno.test("catalog: complete mapping, inherited IDs/trials preserved, rerun has zero writes", async () => {
   const f = fake();
   const first = await syncCatalog(f.http, sandbox, options);

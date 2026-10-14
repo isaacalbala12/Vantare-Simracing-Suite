@@ -13,7 +13,7 @@ No lee disco, red ni sesión.
 
 | Editor → propietario | Qué hace el propietario |
 | --- | --- |
-| `Save(Draft)` | Copia los campos en `PilotProfile` (conserva `photo` y `extensions`), guarda solo en el PC; después llama a `mark_saved(draft)` o a `set_status(Some(error))`. |
+| `Save(Draft)` | Aplica solo diferencias respecto al formulario guardado en `PilotProfile` (conserva campos no editados, `photo` y `extensions`), guarda solo en el PC; después llama a `mark_saved(draft)` o a `set_status(Some(error))`. |
 | `ChoosePhoto` | Abre el selector, valida JPEG/PNG ≤ 5 MiB y ≤ 4096 px, decodifica y llama a `begin_crop(imagen, ancho, alto)`; si la rechaza, `set_status`. |
 | `ApplyCrop(Crop)` | Recorta la original, genera el JPEG 256×256 y llama a `set_photo(Some(imagen))`. |
 | `RemovePhoto` | Borra la foto y llama a `set_photo(None)`. |
@@ -30,6 +30,20 @@ restaurada por el flujo de cuenta, o el namespace local sin sesión. No se cambi
 el login. P2-1 y P3-1 de review r5 quedan inertes al no existir recarga remota.
 El pendiente/op_id se conserva como preparación, sin programar envíos; reactivar
 requiere una decisión y resolver esos hallazgos antes de cambiar el interruptor.
+
+Ronda 7: Guardar está deshabilitado y su acción no emite guardado hasta completar
+la primera carga local. Si se escribe antes del reply, `load_preserving_edits`
+conserva solo los campos modificados e incorpora los demás desde disco; el baseline
+es el perfil recibido. Guardar usa la misma mezcla por campo. Vaciar un campo ya
+cargado sigue siendo una edición; normalizar espacios u ordenar el catálogo de
+simuladores no sustituye campos no tocados. Logout limpia el formulario y vuelve
+a bloquear Guardar hasta la nueva carga. Un fallo de carga o Descartar antes del
+reply no habilitan Guardar.
+
+Regresiones Windows con ventana GPUI oculta y `Local` protegido en un temporal
+exclusivo: guardar perfil completo → reiniciar → editar solo nombre o simuladores
+→ entregar carga → guardar/reabrir, conservando el resto. Sin sleeps ni red.
+Los tests puros de la mezcla se ejecutan también sin sesión gráfica.
 
 ### Sincronización preparada e inerte (fuera de esta entrega)
 

@@ -30,6 +30,42 @@ pub struct Draft {
 }
 
 impl Draft {
+    /// Aplica solo diferencias respecto al formulario guardado; conserva el resto del destino.
+    #[must_use]
+    pub fn merge_edited(&self, baseline: &Self, target: &Self) -> Self {
+        fn edited<T: PartialEq>(current: T, saved: &T, target: T) -> T {
+            if current == *saved { target } else { current }
+        }
+        let current = self.trimmed();
+        let saved = baseline.trimmed();
+        let target = target.clone();
+        let same_simulators = current.simulators.len() == saved.simulators.len()
+            && current
+                .simulators
+                .iter()
+                .all(|id| saved.simulators.contains(id));
+        Self {
+            public_name: edited(current.public_name, &saved.public_name, target.public_name),
+            description: edited(current.description, &saved.description, target.description),
+            country: edited(current.country, &saved.country, target.country),
+            simulators: if same_simulators {
+                target.simulators
+            } else {
+                current.simulators
+            },
+            favorite_car: edited(
+                current.favorite_car,
+                &saved.favorite_car,
+                target.favorite_car,
+            ),
+            favorite_team: edited(
+                current.favorite_team,
+                &saved.favorite_team,
+                target.favorite_team,
+            ),
+        }
+    }
+
     /// Primer problema que impide guardar, redactado para el piloto.
     pub fn problem(&self) -> Option<&'static str> {
         let count = |value: &str| value.trim().chars().count();

@@ -16,7 +16,8 @@ fn draft(profile: &PilotProfile) -> Draft {
         favorite_team: profile.favorite_team.clone(),
     }
 }
-fn merge(profile: &mut PilotProfile, draft: Draft) {
+fn merge(profile: &mut PilotProfile, edits: &Draft, baseline: &Draft) {
+    let draft = edits.merge_edited(baseline, &draft(profile));
     profile.public_name = draft.public_name;
     profile.description = draft.description;
     profile.country = draft.country;
@@ -78,7 +79,7 @@ impl Hub {
                 self.settings.pilot_photo = PhotoEdit::Unchanged;
                 self.settings.pilot_source = None;
                 self.settings.pilot.update(cx, |editor, cx| {
-                    editor.load(Draft::default(), cx);
+                    editor.reset_for_load(cx);
                     editor.set_saved_photo(None, cx);
                     editor.set_status(Some(message), cx);
                 });
@@ -133,7 +134,11 @@ impl Hub {
                     );
                 }
                 let mut profile = state.profile.clone();
-                merge(&mut profile, draft);
+                merge(
+                    &mut profile,
+                    &draft,
+                    self.settings.pilot.read(cx).saved_draft(),
+                );
                 match &self.settings.pilot_photo {
                     PhotoEdit::Unchanged => {}
                     PhotoEdit::Remove => profile.photo = None,
@@ -266,6 +271,156 @@ impl Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(windows)]
+    fn delayed_initial_load(edit_simulators: bool) {
+        use gpui::AppContext;
+        struct Root(std::path::PathBuf);
+        impl Drop for Root {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+        gpui_platform::application().run(move |cx| {
+            crate::orbit::theme::apply(
+                crate::orbit::theme::AppearanceSettings::default(),
+                gpui::WindowAppearance::Dark,
+                cx,
+            );
+            let _window = cx
+                .open_window(
+                    gpui::WindowOptions {
+                        show: false,
+                        ..Default::default()
+                    },
+                    |window, cx| {
+                        let path = std::env::temp_dir().join(format!(
+                            "vantare-pilot-initial-{}-{edit_simulators}",
+                            std::process::id()
+                        ));
+                        std::fs::create_dir(&path).expect("QA exclusiva");
+                        let root = Root(path);
+                        let root = &root.0;
+                        let original = PilotProfile {
+                            public_name: "Ana".into(),
+                            description: "Resistencia local".into(),
+                            country: Some("ES".into()),
+                            simulators: vec!["lmu".into()],
+                            favorite_car: "Porsche".into(),
+                            favorite_team: "Equipo QA".into(),
+                            ..Default::default()
+                        };
+                        let mut local =
+                            vantare_services::pilot::Local::open(root, None, None).expect("abrir");
+                        local
+                            .save(original.clone(), 0)
+                            .expect("perfil previo en disco");
+                        drop(local);
+                        let mut local = vantare_services::pilot::Local::open(root, None, None)
+                            .expect("reiniciar");
+                        let loaded = local.state().clone();
+                        let editor = cx.new(|cx| {
+                            crate::pilot::view::initial_load_tests::delayed_load(
+                                &draft(&loaded.profile),
+                                edit_simulators,
+                                window,
+                                cx,
+                            )
+                        });
+                        let mut profile = loaded.profile;
+                        merge(
+                            &mut profile,
+                            &editor.read(cx).draft(cx).trimmed(),
+                            editor.read(cx).saved_draft(),
+                        );
+                        let mut expected = original;
+                        if edit_simulators {
+                            expected.simulators = vec!["acc".into()];
+                        } else {
+                            expected.public_name = "Bea".into();
+                        }
+                        assert_eq!(
+                            profile, expected,
+                            "editar un campo antes de PilotLoad debe conservar el resto al guardar"
+                        );
+                        local
+                            .save(profile, loaded.revision)
+                            .expect("guardar edición");
+                        drop(local);
+                        let reopened = vantare_services::pilot::Local::open(root, None, None)
+                            .expect("reabrir");
+                        assert_eq!(
+                            reopened.state().profile,
+                            expected,
+                            "perfil completo durable tras reapertura"
+                        );
+                        editor
+                    },
+                )
+                .expect("ventana GPUI QA oculta");
+            cx.quit();
+        });
+    }
+    #[cfg(windows)]
+    #[test]
+    fn initial_pilot_load_name_edit_preserves_saved_local_fields() {
+        delayed_initial_load(false);
+    }
+    #[cfg(windows)]
+    #[test]
+    fn initial_pilot_load_simulator_edit_preserves_saved_local_fields() {
+        delayed_initial_load(true);
+    }
+    #[test]
+    fn saving_only_name_keeps_untouched_fields_from_the_current_profile() {
+        let mut profile = PilotProfile {
+            public_name: "Ana".into(),
+            description: "  Resistencia local  ".into(),
+            country: Some("ES".into()),
+            simulators: vec!["acc".into(), "lmu".into(), "future-sim".into()],
+            favorite_car: "Porsche".into(),
+            favorite_team: "Equipo QA".into(),
+            ..Default::default()
+        };
+        let baseline = draft(&profile);
+        let mut edited = baseline.trimmed();
+        edited.public_name = "Bea".into();
+        edited.simulators.swap(0, 1); // Orden del catálogo UI: no es edición del usuario.
+        profile.description = "Datos locales posteriores".into();
+        profile.country = Some("NZ".into());
+        profile.favorite_car = "BMW".into();
+        profile.favorite_team = "Otro equipo".into();
+        profile
+            .extensions
+            .insert("future".into(), serde_json::json!(true));
+        let mut expected = profile.clone();
+        expected.public_name = "Bea".into();
+        merge(&mut profile, &edited, &baseline);
+        assert_eq!(profile, expected, "Guardar solo modifica el campo editado");
+    }
+
+    #[test]
+    fn saving_explicitly_cleared_fields_keeps_the_clears() {
+        let mut profile = PilotProfile {
+            public_name: "Ana".into(),
+            description: "Resistencia local".into(),
+            country: Some("ES".into()),
+            simulators: vec!["lmu".into()],
+            favorite_car: "Porsche".into(),
+            favorite_team: "Equipo QA".into(),
+            ..Default::default()
+        };
+        let baseline = draft(&profile);
+        let edited = Draft {
+            public_name: "Ana".into(),
+            ..Default::default()
+        };
+        merge(&mut profile, &edited, &baseline);
+        assert_eq!(
+            draft(&profile),
+            edited,
+            "Vaciar un campo ya cargado es una edición explícita"
+        );
+    }
     #[test]
     fn editing_preserves_photo_and_future_fields() {
         let mut profile = PilotProfile::default();
@@ -276,13 +431,15 @@ mod tests {
             jpeg: "fixture".into(),
         });
         let original = profile.photo.clone();
+        let baseline = draft(&profile);
         merge(
             &mut profile,
-            Draft {
+            &Draft {
                 public_name: "Piloto".into(),
                 country: Some("ES".into()),
                 ..Default::default()
             },
+            &baseline,
         );
         assert_eq!(profile.photo, original);
         assert_eq!(profile.extensions["future_team"], serde_json::json!(["A"]));

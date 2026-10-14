@@ -9,6 +9,9 @@ use gpui::{
 };
 use std::sync::Arc;
 
+#[cfg(all(test, windows))]
+pub(crate) mod initial_load_tests;
+
 /// Peticiones al propietario del modelo; el editor no persiste nada.
 #[derive(Clone, Debug, PartialEq)]
 pub enum PilotEvent {
@@ -68,6 +71,7 @@ impl Source {
 
 pub struct PilotEditor {
     saved: Draft,
+    loaded: bool,
     name: Entity<Input>,
     description: Entity<Input>,
     car: Entity<Input>,
@@ -137,6 +141,7 @@ impl PilotEditor {
         Self {
             simulators: draft.simulators.clone(),
             saved: draft,
+            loaded: false,
             name,
             description,
             car,
@@ -172,6 +177,7 @@ impl PilotEditor {
         });
         self.simulators.clone_from(&draft.simulators);
         self.saved = draft;
+        self.loaded = true;
         self.status = None;
         cx.notify();
     }
@@ -179,6 +185,7 @@ impl PilotEditor {
     /// Confirma que `draft` quedó guardado sin tocar lo que se esté escribiendo.
     pub fn mark_saved(&mut self, draft: Draft, cx: &mut Context<Self>) {
         self.saved = draft;
+        self.loaded = true;
         self.busy = false;
         self.status = Some("Perfil guardado.".into());
         cx.notify();
@@ -198,13 +205,21 @@ impl PilotEditor {
         self.set_photo(photo, cx);
     }
 
-    /// Una carga tardía conserva lo que el usuario empezó a escribir.
+    /// Una primera carga tardía incorpora los campos no editados y conserva los editados.
     pub fn load_preserving_edits(&mut self, draft: Draft, cx: &mut Context<Self>) {
-        if self.dirty(cx) {
-            self.mark_saved(draft, cx);
-        } else {
-            self.load(draft, cx);
-        }
+        let merged = self.draft(cx).merge_edited(&self.saved, &draft);
+        self.load(merged, cx);
+        self.saved = draft;
+    }
+
+    pub fn saved_draft(&self) -> &Draft {
+        &self.saved
+    }
+
+    /// Tras logout no se puede guardar contra el perfil anterior.
+    pub fn reset_for_load(&mut self, cx: &mut Context<Self>) {
+        self.load(Draft::default(), cx);
+        self.loaded = false;
     }
 
     /// Abre el recorte de una foto ya validada por servicios.
@@ -272,13 +287,15 @@ impl PilotEditor {
 
     pub(super) fn discard_changes(&mut self, cx: &mut Context<Self>) {
         let saved = self.saved.clone();
+        let loaded = self.loaded;
         self.load(saved, cx);
+        self.loaded = loaded;
         self.set_photo(self.saved_photo.clone(), cx);
         cx.emit(PilotEvent::Discard);
     }
 
     fn act(&mut self, action: Action, window: &mut Window, cx: &mut Context<Self>) {
-        if !action.enabled(self.busy) {
+        if !action.enabled(self.busy) || (action == Action::Save && !self.loaded) {
             return;
         }
         match action {
@@ -1030,7 +1047,7 @@ impl PilotEditor {
             .child(self.action(
                 orbit::carmine_button("pilot-save", "Guardar perfil", cx),
                 Action::Save,
-                dirty && !self.busy,
+                dirty && !self.busy && self.loaded,
                 cx,
             ))
     }

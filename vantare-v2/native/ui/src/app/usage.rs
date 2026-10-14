@@ -11,6 +11,7 @@ pub(super) struct State {
     sampled: Instant,
     clock: Activity,
     pending: BTreeMap<String, Duration>,
+    generation: Option<u64>,
 }
 
 impl Default for State {
@@ -21,11 +22,19 @@ impl Default for State {
             sampled: now,
             clock: Activity::default(),
             pending: BTreeMap::new(),
+            generation: None,
         }
     }
 }
 
 impl State {
+    fn consent(&mut self, generation: Option<u64>) {
+        if self.generation != generation {
+            self.generation = generation;
+            self.clock = Activity::default();
+            self.pending.clear();
+        }
+    }
     fn event(widget_type: &str, elapsed: Duration) -> Option<Usage> {
         (elapsed.as_secs() > 0).then(|| Usage::WidgetUsage {
             widget_type: widget_type.into(),
@@ -34,8 +43,10 @@ impl State {
     }
     pub fn finish(&mut self) {
         for (kind, elapsed) in std::mem::take(&mut self.pending) {
-            if let Some(event) = Self::event(&kind, elapsed) {
-                diagnostics::record_usage(&event);
+            if let Some(event) = Self::event(&kind, elapsed)
+                && let Some(generation) = self.generation
+            {
+                diagnostics::record_usage_in_generation(&event, generation);
             }
         }
     }
@@ -78,10 +89,17 @@ impl LiveScreens {
             return;
         }
         self.usage.sampled = now;
-        let allowed = diagnostics::configured()
-            && diagnostics::data_root()
-                .and_then(|root| diagnostics::Privacy::load(&root))
-                .is_ok_and(|privacy| privacy.usage);
+        let generation = diagnostics::configured()
+            .then(|| {
+                diagnostics::data_root()
+                    .and_then(|root| diagnostics::Privacy::load(&root))
+                    .ok()
+                    .filter(|privacy| privacy.usage)
+                    .map(|privacy| privacy.generation)
+            })
+            .flatten();
+        self.usage.consent(generation);
+        let allowed = generation.is_some();
         if !allowed {
             let _ =
                 self.usage
@@ -106,7 +124,9 @@ impl LiveScreens {
             .usage
             .observe(now.duration_since(self.usage.epoch), allowed, visible)
         {
-            diagnostics::record_usage(&event);
+            if let Some(generation) = generation {
+                diagnostics::record_usage_in_generation(&event, generation);
+            }
         }
     }
 }
@@ -114,6 +134,21 @@ impl LiveScreens {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn consent_generation_change_discards_widget_time_without_a_denied_sample() {
+        let mut state = State::default();
+        state.consent(Some(0));
+        state.observe(Duration::ZERO, true, visible());
+        state.observe(Duration::from_secs(1), true, visible());
+        state.consent(Some(1));
+        assert!(state.pending.is_empty());
+        assert!(
+            state
+                .observe(Duration::from_secs(2), true, visible())
+                .is_empty()
+        );
+        assert!(state.pending.values().all(Duration::is_zero));
+    }
     fn visible() -> BTreeSet<String> {
         ["pedals", "pedals", "standings"]
             .into_iter()

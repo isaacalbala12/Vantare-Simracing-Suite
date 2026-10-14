@@ -133,3 +133,38 @@ fn isa1609_a_paused_payload_cannot_post_after_revoke_or_reaccept() {
         fs::remove_dir_all(root).expect("cleanup");
     }
 }
+
+#[test]
+fn isa1609_identity_and_observations_reset_on_revocation() {
+    let root = tests::root();
+    choice(&root, true);
+    let before = consented_usage_id(&root)
+        .expect("identity")
+        .expect("allowed");
+    enqueue_once(&root, &Usage::AccountSignedIn {}).expect("observations");
+    choice(&root, false);
+    assert!(
+        !root.join("anonymous-id").exists(),
+        "revocation must erase local usage ID"
+    );
+    for marker in [
+        "installation-observed-v1",
+        "account-observed-v1",
+        "commercial-license-observed-v1",
+    ] {
+        assert!(
+            !root.join(marker).exists(),
+            "observation must not cross identities"
+        );
+    }
+    choice(&root, true);
+    assert_ne!(
+        before,
+        consented_usage_id(&root)
+            .expect("identity")
+            .expect("accepted again")
+    );
+    enqueue_once(&root, &Usage::AccountSignedIn {}).expect("fresh observations");
+    assert!(root.join("usage/00.json").exists() && root.join("usage/01.json").exists());
+    fs::remove_dir_all(root).expect("cleanup");
+}

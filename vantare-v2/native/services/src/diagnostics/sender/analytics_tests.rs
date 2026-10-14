@@ -6,13 +6,7 @@ use crate::{
 use serde_json::{Value, json};
 
 fn consent(root: &Path, allowed: bool) {
-    fs::write(
-        root.join(super::super::PRIVACY_FILE),
-        serde_json::to_vec(&json!({"crashes":false,"crashes_decided":true,
-            "usage":allowed,"usage_decided":true}))
-        .expect("json"),
-    )
-    .expect("consent");
+    super::super::consent_tests::choice(root, allowed);
 }
 
 #[test]
@@ -136,7 +130,7 @@ fn isa1609_tampered_queue_cannot_bypass_consent_or_property_catalog() {
 }
 
 #[test]
-fn isa1609_revocation_discards_pending_and_once_markers_do_not_replay() {
+fn isa1609_revocation_discards_pending_and_starts_new_observations() {
     let root = super::super::tests::root();
     let event = Usage::InstallationObserved {};
     enqueue_once(&root, &event).expect("no consent");
@@ -149,8 +143,8 @@ fn isa1609_revocation_discards_pending_and_once_markers_do_not_replay() {
     let server = Server::start(vec![]);
     flush(&root, &Http::default(), &server.base, Some("public-test")).expect("revoke");
     consent(&root, true);
-    enqueue_once(&root, &event).expect("no backfill");
-    assert_eq!(fs::read_dir(root.join("usage")).expect("queue").count(), 0);
+    enqueue_once(&root, &event).expect("fresh identity observation");
+    assert_eq!(fs::read_dir(root.join("usage")).expect("queue").count(), 1);
     assert!(server.requests.try_recv().is_err());
     server.finish();
     fs::remove_dir_all(root).expect("cleanup");

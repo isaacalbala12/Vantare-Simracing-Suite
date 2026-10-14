@@ -68,7 +68,8 @@ devuelve `Result<Option<String>>`: `None` sin `usage && usage_decided`, también
 tras revocar; configuración inválida devuelve error y se omite el vínculo.
 No crea ni lee `anonymous-id` mientras el permiso está apagado. Con permiso,
 devuelve el mismo UUID v4 local (36 caracteres minúsculos) usado como
-`distinct_id` por el emisor. Se conserva entre arranques y revocaciones; no
+`distinct_id` por el emisor. Se conserva entre arranques mientras hay permiso. Revocar borra el ID y los
+marcadores locales; reaceptar crea otro UUID y observaciones nuevas. No
 identifica cuentas ni equipos entre sí. No copiarlo al namespace Testing.
 #1610 debe revalidarlo en el momento de enviar cada informe; aceptar el informe
 voluntario o sus capturas no concede permiso de uso. Ausencia/error: omitir

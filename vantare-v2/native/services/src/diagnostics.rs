@@ -84,6 +84,20 @@ impl Privacy {
         Self::load(root)?.discard_disabled_locked(root)
     }
     fn discard_disabled_locked(self, root: &Path) -> Result<()> {
+        if !self.usage || !self.usage_decided {
+            for name in [
+                "anonymous-id",
+                "installation-observed-v1",
+                "account-observed-v1",
+                "commercial-license-observed-v1",
+            ] {
+                match fs::remove_file(root.join(name)) {
+                    Ok(()) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(_) => return Err(Error::Storage),
+                }
+            }
+        }
         for (folder, allowed) in [
             ("crashes", self.crashes && self.crashes_decided),
             ("usage", self.usage && self.usage_decided),
@@ -504,6 +518,16 @@ pub fn record_usage(event: &Usage) {
     let result = data_root().and_then(|root| enqueue_usage(&root, event));
     if let Err(error) = result {
         eprintln!("diagnóstico local: {error}");
+    }
+}
+
+/// Acumuladores: nunca autorizar tiempo antiguo con un permiso recién aceptado.
+pub fn record_usage_in_generation(event: &Usage, generation: u64) {
+    if !configured() {
+        return;
+    }
+    if let Err(error) = data_root().and_then(|root| enqueue_authorized(&root, event, generation)) {
+        eprintln!("uso local: {error}");
     }
 }
 

@@ -10,6 +10,7 @@ pub(super) struct State {
     clock: Activity,
     page: Option<Section>,
     pending: Duration,
+    generation: Option<u64>,
     pub active: bool,
 }
 
@@ -22,6 +23,7 @@ impl State {
             clock: Activity::default(),
             page: None,
             pending: Duration::ZERO,
+            generation: None,
             active,
         }
     }
@@ -38,6 +40,15 @@ impl State {
         }
         self.pending = Duration::ZERO;
         event
+    }
+
+    fn consent(&mut self, generation: Option<u64>) {
+        if self.generation != generation {
+            self.generation = generation;
+            self.clock = Activity::default();
+            self.pending = Duration::ZERO;
+            self.page = None;
+        }
     }
 
     fn observe(&mut self, now: Duration, enabled: bool, section: Section) -> Vec<Usage> {
@@ -95,16 +106,22 @@ impl Hub {
             return;
         }
         self.analytics.sampled = now;
-        let consent = diagnostics::configured()
-            && diagnostics::data_root()
-                .and_then(|root| diagnostics::Privacy::load(&root))
-                .is_ok_and(|privacy| privacy.usage);
+        let generation = diagnostics::configured()
+            .then(|| {
+                diagnostics::data_root()
+                    .and_then(|root| diagnostics::Privacy::load(&root))
+                    .ok()
+                    .filter(|privacy| privacy.usage)
+                    .map(|privacy| privacy.generation)
+            })
+            .flatten();
+        self.analytics.consent(generation);
         let available = self.demo.is_none()
             && self.capture.is_none()
             && !self.privacy_question_pending()
             && !self.remote.read(cx).requires_access()
             && self.shell.access.beta_lock(self.section).is_none();
-        let enabled = consent && available;
+        let enabled = generation.is_some() && available;
         if enabled {
             diagnostics::record_usage_once(&Usage::InstallationObserved {});
         }
@@ -113,13 +130,17 @@ impl Hub {
             enabled,
             self.section,
         ) {
-            diagnostics::record_usage(&event);
+            if let Some(generation) = generation {
+                diagnostics::record_usage_in_generation(&event, generation);
+            }
         }
     }
 
     pub(super) fn finish_usage(&mut self) {
-        if let Some(event) = self.analytics.flush() {
-            diagnostics::record_usage(&event);
+        if let Some(event) = self.analytics.flush()
+            && let Some(generation) = self.analytics.generation
+        {
+            diagnostics::record_usage_in_generation(&event, generation);
         }
     }
 }
@@ -127,6 +148,18 @@ impl Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn consent_generation_change_discards_page_time_even_without_a_denied_sample() {
+        let mut state = State::new(true);
+        state.consent(Some(0));
+        state.observe(Duration::ZERO, true, Section::Home);
+        state.observe(Duration::from_secs(1), true, Section::Home);
+        state.consent(Some(1));
+        assert!(state.flush().is_none());
+        let events = state.observe(Duration::from_secs(2), true, Section::Home);
+        assert!(matches!(events.as_slice(), [Usage::PageViewed { .. }]));
+        assert!(state.flush().is_none());
+    }
     #[test]
     fn pages_track_only_consent_active_time_and_do_not_restore_revoked_time() {
         let mut state = State::new(true);

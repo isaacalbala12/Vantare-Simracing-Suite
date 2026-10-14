@@ -194,6 +194,16 @@ struct Fixture {
     thread: Option<std::thread::JoinHandle<()>>,
 }
 impl Fixture {
+    fn config(&self) -> Config {
+        Config {
+            authorize: self
+                .base
+                .join("functions/v1/native-account-authorize")
+                .expect("URL"),
+            supabase: self.base.clone(),
+            anon_key: "public-fixture".into(),
+        }
+    }
     fn new() -> Self {
         let listener = TcpListener::bind("127.0.0.1:0").expect("listener");
         let base = url::Url::parse(&format!(
@@ -396,14 +406,7 @@ fn second_device_between_commit_and_retry_cannot_erase_receipt_or_be_overwritten
         let (root, store) = crate::test_store("pilot-two-devices");
         let account = crate::account::fixture(&fixture.base, &store);
         let http = Http::default();
-        let config = Config {
-            authorize: fixture
-                .base
-                .join("functions/v1/native-account-authorize")
-                .expect("URL"),
-            supabase: fixture.base.clone(),
-            anon_key: "public-fixture".into(),
-        };
+        let config = fixture.config();
         let session = config.authorize(&http, &account, 100).expect("session");
         let request = session.request(&http, &config, &account, 100);
         let mut first = Local::open(&root.join("device-1"), None, None).expect("first");

@@ -7,11 +7,11 @@
 3. La admisión compara la generación vigente y revocar vacía la cola local en memoria.
 4. Cola revocable de 32 entradas bajo mutex breve; callbacks try_lock sin I/O ni espera.
 5. Hub vacía acumuladores al guardar y páginas/widgets revalidan antes del cierre/muestreo.
-6. P2-2 `6b177190`: Busy de limpieza no elimina controles; worker cancelable reintenta.
-7. Carga con cerrojo retenido, limpieza diferida y revocación sin reiniciar: GREEN.
+6. P2-2 `6b177190` + `4357a6a5`: limpieza e importación Setup Busy no ocultan controles; reintento cancelable.
+7. Carga ocupada, importación diferida, revocación sin reiniciar y respuesta atrasada descartada: GREEN.
 8. P3 `88ddc324`: el error no inventa que los informes estén desactivados; indica decisión no confirmada.
-9. Services 130 + 2 procesos, Store 7, Nextest 1673/1673 (7 skips), lifecycle 18/18; fmt/check/Clippy PASS.
-10. Código publicado beb68c4f; PR draft #1617, VANTA-22 Por revisar (03:15 UTC). Sin producción/merge/release.
+9. Services 130 + 2 procesos, Store 9, Nextest 1675/1675 (7 skips), lifecycle 18/18; fmt/check/Clippy PASS.
+10. Código publicado 4357a6a5; PR draft #1617, VANTA-22 Por revisar (04:03 UTC). Sin producción/merge/release.
 
 Review: C:/tmp/ola2/review-1617-sol-r2.md; evidencia nueva C:/tmp/1609-r3.
 RED services: A restauraba Some(0); B conservaba/admitía dos observaciones tras revocar.
@@ -29,6 +29,18 @@ entre procesos. Resolver eso requiere una frontera de invalidación compartida;
 DUDA al orquestador en buzón. No se da por cerrado ese criterio estricto de review.
 Los escenarios A/B del mismo proceso y disponibilidad de los controles sí están corregidos.
 
+Seguimiento del mismo P2-2: después del primer cierre, una nueva regresión
+reprodujo Busy al importar la elección de Setup desde load. `4357a6a5` mantiene
+la lectura disponible, reintenta limpieza/importación en el mismo worker y devuelve
+valor/bytes observados al heartbeat por memoria. Busy es tipado; la API save_with
+que devuelve String se conserva. Los errores distintos de Busy no se reintentan.
+La respuesta solo se aplica si los bytes del Store no cambiaron desde el encargo;
+una revocación manual posterior no se sustituye ni se borran avisos ajenos.
+El test sincroniza worker terminado → revocación → recepción, sin sleeps.
+RED en installer-red-out/err.txt; nueve tests Store y suite completa GREEN.
+Se repitieron todos los gates por el nuevo cambio de código; los logs anteriores
+siguen en test-first-green-err.txt y test-followup-green-err.txt.
+
 El texto P3 es una corrección estática sin nuevo test de copia de cadenas; los tests
 de persistencia verifican que Busy no confirma una decisión. Primer comando Hub
 reducido falló por faltar la feature network: corregido solo el runner, conservado
@@ -37,9 +49,9 @@ Option::ok: corregido antes del RED válido; pasos/resultados registrados.
 Gates por compilar.ps1, timeout externo 1800/3600 s, target propio
 native/target/gates y dos jobs. Logs clippy-first/second-err.txt conservan las dos
 simplificaciones exigidas (if let y nombre/cierre explícito del worker); sin allows
-ni relajación. Nextest: 1673 PASS en 257,612 s, 7 skips del perfil; la prueba lenta
-go_physical_tyre_parity pasó en 121,645 s. Lifecycle: 5 Engineer + 13 Runtime PASS.
-Fmt/check/Clippy completos PASS; services 130 + 2 procesos, Store 7 PASS.
+ni relajación. Nextest final: 1675 PASS en 247,062 s, 7 skips del perfil; la prueba lenta
+go_physical_tyre_parity pasó en 118,254 s. Lifecycle: 5 Engineer + 13 Runtime PASS.
+Fmt/check/Clippy completos PASS; services 130 + 2 procesos, Store 9 PASS.
 Diff y marcadores de conflicto revisados; diff --check PASS. Sin nuevos cambios de código
 tras los gates; el commit de cierre es documental.
 Raíces de datos temporales, captura desactivada al compilar pruebas, HTTP loopback.
@@ -47,9 +59,9 @@ Sin QA GUI física ni validación LMU/ACC; telemetría dedicada no requerida por
 no se toca runtime/domain/ipc/testdata. Paneles/snippet intactos: no repetidos.
 Quality de integridad: 456 huellas PASS. Base conservada 69fa2d65, origin/nightly
 consultado 552c0d52; no se integra ese tip. PR #1617 sigue draft a nightly.
-Código final `beb68c4ff58573376302614136e1499cf3741adb` publicado y verificado
+Código final `4357a6a58d66f5648a9d02befc8a0c5b9f5a4dbc` publicado y verificado
 con ls-remote y gh pr view. PR #1617 draft a nightly, sin auto-merge ni mergeCommit.
-VANTA-22 Por revisar verificado desde raíz Git el 14/10 a las 03:15:20 UTC;
+VANTA-22 Por revisar verificado desde raíz Git el 14/10 a las 04:03:53 UTC;
 GitHub Project Vantare, area:plataforma, sin milestone. HEAD documental final y
 CI del mismo HEAD se verifican en la issue y en FIN del buzón, sin afirmar CI verde.
 Un commit por hallazgo y un cierre de gates/sincronización; no hay promoción.

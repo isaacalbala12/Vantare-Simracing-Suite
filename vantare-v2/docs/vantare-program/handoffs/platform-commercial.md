@@ -8,17 +8,20 @@ Ronda 3 publicada para revisión desde `f56156e3`; review Sol r2 completa.
 P2-1 `86fa6aa8`: RED A/B → GREEN, caché monotónica, admisión por generación,
 cola revocable de 32 entradas y acumuladores descartados/revalidados al retirar/cerrar.
 Callbacks try_lock sin I/O ni espera; worker persiste fuera del hilo UI.
-P2-2 `6b177190`: carga con consent.lock retenido, controles disponibles y limpieza
-Busy diferida en worker cancelable; revocación sin reiniciar GREEN.
+P2-2 `6b177190` + `4357a6a5`: carga con consent.lock retenido, controles disponibles,
+limpieza/importación Setup Busy diferidas en worker cancelable y revocación sin reiniciar.
+Busy tipado, wrapper save_with String conservado; resultado al heartbeat por memoria.
+Respuesta atrasada descartada si hubo decisión manual: test worker terminado →
+revocación → recibir respuesta, sin sleeps. No borra otros avisos de Ajustes.
 P3 `88ddc324`: error de decisión no confirmada/reintentar, sin afirmar que fallos
 estén apagados. `beb68c4f` cierra Clippy y refuerza la barrera del test heredado:
 la cancelación al cerrar no puede sustituir su comprobación final de consentimiento.
-Gates locales: fmt/check/Clippy, Nextest 1673/1673 (7 skips), lifecycle 18/18,
-services 130 + 2 procesos, Store 7 e integridad 456 huellas PASS. Errores iniciales
-conservados en C:/tmp/1609-r3; [informe](../../analytics/informe-1609.md).
-Código publicado `beb68c4ff58573376302614136e1499cf3741adb`, base `69fa2d65`;
+Gates finales: fmt/check/Clippy, Nextest 1675/1675 (7 skips), lifecycle 18/18,
+services 130 + 2 procesos, Store 9 e integridad 456 huellas PASS. RED y errores
+iniciales conservados en C:/tmp/1609-r3; [informe](../../analytics/informe-1609.md).
+Código publicado `4357a6a58d66f5648a9d02befc8a0c5b9f5a4dbc`, base `69fa2d65`;
 HEAD documental final y CI en issue/buzón. PR #1617 draft a nightly, sin auto-merge
-ni merge; VANTA-22 Por revisar verificado el 14/10 a las 03:15:20 UTC.
+ni merge; VANTA-22 Por revisar verificado el 14/10 a las 04:03:53 UTC.
 Origin/nightly consultado `552c0d52`; sin integración con ese tip ni promoción.
 **Criterio estricto pendiente:** la invalidación en otra UI depende del refresco
 Privacy del worker (espera normal 250 ms, mayor con I/O ocupado). Descarte al
@@ -30,7 +33,7 @@ datos/instalación reales de Isaac, merge ni release. Telemetría dedicada no re
 (sin cambios runtime/domain/ipc/testdata); paneles/snippet sin cambios, no repetidos.
 Pendientes iniciales de clave/panel real, Marketing/Setup, atribución y registro/pago
 backend conservados en informe/contrato. Acciones externas autorizadas: commits,
-push, actualización PR/issue y estado Plane. Última comprobación local: 03:15 UTC.
+push, actualización PR/issue y estado Plane. Última comprobación local: 04:03 UTC.
 
 ### Ronda 2 (evidencia anterior)
 

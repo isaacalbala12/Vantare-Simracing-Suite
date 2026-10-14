@@ -114,7 +114,9 @@ fn search_limits_match_deployed_validation() {
 
 #[test]
 fn local_contract_server_verifies_every_action_and_oauth_header() {
-    let id = "11111111-1111-4111-8111-111111111111".to_owned();
+    let id = crate::state::State::new(true, crate::state::Screen::Users).users[0]
+        .account_id
+        .clone();
     let actions = vec![
         Action::SearchAccounts {
             query: "Ana".into(),
@@ -149,6 +151,8 @@ fn local_contract_server_verifies_every_action_and_oauth_header() {
         Action::SetReportStatus {
             report_id: "report-1".into(),
             status: Status::Closed,
+            fixed_in_version: None,
+            reason: None,
         },
     ];
     for action in actions {
@@ -201,7 +205,7 @@ fn http_and_contract_errors_are_sanitized() {
         (401, "token=private", Error::Authentication),
         (403, "private detail", Error::Denied),
         (500, "private detail", Error::Offline),
-        (429, "", Error::Offline),
+        (429, "", Error::RateLimited),
         (302, "", Error::Protocol),
         (200, "not-json", Error::Protocol),
         (200, r#"{"version":2,"ok":true}"#, Error::Version),
@@ -290,4 +294,18 @@ fn screenshots_are_bounded_and_downloaded_without_oauth() {
         .expect("url");
     assert_eq!(client.screenshot(url.as_str()), Err(Error::Protocol));
     server.join().expect("server");
+}
+
+#[test]
+fn account_errors_have_distinct_recoverable_messages() {
+    for (code, expected) in [
+        ("confirmation_mismatch", Error::ConfirmationMismatch),
+        ("account_change_incomplete", Error::AccountChangeIncomplete),
+        ("deletion_barrier_unavailable", Error::DeletionUnavailable),
+    ] {
+        let body = format!(r#"{{"version":1,"ok":false,"error":"{code}"}}"#);
+        let (client, server) = serve(503, body.into_bytes());
+        assert_eq!(client.request("test", &Action::GetRollout), Err(expected));
+        server.join().expect("server");
+    }
 }

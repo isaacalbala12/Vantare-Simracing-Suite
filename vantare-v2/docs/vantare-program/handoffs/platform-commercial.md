@@ -29,8 +29,15 @@ vacío/error, sesión aislada del Hub en Mac/Windows. GPUI y servicios existente
 sin dependencias nuevas. QA demo y empaquetado privados locales; capturas y gates
 en `~/evidence/1627/`. Último hito SQL: 103 PASS; Edge completa 606 PASS/1 omitido;
 Nextest admin/services: 153 PASS. Se conservan fallos iniciales y evidencia RED.
-La entrega final completará comparación visual, checks y límites en
-`~/evidence/1627/RESUMEN.md`; no se afirma QA real de OAuth/Clerk/Polar/Windows.
+Comparación visual terminada: 31 capturas finales, cinco pantallas y fichas,
+confirmaciones/carga/vacío/error, correo incorrecto/correcto, alta completa por
+teclado y pago simulado. `~/evidence/1627/comparativa.html` conserva r1 junto a GPUI.
+Mac: fmt/check/build/Clippy PASS, Nextest 153 PASS, lifecycle 10 PASS, arquitectura
+PASS y quality/retirada 456 huellas. Paquete debug privado verificado fuera del
+repo; no se instaló en Applications/Escritorio reales. Tab/Mayús+Tab y foco inicial
+de formularios comprobados. Ventana QA cerrada y turno de pantalla liberado.
+Checks y límites detallados en `~/evidence/1627/RESUMEN.md`;
+no se afirma QA real de OAuth/Clerk/Polar/Windows.
 
 Sin merge, push, PR, promoción, release, despliegue ni efectos sobre datos reales.
 Siguiente: revisar diff y evidencias, recoger rama local, validar Windows; conectar

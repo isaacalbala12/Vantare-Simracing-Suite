@@ -1,0 +1,862 @@
+{
+  "users": [
+    {
+      "account_id": "00000000-0000-4000-8000-000000000001",
+      "name": "Isaac",
+      "email": "isaac@demo.invalid",
+      "owner": true,
+      "blocked": false,
+      "plan": "pro_plus",
+      "billing": "monthly",
+      "renews_at": "2026-11-01T10:12:00Z",
+      "roles": [
+        "owner",
+        "tester"
+      ],
+      "modules": [
+        "vantare.module.strategy",
+        "vantare.module.engineer",
+        "vantare.module.analysis",
+        "vantare.module.calendar"
+      ],
+      "module_access": [
+        {
+          "module": "vantare.module.strategy",
+          "role": true,
+          "rollout": true,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.engineer",
+          "role": true,
+          "rollout": false,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.analysis",
+          "role": true,
+          "rollout": false,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.calendar",
+          "role": true,
+          "rollout": true,
+          "individual": false,
+          "plan": true
+        }
+      ],
+      "created_at": "2026-08-03T10:12:00Z",
+      "last_seen_at": "Ahora",
+      "reports_count": 0,
+      "creator_code": null,
+      "payments": [],
+      "polar_customer_url": null
+    },
+    {
+      "account_id": "00000000-0000-4000-8000-000000000002",
+      "name": "Ana Martín",
+      "email": "ana.martin@demo.invalid",
+      "owner": false,
+      "blocked": false,
+      "plan": "pro",
+      "billing": "monthly",
+      "renews_at": "2026-11-02T10:12:00Z",
+      "roles": [
+        "tester"
+      ],
+      "modules": [
+        "vantare.module.strategy",
+        "vantare.module.engineer",
+        "vantare.module.analysis",
+        "vantare.module.calendar"
+      ],
+      "module_access": [
+        {
+          "module": "vantare.module.strategy",
+          "role": true,
+          "rollout": true,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.engineer",
+          "role": true,
+          "rollout": false,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.analysis",
+          "role": true,
+          "rollout": false,
+          "individual": true,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.calendar",
+          "role": true,
+          "rollout": true,
+          "individual": false,
+          "plan": true
+        }
+      ],
+      "created_at": "2026-09-02T10:12:00Z",
+      "last_seen_at": "Hoy, 10:12",
+      "reports_count": 4,
+      "creator_code": {
+        "code": "CARLOSGT",
+        "creator_id": "00000000-0000-4000-8000-000000000021",
+        "creator_name": "Carlos GT"
+      },
+      "payments": [
+        {
+          "payment_id": "demo-1-0",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-09-02T10:12:00Z",
+          "product": "Pro mensual · mes 1",
+          "period_index": 1,
+          "amount_cents": 319,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0
+        },
+        {
+          "payment_id": "demo-1-1",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-10-02T10:12:00Z",
+          "product": "Pro mensual · mes 2",
+          "period_index": 2,
+          "amount_cents": 319,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0
+        }
+      ],
+      "polar_customer_url": null
+    },
+    {
+      "account_id": "00000000-0000-4000-8000-000000000003",
+      "name": "Bruno Díaz",
+      "email": "bruno.diaz@demo.invalid",
+      "owner": false,
+      "blocked": false,
+      "plan": "pro_plus",
+      "billing": "yearly",
+      "renews_at": "2027-10-01T10:12:00Z",
+      "roles": [],
+      "modules": [
+        "vantare.module.strategy",
+        "vantare.module.engineer",
+        "vantare.module.analysis",
+        "vantare.module.calendar"
+      ],
+      "module_access": [
+        {
+          "module": "vantare.module.strategy",
+          "role": false,
+          "rollout": true,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.engineer",
+          "role": false,
+          "rollout": false,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.analysis",
+          "role": false,
+          "rollout": false,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.calendar",
+          "role": false,
+          "rollout": true,
+          "individual": false,
+          "plan": true
+        }
+      ],
+      "created_at": "2026-10-01T10:12:00Z",
+      "last_seen_at": "Ayer",
+      "reports_count": 0,
+      "creator_code": null,
+      "payments": [
+        {
+          "payment_id": "demo-2-0",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-10-01T10:12:00Z",
+          "product": "Pro Plus anual",
+          "period_index": 1,
+          "amount_cents": 6990,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0
+        }
+      ],
+      "polar_customer_url": null
+    },
+    {
+      "account_id": "00000000-0000-4000-8000-000000000004",
+      "name": "Carla Ruiz",
+      "email": "carla.ruiz@demo.invalid",
+      "owner": false,
+      "blocked": false,
+      "plan": "free",
+      "billing": null,
+      "renews_at": null,
+      "roles": [
+        "tester"
+      ],
+      "modules": [
+        "vantare.module.strategy",
+        "vantare.module.engineer",
+        "vantare.module.calendar"
+      ],
+      "module_access": [
+        {
+          "module": "vantare.module.strategy",
+          "role": true,
+          "rollout": true,
+          "individual": true,
+          "plan": false
+        },
+        {
+          "module": "vantare.module.engineer",
+          "role": true,
+          "rollout": false,
+          "individual": true,
+          "plan": false
+        },
+        {
+          "module": "vantare.module.analysis",
+          "role": true,
+          "rollout": false,
+          "individual": false,
+          "plan": false
+        },
+        {
+          "module": "vantare.module.calendar",
+          "role": true,
+          "rollout": true,
+          "individual": false,
+          "plan": false
+        }
+      ],
+      "created_at": "2026-08-21T10:12:00Z",
+      "last_seen_at": "Hoy, 09:40",
+      "reports_count": 7,
+      "creator_code": null,
+      "payments": [],
+      "polar_customer_url": null
+    },
+    {
+      "account_id": "00000000-0000-4000-8000-000000000005",
+      "name": "David Ortega",
+      "email": "d.ortega@demo.invalid",
+      "owner": false,
+      "blocked": false,
+      "plan": "free",
+      "billing": null,
+      "renews_at": null,
+      "roles": [],
+      "modules": [
+        "vantare.module.strategy",
+        "vantare.module.calendar"
+      ],
+      "module_access": [
+        {
+          "module": "vantare.module.strategy",
+          "role": false,
+          "rollout": true,
+          "individual": false,
+          "plan": false
+        },
+        {
+          "module": "vantare.module.engineer",
+          "role": false,
+          "rollout": false,
+          "individual": false,
+          "plan": false
+        },
+        {
+          "module": "vantare.module.analysis",
+          "role": false,
+          "rollout": false,
+          "individual": false,
+          "plan": false
+        },
+        {
+          "module": "vantare.module.calendar",
+          "role": false,
+          "rollout": true,
+          "individual": false,
+          "plan": false
+        }
+      ],
+      "created_at": "2026-09-28T10:12:00Z",
+      "last_seen_at": "5 oct",
+      "reports_count": 0,
+      "creator_code": null,
+      "payments": [
+        {
+          "payment_id": "demo-4-0",
+          "refund_reason": "No me funciona en mi PC",
+          "refunded_at": "2026-10-05T10:12:00Z",
+          "paid_at": "2026-09-28T10:12:00Z",
+          "product": "Pro mensual · mes 1",
+          "period_index": 1,
+          "amount_cents": 399,
+          "currency": "eur",
+          "status": "refunded",
+          "refunded_cents": 399
+        }
+      ],
+      "polar_customer_url": null
+    },
+    {
+      "account_id": "00000000-0000-4000-8000-000000000006",
+      "name": "Eva López",
+      "email": "eva.lopez@demo.invalid",
+      "owner": false,
+      "blocked": true,
+      "plan": "free",
+      "billing": null,
+      "renews_at": null,
+      "roles": [],
+      "modules": [
+        "vantare.module.strategy",
+        "vantare.module.calendar"
+      ],
+      "module_access": [
+        {
+          "module": "vantare.module.strategy",
+          "role": false,
+          "rollout": true,
+          "individual": false,
+          "plan": false
+        },
+        {
+          "module": "vantare.module.engineer",
+          "role": false,
+          "rollout": false,
+          "individual": false,
+          "plan": false
+        },
+        {
+          "module": "vantare.module.analysis",
+          "role": false,
+          "rollout": false,
+          "individual": false,
+          "plan": false
+        },
+        {
+          "module": "vantare.module.calendar",
+          "role": false,
+          "rollout": true,
+          "individual": false,
+          "plan": false
+        }
+      ],
+      "created_at": "2026-09-12T10:12:00Z",
+      "last_seen_at": "30 sep",
+      "reports_count": 0,
+      "creator_code": null,
+      "payments": [],
+      "polar_customer_url": null
+    },
+    {
+      "account_id": "00000000-0000-4000-8000-000000000007",
+      "name": "Iván Prieto",
+      "email": "ivan.prieto@demo.invalid",
+      "owner": false,
+      "blocked": false,
+      "plan": "pro",
+      "billing": "monthly",
+      "renews_at": "2026-11-09T10:12:00Z",
+      "roles": [],
+      "modules": [
+        "vantare.module.strategy",
+        "vantare.module.engineer",
+        "vantare.module.analysis",
+        "vantare.module.calendar"
+      ],
+      "module_access": [
+        {
+          "module": "vantare.module.strategy",
+          "role": false,
+          "rollout": true,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.engineer",
+          "role": false,
+          "rollout": false,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.analysis",
+          "role": false,
+          "rollout": false,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.calendar",
+          "role": false,
+          "rollout": true,
+          "individual": false,
+          "plan": true
+        }
+      ],
+      "created_at": "2026-10-09T10:12:00Z",
+      "last_seen_at": "12 oct",
+      "reports_count": 0,
+      "creator_code": {
+        "code": "CARLOSGT",
+        "creator_id": "00000000-0000-4000-8000-000000000021",
+        "creator_name": "Carlos GT"
+      },
+      "payments": [
+        {
+          "payment_id": "demo-6-0",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-10-09T10:12:00Z",
+          "product": "Pro mensual · mes 1",
+          "period_index": 1,
+          "amount_cents": 319,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0
+        }
+      ],
+      "polar_customer_url": null
+    },
+    {
+      "account_id": "00000000-0000-4000-8000-000000000008",
+      "name": "Marc Soler",
+      "email": "marc.soler@demo.invalid",
+      "owner": false,
+      "blocked": false,
+      "plan": "pro_plus",
+      "billing": "monthly",
+      "renews_at": "2026-11-15T10:12:00Z",
+      "roles": [
+        "tester"
+      ],
+      "modules": [
+        "vantare.module.strategy",
+        "vantare.module.engineer",
+        "vantare.module.analysis",
+        "vantare.module.calendar"
+      ],
+      "module_access": [
+        {
+          "module": "vantare.module.strategy",
+          "role": true,
+          "rollout": true,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.engineer",
+          "role": true,
+          "rollout": false,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.analysis",
+          "role": true,
+          "rollout": false,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.calendar",
+          "role": true,
+          "rollout": true,
+          "individual": false,
+          "plan": true
+        }
+      ],
+      "created_at": "2026-09-15T10:12:00Z",
+      "last_seen_at": "Hoy, 08:05",
+      "reports_count": 2,
+      "creator_code": {
+        "code": "LUCIASIM",
+        "creator_id": "00000000-0000-4000-8000-000000000022",
+        "creator_name": "Lucía Sim"
+      },
+      "payments": [
+        {
+          "payment_id": "demo-7-0",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-09-15T10:12:00Z",
+          "product": "Pro Plus mensual · mes 1",
+          "period_index": 1,
+          "amount_cents": 559,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0
+        },
+        {
+          "payment_id": "demo-7-1",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-10-15T10:12:00Z",
+          "product": "Pro Plus mensual · mes 2",
+          "period_index": 2,
+          "amount_cents": 559,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0
+        }
+      ],
+      "polar_customer_url": null
+    },
+    {
+      "account_id": "00000000-0000-4000-8000-000000000009",
+      "name": "Sergio Vidal",
+      "email": "sergio.v@demo.invalid",
+      "owner": false,
+      "blocked": false,
+      "plan": "pro_plus",
+      "billing": "monthly",
+      "renews_at": "2026-11-11T10:12:00Z",
+      "roles": [],
+      "modules": [
+        "vantare.module.strategy",
+        "vantare.module.engineer",
+        "vantare.module.analysis",
+        "vantare.module.calendar"
+      ],
+      "module_access": [
+        {
+          "module": "vantare.module.strategy",
+          "role": false,
+          "rollout": true,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.engineer",
+          "role": false,
+          "rollout": false,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.analysis",
+          "role": false,
+          "rollout": false,
+          "individual": false,
+          "plan": true
+        },
+        {
+          "module": "vantare.module.calendar",
+          "role": false,
+          "rollout": true,
+          "individual": false,
+          "plan": true
+        }
+      ],
+      "created_at": "2026-10-11T10:12:00Z",
+      "last_seen_at": "11 oct",
+      "reports_count": 0,
+      "creator_code": {
+        "code": "CARLOSGT",
+        "creator_id": "00000000-0000-4000-8000-000000000021",
+        "creator_name": "Carlos GT"
+      },
+      "payments": [
+        {
+          "payment_id": "demo-8-0",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-10-11T10:12:00Z",
+          "product": "Pro Plus mensual · mes 1",
+          "period_index": 1,
+          "amount_cents": 559,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0
+        }
+      ],
+      "polar_customer_url": null
+    }
+  ],
+  "creators": [
+    {
+      "history_complete": true,
+      "creator_id": "00000000-0000-4000-8000-000000000021",
+      "name": "Carlos GT",
+      "email": "carlos.gt@demo.invalid",
+      "code": "CARLOSGT",
+      "status": "active",
+      "clients_count": 3,
+      "sales_cents": 1516,
+      "earned_cents": 392,
+      "paid_out_cents": 96,
+      "owed_cents": 296,
+      "payable_cents": 0,
+      "last_payout_at": "30 sep",
+      "lines": [
+        {
+          "payment_id": "demo-1-0",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-09-02T10:12:00Z",
+          "product": "Pro mensual",
+          "period_index": 1,
+          "amount_cents": 319,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0,
+          "account_id": "00000000-0000-4000-8000-000000000002",
+          "name": "Ana Martín",
+          "email": "ana.martin@demo.invalid",
+          "rate_bp": 3000,
+          "commission_cents": 96,
+          "refunded": false
+        },
+        {
+          "payment_id": "demo-1-1",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-10-02T10:12:00Z",
+          "product": "Pro mensual",
+          "period_index": 2,
+          "amount_cents": 319,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0,
+          "account_id": "00000000-0000-4000-8000-000000000002",
+          "name": "Ana Martín",
+          "email": "ana.martin@demo.invalid",
+          "rate_bp": 1000,
+          "commission_cents": 32,
+          "refunded": false
+        },
+        {
+          "payment_id": "demo-6-0",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-10-09T10:12:00Z",
+          "product": "Pro mensual",
+          "period_index": 1,
+          "amount_cents": 319,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0,
+          "account_id": "00000000-0000-4000-8000-000000000007",
+          "name": "Iván Prieto",
+          "email": "ivan.prieto@demo.invalid",
+          "rate_bp": 3000,
+          "commission_cents": 96,
+          "refunded": false
+        },
+        {
+          "payment_id": "demo-8-0",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-10-11T10:12:00Z",
+          "product": "Pro Plus mensual",
+          "period_index": 1,
+          "amount_cents": 559,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0,
+          "account_id": "00000000-0000-4000-8000-000000000009",
+          "name": "Sergio Vidal",
+          "email": "sergio.v@demo.invalid",
+          "rate_bp": 3000,
+          "commission_cents": 168,
+          "refunded": false
+        }
+      ]
+    },
+    {
+      "history_complete": true,
+      "creator_id": "00000000-0000-4000-8000-000000000022",
+      "name": "Lucía Sim",
+      "email": "lucia.sim@demo.invalid",
+      "code": "LUCIASIM",
+      "status": "active",
+      "clients_count": 1,
+      "sales_cents": 1118,
+      "earned_cents": 224,
+      "paid_out_cents": 0,
+      "owed_cents": 224,
+      "payable_cents": 168,
+      "last_payout_at": null,
+      "lines": [
+        {
+          "payment_id": "demo-7-0",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-09-15T10:12:00Z",
+          "product": "Pro Plus mensual",
+          "period_index": 1,
+          "amount_cents": 559,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0,
+          "account_id": "00000000-0000-4000-8000-000000000008",
+          "name": "Marc Soler",
+          "email": "marc.soler@demo.invalid",
+          "rate_bp": 3000,
+          "commission_cents": 168,
+          "refunded": false
+        },
+        {
+          "payment_id": "demo-7-1",
+          "refund_reason": null,
+          "refunded_at": null,
+          "paid_at": "2026-10-15T10:12:00Z",
+          "product": "Pro Plus mensual",
+          "period_index": 2,
+          "amount_cents": 559,
+          "currency": "eur",
+          "status": "paid",
+          "refunded_cents": 0,
+          "account_id": "00000000-0000-4000-8000-000000000008",
+          "name": "Marc Soler",
+          "email": "marc.soler@demo.invalid",
+          "rate_bp": 1000,
+          "commission_cents": 56,
+          "refunded": false
+        }
+      ]
+    },
+    {
+      "history_complete": true,
+      "creator_id": "00000000-0000-4000-8000-000000000023",
+      "name": "Pablo Racing",
+      "email": "pablo@demo.invalid",
+      "code": "PABLORACING",
+      "status": "active",
+      "clients_count": 0,
+      "sales_cents": 0,
+      "earned_cents": 0,
+      "paid_out_cents": 0,
+      "owed_cents": 0,
+      "payable_cents": 0,
+      "last_payout_at": null,
+      "lines": []
+    }
+  ],
+  "reports": [
+    {
+      "report_id": "1042",
+      "name": "Carla Ruiz",
+      "email": "carla.ruiz@demo.invalid",
+      "title": "El plan no recalcula el combustible al cambiar de sesión",
+      "module": "Estrategia",
+      "app_version": "0.1.0.7-nightly.13",
+      "action_text": "Al pasar de clasificación a carrera, el plan sigue con el combustible de la sesión anterior.\nEsperaba que se recalculara solo al cargar la nueva sesión.\n\nPasos: abrir Estrategia → elegir carrera → cambiar de sesión en el juego.",
+      "created_at": "Hoy, 09:38",
+      "status": "submitted",
+      "has_screenshots": true,
+      "screenshots": [],
+      "fixed_in_version": null,
+      "reject_reason": null
+    },
+    {
+      "report_id": "1041",
+      "name": "Ana Martín",
+      "email": "ana.martin@demo.invalid",
+      "title": "El widget de relativos parpadea en Le Mans",
+      "module": "Overlays",
+      "app_version": "0.1.0.7-nightly.13",
+      "action_text": "En la recta de Hunaudières el widget de relativos parpadea cada pocos segundos. En Monza no pasa.",
+      "created_at": "Hoy, 08:51",
+      "status": "in_review",
+      "has_screenshots": true,
+      "screenshots": [],
+      "fixed_in_version": null,
+      "reject_reason": null
+    },
+    {
+      "report_id": "1038",
+      "name": "Carla Ruiz",
+      "email": "carla.ruiz@demo.invalid",
+      "title": "La voz del ingeniero se corta al entrar en boxes",
+      "module": "Ingeniero",
+      "app_version": "0.1.0.7-nightly.12",
+      "action_text": "Cuando entro en el pit lane, la frase que estaba diciendo se corta a la mitad.",
+      "created_at": "Ayer",
+      "status": "validated",
+      "has_screenshots": false,
+      "screenshots": [],
+      "fixed_in_version": null,
+      "reject_reason": null
+    },
+    {
+      "report_id": "1035",
+      "name": "Ana Martín",
+      "email": "ana.martin@demo.invalid",
+      "title": "Falta la última vuelta en el gráfico",
+      "module": "Análisis",
+      "app_version": "0.1.0.7-nightly.12",
+      "action_text": "El gráfico de vueltas no muestra la última vuelta de la sesión.",
+      "created_at": "10 oct",
+      "status": "rejected",
+      "has_screenshots": false,
+      "screenshots": [],
+      "fixed_in_version": null,
+      "reject_reason": "Es el mismo fallo que el informe 1030."
+    },
+    {
+      "report_id": "1030",
+      "name": "Marc Soler",
+      "email": "marc.soler@demo.invalid",
+      "title": "El gráfico de vueltas no enseña la vuelta final",
+      "module": "Análisis",
+      "app_version": "0.1.0.7-nightly.11",
+      "action_text": "Después de terminar la carrera la vuelta final no aparece en el gráfico.",
+      "created_at": "6 oct",
+      "status": "fixed",
+      "has_screenshots": true,
+      "screenshots": [],
+      "fixed_in_version": "0.1.0.7-nightly.12",
+      "reject_reason": null
+    }
+  ],
+  "rollout": [
+    {
+      "module": "vantare.module.strategy",
+      "enabled_for_all": true,
+      "individual_count": 1
+    },
+    {
+      "module": "vantare.module.engineer",
+      "enabled_for_all": false,
+      "individual_count": 1
+    },
+    {
+      "module": "vantare.module.analysis",
+      "enabled_for_all": false,
+      "individual_count": 1
+    },
+    {
+      "module": "vantare.module.calendar",
+      "enabled_for_all": true,
+      "individual_count": 0
+    }
+  ]
+}

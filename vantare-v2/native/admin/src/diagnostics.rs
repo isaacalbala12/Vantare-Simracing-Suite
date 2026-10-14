@@ -44,7 +44,7 @@ pub(crate) fn record(event: &str, elapsed_us: u128, outcome: &str) {
     if !timing_enabled(filter.as_deref(), event) {
         return;
     }
-    let Ok(root) = vantare_services::app::default_root() else {
+    let Ok(root) = crate::session::data_root() else {
         return;
     };
     record_at(&root, filter.as_deref(), event, elapsed_us, outcome);

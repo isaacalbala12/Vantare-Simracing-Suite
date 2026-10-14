@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1606",
+  "type": "fix",
+  "summary": "Correcciones de telemetría: grabación, pausas y parrilla LMU, tendencias y delta por vuelta, historial de pedales, huecos de gráficos y replay de medianoche.",
+  "technicalNotes": [
+    "El cierre ordenado conserva el último evento publicado; las identidades LMU tienen límite y las posiciones duplicadas se rechazan.",
+    "Reanudar una pausa exige un reloj válido. Señales numéricas inválidas dejan ausencia y huecos en las series.",
+    "Saltar o retroceder vueltas reinicia la tendencia estimada. Elegir 4 segundos conserva toda esa ventana de pedales.",
+    "Las capturas LMU admiten cruzar medianoche UTC sin cambiar el formato ni las dependencias.",
+    "Un retroceso pequeño con reloj creciente permite recuperar las muestras; el delta descarta esa candidata y conserva la referencia previa.",
+    "Los gráficos separan los puntos fiables de los chunks marcados con hueco para evitar continuidad no observada."
+  ],
+  "testing": [
+    "Con una copia portable y grabación de prueba, cerrar tras un evento de pits y comprobar su recuperación.",
+    "Probar pausa/reanudar LMU y saltos de vuelta; comprobar que los datos ausentes no aparecen como lecturas frescas.",
+    "Elegir 4 segundos en Input Telemetry y comprobar el tramo completo; reproducir una captura que cruce medianoche.",
+    "Con grabación de prueba, retroceder un metro y continuar: conservar las muestras posteriores y no acreditar una referencia delta incoherente.",
+    "Abrir una serie de prueba con reloj inválido entre dos muestras fiables y comprobar que los gráficos separan ambos extremos."
+  ],
+  "knownLimitations": [
+    "Validación física LMU/ACC pendiente; las regresiones y corpus no la sustituyen.",
+    "Persistir el último evento exige cierre ordenado y disco operativo; no garantiza recuperación tras muerte forzada.",
+    "La revisión no activa grabación automática de series ni modifica las instalaciones o datos reales del usuario.",
+    "El formato actual no localiza el hueco dentro del chunk: sus puntos se dibujan aislados, también en chunks posteriores si el flag persiste."
+  ]
+}

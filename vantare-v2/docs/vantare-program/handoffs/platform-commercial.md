@@ -9,9 +9,14 @@ al UUID original sin borrar aliases; conflicto 23505 aborta toda la transacción
 Pruebas pre-B03 reproducibles por `run-commercial-local.py --upgrade identity`
 y `--upgrade identity-conflict`. Evidencia `C:/tmp/1608-comercial-r2/`.
 GREEN 18/18 y conflicto/rollback 4/4 sobre PostgreSQL18 desechable.
-P1-2 pendiente: backfill de restricciones desde ledger anterior y refresh del
-read model en la misma migración. Solo local/tests; sin prod/servicios reales,
+P1-1 commit `a0db4d98`. P1-2 RED 14/26: partial/pending/agregado anteriores
+conservaban grant y read model activos. B02 proyecta cada agregado/refund
+persistido con UUID/entorno/fuente/versión reales y refresca usuarios bloqueados
+en la misma transacción, con writers serializados. No reescribe grants ni ledger;
+otra compra/suscripción/entorno y failed/canceled permanecen. Regresión
+`run-commercial-local.py --upgrade refunds`. Solo local/tests; sin prod/servicios reales,
 secretos/dependencias/promoción. SHAs y gates finales se verificarán en issue/buzón.
+GREEN P1-2 26/26 con estado insertado antes de las tres migraciones comerciales.
 
 ## #1608 · Cierre comercial B03 → B01 → B02 (14/10/2026)
 

@@ -8,7 +8,7 @@ parser.add_argument('--before-b01', action='store_true')
 parser.add_argument('--postgrest-bin')
 parser.add_argument('--deno-bin')
 parser.add_argument('--signer-module')
-parser.add_argument('--upgrade', choices=['identity', 'identity-conflict'])
+parser.add_argument('--upgrade', choices=['identity', 'identity-conflict', 'refunds'])
 args=parser.parse_args()
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 OUT=pathlib.Path(args.output).resolve(); OUT.mkdir(parents=True,exist_ok=True)

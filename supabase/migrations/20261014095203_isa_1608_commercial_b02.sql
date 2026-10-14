@@ -487,4 +487,32 @@ revoke all on function public.claim_billing_reconciliation(text,uuid),
 grant execute on function public.claim_billing_reconciliation(text,uuid),
   public.complete_billing_reconciliation(text,uuid,text,integer),
   public.release_billing_reconciliation(text,uuid,boolean) to service_role;
+
+-- Cut over the persisted ledger too: waiting for a new webhook or the inert
+-- reconciler would leave historical partial/pending refunds authorized.
+-- Serialize writers and commit restrictions plus the derived read model
+-- together. Preserve base grants, paid-through, IDs, versions and hashes.
+lock table public.billing_orders, public.billing_refunds, public.billing_access_grants
+  in share row exclusive mode;
+insert into public.billing_access_blocks(environment,source_type,source_id,cause_type,cause_id,user_id,
+  blocked,remote_modified_at,snapshot_hash)
+  select o.environment,case when o.provider_subscription_id is null then 'order' else 'subscription' end,
+    coalesce(o.provider_subscription_id,o.provider_order_id),'order_refund',o.provider_order_id,o.user_id,
+    o.reported_refunded_amount>0,o.remote_modified_at,o.snapshot_hash
+  from public.billing_orders o;
+insert into public.billing_access_blocks(environment,source_type,source_id,cause_type,cause_id,user_id,
+  blocked,remote_modified_at,snapshot_hash)
+  select o.environment,case when o.provider_subscription_id is null then 'order' else 'subscription' end,
+    coalesce(o.provider_subscription_id,o.provider_order_id),'refund',r.provider_refund_id,o.user_id,
+    r.status in ('pending','succeeded'),r.remote_modified_at,r.snapshot_hash
+  from public.billing_refunds r join public.billing_orders o
+    on o.provider=r.provider and o.environment=r.environment and o.provider_order_id=r.provider_order_id;
+do $$
+declare account uuid;
+begin
+  for account in select distinct user_id from public.billing_access_blocks where blocked
+  loop
+    perform public.billing_refresh_entitlement_read_model(account);
+  end loop;
+end $$;
 commit;

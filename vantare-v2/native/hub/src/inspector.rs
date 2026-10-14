@@ -275,6 +275,12 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     set!(Delta.reference string),
                 ),
             ];
+            rows.push(boolean(
+                "Fondo transparente",
+                Tab::Appearance,
+                value.transparent_background,
+                set!(Delta.transparent_background),
+            ));
             if value.size != "pill" {
                 rows.push(boolean(
                     "Barra de diferencia",

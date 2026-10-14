@@ -22,12 +22,13 @@ pub struct Settings {
     pub content_version: u8,
     pub style: crate::look::Tone,
     pub accent: crate::look::Accent,
-    /// Formato Vantare: `pill` (el del Studio), `bar` (380) o `expanded` (520).
+    /// Formato Vantare: `pill` (el del Studio), `bar` (380) o `expanded` (768).
     pub size: String,
     /// Referencia Vantare: `best`, `optimal` o `leader`.
     pub reference: String,
     pub show_bar: bool,
     pub show_sectors: bool,
+    pub transparent_background: bool,
     /// Marca Vantare: decisión inyectada por el host según la licencia.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub brand_visible: Option<bool>,
@@ -60,6 +61,7 @@ impl Settings {
             reference: "best".into(),
             show_bar: true,
             show_sectors: true,
+            transparent_background: false,
             brand_visible: None,
             template_id: "instrument".into(),
         }

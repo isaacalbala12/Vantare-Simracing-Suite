@@ -2,7 +2,7 @@
 //!
 //! El ViewModel es puro (`vantare_domain::delta`); aquí se mide y se
 //! pinta con el kit Vantare: píldora (la del Studio), barra de 380 y ampliado
-//! de 520 con referencia, vuelta predicha y sectores. La barra se desliza hacia
+//! de 768 con referencia, vuelta predicha y sectores. La barra se desliza hacia
 //! el valor nuevo y una vuelta récord personal destella en morado.
 
 use crate::app::Wake;
@@ -31,6 +31,7 @@ pub(crate) enum Size {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+#[allow(clippy::struct_excessive_bools)] // Opciones visuales independientes: barra, sectores, marca y transparencia.
 pub(crate) struct Options {
     pub look: Tone,
     pub accent: Accent,
@@ -38,6 +39,7 @@ pub(crate) struct Options {
     pub reference: Reference,
     pub show_bar: bool,
     pub show_sectors: bool,
+    pub transparent: bool,
     /// Marca Vantare en la cabecera (`brandVisible`, decidido por la licencia).
     pub brand: bool,
 }
@@ -59,6 +61,7 @@ impl Options {
             },
             show_bar: settings.show_bar,
             show_sectors: settings.show_sectors,
+            transparent: settings.transparent_background,
             brand: settings.brand_visible == Some(true),
         }
     }
@@ -131,22 +134,21 @@ fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Layout {
         };
     }
     let variant = options.variant(style);
-    let g = &style.geometry;
     let mut items = Vec::new();
     let mut y = variant.padding_y;
     let shown = board.filter(|b| !waiting(Some(b)));
     if shown.is_some_and(|b| b.banner.is_some()) {
         items.push((0.0, Item::Banner));
-        y = g.banner_height + g.banner_gap;
+    } else {
+        items.push((y, Item::Header));
     }
-    items.push((y, Item::Header));
     y += variant.header_height + variant.header_gap;
     if message(board) {
         items.push((y, Item::Message));
-        y += d.message_height;
+        y += d.message_height.max(d.big_height);
     } else {
         items.push((y, Item::Big));
-        y += d.big_height;
+        y += d.message_height.max(d.big_height);
     }
     if options.show_bar {
         items.push((y, Item::Bar));
@@ -155,6 +157,8 @@ fn layout(board: Option<&Board>, options: &Options, style: &Style) -> Layout {
     let sectors = shown.is_some_and(|b| !b.sectors.is_empty() && !grey(b) && !message(Some(b)));
     if options.size == Size::Expanded && sectors && options.show_sectors {
         items.push((y, Item::Sectors));
+    }
+    if options.size == Size::Expanded && options.show_sectors {
         y += d.sector_height;
     }
     Layout {
@@ -417,7 +421,9 @@ impl Visual {
             painter.pill_widget(window, cx, self.layout.height);
             return;
         }
-        painter.panel(window, self.layout.height);
+        if !self.options.transparent {
+            painter.panel(window, self.layout.height);
+        }
         for &(y, item) in &self.layout.items {
             match item {
                 Item::Banner => painter.banner(window, cx),
@@ -521,6 +527,38 @@ impl<'a> std::ops::Deref for Painter<'a> {
 }
 
 impl Painter<'_> {
+    fn ink(&self, face: Face, size: f32, tracking: f32, color: Hsla) -> text::TextInk<'_> {
+        let color = if self.options.transparent && color == self.variant.header_color.hsla() {
+            self.style.colors.text.hsla()
+        } else if self.options.transparent && color == self.style.colors.muted.hsla() {
+            self.style.colors.header_em.hsla()
+        } else {
+            color
+        };
+        self.kit.ink(face, size, tracking, color)
+    }
+
+    fn label(
+        &self,
+        window: &mut Window,
+        cx: &mut App,
+        value: &str,
+        x: f32,
+        right: Option<f32>,
+        top: f32,
+        height: f32,
+        face: Face,
+        ink: &text::TextInk<'_>,
+    ) -> f32 {
+        if self.options.transparent {
+            self.kit
+                .label_shadow(window, cx, value, x, right, top, height, face, ink)
+        } else {
+            self.kit
+                .label(window, cx, value, x, right, top, height, face, ink)
+        }
+    }
+
     fn pick(&self, es: &'static str, en: &'static str) -> &'static str {
         if self.es() { es } else { en }
     }
@@ -554,7 +592,9 @@ impl Painter<'_> {
     fn pill_widget(&self, window: &mut Window, cx: &mut App, height: f32) {
         let d = &self.style.delta;
         let c = &self.style.colors;
-        self.panel(window, height);
+        if !self.options.transparent {
+            self.panel(window, height);
+        }
         let pad = 16.0;
         let label = self.ink(Face::Body, d.pill_label, 0.3, c.muted.hsla());
         let x = pad
@@ -735,7 +775,8 @@ impl Painter<'_> {
         }
         let x = pad + width + 12.0;
         let muted = self.ink(Face::Body, self.style.fonts.small, 0.0, c.muted.hsla());
-        let base = y + 6.0;
+        // La predicha comparte la línea de base de la cifra grande (HTML baseline).
+        let base = y + 12.0;
         let label_h = d.big - 6.0;
         match board.phase {
             Phase::Invalid => {
@@ -857,7 +898,18 @@ impl Painter<'_> {
         let (pad, w) = (self.variant.padding_x, self.width);
         let span = w - 2.0 * pad;
         let mid = pad + span / 2.0;
-        round_rect(window, pad, y, span, d.bar, d.bar / 2.0, d.track.hsla());
+        window.paint_quad(quad(
+            crate::efficiency::rect(pad, y, span, d.bar),
+            Corners::all(px(d.bar / 2.0)),
+            if self.options.transparent {
+                Color(0, 0.5).hsla()
+            } else {
+                d.track.hsla()
+            },
+            Edges::all(px(if self.options.transparent { 1.0 } else { 0.0 })),
+            Color(0xffffff, 0.14).hsla(),
+            BorderStyle::default(),
+        ));
         let live = self.live().is_some_and(|b| b.phase == Phase::Live);
         if live && self.bar != 0.0 {
             let half = span / 2.0;
@@ -1069,6 +1121,7 @@ mod tests {
             show_bar: true,
             show_sectors: true,
             brand: false,
+            transparent: false,
         }
     }
 
@@ -1104,6 +1157,36 @@ mod tests {
         );
         assert!(hidden.height < shown.height);
     }
+    #[test]
+    fn approved_delta_has_fixed_size_across_states_and_transparency_round_trips() {
+        let style = Style::compiled();
+        let photos = frames(include_str!("../../fixtures/delta-vantare.scene.json"));
+        for size in [Size::Pill, Size::Bar, Size::Expanded] {
+            let options = options(size, Reference::PersonalBest);
+            let state = State::new(options.clone());
+            let initial = layout(None, &options, &style);
+            for photo in &photos {
+                let layout = layout(Some(&state.project(photo)), &options, &style);
+                assert_eq!(
+                    (layout.width, layout.height),
+                    (initial.width, initial.height)
+                );
+                if size == Size::Expanded {
+                    assert_eq!(layout.width, 768.0);
+                }
+            }
+        }
+        let settings = super::super::Settings {
+            transparent_background: true,
+            ..Default::default()
+        };
+        let restored: super::super::Settings =
+            serde_json::from_str(&serde_json::to_string(&settings).expect("guardar"))
+                .expect("cargar");
+        assert!(restored.normalized().transparent_background);
+        assert!(Options::from_settings(&restored).transparent);
+    }
+
     #[test]
     fn sizes_match_the_catalogue_and_states_change_the_items() {
         let style = Style::compiled();

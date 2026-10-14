@@ -123,6 +123,49 @@ impl Kit<'_> {
         width
     }
 
+    /// Texto legible sobre el juego: sombra oscura sin añadir un panel.
+    pub(crate) fn label_shadow(
+        &self,
+        window: &mut Window,
+        cx: &mut App,
+        value: &str,
+        x: f32,
+        right: Option<f32>,
+        top: f32,
+        height: f32,
+        face: Face,
+        ink: &text::TextInk<'_>,
+    ) -> f32 {
+        let mut shadow = *ink;
+        shadow.color = Color(0, 0.35).hsla();
+        for (dx, dy) in [(-1.0, 0.0), (1.0, 0.0), (0.0, -1.0), (0.0, 2.0)] {
+            self.label(
+                window,
+                cx,
+                value,
+                x + dx,
+                right.map(|r| r + dx),
+                top + dy,
+                height,
+                face,
+                &shadow,
+            );
+        }
+        shadow.color = Color(0, 0.9).hsla();
+        self.label(
+            window,
+            cx,
+            value,
+            x,
+            right,
+            top + 1.0,
+            height,
+            face,
+            &shadow,
+        );
+        self.label(window, cx, value, x, right, top, height, face, ink)
+    }
+
     /// Marca Vantare (símbolo + nombre) alineada a `right` en la caja de la
     /// cabecera. Devuelve su ancho para colocar el resto a su izquierda.
     pub(crate) fn brand(

@@ -30,6 +30,7 @@ pub struct Row {
     pub number: String,
     pub gap: String,
     pub is_player: bool,
+    pub in_pits: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -69,7 +70,7 @@ pub fn project_rows(snapshot: &Snapshot, prefs: Preferences, row_count: usize) -
     let rows = cars
         .into_iter()
         .filter(|_| status == Status::Ready)
-        .take(row_count.clamp(3, 10))
+        .take(row_count.clamp(3, 20))
         .map(|car| {
             let class = car.class.as_ref().map_or("", |class| class.name.as_str());
             let place = car.position.current().copied().filter(|p| *p > 0);
@@ -81,6 +82,7 @@ pub fn project_rows(snapshot: &Snapshot, prefs: Preferences, row_count: usize) -
                 accent: class_accent(class),
                 number: car.number.clone(),
                 gap: gap_text(car.gap_leader.current().copied(), place == Some(1), prefs),
+                in_pits: car.in_pits.current() == Some(&true),
                 is_player: state.player.is_some_and(|player| player.car == car.id),
             }
         })

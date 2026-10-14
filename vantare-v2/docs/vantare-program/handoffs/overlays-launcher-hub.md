@@ -102,3 +102,5 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 #1629 Mac: Vuelta rápida 480×104 con tipografía aprobada, mejora observada, coche/dorsal y sectores disponibles; conserva silencio inicial/expiración live. 5 tests PASS; fixture exacta da preview fija al Workshop. Captura Hub en `~/evidence/1629/fastest-lap/`.
 
 #1629 Mac: Cara a cara 780×72; solo pareja jugador/rival seleccionado, últimas vueltas, diferencias de sector y alcance estimado desde ritmo observado. Se conserva el selector delante/detrás; ausencia de ritmo no extrapola. Tests Domain/UI PASS y captura Hub en `~/evidence/1629/head-to-head/`.
+
+#1629 Mac: Torre 1400×56, 11 fichas por defecto (hasta 20), grupos de clase, código de piloto, batalla <1 s, boxes y movimiento/carrusel conservados. Domain/UI tests PASS; captura Hub completa en ventana QA 1800×900, `~/evidence/1629/broadcast-tower/`. Cara a cara está en de851415 (corrige AVANCE anterior sin commit).

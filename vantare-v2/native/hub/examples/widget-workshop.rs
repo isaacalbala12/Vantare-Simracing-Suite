@@ -42,7 +42,14 @@ fn main() -> Result<(), String> {
             capture: Some(capture),
             capture_output: None,
             capture_appearance: None,
-            capture_size: Some((1440, 900)),
+            capture_size: Some((
+                if kind == vantare_ui::Kind::BroadcastTower {
+                    1800
+                } else {
+                    1440
+                },
+                900,
+            )),
             capture_zoom: Some(100),
         },
         Access {

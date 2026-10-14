@@ -338,7 +338,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 "Filas",
                 value.row_count as f64,
                 3.0,
-                10.0,
+                20.0,
                 1.0,
                 set!(BroadcastTower.row_count as usize),
             ),

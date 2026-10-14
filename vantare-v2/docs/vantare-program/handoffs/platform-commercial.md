@@ -1,5 +1,11 @@
 ## #1627 · VANTA-21 · miniapp de gestión r1 (14/10/2026)
 
+**Cierre verificado 2026-10-14 19:00 UTC:** VANTA-21 con resumen actualizado y
+estado «Por revisar» mediante el script autorizado del Mac. Implementación local
+`b7a217394f45778290624139f25d3982f0610fa6`; HEAD final de recogida en
+`~/orq/1627.buzon.md` y `~/evidence/1627/RESUMEN.md`. Sin PR/CI remoto ni push.
+
+
 Worker Codex macOS arm64, sin subagentes/GitHub/push. Rama
 `vantareapp/isa-1627-miniapp-gestion`, base nightly local `b9ec75ed5435fb95130946cd207a4fa1ce8b8a64`.
 Issue #1627 leída de `~/orq/1627.issue.md`; diseño aprobado `admin-r1.html` y

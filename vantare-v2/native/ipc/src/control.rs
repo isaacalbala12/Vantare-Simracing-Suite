@@ -52,8 +52,9 @@ pub enum CatalogAccess {
 impl CatalogAccess {
     pub fn allows_widget(self, id: &str) -> bool {
         match self {
-            Self::Free => matches!(id, "standings" | "pedals"),
-            Self::LaunchV1 => matches!(id, "standings" | "relative" | "delta" | "pedals"),
+            Self::Free | Self::LaunchV1 => {
+                matches!(id, "standings" | "relative" | "delta" | "pedals")
+            }
             Self::Pro => true,
         }
     }
@@ -451,6 +452,9 @@ mod tests {
     fn a_new_widget_is_outside_the_perpetual_catalog_and_missing_scope_fails_closed() {
         assert!(!CatalogAccess::LaunchV1.allows_widget("future-widget"));
         assert!(!CatalogAccess::Free.allows_widget("future-widget"));
+        for id in ["standings", "relative", "delta", "pedals"] {
+            assert!(CatalogAccess::Free.allows_widget(id), "{id} es gratis");
+        }
         assert!(CatalogAccess::Pro.allows_widget("future-widget"));
         let policy = serde_json::to_value(Policy::default()).expect("policy");
         let mut missing = policy.clone();

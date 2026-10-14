@@ -3,6 +3,8 @@ use crate::orbit;
 use gpui::{Context, Div, FocusHandle, Stateful, Window, div, prelude::*, px};
 use std::path::{Path, PathBuf};
 use vantare_services::diagnostics::{PRIVACY_FILE, Privacy};
+#[path = "privacy_cleanup.rs"]
+mod cleanup;
 
 // El Hub aún muestra la interfaz en español; el idioma de widgets es independiente.
 const PRIVACY_POLICY_URL: &str = "https://vantare.app/privacidad";
@@ -23,6 +25,7 @@ pub(super) struct Store {
     pub value: Privacy,
     path: PathBuf,
     observed: Option<Vec<u8>>,
+    _cleanup: Option<cleanup::Cleanup>,
 }
 impl Store {
     pub fn load(root: &Path) -> Result<Self, String> {
@@ -33,13 +36,16 @@ impl Store {
             Err(error) => return Err(format!("leer privacidad: {error}")),
         };
         let value = Privacy::load(root).map_err(|error| format!("leer privacidad: {error}"))?;
-        value
-            .discard_disabled(root)
-            .map_err(|error| format!("borrar informes pendientes: {error}"))?;
+        let cleanup = match value.discard_disabled(root) {
+            Ok(()) => None,
+            Err(vantare_services::Error::Busy) => Some(cleanup::Cleanup::start(root.to_owned())?),
+            Err(error) => return Err(format!("borrar informes pendientes: {error}")),
+        };
         let mut store = Self {
             value,
             path,
             observed,
+            _cleanup: cleanup,
         };
         if !store.value.usage_decided
             && let Some(usage) = vantare_services::diagnostics::installer::choice(root)
@@ -241,6 +247,74 @@ impl super::Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn isa1609_privacy_load_during_post_keeps_controls_and_can_revoke_without_restart() {
+        let path = std::env::temp_dir().join(format!(
+            "vantare-busy-{}",
+            vantare_services::random_id().expect("entropy")
+        ));
+        let mut initial = Store::load(&path).expect("initial");
+        initial
+            .save(Privacy {
+                crashes: true,
+                usage: true,
+                crashes_decided: true,
+                usage_decided: true,
+                ..Privacy::default()
+            })
+            .expect("accept");
+        let guard = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path.join("consent.lock"))
+            .expect("lock file");
+        guard.try_lock().expect("POST boundary");
+        let loaded = Store::load(&path);
+        drop(guard);
+        let mut store = loaded.expect("controls must load while sender is busy");
+        assert!(store.value.usage && store.value.crashes);
+        let mut next = store.value;
+        next.usage = false;
+        store.save(next).expect("revoke in same session");
+        assert!(!store.value.usage);
+        std::fs::remove_dir_all(path).expect("cleanup");
+    }
+    #[test]
+    fn isa1609_busy_cleanup_retries_in_background_without_losing_controls() {
+        let path = std::env::temp_dir().join(format!(
+            "vantare-busy-cleanup-{}",
+            vantare_services::random_id().expect("entropy")
+        ));
+        let mut initial = Store::load(&path).expect("initial");
+        initial
+            .save(Privacy {
+                usage: true,
+                usage_decided: true,
+                crashes_decided: true,
+                ..Privacy::default()
+            })
+            .expect("choice");
+        std::fs::create_dir_all(path.join("crashes")).expect("queue");
+        std::fs::write(path.join("crashes/00.json"), b"old crash").expect("slot");
+        let guard = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path.join("consent.lock"))
+            .expect("lock");
+        guard.try_lock().expect("POST holds boundary");
+        let mut store = Store::load(&path).expect("controls despite cleanup Busy");
+        assert!(store.value.usage);
+        assert!(path.join("crashes/00.json").exists());
+        let cleanup = store._cleanup.take().expect("retry scheduled");
+        drop(guard);
+        cleanup.finish();
+        assert!(!path.join("crashes/00.json").exists());
+        let mut next = store.value;
+        next.usage = false;
+        store.save(next).expect("revoke without restart");
+        assert!(!store.value.usage);
+        std::fs::remove_dir_all(path).expect("cleanup");
+    }
     #[test]
     fn installer_choice_is_imported_once_and_never_overrides_revocation() {
         let path = std::env::temp_dir().join(format!(

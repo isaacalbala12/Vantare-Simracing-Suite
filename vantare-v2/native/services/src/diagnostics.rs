@@ -82,6 +82,9 @@ impl Privacy {
 
     /// Borra únicamente los slots de diagnóstico sin permiso; nunca datos del usuario.
     pub fn discard_disabled(self, root: &Path) -> Result<()> {
+        if self.crashes && self.crashes_decided && self.usage && self.usage_decided {
+            return Ok(());
+        }
         let _guard = consent_lock(root)?;
         Self::load(root)?.discard_disabled_locked(root)
     }

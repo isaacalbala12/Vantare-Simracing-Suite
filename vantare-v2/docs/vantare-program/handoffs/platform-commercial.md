@@ -6,10 +6,13 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 Ronda 3 en curso desde `f56156e3`, review Sol r2 completa. RED Rust A/B:
 lectura suspendida restaura Some(0); cola conserva/admite dos eventos revocados.
-Corrección local de permiso monotónico y cola revocable bajo mutex en memoria;
+P2-1 `86fa6aa8`, services 130 + 2 procesos PASS. Corrección local de permiso monotónico y cola revocable bajo mutex en memoria;
 callbacks usan try_lock sin espera, generación comprobada al admitir. Acumuladores
 revalidan antes de cerrar y el Hub los vacía al guardar revocación.
-Busy al cargar Privacidad y texto P3 pendientes de GREEN; gates finales pendientes.
+P2-2 RED con consent.lock retenido; GREEN de los 7 tests de Store (carga ocupada,
+limpieza de fallos diferida, revocación sin reiniciar y persistencia). Limpieza Busy
+con worker cancelable; permisos aceptados no toman lock sin trabajo. Texto P3 y
+gates finales pendientes.
 VANTA-22 En curso. Sin subagentes ni nuevo diseño. Evidencia C:/tmp/1609-r3.
 Entre procesos la invalidación depende del refresco de disco del worker; no se
 promete retirada instantánea de memoria en otra UI. DUDA en buzón al orquestador.

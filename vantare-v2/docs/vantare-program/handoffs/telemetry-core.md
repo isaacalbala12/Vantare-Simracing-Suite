@@ -19,8 +19,9 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 Ronda 2 de #1606 / VANTA-46 En curso: review Sol leída entera, N1/N2 RED
 exactos en Rust (`r2-n12-red`, C:/tmp/1606-evidence). N1 recupera muestras
 tras retroceso solo de distancia; reloj regresivo sigue esperando contador.
-GREEN de series 10/10, incluido contador retrasado. N2/N3 y gates completos
-pendientes. Misma rama/PR draft #1616, sin merge ni promoción.
+GREEN de series 10/10, incluido contador retrasado. N2 descarta candidata
+tras retroceso menor y conserva la referencia previa; GREEN delta 13/13.
+N3 y gates completos pendientes. Misma rama/PR draft #1616, sin merge ni promoción.
 
 Revisión #1606 / Plane VANTA-46 Por revisar (verificado), 2026-10-14: rama
 `vantareapp/isa-1606-review-pipeline-telemetria` desde `nightly@69fa2d65`.

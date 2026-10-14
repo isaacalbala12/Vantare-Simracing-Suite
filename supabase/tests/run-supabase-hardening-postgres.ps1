@@ -101,10 +101,27 @@ create table if not exists storage.objects (
   id uuid primary key default gen_random_uuid(),
   bucket_id text not null references storage.buckets(id),
   name text not null,
-  owner_id uuid,
+  owner uuid,
+  owner_id text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique(bucket_id, name)
+);
+-- Persistence columns/FKs from Storage v1.70.3. Full service schema is tested
+-- separately via --storage-schema, never inferred from this minimal fixture.
+create table if not exists storage.s3_multipart_uploads (
+ id text primary key, in_progress_size bigint not null default 0,
+ upload_signature text not null, bucket_id text not null references storage.buckets(id),
+ key text not null collate "C", version text not null, owner_id text,
+ created_at timestamptz not null default now(), user_metadata jsonb, metadata jsonb
+);
+create table if not exists storage.s3_multipart_uploads_parts (
+ id uuid primary key default gen_random_uuid(),
+ upload_id text not null references storage.s3_multipart_uploads(id) on delete cascade,
+ size bigint not null default 0, part_number integer not null,
+ bucket_id text not null references storage.buckets(id), key text not null collate "C",
+ etag text not null, owner_id text, version text not null,
+ created_at timestamptz not null default now()
 );
 alter table storage.objects enable row level security;
 grant usage on schema public, auth, extensions, storage to anon, authenticated, service_role;

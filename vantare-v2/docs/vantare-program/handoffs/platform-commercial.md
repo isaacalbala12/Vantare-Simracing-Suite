@@ -1,3 +1,20 @@
+## #1608 · Ronda 5 local · R4-P1-1 (14/10/2026)
+
+Multipart/partes del esquema Storage real reciben la barrera propia, incluida
+atribución por manifest y upload padre. RED reproducido → GREEN ocho escenarios
+con dos transacciones, rol Storage real, SQLSTATE y commit verificados.
+Uploads anteriores al tombstone se encolan para abort S3; ACK solo después de
+éxito de API, sin SQL DELETE de Storage ni secretos nuevos. Cleanup Edge aborta
+antes de borrar objetos; fallos mantienen cola y reentrega Svix.
+El firmante S3 usa las credenciales existentes anon/service y WebCrypto;
+STORAGE_S3_TENANT_ID es el tenant para local/custom domain y STORAGE_S3_REGION
+la región (us-east-1 por defecto). Configuración y deploy reales fuera de alcance.
+Límite bajo investigación: Storage v1.70.3 comprueba canUpload con un upsert
+antes del abort, que puede ser rechazado para manifest tombstonado. No se
+introduce un bypass de escritura para que una limpieza aparente pasar.
+Evidencia `~/evidence/1608-r5/multipart-{red-2,green}`, seis Edge PASS.
+Sigue reconciliación y locks; seguimiento reservado al orquestador.
+
 ## #1608 · Ronda 5 local · R4-P2-1 (14/10/2026)
 
 Inicio autorizado `e66c6c90`, rama/worktree de #1608, sin trackers/GitHub/push.

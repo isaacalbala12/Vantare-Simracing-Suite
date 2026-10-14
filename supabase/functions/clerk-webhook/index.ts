@@ -7,6 +7,8 @@ import {
 import { readBoundedRawBody } from "../billing-webhook/index.ts";
 import { computeWebhookPayloadHash } from "../billing-webhook/inbox.ts";
 
+import { abortStorageUpload } from "./storage-abort.ts";
+
 type Event = {
   type: "user.created" | "user.updated" | "user.deleted";
   subject: string;
@@ -158,19 +160,34 @@ export async function handleClerkWebhook(
   }
 }
 
-async function cleanupDeletedObjects(
+export async function cleanupDeletedObjects(
   issuer: string,
   subject: string,
+  admin = getSupabaseAdmin(),
+  abort = abortStorageUpload,
 ): Promise<void> {
-  const admin = getSupabaseAdmin();
   // Retry deliveries drain the durable queue even after an idempotent SQL no-op.
   for (let batch = 0; batch < 5; batch++) {
+    const uploads = await admin.rpc("clerk_deletion_uploads", {
+      p_issuer: issuer,
+      p_subject: subject,
+    });
+    if (uploads.error) throw uploads.error;
+    for (const upload of uploads.data ?? []) {
+      await abort(upload);
+      const ack = await admin.rpc("clerk_deletion_upload_completed", {
+        p_issuer: issuer,
+        p_subject: subject,
+        p_upload_id: upload.upload_id,
+      });
+      if (ack.error) throw ack.error;
+    }
     const { data, error } = await admin.rpc("clerk_deletion_objects", {
       p_issuer: issuer,
       p_subject: subject,
     });
     if (error) throw error;
-    if (!data?.length) return;
+    if (!data?.length && !uploads.data?.length) return;
     const buckets = new Map<string, string[]>();
     for (const row of data) {
       const names = buckets.get(row.bucket_id) ?? [];

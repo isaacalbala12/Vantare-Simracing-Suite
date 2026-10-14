@@ -9,6 +9,32 @@ Rama `vantareapp/isa-1612-perfil-y-ajustes`, base `origin/nightly@0807fbd0`.
 [PR draft #1619 a nightly](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1619),
 Plane VANTA-9 / GitHub Project Vantare / area:plataforma.
 
+Ronda 3 CLI tras review r2 `daa2ca20` NO APTO (P2=1/P3=1):
+P2-1 reproducido: A confirmado sin respuesta, Guardar B antes de reconciliar
+y reiniciar devuelve Conflict. Arreglo `98429184` + `c2a59c4e` (Clippy), GREEN 11/11 servicios:
+huella durable del CAS enviado separada del pendiente, reconciliación de R+1
+antes de enviar B con revisión real; documento/hash distintos siguen Conflict.
+La matriz cubre texto/foto, con/sin reinicio y conflicto real; se prueba también
+lectura/edición/reapertura del formato local previo. P3-1 `db7a3783` RED al
+cambiar las coordenadas ya enviadas, GREEN 11/11 Hub: zoom/nudge y arrastre
+congelados durante busy; respuesta libera la edición. Sin diseño nuevo.
+Rust `c2a59c4e`: fmt/check/Clippy -D warnings PASS; Nextest 1675/1675
+(7 skips existentes, paridad lenta 114 s), lifecycle 18/18 PASS. Quality y
+456 huellas, más fragmento de changelog PASS. Telemetría y pgTAP no repetidos:
+esta ronda solo modifica servicios/Hub, sin runtime/domain/IPC/testdata ni SQL;
+la evidencia de ronda 2 se conserva como histórica. Datos de tests aislados,
+target propio `native/target/gates`, dos jobs y plazo de 1800 s por comando.
+Push `c2a59c4e` y PR draft a nightly verificados. VANTA-9 Por revisar verificado
+14/10/2026 05:48 CEST. El cierre posterior solo cambia handoff/changelog;
+HEAD final y CI constan en issue/PR y buzón. CI final pendiente de ejecución.
+Nightly remoto `5a796e89` ha avanzado; GitHub marca DIRTY/conflicto de integración.
+La base aprobada permanece `0807fbd0`: review e integración del conjunto con
+#1608 pendientes del orquestador, sin merge/rebase, promoción ni release.
+Evidencia `C:/tmp/ola3/1612`: también conserva el fallo del test Hub sin
+network y el intento de ventana incompatible con Windows headless. La prueba
+final ejercita los puntos del modelo que comparten las entradas; no acredita
+interacción física ni un worker UI real. No hay capturas nuevas.
+
 Diseño Opus `3aaa3961` conservado: perfil privado local primero, DPAPI por
 issuer/subject, foto JPEG 256×256 ≤24 KiB y recorte circular. Puente UUID
 existente y CAS; sin cambios en account.rs/account/*, login, pagos ni licencias.
@@ -46,7 +72,7 @@ actual. Sin login/Storage HTTP real, Run/toasts, upgrade ni LMU/ACC físicos;
 sin validación compilada del conjunto con #1608. Conserva la separación de
 `services/view.rs` y su techo 1750 al integrar ambos PR.
 
-Push `5e380ef0` verificado; VANTA-9 Por revisar verificado el 14/10/2026
+Histórico de ronda 2: push `5e380ef0` verificado; VANTA-9 Por revisar verificado el 14/10/2026
 a las 05:10 CEST. El commit de cierre solo cambia handoff/changelog; SHA final
 en la issue/PR y buzón `C:/tmp/buzon/1612.md`.
 CI se consulta por HEAD final: no se declara verde completa. Nightly remoto

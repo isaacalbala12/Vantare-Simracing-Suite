@@ -1,3 +1,26 @@
+## #1608 · Ronda 6 · R5-P2-1 local (14/10/2026)
+
+La review r5 refuta el cierre global de locks de r5. La entrada administrativa
+exterior adquiría la asignación del actor y el perfil del objetivo antes del UUID.
+La migración aditiva toma el conjunto ordenado actor+objetivo antes de Owner;
+para reports toma el reporter y lo relee antes de bloquear la fila. El helper
+Owner adquiere también actor antes de la asignación (native_admin_begin).
+RED: mismo prefijo de pg_proc y continuación por native_admin_execute real,
+`40P01`, alias vivo y grant activo. GREEN: cuatro carreras actor/objetivo en
+ambos órdenes, 24 comprobaciones; espera advisory, borrado aplicado o admin
+posterior rechazado con `28000`, sin efectos en cuenta borrada.
+
+Auditoría de catálogo completo (`rpc-callers.json`): cinco callers de las 14 RPC.
+`billing_apply_reconciliation_plan`, `billing_apply_subscription_lifecycle` y
+`billing_expire_subscription_grants` ya toman el conjunto completo en su entrada.
+`billing_refresh_entitlement_read_model` es un wrapper SQL sin locks/escrituras
+antes de la RPC. `native_admin_execute` era la entrada omitida. Se conserva
+40001 y rollback/retry completo para DML mal ordenado, sin bypass de tombstone.
+Runner: `python3 supabase/tests/run-commercial-local.py --pg-bin <PG17/bin>
+--output <evidencia> --admin-lock-order`; RED con `--before-admin-lock-order`.
+Evidencia Mac `~/evidence/1608/r6/`. R5-P1-1 y R5-P3-1 siguen pendientes;
+solo entrega local para revisión por Claude, no CI/promoción ni cierre comercial.
+
 ## #1608 · Ronda 5 local · Mac arm64 · 14/10/2026
 
 **Entrega para revisión con un límite pendiente: el abort de uploads owner NULL

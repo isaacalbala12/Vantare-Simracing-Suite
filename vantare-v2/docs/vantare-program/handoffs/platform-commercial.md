@@ -1,3 +1,17 @@
+## #1608 · Ronda 6 local · R5-P2-1 (14/10/2026)
+
+Inicio autorizado `0a8e794f`, rama/worktree indicados, review r5 completa.
+`native_admin_execute` toma actor+objetivo ordenados antes del primer lock de
+fila (incluido reporter en get/set report); helper Owner cubre native_admin_begin.
+RED exacto wrapper→borrado `40P01` → GREEN cuatro carreras actor/objetivo,
+ambos órdenes, espera advisory y `28000` para administración tras tombstone.
+24 checks; llamadas/guardas productivas reales, prefijo de pg_proc sin sustituirlas.
+Auditoría de callers de las 14 RPC en catálogo completo: cinco funciones;
+reconciliation/lifecycle/expire ya protegidas en r5, refresh thin SQL sin filas,
+admin era el wrapper omitido. Evidencia `~/evidence/1608/r6/rpc-callers.json` y
+`admin-{red,green}/`; pendientes R5-P1-1 y R5-P3-1. Solo local, sin push,
+subagentes, GitHub, merge/promoción/deploy/release ni servicios/datos reales.
+
 ## #1608 · Ronda 5 · Entrega local para revisión (14/10/2026)
 
 Correcciones de los cuatro hallazgos de la review r4 y evidencia final en el

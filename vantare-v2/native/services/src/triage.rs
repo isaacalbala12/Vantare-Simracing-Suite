@@ -63,12 +63,13 @@ impl Triage {
             .filter(|(_, line)| line.starts_with("ERROR "))
             .take(20)
             .map(|(_, line)| {
-                let mut record = evidence::record(&serde_json::json!({
-                    "level":"ERROR", "error_type":"ServicesCommandFailure", "module":"services"
+                let fields = evidence::record(&serde_json::json!({
+                    "error_type":"ServicesCommandFailure"
                 }));
-                record["type"] = "ServicesCommandFailure".into();
-                record["fingerprint"] = crate::content_hash(line.as_bytes()).into();
-                record
+                // Owner storage keeps the existing SQL shape. The worker
+                // projects type/fingerprint and never exports message.
+                serde_json::json!({"type":fields["error_type"], "message":fields["error_type"],
+                    "fingerprint":crate::content_hash(line.as_bytes())})
             })
             .collect();
         errors.reverse();
@@ -76,9 +77,10 @@ impl Triage {
             .iter()
             .rev()
             .take(50)
-            .map(|(at, line)| {
-                evidence::record(&serde_json::json!({"level": if line.starts_with("ERROR ") {"ERROR"} else {"INFO"},
-                    "module":"services", "relative_ms":now.saturating_sub(*at).saturating_mul(1000)}))
+            .filter_map(|(at, line)| {
+                let at = chrono::DateTime::from_timestamp(i64::try_from(*at).ok()?, 0)?;
+                // These remain owner-only; legacy name/at never enter extract.
+                Some(serde_json::json!({"name":line,"at":at.to_rfc3339()}))
             })
             .collect();
         events.reverse();

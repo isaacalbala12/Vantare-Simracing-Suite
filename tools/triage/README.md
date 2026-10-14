@@ -23,8 +23,10 @@ FATAL), error_code/error_type/module/version (ASCII `[A-Za-z0-9_.:-]{1,64}`),
 count/relative_ms (enteros 0..1.000.000.000, sin bool). No copia message,
 first_line, payload ni claves arbitrarias. El resumen de sesión usa la misma
 proyección; type/fingerprint de errores también están acotados a 64 caracteres.
-Los eventos no llevan nombres libres ni horas absolutas. Rust genera registros
-estructurados desde resultados observados; Python los vuelve a validar.
+Los eventos exportados no llevan nombres libres ni horas absolutas. Rust valida
+metadata desde resultados observados; Python la vuelve a proyectar. La forma
+privada SQL de errores (type/message/fingerprint) y eventos (name/at) se conserva:
+message es un código fijo; name/at del owner se descartan al exportar.
 
 Título/descripción: una sola línea, máximos 120/1000 caracteres. Se inspecciona
 el campo **completo antes de truncar o normalizar whitespace**. Si la redacción

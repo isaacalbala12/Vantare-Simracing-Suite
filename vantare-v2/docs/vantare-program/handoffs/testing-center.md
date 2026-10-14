@@ -7,9 +7,11 @@ reales. Reanudación en 5d62f624, worktree limpio, commits heredados preservados
 Encargo explícito de Isaac: cambiar a lista blanca de logs. El worker admite
 únicamente campos cerrados y acotados de registros JSON completos; omite texto
 crudo, messages/first_line/nombres libres/payload. Adjuntos privados del owner
-conservan almacenamiento y retención. Rust genera metadata de sesión sin
-mensajes, con timestamps relativos; Python revalida la misma proyección.
-No cambia SQL ni persistencia.
+conservan almacenamiento y retención. Rust valida metadata de errores; Python aplica la proyección externa cerrada.
+El almacenamiento privado conserva la forma SQL: errores type/message/fingerprint
+y eventos name/at. Message es un código fijo; name/at quedan solo para el owner,
+se descartan al exportar. Solo registros estructurados externos admiten
+relative_ms; nunca una fecha absoluta de evento. No cambia SQL ni persistencia.
 
 Título/descripción y textos generados: si el filtro detecta marcador, campo
 completo sustituido por `[contenido retirado por privacidad]`; una línea y

@@ -120,16 +120,28 @@ fn session_summary_uses_only_recent_observed_failures_and_events_without_posthog
     let events = summary["events"].as_array().expect("events");
     assert_eq!(errors.len(), 20);
     assert_eq!(events.len(), 50);
-    assert_eq!(errors[0]["error_type"], "ServicesCommandFailure");
-    assert!(errors[0].get("message").is_none());
+    assert_eq!(errors[0]["type"], "ServicesCommandFailure");
+    assert_eq!(errors[0]["message"], "ServicesCommandFailure");
     assert!(errors[0].get("first_line").is_none());
+    // Required legacy SQL keys, no new structured-export keys in owner storage.
+    for error in errors {
+        assert_eq!(error.as_object().expect("error").len(), 3);
+        assert!(
+            ["type", "message", "fingerprint"]
+                .iter()
+                .all(|k| error[*k].is_string())
+        );
+    }
     assert_eq!(
         errors[0]["fingerprint"],
         crate::content_hash(b"ERROR services:refresh")
     );
-    assert_eq!(events[0]["relative_ms"], 50_000);
-    assert!(events[0].get("name").is_none());
-    assert!(events[0].get("at").is_none());
+    assert_eq!(events[0]["at"], "1970-01-01T00:32:30+00:00");
+    assert_eq!(events[0]["name"], "ERROR services:refresh");
+    for event in events {
+        assert_eq!(event.as_object().expect("event").len(), 2);
+        assert!(event["name"].is_string() && event["at"].is_string());
+    }
     assert!(!summary.to_string().contains("report-send"));
     assert!(summary.get("performance").is_none());
     assert!(triage.summary(4000).is_null());

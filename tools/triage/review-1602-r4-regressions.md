@@ -14,9 +14,12 @@ privada. La solución cambia el contrato de exportación:
   ASCII `[A-Za-z0-9_.:-]{1,64}`; count/relative_ms enteros 0..1.000.000.000 sin
   bool. Un valor inválido se descarta; texto libre/prefijos/JSON inválido no se
   analizan. No hay fallback a líneas, mensajes, payload o claves arbitrarias.
-- El resumen de sesión omite message/first_line/nombres libres y fechas
-  absolutas. type/fingerprint de errores son escalares acotados. Rust genera
-  metadata desde resultados observados; Python vuelve a proyectar los campos.
+- El resumen de sesión exportado omite message/first_line/nombres libres y
+  fechas absolutas. type/fingerprint de errores son escalares acotados. Rust
+  valida metadata observada; Python vuelve a proyectar los campos. La forma
+  privada SQL conserva type/message/fingerprint y name/at: message es un código
+  fijo y eventos owner-only no se exportan. Tests nativos comprueban esa forma
+  para evitar un cambio incompatible con el validador SQL existente.
 - Título/cuerpo: máximo 120/1000 y una sola línea. La inspección ocurre antes
   de truncar/normalizar; cualquier cambio o marcador de la redacción actual
   retira el campo completo con `[contenido retirado por privacidad]`. Igual

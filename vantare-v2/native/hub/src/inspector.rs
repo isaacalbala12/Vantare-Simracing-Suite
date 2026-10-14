@@ -485,6 +485,12 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             ));
             rows
         }
+        Settings::Radar(value) => vec![boolean(
+            "Frases del radar",
+            Tab::Appearance,
+            value.show_phrases,
+            set!(Radar.show_phrases),
+        )],
         Settings::RacingFlags(value) => vec![
             boolean(
                 "Banderas por sector",

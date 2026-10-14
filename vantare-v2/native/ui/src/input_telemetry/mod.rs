@@ -1,13 +1,10 @@
-//! Input telemetry Eficiencia, layout por defecto de 420 × 110.
+//! Telemetría de entrada aprobada: tira fija 600×84.
 //! La traza corta pertenece al widget y solo conserva muestras observadas.
 
 use crate::efficiency::preview::PaintWindow as Window;
 use std::time::{Duration, Instant};
 
-use gpui::{
-    App, BorderStyle, Corners, Edges, PathBuilder, linear_color_stop, linear_gradient, point, px,
-    quad,
-};
+use gpui::{App, PathBuilder, Pixels, Point, point, px};
 use vantare_domain::{
     CarId, SessionId, Snapshot,
     format::Preferences,
@@ -15,10 +12,10 @@ use vantare_domain::{
 };
 
 use crate::app::{Paint, Wake, replace_if_changed};
-use crate::efficiency::text::{self, ink};
-use crate::efficiency::{col, paint_frame, paint_panel, rect, tokens};
-
-const SIZE: (f32, f32) = (420.0, 110.0);
+use crate::efficiency::text;
+use crate::vantare::paint::{Face, Kit, round_rect};
+use crate::vantare::style::{Color, Style};
+const SIZE: (f32, f32) = (600.0, 84.0);
 const TRANSITION: Duration = Duration::from_millis(80);
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -30,16 +27,13 @@ pub struct Settings {
 impl Default for Settings {
     fn default() -> Self {
         Self {
-            history_seconds: 4,
-            show_clutch: true,
+            history_seconds: 6,
+            show_clutch: false,
         }
     }
 }
 impl Settings {
-    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[(
-        "historySeconds=4:full-window",
-        "El valor por defecto conserva 120 muestras (2,38 s a 20 ms) por compatibilidad visual",
-    )];
+    pub const UNSUPPORTED: &'static [(&'static str, &'static str)] = &[];
     #[must_use]
     pub fn normalized(&self) -> Self {
         Self {
@@ -133,7 +127,7 @@ impl Widget {
             && self.vm.pedals.iter().any(Option::is_some)
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let vm = self.vm.clone();
         let now = Instant::now();
         let pedals = if reduced {
@@ -142,13 +136,14 @@ impl Widget {
             self.pedals_at(now)
         };
         let samples = self.paint_samples();
+        let seconds = self.settings.history_seconds;
         let wake = if !reduced && self.moving(now) {
             Wake::Frame
         } else {
             Wake::Idle
         };
         (
-            Box::new(move |window, cx| paint(&vm, pedals, &samples, window, cx)),
+            Box::new(move |window, cx| paint(&vm, pedals, &samples, seconds, prefs, window, cx)),
             wake,
         )
     }
@@ -184,168 +179,205 @@ fn interpolate(
     })
 }
 
-fn paint(
-    vm: &ViewModel,
-    pedals: [Option<f64>; 3],
-    samples: &[Sample],
-    window: &mut Window,
-    cx: &mut App,
-) {
-    paint_surface(window);
-    let top = if vm.status_text.is_some() { 28.0 } else { 10.0 };
-    let graph_height = SIZE.1 - top - 8.0;
-    let graph_width = 286.0;
-    // Las tres señales comparten muestras, escala y huecos observados.
-    for fraction in [0.0, 1.0 / 3.0, 2.0 / 3.0, 1.0] {
-        window.paint_quad(gpui::fill(
-            rect(6.0, top + fraction * graph_height, graph_width, 1.0),
-            col(tokens::INK, 0.12),
-        ));
+fn paint_segment(points: &[Point<Pixels>], color: Color, window: &mut Window) {
+    if points.len() < 2 {
+        return;
     }
+    let (_, oy) = text::origin();
+    let mut fill = PathBuilder::fill();
+    let first = points[0];
+    let last = points[points.len() - 1];
+    fill.move_to(point(first.x, px(oy + 74.0)));
+    for &p in points {
+        fill.line_to(p);
+    }
+    fill.line_to(point(last.x, px(oy + 74.0)));
+    fill.close();
+    match fill.build() {
+        Ok(path) => window.paint_path(path, Color(color.0, 0.14).hsla()),
+        Err(error) => eprintln!("input-telemetry: relleno: {error}"),
+    }
+    let mut line = PathBuilder::stroke(px(2.0));
+    line.move_to(first);
+    for &p in &points[1..] {
+        line.line_to(p);
+    }
+    match line.build() {
+        Ok(path) => window.paint_path(path, color.hsla()),
+        Err(error) => eprintln!("input-telemetry: traza: {error}"),
+    }
+}
+
+fn paint_traces(vm: &ViewModel, samples: &[Sample], seconds: u8, window: &mut Window) {
     let (ox, oy) = text::origin();
-    for (signal, color) in [0xc9a15c, tokens::LOSS, 0x6fae7d].into_iter().enumerate() {
+    for (signal, color) in [0x4f8ef7, 0xe14a54, 0x22c55e].into_iter().enumerate() {
         if signal == 0 && !vm.show_clutch {
             continue;
         }
-        let mut path = PathBuilder::stroke(px(2.0));
-        let mut connected = false;
-        let mut segments = 0;
-        for (index, sample) in samples.iter().enumerate() {
+        let mut segment = Vec::new();
+        let end = samples.last().map_or(Duration::ZERO, |sample| sample.at);
+        for sample in samples {
+            if sample.break_before || sample.break_pedals[2 - signal] {
+                paint_segment(&segment, Color(color, 1.0), window);
+                segment.clear();
+            }
             let value = match signal {
                 0 => sample.clutch,
                 1 => sample.brake,
                 _ => sample.throttle,
             };
             if let Some(value) = value {
-                let x = 6.0
-                    + index as f32 / samples.len().saturating_sub(1).max(1) as f32 * graph_width;
-                let y = top + graph_height * (1.0 - value as f32 / 100.0);
-                let position = point(px(ox + x), px(oy + y));
-                if connected && !sample.break_before && !sample.break_pedals[2 - signal] {
-                    path.line_to(position);
-                    segments += 1;
-                } else {
-                    path.move_to(position);
-                }
-                connected = true;
+                let age = end.saturating_sub(sample.at).as_secs_f32();
+                let x = 12.0 + 440.0 * (1.0 - age / f32::from(seconds)).clamp(0.0, 1.0);
+                let y = 73.0 - 62.0 * value as f32 / 100.0;
+                segment.push(point(px(ox + x), px(oy + y)));
             } else {
-                connected = false;
+                paint_segment(&segment, Color(color, 1.0), window);
+                segment.clear();
             }
         }
-        if segments > 0 {
-            match path.build() {
-                Ok(path) => window.paint_path(path, col(color, 1.0)),
-                Err(error) => eprintln!("input-telemetry: traza: {error}"),
-            }
-        }
-    }
-    let value_ink = ink(11.0, 700.0, 0.0, col(tokens::INK, 1.0));
-    let count = if vm.show_clutch { 3.0 } else { 2.0 };
-    let step = 60.0 / count;
-    for (i, color) in [0xc9a15c, tokens::LOSS, 0x6fae7d].into_iter().enumerate() {
-        if i == 0 && !vm.show_clutch {
-            continue;
-        }
-        let index = if vm.show_clutch { i } else { i - 1 };
-        let middle = 294.0 + index as f32 * step + step / 2.0;
-        let bar_top = top + 14.0;
-        let bar_height = SIZE.1 - bar_top - 8.0;
-        window.paint_quad(quad(
-            rect(middle - 7.0, bar_top, 14.0, bar_height),
-            Corners::all(px(3.0)),
-            col(tokens::INK, 0.07),
-            Edges::all(px(0.0)),
-            col(0, 0.0),
-            BorderStyle::default(),
-        ));
-        if let Some(value) = pedals[i] {
-            let height = bar_height * value as f32 / 100.0;
-            if height > 0.0 {
-                window.paint_quad(quad(
-                    rect(middle - 7.0, SIZE.1 - 8.0 - height, 14.0, height),
-                    Corners::all(px(3.0)),
-                    col(color, 1.0),
-                    Edges::all(px(0.0)),
-                    col(0, 0.0),
-                    BorderStyle::default(),
-                ));
-            }
-        }
-        let label = pedals[i].map_or_else(|| "—".into(), |value| format!("{value:.0}"));
-        text::draw(
-            window,
-            cx,
-            &label,
-            middle - text::width(window, &label, &value_ink) / 2.0,
-            text::baseline(top, 14.0, 11.0),
-            &value_ink,
-        );
-    }
-    let gear = ink(33.0, 800.0, 0.0, col(tokens::INK, 1.0));
-    let rpm = format!("{} RPM", vm.rpm);
-    for (value, y, line, style) in [
-        (&vm.gear, 16.0, 40.0, gear),
-        (&vm.speed, 58.0, 18.0, value_ink),
-        (&rpm, 78.0, 18.0, value_ink),
-    ] {
-        let fitted = text::fit(window, value, &style, 62.0);
-        text::draw(
-            window,
-            cx,
-            &fitted,
-            383.0 - text::width(window, &fitted, &style) / 2.0,
-            text::baseline(y, line, style.size),
-            &style,
-        );
-    }
-    if let Some(status) = vm.status_text {
-        let style = ink(14.0, 700.0, 0.0, col(0xe2c568, 1.0));
-        let fitted = text::fit(window, status, &style, graph_width);
-        text::draw(
-            window,
-            cx,
-            &fitted,
-            6.0,
-            text::baseline(4.0, 20.0, 14.0),
-            &style,
-        );
+        paint_segment(&segment, Color(color, 1.0), window);
     }
 }
 
-fn paint_surface(window: &mut Window) {
-    let (width, height) = SIZE;
-    paint_panel(window, width, height, 0.87);
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, height),
-        Corners::all(px(tokens::RADIUS)),
-        linear_gradient(
-            120.0,
-            linear_color_stop(col(0xffffff, 0.03), 0.0),
-            linear_color_stop(col(0xffffff, 0.0), 0.38),
-        ),
-        Edges::all(px(0.0)),
-        col(0, 0.0),
-        BorderStyle::default(),
-    ));
-    paint_frame(window, width, height);
-    window.paint_quad(quad(
-        rect(0.0, 0.0, width, 6.0),
-        Corners {
-            top_left: px(tokens::RADIUS),
-            top_right: px(tokens::RADIUS),
-            bottom_left: px(0.0),
-            bottom_right: px(0.0),
-        },
-        col(0, 0.0),
-        Edges {
-            top: px(1.0),
-            right: px(0.0),
-            bottom: px(0.0),
-            left: px(0.0),
-        },
-        col(0xffffff, 0.136),
-        BorderStyle::default(),
-    ));
+fn paint(
+    vm: &ViewModel,
+    pedals: [Option<f64>; 3],
+    samples: &[Sample],
+    seconds: u8,
+    prefs: Preferences,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let style = Style::compiled();
+    let kit = Kit {
+        style: &style,
+        variant: &style.styles.neo,
+        accent: style.accents.red,
+        language: prefs.language,
+        width: SIZE.0,
+    };
+    kit.panel(window, SIZE.1);
+    for (fraction, alpha) in [(0.25, 0.05), (0.5, 0.05), (0.75, 0.05), (1.0, 0.12)] {
+        round_rect(
+            window,
+            12.0,
+            10.0 + fraction * 64.0 - 0.5,
+            440.0,
+            1.0,
+            0.0,
+            Color(0xffffff, alpha).hsla(),
+        );
+    }
+    paint_traces(vm, samples, seconds, window);
+    if let Some(value) = samples.last().and_then(|sample| sample.throttle) {
+        round_rect(
+            window,
+            448.0,
+            70.0 - 62.0 * value as f32 / 100.0,
+            6.0,
+            6.0,
+            3.0,
+            Color(0xffffff, 1.0).hsla(),
+        );
+    }
+    let muted = kit.ink(Face::Mono, 9.0, 0.0, style.colors.column.hsla());
+    kit.label(
+        window,
+        cx,
+        &format!("{seconds} s"),
+        16.0,
+        None,
+        60.0,
+        14.0,
+        Face::Mono,
+        &muted,
+    );
+    if let Some(status) = vm.status_text {
+        let ink = kit.ink(Face::Display, 12.0, 1.4, style.colors.muted.hsla());
+        let width = text::width(window, status, &ink);
+        kit.label(
+            window,
+            cx,
+            status,
+            12.0 + (440.0 - width) / 2.0,
+            None,
+            34.0,
+            16.0,
+            Face::Display,
+            &ink,
+        );
+    }
+    let start = usize::from(!vm.show_clutch);
+    for (index, signal) in (start..3).enumerate() {
+        let x = 462.0 + index as f32 * 12.0;
+        round_rect(
+            window,
+            x,
+            10.0,
+            9.0,
+            64.0,
+            4.0,
+            Color(0xffffff, 0.08).hsla(),
+        );
+        if let Some(value) = pedals[signal] {
+            let h = 64.0 * value as f32 / 100.0;
+            if h > 0.0 {
+                round_rect(
+                    window,
+                    x,
+                    74.0 - h,
+                    9.0,
+                    h,
+                    4.0f32.min(h / 2.0),
+                    Color([0x4f8ef7, 0xe14a54, 0x22c55e][signal], 1.0).hsla(),
+                );
+            }
+        }
+    }
+    let center = if vm.show_clutch { 550.0 } else { 544.0 };
+    // Sin régimen máximo del motor no se inventa el umbral de cambio.
+    let rpm = kit.ink(Face::Mono, 9.0, 0.0, style.colors.muted.hsla());
+    let label = format!("{} rpm", vm.rpm);
+    let width = text::width(window, &label, &rpm);
+    kit.label(
+        window,
+        cx,
+        &label,
+        center - width / 2.0,
+        None,
+        10.0,
+        10.0,
+        Face::Mono,
+        &rpm,
+    );
+    let gear = kit.ink(Face::Display, 40.0, 0.0, style.colors.text.hsla());
+    let width = text::width(window, &vm.gear, &gear);
+    kit.label(
+        window,
+        cx,
+        &vm.gear,
+        center - width / 2.0,
+        None,
+        22.0,
+        36.0,
+        Face::Display,
+        &gear,
+    );
+    let speed = vm.speed.replace("KPH", "km/h");
+    let ink = kit.ink(Face::Mono, 10.0, 0.0, style.colors.muted.hsla());
+    let width = text::width(window, &speed, &ink);
+    kit.label(
+        window,
+        cx,
+        &speed,
+        center - width / 2.0,
+        None,
+        60.0,
+        14.0,
+        Face::Mono,
+        &ink,
+    );
 }
 
 impl Settings {
@@ -359,6 +391,58 @@ impl Settings {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn approved_example_contains_six_seconds_of_observed_input() {
+        let photos = crate::workshop::snapshots_from_json(include_str!(
+            "../../fixtures/input-telemetry-design-system.sequence.json"
+        ))
+        .expect("ejemplo DTO");
+        let prefs = Preferences::default();
+        let mut widget = Widget::new(&Settings::default(), prefs);
+        for photo in &photos {
+            widget.ingest(photo, prefs);
+        }
+        assert_eq!(widget.trace.samples().len(), 91);
+        assert_eq!(
+            widget
+                .trace
+                .samples()
+                .back()
+                .expect("final")
+                .at
+                .checked_sub(widget.trace.samples().front().expect("inicio").at)
+                .expect("tiempo creciente"),
+            Duration::from_secs(6)
+        );
+        assert!(!widget.vm.show_clutch);
+        assert_eq!(widget.vm.gear, "3");
+    }
+
+    #[test]
+    fn approved_strip_keeps_its_size_with_partial_or_missing_signals() {
+        let prefs = Preferences::default();
+        for show_clutch in [false, true] {
+            let mut widget = Widget::new(
+                &Settings {
+                    show_clutch,
+                    ..Default::default()
+                },
+                prefs,
+            );
+            for mut photo in [crate::source::fixed(), Snapshot::default()] {
+                for state in [
+                    vantare_domain::SourceState::Live,
+                    vantare_domain::SourceState::Paused,
+                    vantare_domain::SourceState::Lost,
+                ] {
+                    photo.state.source_state = state;
+                    widget.ingest(&photo, prefs);
+                    assert_eq!(widget.size(), (600.0, 84.0));
+                }
+            }
+        }
+    }
+
     #[test]
     fn first_photo_is_immediate_and_the_same_identity_keeps_its_linear_transition() {
         let prefs = Preferences::default();
@@ -498,9 +582,12 @@ mod tests {
         assert!(!vm.show_clutch);
         assert_eq!(vm.pedals[0], None);
         assert_eq!(
-            Settings::default()
-                .project(&snapshot, Preferences::default())
-                .pedals[0],
+            Settings {
+                show_clutch: true,
+                ..Settings::default()
+            }
+            .project(&snapshot, Preferences::default())
+            .pedals[0],
             Some(40.0)
         );
     }

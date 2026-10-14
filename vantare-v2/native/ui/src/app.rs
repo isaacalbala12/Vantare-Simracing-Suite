@@ -1783,7 +1783,7 @@ mod tests {
         let widgets = apply(widgets, &[instance.clone()]);
         assert_eq!(widgets["inputs"].view, 1);
         if let Settings::InputTelemetry(options) = &mut instance.settings {
-            options.show_clutch = false;
+            options.show_clutch = !options.show_clutch;
         }
         let widgets = apply(widgets, &[instance.clone()]);
         assert_eq!(widgets["inputs"].view, 2);

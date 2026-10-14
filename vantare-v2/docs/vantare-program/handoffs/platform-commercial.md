@@ -4,6 +4,20 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## #1612 / VANTA-9 · Perfil privado y Ajustes (14/10/2026)
 
+Decisión recibida de Isaac el 14/10: entrega de perfil guardado en el PC y
+arreglos de Ajustes; **sync de perfil apagada y pendiente**. Un único interruptor
+`PILOT_SYNC_ENABLED = false` en `native/services/src/app/pilot.rs` corta tanto
+la preparación OAuth como las llamadas al puente/RPC/Storage desde los tres
+comandos de perfil. Backend y pruebas preparados, sin activar ni borrar.
+P2-1 y P3-1 de review r5 quedan inertes; deben resolverse antes de reactivar.
+RED: PilotLoad abre conexión. GREEN: guardar texto multilínea/foto, cargar,
+PilotSync y reabrir conservan la copia local y no abren conexiones, con/sin
+identidad restaurada. Evidencia `C:/tmp/1612-local-sync-off`.
+VANTA-9 En curso verificado; integración de origin/nightly y gates pendientes.
+El roadmap público sigue en Plane; plan.md está retirado y el estado público
+del encargo sigue En marcha (no Entregado). Las rondas siguientes son historia
+de la preparación de sync, no el comportamiento activo de esta entrega.
+
 Rama `vantareapp/isa-1612-perfil-y-ajustes`, base `origin/nightly@0807fbd0`.
 [Issue #1612](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1612),
 [PR draft #1619 a nightly](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1619),

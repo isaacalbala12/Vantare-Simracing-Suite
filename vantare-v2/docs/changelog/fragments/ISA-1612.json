@@ -4,18 +4,17 @@
   "type": "feature",
   "summary": "Perfil privado del piloto en Ajustes: nombre, foto con recorte circular, descripción, país, simuladores y favoritos.",
   "technicalNotes": [
-    "El perfil se guarda primero en el PC, protegido y separado por cuenta. Cada operación lleva un UUID durable: reintentar recupera su resultado original y refresca el perfil actual; nuevas ediciones esperan la confirmación y conservan su copia local. Rechazos definitivos y conflictos retiran el intento y actualizan la revisión remota para permitir corregirlo.",
+    "El perfil y la foto se guardan solo en este PC, protegidos y separados por identidad restaurada. Sincronización apagada por decisión de Isaac: cargar, guardar y pedir sync no invocan red; backend revisado conservado e inerte.",
     "Las descripciones admiten varias líneas. Cancelar y mover o ampliar el recorte se bloquean mientras se procesa la foto.",
     "El backend preparado valida el documento nativo, exige CAS y op_id por RPC y protege las fotos frente a reemplazos. Conserva recibos privados entre dispositivos e incluye retirada segura de QA vacío."
   ],
   "testing": [
     "En un portable de QA, guardar una descripción con Enter, reabrir y comprobar que conserva ambas líneas.",
     "Cambiar solo la foto y comprobar Guardar/Descartar; al procesar el recorte, Cancelar queda deshabilitado y rueda, arrastre y teclado deben conservar la selección enviada.",
-    "En QA con backend autorizado, perder la confirmación de A, guardar B y reiniciar: A se confirma una sola vez y luego B se sincroniza. Si otro dispositivo guarda C entre medias, C permanece y B se conserva como conflicto local.",
-    "Perder la confirmación de A/R1 y confirmar C/R2 en otro equipo: una sola carga debe mostrar C/R2. Rechazar A por validación, quitar la foto y guardar B: B debe confirmarse tras reiniciar. Un CAS obsoleto debe mostrar conflicto y conservar el borrador sin reenviarlo automáticamente."
+    "Cargar, guardar texto y foto, pedir sync explícita y reabrir: conserva la copia local sin conexiones de perfil, con o sin sesión restaurada."
   ],
   "knownLimitations": [
-    "Backend solo preparado, sin aplicar: activar Supabase requiere autorización de Isaac.",
+    "La sincronización de perfil está apagada y pendiente; reactivarla requiere resolver los hallazgos de review r5 y otra decisión de Isaac. Backend solo preparado, sin aplicar.",
     "La bandera está preparada; su colocación en widgets sigue pendiente del diseño aprobado.",
     "Los tests locales no acreditan login real, Storage HTTP real ni integración con otros PR."
   ]

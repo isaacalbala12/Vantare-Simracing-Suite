@@ -1,10 +1,15 @@
 use super::{App, Command, Error, Reply, Result, now};
 
+// Isaac, 14/10/2026 (#1612): perfil solo en este PC. Único interruptor del
+// cliente: impide también descubrir/renovar OAuth desde comandos de perfil.
+// El backend y sus pruebas quedan preparados; reactivar exige otra decisión.
+const PILOT_SYNC_ENABLED: bool = false;
+
 impl App {
     pub(super) fn pilot_reply(&mut self, command: Command) -> Result<Reply> {
         let explicit_sync = matches!(command, Command::PilotSync);
         let saving = matches!(command, Command::PilotSave { .. });
-        if self.config.native_account_configured() {
+        if PILOT_SYNC_ENABLED && self.config.native_account_configured() {
             self.ensure_account()?;
         }
         let identity = self
@@ -32,7 +37,7 @@ impl App {
                 .ok_or(Error::Storage)?
                 .save(profile, expected_revision)?;
         }
-        let message = if explicit_sync || self.pilot_identity.is_some() {
+        let message = if PILOT_SYNC_ENABLED && (explicit_sync || self.pilot_identity.is_some()) {
             let outcome = self.sync_pilot();
             match outcome {
                 Ok(()) if self.pilot.as_ref().is_some_and(|pilot| pilot.state().revision == 0) =>
@@ -95,7 +100,107 @@ mod tests {
     };
 
     #[test]
-    fn pilot_load_recovers_historical_receipt_and_reports_real_http_cas_conflict() {
+    fn pilot_commands_save_and_reload_locally_without_network() {
+        for signed_in in [false, true] {
+            let listener = std::net::TcpListener::bind("127.0.0.1:0").expect("sentinel");
+            listener.set_nonblocking(true).expect("nonblocking");
+            let base = url::Url::parse(&format!(
+                "http://{}/",
+                listener.local_addr().expect("sentinel address")
+            ))
+            .expect("sentinel URL");
+            let (root, store) = crate::test_store("app-pilot-local");
+            let config = || BuildConfig {
+                supabase: Some(base.clone()),
+                anon_key: Some("public-fixture"),
+                license_keys: None,
+                channel: None,
+                native_oauth: Some(crate::config::OAuthBuild {
+                    issuer: base.clone(),
+                    client_id: "public-fixture".into(),
+                    redirect_uri: base.join("callback").expect("callback"),
+                }),
+            };
+            let mut app = App::new(config(), root.clone());
+            if signed_in {
+                app.account = Some(crate::account::fixture(&base, &store));
+            }
+            app.store = Some(store);
+            app.bridge = Some(crate::bridge::Config {
+                authorize: base
+                    .join("functions/v1/native-account-authorize")
+                    .expect("authorize"),
+                supabase: base.clone(),
+                anon_key: "public-fixture".into(),
+            });
+            let mut image = std::io::Cursor::new(Vec::new());
+            image::DynamicImage::new_rgb8(300, 300)
+                .write_to(&mut image, image::ImageFormat::Png)
+                .expect("PNG");
+            let profile = PilotProfile {
+                public_name: "Ana".into(),
+                description: "Primera línea\nSegunda línea".into(),
+                photo: Some(
+                    crate::pilot::crop_photo(image.get_ref(), crate::pilot::Crop::default())
+                        .expect("photo"),
+                ),
+                ..Default::default()
+            };
+            let mut revision = 0;
+            for command in [
+                Command::PilotLoad,
+                Command::PilotSave {
+                    profile: profile.clone(),
+                    expected_revision: 0,
+                },
+                Command::PilotLoad,
+                Command::PilotSync,
+                Command::PilotSave {
+                    profile: profile.clone(),
+                    expected_revision: 1,
+                },
+            ] {
+                let saving = matches!(command, Command::PilotSave { .. });
+                let reply = app.handle(command);
+                assert!(
+                    matches!(listener.accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock),
+                    "profile command opened a network connection"
+                );
+                let Reply::Pilot { state, message } = reply else {
+                    panic!("local reply")
+                };
+                if saving {
+                    revision += 1;
+                }
+                assert_eq!(state.revision, revision);
+                assert_eq!(state.remote_revision, 0);
+                if revision > 0 {
+                    assert_eq!(state.profile, profile);
+                    assert!(message.contains("este equipo"));
+                }
+            }
+            drop(app);
+            let mut reopened = App::new(config(), root.clone());
+            if signed_in {
+                let store = crate::storage::Store::open(&root, "app-pilot-local").expect("store");
+                reopened.account = Some(crate::account::fixture(&base, &store));
+                reopened.store = Some(store);
+            }
+            let Reply::Pilot { state, .. } = reopened.handle(Command::PilotLoad) else {
+                panic!("reopened local reply")
+            };
+            assert_eq!(state.profile, profile);
+            assert_eq!(state.revision, revision);
+            assert!(
+                matches!(listener.accept(), Err(error) if error.kind() == std::io::ErrorKind::WouldBlock)
+            );
+            drop(reopened);
+            std::fs::remove_dir_all(root).expect("cleanup");
+        }
+    }
+
+    #[test]
+    fn prepared_sync_recovers_historical_receipt_and_reports_real_http_cas_conflict() {
         for conflict in [false, true] {
             let time = now().expect("clock");
             let profile = PilotProfile {
@@ -145,19 +250,25 @@ mod tests {
                 supabase: server.base.clone(),
                 anon_key: "public-fixture".into(),
             });
-            let Reply::Pilot { state, message } =
-                app.pilot_reply(Command::PilotLoad).expect("one PilotLoad")
-            else {
-                panic!("pilot reply")
-            };
+            // Preparación inerte: prueba la sync directamente, sin habilitarla
+            // en el dispatch productivo PilotLoad/PilotSave/PilotSync.
+            app.pilot = Some(
+                Local::open(&root, Some(&identity.issuer), Some(&identity.subject)).expect("local"),
+            );
+            app.pilot_identity = Some(identity.clone());
+            let outcome = app.sync_pilot();
+            assert_eq!(
+                outcome,
+                if conflict {
+                    Err(Error::Conflict)
+                } else {
+                    Ok(())
+                }
+            );
+            let state = app.pilot.as_ref().expect("pilot").state().clone();
             assert_eq!(state.remote_revision, 2);
             assert_eq!(state.pending, conflict);
             assert_eq!(state.profile.description, if conflict { "A" } else { "C" });
-            assert!(message.contains(if conflict {
-                "no se han sobrescrito"
-            } else {
-                "sincronizado"
-            }));
             server.finish();
             drop(app);
             let local = Local::open(&root, Some(&identity.issuer), Some(&identity.subject))

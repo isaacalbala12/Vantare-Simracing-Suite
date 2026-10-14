@@ -1,6 +1,18 @@
 # Perfil privado del piloto · #1612 / VANTA-9
 
-**Preparado, sin aplicar.** La migración
+**Sincronización apagada por Isaac (14/10/2026); backend preparado, sin aplicar.**
+El único interruptor cliente es `PILOT_SYNC_ENABLED = false` en
+`native/services/src/app/pilot.rs`. Cargar, guardar y pedir sync explícita solo
+usan el PC: no descubren/renuevan OAuth ni invocan authorize, RPC o Storage.
+Perfil y foto locales permanecen protegidos. El código y SQL revisados quedan
+inertes, sin borrar operaciones previas ni programar reintentos. Sync de perfil
+queda **pendiente**, fuera de esta entrega. Antes de reactivarla hay que resolver
+P2-1 y P3-1 de review r5 (formulario/revisión divergentes y rechazo oculto por
+recarga fallida) y obtener otra decisión de Isaac.
+
+## Preparación histórica para una futura activación
+
+La migración
 `supabase/migrations/20261013225839_pilot_profile_private.sql` añade la tabla
 `pilot_profiles`, los recibos privados `pilot_private.operations`, las RPC
 `pilot_profile_load/save` y el bucket privado

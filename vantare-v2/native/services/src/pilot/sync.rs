@@ -30,7 +30,7 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
             .transpose()
             .map_err(|_| Error::Protocol)?;
         let photo_hash = bytes.as_deref().map(crate::content_hash);
-        let current_fingerprint = fingerprint(&profile, &photo_hash)?;
+        let current_fingerprint = fingerprint(&profile, photo_hash.as_deref())?;
         // No sobreescribe ediciones hechas desde otro dispositivo.
         if local.state().remote_revision != remote_revision {
             reconcile_pending(
@@ -86,14 +86,14 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
     Ok(())
 }
 
-fn fingerprint(profile: &PilotProfile, photo_hash: &Option<String>) -> Result<String> {
+fn fingerprint(profile: &PilotProfile, photo_hash: Option<&str>) -> Result<String> {
     Ok(crate::content_hash(
         &serde_json::to_vec(&(profile, photo_hash)).map_err(|_| Error::Protocol)?,
     ))
 }
 
 fn reconcile_pending(local: &mut Local, observed: &Remote, current: &str) -> Result<()> {
-    let observed_fingerprint = fingerprint(&observed.profile, &observed.photo_hash)?;
+    let observed_fingerprint = fingerprint(&observed.profile, observed.photo_hash.as_deref())?;
     // Reconcilia el CAS realmente enviado, aunque Guardar ya haya sustituido
     // el pendiente. Nunca reconoce contenido remoto distinto.
     let (expected, sent) = local

@@ -326,3 +326,143 @@ Deno.test("missing salt/admission failure/malformed origin never silently bypass
   }
   eq(f.reports.length, 0);
 });
+
+const structured = {
+  p_id: payload.p_id,
+  p_channel: "testers",
+  p_title: "[contenido retirado por privacidad]",
+  p_body: "[contenido retirado por privacidad]",
+  p_context: {
+    app_version: "1.2.3",
+    app_channel: "testers",
+    game: "none",
+    game_version: null,
+    system: {},
+    telemetry_summary: null,
+    posthog_session_id: null,
+    consent: {
+      version: "triage-v2",
+      items: ["app_log"],
+      accepted_at: "2026-10-14T00:00:00Z",
+    },
+  },
+  p_attachments: [{ kind: "app_log", content: "[]", sha256: "a".repeat(64) }],
+};
+Deno.test("F8: structured preview and exact retries retain all fields after IP/account admission", async () => {
+  const f = fixture();
+  for (let i = 0; i < 2; i++) {
+    eq(
+      (await handleTestingReportSubmit(
+        request("account-a", undefined, structured),
+        f.deps,
+      )).status,
+      200,
+    );
+  }
+  eq(f.reports, [{ account: "account-a", body: structured }, {
+    account: "account-a",
+    body: structured,
+  }]);
+  eq([...f.counts.values()], [2, 2]);
+});
+Deno.test("F8: structured preview without IP/account admission never reaches storage", async () => {
+  for (const denied of ["ip", "account"]) {
+    const f = fixture();
+    eq(
+      (await handleTestingReportSubmit(
+        request("account-a", undefined, structured),
+        {
+          ...f.deps,
+          admit: (scope) => Promise.resolve(scope !== denied),
+        },
+      )).status,
+      429,
+    );
+    eq(f.reports.length, 0);
+  }
+});
+Deno.test("F8: partial structured fields, account injection and missing consent fail closed", async () => {
+  for (
+    const body of [
+      { ...structured, p_attachments: undefined },
+      { ...structured, p_account: "account-b" },
+      { ...structured, p_consent: true },
+      { ...structured, p_title: "OrdinaryPrivateTesterNote" },
+      { ...structured, p_context: { ...structured.p_context, consent: null } },
+    ]
+  ) {
+    const f = fixture();
+    eq(
+      (await handleTestingReportSubmit(
+        request("account-a", undefined, body),
+        f.deps,
+      )).status,
+      400,
+    );
+    eq(f.reports.length, 0);
+  }
+});
+
+Deno.test("F8: production submit dispatches the full package only to the service admission RPC", async () => {
+  const f = fixture();
+  const calls: unknown[] = [];
+  const deps = {
+    ...f.deps,
+    submit: undefined,
+    rpc: (name: string, body: Record<string, unknown>) => {
+      calls.push({ name, body });
+      return Promise.resolve({ error: null });
+    },
+  };
+  eq(
+    (await handleTestingReportSubmit(
+      request("verified-account", undefined, structured),
+      deps,
+    )).status,
+    200,
+  );
+  eq(calls, [{
+    name: "testing_contribution_submit_admitted",
+    body: { ...structured, p_account: "verified-account" },
+  }]);
+  eq(
+    (await handleTestingReportSubmit(request("verified-account"), deps)).status,
+    200,
+  );
+  eq(calls[1], {
+    name: "testing_report_submit_admitted",
+    body: { ...payload, p_account: "verified-account" },
+  });
+});
+
+Deno.test({
+  name:
+    "F8: exact native preview crosses Edge admission unchanged for the combined SQL runner",
+  ignore: !Deno.env.get("VANTARE_TRIAGE_TEST_PREVIEW"),
+  fn: async () => {
+    const preview = JSON.parse(
+      await Deno.readTextFile(Deno.env.get("VANTARE_TRIAGE_TEST_PREVIEW")!),
+    );
+    const f = fixture();
+    const calls: unknown[] = [];
+    const account = "15940000-0000-4000-8000-000000000001";
+    eq(
+      (await handleTestingReportSubmit(request(account, undefined, preview), {
+        ...f.deps,
+        submit: undefined,
+        rpc: (name, body) => {
+          calls.push({ name, body });
+          return Promise.resolve({ error: null });
+        },
+      })).status,
+      200,
+    );
+    const expected = {
+      name: "testing_contribution_submit_admitted",
+      body: { ...preview, p_account: account },
+    };
+    eq(calls, [expected]);
+    const output = Deno.env.get("VANTARE_TRIAGE_TEST_ADMITTED");
+    if (output) await Deno.writeTextFile(output, JSON.stringify(expected));
+  },
+});

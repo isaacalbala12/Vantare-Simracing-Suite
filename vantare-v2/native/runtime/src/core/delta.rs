@@ -112,9 +112,14 @@ impl Tracker {
                         self.started_at_line = false;
                     }
                     self.last = Some(reading);
-                } else if self.wrapped || reading.distance_m < last.distance_m {
-                    // Esperando al contador de vueltas, o retroceso menor: la
-                    // foto no aporta muestra.
+                } else if self.wrapped {
+                    // Esperando al contador de vueltas: no muestrear.
+                    self.last = Some(reading);
+                } else if reading.distance_m < last.distance_m {
+                    // Un retroceso menor también pierde la candidata; conservar
+                    // la referencia previa sin agregar puntos fuera de orden.
+                    self.candidate.clear();
+                    self.started_at_line = false;
                     self.last = Some(reading);
                 } else if reading.elapsed_s >= last.elapsed_s {
                     self.sample(reading);
@@ -399,6 +404,54 @@ mod tests {
             step(&mut tracker, &car);
         }
         assert!((tracker.reference.as_ref().expect("completa").duration_s - 1.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn small_distance_reversal_never_wins_or_replaces_a_valid_reference() {
+        for previous_reference in [false, true] {
+            let mut tracker = Tracker::default();
+            let length = Quality::Reliable(1000.0);
+            let mut derive = |lap, distance, elapsed| {
+                tracker.derive(
+                    &mut Player::default(),
+                    &car(lap, distance, elapsed, false),
+                    length,
+                );
+            };
+            derive(0, 990.0, 120.0);
+            if previous_reference {
+                derive(1, 0.0, 0.0);
+                derive(1, 990.0, 120.0);
+            }
+            let lap = if previous_reference { 2 } else { 1 };
+            for (distance, elapsed) in [
+                (0.0, 0.0),
+                (100.0, 10.0),
+                (99.0, 11.0),
+                (99.5, 12.0),
+                (100.5, 13.0),
+                (990.0, 99.0),
+            ] {
+                derive(lap, distance, elapsed);
+            }
+            derive(lap + 1, 0.0, 0.0);
+            if previous_reference {
+                assert_eq!(
+                    tracker
+                        .reference
+                        .as_ref()
+                        .expect("referencia previa intacta")
+                        .duration_s
+                        .to_bits(),
+                    120.0_f64.to_bits()
+                );
+            } else {
+                assert!(
+                    tracker.reference.is_none(),
+                    "la vuelta con retroceso no acredita referencia"
+                );
+            }
+        }
     }
 
     #[test]

@@ -381,7 +381,7 @@ impl Remote {
                 super::protocol::report_document::ScreenshotPreview,
             >(&bytes)
         {
-            editor.screenshots = vec![preview];
+            editor.set_screenshots(vec![preview]);
             editor.message = "Vista previa de captura · ejemplo local; no se enviará".into();
         }
         cx.on_app_quit(|this, cx| {
@@ -875,7 +875,7 @@ impl Remote {
                 |draft| (draft.fields, draft.screenshots),
             );
             self.editor = crate::testing::Editor::new(fields, cx);
-            self.editor.screenshots = screenshots;
+            self.editor.set_screenshots(screenshots);
             self.editor.message = message;
         } else {
             self.editor.message =
@@ -1093,7 +1093,7 @@ impl Remote {
                 if self.report_revision == Some(self.editor.revision) {
                     self.editor.clear_approval(cx);
                     self.editor.error = false;
-                    self.editor.screenshots.clone_from(&preview.screenshots);
+                    self.editor.set_screenshots(preview.screenshots.clone());
                     self.editor.preview = Some(preview);
                     self.editor.message =
                         "Revise cuenta, canal y contenido; el envío exige su consentimiento".into();

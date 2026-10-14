@@ -53,7 +53,8 @@ impl Access {
     pub fn beta_visible(self, section: Section) -> bool {
         match section {
             Section::Workshop | Section::Analysis | Section::Licenses => false,
-            Section::Testing | Section::Calendar => self.verified && !self.blocked && self.tester,
+            Section::Testing => self.verified && !self.blocked,
+            Section::Calendar => self.verified && !self.blocked && self.tester,
             _ => true,
         }
     }
@@ -736,9 +737,8 @@ mod beta_tests {
                 ..Default::default()
             };
             let access = Access::from_policy(&policy, 10_001);
-            for section in [Section::Testing, Section::Calendar] {
-                assert_eq!(access.beta_visible(section), tester, "{role}: {section:?}");
-            }
+            assert!(access.beta_visible(Section::Testing), "{role}");
+            assert_eq!(access.beta_visible(Section::Calendar), tester, "{role}");
             for section in [Section::Workshop, Section::Analysis, Section::Licenses] {
                 assert!(!access.beta_visible(section), "{role}");
             }
@@ -761,10 +761,9 @@ mod beta_tests {
                 item.command,
                 Command::Navigate(Section::Workshop | Section::Analysis | Section::Licenses)
             )));
-            assert_eq!(
+            assert!(
                 menu.iter()
                     .any(|item| item.command == Command::Navigate(Section::Testing)),
-                tester,
                 "{role}"
             );
             assert!(

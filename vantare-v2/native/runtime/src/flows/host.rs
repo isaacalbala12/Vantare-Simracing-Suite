@@ -137,10 +137,17 @@ fn own(
 ) {
     let mut photo = Arc::clone(&latest.load().photo);
     let mut reported = None;
-    while !stop.is_set() {
-        let request = requests.recv_timeout(POLL);
+    loop {
+        // Adquisición ya terminó antes de Drop. Incluso si cancelación gana
+        // el siguiente turno de I/O, persistir el último corte publicado.
+        let stopping = stop.is_set();
+        let request = if stopping {
+            Err(mpsc::RecvTimeoutError::Timeout)
+        } else {
+            requests.recv_timeout(POLL)
+        };
         let cut = latest.load_full();
-        if cut.photo.sequence != photo.sequence {
+        if cut.photo.sequence != photo.sequence || cut.tail != journal.tail() {
             if let Err(error) = journal.replicate(cut.tail, &cut.ring) {
                 eprintln!("events: corte rechazado: {error}");
                 return;
@@ -155,6 +162,9 @@ fn own(
             if !matches!(journal.recording_status(), RecordingStatus::Degraded(_)) {
                 reported = None;
             }
+        }
+        if stopping {
+            break;
         }
         match request {
             Ok(Request::Frame(cursor, sender)) => {
@@ -261,4 +271,35 @@ fn busy() -> io::Error {
 }
 fn timed_out() -> io::Error {
     io::Error::new(io::ErrorKind::TimedOut, "dueño de eventos no respondió")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::core::Core;
+    use crate::flows::tests::{TestFile, photo};
+
+    #[test]
+    fn shutdown_persists_the_last_published_cut_before_owner_exits() {
+        let file = TestFile::new();
+        let journal = Journal::open(1, 256, Some(&file.0)).expect("recording");
+        let mut core = Core::with_event_base(journal.tail()).expect("core");
+        core.observe(photo(1, false)).expect("fuera de pits");
+        core.observe(photo(2, true)).expect("entrada en pits");
+        let tail = core.events().tail();
+        assert_eq!(tail.index, 1, "evento pendiente real");
+        let latest = ArcSwap::from_pointee(Cut {
+            photo: core.snapshot(),
+            tail,
+            ring: Arc::new(core.events().retained()),
+        });
+        let (_sender, receiver) = mpsc::sync_channel(1);
+        let stop = Cancel::new().expect("cancelación");
+        // Intercalación determinista: publish ocurre justo antes de Drop,
+        // y el dueño aún no ha recibido su siguiente turno de I/O.
+        stop.set();
+        own(journal, &latest, &receiver, &stop);
+        let recovered = Journal::open(2, 256, Some(&file.0)).expect("reabrir");
+        assert_eq!(recovered.durable_cursor(), Some(tail));
+    }
 }

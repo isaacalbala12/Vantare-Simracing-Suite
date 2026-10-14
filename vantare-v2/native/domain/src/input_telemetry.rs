@@ -41,9 +41,14 @@ impl Trace {
         &self.samples
     }
     pub fn push(&mut self, snapshot: &Snapshot) -> bool {
-        self.push_with_window(snapshot, WINDOW)
+        // La referencia heredada conserva sus 120 plazas.
+        self.push_bounded(snapshot, WINDOW, MAX_SAMPLES)
     }
     pub fn push_with_window(&mut self, snapshot: &Snapshot, window: Duration) -> bool {
+        // El selector del widget debe conservar toda la ventana, también 4 s.
+        self.push_bounded(snapshot, window, EXTENDED_MAX_SAMPLES)
+    }
+    fn push_bounded(&mut self, snapshot: &Snapshot, window: Duration, max_samples: usize) -> bool {
         let window = window.clamp(Duration::from_secs(1), Duration::from_secs(8));
         let identity = (
             snapshot.epoch,
@@ -119,12 +124,6 @@ impl Trace {
         });
         self.cut = missing;
         self.cut_pedals = absent;
-        // La ventana predeterminada conserva el límite visual heredado de 120.
-        let max_samples = if window == WINDOW {
-            MAX_SAMPLES
-        } else {
-            EXTENDED_MAX_SAMPLES
-        };
         while self.samples.len() > max_samples
             || self
                 .samples
@@ -433,7 +432,7 @@ mod trace_tests {
     #[test]
     fn selected_windows_retain_the_full_span_at_native_cadence() {
         let step = u64::try_from(CADENCE.as_millis()).expect("cadencia acotada");
-        for seconds in [1, 3, 8] {
+        for seconds in [1, 3, 4, 8] {
             let mut trace = Trace::default();
             let expected = seconds * 1000 / step + 1;
             for i in 0..=expected {

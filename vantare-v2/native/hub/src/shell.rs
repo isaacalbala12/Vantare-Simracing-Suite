@@ -27,6 +27,7 @@ use crate::{
 };
 
 use crate::testing::{self, Testing, diagnostic::Module as TestingModule};
+mod analytics;
 pub(crate) mod assets;
 mod chrome;
 mod foundations;
@@ -57,6 +58,7 @@ pub struct Options {
 }
 
 struct Hub {
+    analytics: analytics::State,
     section: Section,
     shell: chrome::State,
     demo: Option<crate::demo::DemoData>,
@@ -93,6 +95,8 @@ impl Hub {
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
+        self.poll_privacy(cx);
+        self.poll_usage(cx, false);
         let incompatible = self.subscriber.connection().incompatible()
             || self.remote.read(cx).connection_incompatible();
         if incompatible != self.connection_incompatible {
@@ -106,7 +110,18 @@ impl Hub {
             remote.poll_roadmap(roadmap_visible, Instant::now(), cx);
         });
         self.notifications.update(cx, |notifications, cx| {
-            notifications.set_tester(self.shell.access.beta_visible(Section::Testing), cx);
+            notifications.set_tester(
+                self.shell.access.verified
+                    && !self.shell.access.blocked
+                    && self.shell.access.tester,
+                cx,
+            );
+        });
+        let remote = self.remote.read(cx);
+        let generation = remote.participation_generation;
+        let reports = remote.participation.contributions.clone();
+        self.notifications.update(cx, |notifications, cx| {
+            notifications.sync_reports(generation, &reports, cx);
         });
         if self
             .launcher
@@ -468,7 +483,7 @@ impl Hub {
             ),
             Section::Testing if self.shell.access.beta_lock(self.section).is_none() => Some(
                 self.testing
-                    .update(cx, |_, cx| Testing::page_header(self.shell.adapt, cx)),
+                    .update(cx, |testing, cx| testing.page_header(self.shell.adapt, cx)),
             ),
             Section::Calendar if self.shell.access.beta_lock(self.section).is_none() => {
                 Some(self.calendar.update(cx, |calendar, cx| {
@@ -559,7 +574,9 @@ impl Hub {
                 launcher.topbar_tabs(cx).into_any_element()
             })),
             Section::Settings => Some(self.settings_tabs(cx).into_any_element()),
-            Section::Testing => Some(self.testing.read(cx).topbar_controls().into_any_element()),
+            Section::Testing if self.shell.access.tester => {
+                Some(self.testing.read(cx).topbar_controls().into_any_element())
+            }
             Section::Calendar => Some(
                 self.calendar
                     .update(cx, |calendar, cx| calendar.topbar_controls(cx))
@@ -949,6 +966,9 @@ fn wire_sections(
     .detach();
     cx.observe(notifications, |this, center, cx| {
         if let Some(destination) = center.update(cx, |center, _| center.destination.take()) {
+            if destination == Section::Testing {
+                this.testing.update(cx, Testing::show_reports);
+            }
             this.navigate(destination, cx);
         }
     })
@@ -1134,7 +1154,7 @@ impl Hub {
         .detach();
         let notifications = cx.new(|cx| {
             let mut notifications = Notifications::from_center(notification_center);
-            notifications.set_tester(access.beta_visible(Section::Testing), cx);
+            notifications.set_tester(access.verified && !access.blocked && access.tester, cx);
             #[cfg(feature = "parity-capture")]
             if capture.is_some()
                 && let Some(demo) = &demo
@@ -1162,7 +1182,12 @@ impl Hub {
                 this.studio
                     .update(cx, |studio, cx| studio.set_access(this.shell.access, cx));
                 this.notifications.update(cx, |notifications, cx| {
-                    notifications.set_tester(this.shell.access.beta_visible(Section::Testing), cx);
+                    notifications.set_tester(
+                        this.shell.access.verified
+                            && !this.shell.access.blocked
+                            && this.shell.access.tester,
+                        cx,
+                    );
                 });
             }
             cx.notify();
@@ -1185,7 +1210,13 @@ impl Hub {
         }
         let testing = cx.new(|cx| Testing::new(testing_dir, remote.clone(), window, cx));
         wire_strategy(&strategy, cx);
+        cx.observe_window_activation(window, |this, window, cx| {
+            this.analytics.active = window.is_window_active();
+            this.poll_usage(cx, true);
+        })
+        .detach();
         cx.on_app_quit(move |this, cx| {
+            this.finish_usage(cx);
             this.analysis.update(cx, |analysis, _| analysis.cancel());
             if let Err(error) = this.launcher.update(cx, |launcher, _| launcher.shutdown()) {
                 eprintln!("cerrar Launcher: {error}");
@@ -1199,6 +1230,7 @@ impl Hub {
         })
         .detach();
         Hub {
+            analytics: analytics::State::new(window.is_window_active()),
             section,
             shell: chrome::State::new(access, capture.as_ref(), cx),
             demo,
@@ -1351,6 +1383,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
     gpui_platform::application()
         .with_assets(assets::Icons)
         .run(move |cx: &mut App| {
+            vantare_ui::analytics::init(cx);
             cx.set_global(orbit::theme::Theme::default());
             let identity = match crate::installation::hub_identity() {
                 Ok(identity) => identity,

@@ -114,6 +114,10 @@ fn participation_is_cleared_on_logout_and_delayed_reply_cannot_restore_private_d
                     title: "Privado".into(),
                     body: "Solo esta cuenta".into(),
                     state: "received".into(),
+                    credit: false,
+                    updated_at: None,
+                    fixed_version: None,
+                    notice: false,
                 }],
             };
             remote.participation_pending = Some(remote.participation_generation);

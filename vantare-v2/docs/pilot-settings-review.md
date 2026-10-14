@@ -1,5 +1,12 @@
 # Revisión de Ajustes · #1612 / VANTA-9
 
+Decisión vigente de Isaac (14/10/2026): **perfil y foto guardados solo en el PC;
+sync apagada y pendiente**. `PILOT_SYNC_ENABLED = false` en Services corta la
+preparación OAuth y la red de todos los comandos de perfil. RED→GREEN adicional
+de cargar/guardar/PilotSync/reabrir sin conexiones, con/sin identidad restaurada,
+en `C:/tmp/1612-local-sync-off`. La evidencia remota descrita abajo corresponde
+a preparación inerte; no acredita una sync activa ni modifica esa decisión.
+
 Base `0807fbd0`, diseño de Opus `3aaa3961` integrado como `48b4f812`.
 La revisión cubre las ocho páginas del código vigente, sus stores, callbacks,
 errores y búsqueda. El QA usa rutas de `C:/tmp`; no se modifica la instalación

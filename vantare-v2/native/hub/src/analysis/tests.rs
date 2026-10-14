@@ -129,6 +129,84 @@ fn verify_writer_lock(exe: &std::path::Path, db: &std::path::Path, cancel: super
 }
 
 #[test]
+fn internal_chunk_gap_separates_reliable_plot_points_after_storage_roundtrip() {
+    let directory =
+        std::env::temp_dir().join(format!("vantare-hub-internal-gap-{}", std::process::id()));
+    std::fs::create_dir(&directory).expect("temporal exclusivo");
+    let db = directory.join("recording.duckdb");
+    let exe = std::env::current_exe()
+        .expect("test exe")
+        .parent()
+        .expect("deps")
+        .parent()
+        .expect("perfil cargo")
+        .join(format!("vantare-storage{}", std::env::consts::EXE_SUFFIX));
+    let mut writer = Command::new(&exe)
+        .arg(&db)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::inherit())
+        .spawn()
+        .expect("writer real");
+    let mut input = writer.stdin.take().expect("stdin");
+    // Seq2 omitida: reloj inválido entre dos fotos fiables, antes de flush.
+    let chunk = json!([
+        "vantare.series-chunk.v1",
+        1,
+        0,
+        0,
+        [
+            "vantare.player-lap.v1",
+            1,
+            3,
+            7,
+            5,
+            null,
+            true,
+            [
+                [1, [1, 100.0], [1, 10.0], [1, 50.0], [1, 0.75], [1, 0.0]],
+                [3, [1, 300.0], [1, 12.0], [1, 20.0], [1, 0.25], [1, 0.5]]
+            ]
+        ]
+    ]);
+    writeln!(input, "{}", json!(["append", chunk])).expect("append");
+    writeln!(input, "{}", json!(["finish", 1])).expect("finish");
+    drop(input);
+    assert!(
+        writer
+            .wait_with_output()
+            .expect("writer cerrado")
+            .status
+            .success()
+    );
+    let original = std::fs::read(&db).expect("original");
+    let charts = {
+        let mut reader =
+            Reader::open(&exe, &db, Arc::new(AtomicBool::new(false))).expect("read-only");
+        let (_, laps) = reader.summaries().expect("resumen");
+        assert!(laps[0].gap);
+        assert_eq!(laps[0].samples, 2);
+        let samples = reader.samples(&laps[0]).expect("plot-page real");
+        super::model::project_laps(&laps[0], &laps[0], &samples, &samples).expect("misma identidad")
+    };
+    assert_eq!(std::fs::read(&db).expect("original intacto"), original);
+    std::fs::remove_file(db).expect("limpiar fixture propia");
+    std::fs::remove_dir(directory).expect("limpiar temporal propio");
+    assert!(charts.delta.is_empty());
+    for points in [&charts.speed[0], &charts.throttle[0], &charts.brake[0]] {
+        assert_eq!(points.len(), 2, "conservar ambos extremos fiables");
+        assert_eq!(
+            (points[0].distance.to_bits(), points[1].distance.to_bits()),
+            (100.0_f64.to_bits(), 300.0_f64.to_bits())
+        );
+        assert_ne!(
+            points[0].segment, points[1].segment,
+            "no dibujar continuidad a través de seq2 ausente"
+        );
+    }
+}
+
+#[test]
 fn no_recordings_does_not_create_a_directory() {
     let directory =
         std::env::temp_dir().join(format!("vantare-hub-no-recordings-{}", std::process::id()));

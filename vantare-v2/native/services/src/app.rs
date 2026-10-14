@@ -126,7 +126,7 @@ impl App {
             let time = now()?;
             self.ensure_oauth(time)?;
             self.candidate_store()?;
-            crate::license_remote::renew(
+            let candidate = crate::license_remote::renew(
                 &self.http,
                 &self.config,
                 self.account.as_ref().ok_or(Error::Authentication)?,
@@ -134,7 +134,16 @@ impl App {
                 &device,
                 self.license_store.as_ref().ok_or(Error::Storage)?,
             )?;
-            return self.transfer_rights();
+            let reply = self.transfer_rights()?;
+            if has_commercial_license(&candidate.credential.claims.capabilities, time) {
+                crate::diagnostics::record_usage_once(
+                    &crate::diagnostics::Usage::AccountSignedIn {},
+                );
+                crate::diagnostics::record_usage_once(
+                    &crate::diagnostics::Usage::CommercialLicenseObserved {},
+                );
+            }
+            return Ok(reply);
         }
         if !matches!(command, Command::DeviceReset) {
             return Err(Error::Protocol);
@@ -307,7 +316,34 @@ impl App {
                 | Command::Logout
         );
         match self.execute(command) {
-            Ok(reply) => reply,
+            Ok(reply) => {
+                if matches!(
+                    &reply,
+                    Reply::Account {
+                        signed_in: true,
+                        pending: false,
+                        error: None,
+                        ..
+                    }
+                ) && self.account.as_ref().is_some_and(|account| {
+                    now().is_ok_and(|time| account.authorized(time, |_| Ok(())).is_ok())
+                }) {
+                    crate::diagnostics::record_usage_once(
+                        &crate::diagnostics::Usage::AccountSignedIn {},
+                    );
+                }
+                let feature = match &reply {
+                    Reply::Checkout { .. } => Some("checkout_opened"),
+                    Reply::ReportReceipt { .. } if report_send => Some("report_sent"),
+                    _ => None,
+                };
+                if let Some(feature) = feature {
+                    crate::diagnostics::record_usage(&crate::diagnostics::Usage::FeatureUsed {
+                        feature: feature.into(),
+                    });
+                }
+                reply
+            }
             Err(error) => {
                 if report_send && error == Error::Authentication {
                     // Un 401 del envío invalida el bearer de datos aún vigente;
@@ -379,6 +415,8 @@ impl App {
             }
             Command::TestingRefresh
             | Command::TestingAnswer { .. }
+            | Command::TestingCredit { .. }
+            | Command::TestingNoticeRead { .. }
             | Command::TestingContribute { .. } => {
                 return self.testing_reply(command);
             }
@@ -657,6 +695,50 @@ impl App {
                 })
             }
             _ => Err(Error::Protocol),
+        }
+    }
+}
+
+fn has_commercial_license(capabilities: &[crate::license::Capability], now: u64) -> bool {
+    capabilities
+        .iter()
+        .any(|capability| match capability.key.as_str() {
+            "vantare.edition.launch_v1" => capability.perpetual,
+            "vantare.plan.pro" => chrono::DateTime::parse_from_rfc3339(&capability.paid_through)
+                .is_ok_and(|end| u64::try_from(end.timestamp()).is_ok_and(|end| end > now)),
+            _ => false,
+        })
+}
+
+#[cfg(test)]
+mod analytics_tests {
+    use super::*;
+
+    #[test]
+    fn commercial_observation_excludes_roles_expired_and_unknown_grants() {
+        for (key, expiry, perpetual, expected) in [
+            ("vantare.plan.pro", "2026-10-15T00:00:00Z", false, true),
+            ("vantare.plan.pro", "2020-01-01T00:00:00Z", false, false),
+            ("vantare.plan.pro", "invalid", false, false),
+            (
+                "vantare.operational.owner",
+                "2026-10-15T00:00:00Z",
+                false,
+                false,
+            ),
+            ("vantare.module.engineer", "", true, false),
+            ("vantare.edition.launch_v1", "", true, true),
+        ] {
+            let capability = crate::license::Capability {
+                key: key.into(),
+                paid_through: expiry.into(),
+                perpetual,
+                scope_version: String::new(),
+            };
+            assert_eq!(
+                has_commercial_license(&[capability], 1_792_000_000),
+                expected
+            );
         }
     }
 }

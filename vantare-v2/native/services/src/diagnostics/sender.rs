@@ -1,6 +1,6 @@
 use super::{
-    Crash, FILE_LIMIT, Privacy, QUEUE_LIMIT, Usage, anonymous_id, configured, data_root,
-    read_bounded,
+    Crash, FILE_LIMIT, PendingUsage, Privacy, QUEUE_LIMIT, anonymous_id, configured, consent_lock,
+    data_root, read_bounded,
 };
 use crate::{Error, Result, http::Http};
 use std::sync::{
@@ -25,6 +25,17 @@ fn flush_until(
     endpoint: &Url,
     key: Option<&str>,
     stopped: &AtomicBool,
+) -> Result<()> {
+    flush_with_hook(root, http, endpoint, key, stopped, || {})
+}
+
+pub(super) fn flush_with_hook(
+    root: &Path,
+    http: &Http,
+    endpoint: &Url,
+    key: Option<&str>,
+    stopped: &AtomicBool,
+    mut before_post: impl FnMut(),
 ) -> Result<()> {
     let Some(key) = key.filter(|key| !key.trim().is_empty()) else {
         return Ok(());
@@ -56,7 +67,7 @@ fn flush_until(
                 fs::remove_file(path).map_err(|_| Error::Storage)?;
                 continue;
             }
-            let (event, properties) = if folder == "crashes" {
+            let (event, properties, generation) = if folder == "crashes" {
                 let crash: Crash = if let Ok(crash) = serde_json::from_slice(&bytes) {
                     crash
                 } else {
@@ -72,34 +83,51 @@ fn flush_until(
                     "unknown"
                 };
                 let properties = serde_json::json!({"code": "native_panic", "version": version, "os": std::env::consts::OS, "stack": crash.frames.into_iter().take(64).collect::<Vec<_>>()});
-                ("crash".to_owned(), properties)
+                ("crash".to_owned(), properties, crash.generation)
             } else {
-                let usage: Usage = if let Ok(usage) = serde_json::from_slice(&bytes) {
+                let pending: PendingUsage = if let Ok(usage) = serde_json::from_slice(&bytes) {
                     usage
                 } else {
                     fs::remove_file(&path).map_err(|_| Error::Storage)?;
                     continue;
                 };
-                if !usage.valid() {
+                if !pending.usage.valid() {
                     fs::remove_file(&path).map_err(|_| Error::Storage)?;
                     continue;
                 }
-                let value = serde_json::to_value(usage).map_err(|_| Error::Protocol)?;
+                let value = serde_json::to_value(pending.usage).map_err(|_| Error::Protocol)?;
                 (
                     value["event"].as_str().ok_or(Error::Protocol)?.to_owned(),
                     value["properties"].clone(),
+                    pending.generation,
                 )
             };
             let mut properties = properties;
+            // Disable person profiles for these installation-level events.
+            properties["$process_person_profile"] = false.into();
+            properties["$ip"] = serde_json::Value::Null;
+            properties["$geoip_disable"] = true.into();
+            before_post();
+            // Sin una frontera común, otra lectura suelta conserva el TOCTOU.
+            // El guard se mantiene hasta terminar el POST acotado (8 s).
+            let _guard = consent_lock(root)?;
+            let current = Privacy::load(root)?;
+            if current.generation != generation
+                || (folder == "usage" && !current.usage)
+                || (folder == "crashes" && !current.crashes)
+            {
+                match fs::remove_file(&path) {
+                    Ok(()) => {}
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+                    Err(_) => return Err(Error::Storage),
+                }
+                continue;
+            }
             let distinct_id = if folder == "crashes" {
                 "native-crash".to_owned()
             } else {
                 anonymous_id(root)?
             };
-            // Disable person profiles for these installation-level events.
-            properties["$process_person_profile"] = false.into();
-            properties["$ip"] = serde_json::Value::Null;
-            properties["$geoip_disable"] = true.into();
             let response = http.post_json(endpoint, &serde_json::json!({"api_key": key, "event": event, "distinct_id": distinct_id, "properties": properties}), None, None)?.success()?;
             // EU capture returns "Ok"; older capture endpoints return 1.
             let status = response.json::<serde_json::Value>()?["status"].clone();
@@ -170,9 +198,11 @@ impl Drop for Worker {
 }
 
 #[cfg(test)]
+mod analytics_tests;
+#[cfg(test)]
 mod tests {
     use super::*;
-    use crate::diagnostics::{PRIVACY_FILE, enqueue_usage, write_crash};
+    use crate::diagnostics::{PRIVACY_FILE, Usage, enqueue_usage, write_crash};
     use crate::test_http::Server;
 
     #[test]
@@ -180,7 +210,7 @@ mod tests {
         let root = super::super::tests::root();
         fs::write(
             root.join(PRIVACY_FILE),
-            br#"{"crashes":false,"usage":true,"crashes_decided":true}"#,
+            br#"{"crashes":false,"usage":true,"crashes_decided":true,"usage_decided":true}"#,
         )
         .expect("consent");
         fs::create_dir(root.join("usage")).expect("queue");
@@ -211,7 +241,7 @@ mod tests {
         let root = super::super::tests::root();
         fs::write(
             root.join(PRIVACY_FILE),
-            br#"{"crashes":false,"usage":true,"crashes_decided":true}"#,
+            br#"{"crashes":false,"usage":true,"crashes_decided":true,"usage_decided":true}"#,
         )
         .expect("consent");
         fs::create_dir_all(root.join("usage")).expect("queue");
@@ -229,7 +259,11 @@ mod tests {
         {
             fs::write(
                 root.join("usage").join(format!("{slot:02}.json")),
-                serde_json::to_vec(usage).expect("json"),
+                serde_json::to_vec(&PendingUsage {
+                    generation: 0,
+                    usage: usage.clone(),
+                })
+                .expect("json"),
             )
             .expect("invalid slot");
         }
@@ -387,6 +421,7 @@ mod tests {
         super::super::tests::consent(&root);
         fs::create_dir(root.join("crashes")).expect("dir");
         let old = Crash {
+            generation: 0,
             binary: "Nombre privado del usuario".into(),
             version: "Nombre privado del usuario".into(),
             message: format!(
@@ -462,7 +497,7 @@ mod tests {
         assert!(!root.join("usage").exists());
         fs::write(
             root.join(PRIVACY_FILE),
-            br#"{"crashes":true,"usage":true,"crashes_decided":true}"#,
+            br#"{"crashes":true,"usage":true,"crashes_decided":true,"usage_decided":true}"#,
         )
         .expect("consent");
         enqueue_usage(&root, &usage).expect("pending usage");
@@ -483,7 +518,7 @@ mod tests {
         let root = super::super::tests::root();
         fs::write(
             root.join(PRIVACY_FILE),
-            br#"{"crashes":true,"usage":true,"crashes_decided":true}"#,
+            br#"{"crashes":true,"usage":true,"crashes_decided":true,"usage_decided":true}"#,
         )
         .expect("consent");
         for usage in [

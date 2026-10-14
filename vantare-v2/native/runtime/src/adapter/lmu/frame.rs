@@ -171,7 +171,7 @@ pub(super) fn admit(buffer: &[u8], verified_build: &str) -> Result<Frame, Reject
         let vehicle = vehicle(buffer, SCORING_BASE + index * SCORING_STRIDE, &telemetry)?;
         if vehicles
             .iter()
-            .any(|seen: &Vehicle| seen.slot == vehicle.slot)
+            .any(|seen: &Vehicle| seen.slot == vehicle.slot || seen.position == vehicle.position)
         {
             return Err(Rejection::InvalidActiveGrid);
         }
@@ -1059,6 +1059,16 @@ mod tests {
                 "offset {offset}"
             );
         }
+    }
+
+    #[test]
+    fn duplicated_native_positions_are_rejected_before_publishing_two_leaders() {
+        let mut bytes = REAL_44.to_vec();
+        bytes[SCORING_BASE + SCORING_STRIDE + 199] = bytes[SCORING_BASE + 199];
+        assert_eq!(
+            admit(&bytes, "1.3.0.0").err(),
+            Some(Rejection::InvalidActiveGrid)
+        );
     }
 
     /// El parser indexa un buffer de tamano fijo con offsets constantes y con

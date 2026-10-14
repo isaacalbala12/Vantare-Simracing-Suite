@@ -76,6 +76,14 @@ select throws_ok($$select pg_temp.direct_write('insert into public.pilot_profile
 select is((public.pilot_profile_load()->>'revision')::bigint,4::bigint,'direct writes leave revision intact');
 select throws_ok($$insert into public.pilot_profiles(account_id) values('16120000-0000-0000-0000-000000000002')$$,'42501',null,'cannot write another profile');
 insert into storage.objects(bucket_id,name) values('pilot-photos','16120000-0000-0000-0000-000000000001/'||repeat('a',64)||'.jpg');
+with changed as (update storage.objects set metadata='{"replaced":true}' where bucket_id='pilot-photos' returning 1)
+  select is(count(*),0::bigint,'global permissive UPDATE cannot replace own immutable photo') from changed;
+with changed as (update storage.objects set bucket_id='other' where bucket_id='pilot-photos' returning 1)
+  select is(count(*),0::bigint,'cannot move immutable photo out of bucket') from changed;
+insert into storage.objects(bucket_id,name) values('other','16120000-0000-0000-0000-000000000001/'||repeat('b',64)||'.jpg');
+select throws_ok($$update storage.objects set bucket_id='pilot-photos' where bucket_id='other'$$,'42501',null,'cannot move a replacement into immutable bucket');
+with changed as (update storage.objects set metadata='{"allowed":true}' where bucket_id='other' returning 1)
+  select is(count(*),1::bigint,'update outside pilot bucket unchanged') from changed;
 select throws_ok(format('select public.pilot_profile_save(%L::jsonb,%L,4)',jsonb_build_object('future',repeat('x',17000))::text,repeat('a',64)), '22023','invalid profile','reserve photo base64 inside native document budget');
 select is((public.pilot_profile_save('{}',repeat('a',64),4)->>'revision')::bigint,5::bigint,'own uploaded photo linked');
 select throws_ok($$select public.pilot_profile_save('{}',repeat('b',64),5)$$,'22023','photo missing','missing photo rejected');

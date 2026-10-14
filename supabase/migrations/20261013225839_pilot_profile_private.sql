@@ -1,6 +1,6 @@
 -- #1612 / VANTA-9. PREPARADA, NO APLICAR EN PRODUCCIÃ“N SIN OK DE ISAAC.
 begin;
--- No se admite que este esquema esté en los esquemas expuestos por Data API.
+-- No se admite que este esquema estÃ© en los esquemas expuestos por Data API.
 create schema pilot_private;
 revoke all on schema pilot_private from public,anon;
 grant usage on schema pilot_private to authenticated;
@@ -96,7 +96,7 @@ create policy pilot_self on public.pilot_profiles to authenticated,pilot_profile
   using (account_id = (select auth.uid()))
   with check (account_id = (select auth.uid()));
 
--- RPC pública INVOKER; el escritor privado solo permite CAS y sigue sujeto a RLS.
+-- RPC pÃºblica INVOKER; el escritor privado solo permite CAS y sigue sujeto a RLS.
 create function public.pilot_profile_load() returns jsonb
 language sql stable security invoker set search_path = '' as $$
   select jsonb_build_object('profile', profile, 'revision', revision, 'photo_hash', photo_hash)
@@ -157,4 +157,9 @@ create policy pilot_photo_delete on storage.objects for delete to authenticated
 create policy pilot_photo_private_guard on storage.objects as restrictive for all to public
   using (bucket_id <> 'pilot-photos' or (storage.foldername(name))[1] = (select auth.uid())::text)
   with check (bucket_id <> 'pilot-photos' or (storage.foldername(name))[1] = (select auth.uid())::text);
+-- Ni reemplazar bytes/metadata ni mover un objeto al/del bucket inmutable,
+-- incluso si existe una policy permisiva global de UPDATE.
+create policy pilot_photo_immutable_guard on storage.objects as restrictive for update to public
+  using (bucket_id <> 'pilot-photos')
+  with check (bucket_id <> 'pilot-photos');
 commit;

@@ -288,11 +288,10 @@ pub(super) fn render(
             btn_pri("calendar-ficha-launch", "Lanzar ahora", false, cx)
                 .on_click(cx.listener(|this, _, _, cx| this.launch_profile(cx))),
         );
-    gpui::deferred(
+    chrome::window_layer(
+        cal.ui.viewport,
         div()
             .id("calendar-ficha")
-            .absolute()
-            .inset_0()
             .flex()
             .justify_end()
             .bg(chrome::tint(0x0000_0000, 0.4))
@@ -340,7 +339,6 @@ pub(super) fn render(
                     .child(footer),
             ),
     )
-    .with_priority(orbit::MODAL_Z)
     .into_any_element()
 }
 

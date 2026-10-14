@@ -10,6 +10,7 @@ use gpui::{ClickEvent, Context, Div, IntoElement, Stateful, div, prelude::*, px,
 
 /// Capa con velo: un clic fuera o Esc la cierra.
 pub(super) fn modal(
+    viewport: gpui::Size<gpui::Pixels>,
     title: &str,
     subtitle: &str,
     width: f32,
@@ -18,11 +19,10 @@ pub(super) fn modal(
     cx: &mut Context<Calendar>,
 ) -> impl IntoElement {
     let skin = chrome::skin(cx);
-    gpui::deferred(
+    chrome::window_layer(
+        viewport,
         div()
             .id("calendar-modal")
-            .absolute()
-            .inset_0()
             .flex()
             .items_center()
             .justify_center()
@@ -89,7 +89,6 @@ pub(super) fn modal(
                     ),
             ),
     )
-    .with_priority(orbit::MODAL_Z)
 }
 
 /// Aplica un cambio de avisos al pulsar; el error se enseña en la página.
@@ -522,6 +521,7 @@ pub(super) fn alerts_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> im
             )),
         );
     modal(
+        cal.ui.viewport,
         "Avisos",
         "Te avisamos antes de que salga la carrera que elijas. Los cambios se guardan al momento.",
         860.0,
@@ -729,6 +729,7 @@ pub(super) fn ics_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> impl 
                 .on_click(cx.listener(|this, _, _, cx| this.download_ics(cx))),
         );
     modal(
+        cal.ui.viewport,
         "Exportar a tu calendario",
         "Un archivo .ics con tus próximas salidas.",
         560.0,

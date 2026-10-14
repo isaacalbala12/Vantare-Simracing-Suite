@@ -1,5 +1,66 @@
 # Handoff vivo — Testing Center
 
+## R5 F6 · 14/10/2026 · entrega CLI
+
+#1594 / VANTA-38/49 **Por revisar**, actualizado y releído con el script oficial.
+Proyecto Vantare/In Review, area:testing-center; issue OPEN, sin milestone.
+PR #1602 draft a nightly; STOP merge, auto-merge OFF. Inicio limpio en
+ffb5a490; commits heredados conservados. Solo F6 autorizado; sin subagentes.
+
+F6: catálogo compartido `tools/triage/structured-catalog.json` para nivel fijo,
+21 tipos reales del enum services + ServicesCommandFailure observado y 13
+módulos de crates nativos. Todo valor desconocido/presente → `otro`.
+Versiones: SemVer restringido, tres números 0..999999 sin ceros iniciales;
+prerelease de etiqueta fija con sufijos numéricos y build numérico, hasta 64
+caracteres. Contadores: enteros 0..1.000.000.000, sin bool/float. No se
+acepta texto privado por cumplir un alfabeto. Mismo contrato antes del modelo,
+para duplicados, al exportar T3/replay y en la frontera directa de Intake.
+Rust usa también la gramática en el contexto previo a preview.
+
+Huella: SHA256 calculado sobre JSON canónico de la proyección cerrada, con
+prefijo vantare.triage.error.v1:. Excluye message/first_line/fingerprint del
+origen, incluso si parece un hash. Referencias del modelo deben corresponder
+al extracto calculado. Marca de contrato creada dentro del worker después de
+validar; nunca procede del informe/modelo. Spools anteriores descartan refs
+de error, mantienen ACK independientes y no llaman de nuevo al modelo.
+
+22 fixtures estructuradas compartidas (F6 exacto, sk-proj/IP/MAC/UUID/nombre,
+SemVer y límites), tres hashes esperados compartidos y test de procedencia
+contra enum/crates. Errores SQL válidos con type o fingerprint privados por
+separado; seis recorridos modelo → T3/cuerpo HTTP mock → POST Intake mock,
+eco de valores recibidos, replay y referencias forjadas. Corpus r1-r4 intactos;
+fixtures compatibles cambian 1.0 a 1.0.0 y refs simuladas por hashes derivados.
+No se elimina ninguna comprobación de privacidad/recuperación/autoridad.
+
+Hito F6 publicado y remoto idéntico:
+**254c62c7fb931443a7f2041a04148ed5e237e01f**.
+Gates finales locales: **fmt/check/Clippy PASS**, **Nextest 1663/1663**
+(7 skips, 1 lento PASS), **lifecycle 18/18**, **Python 54/54** con sockets
+prohibidos, **quality 456** y **diff-check PASS**. RED Python (25 subcasos)
+y Rust (F6 exacto) conservados. Primer full Python: fallo de fixture 1.0,
+corregida a 1.0.0; la suite final incluye siete tests F6 y todas las anteriores.
+[Reproducción y límites R5](../../../../tools/triage/review-1602-r5-regressions.md).
+
+Cola versionada, timeout 3600 s por gate, jobs=2; target exclusivo
+E:/tmp/isa1594-native-gates. Wrapper DuckDB comparado: solo cwd/target difieren,
+defaults de los demás crates conservados. Evidencia E:/tmp/isa1594-r5-evidence/.
+El catálogo JSON debe acompañar los .py al preparar despliegue. Sin dependencias
+ni lints/tests debilitados. Handoff histórico preservado sin convertir su
+encoding mixto. Base común bc89c8b8400a0a7915e7496b6f339d8e8231359b;
+origin/nightly consultado 5a796e89646aba0f233a83a25700506b74940e98.
+
+**F7 pendiente de decisión de Isaac**: título/descripción, escapes y texto
+libre no se modifican ni se certifican seguros. Pendiente re-review del
+orquestador; PR previamente DIRTY/GitGuardian FAILURE. Sobre el push F6,
+GitHub devuelve mergeStateStatus UNKNOWN y checks aún ausentes; no se
+certifica CI verde ni resolución de conflictos. Sin merge/promoción/release.
+Sin proveedor, informes reales a T3/Intake, despliegue, cron, token/LOGIN/
+password ni acciones Supabase prod nuevas. Acciones externas autorizadas:
+commits/push, comentarios GitHub y estados Plane. SQL/pgTAP, telemetría y
+QA visual/física no repetidos por ámbito (sin SQL/runtime/domain/ipc/testdata).
+Riesgos: menor precisión de agrupación, refs legacy omitidas y versiones
+incompletas sin trazabilidad. Canal alcanzado: rama de issue con PR draft.
+
 ## R4 F5 · 14/10/2026 · entrega CLI
 
 #1594 / VANTA-38/49 **Por revisar**, actualizado y releído con el script oficial.

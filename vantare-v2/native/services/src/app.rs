@@ -315,10 +315,11 @@ impl App {
             let completion = ticket.run(&self.http, now()?)?;
             let changed = account
                 .identity()
-                .is_some_and(|old| old != completion.identity());
+                .is_none_or(|old| old != completion.identity());
             // Otra identidad no hereda el candidate ni la autoridad anteriores.
+            // Sin identidad restaurada tampoco se conoce al dueño del binding.
             // Revocar antes de persistir la nueva sesión; si falla, no sustituirla.
-            if changed && self.core.is_some() {
+            if changed {
                 self.revoke_local()?;
             }
             self.account
@@ -847,11 +848,16 @@ mod tests {
         let mut listener = Listener::new(&name, Arc::clone(&stop), Duration::from_secs(5))
             .expect("local IPC listener");
         let mut server_pipe = listener.instance().expect("pipe instance");
+        let (link, core) = core_fixture(String::new(), "unused", vec![CoreStep::Invalidate]);
         let worker = std::thread::spawn(move || {
             server_pipe.accept().expect("local IPC connection");
-            for _ in 0..3 {
+            for index in 0..3 {
                 let request: crate::protocol::Request =
                     crate::protocol::read(&mut server_pipe).expect("IPC request");
+                if index == 2 {
+                    // El primer login también revoca cualquier binding previo.
+                    app.attach_core(link.clone());
+                }
                 let response = crate::protocol::Response {
                     version: crate::protocol::VERSION,
                     sequence: request.sequence,
@@ -860,6 +866,7 @@ mod tests {
                 crate::protocol::write(&mut server_pipe, &response).expect("IPC response");
             }
             drop(app);
+            core.join().expect("initial identity revocation ACK");
         });
         let mut client = vantare_ipc::control::connect_ready(&name, &stop, Duration::from_secs(5))
             .expect("IPC client");
@@ -1533,6 +1540,122 @@ mod tests {
         server.finish();
         drop(app);
         crate::cleanup_store(&root, "app-device-limit", &["account"]);
+    }
+
+    #[test]
+    fn detached_identity_switch_requires_ack_then_managed_retry_retires_candidate() {
+        identity_switch_without_core(true);
+    }
+
+    #[test]
+    fn detached_login_with_missing_identity_cannot_inherit_a_previous_candidate() {
+        identity_switch_without_core(false);
+    }
+
+    fn identity_switch_without_core(previous_identity: bool) {
+        let server = crate::test_http::Server::start(vec![
+            (200, serde_json::json!({"access_token":"new-local-access","refresh_token":"new-local-refresh","token_type":"Bearer","expires_in":3600}).to_string()),
+            (200, serde_json::json!({"sub":"other_fixture_user"}).to_string()),
+            (200, serde_json::json!({"access_token":"retry-local-access","refresh_token":"retry-local-refresh","token_type":"Bearer","expires_in":3600}).to_string()),
+            (200, serde_json::json!({"sub":"other_fixture_user"}).to_string()),
+        ]);
+        let (root, store) = crate::test_store("app-detached-switch");
+        let mut account = crate::account::fixture(&server.base, &store);
+        if !previous_identity {
+            account.logout(&store).expect("missing restored identity");
+        }
+        let saved_before = store
+            .load::<serde_json::Value>("account")
+            .expect("old session");
+        let device = "detached-switch-fixture";
+        let (credential, keys) = crate::license_remote::tests::signed_fixture(device);
+        let mut config = BuildConfig::load();
+        config.supabase = Some(server.base.clone());
+        let mut app = App::new(config, root.clone());
+        app.account = Some(account);
+        app.store = Some(store);
+        app.candidate_store()
+            .expect("candidate store")
+            .save(
+                "license-candidate",
+                &crate::license_remote::Candidate {
+                    account_id: credential.claims.subject.clone(),
+                    credential,
+                    device: device.into(),
+                },
+            )
+            .expect("A candidate before detached login");
+
+        for managed in [false, true] {
+            let core = if managed {
+                let (link, core) = core_fixture(device.into(), keys, vec![CoreStep::Invalidate]);
+                app.attach_core(link);
+                Some(core)
+            } else {
+                None
+            };
+            let login = app
+                .account
+                .as_mut()
+                .expect("account")
+                .begin_login()
+                .expect("explicit retry without browser");
+            let params: std::collections::HashMap<_, _> = login
+                .query_pairs()
+                .map(|(key, value)| (key.into_owned(), value.into_owned()))
+                .collect();
+            let redirect = url::Url::parse(&params["redirect_uri"]).expect("redirect");
+            let mut socket = TcpStream::connect(("127.0.0.1", redirect.port().expect("port")))
+                .expect("callback");
+            write!(
+                socket,
+                "GET /callback?state={}&code=fixture HTTP/1.1\r\nHost: localhost\r\n\r\n",
+                params["state"]
+            )
+            .expect("callback request");
+            assert!(
+                matches!(app.handle(Command::AccountPoll), Reply::Account {
+                signed_in, pending: false, error, ..
+            } if signed_in == (managed || previous_identity) && error.is_some() != managed),
+                "detached login must fail before saving B; managed retry must await Invalidate ACK"
+            );
+            let saved = app
+                .store
+                .as_ref()
+                .expect("store")
+                .load::<serde_json::Value>("account")
+                .expect("durable account");
+            if managed {
+                assert_eq!(
+                    saved["session"]["identity"]["subject"],
+                    "other_fixture_user"
+                );
+                core.expect("managed core").join().expect("revocation ACK");
+            } else {
+                assert!(
+                    saved == saved_before,
+                    "detached login replaced the durable account"
+                );
+            }
+            assert_eq!(
+                app.candidate_store()
+                    .expect("candidate store")
+                    .load::<crate::license_remote::Candidate>("license-candidate")
+                    .is_ok(),
+                !managed,
+                "candidate is retired only after durable revocation ACK"
+            );
+        }
+        for _ in 0..4 {
+            server
+                .requests
+                .recv_timeout(Duration::from_secs(3))
+                .expect("OAuth loopback only");
+        }
+        assert!(server.requests.try_recv().is_err());
+        server.finish();
+        drop(app);
+        crate::cleanup_store(&root, "app-detached-switch", &[]);
     }
 
     #[test]

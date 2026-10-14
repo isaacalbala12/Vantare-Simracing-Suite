@@ -123,12 +123,6 @@ export function extractExternalCustomerId(
     if (fromCustomer) return fromCustomer;
   }
 
-  const metadata = nestedRecord(data.metadata);
-  if (metadata) {
-    const fromMeta = asString(metadata.user_id);
-    if (fromMeta) return fromMeta;
-  }
-
   return null;
 }
 
@@ -208,10 +202,8 @@ export async function resolveUserId(
   environment: BillingEnvironment,
 ): Promise<string | null> {
   const externalId = extractExternalCustomerId(data);
-  if (externalId) return externalId;
-
   const polarCustomerId = extractPolarCustomerId(data);
-  if (!polarCustomerId) return null;
+  if (!polarCustomerId) return externalId;
 
   const { data: row, error } = await supabase
     .from("billing_customers")
@@ -222,7 +214,9 @@ export async function resolveUserId(
     .maybeSingle();
 
   if (error) throw error;
-  return asString(row?.user_id);
+  // El vínculo durable de este cliente/entorno es autoridad; un campo externo
+  // contradictorio nunca puede mover una compra a otro UUID.
+  return asString(row?.user_id) ?? externalId;
 }
 
 export async function recordWebhookEvent(
@@ -940,6 +934,18 @@ async function processClaimedWebhook(
   const processingDeps = { ...deps, runEffect };
   try {
     const result = await applyPolarWebhookEvent(event, processingDeps);
+    // Delivery order is not an attribution conflict. Keep redelivery alive
+    // until the order arrives, bounded by the existing retry limit/backoff.
+    if (
+      result.status === "ignored" &&
+      ["missing_order", "order_refund_ledger_missing_order"].includes(
+        result.reason,
+      )
+    ) {
+      throw Object.assign(new Error("Order awaiting delivery"), {
+        code: "order_refund_ledger_missing_order",
+      });
+    }
     const unsafeReason = quarantineReason(result);
     if (unsafeReason) {
       await inbox.quarantine(inboxId, leaseToken, unsafeReason);

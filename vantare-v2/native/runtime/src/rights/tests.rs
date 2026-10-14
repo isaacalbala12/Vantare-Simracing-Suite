@@ -331,6 +331,94 @@ fn clean(root: &std::path::Path) {
     std::fs::remove_dir_all(root).expect("limpiar solo carpeta aleatoria del test");
 }
 
+#[cfg(windows)]
+#[test]
+fn detached_logout_cannot_claim_revocation_then_managed_ack_survives_restart() {
+    use vantare_services::{
+        app::App,
+        config::BuildConfig,
+        protocol::{Command, Reply},
+    };
+    let now = super::wall_now();
+    let (credential, keys) = signed_v1(
+        now.timestamp() - 10,
+        beta_grants(Some("vantare.edition.launch_v1"), now.timestamp()),
+    );
+    let root = test_root();
+    let mut owner = Owner::open(&root, Some(&keys), devices(), 1, now).expect("owner");
+    owner
+        .install(credential, now, Duration::ZERO)
+        .expect("binding previo");
+    assert_eq!(
+        owner
+            .advance(&photo(false), now, Duration::ZERO)
+            .expect("derechos")
+            .catalog,
+        vantare_ipc::control::CatalogAccess::LaunchV1
+    );
+    drop(owner);
+
+    let mut config = BuildConfig::load();
+    config.native_oauth = None;
+    let mut app = App::new(config, root.join("services"));
+    assert!(
+        matches!(app.handle(Command::Logout), Reply::Error { .. }),
+        "un auxiliar sin CoreLink no puede confirmar revocación del binding"
+    );
+    let mut restored = Owner::open(&root, Some(&keys), devices(), 2, super::wall_now())
+        .expect("binding conservado");
+    assert_eq!(
+        restored
+            .advance(&photo(false), super::wall_now(), Duration::ZERO)
+            .expect("sin falso logout")
+            .catalog,
+        vantare_ipc::control::CatalogAccess::LaunchV1
+    );
+    drop(restored);
+
+    let name = format!("logout-{}", vantare_services::random_id().expect("pipe"));
+    let nonce = vantare_services::random_id().expect("nonce");
+    let pid = std::process::id();
+    let host = host::Host::start(
+        &name,
+        host::Options {
+            root: root.clone(),
+            keys: Some(keys.clone()),
+            devices: devices(),
+            epoch: 3,
+            nonce: Some(nonce.clone()),
+        },
+        move |peer, _| peer.pid == pid,
+    )
+    .expect("núcleo gestionado");
+    app.attach_core(vantare_ipc::control::CoreLink {
+        pipe: vantare_ipc::control::pipe_name(&name),
+        image: std::env::current_exe().expect("imagen"),
+        nonce,
+    });
+    assert!(matches!(
+        app.handle(Command::Logout),
+        Reply::Account {
+            signed_in: false,
+            error: None,
+            ..
+        }
+    ));
+    drop(app);
+    drop(host);
+    let mut restored = Owner::open(&root, Some(&keys), devices(), 4, super::wall_now())
+        .expect("tombstone durable");
+    assert_eq!(
+        restored
+            .advance(&photo(false), super::wall_now(), Duration::ZERO)
+            .expect("sin derechos tras reinicio")
+            .catalog,
+        vantare_ipc::control::CatalogAccess::Free
+    );
+    drop(restored);
+    clean(&root);
+}
+
 #[test]
 fn exact_hour_live_only_never_resets_on_reconnect_or_recycled_session_after_restart() {
     let start = 1_790_770_000;

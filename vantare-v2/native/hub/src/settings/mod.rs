@@ -135,11 +135,11 @@ pub(super) struct State {
     consent_focus: [FocusHandle; 3],
     pub(super) appearance: appearance::Store,
     pilot: Entity<crate::pilot::view::PilotEditor>,
-    pilot_state: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
+    pilot_saved: Option<vantare_ipc::services_protocol::pilot_document::PilotState>,
     pilot_source: Option<Vec<u8>>,
-    pilot_photo: Option<Option<vantare_ipc::services_protocol::pilot_document::PilotPhoto>>,
+    pilot_photo: pilot::PhotoEdit,
     pilot_generation: u64,
-    pilot_requested: bool,
+    pilot_load: pilot::Load,
     appearance_focus: [FocusHandle; 15],
     appearance_bounds: [Option<gpui::Bounds<gpui::Pixels>>; 2],
     appearance_dragging: [bool; 2],
@@ -351,11 +351,11 @@ impl State {
             ),
             appearance,
             pilot: Self::pilot_editor(window, cx),
-            pilot_state: None,
+            pilot_saved: None,
             pilot_source: None,
-            pilot_photo: None,
+            pilot_photo: pilot::PhotoEdit::Unchanged,
             pilot_generation: 0,
-            pilot_requested: false,
+            pilot_load: pilot::Load::New,
             appearance_focus: std::array::from_fn(|_| cx.focus_handle()),
             appearance_bounds: [None, None],
             appearance_dragging: [false, false],
@@ -652,8 +652,8 @@ impl Hub {
         cx.notify();
     }
     fn select_settings_page(&mut self, page: Page, cx: &mut Context<Self>) {
-        if page == Page::Account && self.settings.pilot_state.is_none() {
-            self.settings.pilot_requested = false;
+        if page == Page::Account && self.settings.pilot_saved.is_none() {
+            self.settings.pilot_load = pilot::Load::New;
         }
         self.settings.page = page;
         self.settings.panel_scroll = gpui::ScrollHandle::new();

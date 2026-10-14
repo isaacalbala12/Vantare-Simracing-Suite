@@ -8,7 +8,11 @@ use vantare_services::diagnostics::{PRIVACY_FILE, Privacy};
 const PRIVACY_POLICY_URL: &str = "https://vantare.app/privacidad";
 
 fn resolve_root(data: &Path, default_hub: &Path, shared: PathBuf) -> PathBuf {
-    if data == default_hub { shared } else { data.to_path_buf() }
+    if data == default_hub {
+        shared
+    } else {
+        data.to_path_buf()
+    }
 }
 
 pub(super) fn root(data: &Path) -> Result<PathBuf, String> {
@@ -198,8 +202,14 @@ mod tests {
         let default_hub = Path::new("C:/fixture/VantareNative/hub");
         let shared = PathBuf::from("C:/fixture/Vantare/native");
         let isolated = Path::new("C:/tmp/1612-privacy-qa");
-        assert_eq!(resolve_root(isolated, default_hub, shared.clone()), isolated);
-        assert_eq!(resolve_root(default_hub, default_hub, shared.clone()), shared);
+        assert_eq!(
+            resolve_root(isolated, default_hub, shared.clone()),
+            isolated
+        );
+        assert_eq!(
+            resolve_root(default_hub, default_hub, shared.clone()),
+            shared
+        );
     }
     #[test]
     fn first_choice_migrates_legacy_and_survives_restart_and_revocation() {

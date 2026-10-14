@@ -10,10 +10,19 @@ fn pilot_dispatch_failure_releases_editor_and_can_retry() {
         drop(requests);
         remote.update(cx, |remote, cx| {
             let generation = remote.pilot_generation;
-            remote.request(Command::PilotSave { profile: Default::default(), expected_revision: 0 }, cx);
+            remote.request(
+                Command::PilotSave {
+                    profile: super::super::protocol::pilot_document::PilotProfile::default(),
+                    expected_revision: 0,
+                },
+                cx,
+            );
             assert!(!remote.busy());
-            assert_ne!(remote.pilot_generation, generation, "failed dispatch must notify the editor");
-            assert!(!remote.pilot_succeeded);
+            assert_ne!(
+                remote.pilot_generation, generation,
+                "failed dispatch must notify the editor"
+            );
+            assert!(remote.pilot_result == PilotResult::Failed);
             let (send, retry) = mpsc::sync_channel(8);
             remote.send = Some(send);
             remote.request(Command::PilotLoad, cx);
@@ -130,7 +139,7 @@ pub(super) fn fixture(
     let mut remote = Remote {
         pilot: None,
         pilot_message: String::new(),
-        pilot_succeeded: false,
+        pilot_result: PilotResult::Failed,
         pilot_generation: 0,
         adapt: orbit::Adapt::default(),
         pipe: "qa-in-memory".into(),

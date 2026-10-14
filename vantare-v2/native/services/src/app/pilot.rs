@@ -3,6 +3,7 @@ use super::{App, Command, Error, Reply, Result, now};
 impl App {
     pub(super) fn pilot_reply(&mut self, command: Command) -> Result<Reply> {
         let explicit_sync = matches!(command, Command::PilotSync);
+        let saving = matches!(command, Command::PilotSave { .. });
         if self.config.native_account_configured() {
             self.ensure_account()?;
         }
@@ -34,11 +35,23 @@ impl App {
         let message = if explicit_sync || self.pilot_identity.is_some() {
             let outcome = self.sync_pilot();
             match outcome {
+                Ok(()) if self.pilot.as_ref().is_some_and(|pilot| pilot.state().revision == 0) =>
+                    "Aún no tienes un perfil guardado. Completa tus datos y pulsa Guardar perfil.".into(),
                 Ok(()) => "Perfil sincronizado con tu cuenta".into(),
-                Err(error) => format!("Perfil local conservado. No se pudo sincronizar: {error}"),
+                Err(Error::Conflict) => "Perfil local conservado. Hay cambios en tu cuenta que no se han sobrescrito.".into(),
+                Err(Error::Authentication) => "Perfil local conservado. Inicia sesión para sincronizarlo.".into(),
+                Err(_) => "Perfil local conservado. La sincronización con tu cuenta no está disponible; se reintentará al guardar o reiniciar la app.".into(),
             }
-        } else {
+        } else if self
+            .pilot
+            .as_ref()
+            .is_some_and(|pilot| pilot.state().revision == 0)
+        {
+            "Aún no tienes un perfil guardado. Completa tus datos y pulsa Guardar perfil.".into()
+        } else if saving {
             "Perfil guardado en este equipo; solo tú puedes verlo".into()
+        } else {
+            "Perfil cargado en este equipo; solo tú puedes verlo".into()
         };
         Ok(Reply::Pilot {
             state: self.pilot.as_ref().ok_or(Error::Storage)?.state().clone(),

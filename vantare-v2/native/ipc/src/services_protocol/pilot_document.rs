@@ -75,11 +75,12 @@ mod tests {
     #[test]
     fn old_reader_preserves_future_team_fields_and_accepts_empty_local_profile() {
         let mut profile: PilotProfile =
-            serde_json::from_str(r#"{"team_memberships":["future"],"country":"ES"}"#).unwrap();
+            serde_json::from_str(r#"{"team_memberships":["future"],"country":"ES"}"#)
+                .expect("fixture válida");
         profile.public_name = "Piloto".into();
         assert!(profile.validate());
         assert_eq!(
-            serde_json::to_value(profile).unwrap()["team_memberships"],
+            serde_json::to_value(profile).expect("fixture válida")["team_memberships"],
             serde_json::json!(["future"])
         );
         assert!(PilotProfile::default().validate());

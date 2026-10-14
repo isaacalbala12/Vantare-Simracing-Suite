@@ -167,7 +167,7 @@ impl PilotEditor {
 
     /// Foto final ya procesada (JPEG 256×256); `None` muestra las iniciales.
     pub fn set_photo(&mut self, photo: Option<Arc<Image>>, cx: &mut Context<Self>) {
-        self.photo_changed = photo_diff(&photo, &self.saved_photo);
+        self.photo_changed = photo_diff(photo.as_ref(), self.saved_photo.as_ref());
         self.photo = photo;
         self.source = None;
         self.busy = false;
@@ -1100,7 +1100,7 @@ mod tests {
     }
 }
 
-fn photo_diff(current: &Option<Arc<Image>>, saved: &Option<Arc<Image>>) -> bool {
+fn photo_diff(current: Option<&Arc<Image>>, saved: Option<&Arc<Image>>) -> bool {
     match (current, saved) {
         (None, None) => false,
         (Some(current), Some(saved)) => !Arc::ptr_eq(current, saved),
@@ -1129,13 +1129,13 @@ mod wiring_tests {
             gpui::ImageFormat::Jpeg,
             vec![1, 2, 3],
         )));
-        assert!(photo_diff(&photo, &None));
-        assert!(photo_diff(&None, &photo));
-        assert!(!photo_diff(&photo.clone(), &photo));
+        assert!(photo_diff(photo.as_ref(), None));
+        assert!(photo_diff(None, photo.as_ref()));
+        assert!(!photo_diff(photo.as_ref(), photo.as_ref()));
         assert!(!has_changes(
             &saved,
             &saved,
-            photo_diff(&photo.clone(), &photo)
+            photo_diff(photo.as_ref(), photo.as_ref())
         ));
     }
 }

@@ -77,8 +77,12 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
 fn duplicate(response: &crate::http::Response) -> bool {
     matches!(response.status, 400 | 409)
         && response.json::<serde_json::Value>().is_ok_and(|body| {
-            matches!(body.get("code").or_else(|| body.get("error")).and_then(serde_json::Value::as_str),
-                Some("Duplicate" | "KeyAlreadyExists" | "ResourceAlreadyExists"))
+            matches!(
+                body.get("code")
+                    .or_else(|| body.get("error"))
+                    .and_then(serde_json::Value::as_str),
+                Some("Duplicate" | "KeyAlreadyExists" | "ResourceAlreadyExists")
+            )
         })
 }
 
@@ -94,7 +98,13 @@ mod duplicate_tests {
             (409, "{}", false),
             (401, r#"{"error":"Duplicate"}"#, false),
         ] {
-            assert_eq!(duplicate(&crate::http::Response { status, body: body.as_bytes().to_vec() }), expected);
+            assert_eq!(
+                duplicate(&crate::http::Response {
+                    status,
+                    body: body.as_bytes().to_vec()
+                }),
+                expected
+            );
         }
     }
 }

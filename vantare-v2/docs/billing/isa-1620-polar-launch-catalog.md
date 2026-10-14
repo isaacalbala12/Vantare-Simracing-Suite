@@ -1,218 +1,190 @@
-# #1620 — catálogo Polar de lanzamiento
+# #1620 — catálogo Polar de lanzamiento (ronda 3)
 
-[Tarea Notion VAN-782](https://app.notion.com/p/3f9e51695c6581229de0e11deabcd9ab),
-proyecto Billing y licencias. Sustituye el procedimiento de [PR #1500](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1500)
-/ [#1499](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1499).
-Solo preparación en repo: **ninguna ejecución en Polar, deploy ni venta probados**.
+Issue [#1620](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1620),
+PR draft [#1621](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1621),
+GitHub Project Vantare, área Billing/licencias. Sustituye #1499/PR #1500.
+VANTA-N inexistente: el encargo de ronda 3 autoriza omitir Plane; no se crea
+ni se actualiza Notion (VAN-782 es histórico).
 
-**Ronda 2: P1-1, P2-1 y P2-3 corregidos; P2-2 continúa bloqueando la entrega.**
-No ejecutar los comandos apply con creador que aparecen abajo hasta resolver
-el código público. Polar exige códigos únicos por organización y admite un
-importe fijo por moneda, no por producto: [modelo oficial](https://github.com/polarsource/polar/blob/main/server/polar/models/discount.py)
-y [schema oficial](https://github.com/polarsource/polar/blob/main/server/polar/discount/schemas.py).
-Crear dos `ISAAC` con rebajas 2,80/4,40 € no es válido. La opción propuesta
-para revisión es resolver `ISAAC` + plan a su `discount_id` de creador y
-aplicarlo por Checkout Link/API, con descuentos Polar sin código. Eso requiere
-decidir dónde se introduce el código público y conectar ese flujo; esta ronda
-no lo implementa ni presenta los sufijos existentes como contrato aceptado.
+Decisión del orquestador de 14/10/2026: lanzamiento usa **productos propios
+con precio base**, no descuentos. Un descuento porcentual por creador, código
+con su nombre exacto, limitado a esos productos. Solo preparación en repo:
+sin API Polar, secretos, deploy, activación ni venta probados.
 
-## Tabla y modelo
+## Tabla y duración
 
-Fuente ejecutable: `supabase/functions/scripts/polar-launch-prices.json`.
-EUR, IVA incluido; importes enteros en céntimos.
+Fuente: `supabase/functions/scripts/polar-launch-prices.json`, versión
+`isa-1620-launch-v2`. EUR con IVA incluido, céntimos enteros.
 
-| Plan | Normal | Lanzamiento | Con creador | Descuento lanzamiento / creador sobre normal |
+| Plan | Normal | Lanzamiento | Creador durante 2 meses | Base después del descuento |
 |---|---:|---:|---:|---:|
-| Pro mensual | 5,99 € | 3,99 € | 3,19 € | 2,00 € / 2,80 € |
-| Pro anual | 59,90 € | 39,90 € pendiente | 31,92 € pendiente | 20,00 € / 27,98 € |
-| Pro Plus mensual | 9,99 € | 6,99 € | 5,59 € | 3,00 € / 4,40 € |
-| Pro Plus anual | 99,90 € | 69,90 € pendiente | 55,92 € pendiente | 30,00 € / 43,98 € |
+| Pro mensual | 5,99 € | 3,99 € | 3,19 € | 3,99 € |
+| Pro anual | 59,90 € | 39,90 € | 31,92 € | 39,90 € |
+| Pro Plus mensual | 9,99 € | 6,99 € | 5,59 € | 6,99 € |
+| Pro Plus anual | 99,90 € | 69,90 € | 55,92 € | 69,90 € |
 
-Se conserva un producto por plan/ciclo y un precio normal activo. Se crean
-descuentos **fijos** por producto: sin código para lanzamiento, y con código
-para el importe compuesto lanzamiento + 20 % adicional del creador. Así no
-hace falta acumular dos descuentos, duplicar productos de lanzamiento ni
-aproximar 5,99 → 3,99 mediante porcentajes. Redondeo de `lanzamiento × 0,8`
-al céntimo más cercano; 3,192 → 3,19 y 5,592 → 5,59.
+Los cuatro importes base están decididos en este encargo: se retira el antiguo
+gate `--confirm-annual-launch`. Se conservan cuatro productos normales y se
+crean otros cuatro de lanzamiento. Launch Edition vitalicia de 30 € es otro
+producto y queda fuera. No se migran suscripciones.
 
-Polar admite descuentos fijos, alcance por producto y aplicación automática
-por Checkout Link/API: [documentación](https://polar.sh/docs/features/discounts)
-y [API 2026-10](https://polar.sh/docs/api-reference/2026-10/discounts/create-discount).
-El script fija `Polar-Version: 2026-10`, conforme a su
-[contrato de versiones](https://polar.sh/docs/api-reference/2026-10/versioning).
+`--creator ISAAC` crea **un** descuento `code: ISAAC`, `type: percentage`,
+`basis_points: 2000`, `duration: repeating`, `duration_in_months: 2`, con
+`products` igual a los cuatro IDs de lanzamiento. Sin sufijos ni rebajas fijas
+compuestas ni stacking. Preserva la escritura recibida, también `Isaac`.
+El operador admite códigos alfanuméricos de 3–32 caracteres; no convierte
+nombres con espacios ni inventa alias. Colisiones sin distinguir mayúsculas
+abortan antes de mutar.
 
-Decisión confirmada en el último comentario de #1620: el descuento compuesto
-de creador usa `duration: repeating`, `duration_in_months: 2`. Pro cobra 3,19 €
-y Plus 5,59 € los meses 1 y 2, tanto durante como fuera del lanzamiento;
-desde el mes 3 vuelve el precio normal de 5,99/9,99 €. No hay stacking.
-El descuento de lanzamiento sin creador conserva `duration: forever`.
-La duración individual de creador no depende de una fecha de fin de campaña.
-Descuentos existentes con otra duración abortan como drift antes de escribir;
-requieren revisión manual, no una sustitución automática sobre suscripciones.
-Los importes anuales siguen pendientes de confirmación.
+Mes 3 mensual: termina el −20 % y se paga **la base de lanzamiento**, no la
+normal. En anual, 2 meses es duración calendario, no dos facturas anuales:
+primera factura rebajada, renovación a 39,90/69,90 €. No se promete una segunda
+factura anual rebajada. Conserva el trial Pro configurado de 7 días en normal
+y lanzamiento; Plus no gana trial. Validar fechas/antiabuso en sandbox.
 
-**Comportamiento pendiente de corregir (P2-2):** `--creator ISAAC` genera
-códigos alfanuméricos por plan: `ISAACPROM`,
-`ISAACPROA`, `ISAACPLUSM`, `ISAACPLUSA`. Cada código pertenece a un solo
-producto y concede ya el total combinado. Un código único transversal requeriría
-otra estrategia: los importes relativos difieren entre Pro y Plus. Añadir otro
-creador requiere otra ejecución con su prefijo; se conservan los anteriores.
+Comisión contable sobre lo que paga el cliente: 30 % mes 1, 10 % meses 2–12
+mientras siga suscrito; renegociar después. `creator_commission` conserva ambos
+tramos, base y `automatic_payouts: false`. No se envía como payout a Polar.
 
-La comisión es solo dato contable en `creator_commission`, tanto en la tabla
-como en el plan offline y el resultado. Su base confirmada es **lo que paga el
-cliente**, mientras siga suscrito:
+## Enlaces y fin del mes
 
-| Mes de suscripción | Comisión sobre lo pagado |
-|---|---:|
-| 1 | 30 % |
-| 2–12 | 10 % |
-| Después de 12 | Renegociar; no hay tasa acordada |
+Cada creador tiene un Checkout Link propio con los cuatro productos de
+lanzamiento y su único `discount_id`. `allow_discount_codes: false` fija el
+creador del enlace. El código exacto también sirve en un checkout de esos
+productos que admita códigos; no sirve en normales ni Launch Edition. La
+salida exporta solo ID/URL/código del enlace, nunca el `client_secret`.
 
-No se crean payouts, cuentas afiliadas, split de cobros ni gastos. No se exporta
-una tasa única de 30 % que pueda confundirse con la de renovaciones. El mes 1,
-`0,8 × 0,7 = 0,56`: queda 56 % del lanzamiento antes de impuestos y fees
-(reducción combinada 44 %). El mes 2 queda 72 %; después termina el descuento
-de creador y la comisión es 10 % sobre el precio normal efectivamente pagado.
-La atribución y el tratamiento de refunds siguen sin liquidación automática.
+Durante el mes la web muestra lanzamiento. Al terminar, **retirar sus precios,
+botones y enlaces generales de la web**, conservar productos en Polar y
+mantener solo la distribución por enlaces de creador. No archivarlos ni
+caducar códigos: siguen disponibles para nuevas altas y renovaciones.
+`distribution` en tabla, plan y salida declara ambas fases. Fecha exacta y
+cambio/publicación web pendientes en su entrega autorizada; este repo no
+publica la web ni un temporizador. Checkout app conserva productos normales.
 
-## Qué hace el script y qué conserva
+«Solo por enlace» es distribución, no una barrera de acceso: un enlace puede
+reenviarse. DUDA si se exige impedir técnicamente cualquier otra entrada;
+alternativa mínima: quitar de la web los accesos generales y distribuir
+únicamente los enlaces de creador. No se afirma exclusividad técnica.
 
-`polar-launch-catalog.ts` usa Deno y API HTTP sin nuevas dependencias.
-Sin `--apply` solo muestra la tabla: **cero permisos de entorno/red/lectura**.
-Con apply lee un mapa de IDs no secreto, valida entorno/organización y lista
-todas las páginas de productos y descuentos antes de mutar. No localiza por
-nombres. Reutiliza IDs configurados o metadata `vantare_checkout_key`; los
-descuentos usan `vantare_offer_key`. Duplicados, IDs ausentes, ciclos inválidos,
-códigos de otro propietario y descuentos divergentes abortan antes de escribir.
-No se reintenta automáticamente ninguna petición.
+### Límite Polar: draft
 
-El snapshot sandbox real existente se conserva: Launch 30 €, Pro mensual y
-anual con trials de siete días de nightly. No se inventan UUIDs de Pro Plus ni
-evidencia Polar. Los productos nuevos se crean con visibilidad **draft**, sin
-trial. Pro Plus anual tiene las mismas capabilities/canales que su mensual;
-no se modifica auth, identidad, licencias ni el UUID comercial (ADR 0100).
+DUDA técnica registrada en buzón: Polar rechaza crear Checkout Links con
+productos draft. Alternativa mínima implementada: dos etapas con el mismo
+comando. Primera: productos draft + descuento; resultado `creator_link: null`
+y `creator_link_pending: publish_launch_products_then_rerun`. Después de la
+activación autorizada de los cuatro productos de lanzamiento, repetir con el
+resultado anterior crea el enlace. Otro rerun da `writes: 0`. El script nunca
+publica productos automáticamente.
 
-El resultado incluye `map`, `offers`, `writes`, `pending` y el dato de comisión.
-`map` conserva todos los price IDs históricos aunque el precio activo se
-sustituya: une los IDs de entrada con todos los precios observados del producto,
-activos y archivados, **antes del PATCH**, y el nuevo ID de respuesta. Un ID
-observado que ya pertenece a otra clave aborta antes de mutar. Así una ejecución
-parcial o un cambio de panel no pierde el precio reemplazado cuando el mapa de
-entrada aún no lo contiene. Los suscriptores existentes no se migran. Segunda ejecución con
-el resultado guardado como entrada: mismos IDs, `writes: 0`. La salida se abre
-con `createNew`: una ruta ya existente se rechaza antes de llamar a Polar.
+Fuentes públicas oficiales contrastadas el 14/10/2026, sin API:
+[descuento porcentual/repeating](https://github.com/polarsource/polar/blob/main/server/polar/discount/schemas.py),
+[payload Checkout Links](https://github.com/polarsource/polar/blob/main/server/polar/checkout_link/schemas.py),
+[rechazo de draft en `_get_validated_products`](https://github.com/polarsource/polar/blob/main/server/polar/checkout_link/service.py),
+[discount_id y códigos](https://polar.sh/docs/api-reference/2026-10/checkout-links/create-checkout-link).
 
-Los anuales normales se preparan siempre; sus descuentos de lanzamiento y
-creador requieren `--confirm-annual-launch`, solo tras confirmar ambos importes.
-Sin él, aparecen en `pending` y no se crean descuentos anuales.
+## Mapa y recuperación
 
-## Comandos exactos para Isaac
+`polar_product_id` sigue normal. El opcional `polar_launch_product_id` declara
+su producto de lanzamiento; ambos UUIDs distintos tienen inverso estricto a
+la misma clave y derechos. Loader rechaza IDs extra, inversos ausentes/conflictivos
+y este campo en `launch_lifetime`. Webhook reconoce ambos sin SKU/SQL nuevos.
+`polar_price_ids` conserva normales y lanzamiento, activos/archivados observados
+antes de PATCH, históricos de entrada y nuevo precio. Snapshot sandbox sin
+IDs inventados; solo se actualizará tras observación real.
 
-Desde la **raíz Git**, no desde `vantare-v2`. Token cargado en una sesión privada
-como `POLAR_ACCESS_TOKEN`; nunca en argumentos, ficheros, chat ni logs. Scopes:
-`products:read`, `products:write`, `discounts:read`, `discounts:write`.
-Un solo operador por organización; no ejecutar dos sincronizaciones simultáneas.
+Preflight antes de mutar: entorno/organización, intervalos/trials, duplicados
+paginados, propiedad de precios, duración/porcentaje/ámbito y enlace. Si hay
+descuentos v1 de lanzamiento/creador compuesto, aborta para revisión manual;
+no los modifica ni borra. Metadata permite recuperar ejecuciones parciales.
+Un solo operador por organización; no garantiza concurrencia.
 
-Plan sandbox o producción sin token y sin red:
+## Comandos desde raíz Git (PowerShell)
+
+Token solo mediante `POLAR_ACCESS_TOKEN` en sesión privada del operador, nunca
+argumentos/archivos/logs. Offline no lee tokens. Scopes posteriores: products,
+discounts y checkout_links read/write. Header `Polar-Version: 2026-10`.
+Entrada y salida distintas; salida inexistente. Los `--apply` están preparados,
+**no ejecutados** en esta ronda.
+
+Planes offline sin permisos ni red:
 
 ```powershell
 deno run --no-lock supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --creator ISAAC
 deno run --no-lock supabase/functions/scripts/polar-launch-catalog.ts --environment production --creator ISAAC
 ```
 
-Sandbox real (sin aplicar aún los descuentos anuales pendientes):
+Sandbox etapa 1, draft y descuento:
 
 ```powershell
-deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=supabase/functions/scripts/polar-product-map.sandbox.json --allow-write=C:/tmp/1620-sandbox-result.json --allow-net=sandbox-api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --map supabase/functions/scripts/polar-product-map.sandbox.json --output C:/tmp/1620-sandbox-result.json --creator ISAAC --apply
+deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=supabase/functions/scripts/polar-product-map.sandbox.json --allow-write=C:/tmp/1620-sandbox-r3-draft.json --allow-net=sandbox-api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --map supabase/functions/scripts/polar-product-map.sandbox.json --output C:/tmp/1620-sandbox-r3-draft.json --creator ISAAC --apply
 ```
 
-Después de confirmar anuales, añadir sus descuentos usando el resultado anterior:
+Después de verificar IDs/precios, desplegar runtime/mapping por el pipeline
+autorizado y activar los cuatro productos de lanzamiento; etapa 2, enlace:
 
 ```powershell
-deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-sandbox-result.json --allow-write=C:/tmp/1620-sandbox-confirmed.json --allow-net=sandbox-api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --map C:/tmp/1620-sandbox-result.json --output C:/tmp/1620-sandbox-confirmed.json --creator ISAAC --apply --confirm-annual-launch
+deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-sandbox-r3-draft.json --allow-write=C:/tmp/1620-sandbox-r3-links.json --allow-net=sandbox-api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --map C:/tmp/1620-sandbox-r3-draft.json --output C:/tmp/1620-sandbox-r3-links.json --creator ISAAC --apply
 ```
 
-Idempotencia, misma entrada y otra salida nueva (debe mostrar `writes: 0`):
+Idempotencia después del enlace, debe dar `writes: 0`:
 
 ```powershell
-deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-sandbox-confirmed.json --allow-write=C:/tmp/1620-sandbox-rerun.json --allow-net=sandbox-api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --map C:/tmp/1620-sandbox-confirmed.json --output C:/tmp/1620-sandbox-rerun.json --creator ISAAC --apply --confirm-annual-launch
+deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-sandbox-r3-links.json --allow-write=C:/tmp/1620-sandbox-r3-rerun.json --allow-net=sandbox-api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment sandbox --map C:/tmp/1620-sandbox-r3-links.json --output C:/tmp/1620-sandbox-r3-rerun.json --creator ISAAC --apply
 ```
 
-Producción: preparar **C:/tmp/1620-production-map.json** con el mapa de IDs reales
-de esa organización, `environment: production`, incluyendo los vínculos
-históricos de Launch/Pro. No reutilizar IDs sandbox. Tras validar sandbox y recibir
-el OK final de Isaac, usar su token de producción en sesión privada:
+Otro creador: entrada del último resultado, otra salida nueva y `--creator MARIA`;
+reutiliza productos, crea solo su descuento/enlace.
+
+Producción tras sandbox y OK final de Isaac; mapa propio con IDs reales de esa
+organización y `environment: production`, nunca IDs sandbox:
 
 ```powershell
-deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-production-map.json --allow-write=C:/tmp/1620-production-result.json --allow-net=api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment production --map C:/tmp/1620-production-map.json --output C:/tmp/1620-production-result.json --creator ISAAC --apply --confirm-production
+deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-production-map.json --allow-write=C:/tmp/1620-production-r3-draft.json --allow-net=api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment production --map C:/tmp/1620-production-map.json --output C:/tmp/1620-production-r3-draft.json --creator ISAAC --apply --confirm-production
 ```
 
-Agregar `--confirm-annual-launch` solo si Isaac ha confirmado los anuales. Cada
-repetición usa el resultado anterior como `--map` y una salida inexistente.
-Los comandos se han preparado, **no ejecutado**. Los prefijos de creadores son
-ejemplos operativos: usar el acordado con cada creador.
+Tras activar los cuatro productos de lanzamiento en paso autorizado:
 
-## Activación y comprobación manual (posterior, autorizada)
+```powershell
+deno run --no-lock --allow-env=POLAR_ACCESS_TOKEN --allow-read=C:/tmp/1620-production-r3-draft.json --allow-write=C:/tmp/1620-production-r3-links.json --allow-net=api.polar.sh supabase/functions/scripts/polar-launch-catalog.ts --environment production --map C:/tmp/1620-production-r3-draft.json --output C:/tmp/1620-production-r3-links.json --creator ISAAC --apply --confirm-production
+```
 
-1. Revisar los IDs y productos draft creados; validar los precios IVA incluido,
-   trials Pro conservados, descuentos acotados y sus importes con la tabla.
-2. Antes de ofrecer Pro Plus anual, aplicar por el pipeline autorizado
-   `20261014095626_billing_checkout_pro_plus_annual.sql` y desplegar el mapeo/runtime
-   que reconoce esa clave. Extraer `map` del resultado para el secreto
-   `POLAR_PRODUCT_MAP`; no cargar el objeto resultado entero. El snapshot del repo
-   solo se actualizará con IDs observados tras ejecución real.
-3. Habilitar productos draft después de verificar el backend. Los handlers de
-   checkout actuales **no autoaplican estos descuentos**: en Polar configurar
-   Checkout Links de campaña con el `discount_id` de `offers[plan:launch]`, o
-   aplicar ese ID al crear la sesión mediante API. Con creador, sustituirlo por
-   el ID/código compuesto, no sumar ambos. Esta entrega no cambia el paywall
-   ni habilita la campaña en la app.
-4. Probar cada plan sin descuento, con lanzamiento y con creador usando tarjetas
-   sandbox; comprobar facturas de los meses 1, 2 y 3 (fin de creador), cancelación y refund,
-   capabilities Pro/Plus y aislamiento de entornos. Probar que un código de Pro
-   no sirve en Plus ni en Launch. Conservar evidencia sanitizada y actualizar
-   Notion; esto no levanta por sí solo el no-go comercial de #1514/#1506.
+## Verificación manual y rollback (posteriores, autorizados)
 
-## Vuelta atrás y fallos parciales
+Extraer `map` para `POLAR_PRODUCT_MAP`; no cargar resultado entero. Antes de
+vender Plus anual, aplicar también la migración ya preparada
+`20261014095626_billing_checkout_pro_plus_annual.sql` y desplegar el runtime
+que reconoce `polar_launch_product_id`. Checkout app no selecciona lanzamiento
+ni autoaplica creador. Links no sustituyen atribución de identidad: comprobar
+compra identificada/grant según #1514/#1506; no se levanta su no-go comercial.
 
-Retirar los Checkout Links/IDs de campaña o caducar sus descuentos para nuevas
-altas. Archivar los productos nuevos si se abandona su venta; mantener IDs y
-claves mientras haya suscripciones para reconciliar webhooks. No quitar un
-mapa ni revertir la restricción SQL con filas `pro_plus_annual` existentes.
-Restaurar el precio normal anterior desde el panel no migra suscripciones:
-conservar también su price ID en el mapa.
+Sandbox: cuatro normales y cuatro lanzamiento; código exacto y segundo
+creador; scope restringido; enlace fijo; facturas mensuales 1/2 rebajadas y
+mes 3 a 3,99/6,99; primera anual rebajada y renovación 39,90/69,90; trial/antiabuso,
+cancelación/refund, derechos/canales, entorno, histórico y rerun cero escrituras.
+Al fin de mes: web sin ofertas generales de lanzamiento y enlaces de creador
+operativos, productos conservados. Fixtures no prueban facturas reales.
 
-Si hay timeout o respuesta fallida, puede haber escrituras parciales. Revisar
-el catálogo y repetir con salida nueva: metadata permite recuperar productos y
-descuentos ya creados. No asumir rollback remoto ni repetir POST a ciegas. Si
-un recurso fue alterado fuera del script, resolver el drift manualmente; el
-script no sustituye descuentos ya usados. No imprimir cuerpos HTTP de error.
+Rollback de nuevas altas: retirar enlaces y caducar descuento solo autorizado;
+conservar productos/mapas para suscripciones vigentes. Archivar productos solo
+tras revisar su efecto. No borrar IDs ni revertir SQL con filas existentes.
+Timeout puede dejar escrituras parciales: inspeccionar y recuperar por metadata,
+sin POST ciegos ni imprimir cuerpos HTTP/client_secret.
 
-## Evidencia y límites
+## Evidencia y canal
 
-RED inicial: test de catálogo ausente falla al importar el script. GREEN:
-suite Deno vigente desde raíz con config de funciones, 544 PASS / 1 ignorado;
-tabla, mapeo, idempotencia, precios históricos, duplicados en página posterior,
-drift, colisiones y gates CLI cubiertos. Plan offline ejecutado sin permisos.
-Formato/lint/check y diff revisados en la entrega. pgTAP ampliado a 20
-aserciones; no ejecutado porque no hay Docker ni psql. Primeras ejecuciones de
-suite fallaron por directorio/config de discovery; corregidas sin tocar tests
-ajenos ni añadir Stripe retirado. Rust/UI omitidos: no se modifican.
+Ronda 3: cuatro regresiones P2-2 RED→GREEN; tests adicionales de scope/drift,
+sin creador, recuperación, draft→activación→enlace; webhook de alta, renovación
+y cancelación en cuatro planes con mismos derechos. Logs `C:/tmp/ola2/1620-r3-*`.
+Tipos/encoding/ruta intermedios corregidos sin saltar checks; gates finales y
+HEAD/push/CI en comentario de entrega y buzón. Ronda 2 conserva evidencia
+histórica de P1-1/P2-1/P2-3.
 
-`docs/roadmap/plan.md` fue retirado en nightly (#1601). No se recrea: no hay
-cambio público de disponibilidad; la tarea queda en revisión, sin promoción,
-deploy ni publicación del roadmap.
+Suite final Deno: **558 PASS, 0 FAIL, 1 ignorado**; catálogo 21 PASS.
+Check/lint/fmt, quality 456 huellas, superficie deploy y diff PASS. La suite
+generó node_modules; preview Git confirmó solo esa ruta, retirada con Git
+tras rechazo automático del comando PowerShell, superficie repetida PASS.
 
-Ronda 2: P1-1 dos regresiones RED → GREEN; P2-1 una regresión RED → GREEN;
-P2-3 dos regresiones RED → GREEN. Commits `4ae058f0`, `c25fc327`, `5f85e868`.
-P3 lint RED (dos imports HTTPS) → GREEN usando assertions estándar, `c80fb148`.
-Catálogo 13 PASS; catálogo + script Pro 16 PASS; suite completa 549 PASS,
-0 FAIL, 1 ignorado. Check, lint de scripts y tests, fmt, quality (456 huellas)
-y superficie deploy PASS. La suite creó node_modules; el gate detectó esa
-superficie, se retiró exclusivamente mediante Git con preview y se repitió PASS.
-La limpieza PowerShell inicial fue rechazada automáticamente, sin ejecutar.
-No se cambia ningún juez/config ni se ocultan fallos. Evidencia y RED por hallazgo
-en `C:/tmp/ola2/1620-r2-*`. P2-2 sigue RED en probe externo y sin GREEN.
-No hay facturas reales, llamadas Polar ni secretos. pgTAP omitido: sin
-Docker/psql; Rust/UI omitidos: superficies intactas. Hace falta revisión nueva,
-decisión sobre P2-2 y VANTA-N del orquestador antes de cerrar la entrega.
+pgTAP omitido: sin Docker/psql, SQL intacto en ronda 3. Rust/UI y telemetría
+nativa omitidos sin cambios. Sin API Polar, secretos, deploy, merge/promoción,
+release, pagos ni gasto. Revisión independiente y sandbox real pendientes.

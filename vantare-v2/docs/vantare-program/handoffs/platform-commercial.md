@@ -2,32 +2,53 @@
 
 Estado de la base indicada; releer la issue antes de ejecutar.
 
-## #1620 · ronda 2 de review (14/10/2026)
+## #1620 · ronda 3 P2-2 (14/10/2026)
 
-PR #1621 draft a nightly, review `C:/tmp/ola2/review-1621-sol.md` leída entera.
-P1-1: dos regresiones RED (forever aceptado y reconciliación incorrecta), luego
-GREEN. Creador repite solo dos meses; lanzamiento sin creador conserva forever.
-Drift de duración falla antes de mutar. Logs `C:/tmp/ola2/1620-r2-P1-1-*.log`.
-P2-1: regresión RED por calendario ausente → GREEN; tabla/plan/resultado con
-base sobre lo pagado, 30 % mes 1, 10 % meses 2–12 mientras siga suscrito,
-renegociar después. Sin tasa única ambigua ni payouts. Log P2-1 separado.
-P2-3: dos regresiones RED → GREEN. Conserva IDs activos/archivados observados
-antes del PATCH, IDs de entrada y nuevo precio; conflicto de propietario falla
-antes de escribir. Reejecución conserva el mapa con cero escrituras. Logs P2-3.
-Pendiente P2-2; sin llamadas Polar, secretos, deploy ni promoción.
-P3 barato: lint de los dos tests fallaba por imports HTTPS inline; assertions
-de biblioteca estándar `node:assert/strict` eliminan los dos errores sin
-desactivar reglas ni añadir dependencias. Logs P3 RED/GREEN separados.
-Commits P1-1 `4ae058f0`, P2-1 `c25fc327`, P2-3 `5f85e868`, P3 `c80fb148`.
-Suite completa 549 PASS/0 FAIL/1 ignorado; check/lint/fmt/quality 456 y deploy
-surface PASS (node_modules generado retirado con Git tras preview). Sin
-pgTAP (no Docker/psql) ni gates Rust/UI (sin cambios). Diff completo revisado.
-P2-2 RED externo: ISAACPROM/ISAACPLUSM frente a ISAAC. Polar tiene código único
-por organización y un importe fijo por moneda. Pendiente decisión sobre
-resolver código público + plan a discount_id sin código Polar y conectar al
-Checkout Link/API. No declarar APTO ni ejecutar apply con creador.
-Falta identificador Plane VANTA-N en el encargo/#1620; se avisa en el buzón al
-orquestador sin crear tarea ni reutilizar el tracker Notion histórico.
+Decisión del orquestador: productos propios de lanzamiento 3,99/39,90 y
+6,99/69,90; anuales decididos, sin antiguo gate. Un código exacto por creador,
+-20 % porcentual repeating/2 meses, solo sobre los cuatro productos de
+lanzamiento. Mes 3 mensual vuelve a 3,99/6,99; renovación anual a 39,90/69,90.
+Después del mes, la web retira sus ofertas y solo distribuye enlaces de
+creador, conservando productos. Plane omitido por instrucción explícita del
+encargo; no se crea VANTA-N ni se reutiliza Notion histórico.
+
+Normales e históricos preservados; `polar_launch_product_id` opcional con
+inverso estricto a la misma clave/derechos. Checkout app sigue normal. Un
+descuento/enlace por creador; sin descuentos de lanzamiento ni sufijos.
+Preflight conserva P1-1/P2-1/P2-3; rechaza drift, colisiones y descuentos v1
+compuestos sin migrarlos automáticamente. Comisión contable: 30 % mes 1,
+10 % meses 2–12 sobre lo pagado; luego renegociar. Sin payouts.
+
+DUDA API concreta: servicio oficial rechaza Checkout Links con productos draft.
+Alternativa mínima implementada: draft/descuento y
+`creator_link_pending: publish_launch_products_then_rerun`; tras activar
+productos en paso autorizado separado, rerun crea enlace, otro escribe cero.
+No publica productos automáticamente. Exclusividad por enlace es distribución,
+no impedir reenvíos; cambio/publicación web pendiente en su entrega.
+
+Cuatro regresiones P2-2 RED→GREEN; catálogo 21 PASS y webhook con alta,
+renovación/cancelación de los cuatro productos y mismos derechos. Logs
+`C:/tmp/ola2/1620-r3-*`. Errores intermedios de types/ruta/encoding corregidos
+sin omitir gates. Suite final 558 PASS/0 FAIL/1 ignorado; check/lint/fmt,
+quality 456, deploy surface y diff PASS. node_modules generado retirado solo
+por Git tras preview y rechazo automático de limpieza PowerShell; superficie
+repetida PASS. HEAD final en comentario de PR #1621 y buzón; evita
+SHA autorreferencial. [Comandos/runbook](../../billing/isa-1620-polar-launch-catalog.md).
+
+Rama `vantareapp/isa-1620-precios-polar`; base común `8194c949` incorporada en
+`ce143d6f`, tip nightly consultado `e5c90be5`. PR draft a nightly. Issue en
+GitHub Project Vantare/area:licencias. Siguiente: review independiente, sandbox
+autorizado con facturas/trial/refund/identidad/derechos/enlaces/idempotencia y
+pgTAP con PostgreSQL desechable (Docker/psql ausentes aquí). Rust/UI y telemetría
+nativa omitidos sin cambios. Sin API Polar, secretos, deploy, merge/promoción,
+release ni gasto.
+
+## #1620 · ronda 2 (histórica, sustituida por ronda 3)
+
+P1-1 `4ae058f0`, P2-1 `c25fc327`, P2-3 `5f85e868`, P3 `c80fb148`, docs `35a721fd`.
+549 PASS/0 FAIL/1 ignorado; check/lint/fmt/quality 456/deploy surface PASS.
+P2-2 pendiente entonces por códigos compuestos; decisión ronda 3 anterior
+lo resuelve. Logs `C:/tmp/ola2/1620-r2-*`. Sin API/secretos/pgTAP.
 
 ## #1620 / VAN-782 · entrega inicial (histórica, sustituida por ronda 2)
 

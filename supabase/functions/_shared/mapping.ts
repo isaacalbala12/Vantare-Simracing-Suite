@@ -28,6 +28,8 @@ export type TrialConfig =
 
 export interface CheckoutKeyConfig {
   polar_product_id: string;
+  // Separate launch price; grants the same plan, never selected by app checkout.
+  polar_launch_product_id?: string;
   polar_price_ids: string[];
   plan_sku: CheckoutKey;
   billing_type: "one_time" | "subscription";
@@ -94,6 +96,7 @@ const EXPECTED_KEY_META: Record<
   Omit<
     CheckoutKeyConfig,
     | "polar_product_id"
+    | "polar_launch_product_id"
     | "polar_price_ids"
     | "active"
     | "trial"
@@ -238,8 +241,23 @@ function parseConfig(
     );
   }
 
+  if (
+    value.polar_launch_product_id !== undefined &&
+    (!isUuid(value.polar_launch_product_id) ||
+      value.polar_launch_product_id === value.polar_product_id ||
+      key === "launch_lifetime")
+  ) {
+    return fail(
+      "mapping_invalid_key_meta",
+      `checkout_keys.${key} launch product is invalid`,
+    );
+  }
+
   const config: CheckoutKeyConfig = {
     polar_product_id: value.polar_product_id,
+    ...(value.polar_launch_product_id
+      ? { polar_launch_product_id: value.polar_launch_product_id as string }
+      : {}),
     polar_price_ids: priceIds,
     plan_sku: value.plan_sku as CheckoutKey,
     billing_type: value.billing_type as "one_time" | "subscription",
@@ -416,6 +434,15 @@ export function loadPolarProductMap(
         `checkout_keys.${key}.polar_product_id is not mapped back exactly`,
       );
     }
+    if (
+      config.polar_launch_product_id &&
+      productInverse[config.polar_launch_product_id] !== key
+    ) {
+      return fail(
+        "mapping_product_id_mismatch",
+        `checkout_keys.${key} launch product is not mapped back exactly`,
+      );
+    }
     for (const priceId of config.polar_price_ids) {
       if (priceInverse[priceId] !== key) {
         return fail(
@@ -426,7 +453,10 @@ export function loadPolarProductMap(
     }
   }
   for (const [id, key] of Object.entries(productInverse)) {
-    if (checkoutKeys[key]?.polar_product_id !== id) {
+    if (
+      checkoutKeys[key]?.polar_product_id !== id &&
+      checkoutKeys[key]?.polar_launch_product_id !== id
+    ) {
       return fail(
         "mapping_product_id_mismatch",
         `product_id_to_checkout_key.${id} is not symmetric`,

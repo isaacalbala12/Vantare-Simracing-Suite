@@ -2402,3 +2402,94 @@ Deno.test("processPolarWebhookEvent: Pro annual and monthly produce identical gr
   const monthly = await runProLifecycle(SANDBOX_IDS.proProduct, 30);
   assertEquals(annual.steps, monthly.steps);
 });
+
+Deno.test("P2-2: launch subscriptions grant, renew and cancel the same Pro/Plus rights", async () => {
+  const base = loadProPlusTestMap();
+  if (!base.ok) throw Error("Fixture map invalid");
+  const raw = JSON.parse(
+    withProAnnualAndNewMonthlyPrice(JSON.stringify(base.map)),
+  );
+  const annualId = "00000000-0000-4000-8000-000000000930";
+  const annualPrice = "00000000-0000-4000-8000-000000000931";
+  raw.checkout_keys.pro_plus_annual = {
+    ...raw.checkout_keys.pro_plus_monthly,
+    plan_sku: "pro_plus_annual",
+    polar_product_id: annualId,
+    polar_price_ids: [annualPrice],
+  };
+  raw.product_id_to_checkout_key[annualId] = "pro_plus_annual";
+  raw.price_id_to_checkout_key[annualPrice] = "pro_plus_annual";
+  const keys = [
+    "pro_monthly",
+    "pro_annual",
+    "pro_plus_monthly",
+    "pro_plus_annual",
+  ];
+  for (const [i, key] of keys.entries()) {
+    const id = `00000000-0000-4000-8000-${String(940 + i).padStart(12, "0")}`;
+    raw.checkout_keys[key].polar_launch_product_id = id;
+    raw.product_id_to_checkout_key[id] = key;
+  }
+  const loaded = loadPolarProductMap(JSON.stringify(raw), {
+    environment: "sandbox",
+  });
+  if (!loaded.ok) throw Error(loaded.code);
+  for (const key of keys) {
+    const mock = createMockSupabase();
+    const deps = processDeps(mock, () => loaded);
+    const config = raw.checkout_keys[key];
+    const data = {
+      id: `sub-launch-${key}`,
+      product_id: config.polar_launch_product_id,
+      external_customer_id: USER_ID,
+      status: "active",
+      modified_at: "2026-07-09T12:00:00.000Z",
+      current_period_end: "2027-07-09T12:00:00.000Z",
+    };
+    const first = await processPolarWebhookEvent(
+      { type: "subscription.active", data },
+      `evt-launch-${key}`,
+      deps,
+    );
+    assertEquals(first.status, "processed");
+    assertEquals(
+      [...deps.projection.grants.values()].map((g) => g.capability).sort(),
+      [...config.capabilities].sort(),
+    );
+    const renewal = await processPolarWebhookEvent(
+      {
+        type: "subscription.updated",
+        data: {
+          ...data,
+          modified_at: "2026-08-09T12:00:00.000Z",
+          current_period_end: "2028-07-09T12:00:00.000Z",
+        },
+      },
+      `evt-launch-renew-${key}`,
+      deps,
+    );
+    assertEquals(renewal.status, "processed");
+    assertEquals(
+      [...deps.projection.grants.values()].every((g) => g.status === "active"),
+      true,
+    );
+    const canceled = await processPolarWebhookEvent(
+      {
+        type: "subscription.canceled",
+        data: {
+          ...data,
+          status: "canceled",
+          cancel_at_period_end: false,
+          modified_at: "2026-08-10T12:00:00.000Z",
+        },
+      },
+      `evt-launch-cancel-${key}`,
+      deps,
+    );
+    assertEquals(canceled.status, "processed");
+    assertEquals(
+      [...deps.projection.grants.values()].every((g) => g.status === "revoked"),
+      true,
+    );
+  }
+});

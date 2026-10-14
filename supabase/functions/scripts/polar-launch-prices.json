@@ -1,5 +1,5 @@
 {
-  "catalog_version": "isa-1620-launch-v1",
+  "catalog_version": "isa-1620-launch-v2",
   "currency": "eur",
   "tax_behavior": "inclusive",
   "creator_discount_basis_points": 2000,
@@ -8,8 +8,16 @@
     "requires_active_subscription": true,
     "automatic_payouts": false,
     "schedule": [
-      { "from_month": 1, "to_month": 1, "basis_points": 3000 },
-      { "from_month": 2, "to_month": 12, "basis_points": 1000 }
+      {
+        "from_month": 1,
+        "to_month": 1,
+        "basis_points": 3000
+      },
+      {
+        "from_month": 2,
+        "to_month": 12,
+        "basis_points": 1000
+      }
     ],
     "after_month_12": "renegotiate"
   },
@@ -18,33 +26,30 @@
       "key": "pro_monthly",
       "interval": "month",
       "normal_cents": 599,
-      "launch_cents": 399,
-      "launch_confirmed": true,
-      "code_suffix": "PROM"
+      "launch_cents": 399
     },
     {
       "key": "pro_annual",
       "interval": "year",
       "normal_cents": 5990,
-      "launch_cents": 3990,
-      "launch_confirmed": false,
-      "code_suffix": "PROA"
+      "launch_cents": 3990
     },
     {
       "key": "pro_plus_monthly",
       "interval": "month",
       "normal_cents": 999,
-      "launch_cents": 699,
-      "launch_confirmed": true,
-      "code_suffix": "PLUSM"
+      "launch_cents": 699
     },
     {
       "key": "pro_plus_annual",
       "interval": "year",
       "normal_cents": 9990,
-      "launch_cents": 6990,
-      "launch_confirmed": false,
-      "code_suffix": "PLUSA"
+      "launch_cents": 6990
     }
-  ]
+  ],
+  "launch_model": "separate_products",
+  "distribution": {
+    "launch_month": "website_and_creator_links",
+    "after_launch_month": "creator_links_only"
+  }
 }

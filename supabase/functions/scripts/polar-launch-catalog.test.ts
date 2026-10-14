@@ -14,7 +14,9 @@ import {
 import sandbox from "./polar-product-map.sandbox.json" with { type: "json" };
 import {
   loadPolarProductMap,
+  resolveCheckoutKey,
   resolveCheckoutKeyByPriceId,
+  resolveCheckoutKeyByProductId,
 } from "../_shared/mapping.ts";
 
 Deno.test("launch table: issue #1620 and creator extra 20% rounded to cents", () => {
@@ -25,14 +27,13 @@ Deno.test("launch table: issue #1620 and creator extra 20% rounded to cents", ()
         p.normal_cents,
         p.launch_cents,
         creatorPrice(p.launch_cents),
-        p.launch_confirmed,
       ],
     ),
     [
-      ["pro_monthly", 599, 399, 319, true],
-      ["pro_annual", 5990, 3990, 3192, false],
-      ["pro_plus_monthly", 999, 699, 559, true],
-      ["pro_plus_annual", 9990, 6990, 5592, false],
+      ["pro_monthly", 599, 399, 319],
+      ["pro_annual", 5990, 3990, 3192],
+      ["pro_plus_monthly", 999, 699, 559],
+      ["pro_plus_annual", 9990, 6990, 5592],
     ],
   );
 });
@@ -48,6 +49,7 @@ function fake() {
     recurring_interval: p.interval,
     recurring_interval_count: 1,
     is_archived: false,
+    visibility: "published",
     metadata: {},
     prices: [{
       id: sandbox.checkout_keys[p.key as "pro_monthly" | "pro_annual"]
@@ -62,19 +64,45 @@ function fake() {
     trial_interval_count: 7,
   }));
   const discounts: Resource[] = [];
+  const links: Resource[] = [];
   const writes: unknown[] = [];
   const http: Http = (method, path, body) => {
-    const collection = path.startsWith("/products/") ? products : discounts;
+    const collection = path.startsWith("/products/")
+      ? products
+      : path.startsWith("/discounts/")
+      ? discounts
+      : links;
     if (method === "GET") {
       return Promise.resolve({
         items: structuredClone(collection),
         pagination: { max_page: 1, total_count: collection.length },
       });
     }
+    if (method === "POST" && path.startsWith("/checkout-links/")) {
+      const ids = (body as { products: string[] }).products;
+      if (
+        ids.some((id) =>
+          products.find((p) => p.id === id)?.visibility !== "published"
+        )
+      ) {
+        return Promise.reject(Error("Product is a draft"));
+      }
+    }
     writes.push({ method, path, body });
     const data = body as Resource;
     if (method === "POST") {
-      const resource = { ...data, id: id(), is_archived: false };
+      const resource = {
+        ...data,
+        organization_id: data.organization_id ?? sandbox.organization_id,
+        id: id(),
+        is_archived: false,
+        ...(path.startsWith("/checkout-links/")
+          ? {
+            url: "https://sandbox.polar.sh/checkout/fixture",
+            client_secret: "fixture-not-exported",
+          }
+          : {}),
+      };
       if (data.prices) {
         resource.prices = data.prices.map((p) => ({ ...p, id: id() }));
       }
@@ -90,27 +118,23 @@ function fake() {
     resource.prices = data.prices?.map((p) => ({ ...p, id: id() }));
     return Promise.resolve(structuredClone(resource));
   };
-  return { http, products, discounts, writes };
+  return { http, products, discounts, links, writes };
 }
 const options = {
   environment: "sandbox" as const,
   creator: "ISAAC",
-  confirmAnnualLaunch: true,
 };
 
 Deno.test("P1-1: creator discounts repeat for two months and reconcile without writes", async () => {
   const f = fake();
   const first = await syncCatalog(f.http, sandbox, options);
   const creatorDiscounts = f.discounts.filter((d) =>
-    d.metadata?.vantare_offer_key.includes(":creator:")
+    d.metadata?.vantare_offer_key?.startsWith("creator:")
   );
-  assertEquals(creatorDiscounts.length, 4);
+  assertEquals(creatorDiscounts.length, 1);
   for (const d of creatorDiscounts) {
     assertEquals(d.duration, "repeating");
     assertEquals(d.duration_in_months, 2);
-  }
-  for (const d of f.discounts.filter((d) => !creatorDiscounts.includes(d))) {
-    assertEquals(d.duration, "forever");
   }
   assertEquals((await syncCatalog(f.http, first, options)).writes, 0);
 });
@@ -120,7 +144,7 @@ Deno.test("P1-1: unlimited or wrong-length creator discount fails before mutatio
     const f = fake();
     const first = await syncCatalog(f.http, sandbox, options);
     const d = f.discounts.find((d) =>
-      d.metadata?.vantare_offer_key.includes(":creator:")
+      d.metadata?.vantare_offer_key?.startsWith("creator:")
     )!;
     d.duration = duration;
     Object.assign(d, {
@@ -158,7 +182,7 @@ Deno.test("P2-1: accounting output includes both commission periods on the amoun
 Deno.test("catalog: complete mapping, inherited IDs/trials preserved, rerun has zero writes", async () => {
   const f = fake();
   const first = await syncCatalog(f.http, sandbox, options);
-  assertEquals(first.writes, 10); // two products + eight discounts
+  assertEquals(first.writes, 7); // six draft products + one discount, link waits for publication
   assertEquals(
     first.map.checkout_keys.pro_monthly?.polar_product_id,
     sandbox.checkout_keys.pro_monthly.polar_product_id,
@@ -188,22 +212,25 @@ Deno.test("catalog: complete mapping, inherited IDs/trials preserved, rerun has 
   assertEquals(second.offers, first.offers);
 });
 
-Deno.test("catalog: pending annual launch not applied without confirmation", async () => {
+Deno.test("catalog: decided annual launch prices are created without a confirmation gate", async () => {
   const f = fake();
-  const r = await syncCatalog(f.http, sandbox, {
-    ...options,
-    confirmAnnualLaunch: false,
-  });
-  assertEquals(r.pending, ["pro_annual", "pro_plus_annual"]);
-  assertEquals(f.discounts.length, 4);
+  const r = await syncCatalog(f.http, sandbox, options);
+  for (const p of PRICES.plans) {
+    const id = r.map.checkout_keys[p.key]!.polar_launch_product_id;
+    assertEquals(
+      f.products.find((r) => r.id === id)!.prices![0].price_amount,
+      p.launch_cents,
+    );
+  }
+  assertEquals(f.discounts.length, 1);
 });
 
 Deno.test("catalog: replacing the base price keeps old price IDs mapped", async () => {
   const f = fake();
   f.products[0].prices![0].price_amount = 499;
   const result = await syncCatalog(f.http, sandbox, options);
-  assertEquals(result.writes, 11);
-  assertEquals(result.map.checkout_keys.pro_monthly?.polar_price_ids.length, 2);
+  assertEquals(result.writes, 8);
+  assertEquals(result.map.checkout_keys.pro_monthly?.polar_price_ids.length, 3);
   assertEquals(
     result.map
       .price_id_to_checkout_key[
@@ -251,8 +278,8 @@ Deno.test("catalog: discount drift or code collision abort before any writes", a
     await syncCatalog(f.http, sandbox, options);
     const writes = f.writes.length;
     if (collision) {
-      f.discounts.push({ ...f.discounts[1], id: "foreign-code", metadata: {} });
-    } else f.discounts[0].amounts = { eur: 201 };
+      f.discounts.push({ ...f.discounts[0], id: "foreign-code", metadata: {} });
+    } else f.discounts[0].basis_points = 1900;
     await assertRejects(() => syncCatalog(f.http, sandbox, options));
     assertEquals(f.writes.length, writes);
   }
@@ -330,4 +357,213 @@ Deno.test("catalog: refuses wrong organization, environment and ambiguous produc
     await assertRejects(() => syncCatalog(f.http, map, options));
     assertEquals(f.writes.length, 0);
   }
+});
+
+Deno.test("P2-2: one exact creator code covers only separate launch products", async () => {
+  const f = fake();
+  const first = await syncCatalog(f.http, sandbox, options);
+  assertEquals(f.discounts.length, 1);
+  const d = f.discounts[0];
+  assertEquals(d.code, "ISAAC");
+  assertEquals(d.type, "percentage");
+  assertEquals(d.basis_points, 2000);
+  assertEquals(d.duration, "repeating");
+  assertEquals(d.duration_in_months, 2);
+  assertEquals(d.amounts, undefined);
+  const launchIds: string[] = [];
+  for (const p of PRICES.plans) {
+    const config = first.map.checkout_keys[p.key]!;
+    const launchId = config!.polar_launch_product_id!;
+    launchIds.push(launchId);
+    assertEquals(launchId === config!.polar_product_id, false);
+    const product = f.products.find((r) => r.id === launchId)!;
+    assertEquals(product.prices![0].price_amount, p.launch_cents);
+    assertEquals(resolveCheckoutKeyByProductId(first.map, launchId).ok, true);
+    const launch = resolveCheckoutKeyByProductId(first.map, launchId);
+    assertEquals(launch.ok && launch.key, p.key);
+    // App checkout continues to select the normal product with the same rights.
+    const normal = resolveCheckoutKey(first.map, p.key);
+    assertEquals(
+      normal.ok && normal.config.polar_product_id,
+      config!.polar_product_id,
+    );
+  }
+  assertEquals(d.products!.map((p) => p.id).sort(), launchIds.sort());
+  for (const p of PRICES.plans) {
+    assertEquals(
+      d.products!.some((r) =>
+        r.id === first.map.checkout_keys[p.key]!.polar_product_id
+      ),
+      false,
+    );
+    assertEquals(
+      planOffline("ISAAC").plans.find((r) => r.key === p.key)!.creator_code,
+      "ISAAC",
+    );
+  }
+  assertEquals(
+    d.products!.some((r) =>
+      r.id === sandbox.checkout_keys.launch_lifetime.polar_product_id
+    ),
+    false,
+  );
+});
+
+Deno.test("P2-2: creator spelling is preserved and a second creator reuses launch products", async () => {
+  const f = fake();
+  const first = await syncCatalog(f.http, sandbox, {
+    ...options,
+    creator: "Isaac",
+  });
+  assertEquals(f.discounts.length, 1);
+  assertEquals(f.discounts[0].code, "Isaac");
+  const productIds = f.products.map((p) => p.id);
+  const second = await syncCatalog(f.http, first, {
+    ...options,
+    creator: "MARIA",
+  });
+  assertEquals(f.discounts.length, 2);
+  assertEquals(f.discounts[1].code, "MARIA");
+  assertEquals(f.products.map((p) => p.id), productIds);
+  assertEquals(
+    (await syncCatalog(f.http, second, { ...options, creator: "MARIA" }))
+      .writes,
+    0,
+  );
+});
+
+Deno.test("P2-2: own creator link selects only launch products and pins its discount", async () => {
+  const f = fake();
+  const draft = await syncCatalog(f.http, sandbox, options);
+  assertEquals(draft.creator_link, null);
+  assertEquals(
+    draft.creator_link_pending,
+    "publish_launch_products_then_rerun",
+  );
+  assertEquals(f.links.length, 0);
+  // Simulate the separately authorized activation, never done by syncCatalog.
+  for (const p of f.products) p.visibility = "published";
+  const first = await syncCatalog(f.http, draft, options);
+  assertEquals(first.writes, 1);
+  assertEquals(first.creator_link_pending, null);
+  assertEquals(f.links.length, 1);
+  const link = f.links[0];
+  assertEquals(link.discount_id, f.discounts[0].id);
+  assertEquals(link.allow_discount_codes, false);
+  assertEquals(
+    link.products!.map((r) => r.id).sort(),
+    f.discounts[0].products!.map((r) => r.id).sort(),
+  );
+  assertEquals(JSON.stringify(first).includes("fixture-not-exported"), false);
+  assertEquals((await syncCatalog(f.http, first, options)).writes, 0);
+  link.allow_discount_codes = true;
+  const writes = f.writes.length;
+  await assertRejects(() => syncCatalog(f.http, first, options));
+  assertEquals(f.writes.length, writes);
+});
+
+Deno.test("P2-2: launch product mapping is explicit, symmetric and fails closed", () => {
+  const id = "00000000-0000-4000-8000-000000000850";
+  const raw = structuredClone(sandbox) as unknown as Record<string, unknown>;
+  const keys = raw.checkout_keys as Record<string, Record<string, unknown>>;
+  keys.pro_monthly.polar_launch_product_id = id;
+  const inverse = raw.product_id_to_checkout_key as Record<string, string>;
+  inverse[id] = "pro_monthly";
+  const load = () =>
+    loadPolarProductMap(JSON.stringify(raw), {
+      environment: "sandbox",
+      trialAntiAbuseConfirmed: true,
+    });
+  assertEquals(load().ok, true);
+  delete inverse[id];
+  assertEquals(load().ok, false);
+  inverse[id] = "pro_annual";
+  assertEquals(load().ok, false);
+  inverse[id] = "pro_monthly";
+  keys.pro_monthly.polar_launch_product_id = keys.pro_monthly.polar_product_id;
+  assertEquals(load().ok, false);
+  keys.pro_monthly.polar_launch_product_id = "invalid";
+  assertEquals(load().ok, false);
+});
+
+Deno.test("catalog: launch products without a creator are base prices with no discounts or links", async () => {
+  const f = fake();
+  const first = await syncCatalog(f.http, sandbox, { environment: "sandbox" });
+  assertEquals(f.discounts.length, 0);
+  assertEquals(f.links.length, 0);
+  assertEquals(first.creator_link, null);
+  assertEquals(first.writes, 6);
+  for (const p of PRICES.plans) {
+    assertEquals(first.offers[`${p.key}:launch`].discount_id, null);
+    assertEquals(first.offers[`${p.key}:launch`].final_cents, p.launch_cents);
+    assertEquals(first.offers[`${p.key}:launch`].renewal_cents, p.launch_cents);
+  }
+  const next = await syncCatalog(f.http, sandbox, options); // recover partial run via owned metadata
+  assertEquals(next.writes, 1);
+  assertEquals(next.map, first.map);
+});
+
+Deno.test("catalog: scope/percentage drift and legacy composite discounts abort before writes", async () => {
+  for (
+    const problem of [
+      "normal-scope",
+      "empty-scope",
+      "extra-scope",
+      "duplicate-scope",
+      "percentage",
+      "legacy",
+    ]
+  ) {
+    const f = fake();
+    const first = await syncCatalog(f.http, sandbox, options);
+    const d = f.discounts[0];
+    if (problem === "normal-scope") {
+      d.products![0].id = first.map.checkout_keys.pro_monthly!.polar_product_id;
+    }
+    if (problem === "empty-scope") d.products = [];
+    if (problem === "extra-scope") {
+      d.products!.push({
+        id: sandbox.checkout_keys.launch_lifetime.polar_product_id,
+      });
+    }
+    if (problem === "duplicate-scope") d.products![0] = d.products![1];
+    if (problem === "percentage") d.basis_points = 2100;
+    if (problem === "legacy") {
+      d.metadata = { vantare_offer_key: "pro_monthly:creator:ISAAC" };
+    }
+    // An unrelated normal price also needs updating; preflight still writes nothing.
+    f.products[0].prices![0].price_amount = 499;
+    const writes = f.writes.length;
+    await assertRejects(() => syncCatalog(f.http, first, options));
+    assertEquals(f.writes.length, writes);
+  }
+});
+
+Deno.test("P2-3: launch price replacement preserves unmapped active and archived IDs", async () => {
+  const f = fake();
+  const first = await syncCatalog(f.http, sandbox, options);
+  const launch = f.products.find((p) =>
+    p.id === first.map.checkout_keys.pro_monthly!.polar_launch_product_id
+  )!;
+  const original = launch.prices![0];
+  const active = "00000000-0000-4000-8000-000000000910";
+  const archived = "00000000-0000-4000-8000-000000000911";
+  launch.prices = [{ ...original, id: active, price_amount: 499 }, {
+    ...original,
+    id: archived,
+    is_archived: true,
+  }];
+  const next = await syncCatalog(f.http, first, options);
+  assertEquals(next.writes, 1);
+  for (const id of [active, archived, original.id]) {
+    assertEquals(resolveCheckoutKeyByPriceId(next.map, id).ok, true);
+  }
+  assertEquals((await syncCatalog(f.http, next, options)).writes, 0);
+});
+
+Deno.test("catalog: normal product cannot also claim a launch slot", async () => {
+  const f = fake();
+  f.products[0].metadata = { vantare_catalog_key: "pro_monthly:launch" };
+  await assertRejects(() => syncCatalog(f.http, sandbox, options));
+  assertEquals(f.writes.length, 0);
 });

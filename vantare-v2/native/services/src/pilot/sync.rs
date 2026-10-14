@@ -30,18 +30,17 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
             .transpose()
             .map_err(|_| Error::Protocol)?;
         let photo_hash = bytes.as_deref().map(crate::content_hash);
+        let current_fingerprint = fingerprint(&profile, &photo_hash)?;
         // No sobreescribe ediciones hechas desde otro dispositivo.
         if local.state().remote_revision != remote_revision {
-            // El commit pudo completarse sin confirmación HTTP/DPAPI. Solo
-            // reconoce exactamente nuestro documento y foto en la revisión siguiente.
-            if remote.as_ref().is_some_and(|value| {
-                Some(value.revision) == local.state().remote_revision.checked_add(1)
-                    && value.profile == profile
-                    && value.photo_hash == photo_hash
-            }) {
-                return local.accept_remote(local.state().profile.clone(), remote_revision);
+            reconcile_pending(
+                local,
+                remote.as_ref().ok_or(Error::Conflict)?,
+                &current_fingerprint,
+            )?;
+            if !local.state().pending {
+                return Ok(());
             }
-            return Err(Error::Conflict);
         }
         if let (Some(bytes), Some(hash)) = (&bytes, &photo_hash) {
             let response = request.pilot_photo(hash, Some(bytes))?;
@@ -56,6 +55,8 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
                 response.success()?;
             }
         }
+        // Durable antes de la mutación remota; un error deja el intento intacto.
+        local.record_attempt(current_fingerprint)?;
         let saved: Remote = request.post("rest/v1/rpc/pilot_profile_save", &serde_json::json!({
             "p_profile": profile, "p_photo_hash": photo_hash, "p_expected_revision": remote_revision,
         }))?.success()?.json()?;
@@ -83,6 +84,28 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
         local.accept_remote(remote.profile, remote.revision)?;
     }
     Ok(())
+}
+
+fn fingerprint(profile: &PilotProfile, photo_hash: &Option<String>) -> Result<String> {
+    Ok(crate::content_hash(
+        &serde_json::to_vec(&(profile, photo_hash)).map_err(|_| Error::Protocol)?,
+    ))
+}
+
+fn reconcile_pending(local: &mut Local, observed: &Remote, current: &str) -> Result<()> {
+    let observed_fingerprint = fingerprint(&observed.profile, &observed.photo_hash)?;
+    // Reconcilia el CAS realmente enviado, aunque Guardar ya haya sustituido
+    // el pendiente. Nunca reconoce contenido remoto distinto.
+    let (expected, sent) = local
+        .attempt
+        .as_ref()
+        .map_or((local.state().remote_revision, current), |attempt| {
+            (attempt.remote_revision, attempt.fingerprint.as_str())
+        });
+    if Some(observed.revision) != expected.checked_add(1) || sent != observed_fingerprint {
+        return Err(Error::Conflict);
+    }
+    local.reconcile(observed.revision, current != observed_fingerprint)
 }
 
 fn duplicate(response: &crate::http::Response) -> bool {

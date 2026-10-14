@@ -3,6 +3,7 @@ pub use crate::protocol::pilot_document::{PilotPhoto, PilotProfile, PilotState};
 use crate::{Error, Result, storage::Store};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use image::{ImageFormat, ImageReader, Limits, codecs::jpeg::JpegEncoder};
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -120,6 +121,28 @@ pub fn validate(profile: &PilotProfile) -> Result<()> {
 pub struct Local {
     store: Store,
     state: PilotState,
+    attempt: Option<Attempt>,
+}
+
+// No forma parte del IPC: prueba durable del último CAS enviado, independiente
+// de las ediciones locales posteriores. Un único blob evita estados partidos.
+#[derive(Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Attempt {
+    fingerprint: String,
+    remote_revision: u64,
+}
+#[derive(Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Saved {
+    state: PilotState,
+    attempt: Option<Attempt>,
+}
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum Record {
+    Current(Saved),
+    Legacy(PilotState),
 }
 impl Local {
     /// issuer/subject vienen exclusivamente de la cuenta restaurada, nunca del formulario.
@@ -135,15 +158,35 @@ impl Local {
             _ => return Err(Error::Authentication),
         };
         let store = Store::open(root, &context)?;
-        let state = match store.load::<PilotState>("pilot-profile") {
-            Ok(state) => {
-                validate(&state.profile)?;
-                state
-            }
-            Err(Error::NotFound) => PilotState::default(),
+        let saved = match store.load::<Record>("pilot-profile") {
+            Ok(Record::Current(saved)) => saved,
+            Ok(Record::Legacy(state)) => Saved {
+                state,
+                attempt: None,
+            },
+            Err(Error::NotFound) => Saved {
+                state: PilotState::default(),
+                attempt: None,
+            },
             Err(error) => return Err(error),
         };
-        Ok(Self { store, state })
+        validate(&saved.state.profile)?;
+        if saved.attempt.as_ref().is_some_and(|attempt| {
+            !saved.state.pending
+                || attempt.remote_revision != saved.state.remote_revision
+                || attempt.fingerprint.len() != 64
+                || !attempt
+                    .fingerprint
+                    .bytes()
+                    .all(|byte| byte.is_ascii_hexdigit())
+        }) {
+            return Err(Error::Protocol);
+        }
+        Ok(Self {
+            store,
+            state: saved.state,
+            attempt: saved.attempt,
+        })
     }
     pub fn state(&self) -> &PilotState {
         &self.state
@@ -159,9 +202,7 @@ impl Local {
             pending: true,
             ..self.state.clone()
         };
-        self.store.save("pilot-profile", &state)?;
-        self.state = state;
-        Ok(())
+        self.persist(state, self.attempt.clone())
     }
     pub fn accept_remote(&mut self, profile: PilotProfile, remote_revision: u64) -> Result<()> {
         validate(&profile)?;
@@ -171,9 +212,37 @@ impl Local {
             remote_revision,
             pending: false,
         };
-        self.store.save("pilot-profile", &state)?;
+        self.persist(state, None)
+    }
+    fn persist(&mut self, state: PilotState, attempt: Option<Attempt>) -> Result<()> {
+        self.store.save(
+            "pilot-profile",
+            &Saved {
+                state: state.clone(),
+                attempt: attempt.clone(),
+            },
+        )?;
         self.state = state;
+        self.attempt = attempt;
         Ok(())
+    }
+    #[cfg(feature = "network")]
+    fn record_attempt(&mut self, fingerprint: String) -> Result<()> {
+        let attempt = Attempt {
+            fingerprint,
+            remote_revision: self.state.remote_revision,
+        };
+        self.persist(self.state.clone(), Some(attempt))
+    }
+    #[cfg(feature = "network")]
+    fn reconcile(&mut self, remote_revision: u64, pending: bool) -> Result<()> {
+        let state = PilotState {
+            remote_revision,
+            pending,
+            revision: self.state.revision.checked_add(1).ok_or(Error::Conflict)?,
+            ..self.state.clone()
+        };
+        self.persist(state, None)
     }
 }
 
@@ -183,6 +252,35 @@ pub mod sync;
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn legacy_local_profile_is_preserved_when_upgrading_the_durable_record() {
+        let root = std::env::temp_dir().join(crate::random_id().expect("id"));
+        let state = PilotState {
+            profile: PilotProfile {
+                description: "perfil previo".into(),
+                ..Default::default()
+            },
+            revision: 7,
+            remote_revision: 3,
+            pending: true,
+        };
+        let store = Store::open(&root, "pilot-v1|local").expect("store previo");
+        store
+            .save("pilot-profile", &state)
+            .expect("formato anterior");
+        drop(store);
+        let mut local = Local::open(&root, None, None).expect("abrir previo");
+        assert_eq!(*local.state(), state);
+        local
+            .save(state.profile, state.revision)
+            .expect("editar previo");
+        let expected = local.state().clone();
+        drop(local);
+        let local = Local::open(&root, None, None).expect("reabrir actualizado");
+        assert_eq!(*local.state(), expected);
+        drop(local);
+        std::fs::remove_dir_all(root).expect("limpieza fixture");
+    }
     #[test]
     fn multiline_description_saves_and_reopens_but_rejects_other_controls() {
         let root = std::env::temp_dir().join(crate::random_id().expect("id"));

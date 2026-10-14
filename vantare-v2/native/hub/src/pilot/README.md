@@ -26,6 +26,13 @@ permanece separada. Guardar y abrir con sesión intentan sincronizar mediante el
 puente UUID ya verificado. Un fallo remoto conserva el perfil local y su marca
 pendiente; CAS impide sobrescribir otro dispositivo. No se cambia el login.
 
+El servicio registra en el mismo blob protegido la huella de documento/foto y
+revisión del CAS antes de enviarlo. Guardar una edición posterior conserva ese
+intento. El reintento lee la revisión remota real: solo reconoce el contenido
+enviado en R+1 y después envía la nueva edición mediante CAS sobre esa revisión.
+Documento/hash diferentes mantienen el conflicto y la copia local. El lector
+acepta el formato local previo; al escribir añade el registro del intento.
+
 El selector valida JPEG/PNG ≤ 5 MiB y ≤ 4096 px fuera del hilo de UI. Solo el
 JPEG de 256×256 (≤24 KiB) puede salir del PC; la original se conserva en memoria
 hasta aplicar/descartar. El círculo lo pinta GPUI. Cambiar/quitar foto forma parte

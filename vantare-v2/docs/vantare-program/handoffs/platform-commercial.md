@@ -18,10 +18,18 @@ Pendiente P2-2; sin llamadas Polar, secretos, deploy ni promoción.
 P3 barato: lint de los dos tests fallaba por imports HTTPS inline; assertions
 de biblioteca estándar `node:assert/strict` eliminan los dos errores sin
 desactivar reglas ni añadir dependencias. Logs P3 RED/GREEN separados.
+Commits P1-1 `4ae058f0`, P2-1 `c25fc327`, P2-3 `5f85e868`, P3 `c80fb148`.
+Suite completa 549 PASS/0 FAIL/1 ignorado; check/lint/fmt/quality 456 y deploy
+surface PASS (node_modules generado retirado con Git tras preview). Sin
+pgTAP (no Docker/psql) ni gates Rust/UI (sin cambios). Diff completo revisado.
+P2-2 RED externo: ISAACPROM/ISAACPLUSM frente a ISAAC. Polar tiene código único
+por organización y un importe fijo por moneda. Pendiente decisión sobre
+resolver código público + plan a discount_id sin código Polar y conectar al
+Checkout Link/API. No declarar APTO ni ejecutar apply con creador.
 Falta identificador Plane VANTA-N en el encargo/#1620; se avisa en el buzón al
 orquestador sin crear tarea ni reutilizar el tracker Notion histórico.
 
-## #1620 / VAN-782 · catálogo Polar preparado (14/10/2026)
+## #1620 / VAN-782 · entrega inicial (histórica, sustituida por ronda 2)
 
 [Tarea Notion](https://app.notion.com/p/3f9e51695c6581229de0e11deabcd9ab), proyecto
 Billing y licencias. Rama `vantareapp/isa-1620-precios-polar`, heredada de

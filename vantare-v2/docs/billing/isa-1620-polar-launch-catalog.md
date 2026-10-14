@@ -5,6 +5,17 @@ proyecto Billing y licencias. Sustituye el procedimiento de [PR #1500](https://g
 / [#1499](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1499).
 Solo preparación en repo: **ninguna ejecución en Polar, deploy ni venta probados**.
 
+**Ronda 2: P1-1, P2-1 y P2-3 corregidos; P2-2 continúa bloqueando la entrega.**
+No ejecutar los comandos apply con creador que aparecen abajo hasta resolver
+el código público. Polar exige códigos únicos por organización y admite un
+importe fijo por moneda, no por producto: [modelo oficial](https://github.com/polarsource/polar/blob/main/server/polar/models/discount.py)
+y [schema oficial](https://github.com/polarsource/polar/blob/main/server/polar/discount/schemas.py).
+Crear dos `ISAAC` con rebajas 2,80/4,40 € no es válido. La opción propuesta
+para revisión es resolver `ISAAC` + plan a su `discount_id` de creador y
+aplicarlo por Checkout Link/API, con descuentos Polar sin código. Eso requiere
+decidir dónde se introduce el código público y conectar ese flujo; esta ronda
+no lo implementa ni presenta los sufijos existentes como contrato aceptado.
+
 ## Tabla y modelo
 
 Fuente ejecutable: `supabase/functions/scripts/polar-launch-prices.json`.
@@ -40,7 +51,8 @@ Descuentos existentes con otra duración abortan como drift antes de escribir;
 requieren revisión manual, no una sustitución automática sobre suscripciones.
 Los importes anuales siguen pendientes de confirmación.
 
-`--creator ISAAC` genera códigos alfanuméricos por plan: `ISAACPROM`,
+**Comportamiento pendiente de corregir (P2-2):** `--creator ISAAC` genera
+códigos alfanuméricos por plan: `ISAACPROM`,
 `ISAACPROA`, `ISAACPLUSM`, `ISAACPLUSA`. Cada código pertenece a un solo
 producto y concede ya el total combinado. Un código único transversal requeriría
 otra estrategia: los importes relativos difieren entre Pro y Plus. Añadir otro
@@ -190,3 +202,17 @@ ajenos ni añadir Stripe retirado. Rust/UI omitidos: no se modifican.
 `docs/roadmap/plan.md` fue retirado en nightly (#1601). No se recrea: no hay
 cambio público de disponibilidad; la tarea queda en revisión, sin promoción,
 deploy ni publicación del roadmap.
+
+Ronda 2: P1-1 dos regresiones RED → GREEN; P2-1 una regresión RED → GREEN;
+P2-3 dos regresiones RED → GREEN. Commits `4ae058f0`, `c25fc327`, `5f85e868`.
+P3 lint RED (dos imports HTTPS) → GREEN usando assertions estándar, `c80fb148`.
+Catálogo 13 PASS; catálogo + script Pro 16 PASS; suite completa 549 PASS,
+0 FAIL, 1 ignorado. Check, lint de scripts y tests, fmt, quality (456 huellas)
+y superficie deploy PASS. La suite creó node_modules; el gate detectó esa
+superficie, se retiró exclusivamente mediante Git con preview y se repitió PASS.
+La limpieza PowerShell inicial fue rechazada automáticamente, sin ejecutar.
+No se cambia ningún juez/config ni se ocultan fallos. Evidencia y RED por hallazgo
+en `C:/tmp/ola2/1620-r2-*`. P2-2 sigue RED en probe externo y sin GREEN.
+No hay facturas reales, llamadas Polar ni secretos. pgTAP omitido: sin
+Docker/psql; Rust/UI omitidos: superficies intactas. Hace falta revisión nueva,
+decisión sobre P2-2 y VANTA-N del orquestador antes de cerrar la entrega.

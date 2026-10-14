@@ -828,11 +828,6 @@ mod tests {
         let mut account = crate::account::fixture(&server.base, &store);
         account.logout(&store).expect("signed out");
         let login = account.begin_login().expect("login without browser");
-        let params: std::collections::HashMap<_, _> = login
-            .query_pairs()
-            .map(|(key, value)| (key.into_owned(), value.into_owned()))
-            .collect();
-        let redirect = url::Url::parse(&params["redirect_uri"]).expect("redirect");
         let config = BuildConfig {
             supabase: None,
             anon_key: None,
@@ -895,14 +890,7 @@ mod tests {
                 ..
             }
         ));
-        let mut socket = TcpStream::connect(("127.0.0.1", redirect.port().expect("port")))
-            .expect("callback survived");
-        write!(
-            socket,
-            "GET /callback?state={}&code=fixture HTTP/1.1\r\nHost: localhost\r\n\r\n",
-            params["state"]
-        )
-        .expect("request");
+        let _socket = login_callback(&login);
         assert!(matches!(
             wire_reply(3, Command::AccountPoll),
             Reply::Account {
@@ -1552,6 +1540,23 @@ mod tests {
         identity_switch_without_core(false);
     }
 
+    fn login_callback(login: &url::Url) -> TcpStream {
+        let params: std::collections::HashMap<_, _> = login
+            .query_pairs()
+            .map(|(key, value)| (key.into_owned(), value.into_owned()))
+            .collect();
+        let redirect = url::Url::parse(&params["redirect_uri"]).expect("redirect");
+        let mut socket =
+            TcpStream::connect(("127.0.0.1", redirect.port().expect("port"))).expect("callback");
+        write!(
+            socket,
+            "GET /callback?state={}&code=fixture HTTP/1.1\r\nHost: localhost\r\n\r\n",
+            params["state"]
+        )
+        .expect("callback request");
+        socket
+    }
+
     fn identity_switch_without_core(previous_identity: bool) {
         let server = crate::test_http::Server::start(vec![
             (200, serde_json::json!({"access_token":"new-local-access","refresh_token":"new-local-refresh","token_type":"Bearer","expires_in":3600}).to_string()),
@@ -1600,19 +1605,7 @@ mod tests {
                 .expect("account")
                 .begin_login()
                 .expect("explicit retry without browser");
-            let params: std::collections::HashMap<_, _> = login
-                .query_pairs()
-                .map(|(key, value)| (key.into_owned(), value.into_owned()))
-                .collect();
-            let redirect = url::Url::parse(&params["redirect_uri"]).expect("redirect");
-            let mut socket = TcpStream::connect(("127.0.0.1", redirect.port().expect("port")))
-                .expect("callback");
-            write!(
-                socket,
-                "GET /callback?state={}&code=fixture HTTP/1.1\r\nHost: localhost\r\n\r\n",
-                params["state"]
-            )
-            .expect("callback request");
+            let _socket = login_callback(&login);
             assert!(
                 matches!(app.handle(Command::AccountPoll), Reply::Account {
                 signed_in, pending: false, error, ..
@@ -1637,14 +1630,21 @@ mod tests {
                     "detached login replaced the durable account"
                 );
             }
-            assert_eq!(
-                app.candidate_store()
-                    .expect("candidate store")
-                    .load::<crate::license_remote::Candidate>("license-candidate")
-                    .is_ok(),
-                !managed,
-                "candidate is retired only after durable revocation ACK"
-            );
+            let candidate = app
+                .candidate_store()
+                .expect("candidate store")
+                .load::<crate::license_remote::Candidate>("license-candidate");
+            if managed {
+                assert!(
+                    matches!(candidate, Err(Error::NotFound)),
+                    "old candidate must be absent after ACK"
+                );
+            } else {
+                assert!(
+                    candidate.is_ok(),
+                    "detached rejection must preserve A candidate"
+                );
+            }
         }
         for _ in 0..4 {
             server

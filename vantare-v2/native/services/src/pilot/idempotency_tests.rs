@@ -97,6 +97,13 @@ impl Backend {
     }
 }
 
+fn description_profile(description: &str) -> PilotProfile {
+    PilotProfile {
+        description: description.into(),
+        ..Default::default()
+    }
+}
+
 #[test]
 fn definitive_rejection_retires_a_and_corrected_b_can_commit_after_restart() {
     let fixture = Fixture::new();
@@ -411,15 +418,7 @@ fn second_device_between_commit_and_retry_cannot_erase_receipt_or_be_overwritten
         let request = session.request(&http, &config, &account, 100);
         let mut first = Local::open(&root.join("device-1"), None, None).expect("first");
         let mut second = Local::open(&root.join("device-2"), None, None).expect("second");
-        first
-            .save(
-                PilotProfile {
-                    description: "A".into(),
-                    ..Default::default()
-                },
-                0,
-            )
-            .expect("A");
+        first.save(description_profile("A"), 0).expect("A");
         assert_eq!(synchronize(&mut first, &request), Err(Error::Protocol));
         let mut backend = fixture.backend.lock().expect("state");
         let pending = backend.pending.take().expect("in-flight A");
@@ -427,24 +426,12 @@ fn second_device_between_commit_and_retry_cannot_erase_receipt_or_be_overwritten
         drop(backend);
         if edited {
             first
-                .save(
-                    PilotProfile {
-                        description: "B".into(),
-                        ..Default::default()
-                    },
-                    first.state().revision,
-                )
+                .save(description_profile("B"), first.state().revision)
                 .expect("B queued");
         }
         synchronize(&mut second, &request).expect("device 2 loads A");
         second
-            .save(
-                PilotProfile {
-                    description: "C".into(),
-                    ..Default::default()
-                },
-                second.state().revision,
-            )
+            .save(description_profile("C"), second.state().revision)
             .expect("device 2 edits C");
         synchronize(&mut second, &request).expect("C commits R2");
         drop(first);
@@ -484,13 +471,7 @@ fn second_device_between_commit_and_retry_cannot_erase_receipt_or_be_overwritten
         }
         if !edited {
             first
-                .save(
-                    PilotProfile {
-                        description: "D".into(),
-                        ..Default::default()
-                    },
-                    first.state().revision,
-                )
+                .save(description_profile("D"), first.state().revision)
                 .expect("edit after single recovery");
             synchronize(&mut first, &request).expect("D uses current R2");
             let backend = fixture.backend.lock().expect("state");

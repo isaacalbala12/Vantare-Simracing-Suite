@@ -519,6 +519,17 @@ fn paint_input(
     }
     entity.update(cx, |input, _| input.lines = lines);
 }
+fn input_accessibility(
+    field: gpui::Stateful<gpui::Div>,
+    label: &'static str,
+    value: &str,
+    masked: bool,
+) -> gpui::Stateful<gpui::Div> {
+    field
+        .role(gpui::Role::TextInput)
+        .aria_label(label)
+        .when(!masked, |field| field.aria_value(value.to_owned()))
+}
 impl Render for Input {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let entity = cx.entity();
@@ -526,13 +537,16 @@ impl Render for Input {
         let multiline = self.multiline;
         // ponytail: 16 KiB, movimiento por escalares Unicode y líneas explícitas.
         // Un editor de documentos con wrap/grafemas requiere ampliar este mismo control.
-        field("orbit-input", cx)
+        let field = input_accessibility(
+            field("orbit-input", cx),
+            self.label,
+            &self.value,
+            self.masked,
+        );
+        field
             .track_focus(&self.focus.clone().tab_stop(self.enabled))
             .tab_index(0)
             .tab_stop(self.enabled)
-            .role(gpui::Role::TextInput)
-            .aria_label(self.label)
-            .aria_value(self.value.clone())
             .cursor(gpui::CursorStyle::IBeam)
             .when(multiline, |s| s.h(gpui::px(TEXTAREA_H)))
             .when_some(self.preferred_height, gpui::Styled::h)
@@ -585,6 +599,22 @@ impl Render for Input {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn password_is_absent_from_accessibility_but_email_remains_readable() {
+        use gpui::Element;
+        for masked in [true, false] {
+            let label = if masked { "Contraseña" } else { "Email" };
+            let field =
+                input_accessibility(gpui::div().id("fixture"), label, "fixture-value", masked);
+            let mut node = gpui::accesskit::Node::new(gpui::Role::TextInput);
+            field.write_a11y_info(&mut node);
+            assert_eq!(
+                node.value(),
+                if masked { None } else { Some("fixture-value") }
+            );
+            assert_eq!(node.label(), Some(label));
+        }
+    }
     #[test]
     fn utf16_selection_and_replacement_preserve_surrogates() {
         let mut state = TextState::new("aé🏁z".into(), false);

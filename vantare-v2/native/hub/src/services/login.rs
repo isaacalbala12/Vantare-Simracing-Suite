@@ -1,7 +1,8 @@
 //! Formularios GPUI. No red, sesión del proveedor ni persistencia de inputs.
 use super::super::protocol::{EmailAction, EmailMode, EmailStage};
-use super::*;
-use gpui::Entity;
+use super::{Command, Remote, Reply};
+use crate::orbit;
+use gpui::{Context, Entity, div, prelude::*, px};
 use std::time::{Duration, Instant};
 
 pub(super) struct Form {
@@ -54,12 +55,30 @@ impl Form {
                 password: self.password.read(cx).value.clone(),
                 sign_out_of_other_sessions: self.sign_out_others,
             },
-            EmailStage::Consent => EmailAction::Finish,
+            EmailStage::Consent => EmailAction::Finish {},
             EmailStage::HostedRequired => return None,
         })
     }
 }
 impl Remote {
+    pub(super) fn prepare_account_command(&mut self, command: &Command) {
+        self.access.requested(command);
+        if matches!(
+            command,
+            Command::Logout | Command::AccountBegin | Command::AccountEmail { .. }
+        ) {
+            self.clear_pilot();
+            self.clear_participation();
+        }
+        if matches!(command, Command::Logout | Command::AccountBegin) {
+            self.email = None;
+        }
+        if matches!(command, Command::Logout) {
+            self.purchase_wait = None;
+            self.purchase_product = None;
+            self.purchase_message = None;
+        }
+    }
     pub(super) fn select_email(&mut self, mode: EmailMode, cx: &mut Context<Self>) {
         if self.working() {
             return;
@@ -69,14 +88,16 @@ impl Remote {
         self.account.cancel_login = false;
         cx.notify();
     }
-    pub(super) fn email_observe(
-        &mut self,
-        stage: EmailStage,
-        retry: u64,
-        message: String,
-        error: Option<String>,
-        cx: &mut Context<Self>,
-    ) {
+    pub(super) fn email_reply(&mut self, reply: Reply, cx: &mut Context<Self>) {
+        let Reply::Email {
+            stage,
+            retry_after_seconds: retry,
+            message,
+            error,
+        } = reply
+        else {
+            return;
+        };
         if let Some(form) = &mut self.email {
             form.set_enabled(true, cx);
             if error.is_none() || stage == EmailStage::HostedRequired {
@@ -127,12 +148,9 @@ impl Remote {
         if let Some(form) = self.email.take() {
             form.clear_secrets(cx);
         }
-        self.email_action(EmailAction::Cancel, cx);
+        self.email_action(EmailAction::Cancel {}, cx);
     }
-    pub(super) fn email_view(&self, cx: &mut Context<Self>) -> gpui::Div {
-        let Some(form) = &self.email else {
-            return div();
-        };
+    fn email_fields(&self, form: &Form, cx: &mut Context<Self>) -> gpui::Div {
         let stage = form.stage;
         let mut panel = div()
             .w_full()
@@ -199,7 +217,7 @@ impl Remote {
                             .as_ref()
                             .is_some_and(|form| Instant::now() >= form.retry_at)
                         {
-                            this.email_action(EmailAction::Resend, cx);
+                            this.email_action(EmailAction::Resend {}, cx);
                         }
                     })),
             );
@@ -225,6 +243,14 @@ impl Remote {
                 })),
             );
         }
+        panel
+    }
+    pub(super) fn email_view(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let Some(form) = &self.email else {
+            return div();
+        };
+        let stage = form.stage;
+        let mut panel = self.email_fields(form, cx);
         if stage == EmailStage::Consent {
             panel = panel.child(orbit::text("Permites a Vantare acceder a tu identidad y perfil, y mantener la sesión en este equipo. Puedes cancelar.", 12.0, 400, orbit::ink_2(cx), cx));
         }

@@ -99,9 +99,9 @@ pub enum EmailAction {
         password: String,
         sign_out_of_other_sessions: bool,
     },
-    Resend,
-    Finish,
-    Cancel,
+    Resend {},
+    Finish {},
+    Cancel {},
 }
 impl std::fmt::Debug for EmailAction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -359,10 +359,15 @@ mod email_tests {
         assert_eq!(mode, EmailMode::SignUpPassword);
         assert_eq!(email, "fixture@example.invalid");
         assert_eq!(password, "fixture-password");
-        let forged = r#"{"command":"AccountEmail","action":{"action":"Finish","user_code":"external-code"}}"#;
-        assert!(
-            serde_json::from_str::<Command>(forged).is_err(),
-            "client cannot approve arbitrary device code"
-        );
+        for action in ["Resend", "Finish", "Cancel"] {
+            let valid = serde_json::json!({"command":"AccountEmail","action":{"action":action}});
+            assert!(serde_json::from_value::<Command>(valid.clone()).is_ok());
+            let mut forged = valid;
+            forged["action"]["user_code"] = "external-code".into();
+            assert!(
+                serde_json::from_value::<Command>(forged).is_err(),
+                "actions without data must reject external fields"
+            );
+        }
     }
 }

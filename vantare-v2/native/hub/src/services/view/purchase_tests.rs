@@ -155,6 +155,7 @@ pub(super) fn fixture(
         queued: None,
         account: AccountState::default(),
         access: access::State::from_build(),
+        email: None,
         device_limit: false,
         license_polled_at: None,
         purchase_product: None,

@@ -1,6 +1,7 @@
 //! FAPI nativa efímera. La única sesión durable sigue siendo OAuth v1.
-use super::*;
+use super::{Account, Error, Exchange, Grant, Http, Identity, OAuth, Result, Secret, Url};
 use crate::protocol::{EmailAction, EmailMode, EmailStage, Reply};
+use serde::Deserialize;
 use serde_json::Value;
 
 const DEVICE_GRANT: &str = "urn:ietf:params:oauth:grant-type:device_code";
@@ -177,7 +178,7 @@ impl Login {
         if !self.id.is_empty() && incoming_id != self.id {
             return Err(Error::Protocol);
         }
-        self.id = incoming_id.to_owned();
+        incoming_id.clone_into(&mut self.id);
         match string(response, "status")? {
             "complete" => {
                 let session_id = id(string(response, "created_session_id")?)?;
@@ -211,7 +212,7 @@ impl Login {
                 self.stage = EmailStage::Consent;
             }
             "needs_new_password" if self.mode == EmailMode::Recovery => {
-                self.stage = EmailStage::NewPassword
+                self.stage = EmailStage::NewPassword;
             }
             "needs_first_factor" if !self.signup() => {
                 let strategy = self.strategy();
@@ -255,13 +256,13 @@ impl Login {
     fn device_grant(&mut self, http: &Http, oauth: &OAuth, now: u64) -> Result<Secret> {
         // Only the code created here can be approved. No IPC user_code field.
         #[derive(Deserialize)]
-        struct Device {
+        struct Authorization {
             device_code: Secret,
             user_code: Secret,
             expires_in: u64,
             interval: u64,
         }
-        let device: Device = http
+        let device: Authorization = http
             .post_form(
                 &self.device_endpoint,
                 &[
@@ -440,7 +441,7 @@ impl Account {
         action: EmailAction,
         now: u64,
     ) -> Result<Option<Exchange>> {
-        if let EmailAction::Cancel = action {
+        if let EmailAction::Cancel {} = action {
             self.cancel_login()?;
             return Ok(None);
         }
@@ -503,7 +504,7 @@ impl Account {
                 )?;
                 login.observe(&value)?;
             }
-            EmailAction::Resend if login.stage == EmailStage::Code => {
+            EmailAction::Resend {} if login.stage == EmailStage::Code => {
                 if login
                     .sent_at
                     .is_some_and(|sent| now < sent.saturating_add(COOLDOWN))
@@ -512,7 +513,7 @@ impl Account {
                 }
                 login.prepare(http, &self.oauth.issuer, now)?;
             }
-            EmailAction::Finish if login.stage == EmailStage::Consent => {
+            EmailAction::Finish {} if login.stage == EmailStage::Consent => {
                 let device_code = login.device_grant(http, &self.oauth, now)?;
                 let expected = Identity {
                     issuer: self.oauth.issuer.to_string(),

@@ -423,7 +423,7 @@ impl App {
     }
 
     fn email_account(&mut self, action: crate::protocol::EmailAction) -> Reply {
-        let result = (|| {
+        let result: Result<Reply> = (|| {
             self.ensure_account()?;
             let time = now()?;
             let ticket = self

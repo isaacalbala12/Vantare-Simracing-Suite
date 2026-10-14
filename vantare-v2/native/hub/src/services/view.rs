@@ -801,22 +801,7 @@ impl Remote {
         kind: Option<Inflight>,
         cx: &mut Context<Self>,
     ) {
-        self.access.requested(&command);
-        if matches!(
-            command,
-            Command::Logout | Command::AccountBegin | Command::AccountEmail { .. }
-        ) {
-            self.clear_pilot();
-            self.clear_participation();
-        }
-        if matches!(command, Command::Logout | Command::AccountBegin) {
-            self.email = None;
-        }
-        if matches!(command, Command::Logout) {
-            self.purchase_wait = None;
-            self.purchase_product = None;
-            self.purchase_message = None;
-        }
+        self.prepare_account_command(&command);
         if self.inflight.background() {
             if self.queued.is_none() || matches!(command, Command::Logout) {
                 self.queued = Some(command);
@@ -1050,14 +1035,7 @@ impl Remote {
                 message,
                 ..
             } => self.roadmap_reply(publication, stale, message),
-            Reply::Email {
-                stage,
-                retry_after_seconds,
-                message,
-                error,
-            } => {
-                self.email_observe(stage, retry_after_seconds, message, error, cx);
-            }
+            Reply::Email { .. } => self.email_reply(reply, cx),
             Reply::Account {
                 signed_in,
                 profile,

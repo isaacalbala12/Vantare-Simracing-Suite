@@ -1,4 +1,5 @@
 //! Acceso alojado: el estado viene del mismo servicio que la sección Cuenta.
+use super::super::protocol::{EmailAction, EmailMode};
 use super::{Command, Remote, Reply};
 use crate::orbit;
 use gpui::{Context, Div, Stateful, div, prelude::*, px, rgb, rgba};
@@ -56,13 +57,10 @@ impl State {
         if let Command::AccountEmail { action } = command {
             self.error = None;
             self.login_requested = false;
-            if matches!(
-                action,
-                super::protocol::EmailAction::Begin { .. } | super::protocol::EmailAction::Finish
-            ) {
+            if matches!(action, EmailAction::Begin { .. } | EmailAction::Finish {}) {
                 self.invalidate();
                 self.transition = Transition::Login;
-            } else if matches!(action, super::protocol::EmailAction::Cancel) {
+            } else if matches!(action, EmailAction::Cancel {}) {
                 self.transition = Transition::Idle;
             }
         }
@@ -370,7 +368,7 @@ impl Remote {
             })
             .on_click(cx.listener(move |this, _, _, cx| {
                 if id == "access-email" {
-                    this.select_email(super::protocol::EmailMode::SignInCode, cx);
+                    this.select_email(EmailMode::SignInCode, cx);
                 } else {
                     this.begin_access(cx);
                 }
@@ -378,7 +376,7 @@ impl Remote {
             .on_key_down(cx.listener(move |this, event: &gpui::KeyDownEvent, _, cx| {
                 if matches!(event.keystroke.key.as_str(), "enter" | "space") {
                     if id == "access-email" {
-                        this.select_email(super::protocol::EmailMode::SignInCode, cx);
+                        this.select_email(EmailMode::SignInCode, cx);
                     } else {
                         this.begin_access(cx);
                     }
@@ -404,19 +402,15 @@ impl Remote {
             .focus_visible(|style| style.border_1().border_color(rgb(orbit::carmine(cx))))
             .child(orbit::text(label, 12.0, 400, color, cx))
             .on_click(cx.listener(move |this, _, _, cx| match page {
-                Portal::SignUp => this.select_email(super::protocol::EmailMode::SignUpCode, cx),
-                Portal::Reset => this.select_email(super::protocol::EmailMode::Recovery, cx),
+                Portal::SignUp => this.select_email(EmailMode::SignUpCode, cx),
+                Portal::Reset => this.select_email(EmailMode::Recovery, cx),
                 Portal::Profile => this.open_portal(page, cx),
             }))
             .on_key_down(cx.listener(move |this, event: &gpui::KeyDownEvent, _, cx| {
                 if matches!(event.keystroke.key.as_str(), "enter" | "space") {
                     match page {
-                        Portal::SignUp => {
-                            this.select_email(super::protocol::EmailMode::SignUpCode, cx)
-                        }
-                        Portal::Reset => {
-                            this.select_email(super::protocol::EmailMode::Recovery, cx)
-                        }
+                        Portal::SignUp => this.select_email(EmailMode::SignUpCode, cx),
+                        Portal::Reset => this.select_email(EmailMode::Recovery, cx),
                         Portal::Profile => this.open_portal(page, cx),
                     }
                     cx.stop_propagation();
@@ -1362,7 +1356,7 @@ mod native_email_tests {
         };
         assert!(state.next_command(&reply, &mut false).is_none());
         state.requested(&Command::AccountEmail {
-            action: EmailAction::Finish,
+            action: EmailAction::Finish {},
         });
         let reply = Reply::Account {
             signed_in: true,
@@ -1377,7 +1371,7 @@ mod native_email_tests {
             Some(Command::LicenseRenew)
         ));
         state.requested(&Command::AccountEmail {
-            action: EmailAction::Cancel,
+            action: EmailAction::Cancel {},
         });
         assert_eq!(state.transition as u8, Transition::Idle as u8);
     }

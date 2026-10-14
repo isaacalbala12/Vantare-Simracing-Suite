@@ -1,3 +1,4 @@
+use super::super::Saved;
 use super::*;
 use crate::test_http::Server;
 use serde_json::json;
@@ -43,6 +44,89 @@ fn requests(server: &Server) -> Vec<String> {
     server.requests.try_iter().collect()
 }
 
+fn flow_responses(base: &Url, mode: EmailMode) -> Vec<(u16, String)> {
+    let signup = matches!(mode, EmailMode::SignUpCode | EmailMode::SignUpPassword);
+    let mut responses = vec![
+        metadata(base),
+        (200, "{}".into()),
+        attempt(
+            if signup {
+                "missing_requirements"
+            } else if mode == EmailMode::SignInPassword {
+                "complete"
+            } else {
+                "needs_first_factor"
+            },
+            signup,
+        ),
+    ];
+    if mode != EmailMode::SignInPassword {
+        responses.push(attempt(
+            if signup {
+                "missing_requirements"
+            } else {
+                "needs_first_factor"
+            },
+            signup,
+        ));
+        responses.push(attempt(
+            if mode == EmailMode::Recovery {
+                "needs_new_password"
+            } else {
+                "complete"
+            },
+            signup,
+        ));
+        if mode == EmailMode::Recovery {
+            responses.push(attempt("complete", false));
+        }
+    }
+    responses.extend(complete_responses());
+    responses
+}
+fn assert_native_requests(server: &Server, signup: bool, mode: EmailMode) {
+    let wire = requests(server);
+    assert!(
+        wire.iter()
+            .any(|r| r.contains("/oauth/token") && r.contains("device_code=fixture-device"))
+    );
+    assert!(
+        wire.iter()
+            .filter(|r| r.contains("/v1/"))
+            .all(|r| r.contains("_is_native=true")
+                && !r.to_lowercase().contains("cookie:")
+                && !r.to_lowercase().contains("origin:")
+                && !r.to_lowercase().contains("apikey:"))
+    );
+    assert!(
+        wire.iter()
+            .filter(|r| r.contains("/v1/") && !r.starts_with("POST /v1/client?"))
+            .all(|r| r
+                .to_lowercase()
+                .contains("authorization: bearer fixture-client-token"))
+    );
+    if signup {
+        assert!(
+            wire.iter()
+                .any(|r| r.contains("/prepare_verification?") && r.contains("strategy=email_code"))
+        );
+    }
+    if mode == EmailMode::Recovery {
+        assert!(wire.iter().any(
+            |r| r.contains("/reset_password?") && r.contains("sign_out_of_other_sessions=true")
+        ));
+    }
+    let native: Vec<_> = wire.iter().filter(|r| r.starts_with("POST /v1/")).collect();
+    for (index, request) in native.iter().enumerate().skip(1) {
+        assert!(
+            request.to_lowercase().contains(&format!(
+                "authorization: bearer fixture-client-token-{index}\r\n"
+            )),
+            "FAPI must use latest rotated client token"
+        );
+    }
+}
+
 #[test]
 fn every_email_flow_finishes_as_existing_oauth_session_and_restores() {
     for mode in [
@@ -53,45 +137,7 @@ fn every_email_flow_finishes_as_existing_oauth_session_and_restores() {
         EmailMode::Recovery,
     ] {
         let signup = matches!(mode, EmailMode::SignUpCode | EmailMode::SignUpPassword);
-        let server = Server::start_native(|base| {
-            let mut responses = vec![
-                metadata(base),
-                (200, "{}".into()),
-                attempt(
-                    if signup {
-                        "missing_requirements"
-                    } else if mode == EmailMode::SignInPassword {
-                        "complete"
-                    } else {
-                        "needs_first_factor"
-                    },
-                    signup,
-                ),
-            ];
-            if mode != EmailMode::SignInPassword {
-                responses.push(attempt(
-                    if signup {
-                        "missing_requirements"
-                    } else {
-                        "needs_first_factor"
-                    },
-                    signup,
-                ));
-                responses.push(attempt(
-                    if mode == EmailMode::Recovery {
-                        "needs_new_password"
-                    } else {
-                        "complete"
-                    },
-                    signup,
-                ));
-                if mode == EmailMode::Recovery {
-                    responses.push(attempt("complete", false));
-                }
-            }
-            responses.extend(complete_responses());
-            responses
-        });
+        let server = Server::start_native(|base| flow_responses(base, mode));
         let (root, store) = crate::test_store("email-flow");
         let config = oauth(&server.base);
         let mut account = Account::restore(config.clone(), &store).expect("restore");
@@ -146,7 +192,7 @@ fn every_email_flow_finishes_as_existing_oauth_session_and_restores() {
             }
         ));
         let ticket = account
-            .email_action(&Http::default(), EmailAction::Finish, 103)
+            .email_action(&Http::default(), EmailAction::Finish {}, 103)
             .expect("grant")
             .expect("ticket");
         assert!(
@@ -160,48 +206,7 @@ fn every_email_flow_finishes_as_existing_oauth_session_and_restores() {
             account.identity().expect("identity").subject,
             "user_fixture"
         );
-        let wire = requests(&server);
-        assert!(
-            wire.iter()
-                .any(|r| r.contains("/oauth/token") && r.contains("device_code=fixture-device"))
-        );
-        assert!(
-            wire.iter()
-                .filter(|r| r.contains("/v1/"))
-                .all(|r| r.contains("_is_native=true")
-                    && !r.to_lowercase().contains("cookie:")
-                    && !r.to_lowercase().contains("origin:")
-                    && !r.to_lowercase().contains("apikey:"))
-        );
-        assert!(
-            wire.iter()
-                .filter(|r| r.contains("/v1/") && !r.starts_with("POST /v1/client?"))
-                .all(|r| r
-                    .to_lowercase()
-                    .contains("authorization: bearer fixture-client-token"))
-        );
-        if signup {
-            assert!(
-                wire.iter()
-                    .any(|r| r.contains("/prepare_verification?")
-                        && r.contains("strategy=email_code"))
-            );
-        }
-        if mode == EmailMode::Recovery {
-            assert!(
-                wire.iter().any(|r| r.contains("/reset_password?")
-                    && r.contains("sign_out_of_other_sessions=true"))
-            );
-        }
-        let native: Vec<_> = wire.iter().filter(|r| r.starts_with("POST /v1/")).collect();
-        for (index, request) in native.iter().enumerate().skip(1) {
-            assert!(
-                request.to_lowercase().contains(&format!(
-                    "authorization: bearer fixture-client-token-{index}\r\n"
-                )),
-                "FAPI must use latest rotated client token"
-            );
-        }
+        assert_native_requests(&server, signup, mode);
         let saved =
             serde_json::to_string(&store.load::<Saved>("account").expect("saved OAuth")).ok();
         // On Unix store format is plaintext; no transient credential belongs there.
@@ -217,7 +222,7 @@ fn every_email_flow_finishes_as_existing_oauth_session_and_restores() {
             }
         }
         let restored = Account::restore(config, &store).expect("restored");
-        assert_eq!(restored.identity(), account.identity());
+        assert!(restored.identity() == account.identity());
         assert!(!restored.email_pending());
         account.logout(&store).expect("logout");
         assert!(account.identity().is_none());
@@ -242,7 +247,7 @@ fn wrong_code_can_retry_resend_is_manual_and_cancel_invalidates_grant() {
         .email_action(&Http::default(), start(EmailMode::SignInCode), 100)
         .expect("begin");
     assert!(matches!(
-        account.email_action(&Http::default(), EmailAction::Resend, 110),
+        account.email_action(&Http::default(), EmailAction::Resend {}, 110),
         Err(Error::Busy)
     ));
     assert!(matches!(
@@ -264,7 +269,7 @@ fn wrong_code_can_retry_resend_is_manual_and_cancel_invalidates_grant() {
         }
     ));
     account
-        .email_action(&Http::default(), EmailAction::Resend, 130)
+        .email_action(&Http::default(), EmailAction::Resend {}, 130)
         .expect("resend");
     account
         .email_action(
@@ -276,12 +281,12 @@ fn wrong_code_can_retry_resend_is_manual_and_cancel_invalidates_grant() {
         )
         .expect("retry");
     let ticket = account
-        .email_action(&Http::default(), EmailAction::Finish, 132)
+        .email_action(&Http::default(), EmailAction::Finish {}, 132)
         .expect("grant")
         .expect("ticket");
     let completion = ticket.run(&Http::default(), 132).expect("exchange");
     account
-        .email_action(&Http::default(), EmailAction::Cancel, 133)
+        .email_action(&Http::default(), EmailAction::Cancel {}, 133)
         .expect("cancel");
     assert!(matches!(
         account.complete(completion, &store),
@@ -314,7 +319,7 @@ fn additional_factors_tasks_and_signup_requirements_never_grant_access() {
         let mut account=Account::restore(oauth(&server.base),&store).expect("account");
         assert!(matches!(account.email_action(&Http::default(),start(EmailMode::SignInPassword),100),Err(Error::Unsupported)));
         assert!(matches!(account.email_reply(100,Some(Error::Unsupported)),Reply::Email{stage:EmailStage::HostedRequired,..}));
-        assert!(matches!(account.email_action(&Http::default(),EmailAction::Finish,101),Err(Error::Protocol)));
+        assert!(matches!(account.email_action(&Http::default(),EmailAction::Finish {},101),Err(Error::Protocol)));
         assert!(account.identity().is_none());server.finish();drop(store);crate::cleanup_store(&root,"email-requirements",&[]);
     }
     let server = Server::start_native(|base| {
@@ -349,7 +354,7 @@ fn invalid_credentials_expiry_rate_limit_and_untrusted_metadata_fail_closed() {
         Err(Error::InvalidCredential)
     ));
     assert!(matches!(
-        account.email_action(&Http::default(), EmailAction::Finish, 100),
+        account.email_action(&Http::default(), EmailAction::Finish {}, 100),
         Err(Error::Canceled)
     ));
     server.finish();
@@ -370,7 +375,7 @@ fn invalid_credentials_expiry_rate_limit_and_untrusted_metadata_fail_closed() {
         Err(Error::Busy)
     ));
     assert!(matches!(
-        account.email_action(&Http::default(), EmailAction::Resend, 101),
+        account.email_action(&Http::default(), EmailAction::Resend {}, 101),
         Err(Error::Busy)
     ));
     assert!(matches!(
@@ -431,7 +436,7 @@ fn oauth_identity_mismatch_or_pending_response_never_persists_fapi_session() {
             .email_action(&Http::default(), start(EmailMode::SignInPassword), 100)
             .expect("begin");
         let ticket = account
-            .email_action(&Http::default(), EmailAction::Finish, 101)
+            .email_action(&Http::default(), EmailAction::Finish {}, 101)
             .expect("grant")
             .expect("ticket");
         assert!(ticket.run(&Http::default(), 101).is_err());

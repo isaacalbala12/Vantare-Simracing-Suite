@@ -1,0 +1,11 @@
+begin;
+select plan(7);
+select ok(to_regclass('public.pilot_profiles') is null,'profile table removed');
+select ok(to_regprocedure('public.pilot_profile_load()') is null,'load RPC removed');
+select ok(to_regprocedure('public.pilot_profile_save(jsonb,text,bigint)') is null,'save RPC removed');
+select ok(not exists(select 1 from pg_namespace where nspname='pilot_private'),'private implementation removed');
+select ok(not exists(select 1 from pg_roles where rolname='pilot_profile_writer'),'writer role removed');
+select is((select count(*) from storage.buckets where id='pilot-photos'),0::bigint,'empty bucket removed');
+select is((select count(*) from pg_policies where schemaname='storage' and policyname like 'pilot_photo_%'),0::bigint,'pilot policies removed');
+select * from finish();
+rollback;

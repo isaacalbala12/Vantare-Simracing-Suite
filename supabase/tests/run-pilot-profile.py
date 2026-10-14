@@ -22,12 +22,12 @@ def main():
     with tempfile.TemporaryDirectory(prefix='vantare-1612-') as temp:
         data = Path(temp) / 'data'
 
-        def run(program, *parameters, name):
+        def run(program, *parameters, name, expected=0):
             result = subprocess.run([str(args.pg_bin / program), *map(str, parameters)],
                                     env=env, capture_output=True, text=True, encoding='utf-8', timeout=120)
             output = result.stdout + result.stderr
             (args.output / name).write_text(output, encoding='utf-8')
-            if result.returncode:
+            if result.returncode != expected:
                 raise RuntimeError(f'{name} failed; inspect local log')
             return output
 
@@ -47,6 +47,19 @@ def main():
             if 'not ok ' in output or count is None or f'ok {count[1]} ' not in output:
                 raise RuntimeError('pilot pgTAP failed')
             print(f'PASS {count[1]} local PostgreSQL profile/storage/RLS checks')
+            down = root / 'supabase/rollback/pilot-profile-empty-qa.sql'
+            run('psql', *connection, '-f', down, name='rollback-no-authorization.log', expected=3)
+            run('psql', *connection, '-c', "insert into public.pilot_profiles(account_id) values('16120000-0000-0000-0000-000000000001');", name='rollback-profile-fixture.log')
+            setting = "set vantare.pilot_qa_rollback='empty-disposable';"
+            run('psql', *connection, '-c', setting, '-f', down, name='rollback-profile-refused.log', expected=3)
+            run('psql', *connection, '-c', "select 1 / count(*) from public.pilot_profiles; delete from public.pilot_profiles; insert into storage.objects(bucket_id,name) values('pilot-photos','qa-object');", name='rollback-photo-fixture.log')
+            run('psql', *connection, '-c', setting, '-f', down, name='rollback-photo-refused.log', expected=3)
+            run('psql', *connection, '-c', "select 1 / count(*) from storage.objects where bucket_id='pilot-photos'; delete from storage.objects where bucket_id='pilot-photos';", name='rollback-fixture-cleanup.log')
+            run('psql', *connection, '-c', setting, '-f', down, name='rollback-empty.log')
+            output = run('psql', *connection, '-f', root / 'supabase/tests/pilot-profile-rollback.test.sql', name='rollback-postcheck.log')
+            if 'not ok ' in output or 'ok 7 ' not in output:
+                raise RuntimeError('rollback pgTAP failed')
+            print('PASS rollback: refuses missing consent/profiles/photos, removes empty QA package; 7 postchecks')
         finally:
             run('pg_ctl', '-D', data, '-m', 'fast', '-w', 'stop', name='stop.log')
 

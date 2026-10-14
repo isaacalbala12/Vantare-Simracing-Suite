@@ -4,6 +4,17 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## #1612 / VANTA-9 · Perfil privado y Ajustes (14/10/2026)
 
+Ronda 2 CLI, review Sol #1619 (0 P1/4 P2): H1 `9a3d3b3f` recupera
+confirmación perdida solo con documento/foto idénticos en R+1; H4 `b487e334`
+admite descripción multilínea normalizada; H2 `ae586434` valida SQL como el
+cliente; H3 `4db253ad` cierra DML directo con CAS privado y RLS. P3 baratos:
+H5 `27133332` deshabilita Cancelar durante recorte; H6 `b28cdb4c` impide
+UPDATE de Storage incluso con policy global; H7 añade reversión QA vacía
+probada y rechaza perfiles/fotos existentes. RED→GREEN de cada hallazgo en
+`C:/tmp/ola2/1612`; pgTAP 66/66 y rollback 7/7 + tres rechazos PASS.
+Gates completos de esta ronda en curso; no reutilizar los anteriores como
+prueba del HEAD nuevo. VANTA-9 En curso; sin producción, merge ni promoción.
+
 Worker reanudado por CLI en `vantareapp/isa-1612-perfil-y-ajustes`, base remota
 `0807fbd0`. Diseño Opus `3aaa3961` integrado como `48b4f812`; DPAPI, foto y
 RPC CAS `f8dd0d12`. Wiring `61dc364f`; arreglos por hito de privacidad, foto

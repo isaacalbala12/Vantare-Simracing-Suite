@@ -125,6 +125,25 @@ y este campo en `launch_lifetime`. Webhook reconoce ambos sin SKU/SQL nuevos.
 antes de PATCH, históricos de entrada y nuevo precio. Snapshot sandbox sin
 IDs inventados; solo se actualizará tras observación real.
 
+R1 P2 Sol B: antes de cualquier escritura, si un producto necesita PATCH de
+precio y tiene IDs observados ausentes del mapa de entrada, el script aborta.
+Guardar primero esos IDs en un **nuevo mapa durable**: añadir cada ID observado
+al `checkout_keys[clave].polar_price_ids` y a `price_id_to_checkout_key` con
+la misma clave, sin retirar históricos ni cambiar sus propietarios. Si el
+producto se recuperó por metadata, guardar también su configuración/ID y el
+inverso de producto. Validar ese mapa con el loader y usarlo como `--map` en
+el siguiente apply; no basta con conservar IDs solo en memoria. Este paso es
+preparación operativa posterior, no una llamada real en esta ronda.
+
+Un PATCH puede quedar confirmado en Polar aunque llegue timeout al cliente;
+GET posterior puede mostrar solo el nuevo precio y omitir el archivado.
+Reintentar con el mapa previamente guardado conserva el precio anterior,
+el observado y el nuevo. El script no muta el objeto de entrada. Sin registro
+durable no permite ese PATCH, incluso si afecta al último plan. Nuevos POST
+siguen recuperables por metadata; concurrencia ajena queda fuera del contrato
+de un solo operador. No se recupera retrospectivamente un histórico ya perdido
+por ejecuciones anteriores: inspección autorizada de suscripciones/precios.
+
 Preflight antes de mutar: entorno/organización, intervalos/trials, duplicados
 paginados, propiedad de precios, duración/porcentaje/ámbito y enlace. Si hay
 descuentos v1 de lanzamiento/creador compuesto, aborta para revisión manual;

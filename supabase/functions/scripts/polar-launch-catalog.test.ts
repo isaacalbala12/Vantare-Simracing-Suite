@@ -247,7 +247,7 @@ Deno.test("catalog: replacing the base price keeps old price IDs mapped", async 
   );
 });
 
-Deno.test("P2-3: stale input recovers observed active and archived price IDs before PATCH", async () => {
+Deno.test("P2-3: stale input requires saved observed active and archived IDs before PATCH", async () => {
   const f = fake();
   const active = "00000000-0000-4000-8000-000000000900";
   const archived = "00000000-0000-4000-8000-000000000901";
@@ -256,7 +256,17 @@ Deno.test("P2-3: stale input recovers observed active and archived price IDs bef
     { ...original, id: active, price_amount: 799 },
     { ...original, id: archived, price_amount: 499, is_archived: true },
   ];
-  const result = await syncCatalog(f.http, sandbox, options);
+  await assertRejects(() => syncCatalog(f.http, sandbox, options));
+  assertEquals(f.writes.length, 0);
+  const registered = structuredClone(sandbox);
+  for (const id of [active, archived]) {
+    registered.checkout_keys.pro_monthly.polar_price_ids.push(id);
+    registered
+      .price_id_to_checkout_key[
+        id as keyof typeof registered.price_id_to_checkout_key
+      ] = "pro_monthly";
+  }
+  const result = await syncCatalog(f.http, registered, options);
   for (const id of [active, archived, original.id]) {
     assertEquals(result.map.price_id_to_checkout_key[id], "pro_monthly");
     assertEquals(
@@ -546,7 +556,7 @@ Deno.test("catalog: scope/percentage drift and legacy composite discounts abort 
   }
 });
 
-Deno.test("P2-3: launch price replacement preserves unmapped active and archived IDs", async () => {
+Deno.test("P2-3: launch price replacement requires saved active and archived IDs", async () => {
   const f = fake();
   const first = await syncCatalog(f.http, sandbox, options);
   const launch = f.products.find((p) =>
@@ -560,7 +570,15 @@ Deno.test("P2-3: launch price replacement preserves unmapped active and archived
     id: archived,
     is_archived: true,
   }];
-  const next = await syncCatalog(f.http, first, options);
+  const writes = f.writes.length;
+  await assertRejects(() => syncCatalog(f.http, first, options));
+  assertEquals(f.writes.length, writes);
+  const registered = structuredClone(first);
+  for (const id of [active, archived]) {
+    registered.map.checkout_keys.pro_monthly!.polar_price_ids.push(id);
+    registered.map.price_id_to_checkout_key[id] = "pro_monthly";
+  }
+  const next = await syncCatalog(f.http, registered, options);
   assertEquals(next.writes, 1);
   for (const id of [active, archived, original.id]) {
     assertEquals(resolveCheckoutKeyByPriceId(next.map, id).ok, true);
@@ -644,3 +662,52 @@ Deno.test("R1 P2 scope: existing creator discounts require portal guard even wit
   );
   assertEquals(f.writes.length, writes);
 });
+
+for (const launch of [false, true]) {
+  Deno.test(`R1 P2 history: ${launch ? "launch" : "normal"} unmapped prices block PATCH and survive timeout after registration`, async () => {
+    const f = fake();
+    const first = await syncCatalog(f.http, sandbox, options);
+    // Use the last plan so an early mutation in another slot would also be detected.
+    const config = first.map.checkout_keys.pro_plus_annual!;
+    const product = f.products.find((p) =>
+      p.id ===
+        (launch ? config.polar_launch_product_id : config.polar_product_id)
+    )!;
+    const original = product.prices![0];
+    const active = "00000000-0000-4000-8000-000000000920";
+    const archived = "00000000-0000-4000-8000-000000000921";
+    product.prices = [
+      { ...original, id: active, price_amount: 7990 },
+      { ...original, id: archived, is_archived: true },
+    ];
+    const writes = f.writes.length;
+    await assertRejects(() => syncCatalog(f.http, first, options));
+    assertEquals(f.writes.length, writes);
+    assertEquals(product.prices[0].id, active);
+
+    // Operator saves both forward/inverse mappings before any destructive PATCH.
+    const registered = structuredClone(first);
+    for (const id of [active, archived]) {
+      registered.map.checkout_keys.pro_plus_annual!.polar_price_ids.push(id);
+      registered.map.price_id_to_checkout_key[id] = "pro_plus_annual";
+    }
+    const snapshot = structuredClone(registered);
+    const timeout: Http = async (method, path, body) => {
+      const response = await f.http(method, path, body);
+      if (method === "PATCH") {
+        throw Error("Simulated response lost after server committed PATCH");
+      }
+      return response;
+    };
+    await assertRejects(() => syncCatalog(timeout, registered, options));
+    assertEquals(f.writes.length, writes + 1);
+    assertEquals(product.prices.some((p) => p.id === active), false);
+    assertEquals(registered, snapshot);
+    const recovered = await syncCatalog(f.http, registered, options);
+    for (const id of [original.id, active, archived, product.prices[0].id]) {
+      assertEquals(resolveCheckoutKeyByPriceId(recovered.map, id).ok, true);
+    }
+    assertEquals(recovered.writes, 0);
+    assertEquals((await syncCatalog(f.http, recovered, options)).writes, 0);
+  });
+}

@@ -226,6 +226,22 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
         }
         priceOwners.set(price.id, plan.key);
       }
+      // PATCH hides replaced prices from future GETs. Memory cannot recover them
+      // after a committed PATCH whose response was lost: require durable input first.
+      if (
+        product &&
+        !currentPrice(
+          product,
+          launch ? plan.launch_cents : plan.normal_cents,
+        ) &&
+        (product.prices ?? []).some((p) =>
+          map.price_id_to_checkout_key[p.id] !== plan.key
+        )
+      ) {
+        throw Error(
+          `Save observed price IDs in the input map before updating ${key}`,
+        );
+      }
       selected.set(key, product);
     }
   }

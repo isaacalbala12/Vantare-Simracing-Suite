@@ -13,8 +13,14 @@ organización; bloquea configuración habilitada/ausente/inválida/ajena antes
 de escribir, también sin creador si hay descuentos existentes. No cambia
 ajustes automáticamente. Runbook bloquea cambios administrativos/programados
 mientras siga vigente el descuento; configuración/verificación real pendientes.
-Tres regresiones RED→GREEN, catálogo 27 PASS; logs `r1-p2-scope-*`. El P2 de
-histórico sigue en verificación. Muse no completa review ni añade hallazgos.
+Tres regresiones RED→GREEN, logs `r1-p2-scope-*`.
+P2 Sol B confirmado: antes de PATCH rechaza IDs observados no guardados en
+entrada durable, para impedir perderlos tras timeout y GET sin archivados.
+Runbook explica registro forward/inverse, validación y reintento; conserva
+pruebas anteriores de histórico ampliadas con la guarda. Dos RED→GREEN
+(normal/lanzamiento), timeout confirmado antes del reintento e histórico
+resoluble; catálogo 29 PASS. Logs `r1-p2-history-*`.
+Muse no completa review ni añade hallazgos. Faltan gates completos y push.
 Rama/PR #1621 draft a nightly conservados; sin API Polar, secretos ni deploy.
 
 ## #1620 · ronda 3 P2-2 (14/10/2026)

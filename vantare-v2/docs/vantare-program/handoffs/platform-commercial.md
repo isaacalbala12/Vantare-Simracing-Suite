@@ -4,49 +4,58 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## #1612 / VANTA-9 · Perfil privado y Ajustes (14/10/2026)
 
-Ronda 2 CLI, review Sol #1619 (0 P1/4 P2): H1 `9a3d3b3f` recupera
-confirmación perdida solo con documento/foto idénticos en R+1; H4 `b487e334`
-admite descripción multilínea normalizada; H2 `ae586434` valida SQL como el
-cliente; H3 `4db253ad` cierra DML directo con CAS privado y RLS. P3 baratos:
-H5 `27133332` deshabilita Cancelar durante recorte; H6 `b28cdb4c` impide
-UPDATE de Storage incluso con policy global; H7 añade reversión QA vacía
-probada y rechaza perfiles/fotos existentes. RED→GREEN de cada hallazgo en
-`C:/tmp/ola2/1612`; pgTAP 66/66 y rollback 7/7 + tres rechazos PASS.
-Gates completos de esta ronda en curso; no reutilizar los anteriores como
-prueba del HEAD nuevo. VANTA-9 En curso; sin producción, merge ni promoción.
+Rama `vantareapp/isa-1612-perfil-y-ajustes`, base `origin/nightly@0807fbd0`.
+[Issue #1612](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1612),
+[PR draft #1619 a nightly](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1619),
+Plane VANTA-9 / GitHub Project Vantare / area:plataforma.
 
-Worker reanudado por CLI en `vantareapp/isa-1612-perfil-y-ajustes`, base remota
-`0807fbd0`. Diseño Opus `3aaa3961` integrado como `48b4f812`; DPAPI, foto y
-RPC CAS `f8dd0d12`. Wiring `61dc364f`; arreglos por hito de privacidad, foto
-sola, logout tardío, Storage duplicado, límite JPEG e IPC desconectado.
-Regresiones: servicios 7/7 y Hub piloto 10/10 PASS. Check y Clippy completos
-PASS; Nextest 1668/1668 (7 skips existentes), lifecycle 18/18 PASS. Telemetría
-25/25 PASS (corpus ACC 918 s), fmt PASS. Diez capturas GPUI 1440×900 revisadas
-con datos ficticios; índice/hashes en la evidencia. Integridad de las 456 huellas retiradas PASS.
+Diseño Opus `3aaa3961` conservado: perfil privado local primero, DPAPI por
+issuer/subject, foto JPEG 256×256 ≤24 KiB y recorte circular. Puente UUID
+existente y CAS; sin cambios en account.rs/account/*, login, pagos ni licencias.
+Revisión de ocho páginas en [matriz](../../pilot-settings-review.md). El painter
+compartido de bandera/fallback ISO está preparado; falta diseño aprobado de
+colocación por widget. No se inventa composición.
 
-Perfil local primero, privado y separado por issuer/subject; el formulario no
-concede identidad ni derechos. Sincronización inicial/guardado con el puente UUID
-existente; el error remoto conserva la copia local. Foto original solo en memoria,
-JPEG 256×256 ≤24 KiB, recorte circular en presentación. Backend solo preparado,
-sin aplicar: [runbook](../../pilot-profile-backend.md), 19 pgTAP locales conservados
-de la sesión anterior. [Matriz de las ocho páginas](../../pilot-settings-review.md).
+Ronda 2 CLI corrige la review Sol (0 P1/4 P2):
 
-Painter de bandera y fallback ISO preparados por Opus; colocación por widget
-sin diseño aprobado, DUDA en buzón. Coordinado con #1608: solo extensiones
-aditivas en app/bridge/protocolo/Remote; no account.rs/account/*, login ni pagos.
-Plane VANTA-9 **Por revisar** verificado el 14/10/2026 por CLI;
-[PR draft #1619](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1619)
-a nightly. GitHub Project Vantare y area:plataforma.
-Evidencia `C:/tmp/1612-evidence`; AppData/TEMP de QA, target propio y dos jobs.
-Push verificado; canal alcanzado: rama de issue y PR draft. Código validado
-`6a5fb75a`; docs finales y SHA de entrega en la issue/PR. CI remota está iniciada,
-no se declara verde antes de contrastarla. Sin merge, promoción, release ni
-producción. Siguiente: revisión del orquestador, integración con las extensiones
-aditivas de #1608 y validación humana del backend cuando Isaac lo autorice.
-`services/view.rs` está en su techo original 1750; integrar ambos workers exige
-mantener la partición, sin elevar el gate.
+| Hallazgo | Commit | Resultado probado |
+|---|---|---|
+| H1 confirmación perdida | `9a3d3b3f` + `03068639` | Reintento tras HTTP ilegible y reinicio; recupera solo documento/hash idénticos en R+1, otro hash conserva Conflict |
+| H2 SQL acepta perfil ilegible | `ae586434` | Tipos/límites/controles/ISO/simuladores y campos futuros legibles; máximos válidos conservados |
+| H3 DML elude CAS | `4db253ad` + `5e380ef0` | DML directo denegado; RPC pública INVOKER y escritor CAS privado NOLOGIN/NOBYPASSRLS, sujeto a RLS |
+| H4 descripción con Enter | `b487e334` | Guardado/reapertura de dos líneas; UI normaliza CRLF/CR a LF y rechaza otros controles en IPC/SQL |
+| H5 cancelar recorte ocupado | `27133332` | Guardia de acciones y botón deshabilitan Cancelar mientras procesa; regresión de la guardia, sin prueba física de worker UI |
+| H6 fotos inmutables | `b28cdb4c` + `4e92dbd2` | UPDATE/movimientos y DELETE+INSERT denegados ante policy global adversarial |
+| H7 retirada QA | `df21f8c6` + `63b232bc` | Niega falta de consentimiento/perfiles/fotos; retira paquete vacío y conserva cuentas/policies ajenas |
 
-[Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/platform-commercial.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
+RED→GREEN y logs de esta ronda en `C:/tmp/ola2/1612`. Rust validado
+`03068639`: fmt/check/Clippy PASS, Nextest 1672/1672 (7 skips existentes, una
+paridad lenta de 123 s), lifecycle 18/18 PASS. Telemetría 25/25 PASS
+(corpus largo ACC 898 s, tres tests lentos esperados). Quality y 456 huellas
+PASS. SQL `5e380ef0`: 68/68 pgTAP + 9 postchecks de retirada y tres negativas
+PASS, PostgreSQL desechable loopback con administrador habitual y con
+CREATEROLE sin SUPERUSER. El grant del escritor al administrador permite
+transferir ownership; retirada QA con el mismo grantor. [Runbook](../../pilot-profile-backend.md).
+Paquete solo preparado, sin aplicar en Supabase. Presupuesto SQL conservador
+reserva el máximo de foto dentro de 48 KiB; puede rechazar extensiones cerca del
+límite aunque una foto pequeña cupiera, preservando la copia local.
+
+Capturas anteriores y QA de las ocho páginas: `C:/tmp/1612-evidence` (código
+`6a5fb75a`); no acreditan el estado ocupado nuevo ni son capturas del HEAD
+actual. Sin login/Storage HTTP real, Run/toasts, upgrade ni LMU/ACC físicos;
+sin validación compilada del conjunto con #1608. Conserva la separación de
+`services/view.rs` y su techo 1750 al integrar ambos PR.
+
+Push `5e380ef0` verificado; VANTA-9 Por revisar verificado el 14/10/2026
+a las 05:10 CEST. El commit de cierre solo cambia handoff/changelog; SHA final
+en la issue/PR y buzón `C:/tmp/buzon/1612.md`.
+CI se consulta por HEAD final: no se declara verde completa. Nightly remoto
+ha avanzado a `552c0d52` por #1607; esta rama conserva la base aprobada
+`0807fbd0`, sin merge/rebase ni validación del conjunto nuevo.
+Canal alcanzado: rama de issue y PR draft. Sin merge, promoción, release,
+producción, instalación/datos reales modificados, herramientas nuevas ni
+subagentes. Siguiente: revisión del orquestador; integración y activación backend requieren su
+validación/autorización correspondiente de Isaac.
 
 ## #1601 / VANTA-10 · Plane, fase de implementación (13/10/2026)
 

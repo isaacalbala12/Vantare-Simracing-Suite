@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1612",
+  "type": "feature",
+  "summary": "Perfil privado del piloto en Ajustes: nombre, foto con recorte circular, descripción, país, simuladores y favoritos.",
+  "technicalNotes": [
+    "El perfil se guarda primero en el PC, protegido y separado por cuenta; perder una confirmación remota permite reintentar el mismo guardado.",
+    "Las descripciones admiten varias líneas. Cancelar el recorte se deshabilita mientras se procesa la foto.",
+    "El backend preparado valida el documento nativo, exige CAS por RPC y protege las fotos frente a reemplazos. Incluye retirada segura de QA vacío."
+  ],
+  "testing": [
+    "En un portable de QA, guardar una descripción con Enter, reabrir y comprobar que conserva ambas líneas.",
+    "Cambiar solo la foto y comprobar Guardar/Descartar; al procesar el recorte, Cancelar debe quedar deshabilitado."
+  ],
+  "knownLimitations": [
+    "Backend solo preparado, sin aplicar: activar Supabase requiere autorización de Isaac.",
+    "La bandera está preparada; su colocación en widgets sigue pendiente del diseño aprobado.",
+    "Los tests locales no acreditan login real, Storage HTTP real ni integración con otros PR."
+  ]
+}

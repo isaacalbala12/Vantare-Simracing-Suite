@@ -14,6 +14,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pg-bin', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--regression', choices=['F1', 'F2', 'F3'], help='Run one review regression, then stop')
     dependency = parser.add_mutually_exclusive_group()
     dependency.add_argument('--dependency-ref', help='Read-only git ref of #1602 for combined local SQL validation')
     dependency.add_argument('--dependency-dir', type=Path, help='Reviewed #1602 SQL extracted from git (Windows worktree/WSL)')
@@ -127,6 +128,14 @@ def main():
             if args.dependency_ref or args.dependency_dir:
                 run('psql', *actor, '-f', dependency_file('migrations/20261013160000_testing_contribution_triage.sql'), log='triage-dependency.log')
             run('psql', *actor, '-f', root / 'supabase/migrations/20261013225629_testing_reports_followup.sql', log='followup.log')
+            if args.regression:
+                output = run('psql', *connection, '-f', root / f'supabase/tests/testing_followup_{args.regression}.test.sql', log='regression.log')
+                plan = re.search(r'^1\.\.(\d+)$', output, re.M)
+                count = len(re.findall(r'^ok \d+\b', output, re.M))
+                if not plan or count != int(plan[1]) or re.search(r'^not ok |^# Looks like', output, re.M):
+                    raise RuntimeError(f'{args.regression}: pgTAP failed/incomplete')
+                print(f'PASS: {args.regression}, {count} pgTAP; local synthetic contracts only')
+                return
             output = run('psql', *connection, '-f', root / 'supabase/tests/testing_reports_followup.test.sql', log='pgtap.log')
             plan = re.search(r'^1\.\.(\d+)$', output, re.M)
             count = len(re.findall(r'^ok \d+\b', output, re.M))

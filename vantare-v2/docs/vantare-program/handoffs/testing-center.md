@@ -90,3 +90,7 @@ No fusionar ni activar producción desde este encargo.
 2026-10-14 03:58 +02:00 · worker Codex CLI · VANTA-29 Por revisar verificado.
 Rama publicada y PR draft #1618. HEAD final/CI en la PR, #1610 y buzón.
 [Informe sencillo y límites](../../runbooks/informe-1610.md).
+
+## Re-review ronda 2 · 14/10
+
+F2 reproducido con #1602: historial owner devolvía 3 informes y una página global desplazaba el propio (5/6 RED). Filtro explícito de cuenta antes de LIMIT: 6/6 GREEN sobre #1602@87950380. Se conserva SELECT owner para administración. Evidencia C:/tmp/1610-evidence/r2/F2-{red,green}. PR #1618 sigue draft; F1/F3/F4 en curso. No Plane real ni producción en ronda 2.

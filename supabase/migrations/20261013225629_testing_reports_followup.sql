@@ -113,6 +113,7 @@ begin
         coalesce(f.updated_at,c.created_at) as updated_at,f.fixed_version,
         c.state in ('accepted','fixed') and (f.notice_read_at is null or f.notice_read_at<f.updated_at) as notice
       from public.testing_contributions c left join public.testing_report_followup f on f.contribution_id=c.id
+      where c.account_id=auth.uid()
       order by c.created_at desc,c.id limit 20) t),'[]'::jsonb));
 end $$;
 -- Does not accept triage proposals and cannot accept an unreviewed report.

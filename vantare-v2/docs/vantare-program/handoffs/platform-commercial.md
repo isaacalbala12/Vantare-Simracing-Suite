@@ -1,11 +1,29 @@
 ## #1608 · Revisión cuentas y pagos (14/10/2026)
 
-Ronda 2 sobre `ba02b093`, rama `vantareapp/isa-1608-cuentas-y-pagos`,
+Ronda 3 sobre `b5be4303`, rama `vantareapp/isa-1608-cuentas-y-pagos`,
 base nightly `69fa2d65`; misma PR draft [#1615](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1615).
-Entrega para Plane VANTA-16/17/15 Por revisar; estado final verificado en issue/buzón; GitHub #1608 OPEN/in-review,
+Entrega para revisión de Plane VANTA-16/17/15; escritura/lectura final tras el push en issue/buzón; GitHub #1608 OPEN/in-review,
 area:plataforma, Project Vantare y sin milestone. Sin merge, producción ni compras.
 
-Review Sol NO APTO leída completa y cuatro arreglos por hallazgo:
+Review Sol r2 `C:/tmp/ola2/review-1615-sol-r2.md` leída completa. R2-N1
+reproducido: dos RED en AccountPoll detached con candidato previo, con/sin
+identidad restaurada. Arreglo mínimo: identidad distinta o ausente exige
+`revoke_local` antes de guardar la sesión. Sin núcleo se rechaza el cambio y
+se conserva la cuenta anterior; el reintento gestionado exige ACK durable.
+Misma ruta de revocación que logout y rechazo definitivo de OAuth; services
+no escribe el binding del núcleo. Fix `64e9eec5`, tests/código probado `04cfe8df`;
+GREEN focal 49/49. fmt/check/Clippy PASS; Nextest nuevo 1654 PASS/7 exclusiones
+existentes; lifecycle 18 PASS. Quality/retirada 456 huellas, canal 45 y notes 26
+tests PASS; fragmento válido. Logs `C:/tmp/1608-r3/`, fallo inicial de tamaño
+Clippy conservado y resuelto con callback común, sin allow ni tests relajados.
+Login/candidato/ACK con fixture IPC; Owner real/Launch/reinicio Free se valida
+por separado en la regresión existente. Sin promesa de login comercial real.
+No hay consumidor nuevo de borrado: B03 conserva su plan y No-Go.
+Deno/SQL/telemetría conservan evidencia de ronda 2, no repetida porque solo cambia
+services/documentos. HEAD/push/PR/CI finales tras publicar en issue/buzón;
+combinación con nightly actual/#1612/#1523 y aceptación comercial pendientes.
+
+Los arreglos de las rondas anteriores se conservan:
 
 - N1/F08/F02 `d6aec3ca`: auxiliar sin CoreLink no confirma logout ni inicia
   renovación HTTP; devuelve error y conserva estado para reintento gestionado.
@@ -23,11 +41,11 @@ Review Sol NO APTO leída completa y cuatro arreglos por hallazgo:
 - Atribución `71388711`: binding durable Polar/entorno/customer prevalece sobre
   external_customer_id contradictorio. RED→GREEN 52 tests procesador.
 
-Evidencia nueva `C:/tmp/1608-r2/`: fmt/check/Clippy PASS; Deno completo 524 PASS/
+Evidencia anterior de ronda 2 `C:/tmp/1608-r2/`: fmt/check/Clippy PASS; Deno completo 524 PASS/
 1 ignored PostgREST; SQL desechable 230 GREEN, B01 1 RED; B02 4 RED separados.
 Nextest nuevo 1652 PASS/7 skips; lifecycle 18 PASS; telemetría 25 PASS. Cola y target propio, APPDATA/
 LOCALAPPDATA aislados. Fallos iniciales de fixture/mtime/permisos/lint conservados.
-Sin baselines recalibrados ni tests debilitados. Código final probado `03fb0dea`; cierre posterior documental. SHA/push/CI finales
+Sin baselines recalibrados ni tests debilitados. Código de ronda 2 probado `03fb0dea`; cierre posterior documental. SHA/push/CI de esa ronda
 verificados en issue/buzón, sin heredar verde de ba02b093. Nueve fixes de ronda 1 se
 conservan; sus SHAs/evidencia y los planes actuales están en el
 [informe](../../analysis/review-cuentas-pagos-2026-10.md).

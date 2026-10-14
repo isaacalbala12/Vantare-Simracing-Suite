@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "issue": "ISA-1608",
   "type": "fix",
-  "summary": "El cierre de sesión y la renovación requieren el núcleo para confirmar revocación; un refresh rechazado retira derechos y sesión, y los fallos temporales conservan el acceso offline válido.",
+  "summary": "El cambio de cuenta, el cierre de sesión y la renovación requieren el núcleo para confirmar revocación; un refresh rechazado retira derechos y sesión, y los fallos temporales conservan el acceso offline válido.",
   "technicalNotes": [
     "El emisor deniega cuentas Clerk bloqueadas o borradas; se corrigen el UUID interno del intento de compra, el plan anual y los grants por entorno. El binding durable Polar prevalece sobre el external_customer_id contradictorio; la metadata de usuario no atribuye compras.",
     "Los refunds de Launch anteriores a su order pueden reintentarse con límite; las huellas inválidas se rechazan antes de modificar identidad o dispositivo."

@@ -1,5 +1,65 @@
 # Revisión de cuentas y pagos · #1608 · 14/10/2026
 
+## Ronda 3 · R2-N1, cambio de identidad sin CoreLink
+
+Review completa: `C:/tmp/ola2/review-1615-sol-r2.md`, NO APTO en `b5be4303`.
+Misma rama/PR draft #1615, base `69fa2d65`, sin integrar nightly ni #1523.
+Los planes B01–B03 están aceptados como planes y conservan el No-Go comercial;
+esta ronda no los implementa. El bloqueo nuevo es la herencia local de derechos.
+
+### Resumen de diez líneas para Isaac · ronda 3
+
+1. Los commits anteriores se conservan; worktree limpio al reanudar en `b5be4303`.
+2. R2-N1 reproduce el login B detached que guardaba B sin revocar el candidato A.
+3. Dos RED nuevos cubren cuenta A restaurada y candidato previo sin identidad.
+4. `64e9eec5` exige la revocación común antes de guardar identidad distinta o ausente.
+5. Sin núcleo el cambio falla, conserva la cuenta anterior y exige reintento gestionado.
+6. Con núcleo se exige Invalidate ACK durable antes de retirar candidato y guardar B.
+7. `04cfe8df` comparte el callback; no hay allow, tests relajados ni dependencia nueva.
+8. GREEN: fmt/check/Clippy, 1654 Nextest/7 exclusiones y 18 lifecycle; logs `C:/tmp/1608-r3/`.
+9. B01/B02/B03 permanecen abiertos como No-Go comercial con sus planes aceptados.
+10. Misma draft #1615 a nightly; sin producción, UI nueva, subagentes, merge o release.
+
+RED nuevo: login OAuth B mediante AccountPoll sin CoreLink conserva el candidato
+A y guarda B; se reproduce también con candidato previo y ninguna identidad
+restaurada. Dos regresiones fallan contra el código anterior (`red.log`).
+Arreglo mínimo en `native/services/src/app.rs`: `is_none_or` detecta la ausencia
+de identidad y se retira la condición `core.is_some()` de la revocación.
+`revoke_local` exige Invalidate ACK durable antes de retirar candidato; si falta
+CoreLink o falla el ACK, no se guarda B. Logout/rechazo OAuth ya usan esa ruta.
+No se escribe el binding desde services ni se implementa borrado remoto (B03).
+El primer login sin identidad también necesita núcleo, pues no puede demostrar
+la ausencia de un binding antiguo. La regresión IPC #1548 conserva todos sus
+asserts y añade el ACK al completar ese primer login gestionado.
+
+Fix `64e9eec5`; tests finales `04cfe8df` (callback compartido sin cambiar asserts,
+ausencia del candidato comprobada por NotFound). GREEN focal 49/49, incluido
+Owner/Launch y el IPC #1548; fmt/check/Clippy PASS. Nextest completo nuevo:
+1654 PASS/7 exclusiones existentes del perfil; lifecycle 18 PASS. La paridad
+larga termina en 124 segundos, sin alterar tests. Quality/retirada 456 huellas
+PASS; canal 45 y release-notes 26 tests PASS; fragmento ISA-1608 válido.
+`clippy-initial.log` conserva el fallo de dos tests de 103/102 líneas;
+se extrajo el callback común sin allow ni cambio productivo adicional.
+Evidencia nueva `C:/tmp/1608-r3/`, target propio
+`native/target/gates`, dos jobs y APPDATA/LOCALAPPDATA aislados.
+Código probado `04cfe8df`; los cambios posteriores son solo informe, handoff y
+fragmento. SHA-256 de app.rs probado:
+`762cff81d9ca74d711b857bcaadbde8834cc5e1746aa28cf4e6159ebffb7d003`.
+HEAD/push/PR/CI y estado Plane finales se registran tras publicar en issue/buzón.
+Diff completo de esta ronda y `git diff --check 69fa2d65` revisados, sin conflictos.
+Las regresiones de AccountPoll comprueban sesión durable/candidato y ACK con
+fixture de transporte. La regresión existente de Owner/Launch perpetua comprueba
+por separado el binding real, logout gestionado y reapertura en Free; no se
+presenta el fixture de IPC como Owner real ni como login comercial con Clerk.
+
+Deno/SQL/telemetría no se repiten en esta ronda: solo cambia services y documentos,
+sin cambios en runtime/domain/ipc/testdata/Functions/SQL. Su evidencia de ronda 2
+se conserva más abajo y no cuenta como gate nuevo. GUI, login con cuentas reales,
+PostgREST/TPA, backend comercial y corte combinado con nightly/#1612/#1523 siguen
+sin acreditarse. Verificación manual futura solo con fixture aislado autorizado:
+A con Launch, intento B detached rechazado sin guardar B; reintento gestionado,
+reinicio de Owner en Free y ausencia del candidato A antes de TransferRights.
+
 ## Ronda 2 · respuesta a la review independiente #1615
 
 Review completa: `C:/tmp/ola2/review-1615-sol.md`, NO APTO en `ba02b093`.

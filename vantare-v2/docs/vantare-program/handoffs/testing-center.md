@@ -6,6 +6,8 @@
 privado, consentimiento, cuotas, avisos y crédito opcional. Plane y notas se
 prueban con mocks. Recibos legacy con capturas se conservan aparte; no se
 confunden con el historial de contribuciones. Sin activación en producción.
+Ronda 2: F2/F3/F4 corregidos; F1 contenido mediante cierre del envío público.
+La admisión por IP confiable sigue pendiente: entrega **no apta para activar**.
 
 ## 2. Autoridad y lectura verificada
 
@@ -82,7 +84,8 @@ su estado de producción no se revalidó en este encargo.
 ## 9. Siguiente acción exacta
 
 Revisar la PR draft #1618 y comprobar CI del último SHA publicado.
-El orquestador revisa interfaces con #1602/#1609 y el conjunto SQL.
+El orquestador resuelve F1 con una frontera de admisión confiable antes de
+reabrir envíos; revisa interfaces con #1602/#1609 y el conjunto SQL.
 No fusionar ni activar producción desde este encargo.
 
 ## 10. Última actualización
@@ -100,3 +103,5 @@ F3: aceptar A → arreglar A → aceptar B del mismo día y dos arreglados → t
 F4: legacy sembrado antes de apply bloqueaba down inmediato (RED). Flag de actividad persistente distingue backfill inerte de seguimiento usado. GREEN conserva fila legacy completa y bloquea seis clones independientes: crédito off/on/off, acuse, cambio de estado, consentimiento, nuevo informe y fixed. Ningún dato de seguimiento activo se elimina; rollback sigue cerrado ante datos no reversibles.
 
 F1 CONTENIDO, NO RESUELTO como apertura pública: RED dos cuentas de la misma IP declaran 10 envíos y retries desde otras IP entran; GREEN 17/17 bloquea RPC directa y v2 de #1602 (sin grant sintético). EXECUTE queda cerrado a authenticated/anon/service_role. Falta gateway con IP confiable y contador durable de todos los intentos. --internal-submit concede permiso SOLO en clúster local desechable para preservar los 35 tests semánticos anteriores, separado del test de ACL F1; no prueba admisión/IP productiva. No activar ni reabrir EXECUTE manualmente.
+
+Cierre local ronda 2: F1 17/17, F2 6/6, F3 8/8 más dos sesiones con fixed previo, F4 seis clones de actividad bloqueados y legacy íntegro. Suite original 35/35 + snapshot/concurrencia/rollback/reapply con #1602@87950380 y bootstrap sin dependencia. Mocks 4/4 y quality 456 PASS. Rust/telemetría/QA visual no repetidos: no cambia código/fixtures nativos. F1 sigue pendiente, solo contenido; no activar. Plane real no se consultó ni modificó en esta ronda. Fecha 2026-10-14T04:22:32.6677970+02:00.

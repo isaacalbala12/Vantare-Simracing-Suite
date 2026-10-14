@@ -35,14 +35,33 @@ def main():
             raise RuntimeError(f'{log}: exit {result.returncode}')
         return output
 
-    def concurrent_quota(connection):
+    def concurrent_quota(connection, acceptance=False):
         author = '16100000-0000-0000-0000-000000000040'
-        run('psql', *connection, '-c', f"""insert into public.profiles(id) values('{author}');
+        owner = '16100000-0000-0000-0000-000000000043'
+        fixture = f"""insert into public.profiles(id) values('{author}');
           insert into public.testing_contributions(account_id,channel,title,body)
           select '{author}','master','Concurrent','Synthetic' from generate_series(1,4);
-        """, log='concurrent-fixture.log')
+        """
         setup = f"set role authenticated; set request.jwt.claim.sub='{author}';"
         sql = lambda suffix: f"select public.testing_report_submit('16100000-0000-0000-0000-0000000000{suffix}','master','Concurrent','Synthetic',true);"
+        expected_error, expected_count = 'testing_report_rate_limit', '5'
+        if acceptance:
+            fixture = f"""insert into public.profiles(id) values('{author}'),('{owner}');
+              insert into public.testing_center_memberships(user_id,actor_id,role) values('{owner}','owner-concurrent','owner');
+              insert into public.testing_contributions(id,account_id,channel,title,body,state) values
+              ('16100000-0000-0000-0000-000000000049','{author}','nightly','Fixed','Synthetic','accepted'),
+              ('16100000-0000-0000-0000-000000000041','{author}','nightly','Second','Synthetic','received'),
+              ('16100000-0000-0000-0000-000000000042','{author}','nightly','Third','Synthetic','received');
+              update public.testing_contributions set created_at='2026-10-12 12:00Z' where id='16100000-0000-0000-0000-000000000049';
+              update public.testing_contributions set created_at='2026-10-13 12:00Z' where id='16100000-0000-0000-0000-000000000041';
+              update public.testing_contributions set created_at='2026-10-14 12:00Z' where id='16100000-0000-0000-0000-000000000042';
+              set role authenticated; set request.jwt.claim.sub='{owner}';
+              select public.testing_report_fixed('16100000-0000-0000-0000-000000000049','1.2.3','Reviewed','Summary');"""
+            setup = f"set role authenticated; set request.jwt.claim.sub='{owner}';"
+            proposal = '''{"schema":"vantare.triage.v2","verdict":"valido","criteria":{"contenido_minimo":"si","evidencia":"si","no_duplicado":"si"},"duplicate_of":null,"severity":"media","area":"testing-center","evidence_refs":[],"summary":"Synthetic","preliminary_fix":null,"confidence":0.8,"reasons":[],"trazable":"si"}'''
+            sql = lambda suffix: f"select public.testing_contribution_review('16100000-0000-0000-0000-0000000000{suffix}','accepted','Human review','{proposal}'::jsonb);"
+            expected_error, expected_count = 'testing_acceptance_limit', '2'
+        run('psql', *connection, '-c', fixture, log='concurrent-fixture.log')
         holder = subprocess.Popen([str(args.pg_bin / 'psql'), *connection, '-q'], env=env,
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         contender = None
@@ -73,11 +92,16 @@ def main():
             holder.wait(timeout=10)
             stdout, stderr = contender.communicate(timeout=10)
             (args.output / 'concurrent-rejection.log').write_text(stdout+stderr, encoding='utf-8')
-            if holder.returncode or contender.returncode != 1 or 'testing_report_rate_limit' not in stderr:
+            if holder.returncode or contender.returncode != 1 or expected_error not in stderr:
                 raise RuntimeError('concurrent quota not enforced')
-            output = run('psql', *connection, '-c', f"select count(*) from public.testing_contributions where account_id='{author}';", log='concurrent-count.log')
-            if output.strip() != '5':
-                raise RuntimeError('more than five reports accepted')
+            state_filter = "and state in ('accepted','fixed')" if acceptance else ''
+            output = run('psql', *connection, '-c', f"select count(*) from public.testing_contributions where account_id='{author}' {state_filter};", log='concurrent-count.log')
+            if output.strip() != expected_count:
+                raise RuntimeError('concurrent budget exceeded')
+            if acceptance:
+                output = run('psql', *connection, '-c', "select count(*) from public.testing_contribution_reviews where contribution_id='16100000-0000-0000-0000-000000000042';", log='concurrent-review-rollback.log')
+                if output.strip() != '0':
+                    raise RuntimeError('rejected concurrent review persisted')
         finally:
             for process in (contender, holder):
                 if process is not None and process.poll() is None:
@@ -179,6 +203,8 @@ def main():
                 count = len(re.findall(r'^ok \d+\b', output, re.M))
                 if not plan or count != int(plan[1]) or re.search(r'^not ok |^# Looks like', output, re.M):
                     raise RuntimeError(f'{args.regression}: pgTAP failed/incomplete')
+                if args.regression == 'F3':
+                    concurrent_quota(connection, acceptance=True)
                 print(f'PASS: {args.regression}, {count} pgTAP; local synthetic contracts only')
                 return
             output = run('psql', *connection, '-f', root / 'supabase/tests/testing_reports_followup.test.sql', log='pgtap.log')

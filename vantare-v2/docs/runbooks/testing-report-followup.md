@@ -1,6 +1,11 @@
 # Informes y seguimiento · #1610 / VANTA-29
 
 Entrega aislada para revisión. No despliega SQL, Intake, Plane, PostHog ni notas.
+**Ronda 2: envío público cerrado por F1.** No existe todavía admisión por IP
+confiable. La migración retira EXECUTE de `testing_report_submit` y de la v2 de
+#1602; ni cliente ni service_role pueden reabrirlo. El formulario es código
+preparado y su envío fallará con estos ACLs. No activar ni conceder permisos
+hasta revisar la frontera de admisión y sus presupuestos de intentos cuenta/IP.
 Base `origin/nightly@0807fbd0`; rama `vantareapp/isa-1610-testing-center-todos`.
 El diseño Opus recuperado está en `C:/tmp/buzon/1610-opus-design.md`.
 Se reutilizan los controles Orbit; no se añade un diseño visual.
@@ -19,10 +24,12 @@ Se reutilizan los controles Orbit; no se añade un diseño visual.
 - Crédito opcional por informe, apagado por defecto y revocable. Se prepara un
   agradecimiento al identificador del informe; no se resuelve ni publica un nombre.
   La revocación no modifica notas que ya hayan sido publicadas.
-- SQL preparado: 5 envíos/día y 20/7 días por cuenta, bloqueo transaccional,
+- Semántica SQL interna preparada: 5 envíos/día y 20/7 días por cuenta, bloqueo transaccional,
   reloj real de creación, lectura con RLS y reintento exacto por UUID/payload.
   Se rechaza aislamiento con snapshot antiguo. La RPC legacy sin consentimiento
   queda sin EXECUTE para usuarios; los límites también cubren inserciones legacy/v2.
+  Estas cuotas de filas no son un contador de peticiones rechazadas o retries.
+  La apertura pública sigue bloqueada por la admisión/IP ausente.
 - Owner puede marcar arreglado un informe ya aceptado, con versión y textos
   revisados. No acepta propuestas de triaje. El cliente no ofrece esa RPC al usuario.
 - `testing_report_patch_candidates(version)` permite solo al owner obtener
@@ -99,12 +106,21 @@ python3 supabase/tests/run-followup-local.py \
   --output /mnt/c/tmp/1610-evidence/sql-delivery
 ```
 
+En ronda 2 añadir `--internal-submit` únicamente a la suite semántica anterior:
+el runner crea un grant sintético dentro del clúster desechable sin TCP. No cambia
+la migración, no concede admisión y no puede combinarse con `--regression F1`.
+Para la regresión de ACLs ejecutar `--regression F1` sin ese flag. F2/F3 requieren
+`--dependency-dir` con el SQL exacto de #1602; F4 usa `--regression F4` junto a
+`--internal-submit`. Logs de ronda 2 en `C:/tmp/1610-evidence/r2/`.
+
 Clúster temporal con socket privado, sin TCP, variables PG heredadas descartadas.
 Migraciones con actor postgres NOSUPERUSER BYPASSRLS; auth/membership son contratos
 sintéticos mínimos. pgTAP cubre permiso/aislamiento, cuotas, estados, acuse tardío,
 crédito y candidatos. Dos sesiones reales verifican quinto/sexto envío bajo lock.
-Rollback con datos se rechaza; vacío conserva legacy; reaplicación reconstruye
-seguimiento sin conceder crédito. No prueba Supabase completo/JWT/PostgREST.
+Rollback rechaza seguimiento con actividad; un backfill inerte previo se puede
+revertir conservando íntegra la contribución. Cualquier escritura de seguimiento
+marca actividad de forma durable, incluso crédito off/on/off. Reaplicación
+reconstruye el backfill sin crédito. No prueba Supabase completo/JWT/PostgREST.
 La misma suite pasa sobre bootstrap y migración exactos de #1602@197547a1,
 incluido rollback/reaplicación de este corte. Usar `--dependency-ref <SHA>` con
 Git nativo en Linux, o extraer desde Git los dos SQL a una carpeta temporal y
@@ -118,6 +134,10 @@ Gates Rust por `native/scripts/compilar.ps1`, target propio `native/target/gates
 ## Antes de integrar/activar
 
 1. Revisión de #1602 y #1609; resolver sus interfaces sin cambiar sus ramas.
+   Primero resolver F1: IP obtenida en frontera de servidor confiable, presupuesto
+   durable de peticiones (incluidos rechazos/retries), cuenta+IP, concurrencia,
+   revocación/kill switch y pruebas de bypass. No aceptar IP o verificación del
+   payload/headers del cliente ni reabrir la RPC como solución temporal.
 2. Reconciliar IPC v8, migraciones, allowlist y gate de identidad nativa.
 3. QA del Hub aislado: cuenta normal/tester, login/logout, edición-consentimiento,
    lista/acuse/revocación, errores de red, teclado y DPI. No realizado visualmente.

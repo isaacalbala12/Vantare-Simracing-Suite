@@ -87,7 +87,7 @@ Aplicación pendiente: followup → `20261014022701_testing_report_ip_admission.
 Auth.getUser, reservado a sesiones Supabase Auth. La función queda reconocida
 como candidata en el inventario, ausente de todos los wrappers de despliegue.
 
-Pruebas nuevas: Deno `testing-report-submit/index.test.ts` (9),
+Pruebas nuevas: Deno `testing-report-submit/index.test.ts` (10),
 `--regression F1IP` sin grant sintético (26 pgTAP, quinto/sexto concurrente,
 rollback inerte/reapply y protección del presupuesto usado). Evidencia
 `C:/tmp/1610-evidence/r3/`. Se conserva F1 de ACLs de ronda 2.

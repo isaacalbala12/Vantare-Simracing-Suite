@@ -42,12 +42,14 @@ el conjunto. Telemetría DTO v10 y derechos v4 no cambian.
 - Ningún estado local ni propuesta de modelo concede aceptación.
 - Acuse ligado a timestamp; logout elimina datos/avisos de la cuenta.
 - 5 envíos/día y 20/7 días, bloqueo/reloj real, retry exacto por UUID/payload.
+- F1: 5 intentos/día y 20/semana UTC por IP/cuenta, presupuesto durable antes del envío.
 - Crédito pseudónimo por ID de informe, opt-in y revocable, sin nombre/correo.
 - Plane recibe proyección revisada, nunca texto bruto, cuenta o URL libre.
 
 ## 5. Arquitectura y ownership
 
-Hub presenta; services valida/posee RPCs permitidas; SQL posee estado/RLS/cuotas.
+Hub presenta; services posee rutas permitidas; Edge verifica IP/identidad y
+reserva intentos; SQL posee estado/RLS/cuotas. Solo service_role envía tras admisión.
 `tools/testing/followup.py` modela proyección idempotente y candidato de notas,
 sin red, credenciales, lookup de identidad ni publicación.
 #1602 y #1609 se leyeron sin editar/fusionar sus ramas. En producto, PostHog
@@ -57,9 +59,12 @@ y unión con Intake pendientes de #1602; no se duplica su implementación.
 ## 6. Evidencia y límites
 
 Ronda 3 sobre a43ce994: RED nativo comprobado (cliente aún llamaba RPC cerrada),
-GREEN cambiando solo ruta/allowlist. Edge 9/9; F1IP 26 pgTAP, concurrencia real
+GREEN cambiando solo ruta/allowlist. Edge 10/10; F1IP 26 pgTAP, concurrencia real
 quinto/sexto, rollback inerte/reapply y rollback usado bloqueado con #1602@87950380.
-Gates workspace en curso. Evidencia `C:/tmp/1610-evidence/r3/`. Sin dependencia
+fmt/check/Clippy PASS; Nextest 1649/1649 (7 skips), lifecycle 18/18 PASS.
+Mocks 4/4, quality 456, Deno fmt/lint y superficie deploy PASS. Telemetría
+dedicada/QA visual omitidas: no cambian runtime/domain/ipc/testdata ni controles.
+Evidencia `C:/tmp/1610-evidence/r3/`. Sin dependencia
 nueva, diseño nuevo ni subagentes. JWT del puente firmado verificado; no se usa
 Auth.getUser porque el token es propio del puente nativo.
 Origen cf-connecting-ip solo en Supabase alojado/Cloudflare; detalle y límite
@@ -98,17 +103,19 @@ su estado de producción no se revalidó en este encargo.
 ## 9. Siguiente acción exacta
 
 Revisar la PR draft #1618 y comprobar CI del último SHA publicado.
-El orquestador resuelve F1 con una frontera de admisión confiable antes de
-reabrir envíos; revisa interfaces con #1602/#1609 y el conjunto SQL.
+El orquestador revisa F1 implementado, verifica el gateway alojado antes de
+activar y coordina interfaces con #1602/#1609 y el conjunto SQL. Las RPCs
+cliente directas no se reabren. El SQL #1602 probado @87950380 es idéntico
+al del HEAD actual @5d62f624; esta dependencia sigue sin integrar y con conflictos.
 No fusionar ni activar producción desde este encargo.
 
 ## 10. Última actualización
 
-2026-10-14 03:58 +02:00 · worker Codex CLI · VANTA-29 Por revisar verificado.
+2026-10-14 04:43 +02:00 · worker Codex CLI · VANTA-29 Por revisar verificado.
 Rama publicada y PR draft #1618. HEAD final/CI en la PR, #1610 y buzón.
 [Informe sencillo y límites](../../runbooks/informe-1610.md).
 
-## Re-review ronda 2 · 14/10
+## Histórico · re-review ronda 2 · 14/10
 
 F2 reproducido con #1602: historial owner devolvía 3 informes y una página global desplazaba el propio (5/6 RED). Filtro explícito de cuenta antes de LIMIT: 6/6 GREEN sobre #1602@87950380. Se conserva SELECT owner para administración. Evidencia C:/tmp/1610-evidence/r2/F2-{red,green}. PR #1618 sigue draft; F1/F3/F4 en curso. No Plane real ni producción en ronda 2.
 

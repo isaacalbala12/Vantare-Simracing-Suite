@@ -2,8 +2,8 @@
 
 **Corte #1610:** protocolo services v8 (DTO v10/derechos v4 independientes).
 Rutas cerradas: current_v2, envío consentido por Edge `testing-report-submit`,
-crédito y acuse por fecha. La RPC directa no está permitida. Historial sin cuerpo privado; arreglado
-requiere versión válida. No hay cliente Plane ni referencia PostHog productiva.
+crédito y acuse por fecha. La RPC directa no está permitida. Historial sin cuerpo
+privado; arreglado requiere versión válida. No hay cliente Plane ni referencia PostHog productiva.
 SQL y dependencias #1602/#1609 siguen sujetos a revisión e integración:
 [contrato vigente](../../docs/runbooks/testing-report-followup.md).
 

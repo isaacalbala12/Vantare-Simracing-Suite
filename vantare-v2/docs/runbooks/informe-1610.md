@@ -1,4 +1,66 @@
-# Informe #1610 / VANTA-29 · ronda 2
+# Informe #1610 / VANTA-29 · ronda 3
+
+1. Conservados todos los commits de T3 y F2–F4; reanudación limpia en a43ce994.
+2. F1 implementado: cliente → Edge testing-report-submit → RPC service_role.
+3. Presupuesto durable por IP y cuenta: 5 intentos/día y 20/semana UTC.
+4. Rechazos/retries también cuentan; una IP no obtiene otro presupuesto con otra cuenta.
+5. Solo HMAC con sal servidor y semana; sin IP cruda, sin logs privados propios.
+6. Cabecera cf-connecting-ip exclusiva del gateway alojado; nunca X-Forwarded-For.
+7. JWT corto del puente verificado; identidad vigente y cuenta bloqueada comprobadas.
+8. RED→GREEN nativo; 10 Edge, 26 pgTAP+concurrencia/rollback, F2–F4 y 35 originales PASS.
+9. fmt/check/Clippy PASS; Nextest 1649/1649 (7 skips), lifecycle 18/18; quality 456 PASS.
+10. VANTA-29 Por revisar, PR #1618 draft a nightly; sin deploy, merge, promoción o release.
+
+Hito funcional `f3faedb7899386eb67126e6ec86df60ce256b017`; base
+`0807fbd0d3d8e354706c580f1bc5f60469b202b4`. HEAD de cierre/push/CI se registra
+en la PR, issue y buzón. Última verificación local: 2026-10-14, 04:43 +02:00.
+Rama `vantareapp/isa-1610-testing-center-todos`, proyecto Vantare,
+label area:testing-center, issue OPEN y GitHub Project In Review; sin milestone.
+
+El primer ensayo F1 de ronda 2 creaba 10 informes desde una IP con dos cuentas.
+Ronda 3 añade esa reproducción sobre la Edge, rechazo del sexto e independencia
+del presupuesto de cuenta respecto a IP. RED nativo demuestra que el cliente
+seguía llamando la RPC cerrada; GREEN demuestra la ruta Edge y payload sin IP,
+cuenta ni IDs privados elegidos por el cliente. También hay RED de infraestructura
+ausente (nueva RPC/Edge), conservado en `C:/tmp/1610-evidence/r3/`.
+Primera invocación Rust sin network falló por selección de features del harness;
+se corrigió el comando sin cambiar producto. El RED funcional posterior y GREEN
+se conservan en native-red.log/native-green.log.
+
+SQL sobre #1602 exacta @87950380: 26 pgTAP F1IP y dos sesiones reales; quinto
+admitido, sexto espera advisory lock, devuelve false y conserva gasto. Down
+inerte/reapply PASS; down con presupuesto usado bloqueado. Misma pasada sin
+dependencia PASS. F1 ACL original 17/17; F2 6/6; F3 8/8+concurrencia; F4 legacy
+íntegro y seis clones protegidos; 35 originales+snapshot+concurrencia+rollback PASS.
+El HEAD actual #1602@5d62f624 fue consultado: sus dos archivos SQL probados son
+idénticos a @87950380 (git diff vacío); sigue con conflictos y sin integrar.
+
+Deno fmt/lint/typecheck y 10 tests PASS; guard de superficie TS/PowerShell PASS.
+La nueva Edge está reconocida como candidata, fuera de los wrappers de deploy.
+Mocks Plane/notas 4/4; quality/retirement 456 huellas PASS; diff-check PASS.
+Workspace Rust por cola, timeout y CARGO_BUILD_JOBS=2 con target propio:
+check/Clippy PASS; Nextest 1649/1649, 7 skips previstos, una prueba Strategy lenta
+de 121 s que finalizó PASS; lifecycle 5+13 PASS. Telemetría dedicada no repetida:
+solo cambian services/SQL/Edge/docs, no runtime/domain/ipc/testdata. QA visual
+no repetida; no hay diseño ni cambio de controles.
+
+Límite relevante: las fuentes oficiales se citan en el commit y
+[runbook](testing-report-followup.md). Supabase muestra gateway y uso de
+cf-connecting-ip para controles por IP; Cloudflare documenta la cabecera al
+origen. Las docs Edge no formalizan sobrescritura para cualquier despliegue.
+El backend restringe SUPABASE_URL a project.supabase.co y falla cerrado sin
+cabecera/sal. Antes de activar requiere revisar y probar esa frontera alojada;
+no se ha probado el gateway real ni se declara Supabase/PostgREST end-to-end.
+El borrado de hashes antiguos ocurre con tráfico; sin tráfico espera la siguiente
+petición. Rotar la sal dentro de una ventana reiniciaría presupuesto IP.
+
+#1602/#1609 siguen pendientes; capturas públicas, Intake, PostHog consentido y
+publicación de notas no se completan con F1. No se leen/configuran secretos,
+instalan herramientas ni añaden dependencias. No se toca instalación/datos
+de Isaac ni ramas ajenas. Sin subagentes. Acciones externas autorizadas:
+seguimiento GitHub/Plane, commits/push y PR draft; producción intacta.
+
+## Evidencia histórica · ronda 2
 
 1. Conservados los siete commits de T3; recuperación en HEAD limpio 47e62675.
 2. F2 corregido: «Mis informes» del owner solo incluye sus informes.

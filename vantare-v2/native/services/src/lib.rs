@@ -22,6 +22,7 @@ pub mod http;
 pub mod license;
 #[cfg(feature = "network")]
 pub mod license_remote;
+pub mod pilot;
 #[cfg(any(windows, unix))]
 pub mod process;
 pub use vantare_ipc::product;

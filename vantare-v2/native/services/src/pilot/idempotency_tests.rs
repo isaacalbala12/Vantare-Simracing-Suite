@@ -13,6 +13,8 @@ struct Backend {
     saves: Vec<serde_json::Value>,
     loads: Vec<serde_json::Value>,
     photos: HashMap<String, Vec<u8>>,
+    photo_duplicates: usize,
+    photo_reads: usize,
     lose_first: bool,
     lose_third: bool,
     reject_photo: bool,
@@ -30,9 +32,14 @@ impl Backend {
         if path.starts_with("/storage/") {
             let key = path.rsplit('/').next().expect("key");
             if method == "POST" {
+                if self.photos.contains_key(key) {
+                    self.photo_duplicates += 1;
+                    return (400, br#"{"error":"Duplicate","statusCode":"409"}"#.to_vec());
+                }
                 self.photos.insert(key.into(), bytes[split + 4..].to_vec());
                 return (200, b"{}".to_vec());
             }
+            self.photo_reads += 1;
             return (200, self.photos.get(key).expect("uploaded photo").clone());
         }
         let (status, body) = self.reply(&String::from_utf8_lossy(bytes));
@@ -67,9 +74,6 @@ impl Backend {
     fn reply(&mut self, request: &str) -> (u16, String) {
         if request.starts_with("POST /functions/") {
             return (200, serde_json::json!({"version":1,"account_id":"550e8400-e29b-41d4-a716-446655440000","data_access_token":"data-fixture","expires_at":160}).to_string());
-        }
-        if request.starts_with("POST /storage/") {
-            return (200, "{}".into());
         }
         if request.starts_with("POST /rest/v1/rpc/pilot_profile_load ") {
             let value = self.current.clone().unwrap_or(serde_json::Value::Null);
@@ -311,6 +315,12 @@ fn uncertain_in_flight_a_then_edit_b_retries_a_before_b_even_after_restart() {
             assert_eq!(backend.saves[0], backend.saves[1]);
             assert_eq!(backend.saves[2]["p_expected_revision"], 1);
             assert_ne!(backend.saves[0]["p_op_id"], backend.saves[2]["p_op_id"]);
+            if with_photo {
+                assert_eq!(backend.photo_duplicates, 1);
+                // GET del JPEG/SHA de A duplicado y del perfil B final.
+                assert_eq!(backend.photo_reads, 2);
+                assert_eq!(backend.photos.len(), 2);
+            }
             drop(backend);
             drop(local);
             let local = Local::open(&root, None, None).expect("final restart");

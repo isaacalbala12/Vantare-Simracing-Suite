@@ -442,6 +442,12 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                 set!(InputTelemetry.show_clutch),
             ),
         ],
+        Settings::TrackMap(value) => vec![boolean(
+            "Transparente",
+            Tab::Appearance,
+            value.transparent,
+            set!(TrackMap.transparent),
+        )],
         Settings::MulticlassRelative(value) => vec![
             number(
                 "Filas",

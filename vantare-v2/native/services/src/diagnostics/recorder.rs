@@ -4,27 +4,52 @@ use super::{
 };
 use crate::{Error, Result};
 use std::{
+    collections::VecDeque,
     path::PathBuf,
     sync::{
-        Arc,
-        atomic::{AtomicBool, AtomicU64, Ordering},
-        mpsc,
+        Arc, Condvar, Mutex,
+        atomic::{AtomicBool, Ordering},
     },
     thread::JoinHandle,
     time::Duration,
 };
 
-const DISABLED: u64 = u64::MAX;
 struct Observation {
     event: Usage,
     generation: u64,
     once: bool,
 }
 
+#[derive(Default)]
+struct Pending {
+    privacy: Option<Privacy>,
+    queue: VecDeque<Observation>,
+}
+impl Pending {
+    fn generation(&self) -> Option<u64> {
+        self.privacy
+            .filter(|value| value.usage && value.usage_decided)
+            .map(|value| value.generation)
+    }
+    fn consent(&mut self, privacy: Privacy) {
+        // Una lectura suspendida antes del store no puede deshacer una revocación.
+        if self
+            .privacy
+            .is_some_and(|current| current.generation > privacy.generation)
+        {
+            return;
+        }
+        self.privacy = Some(privacy);
+        let generation = self.generation();
+        self.queue
+            .retain(|event| Some(event.generation) == generation);
+    }
+}
+
 /// Un dueño por proceso de UI; cancelar despierta el worker y lo reúne al cerrar.
 pub struct Recorder {
-    sender: mpsc::SyncSender<Option<Observation>>,
-    consent: Arc<AtomicU64>,
+    pending: Arc<Mutex<Pending>>,
+    wake: Arc<Condvar>,
     stopped: Arc<AtomicBool>,
     thread: Option<JoinHandle<()>>,
 }
@@ -36,72 +61,88 @@ impl Recorder {
         Self::start_at(data_root()?, || {}).map(Some)
     }
 
-    fn start_at(root: PathBuf, mut before_write: impl FnMut() + Send + 'static) -> Result<Self> {
-        let (sender, receiver) = mpsc::sync_channel::<Option<Observation>>(QUEUE_LIMIT);
-        let consent = Arc::new(AtomicU64::new(DISABLED));
-        let current = Arc::clone(&consent);
+    fn start_at(root: PathBuf, before_write: impl FnMut() + Send + 'static) -> Result<Self> {
+        Self::start_with(root, |_| {}, before_write)
+    }
+
+    fn start_with(
+        root: PathBuf,
+        mut before_publish: impl FnMut(Privacy) + Send + 'static,
+        mut before_write: impl FnMut() + Send + 'static,
+    ) -> Result<Self> {
+        let pending = Arc::new(Mutex::new(Pending::default()));
+        let current = Arc::clone(&pending);
+        let wake = Arc::new(Condvar::new());
+        let waiting = Arc::clone(&wake);
         let stopped = Arc::new(AtomicBool::new(false));
         let cancel = Arc::clone(&stopped);
         let thread = std::thread::Builder::new()
             .name("usage-persist".into())
             .spawn(move || {
                 while !cancel.load(Ordering::Acquire) {
-                    let generation = Privacy::load(&root)
-                        .ok()
-                        .filter(|privacy| privacy.usage)
-                        .map_or(DISABLED, |privacy| privacy.generation);
-                    current.store(generation, Ordering::Release);
-                    match receiver.recv_timeout(Duration::from_millis(250)) {
-                        Ok(Some(observation)) => {
-                            if cancel.load(Ordering::Acquire) {
-                                break;
+                    let privacy = Privacy::load(&root);
+                    if let Ok(value) = privacy {
+                        before_publish(value);
+                    }
+                    let Ok(mut state) = current.lock() else { break };
+                    match privacy {
+                        Ok(value) => state.consent(value),
+                        Err(_) => {
+                            if let Some(value) = &mut state.privacy {
+                                value.usage = false;
                             }
-                            before_write();
-                            let result = if observation.once {
-                                enqueue_once_authorized(
-                                    &root,
-                                    &observation.event,
-                                    observation.generation,
-                                )
-                            } else {
-                                enqueue_authorized(
-                                    &root,
-                                    &observation.event,
-                                    observation.generation,
-                                )
-                            };
-                            if let Err(error) = result {
-                                eprintln!("uso local: {error}");
-                            }
+                            state.queue.clear();
                         }
-                        Err(mpsc::RecvTimeoutError::Timeout) => {}
-                        Ok(None) | Err(mpsc::RecvTimeoutError::Disconnected) => break,
+                    }
+                    if state.queue.is_empty() {
+                        // Refresca decisiones de otros procesos incluso sin observaciones.
+                        let _wait = waiting.wait_timeout(state, Duration::from_millis(250));
+                        continue;
+                    }
+                    drop(state);
+                    // La observación aún está en la cola revocable durante esta pausa.
+                    before_write();
+                    let observation = current
+                        .lock()
+                        .ok()
+                        .and_then(|mut state| state.queue.pop_front());
+                    if cancel.load(Ordering::Acquire) {
+                        break;
+                    }
+                    if let Some(observation) = observation {
+                        let result = if observation.once {
+                            enqueue_once_authorized(
+                                &root,
+                                &observation.event,
+                                observation.generation,
+                            )
+                        } else {
+                            enqueue_authorized(&root, &observation.event, observation.generation)
+                        };
+                        if let Err(error) = result {
+                            eprintln!("uso local: {error}");
+                        }
                     }
                 }
             })
             .map_err(|_| Error::Storage)?;
         Ok(Self {
-            sender,
-            consent,
+            pending,
+            wake,
             stopped,
             thread: Some(thread),
         })
     }
 
     pub fn generation(&self) -> Option<u64> {
-        let generation = self.consent.load(Ordering::Acquire);
-        (generation != DISABLED).then_some(generation)
+        self.pending.try_lock().ok()?.generation()
     }
-    /// Publicación en memoria tras guardar una decisión; el disco sigue siendo autoridad.
+    /// Publicación monotónica y descarte en memoria tras guardar una decisión.
     pub fn consent(&self, privacy: Privacy) {
-        self.consent.store(
-            if privacy.usage && privacy.usage_decided {
-                privacy.generation
-            } else {
-                DISABLED
-            },
-            Ordering::Release,
-        );
+        if let Ok(mut state) = self.pending.lock() {
+            state.consent(privacy);
+        }
+        self.wake.notify_one();
     }
     pub fn record(&self, event: &Usage) {
         if let Some(generation) = self.generation() {
@@ -117,18 +158,28 @@ impl Recorder {
         if !event.valid() || self.stopped.load(Ordering::Acquire) {
             return;
         }
-        // Full/Disconnected descartan; nunca send, escritura, mutex ni espera en UI.
-        let _discarded = self.sender.try_send(Some(Observation {
-            event: event.clone(),
-            generation,
-            once,
-        }));
+        // UI nunca espera: ocupado/lleno/envenenado descartan, sin I/O bajo el mutex.
+        if let Ok(mut state) = self.pending.try_lock()
+            && !self.stopped.load(Ordering::Acquire)
+            && state.generation() == Some(generation)
+            && state.queue.len() < QUEUE_LIMIT
+        {
+            state.queue.push_back(Observation {
+                event: event.clone(),
+                generation,
+                once,
+            });
+            self.wake.notify_one();
+        }
     }
 }
 impl Drop for Recorder {
     fn drop(&mut self) {
         self.stopped.store(true, Ordering::Release);
-        let _wake = self.sender.try_send(None);
+        if let Ok(mut state) = self.pending.lock() {
+            state.queue.clear();
+        }
+        self.wake.notify_one();
         if let Some(thread) = self.thread.take()
             && thread.join().is_err()
         {
@@ -141,6 +192,126 @@ impl Drop for Recorder {
 mod tests {
     use super::*;
     use crate::diagnostics::{consent_tests::choice, tests::root};
+    use std::sync::mpsc;
+
+    #[test]
+    fn isa1609_a_loaded_permission_cannot_overwrite_completed_revocation() {
+        let root = root();
+        choice(&root, true);
+        let (loaded, reached) = mpsc::channel();
+        let (resume, paused) = mpsc::channel();
+        let mut reads = 0;
+        let recorder = Recorder::start_with(
+            root.clone(),
+            move |privacy| {
+                reads += 1;
+                if reads <= 2 {
+                    loaded.send(privacy).expect("loaded");
+                    paused.recv().expect("release publication");
+                }
+            },
+            || {},
+        )
+        .expect("worker");
+        let old = reached
+            .recv_timeout(Duration::from_secs(5))
+            .expect("load before store");
+        assert!(old.usage);
+        recorder.consent(choice(&root, false));
+        resume.send(()).expect("publish stale read");
+        reached
+            .recv_timeout(Duration::from_secs(5))
+            .expect("next read after store");
+        let generation = recorder.generation();
+        resume.send(()).expect("release before assertion");
+        drop(recorder);
+        assert_eq!(generation, None, "stale worker restored revoked permission");
+        assert!(!root.join("usage/00.json").exists());
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[test]
+    fn isa1609_b_revocation_empties_memory_and_rejects_close_in_old_generation() {
+        let root = root();
+        let privacy = choice(&root, true);
+        let recorder = Recorder {
+            pending: Arc::new(Mutex::new(Pending::default())),
+            wake: Arc::new(Condvar::new()),
+            stopped: Arc::new(AtomicBool::new(false)),
+            thread: None,
+        };
+        recorder.consent(privacy);
+        let event = Usage::PageUsage {
+            page: "home".into(),
+            duration_seconds: 1,
+        };
+        recorder.record(&event);
+        recorder.consent(choice(&root, false));
+        recorder.record_in_generation(&event, privacy.generation, false);
+        let queued = recorder.pending.lock().expect("queue").queue.len();
+        drop(recorder);
+        assert_eq!(
+            queued, 0,
+            "revoked observations retained/admitted in memory"
+        );
+        assert!(!root.join("usage/00.json").exists());
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
+
+    #[test]
+    fn isa1609_external_revocation_clears_memory_when_worker_refreshes() {
+        let root = root();
+        let privacy = choice(&root, true);
+        let (loaded, reached) = mpsc::channel();
+        let (resume, paused) = mpsc::channel();
+        let mut reads = 0;
+        let recorder = Recorder::start_with(
+            root.clone(),
+            move |_| {
+                reads += 1;
+                if reads <= 3 {
+                    loaded.send(()).expect("read");
+                    paused.recv().expect("resume");
+                }
+            },
+            || {},
+        )
+        .expect("worker");
+        reached
+            .recv_timeout(Duration::from_secs(5))
+            .expect("initial load");
+        recorder.consent(privacy);
+        for _ in 0..2 {
+            recorder.record(&Usage::PageViewed {
+                page: "home".into(),
+            });
+        }
+        // Otro dueño cambia el disco; no llama Recorder::consent de esta UI.
+        choice(&root, false);
+        resume.send(()).expect("stale first read");
+        reached
+            .recv_timeout(Duration::from_secs(5))
+            .expect("revoked read");
+        resume.send(()).expect("publish revoked read");
+        reached
+            .recv_timeout(Duration::from_secs(5))
+            .expect("after refresh");
+        let generation = recorder.generation();
+        recorder.record_in_generation(
+            &Usage::PageViewed {
+                page: "studio".into(),
+            },
+            privacy.generation,
+            false,
+        );
+        let queued = recorder.pending.lock().expect("pending").queue.len();
+        resume.send(()).expect("release before assertion");
+        drop(recorder);
+        assert_eq!(generation, None);
+        assert_eq!(queued, 0);
+        assert!(!root.join("usage/00.json").exists());
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
 
     #[test]
     fn isa1609_ui_callback_returns_and_drops_full_queue_while_write_is_blocked() {

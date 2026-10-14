@@ -116,8 +116,12 @@ a PostHog. Publicación, revocación y autorización final del POST comparten
 UI no comunica una revocación completada. Una petición iniciada antes de revocar
 no se retira del transporte. Los slots de uso antiguos sin generación se descartan.
 
-Los productores GPUI solo validan el catálogo y entregan a un canal en memoria
-de 32 entradas mediante `try_send`; lleno o cerrado, se descarta. Un `Recorder`
+Los productores GPUI validan catálogo y generación y entregan a una cola en memoria
+de 32 entradas mediante `try_lock`; ocupada o llena, se descarta. La decisión y la
+admisión se coordinan bajo el mismo mutex breve, sin I/O; revocar vacía pendientes
+y una lectura antigua no puede reducir la generación. El cierre revalida antes de
+emitir tiempos. Entre procesos el worker descubre la retirada al refrescar el
+archivo de permiso; no se garantiza invalidación instantánea de memoria en otra UI. Un `Recorder`
 de services, propiedad del `App`, lee el permiso, persiste fuera del callback y
 revalida la generación bajo la frontera común. El emisor HTTP sigue viviendo en
 el proceso services. El guardado manual del consentimiento conserva la ruta

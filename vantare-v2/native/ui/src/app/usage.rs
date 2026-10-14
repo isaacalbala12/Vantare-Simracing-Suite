@@ -42,13 +42,22 @@ impl State {
         })
     }
     pub fn finish(&mut self, cx: &gpui::App) {
-        for (kind, elapsed) in std::mem::take(&mut self.pending) {
-            if let Some(event) = Self::event(&kind, elapsed)
-                && let Some(generation) = self.generation
-            {
+        for event in self.finish_events(crate::analytics::generation(cx)) {
+            if let Some(generation) = self.generation {
                 crate::analytics::record_in_generation(cx, &event, generation);
             }
         }
+    }
+
+    fn finish_events(&mut self, generation: Option<u64>) -> Vec<Usage> {
+        self.consent(generation);
+        let mut events = vec![];
+        for (kind, elapsed) in std::mem::take(&mut self.pending) {
+            if let Some(event) = Self::event(&kind, elapsed) {
+                events.push(event);
+            }
+        }
+        events
     }
 
     fn observe(&mut self, now: Duration, allowed: bool, visible: BTreeSet<String>) -> Vec<Usage> {
@@ -84,13 +93,13 @@ impl State {
 
 impl LiveScreens {
     pub(super) fn sample_usage(&mut self, cx: &gpui::App) {
+        let generation = crate::analytics::generation(cx);
+        self.usage.consent(generation);
         let now = Instant::now();
         if now.duration_since(self.usage.sampled) < Duration::from_secs(1) {
             return;
         }
         self.usage.sampled = now;
-        let generation = crate::analytics::generation(cx);
-        self.usage.consent(generation);
         let allowed = generation.is_some();
         if !allowed {
             let _ =
@@ -126,6 +135,16 @@ impl LiveScreens {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn revoke_and_close_before_next_sample_discards_widget_accumulator() {
+        let mut state = State::default();
+        state.consent(Some(0));
+        state.observe(Duration::ZERO, true, visible());
+        state.observe(Duration::from_secs(1), true, visible());
+        assert!(state.finish_events(None).is_empty());
+        assert!(state.pending.is_empty());
+        assert!(state.finish_events(Some(1)).is_empty());
+    }
     #[test]
     fn consent_generation_change_discards_widget_time_without_a_denied_sample() {
         let mut state = State::default();

@@ -4,6 +4,18 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## #1609 / VANTA-22 · Analítica consentida (14/10/2026)
 
+Ronda 3 en curso desde `f56156e3`, review Sol r2 completa. RED Rust A/B:
+lectura suspendida restaura Some(0); cola conserva/admite dos eventos revocados.
+Corrección local de permiso monotónico y cola revocable bajo mutex en memoria;
+callbacks usan try_lock sin espera, generación comprobada al admitir. Acumuladores
+revalidan antes de cerrar y el Hub los vacía al guardar revocación.
+Busy al cargar Privacidad y texto P3 pendientes de GREEN; gates finales pendientes.
+VANTA-22 En curso. Sin subagentes ni nuevo diseño. Evidencia C:/tmp/1609-r3.
+Entre procesos la invalidación depende del refresco de disco del worker; no se
+promete retirada instantánea de memoria en otra UI. DUDA en buzón al orquestador.
+
+### Ronda 2 (evidencia anterior)
+
 Ronda 2 completada por Codex CLI; review Sol leída completa, sin subagentes.
 P1 `58d0a735`: RED A/B → GREEN. Generación persistida y cerrojo SO común
 publicación/revocación/POST; con POST activo (8 s), guardar devuelve ocupado

@@ -108,6 +108,8 @@ impl super::Hub {
             self.settings.status = store.save(next).err();
             if self.settings.status.is_none() {
                 vantare_ui::analytics::consent(cx, store.value);
+                self.analytics
+                    .consent(vantare_ui::analytics::generation(cx));
                 self.focus.focus(window, cx);
             }
         }
@@ -228,6 +230,8 @@ impl super::Hub {
             self.settings.status = store.save(next).err();
             if self.settings.status.is_none() {
                 vantare_ui::analytics::consent(cx, store.value);
+                self.analytics
+                    .consent(vantare_ui::analytics::generation(cx));
             }
         }
         cx.notify();

@@ -42,13 +42,18 @@ impl State {
         event
     }
 
-    fn consent(&mut self, generation: Option<u64>) {
+    pub(super) fn consent(&mut self, generation: Option<u64>) {
         if self.generation != generation {
             self.generation = generation;
             self.clock = Activity::default();
             self.pending = Duration::ZERO;
             self.page = None;
         }
+    }
+
+    fn finish(&mut self, generation: Option<u64>) -> Option<Usage> {
+        self.consent(generation);
+        self.flush()
     }
 
     fn observe(&mut self, now: Duration, enabled: bool, section: Section) -> Vec<Usage> {
@@ -101,13 +106,13 @@ fn page_name(page: Section) -> &'static str {
 
 impl Hub {
     pub(super) fn poll_usage(&mut self, cx: &gpui::Context<Self>, force: bool) {
+        let generation = vantare_ui::analytics::generation(cx);
+        self.analytics.consent(generation);
         let now = Instant::now();
         if !force && now.duration_since(self.analytics.sampled) < Duration::from_secs(1) {
             return;
         }
         self.analytics.sampled = now;
-        let generation = vantare_ui::analytics::generation(cx);
-        self.analytics.consent(generation);
         let available = self.demo.is_none()
             && self.capture.is_none()
             && !self.privacy_question_pending()
@@ -129,7 +134,7 @@ impl Hub {
     }
 
     pub(super) fn finish_usage(&mut self, cx: &gpui::App) {
-        if let Some(event) = self.analytics.flush()
+        if let Some(event) = self.analytics.finish(vantare_ui::analytics::generation(cx))
             && let Some(generation) = self.analytics.generation
         {
             vantare_ui::analytics::record_in_generation(cx, &event, generation);
@@ -140,6 +145,17 @@ impl Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn revoke_and_close_before_next_sample_discards_page_accumulator() {
+        let mut state = State::new(true);
+        state.consent(Some(0));
+        state.observe(Duration::ZERO, true, Section::Home);
+        state.observe(Duration::from_secs(1), true, Section::Home);
+        assert!(state.finish(None).is_none());
+        assert!(state.pending.is_zero());
+        assert!(state.page.is_none());
+        assert!(state.finish(Some(1)).is_none());
+    }
     #[test]
     fn consent_generation_change_discards_page_time_even_without_a_denied_sample() {
         let mut state = State::new(true);

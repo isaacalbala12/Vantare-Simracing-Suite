@@ -21,6 +21,87 @@ pub(super) fn photo(index: u32, lap: u32) -> Observation {
 }
 
 #[test]
+fn negative_native_lmu_lap_clock_does_not_break_the_series_codec() {
+    use crate::adapter::{Replay, ReplayEvent};
+    use vantare_domain::Adapter;
+
+    let mut frame = include_bytes!("../../../../testdata/lmu-fixture.bin").to_vec();
+    // Mutación explícita de mLapProgress, en la fila del jugador del fixture real.
+    let player = (0..44)
+        .map(|index| 2192 + index * 584)
+        .find(|base| frame[base + 196] == 1)
+        .unwrap();
+    frame[player + 464..player + 472].copy_from_slice(&(-2.0_f64).to_le_bytes());
+    let mut replay = Replay::new(
+        "1.3.0.0",
+        [ReplayEvent::Shm {
+            at: std::time::Duration::ZERO,
+            frame,
+        }],
+    );
+    let observation = replay.poll(std::time::Duration::ZERO).unwrap().unwrap();
+    let car = observation.state.player.unwrap().car;
+    assert_eq!(
+        observation
+            .state
+            .cars
+            .iter()
+            .find(|c| c.id == car)
+            .unwrap()
+            .lap_elapsed_s,
+        Quality::Reliable(-2.0)
+    );
+    let mut core = Core::new(1);
+    let receiver = core.series_mut().subscribe(2).unwrap();
+    core.observe(observation).unwrap();
+    core.series_mut().flush();
+    let chunk = receiver.try_recv().unwrap();
+    assert!(
+        chunk.to_bytes().is_ok(),
+        "el reloj nativo inválido no rompe la grabación"
+    );
+    assert!(chunk.block.gap);
+    assert!(chunk.block.samples.is_empty());
+}
+
+#[test]
+fn invalid_numeric_signals_cannot_poison_the_recording_feed() {
+    let mut core = Core::new(1);
+    let receiver = core.series_mut().subscribe(2).unwrap();
+    let mut input = photo(1, 0);
+    let car = &mut input.state.cars[0];
+    car.lap_distance_m = Quality::Reliable(-1.0);
+    car.lap_elapsed_s = Quality::Reliable(-2.0);
+    core.observe(input).unwrap();
+    assert!(core.series().active().unwrap().samples.is_empty());
+    let mut input = photo(2, 0);
+    let telemetry = &mut input.state.player.as_mut().unwrap().telemetry;
+    telemetry.speed_mps = Quality::Reliable(-3.0);
+    telemetry.throttle = Quality::Estimated(1.5);
+    telemetry.brake = Quality::Stale(-0.1);
+    telemetry.clutch = Quality::Reliable(2.0);
+    core.observe(input).unwrap();
+    let snapshot = core.snapshot();
+    let telemetry = &snapshot.state.player.as_ref().unwrap().telemetry;
+    for signal in [
+        telemetry.speed_mps,
+        telemetry.throttle,
+        telemetry.brake,
+        telemetry.clutch,
+    ] {
+        assert_eq!(signal, Quality::Unavailable);
+    }
+    core.series_mut().flush();
+    let chunk = receiver.try_recv().unwrap();
+    assert!(chunk.block.gap);
+    assert_eq!(chunk.block.samples.len(), 1);
+    assert!(
+        chunk.to_bytes().is_ok(),
+        "una señal inválida no puede matar al worker"
+    );
+}
+
+#[test]
 fn chunks_arrive_during_the_lap_and_the_seal_keeps_the_coherent_cut() {
     let mut core = Core::new(7);
     let receiver = core.series_mut().subscribe(4).unwrap();

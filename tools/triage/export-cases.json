@@ -1,0 +1,320 @@
+[
+  {
+    "name": "prefixed-json-'\\n'",
+    "input": "ERROR {\n \"password\"\n : \"OpaqueTailSecret\"\n}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "prefixed-json-nested-'\\n'",
+    "input": "{\"payload\": \"ERROR {\\n \\\"password\\\"\\n : \\\"OpaqueTailSecret\\\"\\n}\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "prefixed-json-'\\r\\n'",
+    "input": "ERROR {\r\n \"password\"\r\n : \"OpaqueTailSecret\"\r\n}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "prefixed-json-nested-'\\r\\n'",
+    "input": "{\"payload\": \"ERROR {\\r\\n \\\"password\\\"\\r\\n : \\\"OpaqueTailSecret\\\"\\r\\n}\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "prefixed-json-'\\r'",
+    "input": "ERROR {\r \"password\"\r : \"OpaqueTailSecret\"\r}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "prefixed-json-nested-'\\r'",
+    "input": "{\"payload\": \"ERROR {\\r \\\"password\\\"\\r : \\\"OpaqueTailSecret\\\"\\r}\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "authorization-'\\n'",
+    "input": "Authorization:\n Basic OpaqueTailSecret",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "authorization-nested-'\\n'",
+    "input": "{\"payload\": \"Authorization:\\n Basic OpaqueTailSecret\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "authorization-'\\r\\n'",
+    "input": "Authorization:\r\n Basic OpaqueTailSecret",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "authorization-nested-'\\r\\n'",
+    "input": "{\"payload\": \"Authorization:\\r\\n Basic OpaqueTailSecret\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "authorization-'\\r'",
+    "input": "Authorization:\r Basic OpaqueTailSecret",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "authorization-nested-'\\r'",
+    "input": "{\"payload\": \"Authorization:\\r Basic OpaqueTailSecret\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "assignment-'\\n'",
+    "input": "password=\nOpaqueTailSecret",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "assignment-nested-'\\n'",
+    "input": "{\"payload\": \"password=\\nOpaqueTailSecret\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "assignment-'\\r\\n'",
+    "input": "password=\r\nOpaqueTailSecret",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "assignment-nested-'\\r\\n'",
+    "input": "{\"payload\": \"password=\\r\\nOpaqueTailSecret\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "assignment-'\\r'",
+    "input": "password=\rOpaqueTailSecret",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "assignment-nested-'\\r'",
+    "input": "{\"payload\": \"password=\\rOpaqueTailSecret\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "truncated-'\\n'",
+    "input": "ERROR {\"password\":\"Start\nOpaqueTailSecret\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "truncated-nested-'\\n'",
+    "input": "{\"payload\": \"ERROR {\\\"password\\\":\\\"Start\\nOpaqueTailSecret\\\"}\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "truncated-'\\r\\n'",
+    "input": "ERROR {\"password\":\"Start\r\nOpaqueTailSecret\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "truncated-nested-'\\r\\n'",
+    "input": "{\"payload\": \"ERROR {\\\"password\\\":\\\"Start\\r\\nOpaqueTailSecret\\\"}\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "truncated-'\\r'",
+    "input": "ERROR {\"password\":\"Start\rOpaqueTailSecret\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "truncated-nested-'\\r'",
+    "input": "{\"payload\": \"ERROR {\\\"password\\\":\\\"Start\\rOpaqueTailSecret\\\"}\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "complete-log-'\\n'",
+    "input": "{\"message\":\"ERROR export\",\n \"password\"\n : \"OpaqueTailSecret\"\n}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "complete-log-nested-'\\n'",
+    "input": "{\"payload\": \"{\\\"message\\\":\\\"ERROR export\\\",\\n \\\"password\\\"\\n : \\\"OpaqueTailSecret\\\"\\n}\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "complete-log-'\\r\\n'",
+    "input": "{\"message\":\"ERROR export\",\r\n \"password\"\r\n : \"OpaqueTailSecret\"\r\n}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "complete-log-nested-'\\r\\n'",
+    "input": "{\"payload\": \"{\\\"message\\\":\\\"ERROR export\\\",\\r\\n \\\"password\\\"\\r\\n : \\\"OpaqueTailSecret\\\"\\r\\n}\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "complete-log-'\\r'",
+    "input": "{\"message\":\"ERROR export\",\r \"password\"\r : \"OpaqueTailSecret\"\r}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "complete-log-nested-'\\r'",
+    "input": "{\"payload\": \"{\\\"message\\\":\\\"ERROR export\\\",\\r \\\"password\\\"\\r : \\\"OpaqueTailSecret\\\"\\r}\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "carriage-return-'\\n'",
+    "input": "ERROR password=\"Start\rOpaqueTailSecret\"",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "carriage-return-nested-'\\n'",
+    "input": "{\"payload\": \"ERROR password=\\\"Start\\rOpaqueTailSecret\\\"\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "carriage-return-'\\r\\n'",
+    "input": "ERROR password=\"Start\rOpaqueTailSecret\"",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "carriage-return-nested-'\\r\\n'",
+    "input": "{\"payload\": \"ERROR password=\\\"Start\\rOpaqueTailSecret\\\"\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "carriage-return-'\\r'",
+    "input": "ERROR password=\"Start\rOpaqueTailSecret\"",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "carriage-return-nested-'\\r'",
+    "input": "{\"payload\": \"ERROR password=\\\"Start\\rOpaqueTailSecret\\\"\"}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "prefixed-username",
+    "input": "ERROR {\n \"username\"\n : \"SyntheticOtherPerson\"\n}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "SyntheticOtherPerson"
+    ]
+  },
+  {
+    "name": "prefixed-accountId",
+    "input": "ERROR {\n \"accountId\"\n : \"SyntheticOtherPerson\"\n}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "SyntheticOtherPerson"
+    ]
+  },
+  {
+    "name": "prefixed-Authorization",
+    "input": "ERROR {\n \"Authorization\"\n : \"SyntheticOtherPerson\"\n}",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": [
+      "SyntheticOtherPerson"
+    ]
+  },
+  {
+    "name": "empty-private-label",
+    "input": "password=",
+    "expected": "[contenido retirado por privacidad]",
+    "secrets": []
+  }
+]

@@ -384,6 +384,7 @@ impl Editor {
             )
             .child(self.field(0, "Título · qué hiciste", compact, cx))
             .child(self.field(2, "Texto · qué ocurrió o qué propones", compact, cx))
+            .child(orbit::text("Estas notas se guardan solo en este equipo y no se envían. El envío contiene los campos estructurados permitidos.", 12.0, 400, orbit::ink_3(cx), cx))
             .child(
                 div()
                     .flex()

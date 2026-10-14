@@ -1,3 +1,4 @@
+import { grossRefund } from "../native-admin/amounts.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   type BillingEnvironment,
@@ -621,7 +622,7 @@ export async function applyPolarWebhookEvent(
     ["refund.created", "refund.updated"].includes(event.type) &&
     event.data.currency === "eur"
   ) {
-    const amount = asNonNegativeInteger(event.data.amount);
+    const amount = grossRefund(event.data.amount, event.data.tax_amount);
     const modified = parseIsoTimestamp(
       event.data.modified_at ?? event.data.updated_at,
     );
@@ -665,7 +666,10 @@ export async function applyPolarWebhookEvent(
         environment,
       );
       const amount = asNonNegativeInteger(event.data.total_amount);
-      const refunded = asNonNegativeInteger(event.data.refunded_amount);
+      const refunded = grossRefund(
+        event.data.refunded_amount,
+        event.data.refunded_tax_amount,
+      );
       const paidAt = parseIsoTimestamp(
         event.data.paid_at ?? event.data.created_at,
       );
@@ -909,6 +913,7 @@ const REPLAY_DATA_KEYS = [
   "refund_pending",
   "applied_balance_amount",
   "refunded_amount",
+  "refunded_tax_amount",
   "amount",
   "tax_amount",
   "currency",

@@ -1,3 +1,4 @@
+import { syncAdminPayments } from "./payment-sync.ts";
 import { ensureCreatorCode } from "./creator-code.ts";
 import type { PolarProductMap } from "../_shared/mapping.ts";
 import {
@@ -375,6 +376,10 @@ export async function handleNativeAdmin(
         arguments_,
         environment,
       );
+    if (
+      ["get_account", "list_creators", "get_creator", "record_creator_payout"]
+        .includes(action)
+    ) await syncAdminPayments(run, environment, deps.productMap, deps.polar);
     if (action === "create_creator") {
       if (environment !== "sandbox") {
         throw new NativeError(503, "admin_sandbox_required");
@@ -454,13 +459,29 @@ export async function handleNativeAdmin(
           !current.subscriptions.every((id) => typeof id === "string")
         ) throw new NativeError(503, "bridge_unavailable");
         for (const id of current.subscriptions) {
-          await polarAdminRequest(
-            "DELETE",
-            `/subscriptions/${encodeURIComponent(id)}`,
+          const path = `/subscriptions/${encodeURIComponent(id)}`;
+          const subscription = await polarAdminRequest(
+            "GET",
+            path,
             undefined,
             environment,
             deps.polar,
           );
+          if (subscription.id !== id) {
+            throw new NativeError(503, "account_change_incomplete");
+          }
+          // A lost cancellation ACK must be safe to retry before its webhook arrives.
+          if (subscription.status === "canceled") continue;
+          const canceled = await polarAdminRequest(
+            "DELETE",
+            path,
+            undefined,
+            environment,
+            deps.polar,
+          );
+          if (canceled.id !== id || canceled.status !== "canceled") {
+            throw new NativeError(503, "account_change_incomplete");
+          }
         }
       } else await run("set_blocked", params);
       return respond({

@@ -54,7 +54,7 @@ revoke all on private.admin_creators from public,anon,authenticated,service_role
 -- never grant access or replace the commercial ledger under review in #1622.
 create table private.admin_payments(
  environment text not null check(environment in('sandbox','production')),payment_id text not null check(length(payment_id) between 1 and 200),
- account_id uuid not null references public.profiles(id) on delete restrict,subscription_id text not null check(length(subscription_id) between 1 and 200),
+ account_id uuid not null references public.profiles(id) on delete restrict,subscription_id text check(subscription_id is null or length(subscription_id) between 1 and 200),
  product text not null check(length(product) between 1 and 120),paid_at timestamptz not null,amount_cents bigint not null check(amount_cents>0 and amount_cents<=100000000),
  currency text not null check(currency='eur'),discount_id text,refunded_cents bigint not null default 0 check(refunded_cents between 0 and amount_cents),
  refund_pending boolean not null default false,modified_at timestamptz not null,settled_creator_id uuid references private.admin_creators(creator_id),settled_commission_cents bigint check(settled_commission_cents>=0),
@@ -68,17 +68,21 @@ create table private.admin_payment_refunds(environment text not null check(envir
  payment_id text not null check(length(payment_id) between 1 and 200),amount_cents bigint not null check(amount_cents>0 and amount_cents<=100000000),currency text not null check(currency='eur'),
  status text not null check(status in('pending','succeeded','failed','canceled')),modified_at timestamptz not null,primary key(environment,refund_id));
 revoke all on private.admin_payment_refunds from public,anon,authenticated,service_role;
+create table private.admin_payment_sync(environment text primary key,last_synced_at timestamptz not null);
+create table private.admin_payment_history(environment text not null,account_id uuid not null references public.profiles(id),primary key(environment,account_id));
+revoke all on private.admin_payment_sync,private.admin_payment_history from public,anon,authenticated,service_role;
+
 create function public.native_admin_record_refund(p_environment text,p_refund jsonb) returns boolean
 language plpgsql security definer set search_path='' as $$
-declare v_old private.admin_payment_refunds%rowtype; v_account uuid;
+declare v_old private.admin_payment_refunds%rowtype; v_account uuid; v_subscription text;
 begin
  if p_environment is null or p_environment not in('sandbox','production') or jsonb_typeof(p_refund) is distinct from 'object' then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  perform pg_advisory_xact_lock(hashtextextended(p_environment||':'||(p_refund->>'payment_id'),1628));
- select account_id into v_account from private.admin_payments where environment=p_environment and payment_id=p_refund->>'payment_id';
+ select account_id,subscription_id into v_account,v_subscription from private.admin_payments where environment=p_environment and payment_id=p_refund->>'payment_id';
  if v_account is not null then perform pg_advisory_xact_lock(hashtextextended(p_environment||':'||v_account::text,1627)); end if;
  select * into v_old from private.admin_payment_refunds where environment=p_environment and refund_id=p_refund->>'refund_id' for update;
  if found then
-  if (p_refund->>'modified_at')::timestamptz<v_old.modified_at then return v_account is not null; end if;
+  if (p_refund->>'modified_at')::timestamptz<v_old.modified_at then return v_account is not null and v_subscription is not null; end if;
   if v_old.payment_id is distinct from p_refund->>'payment_id' or v_old.amount_cents is distinct from(p_refund->>'amount_cents')::bigint or v_old.currency is distinct from p_refund->>'currency'
    or(v_old.status='succeeded' and p_refund->>'status'<>'succeeded') or(v_old.modified_at=(p_refund->>'modified_at')::timestamptz and v_old.status is distinct from p_refund->>'status') then raise exception 'native_admin_owner_conflict' using errcode='55000'; end if;
  end if;
@@ -86,7 +90,7 @@ begin
  values(p_environment,p_refund->>'refund_id',p_refund->>'payment_id',(p_refund->>'amount_cents')::bigint,p_refund->>'currency',p_refund->>'status',(p_refund->>'modified_at')::timestamptz)
  on conflict(environment,refund_id) do update set status=excluded.status,modified_at=excluded.modified_at;
  if exists(select 1 from private.admin_payments p where p.environment=p_environment and p.payment_id=p_refund->>'payment_id' and p.amount_cents<(select sum(r.amount_cents) from private.admin_payment_refunds r where r.environment=p_environment and r.payment_id=p.payment_id and r.status='succeeded')) then raise exception 'native_admin_invalid' using errcode='22023'; end if;
- return v_account is not null;
+ return v_account is not null and v_subscription is not null;
 end $$;
 revoke all on function public.native_admin_record_refund(text,jsonb) from public,anon,authenticated,service_role;
 grant execute on function public.native_admin_record_refund(text,jsonb) to service_role;
@@ -113,6 +117,7 @@ begin
   (p_payment->>'paid_at')::timestamptz,(p_payment->>'amount_cents')::bigint,p_payment->>'currency',p_payment->>'discount_id',
   (p_payment->>'refunded_cents')::bigint,coalesce((p_payment->>'refund_pending')::boolean,false),(p_payment->>'modified_at')::timestamptz)
  on conflict(environment,payment_id) do update set refunded_cents=greatest(admin_payments.refunded_cents,excluded.refunded_cents),refund_pending=excluded.refund_pending,modified_at=excluded.modified_at;
+ if (select coalesce(sum(amount_cents),0) from private.admin_payment_refunds where environment=p_environment and payment_id=p_payment->>'payment_id' and status='succeeded')>(p_payment->>'amount_cents')::bigint then raise exception 'native_admin_invalid' using errcode='22023'; end if;
 end $$;
 revoke all on function public.native_admin_record_payment(text,jsonb) from public,anon,authenticated,service_role;
 grant execute on function public.native_admin_record_payment(text,jsonb) to service_role;
@@ -122,20 +127,22 @@ language sql stable security definer set search_path='' as $$
  with receipts as(select p.*,greatest(p.refunded_cents,coalesce((select sum(r.amount_cents) from private.admin_payment_refunds r where r.environment=p.environment and r.payment_id=p.payment_id and r.status='succeeded'),0)) refund_total,
  (p.refund_pending or exists(select 1 from private.admin_payment_refunds r where r.environment=p.environment and r.payment_id=p.payment_id and r.status='pending')) pending from private.admin_payments p),
  firsts as(select distinct on(account_id) account_id,paid_at,discount_id from private.admin_payments where environment=p_environment order by account_id,paid_at,payment_id),
- lines as(select p.*,c.creator_id,greatest(1,1+12*(extract(year from p.paid_at at time zone 'UTC')::int-extract(year from f.paid_at at time zone 'UTC')::int)
-  +extract(month from p.paid_at at time zone 'UTC')::int-extract(month from f.paid_at at time zone 'UTC')::int) period_index
+ lines as(select p.*,c.creator_id,case when (p.paid_at at time zone 'UTC')>=(f.paid_at at time zone 'UTC')+interval '12 months' then 13 else
+  1+(select coalesce(max(n),0) from generate_series(0,11)n where(p.paid_at at time zone 'UTC')>=(f.paid_at at time zone 'UTC')+make_interval(months=>n)) end period_index
   from receipts p join firsts f using(account_id) left join private.admin_creators c on c.environment=p_environment and c.creator_id=coalesce(p.settled_creator_id,(select c2.creator_id from private.admin_creators c2 where c2.environment=p_environment and c2.discount_id=f.discount_id and c2.status='active')) where p.environment=p_environment),
  rated as(select *,case when period_index=1 then 3000 when period_index<=12 then 1000 else 0 end rate_bp from lines)
  select jsonb_build_object('creator_id',creator_id,'account_id',account_id,'payment_id',payment_id,'paid_at',paid_at,'product',product,
   'period_index',period_index,'amount_cents',amount_cents,'currency',currency,'status',case when pending then 'refund_pending' when refund_total>=amount_cents then 'refunded' when refund_total>0 then 'partially_refunded' else 'paid' end,
   'refunded_cents',refund_total,'refunded',refund_total>0,'rate_bp',rate_bp,
-  'commission_cents',coalesce(settled_commission_cents,case when pending then 0 else floor((greatest(0,amount_cents-refund_total)::numeric*rate_bp+5000)/10000)::bigint end)) from rated
+  'history_complete',exists(select 1 from private.admin_payment_history h where h.environment=p_environment and h.account_id=rated.account_id),
+  'commission_cents',greatest(coalesce(settled_commission_cents,0),case when pending or not exists(select 1 from private.admin_payment_history h where h.environment=p_environment and h.account_id=rated.account_id) then 0 else floor((greatest(0,amount_cents-refund_total)::numeric*rate_bp+5000)/10000)::bigint end)) from rated
 $$;
 revoke all on function private.native_admin_creator_lines(text) from public,anon,authenticated,service_role;
 
 create function private.native_admin_creator(p_id uuid,p_environment text) returns jsonb
 language sql stable security definer set search_path='' as $$
  select to_jsonb(c)-'discount_id'-'environment'||jsonb_build_object(
+  'history_complete',not exists(select 1 from private.native_admin_creator_lines(p_environment) where item->>'creator_id'=p_id::text and item->>'history_complete'='false'),
   'clients_count',(select count(distinct item->>'account_id') from private.native_admin_creator_lines(p_environment) where item->>'creator_id'=p_id::text),
   'sales_cents',coalesce((select sum((item->>'amount_cents')::bigint-(item->>'refunded_cents')::bigint) from private.native_admin_creator_lines(p_environment) where item->>'creator_id'=p_id::text),0),
   'earned_cents',coalesce((select sum((item->>'commission_cents')::bigint) from private.native_admin_creator_lines(p_environment) where item->>'creator_id'=p_id::text),0),
@@ -152,7 +159,7 @@ language sql stable security definer set search_path='' as $$
  with base as(select private.native_admin_account_v1(p_account,p_issuer,p_environment) data),
  grants as(select * from public.billing_access_grants where user_id=p_account and environment=p_environment and status='active' and(valid_until is null or valid_until>now())),
  sub as(select * from public.billing_subscriptions where user_id=p_account and environment=p_environment and provider='polar' and(status in('active','trialing','past_due') or cancel_at_period_end) order by updated_at desc limit 1),
- access as(select r.module,r.enabled_for_all rollout,
+ access as(select r.module,r.enabled_for_all rollout, (select data->'roles'<>'[]'::jsonb from base) role,
   exists(select 1 from grants where capability=r.module and provider='vantare' and source_type='support') individual,
   exists(select 1 from grants where capability in(r.module,'vantare.plan.pro')) plan from public.module_rollout r)
  select data||jsonb_build_object(
@@ -165,19 +172,37 @@ language sql stable security definer set search_path='' as $$
   'module_access',(select jsonb_agg(to_jsonb(access) order by module) from access),
   'reports_count',(select count(*) from public.testing_center_reports where reporter_user_id=p_account)+(select count(*) from public.testing_contributions where account_id=p_account),
   'creator_code',(select jsonb_build_object('code',c.code,'creator_id',c.creator_id,'creator_name',c.name) from private.admin_payments p join private.admin_creators c on c.discount_id=p.discount_id and c.environment=p_environment where p.account_id=p_account and p.environment=p_environment order by p.paid_at,p.payment_id limit 1),
-  'payments',coalesce((select jsonb_agg(item order by item->>'paid_at' desc) from private.native_admin_creator_lines(p_environment) where item->>'account_id'=p_account::text),'[]'::jsonb)||coalesce((select jsonb_agg(jsonb_build_object('payment_id',o.provider_order_id,'paid_at',o.created_at,'date_source','recorded_at','product','Launch Edition','period_index',1,'amount_cents',o.net_amount,'currency',o.currency,'refunded_cents',o.reported_refunded_amount,'status',o.status) order by o.created_at desc) from public.billing_orders o where o.user_id=p_account and o.environment=p_environment),'[]'::jsonb),
-  'polar_customer_url',(select case p_environment when 'sandbox' then 'https://sandbox.polar.sh/dashboard/customers/' else 'https://polar.sh/dashboard/customers/' end||provider_customer_id from public.billing_customers where user_id=p_account and environment=p_environment and provider='polar'),
+  'payments',coalesce((select jsonb_agg(item order by item->>'paid_at' desc) from private.native_admin_creator_lines(p_environment) where item->>'account_id'=p_account::text),'[]'::jsonb)||coalesce((select jsonb_agg(jsonb_build_object('payment_id',o.provider_order_id,'paid_at',o.created_at,'date_source','recorded_at','amount_basis','net','product','Launch Edition','period_index',1,'amount_cents',o.net_amount,'currency',o.currency,'refunded_cents',o.reported_refunded_amount,'status',o.status) order by o.created_at desc) from public.billing_orders o where o.user_id=p_account and o.environment=p_environment and not exists(select 1 from private.admin_payments p where p.environment=p_environment and p.payment_id=o.provider_order_id)),'[]'::jsonb),
+  'polar_customer_url',null,
   'subscriptions',coalesce((select jsonb_agg(s.provider_subscription_id) from public.billing_subscriptions s where s.user_id=p_account and s.environment=p_environment and s.provider='polar' and(s.status in('active','trialing','past_due') or s.cancel_at_period_end)),'[]'::jsonb)) from base
 $$;
 revoke all on function private.native_admin_account(uuid,text,text) from public,anon,authenticated,service_role;
 
 create function public.native_admin_execute(p_actor uuid,p_issuer text,p_action text,p_params jsonb,p_environment text)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare v_before jsonb; v_after jsonb; v_rows jsonb; v_counts jsonb; v_id text; v_status text; v_version text; v_state text; v_limit integer; v_account uuid; v_creator private.admin_creators%rowtype; v_amount bigint; v_paid_at timestamptz; v_lock record;
+declare v_before jsonb; v_after jsonb; v_rows jsonb; v_counts jsonb; v_id text; v_status text; v_version text; v_state text; v_limit integer; v_account uuid; v_creator private.admin_creators%rowtype; v_amount bigint; v_paid_at timestamptz; v_lock record; v_remaining bigint; v_applied bigint;
 begin
  perform private.native_admin_require_owner(p_actor);
  if p_environment is null or p_environment not in('sandbox','production') or p_issuer is null or p_issuer!~'^https://' or jsonb_typeof(p_params) is distinct from 'object' then
   raise exception 'native_admin_invalid' using errcode='22023'; end if;
+ if p_action='get_payment_sync' then
+  return jsonb_build_object('needs_sync',not exists(select 1 from private.admin_payment_sync where environment=p_environment) or exists(select 1 from private.admin_payments p where p.environment=p_environment and not exists(select 1 from private.admin_payment_history h where h.environment=p_environment and h.account_id=p.account_id)));
+ elsif p_action='resolve_payment_account' then
+  select user_id into v_account from public.billing_customers where provider='polar' and environment=p_environment and provider_customer_id=p_params->>'customer_id';
+  if v_account is null and p_params->>'external_id' ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' then select id into v_account from public.profiles where id=(p_params->>'external_id')::uuid; end if;
+  if v_account is null then select account_id into v_account from public.account_identities where issuer in(p_issuer,p_issuer||'/') and subject=p_params->>'external_id' order by account_id limit 1; end if;
+  return jsonb_build_object('account_id',v_account);
+ elsif p_action='sync_admin_payment' then
+  perform public.native_admin_record_payment(p_environment,p_params->'payment'); return '{}'::jsonb;
+ elsif p_action='sync_admin_refund' then
+  perform public.native_admin_record_refund(p_environment,p_params->'refund'); return '{}'::jsonb;
+ elsif p_action='finish_payment_sync' then
+  if jsonb_typeof(p_params->'account_ids') is distinct from 'array' or jsonb_array_length(p_params->'account_ids')>10000 then raise exception 'native_admin_invalid' using errcode='22023'; end if;
+  insert into private.admin_payment_history(environment,account_id) select p_environment,value::uuid from jsonb_array_elements_text(p_params->'account_ids') on conflict do nothing;
+  delete from private.admin_payment_history where environment=p_environment and account_id in(select value::uuid from jsonb_array_elements_text(coalesce(p_params->'incomplete_ids','[]'::jsonb)));
+  insert into private.admin_payment_sync values(p_environment,clock_timestamp()) on conflict(environment) do update set last_synced_at=excluded.last_synced_at;
+  return '{}'::jsonb;
+ end if;
  if p_action='search_accounts' then
   v_after:=private.native_admin_execute_v1(p_actor,p_issuer,p_action,p_params,p_environment);
   select coalesce(jsonb_agg(c-'payments'-'module_access'-'subscriptions'),'[]'::jsonb) into v_rows from jsonb_array_elements(v_after->'accounts')c;
@@ -197,10 +222,25 @@ begin
    perform pg_advisory_xact_lock(hashtextextended(p_environment||':'||v_lock.account,1627)); end loop;
   v_amount:=(p_params->>'amount_cents')::bigint; v_paid_at:=coalesce((p_params->>'paid_at')::timestamptz,clock_timestamp());
   v_before:=private.native_admin_creator(v_creator.creator_id,p_environment);
+  if v_before->>'history_complete'='false' then raise exception 'native_admin_owner_conflict' using errcode='55000'; end if;
   if v_amount is null or v_amount<=0 or v_amount>(v_before->>'payable_cents')::bigint or v_paid_at>clock_timestamp() then raise exception 'native_admin_owner_conflict' using errcode='55000'; end if;
-  update private.admin_payments p set settled_commission_cents=(q.item->>'commission_cents')::bigint,settled_creator_id=v_creator.creator_id
-   from private.native_admin_creator_lines(p_environment) q where p.environment=p_environment and p.payment_id=q.item->>'payment_id' and q.item->>'creator_id'=v_creator.creator_id::text
-    and p.paid_at<date_trunc('month',clock_timestamp() at time zone 'UTC') at time zone 'UTC' and p.settled_commission_cents is null and q.item->>'status'<>'refund_pending';
+  -- Protect exactly the money already paid, oldest eligible commission first.
+  -- Partial settlement must not freeze an unpaid line against a later refund.
+  v_remaining:=v_amount;
+  for v_lock in
+   select p.payment_id,greatest(0,(q.item->>'commission_cents')::bigint-coalesce(p.settled_commission_cents,0)) available
+   from private.native_admin_creator_lines(p_environment) q join private.admin_payments p on p.environment=p_environment and p.payment_id=q.item->>'payment_id'
+   where q.item->>'creator_id'=v_creator.creator_id::text and p.paid_at<date_trunc('month',clock_timestamp() at time zone 'UTC') at time zone 'UTC' and q.item->>'status'<>'refund_pending'
+   order by p.paid_at,p.payment_id
+  loop
+   v_applied:=least(v_remaining,v_lock.available);
+   if v_applied>0 then
+    update private.admin_payments set settled_commission_cents=coalesce(settled_commission_cents,0)+v_applied,settled_creator_id=v_creator.creator_id where environment=p_environment and payment_id=v_lock.payment_id;
+    v_remaining:=v_remaining-v_applied;
+   end if;
+   exit when v_remaining=0;
+  end loop;
+  if v_remaining<>0 then raise exception 'native_admin_owner_conflict' using errcode='55000'; end if;
   insert into private.admin_creator_payouts(creator_id,amount_cents,paid_at,actor) values(v_creator.creator_id,v_amount,v_paid_at,p_actor);
   v_after:=private.native_admin_creator(v_creator.creator_id,p_environment);
   insert into public.admin_audit_log(actor_account_id,action,target,before_value,after_value) values(p_actor,p_action,v_creator.creator_id::text,v_before,v_after);

@@ -618,9 +618,29 @@ export async function polarAdminRequest(
   environment: BillingEnvironment,
   deps: PolarClientDeps = {},
 ): Promise<Record<string, unknown>> {
+  const url = new URL(`https://local.invalid${path}`);
+  const resource = /^\/(discounts|orders|refunds)\/$/.test(url.pathname);
+  const direct = /^\/(subscriptions|organizations)\/[A-Za-z0-9_-]+$/.test(
+    url.pathname,
+  );
+  const query = [...url.searchParams];
   if (
-    environment !== "sandbox" ||
-    !/^\/(discounts\/|subscriptions\/[A-Za-z0-9_-]+)$/.test(path)
+    environment !== "sandbox" || url.hash ||
+    (method === "GET"
+      ? !(resource || direct)
+      : method === "POST"
+      ? url.pathname !== "/discounts/"
+      : !/^\/subscriptions\/[A-Za-z0-9_-]+$/.test(url.pathname)) ||
+    (method !== "GET" && query.length > 0) ||
+    query.some(([k, v]) =>
+      k === "organization_id"
+        ? !/^[0-9a-f-]{36}$/.test(v)
+        : k === "limit"
+        ? v !== "100"
+        : k === "page"
+        ? !/^[1-9][0-9]{0,2}$/.test(v)
+        : true
+    )
   ) {
     throw new PolarClientError(
       "admin_sandbox_required",

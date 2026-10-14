@@ -1,3 +1,4 @@
+import { polarPages } from "./payment-sync.ts";
 import { NativeError } from "../_shared/native-auth.ts";
 import {
   loadPolarProductMap,
@@ -28,22 +29,22 @@ export async function ensureCreatorCode(
   ) {
     throw new NativeError(503, "catalog_unavailable");
   }
-  const all = await polarAdminRequest(
+  const organization = await polarAdminRequest(
     "GET",
-    "/discounts/",
+    `/organizations/${loaded.map.organization_id}`,
     undefined,
     "sandbox",
     polar,
   );
-  if (!Array.isArray(all.items)) {
-    throw new NativeError(503, "bridge_unavailable");
-  }
-  // Fail closed on incomplete pages. Never create a duplicate after an uncertain POST.
+  const settings = organization.customer_portal_settings as {
+    subscription?: { update_plan?: boolean };
+  } | undefined;
   if (
-    !all.pagination || typeof all.pagination !== "object" ||
-    (all.pagination as Record<string, unknown>).max_page !== 1
+    organization.id !== loaded.map.organization_id ||
+    settings?.subscription?.update_plan !== false
   ) throw new NativeError(503, "catalog_unavailable");
-  const matching = all.items.filter((d) =>
+  const all = await polarPages("discounts", loaded.map.organization_id, polar);
+  const matching = all.filter((d) =>
     d && typeof d === "object" && String(d.code).toUpperCase() === code
   );
   if (matching.length > 1) throw new NativeError(409, "account_conflict");
@@ -59,7 +60,6 @@ export async function ensureCreatorCode(
         duration_in_months: 2,
         code,
         products,
-        organization_id: loaded.map.organization_id,
         metadata: {
           vantare_offer_key: `creator:${code}`,
           vantare_creator_id: id,
@@ -68,6 +68,11 @@ export async function ensureCreatorCode(
       "sandbox",
       polar,
     );
+  const metadata =
+    (discount.metadata && typeof discount.metadata === "object" &&
+        !Array.isArray(discount.metadata))
+      ? discount.metadata as Record<string, unknown>
+      : {};
   const scope = Array.isArray(discount.products)
     ? discount.products.map((p: unknown) =>
       typeof p === "string" ? p : (p as Record<string, unknown>).id
@@ -76,10 +81,15 @@ export async function ensureCreatorCode(
   if (
     typeof discount.id !== "string" ||
     discount.organization_id !== loaded.map.organization_id ||
-    discount.code !== code || discount.type !== "percentage" ||
+    String(discount.code).toUpperCase() !== code ||
+    discount.type !== "percentage" ||
     discount.basis_points !== 2000 || discount.duration !== "repeating" ||
     discount.duration_in_months !== 2 ||
-    discount.metadata?.vantare_creator_id !== id ||
+    (metadata.vantare_creator_id
+      ? metadata.vantare_creator_id !== id
+      : String(metadata.vantare_offer_key).toUpperCase() !==
+        `creator:${code}`.toUpperCase()) ||
+    discount.starts_at || discount.ends_at || discount.max_redemptions ||
     scope.length !== products.length ||
     !products.every((p) => scope.includes(p))
   ) throw new NativeError(409, "account_conflict");

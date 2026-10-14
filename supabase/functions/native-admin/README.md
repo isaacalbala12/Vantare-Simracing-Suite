@@ -1,130 +1,107 @@
-# native-admin — #1456
+# native-admin · gestión privada r1 (#1627)
 
-Edge de administración v1: OAuth Clerk verificado, cuenta no bloqueada y
-asignación `owner` activa, policy_version 1 y no caducada. El cliente nunca
-recibe service_role ni el secreto Clerk. Anónimo/OAuth inválido: 401; no
-owner/bloqueado: 403. Body JSON cerrado de 8 KiB; bearer 16 KiB; solo POST; todo
-`no-store`. Respuesta feliz `{version:1,ok:true,...}`, error
-`{version:1,ok:false,error}`. No hay eliminación de cuentas/datos ni efectos
-externos Clerk.
+OAuth Clerk y Owner vigente comprobados en Edge y otra vez en SQL. Cuenta
+bloqueada: 403. JSON cerrado de 8 KiB, bearer limitado, solo POST, `no-store`,
+presupuesto persistente de 60 peticiones/minuto por actor. El cliente no recibe
+secretos ni tiene acceso directo a tablas. No se crea Owner automáticamente.
 
-`search_accounts` también admite `query: ""`: devuelve cuentas Vantare ya
-mapeadas al issuer configurado, ordenadas por alta descendente y UUID
-descendente para desempatar. `limit` 1–50 y `cursor` UUID opcional;
-`next_cursor` es null en la última página. No crea cuentas ni consulta todo el
-directorio de Clerk. La búsqueda con texto conserva el contrato anterior; no
-admite cursor y devuelve hasta 50 coincidencias. Para el listado vacío, la
-migración `20261005160000_native_admin_account_pages.sql` debe preceder al
-despliegue Edge.
+Aplicar las migraciones existentes y `20261014010000_native_admin_r1.sql` antes
+de usar este cliente. Contrato v1 ampliado, conservando las acciones anteriores:
 
-Cada petición registra `native_admin_timing` con acción, duración total y fases
-(OAuth, perfil actor, resolución, permiso/presupuesto, búsqueda Clerk, RPC y
-enriquecimiento), sin datos personales ni credenciales. El perfil del actor se
-reutiliza para enriquecer su detalle, sin omitir la validación de bloqueo/owner.
-No se cachea la autenticación ni la revocación de OAuth.
+| Acción | Campos | Resultado |
+| --- | --- | --- |
+| `search_accounts` | `query` vacío o ≤200 bytes, `limit` 1–50, `cursor?` | cuentas, `counts` globales, `next_cursor` |
+| `get_account` | `account_id` | cuenta, plan, bloqueo, permisos y pagos |
+| `set_tester` | `account_id`, `enabled` | ACK; releer cuenta |
+| `set_module` | `account_id`, `module`, `enabled` | modifica solo el acceso individual |
+| `get_rollout` / `set_rollout` | ninguno / `module`, `enabled_for_all` | módulos, accesos individuales y total de cuentas |
+| `list_reports` / `get_report` | `status?`, `limit?`, `cursor?` / `report_id` | informes actuales e históricos; detalle y capturas firmadas |
+| `set_report_status` | `report_id`, `status`, `fixed_in_version?`, `reason?` | ACK; releer informe |
+| `set_blocked` | `account_id`, `blocked`, `reason?` ≤200 caracteres | bloqueo local + Clerk + cancelación Polar |
+| `delete_account` | `account_id`, `confirm_email` | contrato preparado; borrado pendiente de #1622 |
+| `list_creators` / `get_creator` | ninguno / `creator_id` | creadores, totales, líneas y `history_complete` |
+| `create_creator` | `name` ≤120, `email` ≤320, `code` `[A-Z0-9]{3,32}` | reserva local y código Polar confirmado |
+| `record_creator_payout` | `creator_id`, `amount_cents`, `paid_at?` | apunta pago manual, no transfiere dinero |
 
-| Acción              | Campos además de version/action                          | Resultado                                                                                |
-| ------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `search_accounts`   | `query` (1–200 bytes), `limit` opcional 1–50, defecto 50 | `accounts:[{account_id,email,name,created_at,last_seen_at,roles,modules,reports_count}]` |
-| `get_account`       | `account_id` UUID                                        | `account:{...}`                                                                          |
-| `set_tester`        | `account_id`, `enabled` boolean                          | `account_id,enabled`                                                                     |
-| `set_module`        | `account_id`, `module`, `enabled` boolean                | `account_id,module,enabled`                                                              |
-| `get_rollout`       | Ninguno                                                  | `rollout:[{module,enabled_for_all,updated_at}]`                                          |
-| `set_rollout`       | `module`, `enabled_for_all` boolean                      | `rollout:{...}`                                                                          |
-| `list_reports`      | `status?`, `limit?` 1–100 defecto 100, `cursor?`         | `reports:[...],next_cursor`                                                              |
-| `get_report`        | `report_id` (1–256 bytes)                                | `report:{...,payload,screenshots:[{evidence_id,media_type,position,url,expires_at}]}`    |
-| `set_report_status` | `report_id`, `status`                                    | `report_id,status`                                                                       |
+Búsquedas: solo cuentas ya vinculadas al issuer; no crea destinos ni une por
+correo. Los filtros de Personas se aplican a la página cargada, con recuentos
+SQL globales. Revocar acceso individual conserva acceso por plan, rol o rollout.
 
-Módulos: `vantare.module.analysis`, `.calendar`, `.engineer`, `.strategy`.
-Estados: `draft`, `submitted`, `validated`, `duplicate_linked`, `incomplete`,
-`closed` (los del esquema existente). Cambiar estado no lanza triage, agentes,
-promociones ni altera el estado de una issue técnica asociada. `list_reports`
-ordena por `report_id` ascendente; el cursor es el último ID devuelto,
-exclusivo. Puede devolver una página final vacía. Cada fila contiene
-`report_id,account_id,email,name,last_seen_at,status,created_at,module,app_version,
-action_text,expected_text,observed_text,context_text,has_screenshots`.
+Informes: `submitted`, `in_review`, `validated`, `rejected`, `fixed` son los cinco
+estados visibles nuevos; se conserva lectura de estados históricos. Draft no se
+lista. Arreglado exige aceptación previa y versión de release. La actualización
+usa los triggers y `testing_report_followup` existentes: avisos y descuentos de
+testers conservan su flujo. Capturas privadas `ready`, firmadas durante 600 s.
 
-Correo/nombre/último login provienen de Clerk Backend `/v1/users`; se agrupan
-los IDs en una consulta. La búsqueda filtra correo/nombre y devuelve solo
-mappings existentes del issuer configurado: nunca crea cuentas destino ni une
-por email. Las cuentas legacy sin mapping Clerk conservan
-`email/name/last_seen_at=null`. `created_at` es la creación del perfil interno.
-`modules` muestra acceso efectivo (grant individual, rollout u operativo).
-Revocar un grant individual no vence un rollout global ni owner/tester; las
-credenciales ya firmadas requieren renovación.
+## Efectos externos y recuperación
 
-`set_tester` actualiza rol operativo y membership del canal testers en **una**
-transacción. Usa `operational_access_set` existente; conserva owner, incluso al
-desactivar tester. Un owner vivo sigue pudiendo reportar como owner. Un owner
-activo pero caducado no se sustituye: 409 `account_conflict` al intentar
-conceder tester; el operador debe resolver su rol por el procedimiento operativo
-existente. Conceder tester reemplaza nightly_tester según la exclusividad del
-esquema.
+**Candidato limitado a sandbox.** Crear códigos, bloquear y preparar borrado
+rechazan `production` antes de escribir. El transporte nuevo fija el host
+`sandbox-api.polar.sh`, rechaza redirects y no reintenta escrituras. Sin pruebas
+contra SaaS real ni despliegue en este encargo.
 
-La migración `20261003201000_native_admin.sql` añade un rate budget persistente
-de **60 peticiones/minuto UTC por actor**, reservado antes de consultar el
-directorio o firmar capturas. La verificación owner se repite dentro de la RPC
-de ejecución y se bloquea su asignación durante la transacción. Los rechazos
-OAuth dependen además de los límites de Clerk/gateway. No hay cola ni scheduler.
+Bloquear persiste primero el bloqueo Vantare; el resolver común de identidad
+rechaza nuevas autorizaciones/licencias. Después Clerk `ban` y cancelación
+inmediata Polar de las suscripciones registradas. Se verifica el ACK y se acepta
+una suscripción ya cancelada al repetir. Un fallo posterior al bloqueo devuelve
+`account_change_incomplete`: actualizar y repetir para terminar; no se afirma
+que Polar quedó cancelado. Desbloquear no reactiva suscripciones. Credenciales
+ya emitidas conservan los límites de caducidad existentes.
 
-Cada acción ejecutada (incluidas lecturas) escribe `admin_audit_log` con actor,
-acción, objetivo, antes/después y timestamp. Los cambios y la auditoría
-confirman juntos: si falla el registro, se revierte la mutación. Para tester se
-guardan asignación y membership; para módulos, las filas de grant, incluso si el
-acceso efectivo no cambia por rollout. Auditoría append-only, RLS, escritura
-únicamente desde RPC security-definer y EXECUTE solo service_role. Lecturas
-masivas dejan el snapshot de resultados en auditoría privada; incluye texto de
-los reportes. Si Clerk/Storage falla después de leer/auditar SQL, el HTTP da 503
-y la lectura ya queda auditada; no se presenta como acción satisfactoria al
-cliente.
+Owner y propia cuenta protegidos en servidor. Borrar compara correo normalizado
+con el correo actual obtenido de Clerk, no con un valor aportado por el cliente.
+Incorrecto: 422. Correcto: `deletion_barrier_unavailable` sin efectos. La base
+`b9ec75ed` carece de la barrera de #1622: el orquestador la conectará tras su
+revisión. No se sustituye borrado por un ban.
 
-Capturas: solo evidencias `ready` ligadas al reporte, bucket privado existente
-`testing-center-evidence`. URLs firmadas por 600 s; no se devuelven rutas
-internas. Se admite el máximo histórico de 10 al consultar, aunque el cliente
-beta adjunta como máximo 3. Esta función no valida bytes ni sustituye
-prepare/upload/finalize/attach.
+Los códigos reservan identidad estable y se reconcilian tras perder un ACK.
+Descuento 20 %, dos meses, exactamente los cuatro productos de lanzamiento.
+Organización verificada mediante GET (OAT: no `organization_id` en POST), portal
+sin cambio de plan. Se rechazan códigos ajenos o de alcance distinto. Se admite
+adoptar un código anterior identificado por `vantare_offer_key: creator:CODE`.
 
-## Despliegue exacto — orquestador, tras autorización
+## Recibos y comisiones
 
-Prerrequisitos: #909, `native_license_bridge`, #1451 `module_rollout`, y
-`20261003200000_native_account_data.sql`. **No** se crea owner automáticamente.
-Tiene que existir una asignación owner vigente mediante el flujo administrativo
-anterior. Reutilizar `CLERK_SECRET_KEY`, `CLERK_NATIVE_CLIENT_ID`,
-`CLERK_ISSUER`, `POLAR_ENVIRONMENT` (`production` o `sandbox`) y las variables
-Edge integradas `SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY`. Esta función no
-necesita signing key de datos ni Ed25519. No se leyeron los secretos existentes.
+Proyección privada de órdenes/refunds firmados del webhook. Para cuentas sin
+historia certificada se lee el historial completo de sandbox: páginas acotadas,
+identidades existentes, sin crear cuentas. Una vez completo se usa el ledger,
+sin volver a consultar Polar por caducidad de caché. La lectura histórica no
+concede licencias ni sustituye los ledgers comerciales existentes. El espejo de
+Launch Edition nunca consume su ruta BIL-07 de revocación tras reembolso.
 
-```powershell
-# Desde raíz Git, SHA revisado. Ref beta explícita, no project_id histórico.
-supabase link --project-ref olhwhfaczmrmooeaoqqf
-supabase db push --linked --dry-run
-# Continuar SOLO si el inventario contiene el conjunto previamente autorizado.
-supabase db push --linked
-deno run --config supabase/functions/deno.json --allow-read supabase/functions/scripts/verify-deploy-surface.ts
-supabase functions deploy native-admin --project-ref olhwhfaczmrmooeaoqqf --no-verify-jwt
+Céntimos EUR enteros: total tras descuento e impuestos; refund incluye impuesto.
+La fecha histórica es la fecha de factura (`created_at`), pues la API de órdenes
+no ofrece `paid_at`; no demuestra fecha de liquidación bancaria. Las órdenes con
+saldo aplicado, divisa/producto desconocido o campos incompletos dejan la cuenta
+sin certificar y bloquean el pago manual. Pendientes de reembolso no se liquidan.
+La primera compra pagada fija creador; cohortes por aniversario mensual UTC:
+30 % mes 1, 10 % meses 2–12, 0 % desde mes 13. Igual para cobro anual, sin
+prorratear. Redondeo half-up por línea. Los registros legacy netos se identifican
+como tales, con fecha de registro; no se inventan impuestos ni enlace de cliente.
+
+Solo se apunta saldo de meses UTC cerrados, >0 y ≤ disponible, con bloqueo
+transaccional frente a recibos/refunds. Se distribuye el pago por antigüedad y
+se protege exactamente la comisión pagada, incluso si una línea se pagó a medias.
+Un refund posterior reduce solo lo aún no pagado. Payout append-only, auditoría
+de antes/después; no se envía dinero. Esto no ejecuta un cierre automático ni
+reconstruye la situación de un cierre histórico anterior al registro manual.
+
+## Verificación local
+
+Desde raíz Git, sin permisos de red y con cachés ya instaladas:
+
+```sh
+deno test --config supabase/functions/deno.json --cached-only --allow-env --allow-read --allow-write=/tmp supabase/functions
+python3 supabase/tests/run-admin-local.py --output /ruta/fuera-del-repo --test native_admin.test.sql --test native_admin_reports_r1.test.sql --test native_admin_accounts_r1.test.sql --test native_admin_creators_r1.test.sql --test native_admin_payments_r1.test.sql --test native_admin_months_r1.test.sql
 ```
 
-Si falta una variable, configurarla mediante el procedimiento seguro del
-orquestador y autorización propia, sin imprimir/copiar valores. Config
-versionada: `[functions.native-admin] verify_jwt=false`. Allowlist TS/PowerShell
-reconoce las dos funciones nuevas, pero el wrapper comercial no las despliega
-por defecto. No se cambió el workflow ni se ejecutó ninguno de estos comandos
-remotos.
+Runner: PostgreSQL Supabase desechable, Docker `--network none`, sin puertos,
+todas las migraciones reales y bootstrap sintético auth/storage. Comprueba TAP,
+no solo exit de psql. Fakes Clerk/Polar en Edge. RED y GREEN en
+`~/evidence/1627/`. Variables existentes: configuración pública OAuth, secretos
+Edge ya establecidos, `POLAR_ENVIRONMENT`, `POLAR_ACCESS_TOKEN`, mapa Polar;
+solo se usan nombres, no valores reales. Despliegue, secretos, QA de OAuth y
+webhooks reales quedan al orquestador tras revisión y autorización propias.
 
-## Verificación
-
-```powershell
-deno test --config supabase/functions/deno.json --allow-env --allow-read supabase/functions
-supabase test db supabase/tests/native_admin.test.sql
-```
-
-Upgrade desechable: aplicar hasta #1451, cargar
-`supabase/tests/native_account_data_upgrade_seed.sql`, aplicar las dos nuevas
-migraciones, ejecutar `native_account_data_upgrade.test.sql` y
-`native_admin.test.sql`. Examinar plan pgTAP y ausencia de `not ok`; psql por sí
-solo no convierte aserciones fallidas en exit no cero. Se probaron localmente
-clean/upgrade, rechazo no-owner/caducado, acciones felices, snapshots, FKs,
-preservación owner, rate limit y rollback de rol/membership ante fallo de
-auditoría. Los tests Deno cubren Clerk/Storage inyectados y límites del
-protocolo. Falta QA real autorizada de owner, directorio Clerk y URLs Storage
-tras desplegar.
+Referencias API: [órdenes](https://polar.sh/docs/api-reference/orders/list),
+[orden e importes](https://polar.sh/docs/api-reference/orders/get).

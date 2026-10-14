@@ -3,7 +3,7 @@ import subprocess,time,re
 import argparse
 args=argparse.ArgumentParser()
 args.add_argument('--output', type=Path, required=True)
-args.add_argument('--test', default='native_admin.test.sql')
+args.add_argument('--test', action='append')
 opts=args.parse_args()
 root=Path(__file__).resolve().parents[2]
 out=opts.output
@@ -42,8 +42,12 @@ try:
   try: (out/('baseline-'+f.name+'.log')).write_text(sql(f.read_text(),'supabase_admin' if f.name=='20261010001000_visual_roadmap_clickup.sql' else 'postgres'))
   except Exception as e:
    (out/('baseline-'+f.name+'.log')).write_text(str(e)); raise
- f=root/'supabase/tests'/opts.test
- result=sql(f.read_text()); (out/'result.tap').write_text(result)
- if re.search(r'^not ok|^# Looks like',result,re.M): raise RuntimeError('pgTAP failure')
- print('PASS SQL local',len(re.findall(r'^ok [0-9]+',result,re.M)),'pgTAP checks')
+ total=0
+ for test in opts.test or ['native_admin.test.sql']:
+  f=root/'supabase/tests'/test
+  result=sql(f.read_text()); (out/(f.stem+'.tap')).write_text(result)
+  if re.search(r'^not ok|^# Looks like',result,re.M): raise RuntimeError('pgTAP failure: '+test)
+  count=len(re.findall(r'^ok [0-9]+',result,re.M)); total+=count
+  print('PASS SQL local',test,count,'pgTAP checks',flush=True)
+ print('TOTAL',total,'pgTAP checks')
 finally: run(['docker','rm','-f',name])

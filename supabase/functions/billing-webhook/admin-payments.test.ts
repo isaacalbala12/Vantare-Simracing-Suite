@@ -35,6 +35,7 @@ Deno.test("subscription order becomes an attributable admin receipt through the 
       tax_amount: 55,
       currency: "eur",
       refunded_amount: 0,
+      refunded_tax_amount: 0,
       discount_id: "discount-test",
     },
   });
@@ -71,6 +72,7 @@ Deno.test("subscription refund events update the admin projection without revoki
         id: "refund-test",
         order_id: "order-test",
         amount: 159,
+        tax_amount: 0,
         currency: "eur",
         status: "pending",
         modified_at: "2026-09-02T00:00:00Z",
@@ -79,4 +81,30 @@ Deno.test("subscription refund events update the admin projection without revoki
     { supabase, loadMap: () => mapping },
   );
   assert(result.status === "processed" && persisted);
+});
+
+Deno.test("admin commission refunds include VAT paid back to the customer", async () => {
+  const mapping = loadPolarProductMap(VALID_POLAR_PRODUCT_MAP_JSON, {
+    environment: "sandbox",
+  });
+  assert(mapping.ok);
+  const supabase = {
+    rpc: (_name: string, args: Record<string, unknown>) => {
+      assert((args.p_refund as Record<string, unknown>).amount_cents === 319);
+      return Promise.resolve({ data: true, error: null });
+    },
+  } as unknown as SupabaseClient;
+  const result = await applyPolarWebhookEvent({
+    type: "refund.updated",
+    data: {
+      id: "refund-tax",
+      order_id: "order-test",
+      amount: 264,
+      tax_amount: 55,
+      currency: "eur",
+      status: "succeeded",
+      modified_at: "2026-09-03T00:00:00Z",
+    },
+  }, { supabase, loadMap: () => mapping });
+  assert(result.status === "processed");
 });

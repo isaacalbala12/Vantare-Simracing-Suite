@@ -1,3 +1,40 @@
+## #1627 · VANTA-21 · miniapp de gestión r1 (14/10/2026)
+
+Worker Codex macOS arm64, sin subagentes/GitHub/push. Rama
+`vantareapp/isa-1627-miniapp-gestion`, base nightly local `b9ec75ed5435fb95130946cd207a4fa1ce8b8a64`.
+Issue #1627 leída de `~/orq/1627.issue.md`; diseño aprobado `admin-r1.html` y
+`datos-necesarios.md` §9 son el plan. Project Vantare. Seguimiento GitHub/PR/CI al
+orquestador; no se verificaron remotos ni se obtuvo nightly por autorización del
+encargo sin GitHub. Commits y HEAD exactos en `~/orq/1627.buzon.md`.
+
+Backend: informes actuales e históricos, nuevos estados/followup, bloqueo privado
+que cierra nuevas autorizaciones, ban Clerk y cancelación Polar recuperable,
+creadores/códigos API y ledger de comisiones mensual. Efectos externos nuevos
+limitados a sandbox. Owner protegido en SQL/Edge. Correo de borrado comprobado
+contra Clerk; correo correcto falla cerrado sin efectos: **#1622 sigue pendiente
+y no está conectado**. No hay RPC de borrado en esta base que se pueda reutilizar.
+
+Comisiones: céntimos cobrados tras descuento/impuestos, refunds incluyen impuesto;
+30 % mes 1, 10 % mes 2–12 por aniversario, también anual; mes 13 cero. Pago manual
+solo sobre meses UTC cerrados. Protege exactamente lo ya pagado por línea; no
+reclama pagos anteriores ni congela comisiones pendientes. Historial incompleto
+bloquea pago. Carga inicial de historia Polar sandbox si falta; después ledger
+sin lecturas remotas por mero vencimiento de caché. Detalles y limitaciones en
+`supabase/functions/native-admin/README.md`.
+
+Miniapp: cuatro pantallas + entrar, fichas y confirmaciones, estados de carga,
+vacío/error, sesión aislada del Hub en Mac/Windows. GPUI y servicios existentes,
+sin dependencias nuevas. QA demo y empaquetado privados locales; capturas y gates
+en `~/evidence/1627/`. Último hito SQL: 100 PASS; Edge focal 265 PASS/1 omitido;
+Nextest admin/services: 153 PASS. Se conservan fallos iniciales y evidencia RED.
+La entrega final completará comparación visual, checks y límites en
+`~/evidence/1627/RESUMEN.md`; no se afirma QA real de OAuth/Clerk/Polar/Windows.
+
+Sin merge, push, PR, promoción, release, despliegue ni efectos sobre datos reales.
+Siguiente: revisar diff y evidencias, recoger rama local, validar Windows; conectar
+borrado cuando #1622 se apruebe. Cualquier activación en producción necesita otro
+encargo explícito; este candidato la rechaza para los efectos nuevos.
+
 ## #1620 / PR #1621 · lanzamiento sin trial, decisión B (14/10/2026)
 
 Encargo explícito al worker Codex macOS arm64; base limpia `c6739de8`, rama

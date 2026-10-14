@@ -14,13 +14,17 @@ import {
 } from "../native-account-authorize/testdata/auth.ts";
 
 function deps(overrides: AdminDeps = {}): AdminDeps {
+  const execute = overrides.execute ?? (() => Promise.resolve({}));
   return {
     ...authDeps(),
     environment: "production",
     resolve: () => Promise.resolve(account),
     begin: () => Promise.resolve(true),
-    execute: () => Promise.resolve({}),
     ...overrides,
+    execute: (...args) =>
+      args[2] === "get_payment_sync"
+        ? Promise.resolve({ needs_sync: false })
+        : execute(...args),
   };
 }
 const module = "vantare.module.engineer";
@@ -486,8 +490,13 @@ Deno.test("r1: blocking persists before Clerk ban and cancels sandbox subscripti
           assert(
             String(url) ===
                 "https://sandbox-api.polar.sh/v1/subscriptions/subscription-test" &&
-              init?.method === "DELETE",
+              ["GET", "DELETE"].includes(String(init?.method)),
           );
+          if (init?.method === "GET") {
+            return Promise.resolve(
+              Response.json({ id: "subscription-test", status: "active" }),
+            );
+          }
           calls.push("cancel");
           return Promise.resolve(
             Response.json({ id: "subscription-test", status: "canceled" }),
@@ -668,6 +677,16 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
     polar: {
       getAccessToken: () => "fake",
       fetchFn: (_url, init) => {
+        if (String(_url).includes("/organizations/")) {
+          return Promise.resolve(
+            Response.json({
+              id: map.organization_id,
+              customer_portal_settings: {
+                subscription: { update_plan: false },
+              },
+            }),
+          );
+        }
         if (init?.method === "GET") {
           return Promise.resolve(
             Response.json({
@@ -677,7 +696,12 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
           );
         }
         created++;
-        stored = { ...JSON.parse(String(init?.body)), id: "discount-created" };
+        assert(!("organization_id" in JSON.parse(String(init?.body))));
+        stored = {
+          ...JSON.parse(String(init?.body)),
+          id: "discount-created",
+          organization_id: map.organization_id,
+        };
         return Promise.resolve(Response.json(stored));
       },
     },
@@ -700,4 +724,216 @@ Deno.test("r1: miniapp creates a scoped Polar discount and retries it without du
       (stored as Record<string, unknown> | null)?.basis_points === 2000 &&
       (stored as Record<string, unknown> | null)?.duration_in_months === 2,
   );
+});
+
+Deno.test("r1: first read synchronizes historical invoices and refunds before showing creator debt", async () => {
+  const map = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON) as PolarProductMap;
+  const writes: Record<string, unknown>[] = [];
+  let finished = false;
+  const actorDeps = deps({
+    environment: "sandbox",
+    productMap: map,
+    polar: {
+      getAccessToken: () => "fake",
+      fetchFn: (url) => {
+        const path = new URL(String(url)).pathname;
+        if (path.includes("organizations")) {
+          return Promise.resolve(Response.json({ id: map.organization_id }));
+        }
+        if (path.includes("refunds")) {
+          return Promise.resolve(Response.json({
+            items: [{
+              id: "refund-old",
+              order_id: "order-old",
+              amount: 264,
+              tax_amount: 55,
+              currency: "eur",
+              status: "succeeded",
+              modified_at: "2026-09-20T00:00:00Z",
+            }],
+            pagination: { max_page: 1, total_count: 1 },
+          }));
+        }
+        assert(path.includes("orders"));
+        return Promise.resolve(Response.json({
+          items: [{
+            id: "order-old",
+            customer_id: "customer-old",
+            product_id: map.checkout_keys.pro_monthly!.polar_product_id,
+            subscription_id: "sub-old",
+            status: "refunded",
+            paid: true,
+            created_at: "2026-08-31T00:00:00Z",
+            modified_at: "2026-09-20T00:00:00Z",
+            total_amount: 319,
+            refunded_amount: 264,
+            refunded_tax_amount: 55,
+            currency: "eur",
+            applied_balance_amount: 0,
+            discount_id: "discount-old",
+          }],
+          pagination: { max_page: 1, total_count: 1 },
+        }));
+      },
+    },
+  });
+  actorDeps.execute = (_a, _i, action, params) => {
+    if (action === "get_payment_sync") {
+      return Promise.resolve({ needs_sync: true });
+    }
+    if (action === "resolve_payment_account") {
+      return Promise.resolve({ account_id: target });
+    }
+    if (action === "sync_admin_payment") {
+      writes.push(params.payment as Record<string, unknown>);
+      return Promise.resolve({});
+    }
+    if (action === "sync_admin_refund") {
+      assert((params.refund as Record<string, unknown>).amount_cents === 319);
+      return Promise.resolve({});
+    }
+    if (action === "finish_payment_sync") {
+      assert((params.account_ids as string[])[0] === target);
+      finished = true;
+      return Promise.resolve({});
+    }
+    assert(action === "list_creators" && finished);
+    return Promise.resolve({ creators: [], totals: {} });
+  };
+  const response = await handleNativeAdmin(
+    request({ version: 1, action: "list_creators" }),
+    actorDeps,
+  );
+  assert(
+    response.status === 200 && writes.length === 1 &&
+      writes[0].refunded_cents === 319 &&
+      writes[0].paid_at === "2026-08-31T00:00:00Z",
+  );
+});
+Deno.test("r1: incomplete Polar pagination never certifies payment history or records a payout", async () => {
+  let finalized = false;
+  const map = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON) as PolarProductMap;
+  const actorDeps = deps({
+    environment: "sandbox",
+    productMap: map,
+    polar: {
+      getAccessToken: () => "fake",
+      fetchFn: (url) =>
+        Promise.resolve(
+          Response.json(
+            String(url).includes("organizations")
+              ? { id: map.organization_id }
+              : { items: [], pagination: { max_page: 101 } },
+          ),
+        ),
+    },
+  });
+  actorDeps.execute = (_a, _i, action) => {
+    if (action === "get_payment_sync") {
+      return Promise.resolve({ needs_sync: true });
+    }
+    finalized = true;
+    throw Error("must not finish or pay");
+  };
+  const response = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "record_creator_payout",
+      creator_id: target,
+      amount_cents: 1,
+    }),
+    actorDeps,
+  );
+  assert(response.status === 503 && !finalized);
+});
+
+Deno.test("r1: duplicated pages cannot certify historical invoices", async () => {
+  const { polarPages } = await import("./payment-sync.ts");
+  let rejected = false;
+  try {
+    await polarPages("orders", "00000000-0000-4000-8000-000000001627", {
+      getAccessToken: () => "fake",
+      fetchFn: () =>
+        Promise.resolve(
+          Response.json({
+            items: [{ id: "same-order" }],
+            pagination: { max_page: 2 },
+          }),
+        ),
+    });
+  } catch {
+    rejected = true;
+  }
+  assert(rejected);
+});
+Deno.test("r1: foreign organization or editable portal cannot create creator codes", async () => {
+  const { ensureCreatorCode } = await import("./creator-code.ts");
+  const map = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON) as PolarProductMap;
+  for (
+    const organization of [
+      {
+        id: "another-organization",
+        customer_portal_settings: { subscription: { update_plan: false } },
+      },
+      {
+        id: map.organization_id,
+        customer_portal_settings: { subscription: { update_plan: true } },
+      },
+    ]
+  ) {
+    let writes = 0, rejected = false;
+    try {
+      await ensureCreatorCode(target, "CARLOSGT", map, {
+        getAccessToken: () => "fake",
+        fetchFn: (_url, init) => {
+          if (init?.method !== "GET") writes++;
+          return Promise.resolve(Response.json(organization));
+        },
+      });
+    } catch {
+      rejected = true;
+    }
+    assert(rejected && writes === 0);
+  }
+});
+Deno.test("r1: blocking retry accepts an already canceled Polar subscription", async () => {
+  let deletes = 0;
+  const response = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "set_blocked",
+      account_id: target,
+      blocked: true,
+    }),
+    deps({
+      environment: "sandbox",
+      execute: (_a, _i, action) =>
+        Promise.resolve(
+          action === "get_account"
+            ? {
+              account: {
+                account_id: target,
+                clerk_subject: subject,
+                owner: false,
+                subscriptions: ["subscription-test"],
+              },
+            }
+            : {},
+        ),
+      fetch: (url, init) =>
+        String(url).endsWith("/ban")
+          ? Promise.resolve(Response.json(user))
+          : authDeps().fetch!(url, init),
+      polar: {
+        getAccessToken: () => "fake",
+        fetchFn: (_url, init) => {
+          if (init?.method === "DELETE") deletes++;
+          return Promise.resolve(
+            Response.json({ id: "subscription-test", status: "canceled" }),
+          );
+        },
+      },
+    }),
+  );
+  assert(response.status === 200 && deletes === 0);
 });

@@ -1,3 +1,76 @@
+## #1608 · Cierre comercial ronda 2 (14/10/2026)
+
+Review `C:/tmp/ola2/review-1622-sol.md` leída entera: **dos P1 confirmados;
+ningún P2/P3 adicional confirmado**. Se corrigen ambos upgrades en la misma
+rama `vantareapp/isa-1608-cierre-comercial`, PR draft [#1622](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1622)
+a nightly; arranque limpio `76c1b948`, base `e5c90be5`. No se cambia Rust,
+Functions, precios, despliegue, dependencias ni datos reales.
+
+| Hallazgo | RED exacto con datos anteriores | Corrección / GREEN |
+| --- | --- | --- |
+| P1-1 · issuer histórico con slash | El resolver basal recupera A; después del upgrade el canónico crea B y user.deleted deja PII, compra y alias de A activos. **10/18 aserciones fallan**; otro fixture de canonical/slash con UUID distintos pasa la migración indebidamente. | `a0db4d98`: B03 backfillea el vínculo canónico al UUID original sin borrar aliases. **18/18 PASS**: UUID, compra, RLS, tombstone, PII, Storage y otro issuer. Conflicto **23505** aborta la transacción; **4/4 PASS** prueban historial/perfiles intactos y rollback. |
+| P1-2 · refunds históricos sin bloque | Compras de 3000 con refund succeeded parcial de 1000, pending y agregado positivo anteriores al PR conservan grants/read model activos, también después de refresh. **14/26 aserciones fallan**. | `d6e3caf5`: B02 proyecta todos los agregados/refunds del ledger y refresca usuarios bloqueados antes del commit. **26/26 PASS**, sin evento/sync adicional; otra compra/suscripción/entorno, failed/canceled, IDs/hashes y grants base conservados. Cancelación posterior válida restaura solo su fuente. |
+
+Las fixtures se insertan **antes de B03/B01/B02**, usando el esquema y las
+RPC de la base; no simulan historial insertando filas tras el upgrade. B03
+conserva los aliases admitidos por el resolver anterior (origen exacto o su
+variante con un slash) y rechaza su ambigüedad antes del cutover. No fusiona
+UUIDs ni inventa vínculos entre instancias/subjects. B02 conserva atribución
+por UUID/entorno/fuente y toma estados/versiones/hashes directamente de órdenes
+y refunds. No fabrica payment/refund/subscription IDs ni cambia paid-through.
+Los writers de orders/refunds/grants quedan serializados hasta commit para
+publicar juntos restricciones y read model; el scheduler permanece inerte.
+
+### Gates nuevos y reproducción
+
+Código probado `d6e3caf57dc9ca1ce7dc4771df1405a11b3f8d1b`:
+**551 Deno PASS/0 FAIL/1 ignored histórico**, con tipos; **317 pgTAP PASS**
+existentes y **48 de upgrade PASS (18+4+26)**, total **365**.
+JWT del handler real → PostgREST loopback: reset propio204 y nueve denegaciones,
+borrado invalida bearer previo. Ed25519 nativo verificado leyendo SQL real:
+Pro refundado excluido, Launch independiente conservado. Calidad/retirada456,
+guarda de superficies de deploy, check de los dos scripts HTTP y diff--check
+PASS. Diff completo revisado; código anterior y commits por bloqueo preservados.
+
+Desde la raíz Git, repetir la suite Deno y los upgrades aislados:
+
+```powershell
+deno test --cached-only --no-lock --allow-all --config supabase/functions/deno.json supabase/functions
+wsl --exec python3 /mnt/c/tmp/1608-cierre-comercial/supabase/tests/run-commercial-local.py --pg-bin /usr/lib/postgresql/18/bin --output /mnt/c/tmp/1608-comercial-r2/recheck-identity --upgrade identity
+wsl --exec python3 /mnt/c/tmp/1608-cierre-comercial/supabase/tests/run-commercial-local.py --pg-bin /usr/lib/postgresql/18/bin --output /mnt/c/tmp/1608-comercial-r2/recheck-conflict --upgrade identity-conflict
+wsl --exec python3 /mnt/c/tmp/1608-cierre-comercial/supabase/tests/run-commercial-local.py --pg-bin /usr/lib/postgresql/18/bin --output /mnt/c/tmp/1608-comercial-r2/recheck-refunds --upgrade refunds
+```
+
+El runner sin `--upgrade` ejecuta las 317 aserciones existentes; añadir
+`--postgrest-bin` y `--deno-bin` con las herramientas locales para el gate
+HTTP/Ed25519. Nunca acepta DSN externo; usa cluster/puerto nuevos y lo detiene
+incluso ante fallo. Logs RED/GREEN y gates en `C:/tmp/1608-comercial-r2/`.
+Primeras fixtures P1-1 tenían un subject corto y un ANY mal formado: errores
+conservados, corregidos **antes del RED válido**. Check auxiliar falló primero
+por flag Deno retirado y después por `--no-remote`; se corrigió la invocación
+sin cambiar fuentes, lock o dependencias. Gates finales anteriores son nuevos,
+no herencia del HEAD revisado ni de #1615.
+
+### Estado y límites de esta ronda
+
+Handoff/issue actualizados tras cada hallazgo; Plane VANTA-16/17/15 En curso
+durante ejecución y Por revisar al publicar. GitHub #1608 OPEN/in-review,
+area:plataforma, Project Vantare, sin milestone. Commit documental posterior;
+HEAD/push/PR/CI y timestamp finales se verifican en issue y buzón.
+Solo rama de issue con draft; sin merge/promoción/release/producción,
+Clerk/Polar/Storage reales, secretos/dependencias nuevas o compras/refunds reales.
+Rust fmt/check/Clippy/Nextest/lifecycle/telemetría y lint TS omitidos en esta
+ronda: solo SQL, runner Python y documentación; ningún cambio nativo/TS.
+Clerk/OAuth/datos monetarios son fixtures; PostgreSQL/PostgREST/firma reales y
+locales. Configurar confianza/desplegar/aceptar datos reales sigue separado.
+
+Riesgos: aliases de UUID distintos requieren resolver el conflicto antes de
+aplicar B03; la migración aborta sin destruir historial. B02 bloquea writers
+durante el backfill: duración/volumen de datos reales no medidos aquí. Solo se
+convierte evidencia persistida; no se reconstruyen eventos o enlaces de
+suscripción ausentes mediante inferencias. Queda review independiente del nuevo
+SHA y CI; estas correcciones locales no autorizan venta.
+
 ## #1608 · Cierre comercial B03 → B01 → B02 (14/10/2026)
 
 Encargo explícito de Isaac: implementar los tres planes en rama nueva, solo

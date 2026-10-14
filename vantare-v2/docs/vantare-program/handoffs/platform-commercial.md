@@ -2,7 +2,8 @@
 
 Review independiente `C:/tmp/ola2/review-1622-sol.md` completa: dos P1 de
 datos históricos, ningún P2/P3 adicional confirmado. Misma rama/PR draft
-#1622 y base `e5c90be5`; inicio limpio `76c1b948`. VANTA-16/17/15 En curso.
+#1622 y base `e5c90be5`; inicio limpio `76c1b948`. VANTA-16/17/15 En curso
+durante ejecución, Por revisar al cierre por escritura/lectura en issue/buzón.
 P1-1 RED de upgrade: 10/18 aserciones fallan (UUID/compras/PII/tombstone/Storage)
 y la migración acepta aliases de UUID distintos. B03 añade el vínculo canónico
 al UUID original sin borrar aliases; conflicto 23505 aborta toda la transacción.
@@ -17,6 +18,16 @@ otra compra/suscripción/entorno y failed/canceled permanecen. Regresión
 `run-commercial-local.py --upgrade refunds`. Solo local/tests; sin prod/servicios reales,
 secretos/dependencias/promoción. SHAs y gates finales se verificarán en issue/buzón.
 GREEN P1-2 26/26 con estado insertado antes de las tres migraciones comerciales.
+P1-2 commit/código probado `d6e3caf57dc9ca1ce7dc4771df1405a11b3f8d1b`.
+Gates nuevos: 551 Deno PASS/1 ignored, 317 SQL existentes + 48 upgrade = 365,
+JWT/PostgREST y Ed25519/SQL real PASS; calidad456, superficies deploy,
+check scripts HTTP y diff--check PASS. Sin fuente TS/nativa nueva: lint TS,
+fmt/check/Clippy/Nextest/lifecycle/telemetría omitidos por alcance.
+Riesgos: B03 aborta con aliases contradictorios; B02 bloquea writers durante
+backfill (volumen/duración reales no medidos). No infiere enlaces de suscripción
+ausentes del ledger. Informe actualizado con comandos y fallos iniciales
+conservados. Entrega en la misma draft #1622; siguiente: review/CI del nuevo SHA;
+activación/confianza/despliegue/aceptación real siguen separados.
 
 ## #1608 · Cierre comercial B03 → B01 → B02 (14/10/2026)
 

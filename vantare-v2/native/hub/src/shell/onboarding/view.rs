@@ -116,6 +116,46 @@ fn check(on: bool, s: f32, cx: &gpui::App) -> Div {
         .items_center()
         .justify_center()
 }
+fn simulator_note(found: bool, s: f32, cx: &gpui::App) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .gap(px(8.0 * s))
+        .child(
+            text(
+                if found { "ENCONTRADO" } else { "NO ENCONTRADO" },
+                8.8 * s,
+                700,
+                if found { 0x0022_c55e } else { orbit::ink_3(cx) },
+                cx,
+            )
+            .px(px(8.0 * s))
+            .py(px(4.0 * s))
+            .rounded(px(6.0 * s))
+            .border_1()
+            .border_color(if found {
+                orbit::tint(0x0022_c55e, 0.25)
+            } else {
+                orbit::tint(0x00fa_f7f7, 0.08)
+            })
+            .bg(if found {
+                orbit::tint(0x0022_c55e, 0.1)
+            } else {
+                rgb(0x0022_1d1f).into()
+            }),
+        )
+        .child(text(
+            if found {
+                "En tu biblioteca"
+            } else {
+                "Márcalo si lo vas a instalar"
+            },
+            13.0 * s,
+            400,
+            orbit::ink_3(cx),
+            cx,
+        ))
+}
 impl Hub {
     #[allow(clippy::too_many_lines)] // Una raíz de render para el marco, contenido y navegación del contrato visual.
     pub(in crate::shell) fn onboarding_view(
@@ -258,19 +298,22 @@ impl Hub {
                             .rounded_full()
                             .bg(rgb(if i < step { 0x00d8_0000 } else { 0x0022_1d1f }))
                     })))
-                    .child(text(
-                        if step == 0 {
-                            "5 PASOS · MENOS DE 1 MINUTO".into()
-                        } else if step == 6 {
-                            "LISTO".into()
-                        } else {
-                            format!("PASO {step} DE 5")
-                        },
-                        11.0 * s,
-                        600,
-                        orbit::ink_3(cx),
-                        cx,
-                    )),
+                    .child(
+                        text(
+                            if step == 0 {
+                                "5 PASOS · MENOS DE 1 MINUTO".into()
+                            } else if step == 6 {
+                                "LISTO".into()
+                            } else {
+                                format!("PASO {step} DE 5")
+                            },
+                            11.0 * s,
+                            600,
+                            orbit::ink_3(cx),
+                            cx,
+                        )
+                        .line_height(px(11.0 * s)),
+                    ),
             )
             .child(
                 button("onboarding-next", next, true, s, cx)
@@ -374,13 +417,21 @@ impl Hub {
                             ),
                     )
                     .child(div().flex_1())
-                    .child(text(
-                        "◷  MENOS DE 1 MINUTO",
-                        11.0 * s,
-                        600,
-                        orbit::ink_3(cx),
-                        cx,
-                    ))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(8.0 * s))
+                            .child(orbit::icon("clock", 14.0 * s, orbit::ink_3(cx)))
+                            .child(orbit::tracked_text(
+                                "MENOS DE 1 MINUTO",
+                                10.9 * s,
+                                600,
+                                orbit::ink_3(cx),
+                                1.5 * s,
+                                cx,
+                            )),
+                    )
                     .child(
                         button("onboarding-skip", "Saltar", false, s, cx)
                             .bg(gpui::transparent_black())
@@ -516,31 +567,39 @@ impl Hub {
                     .aria_selected(on)
                     .tab_stop(true)
                     .cursor_pointer()
-                    .h(px(96.0 * s))
-                    .p(px(18.0 * s))
+                    .h(px(98.0 * s))
+                    .pl(px(16.0 * s))
+                    .pr(px(20.0 * s))
+                    .py(px(16.0 * s))
                     .rounded(px(14.0 * s))
                     .border_1()
                     .border_color(rgb(if on { 0x00d8_0000 } else { 0x0029_2325 }))
                     .bg(rgb(0x0012_1011))
                     .flex()
                     .items_center()
-                    .gap(px(16.0 * s))
-                    .child(text(abbr, 17.0 * s, 700, 0x00f3_eeee, cx).w(px(64.0 * s)))
+                    .gap(px(18.0 * s))
+                    .child(
+                        div()
+                            .size(px(64.0 * s))
+                            .flex_none()
+                            .rounded(px(12.0 * s))
+                            .bg(rgb(if on { 0x00f3_eeee } else { 0x0022_1d1f }))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .child(text(
+                                abbr,
+                                20.0 * s,
+                                600,
+                                if on { 0x001c_1719 } else { orbit::ink_3(cx) },
+                                cx,
+                            )),
+                    )
                     .child(
                         div()
                             .flex_1()
-                            .child(text(name, 16.0 * s, 700, orbit::ink(cx), cx))
-                            .child(text(
-                                if found {
-                                    "Encontrado · En tu biblioteca"
-                                } else {
-                                    "No encontrado · Márcalo si lo vas a instalar"
-                                },
-                                13.0 * s,
-                                400,
-                                if found { 0x0022_c55e } else { orbit::ink_3(cx) },
-                                cx,
-                            )),
+                            .child(text(name, 18.0 * s, 600, orbit::ink(cx), cx))
+                            .child(simulator_note(found, s, cx)),
                     )
                     .child(check(on, s, cx))
                     .on_click(cx.listener(move |hub, _, _, cx| {
@@ -690,6 +749,41 @@ impl Hub {
         }
         levels
     }
+    fn onboarding_equipment(&self, s: f32, cx: &gpui::App) -> Div {
+        let state = self.onboarding.as_ref().expect("visible");
+        div().flex().flex_wrap().gap(px(8.0 * s)).children(
+            state
+                .equipment
+                .labels()
+                .into_iter()
+                .enumerate()
+                .map(|(i, label)| {
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(8.0 * s))
+                        .max_w(px([300.0, 200.0, 100.0][i] * s))
+                        .px(px(12.0 * s))
+                        .py(px(10.0 * s))
+                        .rounded(px(8.0 * s))
+                        .border_1()
+                        .border_color(rgb(0x0029_2325))
+                        .bg(rgb(0x0012_1011))
+                        .child(orbit::icon(
+                            ["v-gauge", "monitor", "monitor"][i],
+                            14.0 * s,
+                            orbit::ink_3(cx),
+                        ))
+                        .child(
+                            text(label, 13.0 * s, 600, orbit::ink_3(cx), cx)
+                                .min_w_0()
+                                .whitespace_nowrap()
+                                .overflow_hidden()
+                                .text_ellipsis(),
+                        )
+                }),
+        )
+    }
     fn onboarding_performance(&self, s: f32, cx: &mut Context<Self>) -> Div {
         let state = self.onboarding.as_ref().expect("visible");
         let levels = self.onboarding_levels(s, cx);
@@ -697,13 +791,7 @@ impl Hub {
             .flex()
             .flex_col()
             .gap(px(22.0 * s))
-            .child(text(
-                state.equipment.summary(),
-                13.0 * s,
-                600,
-                orbit::ink_3(cx),
-                cx,
-            ))
+            .child(self.onboarding_equipment(s, cx))
             .child(
                 div()
                     .id("onboarding-auto")

@@ -54,6 +54,37 @@ pub(super) fn radio_tail(s: f32) -> impl IntoElement {
     .size(px(14.0 * s))
 }
 
+fn radar_beam(s: f32) -> impl IntoElement {
+    gpui::canvas(
+        |_, _, _| (),
+        move |bounds, (), window, _| {
+            let at = |x: f32, y: f32| {
+                gpui::point(bounds.origin.x + px(x * s), bounds.origin.y + px(y * s))
+            };
+            for i in 0u8..10 {
+                let r = 260.0 - f32::from(i) * 23.0;
+                let d = r * std::f32::consts::FRAC_1_SQRT_2;
+                let mut path = PathBuilder::fill();
+                path.move_to(at(260.0, 260.0));
+                path.line_to(at(260.0 + d, 260.0 + d));
+                path.cubic_bezier_to(
+                    at(260.0 - d, 260.0 + d),
+                    at(260.0 + d * 0.44, 260.0 + r * 1.12),
+                    at(260.0 - d * 0.44, 260.0 + r * 1.12),
+                );
+                path.close();
+                if let Ok(path) = path.build() {
+                    window.paint_path(path, orbit::tint(0x00ff_ffff, 0.017));
+                }
+            }
+        },
+    )
+    .absolute()
+    .left(px(-77.0 * s))
+    .top(px(-77.0 * s))
+    .size(px(520.0 * s))
+}
+
 pub(super) fn helmet(state: &State, width: f32, reduced: bool) -> Div {
     let s = width / 210.0;
     let elapsed = state.spoken.elapsed().as_secs_f32();
@@ -225,16 +256,17 @@ impl Hub {
                     heading("VANTA", 300.0 * s, cx)
                         .text_color(rgb(0x0000_0000))
                         .absolute()
-                        .top(px(200.0 * s))
+                        .top(px(180.0 * s))
                         .opacity(0.15),
                 )
                 .child(helmet(state, 330.0 * s, reduced))
                 .child(
-                    text(
+                    orbit::tracked_text(
                         "VANTA · ASISTENTE DE CONFIGURACIÓN",
-                        12.0 * s,
+                        10.88 * s,
                         700,
                         0x00ff_ffff,
+                        1.08 * s,
                         cx,
                     )
                     .px(px(14.0 * s))
@@ -287,11 +319,12 @@ impl Hub {
         let state = self.onboarding.as_ref().expect("visible");
         let mut radar = div()
             .relative()
-            .size(px(410.0 * s))
+            .size(px(366.0 * s))
+            .child(radar_beam(s))
             .flex()
             .items_center()
             .justify_center();
-        for diameter in [410.0, 280.0, 150.0] {
+        for diameter in [366.0, 184.0, 92.0] {
             radar = radar.child(
                 div()
                     .absolute()
@@ -303,7 +336,9 @@ impl Hub {
         }
         radar = radar.child(
             div()
-                .size(px(100.0 * s))
+                .size(px(102.0 * s))
+                .border(px(5.0 * s))
+                .border_color(orbit::tint(0x0000_0000, 0.24))
                 .bg(rgb(0x00f3_eeee))
                 .rounded_full()
                 .flex()
@@ -318,23 +353,35 @@ impl Hub {
                 radar = radar.child(
                     div()
                         .absolute()
-                        .left(px(if i == 0 { 255.0 * s } else { -15.0 * s }))
-                        .top(px(if i == 0 { 55.0 * s } else { 270.0 * s }))
-                        .bg(rgb(0x00f3_eeee))
-                        .rounded(px(12.0 * s))
-                        .p(px(14.0 * s))
+                        .left(px(if i == 0 { 270.0 * s } else { -15.0 * s }))
+                        .top(px(if i == 0 { 38.0 * s } else { 242.0 * s }))
+                        .bg(orbit::tint(0x0000_0000, 0.42))
+                        .border_1()
+                        .border_color(orbit::tint(0x00ff_ffff, 0.2))
+                        .rounded(px(8.0 * s))
+                        .px(px(12.0 * s))
+                        .py(px(8.0 * s))
                         .child(text(
                             if state.found[i] || state.capture && i == 0 {
                                 "ENCONTRADO"
                             } else {
                                 "AÑADIDO"
                             },
-                            10.0 * s,
+                            8.8 * s,
                             700,
-                            0x00b3_101d,
+                            0x00d6_cfd0,
                             cx,
                         ))
-                        .child(text(name, 16.0 * s, 700, 0x001c_1719, cx)),
+                        .child(text(name, 14.4 * s, 600, 0x00ff_ffff, cx))
+                        .child(
+                            div()
+                                .absolute()
+                                .left(px(-24.0 * s))
+                                .top(px(17.0 * s))
+                                .size(px(13.0 * s))
+                                .rounded_full()
+                                .bg(rgb(0x00ff_ffff)),
+                        ),
                 );
             }
         }
@@ -359,41 +406,17 @@ impl Hub {
             .bg(rgb(0x0030_3a46))
             .border_1()
             .border_color(rgb(0x0072_6066));
-        // Pista esquemática y overlays GPUI productivos; no otro pintor de widgets.
-        screen = screen.child(
-            gpui::canvas(
-                |_, _, _| (),
-                move |bounds, (), window, _| {
-                    let w = f32::from(bounds.size.width);
-                    let h = f32::from(bounds.size.height);
-                    let at = |x: f32, y: f32| {
-                        gpui::point(bounds.origin.x + px(x * w), bounds.origin.y + px(y * h))
-                    };
-                    for (points, color) in [
-                        (
-                            [(0.0, 0.42), (1.0, 0.42), (1.0, 1.0), (0.0, 1.0)],
-                            0x0025_2527,
-                        ),
-                        (
-                            [(0.47, 0.42), (0.53, 0.42), (0.86, 1.0), (0.14, 1.0)],
-                            0x0030_3033,
-                        ),
-                    ] {
-                        let mut path = PathBuilder::fill();
-                        path.move_to(at(points[0].0, points[0].1));
-                        for (x, y) in &points[1..] {
-                            path.line_to(at(*x, *y));
-                        }
-                        path.close();
-                        if let Ok(path) = path.build() {
-                            window.paint_path(path, rgb(color));
-                        }
-                    }
-                },
+        // Ilustración de pista aprobada; los widgets conservan su renderer productivo.
+        screen = screen.when_some(state.backgrounds[2].clone(), |d, image| {
+            d.child(
+                gpui::img(image)
+                    .absolute()
+                    .inset_0()
+                    .size_full()
+                    .rounded(px(14.0 * s))
+                    .object_fit(gpui::ObjectFit::Fill),
             )
-            .absolute()
-            .size_full(),
-        );
+        });
         let scale = 0.48 * s;
         let resize = (state.preview_scale.replace(scale) - scale).abs() > f32::EPSILON;
         for (kind, view) in &state.previews {
@@ -435,7 +458,9 @@ impl Hub {
         div()
             .relative()
             .size_full()
-            .p(px(34.0 * s))
+            .px(px(34.0 * s))
+            .pt(px(34.0 * s))
+            .pb(px(30.0 * s))
             .flex()
             .flex_col()
             .gap(px(18.0 * s))
@@ -444,22 +469,33 @@ impl Hub {
                     .flex()
                     .items_center()
                     .justify_between()
-                    .child(heading(
-                        if state.step == 6 {
-                            "TU OVERLAY"
-                        } else {
-                            "TUS WIDGETS"
-                        },
-                        28.0 * s,
-                        cx,
-                    ))
-                    .child(text(
-                        state.choices.widgets_summary().to_uppercase(),
-                        10.0 * s,
-                        700,
-                        0x00ff_ffff,
-                        cx,
-                    )),
+                    .child(
+                        heading(
+                            if state.step == 6 {
+                                "TU OVERLAY"
+                            } else {
+                                "TUS WIDGETS"
+                            },
+                            28.0 * s,
+                            cx,
+                        )
+                        .line_height(px(28.0 * s)),
+                    )
+                    .child(
+                        text(
+                            state.choices.widgets_summary().to_uppercase(),
+                            10.0 * s,
+                            700,
+                            0x00ff_ffff,
+                            cx,
+                        )
+                        .px(px(9.0 * s))
+                        .py(px(6.0 * s))
+                        .rounded(px(6.0 * s))
+                        .border_1()
+                        .border_color(orbit::tint(0x00ff_ffff, 0.22))
+                        .bg(orbit::tint(0x0000_0000, 0.3)),
+                    ),
             )
             .child(screen)
             .child(
@@ -468,26 +504,31 @@ impl Hub {
                     .flex_wrap()
                     .gap(px(8.0 * s))
                     .children(kit.into_iter().map(|kind| {
-                        text(
-                            format!(
-                                "{}{}",
-                                model::label(kind),
-                                if model::free(kind) { "" } else { "  PRO" }
-                            ),
-                            13.0 * s,
-                            600,
-                            0x00ff_ffff,
-                            cx,
-                        )
-                        .px(px(10.0 * s))
-                        .py(px(8.0 * s))
-                        .border_1()
-                        .border_color(orbit::tint(0x00ff_ffff, 0.25))
-                        .rounded(px(8.0 * s))
-                        .bg(orbit::tint(0x0000_0000, 0.3))
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(6.0 * s))
+                            .px(px(10.0 * s))
+                            .py(px(7.0 * s))
+                            .h(px(32.0 * s))
+                            .border_1()
+                            .border_color(orbit::tint(0x00ff_ffff, 0.18))
+                            .rounded(px(8.0 * s))
+                            .bg(orbit::tint(0x0000_0000, 0.3))
+                            .child(text(model::label(kind), 13.12 * s, 600, 0x00ff_ffff, cx))
+                            .when(!model::free(kind), |d| {
+                                d.child(
+                                    text("PRO", 8.32 * s, 700, 0x00b3_101d, cx)
+                                        .px(px(4.0 * s))
+                                        .py(px(3.0 * s))
+                                        .rounded(px(4.0 * s))
+                                        .bg(rgb(0x00ff_ffff)),
+                                )
+                            })
                     })),
             )
     }
+
     #[allow(clippy::too_many_lines)] // Dos tarjetas y el banner de la misma pantalla aprobada.
     fn onboarding_plans(s: f32, cx: &mut Context<Self>) -> Div {
         let mut plans = div().flex().gap(px(16.0 * s));

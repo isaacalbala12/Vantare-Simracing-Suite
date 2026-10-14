@@ -35,7 +35,7 @@ impl Equipment {
             Level::Balanced
         }
     }
-    pub fn summary(&self) -> String {
+    pub fn labels(&self) -> [String; 3] {
         let cpu = self.cpu.as_deref().unwrap_or("CPU no disponible");
         let cores = self
             .cores
@@ -44,10 +44,13 @@ impl Equipment {
             || "RAM no disponible".into(),
             |n| format!("{} GB", n.div_ceil(1024 * 1024 * 1024)),
         );
-        format!(
-            "{cpu}{cores}     {}     {ram}",
-            self.gpu.as_deref().unwrap_or("GPU no disponible")
-        )
+        [
+            format!("{cpu}{cores}"),
+            self.gpu
+                .clone()
+                .unwrap_or_else(|| "GPU no disponible".into()),
+            ram,
+        ]
     }
 }
 #[cfg(test)]
@@ -81,6 +84,11 @@ mod tests {
         };
         assert_eq!(equipment.recommended_level(), Level::Economy);
         assert_eq!(Equipment::default().recommended_level(), Level::Balanced);
-        assert!(Equipment::default().summary().contains("no disponible"));
+        assert!(
+            Equipment::default()
+                .labels()
+                .iter()
+                .all(|label| label.contains("no disponible"))
+        );
     }
 }

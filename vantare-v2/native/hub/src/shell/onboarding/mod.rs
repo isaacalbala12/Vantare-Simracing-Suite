@@ -28,7 +28,7 @@ pub(super) struct State {
     pub step: usize,
     pub choices: Choices,
     pub equipment: Equipment,
-    pub backgrounds: [Option<std::sync::Arc<gpui::RenderImage>>; 2],
+    pub backgrounds: [Option<std::sync::Arc<gpui::RenderImage>>; 3],
     pub found: [bool; 2],
     pub simulators_touched: bool,
     pub text: String,
@@ -66,6 +66,7 @@ impl State {
         let backgrounds = [
             include_bytes!("../../../assets/onboarding/panel.svg").as_slice(),
             include_bytes!("../../../assets/onboarding/backdrop.svg").as_slice(),
+            include_bytes!("../../../assets/onboarding/track.svg").as_slice(),
         ]
         .map(|bytes| {
             cx.svg_renderer()

@@ -1234,10 +1234,10 @@ impl Hub {
         }
         let mut onboarding =
             (first_run || onboarding_capture).then(|| onboarding::State::new(capture.as_ref(), cx));
-        if let Some(state) = &mut onboarding {
-            if settings.status.is_some() {
-                state.error.clone_from(&settings.status);
-            }
+        if let Some(state) = &mut onboarding
+            && settings.status.is_some()
+        {
+            state.error.clone_from(&settings.status);
         }
         if first_run {
             Self::animate_onboarding(cx);

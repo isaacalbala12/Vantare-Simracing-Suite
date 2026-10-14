@@ -43,6 +43,10 @@ const WIDGETS: &[(&str, &[u8])] = widgets![
 ];
 const ONBOARDING: &[(&str, &[u8])] = &[
     (
+        "onboarding/track.svg",
+        include_bytes!("../../assets/onboarding/track.svg"),
+    ),
+    (
         "onboarding/panel.svg",
         include_bytes!("../../assets/onboarding/panel.svg"),
     ),

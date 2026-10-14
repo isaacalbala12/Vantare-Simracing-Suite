@@ -1,5 +1,20 @@
 # Revisión de cuentas y pagos · #1608 · 14/10/2026
 
+## Ronda 2 · respuesta a la review independiente #1615
+
+Review completa: `C:/tmp/ola2/review-1615-sol.md`, NO APTO en `ba02b093`.
+Misma rama y base `69fa2d65`; sin rebase ni integración de #1523.
+El informe de ronda 1 que sigue es evidencia histórica; sus cierres parciales
+F02/F04/F08 quedan corregidos o limitados por esta sección.
+
+| Hallazgo | Cambio y evidencia de esta ronda |
+| --- | --- |
+| N3 / F04 | El loader recibe el entorno fijado por servidor y filtra `billing_access_grants.environment`. Handler nativo y ruta legacy pasan el mismo entorno a lectura y firma. El normalizador sigue rechazando filas ajenas; soporte del entorno solicitado se conserva. RED: mezcla production/sandbox → 409. GREEN: 67 tests emisor/handler; credencial con Pro+calendar de producción, sin Launch sandbox. Logs `C:/tmp/1608-r2/N3-{red,green-corrected}.log`. |
+
+Ronda en curso: N1/F08 y N2/F02 requieren gates Rust nuevos; los bloqueos
+B01/B02/B03 se revisan con planes concretos si exigen el corte de identidad,
+ledger SQL o política de conservación. No se eleva evidencia previa a verde nuevo.
+
 Issue [#1608](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1608),
 proyecto Vantare / `area:plataforma`, Plane VANTA-16, VANTA-17 y VANTA-15.
 Rama `vantareapp/isa-1608-cuentas-y-pagos`, base `nightly@69fa2d65`.

@@ -691,7 +691,7 @@ Deno.test("credential loader reads rollout with admin and propagates query failu
     } as unknown as Parameters<typeof loadCredentialAccount>[0];
     let rejected = false;
     try {
-      const loaded = await loadCredentialAccount(admin, accountId, fingerprint);
+      const loaded = await loadCredentialAccount(admin, accountId, fingerprint, "production");
       assert(loaded.moduleRollout?.[0].module === "vantare.module.calendar");
       assert(loaded.deviceMatches);
     } catch {
@@ -704,6 +704,42 @@ Deno.test("credential loader reads rollout with admin and propagates query failu
     );
     assert(queried.includes("module_rollout"));
   }
+});
+
+Deno.test("production issuance selects its grants when sandbox rights coexist", async () => {
+  const rows = [{
+    capability: "vantare.plan.pro", valid_until: "2026-11-02T12:00:00Z",
+    provider: "polar", environment: "production", source_type: "subscription",
+  }, {
+    capability: "vantare.edition.launch_v1", valid_until: null,
+    provider: "polar", environment: "sandbox", source_type: "order",
+  }, {
+    capability: "vantare.module.calendar", valid_until: null,
+    provider: "vantare", environment: "production", source_type: "support",
+  }];
+  const admin = {
+    from(table: string) {
+      const filters = new Map<string, unknown>();
+      const query = {
+        select: () => query,
+        eq: (column: string, value: unknown) => { filters.set(column, value); return query; },
+        maybeSingle: () => Promise.resolve({ data: { fingerprint_hash: fingerprint }, error: null }),
+        then(resolve: (value: unknown) => unknown) {
+          return Promise.resolve(resolve({ data: table === "billing_access_grants"
+            ? rows.filter((row) => !filters.has("environment") || row.environment === filters.get("environment"))
+            : [], error: null }));
+        },
+      };
+      return query;
+    },
+  } as unknown as Parameters<typeof loadCredentialAccount>[0];
+  const response = await handleNativeLicenseRequest(request(), deps({
+    load: (_issuer, _subject, device, environment) => loadCredentialAccount(admin, accountId, device, environment),
+  }));
+  assert(response.status === 200, `paid production account received ${response.status}`);
+  const result = await response.json();
+  assert(JSON.stringify(result.credential.claims.capabilities.map((grant: { key: string }) => grant.key)) ===
+    JSON.stringify(["vantare.module.calendar", "vantare.plan.pro"]));
 });
 
 Deno.test("legacy Wails credential omits native modules from account and global rollout", async () => {

@@ -1,5 +1,12 @@
 ## #1608 · Revisión cuentas y pagos (14/10/2026)
 
+Ronda 2 reanudada sobre `ba02b093`, misma PR draft #1615 y base `69fa2d65`;
+VANTA-16/17/15 En curso verificado. Review Sol NO APTO leída completa.
+N3/F04: loader de grants filtrado por entorno de servidor, manteniendo
+normalización estricta y soporte; RED 409 con producción+sandbox → GREEN
+67 tests Deno. Evidencia nueva `C:/tmp/1608-r2/`; N1/N2 y atribución en curso.
+La entrega de ronda 1 siguiente no cierra las omisiones señaladas por Sol.
+
 Por revisar en `vantareapp/isa-1608-cuentas-y-pagos`, base nightly `69fa2d65`.
 Plane VANTA-16/17/15 Por revisar verificado. Reanudado por Codex CLI tras caída
 de T3, sin subagentes; seis commits y dos cambios pendientes recuperados.

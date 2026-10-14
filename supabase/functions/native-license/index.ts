@@ -25,6 +25,7 @@ export type NativeLicenseDeps = Pick<CredentialDeps, "now" | "sign"> & {
     issuer: string,
     subject: string,
     fingerprint: string,
+    environment: BillingEnvironment,
   ) => Promise<CredentialState>;
 };
 
@@ -87,16 +88,18 @@ export async function handleNativeLicenseRequest(
       throw error;
     }
     const { issuer, now } = verified;
+    const environment = deps.environment ?? requirePolarEnvironment();
 
     const loaded = await (deps.load ?? loadNativeCredentialAccount)(
       issuer,
       verified.subject,
       deviceFingerprint,
+      environment,
     );
     const response = await issueCredential(
       loaded,
       deviceFingerprint,
-      deps.environment ?? requirePolarEnvironment(),
+      environment,
       { ...deps, now: () => now, includeModules: true },
     );
     if (response.status === 409) {
@@ -136,6 +139,7 @@ async function loadNativeCredentialAccount(
   issuer: string,
   subject: string,
   fingerprint: string,
+  environment: BillingEnvironment,
 ): Promise<CredentialState> {
   const admin = getSupabaseAdmin();
   const { data: accountId, error } = await admin.rpc(
@@ -148,7 +152,7 @@ async function loadNativeCredentialAccount(
   );
   if (error) throw error;
   if (typeof accountId !== "string") throw new Error("Invalid account result");
-  return await loadCredentialAccount(admin, accountId, fingerprint);
+  return await loadCredentialAccount(admin, accountId, fingerprint, environment);
 }
 
 if (import.meta.main) {

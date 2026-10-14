@@ -15,8 +15,9 @@ select is(public.native_admin_execute('00000000-0000-4000-8000-000000001627','ht
 select lives_ok($$select public.native_admin_record_refund('sandbox','{"refund_id":"refund-before-order","payment_id":"order-3","amount_cents":319,"currency":"eur","status":"pending","modified_at":"2026-09-01T00:00:00Z"}')$$,'guarda reembolso pendiente antes de recibir la orden');
 select public.native_admin_record_payment('sandbox','{"payment_id":"order-3","account_id":"00000000-0000-4000-8000-000000001630","subscription_id":"sub-3","product":"Pro anual","paid_at":"2026-09-01T00:00:00Z","amount_cents":319,"currency":"eur","discount_id":"discount-test","modified_at":"2026-09-01T00:00:00Z","refunded_cents":0}');
 select is(public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','get_creator',jsonb_build_object('creator_id',(select result->'creator'->>'creator_id' from creator_probe)),'sandbox')->'creator'->>'earned_cents','128','no liquida un reembolso pendiente');
-select public.native_admin_record_refund('sandbox','{"refund_id":"refund-unpaid","payment_id":"order-2","amount_cents":319,"currency":"eur","status":"succeeded","modified_at":"2026-10-01T00:00:00Z"}');
+select public.native_admin_record_refund('sandbox','{"refund_id":"refund-unpaid","payment_id":"order-2","reason":"customer_request","amount_cents":319,"currency":"eur","status":"succeeded","modified_at":"2026-10-01T00:00:00Z"}');
 select is(public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','get_creator',jsonb_build_object('creator_id',(select result->'creator'->>'creator_id' from creator_probe)),'sandbox')->'creator'->>'earned_cents','96','un pago parcial no protege comisiones que aún no se han pagado');
+select is((select item->>'refund_reason' from private.native_admin_creator_lines('sandbox') where item->>'payment_id'='order-2'),'customer_request','motivo de refund verificado vuelve en la ficha');
 select * from finish(); rollback;
 -- A separate transaction tests admission of historical payment data.
 begin; select no_plan();

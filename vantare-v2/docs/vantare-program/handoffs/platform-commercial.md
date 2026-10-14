@@ -22,10 +22,12 @@ bloquea pago. Carga inicial de historia Polar sandbox si falta; después ledger
 sin lecturas remotas por mero vencimiento de caché. Detalles y limitaciones en
 `supabase/functions/native-admin/README.md`.
 
+Atribución de la ficha corregida para coincidir con la comisión: un código de una compra posterior no sustituye al de la primera. Refunds conservan motivo y timestamp verificado cuando existen; datos ausentes quedan sin inventar.
+
 Miniapp: cuatro pantallas + entrar, fichas y confirmaciones, estados de carga,
 vacío/error, sesión aislada del Hub en Mac/Windows. GPUI y servicios existentes,
 sin dependencias nuevas. QA demo y empaquetado privados locales; capturas y gates
-en `~/evidence/1627/`. Último hito SQL: 100 PASS; Edge focal 265 PASS/1 omitido;
+en `~/evidence/1627/`. Último hito SQL: 103 PASS; Edge completa 606 PASS/1 omitido;
 Nextest admin/services: 153 PASS. Se conservan fallos iniciales y evidencia RED.
 La entrega final completará comparación visual, checks y límites en
 `~/evidence/1627/RESUMEN.md`; no se afirma QA real de OAuth/Clerk/Polar/Windows.

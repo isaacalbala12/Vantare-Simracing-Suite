@@ -641,6 +641,9 @@ export async function applyPolarWebhookEvent(
             amount_cents: amount,
             currency: "eur",
             status: event.data.status,
+            reason: typeof event.data.reason === "string"
+              ? event.data.reason.slice(0, 500)
+              : null,
             modified_at: modified,
           },
         },

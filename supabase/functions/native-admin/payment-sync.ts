@@ -148,6 +148,9 @@ export async function syncAdminPayments(
         amount_cents: grossRefund(refund.amount, refund.tax_amount),
         currency: refund.currency,
         status: refund.status,
+        reason: typeof refund.reason === "string"
+          ? refund.reason.slice(0, 500)
+          : null,
         modified_at: refund.modified_at ?? refund.updated_at ??
           refund.created_at,
       },

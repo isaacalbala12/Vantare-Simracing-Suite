@@ -74,7 +74,7 @@ La fecha histórica es la fecha de factura (`created_at`), pues la API de órden
 no ofrece `paid_at`; no demuestra fecha de liquidación bancaria. Las órdenes con
 saldo aplicado, divisa/producto desconocido o campos incompletos dejan la cuenta
 sin certificar y bloquean el pago manual. Pendientes de reembolso no se liquidan.
-La primera compra pagada fija creador; cohortes por aniversario mensual UTC:
+Motivo del refund y fecha de su confirmación, cuando existen, proceden del último estado verificado (`modified_at`), no de una liquidación bancaria. La primera compra pagada fija creador; cohortes por aniversario mensual UTC:
 30 % mes 1, 10 % meses 2–12, 0 % desde mes 13. Igual para cobro anual, sin
 prorratear. Redondeo half-up por línea. Los registros legacy netos se identifican
 como tales, con fecha de registro; no se inventan impuestos ni enlace de cliente.
@@ -92,7 +92,7 @@ Desde raíz Git, sin permisos de red y con cachés ya instaladas:
 
 ```sh
 deno test --config supabase/functions/deno.json --cached-only --allow-env --allow-read --allow-write=/tmp supabase/functions
-python3 supabase/tests/run-admin-local.py --output /ruta/fuera-del-repo --test native_admin.test.sql --test native_admin_reports_r1.test.sql --test native_admin_accounts_r1.test.sql --test native_admin_creators_r1.test.sql --test native_admin_payments_r1.test.sql --test native_admin_months_r1.test.sql
+python3 supabase/tests/run-admin-local.py --output /ruta/fuera-del-repo --test native_admin.test.sql --test native_admin_reports_r1.test.sql --test native_admin_accounts_r1.test.sql --test native_admin_creators_r1.test.sql --test native_admin_payments_r1.test.sql --test native_admin_months_r1.test.sql --test native_admin_attribution_r1.test.sql
 ```
 
 Runner: PostgreSQL Supabase desechable, Docker `--network none`, sin puertos,
@@ -104,4 +104,5 @@ solo se usan nombres, no valores reales. Despliegue, secretos, QA de OAuth y
 webhooks reales quedan al orquestador tras revisión y autorización propias.
 
 Referencias API: [órdenes](https://polar.sh/docs/api-reference/orders/list),
-[orden e importes](https://polar.sh/docs/api-reference/orders/get).
+[orden e importes](https://polar.sh/docs/api-reference/orders/get),
+[refunds](https://polar.sh/docs/api-reference/refunds/list).

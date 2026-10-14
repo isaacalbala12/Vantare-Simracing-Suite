@@ -66,7 +66,7 @@ create trigger admin_payout_append_only before update or delete on private.admin
 
 create table private.admin_payment_refunds(environment text not null check(environment in('sandbox','production')),refund_id text not null check(length(refund_id) between 1 and 200),
  payment_id text not null check(length(payment_id) between 1 and 200),amount_cents bigint not null check(amount_cents>0 and amount_cents<=100000000),currency text not null check(currency='eur'),
- status text not null check(status in('pending','succeeded','failed','canceled')),modified_at timestamptz not null,primary key(environment,refund_id));
+ status text not null check(status in('pending','succeeded','failed','canceled')),reason text check(length(reason)<=500),modified_at timestamptz not null,primary key(environment,refund_id));
 revoke all on private.admin_payment_refunds from public,anon,authenticated,service_role;
 create table private.admin_payment_sync(environment text primary key,last_synced_at timestamptz not null);
 create table private.admin_payment_history(environment text not null,account_id uuid not null references public.profiles(id),primary key(environment,account_id));
@@ -86,9 +86,9 @@ begin
   if v_old.payment_id is distinct from p_refund->>'payment_id' or v_old.amount_cents is distinct from(p_refund->>'amount_cents')::bigint or v_old.currency is distinct from p_refund->>'currency'
    or(v_old.status='succeeded' and p_refund->>'status'<>'succeeded') or(v_old.modified_at=(p_refund->>'modified_at')::timestamptz and v_old.status is distinct from p_refund->>'status') then raise exception 'native_admin_owner_conflict' using errcode='55000'; end if;
  end if;
- insert into private.admin_payment_refunds(environment,refund_id,payment_id,amount_cents,currency,status,modified_at)
- values(p_environment,p_refund->>'refund_id',p_refund->>'payment_id',(p_refund->>'amount_cents')::bigint,p_refund->>'currency',p_refund->>'status',(p_refund->>'modified_at')::timestamptz)
- on conflict(environment,refund_id) do update set status=excluded.status,modified_at=excluded.modified_at;
+ insert into private.admin_payment_refunds(environment,refund_id,payment_id,amount_cents,currency,status,reason,modified_at)
+ values(p_environment,p_refund->>'refund_id',p_refund->>'payment_id',(p_refund->>'amount_cents')::bigint,p_refund->>'currency',p_refund->>'status',left(p_refund->>'reason',500),(p_refund->>'modified_at')::timestamptz)
+ on conflict(environment,refund_id) do update set status=excluded.status,reason=coalesce(excluded.reason,admin_payment_refunds.reason),modified_at=excluded.modified_at;
  if exists(select 1 from private.admin_payments p where p.environment=p_environment and p.payment_id=p_refund->>'payment_id' and p.amount_cents<(select sum(r.amount_cents) from private.admin_payment_refunds r where r.environment=p_environment and r.payment_id=p.payment_id and r.status='succeeded')) then raise exception 'native_admin_invalid' using errcode='22023'; end if;
  return v_account is not null and v_subscription is not null;
 end $$;
@@ -134,6 +134,8 @@ language sql stable security definer set search_path='' as $$
  select jsonb_build_object('creator_id',creator_id,'account_id',account_id,'payment_id',payment_id,'paid_at',paid_at,'product',product,
   'period_index',period_index,'amount_cents',amount_cents,'currency',currency,'status',case when pending then 'refund_pending' when refund_total>=amount_cents then 'refunded' when refund_total>0 then 'partially_refunded' else 'paid' end,
   'refunded_cents',refund_total,'refunded',refund_total>0,'rate_bp',rate_bp,
+  'refunded_at',(select max(r.modified_at) from private.admin_payment_refunds r where r.environment=p_environment and r.payment_id=rated.payment_id and r.status='succeeded'),
+  'refund_reason',(select r.reason from private.admin_payment_refunds r where r.environment=p_environment and r.payment_id=rated.payment_id and r.status in('succeeded','pending') and r.reason is not null order by r.modified_at desc,r.refund_id limit 1),
   'history_complete',exists(select 1 from private.admin_payment_history h where h.environment=p_environment and h.account_id=rated.account_id),
   'commission_cents',greatest(coalesce(settled_commission_cents,0),case when pending or not exists(select 1 from private.admin_payment_history h where h.environment=p_environment and h.account_id=rated.account_id) then 0 else floor((greatest(0,amount_cents-refund_total)::numeric*rate_bp+5000)/10000)::bigint end)) from rated
 $$;
@@ -171,7 +173,7 @@ language sql stable security definer set search_path='' as $$
   'modules',coalesce((select jsonb_agg(module order by module) from access where rollout or individual or plan or data->'roles'<>'[]'::jsonb),'[]'::jsonb),
   'module_access',(select jsonb_agg(to_jsonb(access) order by module) from access),
   'reports_count',(select count(*) from public.testing_center_reports where reporter_user_id=p_account)+(select count(*) from public.testing_contributions where account_id=p_account),
-  'creator_code',(select jsonb_build_object('code',c.code,'creator_id',c.creator_id,'creator_name',c.name) from private.admin_payments p join private.admin_creators c on c.discount_id=p.discount_id and c.environment=p_environment where p.account_id=p_account and p.environment=p_environment order by p.paid_at,p.payment_id limit 1),
+  'creator_code',(select jsonb_build_object('code',c.code,'creator_id',c.creator_id,'creator_name',c.name) from (select p.discount_id from private.admin_payments p where p.account_id=p_account and p.environment=p_environment order by p.paid_at,p.payment_id limit 1) first_payment join private.admin_creators c on c.discount_id=first_payment.discount_id and c.environment=p_environment),
   'payments',coalesce((select jsonb_agg(item order by item->>'paid_at' desc) from private.native_admin_creator_lines(p_environment) where item->>'account_id'=p_account::text),'[]'::jsonb)||coalesce((select jsonb_agg(jsonb_build_object('payment_id',o.provider_order_id,'paid_at',o.created_at,'date_source','recorded_at','amount_basis','net','product','Launch Edition','period_index',1,'amount_cents',o.net_amount,'currency',o.currency,'refunded_cents',o.reported_refunded_amount,'status',o.status) order by o.created_at desc) from public.billing_orders o where o.user_id=p_account and o.environment=p_environment and not exists(select 1 from private.admin_payments p where p.environment=p_environment and p.payment_id=o.provider_order_id)),'[]'::jsonb),
   'polar_customer_url',null,
   'subscriptions',coalesce((select jsonb_agg(s.provider_subscription_id) from public.billing_subscriptions s where s.user_id=p_account and s.environment=p_environment and s.provider='polar' and(s.status in('active','trialing','past_due') or s.cancel_at_period_end)),'[]'::jsonb)) from base

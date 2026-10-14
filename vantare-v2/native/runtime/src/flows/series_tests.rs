@@ -168,6 +168,40 @@ fn counter_jumps_session_changes_and_rejections_never_invent_a_closed_lap() {
 }
 
 #[test]
+fn small_distance_reversal_recovers_samples_with_a_growing_lap_clock() {
+    let mut core = Core::new(1);
+    let receiver = core.series_mut().subscribe(2).unwrap();
+    for (index, distance, elapsed) in [
+        (1, 100.0, 10.0),
+        (2, 99.0, 11.0),
+        (3, 100.5, 13.0),
+        (4, 990.0, 99.0),
+    ] {
+        core.observe(lap_photo(index, 5, distance, elapsed))
+            .unwrap();
+    }
+    core.series_mut().flush();
+    let chunk = receiver.try_recv().unwrap();
+    assert!(chunk.block.gap);
+    assert_eq!(chunk.block.lap, 5);
+    assert_eq!(chunk.block.sealed_at, None, "sin cruce de meta");
+    assert_eq!(
+        chunk
+            .block
+            .samples
+            .iter()
+            .map(|s| s.sequence)
+            .collect::<Vec<_>>(),
+        [1, 3, 4],
+        "solo omitir el retroceso, sin perder el resto de la vuelta"
+    );
+    assert!(
+        chunk.to_bytes().is_ok(),
+        "progreso monotónico para el codec"
+    );
+}
+
+#[test]
 fn delayed_lap_counter_never_assigns_next_lap_samples_to_the_previous_one() {
     let mut core = Core::new(1);
     core.observe(lap_photo(1, 0, 100.0, 2.0)).unwrap();

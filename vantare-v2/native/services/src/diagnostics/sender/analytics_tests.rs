@@ -112,7 +112,7 @@ fn isa1609_tampered_queue_cannot_bypass_consent_or_property_catalog() {
         json!({"event":"installation_observed","properties":{"account_id":"private"}}),
         json!({"event":"purchase_completed","properties":{}}),
     ] {
-        queue(&root, "usage", &value).expect("tamper");
+        queue(&root, "usage", &json!({"generation":0,"usage":value})).expect("tamper");
     }
     enqueue_usage(
         &root,
@@ -164,11 +164,11 @@ fn isa1609_account_observation_cannot_precede_installation() {
     let first: Value =
         serde_json::from_slice(&fs::read(root.join("usage/00.json")).expect("first"))
             .expect("json");
-    assert_eq!(first["event"], "installation_observed");
+    assert_eq!(first["usage"]["event"], "installation_observed");
     let second: Value =
         serde_json::from_slice(&fs::read(root.join("usage/01.json")).expect("second"))
             .expect("json");
-    assert_eq!(second["event"], "account_signed_in");
+    assert_eq!(second["usage"]["event"], "account_signed_in");
     enqueue_once(&root, &Usage::InstallationObserved {}).expect("no duplicate");
     assert_eq!(fs::read_dir(root.join("usage")).expect("queue").count(), 2);
     fs::remove_dir_all(root).expect("cleanup");

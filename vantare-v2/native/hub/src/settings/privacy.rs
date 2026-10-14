@@ -57,18 +57,16 @@ impl Store {
             .path
             .parent()
             .ok_or("ruta de privacidad sin directorio")?;
-        // Antes de aceptar, elimina informes recogidos sin la nueva decisión.
-        self.value
-            .discard_disabled(root)
-            .map_err(|error| format!("borrar informes pendientes: {error}"))?;
-        value
-            .discard_disabled(root)
-            .map_err(|error| format!("borrar informes pendientes: {error}"))?;
-        let bytes =
-            serde_json::to_vec(&value).map_err(|error| format!("guardar privacidad: {error}"))?;
-        crate::files::save(&self.path, &bytes, self.observed.as_deref())?;
-        self.observed = Some(bytes);
-        self.value = value;
+        let mut saved = None;
+        let next = Privacy::save_with(root, value, |next| {
+            let bytes = serde_json::to_vec(&next)
+                .map_err(|error| format!("guardar privacidad: {error}"))?;
+            crate::files::save(&self.path, &bytes, self.observed.as_deref())?;
+            saved = Some(bytes);
+            Ok(())
+        })?;
+        self.observed = saved;
+        self.value = next;
         Ok(())
     }
 }
@@ -258,7 +256,7 @@ mod tests {
         assert!(!path.join("usage/00.json").exists());
         assert_eq!(
             Store::load(&path).expect("reinstall/restart").value,
-            revoked
+            store.value
         );
         std::fs::remove_dir_all(path).expect("cleanup");
     }
@@ -313,6 +311,7 @@ mod tests {
                     usage: false,
                     usage_decided: false,
                     crashes_decided: true,
+                    ..Privacy::default()
                 })
                 .expect("choice");
             let saved = Store::load(&path).expect("restart").value;
@@ -337,7 +336,8 @@ mod tests {
                     crashes: true,
                     usage: false,
                     usage_decided: false,
-                    crashes_decided: true
+                    crashes_decided: true,
+                    ..Privacy::default()
                 })
                 .is_err()
         );
@@ -358,6 +358,7 @@ mod tests {
             usage: true,
             usage_decided: true,
             crashes_decided: true,
+            ..Privacy::default()
         };
         first.save(next).expect("save");
         assert_eq!(Store::load(&path).expect("reload").value, next);

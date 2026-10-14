@@ -4,6 +4,14 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## #1609 / VANTA-22 · Analítica consentida (14/10/2026)
 
+Ronda 2 en curso por Codex CLI, sin subagentes: review Sol sobre `b453254e`
+NO APTO (P1 revocación concurrente, P2 conservación de ID, P2 I/O en callbacks).
+Encargo de Isaac: generación persistida, frontera común publicación/POST,
+ID y marcadores borrados al revocar; UI entrega por canal acotado sin espera.
+Regresiones con señales A/B y revocar/reaceptar preparadas; RED en ejecución
+por la cola. Logs `C:/tmp/1609-r2/`. VANTA-22 «En curso» verificado.
+Los gates siguientes corresponden a la entrega anterior, no a esta corrección.
+
 Rama `vantareapp/isa-1609-posthog-uso-embudo`, base nightly `69fa2d65`.
 Entrega local: catálogo y límites en `docs/analytics/eventos.md`, integración web para
 Marketing en `web-snippet.md` y ocho insights en `paneles.md`. Script de paneles

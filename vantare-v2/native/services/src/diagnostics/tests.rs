@@ -61,6 +61,7 @@ fn isa1548_atomic_crash_queue_preserves_all_concurrent_producers() {
                         root,
                         "crashes",
                         &Crash {
+                            generation: 0,
                             binary: "native".into(),
                             version: crate::product::VERSION.into(),
                             message: "native_panic".into(),

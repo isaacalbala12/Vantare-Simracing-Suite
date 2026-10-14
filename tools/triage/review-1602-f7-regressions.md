@@ -46,3 +46,43 @@ consentimiento, ACK, exactitud HTTP, referencias y autoridad. Las expectativas
 de prosa/redacción cambian por ausencia de claves o etiqueta fija conforme a
 la decisión. SQL/producción, proveedor, despliegue y QA física no se ejecutan.
 Gates finales y SHAs se registran en el handoff vivo y la PR.
+
+## Verificación final y fusión de nightly
+
+F7 cbb3b2af; nightly 8194c949 integrado en 10d2b439 (ocho conflictos);
+nightly e5c90be5 integrado en 4083e4fc (un conflicto de identidad). Conservados
+Edge/historial/avisos/crédito #1610, analítica consentida #1609 y revocación #1615
+antes de persistir identidad, con cancelación de triaje. Services IPC v9 combina
+los contratos; Hub/services se recompilan juntos y rechazan peers v7/v8.
+
+La revisión final reprodujo un problema de la redacción heredada: nombres de
+perfil `type`, `fingerprint`, `at` o `ServicesCommandFailure` podían cambiar
+claves y valores del resumen ya cerrado. Test
+`f7_closed_session_metadata_is_independent_of_profile_names`: RED (type=NULL),
+GREEN (tipo, SHA256, nombre de evento y timestamp exactos). Se elimina esa
+redacción del resumen y se deja el parser anterior solo en tests históricos;
+wrapper clean_tree sin consumidores retirado, sin allow. Hito 4557b5d5.
+
+Sobre 4083e4fc: fmt/check/Clippy workspace PASS, Nextest 1736/1736 (12 skips,
+1 lento PASS) y lifecycle 18/18. Tras el cambio final exclusivo de services:
+fmt/check/Clippy y Nextest 165/165 PASS. Python 57/57 con sockets prohibidos,
+followup mocks 4/4 y quality/retirement 456 PASS. Difusión solo a rama de issue.
+
+Telemetría 25/25 sobre 10d2b439; ACC lento 774 s PASS. No repetida: fuentes,
+contrato y filtro del perfil idénticos en el código final. El único delta
+adicional en runtime es rights/tests.rs, excluido de ese perfil y cubierto por
+Nextest final. Evidencia first-nightly/telemetria.log y telemetry-reuse-delta.txt.
+No se atribuye este gate a ejecución sobre otro SHA.
+
+Cola versionada, CARGO_BUILD_JOBS=2, target exclusivo
+E:/tmp/isa1594-native-gates y timeout 3600 s por gate. Fallos iniciales conservados:
+fixture Report con id inválido (RED repetido con id válido), mtime de fuente
+restaurada/Cargo con binario anterior, expectativa de contexto local, new_uuid
+perdido por automerge, límites de tamaño de funciones y wrapper legacy sin uso.
+Corregidos sin supresión ni aserciones de privacidad debilitadas.
+
+Sin pnpm porque la UI es Rust/GPUI. Sin SQL/pgTAP, provider, informes reales,
+deploy, publicación ni QA visual/física nuevos. Imágenes de la ruta histórica
+se conservan fuera del proveedor. Riesgo: menor contexto diagnóstico; no se
+acredita contenido mínimo ni se inventa aceptación para descuento. CI y HEAD
+final de documentación se consultan y registran en PR/issue/buzón.

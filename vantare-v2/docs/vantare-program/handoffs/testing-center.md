@@ -1,8 +1,66 @@
-## F7=C · 14/10/2026 · en curso
+## F7=C · 14/10/2026 · entrega CLI por revisar
 
-Decisión explícita de Isaac: el texto libre del tester nunca se envía. #1594 / VANTA-38 en curso; VANTA-49 conserva su hito de Intake. PR #1602 draft a nightly, sin auto-merge ni merge. Título/cuerpo/notas locales; etiquetas SQL fijas, log/eventos/hardware estructurados y cerrados; proveedor/T3/Intake/replay excluyen prosa. Las rutas TestingAnswer/TestingContribute/Report tampoco envían los campos escritos. Sin texto no se acredita el requisito anterior de 200 caracteres: revisión humana pendiente, sin aceptación inventada. Las capturas históricas no entran en triaje.
+#1594 / VANTA-38/49 Por revisar; proyecto Vantare/In Review,
+area:testing-center, issue OPEN y sin milestone. PR #1602 draft a nightly,
+auto-merge OFF; sin merge de PR, promoción ni release. La decisión de Isaac
+excluye todo texto libre escrito por el tester: título/cuerpo/notas/pasos locales,
+UI explícita y etiquetas SQL fijas. No se intenta anonimizar prosa.
 
-RED Python/nativo conservados y GREEN focal; suite/gates en ejecución. Siguiente: commit F7, merge de origin/nightly en esta rama, resolver conflictos, gates afectados, push y actualizar PR. Evidencia E:/tmp/isa1594-f7-evidence/; regresiones tools/triage/review-1602-f7-regressions.md. R5 y rondas anteriores de abajo son evidencia histórica; F7 pendiente queda reemplazado por esta decisión.
+Proveedor, T3, Intake directo y replay omiten título/cuerpo y títulos de
+duplicados; summary fijo, preliminary_fix=null y reasons=[]. Log JSON de 300
+registros máximo, eventos cerrados, hardware numérico/booleano y valores
+catalogados; sin nombres CPU/GPU. Valores y huellas de F6 conservados. El resumen
+cerrado no pasa por redacción de nombres de perfil: no pueden modificar sus
+claves, etiquetas, fechas o SHA256. La redacción nativa anterior queda solo
+en los tests históricos. TestingAnswer/TestingContribute/Report tampoco envían
+los campos escritos. Recibos legacy confirmados conservados como historial;
+pendientes con prosa se preservan en cuarentena, sin reenviar otros bytes bajo
+el mismo id. Las imágenes de la ruta histórica se conservan y no entran en IA.
+
+Sin texto no se acredita la regla anterior de 200 caracteres: contenido_minimo=no
+y valido se degrada a dudoso. No hay checklist ni aceptación para descuento
+inventados. El worker versionado permanece inerte; esta entrega no despliega.
+
+Commits: F7 cbb3b2afd3110ab934e28c0e89414f13bff800f9; merge de nightly
+8194c949 en 10d2b4394a7d05b25ce3229610d4c5f12fb7594a; merge de nightly
+e5c90be5 en 4083e4fcd8b2cb6379f829625b05c65140b0b5ec; corrección de metadatos
+cerrados 4557b5d59d08a9b0c20bb9a8f86925a85d8e8539. Push verificado en cada
+hito. Ocho conflictos del primer merge y uno del segundo resueltos conservando
+Edge/historial/avisos/crédito #1610, analítica consentida #1609 y revocación
+#1615 antes de persistir identidad, más cancelación de triaje. Services IPC v9
+combina los contratos: recompilar Hub/services juntos; peers v7/v8 rechazados.
+
+Gates locales: workspace fmt/check/Clippy PASS; Nextest 1736/1736 (12 skips,
+1 lento PASS) y lifecycle 18/18 sobre 4083e4fc. Tras el ajuste final exclusivo
+de services: fmt/check/Clippy y Nextest 165/165 PASS, incluida la regresión de
+metadatos contra nombres de perfil. Telemetría 25/25 PASS sobre 10d2b439,
+ACC lento 774 s PASS; reutilizada porque sus fuentes/contrato/filtro permanecen
+idénticos. El delta adicional en runtime es solo rights/tests.rs, fuera de ese
+perfil; queda cubierto por Nextest final. Python 57/57 con sockets prohibidos,
+followup mocks 4/4, quality/retirement 456 y diff-check PASS. No pnpm: UI Rust/GPUI.
+
+RED/GREEN y fallos iniciales conservados en E:/tmp/isa1594-f7-evidence/.
+Cola versionada, jobs=2, timeout 3600 s por gate y target propio
+E:/tmp/isa1594-native-gates. Sin dependencias, supresión de lints ni expectativas
+de privacidad debilitadas. La documentación final no modifica código y no
+repite compilación. SQL/pgTAP, proveedor, informes reales, desplegar en .57,
+QA visual/física, instalación real y credenciales nuevos omitidos por alcance.
+
+PR MERGEABLE verificado sobre el push de código; DIRTY resuelto. GitGuardian
+FAILURE, native-linux y blocking gates pendientes al consultar: no se certifica
+CI remoto verde. Cierre documental/HEAD final y última consulta de CI en el
+comentario final de issue/PR y C:/tmp/buzon/1594.md. Canal alcanzado: rama
+vantareapp/isa-1594-triaje-informes con PR draft; solo fusiones locales de nightly
+en esta rama, autorizadas por Isaac. Acciones externas: commits/push,
+metadata/comentarios GitHub y estados Plane. Sin subagentes.
+
+[Regresiones y límites F7](../../../../tools/triage/review-1602-f7-regressions.md).
+Verificación manual pendiente: en build aislada con Hub/services v9, escribir
+una nota distintiva, consentir y revisar el preview; no debe contenerla. Los
+reintentos deben coincidir con ese preview. No usar la instalación real.
+Riesgos: menor contexto diagnóstico, criterio de contenido mínimo no acreditado
+y reintentos antiguos con prosa retirados. R5 y snapshots inferiores son
+históricos; F7 pendiente queda reemplazado por esta decisión y entrega.
 
 # Handoff vivo — Testing Center
 

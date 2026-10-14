@@ -25,7 +25,9 @@ Storage admite fotos
 inmutables bajo `<UUID>/<SHA256>.jpg`; no hay upsert ni permisos de UPDATE.
 Una policy restrictiva evita que una policy global de Storage permita leer o
 escribir fotos ajenas. Otra guardia restrictiva de UPDATE impide reemplazar
-objetos o moverlos al/del bucket incluso ante policies globales. El bucket no es público. El JPEG admite 24 KiB; nunca se
+objetos o moverlos al/del bucket incluso ante policies globales. DELETE también
+queda cerrado para impedir reemplazos por borrar y reinsertar. La limpieza
+necesitará autoridad separada. El bucket no es público. El JPEG admite 24 KiB; nunca se
 sube la original. Al retirar/cambiar foto el perfil deja de referenciar la anterior;
 los objetos anteriores permanecen privados. Su limpieza queda para un trabajo
 posterior, sin borrados de usuarios desde este encargo.
@@ -36,7 +38,7 @@ posterior, sin borrados de usuarios desde este encargo.
 crea y cierra un PostgreSQL desechable en loopback, con pgTAP instalado. No acepta
 DSN ni base existente. El bootstrap reproduce los contratos mínimos de
 profiles/Auth/Storage; no demuestra el esquema completo de Supabase ni su API
-HTTP de Storage. Los 66 checks cubren RLS, ACL, CAS, aislamiento entre cuentas,
+HTTP de Storage. Los 67 checks cubren RLS, ACL, CAS, aislamiento entre cuentas,
 rechazo del DML directo, contrato nativo, foto propia/ausente e inmutabilidad
 ante una policy global permisiva adversarial. El runner comprueba además tres
 rechazos de reversión y siete postchecks del paquete QA retirado.

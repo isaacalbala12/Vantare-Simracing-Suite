@@ -151,8 +151,10 @@ create policy pilot_photo_read on storage.objects for select to authenticated,pi
 create policy pilot_photo_insert on storage.objects for insert to authenticated
   with check (bucket_id='pilot-photos' and name ~ '^[0-9a-f-]{36}/[0-9a-f]{64}\.jpg$'
     and (storage.foldername(name))[1] = (select auth.uid())::text);
-create policy pilot_photo_delete on storage.objects for delete to authenticated
-  using (bucket_id='pilot-photos' and (storage.foldername(name))[1] = (select auth.uid())::text);
+-- La limpieza futura necesita autoridad separada: DELETE + INSERT también
+-- reemplazaría una foto cuyo nombre promete contenido inmutable.
+create policy pilot_photo_delete on storage.objects as restrictive for delete to public
+  using (bucket_id <> 'pilot-photos');
 -- Defensa contra policies permisivas globales ya existentes en Storage.
 create policy pilot_photo_private_guard on storage.objects as restrictive for all to public
   using (bucket_id <> 'pilot-photos' or (storage.foldername(name))[1] = (select auth.uid())::text)

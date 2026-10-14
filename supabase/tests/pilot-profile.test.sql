@@ -78,6 +78,8 @@ select throws_ok($$insert into public.pilot_profiles(account_id) values('1612000
 insert into storage.objects(bucket_id,name) values('pilot-photos','16120000-0000-0000-0000-000000000001/'||repeat('a',64)||'.jpg');
 with changed as (update storage.objects set metadata='{"replaced":true}' where bucket_id='pilot-photos' returning 1)
   select is(count(*),0::bigint,'global permissive UPDATE cannot replace own immutable photo') from changed;
+with changed as (delete from storage.objects where bucket_id='pilot-photos' returning 1)
+  select is(count(*),0::bigint,'global permissive DELETE cannot enable delete plus reinsert replacement') from changed;
 with changed as (update storage.objects set bucket_id='other' where bucket_id='pilot-photos' returning 1)
   select is(count(*),0::bigint,'cannot move immutable photo out of bucket') from changed;
 insert into storage.objects(bucket_id,name) values('other','16120000-0000-0000-0000-000000000001/'||repeat('b',64)||'.jpg');

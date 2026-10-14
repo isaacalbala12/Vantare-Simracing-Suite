@@ -125,6 +125,7 @@ impl Privacy {
         if !self.usage || !self.usage_decided {
             for name in [
                 "anonymous-id",
+                "usage-opt-in-v1",
                 "installation-observed-v1",
                 "account-observed-v1",
                 "commercial-license-observed-v1",

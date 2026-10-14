@@ -181,9 +181,16 @@ impl super::Hub {
                 next.crashes = accept;
                 next.crashes_decided = true;
             }
+            let usage_activated = next.usage && !store.value.usage;
             self.settings.status = store.save(next).err();
             if self.settings.status.is_none() {
                 vantare_ui::analytics::consent(cx, store.value);
+                if usage_activated {
+                    vantare_ui::analytics::record_once(
+                        cx,
+                        &vantare_services::diagnostics::Usage::UsageOptIn {},
+                    );
+                }
                 self.analytics
                     .consent(vantare_ui::analytics::generation(cx));
                 self.focus.focus(window, cx);
@@ -306,6 +313,12 @@ impl super::Hub {
             self.settings.status = store.save(next).err();
             if self.settings.status.is_none() {
                 vantare_ui::analytics::consent(cx, store.value);
+                if usage && store.value.usage {
+                    vantare_ui::analytics::record_once(
+                        cx,
+                        &vantare_services::diagnostics::Usage::UsageOptIn {},
+                    );
+                }
                 self.analytics
                     .consent(vantare_ui::analytics::generation(cx));
             }

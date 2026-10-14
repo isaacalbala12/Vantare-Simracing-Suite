@@ -14,12 +14,22 @@ fn onboarding_opt_in_is_once_and_nothing_is_queued_before_explicit_consent() {
     assert_eq!(records, 1);
     assert!(root.join("usage-opt-in-v1").exists());
     super::consent_tests::choice(&root, false);
+    assert!(!root.join("usage-opt-in-v1").exists());
     enqueue_once(&root, &Usage::UsageOptIn {}).expect("revoked");
     assert_eq!(
         std::fs::read_dir(root.join("usage"))
             .expect("empty queue")
             .count(),
         0
+    );
+    super::consent_tests::choice(&root, true);
+    enqueue_once(&root, &Usage::UsageOptIn {}).expect("reactivate");
+    enqueue_once(&root, &Usage::UsageOptIn {}).expect("same activation");
+    assert_eq!(
+        std::fs::read_dir(root.join("usage"))
+            .expect("new queue")
+            .count(),
+        1
     );
     std::fs::remove_dir_all(root).expect("cleanup");
 }

@@ -670,7 +670,10 @@ impl Hub {
             ("Páginas y funciones", "Uso de la app"),
             ("Tipos de widgets", "Sin contenido"),
             ("Tiempo de uso", "Solo con permiso"),
-            ("Versión, canal y simulador", "Instalación, cuenta y licencia"),
+            (
+                "Versión, canal y simulador",
+                "Instalación, cuenta y licencia",
+            ),
         ] {
             yes = yes.child(
                 div()

@@ -96,3 +96,5 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 #1629 Mac: Mapa 320×248 fijo, puntos por clase y transparencia guardada/editable en Studio; fixture Le Mans explícita, imposible reutilizarla como live. 5 tests PASS y captura Hub. Falta geometría productiva por circuito y señales de salida prevista de boxes; no se fabrican. Evidencia `~/evidence/1629/track-map/`.
 
 #1629 Mac: Tiempo en pista vertical 132×440, franja y filas de medidas con tamaño fijo; 2 tests PASS y captura Hub. Pronóstico, tendencia térmica y hora del día no existen en Snapshot: se muestran guiones, sin recomendaciones inventadas; paridad de contenido pendiente de esas señales. Evidencia `~/evidence/1629/track-weather/`.
+
+#1629 Mac: Banderas 340×88 y PenaltyKind neutral; DT/SG en placas, negra = descalificación, sin inferir el tipo desde el contador. 5 tests Domain + 6 UI PASS; capturas Hub DT/SG/DQ. Unión #1638 documentada en racing_flags/README.md; runtime/services/DTO intactos.

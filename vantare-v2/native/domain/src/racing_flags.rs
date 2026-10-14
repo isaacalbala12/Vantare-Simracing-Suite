@@ -26,6 +26,7 @@ impl Default for Config {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ViewModel {
     pub flag: Option<FlagKind>,
+    pub penalty: Option<crate::PenaltyKind>,
     pub heading: &'static str,
     pub message: &'static str,
     pub sectors: Vec<Option<FlagKind>>,
@@ -38,6 +39,17 @@ pub fn project(snapshot: &Snapshot, prefs: Preferences) -> ViewModel {
 }
 
 pub fn project_with_config(snapshot: &Snapshot, prefs: Preferences, config: Config) -> ViewModel {
+    project_with_penalty(snapshot, prefs, config, None)
+}
+
+/// Punto de unión para #1638: recibe el tipo neutral medido, separado de las banderas.
+/// `None` conserva la ausencia; no se deduce DT/SG de `pending_penalties`.
+pub fn project_with_penalty(
+    snapshot: &Snapshot,
+    prefs: Preferences,
+    config: Config,
+    penalty: Option<crate::PenaltyKind>,
+) -> ViewModel {
     // El productivo conserva un valor stale y su color hasta que desaparezca
     // la señal; Unavailable y una lista vacía no equivalen a bandera verde.
     let flags = match &snapshot.state.flags {
@@ -46,6 +58,24 @@ pub fn project_with_config(snapshot: &Snapshot, prefs: Preferences, config: Conf
             flags.as_slice()
         }
         Quality::Unavailable => &[],
+    };
+    let black = flags.iter().any(|f| {
+        f.kind == FlagKind::Black
+            && (f.scope == FlagScope::Session
+                || snapshot
+                    .state
+                    .player
+                    .is_some_and(|p| f.scope == FlagScope::Car(p.car)))
+    });
+    let penalty = if matches!(
+        snapshot.state.source_state,
+        crate::SourceState::Waiting | crate::SourceState::Lost
+    ) {
+        None
+    } else if black {
+        Some(crate::PenaltyKind::Disqualified)
+    } else {
+        penalty
     };
     let flag = flags
         .iter()
@@ -68,9 +98,10 @@ pub fn project_with_config(snapshot: &Snapshot, prefs: Preferences, config: Conf
         }
     }
     ViewModel {
+        penalty,
         heading,
         message: label(flag.as_ref(), prefs.language),
-        hidden: config.hide_when_green && flag == Some(FlagKind::Green),
+        hidden: penalty.is_none() && config.hide_when_green && flag == Some(FlagKind::Green),
         text_color: if flag == Some(FlagKind::Black) && config.text_color == 0 {
             0x00ff_ffff
         } else {
@@ -130,6 +161,45 @@ mod tests {
             kind,
             scope: FlagScope::Session,
         }
+    }
+
+    #[test]
+    fn penalties_are_typed_and_black_is_disqualification() {
+        use crate::{PenaltyKind, Player};
+        let mut s = snapshot(Quality::Reliable(vec![session(FlagKind::Green)]));
+        s.state.player = Some(Player::default());
+        let config = Config {
+            hide_when_green: true,
+            ..Config::default()
+        };
+        for kind in [
+            PenaltyKind::DriveThrough,
+            PenaltyKind::StopGo,
+            PenaltyKind::Disqualified,
+        ] {
+            let vm = project_with_penalty(&s, Preferences::default(), config, Some(kind));
+            assert_eq!(vm.penalty, Some(kind));
+            assert!(!vm.hidden);
+            assert_eq!(vm.flag, Some(FlagKind::Green));
+        }
+        s.state.flags = Quality::Reliable(vec![crate::Flag {
+            kind: FlagKind::Black,
+            scope: FlagScope::Car(crate::CarId(0)),
+        }]);
+        let vm = project_with_config(&s, Preferences::default(), config);
+        assert_eq!(vm.penalty, Some(PenaltyKind::Disqualified));
+        assert_ne!(vm.penalty, Some(PenaltyKind::DriveThrough));
+        s.state.source_state = crate::SourceState::Lost;
+        assert!(
+            project_with_penalty(
+                &s,
+                Preferences::default(),
+                config,
+                Some(PenaltyKind::StopGo)
+            )
+            .penalty
+            .is_none()
+        );
     }
 
     #[test]

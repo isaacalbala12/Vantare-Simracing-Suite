@@ -41,7 +41,8 @@ profiles/Auth/Storage; no demuestra el esquema completo de Supabase ni su API
 HTTP de Storage. Los 67 checks cubren RLS, ACL, CAS, aislamiento entre cuentas,
 rechazo del DML directo, contrato nativo, foto propia/ausente e inmutabilidad
 ante una policy global permisiva adversarial. El runner comprueba además tres
-rechazos de reversión y siete postchecks del paquete QA retirado.
+rechazos de reversión y nueve postchecks del paquete QA retirado, conservando
+las cuentas y policies ajenas al paquete.
 
 El servidor valida tipos, límites, controles, ISO y simuladores como el cliente;
 la descripción admite LF (la UI normaliza CRLF/CR). Los campos futuros siguen

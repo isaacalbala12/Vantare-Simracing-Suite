@@ -57,9 +57,9 @@ def main():
             run('psql', *connection, '-c', "select 1 / count(*) from storage.objects where bucket_id='pilot-photos'; delete from storage.objects where bucket_id='pilot-photos';", name='rollback-fixture-cleanup.log')
             run('psql', *connection, '-c', setting, '-f', down, name='rollback-empty.log')
             output = run('psql', *connection, '-f', root / 'supabase/tests/pilot-profile-rollback.test.sql', name='rollback-postcheck.log')
-            if 'not ok ' in output or 'ok 7 ' not in output:
+            if 'not ok ' in output or '1..9' not in output or 'ok 9 ' not in output:
                 raise RuntimeError('rollback pgTAP failed')
-            print('PASS rollback: refuses missing consent/profiles/photos, removes empty QA package; 7 postchecks')
+            print('PASS rollback: refuses missing consent/profiles/photos, removes empty QA package; 9 postchecks')
         finally:
             run('pg_ctl', '-D', data, '-m', 'fast', '-w', 'stop', name='stop.log')
 

@@ -8,10 +8,7 @@ use gpui::{
 };
 use serde::{Deserialize, Serialize};
 use vantare_domain::format::{Language, Preferences};
-use vantare_ui::{
-    Kind, Overlay, Settings as WidgetSettings,
-    standings::{model::PIT_RAIL_WIDTH, options::ColumnSetting},
-};
+use vantare_ui::{Kind, Overlay, Settings as WidgetSettings, standings::model::PIT_RAIL_WIDTH};
 
 use crate::{
     comparison::{self, Comparison},
@@ -139,23 +136,9 @@ fn restarts_renderer(previous: (u64, u64), next: (u64, u64)) -> bool {
 fn workshop_overlay(kind: Kind, prefs: Preferences) -> Overlay {
     let mut settings = WidgetSettings::default_for(kind);
     if let WidgetSettings::Standings(standings) = &mut settings {
-        let column = |id: &str, metric_id: &str, width_preset: &str| ColumnSetting {
-            id: id.into(),
-            metric_id: metric_id.into(),
-            width_preset: width_preset.into(),
-            ..ColumnSetting::default()
-        };
-        // El golden Wails muestra siete filas y esta misma selección de columnas.
-        standings.row_count = 7;
+        standings.row_count = 8;
         standings.class_scope = "all-classes".into();
-        standings.classification_mode = "normal".into();
-        standings.columns = Some(vec![
-            column("position", "position", "sm"),
-            column("driverName", "driverName", "lg"),
-            column("gap", "gap", "md"),
-            column("lastLap", "lastLap", "lg"),
-            column("pit", "pit", "auto"),
-        ]);
+        standings.columns = Some(vantare_ui::standings::vantare_template("standard"));
     }
     Overlay::configured(&settings, prefs)
 }
@@ -194,7 +177,7 @@ impl Prepared {
             let root = fixtures
                 .as_ref()
                 .ok_or("no hay catálogo de escenas instalado; use --escena")?;
-            Scene::open(root.join("standings.snapshot.json"))
+            Scene::open(root.join("standings-design-system.sequence.json"))
         };
         let mut scene = if let Some(explicit) = initial {
             // La escena explícita conserva sus errores y no usa el cursor guardado.
@@ -1410,7 +1393,7 @@ mod tests {
                 .path
                 .file_name()
                 .and_then(|n| n.to_str()),
-            Some("standings.snapshot.json")
+            Some("standings-design-system.sequence.json")
         );
         assert!(
             Prepared::load(&dir, Some(scene.clone())).is_ok(),
@@ -1453,7 +1436,7 @@ mod tests {
                     .path
                     .file_name()
                     .and_then(|n| n.to_str()),
-                Some("standings.snapshot.json")
+                Some("standings-design-system.sequence.json")
             );
         }
         for invalid in ["{", "{\"version\":999}"] {
@@ -1477,7 +1460,7 @@ mod tests {
                 .path
                 .file_name()
                 .and_then(|name| name.to_str()),
-            Some("standings.snapshot.json")
+            Some("standings-design-system.sequence.json")
         );
 
         std::fs::remove_dir(dir).expect("limpiar");

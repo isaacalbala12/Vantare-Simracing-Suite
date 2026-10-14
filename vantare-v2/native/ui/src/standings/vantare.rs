@@ -10,7 +10,7 @@ use crate::efficiency::{rect, text};
 use crate::look::{Accent, Tone};
 use crate::vantare::columns::ColumnBoxes;
 use crate::vantare::motion::{Flash, Sample};
-use crate::vantare::paint::{BOX, Face, Kit, WHITE, estimate, round_rect, transparent};
+use crate::vantare::paint::{BOX, Face, Kit, WHITE, round_rect, transparent};
 use crate::vantare::style::{ClassColors, Color, Style, Variant, with_opacity};
 use gpui::{App, BorderStyle, Corners, Edges, px, quad};
 use std::sync::Arc;
@@ -217,6 +217,13 @@ impl Options {
         match self.cols.driver {
             Preset::Xs => g.driver_xs,
             Preset::Sm => g.driver_sm,
+            Preset::Md
+                if !self.cols.has(Kind::Number)
+                    && !self.cols.has(Kind::Sectors)
+                    && !self.cols.has(Kind::Pit) =>
+            {
+                343.0
+            }
             Preset::Md => g.driver_md,
             Preset::Lg => g.driver_lg,
         }
@@ -276,24 +283,6 @@ fn driver_text(row: &Row, options: &Options) -> String {
     } else {
         vantare_domain::standings::driver_name(&row.driver, &options.name_mode, options.name_max)
     }
-}
-
-/// Piloto ajustado al nombre más largo de toda la sesión (estable aunque
-/// cambien las filas visibles), sin pasar del preset.
-fn driver_width(board: Option<&Board>, options: &Options, style: &Style) -> f32 {
-    let max = options.driver_max(style);
-    let widest = board
-        .into_iter()
-        .flat_map(|b| b.groups.iter().flat_map(|g| &g.rows))
-        .map(|row| {
-            estimate(&driver_text(row, options), style.fonts.body)
-                + estimate(&vehicle_detail(row, &options.cols), style.fonts.small)
-        })
-        .fold(0.0_f32, f32::max);
-    if widest <= 0.0 {
-        return max;
-    }
-    (widest + 4.0).clamp(style.geometry.driver_xs, max)
 }
 
 // ---------------------------------------------------------------------------
@@ -387,15 +376,14 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
     crate::benchmark::mark(crate::benchmark::Work::Plan);
     let variant = options.variant(style);
     let g = &style.geometry;
-    let shown = board.filter(|b| !waiting(Some(b)));
-    let (columns, width) = options.layout(style, driver_width(shown, options, style));
+    let (columns, width) = options.layout(style, options.driver_max(style));
     let mut items = Vec::new();
-    let mut y = variant.padding_y;
+    let mut y = variant.padding_y + 1.0;
     if board.is_some_and(|b| b.banner.is_some()) {
         items.push((0.0, Item::Banner));
-        y = g.banner_height + g.banner_gap;
+    } else {
+        items.push((y, Item::Header));
     }
-    items.push((y, Item::Header));
     y += variant.header_height + variant.header_gap;
     match board.filter(|b| !waiting(Some(b))) {
         None => {
@@ -408,8 +396,10 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
             }
         }
         Some(board) => {
-            items.push((y, Item::Columns));
-            y += g.column_header_height;
+            if options.cols.has(Kind::Last) || options.cols.has(Kind::Best) {
+                items.push((y, Item::Columns));
+                y += g.column_header_height;
+            }
             let mut group = None;
             for (gi, ri) in rows(board, options) {
                 if options.mode == Mode::Multiclass && group != Some(gi) {
@@ -421,26 +411,59 @@ fn plan(board: Option<&Board>, options: &Options, style: &Style) -> Plan {
                 items.push((y, Item::Row(gi, ri)));
                 y += g.row_height;
             }
-            let mut footers = Vec::new();
-            if !board.player_present {
-                footers.push(Footer::Spectator);
-            } else if board.player_in_pits {
-                footers.push(Footer::Pits);
+            if board.banner.is_none() && (!board.player_present || board.player_in_pits) {
+                // La información de espectador/boxes sustituye la cabecera.
+                items.retain(|(_, item)| *item != Item::Header);
+                items.push((
+                    variant.padding_y - g.footer_gap - 1.0,
+                    Item::Footer(if board.player_present {
+                        Footer::Pits
+                    } else {
+                        Footer::Spectator
+                    }),
+                ));
             }
-            footers.push(Footer::Session);
-            for footer in footers {
+            if options.cols.has(Kind::Last) || options.cols.has(Kind::Best) {
                 y += g.footer_gap;
-                items.push((y, Item::Footer(footer)));
-                y += 1.0 + g.footer_gap + g.footer_height;
+                items.push((y, Item::Footer(Footer::Session)));
             }
         }
     }
+    let height = fixed_height(options, style);
     Plan {
         width,
-        height: y + variant.padding_y,
+        height,
         items,
         columns,
     }
+}
+
+/// Caja estable; los avisos sustituyen espacio dentro de ella.
+fn fixed_height(options: &Options, style: &Style) -> f32 {
+    let g = &style.geometry;
+    let v = options.variant(style);
+    let detailed = options.cols.has(Kind::Last) || options.cols.has(Kind::Best);
+    let table = options.rows as f32 * g.row_height
+        + if detailed {
+            g.column_header_height
+        } else {
+            0.0
+        }
+        + if options.mode == Mode::Multiclass {
+            3.0 * (g.separator_gap_top + g.separator_height + g.separator_gap_bottom)
+        } else {
+            0.0
+        };
+    let waiting = g.wait_height + 5.0 * g.row_height;
+    2.0 + 2.0 * v.padding_y
+        + v.header_height
+        + v.header_gap
+        + table.max(waiting)
+        + if detailed {
+            2.0 * g.footer_gap + 1.0 + g.footer_height
+        } else {
+            0.0
+        }
 }
 
 // Solo valores consumidos por este pintor; los campos de otros Looks no invalidan su caché.
@@ -568,7 +591,7 @@ impl Visual {
     /// sobre la vista previa. `None` sin filas que mostrar.
     pub(crate) fn columns(&self) -> Option<ColumnBoxes> {
         let top = self.plan.items.iter().find_map(|(y, item)| match item {
-            Item::Columns => Some(*y),
+            Item::Columns | Item::Row(..) => Some(*y),
             _ => None,
         })?;
         let bottom = self
@@ -1054,12 +1077,8 @@ impl Painter<'_> {
         let me = row.is_player && board.player_present;
         // El destello sustituye a la fila propia y se funde de vuelta en ella.
         let strength = flash.map_or(0.0, |(_, s)| s);
-        // Fondo fijo: el líder en amarillo (también si es el jugador); la fila
-        // propia en el acento.
-        let leader = is_leader(row);
-        let base = if leader {
-            Some(c.leader)
-        } else if me {
+        // El jugador es la única fila iluminada en el contrato aprobado.
+        let base = if me {
             Some(if v.player_white > 0.0 {
                 WHITE
             } else {
@@ -1082,8 +1101,8 @@ impl Painter<'_> {
             self.highlight(window, y, color, strength * self.style.motion.flash_boost);
         }
         let class = self.style.class(&group.class);
-        // Posición: el líder en amarillo.
-        let position_color = if leader { c.leader } else { c.muted };
+        // Posición discreta; el color identifica clase y cambios de puesto.
+        let position_color = c.muted;
         let ink = self.ink(Face::Display, f.position, 0.0, position_color.hsla());
         self.label(
             window,
@@ -1146,14 +1165,21 @@ impl Painter<'_> {
                     let is_gap = column.kind == Kind::Gap;
                     let color = if frozen {
                         c.frozen
-                    } else if leader && is_gap {
-                        c.leader
                     } else if me {
                         c.text
                     } else {
                         c.value
                     };
-                    let text = if is_gap { &row.gap } else { &row.interval };
+                    let class_leader = (is_gap
+                        && is_leader(row)
+                        && self.options.mode == Mode::AllClasses
+                        && shown_group(board) != Some(gi))
+                    .then(|| format!("1º {}", group.short.trim_start_matches("LM")));
+                    let text = class_leader.as_deref().unwrap_or(if is_gap {
+                        &row.gap
+                    } else {
+                        &row.interval
+                    });
                     let ink = self.ink(Face::Mono, f.mono, 0.0, color.hsla());
                     self.label(window, cx, text, 0.0, Some(right), y, h, Face::Mono, &ink);
                 }
@@ -1212,7 +1238,18 @@ impl Painter<'_> {
         let driver = driver_text(row, self.options);
         let driver = text::fit(window, &driver, &driver_ink, available);
         let used = self.label(window, cx, &driver, x, None, y, h, Face::Body, &driver_ink);
-        let detail = vehicle_detail(row, &self.options.cols);
+        let detail = if self.options.cols.vehicle
+            && !self.options.cols.has(Kind::Number)
+            && !row.number.is_empty()
+        {
+            format!(
+                "{} #{}",
+                vehicle_detail(row, &self.options.cols),
+                row.number
+            )
+        } else {
+            vehicle_detail(row, &self.options.cols)
+        };
         if detail.is_empty() {
             return;
         }
@@ -1572,6 +1609,51 @@ mod tests {
     }
 
     #[test]
+    fn a_banner_and_pit_or_spectator_status_never_overlap_the_header() {
+        let style = Style::compiled();
+        let opts = options("standard");
+        let mut board = vantare_domain::standings::project(&scene(), Preferences::default());
+        board.banner = Some(Banner::FullCourseYellow);
+        for player_present in [false, true] {
+            board.player_present = player_present;
+            board.player_in_pits = true;
+            let layout = plan(Some(&board), &opts, &style);
+            assert!(layout.items.iter().any(|(_, item)| *item == Item::Banner));
+            assert!(!layout.items.iter().any(|(_, item)| matches!(
+                item,
+                Item::Header | Item::Footer(Footer::Pits | Footer::Spectator)
+            )));
+        }
+    }
+
+    #[test]
+    fn design_system_box_is_fixed_across_every_catalogue_state() {
+        let scene: serde_json::Value =
+            serde_json::from_str(include_str!("../../fixtures/standings-vantare.scene.json"))
+                .expect("escena");
+        let style = Style::compiled();
+        for name in ["compact", "standard", "expanded"] {
+            for mode in ["player", "all", "multiclass"] {
+                let options = template(name, 8, mode);
+                let empty = plan(None, &options, &style);
+                for frame in scene["frames"].as_array().expect("fases") {
+                    let snapshot = vantare_ipc::snapshot_from_json(&frame["snapshot"].to_string())
+                        .expect("DTO");
+                    let board =
+                        vantare_domain::standings::project(&snapshot, Preferences::default());
+                    let plan = plan(Some(&board), &options, &style);
+                    assert_eq!(
+                        (plan.width, plan.height),
+                        (empty.width, empty.height),
+                        "{name}/{mode}"
+                    );
+                    assert!(plan.items.iter().all(|(y, _)| *y < plan.height));
+                }
+            }
+        }
+    }
+
+    #[test]
     fn compiled_style_is_valid_and_round_trips() {
         let style = Style::compiled();
         let json = serde_json::to_string(&*style).expect("JSON");
@@ -1627,7 +1709,7 @@ mod tests {
         assert_eq!(width(&options("standard")), 520.0);
         assert_eq!(width(&options("expanded")), 900.0);
         let mut narrower = options("standard");
-        narrower.cols.order.retain(|kind| *kind != Kind::Sectors);
+        narrower.cols.order.retain(|kind| *kind != Kind::Gained);
         assert!(
             width(&narrower) < 520.0,
             "quitar una columna estrecha el panel"

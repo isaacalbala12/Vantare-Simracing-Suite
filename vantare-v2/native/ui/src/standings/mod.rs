@@ -130,11 +130,8 @@ pub fn vantare_template(name: &str) -> Vec<options::ColumnSetting> {
             &[
                 "position",
                 "positionsGained",
-                "driverNumber",
                 "driverName",
                 "vehicle",
-                "pit",
-                "sectors",
                 "gap",
             ],
         ),
@@ -1084,23 +1081,15 @@ mod tests {
         assert!(move_column(&mut columns, "gap", Some("driverName")));
         assert_eq!(
             order(&columns),
-            [
-                "position",
-                "positionsGained",
-                "driverNumber",
-                "gap",
-                "driverName",
-                "pit",
-                "sectors"
-            ]
+            ["position", "positionsGained", "gap", "driverName"]
         );
         assert_eq!(columns.len(), before.len(), "no se pierde ni duplica nada");
         assert!(!move_column(&mut columns, "position", None), "P es fija");
         assert!(!move_column(&mut columns, "gap", Some("gap")));
         assert!(!move_column(&mut columns, "gap", Some("noExiste")));
         assert!(shift_column(&mut columns, "gap", 1));
-        assert_eq!(order(&columns)[3..5], ["driverName", "gap"]);
-        assert!(shift_column(&mut columns, "pit", -1));
+        assert_eq!(order(&columns)[2..4], ["driverName", "gap"]);
+        assert!(!shift_column(&mut columns, "pit", -1), "columna oculta");
         assert!(
             !shift_column(&mut columns, "positionsGained", -1),
             "ya es la primera"

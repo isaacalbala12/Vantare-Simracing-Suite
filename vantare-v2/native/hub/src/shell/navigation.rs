@@ -52,7 +52,7 @@ impl Access {
 
     pub fn beta_visible(self, section: Section) -> bool {
         match section {
-            Section::Workshop | Section::Analysis | Section::Licenses => false,
+            Section::Analysis | Section::Licenses => false,
             Section::Testing => self.verified && !self.blocked,
             Section::Calendar => self.verified && !self.blocked && self.tester,
             _ => true,
@@ -739,13 +739,14 @@ mod beta_tests {
             let access = Access::from_policy(&policy, 10_001);
             assert!(access.beta_visible(Section::Testing), "{role}");
             assert_eq!(access.beta_visible(Section::Calendar), tester, "{role}");
-            for section in [Section::Workshop, Section::Analysis, Section::Licenses] {
+            for section in [Section::Analysis, Section::Licenses] {
                 assert!(!access.beta_visible(section), "{role}");
             }
             for section in [
                 Section::Home,
                 Section::Launcher,
                 Section::Studio,
+                Section::Workshop,
                 Section::Account,
                 Section::Settings,
                 Section::Roadmap,
@@ -759,7 +760,7 @@ mod beta_tests {
             let menu = beta_commands(access, "");
             assert!(!menu.iter().any(|item| matches!(
                 item.command,
-                Command::Navigate(Section::Workshop | Section::Analysis | Section::Licenses)
+                Command::Navigate(Section::Analysis | Section::Licenses)
             )));
             assert!(
                 menu.iter()
@@ -776,6 +777,34 @@ mod beta_tests {
         }
     }
     #[test]
+    fn approved_workshop_is_visible_without_granting_widget_rights() {
+        let access = Access::default();
+        assert!(access.beta_visible(Section::Workshop));
+        assert_eq!(
+            access.widget_lock(vantare_ui::Kind::Radar),
+            Some("Acceso sin verificar")
+        );
+        let mut section = Section::Home;
+        assert!(
+            access
+                .beta_navigate(&mut section, Section::Workshop)
+                .is_err()
+        );
+        assert_eq!(section, Section::Home);
+        let verified = Access {
+            verified: true,
+            ..access
+        };
+        assert!(
+            verified
+                .beta_navigate(&mut section, Section::Workshop)
+                .is_ok()
+        );
+        assert_eq!(section, Section::Workshop);
+        assert!(verified.widget_lock(vantare_ui::Kind::Radar).is_some());
+    }
+
+    #[test]
     fn beta_routes_keep_hidden_modules_unreachable_and_future_modules_presentable() {
         for access in [
             Access::default(),
@@ -789,7 +818,7 @@ mod beta_tests {
             },
         ] {
             let mut current = Section::Home;
-            for hidden in [Section::Workshop, Section::Analysis, Section::Licenses] {
+            for hidden in [Section::Analysis, Section::Licenses] {
                 assert!(access.beta_navigate(&mut current, hidden).is_err());
                 assert_eq!(current, Section::Home);
             }

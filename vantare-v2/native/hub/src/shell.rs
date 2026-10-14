@@ -33,6 +33,7 @@ mod chrome;
 mod foundations;
 mod input;
 pub mod navigation;
+mod onboarding;
 #[path = "settings/mod.rs"]
 mod settings;
 pub(crate) use settings::releases::news_for_channel;
@@ -58,6 +59,7 @@ pub struct Options {
 }
 
 struct Hub {
+    onboarding: Option<onboarding::State>,
     analytics: analytics::State,
     section: Section,
     shell: chrome::State,
@@ -95,6 +97,7 @@ impl Hub {
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
+        self.poll_onboarding(cx);
         self.poll_privacy(cx);
         self.poll_usage(cx, false);
         let incompatible = self.subscriber.connection().incompatible()
@@ -730,6 +733,9 @@ impl Hub {
 impl Render for Hub {
     #[allow(clippy::too_many_lines)] // Compone el marco común en una sola raíz.
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.onboarding.is_some() {
+            return self.onboarding_view(window, cx).into_any_element();
+        }
         if self.privacy_question_pending() {
             return self.privacy_question(window, cx).into_any_element();
         }
@@ -1209,6 +1215,20 @@ impl Hub {
             settings.select_demo_page(page);
         }
         let testing = cx.new(|cx| Testing::new(testing_dir, remote.clone(), window, cx));
+        let onboarding_capture = capture
+            .as_ref()
+            .is_some_and(|c| c.name.starts_with("onboarding-"));
+        let first_run = demo.is_none()
+            && capture.is_none()
+            && settings
+                .general
+                .as_ref()
+                .is_ok_and(|store| !store.value.onboarding_completed);
+        let onboarding =
+            (first_run || onboarding_capture).then(|| onboarding::State::new(capture.as_ref(), cx));
+        if first_run {
+            Self::animate_onboarding(cx);
+        }
         wire_strategy(&strategy, cx);
         cx.observe_window_activation(window, |this, window, cx| {
             this.analytics.active = window.is_window_active();
@@ -1230,6 +1250,7 @@ impl Hub {
         })
         .detach();
         Hub {
+            onboarding,
             analytics: analytics::State::new(window.is_window_active()),
             section,
             shell: chrome::State::new(access, capture.as_ref(), cx),
@@ -1383,7 +1404,9 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
     gpui_platform::application()
         .with_assets(assets::Icons)
         .run(move |cx: &mut App| {
-            vantare_ui::analytics::init(cx);
+            if options.capture.is_none() && options.demo.is_none() {
+                vantare_ui::analytics::init(cx);
+            }
             cx.set_global(orbit::theme::Theme::default());
             let identity = match crate::installation::hub_identity() {
                 Ok(identity) => identity,

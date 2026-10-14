@@ -8,6 +8,13 @@ const DATA: &str = include_str!("../reference/fixtures/demo-data.json");
 const SCREENS: &str = include_str!("../reference/tools/demo-states.json");
 const STRATEGY_REVIEW: &str = include_str!("../reference/fixtures/strategy-review-demo.json");
 const QUALITY_CAPTURES: &[&str] = &[
+    "onboarding-0",
+    "onboarding-1",
+    "onboarding-2",
+    "onboarding-3",
+    "onboarding-4",
+    "onboarding-5",
+    "onboarding-6",
     "ajustes-perfil",
     "ajustes-perfil-foto",
     "ajustes-perfil-recorte",
@@ -649,6 +656,8 @@ impl CaptureState {
             return Err(format!("pantalla Wails desconocida: {name}"));
         }
         let section = match name {
+            "onboarding-0" | "onboarding-1" | "onboarding-2" | "onboarding-3" | "onboarding-4"
+            | "onboarding-5" | "onboarding-6" => Section::Home,
             "shell-notificaciones-abiertas" | "notificaciones-panel" | "notificaciones-vacio" => {
                 Section::Home
             }

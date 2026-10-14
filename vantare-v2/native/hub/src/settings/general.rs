@@ -27,6 +27,8 @@ impl Density {
 #[serde(default, deny_unknown_fields)]
 #[allow(clippy::struct_excessive_bools)]
 pub(in crate::shell) struct Preferences {
+    pub onboarding_completed: bool,
+    pub onboarding_simulators: [bool; 2],
     pub density: Density,
     pub startup: bool,
     pub minimized: bool,
@@ -37,6 +39,9 @@ pub(in crate::shell) struct Preferences {
 impl Default for Preferences {
     fn default() -> Self {
         Self {
+            // Los JSON anteriores al onboarding pertenecen a instalaciones existentes.
+            onboarding_completed: true,
+            onboarding_simulators: [true, false],
             density: Density::Balanced,
             startup: false,
             minimized: false,
@@ -59,12 +64,15 @@ impl Store {
             Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
             Err(error) => return Err(format!("leer ajustes generales: {error}")),
         };
-        let value = observed
+        let mut value = observed
             .as_deref()
             .map_or(Ok(Preferences::default()), |bytes| {
                 serde_json::from_slice(bytes)
                     .map_err(|error| format!("leer ajustes generales: {error}"))
             })?;
+        if observed.is_none() {
+            value.onboarding_completed = false;
+        }
         Ok(Self {
             value,
             path,
@@ -192,6 +200,31 @@ pub(super) fn wire(state: &super::State, cx: &mut gpui::Context<super::Hub>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn onboarding_runs_only_on_new_installations_and_completion_survives_restart() {
+        let root =
+            std::env::temp_dir().join(format!("vantare-onboarding-general-{}", std::process::id()));
+        std::fs::create_dir_all(&root).expect("root");
+        let mut store = Store::load(&root).expect("new installation");
+        assert!(!store.value.onboarding_completed);
+        let mut next = store.value;
+        next.onboarding_completed = true;
+        store.save(next).expect("completed");
+        assert!(
+            Store::load(&root)
+                .expect("restart")
+                .value
+                .onboarding_completed
+        );
+        std::fs::write(root.join("general.json"), b"{}").expect("legacy");
+        assert!(
+            Store::load(&root)
+                .expect("existing installation")
+                .value
+                .onboarding_completed
+        );
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
     #[test]
     fn density_changes_spacing_and_never_overrides_small_window_limits() {
         let base = crate::orbit::Adapt::new(1920.0, 1080.0, None, true);

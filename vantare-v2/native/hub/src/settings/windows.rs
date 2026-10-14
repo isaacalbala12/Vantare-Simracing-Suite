@@ -1,5 +1,28 @@
 //! Frontera Win32 acotada al valor Run del Hub del usuario actual.
 #![allow(unsafe_code)]
+/// Consulta de solo lectura de «Efectos de animación» de Windows.
+pub(in crate::shell) fn reduced_motion() -> bool {
+    #[cfg(windows)]
+    {
+        #[link(name = "user32")]
+        unsafe extern "system" {
+            fn SystemParametersInfoW(
+                action: u32,
+                parameter: u32,
+                value: *mut i32,
+                flags: u32,
+            ) -> i32;
+        }
+        let mut enabled = 0;
+        // SAFETY: SPI_GETCLIENTAREAANIMATION escribe un BOOL en un buffer válido.
+        // Ante fallo, reducir movimiento; jamás modifica la preferencia del SO.
+        unsafe { SystemParametersInfoW(0x1042, 0, &raw mut enabled, 0) == 0 || enabled == 0 }
+    }
+    #[cfg(not(windows))]
+    {
+        false
+    }
+}
 #[cfg(windows)]
 mod win {
     use std::{ffi::c_void, io};

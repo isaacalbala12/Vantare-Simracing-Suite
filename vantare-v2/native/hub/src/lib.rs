@@ -17,6 +17,7 @@ mod installation;
 pub mod launcher;
 pub mod lifecycle;
 pub mod notifications;
+pub mod onboarding;
 pub mod orbit;
 pub mod pilot;
 pub use vantare_ipc::product;

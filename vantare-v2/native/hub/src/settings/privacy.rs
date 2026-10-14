@@ -35,7 +35,7 @@ pub(super) fn policy_link(id: &'static str, focus: &FocusHandle, cx: &gpui::App)
         })
 }
 
-pub(super) struct Store {
+pub(in crate::shell) struct Store {
     pub value: Privacy,
     path: PathBuf,
     observed: Option<Vec<u8>>,

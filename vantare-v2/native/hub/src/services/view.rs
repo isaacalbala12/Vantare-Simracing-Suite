@@ -1,4 +1,6 @@
 //! UI sin red ni tokens. Un worker cancelable posee la conexión IPC y el I/O bloqueante.
+#[path = "onboarding.rs"]
+mod onboarding;
 #[path = "participation.rs"]
 mod participation;
 use super::{
@@ -9,6 +11,7 @@ use crate::orbit;
 use crate::{Section, shell::navigation::Access};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use gpui::{Context, div, linear_color_stop, linear_gradient, prelude::*, px, rgb, rgba};
+use onboarding::account_plan_label;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, Ordering},
@@ -322,14 +325,6 @@ fn purchase_disabled_reason(signed_in: bool, working: bool) -> Option<&'static s
         Some("Operación en curso")
     } else {
         None
-    }
-}
-
-fn account_plan_label(verified: bool) -> &'static str {
-    if verified {
-        "Acceso verificado"
-    } else {
-        "Acceso sin verificar"
     }
 }
 

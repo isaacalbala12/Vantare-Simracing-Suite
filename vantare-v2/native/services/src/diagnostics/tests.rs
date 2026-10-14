@@ -1,4 +1,28 @@
 use super::*;
+#[test]
+fn onboarding_opt_in_is_once_and_nothing_is_queued_before_explicit_consent() {
+    let root = root();
+    enqueue_once(&root, &Usage::UsageOptIn {}).expect("default off");
+    assert!(!root.join("usage-opt-in-v1").exists());
+    assert!(!root.join("usage").exists());
+    super::consent_tests::choice(&root, true);
+    enqueue_once(&root, &Usage::UsageOptIn {}).expect("activate");
+    enqueue_once(&root, &Usage::UsageOptIn {}).expect("repeat");
+    let records = std::fs::read_dir(root.join("usage"))
+        .expect("queue")
+        .count();
+    assert_eq!(records, 1);
+    assert!(root.join("usage-opt-in-v1").exists());
+    super::consent_tests::choice(&root, false);
+    enqueue_once(&root, &Usage::UsageOptIn {}).expect("revoked");
+    assert_eq!(
+        std::fs::read_dir(root.join("usage"))
+            .expect("empty queue")
+            .count(),
+        0
+    );
+    std::fs::remove_dir_all(root).expect("cleanup");
+}
 
 #[test]
 fn regression_1542_published_id_survives_temporary_cleanup_failure() {

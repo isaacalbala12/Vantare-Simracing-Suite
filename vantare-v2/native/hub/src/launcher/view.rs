@@ -150,6 +150,13 @@ mod presentation;
 mod showcase;
 
 impl Launcher {
+    pub(crate) fn onboarding_simulators(&self) -> [bool; 2] {
+        ["lmu", "acc"].map(|id| {
+            self.discovered
+                .app(id)
+                .is_some_and(|app| app.availability.installed)
+        })
+    }
     pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
         if self.adapt != adapt {
             self.adapt = adapt;

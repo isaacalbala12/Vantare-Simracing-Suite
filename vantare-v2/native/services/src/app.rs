@@ -118,6 +118,9 @@ impl App {
                 return Err(Error::Unconfigured);
             }
             let device = crate::license::installation::legacy_fingerprint()?;
+            // La renovación puede exigir revocación. Sin propietario no se
+            // inicia red ni se anuncia una limpieza parcial como revocación.
+            self.core.as_ref().ok_or(Error::Unconfigured)?;
             let time = now()?;
             let renewal = (|| {
                 self.ensure_oauth(time)?;
@@ -141,11 +144,7 @@ impl App {
                         | Error::InvalidCredential
                 ) {
                     // Rechazo definitivo: ACK durable antes de limpiar la caché.
-                    if self.core.is_some() {
-                        self.revoke_local()?;
-                    } else {
-                        self.candidate_store()?.remove("license-candidate")?;
-                    }
+                    self.revoke_local()?;
                 }
                 return Err(error);
             }
@@ -178,12 +177,7 @@ impl App {
 
     fn logout_reply(&mut self) -> Result<Reply> {
         // Invalida primero: ni limpieza local ni UI anuncian éxito antes del ACK.
-        if self.core.is_some() {
-            self.revoke_local()?;
-        } else {
-            // El auxiliar sin núcleo también debe retirar el candidato durable.
-            self.candidate_store()?.remove("license-candidate")?;
-        }
+        self.revoke_local()?;
         self.data_session = None;
         if let Some(reports) = self.reports.as_mut() {
             reports.cancel_preview();
@@ -980,7 +974,7 @@ mod tests {
     }
 
     #[test]
-    fn logout_without_core_removes_candidate_before_session_success() {
+    fn logout_without_core_requires_ack_before_session_success() {
         let server = crate::test_http::Server::start(vec![]);
         let (root, store) = crate::test_store("app-detached-logout");
         let account = crate::account::fixture(&server.base, &store);
@@ -1007,20 +1001,17 @@ mod tests {
             .expect("signed candidate");
         assert!(matches!(
             app.execute(Command::Logout),
-            Ok(Reply::Account {
-                signed_in: false,
-                ..
-            })
+            Err(Error::Unconfigured)
         ));
-        assert!(app.account.as_ref().expect("account").identity().is_none());
+        assert!(app.account.as_ref().expect("account").identity().is_some());
         assert!(
             matches!(
                 app.candidate_store()
                     .expect("store")
                     .load::<crate::license_remote::Candidate>("license-candidate"),
-                Err(Error::NotFound)
+                Ok(_)
             ),
-            "logout retained candidate without core"
+            "no durable revocation ACK: preserve the session for a managed retry"
         );
         server.finish();
         drop(app);
@@ -1097,6 +1088,8 @@ mod tests {
             let mut app = App::new(config, root.clone());
             app.account = Some(account);
             app.store = Some(store);
+            let (link, core) = core_fixture(device.clone(), keys, vec![]);
+            app.attach_core(link);
             app.candidate_store()
                 .expect("store")
                 .save(
@@ -1119,6 +1112,7 @@ mod tests {
                     .is_ok()
             );
             server.finish();
+            core.join().expect("no revocation for transient error");
             drop(app);
             crate::cleanup_store(&root, "app-transient-license", &[]);
         }

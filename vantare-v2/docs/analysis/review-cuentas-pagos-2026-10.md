@@ -11,10 +11,91 @@ F02/F04/F08 quedan corregidos o limitados por esta sección.
 | --- | --- |
 | N3 / F04 | El loader recibe el entorno fijado por servidor y filtra `billing_access_grants.environment`. Handler nativo y ruta legacy pasan el mismo entorno a lectura y firma. El normalizador sigue rechazando filas ajenas; soporte del entorno solicitado se conserva. RED: mezcla production/sandbox → 409. GREEN: 67 tests emisor/handler; credencial con Pro+calendar de producción, sin Launch sandbox. Logs `C:/tmp/1608-r2/N3-{red,green-corrected}.log`. |
 | Atribución residual | `resolveUserId` consulta primero el binding Polar+entorno+customer; ese UUID prevalece sobre external_customer_id raíz/anidado contradictorio. Sin binding conserva el contrato de external ID existente; no se presenta como cierre de checkout/atribución completo. RED: cliente A + external B devuelve B. GREEN: 52 tests procesador, incluyendo entornos distintos y metadata no autoritativa. Logs `attribution-{red,green}.log`. |
+| N1 / F08 / parte F02 | Opción mínima de la review: sin CoreLink no se confirma logout ni se inicia renovación HTTP, porque no se puede revocar el binding del propietario. Se devuelve Unconfigured y se conserva estado para reintento gestionado. Con núcleo se exige Invalidate durable antes de borrar candidato/sesión. RED: dos tests fallan por falso éxito del auxiliar con binding Owner previamente instalado. GREEN: cuatro focales; el test real arranca host, hace logout gestionado, cierra/reabre Owner y demuestra ausencia de derechos. Logs `N1-{red,green}.log`. No se escribe el almacén del núcleo desde services ni se cambia formato/protocolo. |
 
 Ronda en curso: N1/F08 y N2/F02 requieren gates Rust nuevos; los bloqueos
 B01/B02/B03 se revisan con planes concretos si exigen el corte de identidad,
 ledger SQL o política de conservación. No se eleva evidencia previa a verde nuevo.
+
+### Plan concreto de los bloqueos (sin ejecución de producción)
+
+Se contrastó el código de `#1523@33be660d` y su PR OPEN/draft con esta base;
+no se trasplantaron fragmentos ni se hizo merge. Estos tres bloqueos permanecen
+P1. El corte completo necesita revisión/integración y aceptación separadas.
+
+**B01 · Identidad Clerk-only y bearer de datos.** El cambio afecta autoridad,
+RPC/RLS y configuración PostgREST; aceptar dos claims de proveniencia en la
+función legacy no es un arreglo local seguro.
+
+1. Revisar juntos `supabase/migrations/20261008210000_clerk_identity_cutover.sql`
+   y `20261008233000_clerk_native_data_boundary.sql` de #1523, el resolver
+   `20261002130000_native_license_bridge.sql`,
+   `supabase/functions/native-account-authorize/index.ts` y
+   `native/services/src/{bridge,license_remote}.rs`. Conservar `(issuer,sub)` →
+   UUID y verificar la firma y procedencia del bearer; retirar la dependencia
+   operativa de `auth.users` sin borrar usuarios/datos históricos.
+2. Probar en PostgreSQL/PostgREST aislados: Clerk-only puede resetear su equipo;
+   otro UUID, issuer no fijado, claims falsos, token Supabase legacy y TTL >300 s
+   no pueden leer/resetear. Ejecutar `clerk_native_data_boundary_test.sql`,
+   `clerk_identity_cutover_test.sql` y bridge nativo con JWT real, no solo claims
+   SQL simulados. Inspeccionar ACL/RLS y cero ampliaciones para anon.
+3. Isaac decide el corte coordinado #1523, issuer/audiencia/firmante de datos y
+   ventana de migración/rollback. Después autoriza por separado configuración
+   TPA/JWT y despliegue. Riesgo: aceptar un JWT legacy como Clerk, bloquear
+   cuentas válidas o permitir acceso cruzado al cambiar la autoridad.
+
+**B02 · Refund ordinario, Pro, parcial y `order.refunded` agregado.**
+`RefundLedgerInput.paymentId` y `billing_refunds.provider_payment_id` son
+obligatorios aquí; `parseOrderLedgerInput` y el procesador solo admiten Launch
+one-time; Memory/SQL revocan por total. Cambiar solo TypeScript dejaría distinto
+el comportamiento durable SQL. La [API Polar vigente](https://polar.sh/docs/api-reference/2026-10/refunds/create-refund)
+identifica el refund por `order_id`, y muestra `payment_id` dentro de disputa.
+
+1. Revisar/integrar el paquete monetario #1523:
+   `supabase/migrations/20261008220000_billing_identity_refunds.sql`,
+   `supabase/functions/billing-webhook/{process,order-refund-ledger,disputes}.ts`,
+   `subscription-lifecycle-store.ts`, `billing-reconcile/{worker,checkouts}.ts`
+   y `supabase/functions/_shared/license-credential.ts`. Payment ID nullable,
+   vínculo durable order→UUID/checkout/entorno/subscription y restricción de
+   refund/disputa independiente de grants paid-through. No inventar payment ID
+   ni atribuir por email; una renovación tardía no debe levantar la restricción.
+2. Conservar RED ordinario/Pro/parcial de `billing-blockers.test.ts`; añadir
+   orden agregada totalmente refundada sin `refund.updated`, out-of-order,
+   pending→failed/canceled, late renewal, otra fuente activa y separación de
+   entornos. Comparar el ledger en memoria con SQL real usando
+   `billing_identity_refunds_test.sql` y `lifecycle-matrix.test.ts`, y verificar
+   emisión nativa sin los derechos de la fuente revocada. Reconciliación debe
+   resolver el agregado aunque falte el evento de refund; no declarar cerrado
+   ese caso solo por integrar un parser. Matriz sandbox requiere autorización.
+3. Isaac ratifica en el corte la política ya descrita en BIL-13: refund emitido
+   (incluido parcial/pending) retira esa fuente, failed/canceled restaura solo
+   si sigue vigente, disputa suspende y restaura al ganar el cliente; confirma
+   alcance Pro (factura/fuente/suscripción) y tratamiento del agregado sin
+   detalle. Riesgo: retirar otra compra legítima o restaurar derechos por un
+   evento tardío. No se ejecutan refunds, compras ni cambios SQL de producción.
+
+**B03 · Borrado y tombstone del UUID.** No es seguro inventar una política de
+retención ni un botón de borrado; tampoco basta consultar Clerk al firmar.
+
+1. Revisar el consumidor firmado `supabase/functions/clerk-webhook/index.ts`,
+   `_shared/webhook-verify.ts`, `20261008210000_clerk_identity_cutover.sql` y
+   `20261008233000_clerk_native_data_boundary.sql` de #1523: inbox idempotente,
+   timestamp monotónico y tombstone que un `user.updated` tardío no revive.
+   Toda RPC/RLS/Storage sensible debe consultar identidad no borrada; el
+   bearer emitido antes del borrado debe quedar denegado aun antes de su TTL.
+2. Verificar con fixtures firmados y SQL/PostgREST aislado: deleted→updated
+   tardío, duplicados, UUID histórico, bearer previo, webhook Polar posterior,
+   licencias nuevas y borrado/anonimización de datos personales sin destruir
+   la trazabilidad comercial. `clerk-webhook/index.test.ts`,
+   `clerk_identity_cutover_test.sql`, `clerk_native_data_boundary_test.sql` y
+   tests del emisor deben cubrir esos escenarios. Offline mantiene su política
+   hasta reconectar/expirar; no prometer revocación instantánea sin red.
+3. Isaac fija qué datos personales borrar/anonimizar, qué historial comercial
+   conservar y cuánto tiempo, si la cuenta puede recuperarse/recrearse y qué
+   ocurre con compras posteriores. Luego autoriza configuración Svix/Clerk y
+   despliegue como pasos separados. Riesgos: pérdida irreversible de historial,
+   acceso residual por RLS antigua y resurrección de UUID/grants. Sin UI nueva,
+   consumidor parcial ni eliminación de datos reales en esta entrega.
 
 Issue [#1608](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1608),
 proyecto Vantare / `area:plataforma`, Plane VANTA-16, VANTA-17 y VANTA-15.

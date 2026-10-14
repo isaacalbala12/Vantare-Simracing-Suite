@@ -9,6 +9,11 @@ La entrega de ronda 1 siguiente no cierra las omisiones señaladas por Sol.
 Atribución residual: binding durable Polar/entorno/customer precede al external
 ID contradictorio, RED→GREEN 52 tests procesador; cierre completo de checkout
 sin binding sigue dependiendo del corte #1514/#1523.
+N1/F08/F02: auxiliar sin CoreLink devuelve error de configuración; no confirma
+revocación ni inicia renovación HTTP. Reintento desde ejecución gestionada exige
+ACK durable. RED dos regresiones → GREEN cuatro focales, incluyendo binding
+real Owner, logout por host y reapertura sin derechos. El almacenamiento del
+núcleo sigue bajo su único propietario. No se promete logout autónomo sin él.
 
 Por revisar en `vantareapp/isa-1608-cuentas-y-pagos`, base nightly `69fa2d65`.
 Plane VANTA-16/17/15 Por revisar verificado. Reanudado por Codex CLI tras caída

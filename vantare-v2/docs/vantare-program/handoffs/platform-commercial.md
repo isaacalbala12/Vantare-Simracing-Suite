@@ -23,10 +23,17 @@ de la sesión anterior. [Matriz de las ocho páginas](../../pilot-settings-revie
 Painter de bandera y fallback ISO preparados por Opus; colocación por widget
 sin diseño aprobado, DUDA en buzón. Coordinado con #1608: solo extensiones
 aditivas en app/bridge/protocolo/Remote; no account.rs/account/*, login ni pagos.
-Plane VANTA-9 En curso verificado; GitHub Project Vantare y area:plataforma.
+Plane VANTA-9 **Por revisar** verificado el 14/10/2026 por CLI;
+[PR draft #1619](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1619)
+a nightly. GitHub Project Vantare y area:plataforma.
 Evidencia `C:/tmp/1612-evidence`; AppData/TEMP de QA, target propio y dos jobs.
-Sin push/PR todavía, ni merge, promoción, release o producción. Siguiente: publicar la rama, PR draft a nightly y Plane Por revisar;
-la issue registra SHA final, PR y estado de CI realmente alcanzado.
+Push verificado; canal alcanzado: rama de issue y PR draft. Código validado
+`6a5fb75a`; docs finales y SHA de entrega en la issue/PR. CI remota está iniciada,
+no se declara verde antes de contrastarla. Sin merge, promoción, release ni
+producción. Siguiente: revisión del orquestador, integración con las extensiones
+aditivas de #1608 y validación humana del backend cuando Isaac lo autorice.
+`services/view.rs` está en su techo original 1750; integrar ambos workers exige
+mantener la partición, sin elevar el gate.
 
 [Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/platform-commercial.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 

@@ -9,7 +9,7 @@ fn pilot_dispatch_failure_releases_editor_and_can_retry() {
         let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
         drop(requests);
         remote.update(cx, |remote, cx| {
-            let generation = remote.pilot_generation;
+            let generation = remote.pilot.generation;
             remote.request(
                 Command::PilotSave {
                     profile: super::super::protocol::pilot_document::PilotProfile::default(),
@@ -19,10 +19,10 @@ fn pilot_dispatch_failure_releases_editor_and_can_retry() {
             );
             assert!(!remote.busy());
             assert_ne!(
-                remote.pilot_generation, generation,
+                remote.pilot.generation, generation,
                 "failed dispatch must notify the editor"
             );
-            assert!(remote.pilot_result == PilotResult::Failed);
+            assert!(remote.pilot.result == pilot::PilotResult::Failed);
             let (send, retry) = mpsc::sync_channel(8);
             remote.send = Some(send);
             remote.request(Command::PilotLoad, cx);
@@ -42,7 +42,7 @@ fn pilot_reply_during_logout_cannot_restore_private_profile() {
             remote.request(Command::PilotLoad, cx);
             assert!(matches!(requests.try_recv(), Ok(Command::PilotLoad)));
             remote.request(Command::Logout, cx);
-            assert!(remote.pilot.is_none());
+            assert!(remote.pilot.saved.is_none());
             remote.complete(
                 Reply::Pilot {
                     state: crate::services::protocol::pilot_document::PilotState {
@@ -57,7 +57,7 @@ fn pilot_reply_during_logout_cannot_restore_private_profile() {
                 cx,
             );
             assert!(
-                remote.pilot.is_none(),
+                remote.pilot.saved.is_none(),
                 "late load must not restore private data after logout"
             );
             assert!(matches!(requests.try_recv(), Ok(Command::Logout)));
@@ -137,10 +137,7 @@ pub(super) fn fixture(
     let recovery = crate::testing::recovery::Recovery::load(data);
     let editor = crate::testing::Editor::new(crate::testing::empty_fields(), cx);
     let mut remote = Remote {
-        pilot: None,
-        pilot_message: String::new(),
-        pilot_result: PilotResult::Failed,
-        pilot_generation: 0,
+        pilot: pilot::Projection::default(),
         adapt: orbit::Adapt::default(),
         pipe: "qa-in-memory".into(),
         send: Some(send),

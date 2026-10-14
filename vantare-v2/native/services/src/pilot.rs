@@ -24,7 +24,11 @@ impl Default for Crop {
 /// La imagen original nunca sale del PC. Coordenadas normalizadas sobre la imagen original.
 // Las dimensiones están acotadas a 4096 y las coordenadas se validan antes
 // de convertir píxeles positivos; todos los enteros son exactos en f32.
-#[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
+#[allow(
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss
+)]
 pub fn crop_photo(bytes: &[u8], crop: Crop) -> Result<PilotPhoto> {
     let image = decode_source(bytes)?;
     let side = image.width().min(image.height());
@@ -58,7 +62,9 @@ pub fn crop_photo(bytes: &[u8], crop: Crop) -> Result<PilotPhoto> {
             .encode_image(&small)
             .map_err(|_| Error::Protocol)?;
         if jpeg.len() <= crate::protocol::pilot_document::MAX_PHOTO_BYTES {
-            return Ok(PilotPhoto { jpeg: STANDARD.encode(jpeg) });
+            return Ok(PilotPhoto {
+                jpeg: STANDARD.encode(jpeg),
+            });
         }
     }
     Err(Error::TooLarge)
@@ -223,9 +229,10 @@ mod tests {
             },
         )
         .expect("fixture válida");
-        let decoded = image::load_from_memory(&STANDARD.decode(photo.jpeg).expect("fixture válida"))
-            .expect("fixture válida")
-            .to_rgb8();
+        let decoded =
+            image::load_from_memory(&STANDARD.decode(photo.jpeg).expect("fixture válida"))
+                .expect("fixture válida")
+                .to_rgb8();
         let pixel = decoded.get_pixel(128, 128);
         assert!(pixel[2] > 240 && pixel[0] < 15);
     }
@@ -245,8 +252,8 @@ mod tests {
         assert_eq!(local.state().profile, profile);
         assert!(local.state().pending);
         drop(local);
-        let mut account =
-            Local::open(&root, Some("https://fixture.invalid"), Some("user_a")).expect("fixture válida");
+        let mut account = Local::open(&root, Some("https://fixture.invalid"), Some("user_a"))
+            .expect("fixture válida");
         assert_eq!(account.state(), &PilotState::default());
         account
             .save(
@@ -258,10 +265,12 @@ mod tests {
             )
             .expect("fixture válida");
         drop(account);
-        let other = Local::open(&root, Some("https://fixture.invalid"), Some("user_b")).expect("fixture válida");
+        let other = Local::open(&root, Some("https://fixture.invalid"), Some("user_b"))
+            .expect("fixture válida");
         assert_eq!(other.state(), &PilotState::default());
         drop(other);
-        let issuer = Local::open(&root, Some("https://other.invalid"), Some("user_a")).expect("fixture válida");
+        let issuer = Local::open(&root, Some("https://other.invalid"), Some("user_a"))
+            .expect("fixture válida");
         assert_eq!(issuer.state(), &PilotState::default());
         drop(issuer);
         std::fs::remove_dir_all(root).expect("fixture válida");

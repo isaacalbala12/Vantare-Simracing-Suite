@@ -46,11 +46,12 @@ pub(super) enum PhotoEdit {
 impl Hub {
     pub(super) fn observe_pilot(&mut self, cx: &mut Context<Self>) {
         let remote = self.remote.read(cx);
-        let generation = remote.pilot_generation;
+        let generation = remote.pilot.generation;
         if generation != self.settings.pilot_generation {
-            let state = remote.pilot.clone();
-            let succeeded = remote.pilot_result == crate::services::view::PilotResult::Loaded;
-            let message = remote.pilot_message.clone();
+            let state = remote.pilot.saved.clone();
+            let succeeded =
+                remote.pilot.result == crate::services::view::pilot::PilotResult::Loaded;
+            let message = remote.pilot.message.clone();
             self.settings.pilot_generation = generation;
             if !succeeded && !message.is_empty() {
                 self.pilot_error(message, cx);
@@ -163,7 +164,7 @@ impl Hub {
         }
     }
     fn pick_pilot_photo(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let generation = self.remote.read(cx).pilot_generation;
+        let generation = self.remote.read(cx).pilot.generation;
         let picker = cx.prompt_for_paths(PathPromptOptions {
             files: true,
             directories: false,
@@ -192,7 +193,7 @@ impl Hub {
             }
             .await;
             let _ = this.update_in(cx, |hub, window, cx| {
-                if hub.remote.read(cx).pilot_generation != generation {
+                if hub.remote.read(cx).pilot.generation != generation {
                     return;
                 }
                 match result {
@@ -216,7 +217,7 @@ impl Hub {
         .detach();
     }
     fn crop_pilot_photo(&mut self, crop: crate::pilot::Crop, cx: &mut Context<Self>) {
-        let generation = self.remote.read(cx).pilot_generation;
+        let generation = self.remote.read(cx).pilot.generation;
         let Some(bytes) = self.settings.pilot_source.clone() else {
             return self.pilot_error("Selecciona de nuevo la foto.".into(), cx);
         };
@@ -235,7 +236,7 @@ impl Hub {
                 })
                 .await;
             let _ = this.update(cx, |hub, cx| {
-                if hub.remote.read(cx).pilot_generation != generation {
+                if hub.remote.read(cx).pilot.generation != generation {
                     return;
                 }
                 match result {

@@ -25,8 +25,12 @@ la migración ni se envió feedback real. Bugs conservan la RPC existente.
 ## Triaje #1594
 
 Nuevo informe prepara etiquetas fijas, juego/versión observados, hardware de lista
-blanca y log reciente real de services. Vista previa del mismo payload de
-submit_v2, cinco casillas opcionales y consentimiento obligatorio DeepSeek.
+blanca y log reciente real de services. Vista previa del paquete exacto,
+cinco casillas opcionales y consentimiento obligatorio DeepSeek. En ronda 7
+se envía por la Edge de admisión #1610 y su adaptador exclusivo de servidor;
+v2 queda como validación interna, sin EXECUTE directo. Contexto/adjuntos,
+UUID y bytes de reintento se conservan. La lista con recibos legacy mantiene
+fixed como Arreglado.
 Texto/casillas invalidan vista previa y consentimiento; logout elimina contenido
 y rechaza respuestas tardías. PostHog/fragmento no disponibles quedan vacíos.
 Informe con capturas conserva la ruta previa; las imágenes no van al modelo.

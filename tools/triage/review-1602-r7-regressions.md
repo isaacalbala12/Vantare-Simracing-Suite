@@ -80,9 +80,14 @@ sin afirmar captura visual de GPUI.
 
 ## Límites
 
-Python triaje 57/57 con connect prohibido, followup mocks 4/4, quality/retirement
-456 PASS. Gates completos en ejecución al registrar F8; resultados finales en
-handoff/buzón/issue. Telemetría dedicada no repetida: sin cambios en
+Sobre código final 890e2473: workspace fmt/check/Clippy PASS; Nextest 1739/1739
+(12 skips del perfil, 1 lento PASS) y lifecycle 18/18 (5+13) PASS. Python triaje
+57/57 con connect prohibido, followup mocks 4/4, quality/retirement 456,
+Deno fmt/lint/check y diff-check PASS. Ambos hallazgos con RED/GREEN y commits
+separados: F8 f27df31a, F9 890e2473. Cierre documental posterior sin cambio de
+código; HEAD/checks remotos verificados en buzón/issue. Target propio, cola
+versionada y jobs=2; sin deps, baselines o lints modificados. Telemetría
+dedicada no repetida: sin cambios en
 runtime/domain/ipc/testdata. No proveedor, informes reales, SQL/gateway remoto,
 sal/tokens, deploy/cron/LOGIN, instalación, QA visual/física, merge o release.
 Antes de activar quedan revisión SQL/Edge y prueba de origen del gateway #1610.

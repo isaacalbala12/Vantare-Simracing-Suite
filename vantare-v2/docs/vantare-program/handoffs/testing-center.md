@@ -1,3 +1,58 @@
+## R7 F8/F9 · 14/10/2026 · entrega CLI por revisar
+
+#1594 / VANTA-38/49 Por revisar, actualizado y releído con script oficial.
+Proyecto Vantare/In Review, area:testing-center, issue OPEN y sin milestone.
+Rama vantareapp/isa-1594-triaje-informes; inicio limpio bb1d7bb3 y base/merge-base
+nightly e5c90be5, vigente al cierre. PR #1602 draft a nightly, auto-merge OFF,
+MERGEABLE/BLOCKED al consultar código; mergedAt null. Sin integración/release.
+
+Commits separados publicados: F8 f27df31a20d9f4a4487649e25f5c3eb88593cf01;
+F9/código final 890e2473fe0d16dce14f75f8d61759e1a615e972. F8 cambia el envío
+al camino admitido de #1610 (Edge → RPC exclusiva service_role) y conserva
+cuenta/IP/consentimiento, UUID v4, contexto/adjuntos, reintento exacto y follow-up.
+V2 sigue cerrada en SQL y puente; F7=C mantiene toda prosa local. F9 conserva
+fixed → Arreglado junto a recibos legacy, sin diseño visual nuevo.
+
+Migración nueva candidata 20261014115717_testing_triage_admitted, tras
+participación/triaje/followup/admisión IP; down preserva datos/presupuestos y
+no reabre RPCs. SQL/rollback original aprobado #1594 idénticos (0fd57395...cf6c9
+/ 206dd635...4e621). Sin aplicación SQL remota ni despliegue de Edge/worker.
+
+RED/GREEN propio conservado: ruta/UUID nativos, Edge 400, adaptador SQL ausente;
+F9 [No aceptado, Recibido] → [Arreglado, Recibido]. SQL combinado: 27 checks,
+F1 17/F1IP 26/F2 6/F3 8 sin grants sintéticos; preview nativo preparado/enviado
+por HTTP loopback, envelope del handler Edge y storage local idénticos.
+Sin admisión IP/cuenta en Edge no se invoca storage; clientes/worker no tienen
+EXECUTE del adaptador. La autoridad es el servidor Edge/service_role, como en
+#1610. Pruebas Edge con identidad/admisión/RPC inyectadas, sin gateway ni
+PostgREST remoto. PostgreSQL desechable con actor NOSUPERUSER y sin TCP.
+#1594 aislada 83/83, concurrencia/login/snapshot/rollback/reapply PASS.
+
+Gates completos sobre fuente final 890e2473: fmt/check/Clippy PASS, Nextest
+1739/1739 (12 skips del perfil, 1 lento PASS), lifecycle 18/18 (5+13),
+Python triaje 57/57 con connect prohibido y followup mocks 4/4, Deno Edge
+15/15 más fmt/lint/check, quality/retirement 456 y diff-check PASS.
+Target exclusivo E:/tmp/isa1594-native-gates, compilar.ps1 y jobs=2; sin nuevas
+deps, allow, baselines ni tests debilitados. Telemetría dedicada no repetida:
+ningún runtime/domain/ipc/testdata cambió en r7. Cierre posterior solo docs;
+HEAD/push y CI exactos del cierre en comentario de issue/PR y buzón.
+
+[Regresiones r7](../../../../tools/triage/review-1602-r7-regressions.md),
+[contrato combinado](../../runbooks/testing-report-followup.md).
+Evidencia/manifest E:/tmp/isa1594-r7-evidence/. Diff completo revisado.
+CI de código: promotion/ratchet SUCCESS; GitGuardian FAILURE; blocking gates
+/native-linux aún IN_PROGRESS. No se certifica CI completo verde.
+Próximo paso: re-review del orquestador y clasificación del check, sin auto-merge.
+
+Sin subagentes, producción, informes reales a T3/Intake, proveedor, deploy,
+sal/tokens/LOGIN/cron nuevos, instalación real, merge/promoción/release ni pagos.
+QA visual/física y telemetría dedicada omitidas por alcance. Manual pendiente:
+fixed + recibo legacy → Arreglado; nota distintiva ausente de preview/retry,
+en build aislada con componentes v9. Gateway #1610 necesita prueba de origen
+antes de activar; SQL/Edge/cliente se revisan/despliegan juntos con autorización.
+Menor contexto diagnóstico, contenido mínimo no acreditado y pendientes antiguos
+con prosa en cuarentena permanecen como riesgos. Hitos inferiores históricos.
+
 ## R7 F9 · 14/10/2026 · hito local, gates completos en curso
 
 #1594 / VANTA-38/49 En curso. F8 publicado en

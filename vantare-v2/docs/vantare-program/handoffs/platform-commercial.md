@@ -9,7 +9,44 @@ Rama `vantareapp/isa-1612-perfil-y-ajustes`, base `origin/nightly@0807fbd0`.
 [PR draft #1619 a nightly](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1619),
 Plane VANTA-9 / GitHub Project Vantare / area:plataforma.
 
-Ronda 3 CLI tras review r2 `daa2ca20` NO APTO (P2=1/P3=1):
+Ronda 4 CLI terminada en rama tras review r3 `8eadf36e` NO APTO (P2-1=1).
+Corte Rust/SQL validado y publicado `d9df6b17256f31bc9499772b3aafe3069fe134fa`.
+RED exacto: A aún en curso, load ve R, B reemplaza el intento y termina en
+Conflict. GREEN: UUID v4 durable con contenido/foto y CAS inmutables; B conserva
+su copia local y solo recibe otra clave después de confirmar A. Eliminadas
+huellas y reconciliación por SELECT. Servidor preparado: `last_op_id`, recibos
+privados por cuenta/op_id y lock transaccional; duplicado devuelve el resultado
+original incluso después de un guardado de otro dispositivo.
+
+fmt/check/Clippy `-D warnings` PASS; Nextest 1679/1679 (7 skips existentes,
+paridad lenta 125 s), lifecycle 18/18 PASS. Los 15 tests de piloto pasan:
+texto/foto, reinicio, confirmación de A/B perdida, edición intermedia, dos
+dispositivos y negativas de documento/hash/revisión. Ambos formatos locales
+anteriores preservan el pendiente; no recuperan retroactivamente confirmaciones
+sin op_id. SQL 90 pgTAP, concurrencia real por barreras, aborto/reintento con la
+misma clave, diez postchecks y cuatro negativas de retirada PASS también sin
+SUPERUSER. Quality/456 huellas y fragmento PASS. Telemetría no repetida: no hay
+cambios en runtime/domain/IPC/testdata. Datos de pruebas aislados, target propio
+`native/target/gates`, dos jobs y plazo de 1800 s por gate.
+
+PR draft #1619 actualizada, push d9df6b17 y VANTA-9 Por revisar verificados
+14/10/2026 06:27 CEST. Cierre posterior solo handoff/changelog; HEAD final y CI en
+issue/PR y buzón. No se declara CI completa verde. Origin/nightly `5a796e89`,
+base aprobada `0807fbd0`, PR DIRTY: falta review del SHA nuevo e integración
+compilada con #1608 por el orquestador. Sin merge/rebase, promoción ni release.
+Evidencia `C:/tmp/ola4/1612`: RED Conflict y GREEN, gates y SQL; conserva también
+un primer fixture RED que devolvía Protocol y un fixture antiguo con load extra,
+corregidos antes de los gates finales. No son fallos omitidos del gate final.
+
+Backend solo preparado, sin consulta/aplicación de Supabase real. Recibos sin
+poda automática: cualquier retención futura debe conservar idempotencia.
+Sin diseño/capturas nuevas, login/Storage HTTP reales, juego físico ni validación
+integrada. Las fotos del fixture no certifican la API completa de Storage.
+Bandera sigue pendiente de colocación diseñada. Sin instalación/datos reales
+tocados, herramientas/dependencias nuevas ni subagentes. Siguiente: review del
+orquestador; activación backend requiere autorización separada de Isaac.
+
+Histórico ronda 3 CLI tras review r2 `daa2ca20` NO APTO (P2=1/P3=1):
 P2-1 reproducido: A confirmado sin respuesta, Guardar B antes de reconciliar
 y reiniciar devuelve Conflict. Arreglo `98429184` + `c2a59c4e` (Clippy), GREEN 11/11 servicios:
 huella durable del CAS enviado separada del pendiente, reconciliación de R+1

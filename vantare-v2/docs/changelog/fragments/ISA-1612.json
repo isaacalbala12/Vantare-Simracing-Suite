@@ -4,13 +4,14 @@
   "type": "feature",
   "summary": "Perfil privado del piloto en Ajustes: nombre, foto con recorte circular, descripción, país, simuladores y favoritos.",
   "technicalNotes": [
-    "El perfil se guarda primero en el PC, protegido y separado por cuenta; el reintento conserva el intento enviado y reconcilia la revisión remota aunque haya nuevas ediciones tras perder la confirmación.",
+    "El perfil se guarda primero en el PC, protegido y separado por cuenta. Cada operación lleva un UUID durable: reintentar recupera su resultado original; nuevas ediciones esperan la confirmación y conservan su copia local.",
     "Las descripciones admiten varias líneas. Cancelar y mover o ampliar el recorte se bloquean mientras se procesa la foto.",
-    "El backend preparado valida el documento nativo, exige CAS por RPC y protege las fotos frente a reemplazos. Incluye retirada segura de QA vacío."
+    "El backend preparado valida el documento nativo, exige CAS y op_id por RPC y protege las fotos frente a reemplazos. Conserva recibos privados entre dispositivos e incluye retirada segura de QA vacío."
   ],
   "testing": [
     "En un portable de QA, guardar una descripción con Enter, reabrir y comprobar que conserva ambas líneas.",
-    "Cambiar solo la foto y comprobar Guardar/Descartar; al procesar el recorte, Cancelar queda deshabilitado y rueda, arrastre y teclado deben conservar la selección enviada."
+    "Cambiar solo la foto y comprobar Guardar/Descartar; al procesar el recorte, Cancelar queda deshabilitado y rueda, arrastre y teclado deben conservar la selección enviada.",
+    "En QA con backend autorizado, perder la confirmación de A, guardar B y reiniciar: A se confirma una sola vez y luego B se sincroniza. Si otro dispositivo guarda C entre medias, C permanece y B se conserva como conflicto local."
   ],
   "knownLimitations": [
     "Backend solo preparado, sin aplicar: activar Supabase requiere autorización de Isaac.",

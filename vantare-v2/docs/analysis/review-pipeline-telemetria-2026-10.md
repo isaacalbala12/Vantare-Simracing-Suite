@@ -108,10 +108,13 @@ su único fallo era F7, que aún no estaba arreglado.
   Los candidatos sin escenario probado están contrastados abajo; no equivalen
   a certificación física ni a ausencia de todos los bugs posibles.
 
-Estado de publicación al cerrar gates: rama local lista, issue #1606 OPEN,
-Plane VANTA-46 En curso y GitHub Project Vantare In Progress; falta publicar
-el PR draft. SHA final, PR/CI y paso a Por revisar se verifican en la issue y
-en el buzón. No hay milestone asignado ni compromiso nuevo de release.
+Estado verificado el 2026-10-14: rama publicada, issue #1606 OPEN,
+Plane VANTA-46 Por revisar y GitHub Project Vantare In Review.
+[PR draft #1616](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1616)
+OPEN a nightly `0807fbd0`; comprobación de compatibilidad con `git merge-tree`
+sin conflictos, sin modificar ramas ni hacer merge. No había checks remotos
+emitidos al crear el draft; HEAD/CI finales quedan releídos en la issue y el
+buzón tras el último push. No hay milestone asignado ni compromiso nuevo de release.
 
 ### Repetir los checks
 

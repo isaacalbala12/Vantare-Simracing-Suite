@@ -49,7 +49,7 @@ function fake() {
     recurring_interval: p.interval,
     recurring_interval_count: 1,
     is_archived: false,
-    visibility: "published",
+    visibility: "public",
     metadata: {},
     prices: [{
       id: sandbox.checkout_keys[p.key as "pro_monthly" | "pro_annual"]
@@ -82,7 +82,7 @@ function fake() {
       const ids = (body as { products: string[] }).products;
       if (
         ids.some((id) =>
-          products.find((p) => p.id === id)?.visibility !== "published"
+          products.find((p) => p.id === id)?.visibility === "draft"
         )
       ) {
         return Promise.reject(Error("Product is a draft"));
@@ -442,7 +442,7 @@ Deno.test("P2-2: own creator link selects only launch products and pins its disc
   );
   assertEquals(f.links.length, 0);
   // Simulate the separately authorized activation, never done by syncCatalog.
-  for (const p of f.products) p.visibility = "published";
+  for (const p of f.products) p.visibility = "public";
   const first = await syncCatalog(f.http, draft, options);
   assertEquals(first.writes, 1);
   assertEquals(first.creator_link_pending, null);
@@ -566,4 +566,29 @@ Deno.test("catalog: normal product cannot also claim a launch slot", async () =>
   f.products[0].metadata = { vantare_catalog_key: "pro_monthly:launch" };
   await assertRejects(() => syncCatalog(f.http, sandbox, options));
   assertEquals(f.writes.length, 0);
+});
+
+for (const visibility of ["public", "private"] as const) {
+  Deno.test(`R1 P1: activated ${visibility} launch products create one idempotent creator link`, async () => {
+    const f = fake();
+    const draft = await syncCatalog(f.http, sandbox, options);
+    for (const p of f.products) Object.assign(p, { visibility });
+    const activated = await syncCatalog(f.http, draft, options);
+    assertEquals(activated.creator_link?.id, f.links[0]?.id);
+    assertEquals(activated.creator_link_pending, null);
+    assertEquals(activated.writes, 1);
+    assertEquals(f.links.length, 1);
+    assertEquals((await syncCatalog(f.http, activated, options)).writes, 0);
+  });
+}
+
+Deno.test("R1 P1: a remaining draft launch product keeps creator link pending", async () => {
+  const f = fake();
+  const draft = await syncCatalog(f.http, sandbox, options);
+  for (const p of f.products) Object.assign(p, { visibility: "public" });
+  f.products.find((p) => p.metadata?.vantare_catalog_key)!.visibility = "draft";
+  const partial = await syncCatalog(f.http, draft, options);
+  assertEquals(partial.creator_link, null);
+  assertEquals(partial.writes, 0);
+  assertEquals(f.links.length, 0);
 });

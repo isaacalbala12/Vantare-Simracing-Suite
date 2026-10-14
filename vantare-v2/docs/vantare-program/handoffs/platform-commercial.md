@@ -2,6 +2,14 @@
 
 Estado de la base indicada; releer la issue antes de ejecutar.
 
+## #1620 · respuesta ronda 1 independiente (14/10/2026)
+
+P1 Sol A/B confirmado: `published` no existe. Enum y gate usan `public`/
+`private`; draft sigue pendiente. Dos regresiones RED → GREEN y control de
+activación parcial; catálogo 24 PASS. Logs `C:/tmp/polar-loop/r1-p1-*`.
+Los dos P2 siguen en verificación. Muse no completa review ni añade hallazgos.
+Rama/PR #1621 draft a nightly conservados; sin API Polar, secretos ni deploy.
+
 ## #1620 · ronda 3 P2-2 (14/10/2026)
 
 Decisión del orquestador: productos propios de lanzamiento 3,99/39,90 y

@@ -77,6 +77,10 @@ activación autorizada de los cuatro productos de lanzamiento, repetir con el
 resultado anterior crea el enlace. Otro rerun da `writes: 0`. El script nunca
 publica productos automáticamente.
 
+Visibilidades reales: `draft`, `public`, `private`. La etapa de enlace acepta
+los cuatro productos en `public` o `private`; un solo draft mantiene el enlace
+pendiente. `published` no es un valor de la API (R1 P1 Sol A/B, RED→GREEN).
+
 Fuentes públicas oficiales contrastadas el 14/10/2026, sin API:
 [descuento porcentual/repeating](https://github.com/polarsource/polar/blob/main/server/polar/discount/schemas.py),
 [payload Checkout Links](https://github.com/polarsource/polar/blob/main/server/polar/checkout_link/schemas.py),

@@ -20,7 +20,7 @@ export type Resource = {
   recurring_interval?: string | null;
   recurring_interval_count?: number;
   is_archived?: boolean;
-  visibility?: "draft" | "published";
+  visibility?: "draft" | "public" | "private";
   prices?: {
     id: string;
     is_archived?: boolean;
@@ -338,7 +338,8 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
     };
     for (const id of priceIds) map.price_id_to_checkout_key[id] = plan.key;
     launchIds.push(pair[1].id);
-    launchProductsPublished &&= pair[1].visibility === "published";
+    launchProductsPublished &&= pair[1].visibility === "public" ||
+      pair[1].visibility === "private";
     offers[`${plan.key}:launch`] = {
       product_id: pair[1].id,
       discount_id: null,

@@ -1,3 +1,31 @@
+## #1608 · Revisión cuentas y pagos (14/10/2026)
+
+En curso en `vantareapp/isa-1608-cuentas-y-pagos`, base nightly `69fa2d65`.
+Plane VANTA-16/17/15 En curso verificado. Reanudado por Codex CLI tras caída
+de T3, sin subagentes; seis commits y dos cambios pendientes recuperados.
+Sin producción, secretos, cuentas/compras ni promoción. Informe
+[review-cuentas-pagos-2026-10.md](../../analysis/review-cuentas-pagos-2026-10.md).
+Arreglos locales: `cf2983ec` usuario Clerk bloqueado/borrado; `4eba01d6` FK
+checkout al UUID interno; `e286eff6` consulta de grants existente; `a359653f`
+CHECK plan anual; `0314d266` retry acotado refund anterior a order. Evidencia
+rojo→verde en `C:/tmp/1608-evidence/`; migraciones no aplicadas remotamente.
+`fbf68867` exige huella canónica antes de resolver identidad/reset;
+`0fd539ce` invalida núcleo/candidato ante denegación definitiva online y conserva
+offline ante 429/503. Logout sin núcleo también retira el candidato (RED→GREEN).
+`84db0981` cierre sin núcleo; `f8183f36` elimina atribución por metadata.user_id,
+sin romper el binding durable del cliente (RED→GREEN, 51 tests del procesador).
+Deno final 522 PASS/1 ignored; PostgreSQL local 230 assertions PASS; quality/retirada
+456 huellas PASS. Rust fmt/check/Clippy y Nextest 1649 PASS/7 skips;
+lifecycle 18 PASS, target propio y dos jobs. Dos fallos de entorno QA documentados
+y corregidos sin modificar tests; suite completa final verde en rutas temporales.
+Se mantiene no-Go #1514/#1506: bearer de datos/reset RED `not_authenticated`,
+refund sin payment_id y refund Pro RED con grants activos, borrado/tombstones
+sin cierre en esta base. #1514 autorizada tiene implementación en draft #1523,
+OPEN sin merge a HEAD 33be660d; no se duplican ni trasplantan sus fragmentos.
+No se debilita el resolver ni se inventa atribución. Aceptación física
+autorizada pendiente. #1612 conserva perfil separado; aquí solo license/logout
+y tests de app.rs, sin account.rs/bridge/IPC/Hub. PR draft/CI/estado final pendientes.
+
 # Handoff vivo — Plataforma, cuenta, servicios y distribución
 
 Estado de la base indicada; releer la issue antes de ejecutar.

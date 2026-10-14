@@ -6,7 +6,7 @@
 default-filter = 'not binary(lifecycle) & not (package(vantare-runtime) & (binary(telemetry_golden) | binary(acc_conformance) | binary(lmu_conformance) | binary(lmu_oracle)))'
 
 [profile.telemetria]
-default-filter = 'package(vantare-runtime) & (binary(telemetry_golden) | binary(acc_conformance) | binary(lmu_conformance) | binary(lmu_oracle))'
+default-filter = 'package(vantare-runtime) & (binary(telemetry_golden) | binary(acc_conformance) | binary(lmu_conformance) | binary(lmu_oracle) | binary(launch_coverage))'
 
 # Intermitentes conocidos: se reintentan solos; el resto falla a la primera.
 # Quitar cada línea al cerrar su issue (#1434 lanzador).

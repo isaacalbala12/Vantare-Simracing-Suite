@@ -90,6 +90,7 @@ pub(super) struct Trackers {
     /// Sesión y coche de los que son los datos acumulados.
     identity: Option<(SessionId, CarId)>,
     fuel: fuel::Tracker,
+    energy: fuel::Tracker,
     delta: delta::Tracker,
     stint: stint::Tracker,
     trend: trend::Tracker,
@@ -105,6 +106,7 @@ impl Trackers {
             if self.identity != Some(identity) {
                 // Sesión o coche del jugador nuevos: nada es comparable.
                 self.fuel.reset();
+                self.energy.reset();
                 self.delta.reset();
                 self.stint.reset();
                 self.trend.reset();
@@ -119,16 +121,19 @@ impl Trackers {
         } = state;
         let Some(player) = player.as_mut() else {
             self.fuel.invalidate();
+            self.energy.invalidate();
             self.delta.invalidate();
             return;
         };
         self.trend.derive(cars, player.car);
         let Some(car) = cars.iter().find(|car| car.id == player.car) else {
             self.fuel.invalidate();
+            self.energy.invalidate();
             self.delta.invalidate();
             return;
         };
         self.fuel.derive(player, car);
+        self.energy.derive_energy(player, car);
         self.delta.derive(player, car, session.track_length_m);
         delta::references(player, car, cars);
         self.stint.derive(player, car, session);

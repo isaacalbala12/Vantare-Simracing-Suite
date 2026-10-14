@@ -1,6 +1,6 @@
 //! Los dos endpoints REST de LMU, decodificados con límites. REST solo aporta
-//! lo que la memoria compartida no trae (número de carrera, bandera global) o
-//! un respaldo del circuito y del tipo de sesión; nunca crea un coche.
+//! números, banderas explícitas, paradas y energía virtual, con un respaldo
+//! de circuito/tipo de sesión. Nunca crea un coche ni rejuvenece SHM.
 
 #[cfg(windows)]
 mod http;
@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use std::time::Duration;
 
 use serde_json::{Map, Value};
+use vantare_domain::{Flag, FlagKind, FlagScope};
 
 use super::frame::Kind;
 
@@ -28,11 +29,14 @@ pub(super) enum DecodeError {
     Malformed,
 }
 
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub(super) struct CarNumber {
     pub slot: i32,
     pub number: String,
     pub vehicle: String,
+    pub pit_stops: Option<u32>,
+    pub energy: Option<f64>,
+    pub flag: Option<FlagKind>,
 }
 
 #[derive(Debug, Default, PartialEq)]
@@ -40,6 +44,7 @@ pub(super) struct SessionInfo {
     pub track: Option<String>,
     pub kind: Option<Kind>,
     pub global_yellow: bool,
+    pub sector_flags: Vec<Flag>,
 }
 
 /// Cada endpoint se confirma solo tras decodificar completo; una respuesta
@@ -89,6 +94,17 @@ impl Cache {
             Some((rows, started)) if current(*started, now) && *started >= floor => rows,
             _ => &[],
         }
+    }
+
+    /// Metadata por coche conserva su reloj, incluso tras caducar. El slot
+    /// debe casarse además con la etiqueta SHM antes de usar estas señales.
+    pub(super) fn car_details(
+        &self,
+        now: Duration,
+        floor: Duration,
+    ) -> Option<(&[CarNumber], bool)> {
+        let (rows, started) = self.car_numbers.as_ref()?;
+        (*started >= floor).then(|| (rows.as_slice(), current(*started, now)))
     }
 
     /// Sesión REST y si sigue siendo actual (`false`: dato caducado).
@@ -156,6 +172,14 @@ fn decode_standings(body: &[u8]) -> Result<Vec<CarNumber>, DecodeError> {
             slot,
             text(row, "carNumber")?.unwrap_or_default(),
             text(row, "vehicleName")?.unwrap_or_default(),
+            property(row, "pitstops")
+                .and_then(Value::as_u64)
+                .and_then(|v| u32::try_from(v).ok())
+                .filter(|v| *v <= 10_000),
+            property(row, "veFraction")
+                .and_then(Value::as_f64)
+                .filter(|v| v.is_finite() && (0.0..=1.0).contains(v)),
+            property(row, "flag").and_then(rest_flag),
         ));
     }
     // Un hueco repetido es ambiguo: no se asigna número a ninguno de sus coches.
@@ -167,15 +191,24 @@ fn decode_standings(body: &[u8]) -> Result<Vec<CarNumber>, DecodeError> {
     }
     Ok(parsed
         .into_iter()
-        .filter_map(|(slot, number, vehicle)| {
+        .filter_map(|(slot, mut number, vehicle, pit_stops, energy, flag)| {
             let slot = slot.filter(|slot| counts.get(slot) == Some(&1))?;
             // LMU numera con enteros de hasta cuatro cifras; "007" se conserva.
-            ((1..=4).contains(&number.len()) && number.bytes().all(|byte| byte.is_ascii_digit()))
-                .then_some(CarNumber {
+            let numbered =
+                (1..=4).contains(&number.len()) && number.bytes().all(|byte| byte.is_ascii_digit());
+            if !numbered {
+                number.clear();
+            }
+            (numbered || pit_stops.is_some() || energy.is_some() || flag.is_some()).then_some(
+                CarNumber {
                     slot,
                     number,
                     vehicle,
-                })
+                    pit_stops,
+                    energy,
+                    flag,
+                },
+            )
         })
         .collect())
 }
@@ -207,7 +240,38 @@ fn decode_session_info(body: &[u8]) -> Result<SessionInfo, DecodeError> {
         track: text(row, "trackName")?,
         kind,
         global_yellow,
+        // REST tiene códigos textuales explícitos, no números de fase. Un
+        // sector amarillo nunca se promueve a FCY/amarilla global.
+        sector_flags: property(row, "sectorFlag")
+            .and_then(Value::as_array)
+            .filter(|flags| flags.len() == 3)
+            .map(|flags| {
+                flags
+                    .iter()
+                    .zip(0_u8..3)
+                    .filter_map(|(value, sector)| {
+                        Some(Flag {
+                            kind: rest_flag(value)?,
+                            scope: FlagScope::Sector(sector),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default(),
     })
+}
+
+fn rest_flag(value: &Value) -> Option<FlagKind> {
+    match value.as_str()? {
+        "GREEN" => Some(FlagKind::Green),
+        "YELLOW" => Some(FlagKind::Yellow),
+        "BLUE" => Some(FlagKind::Blue),
+        "WHITE" => Some(FlagKind::White),
+        "RED" => Some(FlagKind::Red),
+        "BLACK" => Some(FlagKind::Black),
+        "CHECKERED" => Some(FlagKind::Checkered),
+        _ => None,
+    }
 }
 
 #[cfg(test)]
@@ -215,6 +279,54 @@ mod tests {
     use super::*;
 
     const S: Duration = Duration::from_secs(1);
+
+    #[test]
+    fn auxiliary_signals_do_not_depend_on_a_valid_race_number_or_unrelated_fields() {
+        let rows = decode_standings(
+            br#"[{"slotID":7,"carNumber":"A3","vehicleName":"Car-7",
+            "pitstops":2,"veFraction":0.5,"flag":"BLACK","finishStatus":"FSTAT_NONE"}]"#,
+        )
+        .unwrap();
+        assert_eq!(rows.len(), 1);
+        assert!(rows[0].number.is_empty());
+        assert_eq!(rows[0].pit_stops, Some(2));
+        assert_eq!(rows[0].energy, Some(0.5));
+        assert_eq!(rows[0].flag, Some(FlagKind::Black));
+        let rows = decode_standings(
+            br#"[{"slotID":7,"carNumber":"7","vehicleName":"Car-7",
+            "pitstops":-1,"veFraction":1.1,"flag":3}]"#,
+        )
+        .unwrap();
+        assert_eq!(rows[0].pit_stops, None);
+        assert_eq!(rows[0].energy, None);
+        assert_eq!(rows[0].flag, None);
+        assert_eq!(rows[0].number, "7");
+    }
+
+    #[test]
+    fn local_flags_keep_their_scope_and_ignore_unknown_codes() {
+        let info = decode_session_info(br#"{"sectorFlag":["YELLOW","invalid","GREEN"]}"#).unwrap();
+        assert!(!info.global_yellow);
+        assert_eq!(
+            info.sector_flags,
+            vec![
+                Flag {
+                    kind: FlagKind::Yellow,
+                    scope: FlagScope::Sector(0)
+                },
+                Flag {
+                    kind: FlagKind::Green,
+                    scope: FlagScope::Sector(2)
+                },
+            ]
+        );
+        for shape in [
+            br#"{"sectorFlag":[2,3,4]}"#.as_slice(),
+            br#"{"sectorFlag":["YELLOW"]}"#,
+        ] {
+            assert!(decode_session_info(shape).unwrap().sector_flags.is_empty());
+        }
+    }
 
     #[test]
     fn standings_keep_numbers_and_drop_ambiguous_slots() {
@@ -230,7 +342,8 @@ mod tests {
             vec![CarNumber {
                 slot: 0,
                 number: "007".to_owned(),
-                vehicle: "Team A".to_owned()
+                vehicle: "Team A".to_owned(),
+                ..CarNumber::default()
             }]
         );
         assert_eq!(decode_standings(b"[null]").unwrap(), vec![]);

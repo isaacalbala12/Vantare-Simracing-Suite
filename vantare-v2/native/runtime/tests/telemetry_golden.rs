@@ -16,7 +16,17 @@ fn legacy_fixture(text: &str) -> String {
     text.replace("\"version\":10", "\"version\":9")
 }
 fn legacy_dto(snapshot: &vantare_domain::Snapshot) -> String {
-    let dto = vantare_ipc::snapshot_to_json(snapshot).expect("DTO v10");
+    // #1638 delivers two previously omitted, existing DTO fields. Frozen
+    // oracles remain intact; launch_coverage and lmu_conformance independently
+    // check those values against the original SHM/REST, not against this view.
+    let mut snapshot = snapshot.clone();
+    if snapshot.origin.source.simulator == "lmu" {
+        for car in &mut snapshot.state.cars {
+            car.vehicle.clear();
+            car.pit_stops = vantare_domain::Quality::Unavailable;
+        }
+    }
+    let dto = vantare_ipc::snapshot_to_json(&snapshot).expect("DTO v10");
     let start = dto.find(",\"driving_situation\":").expect("situation v10");
     let end = start + 1 + dto[start + 1..].find(',').expect("metadata siguiente");
     let mut old = dto;

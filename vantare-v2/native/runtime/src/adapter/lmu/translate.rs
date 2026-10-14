@@ -164,28 +164,24 @@ impl Translator {
         self.frame_count += 1;
         let rest_session = self.rest.session(now, self.floor);
         let session = self.session(&frame, rest_session, stale);
-        let flags = flags(rest_session);
         let race = matches!(
             session.kind,
             Quality::Reliable(SessionKind::Race) | Quality::Stale(SessionKind::Race)
         );
-        let cars: Vec<Car> = frame
-            .vehicles
-            .iter()
-            .map(|vehicle| {
-                let id = self.car_id(vehicle);
-                let number = self.car_number(vehicle, now);
-                self.car(vehicle, id, number, stale, race)
-            })
-            .collect();
+        let cars = self.observed_cars(&frame, now, stale, race);
         let player = frame.player.map(|index| {
-            player(
+            self.observed_player(
                 &frame.vehicles[index],
                 cars[index].id,
+                now,
                 stale,
                 telemetry_stale,
             )
         });
+        let player_flag = frame
+            .player
+            .and_then(|index| self.player_flag(&frame.vehicles[index], cars[index].id, now));
+        let flags = flags(self.rest.session(now, self.floor), player_flag, stale);
         Ok(Observation {
             origin: Origin {
                 source: Source {
@@ -220,6 +216,51 @@ impl Translator {
                 player,
             },
         })
+    }
+
+    fn observed_cars(&mut self, frame: &Frame, now: Duration, stale: bool, race: bool) -> Vec<Car> {
+        frame
+            .vehicles
+            .iter()
+            .map(|vehicle| {
+                let id = self.car_id(vehicle);
+                let number = self.car_number(vehicle, now);
+                let mut car = self.car(vehicle, id, number, stale, race);
+                if let Some((info, fresh)) = self.car_details(vehicle, now) {
+                    car.pit_stops = quality(info.pit_stops, stale || !fresh);
+                }
+                car
+            })
+            .collect()
+    }
+
+    fn observed_player(
+        &self,
+        vehicle: &Vehicle,
+        car: CarId,
+        now: Duration,
+        stale: bool,
+        telemetry_stale: bool,
+    ) -> Player {
+        let mut player = player(vehicle, car, stale, telemetry_stale);
+        // Energía virtual solo en Hypercar, nunca veFraction como litros.
+        if vehicle.class.to_ascii_uppercase().contains("HYPER")
+            && let Some((info, fresh)) = self.car_details(vehicle, now)
+        {
+            player.fuel.energy = quality(info.energy, stale || !fresh);
+        }
+        player
+    }
+
+    fn player_flag(&self, vehicle: &Vehicle, car: CarId, now: Duration) -> Option<(Flag, bool)> {
+        let (info, fresh) = self.car_details(vehicle, now)?;
+        Some((
+            Flag {
+                kind: info.flag.clone()?,
+                scope: FlagScope::Car(car),
+            },
+            fresh,
+        ))
     }
 
     fn telemetry_stale(&mut self, frame: &Frame, now: Duration) -> bool {
@@ -257,6 +298,16 @@ impl Translator {
                     && entry.vehicle == vehicle.name.trim()
             })
             .map_or_else(String::new, |entry| entry.number.clone())
+    }
+
+    fn car_details(&self, vehicle: &Vehicle, now: Duration) -> Option<(&rest::CarNumber, bool)> {
+        let (rows, fresh) = self.rest.car_details(now, self.floor)?;
+        let info = rows.iter().find(|entry| {
+            entry.slot == vehicle.slot
+                && !entry.vehicle.is_empty()
+                && entry.vehicle == vehicle.name.trim()
+        })?;
+        Some((info, fresh))
     }
 
     /// Nueva sesión si el circuito o el tipo cambian con datos frescos, o si el
@@ -396,6 +447,7 @@ impl Translator {
         Car {
             id,
             number,
+            vehicle: vehicle.name.clone(),
             driver: Driver {
                 id: driver,
                 name: vehicle.driver.clone(),
@@ -541,7 +593,8 @@ fn player(vehicle: &Vehicle, car: CarId, stale: bool, telemetry_stale: bool) -> 
         ),
         // LMU no publica la pérdida estimada de una parada (#1497).
         pit_loss_s: Quality::Unavailable,
-        // Energía virtual, servicio de la parada y stint aún no se leen de LMU (#1497).
+        // Energía virtual se añade desde REST en observed_player; servicio
+        // aún no se lee y stint se deriva en el núcleo (#1497).
         pit_service: PitService::default(),
         stint: Stint::default(),
         // Los deltas frente a óptima y líder los deriva el núcleo (#1497).
@@ -572,22 +625,35 @@ fn weather(value: Weather, stale: bool) -> Weather {
     }
 }
 
-/// Solo la evidencia positiva de amarillo global del REST; su ausencia no
-/// prueba que no haya bandera.
-fn flags(rest: Option<(&rest::SessionInfo, bool)>) -> Quality<Vec<Flag>> {
-    match rest {
-        Some((info, fresh)) if info.global_yellow => {
-            let flags = vec![Flag {
+/// Códigos explícitos y su ámbito original. Ausencia no prueba pista libre;
+/// flags caducados no se rejuvenecen por una respuesta de otro endpoint.
+fn flags(
+    rest: Option<(&rest::SessionInfo, bool)>,
+    player: Option<(Flag, bool)>,
+    stale: bool,
+) -> Quality<Vec<Flag>> {
+    let mut flags = Vec::new();
+    let mut stale = stale;
+    if let Some((info, fresh)) = rest {
+        if info.global_yellow {
+            flags.push(Flag {
                 kind: FlagKind::Yellow,
                 scope: FlagScope::Session,
-            }];
-            if fresh {
-                Quality::Reliable(flags)
-            } else {
-                Quality::Stale(flags)
-            }
+            });
         }
-        _ => Quality::Unavailable,
+        flags.extend(info.sector_flags.iter().cloned());
+        if !flags.is_empty() {
+            stale |= !fresh;
+        }
+    }
+    if let Some((flag, fresh)) = player {
+        flags.push(flag);
+        stale |= !fresh;
+    }
+    if flags.is_empty() {
+        Quality::Unavailable
+    } else {
+        quality(Some(flags), stale)
     }
 }
 

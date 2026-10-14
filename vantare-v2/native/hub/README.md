@@ -1,11 +1,14 @@
-## #1631 · Formularios de email (pendientes de gates/QA)
+## #1631 · Formularios de email (verificación local macOS)
 
 El acceso ofrece email con código o contraseña, alta y recuperación en Orbit.
 Los inputs no se guardan; la contraseña se dibuja oculta y no permite copiar.
 Tras verificación hay una aprobación explícita de acceso a identidad/perfil.
 Google/Discord siguen abriendo la página alojada de Clerk en el navegador.
 Protocolo services v9: Hub, supervisor y servicios se actualizan juntos.
-Compilación/tests/QA aún pendientes en este worker macOS; no certifica Clerk real.
+Build y Clippy de Hub/services/ipc/runtime PASS; Nextest compatible 1072/1072
+PASS. 49 tests GPUI quedan pendientes por AppKit/hilo principal; cuatro mediciones
+se omiten por defecto. QA visual/interacción, Windows y Clerk development real
+quedan al orquestador. La contraseña tampoco se expone en accesibilidad.
 
 # Hub nativo (ISA-1430)
 
@@ -222,7 +225,7 @@ No hay publicación, Discord, zonas distintas de UTC ni recordatorios.
 | Notificaciones | Errores locales, dedupe, lectura y destinos cerrados; memoria del proceso. |
 | Ajustes | Preferencias locales de apariencia y Workshop; [contrato](src/settings/README.md). |
 | Testing Center | Editor del servicio de reportes y diagnóstico local separado; [contrato](src/testing/README.md). |
-| Cuenta / licencias / roadmap | DTO/IPC al supervisor, sin red ni credenciales en el Hub; `src/services`. |
+| Cuenta / licencias / roadmap | DTO/IPC al supervisor; sin red/tokens; inputs de email transitorios; `src/services`. |
 | Launcher | Catálogo, perfiles, cadenas y política de cierre; [contrato](src/launcher/README.md). |
 | Strategy | Documento y solver local, datos/revisiones y editor; `src/strategy.rs`. |
 | Análisis | Lectura acotada y cancelable mediante el helper de storage; `src/analysis`. |

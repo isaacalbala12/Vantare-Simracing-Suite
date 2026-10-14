@@ -1,4 +1,4 @@
-## #1631 · Login propio (implementación pendiente de gates)
+## #1631 · Login propio (gates locales macOS)
 
 El protocolo services v9 añade AccountEmail y respuestas Email sin tokens.
 Hub/supervisor/servicios deben compilarse juntos. Entrada con código/contraseña,
@@ -7,8 +7,12 @@ La sesión FAPI es temporal; la aprobación explícita de Device Grant obtiene l
 misma sesión OAuth v1 guardada por Account.complete. Supabase/Polar no cambian.
 Google/Discord mantienen authorize alojado + PKCE + callback loopback.
 Requisitos de desarrollo, seguridad y límites: [login propio](../../docs/auth/login-propio.md).
-Esta rama todavía no acredita compilación, tests ni login real: falta resolver
-la cola Windows en el worker macOS sin pwsh. No promover antes de gates y review.
+Cargo directo con target propio y dos jobs autorizado en este Mac. Build y
+Clippy --all-targets/-D warnings PASS; Nextest compatible 1072/1072 PASS.
+Los 49 tests GPUI de AppKit requieren otro harness/Windows; cuatro mediciones
+permanecen ignoradas por defecto. No acredita login real: Native API/Device Grant,
+QA y Windows pendientes del orquestador. Telemetría 25/25 y lifecycle macOS
+10/10 PASS. Evidencia y resultados en el handoff.
 
 # Servicios nativos — ISA-1430
 

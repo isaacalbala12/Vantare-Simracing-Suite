@@ -1,44 +1,57 @@
-## #1631 / VANTA-70 · Login propio — trabajo local pendiente de gates (14/10/2026)
+## #1631 / VANTA-70 · Login propio — Por revisar, gates macOS (14/10/2026)
 
-Encargo explícito del orquestador al worker Codex macOS arm64, sin subagentes,
-GitHub, push ni servicios reales. Proyecto Vantare, rama aislada
-`vantareapp/isa-1631-login-propio`, base nightly local `b9ec75ed` verificada y
-checkout inicialmente limpio. GitHub #1631/PR/CI remotos no verificables en Mac.
-La excepción inicial de seguimiento se concreta en la instrucción posterior
-que autoriza exclusivamente `~/orq/plane-estado.py`: VANTA-70 «En curso»
-verificado al empezar; no se busca ningún tracker ni se usa Notion.
+Encargo del orquestador al worker Codex macOS arm64, sin subagentes, GitHub,
+push ni servicios de producto reales. Proyecto Vantare; issue
+[#1631](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1631)
+según el brief, estado/labels/PR/CI remotos no verificables desde este Mac.
+Rama `vantareapp/isa-1631-login-propio`, base nightly local `b9ec75ed`; checkout
+inicial limpio. Solo se autoriza el script específico `~/orq/plane-estado.py`:
+VANTA-70 «En curso» verificado al retomar; resumen actualizado y «Por revisar»
+verificado el 14/10/2026 a las 18:05 UTC. Sin búsquedas de trackers ni Notion.
 
-Fase 1 commit `3f74eb58`: [investigación y diseño](../../auth/login-propio.md).
-Google requiere navegador o sesión web del sistema; Discord no tiene una vía
-embebida confirmada, ambos conservan navegador. FAPI nativa usa client API token
-por Authorization/_is_native, distinto del OAuth access/refresh del almacén.
-La composición documentada FAPI → aprobación de Device Grant → OAuth permite
-conservar contrato Supabase/Polar y Account.complete v1. Habilitación de Native
-API y Device Grant del OAuth client público en development pendiente del operador;
-no se ha configurado ningún servicio real ni se acredita compatibilidad en vivo.
+Fase 1 `3f74eb58`: [investigación y diseño](../../auth/login-propio.md).
+Google requiere navegador o sesión web del sistema; Discord no tiene vía
+embebida confirmada. Ambos conservan el navegador. FAPI nativa mantiene el
+client API token efímero; la aprobación explícita de Device Grant obtiene la
+sesión OAuth v1 existente. Supabase/Polar, puente, licencia y almacén no cambian.
+Native API y Device Grant del client público deben habilitarse en development;
+no se ha configurado un servicio real ni probado compatibilidad en vivo.
 
-Fase 2 escrita, **sin compilar todavía**: protocolo services v9 con credenciales
-de entrada y Debug redactado; servicios manejan cinco flujos email, reenvío,
-cancelación, estados incompletos y consentimiento. Tokens FAPI efímeros;
-intercambio OAuth compara identidad y generación. El Hub usa Orbit, contraseña
-oculta/sin copiar y renovación de licencia solo después del OAuth confirmado.
-El supervisor preserva la ventana de acceso para pasos de email. Almacén v1,
-puente, licencia y billing servidor intactos; sin dependencias nuevas.
-Tests loopback preparados para cinco flujos, errores, cooldown/rate limit,
-rotación de header, tareas/MFA/requisitos, origen, identidad distinta, respuesta
-OAuth pendiente y cancelación; tests de IPC y transición del Hub preparados.
-**No se presentan como PASS:** check/Clippy/Nextest/lifecycle/telemetría y QA
-pendientes. `cargo fmt` y `git diff --check` PASS; huellas **456 PASS**.
+Fase 2: checkpoint `b6844b4c`, correcciones verificadas en `e08e48f2`.
+Servicios v9, cinco flujos email, código incorrecto, reenvío, cancelación,
+recuperación y consentimiento en Orbit. MFA/tareas/requisitos adicionales
+ofrecen el navegador. Los tokens FAPI no se guardan. El intercambio compara
+identidad/generación antes de persistir OAuth y renovar licencia. Sin nuevas
+dependencias. Se corrigen tipos/importaciones/fixtures, la exposición de la
+contraseña por accesibilidad y los campos extra de acciones IPC sin datos.
+La regresión de accesibilidad usa el constructor productivo sin AppKit.
+Se mueven los pasos de email a login.rs; view.rs respeta el techo de 1750 líneas
+sin elevarlo. Las expectativas de tests y los lints se conservan.
 
-Bloqueo de entorno: Mac no tiene pwsh y `native/scripts/compilar.ps1` consulta
-Win32_OperatingSystem; gates.ps1 exige además DuckDB Windows. Solicitada a Isaac
-excepción para Cargo local con target propio y dos jobs. No se instala tooling,
-no se altera la cola y no se compila mientras esa autorización está pendiente.
-Evidencia/documentación pública en `~/evidence/1631/`; AVANCE en
-`~/orq/1631.buzon.md`. No FIN ni «Por revisar» antes de verificar.
-Siguiente: resolver ejecución de gates, corregir lo que fallen, QA de formularios,
-commit de cierre y review del orquestador; luego validar Clerk development real
-sin anunciar producción. Sin merge, release, deploy, pagos ni promoción.
+Autorización de continuación: Cargo directo, CARGO_BUILD_JOBS=2 y target
+`~/target-1631`, --locked; sin pwsh ni compilar.ps1/cola Win32. Build de
+services/ipc/runtime/hub PASS; el smoke de Análisis exige compilar también
+storage (DuckDB bundled ya fijado, PASS). Clippy de los cuatro crates,
+--all-targets y -D warnings PASS. Nextest compatible: **1072/1072 PASS**,
+**53 omitidos** (49 AppKit + cuatro mediciones ignoradas por defecto).
+Suite completa inicial: 1071 PASS/50 FAIL; 49 fallan antes de la lógica por
+«Mac platform not created on main thread» y uno por tamaño, ya corregido.
+El filtro local enumera solo esos 49: no se ignoran en el repo ni se declaran PASS.
+Lifecycle macOS: **10/10 PASS**; tres escenarios Win32 no se compilan aquí.
+Build final del código e08e48f2 PASS. Telemetría: **25/25 PASS**, incluidas
+las 190.308 fotos ACC (959 s de suite; no se acorta ni altera el corpus).
+Fmt/diff y retirada **456 huellas PASS**; fragmento ISA-1631 válido, sin publicar.
+
+QA visual/interacción, esos 49 tests gráficos, Windows (DPAPI/lifecycle Win32)
+y Clerk development real quedan al orquestador. macOS conserva JSON sin cifrar
+con permisos 0600; máscara/Debug redactado no garantizan borrar todas las copias
+transitorias de credenciales. No hay SQL/Edge nuevos ni cambios de contrato servidor.
+Evidencia y fallos iniciales: `~/evidence/1631/`; comandos, inventario AppKit y
+resultados en ESTADO.md. AVANCE/FIN en `~/orq/1631.buzon.md`.
+Entrega local lista para review: FIN registra el HEAD documental final en el
+buzón. Siguiente: el orquestador recoge los commits, revisa el diff y valida
+development/Windows/QA antes de integrar. No se acredita ningún canal remoto.
+Sin push, PR, merge, release, deploy, pagos ni promoción.
 
 ## #1620 / PR #1621 · lanzamiento sin trial, decisión B (14/10/2026)
 

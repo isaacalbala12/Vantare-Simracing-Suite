@@ -63,7 +63,7 @@ Nunca conceder acceso por tener un email verificado solamente.
 | Acción | Peticiones FAPI y transición |
 | --- | --- |
 | Entrada con código | `POST /v1/client/sign_ins` con `identifier=email`. Leer `supported_first_factors`, escoger `email_code` y su `email_address_id`. `POST /v1/client/sign_ins/{id}/prepare_first_factor` con ambos campos. Pedir el código. `POST .../attempt_first_factor` con `strategy=email_code&code=...`. Exigir `status=complete` y `created_session_id`. |
-| Entrada con contraseña | Crear sign-in con `identifier=email`, `strategy=password`, `password=...`. Si queda `needs_first_factor`, usar `POST .../attempt_first_factor` con `strategy=password&password=...`; nunca inferir éxito del HTTP 200. |
+| Entrada con contraseña | Crear sign-in con `identifier=email`, `strategy=password`, `password=...`. Exigir `complete` y sesión creada. Este corte ofrece navegador si aún requiere otro factor; nunca inferir éxito del HTTP 200. |
 | Alta sin contraseña | `POST /v1/client/sign_ups` con `email_address=email`; `POST /v1/client/sign_ups/{id}/prepare_verification` con `strategy=email_code`. `POST .../attempt_verification` con `strategy=email_code&code=...`. Exigir `complete` y sesión creada. |
 | Alta con contraseña | Misma alta incluyendo `password`; **también** verificar email mediante código antes de completar. Requisitos extra configurados por Clerk pueden impedir completar. |
 | Recuperación | Crear sign-in con `identifier=email`; preparar `reset_password_email_code` usando el `email_address_id` que ofrece Clerk; verificar con `attempt_first_factor` y ese strategy/código. Exigir `needs_new_password`; `POST .../reset_password` con `password` y la elección explícita `sign_out_of_other_sessions`. Después exigir `complete`. |
@@ -170,3 +170,29 @@ OAuth distinta, rotación de header, restauración/renovación/logout y generaci
 Gates fmt/check/Clippy/Nextest/lifecycle, telemetría por IPC/runtime y huellas.
 QA de formulario/máscara/foco/errores en macOS; Windows y Clerk development
 real quedan al orquestador. Sin SQL/Edge nuevos: contrato servidor intacto.
+
+
+## Verificación local completada — 14/10/2026
+
+Fase 1 `3f74eb58`, checkpoint Fase 2 `b6844b4c`, correcciones `e08e48f2`.
+Cargo directo autorizado en macOS arm64 con dos jobs, target `~/target-1631`
+y --locked. Build de services/ipc/runtime/hub y storage PASS; Clippy de los
+cuatro crates, --all-targets/-D warnings PASS; fmt y 456 huellas PASS.
+Nextest compatible **1072/1072 PASS**, telemetría **25/25 PASS** (corpus
+completos, incluidas 190.308 fotos ACC), lifecycle macOS **10/10 PASS**.
+
+La suite completa inicial conserva 49 fallos GPUI por AppKit fuera del hilo
+principal; no se eliminan tests ni expectativas. La repetición local excluye
+esos nombres exactos y cuatro mediciones ya ignoradas por defecto. El fallo
+adicional de tamaño se corrige moviendo email a login.rs, sin elevar el techo.
+IPC verifica que Resend/Finish/Cancel rechacen campos extra; accesibilidad
+verifica que la contraseña no exponga valor y que el email siga siendo legible.
+Los cinco flujos se verifican con HTTP loopback y sesiones/almacén OAuth fakes.
+Evidencia completa, comandos y fallos iniciales en `~/evidence/1631/ESTADO.md`.
+
+Quedan pendientes QA visual/interacción (máscara, foco, clipboard, errores y
+reconexión), los tests gráficos con un harness adecuado, Windows (incluidos
+DPAPI y los tres escenarios lifecycle Win32) y Clerk development real con
+Native API/Device Grant habilitados. Este corte no certifica login real,
+producción, Supabase/Polar remotos ni revocación de todos los grants OAuth al
+recuperar contraseña. VANTA-70 «Por revisar»; sin push, PR, merge ni release.

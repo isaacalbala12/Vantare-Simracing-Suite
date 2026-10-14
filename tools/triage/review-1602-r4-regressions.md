@@ -68,7 +68,9 @@ Native: gates check/Clippy/Nextest/lifecycle por `native/scripts/compilar.ps1`,
 jobs=2, timeout 3600 s, target exclusivo E:/tmp/isa1594-native-gates. Wrapper
 verificado contra `native/gates.ps1`, solo cwd/target distintos; sin alterar
 features/defaults. La suite focal inicial de services pasó 17/17; la ejecución
-final del workspace y sus cifras se registran en el cierre del handoff vivo.
+final del workspace sobre 674d4c44 pasó fmt/check/Clippy, Nextest 1661/1661
+(7 skips, un lento PASS) y lifecycle 18/18. Python final 47/47 y quality 456 PASS.
+El cierre del handoff enlaza los hitos de código y el estado real de entrega.
 
 RED Python anterior al arreglo en
 E:/tmp/isa1594-r4-evidence/python-red.log; GREEN completo con sockets prohibidos
@@ -76,7 +78,8 @@ E:/tmp/isa1594-r4-evidence/python-red.log; GREEN completo con sockets prohibidos
 fallos de fixtures antiguas que exigían texto de log conservados en evidencia;
 corregidos por contrato explícito, sin cambiar las expectativas de privacidad.
 Clippy inicial exigió backticks en un comentario; corregido sin allow y repetido
-GREEN. fmt/check/Clippy y quality PASS; Nextest/lifecycle en curso.
+GREEN. Todos los gates finales PASS sobre 674d4c44; también se conserva la
+primera tanda verde, repetida tras el ajuste de compatibilidad SQL privada.
 No hay RED Rust ejecutado sobre la versión anterior: la fuga nativa de la
 review r4 era una predicción por lectura; sí se ejecutan las regresiones nuevas.
 

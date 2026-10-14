@@ -1,37 +1,60 @@
 # Handoff vivo — Testing Center
 
-## R4 F5 · 14/10/2026 · CLI, gates en curso
+## R4 F5 · 14/10/2026 · entrega CLI
 
-#1594 / VANTA-38/49 En curso. PR #1602 draft a nightly; STOP merge y sin envíos
-reales. Reanudación en 5d62f624, worktree limpio, commits heredados preservados.
-Encargo explícito de Isaac: cambiar a lista blanca de logs. El worker admite
-únicamente campos cerrados y acotados de registros JSON completos; omite texto
-crudo, messages/first_line/nombres libres/payload. Adjuntos privados del owner
-conservan almacenamiento y retención. Rust valida metadata de errores; Python aplica la proyección externa cerrada.
-El almacenamiento privado conserva la forma SQL: errores type/message/fingerprint
-y eventos name/at. Message es un código fijo; name/at quedan solo para el owner,
-se descartan al exportar. Solo registros estructurados externos admiten
-relative_ms; nunca una fecha absoluta de evento. No cambia SQL ni persistencia.
+#1594 / VANTA-38/49 **Por revisar**, actualizado y releído con el script oficial.
+Proyecto Vantare, area:testing-center; issue OPEN/In Review, sin milestone.
+PR #1602 draft a nightly, STOP merge, auto-merge OFF. Reanudación limpia en
+5d62f624; commits heredados conservados, sin subagentes ni diseño visual nuevo.
 
-Título/descripción y textos generados: si el filtro detecta marcador, campo
-completo sustituido por `[contenido retirado por privacidad]`; una línea y
-límites después de inspeccionar el original completo. Fallback por líneas
-eliminado en Python/Rust. También protege duplicados y spools antiguos antes de
-exportarlos, sin reanálisis. Fixtures de log ahora estructuradas y referencias
-al registro permitido; el texto de log ya no es evidencia externa. Se conserva
-la prueba HTML sobre texto limpio y se exige retirada completa ante marcador.
+F5 cambia el contrato: **ningún log crudo llega al modelo, propuesta T3 o
+Intake**. Solo campos cerrados y acotados de JSON completo; fuera messages,
+first_line, nombres libres, payload y claves arbitrarias. Rechaza prefijos,
+texto libre, JSON inválido y claves duplicadas. Los adjuntos privados del owner
+conservan su almacenamiento y retención. Rust valida metadata observada;
+Python aplica la proyección externa. La forma privada SQL conserva errores
+(type/message/fingerprint) y eventos (name/at): message es un código fijo y
+name/at quedan solo para el owner. Sin cambios SQL ni nuevas acciones prod.
 
-RED Python en E:/tmp/isa1594-r4-evidence/python-red.log. Suite final Python
-47/47 PASS con sockets prohibidos, Rust focal inicial 17/17 PASS. Corpus
-compartido: 40 F5/campo vacío y 43 previos, límites/idempotencia y cuatro
+Título/cuerpo: una línea, 120/1000 caracteres; inspección completa antes de
+truncar o normalizar. Ante marcador, campo entero sustituido por
+`[contenido retirado por privacidad]`. Igual para duplicados y textos del
+modelo. Fallback por líneas eliminado en Python/Rust. Spools antiguos pasan por
+el contrato actual al exportar, sin reanálisis; se conservan ACK independientes.
+Un cuerpo/log descartado no acredita contenido mínimo/evidencia.
+
+Hitos publicados: lista blanca **134c050f7a25c4e435218b8595c3805770b008bd**;
+compatibilidad SQL privada **674d4c4431aa140365e458d16197bc3190c8d63d**.
+Gates finales sobre 674d4c44 y árbol limpio: **fmt/check/Clippy PASS**,
+**Nextest 1661/1661** (7 skips, 1 lento PASS), **lifecycle 18/18**,
+**Python 47/47** con sockets prohibidos, quality **456** y diff-check PASS.
+Sin dependencias, tests ni lints debilitados. Fallo inicial Clippy doc_markdown
+conservado y corregido con backticks, sin allow. Primera tanda verde repetida
+porque el ajuste de compatibilidad era posterior a la compilación inicial.
+
+Corpus compartido: 40 F5/campo vacío + 43 previos, límites/idempotencia y cuatro
 proyecciones escalares. Propiedad offline: 166 recorridos modelo/T3/POST Intake
-mock con resumen limpio/generado, más replay sin reanálisis. F5 cubre LF/CRLF/CR,
-JSON prefijado/completo/truncado/anidado, Authorization y asignación multilínea.
-fmt/check/Clippy y quality PASS; Nextest/lifecycle en curso por cola, jobs=2,
-timeout 3600 s y target exclusivo. Fallo inicial Clippy doc_markdown conservado;
-corregido con backticks, sin allow.
-Sin dependencias, diseño visual, proveedor, despliegue o envíos reales nuevos.
-Revisión externa pendiente; estado r3 de debajo es histórico.
+mock con resumen limpio/generado, más replay antiguo sin reanálisis. F5 exacto,
+JSON prefijado/completo/truncado/anidado, Authorization/asignación multilínea y
+LF/CRLF/CR. Rust ejecuta prepare/preview; prueba la forma admitida por SQL y
+mantiene presupuesto HTTP/hash/reintento exacto. Fixtures previas adaptadas al
+contrato sin quitar comprobaciones de privacidad, referencias ni recuperación.
+[Reproducción y límites](../../../../tools/triage/review-1602-r4-regressions.md).
+
+Evidencia RED/GREEN, comandos y manifest SHA256 en E:/tmp/isa1594-r4-evidence/.
+Cola native/scripts/compilar.ps1, jobs=2, timeout 3600 s, target exclusivo
+E:/tmp/isa1594-native-gates. Wrapper comparado con el original: solo cwd/target.
+Base común bc89c8b8400a0a7915e7496b6f339d8e8231359b; origin/nightly consultado
+552c0d52e24310923c76a4dceb6aed4e60cd33af. GitGuardian FAILURE y PR DIRTY
+verificados en el hito de código; no se certifica CI remoto verde. Re-review,
+clasificación del check y conflictos/integración quedan al orquestador.
+
+Sin merge, promoción, release, proveedor, despliegue, cron, token/LOGIN/password
+ni informes reales a T3/Plane/Intake. Actualizaciones autorizadas: commits/push,
+PR/issue y estados Plane. SQL/pgTAP, telemetría y QA visual/física no repetidos
+(no se toca SQL/runtime/domain/ipc/testdata); sus resultados anteriores son
+históricos. La omisión de texto libre y campos completos puede reducir contexto.
+La propiedad se limita a la batería sintética; no afirma anonimización universal.
 
 
 ## R3 F4 · 14/10/2026 · entrega CLI

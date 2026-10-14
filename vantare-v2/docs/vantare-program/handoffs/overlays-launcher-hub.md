@@ -88,3 +88,5 @@ Hitos #1607: PNG `c40a90d9` (2234.920 → 115.473 µs/carga repetida; RED/GREEN)
 2026-10-13 · GitHub #1569 · Claude (Opus 5.5): merge de nightly@707514e2 (#1581 integrada); §3, §7, §8 y §9.
 2026-10-13 · GitHub #1561 · Codex. Merge de nightly con #1579 y #1580 conservados junto con PR-4/PR-6; estado y diario en issue/buzón.
 2026-10-13 · GitHub #1566 · Claude (Opus 5.5): §1, §4, §6 y §8 por Pedales Vantare; merge de nightly con #1578 y #1579 conservados.
+
+#1629 continuación Mac: Historial de delta 760×192 (alto efectivo del HTML), traza por distancia, vuelta anterior y sectores disponibles; Hub reconstruye las muestras hasta el cursor. Banco local `hub/examples/widget-workshop.rs`, sin servicios reales ni derechos de producto. Evidencia `~/evidence/1629/delta-trace/`. Pendiente revisión global, sin push.

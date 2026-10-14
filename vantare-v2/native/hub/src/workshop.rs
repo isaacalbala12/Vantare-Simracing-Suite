@@ -286,7 +286,7 @@ impl Workshop {
             ("Widget", widgets, widget),
             (
                 "Sistema de diseño",
-                vec![orbit::OptionItem::new("Eficiencia")],
+                vec![orbit::OptionItem::new("Vantare")],
                 0,
             ),
             (
@@ -363,8 +363,8 @@ impl Workshop {
         };
         let mut panel = div().flex().flex_col().px(px(22.0)).pt(px(38.0)).pb(px(30.0))
             .child(orbit::tracked_text("VANTARE / WORKSHOP", 8.0, 600, 0x00aa_aab0, 1.6, cx))
-            .child(orbit::tracked_text("Eficiencia.", 28.0, 600, 0x00f5_f5f5, -1.96, cx).mt(px(18.0)))
-            .child(orbit::text(format!("{} · Sistema Eficiencia", widget_label(self.kind)), 11.0, 400, 0x00a5_a5ab, cx).mt(px(4.0)))
+            .child(orbit::tracked_text("Vantare.", 28.0, 600, 0x00f5_f5f5, -1.96, cx).mt(px(18.0)))
+            .child(orbit::text(format!("{} · Sistema Vantare", widget_label(self.kind)), 11.0, 400, 0x00a5_a5ab, cx).mt(px(4.0)))
             .child(study_section("Idioma del widget", cx)
                 .child(choice(0, "Idioma"))
                 .child(study_note("Demostración local. El idioma de esta vista se restablece al abrir el Workshop.", cx)))
@@ -476,7 +476,9 @@ impl Workshop {
         } = prepared;
         let overlay = cx.new(|cx| {
             let mut overlay = workshop_overlay(kind, prefs);
-            overlay.ingest(scene.snapshot(), cx);
+            for photo in scene.observed() {
+                overlay.ingest(photo, cx);
+            }
             overlay
         });
         let stamp = stamp(&scene.path);
@@ -537,7 +539,9 @@ impl Workshop {
         self.rendered_photo = (self.scene.snapshot().epoch, self.scene.snapshot().sequence);
         self.overlay = cx.new(|cx| {
             let mut overlay = workshop_overlay(self.kind, self.prefs);
-            overlay.ingest(self.scene.snapshot(), cx);
+            for photo in self.scene.observed() {
+                overlay.ingest(photo, cx);
+            }
             overlay
         });
         self.reference = self.reference_cache.load(&comparison::reference(self.kind));

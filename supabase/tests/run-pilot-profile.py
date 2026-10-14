@@ -1,6 +1,7 @@
 """Only disposable loopback PostgreSQL; no DSN, production or existing database."""
 import argparse
 import os
+import re
 from pathlib import Path
 import socket
 import subprocess
@@ -42,9 +43,10 @@ def main():
                          'supabase/migrations/20261013225839_pilot_profile_private.sql',
                          'supabase/tests/pilot-profile.test.sql'):
                 output = run('psql', *connection, '-f', root / path, name=Path(path).name + '.log')
-            if 'not ok ' in output or '1..19' not in output or 'ok 19 ' not in output:
+            count = re.search(r'^1\.\.(\d+)$', output, re.MULTILINE)
+            if 'not ok ' in output or count is None or f'ok {count[1]} ' not in output:
                 raise RuntimeError('pilot pgTAP failed')
-            print('PASS 19 local PostgreSQL profile/storage/RLS checks')
+            print(f'PASS {count[1]} local PostgreSQL profile/storage/RLS checks')
         finally:
             run('pg_ctl', '-D', data, '-m', 'fast', '-w', 'stop', name='stop.log')
 

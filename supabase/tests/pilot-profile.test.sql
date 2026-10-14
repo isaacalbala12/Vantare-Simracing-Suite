@@ -1,5 +1,13 @@
 begin;
-select plan(19);
+select no_plan();
+create function pg_temp.reject_invalid(document jsonb) returns void language plpgsql as $$
+begin
+  perform public.pilot_profile_save(document,null,2);
+  -- Fuerza rollback del intento si el servidor lo acepta erróneamente,
+  -- así cada fila RED ejercita el mismo CAS en vez de contaminar la siguiente.
+  raise exception 'invalid document accepted';
+end;
+$$;
 select ok((select relrowsecurity from pg_class where oid='public.pilot_profiles'::regclass),'RLS enabled');
 select ok(not has_table_privilege('anon','public.pilot_profiles','select'),'anon has no table access');
 select ok(not has_function_privilege('anon','public.pilot_profile_load()','execute'),'anon cannot load');
@@ -13,10 +21,50 @@ select is((public.pilot_profile_save('{"public_name":"A","team_future":true}',nu
 select throws_ok($$select public.pilot_profile_save('{}',null,0)$$,'40001','revision conflict','stale insert rejected');
 select is((public.pilot_profile_save('{"public_name":"B","team_future":true}',null,1)->>'revision')::bigint,2::bigint,'CAS update');
 select is(public.pilot_profile_load()->'profile'->'team_future','true'::jsonb,'future fields survive');
+-- Cada intento inválido mantiene intactos el documento y su revisión.
+select throws_ok(format('select pg_temp.reject_invalid(%L::jsonb)', document::text),
+  '22023','invalid profile', 'native contract rejects ' || label)
+from (values
+  ('name number', '{"public_name":123}'::jsonb),
+  ('name null', '{"public_name":null}'::jsonb),
+  ('name too long', jsonb_build_object('public_name',repeat('ñ',65))),
+  ('name LF', jsonb_build_object('public_name',E'GT\nLMU')),
+  ('description array', '{"description":[]}'::jsonb),
+  ('description too long', jsonb_build_object('description',repeat('ñ',281))),
+  ('description CR', jsonb_build_object('description',E'GT\rLMU')),
+  ('description tab', jsonb_build_object('description',E'GT\tLMU')),
+  ('description escape', jsonb_build_object('description','GT'||chr(27))),
+  ('description DEL', jsonb_build_object('description','GT'||chr(127))),
+  ('description C1', jsonb_build_object('description','GT'||chr(133))),
+  ('country unknown', '{"country":"ZZ"}'::jsonb),
+  ('country lowercase', '{"country":"es"}'::jsonb),
+  ('country number', '{"country":1}'::jsonb),
+  ('car object', '{"favorite_car":{}}'::jsonb),
+  ('car too long', jsonb_build_object('favorite_car',repeat('a',121))),
+  ('team boolean', '{"favorite_team":true}'::jsonb),
+  ('team too long', jsonb_build_object('favorite_team',repeat('a',121))),
+  ('simulators string', '{"simulators":"lmu"}'::jsonb),
+  ('simulators null', '{"simulators":null}'::jsonb),
+  ('simulator number', '{"simulators":[1]}'::jsonb),
+  ('simulator blank', jsonb_build_object('simulators',jsonb_build_array(E' \t'))),
+  ('simulator unicode blank', jsonb_build_object('simulators',jsonb_build_array(chr(160)))),
+  ('simulator controls', jsonb_build_object('simulators',jsonb_build_array(E'LMU\n'))),
+  ('simulator too long', jsonb_build_object('simulators',jsonb_build_array(repeat('a',65)))),
+  ('simulator duplicate', '{"simulators":["lmu","lmu"]}'::jsonb),
+  ('simulators excessive', jsonb_build_object('simulators',(select jsonb_agg(i::text) from generate_series(1,17) i))),
+  ('combined bad fields', '{"public_name":123,"country":"ZZ","simulators":"lmu"}'::jsonb)
+  ,('future number beyond f64', '{"future":1e400}'::jsonb)
+  ,('future depth beyond serde', ('{"future":'||repeat('[',128)||'0'||repeat(']',128)||'}')::jsonb)
+) cases(label,document);
+select is((public.pilot_profile_load()->>'revision')::bigint,2::bigint,'invalid documents do not mutate revision');
+select is(public.pilot_profile_load()->'profile'->>'public_name','B','invalid documents preserve profile');
+select is((public.pilot_profile_save(jsonb_build_object('public_name',repeat('ñ',64),'description',E'GT\n'||repeat('a',277),'favorite_car',repeat('a',120),'favorite_team',repeat('a',120),'country','AX','simulators',(select jsonb_agg(i::text) from generate_series(1,16) i),'future',jsonb_build_object('teams',jsonb_build_array('A'))),null,2)->>'revision')::bigint,3::bigint,'native maxima, multiline and future fields accepted');
+select is((public.pilot_profile_save('{"public_name":"B","team_future":true}',null,3)->>'revision')::bigint,4::bigint,'restore fixture after valid boundaries');
 select throws_ok($$insert into public.pilot_profiles(account_id) values('16120000-0000-0000-0000-000000000002')$$,'42501',null,'cannot write another profile');
 insert into storage.objects(bucket_id,name) values('pilot-photos','16120000-0000-0000-0000-000000000001/'||repeat('a',64)||'.jpg');
-select is((public.pilot_profile_save('{}',repeat('a',64),2)->>'revision')::bigint,3::bigint,'own uploaded photo linked');
-select throws_ok($$select public.pilot_profile_save('{}',repeat('b',64),3)$$,'22023','photo missing','missing photo rejected');
+select throws_ok(format('select public.pilot_profile_save(%L::jsonb,%L,4)',jsonb_build_object('future',repeat('x',17000))::text,repeat('a',64)), '22023','invalid profile','reserve photo base64 inside native document budget');
+select is((public.pilot_profile_save('{}',repeat('a',64),4)->>'revision')::bigint,5::bigint,'own uploaded photo linked');
+select throws_ok($$select public.pilot_profile_save('{}',repeat('b',64),5)$$,'22023','photo missing','missing photo rejected');
 set local request.jwt.claim.sub='16120000-0000-0000-0000-000000000002';
 select is((select count(*) from public.pilot_profiles),0::bigint,'other account sees no profiles');
 select is((select count(*) from storage.objects where bucket_id='pilot-photos'),0::bigint,'broad existing storage policy cannot leak photos');

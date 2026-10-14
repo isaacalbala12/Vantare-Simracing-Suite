@@ -306,7 +306,7 @@
       "source": "internal/engineer/presentation/presentation.go",
       "sha256": "2ce2ee76624269ae2368eed1596bcfdf6eba8aa45a2482010e0144c9d4260c56"
     },
-    "native/hub/data/lmu-weekly-schedule.json": {
+    "scripts/testdata/lmu-weekly-schedule-2026-08.json": {
       "source": "internal/calendar/seed/lmu-weekly-schedule.json",
       "sha256": "49cd40fb3fd099e9713f5ef26ea83a09c86eb86bb3fac19207de555c675c6628"
     },

@@ -11,6 +11,36 @@ con precio base**, no descuentos. Un descuento porcentual por creador, código
 con su nombre exacto, limitado a esos productos. Solo preparación en repo:
 sin API Polar, secretos, deploy, activación ni venta probados.
 
+## Nombres y descripciones de cliente (14/10/2026)
+
+El script crea las suscripciones con `Vantare Pro` o `Vantare Pro Plus`;
+las de lanzamiento añaden ` · Precio de lanzamiento`. Polar muestra el
+intervalo mensual/anual junto al precio. Las claves técnicas permanecen en
+metadata y en el mapa, nunca en el nombre visible. Las descripciones breves
+Markdown proceden de [product-contract.md](../vantare-program/product-contract.md):
+Stable y Discord para Pro; todo Pro más Nightly/Beta privada, tests, encuestas
+y previews para Plus, con los mismos derechos para normales y lanzamiento.
+
+La Launch Edition ya configurada se presenta como `Vantare Launch Edition`:
+módulos existentes al comprar y mejoras de por vida, Engineer inicial,
+Testers sin Nightly y advertencia de que módulos nuevos pueden venderse aparte.
+No se crea ni se sustituye esa edición, ni se modifica su precio de pago único.
+Su ausencia, duplicidad por metadata, archivo o intervalo recurrente abortan
+el preflight antes de cualquier escritura.
+
+Los existentes se corrigen idempotentemente con PATCH **solo** de `name` y
+`description`, separado del reconciliador de precios ya existente. No se
+mandan precios, metadata, visibilidad, trial, beneficios ni suscripciones en
+el PATCH cosmético. Los IDs e historial se conservan; un rerun sin cambios
+escribe cero. El plan offline incluye ambos textos para revisión.
+
+Polar acepta una cadena por `name`/`description`, sin campos de traducción por
+idioma en [Product Update](https://polar.sh/docs/api-reference/2026-10/products/update-product).
+Se usa ES; la localización del formulario de checkout es independiente.
+Los tests usan HTTP inyectado sin red: no certifican el aspecto del checkout
+real. El orquestador debe revisar/aplicar en sandbox por su vía autorizada y
+comprobar los nueve nombres, Markdown, mensual/anual y conservación de IDs.
+
 ## Tabla y duración
 
 Fuente: `supabase/functions/scripts/polar-launch-prices.json`, versión
@@ -26,7 +56,8 @@ Fuente: `supabase/functions/scripts/polar-launch-prices.json`, versión
 Los cuatro importes base están decididos en este encargo: se retira el antiguo
 gate `--confirm-annual-launch`. Se conservan cuatro productos normales y se
 crean otros cuatro de lanzamiento. Launch Edition vitalicia de 30 € es otro
-producto y queda fuera. No se migran suscripciones.
+producto: su precio queda fuera; el encargo de nombres del 14/10 corrige
+únicamente su nombre y descripción. No se migran suscripciones.
 
 `--creator ISAAC` crea **un** descuento `code: ISAAC`, `type: percentage`,
 `basis_points: 2000`, `duration: repeating`, `duration_in_months: 2`, con

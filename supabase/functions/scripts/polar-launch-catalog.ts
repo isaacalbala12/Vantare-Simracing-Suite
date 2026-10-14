@@ -16,6 +16,8 @@ export const PRICES = table as Omit<typeof table, "plans"> & { plans: Plan[] };
 export type Resource = {
   id: string;
   organization_id: string;
+  name?: string;
+  description?: string | null;
   metadata?: Record<string, string>;
   recurring_interval?: string | null;
   recurring_interval_count?: number;
@@ -62,6 +64,49 @@ const fixedPrice = (cents: number) => ({
   price_currency: "eur",
   tax_behavior: "inclusive",
 });
+
+// Customer copy from product-contract.md; interval is shown by Polar's price.
+// Product name/description are single strings, not localized fields in Polar.
+function productCopy(key: CheckoutKey, launch = false) {
+  if (key === "launch_lifetime") {
+    return {
+      name: "Vantare Launch Edition",
+      description:
+        "- Acceso de por vida a los módulos existentes al comprar y sus mejoras, incluido **Engineer** en la edición inicial.\n- Acceso a tests, encuestas y builds de **Testers**, sin Nightly.\n- Los módulos completamente nuevos pueden venderse aparte.",
+    };
+  }
+  const plus = key.startsWith("pro_plus_");
+  return {
+    name: (plus ? "Vantare Pro Plus" : "Vantare Pro") +
+      (launch ? " · Precio de lanzamiento" : ""),
+    description: plus
+      ? "- Todo **Vantare Pro**: aplicación publicada en Stable y soporte en Discord.\n- Acceso a **Nightly/Beta privada**, tests, encuestas y previews activas."
+      : "- Toda la aplicación publicada en **Stable**.\n- Soporte en **Discord**.",
+  };
+}
+
+function copyMatches(product: Resource, copy: ReturnType<typeof productCopy>) {
+  return product.name === copy.name && product.description === copy.description;
+}
+
+async function patchProductCopy(
+  http: Http,
+  product: Resource,
+  copy: ReturnType<typeof productCopy>,
+) {
+  // Deliberately separate from price reconciliation: never send prices here.
+  const updated = await http(
+    "PATCH",
+    `/products/${product.id}`,
+    copy,
+  ) as Resource;
+  if (
+    updated.id !== product.id ||
+    updated.organization_id !== product.organization_id ||
+    !copyMatches(updated, copy)
+  ) throw Error("Product copy response mismatch");
+  return updated;
+}
 
 async function list(
   http: Http,
@@ -182,6 +227,18 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       productOwners.set(config.polar_launch_product_id, `${key}:launch`);
     }
   }
+  // Launch Edition already belongs to the required input mapping. Only its copy
+  // is managed here: never create a replacement or reconcile its one-time price.
+  const lifetimeId = map.checkout_keys.launch_lifetime!.polar_product_id;
+  const lifetimeMatches = products.filter((p) =>
+    p.id === lifetimeId ||
+    p.metadata?.vantare_checkout_key === "launch_lifetime"
+  );
+  const lifetime = lifetimeMatches[0];
+  if (
+    lifetimeMatches.length !== 1 || lifetime.id !== lifetimeId ||
+    lifetime.is_archived || lifetime.recurring_interval != null
+  ) throw Error("Invalid or missing Launch Edition product");
   // Both normal and launch products are preflighted before the first mutation.
   for (const plan of PRICES.plans) {
     const config = map.checkout_keys[plan.key];
@@ -296,6 +353,11 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   }
 
   let writes = 0;
+  const lifetimeCopy = productCopy("launch_lifetime");
+  if (!copyMatches(lifetime, lifetimeCopy)) {
+    await patchProductCopy(http, lifetime, lifetimeCopy);
+    writes++;
+  }
   const launchIds: string[] = [];
   let launchProductsPublished = true;
   const offers: Record<
@@ -337,12 +399,13 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
     for (const launch of [false, true]) {
       const key = launch ? `${plan.key}:launch` : plan.key;
       const cents = launch ? plan.launch_cents : plan.normal_cents;
+      const copy = productCopy(plan.key, launch);
       let product = selected.get(key);
       // Snapshot before PATCH may omit replaced/archived prices.
       for (const p of product?.prices ?? []) priceIds.add(p.id);
       if (!product) {
         product = await http("POST", "/products/", {
-          name: `Vantare ${key}`,
+          ...copy,
           visibility: "draft",
           recurring_interval: plan.interval,
           recurring_interval_count: 1,
@@ -359,6 +422,10 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
         product = await http("PATCH", `/products/${product.id}`, {
           prices: [fixedPrice(cents)],
         }) as Resource;
+        writes++;
+      }
+      if (!copyMatches(product, copy)) {
+        product = await patchProductCopy(http, product, copy);
         writes++;
       }
       const price = currentPrice(product, cents);
@@ -475,10 +542,13 @@ export function planOffline(creator?: string) {
       : null,
     plans: PRICES.plans.map((p) => ({
       ...p,
+      normal_product: productCopy(p.key),
+      launch_product: productCopy(p.key, true),
       creator_cents: creatorPrice(p.launch_cents),
       creator_code: code ?? null,
       renewal_cents_after_creator: p.launch_cents,
     })),
+    launch_edition_copy: productCopy("launch_lifetime"),
   };
 }
 

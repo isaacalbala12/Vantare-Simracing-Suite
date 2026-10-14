@@ -1,3 +1,31 @@
+## #1620 / PR #1621 · nombres de cliente (14/10/2026)
+
+Worker Codex macOS, encargo explícito sin subagentes, GitHub/Plane ni push.
+Base local `0d03e6c0`, con nightly `953f041c` ya incorporado; rama
+`vantareapp/isa-1620-precios-polar`, Project Vantare/area:licencias.
+Se conserva la omisión autorizada de VANTA-N: trackers/PR/CI al orquestador.
+
+Productos nuevos: Pro/Pro Plus y sufijo ` · Precio de lanzamiento`, con
+Markdown del contrato y ciclo visible en el precio. Existentes: PATCH
+idempotente solo name/description, separado de la lógica monetaria previa.
+Launch Edition del mapa: mismo ID/precio/capabilities, nuevo texto que limita
+la licencia a módulos existentes y mejoras, Engineer inicial, Testers sin
+Nightly. Preflight rechaza edición ausente/ambigua/archivada/recurrente.
+Sin i18n de producto documentado en Polar; ES sin duplicar productos.
+
+RED cuatro tests fallidos por comportamiento → catálogo **42 PASS/0 FAIL**:
+creación, reparación de nueve productos, precios archivados preservados,
+mapa e IDs, cero escrituras al repetir, preflight, respuesta sin corrección
+rechazada y reintento tras respuesta perdida. Evidencia en
+`~/evidence/1620/checkout-names/01-red.log` y `01-green-final.log`.
+Una primera ejecución GREEN falló por un UUID histórico inválido en el test;
+se corrigió el dato sintético, conservando el log `01-green.log`.
+
+Sin servicios reales, secretos, dependencias, push, merge, promoción o release.
+Pendiente hito de tema/informe oficial y gates completos. SHAs finales en
+`~/orq/1620.buzon.md`. Siguiente: orquestador revisa diff y actualiza issue/PR,
+aplica solo por su vía autorizada y verifica aspecto real en sandbox.
+
 ## #1620 / PR #1621 · correcciones de sandbox (14/10/2026)
 
 Encargo explícito al worker Codex macOS, sin subagentes ni acceso GitHub/Plane,

@@ -51,6 +51,9 @@ function fake() {
     id: sandbox.checkout_keys[p.key as "pro_monthly" | "pro_annual"]
       .polar_product_id,
     organization_id: sandbox.organization_id,
+    name: "Vantare Pro",
+    description:
+      "- Toda la aplicación publicada en **Stable**.\n- Soporte en **Discord**.",
     recurring_interval: p.interval,
     recurring_interval_count: 1,
     is_archived: false,
@@ -68,6 +71,24 @@ function fake() {
     trial_interval: "day",
     trial_interval_count: 7,
   }));
+  products.push({
+    id: sandbox.checkout_keys.launch_lifetime.polar_product_id,
+    organization_id: sandbox.organization_id,
+    name: "Vantare Launch Edition",
+    description:
+      "- Acceso de por vida a los módulos existentes al comprar y sus mejoras, incluido **Engineer** en la edición inicial.\n- Acceso a tests, encuestas y builds de **Testers**, sin Nightly.\n- Los módulos completamente nuevos pueden venderse aparte.",
+    recurring_interval: null,
+    is_archived: false,
+    visibility: "public",
+    metadata: { vantare_checkout_key: "launch_lifetime" },
+    prices: [{
+      id: sandbox.checkout_keys.launch_lifetime.polar_price_ids[0],
+      amount_type: "fixed",
+      price_amount: 3000,
+      price_currency: "eur",
+      tax_behavior: "inclusive",
+    }],
+  });
   const discounts: Resource[] = [];
   const links: Resource[] = [];
   const writes: unknown[] = [];
@@ -123,7 +144,10 @@ function fake() {
       return Promise.resolve(structuredClone(resource));
     }
     const resource = collection.find((r) => path.split("/")[2] === r.id)!;
-    resource.prices = data.prices?.map((p) => ({ ...p, id: id() }));
+    Object.assign(resource, data);
+    if (data.prices) {
+      resource.prices = data.prices.map((p) => ({ ...p, id: id() }));
+    }
     return Promise.resolve(structuredClone(resource));
   };
   return { http, products, discounts, links, writes, organization };
@@ -132,6 +156,130 @@ const options = {
   environment: "sandbox" as const,
   creator: "ISAAC",
 };
+
+Deno.test("customer copy: new subscriptions have commercial names and contracted Markdown", async () => {
+  const f = fake();
+  const result = await syncCatalog(f.http, sandbox, options);
+  for (const plan of PRICES.plans) {
+    const plus = plan.key.startsWith("pro_plus_");
+    const name = plus ? "Vantare Pro Plus" : "Vantare Pro";
+    const description = plus
+      ? "- Todo **Vantare Pro**: aplicación publicada en Stable y soporte en Discord.\n- Acceso a **Nightly/Beta privada**, tests, encuestas y previews activas."
+      : "- Toda la aplicación publicada en **Stable**.\n- Soporte en **Discord**.";
+    const config = result.map.checkout_keys[plan.key]!;
+    for (const launch of [false, true]) {
+      const product = f.products.find((p) =>
+        p.id ===
+          (launch ? config.polar_launch_product_id : config.polar_product_id)
+      )!;
+      assertEquals(
+        product.name,
+        name + (launch ? " · Precio de lanzamiento" : ""),
+      );
+      assertEquals(product.description, description);
+      if (product.metadata?.vantare_catalog_key) {
+        assertEquals(
+          product.metadata.vantare_catalog_key,
+          `${plan.key}:launch`,
+        );
+      }
+    }
+  }
+});
+
+Deno.test("customer copy: repairs all nine existing products with cosmetic PATCH only, history and rerun preserved", async () => {
+  const f = fake();
+  const first = await syncCatalog(f.http, sandbox, options);
+  for (const [i, product] of f.products.entries()) {
+    product.name = `Vantare ${
+      product.metadata?.vantare_catalog_key ?? product.id
+    }`;
+    product.description = "Texto antiguo";
+    const historyId = `00000000-0000-4000-8000-${
+      String(900 + i).padStart(12, "0")
+    }`;
+    product.prices!.push({
+      ...product.prices![0],
+      id: historyId,
+      is_archived: true,
+    });
+    const key = first.map.product_id_to_checkout_key[product.id];
+    first.map.checkout_keys[key]!.polar_price_ids.push(historyId);
+    first.map.price_id_to_checkout_key[historyId] = key;
+  }
+  const before = structuredClone(f.products);
+  const start = f.writes.length;
+  const repaired = await syncCatalog(f.http, first, options);
+  assertEquals(repaired.writes, 9);
+  const patches = f.writes.slice(start) as {
+    method: string;
+    path: string;
+    body: Record<string, unknown>;
+  }[];
+  assertEquals(patches.length, 9);
+  for (const patch of patches) {
+    assertEquals(patch.method, "PATCH");
+    assertEquals(patch.path.startsWith("/products/"), true);
+    assertEquals(Object.keys(patch.body).sort(), ["description", "name"]);
+  }
+  for (let i = 0; i < before.length; i++) {
+    const { name: _name, description: _description, ...rest } = f.products[i];
+    const { name: _oldName, description: _oldDescription, ...oldRest } =
+      before[i];
+    assertEquals(rest, oldRest);
+  }
+  const lifetime = f.products.find((p) =>
+    p.id === sandbox.checkout_keys.launch_lifetime.polar_product_id
+  )!;
+  assertEquals(lifetime.name, "Vantare Launch Edition");
+  assertEquals(lifetime.description?.includes("pueden venderse aparte"), true);
+  assertEquals(lifetime.description?.includes("sin Nightly"), true);
+  assertEquals(lifetime.description?.includes("Engineer"), true);
+  assertEquals(
+    repaired.map.checkout_keys.launch_lifetime,
+    first.map.checkout_keys.launch_lifetime,
+  );
+  assertEquals(
+    repaired.map.price_id_to_checkout_key,
+    first.map.price_id_to_checkout_key,
+  );
+  assertEquals((await syncCatalog(f.http, repaired, options)).writes, 0);
+});
+
+Deno.test("customer copy: Launch Edition missing or recurring aborts before any writes", async () => {
+  for (const problem of ["missing", "recurring", "archived"]) {
+    const f = fake();
+    const index = f.products.findIndex((p) =>
+      p.id === sandbox.checkout_keys.launch_lifetime.polar_product_id
+    );
+    if (problem === "missing") f.products.splice(index, 1);
+    if (problem === "recurring") f.products[index].recurring_interval = "month";
+    if (problem === "archived") f.products[index].is_archived = true;
+    await assertRejects(() => syncCatalog(f.http, sandbox, options));
+    assertEquals(f.writes.length, 0);
+  }
+});
+
+Deno.test("customer copy: a rejected cosmetic update fails, and a committed lost response can be retried", async () => {
+  const f = fake();
+  const first = await syncCatalog(f.http, sandbox, options);
+  f.products[0].name = "Vantare pro_monthly";
+  const http: Http = async (method, path, body) => {
+    const response = await f.http(method, path, body);
+    if (method === "PATCH") {
+      throw Error("Simulated response lost after cosmetic PATCH");
+    }
+    return response;
+  };
+  await assertRejects(() => syncCatalog(http, first, options));
+  assertEquals((await syncCatalog(f.http, first, options)).writes, 0);
+  f.products[0].description = "Texto antiguo";
+  const rejectsCopy: Http = async (method, path, body) =>
+    method === "PATCH"
+      ? structuredClone(f.products[0])
+      : await f.http(method, path, body);
+  await assertRejects(() => syncCatalog(rejectsCopy, first, options));
+});
 
 Deno.test("P1-1: creator discounts repeat for two months and reconcile without writes", async () => {
   const f = fake();

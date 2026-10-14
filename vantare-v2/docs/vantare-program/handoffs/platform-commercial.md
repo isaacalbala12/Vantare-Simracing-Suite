@@ -2,6 +2,35 @@
 
 Estado de la base indicada; releer la issue antes de ejecutar.
 
+## #1620 / VAN-782 · catálogo Polar preparado (14/10/2026)
+
+[Tarea Notion](https://app.notion.com/p/3f9e51695c6581229de0e11deabcd9ab), proyecto
+Billing y licencias. Rama `vantareapp/isa-1620-precios-polar`, heredada de
+#1500@9e041ab8; merge de origin/nightly@8194c949 en `ce143d6f`, preservando la
+regla vigente del trial anual de Pro. Checkout fuente dirty no modificado.
+#1500/#1499 quedan sustituidos por este catálogo completo; no integrados por ello.
+
+Tabla Pro 5,99/59,90 y lanzamiento 3,99/39,90; Plus 9,99/99,90 y
+6,99/69,90. Anuales de lanzamiento pendientes con gate explícito. Código de
+creador por plan: descuento fijo compuesto equivalente a 20 % extra sobre
+lanzamiento (3,19/31,92/5,59/55,92); comisión 30 % solo dato contable.
+Script Deno idempotente por API, offline por defecto, duplicados/paginación y
+drift rechazados, entorno/organización validados, producción con confirmación.
+Productos nuevos draft; mapa generado conserva IDs/precios históricos y trials
+Pro; no se inventan IDs en el snapshot sandbox. Pro Plus anual comparte derechos
+con mensual; migración de checkout y pgTAP preparados.
+
+[Runbook y comandos exactos](../../billing/isa-1620-polar-launch-catalog.md).
+Tests Deno vigentes 544 PASS / 1 ignorado; sin dependencias nuevas, tests focales,
+formato/check/lint y plan offline. PostgreSQL omitido: no Docker/psql; Rust/UI
+omitidos sin cambios nativos. Evidencia local C:/tmp/buzon/1620-deno-tests-final.log.
+Siguiente: revisar PR draft a nightly y después Isaac ejecutar con token privado
+sandbox, confirmar anuales, comprobar renovaciones/creadores y autorizar producción.
+No hay token, llamadas Polar, deploy, campaña activa, payouts, merge a canal,
+release ni publicación. El checkout de la app aún no autoaplica los descuentos;
+usar Checkout Links/API de Polar tras la validación autorizada. `plan.md` retirado
+por #1601: no recreado, sin cambio público de disponibilidad.
+
 ## #1609 / VANTA-22 · Analítica consentida (14/10/2026)
 
 Ronda 3 publicada para revisión desde `f56156e3`; review Sol r2 completa.

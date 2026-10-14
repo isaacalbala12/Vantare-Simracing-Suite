@@ -1,5 +1,10 @@
 # BIL-11 — runbook de precios Pro (5,99 €/mes y 59,90 €/año)
 
+> Procedimiento histórico de #1499/#1500, sustituido por
+> [catálogo completo #1620](isa-1620-polar-launch-catalog.md). No ejecutar el
+> script antiguo para esta campaña: desconoce Pro Plus y los descuentos.
+> El trial anual actual lo fija nightly, no este snapshot histórico.
+
 Issue: [ISA-1499](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1499).
 Este texto no verifica ningún despliegue ni ninguna ejecución en Polar: la
 evidencia de cada paso se guarda en la issue (IDs y SHA, nunca tokens).

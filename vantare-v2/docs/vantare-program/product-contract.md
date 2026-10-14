@@ -80,15 +80,22 @@ la primera variante de Engineer. El tono es profesional y cercano.
 
 ### Vantare Pro — 5,99 EUR/mes o 59,90 EUR/año
 
-- Precios con IVA incluido, vigentes para la venta del 12-oct-2026 (ISA-1499).
+- Precios normales con IVA incluido; catálogo preparado en ISA-1499/1620,
+  sin certificar venta ni ejecución Polar.
   Mensual y anual conceden exactamente las mismas capabilities.
 - Toda la aplicación publicada en Stable.
 - Soporte en Discord.
 
-### Vantare Pro Plus — 9,99 EUR/mes
+### Vantare Pro Plus — 9,99 EUR/mes o 99,90 EUR/año
 
 - Todo Pro.
 - Acceso a Nightly/Beta privada, tests, encuestas y previews activas.
+
+Campaña preparada en [#1620](../billing/isa-1620-polar-launch-catalog.md):
+Pro 3,99 EUR/mes y Plus 6,99 EUR/mes; anuales 39,90/69,90 EUR pendientes de
+confirmación. Creador: 20 % adicional sobre lanzamiento; comisión 30 % como
+dato contable. No implica campaña activa ni integración del descuento en el
+checkout de la app. Mensual y anual de Plus comparten capabilities y canales.
 
 ### Launch Edition — 30 EUR una vez
 

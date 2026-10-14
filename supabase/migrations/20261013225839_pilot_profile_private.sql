@@ -81,6 +81,7 @@ create table public.pilot_profiles (
   profile jsonb not null default '{}'::jsonb,
   photo_hash text,
   revision bigint not null default 1 check (revision > 0),
+  last_op_id uuid,
   updated_at timestamptz not null default now(),
   check (public.pilot_profile_valid(profile,photo_hash)),
   check (not (profile ? 'photo') or profile->'photo' = 'null'::jsonb),
@@ -96,17 +97,39 @@ create policy pilot_self on public.pilot_profiles to authenticated,pilot_profile
   using (account_id = (select auth.uid()))
   with check (account_id = (select auth.uid()));
 
+-- Recibos inmutables: otro dispositivo puede cambiar el último op_id antes
+-- de que el emisor recupere una confirmación perdida. No se exponen por API.
+create table pilot_private.operations (
+  account_id uuid not null references public.profiles(id) on delete cascade,
+  op_id uuid not null,
+  result jsonb not null,
+  primary key (account_id,op_id)
+);
+alter table pilot_private.operations enable row level security;
+revoke all on pilot_private.operations from public,anon,authenticated;
+grant select,insert on pilot_private.operations to pilot_profile_writer;
+create policy pilot_operation_self on pilot_private.operations to pilot_profile_writer
+  using (account_id = (select auth.uid()))
+  with check (account_id = (select auth.uid()));
+
 -- RPC pública INVOKER; el escritor privado solo permite CAS y sigue sujeto a RLS.
 create function public.pilot_profile_load() returns jsonb
 language sql stable security invoker set search_path = '' as $$
   select jsonb_build_object('profile', profile, 'revision', revision, 'photo_hash', photo_hash)
   from public.pilot_profiles where account_id = auth.uid();
 $$;
-create function pilot_private.pilot_profile_save(p_profile jsonb, p_photo_hash text, p_expected_revision bigint)
+create function pilot_private.pilot_profile_save(p_profile jsonb, p_photo_hash text, p_expected_revision bigint, p_op_id uuid)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare v_result jsonb;
+declare v_result jsonb; v_account uuid := auth.uid();
 begin
-  if auth.uid() is null then raise exception 'authentication required' using errcode='42501'; end if;
+  if v_account is null then raise exception 'authentication required' using errcode='42501'; end if;
+  if p_op_id is null then raise exception 'operation required' using errcode='22023'; end if;
+  -- Serializa incluso la primera inserción. El duplicado espera a que el
+  -- intento original confirme o revierta; SELECT fuera de aquí no decide CAS.
+  perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended('pilot-profile:'||v_account::text,0));
+  select result into v_result from pilot_private.operations
+    where account_id=v_account and op_id=p_op_id;
+  if found then return v_result; end if;
   if p_expected_revision is null or p_expected_revision < 0
     or not public.pilot_profile_valid(p_profile,p_photo_hash)
     then raise exception 'invalid profile' using errcode='22023'; end if;
@@ -115,16 +138,17 @@ begin
       and name=auth.uid()::text || '/' || p_photo_hash || '.jpg'
   ) then raise exception 'photo missing' using errcode='22023'; end if;
   if p_expected_revision = 0 then
-    insert into public.pilot_profiles(account_id,profile,photo_hash)
-      values(auth.uid(),p_profile,p_photo_hash) on conflict(account_id) do nothing
+    insert into public.pilot_profiles(account_id,profile,photo_hash,last_op_id)
+      values(v_account,p_profile,p_photo_hash,p_op_id) on conflict(account_id) do nothing
       returning jsonb_build_object('profile',profile,'revision',revision,'photo_hash',photo_hash) into v_result;
   else
     update public.pilot_profiles set profile=p_profile,photo_hash=p_photo_hash,
-      revision=revision+1,updated_at=now()
+      revision=revision+1,updated_at=now(),last_op_id=p_op_id
       where account_id=auth.uid() and revision=p_expected_revision
       returning jsonb_build_object('profile',profile,'revision',revision,'photo_hash',photo_hash) into v_result;
   end if;
   if v_result is null then raise exception 'revision conflict' using errcode='40001'; end if;
+  insert into pilot_private.operations(account_id,op_id,result) values(v_account,p_op_id,v_result);
   return v_result;
 end;
 $$;
@@ -132,18 +156,18 @@ grant create on schema pilot_private to pilot_profile_writer;
 -- El administrador que prepara el paquete debe poder transferir ownership
 -- también sin SUPERUSER. Nunca se concede este rol a authenticated/anon.
 grant pilot_profile_writer to current_user;
-alter function pilot_private.pilot_profile_save(jsonb,text,bigint) owner to pilot_profile_writer;
+alter function pilot_private.pilot_profile_save(jsonb,text,bigint,uuid) owner to pilot_profile_writer;
 revoke create on schema pilot_private from pilot_profile_writer;
-revoke all on function pilot_private.pilot_profile_save(jsonb,text,bigint) from public,anon;
-grant execute on function pilot_private.pilot_profile_save(jsonb,text,bigint) to authenticated;
-create function public.pilot_profile_save(p_profile jsonb,p_photo_hash text,p_expected_revision bigint)
+revoke all on function pilot_private.pilot_profile_save(jsonb,text,bigint,uuid) from public,anon;
+grant execute on function pilot_private.pilot_profile_save(jsonb,text,bigint,uuid) to authenticated;
+create function public.pilot_profile_save(p_profile jsonb,p_photo_hash text,p_expected_revision bigint,p_op_id uuid)
 returns jsonb language sql security invoker set search_path = '' as $$
-  select pilot_private.pilot_profile_save(p_profile,p_photo_hash,p_expected_revision);
+  select pilot_private.pilot_profile_save(p_profile,p_photo_hash,p_expected_revision,p_op_id);
 $$;
 revoke all on function public.pilot_profile_load() from public, anon;
-revoke all on function public.pilot_profile_save(jsonb,text,bigint) from public, anon;
+revoke all on function public.pilot_profile_save(jsonb,text,bigint,uuid) from public, anon;
 grant execute on function public.pilot_profile_load() to authenticated;
-grant execute on function public.pilot_profile_save(jsonb,text,bigint) to authenticated;
+grant execute on function public.pilot_profile_save(jsonb,text,bigint,uuid) to authenticated;
 
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values('pilot-photos','pilot-photos',false,24576,array['image/jpeg']);

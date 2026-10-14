@@ -121,27 +121,65 @@ pub fn validate(profile: &PilotProfile) -> Result<()> {
 pub struct Local {
     store: Store,
     state: PilotState,
-    attempt: Option<Attempt>,
+    operation: Option<Operation>,
 }
 
-// No forma parte del IPC: prueba durable del último CAS enviado, independiente
-// de las ediciones locales posteriores. Un único blob evita estados partidos.
+// Contenido inmutable hasta la confirmación definitiva. Las ediciones posteriores
+// quedan en state; UUID, contenido y pendiente se protegen en un único blob.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Attempt {
-    fingerprint: String,
+struct Operation {
+    op_id: String,
+    profile: PilotProfile,
     remote_revision: u64,
+}
+impl Operation {
+    fn new(profile: PilotProfile, remote_revision: u64) -> Result<Self> {
+        let mut bytes = [0_u8; 16];
+        getrandom::fill(&mut bytes).map_err(|_| Error::Storage)?;
+        bytes[6] = (bytes[6] & 0x0f) | 0x40;
+        bytes[8] = (bytes[8] & 0x3f) | 0x80;
+        let hex = format!("{:032x}", u128::from_be_bytes(bytes));
+        let op_id = format!(
+            "{}-{}-{}-{}-{}",
+            &hex[..8],
+            &hex[8..12],
+            &hex[12..16],
+            &hex[16..20],
+            &hex[20..]
+        );
+        Ok(Self {
+            op_id,
+            profile,
+            remote_revision,
+        })
+    }
 }
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Saved {
     state: PilotState,
-    attempt: Option<Attempt>,
+    operation: Option<Operation>,
+}
+// Lectura del formato de QA anterior. No contiene una clave de servidor y no
+// permite afirmar que un CAS incierto de esa versión haya sido confirmado.
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Previous {
+    state: PilotState,
+    attempt: Option<PreviousAttempt>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct PreviousAttempt {
+    fingerprint: String,
+    remote_revision: u64,
 }
 #[derive(Deserialize)]
 #[serde(untagged)]
 enum Record {
     Current(Saved),
+    Previous(Previous),
     Legacy(PilotState),
 }
 impl Local {
@@ -160,33 +198,55 @@ impl Local {
         let store = Store::open(root, &context)?;
         let saved = match store.load::<Record>("pilot-profile") {
             Ok(Record::Current(saved)) => saved,
+            Ok(Record::Previous(previous)) => {
+                if previous.attempt.is_some_and(|attempt| {
+                    !previous.state.pending
+                        || attempt.remote_revision != previous.state.remote_revision
+                        || attempt.fingerprint.len() != 64
+                        || !attempt
+                            .fingerprint
+                            .bytes()
+                            .all(|byte| byte.is_ascii_hexdigit())
+                }) {
+                    return Err(Error::Protocol);
+                }
+                Saved {
+                    state: previous.state,
+                    operation: None,
+                }
+            }
             Ok(Record::Legacy(state)) => Saved {
                 state,
-                attempt: None,
+                operation: None,
             },
             Err(Error::NotFound) => Saved {
                 state: PilotState::default(),
-                attempt: None,
+                operation: None,
             },
             Err(error) => return Err(error),
         };
         validate(&saved.state.profile)?;
-        if saved.attempt.as_ref().is_some_and(|attempt| {
+        if saved.operation.as_ref().is_some_and(|operation| {
             !saved.state.pending
-                || attempt.remote_revision != saved.state.remote_revision
-                || attempt.fingerprint.len() != 64
-                || !attempt
-                    .fingerprint
-                    .bytes()
-                    .all(|byte| byte.is_ascii_hexdigit())
+                || operation.remote_revision != saved.state.remote_revision
+                || !crate::license::uuid(&operation.op_id)
         }) {
             return Err(Error::Protocol);
         }
-        Ok(Self {
+        if let Some(operation) = &saved.operation {
+            validate(&operation.profile)?;
+        }
+        let mut local = Self {
             store,
             state: saved.state,
-            attempt: saved.attempt,
-        })
+            operation: saved.operation,
+        };
+        if local.state.pending && local.operation.is_none() {
+            let operation =
+                Operation::new(local.state.profile.clone(), local.state.remote_revision)?;
+            local.persist(local.state.clone(), Some(operation))?;
+        }
+        Ok(local)
     }
     pub fn state(&self) -> &PilotState {
         &self.state
@@ -202,9 +262,16 @@ impl Local {
             pending: true,
             ..self.state.clone()
         };
-        self.persist(state, self.attempt.clone())
+        let operation = match &self.operation {
+            Some(operation) => operation.clone(),
+            None => Operation::new(state.profile.clone(), state.remote_revision)?,
+        };
+        self.persist(state, Some(operation))
     }
     pub fn accept_remote(&mut self, profile: PilotProfile, remote_revision: u64) -> Result<()> {
+        if self.state.pending {
+            return Err(Error::Conflict);
+        }
         validate(&profile)?;
         let state = PilotState {
             profile,
@@ -214,35 +281,34 @@ impl Local {
         };
         self.persist(state, None)
     }
-    fn persist(&mut self, state: PilotState, attempt: Option<Attempt>) -> Result<()> {
+    fn persist(&mut self, state: PilotState, operation: Option<Operation>) -> Result<()> {
         self.store.save(
             "pilot-profile",
             &Saved {
                 state: state.clone(),
-                attempt: attempt.clone(),
+                operation: operation.clone(),
             },
         )?;
         self.state = state;
-        self.attempt = attempt;
+        self.operation = operation;
         Ok(())
     }
     #[cfg(feature = "network")]
-    fn record_attempt(&mut self, fingerprint: String) -> Result<()> {
-        let attempt = Attempt {
-            fingerprint,
-            remote_revision: self.state.remote_revision,
-        };
-        self.persist(self.state.clone(), Some(attempt))
-    }
-    #[cfg(feature = "network")]
-    fn reconcile(&mut self, remote_revision: u64, pending: bool) -> Result<()> {
+    fn confirm_operation(&mut self, remote_revision: u64) -> Result<()> {
+        let operation = self.operation.as_ref().ok_or(Error::Protocol)?;
+        let pending = self.state.profile != operation.profile;
         let state = PilotState {
             remote_revision,
             pending,
             revision: self.state.revision.checked_add(1).ok_or(Error::Conflict)?,
             ..self.state.clone()
         };
-        self.persist(state, None)
+        let next = if pending {
+            Some(Operation::new(state.profile.clone(), remote_revision)?)
+        } else {
+            None
+        };
+        self.persist(state, next)
     }
 }
 
@@ -252,6 +318,34 @@ pub mod sync;
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn previous_qa_attempt_preserves_pending_profile_and_upgrades_to_durable_uuid() {
+        let root = std::env::temp_dir().join(crate::random_id().expect("id"));
+        let state = PilotState {
+            profile: PilotProfile {
+                description: "B pendiente".into(),
+                ..Default::default()
+            },
+            revision: 4,
+            remote_revision: 2,
+            pending: true,
+        };
+        let store = Store::open(&root, "pilot-v1|local").expect("store previo");
+        store.save("pilot-profile", &serde_json::json!({"state":state,"attempt":{"fingerprint":"a".repeat(64),"remote_revision":2}})).expect("QA previo");
+        drop(store);
+        let local = Local::open(&root, None, None).expect("upgrade");
+        assert_eq!(*local.state(), state);
+        let operation = local.operation.as_ref().expect("UUID durable");
+        assert!(crate::license::uuid(&operation.op_id));
+        assert_eq!(operation.profile, state.profile);
+        let id = operation.op_id.clone();
+        drop(local);
+        let local = Local::open(&root, None, None).expect("reopen upgraded");
+        assert_eq!(*local.state(), state);
+        assert_eq!(local.operation.as_ref().expect("same UUID").op_id, id);
+        drop(local);
+        std::fs::remove_dir_all(root).expect("cleanup");
+    }
     #[test]
     fn legacy_local_profile_is_preserved_when_upgrading_the_durable_record() {
         let root = std::env::temp_dir().join(crate::random_id().expect("id"));

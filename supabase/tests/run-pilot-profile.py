@@ -6,6 +6,7 @@ from pathlib import Path
 import socket
 import subprocess
 import tempfile
+from pilot_profile_concurrency import check as check_concurrency
 
 
 def main():
@@ -52,6 +53,7 @@ def main():
             if 'not ok ' in output or count is None or f'ok {count[1]} ' not in output:
                 raise RuntimeError('pilot pgTAP failed')
             print(f'PASS {count[1]} local PostgreSQL profile/storage/RLS checks')
+            check_concurrency(args.pg_bin, connection, env, args.output, run)
             down = root / 'supabase/rollback/pilot-profile-empty-qa.sql'
             rollback_role = ['-c', 'set role pilot_qa_migrator;'] if args.non_superuser_migration else []
             run('psql', *connection, *rollback_role, '-f', down, name='rollback-no-authorization.log', expected=3)
@@ -61,11 +63,14 @@ def main():
             run('psql', *connection, '-c', "select 1 / count(*) from public.pilot_profiles; delete from public.pilot_profiles; insert into storage.objects(bucket_id,name) values('pilot-photos','qa-object');", name='rollback-photo-fixture.log')
             run('psql', *connection, *rollback_role, '-c', setting, '-f', down, name='rollback-photo-refused.log', expected=3)
             run('psql', *connection, '-c', "select 1 / count(*) from storage.objects where bucket_id='pilot-photos'; delete from storage.objects where bucket_id='pilot-photos';", name='rollback-fixture-cleanup.log')
+            run('psql', *connection, '-c', "insert into pilot_private.operations(account_id,op_id,result) values('16120000-0000-0000-0000-000000000001','16120000-0000-4000-8000-000000000030','{}');", name='rollback-receipt-fixture.log')
+            run('psql', *connection, *rollback_role, '-c', setting, '-f', down, name='rollback-receipt-refused.log', expected=3)
+            run('psql', *connection, '-c', 'select 1 / count(*) from pilot_private.operations; delete from pilot_private.operations;', name='rollback-receipt-cleanup.log')
             run('psql', *connection, *rollback_role, '-c', setting, '-f', down, name='rollback-empty.log')
             output = run('psql', *connection, '-f', root / 'supabase/tests/pilot-profile-rollback.test.sql', name='rollback-postcheck.log')
-            if 'not ok ' in output or '1..9' not in output or 'ok 9 ' not in output:
+            if 'not ok ' in output or '1..10' not in output or 'ok 10 ' not in output:
                 raise RuntimeError('rollback pgTAP failed')
-            print('PASS rollback: refuses missing consent/profiles/photos, removes empty QA package; 9 postchecks')
+            print('PASS rollback: refuses missing consent/profiles/photos/receipts, removes empty QA package; 10 postchecks')
         finally:
             run('pg_ctl', '-D', data, '-m', 'fast', '-w', 'stop', name='stop.log')
 

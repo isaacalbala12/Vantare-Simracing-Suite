@@ -2,7 +2,8 @@
 
 **Preparado, sin aplicar.** La migración
 `supabase/migrations/20261013225839_pilot_profile_private.sql` añade la tabla
-`pilot_profiles`, las RPC `pilot_profile_load/save` y el bucket privado
+`pilot_profiles`, los recibos privados `pilot_private.operations`, las RPC
+`pilot_profile_load/save` y el bucket privado
 `pilot-photos`. Requiere autorización separada de Isaac para producción.
 
 La aplicación conserva primero una copia local protegida con DPAPI, separada
@@ -14,12 +15,36 @@ y muestra que la sincronización quedó pendiente. Cargar inicialmente o guardar
 reintenta; un conflicto entre dispositivos conserva ambas copias y no fuerza
 la revisión remota.
 
+Cada guardado conserva un UUID v4 `op_id`, el documento/foto enviado y su
+revisión CAS en el mismo registro local protegido que el pendiente. Editar B
+con A incierto conserva A intacto y B como copia local. Se reenvía A con la misma
+clave, contenido y CAS hasta confirmar; solo entonces se crea la clave nueva de
+B y se envía sobre la revisión confirmada. No hay huellas ni reconciliación por
+comparar un SELECT con R+1. La RPC requiere `p_op_id` además de documento,
+hash y revisión; no se conserva una sobrecarga que pueda eludir idempotencia.
+
+El servidor serializa guardados de la misma cuenta mediante un advisory lock
+transaccional, incluido el primer INSERT. En una misma transacción confirma el
+CAS, `last_op_id` del perfil y el recibo inmutable `(account_id, op_id, result)`.
+Un duplicado espera al intento aún en curso y devuelve exactamente su revisión,
+documento y hash originales antes de validar un nuevo payload o evaluar CAS.
+Si el original revierte, el reintento puede aplicar normalmente. Los recibos
+conservan también operaciones anteriores: solo el último ID sería insuficiente
+si otro dispositivo guarda antes del reintento. No se podan automáticamente;
+cualquier futura política de retención debe mantener la garantía de reintento.
+
+Los formatos locales anteriores de QA se leen sin perder el perfil pendiente y
+reciben una clave durable. Un intento de esas versiones no tenía `op_id` en el
+servidor: no se puede recuperar retroactivamente su confirmación; un CAS real
+distinto permanece en conflicto, sin forzarlo. Este backend sigue sin desplegar.
+
 La tabla es privada por `account_id = auth.uid()`, con `USING` y `WITH CHECK`.
 Las RPC públicas son INVOKER, sin EXECUTE para PUBLIC/anon. La tabla solo
 concede SELECT a authenticated. Guardar llama a una función SECURITY DEFINER
 en `pilot_private`, con search_path vacío y owner `pilot_profile_writer`
 NOLOGIN/NOINHERIT/NOBYPASSRLS; tiene únicamente SELECT/INSERT/UPDATE del perfil,
-lectura de Storage y acceso a auth.uid(). No es owner de la tabla: RLS sigue
+SELECT/INSERT de recibos, lectura de Storage y acceso a auth.uid(). No es owner
+de las tablas: RLS sigue
 aplicándose. Solo el administrador que ejecuta la migración recibe membresía
 del escritor para transferir ownership sin requerir SUPERUSER; nunca los roles
 de API. El esquema privado no puede estar expuesto por Data API.
@@ -40,11 +65,16 @@ posterior, sin borrados de usuarios desde este encargo.
 crea y cierra un PostgreSQL desechable en loopback, con pgTAP instalado. No acepta
 DSN ni base existente. El bootstrap reproduce los contratos mínimos de
 profiles/Auth/Storage; no demuestra el esquema completo de Supabase ni su API
-HTTP de Storage. Los 68 checks cubren RLS, ACL, CAS, aislamiento entre cuentas,
+HTTP de Storage. Los 90 checks cubren RLS, ACL, CAS, aislamiento entre cuentas,
 rechazo del DML directo, contrato nativo, foto propia/ausente e inmutabilidad
-ante una policy global permisiva adversarial. El runner comprueba además tres
-rechazos de reversión y nueve postchecks del paquete QA retirado, conservando
+ante una policy global permisiva adversarial. El runner comprueba además cuatro
+rechazos de reversión por consentimiento/perfiles/fotos/recibos y diez postchecks
+del paquete QA retirado, conservando
 las cuentas y policies ajenas al paquete.
+Además usa dos conexiones y barreras explícitas: A sin COMMIT, load que ve R=0,
+reintento bloqueado en el advisory lock, confirmación de A y recibo idéntico,
+B con revisión 1, otro dispositivo C y reintento tardío de A. C no cambia y un
+CAS nuevo obsoleto se rechaza. Sin sleeps ni consultas a una instancia existente.
 `--non-superuser-migration` repite el paquete con un administrador CREATEROLE
 sin SUPERUSER en el mismo entorno desechable. No certifica los privilegios
 reales de la instancia de Supabase. Para transferir ownership, el administrador
@@ -77,7 +107,7 @@ Para retirar una activación de **QA desechable en loopback y sin datos**, usar
 que aplicó el paquete (los REVOKE deben retirar los grants de ese grantor):
 primero `SET vantare.pilot_qa_rollback='empty-disposable'`, después el archivo.
 El script exige 127.0.0.1 y bloquea las tablas mientras verifica que no existen
-perfiles ni objetos del bucket. Si existen, aborta conservando todo: cerrar el
+perfiles, recibos ni objetos del bucket. Si existen, aborta conservando todo: cerrar el
 gate/revocar RPC y preparar una recuperación específica autorizada. No contiene
 borrado de perfiles/fotos ni CASCADE. Retira únicamente tabla, funciones,
 policies, bucket vacío, esquema y rol del paquete; dependencias ajenas abortan

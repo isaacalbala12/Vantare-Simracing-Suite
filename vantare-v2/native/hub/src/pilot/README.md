@@ -26,12 +26,15 @@ permanece separada. Guardar y abrir con sesión intentan sincronizar mediante el
 puente UUID ya verificado. Un fallo remoto conserva el perfil local y su marca
 pendiente; CAS impide sobrescribir otro dispositivo. No se cambia el login.
 
-El servicio registra en el mismo blob protegido la huella de documento/foto y
-revisión del CAS antes de enviarlo. Guardar una edición posterior conserva ese
-intento. El reintento lee la revisión remota real: solo reconoce el contenido
-enviado en R+1 y después envía la nueva edición mediante CAS sobre esa revisión.
-Documento/hash diferentes mantienen el conflicto y la copia local. El lector
-acepta el formato local previo; al escribir añade el registro del intento.
+El servicio conserva en el mismo blob protegido un UUID v4 `op_id`, el
+documento/foto y la revisión CAS de la operación pendiente. Guardar B mientras
+A tiene resultado incierto mantiene A intacto y B local; el reintento reenvía
+A con la misma clave y contenido. El servidor devuelve su recibo original sin
+reaplicar ni evaluar CAS de nuevo, incluso si otro dispositivo guardó después.
+Solo tras confirmar A se crea la clave de B y se envía sobre esa revisión.
+Un CAS nuevo obsoleto mantiene el conflicto y la copia local. No se usa una
+huella ni un SELECT para inferir confirmaciones. Los formatos locales anteriores
+de QA preservan el pendiente; no recuperan confirmaciones antiguas sin op_id.
 
 El selector valida JPEG/PNG ≤ 5 MiB y ≤ 4096 px fuera del hilo de UI. Solo el
 JPEG de 256×256 (≤24 KiB) puede salir del PC; la original se conserva en memoria

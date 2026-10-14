@@ -10,18 +10,20 @@ begin
 end;
 $$;
 -- La verificación y retirada son atómicas frente a nuevos guardados/subidas.
-lock table public.pilot_profiles,storage.objects,storage.buckets in access exclusive mode;
+lock table public.pilot_profiles,pilot_private.operations,storage.objects,storage.buckets in access exclusive mode;
 do $$
 begin
   if exists(select 1 from public.pilot_profiles)
+    or exists(select 1 from pilot_private.operations)
     or exists(select 1 from storage.objects where bucket_id='pilot-photos') then
     raise exception 'preserve profiles and photos: package is not empty' using errcode='55000';
   end if;
 end;
 $$;
 drop function public.pilot_profile_load();
-drop function public.pilot_profile_save(jsonb,text,bigint);
-drop function pilot_private.pilot_profile_save(jsonb,text,bigint);
+drop function public.pilot_profile_save(jsonb,text,bigint,uuid);
+drop function pilot_private.pilot_profile_save(jsonb,text,bigint,uuid);
+drop table pilot_private.operations;
 drop table public.pilot_profiles;
 drop function public.pilot_profile_valid(jsonb,text);
 drop policy pilot_photo_read on storage.objects;

@@ -44,11 +44,11 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
             return Err(Error::Conflict);
         }
         if let (Some(bytes), Some(hash)) = (&bytes, &photo_hash) {
-            let response = request.pilot_photo(&hash, Some(&bytes))?;
+            let response = request.pilot_photo(hash, Some(bytes))?;
             // Storage puede devolver 400/409 por objeto existente. Solo se
             // acepta su código tipado y se verifica el contenido por hash.
             if duplicate(&response) {
-                let existing = request.pilot_photo(&hash, None)?.success()?.body;
+                let existing = request.pilot_photo(hash, None)?.success()?.body;
                 if crate::content_hash(&existing) != *hash {
                     return Err(Error::Protocol);
                 }

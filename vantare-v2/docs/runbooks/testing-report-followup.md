@@ -1,11 +1,11 @@
 # Informes y seguimiento · #1610 / VANTA-29
 
 Entrega aislada para revisión. No despliega SQL, Intake, Plane, PostHog ni notas.
-**Ronda 2: envío público cerrado por F1.** No existe todavía admisión por IP
-confiable. La migración retira EXECUTE de `testing_report_submit` y de la v2 de
-#1602; ni cliente ni service_role pueden reabrirlo. El formulario es código
-preparado y su envío fallará con estos ACLs. No activar ni conceder permisos
-hasta revisar la frontera de admisión y sus presupuestos de intentos cuenta/IP.
+**Ronda 3: F1 implementado localmente.** El cliente envía a la Edge Function
+`testing-report-submit`. La migración de admisión añade presupuestos durables
+por cuenta/IP y una RPC exclusiva de service_role. Las RPCs directas antiguas
+siguen cerradas. SQL/Edge pendientes de revisión y despliegue autorizado;
+la instalación de producción no cambia.
 Base `origin/nightly@0807fbd0`; rama `vantareapp/isa-1610-testing-center-todos`.
 El diseño Opus recuperado está en `C:/tmp/buzon/1610-opus-design.md`.
 Se reutilizan los controles Orbit; no se añade un diseño visual.
@@ -28,8 +28,8 @@ Se reutilizan los controles Orbit; no se añade un diseño visual.
   reloj real de creación, lectura con RLS y reintento exacto por UUID/payload.
   Se rechaza aislamiento con snapshot antiguo. La RPC legacy sin consentimiento
   queda sin EXECUTE para usuarios; los límites también cubren inserciones legacy/v2.
-  Estas cuotas de filas no son un contador de peticiones rechazadas o retries.
-  La apertura pública sigue bloqueada por la admisión/IP ausente.
+  La Edge añade cuotas de intentos (incluidos rechazos/retries), sin reemplazar
+  estas cuotas de filas ni reabrir la RPC directa.
 - Owner puede marcar arreglado un informe ya aceptado, con versión y textos
   revisados. No acepta propuestas de triaje. El cliente no ofrece esa RPC al usuario.
 - `testing_report_patch_candidates(version)` permite solo al owner obtener
@@ -39,6 +39,58 @@ Se reutilizan los controles Orbit; no se añade un diseño visual.
 IPC de services **v8**: se reserva un número distinto del v7 de #1602 porque
 estos comandos/DTOs son diferentes. Hub y services deben recompilarse juntos.
 DTO de telemetría v10 y derechos v4 no cambian. Stable se normaliza a `master`.
+
+## Admisión por IP y cuenta (F1, ronda 3)
+
+La Edge reutiliza WebCrypto y los helpers request/cors/responses/admin/NativeError.
+Sin librerías nuevas ni Redis. Verifica HS256, issuer, aud, role, UUID,
+iat/exp de hasta 300 s y claims Clerk; consulta bloqueo vigente y comprueba que
+la identidad resuelta sigue perteneciendo al UUID. No basta decodificar el JWT.
+
+Origen exclusivo: `cf-connecting-ip`, una dirección IPv4/IPv6 válida, a través
+del gateway **alojado de Supabase/Cloudflare**. Nunca X-Forwarded-For, X-Real-IP
+ni una IP declarada en el JSON. Sin cabecera válida o sal, falla cerrado.
+[Supabase documenta el gateway Edge](https://supabase.com/docs/guides/functions)
+y [usa cf-connecting-ip para controles por IP](https://supabase.com/docs/guides/database/debugging-performance#production-use-with-pre-request-protection);
+[Cloudflare documenta su cabecera al origen](https://developers.cloudflare.com/fundamentals/reference/http-headers/#cf-connecting-ip).
+La documentación Edge de Supabase no formaliza una garantía de sobrescritura
+para todo despliegue. Esta implementación se limita al acceso alojado mediante
+Cloudflare; no autoriza self-hosting ni una ruta directa al runtime. Antes de
+activar, revisar esa frontera y comprobar que cabeceras enviadas por el cliente
+no cambian la IP fijada por el gateway. No se hizo esa comprobación remota.
+
+Se guarda únicamente HMAC-SHA256(IP normalizada, sal servidor, semana UTC),
+sin IP cruda ni relación entre fila IP y fila cuenta. La sal secreta
+`TESTING_REPORT_IP_SALT` requiere al menos 32 bytes aleatorios y permanece
+estable durante la ventana; cambiarla durante una semana reinicia el presupuesto
+IP y no debe hacerse como bypass. Ningún dato/credencial aparece en logs propios.
+Contadores privados con RLS y sin grants para clientes/service_role.
+
+5 intentos/día UTC y 20/semana UTC (lunes) por IP y cuenta. IP se reserva antes
+de autenticar; cuenta antes de analizar el cuerpo. RPCs separadas y confirmadas
+antes del envío: invalidación, rechazo SQL y reintento no revierten su gasto.
+Una denegación devuelve false y conserva contador; advisory lock serializa
+regiones/instancias concurrentes. Un JSON no puede seleccionar cuenta, hash
+ni ventana. El envío utiliza solo service_role con el UUID verificado. Las
+cuotas originales de 5/24 h y 20/7 días por filas/cuenta siguen vigentes.
+
+El hash cambia semanalmente; en cada admisión se borran contadores de días
+anteriores a hoy-8. Si no hay tráfico, la limpieza espera la siguiente petición:
+no se afirma un TTL automático ni anonimización absoluta (es pseudonimización).
+El down de admisión revierte solo una instalación inerte; con contadores
+usados exige preservación. Luego se puede aplicar el down de seguimiento.
+No se configura un job, secreto, credencial ni deploy con este cambio.
+
+Aplicación pendiente: followup → `20261014022701_testing_report_ip_admission.sql`
+→ configuración/sal servidor → Edge/cliente juntos, solo tras autorización.
+`verify_jwt=false` porque el handler verifica el JWT corto del puente; no usa
+Auth.getUser, reservado a sesiones Supabase Auth. La función queda reconocida
+como candidata en el inventario, ausente de todos los wrappers de despliegue.
+
+Pruebas nuevas: Deno `testing-report-submit/index.test.ts` (9),
+`--regression F1IP` sin grant sintético (26 pgTAP, quinto/sexto concurrente,
+rollback inerte/reapply y protección del presupuesto usado). Evidencia
+`C:/tmp/1610-evidence/r3/`. Se conserva F1 de ACLs de ronda 2.
 
 ## Frontera con #1602 y #1609
 

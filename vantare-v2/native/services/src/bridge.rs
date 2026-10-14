@@ -117,7 +117,7 @@ impl DataSession {
                 | "rest/v1/rpc/testing_center_submit_report_with_evidence"
                 | "rest/v1/rpc/testing_participation_current"
                 | "rest/v1/rpc/testing_participation_current_v2"
-                | "rest/v1/rpc/testing_report_submit"
+                | "functions/v1/testing-report-submit"
                 | "rest/v1/rpc/testing_report_credit"
                 | "rest/v1/rpc/testing_report_notice_read"
                 | "rest/v1/rpc/testing_answer_save"

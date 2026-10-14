@@ -104,7 +104,7 @@ pub(crate) fn execute(
             if !consent || !uuid(&id) || !text(&title, 120, true) || !text(&body, 1000, true) {
                 return Err(Error::Protocol);
             }
-            request.post("rest/v1/rpc/testing_report_submit", &serde_json::json!({"p_id":id,"p_channel":channel,"p_title":title,"p_body":body,"p_consent":consent}))?.success()?;
+            request.post("functions/v1/testing-report-submit", &serde_json::json!({"p_id":id,"p_channel":channel,"p_title":title,"p_body":body,"p_consent":consent}))?.success()?;
         }
         Command::TestingCredit { id, consent } => {
             if !uuid(&id) {
@@ -254,7 +254,7 @@ mod tests {
                     .unwrap()
             })
             .collect();
-        assert!(captured[1].starts_with("POST /rest/v1/rpc/testing_report_submit "));
+        assert!(captured[1].starts_with("POST /functions/v1/testing-report-submit "));
         let body: serde_json::Value =
             serde_json::from_str(captured[1].split("\r\n\r\n").nth(1).unwrap()).unwrap();
         assert_eq!(

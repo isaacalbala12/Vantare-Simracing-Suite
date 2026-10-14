@@ -6,8 +6,9 @@
 privado, consentimiento, cuotas, avisos y crédito opcional. Plane y notas se
 prueban con mocks. Recibos legacy con capturas se conservan aparte; no se
 confunden con el historial de contribuciones. Sin activación en producción.
-Ronda 2: F2/F3/F4 corregidos; F1 contenido mediante cierre del envío público.
-La admisión por IP confiable sigue pendiente: entrega **no apta para activar**.
+Ronda 3: F2/F3/F4 conservados; F1 implementado localmente mediante Edge,
+HMAC semanal y presupuestos durables IP/cuenta. Las RPC directas siguen cerradas.
+Sin despliegue ni prueba del gateway alojado; pendiente revisión antes de activar.
 
 ## 2. Autoridad y lectura verificada
 
@@ -54,6 +55,19 @@ sigue ausente hasta su referencia consentida. Capturas para cuentas normales
 y unión con Intake pendientes de #1602; no se duplica su implementación.
 
 ## 6. Evidencia y límites
+
+Ronda 3 sobre a43ce994: RED nativo comprobado (cliente aún llamaba RPC cerrada),
+GREEN cambiando solo ruta/allowlist. Edge 9/9; F1IP 26 pgTAP, concurrencia real
+quinto/sexto, rollback inerte/reapply y rollback usado bloqueado con #1602@87950380.
+Gates workspace en curso. Evidencia `C:/tmp/1610-evidence/r3/`. Sin dependencia
+nueva, diseño nuevo ni subagentes. JWT del puente firmado verificado; no se usa
+Auth.getUser porque el token es propio del puente nativo.
+Origen cf-connecting-ip solo en Supabase alojado/Cloudflare; detalle y límite
+de la documentación oficial en el runbook. No hay garantía para self-hosting.
+Sal/cabecera ausente falla cerrado; no hay IP cruda ni logs propios de identidad.
+Se reconoce la función como candidata sin añadirla a ningún wrapper de deploy.
+
+Evidencia histórica de primera ronda:
 
 `C:/tmp/1610-evidence/`: SQL local 35 pgTAP PASS; dos sesiones reales verifican
 quinto/sexto envío bajo lock; snapshot antiguo rechazado. Rollback con datos

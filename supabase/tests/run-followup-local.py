@@ -14,14 +14,14 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pg-bin', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
-    parser.add_argument('--regression', choices=['F1', 'F2', 'F3', 'F4'], help='Run one review regression, then stop')
+    parser.add_argument('--regression', choices=['F1', 'F1IP', 'F2', 'F3', 'F4'], help='Run one review regression, then stop')
     parser.add_argument('--internal-submit', action='store_true', help='Synthetic local-only grant for testing submission semantics behind the closed public boundary')
     dependency = parser.add_mutually_exclusive_group()
     dependency.add_argument('--dependency-ref', help='Read-only git ref of #1602 for combined local SQL validation')
     dependency.add_argument('--dependency-dir', type=Path, help='Reviewed #1602 SQL extracted from git (Windows worktree/WSL)')
     args = parser.parse_args()
-    if args.internal_submit and args.regression == 'F1':
-        parser.error('F1 must test real migration ACLs, without synthetic submission grants')
+    if args.internal_submit and args.regression in ('F1', 'F1IP'):
+        parser.error('F1/F1IP must test real migration ACLs, without synthetic submission grants')
     args.output.mkdir(parents=True, exist_ok=True)
     root = Path(__file__).resolve().parents[2]
     env = {key: value for key, value in os.environ.items() if not key.startswith('PG')}
@@ -35,7 +35,7 @@ def main():
             raise RuntimeError(f'{log}: exit {result.returncode}')
         return output
 
-    def concurrent_quota(connection, acceptance=False):
+    def concurrent_quota(connection, acceptance=False, admission=False):
         author = '16100000-0000-0000-0000-000000000040'
         owner = '16100000-0000-0000-0000-000000000043'
         fixture = f"""insert into public.profiles(id) values('{author}');
@@ -45,6 +45,11 @@ def main():
         setup = f"set role authenticated; set request.jwt.claim.sub='{author}';"
         sql = lambda suffix: f"select public.testing_report_submit('16100000-0000-0000-0000-0000000000{suffix}','master','Concurrent','Synthetic',true);"
         expected_error, expected_count = 'testing_report_rate_limit', '5'
+        if admission:
+            call = "public.testing_report_admit('ip',repeat('b',64),date_trunc('week',clock_timestamp() at time zone 'UTC')::date)"
+            fixture = f"set role service_role; select {call} from generate_series(1,4);"
+            setup = 'set role service_role;'
+            sql = lambda suffix: f'select {call};'
         if acceptance:
             fixture = f"""insert into public.profiles(id) values('{author}'),('{owner}');
               insert into public.testing_center_memberships(user_id,actor_id,role) values('{owner}','owner-concurrent','owner');
@@ -92,6 +97,13 @@ def main():
             holder.wait(timeout=10)
             stdout, stderr = contender.communicate(timeout=10)
             (args.output / 'concurrent-rejection.log').write_text(stdout+stderr, encoding='utf-8')
+            if admission:
+                if holder.returncode or contender.returncode or stdout.strip().splitlines()[-1:] != ['f']:
+                    raise RuntimeError('concurrent admission quota not enforced')
+                output = run('psql', *connection, '-c', "select sum(attempts) from private.testing_report_attempts where scope='ip' and subject=repeat('b',64);", log='concurrent-count.log')
+                if output.strip() != '6':
+                    raise RuntimeError('denied concurrent admission not durable')
+                return
             if holder.returncode or contender.returncode != 1 or expected_error not in stderr:
                 raise RuntimeError('concurrent quota not enforced')
             state_filter = "and state in ('accepted','fixed')" if acceptance else ''
@@ -198,6 +210,12 @@ def main():
             if args.internal_submit:
                 run('psql', *actor, '-c', 'grant execute on function public.testing_report_submit(uuid,text,text,text,boolean) to authenticated;', log='internal-test-grant.log')
             if args.regression:
+                if args.regression == 'F1IP':
+                    for admission in sorted((root / 'supabase/migrations').glob('*_testing_report_ip_admission.sql')):
+                        run('psql', *actor, '-f', admission, log='admission-apply.log')
+                        admission_down = root / 'supabase/rollbacks' / admission.name.replace('.sql', '.down.sql')
+                        run('psql', *actor, '-f', admission_down, log='admission-inert-down.log')
+                        run('psql', *actor, '-f', admission, log='admission-reapply.log')
                 output = run('psql', *connection, '-f', root / f'supabase/tests/testing_followup_{args.regression}.test.sql', log='regression.log')
                 plan = re.search(r'^1\.\.(\d+)$', output, re.M)
                 count = len(re.findall(r'^ok \d+\b', output, re.M))
@@ -205,6 +223,11 @@ def main():
                     raise RuntimeError(f'{args.regression}: pgTAP failed/incomplete')
                 if args.regression == 'F3':
                     concurrent_quota(connection, acceptance=True)
+                if args.regression == 'F1IP':
+                    concurrent_quota(connection, admission=True)
+                    result = run('psql', *actor, '-f', admission_down, log='admission-active-down.log', expected=3)
+                    if 'testing_admission_rollback_requires_data_preservation' not in result:
+                        raise RuntimeError('admission rollback did not preserve used budgets')
                 print(f'PASS: {args.regression}, {count} pgTAP; local synthetic contracts only')
                 return
             output = run('psql', *connection, '-f', root / 'supabase/tests/testing_reports_followup.test.sql', log='pgtap.log')

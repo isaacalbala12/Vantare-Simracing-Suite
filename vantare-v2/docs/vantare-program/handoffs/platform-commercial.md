@@ -4,46 +4,27 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## #1609 / VANTA-22 · Analítica consentida (14/10/2026)
 
-Ronda 2 en curso por Codex CLI, sin subagentes; review Sol leída completa.
-P1 `58d0a735`: RED A/B → GREEN services 124 tests + 2 procesos. Generación
-persistida y cerrojo SO común hasta terminar cada POST (timeout 8 s); guardar
-con envío activo devuelve ocupado, nunca éxito falso de revocación.
-P2 identidad `f40bc343`: RED UUID conservado → GREEN services 125 + 2 procesos.
-Revocar elimina UUID/marcadores; reaceptar crea UUID distinto. Acumuladores
-reinician al cambiar generación; tests añadidos, gates workspace pendientes.
-P2 UI: RED con persistencia detenida → GREEN; productor acotado try_send y
-worker de services, propiedad del App. Services 127 + 2 procesos; Nextest
-1666/1666 PASS (7 skips), lifecycle 18/18; fmt/check/Clippy y quality PASS.
-Regresiones de acumuladores PASS. Logs `C:/tmp/1609-r2/`.
-VANTA-22 «En curso» verificado. Gates siguientes: entrega anterior.
-
-Rama `vantareapp/isa-1609-posthog-uso-embudo`, base nightly `69fa2d65`.
-Entrega local: catálogo y límites en `docs/analytics/eventos.md`, integración web para
-Marketing en `web-snippet.md` y ocho insights en `paneles.md`. Script de paneles
-inerte por defecto en `tools/analytics/posthog_paneles.py`; nunca ejecutado con
-`--apply`. Consentimiento de uso separado y apagado; no reusar el sí heredado.
-Pendientes coordinados: casilla #1591/PR #1600, atribución web→app, registro y
-pago exactos con consentimiento durable backend. No alterar auth/billing para
-inventar esas señales. Se preparan observaciones nativas explícitamente etiquetadas.
-Clave personal pendiente por ventana privada del orquestador; no buscar/pedir
-por chat. Sin cambios en producción, deploy, merge, release ni PostHog real.
-Reanudado por Codex CLI tras caída T3; trabajo heredado conservado. Código
-`f5837cd3` (Hub/overlays); contrato/servicios `a82a283b`, comunicado a #1610.
-Paneles `7003f0d1` y guardia de paginación completa `089bae4b` (RED→GREEN).
-Consentimiento heredado y orden instalación/cuenta protegidos por regresiones.
-Gates locales: fmt/check/Clippy PASS, Nextest 1659/1659 PASS (7 skips),
-lifecycle 18/18, services 122 + 2 procesos, paneles Python 8, snippet Node e
-integridad 456 PASS. Telemetría dedicada omitida: no se toca runtime/domain/ipc/testdata.
-Dos fallos de entorno del runner conservados en el [informe](../../analytics/informe-1609.md);
-repetición final aislada, sin cambios de código/tests para acomodarlos.
-Acceso comercial observado no demuestra pago: `commercial_license_observed`.
-Revisión visual del consentimiento heredado pendiente, sin diseño Opus específico.
+Ronda 2 completada por Codex CLI; review Sol leída completa, sin subagentes.
+P1 `58d0a735`: RED A/B → GREEN. Generación persistida y cerrojo SO común
+publicación/revocación/POST; con POST activo (8 s), guardar devuelve ocupado
+sin éxito falso. P2 `f40bc343`: ID/marcadores borrados; UUID nuevo al reaceptar,
+tiempos reiniciados por generación. P2 `55531cc4`: instrumentación GPUI solo
+try_send (32 entradas); worker de services persiste, emisor HTTP en services.
+Guardado manual del consentimiento conserva su ruta atómica existente.
+Gates locales: services 127 + 2 procesos, Nextest 1666/1666 (7 skips), lifecycle
+18/18, fmt/check/Clippy/quality PASS (456 huellas). RED y GREEN conservados en
+`C:/tmp/1609-r2/`; detalle, límites y omisiones en [informe](../../analytics/informe-1609.md).
+Base `69fa2d65`, código publicado `55531cc4`; HEAD documental en issue/buzón.
 PR draft [#1617](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1617)
-a nightly; VANTA-22 «Por revisar» verificado el 14/10 a las 01:51 UTC.
-Código `f5837cd3`, entregado por push en `db7a1c28` más este cierre documental.
-CI remoto en curso en la consulta inicial (canales, ratchet, native-linux);
-sin resultado final aún. Gates locales separados; sin merge/promoción/release.
-[Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/platform-commercial.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
+a nightly, sin auto-merge; VANTA-22 «Por revisar» verificado 14/10 02:36 UTC.
+CI del nuevo HEAD pendiente; no afirmar integración/release. Nightly consultado
+`0807fbd0`; esta entrega no integra ese tip ni promociona canales.
+Catálogo/ID en `docs/analytics/eventos.md`; snippet/paneles preparados, sin --apply.
+Pendientes: clave/panel real por vía privada del orquestador, Marketing/Setup
+(#1591/PR #1600), atribución y registro/pago exactos backend, QA visual/review.
+Telemetría dedicada omitida: no se toca runtime/domain/ipc/testdata. Sin diseño
+nuevo, producción/PostHog real, datos/instalación reales de Isaac, dependencias,
+merge ni release. Evidencia inicial y contratos conservados en el informe y Git.
 
 ## #1601 / VANTA-10 · Plane, fase de implementación (13/10/2026)
 

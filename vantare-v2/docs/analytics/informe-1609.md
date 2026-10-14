@@ -1,5 +1,70 @@
 # Entrega #1609 / VANTA-22 · PostHog consentido
 
+## Ronda 2 · revisión Sol corregida (14/10/2026)
+
+1. Se conservó el worktree limpio en `b453254e` y la base `69fa2d65`; review completa leída.
+2. P1 `58d0a735`: contador persistido del permiso y cerrojo común entre procesos.
+3. A/B se reprodujeron en Rust: POST y publicación después de revocar; ambos ahora descartados.
+4. Revocar/reaceptar también invalida el evento y el payload autorizados en la generación anterior.
+5. P2 `f40bc343`: revocar borra UUID/marcadores; reaceptar crea otro UUID.
+6. Páginas/widgets reinician tiempos al cambiar generación y no heredan tiempo al cerrar.
+7. P2 `55531cc4`: callbacks de instrumentación entregan en memoria con `try_send`, máximo 32 entradas.
+8. Worker de services persiste; pruebas con persistencia detenida y canal lleno retornan sin esperar.
+9. Fmt/check/Clippy PASS; Nextest 1666/1666 (7 skips), lifecycle 18/18; services 127 + 2 procesos.
+10. Push del código verificado, PR #1617 sigue draft a nightly; VANTA-22 Por revisar, 02:36 UTC.
+
+Código final `55531cc4723d4cfa0c43e7b9e47a8304d64f187c`; tres commits por hallazgo.
+El SHA del cierre documental se verifica en la issue, el PR y `C:/tmp/buzon/1609.md`.
+GitHub Project Vantare verificado; `area:plataforma`, issue abierta, sin milestone.
+Nightly remoto consultado: `0807fbd0`, base conservada de este encargo `69fa2d65`.
+No se ha integrado esta rama ni validado una integración con el nuevo tip.
+
+| Hallazgo | RED conservado en C:/tmp/1609-r2 | GREEN / punto común |
+| --- | --- | --- |
+| P1 A: payload suspendido antes del POST | `p1-p2-red-out.txt`: POST empezó tras completar revocación | `consent_tests.rs`, barreras para revocar y reaceptar; `sender.rs:113` conserva frontera hasta terminar HTTP |
+| P1 B: productor suspendido tras permiso | Mismo log: slot publicado tras revocar | `diagnostics.rs:586`, revalidación de generación bajo `consent.lock` antes de persistir |
+| P2 identidad | Mismo log: `anonymous-id` seguía presente | `diagnostics.rs:88`, ID y marcadores ausentes, UUID nuevo y observaciones frescas |
+| P2 UI | `ui-red-out.txt`: callback esperaba la persistencia | `recorder.rs:146`, writer detenido por barrera y 128 entregas con canal de 32; retorno anterior a liberar writer |
+
+Rutas de cambio: `services/src/diagnostics.rs`, `diagnostics/sender.rs` y sus tests;
+`diagnostics/recorder.rs` implementa el worker sin red para productores GPUI.
+`ui/src/analytics.rs` adapta el dueño `App`; Hub/overlays, Launcher, Studio y Strategy
+usan esa ruta, sin leer privacidad ni escribir desde los callbacks de instrumentación.
+El proceso services conserva el emisor HTTP. El guardado manual de la decisión en
+Ajustes mantiene la ruta atómica y sus conflictos por bytes observados; no se cambia su diseño.
+
+La frontera SO cubre el POST completo, acotado a 8 s: si ya hay una petición en
+curso, guardar devuelve ocupado y hay que reintentar. No se informa de éxito de
+revocación mientras esa petición puede avanzar. Una petición iniciada antes de
+revocar no puede retirarse del transporte. El contador solo se guarda localmente;
+el payload PostHog sigue teniendo su allowlist exacta, sin generación extra.
+Las observaciones reinician por identidad de consentimiento; no son un censo de instalaciones.
+
+Logs nuevos: `p1-p2-red-out.txt`, `p1-green-out.txt`, `p2-green-out.txt`,
+`ui-red-out.txt`, `services-out.txt`, `check-err.txt`, `clippy-err.txt`,
+`test-err.txt`, `lifecycle-out.txt`, `steps.txt`. Se mantuvieron logs anteriores;
+los errores RED son intencionales. La única prueba lenta del Nextest final
+(`go_physical_tyre_parity`, 128,750 s) pasó; no se excluyó ni relajó.
+Quality: 456 huellas PASS. Targets propios en `native/target/gates`, dos jobs,
+comandos por la cola y timeout externo de 1800/3600 s; gates en serie.
+Tras retirar un helper síncrono temporal sin consumidores se repitieron check
+ y Clippy completos; no cambia el comportamiento cubierto por Nextest/lifecycle.
+
+Telemetría dedicada no repetida: no se toca runtime/domain/ipc/testdata.
+Paneles Python/snippet no repetidos: no hay cambios en esas rutas; abajo consta
+su evidencia inicial. Sin GUI física: se prueba el productor real que usan los
+callbacks, con barreras, reloj inyectado y HTTP loopback; no se midió disco/antivirus real.
+Persisten los pendientes iniciales: panel real/clave, Marketing/Setup, atribución,
+registro/pago exactos backend y QA visual/revisión independiente. Sin subagentes,
+diseño visual nuevo, dependencias nuevas, instalación/datos reales de Isaac,
+PostHog real, producción, merge, promoción ni release.
+
+CI observado en el código `55531cc4` a las 02:37 UTC: ratchet y GitGuardian
+SUCCESS; canales y native-linux IN_PROGRESS. El HEAD documental final dispara
+su propia CI: consultar el PR; no se afirma CI completa verde ni release.
+
+## Entrega inicial · evidencia histórica hasta b453254e
+
 Issue: [#1609](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1609),
 GitHub Project Vantare, `area:plataforma`, sin milestone comprometido.
 Rama `vantareapp/isa-1609-posthog-uso-embudo`; base nightly `69fa2d65`.

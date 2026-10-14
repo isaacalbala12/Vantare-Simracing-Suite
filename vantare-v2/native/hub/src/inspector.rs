@@ -306,22 +306,33 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             &[("Instrumento", "instrument"), ("Cápsula", "capsule")],
             set!(Delta.template_id string),
         )],
-        Settings::Pedals(value) => vec![
-            number(
-                "Separación entre barras",
-                f64::from(value.gap),
-                f64::from(vantare_ui::pedals::GAP_MIN),
-                f64::from(vantare_ui::pedals::GAP_MAX),
-                1.0,
-                set!(Pedals.gap as f32),
-            ),
-            boolean(
-                "Fondo transparente",
-                Tab::Appearance,
-                value.transparent_background,
-                set!(Pedals.transparent_background),
-            ),
-        ],
+        Settings::Pedals(value) => {
+            let mut rows = vec![
+                number(
+                    "Separación entre barras",
+                    f64::from(value.gap),
+                    f64::from(vantare_ui::pedals::GAP_MIN),
+                    f64::from(vantare_ui::pedals::GAP_MAX),
+                    1.0,
+                    set!(Pedals.gap as f32),
+                ),
+                boolean(
+                    "Fondo transparente",
+                    Tab::Appearance,
+                    value.transparent_background,
+                    set!(Pedals.transparent_background),
+                ),
+            ];
+            if value.design_system == vantare_ui::look::Look::Vantare {
+                rows.push(boolean(
+                    "Pico de frenada",
+                    Tab::Content,
+                    value.show_brake_peak,
+                    set!(Pedals.show_brake_peak),
+                ));
+            }
+            rows
+        }
         Settings::BroadcastTower(value) => vec![
             number(
                 "Filas",

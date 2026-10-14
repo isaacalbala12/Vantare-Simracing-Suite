@@ -14,7 +14,13 @@ despliegue: todavía no hay autorización ni condiciones de privacidad escritas.
 Los tests usan únicamente fixtures y un subprocess simulado; nunca llaman al
 proveedor, al webhook ni a producción.
 
-`privacy.py` repite redacción y proyección de hardware. `analysis.py` calcula
+`privacy.py` repite redacción y proyección de hardware. Python/Rust parsean
+JSON y redactan por clave/valor antes de serializar; strings con JSON vuelven
+al mismo recorrido. No se normalizan comillas escapadas. JSON inválido,
+demasiado profundo o fragmentos ambiguos se omiten conservadoramente; los
+filtros de texto libre pueden retirar contexto público junto al privado.
+[Regresiones F4 y paridad](review-1602-r3-regressions.md).
+`analysis.py` calcula
 trazabilidad con catálogo de versiones aprobado, candidatos de 14 días (≤15),
 presencia de evidencia y extracto JSON ≤24.000 caracteres. Logs WARN/ERROR con
 cinco líneas de contexto (≤300); del fragmento solo estadísticas, nunca muestras.

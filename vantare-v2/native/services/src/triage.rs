@@ -112,7 +112,13 @@ impl Triage {
         }
         let observed = capture::capture(selection.items.contains(&Item::System))?;
         let mut system = observed.system;
-        clean_strings(&mut system, private_names);
+        redaction::clean_tree(&mut system, private_names);
+        let mut summary = if selection.items.contains(&Item::Session) {
+            self.summary(now)
+        } else {
+            serde_json::Value::Null
+        };
+        redaction::clean_tree(&mut summary, private_names);
         let items: Vec<_> = selection.items.iter().map(|item| item.key()).collect();
         let mut attachments = Vec::new();
         if selection.items.contains(&Item::AppLog) {
@@ -159,7 +165,7 @@ impl Triage {
             context: serde_json::json!({"app_version":crate::product::VERSION,"app_channel":channel,
                 "game":observed.game,"game_version":observed.game_version.filter(|v|v.bytes().all(|b|b.is_ascii_digit() || b==b'.')),
                 "system":if selection.items.contains(&Item::System) {system} else {serde_json::json!({})},
-                "telemetry_summary":if selection.items.contains(&Item::Session) {self.summary(now)} else {serde_json::Value::Null},"posthog_session_id":null,
+                "telemetry_summary":summary,"posthog_session_id":null,
                 "consent":{"version":"triage-v2","items":items,"accepted_at":accepted}}),
             attachments,
         };
@@ -240,22 +246,6 @@ fn fit_http_budget(packet: &mut Packet, channel: &str) -> Result<()> {
         return Ok(());
     }
     Err(Error::TooLarge)
-}
-fn clean_strings(value: &mut serde_json::Value, names: &[String]) {
-    match value {
-        serde_json::Value::String(s) => *s = redaction::clean(s, names),
-        serde_json::Value::Array(a) => {
-            for v in a {
-                clean_strings(v, names);
-            }
-        }
-        serde_json::Value::Object(o) => {
-            for v in o.values_mut() {
-                clean_strings(v, names);
-            }
-        }
-        _ => {}
-    }
 }
 fn tail(text: &str, max: usize) -> String {
     let mut start = text.len().saturating_sub(max);

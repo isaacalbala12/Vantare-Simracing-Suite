@@ -132,6 +132,35 @@ fn session_summary_uses_only_recent_observed_failures_and_events_without_posthog
 }
 
 #[test]
+fn review_r3_f4_structural_json_before_preview() {
+    let cases: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../../tools/triage/redaction-cases.json"
+    ))
+    .expect("shared synthetic cases");
+    for case in cases.as_array().expect("cases") {
+        let raw = case["input"].as_str().expect("input");
+        let clean = redaction::clean(raw, &[]);
+        assert_eq!(
+            clean,
+            case["expected"].as_str().expect("expected"),
+            "{}",
+            case["name"]
+        );
+        assert_eq!(redaction::clean(&clean, &[]), clean);
+        if raw.chars().count() <= 120 {
+            let preview = prepared_text(raw);
+            for secret in case["secrets"].as_array().expect("secrets") {
+                assert!(
+                    !preview.contains(secret.as_str().expect("secret")),
+                    "{}",
+                    case["name"]
+                );
+            }
+        }
+    }
+}
+
+#[test]
 fn review_r2_f1_json_representations_are_removed_before_preview() {
     let basic = ["c3ludGhldGlj", "OmZpeHR1cmU="].concat();
     for (label, secret, prefix) in [
@@ -228,7 +257,7 @@ fn prepared_text(raw: &str) -> String {
                 title: raw,
                 body: raw,
                 selection: Selection {
-                    items: [Item::AppLog].into_iter().collect(),
+                    items: [Item::AppLog, Item::Session].into_iter().collect(),
                 },
                 consent: true,
                 private_names: &[],

@@ -1,6 +1,18 @@
 # Handoff vivo — Testing Center
 
-Estado #1594 / VANTA-38/49: F1 (P1), F2/F3 (P2) de la re-review r2
+## Reanudación CLI · r3 F4 · 14/10/2026
+
+#1594 / VANTA-38/49 En curso, PR #1602 draft a nightly, STOP merge y
+auto-merge OFF. HEAD inicial 87950380 y worktree limpio. F4 reproduce en
+Python y Rust la fuga de una cola privada tras una comilla interna JSON.
+Se sustituye la normalización de escapes por parser estándar/serde_json,
+recorrido por claves/valores y serialización nueva; strings JSON anidados
+siguen el mismo recorrido. Texto ambiguo se omite conservadoramente.
+Corpus compartido de 43 casos y recorrido modelo/T3/Intake mock sin sockets.
+Gates finales pendientes; sin proveedores, envíos reales ni producción.
+Evidencia local E:/tmp/isa1594-r3-evidence/.
+
+Historico r2 #1594 / VANTA-38/49: F1 (P1), F2/F3 (P2) de la re-review r2
 corregidos y publicados. VANTA-38/49 Por revisar verificado el 14/10/2026.
 PR #1602 draft a nightly, auto-merge OFF, sin merge ni despliegue. Migración
 anterior preservada; ninguna acción de Supabase prod en esta reanudación.

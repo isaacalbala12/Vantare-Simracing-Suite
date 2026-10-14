@@ -1,6 +1,123 @@
 //! Additional report redaction on top of the existing diagnostics cleaner.
+use serde_json::Value;
+
+const REDACTED: &str = "<redacted>";
+const MAX_DEPTH: usize = 32;
+
 pub(super) fn clean(text: &str, private_names: &[String]) -> String {
-    let mut text = crate::diagnostics::clean_paths(&unc_paths(&plain_quotes(text)));
+    clean_depth(text, private_names, 0)
+}
+
+pub(super) fn clean_tree(value: &mut Value, names: &[String]) {
+    *value =
+        tree(std::mem::take(value), names, 0).unwrap_or_else(|| Value::String(REDACTED.into()));
+}
+
+fn private_key(key: &str) -> bool {
+    matches!(
+        key.to_ascii_lowercase().replace(['_', '-'], "").as_str(),
+        "accesstoken"
+            | "refreshtoken"
+            | "accountid"
+            | "hostname"
+            | "computername"
+            | "username"
+            | "gamertag"
+            | "token"
+            | "apikey"
+            | "licensekey"
+            | "license"
+            | "password"
+            | "authorization"
+            | "key"
+            | "email"
+    )
+}
+
+fn tree(value: Value, names: &[String], depth: usize) -> Option<Value> {
+    if depth >= MAX_DEPTH {
+        return None;
+    }
+    Some(match value {
+        Value::String(s) => Value::String(clean_depth(&s, names, depth)),
+        Value::Array(values) => Value::Array(
+            values
+                .into_iter()
+                .map(|v| tree(v, names, depth + 1))
+                .collect::<Option<_>>()?,
+        ),
+        Value::Object(values) => Value::Object(
+            values
+                .into_iter()
+                .map(|(key, value)| {
+                    let value = if private_key(&key) {
+                        Value::String(REDACTED.into())
+                    } else {
+                        tree(value, names, depth + 1)?
+                    };
+                    Some((clean_depth(&key, names, depth + 1), value))
+                })
+                .collect::<Option<_>>()?,
+        ),
+        Value::Number(n) if free_text(&n.to_string(), names) != n.to_string() => {
+            Value::String(REDACTED.into())
+        }
+        other => other,
+    })
+}
+
+fn clean_depth(text: &str, names: &[String], depth: usize) -> String {
+    if depth >= MAX_DEPTH {
+        return REDACTED.into();
+    }
+    if text.trim_start().starts_with(['{', '[', '"']) {
+        if let Ok(value) = serde_json::from_str::<Value>(text) {
+            return tree(value, names, depth + 1)
+                .and_then(|mut v| {
+                    // The workspace may unify serde_json/preserve_order.
+                    // Match Python's canonical key order regardless of features.
+                    v.sort_all_objects();
+                    serde_json::to_string(&v).ok()
+                })
+                .unwrap_or_else(|| REDACTED.into());
+        }
+        return REDACTED.into();
+    }
+    // Invalid/embedded/escaped JSON is ambiguous: keep only the free-text
+    // prefix per line. Never erase escapes before identifying private fields.
+    text.split('\n')
+        .map(|line| {
+            let start = [
+                line.find('{'),
+                line.find('['),
+                line.find(r#"\""#),
+                line.find(r"\u0022"),
+            ]
+            .into_iter()
+            .flatten()
+            .min();
+            if let Some(start) = start {
+                let prefix = free_text(&line[..start], names);
+                if prefix.ends_with(REDACTED) {
+                    prefix
+                } else {
+                    format!("{prefix}{REDACTED}")
+                }
+            } else if line.trim_start().starts_with(['[', '"'])
+                || line.trim_start().starts_with(r#"\""#)
+                || line.trim_start().starts_with(r"\u0022")
+            {
+                REDACTED.into()
+            } else {
+                free_text(line, names)
+            }
+        })
+        .collect::<Vec<_>>()
+        .join("\n")
+}
+
+fn free_text(text: &str, private_names: &[String]) -> String {
+    let mut text = crate::diagnostics::clean_paths(&unc_paths(text));
     text = labeled_secrets(&text);
     for name in private_names.iter().filter(|n| !n.is_empty()) {
         for form in [name.clone(), name.to_lowercase(), name.to_uppercase()] {
@@ -41,27 +158,6 @@ pub(super) fn clean(text: &str, private_names: &[String]) -> String {
     }
     phones(&out)
 }
-// Normalize escaped quote delimiters only, at any serialization depth in one
-// pass. Never decode arbitrary JSON/Unicode escapes into unredacted data.
-fn plain_quotes(text: &str) -> String {
-    let mut out = String::new();
-    let mut chars = text.chars().peekable();
-    while let Some(c) = chars.next() {
-        if c == '\\' {
-            let mut count = 1;
-            while chars.peek() == Some(&'\\') {
-                chars.next();
-                count += 1;
-            }
-            if !chars.peek().is_some_and(|c| matches!(c, '"' | '\'')) {
-                out.extend(std::iter::repeat_n('\\', count));
-            }
-        } else {
-            out.push(c);
-        }
-    }
-    out
-}
 // Redact before diagnostics normalizes escaped separators. Unknown shares do
 // not provide a trustworthy way to distinguish a user name from a directory.
 fn unc_paths(text: &str) -> String {
@@ -96,50 +192,36 @@ fn unc_paths(text: &str) -> String {
     }
     out
 }
-// Skip only a recognized unquoted Authorization scheme; the caller then
-// consumes the credential too instead of stopping at the scheme's first space.
-fn authorization_credential_start(text: &str, lower: &str, mut start: usize) -> usize {
-    for scheme in ["basic", "bearer"] {
-        let end = start + scheme.len();
-        if lower[start..].starts_with(scheme)
-            && text
-                .as_bytes()
-                .get(end)
-                .is_some_and(u8::is_ascii_whitespace)
-        {
-            start = end;
-            while text
-                .as_bytes()
-                .get(start)
-                .is_some_and(u8::is_ascii_whitespace)
-            {
-                start += 1;
-            }
-            break;
-        }
-    }
-    start
-}
 fn labeled_secrets(text: &str) -> String {
     let lower = text.to_ascii_lowercase();
     let labels = [
         "access_token",
+        "accesstoken",
+        "access-token",
         "refresh_token",
+        "refreshtoken",
+        "refresh-token",
         "account_id",
         "accountid",
         "account-id",
         "hostname",
         "computername",
         "username",
+        "user_name",
+        "user-name",
         "gamertag",
         "token",
         "api_key",
+        "api-key",
         "apikey",
         "license_key",
+        "licensekey",
+        "license-key",
         "license",
         "password",
         "authorization",
         "key",
+        "email",
     ];
     let mut out = String::new();
     let mut i = 0;
@@ -172,35 +254,26 @@ fn labeled_secrets(text: &str) -> String {
                 {
                     start += 1;
                 }
-                let quote = text
-                    .as_bytes()
-                    .get(start)
-                    .copied()
-                    .filter(|b| matches!(b, b'\"' | b'\''));
-                if quote.is_some() {
-                    start += 1;
-                }
-                // An unquoted Authorization value includes the scheme AND credential.
-                if *label == "authorization" && quote.is_none() {
-                    start = authorization_credential_start(text, &lower, start);
-                }
-
-                let end = start
+                // Only bare scalars have a trustworthy whitespace delimiter.
+                // Quotes/escapes or Authorization consume the rest of the line.
+                let line_end = start
                     + text[start..]
-                        .chars()
-                        .take_while(|c| {
-                            quote.map_or(!c.is_whitespace() && !",;}".contains(*c), |q| {
-                                *c != char::from(q)
-                            })
-                        })
-                        .map(char::len_utf8)
-                        .sum::<usize>();
+                        .find(['\r', '\n'])
+                        .unwrap_or(text.len() - start);
+                let token = text[start..line_end]
+                    .split_whitespace()
+                    .next()
+                    .unwrap_or_default();
+                let end = if *label == "authorization"
+                    || text[start..line_end].contains(['\\', '"', '\''])
+                {
+                    line_end
+                } else {
+                    start + token.len()
+                };
                 if end > start {
-                    out.push_str("<redactado>");
-                    i = end
-                        + usize::from(
-                            quote.is_some() && text.as_bytes().get(end) == quote.as_ref(),
-                        );
+                    out.push_str(REDACTED);
+                    i = end;
                     continue;
                 }
             }

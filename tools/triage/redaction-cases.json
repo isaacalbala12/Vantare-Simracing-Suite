@@ -1,0 +1,345 @@
+[
+  {
+    "name": "password",
+    "input": "{\"password\":\"StartFixture\\\"OpaqueTailSecret\"}",
+    "expected": "{\"password\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "password-unicode",
+    "input": "{\"password\":\"StartFixture\\u0022OpaqueTailSecret\"}",
+    "expected": "{\"password\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "password-string-depth-1",
+    "input": "\"{\\\"password\\\":\\\"StartFixture\\\\\\\"OpaqueTailSecret\\\"}\"",
+    "expected": "\"{\\\"password\\\":\\\"<redacted>\\\"}\"",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "password-string-depth-2",
+    "input": "\"\\\"{\\\\\\\"password\\\\\\\":\\\\\\\"StartFixture\\\\\\\\\\\\\\\"OpaqueTailSecret\\\\\\\"}\\\"\"",
+    "expected": "\"\\\"{\\\\\\\"password\\\\\\\":\\\\\\\"<redacted>\\\\\\\"}\\\"\"",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "password-string-depth-3",
+    "input": "\"\\\"\\\\\\\"{\\\\\\\\\\\\\\\"password\\\\\\\\\\\\\\\":\\\\\\\\\\\\\\\"StartFixture\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"OpaqueTailSecret\\\\\\\\\\\\\\\"}\\\\\\\"\\\"\"",
+    "expected": "\"\\\"\\\\\\\"{\\\\\\\\\\\\\\\"password\\\\\\\\\\\\\\\":\\\\\\\\\\\\\\\"<redacted>\\\\\\\\\\\\\\\"}\\\\\\\"\\\"\"",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "username",
+    "input": "{\"username\":\"Synthetic \\\"OtherPerson\\\"\"}",
+    "expected": "{\"username\":\"<redacted>\"}",
+    "secrets": [
+      "OtherPerson"
+    ]
+  },
+  {
+    "name": "username-unicode",
+    "input": "{\"username\":\"Synthetic \\u0022OtherPerson\\u0022\"}",
+    "expected": "{\"username\":\"<redacted>\"}",
+    "secrets": [
+      "OtherPerson"
+    ]
+  },
+  {
+    "name": "username-string-depth-1",
+    "input": "\"{\\\"username\\\":\\\"Synthetic \\\\\\\"OtherPerson\\\\\\\"\\\"}\"",
+    "expected": "\"{\\\"username\\\":\\\"<redacted>\\\"}\"",
+    "secrets": [
+      "OtherPerson"
+    ]
+  },
+  {
+    "name": "username-string-depth-2",
+    "input": "\"\\\"{\\\\\\\"username\\\\\\\":\\\\\\\"Synthetic \\\\\\\\\\\\\\\"OtherPerson\\\\\\\\\\\\\\\"\\\\\\\"}\\\"\"",
+    "expected": "\"\\\"{\\\\\\\"username\\\\\\\":\\\\\\\"<redacted>\\\\\\\"}\\\"\"",
+    "secrets": [
+      "OtherPerson"
+    ]
+  },
+  {
+    "name": "username-string-depth-3",
+    "input": "\"\\\"\\\\\\\"{\\\\\\\\\\\\\\\"username\\\\\\\\\\\\\\\":\\\\\\\\\\\\\\\"Synthetic \\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"OtherPerson\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"\\\\\\\\\\\\\\\"}\\\\\\\"\\\"\"",
+    "expected": "\"\\\"\\\\\\\"{\\\\\\\\\\\\\\\"username\\\\\\\\\\\\\\\":\\\\\\\\\\\\\\\"<redacted>\\\\\\\\\\\\\\\"}\\\\\\\"\\\"\"",
+    "secrets": [
+      "OtherPerson"
+    ]
+  },
+  {
+    "name": "token",
+    "input": "{\"token\":\"StartFixture\\\"OpaqueTailToken\"}",
+    "expected": "{\"token\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailToken"
+    ]
+  },
+  {
+    "name": "token-unicode",
+    "input": "{\"token\":\"StartFixture\\u0022OpaqueTailToken\"}",
+    "expected": "{\"token\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailToken"
+    ]
+  },
+  {
+    "name": "token-string-depth-1",
+    "input": "\"{\\\"token\\\":\\\"StartFixture\\\\\\\"OpaqueTailToken\\\"}\"",
+    "expected": "\"{\\\"token\\\":\\\"<redacted>\\\"}\"",
+    "secrets": [
+      "OpaqueTailToken"
+    ]
+  },
+  {
+    "name": "token-string-depth-2",
+    "input": "\"\\\"{\\\\\\\"token\\\\\\\":\\\\\\\"StartFixture\\\\\\\\\\\\\\\"OpaqueTailToken\\\\\\\"}\\\"\"",
+    "expected": "\"\\\"{\\\\\\\"token\\\\\\\":\\\\\\\"<redacted>\\\\\\\"}\\\"\"",
+    "secrets": [
+      "OpaqueTailToken"
+    ]
+  },
+  {
+    "name": "token-string-depth-3",
+    "input": "\"\\\"\\\\\\\"{\\\\\\\\\\\\\\\"token\\\\\\\\\\\\\\\":\\\\\\\\\\\\\\\"StartFixture\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\"OpaqueTailToken\\\\\\\\\\\\\\\"}\\\\\\\"\\\"\"",
+    "expected": "\"\\\"\\\\\\\"{\\\\\\\\\\\\\\\"token\\\\\\\\\\\\\\\":\\\\\\\\\\\\\\\"<redacted>\\\\\\\\\\\\\\\"}\\\\\\\"\\\"\"",
+    "secrets": [
+      "OpaqueTailToken"
+    ]
+  },
+  {
+    "name": "key-Password",
+    "input": "{\"Password\":{\"deep\":[\"OpaqueTailSecret\"]}}",
+    "expected": "{\"Password\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "key-USER_name",
+    "input": "{\"USER_name\":{\"deep\":[\"OpaqueTailSecret\"]}}",
+    "expected": "{\"USER_name\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "key-user-name",
+    "input": "{\"user-name\":{\"deep\":[\"OpaqueTailSecret\"]}}",
+    "expected": "{\"user-name\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "key-accountId",
+    "input": "{\"accountId\":{\"deep\":[\"OpaqueTailSecret\"]}}",
+    "expected": "{\"accountId\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "key-AccountID",
+    "input": "{\"AccountID\":{\"deep\":[\"OpaqueTailSecret\"]}}",
+    "expected": "{\"AccountID\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "key-account-id",
+    "input": "{\"account-id\":{\"deep\":[\"OpaqueTailSecret\"]}}",
+    "expected": "{\"account-id\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "key-account_id",
+    "input": "{\"account_id\":{\"deep\":[\"OpaqueTailSecret\"]}}",
+    "expected": "{\"account_id\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "key-AccessToken",
+    "input": "{\"AccessToken\":{\"deep\":[\"OpaqueTailSecret\"]}}",
+    "expected": "{\"AccessToken\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "key-access-token",
+    "input": "{\"access-token\":{\"deep\":[\"OpaqueTailSecret\"]}}",
+    "expected": "{\"access-token\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "key-API_KEY",
+    "input": "{\"API_KEY\":{\"deep\":[\"OpaqueTailSecret\"]}}",
+    "expected": "{\"API_KEY\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "key-Authorization",
+    "input": "{\"Authorization\":{\"deep\":[\"OpaqueTailSecret\"]}}",
+    "expected": "{\"Authorization\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "key-email",
+    "input": "{\"email\":{\"deep\":[\"OpaqueTailSecret\"]}}",
+    "expected": "{\"email\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "nested",
+    "input": "{\"outer\":[{\"username\":\"Synthetic \\\"OtherPerson\\\"\",\"public\":\"ERROR módulo\"}]}",
+    "expected": "{\"outer\":[{\"public\":\"ERROR módulo\",\"username\":\"<redacted>\"}]}",
+    "secrets": [
+      "OtherPerson"
+    ]
+  },
+  {
+    "name": "json-in-field",
+    "input": "{\"payload\":\"{\\\"password\\\":\\\"Start\\\\\\\"OpaqueTailSecret\\\"}\"}",
+    "expected": "{\"payload\":\"{\\\"password\\\":\\\"<redacted>\\\"}\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "unicode-key",
+    "input": "{\"pass\\u0077ord\":\"Start\\u0022OpaqueTailSecret\"}",
+    "expected": "{\"password\":\"<redacted>\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "malformed",
+    "input": "{\"password\":\"Start\\\"OpaqueTailSecret\"",
+    "expected": "<redacted>",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "escaped-delimiters",
+    "input": "{\\\"password\\\":\\\"Start\\\\\\\"OpaqueTailSecret\\\"}",
+    "expected": "<redacted>",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "excess-depth",
+    "input": "[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[\"OpaqueTailSecret\"]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]",
+    "expected": "<redacted>",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "log-json",
+    "input": "ERROR {\"password\":\"Start\\\"OpaqueTailSecret\"}",
+    "expected": "ERROR <redacted>",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "free-ambiguous",
+    "input": "ERROR password=\"Start\\\"OpaqueTailSecret\" public=60",
+    "expected": "ERROR <redacted>",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "public-json",
+    "input": "{\"message\":\"ERROR \\\"módulo\\\"\",\"fps\":60}",
+    "expected": "{\"fps\":60,\"message\":\"ERROR \\\"módulo\\\"\"}",
+    "secrets": []
+  },
+  {
+    "name": "malformed-string",
+    "input": "\"Start\\\"OpaqueTailSecret",
+    "expected": "<redacted>",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "malformed-multiline",
+    "input": "{\n\"password\": \"Start\\\"OpaqueTailSecret\"",
+    "expected": "<redacted>",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "free-spaced-quote",
+    "input": "ERROR password=Start \"OpaqueTailSecret\"",
+    "expected": "ERROR <redacted>",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "unicode-json-in-field",
+    "input": "{\"payload\": \"{\\\"pass\\\\u0077ord\\\":\\\"Start\\\\u0022OpaqueTailSecret\\\"}\"}",
+    "expected": "{\"payload\":\"{\\\"password\\\":\\\"<redacted>\\\"}\"}",
+    "secrets": [
+      "OpaqueTailSecret"
+    ]
+  },
+  {
+    "name": "numeric-steam",
+    "input": "{\"value\": 76561191234567890}",
+    "expected": "{\"value\":\"<redacted>\"}",
+    "secrets": [
+      "76561191234567890"
+    ]
+  },
+  {
+    "name": "numeric-phone",
+    "input": "{\"value\": 612345678}",
+    "expected": "{\"value\":\"<redacted>\"}",
+    "secrets": [
+      "612345678"
+    ]
+  },
+  {
+    "name": "multiple-free-values",
+    "input": "ERROR password=FirstFixture token=OpaqueTailToken",
+    "expected": "ERROR <redacted> <redacted>",
+    "secrets": [
+      "FirstFixture",
+      "OpaqueTailToken"
+    ]
+  }
+]

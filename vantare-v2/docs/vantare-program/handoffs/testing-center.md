@@ -1,3 +1,17 @@
+## R7 F9 · 14/10/2026 · hito local, gates completos en curso
+
+#1594 / VANTA-38/49 En curso. F8 publicado en
+f27df31a20d9f4a4487649e25f5c3eb88593cf01 (remoto idéntico).
+F9: session_reports_panel usa un mapeo probado que conserva fixed → Arreglado;
+declined → No aceptado, desconocidos → Estado no disponible. Sin diseño nuevo.
+Regresión con contribución fixed/versión/fecha y recibo legacy submitted:
+RED [No aceptado, Recibido] → GREEN [Arreglado, Recibido]. Focal r7/retry 3/3
+PASS. Fuente final de ambos hallazgos bajo gates workspace en serie por cola.
+F7=C intacto, sin runtime/domain/ipc/testdata cambiado ni telemetría nueva.
+PR #1602 draft a nightly, auto-merge OFF; sin integración/deploy/producción.
+Próximo paso: gates completos y cierre/push/Por revisar con HEAD verificado.
+[Regresiones r7](../../../../tools/triage/review-1602-r7-regressions.md).
+
 ## R7 F8 · 14/10/2026 · hito local, gates completos en curso
 
 #1594 / VANTA-38/49 En curso verificado. Inicio limpio bb1d7bb3; nightly

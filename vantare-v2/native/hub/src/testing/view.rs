@@ -523,13 +523,7 @@ impl Testing {
             .contributions
             .iter()
             .map(|c| {
-                let state = match c.state.as_str() {
-                    "received" => "Recibido",
-                    "reviewing" => "En revisión",
-                    "accepted" => "Aceptado",
-                    "spam" => "Spam",
-                    _ => "No aceptado",
-                };
+                let state = super::model::session_contribution_status(&c.state);
                 orbit::text(
                     format!("{} · {state}", c.title),
                     13.0,

@@ -2,10 +2,11 @@
 
 Ronda 2 sobre `ba02b093`, rama `vantareapp/isa-1608-cuentas-y-pagos`,
 base nightly `69fa2d65`; misma PR draft [#1615](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1615).
-Plane VANTA-16/17/15 En curso verificado; GitHub #1608 OPEN/in-review,
+Entrega para Plane VANTA-16/17/15 Por revisar; estado final verificado en issue/buzón; GitHub #1608 OPEN/in-review,
 area:plataforma, Project Vantare y sin milestone. Sin merge, producción ni compras.
 
 Review Sol NO APTO leída completa y cuatro arreglos por hallazgo:
+
 - N1/F08/F02 `d6aec3ca`: auxiliar sin CoreLink no confirma logout ni inicia
   renovación HTTP; devuelve error y conserva estado para reintento gestionado.
   Con núcleo exige Invalidate ACK durable antes de retirar candidato/sesión.
@@ -24,9 +25,10 @@ Review Sol NO APTO leída completa y cuatro arreglos por hallazgo:
 
 Evidencia nueva `C:/tmp/1608-r2/`: fmt/check/Clippy PASS; Deno completo 524 PASS/
 1 ignored PostgREST; SQL desechable 230 GREEN, B01 1 RED; B02 4 RED separados.
-Nextest nuevo 1652 PASS/7 skips; lifecycle/telemetría en curso, cola y target propio, APPDATA/
+Nextest nuevo 1652 PASS/7 skips; lifecycle 18 PASS; telemetría 25 PASS. Cola y target propio, APPDATA/
 LOCALAPPDATA aislados. Fallos iniciales de fixture/mtime/permisos/lint conservados.
-Sin baselines recalibrados ni tests debilitados. Nueve fixes de ronda 1 se
+Sin baselines recalibrados ni tests debilitados. Código final probado `03fb0dea`; cierre posterior documental. SHA/push/CI finales
+verificados en issue/buzón, sin heredar verde de ba02b093. Nueve fixes de ronda 1 se
 conservan; sus SHAs/evidencia y los planes actuales están en el
 [informe](../../analysis/review-cuentas-pagos-2026-10.md).
 

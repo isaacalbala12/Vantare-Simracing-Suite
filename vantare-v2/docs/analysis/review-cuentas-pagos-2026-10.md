@@ -16,7 +16,7 @@ F02/F04/F08 quedan corregidos o limitados por esta sección.
 5. N3/F04: Pro production y grants sandbox coexisten sin bloquear emisión de producción.
 6. El cliente Polar vinculado conserva su UUID pese a external_customer_id contradictorio.
 7. RED→GREEN por arreglo; Deno 524 PASS/1 ignored y SQL desechable 230 GREEN.
-8. Gates Rust nuevos en curso; los fallos iniciales se conservan, sin debilitar tests.
+8. Gates nuevos GREEN: fmt/check/Clippy, Nextest 1652 PASS/7 skips, lifecycle 18 y telemetría 25.
 9. B01/B02/B03 siguen P1 y No-Go: planes por archivo, riesgo, pruebas y decisión de Isaac.
 10. Sin producción, compras/refunds, datos instalados, subagentes, UI nueva, merge ni release.
 
@@ -27,8 +27,8 @@ F02/F04/F08 quedan corregidos o limitados por esta sección.
 | N1 / F08 / parte F02 | Opción mínima de la review: sin CoreLink no se confirma logout ni se inicia renovación HTTP, porque no se puede revocar el binding del propietario. Se devuelve Unconfigured y se conserva estado para reintento gestionado. Con núcleo se exige Invalidate durable antes de borrar candidato/sesión. RED: dos tests fallan por falso éxito del auxiliar con binding Owner previamente instalado. GREEN: cuatro focales; el test real arranca host, hace logout gestionado, cierra/reabre Owner y demuestra ausencia de derechos. Logs `N1-{red,green}.log`. No se escribe el almacén del núcleo desde services ni se cambia formato/protocolo. |
 | N2 / F02 | Solo HTTP 400 con JSON OAuth `error=invalid_grant` se clasifica Authentication (RFC 6749 §5.2). Refresh explícito y automático comparten ACK Invalidate, retirada de candidato, tombstone de cuenta y descarte de bearer de datos. Sin núcleo el refresh se detiene antes de HTTP. RED: invalid_grant era Protocol. GREEN: 6 focales, incluida renovación de licencia/cuenta/perfil, cero llamadas a userinfo/native-license tras rechazo; 400 genérico/malformado y 429/503 conservan derechos/sesión. Logs `N2-{red,green-corrected}.log`; N1 verifica la durabilidad del mismo Invalidate con Owner real. |
 
-Los cuatro arreglos están en commits separados. fmt/check/Clippy y Nextest completo (1652 PASS/7 skips) pasan; lifecycle y
-telemetría siguen en curso. B01/B02/B03 permanecen abiertos con los planes siguientes.
+Los cuatro arreglos están en commits separados. Gates completos nuevos GREEN: fmt/check/Clippy, Nextest 1652 PASS/7 skips,
+lifecycle 18 y telemetría 25 PASS. B01/B02/B03 permanecen abiertos con los planes siguientes.
 No se eleva evidencia previa a verde nuevo. `N2-green.log` conserva un primer
 intento interrumpido: el fixture hacía join del core antes de solicitar refresh;
 se corrigió la sincronización y el GREEN final no tiene ese bloqueo ni warnings.
@@ -139,6 +139,47 @@ retención ni un botón de borrado; tampoco basta consultar Clerk al firmar.
    despliegue como pasos separados. Riesgos: pérdida irreversible de historial,
    acceso residual por RLS antigua y resurrección de UUID/grants. Sin UI nueva,
    consumidor parcial ni eliminación de datos reales en esta entrega.
+
+### Verificación y entrega final de la ronda 2
+
+| Hallazgo | Commit o plan concreto |
+| --- | --- |
+| N1 / F08 / F02 sin núcleo | `d6aec3ca`; validación Launch perpetua y fixture gestionado `03fb0dea` |
+| N2 / F02 refresh invalid_grant | `381bee42`; dispatch explícito validado en `03fb0dea` |
+| N3 / F04 entorno de grants | `5b5ab24c` |
+| Atribución residual external ID | `71388711` |
+| B01 P1 | Plan identidad/bearer anterior: corte #1523 JWT/RLS, gate PostgREST real y decisión de issuer/firmante por Isaac. |
+| B02 P1 | Plan monetario anterior: ledger SQL/refunds/Pro/reconciliación, matriz aislada y política/corte confirmados por Isaac. |
+| B03 P1 | Plan borrado anterior: webhook/tombstone/RLS/Storage y decisión de conservación/recreación por Isaac. |
+
+| Gate | Resultado nuevo / log en `C:/tmp/1608-r2/` |
+| --- | --- |
+| fmt/check/Clippy `-D warnings` | PASS; `fmt.log`, `check.log`, `clippy.log` |
+| Nextest completo | 1652 PASS/7 skips existentes; `test.log`, incluida paridad larga 128 s |
+| lifecycle | 18 PASS; `lifecycle.log` |
+| telemetría | 25 PASS; `telemetria.log`, corpus ACC lento terminado sin excluirlo |
+| Deno completo con tipos | 524 PASS/1 ignored existente; `deno-full-final.log`; sin permiso de red |
+| PostgreSQL 18 desechable | 230 GREEN verificados por plan/count; `sql/`, `validate-sql.log` |
+| Bloqueos aislados | B01 1 RED SQL y B02 4 RED Deno explícitos; no se cuentan como verde ni skips |
+| quality/retirada | 456 huellas PASS, sin recalibrar baselines |
+| Canal/fragmento/notes | ruta issue→nightly válida, 45 + 26 tests PASS, ISA-1608 válido |
+
+Comandos largos con timeout propio por árbol de procesos, cola del repo y
+`CARGO_BUILD_JOBS=2`; target exclusivo del worktree `native/target/gates`.
+`LOCALAPPDATA`/`APPDATA` de tests bajo `C:/tmp/1608-r2/qa`, sin override global
+VANTARE_NATIVE_DATA_ROOT. No se distribuye esta variante DuckDB de desarrollo.
+Snapshots/hash de source comprueban que los archivos probados coinciden con el
+código `03fb0dea`; el cierre posterior solo modifica documentación.
+
+Misma PR draft #1615 a nightly y base `69fa2d65`; `origin/nightly@0807fbd0`
+leído, sin integrarlo. Estado/push/HEAD final, Plane VANTA-16/17/15 y CI se
+verifican al cierre en la issue #1608 y `C:/tmp/buzon/1608.md`. No se hereda CI
+verde de ba02b093 ni se certifica la combinación con nightly/#1612/#1523.
+Sin merge/promoción/release, producción, compras/refunds reales, datos de Isaac,
+secretos, herramientas/dependencias nuevas ni visual nuevo. QA manual comercial,
+Clerk/PostgREST/TPA, instalador y juegos físicos quedan sin ejecutar por alcance;
+la review del corte corregido y las decisiones B01/B02/B03 corresponden a Isaac
+/orquestador. **No-Go comercial permanece: tres P1 con plan, no subsanados aquí.**
 
 ## Ronda 1 · evidencia histórica de `ba02b093`
 

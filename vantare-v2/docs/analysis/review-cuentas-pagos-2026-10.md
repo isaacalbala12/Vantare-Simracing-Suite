@@ -7,6 +7,19 @@ Misma rama y base `69fa2d65`; sin rebase ni integración de #1523.
 El informe de ronda 1 que sigue es evidencia histórica; sus cierres parciales
 F02/F04/F08 quedan corregidos o limitados por esta sección.
 
+### Resumen de diez líneas para Isaac · ronda 2
+
+1. Misma rama/PR draft #1615, base `69fa2d65`; los nueve fixes previos se conservan.
+2. N1/F08: sin núcleo autorizado no se confirma revocación; reintento gestionado con ACK.
+3. Launch v1 perpetua instalada en Owner queda Free tras logout gestionado y reinicio.
+4. N2/F02: OAuth 400 invalid_grant retira derechos/candidato y sesión; otros fallos preservan offline.
+5. N3/F04: Pro production y grants sandbox coexisten sin bloquear emisión de producción.
+6. El cliente Polar vinculado conserva su UUID pese a external_customer_id contradictorio.
+7. RED→GREEN por arreglo; Deno 524 PASS/1 ignored y SQL desechable 230 GREEN.
+8. Gates Rust nuevos en curso; los fallos iniciales se conservan, sin debilitar tests.
+9. B01/B02/B03 siguen P1 y No-Go: planes por archivo, riesgo, pruebas y decisión de Isaac.
+10. Sin producción, compras/refunds, datos instalados, subagentes, UI nueva, merge ni release.
+
 | Hallazgo | Cambio y evidencia de esta ronda |
 | --- | --- |
 | N3 / F04 | El loader recibe el entorno fijado por servidor y filtra `billing_access_grants.environment`. Handler nativo y ruta legacy pasan el mismo entorno a lectura y firma. El normalizador sigue rechazando filas ajenas; soporte del entorno solicitado se conserva. RED: mezcla production/sandbox → 409. GREEN: 67 tests emisor/handler; credencial con Pro+calendar de producción, sin Launch sandbox. Logs `C:/tmp/1608-r2/N3-{red,green-corrected}.log`. |
@@ -14,8 +27,8 @@ F02/F04/F08 quedan corregidos o limitados por esta sección.
 | N1 / F08 / parte F02 | Opción mínima de la review: sin CoreLink no se confirma logout ni se inicia renovación HTTP, porque no se puede revocar el binding del propietario. Se devuelve Unconfigured y se conserva estado para reintento gestionado. Con núcleo se exige Invalidate durable antes de borrar candidato/sesión. RED: dos tests fallan por falso éxito del auxiliar con binding Owner previamente instalado. GREEN: cuatro focales; el test real arranca host, hace logout gestionado, cierra/reabre Owner y demuestra ausencia de derechos. Logs `N1-{red,green}.log`. No se escribe el almacén del núcleo desde services ni se cambia formato/protocolo. |
 | N2 / F02 | Solo HTTP 400 con JSON OAuth `error=invalid_grant` se clasifica Authentication (RFC 6749 §5.2). Refresh explícito y automático comparten ACK Invalidate, retirada de candidato, tombstone de cuenta y descarte de bearer de datos. Sin núcleo el refresh se detiene antes de HTTP. RED: invalid_grant era Protocol. GREEN: 6 focales, incluida renovación de licencia/cuenta/perfil, cero llamadas a userinfo/native-license tras rechazo; 400 genérico/malformado y 429/503 conservan derechos/sesión. Logs `N2-{red,green-corrected}.log`; N1 verifica la durabilidad del mismo Invalidate con Owner real. |
 
-Los cuatro arreglos están en commits separados. Los gates Rust completos siguen
-en curso. B01/B02/B03 permanecen abiertos con los planes siguientes.
+Los cuatro arreglos están en commits separados. fmt/check/Clippy y Nextest completo (1652 PASS/7 skips) pasan; lifecycle y
+telemetría siguen en curso. B01/B02/B03 permanecen abiertos con los planes siguientes.
 No se eleva evidencia previa a verde nuevo. `N2-green.log` conserva un primer
 intento interrumpido: el fixture hacía join del core antes de solicitar refresh;
 se corrigió la sincronización y el GREEN final no tiene ese bloqueo ni warnings.
@@ -24,6 +37,28 @@ estrechos de scripts/código público; se ampliaron únicamente esas rutas, sin
 acceso a `.env*`, cambios de tests ni permisos de red. Final: 524 PASS/1 ignored.
 PostgreSQL 18 desechable repetido: 230 assertions GREEN; B01 sigue 1 RED
 `not_authenticated`. B02 repetido: cuatro RED (incluido agregado), sin skips.
+N1 reforzado con Launch v1 **perpetua**: instalar binding, cerrar Owner, pedir
+logout detached, comprobar error y binding vigente, ejecutar logout gestionado
+por host y reabrir Owner en Free. RED contrafactual restaurando solo la rama de
+logout de `ba02b093`; GREEN 2 focales (`N1-launch-{red,green-rebuilt}.log`).
+La primera restauración conservó mtime y Cargo reutilizó el binario RED;
+`N1-launch-green.log` conserva ese fallo. SHA-256 del source restaurado idéntico,
+mtime actualizado y recompilación explícita antes del GREEN y gates finales.
+Primer Nextest completo: 1157 PASS/1 FAIL/7 skips, 494 no ejecutados porque el
+fixture de `device_limit` carecía de CoreLink. Se añade el vínculo gestionado y
+se exige el ACK, manteniendo íntegros los asserts del reply y del marco IPC.
+Logs `test-failed-detached-device-limit.log` y `check-failed-fixture-patch.log`
+(una edición del fixture mal situada, corregida); suite completa repetida.
+`clippy-initial.log`: wildcard de la única variante restante, sustituido por
+`Command::AccountBegin`, sin allow ni cambio de comportamiento.
+
+Rutas de los arreglos, relativas a raíz Git:
+`vantare-v2/native/services/src/app.rs:121,178,235`,
+`vantare-v2/native/services/src/account.rs:240`,
+`vantare-v2/native/runtime/src/rights/tests.rs:336`,
+`supabase/functions/_shared/license-credential.ts:506,521`,
+`supabase/functions/native-license/index.ts:91` y
+`supabase/functions/billing-webhook/process.ts:199,219`.
 
 ### Plan concreto de los bloqueos (sin ejecución de producción)
 
@@ -104,6 +139,8 @@ retención ni un botón de borrado; tampoco basta consultar Clerk al firmar.
    despliegue como pasos separados. Riesgos: pérdida irreversible de historial,
    acceso residual por RLS antigua y resurrección de UUID/grants. Sin UI nueva,
    consumidor parcial ni eliminación de datos reales en esta entrega.
+
+## Ronda 1 · evidencia histórica de `ba02b093`
 
 Issue [#1608](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1608),
 proyecto Vantare / `area:plataforma`, Plane VANTA-16, VANTA-17 y VANTA-15.

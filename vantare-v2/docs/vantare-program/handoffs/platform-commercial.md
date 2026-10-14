@@ -1,56 +1,42 @@
 ## #1608 · Revisión cuentas y pagos (14/10/2026)
 
-Ronda 2 reanudada sobre `ba02b093`, misma PR draft #1615 y base `69fa2d65`;
-VANTA-16/17/15 En curso verificado. Review Sol NO APTO leída completa.
-N3/F04: loader de grants filtrado por entorno de servidor, manteniendo
-normalización estricta y soporte; RED 409 con producción+sandbox → GREEN
-67 tests Deno. Evidencia nueva `C:/tmp/1608-r2/`; N1/N2 y atribución en curso.
-La entrega de ronda 1 siguiente no cierra las omisiones señaladas por Sol.
-Atribución residual: binding durable Polar/entorno/customer precede al external
-ID contradictorio, RED→GREEN 52 tests procesador; cierre completo de checkout
-sin binding sigue dependiendo del corte #1514/#1523.
-N1/F08/F02: auxiliar sin CoreLink devuelve error de configuración; no confirma
-revocación ni inicia renovación HTTP. Reintento desde ejecución gestionada exige
-ACK durable. RED dos regresiones → GREEN cuatro focales, incluyendo binding
-real Owner, logout por host y reapertura sin derechos. El almacenamiento del
-núcleo sigue bajo su único propietario. No se promete logout autónomo sin él.
-N2/F02: HTTP 400 invalid_grant es rechazo Authentication; refresh de cuenta,
-perfil/licencia comparten Invalidate ACK, borrado de candidato y tombstone de
-sesión. 400 desconocido/malformado y 429/503 preservan offline. RED→GREEN 6
-focales; Deno completo 524 PASS/1 ignored, SQL aislado 230 GREEN + B01 1 RED,
-B02 4 RED. Plan por bloqueo en el informe, con archivos/riesgos/decisión Isaac.
-Gate Rust completo nuevo en curso. Coordinar `account.rs` (Exchange) y `app.rs`
-(refresh/logout) con las extensiones de perfil de #1612 al integrar.
+Ronda 2 sobre `ba02b093`, rama `vantareapp/isa-1608-cuentas-y-pagos`,
+base nightly `69fa2d65`; misma PR draft [#1615](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1615).
+Plane VANTA-16/17/15 En curso verificado; GitHub #1608 OPEN/in-review,
+area:plataforma, Project Vantare y sin milestone. Sin merge, producción ni compras.
 
-Por revisar en `vantareapp/isa-1608-cuentas-y-pagos`, base nightly `69fa2d65`.
-Plane VANTA-16/17/15 Por revisar verificado. Reanudado por Codex CLI tras caída
-de T3, sin subagentes; seis commits y dos cambios pendientes recuperados.
-Sin producción, secretos, cuentas/compras ni promoción. Informe
-[review-cuentas-pagos-2026-10.md](../../analysis/review-cuentas-pagos-2026-10.md).
-Arreglos locales: `cf2983ec` usuario Clerk bloqueado/borrado; `4eba01d6` FK
-checkout al UUID interno; `e286eff6` consulta de grants existente; `a359653f`
-CHECK plan anual; `0314d266` retry acotado refund anterior a order. Evidencia
-rojo→verde en `C:/tmp/1608-evidence/`; migraciones no aplicadas remotamente.
-`fbf68867` exige huella canónica antes de resolver identidad/reset;
-`0fd539ce` invalida núcleo/candidato ante denegación definitiva online y conserva
-offline ante 429/503. Logout sin núcleo también retira el candidato (RED→GREEN).
-`84db0981` cierre sin núcleo; `f8183f36` elimina atribución por metadata.user_id,
-sin romper el binding durable del cliente (RED→GREEN, 51 tests del procesador).
-Deno final 522 PASS/1 ignored; PostgreSQL local 230 assertions PASS; quality/retirada
-456 huellas PASS. Rust fmt/check/Clippy y Nextest 1649 PASS/7 skips;
-lifecycle 18 PASS, target propio y dos jobs. Dos fallos de entorno QA documentados
-y corregidos sin modificar tests; suite completa final verde en rutas temporales.
-Se mantiene no-Go #1514/#1506: bearer de datos/reset RED `not_authenticated`,
-refund sin payment_id y refund Pro RED con grants activos, borrado/tombstones
-sin cierre en esta base. #1514 autorizada tiene implementación en draft #1523,
-OPEN sin merge a HEAD 33be660d; no se duplican ni trasplantan sus fragmentos.
-No se debilita el resolver ni se inventa atribución. Aceptación física
-autorizada pendiente. #1612 conserva perfil separado; aquí solo license/logout
-y tests de app.rs, sin account.rs/bridge/IPC/Hub. Entrega en PR draft
-[#1615](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1615) a nightly,
-issue #1608 en revisión y Project Vantare verificados, sin milestone comprometido.
-Código probado `f8183f36`; informe/fragmento `99405dd9`; SHA final del push y CI
-se verifican y registran en la issue/buzón. No merge, release, promoción ni producción.
+Review Sol NO APTO leída completa y cuatro arreglos por hallazgo:
+- N1/F08/F02 `d6aec3ca`: auxiliar sin CoreLink no confirma logout ni inicia
+  renovación HTTP; devuelve error y conserva estado para reintento gestionado.
+  Con núcleo exige Invalidate ACK durable antes de retirar candidato/sesión.
+  RED→GREEN con Owner real; Launch v1 perpetua reforzada con RED contrafactual,
+  logout gestionado vía host y reapertura en Free. El almacén del núcleo sigue
+  bajo su único propietario; no se promete revocación autónoma sin él.
+- N2/F02 `381bee42`: HTTP 400 OAuth invalid_grant es Authentication. Refresh
+  automático/explicito de licencia/cuenta/perfil comparte ACK, retirada del
+  candidato y tombstone de sesión. 400 genérico/malformado y 429/503 conservan
+  derechos. RED→GREEN 6 focales, sin userinfo/native-license después del rechazo.
+- N3/F04 `5b5ab24c`: lectura/firma reciben el entorno del servidor; loader filtra
+  grants por entorno sin relajar el normalizador ni perder soporte. RED 409 con
+  production+sandbox → GREEN 67 tests emisor/handler.
+- Atribución `71388711`: binding durable Polar/entorno/customer prevalece sobre
+  external_customer_id contradictorio. RED→GREEN 52 tests procesador.
+
+Evidencia nueva `C:/tmp/1608-r2/`: fmt/check/Clippy PASS; Deno completo 524 PASS/
+1 ignored PostgREST; SQL desechable 230 GREEN, B01 1 RED; B02 4 RED separados.
+Nextest nuevo 1652 PASS/7 skips; lifecycle/telemetría en curso, cola y target propio, APPDATA/
+LOCALAPPDATA aislados. Fallos iniciales de fixture/mtime/permisos/lint conservados.
+Sin baselines recalibrados ni tests debilitados. Nueve fixes de ronda 1 se
+conservan; sus SHAs/evidencia y los planes actuales están en el
+[informe](../../analysis/review-cuentas-pagos-2026-10.md).
+
+No-Go comercial: B01 bearer/reset requiere corte JWT/RLS; B02 refunds
+ordinario/Pro/parcial/agregado requiere ledger SQL/reconciliación; B03 requiere
+retención/tombstones/guardas de datos. Plan por bloqueo con archivos, riesgos,
+pruebas y decisiones de Isaac en el informe. #1523 OPEN/draft `33be660d` leído,
+sin integrar ni trasplantar fragmentos. El fallback external ID sin binding
+sigue bajo ese corte. Coordinar `account.rs` (Exchange) y `app.rs` (refresh/logout)
+con #1612 al integrar. Aceptación comercial/GUI/servidor pendiente de autorización.
 
 # Handoff vivo — Plataforma, cuenta, servicios y distribución
 

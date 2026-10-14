@@ -454,7 +454,7 @@ impl App {
                 )?;
                 return Ok(Self::account_reply(account, None));
             }
-            _ => self.ensure_account()?,
+            Command::AccountBegin => self.ensure_account()?,
         }
         let account = self.account.as_mut().ok_or(Error::Unconfigured)?;
         match command {
@@ -1018,7 +1018,10 @@ mod tests {
         let mut app = App::new(config, root.clone());
         app.account = Some(account);
         app.store = Some(store);
-        let (credential, _) = crate::license_remote::tests::signed_fixture("logout-device");
+        let (credential, keys) = crate::license_remote::tests::signed_fixture("logout-device");
+        app.config.supabase = Some(server.base.clone());
+        app.config.anon_key = Some("public-test-key");
+        app.config.license_keys = Some(keys);
         app.candidate_store()
             .expect("store")
             .save(
@@ -1030,18 +1033,22 @@ mod tests {
                 },
             )
             .expect("signed candidate");
+        #[cfg(windows)]
+        assert!(matches!(
+            app.execute(Command::LicenseRenew),
+            Err(Error::Unconfigured)
+        ));
+        assert!(server.requests.try_recv().is_err());
         assert!(matches!(
             app.execute(Command::Logout),
             Err(Error::Unconfigured)
         ));
         assert!(app.account.as_ref().expect("account").identity().is_some());
         assert!(
-            matches!(
-                app.candidate_store()
-                    .expect("store")
-                    .load::<crate::license_remote::Candidate>("license-candidate"),
-                Ok(_)
-            ),
+            app.candidate_store()
+                .expect("store")
+                .load::<crate::license_remote::Candidate>("license-candidate")
+                .is_ok(),
             "no durable revocation ACK: preserve the session for a managed retry"
         );
         server.finish();
@@ -1479,6 +1486,8 @@ mod tests {
         let mut app = App::new(config, root.clone());
         app.account = Some(account);
         app.store = Some(store);
+        let (link, core) = core_fixture(device, keys, vec![CoreStep::Invalidate]);
+        app.attach_core(link);
         let reply = app.handle(Command::LicenseRenew);
         assert_eq!(
             match &reply {
@@ -1488,6 +1497,7 @@ mod tests {
             Error::DeviceLimit.to_string(),
             "el texto sigue saliendo del único mapeo de errores"
         );
+        core.join().expect("device limit revocation ACK");
         // El marco IPC conserva la distinción que el Hub consume.
         let mut wire = Vec::new();
         crate::protocol::write(

@@ -331,6 +331,7 @@ fn clean(root: &std::path::Path) {
     std::fs::remove_dir_all(root).expect("limpiar solo carpeta aleatoria del test");
 }
 
+#[cfg(windows)]
 #[test]
 fn detached_logout_cannot_claim_revocation_then_managed_ack_survives_restart() {
     use vantare_services::{
@@ -339,17 +340,21 @@ fn detached_logout_cannot_claim_revocation_then_managed_ack_survives_restart() {
         protocol::{Command, Reply},
     };
     let now = super::wall_now();
-    let (credential, keys) = signed(now.timestamp() + 3600, now.timestamp() - 10);
+    let (credential, keys) = signed_v1(
+        now.timestamp() - 10,
+        beta_grants(Some("vantare.edition.launch_v1"), now.timestamp()),
+    );
     let root = test_root();
     let mut owner = Owner::open(&root, Some(&keys), devices(), 1, now).expect("owner");
     owner
         .install(credential, now, Duration::ZERO)
         .expect("binding previo");
-    assert!(
+    assert_eq!(
         owner
             .advance(&photo(false), now, Duration::ZERO)
             .expect("derechos")
-            .engineer
+            .catalog,
+        vantare_ipc::control::CatalogAccess::LaunchV1
     );
     drop(owner);
 
@@ -362,11 +367,12 @@ fn detached_logout_cannot_claim_revocation_then_managed_ack_survives_restart() {
     );
     let mut restored = Owner::open(&root, Some(&keys), devices(), 2, super::wall_now())
         .expect("binding conservado");
-    assert!(
+    assert_eq!(
         restored
             .advance(&photo(false), super::wall_now(), Duration::ZERO)
             .expect("sin falso logout")
-            .engineer
+            .catalog,
+        vantare_ipc::control::CatalogAccess::LaunchV1
     );
     drop(restored);
 
@@ -402,11 +408,12 @@ fn detached_logout_cannot_claim_revocation_then_managed_ack_survives_restart() {
     drop(host);
     let mut restored = Owner::open(&root, Some(&keys), devices(), 4, super::wall_now())
         .expect("tombstone durable");
-    assert!(
-        !restored
+    assert_eq!(
+        restored
             .advance(&photo(false), super::wall_now(), Duration::ZERO)
             .expect("sin derechos tras reinicio")
-            .engineer
+            .catalog,
+        vantare_ipc::control::CatalogAccess::Free
     );
     drop(restored);
     clean(&root);

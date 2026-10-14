@@ -1,98 +1,120 @@
 # Rendimiento de Hub GPUI y overlays · octubre de 2026
 
-Issue [#1607](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1607), Plane VANTA-45.
-Base: `69fa2d650c85df4184d5821ae4c032201789a1c1`, `origin/nightly` verificado el 14/10/2026.
-Rama: `vantareapp/isa-1607-rendimiento-ui`. [PR draft #1611](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1611) a nightly. Entrega incompleta: campaña y arreglos bloqueados.
+Issue [#1607](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1607), Plane **VANTA-45**, proyecto Vantare, `area:ui`, sin milestone comprometido.
+Rama `vantareapp/isa-1607-rendimiento-ui`, base `69fa2d650c85df4184d5821ae4c032201789a1c1`.
+[PR draft #1611](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1611) a nightly; no integración ni release.
 
 ## Resumen para Isaac (10 líneas)
 
-1. El encargo comprende analizar, medir y corregir sin límite numérico de arreglos.
-2. Se mantienen colores, tamaños, textos y comportamiento visual.
-3. Tres análisis Muse de solo lectura cubren Hub, overlays y render/layout.
-4. El responsable verifica en el código cada sospecha antes de aceptarla.
-5. Los overlays ya tienen invalidación por ViewModel, caché de entidades y despertares por animación.
-6. El Hub mantiene varios ciclos periódicos aunque sus páginas no estén abiertas.
-7. Hay clones de estado resident sin cambios y proyecciones de previews ocultas.
-8. Sus costes todavía no están medidos: no se presentan como ganancias demostradas.
-9. Las mediciones necesitan el FIN de #1565 posterior al 14/10 a las 00:00 y el lock exclusivo.
-10. Release aislada PASS con dos jobs; las correcciones se admitirán con antes/después y gates.
+1. Se recuperaron los dos commits documentales de T3; no había cambios sin commit.
+2. Las 18 sospechas permanecen contrastadas y tienen decisión explícita abajo.
+3. Se prepararon cinco correcciones, cada una con regresión RED → GREEN y banco antes/después.
+4. Launcher sirve su foto resident por referencia; conserva expiración, errores y decisiones.
+5. Las miniaturas conservan su asset entre renders; no se altera documento ni consentimiento.
+6. Input Telemetry y Delta Trace comparten muestras entre repintados; nunca saltan fotos/historias.
+7. Workshop reutiliza el PNG decodificado cuando sus bytes siguen iguales, con errores y recuperación.
+8. Hay 42 tomas de procesos, seis de scroll, dos campañas por operación y tres pares adicionales para Delta.
+9. Las tres capturas comparables son idénticas; CPU/RAM/arranque bajo carga variable no prueban ganancia global.
+10. Gates locales completos verdes; navegación autenticada, LMU/ACC/OBS y CI final se distinguen de esta prueba.
 
-## Condiciones y bloqueo de medición
+## Recuperación y condiciones de medida
 
-Leídas `C:/tmp/buzon/REGLAS-NOCHE-1014.md`, incluido «Añadido 00:30».
-El último FIN de `1565.md` no incluye fecha y el archivo tenía `LastWriteTime`
-13/10/2026 23:16:08 (hora local). Por tanto no prueba el FIN posterior a las
-00:00 del 14/10 exigido por las reglas. No se reserva el PC ni se abren apps
-hasta cumplirlo. Un FIN antiguo no se convierte en autorización por haber
-terminado una build anterior. Incidencia registrada en el buzón de #1607.
+Leídos AGENTS, issue, buzón y REGLAS-NOCHE-1014 completos, incluidos añadido 00:30 y corrección 01:05.
+La corrección explícita elimina el antiguo bloqueo por fecha del FIN de #1565: la build había terminado el 13/10 a las 23:16.
+El informe anterior lo trataba como bloqueo; se conserva su evidencia histórica en `299234c8` y `db078ad7`.
+Reanudación CLI 14/10, HEAD `db078ad7`, árbol limpio. `origin/nightly` consultado `0807fbd0`; se conserva la base asignada sin merge.
+Sin subagentes en CLI y sin diseño nuevo. Los análisis Muse de T3 se contrastaron personalmente; no son mediciones.
 
-No se han leído secretos ni `.env*`. No se opera sobre la instalación ni los
-datos de Isaac; tampoco se cierran procesos ajenos. No hay merge, promoción
-ni release. Las cifras siguientes permanecen ausentes hasta ejecutar la campaña.
+#1605 renovó su lock a las 02:42 y lo liberó a las 03:09:31. #1607 creó el suyo con `FileMode.CreateNew` a las **03:09:33**.
+Toda la campaña se hizo con ese lock, en serie. Builds Release propias, sin instalación, ajustes ni datos reales de Isaac.
+APPDATA, LOCALAPPDATA, datos nativos, paths de Hub y pipes se aislaron en `C:/tmp/1607-evidence`; se retiró `VANTARE_BETA_ROOT` del hijo.
+No se leyeron `.env*`, secretos ni datos reales; no se cerraron procesos ajenos, no se tocó USB ni se instaló tooling.
 
-## Tabla de medidas
+Hub **diagnóstico 0.0.0 sin configuración autenticada**, opción `--demo`. Inicio y Launcher se comprobaron por captura.
+Studio muestra catálogo y «Acceso sin verificar»: su lienzo vacío no acredita widgets autorizados en vivo.
+Overlays usan `--fuente local`, sintética a 30 Hz. 4/22 repiten Standings/Radar/Pedals; 22 no significa 22 tipos distintos.
+El layout de historias tiene Input Telemetry y Delta Trace; la fuente local no aporta delta, por lo que no acredita una historia Delta real.
 
-Cada caso requiere tres tomas válidas y mediana; `—` significa no medido.
+## Bancos por operación: antes/después
 
-| Caso | Toma 1 | Toma 2 | Toma 3 | Mediana | Estado |
-|---|---:|---:|---:|---:|---|
-| Arranque hasta primera ventana visible (ms) | — | — | — | — | Bloqueado por FIN de #1565 |
-| Hub abierto, CPU (% de un núcleo) | — | — | — | — | Pendiente |
-| Hub abierto, working set / privada (MiB) | — | — | — | — | Pendiente |
-| Hub minimizado, CPU (% de un núcleo) | — | — | — | — | Pendiente |
-| Hub minimizado, working set / privada (MiB) | — | — | — | — | Pendiente |
-| Cambio de página (ms; página y método explícitos) | — | — | — | — | Pendiente |
-| Scroll (CPU y tiempo entre Present) | — | — | — | — | Pendiente |
-| Overlays visibles, CPU (% de un núcleo) | — | — | — | — | Pendiente |
+Microbancos Release sobre el camino original instrumentado y el corregido, mismas features y datos, `black_box`, tres tomas y mediana.
+Unidad de la tabla: **µs por operación**, no tiempo de frame completo ni latencia física. Las tres tomas originales, confirmación y hashes están en
+[`medidas.json`](data/rendimiento-ui-1607/medidas.json). Se conservan todas, incluidos los valores bajo mayor presión del PC.
 
-No se equipara una ventana creada con contenido listo; tampoco Present con
-latencia física ni un ejemplo sintético con LMU/ACC en vivo.
+| Operación | Antes µs | Después µs | Reducción observada |
+|---|---:|---:|---:|
+| Launcher · 128 perfiles, foto resident sin cambios | 70.311050 | 32.562650 | 53.69% |
+| Informe · asset de una miniatura de 24 KiB | 19.526667 | 0.008667 | 99.96% |
+| Workshop · misma referencia PNG | 2234.920000 | 115.473333 | 94.83% |
+| Input Telemetry · mismas 120 muestras | 2.840620 | 0.008600 | 99.70% |
+| Delta Trace · mismas 67 muestras | 0.134040 | 0.008660 | 93.54% |
 
-## Herramientas existentes y protocolo
+Los cuatro primeros valores usan la segunda campaña. Delta usa nueve subtomas de tres pares consecutivos, evitando escoger la campaña favorable.
+La guardia de datos nuevos incluye generación sintética + ingest + preparación de muestras: el wall time de Delta dio -2.1% en la primera campaña y +32.0% en la segunda.
+Por eso se contrastaron tres pares: CPU del proceso **0.343750/0.328125/0.375000 s → 0.312500/0.296875/0.343750 s**, menor en los tres.
+Los nueve tiempos de datos nuevos de esos pares tienen mediana **9.7062 → 9.5501 µs**; no se acredita una mejora de ese camino, pero no reproduce una regresión estable.
+El ahorro confirmado está en repintar muestras inmutables. Con dato nuevo se invalida la caché y se conserva la historia observada.
 
-- `native/ui/measure.ps1`: 6 s de calentamiento, 10 s de CPU/GPU/RAM y contadores
-  `paint-stats`; fuentes sintéticas quieta/realista/estrés. Su CPU usa un núcleo
-  como 100 %, no el total del PC. Necesita tres ejecuciones y conservación de
-  resultados crudos; la ruta del EXE debe apuntar a la build de esta rama.
-- `native/scripts/measure-cost.ps1` y `.md`: QPC, CPU/ciclos y fases, pero su
-  campaña exige LMU real y opera el entorno beta. No ejecutar sin adaptar el
-  aislamiento al encargo; no parar la beta real para satisfacer el banco.
-- `native/profiling`: fases de proyección, render y backend Windows, activadas
-  por `paint-stats` y `VANTARE_PROFILE_PHASES=1`. No es muestreo de funciones.
-- `native/hub/reference/tools/capture-window.ps1`: interacción y captura con
-  PID/ejecutable esperado y protección de foco. El harness de Testing está
-  ligado a `target/debug`; no sirve tal cual para esta Release.
+La fuente de miniatura del banco mide base64, bytes, hash y creación del asset; **no decode JPEG por frame**: GPUI ya lo cacheaba.
+PNG de Workshop sí decodificaba de nuevo al reiniciar/retroceder, no en cada paso normal.
 
-La Release se construye desde esta rama en `C:/tmp/1607-release-target`, mediante
-`native/scripts/compilar.ps1`, `CARGO_BUILD_JOBS=2`, `cargo build --release -j 2`,
-Hub y overlays con `vantare-services/network,vantare-ui/paint-stats`. El primer
-intento omitió `--manifest-path native/Cargo.toml` y falló antes de compilar;
-se corrigió la invocación. Log: `C:/tmp/1607-evidence/build-baseline.log`.
-No se usa el perfil `prueba` para comparar rendimiento.
+## Procesos Release: tres tomas por caso
 
-Build Release terminada con exit 0 en 9 min 46 s; comprobación 14/10/2026
-00:54, sin abrir los binarios. Código nativo idéntico a la base `69fa2d65`;
-durante la build solo se escribió/commiteó este hito documental (`299234c8`).
+6 s de calentamiento + 10 s por toma; working set/privada son medias de diez lecturas, luego mediana de tres tomas.
+CPU: 100% equivale a **un núcleo**, no todo el PC. Arranque: creación hasta primer HWND visible, con polling de 10 ms; no contenido listo.
+Cada celda es **antes / después**. Datos crudos y PIDs en [`procesos.csv`](data/rendimiento-ui-1607/procesos.csv).
 
-| Binario en `C:/tmp/1607-release-target/release/` | SHA-256 |
-|---|---|
-| `vantare-hub.exe` | `301297ec24adc152ecbdc1475a6d9390a48f40cb7c19be081dfce5737a2b8fd7` |
-| `vantare-overlays.exe` | `d6a3fa6e188c503948fc8ba615232d58ebe6e354f9693bd066f279a6e4a85c4c` |
+| Caso | Ventana ms | CPU % núcleo | Working set MiB | Privada MiB |
+|---|---:|---:|---:|---:|
+| hub-home | 697.8 / 447.3 | 2.74 / 2.21 | 104.65 / 104.93 | 120.74 / 120.95 |
+| hub-launcher | 325.0 / 279.8 | 3.21 / 2.16 | 98.45 / 98.60 | 115.18 / 115.34 |
+| hub-studio | 431.1 / 314.0 | 2.89 / 1.68 | 133.38 / 133.32 | 189.43 / 189.98 |
+| hub-minimized | 313.0 / 276.3 | 3.95 / 2.30 | 99.72 / 99.68 | 139.64 / 139.64 |
+| overlays-4 | 236.0 / 302.9 | 7.96 / 7.22 | 57.13 / 57.13 | 87.74 / 87.72 |
+| overlays-22 | 245.7 / 252.4 | 26.18 / 22.53 | 71.70 / 71.97 | 104.55 / 104.70 |
+| overlays-history | 337.5 / 250.1 | 9.79 / 9.00 | 52.57 / 52.62 | 83.45 / 83.44 |
 
-Hashes crudos: `C:/tmp/1607-evidence/baseline-hashes.json`.
-La build es de diagnóstico sin configuración pública leída de `.env*`; no
-certifica servicios conectados, acceso autenticado ni un paquete de distribución.
+Scroll del catálogo Studio: **6.40 / 4.75%** de un núcleo, tres tomas de 50 ruedas alternas a 200 ms; desplazamiento comprobado por capturas.
+No mide input→Present ni frametime. Navegación manual bloqueada por «Acceso sin verificar»: **sin medida**, no se inyecta política ni se falsea un cambio de página.
+GPU/Present/latencia física: ausentes. No se mide juego ni OBS.
 
-Antes de abrir cualquier proceso, reservar atómicamente `pc-medicion.lock`
-(issue y hora; respetar locks de menos de dos horas) y comprobar ausencia de
-compilaciones concurrentes. Fijar directorios de datos, configuración y logs
-en `C:/tmp`, incluidos `LOCALAPPDATA`/`APPDATA` del proceso de prueba,
-`VANTARE_NATIVE_DATA_ROOT`, rutas explícitas de Hub y un pipe de prueba.
-Guardar SHA, hash de binarios, resolución/DPI y escenario. Abrir páginas con
-el harness de PID esperado; comprobar capturas, permisos y scroll reales.
-Una página inaccesible se registra como tal: no se atribuye a contenido nunca
-abierto. Separar Hub sin conexión, demostración y overlays sintéticos.
-Al acabar, cerrar solo los procesos propios y retirar el lock propio.
+**Límite causal:** hubo procesos de compilación ajenos y propios durante parte de la campaña (4–15 en los registros), con carga cambiante.
+No se atribuyen los cambios de arranque/CPU de esta tabla a las cinco correcciones. El control 4/22 no ejercita las historias y también varió.
+Working set y privada apenas cambian; no se afirma una reducción de RAM global. La evidencia de ahorro es el trabajo específico eliminado y sus regresiones.
+
+## Paridad y prueba manual
+
+Capturas físicas propias por PID/ejecutable esperado, a 1280×720 y DPI 96: Inicio, Launcher y catálogo Studio.
+Comparación RGBA, umbral 0, sin máscaras: **0/2.764.800 píxeles distintos**, tres PNG antes/después idénticos.
+Rutas locales `C:/tmp/1607-evidence/{before,after}-hub-{home,launcher,studio}.png`.
+No cambia ningún pintor, color, tamaño, texto, referencia/golden o diseño. No acredita paridad de los 18 widgets en vivo.
+
+El harness externo de navegación tuvo dos errores corregidos (función definida en subscope; variable HOME protegida).
+La tercera parada detectó la denegación real de navegación. Los tres fallos se conservan; el scroll se repitió iniciando `--studio`.
+No se confunden esos fallos de herramienta con defectos del producto ni se ocultan como tomas válidas.
+
+## Reproducción y artefactos
+
+Binarios base de T3, código nativo `69fa2d65`, preservados en `C:/tmp/1607-evidence/baseline-bins`.
+Después en `C:/tmp/1607-release-target/release`; no se comparte target ni se copia su caché. Dos jobs, por `native/scripts/compilar.ps1`.
+Build final Release PASS, 1m48s. Comando reproducible desde `vantare-v2`:
+
+```powershell
+$env:CARGO_BUILD_JOBS='2'
+$env:CARGO_TARGET_DIR='C:/tmp/1607-release-target'
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --release -p vantare-hub -p vantare-ui --bin vantare-hub --bin vantare-overlays --features vantare-services/network,paint-stats -j 2
+```
+
+| SHA-256 | Hub | Overlays |
+|---|---|---|
+| Antes | `301297ec24adc152ecbdc1475a6d9390a48f40cb7c19be081dfce5737a2b8fd7` | `d6a3fa6e188c503948fc8ba615232d58ebe6e354f9693bd066f279a6e4a85c4c` |
+| Después | `e182c1d8dac84b0e46589d36c1d9f00fc7f827a97b82c6df2a776e87ee38025f` | `44536126c50c74ab3b83898c2e9ed5b4942777be68888691684996598446a29a` |
+
+Pruebas/bancos en `launcher/view.rs`, `testing/screenshots.rs`, `comparison.rs` y `ui/{input_telemetry,delta_trace}/performance_tests.rs`.
+Bancos `#[ignore]` se ejecutaron explícitamente bajo lock; no son tests de tiempo que bloqueen CI.
+Los ejecutables instrumentados antes/después y sus hashes permanecen en `C:/tmp/1607-evidence/{before,after}-{hub,ui}-tests.exe`.
+Scripts externos: `benchmarks.ps1`, `paired-delta.ps1`, `campaign.ps1`, `measure.ps1`, `navigation.ps1` en esa carpeta.
+El primer comando de T3 omitió manifest-path y falló antes de compilar; corrección y log original conservados en `build-baseline.log`.
 
 ## Causas verificadas en código, por prioridad de investigación
 
@@ -164,37 +186,47 @@ en el checkout local de Cargo: `platform.rs:2953` (Image por hash),
   Workshop también evita recargas sin cambios. Reducir timers por intuición
   podría romper decisiones, frescura o reproducción.
 
-## Arreglos, ganancias y gates
 
-Todavía no hay arreglos de producto ni ganancia antes/después demostrada.
-No se modifica producto antes de disponer de una baseline comparable.
-Por cada hallazgo aceptado: regresión RED, cambio mínimo, GREEN y gates
-aplicables; tres medidas equivalentes antes/después; un commit por arreglo.
-Se conserva solo una mejora segura y medible. Los que no se puedan corregir
-con seguridad quedan explícitamente pendientes; no se cambia diseño.
+## Decisión final sobre las 18 sospechas
 
-Checks documentales ejecutados sobre este árbol:
+| Grupo del análisis | Decisión y motivo |
+|---|---|
+| Hub 1, Hub 5 · polling/timers | Se corrige la copia resident. Se mantienen cadencias de permisos, errores, cierre, reproducción y trigger LMU; suspenderlas cambia contrato. |
+| Hub 2 · arranque | Sin lazy loading. Las tomas están bajo carga variable y no atribuyen una fase de arranque; diferir documentos/errores requiere nueva validación. |
+| Hub 3, Render 4 · Adapt | Setters ya comparan igualdad: no hay cascada incondicional demostrada. |
+| Hub 4, Render 5 · sort/listas | Sin caché/virtualización nueva: no hay coste aislado demostrado y cambiar árbol/scroll necesita validar layout. |
+| Hub 6 · fan-out/avatar | Avatar ya cacheado; ocultar ingesta puede perder historias. No se salta ninguna foto ni se altera la automatización. |
+| Overlays 1 · apply | Document compara layout; tocar fichero idéntico no reproduce apply. Cambios reales necesitan ingesta y visibilidad. |
+| Overlays 2 · lookup de instancia | Búsqueda N² confirmada; no hay impacto atribuido de frame en layout productivo con IPC/autorización. Queda candidato, no se inventa ahorro global. |
+| Overlays 3 · muestras | Dos arreglos independientes, Input y Delta, con datos retenidos, huecos, pérdida y época protegidos. |
+| Overlays 4 · texto | Shape cache existente; misses de fit/tracking no atribuidos. No se simplifican glifos ni tracking porque cambiaría visual. |
+| Overlays 5 · pausa | Copia inicial protegida por pausa estable; coste permanente descartado. |
+| Overlays 6 · apariencia/timers | Lectura/parseo cada 500 ms condicionada a fichero. Sin firma nueva que pueda ocultar cambios de igual mtime/tamaño; permisos/conexión conservan cadencia. |
+| Render 1 · miniaturas | Asset preparado por actualización y compartido en render; no se altera preview, payload, consentimiento ni retirada. |
+| Render 2 · SVG | GPUI ya cachea assets por ruta estable; no se demuestra relectura de bytes por nodo. |
+| Render 3 · rebuild Studio | Reutilizar por geometría necesita proteger undo/redo, escala y estado de widgets con acceso real. No se cambia identidad del renderer en este lote. |
+| Render 6 · PNG Workshop | Bytes comparados cada rebuild; reutiliza decode sólo si son idénticos. Cambio real, error y recuperación protegidos. |
 
-- `python tools/quality/vantare_quality.py check`: PASS, exit 0.
-- `python vantare-v2/native/retirement/verify.py`: PASS, 456 huellas, exit 0.
-- `git diff --check`: PASS, exit 0.
-- Fmt/check/Clippy/Nextest/lifecycle/telemetría: no ejecutados en este hito
-  documental; no cambia Rust, fixtures ni contratos. La Release en preparación
-  no sustituye estos gates ni acredita una mejora. Para cada arreglo de producto
-  serán obligatorios los gates aplicables antes de aceptar el commit.
+No se aceptan como bugs P1/P2 confirmados las sospechas cuyo coste/condición no se pudo reproducir. No se introduce arquitectura ni diseño por intuición.
 
-## Pendientes y límites de la entrega
+## Gates y revisión
 
-- Análisis Muse y revisión propia terminados; validación dinámica pendiente.
-- Release y hashes completos; no se ha ejecutado la app.
-- Obtener señal de #1565 válida, reservar PC y ejecutar toda la campaña.
-- Corregir hallazgos aceptados, medir cada cambio y ejecutar gates.
-- Actualizar este informe, handoff, issue y PR draft con el SHA/checks reales.
-- No hay prueba de navegación manual, scroll, LMU/ACC, OBS ni instalación de Isaac.
+- RED Release: clon resident, asset de miniatura, muestras Input/Delta y PNG repetido fallaron antes; los guards de historias/errores ya pasaban.
+- GREEN: cinco regresiones y guardias de contenido, huecos, pérdida/época, decisiones respondidas, expiración y recuperación PNG.
+- `cargo fmt --all -- --check`: PASS.
+- `native/gates.ps1 check`, `clippy -- -D warnings`, `test`, `lifecycle`, siempre por cola: PASS.
+- Nextest: **1657/1657**, 291.368 s, 12 skipped (incluye cinco bancos ignorados explícitos); sin excluir/debilitar tests para pasar.
+- Lifecycle: **18/18**, incluyendo procesos/pipes reales; no es LMU/ACC/OBS físico.
+- Quality y retirement: PASS, **456/456** huellas; `git diff --check`: PASS.
+- Telemetría separado: omitido, sólo cambian Hub/UI y documentación; no runtime/domain/IPC/testdata ni corpus. Nextest completo no sustituye ese gate si se ampliase alcance.
+- Diff completo revisado; no dependencias, workflows, schema, auth/billing ni referencias visuales modificados.
 
-Canal alcanzado: rama publicada y PR draft abierta; no integrado en nightly.
-CI de `299234c8`: promotion, quality y GitGuardian PASS; blocking gates y
-native-linux en curso al consultarlos. No se afirma CI completa; consultar
-el SHA final del PR antes de revisar. Plane VANTA-45 permanece En curso
-porque el objetivo de rendimiento no se ha completado. La issue tiene
-`area:ui` y pertenece al GitHub Project Vantare; sin milestone comprometido.
+Logs de cada gate y RED/GREEN en `C:/tmp/1607-evidence`. Targets propios: Release externo y `native/target/gates` del worktree.
+Las medidas son de diagnóstico; no certifican paquete de distribución, autenticación, Owner/Pro Plus, macOS/DPI distintos o simulador físico.
+
+## Entrega y siguiente paso
+
+Cinco hitos de código separados; SHAs reales en el historial de #1607 y el PR #1611. Push/PR/Plane se verifican al cerrar.
+Canal alcanzado: rama de issue y draft a nightly. **Sin merge, promoción, release ni anuncio**.
+Revisión del orquestador y prueba de Isaac con Hub autenticado, LMU/ACC/OBS y PC sin builds para atribuir CPU/frametime/input→Present.
+Los candidatos pendientes permanecen explícitos; esta entrega no afirma haber resuelto todas las sospechas ni una ganancia global de la suite.

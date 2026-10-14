@@ -37,6 +37,11 @@ enum Action {
     OpenAccount,
 }
 const ACTIONS: usize = 9;
+impl Action {
+    fn enabled(self, busy: bool) -> bool {
+        !busy || matches!(self, Self::OpenAccount)
+    }
+}
 
 /// Foto original en recorte; las medidas son las de la imagen decodificada.
 struct Source {
@@ -259,7 +264,7 @@ impl PilotEditor {
     }
 
     fn act(&mut self, action: Action, window: &mut Window, cx: &mut Context<Self>) {
-        if self.busy && !matches!(action, Action::OpenAccount | Action::CancelCrop) {
+        if !action.enabled(self.busy) {
             return;
         }
         match action {
@@ -853,7 +858,7 @@ impl PilotEditor {
                             .child(self.action(
                                 orbit::small_button("pilot-crop-cancel", "Cancelar", cx),
                                 Action::CancelCrop,
-                                true,
+                                Action::CancelCrop.enabled(self.busy),
                                 cx,
                             ))
                             .child(self.action(
@@ -1114,6 +1119,22 @@ fn has_changes(current: &Draft, saved: &Draft, photo_changed: bool) -> bool {
 #[cfg(test)]
 mod wiring_tests {
     use super::*;
+    #[test]
+    fn cancel_crop_is_disabled_after_processing_starts_until_result_arrives() {
+        assert!(
+            Action::CancelCrop.enabled(false),
+            "cancelar antes de enviar"
+        );
+        assert!(
+            !Action::CancelCrop.enabled(true),
+            "no cancelar un worker ya enviado"
+        );
+        assert!(
+            Action::CancelCrop.enabled(false),
+            "respuesta libera la operación"
+        );
+        assert!(Action::OpenAccount.enabled(true));
+    }
     #[test]
     fn photo_only_edit_is_dirty_and_discard_restores_saved_photo() {
         let saved = Draft {

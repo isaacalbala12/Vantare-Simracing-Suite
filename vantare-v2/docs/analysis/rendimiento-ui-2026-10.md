@@ -8,7 +8,7 @@ Rama `vantareapp/isa-1607-rendimiento-ui`, base `69fa2d650c85df4184d5821ae4c0322
 
 1. Se recuperaron los dos commits documentales de T3; no había cambios sin commit.
 2. Las 18 sospechas permanecen contrastadas y tienen decisión explícita abajo.
-3. Se prepararon cinco correcciones, cada una con regresión RED → GREEN y banco antes/después.
+3. Se entregan cinco correcciones en commits separados, cada una con regresión RED → GREEN y banco antes/después.
 4. Launcher sirve su foto resident por referencia; conserva expiración, errores y decisiones.
 5. Las miniaturas conservan su asset entre renders; no se altera documento ni consentimiento.
 6. Input Telemetry y Delta Trace comparten muestras entre repintados; nunca saltan fotos/historias.
@@ -213,7 +213,7 @@ No se aceptan como bugs P1/P2 confirmados las sospechas cuyo coste/condición no
 
 - RED Release: clon resident, asset de miniatura, muestras Input/Delta y PNG repetido fallaron antes; los guards de historias/errores ya pasaban.
 - GREEN: cinco regresiones y guardias de contenido, huecos, pérdida/época, decisiones respondidas, expiración y recuperación PNG.
-- `cargo fmt --all -- --check`: PASS.
+- `cargo fmt --all -- --check`: PASS; `rustfmt --edition 2024 --check` suplementario PASS para Input/Delta, declarados mediante macro y no recorridos por cargo fmt.
 - `native/gates.ps1 check`, `clippy -- -D warnings`, `test`, `lifecycle`, siempre por cola: PASS.
 - Nextest: **1657/1657**, 291.368 s, 12 skipped (incluye cinco bancos ignorados explícitos); sin excluir/debilitar tests para pasar.
 - Lifecycle: **18/18**, incluyendo procesos/pipes reales; no es LMU/ACC/OBS físico.
@@ -226,7 +226,19 @@ Las medidas son de diagnóstico; no certifican paquete de distribución, autenti
 
 ## Entrega y siguiente paso
 
-Cinco hitos de código separados; SHAs reales en el historial de #1607 y el PR #1611. Push/PR/Plane se verifican al cerrar.
+Cinco hitos de código publicados:
+
+| Arreglo | Commit |
+|---|---|
+| Resident | `2fd6b9c55bcee820559fed36c328d805c13424e8` |
+| Miniaturas | `bb3f1545fc25db07f26b814115e26045588210a4` |
+| Input | `9453d08fc0f993e556404a313331308257bc2fe2` |
+| Delta | `b8dd47e4496920a6824dc2ce31ee1a4bf41e05df` |
+| PNG | `c40a90d96807f76a7434acec78de22b41adb7945` |
+
+SHA de código final `c40a90d9` publicado; el cierre posterior sólo consolida documentación. Plane **Por revisar**, escritura y lectura verificadas el 14/10 ~03:57.
+PR #1611 OPEN y draft a nightly. CI del HEAD documental final se consulta en PR/issue; no se afirma verde desde gates locales.
+Procesos propios cerrados y lock liberado a las 03:55:39. Datos, scripts y artefactos de prueba conservados en C:/tmp.
 Canal alcanzado: rama de issue y draft a nightly. **Sin merge, promoción, release ni anuncio**.
 Revisión del orquestador y prueba de Isaac con Hub autenticado, LMU/ACC/OBS y PC sin builds para atribuir CPU/frametime/input→Present.
 Los candidatos pendientes permanecen explícitos; esta entrega no afirma haber resuelto todas las sospechas ni una ganancia global de la suite.

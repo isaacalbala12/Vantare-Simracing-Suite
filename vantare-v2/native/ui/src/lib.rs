@@ -23,6 +23,7 @@
 mod motion_policy;
 pub use motion_policy::MotionPolicy;
 
+pub mod analytics;
 mod app;
 #[cfg(test)]
 mod board_contracts;

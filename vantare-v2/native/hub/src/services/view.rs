@@ -130,6 +130,8 @@ fn account_value(label: &str, value: &str, active: bool, cx: &gpui::App) -> gpui
 
 #[path = "access.rs"]
 mod access;
+#[path = "view/roadmap.rs"]
+mod roadmap;
 
 enum Area {
     Account,
@@ -156,13 +158,18 @@ enum Inflight {
     Profile,
     PurchaseRenew,
     PurchaseSession,
+    Roadmap,
     User,
 }
 impl Inflight {
     fn background(self) -> bool {
         matches!(
             self,
-            Self::Background | Self::Profile | Self::PurchaseRenew | Self::PurchaseSession
+            Self::Background
+                | Self::Profile
+                | Self::PurchaseRenew
+                | Self::PurchaseSession
+                | Self::Roadmap
         )
     }
 }
@@ -270,6 +277,7 @@ pub struct Remote {
     publication: Option<super::protocol::roadmap_document::Publication>,
     roadmap_message: String,
     roadmap_requested: bool,
+    roadmap_polled_at: Option<std::time::Instant>,
     pub(crate) manual_roadmap: crate::roadmap::State,
     stale: bool,
 }
@@ -371,7 +379,7 @@ impl Remote {
                 super::protocol::report_document::ScreenshotPreview,
             >(&bytes)
         {
-            editor.screenshots = vec![preview];
+            editor.set_screenshots(vec![preview]);
             editor.message = "Vista previa de captura · ejemplo local; no se enviará".into();
         }
         cx.on_app_quit(|this, cx| {
@@ -429,6 +437,7 @@ impl Remote {
             publication: None,
             roadmap_message: "No hay una publicación válida guardada".into(),
             roadmap_requested: false,
+            roadmap_polled_at: None,
             manual_roadmap: crate::roadmap::State::load(),
             stale: true,
         };
@@ -863,7 +872,7 @@ impl Remote {
                 |draft| (draft.fields, draft.screenshots),
             );
             self.editor = crate::testing::Editor::new(fields, cx);
-            self.editor.screenshots = screenshots;
+            self.editor.set_screenshots(screenshots);
             self.editor.message = message;
         } else {
             self.editor.message =
@@ -942,6 +951,7 @@ impl Remote {
             .next_command(&reply, &mut self.account.cancel_login)
             .or(after_renew);
         let background = self.inflight.background();
+        let roadmap_background = self.inflight == Inflight::Roadmap;
         self.inflight = Inflight::Idle;
         self.account.pending = false;
         let purchase_message_before = self.purchase_message.clone();
@@ -956,6 +966,10 @@ impl Remote {
             self.purchase_message = Some("Acceso solicitado verificado por el servicio.".into());
         }
         let quiet = background;
+        if roadmap_background && let Reply::Error { message } = &reply {
+            self.roadmap_message.clone_from(message);
+            self.stale = true;
+        }
         if background && failed && purchase_background {
             self.purchase_message = Some("No se pudo comprobar la compra. Reintentamos durante la espera; también puedes comprobar el acceso manualmente.".into());
         }
@@ -1010,11 +1024,7 @@ impl Remote {
                 stale,
                 message,
                 ..
-            } => {
-                self.publication = publication;
-                self.stale = stale;
-                self.roadmap_message = message;
-            }
+            } => self.roadmap_reply(publication, stale, message),
             Reply::Account {
                 signed_in,
                 profile,
@@ -1068,7 +1078,7 @@ impl Remote {
                 if self.report_revision == Some(self.editor.revision) {
                     self.editor.clear_approval(cx);
                     self.editor.error = false;
-                    self.editor.screenshots.clone_from(&preview.screenshots);
+                    self.editor.set_screenshots(preview.screenshots.clone());
                     self.editor.preview = Some(preview);
                     self.editor.message =
                         "Revise cuenta, canal y contenido; el envío exige su consentimiento".into();
@@ -1084,6 +1094,7 @@ impl Remote {
         let next = next_request(next, &mut self.queued, self.calendar_target.is_some())
             .or_else(|| missing_profile.then_some(Command::AccountProfileRefresh));
         let notify = !quiet
+            || roadmap_background
             || profile_changed
             || access_before != self.navigation_access()
             || next.is_some()
@@ -1700,26 +1711,6 @@ impl Remote {
                 ))
             })
             .child(self.editor.render(compact, cx))
-    }
-
-    /// R6: todas las vistas leen la misma publicación real y su estado de caché.
-    pub(crate) fn roadmap_publication(
-        &self,
-    ) -> Option<&super::protocol::roadmap_document::Publication> {
-        self.manual_roadmap.publication(self.publication.as_ref())
-    }
-    pub(crate) fn roadmap_status(&self) -> &str {
-        if self.working() {
-            "Cargando roadmap…"
-        } else {
-            &self.roadmap_message
-        }
-    }
-    pub(crate) fn ensure_roadmap(&mut self, cx: &mut Context<Self>) {
-        if !self.roadmap_requested && !self.working() && self.queued.is_none() {
-            self.roadmap_requested = true;
-            self.request(Command::RoadmapCached, cx);
-        }
     }
 
     pub fn licenses(&self, window: &gpui::Window, cx: &mut Context<Self>) -> gpui::Div {

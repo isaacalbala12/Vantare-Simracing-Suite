@@ -56,6 +56,7 @@ pub struct Workshop {
     chosen_scene: usize,
     overlay: Entity<Overlay>,
     reference: Result<Arc<RenderImage>, String>,
+    reference_cache: comparison::Reference,
     comparison: Option<Comparison>,
     mode: Mode,
     capturing: bool,
@@ -495,13 +496,16 @@ impl Workshop {
         });
         let stamp = stamp(&scene.path);
         let rendered_photo = (scene.snapshot().epoch, scene.snapshot().sequence);
+        let mut reference_cache = comparison::Reference::default();
+        let reference = reference_cache.load(&comparison::reference(kind));
         Self {
             scene,
             kind,
             scenes,
             chosen_scene,
             overlay,
-            reference: comparison::load_png(&comparison::reference(kind)),
+            reference,
+            reference_cache,
             comparison: None,
             mode,
             capturing: false,
@@ -551,7 +555,7 @@ impl Workshop {
             overlay.ingest(self.scene.snapshot(), cx);
             overlay
         });
-        self.reference = comparison::load_png(&comparison::reference(self.kind));
+        self.reference = self.reference_cache.load(&comparison::reference(self.kind));
         self.invalidate();
         cx.notify();
     }

@@ -112,33 +112,7 @@ pub(super) fn system(value: &Value) -> Value {
     }
     let mut out = Map::new();
     if let Some(os) = value["os"].as_object() {
-        let mut fields = Map::new();
-        if let Some(name) = os.get("name") {
-            fields.insert(
-                "name".into(),
-                if matches!(name.as_str(), Some("Windows" | "Linux" | "macOS")) {
-                    name.clone()
-                } else {
-                    Value::from("otro")
-                },
-            );
-        }
-        if let Some(v) = os.get("version") {
-            fields.insert("version".into(), version(v));
-        }
-        if let Some(v) = os.get("build") {
-            fields.insert(
-                "build".into(),
-                if v.as_str().is_some_and(|s| {
-                    !s.is_empty() && s.len() <= 6 && s.bytes().all(|b| b.is_ascii_digit())
-                }) {
-                    v.clone()
-                } else {
-                    Value::from("otro")
-                },
-            );
-        }
-        out.insert("os".into(), Value::Object(fields));
+        out.insert("os".into(), system_os(os));
     }
     if let Some(cpu) = value["cpu"].as_object() {
         let mut fields = Map::new();
@@ -213,4 +187,34 @@ pub(super) fn system(value: &Value) -> Value {
         );
     }
     Value::Object(out)
+}
+
+fn system_os(os: &Map<String, Value>) -> Value {
+    let mut fields = Map::new();
+    if let Some(name) = os.get("name") {
+        fields.insert(
+            "name".into(),
+            if matches!(name.as_str(), Some("Windows" | "Linux" | "macOS")) {
+                name.clone()
+            } else {
+                Value::from("otro")
+            },
+        );
+    }
+    if let Some(v) = os.get("version") {
+        fields.insert("version".into(), version(v));
+    }
+    if let Some(v) = os.get("build") {
+        fields.insert(
+            "build".into(),
+            if v.as_str().is_some_and(|s| {
+                !s.is_empty() && s.len() <= 6 && s.bytes().all(|b| b.is_ascii_digit())
+            }) {
+                v.clone()
+            } else {
+                Value::from("otro")
+            },
+        );
+    }
+    Value::Object(fields)
 }

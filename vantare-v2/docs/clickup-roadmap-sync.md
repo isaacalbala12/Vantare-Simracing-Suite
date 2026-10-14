@@ -1,13 +1,10 @@
-# ClickUp → roadmap público
+# Integración ClickUp retirada (#1601)
 
-Procedimiento vigente: [mantenimiento del roadmap](roadmap-maintenance.md), #1535.
-La Action publica el artefacto; Hub, web y digest solo lo leen.
+Referencia histórica de #1535/#1578. ClickUp ya no es fuente del roadmap.
+Sus scripts, fixture de origen y Action se retiran de esta rama; las fixtures
+nativas legacy y el historial de Supabase se conservan para compatibilidad.
+El retiro local no prueba desactivación de la Action en master ni eliminación
+real de credenciales: estas acciones siguen pendientes del operador autorizado.
 
-scripts/clickup-roadmap.py conserva el parser y pruebas de la herramienta manual
-anterior. Su vía SQL es histórica: no usar --publish ni mantener una segunda
-publicación Supabase. publish_clickup_roadmap.py reutiliza su validación y lista
-de campos públicos; añade solo fechas/etiquetas explícitas y no escribe remoto.
-El workflow invoca únicamente visual_roadmap_sync en Supabase existente,
-con rol SQL dedicado. Nada se aplica/configura sin revisión Sol+Opus.
-
-Referencia primaria: [Get Tasks](https://developer.clickup.com/reference/gettasks).
+Procedimiento vigente: [mantenimiento](roadmap-maintenance.md) y
+[activación Plane](plane-roadmap-runbook.md). No reactivar el flujo ClickUp.

@@ -10,16 +10,46 @@ pub(super) struct Form {
     pub(super) questionnaire_id: Option<String>,
     pub(super) score: u8,
     pub(super) answer_note: Entity<Input>,
+    pub(super) contribution_title: Entity<Input>,
+    pub(super) contribution_body: Entity<Input>,
+    pub(super) contribution_attempt: Option<(String, String, String)>,
     pub(super) generation: u64,
+    pub(super) consent: Entity<orbit::Checkbox>,
 }
 impl Form {
     pub(super) fn new(questionnaire_id: Option<String>, cx: &mut Context<Testing>) -> Self {
+        let consent = cx.new(|cx| {
+            orbit::Checkbox::new(
+                "Consiento enviar los campos estructurados al equipo de Vantare",
+                false,
+                cx,
+            )
+        });
+        cx.observe(&consent, |_, _, cx| cx.notify()).detach();
+        let contribution_title =
+            cx.new(|cx| Input::new(String::new(), "Título local · no se envía", cx));
+        let contribution_body =
+            cx.new(|cx| Input::multiline(String::new(), "Notas locales · no se envían", cx));
+        for input in [&contribution_title, &contribution_body] {
+            let consent = consent.clone();
+            cx.observe(input, move |_, _, cx| {
+                consent.update(cx, |checkbox, cx| {
+                    checkbox.checked = false;
+                    cx.notify();
+                });
+            })
+            .detach();
+        }
         Self {
             questionnaire_id,
             score: 3,
             generation: 0,
+            consent,
+            contribution_attempt: None,
             answer_note: cx
                 .new(|cx| Input::multiline(String::new(), "Nota local · no se envía", cx)),
+            contribution_title,
+            contribution_body,
         }
     }
 }
@@ -187,17 +217,16 @@ impl Testing {
                 "reviewing" => "En revisión",
                 "accepted" => "Aceptada",
                 "spam" => "Marcada como spam",
+                "fixed" => "Arreglada",
                 _ => "No aceptada",
             };
-            list = list
-                .child(orbit::text(
-                    format!("{} · {state}", c.title),
-                    14.0,
-                    600,
-                    orbit::ink(cx),
-                    cx,
-                ))
-                .child(orbit::text(c.body.clone(), 12.0, 400, orbit::ink_2(cx), cx));
+            list = list.child(orbit::text(
+                format!("{} · {state}", c.title),
+                14.0,
+                600,
+                orbit::ink(cx),
+                cx,
+            ));
         }
         div()
             .flex_1()
@@ -206,10 +235,41 @@ impl Testing {
             .flex_col()
             .gap(px(self.adapt.gap()))
             .child(self.participation_header("Ayúdanos a mejorar Vantare", cx))
-            .child(
-                self.remote
-                    .update(cx, |remote, cx| remote.triage.render(ready, cx)),
-            )
-            .child(list)
+            .when(self.remote.read(cx).navigation_access().tester, |page| page.child(self.remote.update(cx, |remote, cx| remote.triage.render(ready, cx))))
+            .when(!self.remote.read(cx).navigation_access().tester, |page| page.child(orbit::neo_card(cx).flex_none().gap(px(10.0))
+                .child(self.participation_form.contribution_title.clone()).child(self.participation_form.contribution_body.clone())
+                .child(orbit::primary_button("testing-contribution-send", "Enviar informe", cx).tab_stop(ready)
+                    .when(!ready, |b| orbit::disabled(b, "Requiere sesión, servicio disponible y consentimiento"))
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        let title = this.participation_form.contribution_title.read(cx).value.clone();
+                        let body = this.participation_form.contribution_body.read(cx).value.clone();
+                        let attempt = match this.participation_form.contribution_attempt.as_ref() {
+                            Some((id, old_title, old_body)) if *old_title == title && *old_body == body => Some(id.clone()),
+                            _ => new_uuid(),
+                        };
+                        if let Some(id) = attempt {
+                            this.participation_form.contribution_attempt = Some((id.clone(), title.clone(), body.clone()));
+                            let consent = this.participation_form.consent.read(cx).checked;
+                            if !consent { return; }
+                            this.remote.update(cx, |remote, cx| remote.participation_request(Command::TestingContribute { id, title:"Informe estructurado".into(), body:"Revisión humana pendiente".into(), consent }, cx));
+                        }
+                    })))
+                .child(self.participation_form.consent.clone())
+                .child(orbit::text("El título y las notas son locales y no se envían. Se envían el canal, el identificador del informe y el consentimiento, ligados a tu cuenta por el servidor. Máximo 5 informes al día y 20 en 7 días. El crédito es opcional y se decide en Mis informes.", 12.0, 400, orbit::ink_3(cx), cx))))
+            .when(self.remote.read(cx).navigation_access().tester, |page| page.child(list))
     }
+}
+
+fn new_uuid() -> Option<String> {
+    let id = vantare_services::random_id().ok()?;
+    (id.len() == 64).then(|| {
+        format!(
+            "{}-{}-{}-{}-{}",
+            &id[..8],
+            &id[8..12],
+            &id[12..16],
+            &id[16..20],
+            &id[20..32]
+        )
+    })
 }

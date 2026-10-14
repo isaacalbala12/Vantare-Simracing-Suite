@@ -1,3 +1,14 @@
+## F7=C · decisión vigente de Isaac, 14/10/2026
+
+Solo campos estructurados cerrados salen del informe. Título, cuerpo, notas y
+títulos de duplicados se omiten antes del proveedor, T3 e Intake. Summary es
+una etiqueta fija; preliminary_fix=null y reasons=[] también en replay.
+Logs JSON, eventos y hardware no exportan nombres o mensajes libres.
+La regla anterior de contenido mínimo por 200 caracteres no queda acreditada;
+veredicto válido se degrada a dudoso hasta revisión humana. Worker sigue inerte.
+[Regresiones F7](review-1602-f7-regressions.md). El resto conserva la historia
+y procedimientos de despliegue, que requieren autorización independiente.
+
 # Worker de propuestas #1594 / VANTA-38
 
 Preparado en Git, **no instalado ni desplegado**. Python estándar, sin paquetes

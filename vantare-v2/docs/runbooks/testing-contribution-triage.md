@@ -7,6 +7,18 @@ Cron, LOGIN/contraseña, proveedor y despliegue siguen inactivos. Diseño r2 com
 DeepSeek `opencode-go/deepseek-v4.1-flash`; el worker propone y un owner
 autenticado confirma. No es una segunda llamada a otro modelo.
 
+## Decisión F7=C vigente · 14/10/2026
+
+El texto libre del tester se conserva solo localmente; no sale al servidor,
+proveedor, T3 ni Intake. SQL mantiene columnas compatibles con etiquetas fijas.
+El worker omite título/cuerpo/duplicados y retira ecos generados; replay no
+reanáliza. Log JSON/eventos/hardware usan valores cerrados y números acotados.
+Services IPC v9 integra triaje #1594 y seguimiento #1610; recompilar con Hub.
+La regla histórica de 200 caracteres queda no acreditada al excluir prosa:
+no se inventa contenido mínimo ni aceptación automática para descuento.
+No habilita proveedor, despliegue ni producción. Las referencias inferiores
+a texto describen contratos históricos, reemplazados por esta decisión.
+
 ## SQL preparado
 
 - `supabase/migrations/20261013160000_testing_contribution_triage.sql`.

@@ -369,7 +369,10 @@ impl Reports {
             Ok(Some(attempt))
                 if attempt.version == 1
                     && crate::license::uuid(&attempt.account_id)
-                    && attempt.payload.validate().is_ok()
+                    // An old confirmed receipt is read-only history, never a
+                    // retry. Preserve it even when its old payload had prose.
+                    && (matches!(attempt.phase, Phase::Confirmed(_))
+                        || attempt.payload.validate().is_ok())
                     && screenshots::validate(&attempt.images).is_ok()
                     && match &attempt.phase {
                         Phase::Confirmed(receipt) => valid_receipt(receipt).is_ok(),

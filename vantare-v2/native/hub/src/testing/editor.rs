@@ -1,4 +1,5 @@
 use super::model::{Consent, MODULES, can_send, field_errors};
+use super::screenshots::Screenshot;
 use crate::{
     orbit::{self, Checkbox, ChoiceState, Input, OptionItem},
     services::{
@@ -9,7 +10,6 @@ use crate::{
         view::Remote,
     },
 };
-use base64::{Engine, engine::general_purpose::STANDARD};
 use gpui::{Context, Entity, div, prelude::*, px, rgb, rgba};
 
 const FIELD_HEIGHTS: [f32; 4] = [38.0, 48.0, 96.0, 48.0];
@@ -26,9 +26,12 @@ pub struct Editor {
     pub error: bool,
     pub revision: u64,
     pub dirty: bool,
-    pub screenshots: Vec<ScreenshotPreview>,
+    screenshots: Vec<Screenshot>,
 }
 impl Editor {
+    pub fn set_screenshots(&mut self, previews: Vec<ScreenshotPreview>) {
+        self.screenshots = previews.into_iter().map(Screenshot::new).collect();
+    }
     fn field_label(label: &str, cx: &gpui::App) -> gpui::Div {
         orbit::text(label.to_owned(), 12.0, 600, orbit::ink_2(cx), cx)
     }
@@ -506,12 +509,12 @@ impl Editor {
                 cx,
             ));
         let mut images = div().flex().gap(px(10.0));
-        for (index, preview) in self.screenshots.iter().enumerate() {
+        for (index, screenshot) in self.screenshots.iter().enumerate() {
+            let preview = &screenshot.preview;
             let mut tile = div().flex_1().min_w_0().flex().flex_col().gap(px(5.0));
-            if let Ok(bytes) = STANDARD.decode(&preview.jpeg) {
-                let image = gpui::Image::from_bytes(gpui::ImageFormat::Jpeg, bytes);
+            if let Some(image) = screenshot.image() {
                 tile = tile.child(
-                    gpui::img(std::sync::Arc::new(image))
+                    gpui::img(image)
                         .w_full()
                         .h(px(100.0))
                         .object_fit(gpui::ObjectFit::Contain),

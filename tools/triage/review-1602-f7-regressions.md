@@ -22,7 +22,8 @@ Las rutas nativas anteriores TestingContribute/TestingAnswer y Report también
 retiran los campos escritos. Los borradores siguen locales. Report mantiene
 la revocación por cambios mediante un hash local efímero que nunca entra en
 el payload; intentos anteriores con prosa se conservan en cuarentena y no se
-reenvían bajo el mismo id con otros bytes. Las imágenes de la ruta histórica
+reenvían bajo el mismo id con otros bytes. Recibos antiguos ya confirmados se
+conservan como historial de solo lectura, nunca como reintentos. Las imágenes de la ruta histórica
 con capturas conservan su flujo existente y no entran en el proveedor de triaje.
 
 Regresiones: test_review_1602_f7 (proveedor, HTTP T3, POST Intake, duplicados,

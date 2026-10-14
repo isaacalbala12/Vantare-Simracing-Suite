@@ -22,6 +22,56 @@ fn f7_report_notes_are_local_and_old_text_attempts_are_rejected() {
     submission.action_text = "OrdinaryPrivateTesterNote".into();
     assert_eq!(submission.validate(), Err(crate::Error::Protocol));
 }
+
+#[test]
+fn f7_legacy_confirmed_receipt_is_kept_but_pending_prose_is_quarantined() {
+    let (root, store) = crate::test_store("f7-legacy-receipt");
+    let draft = save_draft(&store, fields()).expect("draft");
+    let mut payload = Submission::new(draft, environment()).expect("payload");
+    payload.action_text = "OrdinaryPrivateTesterNote".into();
+    let receipt = Receipt {
+        report_id: format!("report_{}", "a".repeat(64)),
+        report_state: "submitted".into(),
+        idempotent: false,
+        created_at: "2026-10-13T00:00:00Z".into(),
+    };
+    let mut attempt = Attempt {
+        version: 1,
+        identity: Identity {
+            issuer: "https://fixture.test/".into(),
+            subject: "user_fixture".into(),
+        },
+        account_id: "550e8400-e29b-41d4-a716-446655440000".into(),
+        payload,
+        phase: Phase::Confirmed(receipt.clone()),
+        images: Vec::new(),
+        installation: None,
+    };
+    store
+        .save("report-attempt", &attempt)
+        .expect("legacy receipt");
+    let restored = Reports::restore(&store).expect("restore");
+    assert_eq!(
+        restored
+            .receipt()
+            .expect("confirmed receipt retained")
+            .report_id,
+        receipt.report_id
+    );
+    attempt.phase = Phase::Uncertain;
+    store
+        .save("report-attempt", &attempt)
+        .expect("legacy pending");
+    assert!(
+        Reports::restore(&store)
+            .expect("restore pending")
+            .attempt
+            .is_none()
+    );
+    assert!(store.load::<Attempt>("report-attempt").is_err());
+    drop(store);
+    crate::cleanup_store(&root, "f7-legacy-receipt", &[]);
+}
 use crate::{account, bridge::Config, http::Http, test_http::Server};
 use std::os::windows::fs::OpenOptionsExt;
 use std::time::Duration;

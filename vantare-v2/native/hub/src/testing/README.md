@@ -1,3 +1,21 @@
+# Testing Center — corte #1610 / VANTA-29
+
+IPC services v9, contrato combinado #1594/#1610; Hub y services se recompilan
+juntos y rechazan peers v7/v8. F7=C (Isaac, 14/10): título, notas, pasos y
+comentarios son locales y no se envían; SQL recibe etiquetas fijas. Solo salen
+campos estructurados cerrados; logs JSON, eventos y hardware sin nombres libres.
+Proveedor/T3/Intake/replay omiten prosa; los resúmenes generados usan una etiqueta
+fija. Sin texto, el criterio antiguo de 200 caracteres no queda acreditado.
+Se conserva el seguimiento de cuentas verificadas normales, con
+consentimiento separado; historial privado, avisos y crédito opt-in. La lista
+remota omite el cuerpo privado y muestra título/estado/versión. Recibos legacy
+con capturas se conservan aparte. Sin producción ni transporte Plane real.
+Intake/capturas públicas dependen de #1602 y referencia PostHog de #1609.
+Ver [runbook vigente](../../../../docs/runbooks/testing-report-followup.md) y
+[handoff](../../../../docs/vantare-program/handoffs/testing-center.md).
+
+Las secciones siguientes conservan la evidencia y los límites de cortes anteriores.
+
 ## Participación #1535
 
 Cuestionarios por versión y contribuciones mediante services IPC v7; ver
@@ -6,7 +24,7 @@ la migración ni se envió feedback real. Bugs conservan la RPC existente.
 
 ## Triaje #1594
 
-Nuevo informe prepara título/texto, juego/versión observados, hardware de lista
+Nuevo informe prepara etiquetas fijas, juego/versión observados, hardware de lista
 blanca y log reciente real de services. Vista previa del mismo payload de
 submit_v2, cinco casillas opcionales y consentimiento obligatorio DeepSeek.
 Texto/casillas invalidan vista previa y consentimiento; logout elimina contenido

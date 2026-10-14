@@ -1,5 +1,5 @@
 //! R6: tres presentaciones de la publicación pública recibida por services.
-//! v2 incorpora áreas, etiquetas de versión y fechas previstas de `ClickUp`;
+//! v2 incorpora áreas, etiquetas de versión y fechas previstas de Plane;
 //! v1 mantiene sus estados vacíos sin inventar esos metadatos.
 use crate::services::protocol::roadmap_document::{Item, Publication};
 use crate::{orbit, services::view::Remote};
@@ -7,8 +7,8 @@ use gpui::{Context, Div, Stateful, div, prelude::*, px};
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 enum View {
-    #[default]
     Circuit,
+    #[default]
     Board,
     Season,
 }
@@ -58,12 +58,16 @@ impl State {
 }
 
 fn items<'a>(publication: &'a Publication, section: &'a str) -> impl Iterator<Item = &'a Item> {
-    publication
-        .document
-        .items
-        .iter()
-        .filter(move |item| item.section == section)
+    publication.document.items.iter().filter(move |item| {
+        item.section == section || (section == "next" && item.section == "later")
+    })
 }
+const LANES: [(&str, &str); 3] = [
+    ("next", "Planeado"),
+    ("now", "En marcha"),
+    ("done", "Hecho"),
+];
+
 fn note(value: impl Into<gpui::SharedString>, cx: &gpui::App) -> Div {
     orbit::text(value, 12.0, 400, orbit::ink_3(cx), cx)
 }
@@ -158,36 +162,28 @@ fn current(publication: Option<&Publication>, adapt: orbit::Adapt, cx: &gpui::Ap
             .items_center()
             .gap(px(12.0))
             .pt(px(12.0))
-            .children(
-                [
-                    ("done", "Entregado"),
-                    ("now", "Ahora"),
-                    ("next", "Siguiente"),
-                    ("later", "Más adelante"),
-                ]
-                .map(|(section, label)| {
-                    div()
-                        .flex_1()
-                        .min_w_0()
-                        .flex()
-                        .flex_col()
-                        .gap(px(8.0))
-                        .child(
-                            div()
-                                .h(px(2.0))
-                                .w_full()
-                                .bg(orbit::alpha(orbit::skin(cx).line3)),
-                        )
-                        .child(orbit::meta(label, 11.0, orbit::skin(cx).text2, cx))
-                        .child(note(
-                            publication.map_or_else(
-                                || "—".into(),
-                                |p| format!("{} tareas", items(p, section).count()),
-                            ),
-                            cx,
-                        ))
-                }),
-            ),
+            .children(LANES.map(|(section, label)| {
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .flex_col()
+                    .gap(px(8.0))
+                    .child(
+                        div()
+                            .h(px(2.0))
+                            .w_full()
+                            .bg(orbit::alpha(orbit::skin(cx).line3)),
+                    )
+                    .child(orbit::meta(label, 11.0, orbit::skin(cx).text2, cx))
+                    .child(note(
+                        publication.map_or_else(
+                            || "—".into(),
+                            |p| format!("{} tareas", items(p, section).count()),
+                        ),
+                        cx,
+                    ))
+            })),
     )
 }
 fn version_calendar(publication: Option<&Publication>, cx: &gpui::App) -> Div {
@@ -259,7 +255,7 @@ impl Remote {
             ))
             .child(note(
                 if self.manual_roadmap.is_capture() {
-                    "QA · ejemplo ClickUp, sin publicación remota".to_owned()
+                    "QA · ejemplo local, sin publicación remota".to_owned()
                 } else {
                     self.roadmap_status().to_owned()
                 },
@@ -274,7 +270,7 @@ impl Remote {
                 .min_h_0()
                 .child(orbit::section_header("Temporada", "v-calendar", None, cx))
                 .child(note(
-                    "Calendario de versiones · fechas previstas de ClickUp, sin garantía de release",
+                    "Calendario de versiones · fechas previstas publicadas, sin garantía de release",
                     cx,
                 ))
                 .when_some(publication, |card, publication| {
@@ -298,9 +294,9 @@ impl Remote {
                         .min_h_0()
                         .flex()
                         .gap(px(adapt.gap()))
-                        .child(lane(publication, "now", "Ahora", cx))
-                        .child(lane(publication, "next", "Siguiente", cx))
-                        .child(lane(publication, "later", "Más adelante", cx)),
+                        .children(
+                            LANES.map(|(section, label)| lane(publication, section, label, cx)),
+                        ),
                 )
         };
         page.child(body)
@@ -375,6 +371,34 @@ impl Remote {
 mod tests {
     use super::*;
     use crate::services::protocol::roadmap_document::{Document, Localized};
+    #[test]
+    fn canonical_plane_publication_matches_web_columns_names_and_ids() {
+        let publication: Publication = serde_json::from_str(include_str!(
+            "../reference/fixtures/roadmap-plane-v2-test.json"
+        ))
+        .expect("canonical Plane document");
+        let names: Vec<_> = LANES
+            .into_iter()
+            .map(|(section, label)| {
+                (
+                    label,
+                    items(&publication, section)
+                        .map(|item| item.title.es.as_str())
+                        .collect::<Vec<_>>(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            names,
+            vec![
+                ("Planeado", vec!["Rework - Roadmap"]),
+                ("En marcha", vec!["Feature - Pedals"]),
+                ("Hecho", vec!["Bugfix - Texto literal"])
+            ]
+        );
+        assert_eq!(publication.document.items.len(), 3);
+        assert_eq!(publication.document.schema_version, 2);
+    }
     fn publication() -> Publication {
         let localized = |text: &str| Localized {
             es: text.into(),
@@ -403,14 +427,14 @@ mod tests {
         }
     }
     #[test]
-    fn published_lanes_preserve_content_in_all_four_sections() {
+    fn three_lanes_preserve_every_task_including_legacy_later_and_done() {
         let publication = publication();
-        let board: Vec<_> = ["now", "next", "later", "done"]
+        let board: Vec<_> = ["next", "now", "done"]
             .into_iter()
             .flat_map(|section| items(&publication, section))
             .map(|item| item.id.as_str())
             .collect();
-        assert_eq!(board, vec!["now", "next", "later", "done"]);
+        assert_eq!(board, vec!["next", "later", "now", "done"]);
         assert_eq!(
             items(&publication, "done")
                 .map(|item| item.id.as_str())

@@ -16,6 +16,29 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+#1606 / VANTA-46 Por revisar verificado, ronda 2 por Codex CLI sin subagentes.
+Rama `vantareapp/isa-1606-review-pipeline-telemetria`, base original
+`nightly@69fa2d65`; fetch observa `0807fbd0`, sin incorporar otra entrega.
+Los ocho P2 originales y sus commits se conservan; review Sol completa de
+`cdf2e631` confirma siete suficientes y F5 parcial en la proyección de huecos.
+N1 `bb377104` recupera series tras retroceso de distancia con reloj creciente;
+el contador retrasado sigue protegido. N2 `93230224` descarta candidata delta
+al retroceder y conserva referencia previa válida. N3 `5a399f4b` aísla los
+puntos fiables de chunks con gap; v1 no localiza el corte. RED exactos en Rust
+y DuckDB→plot-page→Reader→gráficos, GREEN 43/43 focales. Once P2 en ambas rondas,
+sin P1 confirmado. Informe vivo: [revisión](../../analysis/review-pipeline-telemetria-2026-10.md).
+
+Código local probado `5a399f4b`, árbol native
+`567bbc347c7308a2c5892cdeac5dc0dae6791dfb`: fmt/check/Clippy PASS,
+Nextest 1660/1660 PASS (7 skips heredados), lifecycle 18/18 PASS;
+telemetría 25/25 PASS, 0 skips (ACC completo 901,336 s). Integridad/retirement 456/456 PASS.
+Logs `C:/tmp/1606-evidence/r2-*`, por cola, jobs=2 y target propio.
+[PR draft #1616](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1616)
+a nightly actualizado y push de los tres fixes releído. Project Vantare In Review.
+HEAD final/CI tras el hito documental se verifican en #1606 y el buzón;
+CI remota completa y QA física pendientes.
+Sin mediciones, datos reales, merge, promoción ni release.
+
 Base incorporada: `origin/nightly@acff350d740d33ae8901291b63d69da004912fbc`, con #1562/PR #1576 integrada. Resolución de merge de #1564/PR #1577 en `vantareapp/isa-1564-widgets-por-sesion-impl`, validación local completada: fmt/Clippy, Nextest 1613/1613 (7 skips), lifecycle 18/18 y telemetría 25/25 PASS. #1562 introduce situación neutral y DTO live v10; #1573 conserva admisión de acceso frente al cierre por juego. Sin promoción ni release. Evidencia anterior #1562: Nextest 1590/1590, lifecycle 18/18 y telemetría 25/25; el resultado post-merge se acredita con logs merge-*.log en C:/tmp/ola2/evidence-1564, separado del resultado anterior.
 
 ## 4. Decisiones cerradas
@@ -47,8 +70,14 @@ Cerradas en la base: #1530 (DTO), #1532 (contratos de catálogo/disk), #1534 (cr
 
 ## 9. Siguiente acción exacta
 
-Publicar el merge #1564 ya validado localmente y comprobar CI/SHA remoto, conservando señales/fixtures y reglas de #1562. #1527 necesita señales independientes para última vuelta/sesión: releer su issue antes de implementar, coordinar sobre el DTO live v10 integrado y conservar compatibilidad de archivos. QA física de #1562 y paridad histórica se siguen en su issue.
+El orquestador revisa los tres nuevos commits y el diff completo del PR
+draft #1616 antes de cualquier integración autorizada. VANTA-46 está Por revisar,
+con gates locales completos y push de ronda 2 verificados.
+QA física LMU/ACC pendiente.
+El seguimiento previo #1564/#1527 se consulta en sus issues: esta revisión no
+autoriza ejecutar esas features ni sustituye señales independientes para
+última vuelta/sesión. Conservar DTO live v10 y compatibilidad de archivos.
 
 ## 10. Última actualización
 
-2026-10-10 · GitHub #1564 · Codex. Nightly/#1576 y contrato DTO leídos; resolución autorizada de merge con plantilla de estado actual. Diario y checks en #1564; no ejecutar features de otras issues desde este handoff.
+2026-10-14 · GitHub #1606 / Plane VANTA-46 · Codex CLI. Ronda 2: N1/N2/N3 con RED→GREEN y commits propios; todos los gates locales verdes, push/PR draft y trackers de revisión verificados. QA física y CI remota completa pendientes. HEAD/CI finales se releen en la issue y el buzón. El estado anterior #1564 se conserva en sus párrafos; no ejecutar otras issues desde este handoff.

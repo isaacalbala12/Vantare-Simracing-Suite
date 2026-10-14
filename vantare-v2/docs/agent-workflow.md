@@ -50,9 +50,11 @@
 ## Roadmap público
 
 - La issue GitHub conserva alcance, decisiones y evidencia de código;
-  Plane refleja el estado del encargo. El roadmap público sigue en ClickUp/Supabase.
-- Isaac indica los cambios a Codex por chat; Codex actualiza la publicación
-  compartida en Supabase según `docs/roadmap-maintenance.md`. La app solo lee.
+  Plane refleja el estado del encargo.
+- Plane es la fuente del contenido; el servidor sincroniza Supabase según
+  `docs/roadmap-maintenance.md` (#1601). App/web solo leen la misma RPC pública.
+- Credenciales, despliegue, timer y primera publicación requieren autorización
+  separada; implementar/mergear no activa el publicador.
 - Los cambios de código siguen el flujo de rama, PR y CI; el contenido público
   ya no requiere modificar archivos ni abrir una PR.
 

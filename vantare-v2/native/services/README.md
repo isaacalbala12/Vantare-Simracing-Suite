@@ -1,5 +1,14 @@
 # Servicios nativos — ISA-1430
 
+**Corte combinado #1610/#1594:** protocolo services v9 (DTO v10/derechos v4
+independientes); recompilar Hub/services juntos. F7=C: campos escritos locales,
+etiquetas SQL fijas y salida estructurada por catálogo; no se envía prosa del tester.
+Rutas cerradas: current_v2, envío consentido por Edge `testing-report-submit`,
+crédito y acuse por fecha. La RPC directa no está permitida. Historial sin cuerpo
+privado; arreglado requiere versión válida. No hay cliente Plane ni referencia PostHog productiva.
+SQL y dependencias #1602/#1609 siguen sujetos a revisión e integración:
+[contrato vigente](../../docs/runbooks/testing-report-followup.md).
+
 `vantare-services` es miembro de `native/`: un workspace, `Cargo.lock`, edición
 y lints compartidas. Proceso de usuario bajo demanda, sin GPUI/simuladores.
 El supervisor `vantare` posee el auxiliar; el Hub solo manda comandos IPC.

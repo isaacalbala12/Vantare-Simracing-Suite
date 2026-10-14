@@ -224,8 +224,8 @@ fn sanitize(state: &mut State) {
             keep_if(gap, finite_gap);
         }
         finite(relative_s);
-        finite(lap_distance_m);
-        finite(lap_elapsed_s);
+        nonnegative(lap_distance_m);
+        nonnegative(lap_elapsed_s);
         keep_if(pose, |pose: &Pose| {
             [pose.x_m, pose.y_m, pose.yaw_rad]
                 .iter()
@@ -267,8 +267,11 @@ fn sanitize_player(player: &mut Player) {
         speed_mps,
         engine_speed_rad_s,
     } = telemetry;
-    for signal in [throttle, brake, clutch, speed_mps, engine_speed_rad_s] {
-        finite(signal);
+    for signal in [throttle, brake, clutch] {
+        fraction(signal);
+    }
+    for signal in [speed_mps, engine_speed_rad_s] {
+        nonnegative(signal);
     }
     keep_if(steering, |v| (-1.0..=1.0).contains(v));
     let Fuel {
@@ -352,6 +355,10 @@ fn finite_gap(gap: &Gap) -> bool {
 
 fn finite(quality: &mut Quality<f64>) {
     keep_if(quality, |value| value.is_finite());
+}
+
+fn nonnegative(quality: &mut Quality<f64>) {
+    keep_if(quality, |value| value.is_finite() && *value >= 0.0);
 }
 
 fn keep_if<T>(quality: &mut Quality<T>, ok: impl Fn(&T) -> bool) {

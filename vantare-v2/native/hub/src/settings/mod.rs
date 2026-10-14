@@ -64,7 +64,7 @@ impl Page {
             Self::Performance => "Nivel y frecuencia de tus widgets",
             Self::Updates => "Versión, canal y novedades",
             Self::Hotkeys => "Combinaciones globales",
-            Self::Privacy => "Fallos y uso anónimo",
+            Self::Privacy => "Fallos y uso opcional",
             Self::Diagnostics => "Fuentes, datos y registros",
         }
     }
@@ -123,7 +123,8 @@ pub(super) struct State {
     privacy: Result<privacy::Store, String>,
     privacy_focus: [FocusHandle; 2],
     privacy_policy_focus: FocusHandle,
-    consent_focus: [FocusHandle; 3],
+    consent_focus: [FocusHandle; 4],
+    usage_choice: Entity<orbit::Checkbox>,
     pub(super) appearance: appearance::Store,
     appearance_focus: [FocusHandle; 15],
     appearance_bounds: [Option<gpui::Bounds<gpui::Pixels>>; 2],
@@ -284,6 +285,14 @@ impl State {
         let prefs = general
             .as_ref()
             .map_or_else(|_| general::Preferences::default(), |store| store.value);
+        let usage_choice =
+            cx.new(|cx| orbit::Checkbox::new("Acepto compartir datos de uso", false, cx));
+        let consent_focus = [
+            cx.focus_handle(),
+            cx.focus_handle(),
+            cx.focus_handle(),
+            usage_choice.read(cx).focus_handle(),
+        ];
         let state = Self {
             general,
             general_focus: std::array::from_fn(|_| cx.focus_handle()),
@@ -298,7 +307,8 @@ impl State {
                 .and_then(|root| privacy::Store::load(&root)),
             privacy_focus: std::array::from_fn(|_| cx.focus_handle()),
             privacy_policy_focus: cx.focus_handle(),
-            consent_focus: std::array::from_fn(|_| cx.focus_handle()),
+            consent_focus,
+            usage_choice,
             page: Page::default(),
             panel_scroll: gpui::ScrollHandle::new(),
             panel_height: panel_height(f32::from(window.viewport_size().height)),

@@ -1,7 +1,7 @@
 import {
-  assertEquals,
-  assertRejects,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
+  deepStrictEqual as assertEquals,
+  rejects as assertRejects,
+} from "node:assert/strict";
 import {
   creatorPrice,
   type Http,
@@ -163,7 +163,7 @@ Deno.test("catalog: complete mapping, inherited IDs/trials preserved, rerun has 
     first.map.checkout_keys.pro_monthly?.polar_product_id,
     sandbox.checkout_keys.pro_monthly.polar_product_id,
   );
-  assertEquals<unknown>(
+  assertEquals(
     first.map.checkout_keys.pro_monthly?.trial,
     sandbox.checkout_keys.pro_monthly.trial,
   );
@@ -176,7 +176,6 @@ Deno.test("catalog: complete mapping, inherited IDs/trials preserved, rerun has 
     trialAntiAbuseConfirmed: true,
   });
   assertEquals(loaded.ok, true);
-  if (!loaded.ok) throw Error(loaded.message);
   for (const p of PRICES.plans) {
     const config = first.map.checkout_keys[p.key]!;
     for (const id of config.polar_price_ids) {

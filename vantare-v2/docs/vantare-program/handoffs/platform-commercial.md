@@ -15,6 +15,9 @@ P2-3: dos regresiones RED → GREEN. Conserva IDs activos/archivados observados
 antes del PATCH, IDs de entrada y nuevo precio; conflicto de propietario falla
 antes de escribir. Reejecución conserva el mapa con cero escrituras. Logs P2-3.
 Pendiente P2-2; sin llamadas Polar, secretos, deploy ni promoción.
+P3 barato: lint de los dos tests fallaba por imports HTTPS inline; assertions
+de biblioteca estándar `node:assert/strict` eliminan los dos errores sin
+desactivar reglas ni añadir dependencias. Logs P3 RED/GREEN separados.
 Falta identificador Plane VANTA-N en el encargo/#1620; se avisa en el buzón al
 orquestador sin crear tarea ni reutilizar el tracker Notion histórico.
 

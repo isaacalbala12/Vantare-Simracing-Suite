@@ -1,7 +1,7 @@
 import {
-  assertEquals,
-  assertRejects,
-} from "https://deno.land/std@0.224.0/assert/mod.ts";
+  deepStrictEqual as assertEquals,
+  rejects as assertRejects,
+} from "node:assert/strict";
 import { dryRunHttp, type Http, syncProPrices } from "./polar-pro-prices.ts";
 
 const ORG = "00000000-0000-0000-0000-000000000100";

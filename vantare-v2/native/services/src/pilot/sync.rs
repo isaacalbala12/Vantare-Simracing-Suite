@@ -31,8 +31,14 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
             let bytes = STANDARD.decode(photo.jpeg).map_err(|_| Error::Protocol)?;
             let hash = crate::content_hash(&bytes);
             let response = request.pilot_photo(&hash, Some(&bytes))?;
-            // Un reintento idempotente usa el mismo nombre inmutable.
-            if response.status != 409 {
+            // Storage puede devolver 400/409 por objeto existente. Solo se
+            // acepta su código tipado y se verifica el contenido por hash.
+            if duplicate(&response) {
+                let existing = request.pilot_photo(&hash, None)?.success()?.body;
+                if crate::content_hash(&existing) != hash {
+                    return Err(Error::Protocol);
+                }
+            } else {
                 response.success()?;
             }
             Some(hash)
@@ -66,4 +72,29 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
         local.accept_remote(remote.profile, remote.revision)?;
     }
     Ok(())
+}
+
+fn duplicate(response: &crate::http::Response) -> bool {
+    matches!(response.status, 400 | 409)
+        && response.json::<serde_json::Value>().is_ok_and(|body| {
+            matches!(body.get("code").or_else(|| body.get("error")).and_then(serde_json::Value::as_str),
+                Some("Duplicate" | "KeyAlreadyExists" | "ResourceAlreadyExists"))
+        })
+}
+
+#[cfg(test)]
+mod duplicate_tests {
+    use super::*;
+    #[test]
+    fn unrelated_errors_are_never_accepted_as_existing_photos() {
+        for (status, body, expected) in [
+            (400, r#"{"error":"Duplicate"}"#, true),
+            (409, r#"{"code":"KeyAlreadyExists"}"#, true),
+            (400, r#"{"error":"InvalidMimeType"}"#, false),
+            (409, "{}", false),
+            (401, r#"{"error":"Duplicate"}"#, false),
+        ] {
+            assert_eq!(duplicate(&crate::http::Response { status, body: body.as_bytes().to_vec() }), expected);
+        }
+    }
 }

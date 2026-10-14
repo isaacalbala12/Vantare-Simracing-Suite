@@ -2,6 +2,31 @@ use super::*;
 use crate::{bridge::Config, http::Http, test_http::Server};
 
 #[test]
+fn existing_photo_400_is_verified_and_network_failure_preserves_pending_copy() {
+    let server = Server::start(vec![
+        (200, serde_json::json!({"version":1,"account_id":"550e8400-e29b-41d4-a716-446655440000","data_access_token":"data-fixture","expires_at":160}).to_string()),
+        (200, "null".into()),
+        (400, serde_json::json!({"statusCode":"409","error":"Duplicate","message":"The resource already exists"}).to_string()),
+    ]);
+    let (root, store) = crate::test_store("pilot-duplicate");
+    let account = crate::account::fixture(&server.base, &store);
+    let http = Http::default();
+    let config = Config { authorize: server.base.join("functions/v1/native-account-authorize").unwrap(), supabase: server.base.clone(), anon_key: "public-fixture".into() };
+    let session = config.authorize(&http, &account, 100).unwrap();
+    let mut bytes = std::io::Cursor::new(Vec::new());
+    image::DynamicImage::new_rgb8(300,300).write_to(&mut bytes, image::ImageFormat::Png).unwrap();
+    let mut local = Local::open(&root, None, None).unwrap();
+    local.save(PilotProfile { photo: Some(super::super::crop_photo(bytes.get_ref(), super::super::Crop::default()).unwrap()), ..Default::default() }, 0).unwrap();
+    let before = local.state().clone();
+    let request = session.request(&http, &config, &account, 100);
+    assert_eq!(synchronize(&mut local, &request), Err(Error::Offline));
+    assert_eq!(*local.state(), before);
+    server.finish();
+    drop(local); drop(account); drop(store);
+    std::fs::remove_dir_all(root).unwrap();
+}
+
+#[test]
 fn sync_uses_verified_bridge_and_cas_and_preserves_local_on_conflict_or_offline() {
     for (status, body, expected) in [
         (200, "null".to_owned(), Ok(())),

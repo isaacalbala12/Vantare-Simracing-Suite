@@ -254,7 +254,7 @@ fn review_r2_f3_expanded_redaction_fits_sql_and_retries_exact_preview() {
                 title: &title,
                 body: &body,
                 selection: Selection {
-                    items: Default::default(),
+                    items: std::collections::BTreeSet::new(),
                 },
                 consent: true,
                 private_names: &[],

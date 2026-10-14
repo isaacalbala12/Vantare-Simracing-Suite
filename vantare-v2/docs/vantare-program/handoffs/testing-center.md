@@ -1,9 +1,19 @@
 # Handoff vivo — Testing Center
 
-Estado #1594 / VANTA-38/49: reanudado por CLI sobre 197547a1 limpio.
-Re-review r2: F1 (P1), F2/F3 (P2), correcciones en esta rama sin activación.
-Migración aplicada anteriormente; worker inerte. PR #1602 a nightly,
-auto-merge apagado; no integrado ni desplegado.
+Estado #1594 / VANTA-38/49: F1 (P1), F2/F3 (P2) de la re-review r2
+corregidos y publicados. VANTA-38/49 Por revisar verificado el 14/10/2026.
+PR #1602 draft a nightly, auto-merge OFF, sin merge ni despliegue. Migración
+anterior preservada; ninguna acción de Supabase prod en esta reanudación.
+
+Gates locales finales: fmt/check/Clippy PASS, Nextest 1658/1658 (7 skips),
+lifecycle 18/18, Python 39/39 y quality 456 huellas PASS. Fallo inicial de
+Clippy en la fixture F3 conservado y corregido con BTreeSet::new sin allow.
+Commits F1 8add5b53, F2 2f715252, F3 ac366da0; cierre de lint/evidencia aparte.
+GitGuardian FAILURE y conflicto con nightly verificados en ac366da0; CI
+remoto no verde. Isaac coordina re-review/integración. No proveedor activo,
+envíos reales a T3/Intake, cron, LOGIN/password ni release nuevos.
+[Tabla y reproducción r2](../../../../tools/triage/review-1602-r2-regressions.md).
+Evidencia local E:/tmp/isa1594-r2-evidence/ con manifest SHA256.
 
 ## Re-review r2 · 14/10/2026
 
@@ -12,7 +22,7 @@ POST mock Intake. RED Rust falla en prepare/preview para accountId escapado.
 Normalización acotada de comillas escapadas, sin decodificar JSON/Unicode;
 username JSON entra al mismo filtro. Regresiones review_r2_f1_json_representations_*
 cubren profundidad 0–3, resumen generado e idempotencia. Evidencia local
-E:/tmp/isa1594-r2-evidence/f1-*. Gates completos pendientes al cerrar F3.
+E:/tmp/isa1594-r2-evidence/f1-*. Gates completos: ver cierre r2 arriba.
 
 
 [Histórico anterior por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/testing-center.md).
@@ -225,7 +235,7 @@ spool. Regresiones review_r2_f2_* PASS Windows y POSIX (Ubuntu local).
 LoadCredential usa nombre dedicado de credstore, sin ruta obligatoria.
 Unidad temporal de prueba systemd 259 PASS sin credencial, /bin/true y collect;
 no se instaló la unidad del worker. Runbook actualizado para futura activación.
-Evidencia E:/tmp/isa1594-r2-evidence/f2-*. F3/gates finales siguen pendientes.
+Evidencia E:/tmp/isa1594-r2-evidence/f2-*. Gates finales: ver cierre r2 arriba.
 
 
 ### F3 · contrato SQL tras expansión de redacción
@@ -238,4 +248,4 @@ longitudes finales conformes, sin IPv6 original, primer POST loopback 500 y
 reintento con bytes idénticos al preview. Incluye presupuesto HTTP/reintento
 existentes: 4/4 PASS. Suite Python final 39/39 PASS. Evidencia f3-*.
 No SQL/pgTAP nuevos: contrato de longitud contrastado con CHECK versionado;
-no conexión ni cambio a Supabase. Gates completos nativos pendientes.
+no conexión ni cambio a Supabase. Gates completos nativos PASS en el cierre r2.

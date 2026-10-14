@@ -121,7 +121,7 @@ export async function verifyBridgeAccount(
     const c = JSON.parse(new TextDecoder().decode(decode(parts[1])));
     const t = Math.floor(now.getTime() / 1000);
     if (
-      c.iss !== `${config.url}/auth/v1` || c.aud !== "authenticated" ||
+      c.iss !== `${config.url}/native-data/v1` || c.aud !== "vantare-native-data" ||
       c.role !== "authenticated" || !isUuid(c.sub) ||
       !Number.isInteger(c.iat) || !Number.isInteger(c.exp) || c.iat > t ||
       c.exp <= t || c.exp <= c.iat || c.exp - c.iat > 300 ||
@@ -137,8 +137,7 @@ export async function verifyBridgeAccount(
 
 async function account(request: Request, now: Date): Promise<string> {
   const config = {
-    secret: Deno.env.get("NATIVE_DATA_JWT_SECRET") ??
-      Deno.env.get("SUPABASE_JWT_SECRET") ?? "",
+    secret: Deno.env.get("NATIVE_DATA_JWT_SECRET") ?? "",
     url: Deno.env.get("SUPABASE_URL") ?? "",
     issuer: (Deno.env.get("CLERK_ISSUER") ?? "").replace(/\/$/, ""),
   };

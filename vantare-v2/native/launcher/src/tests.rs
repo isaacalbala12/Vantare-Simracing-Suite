@@ -14,6 +14,45 @@ use std::{
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn onboarding_acc_uses_steam_libraries_without_adding_a_launcher_app() {
+    let tree = Tree::new();
+    let library = tree.0.join("segunda");
+    tree.file(
+        "steam/steamapps/libraryfolders.vdf",
+        format!(
+            r#""libraryfolders" {{ "1" {{ "path" "{}" }} }}"#,
+            library.to_string_lossy().replace('\\', "\\\\")
+        )
+        .as_bytes(),
+    );
+    let manifest = tree.file("segunda/steamapps/appmanifest_805550.acf",
+        br#""AppState" { "appid" "805550" "StateFlags" "4" "installdir" "Assetto Corsa Competizione" }"#);
+    tree.file("segunda/steamapps/common/Assetto Corsa Competizione/AC2/Binaries/Win64/AC2-Win64-Shipping.exe", b"fixture no ejecutable");
+    let scan = || {
+        Discovery::scan(
+            &Document::default().apps,
+            Sources {
+                steam_roots: vec![tree.0.join("steam")],
+                ..Sources::default()
+            },
+        )
+    };
+    let found = scan();
+    assert!(found.onboarding_acc_installed);
+    assert!(found.app("acc").is_none());
+    assert!(!CATALOG.iter().any(|app| app.id == "acc"));
+    for bytes in [
+        br#""appid" "805550" "StateFlags" "2" "installdir" "Assetto Corsa Competizione""#
+            .as_slice(),
+        br#""appid" "2399420" "StateFlags" "4""#.as_slice(),
+        b"invalid".as_slice(),
+    ] {
+        fs::write(&manifest, bytes).expect("manifest fixture");
+        assert!(!scan().onboarding_acc_installed);
+    }
+}
+
+#[test]
 fn isa1548_unc_portable_does_not_block_local_first_run_migration() {
     let tree = Tree::new();
     let settings = tree.file("roaming/configs/app-settings.json", b"{}");

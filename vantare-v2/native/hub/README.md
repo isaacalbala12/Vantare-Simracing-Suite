@@ -1,5 +1,23 @@
 # Hub nativo (ISA-1430)
 
+## #1628 · Primer arranque
+
+El asistente GPUI guarda el kit en el layout y el consentimiento en privacy.json.
+Automático es la opción inicial/recomendada: resuelve Equilibrado, o Ahorro si
+el PC tiene ≤4 núcleos físicos o menos de 8 GiB de RAM. La lectura local de
+CPU (registro/topología Windows), RAM (GlobalMemoryStatusEx) y GPU (primer
+adaptador DXGI de hardware) ocurre una vez al abrir el asistente; no se envía.
+Un dato no disponible se muestra como tal y no se inventa. No hay medición en
+carrera ni ajuste continuo: se guarda la cadencia resuelta y la elección
+Automático en general.json. Los cinco niveles manuales siguen disponibles.
+
+LMU usa el discovery del Launcher. ACC solo se marca para el onboarding a
+partir del manifest instalado en las bibliotecas Steam; no entra en el Launcher.
+Los tres proveedores de cuenta usan AccountBegin hasta #1631. Pro conserva
+la compra existente; Pro Plus y Launch Edition abren https://vantare.app/#precios
+sin crear un checkout ni requerir sesión. Los cuatro widgets Gratis se
+reconcilian en #1633, sin modificar derechos comerciales en esta issue.
+
 ## #1564 · Widgets por sesión
 
 Standings → Contenido abre Práctica / Qualy / Carrera, con columnas y formatos

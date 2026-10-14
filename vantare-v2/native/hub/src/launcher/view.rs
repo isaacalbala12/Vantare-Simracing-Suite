@@ -151,11 +151,12 @@ mod showcase;
 
 impl Launcher {
     pub(crate) fn onboarding_simulators(&self) -> [bool; 2] {
-        ["lmu", "acc"].map(|id| {
+        [
             self.discovered
-                .app(id)
-                .is_some_and(|app| app.availability.installed)
-        })
+                .app("lmu")
+                .is_some_and(|app| app.availability.installed),
+            self.discovered.onboarding_acc_installed,
+        ]
     }
     pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
         if self.adapt != adapt {
@@ -744,6 +745,7 @@ impl Launcher {
         }
         // Reusar la foto del discovery sin volver a recorrer discos en el hilo UI.
         let found = Discovery {
+            onboarding_acc_installed: false,
             apps: self.discovered.apps.clone(),
             steam_executable: self.discovered.steam_executable.clone(),
             warnings: vec![],
@@ -808,6 +810,7 @@ impl Launcher {
         };
         let selected = super::chain::retry_steps(&profile, &self.progress, scope);
         let found = Discovery {
+            onboarding_acc_installed: false,
             apps: self.discovered.apps.clone(),
             steam_executable: self.discovered.steam_executable.clone(),
             warnings: vec![],

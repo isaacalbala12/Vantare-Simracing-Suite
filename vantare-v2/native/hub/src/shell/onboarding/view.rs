@@ -127,6 +127,7 @@ impl Hub {
             .min(f32::from(window.viewport_size().height) / 900.0)
             .max(0.5);
         let state = self.onboarding.as_ref().expect("onboarding visible");
+        let backdrop = state.backgrounds[1].clone();
         let step = state.step;
         let mut copy = div()
             .w(px(600.0 * s))
@@ -295,6 +296,16 @@ impl Hub {
             .id("onboarding")
             .size_full()
             .bg(rgb(0x000a_0909))
+            .relative()
+            .when_some(backdrop, |d, image| {
+                d.child(
+                    gpui::img(image)
+                        .absolute()
+                        .inset_0()
+                        .size_full()
+                        .object_fit(gpui::ObjectFit::Fill),
+                )
+            })
             .track_focus(&self.focus)
             .flex()
             .flex_col()
@@ -421,6 +432,7 @@ impl Hub {
         };
         let writing = length < state.text.chars().count();
         let bubble = div()
+            .relative()
             .flex_1()
             .min_w_0()
             .px(px(20.0 * s))
@@ -428,25 +440,33 @@ impl Hub {
             .pb(px(16.0 * s))
             .rounded(px(18.0 * s))
             .border_1()
-            .border_color(rgb(0x0040_383b))
-            .bg(rgb(0x001a_1617))
+            .border_color(orbit::tint(0x00fa_f7f7, 0.14))
+            .bg(orbit::gradient([0x0020_1e1f, 0x0017_1516], 180.0))
+            .shadow(vec![gpui::BoxShadow {
+                color: orbit::tint(0x0000_0000, 0.35),
+                offset: gpui::point(px(0.0), px(24.0 * s)),
+                blur_radius: px(50.0 * s),
+                spread_radius: px(0.0),
+                inset: false,
+            }])
+            .child(art::radio_tail(s))
             .child(
                 div()
                     .flex()
                     .items_center()
                     .gap(px(8.0 * s))
                     .line_height(px(10.0 * s))
-                    .child(div().size(px(6.0 * s)).rounded_full().bg(rgb(if writing {
+                    .child(div().size(px(7.0 * s)).rounded_full().bg(rgb(if writing {
                         0x00ff_6b6b
                     } else {
                         0x0088_7f82
                     })))
                     .child(orbit::tracked_text(
-                        "VANTA  ASISTENTE",
-                        10.0 * s,
+                        "VANTA · ASISTENTE",
+                        9.6 * s,
                         700,
                         orbit::ink_3(cx),
-                        1.1 * s,
+                        1.7 * s,
                         cx,
                     )),
             )
@@ -457,8 +477,8 @@ impl Hub {
                         state.text.chars().take(length).collect::<String>(),
                         if writing { "▌" } else { "" }
                     ),
-                    16.0 * s,
-                    600,
+                    16.96 * s,
+                    500,
                     orbit::ink(cx),
                     cx,
                 )
@@ -471,9 +491,9 @@ impl Hub {
             div()
                 .flex()
                 .items_center()
-                .gap(px(30.0 * s))
+                .gap(px(18.0 * s))
                 .h(px(120.0 * s))
-                .child(art::helmet(state, 120.0 * s, reduced))
+                .child(art::helmet(state, 132.0 * s, reduced))
                 .child(bubble)
         }
     }
@@ -672,18 +692,13 @@ impl Hub {
     }
     fn onboarding_performance(&self, s: f32, cx: &mut Context<Self>) -> Div {
         let state = self.onboarding.as_ref().expect("visible");
-        let capture = state.capture;
         let levels = self.onboarding_levels(s, cx);
         div()
             .flex()
             .flex_col()
             .gap(px(22.0 * s))
             .child(text(
-                if capture {
-                    "▣  Ryzen 7 5800X     ▣  RTX 3070     ▣  32 GB"
-                } else {
-                    "Equipo · Detección automática pendiente"
-                },
+                state.equipment.summary(),
                 13.0 * s,
                 600,
                 orbit::ink_3(cx),
@@ -698,7 +713,11 @@ impl Hub {
                     .p(px(20.0 * s))
                     .rounded(px(14.0 * s))
                     .border_1()
-                    .border_color(rgb(0x00d8_0000))
+                    .border_color(rgb(if state.choices.automatic {
+                        0x00d8_0000
+                    } else {
+                        0x0029_2325
+                    }))
                     .bg(rgb(0x0012_1011))
                     .flex()
                     .items_center()
@@ -722,24 +741,10 @@ impl Hub {
                                     .items_center()
                                     .gap(px(10.0 * s))
                                     .child(text("Automático", 17.0 * s, 700, orbit::ink(cx), cx))
-                                    .child(text(
-                                        if capture { "RECOMENDADO" } else { "PENDIENTE" },
-                                        10.0 * s,
-                                        700,
-                                        if capture {
-                                            0x0022_c55e
-                                        } else {
-                                            orbit::ink_3(cx)
-                                        },
-                                        cx,
-                                    )),
+                                    .child(text("RECOMENDADO", 10.0 * s, 700, 0x0022_c55e, cx)),
                             )
                             .child(text(
-                                if capture {
-                                    "Mide tu PC en carrera y elige el nivel por ti."
-                                } else {
-                                    "No disponible aún · puedes fijar un nivel."
-                                },
+                                "Elige Equilibrado o Ahorro según los núcleos y la RAM de tu PC.",
                                 13.0 * s,
                                 400,
                                 orbit::ink_3(cx),
@@ -747,13 +752,11 @@ impl Hub {
                             )),
                     )
                     .child(check(state.choices.automatic, s, cx))
-                    .opacity(if capture { 1.0 } else { 0.55 })
-                    .tab_stop(capture)
-                    .on_click(cx.listener(move |hub, _, _, cx| {
-                        if capture && let Some(state) = &mut hub.onboarding {
-                            state.choices.automatic = true;
-                            state.choices.level = Level::High;
-                            state.say("Automático: el nivel se ajusta solo durante la carrera.");
+                    .tab_stop(true)
+                    .on_click(cx.listener(|hub, _, _, cx| {
+                        if let Some(state) = &mut hub.onboarding {
+                            state.choices.select_automatic(&state.equipment);
+                            state.say(model::SAY[4]);
                             cx.notify();
                         }
                     })),
@@ -866,7 +869,7 @@ impl Hub {
                     ),
                     (
                         "Rendimiento",
-                        if choices.automatic && state.capture {
+                        if choices.automatic {
                             "Automático"
                         } else {
                             choices.level.label()

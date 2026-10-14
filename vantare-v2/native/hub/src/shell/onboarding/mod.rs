@@ -2,15 +2,33 @@
 mod art;
 mod view;
 use super::Hub;
-use crate::onboarding::{Choices, SAY};
+use crate::onboarding::{Choices, Equipment, SAY};
 use gpui::{Context, Window, prelude::*};
 use std::time::{Duration, Instant};
 use vantare_services::diagnostics::Usage;
+
+fn plan_request(
+    product: Option<crate::services::protocol::BillingProduct>,
+    signed: bool,
+) -> Option<crate::services::protocol::Command> {
+    use crate::services::protocol::{BillingProduct, Command};
+    matches!(product, Some(BillingProduct::ProMonthly)).then(|| {
+        if signed {
+            Command::Purchase {
+                product: BillingProduct::ProMonthly,
+            }
+        } else {
+            Command::AccountBegin
+        }
+    })
+}
 
 #[allow(clippy::struct_excessive_bools)] // Sesión, QA, movimiento del SO y elección manual son hechos independientes.
 pub(super) struct State {
     pub step: usize,
     pub choices: Choices,
+    pub equipment: Equipment,
+    pub backgrounds: [Option<std::sync::Arc<gpui::RenderImage>>; 2],
     pub found: [bool; 2],
     pub simulators_touched: bool,
     pub text: String,
@@ -31,6 +49,33 @@ impl State {
             .filter(|n| *n < 7)
             .unwrap_or(0);
         let capture = capture.is_some();
+        let equipment = if capture {
+            Equipment {
+                cpu: Some("Ryzen 7 5800X".into()),
+                cores: Some(8),
+                ram_bytes: Some(32 * 1024 * 1024 * 1024),
+                gpu: Some("RTX 3070".into()),
+            }
+        } else {
+            Equipment::detect()
+        };
+        let mut choices = Choices::default();
+        choices.select_automatic(&equipment);
+        // Assets estáticos preparados una vez: también deben estar listos en la primera
+        // pintura con movimiento reducido, sin esperar un clic para mostrar el fondo.
+        let backgrounds = [
+            include_bytes!("../../../assets/onboarding/panel.svg").as_slice(),
+            include_bytes!("../../../assets/onboarding/backdrop.svg").as_slice(),
+        ]
+        .map(|bytes| {
+            cx.svg_renderer()
+                .render_single_frame(bytes, 1.0)
+                .map_err(|error| error.to_string())
+        });
+        let artwork_error = backgrounds
+            .iter()
+            .find_map(|result| result.as_ref().err().cloned());
+        let backgrounds = backgrounds.map(Result::ok);
         let mut previews = Vec::new();
         let fixtures = crate::scene::fixtures_root();
         for kind in crate::onboarding::ORDER {
@@ -58,13 +103,15 @@ impl State {
         }
         Self {
             step,
-            choices: Choices::default(),
+            choices,
+            equipment,
+            backgrounds,
             found: [false; 2],
             simulators_touched: false,
             text: SAY[step].into(),
             spoken: Instant::now(),
             pointer: (0.0, 0.0),
-            error: None,
+            error: artwork_error,
             capture,
             signed: false,
             system_reduced: crate::shell::settings::windows::reduced_motion(),
@@ -87,9 +134,6 @@ impl State {
                 "Inicia sesión para conectar tu cuenta. Tu configuración se guarda en este PC.",
             );
         }
-        if self.step == 4 && !self.capture {
-            self.say("Elige un nivel de rendimiento. La detección automática todavía no está disponible.");
-        }
     }
 }
 impl Hub {
@@ -104,18 +148,14 @@ impl Hub {
         if state.capture {
             return;
         }
-        let Some(product) = product else {
-            state.error =
-                Some("Pro Plus todavía no está disponible en el servicio de compra.".into());
-            cx.notify();
+        // #1628 R2: Plus y Launch remiten a precios; nunca inventar un SKU.
+        let Some(command) = plan_request(product, state.signed) else {
+            cx.open_url("https://vantare.app/#precios");
             return;
         };
-        let command = if state.signed {
-            crate::services::protocol::Command::Purchase { product }
-        } else {
+        if !state.signed {
             state.say("Conecta tu cuenta para consultar los planes disponibles.");
-            crate::services::protocol::Command::AccountBegin
-        };
+        }
         self.remote
             .update(cx, |remote, cx| remote.request(command, cx));
         cx.notify();
@@ -222,6 +262,7 @@ impl Hub {
                         let mut next = store.value;
                         next.onboarding_completed = true;
                         next.onboarding_simulators = choices.simulators;
+                        next.onboarding_automatic = choices.automatic;
                         store.save(next)
                     })
             });
@@ -300,5 +341,28 @@ impl Hub {
             }
         })
         .detach();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::services::protocol::{BillingProduct, Command};
+    #[test]
+    fn plus_and_launch_open_prices_without_login_or_checkout() {
+        for signed in [false, true] {
+            assert!(plan_request(None, signed).is_none());
+            assert!(plan_request(Some(BillingProduct::LaunchLifetime), signed).is_none());
+        }
+        assert!(matches!(
+            plan_request(Some(BillingProduct::ProMonthly), false),
+            Some(Command::AccountBegin)
+        ));
+        assert!(matches!(
+            plan_request(Some(BillingProduct::ProMonthly), true),
+            Some(Command::Purchase {
+                product: BillingProduct::ProMonthly
+            })
+        ));
     }
 }

@@ -1,4 +1,6 @@
 //! Elecciones del primer arranque; sin red ni detección paralela al Launcher.
+mod equipment;
+pub use equipment::Equipment;
 use vantare_ui::{Kind, performance::Level};
 
 pub const SAY: [&str; 7] = [
@@ -113,6 +115,11 @@ impl Default for Choices {
     }
 }
 impl Choices {
+    /// Automático resuelve una cadencia existente; no mide ni cambia el juego.
+    pub fn select_automatic(&mut self, equipment: &Equipment) {
+        self.automatic = true;
+        self.level = equipment.recommended_level();
+    }
     pub fn can_advance(&self, step: usize) -> bool {
         match step {
             1 => self.simulators.iter().any(|on| *on),

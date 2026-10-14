@@ -5,46 +5,53 @@ use super::{
 use crate::{onboarding as model, orbit};
 use gpui::{Context, Div, IntoElement, PathBuilder, div, prelude::*, px, rgb};
 use vantare_ui::{Kind, performance::Level};
-fn panel_background() -> impl IntoElement {
+// Gradiente radial y franjas del contrato, SVG local pintado por GPUI; sin HTML.
+fn panel_background(state: &State, s: f32) -> Div {
+    div()
+        .absolute()
+        .inset_0()
+        .size_full()
+        .when_some(state.backgrounds[0].clone(), |d, image| {
+            d.child(
+                gpui::img(image)
+                    .absolute()
+                    .inset_0()
+                    .size_full()
+                    .rounded(px(22.0 * s))
+                    .object_fit(gpui::ObjectFit::Fill),
+            )
+        })
+}
+
+pub(super) fn radio_tail(s: f32) -> impl IntoElement {
     gpui::canvas(
         |_, _, _| (),
         move |bounds, (), window, _| {
-            window.paint_quad(gpui::quad(
-                bounds,
-                gpui::Corners::all(bounds.size.width * (22.0 / 832.0)),
-                gpui::linear_gradient(
-                    155.0,
-                    gpui::linear_color_stop(rgb(0x00c8_141f), 0.0),
-                    gpui::linear_color_stop(rgb(0x004a_0710), 1.0),
-                ),
-                gpui::Edges::default(),
-                gpui::transparent_black(),
-                gpui::BorderStyle::default(),
-            ));
             let at = |x: f32, y: f32| {
-                gpui::point(
-                    bounds.origin.x + bounds.size.width * x,
-                    bounds.origin.y + bounds.size.height * y,
-                )
+                gpui::point(bounds.origin.x + px(x * s), bounds.origin.y + px(y * s))
             };
-            for i in 0u8..6 {
-                let x = 0.5 + f32::from(i) * 0.18;
-                let mut stripe = PathBuilder::fill();
-                stripe.move_to(at(x, 0.0));
-                stripe.line_to(at(x + 0.064, 0.0));
-                stripe.line_to(at(x - 0.30, 1.0));
-                stripe.line_to(at(x - 0.364, 1.0));
-                stripe.close();
-                if let Ok(path) = stripe.build() {
-                    window.paint_path(path, orbit::tint(0x0000_0000, 0.14));
-                }
+            let mut fill = PathBuilder::fill();
+            fill.move_to(at(7.0, 0.0));
+            fill.line_to(at(0.0, 7.0));
+            fill.line_to(at(7.0, 14.0));
+            fill.line_to(at(14.0, 7.0));
+            fill.close();
+            if let Ok(path) = fill.build() {
+                window.paint_path(path, rgb(0x0017_1516));
+            }
+            let mut edge = PathBuilder::stroke(px(s));
+            edge.move_to(at(7.0, 0.0));
+            edge.line_to(at(0.0, 7.0));
+            edge.line_to(at(7.0, 14.0));
+            if let Ok(path) = edge.build() {
+                window.paint_path(path, orbit::tint(0x00fa_f7f7, 0.14));
             }
         },
     )
     .absolute()
-    .left(px(0.0))
-    .top(px(0.0))
-    .size_full()
+    .left(px(-7.0 * s))
+    .top(px(26.0 * s))
+    .size(px(14.0 * s))
 }
 
 pub(super) fn helmet(state: &State, width: f32, reduced: bool) -> Div {
@@ -197,7 +204,14 @@ impl Hub {
             .rounded(px(22.0 * s))
             .overflow_hidden()
             .bg(rgb(0x007a_0b15))
-            .child(panel_background());
+            .shadow(vec![gpui::BoxShadow {
+                color: orbit::tint(0x0028_0008, 0.45),
+                offset: gpui::point(px(0.0), px(40.0 * s)),
+                blur_radius: px(100.0 * s),
+                spread_radius: px(0.0),
+                inset: false,
+            }])
+            .child(panel_background(state, s));
         let content = match step {
             0 => div()
                 .size_full()
@@ -235,11 +249,7 @@ impl Hub {
             3 => Self::onboarding_plans(s, cx),
             4 => {
                 let automatic = state.choices.automatic;
-                let level = if state.capture && automatic {
-                    Level::High
-                } else {
-                    state.choices.level
-                };
+                let level = state.choices.level;
                 div()
                     .size_full()
                     .flex()
@@ -249,7 +259,7 @@ impl Hub {
                     .gap(px(24.0 * s))
                     .child(gauge(level, s))
                     .child(heading(
-                        if automatic && state.capture {
+                        if automatic {
                             "AUTOMÁTICO"
                         } else {
                             level.label()
@@ -258,10 +268,10 @@ impl Hub {
                         cx,
                     ))
                     .child(text(
-                        if state.capture && automatic {
-                            "Ahora en Alto · recomendado para tu PC"
+                        if automatic {
+                            format!("Ahora en {} · recomendado para tu PC", level.label())
                         } else {
-                            "Nivel de cadencia de los widgets"
+                            "Nivel de cadencia de los widgets".into()
                         },
                         15.0 * s,
                         500,

@@ -29,6 +29,7 @@ impl Density {
 pub(in crate::shell) struct Preferences {
     pub onboarding_completed: bool,
     pub onboarding_simulators: [bool; 2],
+    pub onboarding_automatic: bool,
     pub density: Density,
     pub startup: bool,
     pub minimized: bool,
@@ -42,6 +43,7 @@ impl Default for Preferences {
             // Los JSON anteriores al onboarding pertenecen a instalaciones existentes.
             onboarding_completed: true,
             onboarding_simulators: [true, false],
+            onboarding_automatic: false,
             density: Density::Balanced,
             startup: false,
             minimized: false,
@@ -244,6 +246,7 @@ mod tests {
         assert!(!store.value.onboarding_completed);
         let mut next = store.value;
         next.onboarding_completed = true;
+        next.onboarding_automatic = true;
         store.save(next).expect("completed");
         assert!(
             Store::load(&root)
@@ -251,7 +254,19 @@ mod tests {
                 .value
                 .onboarding_completed
         );
+        assert!(
+            Store::load(&root)
+                .expect("automatic roundtrip")
+                .value
+                .onboarding_automatic
+        );
         std::fs::write(root.join("general.json"), b"{}").expect("legacy");
+        assert!(
+            !Store::load(&root)
+                .expect("legacy manual")
+                .value
+                .onboarding_automatic
+        );
         assert!(
             Store::load(&root)
                 .expect("existing installation")

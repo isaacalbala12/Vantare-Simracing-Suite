@@ -43,6 +43,14 @@ const WIDGETS: &[(&str, &[u8])] = widgets![
 ];
 const ONBOARDING: &[(&str, &[u8])] = &[
     (
+        "onboarding/panel.svg",
+        include_bytes!("../../assets/onboarding/panel.svg"),
+    ),
+    (
+        "onboarding/backdrop.svg",
+        include_bytes!("../../assets/onboarding/backdrop.svg"),
+    ),
+    (
         "onboarding/discord.svg",
         include_bytes!("../../assets/onboarding/discord.svg"),
     ),

@@ -36,6 +36,8 @@ pub struct Sources {
 #[derive(Default)]
 pub struct Discovery {
     pub apps: Vec<Detected>,
+    /// Solo onboarding: ACC no se añade al catálogo ni a los perfiles del Launcher.
+    pub onboarding_acc_installed: bool,
     pub steam_executable: Option<PathBuf>,
     pub warnings: Vec<String>,
 }
@@ -257,6 +259,27 @@ impl Discovery {
             a.to_string_lossy()
                 .eq_ignore_ascii_case(&b.to_string_lossy())
         });
+        let mut acc = Detected {
+            id: "acc".into(),
+            executable: None,
+            source: "Steam",
+            availability: Availability::default(),
+        };
+        detect_steam(
+            &super::CatalogApp {
+                id: "acc",
+                name: "Assetto Corsa Competizione",
+                category: "Simulador",
+                executables: &[], // Solo estado instalado; no recorrer archivos ni preparar lanzamiento.
+                matchers: &[],
+                paths: &[],
+                steam_id: Some(805_550),
+            },
+            &libraries,
+            &mut acc,
+            &mut result.warnings,
+        );
+        result.onboarding_acc_installed = acc.availability.installed;
         let mut steam_files = BTreeMap::new();
         let mut budget = 20000;
         for library in &libraries {
@@ -416,7 +439,7 @@ fn detect_steam(
             .and_then(|flag| flag.parse::<u32>().ok())
             .is_some_and(|flags| flags & 4 != 0);
         detected.availability.installed |= installed;
-        if !installed || detected.executable.is_some() {
+        if !installed || detected.executable.is_some() || official.executables.is_empty() {
             continue;
         }
         if let Some(dir) = vdf_values(&text, "installdir").first() {

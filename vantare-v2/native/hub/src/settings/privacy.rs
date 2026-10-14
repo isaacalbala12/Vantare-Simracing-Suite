@@ -25,7 +25,7 @@ pub(super) struct Store {
     pub value: Privacy,
     path: PathBuf,
     observed: Option<Vec<u8>>,
-    _cleanup: Option<cleanup::Cleanup>,
+    cleanup: Option<cleanup::Cleanup>,
 }
 impl Store {
     pub fn load(root: &Path) -> Result<Self, String> {
@@ -45,7 +45,7 @@ impl Store {
             value,
             path,
             observed,
-            _cleanup: cleanup,
+            cleanup,
         };
         if !store.value.usage_decided
             && let Some(usage) = vantare_services::diagnostics::installer::choice(root)
@@ -74,6 +74,13 @@ impl Store {
         self.observed = saved;
         self.value = next;
         Ok(())
+    }
+}
+
+impl Drop for Store {
+    fn drop(&mut self) {
+        // Cancela y reúne el reintento antes de liberar el estado de privacidad.
+        drop(self.cleanup.take());
     }
 }
 
@@ -305,7 +312,7 @@ mod tests {
         let mut store = Store::load(&path).expect("controls despite cleanup Busy");
         assert!(store.value.usage);
         assert!(path.join("crashes/00.json").exists());
-        let cleanup = store._cleanup.take().expect("retry scheduled");
+        let cleanup = store.cleanup.take().expect("retry scheduled");
         drop(guard);
         cleanup.finish();
         assert!(!path.join("crashes/00.json").exists());

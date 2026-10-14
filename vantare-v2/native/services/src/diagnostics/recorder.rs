@@ -85,14 +85,13 @@ impl Recorder {
                         before_publish(value);
                     }
                     let Ok(mut state) = current.lock() else { break };
-                    match privacy {
-                        Ok(value) => state.consent(value),
-                        Err(_) => {
-                            if let Some(value) = &mut state.privacy {
-                                value.usage = false;
-                            }
-                            state.queue.clear();
+                    if let Ok(value) = privacy {
+                        state.consent(value);
+                    } else {
+                        if let Some(value) = &mut state.privacy {
+                            value.usage = false;
                         }
+                        state.queue.clear();
                     }
                     if state.queue.is_empty() {
                         // Refresca decisiones de otros procesos incluso sin observaciones.
@@ -362,11 +361,20 @@ mod tests {
         let (writing, entered) = mpsc::channel();
         let (release, blocked) = mpsc::channel();
         let (done, persisted) = mpsc::channel();
-        let recorder = Recorder::start_at(root.clone(), move || {
-            writing.send(()).expect("writing");
-            blocked.recv().expect("release write");
-            done.send(()).expect("reached final consent check");
-        })
+        let mut reads = 0;
+        let recorder = Recorder::start_with(
+            root.clone(),
+            move |_| {
+                reads += 1;
+                if reads == 2 {
+                    done.send(()).expect("after final consent check");
+                }
+            },
+            move || {
+                writing.send(()).expect("writing");
+                blocked.recv().expect("release write");
+            },
+        )
         .expect("worker");
         recorder.consent(privacy);
         recorder.record(&Usage::PageViewed {
@@ -380,8 +388,8 @@ mod tests {
         release.send(()).expect("release");
         persisted
             .recv_timeout(Duration::from_secs(5))
-            .expect("worker resumed");
-        // Drop reúne el writer: no se consulta la cola antes de su comprobación final.
+            .expect("writer checked consent before next refresh");
+        // La comprobación final ya ocurrió; Drop no puede hacer pasar el test cancelándola.
         drop(recorder);
         assert!(!root.join("usage/00.json").exists());
         std::fs::remove_dir_all(root).expect("cleanup");

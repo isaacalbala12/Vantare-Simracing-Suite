@@ -78,15 +78,43 @@ la primera variante de Engineer. El tono es profesional y cercano.
 - Vantare Crystal con marca Vantare integrada y no eliminable.
 - Overlay Studio limitado a los widgets gratuitos.
 
-### Vantare Pro — 4,99 EUR/mes
+### Vantare Pro — 5,99 EUR/mes o 59,90 EUR/año
 
+- Precios normales con IVA incluido; catálogo preparado en ISA-1499/1620,
+  sin certificar venta ni ejecución Polar.
+  Mensual y anual conceden exactamente las mismas capabilities.
 - Toda la aplicación publicada en Stable.
 - Soporte en Discord.
 
-### Vantare Pro Plus — 9,99 EUR/mes
+### Vantare Pro Plus — 9,99 EUR/mes o 99,90 EUR/año
 
 - Todo Pro.
 - Acceso a Nightly/Beta privada, tests, encuestas y previews activas.
+
+Campaña preparada en [#1620](../billing/isa-1620-polar-launch-catalog.md),
+decisión ronda 3 del 14/10/2026: productos propios de lanzamiento Pro
+3,99 EUR/mes o 39,90 EUR/año, Plus 6,99 EUR/mes o 69,90 EUR/año.
+Un código exacto por creador (ISAAC), -20 % porcentual, repeating 2 meses,
+solo sobre esos cuatro productos; luego vuelve a la base de lanzamiento.
+Mensual: 3,19/5,59 EUR los dos primeros meses, 3,99/6,99 desde mes 3.
+Anual: primera factura 31,92/55,92 EUR, renovación 39,90/69,90.
+Decisión B de Isaac del 14/10/2026: los cuatro productos de lanzamiento,
+incluidos los accesos por enlace/código de creador, **no tienen prueba gratis**;
+el primer cobro ocurre al comprar. Los siete días gratis son exclusivos de
+Pro a precio normal, mensual/anual; Pro Plus normal tampoco tiene trial.
+Tras el mes de lanzamiento se retiran sus ofertas de la web y se conservan
+los productos accesibles por enlace de creador propio. Activación y cambio
+web pendientes; el catálogo no publica ni certifica venta. El checkout de la
+app conserva los productos normales. Normales y lanzamiento conceden los
+mismos derechos por plan/ciclo; Plus mensual y anual comparten canales.
+Comisión contable sobre lo pagado: 30 % mes 1, 10 % meses 2–12 mientras siga
+suscrito; después se renegocia. Sin payouts automáticos.
+
+Protección de #1620 R1: las ofertas de creador requieren cambios de plan del
+portal deshabilitados y bloqueo operativo de cambios administrativos/programados
+mientras siga vigente el descuento. El scope solo restringe su aplicación
+inicial; no elimina descuentos heredados al cambiar producto. Configuración
+y verificación real pendientes, según el runbook enlazado.
 
 ### Launch Edition — 30 EUR una vez
 
@@ -103,7 +131,8 @@ demás widgets no gratuitos requieren licencia.
 - Polar es la autoridad comercial.
 - Supabase permanece como backend de cuenta/licencia endurecido.
 - Stripe se retira cuando Polar esté operativo y reconciliado.
-- Trial de siete días con método de pago y recordatorio.
+- Trial de siete días con método de pago y recordatorio solo para Pro a precio
+  normal (mensual/anual); sin trial en lanzamiento, creador ni Pro Plus.
 - Tras un fallo existe recuperación técnica máxima de tres días; después se
   baja al modo gratuito.
 - Cancelar conserva acceso hasta la fecha pagada.

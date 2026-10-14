@@ -253,12 +253,12 @@ fn command(cx: &gpui::App) -> Stateful<Div> {
 }
 
 /// Tarjeta «Tu próxima carrera»: la salida más cercana de tus favoritas.
-fn next_race(
-    hero: Option<&super::rows::Hero<'_>>,
-    now: DateTime<Utc>,
-    navigate: &impl Fn(Stateful<Div>, Section) -> Stateful<Div>,
-    cx: &gpui::App,
-) -> Div {
+pub(crate) fn next_race(calendar: &Calendar, cx: &gpui::App) -> Option<Div> {
+    let now = calendar.now();
+    let hero = calendar.schedule().and_then(|schedule| {
+        super::rows::hero(schedule, now, calendar.favorites(), &calendar.alerts)
+    });
+    let hero = hero.as_ref();
     let mut card = div()
         .w(px(380.0))
         .flex_none()
@@ -270,15 +270,7 @@ fn next_race(
         .bg(orbit::alpha(0x0000_0040))
         .border_1()
         .border_color(orbit::alpha(0xffff_ff1f));
-    let Some(hero) = hero else {
-        return card.child(text(
-            "Sin salidas próximas entre tus favoritas",
-            12.0,
-            400,
-            orbit::ink_3(cx),
-            cx,
-        ));
-    };
+    let hero = hero?;
     let at = hero.at.with_timezone(&Local);
     let when = if at.date_naive() == now.with_timezone(&Local).date_naive() {
         format!("hoy {}", at.format("%H:%M"))
@@ -328,12 +320,7 @@ fn next_race(
                     cx,
                 )),
         );
-    card.child(navigate(
-        orbit::button("home-next", "Ver en Calendario", cx)
-            .h(px(36.0))
-            .mt(px(6.0)),
-        Section::Calendar,
-    ))
+    Some(card)
 }
 
 fn hero(
@@ -783,12 +770,18 @@ pub fn render(
         .ml(px(-1.0))
         .mr(px(-1.0))
         .child(hero(
-            races_visible.then(|| {
-                let next = calendar.schedule().and_then(|schedule| {
-                    super::rows::hero(schedule, now, calendar.favorites(), &calendar.alerts)
-                });
-                next_race(next.as_ref(), now, &navigate, cx)
-            }),
+            races_visible
+                .then(|| {
+                    next_race(calendar, cx).map(|card| {
+                        card.child(navigate(
+                            orbit::button("home-next", "Ver en Calendario", cx)
+                                .h(px(36.0))
+                                .mt(px(6.0)),
+                            Section::Calendar,
+                        ))
+                    })
+                })
+                .flatten(),
             access.lock(Section::Strategy).is_none(),
             salute,
             &navigate,

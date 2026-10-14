@@ -659,6 +659,7 @@ impl CaptureState {
             | "launcher-listo"
             | "launcher-cancelado"
             | "launcher-nombres-largos" => Section::Launcher,
+            "calendario-r6-inicio" => Section::Home,
             name if name.starts_with("calendario-r6-") => Section::Calendar,
             "calendario-base"
             | "calendario-dia"

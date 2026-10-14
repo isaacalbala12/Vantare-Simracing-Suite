@@ -801,6 +801,7 @@ impl Hub {
         launch: gpui::AnyElement,
         studio: gpui::AnyElement,
         favorite: Div,
+        card_from: f32,
         cx: &mut Context<Self>,
     ) -> Div {
         let empty = state == HomeState::Empty;
@@ -949,7 +950,7 @@ impl Hub {
                             .child(studio),
                     ),
             )
-            .when(adapt.width > 1600.0 && adapt.show_optional(), |hero| {
+            .when(adapt.width > card_from && adapt.show_optional(), |hero| {
                 hero.child(favorite.relative())
             })
     }
@@ -1193,6 +1194,31 @@ impl Hub {
                 .children((0..4).map(|_| orbit::skeleton(1.0, 18.0, cx))),
             _ => favorite,
         };
+        // Con calendario y una favorita que sale pronto, la tarjeta del hero es la próxima carrera.
+        let race_card = (state == HomeState::Session)
+            .then(|| {
+                self.shell
+                    .access
+                    .visible(Section::Calendar)
+                    .then(|| crate::calendar::home::next_race(self.calendar.read(cx), cx))
+                    .flatten()
+            })
+            .flatten();
+        let (favorite, card_from) = match race_card {
+            Some(card) => (
+                card.w(px(if adapt.show_secondary() { 380.0 } else { 320.0 }))
+                    .child(
+                        orbit::button("home-next", "Ver en Calendario", cx)
+                            .h(px(36.0))
+                            .mt(px(6.0))
+                            .on_click(
+                                cx.listener(|hub, _, _, cx| hub.navigate(Section::Calendar, cx)),
+                            ),
+                    ),
+                1400.0,
+            ),
+            None => (favorite, 1600.0),
+        };
         let hero = self.home_hero(
             adapt,
             state,
@@ -1200,6 +1226,7 @@ impl Hub {
             launch.into_any_element(),
             studio.into_any_element(),
             favorite,
+            card_from,
             cx,
         );
         if state == HomeState::Loading {

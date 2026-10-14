@@ -182,7 +182,16 @@ end $$;
 revoke all on function public.testing_report_submit(uuid,text,text,text,boolean),public.testing_report_credit(uuid,boolean),
   public.testing_report_notice_read(uuid,timestamptz),public.testing_participation_current_v2(text),
   public.testing_report_fixed(uuid,text,text,text),public.testing_report_patch_candidates(text) from public,anon,service_role;
-grant execute on function public.testing_report_submit(uuid,text,text,text,boolean),public.testing_report_credit(uuid,boolean),
+-- F1 containment: a trusted account/IP admission boundary is not implemented.
+-- Keep submission inoperative; a client header is never admission authority.
+revoke all on function public.testing_report_submit(uuid,text,text,text,boolean) from authenticated;
+do $$begin
+  if to_regprocedure('public.testing_contribution_submit_v2(uuid,text,text,text,jsonb,jsonb)') is not null then
+    revoke all on function public.testing_contribution_submit_v2(uuid,text,text,text,jsonb,jsonb)
+      from public,anon,authenticated,service_role;
+  end if;
+end $$;
+grant execute on function public.testing_report_credit(uuid,boolean),
   public.testing_report_notice_read(uuid,timestamptz),public.testing_participation_current_v2(text),
   public.testing_report_fixed(uuid,text,text,text),public.testing_report_patch_candidates(text) to authenticated;
 commit;

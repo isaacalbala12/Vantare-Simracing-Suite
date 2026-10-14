@@ -15,10 +15,13 @@ def main():
     parser.add_argument('--pg-bin', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--regression', choices=['F1', 'F2', 'F3', 'F4'], help='Run one review regression, then stop')
+    parser.add_argument('--internal-submit', action='store_true', help='Synthetic local-only grant for testing submission semantics behind the closed public boundary')
     dependency = parser.add_mutually_exclusive_group()
     dependency.add_argument('--dependency-ref', help='Read-only git ref of #1602 for combined local SQL validation')
     dependency.add_argument('--dependency-dir', type=Path, help='Reviewed #1602 SQL extracted from git (Windows worktree/WSL)')
     args = parser.parse_args()
+    if args.internal_submit and args.regression == 'F1':
+        parser.error('F1 must test real migration ACLs, without synthetic submission grants')
     args.output.mkdir(parents=True, exist_ok=True)
     root = Path(__file__).resolve().parents[2]
     env = {key: value for key, value in os.environ.items() if not key.startswith('PG')}
@@ -159,6 +162,8 @@ def main():
                     case_actor = actor.copy()
                     case_actor[case_actor.index('-d') + 1] = database
                     run('psql', *case_actor, '-f', migration, log=f'{label}-apply.log')
+                    if args.internal_submit:
+                        run('psql', *case_actor, '-c', 'grant execute on function public.testing_report_submit(uuid,text,text,text,boolean) to authenticated;', log=f'{label}-internal-test-grant.log')
                     run('psql', *case_conn, '-c', "set role authenticated; set request.jwt.claim.sub='16100000-0000-0000-0000-000000000001';" + sql, log=f'{label}-activity.log')
                     result = run('psql', *case_actor, '-f', rollback, log=f'{label}-protected.log', expected=3)
                     if 'testing_followup_rollback_requires_data_preservation' not in result:
@@ -166,6 +171,8 @@ def main():
                 print(f'PASS: F4 legacy-before-apply immediate rollback preserves exact row; {len(cases)} isolated activity rollbacks blocked')
                 return
             run('psql', *actor, '-f', root / 'supabase/migrations/20261013225629_testing_reports_followup.sql', log='followup.log')
+            if args.internal_submit:
+                run('psql', *actor, '-c', 'grant execute on function public.testing_report_submit(uuid,text,text,text,boolean) to authenticated;', log='internal-test-grant.log')
             if args.regression:
                 output = run('psql', *connection, '-f', root / f'supabase/tests/testing_followup_{args.regression}.test.sql', log='regression.log')
                 plan = re.search(r'^1\.\.(\d+)$', output, re.M)

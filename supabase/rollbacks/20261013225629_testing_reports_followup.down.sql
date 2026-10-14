@@ -35,4 +35,9 @@ drop policy testing_contributions_read on public.testing_contributions;
 create policy testing_contributions_read on public.testing_contributions for select to authenticated
  using(account_id=auth.uid() and public.testing_center_can_view_channel(channel));
 grant execute on function public.testing_contribution_submit(uuid,text,text,text) to authenticated;
+do $$begin
+  if to_regprocedure('public.testing_contribution_submit_v2(uuid,text,text,text,jsonb,jsonb)') is not null then
+    grant execute on function public.testing_contribution_submit_v2(uuid,text,text,text,jsonb,jsonb) to authenticated;
+  end if;
+end $$;
 commit;

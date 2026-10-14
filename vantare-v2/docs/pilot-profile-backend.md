@@ -38,6 +38,19 @@ reciben una clave durable. Un intento de esas versiones no tenía `op_id` en el
 servidor: no se puede recuperar retroactivamente su confirmación; un CAS real
 distinto permanece en conflicto, sin forzarlo. Este backend sigue sin desplegar.
 
+Tras confirmar el último recibo, el cliente carga el perfil actual en esa misma
+llamada si no queda edición pendiente. Un recibo de A/R1 no termina la carga si
+otro dispositivo ya confirmó C/R2. Un rechazo definitivo HTTP400/22023 retira A
+de forma durable y refresca la revisión remota sin borrar el borrador; se puede
+corregir B y volver a guardar, incluso tras reiniciar. La RPC emite SQLSTATE
+PT409 para CAS obsoleto (HTTP409 en PostgREST); el cliente admite también
+HTTP500/40001 del paquete QA anterior. Ambos conservan el borrador y reanclan
+la revisión actual, sin enviar automáticamente una sustitución. El pendiente
+sin operación representa esta revisión necesaria; reabrir no recrea el intento.
+Si falla la carga posterior, el intento rechazado sigue retirado y se conserva
+la última revisión conocida hasta poder refrescar. Otros 500/503, transporte y
+éxitos ilegibles conservan UUID/contenido/CAS inciertos.
+
 La tabla es privada por `account_id = auth.uid()`, con `USING` y `WITH CHECK`.
 Las RPC públicas son INVOKER, sin EXECUTE para PUBLIC/anon. La tabla solo
 concede SELECT a authenticated. Guardar llama a una función SECURITY DEFINER
@@ -86,6 +99,11 @@ admitidos, con número finito/profundidad legibles por serde_json. El presupuest
 de 48 KiB incluye campos por defecto y reserva conservadora de 32780 bytes
 cuando hay foto para su máximo base64. El servidor puede rechazar un documento
 próximo al límite aunque un JPEG pequeño cupiera; conserva la copia local.
+El cliente comprueba antes de crear una nueva operación con foto el documento
+sin JPEG serializado con espacios y la misma reserva de 32780 bytes. Los blobs
+anteriores siguen siendo legibles para corregirlos. La negativa tipada del
+servidor cubre las restantes diferencias de validación, sin bloquear futuras
+correcciones. Referencia de estados HTTP: [PostgREST](https://docs.postgrest.org/en/stable/references/errors.html).
 
 ## Aplicación, después del OK
 

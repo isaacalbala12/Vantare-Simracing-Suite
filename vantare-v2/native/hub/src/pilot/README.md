@@ -32,6 +32,12 @@ A tiene resultado incierto mantiene A intacto y B local; el reintento reenvía
 A con la misma clave y contenido. El servidor devuelve su recibo original sin
 reaplicar ni evaluar CAS de nuevo, incluso si otro dispositivo guardó después.
 Solo tras confirmar A se crea la clave de B y se envía sobre esa revisión.
+Después del último recibo se carga el perfil actual en la misma llamada si no
+queda una edición pendiente; un recibo histórico no acredita frescura actual.
+Un rechazo definitivo 22023 o un CAS obsoleto retira la operación de forma durable
+y carga la revisión remota, conservando el borrador local. Reiniciar no recrea ni
+envía ese intento: hay que corregir/revisar y volver a guardar. Fallos de transporte,
+5xx ajenos al conflicto y éxitos ilegibles conservan la operación incierta.
 Un CAS nuevo obsoleto mantiene el conflicto y la copia local. No se usa una
 huella ni un SELECT para inferir confirmaciones. Los formatos locales anteriores
 de QA preservan el pendiente; no recuperan confirmaciones antiguas sin op_id.

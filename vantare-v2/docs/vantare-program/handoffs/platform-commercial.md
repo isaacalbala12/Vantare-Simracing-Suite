@@ -9,24 +9,42 @@ Rama `vantareapp/isa-1612-perfil-y-ajustes`, base `origin/nightly@0807fbd0`.
 [PR draft #1619 a nightly](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1619),
 Plane VANTA-9 / GitHub Project Vantare / area:plataforma.
 
-Ronda 5 CLI en curso tras review r4 de `37ced450` (P2=3, P3=1).
-P2-1 corregido en `f00f3607`: RED R1 != R2; GREEN 15/15 piloto.
-Una recuperación de recibo sin edición pendiente carga el perfil actual en la
-misma llamada; la edición posterior usa R2. La negativa con B pendiente conserva
-el CAS histórico, sin sobrescribir C. P2-2 RED: rechazo 22023 conserva A; presupuesto
-de foto permite crear A incompatible. GREEN 16/16: preflight del presupuesto,
-retiro durable de A rechazado, borrador conservado y revisión actual cargada;
-reabrir no resucita A y B corregido se confirma tras otro reinicio. HTTP incierto
-y recibos inválidos conservan A. P2-3 y P3-1 pendientes; gates completos pendientes.
-P2-2 committed en `11a5511c`. P2-3 RED HTTP500/40001 => Offline y SQLSTATE
-40001 != PT409; GREEN: SQL PT409 explícito, clasificación compatible del 500
-anterior, retiro del CAS obsoleto y reanclaje R2 sin enviar B automáticamente.
-Un único PilotLoad de App carga C/R2 tras recibo y muestra conflicto real; el
-borrador/revisión sobreviven al reinicio. SQL 90 pgTAP, concurrencia/PT409 y
-retirada 10 postchecks/cuatro negativas PASS, también sin SUPERUSER. PostgreSQL
-18/pgTAP instalados desde Ubuntu oficial en WSL; cluster creado por el instalador
-detenido, pruebas solo en instancias desechables. P3-1 y gates finales pendientes.
-Evidencia `C:/tmp/ola5/1612`, sin cambios visuales, backend solo preparado.
+Ronda 5 CLI: fixes publicados en `82c8340fb05f013381b8da00d0c3f7b7f9de7b0b`,
+tras review r4 de `37ced450` (P2=3/P3=1). Base aprobada conservada.
+
+| Hallazgo | Commit | RED y GREEN |
+|---|---|---|
+| P2-1 recibo histórico | `f00f3607` | RED R1 != R2; una llamada carga C/R2, la siguiente edición usa CAS R2; B pendiente conserva la negativa |
+| P2-2 rechazo definitivo | `11a5511c` | RED A retenido tras 22023 y presupuesto incompatible; preflight impide nueva A, retiro durable conserva borrador/reancla y B corregido confirma tras reinicio |
+| P2-3 conflicto HTTP | `c50a7b5f` | RED HTTP500/40001 => Offline y SQLSTATE40001 != PT409; GREEN PT409 y compatibilidad anterior, App muestra conflicto, R2 durable sin reenviar B al reiniciar |
+| P3-1 duplicado de foto | `f63c9fc1` | POST duplicado -> GET JPEG/SHA -> recibo A -> B/CAS1 -> reapertura sin pendiente, con/sin reinicio |
+
+HTTP incierto y recibos ilegibles/distintos conservan A. El pendiente sin
+operación exige revisar/corregir y guardar; solo formatos locales anteriores
+crean una operación durante su conversión. Un rechazo retira A antes del
+refresco: si este falla, conserva la última revisión conocida y no resucita A.
+Una sola llamada PilotLoad de App carga C/R2 tras recibo o muestra conflicto
+real, con borrador/revisión persistidos. Preparación de tests compartida en
+`ddda32dc`/`82c8340f` para cumplir Clippy sin reducir comprobaciones.
+
+17/17 piloto PASS; fmt/check/Clippy -D warnings, quality/456 huellas y fragmento
+PASS. Nextest 1681/1681 (7 skips existentes, paridad lenta 101 s) y lifecycle
+18/18 PASS sobre `82c8340f`, con target propio native/target/gates, dos jobs,
+datos aislados y plazo 1800 s por comando. Telemetría omitida en r5: sin cambios
+en runtime/domain/IPC/testdata. Cierre posterior solo documental.
+SQL 90 pgTAP, concurrencia/PT409 y retirada 10 postchecks/cuatro negativas PASS,
+también sin SUPERUSER. PostgreSQL 18.6 y pgTAP 1.3.4 instalados desde Ubuntu
+oficial en WSL; cluster nuevo 18/main detenido y arranque manual verificado.
+Las pruebas se ejecutaron únicamente en bases desechables de loopback.
+Evidencia `C:/tmp/ola5/1612`; fallos iniciales conservados y explicados allí.
+Backend solo preparado, sin producción. P3 cerrado, sin cambios visuales,
+login/Storage reales, QA física, integración #1608, merge/promoción/release.
+PR draft a nightly DIRTY; CI solo GitGuardian PASS visible, sin CI completa
+verde. Cierre/push final, estado Por revisar de VANTA-9 y última actualización
+verificada constan en issue/PR y buzón. Sin merge/rebase, promoción ni release.
+Siguiente: review del SHA final e integración compilada con #1608 por el
+orquestador; API login/Storage y QA física pendientes. Activar el backend
+requiere autorización separada de Isaac.
 
 Ronda 4 CLI terminada en rama tras review r3 `8eadf36e` NO APTO (P2-1=1).
 Corte Rust/SQL validado y publicado `d9df6b17256f31bc9499772b3aafe3069fe134fa`.

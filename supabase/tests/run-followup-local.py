@@ -14,6 +14,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--pg-bin', type=Path, required=True)
     parser.add_argument('--output', type=Path, required=True)
+    dependency = parser.add_mutually_exclusive_group()
+    dependency.add_argument('--dependency-ref', help='Read-only git ref of #1602 for combined local SQL validation')
+    dependency.add_argument('--dependency-dir', type=Path, help='Reviewed #1602 SQL extracted from git (Windows worktree/WSL)')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     root = Path(__file__).resolve().parents[2]
@@ -85,7 +88,19 @@ def main():
         run('pg_ctl', '-D', data, '-l', args.output / 'server.log', '-o', f'-h "" -k {temp}', '-w', 'start', log='start.log')
         connection = ['-X', '-h', temp, '-d', 'postgres', '-U', 'local_supervisor', '-v', 'ON_ERROR_STOP=1', '-At']
         try:
-            run('psql', *connection, '-c', """
+            if args.dependency_ref or args.dependency_dir:
+                def dependency_file(name):
+                    if args.dependency_dir:
+                        return args.dependency_dir / Path(name).name
+                    result = subprocess.run(['git', '-C', str(root), 'show', f'{args.dependency_ref}:supabase/{name}'],
+                        capture_output=True, text=True, encoding='utf-8', timeout=60, check=True)
+                    path = Path(temp) / Path(name).name
+                    path.write_text(result.stdout, encoding='utf-8')
+                    return path
+                run('psql', *connection, '-f', dependency_file('tests/triage_local_bootstrap.sql'), log='bootstrap.log')
+                run('psql', *connection, '-c', 'create extension pgtap;', log='pgtap-install.log')
+            else:
+                run('psql', *connection, '-c', """
               create role anon noinherit;
               create role authenticated noinherit;
               create role service_role noinherit;
@@ -105,10 +120,12 @@ def main():
               grant all on schema public,private to postgres;
               grant usage on schema auth to postgres;
               grant all on public.profiles,public.testing_center_memberships to postgres;
-            """, log='bootstrap.log')
+                """, log='bootstrap.log')
             actor = connection.copy()
             actor[actor.index('-U') + 1] = 'postgres'
             run('psql', *actor, '-f', root / 'supabase/migrations/20261010000000_testing_participation.sql', log='participation.log')
+            if args.dependency_ref or args.dependency_dir:
+                run('psql', *actor, '-f', dependency_file('migrations/20261013160000_testing_contribution_triage.sql'), log='triage-dependency.log')
             run('psql', *actor, '-f', root / 'supabase/migrations/20261013225629_testing_reports_followup.sql', log='followup.log')
             output = run('psql', *connection, '-f', root / 'supabase/tests/testing_reports_followup.test.sql', log='pgtap.log')
             plan = re.search(r'^1\.\.(\d+)$', output, re.M)

@@ -1,23 +1,30 @@
 ## #1608 · Integración de nightly (14/10/2026)
 
-Encargo explícito tras review r3 APTA: fusionar nightly en la rama de issue,
-sin rebase ni promoción. Worktree limpio al reanudar en `8fecf307`; se conserva
-el merge remoto `812ed8ec` mediante fast-forward. Segunda base `origin/nightly`
-`5b781964` incluye #1611/#1617/#1618. Conflicto único:
-`native/services/src/app.rs`, en renovación de licencia. Se conserva el rechazo
-definitivo con revocación/ACK de #1608 y la observación comercial consentida de
-#1609 después de renovación y transferencia correctas. Sin cambio de política,
-UI nueva, dependencias o decisiones de comportamiento. Resto de entradas de
-nightly conservadas sin edición; B01/B02/B03 permanecen No-Go comercial.
+Encargo explícito tras review r3 APTA: nightly → rama de issue, con merge,
+sin rebase ni promoción. Worktree limpio `8fecf307`, fast-forward al remoto
+`812ed8ec` conservado. Merge probado `eca5155f6a51aad620e5af5d4ad51368edcaaa83`,
+padres `812ed8ec` + `origin/nightly@5b781964`, incluye #1611/#1617/#1618.
+Conflicto único `native/services/src/app.rs`: rechazo definitivo conserva
+revocación/ACK y éxito conserva analytics consentido tras transferir derechos.
+Los otros 66 archivos entrantes son idénticos a nightly. Sin política nueva,
+UI nueva, dependencias o tests relajados; B01/B02/B03 permanecen No-Go comercial.
 
-Gates nuevos en `C:/tmp/1608-merge/`, cola, target exclusivo del worktree,
-dos jobs y APPDATA/LOCALAPPDATA aislados. fmt/check/Clippy PASS; Deno 534 PASS/
-1 ignored existente; SQL cuentas/pagos 230 PASS, Testing Center 35 pgTAP más
-concurrencia/rollback y F1/F1IP/F2/F3/F4 PASS. Integridad 456 huellas y tooling
-PASS. Nextest/lifecycle/telemetría aún en curso; resultados finales y SHA/push/CI
-se registran al cerrar. Fallos de invocación Deno conservados, sin tocar tests.
-VANTA-16/17/15 En curso; misma PR #1615 a nightly, actualmente ready, sin
-fusionarla en nightly. Sin producción, compras, datos reales ni release.
+Gates nuevos GREEN: fmt/check/Clippy; Nextest 1697 PASS/12 skips heredados
+(cinco bancos manuales #1611 más los siete previos); lifecycle 18 PASS;
+telemetría 25 PASS/0 skips (ACC 814.150 s); Deno534 PASS/1 ignored PostgREST;
+SQL230 y followup35+F1/F1IP/F2/F3/F4/concurrencia/rollback PASS. Integridad456,
+138 tests scripts GitHub, paneles8, followup4, snippet y guardas de superficie PASS.
+Logs `C:/tmp/1608-merge/`, target propio, cola/dos jobs y QA aislada. Fuente Rust
+sin cambios tras la prueba; cierre posterior documental. Fallos de entorno
+Deno y sonda conservados/corregidos en invocación; cache anterior de Functions
+apartada y conservada fuera del repo, sin editar dependencias. B01 RED separado.
+
+Misma PR #1615 ready a nightly; auto-merge preexistente desactivado reversiblemente
+antes del push porque no se autoriza promoción. HEAD final/push/CI y Plane
+VANTA-16/17/15 Por revisar por escritura/lectura en issue/buzón al publicar;
+no se hereda CI anterior. Informe actualizado. Siguiente: revisión del nuevo
+SHA y decisión del orquestador sobre integración. Sin producción, compras,
+datos reales, QA GUI física, promoción ni release.
 
 ## #1608 · Revisión cuentas y pagos (14/10/2026)
 

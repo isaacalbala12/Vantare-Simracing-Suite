@@ -2,24 +2,49 @@
 
 ## Integración autorizada tras review r3 APTA
 
-Se reanuda el worktree limpio en `8fecf307` y se avanza sin reescribir historia
-al merge remoto publicado `812ed8ec`. Se fusiona `origin/nightly@5b781964`
-(#1611/#1617/#1618) en `vantareapp/isa-1608-cuentas-y-pagos`, con merge.
-Único archivo en conflicto: `native/services/src/app.rs`. La resolución mantiene
-la revocación con ACK al rechazar definitivamente la renovación; el candidato
-correcto se transfiere al núcleo antes de registrar las observaciones consentidas
-de cuenta/licencia comercial de #1609. No se decide ni cambia comportamiento.
+### Resumen de diez líneas para Isaac
 
-Evidencia nueva `C:/tmp/1608-merge/`: fmt/check/Clippy PASS; Deno 534 PASS/
-1 ignored existente; SQL cuentas/pagos 230 PASS; Testing Center 35 pgTAP más
-concurrencia/rollback y F1/F1IP/F2/F3/F4 PASS. Integridad 456 huellas, 138 tests
-de scripts GitHub, 8 de paneles y 4 de followup, snippet Node PASS.
-Nextest/lifecycle/telemetría en curso por cola, target propio y QA aislada.
-Los fallos Deno por resolución de tipos, cwd y permisos quedan en logs; se
-corrige la invocación sin editar tests. B01/B02/B03 siguen No-Go comercial;
-su sonda RED SQL se conserva fuera del recuento de gates GREEN.
-Último SHA/push/CI/estados se actualizan al cierre. Sin promoción a nightly,
-producción, compras/refunds, datos reales, UI nueva, subagentes ni release.
+1. Reanudación limpia en `8fecf307`; fast-forward conserva el merge remoto `812ed8ec`.
+2. Merge `eca5155f6a51aad620e5af5d4ad51368edcaaa83`, padres `812ed8ec` + nightly `5b781964`.
+3. Se incorporan #1611/#1617/#1618 mediante merge, sin rebase ni historia reescrita.
+4. Conflicto único `native/services/src/app.rs`: rechazo definitivo conserva revocación/ACK.
+5. Renovación correcta conserva analytics consentido después de transferir derechos; sin política nueva.
+6. Los otros 66 archivos entrantes coinciden exactamente con nightly; prueba y hashes en logs.
+7. fmt/check/Clippy PASS; Nextest 1697 PASS/12 skips heredados y lifecycle 18 PASS.
+8. Telemetría 25 PASS/0 skips, ACC largo 814.150 s; Deno 534 PASS/1 ignored existente.
+9. SQL230 y followup35+F1–F4/concurrencia/rollback PASS; integridad456 y tooling PASS.
+10. Sin promoción/producción/release; B01/B02/B03 siguen No-Go comercial y CI final se lee tras push.
+
+Evidencia nueva `C:/tmp/1608-merge/`, cola `native/scripts/compilar.ps1`,
+target propio `native/target/gates`, CARGO_BUILD_JOBS=2 y APPDATA/LOCALAPPDATA
+bajo la QA aislada de esta integración. Código probado `eca5155f`; hashes Rust
+conservados en `integration-proof.json` y contrastados antes del cierre documental.
+No se han añadido ni relajado tests. Las cinco exclusiones adicionales son los
+bancos manuales de rendimiento de #1611, idénticos a nightly; no se ejecutan como
+medición física. Se conservan las siete exclusiones previas. PostgREST real sigue
+ignored en Deno y la sonda B01 sigue RED separado, fuera de las 230 assertions GREEN.
+
+Testing Center: 35 pgTAP, snapshot tardío, concurrencia y rollback/reaplicación;
+F1 17, F1IP 26, F2 6, F3 8 y F4 legacy/6 bloqueos de rollback PASS. F2/F3
+usan el SQL exacto #1602 extraído en la evidencia anterior, sin integrarlo ni
+modificarlo. Tooling: 138 tests scripts GitHub, 8 paneles, 4 followup y snippet
+Node PASS. Guardas de superficie TypeScript/PowerShell PASS, sin despliegue.
+
+Fallos de entorno conservados: Deno inicial resolvía tipos contra un node_modules
+anterior; segunda invocación tenía cwd/permisos insuficientes. Se corrigió la
+invocación (`--node-modules-dir=none`, config explícita, cwd raíz y allowlist de
+lectura), sin cambiar tests. La caché node_modules preexistente en Functions se
+apartó reversiblemente a `C:/tmp/1608-merge/deno-node-modules` para pasar la guarda
+de superficie; no se borró ni se cambió ninguna dependencia. La primera ejecución
+de la sonda de conservación usó cwd incorrecto; se corrigió en tooling de evidencia.
+
+Auto-merge preexistente de #1615 estaba activado por Isaac desde 03:20:18Z.
+Desactivado reversiblemente y verificado antes del push: este encargo permite
+merge de nightly en la rama, no promoción a nightly. PR ready conservada, sin
+alterar reviews. HEAD final/push/CI y VANTA-16/17/15 Por revisar se verifican en
+issue/buzón después de publicar. No se presenta la CI del SHA anterior como nueva.
+Sin GUI física, Clerk/Polar/PostgREST real, compras/refunds, instalación/datos
+reales, visual nuevo, subagentes ni release. B01/B02/B03 continúan sin implementación.
 
 ## Ronda 3 · R2-N1, cambio de identidad sin CoreLink
 

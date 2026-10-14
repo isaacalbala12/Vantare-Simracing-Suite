@@ -1,5 +1,12 @@
 -- #1612 / VANTA-9. PREPARADA, NO APLICAR EN PRODUCCIÃ“N SIN OK DE ISAAC.
 begin;
+-- No se admite que este esquema esté en los esquemas expuestos por Data API.
+create schema pilot_private;
+revoke all on schema pilot_private from public,anon;
+grant usage on schema pilot_private to authenticated;
+create role pilot_profile_writer nologin noinherit nobypassrls;
+grant usage on schema public,auth,storage,pilot_private to pilot_profile_writer;
+grant execute on function auth.uid() to pilot_profile_writer;
 
 
 -- Contrato semÃ¡ntico de PilotProfile: campos futuros conservados.
@@ -67,7 +74,7 @@ exception when numeric_value_out_of_range then return false;
 end;
 $$;
 revoke all on function public.pilot_profile_valid(jsonb,text) from public,anon;
-grant execute on function public.pilot_profile_valid(jsonb,text) to authenticated;
+grant execute on function public.pilot_profile_valid(jsonb,text) to authenticated,pilot_profile_writer;
 
 create table public.pilot_profiles (
   account_id uuid primary key references public.profiles(id) on delete cascade,
@@ -81,19 +88,22 @@ create table public.pilot_profiles (
 );
 alter table public.pilot_profiles enable row level security;
 revoke all on public.pilot_profiles from public, anon;
-grant select, insert, update, delete on public.pilot_profiles to authenticated;
-create policy pilot_self on public.pilot_profiles to authenticated
+revoke all on public.pilot_profiles from authenticated;
+grant select on public.pilot_profiles to authenticated;
+grant select,insert,update on public.pilot_profiles to pilot_profile_writer;
+grant select on storage.objects to pilot_profile_writer;
+create policy pilot_self on public.pilot_profiles to authenticated,pilot_profile_writer
   using (account_id = (select auth.uid()))
   with check (account_id = (select auth.uid()));
 
--- INVOKER: RLS siempre se aplica; sin roles ni permisos derivados del formulario.
+-- RPC pública INVOKER; el escritor privado solo permite CAS y sigue sujeto a RLS.
 create function public.pilot_profile_load() returns jsonb
 language sql stable security invoker set search_path = '' as $$
   select jsonb_build_object('profile', profile, 'revision', revision, 'photo_hash', photo_hash)
   from public.pilot_profiles where account_id = auth.uid();
 $$;
-create function public.pilot_profile_save(p_profile jsonb, p_photo_hash text, p_expected_revision bigint)
-returns jsonb language plpgsql security invoker set search_path = '' as $$
+create function pilot_private.pilot_profile_save(p_profile jsonb, p_photo_hash text, p_expected_revision bigint)
+returns jsonb language plpgsql security definer set search_path = '' as $$
 declare v_result jsonb;
 begin
   if auth.uid() is null then raise exception 'authentication required' using errcode='42501'; end if;
@@ -118,6 +128,15 @@ begin
   return v_result;
 end;
 $$;
+grant create on schema pilot_private to pilot_profile_writer;
+alter function pilot_private.pilot_profile_save(jsonb,text,bigint) owner to pilot_profile_writer;
+revoke create on schema pilot_private from pilot_profile_writer;
+revoke all on function pilot_private.pilot_profile_save(jsonb,text,bigint) from public,anon;
+grant execute on function pilot_private.pilot_profile_save(jsonb,text,bigint) to authenticated;
+create function public.pilot_profile_save(p_profile jsonb,p_photo_hash text,p_expected_revision bigint)
+returns jsonb language sql security invoker set search_path = '' as $$
+  select pilot_private.pilot_profile_save(p_profile,p_photo_hash,p_expected_revision);
+$$;
 revoke all on function public.pilot_profile_load() from public, anon;
 revoke all on function public.pilot_profile_save(jsonb,text,bigint) from public, anon;
 grant execute on function public.pilot_profile_load() to authenticated;
@@ -126,7 +145,7 @@ grant execute on function public.pilot_profile_save(jsonb,text,bigint) to authen
 insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
 values('pilot-photos','pilot-photos',false,24576,array['image/jpeg']);
 -- Solo objetos inmutables por hash, en el namespace UUID del puente nativo.
-create policy pilot_photo_read on storage.objects for select to authenticated
+create policy pilot_photo_read on storage.objects for select to authenticated,pilot_profile_writer
   using (bucket_id='pilot-photos' and name ~ '^[0-9a-f-]{36}/[0-9a-f]{64}\.jpg$'
     and (storage.foldername(name))[1] = (select auth.uid())::text);
 create policy pilot_photo_insert on storage.objects for insert to authenticated

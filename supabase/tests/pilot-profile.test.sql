@@ -8,9 +8,18 @@ begin
   raise exception 'invalid document accepted';
 end;
 $$;
+create function pg_temp.direct_write(statement text) returns void language plpgsql as $$
+begin
+  execute statement;
+  raise exception 'direct update accepted';
+end;
+$$;
 select ok((select relrowsecurity from pg_class where oid='public.pilot_profiles'::regclass),'RLS enabled');
 select ok(not has_table_privilege('anon','public.pilot_profiles','select'),'anon has no table access');
 select ok(not has_function_privilege('anon','public.pilot_profile_load()','execute'),'anon cannot load');
+select ok(not (select rolcanlogin or rolbypassrls from pg_roles where rolname='pilot_profile_writer'),'private writer cannot login or bypass RLS');
+select ok((select proowner='pilot_profile_writer'::regrole and prosecdef and proconfig=array['search_path=""'] from pg_proc where oid='pilot_private.pilot_profile_save(jsonb,text,bigint)'::regprocedure),'private CAS uses narrow owner and empty search_path');
+select ok(not has_function_privilege('anon','pilot_private.pilot_profile_save(jsonb,text,bigint)','execute'),'anon cannot call private CAS');
 select ok(not (select prosecdef from pg_proc where oid='public.pilot_profile_save(jsonb,text,bigint)'::regprocedure),'save is invoker');
 select ok(not (select public from storage.buckets where id='pilot-photos'),'bucket private');
 select is((select file_size_limit from storage.buckets where id='pilot-photos'),24576::bigint,'photo limit');
@@ -60,6 +69,11 @@ select is((public.pilot_profile_load()->>'revision')::bigint,2::bigint,'invalid 
 select is(public.pilot_profile_load()->'profile'->>'public_name','B','invalid documents preserve profile');
 select is((public.pilot_profile_save(jsonb_build_object('public_name',repeat('ñ',64),'description',E'GT\n'||repeat('a',277),'favorite_car',repeat('a',120),'favorite_team',repeat('a',120),'country','AX','simulators',(select jsonb_agg(i::text) from generate_series(1,16) i),'future',jsonb_build_object('teams',jsonb_build_array('A'))),null,2)->>'revision')::bigint,3::bigint,'native maxima, multiline and future fields accepted');
 select is((public.pilot_profile_save('{"public_name":"B","team_future":true}',null,3)->>'revision')::bigint,4::bigint,'restore fixture after valid boundaries');
+select ok(not has_table_privilege('authenticated','public.pilot_profiles','insert,update,delete'),'no direct DML grant');
+select throws_ok($$select pg_temp.direct_write('update public.pilot_profiles set profile=''{}'' where account_id=auth.uid()')$$,'42501',null,'own direct update cannot bypass CAS at unchanged revision');
+select throws_ok($$select pg_temp.direct_write('delete from public.pilot_profiles where account_id=auth.uid()')$$,'42501',null,'own direct delete forbidden');
+select throws_ok($$select pg_temp.direct_write('insert into public.pilot_profiles(account_id) values(auth.uid()) on conflict do nothing')$$,'42501',null,'own direct insert forbidden');
+select is((public.pilot_profile_load()->>'revision')::bigint,4::bigint,'direct writes leave revision intact');
 select throws_ok($$insert into public.pilot_profiles(account_id) values('16120000-0000-0000-0000-000000000002')$$,'42501',null,'cannot write another profile');
 insert into storage.objects(bucket_id,name) values('pilot-photos','16120000-0000-0000-0000-000000000001/'||repeat('a',64)||'.jpg');
 select throws_ok(format('select public.pilot_profile_save(%L::jsonb,%L,4)',jsonb_build_object('future',repeat('x',17000))::text,repeat('a',64)), '22023','invalid profile','reserve photo base64 inside native document budget');
@@ -69,8 +83,7 @@ set local request.jwt.claim.sub='16120000-0000-0000-0000-000000000002';
 select is((select count(*) from public.pilot_profiles),0::bigint,'other account sees no profiles');
 select is((select count(*) from storage.objects where bucket_id='pilot-photos'),0::bigint,'broad existing storage policy cannot leak photos');
 select throws_ok($$insert into storage.objects(bucket_id,name) values('pilot-photos','16120000-0000-0000-0000-000000000001/'||repeat('b',64)||'.jpg')$$,'42501',null,'cannot upload into another namespace');
-with changed as (update public.pilot_profiles set profile='{}' where account_id='16120000-0000-0000-0000-000000000001' returning 1)
- select is(count(*),0::bigint,'cannot update another profile') from changed;
+select throws_ok($$update public.pilot_profiles set profile='{}' where account_id='16120000-0000-0000-0000-000000000001'$$,'42501',null,'cannot update another profile');
 reset role;
 set local role anon;
 set local request.jwt.claim.sub='';

@@ -79,8 +79,40 @@ export async function abortStorageUpload(
     },
     signal: AbortSignal.timeout(15000),
   });
-  // Never ACK a generic 404 or permission failure: it may mean a bad route or
-  // a failed permission probe, not an absent upload. Queue survives for retry.
-  await response.body?.cancel();
-  if (!response.ok) throw new Error("storage_abort_failed");
+  if (response.ok) {
+    await response.body?.cancel();
+    return;
+  }
+  // After API success an SQL ACK may be lost. Only the S3 NoSuchUpload result
+  // proves this exact upload is absent; a generic 404/permission error does not.
+  if (await uploadAlreadyAbsent(response)) return;
+  throw new Error("storage_abort_failed");
+}
+
+async function uploadAlreadyAbsent(response: Response): Promise<boolean> {
+  if (
+    response.status !== 404 ||
+    !response.headers.get("content-type")?.includes("application/xml") ||
+    !response.body
+  ) {
+    await response.body?.cancel();
+    return false;
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let length = 0, body = "";
+  try {
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      length += value.length;
+      if (length > 8192) return false;
+      body += decoder.decode(value, { stream: true });
+    }
+    body += decoder.decode();
+    return /<Code>NoSuchUpload<\/Code>/.test(body);
+  } finally {
+    await reader.cancel();
+    reader.releaseLock();
+  }
 }

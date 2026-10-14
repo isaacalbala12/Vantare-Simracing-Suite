@@ -1,3 +1,18 @@
+## #1608 · Ronda 5 · Reintento de abort y validación real (14/10/2026)
+
+R4-P1-1, mismo alcance: si la API aborta y se pierde ACK SQL, la siguiente
+entrega admite únicamente 404 XML `NoSuchUpload`; otros 404/403/500 siguen
+fallando y conservan cola. Respuesta limitada a 8 KiB, sin mensajes/PII.
+RED exacto del reintento → GREEN siete Edge, y API HTTP real dos veces con
+Storage v1.70.3: abort inicial elimina upload, reintento NoSuchUpload permite
+ACK y deja cero pendientes. Firmante validado también por SignatureV4 de la
+imagen distribuida. No se afirma subida de partes/bytes ni S3 gestionado.
+Reconciliador con error SQL 42501 real sigue abortando la página; restores de
+ACL del fixture local verificados. Upgrades identidad18/conflicto4/refunds26
+PASS. Evidencia `~/evidence/1608-r5/storage-http-{probe,retry}.log`,
+`abort-retry-{red,green}.log`, `reconcile-outage.log` y `upgrade-*`.
+Sigue abierto el abort NULL-manifest por preflight Storage; no hay bypass.
+
 ## #1608 · Ronda 5 local · R4-P2-2 (14/10/2026)
 
 14 RPC de Billing/operacional adquieren todos sus UUID ordenados antes de

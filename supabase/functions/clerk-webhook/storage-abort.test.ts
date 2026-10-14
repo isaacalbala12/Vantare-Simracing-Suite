@@ -16,7 +16,7 @@ const config = {
   region: "us-east-1",
 };
 Deno.test("multipart abort signs DELETE, preserves path and upload ID, and only acknowledges API success", async () => {
-  await abortStorageUpload(upload, config, async (input, init) => {
+  await abortStorageUpload(upload, config, (input, init) => {
     const u = new URL(String(input));
     assertEquals(
       u.pathname,
@@ -32,7 +32,7 @@ Deno.test("multipart abort signs DELETE, preserves path and upload ID, and only 
       ),
       true,
     );
-    return new Response(null, { status: 204 });
+    return Promise.resolve(new Response(null, { status: 204 }));
   });
   for (const status of [403, 404, 500]) {
     await assertRejects(
@@ -50,5 +50,31 @@ Deno.test("multipart abort signs DELETE, preserves path and upload ID, and only 
     () => abortStorageUpload(upload, { ...config, tenant: "" }),
     Error,
     "storage_abort_not_configured",
+  );
+});
+
+Deno.test("API abort succeeded but SQL ACK lost: exact NoSuchUpload can drain retry, generic 404 cannot", async () => {
+  await abortStorageUpload(
+    upload,
+    config,
+    () =>
+      Promise.resolve(
+        new Response("<Error><Code>NoSuchUpload</Code></Error>", {
+          status: 404,
+          headers: { "content-type": "application/xml" },
+        }),
+      ),
+  );
+  await assertRejects(
+    () =>
+      abortStorageUpload(upload, config, () =>
+        Promise.resolve(
+          new Response("<Error><Code>NoSuchKey</Code></Error>", {
+            status: 404,
+            headers: { "content-type": "application/xml" },
+          }),
+        )),
+    Error,
+    "storage_abort_failed",
   );
 });

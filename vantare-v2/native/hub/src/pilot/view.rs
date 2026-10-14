@@ -51,6 +51,20 @@ struct Source {
     crop: Crop,
     drag: Option<Point<Pixels>>,
 }
+impl Source {
+    fn zoom(&mut self, factor: f32, busy: bool) {
+        if busy {
+            return;
+        }
+        self.crop = self.crop.zoomed(factor, self.width, self.height);
+    }
+    fn nudge(&mut self, dx: f32, dy: f32, busy: bool) {
+        if busy {
+            return;
+        }
+        self.crop = self.crop.moved(dx, dy, self.width, self.height);
+    }
+}
 
 pub struct PilotEditor {
     saved: Draft,
@@ -281,7 +295,8 @@ impl PilotEditor {
             Action::ZoomIn => self.zoom(1.25),
             Action::ZoomOut => self.zoom(0.8),
             Action::ApplyCrop => {
-                if let Some(source) = &self.source {
+                if let Some(source) = &mut self.source {
+                    source.drag = None;
                     self.busy = true;
                     cx.emit(PilotEvent::ApplyCrop(source.crop));
                 }
@@ -323,13 +338,13 @@ impl PilotEditor {
 
     fn zoom(&mut self, factor: f32) {
         if let Some(source) = &mut self.source {
-            source.crop = source.crop.zoomed(factor, source.width, source.height);
+            source.zoom(factor, self.busy);
         }
     }
 
     fn nudge(&mut self, dx: f32, dy: f32) {
         if let Some(source) = &mut self.source {
-            source.crop = source.crop.moved(dx, dy, source.width, source.height);
+            source.nudge(dx, dy, self.busy);
         }
     }
 
@@ -758,6 +773,9 @@ impl PilotEditor {
             .on_mouse_down(
                 gpui::MouseButton::Left,
                 cx.listener(|this, event: &gpui::MouseDownEvent, window, cx| {
+                    if this.busy {
+                        return;
+                    }
                     this.crop_focus.focus(window, cx);
                     if let Some(source) = &mut this.source {
                         source.drag = Some(event.position);
@@ -766,6 +784,9 @@ impl PilotEditor {
             )
             .on_mouse_move(
                 cx.listener(move |this, event: &gpui::MouseMoveEvent, _, cx| {
+                    if this.busy {
+                        return;
+                    }
                     let Some(source) = &mut this.source else {
                         return;
                     };
@@ -1119,6 +1140,26 @@ fn has_changes(current: &Draft, saved: &Draft, photo_changed: bool) -> bool {
 #[cfg(test)]
 mod wiring_tests {
     use super::*;
+    #[test]
+    fn late_crop_inputs_keep_the_selection_sent_to_the_worker() {
+        let mut source = Source {
+            image: Arc::new(Image::from_bytes(gpui::ImageFormat::Png, vec![])),
+            width: 600,
+            height: 300,
+            crop: Crop::centered(600, 300),
+            drag: None,
+        };
+        source.zoom(1.25, false);
+        let sent = source.crop;
+        // El worker recibe `sent` por valor; rueda/teclado/arrastre comparten
+        // estos puntos de entrada del modelo mientras el editor está ocupado.
+        source.zoom(1.25, true);
+        assert_eq!(source.crop, sent);
+        source.nudge(0.1, 0.1, true);
+        assert_eq!(source.crop, sent);
+        source.nudge(0.1, 0.0, false);
+        assert_ne!(source.crop, sent, "respuesta libera la edición");
+    }
     #[test]
     fn cancel_crop_is_disabled_after_processing_starts_until_result_arrives() {
         assert!(

@@ -170,6 +170,8 @@ impl Drop for Worker {
 }
 
 #[cfg(test)]
+mod analytics_tests;
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::diagnostics::{PRIVACY_FILE, enqueue_usage, write_crash};
@@ -180,7 +182,7 @@ mod tests {
         let root = super::super::tests::root();
         fs::write(
             root.join(PRIVACY_FILE),
-            br#"{"crashes":false,"usage":true,"crashes_decided":true}"#,
+            br#"{"crashes":false,"usage":true,"crashes_decided":true,"usage_decided":true}"#,
         )
         .expect("consent");
         fs::create_dir(root.join("usage")).expect("queue");
@@ -211,7 +213,7 @@ mod tests {
         let root = super::super::tests::root();
         fs::write(
             root.join(PRIVACY_FILE),
-            br#"{"crashes":false,"usage":true,"crashes_decided":true}"#,
+            br#"{"crashes":false,"usage":true,"crashes_decided":true,"usage_decided":true}"#,
         )
         .expect("consent");
         fs::create_dir_all(root.join("usage")).expect("queue");
@@ -462,7 +464,7 @@ mod tests {
         assert!(!root.join("usage").exists());
         fs::write(
             root.join(PRIVACY_FILE),
-            br#"{"crashes":true,"usage":true,"crashes_decided":true}"#,
+            br#"{"crashes":true,"usage":true,"crashes_decided":true,"usage_decided":true}"#,
         )
         .expect("consent");
         enqueue_usage(&root, &usage).expect("pending usage");
@@ -483,7 +485,7 @@ mod tests {
         let root = super::super::tests::root();
         fs::write(
             root.join(PRIVACY_FILE),
-            br#"{"crashes":true,"usage":true,"crashes_decided":true}"#,
+            br#"{"crashes":true,"usage":true,"crashes_decided":true,"usage_decided":true}"#,
         )
         .expect("consent");
         for usage in [

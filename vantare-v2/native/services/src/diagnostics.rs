@@ -11,16 +11,23 @@ use std::{
 const FILE_LIMIT: u64 = 24 * 1024;
 const QUEUE_LIMIT: usize = 32;
 pub const PRIVACY_FILE: &str = "privacy.json";
+pub mod activity;
+pub mod installer;
 mod redaction;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+// Dos decisiones independientes y su registro explícito; contrato JSON existente.
+#[allow(clippy::struct_excessive_bools)]
 pub struct Privacy {
     pub crashes: bool,
     pub usage: bool,
     /// Solo una decisión explícita de la nueva pregunta o de Ajustes habilita fallos.
     #[serde(default)]
     pub crashes_decided: bool,
+    /// Decisión independiente de uso; ningún sí heredado habilita analítica.
+    #[serde(default)]
+    pub usage_decided: bool,
 }
 impl Privacy {
     pub fn load(root: &Path) -> Result<Self> {
@@ -31,6 +38,9 @@ impl Privacy {
                 // Los archivos antiguos no distinguen el sí implícito del consentimiento.
                 if !privacy.crashes_decided {
                     privacy.crashes = false;
+                }
+                if !privacy.usage_decided {
+                    privacy.usage = false;
                 }
                 Ok(privacy)
             }
@@ -43,7 +53,7 @@ impl Privacy {
     pub fn discard_disabled(self, root: &Path) -> Result<()> {
         for (folder, allowed) in [
             ("crashes", self.crashes && self.crashes_decided),
-            ("usage", self.usage),
+            ("usage", self.usage && self.usage_decided),
         ] {
             if allowed {
                 continue;
@@ -132,6 +142,15 @@ fn valid_uuid(id: &str) -> bool {
 /// UUID v4 estable por namespace; Testing usa otro. Publicación atómica entre procesos.
 pub fn anonymous_id(root: &Path) -> Result<String> {
     anonymous_id_with_cleanup(root, |path| fs::remove_file(path))
+}
+
+/// Contrato #1610: ausencia sin consentimiento de uso vigente, sin crear un ID.
+/// El informe voluntario no concede consentimiento de analítica.
+pub fn consented_usage_id(root: &Path) -> Result<Option<String>> {
+    if !Privacy::load(root)?.usage {
+        return Ok(None);
+    }
+    anonymous_id(root).map(Some)
 }
 
 fn anonymous_id_with_cleanup(
@@ -312,6 +331,23 @@ pub enum Usage {
     LiveSessionStarted { simulator: String },
     #[serde(rename = "layout_widgets")]
     LayoutWidgets { widget_types: Vec<String> },
+    #[serde(rename = "page_viewed")]
+    PageViewed { page: String },
+    #[serde(rename = "page_usage")]
+    PageUsage { page: String, duration_seconds: u64 },
+    #[serde(rename = "widget_usage")]
+    WidgetUsage {
+        widget_type: String,
+        duration_seconds: u64,
+    },
+    #[serde(rename = "feature_used")]
+    FeatureUsed { feature: String },
+    #[serde(rename = "installation_observed")]
+    InstallationObserved {},
+    #[serde(rename = "account_signed_in")]
+    AccountSignedIn {},
+    #[serde(rename = "commercial_license_observed")]
+    CommercialLicenseObserved {},
 }
 impl Usage {
     fn valid(&self) -> bool {
@@ -334,9 +370,47 @@ impl Usage {
                         .iter()
                         .all(|t| WIDGET_TYPES.contains(&t.as_str()))
             }
+            Self::PageViewed { page } => PAGES.contains(&page.as_str()),
+            Self::PageUsage {
+                page,
+                duration_seconds,
+            } => PAGES.contains(&page.as_str()) && (1..=60).contains(duration_seconds),
+            Self::WidgetUsage {
+                widget_type,
+                duration_seconds,
+            } => {
+                WIDGET_TYPES.contains(&widget_type.as_str()) && (1..=60).contains(duration_seconds)
+            }
+            Self::FeatureUsed { feature } => FEATURES.contains(&feature.as_str()),
+            Self::InstallationObserved {}
+            | Self::AccountSignedIn {}
+            | Self::CommercialLicenseObserved {} => true,
         }
     }
 }
+const PAGES: &[&str] = &[
+    "home",
+    "workshop",
+    "studio",
+    "launcher",
+    "calendar",
+    "strategy",
+    "engineer",
+    "analysis",
+    "testing",
+    "roadmap",
+    "account",
+    "licenses",
+    "notifications",
+    "settings",
+];
+const FEATURES: &[&str] = &[
+    "widget_added",
+    "launch_profile",
+    "strategy_recalculated",
+    "report_sent",
+    "checkout_opened",
+];
 // Solo nombres del catálogo; nunca IDs libres, layout, posiciones ni datos del piloto.
 const WIDGET_TYPES: &[&str] = &[
     "standings",
@@ -366,6 +440,53 @@ pub fn record_usage(event: &Usage) {
     if let Err(error) = result {
         eprintln!("diagnóstico local: {error}");
     }
+}
+
+/// Una observación consentida por instalación; nunca un recibo monetario.
+pub fn record_usage_once(event: &Usage) {
+    if !configured() {
+        return;
+    }
+    if let Err(error) = data_root().and_then(|root| enqueue_once(&root, event)) {
+        eprintln!("uso local: {error}");
+    }
+}
+
+fn enqueue_once(root: &Path, event: &Usage) -> Result<()> {
+    if !Privacy::load(root)?.usage {
+        return Ok(());
+    }
+    let marker = match event {
+        Usage::InstallationObserved {} => "installation-observed-v1",
+        Usage::AccountSignedIn {} => "account-observed-v1",
+        Usage::CommercialLicenseObserved {} => "commercial-license-observed-v1",
+        _ => return Err(Error::Protocol),
+    };
+    fs::create_dir_all(root).map_err(|_| Error::Storage)?;
+    let lock = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(root.join("usage-observed.lock"))
+        .map_err(|_| Error::Storage)?;
+    lock.try_lock().map_err(|_| Error::Busy)?;
+    if root.join(marker).exists() {
+        return Ok(());
+    }
+    // Services puede confirmar cuenta/licencia antes de que el Hub se abra.
+    // Reservar la primera observación bajo el mismo lock conserva el orden.
+    let installation = root.join("installation-observed-v1");
+    if !matches!(event, Usage::InstallationObserved {}) && !installation.exists() {
+        enqueue_usage(root, &Usage::InstallationObserved {})?;
+        File::create(installation)
+            .and_then(|file| file.sync_all())
+            .map_err(|_| Error::Storage)?;
+    }
+    enqueue_usage(root, event)?;
+    File::create(root.join(marker))
+        .and_then(|file| file.sync_all())
+        .map_err(|_| Error::Storage)
 }
 fn enqueue_usage(root: &Path, event: &Usage) -> Result<()> {
     if !Privacy::load(root)?.usage {

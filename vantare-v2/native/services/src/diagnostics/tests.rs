@@ -218,6 +218,57 @@ pub(super) fn root() -> PathBuf {
     path
 }
 #[test]
+fn consented_identifier_is_absent_until_explicit_usage_and_after_revocation() {
+    let root = root();
+    assert_eq!(consented_usage_id(&root).expect("default"), None);
+    assert!(!root.join("anonymous-id").exists());
+    for (document, allowed) in [
+        (
+            r#"{"crashes":true,"crashes_decided":true,"usage":true}"#,
+            false,
+        ),
+        (
+            r#"{"crashes":false,"usage":true,"usage_decided":true}"#,
+            true,
+        ),
+        (
+            r#"{"crashes":false,"usage":false,"usage_decided":true}"#,
+            false,
+        ),
+    ] {
+        fs::write(root.join(PRIVACY_FILE), document).expect("privacy");
+        let identifier = consented_usage_id(&root).expect("lookup");
+        assert_eq!(identifier.is_some(), allowed);
+        if let Some(identifier) = identifier {
+            assert_eq!(identifier, anonymous_id(&root).expect("sender identity"));
+            assert!(valid_uuid(&identifier));
+        }
+    }
+    fs::remove_dir_all(root).expect("cleanup");
+}
+#[test]
+fn isa1609_legacy_usage_is_not_explicit_consent() {
+    let root = root();
+    fs::write(
+        root.join(PRIVACY_FILE),
+        br#"{"crashes":false,"usage":true,"crashes_decided":true}"#,
+    )
+    .expect("legacy");
+    enqueue_usage(
+        &root,
+        &Usage::LiveSessionStarted {
+            simulator: "lmu".into(),
+        },
+    )
+    .expect("closed");
+    assert!(
+        !root.join("usage").exists(),
+        "legacy usage must not enqueue without a separate explicit decision"
+    );
+    assert!(!Privacy::load(&root).expect("load").usage);
+    fs::remove_dir_all(root).expect("cleanup");
+}
+#[test]
 fn identifier_is_uuid_v4_stable_and_shared_by_concurrent_writers() {
     let root = root();
     let handles: Vec<_> = (0..8)
@@ -250,7 +301,7 @@ fn usage_rejects_paths_and_tokens_before_creating_a_file() {
     let root = root();
     fs::write(
         root.join(PRIVACY_FILE),
-        br#"{"crashes":true,"usage":true,"crashes_decided":true}"#,
+        br#"{"crashes":true,"usage":true,"crashes_decided":true,"usage_decided":true}"#,
     )
     .expect("consent");
     for usage in [

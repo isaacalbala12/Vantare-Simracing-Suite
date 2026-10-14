@@ -173,6 +173,67 @@ pub fn week_title(days: &[NaiveDate; 7]) -> String {
     }
 }
 
+/// Ciudad de la zona del sistema (Windows), si se conoce: «Madrid».
+fn local_city() -> Option<&'static str> {
+    static CITY: std::sync::OnceLock<Option<&'static str>> = std::sync::OnceLock::new();
+    *CITY.get_or_init(|| {
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            let out = std::process::Command::new("tzutil")
+                .arg("/g")
+                .creation_flags(0x0800_0000) // CREATE_NO_WINDOW
+                .output()
+                .ok()?;
+            city_of(String::from_utf8_lossy(&out.stdout).trim())
+        }
+        #[cfg(not(windows))]
+        None
+    })
+}
+
+/// Id de zona de Windows -> ciudad de referencia; lo que no esté aquí se queda en «Local».
+fn city_of(id: &str) -> Option<&'static str> {
+    Some(match id {
+        "Romance Standard Time" => "Madrid",
+        "W. Europe Standard Time" => "Berlín",
+        "Central Europe Standard Time" => "Budapest",
+        "Central European Standard Time" => "Varsovia",
+        "GMT Standard Time" => "Londres",
+        "E. Europe Standard Time" => "Bucarest",
+        "FLE Standard Time" => "Kiev",
+        "GTB Standard Time" => "Atenas",
+        "Russian Standard Time" => "Moscú",
+        "Turkey Standard Time" => "Estambul",
+        "Eastern Standard Time" => "Nueva York",
+        "Central Standard Time" => "Chicago",
+        "Mountain Standard Time" => "Denver",
+        "Pacific Standard Time" => "Los Ángeles",
+        "Atlantic Standard Time" => "Halifax",
+        "Central Standard Time (Mexico)" => "Ciudad de México",
+        "Argentina Standard Time" => "Buenos Aires",
+        "E. South America Standard Time" => "São Paulo",
+        "Pacific SA Standard Time" => "Santiago",
+        "SA Pacific Standard Time" => "Bogotá",
+        "AUS Eastern Standard Time" => "Sídney",
+        "W. Australia Standard Time" => "Perth",
+        "Tokyo Standard Time" => "Tokio",
+        "China Standard Time" => "Pekín",
+        "India Standard Time" => "Calcuta",
+        "South Africa Standard Time" => "Johannesburgo",
+        _ => return None,
+    })
+}
+
+/// «Madrid +2», o «Local +2» si no se conoce la ciudad.
+pub fn local_label(at: DateTime<Utc>) -> String {
+    format!(
+        "{} {}",
+        local_city().unwrap_or("Local"),
+        Zone::Local.short(at)
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -242,6 +303,12 @@ mod tests {
         );
         assert!(b > a);
         assert_eq!(Zone::Local.date(a), day);
+    }
+
+    #[test]
+    fn windows_zone_ids_name_a_city() {
+        assert_eq!(city_of("Romance Standard Time"), Some("Madrid"));
+        assert_eq!(city_of("Zona Inventada"), None);
     }
 
     #[test]

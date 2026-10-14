@@ -75,6 +75,10 @@ pub(crate) struct State {
     pub scroll: gpui::ScrollHandle,
     pub scrolled_day: Option<usize>,
     pub scroll_tries: u8,
+    /// Campo de búsqueda de Próximas; se crea al pintar por primera vez.
+    pub search: Option<gpui::Entity<orbit::Input>>,
+    /// Tamaño de la ventana, para las capas que la cubren entera.
+    pub viewport: gpui::Size<gpui::Pixels>,
     pub toast: Option<String>,
 }
 
@@ -160,8 +164,23 @@ impl Calendar {
     }
 
     pub(super) fn say(&mut self, message: impl Into<String>, cx: &mut Context<Self>) {
-        self.ui.toast = Some(message.into());
+        let message = message.into();
+        self.ui.toast = Some(message.clone());
         cx.notify();
+        cx.spawn(async move |this, cx| {
+            cx.background_executor()
+                .timer(std::time::Duration::from_secs(4))
+                .await;
+            // Si la sección ya no existe, no hay nada que limpiar.
+            this.update(cx, |this, cx| {
+                if this.ui.toast.as_deref() == Some(message.as_str()) {
+                    this.ui.toast = None;
+                    cx.notify();
+                }
+            })
+            .ok();
+        })
+        .detach();
     }
 
     /// Series visibles y salidas por hora del horario, para la cabecera.
@@ -333,9 +352,10 @@ impl Calendar {
             ));
         } else {
             let current = self.schedule().or(self.last_week.as_ref());
-            let week = current
-                .and_then(|s| s.window().ok())
-                .map(|(from, _)| clock::week_days(from));
+            // Caducado: el carril ya mira a la semana que falta por publicar.
+            let week = current.and_then(|s| s.window().ok()).map(|(from, to)| {
+                clock::week_days(if health == Health::Expired { to } else { from })
+            });
             let title = week.map_or_else(String::new, |d| {
                 format!(
                     "{} {} – {} {} {}",
@@ -367,7 +387,15 @@ impl Calendar {
             let next_from = clock::week_start(now) + chrono::Duration::days(7);
             let estimate = self.history.publication_estimate(next_from);
             status = status
-                .child(kv("Semana", title, cx))
+                .child(kv(
+                    "Semana",
+                    if health == Health::Expired {
+                        format!("{title} · sin publicar")
+                    } else {
+                        title
+                    },
+                    cx,
+                ))
                 .child(kv("Fuente", source, cx))
                 .child(kv(
                     "Actualizado",
@@ -404,10 +432,7 @@ impl Calendar {
                 seg(
                     "calendar-zone",
                     &[
-                        (
-                            format!("Local {}", zone_short(clock::Zone::Local, now)),
-                            !self.prefs.utc,
-                        ),
+                        (clock::local_label(now), !self.prefs.utc),
                         ("UTC".into(), self.prefs.utc),
                     ],
                     cx,
@@ -433,7 +458,7 @@ impl Calendar {
     }
 
     fn zone_seg(&self, now: DateTime<Utc>, cx: &mut Context<Self>) -> Div {
-        let local = format!("Local {}", zone_short(clock::Zone::Local, now));
+        let local = clock::local_label(now);
         let utc = self.prefs.utc;
         div()
             .flex()
@@ -570,16 +595,13 @@ impl Calendar {
     }
 }
 
-fn zone_short(zone: clock::Zone, now: DateTime<Utc>) -> String {
-    zone.short(now)
-}
-
 /// Contenido central de la página.
 pub(super) fn render(
     cal: &mut Calendar,
-    _window: &mut Window,
+    window: &mut Window,
     cx: &mut Context<Calendar>,
 ) -> impl IntoElement {
+    cal.ui.viewport = window.viewport_size();
     let health = cal.health();
     let mut page = div()
         .id("calendar")
@@ -665,6 +687,36 @@ pub(super) fn render(
     }
     if let Some(ficha) = cal.ui.ficha.clone() {
         page = page.child(ficha::render(cal, &ficha, cx));
+    }
+    if let Some(message) = cal.ui.toast.clone() {
+        let skin = chrome::skin(cx);
+        page = page.child(
+            gpui::deferred(
+                div()
+                    .absolute()
+                    .bottom(px(22.0))
+                    .left_0()
+                    .right_0()
+                    .flex()
+                    .justify_center()
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(8.0))
+                            .px(px(16.0))
+                            .py(px(10.0))
+                            .rounded(px(10.0))
+                            .bg(gpui::rgb(skin.l3))
+                            .border_1()
+                            .border_color(orbit::alpha(skin.line2))
+                            .shadow(vec![orbit::kit_shadow(0x0000_0066, 0.0, 8.0, 24.0, false)])
+                            .child(chrome::icon("info", 14.0, skin.text2))
+                            .child(t(message, 13.0, 500, skin.text1, cx)),
+                    ),
+            )
+            .with_priority(orbit::MODAL_Z + 1),
+        );
     }
     match cal.ui.modal {
         Some(Modal::Avisos) => page = page.child(avisos::alerts_modal(cal, cx)),

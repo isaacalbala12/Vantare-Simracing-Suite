@@ -522,10 +522,15 @@ impl Calendar {
         Ok(true)
     }
 
-    pub(crate) fn complete_refresh(&mut self, reply: crate::services::protocol::Reply) {
+    pub(crate) fn complete_refresh(
+        &mut self,
+        reply: crate::services::protocol::Reply,
+        cx: &mut Context<Self>,
+    ) {
         use crate::services::protocol::Reply;
         self.refreshing = false;
         let now = Utc::now();
+        let week_before = self.week_from();
         let result = match reply {
             Reply::Calendar { schedule, fallback } => {
                 self.refresh_failed = false;
@@ -547,6 +552,28 @@ impl Calendar {
             format!("No se pudo actualizar el horario: {error}. {retained}")
         });
         self.report_orphans();
+        let week_after = self.week_from();
+        if self.alerts.notify_week
+            && self.alerts.channels.windows
+            && week_before.is_some_and(|before| week_after.is_some_and(|after| after > before))
+            && let Some(from) = week_after
+        {
+            let title = clock::week_title(&clock::week_days(from));
+            cx.emit(Event::Alert {
+                series_id: "semana-nueva".into(),
+                title: format!("Ya está el horario de la semana {title}"),
+                body: "Tus favoritas y tus avisos pasan solos a la semana nueva.".into(),
+            });
+        }
+    }
+
+    /// Inicio de la semana LMU del horario vigente (o de la última, ya caducada).
+    fn week_from(&self) -> Option<DateTime<Utc>> {
+        self.current
+            .as_ref()
+            .or(self.last_week.as_ref())
+            .and_then(|s| s.window().ok())
+            .map(|(from, _)| from)
     }
 
     /// Avisos que apuntan a una serie que ya no está: se dice, no se borran.

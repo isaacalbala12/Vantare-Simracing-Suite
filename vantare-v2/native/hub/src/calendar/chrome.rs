@@ -518,3 +518,16 @@ pub(super) fn kv_box(label: &str, value: impl Into<SharedString>, cx: &gpui::App
         .child(cap(label, skin.cap, cx))
         .child(t(value, 14.0, 700, skin.text1, cx).truncate())
 }
+
+/// Capa que cubre toda la ventana (no solo el área del calendario), por encima de la shell.
+pub fn window_layer(
+    viewport: gpui::Size<gpui::Pixels>,
+    layer: gpui::Stateful<Div>,
+) -> impl IntoElement {
+    gpui::deferred(
+        gpui::anchored()
+            .position(gpui::point(px(0.0), px(0.0)))
+            .child(layer.w(viewport.width).h(viewport.height)),
+    )
+    .with_priority(orbit::MODAL_Z)
+}

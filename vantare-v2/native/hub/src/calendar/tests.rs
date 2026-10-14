@@ -226,3 +226,10 @@ fn following_a_series_is_saved_and_toggles() {
     );
     let _ = std::fs::remove_dir_all(dir);
 }
+
+#[test]
+fn new_week_notice_is_on_by_default_and_old_files_keep_it() {
+    assert!(Alerts::default().notify_week);
+    let old: Alerts = serde_json::from_str(r#"{"leadMin":10}"#).expect("archivo antiguo");
+    assert!(old.notify_week);
+}

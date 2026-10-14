@@ -579,7 +579,7 @@ impl Remote {
         if let Some(target) = self.calendar_target.take() {
             // La sección puede haber desaparecido al cerrar el Hub.
             let _ = target.update(cx, |calendar, cx| {
-                calendar.complete_refresh(reply);
+                calendar.complete_refresh(reply, cx);
                 cx.notify();
             });
         }

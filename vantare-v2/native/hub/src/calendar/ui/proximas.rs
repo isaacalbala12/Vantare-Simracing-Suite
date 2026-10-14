@@ -51,6 +51,15 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
     if health == Health::Expired {
         return expired(cal, cx);
     }
+    if cal.ui.search.is_none() {
+        let input = cx.new(|cx| orbit::Input::new(String::new(), "Buscar serie", cx));
+        cx.observe(&input, |this, input, cx| {
+            this.ui.filter.query.clone_from(&input.read(cx).value);
+            cx.notify();
+        })
+        .detach();
+        cal.ui.search = Some(input);
+    }
     page = page.child(hero(cal, compact, cx));
     page.child(board(cal, compact, cx))
 }
@@ -295,6 +304,7 @@ fn hero(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
                         .items_center()
                         .gap(px(10.0))
                         .mt(px(if compact { 6.0 } else { 8.0 }))
+                        .overflow_hidden()
                         .child(
                             t(series.track_short().to_owned(), 13.0, 600, skin.text2, cx)
                                 .whitespace_nowrap(),
@@ -310,17 +320,19 @@ fn hero(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
                                 .gap(px(10.0))
                                 .children(series.class_chips().iter().map(|c| class_chip(c, cx))),
                         )
-                        .child(div().w(px(1.0)).h(px(12.0)).bg(orbit::alpha(skin.line3)))
-                        .child(
-                            t(
-                                format!("Carrera {}", duration_txt(series.race_minutes())),
-                                13.0,
-                                400,
-                                skin.text2,
-                                cx,
-                            )
-                            .whitespace_nowrap(),
-                        ),
+                        .when(!compact, |row| {
+                            row.child(div().w(px(1.0)).h(px(12.0)).bg(orbit::alpha(skin.line3)))
+                                .child(
+                                    t(
+                                        format!("Carrera {}", duration_txt(series.race_minutes())),
+                                        13.0,
+                                        400,
+                                        skin.text2,
+                                        cx,
+                                    )
+                                    .whitespace_nowrap(),
+                                )
+                        }),
                 )
                 .when(!compact, |info| {
                     info.child(
@@ -569,6 +581,20 @@ fn board(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
+                .children(cal.ui.search.clone().map(|input| {
+                    div()
+                        .relative()
+                        .w(px(if compact { 130.0 } else { 180.0 }))
+                        .child(input.clone())
+                        .when(input.read(cx).value.is_empty(), |field| {
+                            field.child(
+                                t("Buscar serie", 13.0, 400, skin.text3, cx)
+                                    .absolute()
+                                    .left(px(14.0))
+                                    .top(px(10.0)),
+                            )
+                        })
+                }))
                 .child(super::fav_seg(cal, Some(total), cx).when(true, |s| s))
                 .child(tier_filter(cal, cx))
                 .child(class_filter(cal, cx)),
@@ -1137,9 +1163,30 @@ pub(super) fn expired(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                 ),
         )
         .child(
-            btn("calendar-expired-refresh", "Buscar ahora", false, cx)
-                .child(icon("refresh", 15.0, skin.text1))
-                .on_click(cx.listener(|this, _, _, cx| this.refresh(cx))),
+            div()
+                .flex_none()
+                .flex()
+                .flex_col()
+                .items_end()
+                .gap(px(6.0))
+                .child(
+                    btn("calendar-expired-refresh", "Buscar ahora", false, cx)
+                        .child(icon("refresh", 15.0, skin.text1))
+                        .on_click(cx.listener(|this, _, _, cx| this.refresh(cx))),
+                )
+                .child(
+                    super::avisos::toggle(
+                        "calendar-notify-week",
+                        "Avisarme al llegar",
+                        "",
+                        cal.alerts.notify_week,
+                        cx,
+                    )
+                    .on_click(super::avisos::edit(cx, |a| {
+                        a.notify_week = !a.notify_week;
+                        Ok(())
+                    })),
+                ),
         );
     let readonly = super::semana::card(cal, true, cx);
     let _ = View::Proximas;

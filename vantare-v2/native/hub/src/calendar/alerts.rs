@@ -101,6 +101,13 @@ pub struct Alerts {
     /// Lanza el perfil 3 min antes de la salida avisada. Apagado por defecto.
     #[serde(default)]
     pub auto_launch: bool,
+    /// Avisa cuando LMU publica la semana nueva.
+    #[serde(default = "yes")]
+    pub notify_week: bool,
+}
+
+fn yes() -> bool {
+    true
 }
 
 fn default_lead() -> u8 {
@@ -115,6 +122,7 @@ impl Default for Alerts {
             slots: vec![],
             channels: Channels::default(),
             auto_launch: false,
+            notify_week: true,
         }
     }
 }

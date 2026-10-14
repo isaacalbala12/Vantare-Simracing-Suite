@@ -1,6 +1,33 @@
 # Handoff vivo — Plataforma, cuenta, servicios y distribución
 
 Estado de la base indicada; releer la issue antes de ejecutar.
+
+## #1612 / VANTA-9 · Perfil privado y Ajustes (14/10/2026)
+
+Worker reanudado por CLI en `vantareapp/isa-1612-perfil-y-ajustes`, base remota
+`0807fbd0`. Diseño Opus `3aaa3961` integrado como `48b4f812`; DPAPI, foto y
+RPC CAS `f8dd0d12`. Wiring `61dc364f`; arreglos por hito de privacidad, foto
+sola, logout tardío, Storage duplicado, límite JPEG e IPC desconectado.
+Regresiones: servicios 7/7 y Hub piloto 10/10 PASS. Check y Clippy completos
+PASS; Nextest 1668/1668 (7 skips existentes), lifecycle 18/18 PASS. Telemetría
+25/25 PASS (corpus ACC 918 s), fmt PASS. Diez capturas GPUI 1440×900 revisadas
+con datos ficticios; índice/hashes en la evidencia. Integridad de las 456 huellas retiradas PASS.
+
+Perfil local primero, privado y separado por issuer/subject; el formulario no
+concede identidad ni derechos. Sincronización inicial/guardado con el puente UUID
+existente; el error remoto conserva la copia local. Foto original solo en memoria,
+JPEG 256×256 ≤24 KiB, recorte circular en presentación. Backend solo preparado,
+sin aplicar: [runbook](../../pilot-profile-backend.md), 19 pgTAP locales conservados
+de la sesión anterior. [Matriz de las ocho páginas](../../pilot-settings-review.md).
+
+Painter de bandera y fallback ISO preparados por Opus; colocación por widget
+sin diseño aprobado, DUDA en buzón. Coordinado con #1608: solo extensiones
+aditivas en app/bridge/protocolo/Remote; no account.rs/account/*, login ni pagos.
+Plane VANTA-9 En curso verificado; GitHub Project Vantare y area:plataforma.
+Evidencia `C:/tmp/1612-evidence`; AppData/TEMP de QA, target propio y dos jobs.
+Sin push/PR todavía, ni merge, promoción, release o producción. Siguiente: publicar la rama, PR draft a nightly y Plane Por revisar;
+la issue registra SHA final, PR y estado de CI realmente alcanzado.
+
 [Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/platform-commercial.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 
 ## #1601 / VANTA-10 · Plane, fase de implementación (13/10/2026)

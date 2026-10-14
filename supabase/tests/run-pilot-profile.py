@@ -23,7 +23,7 @@ def main():
 
         def run(program, *parameters, name):
             result = subprocess.run([str(args.pg_bin / program), *map(str, parameters)],
-                                    env=env, capture_output=True, text=True, encoding='utf-8')
+                                    env=env, capture_output=True, text=True, encoding='utf-8', timeout=120)
             output = result.stdout + result.stderr
             (args.output / name).write_text(output, encoding='utf-8')
             if result.returncode:

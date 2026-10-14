@@ -178,7 +178,7 @@ impl super::Hub {
             .child(orbit::text("Es opcional. Puedes usar Vantare si rechazas y cambiar tu decisión en Ajustes › Privacidad. Uso e informes de fallos se aceptan por separado.", 13.0, 400, orbit::skin(cx).text2, cx))
             .when(asking_usage, |body| body.child(self.settings.usage_choice.clone()))
             .child(policy)
-            .when_some(self.settings.status.as_ref(), |body, error| body.child(orbit::text(format!("No se pudo guardar tu decisión: {error}. Los informes siguen desactivados."), 13.0, 400, orbit::skin(cx).text1, cx)))
+            .when_some(self.settings.status.as_ref(), |body, error| body.child(orbit::text(format!("No se pudo confirmar tu decisión: {error}. Puedes volver a intentarlo."), 13.0, 400, orbit::skin(cx).text1, cx)))
             .child(actions);
         div()
             .id("crash-consent-screen")

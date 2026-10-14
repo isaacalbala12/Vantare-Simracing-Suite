@@ -9,10 +9,11 @@ lectura suspendida restaura Some(0); cola conserva/admite dos eventos revocados.
 P2-1 `86fa6aa8`, services 130 + 2 procesos PASS. Corrección local de permiso monotónico y cola revocable bajo mutex en memoria;
 callbacks usan try_lock sin espera, generación comprobada al admitir. Acumuladores
 revalidan antes de cerrar y el Hub los vacía al guardar revocación.
-P2-2 RED con consent.lock retenido; GREEN de los 7 tests de Store (carga ocupada,
+P2-2 `6b177190`: RED con consent.lock retenido; GREEN de los 7 tests de Store (carga ocupada,
 limpieza de fallos diferida, revocación sin reiniciar y persistencia). Limpieza Busy
-con worker cancelable; permisos aceptados no toman lock sin trabajo. Texto P3 y
-gates finales pendientes.
+con worker cancelable; permisos aceptados no toman lock sin trabajo. P3: el error ya no afirma que los fallos estén desactivados al fallar la decisión
+de uso; indica que no se pudo confirmar la decisión y permite reintentar. Cambio de texto, sin diseño
+nuevo ni test que copie la cadena. Gates finales pendientes.
 VANTA-22 En curso. Sin subagentes ni nuevo diseño. Evidencia C:/tmp/1609-r3.
 Entre procesos la invalidación depende del refresco de disco del worker; no se
 promete retirada instantánea de memoria en otra UI. DUDA en buzón al orquestador.

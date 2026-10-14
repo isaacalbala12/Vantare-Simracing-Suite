@@ -293,8 +293,7 @@ impl State {
             update_focus: cx.focus_handle(),
             custom_performance_focus: cx.focus_handle(),
             performance_focus: std::array::from_fn(|_| cx.focus_handle()),
-            privacy: vantare_services::diagnostics::data_root()
-                .map_err(|error| error.to_string())
+            privacy: privacy::root(&data)
                 .and_then(|root| privacy::Store::load(&root)),
             privacy_focus: std::array::from_fn(|_| cx.focus_handle()),
             privacy_policy_focus: cx.focus_handle(),

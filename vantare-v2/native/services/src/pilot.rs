@@ -21,7 +21,10 @@ impl Default for Crop {
     }
 }
 
-/// La imagen original nunca sale del PC. Coordenadas sobre el cuadrado centrado.
+/// La imagen original nunca sale del PC. Coordenadas normalizadas sobre la imagen original.
+// Las dimensiones están acotadas a 4096 y las coordenadas se validan antes
+// de convertir píxeles positivos; todos los enteros son exactos en f32.
+#[allow(clippy::cast_precision_loss, clippy::cast_possible_truncation, clippy::cast_sign_loss)]
 pub fn crop_photo(bytes: &[u8], crop: Crop) -> Result<PilotPhoto> {
     let image = decode_source(bytes)?;
     let side = image.width().min(image.height());
@@ -49,15 +52,16 @@ pub fn crop_photo(bytes: &[u8], crop: Crop) -> Result<PilotPhoto> {
         .resize_exact(256, 256, image::imageops::FilterType::Lanczos3)
         .to_rgb8();
     let mut jpeg = Vec::new();
-    JpegEncoder::new_with_quality(&mut jpeg, 80)
-        .encode_image(&small)
-        .map_err(|_| Error::Protocol)?;
-    if jpeg.len() > crate::protocol::pilot_document::MAX_PHOTO_BYTES {
-        return Err(Error::TooLarge);
+    for quality in [80, 65, 50, 35, 20] {
+        jpeg.clear();
+        JpegEncoder::new_with_quality(&mut jpeg, quality)
+            .encode_image(&small)
+            .map_err(|_| Error::Protocol)?;
+        if jpeg.len() <= crate::protocol::pilot_document::MAX_PHOTO_BYTES {
+            return Ok(PilotPhoto { jpeg: STANDARD.encode(jpeg) });
+        }
     }
-    Ok(PilotPhoto {
-        jpeg: STANDARD.encode(jpeg),
-    })
+    Err(Error::TooLarge)
 }
 
 fn decode_source(bytes: &[u8]) -> Result<image::DynamicImage> {
@@ -174,6 +178,29 @@ pub mod sync;
 mod tests {
     use super::*;
     #[test]
+    fn valid_detailed_photo_fits_storage_budget() {
+        let mut image = image::RgbImage::new(256, 256);
+        let mut seed = 1_u32;
+        for pixel in image.pixels_mut() {
+            let mut color = [0; 3];
+            for value in &mut color {
+                seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                *value = seed.to_be_bytes()[0];
+            }
+            *pixel = image::Rgb(color);
+        }
+        let mut bytes = std::io::Cursor::new(Vec::new());
+        image::DynamicImage::ImageRgb8(image)
+            .write_to(&mut bytes, ImageFormat::Png)
+            .expect("PNG válido");
+        let photo = crop_photo(bytes.get_ref(), Crop::default())
+            .expect("foto admitida dentro del presupuesto");
+        assert!(
+            STANDARD.decode(photo.jpeg).expect("JPEG").len()
+                <= crate::protocol::pilot_document::MAX_PHOTO_BYTES
+        );
+    }
+    #[test]
     fn rectangular_crop_uses_original_image_coordinates() {
         let mut image = image::RgbImage::new(600, 300);
         for (x, _, pixel) in image.enumerate_pixels_mut() {
@@ -186,7 +213,7 @@ mod tests {
         let mut bytes = std::io::Cursor::new(Vec::new());
         image::DynamicImage::ImageRgb8(image)
             .write_to(&mut bytes, ImageFormat::Png)
-            .unwrap();
+            .expect("fixture válida");
         let photo = crop_photo(
             bytes.get_ref(),
             Crop {
@@ -195,31 +222,31 @@ mod tests {
                 size: 1.0,
             },
         )
-        .unwrap();
-        let decoded = image::load_from_memory(&STANDARD.decode(photo.jpeg).unwrap())
-            .unwrap()
+        .expect("fixture válida");
+        let decoded = image::load_from_memory(&STANDARD.decode(photo.jpeg).expect("fixture válida"))
+            .expect("fixture válida")
             .to_rgb8();
         let pixel = decoded.get_pixel(128, 128);
         assert!(pixel[2] > 240 && pixel[0] < 15);
     }
     #[test]
     fn local_restart_account_isolation_stale_edit_and_unavailable_backend() {
-        let root = std::env::temp_dir().join(crate::random_id().unwrap());
-        let mut local = Local::open(&root, None, None).unwrap();
+        let root = std::env::temp_dir().join(crate::random_id().expect("fixture válida"));
+        let mut local = Local::open(&root, None, None).expect("fixture válida");
         let profile = PilotProfile {
             public_name: "Local".into(),
             country: Some("ES".into()),
             ..Default::default()
         };
-        local.save(profile.clone(), 0).unwrap();
+        local.save(profile.clone(), 0).expect("fixture válida");
         assert_eq!(local.save(PilotProfile::default(), 0), Err(Error::Conflict));
         drop(local);
-        let local = Local::open(&root, None, None).unwrap();
+        let local = Local::open(&root, None, None).expect("fixture válida");
         assert_eq!(local.state().profile, profile);
         assert!(local.state().pending);
         drop(local);
         let mut account =
-            Local::open(&root, Some("https://fixture.invalid"), Some("user_a")).unwrap();
+            Local::open(&root, Some("https://fixture.invalid"), Some("user_a")).expect("fixture válida");
         assert_eq!(account.state(), &PilotState::default());
         account
             .save(
@@ -229,28 +256,28 @@ mod tests {
                 },
                 0,
             )
-            .unwrap();
+            .expect("fixture válida");
         drop(account);
-        let other = Local::open(&root, Some("https://fixture.invalid"), Some("user_b")).unwrap();
+        let other = Local::open(&root, Some("https://fixture.invalid"), Some("user_b")).expect("fixture válida");
         assert_eq!(other.state(), &PilotState::default());
         drop(other);
-        let issuer = Local::open(&root, Some("https://other.invalid"), Some("user_a")).unwrap();
+        let issuer = Local::open(&root, Some("https://other.invalid"), Some("user_a")).expect("fixture válida");
         assert_eq!(issuer.state(), &PilotState::default());
         drop(issuer);
-        std::fs::remove_dir_all(root).unwrap();
+        std::fs::remove_dir_all(root).expect("fixture válida");
     }
     #[test]
     fn photo_is_square_bounded_and_crop_rejects_invalid_formats_and_coordinates() {
         let mut bytes = std::io::Cursor::new(Vec::new());
         image::DynamicImage::new_rgb8(512, 300)
             .write_to(&mut bytes, ImageFormat::Png)
-            .unwrap();
-        let photo = crop_photo(bytes.get_ref(), Crop::default()).unwrap();
+            .expect("fixture válida");
+        let photo = crop_photo(bytes.get_ref(), Crop::default()).expect("fixture válida");
         validate(&PilotProfile {
             photo: Some(photo),
             ..Default::default()
         })
-        .unwrap();
+        .expect("fixture válida");
         for crop in [
             Crop {
                 x: f32::NAN,

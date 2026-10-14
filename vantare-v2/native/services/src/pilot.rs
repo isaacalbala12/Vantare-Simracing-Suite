@@ -196,9 +196,11 @@ impl Local {
             _ => return Err(Error::Authentication),
         };
         let store = Store::open(root, &context)?;
+        let mut upgrade = false;
         let saved = match store.load::<Record>("pilot-profile") {
             Ok(Record::Current(saved)) => saved,
             Ok(Record::Previous(previous)) => {
+                upgrade = true;
                 if previous.attempt.is_some_and(|attempt| {
                     !previous.state.pending
                         || attempt.remote_revision != previous.state.remote_revision
@@ -215,10 +217,13 @@ impl Local {
                     operation: None,
                 }
             }
-            Ok(Record::Legacy(state)) => Saved {
-                state,
-                operation: None,
-            },
+            Ok(Record::Legacy(state)) => {
+                upgrade = true;
+                Saved {
+                    state,
+                    operation: None,
+                }
+            }
             Err(Error::NotFound) => Saved {
                 state: PilotState::default(),
                 operation: None,
@@ -241,7 +246,7 @@ impl Local {
             state: saved.state,
             operation: saved.operation,
         };
-        if local.state.pending && local.operation.is_none() {
+        if upgrade && local.state.pending && local.operation.is_none() {
             let operation =
                 Operation::new(local.state.profile.clone(), local.state.remote_revision)?;
             local.persist(local.state.clone(), Some(operation))?;
@@ -253,6 +258,18 @@ impl Local {
     }
     pub fn save(&mut self, profile: PilotProfile, expected_revision: u64) -> Result<()> {
         validate(&profile)?;
+        // SQL reserva el JPEG máximo, incluso si esta foto es pequeña.
+        // No limita la lectura de blobs anteriores: deben poder corregirse.
+        if profile.photo.is_some() {
+            let mut document = profile.clone();
+            document.photo = None;
+            let size = serde_json::to_vec_pretty(&document)
+                .map_err(|_| Error::Protocol)?
+                .len();
+            if size + 32780 > crate::protocol::pilot_document::MAX_DOCUMENT_BYTES {
+                return Err(Error::TooLarge);
+            }
+        }
         if self.state.revision != expected_revision {
             return Err(Error::Conflict);
         }
@@ -292,6 +309,23 @@ impl Local {
         self.state = state;
         self.operation = operation;
         Ok(())
+    }
+    #[cfg(feature = "network")]
+    fn reject_operation(&mut self) -> Result<()> {
+        // Conserva el borrador sin recrear automáticamente el intento rechazado.
+        self.persist(self.state.clone(), None)
+    }
+    #[cfg(feature = "network")]
+    fn reanchor(&mut self, remote_revision: u64) -> Result<()> {
+        if remote_revision < self.state.remote_revision {
+            return Err(Error::Protocol);
+        }
+        let state = PilotState {
+            remote_revision,
+            revision: self.state.revision.checked_add(1).ok_or(Error::Conflict)?,
+            ..self.state.clone()
+        };
+        self.persist(state, None)
     }
     #[cfg(feature = "network")]
     fn confirm_operation(&mut self, remote_revision: u64) -> Result<()> {

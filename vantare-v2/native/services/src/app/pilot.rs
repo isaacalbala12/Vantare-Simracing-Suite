@@ -39,6 +39,7 @@ impl App {
                     "Aún no tienes un perfil guardado. Completa tus datos y pulsa Guardar perfil.".into(),
                 Ok(()) => "Perfil sincronizado con tu cuenta".into(),
                 Err(Error::Conflict) => "Perfil local conservado. Hay cambios en tu cuenta que no se han sobrescrito.".into(),
+                Err(Error::PilotRejected) => "Perfil local conservado. Revisa los datos y vuelve a guardar para sincronizarlo.".into(),
                 Err(Error::Authentication) => "Perfil local conservado. Inicia sesión para sincronizarlo.".into(),
                 Err(_) => "Perfil local conservado. La sincronización con tu cuenta no está disponible; se reintentará al guardar o reiniciar la app.".into(),
             }

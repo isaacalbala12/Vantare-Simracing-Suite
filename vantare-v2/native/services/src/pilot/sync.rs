@@ -19,6 +19,10 @@ pub struct Remote {
 }
 
 pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
+    if local.state().pending && local.operation.is_none() {
+        refresh(local, request)?;
+        return Err(Error::PilotRejected);
+    }
     if local.state().pending {
         // Reintenta siempre la misma operación antes de enviar una edición nueva.
         // No se infiere el resultado de un CAS a partir de un SELECT concurrente.
@@ -42,10 +46,23 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
                     response.success()?;
                 }
             }
-            let saved: Remote = request.post("rest/v1/rpc/pilot_profile_save", &serde_json::json!({
-                "p_profile": profile, "p_photo_hash": photo_hash,
-                "p_expected_revision": operation.remote_revision, "p_op_id": operation.op_id,
-            }))?.success()?.json()?;
+            let response = request.post(
+                "rest/v1/rpc/pilot_profile_save",
+                &serde_json::json!({
+                    "p_profile": profile, "p_photo_hash": photo_hash,
+                    "p_expected_revision": operation.remote_revision, "p_op_id": operation.op_id,
+                }),
+            )?;
+            if response.status == 400
+                && response
+                    .json::<serde_json::Value>()
+                    .is_ok_and(|v| v["code"] == "22023")
+            {
+                local.reject_operation()?;
+                refresh(local, request)?;
+                return Err(Error::PilotRejected);
+            }
+            let saved: Remote = response.success()?.json()?;
             if saved.revision
                 != operation
                     .remote_revision
@@ -62,24 +79,33 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
     // Un recibo confirma una operación histórica, no el perfil actual.
     // Completa esta misma carga sin pisar una edición local pendiente.
     if !local.state().pending {
-        let remote: Option<Remote> = request
-            .post("rest/v1/rpc/pilot_profile_load", &serde_json::json!({}))?
-            .success()?
-            .json()?;
-        if let Some(mut remote) = remote {
-            if remote.revision < local.state().remote_revision || remote.profile.photo.is_some() {
+        refresh(local, request)?;
+    }
+    Ok(())
+}
+
+fn refresh(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
+    let remote: Option<Remote> = request
+        .post("rest/v1/rpc/pilot_profile_load", &serde_json::json!({}))?
+        .success()?
+        .json()?;
+    if let Some(mut remote) = remote {
+        if remote.revision < local.state().remote_revision || remote.profile.photo.is_some() {
+            return Err(Error::Protocol);
+        }
+        if let Some(hash) = remote.photo_hash {
+            let bytes = request.pilot_photo(&hash, None)?.success()?.body;
+            if crate::content_hash(&bytes) != hash {
                 return Err(Error::Protocol);
             }
-            if let Some(hash) = remote.photo_hash {
-                let bytes = request.pilot_photo(&hash, None)?.success()?.body;
-                if crate::content_hash(&bytes) != hash {
-                    return Err(Error::Protocol);
-                }
-                remote.profile.photo = Some(PilotPhoto {
-                    jpeg: STANDARD.encode(bytes),
-                });
-            }
-            validate(&remote.profile)?;
+            remote.profile.photo = Some(PilotPhoto {
+                jpeg: STANDARD.encode(bytes),
+            });
+        }
+        validate(&remote.profile)?;
+        if local.state().pending {
+            local.reanchor(remote.revision)?;
+        } else {
             local.accept_remote(remote.profile, remote.revision)?;
         }
     }

@@ -9,6 +9,17 @@ Rama `vantareapp/isa-1612-perfil-y-ajustes`, base `origin/nightly@0807fbd0`.
 [PR draft #1619 a nightly](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1619),
 Plane VANTA-9 / GitHub Project Vantare / area:plataforma.
 
+Ronda 5 CLI en curso tras review r4 de `37ced450` (P2=3, P3=1).
+P2-1 corregido en `f00f3607`: RED R1 != R2; GREEN 15/15 piloto.
+Una recuperación de recibo sin edición pendiente carga el perfil actual en la
+misma llamada; la edición posterior usa R2. La negativa con B pendiente conserva
+el CAS histórico, sin sobrescribir C. P2-2 RED: rechazo 22023 conserva A; presupuesto
+de foto permite crear A incompatible. GREEN 16/16: preflight del presupuesto,
+retiro durable de A rechazado, borrador conservado y revisión actual cargada;
+reabrir no resucita A y B corregido se confirma tras otro reinicio. HTTP incierto
+y recibos inválidos conservan A. P2-3 y P3-1 pendientes; gates completos pendientes.
+Evidencia `C:/tmp/ola5/1612`, sin cambios visuales, backend solo preparado.
+
 Ronda 4 CLI terminada en rama tras review r3 `8eadf36e` NO APTO (P2-1=1).
 Corte Rust/SQL validado y publicado `d9df6b17256f31bc9499772b3aafe3069fe134fa`.
 RED exacto: A aún en curso, load ve R, B reemplaza el intento y termina en

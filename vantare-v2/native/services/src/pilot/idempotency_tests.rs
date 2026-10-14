@@ -15,6 +15,7 @@ struct Backend {
     photos: HashMap<String, Vec<u8>>,
     lose_first: bool,
     lose_third: bool,
+    reject_photo: bool,
 }
 impl Backend {
     fn http_reply(&mut self, bytes: &[u8]) -> (u16, Vec<u8>) {
@@ -41,6 +42,12 @@ impl Backend {
         let id = request["p_op_id"].as_str();
         if let Some(receipt) = id.and_then(|id| self.receipts.get(id)) {
             return (200, receipt.to_string());
+        }
+        if self.reject_photo && !request["p_photo_hash"].is_null() {
+            return (
+                400,
+                r#"{"code":"22023","message":"invalid profile"}"#.into(),
+            );
         }
         let revision = self
             .current
@@ -84,6 +91,97 @@ impl Backend {
         }
         self.apply(&body)
     }
+}
+
+#[test]
+fn definitive_rejection_retires_a_and_corrected_b_can_commit_after_restart() {
+    let fixture = Fixture::new();
+    let remote = PilotProfile {
+        extensions: [("future".into(), serde_json::json!("x".repeat(17000)))].into(),
+        ..Default::default()
+    };
+    {
+        let mut backend = fixture.backend.lock().expect("state");
+        backend.lose_first = false;
+        backend.reject_photo = true;
+        backend.current =
+            Some(serde_json::json!({"profile":remote,"revision":4,"photo_hash":null}));
+    }
+    let (root, store) = crate::test_store("pilot-rejected-a");
+    let account = crate::account::fixture(&fixture.base, &store);
+    let http = Http::default();
+    let config = Config {
+        authorize: fixture
+            .base
+            .join("functions/v1/native-account-authorize")
+            .expect("URL"),
+        supabase: fixture.base.clone(),
+        anon_key: "public-fixture".into(),
+    };
+    let session = config.authorize(&http, &account, 100).expect("session");
+    let request = session.request(&http, &config, &account, 100);
+    let mut local = Local::open(&root, None, None).expect("local");
+    synchronize(&mut local, &request).expect("load remote");
+    let a = PilotProfile {
+        photo: Some(super::tests::colored_photo([200, 0, 0])),
+        ..remote.clone()
+    };
+    assert!(a.validate());
+    assert_eq!(
+        local.save(a.clone(), local.state().revision),
+        Err(Error::TooLarge)
+    );
+    assert!(
+        local.operation.is_none(),
+        "incompatible photo budget must not create A"
+    );
+    // Reproduce el blob durable de r4: el lector debe permitir corregirlo.
+    let state = crate::protocol::pilot_document::PilotState {
+        profile: a.clone(),
+        pending: true,
+        ..local.state().clone()
+    };
+    let operation = super::super::Operation::new(a, 4).expect("A");
+    let id = operation.op_id.clone();
+    local.persist(state, Some(operation)).expect("r4 pending A");
+    fixture
+        .backend
+        .lock()
+        .expect("state")
+        .current
+        .as_mut()
+        .expect("remote")["revision"] = serde_json::json!(6);
+    assert_eq!(synchronize(&mut local, &request), Err(Error::PilotRejected));
+    assert!(
+        local.operation.is_none(),
+        "definitive rejection must retire A"
+    );
+    assert_eq!(local.state().remote_revision, 6);
+    drop(local);
+    let mut local = Local::open(&root, None, None).expect("reopen rejection");
+    assert!(
+        local.operation.is_none(),
+        "reopen must not resurrect rejected A"
+    );
+    let b = PilotProfile {
+        description: "B corregido".into(),
+        ..remote
+    };
+    local
+        .save(b.clone(), local.state().revision)
+        .expect("remove photo");
+    assert_ne!(local.operation.as_ref().expect("B").op_id, id);
+    drop(local);
+    let mut local = Local::open(&root, None, None).expect("reopen B");
+    synchronize(&mut local, &request).expect("B accepted");
+    assert_eq!(local.state().profile, b);
+    assert_eq!(local.state().remote_revision, 7);
+    assert!(!local.state().pending);
+    assert_eq!(fixture.backend.lock().expect("state").saves.len(), 2);
+    drop(local);
+    drop(account);
+    drop(store);
+    std::fs::remove_dir_all(root).expect("cleanup");
 }
 
 struct Fixture {

@@ -25,7 +25,11 @@ Dos fallos de entorno del runner conservados en el [informe](../../analytics/inf
 repetición final aislada, sin cambios de código/tests para acomodarlos.
 Acceso comercial observado no demuestra pago: `commercial_license_observed`.
 Revisión visual del consentimiento heredado pendiente, sin diseño Opus específico.
-PR draft y estado Plane se verificarán al cierre; CI remoto separado de gates locales.
+PR draft [#1617](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1617)
+a nightly; VANTA-22 «Por revisar» verificado el 14/10 a las 01:51 UTC.
+Código `f5837cd3`, entregado por push en `db7a1c28` más este cierre documental.
+CI remoto en curso en la consulta inicial (canales, ratchet, native-linux);
+sin resultado final aún. Gates locales separados; sin merge/promoción/release.
 [Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/platform-commercial.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 
 ## #1601 / VANTA-10 · Plane, fase de implementación (13/10/2026)

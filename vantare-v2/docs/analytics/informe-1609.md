@@ -5,7 +5,11 @@ GitHub Project Vantare, `area:plataforma`, sin milestone comprometido.
 Rama `vantareapp/isa-1609-posthog-uso-embudo`; base nightly `69fa2d65`.
 Reanudación CLI del 14/10: commit T3 `f69554f9` y cambios heredados conservados.
 Código local verificado: `f5837cd3`; contrato/servicios `a82a283b`, paneles
-`7003f0d1` y corrección de paginación `089bae4b`. Documentación/PR al cierre.
+`7003f0d1` y corrección de paginación `089bae4b`.
+PR draft [#1617](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1617)
+a nightly; Plane «Por revisar», verificado el 14/10 a las 01:51 UTC. Código y
+documentación publicados en la rama de issue; CI remoto en curso, sin resultado
+final en la consulta inicial. Los gates anteriores son locales.
 No se ha integrado, publicado ni probado PostHog real.
 
 ## Resultado preparado

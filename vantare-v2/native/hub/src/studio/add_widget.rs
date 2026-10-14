@@ -541,6 +541,13 @@ impl Studio {
         self.reset_fields();
         self.edit(|editor| editor.add_at(kind, at), cx);
         if self.status.is_ok() {
+            if self.demo_profile.is_none() {
+                vantare_services::diagnostics::record_usage(
+                    &vantare_services::diagnostics::Usage::FeatureUsed {
+                        feature: "widget_added".into(),
+                    },
+                );
+            }
             self.show_toast(Toast::Added(kind), cx);
         }
         self.status.is_ok()

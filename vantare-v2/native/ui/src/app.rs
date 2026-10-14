@@ -11,6 +11,7 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
+mod usage;
 
 use gpui::{
     App, Bounds, Context, DisplayId, Entity, IntoElement, Pixels, Render, StyleRefinement, Window,
@@ -744,6 +745,7 @@ fn window_action(existing: bool, occupied: bool) -> WindowAction {
 }
 
 struct LiveScreens {
+    usage: usage::State,
     cadences: HashMap<String, crate::performance::Cadence>,
     usage_widgets: Option<Vec<String>>,
     /// Último layout aplicado y su ocultación (bandeja o Studio).
@@ -1134,6 +1136,7 @@ fn run_layout_feed<T: Send + 'static>(
             cx,
         );
         let screens = Rc::new(RefCell::new(LiveScreens {
+            usage: usage::State::default(),
             cadences: HashMap::new(),
             usage_widgets: None,
             layout: crate::layout::Layout::default(),
@@ -1151,6 +1154,12 @@ fn run_layout_feed<T: Send + 'static>(
             demand.set(document.layout().demand());
         }
         screens.borrow_mut().apply(document.layout(), cx);
+        let quit_screens = screens.clone();
+        cx.on_app_quit(move |_| {
+            quit_screens.borrow_mut().usage.finish();
+            async {}
+        })
+        .detach();
         #[cfg(windows)]
         match crate::tray::spawn() {
             Ok(actions) => {
@@ -1180,6 +1189,7 @@ fn run_layout_feed<T: Send + 'static>(
                 cx.background_executor()
                     .timer(Duration::from_millis(500))
                     .await;
+                cx.update(|cx| screens.borrow_mut().sample_usage(cx));
                 match presentation.poll() {
                     Ok(Some(showing)) => cx.update(|cx| {
                         let mut screens = screens.borrow_mut();

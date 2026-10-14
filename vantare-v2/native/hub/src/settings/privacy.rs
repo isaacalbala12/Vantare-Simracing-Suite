@@ -36,11 +36,21 @@ impl Store {
         value
             .discard_disabled(root)
             .map_err(|error| format!("borrar informes pendientes: {error}"))?;
-        Ok(Self {
+        let mut store = Self {
             value,
             path,
             observed,
-        })
+        };
+        if !store.value.usage_decided
+            && let Some(usage) = vantare_services::diagnostics::installer::choice(root)
+                .map_err(|error| format!("leer elección del instalador: {error}"))?
+        {
+            let mut next = store.value;
+            next.usage = usage;
+            next.usage_decided = true;
+            store.save(next)?;
+        }
+        Ok(store)
     }
     pub fn save(&mut self, value: Privacy) -> Result<(), String> {
         let root = self
@@ -71,14 +81,32 @@ impl super::Hub {
                 .settings
                 .privacy
                 .as_ref()
-                .is_ok_and(|store| !store.value.crashes_decided)
+                .is_ok_and(|store| !store.value.crashes_decided || !store.value.usage_decided)
     }
 
-    fn decide_crashes(&mut self, accept: bool, window: &mut Window, cx: &mut Context<Self>) {
+    fn consent_targets(&self) -> &[FocusHandle] {
+        if self
+            .settings
+            .privacy
+            .as_ref()
+            .is_ok_and(|store| store.value.crashes_decided)
+        {
+            &self.settings.consent_focus[..]
+        } else {
+            &self.settings.consent_focus[..3]
+        }
+    }
+
+    fn decide_privacy(&mut self, accept: bool, window: &mut Window, cx: &mut Context<Self>) {
         if let Ok(store) = &mut self.settings.privacy {
             let mut next = store.value;
-            next.crashes = accept;
-            next.crashes_decided = true;
+            if next.crashes_decided {
+                next.usage = accept && self.settings.usage_choice.read(cx).checked;
+                next.usage_decided = true;
+            } else {
+                next.crashes = accept;
+                next.crashes_decided = true;
+            }
             self.settings.status = store.save(next).err();
             if self.settings.status.is_none() {
                 self.focus.focus(window, cx);
@@ -92,7 +120,12 @@ impl super::Hub {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
-        let targets = &self.settings.consent_focus;
+        let asking_usage = self
+            .settings
+            .privacy
+            .as_ref()
+            .is_ok_and(|store| store.value.crashes_decided);
+        let targets = self.consent_targets();
         if !targets
             .iter()
             .any(|focus| focus.contains_focused(window, cx))
@@ -101,17 +134,20 @@ impl super::Hub {
         }
         let mut actions = div().flex().flex_wrap().gap(px(12.0));
         // Mismo estilo y acceso por teclado para ambas decisiones; foco inicial en rechazar.
-        for (index, accept, label) in [(0, false, "No, gracias"), (1, true, "Aceptar")] {
+        for (index, accept, label) in [
+            (0, false, "No, gracias"),
+            (1, true, if asking_usage { "Continuar" } else { "Aceptar" }),
+        ] {
             actions = actions.child(
                 orbit::button(format!("crash-consent-{index}"), label, cx)
                     .track_focus(&targets[index])
                     .on_click(cx.listener(move |hub, _, window, cx| {
-                        hub.decide_crashes(accept, window, cx);
+                        hub.decide_privacy(accept, window, cx);
                     }))
                     .on_key_down(cx.listener(
                         move |hub, event: &gpui::KeyDownEvent, window, cx| {
                             if matches!(event.keystroke.key.as_str(), "enter" | "space") {
-                                hub.decide_crashes(accept, window, cx);
+                                hub.decide_privacy(accept, window, cx);
                                 cx.stop_propagation();
                             }
                         },
@@ -119,10 +155,21 @@ impl super::Hub {
             );
         }
         let policy = policy_link("crash-consent-policy", &targets[2], cx);
+        let question = if asking_usage {
+            "¿Quieres compartir datos de uso para mejorar Vantare?"
+        } else {
+            "¿Quieres enviar informes de fallos para ayudarnos a corregir errores?"
+        };
+        let description = if asking_usage {
+            "Solo si marcas la casilla, enviaremos a PostHog (Unión Europea) páginas, funciones, tipos de widgets y tiempo de uso, además de instalación, sesión de cuenta y licencia observadas. Con un identificador aleatorio de instalación; sin nombres, contenido, rutas ni datos de pilotos."
+        } else {
+            "Solo si aceptas, Vantare enviará a PostHog (Unión Europea) la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal."
+        };
         let body = orbit::card_body().gap(px(16.0))
-            .child(orbit::text("¿Quieres enviar informes de fallos para ayudarnos a corregir errores?", 16.0, 600, orbit::skin(cx).text1, cx))
-            .child(orbit::text("Solo si aceptas, Vantare enviará a PostHog (Unión Europea) la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal.", 13.0, 400, orbit::skin(cx).text2, cx))
-            .child(orbit::text("Es opcional. Puedes usar Vantare si rechazas y cambiar tu decisión en Ajustes › Privacidad. Esta elección no cambia los datos de uso, que se gestionan por separado.", 13.0, 400, orbit::skin(cx).text2, cx))
+            .child(orbit::text(question, 16.0, 600, orbit::skin(cx).text1, cx))
+            .child(orbit::text(description, 13.0, 400, orbit::skin(cx).text2, cx))
+            .child(orbit::text("Es opcional. Puedes usar Vantare si rechazas y cambiar tu decisión en Ajustes › Privacidad. Uso e informes de fallos se aceptan por separado.", 13.0, 400, orbit::skin(cx).text2, cx))
+            .when(asking_usage, |body| body.child(self.settings.usage_choice.clone()))
             .child(policy)
             .when_some(self.settings.status.as_ref(), |body, error| body.child(orbit::text(format!("No se pudo guardar tu decisión: {error}. Los informes siguen desactivados."), 13.0, 400, orbit::skin(cx).text1, cx)))
             .child(actions);
@@ -136,7 +183,7 @@ impl super::Hub {
             .p(px(24.0))
             .capture_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
                 if event.keystroke.key == "tab" {
-                    let targets = &hub.settings.consent_focus;
+                    let targets = hub.consent_targets();
                     let current = targets
                         .iter()
                         .position(|focus| focus.contains_focused(window, cx));
@@ -156,7 +203,11 @@ impl super::Hub {
                     .child(orbit::card_header("Tu privacidad", cx))
                     .id("crash-consent-card")
                     .role(gpui::Role::Dialog)
-                    .aria_label("Consentimiento para informes de fallos")
+                    .aria_label(if asking_usage {
+                        "Consentimiento para datos de uso"
+                    } else {
+                        "Consentimiento para informes de fallos"
+                    })
                     .w(px(560.0))
                     .max_w_full()
                     .max_h_full()
@@ -170,6 +221,7 @@ impl super::Hub {
             let mut next = store.value;
             if usage {
                 next.usage = !next.usage;
+                next.usage_decided = true;
             } else {
                 next.crashes = !next.crashes;
                 next.crashes_decided = true;
@@ -183,6 +235,33 @@ impl super::Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn installer_choice_is_imported_once_and_never_overrides_revocation() {
+        let path = std::env::temp_dir().join(format!(
+            "vantare-usage-choice-{}",
+            vantare_services::random_id().expect("entropy")
+        ));
+        std::fs::create_dir_all(&path).expect("fixture");
+        std::fs::write(
+            path.join(vantare_services::diagnostics::installer::CHOICE_FILE),
+            r#"{"version":1,"usage":true,"explicit":true}"#,
+        )
+        .expect("installer choice");
+        let mut store = Store::load(&path).expect("first run");
+        assert!(store.value.usage && store.value.usage_decided);
+        assert!(!store.value.crashes && !store.value.crashes_decided);
+        std::fs::create_dir_all(path.join("usage")).expect("queue");
+        std::fs::write(path.join("usage/00.json"), b"pending").expect("pending");
+        let mut revoked = store.value;
+        revoked.usage = false;
+        store.save(revoked).expect("revoke");
+        assert!(!path.join("usage/00.json").exists());
+        assert_eq!(
+            Store::load(&path).expect("reinstall/restart").value,
+            revoked
+        );
+        std::fs::remove_dir_all(path).expect("cleanup");
+    }
     #[test]
     fn first_choice_migrates_legacy_and_survives_restart_and_revocation() {
         for accept in [false, true] {
@@ -201,7 +280,8 @@ mod tests {
             let mut store = Store::load(&path).expect("migrate");
             assert!(!store.value.crashes);
             assert!(!store.value.crashes_decided);
-            assert!(store.value.usage);
+            assert!(!store.value.usage);
+            assert!(!store.value.usage_decided);
             assert!(!path.join("crashes/00.json").exists());
             let mut next = store.value;
             next.crashes = accept;
@@ -231,6 +311,7 @@ mod tests {
                 .save(Privacy {
                     crashes: accept,
                     usage: false,
+                    usage_decided: false,
                     crashes_decided: true,
                 })
                 .expect("choice");
@@ -255,6 +336,7 @@ mod tests {
                 .save(Privacy {
                     crashes: true,
                     usage: false,
+                    usage_decided: false,
                     crashes_decided: true
                 })
                 .is_err()
@@ -274,6 +356,7 @@ mod tests {
         let next = Privacy {
             crashes: false,
             usage: true,
+            usage_decided: true,
             crashes_decided: true,
         };
         first.save(next).expect("save");

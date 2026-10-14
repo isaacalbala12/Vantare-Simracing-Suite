@@ -758,6 +758,11 @@ impl Launcher {
             selected,
         ) {
             Ok(chain) => {
+                vantare_services::diagnostics::record_usage(
+                    &vantare_services::diagnostics::Usage::FeatureUsed {
+                        feature: "launch_profile".into(),
+                    },
+                );
                 self.page = LauncherPage::Showcase;
                 self.selected_profile = Some(profile.id.clone());
                 self.last_profile = Some(profile);

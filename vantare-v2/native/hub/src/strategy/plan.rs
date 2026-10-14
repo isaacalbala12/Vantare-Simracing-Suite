@@ -228,6 +228,13 @@ impl Strategy {
             self.running = false;
             match result {
                 Ok((outcome, edited)) => {
+                    if self.capture_demo.is_none() {
+                        vantare_services::diagnostics::record_usage(
+                            &vantare_services::diagnostics::Usage::FeatureUsed {
+                                feature: "strategy_recalculated".into(),
+                            },
+                        );
+                    }
                     self.edit_cost_seconds = outcome.cost_seconds;
                     if outcome.result.feasible {
                         self.baseline_result = Some(outcome.clone());

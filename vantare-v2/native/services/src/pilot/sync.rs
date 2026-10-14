@@ -22,29 +22,40 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
         .json()?;
     let remote_revision = remote.as_ref().map_or(0, |value| value.revision);
     if local.state().pending {
+        let mut profile = local.state().profile.clone();
+        let bytes = profile
+            .photo
+            .take()
+            .map(|photo| STANDARD.decode(photo.jpeg))
+            .transpose()
+            .map_err(|_| Error::Protocol)?;
+        let photo_hash = bytes.as_deref().map(crate::content_hash);
         // No sobreescribe ediciones hechas desde otro dispositivo.
         if local.state().remote_revision != remote_revision {
+            // El commit pudo completarse sin confirmación HTTP/DPAPI. Solo
+            // reconoce exactamente nuestro documento y foto en la revisión siguiente.
+            if remote.as_ref().is_some_and(|value| {
+                Some(value.revision) == local.state().remote_revision.checked_add(1)
+                    && value.profile == profile
+                    && value.photo_hash == photo_hash
+            }) {
+                return local.accept_remote(local.state().profile.clone(), remote_revision);
+            }
             return Err(Error::Conflict);
         }
-        let mut profile = local.state().profile.clone();
-        let photo_hash = if let Some(photo) = profile.photo.take() {
-            let bytes = STANDARD.decode(photo.jpeg).map_err(|_| Error::Protocol)?;
-            let hash = crate::content_hash(&bytes);
+        if let (Some(bytes), Some(hash)) = (&bytes, &photo_hash) {
             let response = request.pilot_photo(&hash, Some(&bytes))?;
             // Storage puede devolver 400/409 por objeto existente. Solo se
             // acepta su código tipado y se verifica el contenido por hash.
             if duplicate(&response) {
                 let existing = request.pilot_photo(&hash, None)?.success()?.body;
-                if crate::content_hash(&existing) != hash {
+                if crate::content_hash(&existing) != *hash {
                     return Err(Error::Protocol);
                 }
             } else {
                 response.success()?;
             }
-            Some(hash)
-        } else {
-            None
-        };
+        }
         let saved: Remote = request.post("rest/v1/rpc/pilot_profile_save", &serde_json::json!({
             "p_profile": profile, "p_photo_hash": photo_hash, "p_expected_revision": remote_revision,
         }))?.success()?.json()?;

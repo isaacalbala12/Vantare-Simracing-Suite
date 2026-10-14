@@ -102,6 +102,12 @@ class PanelsTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 api.list("insights/")
 
+    def test_missing_pagination_is_not_a_confirmed_complete_list(self):
+        api = panels.Api(123, "test-only")
+        with patch.object(api, "request", return_value={"results": [{"id": 1}]}):
+            with self.assertRaises(RuntimeError):
+                api.list("insights/")
+
 
 if __name__ == "__main__":
     unittest.main()

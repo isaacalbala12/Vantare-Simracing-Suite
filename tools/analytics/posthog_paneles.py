@@ -101,7 +101,10 @@ class Api:
                 raise RuntimeError("Paginación repetida o excesiva")
             seen.add(path)
             page = self.request("GET", path)
-            if not isinstance(page.get("results"), list):
+            if (not isinstance(page, dict) or "next" not in page
+                    or not isinstance(page.get("results"), list)
+                    or (page["next"] is not None and
+                        (not isinstance(page["next"], str) or not page["next"]))):
                 raise RuntimeError("Listado incompleto: abortado sin crear")
             items.extend(page["results"])
             path = page.get("next")

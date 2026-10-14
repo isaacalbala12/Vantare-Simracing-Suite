@@ -5,6 +5,47 @@ use super::{
 use crate::{onboarding as model, orbit};
 use gpui::{Context, Div, IntoElement, PathBuilder, div, prelude::*, px, rgb};
 use vantare_ui::{Kind, performance::Level};
+fn panel_background() -> impl IntoElement {
+    gpui::canvas(
+        |_, _, _| (),
+        move |bounds, (), window, _| {
+            window.paint_quad(gpui::quad(
+                bounds,
+                gpui::Corners::all(bounds.size.width * (22.0 / 832.0)),
+                gpui::linear_gradient(
+                    155.0,
+                    gpui::linear_color_stop(rgb(0x00c8_141f), 0.0),
+                    gpui::linear_color_stop(rgb(0x004a_0710), 1.0),
+                ),
+                gpui::Edges::default(),
+                gpui::transparent_black(),
+                gpui::BorderStyle::default(),
+            ));
+            let at = |x: f32, y: f32| {
+                gpui::point(
+                    bounds.origin.x + bounds.size.width * x,
+                    bounds.origin.y + bounds.size.height * y,
+                )
+            };
+            for i in 0u8..6 {
+                let x = 0.5 + f32::from(i) * 0.18;
+                let mut stripe = PathBuilder::fill();
+                stripe.move_to(at(x, 0.0));
+                stripe.line_to(at(x + 0.064, 0.0));
+                stripe.line_to(at(x - 0.30, 1.0));
+                stripe.line_to(at(x - 0.364, 1.0));
+                stripe.close();
+                if let Ok(path) = stripe.build() {
+                    window.paint_path(path, orbit::tint(0x0000_0000, 0.14));
+                }
+            }
+        },
+    )
+    .absolute()
+    .left(px(0.0))
+    .top(px(0.0))
+    .size_full()
+}
 
 pub(super) fn helmet(state: &State, width: f32, reduced: bool) -> Div {
     let s = width / 210.0;
@@ -156,14 +197,7 @@ impl Hub {
             .rounded(px(22.0 * s))
             .overflow_hidden()
             .bg(rgb(0x007a_0b15))
-            .child(
-                gpui::img("onboarding/panel.svg")
-                    .absolute()
-                    .left(px(0.0))
-                    .top(px(0.0))
-                    .w(px(832.0 * s))
-                    .h(px(680.0 * s)),
-            );
+            .child(panel_background());
         let content = match step {
             0 => div()
                 .size_full()
@@ -357,8 +391,14 @@ impl Hub {
                 continue;
             }
             if resize {
+                let widget_scale = s * match kind {
+                    Kind::Relative => 0.8,
+                    Kind::Delta => 1.0,
+                    Kind::RacingFlags => 0.35,
+                    _ => 0.48,
+                };
                 view.update(cx, |overlay, cx| {
-                    let _ = overlay.set_preview_scale(scale);
+                    let _ = overlay.set_preview_scale(widget_scale);
                     cx.notify();
                 });
             }
@@ -366,7 +406,7 @@ impl Hub {
                 Kind::Standings => (24.0, 26.0),
                 Kind::Relative => (264.0, 348.0),
                 Kind::Delta => (286.0, 26.0),
-                Kind::RacingFlags => (230.0, 26.0),
+                Kind::RacingFlags => (286.0, 125.0),
                 Kind::Pedals => (640.0, 325.0),
                 Kind::BroadcastTower => (580.0, 26.0),
                 Kind::HeadToHead => (280.0, 240.0),
@@ -630,7 +670,7 @@ impl Hub {
             ("Páginas y funciones", "Uso de la app"),
             ("Tipos de widgets", "Sin contenido"),
             ("Tiempo de uso", "Solo con permiso"),
-            ("Versión y canal", "Instalación, cuenta y licencia"),
+            ("Versión, canal y simulador", "Instalación, cuenta y licencia"),
         ] {
             yes = yes.child(
                 div()

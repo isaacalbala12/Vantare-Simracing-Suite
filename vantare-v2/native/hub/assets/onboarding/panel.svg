@@ -1,5 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="832" height="680" viewBox="0 0 832 680" preserveAspectRatio="none">
-<defs><radialGradient id="car" cx=".2" cy="0" r="1.05"><stop offset="0" stop-color="#c8141f"/><stop offset=".38" stop-color="#b3101d"/><stop offset=".78" stop-color="#7a0b15"/><stop offset="1" stop-color="#4a0710"/></radialGradient><linearGradient id="mask"><stop stop-color="white" stop-opacity="0"/><stop offset=".45" stop-color="white"/></linearGradient><mask id="m"><rect x="332" width="500" height="680" fill="url(#mask)"/></mask></defs>
-<rect width="832" height="680" fill="url(#car)"/>
-<g mask="url(#m)" fill="black" opacity=".14"><path d="M500 0h64L247 680h-64zM676 0h64L423 680h-64zM852 0h64L599 680h-64zM1028 0h64L775 680h-64z"/></g>
-</svg>

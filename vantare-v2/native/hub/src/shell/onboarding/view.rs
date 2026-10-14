@@ -28,6 +28,7 @@ fn button(
     div()
         .id(id.into())
         .role(gpui::Role::Button)
+        .aria_label(label.to_string())
         .cursor_pointer()
         .tab_stop(true)
         .h(px(52.0 * s))
@@ -62,6 +63,8 @@ fn card(
     div()
         .id(SharedString::from(id))
         .role(gpui::Role::Button)
+        .aria_label(title.to_owned())
+        .aria_selected(selected)
         .relative()
         .cursor_pointer()
         .tab_stop(true)
@@ -171,17 +174,32 @@ impl Hub {
                     .flex()
                     .gap(px(12.0 * s))
                     .child(
-                        button("onboarding-open", "Abrir mi overlay", true, s, cx).on_click(
-                            cx.listener(|hub, _, window, cx| {
+                        button("onboarding-open", "Abrir mi overlay", true, s, cx)
+                            .on_click(cx.listener(|hub, _, window, cx| {
                                 hub.onboarding_finish(true, window, cx);
-                            }),
-                        ),
+                            }))
+                            .on_key_down(cx.listener(
+                                |hub, event: &gpui::KeyDownEvent, window, cx| {
+                                    if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                                        hub.onboarding_finish(true, window, cx);
+                                        cx.stop_propagation();
+                                    }
+                                },
+                            )),
                     )
                     .child(
                         button("onboarding-edit", "Editar en Overlays Studio", false, s, cx)
                             .on_click(cx.listener(|hub, _, window, cx| {
                                 hub.onboarding_finish(false, window, cx);
-                            })),
+                            }))
+                            .on_key_down(cx.listener(
+                                |hub, event: &gpui::KeyDownEvent, window, cx| {
+                                    if matches!(event.keystroke.key.as_str(), "enter" | "space") {
+                                        hub.onboarding_finish(false, window, cx);
+                                        cx.stop_propagation();
+                                    }
+                                },
+                            )),
                     ),
             ),
         };
@@ -281,7 +299,9 @@ impl Hub {
             .flex()
             .flex_col()
             .capture_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
-                if event.keystroke.key == "enter" {
+                if event.keystroke.key == "enter"
+                    && hub.onboarding.as_ref().is_some_and(|state| state.step < 6)
+                {
                     hub.onboarding_next(window, cx);
                     cx.stop_propagation();
                 } else if event.keystroke.key == "escape" {
@@ -289,6 +309,12 @@ impl Hub {
                         state.page(state.step.saturating_sub(1));
                         cx.notify();
                     }
+                    cx.stop_propagation();
+                }
+            }))
+            .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, window, cx| {
+                if event.keystroke.key == "enter" {
+                    hub.onboarding_next(window, cx);
                     cx.stop_propagation();
                 }
             }))
@@ -328,7 +354,9 @@ impl Hub {
                             .gap(px(7.0 * s))
                             .child(orbit::icon("mark", 16.0 * s, 0x00ff_ffff))
                             .child(
-                                gpui::img("brand/wordmark.svg")
+                                gpui::svg()
+                                    .path("brand/wordmark.svg")
+                                    .text_color(rgb(0x00ff_ffff))
                                     .flex_none()
                                     .w(px(90.0 * s))
                                     .h(px(16.0 * s)),
@@ -463,6 +491,9 @@ impl Hub {
                 let found = state.found[index] || state.capture && index == 0;
                 div()
                     .id(("onboarding-sim", index))
+                    .role(gpui::Role::Button)
+                    .aria_label(name)
+                    .aria_selected(on)
                     .tab_stop(true)
                     .cursor_pointer()
                     .h(px(96.0 * s))
@@ -558,6 +589,7 @@ impl Hub {
             {
                 column = column.child(
                     button(format!("onboarding-account-{i}"), "", false, s, cx)
+                        .aria_label(label)
                         .justify_start()
                         .gap(px(12.0 * s))
                         .child(
@@ -613,33 +645,27 @@ impl Hub {
         for (i, level) in Level::ALL.into_iter().enumerate() {
             let selected = !state.choices.automatic && state.choices.level == level;
             levels = levels.child(
-                button(
-                    format!("onboarding-level-{i}"),
-                    level.label(),
-                    selected,
-                    s,
-                    cx,
-                )
-                .flex_1()
-                .px(px(2.0 * s))
-                .border_0()
-                .bg(if selected {
-                    orbit::tint(0x00d8_0000, 0.18)
-                } else {
-                    gpui::transparent_black()
-                })
-                .on_click(cx.listener(move |hub, _, _, cx| {
-                    if let Some(state) = &mut hub.onboarding {
-                        state.choices.automatic = false;
-                        state.choices.level = level;
-                        state.say(match level {
-                            Level::Maximum => "Máximo: usa más recursos del PC.".into(),
-                            Level::Minimum => "Mínimo: usa los menos recursos posibles.".into(),
-                            _ => format!("Nivel fijado: {}.", level.label()),
-                        });
-                        cx.notify();
-                    }
-                })),
+                button(format!("onboarding-level-{i}"), level.label(), false, s, cx)
+                    .flex_1()
+                    .px(px(2.0 * s))
+                    .border_0()
+                    .bg(if selected {
+                        orbit::tint(0x00d8_0000, 0.18)
+                    } else {
+                        gpui::transparent_black()
+                    })
+                    .on_click(cx.listener(move |hub, _, _, cx| {
+                        if let Some(state) = &mut hub.onboarding {
+                            state.choices.automatic = false;
+                            state.choices.level = level;
+                            state.say(match level {
+                                Level::Maximum => "Máximo: usa más recursos del PC.".into(),
+                                Level::Minimum => "Mínimo: usa los menos recursos posibles.".into(),
+                                _ => format!("Nivel fijado: {}.", level.label()),
+                            });
+                            cx.notify();
+                        }
+                    })),
             );
         }
         levels
@@ -712,7 +738,7 @@ impl Hub {
                                 if capture {
                                     "Mide tu PC en carrera y elige el nivel por ti."
                                 } else {
-                                    "No disponible aún · se conserva el nivel Equilibrado."
+                                    "No disponible aún · puedes fijar un nivel."
                                 },
                                 13.0 * s,
                                 400,

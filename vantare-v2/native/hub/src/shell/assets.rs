@@ -59,10 +59,6 @@ const ONBOARDING: &[(&str, &[u8])] = &[
         include_bytes!("../../assets/onboarding/helmet.svg"),
     ),
     (
-        "onboarding/panel.svg",
-        include_bytes!("../../assets/onboarding/panel.svg"),
-    ),
-    (
         "onboarding/pro.png",
         include_bytes!("../../assets/onboarding/pro.png"),
     ),

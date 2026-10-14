@@ -88,6 +88,7 @@ pub fn label(kind: Kind) -> &'static str {
         Kind::TrackMap => "Mapa",
         Kind::HeadToHead => "Duelo",
         Kind::RacingFlags => "Banderas",
+        Kind::Pedals => "Pedals",
         _ => kind.label(),
     }
 }
@@ -179,17 +180,27 @@ mod tests {
     }
     #[test]
     fn each_kit_and_union_follow_the_approved_order_without_duplicates() {
-        for (index, kit) in KITS.iter().enumerate() {
+        let expected: [&[&str]; 4] = [
+            &["Standings", "Relative", "Delta", "Banderas"],
+            &["Standings", "Relative", "Delta", "Banderas", "Duelo"],
+            &[
+                "Standings",
+                "Relative",
+                "Delta",
+                "Banderas",
+                "Combustible",
+                "Clima",
+            ],
+            &["Pedals", "Duelo", "Torre de TV", "Mapa"],
+        ];
+        for (index, expected) in expected.iter().enumerate() {
             let choices = Choices {
                 styles: std::array::from_fn(|i| i == index),
                 ..Default::default()
             };
             assert_eq!(
-                choices.kit(),
-                ORDER
-                    .into_iter()
-                    .filter(|k| kit.contains(k))
-                    .collect::<Vec<_>>()
+                choices.kit().into_iter().map(label).collect::<Vec<_>>(),
+                *expected
             );
         }
         let choices = Choices {

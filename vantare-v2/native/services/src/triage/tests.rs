@@ -134,7 +134,7 @@ fn session_summary_uses_only_recent_observed_failures_and_events_without_posthog
     }
     assert_eq!(
         errors[0]["fingerprint"],
-        crate::content_hash(b"ERROR services:refresh")
+        evidence::error_record(&serde_json::json!({"type":"ServicesCommandFailure"}))["fingerprint"]
     );
     assert_eq!(events[0]["at"], "1970-01-01T00:32:30+00:00");
     assert_eq!(events[0]["name"], "ERROR services:refresh");
@@ -205,6 +205,40 @@ fn review_r4_f5_shared_export_fields_and_secret_property() {
         redaction::external_text(&"x".repeat(500), &[], 120),
         "x".repeat(120)
     );
+}
+
+#[test]
+fn review_r5_f6_closed_fields_shared_projection() {
+    let cases: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../../tools/triage/structured-f6-cases.json"
+    ))
+    .expect("shared F6 fixtures");
+    for case in cases.as_array().expect("cases") {
+        let input: serde_json::Value =
+            serde_json::from_str(case["input"].as_str().expect("input")).expect("JSON");
+        let values = match input {
+            serde_json::Value::Array(values) => values,
+            value => vec![value],
+        };
+        let records: Vec<_> = values.iter().map(evidence::record).collect();
+        assert_eq!(
+            serde_json::json!(records),
+            case["expected"],
+            "{}",
+            case["name"]
+        );
+    }
+}
+
+#[test]
+fn review_r5_f6_fingerprint_is_derived_from_closed_values() {
+    let cases: serde_json::Value = serde_json::from_str(include_str!(
+        "../../../../../tools/triage/error-f6-cases.json"
+    ))
+    .expect("shared hash fixtures");
+    for case in cases.as_array().expect("cases") {
+        assert_eq!(evidence::error_record(&case["input"]), case["expected"]);
+    }
 }
 
 #[test]

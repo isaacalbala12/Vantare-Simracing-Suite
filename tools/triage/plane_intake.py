@@ -9,7 +9,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import uuid
-from privacy import external_text
+from privacy import external_text, version
 
 SOURCE = 'vantare-testing-contribution'
 WORKSPACE = 'vantare-simracing-suite'
@@ -72,7 +72,7 @@ def content(payload):
         raise PlaneError('invalid_game')
     title = external_text(contribution['title'],120).strip() or 'Informe de tester'
     rows = [('Canal','testers'),('Juego',contribution['game']),
-            ('Versión',external_text(contribution.get('game_version') or 'No disponible',120)),
+            ('Versión',version(contribution.get('game_version'))),
             ('Veredicto',verdict),('Confianza',format(confidence,'.3f')),
             ('Resumen',external_text(proposal['summary'],200)),
             ('Contribución',id),('Fuente externa',SOURCE)]

@@ -5,8 +5,8 @@
     "expected": [
       {
         "level": "ERROR",
-        "error_code": "E_TIMEOUT",
-        "error_type": "Timeout",
+        "error_code": "otro",
+        "error_type": "otro",
         "module": "services",
         "version": "1.2.3",
         "count": 2,
@@ -22,7 +22,17 @@
   {
     "name": "invalid-values",
     "input": "{\"level\": \"secret\", \"module\": \"a b\", \"error_code\": \"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx\", \"error_type\": \"a/b\", \"version\": \"user@example.invalid\", \"count\": true, \"relative_ms\": -1, \"message\": \"OpaqueTailSecret\"}",
-    "expected": []
+    "expected": [
+      {
+        "level": "otro",
+        "module": "otro",
+        "error_code": "otro",
+        "error_type": "otro",
+        "version": "otro",
+        "count": "otro",
+        "relative_ms": "otro"
+      }
+    ]
   },
   {
     "name": "bounds",
@@ -30,11 +40,13 @@
     "expected": [
       {
         "level": "WARN",
-        "module": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-        "count": 1000000000
+        "module": "otro",
+        "count": 1000000000,
+        "relative_ms": "otro"
       },
       {
-        "level": "INFO"
+        "level": "INFO",
+        "count": "otro"
       }
     ]
   }

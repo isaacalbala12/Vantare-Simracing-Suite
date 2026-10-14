@@ -193,6 +193,12 @@ hardware de lista blanca, errores/huellas, percentiles, los 20 últimos eventos,
 solo campos de log estructurados permitidos (hasta 300 registros) y estadísticas
 del fragmento. El texto crudo del log queda solo para el owner: nunca modelo,
 T3 ni Intake. R4 #1594 sustituye el extracto por líneas por lista blanca;
+R5 F6 cierra también los valores mediante `structured-catalog.json` compartido
+Python/Rust, SemVer restringido y contadores acotados. Fuera del conjunto →
+`otro`; las huellas y referencias solo se calculan sobre la proyección cerrada.
+No se copia el fingerprint del cliente, aunque parezca un hash. Replay antiguo
+descarta referencias de error sin reanalizar. Copiar el catálogo junto con los
+`.py` al preparar el despliegue. F7 queda pendiente de decisión de Isaac.
 message/first_line/payload y nombres libres de eventos se descartan. Los
 timestamps de eventos son relativos. Título/cuerpo son una línea, 120/1000
 caracteres; un marcador sospechoso retira el campo entero antes de truncarlo.

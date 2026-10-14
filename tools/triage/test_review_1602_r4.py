@@ -30,7 +30,7 @@ class Tests(unittest.TestCase):
                     r['context']['telemetry_summary']['events'] = [{'name':text, 'at':text}]
                     old_report = report(); old_report['id'] = '15940000-0000-0000-0000-000000000011'
                     old_report['title'] = text
-                    proposal = response(); proposal['evidence_refs'] = ['error:fixture']
+                    proposal = response(); proposal['evidence_refs'] = ['error:' + privacy.error_record(r['context']['telemetry_summary']['errors'][0])['fingerprint']]
                     if generated:
                         proposal.update(summary=text[:200], preliminary_fix=text[:600], reasons=[text[:200]])
                     captured=[]; sent=[]; api=MockPlane()
@@ -71,7 +71,7 @@ class Tests(unittest.TestCase):
              'relative_ms':500, 'version':'1.2.3', 'message':'OpaqueTailSecret',
              'password':'OpaqueTailSecret', 'payload':{'level':'OpaqueTailSecret'}}])
         value, facts=analysis.extract(r, [], {})
-        self.assertEqual(value['log'], [{'line':1, 'level':'ERROR', 'error_type':'Timeout',
+        self.assertEqual(value['log'], [{'line':1, 'level':'ERROR', 'error_type':'otro',
                          'module':'services', 'count':2, 'relative_ms':500, 'version':'1.2.3'}])
         self.assertNotIn('OpaqueTailSecret', json.dumps(value))
         self.assertEqual(facts['lines'], {1})

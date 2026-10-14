@@ -18,15 +18,31 @@ proveedor, al webhook ni a producción.
 T3 o Intake**. Los adjuntos privados del owner conservan su almacenamiento y
 retención actuales. El worker solo admite un documento JSON completo (objeto o
 lista); rechaza texto libre, prefijos, JSON inválido y claves duplicadas. De los
-primeros 300 registros conserva únicamente level (TRACE/DEBUG/INFO/WARN/ERROR/
-FATAL), error_code/error_type/module/version (ASCII `[A-Za-z0-9_.:-]{1,64}`),
-count/relative_ms (enteros 0..1.000.000.000, sin bool). No copia message,
+primeros 300 registros conserva únicamente valores del catálogo compartido
+`structured-catalog.json`: nivel fijo, códigos/tipos del enum real
+`native/services/src/error.rs` y `ServicesCommandFailure` observado, y módulos
+de los crates nativos. No admite códigos inventados como `E_TIMEOUT`.
+Versiones: subconjunto estricto de SemVer, tres enteros de hasta seis dígitos
+sin ceros iniciales, prerelease de etiqueta conocida (nightly/testers/alpha/
+beta/rc) con sufijos numéricos y build solo numérico; máximo 64 caracteres.
+No permite texto arbitrario en prerelease/build aunque sea SemVer válido.
+count/relative_ms: enteros 0..1.000.000.000, sin bool. Campo presente fuera de
+estos conjuntos → `otro`; campo ausente no se inventa. No copia message,
 first_line, payload ni claves arbitrarias. El resumen de sesión usa la misma
-proyección; type/fingerprint de errores también están acotados a 64 caracteres.
+proyección, incluido type. Fingerprint siempre es SHA256 calculado por nosotros
+sobre JSON canónico de campos cerrados, con prefijo `vantare.triage.error.v1:`;
+nunca se copia ni se valida por apariencia el fingerprint del cliente/log.
 Los eventos exportados no llevan nombres libres ni horas absolutas. Rust valida
 metadata desde resultados observados; Python la vuelve a proyectar. La forma
 privada SQL de errores (type/message/fingerprint) y eventos (name/at) se conserva:
 message es un código fijo; name/at del owner se descartan al exportar.
+Rust y Python comparten catálogo, fixtures exactas F6 y hashes esperados.
+Las propuestas nuevas guardan `evidence_contract=closed-fields-v1` en el spool
+local después de validar referencias calculadas; no viene del informe/modelo.
+Replay anterior sin esa marca descarta todas las referencias de error, incluso
+las que parecen hashes; no reanaliza ni altera los ACK. Puede perder precisión
+al agrupar errores del mismo tipo cerrado. [Regresión F6](review-1602-r5-regressions.md).
+F7 (título/descripción y texto libre) sigue pendiente de decisión de Isaac.
 
 Título/descripción: una sola línea, máximos 120/1000 caracteres. Se inspecciona
 el campo **completo antes de truncar o normalizar whitespace**. Si la redacción
@@ -85,7 +101,8 @@ del rol sin su autorización separada. La configuración sigue disabled.
    aprobado y su SHA256; no inferir ZDR o región de fuentes de terceros.
 2. Con OK de despliegue, crear usuario de sistema vantare-triage, sin sudo,
    shell `/usr/sbin/nologin`; root mantiene los ficheros de programa/config.
-   Copiar solo los `.py` de esta carpeta a `/opt/vantare-triage` (0755),
+   Copiar los `.py` y `structured-catalog.json` de esta carpeta a
+   `/opt/vantare-triage` (0755; catálogo 0644),
    configuración a `/etc/vantare-triage` (0700, fichero 0600) y certificado
    público Supabase ya versionado. No copiar configuraciones globales o `.env`.
 3. Verificar Python, psql y la CLI OpenCode ya instalados; fijar ruta/digest.

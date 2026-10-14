@@ -62,14 +62,14 @@ impl Triage {
             .rev()
             .filter(|(_, line)| line.starts_with("ERROR "))
             .take(20)
-            .map(|(_, line)| {
-                let fields = evidence::record(&serde_json::json!({
-                    "error_type":"ServicesCommandFailure"
+            .map(|_| {
+                let fields = evidence::error_record(&serde_json::json!({
+                    "type":"ServicesCommandFailure"
                 }));
                 // Owner storage keeps the existing SQL shape. The worker
                 // projects type/fingerprint and never exports message.
-                serde_json::json!({"type":fields["error_type"], "message":fields["error_type"],
-                    "fingerprint":crate::content_hash(line.as_bytes())})
+                serde_json::json!({"type":fields["type"], "message":fields["type"],
+                    "fingerprint":fields["fingerprint"]})
             })
             .collect();
         errors.reverse();
@@ -161,8 +161,8 @@ impl Triage {
             // before preview so consent and every retry use these same values.
             title: redaction::external_text(title, private_names, 120),
             body: redaction::external_text(body, private_names, 1000),
-            context: serde_json::json!({"app_version":crate::product::VERSION,"app_channel":channel,
-                "game":observed.game,"game_version":observed.game_version.filter(|v|v.bytes().all(|b|b.is_ascii_digit() || b==b'.')),
+            context: serde_json::json!({"app_version":evidence::version(&serde_json::json!(crate::product::VERSION)),"app_channel":channel,
+                "game":observed.game,"game_version":observed.game_version.map(|v|evidence::version(&serde_json::json!(v))),
                 "system":if selection.items.contains(&Item::System) {system} else {serde_json::json!({})},
                 "telemetry_summary":summary,"posthog_session_id":null,
                 "consent":{"version":"triage-v2","items":items,"accepted_at":accepted}}),

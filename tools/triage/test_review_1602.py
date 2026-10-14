@@ -13,6 +13,7 @@ import triage
 from test_triage import report, response, NOW
 from test_plane_intake import MockPlane, CONFIG
 from privacy import redact
+import privacy
 import plane_intake
 
 
@@ -50,7 +51,7 @@ class Tests(unittest.TestCase):
         r['attachments'][0]['content']='ERROR '+body
         r['attachments'][0]['sha256']=hashlib.sha256(r['attachments'][0]['content'].encode()).hexdigest()
         r['context']['telemetry_summary']['errors']=[{'type':'Fixture','message':body,'first_line':body,'fingerprint':'review-fixture'}]
-        captured=[];sent=[];proposal=response();proposal["evidence_refs"]=["error:review-fixture"]
+        captured=[];sent=[];proposal=response();proposal["evidence_refs"]=["error:" + privacy.error_record(r["context"]["telemetry_summary"]["errors"][0])["fingerprint"]]
         with tempfile.TemporaryDirectory() as root:
             state=State(root)
             try:

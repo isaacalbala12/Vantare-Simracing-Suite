@@ -1,7 +1,9 @@
 """Second redaction. Standard library only; no identifiers or full logs to the model."""
 import ipaddress
+import hashlib
 import json
 import re
+from pathlib import Path
 
 REDACTED = '<redacted>'
 REMOVED = '[contenido retirado por privacidad]'
@@ -52,8 +54,25 @@ def external_text(text, limit):
     return ' '.join(text.split())[:limit]
 
 
-def atom(value):
-    return value if isinstance(value, str) and re.fullmatch(r'[A-Za-z0-9_.:-]{1,64}', value) else None
+CATALOG = json.loads(Path(__file__).with_name('structured-catalog.json').read_text(encoding='utf-8'))
+
+
+def closed(value, kind):
+    return value if isinstance(value, str) and value in CATALOG[kind] else 'otro'
+
+
+def version(value):
+    """Strict SemVer subset: closed release labels, bounded numeric identifiers.
+
+    Arbitrary SemVer prerelease/build text is still a covert text channel.
+    Unknown labels/build text are therefore also 'otro'.
+    """
+    if not isinstance(value, str) or len(value) > 64:
+        return 'otro'
+    number = r'(?:0|[1-9][0-9]{0,5})'
+    labels = '|'.join(CATALOG['release_labels'])
+    grammar = rf'{number}\.{number}\.{number}(?:-(?:{labels})(?:\.{number})*)?(?:\+{number}(?:\.{number})*)?'
+    return value if re.fullmatch(grammar, value) else 'otro'
 
 
 def log_record(value):
@@ -61,14 +80,26 @@ def log_record(value):
     if not isinstance(value, dict):
         return {}
     result = {}
-    if value.get('level') in ('TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR', 'FATAL'):
-        result['level'] = value['level']
-    for key in ('error_code', 'error_type', 'module', 'version'):
-        if atom(value.get(key)) is not None:
-            result[key] = value[key]
+    for key, kind in [('level','levels'), ('error_code','errors'),
+                      ('error_type','errors'), ('module','modules')]:
+        if key in value:
+            result[key] = closed(value[key], kind)
+    if 'version' in value:
+        result['version'] = version(value['version'])
     for key in ('count', 'relative_ms'):
-        if type(value.get(key)) is int and 0 <= value[key] <= 1_000_000_000:
-            result[key] = value[key]
+        if key in value:
+            result[key] = value[key] if type(value[key]) is int and 0 <= value[key] <= 1_000_000_000 else 'otro'
+    return result
+
+
+def error_record(value):
+    """Hash only our canonical closed projection, never a supplied fingerprint."""
+    result = log_record(value)
+    if isinstance(value, dict) and 'type' in value:
+        result['type'] = closed(value['type'], 'errors')
+    if result:
+        content = json.dumps(result, sort_keys=True, separators=(',', ':')).encode('ascii')
+        result['fingerprint'] = hashlib.sha256(b'vantare.triage.error.v1:' + content).hexdigest()
     return result
 
 

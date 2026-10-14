@@ -18,7 +18,7 @@ CONFIG={'base_url':'http://sapphireos.tail357eab.ts.net:8088','workspace':plane.
 
 
 def payload():
-    return {'type':'triage.proposal','contribution':{'id':ID,'channel':'testers','title':'Error user@example.invalid <script>','game':'lmu','game_version':'1.0','account_id':'PRIVATE-ACCOUNT','body_redacted':'PRIVATE-BODY','logs':['PRIVATE-LOG']},
+    return {'type':'triage.proposal','contribution':{'id':ID,'channel':'testers','title':'Error user@example.invalid <script>','game':'lmu','game_version':'1.0.0','account_id':'PRIVATE-ACCOUNT','body_redacted':'PRIVATE-BODY','logs':['PRIVATE-LOG']},
             'triage':{**response(),'summary':'Falló token=private-token-value <script>'}}
 
 
@@ -89,7 +89,7 @@ class Tests(unittest.TestCase):
         _,entry=plane.content(safe)
         self.assertEqual(entry['issue']['name'],'Error <script>')  # Plain title, HTML escaped body.
         self.assertIn('&lt;script&gt;',entry['issue']['description_html'])
-        for value in ('testers','lmu','1.0','válido','0.900',ID):self.assertIn(value,text if value!='válido' else post['issue']['description_html'])
+        for value in ('testers','lmu','1.0.0','válido','0.900',ID):self.assertIn(value,text if value!='válido' else post['issue']['description_html'])
         self.assertEqual(self.state.intake_record(ID),('published',ISSUE))
         self.assertEqual(self.api.rows[0]['status'],-2)
         self.assertFalse(any('/review' in c[1] for c in self.api.calls))

@@ -23,7 +23,7 @@ def report():
                      'message':r'overlay stalled user@example.invalid C:\Users\PrivateTester\a'},
                     {'level':'INFO','module':'services'}])
     return {'id':ID,'channel':'testers','created_at':'2026-10-13T00:00:00Z','title':'Overlay stalls',
-        'body':'steps expected actual '*15,'context':{'app_version':'1.2.3','app_channel':'testers','game':'lmu','game_version':'1.0',
+        'body':'steps expected actual '*15,'context':{'app_version':'1.2.3','app_channel':'testers','game':'lmu','game_version':'1.0.0',
         'system':{'cpu':{'model':'CPU','cores':8},'username':'private','gpu':[{'model':'GPU','serial':'private'}]},
         'posthog_session_id':'PRIVATE-SESSION','account_id':'PRIVATE-ACCOUNT',
         'consent':{'version':'triage-v2','items':['system','app_log','telemetry_summary']},

@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 from privacy import redact, clean_tree
+import privacy
 from state import State
 import triage
 import plane_intake
@@ -43,7 +44,7 @@ class Tests(unittest.TestCase):
                         r['context']['telemetry_summary']['errors'] = [{'type': 'Fixture', 'message': text,
                                                                        'first_line': text, 'fingerprint': 'fixture'}]
                         proposal = response()
-                        proposal['evidence_refs'] = ['error:fixture']
+                        proposal['evidence_refs'] = ['error:' + privacy.error_record(r['context']['telemetry_summary']['errors'][0])['fingerprint']]
                         if generated:
                             proposal['summary'] = text
                             proposal['preliminary_fix'] = text

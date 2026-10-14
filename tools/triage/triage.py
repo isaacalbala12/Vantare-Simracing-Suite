@@ -6,6 +6,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 import time
@@ -13,12 +14,13 @@ import urllib.parse
 import urllib.request
 import uuid
 from analysis import MODEL, extract, validate, utc
-from privacy import external_text, atom
+from privacy import external_text, version
 from state import State
 import model
 import plane_intake
 
 PROJECT = 'ombjshwzqgeisazijduq'
+EVIDENCE_CONTRACT = 'closed-fields-v1'
 
 
 def canonical_id(value):
@@ -121,9 +123,11 @@ def external_payload(payload):
     for key, limit in (('title',120),('body_redacted',1000)):
         if key in contribution:
             value['contribution'][key] = external_text(contribution[key],limit)
-    for key in ('app_version','game','game_version'):
+    for key in ('app_version','game_version'):
         if key in contribution:
-            value['contribution'][key] = atom(contribution[key])
+            value['contribution'][key] = version(contribution[key])
+    if 'game' in contribution:
+        value['contribution']['game'] = contribution['game'] if contribution['game'] in ('lmu','acc','none') else 'otro'
     proposal = payload.get('triage')
     value['triage'] = None
     if isinstance(proposal,dict):
@@ -132,6 +136,16 @@ def external_payload(payload):
         value['triage'].update(summary=external_text(proposal['summary'],200),
             preliminary_fix=external_text(proposal['preliminary_fix'],600) if proposal.get('preliminary_fix') is not None else None,
             reasons=[external_text(r,200) for r in proposal.get('reasons',[])])
+        # Old spools predate derived fingerprints. Even hash-shaped legacy
+        # strings are not evidence we calculated; discard their error refs.
+        current = payload.get('evidence_contract') == EVIDENCE_CONTRACT
+        value['triage']['evidence_refs'] = [ref for ref in proposal.get('evidence_refs', [])
+            if isinstance(ref,str) and (
+                (current and re.fullmatch(r'error:[0-9a-f]{64}',ref)) or
+                re.fullmatch(r'perf:(?:overlay_fps|cpu_percent|memory_mb|telemetry_latency_ms)_p(?:50|95)',ref) or
+                re.fullmatch(r'log:L[1-9][0-9]{0,3}-L[1-9][0-9]{0,3}',ref))]
+        if current:
+            value['evidence_contract'] = EVIDENCE_CONTRACT
     return value
 
 
@@ -189,14 +203,15 @@ def pass_once(state, reports, history, versions, analyze, send, now, intake=None
         base={'delivery_id':id,'sent_at':datetime.fromtimestamp(now,timezone.utc).isoformat(),
               'contribution':{'id':id,'channel':report['channel'],'created_at':report['created_at'],
                   'title':external_text(report['title'],120),'body_redacted':external_text(report['body'],1000),
-                  **{k:atom((report.get('context') or {}).get(k)) for k in ('app_version','game','game_version')}}}
+                  **{k:version((report.get('context') or {}).get(k)) for k in ('app_version','game_version')},
+                  'game':(report.get('context') or {}).get('game') if (report.get('context') or {}).get('game') in ('lmu','acc','none') else 'otro'}}
         started=time.monotonic()
         invoked=False
         try:
             minimal,facts=extract(report,history,versions)
             invoked=True
             proposal=validate(analyze(minimal),facts)
-            payload={**base,'type':'triage.proposal','triage':proposal,
+            payload={**base,'type':'triage.proposal','triage':proposal,'evidence_contract':EVIDENCE_CONTRACT,
                      'engine':{'model':MODEL,'prompt':'triage-v2','duration_ms':int((time.monotonic()-started)*1000),'attempt':attempt}}
             publish_intake=intake is not None and report['channel']=='testers'
             state.analyzed(id,payload,now,intake=publish_intake)

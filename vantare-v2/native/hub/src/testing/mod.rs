@@ -15,4 +15,5 @@ mod tests;
 
 mod editor;
 mod model;
+mod screenshots;
 pub use editor::{Editor, empty_fields};

@@ -256,6 +256,9 @@ mod tests {
                 Local::open(&root, Some(&identity.issuer), Some(&identity.subject)).expect("local"),
             );
             app.pilot_identity = Some(identity.clone());
+            // #1608 exige núcleo adjunto incluso antes de un refresh válido.
+            let (link, core) = crate::app::tests::core_fixture(String::new(), "unused", vec![]);
+            app.attach_core(link);
             let outcome = app.sync_pilot();
             assert_eq!(
                 outcome,
@@ -269,6 +272,8 @@ mod tests {
             assert_eq!(state.remote_revision, 2);
             assert_eq!(state.pending, conflict);
             assert_eq!(state.profile.description, if conflict { "A" } else { "C" });
+            core.join()
+                .expect("core fixture completed without revocation");
             server.finish();
             drop(app);
             let local = Local::open(&root, Some(&identity.issuer), Some(&identity.subject))

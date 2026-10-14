@@ -1365,7 +1365,7 @@ mod tests {
         }
     }
 
-    enum CoreStep {
+    pub(super) enum CoreStep {
         #[cfg(windows)]
         Install,
         Invalidate,
@@ -1374,7 +1374,7 @@ mod tests {
         RejectInvalidate,
     }
 
-    fn core_fixture(
+    pub(super) fn core_fixture(
         device: String,
         keys: &'static str,
         steps: Vec<CoreStep>,

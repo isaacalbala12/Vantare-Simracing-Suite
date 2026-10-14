@@ -106,8 +106,11 @@ VANTA-9 En curso verificado. Primera integración de nightly8194c949 en
  y telemetría25/25 PASS (ACC810s; suite853s). Durante esos gates nightly incorporó
 #1608/PR #1615 en `e5c90be5f63347fa4d50b4110e1946201c1957c0`: nueva integración
 autorizada sin conflictos, conservando los arreglos de cuenta y el corte local.
-Fmt/check/Clippy del nuevo conjunto PASS; Nextest/lifecycle/telemetría se están
-repitiendo antes del push. Las resoluciones anteriores conservan todas las
+Fmt/check/Clippy del nuevo conjunto PASS. Nextest detectó que la fixture de
+sync preparada no adjuntaba el CoreLink requerido por #1608 (Unconfigured).
+Se comparte el helper existente solo en cfg(test), sin relajar el guard productivo:
+fixture-green 2/2 PASS; el perfil local sin red permaneció verde. Fallo conservado
+en final-test.log. Nextest/lifecycle/telemetría se están repitiendo antes del push. Las resoluciones anteriores conservan todas las
 regresiones de privacidad y Services v8 con DTO piloto aditivo. La integración
 compilada actual no acredita OAuth/Storage reales ni QA física.
 El roadmap público sigue en Plane; plan.md está retirado y el estado público

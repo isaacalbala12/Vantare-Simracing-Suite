@@ -2334,6 +2334,20 @@ Deno.test("untrusted user_id metadata cannot attribute a purchase without a serv
   );
 });
 
+Deno.test("durable customer binding wins over contradictory external_customer_id", async () => {
+  const mock = createMockSupabase({ billing_customers: [{
+    user_id: USER_ID, provider: "polar", environment: "sandbox", provider_customer_id: "bound-customer",
+  }, {
+    user_id: PRODUCTION_USER_ID, provider: "polar", environment: "production", provider_customer_id: "bound-customer",
+  }] });
+  assertEquals(await resolveUserId(mock.client, {
+    customer_id: "bound-customer", external_customer_id: PRODUCTION_USER_ID,
+  }, "sandbox"), USER_ID);
+  assertEquals(await resolveUserId(mock.client, {
+    customer: { id: "bound-customer", external_id: USER_ID },
+  }, "production"), PRODUCTION_USER_ID);
+});
+
 Deno.test("missing order retry remains bounded and never grants access", async () => {
   const deps = processDeps(createMockSupabase());
   const refund = {

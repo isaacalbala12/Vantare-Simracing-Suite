@@ -202,10 +202,8 @@ export async function resolveUserId(
   environment: BillingEnvironment,
 ): Promise<string | null> {
   const externalId = extractExternalCustomerId(data);
-  if (externalId) return externalId;
-
   const polarCustomerId = extractPolarCustomerId(data);
-  if (!polarCustomerId) return null;
+  if (!polarCustomerId) return externalId;
 
   const { data: row, error } = await supabase
     .from("billing_customers")
@@ -216,7 +214,9 @@ export async function resolveUserId(
     .maybeSingle();
 
   if (error) throw error;
-  return asString(row?.user_id);
+  // El vínculo durable de este cliente/entorno es autoridad; un campo externo
+  // contradictorio nunca puede mover una compra a otro UUID.
+  return asString(row?.user_id) ?? externalId;
 }
 
 export async function recordWebhookEvent(

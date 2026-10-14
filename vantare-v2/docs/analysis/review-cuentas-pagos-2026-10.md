@@ -10,6 +10,7 @@ F02/F04/F08 quedan corregidos o limitados por esta sección.
 | Hallazgo | Cambio y evidencia de esta ronda |
 | --- | --- |
 | N3 / F04 | El loader recibe el entorno fijado por servidor y filtra `billing_access_grants.environment`. Handler nativo y ruta legacy pasan el mismo entorno a lectura y firma. El normalizador sigue rechazando filas ajenas; soporte del entorno solicitado se conserva. RED: mezcla production/sandbox → 409. GREEN: 67 tests emisor/handler; credencial con Pro+calendar de producción, sin Launch sandbox. Logs `C:/tmp/1608-r2/N3-{red,green-corrected}.log`. |
+| Atribución residual | `resolveUserId` consulta primero el binding Polar+entorno+customer; ese UUID prevalece sobre external_customer_id raíz/anidado contradictorio. Sin binding conserva el contrato de external ID existente; no se presenta como cierre de checkout/atribución completo. RED: cliente A + external B devuelve B. GREEN: 52 tests procesador, incluyendo entornos distintos y metadata no autoritativa. Logs `attribution-{red,green}.log`. |
 
 Ronda en curso: N1/F08 y N2/F02 requieren gates Rust nuevos; los bloqueos
 B01/B02/B03 se revisan con planes concretos si exigen el corte de identidad,

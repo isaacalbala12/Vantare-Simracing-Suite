@@ -6,6 +6,9 @@ N3/F04: loader de grants filtrado por entorno de servidor, manteniendo
 normalización estricta y soporte; RED 409 con producción+sandbox → GREEN
 67 tests Deno. Evidencia nueva `C:/tmp/1608-r2/`; N1/N2 y atribución en curso.
 La entrega de ronda 1 siguiente no cierra las omisiones señaladas por Sol.
+Atribución residual: binding durable Polar/entorno/customer precede al external
+ID contradictorio, RED→GREEN 52 tests procesador; cierre completo de checkout
+sin binding sigue dependiendo del corte #1514/#1523.
 
 Por revisar en `vantareapp/isa-1608-cuentas-y-pagos`, base nightly `69fa2d65`.
 Plane VANTA-16/17/15 Por revisar verificado. Reanudado por Codex CLI tras caída

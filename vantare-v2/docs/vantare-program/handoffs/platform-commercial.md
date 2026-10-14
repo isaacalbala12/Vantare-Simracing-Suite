@@ -1,7 +1,7 @@
 ## #1608 · Revisión cuentas y pagos (14/10/2026)
 
-En curso en `vantareapp/isa-1608-cuentas-y-pagos`, base nightly `69fa2d65`.
-Plane VANTA-16/17/15 En curso verificado. Reanudado por Codex CLI tras caída
+Por revisar en `vantareapp/isa-1608-cuentas-y-pagos`, base nightly `69fa2d65`.
+Plane VANTA-16/17/15 Por revisar verificado. Reanudado por Codex CLI tras caída
 de T3, sin subagentes; seis commits y dos cambios pendientes recuperados.
 Sin producción, secretos, cuentas/compras ni promoción. Informe
 [review-cuentas-pagos-2026-10.md](../../analysis/review-cuentas-pagos-2026-10.md).
@@ -24,7 +24,11 @@ sin cierre en esta base. #1514 autorizada tiene implementación en draft #1523,
 OPEN sin merge a HEAD 33be660d; no se duplican ni trasplantan sus fragmentos.
 No se debilita el resolver ni se inventa atribución. Aceptación física
 autorizada pendiente. #1612 conserva perfil separado; aquí solo license/logout
-y tests de app.rs, sin account.rs/bridge/IPC/Hub. PR draft/CI/estado final pendientes.
+y tests de app.rs, sin account.rs/bridge/IPC/Hub. Entrega en PR draft
+[#1615](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1615) a nightly,
+issue #1608 en revisión y Project Vantare verificados, sin milestone comprometido.
+Código probado `f8183f36`; informe/fragmento `99405dd9`; SHA final del push y CI
+se verifican y registran en la issue/buzón. No merge, release, promoción ni producción.
 
 # Handoff vivo — Plataforma, cuenta, servicios y distribución
 

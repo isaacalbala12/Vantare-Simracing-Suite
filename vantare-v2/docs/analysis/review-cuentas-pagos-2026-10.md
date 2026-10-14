@@ -157,8 +157,11 @@ rutas de Windows en el directorio de QA, y se repitió todo sin modificar tests.
 
 ## Entrega y siguiente paso
 
-PR **draft a nightly**, pendiente de revisión independiente. SHA/push/CI y estados
-verificados finales en la issue y el buzón; no se afirma integración en nightly.
+PR [**#1615, draft a nightly**](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1615),
+pendiente de revisión independiente. Plane VANTA-16/17/15 **Por revisar** e issue
+GitHub `state:in-review` verificados el 14/10/2026; Project Vantare, sin milestone
+comprometido. Código probado `f8183f36`, entrega documental `99405dd9`.
+SHA/push/CI finales en la issue y el buzón; no se afirma integración en nightly.
 Sin merge, release, promoción, deploy, migración prod, precios, compras ni refunds
 reales. La única actividad externa es seguimiento GitHub/Plane y push/PR pedidos.
 

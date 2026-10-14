@@ -12,6 +12,7 @@ use std::sync::Arc;
 /// Peticiones al propietario del modelo; el editor no persiste nada.
 #[derive(Clone, Debug, PartialEq)]
 pub enum PilotEvent {
+    Discard,
     /// Guardar estos datos (ya recortados y válidos).
     Save(Draft),
     /// Abrir el selector de foto; el propietario valida y llama a [`PilotEditor::begin_crop`].
@@ -55,6 +56,8 @@ pub struct PilotEditor {
     country: Entity<Choice>,
     simulators: Vec<String>,
     photo: Option<Arc<Image>>,
+    saved_photo: Option<Arc<Image>>,
+    photo_changed: bool,
     source: Option<Source>,
     status: Option<String>,
     busy: bool,
@@ -121,6 +124,8 @@ impl PilotEditor {
             team,
             country,
             photo: None,
+            saved_photo: None,
+            photo_changed: false,
             source: None,
             status: None,
             busy: false,
@@ -162,10 +167,25 @@ impl PilotEditor {
 
     /// Foto final ya procesada (JPEG 256×256); `None` muestra las iniciales.
     pub fn set_photo(&mut self, photo: Option<Arc<Image>>, cx: &mut Context<Self>) {
+        self.photo_changed = photo_diff(&photo, &self.saved_photo);
         self.photo = photo;
         self.source = None;
         self.busy = false;
         cx.notify();
+    }
+
+    pub fn set_saved_photo(&mut self, photo: Option<Arc<Image>>, cx: &mut Context<Self>) {
+        self.saved_photo.clone_from(&photo);
+        self.set_photo(photo, cx);
+    }
+
+    /// Una carga tardía conserva lo que el usuario empezó a escribir.
+    pub fn load_preserving_edits(&mut self, draft: Draft, cx: &mut Context<Self>) {
+        if self.dirty(cx) {
+            self.mark_saved(draft, cx);
+        } else {
+            self.load(draft, cx);
+        }
     }
 
     /// Abre el recorte de una foto ya validada por servicios.
@@ -227,8 +247,15 @@ impl PilotEditor {
         }
     }
 
-    fn dirty(&self, cx: &gpui::App) -> bool {
-        self.draft(cx).trimmed() != self.saved.trimmed()
+    pub(super) fn dirty(&self, cx: &gpui::App) -> bool {
+        has_changes(&self.draft(cx), &self.saved, self.photo_changed)
+    }
+
+    pub(super) fn discard_changes(&mut self, cx: &mut Context<Self>) {
+        let saved = self.saved.clone();
+        self.load(saved, cx);
+        self.set_photo(self.saved_photo.clone(), cx);
+        cx.emit(PilotEvent::Discard);
     }
 
     fn act(&mut self, action: Action, window: &mut Window, cx: &mut Context<Self>) {
@@ -256,8 +283,7 @@ impl PilotEditor {
             }
             Action::CancelCrop => self.source = None,
             Action::Discard => {
-                let saved = self.saved.clone();
-                self.load(saved, cx);
+                self.discard_changes(cx);
             }
             Action::Save => {
                 let draft = self.draft(cx).trimmed();
@@ -1071,5 +1097,45 @@ mod tests {
         let (options, selected) = country_options(Some("is"));
         assert_eq!(options[selected].label, "IS");
         assert_eq!(options.len(), COUNTRIES.len() + 2);
+    }
+}
+
+fn photo_diff(current: &Option<Arc<Image>>, saved: &Option<Arc<Image>>) -> bool {
+    match (current, saved) {
+        (None, None) => false,
+        (Some(current), Some(saved)) => !Arc::ptr_eq(current, saved),
+        _ => true,
+    }
+}
+fn has_changes(current: &Draft, saved: &Draft, photo_changed: bool) -> bool {
+    photo_changed || current.trimmed() != saved.trimmed()
+}
+
+#[cfg(test)]
+mod wiring_tests {
+    use super::*;
+    #[test]
+    fn photo_only_edit_is_dirty_and_discard_restores_saved_photo() {
+        let saved = Draft {
+            public_name: "Piloto".into(),
+            ..Default::default()
+        };
+        assert!(!has_changes(&saved, &saved, false));
+        assert!(
+            has_changes(&saved, &saved, true),
+            "photo-only edit must enable saving"
+        );
+        let photo = Some(Arc::new(Image::from_bytes(
+            gpui::ImageFormat::Jpeg,
+            vec![1, 2, 3],
+        )));
+        assert!(photo_diff(&photo, &None));
+        assert!(photo_diff(&None, &photo));
+        assert!(!photo_diff(&photo.clone(), &photo));
+        assert!(!has_changes(
+            &saved,
+            &saved,
+            photo_diff(&photo.clone(), &photo)
+        ));
     }
 }

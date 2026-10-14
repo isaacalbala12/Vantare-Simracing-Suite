@@ -6,6 +6,9 @@ preparación OAuth y la red de todos los comandos de perfil. RED→GREEN adicion
 de cargar/guardar/PilotSync/reabrir sin conexiones, con/sin identidad restaurada,
 en `C:/tmp/1612-local-sync-off`. La evidencia remota descrita abajo corresponde
 a preparación inerte; no acredita una sync activa ni modifica esa decisión.
+Validación actual `414474ca` con nightly e5c90be5/#1608: fmt/check/Clippy PASS,
+Nextest 1747/1747 (12 skips), lifecycle 18/18, telemetría 25/25 e integridad 456 PASS.
+QA física y las capturas anteriores conservan sus límites; no hay nuevas capturas.
 
 Base `0807fbd0`, diseño de Opus `3aaa3961` integrado como `48b4f812`.
 La revisión cubre las ocho páginas del código vigente, sus stores, callbacks,

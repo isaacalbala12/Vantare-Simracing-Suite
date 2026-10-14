@@ -16,6 +16,6 @@
   "knownLimitations": [
     "La sincronización de perfil está apagada y pendiente; reactivarla requiere resolver los hallazgos de review r5 y otra decisión de Isaac. Backend solo preparado, sin aplicar.",
     "La bandera está preparada; su colocación en widgets sigue pendiente del diseño aprobado.",
-    "Los tests locales no acreditan login real, Storage HTTP real ni integración con otros PR."
+    "Gates locales del conjunto con nightly e5c90be5 y #1608; pendientes QA física y login/Storage reales."
   ]
 }

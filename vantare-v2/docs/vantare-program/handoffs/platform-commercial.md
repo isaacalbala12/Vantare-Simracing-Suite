@@ -101,18 +101,30 @@ P2-1 y P3-1 de review r5 quedan inertes; deben resolverse antes de reactivar.
 RED: PilotLoad abre conexión. GREEN: guardar texto multilínea/foto, cargar,
 PilotSync y reabrir conservan la copia local y no abren conexiones, con/sin
 identidad restaurada. Evidencia `C:/tmp/1612-local-sync-off`.
-VANTA-9 En curso verificado. Primera integración de nightly8194c949 en
-`685d4d63`: fmt/check/Clippy PASS, Nextest1739/1739 (12 skips), lifecycle18/18
- y telemetría25/25 PASS (ACC810s; suite853s). Durante esos gates nightly incorporó
-#1608/PR #1615 en `e5c90be5f63347fa4d50b4110e1946201c1957c0`: nueva integración
-autorizada sin conflictos, conservando los arreglos de cuenta y el corte local.
-Fmt/check/Clippy del nuevo conjunto PASS. Nextest detectó que la fixture de
-sync preparada no adjuntaba el CoreLink requerido por #1608 (Unconfigured).
-Se comparte el helper existente solo en cfg(test), sin relajar el guard productivo:
-fixture-green 2/2 PASS; el perfil local sin red permaneció verde. Fallo conservado
-en final-test.log. Nextest/lifecycle/telemetría se están repitiendo antes del push. Las resoluciones anteriores conservan todas las
-regresiones de privacidad y Services v8 con DTO piloto aditivo. La integración
-compilada actual no acredita OAuth/Storage reales ni QA física.
+Entrega local validada sobre `414474ca39dac7532d6b5d115e0002c8263f9658`.
+Corte cliente `6fab68b8`; primera integración nightly8194c949 en `685d4d63`
+(gates completos verdes), seguida de nightly@`e5c90be5f63347fa4d50b4110e1946201c1957c0`
+con #1608 en `db52700e`. Conflictos iniciales conservan ambos bloques del handoff,
+todos los tests de privacidad y Services v8 + DTO piloto aditivo. Segundo merge
+sin conflictos, con arreglos de cuenta intactos. La fixture de sync preparada
+falló al no adjuntar CoreLink (final-test.log); se comparte el helper existente
+solo cfg(test), sin relajar producción. fixture-green 2/2 PASS, incluido perfil
+local sin red; fallo y explicación conservados.
+
+Gates finales de `414474ca`: fmt/check/Clippy -D warnings PASS; Nextest
+**1747/1747** (12 skips, paridad lenta 91 s), lifecycle **18/18** y telemetría
+**25/25** (ACC 773 s; suite 818 s) PASS. quality/456 huellas y fragmento PASS.
+Target propio native/target/gates, CARGO_BUILD_JOBS=2, datos aislados y plazo
+1800 s por gate. pnpm no aplica (Rust/GPUI); sin cambios propios nuevos en SQL,
+sin repetir pgTAP/Deno ni consultar producción. Cierre posterior solo documental.
+HEAD/push, CI y VANTA-9 Por revisar se verifican en issue/PR y FIN del buzón.
+Sin merge de PR #1619, auto-merge, promoción ni release. Únicos merges del worker:
+nightly hacia esta rama de issue, autorizados por Isaac.
+Siguiente: review de entrega local y QA física en portable aislado (guardar y
+reabrir nombre/descripción con Enter/foto; Guardar/Descartar). Integración nativa
+#1608 compilada; API OAuth/Storage reales y colocación de bandera pendientes.
+Reactivar sync exige otra decisión y resolver P2-1/P3-1 r5 antes del cambio.
+
 El roadmap público sigue en Plane; plan.md está retirado y el estado público
 del encargo sigue En marcha (no Entregado). Las rondas siguientes son historia
 de la preparación de sync, no el comportamiento activo de esta entrega.

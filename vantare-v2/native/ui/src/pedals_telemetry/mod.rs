@@ -2,15 +2,15 @@
 //! Volante genérico con steering canónico × 450°, rasterizado por GPUI.
 
 use crate::efficiency::preview::PaintWindow as Window;
+use crate::vantare::{
+    paint::{Face, Kit, round_rect},
+    style::{Color, Style},
+};
 use crate::{
     app::{Paint, Wake, replace_if_changed},
-    efficiency::{
-        col, rect,
-        text::{self, ink},
-        tokens,
-    },
+    efficiency::{rect, text},
 };
-use gpui::{App, BorderStyle, Corners, Edges, linear_color_stop, linear_gradient, px, quad};
+use gpui::{App, Corners, px};
 use std::{
     cell::RefCell,
     rc::Rc,
@@ -25,7 +25,7 @@ use vantare_domain::{
 
 mod wheels;
 
-const SIZE: (f32, f32) = (300.0, 112.0);
+const SIZE: (f32, f32) = (380.0, 64.0);
 const TRANSITION: Duration = Duration::from_millis(60);
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -157,7 +157,7 @@ impl Widget {
         })
     }
 
-    pub(crate) fn frame(&mut self, _prefs: Preferences, reduced: bool) -> (Paint, Wake) {
+    pub(crate) fn frame(&mut self, prefs: Preferences, reduced: bool) -> (Paint, Wake) {
         let now = Instant::now();
         let moving = !reduced && self.moving_at(now);
         let bars = if reduced {
@@ -171,7 +171,7 @@ impl Widget {
         let vm = self.vm.clone();
         let wheel = Rc::clone(&self.wheel);
         (
-            Box::new(move |window, cx| paint(&vm, bars, &wheel, window, cx)),
+            Box::new(move |window, cx| paint(&vm, bars, prefs, &wheel, window, cx)),
             if moving { Wake::Frame } else { Wake::Idle },
         )
     }
@@ -233,7 +233,7 @@ fn wheel(
         };
     }
     if let Some(image) = &artwork.image {
-        let bounds = rect(181.0, 20.0, 72.0, 72.0);
+        let bounds = rect(320.0, 2.0, 40.0, 40.0);
         if let Err(error) = window.paint_image(
             bounds,
             bounds,
@@ -250,118 +250,108 @@ fn wheel(
 fn paint(
     vm: &ViewModel,
     bars: [Option<f64>; 3],
+    prefs: Preferences,
     wheel_cache: &RefCell<WheelArtwork>,
     window: &mut Window,
     cx: &mut App,
 ) {
-    let panel = rect(0.0, 0.0, SIZE.0, SIZE.1);
-    window.paint_quad(quad(
-        panel,
-        Corners::all(px(10.0)),
-        col(tokens::PANEL, 0.92),
-        Edges::all(px(0.0)),
-        col(0, 0.0),
-        BorderStyle::default(),
-    ));
-    window.paint_quad(quad(
-        panel,
-        Corners::all(px(10.0)),
-        linear_gradient(
-            120.0,
-            linear_color_stop(col(0xffffff, 0.03), 0.0),
-            linear_color_stop(col(0xffffff, 0.0), 0.38),
-        ),
-        Edges::all(px(0.0)),
-        col(0, 0.0),
-        BorderStyle::default(),
-    ));
-
-    let alpha = if vm.status == Status::Stale {
-        0.55
-    } else {
-        1.0
+    let style = Style::compiled();
+    let kit = Kit {
+        style: &style,
+        variant: &style.styles.neo,
+        accent: style.accents.red,
+        language: prefs.language,
+        width: SIZE.0,
     };
-    let gear_ink = ink(44.0, 800.0, -0.03, col(0xf1f1f2, alpha));
-    text::draw(
+    kit.panel(window, SIZE.1);
+    let color = if vm.status == Status::Stale {
+        Color(0x6e6668, 1.0)
+    } else {
+        style.colors.text
+    };
+    let gear = kit.ink(Face::Display, 36.0, 0.0, color.hsla());
+    kit.label(
         window,
         cx,
         &vm.gear,
-        46.0 - text::width(window, &vm.gear, &gear_ink) / 2.0,
-        text::baseline(17.6, 41.8, 44.0),
-        &gear_ink,
+        38.0 - text::width(window, &vm.gear, &gear) / 2.0,
+        None,
+        8.0,
+        32.0,
+        Face::Display,
+        &gear,
     );
-    let speed_ink = ink(14.0, 700.0, 0.0, col(0xf1f1f2, alpha));
-    let unit_ink = ink(11.0, 500.0, 0.0, col(0xf1f1f2, alpha));
-    let unit = format!(" {}", vm.speed_unit);
-    let speed_w = text::width(window, &vm.speed, &speed_ink);
-    let x = 46.0 - f32::midpoint(speed_w, text::width(window, &unit, &unit_ink));
-    let baseline = text::baseline(60.4, 18.0, 14.0);
-    text::draw(window, cx, &vm.speed, x, baseline, &speed_ink);
-    text::draw(window, cx, &unit, x + speed_w, baseline, &unit_ink);
-    let rpm_ink = ink(11.0, 400.0, 0.0, col(0x929399, alpha));
-    let rpm = format!("{} rpm", vm.rpm);
-    text::draw(
+    let muted = kit.ink(Face::Mono, 10.0, 0.0, style.colors.muted.hsla());
+    let speed = format!("{} {}", vm.speed, vm.speed_unit);
+    kit.label(
         window,
         cx,
-        &rpm,
-        46.0 - text::width(window, &rpm, &rpm_ink) / 2.0,
-        text::baseline(79.4, 15.0, 11.0),
-        &rpm_ink,
+        &speed,
+        38.0 - text::width(window, &speed, &muted) / 2.0,
+        None,
+        42.0,
+        14.0,
+        Face::Mono,
+        &muted,
     );
-
     for (i, (value, color)) in bars
         .into_iter()
-        .zip([0xc9a15c, tokens::LOSS, 0x6fae7d])
+        .zip([0x4f8ef7, 0xe14a54, 0x22c55e])
         .enumerate()
     {
         if i == 0 && !vm.show_clutch {
             continue;
         }
-        let index = if vm.show_clutch { i } else { i - 1 };
-        let x = 86.0 + index as f32 * 24.0;
-        let label_top = if vm.status_text.is_empty() {
-            10.0
-        } else {
-            24.0
-        };
-        let bar_top = label_top + 14.0;
-        let bar_height = 102.0 - bar_top;
-        let label = value.map_or_else(|| "—".into(), |value| format!("{:.0}", value * 100.0));
-        let label_ink = ink(11.0, 700.0, 0.0, col(0xf1f1f2, alpha));
-        text::draw(
+        let y = 10.0 + i as f32 * 16.0;
+        let label = kit.ink(Face::Display, 10.0, 1.0, Color(0x6e6668, 1.0).hsla());
+        kit.label(
             window,
             cx,
+            if kit.es() {
+                ["E", "F", "A"][i]
+            } else {
+                ["C", "B", "T"][i]
+            },
+            76.0,
+            None,
+            y,
+            12.0,
+            Face::Display,
             &label,
-            x + 7.0 - text::width(window, &label, &label_ink) / 2.0,
-            text::baseline(label_top, 14.0, 11.0),
-            &label_ink,
         );
-        window.paint_quad(quad(
-            rect(x, bar_top, 14.0, bar_height),
-            Corners::all(px(3.0)),
-            col(0x0c0c0e, 0.85 * alpha),
-            Edges::all(px(0.0)),
-            col(0, 0.0),
-            BorderStyle::default(),
-        ));
-        if let Some(value) = value.filter(|v| *v > 0.0) {
-            let height = value as f32 * bar_height;
-            // CSS overflow:hidden recorta el relleno por las esquinas del slot.
-            let radius = 3.0f32.min(height / 2.0);
-            window.paint_quad(quad(
-                rect(x, 102.0 - height, 14.0, height),
-                Corners {
-                    top_left: px(if value >= 1.0 { 3.0 } else { 0.0 }),
-                    top_right: px(if value >= 1.0 { 3.0 } else { 0.0 }),
-                    bottom_left: px(radius),
-                    bottom_right: px(radius),
-                },
-                col(color, alpha),
-                Edges::all(px(0.0)),
-                col(0, 0.0),
-                BorderStyle::default(),
-            ));
+        round_rect(
+            window,
+            90.0,
+            y + 2.0,
+            188.0,
+            8.0,
+            4.0,
+            Color(0xffffff, 0.08).hsla(),
+        );
+        if let Some(value) = value {
+            round_rect(
+                window,
+                90.0,
+                y + 2.0,
+                188.0 * value as f32,
+                8.0,
+                4.0,
+                Color(color, 1.0).hsla(),
+            );
         }
+        let value = value.map_or_else(|| "—".into(), |v| format!("{:.0}", v * 100.0));
+        let ink = kit.ink(Face::Mono, 10.0, 0.0, style.colors.text.hsla());
+        kit.label(
+            window,
+            cx,
+            &value,
+            0.0,
+            Some(308.0),
+            y,
+            12.0,
+            Face::Mono,
+            &ink,
+        );
     }
     wheel(
         wheel_cache,
@@ -371,14 +361,19 @@ fn paint(
         vm.status == Status::Stale,
         vm.steering_wheel,
     );
-    let status_ink = ink(11.0, 600.0, 0.06, col(0xc1121f, 1.0));
-    text::draw(
+    let angle = vm
+        .steering
+        .map_or_else(|| "—".into(), |v| format!("{:+.0}°", v * 450.0));
+    kit.label(
         window,
         cx,
-        vm.status_text,
-        14.0,
-        text::baseline(4.0, 13.5, 11.0),
-        &status_ink,
+        &angle,
+        340.0 - text::width(window, &angle, &muted) / 2.0,
+        None,
+        46.0,
+        12.0,
+        Face::Mono,
+        &muted,
     );
 }
 
@@ -444,7 +439,7 @@ mod tests {
         );
         let mut widget = Widget::new(&Settings::default(), prefs);
         assert!(widget.ingest(&snapshot, prefs));
-        assert_eq!(widget.size(), (300.0, 112.0));
+        assert_eq!(widget.size(), (380.0, 64.0));
         assert_eq!(widget.frame(prefs, false).1, Wake::Idle);
         assert!(!widget.ingest(&snapshot, prefs));
     }

@@ -2,7 +2,7 @@
 use crate::orbit;
 use gpui::{Context, Div, FocusHandle, Stateful, Window, div, prelude::*, px};
 use std::path::{Path, PathBuf};
-use vantare_services::diagnostics::{PRIVACY_FILE, Privacy};
+use vantare_services::diagnostics::{ConsentSaveError, PRIVACY_FILE, Privacy};
 #[path = "privacy_cleanup.rs"]
 mod cleanup;
 
@@ -28,7 +28,7 @@ pub(super) struct Store {
     cleanup: Option<cleanup::Cleanup>,
 }
 impl Store {
-    pub fn load(root: &Path) -> Result<Self, String> {
+    fn read(root: &Path) -> Result<Self, String> {
         let path = root.join(PRIVACY_FILE);
         let observed = match std::fs::metadata(&path) {
             Ok(_) => Some(crate::files::read(&path, 1024)?),
@@ -36,35 +36,69 @@ impl Store {
             Err(error) => return Err(format!("leer privacidad: {error}")),
         };
         let value = Privacy::load(root).map_err(|error| format!("leer privacidad: {error}"))?;
-        let cleanup = match value.discard_disabled(root) {
-            Ok(()) => None,
-            Err(vantare_services::Error::Busy) => Some(cleanup::Cleanup::start(root.to_owned())?),
-            Err(error) => return Err(format!("borrar informes pendientes: {error}")),
-        };
-        let mut store = Self {
+        Ok(Self {
             value,
             path,
             observed,
-            cleanup,
-        };
-        if !store.value.usage_decided
-            && let Some(usage) = vantare_services::diagnostics::installer::choice(root)
+            cleanup: None,
+        })
+    }
+    pub fn load(root: &Path) -> Result<Self, String> {
+        let mut store = Self::read(root)?;
+        let import = if store.value.usage_decided {
+            None
+        } else {
+            vantare_services::diagnostics::installer::choice(root)
                 .map_err(|error| format!("leer elección del instalador: {error}"))?
-        {
+        };
+        let mut deferred = match store.value.discard_disabled(root) {
+            Ok(()) => false,
+            Err(vantare_services::Error::Busy) => true,
+            Err(error) => return Err(format!("borrar informes pendientes: {error}")),
+        };
+        if !deferred && let Some(usage) = import {
             let mut next = store.value;
             next.usage = usage;
             next.usage_decided = true;
-            store.save(next)?;
+            match store.save_typed(next) {
+                Ok(()) => {}
+                Err(ConsentSaveError::Busy) => deferred = true,
+                Err(error) => return Err(error.to_string()),
+            }
+        }
+        if deferred {
+            store.cleanup = Some(cleanup::Cleanup::start(
+                root.to_owned(),
+                import,
+                store.observed.clone(),
+            )?);
         }
         Ok(store)
     }
+    fn poll(&mut self) -> Option<Result<(), String>> {
+        let worker = self.cleanup.as_ref()?;
+        let unchanged = worker.unchanged(self.observed.as_deref());
+        let result = worker.poll()?;
+        drop(self.cleanup.take());
+        if !unchanged {
+            // Una respuesta anterior no sustituye una decisión manual posterior.
+            return None;
+        }
+        Some(result.map(|(value, observed)| {
+            self.value = value;
+            self.observed = observed;
+        }))
+    }
     pub fn save(&mut self, value: Privacy) -> Result<(), String> {
+        self.save_typed(value).map_err(|error| error.to_string())
+    }
+    fn save_typed(&mut self, value: Privacy) -> Result<(), ConsentSaveError> {
         let root = self
             .path
             .parent()
-            .ok_or("ruta de privacidad sin directorio")?;
+            .ok_or_else(|| ConsentSaveError::Failed("ruta de privacidad sin directorio".into()))?;
         let mut saved = None;
-        let next = Privacy::save_with(root, value, |next| {
+        let next = Privacy::try_save_with(root, value, |next| {
             let bytes = serde_json::to_vec(&next)
                 .map_err(|error| format!("guardar privacidad: {error}"))?;
             crate::files::save(&self.path, &bytes, self.observed.as_deref())?;
@@ -85,6 +119,21 @@ impl Drop for Store {
 }
 
 impl super::Hub {
+    pub(in crate::shell) fn poll_privacy(&mut self, cx: &mut gpui::Context<Self>) {
+        if let Ok(store) = &mut self.settings.privacy
+            && let Some(result) = store.poll()
+        {
+            if let Err(error) = result {
+                self.settings.status = Some(error);
+            } else {
+                vantare_ui::analytics::consent(cx, store.value);
+                self.analytics
+                    .consent(vantare_ui::analytics::generation(cx));
+            }
+            cx.notify();
+        }
+    }
+
     pub(in crate::shell) fn privacy_question_pending(&self) -> bool {
         self.demo.is_none()
             && self.capture.is_none()
@@ -255,6 +304,98 @@ impl super::Hub {
 mod tests {
     use super::*;
     #[test]
+    fn isa1609_busy_installer_import_keeps_privacy_available() {
+        let path = std::env::temp_dir().join(format!(
+            "vantare-busy-installer-{}",
+            vantare_services::random_id().expect("entropy")
+        ));
+        let mut initial = Store::load(&path).expect("initial");
+        initial
+            .save(Privacy {
+                crashes: true,
+                crashes_decided: true,
+                ..Privacy::default()
+            })
+            .expect("crash consent");
+        std::fs::write(
+            path.join(vantare_services::diagnostics::installer::CHOICE_FILE),
+            r#"{"version":1,"usage":true,"explicit":true}"#,
+        )
+        .expect("setup choice");
+        let guard = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path.join("consent.lock"))
+            .expect("lock");
+        guard.try_lock().expect("crash POST");
+        let mut loaded = Store::load(&path);
+        if let Ok(store) = &mut loaded {
+            let previous = store.value;
+            let mut next = previous;
+            next.usage = true;
+            next.usage_decided = true;
+            assert!(
+                store.save(next).is_err(),
+                "Busy must not confirm a decision"
+            );
+            assert_eq!(store.value, previous);
+            assert_eq!(Privacy::load(&path).expect("disk while busy"), previous);
+        }
+        drop(guard);
+        let mut store = loaded.expect("load must not depend on installer write lock");
+        assert!(store.value.crashes);
+        assert!(!store.value.usage_decided);
+        store.cleanup.as_mut().expect("deferred import").finish();
+        store
+            .poll()
+            .expect("background reply")
+            .expect("import after POST");
+        assert!(store.value.usage && store.value.usage_decided);
+        let mut next = store.value;
+        next.usage = false;
+        store
+            .save(next)
+            .expect("revoke without restarting after import");
+        assert!(!store.value.usage);
+        assert!(!Privacy::load(&path).expect("disk").usage);
+        std::fs::remove_dir_all(path).expect("cleanup");
+    }
+    #[test]
+    fn isa1609_completed_background_reply_cannot_restore_manual_revocation() {
+        let path = std::env::temp_dir().join(format!(
+            "vantare-privacy-reply-{}",
+            vantare_services::random_id().expect("entropy")
+        ));
+        let mut initial = Store::load(&path).expect("initial");
+        initial
+            .save(Privacy {
+                usage: true,
+                usage_decided: true,
+                crashes_decided: true,
+                ..Privacy::default()
+            })
+            .expect("consent");
+        let guard = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .open(path.join("consent.lock"))
+            .expect("lock");
+        guard.try_lock().expect("POST");
+        let mut store = Store::load(&path).expect("deferred cleanup");
+        drop(guard);
+        store.cleanup.as_mut().expect("worker").finish();
+        // El resultado ya está en memoria; el heartbeat aún no lo ha recibido.
+        let mut next = store.value;
+        next.usage = false;
+        store.save(next).expect("manual revocation before reply");
+        let revoked = store.value;
+        assert!(store.poll().is_none(), "stale reply must not update the UI");
+        assert_eq!(store.value, revoked);
+        assert!(!store.value.usage);
+        assert_eq!(Privacy::load(&path).expect("disk"), revoked);
+        std::fs::remove_dir_all(path).expect("cleanup");
+    }
+    #[test]
     fn isa1609_privacy_load_during_post_keeps_controls_and_can_revoke_without_restart() {
         let path = std::env::temp_dir().join(format!(
             "vantare-busy-{}",
@@ -312,9 +453,13 @@ mod tests {
         let mut store = Store::load(&path).expect("controls despite cleanup Busy");
         assert!(store.value.usage);
         assert!(path.join("crashes/00.json").exists());
-        let cleanup = store.cleanup.take().expect("retry scheduled");
+        assert!(store.cleanup.is_some());
         drop(guard);
-        cleanup.finish();
+        store.cleanup.as_mut().expect("retry scheduled").finish();
+        store
+            .poll()
+            .expect("worker replied")
+            .expect("cleanup completed");
         assert!(!path.join("crashes/00.json").exists());
         let mut next = store.value;
         next.usage = false;

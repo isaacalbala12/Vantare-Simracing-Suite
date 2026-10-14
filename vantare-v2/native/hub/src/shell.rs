@@ -95,6 +95,7 @@ impl Hub {
     }
 
     fn poll_source(&mut self, cx: &mut Context<Self>) {
+        self.poll_privacy(cx);
         self.poll_usage(cx, false);
         let incompatible = self.subscriber.connection().incompatible()
             || self.remote.read(cx).connection_incompatible();

@@ -34,31 +34,64 @@ pub struct Privacy {
     #[serde(default)]
     pub usage_decided: bool,
 }
+
+#[derive(Debug)]
+pub enum ConsentSaveError {
+    Busy,
+    Failed(String),
+}
+impl From<Error> for ConsentSaveError {
+    fn from(error: Error) -> Self {
+        match error {
+            Error::Busy => Self::Busy,
+            error => Self::Failed(error.to_string()),
+        }
+    }
+}
+impl std::fmt::Display for ConsentSaveError {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Busy => std::fmt::Display::fmt(&Error::Busy, formatter),
+            Self::Failed(message) => formatter.write_str(message),
+        }
+    }
+}
 impl Privacy {
     /// La UI conserva su guardado atómico y control de conflictos por bytes.
     pub fn save_with(
         root: &Path,
-        mut next: Self,
+        next: Self,
         persist: impl FnOnce(Self) -> std::result::Result<(), String>,
     ) -> std::result::Result<Self, String> {
-        let _guard = consent_lock(root).map_err(|error| error.to_string())?;
-        let previous = Self::load(root).map_err(|error| error.to_string())?;
+        Self::try_save_with(root, next, persist).map_err(|error| error.to_string())
+    }
+
+    /// Busy tipado para reintentar sin comparar mensajes ni ocultar otros errores.
+    pub fn try_save_with(
+        root: &Path,
+        mut next: Self,
+        persist: impl FnOnce(Self) -> std::result::Result<(), String>,
+    ) -> std::result::Result<Self, ConsentSaveError> {
+        let _guard = consent_lock(root).map_err(ConsentSaveError::from)?;
+        let previous = Self::load(root).map_err(ConsentSaveError::from)?;
         next.generation = previous.generation;
         if (previous.usage && !next.usage) || (previous.crashes && !next.crashes) {
             next.generation = next
                 .generation
                 .checked_add(1)
                 .filter(|generation| *generation < u64::MAX)
-                .ok_or("generación de consentimiento agotada")?;
+                .ok_or_else(|| {
+                    ConsentSaveError::Failed("generación de consentimiento agotada".into())
+                })?;
         }
         // No reactivar slots recogidos sin permiso. El conflicto se comprueba
         // antes de limpiar, en el guardado atómico del llamador.
-        persist(next)?;
+        persist(next).map_err(ConsentSaveError::Failed)?;
         previous
             .discard_disabled_locked(root)
-            .map_err(|error| error.to_string())?;
+            .map_err(ConsentSaveError::from)?;
         next.discard_disabled_locked(root)
-            .map_err(|error| error.to_string())?;
+            .map_err(ConsentSaveError::from)?;
         Ok(next)
     }
     pub fn load(root: &Path) -> Result<Self> {

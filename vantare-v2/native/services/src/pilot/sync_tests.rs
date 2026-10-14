@@ -84,6 +84,12 @@ fn sync_uses_verified_bridge_and_cas_and_preserves_local_on_conflict_or_offline(
                 body
             },
         ));
+        if expected.is_ok() {
+            responses.push((
+                200,
+                serde_json::json!({"profile":profile,"revision":1,"photo_hash":null}).to_string(),
+            ));
+        }
         let server = Server::start(responses);
         let (root, store) = crate::test_store("pilot-sync-bridge");
         let account = crate::account::fixture(&server.base, &store);

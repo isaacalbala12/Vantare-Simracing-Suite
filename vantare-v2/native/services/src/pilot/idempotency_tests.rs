@@ -12,10 +12,31 @@ struct Backend {
     pending: Option<serde_json::Value>,
     saves: Vec<serde_json::Value>,
     loads: Vec<serde_json::Value>,
+    photos: HashMap<String, Vec<u8>>,
     lose_first: bool,
     lose_third: bool,
 }
 impl Backend {
+    fn http_reply(&mut self, bytes: &[u8]) -> (u16, Vec<u8>) {
+        let split = bytes
+            .windows(4)
+            .position(|v| v == b"\r\n\r\n")
+            .expect("headers");
+        let headers = String::from_utf8_lossy(&bytes[..split]);
+        let mut line = headers.split_whitespace();
+        let method = line.next().expect("method");
+        let path = line.next().expect("path");
+        if path.starts_with("/storage/") {
+            let key = path.rsplit('/').next().expect("key");
+            if method == "POST" {
+                self.photos.insert(key.into(), bytes[split + 4..].to_vec());
+                return (200, b"{}".to_vec());
+            }
+            return (200, self.photos.get(key).expect("uploaded photo").clone());
+        }
+        let (status, body) = self.reply(&String::from_utf8_lossy(bytes));
+        (status, body.into_bytes())
+    }
     fn apply(&mut self, request: &serde_json::Value) -> (u16, String) {
         let id = request["p_op_id"].as_str();
         if let Some(receipt) = id.and_then(|id| self.receipts.get(id)) {
@@ -114,11 +135,9 @@ impl Fixture {
                 let end = bytes.len();
                 bytes.resize(end + length, 0);
                 socket.read_exact(&mut bytes[end..]).expect("body");
-                let (status, body) = state
-                    .lock()
-                    .expect("state")
-                    .reply(&String::from_utf8_lossy(&bytes));
-                write!(socket, "HTTP/1.1 {status} Test\r\nContent-Length: {}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n{body}", body.len()).expect("response");
+                let (status, body) = state.lock().expect("state").http_reply(&bytes);
+                write!(socket, "HTTP/1.1 {status} Test\r\nContent-Length: {}\r\nContent-Type: application/json\r\nConnection: close\r\n\r\n", body.len()).expect("response");
+                socket.write_all(&body).expect("body");
             }
         });
         Self {
@@ -323,10 +342,10 @@ fn second_device_between_commit_and_retry_cannot_erase_receipt_or_be_overwritten
             synchronize(&mut first, &request),
             if edited { Err(Error::Conflict) } else { Ok(()) }
         );
-        assert_eq!(first.state().remote_revision, 1);
+        assert_eq!(first.state().remote_revision, if edited { 1 } else { 2 });
         assert_eq!(
             first.state().profile.description,
-            if edited { "B" } else { "A" }
+            if edited { "B" } else { "C" }
         );
         assert_eq!(first.state().pending, edited);
         let backend = fixture.backend.lock().expect("state");
@@ -342,8 +361,19 @@ fn second_device_between_commit_and_retry_cannot_erase_receipt_or_be_overwritten
         }
         drop(backend);
         if !edited {
-            synchronize(&mut first, &request).expect("refresh current C");
-            assert_eq!(first.state().profile.description, "C");
+            first
+                .save(
+                    PilotProfile {
+                        description: "D".into(),
+                        ..Default::default()
+                    },
+                    first.state().revision,
+                )
+                .expect("edit after single recovery");
+            synchronize(&mut first, &request).expect("D uses current R2");
+            let backend = fixture.backend.lock().expect("state");
+            assert_eq!(backend.saves.last().expect("D")["p_expected_revision"], 2);
+            assert_eq!(backend.current.as_ref().expect("D")["revision"], 3);
         }
         drop(first);
         drop(second);

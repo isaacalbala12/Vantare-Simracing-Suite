@@ -58,7 +58,10 @@ pub fn synchronize(local: &mut Local, request: &DataRequest<'_>) -> Result<()> {
             }
             local.confirm_operation(saved.revision)?;
         }
-    } else {
+    }
+    // Un recibo confirma una operación histórica, no el perfil actual.
+    // Completa esta misma carga sin pisar una edición local pendiente.
+    if !local.state().pending {
         let remote: Option<Remote> = request
             .post("rest/v1/rpc/pilot_profile_load", &serde_json::json!({}))?
             .success()?

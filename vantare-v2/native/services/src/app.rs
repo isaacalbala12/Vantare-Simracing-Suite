@@ -180,6 +180,9 @@ impl App {
         // Invalida primero: ni limpieza local ni UI anuncian éxito antes del ACK.
         if self.core.is_some() {
             self.revoke_local()?;
+        } else {
+            // El auxiliar sin núcleo también debe retirar el candidato durable.
+            self.candidate_store()?.remove("license-candidate")?;
         }
         self.data_session = None;
         if let Some(reports) = self.reports.as_mut() {
@@ -974,6 +977,54 @@ mod tests {
         server.finish();
         drop(app);
         crate::cleanup_store(&root, "app-refresh-failure", &["account"]);
+    }
+
+    #[test]
+    fn logout_without_core_removes_candidate_before_session_success() {
+        let server = crate::test_http::Server::start(vec![]);
+        let (root, store) = crate::test_store("app-detached-logout");
+        let account = crate::account::fixture(&server.base, &store);
+        let mut config = BuildConfig::load();
+        config.native_oauth = Some(crate::config::OAuthBuild {
+            issuer: server.base.clone(),
+            client_id: "public-fixture".into(),
+            redirect_uri: url::Url::parse("http://127.0.0.1:0/callback").expect("redirect"),
+        });
+        let mut app = App::new(config, root.clone());
+        app.account = Some(account);
+        app.store = Some(store);
+        let (credential, _) = crate::license_remote::tests::signed_fixture("logout-device");
+        app.candidate_store()
+            .expect("store")
+            .save(
+                "license-candidate",
+                &crate::license_remote::Candidate {
+                    account_id: credential.claims.subject.clone(),
+                    credential,
+                    device: "logout-device".into(),
+                },
+            )
+            .expect("signed candidate");
+        assert!(matches!(
+            app.execute(Command::Logout),
+            Ok(Reply::Account {
+                signed_in: false,
+                ..
+            })
+        ));
+        assert!(app.account.as_ref().expect("account").identity().is_none());
+        assert!(
+            matches!(
+                app.candidate_store()
+                    .expect("store")
+                    .load::<crate::license_remote::Candidate>("license-candidate"),
+                Err(Error::NotFound)
+            ),
+            "logout retained candidate without core"
+        );
+        server.finish();
+        drop(app);
+        crate::cleanup_store(&root, "app-detached-logout", &[]);
     }
 
     #[cfg(windows)]

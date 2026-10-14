@@ -127,7 +127,9 @@ function discountMatches(resource: Resource, ids: string[], code: string) {
     !resource.starts_at && !resource.ends_at && !resource.max_redemptions;
 }
 function linkMatches(resource: Resource, ids: string[], discountId: string) {
+  // A shared link must inherit each product's trial: Pro seven days, Plus none.
   return sameProducts(resource, ids) && resource.discount_id === discountId &&
+    resource.trial_interval == null && resource.trial_interval_count == null &&
     resource.allow_discount_codes === false && !!resource.url;
 }
 

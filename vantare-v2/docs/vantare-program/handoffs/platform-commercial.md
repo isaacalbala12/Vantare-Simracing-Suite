@@ -2,6 +2,30 @@
 
 Estado de la base indicada; releer la issue antes de ejecutar.
 
+## #1620 · respuesta ronda 2 independiente (14/10/2026)
+
+Sol A sin hallazgos. P2 Sol B confirmado: el Checkout Link compartido podía
+añadir trial a Plus o sustituir siete días de Pro. `linkMatches` ahora exige
+ambos campos de trial ausentes/null para heredar la configuración del producto;
+rechaza drift antes de escribir y valida también la respuesta de creación.
+Cuatro regresiones RED → GREEN: dos meses, siete días y cada campo aislado;
+incluyen los cuatro productos y un PATCH pendiente que debe quedar intacto.
+Control de campos ausentes/null e idempotencia PASS. Logs
+`C:/tmp/polar-loop/r2-p2-trial-{red,green}.log`.
+Muse no completa revisión ni aporta defectos nuevos/veredicto; no se cuenta
+como aprobación. Suite Deno 571 PASS/0 FAIL/1 ignorado; catálogo 34 PASS.
+Tipos/lint/fmt, quality 456 huellas, superficie deploy, planes offline sin
+permisos de red/entorno y diff check PASS. Primeros intentos de tipos/suite
+fallaron por flags/config/cwd/permisos; logs conservados y repetición correcta
+PASS, sin cambiar tests existentes ni gates. Commit/HEAD/push y CI al cerrar
+en `C:/tmp/polar-loop/r2-respuesta.md` y #1620/#1621. PR draft a nightly;
+base común `8194c949`, nightly consultado `e5c90be5`. Sin VANTA-N, se avisa al
+orquestador y no se crea tarea, conforme al encargo anterior.
+Siguiente: review y sandbox autorizado, incluido enlace sin override de trial;
+no levanta no-go #1514/#1506. Sin API Polar, secretos, dependencias nuevas,
+deploy, merge/promoción, release ni gasto. Rust/UI/telemetría y pgTAP omitidos:
+no se modifica código nativo ni SQL.
+
 ## #1620 · respuesta ronda 1 independiente (14/10/2026)
 
 P1 Sol A/B confirmado: `published` no existe. Enum y gate usan `public`/

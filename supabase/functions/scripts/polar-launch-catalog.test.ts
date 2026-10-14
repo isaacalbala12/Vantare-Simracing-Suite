@@ -479,6 +479,57 @@ Deno.test("P2-2: own creator link selects only launch products and pins its disc
   assertEquals(f.writes.length, writes);
 });
 
+for (
+  const override of [
+    { trial_interval: "month", trial_interval_count: 2 },
+    { trial_interval: "day", trial_interval_count: 7 },
+    { trial_interval: "month", trial_interval_count: null },
+    { trial_interval: null, trial_interval_count: 2 },
+  ]
+) {
+  Deno.test(`R2 P2: creator link trial override ${JSON.stringify(override)} aborts before writes`, async () => {
+    const f = fake();
+    const draft = await syncCatalog(f.http, sandbox, options);
+    for (const p of f.products) p.visibility = "public";
+    const ready = await syncCatalog(f.http, draft, options);
+    for (const plan of PRICES.plans) {
+      const product = f.products.find((p) =>
+        p.id === ready.map.checkout_keys[plan.key]!.polar_launch_product_id
+      )!;
+      assertEquals(
+        product.trial_interval ?? null,
+        plan.key.startsWith("pro_plus_") ? null : "day",
+      );
+      assertEquals(
+        product.trial_interval_count ?? null,
+        plan.key.startsWith("pro_plus_") ? null : 7,
+      );
+    }
+    Object.assign(f.links[0], override);
+    // This known price requires PATCH; link drift must reject before that write.
+    f.products[0].prices![0].price_amount = 499;
+    const writes = f.writes.length;
+    await assertRejects(() => syncCatalog(f.http, ready, options));
+    assertEquals(f.writes.length, writes);
+    assertEquals(f.products[0].prices![0].price_amount, 499);
+  });
+}
+
+Deno.test("R2 P2: absent or null creator link trials inherit product trials on rerun", async () => {
+  const f = fake();
+  const draft = await syncCatalog(f.http, sandbox, options);
+  for (const p of f.products) p.visibility = "public";
+  const ready = await syncCatalog(f.http, draft, options);
+  assertEquals(f.links[0].trial_interval, undefined);
+  assertEquals(f.links[0].trial_interval_count, undefined);
+  assertEquals((await syncCatalog(f.http, ready, options)).writes, 0);
+  Object.assign(f.links[0], {
+    trial_interval: null,
+    trial_interval_count: null,
+  });
+  assertEquals((await syncCatalog(f.http, ready, options)).writes, 0);
+});
+
 Deno.test("P2-2: launch product mapping is explicit, symmetric and fails closed", () => {
   const id = "00000000-0000-4000-8000-000000000850";
   const raw = structuredClone(sandbox) as unknown as Record<string, unknown>;

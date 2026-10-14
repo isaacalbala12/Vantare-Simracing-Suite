@@ -54,6 +54,15 @@ creador del enlace. El código exacto también sirve en un checkout de esos
 productos que admita códigos; no sirve en normales ni Launch Edition. La
 salida exporta solo ID/URL/código del enlace, nunca el `client_secret`.
 
+R2 P2 Sol B: el enlace compartido debe tener `trial_interval` y
+`trial_interval_count` ausentes o null para heredar el trial de cada producto:
+Pro conserva siete días y Plus no tiene trial. Cualquier override, incluso
+siete días iguales a Pro o un campo aislado, aborta el preflight antes de
+escribir. No se corrige el enlace automáticamente; revisar y retirar el
+override en un paso autorizado antes de reintentar. La misma validación
+comprueba la respuesta al crear el enlace.
+Fuente: [prioridad del trial del checkout sobre el producto](https://github.com/polarsource/polar/blob/71ea1871ce9d3e7bada94d0e1e4f66f91d1e7b59/server/polar/models/checkout.py#L475).
+
 ### Cambios de plan con descuento de creador (R1 P2 Sol A)
 
 El scope limita la aplicación inicial del código. Polar conserva un descuento
@@ -213,6 +222,7 @@ compra identificada/grant según #1514/#1506; no se levanta su no-go comercial.
 Sandbox: cuatro normales y cuatro lanzamiento; código exacto y segundo
 creador; scope restringido; enlace fijo; facturas mensuales 1/2 rebajadas y
 mes 3 a 3,99/6,99; primera anual rebajada y renovación 39,90/69,90; trial/antiabuso,
+enlace sin override (Pro siete días, Plus sin trial),
 cancelación/refund, derechos/canales, entorno, histórico y rerun cero escrituras.
 Al fin de mes: web sin ofertas generales de lanzamiento y enlaces de creador
 operativos, productos conservados. Fixtures no prueban facturas reales.

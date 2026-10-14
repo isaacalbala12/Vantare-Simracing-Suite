@@ -1,3 +1,26 @@
+## #1608 · Ronda 5 · Entrega local para revisión (14/10/2026)
+
+Correcciones de los cuatro hallazgos de la review r4 y evidencia final en el
+[informe](../../analysis/review-cuentas-pagos-2026-10.md). **Queda pendiente el
+abort NULL-manifest por preflight Storage v1.70.3; no se declara cierre completo.**
+Barrera: 77 tablas protegidas/97 rutas/577 checks; multipart ocho carreras/64
+checks; locks 17; aliases40, pgTAP317, upgrades18+4+26, Edge553/1 ignored,
+lint/fmt nueve TS, surface y 456 huellas PASS. SQL, PostgREST y Storage HTTP
+locales reales. Disputas borrada+viva y outage SQL también PASS; interacción
+con el lock temprano corregida con RED→GREEN.
+Commits por hallazgo `21e3f262`, `3758ff12`, `f86fafb6`, `c9f0c727`; reintento
+API/ACK perdido `d2a96ce5`. HEAD final y cierre en `~/orq/1608.buzon.md`.
+Evidencia `~/evidence/1608-r5/`, errores originales conservados, sin bypass ni
+dependencias nuevas. Locks siempre UUID→fila; 40001 requiere rollback/retry
+completo. Metadata ajena sin identidad de cuenta y configuración Storage no
+se presentan como nuevas raíces de producto cubiertas por el bootstrap.
+Sin Rust ni gates nativos (sin cambios native/runtime/domain/ipc/testdata),
+GUI/servicios gestionados/partes con bytes. Sin datos reales, .env/secretos,
+subagentes, push, trackers/GitHub, merge, promoción, deploy o release.
+Siguiente: orquestador revisa diff/SHAs y acota la corrección del servicio
+Storage para abort sin upsert de permisos sobre la cuenta ya borrada.
+Seguimiento remoto #1608/#1622/VANTA-16/17/15 reservado al orquestador.
+
 ## #1608 · Ronda 5 · Reintento de abort y validación real (14/10/2026)
 
 R4-P1-1, mismo alcance: si la API aborta y se pierde ACK SQL, la siguiente

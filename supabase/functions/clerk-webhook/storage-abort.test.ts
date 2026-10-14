@@ -24,6 +24,7 @@ Deno.test("multipart abort signs DELETE, preserves path and upload ID, and only 
     );
     assertEquals(u.searchParams.get("uploadId"), "fixture/+=id");
     assertEquals(init?.method, "DELETE");
+    assertEquals(init?.redirect, "error");
     const headers = new Headers(init?.headers);
     assertEquals(headers.get("x-amz-security-token"), "fixture-service");
     assertEquals(

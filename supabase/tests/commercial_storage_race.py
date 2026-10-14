@@ -115,17 +115,19 @@ def run_storage_multipart(bin_path, conn, env, run, out):
                     check(blocked or early_retry,case+' final write waits or aborts with typed 40001 while deletion is pending')
                     holder.stdin.write(b'commit;\n');holder.stdin.close();holder.wait(timeout=30)
                     check(holder.returncode==0,case+' deletion committed')
-                    stdout,stderr=writer.communicate(timeout=30);stderr=stderr.decode();log.append(stdout.decode()+stderr)
+                    stdout,stderr=writer.communicate(timeout=30);stderr=stderr.decode();write_exit=writer.returncode;log.append(stdout.decode()+stderr)
                     if early_retry:
-                        retried=write(statement);stderr=retried.stderr;writer.returncode=retried.returncode
+                        retried=write(statement);stderr=retried.stderr;write_exit=retried.returncode
                         log.append('Full service persistence transaction retried after deletion commit: '+stderr)
-                    check(writer.returncode!=0 and '28000' in stderr,case+' pending-authorized write rejected after tombstone')
+                    check(write_exit!=0 and '28000' in stderr,case+' pending-authorized write rejected after tombstone')
                 finally:
                     for proc in (holder,writer):
                         if proc is not None and proc.poll() is None: proc.kill();proc.wait(timeout=10)
                 r=write(upload+part if operation=='upload' else part);log.append(r.stdout+r.stderr)
                 check(r.returncode!=0 and '28000' in r.stderr,case+' committed tombstone rejects repeat service write')
                 check(run('psql',*conn,'-c',f"select count(*) from storage.s3_multipart_uploads_parts where upload_id='{case}'").strip()=='0',case+' no resurrected parts')
+                uploads_left=run('psql',*conn,'-c',f"select count(*) from storage.s3_multipart_uploads where id='{case}'").strip()
+                check(uploads_left==('1' if operation=='part' else '0'),case+' no resurrected upload; prior upload only remains queued')
                 if operation=='part':
                     try:
                         queue=run('psql',*conn,'-c',f"select upload_id from public.clerk_deletion_uploads('{issuer}','{subject}')").strip().splitlines()

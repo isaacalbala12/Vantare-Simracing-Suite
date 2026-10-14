@@ -94,7 +94,15 @@ begin
      end if;
      owners:='array[p_user_id]';
    end if;
-   prefix:='begin'||chr(10)||'  perform private.lock_accounts_before_rows('||owners||');';
+   if r.proname='billing_record_dispute_snapshot' then
+     -- This RPC classifies a durable tombstone instead of throwing. Acquire
+     -- UUID before rows without overriding the account_deleted result.
+     prefix:='begin'||chr(10)||$q$  perform private.lock_account_write((select lock_order.user_id
+       from public.billing_orders lock_order where lock_order.environment=p_environment
+       and lock_order.provider='polar' and lock_order.provider_order_id=p_order_id));$q$;
+   else
+     prefix:='begin'||chr(10)||'  perform private.lock_accounts_before_rows('||owners||');';
+   end if;
    definition:=regexp_replace(definition,'\mbegin\M',prefix,'i');
    execute definition;
  end loop;

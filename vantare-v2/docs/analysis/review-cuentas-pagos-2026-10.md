@@ -1,3 +1,129 @@
+## #1608 · Ronda 5 local · Mac arm64 · 14/10/2026
+
+**Entrega para revisión con un límite pendiente: el abort de uploads owner NULL
+con manifest. No se declara cierre comercial completo.** La barrera multipart,
+la reconciliación entre cuentas, los propietarios Clerk textuales y las carreras
+UUID→fila se corrigen y prueban localmente. El servicio Storage v1.70.3 exige
+un upsert de permisos antes del abort de un manifest tombstoneado; esa operación
+se rechaza y conserva upload y cola pendientes. Resolverlo requiere una revisión
+acotada del servicio Storage, sin abrir una excepción de INSERT en nuestra SQL.
+
+Encargo del orquestador, review `~/orq/review-1622-sol-r4.md` leída entera:
+R4-P1-1, R4-P1-2, R4-P2-1 y R4-P2-2. Ningún P3 adicional confirmado en la
+review. Sin subagentes, trackers, GitHub/gh, push ni servicios gestionados.
+Issue [#1608](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1608),
+PR de contexto [#1622](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1622),
+proyecto Vantare. Seguimiento de VANTA-16/17/15 exclusivamente por el orquestador;
+no se afirma una actualización remota, estado/CI nuevo, merge o canal alcanzado.
+
+Inicio limpio `e66c6c9016e7fedff8e753d22949a7c9a72676d8`, rama
+`vantareapp/isa-1608-cierre-comercial`, worktree
+`/Users/isaacalbala/vw-isa-1608-cierre-comercial`. Merge-base local
+`e5c90be5f63347fa4d50b4110e1946201c1957c0`; referencia local origin/nightly
+`953f041c5034d12648c4e23463dd953dc04a0e19`, sin fetch ni integración en esta ronda.
+SHAs de entrega y HEAD final en `~/orq/1608.buzon.md` y en el log Git local.
+
+### Correcciones y evidencia exacta
+
+| Hallazgo | Corrección | RED → GREEN y límite |
+| --- | --- | --- |
+| R4-P2-1 | `20261014150000_isa_1608_storage_owner.sql`: owner text resuelto por UUID o identidad Clerk durable; owner histórico y manifest conservados. Subject ambiguo entre UUID se rechaza, incluso con claims: Storage no guarda issuer en su fila. Cleanup textual inequívoco. | RED 22P02 → 10 checks con el esquema real y rol `supabase_storage_admin`, INSERT/UPDATE/DELETE vivos y limpieza posterior. `owner-red`, `owner-green-3`. |
+| R4-P1-1 | `20261014151000_isa_1608_storage_multipart.sql`: uploads y partes como raíces explícitas, herencia desde upload/manifest, cola durable de abort y ACK. `clerk-webhook` aborta antes de borrar objetos. | RED final 40 fallos → 8 escenarios/64 checks con dos transacciones reales: UUID, Clerk, NULL-manifest y parte sin propietario que hereda el padre. Sin uploads/partes recreados. `multipart-red-final`, `multipart-checked`. Abort HTTP UUID y reintento NoSuchUpload PASS. **NULL-manifest no se drena**, 1 upload + 1 pendiente, sin ACK. |
+| R4-P1-2 | `20261014152000_isa_1608_reconcile_deleted.sql`: enlaces durables y tombstone bajo UUID, relectura y receipt `account_deleted` sin inbox/payload. Diagnóstico privado entorno+hash, sin UUID/PII. Disputas usan la misma clasificación. | RED 28000 real → dos páginas repetidas, cuenta borrada seguida de viva, una sola orden viva y avance; contradicción borrada/viva sigue fallando. Error SQL 42501 real no se omite. Disputas borrada+viva en dos pasadas PASS. `reconcile-*`. |
+| R4-P2-2 | `20261014153000_isa_1608_uuid_before_rows.sql`: 14 entradas Billing/operacional toman UUID antes de filas, propietarios completos ordenados. Garbage collection checkout por cuenta y barrido que excluye tombstones. Fallback DML no espera el UUID: try-lock/40001. | RED 40P01 en el prefijo operacional desplegado → 17 checks: ambos órdenes, DML fila primero y dos UUID inversos con rollback/reintento completo. `locks-red-final`, `locks-green-final`. |
+
+Primeros commits por hallazgo: `21e3f262`, `3758ff12`, `f86fafb6`, `c9f0c727`.
+`d2a96ce5` añade reintento de ACK perdido: únicamente 404 XML NoSuchUpload se
+acepta, cuerpo limitado a 8 KiB; 403/404 genérico/500 mantienen cola y fallo.
+Siete Edge PASS y API HTTP real: abort inicial, retry de upload ausente, ACK y
+cero pendientes. Firma verificada también por SignatureV4 de la imagen Storage.
+En revisión del diff se corrigió una interacción del lock temprano de disputas
+con su clasificación de tombstone, con RED→GREEN HTTP/SQL real conservado.
+
+### Contrato de locks
+
+**Siempre UUID→fila:** antes de cualquier fila, cada RPC adquiere el conjunto
+completo de UUID, ordenado. El caller que agrupe varias operaciones en una
+transacción debe mantener ese mismo orden para todo el conjunto, no tomar filas
+antes ni adquirir después otro UUID fuera de orden.
+
+PostgreSQL puede bloquear la tupla antes de un BEFORE ROW, y un INSERT puede
+seguir a operaciones anteriores de la transacción. Por eso el fallback del
+trigger nunca espera el UUID; rechaza con 40001. El caller debe hacer rollback
+y reintentar **toda** la transacción, resolviendo propietarios antes de filas.
+Se verifica que no quedan efectos parciales y que el reintento confirma ambos
+UUID. No se promete ausencia de cualquier deadlock PostgreSQL ajeno a estas
+rutas ni soporte para una transacción que viole deliberadamente este contrato.
+No hay bypass por rol, GUC o payload, ni cambios de aislamiento para ocultar
+fallos. READ COMMITTED continúa obligatorio.
+
+### Gates y reproducción
+
+Evidencia completa fuera de Git: `/Users/isaacalbala/evidence/1608-r5/`.
+Los tests SQL crean clústeres loopback desechables, sin aceptar DSN remota.
+La integración de reconciliación acepta exclusivamente HTTP loopback.
+
+| Gate | Resultado / evidencia |
+| --- | --- |
+| Deno Edge completo, con tipos, --no-lock | 553 PASS / 0 FAIL / 1 ignored histórico; `deno-checked.log`. |
+| 54 migraciones + nueve suites pgTAP | 317/317 PASS; `sql-final-2/`, `sql-final-2-console.log`. |
+| Upgrades identidad / conflicto / refunds | 18 + 4 + 26 PASS; `upgrade-*`. |
+| Aliases/PII concurrentes | 40/40 PASS; `sql-final-2/concurrency-results.log`. |
+| Inventario y barreras | 91 tablas del bootstrap, 77 protegidas; 97 rutas/577 checks PASS; `writers-checked/`. Las tablas de Storage completo se verifican separadamente con su dump real. |
+| Multipart real | Ocho carreras / 64 checks PASS; `multipart-checked/`, `storage-real-current.sql` obtenido del stack distribuido. |
+| RPC operacional, DML y dos UUID | 17 checks PASS; `locks-green-final/`. |
+| Reconciliación SQL/PostgREST/Supabase JS | Pedidos, dos páginas, repetición, conflictos, outage SQL y disputas PASS; `reconcile-*.log`. |
+| Storage API HTTP / firma | Creación multipart, abort UUID y ACK perdido PASS; `storage-http-probe.log`, `storage-http-retry.log`, `signature-verify.log`. NULL-manifest falla y conserva pendientes: `storage-manifest-http-probe.log`. |
+| Lint / fmt TS modificados | Nueve archivos PASS, exclusión habitual no-import-prefix; `lint-checked.log`, `fmt-checked.log`. |
+| Deploy surface / quality / retirada | PASS; 456 huellas conservadas; `surface.log`, `quality.log`, `retirement.log`. |
+| Diff y sintaxis Python | `git diff --check` y parseo AST de los runners PASS. |
+
+Desde la raíz Git, usar `supabase/tests/run-commercial-local.py --pg-bin
+/opt/homebrew/opt/postgresql@17/bin --output <carpeta>` para el gate general;
+`--lock-order` prueba carreras, `--before-lock-order` conserva su RED.
+`--storage-owners` y `--storage-multipart` requieren `--storage-schema <dump>`:
+`pg_dump --schema-only --no-owner --no-acl -n storage` de un Supabase local vacío.
+`--before-storage-multipart` reproduce RED omitiendo solo esa corrección.
+No se usa el fixture reducido para afirmar cobertura del esquema completo.
+
+La integración HTTP usa `commercial_reconcile_deleted_setup.sql` después de las
+migraciones, una vez en una base local vacía, y `commercial-reconcile-deleted.ts`
+con `{url,key}` de fixture por stdin. `--disputes` repite las disputas;
+`--outage` requiere revocar temporalmente EXECUTE de billing_receive_webhook al
+rol fixture y restaurarlo en finally. Nunca usar credenciales/servicios reales.
+Los scripts y logs del harness HTTP Mac quedan en la evidencia para el orquestador.
+
+Se reutilizó pgTAP 1.3.3 de la imagen ya instalada, temporalmente en Homebrew;
+sus dos archivos se retiran al cierre. No hay dependencia nueva en producto.
+Fallos conservados: primer arranque sin Kong, copia inicial de symlinks pgTAP,
+colisiones de nombres PL/pgSQL, permisos Deno de lectura, lint require-await y
+setup HTTP sin bucket backend/readiness. Ninguno se oculta ni se pasa con
+--no-check, asserts relajados o baseline recalibrado.
+
+### Límite que requiere revisión del orquestador
+
+Storage v1.70.3 `abortMultipartUpload` ejecuta `uploader.canUpload(isUpsert=true)`
+antes del abort. Para la ruta NULL-manifest, ese INSERT/UPDATE simulado cae en
+la barrera del UUID borrado y se rechaza. Reproducción con API y backend file
+reales, no respuesta fingida: creación antes del borrado, tombstone, abort fallido,
+1 upload y 1 entrada de cola conservados. El webhook solicita retry y no confirma
+limpieza. Abrir una excepción de escritura permitiría de nuevo persistir datos;
+no se hace. La siguiente entrega necesita un abort autorizado del servicio que
+no simule una escritura sobre la cuenta borrada, o una versión revisada que lo
+resuelva. No se cambia la imagen/dependencia ni se despliega fuera del encargo.
+
+No se ejecutaron Rust fmt/check/Clippy/Nextest/lifecycle/telemetría, GUI,
+instalación, OAuth/TPA/Clerk/Polar gestionados, S3 gestionado o subida de partes/
+bytes. No se modificó native/runtime/domain/ipc/testdata. El HTTP Storage usó
+el backend file local y JWT sintéticos. Ningún dato/cuenta/pago/refund real,
+secretos/.env, push, GitHub/tracker, merge, promoción, deploy, release o venta.
+Las herramientas y clústeres de la ronda se retiran al cierre; se conserva
+la evidencia. El orquestador recoge la rama por Git y revisa el límite pendiente.
+
+---
+
+La siguiente sección conserva la evidencia histórica de ronda 4 y anteriores.
+
 ## #1608 · Cierre comercial ronda 4 · Mac arm64 (14/10/2026)
 
 Review `~/orq/review-1622-sol-r3.md` leída **entera**: NO APTO por R3-P1-1,

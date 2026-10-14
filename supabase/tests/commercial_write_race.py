@@ -137,20 +137,22 @@ end $$;
                 if holder.returncode:
                     raise RuntimeError(err.decode())
                 stdout, stderr = writer.communicate(timeout=20)
+                write_exit = writer.returncode
                 if early_retry:
+                    logs.append(name + ': original transaction exit=' + str(write_exit) + ' error=' + stderr.decode().strip())
                     retried = subprocess.run([str(bin_path/'psql'), *quiet, '-c',
                         'begin; '+command+' commit;'],env=env,capture_output=True,timeout=20)
                     stdout, stderr = retried.stdout, retried.stderr
-                    writer.returncode = retried.returncode
+                    write_exit = retried.returncode
                     logs.append(name + ': full transaction retried after confirmed deletion')
-                logs.append(name + ': exit=' + str(writer.returncode) + ' output=' + stdout.decode().strip()
+                logs.append(name + ': exit=' + str(write_exit) + ' output=' + stdout.decode().strip()
                     + ' error=' + stderr.decode().strip())
                 # Revoked financial projections and cascaded-away rows may succeed.
                 # Every other route must reject with the typed tombstone error.
                 safe_success = name in ('grant', 'entitlement', 'operational', 'followup')
                 tombstone_receipt = b'|account_deleted|t' in stdout
-                check((writer.returncode == 0 and (safe_success or tombstone_receipt)) or
-                    (writer.returncode != 0 and sqlstate(stderr.decode()) == '28000'),
+                check((write_exit == 0 and (safe_success or tombstone_receipt)) or
+                    (write_exit != 0 and sqlstate(stderr.decode()) == '28000'),
                     name + ': tombstone rejection or safe revoked/no-row result')
                 state = sql("""
 select email is null and display_name is null from public.profiles where id='{a}';

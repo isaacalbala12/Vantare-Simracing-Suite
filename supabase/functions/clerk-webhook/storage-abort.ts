@@ -42,8 +42,8 @@ export async function abortStorageUpload(
   if (!tenant || !config.anonKey || !config.serviceKey) {
     throw new Error("storage_abort_not_configured");
   }
-  // Sign the external path including the gateway prefix; Storage strips that
-  // prefix using its configured S3_PROTOCOL_PREFIX when verifying the request.
+  // Sign the external path including the gateway prefix; Storage reconstructs
+  // it using S3_PROTOCOL_PREFIX after the gateway has stripped it.
   const path = "/storage/v1/s3/" + encode(upload.bucket_id) + "/" +
     upload.name.split("/").map(encode).join("/");
   const query = "uploadId=" + encode(upload.upload_id);
@@ -69,6 +69,7 @@ export async function abortStorageUpload(
   );
   const response = await request(url.origin + path + "?" + query, {
     method: "DELETE",
+    redirect: "error",
     headers: {
       authorization:
         `AWS4-HMAC-SHA256 Credential=${tenant}/${scope}, SignedHeaders=${signedHeaders}, Signature=${signature}`,

@@ -15,12 +15,13 @@ parser.add_argument('--signer-module')
 parser.add_argument('--upgrade', choices=['identity', 'identity-conflict', 'refunds'])
 parser.add_argument('--concurrency', action='store_true', help='Only the two-transaction tombstone regression')
 parser.add_argument('--writers', action='store_true', help='All user-write barriers, two real transactions per route; no pgTAP required')
-parser.add_argument('--before-write-barrier', action='store_true', help='RED control: omit only r4 barrier migration')
+parser.add_argument('--before-write-barrier', action='store_true', help='RED control: omit r4 barrier and dependent r5 migrations')
 parser.add_argument('--storage-schema', help='pg_dump --schema-only --no-owner --no-acl -n storage from a disposable Supabase stack')
 parser.add_argument('--storage-owners', action='store_true', help='Real Storage owner text/UUID/manifest regression')
 parser.add_argument('--storage-multipart', action='store_true', help='Two-transaction multipart persistence and cleanup queue')
 parser.add_argument('--lock-order', action='store_true', help='Real writer-first and deletion-first operational RPC races')
 parser.add_argument('--before-lock-order', action='store_true', help='RED: omit only r5 UUID-before-rows migration')
+parser.add_argument('--before-storage-multipart', action='store_true', help='RED: omit only the r5 multipart barrier/abort queue')
 args=parser.parse_args()
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 OUT=pathlib.Path(args.output).resolve(); OUT.mkdir(parents=True,exist_ok=True)
@@ -59,6 +60,9 @@ $$;
   if args.storage_schema:
    run('psql',*conn,'-c',"create role supabase_storage_admin noinherit bypassrls; grant usage on schema storage to supabase_storage_admin; grant all on all tables in schema storage to supabase_storage_admin;")
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
+   r5 = m.name.startswith('2026101415') and 'isa_1608_' in m.name
+   if r5 and (args.baseline or args.before_write_barrier): continue
+   if args.before_storage_multipart and 'storage_multipart' in m.name: continue
    if args.before_lock_order and 'uuid_before_rows' in m.name: continue
    if args.before_write_barrier and 'account_write_barrier' in m.name: continue
    if args.baseline and ('isa_1608_commercial' in m.name or 'account_write_barrier' in m.name): continue

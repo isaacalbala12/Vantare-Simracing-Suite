@@ -7,6 +7,22 @@ alter table public.testing_center_reports add column fixed_in_version text
  check(fixed_in_version ~ '^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?(-[a-z0-9.-]+)?$' and length(fixed_in_version)<=60);
 alter table public.testing_center_reports add column reject_reason text check(length(reject_reason)<=500);
 alter table public.testing_report_followup add column reject_reason text check(length(reject_reason)<=500);
+create table private.admin_account_blocks(account_id uuid primary key references public.profiles(id) on delete cascade,
+ blocked boolean not null,reason text check(length(reason)<=200));
+revoke all on private.admin_account_blocks from public,anon,authenticated,service_role;
+alter table public.admin_audit_log drop constraint admin_audit_log_action_check;
+alter table public.admin_audit_log add constraint admin_audit_log_action_check check(action in
+ ('search_accounts','get_account','set_tester','set_module','get_rollout','set_rollout','list_reports','get_report','set_report_status','set_blocked','delete_account','list_creators','get_creator','create_creator','record_creator_payout'));
+alter function private.native_admin_account(uuid,text,text) rename to native_admin_account_v1;
+create function private.native_admin_account(p_account uuid,p_issuer text,p_environment text) returns jsonb
+language sql stable security definer set search_path='' as $$
+ select private.native_admin_account_v1(p_account,p_issuer,p_environment)||jsonb_build_object(
+  'owner',exists(select 1 from public.operational_access_assignments a where a.user_id=p_account and a.role='owner' and a.status='active'),
+  'blocked',coalesce((select b.blocked from private.admin_account_blocks b where b.account_id=p.id),false),'blocked_reason',(select b.reason from private.admin_account_blocks b where b.account_id=p.id),
+  'subscriptions',coalesce((select jsonb_agg(s.provider_subscription_id) from public.billing_subscriptions s where s.user_id=p_account and s.environment=p_environment and s.provider='polar' and (s.status in('active','trialing','past_due') or s.cancel_at_period_end)),'[]'::jsonb))
+ from public.profiles p where p.id=p_account
+$$;
+revoke all on function private.native_admin_account(uuid,text,text) from public,anon,authenticated,service_role;
 -- Keep the proven v1 mutations, owner gate and append-only audit.
 alter function public.native_admin_execute(uuid,text,text,jsonb,text) rename to native_admin_execute_v1;
 alter function public.native_admin_execute_v1(uuid,text,text,jsonb,text) set schema private;
@@ -37,12 +53,25 @@ revoke all on function private.native_admin_reports(text) from public,anon,authe
 
 create function public.native_admin_execute(p_actor uuid,p_issuer text,p_action text,p_params jsonb,p_environment text)
 returns jsonb language plpgsql security definer set search_path='' as $$
-declare v_before jsonb; v_after jsonb; v_rows jsonb; v_counts jsonb; v_id text; v_status text; v_version text; v_state text; v_limit integer;
+declare v_before jsonb; v_after jsonb; v_rows jsonb; v_counts jsonb; v_id text; v_status text; v_version text; v_state text; v_limit integer; v_account uuid;
 begin
  perform private.native_admin_require_owner(p_actor);
  if p_environment is null or p_environment not in('sandbox','production') or p_issuer is null or p_issuer!~'^https://' or jsonb_typeof(p_params) is distinct from 'object' then
   raise exception 'native_admin_invalid' using errcode='22023'; end if;
- if p_action not in('list_reports','get_report','set_report_status') then
+ if p_action='set_blocked' then
+  if p_environment<>'sandbox' or jsonb_typeof(p_params->'blocked') is distinct from 'boolean' or length(p_params->>'reason')>200 then raise exception 'native_admin_invalid' using errcode='22023'; end if;
+  v_account:=(p_params->>'account_id')::uuid;
+  perform 1 from public.profiles where id=v_account for update;
+  if not found then raise exception 'native_admin_not_found' using errcode='P0002'; end if;
+  if exists(select 1 from public.operational_access_assignments where user_id=v_account and role='owner' and status='active') or v_account=p_actor then
+   raise exception 'native_admin_owner_conflict' using errcode='55000'; end if;
+  v_before:=private.native_admin_account(v_account,p_issuer,p_environment);
+  insert into private.admin_account_blocks(account_id,blocked,reason) values(v_account,(p_params->>'blocked')::boolean,case when (p_params->>'blocked')::boolean then p_params->>'reason' else null end) on conflict(account_id) do update set blocked=excluded.blocked,reason=excluded.reason;
+  v_after:=private.native_admin_account(v_account,p_issuer,p_environment);
+  insert into public.admin_audit_log(actor_account_id,action,target,before_value,after_value) values(p_actor,p_action,v_account::text,v_before,v_after);
+  return jsonb_build_object('account_id',v_account,'blocked',p_params->'blocked');
+ end if;
+ if p_action not in('list_reports' ,'get_report','set_report_status') then
   return private.native_admin_execute_v1(p_actor,p_issuer,p_action,p_params,p_environment); end if;
  if p_action='list_reports' then
   v_limit:=(p_params->>'limit')::integer;
@@ -89,4 +118,62 @@ begin
 end $$;
 revoke all on function public.native_admin_execute(uuid,text,text,jsonb,text) from public,anon,authenticated,service_role;
 grant execute on function public.native_admin_execute(uuid,text,text,jsonb,text) to service_role;
+-- ISA-1444: shared identity/device logic; native entry accepts server-verified identities only.
+
+create or replace function private.resolve_account_identity(issuer text, subject text)
+returns uuid
+language plpgsql
+volatile
+security definer
+set search_path = ''
+as $$
+declare
+  v_issuer text := nullif(rtrim(trim(issuer), '/'), '');
+  v_subject text := nullif(trim(subject), '');
+  v_account_id uuid;
+  v_accounts integer;
+begin
+  if v_issuer is null or v_subject is null then
+    raise exception 'not_authenticated';
+  end if;
+  if length(v_issuer) > 512 or length(v_subject) > 255 then
+    raise exception 'invalid_identity';
+  end if;
+
+  if v_issuer ~ '/auth/v1$' then
+    if v_subject ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      and exists (
+        select 1 from auth.users user_row where user_row.id = v_subject::uuid
+      )
+    then
+      return v_subject::uuid;
+    end if;
+    raise exception 'not_authenticated';
+  end if;
+
+  perform pg_catalog.pg_advisory_xact_lock(
+    pg_catalog.hashtextextended(v_issuer || chr(31) || v_subject, 0)
+  );
+
+  select count(distinct identity_row.account_id), min(identity_row.account_id::text)::uuid
+  into v_accounts, v_account_id
+  from public.account_identities identity_row
+  where identity_row.issuer in (v_issuer, v_issuer || '/')
+    and identity_row.subject = v_subject;
+
+  if v_accounts > 1 then raise exception 'account_conflict'; end if;
+  if v_account_id is not null then
+    if exists(select 1 from private.admin_account_blocks where account_id=v_account_id and blocked) then raise exception 'native_account_blocked' using errcode='42501'; end if;
+    return v_account_id;
+  end if;
+
+  v_account_id := gen_random_uuid();
+  insert into public.profiles (id) values (v_account_id);
+  insert into public.account_identities (issuer, subject, account_id)
+  values (v_issuer, v_subject, v_account_id);
+  return v_account_id;
+end;
+$$;
+
+
 commit;

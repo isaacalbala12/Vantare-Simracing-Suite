@@ -10,7 +10,11 @@ import {
   verifyNativeOAuth,
 } from "../_shared/native-auth.ts";
 import { MODULE_CAPABILITIES } from "../_shared/license-credential.ts";
-import { requirePolarEnvironment } from "../_shared/polar.ts";
+import {
+  polarAdminRequest,
+  type PolarClientDeps,
+  requirePolarEnvironment,
+} from "../_shared/polar.ts";
 import { isUuid, readJsonObject } from "../_shared/request.ts";
 import { jsonResponse } from "../_shared/responses.ts";
 import { getSupabaseAdmin } from "../_shared/supabase-admin.ts";
@@ -39,6 +43,7 @@ export type AdminDeps = NativeAuthDeps & {
   ) => Promise<ObjectValue>;
   signUrl?: (path: string, seconds: number) => Promise<string>;
   environment?: "production" | "sandbox";
+  polar?: PolarClientDeps;
 };
 
 function boundedText(value: unknown, max: number): value is string {
@@ -56,6 +61,8 @@ export function validateAdminRequest(
   const fields: Record<string, string[]> = {
     search_accounts: ["query", "limit", "cursor"],
     get_account: ["account_id"],
+    set_blocked: ["account_id", "blocked", "reason"],
+    delete_account: ["account_id", "confirm_email"],
     set_tester: ["account_id", "enabled"],
     set_module: ["account_id", "module", "enabled"],
     get_rollout: [],
@@ -77,6 +84,13 @@ export function validateAdminRequest(
             (params.query === "" && isUuid(params.cursor))) &&
           Number.isInteger(params.limit) && Number(params.limit) >= 1 &&
           Number(params.limit) <= 50;
+      case "set_blocked":
+        return isUuid(params.account_id) &&
+          typeof params.blocked === "boolean" &&
+          (params.reason === undefined || boundedText(params.reason, 200));
+      case "delete_account":
+        return isUuid(params.account_id) &&
+          boundedText(params.confirm_email, 320);
       case "get_account":
         return isUuid(params.account_id);
       case "set_tester":
@@ -182,6 +196,7 @@ function contact(user: ClerkUser | undefined) {
       user?.email_addresses.find((item) =>
         item.id === user.primary_email_address_id
       )?.email_address ?? null,
+    clerk_blocked: user ? user.banned || user.locked : false,
     name: user
       ? [user.first_name, user.last_name].filter(Boolean).join(" ") || null
       : null,
@@ -220,6 +235,9 @@ async function enrich(
       row,
       contact(typeof subject === "string" ? users.get(subject) : undefined),
     );
+    row.blocked = row.blocked === true || row.clerk_blocked === true;
+    delete row.clerk_blocked;
+    delete row.subscriptions;
     delete row.clerk_subject;
   }
 }
@@ -323,6 +341,80 @@ export async function handleNativeAdmin(
     // Reuse the actor profile only for enrichment, AFTER fixing search subjects.
     // Adding it before subjects would incorrectly return the owner in every search.
     users.set(actorUser.id, actorUser);
+    const environment = deps.environment ?? requirePolarEnvironment();
+    const run = (command: string, arguments_: ObjectValue) =>
+      (deps.execute ?? execute)(
+        actor,
+        nativeConfig(deps).issuer,
+        command,
+        arguments_,
+        environment,
+      );
+    if (["set_blocked", "delete_account"].includes(action)) {
+      if (environment !== "sandbox") {
+        throw new NativeError(503, "admin_sandbox_required");
+      }
+      const current = objectValue(
+        (await run("get_account", { account_id: params.account_id })).account,
+      );
+      if (current.owner === true || params.account_id === actor) {
+        throw new NativeError(409, "account_conflict");
+      }
+      if (typeof current.clerk_subject !== "string") {
+        throw new NativeError(404, "not_found");
+      }
+      const subject = current.clerk_subject;
+      if (action === "delete_account") {
+        const targetUser = clerkUser(
+          await clerkGet(`users/${encodeURIComponent(subject)}`, deps),
+        );
+        if (targetUser.id !== subject) {
+          throw new NativeError(503, "bridge_unavailable");
+        }
+        const email = contact(targetUser).email;
+        if (
+          !email ||
+          String(params.confirm_email).trim().toLowerCase() !==
+            email.trim().toLowerCase()
+        ) throw new NativeError(422, "confirmation_mismatch");
+        // b9ec75ed has no account erasure barrier. Never pretend a ban is deletion.
+        // #1622 is still under review; connect its approved RPC in the final handoff.
+        throw new NativeError(503, "deletion_barrier_unavailable");
+      }
+      if (params.blocked === true) await run("set_blocked", params);
+      const response = await (deps.fetch ?? fetch)(
+        `https://api.clerk.com/v1/users/${encodeURIComponent(subject)}/${
+          params.blocked ? "ban" : "unban"
+        }`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${nativeConfig(deps).secretKey}` },
+          redirect: "error",
+          signal: AbortSignal.timeout(4000),
+        },
+      );
+      if (!response.ok) throw new NativeError(503, "account_change_incomplete");
+      if (params.blocked === true) {
+        if (
+          !Array.isArray(current.subscriptions) ||
+          !current.subscriptions.every((id) => typeof id === "string")
+        ) throw new NativeError(503, "bridge_unavailable");
+        for (const id of current.subscriptions) {
+          await polarAdminRequest(
+            "DELETE",
+            `/subscriptions/${encodeURIComponent(id)}`,
+            undefined,
+            environment,
+            deps.polar,
+          );
+        }
+      } else await run("set_blocked", params);
+      return respond({
+        ok: true,
+        account_id: params.account_id,
+        blocked: params.blocked,
+      });
+    }
     const result = await timed(
       "postgres_action",
       () =>
@@ -331,7 +423,7 @@ export async function handleNativeAdmin(
           nativeConfig(deps).issuer,
           action,
           params,
-          deps.environment ?? requirePolarEnvironment(),
+          environment,
         ),
     );
     if (

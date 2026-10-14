@@ -442,3 +442,155 @@ Deno.test("r1: report review accepts the closed request and forwards status", as
   );
   assert(response.status === 200);
 });
+
+const target = "00000000-0000-4000-8000-000000001628";
+Deno.test("r1: blocking persists before Clerk ban and cancels sandbox subscriptions", async () => {
+  const calls: string[] = [];
+  const response = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "set_blocked",
+      account_id: target,
+      blocked: true,
+    }),
+    deps({
+      environment: "sandbox",
+      execute: (_a, _i, action) => {
+        calls.push(action);
+        return Promise.resolve(
+          action === "get_account"
+            ? {
+              account: {
+                account_id: target,
+                clerk_subject: subject,
+                owner: false,
+                subscriptions: ["subscription-test"],
+              },
+            }
+            : {},
+        );
+      },
+      fetch: (url, init) => {
+        const path = String(url);
+        if (path.endsWith("/ban")) {
+          calls.push("ban");
+          return Promise.resolve(Response.json(user));
+        }
+        return authDeps().fetch!(url, init);
+      },
+      polar: {
+        getAccessToken: () => "fake-polar",
+        fetchFn: (url, init) => {
+          assert(
+            String(url) ===
+                "https://sandbox-api.polar.sh/v1/subscriptions/subscription-test" &&
+              init?.method === "DELETE",
+          );
+          calls.push("cancel");
+          return Promise.resolve(
+            Response.json({ id: "subscription-test", status: "canceled" }),
+          );
+        },
+      },
+    }),
+  );
+  assert(response.status === 200);
+  assert(calls.join(",") === "get_account,set_blocked,ban,cancel");
+});
+Deno.test("r1: owner protection and production containment precede all external writes", async () => {
+  for (const scenario of ["owner", "production", "denied"]) {
+    let writes = 0;
+    const response = await handleNativeAdmin(
+      request({
+        version: 1,
+        action: "set_blocked",
+        account_id: target,
+        blocked: true,
+      }),
+      deps({
+        environment: scenario === "production" ? "production" : "sandbox",
+        begin: () => {
+          if (scenario === "denied") throw new NativeError(403, "forbidden");
+          return Promise.resolve(true);
+        },
+        execute: () => Promise.resolve({ account: { owner: true } }),
+        polar: {
+          fetchFn: () => {
+            writes++;
+            throw Error("external write");
+          },
+        },
+        fetch: (url, init) => {
+          if (
+            init?.method === "POST" && !String(url).endsWith("verify")
+          ) writes++;
+          return authDeps().fetch!(url, init);
+        },
+      }),
+    );
+    assert(
+      response.status ===
+        (scenario === "production" ? 503 : scenario === "denied" ? 403 : 409),
+    );
+    assert(writes === 0);
+  }
+});
+Deno.test("r1: failed cancellation preserves the local ban and returns an incomplete action", async () => {
+  let blocked = false;
+  const response = await handleNativeAdmin(
+    request({
+      version: 1,
+      action: "set_blocked",
+      account_id: target,
+      blocked: true,
+    }),
+    deps({
+      environment: "sandbox",
+      execute: (_a, _i, action) => {
+        if (action === "set_blocked") blocked = true;
+        return Promise.resolve(
+          action === "get_account"
+            ? {
+              account: {
+                owner: false,
+                clerk_subject: subject,
+                subscriptions: ["sub-test"],
+              },
+            }
+            : {},
+        );
+      },
+      polar: {
+        getAccessToken: () => "fake",
+        fetchFn: () => Promise.resolve(new Response(null, { status: 503 })),
+      },
+    }),
+  );
+  assert(response.status === 503 && blocked);
+});
+Deno.test("r1: delete checks the current primary Clerk email before the pending barrier", async () => {
+  for (const email of ["wrong@example.invalid", " TESTER@EXAMPLE.INVALID "]) {
+    const response = await handleNativeAdmin(
+      request({
+        version: 1,
+        action: "delete_account",
+        account_id: target,
+        confirm_email: email.trim(),
+      }),
+      deps({
+        environment: "sandbox",
+        execute: () =>
+          Promise.resolve({
+            account: { owner: false, clerk_subject: subject },
+          }),
+      }),
+    );
+    assert(response.status === (email.startsWith("wrong") ? 422 : 503));
+    assert(
+      (await response.json()).error ===
+        (email.startsWith("wrong")
+          ? "confirmation_mismatch"
+          : "deletion_barrier_unavailable"),
+    );
+  }
+});

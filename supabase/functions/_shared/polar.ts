@@ -609,3 +609,55 @@ export async function createPolarPortalSession(
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+// #1627: this candidate cannot send administrative mutations to production.
+export async function polarAdminRequest(
+  method: "GET" | "POST" | "DELETE",
+  path: string,
+  body: unknown,
+  environment: BillingEnvironment,
+  deps: PolarClientDeps = {},
+): Promise<Record<string, unknown>> {
+  if (
+    environment !== "sandbox" ||
+    !/^\/(discounts\/|subscriptions\/[A-Za-z0-9_-]+)$/.test(path)
+  ) {
+    throw new PolarClientError(
+      "admin_sandbox_required",
+      "Sandbox required",
+      503,
+    );
+  }
+  return await polarRequest(
+    `${apiBase(environment, deps)}${path}`,
+    {
+      method,
+      headers: {
+        Authorization: `Bearer ${requireToken(deps)}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      redirect: "error",
+    },
+    { ...deps, maxRateLimitRetries: 0 },
+    async (response) => {
+      if (!response.ok) {
+        throw new PolarClientError(
+          "polar_admin_failed",
+          "Administrative action failed",
+          502,
+        );
+      }
+      const result: unknown = await response.json();
+      if (!isRecord(result)) {
+        throw new PolarClientError(
+          "polar_invalid_response",
+          "Invalid response",
+          502,
+        );
+      }
+      return result;
+    },
+  );
+}

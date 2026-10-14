@@ -1,0 +1,11 @@
+begin; select no_plan();
+insert into public.profiles(id) values ('00000000-0000-4000-8000-000000001627'),('00000000-0000-4000-8000-000000001628');
+insert into public.account_identities(issuer,subject,account_id) values('https://clerk.admin.test','user_ttttttttttttttttttttttttttt','00000000-0000-4000-8000-000000001628');
+select * from public.operational_access_set('00000000-0000-4000-8000-000000001627','owner','grant','test:admin','Admin r1','test:r1',null);
+select lives_ok($$select public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','set_blocked','{"account_id":"00000000-0000-4000-8000-000000001628","blocked":true,"reason":"Prueba"}','sandbox')$$,'bloqueo persistido y auditado');
+select is(public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','get_account','{"account_id":"00000000-0000-4000-8000-000000001628"}','sandbox')->'account'->>'blocked','true','ficha releída bloqueada');
+select throws_ok($$select public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','set_blocked','{"account_id":"00000000-0000-4000-8000-000000001627","blocked":true}','sandbox')$$,'55000','native_admin_owner_conflict','dueño protegido por SQL');
+select throws_ok($$select public.native_resolve_account('https://clerk.admin.test','user_ttttttttttttttttttttttttttt')$$,'42501','native_account_blocked','cuenta bloqueada no recibe nuevo JWT');
+select lives_ok($$select public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','set_blocked','{"account_id":"00000000-0000-4000-8000-000000001628","blocked":false}','sandbox')$$,'desbloqueo sin reactivar suscripción');
+select is(public.native_resolve_account('https://clerk.admin.test','user_ttttttttttttttttttttttttttt'),'00000000-0000-4000-8000-000000001628'::uuid,'puede autorizar tras desbloqueo');
+select * from finish(); rollback;

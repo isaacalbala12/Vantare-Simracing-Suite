@@ -141,6 +141,10 @@ pub enum Reply {
     },
     Calendar {
         schedule: Option<String>,
+        /// Respaldo de `RaceControl` con el mismo contrato; los clientes antiguos
+        /// no lo envían, por eso no cambia `VERSION`.
+        #[serde(default)]
+        fallback: Option<String>,
     },
     Testing {
         data: testing_document::Participation,

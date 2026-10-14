@@ -637,10 +637,7 @@ impl CaptureState {
                     | "launcher-listo"
                     | "launcher-cancelado"
             )
-            && !matches!(
-                name,
-                "calendario-beta-archivo" | "calendario-beta-prueba" | "calendario-lmu-local"
-            )
+            && !name.starts_with("calendario-r6-")
             && name != "roadmap-clickup-prueba"
             && !matches!(name, "notificaciones-panel" | "notificaciones-vacio")
             && !matches!(name, "inicio-vacio" | "inicio-cargando" | "inicio-error")
@@ -662,10 +659,8 @@ impl CaptureState {
             | "launcher-listo"
             | "launcher-cancelado"
             | "launcher-nombres-largos" => Section::Launcher,
-            "calendario-beta-archivo"
-            | "calendario-beta-prueba"
-            | "calendario-lmu-local"
-            | "calendario-base"
+            name if name.starts_with("calendario-r6-") => Section::Calendar,
+            "calendario-base"
             | "calendario-dia"
             | "calendario-semana"
             | "calendario-mes"

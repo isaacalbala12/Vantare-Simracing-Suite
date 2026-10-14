@@ -710,9 +710,10 @@ pub fn render(
     cx: &gpui::App,
 ) -> Stateful<Div> {
     let now = calendar.demo_now.unwrap_or_else(Utc::now);
-    let starts_result = match demo {
-        Some(data) => demo_races(calendar.official_state().0, data, now),
-        None => races(calendar.official_state().0, now),
+    let starts_result = match (calendar.schedule(), demo) {
+        (Some(schedule), Some(data)) => demo_races(schedule, data, now),
+        (Some(schedule), None) => races(schedule, now),
+        (None, _) => Ok(vec![]),
     };
     let (starts, error) = match starts_result {
         Ok(starts) => (starts, None),
@@ -756,13 +757,7 @@ pub fn render(
         .ml(px(-1.0))
         .mr(px(-1.0))
         .child(hero(
-            races_visible.then(|| {
-                next_race(
-                    target(&starts, &calendar.official_state().1.series_ids),
-                    &navigate,
-                    cx,
-                )
-            }),
+            races_visible.then(|| next_race(target(&starts, calendar.favorites()), &navigate, cx)),
             access.lock(Section::Strategy).is_none(),
             salute,
             &navigate,
@@ -782,6 +777,8 @@ pub fn render(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    const SCHEDULE: &[u8] = include_bytes!("../reference/fixtures/calendar-lmu-2026-10-06.json");
 
     #[test]
     fn greeting_uses_local_hour_boundaries() {
@@ -815,7 +812,7 @@ mod tests {
     #[test]
     fn calendar_includes_unfollowed_series_orders_rows_and_prefers_followed_target()
     -> Result<(), String> {
-        let schedule = Schedule::parse(super::super::SEED.as_bytes())?;
+        let schedule = Schedule::parse(SCHEDULE)?;
         let (from, to) = schedule.window()?;
         assert!(races(&schedule, from - Duration::seconds(1))?.is_empty());
         assert!(races(&schedule, to)?.is_empty());
@@ -852,7 +849,7 @@ mod tests {
     }
     #[test]
     fn four_row_limit_preserves_earliest_starts_and_window_errors() -> Result<(), String> {
-        let mut schedule = Schedule::parse(super::super::SEED.as_bytes())?;
+        let mut schedule = Schedule::parse(SCHEDULE)?;
         let (now, _) = schedule.window()?;
         let mut expanded = vec![];
         for series in &schedule.series {

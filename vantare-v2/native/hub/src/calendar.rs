@@ -1,290 +1,187 @@
-//! Horario publicado UTC y caché local; red exclusivamente por services.
+//! Calendario LMU: horario publicado en UTC (oficial, con respaldo externo
+//! indicado), favoritas, avisos y vistas. La red entra solo por services.
+// Composición visual por píxeles y horas: las conversiones están acotadas por la rejilla y las
+// funciones de pintado son largas por construcción (mismo criterio que home.rs).
+#![allow(
+    clippy::too_many_lines,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_wrap,
+    clippy::similar_names,
+    clippy::float_cmp
+)]
 use crate::{files, orbit};
-pub mod views;
-
-// Inicio comparte el calendario local; la shell mantiene la navegación y el IPC.
-#[path = "home.rs"]
-pub mod home;
-use chrono::{DateTime, Datelike, Duration, NaiveDate, NaiveTime, Utc};
-#[cfg(feature = "parity-capture")]
-use chrono::{Local, Timelike};
-use gpui::{Context, IntoElement, Render, Styled, Window, div, prelude::*, px};
+use chrono::{DateTime, Duration, Utc};
+use gpui::{Context, EventEmitter, FocusHandle, IntoElement, Render, Window};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::HashSet,
     path::{Path, PathBuf},
+    time::Instant,
 };
 
-const SEED: &str = include_str!("../data/lmu-weekly-schedule.json");
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Schedule {
-    version: u32,
-    timezone: String,
-    valid_from: String,
-    valid_until: String,
-    pub series: Vec<Series>,
+pub mod alerts;
+mod chrome;
+pub mod clock;
+mod history;
+pub mod ics;
+pub mod model;
+pub mod rows;
+mod ui;
+
+#[cfg(feature = "parity-capture")]
+mod capture;
+#[cfg(test)]
+mod tests;
+
+// Inicio comparte el calendario local; la shell mantiene la navegación y el IPC.
+#[path = "home.rs"]
+pub mod home;
+
+pub use model::{Schedule, Series};
+
+use alerts::Alerts;
+use clock::Zone;
+use history::History;
+
+const DOC_LIMIT: u64 = 256 * 1024;
+
+/// Lo que la shell debe hacer con el calendario: avisar o lanzar.
+#[derive(Clone, Debug)]
+pub enum Event {
+    /// Aviso de salida próxima: título, texto y serie para «Ver ficha».
+    Alert {
+        series_id: String,
+        title: String,
+        body: String,
+    },
+    /// Lanzamiento automático opcional, 3 min antes de la salida.
+    Launch { series_id: String },
 }
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct Series {
-    pub id: String,
-    pub name: String,
-    pub track: String,
-    pub vehicle_class: String,
-    #[serde(default)]
-    pub classes: Vec<VehicleClass>,
-    #[serde(default)]
-    pub race_duration_min: Option<u32>,
-    pub license_label: String,
-    #[serde(default)]
-    pub tier: String,
-    #[serde(default)]
-    pub event_kind: String,
-    #[serde(default)]
-    start_offset_minute: i64,
-    recurrence: Recurrence,
-}
-#[derive(Deserialize)]
-pub struct VehicleClass {
-    pub name: String,
-}
-#[derive(Deserialize)]
-#[serde(rename_all = "camelCase")]
-struct Recurrence {
-    kind: String,
-    #[serde(default)]
-    interval_minutes: i64,
-    #[serde(default)]
-    days: Vec<String>,
-    #[serde(default, rename = "timesUTC")]
-    times_utc: Vec<String>,
-}
-fn timestamp(value: &str) -> Result<DateTime<Utc>, String> {
-    DateTime::parse_from_rfc3339(value)
-        .map(|date| date.with_timezone(&Utc))
-        .map_err(|error| format!("fecha RFC3339: {error}"))
-}
-fn weekday(day: &str) -> Option<u32> {
-    ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
-        .iter()
-        .position(|name| *name == day)
-        .and_then(|index| u32::try_from(index).ok())
-}
-impl Schedule {
-    pub fn parse(data: &[u8]) -> Result<Self, String> {
-        let schedule: Self =
-            serde_json::from_slice(data).map_err(|error| format!("agenda: {error}"))?;
-        let (from, to) = schedule.window()?;
-        if schedule.version != 1
-            || schedule.timezone != "UTC"
-            || to <= from
-            || schedule.series.is_empty()
-            || schedule.series.len() > 256
-        {
-            return Err("agenda inválida o zona no soportada (solo UTC)".into());
-        }
-        let mut ids = HashSet::new();
-        for series in &schedule.series {
-            if series.id.trim().is_empty()
-                || series.name.trim().is_empty()
-                || !ids.insert(&series.id)
-            {
-                return Err("serie sin identidad/nombre o duplicada".into());
-            }
-            let recurrence = &series.recurrence;
-            match recurrence.kind.as_str() {
-                "interval" if (1..=10080).contains(&recurrence.interval_minutes) => {}
-                "weekly-slots"
-                    if !recurrence.days.is_empty()
-                        && !recurrence.times_utc.is_empty()
-                        && recurrence.days.iter().all(|day| weekday(day).is_some())
-                        && recurrence
-                            .times_utc
-                            .iter()
-                            .all(|time| NaiveTime::parse_from_str(time, "%H:%M").is_ok()) => {}
-                _ => return Err(format!("recurrencia inválida: {}", series.id)),
-            }
-        }
-        Ok(schedule)
-    }
-    fn window(&self) -> Result<(DateTime<Utc>, DateTime<Utc>), String> {
-        Ok((timestamp(&self.valid_from)?, timestamp(&self.valid_until)?))
-    }
-    pub fn is_current(&self, now: DateTime<Utc>) -> Result<bool, String> {
-        let (from, to) = self.window()?;
-        Ok(from <= now && now < to)
-    }
-    /// Mismos intervalos/slots UTC y ventana [from,to) que `ExpandSeries` de Go.
-    pub fn starts(
-        &self,
-        series: &Series,
-        from: DateTime<Utc>,
-        to: DateTime<Utc>,
-    ) -> Result<Vec<DateTime<Utc>>, String> {
-        let (valid_from, valid_to) = self.window()?;
-        let from = from.max(valid_from);
-        let to = to.min(valid_to);
-        if to <= from {
-            return Ok(vec![]);
-        }
-        let mut result = vec![];
-        if series.recurrence.kind == "interval" {
-            let base = NaiveDate::from_ymd_opt(1, 1, 1)
-                .and_then(|date| date.and_hms_opt(0, 0, 0))
-                .ok_or("fecha base")?
-                .and_utc();
-            let base = base
-                .checked_add_signed(Duration::minutes(
-                    series
-                        .start_offset_minute
-                        .rem_euclid(series.recurrence.interval_minutes),
-                ))
-                .ok_or("offset fuera de rango")?;
-            let interval = Duration::minutes(series.recurrence.interval_minutes);
-            let width = interval.num_milliseconds();
-            let elapsed = (from - base).num_milliseconds();
-            let rounded = elapsed.div_euclid(width) * width;
-            let mut start = base
-                .checked_add_signed(Duration::milliseconds(rounded))
-                .ok_or("fecha fuera de rango")?;
-            if start < from {
-                start = start
-                    .checked_add_signed(interval)
-                    .ok_or("fecha fuera de rango")?;
-            }
-            while start < to {
-                if result.len() == 10000 {
-                    return Err("agenda supera 10000 carreras por serie".into());
-                }
-                result.push(start);
-                start = start
-                    .checked_add_signed(interval)
-                    .ok_or("fecha fuera de rango")?;
-            }
-        } else {
-            let mut date = from.date_naive();
-            while date <= to.date_naive() {
-                if series
-                    .recurrence
-                    .days
-                    .iter()
-                    .any(|day| weekday(day) == Some(date.weekday().num_days_from_monday()))
-                {
-                    for time in &series.recurrence.times_utc {
-                        let time = NaiveTime::parse_from_str(time, "%H:%M")
-                            .map_err(|error| error.to_string())?;
-                        let start = date.and_time(time).and_utc();
-                        if from <= start && start < to {
-                            if result.len() == 10000 {
-                                return Err("agenda supera 10000 carreras por serie".into());
-                            }
-                            result.push(start);
-                        }
-                    }
-                }
-                date = date.succ_opt().ok_or("fecha fuera de rango")?;
-            }
-        }
-        result.sort_unstable();
-        result.dedup();
-        Ok(result)
-    }
-}
+impl EventEmitter<Event> for Calendar {}
+
 #[derive(Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Following {
     series_ids: Vec<String>,
-    #[serde(skip)]
-    reminder_ids: Vec<String>,
 }
+
+/// Preferencias de visualización, no del horario.
+#[derive(Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Prefs {
+    #[serde(default)]
+    utc: bool,
+}
+
+/// Cuándo se comprobó y actualizó el horario (segundos Unix; 0 = nunca).
+#[derive(Clone, Copy, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct Stamps {
+    #[serde(default)]
+    checked: i64,
+    #[serde(default)]
+    updated: i64,
+}
+
+/// Estado del horario para el carril y los estados vacíos.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Health {
+    Loading,
+    Ok,
+    Fallback,
+    Offline,
+    /// La semana terminó y la nueva aún no está: se enseña la anterior.
+    Expired,
+    /// Nunca se descargó nada.
+    Missing,
+}
+
+/// Un documento JSON del directorio de datos con conflicto por bytes vistos.
+struct Doc {
+    path: PathBuf,
+    seen: Option<Vec<u8>>,
+}
+impl Doc {
+    fn open(dir: &Path, name: &str) -> Self {
+        Self {
+            path: dir.join(name),
+            seen: None,
+        }
+    }
+    /// `Ok(None)` si no existe todavía.
+    fn read(&mut self) -> Result<Option<Vec<u8>>, String> {
+        match std::fs::metadata(&self.path) {
+            Ok(_) => {
+                let data = files::read(&self.path, DOC_LIMIT)?;
+                self.seen = Some(data.clone());
+                Ok(Some(data))
+            }
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => Ok(None),
+            Err(error) => Err(format!("{}: {error}", self.path.display())),
+        }
+    }
+    fn write(&mut self, data: Vec<u8>) -> Result<(), String> {
+        files::save(&self.path, &data, self.seen.as_deref())?;
+        self.seen = Some(data);
+        Ok(())
+    }
+    fn json<T: Serialize>(&mut self, value: &T) -> Result<(), String> {
+        self.write(serde_json::to_vec_pretty(value).map_err(|error| error.to_string())?)
+    }
+}
+
+struct Docs {
+    following: Doc,
+    alerts: Doc,
+    prefs: Doc,
+    stamps: Doc,
+    history: Doc,
+    official: Doc,
+    previous: Doc,
+    fallback: Doc,
+}
+
+/// La publicación, si su semana ya terminó.
+fn expired(schedule: Option<&Schedule>, now: DateTime<Utc>) -> Option<&Schedule> {
+    schedule.filter(|schedule| schedule.window().is_ok_and(|(_, to)| to <= now))
+}
+
+#[allow(clippy::struct_excessive_bools)] // Estado independiente de la vista y del ciclo de refresco.
 pub struct Calendar {
     adapt: orbit::Adapt,
-    schedule: Schedule,
     remote: Option<gpui::Entity<crate::services::view::Remote>>,
+    focus: Option<FocusHandle>,
+    docs: Docs,
+    /// Publicaciones guardadas tal cual llegaron.
+    official: Option<Schedule>,
+    previous: Option<Schedule>,
+    fallback: Option<Schedule>,
+    /// Horario vigente (oficial + respaldo) y última semana pasada (solo lectura).
+    current: Option<Schedule>,
+    last_week: Option<Schedule>,
+    differences: Vec<String>,
+    following: Following,
+    alerts: Alerts,
+    prefs: Prefs,
+    stamps: Stamps,
+    history: History,
     refreshing: bool,
+    refresh_failed: bool,
     first_open_requested: bool,
-    path: PathBuf,
-    following: Following,
-    reminder_saved: Option<Vec<u8>>,
-    saved: Option<Vec<u8>>,
-    demo_now: Option<DateTime<Utc>>,
-    view: CalendarView,
-    agenda_scroll: Option<gpui::ScrollHandle>,
-    class_filter: Option<String>,
-    tier_filter: Option<String>,
     clock_started: bool,
-    test_session: Option<TestSession>,
+    last_render: Option<Instant>,
+    alerts_checked: Option<DateTime<Utc>>,
+    in_track: bool,
+    /// Nombre del perfil que lanzaría la shell, para el botón del hero.
+    profile: Option<String>,
+    /// Lanzamiento programado desde el hero: serie y momento.
+    armed: Option<(String, DateTime<Utc>)>,
+    pub(crate) demo_now: Option<DateTime<Utc>>,
+    ui: ui::State,
     pub error: Option<String>,
-    pub status: String,
 }
-
-struct TestSession {
-    schedule: Schedule,
-    following: Following,
-    status: String,
-}
-
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-enum CalendarView {
-    Times,
-    #[default]
-    Agenda,
-    Posters,
-}
-
-impl CalendarView {
-    #[cfg(feature = "parity-capture")]
-    fn from_capture_name(name: &str) -> Option<Self> {
-        match name {
-            "calendario-base" | "calendario-beta-archivo" => Some(Self::Times),
-            "calendario-dia" => Some(Self::Agenda),
-            "calendario-semana" => Some(Self::Agenda),
-            "calendario-mes" => Some(Self::Posters),
-            "calendario-timeline" => Some(Self::Times),
-            _ => None,
-        }
-    }
-}
-
-#[cfg(feature = "parity-capture")]
-fn capture_view() -> CalendarView {
-    // Selector exclusivamente QA: el reloj archivado puede cubrir las tres vistas.
-    if let Ok(view) = std::env::var("VANTARE_CAPTURE_CALENDAR_VIEW") {
-        match view.as_str() {
-            "a" => return CalendarView::Agenda,
-            "b" => return CalendarView::Posters,
-            "c" => return CalendarView::Times,
-            _ => {}
-        }
-    }
-    let args: Vec<_> = std::env::args().collect();
-    for pair in args.windows(2) {
-        if pair[0] == "--capture"
-            && let Some(view) = CalendarView::from_capture_name(&pair[1])
-        {
-            return view;
-        }
-    }
-    CalendarView::Times
-}
-
-#[cfg(feature = "parity-capture")]
-fn capture_clock(now: DateTime<Utc>) -> DateTime<Utc> {
-    let local = now.with_timezone(&Local);
-    match local
-        .with_hour(16)
-        .and_then(|time| time.with_minute(0))
-        .and_then(|time| time.with_second(0))
-        .and_then(|time| time.with_nanosecond(0))
-    {
-        Some(local) => local.with_timezone(&Utc),
-        None => now,
-    }
-}
-
-mod beta;
-mod presentation;
 
 impl Calendar {
     pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
@@ -295,129 +192,191 @@ impl Calendar {
     }
 
     pub fn load(data_dir: &Path) -> Result<Self, String> {
-        let schedule = Schedule::parse(SEED.as_bytes())?;
-        let path = data_dir.join("calendar-following.json");
-        let saved = match std::fs::metadata(&path) {
-            Ok(_) => Some(files::read(&path, 64 * 1024)?),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
-            Err(error) => return Err(format!("seguimiento: {error}")),
+        let mut docs = Docs {
+            following: Doc::open(data_dir, "calendar-following.json"),
+            alerts: Doc::open(data_dir, "calendar-alerts.json"),
+            prefs: Doc::open(data_dir, "calendar-prefs.json"),
+            stamps: Doc::open(data_dir, "calendar-stamps.json"),
+            history: Doc::open(data_dir, "calendar-history.json"),
+            official: Doc::open(data_dir, "official-schedule.json"),
+            previous: Doc::open(data_dir, "official-schedule-previous.json"),
+            fallback: Doc::open(data_dir, "fallback-schedule.json"),
         };
-        let mut following: Following = saved
-            .as_deref()
-            .map(serde_json::from_slice)
+        let following: Following = docs
+            .following
+            .read()?
+            .map(|data| serde_json::from_slice(&data))
             .transpose()
             .map_err(|error| format!("seguimiento inválido: {error}"))?
             .unwrap_or_default();
-        let reminder_path = data_dir.join("calendar-reminders.json");
-        let reminder_saved = match std::fs::metadata(&reminder_path) {
-            Ok(_) => Some(files::read(&reminder_path, 64 * 1024)?),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
-            Err(error) => return Err(format!("recordatorios: {error}")),
-        };
-        following.reminder_ids = reminder_saved
-            .as_deref()
-            .map(serde_json::from_slice::<Vec<String>>)
-            .transpose()
-            .map_err(|error| format!("recordatorios inválidos: {error}"))?
-            .unwrap_or_default();
-        let mut ids = HashSet::new();
-        if [&following.series_ids, &following.reminder_ids]
-            .iter()
-            .any(|list| {
-                ids.clear();
-                list.len() > 256
-                    || list
-                        .iter()
-                        .any(|id| id.trim().is_empty() || !ids.insert(id))
-            })
+        let mut seen = HashSet::new();
+        if following.series_ids.len() > 256
+            || following
+                .series_ids
+                .iter()
+                .any(|id| id.trim().is_empty() || !seen.insert(id))
         {
             return Err("seguimiento inválido: límite o identidad vacía/duplicada".into());
         }
-        let schedule_path = path.with_file_name("official-schedule.json");
-        let cached =
-            files::read(&schedule_path, 64 * 1024).and_then(|bytes| Schedule::parse(&bytes));
-        let schedule = cached.unwrap_or(schedule);
-        let status = if schedule.is_current(Utc::now())? {
-            "Horario guardado en este equipo"
-        } else {
-            "Aún no hay horario publicado para esta semana"
-        }
-        .into();
-        Ok(Self {
+        let alerts = docs
+            .alerts
+            .read()?
+            .map(|data| Alerts::parse(&data))
+            .transpose()?
+            .unwrap_or_default();
+        // Un archivo dañado de ajustes menores no impide abrir el calendario.
+        let prefs = docs
+            .prefs
+            .read()
+            .ok()
+            .flatten()
+            .and_then(|data| serde_json::from_slice(&data).ok())
+            .unwrap_or_default();
+        let stamps = docs
+            .stamps
+            .read()
+            .ok()
+            .flatten()
+            .and_then(|data| serde_json::from_slice(&data).ok())
+            .unwrap_or_default();
+        let history = History::load(&mut docs.history);
+        // Una caché inválida no impide actualizar: se descarta y se vuelve a pedir.
+        let cached = |doc: &mut Doc| {
+            doc.read()
+                .ok()
+                .flatten()
+                .and_then(|data| Schedule::parse(&data).ok())
+        };
+        let (official, previous, fallback) = (
+            cached(&mut docs.official),
+            cached(&mut docs.previous),
+            cached(&mut docs.fallback),
+        );
+        let mut calendar = Self {
             adapt: orbit::Adapt::default(),
-            schedule,
             remote: None,
-            refreshing: false,
-            first_open_requested: false,
-            path,
+            focus: None,
+            docs,
+            official,
+            previous,
+            fallback,
+            current: None,
+            last_week: None,
+            differences: vec![],
             following,
-            reminder_saved,
-            saved,
-            demo_now: None,
-            view: CalendarView::default(),
-            agenda_scroll: None,
-            class_filter: None,
-            tier_filter: None,
+            alerts,
+            prefs,
+            stamps,
+            history,
+            refreshing: false,
+            refresh_failed: false,
+            first_open_requested: false,
             clock_started: false,
-            test_session: None,
+            last_render: None,
+            alerts_checked: None,
+            in_track: false,
+            profile: None,
+            armed: None,
+            demo_now: None,
+            ui: ui::State::default(),
             error: None,
-            status,
-        })
+        };
+        calendar.rebuild(Utc::now());
+        Ok(calendar)
     }
+
     pub fn load_demo(data_dir: &Path, demo: &crate::demo::DemoData) -> Result<Self, String> {
         let mut calendar = Self::load(data_dir)?;
-        // Las capturas comparan el calendario visual con el seed oficial compartido.
-        calendar.schedule = Schedule::parse(SEED.as_bytes())?;
         let now = demo.fixed_now()?;
-        #[cfg(feature = "parity-capture")]
-        let now = capture_clock(now);
         calendar.demo_now = Some(now);
-        calendar.status = "Horario de ejemplo".into();
         #[cfg(feature = "parity-capture")]
+        capture::apply(&mut calendar, demo)?;
+        #[cfg(not(feature = "parity-capture"))]
         {
-            calendar.view = capture_view();
-            if std::env::args()
-                .collect::<Vec<_>>()
-                .windows(2)
-                .any(|pair| pair[0] == "--capture" && pair[1] == "calendario-lmu-local")
-            {
-                calendar.schedule = Schedule::parse(include_bytes!(
-                    "../reference/fixtures/calendar-lmu-2026-10-06.json"
-                ))?;
-                calendar.demo_now = None;
-                calendar.status = "QA · horario real LMU 6–13 oct recibido de Discord; publicación Supabase pendiente".into();
-                let id = calendar.schedule.series[0].id.clone();
-                calendar.follow(id.clone())?;
-                calendar.toggle_reminder(id)?;
-            }
-            if calendar_test_capture() {
-                calendar.toggle_test_schedule(true, Utc::now())?;
-                calendar.demo_now = None;
-                let id = calendar.schedule.series[0].id.clone();
-                calendar.follow(id.clone())?;
-                calendar.toggle_reminder(id)?;
-            }
-            if std::env::args().any(|arg| arg == "calendario-beta-archivo") {
-                // Escena QA explícita: catálogo oficial archivado y reloj dentro de su publicación.
-                calendar.demo_now = Some(
-                    calendar.schedule.window()?.0 + Duration::hours(16) - Duration::minutes(13),
-                );
-                if let Some(series) = calendar
-                    .schedule
-                    .series
-                    .iter()
-                    .find(|series| series.tier == "weekly")
-                {
-                    calendar.following.series_ids = vec![series.id.clone()];
-                }
-                calendar.status =
-                    "QA · catálogo oficial archivado · reloj congelado; no es el horario actual"
-                        .into();
-            }
+            calendar.official = Some(Schedule::parse(&demo.calendar_json()?)?);
+            calendar.rebuild(now);
         }
         Ok(calendar)
     }
-    /// Sigue una serie usando el estado local existente del calendario.
+
+    pub(crate) fn now(&self) -> DateTime<Utc> {
+        self.demo_now.unwrap_or_else(Utc::now)
+    }
+    pub(crate) fn zone(&self) -> Zone {
+        if self.prefs.utc {
+            Zone::Utc
+        } else {
+            Zone::Local
+        }
+    }
+    /// Horario vigente, si lo hay.
+    pub(crate) fn schedule(&self) -> Option<&Schedule> {
+        self.current.as_ref()
+    }
+    pub(crate) fn favorites(&self) -> &[String] {
+        &self.following.series_ids
+    }
+
+    /// Vuelve a combinar publicaciones según el reloj: oficial vigente más el
+    /// respaldo solo para lo que falte; sin oficial vigente, el respaldo solo.
+    fn rebuild(&mut self, now: DateTime<Utc>) {
+        let live = |schedule: &Option<Schedule>| {
+            schedule
+                .as_ref()
+                .filter(|schedule| matches!(schedule.is_current(now), Ok(true)))
+                .cloned()
+        };
+        self.differences.clear();
+        self.current = match (live(&self.official), live(&self.fallback)) {
+            (Some(official), Some(fallback)) => {
+                let (merged, differences) = official.with_fallback(fallback);
+                self.differences = differences;
+                Some(merged)
+            }
+            (Some(official), None) => Some(official),
+            (None, fallback) => fallback,
+        };
+        self.last_week = [
+            expired(self.official.as_ref(), now),
+            expired(self.previous.as_ref(), now),
+        ]
+        .into_iter()
+        .flatten()
+        .max_by_key(|schedule| schedule.window().ok().map(|(_, to)| to))
+        .cloned();
+        self.alerts.prune(now);
+    }
+
+    pub(crate) fn health(&self) -> Health {
+        if self.current.is_none() {
+            if self.refreshing {
+                Health::Loading
+            } else if self.last_week.is_some() {
+                Health::Expired
+            } else {
+                Health::Missing
+            }
+        } else if self.refresh_failed {
+            Health::Offline
+        } else if self
+            .current
+            .as_ref()
+            .is_some_and(|schedule| schedule.series.iter().any(Series::is_fallback))
+        {
+            Health::Fallback
+        } else {
+            Health::Ok
+        }
+    }
+
+    /// Series que vienen del respaldo, para el rótulo «RC» y el rail.
+    pub(crate) fn fallback_count(&self) -> usize {
+        self.current
+            .as_ref()
+            .map_or(0, |s| s.series.iter().filter(|s| s.is_fallback()).count())
+    }
+
+    /// Alterna una favorita; el estado se guarda antes de cambiar la memoria.
     pub fn follow(&mut self, id: String) -> Result<(), String> {
         let mut next = self.following.series_ids.clone();
         if next.contains(&id) {
@@ -428,50 +387,40 @@ impl Calendar {
             }
             next.push(id);
         }
-        let following = Following {
-            series_ids: next,
-            reminder_ids: self.following.reminder_ids.clone(),
-        };
-        let data = serde_json::to_vec_pretty(&following).map_err(|error| error.to_string())?;
-        if self.test_session.is_some() {
-            self.following = following;
-            return Ok(());
-        }
-        files::save(&self.path, &data, self.saved.as_deref())?;
+        let following = Following { series_ids: next };
+        self.docs.following.json(&following)?;
         self.following = following;
-        self.saved = Some(data);
         Ok(())
     }
-    /// Preferencia local; no promete una notificación sin servicio de avisos.
-    fn toggle_reminder(&mut self, id: String) -> Result<(), String> {
-        let mut next = self.following.reminder_ids.clone();
-        if next.contains(&id) {
-            next.retain(|item| item != &id);
-        } else {
-            if next.len() == 256 {
-                return Err("máximo 256 recordatorios".into());
-            }
-            next.push(id);
-        }
-        let data = serde_json::to_vec_pretty(&next).map_err(|error| error.to_string())?;
-        if self.test_session.is_some() {
-            self.following.reminder_ids = next;
-            return Ok(());
-        }
-        files::save(
-            &self.path.with_file_name("calendar-reminders.json"),
-            &data,
-            self.reminder_saved.as_deref(),
-        )?;
-        self.following.reminder_ids = next;
-        self.reminder_saved = Some(data);
+
+    fn save_alerts(&mut self, next: Alerts) -> Result<(), String> {
+        self.docs.alerts.json(&next)?;
+        self.alerts = next;
         Ok(())
     }
+    /// Cambia los avisos con una función y los guarda; si falla, no cambia nada.
+    pub(crate) fn edit_alerts(
+        &mut self,
+        change: impl FnOnce(&mut Alerts) -> Result<(), String>,
+    ) -> Result<(), String> {
+        let mut next = self.alerts.clone();
+        change(&mut next)?;
+        self.save_alerts(next)
+    }
+    pub(crate) fn set_utc(&mut self, utc: bool) {
+        let prefs = Prefs { utc };
+        self.error = self.docs.prefs.json(&prefs).err();
+        if self.error.is_none() {
+            self.prefs = prefs;
+        }
+    }
+
     pub(crate) fn attach_remote(&mut self, remote: gpui::Entity<crate::services::view::Remote>) {
         self.remote = Some(remote);
     }
-    fn refresh(&mut self, cx: &mut Context<Self>) {
-        if self.refreshing || self.demo_now.is_some() || self.test_session.is_some() {
+
+    pub(crate) fn refresh(&mut self, cx: &mut Context<Self>) {
+        if self.refreshing || self.demo_now.is_some() {
             return;
         }
         let target = cx.entity().downgrade();
@@ -482,239 +431,269 @@ impl Calendar {
             self.refreshing = true;
             self.first_open_requested = true;
             self.error = None;
-            self.status = "Actualizando horario…".into();
         } else {
-            self.error = Some("No se pudo actualizar el horario: servicios ocupados o no disponibles. Vuelve a intentarlo.".into());
+            self.error = Some(
+                "No se pudo actualizar el horario: servicios ocupados o no disponibles. Vuelve a intentarlo."
+                    .into(),
+            );
         }
         cx.notify();
     }
-    fn apply_publication(&mut self, data: Option<&str>, now: DateTime<Utc>) -> Result<(), String> {
-        if self.test_session.is_some() {
-            return Ok(());
-        }
-        let Some(data) = data else {
-            self.status = if self.schedule.is_current(now)? {
-                "No hay una nueva publicación; se conserva el horario guardado"
-            } else {
-                "Aún no hay horario publicado para esta semana"
+
+    /// Aplica lo recibido: oficial y respaldo se validan y guardan por separado;
+    /// uno inválido nunca destruye el último válido.
+    fn apply_publication(
+        &mut self,
+        official: Option<&str>,
+        fallback: Option<&str>,
+        now: DateTime<Utc>,
+    ) -> Result<(), String> {
+        let mut changed = false;
+        let mut failure = None;
+        if let Some(data) = official {
+            match self.store_official(data, now) {
+                Ok(updated) => changed |= updated,
+                Err(error) => failure = Some(error),
             }
-            .into();
-            return Ok(());
-        };
+        }
+        if let Some(data) = fallback {
+            match self.store_fallback(data, now) {
+                Ok(updated) => changed |= updated,
+                Err(error) => failure = failure.or(Some(error)),
+            }
+        }
+        self.stamps.checked = now.timestamp();
+        if changed {
+            self.stamps.updated = now.timestamp();
+        }
+        let _ = self.docs.stamps.json(&self.stamps);
+        self.rebuild(now);
+        failure.map_or(Ok(()), Err)
+    }
+
+    fn store_official(&mut self, data: &str, now: DateTime<Utc>) -> Result<bool, String> {
         if data.len() > 64 * 1024 {
             return Err("horario demasiado grande".into());
         }
         let schedule = Schedule::parse(data.as_bytes())?;
         if !schedule.is_current(now)? {
-            self.status = if self.schedule.is_current(now)? {
-                "La publicación no está vigente; se conserva el horario guardado"
-            } else {
-                "Aún no hay horario publicado para esta semana"
+            return Ok(false);
+        }
+        let from = schedule.window()?.0;
+        let saved_from = self
+            .official
+            .as_ref()
+            .map(|s| s.window().map(|w| w.0))
+            .transpose()?;
+        match saved_from {
+            Some(saved) if from < saved => return Ok(false),
+            Some(saved) if from > saved => {
+                // Semana nueva: la anterior pasa a solo lectura y al histórico.
+                if let (Some(old), Some(raw)) =
+                    (self.official.take(), self.docs.official.seen.clone())
+                {
+                    self.history.upsert(&old, now.timestamp());
+                    self.docs.previous.write(raw)?;
+                    self.previous = Some(old);
+                }
             }
-            .into();
-            return Ok(());
+            _ => {}
         }
-        if self.schedule.is_current(now)? && schedule.window()?.0 < self.schedule.window()?.0 {
-            self.status = "La publicación es anterior; se conserva el horario guardado".into();
-            return Ok(());
+        let changed = self.docs.official.seen.as_deref() != Some(data.as_bytes());
+        if changed {
+            self.docs.official.write(data.as_bytes().to_vec())?;
         }
-        let path = self.path.with_file_name("official-schedule.json");
-        let previous = match std::fs::metadata(&path) {
-            Ok(_) => Some(files::read(&path, 64 * 1024)?),
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => None,
-            Err(error) => return Err(format!("caché del horario: {error}")),
-        };
-        files::save(&path, data.as_bytes(), previous.as_deref())?;
-        self.schedule = schedule;
-        self.status = "Horario publicado actualizado".into();
-        Ok(())
+        self.history.upsert(&schedule, now.timestamp());
+        let _ = self.docs.history.json(&self.history);
+        self.official = Some(schedule);
+        Ok(changed)
     }
+
+    fn store_fallback(&mut self, data: &str, now: DateTime<Utc>) -> Result<bool, String> {
+        if data.len() > 64 * 1024 {
+            return Err("respaldo demasiado grande".into());
+        }
+        let schedule = Schedule::parse(data.as_bytes())?;
+        if !schedule.is_current(now)? {
+            return Ok(false);
+        }
+        self.docs.fallback.write(data.as_bytes().to_vec())?;
+        self.fallback = Some(schedule);
+        Ok(true)
+    }
+
     pub(crate) fn complete_refresh(&mut self, reply: crate::services::protocol::Reply) {
         use crate::services::protocol::Reply;
         self.refreshing = false;
+        let now = Utc::now();
         let result = match reply {
-            Reply::Calendar { schedule } => self.apply_publication(schedule.as_deref(), Utc::now()),
-            Reply::Error { message } => Err(message),
+            Reply::Calendar { schedule, fallback } => {
+                self.refresh_failed = false;
+                self.apply_publication(schedule.as_deref(), fallback.as_deref(), now)
+            }
+            Reply::Error { message } => {
+                self.refresh_failed = true;
+                self.stamps.checked = now.timestamp();
+                Err(message)
+            }
             _ => Err("respuesta de horario inválida".into()),
         };
         self.error = result.err().map(|error| {
-            let retained = if matches!(self.schedule.is_current(Utc::now()), Ok(true)) {
+            let retained = if self.current.is_some() {
                 "Se conserva el último horario válido."
             } else {
                 "Vuelve a intentarlo."
             };
             format!("No se pudo actualizar el horario: {error}. {retained}")
         });
-        if self.error.is_some() {
-            self.status = if matches!(self.schedule.is_current(Utc::now()), Ok(true)) {
-                "Horario guardado en este equipo"
-            } else {
-                "Aún no hay horario publicado para esta semana"
-            }
-            .into();
+        self.report_orphans();
+    }
+
+    /// Avisos que apuntan a una serie que ya no está: se dice, no se borran.
+    fn report_orphans(&mut self) {
+        let Some(schedule) = &self.current else {
+            return;
+        };
+        let gone: Vec<_> = self.alerts.orphans(schedule);
+        if !gone.is_empty() && self.error.is_none() {
+            self.error = Some(format!(
+                "Un aviso apunta a una serie que ya no está en el horario: {}. Puedes quitarlo en Avisos.",
+                gone.join(", ")
+            ));
         }
     }
-}
-impl Calendar {
-    fn upcoming(&self, now: DateTime<Utc>) -> (Vec<(DateTime<Utc>, String)>, Option<String>) {
-        let mut starts = vec![];
-        let mut error = None;
-        if matches!(self.schedule.is_current(now), Ok(true)) {
-            for series in &self.schedule.series {
-                if self.following.series_ids.contains(&series.id) {
-                    let horizon = if series.recurrence.kind == "interval" {
-                        Duration::days(1).max(Duration::minutes(series.recurrence.interval_minutes))
-                    } else {
-                        Duration::days(7)
-                    };
-                    match self.schedule.starts(series, now, now + horizon) {
-                        Ok(times) => {
-                            starts.extend(times.into_iter().map(|time| (time, series.id.clone())));
-                        }
-                        Err(cause) => error = Some(cause),
-                    }
+
+    /// Cada cuánto se busca: 15 min; 5 min el lunes por la mañana (UTC) mientras
+    /// la semana siguiente no esté publicada.
+    fn poll_interval(now: DateTime<Utc>) -> Duration {
+        use chrono::{Datelike, Timelike, Weekday};
+        let monday_morning = now.weekday() == Weekday::Mon && now.hour() < 12;
+        Duration::minutes(if monday_morning { 5 } else { 15 })
+    }
+
+    /// Tick de reloj: sondeo periódico, caducidad de la semana y avisos.
+    fn tick(&mut self, cx: &mut Context<Self>) {
+        let now = Utc::now();
+        if self
+            .current
+            .as_ref()
+            .is_some_and(|s| s.window().is_ok_and(|w| w.1 <= now))
+        {
+            self.rebuild(now);
+        }
+        let last = DateTime::from_timestamp(self.stamps.checked, 0);
+        if last.is_none_or(|last| now - last >= Self::poll_interval(now)) && !self.refreshing {
+            self.refresh(cx);
+        }
+        if self.armed.as_ref().is_some_and(|(_, at)| *at <= now)
+            && let Some((series_id, _)) = self.armed.take()
+        {
+            cx.emit(Event::Launch { series_id });
+        }
+        self.check_alerts(now, cx);
+    }
+
+    fn check_alerts(&mut self, now: DateTime<Utc>, cx: &mut Context<Self>) {
+        let since = self.alerts_checked.replace(now);
+        let (Some(schedule), Some(since)) = (&self.current, since) else {
+            return;
+        };
+        let due = self.alerts.due(schedule, now, since, self.in_track);
+        let launch = self.alerts.auto_launch;
+        for item in due.into_iter().filter(|_| self.alerts.channels.windows) {
+            let Some(series) = schedule.by_id(&item.series_id) else {
+                continue;
+            };
+            let zone = Zone::Local;
+            cx.emit(Event::Alert {
+                series_id: series.id.clone(),
+                title: format!("{} sale a las {}", series.name, zone.hm(item.at)),
+                body: format!(
+                    "{} · carrera {} · {}",
+                    series.track_short(),
+                    clock::duration_txt(series.race_minutes()),
+                    clock::in_txt(item.at - now)
+                ),
+            });
+        }
+        if launch {
+            let lead = Duration::minutes(3);
+            for series in &schedule.series {
+                let Some(at) = schedule.next_start(series, now) else {
+                    continue;
+                };
+                let fire = at - lead;
+                if fire > since && fire <= now && self.alerts.cause(schedule, series, at).is_some()
+                {
+                    cx.emit(Event::Launch {
+                        series_id: series.id.clone(),
+                    });
                 }
             }
         }
-        starts.sort_unstable();
-        starts.truncate(20);
-        (starts, error)
-    }
-}
-
-impl Calendar {
-    fn official_state(&self) -> (&Schedule, &Following) {
-        self.test_session
-            .as_ref()
-            .map_or((&self.schedule, &self.following), |previous| {
-                (&previous.schedule, &previous.following)
-            })
     }
 
-    fn tester_access(&self, cx: &gpui::App) -> bool {
-        #[cfg(feature = "parity-capture")]
-        if calendar_test_capture() {
-            return true;
-        }
-        self.remote.as_ref().is_some_and(|remote| {
-            let access = remote.read(cx).navigation_access();
-            access.verified && access.tester && !access.blocked
-        })
+    /// La shell dice qué perfil lanzaría el botón del hero.
+    pub(crate) fn set_profile(&mut self, name: Option<String>) {
+        self.profile = name;
     }
 
-    fn toggle_test_schedule(&mut self, allowed: bool, now: DateTime<Utc>) -> Result<(), String> {
-        if let Some(previous) = self.test_session.take() {
-            self.schedule = previous.schedule;
-            self.following = previous.following;
-            self.status = previous.status;
-        } else {
-            if !allowed || self.refreshing {
-                return Err("Prueba disponible solo para testers, después de actualizar".into());
-            }
-            // Catálogo REAL archivado; solo en memoria se traslada su ventana.
-            // No se presenta como publicación actual ni se guarda en la caché.
-            let mut data: serde_json::Value = serde_json::from_str(SEED)
-                .map_err(|error| format!("horario de prueba: {error}"))?;
-            data["validFrom"] = serde_json::json!(now.to_rfc3339());
-            data["validUntil"] = serde_json::json!((now + Duration::days(7)).to_rfc3339());
-            let mut schedule = Schedule::parse(data.to_string().as_bytes())?;
-            for series in &mut schedule.series {
-                series.id = format!("test-{}", series.id);
-            }
-            self.test_session = Some(TestSession {
-                schedule: std::mem::replace(&mut self.schedule, schedule),
-                following: std::mem::take(&mut self.following),
-                status: std::mem::replace(&mut self.status,
-                    "PRUEBA LOCAL · catálogo LMU archivado del 25-ago; fechas trasladadas, no horario oficial actual. Favoritas y avisos de prueba no se guardan.".into()),
+    /// Pide a la shell lanzar el perfil por la serie de la próxima carrera.
+    pub(crate) fn launch_profile(&mut self, cx: &mut Context<Self>) {
+        let Some(schedule) = self.current.as_ref() else {
+            return;
+        };
+        if let Some(hero) = rows::hero(schedule, self.now(), self.favorites(), &self.alerts) {
+            cx.emit(Event::Launch {
+                series_id: hero.series.id.clone(),
             });
         }
-        self.error = None;
-        self.class_filter = None;
-        self.tier_filter = None;
-        self.agenda_scroll = None;
-        Ok(())
     }
 
-    pub(crate) fn page_header(&self, adapt: orbit::Adapt, cx: &mut Context<Self>) -> gpui::Div {
-        let tester = self.tester_access(cx);
-        let testing = self.test_session.is_some();
-        div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .gap(px(12.0))
-            .child(
-                orbit::neo_page_header("Calendario LMU", "Carreras diarias y semanales", adapt, cx)
-                    .flex_1(),
-            )
-            .when(tester || testing, |header| {
-                header.child(
-                    orbit::button(
-                        "calendar-test",
-                        if testing {
-                            "Salir de la prueba"
-                        } else {
-                            "Probar calendario"
-                        },
-                        cx,
-                    )
-                    .tab_stop(!self.refreshing)
-                    .when(self.refreshing, |button| {
-                        orbit::disabled(button, "Espera a que termine la actualización")
-                    })
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.error = this
-                            .toggle_test_schedule(this.tester_access(cx), Utc::now())
-                            .err();
-                        cx.notify();
-                    })),
-                )
-            })
-            .child(
-                orbit::button("calendar-reload", "Actualizar horario", cx)
-                    .tab_stop(!testing)
-                    .when(testing, |button| {
-                        orbit::disabled(
-                            button,
-                            "Sal de la prueba para actualizar el horario oficial",
-                        )
-                    })
-                    .on_click(cx.listener(|this, _, _, cx| {
-                        this.refresh(cx);
-                    })),
-            )
-    }
-    pub(crate) fn topbar_controls(&self, cx: &mut Context<Self>) -> gpui::Div {
-        presentation::views_control(self, cx)
-    }
-    pub(crate) fn rail_sections(&self, cx: &mut Context<Self>) -> Vec<orbit::RailSection> {
-        beta::rail_sections(self, cx)
-    }
-}
-
-#[cfg(feature = "parity-capture")]
-fn calendar_test_capture() -> bool {
-    std::env::args()
-        .collect::<Vec<_>>()
-        .windows(2)
-        .any(|pair| pair[0] == "--capture" && pair[1] == "calendario-beta-prueba")
-}
-impl Render for Calendar {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        if self.test_session.is_some() && !self.tester_access(cx) {
-            self.error = self.toggle_test_schedule(false, Utc::now()).err();
+    /// Programa un lanzamiento puntual (3 min antes de la próxima carrera).
+    pub(crate) fn schedule_launch(&mut self, at: DateTime<Utc>, cx: &mut Context<Self>) {
+        let Some(schedule) = self.current.as_ref() else {
+            return;
+        };
+        let id = rows::hero(schedule, self.now(), self.favorites(), &self.alerts)
+            .map(|hero| hero.series.id.clone());
+        if let Some(id) = id {
+            self.arm_launch(&id, at, cx);
         }
+    }
+
+    pub(crate) fn arm_launch(
+        &mut self,
+        series_id: &str,
+        at: DateTime<Utc>,
+        cx: &mut Context<Self>,
+    ) {
+        self.armed = Some((series_id.to_owned(), at));
+        cx.notify();
+    }
+
+    /// La shell informa de si hay una sesión en pista: las franjas se callan.
+    pub(crate) fn set_in_track(&mut self, in_track: bool) {
+        self.in_track = in_track;
+    }
+}
+
+impl Render for Calendar {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        if self.focus.is_none() {
+            self.focus = Some(cx.focus_handle());
+        }
+        self.last_render = Some(Instant::now());
         if !self.first_open_requested
             && self.demo_now.is_none()
-            && !matches!(self.schedule.is_current(Utc::now()), Ok(true))
+            && self.current.is_none()
             && self
                 .remote
                 .as_ref()
                 .is_some_and(|remote| !remote.read(cx).calendar_busy())
         {
             self.refresh(cx);
-            self.first_open_requested = true;
-        } else if matches!(self.schedule.is_current(Utc::now()), Ok(true)) {
+        } else if self.current.is_some() {
             self.first_open_requested = true;
         }
         if !self.clock_started && self.demo_now.is_none() {
@@ -722,472 +701,25 @@ impl Render for Calendar {
             cx.spawn(async move |this, cx| {
                 loop {
                     cx.background_executor()
-                        .timer(std::time::Duration::from_secs(30))
+                        .timer(std::time::Duration::from_secs(1))
                         .await;
-                    if this.update(cx, |_, cx| cx.notify()).is_err() {
+                    let alive = this.update(cx, |this, cx| {
+                        this.tick(cx);
+                        // Solo repinta si la pantalla se está viendo.
+                        if this
+                            .last_render
+                            .is_some_and(|at| at.elapsed() < std::time::Duration::from_secs(3))
+                        {
+                            cx.notify();
+                        }
+                    });
+                    if alive.is_err() {
                         break;
                     }
                 }
             })
             .detach();
         }
-        div()
-            .size_full()
-            .min_h_0()
-            .flex()
-            .flex_col()
-            .gap(px(12.0))
-            .when(self.test_session.is_some(), |page| {
-                page.child(orbit::callout(self.status.clone(), cx))
-            })
-            .child(beta::render(self, cx).flex_1().min_h_0())
-            .into_any_element()
-    }
-}
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn real_october_publication_is_current_and_keeps_official_weekly_slots() {
-        let schedule = Schedule::parse(include_bytes!(
-            "../reference/fixtures/calendar-lmu-2026-10-06.json"
-        ))
-        .expect("horario real serializado por el bot");
-        let now = timestamp("2026-10-09T10:00:00Z").expect("reloj");
-        assert!(schedule.is_current(now).expect("vigencia"));
-        assert_eq!(schedule.series.len(), 11);
-        let special = schedule
-            .series
-            .iter()
-            .find(|series| series.name == "10 Hours of Road Atlanta")
-            .expect("evento real");
-        assert_eq!(special.track, "Road Atlanta (RC)");
-        assert_eq!(special.race_duration_min, Some(600));
-        assert_eq!(
-            schedule
-                .starts(special, now, now + Duration::days(1))
-                .expect("salidas"),
-            vec![
-                timestamp("2026-10-09T15:00:00Z").expect("slot"),
-                timestamp("2026-10-09T21:00:00Z").expect("slot"),
-                timestamp("2026-10-10T02:00:00Z").expect("slot"),
-                timestamp("2026-10-10T09:00:00Z").expect("slot"),
-            ]
-        );
-    }
-    #[test]
-    fn tester_schedule_is_current_ephemeral_and_restores_real_preferences() {
-        let dir = std::env::temp_dir().join(format!("vantare-calroad-test-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).expect("directorio propio");
-        let mut calendar = Calendar::load(&dir).expect("cargar");
-        let real_from = calendar.schedule.valid_from.clone();
-        let id = calendar.schedule.series[0].id.clone();
-        calendar.follow(id.clone()).expect("favorita real");
-        calendar
-            .toggle_reminder(id.clone())
-            .expect("preferencia real");
-        let favorites = std::fs::read(&calendar.path).expect("favoritas");
-        let reminders = std::fs::read(dir.join("calendar-reminders.json")).expect("avisos");
-        let now = timestamp("2026-10-09T10:00:00Z").expect("reloj");
-        assert!(calendar.toggle_test_schedule(false, now).is_err());
-        calendar.toggle_test_schedule(true, now).expect("tester");
-        assert_eq!(calendar.official_state().0.valid_from, real_from);
-        assert_eq!(calendar.official_state().1.series_ids, vec![id.clone()]);
-        assert!(calendar.schedule.is_current(now).expect("vigencia"));
-        assert!(calendar.following.series_ids.is_empty());
-        let test_id = calendar.schedule.series[0].id.clone();
-        calendar
-            .follow(test_id.clone())
-            .expect("favorita de prueba");
-        calendar
-            .toggle_reminder(test_id)
-            .expect("preferencia de prueba");
-        assert!(!calendar.upcoming(now).0.is_empty());
-        assert_eq!(std::fs::read(&calendar.path).expect("favoritas"), favorites);
-        assert_eq!(
-            std::fs::read(dir.join("calendar-reminders.json")).expect("avisos"),
-            reminders
-        );
-        assert!(!dir.join("official-schedule.json").exists());
-        calendar
-            .apply_publication(Some("no JSON"), now)
-            .expect("no mezcla red y prueba");
-        calendar
-            .toggle_test_schedule(false, now)
-            .expect("salir al revocar acceso");
-        assert_eq!(calendar.schedule.valid_from, real_from);
-        assert_eq!(calendar.following.series_ids, vec![id.clone()]);
-        assert_eq!(calendar.following.reminder_ids, vec![id]);
-        std::fs::remove_dir_all(dir).expect("limpiar fixture propia");
-    }
-
-    #[test]
-    fn favorites_and_pending_reminders_survive_restart_and_conflicts() {
-        let dir = std::env::temp_dir().join(format!("vantare-calendar-r6-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).expect("directorio aislado");
-        // Archivo del formato anterior: la migración no pierde favoritas.
-        std::fs::write(
-            dir.join("calendar-following.json"),
-            br#"{"seriesIds":["retained"]}"#,
-        )
-        .expect("formato anterior");
-        let mut calendar = Calendar::load(&dir).expect("cargar");
-        assert!(calendar.following.reminder_ids.is_empty());
-        let id = calendar.schedule.series[0].id.clone();
-        calendar
-            .toggle_reminder(id.clone())
-            .expect("guardar preferencia");
-        calendar
-            .follow(id.clone())
-            .expect("guardar favorita sin perder campana");
-        let favorite_document: serde_json::Value = serde_json::from_slice(
-            &std::fs::read(dir.join("calendar-following.json")).expect("favoritas"),
-        )
-        .expect("JSON");
-        assert_eq!(
-            favorite_document
-                .as_object()
-                .expect("formato anterior")
-                .len(),
-            1
-        );
-        assert!(favorite_document.get("seriesIds").is_some());
-        assert!(dir.join("calendar-reminders.json").exists());
-        let mut restored = Calendar::load(&dir).expect("reiniciar");
-        assert_eq!(
-            restored.following.series_ids,
-            vec!["retained".to_owned(), id.clone()]
-        );
-        assert_eq!(restored.following.reminder_ids, vec![id.clone()]);
-        calendar
-            .toggle_reminder(id.clone())
-            .expect("otra escritura válida");
-        assert!(restored.toggle_reminder(id.clone()).is_err());
-        assert_eq!(restored.following.reminder_ids, vec![id.clone()]);
-        let mut final_state = Calendar::load(&dir).expect("releer conflicto");
-        assert!(final_state.following.reminder_ids.is_empty());
-        final_state.follow(id).expect("quitar favorita");
-        assert_eq!(
-            Calendar::load(&dir)
-                .expect("reinicio final")
-                .following
-                .series_ids,
-            vec!["retained"]
-        );
-        std::fs::remove_dir_all(dir).expect("limpiar solo fixture propia");
-    }
-
-    #[test]
-    fn calendar_copy_has_no_registration_actions() {
-        let copy = [
-            include_str!("calendar/beta.rs"),
-            include_str!("calendar/presentation.rs"),
-        ]
-        .join("\n")
-        .to_lowercase();
-        for forbidden in ["apuntarme", "apuntado", "tu split", "inscripción"] {
-            assert!(
-                !copy.contains(forbidden),
-                "acción ajena al horario: {forbidden}"
-            );
-        }
-    }
-
-    #[cfg(feature = "parity-capture")]
-    #[test]
-    fn capture_names_select_the_three_calendar_views() {
-        for (name, expected) in [
-            ("calendario-base", CalendarView::Times),
-            ("calendario-dia", CalendarView::Agenda),
-            ("calendario-semana", CalendarView::Agenda),
-            ("calendario-mes", CalendarView::Posters),
-            ("calendario-timeline", CalendarView::Times),
-        ] {
-            assert_eq!(CalendarView::from_capture_name(name), Some(expected));
-        }
-        assert_eq!(CalendarView::from_capture_name("inicio-base"), None);
-        assert_eq!(CalendarView::default(), CalendarView::Agenda);
-    }
-
-    #[test]
-    fn upcoming_only_includes_followed_current_series_in_order_and_is_bounded() {
-        let mut calendar = Calendar {
-            adapt: orbit::Adapt::default(),
-            schedule: Schedule::parse(SEED.as_bytes()).expect("catálogo real empaquetado"),
-            remote: None,
-            refreshing: false,
-            first_open_requested: false,
-            path: PathBuf::new(),
-            following: Following::default(),
-            reminder_saved: None,
-            saved: None,
-            demo_now: None,
-            view: CalendarView::Times,
-            agenda_scroll: None,
-            class_filter: None,
-            tier_filter: None,
-            clock_started: false,
-            test_session: None,
-            error: None,
-            status: String::new(),
-        };
-        let now = timestamp("2026-08-25T00:07:00Z").expect("dentro de vigencia");
-        assert!(calendar.upcoming(now).0.is_empty());
-        let series = &mut calendar.schedule.series[0];
-        series.recurrence = Recurrence {
-            kind: "interval".into(),
-            interval_minutes: 15,
-            days: vec![],
-            times_utc: vec![],
-        };
-        let identity = series.id.clone();
-        calendar.following.series_ids.push(series.id.clone());
-        let (starts, error) = calendar.upcoming(now);
-        assert!(error.is_none());
-        assert_eq!(starts.len(), 20);
-        assert_eq!(
-            starts[0].0,
-            timestamp("2026-08-25T00:15:00Z").expect("salida")
-        );
-        assert!(
-            starts
-                .iter()
-                .all(|(time, series)| *time >= now && *series == identity)
-        );
-        assert!(starts.windows(2).all(|pair| pair[0].0 < pair[1].0));
-        calendar.schedule.series[0].recurrence.interval_minutes = 2880;
-        assert!(!calendar.upcoming(now).0.is_empty());
-        let expired = timestamp("2026-09-30T12:00:00Z").expect("caducado");
-        assert!(calendar.upcoming(expired).0.is_empty());
-    }
-
-    #[test]
-    fn following_survives_restart_failed_writes_and_invalid_catalog_reload_keep_last_state() {
-        let dir = std::env::temp_dir().join(format!("vantare-calendar-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).expect("directorio propio");
-        let mut calendar = Calendar::load(&dir).expect("cargar");
-        let id = calendar.schedule.series[0].id.clone();
-        calendar.follow(id.clone()).expect("seguir");
-        let mut calendar = Calendar::load(&dir).expect("reiniciar");
-        assert_eq!(calendar.following.series_ids, vec![id.clone()]);
-        let lock = dir.join("calendar-following.json.lock");
-        std::fs::write(&lock, "").expect("lock residual");
-        // Un lock residual no debe impedir seguir la serie. `follow` alterna,
-        // asi que esta segunda llamada la deja de seguir: que el efecto se
-        // aplique es la prueba de que el lock residual no bloqueo.
-        calendar
-            .follow(id.clone())
-            .expect("un lock residual no debe bloquear");
-        assert!(
-            calendar.following.series_ids.is_empty(),
-            "el efecto debe aplicarse pese al lock residual"
-        );
-        let before = calendar.schedule.window().expect("ventana");
-        let schedule = dir.join("official-schedule.json");
-        std::fs::write(&schedule, "{}").expect("agenda inválida de test");
-        assert!(calendar.apply_publication(Some("{}"), Utc::now()).is_err());
-        assert_eq!(
-            calendar.schedule.window().expect("ventana conservada"),
-            before
-        );
-        // IDs retenidos de publicaciones anteriores, solo para probar el límite.
-        calendar.following.series_ids = (0..256).map(|index| format!("retained-{index}")).collect();
-        assert!(
-            calendar
-                .follow(calendar.schedule.series[0].id.clone())
-                .is_err()
-        );
-        assert_eq!(calendar.following.series_ids.len(), 256);
-        for path in [lock, schedule, dir.join("calendar-following.json")] {
-            std::fs::remove_file(path).expect("limpiar fichero propio");
-        }
-        std::fs::remove_dir_all(dir).expect("limpiar directorio");
-    }
-
-    fn published_fixture(now: DateTime<Utc>) -> String {
-        let mut value: serde_json::Value = serde_json::from_str(SEED).expect("fixture");
-        value["validFrom"] = serde_json::json!((now - Duration::days(1)).to_rfc3339());
-        value["validUntil"] = serde_json::json!((now + Duration::days(6)).to_rfc3339());
-        serde_json::to_string(&value).expect("JSON")
-    }
-
-    #[test]
-    fn publication_is_validated_cached_and_restored_and_failures_keep_last_valid() {
-        use crate::services::protocol::Reply;
-        let dir = std::env::temp_dir().join(format!(
-            "vantare-calendar-publication-{}",
-            vantare_services::random_id().expect("id")
-        ));
-        let now = Utc::now();
-        let mut calendar = Calendar::load(&dir).expect("sin caché");
-        let data = published_fixture(now);
-        calendar
-            .apply_publication(Some(&data), now)
-            .expect("publicado");
-        assert!(calendar.schedule.is_current(now).expect("vigencia"));
-        let path = dir.join("official-schedule.json");
-        assert_eq!(
-            files::read(&path, 64 * 1024).expect("caché"),
-            data.as_bytes()
-        );
-        let mut restored = Calendar::load(&dir).expect("reinicio");
-        assert_eq!(
-            restored.schedule.window().expect("ventana"),
-            calendar.schedule.window().expect("ventana")
-        );
-        restored.complete_refresh(Reply::Error {
-            message: "sin conexión".into(),
-        });
-        assert!(restored.error.is_some());
-        assert!(restored.schedule.is_current(now).expect("conservado"));
-        assert!(restored.apply_publication(Some("{}"), now).is_err());
-        restored
-            .apply_publication(Some(SEED), now)
-            .expect("caducado no sustituye");
-        restored
-            .apply_publication(None, now)
-            .expect("vacío no sustituye");
-        restored
-            .apply_publication(Some(&published_fixture(now - Duration::days(2))), now)
-            .expect("publicación anterior aún vigente no sustituye una nueva");
-        assert_eq!(
-            files::read(&path, 64 * 1024).expect("caché intacta"),
-            data.as_bytes()
-        );
-        assert!(
-            !restored
-                .schedule
-                .is_current(now + Duration::days(6))
-                .expect("fin exclusivo")
-        );
-        // Un guardado bloqueado tampoco altera el horario en memoria ni disco.
-        let lock = std::fs::OpenOptions::new()
-            .write(true)
-            .open(dir.join("official-schedule.json.lock"))
-            .expect("lock");
-        lock.try_lock().expect("bloqueo real");
-        assert!(
-            restored
-                .apply_publication(Some(&published_fixture(now + Duration::hours(1))), now)
-                .is_err()
-        );
-        assert_eq!(
-            restored.schedule.window().expect("ventana"),
-            calendar.schedule.window().expect("ventana")
-        );
-        drop(lock);
-        std::fs::remove_dir_all(dir).expect("limpiar propio");
-    }
-
-    #[test]
-    fn no_network_or_current_cache_is_an_honest_empty_state() {
-        use crate::services::protocol::Reply;
-        let dir = std::env::temp_dir().join(format!(
-            "vantare-calendar-empty-{}",
-            vantare_services::random_id().expect("id")
-        ));
-        let now = Utc::now();
-        let mut calendar = Calendar::load(&dir).expect("vacío");
-        calendar.complete_refresh(Reply::Error {
-            message: "sin conexión".into(),
-        });
-        assert!(!calendar.schedule.is_current(now).expect("sin vigente"));
-        assert!(calendar.upcoming(now).0.is_empty());
-        assert_eq!(
-            calendar.status,
-            "Aún no hay horario publicado para esta semana"
-        );
-        calendar.complete_refresh(Reply::Calendar { schedule: None });
-        assert!(calendar.error.is_none());
-        assert_eq!(
-            calendar.status,
-            "Aún no hay horario publicado para esta semana"
-        );
-        std::fs::create_dir_all(&dir).expect("propio");
-        std::fs::write(dir.join("official-schedule.json"), SEED).expect("caché caducada");
-        let restored = Calendar::load(&dir).expect("caducada");
-        assert!(!restored.schedule.is_current(now).expect("caducada"));
-        assert_eq!(restored.status, calendar.status);
-        std::fs::write(dir.join("official-schedule.json"), "{}").expect("caché inválida");
-        assert_eq!(
-            Calendar::load(&dir)
-                .expect("inválida no impide actualizar")
-                .status,
-            calendar.status
-        );
-        std::fs::remove_dir_all(dir).expect("limpiar propio");
-    }
-
-    #[test]
-    fn interval_rounds_up_and_weekly_slots_use_utc_weekdays_and_exclusive_end() {
-        let mut schedule = Schedule::parse(SEED.as_bytes()).expect("seed");
-        let from = timestamp("2026-08-25T00:07:00Z").expect("martes");
-        let to = timestamp("2026-08-25T01:00:00Z").expect("límite");
-        let series = &mut schedule.series[0];
-        // Recurrencias de test, no un calendario publicado ni datos de producto.
-        series.recurrence = Recurrence {
-            kind: "interval".into(),
-            interval_minutes: 15,
-            days: vec![],
-            times_utc: vec![],
-        };
-        assert_eq!(
-            schedule
-                .starts(&schedule.series[0], from, to)
-                .expect("intervalo"),
-            [
-                "2026-08-25T00:15:00Z",
-                "2026-08-25T00:30:00Z",
-                "2026-08-25T00:45:00Z"
-            ]
-            .map(|date| timestamp(date).expect("fecha"))
-        );
-        schedule.series[0].recurrence = Recurrence {
-            kind: "weekly-slots".into(),
-            interval_minutes: 0,
-            days: vec!["Tue".into()],
-            times_utc: vec!["01:00".into(), "00:30".into()],
-        };
-        assert_eq!(
-            schedule
-                .starts(&schedule.series[0], from, to)
-                .expect("slots"),
-            vec![timestamp("2026-08-25T00:30:00Z").expect("fecha")]
-        );
-    }
-    #[test]
-    fn expired_seed_is_not_a_current_agenda_and_expansion_stops_at_publication_boundary() {
-        let schedule = Schedule::parse(SEED.as_bytes()).expect("seed");
-        let (from, to) = schedule.window().expect("ventana");
-        assert!(
-            !schedule
-                .is_current(timestamp("2026-09-30T12:00:00Z").expect("fecha"))
-                .expect("vigencia")
-        );
-        for series in &schedule.series {
-            let starts = schedule
-                .starts(series, from - Duration::days(1), to + Duration::days(1))
-                .expect("expandir");
-            assert!(!starts.is_empty());
-            assert!(starts.iter().all(|time| from <= *time && *time < to));
-            assert!(
-                schedule
-                    .starts(series, to, to + Duration::days(1))
-                    .expect("fuera")
-                    .is_empty()
-            );
-        }
-    }
-    #[test]
-    fn malformed_recurrence_timezone_and_duplicate_ids_are_rejected() {
-        let mut value: serde_json::Value = serde_json::from_str(SEED).expect("json");
-        value["series"][0]["recurrence"]["intervalMinutes"] = serde_json::json!(0);
-        assert!(Schedule::parse(&serde_json::to_vec(&value).expect("json")).is_err());
-        let mut value: serde_json::Value = serde_json::from_str(SEED).expect("json");
-        value["timezone"] = serde_json::json!("Europe/Madrid");
-        assert!(Schedule::parse(&serde_json::to_vec(&value).expect("json")).is_err());
-        let mut value: serde_json::Value = serde_json::from_str(SEED).expect("json");
-        value["series"][1]["id"] = value["series"][0]["id"].clone();
-        assert!(Schedule::parse(&serde_json::to_vec(&value).expect("json")).is_err());
+        ui::render(self, window, cx)
     }
 }

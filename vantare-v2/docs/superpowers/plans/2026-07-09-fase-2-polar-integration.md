@@ -911,7 +911,7 @@ Cerrado sin pago real (sin presupuesto test). Ver `docs/current-plan.md` nota **
 
 ## 21. Gap crítico en código actual (Fase 1.6)
 
-[`billing-client.ts`](../../../frontend/src/lib/billing-client.ts) hoy:
+[`billing-client.ts`](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/lib/billing-client.ts) hoy:
 
 - No envía `Authorization: Bearer JWT`
 - Checkout envía `email` del cliente (debe ignorarse en EF)

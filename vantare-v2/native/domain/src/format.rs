@@ -29,7 +29,7 @@ pub struct Preferences {
 
 /// Parte entera de un número finito y no negativo.
 #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
-fn whole(value: f64) -> u64 {
+pub(crate) fn whole(value: f64) -> u64 {
     value as u64
 }
 
@@ -40,10 +40,14 @@ fn whole(value: f64) -> u64 {
     clippy::cast_possible_wrap,
     clippy::float_cmp
 )] // la igualdad exacta es la regla
-fn to_fixed(value: f64, decimals: usize) -> String {
+pub(crate) fn to_fixed(value: f64, decimals: usize) -> String {
     let scale = 10f64.powi(decimals as i32);
     let scaled = value.abs() * scale;
-    let tie = (scaled.fract() - 0.5).abs() == 0.0 && scaled / scale == value.abs();
+    // An exact decimal tie must also be representable in binary: the
+    // magnitude is an odd multiple of 2^-(decimals + 1). Scaling by 10^d
+    // alone can round a neighbouring f64 into a false tie.
+    let period = 2_f64.powi(-(decimals as i32));
+    let tie = value.abs().rem_euclid(period) == period / 2.0;
     let text = if tie {
         format!("{:.*}", decimals, (scaled.floor() + 1.0) / scale)
     } else {
@@ -131,6 +135,52 @@ pub fn speed(mps: Option<f64>, prefs: Preferences) -> String {
     format!("{value:.0} {unit}")
 }
 
+/// Temperatura desde kelvin, según las unidades del usuario.
+pub fn temperature(kelvin: Option<f64>, prefs: Preferences) -> String {
+    let Some(kelvin) = kelvin.filter(|v| v.is_finite() && *v >= 0.0) else {
+        return PLACEHOLDER.into();
+    };
+    let celsius = kelvin - 273.15;
+    let (value, unit) = match prefs.units {
+        Units::Metric => (celsius, "°C"),
+        Units::Imperial => (celsius * 1.8 + 32.0, "°F"),
+    };
+    format!("{} {unit}", to_fixed(value, 0))
+}
+
+/// Presión atmosférica desde pascales a hPa.
+pub fn pressure(pascals: Option<f64>) -> String {
+    match pascals.filter(|v| v.is_finite() && *v >= 0.0) {
+        Some(value) => format!("{} hPa", to_fixed(value / 100.0, 0)),
+        None => PLACEHOLDER.into(),
+    }
+}
+
+/// Punto cardinal de procedencia del viento (0 = norte, sentido horario).
+pub fn wind_direction(radians: Option<f64>, prefs: Preferences) -> String {
+    use std::f64::consts::{FRAC_PI_4, FRAC_PI_8, TAU};
+
+    let Some(radians) = radians.filter(|v| v.is_finite()) else {
+        return PLACEHOLDER.into();
+    };
+    let sector = whole((radians.rem_euclid(TAU) + FRAC_PI_8) / FRAC_PI_4) % 8;
+    match (sector, prefs.language) {
+        (1, _) => "NE",
+        (2, _) => "E",
+        (3, _) => "SE",
+        (4, _) => "S",
+        (5, Language::Es) => "SO",
+        (6, Language::Es) => "O",
+        (7, Language::Es) => "NO",
+        (5, Language::En) => "SW",
+        (6, Language::En) => "W",
+        (7, Language::En) => "NW",
+        // El módulo 8 deja solo el sector 0 después de los siete anteriores.
+        _ => "N",
+    }
+    .into()
+}
+
 /// Régimen del motor en rpm, desde rad/s.
 pub fn rpm(rad_per_s: Option<f64>) -> String {
     match rad_per_s.filter(|v| v.is_finite() && *v >= 0.0) {
@@ -183,6 +233,21 @@ mod tests {
     };
 
     #[test]
+    fn to_fixed_matches_node_at_decimal_boundaries() {
+        let cases: &[(u64, usize, &str)] = &include!("../testdata/to_fixed_node.rs");
+        for &(bits, decimals, expected) in cases {
+            let value = f64::from_bits(bits);
+            assert_eq!(
+                to_fixed(value, decimals),
+                expected,
+                "{value:?} / {decimals}"
+            );
+        }
+        assert_eq!(seconds_difference(Some(0.015)), "+0.01s");
+        assert_eq!(seconds_difference(Some(-0.015)), "-0.01s");
+    }
+
+    #[test]
     fn to_fixed_rounds_ties_up_like_javascript() {
         assert_eq!(to_fixed(0.125, 2), "0.13");
         assert_eq!(to_fixed(2.5, 0), "3");
@@ -193,7 +258,8 @@ mod tests {
     #[test]
     fn lap_time_and_clock_match_production() {
         assert_eq!(lap_time(Some(102.198)), "1:42.198");
-        assert_eq!(lap_time(Some(119.9995)), "2:00.000");
+        assert_eq!(lap_time(Some(119.9995)), "1:59.999");
+        assert_eq!(lap_time(Some(119.9995_f64.next_up())), "2:00.000");
         assert_eq!(lap_time(Some(59.5)), "0:59.500");
         assert_eq!(lap_time(Some(0.0)), PLACEHOLDER);
         assert_eq!(lap_time(None), PLACEHOLDER);
@@ -232,6 +298,54 @@ mod tests {
         assert_eq!(percent(Some(0.734)), "73%");
         assert_eq!(percent(Some(1.4)), "100%");
         assert_eq!(speed(None, ES), PLACEHOLDER);
+    }
+
+    #[test]
+    fn weather_units_and_missing_values() {
+        assert_eq!(temperature(Some(295.15), ES), "22 °C");
+        assert_eq!(temperature(Some(263.15), ES), "-10 °C");
+        assert_eq!(temperature(Some(273.15), EN_IMPERIAL), "32 °F");
+        assert_eq!(temperature(Some(273.15), ES), "0 °C");
+        assert_eq!(speed(Some(5.0), ES), "18 km/h");
+        assert_eq!(speed(Some(0.0), ES), "0 km/h");
+        assert_eq!(pressure(Some(101_325.0)), "1013 hPa");
+        assert_eq!(percent(Some(0.25)), "25%");
+        assert_eq!(percent(Some(1.0 - 0.25)), "75%");
+        for value in [
+            None,
+            Some(f64::NAN),
+            Some(f64::INFINITY),
+            Some(f64::NEG_INFINITY),
+        ] {
+            assert_eq!(temperature(value, ES), PLACEHOLDER);
+            assert_eq!(speed(value, ES), PLACEHOLDER);
+            assert_eq!(pressure(value), PLACEHOLDER);
+            assert_eq!(wind_direction(value, ES), PLACEHOLDER);
+        }
+        assert_eq!(temperature(Some(-1.0), ES), PLACEHOLDER);
+        assert_eq!(pressure(Some(-1.0)), PLACEHOLDER);
+    }
+
+    #[test]
+    fn wind_cardinals_wrap_and_follow_language() {
+        use std::f64::consts::{FRAC_PI_4, FRAC_PI_8, TAU};
+
+        let es = ["N", "NE", "E", "SE", "S", "SO", "O", "NO"];
+        let en = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
+        for sector in 0_u32..8 {
+            let radians = f64::from(sector) * FRAC_PI_4;
+            assert_eq!(wind_direction(Some(radians), ES), es[sector as usize]);
+            assert_eq!(
+                wind_direction(Some(radians), EN_IMPERIAL),
+                en[sector as usize]
+            );
+        }
+        assert_eq!(wind_direction(Some(-FRAC_PI_4), ES), "NO");
+        assert_eq!(wind_direction(Some(TAU), ES), "N");
+        assert_eq!(wind_direction(Some(2.0 * TAU), ES), "N");
+        assert_eq!(wind_direction(Some(FRAC_PI_8 - 1e-9), ES), "N");
+        assert_eq!(wind_direction(Some(FRAC_PI_8), ES), "NE");
+        assert_eq!(wind_direction(Some(TAU - FRAC_PI_8), ES), "N");
     }
 
     #[test]

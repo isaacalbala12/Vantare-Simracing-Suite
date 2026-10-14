@@ -1,3 +1,6 @@
+> Roadmap #1535: las referencias a plan.md/generador en este documento son históricas.
+> ClickUp es la única fuente; ver [mantenimiento vigente](../roadmap-maintenance.md).
+
 # PLAN — VAN-732 · Paridad CrewChief Timings y voz LLM nativa
 
 ## Control

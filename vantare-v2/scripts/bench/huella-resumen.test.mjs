@@ -145,8 +145,8 @@ test("la tabla de pérdidas etiqueta el total sin llamarlo presentado", () => {
   assert.doesNotMatch(markdown, /\| Perdidos \| Presentados \|/);
 });
 
-test("el banco limita el muestreo de procesos por tiempo de pared", async () => {
-  const script = await readFile(new URL("huella.ps1", import.meta.url), "utf8");
+test("el medidor conservado limita el muestreo por tiempo de pared", async () => {
+  const script = await readFile(new URL("huella-medir.ps1", import.meta.url), "utf8");
   assert.match(script, /AddSeconds\(\$Duracion\)/);
   assert.match(script, /while \(\(Get-Date\) -lt \$sampleDeadline\)/);
   assert.doesNotMatch(script, /for \(\$sampleIndex = 0; \$sampleIndex -lt \$Duracion/);

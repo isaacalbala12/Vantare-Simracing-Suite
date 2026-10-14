@@ -40,10 +40,10 @@ El mismo texto es el que la app muestra al pasar el ratón por el aviso de actua
 
 ## Desarrollo activo
 
-El digest diario consulta en lectura los milestones abiertos de GitHub del propio
-repositorio. El progreso es `closed/total` de sus issues y el texto es la
-descripción del milestone. Si no hay milestones disponibles, publica el embed
-honesto de "sin novedades". El workflow no escribe en ninguna fuente.
+El digest diario lee visual_roadmap_current, publicación ClickUp compartida
+por Hub/web, con URL y anon key públicas. Progreso complete / tareas por Tipo.
+No requiere que GitHub sea público ni consulta milestones como fallback.
+Ausencia/error conserva el mensaje honesto de sin novedades.
 
 ## Sistema visual compartido
 
@@ -56,6 +56,11 @@ Los cinco mensajes usan una presentación híbrida y determinista:
 - si no puede generarse la tarjeta, el workflow falla antes de publicar y no envía un mensaje parcial.
 
 La referencia visual es `roadmap_v5.2.html`: fondo negro con iluminación roja, superficies translúcidas, Inter, mono técnico, bordes finos y jerarquía sobria. Las tarjetas no reproducen la navegación de la app.
+
+Desde #1535 el digest de desarrollo lee el mismo artefacto público ClickUp
+que Hub y web; no usa milestones de GitHub ni plan.md como contenido alternativo.
+El progreso es complete / tareas publicadas por Tipo. Error de lectura produce
+el estado honesto de ausencia de novedades. Ver [mantenimiento](roadmap-maintenance.md).
 
 | Canal | Tarjeta | Contenido visual |
 |---|---|---|

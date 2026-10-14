@@ -1,0 +1,32 @@
+{
+  "issue": 1427,
+  "source": "Workshop reconstruido: demostración, no captura LMU",
+  "snapshot": "../../../fixtures/fuel-strategy.snapshot.json",
+  "variants": [
+    {
+      "name": "history-1",
+      "settings": {
+        "historyRows": 1
+      }
+    },
+    {
+      "name": "history-8",
+      "settings": {
+        "historyRows": 8
+      },
+      "snapshot": "eight-laps.snapshot.json"
+    },
+    {
+      "name": "no-projection",
+      "settings": {
+        "showProjection": false
+      }
+    },
+    {
+      "name": "virtual-energy",
+      "settings": {
+        "source": "virtual-energy"
+      }
+    }
+  ]
+}

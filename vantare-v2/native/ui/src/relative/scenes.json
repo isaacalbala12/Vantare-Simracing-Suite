@@ -1,0 +1,180 @@
+[
+  {
+    "name": "asymmetric",
+    "snapshot": "../../fixtures/relative.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "relative",
+            "rangeAhead": 1,
+            "rangeBehind": 2
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "same-class",
+    "snapshot": "../../fixtures/relative.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "relative",
+            "classScope": "sameClass"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "fill",
+    "snapshot": "../../fixtures/relative.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "relative",
+            "rowHeightMode": "fill"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "last-lap-columns",
+    "snapshot": "../../fixtures/relative.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "relative",
+            "columns": [
+              {
+                "id": "position",
+                "metricId": "position",
+                "widthPreset": "xs",
+                "enabled": true
+              },
+              {
+                "id": "driverName",
+                "metricId": "driverName",
+                "widthPreset": "lg",
+                "enabled": true
+              },
+              {
+                "id": "lastLap",
+                "metricId": "lastLap",
+                "widthPreset": "md",
+                "enabled": true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "initial-name",
+    "snapshot": "../../fixtures/relative.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "relative",
+            "columns": [
+              {
+                "id": "driver",
+                "metricId": "driverName",
+                "widthPreset": "lg",
+                "format": {
+                  "mode": "initial"
+                },
+                "enabled": true
+              },
+              {
+                "id": "gap",
+                "metricId": "gap",
+                "widthPreset": "md",
+                "enabled": true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "slots",
+    "snapshot": "../../fixtures/relative.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "relative",
+            "footerSlots": [
+              "time",
+              "position",
+              "bestLap",
+              "lastLap",
+              "track"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "many-slots",
+    "snapshot": "../../fixtures/relative.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "relative",
+            "footerSlots": [
+              "time",
+              "lap",
+              "position",
+              "gap",
+              "bestLap",
+              "lastLap",
+              "track",
+              "ambient",
+              "wind"
+            ]
+          }
+        }
+      ]
+    }
+  }
+]

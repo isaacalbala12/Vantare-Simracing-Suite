@@ -235,3 +235,20 @@ Score no mejora en 3 iteraciones, o `pointerLagMs_p95 < 8 ms` en traza `move-fas
 ---
 
 *Última actualización: 2026-07-10. Variante B1 en producción.*
+
+## Studio nativo (#1496, 2026-10-09)
+
+GPUI conserva la preview en CanvasFrame, fuera del documento. Ocho tiradores
+editan una geometría opcional compartida por Studio y el overlay de pista.
+El documento v1 anterior mantiene tamaño natural; `geometry.size` guarda el frame
+en píxeles lógicos y `geometry.aspectLocked` mantiene su proporción actual.
+El ancho escala uniformemente todas las primitivas del renderer canónico; con
+proporción libre la altura recorta o añade espacio, sin estirar tipografía.
+Mínimos del frame 64×32, máximos 3840×2160; con proporción se acotan ambos ejes
+sin mover la esquina opuesta. Esquinas usan el mayor delta relativo; lados su eje.
+Flechas mueven1px, Mayús8px; Alt+flechas redimensiona con esos pasos. Inspector
+permite Ancho/Alto, proporción y escala±10%. Escape, pérdida de foco y cambio de
+ventana/zoom/carril/selección/scroll cancelan y restauran renderer/documento.
+Preview no escribe ni añade historial; soltar escribe una vez y Undo/Redo restaura
+la geometría. Copias antiguas del binario con deny_unknown_fields no entienden
+geometry no predeterminada: no usar un cliente antiguo junto a este documento.

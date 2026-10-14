@@ -1268,6 +1268,15 @@ def main() -> int:
     args = parser.parse_args()
     handlers = {"bootstrap": cmd_bootstrap, "doctor": cmd_doctor, "check": cmd_check,
                 "audit": cmd_audit, "report": cmd_report, "baseline": cmd_baseline}
+    if load_json(SCOPE_PATH).get("retired_product"):
+        from native_retirement import check
+        if args.cmd in ("baseline", "bootstrap"):
+            print("Go/React analyzers retired; their baselines remain historical", file=sys.stderr)
+            return 1
+        if args.cmd == "check" and args.ci and not args.base:
+            print("--ci requires --base", file=sys.stderr)
+            return 1
+        return check(REPO_ROOT)
     return handlers[args.cmd](args)
 
 

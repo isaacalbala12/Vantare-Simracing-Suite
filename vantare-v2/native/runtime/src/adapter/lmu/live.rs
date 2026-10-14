@@ -11,9 +11,9 @@ use super::rest::Poller;
 use super::shm::RunningSource;
 use super::translate::Translator;
 
-/// Intervalo mínimo entre lecturas del frame: el simulador lo refresca a ~60 Hz
-/// y leer más rápido solo copia lo mismo. Es un mínimo, sin fase fija: el
-/// ritmo real lo marca el núcleo al llamar a `poll`.
+/// Periodo de lectura del frame: el simulador lo refresca a ~60 Hz.
+/// Una lectura por periodo, con fase fija en el reloj del núcleo;
+/// una llamada tardía salta periodos perdidos sin desplazar esa fase.
 const READ_INTERVAL: Duration = Duration::from_nanos(1_000_000_000 / 60);
 /// Espera entre intentos de abrir la fuente: recorrer los procesos no es barato.
 const RETRY_INTERVAL: Duration = Duration::from_secs(1);
@@ -118,12 +118,25 @@ impl Adapter for Lmu {
         } else if now < self.next_read {
             return Ok(None);
         }
-        self.next_read = now + READ_INTERVAL;
-        let rest_updated = self.take_rest(now);
+        let remaining = READ_INTERVAL.as_nanos() - now.as_nanos() % READ_INTERVAL.as_nanos();
+        // El resto está acotado por READ_INTERVAL (menos de un segundo).
+        let remaining =
+            u64::try_from(remaining).expect("intervalo de lectura menor que u64 nanosegundos");
+        self.next_read = now.saturating_add(Duration::from_nanos(remaining));
+        let rest_updated = {
+            #[cfg(feature = "paint-stats")]
+            let _span = crate::profiling::begin(crate::profiling::Stage::RestCache);
+            self.take_rest(now)
+        };
         let Some(running) = &mut self.source else {
             return Err(AdapterError::Disconnected);
         };
-        match (running.read)(&mut self.frame, &mut self.scratch) {
+        let read = {
+            #[cfg(feature = "paint-stats")]
+            let _span = crate::profiling::begin(crate::profiling::Stage::Shm);
+            (running.read)(&mut self.frame, &mut self.scratch)
+        };
+        match read {
             Ok(()) => {}
             // El productor escribía a la vez: se reintenta en la próxima llamada.
             Err(error) if error.kind() == io::ErrorKind::WouldBlock => return Ok(None),
@@ -138,6 +151,8 @@ impl Adapter for Lmu {
             return Ok(None);
         }
         let build = running.build.as_str();
+        #[cfg(feature = "paint-stats")]
+        let _span = crate::profiling::begin(crate::profiling::Stage::Translate);
         let observation = self
             .translator
             .observe(&self.frame, build, now)
@@ -145,10 +160,18 @@ impl Adapter for Lmu {
         std::mem::swap(&mut self.frame, &mut self.previous);
         Ok(Some(observation))
     }
+
+    fn next_poll(&self) -> Option<Duration> {
+        Some(if self.source.is_some() {
+            self.next_read
+        } else {
+            self.retry_at
+        })
+    }
 }
 
 fn open_running() -> Result<Running, AdapterError> {
-    let source = RunningSource::open().map_err(|_| AdapterError::Disconnected)?;
+    let source = RunningSource::open().map_err(|error| open_error(error.kind()))?;
     let build = source
         .build
         .exact_supported_build()
@@ -165,6 +188,16 @@ fn open_running() -> Result<Running, AdapterError> {
     })
 }
 
+fn open_error(kind: io::ErrorKind) -> AdapterError {
+    if kind == io::ErrorKind::AlreadyExists {
+        AdapterError::Rejected(
+            "hay varios procesos LMU; no se puede elegir una fuente única".into(),
+        )
+    } else {
+        AdapterError::Disconnected
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -173,6 +206,24 @@ mod tests {
     const REAL_44: &[u8] = include_bytes!("../../../../../testdata/lmu-fixture.bin");
     const MENU: &[u8] = include_bytes!("../../../../../testdata/lmu-menu-fixture.bin");
     const MS: fn(u64) -> Duration = Duration::from_millis;
+
+    #[test]
+    fn ambiguous_lmu_processes_are_rejected_and_keep_the_diagnosis_during_retry() {
+        let mut lmu = Lmu::with_source(
+            Box::new(|| Err(open_error(io::ErrorKind::AlreadyExists))),
+            None,
+        );
+        for now in [MS(0), MS(10), MS(1_000)] {
+            let error = lmu.poll(now).expect_err("varios procesos no son ausencia");
+            assert!(
+                matches!(error, AdapterError::Rejected(ref cause) if cause.contains("varios procesos LMU"))
+            );
+        }
+        assert_eq!(
+            open_error(io::ErrorKind::NotFound),
+            AdapterError::Disconnected
+        );
+    }
 
     /// Fuente simulada: `next` es el frame que devolverá la próxima lectura, o
     /// el error con que fallará.
@@ -193,6 +244,197 @@ mod tests {
                 build: "1.3.0.0".to_owned(),
             })
         })
+    }
+
+    #[test]
+    fn late_reads_keep_the_phase_and_skip_missed_frames() {
+        let opens = Arc::new(Mutex::new(0));
+        let script = Arc::new(Mutex::new(Ok(REAL_44.to_vec())));
+        let mut lmu = Lmu::with_source(scripted(opens, script), None);
+        lmu.poll(Duration::ZERO).unwrap();
+        lmu.poll(READ_INTERVAL + MS(2)).unwrap();
+        assert_eq!(lmu.next_read, READ_INTERVAL * 2);
+        assert_eq!(lmu.next_poll(), Some(READ_INTERVAL * 2));
+        lmu.poll(READ_INTERVAL * 10 + MS(3)).unwrap();
+        assert_eq!(lmu.next_read, READ_INTERVAL * 11);
+        assert_eq!(lmu.poll(READ_INTERVAL * 10 + MS(4)), Ok(None));
+    }
+
+    #[test]
+    fn a_frozen_clock_with_live_rest_preserves_data_until_rest_also_stops() {
+        let opens = Arc::new(Mutex::new(0));
+        let script: Script = Arc::new(Mutex::new(Ok(REAL_44.to_vec())));
+        let mut lmu = Lmu::with_source(scripted(opens, script), None);
+        let mut core = crate::core::Core::new(1);
+        lmu.translator
+            .rest
+            .accept_session(
+                br#"{"inRealtime":true,"gamePhase":5,"session":"PRACTICE1"}"#,
+                MS(0),
+            )
+            .unwrap();
+        core.step(&mut lmu, MS(0)).unwrap();
+        let original = core.snapshot().state.clone();
+        for at in (250..=6000).step_by(250) {
+            lmu.translator
+                .rest
+                .accept_session(
+                    br#"{"inRealtime":false,"gamePhase":5,"session":"PRACTICE1"}"#,
+                    MS(at),
+                )
+                .unwrap();
+            // Una ronda REST recibida provoca observe aunque SHM sea idéntico
+            // (take_rest devuelve true en producción, sin otro consumidor IPC).
+            core.observe(lmu.translator.observe(REAL_44, "1.3.0.0", MS(at)).unwrap())
+                .unwrap();
+            core.tick(MS(at));
+            if at >= 500 {
+                let snapshot = core.snapshot();
+                assert_eq!(
+                    snapshot.state.source_state,
+                    vantare_domain::SourceState::Paused,
+                    "en {at} ms"
+                );
+                let mut preserved = snapshot.state.clone();
+                assert_eq!(
+                    preserved.driving_situation,
+                    if at >= 750 {
+                        vantare_domain::DrivingSituation::Paused
+                    } else {
+                        original.driving_situation
+                    },
+                    "situación tras 250 ms de pausa confirmada"
+                );
+                preserved.source_state = original.source_state;
+                preserved.driving_situation = original.driving_situation;
+                assert_eq!(
+                    preserved, original,
+                    "no cambia ningún dato durante la pausa"
+                );
+            }
+        }
+        core.step(&mut lmu, MS(6499)).unwrap();
+        assert_eq!(
+            core.snapshot().state.source_state,
+            vantare_domain::SourceState::Paused
+        );
+        core.step(&mut lmu, MS(6500)).unwrap();
+        assert_eq!(
+            core.snapshot().state.source_state,
+            vantare_domain::SourceState::Stale
+        );
+        assert!(matches!(
+            core.snapshot().state.cars[0].position,
+            vantare_domain::Quality::Stale(_)
+        ));
+    }
+
+    #[test]
+    fn resuming_a_confirmed_pause_is_immediate_and_unrelated_rest_cannot_confirm_it() {
+        for (session, expected) in [
+            ("PRACTICE1", vantare_domain::SourceState::Paused),
+            ("RACE1", vantare_domain::SourceState::Stale),
+        ] {
+            let script: Script = Arc::new(Mutex::new(Ok(REAL_44.to_vec())));
+            let mut lmu =
+                Lmu::with_source(scripted(Arc::new(Mutex::new(0)), Arc::clone(&script)), None);
+            let mut core = crate::core::Core::new(1);
+            core.step(&mut lmu, MS(0)).unwrap();
+            let body = format!(r#"{{"session":"{session}","inRealtime":false}}"#);
+            lmu.translator
+                .rest
+                .accept_session(body.as_bytes(), MS(500))
+                .unwrap();
+            core.step(&mut lmu, MS(500)).unwrap();
+            assert_eq!(core.snapshot().state.source_state, expected);
+            if expected == vantare_domain::SourceState::Paused {
+                let mut advanced = REAL_44.to_vec();
+                advanced[1700..1708].copy_from_slice(&112.8_f64.to_le_bytes());
+                *script.lock().unwrap() = Ok(advanced);
+                core.step(&mut lmu, MS(520)).unwrap();
+                assert_eq!(
+                    core.snapshot().state.source_state,
+                    vantare_domain::SourceState::Live
+                );
+                assert!(core.snapshot().state.cars[0].position.current().is_some());
+            }
+        }
+    }
+
+    #[test]
+    fn resuming_scoring_does_not_hide_a_player_clock_that_remains_frozen() {
+        let mut frame = REAL_44.to_vec();
+        let player_clock = 128_468 + 43 * 1_888 + 12;
+        frame[player_clock..player_clock + 8].copy_from_slice(&112.6_f64.to_le_bytes());
+        let script: Script = Arc::new(Mutex::new(Ok(frame.clone())));
+        let mut lmu =
+            Lmu::with_source(scripted(Arc::new(Mutex::new(0)), Arc::clone(&script)), None);
+        let mut core = crate::core::Core::new(1);
+        core.step(&mut lmu, MS(0)).unwrap();
+        lmu.translator
+            .rest
+            .accept_session(br#"{"session":"PRACTICE1"}"#, MS(500))
+            .unwrap();
+        core.step(&mut lmu, MS(500)).unwrap();
+        assert_eq!(
+            core.snapshot().state.source_state,
+            vantare_domain::SourceState::Paused
+        );
+        frame[1700..1708].copy_from_slice(&112.8_f64.to_le_bytes());
+        *script.lock().unwrap() = Ok(frame);
+        core.step(&mut lmu, MS(520)).unwrap();
+        let snapshot = core.snapshot();
+        assert_eq!(
+            snapshot.state.source_state,
+            vantare_domain::SourceState::Live
+        );
+        assert_eq!(
+            snapshot.state.capabilities.driver_inputs,
+            vantare_domain::Capability::WithData
+        );
+        assert!(matches!(
+            snapshot.state.player.as_ref().unwrap().telemetry.throttle,
+            vantare_domain::Quality::Stale(_)
+        ));
+    }
+
+    #[test]
+    fn independently_stalled_clocks_keep_latest_scoring_and_last_valid_player_when_paused() {
+        let mut frame = REAL_44.to_vec();
+        let player_clock = 128_468 + 43 * 1_888 + 12;
+        frame[player_clock..player_clock + 8].copy_from_slice(&112.6_f64.to_le_bytes());
+        let script: Script = Arc::new(Mutex::new(Ok(frame.clone())));
+        let mut lmu =
+            Lmu::with_source(scripted(Arc::new(Mutex::new(0)), Arc::clone(&script)), None);
+        let mut core = crate::core::Core::new(1);
+        core.step(&mut lmu, MS(0)).unwrap();
+        let player = core.snapshot().state.player;
+        frame[1700..1708].copy_from_slice(&113.0_f64.to_le_bytes());
+        *script.lock().unwrap() = Ok(frame);
+        core.step(&mut lmu, MS(500)).unwrap();
+        let latest = core.snapshot();
+        assert_eq!(latest.state.source_state, vantare_domain::SourceState::Live);
+        assert_eq!(
+            latest.state.capabilities.driver_inputs,
+            vantare_domain::Capability::WithData
+        );
+        lmu.translator
+            .rest
+            .accept_session(br#"{"session":"PRACTICE1"}"#, MS(1000))
+            .unwrap();
+        core.step(&mut lmu, MS(1000)).unwrap();
+        let paused = core.snapshot();
+        assert_eq!(
+            paused.state.source_state,
+            vantare_domain::SourceState::Paused
+        );
+        assert_eq!(paused.state.cars, latest.state.cars);
+        assert_eq!(paused.state.session, latest.state.session);
+        assert_eq!(paused.state.player, player);
+        assert_eq!(
+            paused.state.capabilities.driver_inputs,
+            vantare_domain::Capability::Fresh
+        );
     }
 
     #[test]

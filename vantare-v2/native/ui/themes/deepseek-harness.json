@@ -1,0 +1,92 @@
+{
+  "name": "Harness",
+  "colors": {
+    "window": 1381655,
+    "base": 1381655,
+    "sidebar": 1776412,
+    "l1": 2302756,
+    "l2": 2894894,
+    "l3": 3487288,
+    "elevated": 4408650,
+    "neoTop": 2631980,
+    "neoBottom": 2302756,
+    "text": 16382715,
+    "text2": 13620182,
+    "text3": 11383480,
+    "caption": 8488332,
+    "onPrimary": 987413,
+    "accent": 5670654,
+    "accentBright": 8039167,
+    "accentDark": 3431106,
+    "wine": 2176359,
+    "ok": 2278750,
+    "warn": 16096779,
+    "error": 15882842,
+    "line": 4294967055,
+    "line2": 4294967066,
+    "line3": 4294967078
+  },
+  "geometry": {
+    "sidebar": 272,
+    "sidebarCollapsed": 76,
+    "gap": 16,
+    "gutter": 28,
+    "radius": 16,
+    "controlRadius": 8,
+    "controlHeight": 36,
+    "topbar": 52,
+    "columns": 3
+  },
+  "fonts": {
+    "body": "Inter W400",
+    "display": "Rajdhani",
+    "mono": "Space Mono",
+    "bodySize": 14,
+    "smallSize": 12,
+    "titleSize": 44
+  },
+  "shadow": {
+    "lightAlpha": 0.08,
+    "alpha": 0.28,
+    "blur": 24,
+    "y": 8
+  },
+  "gradients": {
+    "hero": [
+      2504540,
+      1579813
+    ],
+    "button": [
+      5670654,
+      3431106
+    ],
+    "progress": [
+      3431106,
+      8039167
+    ],
+    "active": [
+      4408650,
+      3487288
+    ],
+    "appGame": [
+      3107544,
+      1191530
+    ],
+    "appVoice": [
+      15303978,
+      9389323
+    ],
+    "appTools": [
+      9063648,
+      4202618
+    ],
+    "appVideo": [
+      5922148,
+      2500395
+    ],
+    "appMusic": [
+      2278237,
+      944944
+    ]
+  }
+}

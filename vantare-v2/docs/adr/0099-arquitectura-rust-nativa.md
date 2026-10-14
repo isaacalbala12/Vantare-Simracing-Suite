@@ -111,6 +111,10 @@ Topología por defecto (**B**):
   una única copia del snapshot.
 - **Proceso Hub** (Hub, Overlay Studio, Workshop): se cierra por completo al
   entrar al juego.
+- **Servicios bajo demanda**: cuenta Clerk, renovación y llamadas remotas,
+  sin UI/elevación y con un único propietario de sesión. Inicialmente termina
+  al entrar al juego; futuro residente requiere opt-in/presupuesto. Decisión
+  de Isaac 2026-09-30, ISA-1430: [plan](../superpowers/plans/2026-09-30-servicios-hub.md).
 - **Bajo demanda**: Engineer/voz, almacenamiento y grabación, análisis, render
   3D. Una salida remota (autenticada y cifrada) para análisis live queda para
   mucho después del corte; la arquitectura solo no la impide.
@@ -166,7 +170,7 @@ Overlay V2 se documenta y se prueba; no se hereda en silencio.
 | Servicio | Ubicación |
 |---|---|
 | Adaptador activo, estado, derivaciones, licencia local | Núcleo |
-| Cuenta/Supabase, renovación, calendario, Discord/notificaciones | Hub |
+| Cuenta Clerk, renovación y red (calendario/Discord/notificaciones futuros) | Servicios bajo demanda; Hub presenta estado/comandos |
 | Planes de Strategy (edición y persistencia) | Hub |
 | Engineer/Spotter y voz | Worker bajo demanda (foto + eventos) |
 | Grabación y almacén (DuckDB con un único propietario) | Worker de almacenamiento |
@@ -175,6 +179,15 @@ Overlay V2 se documenta y se prueba; no se hereda en silencio.
 | Render 3D | Extensión opcional, fuera de la sustitución |
 | Salida remota para análisis live | Fuera de este plan; mucho después del corte |
 | Actualizador/instalador | Proceso temporal, fuera de carrera, con rollback compatible con datos persistidos |
+
+El núcleo conserva autoridad local: firma/clock/política para overlays y
+Engineer por IPC autenticado, sin tokens ni HTTP. Si una credencial válida al
+entrar al juego caduca durante esa sesión, una hora desde vencimiento antes de
+suspender funciones protegidas. Fuera de ello, sin gracia offline; salir del
+juego elimina margen, reconectar/reiniciar no lo renueva. Firma inválida, logout,
+revocación y rollback no obtienen margen. Clerk y UUID interno se vinculan en
+servidor, no por email ni claims editables. JWS Ed25519/clave de instalación son
+destino, v1 compatible es transición.
 
 ### 8. Reutilización de ISA-1403
 

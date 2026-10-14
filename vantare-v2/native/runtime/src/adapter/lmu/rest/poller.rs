@@ -40,6 +40,8 @@ impl Poller {
         let worker = thread::spawn(move || {
             let mut backoff = interval;
             while !stop.load(Ordering::Acquire) {
+                #[cfg(feature = "paint-stats")]
+                let span = crate::profiling::begin(crate::profiling::Stage::Rest);
                 let standings_started = Instant::now();
                 let standings = client.fetch(Endpoint::Standings);
                 if stop.load(Ordering::Acquire) {
@@ -54,6 +56,8 @@ impl Poller {
                     session,
                     session_started,
                 });
+                #[cfg(feature = "paint-stats")]
+                drop(span); // No incluir el park/backoff en la consulta REST.
                 backoff = if complete {
                     interval
                 } else {

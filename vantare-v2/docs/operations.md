@@ -1,10 +1,12 @@
 # Operaciones
 
+> #1533: este documento conserva la referencia histórica Wails/React. Sus comandos y rutas retirados no son instrucciones ejecutables del checkout actual; usa [native/README.md](../native/README.md).
+
 Comandos contrastados con el código y CI de nightly del 2026-09-14. Salvo indicación, ejecutar desde `vantare-v2`.
 
 ## Requisitos y preparación
 
-Go según [go.mod](../go.mod) (1.25.0 en este corte), Node 22 y pnpm 9.1.0 como [CI](../../.github/workflows/branch-channel-gates.yml). Wails v3 usa la versión fijada en ese workflow. Windows 10/11 con WebView2 es el entorno objetivo del runtime LMU.
+Go según [go.mod](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/go.mod) (1.25.0 en este corte), Node 22 y pnpm 9.1.0 como [CI](../../.github/workflows/branch-channel-gates.yml). Wails v3 usa la versión fijada en ese workflow. Windows 10/11 con WebView2 es el entorno objetivo del runtime LMU.
 
 Leer [AGENTS](../AGENTS.md) y la tarea/proyecto en Notion antes de editar. Obtener `origin/nightly`, comprobar HEAD y trabajar en rama/worktree propios.
 
@@ -84,7 +86,7 @@ verifier queda sin configurar y el estado puede permanecer `unconfigured`.
 
 ### App con assets compilados
 
-Compila primero el frontend: Go lo embebe mediante [frontend/embed.go](../frontend/embed.go). El siguiente comando también abre Wails; no es un modo headless.
+Compila primero el frontend: Go lo embebe mediante [frontend/embed.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/embed.go). El siguiente comando también abre Wails; no es un modo headless.
 
 ```powershell
 pnpm --dir frontend build

@@ -1,0 +1,57 @@
+[
+  {
+    "name": "ten-no-weather",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "broadcast-tower",
+            "rowCount": 10,
+            "showWeather": false
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "three",
+    "snapshot": "../../fixtures/broadcast-tower.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "broadcast-tower",
+            "rowCount": 3
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "carousel",
+    "snapshot": "../../fixtures/broadcast-tower.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "broadcast-tower",
+            "driverCarousel": true
+          }
+        }
+      ]
+    }
+  }
+]

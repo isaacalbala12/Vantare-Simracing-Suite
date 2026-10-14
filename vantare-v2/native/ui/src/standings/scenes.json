@@ -1,0 +1,397 @@
+[
+  {
+    "name": "broadcast",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "templateId": "broadcast",
+            "rowCount": 7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "no-header",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "showSessionHeader": false,
+            "rowCount": 7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "no-footer",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "showSessionFooter": false,
+            "rowCount": 7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "bare-header",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "brandVisible": false,
+            "rowCount": 7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "brand-band",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "showSessionHeader": false,
+            "showBrand": true,
+            "rowCount": 7
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "multiclass",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "classificationMode": "multiclass",
+            "classScope": "all-classes",
+            "rowCount": 8
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "player-window",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "playerWindow": true,
+            "windowAround": 2
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "columns-pit",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "rowCount": 7,
+            "columns": [
+              {
+                "id": "position",
+                "metricId": "position",
+                "widthPreset": "xs",
+                "format": {
+                  "mode": "initial",
+                  "display": "compact",
+                  "decimals": 1
+                },
+                "enabled": true
+              },
+              {
+                "id": "driverNumber",
+                "metricId": "driverNumber",
+                "widthPreset": "sm",
+                "format": {
+                  "mode": "initial",
+                  "display": "compact",
+                  "decimals": 1
+                },
+                "enabled": true
+              },
+              {
+                "id": "driverName",
+                "metricId": "driverName",
+                "widthPreset": "md",
+                "format": {
+                  "mode": "initial",
+                  "display": "compact",
+                  "decimals": 1
+                },
+                "enabled": true
+              },
+              {
+                "id": "interval",
+                "metricId": "interval",
+                "widthPreset": "md",
+                "format": {
+                  "mode": "initial",
+                  "display": "compact",
+                  "decimals": 1
+                },
+                "enabled": true
+              },
+              {
+                "id": "lastLap",
+                "metricId": "lastLap",
+                "widthPreset": "lg",
+                "format": {
+                  "mode": "initial",
+                  "display": "compact",
+                  "decimals": 1
+                },
+                "enabled": true
+              },
+              {
+                "id": "pit",
+                "metricId": "pit",
+                "widthPreset": "auto",
+                "format": {
+                  "mode": "initial",
+                  "display": "compact",
+                  "decimals": 1
+                },
+                "enabled": true
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "slots",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "rowCount": 7,
+            "footerSlots": [
+              "time",
+              "position",
+              "gap",
+              "bestLap",
+              "lastLap"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "many-slots",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "rowCount": 7,
+            "footerSlots": [
+              "time",
+              "lap",
+              "position",
+              "gap",
+              "bestLap",
+              "lastLap",
+              "track",
+              "ambient",
+              "wind"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "trackTemperature",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "rowCount": 7,
+            "footerFirst": "trackTemperature",
+            "footerSecond": "none"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "airTemperature",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "rowCount": 7,
+            "footerFirst": "airTemperature",
+            "footerSecond": "none"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "totalLaps",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "rowCount": 7,
+            "footerFirst": "totalLaps",
+            "footerSecond": "none"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "remaining",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "rowCount": 7,
+            "footerFirst": "remaining",
+            "footerSecond": "none"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "rain",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "rowCount": 7,
+            "footerFirst": "rain",
+            "footerSecond": "none"
+          }
+        }
+      ]
+    }
+  },
+  {
+    "name": "wetness",
+    "snapshot": "../../fixtures/standings.snapshot.json",
+    "layout": {
+      "version": 1,
+      "instances": [
+        {
+          "id": "variant",
+          "x": 0,
+          "y": 0,
+          "settings": {
+            "kind": "standings",
+            "rowCount": 7,
+            "footerFirst": "wetness",
+            "footerSecond": "none"
+          }
+        }
+      ]
+    }
+  }
+]

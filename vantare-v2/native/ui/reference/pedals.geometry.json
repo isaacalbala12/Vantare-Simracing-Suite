@@ -1,0 +1,3696 @@
+{
+  "diagnostics": [],
+  "widget": {
+    "id": "reference-pedals",
+    "type": "pedals",
+    "layout": {
+      "x": 0,
+      "y": 0,
+      "w": 120,
+      "h": 160,
+      "zIndex": 0,
+      "aspectLocked": true
+    },
+    "behavior": {
+      "enabled": true,
+      "updateHz": 30
+    },
+    "content": {},
+    "visual": {
+      "systemId": "vantare-functional",
+      "systemVersion": 1,
+      "configVersion": 1,
+      "baseSettings": {
+        "showHeader": true,
+        "transparentBackground": false
+      },
+      "appearanceOverrides": {},
+      "provenance": {
+        "designId": "pedals-functional-signature",
+        "designName": "Con fondo",
+        "origin": "vantare",
+        "appliedAt": "1970-01-01T00:00:00.000Z"
+      }
+    }
+  },
+  "runtime": {
+    "overlayV2Frame": {
+      "contract": 2,
+      "algorithm": 2,
+      "epoch": 3,
+      "sequence": 2,
+      "sectionMask": 2047,
+      "sessionId": "f6-session",
+      "generatedAt": "2026-08-19T12:00:02Z",
+      "units": {
+        "speed": "mps",
+        "temperature": "celsius",
+        "pressure": "kpa",
+        "fuel": "liters"
+      },
+      "session": {
+        "track": {
+          "v": "Sebring",
+          "q": "fresh"
+        },
+        "phase": {
+          "v": "race",
+          "q": "fresh"
+        },
+        "flag": {
+          "q": "missing"
+        },
+        "remaining": {
+          "v": 7198,
+          "q": "fresh"
+        },
+        "maxLaps": {
+          "q": "fresh"
+        }
+      },
+      "player": {
+        "lapNumber": {
+          "q": "missing"
+        },
+        "id": "vehicle-000",
+        "speed": {
+          "v": 50,
+          "q": "fresh"
+        },
+        "rpm": {
+          "v": 7200,
+          "q": "fresh"
+        },
+        "gear": {
+          "v": 4,
+          "q": "fresh"
+        },
+        "throttle": {
+          "v": 0.75,
+          "q": "fresh"
+        },
+        "brake": {
+          "v": 0.125,
+          "q": "fresh"
+        },
+        "clutch": {
+          "v": 0.06,
+          "q": "fresh"
+        },
+        "steering": {
+          "v": 0.08,
+          "q": "fresh"
+        }
+      },
+      "controls": {
+        "history": {
+          "q": "fresh",
+          "capturedAtMS": [
+            0,
+            20,
+            40,
+            60,
+            80,
+            100,
+            120,
+            140,
+            160,
+            180,
+            200,
+            220,
+            240,
+            260,
+            280,
+            300,
+            320,
+            340,
+            360,
+            380,
+            400,
+            420,
+            440,
+            460,
+            480,
+            500,
+            520,
+            540,
+            560,
+            580,
+            600,
+            620,
+            640,
+            660,
+            680,
+            700,
+            720,
+            740,
+            760,
+            780
+          ],
+          "throttle": [
+            550,
+            565,
+            581,
+            596,
+            612,
+            627,
+            642,
+            658,
+            673,
+            688,
+            704,
+            719,
+            735,
+            750,
+            765,
+            781,
+            796,
+            812,
+            827,
+            842,
+            858,
+            873,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000
+          ],
+          "brake": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            127,
+            358,
+            588,
+            819,
+            1000,
+            1000,
+            1000,
+            1000,
+            1000,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "clutch": [
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0
+          ],
+          "speedMPS": [
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 58.953846153846165,
+              "q": "fresh"
+            },
+            {
+              "v": 53.415384615384625,
+              "q": "fresh"
+            },
+            {
+              "v": 47.87692307692308,
+              "q": "fresh"
+            },
+            {
+              "v": 42.33846153846154,
+              "q": "fresh"
+            },
+            {
+              "v": 38,
+              "q": "fresh"
+            },
+            {
+              "v": 38,
+              "q": "fresh"
+            },
+            {
+              "v": 38,
+              "q": "fresh"
+            },
+            {
+              "v": 38,
+              "q": "fresh"
+            },
+            {
+              "v": 38,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            },
+            {
+              "v": 62,
+              "q": "fresh"
+            }
+          ],
+          "rpm": [
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8206.538461538463,
+              "q": "fresh"
+            },
+            {
+              "v": 7491.153846153848,
+              "q": "fresh"
+            },
+            {
+              "v": 6775.7692307692305,
+              "q": "fresh"
+            },
+            {
+              "v": 6060.384615384615,
+              "q": "fresh"
+            },
+            {
+              "v": 5500,
+              "q": "fresh"
+            },
+            {
+              "v": 5500,
+              "q": "fresh"
+            },
+            {
+              "v": 5500,
+              "q": "fresh"
+            },
+            {
+              "v": 5500,
+              "q": "fresh"
+            },
+            {
+              "v": 5500,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            },
+            {
+              "v": 8600,
+              "q": "fresh"
+            }
+          ],
+          "gear": [
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 3,
+              "q": "fresh"
+            },
+            {
+              "v": 3,
+              "q": "fresh"
+            },
+            {
+              "v": 3,
+              "q": "fresh"
+            },
+            {
+              "v": 3,
+              "q": "fresh"
+            },
+            {
+              "v": 3,
+              "q": "fresh"
+            },
+            {
+              "v": 3,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            },
+            {
+              "v": 5,
+              "q": "fresh"
+            }
+          ]
+        }
+      },
+      "standings": [
+        {
+          "id": "vehicle-000",
+          "position": 1,
+          "classPosition": 1,
+          "classId": "hypercar",
+          "driver": "André Lotterer",
+          "pit": "track",
+          "laps": 127,
+          "groundPosition": {
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh"
+          },
+          "bestLap": {
+            "v": 90.964,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.234
+          },
+          "quality": {
+            "q": "fresh",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classRef": 1
+        },
+        {
+          "id": "vehicle-001",
+          "position": 2,
+          "classPosition": 1,
+          "classId": "lmp2",
+          "driver": "Ben Hanley",
+          "pit": "track",
+          "laps": 127,
+          "groundPosition": {
+            "v": {
+              "x": 1,
+              "z": -2
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 1.234
+          },
+          "bestLap": {
+            "v": 90.94399999999999,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.28399999999999
+          },
+          "quality": {
+            "q": "fresh",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classRef": 2
+        },
+        {
+          "id": "vehicle-002",
+          "position": 3,
+          "classPosition": 1,
+          "classId": "gte",
+          "driver": "Kévin Estre",
+          "pit": "track",
+          "laps": 127,
+          "groundPosition": {
+            "v": {
+              "x": 2,
+              "z": -4
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 2.468
+          },
+          "bestLap": {
+            "v": 90.92399999999999,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.33399999999999
+          },
+          "quality": {
+            "q": "fresh",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classRef": 3
+        },
+        {
+          "id": "vehicle-003",
+          "position": 4,
+          "classPosition": 2,
+          "classId": "hypercar",
+          "driver": "Antonio Giovinazzi",
+          "pit": "track",
+          "laps": 127,
+          "groundPosition": {
+            "v": {
+              "x": 3,
+              "z": -6
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 3.702
+          },
+          "bestLap": {
+            "v": 90.904,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.384
+          },
+          "quality": {
+            "q": "fresh",
+            "classGap": "missing",
+            "classGapLaps": "missing",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classRef": 1
+        },
+        {
+          "id": "vehicle-004",
+          "position": 5,
+          "classPosition": 2,
+          "classId": "lmp2",
+          "driver": "Filipe Albuquerque",
+          "pit": "track",
+          "laps": 127,
+          "groundPosition": {
+            "v": {
+              "x": 4,
+              "z": -8
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 4.936
+          },
+          "bestLap": {
+            "v": 90.884,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.434
+          },
+          "quality": {
+            "q": "fresh",
+            "classGap": "missing",
+            "classGapLaps": "missing",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classRef": 2
+        },
+        {
+          "id": "vehicle-005",
+          "position": 6,
+          "classPosition": 2,
+          "classId": "gte",
+          "driver": "Alessandro Pier Guidi",
+          "pit": "track",
+          "laps": 127,
+          "groundPosition": {
+            "v": {
+              "x": 5,
+              "z": -10
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 6.17
+          },
+          "bestLap": {
+            "v": 90.86399999999999,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.484
+          },
+          "quality": {
+            "q": "fresh",
+            "classGap": "missing",
+            "classGapLaps": "missing",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classRef": 3
+        },
+        {
+          "id": "vehicle-006",
+          "position": 7,
+          "classPosition": 3,
+          "classId": "hypercar",
+          "driver": "Sarah Bovy",
+          "pit": "track",
+          "laps": 127,
+          "groundPosition": {
+            "v": {
+              "x": 6,
+              "z": -12
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 7.404
+          },
+          "bestLap": {
+            "v": 91.33399999999999,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.53399999999999
+          },
+          "quality": {
+            "q": "fresh",
+            "classGap": "missing",
+            "classGapLaps": "missing",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classRef": 1
+        },
+        {
+          "id": "vehicle-007",
+          "position": 8,
+          "classPosition": 3,
+          "classId": "lmp2",
+          "driver": "Martin Berry",
+          "pit": "track",
+          "laps": 127,
+          "groundPosition": {
+            "v": {
+              "x": 7,
+              "z": -14
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 8.638
+          },
+          "bestLap": {
+            "v": 91.314,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.58399999999999
+          },
+          "quality": {
+            "q": "fresh",
+            "classGap": "missing",
+            "classGapLaps": "missing",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classRef": 2
+        },
+        {
+          "id": "vehicle-008",
+          "position": 9,
+          "classPosition": 3,
+          "classId": "gte",
+          "driver": "Michael Birch",
+          "pit": "track",
+          "laps": 126,
+          "groundPosition": {
+            "v": {
+              "x": 8,
+              "z": -16
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 9.872
+          },
+          "bestLap": {
+            "v": 91.294,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.634
+          },
+          "quality": {
+            "q": "fresh",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classGap": 7.404,
+          "classRef": 3
+        },
+        {
+          "id": "vehicle-009",
+          "position": 10,
+          "classPosition": 4,
+          "classId": "hypercar",
+          "driver": "Gianmaria Bruni",
+          "pit": "track",
+          "laps": 126,
+          "groundPosition": {
+            "v": {
+              "x": 9,
+              "z": -18
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 11.106
+          },
+          "bestLap": {
+            "v": 91.274,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.684
+          },
+          "quality": {
+            "q": "fresh",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classGap": 11.106,
+          "classRef": 1
+        },
+        {
+          "id": "vehicle-010",
+          "position": 11,
+          "classPosition": 4,
+          "classId": "lmp2",
+          "driver": "Phil Hanson",
+          "pit": "track",
+          "laps": 126,
+          "groundPosition": {
+            "v": {
+              "x": 10,
+              "z": -20
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 12.34
+          },
+          "bestLap": {
+            "v": 91.25399999999999,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.734
+          },
+          "quality": {
+            "q": "fresh",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classGap": 11.106,
+          "classRef": 2
+        },
+        {
+          "id": "vehicle-011",
+          "position": 12,
+          "classPosition": 4,
+          "classId": "gte",
+          "driver": "Matt Campbell",
+          "pit": "track",
+          "laps": 126,
+          "groundPosition": {
+            "v": {
+              "x": 11,
+              "z": -22
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 13.574
+          },
+          "bestLap": {
+            "v": 91.234,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.78399999999999
+          },
+          "quality": {
+            "q": "fresh",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classGap": 11.106,
+          "classRef": 3
+        },
+        {
+          "id": "vehicle-012",
+          "position": 13,
+          "classPosition": 5,
+          "classId": "hypercar",
+          "driver": "Duncan Cameron",
+          "pit": "track",
+          "laps": 126,
+          "groundPosition": {
+            "v": {
+              "x": 12,
+              "z": -24
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 14.808
+          },
+          "bestLap": {
+            "v": 91.21399999999998,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.83399999999999
+          },
+          "quality": {
+            "q": "fresh",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classGap": 14.808,
+          "classRef": 1
+        },
+        {
+          "id": "vehicle-013",
+          "position": 14,
+          "classPosition": 5,
+          "classId": "lmp2",
+          "driver": "Job van Uitert",
+          "pit": "track",
+          "laps": 126,
+          "groundPosition": {
+            "v": {
+              "x": 13,
+              "z": -26
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 16.042
+          },
+          "bestLap": {
+            "v": 91.684,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.884
+          },
+          "quality": {
+            "q": "fresh",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classGap": 14.808000000000002,
+          "classRef": 2
+        },
+        {
+          "id": "vehicle-014",
+          "position": 15,
+          "classPosition": 5,
+          "classId": "gte",
+          "driver": "Daniel Juncadella",
+          "pit": "track",
+          "laps": 126,
+          "groundPosition": {
+            "v": {
+              "x": 14,
+              "z": -28
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 17.276
+          },
+          "bestLap": {
+            "v": 91.664,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.934
+          },
+          "quality": {
+            "q": "fresh",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classGap": 14.808,
+          "classRef": 3
+        },
+        {
+          "id": "vehicle-015",
+          "position": 16,
+          "classPosition": 6,
+          "classId": "hypercar",
+          "driver": "Conrad Laursen",
+          "pit": "track",
+          "laps": 126,
+          "groundPosition": {
+            "v": {
+              "x": 15,
+              "z": -30
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 18.509999999999998
+          },
+          "bestLap": {
+            "v": 91.64399999999999,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 91.984
+          },
+          "quality": {
+            "q": "fresh",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classGap": 18.509999999999998,
+          "classRef": 1
+        },
+        {
+          "id": "vehicle-016",
+          "position": 17,
+          "classPosition": 6,
+          "classId": "lmp2",
+          "driver": "Oliver Jarvis",
+          "pit": "track",
+          "laps": 125,
+          "groundPosition": {
+            "v": {
+              "x": 16,
+              "z": -32
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 19.744
+          },
+          "bestLap": {
+            "v": 91.624,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 92.03399999999999
+          },
+          "quality": {
+            "q": "fresh",
+            "classGap": "missing",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classGapLaps": 1,
+          "classRef": 2
+        },
+        {
+          "id": "vehicle-017",
+          "position": 18,
+          "classPosition": 6,
+          "classId": "gte",
+          "driver": "Maro Engel",
+          "pit": "pit",
+          "laps": 125,
+          "groundPosition": {
+            "v": {
+              "x": 17,
+              "z": -34
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 20.978
+          },
+          "bestLap": {
+            "v": 91.60399999999998,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 92.08399999999999
+          },
+          "quality": {
+            "q": "fresh",
+            "classGap": "missing",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classGapLaps": 1,
+          "classRef": 3
+        },
+        {
+          "id": "vehicle-018",
+          "position": 19,
+          "classPosition": 7,
+          "classId": "hypercar",
+          "driver": "Mikkel Jensen",
+          "pit": "track",
+          "laps": 125,
+          "groundPosition": {
+            "v": {
+              "x": 18,
+              "z": -36
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 22.212
+          },
+          "bestLap": {
+            "v": 91.584,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 92.134
+          },
+          "quality": {
+            "q": "fresh",
+            "classGap": "missing",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classGapLaps": 1,
+          "classRef": 1
+        },
+        {
+          "id": "vehicle-019",
+          "position": 20,
+          "classPosition": 7,
+          "classId": "lmp2",
+          "driver": "Nico Pino",
+          "pit": "track",
+          "laps": 125,
+          "groundPosition": {
+            "v": {
+              "x": 19,
+              "z": -38
+            },
+            "q": "fresh"
+          },
+          "gap": {
+            "q": "fresh",
+            "v": 23.445999999999998
+          },
+          "bestLap": {
+            "v": 91.564,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "q": "fresh",
+            "v": 92.184
+          },
+          "quality": {
+            "q": "fresh",
+            "classGap": "missing",
+            "interval": "missing",
+            "intervalLaps": "missing"
+          },
+          "classGapLaps": 1,
+          "classRef": 2
+        }
+      ],
+      "relative": [
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-001",
+          "position": 2,
+          "gap": {
+            "v": 4.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.28399999999999,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Ben Hanley",
+          "classId": "lmp2"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-002",
+          "position": 3,
+          "gap": {
+            "v": 9,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.33399999999999,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Kévin Estre",
+          "classId": "gte"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-003",
+          "position": 4,
+          "gap": {
+            "v": 13.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.384,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Antonio Giovinazzi",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-004",
+          "position": 5,
+          "gap": {
+            "v": 18,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.434,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Filipe Albuquerque",
+          "classId": "lmp2"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-005",
+          "position": 6,
+          "gap": {
+            "v": 22.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.484,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Alessandro Pier Guidi",
+          "classId": "gte"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-006",
+          "position": 7,
+          "gap": {
+            "v": 27,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.53399999999999,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Sarah Bovy",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-007",
+          "position": 8,
+          "gap": {
+            "v": 31.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.58399999999999,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Martin Berry",
+          "classId": "lmp2"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-008",
+          "position": 9,
+          "gap": {
+            "v": 36,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.634,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Michael Birch",
+          "classId": "gte"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-000",
+          "position": 1,
+          "gap": {
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.234,
+            "q": "fresh"
+          },
+          "side": "player",
+          "name": "André Lotterer",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-019",
+          "position": 20,
+          "gap": {
+            "v": -4.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "v": -1,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 92.184,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Nico Pino",
+          "classId": "lmp2"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-018",
+          "position": 19,
+          "gap": {
+            "v": -9,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "v": -1,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 92.134,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Mikkel Jensen",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-017",
+          "position": 18,
+          "gap": {
+            "v": -13.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "v": -1,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 92.08399999999999,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Maro Engel",
+          "classId": "gte"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-016",
+          "position": 17,
+          "gap": {
+            "v": -18,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "v": -1,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 92.03399999999999,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Oliver Jarvis",
+          "classId": "lmp2"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-015",
+          "position": 16,
+          "gap": {
+            "v": -22.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.984,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Conrad Laursen",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-014",
+          "position": 15,
+          "gap": {
+            "v": -27,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.934,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Daniel Juncadella",
+          "classId": "gte"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-013",
+          "position": 14,
+          "gap": {
+            "v": -31.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.884,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Job van Uitert",
+          "classId": "lmp2"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-012",
+          "position": 13,
+          "gap": {
+            "v": -36,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.83399999999999,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Duncan Cameron",
+          "classId": "hypercar"
+        }
+      ],
+      "relativeSettled": [
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-001",
+          "position": 2,
+          "gap": {
+            "v": 4.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.28399999999999,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Ben Hanley",
+          "classId": "lmp2"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-002",
+          "position": 3,
+          "gap": {
+            "v": 9,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.33399999999999,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Kévin Estre",
+          "classId": "gte"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-003",
+          "position": 4,
+          "gap": {
+            "v": 13.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.384,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Antonio Giovinazzi",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-004",
+          "position": 5,
+          "gap": {
+            "v": 18,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.434,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Filipe Albuquerque",
+          "classId": "lmp2"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-005",
+          "position": 6,
+          "gap": {
+            "v": 22.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.484,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Alessandro Pier Guidi",
+          "classId": "gte"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-006",
+          "position": 7,
+          "gap": {
+            "v": 27,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.53399999999999,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Sarah Bovy",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-007",
+          "position": 8,
+          "gap": {
+            "v": 31.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.58399999999999,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Martin Berry",
+          "classId": "lmp2"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-008",
+          "position": 9,
+          "gap": {
+            "v": 36,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.634,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Michael Birch",
+          "classId": "gte"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-000",
+          "position": 1,
+          "gap": {
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.234,
+            "q": "fresh"
+          },
+          "side": "player",
+          "name": "André Lotterer",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-019",
+          "position": 20,
+          "gap": {
+            "v": -4.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "v": -1,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 92.184,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Nico Pino",
+          "classId": "lmp2"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-018",
+          "position": 19,
+          "gap": {
+            "v": -9,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "v": -1,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 92.134,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Mikkel Jensen",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-017",
+          "position": 18,
+          "gap": {
+            "v": -13.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "v": -1,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 92.08399999999999,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Maro Engel",
+          "classId": "gte"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-016",
+          "position": 17,
+          "gap": {
+            "v": -18,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "v": -1,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 92.03399999999999,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Oliver Jarvis",
+          "classId": "lmp2"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-015",
+          "position": 16,
+          "gap": {
+            "v": -22.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.984,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Conrad Laursen",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-014",
+          "position": 15,
+          "gap": {
+            "v": -27,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.934,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Daniel Juncadella",
+          "classId": "gte"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-013",
+          "position": 14,
+          "gap": {
+            "v": -31.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.884,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Job van Uitert",
+          "classId": "lmp2"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-012",
+          "position": 13,
+          "gap": {
+            "v": -36,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.83399999999999,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Duncan Cameron",
+          "classId": "hypercar"
+        }
+      ],
+      "relativeSameClass": [
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-003",
+          "position": 4,
+          "gap": {
+            "v": 13.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.384,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Driver 003",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-006",
+          "position": 7,
+          "gap": {
+            "v": 27,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.53399999999999,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Driver 006",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-009",
+          "position": 10,
+          "gap": {
+            "v": 40.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.684,
+            "q": "fresh"
+          },
+          "side": "ahead",
+          "name": "Driver 009",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-000",
+          "position": 1,
+          "gap": {
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.234,
+            "q": "fresh"
+          },
+          "side": "player",
+          "name": "Driver 000",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-018",
+          "position": 19,
+          "gap": {
+            "v": -9,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "v": -1,
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 92.134,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Driver 018",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-015",
+          "position": 16,
+          "gap": {
+            "v": -22.5,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.984,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Driver 015",
+          "classId": "hypercar"
+        },
+        {
+          "bestLap": {
+            "q": "missing"
+          },
+          "id": "vehicle-012",
+          "position": 13,
+          "gap": {
+            "v": -36,
+            "q": "fresh"
+          },
+          "lapDelta": {
+            "q": "fresh"
+          },
+          "lastLap": {
+            "v": 91.83399999999999,
+            "q": "fresh"
+          },
+          "side": "behind",
+          "name": "Driver 012",
+          "classId": "hypercar"
+        }
+      ],
+      "delta": {
+        "references": [
+          {
+            "requested": "personal-best",
+            "reference": "personal-best",
+            "seconds": {
+              "v": 0.214,
+              "q": "fresh"
+            },
+            "authority": "native"
+          },
+          {
+            "requested": "session-best",
+            "reference": "session-best",
+            "seconds": {
+              "v": -0.08,
+              "q": "fresh"
+            },
+            "authority": "derived"
+          },
+          {
+            "requested": "previous-lap",
+            "reference": "previous-lap",
+            "seconds": {
+              "v": 0.43,
+              "q": "fresh"
+            },
+            "authority": "derived"
+          }
+        ],
+        "seconds": {
+          "v": 0.214,
+          "q": "fresh"
+        },
+        "requested": "personal-best",
+        "available": [
+          "personal-best",
+          "session-best",
+          "previous-lap"
+        ],
+        "history": {
+          "q": "fresh",
+          "capturedAtMS": [
+            1757900000000,
+            1757900000050,
+            1757900000100,
+            1757900000150,
+            1757900000200,
+            1757900000250,
+            1757900000300,
+            1757900000350,
+            1757900000400,
+            1757900000450,
+            1757900000500,
+            1757900000550,
+            1757900000600,
+            1757900000650,
+            1757900000700,
+            1757900000750,
+            1757900000800,
+            1757900000850,
+            1757900000900,
+            1757900000950,
+            1757900001000,
+            1757900001050,
+            1757900001100,
+            1757900001150,
+            1757900001200,
+            1757900001250,
+            1757900001300,
+            1757900001350,
+            1757900001400,
+            1757900001450,
+            1757900001500,
+            1757900001550,
+            1757900001600,
+            1757900001650,
+            1757900001700,
+            1757900001750,
+            1757900001800,
+            1757900001850,
+            1757900001900,
+            1757900001950,
+            1757900002000,
+            1757900002050,
+            1757900002100,
+            1757900002150,
+            1757900002200,
+            1757900002250,
+            1757900002300,
+            1757900002350,
+            1757900002400,
+            1757900002450,
+            1757900002500,
+            1757900002550,
+            1757900002600,
+            1757900002650,
+            1757900002700,
+            1757900002750,
+            1757900002800,
+            1757900002850,
+            1757900002900,
+            1757900002950,
+            1757900003000,
+            1757900003050,
+            1757900003100,
+            1757900003150,
+            1757900003200,
+            1757900003250,
+            1757900003300,
+            1757900003350,
+            1757900003400,
+            1757900003450,
+            1757900003500,
+            1757900003550,
+            1757900003600,
+            1757900003650,
+            1757900003700,
+            1757900003750,
+            1757900003800,
+            1757900003850,
+            1757900003900,
+            1757900003950,
+            1757900004000,
+            1757900004050,
+            1757900004100,
+            1757900004150,
+            1757900004200,
+            1757900004250,
+            1757900004300,
+            1757900004350,
+            1757900004400,
+            1757900004450,
+            1757900004500,
+            1757900004550,
+            1757900004600,
+            1757900004650,
+            1757900004700,
+            1757900004750,
+            1757900004800,
+            1757900004850,
+            1757900004900,
+            1757900004950
+          ],
+          "seconds": [
+            0.5,
+            0.5108765501253513,
+            0.5211986779009995,
+            0.5304340640467434,
+            0.5380937142417545,
+            0.5437514537850376,
+            0.5470609178358876,
+            0.547769359887071,
+            0.5457277279704811,
+            0.5408966068887464,
+            0.5333477895747675,
+            0.523261414934038,
+            0.5109187862749442,
+            0.49669115663356306,
+            0.48102492808667097,
+            0.46442385510964523,
+            0.44742896147522093,
+            0.4305969713429703,
+            0.41447811442390575,
+            0.39959419005825214,
+            0.3864177647223844,
+            0.3753533322946852,
+            0.36672118816106725,
+            0.36074466004868777,
+            0.3575412046542184,
+            0.3571177250160046,
+            0.3593702953117105,
+            0.3640883040528991,
+            0.37096285050045263,
+            0.3795990595622491,
+            0.38953182421698423,
+            0.4002443478633813,
+            0.41118874736983757,
+            0.4218078954459365,
+            0.4315576315493995,
+            0.4399284558497092,
+            0.4464658413785316,
+            0.45078835458560174,
+            0.45260286189068893,
+            0.4517162159944042,
+            0.4480429560515155,
+            0.44160871472515983,
+            0.4325491962934524,
+            0.42110476654815765,
+            0.40761087016909003,
+            0.3924846576032866,
+            0.37620835459307794,
+            0.3593100373574926,
+            0.34234257985984595,
+            0.3258616124675165,
+            0.3104033707225926,
+            0.29646331732299747,
+            0.2844763895882466,
+            0.2747996598810429,
+            0.267698100258982,
+            0.26333401887478414,
+            0.2617605892624381,
+            0.2629197304762,
+            0.26664442259461457,
+            0.27266536527772267,
+            0.2806217139217877,
+            0.29007546539493717,
+            0.3005289198398305,
+            0.31144452239638865,
+            0.32226629381771377,
+            0.3324419956081679,
+            0.34144514602950565,
+            0.3487960092663684,
+            0.3540807209793487,
+            0.35696778777017824,
+            0.3572213027774288,
+            0.3547103505386302,
+            0.3494142261766313,
+            0.3414232608377141,
+            0.3309352204738479,
+            0.3182474215382709,
+            0.3037448779167357,
+            0.28788495163886585,
+            0.27117911929732474,
+            0.2541725810901229,
+            0.237422525409203,
+            0.22147591549756188,
+            0.2068476837507952,
+            0.19400020298744763,
+            0.18332485310384017,
+            0.17512641799267345,
+            0.16961093477102765,
+            0.16687747973069206,
+            0.16691421847906465,
+            0.1695988777390396,
+            0.17470361999870998,
+            0.18190412667398437,
+            0.19079252766708849,
+            0.20089366186025473,
+            0.21168402029002942,
+            0.22261261679761882,
+            0.23312295410830178,
+            0.2426752096216448,
+            0.2507677564350725,
+            0.2569571616254974
+          ]
+        },
+        "reference": "personal-best",
+        "authority": "native"
+      },
+      "fuel": {
+        "remaining": {
+          "v": 42,
+          "q": "fresh"
+        },
+        "capacity": {
+          "v": 100,
+          "q": "fresh"
+        },
+        "perLap": {
+          "v": 2.14,
+          "q": "fresh"
+        },
+        "estimatedLaps": {
+          "v": 79,
+          "q": "fresh"
+        },
+        "basis": "session",
+        "sessionLaps": {
+          "v": 79,
+          "q": "fresh"
+        },
+        "requiredFuel": {
+          "v": 169.1,
+          "q": "fresh"
+        },
+        "history": {
+          "q": "fresh",
+          "lap": [
+            14,
+            15,
+            16,
+            17
+          ],
+          "consumed": [
+            2.21,
+            2.08,
+            2.26,
+            2.12
+          ]
+        }
+      },
+      "spotter": {
+        "mode": "none",
+        "left": {
+          "q": "missing"
+        },
+        "right": {
+          "q": "missing"
+        }
+      },
+      "radar": {
+        "mode": "none",
+        "cars": []
+      },
+      "damage": {
+        "dents": {
+          "v": [
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8
+          ],
+          "q": "fresh"
+        },
+        "overheating": {
+          "q": "fresh"
+        },
+        "detached": {
+          "q": "fresh"
+        },
+        "wheelDetachedCount": {
+          "q": "fresh"
+        },
+        "tyreWear": {
+          "v": [
+            0.98,
+            0.91,
+            0.87,
+            0.93
+          ],
+          "q": "fresh"
+        }
+      },
+      "weather": {
+        "ambientC": {
+          "v": 21,
+          "q": "fresh"
+        },
+        "trackC": {
+          "v": 28,
+          "q": "fresh"
+        },
+        "rainPercent": {
+          "v": 0,
+          "q": "fresh"
+        },
+        "wetnessPct": {
+          "v": 0,
+          "q": "fresh"
+        },
+        "windKph": {
+          "v": 14,
+          "q": "fresh"
+        },
+        "windDir": {
+          "v": "NW",
+          "q": "fresh"
+        },
+        "pressureHpa": {
+          "q": "missing"
+        }
+      },
+      "capabilities": {
+        "supported": [
+          "controls",
+          "damage",
+          "delta",
+          "fuel",
+          "gaps",
+          "session",
+          "spatial.lateral",
+          "spatial.longitudinal",
+          "spotter",
+          "standings"
+        ],
+        "available": {
+          "controls": "fresh",
+          "damage": "fresh",
+          "delta": "missing",
+          "fuel": "fresh",
+          "gaps": "fresh",
+          "session": "fresh",
+          "spatial.lateral": "fresh",
+          "spatial.longitudinal": "fresh",
+          "spotter": "fresh",
+          "standings": "fresh"
+        },
+        "modes": {
+          "spatial": [
+            "xyz"
+          ],
+          "delta": [
+            "personal-best"
+          ],
+          "standings": "official",
+          "gaps": "official"
+        },
+        "performance": {
+          "level": 3,
+          "mode": "manual",
+          "effects": "noBlur",
+          "rafCap": 40,
+          "widgetHz": {
+            "broadcast-tower": 4,
+            "car-damage-numbers": 1,
+            "car-damage-visual": 1,
+            "delta": 20,
+            "delta-advanced": 20,
+            "delta-trace": 20,
+            "engineer-radio": "event",
+            "fuel-strategy": 1,
+            "head-to-head": 15,
+            "input-telemetry": 40,
+            "multiclass-relative": 15,
+            "pedals": 40,
+            "pedals-telemetry": 40,
+            "pedals-telemetry-compact": 40,
+            "race-schedule": "dirty",
+            "racing-flags": "event",
+            "relative": 15,
+            "standings": 5,
+            "track-map": 20,
+            "track-weather": "dirty"
+          },
+          "sourceHz": 60
+        }
+      }
+    },
+    "overlayV2Source": {
+      "state": "live"
+    }
+  },
+  "scene": "Workshop default / race / track / ready",
+  "renderMode": "harness",
+  "brandVisible": true,
+  "viewport": {
+    "w": 120,
+    "h": 160,
+    "dpr": 1
+  },
+  "elements": [
+    {
+      "index": 0,
+      "tag": "div",
+      "attrs": {
+        "id": "reference-widget",
+        "style": "width: 120px; height: 160px;"
+      },
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 120,
+        "h": 160
+      },
+      "style": {
+        "display": "block",
+        "position": "absolute",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "normal",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "start",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 1,
+      "tag": "div",
+      "attrs": {
+        "data-testid": "reference-viewport",
+        "data-widget-visual-viewport": "true",
+        "data-widget-visual-base-width": "120",
+        "style": "width: 120px; height: 160px; transform: scale(1); transform-origin: left top;"
+      },
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 120,
+        "h": 160
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "normal",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "start",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "matrix(1, 0, 0, 1, 0, 0)",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 2,
+      "tag": "section",
+      "attrs": {
+        "class": "vf-pedals",
+        "data-widget-system": "vantare-functional",
+        "data-widget-renderer": "pedals",
+        "data-status": "ready",
+        "data-transparent": "false",
+        "data-session": "race",
+        "data-flag": "unknown",
+        "data-session-header": "false",
+        "data-effects": "noBlur"
+      },
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 120,
+        "h": 160
+      },
+      "style": {
+        "display": "flex",
+        "position": "relative",
+        "boxSizing": "border-box",
+        "overflow": "hidden",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(16, 17, 19, 0.9)",
+        "backgroundImage": "linear-gradient(rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0) 32%), none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "6px",
+        "boxShadow": "rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset, rgba(0, 0, 0, 0.48) 0px 10px 20px -14px",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      },
+      "pseudoAfter": {
+        "content": "\"\"",
+        "width": "120px",
+        "height": "160px",
+        "top": "0px",
+        "right": "0px",
+        "bottom": "0px",
+        "left": "0px",
+        "style": {
+          "display": "block",
+          "position": "absolute",
+          "boxSizing": "border-box",
+          "overflow": "visible",
+          "fontFamily": "Inter, Arial, sans-serif",
+          "fontSize": "16px",
+          "fontWeight": "400",
+          "fontVariantNumeric": "tabular-nums",
+          "letterSpacing": "normal",
+          "lineHeight": "24px",
+          "color": "rgb(245, 245, 245)",
+          "backgroundColor": "rgba(0, 0, 0, 0)",
+          "backgroundImage": "none",
+          "borderTop": "1px solid rgba(255, 255, 255, 0.24)",
+          "borderRight": "1px solid rgba(255, 255, 255, 0.12)",
+          "borderBottom": "1px solid rgba(255, 255, 255, 0.12)",
+          "borderLeft": "1px solid rgba(255, 255, 255, 0.12)",
+          "borderRadius": "6px",
+          "boxShadow": "none",
+          "padding": "0px",
+          "margin": "0px",
+          "gap": "normal",
+          "textAlign": "left",
+          "textTransform": "none",
+          "opacity": "1",
+          "backdropFilter": "none",
+          "transform": "none",
+          "translate": "none",
+          "transition": "all"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "tag": "div",
+      "attrs": {
+        "class": "vf-pedals-bars",
+        "role": "group",
+        "aria-label": "PEDALES"
+      },
+      "rect": {
+        "x": 0,
+        "y": 0,
+        "w": 120,
+        "h": 160
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "8px 10px 10px",
+        "margin": "0px",
+        "gap": "8px",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 4,
+      "tag": "div",
+      "attrs": {
+        "class": "vf-pedal",
+        "data-pedal": "clutch",
+        "title": "EMBRAGUE: 6%"
+      },
+      "rect": {
+        "x": 10,
+        "y": 8,
+        "w": 28,
+        "h": 142
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "4px",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 5,
+      "tag": "div",
+      "attrs": {
+        "class": "vf-pedal-track"
+      },
+      "rect": {
+        "x": 17,
+        "y": 8,
+        "w": 14,
+        "h": 118
+      },
+      "style": {
+        "display": "block",
+        "position": "relative",
+        "boxSizing": "border-box",
+        "overflow": "hidden",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "linear-gradient(rgba(245, 245, 245, 0.08), rgba(245, 245, 245, 0.05))",
+        "borderTop": "1px solid rgba(245, 245, 245, 0.08)",
+        "borderRight": "1px solid rgba(245, 245, 245, 0.08)",
+        "borderBottom": "1px solid rgba(245, 245, 245, 0.08)",
+        "borderLeft": "1px solid rgba(245, 245, 245, 0.08)",
+        "borderRadius": "4px",
+        "boxShadow": "rgba(0, 0, 0, 0.24) 0px 2px 5px 0px inset",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 6,
+      "tag": "span",
+      "attrs": {
+        "class": "vf-pedal-fill",
+        "style": "height: 6%;"
+      },
+      "text": "",
+      "rect": {
+        "x": 18,
+        "y": 118.05,
+        "w": 12,
+        "h": 6.95
+      },
+      "style": {
+        "display": "block",
+        "position": "absolute",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgb(201, 161, 92)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "3px 3px 0px 0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "height 0.08s linear"
+      }
+    },
+    {
+      "index": 7,
+      "tag": "span",
+      "attrs": {
+        "class": "vf-pedal-label"
+      },
+      "text": "C",
+      "rect": {
+        "x": 21.66,
+        "y": 130,
+        "w": 4.69,
+        "h": 6
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, monospace",
+        "fontSize": "6px",
+        "fontWeight": "600",
+        "fontVariantNumeric": "normal",
+        "letterSpacing": "1.08px",
+        "lineHeight": "6px",
+        "color": "rgba(185, 185, 189, 0.78)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgba(185, 185, 189, 0.78)",
+        "borderRight": "0px solid rgba(185, 185, 189, 0.78)",
+        "borderBottom": "0px solid rgba(185, 185, 189, 0.78)",
+        "borderLeft": "0px solid rgba(185, 185, 189, 0.78)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 8,
+      "tag": "span",
+      "attrs": {
+        "class": "vf-pedal-value"
+      },
+      "text": "6%",
+      "rect": {
+        "x": 18,
+        "y": 140,
+        "w": 12,
+        "h": 10
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, monospace",
+        "fontSize": "10px",
+        "fontWeight": "700",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "10px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 9,
+      "tag": "div",
+      "attrs": {
+        "class": "vf-pedal",
+        "data-pedal": "brake",
+        "title": "FRENO: 13%"
+      },
+      "rect": {
+        "x": 46,
+        "y": 8,
+        "w": 28,
+        "h": 142
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "4px",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 10,
+      "tag": "div",
+      "attrs": {
+        "class": "vf-pedal-track"
+      },
+      "rect": {
+        "x": 53,
+        "y": 8,
+        "w": 14,
+        "h": 118
+      },
+      "style": {
+        "display": "block",
+        "position": "relative",
+        "boxSizing": "border-box",
+        "overflow": "hidden",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "linear-gradient(rgba(245, 245, 245, 0.08), rgba(245, 245, 245, 0.05))",
+        "borderTop": "1px solid rgba(245, 245, 245, 0.08)",
+        "borderRight": "1px solid rgba(245, 245, 245, 0.08)",
+        "borderBottom": "1px solid rgba(245, 245, 245, 0.08)",
+        "borderLeft": "1px solid rgba(245, 245, 245, 0.08)",
+        "borderRadius": "4px",
+        "boxShadow": "rgba(0, 0, 0, 0.24) 0px 2px 5px 0px inset",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 11,
+      "tag": "span",
+      "attrs": {
+        "class": "vf-pedal-fill",
+        "style": "height: 13%;"
+      },
+      "text": "",
+      "rect": {
+        "x": 54,
+        "y": 109.92,
+        "w": 12,
+        "h": 15.08
+      },
+      "style": {
+        "display": "block",
+        "position": "absolute",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgb(217, 83, 96)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "3px 3px 0px 0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "height 0.08s linear"
+      }
+    },
+    {
+      "index": 12,
+      "tag": "span",
+      "attrs": {
+        "class": "vf-pedal-label"
+      },
+      "text": "B",
+      "rect": {
+        "x": 57.66,
+        "y": 130,
+        "w": 4.69,
+        "h": 6
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, monospace",
+        "fontSize": "6px",
+        "fontWeight": "600",
+        "fontVariantNumeric": "normal",
+        "letterSpacing": "1.08px",
+        "lineHeight": "6px",
+        "color": "rgba(185, 185, 189, 0.78)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgba(185, 185, 189, 0.78)",
+        "borderRight": "0px solid rgba(185, 185, 189, 0.78)",
+        "borderBottom": "0px solid rgba(185, 185, 189, 0.78)",
+        "borderLeft": "0px solid rgba(185, 185, 189, 0.78)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 13,
+      "tag": "span",
+      "attrs": {
+        "class": "vf-pedal-value"
+      },
+      "text": "13%",
+      "rect": {
+        "x": 51,
+        "y": 140,
+        "w": 18,
+        "h": 10
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, monospace",
+        "fontSize": "10px",
+        "fontWeight": "700",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "10px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 14,
+      "tag": "div",
+      "attrs": {
+        "class": "vf-pedal",
+        "data-pedal": "throttle",
+        "title": "ACELERADOR: 75%"
+      },
+      "rect": {
+        "x": 82,
+        "y": 8,
+        "w": 28,
+        "h": 142
+      },
+      "style": {
+        "display": "flex",
+        "position": "static",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "4px",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 15,
+      "tag": "div",
+      "attrs": {
+        "class": "vf-pedal-track"
+      },
+      "rect": {
+        "x": 89,
+        "y": 8,
+        "w": 14,
+        "h": 118
+      },
+      "style": {
+        "display": "block",
+        "position": "relative",
+        "boxSizing": "border-box",
+        "overflow": "hidden",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "linear-gradient(rgba(245, 245, 245, 0.08), rgba(245, 245, 245, 0.05))",
+        "borderTop": "1px solid rgba(245, 245, 245, 0.08)",
+        "borderRight": "1px solid rgba(245, 245, 245, 0.08)",
+        "borderBottom": "1px solid rgba(245, 245, 245, 0.08)",
+        "borderLeft": "1px solid rgba(245, 245, 245, 0.08)",
+        "borderRadius": "4px",
+        "boxShadow": "rgba(0, 0, 0, 0.24) 0px 2px 5px 0px inset",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 16,
+      "tag": "span",
+      "attrs": {
+        "class": "vf-pedal-fill",
+        "style": "height: 75%;"
+      },
+      "text": "",
+      "rect": {
+        "x": 90,
+        "y": 38,
+        "w": 12,
+        "h": 87
+      },
+      "style": {
+        "display": "block",
+        "position": "absolute",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "Inter, Arial, sans-serif",
+        "fontSize": "16px",
+        "fontWeight": "400",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "24px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgb(111, 174, 125)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "3px 3px 0px 0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "height 0.08s linear"
+      }
+    },
+    {
+      "index": 17,
+      "tag": "span",
+      "attrs": {
+        "class": "vf-pedal-label"
+      },
+      "text": "T",
+      "rect": {
+        "x": 93.66,
+        "y": 130,
+        "w": 4.69,
+        "h": 6
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, monospace",
+        "fontSize": "6px",
+        "fontWeight": "600",
+        "fontVariantNumeric": "normal",
+        "letterSpacing": "1.08px",
+        "lineHeight": "6px",
+        "color": "rgba(185, 185, 189, 0.78)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgba(185, 185, 189, 0.78)",
+        "borderRight": "0px solid rgba(185, 185, 189, 0.78)",
+        "borderBottom": "0px solid rgba(185, 185, 189, 0.78)",
+        "borderLeft": "0px solid rgba(185, 185, 189, 0.78)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    },
+    {
+      "index": 18,
+      "tag": "span",
+      "attrs": {
+        "class": "vf-pedal-value"
+      },
+      "text": "75%",
+      "rect": {
+        "x": 87,
+        "y": 140,
+        "w": 18,
+        "h": 10
+      },
+      "style": {
+        "display": "block",
+        "position": "static",
+        "boxSizing": "border-box",
+        "overflow": "visible",
+        "fontFamily": "\"JetBrains Mono\", ui-monospace, monospace",
+        "fontSize": "10px",
+        "fontWeight": "700",
+        "fontVariantNumeric": "tabular-nums",
+        "letterSpacing": "normal",
+        "lineHeight": "10px",
+        "color": "rgb(245, 245, 245)",
+        "backgroundColor": "rgba(0, 0, 0, 0)",
+        "backgroundImage": "none",
+        "borderTop": "0px solid rgb(245, 245, 245)",
+        "borderRight": "0px solid rgb(245, 245, 245)",
+        "borderBottom": "0px solid rgb(245, 245, 245)",
+        "borderLeft": "0px solid rgb(245, 245, 245)",
+        "borderRadius": "0px",
+        "boxShadow": "none",
+        "padding": "0px",
+        "margin": "0px",
+        "gap": "normal",
+        "textAlign": "left",
+        "textTransform": "none",
+        "opacity": "1",
+        "backdropFilter": "none",
+        "transform": "none",
+        "translate": "none",
+        "transition": "all"
+      }
+    }
+  ],
+  "animations": []
+}

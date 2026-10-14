@@ -1,0 +1,13 @@
+{
+  "issue": 1427,
+  "source": "Workshop reconstruido: demostración, no captura LMU",
+  "snapshot": "../../../fixtures/delta.snapshot.json",
+  "variants": [
+    {
+      "name": "capsule",
+      "settings": {
+        "templateId": "capsule"
+      }
+    }
+  ]
+}

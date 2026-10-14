@@ -1,0 +1,5 @@
+[
+  {"name":"cuenta-login","url":"http://wails.localhost/?reference=login#/hub","ready":"[data-testid=login-google-primary]"},
+  {"name":"cuenta-crear","actions":[{"click":"text=\"¿No tienes cuenta? Crear cuenta\""}]},
+  {"name":"cuenta-recuperar","url":"http://wails.localhost/?reference=reset#/hub","ready":"[data-testid=login-google-primary]","actions":[{"click":"text=\"¿Olvidaste tu contraseña?\""}]}
+]

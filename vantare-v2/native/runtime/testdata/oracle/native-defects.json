@@ -1,0 +1,42 @@
+[
+  {
+    "go": {
+      "laps": 1
+    },
+    "native": {
+      "time_ms": 119280.71594238281
+    },
+    "path": "lmu-1.4.1.3-track-fixture.json.cars[8].gap_leader.v",
+    "reason": "Defecto nativo: derive::gaps trata Gap::Laps como ausencia de tiempo y sobrescribe un dato Reliable con Estimated(Time). El frame y Go conservan una vuelta perdida. No es una excepcion admitida."
+  },
+  {
+    "go": {
+      "laps": 1
+    },
+    "native": {
+      "time_ms": 121043.97010803223
+    },
+    "path": "lmu-1.4.1.3-track-fixture.json.cars[9].gap_leader.v",
+    "reason": "Defecto nativo: derive::gaps trata Gap::Laps como ausencia de tiempo y sobrescribe un dato Reliable con Estimated(Time). El frame y Go conservan una vuelta perdida. No es una excepcion admitida."
+  },
+  {
+    "go": {
+      "laps": 1
+    },
+    "native": {
+      "time_ms": 121117.90800094604
+    },
+    "path": "lmu-1.4.1.3-track-fixture.json.cars[10].gap_leader.v",
+    "reason": "Defecto nativo: derive::gaps trata Gap::Laps como ausencia de tiempo y sobrescribe un dato Reliable con Estimated(Time). El frame y Go conservan una vuelta perdida. No es una excepcion admitida."
+  },
+  {
+    "go": {
+      "laps": 1
+    },
+    "native": {
+      "time_ms": 129750.44584274292
+    },
+    "path": "lmu-1.4.1.3-track-fixture.json.cars[11].gap_leader.v",
+    "reason": "Defecto nativo: derive::gaps trata Gap::Laps como ausencia de tiempo y sobrescribe un dato Reliable con Estimated(Time). El frame y Go conservan una vuelta perdida. No es una excepcion admitida."
+  }
+]

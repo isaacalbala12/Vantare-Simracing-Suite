@@ -7,22 +7,42 @@ use std::f64::consts::TAU;
 use std::time::Duration;
 
 use vantare_domain::{
-    Capabilities, Capability, Car, CarId, Class, ClassId, Driver, DriverId, Flag, FlagKind,
-    FlagScope, Gap, Observation, Origin, Player, Quality, Session, SessionId, SessionKind, Source,
-    SourceKind, State, Telemetry,
+    Capabilities, Capability, Car, CarId, Class, ClassId, Damage, Driver, DriverId, Flag, FlagKind,
+    FlagScope, Fuel, Gap, Observation, Origin, PitService, Player, Quality, Session, SessionId,
+    SessionKind, Source, SourceKind, State, Stint, Telemetry, Weather,
 };
 
-use super::frame::{self, Frame, Kind, Rejection, Vehicle};
+use super::frame::{self, Frame, Inputs, Kind, Rejection, Vehicle};
 use super::gate::Gate;
 use super::rest;
+
+#[cfg(test)]
+#[path = "signals_tests.rs"]
+mod signals_tests;
 
 /// Un hueco que reaparece con el mismo piloto y clase dentro de este número de
 /// frames es el mismo coche (parpadeo de la parrilla); pasado, es otro.
 const SLOT_GRACE_FRAMES: u64 = 30;
+/// Tope de identidades de piloto y clase recordadas a la vez. Una carrera
+/// legitima no pasa de 104 coches; el margen absorbe entradas y salidas.
+const IDENTITY_BUDGET: usize = 512;
+
 /// El reloj de sesión da la vuelta a las 24 h; un retroceso desde ahí a menos
 /// de un minuto es ese giro, no una sesión nueva.
 const CLOCK_WRAP_FROM: Duration = Duration::from_hours(24);
 const CLOCK_WRAP_TO: Duration = Duration::from_mins(1);
+
+fn driving_situation(frame: &Frame, stale: bool) -> vantare_domain::DrivingSituation {
+    use vantare_domain::DrivingSituation;
+    if stale {
+        return DrivingSituation::Unknown;
+    }
+    match frame.player.and_then(|i| frame.vehicles[i].in_garage_stall) {
+        Some(true) => DrivingSituation::Garage,
+        Some(false) => DrivingSituation::OnTrack,
+        None => DrivingSituation::Unknown,
+    }
+}
 
 struct Slot {
     car: CarId,
@@ -34,9 +54,13 @@ struct Slot {
 pub(super) struct Translator {
     kind: SourceKind,
     gate: Gate,
+    telemetry_gate: Gate,
+    last_inputs: Option<Inputs>,
+    emitted_telemetry_stale: bool,
     pub(super) rest: rest::Cache,
     /// Última `Observation` publicada con datos caducados.
     emitted_stale: bool,
+    emitted_paused: bool,
     session: u64,
     signature: Option<(String, Kind)>,
     last_source_time: Option<Duration>,
@@ -47,6 +71,8 @@ pub(super) struct Translator {
     next_car: u32,
     drivers: HashMap<String, DriverId>,
     classes: HashMap<String, ClassId>,
+    next_driver: u32,
+    next_class: u32,
 }
 
 impl Translator {
@@ -54,8 +80,12 @@ impl Translator {
         Self {
             kind,
             gate: Gate::default(),
+            telemetry_gate: Gate::default(),
+            last_inputs: None,
+            emitted_telemetry_stale: false,
             rest: rest::Cache::default(),
             emitted_stale: false,
+            emitted_paused: false,
             session: 0,
             signature: None,
             last_source_time: None,
@@ -65,13 +95,19 @@ impl Translator {
             next_car: 0,
             drivers: HashMap::new(),
             classes: HashMap::new(),
+            next_driver: 0,
+            next_class: 0,
         }
     }
 
     /// El estado publicado dejaría de coincidir con la realidad aunque el
     /// frame no cambie (el reloj del simulador se ha parado o ha vuelto).
+    #[cfg(any(windows, test))]
     pub(super) fn needs_refresh(&self, now: Duration) -> bool {
         self.gate.is_stale_at(now) != self.emitted_stale
+            || (self.emitted_paused && self.rest.session_alive(now, self.floor).is_none())
+            || (self.last_inputs.is_some()
+                && self.telemetry_gate.is_stale_at(now) != self.emitted_telemetry_stale)
     }
 
     pub(super) fn observe(
@@ -81,27 +117,75 @@ impl Translator {
         now: Duration,
     ) -> Result<Observation, Rejection> {
         let frame = frame::admit(buffer, build)?;
+        // Reanudar una pausa confirmada no es recuperarse de una fuente colgada.
+        if self.emitted_paused
+            && frame.source_time.is_some()
+            && frame.source_time != self.last_source_time
+        {
+            self.gate = Gate::default();
+            let inputs = frame
+                .player
+                .and_then(|index| frame.vehicles[index].inputs.as_ref());
+            if inputs.is_some_and(|inputs| {
+                inputs.source_time.is_none()
+                    || self
+                        .last_inputs
+                        .as_ref()
+                        .is_none_or(|previous| previous.source_time != inputs.source_time)
+            }) {
+                self.telemetry_gate = Gate::default();
+            }
+        }
         let stale = self.gate.observe(now, frame.source_time);
         self.emitted_stale = stale;
         self.track_session(&frame, now, stale);
+        let telemetry_stale = self.telemetry_stale(&frame, now);
+        // No se deduce pausa de gamePhase/inRealtime: también describen garaje
+        // y otras fases. SHM detenido + REST reciente de esta sesión + proceso
+        // vivo (comprobado en cada read_stable) es la confirmación disponible.
+        let paused = self.kind == SourceKind::Live
+            && !frame.vehicles.is_empty()
+            && frame.source_time.is_some()
+            && self.gate.is_stalled_at(now)
+            && self
+                .rest
+                .session_alive(now, self.floor)
+                .is_some_and(|info| {
+                    info.kind == frame.kind
+                        && info
+                            .track
+                            .as_ref()
+                            .is_none_or(|track| *track == frame.track)
+                });
+        self.emitted_paused = paused;
+        let stale = stale && !paused;
+        let telemetry_stale = telemetry_stale && !paused;
+        self.prepare_identities(&frame)?;
         self.frame_count += 1;
-        let car_ids: Vec<CarId> = frame
-            .vehicles
-            .iter()
-            .map(|vehicle| self.car_id(vehicle))
-            .collect();
-        let numbers = self.car_numbers(&frame, now);
+        let rest_session = self.rest.session(now, self.floor);
+        let session = self.session(&frame, rest_session, stale);
+        let flags = flags(rest_session);
+        let race = matches!(
+            session.kind,
+            Quality::Reliable(SessionKind::Race) | Quality::Stale(SessionKind::Race)
+        );
         let cars: Vec<Car> = frame
             .vehicles
             .iter()
-            .zip(car_ids.iter().zip(numbers))
-            .map(|(vehicle, (id, number))| self.car(vehicle, *id, number, stale))
+            .map(|vehicle| {
+                let id = self.car_id(vehicle);
+                let number = self.car_number(vehicle, now);
+                self.car(vehicle, id, number, stale, race)
+            })
             .collect();
-        let player = frame
-            .player
-            .map(|index| player(&frame.vehicles[index], car_ids[index], stale));
-        let rest_session = self.rest.session(now, self.floor);
-        let flags = flags(rest_session);
+        let player = frame.player.map(|index| {
+            player(
+                &frame.vehicles[index],
+                cars[index].id,
+                stale,
+                telemetry_stale,
+            )
+        });
         Ok(Observation {
             origin: Origin {
                 source: Source {
@@ -112,8 +196,25 @@ impl Translator {
                 received_at: now,
             },
             state: State {
-                capabilities: capabilities(&frame, &cars, player.as_ref(), &flags, stale),
-                session: self.session(&frame, rest_session, stale),
+                driving_situation: driving_situation(&frame, stale),
+                source_state: if frame.vehicles.is_empty() {
+                    vantare_domain::SourceState::Waiting
+                } else if paused {
+                    vantare_domain::SourceState::Paused
+                } else if stale {
+                    vantare_domain::SourceState::Stale
+                } else {
+                    vantare_domain::SourceState::Live
+                },
+                capabilities: capabilities(
+                    &frame,
+                    &cars,
+                    player.as_ref(),
+                    &flags,
+                    stale,
+                    telemetry_stale,
+                ),
+                session,
                 flags,
                 cars,
                 player,
@@ -121,24 +222,41 @@ impl Translator {
         })
     }
 
-    /// Número de carrera de cada coche, casado por hueco y por etiqueta: si la
+    fn telemetry_stale(&mut self, frame: &Frame, now: Duration) -> bool {
+        let inputs = frame
+            .player
+            .and_then(|index| frame.vehicles[index].inputs.as_ref());
+        let Some(inputs) = inputs else {
+            self.last_inputs = None;
+            self.telemetry_gate = Gate::default();
+            self.emitted_telemetry_stale = false;
+            return false;
+        };
+        // El scoring puede avanzar con la telemetría congelada. Usar su reloj
+        // propio; sin él (fixtures sanitizados), vigilar el contenido admitido.
+        let stale = if inputs.source_time.is_some() {
+            self.telemetry_gate.observe(now, inputs.source_time)
+        } else {
+            self.telemetry_gate
+                .observe_change(now, self.last_inputs.as_ref() != Some(inputs))
+        };
+        self.last_inputs = Some(inputs.clone());
+        self.emitted_telemetry_stale = stale;
+        stale
+    }
+
+    /// Número de carrera del coche, casado por hueco y por etiqueta: si la
     /// etiqueta REST no coincide con la del frame, el hueco se reutilizó.
-    fn car_numbers(&self, frame: &Frame, now: Duration) -> Vec<String> {
-        let entries = self.rest.car_numbers(now, self.floor);
-        frame
-            .vehicles
+    fn car_number(&self, vehicle: &Vehicle, now: Duration) -> String {
+        self.rest
+            .car_numbers(now, self.floor)
             .iter()
-            .map(|vehicle| {
-                entries
-                    .iter()
-                    .find(|entry| {
-                        entry.slot == vehicle.slot
-                            && !entry.vehicle.is_empty()
-                            && entry.vehicle == vehicle.name.trim()
-                    })
-                    .map_or_else(String::new, |entry| entry.number.clone())
+            .find(|entry| {
+                entry.slot == vehicle.slot
+                    && !entry.vehicle.is_empty()
+                    && entry.vehicle == vehicle.name.trim()
             })
-            .collect()
+            .map_or_else(String::new, |entry| entry.number.clone())
     }
 
     /// Nueva sesión si el circuito o el tipo cambian con datos frescos, o si el
@@ -170,7 +288,41 @@ impl Translator {
             self.session += 1;
             self.frame_count = 0;
             self.slots.clear();
+            // Las identidades de piloto y clase son POR SESION. Sin limpiarlas
+            // aqui, los mapas crecian durante toda la vida del proceso: quien
+            // pueda escribir la memoria del simulador acuna hasta MAX_VEHICLES
+            // nombres nuevos por fotograma, a 60 Hz.
+            self.drivers.clear();
+            self.classes.clear();
+            self.next_driver = 0;
+            self.next_class = 0;
         }
+    }
+
+    fn prepare_identities(&mut self, frame: &Frame) -> Result<(), Rejection> {
+        let incoming =
+            u32::try_from(frame.vehicles.len()).map_err(|_| Rejection::InvalidActiveGrid)?;
+        if self.next_car.checked_add(incoming).is_none()
+            || self.next_driver.checked_add(incoming).is_none()
+            || self.next_class.checked_add(incoming).is_none()
+        {
+            return Err(Rejection::InvalidActiveGrid);
+        }
+        if self.slots.len() + frame.vehicles.len() > IDENTITY_BUDGET {
+            self.slots
+                .retain(|slot, _| frame.vehicles.iter().any(|car| car.slot == *slot));
+        }
+        // Recortar antes de construir la foto, conservando las identidades
+        // presentes. Nunca vaciar un mapa a mitad de una Observation.
+        if self.drivers.len() + frame.vehicles.len() > IDENTITY_BUDGET {
+            self.drivers
+                .retain(|name, _| frame.vehicles.iter().any(|car| car.driver == *name));
+        }
+        if self.classes.len() + frame.vehicles.len() > IDENTITY_BUDGET {
+            self.classes
+                .retain(|name, _| frame.vehicles.iter().any(|car| car.class == *name));
+        }
+        Ok(())
     }
 
     fn car_id(&mut self, vehicle: &Vehicle) -> CarId {
@@ -202,24 +354,40 @@ impl Translator {
         car
     }
 
-    fn car(&mut self, vehicle: &Vehicle, id: CarId, number: String, stale: bool) -> Car {
-        let next_driver = self.drivers.len();
+    fn car(
+        &mut self,
+        vehicle: &Vehicle,
+        id: CarId,
+        number: String,
+        stale: bool,
+        race: bool,
+    ) -> Car {
+        // La numeración es por sesión, independiente de la poda del mapa.
         let driver = *self
             .drivers
             .entry(vehicle.driver.clone())
-            .or_insert(DriverId(u32::try_from(next_driver).unwrap_or(u32::MAX)));
-        let class = (!vehicle.class.is_empty()).then(|| {
-            let next_class = self.classes.len();
-            Class {
-                id: *self
-                    .classes
-                    .entry(vehicle.class.clone())
-                    .or_insert(ClassId(u32::try_from(next_class).unwrap_or(u32::MAX))),
-                name: vehicle.class.clone(),
-            }
+            .or_insert_with(|| {
+                let id = DriverId(self.next_driver);
+                self.next_driver += 1;
+                id
+            });
+        let class = (!vehicle.class.is_empty()).then(|| Class {
+            id: *self
+                .classes
+                .entry(vehicle.class.clone())
+                .or_insert_with(|| {
+                    let id = ClassId(self.next_class);
+                    self.next_class += 1;
+                    id
+                }),
+            name: vehicle.class.clone(),
         });
         let gap = |seconds: Option<f64>, laps: u32| {
-            if laps > 0 {
+            // Scoring compara progreso en pista, no mejores vueltas. En
+            // práctica/clasificación su cero y sus vueltas no son gaps de tabla.
+            if !race {
+                None
+            } else if laps > 0 {
                 Some(Gap::Laps { count: laps })
             } else {
                 seconds.map(|seconds| Gap::Time { seconds })
@@ -239,7 +407,30 @@ impl Translator {
             laps: quality(Some(vehicle.laps), stale),
             last_lap_s: quality(vehicle.last_lap_s, stale),
             best_lap_s: quality(vehicle.best_lap_s, stale),
-            last_sectors_s: Vec::new(),
+            last_sectors_s: vehicle
+                .last_sectors_s
+                .iter()
+                .map(|v| quality(*v, stale))
+                .collect(),
+            // Sin ninguno medido se quedan vacíos, como antes de leerlos (#1497).
+            best_sectors_s: if vehicle.best_sectors_s.iter().any(Option::is_some) {
+                vehicle
+                    .best_sectors_s
+                    .iter()
+                    .map(|v| quality(*v, stale))
+                    .collect()
+            } else {
+                Vec::new()
+            },
+            current_sectors_s: vehicle
+                .current_sectors_s
+                .iter()
+                .map(|v| quality(Some(*v), stale))
+                .collect(),
+            estimated_lap_s: estimate(vehicle.estimated_lap_s, stale),
+            lap_distance_m: quality(vehicle.lap_distance_m, stale),
+            lap_elapsed_s: quality(vehicle.lap_progress_s, stale),
+            current_sector: quality(vehicle.sector, stale),
             gap_leader: quality(
                 gap(vehicle.time_behind_leader_s, vehicle.laps_behind_leader),
                 stale,
@@ -250,6 +441,9 @@ impl Translator {
             ),
             in_pits: quality(Some(vehicle.in_pit), stale),
             pose: quality(vehicle.pose, stale),
+            velocity_mps: quality(vehicle.velocity_mps, stale),
+            pending_penalties: quality(Some(vehicle.pending_penalties), stale),
+            ..Car::default()
         }
     }
 
@@ -290,7 +484,8 @@ impl Translator {
                     stale,
                 )
             }),
-            // `mGamePhase` vale 0 en fixtures 1.4.x con la sesión en marcha: no es fiable.
+            // `mGamePhase` vale 0 en fixtures 1.4.x con la sesión en marcha;
+            // REST tampoco aporta una fase verificada (evidencia en REVIEW.md).
             state: Quality::Unavailable,
             elapsed_s: quality(elapsed, stale),
             remaining_s: quality(remaining, stale),
@@ -299,24 +494,81 @@ impl Translator {
             }),
             // Lo estima el núcleo con el ritmo de la clase.
             laps_remaining: Quality::Unavailable,
+            laps_total: quality(frame.maximum_laps, stale),
+            track_length_m: quality(frame.track_length_m, stale),
+            weather: weather(frame.weather, stale),
         }
     }
 }
 
-fn player(vehicle: &Vehicle, car: CarId, stale: bool) -> Player {
+fn player(vehicle: &Vehicle, car: CarId, stale: bool, telemetry_stale: bool) -> Player {
+    let inputs = vehicle.inputs.as_ref();
     Player {
         car,
-        telemetry: vehicle
-            .inputs
-            .as_ref()
-            .map_or_else(Telemetry::default, |inputs| Telemetry {
-                throttle: quality(inputs.throttle, stale),
-                brake: quality(inputs.brake, stale),
-                clutch: quality(inputs.clutch, stale),
-                gear: quality(inputs.gear, stale),
-                speed_mps: quality(inputs.speed_mps, stale),
-                engine_speed_rad_s: quality(inputs.engine_rpm.map(|rpm| rpm * TAU / 60.0), stale),
-            }),
+        telemetry: inputs.map_or_else(Telemetry::default, |inputs| Telemetry {
+            throttle: quality(inputs.throttle, telemetry_stale),
+            brake: quality(inputs.brake, telemetry_stale),
+            clutch: quality(inputs.clutch, telemetry_stale),
+            steering: quality(inputs.steering, telemetry_stale),
+            gear: quality(inputs.gear, telemetry_stale),
+            speed_mps: quality(inputs.speed_mps, telemetry_stale),
+            engine_speed_rad_s: quality(
+                inputs.engine_rpm.map(|rpm| rpm * TAU / 60.0),
+                telemetry_stale,
+            ),
+        }),
+        fuel: inputs.map_or_else(Fuel::default, |inputs| Fuel {
+            level_l: quality(inputs.fuel_level_l, telemetry_stale),
+            capacity_l: quality(inputs.fuel_capacity_l, telemetry_stale),
+            ..Fuel::default()
+        }),
+        damage: inputs.map_or_else(Damage::default, |inputs| Damage {
+            tyre_wear: inputs
+                .damage
+                .tyre_wear
+                .map(|value| stale_quality(value, telemetry_stale)),
+            ..Damage::default()
+        }),
+        pit_limiter_active: quality(inputs.and_then(|i| i.pit_limiter_active), telemetry_stale),
+        pit_stop_stopped: quality(vehicle.pit_stop_stopped, stale),
+        // LMU escribe 0 mientras no hay mejor vuelta: sin referencia no es un
+        // delta, y un 0 fiable taparía el delta que deriva el núcleo.
+        delta_best_s: quality(
+            inputs
+                .and_then(|inputs| inputs.delta_best_s)
+                .filter(|delta| *delta != 0.0 || vehicle.best_lap_s.is_some()),
+            telemetry_stale,
+        ),
+        // LMU no publica la pérdida estimada de una parada (#1497).
+        pit_loss_s: Quality::Unavailable,
+        // Energía virtual, servicio de la parada y stint aún no se leen de LMU (#1497).
+        pit_service: PitService::default(),
+        stint: Stint::default(),
+        // Los deltas frente a óptima y líder los deriva el núcleo (#1497).
+        delta_optimal_s: Quality::Unavailable,
+        delta_leader_s: Quality::Unavailable,
+        lap_invalid: quality(
+            vehicle.lap_time_counts.map(|counts| !counts),
+            telemetry_stale,
+        ),
+    }
+}
+
+fn stale_quality<T>(value: Quality<T>, stale: bool) -> Quality<T> {
+    match value {
+        Quality::Reliable(value) if stale => Quality::Stale(value),
+        other => other,
+    }
+}
+
+fn weather(value: Weather, stale: bool) -> Weather {
+    Weather {
+        air_temperature_k: stale_quality(value.air_temperature_k, stale),
+        track_temperature_k: stale_quality(value.track_temperature_k, stale),
+        wind_speed_mps: stale_quality(value.wind_speed_mps, stale),
+        rain: stale_quality(value.rain, stale),
+        track_wetness: stale_quality(value.track_wetness, stale),
+        ..value
     }
 }
 
@@ -345,6 +597,7 @@ fn capabilities(
     player: Option<&Player>,
     flags: &Quality<Vec<Flag>>,
     stale: bool,
+    telemetry_stale: bool,
 ) -> Capabilities {
     let has_cars = !cars.is_empty();
     let telemetry = player.map(|player| &player.telemetry);
@@ -352,7 +605,11 @@ fn capabilities(
         session_clock: capability(frame.source_time.is_some(), stale),
         positions: capability(has_cars, stale),
         lap_times: capability(has_cars, stale),
-        gaps: capability(has_cars, stale),
+        gaps: capability(
+            cars.iter()
+                .any(|car| has(&car.gap_leader) || has(&car.gap_ahead)),
+            stale,
+        ),
         pit_status: capability(has_cars, stale),
         flags: capability(
             !matches!(flags, Quality::Unavailable),
@@ -360,14 +617,53 @@ fn capabilities(
         ),
         spatial: capability(cars.iter().any(|car| has(&car.pose)), stale),
         driver_inputs: capability(
-            telemetry.is_some_and(|t| has(&t.throttle) || has(&t.brake) || has(&t.clutch)),
-            stale,
+            telemetry.is_some_and(|t| {
+                has(&t.throttle) || has(&t.brake) || has(&t.clutch) || has(&t.steering)
+            }),
+            telemetry_stale,
         ),
         powertrain: capability(
             telemetry
                 .is_some_and(|t| has(&t.gear) || has(&t.speed_mps) || has(&t.engine_speed_rad_s)),
+            telemetry_stale,
+        ),
+        fuel: capability(
+            player.is_some_and(|player| has(&player.fuel.level_l) || has(&player.fuel.capacity_l)),
+            telemetry_stale,
+        ),
+        delta: capability(
+            player.is_some_and(|player| has(&player.delta_best_s)),
+            telemetry_stale,
+        ),
+        sectors: capability(cars.iter().any(|car| has(&car.current_sector)), stale),
+        lap_progress: capability(
+            cars.iter()
+                .any(|car| has(&car.lap_distance_m) || has(&car.lap_elapsed_s)),
             stale,
         ),
+        weather: capability(
+            [
+                frame.weather.air_temperature_k,
+                frame.weather.track_temperature_k,
+                frame.weather.wind_speed_mps,
+                frame.weather.rain,
+                frame.weather.track_wetness,
+            ]
+            .iter()
+            .any(has),
+            stale,
+        ),
+        damage: capability(
+            player.is_some_and(|p| p.damage.tyre_wear.iter().any(has)),
+            telemetry_stale,
+        ),
+    }
+}
+
+fn estimate<T>(value: Option<T>, stale: bool) -> Quality<T> {
+    match value {
+        Some(value) if !stale => Quality::Estimated(value),
+        _ => quality(value, stale),
     }
 }
 
@@ -399,6 +695,8 @@ mod tests {
     const REAL_44: &[u8] = include_bytes!("../../../../../testdata/lmu-fixture.bin");
     const BUILD: &str = "1.3.0.0";
     const SCORING_BASE: usize = 2_192;
+    /// Fila de telemetría del jugador en `lmu-fixture.bin` (43).
+    const PLAYER_TELEMETRY: usize = 128_468 + 43 * 1_888;
 
     const fn ms(value: u64) -> Duration {
         Duration::from_millis(value)
@@ -406,6 +704,74 @@ mod tests {
 
     fn translator() -> Translator {
         Translator::new(SourceKind::Replay)
+    }
+
+    #[test]
+    fn identity_budget_preserves_active_drivers_and_classes_without_aliasing() {
+        let mut t = translator();
+        let first = observe(&mut t, REAL_44, ms(0));
+        for index in t.drivers.len()..IDENTITY_BUDGET {
+            t.drivers.insert(
+                format!("retired-driver-{index}"),
+                DriverId(u32::try_from(index).unwrap()),
+            );
+        }
+        for index in t.classes.len()..IDENTITY_BUDGET {
+            t.classes.insert(
+                format!("retired-class-{index}"),
+                ClassId(u32::try_from(index).unwrap()),
+            );
+        }
+        let mut frame = with_time(first.origin.source_time.unwrap().as_secs_f64() + 1.0);
+        // Segundo coche: el primero ya habrá conservado su identidad en la foto.
+        let second = SCORING_BASE + 584;
+        for (at, size, name) in [
+            (second + 4, 32, "new-driver"),
+            (second + 200, 32, "new-class"),
+        ] {
+            frame[at..at + size].fill(0);
+            frame[at..at + name.len()].copy_from_slice(name.as_bytes());
+        }
+        let after = observe(&mut t, &frame, ms(16));
+        assert_eq!(after.state.cars[0].driver.id, first.state.cars[0].driver.id);
+        assert_eq!(
+            after.state.cars[0].class.as_ref().unwrap().id,
+            first.state.cars[0].class.as_ref().unwrap().id
+        );
+        for car in &after.state.cars[2..] {
+            assert_ne!(
+                after.state.cars[1].driver.id, car.driver.id,
+                "nombres distintos requieren IDs distintos"
+            );
+            assert_ne!(
+                after.state.cars[1].class.as_ref().unwrap().id,
+                car.class.as_ref().unwrap().id
+            );
+        }
+        assert_ne!(after.state.cars[0].driver.id, after.state.cars[1].driver.id);
+        assert_ne!(
+            after.state.cars[0].class.as_ref().unwrap().id,
+            after.state.cars[1].class.as_ref().unwrap().id
+        );
+        assert!(t.drivers.len() <= IDENTITY_BUDGET && t.classes.len() <= IDENTITY_BUDGET);
+    }
+
+    #[test]
+    fn exhausted_identity_counters_reject_the_frame_without_wrapping() {
+        let mut t = translator();
+        let first = observe(&mut t, REAL_44, ms(0));
+        let frame = with_time(first.origin.source_time.unwrap().as_secs_f64() + 1.0);
+        t.next_driver = u32::MAX;
+        assert_eq!(
+            t.observe(&frame, BUILD, ms(16)).unwrap_err(),
+            Rejection::InvalidActiveGrid
+        );
+        t.next_driver = 0;
+        t.next_class = u32::MAX;
+        assert_eq!(
+            t.observe(&frame, BUILD, ms(32)).unwrap_err(),
+            Rejection::InvalidActiveGrid
+        );
     }
 
     fn observe(translator: &mut Translator, frame: &[u8], at: Duration) -> Observation {
@@ -426,6 +792,13 @@ mod tests {
 
     fn ids(observation: &Observation) -> Vec<CarId> {
         observation.state.cars.iter().map(|car| car.id).collect()
+    }
+
+    fn reliable<T: Copy>(quality: Quality<T>) -> T {
+        match quality {
+            Quality::Reliable(value) => value,
+            _ => panic!("se esperaba un valor fiable"),
+        }
     }
 
     #[test]
@@ -601,12 +974,99 @@ mod tests {
     }
 
     #[test]
+    fn fuel_and_delta_carry_the_native_validity_rules() {
+        let observation = observe(&mut translator(), REAL_44, ms(0));
+        let player = observation.state.player.expect("jugador");
+        assert!((reliable(player.fuel.level_l) - 99.586_573_277_723_69).abs() < 1e-9);
+        assert!((reliable(player.fuel.capacity_l) - 100.0).abs() < 1e-9);
+        // `per_lap_l` y `laps_left` los deriva el núcleo.
+        assert!(matches!(player.fuel.per_lap_l, Quality::Unavailable));
+        assert!(matches!(player.fuel.laps_left, Quality::Unavailable));
+        // El fixture trae delta 0 sin mejor vuelta: no es un delta.
+        assert!(matches!(player.delta_best_s, Quality::Unavailable));
+        let caps = observation.state.capabilities;
+        assert_eq!(
+            (caps.fuel, caps.delta),
+            (Capability::Fresh, Capability::Supported)
+        );
+
+        // Nivel por encima de la capacidad: el par entero es inválido.
+        let mut frame = REAL_44.to_vec();
+        frame[PLAYER_TELEMETRY + 524..PLAYER_TELEMETRY + 532]
+            .copy_from_slice(&150.0_f64.to_le_bytes());
+        let observation = observe(&mut translator(), &frame, ms(0));
+        let player = observation.state.player.unwrap();
+        assert!(matches!(
+            (player.fuel.level_l, player.fuel.capacity_l),
+            (Quality::Unavailable, Quality::Unavailable)
+        ));
+        assert_eq!(observation.state.capabilities.fuel, Capability::Supported);
+
+        // Delta fuera de ±10 000 s o no finito: sin dato.
+        for delta in [10_000.0_f64, -10_000.0, f64::NAN, f64::INFINITY] {
+            let mut frame = REAL_44.to_vec();
+            frame[PLAYER_TELEMETRY + 696..PLAYER_TELEMETRY + 704]
+                .copy_from_slice(&delta.to_le_bytes());
+            let observation = observe(&mut translator(), &frame, ms(0));
+            let player = observation.state.player.unwrap();
+            assert!(
+                matches!(player.delta_best_s, Quality::Unavailable),
+                "{delta}"
+            );
+            assert_eq!(observation.state.capabilities.delta, Capability::Supported);
+        }
+        // Un delta real (negativo = más rápido) sí viaja.
+        let mut frame = REAL_44.to_vec();
+        frame[PLAYER_TELEMETRY + 696..PLAYER_TELEMETRY + 704]
+            .copy_from_slice(&(-3.5_f64).to_le_bytes());
+        let observation = observe(&mut translator(), &frame, ms(0));
+        assert!(
+            matches!(observation.state.player.unwrap().delta_best_s, Quality::Reliable(delta) if (delta + 3.5).abs() < f64::EPSILON)
+        );
+    }
+
+    #[test]
+    fn cars_and_session_publish_sector_distance_progress_and_limits() {
+        let observation = observe(&mut translator(), REAL_44, ms(0));
+        let car = observation.state.player_car().expect("coche del jugador");
+        assert_eq!(reliable(car.current_sector), 0);
+        assert!((reliable(car.lap_distance_m) - 1_068.229_614_257_812_5).abs() < 1e-9);
+        // Cronómetro todo a cero con distancias distintas: sin dato.
+        assert!(matches!(car.lap_elapsed_s, Quality::Unavailable));
+        // `mMaximumLaps` 0 = sesión por tiempo.
+        assert!(matches!(
+            observation.state.session.laps_total,
+            Quality::Unavailable
+        ));
+        assert!(
+            (reliable(observation.state.session.track_length_m) - 4_655.109_863_281_25).abs()
+                < 1e-9
+        );
+        let caps = observation.state.capabilities;
+        assert_eq!(
+            (caps.sectors, caps.lap_progress),
+            (Capability::Fresh, Capability::Fresh)
+        );
+
+        // Carrera por vueltas: `mMaximumLaps` llega tal cual.
+        let mut frame = REAL_44.to_vec();
+        frame[1_716..1_720].copy_from_slice(&30_i32.to_le_bytes());
+        let observation = observe(&mut translator(), &frame, ms(0));
+        assert!(matches!(
+            observation.state.session.laps_total,
+            Quality::Reliable(30)
+        ));
+    }
+
+    #[test]
     fn a_stalled_session_clock_marks_everything_stale_and_declares_data_without_freshness() {
         let mut t = translator();
         let fresh = observe(&mut t, REAL_44, ms(0));
+        assert_eq!(fresh.state.source_state, vantare_domain::SourceState::Live);
         assert!(!t.needs_refresh(ms(499)));
         assert!(t.needs_refresh(ms(500)));
         let stale = observe(&mut t, REAL_44, ms(600));
+        assert_eq!(stale.state.source_state, vantare_domain::SourceState::Stale);
         assert!(!t.needs_refresh(ms(700)));
         assert!(matches!(stale.state.cars[0].position, Quality::Stale(_)));
         assert!(matches!(stale.state.session.elapsed_s, Quality::Stale(_)));
@@ -619,9 +1079,14 @@ mod tests {
             caps.spatial,
             caps.driver_inputs,
             caps.powertrain,
+            caps.fuel,
+            caps.sectors,
+            caps.lap_progress,
         ] {
             assert_eq!(declared, Capability::WithData);
         }
+        // Sin mejor vuelta, el delta nunca tuvo dato.
+        assert_eq!(caps.delta, Capability::Supported);
         // Los valores no cambian, solo su calidad.
         assert_eq!(ids(&stale), ids(&fresh));
         assert_eq!(stale.state.cars[0].pose.current(), None);
@@ -649,14 +1114,128 @@ mod tests {
     fn menu_frames_are_valid_observations_with_supported_but_dataless_signals() {
         let menu = include_bytes!("../../../../../testdata/lmu-menu-fixture.bin");
         let observation = observe(&mut translator(), menu, ms(0));
+        assert_eq!(
+            observation.state.source_state,
+            vantare_domain::SourceState::Waiting
+        );
         assert!(observation.state.cars.is_empty() && observation.state.player.is_none());
-        assert_eq!(
-            observation.state.capabilities.positions,
-            Capability::Supported
+        let caps = observation.state.capabilities;
+        for dataless in [
+            caps.positions,
+            caps.fuel,
+            caps.delta,
+            caps.sectors,
+            caps.lap_progress,
+        ] {
+            assert_eq!(dataless, Capability::Supported);
+        }
+        assert_eq!(caps.session_clock, Capability::Fresh);
+    }
+
+    /// Los nombres de piloto vienen de la memoria del simulador, asi que los
+    /// mapas de identidad son superficie de crecimiento. Sin cota, quien pueda
+    /// escribir esa memoria acuna un nombre nuevo por fotograma y los mapas
+    /// crecen durante toda la sesion.
+    #[test]
+    fn mutated_driver_names_cannot_grow_the_identity_maps_without_bound() {
+        let mut translator = translator();
+        // El reloj AVANZA a proposito: asi no cuenta como sesion nueva y el
+        // unico limite posible es el presupuesto de identidades.
+        for round in 0..2_000_u32 {
+            let mut frame = REAL_44.to_vec();
+            frame[1_700..1_708].copy_from_slice(&f64::from(round).to_le_bytes());
+            let name = format!("p{round:08}");
+            let at = SCORING_BASE + 4;
+            frame[at..at + name.len()].copy_from_slice(name.as_bytes());
+            frame[at + name.len()] = 0;
+            let _ = translator.observe(&frame, BUILD, ms(u64::from(round) * 16));
+        }
+        assert!(
+            translator.drivers.len() <= IDENTITY_BUDGET,
+            "el mapa de pilotos debe quedar acotado, y tiene {}",
+            translator.drivers.len()
         );
-        assert_eq!(
-            observation.state.capabilities.session_clock,
-            Capability::Fresh
+        assert!(translator.classes.len() <= IDENTITY_BUDGET);
+    }
+
+    #[test]
+    fn rotating_scoring_slots_stays_bounded_and_preserves_present_car_ids() {
+        let mut t = translator();
+        let mut stable = None;
+        for round in 0..600_u32 {
+            let mut bytes = REAL_44.to_vec();
+            bytes[1700..1708].copy_from_slice(&f64::from(round).to_le_bytes());
+            let slot = i32::try_from(1000 + round).unwrap();
+            bytes[SCORING_BASE..SCORING_BASE + 4].copy_from_slice(&slot.to_le_bytes());
+            // Scoring y telemetría declaran el mismo id, mutación explícita.
+            let old_slot =
+                i32::from_le_bytes(REAL_44[SCORING_BASE..SCORING_BASE + 4].try_into().unwrap());
+            for index in 0..44 {
+                let at = 128_468 + index * 1_888;
+                if i32::from_le_bytes(bytes[at..at + 4].try_into().unwrap()) == old_slot {
+                    bytes[at..at + 4].copy_from_slice(&slot.to_le_bytes());
+                }
+            }
+            let observation = t.observe(&bytes, BUILD, ms(u64::from(round) * 16)).unwrap();
+            let current = observation.state.cars[1].id;
+            assert_eq!(*stable.get_or_insert(current), current);
+        }
+        assert!(
+            t.slots.len() <= IDENTITY_BUDGET,
+            "slots sin cota: {}",
+            t.slots.len()
         );
+    }
+
+    #[test]
+    fn exhausted_car_counter_rejects_before_assigning_a_wrapped_id() {
+        let mut t = translator();
+        t.next_car = u32::MAX;
+        assert_eq!(
+            t.observe(REAL_44, BUILD, ms(0)).unwrap_err(),
+            Rejection::InvalidActiveGrid
+        );
+    }
+
+    #[test]
+    fn missing_source_clock_cannot_resume_a_confirmed_pause() {
+        let mut t = Translator::new(SourceKind::Live);
+        t.observe(REAL_44, BUILD, ms(0)).unwrap();
+        t.rest
+            .accept_session(br#"{"session":"PRACTICE1"}"#, ms(500))
+            .unwrap();
+        assert_eq!(
+            t.observe(REAL_44, BUILD, ms(500))
+                .unwrap()
+                .state
+                .source_state,
+            vantare_domain::SourceState::Paused
+        );
+        let mut bytes = REAL_44.to_vec();
+        bytes[1700..1708].copy_from_slice(&f64::NAN.to_le_bytes());
+        assert_eq!(
+            t.observe(&bytes, BUILD, ms(520))
+                .unwrap()
+                .state
+                .source_state,
+            vantare_domain::SourceState::Stale
+        );
+    }
+    #[test]
+    fn changing_classes_with_fixed_drivers_are_bounded_independently() {
+        let mut translator = translator();
+        let mut driver_count = None;
+        for round in 0..2_000_u32 {
+            let mut frame = REAL_44.to_vec();
+            frame[1_700..1_708].copy_from_slice(&f64::from(round).to_le_bytes());
+            let name = format!("class{round:08}");
+            let at = SCORING_BASE + 200;
+            frame[at..at + 32].fill(0);
+            frame[at..at + name.len()].copy_from_slice(name.as_bytes());
+            let _ = translator.observe(&frame, BUILD, ms(u64::from(round) * 16));
+            let fixed_count = *driver_count.get_or_insert(translator.drivers.len());
+            assert_eq!(translator.drivers.len(), fixed_count);
+            assert!(translator.classes.len() <= IDENTITY_BUDGET);
+        }
     }
 }

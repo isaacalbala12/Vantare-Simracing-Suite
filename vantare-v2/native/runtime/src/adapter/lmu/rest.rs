@@ -2,7 +2,9 @@
 //! lo que la memoria compartida no trae (número de carrera, bandera global) o
 //! un respaldo del circuito y del tipo de sesión; nunca crea un coche.
 
+#[cfg(windows)]
 mod http;
+#[cfg(windows)]
 mod poller;
 
 use std::collections::HashMap;
@@ -12,6 +14,7 @@ use serde_json::{Map, Value};
 
 use super::frame::Kind;
 
+#[cfg(windows)]
 pub(super) use poller::Poller;
 
 pub(super) const MAX_RESPONSE_BYTES: usize = 4 << 20;
@@ -48,6 +51,18 @@ pub(super) struct Cache {
 }
 
 impl Cache {
+    /// REST debe confirmar una sesión compatible dentro del mismo límite de
+    /// 500 ms que SHM. La caché auxiliar de 2 s no prueba que el juego siga vivo.
+    pub(super) fn session_alive(&self, now: Duration, floor: Duration) -> Option<&SessionInfo> {
+        let (info, started) = self.session.as_ref()?;
+        (*started >= floor
+            && now
+                .checked_sub(*started)
+                .is_some_and(|age| age < super::gate::STALL_LIMIT)
+            && info.kind.is_some())
+        .then_some(info)
+    }
+
     /// `started`: instante en que se inició la consulta, en el reloj del núcleo.
     pub(super) fn accept_standings(
         &mut self,
@@ -182,12 +197,12 @@ fn decode_session_info(body: &[u8]) -> Result<SessionInfo, DecodeError> {
     ]
     .into_iter()
     .find_map(|(prefix, kind)| session.starts_with(prefix).then_some(kind));
-    // Códigos 2–5 del SDK (solo carrera completa). Cualquier otro valor, incluida
-    // la cadena `"invalid"` del corpus, no prueba ni descarta una bandera.
-    let global_yellow = matches!(
-        property(row, "yellowFlagState").and_then(Value::as_f64),
-        Some(2.0..=5.0)
-    );
+    // Contrato candidato de Go: solo los códigos exactos 2, 3, 4, 5 del SDK
+    // (full-course). La equivalencia REST/SHM necesita una captura positiva;
+    // fracciones y `"invalid"` no prueban ni descartan una bandera.
+    let global_yellow = property(row, "yellowFlagState")
+        .and_then(Value::as_f64)
+        .is_some_and(|code| [2.0, 3.0, 4.0, 5.0].contains(&code));
     Ok(SessionInfo {
         track: text(row, "trackName")?,
         kind,
@@ -260,6 +275,64 @@ mod tests {
             decode_session_info(br#"{"trackName":3}"#),
             Err(DecodeError::Malformed)
         );
+    }
+
+    /// Contrato candidato de Go (`parseRESTSessionFlag`), no captura física.
+    #[test]
+    fn only_exact_full_course_codes_assert_yellow() {
+        for code in ["2", "3", "4", "5", "2.0", "5e0"] {
+            let body = format!(r#"{{"yellowFlagState":{code}}}"#);
+            assert!(
+                decode_session_info(body.as_bytes()).unwrap().global_yellow,
+                "{code}"
+            );
+        }
+        for code in [
+            "-1",
+            "0",
+            "1",
+            "6",
+            "7",
+            "99",
+            "2.5",
+            "3.001",
+            "4.999",
+            r#""3""#,
+            r#""invalid""#,
+            "true",
+            "[]",
+            "{}",
+            "null",
+        ] {
+            let body = format!(r#"{{"yellowFlagState":{code}}}"#);
+            assert!(
+                !decode_session_info(body.as_bytes()).unwrap().global_yellow,
+                "{code}"
+            );
+        }
+    }
+
+    #[test]
+    fn ignored_phase_and_sector_shapes_do_not_assert_global_flags() {
+        for shape in [
+            "3",
+            "5",
+            "6",
+            "7",
+            "8",
+            r#""GPHASE_GREEN""#,
+            "true",
+            "[]",
+            "{}",
+            "null",
+        ] {
+            let body = format!(r#"{{"gamePhase":{shape},"sectorFlag":{shape}}}"#);
+            assert_eq!(
+                decode_session_info(body.as_bytes()).unwrap(),
+                SessionInfo::default(),
+                "{shape}"
+            );
+        }
     }
 
     #[test]

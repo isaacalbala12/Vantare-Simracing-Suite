@@ -1,11 +1,9 @@
 # Workflow de agentes
 
-> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
-> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
-> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
-> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
-> las referencias ISA exigidas por los controles son un puente técnico temporal.
-> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+> **Seguimiento vigente (#1598): Plane es el tablero de Isaac; GitHub Issues
+> y Project Vantare se mantienen para código, ramas y PRs.** Leer la issue y actualizarla junto con el handoff tras
+> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
+> estados de trackers anteriores son evidencia histórica, no instrucciones.
 
 
 > Linear fue retirado el 2026-08-20. Los IDs migrados se resuelven por su
@@ -26,19 +24,21 @@
 
 ## Fuente operativa y aislamiento
 
-- Notion contiene tareas, proyectos, hitos, dependencias, prioridades y estado.
-  Leer tarea y proyecto antes de ejecutar, también para issues GitHub existentes.
-  Las labels `state:*` y el GitHub Project son referencias del flujo anterior.
+- Plane organiza los encargos del orquestador y sus estados; GitHub Issues
+  define el alcance y las dependencias de código. La tarea `VANTA-N` enlaza issue y PR.
+  Ningún worker toma tareas directamente de «Para Claude» ni crea tareas Plane.
+  Si falta `VANTA-N`, avisa al orquestador. Leer la issue
+  antes de editar. Las labels `state:*`, `area:*`, los milestones y el GitHub
+  Project Vantare organizan el trabajo vigente.
 - Una issue ejecutable con cambios equivale a una rama, un worktree y un
   contexto propios.
-- Una investigación que solo modifica la tarea Notion no necesita rama; si genera
+- Una investigación que solo modifica la issue GitHub no necesita rama; si genera
   docs en el repo, sí.
-- Los hallazgos fuera de alcance crean tareas Notion pendientes; no se incorporan silenciosamente.
+- Los hallazgos fuera de alcance crean issues GitHub pendientes; no se incorporan silenciosamente.
 - Se confirma base, worktree y estado limpio antes de editar.
 - La rama sigue exactamente la convención `vantareapp/isa-N-slug`, con el
-  número GitHub de la referencia técnica exigida por los gates actuales.
-  Crear primero la tarea Notion y reutilizar la issue importada cuando exista.
-  No usar VAN como ISA ni crear otro backlog GitHub.
+  número GitHub de la issue. Crear la issue antes de editar y reutilizarla
+  cuando exista; conservar los identificadores históricos de las migradas.
 - Commits pequeños y staging limitado a rutas; no `git add .`.
 - El worker puede commit, push, PR draft e `In Review`, pero no promociona sin
   autorización.
@@ -49,9 +49,12 @@
 
 ## Roadmap público
 
-- La tarea Notion conserva alcance, decisiones y estado operativo.
-- Owner edita el roadmap en la app, guarda un borrador privado y lo publica
-  explícitamente. Solo la versión publicada es visible para todos los usuarios.
+- La issue GitHub conserva alcance, decisiones y evidencia de código;
+  Plane refleja el estado del encargo.
+- Plane es la fuente del contenido; el servidor sincroniza Supabase según
+  `docs/roadmap-maintenance.md` (#1601). App/web solo leen la misma RPC pública.
+- Credenciales, despliegue, timer y primera publicación requieren autorización
+  separada; implementar/mergear no activa el publicador.
 - Los cambios de código siguen el flujo de rama, PR y CI; el contenido público
   ya no requiere modificar archivos ni abrir una PR.
 
@@ -86,8 +89,8 @@ master, solo con aprobación final de Isaac
 ```
 
 `nightly` y `testers` existen desde ISA-121. `develop` queda congelada como
-referencia histórica y no recibe trabajo nuevo. La promoción usa una tarea Notion de
-integración propia y la referencia técnica GitHub que exigen los gates; terminar una feature no la promociona automáticamente.
+referencia histórica y no recibe trabajo nuevo. La promoción usa una issue GitHub de
+integración propia; terminar una feature no la promociona automáticamente.
 Tests y review no sustituyen las aprobaciones.
 
 ## Rama automática del Testing Center (ISA-318)
@@ -184,34 +187,43 @@ Debe buscar:
 
 ## Flujo normal
 
-1. Usuario debate con orquestador cuando hacen falta decisiones.
-2. Orquestador lee la tarea y el proyecto en Notion, las instrucciones actualizadas
+1. Isaac pasa la tarea a «Para Claude» para el orquestador. Este le hace las
+   preguntas necesarias hasta aclarar al 100 % qué entra, qué no y cómo se verifica;
+   después crea o enlaza la issue GitHub y asigna al worker según el rol del modelo.
+2. Orquestador lee la tarea Plane y el proyecto en GitHub Issues, las instrucciones actualizadas
    de nightly, `docs/vantare-program/` y el handoff técnico. Registra agente,
-   Estado `En curso`, rama/base y siguiente paso en Notion.
-3. Notion define el alcance. El roadmap público comunica una selección editorial
-   publicada desde la app; los planes históricos solo se consultan como contexto.
+   rama/base y siguiente paso en GitHub Issues. Solo el worker asignado pasa
+   a «En curso» al empezar.
+3. GitHub Issues define el alcance. El roadmap público comunica una selección editorial
+   publicada en Supabase; los planes históricos solo se consultan como contexto.
 4. Orquestador crea o identifica el miniplan vigente.
 5. Orquestador crea prompt worker.
 6. Worker implementa.
-7. Worker reporta evidencia.
+7. Worker reporta evidencia y pasa a «Por revisar», con el comentario del PR.
 8. Reviewer audita sin editar.
 9. Orquestador recomienda aceptar, corregir, dividir o revertir.
-10. Se hace commit pequeño cuando el contrato de la tarea Notion lo permite.
-11. Actualizar y releer Notion después de cada worker o cambio material. La
+10. Se hace commit pequeño cuando el contrato de la issue GitHub lo permite.
+11. Actualizar y releer GitHub Issues después de cada worker o cambio material. La
     entrega queda `En revisión` con PR, checks/omisiones, riesgos y siguiente paso.
-    El handoff Git conserva evidencia técnica enlazada; no sustituye Notion. Si
-    cambia alcance o plan futuro, actualizar Notion. Isaac decide cuándo
+    El handoff Git conserva evidencia técnica enlazada; no sustituye GitHub Issues. Si
+    cambia alcance o plan futuro, actualizar GitHub Issues. Isaac decide cuándo
     publicar un cambio en el roadmap visual. El worker no promociona por su cuenta.
 12. Tras la aprobación inicial de Isaac, la tarea de integración promueve la
-    entrega a `nightly`.
+    entrega a `nightly`. El orquestador pasa a «Por testear» tras revisar y fusionar.
+    Isaac decide «Entregado». Cualquiera puede cancelar explicándolo.
 13. Después del feedback y sus correcciones, otra promoción lleva el conjunto
     de `nightly` a `testers`.
 14. Solo una aprobación final de Isaac permite `testers` a `master`.
 15. Verificar el SHA en el canal remoto y registrar aceptación, PR y canal real
-    en Notion. Releer la escritura; no equiparar merge a publicación. El roadmap se actualiza cuando cambia el alcance, el plan futuro,
-    una fase, un área, un hito o una entrega pública. `docs/current-plan.md` y
+    en GitHub Issues. Releer la escritura; no equiparar merge a publicación.
+    El roadmap se actualiza únicamente cuando Isaac lo solicita. la issue de GitHub vigente y
     `docs/roadmap-execution-board.md` son históricos y no se actualizan como
     parte del flujo normal.
+
+Los estados se mueven con `tools/plane/plane-estado.py` desde la raíz Git,
+según [AGENTS.md](../AGENTS.md#issues). Si falta token, el worker avisa en su
+buzón y el orquestador mueve el estado. `--isaac` solo lo usa el orquestador
+cuando Isaac lo pide. Tareas «Tipo - Nombre», con los tipos de AGENTS y Module obligatorio.
 
 ## Comunicación de cambios visibles
 
@@ -266,9 +278,9 @@ Una tarea esta terminada solo si:
 - tests actualizados si cambia comportamiento,
 - verificacion manual clara,
 - reviewer no encuentra criticos,
-- Notion contiene el alcance, estado, PR, SHA/canal, checks, limitaciones
+- GitHub Issues contiene el alcance, estado, PR, SHA/canal, checks, limitaciones
   y siguiente paso, con escritura verificada; el handoff Git enlaza esa tarea.
-- Si falla el acceso o la escritura en Notion, conservar evidencia, comunicar
+- Si falla el acceso o la escritura en GitHub Issues, conservar evidencia, comunicar
   el bloqueo y pausar trabajo dependiente; no declarar seguimiento completado.
 
 Esta definicion cierra el trabajo tecnico de la rama. No demuestra que el

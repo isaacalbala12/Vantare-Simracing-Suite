@@ -1,0 +1,89 @@
+{
+  "schema_version": 2,
+  "environment": "sandbox",
+  "catalog_version": "bil-13-clerk-v1",
+  "organization_id": "71f1b902-c29a-421b-aeb7-7861d8bbc08d",
+  "checkout_keys": {
+    "launch_lifetime": {
+      "polar_product_id": "fd15a961-ed86-4cbc-9ffa-f8c16716b22f",
+      "polar_price_ids": [
+        "a6a594ea-8275-4922-b1ac-e48ca64003da"
+      ],
+      "plan_sku": "launch_lifetime",
+      "billing_type": "one_time",
+      "lifetime": true,
+      "active": true,
+      "capabilities": [
+        "vantare.edition.launch_v1",
+        "vantare.channel.testers"
+      ],
+      "channels": [
+        "stable",
+        "testers"
+      ],
+      "launch_scope_version": "launch_v1",
+      "trial": {
+        "enabled": false
+      },
+      "entitlement_product_key": "bundle"
+    },
+    "pro_monthly": {
+      "polar_product_id": "41cffd72-bd41-4904-a0e4-9083243d26d7",
+      "polar_price_ids": [
+        "e6674b3a-5d30-434d-88b4-827167f462c3"
+      ],
+      "plan_sku": "pro_monthly",
+      "billing_type": "subscription",
+      "lifetime": false,
+      "active": true,
+      "capabilities": [
+        "vantare.plan.pro"
+      ],
+      "channels": [
+        "stable"
+      ],
+      "launch_scope_version": null,
+      "trial": {
+        "enabled": true,
+        "interval": "day",
+        "interval_count": 7,
+        "provider_anti_abuse_confirmed": true
+      },
+      "entitlement_product_key": "bundle"
+    },
+    "pro_annual": {
+      "polar_product_id": "0ffa6373-57ae-44a3-9ec3-5661d37fb689",
+      "polar_price_ids": [
+        "af881ab0-a4ab-4fee-96a2-12a1602343eb"
+      ],
+      "plan_sku": "pro_annual",
+      "billing_type": "subscription",
+      "lifetime": false,
+      "active": true,
+      "capabilities": [
+        "vantare.plan.pro"
+      ],
+      "channels": [
+        "stable"
+      ],
+      "launch_scope_version": null,
+      "trial": {
+        "enabled": true,
+        "interval": "day",
+        "interval_count": 7,
+        "provider_anti_abuse_confirmed": true
+      },
+      "entitlement_product_key": "bundle"
+    }
+  },
+  "product_id_to_checkout_key": {
+    "fd15a961-ed86-4cbc-9ffa-f8c16716b22f": "launch_lifetime",
+    "41cffd72-bd41-4904-a0e4-9083243d26d7": "pro_monthly",
+    "0ffa6373-57ae-44a3-9ec3-5661d37fb689": "pro_annual"
+  },
+  "price_id_to_checkout_key": {
+    "a6a594ea-8275-4922-b1ac-e48ca64003da": "launch_lifetime",
+    "e6674b3a-5d30-434d-88b4-827167f462c3": "pro_monthly",
+    "af881ab0-a4ab-4fee-96a2-12a1602343eb": "pro_annual"
+  }
+}

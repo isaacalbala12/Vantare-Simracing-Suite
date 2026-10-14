@@ -1,0 +1,71 @@
+{
+  "stints": [
+    {
+      "index": 0,
+      "laps": 43,
+      "driver": "A"
+    },
+    {
+      "index": 1,
+      "laps": 42,
+      "driver": "B"
+    },
+    {
+      "index": 2,
+      "laps": 42,
+      "driver": "C"
+    },
+    {
+      "index": 3,
+      "laps": 43,
+      "driver": "A"
+    },
+    {
+      "index": 4,
+      "laps": 42,
+      "driver": "B"
+    },
+    {
+      "index": 5,
+      "laps": 24,
+      "driver": "C"
+    }
+  ],
+  "pitStops": [
+    {
+      "lap": 43,
+      "fuelLiters": 78,
+      "vePercent": 99,
+      "driver": "B",
+      "changeTyres": true
+    },
+    {
+      "lap": 85,
+      "fuelLiters": 77,
+      "vePercent": 97,
+      "driver": "C",
+      "changeTyres": true
+    },
+    {
+      "lap": 127,
+      "fuelLiters": 77,
+      "vePercent": 98,
+      "driver": "A",
+      "changeTyres": true
+    },
+    {
+      "lap": 170,
+      "fuelLiters": 79,
+      "vePercent": 99,
+      "driver": "B",
+      "changeTyres": true
+    },
+    {
+      "lap": 212,
+      "fuelLiters": 41,
+      "vePercent": 56,
+      "driver": "C",
+      "changeTyres": true
+    }
+  ]
+}

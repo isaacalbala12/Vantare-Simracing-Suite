@@ -1,0 +1,199 @@
+{
+  "issue": 1427,
+  "source": "Workshop reconstruido: demostración, no captura LMU",
+  "snapshot": "../../../fixtures/pedals-telemetry.snapshot.json",
+  "variants": [
+    {
+      "name": "no-clutch",
+      "settings": {
+        "showClutch": false
+      }
+    },
+    {
+      "name": "alpine-a424",
+      "settings": {
+        "steeringWheel": "alpine-a424"
+      }
+    },
+    {
+      "name": "aston-martin-valkyrie",
+      "settings": {
+        "steeringWheel": "aston-martin-valkyrie"
+      }
+    },
+    {
+      "name": "bmw-m-hybrid-v8-pre-le-mans",
+      "settings": {
+        "steeringWheel": "bmw-m-hybrid-v8-pre-le-mans"
+      }
+    },
+    {
+      "name": "bmw-m-hybrid-v8",
+      "settings": {
+        "steeringWheel": "bmw-m-hybrid-v8"
+      }
+    },
+    {
+      "name": "cadillac-v-series-r",
+      "settings": {
+        "steeringWheel": "cadillac-v-series-r"
+      }
+    },
+    {
+      "name": "ferrari-499p",
+      "settings": {
+        "steeringWheel": "ferrari-499p"
+      }
+    },
+    {
+      "name": "genesis-gmr-001",
+      "settings": {
+        "steeringWheel": "genesis-gmr-001"
+      }
+    },
+    {
+      "name": "glickenhaus-scg007",
+      "settings": {
+        "steeringWheel": "glickenhaus-scg007"
+      }
+    },
+    {
+      "name": "isotta-fraschini-tipo6",
+      "settings": {
+        "steeringWheel": "isotta-fraschini-tipo6"
+      }
+    },
+    {
+      "name": "lamborghini-sc63",
+      "settings": {
+        "steeringWheel": "lamborghini-sc63"
+      }
+    },
+    {
+      "name": "peugeot-9x8",
+      "settings": {
+        "steeringWheel": "peugeot-9x8"
+      }
+    },
+    {
+      "name": "peugeot-9x8-2024",
+      "settings": {
+        "steeringWheel": "peugeot-9x8-2024"
+      }
+    },
+    {
+      "name": "porsche-963",
+      "settings": {
+        "steeringWheel": "porsche-963"
+      }
+    },
+    {
+      "name": "toyota-gr010",
+      "settings": {
+        "steeringWheel": "toyota-gr010"
+      }
+    },
+    {
+      "name": "toyota-tr010",
+      "settings": {
+        "steeringWheel": "toyota-tr010"
+      }
+    },
+    {
+      "name": "vanwall-vandervell-680",
+      "settings": {
+        "steeringWheel": "vanwall-vandervell-680"
+      }
+    },
+    {
+      "name": "aston-martin-vantage-gt3",
+      "settings": {
+        "steeringWheel": "aston-martin-vantage-gt3"
+      }
+    },
+    {
+      "name": "bmw-m4-gt3",
+      "settings": {
+        "steeringWheel": "bmw-m4-gt3"
+      }
+    },
+    {
+      "name": "corvette-z06-gt3",
+      "settings": {
+        "steeringWheel": "corvette-z06-gt3"
+      }
+    },
+    {
+      "name": "ferrari-296-gt3",
+      "settings": {
+        "steeringWheel": "ferrari-296-gt3"
+      }
+    },
+    {
+      "name": "ford-mustang-gt3",
+      "settings": {
+        "steeringWheel": "ford-mustang-gt3"
+      }
+    },
+    {
+      "name": "lamborghini-huracan-gt3",
+      "settings": {
+        "steeringWheel": "lamborghini-huracan-gt3"
+      }
+    },
+    {
+      "name": "lexus-rc-f-gt3",
+      "settings": {
+        "steeringWheel": "lexus-rc-f-gt3"
+      }
+    },
+    {
+      "name": "mclaren-720s-gt3",
+      "settings": {
+        "steeringWheel": "mclaren-720s-gt3"
+      }
+    },
+    {
+      "name": "mercedes-amg-gt3",
+      "settings": {
+        "steeringWheel": "mercedes-amg-gt3"
+      }
+    },
+    {
+      "name": "porsche-911-gt3-r",
+      "settings": {
+        "steeringWheel": "porsche-911-gt3-r"
+      }
+    },
+    {
+      "name": "oreca-07",
+      "settings": {
+        "steeringWheel": "oreca-07"
+      }
+    },
+    {
+      "name": "adess-ad25",
+      "settings": {
+        "steeringWheel": "adess-ad25"
+      }
+    },
+    {
+      "name": "duqueine-d09",
+      "settings": {
+        "steeringWheel": "duqueine-d09"
+      }
+    },
+    {
+      "name": "ginetta-g61-lt-p3-evo",
+      "settings": {
+        "steeringWheel": "ginetta-g61-lt-p3-evo"
+      }
+    },
+    {
+      "name": "ligier-js-p325",
+      "settings": {
+        "steeringWheel": "ligier-js-p325"
+      }
+    }
+  ]
+}

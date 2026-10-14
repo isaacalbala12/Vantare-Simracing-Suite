@@ -1,0 +1,13 @@
+{
+  "issue": 1427,
+  "source": "Workshop reconstruido: demostración, no captura LMU",
+  "snapshot": "../../../fixtures/pedals.snapshot.json",
+  "variants": [
+    {
+      "name": "transparent",
+      "settings": {
+        "transparentBackground": true
+      }
+    }
+  ]
+}

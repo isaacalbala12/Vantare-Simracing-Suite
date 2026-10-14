@@ -1,0 +1,26 @@
+[
+  {
+    "Name": "msedgewebview2.exe",
+    "ProcessId": 10468,
+    "ParentProcessId": 10096,
+    "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --embedded-browser-webview=1 --webview-exe-name=SearchHost.exe --user-data-dir=\"C:\\Users\\isaac\\AppData\\Local\\Packages\\MicrosoftWindows.Client.CBS_cw5n1h2txyewy\\LocalState\\EBWebView\""
+  },
+  {
+    "Name": "msedgewebview2.exe",
+    "ProcessId": 30380,
+    "ParentProcessId": 22468,
+    "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\EdgeWebView\\Application\\151.0.4129.107\\msedgewebview2.exe\" --embedded-browser-webview=1 --webview-exe-name=vantare-review937.exe --user-data-dir=\"C:\\Users\\isaac\\AppData\\Roaming\\vantare-review937.exe\\EBWebView\""
+  },
+  {
+    "Name": "vantare-review937.exe",
+    "ProcessId": 22468,
+    "ParentProcessId": 9120,
+    "CommandLine": "C:\\tmp\\review\\vantare-review937.exe"
+  },
+  {
+    "Name": "msedge.exe",
+    "ProcessId": 26216,
+    "ParentProcessId": 29336,
+    "CommandLine": "\"C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe\" --no-startup-window"
+  }
+]

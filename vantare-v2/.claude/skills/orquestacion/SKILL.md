@@ -123,4 +123,4 @@ Todo encargo incluye:
 - Revisa por tu cuenta las cifras que importan (diffs, mediciones) en vez de
   repetir las del worker.
 - Al terminar cada worker: revisión, decisión sobre sus preguntas, actualización
-  del handoff vivo y de la tarea Notion (ver `AGENTS.md`).
+  del handoff vivo y de la issue GitHub (ver `AGENTS.md`).

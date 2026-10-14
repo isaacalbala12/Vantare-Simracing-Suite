@@ -2,59 +2,72 @@
 
 Guia obligatoria para agentes que trabajen en este repo.
 
-## Contexto del usuario
+La aplicación es **Rust + GPUI** en `native/`, conforme a
+[ADR 0099](docs/adr/0099-arquitectura-rust-nativa.md). #1533 retira el código de
+la app Wails/React de este checkout; esto no publica un corte ni una release.
+Lee `native/README.md`, los README de los crates afectados y sus gates.
+Los corpus y referencias se conservan en `native/retirement`; los oráculos
+Go históricos se reproducen opcionalmente desde `tools/frozen-go`.
 
-- El usuario no revisa codigo complejo linea por linea.
-- El usuario si sabe dirigir agentes, modelos, prompts, revisiones y verificaciones.
-- El repo debe protegerse con cambios pequenos, tests, builds, documentacion viva y checklists claras.
-- Explica los resultados en espanol sencillo: que cambio, que archivos tocaste, que checks pasaron y como puede verificarlo manualmente.
+## Criterio de trabajo
 
-Regla central: implementar la solucion correcta mas sencilla, legible y segura.
-Menos codigo es preferible cuando mantiene o mejora claridad, seguridad,
-pruebas y rendimiento. Si la complejidad supera claramente al problema, revisa
-y simplifica antes de ampliarla.
+Isaac dirige y verifica agentes; explica en español sencillo qué cambió,
+la evidencia y cómo comprobarlo. Implementa la solución correcta más sencilla,
+legible y segura; simplifica si la complejidad supera al problema.
 
-## Notion primero: obligatorio desde 2026-09-14
+## Issues
 
-Abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192) y leer la tarea y su proyecto
-antes de ejecutar, incluidas las issues importadas. Leer el contrato completo
-[docs/vantare-program/notion-transition.md](docs/vantare-program/notion-transition.md).
-Actualizar y releer Notion al empezar, bloquear, entregar y verificar integración.
-Una tarea no está entregada si su evidencia solo existe en GitHub o en el chat.
+Plane es el tablero de Isaac: http://sapphireos.tail357eab.ts.net:8088,
+workspace `vantare-simracing-suite`, proyecto `VANTA`. Todo trabajo pasa por el
+orquestador. Un worker solo trabaja en lo que este le encarga y en una tarea
+`VANTA-N` concreta; si falta, avisa al orquestador y no la crea por su cuenta.
+GitHub Issues y el Project Vantare se mantienen para código, ramas y PRs (#1503).
+La tarea Plane enlaza la issue GitHub y el PR.
+`ISA-N` es el número GitHub para issues nuevas; los IDs migrados conservan
+su título e identificadores históricos. Usar `vantareapp/isa-N-slug`.
+Las instrucciones de Notion en otros documentos son históricas.
 
-### Compatibilidad técnica temporal con GitHub
+Flujo de estados:
 
-- GitHub conserva código, ramas, PR, CI, builds y releases. Su Project y labels
-  de estado son referencias históricas, no la cola de ejecución.
-- Los validadores actuales aún consultan una issue GitHub viva y usan ramas
-  `vantareapp/isa-N-slug`. Reutilizar la issue existente; si CI requiere una nueva,
-  crear primero la tarea Notion y enlazar la issue como puente técnico mínimo.
-  Mantener en ella el contrato de roadmap que consume CI, coherente con Notion.
-- Separar UUID/`VAN-N`, número GitHub e ISA histórico. GitHub #519 = ISA-233;
-  no obtener la identidad del título ni reutilizar VAN como ISA.
-- Linear fue retirado el 2026-08-20. No es una dependencia operativa.
-- El corte técnico exclusivo sigue pendiente; esto no pospone Notion como
-  autoridad de alcance, prioridades, dependencias y seguimiento.
+- Isaac → «Para Claude»: la recibe el **orquestador**, que hace a Isaac las
+  preguntas necesarias hasta que el alcance quede 100 % claro: qué entra,
+  qué no y cómo se verifica. Después crea o enlaza la issue GitHub y reparte
+  la tarea al worker adecuado según el rol del modelo.
+- Worker → «En curso» solo al empezar el encargo asignado; ningún worker
+  coge tareas directamente de «Para Claude».
+- Worker → «Por revisar» al terminar, con el comentario del PR.
+- Orquestador → «Por testear» tras revisar y fusionar en `nightly`.
+- Isaac → «Entregado».
+- Cualquiera → «Cancelado», explicándolo en un comentario.
+
+Desde la raíz Git, usar `python tools/plane/plane-estado.py VANTA-N "En curso"`,
+`python tools/plane/plane-estado.py VANTA-N "Por revisar" --comentario "PR https://..."`
+o `python tools/plane/plane-estado.py VANTA-N --ver`. El token se lee de
+`PLANE_API_TOKEN` o `~/.vantare/plane-token`, nunca se imprime. Si el worker
+no tiene token (por ejemplo, en otro PC), avisa en su buzón al orquestador,
+que mueve el estado. «Entregado» y «Para Claude» se rechazan salvo `--isaac`,
+flag que solo usa el orquestador cuando Isaac lo pide. «Por hacer» es el estado
+inicial previo a «Para Claude».
+
+Las tareas se llaman «Tipo - Nombre». Tipos: Feature, Rework, Bug, Review,
+Investigar, Documento, Marketing, Medición, Optimizar. Module obligatorio.
 
 ## Fuentes de verdad y lectura obligatoria
 
 Antes de interpretar o ejecutar una tarea:
 
-1. Lee la tarea Notion y su proyecto; verifica acceso de lectura/escritura.
-   Verifica raiz Git, rama, HEAD, worktree y `git status --short`; consulta
-   las instrucciones de `origin/nightly` actualizado si el checkout es antiguo.
-2. Lee este archivo y `docs/vantare-program/notion-transition.md`.
+1. Verifica raiz Git, rama, HEAD, worktree y `git status --short`.
+2. Lee este archivo y `docs/roadmap-maintenance.md`.
 3. Lee `docs/agent-workflow.md` y `docs/branch-channels.md` si la tarea afecta
    Git, el tracker, CI, releases o estados.
 4. Lee `docs/vantare-program/README.md`, sus contratos aplicables y el unico
    handoff vivo del proyecto.
-5. Lee dependencias y aceptación en Notion, la referencia GitHub que consume CI
-   y el plan, ADR o microplan vigente.
+5. Lee la issue de GitHub, sus dependencias y el plan, ADR o microplan vigente.
 6. Lee el codigo y los tests que demuestran el comportamiento actual.
 
 Las decisiones recientes del expediente canonico y la evidencia del runtime
-prevalecen sobre planes historicos. La tarea Notion es la autoridad para alcance,
-dependencias y estado; GitHub demuestra rama, PR, CI e integración; no sustituye los contratos de producto o
+prevalecen sobre planes historicos. La issue de GitHub es la autoridad para alcance,
+dependencias, rama y estado; no sustituye los contratos de producto o
 arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 
 ## Reglas generales
@@ -73,12 +86,10 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
   afirmes uno sin verificar la rama/SHA remota, PR, CI y release aplicables.
 - Cada proyecto mantiene un unico handoff vivo. Actualizalo despues de cada
   worker, decision o cambio material de estado, arquitectura, evidencia,
-  riesgos o siguiente accion. Notion contiene la continuidad operativa; Git
-  conserva la evidencia técnica versionada con enlace a la tarea.
-- Toda ejecución requiere tarea Notion antes de editar. Registrar Estado,
-  Proyecto, Agente, alcance, dependencias y siguiente paso. Los hallazgos fuera
-  de alcance van a Notion como pendientes; no se ejecutan sin alcance autorizado.
-  Releer después de escribir y registrar bloqueos de acceso sin simular éxito.
+  riesgos o siguiente accion; refleja el mismo estado real en la issue de GitHub.
+- Todo trabajo nuevo debe estar cubierto por una issue de GitHub antes de
+  editar. Los hallazgos fuera de alcance se documentan como issues y no se
+  incorporan silenciosamente.
 - La delegacion tiene un solo nivel por defecto: el orquestador puede crear
   workers, pero un worker no puede crear subagentes ni delegar su tarea salvo
   autorizacion expresa y acotada del orquestador. No ejecutes dos agentes en
@@ -86,23 +97,17 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 - No delegues una tarea trivial cuando ejecutarla directamente sea mas clara y
   barata. El orquestador sigue siendo responsable de revisar el diff, la
   evidencia y el handoff; el reporte del worker no basta por si solo.
-- Overlay Studio V3 es un único editor de layout, contenido, comportamiento y apariencia. Mantén separadas sus capas internas: el canvas solo gestiona interacción espacial; el inspector edita el documento; los renderizadores visuales reciben ViewModels puros y nunca acceden a persistencia, permisos, Wails/SSE ni posición. Consulta ADR 0003 y el plan maestro V3.
-- `WidgetVisualHost` es la frontera compartida de renderizado para Studio,
-  Desktop, OBS y Workshop. En el flujo aprobado de autoria visual se edita el
-  TSX/CSS productivo y Workshop debe reflejarlo mediante HMR: no crees un renderer duplicado, DSL,
-  compilador HTML, scaffolder o registro generico salvo una decision nueva.
-  Los HTML son contratos visuales; el fondo del escenario no forma parte del
-  widget ni de sus capturas de paridad.
-- Si tocas drag/resize del canvas V3, lee primero `docs/overlays-studio/canvas-drag-imperative-preview.md` (preview DOM imperativa; no reintroducir posición transitoria vía React state).
-- El alcance, las dependencias y el estado operativo viven en la tarea Notion.
-  El roadmap público muestra varias vistas gráficas de una única publicación.
-  Isaac indica los cambios a Codex por chat; Codex actualiza la publicación
-  compartida en Supabase tras comprobar la versión vigente. La app solo lee.
-  No hay editor en la app, archivo de contenido ni requisito de modificar el
-  roadmap en cada PR.
-- Cada tarea vive bajo su **Proyecto** y, si está comprometida para una versión,
-  su **Hito** en Notion. Conservar labels/milestones GitHub solo cuando los
-  consumidores técnicos actuales los necesitan. El hito agrupa las entregas de una
+- El alcance y las dependencias de código viven en la issue de GitHub;
+  Plane refleja el encargo y sus estados según la sección «Issues».
+  Plane (proyecto Vantare) es la única fuente del roadmap público (#1601).
+  El publicador del servidor sincroniza `visual_roadmap` en Supabase; Hub, web y
+  digest leen la RPC pública sin credenciales Plane. Funciona con GitHub privado. Consulta
+  `docs/roadmap-maintenance.md`. No hay editor en la app ni requisito de
+  modificar el roadmap en cada PR. `docs/roadmap/plan.md` y
+  `.github/scripts/roadmap_digest.py` fueron retirados de nightly; no se recrean.
+- Cada issue vive bajo su **proyecto** (label `area:*`, columna del GitHub
+  Project **Vantare**) y, si esta comprometida para una version, bajo su
+  **milestone** de GitHub. El milestone agrupa las features que justifican una
   promocion de canal: cuando se cierra al 100%, ese corte es **candidato** a
   subir de nightly a testers, y de testers a master tras su validacion. La
   promocion la dispara una persona, nunca el cierre automatico del milestone.
@@ -122,21 +127,9 @@ arquitectura. No uses la skill `vantare-core`: esta desactualizada.
 
 ## Orquestación y roles de modelos
 
-Cada modelo tiene un rol. Detalle, criterios de elección, modo ahorro y
-plantilla de encargo en la skill
-[`.claude/skills/orquestacion/SKILL.md`](.claude/skills/orquestacion/SKILL.md);
-léela antes de planificar o delegar.
-
-- **Advisors: Fable 5.1 (razonamiento medio) y GPT 6 Astra (max).** Solo si es
-  estrictamente necesario o para fijar la dirección al inicio de un plan.
-- **Orquestador y optimizador: Opus 5.5 (medio).** Planifica, reparte, optimiza,
-  hace el diseño visual nuevo y revisa todo lo que entregan los workers.
-- **Ejecutor principal: Sonnet 5.5 (medio).** Código a gran escala y réplicas o
-  paridad de diseños existentes; no diseño visual nuevo.
-- **Worker barato: DeepSeek V4.1 Flash** (DeepSeek Harness / opencode-go) **y
-  Muse Spark 1.3** (free y, al agotarse, contributor), **ambos en max.** Tareas
-  repetitivas o sencillas, y más carga cuando quede menos del 50 % de la cuota
-  de uso del plan.
+Los roles, criterios de elección y encargos viven en
+[la skill de orquestación](.claude/skills/orquestacion/SKILL.md).
+Leerla antes de planificar o delegar; respetar el modelo autorizado en el encargo.
 
 ## Preautorización inerte de la rama automática (ISA-318)
 
@@ -157,8 +150,7 @@ léela antes de planificar o delegar.
 
 ## Autoridad y acciones externas
 
-Dentro de una tarea Notion aprobada, los agentes pueden actualizar Notion y
-las referencias técnicas necesarias, crear o actualizar
+Dentro de una issue aprobada, los agentes pueden crear o actualizar issues,
 ramas, worktrees, commits, pushes, PRs draft, CI, documentacion y reviews.
 
 Requieren autorizacion explicita de Isaac:
@@ -170,147 +162,71 @@ Requieren autorizacion explicita de Isaac:
 - borrar masivamente datos de forma irreversible;
 - eliminar cuentas o datos reales de usuarios.
 
-## Flujo esperado
-
-1. Revisa `git status --short`.
-2. Lee los docs relevantes.
-3. Declara objetivo, alcance y archivos esperados.
-4. Haz un cambio pequeno.
-5. Anade o actualiza tests si cambia comportamiento.
-6. Ejecuta los checks aplicables.
-7. Resume evidencia y verificacion manual.
-8. Revisa el diff completo y la evidencia; no confies solo en el resumen de un worker.
-9. Actualiza y relee la tarea y continuidad del proyecto en Notion después de
-   cada worker o cambio material; enlaza el handoff técnico versionado. Si Isaac
-   pide cambiar el roadmap público, actualiza la publicación compartida según
-   `docs/roadmap-maintenance.md`.
-
 ## Stop conditions
 
-Para y pide revision si:
+Para y pide revisión si la base/rama/SHA no coincide con la issue, hay cambios
+ajenos en conflicto, se exceden las rutas previstas, falta una dependencia
+aprobada, hay que cambiar arquitectura, no se entiende un fallo o no se sabe
+verificar, los documentos vigentes se contradicen o la acción está reservada a Isaac.
 
-- Necesitas tocar muchos mas archivos de los previstos.
-- Necesitas una dependencia nueva.
-- Necesitas cambiar arquitectura.
-- Los tests fallan por una causa que no entiendes.
-- Encuentras cambios previos que chocan con tu tarea.
-- No sabes como verificar el resultado.
-- Hay contradicciones entre documentos.
-- La base, rama o SHA no coincide con la tarea Notion y su referencia técnica.
-- La accion requiere una autorizacion reservada a Isaac.
+## Ruta nativa
 
-## Go
+La decisión vigente es ADR 0099 y su [plan por fases](docs/superpowers/plans/2026-09-29-arquitectura-rust-nativa.md).
+El mapa de crates y la topología viven en [native/README.md](native/README.md).
 
-- Usa Go simple e idiomatico.
-- Ejecuta `gofmt` en archivos Go modificados.
-- Ejecuta `go test ./...` si tocaste Go o contratos compartidos.
-- Maneja errores siempre; no uses `_` para ignorarlos salvo justificacion clara.
-- Envuelve errores con contexto usando `%w` cuando propagas errores.
-- No uses `panic` salvo casos muy justificados o tests.
-- No uses `log.Fatal` fuera de `main`.
-- Usa `context.Context` en I/O, red, DB, procesos largos o tareas cancelables.
-- Evita interfaces prematuras; define interfaces en el consumidor cuando hagan falta.
-- Evita paquetes `utils` genericos.
-- No metas goroutines/channels sin razon clara.
-- Toda goroutine debe tener cancelacion o camino de cierre.
-- Preferir tests table-driven para logica.
-- Usa `testdata/` para fixtures reales.
+`domain` y `ui` no dependen de `runtime`, tampoco transitivamente; conserva el
+test de arquitectura descrito en `native/README.md`. Usa Rust concreto,
+funciones puras y `Result`, y GPUI directamente conforme a ADR 0099.
 
-## TypeScript / React
+Desde `native/`, `cargo fmt --all -- --check`; gates check, clippy
+(`-D warnings`), test (Nextest) y lifecycle, por la cola del repo.
+La configuración exacta, DuckDB de desarrollo/distribución, targets propios,
+plataformas, caché y limpieza están en [native/README.md](native/README.md).
+Una entrega documental puede omitir compilación si el brief lo autoriza;
+registra los checks omitidos y el motivo.
 
-- Mantener TypeScript estricto segun la configuracion existente.
-- Ejecuta `pnpm --dir frontend test` si tocaste frontend.
-- Ejecuta `pnpm --dir frontend build` antes de cerrar cambios frontend relevantes.
-- Ejecuta `pnpm --dir frontend lint` si tocaste patrones que ESLint cubre.
-- Ejecuta `pnpm --dir frontend typecheck` para comprobar tipos sin construir.
+## Código retirado
 
-### Typecheck: usa `pnpm typecheck` o `pnpm build`, nunca `-p tsconfig.json`
+No hay gates Go ni pnpm de la app nativa. Los oráculos son referencia histórica
+inerte: no reintroducir Wails/React. Validar sus huellas con
+`python native/retirement/verify.py`. Los otros proyectos del monorepo
+conservan sus instrucciones propias.
 
-`frontend/tsconfig.json` es solution-style: tiene `"files": []` y delega en
-`references` (`tsconfig.app.json` y `tsconfig.node.json`). Por eso:
+## Compilación Rust (`native/`)
 
-- **VALIDO:** `pnpm --dir frontend typecheck` (`tsc -b --noEmit`) o
-  `pnpm --dir frontend build` (`tsc -b && vite build`). Ambos recorren los
-  proyectos referenciados y comprueban los ficheros de verdad.
-- **NO COMPRUEBA NADA:** `tsc --noEmit -p tsconfig.json`. Con `"files": []` no
-  typechequea ni un solo fichero y sale con codigo 0 en vacio, aunque el
-  codigo tenga errores de tipos. Ya provoco que un error de tipos real
-  llegara a CI sin ser detectado. No lo uses como gate.
-
-- No anadas librerias UI sin aprobacion.
-- No dupliques estado si ya existe una fuente clara.
-- Mantener logica de negocio fuera de componentes React cuando sea razonable.
-- Componentes pequenos, con nombres claros.
-- No mezcles UI con persistencia o logica core sin necesidad.
-- No cambies configuracion de build salvo que la tarea lo pida.
-
-## Compilacion Rust (`native/`)
-
-Cada worktree compila el workspace entero en su propio `target/` (~8 GB).
-Con varios workers en paralelo el disco se llena y los corta (ISA-1494).
-
-- Compila siempre a traves de la cola:
-  `pwsh -File native/scripts/compilar.ps1 <comando> [args...]`
-  (p. ej. `... compilar.ps1 cargo nextest run --workspace`). La cola limita
-  las compilaciones simultaneas (`VANTARE_CARGO_SLOTS`, 4 por defecto) y
-  espera si hay menos RAM libre que `VANTARE_CARGO_MIN_GB` (5 por defecto).
-- La cola activa `sccache` (`RUSTC_WRAPPER`) si esta instalado: las
-  dependencias ya compiladas en otro worktree se reutilizan. Ahorra tiempo,
-  no disco: cada `target/` sigue guardando su copia. Instalalo una vez con
-  `scoop install sccache`. Si una compilacion falla sin diagnostico del
-  compilador, repitela con `$env:VANTARE_SCCACHE='0'` y anota el caso en la
-  evidencia; no lo trates como fallo del codigo.
-- Al entregar el trabajo de un worktree, o si lleva dias sin usarse, borra su
-  `native/target/`; es cache y se regenera. Para podar sin borrarlo todo:
-  `cargo sweep --time 3` (artefactos sin usar en 3 dias).
-- Si la maquina tiene un segundo disco, deja alli los artefactos grandes que no
-  son cache (instaladores, builds de prueba, capturas pesadas). No guardes
-  copias de `target/` en carpetas de evidencia.
+Desde `vantare-v2/`, compilar siempre mediante
+`pwsh -NoProfile -File native/scripts/compilar.ps1 <comando> [args...]`,
+con target propio y `-j 2`. La cola limita slots y RAM; usa sccache si está
+instalado. Si falla sin diagnóstico del compilador, repetir con
+`VANTARE_SCCACHE=0` y conservar el fallo en la evidencia (#1465).
+No compartir targets ni copiar su caché a carpetas de evidencia.
 
 ## Testing
 
+- Si tocas código/fixtures de runtime, domain, ipc o testdata, pasa también telemetría (#1498).
 - Todo cambio de comportamiento necesita test o explicacion de por que no.
 - Bugs corregidos necesitan test de regresion cuando sea viable.
 - Antes de refactorizar comportamiento existente, crea o identifica tests que lo protejan.
 - No escribas tests complacientes que solo prueban detalles internos del cambio.
-- No uses `time.Sleep` en tests salvo justificacion.
+- Usa reloj inyectado o sincronización explícita; las esperas temporizadas en tests necesitan justificación.
 - No compares strings de error si puedes usar errores tipados o comportamiento observable.
 
-## Dependencias
+## Dependencias y patrones prohibidos
 
-- Preferir standard library en Go.
-- Preferir herramientas ya instaladas en frontend.
-- Si propones una dependencia, explica:
-  - por que hace falta,
-  - por que lo existente no basta,
-  - riesgo que introduce,
-  - alternativa mas simple.
+Preferir la biblioteca estándar de Rust y herramientas instaladas. Una nueva
+dependencia necesita aprobación y justificación: necesidad, alternativa
+existente, riesgo y solución más simple.
 
-## Patrones prohibidos
-
-- Grandes rewrites.
-- Microservicios prematuros.
-- Rust como base principal sin decision explicita.
-- Abstracciones enormes.
-- Interfaces con una sola implementacion sin justificacion.
-- Factories/providers/managers innecesarios.
-- Estado global mutable.
-- Goroutines sin cancelacion.
-- Channels para trabajo secuencial.
-- Mocks innecesarios.
-- Secretos hardcodeados.
-- "Mejoras generales" sin alcance.
-- Renderizadores alternativos o pipelines paralelos que dupliquen una fuente de verdad.
+Prohibidos: grandes rewrites, microservicios prematuros, arquitectura fuera
+de fases autorizadas de ADR 0099, abstracciones enormes, interfaces de una
+implementación sin justificación, factories/providers/managers innecesarios,
+estado global mutable, tareas/hilos sin cancelación y cierre, canales para
+trabajo secuencial sin justificación, mocks innecesarios, secretos hardcodeados,
+limpieza sin alcance y renderizadores/pipelines que dupliquen la fuente de verdad.
 
 ## Evidencia final obligatoria
 
-Al terminar, informa:
-
-- URL/ID de la tarea Notion, proyecto, estado y última actualización verificada.
-- Archivos creados/modificados/movidos.
-- Tests o checks ejecutados y resultado.
-- Checks no ejecutados y motivo.
-- Riesgos restantes.
-- Como verificar manualmente.
-- Rama, base, HEAD, commit, push, PR, CI y nivel de promocion realmente alcanzado.
-- Confirmacion de que no hubo merge, release o accion externa fuera del alcance.
+Revisa el diff completo. Informa issue/URL, proyecto, estado y última actualización verificada;
+archivos y checks con resultados/omisiones; riesgos y verificación manual;
+rama, base, HEAD, commits, push, PR, CI y canal realmente alcanzado.
+Confirma si hubo merge, release o acción externa y su autorización.

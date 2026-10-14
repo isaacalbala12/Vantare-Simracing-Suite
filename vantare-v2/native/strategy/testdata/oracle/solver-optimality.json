@@ -1,0 +1,2386 @@
+[
+  {
+    "name": "counterexample-solve",
+    "input": {
+      "contractVersion": "strategy.solver.v2",
+      "raceLaps": 4,
+      "baseLapSeconds": {
+        "value": 90,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "baseLapClimateBucket": "dry",
+      "projection": null,
+      "pitCost": {
+        "transitSeconds": {
+          "value": 0,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "refuelRateLPerS": {
+          "value": 1,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "veRatePPerS": {
+          "value": 1,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "tyreSeconds": {
+          "value": 0,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "serviceMode": "parallel"
+      },
+      "formation": {
+        "seconds": {
+          "value": 0,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "presence": "valid"
+      },
+      "eventRules": {},
+      "budget": {
+        "p95Millis": 30000,
+        "maxCandidates": 10000000,
+        "maxIterations": 100000000
+      },
+      "fuelCapacityLiters": {
+        "value": 3,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "veCapacityPercent": {
+        "value": 0,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "tyreLifeLaps": {
+        "value": 0,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "fuelPerLapLiters": {
+        "value": 1,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "vePerLapPercent": {
+        "value": 0,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "fuelReserve": {
+        "kind": "",
+        "amount": {
+          "value": 0,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "laps": {
+          "value": 0,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "percent": {
+          "value": 0,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "selection": {
+          "provenance": {
+            "kind": ""
+          },
+          "confidence": {
+            "level": ""
+          }
+        }
+      },
+      "virtualEnergyReserve": {
+        "kind": "",
+        "amount": {
+          "value": 0,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "laps": {
+          "value": 0,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "percent": {
+          "value": 0,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "selection": {
+          "provenance": {
+            "kind": ""
+          },
+          "confidence": {
+            "level": ""
+          }
+        }
+      },
+      "degradationPerLapSeconds": {
+        "value": 0,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "fuelWeight": {
+        "presence": "valid",
+        "secondsPerLiter": 1,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        }
+      },
+      "serviceDiscretization": {
+        "fuelLiters": 1,
+        "vePercent": 1
+      }
+    },
+    "result": {
+      "resolvedInputs": {
+        "baseLapSeconds": {
+          "value": 90,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "fuelCapacityLiters": {
+          "value": 3,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "veCapacityPercent": {
+          "value": 0,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "tyreLifeLaps": {
+          "value": 0,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "fuelPerLapLiters": {
+          "value": 1,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "vePerLapPercent": {
+          "value": 0,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "degradationPerLapSeconds": {
+          "value": 0,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "formationSeconds": {
+          "value": 0,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "pitCost": {
+          "transitSeconds": {
+            "value": 0,
+            "provenance": {
+              "kind": "manual",
+              "sourceId": "oracle:manual"
+            },
+            "confidence": {
+              "sampleSize": 1,
+              "computationVersion": "solver-input.v2"
+            },
+            "role": "user_override"
+          },
+          "refuelRateLPerS": {
+            "value": 1,
+            "provenance": {
+              "kind": "manual",
+              "sourceId": "oracle:manual"
+            },
+            "confidence": {
+              "sampleSize": 1,
+              "computationVersion": "solver-input.v2"
+            },
+            "role": "user_override"
+          },
+          "veRatePPerS": {
+            "value": 1,
+            "provenance": {
+              "kind": "manual",
+              "sourceId": "oracle:manual"
+            },
+            "confidence": {
+              "sampleSize": 1,
+              "computationVersion": "solver-input.v2"
+            },
+            "role": "user_override"
+          },
+          "tyreSeconds": {
+            "value": 0,
+            "provenance": {
+              "kind": "manual",
+              "sourceId": "oracle:manual"
+            },
+            "confidence": {
+              "sampleSize": 1,
+              "computationVersion": "solver-input.v2"
+            },
+            "role": "user_override"
+          },
+          "serviceMode": "parallel"
+        }
+      },
+      "reserve": {
+        "satisfied": true,
+        "effectiveLaps": 0,
+        "fuel": {
+          "resource": "fuel",
+          "configured": false,
+          "active": false,
+          "requestedLaps": 0,
+          "requiredAmount": 0,
+          "remainingAmount": 0,
+          "effectiveLaps": 0,
+          "effectiveLapsAvailable": false,
+          "satisfied": true,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "virtualEnergy": {
+          "resource": "virtual_energy",
+          "configured": false,
+          "active": false,
+          "requestedLaps": 0,
+          "requiredAmount": 0,
+          "remainingAmount": 0,
+          "effectiveLaps": 0,
+          "effectiveLapsAvailable": false,
+          "satisfied": true,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        }
+      },
+      "best": {
+        "pitStops": [
+          {
+            "lap": 2,
+            "fuelLiters": 2,
+            "vePercent": 0,
+            "compound": "",
+            "driver": "",
+            "savingLevel": "none",
+            "serviceMode": "parallel",
+            "pitCostInput": {
+              "entry": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "transit": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "exit": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "refuel": {
+                "value": 2,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "virtualEnergy": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "tyres": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "serviceMode": "parallel",
+              "modeSelection": {
+                "provenance": {
+                  "kind": "derived",
+                  "sourceId": "strategy.solver.v2"
+                },
+                "confidence": {
+                  "level": "high",
+                  "basis": "deterministic candidate service cost"
+                }
+              }
+            },
+            "pitBreakdown": {
+              "travelSeconds": 0,
+              "coreServiceSeconds": 2,
+              "repairSeconds": 0,
+              "penaltySeconds": 0,
+              "fixedSeconds": 0,
+              "variableSeconds": 2,
+              "overlapSavedSeconds": 0,
+              "totalSeconds": 2,
+              "assumptions": [
+                {
+                  "field": "pit.entry",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.transit",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.exit",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.refuel",
+                  "unit": "duration_seconds",
+                  "value": "2",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.tyres",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.virtualEnergy",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.serviceMode",
+                  "unit": "pit_service_mode",
+                  "value": "parallel",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              ]
+            },
+            "changeTyres": true
+          }
+        ],
+        "stints": [
+          {
+            "index": 0,
+            "laps": 2,
+            "compound": "",
+            "driver": "",
+            "savingLevel": "none",
+            "fuelSavedPerLap": 0,
+            "veSavedPerLap": 0,
+            "timeCostPerLap": 0,
+            "savingCostSeconds": 0
+          },
+          {
+            "index": 1,
+            "laps": 2,
+            "compound": "",
+            "driver": "",
+            "savingLevel": "none",
+            "fuelSavedPerLap": 0,
+            "veSavedPerLap": 0,
+            "timeCostPerLap": 0,
+            "savingCostSeconds": 0
+          }
+        ]
+      },
+      "expected": {
+        "totalSeconds": 368,
+        "greenSeconds": 360,
+        "degradationSeconds": 0,
+        "compoundSeconds": 0,
+        "fuelWeightSeconds": 6,
+        "savingSeconds": 0,
+        "weatherSeconds": 0,
+        "pitSeconds": 2,
+        "formationSeconds": 0
+      },
+      "worstCase": {
+        "totalSeconds": 368,
+        "greenSeconds": 360,
+        "degradationSeconds": 0,
+        "compoundSeconds": 0,
+        "fuelWeightSeconds": 6,
+        "savingSeconds": 0,
+        "weatherSeconds": 0,
+        "pitSeconds": 2,
+        "formationSeconds": 0
+      },
+      "variants": [
+        {
+          "kind": "fast",
+          "tolerance": {
+            "allowHardRisk": true
+          },
+          "decision": {
+            "pitStops": [
+              {
+                "lap": 2,
+                "fuelLiters": 2,
+                "vePercent": 0,
+                "compound": "",
+                "driver": "",
+                "savingLevel": "none",
+                "serviceMode": "parallel",
+                "pitCostInput": {
+                  "entry": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "transit": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "exit": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "refuel": {
+                    "value": 2,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "virtualEnergy": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "tyres": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "serviceMode": "parallel",
+                  "modeSelection": {
+                    "provenance": {
+                      "kind": "derived",
+                      "sourceId": "strategy.solver.v2"
+                    },
+                    "confidence": {
+                      "level": "high",
+                      "basis": "deterministic candidate service cost"
+                    }
+                  }
+                },
+                "pitBreakdown": {
+                  "travelSeconds": 0,
+                  "coreServiceSeconds": 2,
+                  "repairSeconds": 0,
+                  "penaltySeconds": 0,
+                  "fixedSeconds": 0,
+                  "variableSeconds": 2,
+                  "overlapSavedSeconds": 0,
+                  "totalSeconds": 2,
+                  "assumptions": [
+                    {
+                      "field": "pit.entry",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.transit",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.exit",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.refuel",
+                      "unit": "duration_seconds",
+                      "value": "2",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.tyres",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.virtualEnergy",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.serviceMode",
+                      "unit": "pit_service_mode",
+                      "value": "parallel",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  ]
+                },
+                "changeTyres": true
+              }
+            ],
+            "stints": [
+              {
+                "index": 0,
+                "laps": 2,
+                "compound": "",
+                "driver": "",
+                "savingLevel": "none",
+                "fuelSavedPerLap": 0,
+                "veSavedPerLap": 0,
+                "timeCostPerLap": 0,
+                "savingCostSeconds": 0
+              },
+              {
+                "index": 1,
+                "laps": 2,
+                "compound": "",
+                "driver": "",
+                "savingLevel": "none",
+                "fuelSavedPerLap": 0,
+                "veSavedPerLap": 0,
+                "timeCostPerLap": 0,
+                "savingCostSeconds": 0
+              }
+            ]
+          },
+          "expected": {
+            "totalSeconds": 368,
+            "greenSeconds": 360,
+            "degradationSeconds": 0,
+            "compoundSeconds": 0,
+            "fuelWeightSeconds": 6,
+            "savingSeconds": 0,
+            "weatherSeconds": 0,
+            "pitSeconds": 2,
+            "formationSeconds": 0
+          },
+          "worstCase": {
+            "totalSeconds": 368,
+            "greenSeconds": 360,
+            "degradationSeconds": 0,
+            "compoundSeconds": 0,
+            "fuelWeightSeconds": 6,
+            "savingSeconds": 0,
+            "weatherSeconds": 0,
+            "pitSeconds": 2,
+            "formationSeconds": 0
+          },
+          "worstCaseFeasible": true
+        },
+        {
+          "kind": "balanced",
+          "tolerance": {
+            "allowHardRisk": false,
+            "maxExpectedSlowdownRatio": 0.05
+          },
+          "decision": {
+            "pitStops": [
+              {
+                "lap": 2,
+                "fuelLiters": 2,
+                "vePercent": 0,
+                "compound": "",
+                "driver": "",
+                "savingLevel": "none",
+                "serviceMode": "parallel",
+                "pitCostInput": {
+                  "entry": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "transit": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "exit": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "refuel": {
+                    "value": 2,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "virtualEnergy": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "tyres": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "serviceMode": "parallel",
+                  "modeSelection": {
+                    "provenance": {
+                      "kind": "derived",
+                      "sourceId": "strategy.solver.v2"
+                    },
+                    "confidence": {
+                      "level": "high",
+                      "basis": "deterministic candidate service cost"
+                    }
+                  }
+                },
+                "pitBreakdown": {
+                  "travelSeconds": 0,
+                  "coreServiceSeconds": 2,
+                  "repairSeconds": 0,
+                  "penaltySeconds": 0,
+                  "fixedSeconds": 0,
+                  "variableSeconds": 2,
+                  "overlapSavedSeconds": 0,
+                  "totalSeconds": 2,
+                  "assumptions": [
+                    {
+                      "field": "pit.entry",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.transit",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.exit",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.refuel",
+                      "unit": "duration_seconds",
+                      "value": "2",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.tyres",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.virtualEnergy",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.serviceMode",
+                      "unit": "pit_service_mode",
+                      "value": "parallel",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  ]
+                },
+                "changeTyres": true
+              }
+            ],
+            "stints": [
+              {
+                "index": 0,
+                "laps": 2,
+                "compound": "",
+                "driver": "",
+                "savingLevel": "none",
+                "fuelSavedPerLap": 0,
+                "veSavedPerLap": 0,
+                "timeCostPerLap": 0,
+                "savingCostSeconds": 0
+              },
+              {
+                "index": 1,
+                "laps": 2,
+                "compound": "",
+                "driver": "",
+                "savingLevel": "none",
+                "fuelSavedPerLap": 0,
+                "veSavedPerLap": 0,
+                "timeCostPerLap": 0,
+                "savingCostSeconds": 0
+              }
+            ]
+          },
+          "expected": {
+            "totalSeconds": 368,
+            "greenSeconds": 360,
+            "degradationSeconds": 0,
+            "compoundSeconds": 0,
+            "fuelWeightSeconds": 6,
+            "savingSeconds": 0,
+            "weatherSeconds": 0,
+            "pitSeconds": 2,
+            "formationSeconds": 0
+          },
+          "worstCase": {
+            "totalSeconds": 368,
+            "greenSeconds": 360,
+            "degradationSeconds": 0,
+            "compoundSeconds": 0,
+            "fuelWeightSeconds": 6,
+            "savingSeconds": 0,
+            "weatherSeconds": 0,
+            "pitSeconds": 2,
+            "formationSeconds": 0
+          },
+          "worstCaseFeasible": true
+        },
+        {
+          "kind": "conservative",
+          "tolerance": {
+            "allowHardRisk": false,
+            "maxExpectedSlowdownRatio": 0.02
+          },
+          "decision": {
+            "pitStops": [
+              {
+                "lap": 2,
+                "fuelLiters": 2,
+                "vePercent": 0,
+                "compound": "",
+                "driver": "",
+                "savingLevel": "none",
+                "serviceMode": "parallel",
+                "pitCostInput": {
+                  "entry": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "transit": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "exit": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "refuel": {
+                    "value": 2,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "virtualEnergy": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "tyres": {
+                    "value": 0,
+                    "evidence": {
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  },
+                  "serviceMode": "parallel",
+                  "modeSelection": {
+                    "provenance": {
+                      "kind": "derived",
+                      "sourceId": "strategy.solver.v2"
+                    },
+                    "confidence": {
+                      "level": "high",
+                      "basis": "deterministic candidate service cost"
+                    }
+                  }
+                },
+                "pitBreakdown": {
+                  "travelSeconds": 0,
+                  "coreServiceSeconds": 2,
+                  "repairSeconds": 0,
+                  "penaltySeconds": 0,
+                  "fixedSeconds": 0,
+                  "variableSeconds": 2,
+                  "overlapSavedSeconds": 0,
+                  "totalSeconds": 2,
+                  "assumptions": [
+                    {
+                      "field": "pit.entry",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.transit",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.exit",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.refuel",
+                      "unit": "duration_seconds",
+                      "value": "2",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.tyres",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.virtualEnergy",
+                      "unit": "duration_seconds",
+                      "value": "0",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    },
+                    {
+                      "field": "pit.serviceMode",
+                      "unit": "pit_service_mode",
+                      "value": "parallel",
+                      "provenance": {
+                        "kind": "derived",
+                        "sourceId": "strategy.solver.v2"
+                      },
+                      "confidence": {
+                        "level": "high",
+                        "basis": "deterministic candidate service cost"
+                      }
+                    }
+                  ]
+                },
+                "changeTyres": true
+              }
+            ],
+            "stints": [
+              {
+                "index": 0,
+                "laps": 2,
+                "compound": "",
+                "driver": "",
+                "savingLevel": "none",
+                "fuelSavedPerLap": 0,
+                "veSavedPerLap": 0,
+                "timeCostPerLap": 0,
+                "savingCostSeconds": 0
+              },
+              {
+                "index": 1,
+                "laps": 2,
+                "compound": "",
+                "driver": "",
+                "savingLevel": "none",
+                "fuelSavedPerLap": 0,
+                "veSavedPerLap": 0,
+                "timeCostPerLap": 0,
+                "savingCostSeconds": 0
+              }
+            ]
+          },
+          "expected": {
+            "totalSeconds": 368,
+            "greenSeconds": 360,
+            "degradationSeconds": 0,
+            "compoundSeconds": 0,
+            "fuelWeightSeconds": 6,
+            "savingSeconds": 0,
+            "weatherSeconds": 0,
+            "pitSeconds": 2,
+            "formationSeconds": 0
+          },
+          "worstCase": {
+            "totalSeconds": 368,
+            "greenSeconds": 360,
+            "degradationSeconds": 0,
+            "compoundSeconds": 0,
+            "fuelWeightSeconds": 6,
+            "savingSeconds": 0,
+            "weatherSeconds": 0,
+            "pitSeconds": 2,
+            "formationSeconds": 0
+          },
+          "worstCaseFeasible": true
+        }
+      ],
+      "feasible": true
+    }
+  },
+  {
+    "name": "counterexample-replay-51",
+    "input": {
+      "contractVersion": "strategy.solver.v2",
+      "raceLaps": 4,
+      "baseLapSeconds": {
+        "value": 90,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "baseLapClimateBucket": "dry",
+      "projection": null,
+      "pitCost": {
+        "transitSeconds": {
+          "value": 0,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "refuelRateLPerS": {
+          "value": 1,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "veRatePPerS": {
+          "value": 1,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "tyreSeconds": {
+          "value": 0,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "serviceMode": "parallel"
+      },
+      "formation": {
+        "seconds": {
+          "value": 0,
+          "provenance": {
+            "kind": "manual",
+            "sourceId": "oracle:manual"
+          },
+          "confidence": {
+            "sampleSize": 1,
+            "computationVersion": "solver-input.v2"
+          },
+          "role": "user_override"
+        },
+        "presence": "valid"
+      },
+      "eventRules": {},
+      "budget": {
+        "p95Millis": 30000,
+        "maxCandidates": 10000000,
+        "maxIterations": 100000000
+      },
+      "fuelCapacityLiters": {
+        "value": 3,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "veCapacityPercent": {
+        "value": 0,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "tyreLifeLaps": {
+        "value": 0,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "fuelPerLapLiters": {
+        "value": 1,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "vePerLapPercent": {
+        "value": 0,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "fuelReserve": {
+        "kind": "",
+        "amount": {
+          "value": 0,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "laps": {
+          "value": 0,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "percent": {
+          "value": 0,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "selection": {
+          "provenance": {
+            "kind": ""
+          },
+          "confidence": {
+            "level": ""
+          }
+        }
+      },
+      "virtualEnergyReserve": {
+        "kind": "",
+        "amount": {
+          "value": 0,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "laps": {
+          "value": 0,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "percent": {
+          "value": 0,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "selection": {
+          "provenance": {
+            "kind": ""
+          },
+          "confidence": {
+            "level": ""
+          }
+        }
+      },
+      "degradationPerLapSeconds": {
+        "value": 0,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        },
+        "role": "user_override"
+      },
+      "fuelWeight": {
+        "presence": "valid",
+        "secondsPerLiter": 1,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "oracle:manual"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "solver-input.v2"
+        }
+      },
+      "serviceDiscretization": {
+        "fuelLiters": 1,
+        "vePercent": 1
+      }
+    },
+    "decision": {
+      "pitStops": [
+        {
+          "lap": 2,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "compound": "",
+          "driver": "",
+          "savingLevel": "none",
+          "serviceMode": "parallel",
+          "changeTyres": true
+        },
+        {
+          "lap": 3,
+          "fuelLiters": 1,
+          "vePercent": 0,
+          "compound": "",
+          "driver": "",
+          "savingLevel": "none",
+          "serviceMode": "parallel",
+          "changeTyres": true
+        }
+      ],
+      "stints": [
+        {
+          "index": 0,
+          "laps": 2,
+          "compound": "",
+          "driver": "",
+          "savingLevel": "none",
+          "fuelSavedPerLap": 0,
+          "veSavedPerLap": 0,
+          "timeCostPerLap": 0,
+          "savingCostSeconds": 0
+        },
+        {
+          "index": 1,
+          "laps": 1,
+          "compound": "",
+          "driver": "",
+          "savingLevel": "none",
+          "fuelSavedPerLap": 0,
+          "veSavedPerLap": 0,
+          "timeCostPerLap": 0,
+          "savingCostSeconds": 0
+        },
+        {
+          "index": 2,
+          "laps": 1,
+          "compound": "",
+          "driver": "",
+          "savingLevel": "none",
+          "fuelSavedPerLap": 0,
+          "veSavedPerLap": 0,
+          "timeCostPerLap": 0,
+          "savingCostSeconds": 0
+        }
+      ]
+    },
+    "replay": {
+      "finalLapStartSeconds": 276,
+      "contractVersion": "strategy.solver.replay.v1",
+      "decision": {
+        "pitStops": [
+          {
+            "lap": 2,
+            "fuelLiters": 1,
+            "vePercent": 0,
+            "compound": "",
+            "driver": "",
+            "savingLevel": "none",
+            "serviceMode": "parallel",
+            "pitCostInput": {
+              "entry": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "transit": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "exit": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "refuel": {
+                "value": 1,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "virtualEnergy": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "tyres": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "serviceMode": "parallel",
+              "modeSelection": {
+                "provenance": {
+                  "kind": "derived",
+                  "sourceId": "strategy.solver.v2"
+                },
+                "confidence": {
+                  "level": "high",
+                  "basis": "deterministic candidate service cost"
+                }
+              }
+            },
+            "pitBreakdown": {
+              "travelSeconds": 0,
+              "coreServiceSeconds": 1,
+              "repairSeconds": 0,
+              "penaltySeconds": 0,
+              "fixedSeconds": 0,
+              "variableSeconds": 1,
+              "overlapSavedSeconds": 0,
+              "totalSeconds": 1,
+              "assumptions": [
+                {
+                  "field": "pit.entry",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.transit",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.exit",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.refuel",
+                  "unit": "duration_seconds",
+                  "value": "1",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.tyres",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.virtualEnergy",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.serviceMode",
+                  "unit": "pit_service_mode",
+                  "value": "parallel",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              ]
+            },
+            "changeTyres": true
+          },
+          {
+            "lap": 3,
+            "fuelLiters": 1,
+            "vePercent": 0,
+            "compound": "",
+            "driver": "",
+            "savingLevel": "none",
+            "serviceMode": "parallel",
+            "pitCostInput": {
+              "entry": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "transit": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "exit": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "refuel": {
+                "value": 1,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "virtualEnergy": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "tyres": {
+                "value": 0,
+                "evidence": {
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              },
+              "serviceMode": "parallel",
+              "modeSelection": {
+                "provenance": {
+                  "kind": "derived",
+                  "sourceId": "strategy.solver.v2"
+                },
+                "confidence": {
+                  "level": "high",
+                  "basis": "deterministic candidate service cost"
+                }
+              }
+            },
+            "pitBreakdown": {
+              "travelSeconds": 0,
+              "coreServiceSeconds": 1,
+              "repairSeconds": 0,
+              "penaltySeconds": 0,
+              "fixedSeconds": 0,
+              "variableSeconds": 1,
+              "overlapSavedSeconds": 0,
+              "totalSeconds": 1,
+              "assumptions": [
+                {
+                  "field": "pit.entry",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.transit",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.exit",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.refuel",
+                  "unit": "duration_seconds",
+                  "value": "1",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.tyres",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.virtualEnergy",
+                  "unit": "duration_seconds",
+                  "value": "0",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                },
+                {
+                  "field": "pit.serviceMode",
+                  "unit": "pit_service_mode",
+                  "value": "parallel",
+                  "provenance": {
+                    "kind": "derived",
+                    "sourceId": "strategy.solver.v2"
+                  },
+                  "confidence": {
+                    "level": "high",
+                    "basis": "deterministic candidate service cost"
+                  }
+                }
+              ]
+            },
+            "changeTyres": true
+          }
+        ],
+        "stints": [
+          {
+            "index": 0,
+            "laps": 2,
+            "compound": "",
+            "driver": "",
+            "savingLevel": "none",
+            "fuelSavedPerLap": 0,
+            "veSavedPerLap": 0,
+            "timeCostPerLap": 0,
+            "savingCostSeconds": 0
+          },
+          {
+            "index": 1,
+            "laps": 1,
+            "compound": "",
+            "driver": "",
+            "savingLevel": "none",
+            "fuelSavedPerLap": 0,
+            "veSavedPerLap": 0,
+            "timeCostPerLap": 0,
+            "savingCostSeconds": 0
+          },
+          {
+            "index": 2,
+            "laps": 1,
+            "compound": "",
+            "driver": "",
+            "savingLevel": "none",
+            "fuelSavedPerLap": 0,
+            "veSavedPerLap": 0,
+            "timeCostPerLap": 0,
+            "savingCostSeconds": 0
+          }
+        ]
+      },
+      "evaluation": {
+        "totalSeconds": 367,
+        "greenSeconds": 360,
+        "degradationSeconds": 0,
+        "compoundSeconds": 0,
+        "fuelWeightSeconds": 5,
+        "savingSeconds": 0,
+        "weatherSeconds": 0,
+        "pitSeconds": 2,
+        "formationSeconds": 0
+      },
+      "stints": [
+        {
+          "index": 0,
+          "laps": 2,
+          "evaluation": {
+            "totalSeconds": 184,
+            "greenSeconds": 180,
+            "degradationSeconds": 0,
+            "compoundSeconds": 0,
+            "fuelWeightSeconds": 3,
+            "savingSeconds": 0,
+            "weatherSeconds": 0,
+            "pitSeconds": 1,
+            "formationSeconds": 0
+          }
+        },
+        {
+          "index": 1,
+          "laps": 1,
+          "evaluation": {
+            "totalSeconds": 92,
+            "greenSeconds": 90,
+            "degradationSeconds": 0,
+            "compoundSeconds": 0,
+            "fuelWeightSeconds": 1,
+            "savingSeconds": 0,
+            "weatherSeconds": 0,
+            "pitSeconds": 1,
+            "formationSeconds": 0
+          }
+        },
+        {
+          "index": 2,
+          "laps": 1,
+          "evaluation": {
+            "totalSeconds": 91,
+            "greenSeconds": 90,
+            "degradationSeconds": 0,
+            "compoundSeconds": 0,
+            "fuelWeightSeconds": 1,
+            "savingSeconds": 0,
+            "weatherSeconds": 0,
+            "pitSeconds": 0,
+            "formationSeconds": 0
+          }
+        }
+      ],
+      "reserve": {
+        "satisfied": true,
+        "effectiveLaps": 0,
+        "fuel": {
+          "resource": "fuel",
+          "configured": false,
+          "active": false,
+          "requestedLaps": 0,
+          "requiredAmount": 0,
+          "remainingAmount": 0,
+          "effectiveLaps": 0,
+          "effectiveLapsAvailable": false,
+          "satisfied": true,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        },
+        "virtualEnergy": {
+          "resource": "virtual_energy",
+          "configured": false,
+          "active": false,
+          "requestedLaps": 0,
+          "requiredAmount": 0,
+          "remainingAmount": 0,
+          "effectiveLaps": 0,
+          "effectiveLapsAvailable": false,
+          "satisfied": true,
+          "evidence": {
+            "provenance": {
+              "kind": ""
+            },
+            "confidence": {
+              "level": ""
+            }
+          }
+        }
+      },
+      "feasible": true
+    }
+  }
+]

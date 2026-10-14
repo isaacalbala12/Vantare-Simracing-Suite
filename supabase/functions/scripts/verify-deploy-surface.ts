@@ -3,6 +3,9 @@ const productionFunctions = new Set([
   "billing-portal",
   "billing-webhook",
   "license-credential",
+  "native-billing-checkout", "native-billing-portal", "native-license",
+  "native-account-authorize",
+  "native-admin",
 ]);
 const testingPilotFunctions = new Set([
   "testing-center-feedback",
@@ -14,6 +17,8 @@ const testingAutomationFunctions = new Set([
   "testing-center-agent-callback",
 ]);
 const recognizedFunctions = new Set([
+  // Review candidate, absent from all deploy wrappers.
+  "testing-report-submit",
   ...productionFunctions,
   ...testingPilotFunctions,
   ...testingAutomationFunctions,

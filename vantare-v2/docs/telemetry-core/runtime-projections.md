@@ -1,6 +1,6 @@
 # Proyecciones por consumidor
 
-Contrastado el 2026-09-14 con [telemetry_core_runtime.go](../../internal/app/telemetry_core_runtime.go) y [projection/](../../internal/telemetry/projection/). El [ADR 0008](../adr/0008-telemetry-engine-commit-boundary-and-overlay-frame-v2.md) define la frontera canónica.
+Contrastado el 2026-09-14 con [telemetry_core_runtime.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/app/telemetry_core_runtime.go) y [projection/](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/telemetry/projection). El [ADR 0008](../adr/0008-telemetry-engine-commit-boundary-and-overlay-frame-v2.md) define la frontera canónica.
 
 ```text
 fuentes → TelemetryEngine (prepare/commit) → resultado aceptado
@@ -9,9 +9,9 @@ fuentes → TelemetryEngine (prepare/commit) → resultado aceptado
     → Strategy (builder/consumidor según wiring)
 ```
 
-- **Overlay:** [overlayv2](../../internal/telemetry/projection/overlayv2/) define el frame compacto. `projection/overlay` v1 está retirado; no construir consumidores nuevos sobre él.
+- **Overlay:** [overlayv2](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/telemetry/projection/overlayv2) define el frame compacto. `projection/overlay` v1 está retirado; no construir consumidores nuevos sobre él.
 - **Engineer:** [contrato de capabilities](../adr/0005-engineer-projection-capability-contract.md), [rework](../engineer/rework-spec.md) y servicio actual. No asumir que un tipo de transporte implica exposición SSE.
-- **Strategy:** [projection/strategy](../../internal/telemetry/projection/strategy/) conserva su contrato live. La [proyección histórica desde Analysis](../strategy-planner/f1-2-contrato-proyeccion-v2.md) tiene ownership y versión independientes; no son intercambiables.
+- **Strategy:** [projection/strategy](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/telemetry/projection/strategy) conserva su contrato live. La [proyección histórica desde Analysis](../strategy-planner/f1-2-contrato-proyeccion-v2.md) tiene ownership y versión independientes; no son intercambiables.
 - **Analysis:** consultar [contratos post-sesión](../vantare-program/research/telemetry-analysis/README.md); el esquema anterior con cuatro ProjectorV1 no describe el runtime actual.
 
 ## Reglas que se mantienen

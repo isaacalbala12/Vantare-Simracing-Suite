@@ -35,11 +35,11 @@
 - Respuesta extra (opcional, ignorada por Go hoy): `device_ok`, `provider_customer_id`, `billing_provider`
 - Device mismatch: RPC devuelve `active_device` = fingerprint **guardado en BD** (no el del cliente). Go compara en `fromSupabase` → `device-limit`, `deviceOK=false`. Premium bloqueado en `access-policy.ts`.
 - `POST /rest/v1/rpc/reset_active_device` mismo body
-- Código: [`vantare-v2/internal/license/supabase_client.go`](../../../internal/license/supabase_client.go), [`service.go`](../../../internal/license/service.go) L148-152
+- Código: [`vantare-v2/internal/license/supabase_client.go`](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/license/supabase_client.go), [`service.go`](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/license/service.go) L148-152
 
 ### Bugs actuales a corregir
 
-1. [`PaywallScreen.tsx`](../../../frontend/src/hub/auth/PaywallScreen.tsx) llama `/functions/v1/create-checkout-session` — **no existe**
+1. [`PaywallScreen.tsx`](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/hub/auth/PaywallScreen.tsx) llama `/functions/v1/create-checkout-session` — **no existe**
 2. `AccountSettings.tsx` (ruta histórica `vantare-v2/frontend/src/hub/settings/AccountSettings.tsx`, ausente en el corte actual) llama `/functions/v1/create-portal-session` y manda `userId` como `stripeCustomerId`
 3. `handleFrontendRequest` en `stripe-webhook/index.ts` **nunca se invoca** (código muerto)
 4. RPC planeado no registra device en primera validación — **corregir en SQL**

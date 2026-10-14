@@ -1,0 +1,17 @@
+{
+  "sourceHead": "fe12dcbbf00003e983931e10ac7d3948eb8aae7d",
+  "designSystem": "vantare-functional",
+  "fixtureKind": "demonstration",
+  "sourcesSha256": {
+    "authoring-v2-workshop-frame.ts": "30c105772891894fa3cdb067f3b93079d0ca68e09f3b37e3cf40a7c8c1af9bd3",
+    "animation-scenes.ts": "fdc8911153660a7a9b716053f9cfd769dbc9a84f309de2cc9528d3a2c861be63",
+    "scene-interpolation.ts": "6d18ed967873c68d51b674da6106443b94b3632883038224bc731e5ca31830f9"
+  },
+  "sceneCount": 43,
+  "limitations": [
+    "dents have no canonical aero/body/suspension equivalent",
+    "no spatial pose is inferred from missing groundPosition",
+    "historical controls/delta traces not imported yet",
+    "only es/en exist in native Preferences"
+  ]
+}

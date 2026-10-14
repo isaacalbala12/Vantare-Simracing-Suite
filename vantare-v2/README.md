@@ -1,34 +1,24 @@
 # Vantare — aplicación de escritorio
 
-Aplicación principal de Vantare Simracing Suite. El código usa Go + Wails v3 y React/TypeScript. Windows 10/11 y Le Mans Ultimate son el objetivo principal de desarrollo; la disponibilidad de otros simuladores se verifica por driver y por build, no por el README antiguo del monorepo.
+La aplicación de este checkout usa Rust + GPUI en `native/`, según ADR 0099.
+#1533 retira las fuentes Wails/React; no demuestra promoción ni publicación.
+Windows 10/11 y Le Mans Ultimate siguen siendo el objetivo principal de desarrollo.
 
 ## Desarrollo
 
-Lee [operaciones](docs/operations.md) para requisitos, preparación y arranque; [testing](docs/testing-strategy.md) para los checks. Los agentes comienzan por [AGENTS.md](AGENTS.md) y la tarea Notion.
+Lee [native/README.md](native/README.md), los README de sus crates y [AGENTS.md](AGENTS.md).
+Los gates de la aplicación son formato, check, Clippy, Nextest, lifecycle y telemetría;
+Go y pnpm no forman parte de ellos. Respetar la cola de compilación del worktree.
+El [empaquetado nativo](native/packaging/README.md) tiene su propio contrato y
+requiere autorización separada para publicar. `release.yml` rechaza la publicación retirada.
 
-Desde la raíz del repositorio:
+## Fuentes y referencias
 
-```powershell
-pnpm install --frozen-lockfile
-pnpm --dir vantare-v2/frontend build
-cd vantare-v2
-go run ./cmd/vantare -live=false -profile configs/example-racing.json
-```
+- [Workspace nativo](native/README.md): aplicación, widgets, telemetría y servicios.
+- [Corpus conservado](native/retirement/README.md): fixtures, voz, calendario, perfiles y marca.
+- [Oráculos históricos Go](tools/frozen-go/README.md): archivos mínimos, hashes y reproducción aislada.
+- [Documentación](docs/README.md): contratos actuales y evidencia histórica.
 
-Este comando abre la app Wails con los assets compilados. `-live=false` deja la telemetría **desconectada**; no activa un simulador ficticio ni un servidor sin ventana. El arranque con recarga de desarrollo y la configuración local se explican en operaciones.
-
-## Mapa del código
-
-| Ruta | Responsabilidad |
-|---|---|
-| [cmd/vantare](cmd/vantare/) | Entrada Wails y conexión de servicios |
-| [internal/app](internal/app/) | Ciclo de vida, puente, perfiles y coordinación |
-| [internal/telemetry](internal/telemetry/) | Fuentes LMU, núcleo y proyecciones |
-| [internal/telemetryanalysis](internal/telemetryanalysis/) | Análisis de sesiones |
-| [internal/engineer](internal/engineer/) | Engineer/Spotter y audio |
-| [internal/strategy](internal/strategy/) | Estrategia, documentos y cálculo |
-| [internal/server](internal/server/) | Servidor local y OBS |
-| [frontend/src/hub](frontend/src/hub/) | Hub y pantallas de la suite |
-| [frontend/src/overlay](frontend/src/overlay/) | Renderizado compartido de widgets |
-
-[Arquitectura](docs/architecture.md) · [Documentación vigente](docs/README.md) · [Roadmap](docs/roadmap-maintenance.md) · [Histórico](docs/documentation-inventory.md).
+El código y los datos de Supabase siguen conservados fuera de esta carpeta.
+`apps/`, `packages/` y `shared/` pertenecen a otros proyectos históricos del monorepo.
+No se han modificado instalaciones, cuentas ni datos reales del usuario.

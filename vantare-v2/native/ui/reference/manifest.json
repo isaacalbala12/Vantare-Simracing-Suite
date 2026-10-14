@@ -1,0 +1,440 @@
+{
+  "schema": 1,
+  "sourceSha": "f0254e1f354970c06130775c92edc0a4e21cd9e6",
+  "browser": "148.0.7778.96",
+  "dpi": 100,
+  "dpr": 1,
+  "locale": "es",
+  "timezone": "UTC",
+  "clock": "2026-07-14T12:00:00.000Z",
+  "scene": "Workshop default / race / track / ready",
+  "widgets": [
+    {
+      "type": "delta",
+      "designId": "delta-functional-signature",
+      "width": 280,
+      "height": 96,
+      "status": "ready",
+      "text": "MEJOR PERSONAL | 1:30.964 | ÚLT. VUELTA | 1:31.234 | ▼ | -1.5 | 0 | +1.5",
+      "determinism": {
+        "width": 280,
+        "height": 96,
+        "threshold": 0,
+        "compared_pixels": 26880,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "standings",
+      "designId": "standings-functional-compact",
+      "width": 440,
+      "height": 664,
+      "status": "ready",
+      "text": "CARRERA | 38:12 | HYP | AL LÍDER | ÚLT. VUELTA | 1 | André Lotterer | LÍDER | 1:49.667 | 4 | Antonio Giovinazzi | — | 1:49.884 | 7 | Sarah Bovy | — | 1:50.101 | 10 | Gianmaria Bruni | s | 1:50.318 | 13 | Duncan Cameron | s | 1:50.535 | 16 | Conrad Laursen | s | 1:50.752 | 19 | Mikkel Jensen | +1 V | 1:50.969 | PISTA | Sebring | V. REST. EST. | ≈79",
+      "determinism": {
+        "width": 440,
+        "height": 664,
+        "threshold": 0,
+        "compared_pixels": 292160,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "relative",
+      "designId": "relative-functional-signature",
+      "width": 304,
+      "height": 285,
+      "status": "ready",
+      "text": "SEBRING | P1 · HYPERCAR | 4 | Antonio Giovinazzi | −1 V | +4.2 | — | 3 | Kévin Estre | +1.8 | — | 2 | Ben Hanley | +0.4 | — | 1 | André Lotterer | — | — | 20 | Nico Pino | -0.3 | — | 19 | Mikkel Jensen | -2.6 | — | 18 | Maro Engel | -5.1 | — | CARRERA 01:59:58 | 21° | 28° | 14 km/h",
+      "determinism": {
+        "width": 304,
+        "height": 285,
+        "threshold": 0,
+        "compared_pixels": 86640,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "pedals",
+      "designId": "pedals-functional-signature",
+      "width": 120,
+      "height": 160,
+      "status": "ready",
+      "text": "C | 6% | B | 13% | T | 75%",
+      "determinism": {
+        "width": 120,
+        "height": 160,
+        "threshold": 0,
+        "compared_pixels": 19200,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "broadcast-tower",
+      "designId": "broadcast-tower-functional-signature",
+      "width": 1920,
+      "height": 71,
+      "status": "ready",
+      "text": "CARRERA | VUELTA — | 1 | A. Lotterer | HYP | LÍDER | 2 | B. Hanley | LMP | +1.234 | 3 | K. Estre | GTE | +2.468 | 4 | A. Giovinazzi | HYP | +3.702 | 5 | F. Albuquerque | LMP | +4.936 | PISTA 28°",
+      "determinism": {
+        "width": 1920,
+        "height": 71,
+        "threshold": 0,
+        "compared_pixels": 136320,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "fuel-strategy",
+      "designId": "fuel-strategy-functional-signature",
+      "width": 680,
+      "height": 204,
+      "status": "ready",
+      "text": "COMBUSTIBLE | 42.0 L | MED. | 2.14 L | VUELTAS | 79.0 | NEC. | 169.1 L | EST. META: | 169.1 L NEC. | HISTORIAL | VUELTA 17 | 2.1 L | VUELTA 16 | 2.3 L | VUELTA 15 | 2.1 L | VUELTA 14 | 2.2 L",
+      "determinism": {
+        "width": 680,
+        "height": 204,
+        "threshold": 0,
+        "compared_pixels": 138720,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "pedals-telemetry",
+      "designId": "pedals-telemetry-functional-signature",
+      "width": 300,
+      "height": 112,
+      "status": "ready",
+      "text": "4 | 180 | 7.2k rpm",
+      "determinism": {
+        "width": 300,
+        "height": 112,
+        "threshold": 0,
+        "compared_pixels": 33600,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "pedals-telemetry-compact",
+      "blocked": "Sin renderer Eficiencia en manifest.ts"
+    },
+    {
+      "type": "racing-flags",
+      "designId": "racing-flags-functional-signature",
+      "width": 280,
+      "height": 88,
+      "status": "ready",
+      "text": "BANDERA | VERDE",
+      "determinism": {
+        "width": 280,
+        "height": 88,
+        "threshold": 0,
+        "compared_pixels": 24640,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "fastest-lap",
+      "designId": "fastest-lap-functional-signature",
+      "width": 480,
+      "height": 104,
+      "status": "ready",
+      "text": "VUELTA RÁPIDA | HYPERCAR | 1:30.904 | Antonio Giovinazzi",
+      "determinism": {
+        "width": 480,
+        "height": 104,
+        "threshold": 0,
+        "compared_pixels": 49920,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "delta-trace",
+      "designId": "delta-trace-functional-signature",
+      "width": 1000,
+      "height": 278,
+      "status": "ready",
+      "text": "+0.257 | PERDIENDO",
+      "determinism": {
+        "width": 1000,
+        "height": 278,
+        "threshold": 0,
+        "compared_pixels": 278000,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "race-schedule",
+      "designId": "race-schedule-functional-signature",
+      "width": 780,
+      "height": 340,
+      "status": "ready",
+      "text": "CALENDARIO | local | A | Spa Endurance | Spa-Francorchamps | GT3 | 90m | A | Monza Sprint | Monza | GT3 | 45m | GOLD SR | One Stint Sprint | Circuit of the Americas | HYPERCAR LMGT3 | 40m | SPECIAL EVENT | 6 Hours of Le Mans | Circuit de la Sarthe | HYPERCAR LMP2 LMGT3 | 360m",
+      "determinism": {
+        "width": 780,
+        "height": 340,
+        "threshold": 0,
+        "compared_pixels": 265200,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "head-to-head",
+      "designId": "head-to-head-functional-signature",
+      "width": 360,
+      "height": 128,
+      "status": "missing",
+      "text": "H2H · DELANTE | SIN RIVAL",
+      "determinism": {
+        "width": 360,
+        "height": 128,
+        "threshold": 0,
+        "compared_pixels": 46080,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "delta-advanced",
+      "blocked": "Sin renderer Eficiencia en manifest.ts"
+    },
+    {
+      "type": "input-telemetry",
+      "designId": "input-telemetry-functional-signature",
+      "width": 360,
+      "height": 140,
+      "status": "ready",
+      "text": "4 | VELOCIDAD | 180 KPH | RPM | 7200 | EMBRAGUE | FRENO | ACELERADOR",
+      "determinism": {
+        "width": 360,
+        "height": 140,
+        "threshold": 0,
+        "compared_pixels": 50400,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "multiclass-relative",
+      "designId": "multiclass-relative-functional-signature",
+      "width": 420,
+      "height": 155,
+      "status": "ready",
+      "text": "1 | HC | — | André Lotterer | 0.0 | 2 | LMP | — | Ben Hanley | +4.5 | 3 | GTE | — | Kévin Estre | +9.0 | 4 | HC | — | Antonio Giovinazzi | +13.5 | 5 | LMP | — | Filipe Albuquerque | +18.0",
+      "determinism": {
+        "width": 420,
+        "height": 155,
+        "threshold": 0,
+        "compared_pixels": 65100,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "track-weather",
+      "designId": "track-weather-functional-signature",
+      "width": 240,
+      "height": 150,
+      "status": "ready",
+      "text": "PISTA | 28 °C | AIRE | 21 °C | VIENTO | 14 km/h NW | LLUVIA | 0 % | HÚMEDO | 0 % | SECO | 100% | PRES | —",
+      "determinism": {
+        "width": 240,
+        "height": 150,
+        "threshold": 0,
+        "compared_pixels": 36000,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "car-damage-visual",
+      "designId": "car-damage-visual-functional-signature",
+      "width": 150,
+      "height": 191,
+      "status": "ready",
+      "text": "AERO | 100% | CARROC. | 100% | SUSP | 100%",
+      "determinism": {
+        "width": 150,
+        "height": 191,
+        "threshold": 0,
+        "compared_pixels": 28650,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "car-damage-numbers",
+      "designId": "car-damage-numbers-functional-signature",
+      "width": 140,
+      "height": 149,
+      "status": "ready",
+      "text": "AERO | 100% | CARROC. | 100% | SUSP | 100% | NEUM. | 13%",
+      "determinism": {
+        "width": 140,
+        "height": 149,
+        "threshold": 0,
+        "compared_pixels": 20860,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "engineer-radio",
+      "designId": "engineer-radio-functional-signature",
+      "width": 440,
+      "height": 112,
+      "text": "Ingeniero | FUEL | Combustible crítico, entra en boxes | VISTA PREVIA",
+      "determinism": {
+        "width": 440,
+        "height": 112,
+        "threshold": 0,
+        "compared_pixels": 49280,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "track-map",
+      "designId": "track-map-functional-signature",
+      "width": 320,
+      "height": 248,
+      "status": "ready",
+      "text": "Sebring International Raceway",
+      "determinism": {
+        "width": 320,
+        "height": 248,
+        "threshold": 0,
+        "compared_pixels": 79360,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    },
+    {
+      "type": "radar",
+      "designId": "radar-functional-signature",
+      "width": 220,
+      "height": 220,
+      "status": "ready",
+      "text": "car-left | car-right | car-ahead",
+      "determinism": {
+        "width": 220,
+        "height": 220,
+        "threshold": 0,
+        "compared_pixels": 48400,
+        "different_pixels": 0,
+        "different_percent": 0,
+        "max_channel_delta": 0,
+        "boxes": [],
+        "masks": [],
+        "diff_png": null
+      },
+      "geometryEqual": true
+    }
+  ]
+}

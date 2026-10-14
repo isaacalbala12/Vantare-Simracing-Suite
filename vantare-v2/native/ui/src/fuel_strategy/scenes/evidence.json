@@ -1,0 +1,79 @@
+{
+  "issue": 1427,
+  "widget": "fuel-strategy",
+  "source": "Workshop de demostraci\u00f3n; no datos de carrera real",
+  "captures": [
+    {
+      "name": "history-1",
+      "settings": {
+        "historyRows": 1
+      },
+      "capture": "evidence/history-1.png",
+      "capture_sha256": "8d45677574244b2fb4f890d23f9ec0262de791a858dcfed7fb93f46751763c84",
+      "fresh_product_capture_sha256": "aaa246d9b385dbf2cf4382a65757cfdfb0783d86eaba12a2434a3975379cfe9e",
+      "instrumented_binary_sha256": "584C66A2026E2BDDD942E3EE3361BF8FC8EED16B2B530417BC3F4BAFA044E522",
+      "comparison": {
+        "changed_pixels": 2201,
+        "total_pixels": 138720,
+        "percent": 1.5866,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "history-8",
+      "settings": {
+        "historyRows": 8
+      },
+      "capture": "evidence/history-8.png",
+      "capture_sha256": "f85c6e6158d6dd6221be5499ccf83331a130fc9ea9ad5505653c82664507dbb5",
+      "fresh_product_capture_sha256": "60edb861e57fbac6a465e91589783c206136b45e6900d60d581af763a63ba509",
+      "instrumented_binary_sha256": "584C66A2026E2BDDD942E3EE3361BF8FC8EED16B2B530417BC3F4BAFA044E522",
+      "comparison": {
+        "changed_pixels": 2091,
+        "total_pixels": 138720,
+        "percent": 1.5074,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "no-projection",
+      "settings": {
+        "showProjection": false
+      },
+      "capture": "evidence/no-projection.png",
+      "capture_sha256": "d475b9ac8f444483954a847e1f011c22ac3c4d502297b6a7f15435f684758f6e",
+      "fresh_product_capture_sha256": "2caa76744207540fcd94d61c8f67416ad609a7cfa44ca09d9f6d982233edac81",
+      "instrumented_binary_sha256": "584C66A2026E2BDDD942E3EE3361BF8FC8EED16B2B530417BC3F4BAFA044E522",
+      "comparison": {
+        "changed_pixels": 2430,
+        "total_pixels": 138720,
+        "percent": 1.7517,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    },
+    {
+      "name": "virtual-energy",
+      "settings": {
+        "source": "virtual-energy"
+      },
+      "capture": "evidence/virtual-energy.png",
+      "capture_sha256": "3984cb499530a20d2e134c24521340ade08de8899de7752a25335d2fa132eceb",
+      "fresh_product_capture_sha256": "0f33d213414b0d244c2853278e622e1df906e48372c694e441ecdfc78db07f51",
+      "instrumented_binary_sha256": "584C66A2026E2BDDD942E3EE3361BF8FC8EED16B2B530417BC3F4BAFA044E522",
+      "comparison": {
+        "changed_pixels": 1613,
+        "total_pixels": 138720,
+        "percent": 1.1628,
+        "channel_threshold": 8,
+        "parity_gate": false
+      },
+      "review": "Comparaci\u00f3n visual con el productivo; l\u00edmites en delta/VARIANTES-1427.md"
+    }
+  ]
+}

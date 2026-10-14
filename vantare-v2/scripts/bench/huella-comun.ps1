@@ -1,4 +1,4 @@
-# Funciones compartidas por huella.ps1 y huella-medir.ps1 (se cargan con dot-source).
+# Funciones compartidas por huella-medir.ps1 (se cargan con dot-source).
 
 function Format-Invariant([double]$Value) {
     $Value.ToString('R', [Globalization.CultureInfo]::InvariantCulture)

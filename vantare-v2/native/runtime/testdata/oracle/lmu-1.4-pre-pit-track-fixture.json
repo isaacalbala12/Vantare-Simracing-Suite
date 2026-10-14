@@ -1,0 +1,62 @@
+{
+  "go_rejection": "",
+  "session": {
+    "kind": {
+      "v": "practice",
+      "q": "fresh"
+    },
+    "remaining_ms": {
+      "v": 21388200,
+      "q": "fresh"
+    },
+    "track": {
+      "v": "Track-01",
+      "q": "fresh"
+    }
+  },
+  "cars": [
+    {
+      "id": "lmu-slot-1000001-generation-1",
+      "ordinal": 1,
+      "number": "",
+      "driver": "Driver-001",
+      "class": "Class-001",
+      "position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "class_position": {
+        "v": 1,
+        "q": "fresh"
+      },
+      "laps": {
+        "v": 0,
+        "q": "fresh"
+      },
+      "last_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "best_lap_ms": {
+        "v": null,
+        "q": "missing"
+      },
+      "gap_leader": {
+        "v": {
+          "time_ms": 0
+        },
+        "q": "fresh"
+      },
+      "gap_ahead": {
+        "v": {
+          "time_ms": 0
+        },
+        "q": "fresh"
+      },
+      "in_pits": {
+        "v": false,
+        "q": "fresh"
+      }
+    }
+  ]
+}

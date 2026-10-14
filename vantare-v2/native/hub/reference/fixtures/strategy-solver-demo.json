@@ -1,0 +1,260 @@
+{
+  "contractVersion": "strategy.solver.v2",
+  "raceLaps": 69,
+  "baseLapSeconds": {
+    "value": 104,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "oracle:manual"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "solver-input.v2"
+    },
+    "role": "user_override"
+  },
+  "projection": null,
+  "pitCost": {
+    "transitSeconds": {
+      "value": 47,
+      "provenance": {
+        "kind": "manual",
+        "sourceId": "oracle:manual"
+      },
+      "confidence": {
+        "sampleSize": 1,
+        "computationVersion": "solver-input.v2"
+      },
+      "role": "user_override"
+    },
+    "refuelRateLPerS": {
+      "value": 1,
+      "provenance": {
+        "kind": "manual",
+        "sourceId": "oracle:manual"
+      },
+      "confidence": {
+        "sampleSize": 1,
+        "computationVersion": "solver-input.v2"
+      },
+      "role": "user_override"
+    },
+    "veRatePPerS": {
+      "value": 2,
+      "provenance": {
+        "kind": "manual",
+        "sourceId": "oracle:manual"
+      },
+      "confidence": {
+        "sampleSize": 1,
+        "computationVersion": "solver-input.v2"
+      },
+      "role": "user_override"
+    },
+    "tyreSeconds": {
+      "value": 2,
+      "provenance": {
+        "kind": "manual",
+        "sourceId": "oracle:manual"
+      },
+      "confidence": {
+        "sampleSize": 1,
+        "computationVersion": "solver-input.v2"
+      },
+      "role": "user_override"
+    },
+    "serviceMode": "sequential"
+  },
+  "formation": {
+    "seconds": {
+      "value": 3,
+      "provenance": {
+        "kind": "manual",
+        "sourceId": "oracle:manual"
+      },
+      "confidence": {
+        "sampleSize": 1,
+        "computationVersion": "solver-input.v2"
+      },
+      "role": "user_override"
+    },
+    "presence": "valid"
+  },
+  "eventRules": {
+    "minPitStops": 2,
+    "maxPitStops": 2,
+    "requiredWindows": [
+      { "fromLap": 23, "toLap": 23 },
+      { "fromLap": 46, "toLap": 46 }
+    ]
+  },
+  "budget": {
+    "p95Millis": 10000,
+    "maxCandidates": 1000000,
+    "maxIterations": 100000000
+  },
+  "fuelCapacityLiters": {
+    "value": 23,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "oracle:manual"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "solver-input.v2"
+    },
+    "role": "user_override"
+  },
+  "veCapacityPercent": {
+    "value": 0,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "oracle:manual"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "solver-input.v2"
+    },
+    "role": "user_override"
+  },
+  "tyreLifeLaps": {
+    "value": 23,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "oracle:manual"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "solver-input.v2"
+    },
+    "role": "user_override"
+  },
+  "fuelPerLapLiters": {
+    "value": 1,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "oracle:manual"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "solver-input.v2"
+    },
+    "role": "user_override"
+  },
+  "vePerLapPercent": {
+    "value": 0,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "oracle:manual"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "solver-input.v2"
+    },
+    "role": "user_override"
+  },
+  "fuelReserve": {
+    "kind": "",
+    "amount": {
+      "value": 0,
+      "evidence": {
+        "provenance": {
+          "kind": ""
+        },
+        "confidence": {
+          "level": ""
+        }
+      }
+    },
+    "laps": {
+      "value": 0,
+      "evidence": {
+        "provenance": {
+          "kind": ""
+        },
+        "confidence": {
+          "level": ""
+        }
+      }
+    },
+    "percent": {
+      "value": 0,
+      "evidence": {
+        "provenance": {
+          "kind": ""
+        },
+        "confidence": {
+          "level": ""
+        }
+      }
+    },
+    "selection": {
+      "provenance": {
+        "kind": ""
+      },
+      "confidence": {
+        "level": ""
+      }
+    }
+  },
+  "virtualEnergyReserve": {
+    "kind": "",
+    "amount": {
+      "value": 0,
+      "evidence": {
+        "provenance": {
+          "kind": ""
+        },
+        "confidence": {
+          "level": ""
+        }
+      }
+    },
+    "laps": {
+      "value": 0,
+      "evidence": {
+        "provenance": {
+          "kind": ""
+        },
+        "confidence": {
+          "level": ""
+        }
+      }
+    },
+    "percent": {
+      "value": 0,
+      "evidence": {
+        "provenance": {
+          "kind": ""
+        },
+        "confidence": {
+          "level": ""
+        }
+      }
+    },
+    "selection": {
+      "provenance": {
+        "kind": ""
+      },
+      "confidence": {
+        "level": ""
+      }
+    }
+  },
+  "degradationPerLapSeconds": {
+    "value": 0,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "oracle:manual"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "solver-input.v2"
+    },
+    "role": "user_override"
+  },
+  "serviceDiscretization": {
+    "fuelLiters": 1,
+    "vePercent": 1
+  }
+}

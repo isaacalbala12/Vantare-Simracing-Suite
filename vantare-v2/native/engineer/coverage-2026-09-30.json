@@ -1,0 +1,329 @@
+{
+  "version": "vantare.voice.coverage.v1",
+  "locales": [
+    {
+      "locale": "es",
+      "voice": "ef_dora",
+      "phrases": [
+        {
+          "intent": "pitstops.entry",
+          "text": "Entrando en boxes",
+          "status": "available",
+          "clip": "2b659e2aac4944ae11fe9d07e1ef078431a719e2afaa48e4311addb4070c27fc.mp3",
+          "duration_ms": 1350
+        },
+        {
+          "intent": "pitstops.exit",
+          "text": "Saliendo de boxes",
+          "status": "available",
+          "clip": "d27ddb6fb8af064841475c19af1b5bef10f197b51a42df862c1def27b55c29a2.mp3",
+          "duration_ms": 1332
+        },
+        {
+          "intent": "laps.completed",
+          "text": "Vuelta completada",
+          "status": "available",
+          "clip": "3564ef64c6acd4b8ef006c523cb53a43f074a6ddfffcc05135cb81f5a2393949.mp3",
+          "duration_ms": 1275
+        },
+        {
+          "intent": "fuel.low_1l",
+          "text": "Queda un litro",
+          "status": "available",
+          "clip": "548efa3ffeefef2900d83b32b51d0b099f96f2d273845432e236e41e8f784e17.mp3",
+          "duration_ms": 948
+        },
+        {
+          "intent": "fuel.low_2l",
+          "text": "Quedan dos litros",
+          "status": "available",
+          "clip": "40bb90520b9a976adb692ed9d12c58f02a30a6a9ab243f30e7ae8a6fcccf3d5f.mp3",
+          "duration_ms": 1227
+        },
+        {
+          "intent": "fuel.low_half_tank",
+          "text": "Queda medio depósito",
+          "status": "available",
+          "clip": "ca19e978de7f6486039efcf8cf7320383e808db0ee423371eb139b7326ac789c.mp3",
+          "duration_ms": 1431
+        },
+        {
+          "intent": "flags.yellow",
+          "text": "Bandera amarilla",
+          "status": "missing",
+          "error": "clip Kokoro ausente"
+        },
+        {
+          "intent": "flags.blue",
+          "text": "Bandera azul",
+          "status": "missing",
+          "error": "clip Kokoro ausente"
+        },
+        {
+          "intent": "spotter.car_left",
+          "text": "Coche a la izquierda",
+          "status": "available",
+          "clip": "ac150ff613b7b760bc86bcfaaefdc6796c286661d9987cfe545628ab2251f4dc.wav",
+          "duration_ms": 1322
+        },
+        {
+          "intent": "spotter.car_right",
+          "text": "Coche a la derecha",
+          "status": "available",
+          "clip": "4eb9c0a028ff50558b40aca6e7902ceaf90a41c408cdd626d89478a7a6b9bb34.wav",
+          "duration_ms": 1280
+        },
+        {
+          "intent": "spotter.three_wide",
+          "text": "Tres coches en paralelo",
+          "status": "available",
+          "clip": "6e3309f3b2d2e82a19d9dcc145b222a045548e69e6311cf4823ae2398cb8d81c.wav",
+          "duration_ms": 1642
+        }
+      ]
+    },
+    {
+      "locale": "en",
+      "voice": "af_bella",
+      "phrases": [
+        {
+          "intent": "pitstops.entry",
+          "text": "Entering the pits",
+          "status": "available",
+          "clip": "257cbccc1a940622dacf3876d893d63851e6f01312576585b6c68a23a044e5a9.mp3",
+          "duration_ms": 1032
+        },
+        {
+          "intent": "pitstops.exit",
+          "text": "Leaving the pits",
+          "status": "available",
+          "clip": "4e7283513be5bccfc7b2ebb20dd28930880468455bf89f82a0abba2e351b4ea3.mp3",
+          "duration_ms": 1050
+        },
+        {
+          "intent": "laps.completed",
+          "text": "Lap completed",
+          "status": "available",
+          "clip": "e49bbe90cb433c874f77027a1dca254b5bdada97913e9462b0f575d0ff90f2ce.mp3",
+          "duration_ms": 1113
+        },
+        {
+          "intent": "fuel.low_1l",
+          "text": "One litre remaining",
+          "status": "available",
+          "clip": "e11153a779e2fce3d9b99e9fe47a7d153646ddf29d8ee8291e72b0d082163795.mp3",
+          "duration_ms": 1332
+        },
+        {
+          "intent": "fuel.low_2l",
+          "text": "Two litres remaining",
+          "status": "available",
+          "clip": "c40f83f5d5527e7e5846133369a9d9adf8efaf686d8235f945b16b7f1f9c7d47.mp3",
+          "duration_ms": 1464
+        },
+        {
+          "intent": "fuel.low_half_tank",
+          "text": "Half a tank remaining",
+          "status": "available",
+          "clip": "e2acaaa98ff4dcb153d26c7b2d4847a2e35abe3cd56eb7fa9669fba461b089cb.mp3",
+          "duration_ms": 1302
+        },
+        {
+          "intent": "flags.yellow",
+          "text": "Yellow flag",
+          "status": "missing",
+          "error": "clip Kokoro ausente"
+        },
+        {
+          "intent": "flags.blue",
+          "text": "Blue flag",
+          "status": "missing",
+          "error": "clip Kokoro ausente"
+        },
+        {
+          "intent": "spotter.car_left",
+          "text": "Car left",
+          "status": "available",
+          "clip": "b02f71a4c58e0828fc4cb2d21a086794df273b40b14d6e9c53063c16d32c4fd8.wav",
+          "duration_ms": 874
+        },
+        {
+          "intent": "spotter.car_right",
+          "text": "Car right",
+          "status": "available",
+          "clip": "3d3239846095aa3317dd6d233a424e28aa6d09e5953cd8ff232fa6064e02ce33.wav",
+          "duration_ms": 874
+        },
+        {
+          "intent": "spotter.three_wide",
+          "text": "Three wide",
+          "status": "available",
+          "clip": "36f26efc45364fc4fa903623fb5a8f7cda2cc27ea7dddda5a7ac082e6ed909a8.wav",
+          "duration_ms": 810
+        }
+      ]
+    },
+    {
+      "locale": "it",
+      "voice": "if_sara",
+      "phrases": [
+        {
+          "intent": "pitstops.entry",
+          "text": "Ingresso ai box",
+          "status": "available",
+          "clip": "aa6f98ecaea95f54d916621e68a26098791dab8895ce7c64da45e7fdbb784c8b.mp3",
+          "duration_ms": 1302
+        },
+        {
+          "intent": "pitstops.exit",
+          "text": "Uscita dai box",
+          "status": "available",
+          "clip": "c27a636960dda7586bf5c5d41dfed01470c7e40967665082075967ff8e9536a0.mp3",
+          "duration_ms": 1236
+        },
+        {
+          "intent": "laps.completed",
+          "text": "Giro completato",
+          "status": "available",
+          "clip": "4cf17bfa48733574148b3c5aecb8efe71278e0473ee5852978556ae567644de4.mp3",
+          "duration_ms": 1338
+        },
+        {
+          "intent": "fuel.low_1l",
+          "text": "Rimane un litro",
+          "status": "available",
+          "clip": "5b7eee05cb77b267f13da9def2e60418fc362044cbd758ccb089c2dae0758148.mp3",
+          "duration_ms": 1251
+        },
+        {
+          "intent": "fuel.low_2l",
+          "text": "Rimangono due litri",
+          "status": "available",
+          "clip": "28a96b2701558b9304a45e0bbcb5c43bd9539c1e86874ed895fc8df6db4f724d.mp3",
+          "duration_ms": 1527
+        },
+        {
+          "intent": "fuel.low_half_tank",
+          "text": "Rimane metà serbatoio",
+          "status": "available",
+          "clip": "c947cb1ee85436503cc4ed10fce6070f46593f42039c29420ed5c8d775261c00.mp3",
+          "duration_ms": 1695
+        },
+        {
+          "intent": "flags.yellow",
+          "text": "Bandiera gialla",
+          "status": "missing",
+          "error": "clip Kokoro ausente"
+        },
+        {
+          "intent": "flags.blue",
+          "text": "Bandiera blu",
+          "status": "missing",
+          "error": "clip Kokoro ausente"
+        },
+        {
+          "intent": "spotter.car_left",
+          "text": "Auto a sinistra",
+          "status": "available",
+          "clip": "eb2dc6c889c7170356c58a3f649fa82e2bef8777efa16b485d7b0f8d90afbe92.wav",
+          "duration_ms": 1280
+        },
+        {
+          "intent": "spotter.car_right",
+          "text": "Auto a destra",
+          "status": "available",
+          "clip": "13b7eb2d4a08a180f6751865373e7f6e28c20183ae27afb67d17dc6c6f6a3bdd.wav",
+          "duration_ms": 1173
+        },
+        {
+          "intent": "spotter.three_wide",
+          "text": "Tre auto affiancate",
+          "status": "available",
+          "clip": "c387d424ae2c9c020cd2910b65def1389ea165767447fd48dff60b2820f4ffa7.wav",
+          "duration_ms": 1514
+        }
+      ]
+    },
+    {
+      "locale": "pt-BR",
+      "voice": "pf_dora",
+      "phrases": [
+        {
+          "intent": "pitstops.entry",
+          "text": "Entrando nos boxes",
+          "status": "available",
+          "clip": "a686e24d3555a865867186cbb68a91f363580e23a383b30357f2060102d88204.mp3",
+          "duration_ms": 1437
+        },
+        {
+          "intent": "pitstops.exit",
+          "text": "Saindo dos boxes",
+          "status": "available",
+          "clip": "1df2b32f3968cd7bfa2462577c1765607764b90b5d1ca38613fdf6034b9ecb94.mp3",
+          "duration_ms": 1317
+        },
+        {
+          "intent": "laps.completed",
+          "text": "Volta concluída",
+          "status": "available",
+          "clip": "5c0e9db2fa68bec0bd4d8c23a1807b31f6a53aa0e4737a2846f400fff6da038a.mp3",
+          "duration_ms": 1233
+        },
+        {
+          "intent": "fuel.low_1l",
+          "text": "Resta um litro",
+          "status": "available",
+          "clip": "ab5483c473151b5f98a067808970e026447cfc89a3a84888789ed12b5c8ba448.mp3",
+          "duration_ms": 1050
+        },
+        {
+          "intent": "fuel.low_2l",
+          "text": "Restam dois litros",
+          "status": "available",
+          "clip": "e0df203f4ef4d90dec199f4d33499839535b76482c876d30c62deab3a6524f6e.mp3",
+          "duration_ms": 1413
+        },
+        {
+          "intent": "fuel.low_half_tank",
+          "text": "Resta meio tanque",
+          "status": "available",
+          "clip": "9b526d3a6311fa24bc0375f26116ba10816697c2045575791b34dca6bc356e85.mp3",
+          "duration_ms": 1245
+        },
+        {
+          "intent": "flags.yellow",
+          "text": "Bandeira amarela",
+          "status": "missing",
+          "error": "clip Kokoro ausente"
+        },
+        {
+          "intent": "flags.blue",
+          "text": "Bandeira azul",
+          "status": "missing",
+          "error": "clip Kokoro ausente"
+        },
+        {
+          "intent": "spotter.car_left",
+          "text": "Carro à esquerda",
+          "status": "available",
+          "clip": "90ca7e0155d5d387c4e1f60d1a4ab626a0d3a0ca4a4e52924bf20088885c8842.wav",
+          "duration_ms": 1130
+        },
+        {
+          "intent": "spotter.car_right",
+          "text": "Carro à direita",
+          "status": "available",
+          "clip": "aa63a61b7605ad0e79c22291459a1fb1211feccff0ce31588d576e3b11ac8d97.wav",
+          "duration_ms": 1109
+        },
+        {
+          "intent": "spotter.three_wide",
+          "text": "Três carros lado a lado",
+          "status": "available",
+          "clip": "f498f309a60b1078586f60a97a94ad6fb970aef1903520e9f82e7623e86a79f4.wav",
+          "duration_ms": 1621
+        }
+      ]
+    }
+  ]
+}

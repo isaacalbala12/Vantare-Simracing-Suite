@@ -1,11 +1,9 @@
 # Canales de ramas y promociones
 
-> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
-> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
-> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
-> [Contrato vigente](vantare-program/notion-transition.md). GitHub conserva código, PR, CI y releases;
-> las referencias ISA exigidas por los controles son un puente técnico temporal.
-> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+> **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
+> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
+> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
+> estados de trackers anteriores son evidencia histórica, no instrucciones.
 
 
 ## Contrato canónico
@@ -52,8 +50,9 @@ aplicable. Solo Isaac puede autorizar `testers` a `master`.
 
 ### Roadmap público
 
-El contenido se edita visualmente en la app: Owner guarda un borrador privado
-y lo publica para todos. No hay rama automática ni gate de archivos de roadmap.
+El contenido procede de Plane; el publicador del servidor sincroniza Supabase
+y app/web leen la RPC pública (#1601). No hay editor en la app ni rama de datos.
+Credenciales, despliegue, timer y primera escritura requieren autorización separada.
 Las ramas de código siguen las validaciones de canal descritas aquí.
 
 La proteccion efectiva requiere que el check `Validate promotion path` siga
@@ -126,7 +125,7 @@ fase de activación y autorización expresa de Isaac.
 El lint de archivos cambiados y el visual de Testing Center son bloqueantes
 solo en el PR automático `tc-*`, calculados contra el primer padre real del
 merge sintético. El evento `merge_group` no expone la rama fuente original:
-revalida Go, frontend y Windows/Wails, mientras la futura activación deberá
+revalida Go, frontend y Windows/Wails (revalidación histórica del stack retirado; gates actuales en `native/README.md`), mientras la futura activación deberá
 exigir los checks exactos ya emitidos sobre el `head_sha` atestado antes de
 encolar. El lint global de los canales humanos continúa advisory por su deuda
 inventariada.

@@ -1,0 +1,70 @@
+name: Supabase latido diario
+
+on:
+  schedule:
+    - cron: "23 7 * * *"
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - .github/workflows/supabase-latido.yml
+      - .github/scripts/supabase_latido.py
+      - .github/scripts/test_supabase_latido.py
+      - supabase/migrations/20261008230000_supabase_heartbeat.sql
+      - supabase/rollbacks/20261008230000_supabase_heartbeat.down.sql
+      - supabase/tests/supabase_heartbeat.test.sql
+
+permissions:
+  contents: read
+
+concurrency:
+  group: supabase-latido-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  mock-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probar sin secretos ni red
+        run: python -m unittest discover -s .github/scripts -p test_supabase_latido.py -v
+
+  sql-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: mock-local-only
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verificar SQL en PostgreSQL desechable
+        env:
+          PGPASSWORD: mock-local-only
+        run: psql -X -h localhost -U postgres -d postgres -v ON_ERROR_STOP=1 -f supabase/tests/supabase_heartbeat.test.sql
+
+  latido:
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    needs: [mock-tests, sql-tests]
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v4
+      - name: Leer fila de salud
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        run: python .github/scripts/supabase_latido.py
+      - name: Avisar del fallo
+        if: failure()
+        env:
+          DISCORD_KNOWN_ISSUES_WEBHOOK_URL: ${{ secrets.DISCORD_KNOWN_ISSUES_WEBHOOK_URL }}
+        run: python .github/scripts/supabase_latido.py --notify-failure

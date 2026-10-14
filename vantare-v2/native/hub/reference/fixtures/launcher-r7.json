@@ -1,0 +1,152 @@
+{
+  "apps": [
+    {
+      "id": "lmu",
+      "displayName": "Le Mans Ultimate",
+      "abbreviation": "LMU",
+      "category": "simulator",
+      "launchMethod": "steam-uri",
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "crewchief",
+      "displayName": "CrewChief",
+      "abbreviation": "CC",
+      "category": "utility",
+      "launchMethod": "executable",
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "simhub",
+      "displayName": "SimHub",
+      "abbreviation": "SH",
+      "category": "telemetry",
+      "launchMethod": "executable",
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "obs",
+      "displayName": "OBS Studio",
+      "abbreviation": "OBS",
+      "category": "streaming",
+      "launchMethod": "executable",
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "spotify",
+      "displayName": "Spotify",
+      "abbreviation": "SP",
+      "category": "audio",
+      "launchMethod": "executable",
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "discord",
+      "displayName": "Discord",
+      "abbreviation": "DC",
+      "category": "utility",
+      "launchMethod": "executable",
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "motec",
+      "displayName": "MoTeC",
+      "abbreviation": "MT",
+      "category": "telemetry",
+      "launchMethod": "executable",
+      "found": true,
+      "installed": true
+    },
+    {
+      "id": "custom:vantare",
+      "displayName": "Vantare Overlay",
+      "abbreviation": "A",
+      "category": "overlay",
+      "launchMethod": "executable",
+      "found": true,
+      "installed": true,
+      "executablePath": "C:/QA/vantare-hub.exe"
+    }
+  ],
+  "profiles": [
+    {
+      "id": "carrera-lmu",
+      "name": "Carrera LMU",
+      "description": "Abre Le Mans Ultimate, tu ingeniero de voz, SimHub y tu overlay Standings neo en este orden.",
+      "favorite": true,
+      "steps": [
+        {
+          "appId": "lmu",
+          "delaySeconds": 0
+        },
+        {
+          "appId": "crewchief",
+          "delaySeconds": 0
+        },
+        {
+          "appId": "simhub",
+          "delaySeconds": 0
+        },
+        {
+          "appId": "custom:vantare",
+          "delaySeconds": 0
+        }
+      ],
+      "retryLimit": 2,
+      "launchCount": 12,
+      "lastLaunchedAt": "2026-10-05T18:02:00+02:00",
+      "avgChainDurationMs": 41000,
+      "lastReadySteps": 4
+    },
+    {
+      "id": "streaming-le-mans",
+      "name": "Streaming Le Mans",
+      "description": "lmu → obs → spotify",
+      "favorite": false,
+      "steps": [
+        {
+          "appId": "lmu",
+          "delaySeconds": 0
+        },
+        {
+          "appId": "obs",
+          "delaySeconds": 0
+        },
+        {
+          "appId": "spotify",
+          "delaySeconds": 0
+        }
+      ],
+      "retryLimit": 0,
+      "launchCount": 2,
+      "lastLaunchedAt": "2026-10-04T20:41:00+02:00",
+      "avgChainDurationMs": 12000
+    },
+    {
+      "id": "entreno-rapido",
+      "name": "Entreno rápido",
+      "description": "lmu → overlays",
+      "favorite": false,
+      "steps": [
+        {
+          "appId": "lmu",
+          "delaySeconds": 0
+        },
+        {
+          "appId": "custom:vantare",
+          "delaySeconds": 0
+        }
+      ],
+      "retryLimit": 0,
+      "launchCount": 2,
+      "lastLaunchedAt": "2026-10-04T20:41:00+02:00",
+      "avgChainDurationMs": 12000
+    }
+  ]
+}

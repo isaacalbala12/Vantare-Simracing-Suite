@@ -1,0 +1,16 @@
+{
+  "questionnaires": [{
+    "id": "15350000-0000-0000-0000-000000000001",
+    "version": "0.0.974",
+    "title": "QA · experiencia del Hub",
+    "question": "¿Cómo ha sido tu experiencia al configurar y lanzar los overlays?",
+    "score": null,
+    "note": ""
+  }],
+  "contributions": [{
+    "id": "15350000-0000-0000-0000-000000000002",
+    "title": "QA · documentación de una prueba",
+    "body": "Ejemplo de una contribución revisada. Esta escena no consulta ni escribe en Supabase.",
+    "state": "reviewing"
+  }]
+}

@@ -1,0 +1,92 @@
+{
+  "name": "Grafito carmín",
+  "colors": {
+    "window": 723466,
+    "base": 1446676,
+    "sidebar": 1775384,
+    "l1": 2235679,
+    "l2": 2827559,
+    "l3": 3485232,
+    "elevated": 4405821,
+    "neoTop": 2498594,
+    "neoBottom": 2038300,
+    "text": 16447479,
+    "text2": 14077904,
+    "text3": 11577257,
+    "caption": 8879488,
+    "onPrimary": 1511695,
+    "accent": 14764628,
+    "accentBright": 16743042,
+    "accentDark": 11873077,
+    "wine": 7213081,
+    "ok": 2278750,
+    "warn": 16096779,
+    "error": 15882842,
+    "line": 4294967055,
+    "line2": 4294967066,
+    "line3": 4294967078
+  },
+  "geometry": {
+    "sidebar": 272,
+    "sidebarCollapsed": 76,
+    "gap": 16,
+    "gutter": 28,
+    "radius": 16,
+    "controlRadius": 8,
+    "controlHeight": 36,
+    "topbar": 52,
+    "columns": 3
+  },
+  "fonts": {
+    "body": "Inter W400",
+    "display": "Rajdhani",
+    "mono": "Space Mono",
+    "bodySize": 14,
+    "smallSize": 12,
+    "titleSize": 56
+  },
+  "shadow": {
+    "lightAlpha": 0.07,
+    "alpha": 0.35,
+    "blur": 28,
+    "y": 12
+  },
+  "gradients": {
+    "hero": [
+      6035232,
+      1971479
+    ],
+    "button": [
+      14564680,
+      10687519
+    ],
+    "progress": [
+      9312291,
+      16732764
+    ],
+    "active": [
+      4602943,
+      3879733
+    ],
+    "appGame": [
+      3107544,
+      1191530
+    ],
+    "appVoice": [
+      15303978,
+      9389323
+    ],
+    "appTools": [
+      9063648,
+      4202618
+    ],
+    "appVideo": [
+      5922148,
+      2500395
+    ],
+    "appMusic": [
+      2278237,
+      944944
+    ]
+  }
+}

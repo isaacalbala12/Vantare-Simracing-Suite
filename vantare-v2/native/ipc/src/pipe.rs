@@ -45,7 +45,7 @@ use windows_sys::Win32::System::Threading::{
 
 const BUFFER: u32 = 64 * 1024;
 /// Plazo por operación de E/S; también rige el saludo y el silencio del productor.
-pub(crate) const IO_TIMEOUT: Duration = Duration::from_secs(5);
+pub const IO_TIMEOUT: Duration = Duration::from_secs(5);
 const INFINITE: u32 = u32::MAX;
 
 fn wide(s: &str) -> Vec<u16> {
@@ -76,6 +76,19 @@ pub struct Peer {
     pub image: PathBuf,
 }
 
+impl Peer {
+    /// Comparar rutas reales (incluidos alias relativos/symlinks), fuera de
+    /// adquisición. Error de resolución no concede confianza al proceso.
+    pub fn is_image(&self, expected: &std::path::Path) -> bool {
+        match (self.image.canonicalize(), expected.canonicalize()) {
+            (Ok(image), Ok(expected)) => image
+                .to_string_lossy()
+                .eq_ignore_ascii_case(&expected.to_string_lossy()),
+            _ => false,
+        }
+    }
+}
+
 fn peer(pid: u32) -> io::Result<Peer> {
     // SAFETY: `OpenProcess` no toma punteros; el resultado se comprueba y se envuelve.
     let process = unsafe { OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, 0, pid) };
@@ -98,7 +111,7 @@ fn peer(pid: u32) -> io::Result<Peer> {
 }
 
 /// Evento manual del kernel. Con él se para todo lo que espera en un pipe.
-pub(crate) struct Event(OwnedHandle);
+pub struct Event(OwnedHandle);
 
 impl Event {
     pub fn new() -> io::Result<Self> {
@@ -137,7 +150,7 @@ unsafe impl Sync for Event {}
 
 /// Un extremo de pipe con E/S solapada. `Read`/`Write` esperan como mucho
 /// `timeout` por operación y terminan antes con `ConnectionAborted` si `stop` se activa.
-pub(crate) struct Pipe {
+pub struct Pipe {
     handle: OwnedHandle,
     /// Señal de fin de cada operación solapada (una operación a la vez: `&mut self`).
     done: Event,
@@ -157,7 +170,7 @@ impl Pipe {
     }
 
     #[cfg(test)]
-    pub fn set_timeout(&mut self, timeout: Duration) {
+    fn set_timeout(&mut self, timeout: Duration) {
         self.timeout = timeout;
     }
 
@@ -378,7 +391,7 @@ fn current_user_sid() -> io::Result<String> {
 /// Fábrica de instancias servidor de un pipe. La primera se crea con
 /// `FIRST_PIPE_INSTANCE`: si otro proceso ya tiene ese nombre, falla en lugar de
 /// dejarnos servir junto a un impostor.
-pub(crate) struct Listener {
+pub struct Listener {
     name: Vec<u16>,
     acl: Acl,
     stop: Arc<Event>,
@@ -431,7 +444,7 @@ impl Listener {
 }
 
 /// Conecta con el servidor sin permitirle suplantarnos (`SECURITY_ANONYMOUS`).
-pub(crate) fn connect(name: &str, stop: Arc<Event>, timeout: Duration) -> io::Result<Pipe> {
+pub fn connect(name: &str, stop: Arc<Event>, timeout: Duration) -> io::Result<Pipe> {
     let name = wide(&format!(r"\\.\pipe\{name}"));
     // SAFETY: `name` termina en NUL; el resto son valores por defecto.
     let handle = unsafe {

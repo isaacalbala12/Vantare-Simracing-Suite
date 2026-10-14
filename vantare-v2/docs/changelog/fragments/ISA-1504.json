@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1504",
+  "type": "change",
+  "summary": "El Hub muestra el wordmark oficial C2 y Windows usa el icono legible en tamaños pequeños.",
+  "technicalNotes": [
+    "SVG de trazos embebido desde build/brand/wordmark, a 24 px y teñido según el tema.",
+    "Barra abierta con BETA debajo del nombre; barra contraída con la Λ.",
+    "ICO con siete frames: plano a 16/24/32 px, patas gruesas a 16/24 y degradado existente a partir de 48.",
+    "Activos MSIX versionados con targetsize y variantes sin placa; regeneración Python/Pillow reproducible.",
+    "BRAND y DESIGN documentan #D80000, escala roja, contrastes e históricos; wordmark pendiente, sin cambios."
+  ],
+  "testing": [
+    "Comprobar Vantare y DeepSeek en claro/oscuro y alternar la barra con Ctrl+B.",
+    "Revisar icono a 16, 24 y 32 px sobre barras clara y oscura; hoja C:/tmp/ui-r10/iconos-1504.png.",
+    "Regenerar con scripts/generate-brand-icons.py --check y comprobar scripts/test-brand-icons.py."
+  ],
+  "knownLimitations": [
+    "Integración local de wordmark e iconos; sin firma, publicación ni prueba de MSIX instalado."
+  ]
+}

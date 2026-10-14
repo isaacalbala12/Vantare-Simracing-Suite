@@ -6,7 +6,7 @@ respects _pack_=4 alignment, and generates offset constants for TypeScript and G
 Usage:
   python tools/generate-lmu-offsets.py
   python tools/generate-lmu-offsets.py --output packages/sim-core/src/lmu-offsets.ts \\
-      --go-output vantare-v2/internal/telemetry/lmu/offsets.go
+      --go-output C:/tmp/lmu-offsets.go
 """
 
 import argparse
@@ -574,8 +574,8 @@ def main():
     parser.add_argument('--output', default='packages/sim-core/src/lmu-offsets.ts')
     parser.add_argument(
         '--go-output',
-        default='vantare-v2/internal/telemetry/lmu/offsets.go',
-        help='Go offsets output path (pass empty string to skip)',
+        default=None,
+        help='Optional Go offsets output path (disabled by default after Wails retirement)',
     )
     args = parser.parse_args()
 

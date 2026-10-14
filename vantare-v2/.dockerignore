@@ -1,0 +1,27 @@
+# Contexto de build de Docker. Sin este fichero, `COPY . .` del Dockerfile
+# mete en la imagen cualquier `.env` real que el desarrollador haya creado
+# siguiendo las instrucciones de `.env.example`, y ese fichero lleva
+# SUPABASE_SERVICE_ROLE_KEY. Queda en una capa intermedia, recuperable del
+# builder o de la cache.
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.secrets.json
+.dev.vars
+
+# Repositorio y artefactos de build
+.git
+.gitignore
+.github
+node_modules
+**/node_modules
+frontend/dist
+frontend/bindings
+build/bin
+testdata
+*.log

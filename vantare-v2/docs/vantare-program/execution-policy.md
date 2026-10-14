@@ -1,11 +1,9 @@
 # Política de ejecución, ramas y promoción
 
-> **Notion primero (2026-09-14):** abrir el [hub de Vantare](https://app.notion.com/p/3fce51695c65834e80b381ec2d632192)
-> y leer la tarea y su proyecto antes de ejecutar. Actualizar Notion al empezar,
-> bloquear, entregar y verificar una integración; releer para comprobar la escritura.
-> [Contrato vigente](notion-transition.md). GitHub conserva código, PR, CI y releases;
-> las referencias ISA exigidas por los controles son un puente técnico temporal.
-> Su adaptación pendiente nunca permite omitir el seguimiento en Notion.
+> **Seguimiento vigente (#1503): GitHub Issues de este repositorio y GitHub
+> Project Vantare.** Leer la issue y actualizarla junto con el handoff tras
+> cada cambio material; registrar PR, checks, SHA y canal real. Los enlaces y
+> estados de trackers anteriores son evidencia histórica, no instrucciones.
 
 
 Estado: vigente, actualizado el 2026-08-05 tras ISA-121.
@@ -31,21 +29,22 @@ debe seguir `nightly`, pero el trabajo se implementa siempre en una rama y
 worktree de issue. `develop` y `refactor` son referencias historicas: no
 reciben promociones nuevas y sus cambios locales no se limpian ni reutilizan.
 
-## Contrato por tarea Notion
+## Contrato por issue GitHub
 
-- Una tarea Notion ejecutable equivale a rama, worktree y contexto propios.
-- Leer tarea y proyecto Notion antes de trabajar. La referencia GitHub/ISA
-  mantiene el nombre técnico exigido por CI hasta adaptar los gates; no usar VAN
-  como ISA ni convertir este puente en seguimiento principal.
-- Base exacta y destino constan en Notion junto con la referencia técnica.
+- Una issue GitHub ejecutable equivale a rama, worktree y contexto propios.
+- Leer la issue y su proyecto antes de trabajar. Usar `vantareapp/isa-N-slug`
+  con el número GitHub; conservar títulos e IDs históricos de issues migradas.
+  Organizar con `area:*`, `state:*`, milestones y GitHub Project Vantare.
+- Base exacta y destino constan en GitHub Issues junto con la referencia técnica.
 - Commits pequeños y staging limitado.
-- PR draft y Estado Notion `En revisión` con evidencia; nunca merge implícito.
-- La promoción utiliza tareas Notion de integración separadas y el puente CI aplicable.
+- PR draft y Estado GitHub Issues `En revisión` con evidencia; nunca merge implícito.
+- La promoción utiliza issues GitHub de integración separadas con evidencia de CI.
 - Cada proyecto tiene un único handoff vivo y se actualiza tras cada worker,
   decisión o cambio material. La continuidad operativa y el estado se actualizan
-  y releen en Notion al empezar, bloquear, entregar y verificar merge; el
+  y releen en GitHub Issues al empezar, bloquear, entregar y verificar merge; el
   handoff Git conserva evidencia técnica enlazada. Los cambios de alcance y
-  plan futuro se registran en Notion. Owner publica el roadmap desde la app.
+  plan futuro se registran en GitHub Issues. Isaac indica a Codex los cambios del roadmap
+  compartido en Supabase; la app solo lee (`../roadmap-maintenance.md`).
 
 ## Delegacion y responsabilidad
 
@@ -58,14 +57,14 @@ reciben promociones nuevas y sus cambios locales no se limpian ni reutilizan.
 
 ## Autonomía
 
-Los agentes pueden crear/actualizar tareas y proyectos Notion, las referencias
-GitHub necesarias para CI, ramas, worktrees, commits, pushes, PRs, investigación,
-reviews y fixes dentro de la tarea aprobada. Si Notion falla, conservar evidencia
-y comunicar el bloqueo; no sustituirlo por GitHub ni dar el seguimiento por cerrado.
+Los agentes pueden crear/actualizar issues, ramas, worktrees, commits, pushes,
+PRs draft, investigación, reviews y fixes dentro de la issue aprobada. Si falla
+el acceso al tracker, conservar evidencia y comunicar el bloqueo; no dar el
+seguimiento por cerrado sin verificar la escritura.
 
 Una simplificación arquitectónica o retirada de código se ejecuta solo cuando:
 
-- la tarea Notion/plan la incluye o se crea una tarea propia;
+- la issue GitHub/plan la incluye o se crea una tarea propia;
 - no contradice decisiones;
 - hay consumidores cero o contrato de migración;
 - existen characterization/tests y rollback;
@@ -132,10 +131,10 @@ alcance, simplicidad, seguridad, rendimiento, tests complacientes, código
 muerto, contratos, privacidad y rollback.
 
 La entrega enumera base/rama/SHA, archivos, checks, omisiones, capturas/datos,
-rendimiento, riesgos, rollback, siguiente tarea Notion, commit/push/PR y nivel
+rendimiento, riesgos, rollback, siguiente issue GitHub, commit/push/PR y nivel
 de promoción alcanzado.
 
-Una tarea terminada en rama queda `En revisión` en Notion. Solo queda `Aceptada`
+Una tarea terminada en rama queda `En revisión` en GitHub Issues. Solo queda `Aceptada`
 cuando cumple los criterios y la aceptación aplicable; registrar por separado
 el SHA y canal realmente verificados. Una tarea `Cerrada` sin entrega debe
 explicar cancelación o sustitución; no presentarla como completada. Master siempre requiere

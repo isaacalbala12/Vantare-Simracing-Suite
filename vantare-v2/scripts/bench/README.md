@@ -1,37 +1,11 @@
-# Banco de huella
+# Herramientas de medición conservadas · #1533
 
-Los scripts de este directorio miden builds reales de Vantare. La higiene de
-procesos, la escena y la identidad exacta del binario forman parte del
-resultado; una corrida que incumpla cualquiera de esos requisitos se descarta.
+`huella-medir.ps1` mide procesos ya arrancados y PresentMon sin Wails/React.
+`huella-comun.ps1` contiene sus funciones compartidas. `huella-resumen.mjs`
+analiza CSV archivado; `huella-procesos.mjs` y `huella-cdp-metrics.mjs` conservan
+los analizadores independientes y sus fixtures. No implican latencia de entrada.
 
-## Build de medida con licencia
-
-Toda build usada por `huella.ps1` debe embeber la
-configuración autorizada de `frontend/.env.local` en compile-time:
-
-1. Mapear en el proceso de build `VITE_SUPABASE_URL` y
-   `VITE_SUPABASE_ANON_KEY` a `VANTARE_SUPABASE_URL` y
-   `VANTARE_SUPABASE_ANON_KEY`. Mapear también
-   `VANTARE_LICENSE_PUBLIC_KEYS` cuando esté configurado.
-2. Ejecutar `corepack pnpm --dir frontend build`.
-3. Ejecutar `tools/generate_supabase_config.ps1` y después `go build` en el
-   mismo proceso, eliminando el Go generado al terminar.
-4. Verificar por CDP que `license:changed` no devuelve `unconfigured` antes de
-   empezar a muestrear.
-
-Está **prohibido medir con una build sin licencia configurada**. `huella.ps1`
-aplica este gate automáticamente y guarda un manifiesto `*-license.json` con
-datos sanitizados: estado, `configured`, tipo de cuenta
-(`authenticated|anonymous`) y `deviceOK`. No guarda usuario, correo, token ni
-valores de configuración.
-
-No se deben imprimir, copiar ni versionar los valores de `.env.local`. El
-fichero se lee únicamente desde su ubicación autorizada durante el build.
-
-El procedimiento reproducible es:
-
-```powershell
-pwsh -File scripts/bench/build-measurement.ps1 `
-  -EnvFile C:\ruta\autorizada\frontend\.env.local `
-  -OutFile bin\vantare-isa894.exe
-```
+Checks sin arrancar apps: `node --test scripts/bench/all.test.mjs`.
+Los runners Wails, builds y harnesses React se retiraron. La documentación y
+datos originales están en `native/retirement/legacy-evidence/scripts/bench`;
+sus comandos históricos no se ejecutan en este checkout.

@@ -1,18 +1,18 @@
 # Contrato TypeScript de proyecciones
 
-Los tipos wire se generan desde Go en [generated/telemetry.ts](../../frontend/src/generated/telemetry.ts). No editarlos manualmente; consultar [generador](../../tools/telemetry-contract-gen/README.md).
+Los tipos wire se generan desde Go en [generated/telemetry.ts](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/generated/telemetry.ts). No editarlos manualmente; consultar [generador](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/tools/telemetry-contract-gen/README.md).
 
 ## Overlay V2
 
-[overlay-frame-v2-store.ts](../../frontend/src/telemetry-transport/overlay-frame-v2-store.ts) valida `OverlayUpdateV2` y declara eventos `telemetry:overlay-v2:snapshot|status`, ruta `/telemetry/overlay-v2/projection` y límite **72 KiB**, coherente con Go. Mantiene estado, revisión de frame, fuente, frescura y diagnósticos propios.
+[overlay-frame-v2-store.ts](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/telemetry-transport/overlay-frame-v2-store.ts) valida `OverlayUpdateV2` y declara eventos `telemetry:overlay-v2:snapshot|status`, ruta `/telemetry/overlay-v2/projection` y límite **72 KiB**, coherente con Go. Mantiene estado, revisión de frame, fuente, frescura y diagnósticos propios.
 
-[overlay-wails-pull.ts](../../frontend/src/telemetry-transport/overlay-wails-pull.ts) y [overlay-socket-pull.ts](../../frontend/src/telemetry-transport/overlay-socket-pull.ts) tienen contratos y tests de entrega/lifecycle. No sustituirlos por el antiguo adapter Overlay v1.
+[overlay-wails-pull.ts](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/telemetry-transport/overlay-wails-pull.ts) y [overlay-socket-pull.ts](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/telemetry-transport/overlay-socket-pull.ts) tienen contratos y tests de entrega/lifecycle. No sustituirlos por el antiguo adapter Overlay v1.
 
 ## Transporte genérico conservado
 
-[contracts.ts](../../frontend/src/telemetry-transport/contracts.ts) enumera `engineer`, `strategy` y `analysis`, con versión 1 y techo 256 KiB para ese contrato. Es una frontera distinta de Overlay V2; la lista de tipos no demuestra que las tres rutas estén expuestas por el servidor. Los deltas RFC 7396 ya no son la implementación actual (`delta-unsupported`).
+[contracts.ts](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/telemetry-transport/contracts.ts) enumera `engineer`, `strategy` y `analysis`, con versión 1 y techo 256 KiB para ese contrato. Es una frontera distinta de Overlay V2; la lista de tipos no demuestra que las tres rutas estén expuestas por el servidor. Los deltas RFC 7396 ya no son la implementación actual (`delta-unsupported`).
 
-La UI adapta datos validados a sus ViewModels. No reconstruye raw ni se convierte en autoridad de calidad, identidad o cálculo de carrera. Los fixtures del [generador](../../frontend/src/generated/telemetry.generated.test.ts) y los [tests de transporte](../../frontend/src/telemetry-transport/) protegen el cruce Go/TypeScript.
+La UI adapta datos validados a sus ViewModels. No reconstruye raw ni se convierte en autoridad de calidad, identidad o cálculo de carrera. Los fixtures del [generador](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/generated/telemetry.generated.test.ts) y los [tests de transporte](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/telemetry-transport) protegen el cruce Go/TypeScript.
 
 ## Checks
 

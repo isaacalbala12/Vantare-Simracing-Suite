@@ -31,4 +31,16 @@ pub struct Capabilities {
     pub driver_inputs: Capability,
     /// Marcha, velocidad y régimen del motor del jugador.
     pub powertrain: Capability,
+    /// Combustible del jugador.
+    pub fuel: Capability,
+    /// Delta frente a la mejor vuelta propia.
+    pub delta: Capability,
+    /// Sector en curso y tiempos de sector.
+    pub sectors: Capability,
+    /// Distancia y tiempo dentro de la vuelta en curso.
+    pub lap_progress: Capability,
+    /// Clima y estado de la pista.
+    pub weather: Capability,
+    /// Integridad del jugador y goma restante por neumático.
+    pub damage: Capability,
 }

@@ -1,0 +1,477 @@
+use super::{
+    diagnostic::{self, Diagnostic, Module, Observed},
+    store::{self, Draft, Store},
+};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+    sync::atomic::{AtomicU64, Ordering},
+    time::{Duration, Instant},
+};
+use vantare_domain::{Snapshot, SourceKind, SourceState};
+
+static NEXT: AtomicU64 = AtomicU64::new(0);
+
+#[test]
+fn testing_uses_build_channel_without_a_capture_override() {
+    use super::model::channel_label;
+    for missing in [None, Some(""), Some(" ")] {
+        assert_eq!(channel_label(missing), "Canal no disponible");
+    }
+    assert_eq!(channel_label(Some("testers")), "Testers");
+    assert_eq!(channel_label(Some("nightly")), "Nightly");
+    assert_eq!(channel_label(Some("stable")), "Estable");
+    assert_eq!(channel_label(Some("not-a-channel")), "Canal no disponible");
+}
+
+#[test]
+fn customer_preview_uses_the_approved_payload_and_keeps_private_text() {
+    use crate::services::protocol::report_document::Preview;
+    let mut preview = Preview {
+        id: "preview-original".into(),
+        digest: "digest-original".into(),
+        account_id: "account-private-id".into(),
+        channel: "testers".into(),
+        retry: true,
+        screenshots: vec![],
+        payload: serde_json::json!({
+            "p_module": "settings", "p_action_text": "Título original", "p_expected_text": "Mi expectativa",
+            "p_observed_text": "Mi observación", "p_context_text": "Mi contexto privado",
+            "p_app_version": "1.2.3", "p_os_version": "Windows 11",
+            "p_include_diagnostic": false, "p_include_logs": false,
+            "p_idempotency_key": "internal-key"
+        })
+        .to_string(),
+    };
+    let summary = super::model::preview_summary(&preview).expect("contenido legible");
+    for text in [
+        "Título original",
+        "Mi expectativa",
+        "Mi observación",
+        "Mi contexto privado",
+        "Windows 11",
+    ] {
+        assert!(summary.contains(text));
+    }
+    assert!(!summary.contains("internal-key"));
+    assert!(summary.contains("Módulo: Ajustes"));
+    assert!(!summary.contains("account-private-id"));
+    preview.payload = serde_json::json!({"reporte": serde_json::from_str::<serde_json::Value>(&preview.payload).expect("reporte")}).to_string();
+    assert_eq!(
+        super::model::preview_summary(&preview).expect("envío con capturas"),
+        summary
+    );
+    preview.payload = "no es JSON".into();
+    assert!(super::model::preview_summary(&preview).is_err());
+}
+
+#[test]
+fn report_form_uses_wails_utf8_limits_and_optional_context() {
+    use super::{empty_fields, model::field_errors};
+    let mut fields = empty_fields();
+    assert_eq!(
+        field_errors(&fields).map(|error| error.is_some()),
+        [true, true, true, false]
+    );
+    fields.action_text = " éé ".into();
+    fields.expected_text = "abc".into();
+    fields.observed_text = "é".repeat(1024);
+    fields.context_text = "é".repeat(2048);
+    assert!(field_errors(&fields).iter().all(Option::is_none));
+    fields.observed_text.push('x');
+    fields.context_text.push('x');
+    assert_eq!(
+        field_errors(&fields).map(|error| error.is_some()),
+        [false, false, true, true]
+    );
+}
+
+#[test]
+fn report_send_requires_the_exact_reviewed_preview_and_fresh_consent() {
+    use super::model::{Consent, can_send};
+    use crate::services::protocol::report_document::Preview;
+    let preview = Preview {
+        screenshots: Vec::new(),
+        id: "preview-test".into(),
+        digest: "digest-test".into(),
+        payload: "texto revisado".into(),
+        account_id: "cuenta-test".into(),
+        channel: "nightly".into(),
+        retry: false,
+    };
+    let consent = Consent::from(&preview);
+    assert!(!can_send(None, Some(&consent), false));
+    assert!(!can_send(Some(&preview), None, false));
+    assert!(!can_send(Some(&preview), Some(&consent), true));
+    assert!(can_send(Some(&preview), Some(&consent), false));
+    for index in 0..6 {
+        let mut changed = preview.clone();
+        match index {
+            0 => changed.id.push('x'),
+            1 => changed.digest.push('x'),
+            2 => changed.payload.push('x'),
+            3 => changed.account_id.push('x'),
+            4 => changed.channel = "testers".into(),
+            _ => changed.retry = true,
+        }
+        assert!(!can_send(Some(&changed), Some(&consent), false));
+    }
+    let mut retry = preview;
+    retry.retry = true;
+    assert!(can_send(Some(&retry), Some(&Consent::from(&retry)), true));
+}
+struct Temp(PathBuf);
+impl Temp {
+    fn new() -> Self {
+        let path = std::env::temp_dir().join(format!(
+            "vantare-testing-{}-{}",
+            std::process::id(),
+            NEXT.fetch_add(1, Ordering::Relaxed)
+        ));
+        fs::create_dir(&path).expect("crear directorio aislado");
+        Self(path)
+    }
+    fn draft(&self) -> PathBuf {
+        self.0.join("testing-center/report-draft.json")
+    }
+}
+impl Drop for Temp {
+    fn drop(&mut self) {
+        fs::remove_dir_all(&self.0).expect("limpiar directorio aislado de prueba");
+    }
+}
+fn diagnostic(temp: &Temp, observed: &Observed) -> Diagnostic {
+    Diagnostic::collect(&temp.0, &temp.0, observed, Instant::now())
+}
+
+#[test]
+fn whitelist_drops_personal_paths_names_tokens_and_snapshot_content() {
+    let temp = Temp::new();
+    let private = "María García C:\\Users\\María\\secret.txt /home/Maria token=eyJhbGciOiJIUzI1NiJ9 Bearer sk-private";
+    let mut observed = Observed::default();
+    observed.error(Module::Engineer, private);
+    let mut snapshot = Snapshot::default();
+    snapshot.origin.source.simulator = "Bearer sk-private";
+    snapshot.origin.source.kind = SourceKind::Replay;
+    snapshot.state.source_state = SourceState::Stale;
+    snapshot.state.cars.push(vantare_domain::Car {
+        driver: vantare_domain::Driver {
+            name: private.into(),
+            ..Default::default()
+        },
+        ..Default::default()
+    });
+    observed.snapshot(&snapshot);
+    let mut draft = Draft::new();
+    draft.fields = std::array::from_fn(|_| private.into());
+    let diagnostic = Diagnostic::collect(
+        &temp.0,
+        Path::new("C:/Users/María/secret.txt"),
+        &observed,
+        Instant::now(),
+    );
+    let bytes = store::export_bytes(&draft, &diagnostic).expect("exportar");
+    let text = String::from_utf8(bytes.clone()).expect("UTF-8");
+    for secret in [
+        "María",
+        "García",
+        "Maria",
+        "Users",
+        "secret.txt",
+        "eyJ",
+        "Bearer",
+        "sk-private",
+    ] {
+        assert!(!text.contains(secret), "filtra {secret}");
+    }
+    let value: serde_json::Value = serde_json::from_slice(&bytes).expect("JSON");
+    assert_eq!(value["diagnostic"]["version"], crate::product::VERSION);
+    assert_eq!(value["diagnostic"]["channel"], crate::product::CHANNEL);
+    assert_eq!(value["privateText"], "omitted_for_privacy");
+    assert_eq!(
+        value["privateFieldsPresent"],
+        serde_json::json!([true, true, true, true])
+    );
+    let mut keys: Vec<_> = value
+        .as_object()
+        .expect("objeto")
+        .keys()
+        .map(String::as_str)
+        .collect();
+    keys.sort_unstable();
+    assert_eq!(
+        keys,
+        [
+            "diagnostic",
+            "module",
+            "privateFieldsPresent",
+            "privateText",
+            "schemaVersion"
+        ]
+    );
+    assert_eq!(value["diagnostic"]["source"]["simulator"], "unknown");
+    assert_eq!(value["diagnostic"]["source"]["kind"], "replay");
+    assert_eq!(value["diagnostic"]["source"]["state"], "stale");
+    assert_eq!(
+        value["diagnostic"]["sectionErrors"][0]["code"],
+        "local_error"
+    );
+    assert!(value["diagnostic"].get("snapshot").is_none());
+    assert!(value["diagnostic"].get("pipe").is_none());
+    let mut diagnostic_keys: Vec<_> = value["diagnostic"]
+        .as_object()
+        .expect("diagnóstico")
+        .keys()
+        .map(String::as_str)
+        .collect();
+    diagnostic_keys.sort_unstable();
+    assert_eq!(
+        diagnostic_keys,
+        [
+            "arch",
+            "binaries",
+            "channel",
+            "core",
+            "dataPaths",
+            "generatedAtUtc",
+            "os",
+            "schemaVersion",
+            "sectionErrors",
+            "source",
+            "uninstrumentedSections",
+            "version"
+        ]
+    );
+}
+
+#[test]
+fn observed_core_silence_does_not_invent_connection_or_source_freshness() {
+    let temp = Temp::new();
+    let now = Instant::now();
+    let mut observed = Observed::default();
+    let get = |observed: &Observed, now| {
+        serde_json::to_value(Diagnostic::collect(&temp.0, &temp.0, observed, now)).expect("JSON")
+    };
+    assert_eq!(get(&observed, now)["core"], "unobserved");
+    observed.activity(0, now);
+    assert_eq!(get(&observed, now)["core"], "unobserved");
+    observed.activity(1, now);
+    assert_eq!(get(&observed, now)["core"], "recent_messages");
+    assert!(get(&observed, now)["source"].is_null());
+    observed.activity(1, now + Duration::from_secs(3));
+    assert_eq!(
+        get(&observed, now + Duration::from_secs(3))["core"],
+        "silent"
+    );
+    observed.activity(2, now + Duration::from_secs(4));
+    assert_eq!(
+        get(&observed, now + Duration::from_secs(4))["core"],
+        "recent_messages"
+    );
+}
+
+#[test]
+fn private_draft_roundtrips_and_byte_conflicts_preserve_both_edits() {
+    let temp = Temp::new();
+    let mut first = Store::new(&temp.0);
+    first.reload().expect("sin archivo");
+    first.draft.fields[0] = "Abrí Studio".into();
+    first.save().expect("guardar");
+    let mut second = Store::new(&temp.0);
+    second.reload().expect("cargar");
+    assert_eq!(second.draft.fields[0], "Abrí Studio");
+    first.draft.fields[2] = "Error al guardar".into();
+    first.save().expect("guardar segunda edición");
+    let saved = fs::read(temp.draft()).expect("leer");
+    second.draft.fields[2] = "Mi edición sin guardar".into();
+    assert!(second.save().is_err());
+    assert_eq!(fs::read(temp.draft()).expect("leer"), saved);
+    assert_eq!(second.draft.fields[2], "Mi edición sin guardar");
+    second.reload().expect("recargar explícitamente");
+    assert_eq!(second.draft.fields[2], "Error al guardar");
+    let mut whitespace_edit = saved.clone();
+    whitespace_edit.push(b'\n');
+    fs::write(temp.draft(), &whitespace_edit).expect("cambio externo solo de bytes");
+    assert!(second.save().is_err());
+    assert_eq!(fs::read(temp.draft()).expect("leer"), whitespace_edit);
+}
+
+#[test]
+fn corrupt_unknown_and_oversized_drafts_are_preserved_and_never_exported() {
+    let temp = Temp::new();
+    fs::create_dir(temp.0.join("testing-center")).expect("directorio");
+    for bytes in [b"{".to_vec(), b"{\"schemaVersion\":1,\"module\":\"hub\",\"fields\":[\"\",\"\",\"\",\"\"],\"token\":\"private\"}".to_vec(), vec![b' '; 16385]] {
+        fs::write(temp.draft(), &bytes).expect("corrupto");
+        let mut store = Store::new(&temp.0);
+        assert!(store.reload().is_err());
+        store.draft.fields[0] = "Mi edición".into();
+        assert!(store.save().is_err());
+        assert_eq!(fs::read(temp.draft()).expect("leer"), bytes);
+    }
+    let mut draft = Draft::new();
+    draft.fields[0] = "a".repeat(2049);
+    assert!(store::export_bytes(&draft, &diagnostic(&temp, &Observed::default())).is_err());
+    draft.fields[0] = "á".repeat(1024);
+    draft.validate().expect("UTF-8 dentro del límite");
+    draft.fields[0].push('á');
+    assert!(draft.validate().is_err());
+}
+
+#[test]
+fn failed_atomic_save_and_existing_export_never_overwrite_user_files() {
+    let temp = Temp::new();
+    let mut store = Store::new(&temp.0);
+    store.draft.fields[0] = "Antes".into();
+    store.save().expect("guardar");
+    let before = fs::read(temp.draft()).expect("leer");
+    fs::write(
+        temp.0.join("testing-center/report-draft.json.tmp"),
+        b"temporal ajeno",
+    )
+    .expect("temporal");
+    store.draft.fields[0] = "Después".into();
+    // Un temporal ajeno con el nombre del temporal ya NO bloquea: el temporal
+    // real lleva pid y contador. Antes bastaba `touch <doc>.tmp` para que todo
+    // guardado de ese documento fallara para siempre.
+    store.save().expect("un temporal ajeno no debe bloquear");
+    assert_ne!(fs::read(temp.draft()).expect("leer"), before);
+    assert_eq!(store.draft.fields[0], "Después");
+    let bytes = store::export_bytes(&store.draft, &diagnostic(&temp, &Observed::default()))
+        .expect("exportar");
+    let export = temp.0.join("report.json");
+    store::export(&export, &bytes).expect("crear exportación");
+    assert!(store::export(&export, b"replacement").is_err());
+    assert_eq!(fs::read(export).expect("leer exportación"), bytes);
+    assert!(store::export(&temp.0.join("report.zip"), &bytes).is_err());
+}
+
+#[test]
+fn unc_and_device_paths_are_rejected_before_io() {
+    for path in [
+        r"\\server\share\report.json",
+        "//server/share/report.json",
+        r"\\?\UNC\server\share\report.json",
+        r"\\.\pipe\secret",
+    ] {
+        assert!(!diagnostic::local_path(Path::new(path)));
+        assert!(store::export(Path::new(path), b"{}").is_err());
+        assert!(Store::new(Path::new(path)).reload().is_err());
+        assert!(
+            diagnostic::binaries(Path::new(path))
+                .iter()
+                .all(|binary| binary.state == "unavailable")
+        );
+    }
+}
+
+#[cfg(windows)]
+#[test]
+fn bcrypt_hash_matches_known_vector_and_inventory_ignores_unlisted_files() {
+    let temp = Temp::new();
+    fs::write(temp.0.join("vantare-hub.exe"), b"abc").expect("binario de prueba");
+    fs::write(temp.0.join("private-token.exe"), b"secreto de prueba")
+        .expect("archivo fuera de lista");
+    let binaries = diagnostic::binaries(&temp.0);
+    assert_eq!(
+        binaries.len(),
+        if matches!(crate::product::CHANNEL, "beta" | "testers") {
+            8
+        } else {
+            9
+        }
+    );
+    assert_eq!(binaries[0].state, "present");
+    assert_eq!(
+        binaries[0].sha256.as_deref(),
+        Some("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    );
+    assert!(
+        binaries[1..]
+            .iter()
+            .all(|binary| binary.state == "missing" && binary.sha256.is_none())
+    );
+    fs::write(temp.0.join("vantare-hub.exe"), vec![b'a'; 1_000_000]).expect("streaming");
+    assert_eq!(
+        diagnostic::binaries(&temp.0)[0].sha256.as_deref(),
+        Some("cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0")
+    );
+    let large = fs::File::create(temp.0.join("vantare-core.exe")).expect("crear sparse");
+    large.set_len(512 * 1024 * 1024 + 1).expect("límite");
+    drop(large);
+    assert_eq!(diagnostic::binaries(&temp.0)[2].state, "unreadable");
+}
+
+#[test]
+fn diagnostic_inventory_only_reports_binaries_distributed_in_its_channel() {
+    let temp = Temp::new();
+    for channel in ["beta", "testers", "nightly", "master", "development"] {
+        let binaries = diagnostic::binaries_for_channel(&temp.0, channel);
+        let expected = if matches!(channel, "beta" | "testers") {
+            vec![
+                "vantare-hub.exe",
+                "vantare.exe",
+                "vantare-core.exe",
+                "vantare-overlays.exe",
+                "vantare-engineer.exe",
+                "vantare-storage.exe",
+                "vantare-grabar-lmu.exe",
+                "vantare-grabar-acc.exe",
+            ]
+        } else {
+            diagnostic::BINARIES.to_vec()
+        };
+        assert_eq!(
+            binaries
+                .iter()
+                .map(|binary| binary.name)
+                .collect::<Vec<_>>(),
+            expected
+        );
+        assert_eq!(
+            binaries
+                .iter()
+                .any(|binary| binary.name == "vantare-workshop.exe"),
+            !matches!(channel, "beta" | "testers")
+        );
+        assert!(
+            binaries
+                .iter()
+                .all(|binary| binary.state == "missing" && binary.sha256.is_none())
+        );
+    }
+}
+
+#[test]
+fn receipt_does_not_invent_progress_or_a_nightly_version() {
+    use super::model::receipt_status;
+    assert_eq!(receipt_status("submitted"), "Recibido");
+    for state in [
+        "",
+        "reproduced",
+        "fixing",
+        "fixed",
+        "nightly.14",
+        "unrecognized",
+    ] {
+        assert_eq!(receipt_status(state), "Estado no disponible");
+    }
+}
+
+#[test]
+fn testing_capture_entrypoint_accepts_the_four_views_and_rejects_unknown_screens() {
+    use crate::{Section, demo::CaptureState};
+    for name in [
+        "testing-center-resumen",
+        "testing-center-cuestionarios",
+        "testing-center-informe",
+        "testing-center-comunidad",
+    ] {
+        assert_eq!(
+            CaptureState::parse(name)
+                .expect("vista Testing válida")
+                .section,
+            Section::Testing
+        );
+    }
+    assert!(CaptureState::parse("testing-center-inventado").is_err());
+}

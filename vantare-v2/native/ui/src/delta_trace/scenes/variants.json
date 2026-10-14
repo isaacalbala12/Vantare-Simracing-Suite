@@ -1,0 +1,19 @@
+{
+  "issue": 1427,
+  "source": "Workshop reconstruido: demostración, no captura LMU",
+  "snapshot": "../../../fixtures/delta-trace.sequence.json",
+  "variants": [
+    {
+      "name": "window-1",
+      "settings": {
+        "windowSeconds": 1
+      }
+    },
+    {
+      "name": "window-8",
+      "settings": {
+        "windowSeconds": 8
+      }
+    }
+  ]
+}

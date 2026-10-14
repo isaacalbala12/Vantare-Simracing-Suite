@@ -16,7 +16,7 @@ catálogo y una tabla por canal o evento:
 - 101 tablas en total.
 
 El diccionario completo, sin valores de usuario, está versionado en
-[`lmu-duckdb-schema-v1.json`](../../../../internal/telemetryanalysis/testdata/lmu-duckdb-schema-v1.json).
+[`lmu-duckdb-schema-v1.json`](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/telemetryanalysis/testdata/lmu-duckdb-schema-v1.json).
 Contiene nombres de tablas, frecuencia declarada, unidad declarada y tipos de
 columnas. No es una base DuckDB, no contiene una ruta, una sesión, nombres,
 Steam ID, setup, valores de metadatos ni muestras.

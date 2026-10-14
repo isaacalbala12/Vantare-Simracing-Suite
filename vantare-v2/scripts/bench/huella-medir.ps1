@@ -1,7 +1,7 @@
 # Mide un conjunto de procesos cualquiera (app nativa, Wails, otro) sin CDP ni WebView2:
 # CPU total, memoria privada, working set y GPU dedicada de los procesos pedidos (rol `app`),
 # opcionalmente dwm.exe (rol `dwm`), más frame time del juego con PresentMon (rol `game`).
-# Genera el mismo CSV que huella.ps1, así que huella-resumen.mjs sirve tal cual
+# Genera el formato CSV histórico, así que huella-resumen.mjs sirve tal cual
 # (--condition o --compare wails,nativo). Los procesos deben estar ya en marcha.
 [CmdletBinding()]
 param(
@@ -105,7 +105,7 @@ $sessionName = $null
 $gameStable = $true
 $gameFrametimeValid = $false
 
-# Misma forma de fila que huella.ps1 para que huella-resumen.mjs la agregue igual.
+# Forma histórica de fila para que huella-resumen.mjs la agregue igual.
 function New-Row([hashtable]$Values) {
     $row = [ordered]@{
         timestamp = ''; condition = $Etiqueta; pid = $null; role = ''; processName = ''

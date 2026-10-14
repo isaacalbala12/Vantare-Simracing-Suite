@@ -59,58 +59,29 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             workflow,
         )
         self.assertNotIn("github.event.pull_request.base.sha", workflow)
-        self.assertIn(
-            "if ($paths.Count -gt 0) {\n"
-            "            & pnpm exec eslint -- @paths\n"
-            "            if ($LASTEXITCODE -ne 0) { throw \"changed frontend lint failed\" }\n"
-            "          }",
-            workflow,
-        )
+        self.assertIn('throw "automatic frontend scope retired', workflow)
         for line in workflow.splitlines():
             if "uses:" in line:
                 self.assertRegex(line, r"uses: [^@]+@[0-9a-f]{40}$")
-        for required in (
-            "Frontend build",
-            "Go tests",
-            "Frontend tests",
-            "Changed frontend lint",
-            "Windows Wails build",
-            "Testing Center visual gate",
-        ):
+        for required in ("Native format and blocking gates", "'check', 'clippy', 'test', 'lifecycle', 'telemetria'", "native/retirement/verify.py"):
             self.assertIn(required, workflow)
-        self.assertNotIn(
-            "- name: Changed frontend lint\n        continue-on-error: true", workflow
-        )
-        self.assertNotIn(
-            "- name: Testing Center visual gate\n        continue-on-error: true", workflow
-        )
-        self.assertNotIn(
-            "- name: Windows Wails build\n        continue-on-error: true", workflow
-        )
+        self.assertNotIn("continue-on-error:", workflow)
+        self.assertNotIn("actions/setup-go", workflow)
+        self.assertNotIn("pnpm", workflow)
         self.assertIn(
             "- name: Test inert Testing Center merge queue policy\n"
             "        run: python .github/scripts/test_testing_center_merge_queue.py",
             workflow,
         )
 
-    def test_blocking_frontend_tests_provision_chromium_before_running(self) -> None:
-        workflow = (
-            Path(__file__).resolve().parents[1] / "workflows" / "branch-channel-gates.yml"
-        ).read_text(encoding="utf-8")
-        dependencies_index = workflow.index("- name: Install frontend dependencies")
-        install_marker = "- name: Install Playwright Chromium for blocking frontend tests"
-        tests_marker = "- name: Frontend tests"
-        install_index = workflow.index(install_marker)
-        tests_index = workflow.index(tests_marker)
-        self.assertLess(dependencies_index, install_index)
-        self.assertLess(install_index, tests_index)
-        blocking_install = workflow[install_index:tests_index]
-        self.assertIn("pnpm exec playwright install chromium", blocking_install)
-        self.assertIn(
-            'if ($LASTEXITCODE -ne 0) { throw "playwright chromium install failed" }',
-            blocking_install,
-        )
-        self.assertNotIn("continue-on-error", blocking_install)
+    def test_blocking_native_gates_preserve_all_tests(self) -> None:
+        workflow = (Path(__file__).resolve().parents[1] / "workflows/branch-channel-gates.yml").read_text(encoding="utf-8")
+        self.assertIn("./setup-duckdb.ps1", workflow)
+        self.assertIn("./gates.ps1 -Gate $gate", workflow)
+        self.assertIn('if ($LASTEXITCODE) { throw "native $gate failed" }', workflow)
+        self.assertNotIn("--exclude", workflow)
+        self.assertNotIn("--skip", workflow)
+        self.assertNotIn("continue-on-error", workflow)
 
     def test_accepts_issue_branch_into_nightly(self) -> None:
         self.assertEqual(
@@ -235,18 +206,13 @@ class ValidateBranchChannelsTest(unittest.TestCase):
             channel_gate,
         )
 
-    def test_release_build_embeds_the_real_testing_channel(self) -> None:
-        repo_root = Path(__file__).resolve().parents[2]
-        release_gate = (
-            repo_root / ".github" / "workflows" / "release.yml"
-        ).read_text(encoding="utf-8")
-        taskfile = (
-            repo_root / "vantare-v2" / "build" / "windows" / "Taskfile.yml"
-        ).read_text(encoding="utf-8")
-
-        self.assertIn("VANTARE_BUILD_CHANNEL:", release_gate)
-        self.assertIn("github.ref_type == 'branch'", release_gate)
-        self.assertIn("-X main.buildChannel={{.VANTARE_BUILD_CHANNEL}}", taskfile)
+    def test_retired_release_cannot_publish_any_channel(self) -> None:
+        release = (Path(__file__).resolve().parents[1] / "workflows/release.yml").read_text(encoding="utf-8")
+        self.assertIn("permissions:\n  contents: read", release)
+        self.assertIn("exit 1", release)
+        self.assertIn("options: [none]", release)
+        for forbidden in ("contents: write", "gh release", "wails3", "upload-artifact", "secrets.", "tags:"):
+            self.assertNotIn(forbidden, release)
 
     def test_runbook_never_reuses_tags_or_commits_to_master(self) -> None:
         repo_root = Path(__file__).resolve().parents[2]

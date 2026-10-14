@@ -1,0 +1,138 @@
+[
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-testers.2",
+    "channel": "testers",
+    "title": "Más datos de carrera",
+    "summary": "Mejoras en combustible, daño, clima y posición. Los nuevos widgets siguen en pruebas.",
+    "kind": "Mejora"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-testers.1",
+    "channel": "testers",
+    "title": "Primeras pruebas para testers",
+    "summary": "Mejoras en el Ingeniero, el inicio de aplicaciones y los datos de carrera.",
+    "kind": "Nuevo"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.15",
+    "channel": "nightly",
+    "title": "Overlays más ligeros",
+    "summary": "Menos trabajo mientras corres y correcciones en la apariencia de los overlays.",
+    "kind": "Mejora"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.14",
+    "channel": "nightly",
+    "title": "Zoom y actualizaciones",
+    "summary": "Ajusta el tamaño de toda la interfaz y controla las actualizaciones.",
+    "kind": "Nuevo"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.13",
+    "channel": "nightly",
+    "title": "Datos de carrera más fiables",
+    "summary": "Mejoras en la lectura y actualización de los datos del simulador.",
+    "kind": "Mejora"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.12",
+    "channel": "nightly",
+    "title": "Más información en pista",
+    "summary": "Mejoras en combustible, daños, clima y posición de los coches.",
+    "kind": "Mejora"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.11",
+    "channel": "nightly",
+    "title": "Una interfaz unificada",
+    "summary": "Las páginas del Hub comparten el mismo diseño y navegación.",
+    "kind": "Mejora"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.10",
+    "channel": "nightly",
+    "title": "Nuevo diseño del Hub",
+    "summary": "Una nueva presentación para navegar por tus herramientas.",
+    "kind": "Nuevo"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.9",
+    "channel": "nightly",
+    "title": "Más estabilidad",
+    "summary": "Correcciones para que el Hub y los overlays resistan mejor los fallos.",
+    "kind": "Arreglo"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.8",
+    "channel": "nightly",
+    "title": "Perfiles más fiables",
+    "summary": "Correcciones en los perfiles de carrera y la tabla de retransmisión.",
+    "kind": "Arreglo"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.7",
+    "channel": "nightly",
+    "title": "Adaptado a tu pantalla",
+    "summary": "Studio y los overlays se ajustan mejor a la resolución del monitor.",
+    "kind": "Mejora"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.6",
+    "channel": "nightly",
+    "title": "Nuevo aspecto en pista",
+    "summary": "Cuatro overlays de resistencia estrenan una nueva apariencia.",
+    "kind": "Nuevo"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.5",
+    "channel": "nightly",
+    "title": "Calendario de LMU",
+    "summary": "Consulta las próximas carreras desde Vantare.",
+    "kind": "Nuevo"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.4",
+    "channel": "nightly",
+    "title": "Edición desde Studio",
+    "summary": "Accede a los ajustes del overlay desde Studio.",
+    "kind": "Mejora"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.2",
+    "channel": "nightly",
+    "title": "Arranques más rápidos",
+    "summary": "Mejoras al abrir tus aplicaciones y mantener los datos de carrera.",
+    "kind": "Mejora"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.7-nightly.1",
+    "channel": "nightly",
+    "title": "Overlays de resistencia",
+    "summary": "Primera entrega de la nueva apariencia para carreras de resistencia.",
+    "kind": "Nuevo"
+  },
+  {
+    "schemaVersion": 1,
+    "tag": "v0.1.0.5-nightly.1",
+    "channel": "nightly",
+    "title": "Primeras pruebas de Studio",
+    "summary": "Primera versión de pruebas del editor de overlays.",
+    "kind": "Nuevo"
+  }
+]

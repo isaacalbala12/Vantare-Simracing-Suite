@@ -4,7 +4,7 @@ Entrada técnica contrastada con nightly del 2026-09-14. El [handoff](../vantare
 
 ## Camino actual
 
-[telemetry_core_runtime.go](../../internal/app/telemetry_core_runtime.go) conecta las fuentes y construye `TelemetryEngine`. [engine.go](../../internal/telemetry/engine/engine.go) coordina preparación y commit canónico. Los consumidores leen el resultado aceptado; no poseen un reader independiente.
+[telemetry_core_runtime.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/app/telemetry_core_runtime.go) conecta las fuentes y construye `TelemetryEngine`. [engine.go](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/internal/telemetry/engine/engine.go) coordina preparación y commit canónico. Los consumidores leen el resultado aceptado; no poseen un reader independiente.
 
 - [Drivers y autoridad LMU](lmu-authority-matrix.md).
 - [Proyecciones](runtime-projections.md): Overlay V2, Engineer y Strategy según su contrato y wiring.
@@ -21,6 +21,6 @@ SQLite local y el reader DuckDB post-sesión tienen papeles distintos. No inferi
 - [Diagnóstico y exportación sanitizada](inspector-privacy-diagnostic-export-isa-104.md).
 - [Analysis post-sesión](../vantare-program/research/telemetry-analysis/README.md).
 
-`evidence/`, los baselines y las entregas ISA fechadas conservan observaciones de su build, no una certificación de la actual. [Inventario documental](../documentation-inventory.md).
+`evidence/`, los baselines y las entregas ISA fechadas conservan observaciones de su build, no una certificación de la actual. [Inventario documental (histórico)](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/documentation-inventory.md).
 
 [Contrato histórico completo](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/60b47b7c7e7550faf0c532fdf3dbc6f32cfd516c/vantare-v2/docs/telemetry-core/README.md). Sus resultados y su wiring corresponden al corte que declara.

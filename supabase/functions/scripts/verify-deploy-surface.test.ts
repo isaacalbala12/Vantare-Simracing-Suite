@@ -1,5 +1,32 @@
 import { invalidDeployableDirectories } from "./verify-deploy-surface.ts";
 
+Deno.test("native account/admin are recognized without changing default commercial deploy", () => {
+  const functions = ["native-account-authorize", "native-admin"];
+  if (
+    invalidDeployableDirectories(
+      functions.map((name) => ({ name, isDirectory: true }) as Deno.DirEntry),
+    ).length
+  ) {
+    throw new Error("native beta functions rejected");
+  }
+  const config = Deno.readTextFileSync(
+    new URL("../../config.toml", import.meta.url),
+  ).replaceAll("\r\n", "\n");
+  const wrapper = Deno.readTextFileSync(
+    new URL("deploy-approved-functions.ps1", import.meta.url),
+  );
+  for (const name of functions) {
+    if (
+      !config.includes(`[functions.${name}]\nverify_jwt = false`) ||
+      wrapper.includes(`"${name}"`)
+    ) {
+      throw new Error(
+        "beta authentication config or isolated deployment changed",
+      );
+    }
+  }
+});
+
 Deno.test("deploy surface rejects legacy and unknown top-level functions", () => {
   const entries = [
     { name: "billing-webhook", isDirectory: true },
@@ -12,6 +39,49 @@ Deno.test("deploy surface rejects legacy and unknown top-level functions", () =>
   if (actual.length !== 1 || actual[0] !== "validate-license") {
     throw new Error(
       `unexpected invalid deploy surface: ${JSON.stringify(actual)}`,
+    );
+  }
+});
+
+Deno.test("native license is guarded and deployable in isolation", () => {
+  if (
+    invalidDeployableDirectories([
+      { name: "native-license", isDirectory: true },
+    ] as Deno.DirEntry[]).length !== 0
+  ) throw new Error("native license rejected");
+  const wrapper = Deno.readTextFileSync(
+    new URL("deploy-approved-functions.ps1", import.meta.url),
+  );
+  const workflow = Deno.readTextFileSync(
+    new URL(
+      "../../../.github/workflows/deploy-supabase-functions.yml",
+      import.meta.url,
+    ),
+  );
+  const config = Deno.readTextFileSync(
+    new URL("../../config.toml", import.meta.url),
+  ).replaceAll("\r\n", "\n");
+  if (
+    !wrapper.includes("[ValidateSet(") ||
+    !wrapper.includes('"native-license"') ||
+    !wrapper.includes("foreach ($functionName in $Functions)") ||
+    !workflow.includes('-Functions @("native-license")') ||
+    !workflow.includes("default: commercial") ||
+    !config.includes("[functions.native-license]\nverify_jwt = false")
+  ) {
+    throw new Error(
+      "native deploy does not have the reviewed isolated surface",
+    );
+  }
+  const defaultFunctions = wrapper.match(/\$Functions = @\(([^\n]+)\)/)?.[1];
+  if (!defaultFunctions || defaultFunctions.includes('"native-license"')) {
+    throw new Error(
+      "native bridge was added to the default commercial deployment",
+    );
+  }
+  if (/& \$guard\s+if \(\$LASTEXITCODE/.test(wrapper)) {
+    throw new Error(
+      "PowerShell guard incorrectly reuses stale native exit code",
     );
   }
 });
@@ -134,109 +204,86 @@ Deno.test("official deploy workflow can only deploy through the guarded wrapper"
   }
 });
 
-Deno.test("client build receives public verification keys only", () => {
+Deno.test("native client build receives public verification keys only", () => {
+  const root = new URL("../../../", import.meta.url);
   const files = [
-    new URL("../../../.github/workflows/release.yml", import.meta.url),
-    new URL("../../../vantare-v2/build/windows/Taskfile.yml", import.meta.url),
-    new URL("../../../vantare-v2/cmd/vantare/main.go", import.meta.url),
+    "vantare-v2/native/packaging/build-config.ps1",
+    "vantare-v2/native/services/src/config.rs",
+    "vantare-v2/native/runtime/src/rights/mod.rs",
   ];
-  const clientBuildSurface = files.map((file) => Deno.readTextFileSync(file))
+  const surface = files.map((file) =>
+    Deno.readTextFileSync(new URL(file, root))
+  )
     .join("\n");
-  if (!clientBuildSurface.includes("VANTARE_LICENSE_PUBLIC_KEYS")) {
-    throw new Error("client build does not receive the public key registry");
+  if (!surface.includes('option_env!("VANTARE_LICENSE_PUBLIC_KEYS")')) {
+    throw new Error("native client omits the public verification key registry");
   }
-  if (
-    clientBuildSurface.includes("OFFLINE_LICENSE_ED25519_PRIVATE_KEY") ||
-    clientBuildSurface.includes("OFFLINE_LICENSE_KEY_ID")
-  ) {
-    throw new Error("server-side signing material leaked into client build");
-  }
-  const windowsTask = Deno.readTextFileSync(files[1]);
   for (
-    const ldflag of [
-      "-X main.supabaseURL=",
-      "-X main.supabaseAnonKey=",
-      "-X main.licensePublicKeys=",
+    const forbidden of [
+      "OFFLINE_LICENSE_ED25519_PRIVATE_KEY",
+      "OFFLINE_LICENSE_KEY_ID",
+      "CLERK_SECRET_KEY",
+      "SUPABASE_SERVICE_ROLE_KEY",
     ]
   ) {
-    if (windowsTask.includes(ldflag)) {
+    if (surface.includes(forbidden)) {
       throw new Error(
-        `public client config leaked into Task cache key: ${ldflag}`,
+        `server-side signing material entered client build: ${forbidden}`,
       );
     }
   }
-  const generator = Deno.readTextFileSync(
-    new URL(
-      "../../../vantare-v2/tools/generate_supabase_config.ps1",
-      import.meta.url,
-    ),
-  );
-  if (
-    !generator.includes("VANTARE_LICENSE_PUBLIC_KEYS") ||
-    !generator.includes("licensePublicKeys = string(decoded)")
-  ) {
-    throw new Error(
-      "generated client config omits the public license registry",
-    );
-  }
-  const commonTask = Deno.readTextFileSync(
-    new URL("../../../vantare-v2/build/Taskfile.yml", import.meta.url),
-  );
+  const config = Deno.readTextFileSync(new URL(files[0], root));
   for (
-    const forwarding of [
-      "VITE_SUPABASE_URL:\n            ref: .VANTARE_SUPABASE_URL",
-      "VITE_SUPABASE_ANON_KEY:\n            ref: .VANTARE_SUPABASE_ANON_KEY",
-      "VITE_SUPABASE_URL:\n            ref: .VITE_SUPABASE_URL",
-      "VITE_SUPABASE_ANON_KEY:\n            ref: .VITE_SUPABASE_ANON_KEY",
-      "VITE_SUPABASE_URL: '{{.VITE_SUPABASE_URL",
-      "VITE_SUPABASE_ANON_KEY: '{{.VITE_SUPABASE_ANON_KEY",
-      "env: *frontend-build-env",
+    const guard of [
+      "$name -cnotin $allowed",
+      "service_role|sb_secret_",
+      "PRIVATE KEY",
+      "$claims.role -cne 'anon'",
     ]
   ) {
-    if (!commonTask.includes(forwarding)) {
-      throw new Error(`frontend task chain omits forwarding: ${forwarding}`);
-    }
-  }
-  for (
-    const variable of [
-      "VANTARE_SUPABASE_URL:\n            ref: .VANTARE_SUPABASE_URL",
-      "VANTARE_SUPABASE_ANON_KEY:\n            ref: .VANTARE_SUPABASE_ANON_KEY",
-    ]
-  ) {
-    const occurrences = windowsTask.split(variable).length - 1;
-    if (occurrences !== 2) {
-      throw new Error(
-        `Windows native and Docker builds must forward ${variable}: ${occurrences}`,
-      );
+    if (!config.includes(guard)) {
+      throw new Error(`native public-config guard missing: ${guard}`);
     }
   }
 });
 
-Deno.test("binding generation never receives client credential linker values", () => {
-  const taskfile = Deno.readTextFileSync(
-    new URL("../../../vantare-v2/build/windows/Taskfile.yml", import.meta.url),
-  );
-  const frontendDependency = taskfile.match(
-    /task: common:build:frontend[\s\S]*?ref: \.([A-Z_]+)/,
-  );
-  if (frontendDependency?.[1] !== "BINDING_FLAGS") {
-    throw new Error(
-      "Windows frontend build does not use isolated binding flags",
-    );
-  }
-  const bindingFlags = taskfile.match(
-    /BINDING_FLAGS:\s*'([^\n]+)'/,
-  )?.[1] ?? "";
+Deno.test("retired Wails binding pipeline cannot return or publish", () => {
+  const root = new URL("../../../", import.meta.url);
   for (
-    const forbidden of [
-      "VANTARE_SUPABASE_URL",
-      "VANTARE_SUPABASE_ANON_KEY",
-      "VANTARE_LICENSE_PUBLIC_KEYS",
-      "ldflags",
+    const retired of [
+      "vantare-v2/build/",
+      "vantare-v2/cmd/",
+      "vantare-v2/frontend/",
+      "vantare-v2/tools/generate_supabase_config.ps1",
     ]
   ) {
-    if (bindingFlags.includes(forbidden)) {
-      throw new Error(`binding flags contain linker-only value: ${forbidden}`);
+    let exists = true;
+    try {
+      Deno.statSync(new URL(retired, root));
+    } catch (error) {
+      if (!(error instanceof Deno.errors.NotFound)) throw error;
+      exists = false;
+    }
+    if (exists) throw new Error(`retired client pipeline returned: ${retired}`);
+  }
+  const release = Deno.readTextFileSync(
+    new URL(".github/workflows/release.yml", root),
+  );
+  if (!release.includes("exit 1") || !release.includes("contents: read")) {
+    throw new Error("retired release must remain closed and read-only");
+  }
+  for (
+    const forbidden of [
+      "wails3",
+      "VITE_SUPABASE",
+      "secrets.",
+      "contents: write",
+    ]
+  ) {
+    if (release.includes(forbidden)) {
+      throw new Error(
+        `retired publisher has client credentials or effects: ${forbidden}`,
+      );
     }
   }
 });

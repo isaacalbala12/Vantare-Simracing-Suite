@@ -15,6 +15,12 @@ use super::replay::{Replay, ReplayEvent};
 
 const CORPUS_SCHEMA: &str = "vantare.lmu-temporal-high-rate.v1";
 const REST_SCHEMA: &str = "vantare.lmu-rest-bodies.v1";
+// El layout actual mide 324820 bytes; 1 MiB admite extensiones sin leer un .bin
+// arbitrario entero. REST conserva las cotas de los dos endpoints productivos.
+const MAX_FRAME_BYTES: usize = 1 << 20;
+const MAX_REST_BYTES: usize = 2 * super::rest::MAX_RESPONSE_BYTES + 1024;
+const MAX_MANIFEST_BYTES: usize = 16 << 20;
+const MAX_METADATA_BYTES: usize = 64 << 20;
 
 fn invalid(message: impl Into<String>) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidData, message.into())
@@ -33,7 +39,15 @@ pub fn open_replay(path: &Path, build: Option<&str>) -> io::Result<Replay> {
     if name.ends_with(".bin") {
         let build =
             build.ok_or_else(|| invalid("un fixture .bin necesita --build <versión de LMU>"))?;
-        let frame = std::fs::read(path).map_err(open)?;
+        let mut frame = Vec::new();
+        File::open(path)
+            .map_err(open)?
+            .take((MAX_FRAME_BYTES + 1) as u64)
+            .read_to_end(&mut frame)
+            .map_err(open)?;
+        if frame.len() > MAX_FRAME_BYTES {
+            return Err(invalid("fixture LMU supera 1 MiB"));
+        }
         Ok(Replay::new(
             build,
             [ReplayEvent::Shm {
@@ -55,11 +69,18 @@ fn corpus(archive: impl Read + Send + 'static, build: Option<&str>) -> io::Resul
     // que se leen una a una según se reproducen.
     let mut manifest = None;
     let mut rests = Vec::new();
+    let mut metadata_bytes = 0_usize;
     let first_shm = loop {
         let (name, content) = entries
             .next()
             .ok_or_else(|| invalid("el corpus no tiene lecturas SHM"))??;
         let file = name.rsplit('/').next().unwrap_or_default().to_owned();
+        if file == "manifest.json" || file.starts_with("rest-") {
+            metadata_bytes = metadata_bytes
+                .checked_add(content.len())
+                .filter(|size| *size <= MAX_METADATA_BYTES)
+                .ok_or_else(|| invalid("metadatos LMU superan 64 MiB"))?;
+        }
         if file == "manifest.json" {
             manifest = Some(serde_json::from_slice::<Value>(&content)?);
         } else if file.starts_with("rest-") {
@@ -92,16 +113,10 @@ fn corpus(archive: impl Read + Send + 'static, build: Option<&str>) -> io::Resul
     )?)?;
 
     let mut first_shm = Some(first_shm);
-    let events = events.into_iter().map_while(move |event| {
-        match next_event(&event, &clock, &mut first_shm, &mut entries, &rests) {
-            Ok(event) => Some(event),
-            Err(error) => {
-                eprintln!("corpus: {error}; la reproducción termina aquí");
-                None
-            }
-        }
-    });
-    Ok(Replay::new(build, events))
+    let events = events
+        .into_iter()
+        .map(move |event| next_event(&event, &clock, &mut first_shm, &mut entries, &rests));
+    Ok(Replay::from_results(build, events))
 }
 
 fn next_event(
@@ -168,7 +183,7 @@ fn rest_bodies(content: &[u8]) -> io::Result<(Vec<u8>, Vec<u8>)> {
 /// del núcleo: cero es el primer evento, más un segundo de margen para que
 /// ningún instante de consulta sea negativo.
 struct Clock {
-    date: String,
+    date: chrono::NaiveDate,
     origin_ns: i128,
 }
 
@@ -176,17 +191,16 @@ impl Clock {
     fn new(first: &str) -> io::Result<Self> {
         let (date, ns) = split_utc(first)?;
         Ok(Self {
-            date: date.to_owned(),
+            date: date.parse().map_err(|_| invalid("fecha UTC inválida"))?,
             origin_ns: ns,
         })
     }
 
     fn at(&self, value: &str) -> io::Result<Duration> {
         let (date, ns) = split_utc(value)?;
-        if date != self.date {
-            return Err(invalid("el corpus no debe cruzar de día"));
-        }
-        let elapsed = ns - self.origin_ns + 1_000_000_000;
+        let date: chrono::NaiveDate = date.parse().map_err(|_| invalid("fecha UTC inválida"))?;
+        let days = i128::from(date.signed_duration_since(self.date).num_days());
+        let elapsed = days * 86_400_000_000_000 + ns - self.origin_ns + 1_000_000_000;
         u64::try_from(elapsed)
             .map(Duration::from_nanos)
             .map_err(|_| invalid("instante anterior al origen"))
@@ -206,6 +220,13 @@ fn split_utc(value: &str) -> io::Result<(&str, i128)> {
     else {
         return Err(bad());
     };
+    if parts.next().is_some()
+        || !(0..24).contains(&h)
+        || !(0..60).contains(&m)
+        || !(0..60).contains(&s)
+    {
+        return Err(bad());
+    }
     let fraction = format!("{fraction:0<9}");
     let nanos = fraction
         .get(..9)
@@ -234,18 +255,35 @@ fn tar_entries(mut reader: impl Read) -> impl Iterator<Item = io::Result<(String
             let name = field(0..100);
             let size = usize::from_str_radix(field(124..136).trim(), 8)
                 .map_err(|_| invalid(format!("tamaño tar inválido en {name}")))?;
-            let mut content = vec![0_u8; size.div_ceil(512) * 512];
-            reader.read_exact(&mut content)?;
-            content.truncate(size);
+            let file = name.rsplit('/').next().unwrap_or_default();
+            let limit = if file.starts_with("shm-") {
+                MAX_FRAME_BYTES
+            } else if file == "manifest.json" {
+                MAX_MANIFEST_BYTES
+            } else if file.starts_with("rest-") {
+                MAX_REST_BYTES
+            } else {
+                // Respuestas crudas y entradas ajenas tienen la cota REST.
+                super::rest::MAX_RESPONSE_BYTES
+            };
             match header[156] {
-                b'0' | 0 => return Ok(Some((name, content))),
-                b'5' => {}
+                b'0' | 0 => {}
+                b'5' if size == 0 => continue,
                 other => {
                     return Err(invalid(format!(
                         "entrada tar {other:#x} inesperada en {name}"
                     )));
                 }
             }
+            if size > limit {
+                return Err(invalid(format!("miembro LMU demasiado grande: {name}")));
+            }
+            let padding = (512 - size % 512) % 512;
+            let mut content = vec![0; size];
+            reader.read_exact(&mut content)?;
+            let mut tail = [0; 512];
+            reader.read_exact(&mut tail[..padding])?;
+            return Ok(Some((name, content)));
         }
     };
     let mut done = false;
@@ -265,6 +303,34 @@ mod tests {
     use vantare_domain::Adapter;
 
     use super::*;
+
+    #[test]
+    fn utc_rejects_out_of_range_or_extra_clock_components() {
+        for time in [
+            "25:00:00",
+            "24:00:00",
+            "10:60:00",
+            "10:00:60",
+            "-1:00:00",
+            "10:00:00:99",
+            "170141183460469231731687303715884105727:00:00",
+        ] {
+            let stamp = format!("2026-10-10T{time}.0Z");
+            assert!(Clock::new(&stamp).is_err(), "aceptado {stamp}");
+            assert!(
+                Clock::new("2026-10-10T10:00:00.0Z")
+                    .unwrap()
+                    .at(&stamp)
+                    .is_err(),
+                "aceptado {stamp}"
+            );
+        }
+        let clock = Clock::new("2026-10-10T00:00:00.0Z").unwrap();
+        assert_eq!(
+            clock.at("2026-10-10T23:59:59.999999999Z").unwrap(),
+            Duration::from_nanos(86_400_999_999_999)
+        );
+    }
 
     fn tar(files: &[(&str, &[u8])]) -> Vec<u8> {
         let mut out = Vec::new();
@@ -291,9 +357,38 @@ mod tests {
             at("2026-09-29T10:01:01.0000000Z"),
             Duration::from_millis(61_500)
         );
-        assert!(clock.at("2026-09-30T10:00:00.5Z").is_err());
+        assert_eq!(
+            clock.at("2026-09-30T10:00:00.5Z").unwrap(),
+            Duration::from_secs(86_401)
+        );
+        assert!(clock.at("2026-02-30T10:00:00.5Z").is_err());
         assert!(clock.at("2026-09-29T09:00:00.0Z").is_err());
         assert!(clock.at("mañana").is_err());
+    }
+
+    #[test]
+    fn captured_lmu_frames_replay_across_utc_midnight() {
+        let frame = include_bytes!("../../../../../testdata/lmu-fixture.bin");
+        for (first, next) in [
+            ("2026-10-13T23:59:59.5Z", "2026-10-14T00:00:00.5Z"),
+            ("2026-12-31T23:59:59.5Z", "2027-01-01T00:00:00.5Z"),
+            ("2028-02-28T23:59:59.5Z", "2028-02-29T00:00:00.5Z"),
+        ] {
+            let manifest = serde_json::to_vec(&serde_json::json!({
+                "schema": CORPUS_SCHEMA, "build": "1.3.0.0",
+                "events": [{"kind":"shm", "atUtc":first}, {"kind":"shm", "atUtc":next}]
+            }))
+            .unwrap();
+            // Tar de frontera declarado; frames reales sin alterar, no nueva captura.
+            let archive = tar(&[
+                ("manifest.json", &manifest),
+                ("shm-0.bin", frame),
+                ("shm-1.bin", frame),
+            ]);
+            let mut replay = corpus(std::io::Cursor::new(archive), None).unwrap();
+            assert!(replay.poll(Duration::from_secs(1)).unwrap().is_some());
+            assert!(replay.poll(Duration::from_secs(2)).unwrap().is_some());
+        }
     }
 
     #[test]
@@ -321,6 +416,87 @@ mod tests {
         assert_eq!(observation.state.cars.len(), 44);
         assert!(open_replay(&dir.join("no-existe.bin"), Some("1.3.0.0")).is_err());
         assert!(open_replay(&dir.join("README.md"), None).is_err());
+    }
+
+    #[test]
+    fn late_corpus_error_is_not_a_clean_eof() {
+        let frame = include_bytes!("../../../../../testdata/lmu-fixture.bin");
+        for complete in [false, true] {
+            let manifest = serde_json::to_vec(&serde_json::json!({
+                "schema": CORPUS_SCHEMA, "build": "1.3.0.0",
+                "events": [
+                    {"kind": "shm", "atUtc": "2026-10-02T10:00:00.0Z"},
+                    {"kind": "shm", "atUtc": "2026-10-02T10:00:01.0Z"}
+                ]
+            }))
+            .expect("manifiesto");
+            let mut files = vec![
+                ("manifest.json", manifest.as_slice()),
+                ("shm-000.bin", frame.as_slice()),
+            ];
+            if complete {
+                files.push(("shm-001.bin", frame.as_slice()));
+            }
+            let mut replay = corpus(io::Cursor::new(tar(&files)), None).expect("abrir");
+            assert!(
+                replay
+                    .poll(Duration::from_secs(1))
+                    .expect("primero")
+                    .is_some()
+            );
+            if complete {
+                assert!(
+                    replay
+                        .poll(Duration::from_secs(2))
+                        .expect("segundo")
+                        .is_some()
+                );
+                assert_eq!(replay.poll(Duration::from_secs(3)), Ok(None));
+            } else {
+                for now in [2, 3] {
+                    assert!(matches!(
+                        replay.poll(Duration::from_secs(now)),
+                        Err(vantare_domain::AdapterError::Rejected(_))
+                    ));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn oversized_tar_members_are_rejected_before_reading_their_body() {
+        for (name, size) in [
+            ("shm-000.bin", 2 << 20),
+            ("rest-000.json", 10 << 20),
+            ("manifest.json", 32 << 20),
+        ] {
+            // Solo header: el lector anterior reservaba el tamaño y fallaba por EOF.
+            let mut header = [0; 512];
+            header[..name.len()].copy_from_slice(name.as_bytes());
+            header[124..135].copy_from_slice(format!("{size:011o}").as_bytes());
+            header[156] = b'0';
+            let error = tar_entries(header.as_slice())
+                .next()
+                .expect("entrada")
+                .expect_err("cota previa al cuerpo");
+            assert_eq!(error.kind(), io::ErrorKind::InvalidData, "{name}");
+        }
+    }
+
+    #[test]
+    fn oversized_bin_is_rejected_but_a_small_layout_extension_is_accepted() {
+        let path =
+            std::env::temp_dir().join(format!("vantare-lmu-bounded-{}.bin", std::process::id()));
+        let file = File::create(&path).expect("fichero propio");
+        file.set_len(2 << 20).expect("fixture disperso");
+        drop(file);
+        assert!(open_replay(&path, Some("1.3.0.0")).is_err());
+        let mut frame = include_bytes!("../../../../../testdata/lmu-fixture.bin").to_vec();
+        frame.extend_from_slice(&[0; 512]);
+        std::fs::write(&path, frame).expect("extensión pequeña");
+        let mut replay = open_replay(&path, Some("1.3.0.0")).expect("extensión compatible");
+        assert!(replay.poll(Duration::ZERO).expect("admitido").is_some());
+        std::fs::remove_file(path).expect("limpiar fichero propio");
     }
 
     #[test]

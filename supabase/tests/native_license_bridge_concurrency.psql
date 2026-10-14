@@ -1,0 +1,66 @@
+-- Disposable local PostgreSQL only. Run via psql, passing a test-only dblink_password.
+-- Two real sessions contend for the same identity while the first transaction is open.
+begin;
+select no_plan();
+create extension if not exists dblink with schema extensions;
+
+create function pg_temp.native_test_connect(connection_name text, connection_string text)
+returns text language plpgsql as $$
+begin
+  if to_regprocedure('extensions.vantare_test_dblink_connect(text,text)') is not null then
+    return extensions.vantare_test_dblink_connect(connection_name, connection_string);
+  end if;
+  return extensions.dblink_connect(connection_name, connection_string);
+end;
+$$;
+select pg_temp.native_test_connect('native_one', format(
+  'host=127.0.0.1 dbname=%I user=postgres password=%s', current_database(), :'dblink_password'));
+select pg_temp.native_test_connect('native_two', format(
+  'host=127.0.0.1 dbname=%I user=postgres password=%s', current_database(), :'dblink_password'));
+select extensions.dblink_exec('native_one', 'begin');
+select extensions.dblink_exec('native_one', 'set local role service_role');
+select extensions.dblink_exec('native_two', 'set role service_role');
+create temporary table native_race_result (name text, account_id uuid);
+insert into native_race_result
+select 'one', account_id from extensions.dblink('native_one',
+  $$select public.native_claim_license_device('https://race-clerk.isa1444.test',
+    'user_' || repeat('r', 27), repeat('a', 64))$$) as result(account_id uuid);
+
+select is(extensions.dblink_send_query('native_two',
+  $$select public.native_claim_license_device('https://race-clerk.isa1444.test/',
+    'user_' || repeat('r', 27), repeat('a', 64))$$), 1, 'second session submits concurrent bootstrap');
+
+-- Wait for a real advisory-lock wait, not a fixed sleep; fail if the contender never reaches it.
+do $$
+begin
+  for attempt in 1..500 loop
+    exit when exists (select 1 from pg_locks where locktype = 'advisory' and not granted);
+    perform pg_sleep(0.01);
+  end loop;
+  if not exists (select 1 from pg_locks where locktype = 'advisory' and not granted) then
+    raise exception 'native_race_did_not_contend';
+  end if;
+end;
+$$;
+select is(extensions.dblink_is_busy('native_two'), 1, 'contender waits while winner is uncommitted');
+select extensions.dblink_exec('native_one', 'commit');
+insert into native_race_result
+select 'two', account_id from extensions.dblink_get_result('native_two') as result(account_id uuid);
+select is((select account_id from native_race_result where name = 'one'),
+  (select account_id from native_race_result where name = 'two'), 'concurrent sessions return the same UUID');
+select is((select count(*)::integer from public.account_identities where
+  issuer = 'https://race-clerk.isa1444.test' and subject = 'user_' || repeat('r', 27)),
+  1, 'concurrent bootstrap creates one mapping');
+select is((select count(*)::integer from public.profiles p join public.account_identities i on i.account_id = p.id
+  where i.issuer = 'https://race-clerk.isa1444.test' and i.subject = 'user_' || repeat('r', 27)),
+  1, 'concurrent bootstrap creates one profile');
+select is((select count(*)::integer from public.profiles p where
+  not exists (select 1 from auth.users u where u.id = p.id) and
+  not exists (select 1 from public.account_identities i where i.account_id = p.id)),
+  0, 'concurrent bootstrap leaves no orphan profiles in the disposable database');
+select extensions.dblink_disconnect('native_one');
+select extensions.dblink_disconnect('native_two');
+delete from public.profiles where id = (select account_id from native_race_result where name = 'one');
+select * from finish();
+-- Remote sessions committed a fixture; commit its cleanup as well.
+commit;

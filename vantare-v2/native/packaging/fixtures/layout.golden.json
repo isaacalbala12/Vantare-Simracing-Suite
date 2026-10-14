@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "instances": [
+    {
+      "id": "standings",
+      "x": -2368.0,
+      "y": 196.0,
+      "visible": true,
+      "opacity": 0.6,
+      "settings": {
+        "kind": "standings",
+        "showSessionHeader": false,
+        "templateId": "broadcast",
+        "headerFirst": "none",
+        "headerSecond": "none",
+        "showSessionFooter": true,
+        "footerFirst": "track",
+        "footerSecond": "estimatedLaps",
+        "showBrand": true
+      }
+    },
+    {
+      "id": "delta",
+      "x": -2368.0,
+      "y": 196.0,
+      "visible": false,
+      "opacity": 1.0,
+      "settings": {
+        "kind": "delta",
+        "templateId": "capsule"
+      }
+    },
+    {
+      "id": "pedals",
+      "x": -2368.0,
+      "y": 196.0,
+      "visible": false,
+      "opacity": 1.0,
+      "settings": {
+        "kind": "pedals",
+        "transparentBackground": true
+      }
+    },
+    {
+      "id": "flags",
+      "x": -2368.0,
+      "y": 196.0,
+      "visible": true,
+      "opacity": 1.0,
+      "settings": {
+        "kind": "racing-flags",
+        "textColor": "#abcdef"
+      }
+    }
+  ]
+}

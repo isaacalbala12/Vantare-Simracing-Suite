@@ -26,7 +26,7 @@ Cada app mantiene cuatro hechos independientes:
 
 ## Iconos
 
-La prioridad runtime es override local → asset oficial local → extracción del ejecutable → abreviatura. No se usa CDN ni URL remota. La tabla [app-icons.ts](../frontend/src/hub/launcher/app-icons.ts) incorpora `MOTEC_BRAND_ICON` para MoTeC, porque el ejecutable i2 tiene otra marca. Las otras seis entradas quedan vacías deliberadamente y recurren al icono instalado o al fallback local.
+La prioridad runtime es override local → asset oficial local → extracción del ejecutable → abreviatura. No se usa CDN ni URL remota. La tabla [app-icons.ts](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/5e1da3f68f9735d60057b61798d55849bbca0677/vantare-v2/frontend/src/hub/launcher/app-icons.ts) incorpora `MOTEC_BRAND_ICON` para MoTeC, porque el ejecutable i2 tiene otra marca. Las otras seis entradas quedan vacías deliberadamente y recurren al icono instalado o al fallback local.
 
 ## Perfiles y ejecución
 

@@ -1,5 +1,7 @@
 # Vantare · Command Orbit v0.3 — paquete de diseño
 
+> #1533: comandos Go/React retirados. Scripts originales congelados como texto en `native/retirement/legacy-evidence`; este documento conserva historia, no un procedimiento ejecutable actual.
+
 > Documentación oficial del prototipo de dirección **Command Orbit v0.3** y contrato para portarlo al frontend real.
 > Fuente visual: [`vantare-exploration-v03-orbit.html`](../../../vantare-exploration-v03-orbit.html) (autocontenido; ábrelo con `?view=<sección>`).
 > Estado: **dirección aprobada** por producto (Isaac) el 2026-08-16. Sustituye la dirección "v5" descrita en [`docs/DESIGN.md`](../../DESIGN.md) para el **hub**; los overlays (widgets sobre el juego) mantienen su propio sistema V3.

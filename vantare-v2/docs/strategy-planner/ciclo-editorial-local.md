@@ -1,5 +1,7 @@
 # Runbook — ciclo editorial local de Strategy
 
+> #1533: comandos Go/React retirados. Scripts originales congelados como texto en `native/retirement/legacy-evidence`; este documento conserva historia, no un procedimiento ejecutable actual.
+
 Estado: F6-e implementado en la rama de ISA-774. Este flujo es local y se
 detiene en un catálogo sin firmar. No sincroniza con un Worker real, no firma y
 no publica.

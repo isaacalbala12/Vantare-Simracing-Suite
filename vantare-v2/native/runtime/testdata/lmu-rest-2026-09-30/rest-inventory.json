@@ -1,0 +1,560 @@
+[
+  {
+    "path": "/navigation/GetLoadingScreen",
+    "method": "GET",
+    "status": 200,
+    "bytes": 3821,
+    "elapsed_ms": 52.05,
+    "fields": [
+      "selectedCar",
+      "trackInfo"
+    ],
+    "atUtc": "2026-09-30T11:15:32.473357+00:00"
+  },
+  {
+    "path": "/navigation/state",
+    "method": "GET",
+    "status": 200,
+    "bytes": 4961,
+    "elapsed_ms": 8.12,
+    "fields": [
+      "loadingStatus",
+      "state"
+    ],
+    "atUtc": "2026-09-30T11:15:32.481410+00:00"
+  },
+  {
+    "path": "/rest/garage/PitMenu/receivePitMenu",
+    "method": "GET",
+    "status": 500,
+    "bytes": 13,
+    "elapsed_ms": 25.35,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:32.506624+00:00"
+  },
+  {
+    "path": "/rest/garage/UIScreen/CarSetupOverview",
+    "method": "GET",
+    "status": 404,
+    "bytes": 0,
+    "elapsed_ms": 2.21,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:32.508719+00:00"
+  },
+  {
+    "path": "/rest/garage/UIScreen/CoopOverview",
+    "method": "GET",
+    "status": 404,
+    "bytes": 0,
+    "elapsed_ms": 2.79,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:32.511760+00:00"
+  },
+  {
+    "path": "/rest/garage/UIScreen/DriverHandOffStintStart",
+    "method": "GET",
+    "status": 404,
+    "bytes": 0,
+    "elapsed_ms": 8.68,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:32.520411+00:00"
+  },
+  {
+    "path": "/rest/garage/UIScreen/PitCarReview",
+    "method": "GET",
+    "status": 404,
+    "bytes": 0,
+    "elapsed_ms": 8.06,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:32.528952+00:00"
+  },
+  {
+    "path": "/rest/garage/UIScreen/RepairAndRefuel",
+    "method": "GET",
+    "status": 404,
+    "bytes": 0,
+    "elapsed_ms": 2.11,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:32.530972+00:00"
+  },
+  {
+    "path": "/rest/garage/UIScreen/SessionSetup",
+    "method": "GET",
+    "status": 200,
+    "bytes": 4341,
+    "elapsed_ms": 8.46,
+    "fields": [
+      "classesSelection",
+      "fullGrid",
+      "selectedCar",
+      "trackInfo"
+    ],
+    "atUtc": "2026-09-30T11:15:32.539531+00:00"
+  },
+  {
+    "path": "/rest/garage/UIScreen/TireManagement",
+    "method": "GET",
+    "status": 404,
+    "bytes": 0,
+    "elapsed_ms": 2.05,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:32.541028+00:00"
+  },
+  {
+    "path": "/rest/garage/brakeinfo",
+    "method": "GET",
+    "status": 404,
+    "bytes": 0,
+    "elapsed_ms": 4.06,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:32.545787+00:00"
+  },
+  {
+    "path": "/rest/garage/getPlayerGarageData",
+    "method": "GET",
+    "status": 404,
+    "bytes": 0,
+    "elapsed_ms": 8.03,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:32.553948+00:00"
+  },
+  {
+    "path": "/rest/hud",
+    "method": "GET",
+    "status": 200,
+    "bytes": 68,
+    "elapsed_ms": 16.35,
+    "fields": [
+      "chat",
+      "mfd",
+      "speedo",
+      "timing",
+      "trackMap"
+    ],
+    "atUtc": "2026-09-30T11:15:32.570054+00:00"
+  },
+  {
+    "path": "/rest/race/car",
+    "method": "GET",
+    "status": 200,
+    "bytes": 529058,
+    "elapsed_ms": 1202.68,
+    "fields": [
+      "displayProperties",
+      "dlcappID",
+      "engine",
+      "fullPathTree",
+      "id",
+      "image",
+      "manufacturer",
+      "name",
+      "owned",
+      "premId",
+      "sig",
+      "thumbnail",
+      "vehFile"
+    ],
+    "atUtc": "2026-09-30T11:15:33.772331+00:00"
+  },
+  {
+    "path": "/rest/race/getAllowedToStartRacing",
+    "method": "GET",
+    "status": 200,
+    "bytes": 5,
+    "elapsed_ms": 24.33,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:33.797637+00:00"
+  },
+  {
+    "path": "/rest/race/series",
+    "method": "GET",
+    "status": 404,
+    "bytes": 0,
+    "elapsed_ms": 11.2,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:33.808228+00:00"
+  },
+  {
+    "path": "/rest/race/track",
+    "method": "GET",
+    "status": 200,
+    "bytes": 20098,
+    "elapsed_ms": 23.08,
+    "fields": [
+      "displayProperties",
+      "dlcappID",
+      "id",
+      "image",
+      "length",
+      "name",
+      "owned",
+      "premId",
+      "sceneDesc",
+      "shortName",
+      "thumbnail",
+      "type"
+    ],
+    "atUtc": "2026-09-30T11:15:33.831554+00:00"
+  },
+  {
+    "path": "/rest/sessions/",
+    "method": "GET",
+    "status": 200,
+    "bytes": 9219,
+    "elapsed_ms": 9.55,
+    "fields": [
+      "SESSSET_AI_Aggression",
+      "SESSSET_AI_Strength",
+      "SESSSET_Damage_Multi",
+      "SESSSET_Finish_Criteria",
+      "SESSSET_Fuel_Usage",
+      "SESSSET_Grid_Position",
+      "SESSSET_Mech_Failures",
+      "SESSSET_Num_Opponents",
+      "SESSSET_Practice_Length",
+      "SESSSET_Qualify_Length",
+      "SESSSET_Race_Laps",
+      "SESSSET_Tire_Wear",
+      "SESSSET_WarmUp_Length",
+      "SESSSET_adjust_frozen",
+      "SESSSET_blue_flags",
+      "SESSSET_cut_rules",
+      "SESSSET_cuts_allowed",
+      "SESSSET_flag_rules",
+      "SESSSET_force_formation",
+      "SESSSET_formation",
+      "SESSSET_keep_tire_inv_on_track_change",
+      "SESSSET_num_qual_sessions",
+      "SESSSET_num_race_sessions",
+      "SESSSET_parc_ferme",
+      "SESSSET_pract1",
+      "SESSSET_pract1_realroad_init",
+      "SESSSET_pract1_realroad_temperatures",
+      "SESSSET_pract1_realroad_wet",
+      "SESSSET_pract2",
+      "SESSSET_pract3",
+      "SESSSET_pract4",
+      "SESSSET_practice1_starting_time",
+      "SESSSET_private_prac",
+      "SESSSET_private_qual",
+      "SESSSET_qual1_realroad_init",
+      "SESSSET_qual1_realroad_temperatures",
+      "SESSSET_qual1_realroad_wet",
+      "SESSSET_qualify_starting_time",
+      "SESSSET_race_realroad_init",
+      "SESSSET_race_realroad_temperatures",
+      "SESSSET_race_realroad_wet",
+      "SESSSET_race_starting_time",
+      "SESSSET_race_time",
+      "SESSSET_race_timer",
+      "SESSSET_race_timescale",
+      "SESSSET_realroad_timescale_practice",
+      "SESSSET_realroad_timescale_qualify",
+      "SESSSET_realroad_timescale_race",
+      "SESSSET_recon_pit_closed",
+      "SESSSET_recon_pit_open",
+      "SESSSET_recon_timer",
+      "SESSSET_reconnaissance",
+      "SESSSET_run_warmup",
+      "SESSSET_safetycar_thresh",
+      "SESSSET_safetycarcollision",
+      "SESSSET_timescaled_weather",
+      "SESSSET_tire_warmers",
+      "SESSSET_tires_available_in_garage",
+      "SESSSET_unsportsmanlike",
+      "SESSSET_walkthrough",
+      "SESSSET_warmup_starting_time",
+      "SESSSET_weather"
+    ],
+    "atUtc": "2026-09-30T11:15:33.841629+00:00"
+  },
+  {
+    "path": "/rest/sessions/GetGameState",
+    "method": "GET",
+    "status": 503,
+    "bytes": 93,
+    "elapsed_ms": 2.45,
+    "fields": [
+      "status",
+      "reason",
+      "gameState"
+    ],
+    "atUtc": "2026-09-30T11:15:33.844139+00:00"
+  },
+  {
+    "path": "/rest/sessions/GetSessionsInfoForEvent",
+    "method": "GET",
+    "status": 200,
+    "bytes": 88,
+    "elapsed_ms": 15.1,
+    "fields": [
+      "scheduledSessions"
+    ],
+    "atUtc": "2026-09-30T11:15:33.859219+00:00"
+  },
+  {
+    "path": "/rest/sessions/TireInventory",
+    "method": "GET",
+    "status": 404,
+    "bytes": 0,
+    "elapsed_ms": 1.98,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:33.861218+00:00"
+  },
+  {
+    "path": "/rest/sessions/amount",
+    "method": "GET",
+    "status": 200,
+    "bytes": 46,
+    "elapsed_ms": 2.17,
+    "fields": [
+      "PRACTICE",
+      "QUALIFY",
+      "RACE",
+      "WARMUP"
+    ],
+    "atUtc": "2026-09-30T11:15:33.863217+00:00"
+  },
+  {
+    "path": "/rest/sessions/getAllVehicles",
+    "method": "GET",
+    "status": 200,
+    "bytes": 611465,
+    "elapsed_ms": 999.05,
+    "fields": [
+      "classes",
+      "classesOverride",
+      "desc",
+      "dlcAppID",
+      "drivers",
+      "engine",
+      "fullPathTree",
+      "fullTeam",
+      "id",
+      "isOwned",
+      "liveryName",
+      "manufacturer",
+      "number",
+      "premID",
+      "primaryVehFile",
+      "sig",
+      "team",
+      "teamFounded",
+      "teamHeadquarters",
+      "vehFile",
+      "vehicle"
+    ],
+    "atUtc": "2026-09-30T11:15:34.861861+00:00"
+  },
+  {
+    "path": "/rest/sessions/getTracksAll",
+    "method": "GET",
+    "status": 200,
+    "bytes": 106357,
+    "elapsed_ms": 36.3,
+    "fields": [
+      "cmpName",
+      "corners",
+      "countryCode",
+      "defaultPracticeStartTime",
+      "defaultPracticeWeather",
+      "defaultQualifyStartTime",
+      "defaultQualifyWeather",
+      "defaultRaceLengthLaps",
+      "defaultRaceLengthTime",
+      "defaultRaceStartTime",
+      "defaultRaceWeather",
+      "dlcAppID",
+      "eventName",
+      "grandPrixName",
+      "id",
+      "image",
+      "isOwned",
+      "location",
+      "officialEvent",
+      "openingYear",
+      "premId",
+      "properTrackName",
+      "sceneDesc",
+      "sceneSig",
+      "thumbnail",
+      "trackLength",
+      "trackName",
+      "type",
+      "version"
+    ],
+    "atUtc": "2026-09-30T11:15:34.898812+00:00"
+  },
+  {
+    "path": "/rest/sessions/getTracksInSeries",
+    "method": "GET",
+    "status": 200,
+    "bytes": 92859,
+    "elapsed_ms": 19.46,
+    "fields": [
+      "cmpName",
+      "corners",
+      "countryCode",
+      "defaultPracticeStartTime",
+      "defaultPracticeWeather",
+      "defaultQualifyStartTime",
+      "defaultQualifyWeather",
+      "defaultRaceLengthLaps",
+      "defaultRaceLengthTime",
+      "defaultRaceStartTime",
+      "defaultRaceWeather",
+      "dlcAppID",
+      "eventName",
+      "grandPrixName",
+      "id",
+      "image",
+      "isOwned",
+      "location",
+      "officialEvent",
+      "openingYear",
+      "premId",
+      "properTrackName",
+      "sceneDesc",
+      "sceneSig",
+      "thumbnail",
+      "trackLength",
+      "trackName",
+      "type",
+      "version"
+    ],
+    "atUtc": "2026-09-30T11:15:34.918025+00:00"
+  },
+  {
+    "path": "/rest/sessions/opponents",
+    "method": "GET",
+    "status": 200,
+    "bytes": 27492,
+    "elapsed_ms": 7.83,
+    "fields": [
+      "id",
+      "name"
+    ],
+    "atUtc": "2026-09-30T11:15:34.926612+00:00"
+  },
+  {
+    "path": "/rest/sessions/opponents/filter",
+    "method": "GET",
+    "status": 404,
+    "bytes": 0,
+    "elapsed_ms": 16.07,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:34.941719+00:00"
+  },
+  {
+    "path": "/rest/sessions/weather",
+    "method": "GET",
+    "status": 200,
+    "bytes": 5473,
+    "elapsed_ms": 17.63,
+    "fields": [
+      "PRACTICE",
+      "QUALIFY",
+      "RACE"
+    ],
+    "atUtc": "2026-09-30T11:15:34.959976+00:00"
+  },
+  {
+    "path": "/rest/strategy/overall",
+    "method": "GET",
+    "status": 400,
+    "bytes": 0,
+    "elapsed_ms": 3.08,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:34.963476+00:00"
+  },
+  {
+    "path": "/rest/strategy/usage",
+    "method": "GET",
+    "status": 200,
+    "bytes": 4,
+    "elapsed_ms": 25.82,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:34.989129+00:00"
+  },
+  {
+    "path": "/rest/watch/focus",
+    "method": "GET",
+    "status": 400,
+    "bytes": 2,
+    "elapsed_ms": 2.59,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:34.992167+00:00"
+  },
+  {
+    "path": "/rest/watch/getBookmarkedTimestamps",
+    "method": "GET",
+    "status": 404,
+    "bytes": 51,
+    "elapsed_ms": 12.22,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:35.004324+00:00"
+  },
+  {
+    "path": "/rest/watch/sessionInfo",
+    "method": "GET",
+    "status": 200,
+    "bytes": 0,
+    "elapsed_ms": 17.52,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:35.021963+00:00"
+  },
+  {
+    "path": "/rest/watch/standings",
+    "method": "GET",
+    "status": 200,
+    "bytes": 0,
+    "elapsed_ms": 2.75,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:35.023962+00:00"
+  },
+  {
+    "path": "/rest/watch/standings/history",
+    "method": "GET",
+    "status": 200,
+    "bytes": 2,
+    "elapsed_ms": 2.9,
+    "fields": [],
+    "atUtc": "2026-09-30T11:15:35.027605+00:00"
+  },
+  {
+    "path": "/rest/garage/getVehicleCondition",
+    "method": "GET",
+    "status": null,
+    "bytes": 0,
+    "elapsed_ms": 760.84,
+    "fields": [],
+    "atUtc": "2026-09-30T11:07:09.327256+00:00"
+  },
+  {
+    "path": "/rest/garage/showOnlyRelevantSetups",
+    "method": "GET",
+    "status": null,
+    "bytes": 0,
+    "elapsed_ms": 2049.44,
+    "fields": [],
+    "atUtc": "2026-09-30T11:07:11.376902+00:00"
+  },
+  {
+    "path": "/rest/garage/summary",
+    "method": "GET",
+    "status": null,
+    "bytes": 0,
+    "elapsed_ms": 2427.95,
+    "fields": [],
+    "atUtc": "2026-09-30T11:07:13.805226+00:00"
+  },
+  {
+    "path": "/rest/garage/tireinfo",
+    "method": "GET",
+    "status": null,
+    "bytes": 0,
+    "elapsed_ms": 2039.08,
+    "fields": [],
+    "atUtc": "2026-09-30T11:07:15.844383+00:00"
+  }
+]

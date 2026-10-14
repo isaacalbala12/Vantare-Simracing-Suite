@@ -234,28 +234,61 @@ Deno.test("mapping v2: old and new Pro monthly prices resolve to pro_monthly", (
   assertEquals(annual.ok && annual.key, "pro_annual");
 });
 
-Deno.test("mapping v2: Pro annual cannot widen capabilities or enable a trial", () => {
-  for (
-    const change of [
-      (config: Record<string, unknown>) => {
-        config.capabilities = ["vantare.plan.pro", "vantare.channel.nightly"];
-      },
-      (config: Record<string, unknown>) => {
-        config.trial = {
-          enabled: true,
-          interval: "day",
-          interval_count: 7,
-          provider_anti_abuse_confirmed: true,
-        };
-      },
-    ]
-  ) {
-    const raw = JSON.parse(
-      withProAnnualAndNewMonthlyPrice(VALID_POLAR_PRODUCT_MAP_JSON),
-    );
-    change(raw.checkout_keys.pro_annual);
-    const result = load(JSON.stringify(raw), true);
-    assertEquals(result.ok, false);
-    if (!result.ok) assertEquals(result.code, "mapping_invalid_key_meta");
+Deno.test("mapping v2: Pro annual cannot widen capabilities", () => {
+  const raw = JSON.parse(
+    withProAnnualAndNewMonthlyPrice(VALID_POLAR_PRODUCT_MAP_JSON),
+  );
+  raw.checkout_keys.pro_annual.capabilities = [
+    "vantare.plan.pro",
+    "vantare.channel.nightly",
+  ];
+  const result = load(JSON.stringify(raw), true);
+  assertEquals(result.ok, false);
+  if (!result.ok) assertEquals(result.code, "mapping_invalid_key_meta");
+});
+
+Deno.test("mapping v2: sandbox annual trial requires provider proof even without monthly trial", async () => {
+  const { default: catalog } = await import(
+    "../scripts/polar-product-map.sandbox.json",
+    { with: { type: "json" } }
+  );
+  const raw = structuredClone(catalog);
+  raw.checkout_keys.pro_monthly.trial = {
+    enabled: false,
+  } as typeof raw.checkout_keys.pro_monthly.trial;
+  const denied = loadPolarProductMap(JSON.stringify(raw), {
+    environment: "sandbox",
+    trialAntiAbuseConfirmed: false,
+  });
+  assertEquals(denied.ok, false);
+  if (!denied.ok) assertEquals(denied.code, "mapping_trial_unverified");
+  assertEquals(
+    loadPolarProductMap(JSON.stringify(raw), {
+      environment: "sandbox",
+      trialAntiAbuseConfirmed: true,
+    }).ok,
+    true,
+  );
+});
+Deno.test("mapping v2: live sandbox catalogue is complete and cannot target production", async () => {
+  const { default: catalog } = await import(
+    "../scripts/polar-product-map.sandbox.json",
+    { with: { type: "json" } }
+  );
+  const result = loadPolarProductMap(JSON.stringify(catalog), {
+    environment: "sandbox",
+    trialAntiAbuseConfirmed: true,
+  });
+  assertEquals(result.ok, true);
+  if (result.ok) {
+    assertEquals(Object.keys(result.map.checkout_keys).length, 3);
+    assertEquals(resolveCheckoutKey(result.map, "pro_annual").ok, true);
   }
+  assertEquals(
+    loadPolarProductMap(JSON.stringify(catalog), {
+      environment: "production",
+      trialAntiAbuseConfirmed: true,
+    }).ok,
+    false,
+  );
 });

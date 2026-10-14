@@ -1,12 +1,13 @@
 $ErrorActionPreference = "Stop"
 
 $functionsRoot = Resolve-Path (Join-Path $PSScriptRoot "..")
-$production = @("billing-checkout", "billing-portal", "billing-webhook", "license-credential")
+$production = @("billing-checkout", "billing-portal", "billing-webhook", "license-credential", "native-billing-checkout", "native-billing-portal", "native-license", "native-account-authorize", "native-admin")
 $testingPilot = @("testing-center-feedback", "testing-center-linear-webhook", "testing-center-linear-worker")
 $allowed = $production + $testingPilot
 $testingAutomation = @("testing-center-agent-dispatch", "testing-center-agent-callback")
 $infrastructure = @("_deprecated", "_shared", "scripts")
-$known = $allowed + $testingAutomation + $infrastructure
+$reviewCandidates = @("testing-report-submit") # Inert: not added to $allowed or deploy wrappers.
+$known = $allowed + $testingAutomation + $reviewCandidates + $infrastructure
 $unexpected = Get-ChildItem -LiteralPath $functionsRoot -Directory |
   Where-Object { $_.Name -notin $known } |
   Select-Object -ExpandProperty Name |

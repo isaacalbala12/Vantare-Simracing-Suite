@@ -1,0 +1,296 @@
+{
+  "contractVersion": "strategy.solver.v2",
+  "raceLaps": 240,
+  "baseLapSeconds": {
+    "value": 90.472412109375,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "practice:fuji-bmw-2026-20261003T102355Z"
+    },
+    "confidence": {
+      "sampleSize": 21,
+      "computationVersion": "isa-1450-practice.v1"
+    },
+    "role": "user_override"
+  },
+  "pitCost": {
+    "transitSeconds": {
+      "value": 25,
+      "provenance": {
+        "kind": "manual",
+        "sourceId": "assumption:isa-1450"
+      },
+      "confidence": {
+        "sampleSize": 1,
+        "computationVersion": "isa-1450-practice.v1"
+      },
+      "role": "user_override"
+    },
+    "refuelRateLPerS": {
+      "value": 4.00000015894572,
+      "provenance": {
+        "kind": "manual",
+        "sourceId": "practice:refuel-slope"
+      },
+      "confidence": {
+        "sampleSize": 120,
+        "computationVersion": "isa-1450-practice.v1"
+      },
+      "role": "user_override"
+    },
+    "veRatePPerS": {
+      "value": 2.5000001589457193,
+      "provenance": {
+        "kind": "manual",
+        "sourceId": "practice:ve-slope"
+      },
+      "confidence": {
+        "sampleSize": 120,
+        "computationVersion": "isa-1450-practice.v1"
+      },
+      "role": "user_override"
+    },
+    "tyreSeconds": {
+      "value": 30,
+      "provenance": {
+        "kind": "manual",
+        "sourceId": "assumption:isa-1450"
+      },
+      "confidence": {
+        "sampleSize": 1,
+        "computationVersion": "isa-1450-practice.v1"
+      },
+      "role": "user_override"
+    },
+    "serviceMode": "parallel"
+  },
+  "formation": {
+    "seconds": {
+      "value": 0,
+      "provenance": {
+        "kind": "manual",
+        "sourceId": "assumption:isa-1450"
+      },
+      "confidence": {
+        "sampleSize": 1,
+        "computationVersion": "isa-1450-practice.v1"
+      },
+      "role": "user_override"
+    },
+    "presence": "valid"
+  },
+  "eventRules": {},
+  "budget": {
+    "p95Millis": 20000,
+    "maxCandidates": 100000,
+    "maxIterations": 1000000
+  },
+  "fuelCapacityLiters": {
+    "value": 82,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "practice:observed-maximum"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "isa-1450-practice.v1"
+    },
+    "role": "user_override"
+  },
+  "veCapacityPercent": {
+    "value": 100,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "practice:observed-maximum"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "isa-1450-practice.v1"
+    },
+    "role": "user_override"
+  },
+  "tyreLifeLaps": {
+    "value": 43,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "assumption:isa-1450"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "isa-1450-practice.v1"
+    },
+    "role": "user_override"
+  },
+  "fuelPerLapLiters": {
+    "value": 1.8301201320829845,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "practice:fuji-bmw-2026-20261003T102355Z"
+    },
+    "confidence": {
+      "sampleSize": 21,
+      "computationVersion": "isa-1450-practice.v1"
+    },
+    "role": "user_override"
+  },
+  "vePerLapPercent": {
+    "value": 2.315803641364688,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "practice:fuji-bmw-2026-20261003T102355Z"
+    },
+    "confidence": {
+      "sampleSize": 21,
+      "computationVersion": "isa-1450-practice.v1"
+    },
+    "role": "user_override"
+  },
+  "degradationPerLapSeconds": {
+    "value": 0,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "assumption:isa-1450"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "isa-1450-practice.v1"
+    },
+    "role": "user_override"
+  },
+  "serviceDiscretization": {
+    "fuelLiters": 1,
+    "vePercent": 1
+  },
+  "fuelReserve": {
+    "kind": "laps",
+    "laps": {
+      "value": 0.8,
+      "evidence": {
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "assumption:isa-832-reserve-0.8"
+        },
+        "confidence": {
+          "level": "low",
+          "basis": "Reserva de producto ISA-832 asumida para Fuel y VE"
+        }
+      }
+    },
+    "selection": {
+      "provenance": {
+        "kind": "manual",
+        "sourceId": "assumption:isa-832-reserve-0.8"
+      },
+      "confidence": {
+        "level": "low",
+        "basis": "Reserva de producto ISA-832 asumida para Fuel y VE"
+      }
+    }
+  },
+  "virtualEnergyReserve": {
+    "kind": "laps",
+    "laps": {
+      "value": 0.8,
+      "evidence": {
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "assumption:isa-832-reserve-0.8"
+        },
+        "confidence": {
+          "level": "low",
+          "basis": "Reserva de producto ISA-832 asumida para Fuel y VE"
+        }
+      }
+    },
+    "selection": {
+      "provenance": {
+        "kind": "manual",
+        "sourceId": "assumption:isa-832-reserve-0.8"
+      },
+      "confidence": {
+        "level": "low",
+        "basis": "Reserva de producto ISA-832 asumida para Fuel y VE"
+      }
+    }
+  },
+  "raceDurationSeconds": 21600,
+  "driverProfiles": [
+    {
+      "driverId": "A",
+      "manual": {
+        "baseLapSeconds": 90.472412109375,
+        "fuelPerLapLiters": 1.8301201320829845,
+        "vePerLapPercent": 2.315803641364688,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "assumption:equal-drivers"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "isa-1450-practice.v1"
+        }
+      }
+    },
+    {
+      "driverId": "B",
+      "manual": {
+        "baseLapSeconds": 90.472412109375,
+        "fuelPerLapLiters": 1.8301201320829845,
+        "vePerLapPercent": 2.315803641364688,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "assumption:equal-drivers"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "isa-1450-practice.v1"
+        }
+      }
+    },
+    {
+      "driverId": "C",
+      "manual": {
+        "baseLapSeconds": 90.472412109375,
+        "fuelPerLapLiters": 1.8301201320829845,
+        "vePerLapPercent": 2.315803641364688,
+        "provenance": {
+          "kind": "manual",
+          "sourceId": "assumption:equal-drivers"
+        },
+        "confidence": {
+          "sampleSize": 1,
+          "computationVersion": "isa-1450-practice.v1"
+        }
+      }
+    }
+  ],
+  "driverSequence": [
+    "A",
+    "B",
+    "C"
+  ],
+  "initialFuelLiters": {
+    "value": 82,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "practice:observed-maximum"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "isa-1450-practice.v1"
+    },
+    "role": "user_override"
+  },
+  "initialVEPercent": {
+    "value": 100,
+    "provenance": {
+      "kind": "manual",
+      "sourceId": "practice:observed-maximum"
+    },
+    "confidence": {
+      "sampleSize": 1,
+      "computationVersion": "isa-1450-practice.v1"
+    },
+    "role": "user_override"
+  }
+}

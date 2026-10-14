@@ -1,5 +1,7 @@
 # ISA-113 / TC-09A — auditoría final de consumidores
 
+> #1533: comandos Go/React retirados. Scripts originales congelados como texto en `native/retirement/legacy-evidence`; este documento conserva historia, no un procedimiento ejecutable actual.
+
 Fecha: 2026-08-01. Base auditada: ISA-112
 `2fff97055096731f0456129d483fa05943f60d57`.
 

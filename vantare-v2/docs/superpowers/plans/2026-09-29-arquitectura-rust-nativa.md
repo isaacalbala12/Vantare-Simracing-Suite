@@ -126,6 +126,12 @@ congelado por hash; menú, boxes, cambio de sesión, REST caído y cierre del
 juego probados con capturas propias del revisor; sin fuga de tipos de
 simulador.
 
+**Capturas físicas aplazadas (decisión de Isaac, 2026-09-29):** las capturas
+propias de LMU (menú, boxes, cambio de sesión, REST caído, cierre, bandera) y
+de ACC conduciendo se hacen justo antes de la fase 8; las grabadoras
+`vantare-grabar-lmu` y `vantare-grabar-acc` ya existen. Hasta entonces la
+fase 1 se da por cerrada con fixtures, corpus reales y oráculo.
+
 ## Fase 2 — Todos los widgets
 
 **Alcance visual.** Solo el sistema de diseño **Eficiencia**
@@ -207,6 +213,28 @@ antes cuando un perfil representativo lo justifique.
 **Aceptación.** Mejora reproducible frente a la ronda anterior o cierre
 explícito de la tanda.
 
+**Rondas obligatorias además del rendimiento (decisión de Isaac).** Cada tanda
+alterna cuatro tipos de ronda sobre todo el código nativo, y ninguna se cierra
+sin la revisión del orquestador:
+1. **Simplificación:** quitar capas, parámetros y casos que no aportan (skills
+   `ponytail-review`/`ponytail-audit` y `simplify`).
+2. **Reducción extensa de código:** borrar código muerto, duplicado o
+   especulativo; medir líneas de producción antes y después.
+3. **Optimización:** perfilar y atacar una causa por ronda, con banco y paridad.
+4. **Revisión de mantenibilidad y anti-slop:** legibilidad, nombres, fronteras,
+   tests que prueban comportamiento y no detalles, comentarios útiles, sin
+   abstracciones de un solo uso ni código generado sin entender
+   (`code-review`, guías Rust instaladas).
+El criterio de éxito es menos código igual de correcto o más legible; una
+ronda que no reduzca ni aclare nada se registra como tal.
+
+**Primera candidata (decisión de Isaac): demanda desde los widgets.** Hoy el
+núcleo deriva todo en cada tick y el IPC envía la foto completa. En esta fase:
+los widgets del layout activo declaran sus señales (columnas y huecos del pie
+incluidos), el núcleo solo deriva lo demandado, el IPC solo envía lo demandado
+con cadencia por señal, y lo no pedido se marca como no pedido (no como no
+disponible) para no confundir a un widget que se active después.
+
 ## Fase 9 — Corte
 
 **Incluye.** Retirada del producto Go/Wails y de las reglas de `AGENTS.md`
@@ -240,3 +268,35 @@ juego queda pendiente de una campaña con consola elevada.
 3. Solo se porta el sistema de diseño **Eficiencia**.
 4. La salida remota para análisis live queda **fuera de este plan**, mucho
    después del corte.
+
+## Estado a 2026-09-30 (desarrollo autónomo nocturno)
+
+Integración única en `vantareapp/isa-1427-fase2` (fases 2–7 fusionadas; ramas
+por fase con su microplan en `docs/superpowers/plans/2026-09-30-fase-*.md`).
+Workers Codex gpt-6.1-sol; decisiones de contrato consultadas con Astra y Fable.
+
+- **Fase 2 (#1427):** 18 widgets Eficiencia portados; DTO v4 (relative, volante,
+  historial de combustible, estado de la fuente), ajustes tipados por widget,
+  `layout.json` aplicado en caliente reutilizando ventanas, trazas en el widget
+  con escenas en secuencia. Pendientes: variantes de ajustes solo persistidas,
+  residuo de rasterización de texto de GPUI (controles privados; decisión de
+  Isaac si se parchea GPUI) y widgets aún por encima del 4 %.
+- **Fase 3 (#1428):** journal con recording on/off, hechos productivos del
+  núcleo, Engineer como proceso con cursor/checkpoint, radio y clips locales.
+  Voces: caché Kokoro del producto reutilizada; visto bueno de Isaac para alpha (2026-09-30). Pendientes: clips de bandera amarilla/azul; señales para Spotter
+  (velocidad de rivales), sanciones y servicio de boxes.
+- **Fase 4 (#1429):** series por vuelta, codec, análisis puro live/replay,
+  `vantare-storage` con DuckDB bundled (propietario único, WAL, recuperación).
+  Pendiente: presupuesto físico con LMU/OBS.
+- **Fase 5 (#1430):** Hub GPUI con kit visual Orbit, Studio sobre el layout
+  común, Workshop, calendario, notificaciones, cierre por flanco Live.
+  En curso: Engineer, análisis, Workshop completo y Ajustes, Launcher,
+  Strategy. Bloqueado por Isaac: cuenta, licencias, roadmap y envío del
+  Testing Center (servicios Supabase/credenciales).
+- **Fase 6 (#1431):** ACC completo sobre corpus; estado de fuente declarado
+  por el adaptador; pendientes capturas físicas.
+- **Fase 7 (#1432):** candidato local instalable/portable con actualización y
+  rollback probados. En curso: todos los binarios e importación V4 → layout.
+  Bloqueado por Isaac: firma, publicación y pruebas en otra GPU.
+- **Fase 8:** no iniciada; espera las capturas físicas (decisión de Isaac).
+- **Fase 9:** requiere autorización de Isaac.

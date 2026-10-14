@@ -57,13 +57,14 @@ export async function reconcilePage(args: {
   let quarantined = 0;
   for (const item of args.page.items) {
     if (args.cursor.resource === "disputes") {
-      if (
-        await applyPolarDisputeSnapshot(
-          args.supabase,
-          args.environment,
-          item,
-        ) === "missing_order"
-      ) quarantined++;
+      const result = await applyPolarDisputeSnapshot(
+        args.supabase,
+        args.environment,
+        item,
+      );
+      if (result === "missing_order" || result === "account_deleted") {
+        quarantined++;
+      }
       continue;
     }
     const event = reconciliationEvent(args.cursor.resource, item);

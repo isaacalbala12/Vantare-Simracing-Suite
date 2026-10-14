@@ -48,7 +48,7 @@ export async function applyPolarDisputeSnapshot(
   supabase: SupabaseClient,
   environment: BillingEnvironment,
   payload: Record<string, unknown>,
-): Promise<"applied" | "missing_order"> {
+): Promise<"applied" | "missing_order" | "account_deleted"> {
   const dispute = parseDisputeSnapshot(payload);
   if (!dispute) {
     throw Object.assign(new Error("invalid_dispute_snapshot"), {
@@ -71,7 +71,9 @@ export async function applyPolarDisputeSnapshot(
       code: error.code,
     });
   }
-  if (data !== "applied" && data !== "missing_order") {
+  if (
+    data !== "applied" && data !== "missing_order" && data !== "account_deleted"
+  ) {
     throw new Error("invalid_dispute_projection_result");
   }
   return data;

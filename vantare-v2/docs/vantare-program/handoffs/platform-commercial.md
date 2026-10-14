@@ -1,3 +1,19 @@
+## #1608 · Ronda 5 local · R4-P1-2 (14/10/2026)
+
+Inbox verifica tombstone bajo UUID antes de escribir, relee enlaces y devuelve
+receipt tipado `account_deleted` sin fila ni payload. El reconciliador aísla
+ese resultado; cualquier error real o vínculo contradictorio sigue abortando.
+Diagnóstico durable privado solo entorno+hash, idempotente, sin UUID/PII.
+Disputas usan la misma clasificación por orden durable y entorno.
+RED exacto 28000 con PostgreSQL/PostgREST/Supabase JS reales → GREEN cuenta
+borrada seguida de viva, dos páginas y repetición: orden viva única, avance a
+subscriptions, sin nuevo payload borrado; conflicto borrada/viva sigue fallando.
+140 tests Edge billing/reconciliación PASS con tipos. Intentos sin permiso de
+lectura y estrechamiento de receipt conservados, sin --no-check.
+Evidencia `~/evidence/1608-r5/reconcile-{red,green-2}.log`; fixture local,
+no Polar gestionado. Queda revisar locks y límite abort manifest Storage.
+Seguimiento remoto exclusivamente por el orquestador.
+
 ## #1608 · Ronda 5 local · R4-P1-1 (14/10/2026)
 
 Multipart/partes del esquema Storage real reciben la barrera propia, incluida

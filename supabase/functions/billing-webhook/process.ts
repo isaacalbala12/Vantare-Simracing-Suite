@@ -1087,6 +1087,9 @@ export async function processPolarWebhookEvent(
     payloadHash,
     payload,
   });
+  if (receipt.status === "account_deleted") {
+    return { status: "quarantined", reason: "account_deleted" };
+  }
   if (!receipt.payloadMatches) {
     return { status: "quarantined", reason: "payload_hash_mismatch" };
   }

@@ -1115,6 +1115,8 @@ Deno.test("processPolarWebhookEvent: active claim defers a concurrent worker and
     payloadHash,
     payload: event,
   });
+  assertEquals(receipt.status, "received");
+  if (receipt.id === null) throw new Error("live event has no inbox row");
   const firstClaim = await deps.inbox.claim(
     receipt.id,
     "00000000-0000-4000-8000-000000000001",

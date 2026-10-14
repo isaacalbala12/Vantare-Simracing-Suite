@@ -167,27 +167,45 @@ export async function cleanupDeletedObjects(
   abort = abortStorageUpload,
 ): Promise<void> {
   // Retry deliveries drain the durable queue even after an idempotent SQL no-op.
+  let uploadsDrained = false;
   for (let batch = 0; batch < 5; batch++) {
     const uploads = await admin.rpc("clerk_deletion_uploads", {
       p_issuer: issuer,
       p_subject: subject,
     });
-    if (uploads.error) throw uploads.error;
-    for (const upload of uploads.data ?? []) {
-      await abort(upload);
-      const ack = await admin.rpc("clerk_deletion_upload_completed", {
-        p_issuer: issuer,
-        p_subject: subject,
-        p_upload_id: upload.upload_id,
-      });
-      if (ack.error) throw ack.error;
+    // Abort/list/ACK failures keep uploads pending, but cannot retain unrelated
+    // completed objects. The webhook still returns 503 after the object drain.
+    if (uploads.error) break;
+    if (!uploads.data?.length) {
+      uploadsDrained = true;
+      break;
     }
+    let failed = false;
+    for (const upload of uploads.data ?? []) {
+      try {
+        await abort(upload);
+        const ack = await admin.rpc("clerk_deletion_upload_completed", {
+          p_issuer: issuer,
+          p_subject: subject,
+          p_upload_id: upload.upload_id,
+        });
+        if (ack.error) throw ack.error;
+      } catch {
+        failed = true;
+      }
+    }
+    if (failed) break;
+  }
+  for (let batch = 0; batch < 5; batch++) {
     const { data, error } = await admin.rpc("clerk_deletion_objects", {
       p_issuer: issuer,
       p_subject: subject,
     });
     if (error) throw error;
-    if (!data?.length && !uploads.data?.length) return;
+    if (!data?.length) {
+      if (!uploadsDrained) throw new Error("cleanup_retry_required");
+      return;
+    }
     const buckets = new Map<string, string[]>();
     for (const row of data) {
       const names = buckets.get(row.bucket_id) ?? [];

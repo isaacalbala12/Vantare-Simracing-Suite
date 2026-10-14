@@ -1,3 +1,58 @@
+## #1608 · Ronda 6 local · R5-P1-1 y cierre de worker (14/10/2026)
+
+Entrega para review de Claude en la rama `vantareapp/isa-1608-cierre-comercial`,
+inicio `0a8e794f`, base histórica `e5c90be5`. Tres hallazgos de r5 corregidos
+con commits locales por hallazgo; HEAD completo y FIN en `~/orq/1608.buzon.md`.
+GitHub #1608 / PR #1622 / proyecto Vantare: sin acceso ni estado remoto nuevo.
+No hay push, CI del SHA nuevo, merge, promoción, deploy, release ni venta.
+Seguimiento del orquestador conforme a la excepción del encargo; sin Notion,
+Plane ni subagentes. VANTA-16/17/15 son referencias del contexto, no estados
+consultados/actualizados por este worker.
+
+**Abort:** SQL DELETE de metadata no sería seguro: el backend guarda metadata
+incluso sin partes, y partes con bytes fuera de SQL. Se prepara una variante de
+Storage v1.70.3 en `tools/storage/`: digest y hash de fuente fijados; parche
+solo de abort para sesión de servicio verificada, validación bucket/key/upload,
+sin upsert de prueba. Usuarios conservan autorización original. Backend real
+se limpia antes del DELETE original de upload (cascade partes). Ningún INSERT
+ni UPDATE obtiene bypass SQL por rol/GUC. Deriva/reaplicación del parche falla.
+El limpiador Edge separa el drenaje de objetos; abort/list/ACK fallidos mantienen
+upload en cola y HTTP 503 sin impedir limpiar objetos terminados independientes.
+
+**RED→GREEN real:** imagen original y limpiador de `0a8e794f`: manifest NULL y
+UUID, parte multipart con bytes y PNG privado de 68 bytes, dos retries; persistían
+upload+parte+cola+PNG. Con solo limpiador corregido y Storage original, el PNG
+se elimina y el upload sigue pendiente. Con variante preparada, upload/parte,
+ambas colas y bytes desaparecen; dos retries idempotentes. Nueve rechazos HTTP
+por ruta incorrecta, JWT no-service firmado y service JWT falsificado; INSERT
+service tras tombstone sigue rechazado. Un fallo inyectado del abort conserva
+upload/parte/cola, pero elimina PNG. Fallo **real** de backend readonly mantiene
+1/1/1; al restaurar RW convergen también los mismos fixtures RED y todos los
+pendientes: **0 uploads / 0 partes / 0 cola uploads / 0 cola objetos**, backend
+sin archivos. La última entrada durable que no estaba en el listado de fixture
+se recuperó desde la cola real y se drenó; intento anterior/errores conservados.
+
+**Checks nuevos:** Storage HTTP local real anterior; admin 24 + locks r5 17;
+buckets 17, inventario 78 tablas / 102 rutas / 603 checks; aliases 40;
+56 migraciones del checkout y nueve suites pgTAP **317 PASS** con Storage real;
+Edge **553 PASS / 0 FAIL / 1 ignored** con tipos; fmt/lint dos TS, deploy surface,
+Python compile, diff check y **456 huellas PASS**. Evidencia `~/evidence/1608/r6/`.
+Errores de preparación conservados: dump posterior a app tuvo triggers/policy
+que necesitan private/public; se retiraron del dump solo esos objetos de app
+para reinstalarlos mediante migraciones intactas. pgTAP del contenedor era
+symlink Nix: copia dereferenciada temporal a Homebrew. Bootstrap amplía columnas
+owner de buckets; coverage FK detectó la herencia omitida y se corrigió el guard,
+no el gate. Estado/convergencia verificados antes de detener servicios propios.
+
+**Límites:** la imagen original v1.70.3 no converge el abort de manifest;
+la variante requiere review/decisión de integración del orquestador y activación
+separada. Un proveedor que no admita esa imagen necesita alternativa validada;
+no se promete compatibilidad gestionada ni despliegue automático. No hay
+servicios/cuentas/pagos reales, lectura de .env o secretos instalados, nuevos
+paquetes/dependencias ni cambios nativos. Rust/Nextest/lifecycle/telemetría,
+upgrades históricos y GUI/OAuth/Clerk/Polar/S3 gestionados no se repiten: alcance
+SQL/Edge/Storage local; se conserva evidencia histórica sin presentarla como nueva.
+
 ## #1608 · Ronda 6 local · R5-P3-1 (14/10/2026)
 
 `storage.buckets.owner uuid` y `owner_id text` reciben la barrera común:

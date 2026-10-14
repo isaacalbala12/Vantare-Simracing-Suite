@@ -1,3 +1,91 @@
+## #1608 · Integración de nightly (14/10/2026)
+
+Encargo explícito tras review r3 APTA: nightly → rama de issue, con merge,
+sin rebase ni promoción. Worktree limpio `8fecf307`, fast-forward al remoto
+`812ed8ec` conservado. Merge probado `eca5155f6a51aad620e5af5d4ad51368edcaaa83`,
+padres `812ed8ec` + `origin/nightly@5b781964`, incluye #1611/#1617/#1618.
+Conflicto único `native/services/src/app.rs`: rechazo definitivo conserva
+revocación/ACK y éxito conserva analytics consentido tras transferir derechos.
+Los otros 66 archivos entrantes son idénticos a nightly. Sin política nueva,
+UI nueva, dependencias o tests relajados; B01/B02/B03 permanecen No-Go comercial.
+
+Gates nuevos GREEN: fmt/check/Clippy; Nextest 1697 PASS/12 skips heredados
+(cinco bancos manuales #1611 más los siete previos); lifecycle 18 PASS;
+telemetría 25 PASS/0 skips (ACC 814.150 s); Deno534 PASS/1 ignored PostgREST;
+SQL230 y followup35+F1/F1IP/F2/F3/F4/concurrencia/rollback PASS. Integridad456,
+138 tests scripts GitHub, paneles8, followup4, snippet y guardas de superficie PASS.
+Logs `C:/tmp/1608-merge/`, target propio, cola/dos jobs y QA aislada. Fuente Rust
+sin cambios tras la prueba; cierre posterior documental. Fallos de entorno
+Deno y sonda conservados/corregidos en invocación; cache anterior de Functions
+apartada y conservada fuera del repo, sin editar dependencias. B01 RED separado.
+
+Misma PR #1615 ready a nightly; auto-merge preexistente desactivado reversiblemente
+antes del push porque no se autoriza promoción. HEAD final/push/CI y Plane
+VANTA-16/17/15 Por revisar por escritura/lectura en issue/buzón al publicar;
+no se hereda CI anterior. Informe actualizado. Siguiente: revisión del nuevo
+SHA y decisión del orquestador sobre integración. Sin producción, compras,
+datos reales, QA GUI física, promoción ni release.
+
+## #1608 · Revisión cuentas y pagos (14/10/2026)
+
+Ronda 3 sobre `b5be4303`, rama `vantareapp/isa-1608-cuentas-y-pagos`,
+base nightly `69fa2d65`; misma PR draft [#1615](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1615).
+Entrega para revisión de Plane VANTA-16/17/15; escritura/lectura final tras el push en issue/buzón; GitHub #1608 OPEN/in-review,
+area:plataforma, Project Vantare y sin milestone. Sin merge, producción ni compras.
+
+Review Sol r2 `C:/tmp/ola2/review-1615-sol-r2.md` leída completa. R2-N1
+reproducido: dos RED en AccountPoll detached con candidato previo, con/sin
+identidad restaurada. Arreglo mínimo: identidad distinta o ausente exige
+`revoke_local` antes de guardar la sesión. Sin núcleo se rechaza el cambio y
+se conserva la cuenta anterior; el reintento gestionado exige ACK durable.
+Misma ruta de revocación que logout y rechazo definitivo de OAuth; services
+no escribe el binding del núcleo. Fix `64e9eec5`, tests/código probado `04cfe8df`;
+GREEN focal 49/49. fmt/check/Clippy PASS; Nextest nuevo 1654 PASS/7 exclusiones
+existentes; lifecycle 18 PASS. Quality/retirada 456 huellas, canal 45 y notes 26
+tests PASS; fragmento válido. Logs `C:/tmp/1608-r3/`, fallo inicial de tamaño
+Clippy conservado y resuelto con callback común, sin allow ni tests relajados.
+Login/candidato/ACK con fixture IPC; Owner real/Launch/reinicio Free se valida
+por separado en la regresión existente. Sin promesa de login comercial real.
+No hay consumidor nuevo de borrado: B03 conserva su plan y No-Go.
+Deno/SQL/telemetría conservan evidencia de ronda 2, no repetida porque solo cambia
+services/documentos. HEAD/push/PR/CI finales tras publicar en issue/buzón;
+combinación con nightly actual/#1612/#1523 y aceptación comercial pendientes.
+
+Los arreglos de las rondas anteriores se conservan:
+
+- N1/F08/F02 `d6aec3ca`: auxiliar sin CoreLink no confirma logout ni inicia
+  renovación HTTP; devuelve error y conserva estado para reintento gestionado.
+  Con núcleo exige Invalidate ACK durable antes de retirar candidato/sesión.
+  RED→GREEN con Owner real; Launch v1 perpetua reforzada con RED contrafactual,
+  logout gestionado vía host y reapertura en Free. El almacén del núcleo sigue
+  bajo su único propietario; no se promete revocación autónoma sin él.
+- N2/F02 `381bee42`: HTTP 400 OAuth invalid_grant es Authentication. Refresh
+  automático/explicito de licencia/cuenta/perfil comparte ACK, retirada del
+  candidato y tombstone de sesión. 400 genérico/malformado y 429/503 conservan
+  derechos. RED→GREEN 6 focales, sin userinfo/native-license después del rechazo.
+- N3/F04 `5b5ab24c`: lectura/firma reciben el entorno del servidor; loader filtra
+  grants por entorno sin relajar el normalizador ni perder soporte. RED 409 con
+  production+sandbox → GREEN 67 tests emisor/handler.
+- Atribución `71388711`: binding durable Polar/entorno/customer prevalece sobre
+  external_customer_id contradictorio. RED→GREEN 52 tests procesador.
+
+Evidencia anterior de ronda 2 `C:/tmp/1608-r2/`: fmt/check/Clippy PASS; Deno completo 524 PASS/
+1 ignored PostgREST; SQL desechable 230 GREEN, B01 1 RED; B02 4 RED separados.
+Nextest nuevo 1652 PASS/7 skips; lifecycle 18 PASS; telemetría 25 PASS. Cola y target propio, APPDATA/
+LOCALAPPDATA aislados. Fallos iniciales de fixture/mtime/permisos/lint conservados.
+Sin baselines recalibrados ni tests debilitados. Código de ronda 2 probado `03fb0dea`; cierre posterior documental. SHA/push/CI de esa ronda
+verificados en issue/buzón, sin heredar verde de ba02b093. Nueve fixes de ronda 1 se
+conservan; sus SHAs/evidencia y los planes actuales están en el
+[informe](../../analysis/review-cuentas-pagos-2026-10.md).
+
+No-Go comercial: B01 bearer/reset requiere corte JWT/RLS; B02 refunds
+ordinario/Pro/parcial/agregado requiere ledger SQL/reconciliación; B03 requiere
+retención/tombstones/guardas de datos. Plan por bloqueo con archivos, riesgos,
+pruebas y decisiones de Isaac en el informe. #1523 OPEN/draft `33be660d` leído,
+sin integrar ni trasplantar fragmentos. El fallback external ID sin binding
+sigue bajo ese corte. Coordinar `account.rs` (Exchange) y `app.rs` (refresh/logout)
+con #1612 al integrar. Aceptación comercial/GUI/servidor pendiente de autorización.
+
 # Handoff vivo — Plataforma, cuenta, servicios y distribución
 
 Estado de la base indicada; releer la issue antes de ejecutar.

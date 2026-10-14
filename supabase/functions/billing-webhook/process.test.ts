@@ -806,21 +806,24 @@ Deno.test("processPolarWebhookEvent: subscription order refunds never enter the 
   assertEquals(deps.orderRefundLedger.orders.size, 0);
   assertEquals([...deps.projection.grants.values()][0].status, "active");
 
-  const refund = await processPolarWebhookEvent(
-    {
-      type: "refund.updated",
-      data: succeededRefundData({
-        id: "refund-subscription-cycle",
-        order_id: "order-subscription-cycle",
-      }),
-    },
-    "evt_sub_order_refund",
-    deps,
+  await assertRejects(() =>
+    processPolarWebhookEvent(
+      {
+        type: "refund.updated",
+        data: succeededRefundData({
+          id: "refund-subscription-cycle",
+          order_id: "order-subscription-cycle",
+        }),
+      },
+      "evt_sub_order_refund",
+      deps,
+    )
   );
-  assertEquals(refund, {
-    status: "quarantined",
-    reason: "order_refund_ledger_missing_order",
-  });
+  assertEquals(deps.inbox.snapshot("evt_sub_order_refund").status, "failed");
+  assertEquals(
+    deps.inbox.snapshot("evt_sub_order_refund").lastErrorCode,
+    "order_refund_ledger_missing_order",
+  );
   assertEquals([...deps.projection.grants.values()][0].status, "active");
 });
 
@@ -2270,4 +2273,96 @@ Deno.test("processPolarWebhookEvent: terminal subscription revokes recovery but 
     ),
     true,
   );
+});
+Deno.test("refund delivered before its order retries and revokes without manual replay", async () => {
+  const deps = processDeps(createMockSupabase());
+  const refund = {
+    type: "refund.updated",
+    data: succeededRefundData({ order_id: "order-out-of-order" }),
+  };
+  await assertRejects(() =>
+    processPolarWebhookEvent(refund, "evt_out_of_order_refund", deps)
+  );
+  assertEquals(deps.inbox.snapshot("evt_out_of_order_refund").status, "failed");
+  await processPolarWebhookEvent(
+    { type: "order.paid", data: paidOrderData({ id: "order-out-of-order" }) },
+    "evt_out_of_order_paid",
+    deps,
+  );
+  deps.inbox.makeRetryDue("evt_out_of_order_refund");
+  const result = await processPolarWebhookEvent(
+    refund,
+    "evt_out_of_order_refund",
+    deps,
+  );
+  assertEquals(result, {
+    status: "processed",
+    action: "revoked_lifetime_order",
+  });
+  assertEquals(
+    [...deps.orderRefundLedger.grants.values()].every((grant) =>
+      grant === "revoked"
+    ),
+    true,
+  );
+  assertEquals(deps.inbox.replayAudit.length, 0);
+});
+Deno.test("untrusted user_id metadata cannot attribute a purchase without a server binding", async () => {
+  const mock = createMockSupabase();
+  assertEquals(
+    await resolveUserId(
+      mock.client,
+      { metadata: { user_id: USER_ID } },
+      "sandbox",
+    ),
+    null,
+  );
+  const bound = createMockSupabase({
+    billing_customers: [{
+      user_id: USER_ID,
+      provider: "polar",
+      environment: "sandbox",
+      provider_customer_id: "customer-bound",
+    }],
+  });
+  assertEquals(
+    await resolveUserId(bound.client, {
+      customer_id: "customer-bound",
+      metadata: { user_id: PRODUCTION_USER_ID },
+    }, "sandbox"),
+    USER_ID,
+  );
+});
+
+Deno.test("durable customer binding wins over contradictory external_customer_id", async () => {
+  const mock = createMockSupabase({ billing_customers: [{
+    user_id: USER_ID, provider: "polar", environment: "sandbox", provider_customer_id: "bound-customer",
+  }, {
+    user_id: PRODUCTION_USER_ID, provider: "polar", environment: "production", provider_customer_id: "bound-customer",
+  }] });
+  assertEquals(await resolveUserId(mock.client, {
+    customer_id: "bound-customer", external_customer_id: PRODUCTION_USER_ID,
+  }, "sandbox"), USER_ID);
+  assertEquals(await resolveUserId(mock.client, {
+    customer: { id: "bound-customer", external_id: USER_ID },
+  }, "production"), PRODUCTION_USER_ID);
+});
+
+Deno.test("missing order retry remains bounded and never grants access", async () => {
+  const deps = processDeps(createMockSupabase());
+  const refund = {
+    type: "refund.updated",
+    data: succeededRefundData({ order_id: "order-never-arrives" }),
+  };
+  for (let attempt = 0; attempt < 5; attempt++) {
+    await assertRejects(() =>
+      processPolarWebhookEvent(refund, "evt_order_never_arrives", deps)
+    );
+    deps.inbox.makeRetryDue("evt_order_never_arrives");
+  }
+  assertEquals(
+    await processPolarWebhookEvent(refund, "evt_order_never_arrives", deps),
+    { status: "quarantined", reason: "existing_quarantine" },
+  );
+  assertEquals(deps.orderRefundLedger.grants.size, 0);
 });

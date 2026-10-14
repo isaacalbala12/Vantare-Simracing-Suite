@@ -45,6 +45,8 @@ Páginas: `home`, `workshop`, `studio`, `launcher`, `calendar`, `strategy`,
 `strategy_recalculated`, `report_sent`, `checkout_opened`.
 Widgets: los 18 nombres de `WIDGET_TYPES` en `diagnostics.rs`; mismo catálogo
 validado del emisor existente. No se mandan IDs ni nombres de instancias.
+`checkout_opened` mide la respuesta de checkout preparada, no confirma apertura
+del navegador ni pago. `report_sent` mide una acción con recibo, no informes únicos.
 
 El catálogo web separado admite exclusivamente `download_requested` con
 `platform` en `windows`/`linux`/`macos` (snippet de Marketing). No es un evento

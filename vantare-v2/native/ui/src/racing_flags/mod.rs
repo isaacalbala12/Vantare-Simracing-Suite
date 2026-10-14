@@ -309,8 +309,10 @@ fn pulse(elapsed: Option<Duration>) -> (f32, Wake) {
 impl Settings {
     #[allow(clippy::unused_self)] // Contrato común de demanda por renderer.
     pub fn demand(&self) -> vantare_ipc::Demand {
-        use vantare_ipc::Signal::Flags;
-        crate::demand::signals(33, &[Flags])
+        // Las banderas personales necesitan la identidad del jugador;
+        // Penalties incluye coches/jugador sin pedir sus entradas de conducción.
+        use vantare_ipc::Signal::{Flags, Penalties};
+        crate::demand::signals(33, &[Flags, Penalties])
     }
 }
 

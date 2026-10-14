@@ -16,6 +16,52 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1638 / VANTA-33 — lanzamiento y optimización incorporada
+
+14-oct-2026, worktree `C:/tmp/wt-1638`, rama
+`vantareapp/isa-1638-telemetria-lanzamiento`, base `nightly@79a1ace6`.
+Excepción expresa: seguimiento por orquestador/buzón, sin Plane/Notion ni
+subagentes; push al finalizar, sin PR/merge. Auditoría `98482e92`; implementación
+`7ae70eeb`. [Tabla de cobertura y límites](../../telemetria/cobertura-lanzamiento.md).
+
+REST LMU añade flags locales/personales y paradas, SHM entrega el modelo que
+antes se omitía; energía virtual Hypercar y media estimada por vueltas limpias.
+Identidad slot+etiqueta, TTL, barrera de sesión y calidad conservados. Sin nueva
+dependencia/campo DTO/version. Regresión RED→GREEN sobre captura sanitizada de
+37 coches y fuentes existentes; 3839 fotos LMU47 verifican modelos/paradas.
+Oráculos congelados íntegros; vista de comparación histórica solo retira esos
+dos campos recién entregados, con verificación separada contra originales.
+
+Gates locales: build/fmt/Clippy PASS; Nextest runtime/domain/ipc **630/630**, 5
+skips; lifecycle runtime **13/13**; telemetría **30/30**, 1 skip físico opt-in,
+ACC completo 999,416 s. Integridad/anti-slop **456/456**. Logs `C:/tmp/1638-*.log`.
+Target exclusivo `C:/tmp/target-1638`, cola y jobs=2. No build/QA Hub/storage.
+Smoke físico productivo: **Paused, 37 coches, jugador, 0 avances**. La primera
+prueba de conducción falló; el orquestador corrigió a «sesión válida basta sin
+IA/movimiento», y ese smoke pasa. No acredita conducción/18 diseños/ACC físico.
+
+En seguimiento: el pipe selectivo de un layout con solo Banderas omitía el
+jugador; nueva regresión real de pipe reproduce «—» frente a «DESCALIFICADO».
+Se añade Penalties a la demanda de ese widget para obtener identidad y contador,
+sin alterar contrato IPC ni pedir pedales. GREEN por pipe real; gates UI finales
+**321/321**, 4 skips, Clippy/fmt y Release PASS.
+
+El buzón incorpora fase 4 de #1630/VANTA-20. Arnés QA copiado a esta rama;
+scripts/resultados `C:/tmp/1638-perf`, worktree #1630 intacto. Release y Clippy UI
+PASS; 321 tests UI PASS tras la regresión de demanda. No medidas/lock aún:
+hay otros workers/Hub usando el PC. Se espera exclusividad sin cerrarlos.
+Baseline seis tomas; tres pares por candidato, ruido medido, diez sin mejora
+consecutivos para terminar; cada mejora necesita su commit y antes/después.
+
+DUDA ya comunicada: daños exactos/zonas/reparación, forecast actual 15 min,
+ABS/TC/FFB y tipos/plazos DT/SG no tienen fuente/equivalencia acreditada. Dents
+ordinales no son integridad porcentual; presets weather no son forecast live.
+Entrega global **parcial** hasta resolverlos. Sin push, CI remota, merge,
+promoción ni release en este hito. Siguiente: cerrar demanda de flags, medir
+con el arnés aislado y mantener este estado y el buzón con resultados reales.
+
+### Evidencia anterior de #1606 conservada
+
 #1606 / VANTA-46 Por revisar verificado, ronda 2 por Codex CLI sin subagentes.
 Rama `vantareapp/isa-1606-review-pipeline-telemetria`, base original
 `nightly@69fa2d65`; fetch observa `0807fbd0`, sin incorporar otra entrega.

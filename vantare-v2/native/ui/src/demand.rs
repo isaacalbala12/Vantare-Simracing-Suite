@@ -34,6 +34,45 @@ mod tests {
     use crate::{Kind, Settings};
 
     #[test]
+    fn a_flags_only_layout_receives_the_players_personal_flag_over_the_real_pipe() {
+        use std::{
+            sync::Arc,
+            time::{Duration, Instant},
+        };
+        let mut snapshot = vantare_ipc::snapshot_from_fixture_json(include_str!(
+            "../fixtures/telemetry-real/lmu47.snapshot.json"
+        ))
+        .expect("captura real");
+        let player = snapshot.state.player.expect("jugador de la captura").car;
+        // Controlled positive flag: the real corpus does not certify a DQ.
+        snapshot.state.flags = vantare_domain::Quality::Reliable(vec![vantare_domain::Flag {
+            kind: vantare_domain::FlagKind::Black,
+            scope: vantare_domain::FlagScope::Car(player),
+        }]);
+        let name = format!("vantare-1638-flags-demand-{}", std::process::id());
+        let mut publisher = vantare_ipc::Publisher::new(&name, |_| true).expect("pipe aislado");
+        let demand = Settings::default_for(Kind::RacingFlags).demand();
+        let source = publisher.demand_source();
+        let mut subscriber =
+            vantare_ipc::Subscriber::connect_requested(&name, demand.clone(), |_| true)
+                .expect("lector");
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while source.mask() != demand.mask() {
+            assert!(Instant::now() < deadline, "demanda pendiente");
+            std::thread::yield_now();
+        }
+        publisher.publish(Arc::new(snapshot)).expect("foto");
+        let photo = subscriber
+            .next_photo(Duration::from_secs(1))
+            .expect("entrega selectiva");
+        let vm = vantare_domain::racing_flags::project(
+            &photo.snapshot,
+            vantare_domain::format::Preferences::default(),
+        );
+        assert_eq!(vm.message, "DESCALIFICADO");
+    }
+
+    #[test]
     fn common_boards_and_hidden_inputs_declare_required_signals() {
         let settings: Settings = serde_json::from_str(r#"{"kind":"standings","designSystem":"eficiencia","classScope":"all-classes","showSessionHeader":false,"showSessionFooter":true,"footerSlots":["ambient"],"columns":[{"metricId":"driverName"},{"metricId":"gap","enabled":false}]}"#).expect("ajustes");
         let demand = settings.demand();

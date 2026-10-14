@@ -130,6 +130,10 @@ se continúa con los datos demostrables. No hay dependencia nueva autorizada.
   global de `NONE`, de una lista vacía ni de `GREEN` de un coche. La proyección
   muestra amarilla local y la negra del jugador dice «DESCALIFICADO». El contador
   de sanciones sigue separado: no produce banderas DT/SG ni tipos inventados.
+  La demanda del widget incluye Penalties para recibir la identidad del jugador;
+  sin ella, un layout con solo flags perdía la bandera personal en el pipe
+  selectivo. Regresión sobre LMU47 y pipe real: guion → DESCALIFICADO con bandera
+  positiva controlada. No se modifica el protocolo ni la regla IPC de selección.
 - `Car.vehicle`: etiqueta SHM que se leía pero se omitía del DTO. `pit_stops`:
   contador REST entero 0–10000; ausencia/campo roto no es cero. Un dorsal inválido
   no impide publicar las otras señales de una fila inequívoca.
@@ -207,7 +211,13 @@ live válida aún necesita QA de los 18 widgets/variantes y escenarios positivos
 de flags/daño/sanciones. ACC físico no ejecutado. Estado global del lanzamiento:
 **parcial, no listo para aceptación** mientras esos límites permanezcan.
 
-Gates finales y SHA: se registran al terminar en el handoff vivo y buzón #1638.
+Hito de señales `7ae70eeb`: build/fmt/Clippy PASS, Nextest 630/630 (5 skips),
+lifecycle 13/13, telemetría 30/30 (1 opt-in físico omitido y ejecutado aparte),
+ACC completo 999,416 s. Integridad/anti-slop 456/456; hashes de captura 3/3
+verificados contra disco **y contenido Git**, con textos LF. Demanda de flags:
+RED «—», GREEN «DESCALIFICADO» por pipe; UI 321/321 (4 skips), Clippy/Release PASS.
+QA no acredita toda la apariencia HTML. SHAs posteriores y medidas se registran
+en el handoff vivo y buzón #1638.
 Logs locales `C:/tmp/1638-*.log`, jobs 2 y target aislado. Los cuatro fallos de
 proceso Services en la primera pasada de `--lib` se deben al auxiliar aún sin
 compilar; se conservan en `1638-lib.log`. Services se compiló con `network`

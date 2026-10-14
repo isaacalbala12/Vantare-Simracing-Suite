@@ -43,6 +43,40 @@ fn f7_system_projection_keeps_numbers_and_closed_values_only() {
 }
 
 #[test]
+fn f7_closed_session_metadata_is_independent_of_profile_names() {
+    let mut triage = Triage::default();
+    triage.record(100, true, "report-send");
+    let preview = triage
+        .prepare(
+            "15940000-0000-0000-0000-000000000001",
+            "testers",
+            Input {
+                title: "Local note",
+                body: "Local note",
+                selection: Selection {
+                    items: [Item::Session].into_iter().collect(),
+                },
+                consent: true,
+                private_names: &[
+                    "type".into(),
+                    "fingerprint".into(),
+                    "at".into(),
+                    "ServicesCommandFailure".into(),
+                ],
+            },
+            100,
+        )
+        .expect("structured preparation");
+    let summary = &preview.packet.context["telemetry_summary"];
+    let expected = evidence::error_record(&serde_json::json!({"type":"ServicesCommandFailure"}));
+    assert_eq!(summary["errors"][0]["type"], "ServicesCommandFailure");
+    assert_eq!(summary["errors"][0]["fingerprint"], expected["fingerprint"]);
+    assert_eq!(summary["events"][0]["name"], "ServicesCommandFailure");
+    chrono::DateTime::parse_from_rfc3339(summary["events"][0]["at"].as_str().expect("timestamp"))
+        .expect("valid timestamp");
+}
+
+#[test]
 fn uncertain_submission_retries_exact_payload_and_never_selects_identity() {
     let server=Server::start(vec![
         (200,serde_json::json!({"version":1,"account_id":"15940000-0000-0000-0000-000000000001","data_access_token":"data-fixture","expires_at":160}).to_string()),

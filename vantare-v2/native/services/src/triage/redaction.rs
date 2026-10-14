@@ -32,11 +32,6 @@ pub(super) fn clean(text: &str, private_names: &[String]) -> String {
     clean_depth(text, private_names, 0)
 }
 
-pub(super) fn clean_tree(value: &mut Value, names: &[String]) {
-    *value =
-        tree(std::mem::take(value), names, 0).unwrap_or_else(|| Value::String(REDACTED.into()));
-}
-
 fn private_key(key: &str) -> bool {
     matches!(
         key.to_ascii_lowercase().replace(['_', '-'], "").as_str(),

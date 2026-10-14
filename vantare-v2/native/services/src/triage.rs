@@ -1,6 +1,7 @@
 //! Local preparation and exact retries. The model never runs on the tester's PC.
 mod capture;
 mod evidence;
+#[cfg(test)]
 mod redaction;
 use crate::{
     Error, Result,
@@ -8,6 +9,8 @@ use crate::{
     protocol::triage_document::{Attachment, Item, Packet, Preview, Selection},
 };
 use std::collections::VecDeque;
+
+const LOCAL_TEXT_LABEL: &str = "[contenido retirado por privacidad]";
 
 struct Prepared {
     account: String,
@@ -105,7 +108,7 @@ impl Triage {
             body,
             selection,
             consent,
-            private_names,
+            private_names: _private_names,
         } = input;
         self.prepared = None;
         if !consent || !matches!(channel, "testers" | "nightly") {
@@ -120,12 +123,13 @@ impl Triage {
         }
         let observed = capture::capture(selection.items.contains(&Item::System))?;
         let system = evidence::system(&observed.system);
-        let mut summary = if selection.items.contains(&Item::Session) {
+        let summary = if selection.items.contains(&Item::Session) {
             self.summary(now)
         } else {
             serde_json::Value::Null
         };
-        redaction::clean_tree(&mut summary, private_names);
+        // The summary is already closed and generated here. Profile names
+        // must never rename its keys, tags, timestamps or derived hashes.
         let items: Vec<_> = selection.items.iter().map(|item| item.key()).collect();
         let mut attachments = Vec::new();
         if selection.items.contains(&Item::AppLog) {
@@ -164,8 +168,8 @@ impl Triage {
                 &id[20..32]
             ),
             // F7=C: SQL still requires text columns, but tester prose is local.
-            title: redaction::REMOVED.into(),
-            body: redaction::REMOVED.into(),
+            title: LOCAL_TEXT_LABEL.into(),
+            body: LOCAL_TEXT_LABEL.into(),
             context: serde_json::json!({"app_version":evidence::version(&serde_json::json!(crate::product::VERSION)),"app_channel":channel,
                 "game":observed.game,"game_version":observed.game_version.map(|v|evidence::version(&serde_json::json!(v))),
                 "system":if selection.items.contains(&Item::System) {system} else {serde_json::json!({})},

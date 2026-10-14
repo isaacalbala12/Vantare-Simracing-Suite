@@ -1,3 +1,47 @@
+## #1620 / PR #1621 · textos definitivos v3 (14/10/2026)
+
+Encargo aprobado al worker Codex macOS arm64; base limpia `34e9f4af`, rama
+`vantareapp/isa-1620-precios-polar`, Project Vantare/area:licencias.
+Revisión pendiente del orquestador. Excepción explícita: sin GitHub, Plane,
+Notion, push ni subagentes; el orquestador recoge la rama y actualiza issue/PR,
+estado y CI. No se ha verificado el estado remoto ni se afirma integración.
+
+Aplicadas **A1–A6** de `~/orq/v3/cambios-repo.md`: `productCopy`, tests,
+runbook, fragmento ISA-1620, este handoff y contrato de producto con Founders.
+Nombres y descripciones Markdown copiados literalmente de `textos.json` v3,
+incluido ` · Lanzamiento` y los 14 días para la primera compra de Pro Plus
+(decisión final que completa el ejemplo A1). Garantía de 14 días también en
+Pro, Launch Edition y Founders; no en renovaciones Pro/Pro Plus.
+Launch Edition: Pro de la Stable al cerrar la venta (19-11-2026, 19:00 Madrid),
+más Strategy Planner, Análisis de telemetría e Ingeniero local sin límite
+cuando se lancen, sin fechas; arreglos graves y ninguna otra función nueva.
+Founders añade la lista cerrada aprobada: más widgets, Strategy Planner,
+Análisis de telemetría, Ingeniero local sin límite de uso, estrategia en
+directo y vista de equipo. No se modifican IDs, precios, mapas, capabilities,
+trials, emisión de derechos ni runtime nativo.
+
+No hay textos legales de planes versionados en este repo (B4/garantía legal)
+ni `docs/roadmap/plan.md`; no se recrean. B1–B3 y los legales de la web quedan
+al worker de su repo. Las decisiones de oferta no certifican disponibilidad
+ni amplían por sí mismas el catálogo nativo de #1510: su corte/grants se
+verificarán antes de publicar las funciones, fuera de este encargo de copy.
+
+RED: dos tests fallan por los textos antiguos, sin cambios de implementación.
+GREEN: catálogo **47 PASS/0 FAIL**; suite Deno **590 PASS/0 FAIL/1 ignored**
+(PostgREST no configurado). Tipos, lint (exclusión existente no-import-prefix),
+fmt TS/JSON, superficie deploy, validador del fragmento, quality/retirada
+**456 huellas** y diff PASS. Planes offline sandbox/production comparados
+literalmente con el JSON aprobado: nueve nombres/descripciones coinciden.
+Tests con entorno vacío, caché instalada y sin permiso de red; escrituras
+solo temporales. Rust/UI/telemetría/SQL omitidos: no hay cambios en esas áreas.
+
+Evidencia `~/evidence/1620/textos-definitivos/RESUMEN.md`; HEAD final en
+`~/orq/1620.buzon.md`. Sin servicios reales, secretos, dependencias nuevas,
+push, merge, promoción, release ni deploy. Diff completo revisado.
+Siguiente: el orquestador revisa el commit local y actualiza seguimiento;
+por su vía autorizada aplica/verifica nombres y Markdown reales en sandbox,
+revisando el mismo ID/precio de Launch Edition y la garantía de los planes.
+
 ## #1620 / PR #1621 · lanzamiento sin trial, decisión B (14/10/2026)
 
 Encargo explícito al worker Codex macOS arm64; base limpia `c6739de8`, rama
@@ -48,12 +92,10 @@ Base local `0d03e6c0`, con nightly `953f041c` ya incorporado; rama
 `vantareapp/isa-1620-precios-polar`, Project Vantare/area:licencias.
 Se conserva la omisión autorizada de VANTA-N: trackers/PR/CI al orquestador.
 
-Productos nuevos: Pro/Pro Plus y sufijo ` · Precio de lanzamiento`, con
+Productos nuevos: Pro/Pro Plus y sufijo ` · Lanzamiento`, con
 Markdown del contrato y ciclo visible en el precio. Existentes: PATCH
 idempotente solo name/description, separado de la lógica monetaria previa.
-Launch Edition del mapa: mismo ID/precio/capabilities, nuevo texto que limita
-la licencia a módulos existentes y mejoras, Engineer inicial, Testers sin
-Nightly. Preflight rechaza edición ausente/ambigua/archivada/recurrente.
+Launch Edition del mapa: mismo ID/precio/capabilities; texto según DECISIONES §6m (14-oct). Preflight rechaza edición ausente/ambigua/archivada/recurrente.
 Sin i18n de producto documentado en Polar; ES sin duplicar productos.
 
 RED cuatro tests fallidos por comportamiento → catálogo **42 PASS/0 FAIL**:

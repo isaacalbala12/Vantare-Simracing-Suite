@@ -1,6 +1,6 @@
 # Contrato de producto Vantare
 
-Estado: contrato de producto; lanzamiento reconciliado el 2026-09-14 con la decisión del 2026-09-11. Los requisitos y precios decididos no certifican disponibilidad comercial.
+Estado: contrato de producto; licencias de pago reconciliadas el 2026-10-14 con los textos y decisiones aprobados por Isaac. Los requisitos y precios decididos no certifican disponibilidad comercial.
 
 ## Definición y principios
 
@@ -78,18 +78,21 @@ la primera variante de Engineer. El tono es profesional y cercano.
 - Vantare Crystal con marca Vantare integrada y no eliminable.
 - Overlay Studio limitado a los widgets gratuitos.
 
-### Vantare Pro — 5,99 EUR/mes o 59,90 EUR/año
+### Vantare Pro — 5,99 EUR/mes · 59,90 EUR/año
 
-- Precios normales con IVA incluido; catálogo preparado en ISA-1499/1620,
-  sin certificar venta ni ejecución Polar.
-  Mensual y anual conceden exactamente las mismas capabilities.
-- Toda la aplicación publicada en Stable.
-- Soporte en Discord.
+- Todos los widgets, sin marca, y cada widget nuevo en cuanto sale.
+- Overlay Studio con todos los widgets.
+- Soporte en Discord y por correo.
 
-### Vantare Pro Plus — 9,99 EUR/mes o 99,90 EUR/año
+### Vantare Pro Plus — 9,99 EUR/mes · 99,90 EUR/año
 
 - Todo Pro.
-- Acceso a Nightly/Beta privada, tests, encuestas y previews activas.
+- Versiones Nightly.
+- Reconocimiento como apoyo en Discord.
+
+Precios normales con IVA incluido; catálogo preparado en ISA-1499/1620,
+sin certificar venta ni ejecución Polar. Mensual y anual conceden exactamente
+las mismas capabilities.
 
 Campaña preparada en [#1620](../billing/isa-1620-polar-launch-catalog.md),
 decisión ronda 3 del 14/10/2026: productos propios de lanzamiento Pro
@@ -116,12 +119,17 @@ mientras siga vigente el descuento. El scope solo restringe su aplicación
 inicial; no elimina descuentos heredados al cambiar producto. Configuración
 y verificación real pendientes, según el runbook enlazado.
 
-### Launch Edition — 30 EUR una vez
+### Launch Edition — 30 EUR una vez (solo durante el mes de lanzamiento; cierra el 19-11-2026, 19:00 Madrid)
 
-- Acceso de por vida a los módulos existentes al comprar y sus mejoras.
-- Los módulos completamente nuevos pueden venderse aparte.
-- Acceso a tests/encuestas/builds de testers, pero no Nightly.
-- Engineer se considera incluido en la edición inicial.
+- Lo que tenga Pro en la última versión Stable publicada al cerrar la venta, con licencia perpetua sin conexión.
+- Incluye, cuando se lancen y sin fechas: Strategy Planner, Análisis de telemetría e Ingeniero local sin límite de uso.
+- Arreglos de errores graves; ninguna otra función nueva (en builds de testers aparecen bloqueadas).
+- Acceso a builds Stable y Testers, no Nightly.
+
+### Founders — 50 EUR una vez (desde el cierre de la Launch Edition, durante ~1 año)
+
+- Todo lo de la Launch Edition.
+- Incluye, cuando se lancen y sin fechas: más widgets, Strategy Planner, Análisis de telemetría, Ingeniero local sin límite de uso, estrategia en directo y vista de equipo.
 
 Crystal pierde la marca con cualquier licencia de pago. Relative, Delta y los
 demás widgets no gratuitos requieren licencia.
@@ -135,6 +143,8 @@ demás widgets no gratuitos requieren licencia.
   normal (mensual/anual); sin trial en lanzamiento, creador ni Pro Plus.
 - Tras un fallo existe recuperación técnica máxima de tres días; después se
   baja al modo gratuito.
+- Reembolso de la primera compra durante 14 días en Pro, Pro Plus, Launch Edition
+  y Founders; no cubre las renovaciones de Pro ni de Pro Plus.
 - Cancelar conserva acceso hasta la fecha pagada.
 - Un dispositivo activo, reemplazable tras login.
 - El entitlement offline firmado funciona hasta su expiración real.

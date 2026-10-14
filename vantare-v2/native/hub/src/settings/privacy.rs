@@ -9,6 +9,20 @@ mod cleanup;
 // El Hub aún muestra la interfaz en español; el idioma de widgets es independiente.
 const PRIVACY_POLICY_URL: &str = "https://vantare.app/privacidad";
 
+fn resolve_root(data: &Path, default_hub: &Path, shared: PathBuf) -> PathBuf {
+    if data == default_hub {
+        shared
+    } else {
+        data.to_path_buf()
+    }
+}
+
+pub(super) fn root(data: &Path) -> Result<PathBuf, String> {
+    let base = vantare_ui::paths::default_data_dir().map_err(str::to_owned)?;
+    let shared = vantare_services::diagnostics::data_root().map_err(|error| error.to_string())?;
+    Ok(resolve_root(data, &base.join("VantareNative/hub"), shared))
+}
+
 pub(super) fn policy_link(id: &'static str, focus: &FocusHandle, cx: &gpui::App) -> Stateful<Div> {
     orbit::button(id, "Política de privacidad", cx)
         .track_focus(focus)
@@ -303,6 +317,20 @@ impl super::Hub {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn isolated_settings_never_load_or_discard_the_installed_privacy_queue() {
+        let default_hub = Path::new("C:/fixture/VantareNative/hub");
+        let shared = PathBuf::from("C:/fixture/Vantare/native");
+        let isolated = Path::new("C:/tmp/1612-privacy-qa");
+        assert_eq!(
+            resolve_root(isolated, default_hub, shared.clone()),
+            isolated
+        );
+        assert_eq!(
+            resolve_root(default_hub, default_hub, shared.clone()),
+            shared
+        );
+    }
     #[test]
     fn isa1609_busy_installer_import_keeps_privacy_available() {
         let path = std::env::temp_dir().join(format!(

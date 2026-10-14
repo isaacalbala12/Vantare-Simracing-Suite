@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1612",
+  "type": "feature",
+  "summary": "Perfil privado del piloto en Ajustes: nombre, foto con recorte circular, descripción, país, simuladores y favoritos.",
+  "technicalNotes": [
+    "El perfil y la foto se guardan solo en este PC, protegidos y separados por identidad restaurada. Sincronización apagada por decisión de Isaac: cargar, guardar y pedir sync no invocan red; backend revisado conservado e inerte.",
+    "Las descripciones admiten varias líneas. Cancelar y mover o ampliar el recorte se bloquean mientras se procesa la foto.",
+    "Guardar perfil espera a la primera carga local. Si se edita antes del reply, se conserva esa edición y se cargan los demás campos; cada guardado aplica solo los campos modificados.",
+    "El backend preparado valida el documento nativo, exige CAS y op_id por RPC y protege las fotos frente a reemplazos. Conserva recibos privados entre dispositivos e incluye retirada segura de QA vacío."
+  ],
+  "testing": [
+    "En un portable de QA, guardar una descripción con Enter, reabrir y comprobar que conserva ambas líneas.",
+    "Cambiar solo la foto y comprobar Guardar/Descartar; al procesar el recorte, Cancelar queda deshabilitado y rueda, arrastre y teclado deben conservar la selección enviada.",
+    "Con un perfil completo ya guardado y primera carga retrasada, editar solo nombre o simuladores: Guardar sigue bloqueado hasta cargar. Guardar/reabrir conserva descripción, país y favoritos no editados; un borrado explícito tras cargar sí se guarda.",
+    "Cargar, guardar texto y foto, pedir sync explícita y reabrir: conserva la copia local sin conexiones de perfil, con o sin sesión restaurada."
+  ],
+  "knownLimitations": [
+    "La sincronización de perfil está apagada y pendiente; reactivarla requiere resolver los hallazgos de review r5 y otra decisión de Isaac. Backend solo preparado, sin aplicar.",
+    "La bandera está preparada; su colocación en widgets sigue pendiente del diseño aprobado.",
+    "Gates locales del conjunto con nightly e5c90be5 y #1608; pendientes QA física y login/Storage reales."
+  ]
+}

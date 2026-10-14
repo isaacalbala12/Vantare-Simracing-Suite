@@ -24,6 +24,7 @@ pub enum Error {
     EvidencePending,
     TooLarge,
     Conflict,
+    PilotRejected,
     Version,
     NotFound,
 }
@@ -50,6 +51,7 @@ impl fmt::Display for Error {
             Self::EvidencePending => "capturas en validación: el borrador y el intento se conservan; reintenta el envío cuando el servidor termine",
             Self::TooLarge => "datos por encima del límite",
             Self::Conflict => "conflicto de revisión",
+            Self::PilotRejected => "perfil pendiente de corrección: revisa los datos y vuelve a guardar",
             Self::Version => "actualización requerida",
             Self::NotFound => "sin datos guardados",
         })

@@ -9,6 +9,7 @@ use crate::{
 };
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
+mod pilot;
 
 pub struct App {
     core: Option<vantare_ipc::control::CoreLink>,
@@ -24,6 +25,8 @@ pub struct App {
     data_session: Option<crate::bridge::DataSession>,
     report_store: Option<Store>,
     reports: Option<crate::report::Reports>,
+    pilot: Option<crate::pilot::Local>,
+    pilot_identity: Option<crate::account::Identity>,
 }
 
 impl App {
@@ -42,6 +45,8 @@ impl App {
             data_session: None,
             report_store: None,
             reports: None,
+            pilot: None,
+            pilot_identity: None,
         }
     }
 
@@ -413,6 +418,9 @@ impl App {
 
     fn execute(&mut self, command: Command) -> Result<Reply> {
         match command {
+            Command::PilotLoad | Command::PilotSave { .. } | Command::PilotSync => {
+                return self.pilot_reply(command);
+            }
             Command::Status => {
                 return Ok(Reply::Status {
                     account_configured: self.config.native_account_configured(),
@@ -1357,7 +1365,7 @@ mod tests {
         }
     }
 
-    enum CoreStep {
+    pub(super) enum CoreStep {
         #[cfg(windows)]
         Install,
         Invalidate,
@@ -1366,7 +1374,7 @@ mod tests {
         RejectInvalidate,
     }
 
-    fn core_fixture(
+    pub(super) fn core_fixture(
         device: String,
         keys: &'static str,
         steps: Vec<CoreStep>,

@@ -1,6 +1,7 @@
 # Ajustes — feedback del 9 de octubre (#1496)
 
-Siete pestañas en la topbar. General usa Interfaz, Inicio, Avisos y Widgets;
+Ocho pestañas en la topbar. Cuenta abre el perfil del piloto (#1612,
+[pilot](../pilot/README.md)). General usa Interfaz, Inicio, Avisos y Widgets;
 Apariencia ofrece Sistema/Claro/Oscuro y nueve temas con orbes claro/oscuro.
 El esquema, tema, contraste, opacidad y fuentes conservan el guardado atómico
 con detección de conflictos. Cada control tiene foco independiente; los

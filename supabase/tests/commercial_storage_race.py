@@ -108,10 +108,17 @@ def run_storage_multipart(bin_path, conn, env, run, out):
                         blocked=run('psql',*conn,'-c',f"select exists(select 1 from pg_stat_activity where application_name='{case}' and {pid}=any(pg_blocking_pids(pid)))").strip()=='t'
                         if blocked: break
                         time.sleep(.01) # Observe PG lock state; never schedule the race by time.
-                    check(blocked,case+' service write waits for deletion transaction')
+                    early_retry = False
+                    if not blocked and writer.poll() is not None:
+                        early_stdout,early_stderr=writer.communicate(timeout=30)
+                        early_retry='40001' in early_stderr.decode()
+                    check(blocked or early_retry,case+' final write waits or aborts with typed 40001 while deletion is pending')
                     holder.stdin.write(b'commit;\n');holder.stdin.close();holder.wait(timeout=30)
                     check(holder.returncode==0,case+' deletion committed')
                     stdout,stderr=writer.communicate(timeout=30);stderr=stderr.decode();log.append(stdout.decode()+stderr)
+                    if early_retry:
+                        retried=write(statement);stderr=retried.stderr;writer.returncode=retried.returncode
+                        log.append('Full service persistence transaction retried after deletion commit: '+stderr)
                     check(writer.returncode!=0 and '28000' in stderr,case+' pending-authorized write rejected after tombstone')
                 finally:
                     for proc in (holder,writer):

@@ -153,3 +153,10 @@ CASES += [
  ('inbox-subscription', "select * from public.billing_receive_webhook('polar','sandbox','new-{case}','subscription.updated','{h}','{{\"data\":{{\"id\":\"subscription-{case}\"}}}}')"),
  ('inbox-nested-customer', "select * from public.billing_receive_webhook('polar','sandbox','new-{case}','order.paid','{h}','{{\"data\":{{\"customer\":{{\"id\":\"{case}\"}}}}}}')"),
 ]
+
+# R5: service persistence roots not present in the old objects/FK closure.
+CASES += [
+ ('storage-multipart-upload', "insert into storage.s3_multipart_uploads(id,upload_signature,bucket_id,key,version,owner_id) values('{case}','fixture','testing-center-evidence','{case}','fixture','{a}')"),
+ ('storage-multipart-part', "insert into storage.s3_multipart_uploads_parts(upload_id,part_number,bucket_id,key,etag,version,owner_id) values('{case}',1,'testing-center-evidence','{case}','fixture','fixture','{a}')"),
+ ('storage-abort-queue', "insert into private.clerk_deleted_uploads(issuer,subject,bucket_id,name,upload_id) values('{issuer}','{subject}','testing-center-evidence','{case}','{case}')"),
+]

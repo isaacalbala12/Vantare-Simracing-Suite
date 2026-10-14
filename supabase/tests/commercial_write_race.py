@@ -78,6 +78,8 @@ end $$;
                 sql("insert into public.billing_subscriptions(user_id,provider,provider_subscription_id,status,environment) values('{a}','polar','subscription-{case}','active','sandbox')".format(**values))
             if name == 'inbox-nested-customer':
                 sql("insert into private.clerk_deleted_objects(issuer,subject,bucket_id,name) values('{issuer}','{subject}','testing-center-evidence','cleanup-slot')".format(**values))
+            if name == 'storage-multipart-part':
+                sql("insert into storage.s3_multipart_uploads(id,upload_signature,bucket_id,key,version,owner_id) values('{case}','fixture','testing-center-evidence','{case}','fixture','{a}')".format(**values))
             # The actual write must be valid while live, before testing its race.
             claims = {'iss': values['issuer'], 'sub': values['subject'], 'role': 'authenticated',
                 'sid': 'sess_fixture', 'azp': 'https://app.invalid'}
@@ -119,7 +121,13 @@ end $$;
                         barrier = True
                         break
                     time.sleep(.01)  # Poll the observed lock, never schedule correctness by sleep.
-                check(barrier, name + ': concurrent write waits on deletion transaction')
+                early_retry = False
+                if not barrier and writer.poll() is not None:
+                    # UPDATE/DELETE already own a tuple: the fallback must abort,
+                    # never wait for UUID. Only this exact typed retry is allowed.
+                    early_stdout, early_stderr = writer.communicate(timeout=20)
+                    early_retry = sqlstate(early_stderr.decode()) == '40001'
+                check(barrier or early_retry, name + ': waits before rows or rejects misordered DML with 40001')
                 holder.stdin.write(b"commit; select 'DELETE_COMMITTED';\n")
                 holder.stdin.flush()
                 read_marker(holder, 'DELETE_COMMITTED')
@@ -129,12 +137,19 @@ end $$;
                 if holder.returncode:
                     raise RuntimeError(err.decode())
                 stdout, stderr = writer.communicate(timeout=20)
+                if early_retry:
+                    retried = subprocess.run([str(bin_path/'psql'), *quiet, '-c',
+                        'begin; '+command+' commit;'],env=env,capture_output=True,timeout=20)
+                    stdout, stderr = retried.stdout, retried.stderr
+                    writer.returncode = retried.returncode
+                    logs.append(name + ': full transaction retried after confirmed deletion')
                 logs.append(name + ': exit=' + str(writer.returncode) + ' output=' + stdout.decode().strip()
                     + ' error=' + stderr.decode().strip())
                 # Revoked financial projections and cascaded-away rows may succeed.
                 # Every other route must reject with the typed tombstone error.
                 safe_success = name in ('grant', 'entitlement', 'operational', 'followup')
-                check((writer.returncode == 0 and safe_success) or
+                tombstone_receipt = b'|account_deleted|t' in stdout
+                check((writer.returncode == 0 and (safe_success or tombstone_receipt)) or
                     (writer.returncode != 0 and sqlstate(stderr.decode()) == '28000'),
                     name + ': tombstone rejection or safe revoked/no-row result')
                 state = sql("""
@@ -149,8 +164,9 @@ select count(*)=0 from public.testing_contributions where account_id='{a}';
 select count(*)=0 from public.testing_answers where account_id='{a}';
 select count(*)=0 from storage.objects where owner_id='{a}' or name='v1/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/{batch}/{evidence}';
 select count(*)=0 from public.testing_center_report_payloads where report_id='report-{case}' and action_text<>'Deleted';
+select count(*)=0 from public.billing_webhook_inbox where provider_event_id='new-{case}';
 """.format(**values)).splitlines()
-                check(state == ['t'] * 11, name + ': no restored PII/device/access/content/object')
+                check(state == ['t'] * 12, name + ': no restored PII/device/access/content/object')
                 retry = sql(deletion)
                 check(retry == 'unchanged', name + ': duplicate deletion remains idempotent')
             finally:
@@ -163,7 +179,7 @@ select count(*)=0 from public.testing_center_report_payloads where report_id='re
         missing = sql("""
 with recursive expected(rel) as (
  select unnest(array['public.profiles'::regclass,'public.operational_access_audit',
- 'public.operational_legacy_grant_retirements','storage.objects','private.testing_report_attempts',
+ 'public.operational_legacy_grant_retirements','storage.objects','storage.s3_multipart_uploads','private.testing_report_attempts',
  'public.billing_webhook_inbox','public.testing_center_idempotency','public.testing_center_audit',
  'public.admin_audit_log']::regclass[])::oid
  union select c.conrelid from expected e join pg_constraint c on c.confrelid=e.rel

@@ -1,3 +1,27 @@
+## #1608 · Ronda 5 local · R4-P2-2 (14/10/2026)
+
+14 RPC de Billing/operacional adquieren todos sus UUID ordenados antes de
+filas; incluye propietario previo y solicitado, batches y barrido de expiración.
+La recolección checkout queda acotada a su cuenta; el barrido omite tombstones.
+PostgreSQL puede tomar la fila antes de un BEFORE ROW: la barrera de DML usa
+try-lock y aborta con 40001; nunca espera el UUID mientras conserva esa fila.
+El contrato del caller es siempre UUID→fila, conjunto completo en orden UUID;
+40001 exige rollback y reintento de toda la transacción. INSERT aplica la misma
+regla porque puede seguir a escrituras previas de varios UUID. Sin bypass.
+RED 40P01 exacto (prefijo operacional real) → GREEN writer-first/delete-first,
+DML fila primero rechazado con 40001 y dos UUID en orden inverso, sin efectos
+parciales y con reintento completo. 97 rutas/577 checks de escrituras PASS,
+317 pgTAP y 40 aliases PASS. Evidencia `~/evidence/1608-r5/locks-*-final`,
+`sql-full-3`, `writers-green-2`, `multipart-green-2`.
+API Storage HTTP real: creación multipart y abort con owner UUID PASS usando
+solo claves sintéticas locales. Abort owner NULL con manifest NO PASA:
+canUpload hace upsert antes de abort y la barrera lo rechaza tras tombstone;
+upload+cola permanecen (1+1), sin ACK. Se requiere revisión del servicio Storage
+para permitir abort sin preflight de INSERT, sin abrir un bypass SQL. Este
+límite impide afirmar limpieza multipart completa o cierre comercial total.
+El orquestador revisa el diff y mantiene #1608/#1622/VANTA-16/17/15. Sin estado
+remoto nuevo, push, merge, promoción, deploy, release ni producción.
+
 ## #1608 · Ronda 5 local · R4-P1-2 (14/10/2026)
 
 Inbox verifica tombstone bajo UUID antes de escribir, relee enlaces y devuelve

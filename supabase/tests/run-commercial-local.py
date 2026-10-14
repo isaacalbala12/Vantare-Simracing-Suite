@@ -2,6 +2,7 @@
 import argparse, os, pathlib, socket, subprocess, tempfile, json, time, urllib.request, urllib.error
 from commercial_tombstone_race import run_tombstone_race
 from commercial_write_race import run_write_races
+from commercial_lock_order import run_lock_order
 from commercial_storage_race import run_storage_owners, run_storage_multipart
 parser=argparse.ArgumentParser()
 parser.add_argument('--pg-bin', required=True)
@@ -18,6 +19,8 @@ parser.add_argument('--before-write-barrier', action='store_true', help='RED con
 parser.add_argument('--storage-schema', help='pg_dump --schema-only --no-owner --no-acl -n storage from a disposable Supabase stack')
 parser.add_argument('--storage-owners', action='store_true', help='Real Storage owner text/UUID/manifest regression')
 parser.add_argument('--storage-multipart', action='store_true', help='Two-transaction multipart persistence and cleanup queue')
+parser.add_argument('--lock-order', action='store_true', help='Real writer-first and deletion-first operational RPC races')
+parser.add_argument('--before-lock-order', action='store_true', help='RED: omit only r5 UUID-before-rows migration')
 args=parser.parse_args()
 ROOT=pathlib.Path(__file__).resolve().parents[2]
 OUT=pathlib.Path(args.output).resolve(); OUT.mkdir(parents=True,exist_ok=True)
@@ -37,7 +40,7 @@ with tempfile.TemporaryDirectory(prefix='vantare-commercial-') as tmp:
  try:
   runner=(ROOT/'supabase/tests/run-supabase-hardening-postgres.ps1').read_text()
   bootstrap=runner.split("Write-Utf8NoBom $bootstrap @'",1)[1].split("'@",1)[0]
-  if args.writers or args.concurrency or args.storage_owners or args.storage_multipart:
+  if args.writers or args.concurrency or args.storage_owners or args.storage_multipart or args.lock_order:
    bootstrap=bootstrap.replace('create extension if not exists pgtap;', '')
   # Supabase normally provisions service_role table privileges via defaults.
   # Reproduce that contract in plain PG; each migration still revokes its ACLs.
@@ -56,6 +59,7 @@ $$;
   if args.storage_schema:
    run('psql',*conn,'-c',"create role supabase_storage_admin noinherit bypassrls; grant usage on schema storage to supabase_storage_admin; grant all on all tables in schema storage to supabase_storage_admin;")
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
+   if args.before_lock_order and 'uuid_before_rows' in m.name: continue
    if args.before_write_barrier and 'account_write_barrier' in m.name: continue
    if args.baseline and ('isa_1608_commercial' in m.name or 'account_write_barrier' in m.name): continue
    if args.before_b01 and 'commercial_b01' in m.name: continue
@@ -81,6 +85,9 @@ $$;
    (OUT/'upgrade-results.log').write_text(result)
    if 'not ok ' in result or '# Looks like' in result: raise RuntimeError(result)
    print(args.upgrade+' historical upgrade PASS',flush=True)
+   raise SystemExit(0)
+  if args.lock_order:
+   run_lock_order(BIN,conn,ENV,run,OUT)
    raise SystemExit(0)
   if args.storage_multipart:
    if not args.storage_schema: raise ValueError('--storage-schema from local Storage required')

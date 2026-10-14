@@ -6,7 +6,15 @@ preparación OAuth y la red de todos los comandos de perfil. RED→GREEN adicion
 de cargar/guardar/PilotSync/reabrir sin conexiones, con/sin identidad restaurada,
 en `C:/tmp/1612-local-sync-off`. La evidencia remota descrita abajo corresponde
 a preparación inerte; no acredita una sync activa ni modifica esa decisión.
-Validación actual `414474ca` con nightly e5c90be5/#1608: fmt/check/Clippy PASS,
+Ronda 7: P2-1 de primera carga local corregido en `376181f2`. Guardar espera a
+la carga (también tras error/logout/Descartar temprano); llegada y guardado mezclan
+solo campos editados. RED→GREEN nombre y simuladores con editor GPUI oculto y
+Local protegido/reapertura. fmt/check/Clippy PASS; Nextest1751/1751 (12 skips),
+lifecycle18/18, huellas456 y fragmento PASS. TMP/TEMP exclusivos tras reproducir
+un fallo heredado de aislamiento de Strategy, registrado en #1623 sin arreglarlo aquí.
+Evidencia `C:/tmp/ola7/1612/report.md`; sin telemetría/SQL nuevos ni QA física completa.
+
+Validación anterior `414474ca` con nightly e5c90be5/#1608: fmt/check/Clippy PASS,
 Nextest 1747/1747 (12 skips), lifecycle 18/18, telemetría 25/25 e integridad 456 PASS.
 QA física y las capturas anteriores conservan sus límites; no hay nuevas capturas.
 

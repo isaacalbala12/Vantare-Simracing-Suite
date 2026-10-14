@@ -92,6 +92,36 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## #1612 / VANTA-9 · Perfil privado y Ajustes (14/10/2026)
 
+Ronda 7 terminada en rama, fix/código validado `376181f2885f032126264a2f27584d0466dca9be`,
+base integrada `e5c90be5`, PR draft #1619. Review R6 completa: P2-1 local
+(editar durante primera carga conservaba controles vacíos y borraba campos guardados).
+RED exacto nombre/simuladores; GREEN con editor GPUI real, Local protegido y reapertura,
+sin sleeps. Guardar bloqueado hasta primera carga, incluso tras error/logout/Descartar;
+mezcla por campo conserva datos no tocados y respeta borrados explícitos.
+Caso adicional Descartar antes de cargar también RED→GREEN; conserva el bloqueo inicial.
+Sin P3 nuevos en R6; P2/P3 de R5 siguen inertes y pendientes antes de reactivar sync.
+
+Gates de `376181f2`: fmt/check/Clippy -D warnings PASS; Nextest **1751/1751**,
+12 skips existentes (paridad 96,547 s); lifecycle **18/18**. QA con TMP/TEMP
+exclusivos `C:/tmp/1612-r7-final-tests`, target propio native/target/gates, cola/dos jobs.
+Se conserva el fallo de la primera pasada final en Strategy: fixture por PID sin
+limpieza colisiona con un destino anterior. Reproducción controlada exit101 y
+caso aislado PASS; [#1623](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1623)
+registra el hallazgo, sin cambiar Strategy ni debilitar tests. La primera pasada
+amplia anterior sobre `95aee8a2` también pasó 1751/1751 y lifecycle18.
+Quality/456 huellas y fragmento PASS. Telemetría/SQL/Deno omitidos en r7:
+solo Hub/documentos, sin runtime/domain/IPC/testdata ni SQL.
+
+Evidencia `C:/tmp/ola7/1612/report.md`, RED/GREEN y fallos iniciales conservados.
+Cierre posterior solo documental; HEAD/push/CI y Plane Por revisar verificados
+al publicar en issue/PR y FIN del buzón. Sin merge/promoción/release/producción,
+dependencias nuevas, subagentes, capturas nuevas ni instalación/datos reales tocados.
+Siguiente: review del nuevo SHA y QA física del recorrido worker/IPC con primera
+carga retenida, guardar/reabrir y Descartar. La ventana oculta prueba editor y
+persistencia, no toda la app instalada. Sync sigue APAGADA.
+
+La decisión de perfil local y evidencia de la entrega anterior se conservan debajo.
+
 Decisión recibida de Isaac el 14/10: entrega de perfil guardado en el PC y
 arreglos de Ajustes; **sync de perfil apagada y pendiente**. Un único interruptor
 `PILOT_SYNC_ENABLED = false` en `native/services/src/app/pilot.rs` corta tanto

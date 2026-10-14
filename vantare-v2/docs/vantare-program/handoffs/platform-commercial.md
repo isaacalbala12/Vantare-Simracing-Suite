@@ -8,7 +8,10 @@ PR #1621 draft a nightly, review `C:/tmp/ola2/review-1621-sol.md` leída entera.
 P1-1: dos regresiones RED (forever aceptado y reconciliación incorrecta), luego
 GREEN. Creador repite solo dos meses; lanzamiento sin creador conserva forever.
 Drift de duración falla antes de mutar. Logs `C:/tmp/ola2/1620-r2-P1-1-*.log`.
-Pendientes P2-1, P2-2 y P2-3; sin llamadas Polar, secretos, deploy ni promoción.
+P2-1: regresión RED por calendario ausente → GREEN; tabla/plan/resultado con
+base sobre lo pagado, 30 % mes 1, 10 % meses 2–12 mientras siga suscrito,
+renegociar después. Sin tasa única ambigua ni payouts. Log P2-1 separado.
+Pendientes P2-2 y P2-3; sin llamadas Polar, secretos, deploy ni promoción.
 Falta identificador Plane VANTA-N en el encargo/#1620; se avisa en el buzón al
 orquestador sin crear tarea ni reutilizar el tracker Notion histórico.
 
@@ -23,7 +26,7 @@ regla vigente del trial anual de Pro. Checkout fuente dirty no modificado.
 Tabla Pro 5,99/59,90 y lanzamiento 3,99/39,90; Plus 9,99/99,90 y
 6,99/69,90. Anuales de lanzamiento pendientes con gate explícito. Código de
 creador por plan: descuento fijo compuesto equivalente a 20 % extra sobre
-lanzamiento (3,19/31,92/5,59/55,92); comisión 30 % solo dato contable.
+lanzamiento (3,19/31,92/5,59/55,92); duración y comisión corregidas en ronda 2.
 Script Deno idempotente por API, offline por defecto, duplicados/paginación y
 drift rechazados, entorno/organización validados, producción con confirmación.
 Productos nuevos draft; mapa generado conserva IDs/precios históricos y trials

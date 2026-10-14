@@ -308,7 +308,7 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
     map,
     offers,
     pending,
-    commission_basis_points: PRICES.creator_commission_basis_points,
+    creator_commission: PRICES.creator_commission,
   };
 }
 

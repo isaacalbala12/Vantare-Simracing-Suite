@@ -3,7 +3,16 @@
   "currency": "eur",
   "tax_behavior": "inclusive",
   "creator_discount_basis_points": 2000,
-  "creator_commission_basis_points": 3000,
+  "creator_commission": {
+    "basis": "amount_paid_by_customer",
+    "requires_active_subscription": true,
+    "automatic_payouts": false,
+    "schedule": [
+      { "from_month": 1, "to_month": 1, "basis_points": 3000 },
+      { "from_month": 2, "to_month": 12, "basis_points": 1000 }
+    ],
+    "after_month_12": "renegotiate"
+  },
   "plans": [
     {
       "key": "pro_monthly",

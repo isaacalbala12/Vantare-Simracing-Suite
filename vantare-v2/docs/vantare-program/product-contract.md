@@ -93,8 +93,10 @@ la primera variante de Engineer. El tono es profesional y cercano.
 
 Campaña preparada en [#1620](../billing/isa-1620-polar-launch-catalog.md):
 Pro 3,99 EUR/mes y Plus 6,99 EUR/mes; anuales 39,90/69,90 EUR pendientes de
-confirmación. Creador: 20 % adicional sobre lanzamiento; comisión 30 % como
-dato contable. No implica campaña activa ni integración del descuento en el
+confirmación. Creador: 20 % adicional sobre lanzamiento solo los dos primeros
+meses (3,19/5,59 EUR), después precio normal. Comisión contable sobre lo pagado:
+30 % mes 1, 10 % meses 2–12 mientras siga suscrito; después se renegocia.
+No implica campaña activa ni integración del descuento en el
 checkout de la app. Mensual y anual de Plus comparten capabilities y canales.
 
 ### Launch Edition — 30 EUR una vez

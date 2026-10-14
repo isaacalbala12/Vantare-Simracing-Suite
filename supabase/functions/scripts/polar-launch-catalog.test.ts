@@ -6,6 +6,7 @@ import {
   creatorPrice,
   type Http,
   parseArgs,
+  planOffline,
   PRICES,
   type Resource,
   syncCatalog,
@@ -34,7 +35,6 @@ Deno.test("launch table: issue #1620 and creator extra 20% rounded to cents", ()
       ["pro_plus_annual", 9990, 6990, 5592, false],
     ],
   );
-  assertEquals(PRICES.creator_commission_basis_points, 3000);
 });
 
 function fake() {
@@ -130,6 +130,29 @@ Deno.test("P1-1: unlimited or wrong-length creator discount fails before mutatio
     await assertRejects(() => syncCatalog(f.http, first, options));
     assertEquals(f.writes.length, writes);
   }
+});
+
+Deno.test("P2-1: accounting output includes both commission periods on the amount paid", async () => {
+  const expected = {
+    basis: "amount_paid_by_customer",
+    requires_active_subscription: true,
+    automatic_payouts: false,
+    schedule: [
+      { from_month: 1, to_month: 1, basis_points: 3000 },
+      { from_month: 2, to_month: 12, basis_points: 1000 },
+    ],
+    after_month_12: "renegotiate",
+  };
+  const f = fake();
+  const result = await syncCatalog(f.http, sandbox, options);
+  for (const output of [PRICES, planOffline("ISAAC"), result]) {
+    const accounting = output as unknown as Record<string, unknown>;
+    assertEquals(accounting.creator_commission, expected);
+    assertEquals(accounting.creator_commission_basis_points, undefined);
+    assertEquals(accounting.commission_basis_points, undefined);
+  }
+  // Accounting metadata never enters products or discount requests.
+  assertEquals(JSON.stringify(f.writes).includes("commission"), false);
 });
 
 Deno.test("catalog: complete mapping, inherited IDs/trials preserved, rerun has zero writes", async () => {

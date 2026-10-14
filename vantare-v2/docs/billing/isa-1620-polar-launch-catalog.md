@@ -46,13 +46,22 @@ producto y concede ya el total combinado. Un código único transversal requerir
 otra estrategia: los importes relativos difieren entre Pro y Plus. Añadir otro
 creador requiere otra ejecución con su prefijo; se conservan los anteriores.
 
-La comisión del **30 %** es solo dato contable (`creator_commission_basis_points`)
-en la tabla y resultado. No se crean payouts, cuentas afiliadas, split de cobros
-ni gastos. La base de liquidación, IVA, comisiones Polar, refunds y atribución
-deben acordarse por separado; el dato no demuestra soporte automático de Polar.
-Si se calcula un 30 % sobre lo efectivamente cobrado, `0,8 × 0,7 = 0,56`:
-queda 56 % del lanzamiento antes de impuestos y fees (reducción combinada 44 %,
-no una suma de porcentajes). No se implementa esa liquidación.
+La comisión es solo dato contable en `creator_commission`, tanto en la tabla
+como en el plan offline y el resultado. Su base confirmada es **lo que paga el
+cliente**, mientras siga suscrito:
+
+| Mes de suscripción | Comisión sobre lo pagado |
+|---|---:|
+| 1 | 30 % |
+| 2–12 | 10 % |
+| Después de 12 | Renegociar; no hay tasa acordada |
+
+No se crean payouts, cuentas afiliadas, split de cobros ni gastos. No se exporta
+una tasa única de 30 % que pueda confundirse con la de renovaciones. El mes 1,
+`0,8 × 0,7 = 0,56`: queda 56 % del lanzamiento antes de impuestos y fees
+(reducción combinada 44 %). El mes 2 queda 72 %; después termina el descuento
+de creador y la comisión es 10 % sobre el precio normal efectivamente pagado.
+La atribución y el tratamiento de refunds siguen sin liquidación automática.
 
 ## Qué hace el script y qué conserva
 

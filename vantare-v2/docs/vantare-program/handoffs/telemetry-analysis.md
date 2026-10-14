@@ -13,6 +13,19 @@ Issue abierta [#1429](https://github.com/isaacalbala12/Vantare-Simracing-Suite/i
 
 ## 3. Estado real y canal
 
+#1606 / VANTA-46 Por revisar verificado, ronda 2, mismo PR draft #1616 a nightly:
+Sol confirma F5 parcial en gráficos. N3 reproduce seq1 fiable, seq2 omitida
+y seq3 fiable dentro de un chunk: DuckDB real→plot-page→Reader→proyección
+une ambos extremos (RED segmentos 1/1). Arreglo mínimo en Reader: aislar los
+puntos de chunks marcados gap, porque v1 no localiza el corte. Mantiene datos
+fiables, formato y límite de 1.000.000 incluyendo separadores; no cambia pintor
+ni diseño. Hub analysis 11/11 y Core/feed/codec 9/9 GREEN; fmt/check/Clippy, Nextest 1660/1660 (7 skips) y lifecycle 18/18 PASS; telemetría 25/25 PASS, 0 skips (ACC completo 901,336 s).
+Código probado `5a399f4b`; N1 `bb377104`, N2 `93230224`, N3 `5a399f4b`.
+Push/PR draft y Project Vantare In Review verificados; HEAD/CI finales en #1606 y buzón.
+La curva puede quedar como puntos aislados en todo chunk con gap, incluidos
+chunks posteriores si el flag sigue activo. No se inventa continuidad.
+Logs C:/tmp/1606-evidence/r2-*. Sin datos reales ni merge/promoción/release.
+
 #1584 (2026-10-13), rama `vantareapp/isa-1584-duckdb-locked-windows` desde
 `origin/nightly@707514e296bdd3dcc07e14bfffa92b4171fa9749`: `open_error` reconoce
 «being used by another process» como `locked`. El binding DuckDB 1.10505.0
@@ -57,8 +70,12 @@ Evidencia registrada en la base, no reejecutada por esta entrega documental: int
 
 ## 9. Siguiente acción exacta
 
+Revisar ronda 2 de #1606 publicada en PR draft #1616; revisión del orquestador,
+CI remota completa y QA física pendientes. N3 conserva puntos aislados en chunks
+con gap y no modifica el diseño ni el codec v1.
+
 Reconciliar #1429 con los criterios de fase 4: comprobar recording explícito, persistencia/reapertura/ACK, huecos, paginación, cancelación y lectura read-only en la build nativa autorizada. Pasar gates workspace/lifecycle y telemetría si cambia runtime/domain/IPC/testdata; documentar prueba real pendiente y aceptación en la issue. No reiniciar TA-03E/TA-03F Go a partir del handoff anterior.
 
 ## 10. Última actualización
 
-2026-10-13 · GitHub #1584 · Codex. Corrección mínima del diagnóstico Windows y regresión antes/después; gates locales y límites en §3. PR/SHA/CI se registran en la issue y el buzón. El diario y los avances por ronda se escriben en la issue; aquí se sustituye el estado.
+2026-10-14 · GitHub #1606 / Plane VANTA-46 · Codex CLI. N3 RED real y GREEN, gates locales completos verdes, ronda 2 publicada para revisión y trackers verificados. #1584 se conserva como evidencia de la base; límites en §3. PR/SHA/CI se registran en la issue y el buzón. El diario y los avances por ronda se escriben en la issue; aquí se sustituye el estado.

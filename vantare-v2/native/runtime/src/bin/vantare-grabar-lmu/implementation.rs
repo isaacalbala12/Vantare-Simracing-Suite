@@ -15,7 +15,8 @@
 //!
 //! El replay actual ignora `responses` y `sourceEvents`: reproduce las rondas
 //! completas y SHM, pero necesita ampliarse para reproducir fallos/desconexiones
-//! y capturas sin SHM o que crucen medianoche. Aquí no se inventan datos para ello.
+//! y capturas sin SHM. El lector UTC sí admite cruzar medianoche; no inventa
+//! lecturas ni conexiones que no estén en los eventos grabados.
 
 use std::fs::{self, File, OpenOptions};
 use std::io::{self, BufReader, BufWriter, Read, Write};

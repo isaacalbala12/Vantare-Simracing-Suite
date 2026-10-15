@@ -543,6 +543,7 @@ fn run_jobs(jobs: Vec<Job>) -> Result<(), String> {
     gpui_platform::application().run(move |cx: &mut App| {
         if !app::init(cx) {
             *flag.borrow_mut() = Some("inicializar UI".into());
+            cx.quit();
             return;
         }
         let view = cx.new(|_| Overlay::new(jobs[0].settings.kind(), jobs[0].prefs));

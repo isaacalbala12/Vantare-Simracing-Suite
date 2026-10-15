@@ -11,5 +11,5 @@ $ErrorActionPreference = 'Stop'
 $manifest = Join-Path $EvidenceDirectory 'capture-batch.json'
 $entries = @($Scene | ForEach-Object { @{scene=$_; appearance=$Appearance; size=$Size; output=[IO.Path]::GetFullPath((Join-Path $EvidenceDirectory "$_.png"))} })
 ConvertTo-Json -InputObject $entries -Depth 20 | Set-Content -LiteralPath $manifest -Encoding utf8
-& $Executable --capture-batch $manifest
+& $Executable --capture-batch $manifest | Out-Host
 if ($LASTEXITCODE) { throw "Captura en lote falló: $LASTEXITCODE" }

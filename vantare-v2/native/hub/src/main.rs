@@ -1,3 +1,7 @@
+#![cfg_attr(
+    all(windows, feature = "parity-capture"),
+    windows_subsystem = "windows"
+)]
 #![forbid(unsafe_code)]
 
 use vantare_ipc::product;

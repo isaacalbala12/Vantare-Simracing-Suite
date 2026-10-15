@@ -218,7 +218,9 @@ y paridad por píxeles contra Wails siguen siendo exclusivamente Windows.
 ## Capturas sin ocupar la pantalla (#1655)
 
 Compilar Hub y Workshop con `parity-capture`, por la cola y con target propio.
-Solo Windows, sesión gráfica y DPI 96. No se necesita
+Solo Windows, sesión gráfica y DPI 96. Los binarios con `parity-capture` usan
+el subsistema Windows para no crear una consola. En PowerShell, canalizar a
+`Out-Host` (como abajo) espera también a estos ejecutables GUI. No se necesita
 `VANTARE_CAPTURE_OFFSCREEN`: todos los modos de captura crean el HWND oculto,
 fuera de **todos** los monitores y sin activar. El backend conserva esas
 coordenadas desde `CreateWindowExW`; antes de presentar se verifica
@@ -239,8 +241,8 @@ trabajo; las PNG y sus recibos deben quedar fuera del repo:
 
 ```powershell
 # Ejecutables ya compilados con parity-capture:
-& C:/targets/mi-issue/debug/vantare-hub.exe --capture-batch C:/tmp/hub.json
-& C:/targets/mi-issue/debug/vantare-workshop.exe --capture-batch C:/tmp/widgets.json
+& C:/targets/mi-issue/debug/vantare-hub.exe --capture-batch C:/tmp/hub.json | Out-Host
+& C:/targets/mi-issue/debug/vantare-workshop.exe --capture-batch C:/tmp/widgets.json | Out-Host
 # vantare-overlays admite el mismo manifiesto de widgets.
 ```
 

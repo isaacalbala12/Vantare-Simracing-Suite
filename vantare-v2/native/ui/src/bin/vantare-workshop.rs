@@ -1,3 +1,7 @@
+#![cfg_attr(
+    all(windows, feature = "parity-capture"),
+    windows_subsystem = "windows"
+)]
 //! `--dev`: ventana interactiva con recarga JSON y selección del registro.
 //! `dev.ps1` recompila Rust y conserva la selección. Sin `--dev`, abre uno o varios widgets
 //! alimentados por una escena fija, sin núcleo, para retocarlos con

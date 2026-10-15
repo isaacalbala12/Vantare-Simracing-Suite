@@ -19,5 +19,5 @@ foreach($folder in $Folders) {
 }
 $manifest=Join-Path $Out 'capture-batch.json'
 ConvertTo-Json -InputObject $entries -Depth 30 | Set-Content -LiteralPath $manifest -Encoding utf8
-& $Exe --capture-batch $manifest
+& $Exe --capture-batch $manifest | Out-Host
 if($LASTEXITCODE){throw "Captura de escenas falló: $LASTEXITCODE"}

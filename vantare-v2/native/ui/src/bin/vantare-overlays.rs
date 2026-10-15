@@ -1,3 +1,7 @@
+#![cfg_attr(
+    all(windows, feature = "parity-capture"),
+    windows_subsystem = "windows"
+)]
 //! Proceso de overlays. Uso:
 //! `vantare-overlays [1|4|22] [--fuente local|pipe[:<nombre>]]` abre ese número
 //! de widgets (campaña de medición), todos en una ventana por monitor, con los

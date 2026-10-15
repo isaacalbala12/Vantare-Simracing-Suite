@@ -32,7 +32,7 @@ try {
     $exe = Join-Path $targetDir 'debug/vantare-workshop.exe'
     $manifest = Join-Path $Out 'capture-batch.json'
     ConvertTo-Json -InputObject @(@{widget=$Widget; scene=$Scene; output=$candidate}) -Depth 20 | Set-Content -LiteralPath $manifest -Encoding utf8
-    & $exe --capture-batch $manifest
+    & $exe --capture-batch $manifest | Out-Host
     if ($LASTEXITCODE -ne 0) { throw 'la captura falló' }
 
 } finally { Pop-Location }

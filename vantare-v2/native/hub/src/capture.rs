@@ -166,44 +166,7 @@ pub fn run_many(options: Vec<Options>) -> Result<(), String> {
                 started.elapsed().as_millis()
             );
             cx.spawn(async move |cx| {
-                let result = async {
-                    let mut next = Some(first);
-                    let mut initial = true;
-                    while let Some(mut job) = next.take() {
-                        if !initial {
-                            let loaded = shell::load(&mut job.options)?;
-                            window
-                                .update(cx, |root, window, cx| {
-                                    root.hub = cx.new(|cx| {
-                                        Hub::capture_build(
-                                            loaded,
-                                            job.options.section,
-                                            job.access,
-                                            flag.clone(),
-                                            window,
-                                            cx,
-                                        )
-                                    });
-                                    cx.notify();
-                                })
-                                .map_err(|e| e.to_string())?;
-                        }
-                        initial = false;
-                        let (width, height) = dimensions(&job.options);
-                        let hwnd = window
-                            .update(cx, |_, window, _| {
-                                capture_window::show(window, width, height)
-                            })
-                            .map_err(|e| e.to_string())??;
-                        let output = job.options.capture_output.as_ref().ok_or("falta output")?;
-                        save_frame(cx, hwnd, (width, height), output).await?;
-                        job.cache.commit()?;
-                        println!("capture-written {}", output.display());
-                        next = jobs.next();
-                    }
-                    Ok::<(), String>(())
-                }
-                .await;
+                let result = capture_jobs(first, jobs, window, cx, flag.clone()).await;
                 if let Err(error) = result {
                     *flag.borrow_mut() = Some(error);
                 }
@@ -220,6 +183,56 @@ pub fn run_many(options: Vec<Options>) -> Result<(), String> {
         started.elapsed().as_millis()
     );
     Ok(())
+}
+
+async fn capture_jobs(
+    first: Job,
+    mut jobs: std::vec::IntoIter<Job>,
+    window: gpui::WindowHandle<Root>,
+    cx: &mut gpui::AsyncApp,
+    flag: Rc<RefCell<Option<String>>>,
+) -> Result<(), String> {
+    let mut next = Some(first);
+    let mut initial = true;
+    while let Some(mut job) = next.take() {
+        if !initial {
+            let loaded = shell::load(&mut job.options)?;
+            window
+                .update(cx, |root, window, cx| {
+                    if root.hub.read(cx).capture_can_reuse_calendar(&loaded) {
+                        root.hub.update(cx, |hub, cx| {
+                            hub.capture_apply_calendar(loaded, job.access, cx);
+                        });
+                    } else {
+                        root.hub = cx.new(|cx| {
+                            Hub::capture_build(
+                                loaded,
+                                job.options.section,
+                                job.access,
+                                flag.clone(),
+                                window,
+                                cx,
+                            )
+                        });
+                    }
+                    cx.notify();
+                })
+                .map_err(|e| e.to_string())?;
+        }
+        initial = false;
+        let (width, height) = dimensions(&job.options);
+        let hwnd = window
+            .update(cx, |_, window, _| {
+                capture_window::show(window, width, height)
+            })
+            .map_err(|e| e.to_string())??;
+        let output = job.options.capture_output.as_ref().ok_or("falta output")?;
+        save_frame(cx, hwnd, (width, height), output).await?;
+        job.cache.commit()?;
+        println!("capture-written {}", output.display());
+        next = jobs.next();
+    }
+    Ok::<(), String>(())
 }
 
 async fn save_frame(

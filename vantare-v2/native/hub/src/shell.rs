@@ -1086,6 +1086,44 @@ pub(crate) struct Loaded {
 
 impl Hub {
     #[cfg(feature = "parity-capture")]
+    pub(crate) fn capture_can_reuse_calendar(&self, loaded: &Loaded) -> bool {
+        self.section == Section::Calendar
+            && loaded
+                .capture
+                .as_ref()
+                .is_some_and(|capture| capture.section == Section::Calendar)
+            && self.settings.appearance.settings == loaded.appearance.settings
+            && self.settings.appearance.zoom_percent == loaded.appearance.zoom_percent
+            && serde_json::to_vec(&self.demo).ok() == serde_json::to_vec(&loaded.demo).ok()
+    }
+
+    /// Calendar scenes share all other sections. Reload the calendar's complete
+    /// fixture state, keeping the already-built Hub and its unrelated controls.
+    /// Other sections, different demo data or appearance use a fresh Hub.
+    #[cfg(feature = "parity-capture")]
+    pub(crate) fn capture_apply_calendar(
+        &mut self,
+        loaded: Loaded,
+        access: navigation::Access,
+        cx: &mut Context<Self>,
+    ) {
+        if let Some(scene) = &loaded.capture {
+            cx.set_global(crate::capture::CurrentScene(scene.clone()));
+        }
+        self.capture = loaded.capture;
+        self.demo = loaded.demo;
+        self.shell = chrome::State::new(access, self.capture.as_ref(), cx);
+        self.calendar = cx.new(|_| loaded.calendar);
+        let remote = self.remote.clone();
+        self.calendar
+            .update(cx, |calendar, _| calendar.attach_remote(remote));
+        // Existing host observers supply the default profile/context to the
+        // replacement calendar before the next frame, as on initial startup.
+        self.launcher.update(cx, |_, cx| cx.notify());
+        cx.notify();
+    }
+
+    #[cfg(feature = "parity-capture")]
     pub(crate) fn capture_build(
         loaded: Loaded,
         section: Section,

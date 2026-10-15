@@ -215,10 +215,12 @@ jobs:
       # entrada anterior. Un cache creado en una PR solo lo ve esa PR; los del
       # push a nightly los comparten todas las PRs con esa base (docs de
       # GitHub: «Restrictions for accessing a cache»). Para invalidar a mano:
-      # subir `prefix-key`.
+      # subir `prefix-key`. Nota: la línea de la acción no lleva comentario de
+      # versión al final porque el test del flujo de canales exige que acabe en
+      # el SHA fijado.
       - name: Cache de artefactos de dependencias (target)
         if: needs.policy.outputs.native != 'false'
-        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6
         with:
           workspaces: |
             vantare-v2/native -> target/gates

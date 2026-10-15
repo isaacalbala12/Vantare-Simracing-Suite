@@ -458,3 +458,336 @@ fn oauth_identity_mismatch_or_pending_response_never_persists_fapi_session() {
         crate::cleanup_store(&root, "email-no-authority", &[]);
     }
 }
+
+type Ready = (Server, std::path::PathBuf, crate::storage::Store, Account);
+fn ready_to_finish(name: &str, tail: Vec<(u16, String)>) -> Ready {
+    let server = Server::start_native(|base| {
+        let mut r = vec![
+            metadata(base),
+            (200, "{}".into()),
+            attempt("complete", false),
+        ];
+        r.extend(tail);
+        r
+    });
+    let (root, store) = crate::test_store(name);
+    let mut account = Account::restore(oauth(&server.base), &store).expect("account");
+    account
+        .email_action(&Http::default(), start(EmailMode::SignInPassword), 100)
+        .expect("begin");
+    (server, root, store, account)
+}
+
+fn pending() -> (u16, String) {
+    (400, json!({"error":"authorization_pending"}).to_string())
+}
+
+#[test]
+fn expired_code_or_restarted_service_returns_to_form_with_clear_message() {
+    let server = Server::start_native(|base| {
+        vec![
+            metadata(base),
+            (200, "{}".into()),
+            attempt("needs_first_factor", false),
+            attempt("needs_first_factor", false),
+        ]
+    });
+    let (root, store) = crate::test_store("email-expired");
+    let mut account = Account::restore(oauth(&server.base), &store).expect("account");
+    account
+        .email_action(&Http::default(), start(EmailMode::SignInCode), 100)
+        .expect("begin");
+    let verify = || EmailAction::Verify {
+        code: "123456".into(),
+    };
+    let error = account
+        .email_action(&Http::default(), verify(), 701)
+        .err()
+        .expect("expired");
+    assert_eq!(error, Error::Expired);
+    for error in [error, Error::Canceled] {
+        let Reply::Email {
+            stage,
+            message,
+            error: shown,
+            ..
+        } = account.email_reply(702, Some(error))
+        else {
+            panic!("email reply");
+        };
+        assert_eq!(stage, EmailStage::Form);
+        assert!(shown.is_some());
+        assert!(message.contains("Pide otro código"), "{message}");
+    }
+    // Servicios reiniciado: no hay login, y el siguiente intento también cae a Form.
+    for action in [verify(), EmailAction::Resend {}] {
+        let error = account
+            .email_action(&Http::default(), action, 703)
+            .err()
+            .expect("canceled");
+        assert_eq!(error, Error::Canceled);
+    }
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "email-expired", &[]);
+}
+
+#[test]
+fn pending_authorization_retries_with_bounded_injected_clock() {
+    let mut tail = vec![
+        (200,json!({"device_code":"fixture-device","user_code":"TEST-CODE","expires_in":300,"interval":5}).to_string()),
+        (200, "{}".into()),
+        pending(),
+        (400, json!({"error":"slow_down"}).to_string()),
+    ];
+    tail.extend(complete_responses().split_off(2));
+    tail.push((200, "{}".into())); // end de la sesión FAPI
+    let (server, root, store, mut account) = ready_to_finish("email-pending-ok", tail);
+    let ticket = account
+        .email_action(&Http::default(), EmailAction::Finish {}, 101)
+        .expect("grant");
+    assert!(
+        account
+            .exchange_email(&Http::default(), ticket, 101)
+            .expect("pending")
+            .is_none()
+    );
+    assert!(matches!(
+        account.email_reply(102, None),
+        Reply::Email {
+            stage: EmailStage::Authorizing,
+            ..
+        }
+    ));
+    assert!(
+        account
+            .exchange_email(&Http::default(), None, 105)
+            .expect("not due")
+            .is_none()
+    );
+    assert!(
+        account
+            .exchange_email(&Http::default(), None, 106)
+            .expect("slow down")
+            .is_none()
+    );
+    assert!(
+        account
+            .exchange_email(&Http::default(), None, 115)
+            .expect("not due")
+            .is_none()
+    );
+    let completion = account
+        .exchange_email(&Http::default(), None, 116)
+        .expect("ready")
+        .expect("completion");
+    assert_eq!(completion.identity().subject, "user_fixture");
+    let wire = requests(&server);
+    assert_eq!(
+        wire.iter()
+            .filter(|r| r.starts_with("POST /oauth/device_authorization "))
+            .count(),
+        1,
+        "reutiliza el mismo grant"
+    );
+    assert_eq!(
+        wire.iter()
+            .filter(|r| r.starts_with("POST /oauth/token "))
+            .count(),
+        3,
+        "respeta 5s y slow_down +5s"
+    );
+    server.finish();
+    drop(account);
+    drop(store);
+    crate::cleanup_store(&root, "email-pending-ok", &[]);
+}
+
+#[test]
+fn pending_authorization_exhaustion_and_cancellation_leave_no_oauth_session() {
+    for cancel in [false, true] {
+        let mut tail = vec![
+            (200,json!({"device_code":"fixture-device","user_code":"TEST-CODE","expires_in":300,"interval":5}).to_string()),
+            (200, "{}".into()),
+            pending(),
+        ];
+        if !cancel {
+            tail.extend(std::iter::repeat_n(pending(), 6));
+        }
+        tail.push((200, "{}".into())); // cancel/logout cierran FAPI
+        let (server, root, store, mut account) = ready_to_finish("email-pending-stop", tail);
+        let ticket = account
+            .email_action(&Http::default(), EmailAction::Finish {}, 101)
+            .expect("grant");
+        account
+            .exchange_email(&Http::default(), ticket, 101)
+            .expect("pending");
+        if cancel {
+            account
+                .email_action(&Http::default(), EmailAction::Cancel {}, 102)
+                .expect("cancelar sin esperar");
+            assert_eq!(
+                account.exchange_email(&Http::default(), None, 106).err(),
+                Some(Error::Canceled)
+            );
+            assert!(!account.email_pending());
+        } else {
+            for now in [106, 111, 116, 121, 126] {
+                assert!(
+                    account
+                        .exchange_email(&Http::default(), None, now)
+                        .expect("pending")
+                        .is_none()
+                );
+            }
+            assert_eq!(
+                account.exchange_email(&Http::default(), None, 131).err(),
+                Some(Error::Pending)
+            );
+            assert!(matches!(
+                account.email_reply(131, Some(Error::Pending)),
+                Reply::Email {
+                    stage: EmailStage::Consent,
+                    ..
+                }
+            ));
+            assert!(
+                account.email.as_ref().expect("login").session.is_some(),
+                "aún puede reintentar Autorizar"
+            );
+            account.end_email_session(&Http::default());
+        }
+        let wire = requests(&server);
+        assert_eq!(
+            wire.iter()
+                .filter(|r| r.starts_with("POST /oauth/token "))
+                .count(),
+            if cancel { 1 } else { 7 }
+        );
+        assert!(
+            wire.last()
+                .expect("end")
+                .starts_with("POST /v1/client/sessions/sess_fixture/end?")
+        );
+        assert!(account.identity().is_none());
+        assert!(matches!(
+            store.load::<Saved>("account"),
+            Err(Error::NotFound)
+        ));
+        server.finish();
+        drop(account);
+        drop(store);
+        crate::cleanup_store(&root, "email-pending-stop", &[]);
+    }
+}
+
+#[test]
+fn fapi_session_is_ended_and_weak_password_has_its_own_error() {
+    let mut tail = complete_responses();
+    tail.push((200, "{}".into()));
+    let (server, root, store, mut account) = ready_to_finish("email-end-session", tail.clone());
+    let ticket = account
+        .email_action(&Http::default(), EmailAction::Finish {}, 101)
+        .expect("grant")
+        .expect("ticket");
+    account
+        .exchange_email(&Http::default(), Some(ticket), 101)
+        .expect("exchange")
+        .expect("completed");
+    assert!(
+        requests(&server)
+            .iter()
+            .any(|r| r.starts_with("POST /v1/client/sessions/sess_fixture/end")),
+        "la sesión FAPI se cierra tras canjear el token"
+    );
+    server.finish();
+    drop(account);
+    drop(store);
+    crate::cleanup_store(&root, "email-end-session", &[]);
+
+    let server = Server::start_native(|base| {
+        vec![
+            metadata(base),
+            (200, "{}".into()),
+            (
+                422,
+                json!({"errors":[{"code":"form_password_pwned"}]}).to_string(),
+            ),
+        ]
+    });
+    let (root, store) = crate::test_store("email-weak");
+    let mut account = Account::restore(oauth(&server.base), &store).expect("account");
+    assert_eq!(
+        account
+            .email_action(&Http::default(), start(EmailMode::SignUpPassword), 100)
+            .err(),
+        Some(Error::CompromisedPassword)
+    );
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "email-weak", &[]);
+}
+
+#[test]
+fn short_password_and_wrong_password_have_distinct_messages() {
+    for (code, expected) in [
+        ("form_password_length_too_short", Error::WeakPassword),
+        ("form_password_incorrect", Error::InvalidCredential),
+    ] {
+        let server = Server::start_native(|base| {
+            vec![
+                metadata(base),
+                (200, "{}".into()),
+                (422, json!({"errors":[{"code":code}]}).to_string()),
+            ]
+        });
+        let (root, store) = crate::test_store("email-password-policy");
+        let mut account = Account::restore(oauth(&server.base), &store).expect("account");
+        let error = account
+            .email_action(&Http::default(), start(EmailMode::SignUpPassword), 100)
+            .err()
+            .expect("rejected");
+        assert_eq!(error, expected);
+        let Reply::Email { message, .. } = account.email_reply(100, Some(error)) else {
+            panic!("email");
+        };
+        assert_eq!(message.contains("débil"), expected == Error::WeakPassword);
+        server.finish();
+        drop(account);
+        drop(store);
+        crate::cleanup_store(&root, "email-password-policy", &[]);
+    }
+}
+
+#[test]
+fn local_rate_limit_survives_going_back() {
+    let server = Server::start_native(|base| {
+        vec![
+            metadata(base),
+            (200, "{}".into()),
+            attempt("needs_first_factor", false),
+            (429, "{}".into()),
+        ]
+    });
+    let (root, store) = crate::test_store("email-block");
+    let mut account = Account::restore(oauth(&server.base), &store).expect("account");
+    assert_eq!(
+        account
+            .email_action(&Http::default(), start(EmailMode::SignInCode), 100)
+            .err(),
+        Some(Error::Busy)
+    );
+    account
+        .email_action(&Http::default(), EmailAction::Cancel {}, 101)
+        .expect("back");
+    assert_eq!(
+        account
+            .email_action(&Http::default(), start(EmailMode::SignInCode), 102)
+            .err(),
+        Some(Error::Busy),
+        "«Volver» no reinicia el límite"
+    );
+    server.finish();
+    drop(store);
+    crate::cleanup_store(&root, "email-block", &[]);
+}

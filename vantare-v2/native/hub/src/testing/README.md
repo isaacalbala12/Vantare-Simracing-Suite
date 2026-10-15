@@ -1,7 +1,7 @@
 # Testing Center — corte #1610 / VANTA-29
 
-IPC services v9, contrato combinado #1594/#1610; Hub y services se recompilan
-juntos y rechazan peers v7/v8. F7=C (Isaac, 14/10): título, notas, pasos y
+IPC services v10, contrato combinado #1594/#1610/#1631; Hub y services se recompilan
+juntos y rechazan peers v7/v8/v9. F7=C (Isaac, 14/10): título, notas, pasos y
 comentarios son locales y no se envían; SQL recibe etiquetas fijas. Solo salen
 campos estructurados cerrados; logs JSON, eventos y hardware sin nombres libres.
 Proveedor/T3/Intake/replay omiten prosa; los resúmenes generados usan una etiqueta

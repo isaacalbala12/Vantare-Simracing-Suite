@@ -327,10 +327,10 @@ impl App {
 
     fn poll_account(&mut self) -> Result<Reply> {
         self.ensure_account()?;
-        let account = self.account.as_mut().ok_or(Error::Authentication)?;
-        if account.email_pending() {
-            return Ok(account.email_reply(now()?, None));
+        if self.account.as_ref().is_some_and(Account::email_pending) {
+            return Ok(self.email_account(None));
         }
+        let account = self.account.as_mut().ok_or(Error::Authentication)?;
         if account.login_pending()
             && let Some(ticket) = account.poll_login()?
         {
@@ -364,7 +364,7 @@ impl App {
             Command::ReportSend { .. } | Command::TriageSend { .. }
         );
         if let Command::AccountEmail { action } = command {
-            return self.email_account(action);
+            return self.email_account(Some(action));
         }
         let operation = match &command {
             Command::TriagePrepare { .. } => "triage-prepare",
@@ -443,25 +443,20 @@ impl App {
         }
     }
 
-    fn email_account(&mut self, action: crate::protocol::EmailAction) -> Reply {
+    fn email_account(&mut self, action: Option<crate::protocol::EmailAction>) -> Reply {
         let result: Result<Reply> = (|| {
             self.ensure_account()?;
             let time = now()?;
-            let ticket = self
-                .account
-                .as_mut()
-                .ok_or(Error::Authentication)?
-                .email_action(&self.http, action, time)?;
-            if let Some(ticket) = ticket {
-                let completion = ticket.run_waiting(&self.http, time, &mut |seconds| {
-                    std::thread::sleep(std::time::Duration::from_secs(seconds));
-                    now()
-                });
-                // La sesión FAPI no se necesita más, haya o no tokens.
-                if let Some(account) = self.account.as_mut() {
-                    account.end_email_session(&self.http);
-                }
-                let completion = completion?;
+            let account = self.account.as_mut().ok_or(Error::Authentication)?;
+            let ticket = match action {
+                Some(action) => account.email_action(&self.http, action, time)?,
+                None => None,
+            };
+            // Cancel devuelve un formulario sin login y no tiene canje pendiente.
+            if !account.email_pending() {
+                return Ok(account.email_reply(time, None));
+            }
+            if let Some(completion) = account.exchange_email(&self.http, ticket, time)? {
                 if self
                     .account
                     .as_ref()

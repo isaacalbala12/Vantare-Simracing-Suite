@@ -196,3 +196,114 @@ DPAPI y los tres escenarios lifecycle Win32) y Clerk development real con
 Native API/Device Grant habilitados. Este corte no certifica login real,
 producción, Supabase/Polar remotos ni revocación de todos los grants OAuth al
 recuperar contraseña. VANTA-70 «Por revisar»; sin push, PR, merge ni release.
+
+## Segunda ronda (R2, 15/10/2026) y decisiones de revisión
+
+Cambios tras la revisión R1 de PR #1635:
+
+- **Código caducado o servicios reiniciados.** Si el login ya no existe en
+  servicios (10 min o reinicio), la respuesta lleva `stage: Form` con error y
+  el Hub vuelve al primer paso conservando el email, borra secretos y rotula
+  el botón «Pedir otro código». El mensaje lo explica en lenguaje llano.
+- **Autorizacion pendiente.** El canje Device Grant conserva el mismo grant y
+  reintenta `authorization_pending` mediante `AccountPoll`, respetando el
+  `interval` que devuelve Clerk; `slow_down` suma 5 s. La ventana es de 30 s o
+  la caducidad del grant si llega antes. El reloj `now` se inyecta en tests.
+  Entre consultas no hay `sleep` ni red, por lo que Cancel/Logout se atienden
+  sin esperar al siguiente intervalo. Si se agota, vuelve a Consent con un
+  mensaje claro y conserva FAPI para que Autorizar pueda crear otro grant.
+- **Sesión FAPI.** Se cierra (`POST /v1/client/sessions/{id}/end`, mejor
+  esfuerzo) tras el canje, al cancelar, al caducar y al cerrar sesión.
+- **Cola llena.** Una acción de email descartada reactiva el formulario y avisa.
+- **Límite local de intentos** sobrevive a «Volver» mientras viva el proceso;
+  contraseña débil/filtrada (`form_password_*`) tiene mensaje propio.
+- **«Continuar»/«Autorizar» cancelables** con «Volver» durante la espera.
+  Se retira el formulario y se descartan sus respuestas tardías; el cierre se
+  envía con prioridad al terminar el comando HTTP en vuelo (cada petición
+  conserva su timeout de 8 s). Cancelar no deshace una petición que Clerk ya
+  haya recibido. Los intervalos de autorización no retienen el worker.
+- Protocolo services sube a **v10** (nightly ya había tomado v9 con #1594/#1610).
+
+Decisiones documentadas sin cambio de código:
+
+- **Existencia de cuenta (P3-1).** Clerk ya revela si una cuenta existe en su
+  FAPI pública y su UI alojada; los mensajes de Vantare no añaden información
+  nueva. No se intenta ocultar lo que Clerk expone.
+- **Código de seis dígitos legible (P3-3).** El campo de código se expone a
+  lectores de pantalla a propósito (accesibilidad de un OTP). La contraseña
+  sigue sin exponer valor, sin copiar y pintada con `*`.
+
+### Prueba real contra Clerk development (pendiente, para Isaac)
+
+No se ha probado contra Clerk real: el encargo limita las pruebas a HTTP local.
+No se han leido claves ni configuraciones de credenciales.
+Pasos exactos:
+
+1. En el dashboard de la instancia de **development**: habilitar *Native API*,
+   email como identificador obligatorio y verificable (código), entrada con
+   código y con contraseña habilitadas, y *Device authorization grant* para el
+   OAuth client público existente. Password no obligatorio para el alta sin
+   contraseña.
+2. Compilar Hub y servicios juntos con `VANTARE_CLERK_ISSUER`,
+   `VANTARE_CLERK_CLIENT_ID` y `VANTARE_CLERK_REDIRECT` de development.
+   El client debe ser público, con `openid profile offline_access` asignados.
+   Usar el cargador de configuración pública del repo; no pegar sus valores
+   en comandos, comentarios o evidencias. Desde `vantare-v2/`, en Windows:
+
+   ```powershell
+   $env:CARGO_BUILD_JOBS = '2'
+   pwsh -NoProfile -File native/scripts/compilar.ps1 pwsh -NoProfile -File native/gates.ps1 prueba -BuildConfig C:/tmp/beta/build-config/beta-dev-clerk.env
+   ```
+
+   El archivo debe estar preparado por Isaac con el issuer y client de
+   development y el resto de la configuración pública que valida el loader.
+   El comando genera todos los binarios compatibles y copia DuckDB a
+   `native/target/gates/prueba`. No mezclar Hub/services/runtime de otra build.
+   No ejecutar los comandos de esta sección desde un agente de esta entrega.
+
+   Cerrar primero las instancias de prueba anteriores. Abrir dos terminales
+   propias, desde `vantare-v2/native`, con la misma raíz temporal y pipe:
+
+   ```powershell
+   # Terminal 1: supervisor, núcleo y overlays con fixture, sin juego real.
+   $env:VANTARE_NATIVE_DATA_ROOT = 'C:/tmp/clerk-dev-1631'
+   ./target/gates/prueba/vantare.exe --instancia clerk-dev-1631 -- --replay ../testdata/lmu-fixture.bin --build 1.3.0.0 --pipe vantare-clerk-dev-1631 -- 4 --layout C:/tmp/clerk-dev-1631/layout.json
+   # Terminal 2: Hub conectado a ese supervisor.
+   $env:VANTARE_NATIVE_DATA_ROOT = 'C:/tmp/clerk-dev-1631'
+   ./target/gates/prueba/vantare-hub.exe --pipe vantare-clerk-dev-1631 --data-dir C:/tmp/clerk-dev-1631/hub --layout C:/tmp/clerk-dev-1631/layout.json
+   ```
+3. Con una cuenta de prueba nueva, ejecutar los cinco modos y anotar resultado
+   (sin capturar códigos ni contraseñas): entrar con código, entrar con
+   contraseña, alta con código, alta con contraseña, recuperación (con y sin
+   «cerrar otras sesiones»).
+4. Comprobar tras cada entrada: la app queda con sesión, el perfil carga y
+   `Cuenta` muestra licencia sin pasar por el navegador.
+5. Comprobar errores: código erróneo, código tras >10 min (debe volver a
+   «Pedir otro código»), reenviar antes de 30 s, contraseña filtrada en el alta,
+   y *Device grant* desactivado (debe ofrecer «Continuar en el navegador»).
+   Repetir la caducidad con «Verificar» y con «Reenviar». Para simular reinicio,
+   terminar solo el `vantare-services.exe` de esta prueba (identificar su ruta
+   y PID), sin matar el supervisor; repetir ambas acciones. Se conserva el email
+   y se ofrece pedir otro código. No terminar servicios de otra instancia.
+   Con red lenta o desconectada, pulsar «Continuar» y luego «Volver»: desaparece
+   el formulario y la respuesta tardía no vuelve a abrirlo. En la autorización
+   pendiente, «Volver» cancela los reintentos y la sesión FAPI se cierra.
+6. En el dashboard de Clerk, tras entrar, la sesión creada por la app no debe
+   quedar activa en el perfil del usuario (se cierra con `end`).
+7. Confirmar que, si Clerk responde `authorization_pending`, la app espera y
+   termina sola; el timeout vuelve a «Autorizar» y permite reintentar. No
+   forzar respuestas en la instancia real: pending/slow_down, agotamiento y
+   cancelación ya se reproducen con HTTP local y reloj inyectado. Si no aparece
+   pendiente en development, anotarlo como caso no observado.
+8. Adjuntar el resultado sanitizado al PR; sin eso, no certificar login real.
+   Registrar SO, SHA de los tres binarios, modo, resultado y hora; capturar
+   solo pantallas sin contraseña, OTP, tokens ni IDs de sesión. Tras «Cerrar
+   sesión», reiniciar Hub y confirmar que pide acceso. Cerrar las ventanas y
+   detener el supervisor de prueba con `vantare.exe --parar --instancia clerk-dev-1631`.
+
+La configuración del grant público y el tratamiento de `authorization_pending`
+y `slow_down` se contrastaron con la
+[guía oficial de Clerk](https://clerk.com/docs/guides/configure/auth-strategies/oauth/device-authorization-grant)
+(actualizada el 13/10/2026). Esto verifica el contrato documentado, no la
+compatibilidad de una instancia real. La validación real de los cinco modos
+en macOS también sigue pendiente; los gates previos del Mac no la sustituyen.

@@ -227,7 +227,8 @@ fn handle(
                     | Reply::Email {
                         stage: protocol::EmailStage::Code
                             | protocol::EmailStage::NewPassword
-                            | protocol::EmailStage::Consent,
+                            | protocol::EmailStage::Consent
+                            | protocol::EmailStage::Authorizing,
                         ..
                     }
             ),

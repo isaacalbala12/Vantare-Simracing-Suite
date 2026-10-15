@@ -160,6 +160,8 @@ pub struct Account {
     attempt: Option<Attempt>,
     generation: u128,
     email: Option<email::Login>,
+    /// El límite local de intentos sobrevive a «Volver» mientras viva el proceso.
+    email_block: u64,
 }
 
 // Tickets carry secrets inside the service process, never over IPC or Debug.
@@ -221,7 +223,12 @@ pub(crate) mod email;
 mod profile;
 
 impl Exchange {
+    /// Un único intento contra el token endpoint.
     pub fn run(self, http: &Http, now: u64) -> Result<Completion> {
+        self.attempt(http, now)
+    }
+
+    fn attempt(&self, http: &Http, now: u64) -> Result<Completion> {
         let fields = match &self.grant {
             Grant::Code {
                 code,
@@ -249,11 +256,19 @@ impl Exchange {
         // RFC 6749 §5.2: refresh expirado/revocado, no un fallo de protocolo.
         // Un 400 genérico o malformado conserva su clasificación anterior.
         if response.status == 400
-            && response
-                .json::<OAuthFailure>()
-                .is_ok_and(|failure| failure.error == "invalid_grant")
+            && let Ok(failure) = response.json::<OAuthFailure>()
         {
-            return Err(Error::Authentication);
+            match failure.error.as_str() {
+                "invalid_grant" => return Err(Error::Authentication),
+                // RFC 8628 §3.5: la aprobación aún no es visible / ir más despacio.
+                "authorization_pending" if matches!(self.grant, Grant::Device(_)) => {
+                    return Err(Error::Pending);
+                }
+                "slow_down" if matches!(self.grant, Grant::Device(_)) => {
+                    return Err(Error::Busy);
+                }
+                _ => {}
+            }
         }
         let tokens: Tokens = response.success()?.json()?;
         if !tokens.token_type.eq_ignore_ascii_case("bearer")
@@ -297,7 +312,7 @@ impl Exchange {
             profile,
             session: Session {
                 identity,
-                client_id: self.oauth.client_id,
+                client_id: self.oauth.client_id.clone(),
                 access: tokens.access_token,
                 refresh,
                 expires_at: now.checked_add(tokens.expires_in).ok_or(Error::Clock)?,
@@ -332,6 +347,7 @@ impl Account {
             attempt: None,
             generation: fresh_generation()?,
             email: None,
+            email_block: 0,
         })
     }
 

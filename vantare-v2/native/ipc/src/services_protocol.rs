@@ -137,6 +137,7 @@ pub enum EmailStage {
     Code,
     NewPassword,
     Consent,
+    Authorizing,
     HostedRequired,
 }
 

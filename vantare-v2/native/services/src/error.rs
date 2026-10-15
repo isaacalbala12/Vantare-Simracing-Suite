@@ -27,6 +27,9 @@ pub enum Error {
     PilotRejected,
     Version,
     NotFound,
+    Pending,
+    WeakPassword,
+    CompromisedPassword,
 }
 
 impl fmt::Display for Error {
@@ -54,6 +57,9 @@ impl fmt::Display for Error {
             Self::PilotRejected => "perfil pendiente de corrección: revisa los datos y vuelve a guardar",
             Self::Version => "actualización requerida",
             Self::NotFound => "sin datos guardados",
+            Self::Pending => "autorización pendiente",
+            Self::WeakPassword => "contraseña rechazada",
+            Self::CompromisedPassword => "contraseña filtrada",
         })
     }
 }

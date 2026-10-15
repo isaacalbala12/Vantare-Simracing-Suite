@@ -449,6 +449,11 @@ impl Remote {
             manual_roadmap: crate::roadmap::State::load(),
             stale: true,
         };
+        #[cfg(feature = "parity-capture")]
+        if let Ok(scene) = std::env::var("VANTARE_CAPTURE_EMAIL") {
+            remote.capture_email(&scene, cx);
+            return remote;
+        }
         remote.request(Command::Status, cx);
         remote
     }
@@ -789,20 +794,13 @@ impl Remote {
     pub fn request(&mut self, command: Command, cx: &mut Context<Self>) {
         self.request_with_kind(command, None, cx);
     }
-    /// Aviso cuando una acción se descarta porque el refresco automático ocupa
-    /// el hueco reservado: antes se perdía sin mensaje con `queued` ocupado.
-    fn background_discard_message(
-        queued: Option<&Command>,
-        command: &Command,
-    ) -> Option<&'static str> {
-        (queued.is_some() && !matches!(command, Command::Logout)).then_some("Operación en curso")
-    }
     fn request_with_kind(
         &mut self,
         command: Command,
         kind: Option<Inflight>,
         cx: &mut Context<Self>,
     ) {
+        let email_command = matches!(command, Command::AccountEmail { .. });
         self.prepare_account_command(&command, cx);
         if self.inflight.background() {
             if self.queued.is_none() || matches!(command, Command::Logout) {
@@ -832,6 +830,10 @@ impl Remote {
             || self.stop.load(Ordering::Acquire)
             || !self.dispatch_with_kind(command, kind)
         {
+            if email_command {
+                let message = self.message.clone();
+                self.email_discarded(&message, cx);
+            }
             cx.notify();
             return;
         }

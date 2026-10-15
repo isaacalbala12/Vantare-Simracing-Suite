@@ -89,7 +89,14 @@ impl State {
     }
 
     pub(super) fn next_command(&mut self, reply: &Reply, cancel: &mut bool) -> Option<Command> {
-        let pending = matches!(reply, Reply::Account { pending: true, .. });
+        let pending = matches!(
+            reply,
+            Reply::Account { pending: true, .. }
+                | Reply::Email {
+                    stage: super::super::protocol::EmailStage::Authorizing,
+                    ..
+                }
+        );
         let check_session = matches!(
             reply,
             Reply::Status {
@@ -1326,6 +1333,37 @@ mod navigation_tests {
 mod native_email_tests {
     use super::super::super::protocol::{EmailAction, EmailMode, EmailStage};
     use super::*;
+
+    #[test]
+    fn pending_device_grant_polls_and_cancel_has_priority_over_a_retry() {
+        let mut state = State::from_build();
+        state.requested(&Command::AccountEmail {
+            action: EmailAction::Finish {},
+        });
+        let pending = Reply::Email {
+            stage: EmailStage::Authorizing,
+            retry_after_seconds: 0,
+            message: "esperando".into(),
+            error: None,
+        };
+        assert!(matches!(
+            state.next_command(&pending, &mut false),
+            Some(Command::AccountPoll)
+        ));
+        let mut cancel = true;
+        assert!(matches!(
+            state.next_command(&pending, &mut cancel),
+            Some(Command::Logout)
+        ));
+        assert!(!cancel);
+        let exhausted = Reply::Email {
+            stage: EmailStage::Consent,
+            retry_after_seconds: 0,
+            message: "reintentar".into(),
+            error: Some("pendiente".into()),
+        };
+        assert!(state.next_command(&exhausted, &mut false).is_none());
+    }
     #[test]
     fn email_waits_for_consent_and_oauth_before_license_renewal() {
         let mut state = State::from_build();

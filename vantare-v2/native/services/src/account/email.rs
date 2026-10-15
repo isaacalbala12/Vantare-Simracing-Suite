@@ -14,10 +14,20 @@ pub(super) struct Login {
     email_id: Option<String>,
     stage: EmailStage,
     subject: Option<String>,
+    session: Option<String>,
     sent_at: Option<u64>,
     expires_at: u64,
     blocked_until: u64,
     device_endpoint: Url,
+    interval: u64,
+    pending: Option<Pending>,
+}
+
+struct Pending {
+    exchange: Exchange,
+    deadline: u64,
+    next: u64,
+    interval: u64,
 }
 fn id(value: &str) -> Result<&str> {
     if value.is_empty()
@@ -150,6 +160,13 @@ impl Login {
                 .and_then(Value::as_array);
             if codes.is_some_and(|errors| {
                 errors.iter().any(|error| {
+                    error.get("code").and_then(Value::as_str) == Some("form_password_pwned")
+                })
+            }) {
+                return Err(Error::CompromisedPassword);
+            }
+            if codes.is_some_and(|errors| {
+                errors.iter().any(|error| {
                     error
                         .get("code")
                         .and_then(Value::as_str)
@@ -163,6 +180,18 @@ impl Login {
             }) {
                 self.stage = EmailStage::HostedRequired;
                 return Err(Error::Unsupported);
+            }
+            if codes.is_some_and(|errors| {
+                errors.iter().any(|error| {
+                    error
+                        .get("code")
+                        .and_then(Value::as_str)
+                        .is_some_and(|code| {
+                            code.starts_with("form_password_") && code != "form_password_incorrect"
+                        })
+                })
+            }) {
+                return Err(Error::WeakPassword);
             }
             return Err(Error::InvalidCredential);
         }
@@ -202,6 +231,7 @@ impl Login {
                     self.stage = EmailStage::HostedRequired;
                     return Err(Error::Unsupported);
                 }
+                self.session = Some(session_id.to_owned());
                 self.subject = Some(
                     id(session
                         .pointer("/user/id")
@@ -293,6 +323,8 @@ impl Login {
             ],
             now,
         )?;
+        self.interval = device.interval;
+        self.expires_at = self.expires_at.min(now.saturating_add(device.expires_in));
         Ok(device.device_code)
     }
     fn prepare(&mut self, http: &Http, issuer: &Url, now: u64) -> Result<()> {
@@ -328,32 +360,113 @@ impl Account {
                 .as_ref()
                 .map_or(EmailStage::Form, |login| login.stage)
         };
-        let retry = self.email.as_ref().map_or(0, |login| {
-            login
-                .blocked_until
-                .max(
-                    login
-                        .sent_at
-                        .map_or(0, |sent| sent.saturating_add(COOLDOWN)),
-                )
-                .saturating_sub(now)
-        });
+        let retry = self
+            .email
+            .as_ref()
+            .map_or(self.email_block.saturating_sub(now), |login| {
+                login
+                    .blocked_until
+                    .max(self.email_block)
+                    .max(
+                        login
+                            .sent_at
+                            .map_or(0, |sent| sent.saturating_add(COOLDOWN)),
+                    )
+                    .saturating_sub(now)
+            });
         Reply::Email { stage, retry_after_seconds: retry,
             message: error.map_or_else(|| match stage {
                 EmailStage::Form => "Introduce tu email",
                 EmailStage::Code => "Introduce el código enviado a tu email",
                 EmailStage::NewPassword => "Elige una contraseña nueva",
                 EmailStage::Consent => "Autoriza el acceso de Vantare a tu identidad y perfil",
+                EmailStage::Authorizing => "Esperando la confirmación de Clerk. Puedes volver para cancelar.",
                 EmailStage::HostedRequired => "Esta cuenta necesita completar un paso en el navegador",
             }.into(), |error| match error {
                 Error::InvalidCredential => "Revisa el email, la contraseña o el código. No se pudo verificar el acceso.".into(),
                 Error::Busy => "Espera antes de volver a intentarlo.".into(),
+                Error::Expired | Error::Canceled => "El código ha caducado o el acceso se reinició. Pide otro código para continuar.".into(),
+                Error::Pending => "Clerk aún no ha confirmado la autorización. Espera unos segundos y pulsa «Autorizar» otra vez.".into(),
+                Error::WeakPassword => "La contraseña es demasiado débil o corta. Elige una más larga y menos común.".into(),
+                Error::CompromisedPassword => "Esta contraseña apareció en una filtración. Elige una contraseña diferente.".into(),
                 Error::Unsupported | Error::Unconfigured => "Este acceso no está disponible aquí o necesita un paso adicional. Continúa en el navegador.".into(),
                 _ => error.to_string(),
             }), error: error.map(|error| error.to_string()) }
     }
     pub(crate) fn email_pending(&self) -> bool {
         self.email.is_some()
+    }
+
+    /// Un solo intento por comando IPC. Entre intentos no se bloquea el
+    /// servicio: puede atender Cancel/Logout. `now` es el reloj inyectado.
+    pub(crate) fn exchange_email(
+        &mut self,
+        http: &Http,
+        ticket: Option<Exchange>,
+        now: u64,
+    ) -> Result<Option<super::Completion>> {
+        let Some(login) = self.email.as_mut() else {
+            return Err(Error::Canceled);
+        };
+        if let Some(exchange) = ticket {
+            login.pending = Some(Pending {
+                exchange,
+                deadline: now.saturating_add(30).min(login.expires_at),
+                next: now,
+                interval: login.interval,
+            });
+        }
+        let Some(mut pending) = login.pending.take() else {
+            return Ok(None);
+        };
+        if now > pending.deadline {
+            login.stage = EmailStage::Consent;
+            return Err(Error::Pending);
+        }
+        if now < pending.next {
+            login.pending = Some(pending);
+            return Ok(None);
+        }
+        match pending.exchange.attempt(http, now) {
+            Err(error @ (Error::Pending | Error::Busy)) => {
+                if error == Error::Busy {
+                    pending.interval = pending.interval.saturating_add(5);
+                }
+                pending.next = now.saturating_add(pending.interval);
+                if pending.next > pending.deadline {
+                    login.stage = EmailStage::Consent;
+                    return Err(Error::Pending);
+                }
+                login.stage = EmailStage::Authorizing;
+                login.pending = Some(pending);
+                Ok(None)
+            }
+            result => {
+                login.stage = EmailStage::Consent;
+                if result.is_ok() {
+                    self.end_email_session(http);
+                }
+                result.map(Some)
+            }
+        }
+    }
+
+    /// Cierra la sesión FAPI creada por el login (mejor esfuerzo): tras canjear
+    /// el Device Grant o al cancelar/cerrar sesión no debe quedar como activa.
+    pub(crate) fn end_email_session(&mut self, http: &Http) {
+        let Some(login) = self.email.as_mut() else {
+            return;
+        };
+        let (Some(client), Some(session)) = (login.client.as_ref(), login.session.take()) else {
+            return;
+        };
+        let Ok(path) = id(&session).map(|session| format!("v1/client/sessions/{session}/end"))
+        else {
+            return;
+        };
+        if let Ok(url) = self.oauth.issuer.join(&path) {
+            let _best_effort = http.native_form(&url, &[], Some(client.expose()));
+        }
     }
 
     fn begin_email(
@@ -368,6 +481,7 @@ impl Account {
             .email
             .as_ref()
             .is_some_and(|login| now < login.blocked_until)
+            || now < self.email_block
         {
             return Err(Error::Busy);
         }
@@ -383,6 +497,7 @@ impl Account {
         if matches!(mode, EmailMode::SignInPassword | EmailMode::SignUpPassword) {
             password(input)?;
         }
+        self.end_email_session(http);
         self.cancel_login()?;
         let endpoint = device_endpoint(http, &self.oauth)?;
         self.email = Some(Login {
@@ -392,10 +507,13 @@ impl Account {
             email_id: None,
             stage: EmailStage::Form,
             subject: None,
+            session: None,
             sent_at: None,
             expires_at: now.checked_add(600).ok_or(Error::Clock)?,
             blocked_until: 0,
             device_endpoint: endpoint,
+            interval: 5,
+            pending: None,
         });
         let login = self.email.as_mut().ok_or(Error::Protocol)?;
         login.request(http, &self.oauth.issuer, "v1/client", &[], now)?;
@@ -441,7 +559,24 @@ impl Account {
         action: EmailAction,
         now: u64,
     ) -> Result<Option<Exchange>> {
+        self.sync_block();
+        let result = self.email_step(http, action, now);
+        self.sync_block();
+        result
+    }
+    fn sync_block(&mut self) {
+        if let Some(login) = &self.email {
+            self.email_block = self.email_block.max(login.blocked_until);
+        }
+    }
+    fn email_step(
+        &mut self,
+        http: &Http,
+        action: EmailAction,
+        now: u64,
+    ) -> Result<Option<Exchange>> {
         if let EmailAction::Cancel {} = action {
+            self.end_email_session(http);
             self.cancel_login()?;
             return Ok(None);
         }
@@ -457,6 +592,7 @@ impl Account {
         }
         let login = self.email.as_mut().ok_or(Error::Canceled)?;
         if now >= login.expires_at {
+            self.end_email_session(http);
             self.cancel_login()?;
             return Err(Error::Expired);
         }
@@ -519,7 +655,8 @@ impl Account {
                     issuer: self.oauth.issuer.to_string(),
                     subject: login.subject.clone().ok_or(Error::Authentication)?,
                 };
-                // A single first token request after synchronous approval, no polling loop.
+                // La aprobación es explícita; AccountPoll continuará el mismo
+                // grant si Clerk todavía no tiene lista la autorización.
                 return Ok(Some(Exchange {
                     oauth: self.oauth.clone(),
                     generation: self.generation,

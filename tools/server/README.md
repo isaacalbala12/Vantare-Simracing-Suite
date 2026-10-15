@@ -146,3 +146,7 @@ Encargo VANTA-47, PR #1583, sin Rust ni cambios en datos, credenciales o red.
   exponer esos secretos. No enviar las copias a artefactos, chat o repositorios.
   El encargo solo documenta; no cambia formato, retención, ACL ni restauración.
   Cifrar o separar la copia de secretos requiere una decisión posterior de Isaac.
+- **P3-4, HTTP**: sigue habilitado HTTP:8088. Por la interfaz Tailscale el túnel
+  cifra el transporte; acceder directamente por LAN no aporta TLS y permite
+  observar cookies/tokens a quien intercepte ese tráfico. No se configura TLS
+  ni se cierra LAN en este encargo; usar Tailscale mientras Isaac decide el cambio.

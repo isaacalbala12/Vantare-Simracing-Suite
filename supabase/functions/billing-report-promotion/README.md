@@ -1,196 +1,185 @@
-# Descuento por informes · #1593 / VANTA-39
+# Descuento por informes · #1593 / VANTA-39 · ronda 2
 
-Preparación local, sin despliegue ni llamadas Polar reales. Catálogo SQL vacío
-más `REPORT_PROMOTION_ENABLED` ausente/false mantienen la campaña inerte. No se
-crean productos, descuentos, códigos, enlaces ni scheduler automáticamente.
+Candidato local de PR #1659. Catálogo vacío y flag ausente/false: no se activa.
+No crea productos, descuentos, enlaces, scheduler ni despliegue automáticamente.
+La migración sigue inédita; sus correcciones son para el candidato, no un
+upgrade sobre una migración ya aplicada. Si se hubiera aplicado, revisar un
+upgrade aparte.
 
-## Reglas y decisiones conservadoras
+## Reglas vigentes
 
-Altas mensuales Pro/Pro Plus desde **26/10/2026 19:00 Europe/Madrid** inclusive
-hasta **02/11/2026 19:00 Europe/Madrid** exclusivo. Cierre confirmado por el
-orquestador en ronda 2. 45 días significa 1080 horas desde el alta, intervalo
-`[alta, alta+45 días)`. La aritmética de meses usa Europe/Madrid,
-independientemente de la conexión SQL. No se inventa un premio anual; la campaña
-se expresa en cobros mensuales.
+- Altas Pro/Plus **mensuales** desde 26/10/2026 19:00 Europe/Madrid inclusive
+  hasta 02/11/2026 19:00 exclusivo. Cierre confirmado por el orquestador. Los
+  tests incluyen 18:59/19:00/19:01 y las dos 02:30 del cambio de hora 25/10.
+- Informes enviados en `[alta, alta+1080 horas)`. Cuenta solo revisión humana
+  aceptada de #1594, con estado accepted/fixed. Su frontera conserva evidencia,
+  duplicados y cupos UTC 1/día, 2/semana. Aceptar tarde un informe enviado a
+  tiempo es válido. No se añaden descuentos anuales.
+- Primer mes a lanzamiento. Desde el segundo, normal salvo tramo: 2 aceptados
+  dan **3 cobros mensuales rebajados**; 5 dan **6** en sustitución del tramo
+  menor. El mayor empieza con sus seis cobros siguientes, no suma meses de ambos
+  tramos.
+- Se consumen periodos únicos de órdenes `subscription_cycle` **pagadas**, con
+  el descuento del tramo, importe de descuento positivo y una línea completa sin
+  prorrateo. `subscription_create` identifica la factura inicial y no consume
+  premio. IDs repetidos no suman; una devolución posterior no repone meses ya
+  consumidos.
+- El contador no usa `current_period_end` del espejo. Inicio y último fin son
+  los periodos de las facturas liquidadas. Un PATCH tardío no pierde un mes: la
+  factura previa sin rebaja no cuenta y se sirven los tres/seis cobros futuros.
+- **Dos spams** posteriores al alta bloquean nuevos tramos desde ese momento,
+  incluso tras 45 días. **Se conservan los meses ya concedidos** hasta
+  terminarlos. **Devolver la factura inicial**, parcialmente incluida, pierde el
+  premio de informes de forma durable. Estas políticas son decisión del
+  orquestador en R2.
 
-Cuenta solo `testing_contribution_reviews.decision=accepted`, con contribución
-`accepted/fixed`, enviada dentro de la ventana. La revisión humana, evidencia,
-duplicados y cupos UTC de #1594 siguen en su frontera; no se duplican ni
-alteran. Una aceptación tardía puede premiar un informe enviado a tiempo. Dos
-decisiones spam posteriores al alta eliminan la promoción, también si llegan
-tras la ventana. La pérdida es irreversible. Un solo registro por cliente y
-entorno; cambiar o recrear la suscripción no reinicia el premio. El producto
-también es inmutable.
+Los bloques de descuento se limitan al saldo real pendiente: 6 si quedan al
+menos 6, 3 si quedan al menos 3 y 1 en los saldos menores. El cupón fijo de un
+mes sirve también para esos saldos, siempre fuera de la factura inicial. Solo se
+rearma tras una factura liquidada que confirma su uso. Así un traslado o una
+reparación no concede más meses de los pendientes aunque el worker se pare
+después del PATCH. El corte del segundo spam se guarda con la fecha de la
+revisión humana. Un cron atrasado conserva un tramo ganado antes de ese corte y
+no concede otro con aceptaciones posteriores. Devolver el primer mes sigue
+perdiendo el premio.
 
-Antes de sustituir el descuento se exige una factura pagada en el ledger B02 de
-la misma suscripción/cuenta/entorno: `subscription.active` puede preceder al
-cobro.
+## Cambio de plan o suscripción
 
-Primer cobro: descuento de lanzamiento de **un** mes sobre producto normal, sin
-trial y sin códigos adicionales. Desde el siguiente cobro, dos aceptados dan 3
-meses; cinco dan 6. El tramo mayor sustituye al menor y sus seis meses empiezan
-en el siguiente cobro; no son 3+6 acumulados. Repetir el mismo tramo no lo
-renueva. La elección compara céntimos con el 20 % de creador durante sus dos
-primeros meses de calendario; empate favorece informes. Para normales, 2 EUR de
-Pro y 3 EUR de Plus ahorran más que el 20 %. Sin premio puede ganar creador. El
-primer mes ya facturado nunca se reabre ni se consume como mes de informes.
+Una campaña por cliente/entorno. Conserva alta, ventana y tramo originales al
+pasar Pro↔Plus o a una segunda alta, incluso fuera de la semana. El premio sigue
+la suscripción activa más reciente. Versiones de distintas suscripciones se
+comparan por alta, no por el modified_at global de otra; una entrega atrasada no
+roba el premio. Si la vigente está inactiva, puede volver a una anterior activa.
 
-## Catálogo y operación posterior autorizada
+Cada cambio deja registro privado con suscripción/producto anterior y nuevo y
+fecha de la observación. Antes de aplicar el premio en otra suscripción, se
+limpia el anterior mediante operación propia, esperando sus leases en vuelo. No
+se borra un descuento ajeno. El caso comercial no lanza conflicto ni cuarentena
+del webhook. Errores HTTP/de catálogo se marcan para revisión y no bloquean a
+los demás clientes.
 
-`private.report_promotion_catalog` admite solo productos **normales mensuales**
-de precio 599/999 céntimos y lanzamiento 399/699 céntimos. Insertar los IDs
-observados de cada entorno, nunca IDs inventados ni de otro entorno. Los tres
-IDs de descuentos se guardan por producto. `private.report_promotion_creators`
-permite exclusivamente los IDs de creador autorizados para ese producto. La
-asociación de creador se recoge del `discount_id` observado en el webhook; no
-acepta texto del usuario ni metadata libre. No importa códigos de otra campaña.
+## Primer mes consumido y checkout
 
-**Conflicto comercial pendiente:** #1620 usa productos propios con base
-permanente 3,99/6,99 y códigos limitados a esos productos. No se les pueden
-aplicar además 2/3 EUR sin bajar de la tarifa aprobada. Esta campaña separada
-usa normales; no migra suscripciones ni cambia precios, productos o links de
-#1620. Sus códigos no son válidos aquí hasta que Isaac autorice códigos/ámbito y
-distribución para los normales. La entrada de códigos/atribución en checkout
-nativo no se añade. Los links existentes de #1620 conservan su campaña y NO
-cumplen el precio normal desde mes 2 de esta promoción. Resolver la distribución
-antes de habilitarla.
+`report_promotion_launch_uses` es durable por cuenta/entorno. Reserva la oferta
+por `attemptId`; el mismo intento puede repetir y otro no obtiene otro mes
+inicial. Una factura pagada consume la marca desde SQL, con independencia del
+flag Edge. El historial previo de suscripciones/órdenes bloquea otra oferta
+aunque el catálogo se configure tarde. El borrado/traslado/refund no elimina
+esta marca financiera. No se promete backfill ni refund de compras normales
+anteriores a la activación.
 
-Preparar en Polar, tras autorización de Isaac, sin ejecutarlo en esta entrega:
+La consulta de promoción es inyectable y precede a reservar el intento de
+checkout comercial y a llamar a Polar. Un fallo RPC devuelve 503, no crea
+checkout ni marca el intento incierto: permite repetir el mismo `attemptId`. Un
+checkout Polar de resultado incierto conserva tanto su reserva como la
+protección comercial existente. No liberar una reserva a otro intento sin
+comprobar que no hubo efecto remoto.
 
-| Plan mensual normal | Importe fijo EUR | Duración repeating              | Precio final |
-| ------------------- | ---------------: | ------------------------------- | -----------: |
-| Pro · 5,99          |             2,00 | 1, 3 y 6 meses, tres descuentos |         3,99 |
-| Pro Plus · 9,99     |             3,00 | 1, 3 y 6 meses, tres descuentos |         6,99 |
+## Creador y catálogo
 
-Seis descuentos en total, `type=fixed`, moneda `eur`, `amount=200/300`,
-`duration=repeating`, `duration_in_months=1/3/6`, restringidos al ID mensual
-normal de su plan. Sin código público, sin descuentos compuestos. Conservar los
-productos normales existentes; no se necesita crear producto nuevo para esto.
-Para usar creadores en esta campaña: descuento separado `type=percentage`,
-`basis_points=2000`, repeating 2 meses, restringido a esos normales; no ampliar
-silenciosamente los IDs/códigos existentes ni cambiar su campaña. Validar
-primero la atribución al sustituir el descuento de mes 1; hoy solo se conserva
-si el webhook observa el descuento de creador. Es un prerrequisito de
-distribución.
+`report_promotion_catalog` admite productos normales mensuales con 599→399
+céntimos Pro y 999→699 Plus. No migra ni modifica los productos de lanzamiento
+permanente ni los links de #1620: no se les pueden sumar otros 2/3 EUR. Resolver
+esa distribución antes de activar esta campaña sobre normales.
 
-Aplicar migración revisada, configurar catálogo y variables por el procedimiento
-seguro del operador: `POLAR_ENVIRONMENT`, `POLAR_ACCESS_TOKEN`,
-`REPORT_PROMOTION_SECRET`, `REPORT_PROMOTION_ENABLED=true`, además de Supabase
-integradas. Scopes Polar subscriptions read/write; no products write. Deploy de
-esta función NO está en wrappers: añadirlo requiere paso autorizado. Verificar
-gateway/auth y programar POST con `apikey` igual al secreto dedicado, sin
-cuerpo. Páginas de 50: pasar `?after=<next_cursor>` hasta cursor null y
-reiniciar desde el principio en la siguiente pasada. Ejecutar antes de la
-próxima renovación y después de revisiones/webhooks; sugerencia 1 minuto, sin
-scheduler creado aquí. Una aceptación posterior a la generación de la factura
-afecta el cobro siguiente; no altera una factura ya emitida.
+La allowlist de creador guarda ID, producto, `basis_points` (1..10000), duración
+**exacta de dos meses** y `validated_at`. El operador debe cotejar en Polar tipo
+porcentaje, importe, duración, moneda y scope; no introducir IDs de otra
+campaña. La selección compara su ahorro real en céntimos con el fijo; empate
+favorece informes. Un 40 % autorizado puede ganar al tramo. El GET vivo
+actualiza el próximo ciclo para evaluar su vencimiento; nunca consume con ese
+reloj los meses de informes. Al acabar la campaña solo se retiran IDs propios de
+lanzamiento/informes: se conserva un beneficio ajeno o de creador sin
+reaplicarlo ni prolongarlo.
 
-## Idempotencia, permisos y borrado
+Pendiente de autorización de Isaac en Polar real:
 
-El webhook firmado solo observa tras persistir lifecycle/ownership. Versiones
-repetidas o antiguas no abren otra campaña. Cada decisión de descuento produce
-una operación durable, con actor `system:1593`, UUID interno, tramo y
-timestamps; no guarda correo, nombre, cuerpo, logs ni código humano. La revisión
-de origen sigue en #1594. Cambios pendientes superados se conservan como
-superseded.
+| Producto normal mensual | Descuento fijo EUR | Duración repeating              |
+| ----------------------- | -----------------: | ------------------------------- |
+| Pro 5,99 EUR            |               2,00 | 1, 3 y 6 meses, tres descuentos |
+| Plus 9,99 EUR           |               3,00 | 1, 3 y 6 meses, tres descuentos |
 
-Lease de 60 s por operación; cada HTTP tiene timeout 10 s. GET antes de PATCH:
-si Polar ya conserva el ID deseado, se confirma sin volver a escribir. Así una
-respuesta perdida no reinicia `repeating`. Un descuento desconocido, producto,
-precio, moneda o intervalo distintos bloquean la operación para revisión. PATCH
-envía únicamente `discount_id` (o null); no toca producto/precio, trial,
-prorrateo, cancelación ni metadata. Fallo de HTTP/ACK deja pendiente el
-reintento. No se envía `Idempotency-Key` sin contrato publicado: la recuperación
-es GET y operación durable, no una promesa de exactly-once de la red.
+Seis descuentos, EUR, restringidos al ID mensual normal de su plan, sin código
+público ni descuento compuesto. No hace falta crear productos. Para creadores en
+normales: descuento independiente, inicialmente 2000 basis_points y dos meses,
+con atribución y distribución aprobadas; no ampliar silenciosamente los de
+#1620. No se añade un campo de código en la app en esta entrega.
 
-RPC exclusivamente service_role, tablas privadas con RLS y sin escritura
-directa. Antes de preparar, tomar lease, PATCH y ACK se vuelve a comprobar la
-barrera B03 por UUID; el borrado conserva historial financiero privado y oculta
-la campaña. Un tombstone observado impide efectos; un borrado que llegue después
-del último check y durante una petición HTTP ya enviada no puede cancelar esa
-petición. Esa carrera entre proveedores requiere reconciliación/cancelación
-comercial, igual que otros efectos remotos; no se afirma atomicidad entre
-Postgres y Polar. Kill switch se comprueba por cuenta y justo antes de escribir.
+## Operaciones, reintentos y fallos
 
-Owner: `native_admin_account` añade `report_promotion` con aceptados, tramo,
-spam, ventana y último descuento confirmado. Miniapp muestra esos datos; no
-concede acceso nuevo. El descuento es el último confirmado/observado, no una
-simulación de factura Polar; puede estar pendiente de reconciliación. Merge con
-#1639 pendiente: reutilizar este campo/pequeño bloque de detalle en su nueva UI,
-sin sustituir la implementación de gestión. No se fusionó su rama aquí.
-Propuesta para usuario: endpoint autenticado de solo lectura con su progreso y
-ventana, y una línea en Testing Center. Requiere contrato/DTO/UI y se deja
-fuera.
+Operación durable por cuenta, lease de 60 s, timeout HTTP de 10 s. GET antes de
+PATCH; si el ID ya coincide, no se escribe. El ACK no reinicia repeating tras
+una respuesta perdida. Solo `discount_id` en PATCH: no precio, producto, trial,
+prorrateo, cancelación, metadata ni un Idempotency-Key sin contrato publicado.
 
-## Pruebas locales
+Un cobro liquidado sin descuento después del último ACK prueba una renovación
+perdida/expirada. Una factura que consume el cupón de un mes también permite su
+rearme si queda saldo. Se repara una vez para ese ID de factura con
+**clear/attach**: primero se confirma y persiste fase `cleared`, después se
+asocia el descuento. La fase durable permite recuperar tanto la respuesta
+perdida de clear como de attach sin reiniciar dos veces. El premio termina solo
+tras consumir su contador. No se cambia ni devuelve una factura ya emitida: la
+corrección sirve cobros futuros.
 
-Desde la raíz, con `~/orq/docker.lock` adquirido y liberado mediante trap:
+Cada cliente tiene captura de error propia. Se registra código de conjunto
+cerrado, intentos, fechas y resolución; no PII adicional ni cuerpo HTTP. El
+payload Owner incluye la incidencia y la miniapp muestra «descuento pendiente de
+revisión». El lote devuelve `failed` y continúa. Presupuesto de 45 s con cursor
+del último cliente procesado: un cliente lento no salta al siguiente ni atasca
+todas las páginas. Kill switch comprueba por cliente y justo antes de cada
+PATCH; detiene los efectos.
+
+## Seguridad y operación posterior
+
+Tablas privadas con RLS, sin escrituras directas service_role; RPC solo
+servidor. Todos los security definer fijan owner `postgres`. Actor de auditoría
+`system:1593`; solo UUID internos, IDs comerciales, tramos y fechas. Sin
+correo/nombre/informe/log. B03 se comprueba antes de preparar, lease, cada PATCH
+y ACK. Cuenta borrada oculta la promoción; historial financiero privado
+permanece. Una petición ya enviada entre proveedores no es atómica con un
+borrado posterior: reconciliar/cancelar.
+
+Configurar tras autorización `POLAR_ENVIRONMENT`, `POLAR_ACCESS_TOKEN`,
+`REPORT_PROMOTION_SECRET`, `REPORT_PROMOTION_ENABLED` y las variables Supabase
+integradas. Token con subscriptions read/write; sin products write. El bloque
+`[functions.billing-report-promotion] verify_jwt=false` es obligatorio y su gate
+lo comprueba: el handler valida el secreto dedicado. Sigue fuera de wrappers de
+deploy.
+
+Programar POST con `apikey` igual al secreto dedicado; sin cuerpo. Pasar
+`?after=<next_cursor>` hasta null y volver al inicio en la siguiente pasada.
+Sugerencia: cada minuto y después de revisiones. No hay scheduler creado aquí.
+Mantener el flag explícito `false` durante una pausa: se siguen recogiendo
+facturas normalizadas sin nuevos efectos. Si se retira la variable o faltan
+webhooks, reconciliar las órdenes con `billing-reconcile` antes de reactivar; no
+dar por completo el historial de cobros sin esa reconciliación.
+
+Owner recibe aceptados, tramo, descuento confirmado, incidencia y pérdida por
+refund/spam; estados de política visibles en la miniapp. El descuento es el
+último confirmado/observado, no una simulación de factura. Integrar el pequeño
+bloque al fusionar #1639. Progreso en app del usuario sigue como propuesta para
+otro contrato/DTO.
+
+## Verificación local
+
+Adquirir `~/orq/docker.lock` y liberar con trap. Desde raíz:
 
 ```sh
-python3 supabase/tests/run-report-promotion-local.py --output ~/evidence/1593/sql --only report_promotion.test.sql
+python3 supabase/tests/run-report-promotion-local.py --output ~/evidence/1593-r2/sql --only report_promotion.test.sql
 DENO_NO_PACKAGE_JSON=1 deno test --config supabase/functions/deno.json --no-lock --cached-only --allow-env --allow-read --allow-write supabase/functions
 ```
 
-El runner SQL usa contenedor desechable `--network none`, sin puertos/DSN.
-Necesita un dump de esquema Storage local sin datos, por defecto
-`~/evidence/1608/r6/storage-schema.sql` (prerrequisito explícito del Mac de
-pruebas). También ejecuta el catálogo completo y compara por suite con el mismo
-runner sobre nightly. Controles
-`--mutation launch/window/tier/spam/creator/deleted/idempotency/first-month/invoice`
-deben fallar; no se altera producto ni tests en esos controles. Fixtures
-históricos mueven fechas con SQL privilegiado, conservando triggers/cupos; no
-abren admisión. No hay credenciales ni sandbox real usados. Ventas, webhooks
-alojados, facturas reales y repetición calendaria Polar necesitan verificación
-sandbox autorizada.
+Docker desechable sin red ni puertos, sin DSN. El runner y los tests ejecutan
+producto como NOSUPERUSER BYPASSRLS; supervisor solo instala extensiones y la
+migración histórica de infraestructura. Storage schema local requerido mediante
+`--storage-schema`, por defecto `~/evidence/1608/r6/storage-schema.sql`. El
+catálogo se compara con el mismo actor/runner sobre nightly: registrar todos los
+fallos heredados, no compararlo con los números anteriores bajo superusuario.
 
-Ronda 2 · P2-1: el premio conserva alta/ventana originales y sigue la
-suscripción activa más reciente. Pro↔Plus conserva tramo y cambia el descuento
-correspondiente. Se audita cada cambio; entregas antiguas no recuperan la
-suscripción anterior. Antes de aplicar en otra suscripción se liquida una
-operación de limpieza de la anterior, esperando cualquier lease que estuviera en
-vuelo. No se lanza conflicto comercial ni se manda el webhook a cuarentena por
-este caso.
-
-Ronda 2 · P2-2: ya no se retira por `current_period_end` ni por calendario
-local. Se consumen periodos de facturas `subscription_cycle` pagadas, con
-descuento del tramo y sin prorrateo. Duplicados no consumen dos meses; el
-periodo real determina inicio/último fin. Un cobro sin descuento posterior al
-ACK provoca reparación una sola vez: clear/attach con fase durable y
-recuperación de respuesta perdida. Así un PATCH tardío conserva los tres/seis
-cobros futuros. Los dos spams impiden nuevos tramos; los meses que ya estaban
-concedidos se terminan de servir.
-
-Ronda 2 · P2-3: cada cliente se procesa con captura de error propia. El fallo
-queda en SQL (código cerrado, intentos y fechas, sin respuesta HTTP bruta),
-aparece en el payload Owner y en `failed` del lote. Las demás cuentas y la
-paginación continúan. La operación no se confirma; un éxito posterior resuelve
-su marca. El kill switch sí detiene deliberadamente los efectos del lote.
-
-Ronda 2 · P3-1/2: los creadores autorizados incluyen `basis_points`, duración
-exacta de dos meses y fecha de validación del catálogo Polar (tipo porcentaje y
-scope del producto verificados por el operador). El ahorro se calcula con ese
-valor; un 40 % autorizado puede ganar al tramo fijo. Al acabar esta campaña solo
-se retiran IDs propios de lanzamiento/informes. Un beneficio externo, incluido
-el de creador, se conserva y no se vuelve a aplicar para prolongar su duración.
-
-Ronda 2 · P3-3: la dependencia de promoción del checkout es inyectable y se
-consulta antes de reservar el intento y antes de Polar. Un error transitorio
-responde 503, permite repetir el mismo `attemptId` y no lo marca incierto. El
-camino con campaña activada tiene prueba del error, reintento y URL reutilizada.
-
-Ronda 2 · P3-5: cada función nueva fija expresamente owner `postgres`. El runner
-ya no eleva ese rol: las migraciones de producto y todos los tests se ejecutan
-como `NOSUPERUSER BYPASSRLS`; el supervisor del contenedor solo instala
-extensiones y la migración histórica de infraestructura que lo exige. pgTAP
-afirma el rol efectivo y el propietario de todas las funciones de promoción.
-
-Ronda 2 · políticas P3-6/7/8: el primer mes tiene reserva por cuenta/entorno e
-`attemptId`; el mismo intento puede reintentarse y otro no recibe una segunda
-oferta. La primera factura pagada consume la marca desde SQL, incluso con el flag
-apagado. El historial previo de suscripciones/órdenes también bloquea otra oferta
-si el catálogo se configura tarde. No se borra esa marca al devolver o cambiar plan.
-La factura inicial se identifica con `subscription_create`, separada de los
-periodos de premio. Su devolución, parcial incluida, pierde el premio de forma
-durable. Dos spams solo bloquean nuevos tramos: conservan los meses concedidos.
-El GET vivo actualiza el próximo ciclo para comparar creador, sin usar ese reloj
-para consumir meses de informes ni quitar beneficios de otras campañas.
+Controles `--mutation`: launch, launch-end, window, tier, spam, creator,
+deleted, idempotency, first-month, invoice, transfer, settlements, repair,
+first-refund, launch-used. Deben fallar; no se relajan tests ni cambian
+funciones de producto para dejarlos verdes. Deno cubre fallo de lote, checkout
+activado y clear/attach. Sin servicios reales ni sandbox autenticado.
+Facturas/renovaciones Polar reales, Windows, nueva revisión independiente y QA
+visual siguen pendientes.

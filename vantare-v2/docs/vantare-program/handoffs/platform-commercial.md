@@ -1,9 +1,59 @@
-## #1593 / VANTA-39 · Ronda 2 en curso · 15/10/2026
+## #1593 / VANTA-39 · Ronda 2 · 15/10/2026
 
-PR #1659, revisión DeepSeek NO APTO leída completa. P1 corregido: cierre
-02/11/2026 **19:00 Europe/Madrid** exclusivo; tests 18:59/19:00/19:01 y ambos
-02:30 del cambio de hora 25/10. Base de ronda `cc1989b0b`, misma rama/worktree.
-P2/P3 y políticas nuevas en curso; evidencia `~/evidence/1593-r2/`, sin servicios reales.
+PR draft [#1659](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1659).
+Revisión DeepSeek NO APTO leída y corregida; pendiente revisión independiente nueva.
+Base de ronda `cc1989b0b`, nightly `3f82af867`, misma rama
+`vantareapp/isa-1593-descuento-informes` y worktree Mac `~/wt-1593`.
+SHA final y commits por punto, push al bare y FIN: `~/orq/1593.buzon.md`.
+El PR remoto sigue en la entrega anterior hasta que lo suba el orquestador.
+
+- P1: cierre 02/11/2026 **19:00 Europe/Madrid** exclusivo; bordes y DST probados.
+- P2-1: el premio sigue el plan/suscripción activos; conserva alta/ventana y saldo,
+  audita traslados, limpia el descuento anterior y soporta entregas fuera de orden.
+  Este caso ya no lanza conflicto ni manda el webhook a cuarentena.
+- P2-2: saldo por periodos de facturas pagadas con descuento, sin prorrateo; la
+  factura inicial va separada. No se consume por el reloj del espejo. Cupón finito
+  de 6/3/1 según saldo restante: un traslado/reparación no regala meses extra.
+  Rearme de un mes solo tras factura real, con clear/attach y fase durable que
+  recupera respuestas perdidas. PATCH tardío conserva los cobros pendientes.
+- P2-3: error saneado durable por cuenta, visible al Owner; sigue el lote.
+  Presupuesto 45 s y cursor del último cliente procesado.
+- P3: porcentaje/duración/validación en allowlist; comparación del mayor ahorro y
+  ciclo leído de Polar; conserva beneficios ajenos. RPC de checkout anterior a
+  reservar intento, inyectable y probado con campaña encendida. Config gateway
+  verify_jwt=false y gate obligatorio, sin activar deploy. Owners explícitos.
+  Marca/reserva durable de primer mes; facturas e historial la consumen aun sin flag.
+- Política: devolver la factura inicial pierde el premio; dos spams bloquean nuevos
+  tramos **desde la segunda revisión**, conservando los ganados antes de ella,
+  aunque el cron vaya tarde. El corte queda persistido. Miniapp refleja incidencia,
+  devolución y conservación de meses tras spam.
+
+**Evidencia `~/evidence/1593-r2/`:** 98 pgTAP de promoción PASS, 15 controles SQL
+RED y tres controles Edge RED de comportamiento (lote, checkout, gateway).
+SQL completo con el MISMO runner NOSUPERUSER BYPASSRLS: nightly 59 suites/33 PASS,
+rama 60/34 PASS; 1266→1364 aserciones aprobadas y **0 regresiones**. Se conservan
+26 suites rojas comunes; no se ocultan. Cuatro que pasaban con el superusuario de
+R1 exponen requisitos de fixtures (dblink, schema extensions, SET ROLE); no se
+presentan como regresiones de producto ni se elevan privilegios para taparlas.
+Edge **632 PASS / 0 FAIL / 2 ignored**. Clippy admin PASS, Nextest **18/18**, fmt,
+lint de producción/nuevos módulos, superficies deploy, calidad y retirada PASS.
+El test de checkout conserva ocho require-await históricos, idénticos a nightly;
+comparación JSON y fallo inicial de lint guardados. No cambian runtime/domain/ipc/
+testdata: lifecycle y telemetría omitidos. QA visual/Windows siguen sin acreditar;
+permiso de captura Mac ausente en R1, no se afirma captura nueva.
+
+Sin Polar/Clerk/Storage reales, credenciales nuevas, productos, deploy, scheduler,
+merge, release o promoción. Catálogo vacío y flag deshabilitado. Siguen haciendo
+falta los seis descuentos fijos (Pro 200 / Plus 300 céntimos, repeating 1/3/6),
+no productos nuevos; el de un mes sirve también saldos parciales. Reconciliar
+historial de órdenes antes de activar/retomar si faltaron webhooks. Distribución y
+atribución de creador frente a #1620 y fusión con la UI #1639 siguen al orquestador.
+No se promete atomicidad entre una petición Polar ya enviada y un borrado B03.
+
+Siguiente: revisar diff/controles, subir SHA del bare a PR #1659, ejecutar CI del
+nuevo SHA y repetir revisión independiente. Después, sandbox autorizado para
+facturas, traslados, rearmes, devoluciones y pausas; sin activación automática.
+Contrato vigente: `supabase/functions/billing-report-promotion/README.md`.
 
 ## Histórico · #1593 / VANTA-39 · Entrega inicial · 15/10/2026
 

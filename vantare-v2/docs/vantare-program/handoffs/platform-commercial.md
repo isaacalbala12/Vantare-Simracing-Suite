@@ -1,3 +1,19 @@
+## #1608 · R8 · Identidad Pilot tras B03 (15/10/2026)
+
+R7-P1-1: migración aditiva concede solo USAGE de `private` y EXECUTE de
+`private.current_account()` a `pilot_profile_writer`; no accede a tablas de
+identidad ni recibe el rol authenticated. Policy de recibos y RPC privada Pilot
+usan ahora esa identidad validada, igual que perfil/foto y RPC públicas.
+RED reproducido `42501 permission denied for function current_account`;
+GREEN 20 pgTAP después de todas las migraciones. Incluye alta sin foto, cambio
+con foto, replay, binding inválido y cuenta borrada; inventario de permisos de
+owners de funciones/roles explícitos de policies. No otro rol sin BYPASSRLS
+queda pendiente: el publicador de roadmap no usa este resolver ni recibe acceso.
+PostgREST real con JWT emitido por handler nativo: 200 alta/replay/foto;
+el mismo bearer después de borrar da 403. Evidencia `~/evidence/1608-r8/`.
+Rama aislada desde `d5796ad1a`; seguimiento del orquestador por excepción,
+sin Notion/Plane/GitHub/servicios reales. Resto de R8 en curso.
+
 ## #1608 · R7 · Cierre para revisión (15/10/2026)
 
 Base `88051556` incorporada en merge `f59faf2b`. R6-P1-1/P2-1 resueltos con

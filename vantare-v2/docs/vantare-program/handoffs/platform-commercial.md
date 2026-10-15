@@ -1,19 +1,32 @@
-## VANTA-83 / #1661 · ronda 5 en validación · 16-oct-2026
+## VANTA-83 / #1661 · ronda 5 terminada para revisión · 16-oct-2026
 
-- Re-review r3 APTO; F1 Isaac exige retirar creador al reembolsar/revocar,
-  F2 acepta uso por cualquiera que conozca código; contrato actualizado.
-- F3 UUID + vínculo creador/entorno/intervalo; Owner registra ambos cupones.
+- Código validado d037f8f661083791c848ba7081452d3488b974c1; PR draft #1666
+  hacia nightly. Re-review r3 APTO; esta ronda requiere revisión nueva.
+- F1 definitivo: refund del origen o de factura de la suscripción, o revocación,
+  retira el descuento de creador mediante GET/PATCH/ACK durable e idempotente.
+  Fencing, marcador anterior al primer pago y cuenta borrada; fallo visible Owner.
+  Founders conserva prioridad para detener renovación antes de limpiar creador.
+- F2 riesgo aceptado por Isaac: puede usar el código cualquiera que lo conozca.
+  F3 UUID y pertenencia por creador/entorno/intervalo; Owner registra ambos cupones.
   F4 runbook de rotación sin ampliar managedIds ni reiniciar repeating.
-  F5 cableado webhook probado, initial solo desde billing_reason y sin metadata.
-- Retirada durable GET/PATCH/ACK, fencing del escritor anterior, cuenta borrada,
-  marcador aun antes del primer pago, fallo Owner y recuperación al volver activa.
-- Consulta Polar real expresamente autorizada, únicamente GET con token de
-  lectura transmitido por stdin SSH, nunca impreso ni guardado en el Mac.
-  Mapa completo y plan online en C:/VantareServer/evidence/polar-auditoria/.
-  Ready=true, inventario vivo 0 clientes/0 subs activas/0 pedidos; writes=0.
-- SQL 283 pgTAP y Edge 258 PASS antes del test CLI adicional; mutaciones RED
-  initial=true y ausencia de PATCH. Gates Owner Windows y entrega pendientes.
-- Sin apply, dinero, deploy ni capturas; #1593 requiere integración del escritor.
+  F5 webhook real probado: initial solo desde billing_reason, nunca metadata.
+- Consulta Polar real autorizada: solo GET con token de lectura por stdin SSH,
+  nunca impreso ni guardado en Mac. Mapa real completo y plan online en
+  C:/VantareServer/evidence/polar-auditoria/POLAR_PRODUCT_MAP.production.json
+  y plan-catalogo-online.txt. Producción ready=true, writes=0, inventario
+  0 clientes/0 subs activas/0 pedidos (2026-10-15T23:45:37.832Z).
+  Se revalida al aplicar. aplicar-catalogo.txt contiene comando exacto para Isaac;
+  Deno instalado en Mac, requiere otro token con escritura. Bundle conservado.
+- Rojo→verde: online sin escrituras, initial falsificado, retirada ausente y
+  pertenencia SQL. Final: 286 pgTAP, 260 Edge y 25 Owner Nextest PASS;
+  check workspace, Clippy Owner -D warnings, fmt Rust/Deno y quality/retirement
+  PASS (456 huellas). Logs C:/tmp/founders-1661-evidence y Mac ~/orq/founders-1661-evidence.
+- No repetir Nextest global/lifecycle/telemetría: R5 Rust solo toca Owner;
+  se conservan R4 1798 Nextest (14 omitidas), lifecycle y 25 telemetría PASS.
+- Plane Por revisar al entregar; SHA final y CI verificados en PR/issue.
+  Sin apply, dinero, deploy, merge de feature, release ni capturas (#1655).
+  #1593 debe adoptar escritor común/preservar plazos y respetar revocación;
+  #1624 debe rebasarse. Web intacta. IVA y renovaciones sandbox pendientes.
 
 ## VANTA-83 / #1661 · ronda 4 terminada para revisión · 16-oct-2026
 

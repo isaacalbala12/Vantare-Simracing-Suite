@@ -1,15 +1,41 @@
 -- Run over exact #1602 SQL: permissive owner RLS must not widen personal history.
 begin;
+SELECT set_config('fixture.clerk',(to_regclass('private.clerk_issuers') IS NOT NULL)::text,true);
+-- The old schema-cut runner uses UUID claims; B03 requires a bound Clerk session.
+CREATE FUNCTION pg_temp.fixture_claims(account text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', CASE
+    WHEN current_setting('fixture.clerk',true)='true' THEN
+      jsonb_build_object('iss','https://fixtures.clerk.invalid',
+        'sub','user_'||replace(account,'-',''),'role','authenticated',
+        'sid','sess_fixture','azp','https://app.invalid')
+    ELSE jsonb_build_object('iss','https://local.supabase.test/auth/v1',
+        'sub',account,'role','authenticated') END::text, true);
+  RETURN set_config('request.jwt.claim.sub',account,true);
+END $$;
+
 select plan(6);
 insert into public.profiles(id) values
  ('16100000-0000-0000-0000-000000000001'),('16100000-0000-0000-0000-000000000002');
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 insert into public.testing_center_memberships(user_id,actor_id,role)
  values('16100000-0000-0000-0000-000000000001','owner-f2','owner');
 insert into public.testing_contributions(id,account_id,channel,title,body,state) values
  ('16100000-0000-0000-0000-000000000011','16100000-0000-0000-0000-000000000001','nightly','Own','Synthetic','received'),
  ('16100000-0000-0000-0000-000000000012','16100000-0000-0000-0000-000000000002','nightly','Other accepted','Synthetic','accepted'),
  ('16100000-0000-0000-0000-000000000013','16100000-0000-0000-0000-000000000002','nightly','Other fixed','Synthetic','accepted');
-set local request.jwt.claim.sub='16100000-0000-0000-0000-000000000001';
+select pg_temp.fixture_claims('16100000-0000-0000-0000-000000000001');
 set local role authenticated;
 select public.testing_report_fixed('16100000-0000-0000-0000-000000000013','1.2.3','Reviewed','Summary');
 select is((select count(*)::integer from public.testing_contributions),3,'owner administration still sees all reports');

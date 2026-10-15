@@ -48,9 +48,9 @@ export async function signDataToken(
     encoder.encode(JSON.stringify({ alg: "HS256", typ: "JWT" })),
   );
   const payload = base64url(encoder.encode(JSON.stringify({
-    iss: `${url.origin}/auth/v1`,
+    iss: `${url.origin}/native-data/v1`,
     sub: accountId,
-    aud: "authenticated",
+    aud: "vantare-native-data",
     role: "authenticated",
     ...(identity
       ? {
@@ -127,8 +127,7 @@ export async function handleNativeAccountAuthorize(
       identity.now,
       identity.expiration,
       deps.signing ?? {
-        secret: Deno.env.get("NATIVE_DATA_JWT_SECRET") ??
-          Deno.env.get("SUPABASE_JWT_SECRET") ?? "",
+        secret: Deno.env.get("NATIVE_DATA_JWT_SECRET") ?? "",
         supabaseUrl: Deno.env.get("SUPABASE_URL") ?? "",
       },
       identity,
@@ -141,7 +140,10 @@ export async function handleNativeAccountAuthorize(
     });
   } catch (error) {
     // Never log upstream errors, JWTs, OAuth tokens, names or account UUIDs.
-    const failure = error instanceof NativeError
+    const failure = error && typeof error === "object" && "code" in error &&
+        error.code === "28000"
+      ? new NativeError(401, "unauthorized")
+      : error instanceof NativeError
       ? error
       : new NativeError(503, "bridge_unavailable");
     return respond({

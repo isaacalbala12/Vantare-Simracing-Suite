@@ -13,6 +13,33 @@ use vantare_domain::{Snapshot, SourceKind, SourceState};
 static NEXT: AtomicU64 = AtomicU64::new(0);
 
 #[test]
+fn review_r7_f9_fixed_with_legacy_receipt_never_shows_rejection() {
+    use crate::services::protocol::{report_document::Receipt, testing_document::Contribution};
+    let fixed = Contribution {
+        id: "15940000-0000-4000-8000-000000000011".into(),
+        title: "Informe estructurado".into(),
+        body: String::new(),
+        state: "fixed".into(),
+        credit: false,
+        updated_at: Some("2026-10-14T00:00:00Z".into()),
+        fixed_version: Some("1.2.3".into()),
+        notice: true,
+    };
+    let legacy: Receipt = serde_json::from_value(serde_json::json!({
+        "report_id":"15940000-0000-4000-8000-000000000012",
+        "report_state":"submitted", "created_at":"2026-10-13T00:00:00Z",
+        "idempotent":false,
+    }))
+    .expect("legacy receipt");
+    let labels = [
+        super::model::session_contribution_status(&fixed.state),
+        super::model::receipt_status(&legacy.report_state),
+    ];
+    assert_eq!(labels, ["Arreglado", "Recibido"]);
+    assert!(!labels.contains(&"No aceptado"));
+}
+
+#[test]
 fn testing_uses_build_channel_without_a_capture_override() {
     use super::model::channel_label;
     for missing in [None, Some(""), Some(" ")] {

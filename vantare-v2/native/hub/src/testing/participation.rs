@@ -20,15 +20,16 @@ impl Form {
     pub(super) fn new(questionnaire_id: Option<String>, cx: &mut Context<Testing>) -> Self {
         let consent = cx.new(|cx| {
             orbit::Checkbox::new(
-                "Consiento enviar este título y texto al equipo de Vantare",
+                "Consiento enviar los campos estructurados al equipo de Vantare",
                 false,
                 cx,
             )
         });
         cx.observe(&consent, |_, _, cx| cx.notify()).detach();
-        let contribution_title = cx.new(|cx| Input::new(String::new(), "Título del informe", cx));
+        let contribution_title =
+            cx.new(|cx| Input::new(String::new(), "Título local · no se envía", cx));
         let contribution_body =
-            cx.new(|cx| Input::multiline(String::new(), "Explica qué hiciste y qué ocurrió", cx));
+            cx.new(|cx| Input::multiline(String::new(), "Notas locales · no se envían", cx));
         for input in [&contribution_title, &contribution_body] {
             let consent = consent.clone();
             cx.observe(input, move |_, _, cx| {
@@ -45,7 +46,8 @@ impl Form {
             generation: 0,
             consent,
             contribution_attempt: None,
-            answer_note: cx.new(|cx| Input::multiline(String::new(), "Comentario opcional", cx)),
+            answer_note: cx
+                .new(|cx| Input::multiline(String::new(), "Nota local · no se envía", cx)),
             contribution_title,
             contribution_body,
         }
@@ -184,15 +186,14 @@ impl Testing {
                 .child(orbit::primary_button("testing-answer-save", "Guardar respuesta", cx).tab_stop(ready)
                     .when(!ready, |b| orbit::disabled(b, "Servicio ocupado o sesión requerida"))
                     .on_click(cx.listener(move |this, _, _, cx| {
-                        let note = this.participation_form.answer_note.read(cx).value.clone();
+                        let note = String::new();
                         this.remote.update(cx, |remote, cx| remote.participation_request(Command::TestingAnswer { id: id.clone(), score: this.participation_form.score, note }, cx));
                     })))
-                .child(orbit::text("Respuesta privada ligada a tu cuenta. Solo se envía al pulsar Guardar respuesta; puedes actualizarla.", 12.0, 400, orbit::ink_3(cx), cx));
+                .child(orbit::text("Solo se envía la puntuación al pulsar Guardar respuesta. La nota es local y no se envía.", 12.0, 400, orbit::ink_3(cx), cx));
         form
     }
     pub(super) fn community(&self, cx: &mut Context<Self>) -> Div {
-        let ready = self.remote.read(cx).participation_ready()
-            && self.participation_form.consent.read(cx).checked;
+        let ready = self.remote.read(cx).participation_ready();
         let mut list = orbit::neo_card(cx)
             .id("testing-contributions-list")
             .flex_1()
@@ -215,6 +216,7 @@ impl Testing {
                 "received" => "Recibida",
                 "reviewing" => "En revisión",
                 "accepted" => "Aceptada",
+                "spam" => "Marcada como spam",
                 "fixed" => "Arreglada",
                 _ => "No aceptada",
             };
@@ -226,16 +228,21 @@ impl Testing {
                 cx,
             ));
         }
-        div().flex_1().min_h_0().flex().flex_col().gap(px(self.adapt.gap()))
+        div()
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .gap(px(self.adapt.gap()))
             .child(self.participation_header("Ayúdanos a mejorar Vantare", cx))
-            .child(orbit::neo_card(cx).flex_none().gap(px(10.0))
+            .when(self.remote.read(cx).navigation_access().tester, |page| page.child(self.remote.update(cx, |remote, cx| remote.triage.render(ready, cx))))
+            .when(!self.remote.read(cx).navigation_access().tester, |page| page.child(orbit::neo_card(cx).flex_none().gap(px(10.0))
                 .child(self.participation_form.contribution_title.clone()).child(self.participation_form.contribution_body.clone())
                 .child(orbit::primary_button("testing-contribution-send", "Enviar informe", cx).tab_stop(ready)
                     .when(!ready, |b| orbit::disabled(b, "Requiere sesión, servicio disponible y consentimiento"))
                     .on_click(cx.listener(|this, _, _, cx| {
                         let title = this.participation_form.contribution_title.read(cx).value.clone();
                         let body = this.participation_form.contribution_body.read(cx).value.clone();
-                        if title.trim().is_empty() || body.trim().is_empty() { return; }
                         let attempt = match this.participation_form.contribution_attempt.as_ref() {
                             Some((id, old_title, old_body)) if *old_title == title && *old_body == body => Some(id.clone()),
                             _ => new_uuid(),
@@ -244,11 +251,11 @@ impl Testing {
                             this.participation_form.contribution_attempt = Some((id.clone(), title.clone(), body.clone()));
                             let consent = this.participation_form.consent.read(cx).checked;
                             if !consent { return; }
-                            this.remote.update(cx, |remote, cx| remote.participation_request(Command::TestingContribute { id, title, body, consent }, cx));
+                            this.remote.update(cx, |remote, cx| remote.participation_request(Command::TestingContribute { id, title:"Informe estructurado".into(), body:"Revisión humana pendiente".into(), consent }, cx));
                         }
                     })))
                 .child(self.participation_form.consent.clone())
-                .child(orbit::text("Solo se envían el título y texto visibles, el canal y el ID de tu cuenta al servidor privado. No se envían capturas ni datos de uso desde este formulario. Evita datos personales. Máximo 5 informes al día y 20 en 7 días; título 120 caracteres y texto 1000. El crédito es opcional y se decide en Mis informes.", 12.0, 400, orbit::ink_3(cx), cx)))
+                .child(orbit::text("El título y las notas son locales y no se envían. Se envían el canal, el identificador del informe y el consentimiento, ligados a tu cuenta por el servidor. Máximo 5 informes al día y 20 en 7 días. El crédito es opcional y se decide en Mis informes.", 12.0, 400, orbit::ink_3(cx), cx))))
             .when(self.remote.read(cx).navigation_access().tester, |page| page.child(list))
     }
 }

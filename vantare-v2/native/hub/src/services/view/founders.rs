@@ -93,43 +93,7 @@ impl Remote {
                 })),
             )
             .child(self.founders_details(cx))
-            .children(
-                [
-                    crate::services::protocol::BillingProduct::ProMonthly,
-                    crate::services::protocol::BillingProduct::ProAnnual,
-                    crate::services::protocol::BillingProduct::LaunchLifetime,
-                    crate::services::protocol::BillingProduct::Founders,
-                ]
-                .into_iter()
-                .enumerate()
-                .map(|(index, product)| {
-                    orbit::small_button(
-                        [
-                            "purchase-monthly",
-                            "purchase-annual",
-                            "purchase-launch",
-                            "purchase-founders",
-                        ][index],
-                        [
-                            "Pro · 5,99 €/mes",
-                            "Pro · 59,90 €/año",
-                            "Launch · 30 €",
-                            self.founders_language.copy().button,
-                        ][index],
-                        cx,
-                    )
-                    .tab_stop(signed_in && !self.working())
-                    .when_some(
-                        purchase_disabled_reason(signed_in, self.working()),
-                        orbit::disabled,
-                    )
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        if this.account.signed_in && !this.working() {
-                            this.request(Command::Purchase { product }, cx);
-                        }
-                    }))
-                }),
-            )
+            .child(self.purchase_buttons(cx))
             .child(if signed_in {
                 orbit::small_button("services-sign-out", "Cerrar sesión", cx)
                     .tab_stop(!self.working())
@@ -161,6 +125,47 @@ impl Remote {
                     }
                 }))
             })
+    }
+
+    fn purchase_buttons(&self, cx: &mut Context<Self>) -> gpui::Div {
+        let signed_in = self.account.signed_in;
+        div().flex().flex_col().gap(px(6.0)).children(
+            [
+                crate::services::protocol::BillingProduct::ProMonthly,
+                crate::services::protocol::BillingProduct::ProAnnual,
+                crate::services::protocol::BillingProduct::LaunchLifetime,
+                crate::services::protocol::BillingProduct::Founders,
+            ]
+            .into_iter()
+            .enumerate()
+            .map(|(index, product)| {
+                orbit::small_button(
+                    [
+                        "purchase-monthly",
+                        "purchase-annual",
+                        "purchase-launch",
+                        "purchase-founders",
+                    ][index],
+                    [
+                        "Pro · 5,99 €/mes",
+                        "Pro · 59,90 €/año",
+                        "Launch · 30 €",
+                        self.founders_language.copy().button,
+                    ][index],
+                    cx,
+                )
+                .tab_stop(signed_in && !self.working())
+                .when_some(
+                    purchase_disabled_reason(signed_in, self.working()),
+                    orbit::disabled,
+                )
+                .on_click(cx.listener(move |this, _, _, cx| {
+                    if this.account.signed_in && !this.working() {
+                        this.request(Command::Purchase { product }, cx);
+                    }
+                }))
+            }),
+        )
     }
 
     pub(super) fn founders_details(&self, cx: &mut Context<Self>) -> gpui::Div {

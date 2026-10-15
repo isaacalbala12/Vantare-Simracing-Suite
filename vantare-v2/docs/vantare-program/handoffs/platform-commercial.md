@@ -20,10 +20,13 @@ aunque el webhook rechazará el derecho y lo dejará en cuarentena. Isaac debe
 validar cierre operativo y atención manual de excepciones. La credencial perpetua
 offline existente no tiene revocación remota instantánea.
 
-Evidencia Mac local: 139 pgTAP PASS (29 Founders, 57 Owner, 34 reembolsos,
+Evidencia Mac local: 143 pgTAP PASS (33 Founders, 57 Owner, 34 reembolsos,
 19 tombstones); 139 Edge PASS; regresión de credencial RED al restaurar el
 normalizador original. Docker con lock, contenedor propio cerrado. Quality y
-retirement PASS (456 huellas). Gates Rust en curso de uno en uno, con VANTARE_CARGO_MIN_GB=0 autorizado por
+retirement PASS (456 huellas). fmt/check Windows PASS; Clippy en curso tras separar funciones sin silenciar
+sus límites. Un intento posterior falló al mapear metadatos de dependencias
+(E0786, serde/regex_automata); evidencia conservada y repetición sin sccache
+con un job por presión de memoria. Gates Rust en curso de uno en uno, con VANTARE_CARGO_MIN_GB=0 autorizado por
 el orquestador tras detener las esperas anteriores por RAM; target `C:/VantareServer/targets/isa-1661`.
 Sin captura (#1655), producto real, despliegue, cobro, merge o release.
 Siguiente: completar fmt/check/Clippy/Nextest/lifecycle/telemetría, revisar diff,

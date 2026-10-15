@@ -9,12 +9,16 @@ select is(public.billing_founders_payment_allowed('2026-10-26 17:59:59.999Z'),fa
 select is(public.billing_founders_payment_allowed('2026-11-26 18:00:00Z'),false,'closing instant excluded');
 select is(public.billing_founders_payment_allowed('2026-11-26 17:59:59.999Z'),true,'last instant included');
 insert into public.profiles(id) values('00000000-0000-4000-8000-000000001661');
+update private.founders_sale_config set opens_at=now()+interval '1 day',closes_at=now()+interval '2 days';
 select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','founders')->>'reason',
  'founders_sale_closed','before launch cannot checkout');
-update private.founders_sale_config set opens_at=now()-interval '1 hour',closes_at=now()+interval '1 hour';
+update private.founders_sale_config set opens_at=now()-interval '2 days',closes_at=now()-interval '1 day';
+select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','founders')->>'reason','founders_sale_closed','closed window denies checkout independently of client time');
+update private.founders_sale_config set opens_at=now()-interval '1 hour',closes_at=now()+interval '5 minutes';
 select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','founders')->>'reason',null::text,'single configuration controls live window');
 select is((select outcome from public.claim_billing_checkout_attempt('00000000-0000-4000-8000-000000001661',
  '00000000-0000-4000-8000-000000001662','founders','sandbox','founders-test')),'claimed','existing checkout claim accepts Founders');
+select ok((select expires_at <= (select closes_at from private.founders_sale_config where singleton) from public.billing_checkout_attempts where attempt_id='00000000-0000-4000-8000-000000001662'),'local attempt is capped at sale closure');
 select is((select outcome from public.claim_billing_checkout_attempt('00000000-0000-4000-8000-000000001661',
  '00000000-0000-4000-8000-000000001662','founders','sandbox','founders-test')),'busy','same attempt cannot create second checkout');
 select throws_ok($$select public.claim_billing_checkout_attempt('00000000-0000-4000-8000-000000001661',
@@ -38,6 +42,8 @@ select ok((select expires_at is null and status='active' from public.user_entitl
 select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','pro_annual')->>'reason',
  'founders_already_owned','Founders owner cannot pay again for subscriptions');
 select is(private.native_admin_account_summary('00000000-0000-4000-8000-000000001661','https://fixture.invalid','sandbox')->>'plan','founders','Owner sees distinct Founders plan');
+select ok(private.native_admin_account('00000000-0000-4000-8000-000000001661','https://fixture.invalid','sandbox')->'payments' @> '[{"product":"Founders"}]','Owner payment is labelled Founders');
+select ok((select bool_and((item->>'plan')::boolean) from jsonb_array_elements(private.native_admin_account_summary('00000000-0000-4000-8000-000000001661','https://fixture.invalid','sandbox')->'module_access') item),'all current modules belong to Founders');
 select is((select outcome from public.billing_record_refund_snapshot('sandbox','founders-refund','founders-order',null,
  'succeeded',5000,'eur',now()+interval '1 second',repeat('b',64))),'apply','refund recorded');
 select lives_ok($$select public.billing_sync_order_access('sandbox','founders-order','["vantare.plan.founders"]')$$,'refund reconciles same order');

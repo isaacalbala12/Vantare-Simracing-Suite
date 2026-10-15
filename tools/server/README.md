@@ -150,3 +150,18 @@ Encargo VANTA-47, PR #1583, sin Rust ni cambios en datos, credenciales o red.
   cifra el transporte; acceder directamente por LAN no aporta TLS y permite
   observar cookies/tokens a quien intercepte ese tráfico. No se configura TLS
   ni se cierra LAN en este encargo; usar Tailscale mientras Isaac decide el cambio.
+- **P3-5, registro**: comprobación de solo lectura de `/api/instances/` el
+  2026-10-15: `config.enable_signup=True`; la BD confirma `ENABLE_SIGNUP=1`,
+  5 cuentas en total y 5 activas (incluyen bots/servicio; sin listar identidades). **No está acreditado el registro
+  cerrado**. No se creó ninguna cuenta ni se intentó un alta; esa bandera por
+  sí sola tampoco demuestra acceso a un workspace. No se cambió configuración.
+  El orquestador debe resolver el cierre con Isaac antes de asumir esa protección.
+
+Verificado en vivo: las cuatro unidades pasan `systemd-analyze verify`;
+reinicio de Plane y ejecución de copia, supervisión y vigilante completados.
+El backup de drop-ins está en `/var/backups/vantare-hardening/20261015T180427Z`.
+
+Evidencia saneada de esta revisión en `C:\VantareServer\evidence\1647c\`;
+continuidad y estados en VANTA-47/#1565/#1571 y PR #1583. El vigilante tiene
+su detalle de permisos, hashes, tests y despliegue en [PR #1649](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1649),
+VANTA-77/#1647/PR #1649. No hay merge, promoción ni release por el worker.

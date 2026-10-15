@@ -15,8 +15,10 @@ import {
 } from "../_shared/native-auth.ts";
 import { MODULE_CAPABILITIES } from "../_shared/license-credential.ts";
 import {
+  getPolarCustomerStateByExternalId,
   polarAdminRequest,
   type PolarClientDeps,
+  PolarClientError,
   requirePolarEnvironment,
 } from "../_shared/polar.ts";
 import { isUuid, readJsonObject } from "../_shared/request.ts";
@@ -292,13 +294,30 @@ async function cancelSubscriptions(
   }
   for (const id of subscriptions) {
     const path = `/subscriptions/${encodeURIComponent(id)}`;
-    const subscription = await polarAdminRequest(
-      "GET",
-      path,
-      undefined,
-      environment,
-      polar,
-    );
+    let subscription: ObjectValue;
+    try {
+      subscription = await polarAdminRequest(
+        "GET",
+        path,
+        undefined,
+        environment,
+        polar,
+      );
+    } catch (error) {
+      if (
+        error instanceof PolarClientError && error.details.polar_status === 404
+      ) {
+        // No subscription identity in logs; a missing resource is already gone.
+        console.info(
+          JSON.stringify({
+            event: "native_admin_subscription_missing",
+            environment,
+          }),
+        );
+        continue;
+      }
+      throw error;
+    }
     if (subscription.id !== id) {
       throw new NativeError(503, "account_change_incomplete");
     }
@@ -516,8 +535,41 @@ export async function handleNativeAdmin(
         // The durable #1622 tombstone precedes ALL external writes. A lost ACK
         // is retried explicitly; SQL rechecks Owner and the confirmation hash.
         partialChange = true;
+        // A purchase may commit after the initial account read. The #1622 UUID
+        // barrier has now drained preceding writers and prevents new ones.
+        const erased = objectValue(
+          (await run("get_account", { account_id: params.account_id })).account,
+        );
+        if (!Array.isArray(erased.subscriptions)) {
+          throw new NativeError(503, "bridge_unavailable");
+        }
+        let remoteSubscriptions: string[] = [];
+        try {
+          // Checkout binds external_customer_id to our UUID. Read Polar too:
+          // a completed purchase may not have delivered its webhook yet.
+          const state = await getPolarCustomerStateByExternalId(
+            String(params.account_id),
+            environment,
+            deps.polar,
+          );
+          if (state.externalId !== params.account_id) {
+            throw new NativeError(503, "account_change_incomplete");
+          }
+          remoteSubscriptions = state.activeSubscriptions.map((sub) => sub.id);
+        } catch (error) {
+          if (
+            !(error instanceof PolarClientError &&
+              error.code === "polar_customer_not_found")
+          ) throw error;
+          console.info(
+            JSON.stringify({
+              event: "native_admin_customer_missing",
+              environment,
+            }),
+          );
+        }
         await cancelSubscriptions(
-          current.subscriptions,
+          [...new Set([...erased.subscriptions, ...remoteSubscriptions])],
           environment,
           deps.polar,
         );

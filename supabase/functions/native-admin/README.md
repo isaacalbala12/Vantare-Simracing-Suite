@@ -43,7 +43,17 @@ contribuciones aceptadas/rechazadas/spam/arregladas no vuelven a Recibido ni En
 revisión (409); tampoco las históricas sin fila de revisión. No hay acción de
 reapertura. R4 restaura decisiones que el adaptador anterior había reabierto,
 conservando nota y fecha originales. El cupo cuenta también revisiones aceptadas
-si una versión anterior alteró el estado. Los informes antiguos admiten Spam.
+si una versión anterior alteró el estado. Los informes antiguos admiten Spam,
+conservan el motivo y tienen la misma decisión final: no se reabren ni se cambian
+por otra decisión. Solo Aceptado/Arreglado permiten guardar la versión arreglada.
+La reparación no reconstruye «Arreglado en X» si R3 ya borró esos metadatos;
+el Owner debe volver a confirmar la versión desde una fuente comprobada.
+Cada fila reparada deja auditoría `set_report_status`, marcador
+`repair=native_admin_final_decision_r4`, con el reviewer de la decisión original.
+No representa una revisión humana nueva. La reparación suspende en su transacción
+el trigger de cupo y, para esa auditoría histórica, la barrera de cuentas de
+`admin_audit_log` (el reviewer puede estar borrado). Los locks DDL excluyen otros
+escritores y ambos triggers se restauran antes del commit; el resto sigue activo.
 Capturas privadas `ready`, firmadas durante 600 s. Las lecturas se auditan con
 actor, acción, fecha y objetivo; sin duplicar nombres, correos ni pagos.
 
@@ -123,6 +133,28 @@ se protege exactamente la comisión pagada, incluso si una línea se pagó a med
 Un refund posterior reduce solo lo aún no pagado. Payout append-only, auditoría
 de antes/después; no se envía dinero. Esto no ejecuta un cierre automático ni
 reconstruye la situación de un cierre histórico anterior al registro manual.
+
+## Suscripción ausente y recuperación manual del borrado
+
+Tras confirmar el tombstone se releen las suscripciones: incluye compras que
+terminaron entre la lectura inicial y la barrera #1622. Se consulta además el
+estado del cliente en Polar por el UUID usado por checkout, para incluir compras
+completadas cuyo webhook aún no llegó, y se deduplican ambas listas. Los escritores posteriores
+quedan bloqueados por esa barrera. Un GET Polar 404 se considera ya cancelado y
+registra `native_admin_subscription_missing` con entorno, sin IDs ni PII. Si aún
+no existe el cliente remoto (404), registra `native_admin_customer_missing` y
+conserva la cancelación de cualquier ID ya registrado en SQL. Un 401,
+403, 429, 5xx, timeout o respuesta inválida sigue dejando la acción incompleta;
+no autoriza borrar Clerk antes de resolver la cancelación.
+
+Si la acción sigue incompleta, el Owner debe comprobar en el panel Polar del
+mismo entorno la suscripción del usuario y su renovación. Si existe y sigue
+activa, cancelarla manualmente en ese panel y comprobar su estado. Si hay una
+discrepancia de IDs o permisos, resolverla con soporte Polar antes de continuar.
+Después repetir Borrar con el mismo correo confirmado originalmente; la solicitud
+privada permite el reintento aunque Clerk ya no tenga al usuario. El registro 404
+no prueba un reembolso. No retirar el tombstone ni recrear la cuenta para reintentar.
+Este candidato sigue limitado a sandbox; producción requiere su autorización propia.
 
 ## Verificación local
 

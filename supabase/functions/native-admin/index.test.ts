@@ -954,6 +954,10 @@ function deletionFixture(options: {
   cleanupFailure?: boolean;
   subscriptions?: string[];
   polarFailure?: boolean;
+  polarMissing?: boolean;
+  lateSubscription?: boolean;
+  latePolarSubscription?: boolean;
+  polarStateFailure?: number;
 } = {}) {
   const calls: string[] = [];
   const job = {
@@ -972,7 +976,9 @@ function deletionFixture(options: {
             account_id: target,
             owner: options.owner ?? false,
             clerk_subject: subject,
-            subscriptions: options.subscriptions ?? [],
+            subscriptions: options.lateSubscription
+              ? (pending ? ["sub-target"] : [])
+              : options.subscriptions ?? [],
           },
         });
       }
@@ -1012,10 +1018,32 @@ function deletionFixture(options: {
     polar: {
       getAccessToken: () => "fake",
       fetchFn: (_url, init) => {
+        if (String(_url).includes("/customers/external/")) {
+          assert(pending, "remote subscriptions must be read after tombstone");
+          calls.push("polar-state");
+          return Promise.resolve(
+            options.polarStateFailure
+              ? new Response(null, { status: options.polarStateFailure })
+              : Response.json({
+                id: "customer-target",
+                external_id: target,
+                active_subscriptions: options.latePolarSubscription
+                  ? [{
+                    id: "sub-target",
+                    product_id: "product",
+                    modified_at: now.toISOString(),
+                  }]
+                  : [],
+                granted_benefits: [],
+              }),
+          );
+        }
         assert(pending, "tombstone must precede external writes");
         calls.push(`polar-${init?.method}`);
         return Promise.resolve(
-          options.polarFailure
+          options.polarMissing
+            ? new Response(null, { status: 404 })
+            : options.polarFailure
             ? new Response(null, { status: 503 })
             : Response.json({
               id: "sub-target",
@@ -1053,6 +1081,8 @@ Deno.test("r4: deletion checks current email before tombstone, then cancels and 
       "get_account",
       "get_account_deletion",
       "prepare_account_deletion",
+      "get_account",
+      "polar-state",
       "polar-GET",
       "polar-DELETE",
       "clerk-delete",
@@ -1139,4 +1169,56 @@ Deno.test("r4: internal deletion actions are not client commands", () => {
     }
     assert(rejected);
   }
+});
+
+Deno.test("r5: deletion cancels a purchase committed between initial read and tombstone", async () => {
+  const { calls, fake } = deletionFixture({ lateSubscription: true });
+  const response = await handleNativeAdmin(deleteRequest(), fake);
+  assert(response.status === 200);
+  assert(calls.includes("polar-DELETE"), "late subscription must be canceled");
+});
+Deno.test("r5: missing Polar subscription is recorded and deletion completes", async () => {
+  const { calls, fake } = deletionFixture({
+    subscriptions: ["sub-target"],
+    polarMissing: true,
+  });
+  const events: string[] = [];
+  const info = console.info;
+  console.info = (...values) => events.push(values.join(" "));
+  try {
+    const response = await handleNativeAdmin(deleteRequest(), fake);
+    assert(response.status === 200 && calls.includes("cleanup"));
+    assert(!calls.includes("polar-DELETE"));
+    assert(
+      events.some((event) =>
+        JSON.parse(event).event === "native_admin_subscription_missing"
+      ),
+    );
+    assert(
+      !events.join().includes("sub-target"),
+      "log must not expose subscription identity",
+    );
+  } finally {
+    console.info = info;
+  }
+});
+
+Deno.test("r5: deletion cancels a completed Polar purchase even before its webhook arrives", async () => {
+  const { calls, fake } = deletionFixture({ latePolarSubscription: true });
+  const response = await handleNativeAdmin(deleteRequest(), fake);
+  assert(response.status === 200 && calls.includes("polar-DELETE"));
+});
+
+Deno.test("r5: transient Polar state failure keeps deletion retryable before Clerk", async () => {
+  const { calls, fake } = deletionFixture({ polarStateFailure: 503 });
+  const response = await handleNativeAdmin(deleteRequest(), fake);
+  assert(response.status === 503 && !calls.includes("clerk-delete"));
+});
+Deno.test("r5: missing Polar customer still cancels known local subscriptions", async () => {
+  const { calls, fake } = deletionFixture({
+    subscriptions: ["sub-target"],
+    polarStateFailure: 404,
+  });
+  const response = await handleNativeAdmin(deleteRequest(), fake);
+  assert(response.status === 200 && calls.includes("polar-DELETE"));
 });

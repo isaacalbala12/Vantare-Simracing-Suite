@@ -667,6 +667,7 @@ export async function polarAdminRequest(
           "polar_admin_failed",
           "Administrative action failed",
           502,
+          { polar_status: response.status },
         );
       }
       const result: unknown = await response.json();

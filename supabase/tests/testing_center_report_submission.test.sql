@@ -1,4 +1,18 @@
 begin;
+SELECT set_config('fixture.clerk',(to_regclass('private.clerk_issuers') IS NOT NULL)::text,true);
+-- The old schema-cut runner uses UUID claims; B03 requires a bound Clerk session.
+CREATE FUNCTION pg_temp.fixture_claims(account text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', CASE
+    WHEN current_setting('fixture.clerk',true)='true' THEN
+      jsonb_build_object('iss','https://fixtures.clerk.invalid',
+        'sub','user_'||replace(account,'-',''),'role','authenticated',
+        'sid','sess_fixture','azp','https://app.invalid')
+    ELSE jsonb_build_object('iss','https://local.supabase.test/auth/v1',
+        'sub',account,'role','authenticated') END::text, true);
+  RETURN set_config('request.jwt.claim.sub',account,true);
+END $$;
+
 
 select plan(55);
 
@@ -93,6 +107,20 @@ insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-000000000402', 'report-tester@example.invalid'),
   ('00000000-0000-4000-8000-000000000403', 'report-owner@example.invalid'),
   ('00000000-0000-4000-8000-000000000404', 'report-inactive@example.invalid');
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.profiles(id,email) SELECT id,email FROM auth.users
+      ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 
 set local role service_role;
 insert into public.testing_center_memberships (user_id, actor_id, role, active) values
@@ -190,7 +218,7 @@ select throws_ok(
 );
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000401', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000401');
 select is(
   (select idempotent from pg_temp.submit_report('primary-first')),
   false,
@@ -210,7 +238,7 @@ select ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000401', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000401');
 select is(
   (select idempotent from pg_temp.submit_report('primary-first')),
   true,
@@ -229,7 +257,7 @@ select ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000401', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000401');
 select throws_ok(
   $$select * from pg_temp.submit_report('primary-first', p_observed => 'A different observed result')$$,
   '23505', null, 'same key with different verified payload conflicts'
@@ -252,7 +280,7 @@ select throws_ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000402', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000402');
 select throws_ok(
   $$select * from pg_temp.submit_report('tester-nightly')$$,
   '42501', null, 'normal tester cannot report against nightly'
@@ -265,7 +293,7 @@ select is(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000404', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000404');
 select throws_ok(
   $$select * from pg_temp.submit_report('inactive-report')$$,
   '42501', null, 'inactive membership cannot submit'
@@ -273,7 +301,7 @@ select throws_ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000403', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000403');
 select is(
   (select report_state from pg_temp.submit_report('owner-report')),
   'submitted',
@@ -282,7 +310,7 @@ select is(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000401', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000401');
 select throws_ok($$select * from pg_temp.submit_report('bad-version', p_contract => 'testing-center.v2')$$, '22023', null, 'future contract fails closed');
 select throws_ok($$select * from pg_temp.submit_report('bad-channel', p_channel => 'preview')$$, '22023', null, 'unknown channel fails closed');
 select throws_ok($$select * from pg_temp.submit_report('bad-action', p_action => '')$$, '22023', null, 'missing action is rejected');
@@ -376,17 +404,17 @@ select ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000401', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000401');
 select is((select count(*)::integer from public.testing_center_report_payloads), 3, 'reporter sees all three own payloads');
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000402', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000402');
 select is((select count(*)::integer from public.testing_center_report_payloads), 1, 'tester cannot read another reporter payload');
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000403', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000403');
 select is((select count(*)::integer from public.testing_center_report_payloads), 5, 'owner can review all submitted payloads');
 select throws_ok(
   $$insert into public.testing_center_report_payloads (report_id, action_text, expected_text, observed_text, app_version, os_family, os_version, module, include_diagnostic, include_logs) select report_id, 'Did action', 'Expected result', 'Observed result', 'v0.4.0', 'windows', 'Windows 11', 'hub', false, false from public.testing_center_reports limit 1$$,

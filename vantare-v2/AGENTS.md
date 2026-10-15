@@ -207,8 +207,10 @@ conservan sus instrucciones propias.
 
 Desde `vantare-v2/`, compilar siempre mediante
 `pwsh -NoProfile -File native/scripts/compilar.ps1 <comando> [args...]`,
-con target propio y `-j 2`. La cola limita slots y RAM; usa sccache si está
-instalado. Si falla sin diagnóstico del compilador, repetir con
+con target propio y `-j 2`, o los jobs de `CARGO_BUILD_JOBS` si la máquina la
+define (el servidor usa 4); en nextest van en `--build-jobs`, porque su `-j` son
+hilos de test. La cola limita slots y RAM; usa sccache si está instalado.
+Si falla sin diagnóstico del compilador, repetir con
 `VANTARE_SCCACHE=0` y conservar el fallo en la evidencia (#1465).
 No compartir targets ni copiar su caché a carpetas de evidencia.
 

@@ -1,4 +1,18 @@
 begin;
+SELECT set_config('fixture.clerk',(to_regclass('private.clerk_issuers') IS NOT NULL)::text,true);
+-- The old schema-cut runner uses UUID claims; B03 requires a bound Clerk session.
+CREATE FUNCTION pg_temp.fixture_claims(account text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', CASE
+    WHEN current_setting('fixture.clerk',true)='true' THEN
+      jsonb_build_object('iss','https://fixtures.clerk.invalid',
+        'sub','user_'||replace(account,'-',''),'role','authenticated',
+        'sid','sess_fixture','azp','https://app.invalid')
+    ELSE jsonb_build_object('iss','https://local.supabase.test/auth/v1',
+        'sub',account,'role','authenticated') END::text, true);
+  RETURN set_config('request.jwt.claim.sub',account,true);
+END $$;
+
 select plan(61);
 
 select has_table('public', 'testing_center_codex_execution_control', 'durable Codex control exists');
@@ -14,11 +28,25 @@ select ok(has_function_privilege('service_role', 'public.testing_center_claim_co
 select is((select count(*)::integer from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.proname in ('testing_center_load_codex_evidence','testing_center_queue_codex_dry_run','testing_center_claim_codex_dry_run','testing_center_authorize_codex_dispatch','testing_center_record_codex_outcome','testing_center_fail_codex_before_dispatch') and p.prosecdef and p.proconfig[1]='search_path=""'), 6, 'six Codex functions are hardened');
 
 insert into auth.users(id,email) values ('00000000-0000-4000-8000-000000000701','codex-control@example.invalid');
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.profiles(id,email) SELECT id,email FROM auth.users
+      ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 set role service_role;
 insert into public.testing_center_memberships(user_id,actor_id,role,active)
 values ('00000000-0000-4000-8000-000000000701','codex-tester','primary_tester',true);
 reset role;
-select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000000701',true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000701');
 set role authenticated;
 create temporary table wrapper_submission as
 select result.*,fixture.payload

@@ -1,5 +1,6 @@
 //! Horario publicado UTC y caché local; red exclusivamente por services.
 use crate::{files, orbit};
+mod alerts;
 pub mod views;
 
 // Inicio comparte el calendario local; la shell mantiene la navegación y el IPC.

@@ -358,6 +358,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
             1.0,
             set!(DeltaTrace.window_seconds),
         )],
+        Settings::SessionAlerts(value) => session_alerts::fields(value),
         Settings::FastestLap(value) => vec![
             boolean(
                 "Vuelta personal",
@@ -656,6 +657,8 @@ pub fn appearance(
 )> {
     settings.appearance()
 }
+mod session_alerts;
+
 /// Capacidades publicadas por ui; una opción persistida pero ignorada no recibe manejador.
 pub fn pending(settings: &Settings) -> Vec<String> {
     let unsupported = match settings {
@@ -667,6 +670,7 @@ pub fn pending(settings: &Settings) -> Vec<String> {
         Settings::CarDamageVisual(_) => vantare_ui::car_damage_visual::Settings::UNSUPPORTED,
         Settings::DeltaTrace(_) => vantare_ui::delta_trace::Settings::UNSUPPORTED,
         Settings::FastestLap(_) => vantare_ui::fastest_lap::Settings::UNSUPPORTED,
+        Settings::SessionAlerts(_) => vantare_ui::session_alerts::Settings::UNSUPPORTED,
         Settings::FuelStrategy(_) => vantare_ui::fuel_strategy::Settings::UNSUPPORTED,
         Settings::HeadToHead(_) => vantare_ui::head_to_head::Settings::UNSUPPORTED,
         Settings::InputTelemetry(_) => vantare_ui::input_telemetry::Settings::UNSUPPORTED,

@@ -459,6 +459,12 @@ impl Render for Overlay {
         let reduced = cx
             .try_global::<crate::MotionPolicy>()
             .is_some_and(|policy| policy.0);
+        if let Widget::SessionAlerts(widget) = &mut self.widget
+            && let Some(agenda) = cx.try_global::<crate::session_alerts::calendar::Agenda>()
+        {
+            widget.live = true;
+            widget.calendar(&agenda.0);
+        }
         let (paint, wake) = self.widget.frame(self.prefs, reduced);
         #[cfg(feature = "paint-stats")]
         let profile_photo = self.profile_photo.take();
@@ -1108,6 +1114,7 @@ fn run_layout_feed<T: Send + 'static>(
 ) -> Result<(), crate::layout::Error> {
     #[cfg(windows)]
     let track_path = path.clone();
+    let alerts_directory = path.parent().map(std::path::Path::to_path_buf);
     let mut presentation = crate::layout::Presentation::watch(&path)?;
     let mut document = crate::layout::Document::open(path)?;
     gpui_platform::application().run(move |cx: &mut App| {
@@ -1116,6 +1123,7 @@ fn run_layout_feed<T: Send + 'static>(
             return;
         }
         crate::rights::install(rights, cx);
+        cx.set_global(crate::session_alerts::calendar::Agenda::default());
         if let Some(display) = cx.primary_display() {
             let bounds = display.bounds();
             let monitor = (
@@ -1191,7 +1199,12 @@ fn run_layout_feed<T: Send + 'static>(
                 cx.background_executor()
                     .timer(Duration::from_millis(500))
                     .await;
-                cx.update(|cx| screens.borrow_mut().sample_usage(cx));
+                cx.update(|cx| {
+                    screens.borrow_mut().sample_usage(cx);
+                    if let Some(dir) = &alerts_directory {
+                        crate::session_alerts::calendar::poll(dir, cx);
+                    }
+                });
                 match presentation.poll() {
                     Ok(Some(showing)) => cx.update(|cx| {
                         let mut screens = screens.borrow_mut();

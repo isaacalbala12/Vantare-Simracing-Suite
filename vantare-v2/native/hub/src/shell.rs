@@ -912,6 +912,7 @@ fn watch_stdin(controlled: bool) -> Result<Arc<AtomicBool>, String> {
 }
 
 fn start_source_poll(cx: &mut Context<Hub>) {
+    start_session_alerts(cx);
     cx.spawn(async move |this, cx| {
         loop {
             if this.update(cx, Hub::poll_source).is_err() {
@@ -1465,6 +1466,74 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
         Some(error) => Err(error),
         None => Ok(()),
     }
+}
+
+fn start_session_alerts(cx: &mut Context<Hub>) {
+    cx.spawn(async move |this, cx| {
+        let mut machine = vantare_domain::session_alerts::Machine::default();
+        let mut revision = 0;
+        loop {
+            if this
+                .update(cx, |hub, cx| {
+                    if hub.capture.is_some() {
+                        return;
+                    }
+                    let now = chrono::Utc::now();
+                    let mut options = vantare_domain::session_alerts::Options::default();
+                    if let Some(settings) = hub
+                        .studio
+                        .read(cx)
+                        .home_layout()
+                        .instances
+                        .iter()
+                        .find_map(|i| match &i.settings {
+                            vantare_ui::Settings::SessionAlerts(s) if s.companion_for.is_none() => {
+                                Some(s)
+                            }
+                            _ => None,
+                        })
+                    {
+                        options.thresholds.clone_from(&settings.thresholds);
+                    }
+                    let calendar = hub.calendar.read(cx);
+                    let result = calendar.alert_feed(now).and_then(|feed| {
+                        let path = calendar.alert_path();
+                        let bytes = serde_json::to_vec(&feed).map_err(|e| e.to_string())?;
+                        let old = match std::fs::metadata(&path) {
+                            Ok(_) => Some(crate::files::read(&path, 65536)?),
+                            Err(e) if e.kind() == std::io::ErrorKind::NotFound => None,
+                            Err(e) => return Err(e.to_string()),
+                        };
+                        crate::files::save(&path, &bytes, old.as_deref())?;
+                        let time =
+                            u64::try_from(now.timestamp_millis()).map_err(|_| "reloj inválido")?;
+                        machine.calendar(&feed.current(time), time, &options);
+                        Ok(machine.tick(time, &options))
+                    });
+                    match result {
+                        Ok(view) if view.sound_revision != revision => {
+                            revision = view.sound_revision;
+                            if let Some(notice) = view.active {
+                                hub.notify_system(
+                                    &notice.event,
+                                    "Tu próxima carrera",
+                                    &notice.label,
+                                    cx,
+                                );
+                            }
+                        }
+                        Ok(_) => {}
+                        Err(error) => eprintln!("avisos de calendario: {error}"),
+                    }
+                })
+                .is_err()
+            {
+                break;
+            }
+            cx.background_executor().timer(Duration::from_secs(1)).await;
+        }
+    })
+    .detach();
 }
 
 #[cfg(test)]

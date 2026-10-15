@@ -64,6 +64,7 @@ macro_rules! widgets {
                     Self::Relative => "Relative",
                     Self::RacingFlags => "Banderas",
                     Self::FastestLap => "Vuelta rápida",
+                    Self::SessionAlerts => "Avisos de sesión",
                 }
             }
 
@@ -154,4 +155,5 @@ widgets! {
     Relative => relative: "relative",
     RacingFlags => racing_flags: "racing-flags",
     FastestLap => fastest_lap: "fastest-lap",
+    SessionAlerts => session_alerts: "session-alerts",
 }

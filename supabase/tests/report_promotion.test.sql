@@ -179,6 +179,8 @@ select is((select subscription_id from private.report_promotions where account_i
 select public.apply_clerk_user_event('promotion-deleted',repeat('a',64),'https://promotion.clerk.invalid','user_'||replace(pg_temp.account(1)::text,'-',''),'user.deleted','2026-11-11',null);
 select is(public.report_promotion_prepare(pg_temp.account(1),'sandbox','2026-11-12'),null::jsonb,'deleted account cannot prepare');
 select is(private.report_promotion_progress(pg_temp.account(1),'sandbox','2026-11-12'),null::jsonb,'deleted account hidden');
+select ok(not exists(select 1 from public.report_promotion_accounts('sandbox') account where account=pg_temp.account(1)),'P3-21 deleted account is excluded from the worker account list');
+select ok(exists(select 1 from public.report_promotion_accounts('sandbox') account where account=pg_temp.account(2)),'P3-21 live account remains in the worker account list');
 select throws_ok($$select public.report_promotion_observe(pg_temp.account(1),'sandbox','sub1','pro','2026-10-26 19:00 Europe/Madrid','2026-11-12',null)$$,'28000','account_deleted','deleted webhook cannot restore campaign');
 select throws_ok($$select public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000020')$$,'28000','account_deleted','P1-2 deleted account cannot recover a launch checkout');
 select throws_ok($$select public.report_promotion_checkout_pending(pg_temp.account(1),'sandbox','2026-10-30')$$,'28000','account_deleted','P1-2 deleted account cannot read checkout recovery references');

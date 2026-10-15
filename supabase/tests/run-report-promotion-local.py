@@ -9,7 +9,7 @@ p.add_argument('--only', nargs='*')
 p.add_argument('--baseline-summary', help='Compare every shared suite; fail on any regression')
 p.add_argument('--storage-schema', default=str(pathlib.Path.home()/'evidence/1608/r6/storage-schema.sql'), help='Schema-only dump from disposable local Storage')
 p.add_argument('--without-promotion', action='store_true')
-p.add_argument('--mutation',choices=['launch','launch-end','window','tier','spam','creator','deleted','idempotency','first-month','invoice','transfer','settlements','repair','first-refund','launch-used','checkout-proof','cleanup-inactive','invoice-gap','initial-incident','reward-expiry'])
+p.add_argument('--mutation',choices=['launch','launch-end','window','tier','spam','creator','deleted','idempotency','first-month','invoice','transfer','settlements','repair','first-refund','launch-used','checkout-proof','cleanup-inactive','invoice-gap','initial-incident','reward-expiry','accounts-deleted','attempt-required','tier-total','checkout-no-id'])
 a=p.parse_args(); root=pathlib.Path(a.root).resolve(); out=pathlib.Path(a.output).resolve(); out.mkdir(parents=True,exist_ok=True)
 if not (pathlib.Path.home()/'orq/docker.lock').is_dir(): raise SystemExit('Acquire ~/orq/docker.lock first')
 container='vantare-1593-'+str(int(time.time()))
@@ -42,6 +42,10 @@ try:
   if result.returncode: raise RuntimeError(migration.name+': '+result.stderr[-4000:])
  if a.mutation:
   signature, before, after = {
+   'accounts-deleted':('public.report_promotion_accounts(text,uuid)','and not exists(select 1 from public.account_identities i where i.account_id=p.account_id and i.deleted_at is not null)',''),
+   'attempt-required':('public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid)',"if p_attempt is null then raise sqlstate '22023' using message='promotion_attempt_required'; end if;","null;"),
+   'tier-total':('public.report_promotion_prepare(uuid,text,timestamptz)','p.reward_granted_at:=coalesce(p.reward_granted_at,grant_at);','p.reward_granted_at:=grant_at;'),
+   'checkout-no-id':('public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid)','used.remote_pending and coalesce(used.checkout_id,prior.provider_checkout_id) is not null and p_replaces is distinct from used.attempt_id','used.remote_pending and (p_replaces is distinct from used.attempt_id or coalesce(used.checkout_id,prior.provider_checkout_id) is null)'),
    'launch':('private.report_promotion_eligible(timestamptz)','2026-10-26 19:00','2026-10-26 18:00'),
    'launch-end':('private.report_promotion_eligible(timestamptz)','2026-11-02 19:00','2026-11-02 00:00'),
    'window':('private.report_promotion_progress(uuid,text,timestamptz)','1080 hours','1081 hours'),

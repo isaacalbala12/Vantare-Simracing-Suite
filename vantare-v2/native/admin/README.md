@@ -55,7 +55,10 @@ POST bearer OAuth, `version:1` y JSON cerrado; contrato actualizado en
 Cada escritura pide confirmación y espera ACK y relectura; no hay cambios
 optimistas ni reintento automático. El Owner no tiene botones de bloqueo/borrado,
 y el servidor también lo protege. Borrar exige correo exacto normalizado en app
-y servidor; **su ejecución permanece pendiente de la barrera #1622**. Un fallo
+y servidor. Aplica la barrera de #1622, cancela suscripciones, borra en Clerk y
+completa Storage. Si queda incompleto, repite con el mismo correo; el servidor
+conserva su hash para completar la solicitud incluso si Clerk ya no devuelve PII.
+No envía reembolsos. Owner protegido también en SQL bajo lock. Un fallo
 parcial de bloqueo obliga a actualizar/repetir para terminar la cancelación.
 Crear códigos y bloquear solo funcionan con servidor sandbox en este candidato.
 

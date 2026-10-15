@@ -6,7 +6,8 @@ presupuesto persistente de 60 peticiones/minuto por actor. El cliente no recibe
 secretos ni tiene acceso directo a tablas. No se crea Owner automáticamente.
 
 Aplicar las migraciones existentes y las de gestión `20261014010000_native_admin_r1.sql` y
-`20261015010000_native_admin_review_r3.sql` antes
+`20261015010000_native_admin_review_r3.sql`, `20261015120000_native_admin_final_decision_r4.sql`
+y `20261015130000_native_admin_account_deletion_r4.sql` antes
 de usar este cliente. Contrato v1 ampliado, conservando las acciones anteriores:
 
 | Acción | Campos | Resultado |
@@ -19,7 +20,7 @@ de usar este cliente. Contrato v1 ampliado, conservando las acciones anteriores:
 | `list_reports` / `get_report` | `status?`, `limit?`, `cursor?` / `report_id` | informes actuales e históricos; detalle y capturas firmadas |
 | `set_report_status` | `report_id`, `status`, `fixed_in_version?`, `reason?` | ACK; releer informe |
 | `set_blocked` | `account_id`, `blocked`, `reason?` ≤200 caracteres | bloqueo local + Clerk + cancelación Polar |
-| `delete_account` | `account_id`, `confirm_email` | contrato preparado; borrado pendiente de #1622 |
+| `delete_account` | `account_id`, `confirm_email` | barrera #1622, cancelación Polar, borrado Clerk y limpieza Storage; `deleted_at` |
 | `list_creators` / `get_creator` | ninguno / `creator_id` | creadores, totales, líneas y `history_complete` |
 | `create_creator` | `name` ≤120, `email` ≤320, `code` `[A-Z0-9]{3,32}` | reserva local y código Polar confirmado |
 | `record_creator_payout` | `creator_id`, `amount_cents`, `paid_at?` | apunta pago manual, no transfiere dinero |
@@ -48,7 +49,7 @@ actor, acción, fecha y objetivo; sin duplicar nombres, correos ni pagos.
 
 ## Efectos externos y recuperación
 
-**Candidato limitado a sandbox.** Crear códigos, bloquear y preparar borrado
+**Candidato limitado a sandbox.** Crear códigos, bloquear y borrar
 rechazan `production` antes de escribir. El transporte nuevo fija el host
 `sandbox-api.polar.sh`, rechaza redirects y no reintenta escrituras. Sin pruebas
 contra SaaS real ni despliegue en este encargo.
@@ -63,9 +64,23 @@ ya emitidas conservan los límites de caducidad existentes.
 
 Owner y propia cuenta protegidos en servidor. Borrar compara correo normalizado
 con el correo actual obtenido de Clerk, no con un valor aportado por el cliente.
-Incorrecto: 422. Correcto: `deletion_barrier_unavailable` sin efectos. La base
-`b9ec75ed` carece de la barrera de #1622: el orquestador la conectará tras su
-revisión. No se sustituye borrado por un ban.
+Incorrecto: 422 sin efectos. Correcto: una solicitud SQL privada aplica la barrera
+#1622 (tombstone, revocación y anonimización) antes de cualquier escritura externa;
+después cancela suscripciones Polar, borra en Clerk y drena la cola Storage con
+el mismo limpiador de #1622. Se conserva el historial comercial según ese flujo.
+La cuenta del dueño y la propia se rechazan otra vez en SQL bajo locks UUID.
+La solicitud se audita en la misma transacción, sin PII ni hash en la auditoría.
+
+`get_account_deletion` y `prepare_account_deletion` son acciones internas: el
+cliente no puede solicitarlas. La tabla privada conserva UUID, issuer/subject,
+fecha y SHA-256 del correo normalizado, nunca el correo en claro. Solo la primera
+solicitud compara el correo actual de Clerk. Los reintentos exigen el mismo hash
+y Owner vigente; no consultan un usuario Clerk que puede haber desaparecido.
+Un 404 de DELETE se acepta únicamente tras recuperar esa solicitud duradera.
+Un fallo posterior a la barrera devuelve `account_change_incomplete`; no afirma
+que las cancelaciones, Clerk o Storage terminaron. Repetir explícitamente con el
+mismo correo completa los ACK pendientes. No hay reembolsos ni reintento automático.
+El webhook firmado puede llegar después: la barrera y las colas son idempotentes.
 
 Los códigos reservan identidad estable y se reconcilian tras perder un ACK.
 Descuento 20 %, dos meses, exactamente los cuatro productos de lanzamiento.
@@ -128,4 +143,5 @@ webhooks reales quedan al orquestador tras revisión y autorización propias.
 
 Referencias API: [órdenes](https://polar.sh/docs/api-reference/orders/list),
 [orden e importes](https://polar.sh/docs/api-reference/orders/get),
-[refunds](https://polar.sh/docs/api-reference/refunds/list).
+[refunds](https://polar.sh/docs/api-reference/refunds/list),
+[borrado Clerk](https://clerk.com/docs/reference/backend/user/delete-user).

@@ -587,32 +587,6 @@ Deno.test("r1: failed cancellation preserves the local ban and returns an incomp
   );
   assert(response.status === 503 && blocked);
 });
-Deno.test("r1: delete checks the current primary Clerk email before the pending barrier", async () => {
-  for (const email of ["wrong@example.invalid", " TESTER@EXAMPLE.INVALID "]) {
-    const response = await handleNativeAdmin(
-      request({
-        version: 1,
-        action: "delete_account",
-        account_id: target,
-        confirm_email: email.trim(),
-      }),
-      deps({
-        environment: "sandbox",
-        execute: () =>
-          Promise.resolve({
-            account: { owner: false, clerk_subject: subject },
-          }),
-      }),
-    );
-    assert(response.status === (email.startsWith("wrong") ? 422 : 503));
-    assert(
-      (await response.json()).error ===
-        (email.startsWith("wrong")
-          ? "confirmation_mismatch"
-          : "deletion_barrier_unavailable"),
-    );
-  }
-});
 Deno.test("r1: creator creation reserves a stable id before Polar and activates after ACK", async () => {
   let called = 0;
   const response = await handleNativeAdmin(
@@ -968,5 +942,201 @@ Deno.test("r3: spam and acceptance require a human note at the public boundary",
       reason: "Revisado por Isaac",
     });
     assert(request.params.status === status);
+  }
+});
+
+function deletionFixture(options: {
+  pending?: boolean;
+  wrongHash?: boolean;
+  owner?: boolean;
+  sqlFailure?: boolean;
+  deleteStatus?: number;
+  cleanupFailure?: boolean;
+  subscriptions?: string[];
+  polarFailure?: boolean;
+} = {}) {
+  const calls: string[] = [];
+  const job = {
+    account_id: target,
+    clerk_subject: subject,
+    deleted_at: now.toISOString(),
+  };
+  let pending = options.pending ?? false;
+  const fake = deps({
+    environment: "sandbox",
+    execute: (_actor, _issuer, action, params) => {
+      calls.push(action);
+      if (action === "get_account") {
+        return Promise.resolve({
+          account: {
+            account_id: target,
+            owner: options.owner ?? false,
+            clerk_subject: subject,
+            subscriptions: options.subscriptions ?? [],
+          },
+        });
+      }
+      if (action === "get_account_deletion") {
+        if (options.wrongHash) {
+          throw new Error("native_admin_confirmation_mismatch");
+        }
+        return Promise.resolve({ deletion: pending ? job : null });
+      }
+      assert(action === "prepare_account_deletion");
+      assert(
+        params.clerk_subject === subject &&
+          /^[a-f0-9]{64}$/.test(String(params.confirmation_hash)),
+      );
+      assert(
+        !JSON.stringify(params).includes("@"),
+        "SQL never receives the email",
+      );
+      if (options.sqlFailure) throw new Error("unavailable");
+      pending = true;
+      return Promise.resolve({ deletion: job });
+    },
+    fetch: (url, init) => {
+      if (String(url).endsWith("/verify")) {
+        return Promise.resolve(Response.json(claims));
+      }
+      if (init?.method === "DELETE") {
+        assert(pending && init.redirect === "error");
+        calls.push("clerk-delete");
+        return Promise.resolve(
+          new Response(null, { status: options.deleteStatus ?? 200 }),
+        );
+      }
+      calls.push("clerk-get");
+      return Promise.resolve(Response.json(user));
+    },
+    polar: {
+      getAccessToken: () => "fake",
+      fetchFn: (_url, init) => {
+        assert(pending, "tombstone must precede external writes");
+        calls.push(`polar-${init?.method}`);
+        return Promise.resolve(
+          options.polarFailure
+            ? new Response(null, { status: 503 })
+            : Response.json({
+              id: "sub-target",
+              status: init?.method === "DELETE" ? "canceled" : "active",
+            }),
+        );
+      },
+    },
+    cleanupDeletion: () => {
+      calls.push("cleanup");
+      if (options.cleanupFailure) throw new Error("cleanup failed");
+      return Promise.resolve();
+    },
+  });
+  return { calls, fake };
+}
+function deleteRequest(email = "TESTER@EXAMPLE.INVALID") {
+  return request({
+    version: 1,
+    action: "delete_account",
+    account_id: target,
+    confirm_email: email,
+  });
+}
+Deno.test("r4: deletion checks current email before tombstone, then cancels and drains #1622", async () => {
+  const { calls, fake } = deletionFixture({ subscriptions: ["sub-target"] });
+  const response = await handleNativeAdmin(deleteRequest(), fake);
+  assert(
+    response.status === 200 &&
+      (await response.json()).deleted_at === now.toISOString(),
+  );
+  const events = calls.filter((call) => call !== "clerk-get");
+  assert(
+    JSON.stringify(events) === JSON.stringify([
+      "get_account",
+      "get_account_deletion",
+      "prepare_account_deletion",
+      "polar-GET",
+      "polar-DELETE",
+      "clerk-delete",
+      "cleanup",
+    ]),
+  );
+});
+Deno.test("r4: wrong email and Owner never initiate deletion or external writes", async () => {
+  for (const owner of [false, true]) {
+    const { calls, fake } = deletionFixture({ owner });
+    const response = await handleNativeAdmin(
+      deleteRequest("wrong@example.invalid"),
+      fake,
+    );
+    assert(response.status === (owner ? 409 : 422));
+    assert(
+      !calls.includes("prepare_account_deletion") &&
+        !calls.includes("clerk-delete") && !calls.includes("cleanup"),
+    );
+  }
+});
+Deno.test("r4: failed tombstone never performs external deletion", async () => {
+  const { calls, fake } = deletionFixture({ sqlFailure: true });
+  const response = await handleNativeAdmin(deleteRequest(), fake);
+  assert(
+    response.status === 503 && !calls.includes("clerk-delete") &&
+      !calls.includes("cleanup"),
+  );
+});
+Deno.test("r4: pending deletion retries after lost Clerk ACK without looking up erased PII", async () => {
+  const { calls, fake } = deletionFixture({ pending: true, deleteStatus: 404 });
+  const response = await handleNativeAdmin(deleteRequest(), fake);
+  assert(
+    response.status === 200 && !calls.includes("prepare_account_deletion"),
+  );
+  assert(
+    calls.filter((call) => call === "clerk-get").length === 1,
+    "only actor profile is read",
+  );
+  assert(calls.includes("cleanup"));
+});
+Deno.test("r4: pending deletion rejects another confirmation", async () => {
+  const { calls, fake } = deletionFixture({ pending: true, wrongHash: true });
+  const response = await handleNativeAdmin(
+    deleteRequest("different@example.invalid"),
+    fake,
+  );
+  assert(
+    response.status === 422 &&
+      (await response.json()).error === "confirmation_mismatch",
+  );
+  assert(!calls.includes("clerk-delete"));
+});
+Deno.test("r4: failures after tombstone remain explicit and retryable", async () => {
+  for (
+    const options of [
+      { deleteStatus: 503 },
+      { cleanupFailure: true },
+      { subscriptions: ["sub-target"], polarFailure: true },
+    ]
+  ) {
+    const { calls, fake } = deletionFixture(options);
+    const response = await handleNativeAdmin(deleteRequest(), fake);
+    assert(
+      response.status === 503 &&
+        (await response.json()).error === "account_change_incomplete",
+    );
+    if (options.polarFailure) assert(!calls.includes("clerk-delete"));
+    if (options.deleteStatus) assert(!calls.includes("cleanup"));
+  }
+});
+Deno.test("r4: internal deletion actions are not client commands", () => {
+  for (const action of ["get_account_deletion", "prepare_account_deletion"]) {
+    let rejected = false;
+    try {
+      validateAdminRequest({
+        version: 1,
+        action,
+        account_id: target,
+        confirmation_hash: "a".repeat(64),
+      });
+    } catch (e) {
+      rejected = e instanceof NativeError && e.status === 400;
+    }
+    assert(rejected);
   }
 });

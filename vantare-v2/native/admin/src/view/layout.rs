@@ -228,7 +228,7 @@ impl Admin {
                     )))
                     .child(self.form_a.clone())
                     .child(note(
-                        "El borrado estará disponible cuando finalice su revisión de seguridad.",
+                        "Se comprueba el correo en el servidor. Si queda incompleto, repite con el mismo correo para terminar.",
                         RED,
                     ));
             }

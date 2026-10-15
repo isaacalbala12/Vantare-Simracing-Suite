@@ -690,7 +690,9 @@ impl Admin {
                 if user
                     .email
                     .as_deref()
-                    .is_none_or(|email| !email.eq_ignore_ascii_case(&a))
+                    // After a partial deletion Clerk may no longer return the email.
+                    // The server requires the original confirmation hash on retry.
+                    .is_some_and(|email| !email.eq_ignore_ascii_case(&a))
                 {
                     return Err("Escribe exactamente el correo de esta persona.".into());
                 }

@@ -1,3 +1,4 @@
+import { cleanupDeletedObjects } from "../clerk-webhook/index.ts";
 import { syncAdminPayments } from "./payment-sync.ts";
 import { ensureCreatorCode } from "./creator-code.ts";
 import type { PolarProductMap } from "../_shared/mapping.ts";
@@ -46,6 +47,7 @@ export type AdminDeps = NativeAuthDeps & {
     environment: string,
   ) => Promise<ObjectValue>;
   signUrl?: (path: string, seconds: number) => Promise<string>;
+  cleanupDeletion?: (issuer: string, subject: string) => Promise<void>;
   environment?: "production" | "sandbox";
   polar?: PolarClientDeps;
   productMap?: PolarProductMap;
@@ -277,6 +279,43 @@ async function enrich(
   }
 }
 
+async function cancelSubscriptions(
+  subscriptions: unknown,
+  environment: "production" | "sandbox",
+  polar: PolarClientDeps | undefined,
+): Promise<void> {
+  if (
+    !Array.isArray(subscriptions) ||
+    !subscriptions.every((id) => typeof id === "string")
+  ) {
+    throw new NativeError(503, "bridge_unavailable");
+  }
+  for (const id of subscriptions) {
+    const path = `/subscriptions/${encodeURIComponent(id)}`;
+    const subscription = await polarAdminRequest(
+      "GET",
+      path,
+      undefined,
+      environment,
+      polar,
+    );
+    if (subscription.id !== id) {
+      throw new NativeError(503, "account_change_incomplete");
+    }
+    if (subscription.status === "canceled") continue;
+    const canceled = await polarAdminRequest(
+      "DELETE",
+      path,
+      undefined,
+      environment,
+      polar,
+    );
+    if (canceled.id !== id || canceled.status !== "canceled") {
+      throw new NativeError(503, "account_change_incomplete");
+    }
+  }
+}
+
 export async function handleNativeAdmin(
   request: Request,
   deps: AdminDeps = {},
@@ -431,21 +470,81 @@ export async function handleNativeAdmin(
       }
       const subject = current.clerk_subject;
       if (action === "delete_account") {
-        const targetUser = clerkUser(
-          await clerkGet(`users/${encodeURIComponent(subject)}`, deps),
-        );
-        if (targetUser.id !== subject) {
+        const confirmation_hash = [
+          ...new Uint8Array(
+            await crypto.subtle.digest(
+              "SHA-256",
+              new TextEncoder().encode(
+                String(params.confirm_email).trim().toLowerCase(),
+              ),
+            ),
+          ),
+        ].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+        const deletionParams = {
+          account_id: params.account_id,
+          confirmation_hash,
+        };
+        const previous = await run("get_account_deletion", deletionParams);
+        let deletion = previous.deletion;
+        if (deletion === null) {
+          const targetUser = clerkUser(
+            await clerkGet(`users/${encodeURIComponent(subject)}`, deps),
+          );
+          if (targetUser.id !== subject) {
+            throw new NativeError(503, "bridge_unavailable");
+          }
+          const email = contact(targetUser).email;
+          if (
+            !email ||
+            String(params.confirm_email).trim().toLowerCase() !==
+              email.trim().toLowerCase()
+          ) {
+            throw new NativeError(422, "confirmation_mismatch");
+          }
+          deletion = (await run("prepare_account_deletion", {
+            ...deletionParams,
+            clerk_subject: subject,
+          })).deletion;
+        }
+        const job = objectValue(deletion);
+        if (
+          job.account_id !== params.account_id ||
+          job.clerk_subject !== subject || typeof job.deleted_at !== "string"
+        ) {
           throw new NativeError(503, "bridge_unavailable");
         }
-        const email = contact(targetUser).email;
-        if (
-          !email ||
-          String(params.confirm_email).trim().toLowerCase() !==
-            email.trim().toLowerCase()
-        ) throw new NativeError(422, "confirmation_mismatch");
-        // b9ec75ed has no account erasure barrier. Never pretend a ban is deletion.
-        // #1622 is still under review; connect its approved RPC in the final handoff.
-        throw new NativeError(503, "deletion_barrier_unavailable");
+        // The durable #1622 tombstone precedes ALL external writes. A lost ACK
+        // is retried explicitly; SQL rechecks Owner and the confirmation hash.
+        partialChange = true;
+        await cancelSubscriptions(
+          current.subscriptions,
+          environment,
+          deps.polar,
+        );
+        const response = await (deps.fetch ?? fetch)(
+          `https://api.clerk.com/v1/users/${encodeURIComponent(subject)}`,
+          {
+            method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${nativeConfig(deps).secretKey}`,
+            },
+            redirect: "error",
+            signal: AbortSignal.timeout(4000),
+          },
+        );
+        // 404 is safe only AFTER our durable, email-confirmed deletion request.
+        if (!response.ok && response.status !== 404) {
+          throw new NativeError(503, "account_change_incomplete");
+        }
+        await (deps.cleanupDeletion ?? cleanupDeletedObjects)(
+          nativeConfig(deps).issuer,
+          subject,
+        );
+        return respond({
+          ok: true,
+          account_id: params.account_id,
+          deleted_at: job.deleted_at,
+        });
       }
       if (params.blocked === true) {
         await run("set_blocked", params);
@@ -464,35 +563,11 @@ export async function handleNativeAdmin(
       );
       if (!response.ok) throw new NativeError(503, "account_change_incomplete");
       if (params.blocked === true) {
-        if (
-          !Array.isArray(current.subscriptions) ||
-          !current.subscriptions.every((id) => typeof id === "string")
-        ) throw new NativeError(503, "bridge_unavailable");
-        for (const id of current.subscriptions) {
-          const path = `/subscriptions/${encodeURIComponent(id)}`;
-          const subscription = await polarAdminRequest(
-            "GET",
-            path,
-            undefined,
-            environment,
-            deps.polar,
-          );
-          if (subscription.id !== id) {
-            throw new NativeError(503, "account_change_incomplete");
-          }
-          // A lost cancellation ACK must be safe to retry before its webhook arrives.
-          if (subscription.status === "canceled") continue;
-          const canceled = await polarAdminRequest(
-            "DELETE",
-            path,
-            undefined,
-            environment,
-            deps.polar,
-          );
-          if (canceled.id !== id || canceled.status !== "canceled") {
-            throw new NativeError(503, "account_change_incomplete");
-          }
-        }
+        await cancelSubscriptions(
+          current.subscriptions,
+          environment,
+          deps.polar,
+        );
       } else await run("set_blocked", params);
       return respond({
         ok: true,
@@ -570,6 +645,12 @@ export async function handleNativeAdmin(
       ) {
         failure = new NativeError(409, "account_conflict");
       }
+    }
+    if (
+      error && typeof error === "object" && "message" in error &&
+      error.message === "native_admin_confirmation_mismatch"
+    ) {
+      failure = new NativeError(422, "confirmation_mismatch");
     }
     if (partialChange && failure.status >= 500) {
       failure = new NativeError(503, "account_change_incomplete");

@@ -2,6 +2,37 @@
 
 [Histórico previo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/8c6e83f977c8d2245a04266cdaaf896ed8c1b131/vantare-v2/docs/vantare-program/handoffs/overlays-launcher-hub.md). El diario y avances están en las issues; este documento conserva el estado actual.
 
+## Entrega asignada #1653 / VANTA-74 · 2026-10-15
+
+Implementación Mac por SSH en `~/wt-1653`,
+`vantareapp/isa-1653-avisos-sesion`, base nightly `3f82af86`.
+[Issue](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1653),
+área overlays-runtime / Project Vantare; sin milestone. Ronda 4 v2 aprobada.
+Motor puro en domain, widget Pro y mini enlazada del registro, panel/franja/píldora
+del kit, ajustes Studio y agenda local del calendario nightly con toasts existentes.
+[Contrato y QA](../../../native/ui/session-alerts.md). Sin dependencias nuevas.
+
+LMU aún no publica estado/fase fiables ni metros a línea: huecos explícitos
+para #1638, sin inventar valores ni bandera verde. Fin de prácticas/qualy por
+transición observada; el tiempo restante no acredita el comienzo/tipo siguiente.
+PR #1640 aún abierta: enganche mínimo en Calendar::alert_feed, sin fusionarla.
+Capturas de app pendientes de #1655; solo tests puros/escenas/layout.
+Código `e1dd1747ab69b5a72ddaebf9a7fb700c2b6345e7`, entrega técnica para revisión.
+Fmt (incluidos módulos de macro), check workspace/all-targets y Clippy -D warnings
+PASS. Nextest focalizado 17/17; tanda completa 1040 ejecutados: 989 PASS,
+51 FAIL, 8 omitidos. 50 fallos son GPUI macOS «Mac platform not created on main
+thread»; el restante es IPC accept/ENOTCONN y pasa al repetirlo solo. No se
+cambian ni omiten esas pruebas. Suites Windows/QA física siguen pendientes.
+Lifecycle Mac 10/10 (Engineer tiene cero casos aplicables aquí), telemetría
+25/25, calidad/456 huellas PASS. Regresión de caducidad con igual secuencia
+y contrato de demanda reales LMU/ACC PASS. Logs `~/orq/1653-evidence/`.
+
+El worker publica al bare del Mac; el orquestador sube a GitHub/abre el PR.
+Estado Plane y HEAD final del bare verificados al cerrar en issue y buzón
+`~/orq/1653.buzon.md`. Sin PR/CI remotos de esta rama, merge ni promoción/release.
+Siguiente: revisar el diff y los fallos Mac, ejecutar suite Windows, adaptar
+#1640 al integrarla, completar señales de #1638 y capturas con #1655.
+
 ## 1. Resultado
 
 Hub/Studio GPUI editan el layout único y los widgets del registro. Launcher gobierna procesos mediante el motor propio. Standings tiene columnas/formatos por Práctica, Qualy y Carrera; todos los widgets filtran por sesión. Pedales conserva separación ajustable y gana Look Vantare en columnas (#1566, integrada en nightly); el botón de pista alterna mostrar/dejar de mostrar mediante la solicitud compartida.

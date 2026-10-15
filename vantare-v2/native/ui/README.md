@@ -651,3 +651,7 @@ El cálculo de política y el booleano de visibilidad no asignan memoria por fot
 Una situación estable no solicita `notify` ni fuerza `ingest`: mantiene la cadencia
 existente. La regresión cubre los 18 widgets, 100 repeticiones visibles y ocultas;
 no elimina repintados necesarios por cambios de telemetría o por sus historiales.
+
+## Avisos de sesión (#1653)
+
+Widget Pro LMU, ronda 4 v2: [contrato, mini, calendario y límites de señales](session-alerts.md).

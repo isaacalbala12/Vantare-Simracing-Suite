@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "issue": "ISA-1653",
+  "type": "feature",
+  "summary": "Avisos de sesión Pro para LMU: umbrales, cambios observados y carreras marcadas del calendario, con mini independiente.",
+  "technicalNotes": [
+    "Motor puro con reloj inyectado; mismos componentes del kit y registro de widgets.",
+    "Ajustes de umbrales, duración, sonido y mini en Studio; toasts Windows reutilizan las preferencias generales."
+  ],
+  "testing": [
+    "Añadir Avisos de sesión en Studio; mover aviso y mini por separado, editar ajustes y deshacer.",
+    "Comparar con ronda 4 v2 cuando esté disponible #1655; probar sonido y notificaciones en Windows."
+  ],
+  "knownLimitations": [
+    "Fase de formación/salida, estado Finished y metros a línea pendientes de señales LMU verificadas en #1638.",
+    "El reloj actual mide el fin de sesión, no el tipo ni comienzo exacto de la siguiente.",
+    "Adaptar el productor de agenda a los recordatorios nuevos cuando se integre #1640.",
+    "Sin capturas ni QA física de app; quedan pendientes de #1655."
+  ]
+}

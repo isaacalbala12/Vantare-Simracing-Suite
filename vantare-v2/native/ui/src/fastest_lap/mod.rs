@@ -135,7 +135,8 @@ impl Widget {
             self.settings.show_personal,
         );
         #[cfg(feature = "parity-capture")]
-        let preview_changed = self.vm.candidate != next.candidate
+        let preview_changed = preview_changed
+            || self.vm.candidate != next.candidate
             || self.vm.personal != next.personal
             || self.vm.ready != next.ready
             || self.vm.active_class != next.active_class;

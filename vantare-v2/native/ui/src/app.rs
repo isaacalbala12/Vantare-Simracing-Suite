@@ -672,6 +672,62 @@ fn popup(bounds: Bounds<Pixels>) -> WindowOptions {
     }
 }
 
+/// Banco de paridad: usa el mismo Screen, fuera de todos los monitores y sin foco.
+#[cfg(all(windows, feature = "parity-capture"))]
+pub(crate) fn open_capture(cx: &mut App, view: Entity<Overlay>) -> Result<(), String> {
+    let (w, h) = view.read(cx).wanted_size();
+    let displays = cx.displays();
+    let span = displays
+        .iter()
+        .map(|d| f32::from(d.bounds().size.width))
+        .fold(w, f32::max)
+        .max(4000.0);
+    let x = displays
+        .iter()
+        .map(|d| f32::from(d.bounds().origin.x))
+        .fold(0.0_f32, f32::min)
+        - span
+        - 256.0;
+    let bounds = Bounds::new(
+        point(px(x), px(0.0)),
+        gpui::size(px(w.ceil()), px(h.ceil() + crate::capture::MARGIN as f32)),
+    );
+    let mut options = popup(bounds);
+    options.show = false;
+    cx.open_window(options, |window, cx| {
+        let hwnd = overlay::hwnd_of(window);
+        if let Some(hwnd) = hwnd {
+            let scale = window.scale_factor();
+            overlay::apply(hwnd, ((x * scale).round() as i32, 0));
+            // SAFETY: HWND vivo de este banco. Dimensiones finitas del renderer.
+            // SWP_NOACTIVATE | SWP_SHOWWINDOW: nunca obtiene el foco.
+            unsafe {
+                overlay::ffi::SetWindowPos(
+                    hwnd,
+                    -1,
+                    (x * scale).round() as i32,
+                    0,
+                    (w.ceil() * scale).ceil() as i32,
+                    ((h.ceil() + crate::capture::MARGIN as f32) * scale).ceil() as i32,
+                    0x10 | 0x40,
+                );
+            }
+        }
+        cx.new(|_| Screen {
+            connection_owner: false,
+            widgets: vec![PlacedOverlay {
+                view,
+                at: (0.0, 0.0),
+                opacity: 1.0,
+            }],
+            origin: (x, 0.0),
+            hwnd,
+        })
+    })
+    .map(|_| ())
+    .map_err(|e| format!("abrir captura fuera de pantalla: {e}"))
+}
+
 type Placed<T> = Vec<(T, (f32, f32))>;
 
 /// Reparte los widgets (posición global) entre los monitores: cada uno recibe
@@ -756,7 +812,7 @@ fn window_action(existing: bool, occupied: bool) -> WindowAction {
 
 struct LiveScreens {
     #[cfg(windows)]
-    _shortcut_task: Option<gpui::Task<()>>,
+    shortcut_task: Option<gpui::Task<()>>,
     usage: usage::State,
     cadences: HashMap<String, crate::performance::Cadence>,
     usage_widgets: Option<Vec<String>>,
@@ -1151,7 +1207,7 @@ fn run_layout_feed<T: Send + 'static>(
         );
         let screens = Rc::new(RefCell::new(LiveScreens {
             #[cfg(windows)]
-            _shortcut_task: None,
+            shortcut_task: None,
             usage: usage::State::default(),
             cadences: HashMap::new(),
             usage_widgets: None,
@@ -1186,8 +1242,7 @@ fn run_layout_feed<T: Send + 'static>(
                                 if !settings.toggle_key.is_empty())
                             {
                                 active = true;
-                                live.view
-                                    .update(cx, |overlay, cx| overlay.poll_damage_shortcut(cx));
+                                live.view.update(cx, Overlay::poll_damage_shortcut);
                             }
                         }
                         active
@@ -1195,7 +1250,7 @@ fn run_layout_feed<T: Send + 'static>(
                     delay = Duration::from_millis(if active { 32 } else { 500 });
                 }
             });
-            screens.borrow_mut()._shortcut_task = Some(task);
+            screens.borrow_mut().shortcut_task = Some(task);
         }
         let quit_screens = screens.clone();
         cx.on_app_quit(move |cx| {

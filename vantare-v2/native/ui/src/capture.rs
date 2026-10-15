@@ -2,8 +2,8 @@
 //! `parity-capture`, no entra en el binario de producto).
 //!
 //! GPUI en Windows no lee la textura de la ventana. Se pinta el mismo estado
-//! sobre un fondo opaco negro y luego blanco, se copia el área cliente por GDI
-//! (lo que compone DWM) y se resuelve el alfa: `a = 1 - (Cw - Cb)/255`,
+//! sobre un fondo opaco negro y luego blanco, se copia su HWND con `PrintWindow`
+//! fuera de todos los monitores y se resuelve el alfa: `a = 1 - (Cw - Cb)/255`,
 //! `F = Cb/a`. Compárese con `parity/reference/standings-44.png` mediante
 //! `parity/diff.py`.
 
@@ -13,7 +13,7 @@ use std::process::ExitCode;
 use std::rc::Rc;
 use std::time::Duration;
 
-use gpui::{App, AsyncApp, Entity};
+use gpui::{App, AppContext, AsyncApp, Entity};
 use vantare_domain::Snapshot;
 use vantare_domain::format::Preferences;
 
@@ -50,23 +50,13 @@ mod gdi {
         pub fn GetDC(hwnd: Hwnd) -> *mut c_void;
         pub fn ReleaseDC(hwnd: Hwnd, dc: *mut c_void) -> i32;
         pub fn GetDpiForWindow(hwnd: Hwnd) -> u32;
+        pub fn PrintWindow(hwnd: Hwnd, dc: *mut c_void, flags: u32) -> i32;
     }
     #[link(name = "gdi32")]
     unsafe extern "system" {
         pub fn CreateCompatibleDC(dc: *mut c_void) -> *mut c_void;
         pub fn CreateCompatibleBitmap(dc: *mut c_void, w: i32, h: i32) -> *mut c_void;
         pub fn SelectObject(dc: *mut c_void, object: *mut c_void) -> *mut c_void;
-        pub fn BitBlt(
-            dst: *mut c_void,
-            x: i32,
-            y: i32,
-            w: i32,
-            h: i32,
-            src: *mut c_void,
-            sx: i32,
-            sy: i32,
-            rop: u32,
-        ) -> i32;
         pub fn GetDIBits(
             dc: *mut c_void,
             bitmap: *mut c_void,
@@ -98,15 +88,14 @@ fn read_dib(
 }
 
 /// Copia BGRA de la esquina superior izquierda (`w` x `h` px) de la región
-/// cliente tal como la compone DWM en pantalla: el widget está en (0, 0) de una
-/// ventana del tamaño del monitor.
+/// cliente del HWND, incluso fuera de pantalla; nunca lee el escritorio.
 fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), String> {
     use gdi::{
-        BitBlt, BitmapInfoHeader, CreateCompatibleBitmap, CreateCompatibleDC, GetDC, GetDIBits,
+        BitmapInfoHeader, CreateCompatibleBitmap, CreateCompatibleDC, GetDC, GetDIBits,
         SelectObject,
     };
-    const SRCCOPY: u32 = 0x00CC_0020;
-    const CAPTUREBLT: u32 = 0x4000_0000;
+    const PW_CLIENTONLY: u32 = 1;
+    const PW_RENDERFULLCONTENT: u32 = 2;
     let bytes = pixel_bytes(w, h)?;
     let mut pixels = Vec::new();
     pixels
@@ -137,9 +126,10 @@ fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), Str
     // todos los recursos incluso en las salidas de error. `pixels` dispone de
     // w*h*4 bytes comprobados para el DIB de 32 bpp, con filas alineadas a DWORD.
     unsafe {
-        resources.screen = GetDC(0);
+        resources.screen = GetDC(hwnd);
+        resources.hwnd = hwnd;
         if resources.screen.is_null() {
-            return Err("GetDC no pudo obtener el escritorio".into());
+            return Err("GetDC no pudo obtener el HWND".into());
         }
         resources.memory = CreateCompatibleDC(resources.screen);
         if resources.memory.is_null() {
@@ -153,19 +143,8 @@ fn capture_client(hwnd: Hwnd, w: i32, h: i32) -> Result<(u32, u32, Vec<u8>), Str
         if !valid_object(previous) {
             return Err("SelectObject no pudo seleccionar el bitmap".into());
         }
-        if BitBlt(
-            resources.memory,
-            0,
-            0,
-            w,
-            h,
-            resources.screen,
-            origin.x,
-            origin.y,
-            SRCCOPY | CAPTUREBLT,
-        ) == 0
-        {
-            return Err("BitBlt no pudo copiar el área cliente".into());
+        if gdi::PrintWindow(hwnd, resources.memory, PW_CLIENTONLY | PW_RENDERFULLCONTENT) == 0 {
+            return Err("PrintWindow no pudo copiar el área cliente".into());
         }
         read_dib(
             h,
@@ -203,6 +182,7 @@ fn valid_object(object: *mut std::ffi::c_void) -> bool {
 
 #[derive(Default)]
 struct GdiResources {
+    hwnd: Hwnd,
     screen: *mut std::ffi::c_void,
     memory: *mut std::ffi::c_void,
     bitmap: *mut std::ffi::c_void,
@@ -221,7 +201,7 @@ impl Drop for GdiResources {
                 gdi::DeleteObject(self.bitmap);
             }
             if !self.screen.is_null() {
-                gdi::ReleaseDC(0, self.screen);
+                gdi::ReleaseDC(self.hwnd, self.screen);
             }
         }
     }
@@ -319,6 +299,28 @@ async fn pass(
 
 async fn capture(mut cx: AsyncApp, view: Entity<Overlay>, path: PathBuf) -> Result<(), String> {
     let hwnd = settled(&mut cx, &view).await?;
+    let offscreen = cx.update(|cx| {
+        let mut origin = ffi::Point::default();
+        let mut bounds = ffi::Rect::default();
+        // SAFETY: HWND vivo; ambos punteros son locales válidos.
+        if unsafe { ffi::ClientToScreen(hwnd, &raw mut origin) } == 0
+            || unsafe { ffi::GetClientRect(hwnd, &raw mut bounds) } == 0
+        {
+            return false;
+        }
+        cx.displays().iter().all(|display| {
+            let monitor = display.bounds();
+            let left = f32::from(monitor.origin.x);
+            let top = f32::from(monitor.origin.y);
+            origin.x as f32 + (bounds.right - bounds.left) as f32 <= left
+                || origin.x as f32 >= left + f32::from(monitor.size.width)
+                || origin.y as f32 + (bounds.bottom - bounds.top) as f32 <= top
+                || origin.y as f32 >= top + f32::from(monitor.size.height)
+        })
+    });
+    if !offscreen {
+        return Err("el HWND de captura debe estar fuera de todos los monitores".into());
+    }
     let (w, h) = view.read_with(&cx, |v, _| v.wanted_size());
     let mut client = ffi::Rect::default();
     // SAFETY: HWND vivo y puntero a un Rect local válido durante la llamada.
@@ -384,7 +386,6 @@ pub fn run_configured_sequence(
     snapshots: &[Snapshot],
     path: PathBuf,
 ) -> ExitCode {
-    let kind = settings.kind();
     if snapshots.is_empty() {
         eprintln!("la escena no contiene fotos");
         return ExitCode::FAILURE;
@@ -397,14 +398,13 @@ pub fn run_configured_sequence(
             flag.set(true);
             return;
         }
-        // El widget en la esquina del monitor principal: se captura solo su rectángulo.
-        let placed = [(kind, (0.0, 0.0))];
-        let Some(view) = app::open_screens(cx, &placed, prefs).pop() else {
-            eprintln!("no se pudo abrir la ventana");
-            flag.set(true);
-            cx.quit();
-            return;
-        };
+        let names = cx.text_system().all_font_names();
+        let style = crate::vantare::style::Style::compiled();
+        if ![&style.fonts.display_family, &style.fonts.mono_family].iter().all(|name| names.contains(name)) {
+            eprintln!("las fuentes del diseño no están registradas; se rechaza una captura con sustitución");
+            flag.set(true); cx.quit(); return;
+        }
+        let view = cx.new(|_| Overlay::configured(&settings, prefs));
         view.update(cx, |v, cx| {
             *v = Overlay::configured(&settings, prefs);
             for snapshot in &snapshots {
@@ -412,6 +412,12 @@ pub fn run_configured_sequence(
             }
             v.freeze_for_capture();
         });
+        if let Err(error) = app::open_capture(cx, view.clone()) {
+            eprintln!("{error}");
+            flag.set(true);
+            cx.quit();
+            return;
+        }
         cx.spawn(async move |cx| {
             let result = capture(cx.clone(), view, path).await;
             if let Err(error) = &result {

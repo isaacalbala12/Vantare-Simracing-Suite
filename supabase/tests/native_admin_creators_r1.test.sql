@@ -1,0 +1,10 @@
+begin; select no_plan();
+insert into public.profiles(id) values('00000000-0000-4000-8000-000000001627');
+select * from public.operational_access_set('00000000-0000-4000-8000-000000001627','owner','grant','test:admin','Admin r1','test:r1',null);
+create temporary table creator_probe as select public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','create_creator','{"name":"Carlos GT","email":"carlos@example.invalid","code":"CARLOSGT"}','sandbox') result;
+select is((select result->'creator'->>'code' from creator_probe),'CARLOSGT','alta reserva código en mayúsculas');
+select is((select result->'creator'->>'status' from creator_probe),'pending','no se anuncia código activo antes de Polar');
+select is(public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','create_creator','{"name":"Carlos GT","email":"carlos@example.invalid","code":"CARLOSGT"}','sandbox')->'creator'->>'creator_id',(select result->'creator'->>'creator_id' from creator_probe),'repetir alta usa misma reserva');
+select throws_ok($$select public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','create_creator','{"name":"Otro","email":"otro@example.invalid","code":"CARLOSGT"}','sandbox')$$,'55000','native_admin_owner_conflict','no se roba un código existente');
+select is(jsonb_array_length(public.native_admin_execute('00000000-0000-4000-8000-000000001627','https://clerk.admin.test','list_creators','{}','sandbox')->'creators'),1,'lista de creadores reservados');
+select * from finish(); rollback;

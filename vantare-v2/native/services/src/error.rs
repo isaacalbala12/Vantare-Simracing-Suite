@@ -27,6 +27,11 @@ pub enum Error {
     PilotRejected,
     Version,
     NotFound,
+    ConfirmationMismatch,
+    AccountConflict,
+    AccountChangeIncomplete,
+    DeletionUnavailable,
+    RateLimited,
 }
 
 impl fmt::Display for Error {
@@ -54,6 +59,11 @@ impl fmt::Display for Error {
             Self::PilotRejected => "perfil pendiente de corrección: revisa los datos y vuelve a guardar",
             Self::Version => "actualización requerida",
             Self::NotFound => "sin datos guardados",
+            Self::ConfirmationMismatch=>"el correo de confirmación no coincide con el correo actual",
+            Self::AccountConflict=>"esta cuenta está protegida o ha cambiado de estado",
+            Self::AccountChangeIncomplete=>"el cambio quedó incompleto; consulta la cuenta antes de volver a confirmarlo",
+            Self::DeletionUnavailable=>"el borrado todavía no está disponible",
+            Self::RateLimited=>"espera un minuto antes de volver a intentarlo",
         })
     }
 }

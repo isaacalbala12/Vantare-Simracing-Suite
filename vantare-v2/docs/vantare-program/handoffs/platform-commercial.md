@@ -1,3 +1,23 @@
+## #1669 · VANTA-90 · descarga del lanzamiento (15/10/2026)
+
+Review sin cambios de producto. [Informe](../../reviews/2026-10-15-1669-descarga-lanzamiento.md)
+y `C:/VantareServer/evidence/descarga-1669/RESULTADOS.md`. Base nightly ed66924c2;
+rama `vantareapp/isa-1669-descarga`. SHA final/PR/push/CI en #1669 y buzón isa-1669.
+Veredicto: NO funciona el recorrido web→instalador con las tres ramas auditadas.
+36 HTML: before lleva a Discord; during/after tienen `dlLink=#descarga`, sin EXE.
+Worker cambia estado a las 19:00 Madrid del 26-oct, sin despliegue en ese instante.
+Downloads público sigue sin releases. La única nativa publicada, 0.0.975, está
+en el repo de código, con configuración dev y bootstrap del feed antiguo.
+Prueba real de ese Setup: SHA correcto, instalación/reinstalación/desinstalación
+exit 0, 10 EXE --version correctos, Hub-ready nuevo en 7s, datos QA intactos y
+cero procesos al terminar. Desktop privado sin cambio de pantalla ni capturas.
+15/15 tests de reloj web PASS; no prueban descarga. Quality 456 y diff-check PASS.
+Pendientes: worker web enlaza Setup real; Isaac fija versión/SHA/canal/#1591 y
+publica feed firmado en Downloads; QA prueba Windows limpio, SmartScreen y A→B.
+Authenticode aplazado por decisión vigente, sin inventar un bloqueo de certificado.
+Sin compilación Rust: artefacto previo disponible; no certifica candidata final.
+Sin merge, promoción, release ni despliegue. Entrega para revisión del orquestador.
+
 ## #1627 / PR #1639 · VANTA-21 · ronda 5 (15/10/2026)
 
 Worker Codex macOS arm64, sin subagentes ni servicios reales. Seguimiento por

@@ -66,7 +66,11 @@ $$;
   if args.storage_schema:
    run('psql',*conn,'-c',"create role supabase_storage_admin noinherit bypassrls; grant usage on schema storage to supabase_storage_admin; grant all on all tables in schema storage to supabase_storage_admin;")
   for m in sorted((ROOT/'supabase/migrations').glob('*.sql')):
-   if args.before_admin_deleted_reads and 'admin_deleted_reads' in m.name: continue
+   # RED controls omit the dependent adapters as well as their missing guards.
+   legacy = args.baseline or args.before_write_barrier
+   if legacy and m.name.startswith(('2026101416','2026101509')) and 'isa_1608_' in m.name: continue
+   if args.before_storage_multipart and 'managed_storage_abort' in m.name: continue
+   if (args.before_admin_deleted_reads or args.before_admin_lock_order or args.before_lock_order) and 'admin_deleted_reads' in m.name: continue
    if args.before_storage_buckets and 'storage_buckets' in m.name: continue
    if args.before_admin_lock_order and 'admin_uuid_before_rows' in m.name: continue
    r5 = m.name.startswith('2026101415') and 'isa_1608_' in m.name

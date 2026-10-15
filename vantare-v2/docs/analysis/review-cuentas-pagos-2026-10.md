@@ -1,3 +1,48 @@
+## #1608 · Ronda 7 · Respuesta a review R6 (15/10/2026)
+
+Base incorporada `origin/nightly@88051556` mediante merge `f59faf2b`;
+conflicto del handoff resuelto conservando entregas #1608/#1612/#1620.
+Rama `vantareapp/isa-1608-cierre-comercial`, PR #1622, seguimiento remoto
+reservado al orquestador. No se usaron Notion, Plane ni subagentes.
+
+| R6 | Respuesta de R7 |
+| --- | --- |
+| P1-1/P2-1 | Imagen oficial Storage v1.70.3 sin parche. El preflight del abort se descarta sin persistir filas (RETURN NULL); Storage original elimina bytes y metadata. RED 503 → GREEN 200 con los mismos uploads, partes, bytes y ambas colas a cero. Readonly real conserva pendientes/503 y RW los resuelve. Herramientas de imagen propia retiradas. |
+| P2-2 | Search/get de borrados funcionan y conservan auditoría. Actor vivo Owner obligatorio; mutaciones y actor borrado siguen rechazados. Siete pgTAP y RED real. |
+| P3-1 | Documentado como **DUDA**: buckets con owner histórico no se purgan. No hay inventario de producción autorizado; orquestador/Isaac debe comprobar su existencia antes de dar por cubierta esa retención. |
+| P3-2 | Merge de nightly y conflicto documental resueltos. |
+| P3-3 | Contrato explícito sin PII en objetos globales sin owner/manifest; fotos Pilot atribuidas también por ruta UUID/hash.jpg. |
+
+El catálogo detectó las tablas Pilot incorporadas desde nightly. Se cubre
+pilot_private.operations con el guard compartido, se borran perfil/recibos y se
+encolan fotos sin owner por ruta UUID. Tres carreras nuevas y cinco pgTAP;
+no se rebaja el gate de catálogo. Las carreras de audit target/payload ahora
+prueban mutaciones; lecturas permitidas tienen sus regresiones específicas.
+
+Evidencia `~/evidence/1608/r7/RESULTADOS.md`: 62 migraciones, SQL final **337**
+pgTAP/12 suites, **232** pre-B03/10 suites, upgrades **18+4+26**, Pilot original
+**90+10** y concurrencia. Barrera **80 tablas / 105 rutas / 620 checks**;
+aliases40, owners10, multipart64, buckets17, locks17, admin24. PostgREST real:
+reset204, nueve denegaciones, RLS y firma Ed25519 desde SQL. Reconciliación real
+orders/disputes/outage. Edge **609 PASS / 0 FAIL / 1 ignored** con tipos.
+HTTP Storage original: NULL/UUID, partes con bytes, PNG68, webhooks firmados,
+rechazos HTTP, readonly→RW y retries. Final **0 uploads / 0 partes / 0 bytes /
+0 colas**. fmt/lint, compile Python, deploy surface, diff check y 456 huellas PASS.
+Fallos de preparación conservados y explicados en la evidencia.
+
+Procedimiento y límites: [Storage gestionado](../../../tools/storage/README.md).
+Depende del contrato preflight de v1.70.3; deriva falla cerrado y exige repetir
+la prueba. No demuestra despliegue gestionado real, S3 remoto ni ausencia de
+buckets con owner en producción. Supabase documenta expiración multipart a
+24 horas en su [guía S3](https://supabase.com/docs/guides/storage/uploads/s3-uploads),
+consultada el 15/10/2026; no sustituye el abort probado aquí.
+Sin cambios propios native: Rust/Nextest/lifecycle/telemetría no repetidos por
+alcance SQL/Edge/Storage. Sin servicios/datos reales, .env/secretos instalados,
+GitHub/CI remota, merge a nightly, promoción, deploy, release ni venta.
+Push autorizado únicamente al bare origin del Mac; SHAs y FIN en buzón.
+Siguiente: review independiente del diff/evidencia, resolver DUDA P3-1 con Isaac
+y gestionar trackers/PR/canal desde el orquestador.
+
 ## #1608 · Ronda 6 local · R5-P1-1 y cierre de worker (14/10/2026)
 
 Entrega para review de Claude en la rama `vantareapp/isa-1608-cierre-comercial`,

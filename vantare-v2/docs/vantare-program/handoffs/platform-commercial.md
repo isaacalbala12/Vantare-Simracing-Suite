@@ -1,3 +1,23 @@
+## #1608 · R7 · Cierre para revisión (15/10/2026)
+
+Base `88051556` incorporada en merge `f59faf2b`. R6-P1-1/P2-1 resueltos con
+Storage **original**: preflight sin filas, abort backend real, 200 tras recuperación;
+0 uploads/partes/bytes/colas. P2-2: lecturas admin auditadas con targets borrados,
+actor vivo obligatorio; mutaciones siguen bloqueadas. P3-2 merge resuelto;
+P3-3 contrato global sin PII explícito. **DUDA P3-1**: propietarios de buckets
+históricos no se purgan; inventario real pendiente de Isaac/orquestador.
+Catálogo ampliado a #1612: purga perfiles/recibos y atribución de fotos por ruta.
+Checks nuevos: SQL337 + histórico232 + upgrades18/4/26, Pilot90/10+concurrencia,
+80 tablas/105 rutas/620 checks, aliases40, owners10, multipart64, buckets17,
+locks17, admin24, JWT/RLS/Ed25519 PostgREST y reconciliación real. Edge609/0/1 ignored;
+Storage HTTP signed, readonly→RW y retries; fmt/lint/surface/Python/diff/456 huellas PASS.
+Evidencia `~/evidence/1608/r7/RESULTADOS.md` e
+[informe R7](../../analysis/review-cuentas-pagos-2026-10.md). SHAs/push/FIN en buzón.
+Origin bare Mac, sin GitHub/CI remota ni trackers; excepción sin Notion/Plane/subagentes.
+No merge a nightly/promoción/deploy/release/venta ni producción. Review externa
+pendiente. Los apartados R5/R6 siguientes son evidencia histórica, sustituidos
+por este estado para Storage; no requieren activar ninguna imagen propia.
+
 ## #1608 · R7 · Barrera tras incorporar #1612 (15/10/2026)
 
 El gate de catálogo detectó dos tablas nuevas desde nightly: pilot_profiles ya
@@ -20,7 +40,7 @@ RED 503 retenía upload/parte/bytes/cola → GREEN con originales NULL/UUID,
 partes reales, PNG y dos entregas webhook firmadas. Fallo backend readonly
 conserva 503 y pendientes; recuperación RW y replay convergen a 200 y 0/0/0/0.
 Evidencia `~/evidence/1608/r7/`; procedimiento y límites en
-[tools/storage](../../../../../tools/storage/README.md). Imagen/parche propios retirados.
+[tools/storage](../../../../tools/storage/README.md). Imagen/parche propios retirados.
 R6-P3-1 documentado como DUDA: buckets globales no tienen purga de owner
 histórico; inventario prod no autorizado, pendiente del orquestador/Isaac.
 R6-P3-3: configuración global sin owner/manifest debe excluir PII.

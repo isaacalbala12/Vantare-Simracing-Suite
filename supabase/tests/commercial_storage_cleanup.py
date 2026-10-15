@@ -64,7 +64,9 @@ try:
   # Existing barrier must still reject service writes after deletion.
   status,body=s3('POST',name,'uploads=');log.append('late write '+mode+' '+str(status));assert status>=400
   if phase.startswith('green'):
-   for method,query,data,label in [('PUT','partNumber=2&uploadId='+upload,b'late-private-bytes','late part'),('POST','uploadId='+upload,b'<CompleteMultipartUpload/>','late complete')]:
+   etag=sql(f"select etag from storage.s3_multipart_uploads_parts where upload_id='{upload}' and part_number=1;")
+   complete=('<CompleteMultipartUpload><Part><PartNumber>1</PartNumber><ETag>'+etag+'</ETag></Part></CompleteMultipartUpload>').encode()
+   for method,query,data,label in [('PUT','partNumber=2&uploadId='+upload,b'late-private-bytes','late part'),('POST','uploadId='+upload,complete,'late complete')]:
     status,body=s3(method,name,query,data);log.append('denied '+mode+' '+label+' HTTP '+str(status));assert status>=400
    for denied_name,denied_token,label in [(name+'-wrong',None,'wrong path'),(name,token('authenticated',b'isa1608-r6-storage-signing-material-32-bytes'),'nonservice JWT'),(name,token('service_role',b'invalid-fixture-signature'),'forged service JWT')]:
     status,body=s3('DELETE',denied_name,'uploadId='+upload,token=denied_token)

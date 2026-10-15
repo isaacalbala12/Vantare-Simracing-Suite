@@ -81,7 +81,7 @@ function productCopy(key: CheckoutKey, launch = false) {
       (launch ? " · Lanzamiento" : ""),
     description: plus
       ? "- **Todo lo de Pro**: todos los widgets, sin marca, y cada widget nuevo.\n- **Versiones nightly**: lo nuevo, antes que nadie.\n- **Reconocimiento como apoyo** en Discord.\n- Tu cuota **financia lo que viene** en Vantare.\n- Un equipo activo a la vez · cancelas cuando quieras · **14 días** para pedir el reembolso de la primera compra."
-      : "- **Todos los widgets**, sin la marca Vantare en el overlay.\n- **Cada widget nuevo**, en cuanto sale.\n- Overlays Studio con todos tus widgets, para **Le Mans Ultimate y ACC**.\n- Soporte en **Discord** y por correo.\n- Un equipo activo a la vez · cancelas cuando quieras · **14 días** para pedir el reembolso de la primera compra.",
+      : "- **Todos los widgets**, sin la marca Vantare en el overlay.\n- **Cada widget nuevo**, en cuanto sale.\n- Overlay Studio con todos tus widgets, para **Le Mans Ultimate y ACC**.\n- Soporte en **Discord** y por correo.\n- Un equipo activo a la vez · cancelas cuando quieras · **14 días** para pedir el reembolso de la primera compra.",
   };
 }
 

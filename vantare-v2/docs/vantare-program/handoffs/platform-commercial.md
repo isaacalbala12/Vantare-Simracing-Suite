@@ -1,3 +1,31 @@
+## VANTA-50 / #1620 / PR #1624 · fechas confirmadas (15/10/2026)
+
+Decisión de Isaac: apertura **lunes 26-oct-2026, 19:00 Europe/Madrid**;
+cierre comercial **jueves 26-nov-2026, 19:00 Europe/Madrid**. Ambos instantes
+son CET (`UTC+01:00`, `18:00Z`). Sustituye la ventana anterior.
+Precios, código de creador, ausencia de trial de lanzamiento y garantía de
+14 días conservados. Gratis: Standings, Relative, Delta y Pedals; Pro añade
+el catálogo completo. El runtime gratuito se entrega en #1632/PR #1633,
+aún fuera de nightly `5d7950f67`; este cambio solo alinea el contrato.
+
+Worker asignado, rama `vantareapp/isa-1620-textos`, inicio `972349b21`.
+Merge commit `a12e9be57` incorpora `origin/nightly@5d7950f67`, conserva #1622
+y la copia v3. Los tests de webhook/checkout compartidos quedan idénticos
+a nightly. Se unifica **Overlay Studio** en la copia comercial de Polar;
+la denominación de UI nativa queda fuera de este encargo de textos.
+
+Web: worktree `C:/VantareServer/wt/web-fechas`, rama
+`vantareapp/web-fechas-lanzamiento`, base `a4ae91d`. Esa base ya tenía
+26-oct/26-nov y relojes correctos; se revisan restos del corte LE antiguo.
+**Solo commits locales, sin push ni PR**: instrucción del orquestador,
+Workers Builds publica cualquier rama en producción. SHA/comando de
+publicación se entregan en `C:/tmp/buzon/fechas.md`; publica el orquestador.
+
+Validación y SHA finales se registran en #1620/#1624 y el buzón al terminar.
+Sin Rust propio: gates nativos y telemetría omitidos por alcance documental.
+Sin servicios reales, cambios de precios/IDs/derechos, release o despliegue.
+Siguiente: revisar el nuevo HEAD del PR principal y el commit local de la web.
+
 ## #1620 / PR #1621 · textos definitivos v3 (14/10/2026)
 
 Encargo aprobado al worker Codex macOS arm64; base limpia `34e9f4af`, rama
@@ -12,7 +40,7 @@ Nombres y descripciones Markdown copiados literalmente de `textos.json` v3,
 incluido ` · Lanzamiento` y los 14 días para la primera compra de Pro Plus
 (decisión final que completa el ejemplo A1). Garantía de 14 días también en
 Pro, Launch Edition y Founders; no en renovaciones Pro/Pro Plus.
-Launch Edition: Pro de la Stable al cerrar la venta (19-11-2026, 19:00 Madrid),
+Launch Edition: Pro de la Stable al cerrar la venta (26-11-2026, 19:00 Madrid),
 más Strategy Planner, Análisis de telemetría e Ingeniero local sin límite
 cuando se lancen, sin fechas; arreglos graves y ninguna otra función nueva.
 Founders añade la lista cerrada aprobada: más widgets, Strategy Planner,

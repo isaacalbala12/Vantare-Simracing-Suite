@@ -11,6 +11,14 @@ con precio base**, no descuentos. Un descuento porcentual por creador, código
 con su nombre exacto, limitado a esos productos. Solo preparación en repo:
 sin API Polar, secretos, deploy, activación ni venta probados.
 
+## Fechas confirmadas (15/10/2026)
+
+Apertura: **lunes 26 de octubre de 2026, 19:00 Europe/Madrid**
+(`2026-10-26T19:00:00+01:00`, `18:00Z`). Cierre comercial del lanzamiento:
+**jueves 26 de noviembre de 2026, 19:00 Europe/Madrid**
+(`2026-11-26T19:00:00+01:00`, `18:00Z`). La Launch Edition toma la Stable
+al cerrar la venta. Esta documentación no programa ni activa ventas en Polar.
+
 ## Nombres y descripciones de cliente (14/10/2026)
 
 El script crea las suscripciones con `Vantare Pro` o `Vantare Pro Plus`;
@@ -19,7 +27,7 @@ intervalo mensual/anual junto al precio. Las claves técnicas permanecen en
 metadata y en el mapa, nunca en el nombre visible. Las descripciones breves
 Markdown son los textos v3 aprobados por Isaac el 14/10/2026, conforme a
 [product-contract.md](../vantare-program/product-contract.md): todos los widgets
-sin marca y cada widget nuevo, Overlays Studio para Le Mans Ultimate y ACC,
+sin marca y cada widget nuevo, Overlay Studio para Le Mans Ultimate y ACC,
 Discord y correo para Pro; todo Pro más nightly y reconocimiento como apoyo en
 Discord para Plus. Ambos incluyen 14 días para pedir el reembolso de la primera
 compra, con los mismos derechos para normales y lanzamiento.

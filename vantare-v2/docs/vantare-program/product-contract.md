@@ -1,6 +1,6 @@
 # Contrato de producto Vantare
 
-Estado: contrato de producto; licencias de pago reconciliadas el 2026-10-14 con los textos y decisiones aprobados por Isaac. Los requisitos y precios decididos no certifican disponibilidad comercial.
+Estado: contrato de producto; licencias de pago reconciliadas el 2026-10-15 con los textos y fechas aprobados por Isaac. Los requisitos y precios decididos no certifican disponibilidad comercial.
 
 ## Definición y principios
 
@@ -73,7 +73,7 @@ la primera variante de Engineer. El tono es profesional y cercano.
 
 - Hub y Launcher completos.
 - Calendario básico, cuenta local y ajustes.
-- Standings y Pedals.
+- Standings, Relative, Delta y Pedals (cuatro widgets gratuitos).
 - Vantare Original.
 - Vantare Crystal con marca Vantare integrada y no eliminable.
 - Overlay Studio limitado a los widgets gratuitos.
@@ -93,6 +93,11 @@ la primera variante de Engineer. El tono es profesional y cercano.
 Precios normales con IVA incluido; catálogo preparado en ISA-1499/1620,
 sin certificar venta ni ejecución Polar. Mensual y anual conceden exactamente
 las mismas capabilities.
+
+Ventana confirmada por Isaac el 15/10/2026: del **lunes 26 de octubre de 2026
+a las 19:00** al **jueves 26 de noviembre de 2026 a las 19:00**,
+**Europe/Madrid** (CET, UTC+01:00 en ambas fechas; `18:00Z`).
+Esta ventana sustituye las fechas de lanzamiento anteriores.
 
 Campaña preparada en [#1620](../billing/isa-1620-polar-launch-catalog.md),
 decisión ronda 3 del 14/10/2026: productos propios de lanzamiento Pro
@@ -119,7 +124,7 @@ mientras siga vigente el descuento. El scope solo restringe su aplicación
 inicial; no elimina descuentos heredados al cambiar producto. Configuración
 y verificación real pendientes, según el runbook enlazado.
 
-### Launch Edition — 30 EUR una vez (solo durante el mes de lanzamiento; cierra el 19-11-2026, 19:00 Madrid)
+### Launch Edition — 30 EUR una vez (solo durante el mes de lanzamiento; cierra el 26-11-2026, 19:00 Madrid)
 
 - Lo que tenga Pro en la última versión Stable publicada al cerrar la venta, con licencia perpetua sin conexión.
 - Incluye, cuando se lancen y sin fechas: Strategy Planner, Análisis de telemetría e Ingeniero local sin límite de uso.
@@ -131,8 +136,7 @@ y verificación real pendientes, según el runbook enlazado.
 - Todo lo de la Launch Edition.
 - Incluye, cuando se lancen y sin fechas: más widgets, Strategy Planner, Análisis de telemetría, Ingeniero local sin límite de uso, estrategia en directo y vista de equipo.
 
-Crystal pierde la marca con cualquier licencia de pago. Relative, Delta y los
-demás widgets no gratuitos requieren licencia.
+Crystal pierde la marca con cualquier licencia de pago. Los widgets fuera del catálogo gratuito requieren licencia.
 
 ## Billing
 

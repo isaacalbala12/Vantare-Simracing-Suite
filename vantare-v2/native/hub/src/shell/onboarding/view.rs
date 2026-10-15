@@ -1,4 +1,4 @@
-use super::{Hub, art};
+use super::{Hub, art, private_exit_available};
 use crate::{onboarding as model, orbit};
 use gpui::{Context, Div, SharedString, Stateful, Window, div, prelude::*, px, rgb};
 use vantare_ui::performance::Level;
@@ -169,6 +169,9 @@ impl Hub {
         let state = self.onboarding.as_ref().expect("onboarding visible");
         let backdrop = state.backgrounds[1].clone();
         let step = state.step;
+        let capture = state.capture;
+        let error = state.error.clone();
+        let consent_error = state.consent_error;
         let mut copy = div()
             .w(px(600.0 * s))
             .flex_none()
@@ -244,8 +247,30 @@ impl Hub {
                     ),
             ),
         };
-        if let Some(error) = &self.onboarding.as_ref().expect("visible").error {
-            copy = copy.child(text(error.clone(), 13.0 * s, 600, 0x00ff_6b6b, cx));
+        if let Some(message) = error {
+            let mut failed = div()
+                .flex()
+                .flex_col()
+                .items_start()
+                .gap(px(12.0 * s))
+                .child(text(message, 13.0 * s, 600, 0x00ff_6b6b, cx));
+            // Un error al guardar el consentimiento no puede dejar el asistente
+            // sin salida: junto al aviso se entra con todo apagado, sin guardar.
+            if !capture && private_exit_available(step, consent_error) {
+                failed = failed.child(
+                    button(
+                        "onboarding-enter-private",
+                        "Entrar sin guardar",
+                        false,
+                        s,
+                        cx,
+                    )
+                    .on_click(cx.listener(|hub, _, window, cx| {
+                        hub.onboarding_enter_private(window, cx);
+                    })),
+                );
+            }
+            copy = copy.child(failed);
         }
         let art = self.onboarding_art(step, s, cx);
         let next = match step {

@@ -5,7 +5,7 @@ use super::Hub;
 use crate::onboarding::{Choices, Equipment, SAY};
 use gpui::{Context, Window, prelude::*};
 use std::time::{Duration, Instant};
-use vantare_services::diagnostics::Usage;
+use vantare_services::diagnostics::{Privacy, Usage};
 
 fn plan_request(
     product: Option<crate::services::protocol::BillingProduct>,
@@ -35,6 +35,7 @@ pub(super) struct State {
     pub spoken: Instant,
     pub pointer: (f32, f32),
     pub error: Option<String>,
+    pub consent_error: bool,
     pub capture: bool,
     pub signed: bool,
     pub system_reduced: bool,
@@ -113,6 +114,7 @@ impl State {
             spoken: Instant::now(),
             pointer: (0.0, 0.0),
             error: artwork_error,
+            consent_error: false,
             capture,
             signed: false,
             system_reduced: crate::shell::settings::windows::reduced_motion(),
@@ -135,6 +137,21 @@ impl State {
                 "Inicia sesión para conectar tu cuenta. Tu configuración se guarda en este PC.",
             );
         }
+    }
+}
+/// La salida sin guardar solo se ofrece junto al error del paso de privacidad:
+/// sin consentimiento guardado, pero con la opción más privada.
+const fn private_exit_available(step: usize, consent_error: bool) -> bool {
+    consent_error && step >= 5
+}
+/// Todo apagado y sin persistir: la decisión más privada para entrar en la app.
+const fn most_private(privacy: Privacy) -> Privacy {
+    Privacy {
+        usage: false,
+        usage_decided: true,
+        crashes: false,
+        crashes_decided: true,
+        ..privacy
     }
 }
 impl Hub {
@@ -173,6 +190,8 @@ impl Hub {
             return;
         }
         if state.step == 5 && !self.onboarding_consent(state.choices.usage, cx) {
+            // El error queda visible: el usuario puede reintentar o entrar sin guardar.
+            cx.notify();
             return;
         }
         if let Some(state) = &mut self.onboarding {
@@ -205,6 +224,7 @@ impl Hub {
         let success = result.is_ok();
         if let Some(state) = &mut self.onboarding {
             state.error = result.err();
+            state.consent_error = !success;
         }
         success
     }
@@ -280,6 +300,25 @@ impl Hub {
             };
             self.focus.focus(window, cx);
         }
+        cx.notify();
+    }
+    /// Salida de emergencia si el consentimiento no se puede guardar: entra con
+    /// todo apagado y sin intentar más escrituras que puedan volver a fallar.
+    fn onboarding_enter_private(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let Some(state) = &self.onboarding else {
+            return;
+        };
+        if state.capture || !private_exit_available(state.step, state.consent_error) {
+            return;
+        }
+        // Decisión en memoria, no en disco: también evita que la pregunta de
+        // privacidad vuelva a bloquear el primer arranque en este mismo inicio.
+        if let Ok(store) = &mut self.settings.privacy {
+            store.value = most_private(store.value);
+        }
+        self.onboarding = None;
+        self.section = crate::Section::Home;
+        self.focus.focus(window, cx);
         cx.notify();
     }
     pub(super) fn poll_onboarding(&mut self, cx: &mut Context<Self>) {

@@ -284,7 +284,10 @@ jobs:
         run: |
           cargo fmt --all -- --check
           if ($LASTEXITCODE) { throw "native format failed" }
-          foreach ($gate in @('check', 'clippy', 'test', 'lifecycle', 'telemetria')) {
+          # `completa` = suite + corpus de telemetría en una sola invocación de
+          # nextest (perfil `ci`): mismos tests, sin segundo build ni serializar
+          # 5-6 min (#1654 ronda 7).
+          foreach ($gate in @('check', 'clippy', 'completa', 'lifecycle')) {
             ./gates.ps1 -Gate $gate
             if ($LASTEXITCODE) { throw "native $gate failed" }
           }

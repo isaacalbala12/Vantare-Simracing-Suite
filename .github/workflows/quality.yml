@@ -191,20 +191,15 @@ jobs:
       # En nextest, `-j` son hilos de ejecución de tests y los jobs de
       # compilación van en --build-jobs: 4 vCPU para compilar y 4 hilos de test.
       # Los 7 tests con plazos de reloj duros de 1-3 s van en serie y primero
-      # (threads-required en .config/nextest.toml), así que no compiten. Antes
-      # había `-j 2` (que ganaba como hilos de test) y un NEXTEST_TEST_THREADS=1
-      # que no llegaba a aplicarse. Si aparecen intermitentes, volver a 2.
-      - name: Test workspace
+      # (threads-required en .config/nextest.toml), así que no compiten. El
+      # perfil `ci` corre de una vez la suite y el corpus de telemetría (mismos
+      # tests que los dos pasos anteriores, sin segundo build ni serializar ~5
+      # min; #1654 ronda 7). Si aparecen intermitentes, volver a 2 hilos.
+      - name: Test workspace and telemetry corpus
         if: steps.native_scope.outputs.native != 'false'
         env:
           NEXTEST_TEST_THREADS: '4'
-        run: cargo nextest run --workspace --locked $NATIVE_FEATURE_ARGS --build-jobs 4
-
-      - name: Test real telemetry corpus
-        if: steps.native_scope.outputs.native != 'false'
-        env:
-          NEXTEST_TEST_THREADS: '4'
-        run: cargo nextest run --workspace --locked $NATIVE_FEATURE_ARGS --build-jobs 4 --profile telemetria
+        run: cargo nextest run --workspace --locked $NATIVE_FEATURE_ARGS --profile ci --build-jobs 4
 
       - name: Test lifecycle targets
         if: steps.native_scope.outputs.native != 'false'

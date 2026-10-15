@@ -11,6 +11,15 @@ default-filter = 'not binary(lifecycle) & not (package(vantare-runtime) & (binar
 [profile.telemetria]
 default-filter = 'package(vantare-runtime) & (binary(telemetry_golden) | binary(acc_conformance) | binary(lmu_conformance) | binary(lmu_oracle))'
 
+# Perfil de CI: UNA invocación con todo lo que hoy corren los dos pasos de nextest
+# (suite + corpus de telemetría), para no compilar dos veces ni serializar 5-6 min.
+# La cobertura es idéntica por construcción: la unión de `profile.default` (excluye
+# esos 4 binarios) y `profile.telemetria` (selecciona solo esos 4) es «todo menos
+# lifecycle», que es este filtro. Los hilos de test y los overrides se heredan de
+# `default`. No debilita nada: los mismos tests se ejecutan (#1654 ronda 7).
+[profile.ci]
+default-filter = 'not binary(lifecycle)'
+
 # Intermitentes conocidos: se reintentan solos; el resto falla a la primera.
 # Quitar cada línea al cerrar su issue (#1434 lanzador).
 [[profile.default.overrides]]

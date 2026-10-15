@@ -12,6 +12,7 @@ for script in install-para-claude.sh vantare-plane-para-claude.py plane_notify_w
 done
 # Verificar la copia privada evita cambios entre comprobación e instalación.
 (cd "$stage" && sha256sum --check --strict "$manifest")
+install -d -o root -g root -m 700 /var/lib/vantare
 install -o root -g root -m 750 "$stage/vantare-plane-para-claude.py" /usr/local/sbin/
 install -o root -g root -m 750 "$stage/plane_notify_workers.py" /usr/local/sbin/
 cat > /etc/systemd/system/vantare-plane-para-claude.service <<'U'
@@ -22,6 +23,11 @@ ConditionPathExists=/etc/vantare/para-claude.url
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/python3 -I /usr/local/sbin/vantare-plane-para-claude.py
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/vantare
 U
 cat > /etc/systemd/system/vantare-plane-para-claude.timer <<'U'
 [Unit]

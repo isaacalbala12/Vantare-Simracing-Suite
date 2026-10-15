@@ -111,3 +111,57 @@ Sigue pendiente la BIOS «Restore after AC Power Loss».
   iniciar sesión. Copia previa: `/opt/plane/plane.env.bak-20261013-1718`.
 - SSH: `ssh Administrator@sapphireos.tail357eab.ts.net` (misma clave de host que por LAN, verificada).
 - Si la IP LAN cambia, Plane sigue funcionando por Tailscale; solo hay que tocar la regla CORS de la IP LAN.
+
+## Revisión de seguridad 1647c · 2026-10-15
+
+Encargo VANTA-47, PR #1583, sin Rust ni cambios en datos, credenciales o red.
+
+- **P3-2, servicios root**: Plane, copia, supervisión y vigilante añaden
+  `NoNewPrivileges=yes`, `ProtectSystem=strict`, `ProtectHome=yes` y `PrivateTmp=yes`.
+  Solo copia puede escribir en `/var/backups/plane` y
+  `/mnt/c/VantareServer/backups/plane`; supervisión en `/var/lib/vantare` y
+  `/mnt/c/VantareServer/heartbeat`; vigilante en `/var/lib/vantare`.
+  Plane compose no necesita rutas de escritura: el daemon Docker hace su trabajo
+  fuera del namespace del cliente. Esto limita el servicio, pero el acceso a
+  Docker sigue siendo privilegiado; no se afirma aislamiento frente al daemon.
+  `linux/harden-services.sh` aplica drop-ins a la instalación existente, sin
+  reinstalar la stack ni leer secretos. Copia previa root:700 y hashes bajo
+  `/var/backups/vantare-hardening/<UTC>`. Tras aplicarlo, `systemctl daemon-reload`,
+  verificar las unidades y reiniciar en una ventana autorizada. Comprobar con
+  `systemctl show <servicio> -p NoNewPrivileges -p ProtectSystem -p ProtectHome -p PrivateTmp -p ReadWritePaths -p Result -p ExecMainStatus`.
+  Para deshacer: parar los cuatro servicios/timers, comprobar `SHA256SUMS` del
+  backup y restaurar cada `security.conf` previo (o retirar solo ese drop-in si
+  hay marcador `.absent`); daemon-reload, arrancar y repetir comprobaciones.
+- **P3-3, instalación CI**: rustup-init **1.28.2**, Linux x86_64, se descarga del
+  archivo oficial con SHA-256 fijado
+  `20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c`.
+  Se contrastó el checksum oficial y una descarga independiente con Get-FileHash.
+  Si no coincide, `set -e` aborta antes de ejecutar. No se reinstala rustup si ya
+  existe. Fuente: `https://static.rust-lang.org/rustup/archive/1.28.2/x86_64-unknown-linux-gnu/rustup-init.sha256`.
+  No se ejecutó instalación ni compilación Rust en esta revisión.
+- **P3-1, riesgo de copias**: los archivos de copia incluyen `plane.env` para
+  restaurar Plane; contienen secretos aunque el `.tar.zst` no lo indique.
+  No están cifrados. La cuenta svc tiene acceso a las copias Windows, y el PC
+  principal recibe otra copia: comprometer cualquiera de esos destinos puede
+  exponer esos secretos. No enviar las copias a artefactos, chat o repositorios.
+  El encargo solo documenta; no cambia formato, retención, ACL ni restauración.
+  Cifrar o separar la copia de secretos requiere una decisión posterior de Isaac.
+- **P3-4, HTTP**: sigue habilitado HTTP:8088. Por la interfaz Tailscale el túnel
+  cifra el transporte; acceder directamente por LAN no aporta TLS y permite
+  observar cookies/tokens a quien intercepte ese tráfico. No se configura TLS
+  ni se cierra LAN en este encargo; usar Tailscale mientras Isaac decide el cambio.
+- **P3-5, registro**: comprobación de solo lectura de `/api/instances/` el
+  2026-10-15: `config.enable_signup=True`; la BD confirma `ENABLE_SIGNUP=1`,
+  5 cuentas en total y 5 activas (incluyen bots/servicio; sin listar identidades). **No está acreditado el registro
+  cerrado**. No se creó ninguna cuenta ni se intentó un alta; esa bandera por
+  sí sola tampoco demuestra acceso a un workspace. No se cambió configuración.
+  El orquestador debe resolver el cierre con Isaac antes de asumir esa protección.
+
+Verificado en vivo: las cuatro unidades pasan `systemd-analyze verify`;
+reinicio de Plane y ejecución de copia, supervisión y vigilante completados.
+El backup de drop-ins está en `/var/backups/vantare-hardening/20261015T180427Z`.
+
+Evidencia saneada de esta revisión en `C:\VantareServer\evidence\1647c\`;
+continuidad y estados en VANTA-47/#1565/#1571 y PR #1583. El vigilante tiene
+su detalle de permisos, hashes, tests y despliegue en [PR #1649](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1649),
+VANTA-77/#1647/PR #1649. No hay merge, promoción ni release por el worker.

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # vantare-svc (root): timers de copia y roadmap, deploy key. Idempotente.
 set -euo pipefail
+install -d -o root -g root -m 700 /var/lib/vantare
 install -m 750 /mnt/c/VantareServer/ops/linux/vantare-plane-backup.sh /usr/local/sbin/
 install -m 755 /mnt/c/VantareServer/ops/linux/vantare-roadmap-publish.sh /usr/local/bin/
 cat > /etc/systemd/system/vantare-plane-backup.service <<'U'
@@ -11,6 +12,11 @@ After=vantare-plane.service
 [Service]
 Type=oneshot
 ExecStart=/usr/local/sbin/vantare-plane-backup.sh
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/backups/plane /mnt/c/VantareServer/backups/plane
 U
 cat > /etc/systemd/system/vantare-plane-backup.timer <<'U'
 [Unit]
@@ -58,6 +64,11 @@ After=vantare-plane.service
 [Service]
 Type=oneshot
 ExecStart=/usr/local/sbin/vantare-plane-health.sh
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/vantare /mnt/c/VantareServer/heartbeat
 U
 cat > /etc/systemd/system/vantare-plane-health.timer <<'U'
 [Unit]

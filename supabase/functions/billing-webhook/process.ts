@@ -548,7 +548,15 @@ async function applyOrderRefundEvent(args: {
     // be replayed later as if it had been accepted.
     writeOutcome = await ledger.recordOrder(parsed);
     const unsafe = unsafeLedgerOutcome(writeOutcome);
-    if (unsafe) return { status: "ignored", reason: unsafe };
+    if (unsafe) {
+      // The durable order resolves its owner/B03 in SQL; never project an
+      // ambiguous snapshot as a paid promotion invoice.
+      const {error}=await args.deps.supabase.rpc("report_promotion_invoice_missing",{
+        p_environment:args.environment,p_order:orderId,
+      });
+      if(error) throw new Error("report_promotion_invoice_gap_failed");
+      return {status:"ignored",reason:unsafe};
+    }
     await applyEffect(
       args.deps,
       "billing_order_ledger",

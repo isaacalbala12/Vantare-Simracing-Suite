@@ -2629,3 +2629,18 @@ Deno.test("missing order retry remains bounded and never grants access", async (
   );
   assertEquals(deps.orderRefundLedger.grants.size, 0);
 });
+
+Deno.test("P3-20 an unsafe order ledger outcome records the missing invoice without completing its financial effect", async () => {
+  const mock=createMockSupabase();
+  const deps=processDeps(mock);
+  const calls:{name:string;args?:Record<string,unknown>}[]=[];
+  const rpc=mock.client.rpc;
+  mock.client.rpc=(name:string,args?:Record<string,unknown>)=>{calls.push({name,args});return rpc(name);};
+  const order=paidOrderData({id:"unsafe-promotion-order",product_id:PRO_MONTHLY_PRODUCT_ID,subscription_id:"sub-unsafe",billing_reason:"subscription_cycle"});
+  await processPolarWebhookEvent({type:"order.paid",data:order},"evt_unsafe_promotion_seed",deps);
+  calls.length=0;
+  const result=await processPolarWebhookEvent({type:"order.refunded",data:{...order,status:"refunded",refunded_amount:3000}},"evt_unsafe_promotion",deps);
+  assertEquals(result,{status:"quarantined",reason:"order_refund_ledger_version_conflict"});
+  assertEquals(calls.filter(call=>call.name==="report_promotion_invoice_missing"),[{name:"report_promotion_invoice_missing",args:{p_environment:"sandbox",p_order:"unsafe-promotion-order"}}]);
+  assertEquals(deps.inbox.effectAttempts("evt_unsafe_promotion","report_promotion_invoice"),0);
+});

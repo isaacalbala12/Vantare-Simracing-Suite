@@ -70,7 +70,6 @@ function deps(
     attempts: store,
     purchasePolicy: async () => ({
       reason: null,
-      closes_at: "2026-11-26T18:00:00Z",
     }),
     createCheckout: createCheckout ??
       (async () => ({
@@ -84,7 +83,6 @@ Deno.test("Founders policy denies checkout before creating or reusing a Polar se
   for (
     const reason of [
       "founders_sale_closed",
-      "founders_subscription_active",
       "founders_already_owned",
       "account_unavailable",
     ]
@@ -102,7 +100,6 @@ Deno.test("Founders policy denies checkout before creating or reusing a Polar se
         ...deps(),
         purchasePolicy: async () => ({
           reason,
-          closes_at: "2026-11-26T18:00:00Z",
         }),
         createCheckout: async () => {
           contacted = true;

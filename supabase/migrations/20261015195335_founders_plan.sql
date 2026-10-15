@@ -1,18 +1,20 @@
--- VANTA-83 / #1661. One sale window for every client; no Polar side effects.
+-- VANTA-83 / #1661. Public beta opening and one server-owned sales switch.
 create table private.founders_sale_config (
   singleton boolean primary key default true check(singleton),
   opens_at timestamptz not null,
-  closes_at timestamptz not null check(closes_at > opens_at)
+  sales_enabled boolean not null default true,
+  subscription_transition text not null default 'end_period'
+    check(subscription_transition = 'end_period')
 );
 insert into private.founders_sale_config values
-  (true, '2026-10-26 19:00 Europe/Madrid', '2026-11-26 19:00 Europe/Madrid');
+  (true, '2026-10-26 19:00 Europe/Madrid', true, 'end_period');
 alter table private.founders_sale_config enable row level security;
 revoke all on private.founders_sale_config from public, anon, authenticated, service_role;
 
 create function public.founders_sale_window() returns jsonb
 language sql stable security definer set search_path='' as $$
- select jsonb_build_object('opens_at',opens_at,'closes_at',closes_at,
-   'available',now()>=opens_at and now()<closes_at,'amount_cents',5000,'currency','eur')
+ select jsonb_build_object('opens_at',opens_at,'sales_enabled',sales_enabled,
+   'available',sales_enabled and now()>=opens_at,'amount_cents',5000,'currency','eur')
  from private.founders_sale_config where singleton
 $$;
 revoke all on function public.founders_sale_window() from public;
@@ -20,7 +22,7 @@ grant execute on function public.founders_sale_window() to anon,authenticated,se
 
 create function public.billing_founders_payment_allowed(p_paid_at timestamptz) returns boolean
 language sql stable security definer set search_path='' as $$
- select coalesce((select p_paid_at>=opens_at and p_paid_at<closes_at
+ select coalesce((select sales_enabled and p_paid_at>=opens_at
  from private.founders_sale_config where singleton),false)
 $$;
 revoke all on function public.billing_founders_payment_allowed(timestamptz) from public,anon,authenticated;
@@ -43,17 +45,14 @@ begin
    and environment=p_environment and capability='vantare.plan.founders'
    and status='active' and valid_until is null) then
    v_reason:='founders_already_owned';
+ elsif p_checkout_key='launch_lifetime' then
+   v_reason:='product_retired';
  elsif p_checkout_key='founders' then
-   if now()<v_config.opens_at or now()>=v_config.closes_at then
+   if now()<v_config.opens_at or not v_config.sales_enabled then
      v_reason:='founders_sale_closed';
-   elsif exists(select 1 from public.billing_subscriptions where user_id=p_user_id
-     and environment=p_environment and (status in ('active','trialing','past_due','unpaid')
-       or current_period_end>now())) then
-     -- Includes scheduled cancellation until the paid period ends. Never cancel automatically.
-     v_reason:='founders_subscription_active';
    end if;
  end if;
- return jsonb_build_object('reason',v_reason,'closes_at',v_config.closes_at);
+ return jsonb_build_object('reason',v_reason);
 end $$;
 revoke all on function public.billing_purchase_policy(uuid,text,text) from public,anon,authenticated;
 grant execute on function public.billing_purchase_policy(uuid,text,text) to service_role;
@@ -76,14 +75,65 @@ begin
    and attempt_id<>new.attempt_id and expires_at>now()) then
    raise exception 'founders_checkout_pending';
  end if;
- if new.checkout_key='founders' then
-   new.expires_at:=least(new.expires_at,(select closes_at from private.founders_sale_config where singleton));
- end if;
  return new;
 end $$;
 revoke all on function private.guard_founders_checkout() from public,anon,authenticated,service_role;
 create trigger guard_founders_checkout before insert on public.billing_checkout_attempts
  for each row execute function private.guard_founders_checkout();
+
+-- Durable, idempotent transition receipt. No entitlement depends on Polar responding.
+create table private.founders_subscription_transitions (
+ environment text not null check(environment in ('sandbox','production')),
+ subscription_id text not null,
+ account_id uuid not null,
+ founders_order_id text not null,
+ policy text not null check(policy = 'end_period'),
+ state text not null check(state in ('pending','completed')),
+ paid_period_end timestamptz,
+ created_at timestamptz not null default now(),
+ updated_at timestamptz not null default now(),
+ primary key(environment,subscription_id)
+);
+alter table private.founders_subscription_transitions enable row level security;
+revoke all on private.founders_subscription_transitions from public,anon,authenticated,service_role;
+
+create function public.billing_founders_subscription_transitions(p_environment text,p_order_id text)
+returns jsonb language plpgsql security definer set search_path='' as $$
+declare v_user uuid; v_policy text;
+begin
+ select user_id into v_user from public.billing_effective_access_grants
+ where environment=p_environment and source_type='order' and source_id=p_order_id
+ and capability='vantare.plan.founders' and status='active' and valid_until is null limit 1;
+ if v_user is null then return '[]'::jsonb; end if;
+ perform pg_catalog.pg_advisory_xact_lock(pg_catalog.hashtextextended(v_user::text,0));
+ if exists(select 1 from public.account_identities where account_id=v_user and deleted_at is not null)
+ or not exists(select 1 from public.profiles where id=v_user) then return '[]'::jsonb; end if;
+ select subscription_transition into strict v_policy from private.founders_sale_config where singleton;
+ insert into private.founders_subscription_transitions
+ (environment,subscription_id,account_id,founders_order_id,policy,state,paid_period_end)
+ select p_environment,s.provider_subscription_id,v_user,p_order_id,v_policy,
+ 'pending',s.current_period_end
+ from public.billing_subscriptions s where s.user_id=v_user and s.environment=p_environment
+ and s.provider='polar' and s.status in ('active','trialing','past_due','unpaid')
+ and not s.cancel_at_period_end
+ on conflict(environment,subscription_id) do update set
+ founders_order_id=excluded.founders_order_id,policy=excluded.policy,state=excluded.state,
+ paid_period_end=excluded.paid_period_end,updated_at=now()
+ where private.founders_subscription_transitions.founders_order_id<>excluded.founders_order_id;
+ return coalesce((select jsonb_agg(jsonb_build_object('subscription_id',subscription_id,'policy',policy))
+ from private.founders_subscription_transitions where environment=p_environment and account_id=v_user
+ and state='pending'),'[]'::jsonb);
+end $$;
+revoke all on function public.billing_founders_subscription_transitions(text,text) from public,anon,authenticated;
+grant execute on function public.billing_founders_subscription_transitions(text,text) to service_role;
+
+create function public.billing_complete_founders_transition(p_environment text,p_subscription_id text)
+returns void language sql security definer set search_path='' as $$
+ update private.founders_subscription_transitions set state='completed',updated_at=now()
+ where environment=p_environment and subscription_id=p_subscription_id and state='pending'
+$$;
+revoke all on function public.billing_complete_founders_transition(text,text) from public,anon,authenticated;
+grant execute on function public.billing_complete_founders_transition(text,text) to service_role;
 
 -- Preserve the existing Owner-only composition, projecting a distinct plan and all modules.
 create or replace function private.native_admin_account_summary(p_account uuid,p_issuer text,p_environment text) returns jsonb
@@ -100,6 +150,7 @@ language sql stable security definer set search_path='' as $$
   'plan',case when exists(select 1 from grants where capability='vantare.plan.founders') then 'founders' when exists(select 1 from grants where capability='vantare.plan.pro') then case when exists(select 1 from grants where capability='vantare.channel.nightly') then 'pro_plus' else 'pro' end else 'free' end,
   'billing',case when exists(select 1 from grants where capability='vantare.plan.founders') then 'one_time' else (select case when current_period_end-current_period_start>interval '200 days' then 'yearly' else 'monthly' end from sub) end,
   'renews_at',(select current_period_end from sub),
+  'founders_transitions',coalesce((select jsonb_agg(jsonb_build_object('subscription_id',t.subscription_id,'policy',t.policy,'state',t.state,'paid_period_end',t.paid_period_end) order by t.created_at desc) from private.founders_subscription_transitions t where t.account_id=p_account and t.environment=p_environment),'[]'::jsonb),
   'modules',coalesce((select jsonb_agg(module order by module) from access where rollout or individual or plan or data->'roles'<>'[]'::jsonb),'[]'::jsonb),
   'module_access',(select jsonb_agg(to_jsonb(access) order by module) from access),
   'reports_count',(select count(*) from public.testing_center_reports where reporter_user_id=p_account)+(select count(*) from public.testing_contributions where account_id=p_account),

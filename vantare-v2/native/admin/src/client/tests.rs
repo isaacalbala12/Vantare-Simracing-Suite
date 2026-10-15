@@ -352,3 +352,17 @@ fn decided_reports_never_offer_implicit_reopening() {
     assert!(Status::Validated.can_transition_to(Status::Fixed));
     assert!(!Status::Rejected.can_transition_to(Status::Fixed));
 }
+
+#[test]
+fn founders_transition_receipt_has_a_visible_pending_and_completed_state() {
+    for (state, expected) in [("pending", "pendiente"), ("completed", "desactivada")] {
+        let transition: super::FoundersTransition = serde_json::from_value(serde_json::json!({
+            "subscription_id": "fixture-subscription",
+            "policy": "end_period",
+            "state": state,
+            "paid_period_end": null
+        }))
+        .unwrap();
+        assert!(transition.label().contains(expected));
+    }
+}

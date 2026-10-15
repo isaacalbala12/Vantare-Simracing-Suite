@@ -126,9 +126,26 @@ pub struct User {
     #[serde(default)]
     pub payments: Vec<Payment>,
     #[serde(default)]
+    pub founders_transitions: Vec<FoundersTransition>,
+    #[serde(default)]
     pub module_access: Vec<ModuleAccess>,
     #[serde(default)]
     pub polar_customer_url: Option<String>,
+}
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub struct FoundersTransition {
+    pub subscription_id: String,
+    pub policy: String,
+    pub state: String,
+    pub paid_period_end: Option<String>,
+}
+impl FoundersTransition {
+    pub fn label(&self) -> &'static str {
+        match self.state.as_str() {
+            "completed" => "Founders activo · renovación de Pro desactivada",
+            _ => "Founders activo · pendiente de desactivar la renovación de Pro",
+        }
+    }
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Rollout {

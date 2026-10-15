@@ -8,7 +8,6 @@ export const CHECKOUT_KEYS = [
 ] as const;
 
 export const REQUIRED_CONFIGURED_CHECKOUT_KEYS = [
-  "launch_lifetime",
   "pro_monthly",
 ] as const;
 
@@ -507,7 +506,7 @@ export function resolveCheckoutKey(
     };
   }
   const config = map.checkout_keys[productKey];
-  if (!config || !config.active) {
+  if (!config || !config.active || productKey === "launch_lifetime") {
     return {
       ok: false,
       code: "mapping_checkout_unavailable",

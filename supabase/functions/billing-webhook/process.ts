@@ -1,4 +1,7 @@
-import { foundersPaymentAllowed } from "../_shared/founders.ts";
+import {
+  foundersPaymentAllowed,
+  transitionFoundersSubscriptions,
+} from "../_shared/founders.ts";
 import { grossRefund } from "../native-admin/amounts.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
@@ -68,6 +71,7 @@ type EffectRunner = (
 
 export type WebhookProcessorDeps = {
   foundersPaymentAllowed?: typeof foundersPaymentAllowed;
+  transitionFoundersSubscriptions?: typeof transitionFoundersSubscriptions;
   supabase: SupabaseClient;
   loadMap?: typeof loadPolarProductMap;
   now?: () => Date;
@@ -625,6 +629,18 @@ async function applyOrderRefundEvent(args: {
         resolved.config.capabilities,
       ),
   );
+
+  if (
+    resolved.key === "founders" && decision.accessState !== "revoked" &&
+    args.event.type === "order.paid"
+  ) {
+    await (args.deps.transitionFoundersSubscriptions ??
+      transitionFoundersSubscriptions)(
+        args.deps.supabase,
+        args.environment,
+        orderId,
+      );
+  }
 
   if (decision.order.subscriptionId && args.deps.projection?.restrictSource) {
     await args.deps.projection.restrictSource({

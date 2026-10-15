@@ -6,19 +6,19 @@ select ok(has_function_privilege('anon','public.founders_sale_window()','execute
 select is(public.founders_sale_window()->>'amount_cents','5000','fixed 50 EUR');
 select is(public.billing_founders_payment_allowed('2026-10-26 18:00:00Z'),true,'opening instant is included');
 select is(public.billing_founders_payment_allowed('2026-10-26 17:59:59.999Z'),false,'before opening denied');
-select is(public.billing_founders_payment_allowed('2026-11-26 18:00:00Z'),false,'closing instant excluded');
-select is(public.billing_founders_payment_allowed('2026-11-26 17:59:59.999Z'),true,'last instant included');
+select is(public.billing_founders_payment_allowed('2026-11-26 18:00:00Z'),true,'November is no longer a deadline');
+select is(public.billing_founders_payment_allowed('2026-11-26 17:59:59.999Z'),true,'no end date');
 insert into public.profiles(id) values('00000000-0000-4000-8000-000000001661');
-update private.founders_sale_config set opens_at=now()+interval '1 day',closes_at=now()+interval '2 days';
+update private.founders_sale_config set opens_at=now()+interval '1 day';
 select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','founders')->>'reason',
  'founders_sale_closed','before launch cannot checkout');
-update private.founders_sale_config set opens_at=now()-interval '2 days',closes_at=now()-interval '1 day';
-select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','founders')->>'reason','founders_sale_closed','closed window denies checkout independently of client time');
-update private.founders_sale_config set opens_at=now()-interval '1 hour',closes_at=now()+interval '5 minutes';
+update private.founders_sale_config set opens_at=now()-interval '2 days',sales_enabled=false;
+select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','founders')->>'reason','founders_sale_closed','sales switch closes checkout on the server');
+update private.founders_sale_config set opens_at=now()-interval '1 hour',sales_enabled=true;
 select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','founders')->>'reason',null::text,'single configuration controls live window');
 select is((select outcome from public.claim_billing_checkout_attempt('00000000-0000-4000-8000-000000001661',
  '00000000-0000-4000-8000-000000001662','founders','sandbox','founders-test')),'claimed','existing checkout claim accepts Founders');
-select ok((select expires_at <= (select closes_at from private.founders_sale_config where singleton) from public.billing_checkout_attempts where attempt_id='00000000-0000-4000-8000-000000001662'),'local attempt is capped at sale closure');
+select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','launch_lifetime')->>'reason','product_retired','Launch Edition cannot be purchased');
 select is((select outcome from public.claim_billing_checkout_attempt('00000000-0000-4000-8000-000000001661',
  '00000000-0000-4000-8000-000000001662','founders','sandbox','founders-test')),'busy','same attempt cannot create second checkout');
 select throws_ok($$select public.claim_billing_checkout_attempt('00000000-0000-4000-8000-000000001661',
@@ -29,14 +29,20 @@ select throws_ok($$select public.claim_billing_checkout_attempt('00000000-0000-4
  'P0001','founders_checkout_pending','pending Founders blocks new subscription');
 delete from public.billing_checkout_attempts where user_id='00000000-0000-4000-8000-000000001661';
 insert into public.billing_subscriptions(user_id,provider,provider_subscription_id,status,environment,current_period_end,cancel_at_period_end)
- values('00000000-0000-4000-8000-000000001661','polar','founders-existing-sub','canceled','sandbox',now()+interval '1 day',true);
+ values('00000000-0000-4000-8000-000000001661','polar','founders-existing-sub','active','sandbox',now()+interval '1 day',false);
 select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','founders')->>'reason',
- 'founders_subscription_active','scheduled cancellation still blocks duplicate payment until paid period ends');
-delete from public.billing_subscriptions where provider_subscription_id='founders-existing-sub';
+ null::text,'a subscription never blocks Founders purchase');
 select is((select outcome from public.billing_record_order_snapshot('sandbox','founders-order',
  '00000000-0000-4000-8000-000000001661','founders-product','founders-checkout','paid',true,5000,'eur',0,
  now(),repeat('a',64),null)),'apply','one-time order recorded');
 select lives_ok($$select public.billing_sync_order_access('sandbox','founders-order','["vantare.plan.founders"]')$$,'one-time grant projected');
+select is(jsonb_array_length(public.billing_founders_subscription_transitions('sandbox','founders-order')),1,'active Pro creates pending end-period cancellation');
+select is(jsonb_array_length(public.billing_founders_subscription_transitions('sandbox','founders-order')),1,'replay keeps one pending transition');
+select is((select count(*)::integer from private.founders_subscription_transitions),1,'one durable receipt per subscription');
+select ok(private.native_admin_account_summary('00000000-0000-4000-8000-000000001661','https://fixture.invalid','sandbox')->'founders_transitions' @> '[{"state":"pending","policy":"end_period"}]','Owner sees pending cancellation immediately');
+select lives_ok($$select public.billing_complete_founders_transition('sandbox','founders-existing-sub')$$,'confirmation records completion');
+select is(public.billing_founders_subscription_transitions('sandbox','founders-order'),'[]'::jsonb,'completed cancellation is not repeated');
+delete from public.billing_subscriptions where user_id='00000000-0000-4000-8000-000000001661';
 select is((select count(*)::integer from public.billing_effective_access_grants where source_id='founders-order' and valid_until is null),1,'one perpetual right');
 select ok((select expires_at is null and status='active' from public.user_entitlements where user_id='00000000-0000-4000-8000-000000001661' and product_key='bundle'),'compatibility bundle is perpetual');
 select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','pro_annual')->>'reason',
@@ -54,5 +60,6 @@ insert into public.account_identities(issuer,subject,account_id,deleted_at) valu
 select is(public.billing_purchase_policy('00000000-0000-4000-8000-000000001661','sandbox','founders')->>'reason','account_unavailable','deleted identity rejected');
 select throws_ok($$select public.billing_sync_order_access('sandbox','founders-order','["vantare.plan.founders"]')$$,'28000','account_deleted','late order replay after deletion is rejected');
 select is((select count(*)::integer from public.billing_effective_access_grants where source_id='founders-order'),0,'late replay cannot resurrect deleted Founders');
+select is(public.billing_founders_subscription_transitions('sandbox','founders-order'),'[]'::jsonb,'deleted/refunded account cannot trigger financial actions');
 select * from finish();
 rollback;

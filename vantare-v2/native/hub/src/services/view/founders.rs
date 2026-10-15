@@ -22,27 +22,27 @@ impl Language {
     pub fn copy(self) -> Copy {
         match self {
             Self::Es => Copy {
-                button: "Founders · 50 € · pago único",
-                included: "Todos los módulos y widgets presentes y futuros, para siempre. Sin caducidad ni renovación.",
-                subscription: "Con una suscripción vigente, la compra queda bloqueada para evitar otro cobro. No se cancela automáticamente. El servidor confirma la disponibilidad de venta.",
+                button: "Founders · 50 € · precio de fundador",
+                included: "Todos los módulos y widgets presentes y futuros, para siempre. Pago único. Disponible desde la beta pública. Este precio subirá más adelante, sin fecha prevista.",
+                subscription: "Founders se activa al instante. Si tienes Pro o Pro Plus, se desactiva su renovación al terminar el periodo pagado, sin reembolso automático. El servidor confirma la disponibilidad.",
                 owned: "Founders · todo para siempre",
             },
             Self::En => Copy {
-                button: "Founders · €50 · one-time payment",
-                included: "All current and future modules and widgets, forever. No expiry or renewal.",
-                subscription: "Purchases are blocked while a subscription is current to avoid another charge. It is never cancelled automatically. The server confirms sale availability.",
+                button: "Founders · €50 · founder price",
+                included: "All current and future modules and widgets, forever. One-time payment. Available from the public beta. This price will rise later, with no date set.",
+                subscription: "Founders activates immediately. If you have Pro or Pro Plus, renewal stops at the end of the paid period, with no automatic refund. The server confirms availability.",
                 owned: "Founders · everything forever",
             },
             Self::It => Copy {
-                button: "Founders · 50 € · pagamento unico",
-                included: "Tutti i moduli e widget presenti e futuri, per sempre. Senza scadenza né rinnovo.",
-                subscription: "L’acquisto è bloccato con un abbonamento in corso per evitare un altro addebito. Nessuna cancellazione automatica. Il server conferma la disponibilità della vendita.",
+                button: "Founders · 50 € · prezzo fondatore",
+                included: "Tutti i moduli e widget presenti e futuri, per sempre. Pagamento unico. Disponibile dalla beta pubblica. Il prezzo aumenterà in futuro, senza una data prevista.",
+                subscription: "Founders si attiva subito. Con Pro o Pro Plus, il rinnovo termina alla fine del periodo pagato, senza rimborso automatico. Il server conferma la disponibilità.",
                 owned: "Founders · tutto per sempre",
             },
             Self::PtBr => Copy {
-                button: "Founders · € 50 · pagamento único",
-                included: "Todos os módulos e widgets atuais e futuros, para sempre. Sem vencimento nem renovação.",
-                subscription: "A compra é bloqueada enquanto houver uma assinatura vigente para evitar outra cobrança. Nenhum cancelamento automático. O servidor confirma a disponibilidade da venda.",
+                button: "Founders · € 50 · preço de fundador",
+                included: "Todos os módulos e widgets atuais e futuros, para sempre. Pagamento único. Disponível a partir da beta pública. O preço aumentará no futuro, sem data prevista.",
+                subscription: "Founders é ativado imediatamente. Com Pro ou Pro Plus, a renovação termina ao final do período pago, sem reembolso automático. O servidor confirma a disponibilidade.",
                 owned: "Founders · tudo para sempre",
             },
         }
@@ -132,23 +132,16 @@ impl Remote {
             [
                 crate::services::protocol::BillingProduct::ProMonthly,
                 crate::services::protocol::BillingProduct::ProAnnual,
-                crate::services::protocol::BillingProduct::LaunchLifetime,
                 crate::services::protocol::BillingProduct::Founders,
             ]
             .into_iter()
             .enumerate()
             .map(|(index, product)| {
                 orbit::small_button(
-                    [
-                        "purchase-monthly",
-                        "purchase-annual",
-                        "purchase-launch",
-                        "purchase-founders",
-                    ][index],
+                    ["purchase-monthly", "purchase-annual", "purchase-founders"][index],
                     [
                         "Pro · 5,99 €/mes",
-                        "Pro · 59,90 €/año",
-                        "Launch · 30 €",
+                        "Pro · 59,99 €/año",
                         self.founders_language.copy().button,
                     ][index],
                     cx,

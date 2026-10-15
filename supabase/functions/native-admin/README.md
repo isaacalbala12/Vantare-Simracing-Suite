@@ -177,3 +177,12 @@ Referencias API: [órdenes](https://polar.sh/docs/api-reference/orders/list),
 [orden e importes](https://polar.sh/docs/api-reference/orders/get),
 [refunds](https://polar.sh/docs/api-reference/refunds/list),
 [borrado Clerk](https://clerk.com/docs/reference/backend/user/delete-user).
+
+### Founders / VANTA-83
+
+Founders se muestra como plan propio. El detalle de cliente incluye
+`founders_transitions` (suscripción, política `end_period`, estado `pending` o
+`completed`, fin pagado). Un fallo no retrasa el derecho y queda pendiente de
+reintento. Launch Edition se conserva solo como etiqueta de compras históricas;
+no se ofrece ni habilita nuevos checkouts. No cambiar migraciones históricas para
+borrar esa compatibilidad. No hay reembolso automático al cambiar a Founders.

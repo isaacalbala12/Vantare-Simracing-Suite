@@ -191,6 +191,7 @@ Deno.test("customer copy: repairs all nine existing products with cosmetic PATCH
   const f = fake();
   const first = await syncCatalog(f.http, sandbox, options);
   for (const [i, product] of f.products.entries()) {
+    if (product.metadata?.vantare_checkout_key === "launch_lifetime") continue;
     product.name = `Vantare ${
       product.metadata?.vantare_catalog_key ?? product.id
     }`;
@@ -210,13 +211,13 @@ Deno.test("customer copy: repairs all nine existing products with cosmetic PATCH
   const before = structuredClone(f.products);
   const start = f.writes.length;
   const repaired = await syncCatalog(f.http, first, options);
-  assertEquals(repaired.writes, 9);
+  assertEquals(repaired.writes, 8);
   const patches = f.writes.slice(start) as {
     method: string;
     path: string;
     body: Record<string, unknown>;
   }[];
-  assertEquals(patches.length, 9);
+  assertEquals(patches.length, 8);
   for (const patch of patches) {
     assertEquals(patch.method, "PATCH");
     assertEquals(patch.path.startsWith("/products/"), true);
@@ -246,7 +247,7 @@ Deno.test("customer copy: repairs all nine existing products with cosmetic PATCH
   assertEquals((await syncCatalog(f.http, repaired, options)).writes, 0);
 });
 
-Deno.test("customer copy: Launch Edition missing or recurring aborts before any writes", async () => {
+Deno.test("retired Launch Edition is ignored and its historical mapping survives", async () => {
   for (const problem of ["missing", "recurring", "archived"]) {
     const f = fake();
     const index = f.products.findIndex((p) =>
@@ -255,9 +256,68 @@ Deno.test("customer copy: Launch Edition missing or recurring aborts before any 
     if (problem === "missing") f.products.splice(index, 1);
     if (problem === "recurring") f.products[index].recurring_interval = "month";
     if (problem === "archived") f.products[index].is_archived = true;
-    await assertRejects(() => syncCatalog(f.http, sandbox, options));
-    assertEquals(f.writes.length, 0);
+    const result = await syncCatalog(f.http, sandbox, options);
+    assertEquals(
+      result.map.checkout_keys.launch_lifetime,
+      sandbox.checkout_keys.launch_lifetime,
+    );
+    assertEquals(resolveCheckoutKey(result.map, "launch_lifetime").ok, false);
+    assertEquals(
+      resolveCheckoutKeyByProductId(
+        result.map,
+        sandbox.checkout_keys.launch_lifetime.polar_product_id,
+      ).ok,
+      true,
+    );
+    assertEquals(
+      f.writes.some((w) =>
+        (w as { path: string }).path.includes(
+          sandbox.checkout_keys.launch_lifetime.polar_product_id,
+        )
+      ),
+      false,
+    );
   }
+});
+
+Deno.test("Founders: ES one-time founder price, no deadline, no creation of Isaac product", async () => {
+  const f = fake();
+  const plan = planOffline();
+  assertEquals(plan.founders.amount_cents, 5000);
+  assertEquals(plan.founders.ends_at, null);
+  assertEquals(plan.founders.description.includes("beta pública"), true);
+  assertEquals(plan.founders.name.includes("Precio de fundador"), true);
+  const input = structuredClone(sandbox) as unknown as Record<string, any>;
+  const id = "00000000-0000-4000-8000-000000001661";
+  input.checkout_keys.founders = {
+    ...input.checkout_keys.launch_lifetime,
+    polar_product_id: id,
+    polar_price_ids: ["00000000-0000-4000-8000-000000001662"],
+    plan_sku: "founders",
+    capabilities: ["vantare.plan.founders"],
+    channels: ["stable"],
+    launch_scope_version: null,
+  };
+  input.product_id_to_checkout_key[id] = "founders";
+  input.price_id_to_checkout_key["00000000-0000-4000-8000-000000001662"] =
+    "founders";
+  f.products.push({
+    id,
+    organization_id: sandbox.organization_id,
+    name: "Old",
+    recurring_interval: null,
+    prices: [{
+      id: "00000000-0000-4000-8000-000000001662",
+      amount_type: "fixed",
+      price_amount: 5000,
+      price_currency: "eur",
+      tax_behavior: "inclusive",
+    }],
+  });
+  const result = await syncCatalog(f.http, input, options);
+  assertEquals(result.offers.founders.final_cents, 5000);
+  assertEquals(result.offers.founders.renewal_cents, 0);
+  assertEquals((await syncCatalog(f.http, result, options)).writes, 0);
 });
 
 Deno.test("customer copy: a rejected cosmetic update fails, and a committed lost response can be retried", async () => {
@@ -1363,4 +1423,23 @@ Deno.test("sandbox diagnostics: 4xx exposes only type/loc/msg with token redacte
     else Deno.env.set("POLAR_ACCESS_TOKEN", tokenBefore);
     await Deno.remove(dir, { recursive: true });
   }
+});
+
+Deno.test("production catalog cannot apply the superseded permanent launch subscription pricing", async () => {
+  await assertRejects(
+    () =>
+      runCatalog([
+        "--environment",
+        "production",
+        "--map",
+        "unused.json",
+        "--output",
+        "unused-output.json",
+        "--apply",
+        "--confirm-production",
+      ], () => {
+        throw Error("must fail before network");
+      }),
+    /first-period pricing/,
+  );
 });

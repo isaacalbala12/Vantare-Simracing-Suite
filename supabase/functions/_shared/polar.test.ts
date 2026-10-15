@@ -8,6 +8,7 @@ import {
   getPolarCustomerStateByExternalId,
   PolarClientError,
   publicPolarErrorExtras,
+  stopSubscriptionRenewal,
 } from "./polar.ts";
 
 const checkout = {
@@ -312,4 +313,31 @@ Deno.test("Polar Customer State honors Retry-After seconds and HTTP dates", asyn
     assertEquals(requests, 2);
     assertEquals(delays, [retryAfter === "2" ? 2000 : 3000]);
   }
+});
+
+Deno.test("Founders transition stops renewal idempotently without revoke or refund", async () => {
+  const requests: unknown[] = [];
+  const deps = checkoutDeps(async (input, init) => {
+    assertEquals(
+      String(input),
+      "https://sandbox-api.polar.sh/v1/subscriptions/sub_founders",
+    );
+    assertEquals(init?.method, "PATCH");
+    requests.push(JSON.parse(String(init?.body)));
+    return Response.json({ id: "sub_founders", cancel_at_period_end: true });
+  });
+  await stopSubscriptionRenewal("sub_founders", "sandbox", deps);
+  await stopSubscriptionRenewal("sub_founders", "sandbox", deps);
+  assertEquals(requests, [{ cancel_at_period_end: true }, {
+    cancel_at_period_end: true,
+  }]);
+  await assertRejects(() =>
+    stopSubscriptionRenewal(
+      "sub_founders",
+      "sandbox",
+      checkoutDeps(async () =>
+        Response.json({ id: "sub_founders", cancel_at_period_end: false })
+      ),
+    )
+  );
 });

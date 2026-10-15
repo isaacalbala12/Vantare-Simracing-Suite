@@ -1,37 +1,40 @@
 ## VANTA-83 / #1661 · Plan Founders (15/10/2026)
 
-Rama `vantareapp/isa-1661-founders`, worktree `C:/VantareServer/wt/isa-1661`,
-base asignada `28800654c5bb4ca425b49bd827d0ee8cbbeeb155`. Plane En curso;
-GitHub Project Vantare y `area:licencias`. Sin milestone asignado en la issue.
+Rama `vantareapp/isa-1661-founders`, base asignada
+`28800654c5bb4ca425b49bd827d0ee8cbbeeb155`, worktree propio isa-1661.
+Plane En curso; PR draft [#1666](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1666)
+a nightly; Project Vantare, `area:licencias`, sin milestone asignado.
 
-Implementado derecho propio `vantare.plan.founders`: pago único de 50 EUR,
-todos los módulos/widgets presentes y futuros, sin caducidad; catálogo distinto
-de Launch Edition. Servicios v10/control v5, DTO de fotos v10. Configuración de
-fechas centralizada en SQL, checkout existente protegido y webhook/ledger #1622;
-Owner ve el plan y el pago. Cuenta ofrece textos ES/EN/IT/PT-BR.
-[Contrato, configuración y entrega exacta a VANTA-42](../../billing/founders-1661.md).
-No se toca el repo web.
+Decisión definitiva de Isaac: **Founders es un plan de 50 EUR una vez**,
+todo el catálogo presente/futuro para siempre; desde la beta pública del
+26-oct-2026 19:00 Madrid **sin fecha final**, con interruptor SQL de venta.
+Pro/Pro Plus pueden comprar: derecho inmediato y cancelación de renovación al
+final del periodo pagado, sin reembolso. Una única política `end_period`,
+recibo persistente de cancelación y estado pendiente/completado visible en Owner;
+los errores reintentan mediante el inbox existente. Alternativa proporcional
+retirada con autorización de Isaac por simplicidad. Sin operaciones reales.
 
-Decisión conservadora pendiente de Isaac: bloquear compra con suscripción vigente
-(también cancelada hasta fin del periodo pagado), sin cancelar Polar. Founders
-no concede canales privados/roles. Límite antes de activación: Polar no acepta
-`expires_at` en CheckoutCreate; un enlace entregado puede cobrar tras el cierre,
-aunque el webhook rechazará el derecho y lo dejará en cuarentena. Isaac debe
-validar cierre operativo y atención manual de excepciones. La credencial perpetua
-offline existente no tiene revocación remota instantánea.
+Launch Edition retirada del catálogo de compra y de los botones. Se conserva
+la lectura de mappings, pagos y derechos históricos, migraciones y tests.
+El script prepara Founders en español, sin crear producto real ni ID: lo crea
+Isaac y configura `POLAR_PRODUCT_MAP`. El contrato incorpora primer periodo Pro
+3,99/39,90 y renovación 5,99/59,99, extra Pro Plus, creador no combinable,
+informes desde mes 2 y beta pública. El modelo recurrente antiguo de #1620
+requiere reconciliación antes de aplicar catálogo en producción; se impide esa
+aplicación. **#1624 debe rebasarse sobre este PR**, sin tocar su rama aquí.
 
-Evidencia Mac local: 143 pgTAP PASS (33 Founders, 57 Owner, 34 reembolsos,
-19 tombstones); 140 Edge PASS; regresión de credencial RED al restaurar el
-normalizador original. Una orden ya admitida conserva replay/reembolso si
-Isaac modifica después las fechas de venta. Docker con lock, contenedor propio cerrado. Quality y
-retirement PASS (456 huellas). fmt/check Windows PASS; Clippy en curso tras separar funciones sin silenciar
-sus límites. Un intento posterior falló al mapear metadatos de dependencias
-(E0786, serde/regex_automata); evidencia conservada y repetición sin sccache
-con un job por presión de memoria. Gates Rust en curso de uno en uno, con VANTARE_CARGO_MIN_GB=0 autorizado por
-el orquestador tras detener las esperas anteriores por RAM; target `C:/VantareServer/targets/isa-1661`.
-Sin captura (#1655), producto real, despliegue, cobro, merge o release.
-Siguiente: completar fmt/check/Clippy/Nextest/lifecycle/telemetría, revisar diff,
-push/PR draft a nightly y actualizar aquí/issue/Plane con SHA y resultados reales.
+Derecho `vantare.plan.founders`, servicios v10/control v5/fotos v10, textos de
+cuenta ES/EN/IT/PT-BR. [Contrato y payload web para VANTA-42](../../billing/founders-1661.md).
+Repo web intacto. Founders no concede roles ni canales privados.
+Límites: credencial perpetua offline no revocable hasta reconexión; para cerrar
+venta futura, desactivar también producto/enlaces entregados de Polar.
+
+Mac: SQL local con lock Docker, **150 pgTAP PASS**; Edge actualizado en validación.
+Rust anterior: **1795 Nextest PASS**, 14 omitidos por perfil; check/Clippy/lifecycle
+PASS; telemetría en curso. Próximo: gates incrementales sobre los últimos textos
+Hub/Owner y evidencia final. Conservados fallos de infraestructura por RAM/mmap,
+reintento sin sccache con un job y VANTARE_CARGO_MIN_GB=0 autorizado.
+Sin capturas (#1655), deploy, dinero, merge ni release.
 
 ## #1627 / PR #1639 · VANTA-21 · ronda 5 (15/10/2026)
 

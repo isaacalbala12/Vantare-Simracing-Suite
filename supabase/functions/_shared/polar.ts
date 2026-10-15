@@ -683,3 +683,45 @@ export async function polarAdminRequest(
     },
   );
 }
+
+// Setting the same desired state twice is safe, including after a lost response.
+export async function stopSubscriptionRenewal(
+  subscriptionId: string,
+  environment: BillingEnvironment,
+  deps: PolarClientDeps = {},
+): Promise<void> {
+  if (!/^[A-Za-z0-9_-]{1,200}$/.test(subscriptionId)) {
+    throw new Error("invalid_subscription_id");
+  }
+  await polarRequest(
+    `${apiBase(environment, deps)}/subscriptions/${subscriptionId}`,
+    {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${requireToken(deps)}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ cancel_at_period_end: true }),
+      redirect: "error",
+    },
+    deps,
+    async (response) => {
+      if (!response.ok) {
+        throw new PolarClientError(
+          "founders_transition_failed",
+          "Renewal could not be stopped",
+          502,
+        );
+      }
+      const data = await response.json();
+      if (data.id !== subscriptionId || data.cancel_at_period_end !== true) {
+        throw new PolarClientError(
+          "founders_transition_unconfirmed",
+          "Renewal stop was not confirmed",
+          502,
+        );
+      }
+    },
+  );
+}

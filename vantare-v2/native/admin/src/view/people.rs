@@ -364,7 +364,7 @@ impl Admin {
                                 20.,
                             ))
                             .when_some(user.renews_at.as_ref(), |d, renew| {
-                                d.child(muted(&format!("Se renueva el {}", date(renew))))
+                                d.child(muted(&format!("Fin del periodo de suscripción: {}", date(renew))))
                             }),
                     )
                     .child(
@@ -393,6 +393,9 @@ impl Admin {
                 }
             )))
             .when(user.payments.iter().any(|p|p.amount_basis.as_deref()==Some("net")), |d|d.child(note("Los pagos históricos marcados como netos no incluyen impuestos y muestran su fecha de registro.",EMBER)))
+            .children(user.founders_transitions.iter().map(|transition| {
+                note(&format!("{} · {}", transition.label(), transition.subscription_id), EMBER)
+            }))
             .child(Self::payments(&user.payments))
     }
 

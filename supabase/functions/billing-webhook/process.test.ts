@@ -14,6 +14,7 @@ import {
   withProAnnualAndNewMonthlyPrice,
 } from "../_shared/test-fixtures.ts";
 import {
+  applyPolarWebhookEvent,
   minimizePolarWebhookEvent,
   parsePolarWebhookEvent,
   processPolarWebhookEvent,
@@ -309,6 +310,7 @@ Deno.test("Founders paid order is idempotent and refund removes only its own rig
           environment: "sandbox",
         }),
     ),
+    transitionFoundersSubscriptions: async () => {},
     foundersPaymentAllowed: async (paid: string) =>
       Date.parse(paid) === Date.parse("2026-10-26T18:00:00Z"),
   };
@@ -347,11 +349,11 @@ Deno.test("Founders paid order is idempotent and refund removes only its own rig
   assertEquals([...deps.orderRefundLedger.grants.values()], ["revoked"]);
 });
 
-Deno.test("Founders rejects wrong amount, currency, recurring or out-of-window payment", async () => {
+Deno.test("Founders rejects wrong amount, currency, recurring or pre-beta payment", async () => {
   for (
     const overrides of [{ total_amount: 4999 }, { currency: "usd" }, {
       subscription_id: "sub-wrong",
-    }, { paid_at: "2026-11-26T18:00:00Z" }]
+    }, { paid_at: "2026-10-26T17:59:59Z" }]
   ) {
     const mock = createMockSupabase();
     const deps = {
@@ -362,6 +364,7 @@ Deno.test("Founders rejects wrong amount, currency, recurring or out-of-window p
             environment: "sandbox",
           }),
       ),
+      transitionFoundersSubscriptions: async () => {},
       foundersPaymentAllowed: async (paid: string) =>
         Date.parse(paid) === Date.parse("2026-10-26T18:00:00Z"),
     };
@@ -2721,6 +2724,7 @@ Deno.test("Founders refunded-order reconciliation cannot grant an out-of-window 
           environment: "sandbox",
         }),
     ),
+    transitionFoundersSubscriptions: async () => {},
     foundersPaymentAllowed: async () => false,
   };
   const result = await processPolarWebhookEvent(
@@ -2753,6 +2757,7 @@ Deno.test("Founders admitted order still replays and refunds after sale configur
           environment: "sandbox",
         }),
     ),
+    transitionFoundersSubscriptions: async () => {},
     foundersPaymentAllowed: async () => ++admissions === 1,
   };
   const event = {
@@ -2791,4 +2796,43 @@ Deno.test("Founders admitted order still replays and refunds after sale configur
   );
   assertEquals(admissions, 1);
   assertEquals([...deps.orderRefundLedger.grants.values()], ["revoked"]);
+});
+
+Deno.test("Founders entitlement activates before a failed renewal stop and retry preserves the grant", async () => {
+  const mock = createMockSupabase();
+  const deps = {
+    ...processDeps(
+      mock,
+      () =>
+        loadPolarProductMap(withFounders(VALID_POLAR_PRODUCT_MAP_JSON), {
+          environment: "sandbox",
+        }),
+    ),
+    foundersPaymentAllowed: async () => true,
+    transitionFoundersSubscriptions: async () => {
+      assertEquals([...deps.orderRefundLedger.grants.values()], ["active"]);
+      if (++calls === 1) {
+        throw Error("polar_unavailable");
+      }
+    },
+  };
+  let calls = 0;
+  const event = {
+    type: "order.paid",
+    data: paidOrderData({
+      id: "founders-transition-retry",
+      product_id: "00000000-0000-4000-8000-000000001661",
+      paid_at: "2026-10-26T18:00:00Z",
+      total_amount: 5000,
+      net_amount: 5000,
+    }),
+  };
+  try {
+    await applyPolarWebhookEvent(event, deps);
+  } catch { /* existing durable inbox owns retries */ }
+  assertEquals(calls, 1);
+  assertEquals([...deps.orderRefundLedger.grants.values()], ["active"]);
+  assertEquals((await applyPolarWebhookEvent(event, deps)).status, "processed");
+  assertEquals(calls, 2);
+  assertEquals(deps.orderRefundLedger.grants.size, 1);
 });

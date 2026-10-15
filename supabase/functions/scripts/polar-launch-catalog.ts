@@ -68,11 +68,11 @@ const fixedPrice = (cents: number) => ({
 // Customer copy from product-contract.md; interval is shown by Polar's price.
 // Product name/description are single strings, not localized fields in Polar.
 function productCopy(key: CheckoutKey, launch = false) {
-  if (key === "launch_lifetime") {
+  if (key === "founders") {
     return {
-      name: "Vantare Launch Edition",
+      name: "Vantare Founders · Precio de fundador",
       description:
-        "- Acceso de por vida a los módulos existentes al comprar y sus mejoras, incluido **Engineer** en la edición inicial.\n- Acceso a tests, encuestas y builds de **Testers**, sin Nightly.\n- Los módulos completamente nuevos pueden venderse aparte.",
+        "- Pago único de **50 €**: todos los módulos y widgets presentes y futuros, para siempre.\n- Disponible desde la **beta pública**, sin fecha de fin. El precio subirá más adelante, sin fecha prevista.\n- Sin caducidad ni renovación. No incluye roles privados ni Nightly.",
     };
   }
   const plus = key.startsWith("pro_plus_");
@@ -239,18 +239,17 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
       productOwners.set(config.polar_launch_product_id, `${key}:launch`);
     }
   }
-  // Launch Edition already belongs to the required input mapping. Only its copy
-  // is managed here: never create a replacement or reconcile its one-time price.
-  const lifetimeId = map.checkout_keys.launch_lifetime!.polar_product_id;
-  const lifetimeMatches = products.filter((p) =>
-    p.id === lifetimeId ||
-    p.metadata?.vantare_checkout_key === "launch_lifetime"
-  );
-  const lifetime = lifetimeMatches[0];
+  // Legacy launch_lifetime IDs remain in the input/output map for refunds only.
+  // Isaac creates Founders; this tool only validates its price and manages its copy.
+  const foundersId = map.checkout_keys.founders?.polar_product_id;
+  const founders = foundersId
+    ? products.find((p) => p.id === foundersId)
+    : undefined;
   if (
-    lifetimeMatches.length !== 1 || lifetime.id !== lifetimeId ||
-    lifetime.is_archived || lifetime.recurring_interval != null
-  ) throw Error("Invalid or missing Launch Edition product");
+    foundersId && (!founders || founders.is_archived ||
+      founders.recurring_interval != null || !noTrial(founders) ||
+      !currentPrice(founders, 5000))
+  ) throw Error("Invalid or missing Founders product");
   // Both normal and launch products are preflighted before the first mutation.
   for (const plan of PRICES.plans) {
     const config = map.checkout_keys[plan.key];
@@ -367,9 +366,8 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   }
 
   let writes = 0;
-  const lifetimeCopy = productCopy("launch_lifetime");
-  if (!copyMatches(lifetime, lifetimeCopy)) {
-    await patchProductCopy(http, lifetime, lifetimeCopy);
+  if (founders && !copyMatches(founders, productCopy("founders"))) {
+    await patchProductCopy(http, founders, productCopy("founders"));
     writes++;
   }
   const launchIds: string[] = [];
@@ -543,6 +541,15 @@ export async function syncCatalog(http: Http, raw: unknown, options: Options) {
   if (!validated.ok) {
     throw Error(`Generated mapping invalid: ${validated.code}`);
   }
+  if (founders) {
+    offers.founders = {
+      product_id: founders.id,
+      discount_id: null,
+      code: null,
+      final_cents: 5000,
+      renewal_cents: 0,
+    };
+  }
   return {
     writes,
     map,
@@ -582,7 +589,14 @@ export function planOffline(creator?: string) {
       creator_code: code ?? null,
       renewal_cents_after_creator: p.launch_cents,
     })),
-    launch_edition_copy: productCopy("launch_lifetime"),
+    founders: {
+      ...productCopy("founders"),
+      amount_cents: 5000,
+      billing_type: "one_time",
+      ends_at: null,
+      product_id_configuration:
+        "POLAR_PRODUCT_MAP.checkout_keys.founders.polar_product_id",
+    },
   };
 }
 
@@ -678,6 +692,11 @@ export async function runCatalog(
       JSON.stringify({ environment, offline: true, ...plan }, null, 2),
     );
   } else {
+    if (environment === "production") {
+      throw Error(
+        "Subscription first-period pricing supersedes #1620; reconcile renewals and non-combinable creator codes before production apply",
+      );
+    }
     // Check before HTTP, but create only after successful synchronization.
     try {
       await Deno.lstat(values["--output"]);

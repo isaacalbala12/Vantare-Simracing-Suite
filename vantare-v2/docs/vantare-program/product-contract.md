@@ -24,7 +24,7 @@ iterativas y después lanzamiento estable. Sustituye la decisión anterior de
 lanzamiento directo sin beta abierta. Consultar [etapas y decisiones aún pendientes](../plan-beta-publica-y-lanzamiento.md) y el [roadmap](../roadmap-maintenance.md);
 este contrato no anuncia apertura ni fija una fecha nueva.
 
-El lanzamiento debe incluir Hub, Launcher, Overlay Studio, los widgets
+La beta pública debe incluir Hub, Launcher, Overlay Studio, los widgets
 principales, Telemetry Core, Telemetry Analysis, Engineer/Spotter Beta, Strategy
 Planner, calendario, cuenta, Billing, ajustes, instalador y actualizador.
 
@@ -78,7 +78,7 @@ la primera variante de Engineer. El tono es profesional y cercano.
 - Vantare Crystal con marca Vantare integrada y no eliminable.
 - Overlay Studio limitado a los widgets gratuitos.
 
-### Vantare Pro — 5,99 EUR/mes o 59,90 EUR/año
+### Vantare Pro — 5,99 EUR/mes o 59,99 EUR/año
 
 - Precios normales con IVA incluido; catálogo preparado en ISA-1499/1620,
   sin certificar venta ni ejecución Polar.
@@ -91,47 +91,44 @@ la primera variante de Engineer. El tono es profesional y cercano.
 - Todo Pro.
 - Acceso a Nightly/Beta privada, tests, encuestas y previews activas.
 
-Campaña preparada en [#1620](../billing/isa-1620-polar-launch-catalog.md),
-decisión ronda 3 del 14/10/2026: productos propios de lanzamiento Pro
-3,99 EUR/mes o 39,90 EUR/año, Plus 6,99 EUR/mes o 69,90 EUR/año.
-Un código exacto por creador (ISAAC), -20 % porcentual, repeating 2 meses,
-solo sobre esos cuatro productos; luego vuelve a la base de lanzamiento.
-Mensual: 3,19/5,59 EUR los dos primeros meses, 3,99/6,99 desde mes 3.
-Anual: primera factura 31,92/55,92 EUR, renovación 39,90/69,90.
-Decisión B de Isaac del 14/10/2026: los cuatro productos de lanzamiento,
-incluidos los accesos por enlace/código de creador, **no tienen prueba gratis**;
-el primer cobro ocurre al comprar. Los siete días gratis son exclusivos de
-Pro a precio normal, mensual/anual; Pro Plus normal tampoco tiene trial.
-Tras el mes de lanzamiento se retiran sus ofertas de la web y se conservan
-los productos accesibles por enlace de creador propio. Activación y cambio
-web pendientes; el catálogo no publica ni certifica venta. El checkout de la
-app conserva los productos normales. Normales y lanzamiento conceden los
-mismos derechos por plan/ciclo; Plus mensual y anual comparten canales.
-Comisión contable sobre lo pagado: 30 % mes 1, 10 % meses 2–12 mientras siga
-suscrito; después se renegocia. Sin payouts automáticos.
+Durante el mes de apertura de la **beta pública** (desde el 26-oct-2026
+19:00 Europe/Madrid), el primer periodo Pro cuesta **3,99 EUR mensual o
+39,90 EUR anual**. Después renueva a **5,99 EUR/mes o 59,99 EUR/año**.
+La ventaja del primer periodo no fija el precio de las renovaciones.
+Pro Plus es el extra para Nightly/Beta privada, tests, encuestas y previews;
+no se confunde con Founders ni con un rol operativo.
+El código de creador **no se combina con el precio del primer periodo**.
+Los informes se habilitan **desde el segundo mes**. No se prometen informes
+el primer día por adquirir un plan.
 
-Protección de #1620 R1: las ofertas de creador requieren cambios de plan del
-portal deshabilitados y bloqueo operativo de cambios administrativos/programados
-mientras siga vigente el descuento. El scope solo restringe su aplicación
-inicial; no elimina descuentos heredados al cambiar producto. Configuración
-y verificación real pendientes, según el runbook enlazado.
+Los borradores técnicos anteriores de #1620 describían productos recurrentes
+con precio de lanzamiento permanente y acumulación de creador. Ese modelo
+queda sustituido por esta decisión de Isaac; no se debe publicar ese catálogo
+heredado sin reconciliar su cobro del primer periodo y las renovaciones.
+La compra web se coordina en VANTA-42; este contrato no acredita activación
+ni cobros reales. La contabilidad de creadores sigue sin pagos automáticos.
 
-### Founders — 50 EUR una vez
+### Founders — precio de fundador: 50 EUR una vez
 
 - Plan propio: todos los módulos y widgets presentes y futuros, para siempre.
-- Venta del 26-oct-2026 a las 19:00 al 26-nov-2026 a las 19:00 Europe/Madrid;
-  fechas configurables en servidor, apertura inclusiva y cierre exclusivo.
-- La transición desde suscripción queda bloqueada de forma conservadora para
-  evitar otro cobro; Isaac debe validar el procedimiento, sin cancelación automática.
-- Implementación preparada en VANTA-83/#1661; no certifica activación comercial.
+- Disponible desde la beta pública: **26-oct-2026 a las 19:00 Europe/Madrid**,
+  **sin fecha de fin**. Una configuración del servidor permite cerrar la venta.
+- Pago único, sin caducidad ni renovación. El precio subirá más adelante,
+  sin fecha prevista. No es el precio fijo de lanzamiento de una suscripción.
+- Quien tiene Pro o Pro Plus puede comprarlo. Se activa al instante y su
+  suscripción deja de renovar al final del periodo ya pagado, sin reembolso.
+  Owner ve la cancelación pendiente o confirmada y puede revisar incidencias.
+- No añade roles Owner/tester ni canales privados por sí solo.
+- Implementación preparada en VANTA-83/#1661; no certifica apertura comercial.
   [Contrato, configuración e integración web](../billing/founders-1661.md).
 
-### Launch Edition — 30 EUR una vez
+### Launch Edition retirada de la oferta
 
-- Acceso de por vida a los módulos existentes al comprar y sus mejoras.
-- Los módulos completamente nuevos pueden venderse aparte.
-- Acceso a tests/encuestas/builds de testers, pero no Nightly.
-- Engineer se considera incluido en la edición inicial.
+No se ofrece ni se vende. Se conserva exclusivamente la lectura de posibles
+compras históricas, sus derechos originales, reembolsos y reconciliación:
+módulos existentes al comprar y sus mejoras, incluido Engineer inicial;
+Testers sin Nightly. Esos derechos no se convierten ni se borran al retirar
+la opción de compra. Las migraciones y pruebas históricas se mantienen.
 
 Crystal pierde la marca con cualquier licencia de pago. Los widgets fuera del
 catálogo gratuito requieren licencia.

@@ -84,11 +84,35 @@ python -B -m unittest discover -s tools/plane -v
 Cubren cuatro tipos, agrupado, deduplicado, migración, reintento independiente,
 rutas Isaac/bot, texto y prioridad, errores internos de Plane y rollback simulado.
 
-Se usa `Invoke-WorkersPlaneAsSvc.ps1` mediante tarea SYSTEM temporal, con script
-operativo `ops/run/isa-1647b-system.ps1`. Hubo intentos detenidos por permisos
-de Windows en backup/ops, con restauración del código anterior; se concedió
-Modify a vantare-svc solo en la carpeta nueva de backup y en los tres archivos
-operativos de ops/linux de este encargo.
+Seguridad 1647c (P2-1): se revocó el permiso explícito Modify de `vantare-svc`
+en los tres scripts de `ops/linux` y en **todos** los archivos del backup 1647b.
+Propietario: Administrators; escritura: solo Administrators y SYSTEM; svc: RX.
+El backup tiene herencia cortada y ACL propia (sin heredar Modify de `backups`).
+No volver a conceder escritura a svc para instalar o restaurar scripts root.
+Evidencia antes/después: `C:\VantareServer\evidence\1647c\acl-*-before.txt`
+y `acl-*-after.txt`. Durante la retirada hubo una denegación temporal al cortar
+herencia; se recuperó propietario Administrators y se verificaron todos los hijos.
+`icacls C:\VantareServer\ops\linux /T` e
+`icacls C:\VantareServer\backups\vigilante-plane\1647b-20261015 /T`
+deben mostrar RX para svc y ninguna ACE de escritura fuera de Administrators/SYSTEM.
+Se guardó `SHA256SUMS` del backup tras revocar escritura: acredita integridad
+desde ese momento, no demuestra retrospectivamente su contenido anterior.
+
+`linux/vigilante.sha256` fija el SHA-256 de instalador y ambos scripts.
+El administrador copia desde el checkout revisado a ops (sin conversión de
+saltos de línea), comprueba sus hashes y protege también el manifiesto con esas ACL.
+Como root de svc, **antes de ejecutar el instalador**:
+
+```bash
+cd /mnt/c/VantareServer/ops/linux
+sha256sum --check --strict vigilante.sha256 && bash ./install-para-claude.sh "$PWD/vigilante.sha256"
+```
+
+El instalador exige manifiesto y verifica otra vez una copia temporal privada
+antes de instalar root:750. Un hash distinto aborta sin copiar a `/usr/local/sbin`.
+Verificar con `stat -c '%U:%G %a %n'` los scripts instalados y directorios
+`/etc/vantare`, `/var/lib/vantare`, y con `find` sus hijos: dueño root,
+sin escritura de grupo/otros. No mostrar contenidos de secretos.
 
 Procedimiento: validar tests y SQL; parar timer/servicio; guardar scripts y estado;
 instalar ambos scripts root:750 y sus copias ops; migrar sin `--seed`; dry-run
@@ -126,6 +150,12 @@ el script anterior a `/usr/local/sbin/vantare-plane-para-claude.py` (root:750)
 y `para-claude.json` a `/var/lib/vantare/para-claude.json` (root:600).
 Retirar únicamente el helper si su marcador `.absent` acredita que no existía.
 Restaurar también `ops-vantare-plane-para-claude.py` y el instalador ops.
+Antes de restaurar, `cd` al backup y `sha256sum --check --strict SHA256SUMS`;
+abortar ante cualquier discrepancia. El administrador restaura ops desde Windows:
+svc no tiene escritura. Conservar la revocación de Modify también al deshacer;
+repetir `icacls /T` en ops/linux y backup, propietario Administrators, svc RX,
+solo Administrators/SYSTEM escriben. Verificar root:750 en scripts y root:600
+en estado, sin archivos escribibles por grupo/otros bajo los directorios indicados.
 Arrancar el timer y verificar enabled/active y dry-run. No tocar secretos.
 Las campanas y el comentario de prueba ya publicados permanecen; no se borran.
 Restaurar estado antiguo puede reproducir actividad posterior en la ruta T3:

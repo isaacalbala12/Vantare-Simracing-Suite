@@ -3,6 +3,27 @@
 Estado de la base indicada; releer la issue antes de ejecutar.
 [Histórico completo por SHA](https://github.com/isaacalbala12/Vantare-Simracing-Suite/blob/ca17545f607b85f5d47dc9d060721b69e6a6a158/vantare-v2/docs/vantare-program/handoffs/platform-commercial.md): conserva IDs, decisiones, informes, fallos y evidencia de cada ronda. No copiar ese diario aquí.
 
+## Servidor · ISA-1647 · 2026-10-15
+
+[#1647](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1647):
+vigilante ampliado, rama `vantareapp/isa-1647-vigilante-plane`, base
+`vantareapp/isa-1565-servidor@f385f7937` (PR #1583 abierta). Cinco eventos,
+historial de Plane en solo lectura, cola local, reintento y filtro de comentarios.
+El token actual es de Isaac; se excluyen bot, firma `[orquestador]` y origen API.
+Los clientes antiguos sin firma dependen del registro API dentro de 2 minutos;
+usar la CLI firmada de esta rama o `C:/VantareServer/ops/plane/plane-estado.py`.
+No se modifica el checkout de integración ni se rotan secretos.
+
+Desplegado expresamente por el encargo: 382 IDs sembrados sin avisar de antiguos,
+dry-run 0 pendientes, timer enabled/active y único POST sintético HTTP 202.
+36 tests simulados PASS en Windows y dentro de vantare-svc. Sin Rust, cambios
+Plane, merge ni release. Backup Windows `C:/VantareServer/backups/vigilante-plane/1647-20261015-174741/`;
+script y estado previos también en `/var/lib/vantare/vigilante-backup-1647/`.
+[Operación, límites y reversión](../../../../tools/server/vigilante-plane.md).
+Siguiente: revisar la PR borrador apilada contra #1583; al integrar en nightly,
+conservar la CLI existente y aplicar su firma/test (la base antigua no los tenía).
+PR, SHA, CI y última comprobación quedan en #1647 y `C:/tmp/buzon/1647.md`.
+
 ## 1. Resultado
 
 Servicios remotos de cuenta/licencia, Billing, calendario, reportes y distribución; Hub presenta su estado. La existencia del cliente/backend no certifica apertura comercial, producción ni release.

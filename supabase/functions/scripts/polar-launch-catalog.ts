@@ -751,6 +751,8 @@ export function planOffline(
       ...productCopy("founders"),
       amount_cents: 5000,
       billing_type: "one_time",
+      channels: productionFounders.checkout_keys.founders.channels,
+      capabilities: productionFounders.checkout_keys.founders.capabilities,
       tax_behavior: null,
       ends_at: null,
       product_id_configuration:

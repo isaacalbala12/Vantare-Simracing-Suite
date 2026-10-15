@@ -34,7 +34,8 @@ cupones históricos de dos meses ni se modifica su comportamiento silenciosament
 
 1. POST billing-checkout `{productKey,attemptId,creatorCode?}` con OAuth de la
    cuenta. Solo código exacto allowlisted, sin IDs ni importes del cliente.
-2. Claim durable y `billing_save_creator_attribution`: creador activo, cuenta
+2. `claim_billing_creator_checkout_attempt` guarda claim y atribución en una
+   transacción (rollback completo si el creador no es válido): creador activo, cuenta
    viva, intento creando suscripción. Guarda cuenta/entorno/intento/creador/ID.
    El checkout Polar lleva metadata `creator_code` y solo descuento inicial de
    lanzamiento si aplica. Fuera de campaña: precio normal, sin descuento inicial

@@ -177,3 +177,16 @@ language sql stable security definer set search_path='' as $$
   'payments',coalesce((select jsonb_agg(item order by item->>'paid_at' desc) from private.native_admin_creator_lines(p_environment) where item->>'account_id'=p_account::text),'[]'::jsonb)||coalesce((select jsonb_agg(jsonb_build_object('payment_id',o.provider_order_id,'paid_at',o.created_at,'date_source','recorded_at','amount_basis','net','product',case when exists(select 1 from public.billing_access_grants g where g.user_id=o.user_id and g.environment=o.environment and g.source_type='order' and g.source_id=o.provider_order_id and g.capability='vantare.plan.founders') then 'Founders' else 'Launch Edition' end,'period_index',1,'amount_cents',o.net_amount,'currency',o.currency,'refunded_cents',o.reported_refunded_amount,'status',o.status) order by o.created_at desc) from public.billing_orders o where o.user_id=p_account and o.environment=p_environment and not exists(select 1 from private.admin_payments p where p.environment=p_environment and p.payment_id=o.provider_order_id)),'[]'::jsonb),
   'subscriptions',coalesce((select jsonb_agg(s.provider_subscription_id) from public.billing_subscriptions s where s.user_id=p_account and s.environment=p_environment and s.provider='polar' and(s.status in('active','trialing','past_due') or s.cancel_at_period_end)),'[]'::jsonb))
 $$;
+
+-- Claim and attribution commit together; invalid/inactive creator never strands a creating attempt.
+create function public.claim_billing_creator_checkout_attempt(p_user_id uuid,p_attempt_id uuid,p_checkout_key text,p_environment text,p_catalog_version text,p_creator_code text,p_creator_discount uuid)
+returns table(outcome text,checkout_url text) language plpgsql security definer set search_path='' as $$
+declare v_claim record;
+begin
+ select * into v_claim from public.claim_billing_checkout_attempt(p_user_id,p_attempt_id,p_checkout_key,p_environment,p_catalog_version);
+ if v_claim.outcome='claimed' and not public.billing_save_creator_attribution(p_user_id,p_environment,p_attempt_id,p_creator_code,p_creator_discount) then raise exception 'creator_attribution_conflict'; end if;
+ return query select v_claim.outcome::text,v_claim.checkout_url::text;
+end $$;
+revoke all on function public.claim_billing_creator_checkout_attempt(uuid,uuid,text,text,text,text,uuid) from public,anon,authenticated;
+grant execute on function public.claim_billing_creator_checkout_attempt(uuid,uuid,text,text,text,text,uuid) to service_role;
+alter function public.claim_billing_creator_checkout_attempt(uuid,uuid,text,text,text,text,uuid) owner to postgres;

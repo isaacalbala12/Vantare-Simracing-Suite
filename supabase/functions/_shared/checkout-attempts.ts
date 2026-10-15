@@ -45,29 +45,25 @@ export function createCheckoutAttemptStore(
   return {
     async claim(input) {
       const { data, error } = await client.rpc(
-        "claim_billing_checkout_attempt",
+        input.creatorCode
+          ? "claim_billing_creator_checkout_attempt"
+          : "claim_billing_checkout_attempt",
         {
           p_user_id: input.userId,
           p_attempt_id: input.attemptId,
           p_checkout_key: input.checkoutKey,
           p_environment: input.environment,
           p_catalog_version: input.catalogVersion,
+          ...(input.creatorCode
+            ? {
+              p_creator_code: input.creatorCode,
+              p_creator_discount: input.creatorDiscountId,
+            }
+            : {}),
         },
       );
       if (error) throw new Error("checkout_attempt_claim_failed");
       const row = singleRpcRow(data);
-      if (row?.outcome === "claimed" && input.creatorCode) {
-        const saved = await client.rpc("billing_save_creator_attribution", {
-          p_user: input.userId,
-          p_environment: input.environment,
-          p_attempt: input.attemptId,
-          p_code: input.creatorCode,
-          p_discount: input.creatorDiscountId,
-        });
-        if (saved.error || saved.data !== true) {
-          throw new Error("creator_attribution_unavailable");
-        }
-      }
       switch (row?.outcome) {
         case "claimed":
         case "busy":

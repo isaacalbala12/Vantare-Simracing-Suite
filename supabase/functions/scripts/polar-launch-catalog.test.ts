@@ -801,3 +801,29 @@ Deno.test("R3 checks the last affected product and transport failures before any
     assertEquals(f.writes.length, count);
   }
 });
+
+Deno.test("R4 lost annual creator coupon response is recovered without duplicate coupons", async () => {
+  const f = fake();
+  let lose = true;
+  const http: Http = async (method, path, body) => {
+    const value = await f.http(method, path, body);
+    if (
+      lose && method === "POST" &&
+      (body as Resource)?.metadata?.vantare_offer_key ===
+        "creator:ISAAC:annual-renewals-v4"
+    ) {
+      lose = false;
+      throw Error("lost response");
+    }
+    return value;
+  };
+  await assertRejects(() => syncCatalog(http, sandbox, options));
+  const result = await syncCatalog(http, sandbox, options);
+  assertEquals(result.writes, 0);
+  assertEquals(
+    f.discounts.filter((d) =>
+      d.metadata?.vantare_offer_key === "creator:ISAAC:annual-renewals-v4"
+    ).length,
+    1,
+  );
+});

@@ -2,13 +2,30 @@ begin;
 select no_plan();
 select ok(not has_table_privilege(role_name,'private.creator_checkout_attributions','select'),role_name||' cannot read attribution') from unnest(array['anon','authenticated','service_role']) role_name;
 select ok(not has_function_privilege(role_name,signature,'execute'),role_name||' cannot call '||signature) from unnest(array['anon','authenticated']) role_name cross join unnest(array[
+ 'public.claim_billing_creator_checkout_attempt(uuid,uuid,text,text,text,text,uuid)',
  'public.billing_save_creator_attribution(uuid,text,uuid,text,uuid)',
  'public.billing_set_report_renewal_candidate(text,uuid,text,uuid,integer,timestamptz)',
  'public.billing_creator_renewal_prepare(text,uuid,text,text,text,uuid,text,uuid,integer)',
  'public.billing_creator_renewal_finish(text,text,uuid,boolean)',
  'public.billing_creator_renewal_authorized(text,text,uuid)']) signature;
+select ok(has_function_privilege('service_role',signature,'execute'),'service may execute '||signature) from unnest(array[
+ 'public.claim_billing_creator_checkout_attempt(uuid,uuid,text,text,text,text,uuid)',
+ 'public.billing_save_creator_attribution(uuid,text,uuid,text,uuid)',
+ 'public.billing_set_report_renewal_candidate(text,uuid,text,uuid,integer,timestamptz)',
+ 'public.billing_creator_renewal_prepare(text,uuid,text,text,text,uuid,text,uuid,integer)',
+ 'public.billing_creator_renewal_finish(text,text,uuid,boolean)',
+ 'public.billing_creator_renewal_authorized(text,text,uuid)']) signature;
+select ok(pg_get_userbyid(proowner)='postgres' and proconfig @> array['search_path=""'],'fixed owner and search_path: '||proname) from pg_proc where oid in (
+ 'public.claim_billing_creator_checkout_attempt(uuid,uuid,text,text,text,text,uuid)'::regprocedure,
+ 'public.billing_save_creator_attribution(uuid,text,uuid,text,uuid)'::regprocedure,
+ 'public.billing_set_report_renewal_candidate(text,uuid,text,uuid,integer,timestamptz)'::regprocedure,
+ 'public.billing_creator_renewal_prepare(text,uuid,text,text,text,uuid,text,uuid,integer)'::regprocedure,
+ 'public.billing_creator_renewal_finish(text,text,uuid,boolean)'::regprocedure,
+ 'public.billing_creator_renewal_authorized(text,text,uuid)'::regprocedure);
 insert into public.profiles(id) values('00000000-0000-4000-8000-000000001681');
 insert into private.admin_creators(creator_id,environment,name,email,code,status,discount_id) values('00000000-0000-4000-8000-000000001682','sandbox','Fixture','fixture@example.invalid','ISAAC','active','00000000-0000-4000-8000-000000001683');
+select throws_ok($$select * from public.claim_billing_creator_checkout_attempt('00000000-0000-4000-8000-000000001681','00000000-0000-4000-8000-000000001687','pro_monthly','sandbox','r4','UNKNOWN','00000000-0000-4000-8000-000000001683')$$,'P0002','query returned no rows','invalid creator rolls back claim before Polar');
+select is((select count(*)::integer from public.billing_checkout_attempts where attempt_id='00000000-0000-4000-8000-000000001687'),0,'failed creator never strands a checkout');
 select * from public.claim_billing_checkout_attempt('00000000-0000-4000-8000-000000001681','00000000-0000-4000-8000-000000001684','pro_monthly','sandbox','r4');
 select is(public.billing_save_creator_attribution('00000000-0000-4000-8000-000000001681','sandbox','00000000-0000-4000-8000-000000001684','ISAAC','00000000-0000-4000-8000-000000001683'),true,'creator bound before external checkout');
 select is(public.complete_billing_checkout_attempt('00000000-0000-4000-8000-000000001681','00000000-0000-4000-8000-000000001684','creator-checkout','https://sandbox.polar.sh/checkout/r4'),true,'durable checkout binding');

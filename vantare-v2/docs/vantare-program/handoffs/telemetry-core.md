@@ -16,6 +16,49 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1638 / VANTA-33 — revisión de gates del servidor (R2)
+
+El orquestador probó `25885bf5b`; log original
+`C:/VantareServer/logs/gates-1638.log`: 3 doc_markdown, un fallo real del test
+de distancia y cuatro tests de Services sin binario al seleccionar con `-p`.
+Diagnóstico de la captura outlap sin modificar: longitud @1720 **0 m**, distancia
+de vuelta **159,606201171875 m**, in_pit **false**. El adapter debe conservar
+la distancia a meta ausente; el test era incorrecto al exigirla sin longitud.
+La regresión ahora fija longitud, pits y resultado esperados por cada fixture:
+**3586,8802490234375 m** estimados en 1.3; ausencia en outlap sin geometría y en
+las dos capturas 1.4 con jugador en boxes. No se reescribe ninguna captura.
+
+Corrección de los 3 comentarios Rustdoc; `StartPhaseDto` pasa a Copy y se extrae
+el saneado de SessionTiming para resolver los avisos nuevos que aparecieron al
+avanzar Clippy (sin permitir lints ni cambiar el saneado). Autorización nueva:
+gates Windows imprescindibles en serie, `VANTARE_CARGO_MIN_GB=0`, target propio,
+cola y jobs de la máquina (2 en esta tanda). Código de corrección `aa14ffa89`.
+
+Resultados finales del código corregido:
+
+- Clippy `--workspace --all-targets -- -D warnings` **PASS**, exit 0, 51,36 s
+  en la repetición tras reinicio. Defaults conservados excepto DuckDB bundled,
+  con biblioteca oficial de desarrollo como en gates.ps1. Log
+  `C:/VantareServer/logs/1638-r2-clippy-4.log`.
+- Nextest **640/640 PASS**, 5 skips, ejecución 43,877 s (build 2 min 06 s),
+  exit 0. `--workspace`, filtro `package(vantare-runtime) |
+  package(vantare-domain) | package(vantare-ipc)`, manteniendo Services en la
+  selección de compilación para su ejecutable y excluyendo de la compilación
+  de tests los demás miembros. Log `C:/VantareServer/logs/1638-r2-nextest-2.log`.
+- La regresión `real_frames_expose_only_demonstrable_session_timing` pasa, igual
+  que los cuatro tests de proceso Services que fallaban con `-p`.
+- Fmt y diff --check **PASS**. No se repite lifecycle, UI ni el perfil largo de
+  telemetría: el encargo de revisión pide solo estos gates imprescindibles.
+  Los opt-ins físicos siguen sin ejecutar.
+
+Fallos previos conservados en `1638-r2-clippy.log` y `1638-r2-clippy-2.log`; clippy-3 quedó interrumpido por el
+reinicio de T3 sin resultado final y se comprobó que no quedaba proceso suyo.
+El primer setup Nextest con todos los miembros se canceló antes de tests para
+limitar la compilación a los crates solicitados más el ejecutable Services;
+no se cuenta como PASS. Todos los logs originales se conservan.
+No quedan gates de esta tanda activos.
+Fase B sigue pendiente de la instalación de LMU y de sesión cargada por Isaac.
+
 ### #1638 / VANTA-33 — continuación servidor, 15-oct-2026
 
 Encargo vigente reemplaza las excepciones del relevo: Plane **En curso**,

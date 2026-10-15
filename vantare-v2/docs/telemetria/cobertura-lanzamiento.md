@@ -7,6 +7,24 @@ la incorpora después como fase 4 (véase abajo). Seguimiento histórico del rel
 `C:/tmp/buzon/1638.md`, entonces sin Plane/Notion, PR ni merge. El encargo
 del 15-oct en el servidor reemplaza esas excepciones, según la sección siguiente.
 
+## Revisión de gates — 15-oct, R2
+
+Código corregido `aa14ffa89`, PR draft #1664: Clippy workspace con todos los
+targets y `-D warnings` **PASS**; Nextest runtime/domain/ipc con `--workspace`
+**640/640 PASS**, 5 skips; fmt y diff **PASS**. Gates en serie por la cola con
+`VANTARE_CARGO_MIN_GB=0`, autorizado por el orquestador tras la primera entrega.
+Logs finales en `C:/VantareServer/logs/1638-r2-clippy-4.log` y
+`1638-r2-nextest-2.log`; no se repiten UI/lifecycle/telemetría larga en este
+encargo acotado. Servicios pasa sus cuatro tests de proceso al incluir su
+binario mediante workspace.
+
+El test de distancia exigía un dato imposible en `lmu-1.4-outlap-fixture.bin`:
+longitud original **0 m** y distancia de vuelta **159,606201171875 m**.
+Se mantiene la ausencia productiva correcta y se fijan resultados esperados
+por fixture: **3586,8802490234375 m** en el caso con longitud válida, ausencia
+sin longitud o en boxes. Las capturas originales no cambian. Los campos sin
+fuente acreditada y la fase B siguen pendientes; estos gates no son QA LMU.
+
 ## Continuación vigente — 15-oct, servidor
 
 El encargo actual autoriza Plane y PR draft a nightly, sin merge ni A/B.

@@ -109,6 +109,7 @@ create table private.report_promotion_invoice_gaps (
  first_at timestamptz not null, last_at timestamptz not null, resolved_at timestamptz,
  primary key(environment,order_id)
 );
+create index report_promotion_open_invoice_gaps on private.report_promotion_invoice_gaps(account_id,environment) where resolved_at is null;
 alter table private.report_promotion_invoice_gaps enable row level security;
 revoke all on private.report_promotion_invoice_gaps from public,anon,authenticated,service_role;
 create function public.report_promotion_invoice(p_environment text,p_order text,p_discount text,p_amount integer,
@@ -125,10 +126,11 @@ begin
   or not isfinite(p_billed) or not isfinite(p_start) or not isfinite(p_end) or p_end<=p_start then return; end if;
  insert into private.report_promotion_invoices(environment,order_id,account_id,subscription_id,product_id,discount_id,discount_amount,billed_at,period_start,period_end,is_initial,source,reconciled_at)
  values(p_environment,p_order,o.user_id,o.provider_subscription_id,o.provider_product_id,p_discount,p_amount,p_billed,p_start,p_end,p_initial,p_source,case when p_source='reconciliation' then clock_timestamp() end)
+ -- A refund never replenishes a spent month; repeated sources only add trace.
  on conflict(environment,order_id) do update set reconciled_at=coalesce(excluded.reconciled_at,private.report_promotion_invoices.reconciled_at);
  update private.report_promotion_invoice_gaps set resolved_at=clock_timestamp() where environment=p_environment and order_id=p_order and resolved_at is null;
  update private.report_promotion_failures set resolved_at=clock_timestamp() where account_id=o.user_id and environment=p_environment and resolved_at is null
-  and code='promotion_invoice_details_missing' and not exists(select 1 from private.report_promotion_invoice_gaps g where g.account_id=o.user_id and g.environment=p_environment and g.resolved_at is null); -- a later refund never replenishes a spent month
+  and code='promotion_invoice_details_missing' and not exists(select 1 from private.report_promotion_invoice_gaps g where g.account_id=o.user_id and g.environment=p_environment and g.resolved_at is null);
 end $$;
 revoke all on function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz,boolean,text) from public,anon,authenticated;
 grant execute on function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz,boolean,text) to service_role;
@@ -330,7 +332,7 @@ $$;
 create function public.report_promotion_prepare(p_account uuid,p_environment text,p_now timestamptz default clock_timestamp())
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare p private.report_promotions; s public.billing_subscriptions; c private.report_promotion_catalog;
- earned integer; desired text; next_bill timestamptz; op private.report_promotion_changes; prior private.report_promotion_transfers; target_sub text; target_product text; action_kind text:='apply'; spent integer; repair text; creator private.report_promotion_creators; first_order public.billing_orders; spam_at timestamptz; accepted_before_spam integer; grant_at timestamptz;
+ earned integer; desired text; next_bill timestamptz; op private.report_promotion_changes; prior private.report_promotion_transfers; target_sub text; target_product text; action_kind text:='apply'; spent integer; repair text; creator private.report_promotion_creators; first_order public.billing_orders; spam_at timestamptz; accepted_before_spam integer; grant_at timestamptz; valid_months integer;
 begin
  if private.lock_account_write(p_account) then return null; end if;
  select * into p from private.report_promotions where account_id=p_account and environment=p_environment for update;
@@ -350,7 +352,7 @@ begin
  p.first_refunded:=p.first_refunded or first_order.status<>'paid' or first_order.reported_refunded_amount>0
   or exists(select 1 from public.billing_refunds r where r.environment=p_environment and r.provider_order_id=first_order.provider_order_id and r.status='succeeded' and r.amount>0);
  select * into c from private.report_promotion_catalog where environment=p_environment and product_id=p.product_id;
- if exists(select 1 from private.report_promotion_invoice_gaps g where g.account_id=p_account and g.environment=p_environment and g.resolved_at is null) then
+ if exists(select 1 from private.report_promotion_invoice_gaps g where g.account_id=p_account and g.environment=p_environment and g.resolved_at is null) and not p.first_refunded then
    perform public.report_promotion_failed(p_account,p_environment,'promotion_invoice_details_missing',p_now);
    return null; -- Do not rearm while a known paid cycle has incomplete accounting.
  end if;
@@ -368,7 +370,8 @@ begin
    where t.account_id=p_account and t.state in ('accepted','fixed') and r.decision='accepted' and t.created_at>=p.subscribed_at and t.created_at<p.subscribed_at+interval '1080 hours'
    and r.decided_at<=p_now and (p.forfeited_at is null or r.decided_at<p.forfeited_at) order by r.decided_at,t.id offset (case earned when 6 then 4 else 1 end) limit 1;
    p.tier:=earned; p.reward_granted_at:=grant_at;
-   p.reward_expires_at:=private.report_promotion_months(grant_at,(select reward_valid_months from private.report_promotion_policy where singleton));
+   select reward_valid_months into strict valid_months from private.report_promotion_policy where singleton;
+   p.reward_expires_at:=private.report_promotion_months(grant_at,valid_months);
  end if;
  select count(distinct (i.subscription_id,i.period_start))::integer,min(i.period_start),max(i.period_end)
  into spent,p.reward_from,p.reward_until

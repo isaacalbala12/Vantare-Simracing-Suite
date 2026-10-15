@@ -180,6 +180,8 @@ select public.apply_clerk_user_event('promotion-deleted',repeat('a',64),'https:/
 select is(public.report_promotion_prepare(pg_temp.account(1),'sandbox','2026-11-12'),null::jsonb,'deleted account cannot prepare');
 select is(private.report_promotion_progress(pg_temp.account(1),'sandbox','2026-11-12'),null::jsonb,'deleted account hidden');
 select throws_ok($$select public.report_promotion_observe(pg_temp.account(1),'sandbox','sub1','pro','2026-10-26 19:00 Europe/Madrid','2026-11-12',null)$$,'28000','account_deleted','deleted webhook cannot restore campaign');
+select throws_ok($$select public.report_promotion_checkout(pg_temp.account(1),'sandbox','pro','2026-10-30','00000000-0000-4000-8000-000000000020')$$,'28000','account_deleted','P1-2 deleted account cannot recover a launch checkout');
+select throws_ok($$select public.report_promotion_checkout_pending(pg_temp.account(1),'sandbox','2026-10-30')$$,'28000','account_deleted','P1-2 deleted account cannot read checkout recovery references');
 select ok(not public.report_promotion_claim((select id from private.report_promotion_changes where account_id=pg_temp.account(1) and applied_at is null and superseded_at is null),'00000000-0000-4000-8000-000000000003','2026-11-12'),'tombstone denies pending HTTP claim');
 select is((select count(*)::int from private.report_promotion_changes where account_id=pg_temp.account(1) and applied_at is not null),1,'deletion preserves financial trace');
 select is(public.report_promotion_checkout(pg_temp.account(2),'sandbox','plus','2026-10-30'),null::text,'existing customer cannot earn another first month');
@@ -276,5 +278,15 @@ select is(public.report_promotion_prepare(pg_temp.account(19),'sandbox','2027-04
 select is((select reward_expires_at from private.report_promotions where account_id=pg_temp.account(19)),'2027-10-28 19:00 Europe/Madrid'::timestamptz,'P3-12 custom calendar duration is snapshotted');
 select is((select reward_expires_at from private.report_promotions where account_id=pg_temp.account(18)),'2027-04-28 19:00 Europe/Madrid'::timestamptz,'P3-12 policy edits cannot change an already-applied tier');
 select ok(not has_table_privilege('service_role','private.report_promotion_policy','update'),'P3-12 client/worker cannot change the configured policy');
+-- Known refund remains authoritative even when another renewal has missing detail.
+insert into public.billing_orders(user_id,provider,environment,provider_order_id,provider_product_id,provider_subscription_id,status,paid,net_amount,currency,remote_modified_at,snapshot_hash)
+ values(pg_temp.account(16),'polar','sandbox','gap-after-refund16','pro','sub16','paid',true,399,'eur','2026-12-26',repeat('a',64));
+select public.report_promotion_invoice_missing('sandbox','gap-after-refund16','2026-12-27');
+update public.billing_orders set status='refunded',reported_refunded_amount=net_amount where provider_order_id='first-invoice16';
+select public.report_promotion_prepare(pg_temp.account(16),'sandbox','2026-12-28');
+select ok((select first_refunded from private.report_promotions where account_id=pg_temp.account(16)),'P2-5 missing renewal metadata cannot suspend the original refund policy');
+select ok(not exists(select 1 from private.report_promotion_changes where account_id=pg_temp.account(16) and applied_at is null and superseded_at is null and discount_id is not null),'P2-5 refund still withdraws pending report benefits despite another invoice gap');
+select ok(not has_function_privilege('authenticated','public.report_promotion_checkout_pending(uuid,text,timestamptz)','execute'),'P1-2 checkout recovery is server-only');
+select ok(not has_function_privilege('authenticated','public.report_promotion_invoice_missing(text,text,timestamptz)','execute'),'P2-5 client cannot forge an invoice gap');
 select * from finish();
 rollback;

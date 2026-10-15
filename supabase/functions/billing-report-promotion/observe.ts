@@ -101,7 +101,11 @@ export async function observePromotionInvoice(
 ): Promise<void> {
   if (
     !configured ||
-    !(["subscription_cycle", "subscription_cycle_after_trial", "subscription_create"].includes(
+    !([
+      "subscription_cycle",
+      "subscription_cycle_after_trial",
+      "subscription_create",
+    ].includes(
       String(data.billing_reason),
     )) ||
     data.paid !== true || typeof data.id !== "string"
@@ -130,7 +134,11 @@ export async function observePromotionInvoice(
     !Number.isInteger(data.discount_amount) ||
     Number(data.discount_amount) < 0 ||
     typeof item.start_timestamp !== "string" ||
-    typeof item.end_timestamp !== "string"
+    typeof item.end_timestamp !== "string" ||
+    !Number.isFinite(Date.parse(data.created_at)) ||
+    !Number.isFinite(Date.parse(item.start_timestamp)) ||
+    !Number.isFinite(Date.parse(item.end_timestamp)) ||
+    Date.parse(item.end_timestamp) <= Date.parse(item.start_timestamp)
   ) {
     await missing();
     return;

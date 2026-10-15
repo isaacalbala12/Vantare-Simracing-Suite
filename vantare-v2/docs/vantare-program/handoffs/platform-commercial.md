@@ -1,15 +1,60 @@
-## #1593 / VANTA-39 · Ronda 3 en curso · 15/10/2026
+## #1593 / VANTA-39 · Ronda 3 entregada al bare · 15/10/2026
 
-Base de ronda y PR #1659 en origen: d16f28426, misma rama/worktree Mac.
-P1-2 corregido: derecho por cuenta recuperable tras expirar el intento;
-GET remoto reutiliza enlace abierto o permite reemplazar solo expired/failed.
-Datos de recuperación durables tras GC; consumo y CAS bajo barrera B03.
-RED inicial reproducido, SQL105 y Edge19 específicos PASS con lock Docker.
-Faltan P2-4/P2-5/P3, gates completos y entrega final. Decisión nueva de Isaac:
-multi-cuenta aceptado sin control; saldo pendiente caduca a los seis meses
-configurables desde concesión, sin retirar bloques ya confirmados.
+PR draft [#1659](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1659),
+todavía en el SHA de R2 d16f28426 hasta que publique el orquestador. Misma rama
+vantareapp/isa-1593-descuento-informes, worktree Mac ~/wt-1593, base nightly
+3f82af867. SHA final y commits separados por punto en ~/orq/1593.buzon.md.
 
-## #1593 / VANTA-39 · Ronda 2 · 15/10/2026
+- P1-2: derecho de primer mes por cuenta durante la semana, recuperable tras
+  expirar el intento. GET remoto devuelve el enlace abierto sin duplicarlo;
+  solo expired/failed permite otro. CAS y datos durables sobreviven GC, pago
+  consume una sola vez; incierto sin ID devuelve 503 y requiere reconciliar.
+  No continúa silenciosamente a precio normal. B03 y RPC solo servidor probados.
+- P2-4: canceled/paused anteriores se dan por limpios con fecha/motivo durable,
+  sin PATCH prohibido. Prueba de lote confirma el premio en la suscripción
+  vigente en la siguiente pasada, incluyendo el fallo remoto real 422.
+- P2-5: reconciliación alimenta el ledger por order ID aunque el inbox ya
+  completó/quarantinó su efecto. Traza de origen/fecha y huecos durables por
+  datos incompletos; incidencia Owner y sin rearme hasta reparar. Un refund
+  inicial sigue siendo autoritativo aunque otra factura tenga datos incompletos.
+- P3-9/10/13: ciclo después de trial incluido, factura inicial ausente visible
+  y resolución automática; false o retirar el flag nunca apagan contabilidad.
+- Decisiones de Isaac P3-11/12: multi-cuenta aceptado sin control ni más PII.
+  Saldo pendiente caduca a seis meses de calendario Madrid desde la concesión,
+  duración única en private.report_promotion_policy.reward_valid_months,
+  guardada por tramo. No cambia tramos existentes al editar la configuración;
+  bloques ya confirmados terminan naturalmente sin retirarlos por caducidad.
+  Fechas de caducidad disponibles en payload Owner; no UI Rust nueva.
+
+Evidencia ~/evidence/1593-r3/RESULTADOS.md: **133/133 pgTAP** de promoción,
+**20 mutaciones SQL y 5 Edge** detectadas con fallo de comportamiento. Catálogo
+completo NOSUPERUSER BYPASSRLS: nightly 59/33 PASS, rama 60/34 PASS, mismas
+26 suites rojas del entorno, 1266→1399 aserciones, **cero regresiones**.
+Baseline R2 reutilizado con mismo runner/actor y base nightly verificada sin
+cambios; comparación final guardada. Edge completo **640 PASS / 0 FAIL /
+2 ignored** históricos. Lint producción/nuevos módulos, formato, superficies,
+quality, retirada y diff-check PASS. Dobles antiguos completan la RPC contable,
+sin suprimir checks. Ocho require-await del test checkout siguen históricos.
+No Rust modificado: clippy/nextest/lifecycle/telemetría omitidos esta ronda.
+
+La mutación histórica de quitar solo el guard de prepare sobrevive por las
+otras barreras y por ausencia de suscripción tras B03; se conserva su evidencia.
+El control deleted ahora rompe la frontera nueva de recuperación y cae en la
+aserción de cuenta borrada, sin desactivar defensas de producto.
+
+Sin Polar/Clerk/Storage reales, productos, secretos nuevos, deploy, scheduler,
+merge, release ni promoción. Lock huérfano del reinicio comprobado y liberado;
+gates posteriores con lock y trap, sin contenedores propios pendientes. Sin
+target Rust creado. QA visual/Windows y sandbox siguen pendientes. Polar no
+cambia: seis cupones fijos EUR Pro200/Plus300, repeating1/3/6, sin productos.
+
+Siguiente: el orquestador sube el SHA del bare al PR, ejecuta CI y pide revisión
+independiente R3. El check remoto visto solo acredita R2 (GitGuardian SUCCESS).
+Catálogo sigue vacío, campaña inactiva; integración #1620/#1639 y activación
+requieren su coordinación/autorización. Runbook:
+supabase/functions/billing-report-promotion/README.md.
+
+## Histórico · #1593 / VANTA-39 · Ronda 2 · 15/10/2026
 
 PR draft [#1659](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1659).
 Revisión DeepSeek NO APTO leída y corregida; pendiente revisión independiente nueva.

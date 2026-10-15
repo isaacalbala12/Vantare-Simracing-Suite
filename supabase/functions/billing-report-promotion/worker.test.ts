@@ -294,29 +294,116 @@ Deno.test("P2-3 elapsed budget returns the last processed cursor without skippin
 });
 
 Deno.test("P3-9 conversion after trial is a settled recurring invoice", async () => {
-  const {observePromotionInvoice} = await import("./observe.ts");
+  const { observePromotionInvoice } = await import("./observe.ts");
   const calls: unknown[] = [];
-  const admin = {rpc:(...args:unknown[]) => {calls.push(args);return Promise.resolve({error:null});}} as unknown as SupabaseClient;
-  await observePromotionInvoice(admin,"sandbox",{
-    id:"after-trial",paid:true,billing_reason:"subscription_cycle_after_trial",discount_id:"reward3",discount_amount:200,
-    created_at:"2026-12-26T18:00:00Z",items:[{proration:false,start_timestamp:"2026-12-26T18:00:00Z",end_timestamp:"2027-01-26T18:00:00Z"}]
-  },true);
-  assertEquals(calls.length,1);
-  assertEquals((calls[0] as unknown[])[0],"report_promotion_invoice");
+  const admin = {
+    rpc: (...args: unknown[]) => {
+      calls.push(args);
+      return Promise.resolve({ error: null });
+    },
+  } as unknown as SupabaseClient;
+  await observePromotionInvoice(admin, "sandbox", {
+    id: "after-trial",
+    paid: true,
+    billing_reason: "subscription_cycle_after_trial",
+    discount_id: "reward3",
+    discount_amount: 200,
+    created_at: "2026-12-26T18:00:00Z",
+    items: [{
+      proration: false,
+      start_timestamp: "2026-12-26T18:00:00Z",
+      end_timestamp: "2027-01-26T18:00:00Z",
+    }],
+  }, true);
+  assertEquals(calls.length, 1);
+  assertEquals((calls[0] as unknown[])[0], "report_promotion_invoice");
 });
 Deno.test("P3-13 deleting the activation flag never disables settled invoice accounting", async () => {
-  const {observePromotionInvoice} = await import("./observe.ts");
+  const { observePromotionInvoice } = await import("./observe.ts");
   const saved = Deno.env.get("REPORT_PROMOTION_ENABLED");
   try {
     Deno.env.delete("REPORT_PROMOTION_ENABLED");
     let recorded = 0;
-    const admin = {rpc:()=>{recorded++;return Promise.resolve({error:null});}} as unknown as SupabaseClient;
-    await observePromotionInvoice(admin,"sandbox",{
-      id:"flag-absent",paid:true,billing_reason:"subscription_cycle",discount_id:"reward3",discount_amount:200,
-      created_at:"2026-12-26T18:00:00Z",items:[{proration:false,start_timestamp:"2026-12-26T18:00:00Z",end_timestamp:"2027-01-26T18:00:00Z"}]
+    const admin = {
+      rpc: () => {
+        recorded++;
+        return Promise.resolve({ error: null });
+      },
+    } as unknown as SupabaseClient;
+    await observePromotionInvoice(admin, "sandbox", {
+      id: "flag-absent",
+      paid: true,
+      billing_reason: "subscription_cycle",
+      discount_id: "reward3",
+      discount_amount: 200,
+      created_at: "2026-12-26T18:00:00Z",
+      items: [{
+        proration: false,
+        start_timestamp: "2026-12-26T18:00:00Z",
+        end_timestamp: "2027-01-26T18:00:00Z",
+      }],
     });
-    assertEquals(recorded,1);
+    assertEquals(recorded, 1);
   } finally {
-    if(saved===undefined) Deno.env.delete("REPORT_PROMOTION_ENABLED"); else Deno.env.set("REPORT_PROMOTION_ENABLED",saved);
+    if (saved === undefined) Deno.env.delete("REPORT_PROMOTION_ENABLED");
+    else Deno.env.set("REPORT_PROMOTION_ENABLED", saved);
+  }
+});
+
+Deno.test("P2-4 batch acknowledges a non-billable predecessor and grants the current subscription on retry", async () => {
+  for (const status of ["canceled", "paused"]) {
+    let cleaned = false;
+    let currentPatches = 0;
+    let currentDiscount: string | null = null;
+    const acknowledgements: Record<string, unknown>[] = [];
+    const deps: PromotionDeps = {
+      environment: "sandbox",
+      now: () => new Date("2026-11-21T12:00:00Z"),
+      enabled: () => true,
+      rpc: (name, args) => {
+        if (name.endsWith("accounts")) return Promise.resolve(["account"]);
+        if (name.endsWith("prepare")) {
+          return Promise.resolve({
+            id: cleaned ? "next-op" : "cleanup-op",
+            subscription_id: cleaned ? "current" : "previous",
+            product_id: "product",
+            kind: cleaned ? "apply" : "cleanup",
+            discount_id: cleaned ? "reward3" : null,
+            managed_discount_ids: ["reward3"],
+            normal_cents: 599,
+          });
+        }
+        if (name.endsWith("ack")) {
+          acknowledgements.push(args);
+          cleaned = true;
+        }
+        return Promise.resolve(true);
+      },
+      client: {
+        read: (id) =>
+          Promise.resolve({
+            id,
+            product_id: "product",
+            status: id === "previous" ? status : "active",
+            discount_id: id === "previous" ? "reward3" : currentDiscount,
+            amount: 599,
+            currency: "eur",
+            recurring_interval: "month",
+            recurring_interval_count: 1,
+          }),
+        change: (id, discount) => {
+          if (id === "previous") throw new Error("polar_discount_http_422");
+          currentPatches++;
+          currentDiscount = discount;
+          return deps.client.read(id);
+        },
+      },
+    };
+    assertEquals((await runPromotionBatch(deps)).completed, 1);
+    assertEquals(acknowledgements[0].p_cleanup_reason, "remote_inactive");
+    assertEquals(currentPatches, 0);
+    assertEquals((await runPromotionBatch(deps)).completed, 1);
+    assertEquals(currentPatches, 1);
+    assertEquals(currentDiscount, "reward3");
   }
 });

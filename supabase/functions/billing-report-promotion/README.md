@@ -19,11 +19,11 @@ upgrade aparte.
   dan **3 cobros mensuales rebajados**; 5 dan **6** en sustitución del tramo
   menor. El mayor empieza con sus seis cobros siguientes, no suma meses de ambos
   tramos.
-- Se consumen periodos únicos de órdenes `subscription_cycle` / `subscription_cycle_after_trial` **pagadas**, con
-  el descuento del tramo, importe de descuento positivo y una línea completa sin
-  prorrateo. `subscription_create` identifica la factura inicial y no consume
-  premio. IDs repetidos no suman; una devolución posterior no repone meses ya
-  consumidos.
+- Se consumen periodos únicos de órdenes `subscription_cycle` /
+  `subscription_cycle_after_trial` **pagadas**, con el descuento del tramo,
+  importe de descuento positivo y una línea completa sin prorrateo.
+  `subscription_create` identifica la factura inicial y no consume premio. IDs
+  repetidos no suman; una devolución posterior no repone meses ya consumidos.
 - Reconciliación de órdenes alimenta el mismo ledger por order ID aunque el
   inbox ya esté completado o en cuarentena. Guarda origen y fecha de
   reconciliación sin payload ni PII. Si una orden pagada conocida carece de
@@ -155,7 +155,8 @@ borrado posterior: reconciliar/cancelar.
 
 Configurar tras autorización `POLAR_ENVIRONMENT`, `POLAR_ACCESS_TOKEN`,
 `REPORT_PROMOTION_SECRET`, `REPORT_PROMOTION_ENABLED` y las variables Supabase
-integradas. Token con subscriptions read/write; sin products write. El bloque
+integradas. Token con subscriptions read/write y checkouts read para
+recuperación; sin products write. El bloque
 `[functions.billing-report-promotion] verify_jwt=false` es obligatorio y su gate
 lo comprueba: el handler valida el secreto dedicado. Sigue fuera de wrappers de
 deploy.
@@ -169,16 +170,16 @@ contabilidad tiene default explícito true y el catálogo SQL filtra productos.
 billing-reconcile repara por order ID incluso un efecto histórico ya completado
 o un inbox en cuarentena. Conserva origen y fecha de recuperación. Una factura
 pagada conocida con datos incompletos deja un hueco durable y la incidencia
-promotion_invoice_details_missing; impide rearmar hasta recuperar los datos.
-La ausencia de factura inicial muestra promotion_initial_invoice_missing. Ambas
-se resuelven al llegar los hechos, sin duplicar créditos. Reconciliar órdenes
-antes de activar/retomar tras una interrupción; no dar por completo un historial
-solo por el espejo de suscripción.
+promotion_invoice_details_missing; impide rearmar hasta recuperar los datos. La
+ausencia de factura inicial muestra promotion_initial_invoice_missing. Ambas se
+resuelven al llegar los hechos, sin duplicar créditos. Reconciliar órdenes antes
+de activar/retomar tras una interrupción; no dar por completo un historial solo
+por el espejo de suscripción.
 
 ## Caducidad y riesgo aceptado por Isaac · ronda 3
 
-El saldo ganado caduca a los **seis meses de calendario Europe/Madrid** desde
-la revisión humana que alcanza el tramo. Único valor configurable:
+El saldo ganado caduca a los **seis meses de calendario Europe/Madrid** desde la
+revisión humana que alcanza el tramo. Único valor configurable:
 private.report_promotion_policy.reward_valid_months (fila singleton, inicial 6,
 rango 1..120, solo operador de base). La duración se guarda como
 reward_expires_at al conceder un nuevo tramo; cambiar la configuración afecta
@@ -188,14 +189,14 @@ desde la quinta aceptación; no suma los saldos de ambos.
 El límite es exclusivo. Al vencer no se puede asociar ni rearmar otro cupón, y
 las operaciones pendientes se invalidan. **Un bloque finito ya confirmado se
 respeta hasta su término natural**; la caducidad no lo retira ni lo reinicia.
-Devolución inicial y limpieza por cambio de suscripción conservan sus reglas.
-El payload Owner expone reward_expires_at y reward_expired; los clientes que
+Devolución inicial y limpieza por cambio de suscripción conservan sus reglas. El
+payload Owner expone reward_expires_at y reward_expired; los clientes que
 todavía no pinten estos campos pueden ignorarlos.
 
 **Multi-cuenta: riesgo aceptado expresamente por Isaac.** La unidad es
 cuenta/entorno; no se añade huella de tarjeta, normalización de correo ni cruce
-entre cuentas. Una persona con varias cuentas puede repetir la promoción.
-No se afirma protección contra ese abuso ni se recoge PII adicional.
+entre cuentas. Una persona con varias cuentas puede repetir la promoción. No se
+afirma protección contra ese abuso ni se recoge PII adicional.
 
 Owner recibe aceptados, tramo, descuento confirmado, incidencia y pérdida por
 refund/spam; estados de política visibles en la miniapp. El descuento es el
@@ -208,7 +209,7 @@ otro contrato/DTO.
 Adquirir `~/orq/docker.lock` y liberar con trap. Desde raíz:
 
 ```sh
-python3 supabase/tests/run-report-promotion-local.py --output ~/evidence/1593-r2/sql --only report_promotion.test.sql
+python3 supabase/tests/run-report-promotion-local.py --output ~/evidence/1593-r3/sql --only report_promotion.test.sql
 DENO_NO_PACKAGE_JSON=1 deno test --config supabase/functions/deno.json --no-lock --cached-only --allow-env --allow-read --allow-write supabase/functions
 ```
 
@@ -221,7 +222,8 @@ fallos heredados, no compararlo con los números anteriores bajo superusuario.
 
 Controles `--mutation`: launch, launch-end, window, tier, spam, creator,
 deleted, idempotency, first-month, invoice, transfer, settlements, repair,
-first-refund, launch-used. Deben fallar; no se relajan tests ni cambian
+first-refund, launch-used, checkout-proof, cleanup-inactive, invoice-gap,
+initial-incident y reward-expiry. Deben fallar; no se relajan tests ni cambian
 funciones de producto para dejarlos verdes. Deno cubre fallo de lote, checkout
 activado y clear/attach. Sin servicios reales ni sandbox autenticado.
 Facturas/renovaciones Polar reales, Windows, nueva revisión independiente y QA

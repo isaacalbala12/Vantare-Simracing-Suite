@@ -4,10 +4,28 @@ alter table public.testing_center_reports drop constraint testing_center_reports
 alter table public.testing_center_reports add constraint testing_center_reports_state_check
  check(state in ('draft','submitted','validated','duplicate_linked','incomplete','closed','in_review','rejected','fixed','spam'));
 
--- Repair rows reopened by the previous adapter; preserve the original review/date.
-update public.testing_contributions c set state=r.decision
- from public.testing_contribution_reviews r where r.contribution_id=c.id
- and c.state is distinct from r.decision and not (r.decision='accepted' and c.state='fixed');
+-- Restore already-recorded decisions, not new acceptances. Keep every other
+-- trigger active; this transaction rolls back both repair and trigger state on error.
+alter table public.testing_contributions disable trigger testing_report_acceptance_limit;
+-- This audit restores historical decisions, including erased reviewers. The
+-- table DDL lock excludes concurrent audit writers until commit. Suspend only
+-- its account-write barrier, retaining append-only/RLS and restoring it below.
+alter table public.admin_audit_log disable trigger a_account_write_barrier;
+with candidates as materialized (
+ select c.id,c.state old_state,r.decision,r.reviewer from public.testing_contributions c
+ join public.testing_contribution_reviews r on r.contribution_id=c.id
+ where c.state is distinct from r.decision and not (r.decision='accepted' and c.state='fixed')
+), repaired as (
+ update public.testing_contributions c set state=r.decision from candidates r where c.id=r.id
+ returning c.id,r.old_state,r.decision,r.reviewer
+)
+-- Original reviewer identifies the durable decision being restored, not a new
+-- human action. The repair marker distinguishes this migration in the audit.
+insert into public.admin_audit_log(actor_account_id,action,target,before_value,after_value)
+ select reviewer,'set_report_status',id::text,jsonb_build_object('status',old_state),
+ jsonb_build_object('status',decision,'repair','native_admin_final_decision_r4') from repaired;
+alter table public.admin_audit_log enable trigger a_account_write_barrier;
+alter table public.testing_contributions enable trigger testing_report_acceptance_limit;
 
 create or replace function private.testing_contribution_review_as(p_reviewer uuid,p_id uuid,p_decision text,p_note text,p_proposal jsonb) returns void
 language plpgsql security definer set search_path = '' as $$
@@ -64,5 +82,5 @@ begin
  insert into public.testing_report_followup(contribution_id,reject_reason) values(p_id,case when p_status in ('rejected','spam') then p_note else null end)
   on conflict(contribution_id) do update set reject_reason=excluded.reject_reason;
 end $$;
--- Historical reports keep their existing workflow, including reopening.
+-- Historical report decisions are final too (enforced by the admin dispatcher).
 commit;

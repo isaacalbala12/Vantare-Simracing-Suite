@@ -394,6 +394,12 @@ begin
   end if;
  end if;
  perform private.lock_accounts_before_rows(array[p_actor,v_account]);
+ -- #1608 R5-P2-1: do not proceed with a UUID collected before ownership changed.
+ if p_action in ('get_report','set_report_status') and v_account is distinct from coalesce(
+  (select reporter_user_id from public.testing_center_reports where report_id=p_params->>'report_id'),
+  (select account_id from public.testing_contributions where id::text=p_params->>'report_id')) then
+  raise sqlstate '40001' using message='admin_report_owner_changed';
+ end if;
  perform private.native_admin_require_owner(p_actor);
  if p_environment is null or p_environment not in('sandbox','production') or p_issuer is null or p_issuer!~'^https://' or jsonb_typeof(p_params) is distinct from 'object' then
   raise exception 'native_admin_invalid' using errcode='22023'; end if;
@@ -551,8 +557,10 @@ begin
    if exists(select 1 from public.testing_contributions where id::text=v_id) then
     perform private.native_admin_review_report(p_actor,v_id::uuid,v_status,v_version,p_params->>'reason');
    else
+    if v_before->>'status' not in ('draft','submitted','in_review') and v_status<>'fixed' then
+     raise exception 'testing_review_conflict' using errcode='23505'; end if;
     update public.testing_center_reports set state=v_status,fixed_in_version=case when v_status='fixed' then v_version else null end,
-      reject_reason=case when v_status='rejected' then p_params->>'reason' else null end,updated_at=now() where report_id=v_id;
+      reject_reason=case when v_status in ('rejected','spam') then p_params->>'reason' else null end,updated_at=now() where report_id=v_id;
    end if;
    select item into v_rows from private.native_admin_reports(p_issuer) where item->>'report_id'=v_id;
    v_after:=jsonb_build_object('report_id',v_id,'status',v_status);

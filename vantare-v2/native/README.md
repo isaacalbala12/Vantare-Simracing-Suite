@@ -312,10 +312,13 @@ pwsh -NoProfile -File native/scripts/limpiar-targets.ps1 -Raiz C:\VantareServer\
 En el servidor (`SapphireOS`) está aplicado:
 
 - Variables de máquina `VANTARE_CARGO_SLOTS=2`, `VANTARE_CARGO_MIN_GB=4`,
-  `CARGO_BUILD_JOBS=4` y `SCCACHE_CACHE_SIZE=5G`. Con dos workers compilando a la
-  vez, 4 jobs por hueco tardan un 26 % menos que 2 sin bajar más la RAM libre
-  mínima. Toda la caché de dev, test y prueba ocupó 1,5 GB; sccache expulsa lo
-  más antiguo al llenarse (`%LOCALAPPDATA%\Mozilla\sccache`).
+  `CARGO_BUILD_JOBS=2` y `SCCACHE_CACHE_SIZE=5G`. La cola admite el primer worker con
+  `VANTARE_CARGO_MIN_GB` libres y exige `jobs × VANTARE_CARGO_JOB_GB +
+  VANTARE_CARGO_RESERVE_GB` (por defecto 2 × 1,5 + 1 = 4 GB) más por cada worker que ya
+  está compilando: con 16 GB y los agentes abiertos, dos workers a la vez mandaban la
+  memoria a swap (pico medido 19 GB comprometidos en #1654 r3), así que el segundo
+  espera a que el primero deje aire. Toda la caché de dev, test y prueba ocupó 1,5 GB;
+  sccache expulsa lo más antiguo al llenarse (`%LOCALAPPDATA%\Mozilla\sccache`).
 - Tarea `\Vantare\LimpiarTargets` (diaria 05:30, SYSTEM): ejecuta el script del
   checkout de integración con `-Raiz C:\VantareServer\targets,C:\VantareServer\wt
   -Dias 7 -Aplicar` y anexa la salida a `C:\VantareServer\logs\limpiar-targets.log`.
@@ -325,7 +328,7 @@ Para replicarlo en otro PC Windows (PowerShell como administrador):
 
 ```powershell
 [Environment]::SetEnvironmentVariable('VANTARE_CARGO_SLOTS', '2', 'Machine')
-[Environment]::SetEnvironmentVariable('CARGO_BUILD_JOBS', '4', 'Machine') # 16 GB y 8 hilos
+[Environment]::SetEnvironmentVariable('CARGO_BUILD_JOBS', '2', 'Machine') # 16 GB; la cola limita por RAM
 [Environment]::SetEnvironmentVariable('SCCACHE_CACHE_SIZE', '5G', 'Machine')
 $script = '<checkout>\vantare-v2\native\scripts\limpiar-targets.ps1'
 $arg = "-NoProfile -NonInteractive -Command `"& '$script' -Raiz <targets>,<worktrees> -Dias 7 -Aplicar`""

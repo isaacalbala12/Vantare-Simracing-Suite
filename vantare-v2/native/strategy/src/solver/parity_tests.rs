@@ -38,13 +38,29 @@ fn semantic_decision(mut value: Value) -> Value {
 }
 fn parity_cases(data: &str) {
     let cases: Vec<Value> = serde_json::from_str(data).expect("Go cases");
-    let mut failed = Vec::new();
-    for case in &cases {
-        let outcome = std::panic::catch_unwind(|| parity_case(case));
-        if outcome.is_err() {
-            failed.push(case["name"].clone());
-        }
-    }
+    // Los casos son independientes y `parity_case` no usa plazos (solve_v2_without_deadline):
+    // repartirlos entre hilos no cambia lo que se comprueba, solo deja de hacerlo en serie
+    // (#1654 r5: go_physical_tyre_parity tardaba 27 s en CI y ~60 s en el servidor).
+    let threads = std::thread::available_parallelism()
+        .map(|n| n.get().min(4))
+        .unwrap_or(1)
+        .max(1);
+    let failed: Vec<Value> = if threads == 1 || cases.len() < 2 {
+        run_parity_cases(&cases)
+    } else {
+        let per = cases.len().div_ceil(threads).max(1);
+        std::thread::scope(|scope| {
+            let handles: Vec<_> = cases
+                .chunks(per)
+                .map(|chunk| scope.spawn(|| run_parity_cases(chunk)))
+                .collect();
+            let mut failed = Vec::new();
+            for handle in handles {
+                failed.extend(handle.join().expect("parity worker"));
+            }
+            failed
+        })
+    };
     eprintln!(
         "ORACLE cases={} equal={} different={}",
         cases.len(),
@@ -52,6 +68,18 @@ fn parity_cases(data: &str) {
         failed.len()
     );
     assert!(failed.is_empty(), "Go differences: {failed:?}");
+}
+/// Ejecuta los casos en orden y devuelve los nombres que fallan (el orden del
+/// resultado es determinista: trozos en orden y, dentro de cada trozo, casos en orden).
+fn run_parity_cases(cases: &[Value]) -> Vec<Value> {
+    let mut failed = Vec::new();
+    for case in cases {
+        let outcome = std::panic::catch_unwind(|| parity_case(case));
+        if outcome.is_err() {
+            failed.push(case["name"].clone());
+        }
+    }
+    failed
 }
 fn parity_case(case: &Value) {
     let name = case["name"].as_str().expect("name");

@@ -148,27 +148,17 @@ jobs:
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File native/packaging/feed-origin-tests.ps1
           if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
-      # El registro y el clon git de zed (~1 GB) solo cambian con Cargo.lock:
-      # sin caché, cada trabajo los vuelve a descargar (cargo fetch = 129-243 s).
-      - name: Cache de registro y git de Cargo
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('vantare-v2/native/Cargo.lock') }}
-          restore-keys: |
-            cargo-registry-${{ runner.os }}-${{ runner.arch }}-
-
       # Caché de los artefactos de *dependencias* (rust-cache borra antes de
       # guardar los crates del workspace y el fork vendorizado, y limpia el
-      # incremental). Apunta a target/gates, el --target-dir que usa
-      # gates.ps1. La clave la calcula la acción con rustc, las variables
-      # CARGO/RUST/CC y el Cargo.lock/Cargo.toml de todo el repo: no cambia por
-      # PR, y si cambia el lock restaura la entrada anterior. Un cache creado
-      # en una PR solo lo ve esa PR; los del push a nightly los comparten todas
-      # las PRs con esa base (docs de GitHub: «Restrictions for accessing a
-      # cache»). Para invalidar a mano: subir `prefix-key`.
+      # incremental). Incluye el registro y el clon git de Cargo (~1 GB, zed
+      # 388 MB): sustituye a la caché `cargo-registry` de la ronda 1. Apunta a
+      # target/gates, el --target-dir que usa gates.ps1. La clave la calcula la
+      # acción con rustc, las variables CARGO/RUST/CC y el Cargo.lock/Cargo.toml
+      # de todo el repo: no cambia por PR, y si cambia el lock restaura la
+      # entrada anterior. Un cache creado en una PR solo lo ve esa PR; los del
+      # push a nightly los comparten todas las PRs con esa base (docs de
+      # GitHub: «Restrictions for accessing a cache»). Para invalidar a mano:
+      # subir `prefix-key`.
       - name: Cache de artefactos de dependencias (target)
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:

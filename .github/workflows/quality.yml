@@ -46,26 +46,15 @@ jobs:
       - name: Verify pinned Rust toolchain
         run: rustup show active-toolchain
 
-      # El registro y el clon git de zed (~1 GB) solo cambian con Cargo.lock:
-      # sin caché, cada trabajo los vuelve a descargar (cargo fetch = 129-243 s
-      # en Windows y parte del check de Linux).
-      - name: Cache de registro y git de Cargo
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
-        with:
-          path: |
-            ~/.cargo/registry
-            ~/.cargo/git
-          key: cargo-registry-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('vantare-v2/native/Cargo.lock') }}
-          restore-keys: |
-            cargo-registry-${{ runner.os }}-${{ runner.arch }}-
-
       # Caché de los artefactos de *dependencias* (rust-cache borra antes de
       # guardar los crates del workspace y el fork vendorizado, y limpia el
-      # incremental). Aquí el target es el de por defecto (native/target).
-      # Clave por rustc + Cargo.lock/Cargo.toml: no cambia por PR; si cambia el
-      # lock, restaura la entrada anterior. Aviso: este flujo solo corre en
-      # pull_request, así que su cache queda en el merge ref y solo lo
-      # reutilizan las ejecuciones del mismo PR (nightly no lo guarda).
+      # incremental). Incluye el registro y el clon git de Cargo (~1 GB, zed
+      # 388 MB): sustituye a la caché `cargo-registry` de la ronda 1. Aquí el
+      # target es el de por defecto (native/target). Clave por rustc +
+      # Cargo.lock/Cargo.toml: no cambia por PR; si cambia el lock, restaura la
+      # entrada anterior. Aviso: este flujo solo corre en pull_request, así que
+      # su cache queda en el merge ref y solo lo reutilizan las ejecuciones del
+      # mismo PR (nightly no lo guarda).
       - name: Cache de artefactos de dependencias (target)
         uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:

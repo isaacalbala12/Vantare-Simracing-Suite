@@ -1,4 +1,5 @@
 begin; select no_plan();
+insert into private.clerk_issuers(issuer,authorized_parties,enabled) values('https://clerk.admin.test',array['https://app.invalid'],true);
 insert into public.profiles(id) values ('00000000-0000-4000-8000-000000001627'),('00000000-0000-4000-8000-000000001628');
 insert into public.account_identities(issuer,subject,account_id) values('https://clerk.admin.test','user_ttttttttttttttttttttttttttt','00000000-0000-4000-8000-000000001628');
 select * from public.operational_access_set('00000000-0000-4000-8000-000000001627','owner','grant','test:admin','Admin r1','test:r1',null);

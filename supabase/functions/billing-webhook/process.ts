@@ -654,6 +654,22 @@ export async function applyPolarWebhookEvent(
   const now = deps.now?.() ?? new Date();
   const nowIso = now.toISOString();
   const environment = mapping.map.environment;
+  // #1622 owns access/refund decisions. The management ledger is a mirror;
+  // it must never short-circuit the common commercial projection.
+  let commercialResult: ProcessResult | null = null;
+  if (
+    ["order.paid", "order.refunded", "refund.created", "refund.updated"]
+      .includes(event.type)
+  ) {
+    commercialResult = await applyOrderRefundEvent({
+      event,
+      deps,
+      productMap: mapping.map,
+      environment,
+      nowIso,
+    });
+    if (commercialResult.status !== "processed") return commercialResult;
+  }
   if (
     ["refund.created", "refund.updated"].includes(event.type) &&
     event.data.currency === "eur"
@@ -667,7 +683,7 @@ export async function applyPolarWebhookEvent(
       amount <= 100000000 && refundStatus(event.data.status) && modified &&
       Number.isFinite(Date.parse(modified))
     ) {
-      const { data, error } = await deps.supabase.rpc(
+      const { error } = await deps.supabase.rpc(
         "native_admin_record_refund",
         {
           p_environment: environment,
@@ -685,9 +701,6 @@ export async function applyPolarWebhookEvent(
         },
       );
       if (error) throw databaseWriteError("admin_refund_receipt", error);
-      if (data === true) {
-        return { status: "processed", action: "admin_refund_receipt" };
-      }
     }
   }
   if (
@@ -699,7 +712,7 @@ export async function applyPolarWebhookEvent(
       ? resolveCheckoutKeyByProductId(mapping.map, productId)
       : null;
     if (resolved?.ok && resolved.config.billing_type === "subscription") {
-      const userId = await resolveUserId(
+      const userId = await (deps.resolveIdentity ?? resolveUserId)(
         deps.supabase,
         event.data,
         environment,
@@ -721,13 +734,8 @@ export async function applyPolarWebhookEvent(
         !paidAt || !modified || !Number.isFinite(Date.parse(paidAt)) ||
         !Number.isFinite(Date.parse(modified)) || event.data.currency !== "eur"
       ) {
-        return applyOrderRefundEvent({
-          event,
-          deps,
-          productMap: mapping.map,
-          environment,
-          nowIso,
-        });
+        return commercialResult ??
+          { status: "ignored", reason: "invalid_admin_receipt" };
       }
       await applyEffect(deps, "admin_payment_receipt", async () => {
         const { error } = await deps.supabase.rpc(
@@ -753,21 +761,9 @@ export async function applyPolarWebhookEvent(
         );
         if (error) throw databaseWriteError("admin_payment_receipt", error);
       });
-      return { status: "processed", action: "admin_payment_receipt" };
     }
   }
-  if (
-    event.type === "order.paid" || event.type === "order.refunded" ||
-    event.type === "refund.created" || event.type === "refund.updated"
-  ) {
-    return applyOrderRefundEvent({
-      event,
-      deps,
-      productMap: mapping.map,
-      environment,
-      nowIso,
-    });
-  }
+  if (commercialResult) return commercialResult;
   const userId = await (deps.resolveIdentity ?? resolveUserId)(
     deps.supabase,
     event.data,

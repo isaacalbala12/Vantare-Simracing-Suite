@@ -1,3 +1,4 @@
+import { MemoryOrderRefundLedger } from "./order-refund-ledger.ts";
 import {
   applyPolarWebhookEvent,
   minimizePolarWebhookEvent,
@@ -27,6 +28,7 @@ Deno.test("subscription order becomes an attributable admin receipt through the 
       product_id: "00000000-0000-0000-0000-000000000003",
       subscription_id: "sub-test",
       paid: true,
+      applied_balance_amount: 0,
       status: "paid",
       created_at: "2026-09-01T00:00:00Z",
       modified_at: "2026-09-01T00:00:00Z",
@@ -41,6 +43,9 @@ Deno.test("subscription order becomes an attributable admin receipt through the 
   });
   const result = await applyPolarWebhookEvent(event, {
     supabase,
+    resolveIdentity: () =>
+      Promise.resolve("00000000-0000-4000-8000-000000001628"),
+    orderRefundLedger: new MemoryOrderRefundLedger(),
     loadMap: () => mapping,
   });
   assert(result.status === "processed" && rows.length === 1);
@@ -51,8 +56,28 @@ Deno.test("subscription order becomes an attributable admin receipt through the 
   );
 });
 
-Deno.test("subscription refund events update the admin projection without revoking subscription grants", async () => {
+async function subscriptionLedger() {
+  const ledger = new MemoryOrderRefundLedger();
+  await ledger.recordOrder({
+    environment: "sandbox",
+    orderId: "order-test",
+    userId: "00000000-0000-4000-8000-000000001628",
+    productId: "00000000-0000-0000-0000-000000000003",
+    checkoutId: null,
+    subscriptionId: "sub-test",
+    status: "paid",
+    paid: true,
+    netAmount: 264,
+    currency: "eur",
+    reportedRefundedAmount: 0,
+    modifiedAt: "2026-09-01T00:00:00Z",
+    snapshotHash: "a".repeat(64),
+  });
+  return ledger;
+}
+Deno.test("subscription refunds update management AND the common commercial restriction", async () => {
   let persisted = false;
+  const ledger = await subscriptionLedger();
   const supabase = {
     rpc: (name: string, args: Record<string, unknown>) => {
       assert(name === "native_admin_record_refund");
@@ -78,9 +103,17 @@ Deno.test("subscription refund events update the admin projection without revoki
         modified_at: "2026-09-02T00:00:00Z",
       },
     }),
-    { supabase, loadMap: () => mapping },
+    {
+      supabase,
+      loadMap: () => mapping,
+      orderRefundLedger: ledger,
+    },
   );
   assert(result.status === "processed" && persisted);
+  assert(
+    (await ledger.readDecision("sandbox", "order-test"))?.accessState === "revoked",
+    "management mirror must not bypass commercial refund restriction",
+  );
 });
 
 Deno.test("admin commission refunds include VAT paid back to the customer", async () => {
@@ -105,6 +138,10 @@ Deno.test("admin commission refunds include VAT paid back to the customer", asyn
       status: "succeeded",
       modified_at: "2026-09-03T00:00:00Z",
     },
-  }, { supabase, loadMap: () => mapping });
+  }, {
+    supabase,
+    loadMap: () => mapping,
+    orderRefundLedger: await subscriptionLedger(),
+  });
   assert(result.status === "processed");
 });

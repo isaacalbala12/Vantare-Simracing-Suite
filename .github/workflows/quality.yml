@@ -59,14 +59,49 @@ jobs:
           restore-keys: |
             cargo-registry-${{ runner.os }}-${{ runner.arch }}-
 
+      # Igual que en Windows (setup-duckdb.ps1 + gates.ps1, #1465): enlaza la
+      # biblioteca oficial 1.5.5 en vez de compilar el C++ de DuckDB bundled
+      # (~9 min del gate check). La lista de features se calcula como en
+      # gates.ps1: --no-default-features + el default de cada miembro salvo
+      # storage, y falla si el default de storage cambia. Los tests siguen
+      # ejecutándose completos. NATIVE_FEATURE_ARGS va sin comillas a propósito
+      # (0 o 2 argumentos).
+      - name: Prepare prebuilt DuckDB (sin compilar C++)
+        run: |
+          set -euo pipefail
+          features="$(python3 - <<'PY'
+          import json, subprocess
+          meta = json.loads(subprocess.run(["cargo", "metadata", "--locked", "--offline", "--no-deps", "--format-version", "1"], check=True, capture_output=True, text=True).stdout)
+          members = [p for p in meta["packages"] if p["id"] in set(meta["workspace_members"])]
+          storage = [p for p in members if p["name"] == "vantare-storage"]
+          assert len(storage) == 1 and storage[0]["features"].get("default") == ["bundled-duckdb"], "El default de storage cambio: revisar este paso antes de desactivar bundled-duckdb."
+          feats = sorted(p["name"] + "/default" for p in members if p["name"] != "vantare-storage" and "default" in p["features"])
+          print(",".join(feats))
+          PY
+          )"
+          args=""
+          if [ -n "$features" ]; then args="--no-default-features --features $features"; fi
+          echo "NATIVE_FEATURE_ARGS=$args" >> "$GITHUB_ENV"
+          duckdb_dir="$RUNNER_TEMP/duckdb-1.5.5"
+          mkdir -p "$duckdb_dir"
+          archive="$duckdb_dir/libduckdb-linux-amd64.zip"
+          curl -fsSL -o "$archive" \
+            https://github.com/duckdb/duckdb/releases/download/v1.5.5/libduckdb-linux-amd64.zip
+          echo "1fb8ce388157d84a25abe685a8a2520bf00c00321821968e4bb398fd766e7abb  $archive" | sha256sum --check --status -
+          unzip -o "$archive" libduckdb.so -d "$duckdb_dir"
+          rm -f "$archive"
+          test -f "$duckdb_dir/libduckdb.so"
+          echo "DUCKDB_LIB_DIR=$duckdb_dir" >> "$GITHUB_ENV"
+          echo "LD_LIBRARY_PATH=$duckdb_dir" >> "$GITHUB_ENV"
+
       - name: Format
         run: cargo fmt --all -- --check
 
       - name: Check all workspace targets
-        run: cargo check --workspace --all-targets --locked -j 2
+        run: cargo check --workspace --all-targets --locked $NATIVE_FEATURE_ARGS -j 2
 
       - name: Clippy all workspace targets
-        run: cargo clippy --workspace --all-targets --locked -j 2 -- -D warnings
+        run: cargo clippy --workspace --all-targets --locked $NATIVE_FEATURE_ARGS -j 2 -- -D warnings
 
       # El binario solo cambia al subir la versión: se guarda en caché y se
       # evita recompilarlo (342–430 s por trabajo en Windows; 174–226 s aquí).
@@ -91,12 +126,12 @@ jobs:
       - name: Test workspace
         env:
           NEXTEST_TEST_THREADS: '1'
-        run: cargo nextest run --workspace --locked -j 2
+        run: cargo nextest run --workspace --locked $NATIVE_FEATURE_ARGS -j 2
 
       - name: Test real telemetry corpus
         env:
           NEXTEST_TEST_THREADS: '1'
-        run: cargo nextest run --workspace --locked -j 2 --profile telemetria
+        run: cargo nextest run --workspace --locked $NATIVE_FEATURE_ARGS -j 2 --profile telemetria
 
       - name: Test lifecycle targets
-        run: cargo test --workspace --test lifecycle --locked -j 2
+        run: cargo test --workspace --test lifecycle --locked $NATIVE_FEATURE_ARGS -j 2

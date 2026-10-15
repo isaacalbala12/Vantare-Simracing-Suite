@@ -20,7 +20,7 @@ export type WebhookReceipt = {
   id: string;
   status: WebhookInboxState;
   payloadMatches: boolean;
-};
+} | { id: null; status: "account_deleted"; payloadMatches: true };
 
 export type ClaimedWebhook = {
   id: string;
@@ -165,6 +165,12 @@ export function createSupabaseWebhookInbox(
         }),
         operation,
       );
+      if (row.delivery_status === "account_deleted") {
+        if (row.inbox_id !== null || row.payload_matches !== true) {
+          throw new Error(`${operation} returned invalid tombstone receipt`);
+        }
+        return { id: null, status: "account_deleted", payloadMatches: true };
+      }
       return {
         id: requiredString(row, "inbox_id", operation),
         status: state(row.delivery_status, operation),

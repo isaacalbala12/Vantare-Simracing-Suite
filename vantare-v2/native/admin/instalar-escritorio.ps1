@@ -21,7 +21,7 @@ $launcher = Join-Path $destination 'abrir.ps1'
 # CREATE_NO_WINDOW oculta solo la consola del binario; la ventana GPUI sigue visible.
 @'
 $ErrorActionPreference = 'Stop'
-$env:VANTARE_NATIVE_DATA_ROOT = Join-Path $PSScriptRoot 'data'
+$env:VANTARE_ADMIN_DATA_ROOT = Join-Path $PSScriptRoot 'data/Vantare/native/services'
 $env:RUST_LOG = 'vantare_admin=info'
 $start = [Diagnostics.ProcessStartInfo]::new()
 $start.FileName = Join-Path $PSScriptRoot 'vantare-admin.exe'

@@ -1,3 +1,864 @@
+## #1627 / PR #1639 · VANTA-21 · ronda 5 (15/10/2026)
+
+Worker Codex macOS arm64, sin subagentes ni servicios reales. Seguimiento por
+excepción explícita en `~/orq/1627.buzon.md`; sin Notion/Plane/GitHub.
+Entrada `980649944`; worktree `~/wt-1627r5`, misma rama de issue.
+
+R5 corrige reparación con cupo agotado (trigger de aceptación suspendido solo
+para restaurar decisiones en la misma transacción), añade auditoría por fila con
+reviewer original y marcador de reparación (también si fue borrado; barrera de
+auditoría suspendida solo bajo lock DDL en esa transacción y restaurada antes
+del commit), y repone `admin_report_owner_changed`
+(40001) tras el lock tanto para informes antiguos como contribuciones.
+Spam antiguo conserva motivo. Las decisiones de ambos orígenes son finales;
+la UI ofrece Aceptado/No aceptado/Spam solo antes de decidir y permite guardar
+versión desde Aceptado/Arreglado. **No se recupera «Arreglado en X» ya perdido
+por R3**: el Owner debe confirmarlo de nuevo desde evidencia; los `fixed` aún
+válidos se conservan.
+
+El borrado relee suscripciones después del tombstone #1622 para incluir compras
+anteriores a la barrera, y consulta Polar por el UUID del checkout para incluir
+compras completadas cuyo webhook aún no llegó. Combina/deduplica ambos orígenes.
+GET Polar 404 deja evento sanitizado y permite continuar;
+los errores transitorios siguen siendo incompletos/reintentables. Procedimiento
+manual del Owner en `supabase/functions/native-admin/README.md` (panel del mismo
+entorno, comprobar/cancelar y repetir con la confirmación original). Sin retirar
+barreras ni ampliar el candidato a producción.
+
+| Check local | Nightly bf5eead43 | Rama R5 |
+| --- | --- | --- |
+| Catálogo SQL completo, Docker sin red | 59: 34 PASS / 25 FAIL | 74: 49 PASS / 25 FAIL |
+| 59 suites SQL comunes | 1306 aserciones PASS | 1306 PASS; cero diferencias |
+| Gestión pgTAP | 57 / 1 suite | 206 / 16 suites PASS |
+| Seguimiento canónico | 35 PASS + concurrencia/rollback | 35 PASS + concurrencia/rollback |
+| Edge/Deno sin red | 613 PASS / 2 omitidos | 643 PASS / 2 omitidos |
+| Clippy admin/services `-D warnings` | PASS | PASS |
+| Nextest admin/services Mac serial | 172 PASS | 178 PASS |
+
+Rojo→verde conservado para reparación con cupo ocupado, auditoría con reviewer
+borrado, dueño cambiado, motivo/finalidad de informes antiguos, UI, suscripción
+tardía local y compra Polar con webhook retrasado/404. La reparación se prueba
+reaplicando el fichero real y verificando idempotencia y barreras restauradas.
+Los 25 fallos genéricos son heredados, idénticos en ambas ramas; no se declaran
+verdes. Nightly tuvo un fallo intermitente inicial de login; repetición serial
+completa 172/172. Fmt Rust/Deno, quality y 456 huellas de retirada PASS.
+
+Evidencia y SHAs finales: `~/evidence/1627r5/RESULTADOS.md`, `TABLA-SQL.md` y buzón.
+Rust 1.95 fijado, jobs=4 y target propio `~/target-1627r5` retirado al cerrar.
+PowerShell no está instalado y el wrapper usa Win32: Cargo directo en este Mac.
+Sin cambios runtime/domain/ipc/testdata; lifecycle/telemetría no se repiten.
+No valida Windows/DPI/teclado, SaaS real, CI remoto ni despliegue/upgrade remoto.
+Se han corregido migraciones del candidato R3/R4, sin aplicar nada a servicios
+reales; un entorno que ya las registró requiere plan de upgrade del orquestador.
+Pendiente revisión del orquestador; sin merge, promoción, deploy ni release.
+
+## #1627 / PR #1639 · VANTA-21 · ronda 4 (15/10/2026)
+
+Worker Codex macOS arm64, sin subagentes, GitHub ni servicios reales. Excepción
+explícita del orquestador: sin Notion/Plane; seguimiento en `~/orq/1627.buzon.md`.
+Rama `vantareapp/isa-1627-miniapp-gestion`, entrada `1ce7c0edd`.
+Nightly `bf5eead43` (#1622 incluido) fusionado mediante merge `9a70cbc7`.
+Código entregado por hitos, incluido borrado separado `83494734`; SHA final de
+la entrega documental y copia al bare `~/vantare.git` en el buzón y la evidencia.
+Pendiente de revisión del orquestador; sin promoción de canal, deploy ni release.
+
+**Regla de informes:** una decisión de contribución es final. Aceptado,
+rechazado, spam y arreglado no vuelven a Recibido/En revisión, tampoco los
+históricos sin fila de revisión. SQL devuelve conflicto y la UI oculta esas
+vueltas. No se añade una acción Reabrir. Arreglado sigue ocupando 1/día y
+2/semana UTC/cuenta; también cuentan las revisiones aceptadas si un servidor
+anterior alteró el estado. La migración restaura el estado de esas revisiones,
+sin borrar su nota/fecha ni los arreglos que todavía conservan estado `fixed`.
+No recupera «Arreglado en X» ya borrado al reabrir en R3; debe volver a confirmarse
+con evidencia. R5 añade auditoría por fila reparada y evita consumir de nuevo el cupo. Los informes antiguos
+`testing_center_reports` admiten Spam; sus títulos se alinean a la izquierda.
+
+**Anual cerrado por Isaac el 15/10:** 30 % del pago anual completo, sin
+prorrateo. 100,00 € → 30,00 € al pagar en el mes 1; renovación en mes 13 → 0 €.
+No autoriza pagos reales ni producción.
+
+**Borrado conectado a #1622:** Edge compara el correo actual de Clerk antes
+de iniciar la solicitud; SQL vuelve a proteger dueño y actor bajo locks.
+La barrera, anonimización y auditoría se confirman juntas antes de cancelar
+Polar, borrar Clerk y drenar Storage con el limpiador común. Una solicitud
+privada conserva solo hash del correo normalizado, UUID/issuer/subject y fecha.
+Un fallo posterior exige repetir con el mismo correo; no necesita recuperar
+PII ya borrada y acepta 404 de Clerk solo con esa solicitud previa. No hay
+reembolso ni reintento automático. Sigue limitado a sandbox.
+
+Compatibilidad del merge: se conservan locks UUID de #1622 y su identidad
+Clerk; el resolver mantiene además el bloqueo de gestión. El espejo de
+pagos/refunds acompaña al ledger comercial de nightly, sin saltarse la
+revocación por reembolso. Fixtures de identidad y la prueba concurrente se
+adaptan al dispatcher, sin ampliar permisos de producto.
+
+| Check local | Nightly bf5eead43 | Rama R4 |
+| --- | --- | --- |
+| Catálogo SQL completo, Docker sin red | 59 suites: 34 PASS / 25 FAIL | 72: 47 PASS / 25 FAIL |
+| Aserciones de suites SQL comunes | 1306 PASS | 1306 PASS; cero pérdidas |
+| Gestión pgTAP | 57 checks / 1 suite | 178 checks / 14 suites, todas PASS |
+| Triaje / seguimiento, runners canónicos | 83 / 35 PASS | 83 / 35 PASS |
+| Locks de admin frente a borrado | 4 órdenes PASS | 4 órdenes PASS |
+| Borrado miniapp frente a webhook | No existe | 2 órdenes PASS, espera observada |
+| Edge/Deno sin red | 613 PASS / 2 omitidos | 638 PASS / 2 omitidos |
+| Clippy admin/services `-D warnings` | PASS | PASS |
+| Nextest admin/services Mac, serial | 172 PASS | 178 PASS |
+
+Los 25 fallos del catálogo genérico se conservan en ambos árboles: no se
+presentan como SQL verde. Las 13 suites exclusivas de gestión pasan. Los
+runners canónicos cubren cuota concurrente, snapshot obsoleto, ACL y rollback.
+La aserción comercial de auditoría ahora exige actor/acción/objetivo sin copiar
+resultados de cuentas; conserva la comprobación en lugar de omitirla.
+Fmt Rust/Deno, quality y retirada (456 huellas) PASS. Rust 1.95 fijado,
+`CARGO_BUILD_JOBS=4`, target propio `~/target-1627r4`, retirado al cerrar.
+
+Evidencia: `~/evidence/1627-r4/RESULTADOS.md` y `TABLA-SQL.md`, logs completos,
+comparación por número de aserción y capturas GPUI demo `informes.png`,
+`informe-decidido.png`, `borrado-confirmacion.png`. Se inspeccionaron títulos,
+ausencia de reapertura y confirmación de correo; no son pruebas de SaaS real.
+
+Límites: Windows/DPI/teclado físico, OAuth/Clerk/Polar/Storage reales, CI remota,
+despliegue y actualización de un esquema remoto previo no se verifican.
+SQL completo validado desde catálogo limpio; la intercalación de migraciones
+R1/R3 con #1622 requiere revisar el orden de aplicación antes de un despliegue.
+Sin cambios en runtime/domain/ipc/testdata: no se repiten lifecycle/telemetría.
+
+## #1627 / PR #1639 · VANTA-21 · corrección R1 (15/10/2026)
+
+Worker Codex macOS arm64, encargo del orquestador, sin subagentes ni servicios
+reales. Excepción explícita: no Notion/Plane/GitHub; seguimiento en
+`~/orq/1627.buzon.md`. Rama `vantareapp/isa-1627-miniapp-gestion`, entrada
+`52b1d3c39`; nightly `64c493e4f` fusionado primero mediante merge `2354cd416`.
+Se recoge mediante el bare local `~/vantare.git`; no promoción de canal,
+despliegue, release ni CI remoto. SHAs finales en el buzón y la evidencia.
+
+Las contribuciones ya pasan por el motor de revisión de #1594: nota humana,
+aceptación 1/día y 2/semana UTC por cuenta, revisión duradera y purga a 90 días
+de logs/telemetría. `human` identifica revisión manual sin fingir propuesta de
+modelo; la ruta pública anterior conserva propuesta obligatoria y permisos.
+Spam se lee, filtra y confirma en la miniapp. La decisión sigue siendo inmutable;
+un cambio incompatible devuelve conflicto. El trigger compartido retira los metadatos de arreglo al salir de `fixed`;
+R4 bloquea la reapertura de contribuciones decididas.
+
+Personas usa resúmenes sin pagos y recuentos agregados. Creadores agrega las
+líneas una sola vez. En Docker, con 3.000 cuentas, 36.000 pagos y 100 creadores:
+Personas 16,8 ms y Creadores 958,7 ms; antes la búsqueda excede el límite sintético
+de 6 s y se cancela. Las lecturas auditan quién/qué/cuándo/objetivo sin copiar PII
+ni pagos. La primera compra posterior al watermark usa el ledger, sin releer todo
+Polar. Un refund identificable pero inválido pone esa factura pendiente de
+revisión y bloquea su comisión; el resto se muestra. Cuarentenas y pagos históricos
+atrasados requieren reconciliación revisada, sin un nuevo barrido automático.
+
+**Decisión de Isaac, 15/10/2026: anual = 30 % del pago anual completo.**
+La tasa activa está centralizada en `private.native_admin_commission_rate`.
+Un anual de **100,00 € genera 30,00 €** al pagar en el mes 1; renovación en
+mes 13 genera 0 €. No se prorratea entre meses. Esta decisión fija el cálculo;
+no autoriza pagar comisiones reales ni activar producción.
+
+UI: «· anual», etiqueta «—», Owner y Tester simultáneos, tarjeta Clientes/Ventas,
+fechas «2 sep» y nota obligatoria de revisión. Capturas GPUI demo frente al HTML
+en `~/evidence/1627-r3/comparativa.html`; no representan acceso a SaaS real.
+
+Verificación: Docker con todas las migraciones y 133 pgTAP de gestión; motor
+compartido con runner canónico #1594, 83 pgTAP + concurrencia/ACL; seguimiento
+#1610, 35 pgTAP + concurrencia/rollback. Edge completo 613 PASS / 2 omitidos.
+Clippy `-D warnings` y fmt con Rust fijado 1.95 PASS; Nextest admin/services
+177 PASS con tests seriales y `CARGO_BUILD_JOBS=4`. Dos ejecuciones paralelas
+mostraron fallos intermitentes existentes de callback; logs conservados.
+Comparación de todas las suites SQL comunes bajo el runner genérico: mismos
+937 asserts válidos y 22 suites incompatibles en nightly y candidato, sin nuevos
+fallos. Se usan los runners canónicos para triaje y seguimiento, que sí pasan.
+Quality/retirada: 456 huellas PASS. Target propio `~/target-1627r3`, borrado al cerrar.
+
+Límites: Windows/DPI/teclado físico y OAuth/Clerk/Polar reales pendientes;
+en esta R1 histórica el borrado aún no estaba conectado; R4 lo sustituye.
+Los efectos externos nuevos siguen limitados a sandbox. Falta revisión del
+orquestador. La decisión anual queda cerrada el 15/10/2026. No hay activación en producción.
+Evidencia anterior r1: `~/evidence/1627/RESUMEN.md` (histórica).
+
+## #1608 · R11 · Guarda y permisos de triage (15/10/2026)
+
+Base `1ac73ce20`; comparación con nightly `64c493e4f`. Solo cambian el fixture
+de triage y este handoff. `run-triage-local.py` ejecutado en ambos árboles:
+**83/83 PASS**, incluidos rollback, cap concurrente y login real del worker.
+La versión anterior de la rama reproduce el aborto tras ocho checks.
+Catálogo completo con B03: los dos checks de permisos pasan; triage queda en
+**43/84** frente a **42/83** en nightly, con los fallos de admisión ya documentados.
+Su ruta B03 de borrado sigue sin una ejecución completa en verde en este contexto;
+la cobertura de identidad citada en R10 procede de la suite comercial.
+Catálogo repetido: **48 suites nightly / 59 rama**, ninguna común empeora.
+Evidencia y comparación por aserción: `~/evidence/1608-r11/RESULTADOS.md`.
+Sin ejecución nueva de otros runners de checkpoint ni de Docker/PowerShell.
+SHA y entrega al bare local en `~/orq/1608.buzon.md`; revisión del orquestador pendiente.
+
+## #1608 · R10 · Fixtures Clerk y revocación de replay (15/10/2026)
+
+Encargo del orquestador sobre PR #1622; base `28b71186f`, nightly comparada
+`64c493e4f`. Worktrees propios `~/wt-1608-r10` y
+`~/wt-1608-r10-nightly`. Commits: `07d80038` (revocación/P3), `0d79ae42`
+(fixtures/runner). SHA de entrega documental y push local en
+`~/orq/1608.buzon.md`. Sin GitHub, Notion, Plane ni subagentes, por excepción
+expresa; el orquestador gestiona el seguimiento y revisa el diff.
+
+**R9-P1-1 resuelto:** las 12 suites que se rompían con B03 vuelven a pasar
+con sus archivos originales del repo, sobre el catálogo completo:
+hardening **48/48**, Clerk bootstrap **31/31**, native bridge **28/28**,
+checkout **20/20**, report submission **55/55**, screenshots **80/80**,
+agent jobs **71/71**, closeout **45/45**, candidate feedback **45/45**,
+triage outbox **40/40**, F2 **6/6**, F3 **8/8**. También se recuperan todas
+las aserciones que la identidad rompía en las suites previamente rojas:
+Codex **60/61**, privacidad **34/33** (plan antiguo desajustado), core **61/72**,
+access **33/56** (aborta), participación **14/20**, followup **5/35** (aborta)
+y triage **42/83**, igual número aprobado que en nightly. El test nativo de
+concurrencia `.psql` también pasa **6/6** en ambos árboles.
+
+Los fixtures crean perfil y binding Clerk antes de filas dependientes y usan
+claims completos (`iss/sub/role/sid/azp`). La detección del registro B03 selecciona
+la ruta de fixtures. R10 verificó el catálogo completo y el procedimiento de
+hardening descrito abajo; eso no demuestra el resultado de cada runner de
+checkpoint ni de la imagen Docker. El runner propio de triage se ejecutó en R11.
+No se modifican ACL, RLS ni funciones de producto para satisfacer esos tests.
+
+Cambios de significado explícitos por el modelo nuevo (no se eliminan checks):
+
+- Bootstrap: Auth de Supabase y un `sub` UUID ya no crean/resuelven cuentas;
+  se comprueba su rechazo. Un login Clerk hace bootstrap explícito antes del
+  claim de dispositivo; se conservan UUID estable, separación por subject y
+  ausencia de vinculación por correo. Identidad incompleta devuelve `28000`.
+- Bridge nativo: el issuer debe coincidir exactamente con el registro. La
+  barra final se rechaza y se comprueba que no crea un alias. El alias legado
+  canónico se siembra como hace la migración B03; no se normaliza al leer.
+  Una identidad exacta ya vinculada no se puede reasignar a otro UUID (`23505`).
+  Son 28 checks en lugar de 27 por el rechazo explícito adicional de la barra.
+  La carrera conserva dos sesiones que compiten por la MISMA identidad exacta.
+- `native_account_data_upgrade`: el FK de validaciones continúa existiendo,
+  ahora hacia `profiles` tras B03; antes del corte sigue hacia `auth.users`.
+- Core: la misma promoción con SHA incoherente se rechaza por el guard previo
+  de referencias (`23503`) en vez del CHECK posterior (`23514`).
+- Triage (corregido en R11): con B03, `current_account()` debe ser la única
+  función privada ejecutable por authenticated y no puede haber privilegios
+  sobre tablas ni columnas privadas. Sin B03 se conserva exactamente el check
+  de nightly: schema `private` cerrado. El borrado usa el webhook y conserva
+  el UUID duradero del reviewer en auditoría privada; el borrado del autor sigue
+  purgando contexto y reviews. La aserción de auditoría sigue exigiendo tres
+  filas (en el catálogo completo falla por las mismas dos reviews que no llegan
+  a crearse en nightly). Este cambio de etiqueta no se presenta como fallo
+  literalmente idéntico; está detallado en `COMPARACION.json`.
+
+**R9-P2-1 resuelto:** migración aditiva
+`20261015110000_isa_1608_revoke_deleted_authorizer.sql`. Retirar replay puede
+limpiar la referencia al Owner borrado. Conserva TODOS los locks de UUID en
+orden; solo deja de atribuir el tombstone del autorizador retirado a esa limpieza.
+El reporter sigue sujeto a la barrera. La excepción exige que los ocho campos
+de replay/autorización queden vacíos/falsos y que TODOS los demás campos sean
+idénticos. No permite cambiar report, diagnóstico ni propietario.
+Regresión **RED 7/11 → GREEN 11/11**, con revocación real como authenticated,
+limpieza de los ocho campos, auditoría y diagnóstico conservados; cambios
+adicionales y reporter borrado siguen rechazados. El runner incluye
+`--before-deleted-authorizer` para reproducir RED. P3: eliminado el segundo
+`p_account is null` redundante en el helper de reports.
+
+**Verificación nueva, no heredada de R9:** catálogo completo sin adaptar
+fixtures: **48 suites nightly / 59 rama**, una DB clonada por suite; ninguna
+suite compartida pierde checks aprobados ni pasa de PASS a FAIL. Los tests
+nuevos de upgrade se ejecutan además con sus datos anteriores a la migración:
+identidad **18**, conflicto **4** y refunds **26**, todos PASS. En el catálogo
+completo esos tres salen rojos por no sembrar el estado anterior: no son
+fallos compartidos con nightly (sus archivos no existen allí).
+
+`run-supabase-hardening-postgres.ps1` reproducido con PostgreSQL **17.11**
+instalado y pgTAP, sin pwsh/Docker: **1059 checks pgTAP PASS**, clean/upgrade/
+restore, 8 pares de carreras y comprobaciones de resultados, sentinel/RLS/ACL,
+archivos truncado/corrupto rechazados (**48 filas PASS** en el resumen).
+El propio `.ps1` actualiza sus fixtures de carreras (sesión completa y hashes),
+separa el checkpoint histórico del corte B03 y guarda dump antes de liberar
+la DB clean y sus roles globales para el upgrade. No se reejecutan resolutores
+antiguos después del corte. El intérprete local extrae sus SQL/heredocs y no
+reescribe fixtures. La sintaxis PowerShell y la imagen Supabase no se han
+ejecutado en este Mac; el procedimiento y sus diferencias están en RESULTADOS.
+Nightly ejecutada con el mismo intérprete: clean hardening48/Clerk31 pasan,
+projection42/43 falla y las carreras originales fallan por fingerprints no
+válidos; no se afirma que el script entero pase en nightly.
+
+Runner comercial: **19 suites / 574 pgTAP**, **108 rutas / 638 checks** de
+carreras PASS. Edge desde raíz, con tipos y config del repo: **594 nightly /
+613 rama PASS, 0 FAIL, 2 ignored**. Deno `supabase/tests`: mismo TS2353 en ambos;
+sin check, **28 PASS / 5 FAIL**, mismos cinco nombres. Calidad: **456 PASS**.
+
+**R9-P2-2 rectificado:** la tabla nueva enumera cada resultado rojo y enlaza
+su salida nightly/rama. Solo se llaman idénticos los fallos contrastados por
+aserción, SQLSTATE y salida normalizada. Codex60/61 y privacidad34/33 mantienen
+planes desajustados en ambos. Quince suites rojas comunes conservan etiquetas y
+abortos iguales. **No se presentan como abortos idénticos** estos tres casos:
+Pilot11 pasa de `23503 pilot_profiles_account_id_fkey` a `42501 authentication
+required`; GitHub delivery8 pasa de permiso denegado a `23503
+account_owner_unresolved`; Linear outbox8 pasa de FK ausente a ese guard previo.
+Los tres siguen rojos sin perder checks aprobados, pero su causa exacta cambia.
+Triage42 se documenta arriba por su cambio explícito de contrato. No se califican las 12 regresiones
+corregidas como fallos preexistentes. Evidencia completa:
+`~/evidence/1608-r10/RESULTADOS.md` y `COMPARACION.json`.
+
+Límites: PostgreSQL/Storage local sintético; ningún servicio, secreto ni dato
+real; sin dependencias nuevas. Rust omitido: sin cambios propios en `native/`.
+Sin CI remota, despliegue, merge, promoción, release ni autorización de venta.
+Siguen pendientes staging gestionado e inventario real de buckets antes de vender.
+Docker lock tomado y liberado; sin servidor PG ni stack propio al terminar.
+Siguiente: review del orquestador; entrega únicamente al bare local.
+
+## #1608 · R9 · Identidad de servidor y batería completa (15/10/2026)
+
+Base autorizada `494f5c452`; nightly `64c493e4f` incorporada sin conflictos
+mediante merge `18ff846c`. Cambios propios: `b9b06d33` (adaptadores), `f711fc2d`
+(revocación de replay), `0d3da715` (llamadores de identidad) y `1cfe19da`
+(fixtures vigentes). El merge conserva los handoffs de ambos proyectos. Worktree `~/wt-1608r8`, rama worker propia:
+la rama original estaba ocupada por otro worktree limpio en el SHA inicial.
+Entrega al bare local con el refspec explícito hacia
+`vantareapp/isa-1608-cierre-comercial`; SHA final/push en el buzón del orquestador.
+
+**R8-P1-1:** los adaptadores service-only ya no fabrican claims `{sub,role}`.
+Pasan el UUID verificado a tres funciones privadas `…_for_account`; wrappers
+antiguos usan la misma implementación con `private.current_account()` real.
+No se concede EXECUTE de helpers a clientes, servicio, triage, Pilot o publicador.
+Se conservan validación, consentimiento, membresía, hashes, cuotas, retries y
+crédito. Cada helper bloquea el UUID y comprueba el tombstone antes de filas;
+una cuenta borrada no puede enviar. `current_account()` y sus ACL no cambian.
+
+RED F1IP 22/26 → GREEN **26/26** con todas las migraciones. Regresión ampliada
+**52/52**: triage/adjunto, claims conservados, ACL, Owner humano, calendario,
+resolutores de servicio, dispositivos, entitlements, JWT native-data y borrado.
+La preview sintética exacta de #1594 pasa **27 checks** tras TODAS las migraciones,
+sin grants de envío artificiales. Batería comercial final: **19 suites / 569 pgTAP**,
+**108 rutas / 638 checks** de carreras, incluidas las nuevas tablas triage.
+
+Fixtures actualizados sin relajar producto: ledger37 comprueba acceso efectivo
+(B02 conserva la fuente financiera), canonical8 exige bootstrap/sesión completa,
+admin57 usa registro/claims verificados y rechaza issuer no exacto, roadmap31
+acepta que B03 haya retirado handle_new_user. Los cuatro pasan sobre el catálogo
+completo y conservan sus pruebas anteriores a B03 (admin56 en ese contexto).
+
+La batería completa encontró otra regresión real: retirar replay después de una
+autorización Owner fallaba con `account_owner_is_immutable`. Corrección aditiva
+limitada a borrar los campos de replay/autorización con el mismo `report_id`.
+En R9 ambos UUID conservaban bloqueo y comprobación de tombstone; el test
+6/6 fijaba incorrectamente como válido bloquear la revocación si el autorizador
+estaba borrado. **Decisión del orquestador en R10: ese bloqueo es un bug**;
+la corrección y el nuevo RED/GREEN figuran arriba. El cambio de report sigue
+rechazado y no hay excepción general para cambios de propietario.
+
+**Inventario de causa raíz:** todas las migraciones + catálogo instalado de
+nightly/rama: solo dos fabricantes de claims, ambos corregidos; 33 funciones
+leen identidad y 38 contando wrappers transitivos, revisadas individualmente.
+Servicios nativos/admin/billing/jobs usan parámetros o bindings explícitos;
+Storage usa propietarios persistidos/manifest/ruta y su preflight sin filas.
+Inventario y evidencia: `~/evidence/1608-r9/inventario-identidad.md`;
+tabla por TODAS las suites: `~/evidence/1608-r9/RESULTADOS.md`.
+
+**Rectificación R10 de la entrega R9:** era incorrecto presentar las suites
+rojas de la rama como fallos compartidos o solo como snapshots históricos.
+La review R9 y la nueva ejecución R10 demuestran que **12 suites pasaban en
+nightly y fallaban en la rama**. R10 corrige sus fixtures EN EL REPO y las doce
+pasan sobre todas las migraciones, sin traducción externa de fixtures ni grants
+adicionales. No se debe usar el informe R9 para afirmar paridad con nightly.
+La comparación válida y sus fallos concretos están en
+`~/evidence/1608-r10/RESULTADOS.md`, con logs separados de ambos árboles.
+Los recuentos y checkpoints que preceden a esta rectificación son evidencia
+histórica R9; la sección R10 de arriba fija el resultado y los límites vigentes.
+
+**R8-P3-1 documentado:** son **11 policies TO public en 10 tablas distintas**,
+no 11 tablas: profiles aporta SELECT y UPDATE. Son profiles, licenses, devices,
+user_entitlements, billing_customers, billing_subscriptions, subscriptions,
+license_events, license_validations y hwid_changes. Con SELECT de tabla como
+los defaults de Supabase, anon recibe **42501** por no tener EXECUTE sobre
+current_account, en lugar de 0 filas; sin fuga. Sonda local 12/12. No se abren
+ACL anon. Los clientes vigentes usan authenticated o el servidor autorizado.
+
+Sin Notion/Plane/subagentes/GitHub, por excepción explícita; ningún servicio,
+secreto o dato real, ni dependencia nueva. PostgreSQL17/pgTAP local desechable y
+schema Storage del fixture R6; no se usó Docker en R9, ni queda stack propio.
+Rust no ejecutado: sin cambios propios en native frente al merge de nightly.
+Storage/PostgREST HTTP no repetidos; evidencia anterior R8 sigue siendo histórica.
+No CI remota, despliegue, promoción, release ni venta. Siguen siendo obligatorios
+el staging gestionado y el inventario de buckets de producción antes de vender.
+Siguiente: review del orquestador sobre el diff y los fallos compartidos del
+informe; el seguimiento y los estados del tracker los gestiona el orquestador.
+
+Reproducción mínima de R8-P1-1 (sin DSN ni servicios reales):
+
+```sh
+python3 supabase/tests/run-commercial-local.py --pg-bin <PG17/bin> \
+  --storage-schema <schema-Storage-local.sql> --output <evidencia> --testing-identity
+# RED: mismo comando con --before-testing-identity.
+# Default, sin --testing-identity: 19 suites y todas las carreras.
+# RED de privacidad: --testing-identity --before-posthog-consent-clear.
+```
+
+## #1608 · R8 · Entrega local para revisión (15/10/2026)
+
+Inicio `d5796ad1a`; correcciones `9496d71d` (Pilot) y `54a605a3` (deriva de
+parches, regresiones HTTP y requisitos comerciales). Cinco archivos de rama,
+sin Rust ni dependencias nuevas. R7-P1-1 RED SQL42501/HTTP403→GREEN200 con JWT
+emitido por handler real; tras borrar, el mismo JWT queda bloqueado (403).
+R7-P3-3 cuatro RED→GREEN atómicos; P3-4 riesgo de escritor futuro documentado;
+P3-1/P3-2 obligatorios antes de vender, pendientes del orquestador/Isaac.
+
+63 migraciones; 12 suites/352 pgTAP PASS, histórico232, upgrades18/4/26,
+Pilot90+10+concurrencia; 80 tablas/105 rutas/620 checks, aliases40,
+owners10/multipart64/buckets17, locks17/admin24 PASS. PostgREST/JWT/Ed25519 y
+reconciliación SQL/HTTP PASS. Edge609/0/1 ignored desde raíz, con tipos.
+Storage original v1.70.3: RED retiene, restauración drena los mismos uploads;
+readonly conserva cola con 503, RW200 drena: **0 uploads/partes/colas/archivos**.
+Quality456, fmt, lint producción, compile Python, surface y diff PASS.
+Lint adicional del fixture TS sin modificar detecta su import HTTPS histórico
+(no-import-prefix); conservado, sin excluir regla ni cambiar dependencias.
+Fallos iniciales de permisos TMP Deno/iat redondeado del fixture conservados y
+corregidos en la ejecución. Evidencia `~/evidence/1608-r8/RESULTADOS.md`.
+
+Stack propio r8stack/sidecar/proxy retirados, auth sintética retirada y lock
+liberado; stack ajeno intacto. Árbol final/SHA/push al bare local en buzón e
+informe. Sin Notion/Plane/GitHub/subagentes/servicios reales, CI remota, merge,
+promoción, deploy, release o venta. Rust y QA física omitidos por alcance.
+Siguiente: review del diff por el orquestador; sin aceptación comercial implícita.
+
+## #1608 · R8 · Migración y requisitos previos a vender (15/10/2026)
+
+R7-P3-3: cada uno de los cuatro reemplazos de texto Pilot comprueba su patrón
+y lanza RAISE específico si falta. RED: los cuatro cambios de fuente se
+aceptaban en silencio; GREEN: los cuatro se rechazan y revierten funciones y
+trigger completos. Runner reproducible `--pilot-patch-drift
+owner|deletion|objects|uploads`, evidencia `~/evidence/1608-r8/patch-{red,green}-*/`.
+
+**Requisitos obligatorios antes de vender (R7-P3-1/P3-2):**
+
+- Probar en staging gestionado `commercial_storage_cleanup.py` contra la versión
+  Storage y backend S3 que se desplegarán, con NULL/UUID, abort, fallo real,
+  recuperación y retries; acreditar 0 uploads/partes/bytes/colas. El test local
+  v1.70.3 no lo sustituye. Si cambian GUC, version preflight o codificación del
+  uploadId, la adaptación falla cerrado: 503 y cola conservada. Validación y
+  despliegue gestionado siguen pendientes del orquestador/Isaac.
+- Inventariar buckets de producción con `owner IS NOT NULL OR
+  nullif(owner_id,'') IS NOT NULL`, con autorización separada y sin exportar PII.
+  Si hay propietarios de usuario históricos, resolver su retirada mediante
+  una entrega de purga por API y verificarla antes de vender. Este corte no
+  purga esos owners ni demuestra su ausencia. Registrar también el contrato
+  global sin PII de objetos sin owner/manifest, según `tools/storage/README.md`.
+
+**R7-P3-4, riesgo aceptado en este alcance:** la excepción de auditoría de
+lecturas identifica la acción por el texto de la fila. No demuestra por sí
+sola la procedencia de una lectura. Hoy `admin_audit_log` no admite INSERT de
+anon/authenticated/service_role/Pilot/publicador: el único escritor de aplicación
+es `native_admin_execute`, SECURITY DEFINER con Owner vivo verificado, acciones
+cerradas y campos de auditoría construidos por el servidor; no acepta una fila
+arbitraria. Cambiar el texto en una petición tampoco permite omitir el actor
+borrado ni mutar un target borrado. Por eso no hay un bypass alcanzable por
+estos clientes. Un escritor DEFINER futuro podría etiquetar una mutación como
+lectura: deberá revisar esta excepción antes de añadirlo o ampliar ACLs.
+Un marcador GUC o un booleano en la fila tendría la misma autoridad que el
+escritor; autenticar de verdad el origen requeriría separar el canal/rol de
+auditoría, complejidad injustificada aquí. Se conserva el límite explícito;
+no se afirma que PostgreSQL autentique el nombre de acción.
+
+## #1608 · R8 · Identidad Pilot tras B03 (15/10/2026)
+
+R7-P1-1: migración aditiva concede solo USAGE de `private` y EXECUTE de
+`private.current_account()` a `pilot_profile_writer`; no accede a tablas de
+identidad ni recibe el rol authenticated. Policy de recibos y RPC privada Pilot
+usan ahora esa identidad validada, igual que perfil/foto y RPC públicas.
+RED reproducido `42501 permission denied for function current_account`;
+GREEN 20 pgTAP después de todas las migraciones. Incluye alta sin foto, cambio
+con foto, replay, binding inválido y cuenta borrada; inventario de permisos de
+owners de funciones/roles explícitos de policies. No otro rol sin BYPASSRLS
+queda pendiente: el publicador de roadmap no usa este resolver ni recibe acceso.
+PostgREST real con JWT emitido por handler nativo: 200 alta/replay/foto;
+el mismo bearer después de borrar da 403. Evidencia `~/evidence/1608-r8/`.
+Rama aislada desde `d5796ad1a`; seguimiento del orquestador por excepción,
+sin Notion/Plane/GitHub/servicios reales. Resto de R8 en curso.
+
+## #1608 · R7 · Cierre para revisión (15/10/2026)
+
+Base `88051556` incorporada en merge `f59faf2b`. R6-P1-1/P2-1 resueltos con
+Storage **original**: preflight sin filas, abort backend real, 200 tras recuperación;
+0 uploads/partes/bytes/colas. P2-2: lecturas admin auditadas con targets borrados,
+actor vivo obligatorio; mutaciones siguen bloqueadas. P3-2 merge resuelto;
+P3-3 contrato global sin PII explícito. **DUDA P3-1**: propietarios de buckets
+históricos no se purgan; inventario real pendiente de Isaac/orquestador.
+Catálogo ampliado a #1612: purga perfiles/recibos y atribución de fotos por ruta.
+Checks nuevos: SQL337 + histórico232 + upgrades18/4/26, Pilot90/10+concurrencia,
+80 tablas/105 rutas/620 checks, aliases40, owners10, multipart64, buckets17,
+locks17, admin24, JWT/RLS/Ed25519 PostgREST y reconciliación real. Edge609/0/1 ignored;
+Storage HTTP signed, readonly→RW y retries; fmt/lint/surface/Python/diff/456 huellas PASS.
+Evidencia `~/evidence/1608/r7/RESULTADOS.md` e
+[informe R7](../../analysis/review-cuentas-pagos-2026-10.md). SHAs/push/FIN en buzón.
+Origin bare Mac, sin GitHub/CI remota ni trackers; excepción sin Notion/Plane/subagentes.
+No merge a nightly/promoción/deploy/release/venta ni producción. Review externa
+pendiente. Los apartados R5/R6 siguientes son evidencia histórica, sustituidos
+por este estado para Storage; no requieren activar ninguna imagen propia.
+
+## #1608 · R7 · Barrera tras incorporar #1612 (15/10/2026)
+
+El gate de catálogo detectó dos tablas nuevas desde nightly: pilot_profiles ya
+hereda la barrera; pilot_private.operations queda cubierto por el mismo guard.
+Añadidas tres carreras reales: perfil, recibo y foto sin owner atribuida por
+UUID/hash.jpg. Borrado elimina perfil y recibos, y encola también esas fotos.
+GREEN: 105 rutas / 620 checks, catálogo con pilot_private y cobertura completa;
+cinco regresiones pgTAP de purga. No se rebaja el gate que detectó la omisión.
+Las antiguas carreras de audit de lectura pasan a mutación set_tester: las
+lecturas de borrados ahora tienen sus siete controles positivos/negativos propios.
+Paquete #1612 original verificado aparte: 90 pgTAP, concurrencia y 10 rollback.
+Evidencia `~/evidence/1608/r7/`; fuera de native, sin cambios Rust propios.
+
+## #1608 · R7 · Storage gestionado (15/10/2026)
+
+R6-P1-1/P2-1: imagen original v1.70.3, sin variante. El preflight abort
+se descarta con RETURN NULL; nunca persiste INSERT/UPDATE tras tombstone.
+Ruta/upload/rol/operación verificados; Storage original elimina backend y metadata.
+RED 503 retenía upload/parte/bytes/cola → GREEN con originales NULL/UUID,
+partes reales, PNG y dos entregas webhook firmadas. Fallo backend readonly
+conserva 503 y pendientes; recuperación RW y replay convergen a 200 y 0/0/0/0.
+Evidencia `~/evidence/1608/r7/`; procedimiento y límites en
+[tools/storage](../../../../tools/storage/README.md). Imagen/parche propios retirados.
+R6-P3-1 documentado como DUDA: buckets globales no tienen purga de owner
+histórico; inventario prod no autorizado, pendiente del orquestador/Isaac.
+R6-P3-3: configuración global sin owner/manifest debe excluir PII.
+Sin despliegue, producción, venta ni actualización de trackers del orquestador.
+
+## #1608 · R7 · Lecturas admin de borrados (15/10/2026)
+
+R6-P2-2 corregido: el actor vivo mantiene el control Owner y las lecturas
+search/get conservan el UUID borrado en su auditoría. Los targets borrados de
+lectura no se tratan como mutación; actor y objetivos mantienen orden de locks.
+RED real sin migración: search falla por audit y get por el lock exterior.
+GREEN: siete regresiones pgTAP, mutación y actor borrados siguen rechazados.
+Evidencia `~/evidence/1608/r7/admin-red/` y `sql-final/`.
+Storage gestionado e integración #1612 siguen en validación; no producción.
+
+## #1608 · Ronda 7 · Integración de base (15/10/2026)
+
+Merge de origin/nightly conservando los handoffs de #1608 y las entregas
+#1612/#1620. Conflicto exclusivamente documental resuelto sin eliminar secciones.
+R6-P1-1/P2-1 y regresión admin en curso; no despliegue ni promoción.
+
+## #1608 · Ronda 6 local · R5-P1-1 y cierre de worker (14/10/2026)
+
+Entrega para review de Claude en la rama `vantareapp/isa-1608-cierre-comercial`,
+inicio `0a8e794f`, base histórica `e5c90be5`. Tres hallazgos de r5 corregidos
+con commits locales por hallazgo; HEAD completo y FIN en `~/orq/1608.buzon.md`.
+GitHub #1608 / PR #1622 / proyecto Vantare: sin acceso ni estado remoto nuevo.
+No hay push, CI del SHA nuevo, merge, promoción, deploy, release ni venta.
+Seguimiento del orquestador conforme a la excepción del encargo; sin Notion,
+Plane ni subagentes. VANTA-16/17/15 son referencias del contexto, no estados
+consultados/actualizados por este worker.
+
+**Abort:** SQL DELETE de metadata no sería seguro: el backend guarda metadata
+incluso sin partes, y partes con bytes fuera de SQL. Se prepara una variante de
+Storage v1.70.3 en `tools/storage/`: digest y hash de fuente fijados; parche
+solo de abort para sesión de servicio verificada, validación bucket/key/upload,
+sin upsert de prueba. Usuarios conservan autorización original. Backend real
+se limpia antes del DELETE original de upload (cascade partes). Ningún INSERT
+ni UPDATE obtiene bypass SQL por rol/GUC. Deriva/reaplicación del parche falla.
+El limpiador Edge separa el drenaje de objetos; abort/list/ACK fallidos mantienen
+upload en cola y HTTP 503 sin impedir limpiar objetos terminados independientes.
+
+**RED→GREEN real:** imagen original y limpiador de `0a8e794f`: manifest NULL y
+UUID, parte multipart con bytes y PNG privado de 68 bytes, dos retries; persistían
+upload+parte+cola+PNG. Con solo limpiador corregido y Storage original, el PNG
+se elimina y el upload sigue pendiente. Con variante preparada, upload/parte,
+ambas colas y bytes desaparecen; dos retries idempotentes. Nueve rechazos HTTP
+por ruta incorrecta, JWT no-service firmado y service JWT falsificado; INSERT
+service tras tombstone sigue rechazado. Un fallo inyectado del abort conserva
+upload/parte/cola, pero elimina PNG. Fallo **real** de backend readonly mantiene
+1/1/1; al restaurar RW convergen también los mismos fixtures RED y todos los
+pendientes: **0 uploads / 0 partes / 0 cola uploads / 0 cola objetos**, backend
+sin archivos. La última entrada durable que no estaba en el listado de fixture
+se recuperó desde la cola real y se drenó; intento anterior/errores conservados.
+
+**Checks nuevos:** Storage HTTP local real anterior; admin 24 + locks r5 17;
+buckets 17, inventario 78 tablas / 102 rutas / 603 checks; aliases 40;
+56 migraciones del checkout y nueve suites pgTAP **317 PASS** con Storage real;
+Edge **553 PASS / 0 FAIL / 1 ignored** con tipos; fmt/lint dos TS, deploy surface,
+Python compile, diff check y **456 huellas PASS**. Evidencia `~/evidence/1608/r6/`.
+Errores de preparación conservados: dump posterior a app tuvo triggers/policy
+que necesitan private/public; se retiraron del dump solo esos objetos de app
+para reinstalarlos mediante migraciones intactas. pgTAP del contenedor era
+symlink Nix: copia dereferenciada temporal a Homebrew. Bootstrap amplía columnas
+owner de buckets; coverage FK detectó la herencia omitida y se corrigió el guard,
+no el gate. Estado/convergencia verificados antes de detener servicios propios.
+
+**Límites:** la imagen original v1.70.3 no converge el abort de manifest;
+la variante requiere review/decisión de integración del orquestador y activación
+separada. Un proveedor que no admita esa imagen necesita alternativa validada;
+no se promete compatibilidad gestionada ni despliegue automático. No hay
+servicios/cuentas/pagos reales, lectura de .env o secretos instalados, nuevos
+paquetes/dependencias ni cambios nativos. Rust/Nextest/lifecycle/telemetría,
+upgrades históricos y GUI/OAuth/Clerk/Polar/S3 gestionados no se repiten: alcance
+SQL/Edge/Storage local; se conserva evidencia histórica sin presentarla como nueva.
+
+## #1608 · Ronda 6 local · R5-P3-1 (14/10/2026)
+
+`storage.buckets.owner uuid` y `owner_id text` reciben la barrera común:
+propietarios UUID/Clerk, OLD/NEW e inmutabilidad, INSERT/UPDATE tras tombstone
+rechazados; DELETE autorizado sigue permitido. Buckets globales sin propietario
+conservan configuración. Inventario real con ambas columnas y trigger activo.
+RED exacto INSERT de supabase_storage_admin permitido → GREEN 17 checks.
+Objetos/uploads/partes heredan el propietario del bucket y rechazan padre
+invisible; el borrado encola también objetos/uploads con owner propio NULL.
+Bootstrap reproduce owner/owner_id reales; cinco nuevas rutas de carreras,
+102 rutas/603 checks, sin debilitar el gate de cobertura FK.
+Runner `--storage-buckets --storage-schema <dump local>`; RED con
+`--before-storage-buckets`. Evidencia `~/evidence/1608/r6/buckets-{red-exact,inherited-green}/`.
+Dump del stack real elimina solo triggers/policy de la app para cargarlos después
+mediante las migraciones originales; errores de preparación conservados.
+No se afirma API de buckets de usuario ni se borran buckets/datos instalados.
+R5-P1-1 sigue en preparación; solo local, sin push/merge/promoción/deploy/release.
+
+## #1608 · Ronda 6 local · R5-P2-1 (14/10/2026)
+
+Inicio autorizado `0a8e794f`, rama/worktree indicados, review r5 completa.
+`native_admin_execute` toma actor+objetivo ordenados antes del primer lock de
+fila (incluido reporter en get/set report); helper Owner cubre native_admin_begin.
+RED exacto wrapper→borrado `40P01` → GREEN cuatro carreras actor/objetivo,
+ambos órdenes, espera advisory y `28000` para administración tras tombstone.
+24 checks; llamadas/guardas productivas reales, prefijo de pg_proc sin sustituirlas.
+Auditoría de callers de las 14 RPC en catálogo completo: cinco funciones;
+reconciliation/lifecycle/expire ya protegidas en r5, refresh thin SQL sin filas,
+admin era el wrapper omitido. Evidencia `~/evidence/1608/r6/rpc-callers.json` y
+`admin-{red,green}/`; pendientes R5-P1-1 y R5-P3-1. Solo local, sin push,
+subagentes, GitHub, merge/promoción/deploy/release ni servicios/datos reales.
+
+## #1608 · Ronda 5 · Entrega local para revisión (14/10/2026)
+
+Correcciones de los cuatro hallazgos de la review r4 y evidencia final en el
+[informe](../../analysis/review-cuentas-pagos-2026-10.md). **Queda pendiente el
+abort NULL-manifest por preflight Storage v1.70.3; no se declara cierre completo.**
+Barrera: 77 tablas protegidas/97 rutas/577 checks; multipart ocho carreras/64
+checks; locks 17; aliases40, pgTAP317, upgrades18+4+26, Edge553/1 ignored,
+lint/fmt nueve TS, surface y 456 huellas PASS. SQL, PostgREST y Storage HTTP
+locales reales. Disputas borrada+viva y outage SQL también PASS; interacción
+con el lock temprano corregida con RED→GREEN.
+Commits por hallazgo `21e3f262`, `3758ff12`, `f86fafb6`, `c9f0c727`; reintento
+API/ACK perdido `d2a96ce5`. HEAD final y cierre en `~/orq/1608.buzon.md`.
+Evidencia `~/evidence/1608-r5/`, errores originales conservados, sin bypass ni
+dependencias nuevas. Locks siempre UUID→fila; 40001 requiere rollback/retry
+completo. Metadata ajena sin identidad de cuenta y configuración Storage no
+se presentan como nuevas raíces de producto cubiertas por el bootstrap.
+Sin Rust ni gates nativos (sin cambios native/runtime/domain/ipc/testdata),
+GUI/servicios gestionados/partes con bytes. Sin datos reales, .env/secretos,
+subagentes, push, trackers/GitHub, merge, promoción, deploy o release.
+Siguiente: orquestador revisa diff/SHAs y acota la corrección del servicio
+Storage para abort sin upsert de permisos sobre la cuenta ya borrada.
+Seguimiento remoto #1608/#1622/VANTA-16/17/15 reservado al orquestador.
+
+## #1608 · Ronda 5 · Reintento de abort y validación real (14/10/2026)
+
+R4-P1-1, mismo alcance: si la API aborta y se pierde ACK SQL, la siguiente
+entrega admite únicamente 404 XML `NoSuchUpload`; otros 404/403/500 siguen
+fallando y conservan cola. Respuesta limitada a 8 KiB, sin mensajes/PII.
+RED exacto del reintento → GREEN siete Edge, y API HTTP real dos veces con
+Storage v1.70.3: abort inicial elimina upload, reintento NoSuchUpload permite
+ACK y deja cero pendientes. Firmante validado también por SignatureV4 de la
+imagen distribuida. No se afirma subida de partes/bytes ni S3 gestionado.
+Reconciliador con error SQL 42501 real sigue abortando la página; restores de
+ACL del fixture local verificados. Upgrades identidad18/conflicto4/refunds26
+PASS. Evidencia `~/evidence/1608-r5/storage-http-{probe,retry}.log`,
+`abort-retry-{red,green}.log`, `reconcile-outage.log` y `upgrade-*`.
+Sigue abierto el abort NULL-manifest por preflight Storage; no hay bypass.
+
+## #1608 · Ronda 5 local · R4-P2-2 (14/10/2026)
+
+14 RPC de Billing/operacional adquieren todos sus UUID ordenados antes de
+filas; incluye propietario previo y solicitado, batches y barrido de expiración.
+La recolección checkout queda acotada a su cuenta; el barrido omite tombstones.
+PostgreSQL puede tomar la fila antes de un BEFORE ROW: la barrera de DML usa
+try-lock y aborta con 40001; nunca espera el UUID mientras conserva esa fila.
+El contrato del caller es siempre UUID→fila, conjunto completo en orden UUID;
+40001 exige rollback y reintento de toda la transacción. INSERT aplica la misma
+regla porque puede seguir a escrituras previas de varios UUID. Sin bypass.
+RED 40P01 exacto (prefijo operacional real) → GREEN writer-first/delete-first,
+DML fila primero rechazado con 40001 y dos UUID en orden inverso, sin efectos
+parciales y con reintento completo. 97 rutas/577 checks de escrituras PASS,
+317 pgTAP y 40 aliases PASS. Evidencia `~/evidence/1608-r5/locks-*-final`,
+`sql-full-3`, `writers-green-2`, `multipart-green-2`.
+API Storage HTTP real: creación multipart y abort con owner UUID PASS usando
+solo claves sintéticas locales. Abort owner NULL con manifest NO PASA:
+canUpload hace upsert antes de abort y la barrera lo rechaza tras tombstone;
+upload+cola permanecen (1+1), sin ACK. Se requiere revisión del servicio Storage
+para permitir abort sin preflight de INSERT, sin abrir un bypass SQL. Este
+límite impide afirmar limpieza multipart completa o cierre comercial total.
+El orquestador revisa el diff y mantiene #1608/#1622/VANTA-16/17/15. Sin estado
+remoto nuevo, push, merge, promoción, deploy, release ni producción.
+
+## #1608 · Ronda 5 local · R4-P1-2 (14/10/2026)
+
+Inbox verifica tombstone bajo UUID antes de escribir, relee enlaces y devuelve
+receipt tipado `account_deleted` sin fila ni payload. El reconciliador aísla
+ese resultado; cualquier error real o vínculo contradictorio sigue abortando.
+Diagnóstico durable privado solo entorno+hash, idempotente, sin UUID/PII.
+Disputas usan la misma clasificación por orden durable y entorno.
+RED exacto 28000 con PostgreSQL/PostgREST/Supabase JS reales → GREEN cuenta
+borrada seguida de viva, dos páginas y repetición: orden viva única, avance a
+subscriptions, sin nuevo payload borrado; conflicto borrada/viva sigue fallando.
+140 tests Edge billing/reconciliación PASS con tipos. Intentos sin permiso de
+lectura y estrechamiento de receipt conservados, sin --no-check.
+Evidencia `~/evidence/1608-r5/reconcile-{red,green-2}.log`; fixture local,
+no Polar gestionado. Queda revisar locks y límite abort manifest Storage.
+Seguimiento remoto exclusivamente por el orquestador.
+
+## #1608 · Ronda 5 local · R4-P1-1 (14/10/2026)
+
+Multipart/partes del esquema Storage real reciben la barrera propia, incluida
+atribución por manifest y upload padre. RED reproducido → GREEN ocho escenarios
+con dos transacciones, rol Storage real, SQLSTATE y commit verificados.
+Uploads anteriores al tombstone se encolan para abort S3; ACK solo después de
+éxito de API, sin SQL DELETE de Storage ni secretos nuevos. Cleanup Edge aborta
+antes de borrar objetos; fallos mantienen cola y reentrega Svix.
+El firmante S3 usa las credenciales existentes anon/service y WebCrypto;
+STORAGE_S3_TENANT_ID es el tenant para local/custom domain y STORAGE_S3_REGION
+la región (us-east-1 por defecto). Configuración y deploy reales fuera de alcance.
+Límite bajo investigación: Storage v1.70.3 comprueba canUpload con un upsert
+antes del abort, que puede ser rechazado para manifest tombstonado. No se
+introduce un bypass de escritura para que una limpieza aparente pasar.
+Evidencia `~/evidence/1608-r5/multipart-{red-2,green}`, seis Edge PASS.
+Sigue reconciliación y locks; seguimiento reservado al orquestador.
+
+## #1608 · Ronda 5 local · R4-P2-1 (14/10/2026)
+
+Inicio autorizado `e66c6c90`, rama/worktree de #1608, sin trackers/GitHub/push.
+Review r4 completa: dos P1 y dos P2; ningún P3 adicional confirmado.
+R4-P2-1: migración aditiva resuelve `owner_id text` por UUID o identidad
+Clerk durable sin casts arbitrarios, conserva owner histórico y manifest.
+Subject ambiguo entre UUID se rechaza incluso con claims: Storage no conserva
+issuer en la fila y no sería seguro atribuirla después. Cleanup encola sujetos
+textuales solo cuando son inequívocos; no bloquea por owners ajenos desconocidos.
+RED exacto 22P02 → GREEN INSERT/UPDATE/DELETE, borrado, cola y DELETE de
+limpieza con el esquema Storage v1.70.3 y rol supabase_storage_admin.
+Evidencia `~/evidence/1608-r5/owner-{red,green-3}`; primer intento PL/pgSQL
+fallido conservado. Runner exige dump del stack local real, no el bootstrap UUID.
+Pendientes en esta ronda: multipart, reconciliador y orden UUID→fila.
+Seguimiento #1608/#1622/VANTA-16/17/15 exclusivamente por el orquestador;
+no se afirma estado remoto nuevo, CI, merge, canal promovido ni producción.
+
+## #1608 · Cierre comercial ronda 4 local · Mac arm64 (14/10/2026)
+
+Review `~/orq/review-1622-sol-r3.md` entera, R3-P1-1: reset concurrente
+reinserta dispositivo. Encargo recibido de Claude/Isaac, sin subagentes ni
+GitHub/push. Inicio limpio `3ce0eadc`, misma rama
+`vantareapp/isa-1608-cierre-comercial`, worktree
+`/Users/isaacalbala/vw-isa-1608-cierre-comercial`, base local `e5c90be5`.
+
+Migración nueva `20261014140000_isa_1608_account_write_barrier.sql`:
+helper único lock UUID→tombstone y trigger en **74 tablas**, incluidas rutas
+FK indirectas/composites, aliases, PII, devices, grants, Storage/manifest,
+Testing, admin e inbox vinculado. OLD/NEW, propietarios ordenados y releídos,
+identidad durable, snapshots antiguos rechazados. Cleanup bajo UUID y marca
+final en misma transacción; sin bypass. Grants/entitlements/operacional solo
+revocados; los otros writers tardíos se rechazan. Reset adquiere UUID antes
+de fila, claim antes de conflicto; resolvers nativos/bootstrap releen.
+No se reescriben migraciones históricas ni se activa infraestructura.
+
+Inventario completo de **87 tablas / 50 migraciones y entradas Edge**, con
+protegida sí/no y test, en [informe](../../analysis/review-cuentas-pagos-2026-10.md).
+94 rutas con dos transacciones reales y control válido observado por tabla:
+**RED189 → GREEN559**; 74 tablas con cobertura real, catálogo/FK y ACL verificados.
+Regresión anterior aliases **40/40 PASS**; Edge con tipos **551 PASS/1 ignored**;
+retirada456 PASS. Evidencia `~/evidence/1608-r4/checked-{red,green}/`,
+`aliases-green/`, `deno-functions.log`, manifest final y logs de intentos.
+Runner `--writers` sin pgTAP; integrado también al final del gate normal.
+
+Límites nuevos expresos: pgTAP317/upgrades48 no repetidos por extensión ausente
+(0A000 conservado); HTTP/PostgREST/Ed25519→SQL no repetido por binario ausente.
+Invocación extra con todos los tests históricos Supabase falla TS2353 ajeno al
+diff; suite Edge551 con tipos sí pasa, sin --no-check. Sin Rust/TS modificados:
+gates nativos/telemetría/lint TS omitidos. No instalar dependencias nuevas;
+solo caché de paquetes Deno ya declarados. Sin herramientas nuevas.
+
+Última lectura es la **copia de review r3**, 12:13 UTC: #1608 OPEN/in-review,
+area:plataforma/Project Vantare/sin milestone, updatedAt11:40:15Z;
+VANTA-16/17/15 Por revisar y draft#1622 a nightly en `3ce0eadc`.
+No consultado ni actualizado desde este Mac; sin CI del nuevo HEAD.
+Commit/SHA final local en `~/orq/1608.buzon.md`; orquestador recoge la rama,
+revisa, repite pgTAP/upgrades/HTTP, y actualiza seguimiento. Canal: rama de issue.
+Sin merge/promoción/release/deploy/producción/servicios/cuentas/datos reales.
+Activación y esquema/Storage gestionado requieren revisión separada; no venta.
+Política conservadora de rechazo de writers tardíos; filas/advisory pueden
+abortar por deadlock bajo otro orden DML. No se promete ausencia global de
+contención: nunca se acepta el writer omitiendo la relectura. Perfil remoto
+apagado; registry/reconciliación inertes; historial previo privado conservado.
+
+## #1608 · Cierre comercial ronda 3 local (14/10/2026)
+
+Review `C:/tmp/ola2/review-1622-sol-r2.md` entera: R2-P1-1 único hallazgo,
+sin P2/P3 adicional confirmado. Inicio limpio `c30e7c4c`, misma rama/worktree
+`vantareapp/isa-1608-cierre-comercial` / `C:/tmp/1608-cierre-comercial`, base
+`e5c90be5`. Dos transacciones SQL reales: update de alias bloqueado por el UUID,
+borrado confirma primero y update restaura email aun con evento anterior;
+retry de borrado no reparaba. RED16/40, cuatro casos (ambos subjects y tiempos).
+B03 relee identidad FOR UPDATE bajo lock del UUID y comprueba tombstones antes
+de escribir: GREEN40/40, PII/versiones/tombstones y trazabilidad/Storage intactos.
+Regresión Python en runner normal y `--concurrency`, sin dependencia nueva.
+
+Gates nuevos: pgTAP317 + upgrades48 + concurrencia40 = 405 PASS; JWT/PostgREST
+y Ed25519/SQL real PASS; Deno551 PASS/1 ignored; calidad456, deploy surface,
+check scripts y diff--check PASS. Logs `C:/tmp/1608-comercial-r3/`; primer gate
+HTTP con ruta Deno inexistente conservado y corregido solo en invocación.
+Sin native/TS nuevos: gates Rust/telemetría/lint TS omitidos por alcance.
+Detalle y comando en [informe](../../analysis/review-cuentas-pagos-2026-10.md).
+
+Encargo **solo local/tests**: un commit por hallazgo; HEAD final en buzón1608.
+No push ni cambio remoto de issue/PR/Plane/CI. Última lectura #1608 OPEN/
+in-review, area:plataforma, Project Vantare/sin milestone, updatedAt11:40:15Z;
+VANTA-16/17/15 Por revisar, draft#1622 a nightly/auto-merge OFF en `c30e7c4c`.
+Siguiente: orquestador revisa nuevo HEAD y actualiza seguimiento; no atribuir
+la CI antigua al arreglo local. Migración corregida aún no desplegada; no
+actualiza automáticamente un esquema que ya hubiese aplicado el cuerpo viejo.
+Sin producción, datos/cuentas/compras reales, merge/promoción/release/deploy;
+activación/confianza y aceptación comercial real siguen pendientes separadas.
+
+## #1608 · Cierre comercial ronda 2 (14/10/2026)
+
+Review independiente `C:/tmp/ola2/review-1622-sol.md` completa: dos P1 de
+datos históricos, ningún P2/P3 adicional confirmado. Misma rama/PR draft
+#1622 y base `e5c90be5`; inicio limpio `76c1b948`. VANTA-16/17/15 En curso
+durante ejecución, Por revisar al cierre por escritura/lectura en issue/buzón.
+P1-1 RED de upgrade: 10/18 aserciones fallan (UUID/compras/PII/tombstone/Storage)
+y la migración acepta aliases de UUID distintos. B03 añade el vínculo canónico
+al UUID original sin borrar aliases; conflicto 23505 aborta toda la transacción.
+Pruebas pre-B03 reproducibles por `run-commercial-local.py --upgrade identity`
+y `--upgrade identity-conflict`. Evidencia `C:/tmp/1608-comercial-r2/`.
+GREEN 18/18 y conflicto/rollback 4/4 sobre PostgreSQL18 desechable.
+P1-1 commit `a0db4d98`. P1-2 RED 14/26: partial/pending/agregado anteriores
+conservaban grant y read model activos. B02 proyecta cada agregado/refund
+persistido con UUID/entorno/fuente/versión reales y refresca usuarios bloqueados
+en la misma transacción, con writers serializados. No reescribe grants ni ledger;
+otra compra/suscripción/entorno y failed/canceled permanecen. Regresión
+`run-commercial-local.py --upgrade refunds`. Solo local/tests; sin prod/servicios reales,
+secretos/dependencias/promoción. SHAs y gates finales se verificarán en issue/buzón.
+GREEN P1-2 26/26 con estado insertado antes de las tres migraciones comerciales.
+P1-2 commit/código probado `d6e3caf57dc9ca1ce7dc4771df1405a11b3f8d1b`.
+Gates nuevos: 551 Deno PASS/1 ignored, 317 SQL existentes + 48 upgrade = 365,
+JWT/PostgREST y Ed25519/SQL real PASS; calidad456, superficies deploy,
+check scripts HTTP y diff--check PASS. Sin fuente TS/nativa nueva: lint TS,
+fmt/check/Clippy/Nextest/lifecycle/telemetría omitidos por alcance.
+Riesgos: B03 aborta con aliases contradictorios; B02 bloquea writers durante
+backfill (volumen/duración reales no medidos). No infiere enlaces de suscripción
+ausentes del ledger. Informe actualizado con comandos y fallos iniciales
+conservados. Entrega en la misma draft #1622; siguiente: review/CI del nuevo SHA;
+activación/confianza/despliegue/aceptación real siguen separados.
+
+## #1608 · Cierre comercial B03 → B01 → B02 (14/10/2026)
+
+Encargo explícito de Isaac: implementar los tres planes en rama nueva, solo
+local/tests. Worktree `C:/tmp/1608-cierre-comercial`, rama
+`vantareapp/isa-1608-cierre-comercial`, arranque #1615 `7aab0699`.
+#1615 entró en nightly `e5c90be5`; rebase de **solo los commits de cierre** a
+esa base antes del push. El HEAD/PR/checks finales están en issue/buzón.
+
+B03/B01/B02 implementados con RED→GREEN por bloqueo; detalle/decisiones/riesgos
+en `docs/analysis/review-cuentas-pagos-2026-10.md`. 551 Deno PASS/1 ignored,
+317 pgTAP PASS + JWT/PostgREST real y emisión nativa Ed25519 sobre SQL real.
+Se preservan los fixes de #1615; nuevo registry/trust y reconciliador vacíos/
+inertes. Sin Rust nuevo. Queda review/CI y activación/aceptación real separadas,
+sin producción/secretos/precios/datos reales/merge/promoción/release.
+Código probado `05e79d1a1cb68c48f07213aaa89a7d0a69e2b43a`, base `e5c90be5f63347fa4d50b4110e1946201c1957c0`.
+HEAD/PR/estados verificados finales en issue/buzón. Siguiente: review del cierre.
 ## #1620 / PR #1621 · lanzamiento sin trial, decisión B (14/10/2026)
 
 Encargo explícito al worker Codex macOS arm64; base limpia `c6739de8`, rama

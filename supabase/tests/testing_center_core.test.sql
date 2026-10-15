@@ -1,4 +1,5 @@
 begin;
+select to_regclass('private.clerk_issuers') IS NOT NULL as b03 \gset
 
 select plan(72);
 
@@ -235,6 +236,20 @@ insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-000000000209', 'reporter@example.invalid'),
   ('00000000-0000-4000-8000-000000000210', 'validator@example.invalid'),
   ('00000000-0000-4000-8000-000000000211', 'owner@example.invalid');
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.profiles(id,email) SELECT id,email FROM auth.users
+      ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 
 set local role service_role;
 select lives_ok(
@@ -411,7 +426,7 @@ select throws_ok(
 );
 select throws_ok(
   $$insert into public.testing_center_promotions (promotion_id, candidate_id, validation_id, from_channel, to_channel, exact_sha, validated_sha, state) values ('promotion-sha', 'candidate-valid', 'validation-valid', 'nightly', 'testers', repeat('a', 40), repeat('b', 40), 'pending')$$,
-  '23514', null, 'promotion with a SHA not validated for its candidate is rejected'
+  CASE WHEN :'b03'::boolean THEN '23503' ELSE '23514' END, null, 'promotion with a SHA not validated for its candidate is rejected'
 );
 select throws_ok(
   $test$

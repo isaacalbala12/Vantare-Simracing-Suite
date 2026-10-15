@@ -16,31 +16,28 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
-### #1638 / VANTA-33 — fase B preparada y esperando LMU
+### #1638 / VANTA-33 — fase B offline, PC de juego (16-oct)
 
-15-oct-2026: LMU instalado por Isaac en D:/SteamLibrary; no se ha lanzado.
-Core QA y test UI precompilados por cola/MIN_GB=0/jobs2/target propio.
-Dos tests de proyecciones offline PASS y guardas Python **4/4 PASS**.
-El test físico exacto existe en el binario; no se ejecuta todavía con juego.
-Código de preparación `0927d94f3` y ajuste menor del inicio de lock, sin cambio
-Rust. [Procedimiento y límites](../../telemetria/session-alerts-contract.md).
+Cambio expreso de Isaac: no abrir LMU en el servidor, por RAM. El supervisor
+16280 recibió STOP y terminó `cancelled`, verificado en su summary.json bajo
+`C:/VantareServer/logs/1638-phase-b-20261015-204225`. No queda espera live activa
+ni hay resultado de juego nuevo. Plane sigue **En curso**, PR draft #1664 a nightly.
 
-Supervisor oculto Python PID **16280**, `waiting` verificado desde otra llamada.
-Descriptor `C:/tmp/1638-phase-b-active.json`; logs/resumen en
-`C:/VantareServer/logs/1638-phase-b-20261015-204225`. «LISTO FASE B» escrito en
-el buzón. Isaac cargará práctica Hypercar en boxes: proceso único LMU + SHM con
-parrilla/jugador estables en dos sondeos disparan automáticamente Core/pipe QA
-y test precompilado. Exige un test válido, 22 checks y 18 proyecciones; log y
-JSON final más aviso al buzón, sin ventanas, snapshots ni control del juego.
-Sigue pendiente el resultado físico y después la carrera con formación.
+[Procedimiento vigente, formato, límites y comando offline](../../telemetria/grabacion-completa-lmu.md).
+Kit release Windows x64 en `C:/VantareServer/share/kit-grabacion-lmu/` (ZIP).
+Captura ambos mappings del SDK en solo lectura, enteros, con bytes no usados
+por el adapter; SHM objetivo 60 Hz. Catálogo de GET de la UI instalada
+(60 rutas en la build del servidor), plantillas/exclusiones explícitas;
+no invoca acciones ni credenciales. No puede garantizar rutas ocultas que la UI
+no referencia. Gzip/XOR streaming, timestamps, hashes, footer obligatorio.
+Datos crudos privados con nombres y rutas locales; no versionar sin sanear.
 
-Se detectó reaparecida la reserva propia antigua #1638 rest-discard-01-a1-01
-(PID 13928 ausente, 14-oct): verificado el propietario, se archivó reversiblemente
-con nombre `pc-medicion.1638-expired-20261015-204225.json`; ya no bloquea la espera.
-El supervisor respeta reservas vigentes y valida hashes de los binarios.
-Rechazo de duplicado probado (exit 1); principal continúa esperando. Cancelar
-antes de QA mediante `STOP` en el log-dir. Plane permanece **En curso**,
-PR draft #1664 a nightly. Publicar preparado no significa QA física aprobada.
+El arnés acepta --recording y recorre Replay/Translator/Core/DTO estricto y
+los 18 Widget::ingest sin abrir ventanas. Informa calidades y campos ausentes,
+por sesión, y los siete campos de Avisos. Evaluación correcta no es cobertura
+completa ni QA física aprobada. Falta grabación de práctica, qualy, carrera con
+formación/salida, final y transiciones para añadir productores con evidencia.
+No se ha editado la rama #1653/#1660 ni promovido, integrado o publicado nada.
 
 ### #1638 / VANTA-33 — revisión de gates del servidor (R2)
 

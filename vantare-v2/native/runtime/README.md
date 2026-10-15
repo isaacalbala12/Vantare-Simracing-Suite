@@ -2,6 +2,11 @@
 
 Adaptadores LMU/ACC privados, validación y derivaciones centrales; publicación neutral y supervisor.
 
+QA #1638: `vantare-grabar-lmu-completo` graba SHM íntegro y REST descubierto en
+`.lmu.gz`; `open_replay` admite ese archivo y `vantare-verificar-lmu` produce
+DTOs/informe offline por el mismo adapter y Core. [Kit, formato y límites](../../docs/telemetria/grabacion-completa-lmu.md).
+Son herramientas de QA privadas; no se incorporan al instalador de producto.
+
 ## #1562 · Ocultar fuera de pista
 
 El núcleo publica `state.driving_situation` (Unknown/OnTrack/Garage/Paused/Replay)

@@ -1,6 +1,18 @@
 # Cobertura de telemetría para el lanzamiento — VANTA-33 / #1638
 
 Auditoría inicial: 14-oct-2026, base `nightly@79a1ace66e5ec397126495dc5ce99353db9beed9`.
+
+## Plan vigente de fase B — 16-oct
+
+Isaac grabará el fin de semana completo en su PC de juego; **no se abrirá LMU
+en el servidor**. Supervisor 16280 cancelado y salida `cancelled` verificada.
+[Kit release y verificación offline](grabacion-completa-lmu.md): SHM completo,
+REST descubierto desde la UI instalada, gzip/XOR con hashes y cierre verificado,
+replay por adapter/Core/DTO y proyecciones de los 18 widgets, más calidades de
+los siete campos de Avisos. El catálogo declara rutas no resueltas/excluidas y
+no acredita endpoints ocultos. Los datos crudos privados no se versionan.
+Sigue faltando recibir la captura; los campos sin evidencia no cambian.
+
 Encargo: [#1638](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1638).
 La optimización #1630 quedaba fuera del encargo inicial; el buzón del orquestador
 la incorpora después como fase 4 (véase abajo). Seguimiento histórico del relevo por

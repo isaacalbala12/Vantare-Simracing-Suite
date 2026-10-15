@@ -58,6 +58,11 @@ el contrato y no acredita que LMU la entregue.
 
 ## Fase B: pasos para Isaac
 
+**Sustituido el 16-oct:** LMU no se abrirá en el servidor por RAM. El supervisor
+16280 terminó `cancelled` mediante STOP. Usar el [kit autónomo y arnés offline](grabacion-completa-lmu.md)
+en el PC de juego; los comandos live de abajo se conservan como referencia,
+no como instrucciones vigentes. Falta recibir práctica/qualy/carrera completa.
+
 No se lanza LMU desde el worker. Cargar una práctica local con jugador en boxes,
 un Hypercar si se quiere comprobar energía virtual (un GT3 también sirve para
 el transporte). Una sesión parada/garaje basta para el smoke de las 18

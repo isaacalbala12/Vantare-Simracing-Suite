@@ -1,3 +1,13 @@
+## #1608 · R7 · Lecturas admin de borrados (15/10/2026)
+
+R6-P2-2 corregido: el actor vivo mantiene el control Owner y las lecturas
+search/get conservan el UUID borrado en su auditoría. Los targets borrados de
+lectura no se tratan como mutación; actor y objetivos mantienen orden de locks.
+RED real sin migración: search falla por audit y get por el lock exterior.
+GREEN: siete regresiones pgTAP, mutación y actor borrados siguen rechazados.
+Evidencia `~/evidence/1608/r7/admin-red/` y `sql-final/`.
+Storage gestionado e integración #1612 siguen en validación; no producción.
+
 ## #1608 · Ronda 7 · Integración de base (15/10/2026)
 
 Merge de origin/nightly conservando los handoffs de #1608 y las entregas

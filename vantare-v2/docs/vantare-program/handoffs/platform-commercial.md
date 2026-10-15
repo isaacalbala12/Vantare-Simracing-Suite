@@ -5,6 +5,28 @@ Estado de la base indicada; releer la issue antes de ejecutar.
 
 ## 1. Resultado
 
+### Servidor · VANTA-47 / revisión 1647c · 2026-10-15
+
+Encargo de implementación del orquestador sobre PR #1583, rama
+`vantareapp/isa-1565-servidor`, base previa `f385f7937` (merge-base nightly
+`ee3725407`). Worktree `C:/VantareServer/wt/isa-1565`, inicialmente limpio.
+P3-2: cuatro servicios root con NoNewPrivileges, ProtectSystem=strict,
+ProtectHome y PrivateTmp, escritura limitada a rutas de copia/estado/latido.
+Drop-ins aplicados en vivo con backup root:700 y SHA256SUMS en
+`/var/backups/vantare-hardening/20261015T180427Z`; cuatro unidades verificadas,
+Plane reiniciado y copia/supervisión/vigilante ejecutados satisfactoriamente.
+P3-3: rustup-init 1.28.2 con SHA-256 fijado y contrastado con fuente oficial
+y descarga local; sin ejecutar instalación Rust. Riesgos de plane.env en copias
+y HTTP LAN documentados, sin cambiar secretos, datos ni red.
+P3-5 **pendiente de decisión**: lectura pública enable_signup=True, BD
+ENABLE_SIGNUP=1 y 5 cuentas activas/totales. No se acreditó registro cerrado,
+no se intentó crear cuenta ni se cambió configuración; avisado en buzón 1647c.
+Evidencia saneada `C:/VantareServer/evidence/1647c/`, detalle y reversión en
+`tools/server/README.md`. Checks finales, SHA/push y CI se verifican en #1583,
+#1565/#1571 y buzón. Siguiente: revisión del orquestador y decisión sobre alta.
+Sin merge, promoción de canal ni release. VANTA-77/PR #1649 conserva el vigilante
+ampliado encima de esta base y su propio runbook; integrar ambos sin perderlo.
+
 Servicios remotos de cuenta/licencia, Billing, calendario, reportes y distribución; Hub presenta su estado. La existencia del cliente/backend no certifica apertura comercial, producción ni release.
 
 ## 2. Autoridad y lectura verificada

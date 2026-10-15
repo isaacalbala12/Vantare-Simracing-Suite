@@ -180,6 +180,17 @@ camino con campaña activada tiene prueba del error, reintento y URL reutilizada
 
 Ronda 2 · P3-5: cada función nueva fija expresamente owner `postgres`. El runner
 ya no eleva ese rol: las migraciones de producto y todos los tests se ejecutan
-como `NOSUPERUSER BYPASSRLS`; el supervisor del contenedor solo instala extensiones
-y la migración histórica de infraestructura que lo exige. pgTAP afirma el rol
-efectivo y el propietario de todas las funciones de promoción.
+como `NOSUPERUSER BYPASSRLS`; el supervisor del contenedor solo instala
+extensiones y la migración histórica de infraestructura que lo exige. pgTAP
+afirma el rol efectivo y el propietario de todas las funciones de promoción.
+
+Ronda 2 · políticas P3-6/7/8: el primer mes tiene reserva por cuenta/entorno e
+`attemptId`; el mismo intento puede reintentarse y otro no recibe una segunda
+oferta. La primera factura pagada consume la marca desde SQL, incluso con el flag
+apagado. El historial previo de suscripciones/órdenes también bloquea otra oferta
+si el catálogo se configura tarde. No se borra esa marca al devolver o cambiar plan.
+La factura inicial se identifica con `subscription_create`, separada de los
+periodos de premio. Su devolución, parcial incluida, pierde el premio de forma
+durable. Dos spams solo bloquean nuevos tramos: conservan los meses concedidos.
+El GET vivo actualiza el próximo ciclo para comparar creador, sin usar ese reloj
+para consumir meses de informes ni quitar beneficios de otras campañas.

@@ -7,6 +7,7 @@ export type RemoteSubscription = {
   currency: string;
   recurring_interval: string;
   recurring_interval_count: number;
+  current_period_end?: string | null;
 };
 export interface DiscountClient {
   read(subscriptionId: string): Promise<RemoteSubscription>;

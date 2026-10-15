@@ -31,6 +31,7 @@ create table private.report_promotions (
  product_id text not null,
  subscribed_at timestamptz not null,
  current_started_at timestamptz not null,
+ remote_period_end timestamptz,
  first_renewal timestamptz not null,
  observed_at timestamptz not null,
  creator_discount text,
@@ -41,6 +42,7 @@ create table private.report_promotions (
  reward_from timestamptz,
  reward_until timestamptz,
  forfeited boolean not null default false,
+ first_refunded boolean not null default false,
  applied_discount text,
  applied_at timestamptz,
  primary key(account_id,environment),
@@ -82,6 +84,7 @@ create table private.report_promotion_invoices (
  environment text not null, order_id text not null,
  account_id uuid not null references public.profiles(id), subscription_id text not null,
  product_id text not null, discount_id text, discount_amount integer not null check(discount_amount>=0),
+ is_initial boolean not null default false,
  billed_at timestamptz not null, period_start timestamptz not null, period_end timestamptz not null,
  primary key(environment,order_id), check(period_end>period_start)
 );
@@ -89,7 +92,7 @@ create index report_promotion_invoice_account on private.report_promotion_invoic
 alter table private.report_promotion_invoices enable row level security;
 revoke all on private.report_promotion_invoices from public,anon,authenticated,service_role;
 create function public.report_promotion_invoice(p_environment text,p_order text,p_discount text,p_amount integer,
- p_billed timestamptz,p_start timestamptz,p_end timestamptz) returns void
+ p_billed timestamptz,p_start timestamptz,p_end timestamptz,p_initial boolean default false) returns void
 language plpgsql security definer set search_path='' as $$
 declare o public.billing_orders;
 begin
@@ -99,12 +102,12 @@ begin
  if not exists(select 1 from private.report_promotion_catalog where environment=p_environment and product_id=o.provider_product_id) then return; end if;
  if p_amount is null or p_amount<0 or p_billed is null or p_start is null or p_end is null
   or not isfinite(p_billed) or not isfinite(p_start) or not isfinite(p_end) or p_end<=p_start then return; end if;
- insert into private.report_promotion_invoices(environment,order_id,account_id,subscription_id,product_id,discount_id,discount_amount,billed_at,period_start,period_end)
- values(p_environment,p_order,o.user_id,o.provider_subscription_id,o.provider_product_id,p_discount,p_amount,p_billed,p_start,p_end)
+ insert into private.report_promotion_invoices(environment,order_id,account_id,subscription_id,product_id,discount_id,discount_amount,billed_at,period_start,period_end,is_initial)
+ values(p_environment,p_order,o.user_id,o.provider_subscription_id,o.provider_product_id,p_discount,p_amount,p_billed,p_start,p_end,p_initial)
  on conflict(environment,order_id) do nothing; -- a later refund never replenishes a spent month
 end $$;
-revoke all on function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz) from public,anon,authenticated;
-grant execute on function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz) to service_role;
+revoke all on function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz,boolean) from public,anon,authenticated;
+grant execute on function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz,boolean) to service_role;
 create table private.report_promotion_failures (
  account_id uuid not null references public.profiles(id), environment text not null check(environment in ('sandbox','production')),
  code text not null check(code in ('polar_discount_unmanaged','polar_discount_catalog_mismatch','polar_discount_subscription_changed',
@@ -123,6 +126,29 @@ begin
 end $$;
 revoke all on function public.report_promotion_failed(uuid,text,text,timestamptz) from public,anon,authenticated;
 grant execute on function public.report_promotion_failed(uuid,text,text,timestamptz) to service_role;
+create table private.report_promotion_launch_uses (
+ account_id uuid not null references public.profiles(id), environment text not null check(environment in ('sandbox','production')),
+ product_id text not null, attempt_id uuid, subscription_id text, order_id text,
+ reserved_at timestamptz not null, consumed_at timestamptz,
+ primary key(account_id,environment)
+);
+alter table private.report_promotion_launch_uses enable row level security;
+revoke all on private.report_promotion_launch_uses from public,anon,authenticated,service_role;
+-- Billing facts are consumed even when the feature flag is off: SQL has no flag.
+create function private.report_promotion_mark_launch() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+ if new.provider<>'polar' or not new.paid or new.provider_subscription_id is null
+ or not exists(select 1 from private.report_promotion_catalog where environment=new.environment and product_id=new.provider_product_id) then return new; end if;
+ if private.lock_account_write(new.user_id) then return new; end if;
+ insert into private.report_promotion_launch_uses(account_id,environment,product_id,subscription_id,order_id,reserved_at,consumed_at)
+ values(new.user_id,new.environment,new.provider_product_id,new.provider_subscription_id,new.provider_order_id,new.created_at,new.created_at)
+ on conflict(account_id,environment) do update set consumed_at=coalesce(private.report_promotion_launch_uses.consumed_at,excluded.consumed_at),
+  subscription_id=coalesce(private.report_promotion_launch_uses.subscription_id,excluded.subscription_id),order_id=coalesce(private.report_promotion_launch_uses.order_id,excluded.order_id);
+ return new;
+end $$;
+create trigger report_promotion_launch_paid after insert or update on public.billing_orders for each row execute function private.report_promotion_mark_launch();
+revoke all on function private.report_promotion_mark_launch() from public,anon,authenticated,service_role;
 create unique index report_promotion_one_pending on private.report_promotion_changes(account_id,environment) where applied_at is null and superseded_at is null;
 create index report_promotion_changes_account on private.report_promotion_changes(account_id,environment,created_at);
 alter table private.report_promotion_catalog enable row level security;
@@ -140,17 +166,32 @@ language sql immutable set search_path='' as $$select t >= timestamp '2026-10-26
 
 -- First invoice uses the one-month launch discount on the NORMAL monthly product.
 -- Existing permanent launch products and annual subscriptions are not rewritten.
-create function public.report_promotion_checkout(p_account uuid,p_environment text,p_product text,p_now timestamptz default clock_timestamp())
+create function public.report_promotion_checkout(p_account uuid,p_environment text,p_product text,p_now timestamptz default clock_timestamp(),p_attempt uuid default null)
 returns text language plpgsql security definer set search_path='' as $$
-declare discount text;
+declare discount text; used private.report_promotion_launch_uses;
 begin
  if private.lock_account_write(p_account) then raise sqlstate '28000' using message='account_deleted'; end if;
- if not private.report_promotion_eligible(p_now) or exists(select 1 from private.report_promotions where account_id=p_account and environment=p_environment) then return null; end if;
+ if not private.report_promotion_eligible(p_now) then return null; end if;
  select launch_discount into discount from private.report_promotion_catalog where environment=p_environment and product_id=p_product;
+ if not found then return null; end if;
+ select * into used from private.report_promotion_launch_uses where account_id=p_account and environment=p_environment for update;
+ if found then
+   if used.consumed_at is null and used.attempt_id=p_attempt and used.product_id=p_product then return discount; end if;
+   return null;
+ end if;
+ if exists(select 1 from private.report_promotions where account_id=p_account and environment=p_environment)
+ or exists(select 1 from public.billing_subscriptions b join private.report_promotion_catalog c on c.environment=b.environment and c.product_id=b.provider_product_id where b.user_id=p_account and b.environment=p_environment and b.provider='polar')
+ or exists(select 1 from public.billing_orders b join private.report_promotion_catalog c on c.environment=b.environment and c.product_id=b.provider_product_id where b.user_id=p_account and b.environment=p_environment and b.paid) then
+  insert into private.report_promotion_launch_uses(account_id,environment,product_id,reserved_at,consumed_at) values(p_account,p_environment,p_product,p_now,p_now);
+  return null;
+ end if;
+ if p_attempt is not null then
+   insert into private.report_promotion_launch_uses(account_id,environment,product_id,attempt_id,reserved_at) values(p_account,p_environment,p_product,p_attempt,p_now);
+ end if;
  return discount;
 end $$;
-revoke all on function public.report_promotion_checkout(uuid,text,text,timestamptz) from public,anon,authenticated;
-grant execute on function public.report_promotion_checkout(uuid,text,text,timestamptz) to service_role;
+revoke all on function public.report_promotion_checkout(uuid,text,text,timestamptz,uuid) from public,anon,authenticated;
+grant execute on function public.report_promotion_checkout(uuid,text,text,timestamptz,uuid) to service_role;
 
 -- Called only after the verified billing webhook/lifecycle persisted this owner.
 create function public.report_promotion_observe(p_account uuid,p_environment text,p_subscription text,p_product text,
@@ -177,7 +218,7 @@ begin
        case when existing.subscription_id=p_subscription then p_modified end);
      update private.report_promotion_changes set superseded_at=p_modified where account_id=p_account and environment=p_environment and applied_at is null and superseded_at is null;
      update private.report_promotions set subscription_id=p_subscription,product_id=p_product,current_started_at=p_started,
-      remote_discount=p_discount,observed_at=p_modified,applied_at=null,applied_discount=null,
+      remote_discount=p_discount,observed_at=p_modified,remote_period_end=null,applied_at=null,applied_discount=null,
       creator_discount=case when exists(select 1 from private.report_promotion_creators where environment=p_environment and product_id=p_product and discount_id=existing.creator_discount) then existing.creator_discount end
       where account_id=p_account and environment=p_environment;
    else
@@ -201,7 +242,7 @@ returns jsonb language sql stable security definer set search_path='' as $$
    and r.decided_at<=p_now),
  'spam',(select count(*) from public.testing_contributions c join public.testing_contribution_reviews r on r.contribution_id=c.id
    where c.account_id=p.account_id and r.decision='spam' and c.created_at>=p.subscribed_at and r.decided_at<=p_now),
- 'last_error',(select f.code from private.report_promotion_failures f where f.account_id=p.account_id and f.environment=p.environment and f.resolved_at is null),'tier',p.tier,'forfeited',p.forfeited,'active_discount',p.remote_discount,'applied_at',p.applied_at,
+ 'last_error',(select f.code from private.report_promotion_failures f where f.account_id=p.account_id and f.environment=p.environment and f.resolved_at is null),'tier',p.tier,'first_refunded',p.first_refunded,'forfeited',p.forfeited,'active_discount',p.remote_discount,'applied_at',p.applied_at,
  'reward_until',p.reward_until,'window_end',p.subscribed_at+interval '1080 hours')
  from private.report_promotions p where account_id=p_account and environment=p_environment
  and not exists(select 1 from public.account_identities i where i.account_id=p.account_id and i.deleted_at is not null)
@@ -211,7 +252,7 @@ $$;
 create function public.report_promotion_prepare(p_account uuid,p_environment text,p_now timestamptz default clock_timestamp())
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare p private.report_promotions; s public.billing_subscriptions; c private.report_promotion_catalog;
- stats jsonb; earned integer; desired text; next_bill timestamptz; op private.report_promotion_changes; prior private.report_promotion_transfers; target_sub text; target_product text; action_kind text:='apply'; spent integer; repair text; creator private.report_promotion_creators;
+ stats jsonb; earned integer; desired text; next_bill timestamptz; op private.report_promotion_changes; prior private.report_promotion_transfers; target_sub text; target_product text; action_kind text:='apply'; spent integer; repair text; creator private.report_promotion_creators; first_order public.billing_orders;
 begin
  if private.lock_account_write(p_account) then return null; end if;
  select * into p from private.report_promotions where account_id=p_account and environment=p_environment for update;
@@ -221,40 +262,43 @@ begin
  if not found or s.status not in ('active','uncanceled') or s.provider_product_id is distinct from p.product_id then return null; end if;
  -- An active subscription event may precede its first invoice. Never replace
  -- the launch discount until a paid invoice for this exact subscription exists.
- if not exists(select 1 from public.billing_orders o where o.user_id=p_account and o.provider='polar'
-  and o.environment=p_environment and o.provider_subscription_id=p.original_subscription_id and o.paid and o.status='paid' and o.currency='eur') then return null; end if;
+ select o.* into first_order from public.billing_orders o join private.report_promotion_invoices i on i.environment=o.environment and i.order_id=o.provider_order_id and i.is_initial
+ where o.user_id=p_account and o.provider='polar' and o.environment=p_environment and o.provider_subscription_id=p.original_subscription_id and o.paid and o.currency='eur' order by i.billed_at,o.id limit 1;
+ if not found then return null; end if;
+ p.first_refunded:=p.first_refunded or first_order.status<>'paid' or first_order.reported_refunded_amount>0
+  or exists(select 1 from public.billing_refunds r where r.environment=p_environment and r.provider_order_id=first_order.provider_order_id and r.status='succeeded' and r.amount>0);
  select * into c from private.report_promotion_catalog where environment=p_environment and product_id=p.product_id;
  stats:=private.report_promotion_progress(p_account,p_environment,p_now);
  earned:=case when (stats->>'accepted')::integer>=5 then 6 when (stats->>'accepted')::integer>=2 then 3 else 0 end;
  -- Benefits are consumed by settled recurring invoice periods, never by the mirror clock.
  p.forfeited:=p.forfeited or (stats->>'spam')::integer>=2;
- if earned>p.tier and not p.forfeited then
+ if earned>p.tier and not p.forfeited and not p.first_refunded then
    p.tier:=earned; p.reward_granted_at:=p_now;
  end if;
  select count(distinct i.period_start)::integer,min(i.period_start),max(i.period_end)
  into spent,p.reward_from,p.reward_until
  from private.report_promotion_invoices i join private.report_promotion_catalog x on x.environment=i.environment and x.product_id=i.product_id
  where i.account_id=p_account and i.environment=p_environment and i.billed_at>=p.reward_granted_at and i.billed_at<=p_now
- and i.discount_amount>0 and i.discount_id=case p.tier when 6 then x.reward6_discount when 3 then x.reward3_discount end;
+ and not i.is_initial and i.discount_amount>0 and i.discount_id=case p.tier when 6 then x.reward6_discount when 3 then x.reward3_discount end;
  desired:=null;
- if p.tier>0 and spent<p.tier then
+ if p.tier>0 and spent<p.tier and not p.first_refunded then
    desired:=case p.tier when 6 then c.reward6_discount else c.reward3_discount end;
  end if;
  -- A paid, undiscounted renewal after the last confirmed application proves a
  -- provider-side expiry/missed cycle. Repair exactly once for that invoice.
  select i.order_id into repair from private.report_promotion_invoices i
  where i.account_id=p_account and i.environment=p_environment and i.subscription_id=p.subscription_id
- and i.billed_at>p.applied_at and i.billed_at<=p_now and i.discount_amount=0
+ and not i.is_initial and i.billed_at>p.applied_at and i.billed_at<=p_now and i.discount_amount=0
  and i.order_id is distinct from p.repaired_order_id order by i.billed_at desc,i.order_id desc limit 1;
  if desired is null then repair:=null; end if;
- next_bill:=coalesce(s.current_period_end,p_now); -- creator comparison only; never reward budget
+ next_bill:=coalesce(p.remote_period_end,s.current_period_end,p_now); -- creator comparison only; never reward budget
  -- Compare actual cents, never stack. Ties keep the report reward. Creator is
  -- available for the first two calendar months only; reports never affect invoice 1.
  select * into creator from private.report_promotion_creators where environment=p_environment and product_id=p.product_id and discount_id=p.creator_discount;
  if found and p_now<private.report_promotion_months(p.subscribed_at,creator.duration_in_months)
   and next_bill<private.report_promotion_months(p.subscribed_at,creator.duration_in_months)
   and (desired is null or round(c.normal_cents*creator.basis_points/10000.0)>c.normal_cents-c.launch_cents) then desired:=p.creator_discount; repair:=null; end if;
- update private.report_promotions set tier=p.tier,reward_granted_at=p.reward_granted_at,reward_from=p.reward_from,reward_until=p.reward_until,forfeited=p.forfeited
+ update private.report_promotions set tier=p.tier,reward_granted_at=p.reward_granted_at,reward_from=p.reward_from,reward_until=p.reward_until,forfeited=p.forfeited,first_refunded=p.first_refunded
   where account_id=p_account and environment=p_environment;
  target_sub:=p.subscription_id; target_product:=p.product_id;
  select * into prior from private.report_promotion_transfers where account_id=p_account and environment=p_environment and cleared_at is null order by id limit 1;
@@ -278,6 +322,15 @@ begin
 end $$;
 
 -- Revalidate immediately before HTTP, and again at ACK, using the same B03 UUID lock.
+-- Live provider period used only to arbitrate creator expiry, never to spend reward months.
+create function public.report_promotion_period(p_account uuid,p_environment text,p_subscription text,p_end timestamptz) returns void
+language plpgsql security definer set search_path='' as $$
+begin
+ if private.lock_account_write(p_account) or p_end is null or not isfinite(p_end) then return; end if;
+ update private.report_promotions set remote_period_end=p_end where account_id=p_account and environment=p_environment and subscription_id=p_subscription;
+end $$;
+revoke all on function public.report_promotion_period(uuid,text,text,timestamptz) from public,anon,authenticated;
+grant execute on function public.report_promotion_period(uuid,text,text,timestamptz) to service_role;
 create function public.report_promotion_claim(p_id uuid,p_token uuid,p_now timestamptz default clock_timestamp()) returns boolean
 language plpgsql security definer set search_path='' as $$
 declare op private.report_promotion_changes; prepared jsonb;
@@ -341,17 +394,19 @@ grant execute on function public.report_promotion_observe(uuid,text,text,text,ti
  public.report_promotion_prepare(uuid,text,timestamptz),public.report_promotion_claim(uuid,uuid,timestamptz),
  public.report_promotion_ack(uuid,uuid,timestamptz,text),public.report_promotion_accounts(text,uuid) to service_role;
 
+alter function public.report_promotion_period(uuid,text,text,timestamptz) owner to postgres;
+alter function private.report_promotion_mark_launch() owner to postgres;
 -- Explicit runtime principal: NOSUPERUSER BYPASSRLS, matching the hosted postgres role.
 alter function private.report_promotion_months(timestamptz,integer) owner to postgres;
 alter function private.report_promotion_eligible(timestamptz) owner to postgres;
-alter function public.report_promotion_checkout(uuid,text,text,timestamptz) owner to postgres;
+alter function public.report_promotion_checkout(uuid,text,text,timestamptz,uuid) owner to postgres;
 alter function public.report_promotion_observe(uuid,text,text,text,timestamptz,timestamptz,text) owner to postgres;
 alter function private.report_promotion_progress(uuid,text,timestamptz) owner to postgres;
 alter function public.report_promotion_prepare(uuid,text,timestamptz) owner to postgres;
 alter function public.report_promotion_claim(uuid,uuid,timestamptz) owner to postgres;
 alter function public.report_promotion_ack(uuid,uuid,timestamptz,text) owner to postgres;
 alter function public.report_promotion_accounts(text,uuid) owner to postgres;
-alter function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz) owner to postgres;
+alter function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz,boolean) owner to postgres;
 alter function public.report_promotion_failed(uuid,text,text,timestamptz) owner to postgres;
 alter function public.report_promotion_cleared(uuid,uuid,timestamptz) owner to postgres;
 alter function private.native_admin_account(uuid,text,text) owner to postgres;

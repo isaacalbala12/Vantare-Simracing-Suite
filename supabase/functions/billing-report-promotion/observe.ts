@@ -41,6 +41,7 @@ export async function promotionCheckoutDiscount(
   product: string,
   now = new Date(),
   enabled = Deno.env.get("REPORT_PROMOTION_ENABLED") === "true",
+  attemptId?: string,
 ): Promise<string | null> {
   if (!enabled) return null;
   const { data, error } = await admin().rpc("report_promotion_checkout", {
@@ -48,6 +49,7 @@ export async function promotionCheckoutDiscount(
     p_environment: environment,
     p_product: product,
     p_now: now.toISOString(),
+    ...(attemptId ? { p_attempt: attemptId } : {}),
   });
   if (error || !(data === null || typeof data === "string")) {
     throw new Error("report_promotion_checkout_unavailable");
@@ -62,7 +64,10 @@ export async function observePromotionInvoice(
   configured = Deno.env.get("REPORT_PROMOTION_ENABLED") !== undefined,
 ): Promise<void> {
   if (
-    !configured || data.billing_reason !== "subscription_cycle" ||
+    !configured ||
+    !(["subscription_cycle", "subscription_create"].includes(
+      String(data.billing_reason),
+    )) ||
     data.paid !== true || !Array.isArray(data.items)
   ) return;
   const items = data.items.filter((item) =>
@@ -85,6 +90,9 @@ export async function observePromotionInvoice(
     p_billed: data.created_at,
     p_start: item.start_timestamp,
     p_end: item.end_timestamp,
+    ...(data.billing_reason === "subscription_create"
+      ? { p_initial: true }
+      : {}),
   });
   if (error) throw new Error("report_promotion_invoice_failed");
 }

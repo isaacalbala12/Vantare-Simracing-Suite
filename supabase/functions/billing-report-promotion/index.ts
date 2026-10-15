@@ -15,6 +15,7 @@ type Operation = {
   discount_id: string | null;
   managed_discount_ids: (string | null)[];
   normal_cents: number;
+  kind?: "apply" | "cleanup";
   repair?: boolean;
   phase?: "pending" | "cleared";
 };
@@ -57,7 +58,24 @@ export async function runPromotionBatch(
       // A second check is after the GET and immediately before PATCH. Neither a
       // tombstone nor kill switch observed here can lead to an external write.
       const client: DiscountClient = {
-        read: (id) => deps.client.read(id),
+        read: async (id) => {
+          const current = await deps.client.read(id);
+          if (
+            operation.kind !== "cleanup" &&
+            typeof current.current_period_end === "string"
+          ) {
+            await deps.rpc("report_promotion_period", {
+              p_account: account,
+              p_environment: deps.environment,
+              p_subscription: id,
+              p_end: current.current_period_end,
+            });
+            if (!await authorized()) {
+              throw new Error("promotion_not_authorized");
+            }
+          }
+          return current;
+        },
         change: async (id, discount) => {
           if (!deps.enabled() || !await authorized()) {
             throw new Error("promotion_not_authorized");

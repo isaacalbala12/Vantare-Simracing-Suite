@@ -139,6 +139,9 @@ export async function handleCheckoutRequest(
       auth.userId,
       mapping.map.environment,
       resolved.config.polar_product_id,
+      new Date(),
+      undefined,
+      attemptId,
     );
   } catch {
     // No Polar request and no attempt reservation yet: a transient policy lookup

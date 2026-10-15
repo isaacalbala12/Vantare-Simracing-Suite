@@ -120,6 +120,7 @@ export async function promotionCheckoutDiscount(
     if (
       remote.accountId !== account || remote.productId !== previous.product_id
     ) {
+      await incident("promotion_checkout_owner_mismatch");
       throw new Error("promotion_checkout_owner_mismatch");
     }
     if (remote.status === "open") {

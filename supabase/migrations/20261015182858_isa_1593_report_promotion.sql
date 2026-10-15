@@ -137,7 +137,7 @@ grant execute on function public.report_promotion_invoice(text,text,text,integer
 create table private.report_promotion_failures (
  account_id uuid not null references public.profiles(id), environment text not null check(environment in ('sandbox','production')),
  code text not null check(code in ('polar_discount_unmanaged','polar_discount_catalog_mismatch','polar_discount_subscription_changed',
- 'polar_discount_not_applied','polar_discount_invalid_response','polar_discount_http_failed','promotion_account_failed','promotion_not_authorized','promotion_repair_lease_lost','promotion_invoice_details_missing','promotion_initial_invoice_missing','promotion_checkout_recovered','promotion_checkout_recovery_required','promotion_checkout_plan_change_pending')),
+ 'polar_discount_not_applied','polar_discount_invalid_response','polar_discount_http_failed','promotion_account_failed','promotion_not_authorized','promotion_repair_lease_lost','promotion_invoice_details_missing','promotion_initial_invoice_missing','promotion_checkout_recovered','promotion_checkout_recovery_required','promotion_checkout_plan_change_pending','promotion_checkout_owner_mismatch')),
  attempts integer not null default 1, first_at timestamptz not null, last_at timestamptz not null, resolved_at timestamptz,
  primary key(account_id,environment)
 );

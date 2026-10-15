@@ -234,3 +234,60 @@ Deno.test("P3-23 pending reservation uses its actual retry_at and injected clock
     assertEquals((error as Error).message.includes("30 minutos"), false);
   }
 });
+
+Deno.test("P3-24 remote owner or product mismatch records an owner incident before failing closed", async () => {
+  for (
+    const remote of [{ accountId: "other", productId: "pro" }, {
+      accountId: "account",
+      productId: "other",
+    }]
+  ) {
+    const calls: Record<string, unknown>[] = [];
+    const admin = () =>
+      ({
+        rpc: (name: string, args: Record<string, unknown>) => {
+          if (name === "report_promotion_failed") {
+            calls.push(args);
+            return Promise.resolve({ data: null, error: null });
+          }
+          return Promise.resolve(
+            name.endsWith("_pending")
+              ? {
+                data: {
+                  attempt_id: "old",
+                  checkout_id: "remote",
+                  product_id: "pro",
+                },
+                error: null,
+              }
+              : { data: null, error: { code: "55000" } },
+          );
+        },
+      }) as unknown as SupabaseClient;
+    const error = await assertRejects(() =>
+      promotionCheckoutDiscount(
+        admin,
+        "account",
+        "sandbox",
+        "pro",
+        new Date("2026-10-30T12:31:00Z"),
+        true,
+        "new",
+        () =>
+          Promise.resolve({
+            id: "remote",
+            status: "open",
+            url: "https://sandbox.polar.sh/checkout/one",
+            ...remote,
+          }),
+      )
+    );
+    assertEquals((error as Error).message, "promotion_checkout_owner_mismatch");
+    assertEquals(calls, [{
+      p_account: "account",
+      p_environment: "sandbox",
+      p_code: "promotion_checkout_owner_mismatch",
+      p_now: "2026-10-30T12:31:00.000Z",
+    }]);
+  }
+});

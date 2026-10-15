@@ -328,5 +328,8 @@ select pg_temp.enroll(22);
 select is(private.report_promotion_progress(pg_temp.account(22),'sandbox','2026-10-31')->>'last_error',null::text,'P2-9 paid recovery resolves the owner incident');
 select ok((select consumed_at is not null from private.report_promotion_launch_uses where account_id=pg_temp.account(22)),'P2-9 paid recovery consumes the single account right durably');
 select is(public.report_promotion_checkout(pg_temp.account(22),'sandbox','pro','2026-10-31','00000000-0000-4000-8000-000000000034'),null::text,'P2-9 another attempt after recovered payment cannot repeat the first month');
+select lives_ok($$select public.report_promotion_failed(pg_temp.account(23),'sandbox','promotion_checkout_owner_mismatch','2026-10-31')$$,'P3-24 owner mismatch is an allowlisted durable incident');
+select is(private.report_promotion_progress(pg_temp.account(23),'sandbox','2026-10-31')->>'last_error','promotion_checkout_owner_mismatch','P3-24 owner sees remote mismatch even without a subscription');
+
 select * from finish();
 rollback;

@@ -600,12 +600,12 @@ fn board(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
         .flex_none()
         .flex()
         .items_center()
-        .gap(px(12.0))
-        .px(px(16.0))
+        .gap(px(8.0))
+        .px(px(14.0))
         .py(px(12.0))
         .child(
             div()
-                .when(!compact, |title| title.w(px(96.0)))
+                .when(!compact, |title| title.w(px(80.0)))
                 .child(orbit::caps("Salidas", 13.0, skin.text1, cx))
                 .when(!compact, |title| {
                     title.child(
@@ -625,7 +625,7 @@ fn board(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
             div()
                 .flex()
                 .items_center()
-                .gap(px(8.0))
+                .gap(px(6.0))
                 .children(
                     cal.ui
                         .search

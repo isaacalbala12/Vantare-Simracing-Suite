@@ -126,14 +126,14 @@ fn header(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div {
     } else if series.event_kind == "special" {
         "Especial · fin de semana".to_owned()
     } else {
-        // Las tandas de madrugada (antes de las 6:00) cuentan para el día anterior.
+        // Una última tanda de madrugada (antes de las 3:00) cuenta para el día anterior.
         let starts = schedule
             .starts(series, valid_from, valid_until)
             .unwrap_or_default();
         let day_of = |at| {
             let local = zone.naive(at);
             let date = local.date();
-            if chrono::Timelike::hour(&local) < 6 {
+            if chrono::Timelike::hour(&local) < 3 {
                 date - chrono::Duration::days(1)
             } else {
                 date
@@ -142,7 +142,7 @@ fn header(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div {
         match (starts.first(), starts.last()) {
             (Some(a), Some(b)) => format!(
                 "Semanal · {} → {}",
-                clock::day_name(day_of(*a)),
+                clock::day_name(zone.date(*a)),
                 clock::day_name(day_of(*b))
             ),
             _ => "Semanal · tandas fijas".to_owned(),
@@ -230,7 +230,7 @@ fn header(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div {
         ))
         .on_click(cx.listener(move |this, _, _, cx| this.toggle_fav(&fid, cx)));
 
-    let header = div()
+    div()
         .relative()
         .flex_none()
         .flex()
@@ -255,7 +255,7 @@ fn header(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div {
                         .flex()
                         .items_center()
                         .gap(px(8.0))
-                        .child(tier(&series, cx))
+                        .child(tier(series, cx))
                         .child(t(kind_line, 12.5, 400, skin.cap, cx))
                         .when(series.is_fallback(), |r| r.child(chrome::rc_tag(cx))),
                 )
@@ -296,9 +296,7 @@ fn header(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div {
                     btn_pri("calendar-serie-launch", &cal.launch_label(), false, cx)
                         .on_click(cx.listener(|this, _, _, cx| this.launch_profile(cx))),
                 ),
-        );
-
-    header
+        )
 }
 
 #[allow(unused_variables, clippy::too_many_lines)]
@@ -366,7 +364,7 @@ fn outings_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div
         left = left
             .child(section_title("Todas sus salidas", Some(zone.long(now)), cx))
             .child(line)
-            .child(heat_map(cal, &series, valid_from, now, cx))
+            .child(heat_map(cal, series, valid_from, now, cx))
             .child(
                 div()
                     .flex()
@@ -383,7 +381,7 @@ fn outings_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div
                     .child(section_title("Próximas salidas", None, cx)),
             );
         let upcoming: Vec<_> = schedule
-            .starts(&series, now, valid_until)
+            .starts(series, now, valid_until)
             .unwrap_or_default()
             .into_iter()
             .take(if compact { 9 } else { 12 })
@@ -391,7 +389,7 @@ fn outings_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div
         let mut chips = div().flex().flex_wrap().gap(px(6.0));
         for (i, at) in upcoming.iter().enumerate() {
             let (sid, at) = (id.clone(), *at);
-            let alerted = cal.alerts.cause(&schedule, &series, at).is_some();
+            let alerted = cal.alerts.cause(schedule, series, at).is_some();
             chips = chips.child(
                 pick_chip(
                     ("calendar-serie-next", i),
@@ -414,7 +412,7 @@ fn outings_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div
         ));
         let mut by_day: Vec<(String, Vec<DateTime<Utc>>)> = vec![];
         for at in schedule
-            .starts(&series, valid_from, valid_until)
+            .starts(series, valid_from, valid_until)
             .unwrap_or_default()
         {
             let label = zone.day_rel(at, now);
@@ -463,7 +461,7 @@ fn outings_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div
     }
     let first = next.or_else(|| {
         schedule
-            .starts(&series, valid_from, valid_until)
+            .starts(series, valid_from, valid_until)
             .unwrap_or_default()
             .first()
             .copied()
@@ -474,7 +472,7 @@ fn outings_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div
             first.map(|a| format!("la de las {}", zone.hm(a))),
             cx,
         )))
-        .child(phase_block(&series, first, zone, cx));
+        .child(phase_block(series, first, zone, cx));
 
     // Historial en esta serie.
     // «Esta semana»: solo las carreras de la semana LMU publicada.
@@ -574,7 +572,7 @@ fn alerts_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div 
     let id = series.id.clone();
     // Avisos de esta serie.
     let alerts_body = if daily {
-        band_box(cal, &series, cx)
+        band_box(cal, series, cx)
     } else {
         let n = cal
             .alerts
@@ -619,14 +617,13 @@ fn alerts_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Div 
                     )),
             )
     };
-    let alerts_card = chrome::card(cx)
+
+    chrome::card(cx)
         .flex_none()
         .px(px(16.0))
         .py(px(14.0))
         .child(section_title("Avisos de esta serie", None, cx))
-        .child(alerts_body);
-
-    alerts_card
+        .child(alerts_body)
 }
 
 #[allow(unused_variables, clippy::too_many_lines)]
@@ -660,7 +657,8 @@ fn rules_card(p: &Page<'_>, cx: &mut Context<Calendar>) -> Div {
         .collect::<Vec<_>>()
         .join(" · ");
     let dlc = series.track.contains("Silverstone") || series.track.contains("Road Atlanta");
-    let rules = chrome::card(cx)
+
+    chrome::card(cx)
         .flex_none()
         .px(px(16.0))
         .py(px(14.0))
@@ -713,9 +711,7 @@ fn rules_card(p: &Page<'_>, cx: &mut Context<Calendar>) -> Div {
                     if dlc { "DLC · lo tienes" } else { "Incluido" }.to_owned(),
                     cx,
                 )),
-        );
-
-    rules
+        )
 }
 
 #[allow(unused_variables, clippy::too_many_lines)]
@@ -808,14 +804,13 @@ fn rotation_card(cal: &Calendar, p: &Page<'_>, cx: &mut Context<Calendar>) -> Di
                 ),
         );
     }
-    let rotation_card = chrome::card(cx)
+
+    chrome::card(cx)
         .flex_none()
         .px(px(16.0))
         .py(px(14.0))
         .child(section_title("Circuito por semana", None, cx))
-        .child(rotation);
-
-    rotation_card
+        .child(rotation)
 }
 
 pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {

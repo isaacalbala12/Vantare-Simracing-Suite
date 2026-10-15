@@ -750,10 +750,17 @@ impl Render for Hub {
                 .into_any_element();
         }
         let viewport = window.viewport_size();
+        // El contrato visual del calendario contrae la barra por debajo de 1400 px.
+        let sidebar = match &self.capture {
+            Some(capture) if capture.name.starts_with("calendario-r6-") => {
+                Some(f32::from(viewport.width) >= 1400.0)
+            }
+            _ => self.shell.sidebar_pref,
+        };
         let mut adapt = orbit::Adapt::new(
             f32::from(viewport.width),
             f32::from(viewport.height),
-            self.shell.sidebar_pref,
+            sidebar,
             self.shell.column_open,
         );
         self.general_preferences().density.apply(&mut adapt);
@@ -767,7 +774,9 @@ impl Render for Hub {
             .update(cx, |view, cx| view.set_adapt(adapt, cx));
         self.remote.update(cx, |view, cx| view.set_adapt(adapt, cx));
         self.refresh_query(cx);
-        if presentation(self.section) == Presentation::Fullscreen {
+        if presentation(self.section) == Presentation::Fullscreen
+            || (self.section == Section::Calendar && self.calendar.read(cx).full_screen())
+        {
             return self.render_fullscreen(window, cx);
         }
         let skin = orbit::skin(cx).clone();
@@ -1456,6 +1465,7 @@ pub fn run_with_access(mut options: Options, access: navigation::Access) -> Resu
             // de los monitores y sin foco; la captura usa PrintWindow del HWND.
             let offscreen = options.capture.is_some()
                 && std::env::var_os("VANTARE_CAPTURE_OFFSCREEN").is_some();
+            #[allow(clippy::cast_precision_loss)]
             let window_bounds =
                 options
                     .capture_size

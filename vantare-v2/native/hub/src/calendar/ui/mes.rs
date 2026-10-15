@@ -260,7 +260,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
             }
             if alerts > 0 {
                 head = head.child(day_pill(
-                    orbit::ramp(skin.button, 180.0).into(),
+                    orbit::ramp(skin.button, 180.0),
                     0x00ff_ffff,
                     "bell-fill",
                     alerts,
@@ -350,7 +350,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
             cx,
         )))
         .child(day_pill(
-            orbit::ramp(skin.button, 180.0).into(),
+            orbit::ramp(skin.button, 180.0),
             0x00ff_ffff,
             "bell-fill",
             2,

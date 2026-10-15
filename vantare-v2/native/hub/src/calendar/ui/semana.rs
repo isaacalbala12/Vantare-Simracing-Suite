@@ -124,7 +124,7 @@ pub(super) fn card(cal: &Calendar, readonly: bool, cx: &mut Context<Calendar>) -
                 })),
         )
         .when(!compact, |bar| {
-            bar.child(div().w(px(92.0)).flex_none().child(t(
+            bar.child(div().min_w(px(92.0)).flex_shrink(1.0).child(t(
                 "mar → lun, como publica LMU",
                 12.0,
                 400,
@@ -200,7 +200,7 @@ pub(super) fn card(cal: &Calendar, readonly: bool, cx: &mut Context<Calendar>) -
     let today = (current_week && !readonly)
         .then(|| days.iter().position(|d| *d == zone.date(now)))
         .flatten();
-    let mut content = div().relative().flex().flex_col();
+    let mut content = div().relative().flex().flex_col().min_h_full();
     if let Some(_today) = today {
         let f = rows::fraction(now, week.from, week.to);
         content = content.child(

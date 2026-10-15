@@ -54,15 +54,13 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
             .unwrap_or_default();
         let range = match (starts.first(), starts.last()) {
             (Some(a), Some(b)) => {
-                let early = |at: DateTime<Utc>| {
-                    let local = zone.naive(at);
-                    if chrono::Timelike::hour(&local) < 6 {
-                        local.date() - chrono::Duration::days(1)
-                    } else {
-                        local.date()
-                    }
+                let late = zone.naive(*b);
+                let db = if chrono::Timelike::hour(&late) < 3 {
+                    late.date() - chrono::Duration::days(1)
+                } else {
+                    late.date()
                 };
-                let (da, db) = (early(*a), early(*b));
+                let da = zone.date(*a);
                 format!(
                     "{} {} → {} {} {}",
                     clock::day_name(da),
@@ -92,7 +90,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                 day_starts.into_iter().partition(|at| *at < now);
             // Hoy se agrupan las que ya salieron; un día entero pasado se enseña atenuado.
             let compress = !gone.is_empty() && !upcoming.is_empty();
-            let mut chips = div().flex().flex_wrap().gap(px(5.0));
+            let mut chips = div().flex().flex_wrap().gap(px(4.0));
             if compress {
                 chips = chips.child(
                     div()

@@ -62,6 +62,8 @@ pub(crate) struct Ficha {
 }
 
 #[derive(Default)]
+// Estado de interfaz: cada booleano es un modo independiente.
+#[allow(clippy::struct_excessive_bools)]
 pub(crate) struct State {
     pub view: View,
     pub span: Span,
@@ -839,7 +841,7 @@ fn fullscreen(cal: &mut Calendar, cx: &mut Context<Calendar>) -> impl IntoElemen
             .size_full()
             .flex()
             .flex_col()
-            .p(px(16.0))
+            .p(px(12.0))
             .bg(gpui::rgb(orbit::canvas(cx)))
             .occlude()
             .child(body),

@@ -186,6 +186,11 @@ pub struct Calendar {
 }
 
 impl Calendar {
+    /// Día, Semana o Mes a pantalla completa: el Hub oculta barra lateral y cabecera.
+    pub(crate) fn full_screen(&self) -> bool {
+        self.ui.full && self.ui.view == ui::View::Calendario
+    }
+
     pub(crate) fn set_adapt(&mut self, adapt: orbit::Adapt, cx: &mut Context<Self>) {
         if self.adapt != adapt {
             self.adapt = adapt;

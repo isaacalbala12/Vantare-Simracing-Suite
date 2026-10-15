@@ -1,3 +1,91 @@
+## #1608 · R9 · Identidad de servidor y batería completa (15/10/2026)
+
+Base autorizada `494f5c452`; nightly `64c493e4f` incorporada sin conflictos
+mediante merge `18ff846c`. Cambios propios: `b9b06d33` (adaptadores), `f711fc2d`
+(revocación de replay), `0d3da715` (llamadores de identidad) y `1cfe19da`
+(fixtures vigentes). El merge conserva los handoffs de ambos proyectos. Worktree `~/wt-1608r8`, rama worker propia:
+la rama original estaba ocupada por otro worktree limpio en el SHA inicial.
+Entrega al bare local con el refspec explícito hacia
+`vantareapp/isa-1608-cierre-comercial`; SHA final/push en el buzón del orquestador.
+
+**R8-P1-1:** los adaptadores service-only ya no fabrican claims `{sub,role}`.
+Pasan el UUID verificado a tres funciones privadas `…_for_account`; wrappers
+antiguos usan la misma implementación con `private.current_account()` real.
+No se concede EXECUTE de helpers a clientes, servicio, triage, Pilot o publicador.
+Se conservan validación, consentimiento, membresía, hashes, cuotas, retries y
+crédito. Cada helper bloquea el UUID y comprueba el tombstone antes de filas;
+una cuenta borrada no puede enviar. `current_account()` y sus ACL no cambian.
+
+RED F1IP 22/26 → GREEN **26/26** con todas las migraciones. Regresión ampliada
+**52/52**: triage/adjunto, claims conservados, ACL, Owner humano, calendario,
+resolutores de servicio, dispositivos, entitlements, JWT native-data y borrado.
+La preview sintética exacta de #1594 pasa **27 checks** tras TODAS las migraciones,
+sin grants de envío artificiales. Batería comercial final: **19 suites / 569 pgTAP**,
+**108 rutas / 638 checks** de carreras, incluidas las nuevas tablas triage.
+
+Fixtures actualizados sin relajar producto: ledger37 comprueba acceso efectivo
+(B02 conserva la fuente financiera), canonical8 exige bootstrap/sesión completa,
+admin57 usa registro/claims verificados y rechaza issuer no exacto, roadmap31
+acepta que B03 haya retirado handle_new_user. Los cuatro pasan sobre el catálogo
+completo y conservan sus pruebas anteriores a B03 (admin56 en ese contexto).
+
+La batería completa encontró otra regresión real: retirar replay después de una
+autorización Owner fallaba con `account_owner_is_immutable`. Corrección aditiva
+limitada a borrar los campos de replay/autorización con el mismo `report_id`.
+Ambos UUID, incluido el autorizador anterior, conservan bloqueo y comprobación
+de tombstone. RED 2/6 → GREEN **6/6**, con cambio de dueño y autorizador borrado
+rechazados. No hay excepción general para cambios de propietario.
+
+**Inventario de causa raíz:** todas las migraciones + catálogo instalado de
+nightly/rama: solo dos fabricantes de claims, ambos corregidos; 33 funciones
+leen identidad y 38 contando wrappers transitivos, revisadas individualmente.
+Servicios nativos/admin/billing/jobs usan parámetros o bindings explícitos;
+Storage usa propietarios persistidos/manifest/ruta y su preflight sin filas.
+Inventario y evidencia: `~/evidence/1608-r9/inventario-identidad.md`;
+tabla por TODAS las suites: `~/evidence/1608-r9/RESULTADOS.md`.
+
+Se ejecutaron todos los SQL/pgTAP y Deno de Supabase en ambos árboles. Los
+snapshots históricos tienen checkpoints y fixtures propios: no equivalen a
+una prueba del último esquema. El informe conserva cada fallo de la ejecución
+sin adaptar y la comprobación con su contrato vigente. Tras B03 no se reabre
+Auth ni se aceptan claims incompletos para satisfacer snapshots antiguos.
+Persisten en ambos árboles planes pgTAP desajustados (Codex 60/61, webhook
+30/27, privacidad 34/33) y Deno histórico: un error de tipos y cinco tests
+que esperan un comportamiento retirado. No se presentan como checks verdes.
+Edge con tipos y preview activada: **nightly 595 / rama 614 PASS, 1 ignored**
+(integración PostgREST opcional). Pilot original90+rollback10+carrera, triage83,
+admisión27, roadmap20+31/carreras, upgrades11+8/8 y heartbeat/roadmap standalone
+pasan en ambos contextos. Upgrades comerciales18/4/26, locks17/admin24,
+Storage owners10/multipart64/buckets17 y calidad456 pasan en la rama.
+
+**R8-P3-1 documentado:** son **11 policies TO public en 10 tablas distintas**,
+no 11 tablas: profiles aporta SELECT y UPDATE. Son profiles, licenses, devices,
+user_entitlements, billing_customers, billing_subscriptions, subscriptions,
+license_events, license_validations y hwid_changes. Con SELECT de tabla como
+los defaults de Supabase, anon recibe **42501** por no tener EXECUTE sobre
+current_account, en lugar de 0 filas; sin fuga. Sonda local 12/12. No se abren
+ACL anon. Los clientes vigentes usan authenticated o el servidor autorizado.
+
+Sin Notion/Plane/subagentes/GitHub, por excepción explícita; ningún servicio,
+secreto o dato real, ni dependencia nueva. PostgreSQL17/pgTAP local desechable y
+schema Storage del fixture R6; no se usó Docker en R9, ni queda stack propio.
+Rust no ejecutado: sin cambios propios en native frente al merge de nightly.
+Storage/PostgREST HTTP no repetidos; evidencia anterior R8 sigue siendo histórica.
+No CI remota, despliegue, promoción, release ni venta. Siguen siendo obligatorios
+el staging gestionado y el inventario de buckets de producción antes de vender.
+Siguiente: review del orquestador sobre el diff y los fallos compartidos del
+informe; el seguimiento y los estados del tracker los gestiona el orquestador.
+
+Reproducción mínima de R8-P1-1 (sin DSN ni servicios reales):
+
+```sh
+python3 supabase/tests/run-commercial-local.py --pg-bin <PG17/bin> \
+  --storage-schema <schema-Storage-local.sql> --output <evidencia> --testing-identity
+# RED: mismo comando con --before-testing-identity.
+# Default, sin --testing-identity: 19 suites y todas las carreras.
+# RED de privacidad: --testing-identity --before-posthog-consent-clear.
+```
+
 ## #1608 · R8 · Entrega local para revisión (15/10/2026)
 
 Inicio `d5796ad1a`; correcciones `9496d71d` (Pilot) y `54a605a3` (deriva de

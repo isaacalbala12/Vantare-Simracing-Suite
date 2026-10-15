@@ -8,6 +8,8 @@ from commercial_write_cases import SETUP
 parser=argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--output',required=True)
 parser.add_argument('--phase',choices=['red','red-isolation','green'],required=True)
+parser.add_argument('--replay', action='store_true', help='Drain prior synthetic rows after recovery; no new data')
+parser.add_argument('--expect-outage', action='store_true', help='Replay expects a real backend failure')
 args=parser.parse_args()
 OUT=Path(args.output).resolve();OUT.mkdir(parents=True,exist_ok=True)
 C=json.loads((OUT/'storage-fixture-auth.json').read_text());C['url']='http://127.0.0.1:54330'
@@ -38,7 +40,7 @@ def token(role,secret):
  return b+'.'+base64.urlsafe_b64encode(hmac.new(secret,b.encode(),hashlib.sha256).digest()).rstrip(b'=').decode()
 rows=[]
 try:
- for mode in ('null','uuid','outage'):
+ for mode in (() if args.replay else ('null','uuid','outage')):
   vals={k:str(uuid.uuid4()) for k in ('a','batch','evidence','license','attempt','questionnaire','contribution','new_id','other','inbox')}
   tag=phase+'-'+mode+'-'+str(uuid.uuid4())[:8]
   vals.update(case=tag,issuer='https://'+tag+'.clerk.invalid',subject='user_'+tag.replace('-','_'),h='b'*64,h2='c'*64,sha='b'*40)
@@ -62,17 +64,28 @@ try:
   # Existing barrier must still reject service writes after deletion.
   status,body=s3('POST',name,'uploads=');log.append('late write '+mode+' '+str(status));assert status>=400
   if phase.startswith('green'):
+   for method,query,data,label in [('PUT','partNumber=2&uploadId='+upload,b'late-private-bytes','late part'),('POST','uploadId='+upload,b'<CompleteMultipartUpload/>','late complete')]:
+    status,body=s3(method,name,query,data);log.append('denied '+mode+' '+label+' HTTP '+str(status));assert status>=400
    for denied_name,denied_token,label in [(name+'-wrong',None,'wrong path'),(name,token('authenticated',b'isa1608-r6-storage-signing-material-32-bytes'),'nonservice JWT'),(name,token('service_role',b'invalid-fixture-signature'),'forged service JWT')]:
     status,body=s3('DELETE',denied_name,'uploadId='+upload,token=denied_token)
     log.append('denied '+mode+' '+label+' HTTP '+str(status));assert status>=400
    assert sql(f"select count(*) from storage.s3_multipart_uploads where id='{upload}';")=='1'
   rows.append({'mode':mode,'issuer':vals['issuer'],'subject':vals['subject'],'upload_id':upload,'name':name,'objectName':object_name,'failAbort':mode=='outage','objectVersion':version})
- (OUT/('storage-'+phase+'-rows.json')).write_text(json.dumps(rows))
+ if args.replay:
+  for prior in sorted(OUT.glob('storage-*-rows.json')):
+   rows.extend(json.loads(prior.read_text()))
+  rows=list({r['upload_id']:r for r in rows}.values())
+  if args.expect_outage:rows=[r for r in rows if sql(f"select count(*) from storage.s3_multipart_uploads where id='{r['upload_id']}';")=='1']
+  assert rows,'replay must exercise at least one synthetic row'
+  for row in rows:row.update(failAbort=args.expect_outage,realAbort=True)
+ else:(OUT/('storage-'+phase+'-rows.json')).write_text(json.dumps(rows))
  dbkey=token('service_role',b'super-secret-jwt-token-with-at-least-32-characters-long')
  r=subprocess.run(['deno','run','--no-lock','--config',str(ROOT/'supabase/functions/deno.json'),'--allow-env','--allow-net=127.0.0.1:54321,127.0.0.1:54330',str(ROOT/'supabase/tests/commercial-storage-cleanup.ts')],input=json.dumps({'dbUrl':'http://127.0.0.1:54321','dbKey':dbkey,'storage':C,'rows':rows}),text=True,capture_output=True)
  log.append(r.stdout+r.stderr);log.append('cleanup exit '+str(r.returncode))
  for row in rows:
-  log.append(row['mode']+' persisted upload/parts='+sql(f"select count(*) from storage.s3_multipart_uploads where id='{row['upload_id']}'; select count(*) from storage.s3_multipart_uploads_parts where upload_id='{row['upload_id']}';"))
+  counts=sql(f"select count(*) from storage.s3_multipart_uploads where id='{row['upload_id']}'; select count(*) from storage.s3_multipart_uploads_parts where upload_id='{row['upload_id']}';")
+  log.append(row['mode']+' persisted upload/parts='+counts)
+  if phase=='green':assert counts.splitlines()==(['1','1'] if row['failAbort'] else ['0','0'])
   p=subprocess.run(['docker','exec','isa1608-r6-storage','test','-d','/tmp/r5-storage/multiparts/'+row['upload_id']],capture_output=True)
   log.append(row['mode']+' multipart backend present='+str(p.returncode==0))
   if phase.startswith('green'):assert (p.returncode==0)==row['failAbort']
@@ -83,4 +96,4 @@ try:
  if phase.startswith('red'):assert r.returncode!=0,'RED must fail unchanged cleaner'
  else:assert r.returncode==0,'GREEN cleaner failed'
  print('Storage real local '+phase+' assertions observed')
-finally:(OUT/('storage-'+phase+'.log')).write_text('\n'.join(log))
+finally:(OUT/('storage-'+phase+('-replay-outage' if args.expect_outage else '-replay' if args.replay else '')+'.log')).write_text('\n'.join(log))

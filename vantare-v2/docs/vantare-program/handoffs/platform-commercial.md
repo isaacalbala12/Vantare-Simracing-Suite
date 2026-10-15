@@ -1,3 +1,18 @@
+## #1608 · R7 · Storage gestionado (15/10/2026)
+
+R6-P1-1/P2-1: imagen original v1.70.3, sin variante. El preflight abort
+se descarta con RETURN NULL; nunca persiste INSERT/UPDATE tras tombstone.
+Ruta/upload/rol/operación verificados; Storage original elimina backend y metadata.
+RED 503 retenía upload/parte/bytes/cola → GREEN con originales NULL/UUID,
+partes reales, PNG y dos entregas webhook firmadas. Fallo backend readonly
+conserva 503 y pendientes; recuperación RW y replay convergen a 200 y 0/0/0/0.
+Evidencia `~/evidence/1608/r7/`; procedimiento y límites en
+[tools/storage](../../../../../tools/storage/README.md). Imagen/parche propios retirados.
+R6-P3-1 documentado como DUDA: buckets globales no tienen purga de owner
+histórico; inventario prod no autorizado, pendiente del orquestador/Isaac.
+R6-P3-3: configuración global sin owner/manifest debe excluir PII.
+Sin despliegue, producción, venta ni actualización de trackers del orquestador.
+
 ## #1608 · R7 · Lecturas admin de borrados (15/10/2026)
 
 R6-P2-2 corregido: el actor vivo mantiene el control Owner y las lecturas

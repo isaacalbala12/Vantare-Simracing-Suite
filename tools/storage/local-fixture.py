@@ -14,7 +14,6 @@ import urllib.request
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('command', choices=['start', 'proxy'])
 parser.add_argument('--output', required=True)
-parser.add_argument('--patched', action='store_true')
 parser.add_argument('--backend', help='Optional directory of synthetic fixture bytes')
 parser.add_argument('--read-only', action='store_true', help='Real backend failure control')
 args = parser.parse_args()
@@ -73,7 +72,7 @@ else:
         cmd.extend(['--mount', mount + (',readonly' if args.read_only else '')])
     elif args.read_only:
         raise ValueError('--read-only requires --backend')
-    cmd.append('vantare-storage:isa-1608-r6' if args.patched else 'public.ecr.aws/supabase/storage-api:v1.70.3')
+    cmd.append('public.ecr.aws/supabase/storage-api:v1.70.3')
     subprocess.run(cmd, check=True, capture_output=True)
     (out/'storage-fixture-auth.json').write_text(json.dumps({
         'url': 'http://127.0.0.1:54330', 'anonKey': anon, 'serviceKey': service,

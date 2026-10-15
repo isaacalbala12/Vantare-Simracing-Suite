@@ -5,7 +5,8 @@ bloqueada: 403. JSON cerrado de 8 KiB, bearer limitado, solo POST, `no-store`,
 presupuesto persistente de 60 peticiones/minuto por actor. El cliente no recibe
 secretos ni tiene acceso directo a tablas. No se crea Owner automáticamente.
 
-Aplicar las migraciones existentes y `20261014010000_native_admin_r1.sql` antes
+Aplicar las migraciones existentes y las de gestión `20261014010000_native_admin_r1.sql` y
+`20261015010000_native_admin_review_r3.sql` antes
 de usar este cliente. Contrato v1 ampliado, conservando las acciones anteriores:
 
 | Acción | Campos | Resultado |
@@ -27,11 +28,19 @@ Búsquedas: solo cuentas ya vinculadas al issuer; no crea destinos ni une por
 correo. Los filtros de Personas se aplican a la página cargada, con recuentos
 SQL globales. Revocar acceso individual conserva acceso por plan, rol o rollout.
 
-Informes: `submitted`, `in_review`, `validated`, `rejected`, `fixed` son los cinco
-estados visibles nuevos; se conserva lectura de estados históricos. Draft no se
-lista. Arreglado exige aceptación previa y versión de release. La actualización
-usa los triggers y `testing_report_followup` existentes: avisos y descuentos de
-testers conservan su flujo. Capturas privadas `ready`, firmadas durante 600 s.
+Informes: `submitted`, `in_review`, `validated`, `rejected`, `spam`, `fixed`;
+se conserva lectura de estados históricos. Draft no se lista. Las decisiones de
+contribuciones usan el mismo motor privado que `testing_contribution_review`
+(#1594), con nota humana obligatoria (`reason`, ≤500 bytes en Edge), 1 aceptación
+por día y 2 por semana UTC/cuenta. La revisión manual se identifica como `human`,
+sin inventar una propuesta o confianza de modelo. La ruta pública anterior sigue
+exigiendo propuesta y Owner autenticado; no se amplían permisos EXECUTE.
+La decisión es inmutable como en #1594; un intento incompatible devuelve 409.
+La purga existente usa `decided_at + 90 días` para logs y telemetría.
+Arreglado exige aceptación previa y versión. Reabrir borra versión, título y
+resumen del arreglo en el trigger común; el tester deja de ver esa versión.
+Capturas privadas `ready`, firmadas durante 600 s. Las lecturas se auditan con
+actor, acción, fecha y objetivo; sin duplicar nombres, correos ni pagos.
 
 ## Efectos externos y recuperación
 
@@ -62,10 +71,18 @@ adoptar un código anterior identificado por `vantare_offer_key: creator:CODE`.
 
 ## Recibos y comisiones
 
-Proyección privada de órdenes/refunds firmados del webhook. Para cuentas sin
-historia certificada se lee el historial completo de sandbox: páginas acotadas,
-identidades existentes, sin crear cuentas. Una vez completo se usa el ledger,
-sin volver a consultar Polar por caducidad de caché. La lectura histórica no
+Proyección privada de órdenes/refunds firmados del webhook. La carga inicial
+lee el historial completo de sandbox una sola vez por entorno: páginas acotadas,
+identidades existentes, sin crear cuentas. Después se usa el ledger. El primer
+pago de una cuenta tras el watermark inicial certifica su historia si no contiene
+recibos anteriores al watermark; no fuerza otra lectura global. Un pago histórico
+atrasado conserva historia incompleta hasta una reconciliación revisada.
+Un refund mal formado con factura identificable o incompatible con el ledger
+pone solo esa factura en cuarentena (`refund_pending`): comisión 0 salvo importes
+ya liquidados. Las demás facturas siguen visibles. La cuarentena requiere una
+reparación revisada; no se elimina automáticamente al recibir otro webhook.
+Un refund sin identificador de factura no permite acotar el daño y mantiene el
+fallo cerrado de la carga inicial. La lectura histórica no
 concede licencias ni sustituye los ledgers comerciales existentes. El espejo de
 Launch Edition nunca consume su ruta BIL-07 de revocación tras reembolso.
 
@@ -75,8 +92,11 @@ no ofrece `paid_at`; no demuestra fecha de liquidación bancaria. Las órdenes c
 saldo aplicado, divisa/producto desconocido o campos incompletos dejan la cuenta
 sin certificar y bloquean el pago manual. Pendientes de reembolso no se liquidan.
 Motivo del refund y fecha de su confirmación, cuando existen, proceden del último estado verificado (`modified_at`), no de una liquidación bancaria. La primera compra pagada fija creador; cohortes por aniversario mensual UTC:
-30 % mes 1, 10 % meses 2–12, 0 % desde mes 13. Igual para cobro anual, sin
-prorratear. Redondeo half-up por línea. Los registros legacy netos se identifican
+la tasa vive solo en `private.native_admin_commission_rate`: 30 % mes 1,
+10 % meses 2–12, 0 % desde mes 13. Se conserva el cobro anual sin prorratear
+como comportamiento del candidato, pendiente de decisión explícita de Isaac
+(no una regla aprobada para pagar en producción). Ver las dos lecturas con un
+anual de 100 € en el handoff comercial. Redondeo half-up por línea. Los registros legacy netos se identifican
 como tales, con fecha de registro; no se inventan impuestos ni enlace de cliente.
 
 Solo se apunta saldo de meses UTC cerrados, >0 y ≤ disponible, con bloqueo
@@ -88,17 +108,17 @@ reconstruye la situación de un cierre histórico anterior al registro manual.
 
 ## Verificación local
 
-Desde raíz Git, sin permisos de red y con cachés ya instaladas:
+Desde raíz Git, sin permisos de red y con cachés ya instaladas (en macOS se permite escritura temporal a los tests de catálogo):
 
 ```sh
-deno test --config supabase/functions/deno.json --cached-only --allow-env --allow-read --allow-write=/tmp supabase/functions
+deno test --node-modules-dir=none --config supabase/functions/deno.json --cached-only --allow-env --allow-read --allow-write supabase/functions
 python3 supabase/tests/run-admin-local.py --output /ruta/fuera-del-repo --test native_admin.test.sql --test native_admin_reports_r1.test.sql --test native_admin_accounts_r1.test.sql --test native_admin_creators_r1.test.sql --test native_admin_payments_r1.test.sql --test native_admin_months_r1.test.sql --test native_admin_attribution_r1.test.sql
 ```
 
 Runner: PostgreSQL Supabase desechable, Docker `--network none`, sin puertos,
 todas las migraciones reales y bootstrap sintético auth/storage. Comprueba TAP,
 no solo exit de psql. Fakes Clerk/Polar en Edge. RED y GREEN en
-`~/evidence/1627/`. Variables existentes: configuración pública OAuth, secretos
+`~/evidence/1627-r3/` (R1: `~/evidence/1627/`). Variables existentes: configuración pública OAuth, secretos
 Edge ya establecidos, `POLAR_ENVIRONMENT`, `POLAR_ACCESS_TOKEN`, mapa Polar;
 solo se usan nombres, no valores reales. Despliegue, secretos, QA de OAuth y
 webhooks reales quedan al orquestador tras revisión y autorización propias.

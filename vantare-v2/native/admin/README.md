@@ -12,12 +12,12 @@ Desde `native/`, usar la cola descrita en su README en Windows. Excepción
 explícita del encargo #1627 para este Mac:
 
 ```sh
-CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$HOME/target-1627" cargo build -p vantare-admin --locked
-"$HOME/target-1627/debug/vantare-admin" --demo --screen users
-"$HOME/target-1627/debug/vantare-admin" --demo --screen creators
-"$HOME/target-1627/debug/vantare-admin" --demo --screen reports
-"$HOME/target-1627/debug/vantare-admin" --demo --screen rollout
-"$HOME/target-1627/debug/vantare-admin" --demo --screen login
+CARGO_BUILD_JOBS=4 CARGO_TARGET_DIR="$HOME/target-1627r3" cargo build -p vantare-admin --locked
+"$HOME/target-1627r3/debug/vantare-admin" --demo --screen users
+"$HOME/target-1627r3/debug/vantare-admin" --demo --screen creators
+"$HOME/target-1627r3/debug/vantare-admin" --demo --screen reports
+"$HOME/target-1627r3/debug/vantare-admin" --demo --screen rollout
+"$HOME/target-1627r3/debug/vantare-admin" --demo --screen login
 ```
 
 `--demo` no hace red ni abre Store; datos falsos de `fixtures/r1.json`, importados
@@ -30,9 +30,9 @@ informes son fixture de QA, no pruebas de Storage real.
 Mac, con el binario compilado:
 
 ```sh
-sh admin/instalar-macos.sh "$HOME/target-1627/debug/vantare-admin"
+sh admin/instalar-macos.sh "$HOME/target-1627r3/debug/vantare-admin"
 # Tercer argumento opcional --desktop; conserva un acceso ajeno existente.
-sh admin/instalar-macos.sh "$HOME/target-1627/debug/vantare-admin" "$HOME/Applications/Vantare Gestión.app" --desktop
+sh admin/instalar-macos.sh "$HOME/target-1627r3/debug/vantare-admin" "$HOME/Applications/Vantare Gestión.app" --desktop
 ```
 
 En Windows se conserva `admin/instalar-escritorio.ps1 -Executable <binario>`:
@@ -62,11 +62,11 @@ Crear códigos y bloquear solo funcionan con servidor sandbox en este candidato.
 Personas: consulta inicial paginada (50), búsqueda remota tras 300 ms sin teclear,
 filtros sobre página cargada y recuentos globales. Módulos muestra fuente efectiva
 (plan, rol, rollout, individual), con cambio únicamente del acceso propio.
-Informes: cinco estados nuevos, aceptación antes de arreglado y versión obligatoria;
+Informes: incluye Spam y nota obligatoria al aceptar/rechazar/marcar spam; aceptación antes de arreglado y versión obligatoria;
 se siguen leyendo estados históricos. Capturas firmadas solo del origen/bucket
 Supabase configurados, sin OAuth/apikey, acotadas a 10 MiB, 4096×4096 y 64 MiB.
 
-Creadores: céntimos y tasas calculados en servidor, importe anual sin prorratear.
+Creadores: céntimos y tasas calculados en servidor. El candidato conserva el anual sin prorratear, pendiente de la decisión de Isaac; las dos lecturas y ejemplo están en el handoff comercial.
 Ejemplo aprobado CARLOSGT: 3,92 € ganados − 0,96 € pagados = 2,96 € pendientes.
 Historial incompleto se advierte y desactiva el pago. «Apuntar pago» solo registra
 que se ha pagado el saldo disponible de meses cerrados, no envía dinero. Facturas
@@ -85,9 +85,9 @@ de esta QA sin SaaS real y requiere sesión privada y autorización correspondie
 
 ```sh
 cargo fmt --all -- --check
-CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$HOME/target-1627" cargo clippy -p vantare-admin -p vantare-services --all-targets --locked -- -D warnings
-CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$HOME/target-1627" cargo nextest run -p vantare-admin -p vantare-services --locked -j 2
-RUST_TEST_THREADS=2 CARGO_BUILD_JOBS=2 CARGO_TARGET_DIR="$HOME/target-1627" cargo test --workspace --test lifecycle --locked
+CARGO_BUILD_JOBS=4 CARGO_TARGET_DIR="$HOME/target-1627r3" cargo clippy -p vantare-admin -p vantare-services --all-targets --locked -- -D warnings
+CARGO_BUILD_JOBS=4 CARGO_TARGET_DIR="$HOME/target-1627r3" cargo nextest run -p vantare-admin -p vantare-services --locked --build-jobs 4 -j 1
+RUST_TEST_THREADS=2 CARGO_BUILD_JOBS=4 CARGO_TARGET_DIR="$HOME/target-1627r3" cargo test --workspace --test lifecycle --locked
 ```
 
 Windows pendiente: compilar con configuración pública y cola del repo; repetir

@@ -1,54 +1,58 @@
-## #1627 · VANTA-21 · miniapp de gestión r1 (14/10/2026)
+## #1627 / PR #1639 · VANTA-21 · corrección R1 (15/10/2026)
 
-**Cierre verificado 2026-10-14 19:00 UTC:** VANTA-21 con resumen actualizado y
-estado «Por revisar» mediante el script autorizado del Mac. Implementación local
-`b7a217394f45778290624139f25d3982f0610fa6`; HEAD final de recogida en
-`~/orq/1627.buzon.md` y `~/evidence/1627/RESUMEN.md`. Sin PR/CI remoto ni push.
+Worker Codex macOS arm64, encargo del orquestador, sin subagentes ni servicios
+reales. Excepción explícita: no Notion/Plane/GitHub; seguimiento en
+`~/orq/1627.buzon.md`. Rama `vantareapp/isa-1627-miniapp-gestion`, entrada
+`52b1d3c39`; nightly `64c493e4f` fusionado primero mediante merge `2354cd416`.
+Se recoge mediante el bare local `~/vantare.git`; no promoción de canal,
+despliegue, release ni CI remoto. SHAs finales en el buzón y la evidencia.
 
+Las contribuciones ya pasan por el motor de revisión de #1594: nota humana,
+aceptación 1/día y 2/semana UTC por cuenta, revisión duradera y purga a 90 días
+de logs/telemetría. `human` identifica revisión manual sin fingir propuesta de
+modelo; la ruta pública anterior conserva propuesta obligatoria y permisos.
+Spam se lee, filtra y confirma en la miniapp. La decisión sigue siendo inmutable;
+un cambio incompatible devuelve conflicto. Reabrir retira los metadatos de
+arreglo en el trigger compartido, también para los lectores del tester.
 
-Worker Codex macOS arm64, sin subagentes/GitHub/push. Rama
-`vantareapp/isa-1627-miniapp-gestion`, base nightly local `b9ec75ed5435fb95130946cd207a4fa1ce8b8a64`.
-Issue #1627 leída de `~/orq/1627.issue.md`; diseño aprobado `admin-r1.html` y
-`datos-necesarios.md` §9 son el plan. Project Vantare. Seguimiento GitHub/PR/CI al
-orquestador; no se verificaron remotos ni se obtuvo nightly por autorización del
-encargo sin GitHub. Commits y HEAD exactos en `~/orq/1627.buzon.md`.
+Personas usa resúmenes sin pagos y recuentos agregados. Creadores agrega las
+líneas una sola vez. En Docker, con 3.000 cuentas, 36.000 pagos y 100 creadores:
+Personas 16,8 ms y Creadores 958,7 ms; antes la búsqueda excede el límite sintético
+de 6 s y se cancela. Las lecturas auditan quién/qué/cuándo/objetivo sin copiar PII
+ni pagos. La primera compra posterior al watermark usa el ledger, sin releer todo
+Polar. Un refund identificable pero inválido pone esa factura pendiente de
+revisión y bloquea su comisión; el resto se muestra. Cuarentenas y pagos históricos
+atrasados requieren reconciliación revisada, sin un nuevo barrido automático.
 
-Backend: informes actuales e históricos, nuevos estados/followup, bloqueo privado
-que cierra nuevas autorizaciones, ban Clerk y cancelación Polar recuperable,
-creadores/códigos API y ledger de comisiones mensual. Efectos externos nuevos
-limitados a sandbox. Owner protegido en SQL/Edge. Correo de borrado comprobado
-contra Clerk; correo correcto falla cerrado sin efectos: **#1622 sigue pendiente
-y no está conectado**. No hay RPC de borrado en esta base que se pueda reutilizar.
+**Anual pendiente de Isaac; este arreglo conserva el resultado anterior.**
+La tasa activa está centralizada en `private.native_admin_commission_rate`.
+Lectura actual: 30 % de lo cobrado al pagar en el mes 1; un anual de **100,00 €
+genera 30,00 €**; renovación en mes 13 genera 0 €. Otra lectura posible es repartir
+100 €/12 entre los meses: **100 × (30 % + 10 % × 11) / 12 = 11,666… €**, unos
+**11,67 € (11,7 %)** antes de concretar redondeo por línea y calendario de devengo.
+No se implementa ese prorrateo ni se autoriza pagar comisiones reales.
+La frase anterior «anual sin prorratear aprobado» no era una decisión confirmada.
 
-Comisiones: céntimos cobrados tras descuento/impuestos, refunds incluyen impuesto;
-30 % mes 1, 10 % mes 2–12 por aniversario, también anual; mes 13 cero. Pago manual
-solo sobre meses UTC cerrados. Protege exactamente lo ya pagado por línea; no
-reclama pagos anteriores ni congela comisiones pendientes. Historial incompleto
-bloquea pago. Carga inicial de historia Polar sandbox si falta; después ledger
-sin lecturas remotas por mero vencimiento de caché. Detalles y limitaciones en
-`supabase/functions/native-admin/README.md`.
+UI: «· anual», etiqueta «—», Owner y Tester simultáneos, tarjeta Clientes/Ventas,
+fechas «2 sep» y nota obligatoria de revisión. Capturas GPUI demo frente al HTML
+en `~/evidence/1627-r3/comparativa.html`; no representan acceso a SaaS real.
 
-Atribución de la ficha corregida para coincidir con la comisión: un código de una compra posterior no sustituye al de la primera. Refunds conservan motivo y timestamp verificado cuando existen; datos ausentes quedan sin inventar.
+Verificación: Docker con todas las migraciones y 133 pgTAP de gestión; motor
+compartido con runner canónico #1594, 83 pgTAP + concurrencia/ACL; seguimiento
+#1610, 35 pgTAP + concurrencia/rollback. Edge completo 613 PASS / 2 omitidos.
+Clippy `-D warnings` y fmt con Rust fijado 1.95 PASS; Nextest admin/services
+177 PASS con tests seriales y `CARGO_BUILD_JOBS=4`. Dos ejecuciones paralelas
+mostraron fallos intermitentes existentes de callback; logs conservados.
+Comparación de todas las suites SQL comunes bajo el runner genérico: mismos
+937 asserts válidos y 22 suites incompatibles en nightly y candidato, sin nuevos
+fallos. Se usan los runners canónicos para triaje y seguimiento, que sí pasan.
+Quality/retirada: 456 huellas PASS. Target propio `~/target-1627r3`, borrado al cerrar.
 
-Miniapp: cuatro pantallas + entrar, fichas y confirmaciones, estados de carga,
-vacío/error, sesión aislada del Hub en Mac/Windows. GPUI y servicios existentes,
-sin dependencias nuevas. QA demo y empaquetado privados locales; capturas y gates
-en `~/evidence/1627/`. Último hito SQL: 103 PASS; Edge completa 606 PASS/1 omitido;
-Nextest admin/services: 153 PASS. Se conservan fallos iniciales y evidencia RED.
-Comparación visual terminada: 31 capturas finales, cinco pantallas y fichas,
-confirmaciones/carga/vacío/error, correo incorrecto/correcto, alta completa por
-teclado y pago simulado. `~/evidence/1627/comparativa.html` conserva r1 junto a GPUI.
-Mac: fmt/check/build/Clippy PASS, Nextest 153 PASS, lifecycle 10 PASS, arquitectura
-PASS y quality/retirada 456 huellas. Paquete debug privado verificado fuera del
-repo; no se instaló en Applications/Escritorio reales. Tab/Mayús+Tab y foco inicial
-de formularios comprobados. Ventana QA cerrada y turno de pantalla liberado.
-Checks y límites detallados en `~/evidence/1627/RESUMEN.md`;
-no se afirma QA real de OAuth/Clerk/Polar/Windows.
-
-Sin merge, push, PR, promoción, release, despliegue ni efectos sobre datos reales.
-Siguiente: revisar diff y evidencias, recoger rama local, validar Windows; conectar
-borrado cuando #1622 se apruebe. Cualquier activación en producción necesita otro
-encargo explícito; este candidato la rechaza para los efectos nuevos.
+Límites: Windows/DPI/teclado físico y OAuth/Clerk/Polar reales pendientes;
+borrado de cuenta continúa sin conectar a #1622, como en el candidato revisado.
+Los efectos externos nuevos siguen limitados a sandbox. Falta revisión del
+orquestador y decisión anual de Isaac. No hay activación en producción.
+Evidencia anterior r1: `~/evidence/1627/RESUMEN.md` (histórica).
 
 ## #1620 / PR #1621 · lanzamiento sin trial, decisión B (14/10/2026)
 

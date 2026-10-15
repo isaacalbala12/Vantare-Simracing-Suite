@@ -42,6 +42,7 @@ create table private.report_promotions (
  reward_from timestamptz,
  reward_until timestamptz,
  forfeited boolean not null default false,
+ forfeited_at timestamptz,
  first_refunded boolean not null default false,
  applied_discount text,
  applied_at timestamptz,
@@ -255,7 +256,7 @@ $$;
 create function public.report_promotion_prepare(p_account uuid,p_environment text,p_now timestamptz default clock_timestamp())
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare p private.report_promotions; s public.billing_subscriptions; c private.report_promotion_catalog;
- stats jsonb; earned integer; desired text; next_bill timestamptz; op private.report_promotion_changes; prior private.report_promotion_transfers; target_sub text; target_product text; action_kind text:='apply'; spent integer; repair text; creator private.report_promotion_creators; first_order public.billing_orders;
+ earned integer; desired text; next_bill timestamptz; op private.report_promotion_changes; prior private.report_promotion_transfers; target_sub text; target_product text; action_kind text:='apply'; spent integer; repair text; creator private.report_promotion_creators; first_order public.billing_orders; spam_at timestamptz; accepted_before_spam integer; grant_at timestamptz;
 begin
  if private.lock_account_write(p_account) then return null; end if;
  select * into p from private.report_promotions where account_id=p_account and environment=p_environment for update;
@@ -271,27 +272,36 @@ begin
  p.first_refunded:=p.first_refunded or first_order.status<>'paid' or first_order.reported_refunded_amount>0
   or exists(select 1 from public.billing_refunds r where r.environment=p_environment and r.provider_order_id=first_order.provider_order_id and r.status='succeeded' and r.amount>0);
  select * into c from private.report_promotion_catalog where environment=p_environment and product_id=p.product_id;
- stats:=private.report_promotion_progress(p_account,p_environment,p_now);
- earned:=case when (stats->>'accepted')::integer>=5 then 6 when (stats->>'accepted')::integer>=2 then 3 else 0 end;
  -- Benefits are consumed by settled recurring invoice periods, never by the mirror clock.
- p.forfeited:=p.forfeited or (stats->>'spam')::integer>=2;
- if earned>p.tier and not p.forfeited and not p.first_refunded then
-   p.tier:=earned; p.reward_granted_at:=p_now;
+ select r.decided_at into spam_at from public.testing_contribution_reviews r join public.testing_contributions t on t.id=r.contribution_id
+ where t.account_id=p_account and t.created_at>=p.subscribed_at and r.decision='spam' and r.decided_at<=p_now order by r.decided_at,t.id offset 1 limit 1;
+ p.forfeited_at:=coalesce(p.forfeited_at,spam_at);
+ p.forfeited:=p.forfeited or p.forfeited_at is not null;
+ select count(*)::integer into accepted_before_spam from public.testing_contributions t join public.testing_contribution_reviews r on r.contribution_id=t.id
+ where t.account_id=p_account and t.state in ('accepted','fixed') and r.decision='accepted' and t.created_at>=p.subscribed_at and t.created_at<p.subscribed_at+interval '1080 hours'
+ and r.decided_at<=p_now and (p.forfeited_at is null or r.decided_at<p.forfeited_at);
+ earned:=case when accepted_before_spam>=5 then 6 when accepted_before_spam>=2 then 3 else 0 end;
+ if earned>p.tier and not p.first_refunded then
+   select r.decided_at into grant_at from public.testing_contributions t join public.testing_contribution_reviews r on r.contribution_id=t.id
+   where t.account_id=p_account and t.state in ('accepted','fixed') and r.decision='accepted' and t.created_at>=p.subscribed_at and t.created_at<p.subscribed_at+interval '1080 hours'
+   and r.decided_at<=p_now and (p.forfeited_at is null or r.decided_at<p.forfeited_at) order by r.decided_at,t.id offset (case earned when 6 then 4 else 1 end) limit 1;
+   p.tier:=earned; p.reward_granted_at:=grant_at;
  end if;
- select count(distinct i.period_start)::integer,min(i.period_start),max(i.period_end)
+ select count(distinct (i.subscription_id,i.period_start))::integer,min(i.period_start),max(i.period_end)
  into spent,p.reward_from,p.reward_until
  from private.report_promotion_invoices i join private.report_promotion_catalog x on x.environment=i.environment and x.product_id=i.product_id
  where i.account_id=p_account and i.environment=p_environment and i.billed_at>=p.reward_granted_at and i.billed_at<=p_now
- and not i.is_initial and i.discount_amount>0 and i.discount_id=case p.tier when 6 then x.reward6_discount when 3 then x.reward3_discount end;
+ and (not i.is_initial or i.subscription_id<>p.original_subscription_id) and i.discount_amount>0 and i.discount_id in (x.launch_discount,x.reward3_discount,x.reward6_discount);
  desired:=null;
  if p.tier>0 and spent<p.tier and not p.first_refunded then
-   desired:=case p.tier when 6 then c.reward6_discount else c.reward3_discount end;
+   desired:=case when p.tier-spent>=6 then c.reward6_discount when p.tier-spent>=3 then c.reward3_discount else c.launch_discount end;
  end if;
  -- A paid, undiscounted renewal after the last confirmed application proves a
  -- provider-side expiry/missed cycle. Repair exactly once for that invoice.
  select i.order_id into repair from private.report_promotion_invoices i
  where i.account_id=p_account and i.environment=p_environment and i.subscription_id=p.subscription_id
- and not i.is_initial and i.billed_at>p.applied_at and i.billed_at<=p_now and i.discount_amount=0
+ and (not i.is_initial or i.subscription_id<>p.original_subscription_id) and i.billed_at>p.applied_at and i.billed_at<=p_now
+ and (i.discount_amount=0 or (p.applied_discount=c.launch_discount and i.discount_id=p.applied_discount and i.discount_amount>0))
  and i.order_id is distinct from p.repaired_order_id order by i.billed_at desc,i.order_id desc limit 1;
  if desired is null then repair:=null; end if;
  next_bill:=coalesce(p.remote_period_end,s.current_period_end,p_now); -- creator comparison only; never reward budget
@@ -301,7 +311,7 @@ begin
  if found and p_now<private.report_promotion_months(p.subscribed_at,creator.duration_in_months)
   and next_bill<private.report_promotion_months(p.subscribed_at,creator.duration_in_months)
   and (desired is null or round(c.normal_cents*creator.basis_points/10000.0)>c.normal_cents-c.launch_cents) then desired:=p.creator_discount; repair:=null; end if;
- update private.report_promotions set tier=p.tier,reward_granted_at=p.reward_granted_at,reward_from=p.reward_from,reward_until=p.reward_until,forfeited=p.forfeited,first_refunded=p.first_refunded
+ update private.report_promotions set tier=p.tier,reward_granted_at=p.reward_granted_at,reward_from=p.reward_from,reward_until=p.reward_until,forfeited=p.forfeited,forfeited_at=p.forfeited_at,first_refunded=p.first_refunded
   where account_id=p_account and environment=p_environment;
  target_sub:=p.subscription_id; target_product:=p.product_id;
  select * into prior from private.report_promotion_transfers where account_id=p_account and environment=p_environment and cleared_at is null order by id limit 1;

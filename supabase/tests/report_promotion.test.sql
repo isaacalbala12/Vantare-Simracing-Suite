@@ -18,7 +18,7 @@ select ok(not has_function_privilege('anon','public.report_promotion_prepare(uui
 select ok(not has_table_privilege('service_role','private.report_promotions','insert'),'no direct service writes');
 select is((select count(*)::int from pg_class where oid in ('private.report_promotions'::regclass,'private.report_promotion_changes'::regclass,'private.report_promotion_catalog'::regclass,'private.report_promotion_creators'::regclass) and relrowsecurity),4,'all new tables RLS');
 insert into private.clerk_issuers values('https://promotion.clerk.invalid',array['https://app.invalid'],true);
-insert into public.profiles(id) select ('15930000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid from generate_series(1,11)i;
+insert into public.profiles(id) select ('15930000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid from generate_series(1,13)i;
 insert into public.account_identities(issuer,subject,account_id) select 'https://promotion.clerk.invalid','user_'||replace(id::text,'-',''),id from public.profiles where id::text like '15930000%';
 insert into private.report_promotion_catalog values
  ('sandbox','pro','pro',599,399,'pro1','pro3','pro6'),('sandbox','plus','pro_plus',999,699,'plus1','plus3','plus6');
@@ -111,15 +111,24 @@ end$$;
 select pg_temp.invoice(10,'late-full','2026-11-26 19:00 Europe/Madrid',null,0);
 select is(public.report_promotion_prepare(pg_temp.account(10),'sandbox','2026-11-27'),null::jsonb,'P2-2 invoice issued before late PATCH does not consume or restart reward');
 select pg_temp.invoice(10,'late-one','2026-12-26 19:00 Europe/Madrid','pro3',200);
-select public.report_promotion_prepare(pg_temp.account(10),'sandbox','2026-12-27');
+create temporary table remaining_op as select public.report_promotion_prepare(pg_temp.account(10),'sandbox','2026-12-27') op;
+select is((select op->>'discount_id' from remaining_op),'pro1','P2-2 partial balance uses one-month coupon without granting excess months');
+select public.report_promotion_claim((select (op->>'id')::uuid from remaining_op),'00000000-0000-4000-8000-000000000010','2026-12-27');
+select public.report_promotion_ack((select (op->>'id')::uuid from remaining_op),'00000000-0000-4000-8000-000000000010','2026-12-27');
 select is((select reward_from from private.report_promotions where account_id=pg_temp.account(10)),'2026-12-26 19:00 Europe/Madrid'::timestamptz,'P2-2 reward anchored to first settled discounted invoice');
-select pg_temp.invoice(10,'late-two','2027-01-26 19:00 Europe/Madrid','pro3',200);
-select is(public.report_promotion_prepare(pg_temp.account(10),'sandbox','2027-02-01'),null::jsonb,'P2-2 two invoices cannot remove a three-month award');
-select pg_temp.invoice(10,'late-three','2027-02-26 19:00 Europe/Madrid','pro3',200);
+select pg_temp.invoice(10,'late-two','2027-01-26 19:00 Europe/Madrid','pro1',200);
+create temporary table rollover_op as select public.report_promotion_prepare(pg_temp.account(10),'sandbox','2027-01-27') op;
+select is((select op->>'discount_id' from rollover_op),'pro1','P2-2 second paid invoice still leaves one promised month');
+select is((select (op->>'repair')::boolean from rollover_op),true,'P2-2 one-month coupon is renewed only after its settled invoice');
+select public.report_promotion_claim((select (op->>'id')::uuid from rollover_op),'00000000-0000-4000-8000-000000000010','2027-01-27');
+select public.report_promotion_cleared((select (op->>'id')::uuid from rollover_op),'00000000-0000-4000-8000-000000000010','2027-01-27');
+select public.report_promotion_ack((select (op->>'id')::uuid from rollover_op),'00000000-0000-4000-8000-000000000010','2027-01-27');
+select is(public.report_promotion_prepare(pg_temp.account(10),'sandbox','2027-02-01'),null::jsonb,'P2-2 confirmed rollover cannot extend again before another real invoice');
+select pg_temp.invoice(10,'late-three','2027-02-26 19:00 Europe/Madrid','pro1',200);
 create temporary table spent_op as select public.report_promotion_prepare(pg_temp.account(10),'sandbox','2027-02-27') op;
 select ok((select op is not null from spent_op),'P2-2 exhausted budget emits a removal operation');
 select is((select op->>'discount_id' from spent_op),null::text,'P2-2 removal only after all three settled invoices');
-select public.report_promotion_invoice('sandbox','late-three','pro3',200,'2027-02-26 19:00 Europe/Madrid','2027-02-26 19:00 Europe/Madrid','2027-03-26 19:00 Europe/Madrid');
+select public.report_promotion_invoice('sandbox','late-three','pro1',200,'2027-02-26 19:00 Europe/Madrid','2027-02-26 19:00 Europe/Madrid','2027-03-26 19:00 Europe/Madrid');
 select is((select count(*)::int from private.report_promotion_invoices where account_id=pg_temp.account(10)),5,'P2-2 repeated paid webhook cannot duplicate month credit');
 -- P2-2 recovery of a provider-expired coupon, without consuming any missing invoice.
 select ok(public.report_promotion_claim((select id from private.report_promotion_changes where account_id=pg_temp.account(6) and applied_at is null and superseded_at is null),'00000000-0000-4000-8000-000000000006','2026-11-05'),'P2-2 granted months remain claimable after spam');
@@ -131,6 +140,24 @@ select ok(public.report_promotion_claim((select (op->>'id')::uuid from repair_op
 select ok(public.report_promotion_cleared((select (op->>'id')::uuid from repair_op),'00000000-0000-4000-8000-000000000006','2026-12-27'),'P2-2 clear phase persisted before attach');
 select public.report_promotion_ack((select (op->>'id')::uuid from repair_op),'00000000-0000-4000-8000-000000000006','2026-12-27');
 select is(public.report_promotion_prepare(pg_temp.account(6),'sandbox','2026-12-28'),null::jsonb,'P2-2 same missing invoice cannot restart the repair twice');
+-- P2-2 partial six-month award survives a plan change without issuing six fresh months.
+select pg_temp.enroll(13);
+select pg_temp.report(13,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(13,'2026-10-28 19:00 Europe/Madrid');
+select pg_temp.report(13,'2026-11-02 19:00 Europe/Madrid'); select pg_temp.report(13,'2026-11-03 19:00 Europe/Madrid'); select pg_temp.report(13,'2026-11-09 19:00 Europe/Madrid');
+create temporary table six_op as select public.report_promotion_prepare(pg_temp.account(13),'sandbox','2026-11-10') op;
+select public.report_promotion_claim((select (op->>'id')::uuid from six_op),'00000000-0000-4000-8000-000000000013','2026-11-11');
+select public.report_promotion_ack((select (op->>'id')::uuid from six_op),'00000000-0000-4000-8000-000000000013','2026-11-11');
+select pg_temp.invoice(13,'six-spent-one','2026-11-26 19:00 Europe/Madrid','pro6',200);
+update public.billing_subscriptions set provider_product_id='plus' where provider_subscription_id='sub13';
+select public.report_promotion_observe(pg_temp.account(13),'sandbox','sub13','plus','2026-10-26 19:00 Europe/Madrid','2026-11-27',null);
+select is(public.report_promotion_prepare(pg_temp.account(13),'sandbox','2026-11-28')->>'remaining','5','P2-2 plan transfer preserves the actual five remaining invoices');
+select is(public.report_promotion_prepare(pg_temp.account(13),'sandbox','2026-11-28')->>'discount_id','plus3','P2-2 finite coupon duration cannot exceed remaining balance after transfer');
+-- Spam cutoff is the second human decision, not the time the cron happens to wake.
+select pg_temp.enroll(12);
+select pg_temp.report(12,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(12,'2026-10-28 19:00 Europe/Madrid');
+select pg_temp.report(12,'2026-11-02 19:00 Europe/Madrid','spam'); select pg_temp.report(12,'2026-11-03 19:00 Europe/Madrid','spam');
+select is(public.report_promotion_prepare(pg_temp.account(12),'sandbox','2026-11-04')->>'discount_id','pro3','P3-7 cron delay cannot erase a tier earned before the second spam');
+select is((select forfeited_at from private.report_promotions where account_id=pg_temp.account(12)),'2026-11-03 19:00 Europe/Madrid'::timestamptz,'P3-7 exact spam cutoff is durable');
 -- P2-1: the award and original 45-day window survive a plan change and a later re-subscription.
 update public.billing_subscriptions set provider_product_id='plus' where provider_subscription_id='sub1';
 select lives_ok($$select public.report_promotion_observe(pg_temp.account(1),'sandbox','sub1','plus','2026-10-26 19:00 Europe/Madrid','2026-11-12',null)$$,'P2-1 plan change does not fail webhook');

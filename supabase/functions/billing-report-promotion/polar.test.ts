@@ -287,3 +287,61 @@ Deno.test("P3-2 campaign expiry preserves external and expired creator coupons w
     assertEquals(observed, coupon);
   }
 });
+Deno.test("P2-2 lost clear response or failed phase RPC resumes without clearing twice", async () => {
+  for (const failure of ["clear", "phase"]) {
+    let coupon: string | null = "reward3";
+    let phase: "pending" | "cleared" = "pending";
+    let writes = 0;
+    let failed = false;
+    const client = {
+      read: () =>
+        Promise.resolve({
+          id: "sub",
+          product_id: "product",
+          status: "active",
+          discount_id: coupon,
+          amount: 599,
+          currency: "eur",
+          recurring_interval: "month",
+          recurring_interval_count: 1,
+        }),
+      change: (_id: string, value: string | null) => {
+        coupon = value;
+        writes++;
+        if (failure === "clear" && value === null && !failed) {
+          failed = true;
+          throw new Error("lost clear");
+        }
+        return client.read();
+      },
+    };
+    const markCleared = () => {
+      if (failure === "phase" && !failed) {
+        failed = true;
+        throw new Error("phase RPC failed");
+      }
+      phase = "cleared";
+      return Promise.resolve();
+    };
+    const expected = {
+      subscriptionId: "sub",
+      productId: "product",
+      discountId: "reward3",
+      normalCents: 599,
+      managedDiscountIds: ["reward3"],
+      repair: true,
+      markCleared,
+    };
+    await assertRejects(() =>
+      synchronizeDiscount(client, { ...expected, phase })
+    );
+    assertEquals(coupon, null);
+    assertEquals(phase, "pending");
+    assertEquals(
+      await synchronizeDiscount(client, { ...expected, phase }),
+      true,
+    );
+    assertEquals(coupon, "reward3");
+    assertEquals(writes, 2);
+  }
+});

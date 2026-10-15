@@ -86,6 +86,15 @@ impl Form {
             EmailStage::HostedRequired | EmailStage::Authorizing => unreachable!(),
         }
     }
+    /// Mismo criterio que el pintado del botón: atenuado significa que no envía.
+    pub(super) fn submit_enabled(&self, working: bool) -> bool {
+        !working
+            && (Instant::now() >= self.retry_at
+                || matches!(
+                    self.stage,
+                    EmailStage::Code | EmailStage::NewPassword | EmailStage::Consent
+                ))
+    }
 }
 impl Remote {
     /// La acción no cabe en la cola del refresco automático; Logout tiene prioridad.
@@ -225,7 +234,11 @@ impl Remote {
         self.request(Command::AccountEmail { action }, cx);
     }
     fn email_submit(&mut self, cx: &mut Context<Self>) {
-        if self.working() {
+        if self
+            .email
+            .as_ref()
+            .is_none_or(|form| !form.submit_enabled(self.working()))
+        {
             return;
         }
         let Some(action) = self.email.as_ref().and_then(|form| form.action(cx)) else {
@@ -359,12 +372,7 @@ impl Remote {
         if !form.message.is_empty() {
             panel = panel.child(orbit::callout(form.message.clone(), cx));
         }
-        let enabled = !self.working() && Instant::now() >= form.retry_at
-            || (!self.working()
-                && matches!(
-                    stage,
-                    EmailStage::Code | EmailStage::NewPassword | EmailStage::Consent
-                ));
+        let enabled = form.submit_enabled(self.working());
         if stage == EmailStage::Authorizing {
             panel = panel.child(orbit::text(
                 "Esperando la autorización…",
@@ -526,6 +534,41 @@ mod tests {
                     "el error de transporte reactiva el formulario"
                 );
                 assert_eq!(form.message, "Conexión interrumpida");
+            });
+            crate::quit_headless_test(cx);
+        });
+    }
+
+    #[test]
+    fn a_dimmer_submit_button_does_not_send_during_the_cooldown() {
+        gpui_platform::headless().run(|cx| {
+            let file = crate::document::tests::File::new();
+            let (send, requests) = mpsc::sync_channel(8);
+            let remote = cx.new(|cx| fixture(cx, send, file.path.parent().expect("root")));
+            remote.update(cx, |remote, cx| {
+                remote.select_email(EmailMode::SignInCode, cx);
+                remote.email_reply(
+                    Reply::Email {
+                        stage: EmailStage::Form,
+                        retry_after_seconds: 30,
+                        message: "Espera antes de volver a intentarlo.".into(),
+                        error: Some("busy".into()),
+                    },
+                    cx,
+                );
+                assert!(
+                    !remote
+                        .email
+                        .as_ref()
+                        .expect("form")
+                        .submit_enabled(remote.working()),
+                    "el botón se pinta atenuado durante el cooldown"
+                );
+                remote.email_submit(cx);
+                assert!(
+                    requests.try_recv().is_err(),
+                    "el botón atenuado no envía mientras dura el cooldown"
+                );
             });
             crate::quit_headless_test(cx);
         });

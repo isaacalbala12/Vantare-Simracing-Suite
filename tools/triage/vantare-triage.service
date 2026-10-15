@@ -1,0 +1,29 @@
+[Unit]
+Description=Vantare report proposals (activation requires separate approval)
+ConditionPathExists=/etc/vantare-triage/triage.config.json
+
+[Service]
+Type=oneshot
+User=vantare-triage
+Group=vantare-triage
+ExecStart=/usr/bin/python3 /opt/vantare-triage/triage.py --config /etc/vantare-triage/triage.config.json
+WorkingDirectory=/opt/vantare-triage
+StateDirectory=vantare-triage
+StateDirectoryMode=0700
+UMask=0077
+LoadCredential=supabase-url:/etc/vantare-triage/credentials/supabase-url
+LoadCredential=opencode-go-auth:/etc/vantare-triage/credentials/opencode-go-auth
+LoadCredential=t3-hmac:/etc/vantare-triage/credentials/t3-hmac
+# Named credstore credential: absence is non-fatal; Python retains the sink ACK.
+LoadCredential=plane-token:vantare-triage.plane-token
+MemoryMax=2G
+TimeoutStartSec=70min
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+NoNewPrivileges=true
+InaccessiblePaths=/mnt
+ReadWritePaths=/var/lib/vantare-triage
+KillMode=control-group
+RestrictSUIDSGID=true
+LockPersonality=true

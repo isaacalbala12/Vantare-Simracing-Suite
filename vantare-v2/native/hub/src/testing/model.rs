@@ -159,6 +159,18 @@ pub(super) fn receipt_status(state: &str) -> &'static str {
     }
 }
 
+pub(super) fn session_contribution_status(state: &str) -> &'static str {
+    match state {
+        "received" => "Recibido",
+        "reviewing" => "En revisión",
+        "accepted" => "Aceptado",
+        "fixed" => "Arreglado",
+        "spam" => "Spam",
+        "declined" => "No aceptado",
+        _ => "Estado no disponible",
+    }
+}
+
 #[cfg(test)]
 mod kind_tests {
     use super::with_report_kind;

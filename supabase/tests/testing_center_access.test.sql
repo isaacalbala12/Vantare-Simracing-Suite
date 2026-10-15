@@ -1,4 +1,18 @@
 begin;
+SELECT set_config('fixture.clerk',(to_regclass('private.clerk_issuers') IS NOT NULL)::text,true);
+-- The old schema-cut runner uses UUID claims; B03 requires a bound Clerk session.
+CREATE FUNCTION pg_temp.fixture_claims(account text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', CASE
+    WHEN current_setting('fixture.clerk',true)='true' THEN
+      jsonb_build_object('iss','https://fixtures.clerk.invalid',
+        'sub','user_'||replace(account,'-',''),'role','authenticated',
+        'sid','sess_fixture','azp','https://app.invalid')
+    ELSE jsonb_build_object('iss','https://local.supabase.test/auth/v1',
+        'sub',account,'role','authenticated') END::text, true);
+  RETURN set_config('request.jwt.claim.sub',account,true);
+END $$;
+
 
 select plan(56);
 
@@ -104,6 +118,20 @@ insert into auth.users (id, email) values
   ('00000000-0000-4000-8000-000000000305', 'owner@example.invalid'),
   ('00000000-0000-4000-8000-000000000306', 'inactive@example.invalid'),
   ('00000000-0000-4000-8000-000000000307', 'self@example.invalid');
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.profiles(id,email) SELECT id,email FROM auth.users
+      ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 
 set local role service_role;
 
@@ -216,7 +244,7 @@ select pg_temp.seed_testing_candidate(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000301', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000301');
 select is((select count(*)::integer from public.testing_center_memberships), 1, 'tester sees only own active membership');
 select ok(
   (select count(*) = 1 from public.testing_center_reports where report_id = 'report-own-a')
@@ -262,14 +290,14 @@ select throws_ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000303', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000303');
 select ok((select count(*) from public.testing_center_candidate_builds where channel = 'nightly') >= 1, 'primary tester sees nightly candidates');
 select ok((select count(*) from public.testing_center_candidate_builds where channel = 'testers') >= 1, 'primary tester also sees testers candidates');
 select is((select count(*)::integer from public.testing_center_reports), 0, 'primary tester does not inherit access to reporter data');
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000305', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000305');
 select ok((select count(*) from public.testing_center_reports) >= 2, 'owner can review all reports');
 select ok((select count(*) from public.testing_center_evidence) >= 2, 'owner can review all report evidence');
 select ok((select count(*) from public.testing_center_technical_issues) >= 2, 'owner can review all report issues');
@@ -277,7 +305,7 @@ select ok((select count(*) from public.testing_center_candidate_builds) >= 2, 'o
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000306', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000306');
 select is(public.testing_center_current_role(), null, 'inactive membership resolves to no role');
 select is((select count(*)::integer from public.testing_center_memberships), 0, 'inactive tester cannot read membership row');
 select is((select count(*)::integer from public.testing_center_candidate_builds), 0, 'inactive tester cannot read candidates');
@@ -300,7 +328,7 @@ select throws_ok(
 );
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000303', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000303');
 select is(
   (select idempotent from public.testing_center_validate_candidate(
     'testing-center.v1', 'candidate-accept', repeat('c', 40), 'accepted', null,
@@ -335,7 +363,7 @@ select ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000303', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000303');
 select is(
   (select idempotent from public.testing_center_validate_candidate(
     'testing-center.v1', 'candidate-accept', repeat('c', 40), 'accepted', null,
@@ -356,7 +384,7 @@ select ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000303', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000303');
 select throws_ok(
   $$select * from public.testing_center_validate_candidate('testing-center.v1', 'candidate-accept', repeat('c', 40), 'rejected', 'other', 'accept-key')$$,
   '23505', null, 'same idempotency key with another verified payload fails closed'
@@ -380,7 +408,7 @@ select throws_ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000301', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000301');
 select throws_ok(
   $$select * from public.testing_center_validate_candidate('testing-center.v1', 'candidate-tester-denied', repeat('d', 40), 'accepted', null, 'tester-nightly-key')$$,
   '42501', null, 'normal tester cannot validate nightly'
@@ -388,7 +416,7 @@ select throws_ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000304', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000304');
 select is(
   (select resulting_state from public.testing_center_validate_candidate(
     'testing-center.v1', 'candidate-beta', repeat('e', 40), 'accepted', null,
@@ -400,7 +428,7 @@ select is(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000306', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000306');
 select throws_ok(
   $$select * from public.testing_center_validate_candidate('testing-center.v1', 'candidate-inactive', repeat('1', 40), 'accepted', null, 'inactive-key')$$,
   '42501', null, 'inactive membership cannot validate'
@@ -408,7 +436,7 @@ select throws_ok(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000307', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000307');
 select throws_ok(
   $$select * from public.testing_center_validate_candidate('testing-center.v1', 'candidate-self', repeat('2', 40), 'accepted', null, 'self-key')$$,
   '42501', null, 'candidate author cannot validate its own work'
@@ -426,7 +454,7 @@ insert into public.testing_center_pauses (
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000303', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000303');
 select throws_ok(
   $$select * from public.testing_center_validate_candidate('testing-center.v1', 'candidate-global', repeat('3', 40), 'accepted', null, 'global-key')$$,
   '55000', null, 'global pause blocks candidate validation'
@@ -445,7 +473,7 @@ insert into public.testing_center_pauses (
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000303', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000303');
 select throws_ok(
   $$select * from public.testing_center_validate_candidate('testing-center.v1', 'candidate-flow', repeat('4', 40), 'accepted', null, 'flow-key')$$,
   '55000', null, 'flow pause blocks only its candidate aggregate'
@@ -477,7 +505,7 @@ select is(
 reset role;
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000305', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000305');
 select is(
   (select resulting_state from public.testing_center_validate_candidate(
     'testing-center.v1', 'candidate-owner', repeat('7', 40), 'accepted', null,

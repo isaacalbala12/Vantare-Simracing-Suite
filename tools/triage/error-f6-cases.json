@@ -1,0 +1,39 @@
+[
+  {
+    "input": {
+      "type": "ServicesCommandFailure",
+      "fingerprint": "sk-proj-FixtureOpaqueCredential",
+      "message": "SyntheticOtherPerson"
+    },
+    "expected": {
+      "type": "ServicesCommandFailure",
+      "fingerprint": "875c6cab71159f56a4c5251013597f5a11460b451ce031f27b8eb46cf8464973"
+    }
+  },
+  {
+    "input": {
+      "type": "sk-proj-FixtureOpaqueCredential",
+      "fingerprint": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    "expected": {
+      "type": "otro",
+      "fingerprint": "ca543c867ee1bf01a051d93782a8c60ed66e36d3559ace62fec8c732e4603d8a"
+    }
+  },
+  {
+    "input": {
+      "type": "Offline",
+      "count": 2,
+      "module": "services",
+      "version": "1.2.3",
+      "fingerprint": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    "expected": {
+      "type": "Offline",
+      "count": 2,
+      "module": "services",
+      "version": "1.2.3",
+      "fingerprint": "911384406a5b889584fb5f26681fafd719777ac157faaa3406937d1dae3c7d17"
+    }
+  }
+]

@@ -44,6 +44,20 @@ insert into auth.users(id,email) values
   ('00000000-0000-4000-8000-000000000403','tester-b@example.invalid'),
   ('00000000-0000-4000-8000-000000000404','owner@example.invalid'),
   ('00000000-0000-4000-8000-000000000405','outsider@example.invalid');
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.profiles(id,email) SELECT id,email FROM auth.users
+      ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 
 set local role service_role;
 insert into public.testing_center_memberships(user_id,actor_id,role,active) values

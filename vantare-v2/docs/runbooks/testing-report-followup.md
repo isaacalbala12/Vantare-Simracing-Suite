@@ -1,5 +1,28 @@
 # Informes y seguimiento · #1610 / VANTA-29
 
+## Contrato combinado vigente · #1594 / PR #1602 ronda 7
+
+F7=C conserva texto escrito local y etiquetas SQL fijas. Services IPC **v9**
+combina #1610/#1594; recompilar Hub/services juntos. El preview estructurado
+de seis campos usa `testing-report-submit`, con la misma verificación de cuenta,
+admisión durable IP/cuenta y presupuesto del gateway #1610. La Edge llama a
+`testing_contribution_submit_admitted`, exclusiva service_role, sin perder
+contexto/adjuntos ni reabrir v2 directa. Conserva consentimiento seleccionado,
+SHA, UUID/retry exactos y follow-up/crédito. El envío simple sigue admitido.
+La lista junto a recibos legacy conserva el estado fixed como Arreglado.
+
+Migración candidata `20261014115717_testing_triage_admitted.sql`, después de
+participación → triaje → followup → IP admission. Su down solo retira el
+adaptador: conserva datos/presupuestos y deja v2 cerrada. La migración original
+#1594 aplicada anteriormente no cambia. No se aplica ni despliega este corte.
+Actualizar SQL/Edge/cliente juntos tras revisión y autorización de activación;
+la prueba de origen del gateway exigida más abajo sigue pendiente.
+
+[Regresiones r7 y SQL combinado](../../../tools/triage/review-1602-r7-regressions.md).
+La entrega aislada #1610 descrita abajo es histórica donde menciona IPC v8,
+texto enviado o paquete #1602 pendiente; prevalecen este contrato combinado,
+el handoff vivo y los SHAs/checks de la ronda vigente.
+
 Entrega aislada para revisión. No despliega SQL, Intake, Plane, PostHog ni notas.
 **Ronda 3: F1 implementado localmente.** El cliente envía a la Edge Function
 `testing-report-submit`. La migración de admisión añade presupuestos durables

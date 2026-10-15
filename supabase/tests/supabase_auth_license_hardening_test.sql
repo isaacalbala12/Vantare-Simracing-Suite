@@ -1,4 +1,18 @@
 begin;
+SELECT set_config('fixture.clerk',(to_regclass('private.clerk_issuers') IS NOT NULL)::text,true);
+-- The old schema-cut runner uses UUID claims; B03 requires a bound Clerk session.
+CREATE FUNCTION pg_temp.fixture_claims(account text) RETURNS text LANGUAGE plpgsql AS $$
+BEGIN
+  PERFORM set_config('request.jwt.claims', CASE
+    WHEN current_setting('fixture.clerk',true)='true' THEN
+      jsonb_build_object('iss','https://fixtures.clerk.invalid',
+        'sub','user_'||replace(account,'-',''),'role','authenticated',
+        'sid','sess_fixture','azp','https://app.invalid')
+    ELSE jsonb_build_object('iss','https://local.supabase.test/auth/v1',
+        'sub',account,'role','authenticated') END::text, true);
+  RETURN set_config('request.jwt.claim.sub',account,true);
+END $$;
+
 select plan(48);
 
 select ok(has_function_privilege('authenticated', 'public.claim_active_device(text)', 'execute'),
@@ -78,11 +92,25 @@ select is((select proconfig[1] from pg_proc where oid = 'public.mark_billing_che
 
 insert into auth.users (id, email, raw_user_meta_data)
 values ('00000000-0000-4000-8000-000000000088', 'hardening@example.invalid', '{}'::jsonb);
+-- B03 fixture: internal profile plus an explicit Clerk binding before child rows.
+DO $fixture$ BEGIN
+  IF to_regclass('private.clerk_issuers') IS NOT NULL THEN
+    INSERT INTO private.clerk_issuers(issuer,authorized_parties,enabled)
+      VALUES ('https://fixtures.clerk.invalid',ARRAY['https://app.invalid'],true)
+      ON CONFLICT (issuer) DO NOTHING;
+    INSERT INTO public.profiles(id,email) SELECT id,email FROM auth.users
+      ON CONFLICT (id) DO NOTHING;
+    INSERT INTO public.account_identities(issuer,subject,account_id)
+      SELECT 'https://fixtures.clerk.invalid','user_'||replace(id::text,'-',''),id
+      FROM public.profiles ON CONFLICT (issuer,subject) DO NOTHING;
+  END IF;
+END $fixture$;
+
 insert into public.user_entitlements (user_id, product_key, status, source)
 values ('00000000-0000-4000-8000-000000000088', 'bundle', 'active', 'billing_projection');
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000088', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000088');
 select lives_ok($$ select public.claim_active_device('dae186eefacd2890fa975f8b860faf41866b9e1d96c55211b09e7775b808ccd6') $$,
   'authenticated user can claim an unbound device');
 select is(
@@ -97,7 +125,7 @@ create temporary table read_guard as
 select last_seen_at from public.devices where user_id = '00000000-0000-4000-8000-000000000088';
 select pg_sleep(0.01);
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000088', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000088');
 select * from public.read_account_entitlements();
 reset role;
 select is(
@@ -105,7 +133,7 @@ select is(
   (select last_seen_at from read_guard),
   'entitlement read does not mutate device timestamps');
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000088', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000088');
 select lives_ok($$ select public.claim_active_device('7815591318d36ed419b630833d7ccdd461609c491abdb5867967ed2e5bd48fd3') $$,
   'a conflicting claim is handled without exposing account state');
 reset role;
@@ -115,7 +143,7 @@ select is(
   'a second fingerprint is not silently rebound');
 
 set local role anon;
-select set_config('request.jwt.claim.sub', '', true);
+select pg_temp.fixture_claims('');
 select throws_ok($$ select public.claim_active_device('44863b03e9909b7100e05b02526909a346fd7455183f6619e0fe6198c89981e0') $$,
   '42501', null, 'anonymous device claim is denied at runtime');
 select throws_ok($$ select * from public.read_account_entitlements() $$,
@@ -129,7 +157,7 @@ reset role;
 update public.devices set last_reset_at = null
 where user_id = '00000000-0000-4000-8000-000000000088';
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000088', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000088');
 select lives_ok($$ select public.reset_active_device('046a9a7cc6f277a2450d641ca72895d21b92bba4926b8052e393c93c78802e0e') $$,
   'reset binds the explicit current fingerprint');
 reset role;
@@ -137,7 +165,7 @@ select is(
   (select fingerprint_hash from public.devices where user_id = '00000000-0000-4000-8000-000000000088'),
   '046a9a7cc6f277a2450d641ca72895d21b92bba4926b8052e393c93c78802e0e', 'reset replaces the bound device with the explicit fingerprint');
 set local role authenticated;
-select set_config('request.jwt.claim.sub', '00000000-0000-4000-8000-000000000088', true);
+select pg_temp.fixture_claims('00000000-0000-4000-8000-000000000088');
 select throws_ok($$ select public.reset_active_device('2ecae02742821d9925042b3d48e5a7f18e3a0dbdf8e438aef3ca38a0a944d5cf') $$,
   'P0001', 'rate_limit: solo 1 reset cada 24h', 'a second reset inside 24 hours is denied');
 

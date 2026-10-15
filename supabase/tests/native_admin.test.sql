@@ -1,4 +1,11 @@
 begin;
+-- Server identity now uses an explicit issuer registry. Historical pre-B03
+-- runs have no registry; no production configuration is installed by this test.
+select to_regclass('private.clerk_issuers') is not null as has_issuer_registry \gset
+\if :has_issuer_registry
+insert into private.clerk_issuers(issuer,authorized_parties,enabled)
+ values('https://clerk.admin.test',array['https://app.invalid'],true);
+\endif
 select no_plan();
 
 select ok(not has_function_privilege('authenticated', 'public.native_resolve_account(text,text)', 'EXECUTE'), 'authenticated cannot bootstrap arbitrary identities');
@@ -8,8 +15,15 @@ select ok(not has_function_privilege('authenticated', 'public.native_admin_execu
 select ok(not has_table_privilege('authenticated', 'public.admin_audit_log', 'SELECT'), 'audit is private');
 select ok(not has_table_privilege('service_role', 'public.admin_audit_log', 'INSERT'), 'audit writes only through transactional RPC');
 select ok((select relrowsecurity from pg_class where oid = 'public.admin_audit_log'::regclass), 'audit RLS enabled');
+\if :has_issuer_registry
 select is(public.native_resolve_account('https://clerk.admin.test', 'user_aaaaaaaaaaaaaaaaaaaaaaaaaaa'),
-  public.native_resolve_account('https://clerk.admin.test/', 'user_aaaaaaaaaaaaaaaaaaaaaaaaaaa'), 'shared resolver reuses canonical issuer');
+  public.native_resolve_account('https://clerk.admin.test', 'user_aaaaaaaaaaaaaaaaaaaaaaaaaaa'), 'same registered pair reuses the account');
+select throws_ok($$select public.native_resolve_account('https://clerk.admin.test/','user_aaaaaaaaaaaaaaaaaaaaaaaaaaa')$$,
+  '28000','invalid_clerk_identity','B03 requires the exact registered issuer');
+\else
+select is(public.native_resolve_account('https://clerk.admin.test', 'user_aaaaaaaaaaaaaaaaaaaaaaaaaaa'),
+  public.native_resolve_account('https://clerk.admin.test/', 'user_aaaaaaaaaaaaaaaaaaaaaaaaaaa'), 'historical resolver reuses canonical issuer');
+\endif
 select is((select count(*)::integer from public.account_identities where subject = 'user_aaaaaaaaaaaaaaaaaaaaaaaaaaa'), 1, 'no second mapping');
 
 insert into public.profiles(id) values
@@ -18,7 +32,8 @@ insert into public.profiles(id) values
   ('00000000-0000-4000-8000-000000001453');
 insert into public.account_identities(issuer,subject,account_id) values
   ('https://clerk.admin.test', 'user_ooooooooooooooooooooooooooo', '00000000-0000-4000-8000-000000001456'),
-  ('https://clerk.admin.test', 'user_ttttttttttttttttttttttttttt', '00000000-0000-4000-8000-000000001452');
+  ('https://clerk.admin.test', 'user_ttttttttttttttttttttttttttt', '00000000-0000-4000-8000-000000001452'),
+  ('https://clerk.admin.test', 'user_nnnnnnnnnnnnnnnnnnnnnnnnnnn', '00000000-0000-4000-8000-000000001453');
 select * from public.operational_access_set('00000000-0000-4000-8000-000000001456','owner','grant','test:admin','Admin test fixture','test:owner',null);
 
 select throws_ok($$select public.native_admin_begin('00000000-0000-4000-8000-000000001452')$$,
@@ -38,10 +53,13 @@ select lives_ok($$select public.native_admin_execute('00000000-0000-4000-8000-00
 select is((select active from public.testing_center_memberships where user_id = '00000000-0000-4000-8000-000000001452'),true,'internal account membership active without auth.users');
 select is((select role from public.operational_access_assignments where user_id = '00000000-0000-4000-8000-000000001452' and status = 'active'),'tester','operational tester active');
 
--- Real SQL/RLS path for the claims issued by the data JWT; no auth.users fixture.
+-- Real SQL/RLS path for a verified session; no auth.users fixture.
 set local role authenticated;
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000001452',true);
 select set_config('request.jwt.claims','{"iss":"http://127.0.0.1:54321/auth/v1","sub":"00000000-0000-4000-8000-000000001452","role":"authenticated"}',true);
+\if :has_issuer_registry
+select set_config('request.jwt.claims','{"iss":"https://clerk.admin.test","sub":"user_ttttttttttttttttttttttttttt","role":"authenticated","sid":"sess_fixture","azp":"https://app.invalid"}',true);
+\endif
 select is(public.testing_center_current_role(),'tester','authenticated UUID sees its own membership');
 create temporary table submitted as select * from public.testing_center_submit_report(
   'testing-center.v1','testers','Open Hub','Hub appears','Hub hangs',null,'0.1.0','windows','11','hub',false,false,null,null,'admin-test-submit');
@@ -50,6 +68,9 @@ select lives_ok($$select public.testing_center_prepare_screenshot_batch('testing
   '[{"position":1,"mediaType":"image/jpeg","byteSize":123,"sha256":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","width":100,"height":100}]')$$,
   'internal account can prepare screenshot batch without auth.users');
 select set_config('request.jwt.claim.sub','00000000-0000-4000-8000-000000001453',true);
+\if :has_issuer_registry
+select set_config('request.jwt.claims','{"iss":"https://clerk.admin.test","sub":"user_nnnnnnnnnnnnnnnnnnnnnnnnnnn","role":"authenticated","sid":"sess_fixture","azp":"https://app.invalid"}',true);
+\endif
 select is((select count(*)::integer from public.testing_center_reports),0,'another account cannot read report');
 select throws_ok($$select public.testing_center_submit_report('testing-center.v1','testers','Open Hub','Hub appears','Hub hangs',null,'0.1.0','windows','11','hub',false,false,null,null,'no-role')$$,
   '42501','testing_center_membership_required','login alone cannot submit');

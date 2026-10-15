@@ -44,7 +44,7 @@ function refund(
   };
 }
 
-Deno.test("order/refund ledger: partial refund keeps the attributed order active", async () => {
+Deno.test("order/refund ledger: even a partial issued refund retires the attributed license", async () => {
   const ledger = new MemoryOrderRefundLedger();
   assertEquals(await ledger.recordOrder(order()), "apply");
   assertEquals(await ledger.recordRefund(refund()), "apply");
@@ -52,12 +52,12 @@ Deno.test("order/refund ledger: partial refund keeps the attributed order active
   assertEquals(await ledger.readDecision("sandbox", "order-a"), {
     order: order(),
     succeededRefundAmount: 1000,
-    accessState: "active",
+    accessState: "revoked",
     projectionModifiedAt: "2026-08-02T10:05:00.000Z",
   });
 });
 
-Deno.test("order/refund ledger: multiple succeeded refunds revoke only after reaching the order net amount", async () => {
+Deno.test("order/refund ledger: multiple issued refunds retain source revocation", async () => {
   const ledger = new MemoryOrderRefundLedger();
   await ledger.recordOrder(order());
   await ledger.recordRefund(refund());
@@ -74,7 +74,7 @@ Deno.test("order/refund ledger: multiple succeeded refunds revoke only after rea
   assertEquals(decision?.accessState, "revoked");
 });
 
-Deno.test("order/refund ledger: an aggregate order.refunded amount never substitutes refund attribution", async () => {
+Deno.test("order/refund ledger: authoritative aggregate order.refunded independently blocks access", async () => {
   const ledger = new MemoryOrderRefundLedger();
   await ledger.recordOrder(order({
     status: "refunded",
@@ -85,11 +85,11 @@ Deno.test("order/refund ledger: an aggregate order.refunded amount never substit
 
   const decision = await ledger.readDecision("sandbox", "order-a");
   assertEquals(decision?.succeededRefundAmount, 0);
-  assertEquals(decision?.accessState, "active");
+  assertEquals(decision?.accessState, "revoked");
 });
 
-Deno.test("order/refund ledger: pending failed and canceled refunds never revoke", async () => {
-  for (const status of ["pending", "failed", "canceled"] as const) {
+Deno.test("order/refund ledger: failed and canceled refunds do not block", async () => {
+  for (const status of ["failed", "canceled"] as const) {
     const ledger = new MemoryOrderRefundLedger();
     await ledger.recordOrder(order());
     await ledger.recordRefund(refund({ status, amount: 3000 }));
@@ -97,6 +97,45 @@ Deno.test("order/refund ledger: pending failed and canceled refunds never revoke
       (await ledger.readDecision("sandbox", "order-a"))?.accessState,
       "active",
       status,
+    );
+  }
+});
+
+Deno.test("pending refund without payment_id restores on failed/canceled, but a second issued refund still blocks", async () => {
+  for (const status of ["failed", "canceled"] as const) {
+    const ledger = new MemoryOrderRefundLedger();
+    await ledger.recordOrder(order());
+    await ledger.recordRefund(refund({ status: "pending", paymentId: null }));
+    assertEquals(
+      (await ledger.readDecision("sandbox", "order-a"))?.accessState,
+      "revoked",
+    );
+    await ledger.recordRefund(
+      refund({
+        status,
+        paymentId: null,
+        modifiedAt: "2026-08-02T10:06:00Z",
+        snapshotHash: "c".repeat(64),
+      }),
+    );
+    assertEquals(
+      (await ledger.readDecision("sandbox", "order-a"))?.accessState,
+      "active",
+    );
+    assertEquals(
+      await ledger.recordRefund(refund({ status: "pending", paymentId: null })),
+      "stale_noop",
+    );
+    assertEquals(
+      (await ledger.readDecision("sandbox", "order-a"))?.accessState,
+      "active",
+    );
+    await ledger.recordRefund(
+      refund({ refundId: "refund-other", paymentId: null }),
+    );
+    assertEquals(
+      (await ledger.readDecision("sandbox", "order-a"))?.accessState,
+      "revoked",
     );
   }
 });

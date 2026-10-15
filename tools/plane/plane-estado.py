@@ -29,12 +29,17 @@ class Parser(argparse.ArgumentParser):
         self.exit(2, "Error: argumentos inválidos; consulta --help.\n")
 
 
+# El vigilante del servidor (#1647) ignora los comentarios con esta firma.
+COMMENT_PREFIX = "[orquestador] "
+
+
 def parse_args(argv=None):
     parser = Parser(description=__doc__)
     parser.add_argument("tarea", help="VANTA-N")
     parser.add_argument("estado", nargs="?", choices=STATES)
     parser.add_argument("--ver", action="store_true", help="Solo consulta nombre y estado")
     parser.add_argument("--comentario", help="Comentario opcional al cambiar estado")
+    parser.add_argument("--resumen", help="Viñetas (una por línea) de lo hecho, en lenguaje llano; sustituye la sección «Qué se ha hecho» de la descripción")
     parser.add_argument("--isaac", action="store_true", help="Solo orquestador por pedido de Isaac")
     args = parser.parse_args(argv)
     if not re.fullmatch(r"VANTA-[1-9][0-9]*", args.tarea):
@@ -42,8 +47,8 @@ def parse_args(argv=None):
     if args.ver:
         if args.estado or args.comentario is not None or args.isaac:
             parser.error("--ver no admite cambios")
-    elif args.estado is None:
-        parser.error("Falta estado")
+    elif args.estado is None and args.resumen is None:
+        parser.error("Falta estado o --resumen")
     elif args.estado in ISAAC_STATES and not args.isaac:
         parser.exit(2, "Error: Entregado y Para Claude están reservados a Isaac; requieren --isaac.\n")
     return args
@@ -118,6 +123,17 @@ class Plane:
         return PROJECT_ID
 
 
+SUMMARY = "<h3>Qué se ha hecho</h3>"
+
+
+def with_summary(description, text):
+    """Sustituye (o añade al final) la sección de resumen por viñetas."""
+    items = [line.strip().lstrip("-•* ").strip() for line in text.splitlines()]
+    bullets = "".join("<li>" + html.escape(i) + "</li>" for i in items if i)
+    keep = description.split(SUMMARY)[0].rstrip()
+    return keep + SUMMARY + "<ul>" + bullets + "</ul>"
+
+
 def run(args, plane):
     project = plane.project()
     prefix = "projects/" + parse.quote(project, safe="") + "/"
@@ -133,10 +149,16 @@ def run(args, plane):
         raise PlaneError("No se pudo resolver el estado actual por nombre.")
     if args.ver:
         return f"{args.tarea}: {issue['name']} | Estado: {current}"
+    path = prefix + "work-items/" + parse.quote(issue["id"], safe="") + "/"
+    if args.resumen is not None:
+        plane.call(path, "PATCH", {"description_html": with_summary(issue.get("description_html") or "", args.resumen)})
+        if args.estado is None:
+            return f"{args.tarea}: resumen actualizado"
+    if args.estado is None:
+        raise PlaneError("Indica un estado, --resumen o --ver.")
     target = [s for s in states if s["name"] == args.estado]
     if len(target) != 1:
         raise PlaneError("El estado solicitado no existe o es ambiguo en /states/.")
-    path = prefix + "work-items/" + parse.quote(issue["id"], safe="") + "/"
     plane.call(path, "PATCH", {"state": target[0]["id"]})
     # Volver a leer: un PATCH aceptado no basta para acreditar el estado.
     saved = plane.call(path).get("state")
@@ -147,7 +169,7 @@ def run(args, plane):
     if args.comentario is not None:
         try:
             plane.call(path + "comments/", "POST", {
-                "comment_html": "<p>" + html.escape(args.comentario).replace("\n", "<br>") + "</p>"})
+                "comment_html": "<p>" + html.escape(COMMENT_PREFIX + args.comentario).replace("\n", "<br>") + "</p>"})
         except PlaneError:
             raise PlaneError("Estado cambiado y verificado, pero falló el comentario; no se repite automáticamente.") from None
     return f"{args.tarea}: {current} → {args.estado} (verificado)"

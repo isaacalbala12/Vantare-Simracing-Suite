@@ -174,3 +174,5 @@ nativos usan `--workspace` e incluyen admin. Reproducción Mac en
 target aislado `~/target-1636`. No hay compilación ni llamada SaaS en el servidor PC.
 
 R3: se verifica HMAC en tiempo constante antes de consumir cupos. Las firmas inválidas no acceden a SQL ni gastan capacidad de baja de enlaces legítimos.
+
+R3: el enlace de borrado devuelve el mismo 200 y el mismo recibo para una dirección ausente, de espera o vinculada a una cuenta. El recibo no afirma un borrado de cuenta. El Owner conserva errores explícitos en su ruta autenticada.

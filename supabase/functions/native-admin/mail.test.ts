@@ -504,12 +504,18 @@ Deno.test("waitlist erasure uses only verified token address and GET never mutat
     (await handleUnsubscribe(post(), deps)).status === 200 &&
       Number(erased) === 1 && unsubscribed === 0,
   );
-  assert(
-    (await handleUnsubscribe(post(), {
-      ...deps,
-      forget: () => Promise.reject(new Error("mail_contact_has_account")),
-    })).status === 409,
-  );
+  const publicReplies = [];
+  for (
+    const forget of [
+      () => Promise.resolve(), // absent or exclusive waitlist: same public result
+      () => Promise.reject(new Error("mail_contact_has_account")),
+    ]
+  ) {
+    const reply = await handleUnsubscribe(post(), { ...deps, forget });
+    publicReplies.push([reply.status, [...reply.headers], await reply.text()]);
+  }
+  assert(publicReplies[0][0] === 200);
+  assert(JSON.stringify(publicReplies[0]) === JSON.stringify(publicReplies[1]));
   let actions = 0;
   await executeMail("mail_forget_waitlist", {
     email: "wait@example.invalid",

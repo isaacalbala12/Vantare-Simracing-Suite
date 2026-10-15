@@ -4,7 +4,9 @@ PR #1657, rama `vantareapp/isa-1636-correos`, base `3fcb0420a` aprobada por
 seguridad R2 y subida por el orquestador. Mismo worktree Mac, sin SaaS ni
 activación. M1: HMAC antes de ambos presupuestos; 601 firmas inválidas no gastan
 SQL ni bloquean una baja válida. Regresión roja antes del arreglo y verde después.
-Quedan en curso: retención/alerta de borrados, privacidad del enlace, margen del
+M3: recibo público indistinguible (200/cuerpo/cabeceras) para espera/ausente/cuenta;
+regresión roja y verde registrada. Owner mantiene diagnóstico autenticado.
+Quedan en curso: retención/alerta de borrados, margen del
 DELETE y aislamiento del gate Docker. Evidencia `~/evidence/1636-r3/`.
 El orquestador mantiene tracker/GitHub; push del worker solo al bare.
 

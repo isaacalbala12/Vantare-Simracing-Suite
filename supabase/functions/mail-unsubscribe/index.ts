@@ -111,15 +111,13 @@ export async function handleUnsubscribe(
           error && typeof error === "object" && "message" in error &&
           error.message === "mail_contact_has_account"
         ) {
-          return reply(
-            "Para borrar una cuenta, utiliza la gestión de cuenta de Vantare.",
-            409,
-          );
+          // A bearer link must not reveal account membership. Same public receipt.
+        } else {
+          throw error;
         }
-        throw error;
       }
       return reply(
-        "Datos de espera borrados. La retirada de Brevo queda en cola hasta confirmarse.",
+        "Solicitud recibida. Se borrarán los datos que correspondan a esta vía. Para gestionar una cuenta, utiliza los ajustes de Vantare.",
         200,
       );
     }

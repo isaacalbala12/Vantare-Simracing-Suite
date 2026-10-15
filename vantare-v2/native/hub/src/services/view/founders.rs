@@ -92,7 +92,6 @@ impl Remote {
                     }
                 })),
             )
-            .child(self.founders_details(cx))
             .child(self.purchase_buttons(cx))
             .child(if signed_in {
                 orbit::small_button("services-sign-out", "Cerrar sesión", cx)
@@ -171,9 +170,12 @@ impl Remote {
     pub(super) fn founders_details(&self, cx: &mut Context<Self>) -> gpui::Div {
         let copy = self.founders_language.copy();
         div()
+            .w_full()
+            .min_w_0()
             .flex()
             .flex_col()
             .gap(px(6.0))
+            .child(orbit::text(copy.button, 14.0, 600, orbit::ink_2(cx), cx))
             .child(orbit::text(copy.included, 12.0, 400, orbit::ink_2(cx), cx))
             .child(orbit::text(
                 copy.subscription,

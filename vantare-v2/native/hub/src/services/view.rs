@@ -1498,7 +1498,8 @@ impl Remote {
         let access = orbit::neo_card(cx).p(px(16.0)).flex_1().min_w_0()
             .child(text("Acceso beta", 16.0, 600, orbit::ink(cx), cx))
             .child(text("Acceso gratuito durante la beta para testers. La sesión valida tu acceso; no muestra ni copia claves privadas.", 13.0, 400, orbit::ink_2(cx), cx))
-            .child(orbit::pill(self.account_access_label(), orbit::Tone::Neutral, cx).self_start());
+            .child(orbit::pill(self.account_access_label(), orbit::Tone::Neutral, cx).self_start())
+            .child(self.founders_details(cx));
         let contribution = orbit::neo_card(cx)
             .p(px(16.0))
             .flex_1()

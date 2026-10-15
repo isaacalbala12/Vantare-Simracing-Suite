@@ -12,7 +12,7 @@ $previous=@{}
 $previousTime=0.0
 $rows=[Collections.Generic.List[object]]::new()
 # CPU total via Win32 GetSystemTimes, independent of localized performance counters.
-Add-Type @'
+if(-not ('BenchSystemTimes' -as [type])){Add-Type @'
 using System;
 using System.Runtime.InteropServices;
 public static class BenchSystemTimes {
@@ -22,6 +22,7 @@ public static class BenchSystemTimes {
  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr window,out uint processId);
 }
 '@
+}
 [long]$idle=0; [long]$kernel=0; [long]$user=0
 if(-not [BenchSystemTimes]::GetSystemTimes([ref]$idle,[ref]$kernel,[ref]$user)){throw 'GetSystemTimes failed'}
 $lastIdle=$idle; $lastTotal=$kernel+$user

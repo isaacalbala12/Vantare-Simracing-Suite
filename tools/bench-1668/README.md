@@ -1,104 +1,91 @@
-# VANTA-89 · Medición #1668
+# VANTA-89 · Kit del PC de juego (#1668)
 
-Banco Windows local solicitado por Isaac. No lanza ni cierra LMU, no toca el
-supervisor PID 16280, no captura imágenes y no abre interfaces de configuración.
-Los overlays propios solo se arrancan durante las pasadas; procesos preexistentes
-provocan parada, nunca se cierran como parte de la limpieza.
+Entrega vigente: `C:/VantareServer/share/kit-bench/`. El 16-oct Isaac trasladó la
+comparativa al PC de juego por falta de RAM del servidor. La espera del servidor
+se detuvo; ya no hay runner de medición del servidor en este código.
+El README que recibe Isaac tiene diez líneas (`README-KIT.txt`).
 
-## Estado y límites
+## Contenido y uso
 
-La evidencia viva está en `C:/VantareServer/evidence/bench-1668/RESULTADOS.md` y el
-buzón en `C:/tmp/buzon/bench-1668.md`. No confundir instalación/preparación con una
-comparación terminada. RaceLab requiere cuenta según su web oficial y un plugin
-que exige cerrar LMU según su guía; ambas cosas impiden medirlo esta sesión sin
-otra intervención. No se reemplaza por una ventana de login ni por datos sintéticos.
+`INICIAR.cmd` ejecuta `INICIAR.ps1` en Windows PowerShell 5.1 y solicita elevación
+para ETW. No necesita Python en el PC de juego. Incluye Vantare Release, PresentMon
+2.6.0 oficial con licencia, TinyPedal 2.51.0 ZIP oficial con licencia/fuente,
+configuración propia y SHA-256 del paquete. RaceLab se instala desde su web oficial;
+no se redistribuye su instalador ni se crean cuentas o pagos. Si es inaccesible,
+se conservan sus tres posiciones como omitidas. No se afirma una comparativa completa.
 
-- [RaceLab oficial](https://racelab.app/)
-- [Configuración oficial LMU](https://garage.racelab.app/docs/first-steps/lmu/)
-- [TinyPedal 2.51.0](https://github.com/TinyPedal/TinyPedal/releases/tag/v2.51.0)
-- [PresentMon 2.6.0](https://github.com/GameTechDev/PresentMon/releases/tag/v2.6.0)
+El guion pregunta resolución y conjunto común: dos widgets (Standings/Relative),
+o cuatro (también Delta/Pedals) solo si son gratuitos y funcionan en las tres.
+Escala anclajes según resolución. Perfil TinyPedal aislado mediante APPDATA;
+Vantare usa layout propio. Isaac debe configurar y comprobar RaceLab y confirmar
+equivalencia y datos reales. La cuenta/plugin pueden impedir esa equivalencia.
 
-## Preparación reproducible
+Isaac inicia LMU: práctica Hypercar, sin bordes, Enable Plugins ON. Elige pista,
+modo PISTA o BOXES y anota IA/clima/gráficos/VSync/límite FPS. Una vuelta prepara
+Delta. Durante cada toma: misma cámara/ajustes, conducción constante sin incidentes
+o boxes/cabina/ralentí según lo elegido; nunca mezclar ambos.
 
-Descargas oficiales en `C:/VantareServer/bench/`: TinyPedal ZIP, PresentMon CLI,
-RaceLab installer. Los SHA-256 y firmas observadas se conservan en `downloads.json`
-de evidencia; metadatos de releases oficiales en `bench/*-release.json`.
-TinyPedal es portable. RaceLab se extrae como paquete Squirrel mediante 7-Zip,
-sin ejecutar instalador ni escribir en la instalación de LMU; su ejecutable queda
-en `bench/RaceLab/lib/net45/RacelabApps.exe`. No se ha validado su arranque.
+Orden fijado: Base/Vantare/RaceLab/TinyPedal; TinyPedal/RaceLab/Vantare/Base;
+RaceLab/Base/TinyPedal/Vantare. Cada una: confirmación humana, 5 s de foco LMU,
+30 s de calentamiento y 180 s de captura. Un pitido pide volver al guion y declarar
+incidentes. Son 42 minutos más cambios/preparación para doce tomas; unos 32 minutos
+para nueve si RaceLab no está disponible. La variación de tráfico/conducción debe
+revisarse antes de atribuir diferencias pequeñas al producto.
 
-`prepare.py` genera configuración propia aislada: cuatro widgets gratuitos de
-Vantare (Standings/Relative/Delta/Pedals) y equivalentes TinyPedal, anclajes
-aproximados a 1920×1080. Lee los nombres publicados de widgets de TinyPedal 2.51.0,
-sin importar ni ejecutar su código Python. No modifica perfiles existentes del
-usuario. El proceso TinyPedal recibe APPDATA propio; su ventana principal está
-desactivada al arrancar y sus widgets se bloquean para no captar clics.
+Solo se cierran procesos lanzados por el kit y sus descendientes, comprobando PID
+y creación. Si ya hay overlays abiertos, el guion pide que los cierre Isaac.
+No lanza/cierra LMU. Ctrl+C o STOP detienen la prueba; conserva ZIP parcial.
+No captura imágenes, lee variables de entorno privadas ni administra credenciales.
 
-Vantare se construye desde native de `origin/nightly@ed66924c29299d78cb78a0125ecb5e2ab83ef049`.
-Esa base ya contiene los widgets reales; #1641 es una dirección visual aún abierta.
-Se evita mezclarla con el objeto de la medición. No usar perfil debug/prueba.
-Desde `vantare-v2/`, **una sola compilación propia**, por la cola:
+## Evidencia y análisis offline
+
+El ZIP incluye campaña/hardware/condiciones, hashes y versiones de ejecutables,
+layouts, contadores y frames crudos, doce estados de pasada (incluidas omisiones),
+e incidentes. Solo el servidor necesita Python 3.11+ sin dependencias externas:
+
+```powershell
+./ANALIZAR.ps1 -Zip C:/ruta/resultados-FECHA.zip
+```
+
+`analyze_zip.py` valida rutas, duplicados, symlinks, extensiones, volumen y orden del
+ZIP; recalcula desde CSV sin confiar en summaries externos. Extrae a carpeta nueva
+por hash y escribe `C:/VantareServer/evidence/bench-1668/RESULTADOS.md`. Nunca rellena
+faltantes con cero. La tabla distingue cobertura, cada toma y medias de tomas válidas;
+los p1/p99 agregados son medias de percentiles por toma, no un percentil combinado.
+
+PresentMon: cadena dominante por PID, CSV v1; descarta primer intervalo por comenzar
+antes de capturar. FPS = 1000/media de msBetweenPresents; p1/p99 interpolados.
+Incluye presents descartados, no acredita FPS visibles ni input→pantalla. Revisar
+cadenas secundarias/PresentMode/dropped. CPU por tiempo de proceso normalizado a
+todos los hilos lógicos; WS agregado puede duplicar páginas compartidas. CPU total
+GetSystemTimes; RAM física total menos libre. Muestras de recursos ~1 s, con pequeño
+desfase frente a ETW. Procesos protegidos/terminados pueden faltar. Guardas de builds,
+foco, presencia y duración no certifican equivalencia/frescura ni estabilidad térmica.
+El plugin RaceLab cargado en LMU permanece en la base; su CPU dentro del juego no
+figura en el consumo de procesos RaceLab.
+
+## Build y empaquetado
+
+Fuente native de `origin/nightly@ed66924c29299d78cb78a0125ecb5e2ab83ef049`;
+nightly ya contiene widgets reales, por eso no se usa el PR visual #1641 abierto.
+Release optimizado de Cargo; `--version` indica 0.0.0 (development), que es el canal
+compilado, no perfil debug/prueba. No distribuir públicamente este kit privado.
+Build por cola, un solo build propio, MIN_GB=0, target propio y dos jobs:
 
 ```powershell
 $env:VANTARE_CARGO_MIN_GB='0'
 $env:VANTARE_CARGO_SLOTS='1'
-pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --release -p vantare-runtime -p vantare-ui --bin vantare --bin vantare-core --bin vantare-overlays --target-dir C:/VantareServer/targets/isa-1668 -j 2
+pwsh -NoProfile -File native/scripts/compilar.ps1 cargo build --manifest-path native/Cargo.toml --release --locked -p vantare-runtime -p vantare-ui --bin vantare --bin vantare-core --bin vantare-overlays --target-dir C:/VantareServer/targets/isa-1668 -j 2
 ```
 
-No se cambia la configuración de máquina ni se cancela trabajo ajeno. El slot
-único no garantiza que otros workers, configurados con dos slots, estén inactivos:
-el banco espera por nombres de procesos y rechaza pasadas con builds detectados.
+`prepare.py` genera los perfiles iniciales desde nombres publicados TinyPedal;
+`package.ps1` reúne binarios/hashes/licencias y scripts compatibles con PS 5.1.
+Fuentes: [TinyPedal](https://github.com/TinyPedal/TinyPedal/releases/tag/v2.51.0),
+[PresentMon](https://github.com/GameTechDev/PresentMon/releases/tag/v2.6.0),
+[RaceLab](https://racelab.app/) y [plugin/configuración LMU](https://garage.racelab.app/docs/first-steps/lmu/).
 
-## Sesión y ejecución
-
-Isaac debe iniciar práctica Hypercar, 1920×1080 sin bordes, Enable Plugins ON,
-vista de cabina, en su box, motor al ralentí, sin pausa, sin menús ni Alt-Tab.
-Mismos coche/pista/clima/tráfico/gráficos/VSync/límite FPS durante la campaña.
-Hace falta comprobar que cuatro widgets muestran datos reales y posiciones
-comparables; los perfiles escritos por sí solos no lo acreditan.
-
-El runner oculto espera sesión REST y `READY.json` en evidencia. Solo después de
-comprobar las condiciones, crear:
-
-```json
-{"condition":"boxes-cockpit-idle","resolution":"1920x1080","widgets_verified":true}
-```
-
-Ejecutar `run.ps1` con `Start-Process pwsh -WindowStyle Hidden`. Hay un mutex
-de campaña para evitar duplicados. `STOP` en evidencia cancela las esperas y se
-revisa entre pasadas; una captura activa termina antes de detener los procesos
-propios. Al reiniciar debe retirarse deliberadamente READY/STOP anteriores.
-
-Orden: Base/Vantare/RaceLab/TinyPedal; TinyPedal/RaceLab/Vantare/Base;
-RaceLab/Base/TinyPedal/Vantare. Tres tomas de 180 s y calentamiento de 30 s por
-escenario. RaceLab se omite expresamente por el bloqueo. Son unos 32 minutos
-para las nueve pasadas posibles, más las esperas por carga/sesión; 42 minutos
-para doce. No comparar esos resultados de boxes con FPS conduciendo.
-
-## Datos, verificación y revisión obligatoria
-
-`sample.ps1` recoge procesos/counters cada segundo; CPU normalizada sobre todos
-los hilos lógicos, working set agregado y CPU/RAM física total. CSV numéricos con
-cultura invariante. Registra foco y procesos de compilación. Procesos protegidos
-o terminados durante lectura pueden faltar: revisar cobertura de los tres
-procesos de Vantare y de TinyPedal. El primer delta de CPU se excluye.
-
-PresentMon captura solo PID LMU y su propia sesión ETW. Se conserva todo el CSV;
-`summarize.py` selecciona la cadena más frecuente y omite su primer intervalo,
-que podría empezar antes de la captura. No agrega cadenas. Calcula FPS como
-1000/media de intervalos, p1/p99 de frametime interpolados. No equivale a FPS
-visibles ni a latencia input→pantalla; incluye presents descartados. Preservar
-CSV para revisar dropped/PresentMode y cambios de swap chain. CPU/RAM y ETW
-tienen un desfase pequeño al arrancar y no son muestras sincronizadas por frame.
-
-La guarda automática rechaza builds, foco ajeno, juego ausente, duración menor
-al 90% y overlay ausente. **No certifica** datos live, estabilidad de clima/IA,
-igualdad de superficie/cadencia o que el coche siguiera en boxes: revisar estos
-puntos con Isaac antes de aceptar la pasada. No reetiquetar una pasada inválida;
-conservarla y repetir. `report.py` reconstruye RESULTADOS.md desde summaries de
-la última campaña. Presenta cada pasada; N/D jamás significa cero consumo.
-
-Validación: `python tools/bench-1668/test_summary.py`, parseo PowerShell y smoke
-real de instrumento 5 s / sampler 3 s. Los smokes no son medidas comparativas.
-Gates de producto Rust omitidos porque no se toca código nativo; Release es un
-requisito de ejecución, no un gate de corrección de la app.
+Verificación: tres tests de cálculos/clasificación y tres del ZIP/report completo,
+omisiones y rechazo de traversal; sintaxis PS 5.1 y 7; preflight PS 5.1; sampler dos
+veces en una misma sesión PS 5.1 (detecta regresión Add-Type); tres binarios --version.
+No se ejecutan las doce tomas en servidor ni se certifica runtime del PC de Isaac.
+Sin cambios nativos: gates de producto omitidos; Release sí compilado.

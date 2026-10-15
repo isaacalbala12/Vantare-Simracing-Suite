@@ -27,6 +27,8 @@ def frames(path):
     # First interval began before capture and may include loading/alt-tab time.
     values = [float(row['msbetweenpresents']) for row in chain_rows[1:]
               if float(row['msbetweenpresents']) > 0]
+    if any(not math.isfinite(value) for value in values):
+        raise ValueError('Non-finite frametime')
     if len(values) < 100:
         raise ValueError('Insufficient frames')
     mean = statistics.mean(values)
@@ -64,6 +66,8 @@ def resources(path, overlay_prefixes):
                             system_ram=float(group[0]['system_used_bytes']) / 1048576))
     if not samples:
         raise ValueError('No resource samples')
+    if any(not math.isfinite(value) or value < 0 for sample in samples for value in sample.values()):
+        raise ValueError('Non-finite or negative resource sample')
     return dict(overlay_cpu_percent=statistics.mean(s['cpu'] for s in samples),
                 overlay_working_set_mib=statistics.mean(s['ram'] for s in samples),
                 system_cpu_percent=statistics.mean(s['system_cpu'] for s in samples),
@@ -80,6 +84,7 @@ def summarize(folder):
                            ['tinypedal'] if metadata['scenario'] == 'TinyPedal' else
                            ['racelab'] if metadata['scenario'] == 'RaceLab' else ['__none__'])
     result['valid'] = (not result['background_build_processes']
+                       and metadata.get('purpose') != 'calibration'
                        and not result['unfocused_samples'] and not result['missing_game_samples']
                        and result['observed_seconds'] >= .9 * metadata['seconds']
                        and (metadata['scenario'] == 'Base' or result['overlay_working_set_mib'] > 0))

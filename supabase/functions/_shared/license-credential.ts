@@ -371,7 +371,12 @@ function createCredentialStore(): CredentialStore {
         throw new Error("Account resolution returned no identifier");
       }
       const admin = getSupabaseAdmin();
-      return await loadCredentialAccount(admin, accountId, fingerprint, environment);
+      return await loadCredentialAccount(
+        admin,
+        accountId,
+        fingerprint,
+        environment,
+      );
     },
   };
 }
@@ -514,7 +519,7 @@ export async function loadCredentialAccount(
     .maybeSingle();
   if (deviceError) throw deviceError;
   const { data: grants, error: grantsError } = await admin
-    .from("billing_access_grants").select(
+    .from("billing_effective_access_grants").select(
       "capability,valid_until,provider,environment,source_type",
     )
     .eq("user_id", accountId).eq("status", "active")

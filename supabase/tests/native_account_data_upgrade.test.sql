@@ -10,7 +10,8 @@ select is((select count(*)::integer from pg_constraint where contype = 'f' and c
     'public.testing_center_report_submission_keys'::regclass,'public.testing_center_report_events'::regclass,
     'public.testing_center_evidence_batches'::regclass)),5,'five validated internal-account FKs');
 select ok(exists(select 1 from pg_constraint where conrelid = 'public.testing_center_validations'::regclass
-  and confrelid = 'auth.users'::regclass),'unrelated validation lifecycle untouched');
+  and confrelid = CASE WHEN to_regclass('private.clerk_issuers') IS NOT NULL
+    THEN 'public.profiles'::regclass ELSE 'auth.users'::regclass END),'validation lifecycle retains its account FK after the identity cutover');
 select throws_ok($$insert into public.testing_center_memberships(user_id,actor_id,role)
   values('00000000-0000-4000-8000-000000000000','fixture:missing','tester')$$,
   '23503',null,'missing internal account remains rejected by FK');

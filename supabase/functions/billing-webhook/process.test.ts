@@ -252,6 +252,17 @@ function processDeps(
     projection,
     lifecycle,
     orderRefundLedger,
+    resolveIdentity: async (
+      client: SupabaseClient,
+      data: Record<string, unknown>,
+      environment: "sandbox" | "production",
+    ) => {
+      const bound = await resolveUserId(client, data, environment);
+      if (bound) return bound;
+      const customer = data.customer as Record<string, unknown> | undefined;
+      const external = data.external_customer_id ?? customer?.external_id;
+      return typeof external === "string" ? external : null;
+    },
   };
 }
 
@@ -672,7 +683,7 @@ Deno.test("processPolarWebhookEvent: subscription.revoked revokes monthly withou
   assertEquals([...deps.projection.grants.values()][0].status, "revoked");
 });
 
-Deno.test("processPolarWebhookEvent: only an attributed succeeded refund revokes lifetime safely", async () => {
+Deno.test("processPolarWebhookEvent: aggregate and ordinary refund revoke lifetime safely", async () => {
   const mock = createMockSupabase();
   const deps = processDeps(mock);
 
@@ -700,11 +711,11 @@ Deno.test("processPolarWebhookEvent: only an attributed succeeded refund revokes
   );
   assertEquals(aggregate, {
     status: "processed",
-    action: "awaiting_attributed_refund",
+    action: "revoked_lifetime_order",
   });
   assertEquals(
     [...deps.orderRefundLedger.grants.values()].every((grant) =>
-      grant === "active"
+      grant === "revoked"
     ),
     true,
   );
@@ -730,7 +741,7 @@ Deno.test("processPolarWebhookEvent: only an attributed succeeded refund revokes
   );
 });
 
-Deno.test("processPolarWebhookEvent: multiple partial refunds keep access until their attributed sum is total", async () => {
+Deno.test("processPolarWebhookEvent: partial refund retires the affected source immediately", async () => {
   const mock = createMockSupabase();
   const deps = processDeps(mock);
   await processPolarWebhookEvent(
@@ -753,11 +764,11 @@ Deno.test("processPolarWebhookEvent: multiple partial refunds keep access until 
   );
   assertEquals(partial, {
     status: "processed",
-    action: "recorded_partial_refund",
+    action: "revoked_lifetime_order",
   });
   assertEquals(
     [...deps.orderRefundLedger.grants.values()].every((grant) =>
-      grant === "active"
+      grant === "revoked"
     ),
     true,
   );
@@ -782,7 +793,7 @@ Deno.test("processPolarWebhookEvent: multiple partial refunds keep access until 
   });
 });
 
-Deno.test("processPolarWebhookEvent: subscription order refunds never enter the one-time ledger", async () => {
+Deno.test("processPolarWebhookEvent: Pro refund blocks its subscription without issuing perpetual Pro", async () => {
   const mock = createMockSupabase();
   const deps = processDeps(mock);
   await processPolarWebhookEvent(
@@ -815,34 +826,37 @@ Deno.test("processPolarWebhookEvent: subscription order refunds never enter the 
     deps,
   );
   assertEquals(order, {
-    status: "ignored",
-    reason: "order_not_lifetime_product",
+    status: "processed",
+    action: "recorded_subscription_order",
   });
-  assertEquals(deps.orderRefundLedger.orders.size, 0);
+  assertEquals(deps.orderRefundLedger.orders.size, 1);
   assertEquals([...deps.projection.grants.values()][0].status, "active");
 
-  await assertRejects(() =>
-    processPolarWebhookEvent(
-      {
-        type: "refund.updated",
-        data: succeededRefundData({
-          id: "refund-subscription-cycle",
-          order_id: "order-subscription-cycle",
-        }),
-      },
-      "evt_sub_order_refund",
-      deps,
-    )
+  const refund = await processPolarWebhookEvent(
+    {
+      type: "refund.updated",
+      data: succeededRefundData({
+        id: "refund-subscription-cycle",
+        order_id: "order-subscription-cycle",
+      }),
+    },
+    "evt_sub_order_refund",
+    deps,
   );
-  assertEquals(deps.inbox.snapshot("evt_sub_order_refund").status, "failed");
+  assertEquals(refund, {
+    status: "processed",
+    action: "blocked_subscription_refund",
+  });
   assertEquals(
-    deps.inbox.snapshot("evt_sub_order_refund").lastErrorCode,
-    "order_refund_ledger_missing_order",
+    deps.orderRefundLedger.grants.size,
+    0,
   );
-  assertEquals([...deps.projection.grants.values()][0].status, "active");
+  // Base lifecycle remains intact; effective access excludes the refund block.
+  assertEquals([...deps.projection.grants.values()][0].status, "revoked");
+  assertEquals([...deps.projection.baseGrants.values()][0].status, "active");
 });
 
-Deno.test("processPolarWebhookEvent: refund without payment identity is quarantined", async () => {
+Deno.test("processPolarWebhookEvent: official Refund without payment_id retires Launch", async () => {
   const mock = createMockSupabase();
   const deps = processDeps(mock);
   await processPolarWebhookEvent(
@@ -862,12 +876,12 @@ Deno.test("processPolarWebhookEvent: refund without payment identity is quaranti
     deps,
   );
   assertEquals(result, {
-    status: "quarantined",
-    reason: "missing_payment_id",
+    status: "processed",
+    action: "revoked_lifetime_order",
   });
   assertEquals(
     [...deps.orderRefundLedger.grants.values()].every((grant) =>
-      grant === "active"
+      grant === "revoked"
     ),
     true,
   );
@@ -1116,6 +1130,8 @@ Deno.test("processPolarWebhookEvent: active claim defers a concurrent worker and
     payloadHash,
     payload: event,
   });
+  assertEquals(receipt.status, "received");
+  if (receipt.id === null) throw new Error("live event has no inbox row");
   const firstClaim = await deps.inbox.claim(
     receipt.id,
     "00000000-0000-4000-8000-000000000001",

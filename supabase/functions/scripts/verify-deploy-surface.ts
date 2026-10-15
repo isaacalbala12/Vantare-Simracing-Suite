@@ -23,6 +23,8 @@ const recognizedFunctions = new Set([
   "testing-report-submit",
   "clerk-webhook",
   "billing-reconcile",
+  "mail-unsubscribe",
+  "mail-webhook",
   ...productionFunctions,
   ...testingPilotFunctions,
   ...testingAutomationFunctions,

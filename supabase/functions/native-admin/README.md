@@ -177,3 +177,8 @@ Referencias API: [órdenes](https://polar.sh/docs/api-reference/orders/list),
 [orden e importes](https://polar.sh/docs/api-reference/orders/get),
 [refunds](https://polar.sh/docs/api-reference/refunds/list),
 [borrado Clerk](https://clerk.com/docs/reference/backend/user/delete-user).
+
+## Correos de marketing (#1636)
+
+Contrato, consentimiento, cuota, bajas y configuración futura: [MAIL.md](MAIL.md).
+Candidato local; ninguna clave ni despliegue se habilita por añadir el código.

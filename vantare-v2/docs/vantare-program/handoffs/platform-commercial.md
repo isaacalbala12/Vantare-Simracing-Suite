@@ -1,3 +1,20 @@
+## #1636 · VANTA-72 · Correos de gestión (15/10/2026, en implementación)
+
+Worker Codex T3 por SSH en Mac, sin subagentes ni servicios reales. Rama
+`vantareapp/isa-1636-correos`, base miniapp `0ac70754`, no nightly. El orquestador
+mantiene Plane/GitHub y recoge el bare; buzón `~/orq/1636.buzon.md`.
+
+Ledger privado con consentimiento único, siete grupos desde fuentes vigentes,
+cuatro idiomas, aprobación de revisión por Owner, reserva global de 300/24 h,
+no reintento de mensajes inciertos, baja firmada GET/POST y webhook autenticado.
+IA solo devuelve borradores (`claude-opus-5-5`, high), sin guardar ni enviar.
+Flags apagados por omisión. Contrato/guía de Isaac:
+`supabase/functions/native-admin/MAIL.md`. UI GPUI y QA en curso; evidencia en
+`~/evidence/1636/`. Pendiente gates finales, capturas y revisión del orquestador.
+Colectores de consentimiento en registro/cuenta/espera y borrado externo Brevo
+necesitan integración antes de producción; no se presume permiso histórico.
+Sin deploy, merge, promoción, release ni gasto.
+
 ## #1627 / PR #1639 · VANTA-21 · ronda 5 (15/10/2026)
 
 Worker Codex macOS arm64, sin subagentes ni servicios reales. Seguimiento por

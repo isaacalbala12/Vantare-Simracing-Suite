@@ -1,3 +1,4 @@
+import { executeMail, type MailDeps, validateMail } from "./mail.ts";
 import { cleanupDeletedObjects } from "../clerk-webhook/index.ts";
 import { syncAdminPayments } from "./payment-sync.ts";
 import { ensureCreatorCode } from "./creator-code.ts";
@@ -39,6 +40,13 @@ const statuses = [
 ];
 type ObjectValue = Record<string, unknown>;
 export type AdminDeps = NativeAuthDeps & {
+  mail?: MailDeps;
+  mailExecute?: (
+    actor: string,
+    action: string,
+    params: ObjectValue,
+    environment: string,
+  ) => Promise<ObjectValue>;
   resolve?: typeof resolveNativeAccount;
   begin?: (actor: string) => Promise<boolean>;
   execute?: (
@@ -66,6 +74,10 @@ export function validateAdminRequest(
   const { version, action, ...params } = body;
   if (version !== 1 || typeof action !== "string") {
     throw new NativeError(400, "invalid_request");
+  }
+  if (action.startsWith("mail_")) {
+    validateMail(action, params);
+    return { action, params };
   }
   const fields: Record<string, string[]> = {
     search_accounts: ["query", "limit", "cursor"],
@@ -364,7 +376,20 @@ export async function handleNativeAdmin(
       request.headers.get("Content-Type")?.split(";")[0].trim()
         .toLowerCase() !== "application/json"
     ) throw new NativeError(400, "invalid_request");
-    const parsed = await readJsonObject(request, 8192);
+    const legacyCopy = request.clone();
+    const parsed = await readJsonObject(request, 128 * 1024);
+    if (
+      parsed.ok &&
+      !(typeof parsed.value.action === "string" &&
+        parsed.value.action.startsWith("mail_"))
+    ) {
+      const legacy = await readJsonObject(legacyCopy, 8192);
+      if (!legacy.ok && legacy.code === "body_too_large") {
+        throw new NativeError(413, "request_too_large");
+      }
+    } else {
+      void legacyCopy.body?.cancel();
+    }
     if (!parsed.ok) {
       throw new NativeError(
         parsed.code === "body_too_large" ? 413 : 400,
@@ -436,6 +461,26 @@ export async function handleNativeAdmin(
     // Adding it before subjects would incorrectly return the owner in every search.
     users.set(actorUser.id, actorUser);
     const environment = deps.environment ?? requirePolarEnvironment();
+    if (action.startsWith("mail_")) {
+      const runMail = (command: string, arguments_: ObjectValue) =>
+        (deps.mailExecute ?? (async (actor, command, params, environment) => {
+          const { data, error } = await getSupabaseAdmin().rpc(
+            "mail_admin_execute",
+            {
+              p_actor: actor,
+              p_action: command,
+              p_params: params,
+              p_environment: environment,
+            },
+          );
+          if (error) throw error;
+          return objectValue(data);
+        }))(actor, command, arguments_, environment);
+      return respond({
+        ...await executeMail(action, params, runMail, deps.mail),
+        ok: true,
+      });
+    }
     const run = (command: string, arguments_: ObjectValue) =>
       (deps.execute ?? execute)(
         actor,
@@ -691,6 +736,7 @@ export async function handleNativeAdmin(
       if (
         [
           "native_admin_owner_conflict",
+          "mail_revision_conflict",
           "testing_review_conflict",
           "testing_acceptance_limit",
         ].includes(String(error.message))

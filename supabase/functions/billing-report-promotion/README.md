@@ -172,3 +172,8 @@ scope del producto verificados por el operador). El ahorro se calcula con ese
 valor; un 40 % autorizado puede ganar al tramo fijo. Al acabar esta campaña solo
 se retiran IDs propios de lanzamiento/informes. Un beneficio externo, incluido
 el de creador, se conserva y no se vuelve a aplicar para prolongar su duración.
+
+Ronda 2 · P3-3: la dependencia de promoción del checkout es inyectable y se
+consulta antes de reservar el intento y antes de Polar. Un error transitorio
+responde 503, permite repetir el mismo `attemptId` y no lo marca incierto. El
+camino con campaña activada tiene prueba del error, reintento y URL reutilizada.

@@ -237,3 +237,71 @@ Deno.test("checkout propagates request cancellation to Polar", async () => {
   assertEquals(response.status, 503);
   assertEquals((await response.json()).error, "request_cancelled");
 });
+Deno.test("P3-3 activated campaign RPC failure is retryable without uncertain checkout attempt", async () => {
+  const previous = Deno.env.get("REPORT_PROMOTION_ENABLED");
+  Deno.env.set("REPORT_PROMOTION_ENABLED", "true");
+  try {
+    const store = memoryStore();
+    let claims = 0;
+    let uncertain = 0;
+    let calls = 0;
+    let policy = 0;
+    const configured = {
+      ...deps(store),
+      attempts: {
+        ...store,
+        claim: (input: Parameters<CheckoutAttemptStore["claim"]>[0]) => {
+          claims++;
+          return store.claim(input);
+        },
+        markUncertain: (
+          input: Parameters<CheckoutAttemptStore["markUncertain"]>[0],
+        ) => {
+          uncertain++;
+          return store.markUncertain(input);
+        },
+      },
+      promotionDiscount: () => {
+        assertEquals(Deno.env.get("REPORT_PROMOTION_ENABLED"), "true");
+        policy++;
+        return policy === 1
+          ? Promise.reject(new Error("transient SQL outage"))
+          : Promise.resolve("launch1");
+      },
+      createCheckout: (
+        params: Parameters<
+          NonNullable<import("./index.ts").CheckoutDeps["createCheckout"]>
+        >[0],
+      ) => {
+        calls++;
+        assertEquals(params.discountId, "launch1");
+        assertEquals(params.trial, { enabled: false });
+        return Promise.resolve({
+          url: "https://sandbox.polar.sh/checkout/test",
+          checkoutId: "checkout-test",
+        });
+      },
+    };
+    const body = { productKey: "pro_monthly", attemptId: ATTEMPT_ID };
+    assertEquals(
+      (await handleCheckoutRequest(post(body), configured)).status,
+      503,
+    );
+    assertEquals(claims, 0);
+    assertEquals(uncertain, 0);
+    assertEquals(calls, 0);
+    assertEquals(
+      (await handleCheckoutRequest(post(body), configured)).status,
+      200,
+    );
+    assertEquals(
+      (await handleCheckoutRequest(post(body), configured)).status,
+      200,
+    );
+    assertEquals(calls, 1);
+    assertEquals(uncertain, 0);
+  } finally {
+    if (previous === undefined) Deno.env.delete("REPORT_PROMOTION_ENABLED");
+    else Deno.env.set("REPORT_PROMOTION_ENABLED", previous);
+  }
+});

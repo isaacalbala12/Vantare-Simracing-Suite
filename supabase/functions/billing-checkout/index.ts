@@ -28,6 +28,7 @@ export type CheckoutDeps = {
     options?: { signal?: AbortSignal },
   ) => Promise<CreateCheckoutResult>;
   attempts?: CheckoutAttemptStore;
+  promotionDiscount?: typeof promotionCheckoutDiscount;
 };
 
 const MAX_BODY_BYTES = 4096;
@@ -131,6 +132,19 @@ export async function handleCheckoutRequest(
       503,
     );
   }
+  let discount: string | null;
+  try {
+    discount = await (deps.promotionDiscount ?? promotionCheckoutDiscount)(
+      getSupabaseAdmin,
+      auth.userId,
+      mapping.map.environment,
+      resolved.config.polar_product_id,
+    );
+  } catch {
+    // No Polar request and no attempt reservation yet: a transient policy lookup
+    // must remain retryable with exactly the same attemptId.
+    return errorResponse("promotion_unavailable", "Retry checkout", 503);
+  }
   let claim;
   try {
     claim = await attempts.claim(attempt);
@@ -174,12 +188,6 @@ export async function handleCheckoutRequest(
   }
 
   try {
-    const discount = await promotionCheckoutDiscount(
-      getSupabaseAdmin,
-      auth.userId,
-      mapping.map.environment,
-      resolved.config.polar_product_id,
-    );
     const session = await (deps.createCheckout ?? createPolarCheckoutSession)(
       {
         productId: resolved.config.polar_product_id,

@@ -300,6 +300,11 @@ targets propios comparten la caché
 ([implementación fijada](https://github.com/mozilla/sccache/blob/v0.18.0/src/compiler/rust.rs)).
 Para editar widgets con el watcher de Workshop conserva incremental.
 
+Medido en el servidor (#1654 r4, `sccache --show-stats`): 523 aciertos / 200
+fallos (72,3 %) y la caché **llena** (5 GiB de 5 GiB, expulsa la entrada más
+antigua). Los no cacheables son por diseño: `crate-type` (binarios y proc macros),
+`incremental` (crates propios y el fork vendorizado) y `multiple input files`.
+
 **Limpieza.** `scripts/limpiar-targets.ps1` borra los targets de Cargo (directorios
 con su `CACHEDIR.TAG`) que no compilan desde hace más de `-Dias` días. Simula por
 defecto; con `-Aplicar` borra. Nunca toca un target con un build en marcha
@@ -352,6 +357,12 @@ nightly 79a1ace66 sin sccache (`-j 2` de nextest = 2 hilos de test y compilació
 con los 8 hilos). «Después»: esta configuración, caché sccache ya llena por otro
 worktree y `CARGO_BUILD_JOBS=4`.
 
+Tabla de #1465/#1642 (15-oct, **antes de #1651 y #1654**): las filas de la suite,
+`telemetria` y `CARGO_BUILD_JOBS` quedaron desfasadas al retirar los tests de
+triage con PowerShell (#1651) y al pasar la máquina a 2 jobs con la cola por RAM
+(#1654 r3). Pendientes de re-medir con la configuración actual; el cuaderno de
+#1654 guarda el protocolo y los números de CI.
+
 | Medida | Antes | Después |
 | --- | --- | --- |
 | Worktree nuevo → `check --workspace --all-targets` | 272 s | 129 s |
@@ -365,10 +376,16 @@ worktree y `CARGO_BUILD_JOBS=4`.
 | Dos workers a la vez, build de tests en frío (sin caché) | 842 s | 625 s |
 | Disco: check + clippy + nextest | 7,6 GB | 7,6 GB |
 
-Lo que más pesa es la suite: los tests de triage (~350 s lanzando
-`powershell.exe`, de uno en uno) y la paridad del solver (60 s solo, 190 s con
-carga). En `telemetria`, un solo test (`acc_real_corpus_matches_frozen_dtos`)
-marca el tiempo.
+Lo que más pesa, medido en los logs de CI de la r1 (#1654, 2 hilos de test): la
+suite (137 s Windows / 83 s Linux) la dominan `go_physical_tyre_parity` (27 s), los
+seis `strategy::state_tests::isa1544_*` de hub (6–9 s cada uno, y cada uno ejecuta
+el solver completo), `mutated_and_truncated_real_frames_never_panic` (8+8 s),
+`actual_lnk_is_read_without_modification_or_execution` (10 s) y
+`golden_corpora_reach_every_widget_through_the_pipe_without_hiding_current_values`
+(6–8 s). En `telemetria` manda un solo test, `acc_real_corpus_matches_frozen_dtos`
+(208 s Windows / 160 s Linux), que es un replay secuencial con hash acumulado y
+comparación frame a frame: **no se puede paralelizar** sin cambiar la evidencia.
+Los tests de triage ya no lanzan `powershell.exe` (#1651).
 
 Medido y no aplicado: `[profile.test] incremental = false` ahorra 2,2 GB y 20 s
 en frío pero recompilar tests tras editar pasa de 48 s a 78 s; `debug = 0` en los

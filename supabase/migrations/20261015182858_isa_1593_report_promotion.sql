@@ -24,8 +24,10 @@ create table private.report_promotions (
  account_id uuid not null references public.profiles(id),
  environment text not null,
  subscription_id text not null,
+ original_subscription_id text not null,
  product_id text not null,
  subscribed_at timestamptz not null,
+ current_started_at timestamptz not null,
  first_renewal timestamptz not null,
  observed_at timestamptz not null,
  creator_discount text,
@@ -45,6 +47,9 @@ create table private.report_promotion_changes (
  account_id uuid not null,
  environment text not null,
  discount_id text,
+ subscription_id text not null,
+ product_id text not null,
+ kind text not null default 'apply' check(kind in ('apply','cleanup')),
  tier integer not null check(tier in (0,3,6)),
  actor text not null default 'system:1593' check(actor='system:1593'),
  created_at timestamptz not null default clock_timestamp(),
@@ -54,6 +59,18 @@ create table private.report_promotion_changes (
  lease_until timestamptz,
  foreign key(account_id,environment) references private.report_promotions
 );
+create table private.report_promotion_transfers (
+ id bigint generated always as identity primary key,
+ account_id uuid not null, environment text not null,
+ subscription_id text not null, product_id text not null,
+ next_subscription_id text not null, next_product_id text not null,
+ observed_at timestamptz not null, cleanup_after timestamptz not null,
+ cleared_at timestamptz,
+ foreign key(account_id,environment) references private.report_promotions,
+ unique(account_id,environment,subscription_id,product_id,observed_at)
+);
+alter table private.report_promotion_transfers enable row level security;
+revoke all on private.report_promotion_transfers from public,anon,authenticated,service_role;
 create unique index report_promotion_one_pending on private.report_promotion_changes(account_id,environment) where applied_at is null and superseded_at is null;
 create index report_promotion_changes_account on private.report_promotion_changes(account_id,environment,created_at);
 alter table private.report_promotion_catalog enable row level security;
@@ -87,25 +104,38 @@ grant execute on function public.report_promotion_checkout(uuid,text,text,timest
 create function public.report_promotion_observe(p_account uuid,p_environment text,p_subscription text,p_product text,
  p_started timestamptz,p_modified timestamptz,p_discount text) returns void
 language plpgsql security definer set search_path='' as $$
-declare s public.billing_subscriptions; c private.report_promotion_catalog; existing private.report_promotions;
+declare s public.billing_subscriptions; c private.report_promotion_catalog; existing private.report_promotions; until_time timestamptz;
 begin
  if private.lock_account_write(p_account) then raise sqlstate '28000' using message='account_deleted'; end if;
  select * into c from private.report_promotion_catalog where environment=p_environment and product_id=p_product;
- if not found or not coalesce(private.report_promotion_eligible(p_started),false) then return; end if;
+ if not found then return; end if;
  select * into s from public.billing_subscriptions where user_id=p_account and provider='polar'
    and environment=p_environment and provider_subscription_id=p_subscription;
  if not found or s.provider_product_id is distinct from p_product or s.status not in ('active','uncanceled') then return; end if;
- if p_modified is null or not isfinite(p_modified) then raise sqlstate '22023' using message='promotion_observation_invalid'; end if;
+ if p_modified is null or not isfinite(p_modified) or p_started is null or not isfinite(p_started) then return; end if;
  select * into existing from private.report_promotions where account_id=p_account and environment=p_environment for update;
  if found then
-   if existing.subscription_id<>p_subscription or existing.product_id<>p_product or existing.subscribed_at<>p_started then
-     raise sqlstate '23505' using message='promotion_subscription_conflict'; end if;
-   if p_modified<=existing.observed_at then return; end if;
-   update private.report_promotions set remote_discount=p_discount,observed_at=p_modified
-    where account_id=p_account and environment=p_environment;
+   -- Ignore old deliveries and an older subscription waking up after replacement.
+   if p_modified<=existing.observed_at or (p_subscription<>existing.subscription_id and p_started<existing.current_started_at) then return; end if;
+   if existing.subscription_id<>p_subscription or existing.product_id<>p_product then
+     select greatest(p_modified,coalesce(max(lease_until),p_modified)) into until_time from private.report_promotion_changes
+      where account_id=p_account and environment=p_environment and applied_at is null and superseded_at is null;
+     insert into private.report_promotion_transfers(account_id,environment,subscription_id,product_id,next_subscription_id,next_product_id,observed_at,cleanup_after,cleared_at)
+     values(p_account,p_environment,existing.subscription_id,existing.product_id,p_subscription,p_product,p_modified,until_time,
+       case when existing.subscription_id=p_subscription then p_modified end);
+     update private.report_promotion_changes set superseded_at=p_modified where account_id=p_account and environment=p_environment and applied_at is null and superseded_at is null;
+     update private.report_promotions set subscription_id=p_subscription,product_id=p_product,current_started_at=p_started,
+      remote_discount=p_discount,observed_at=p_modified,applied_at=null,applied_discount=null,
+      creator_discount=case when exists(select 1 from private.report_promotion_creators where environment=p_environment and product_id=p_product and discount_id=existing.creator_discount) then existing.creator_discount end
+      where account_id=p_account and environment=p_environment;
+   else
+     update private.report_promotions set remote_discount=p_discount,observed_at=p_modified
+      where account_id=p_account and environment=p_environment;
+   end if;
  else
-   insert into private.report_promotions(account_id,environment,subscription_id,product_id,subscribed_at,first_renewal,observed_at,creator_discount,remote_discount)
-   values(p_account,p_environment,p_subscription,p_product,p_started,private.report_promotion_months(p_started,1),p_modified,
+   if not coalesce(private.report_promotion_eligible(p_started),false) then return; end if;
+   insert into private.report_promotions(account_id,environment,subscription_id,original_subscription_id,product_id,subscribed_at,current_started_at,first_renewal,observed_at,creator_discount,remote_discount)
+   values(p_account,p_environment,p_subscription,p_subscription,p_product,p_started,p_started,private.report_promotion_months(p_started,1),p_modified,
     case when exists(select 1 from private.report_promotion_creators where environment=p_environment and product_id=p_product and discount_id=p_discount) then p_discount end,p_discount);
  end if;
 end $$;
@@ -129,7 +159,7 @@ $$;
 create function public.report_promotion_prepare(p_account uuid,p_environment text,p_now timestamptz default clock_timestamp())
 returns jsonb language plpgsql security definer set search_path='' as $$
 declare p private.report_promotions; s public.billing_subscriptions; c private.report_promotion_catalog;
- stats jsonb; earned integer; desired text; next_bill timestamptz; op private.report_promotion_changes;
+ stats jsonb; earned integer; desired text; next_bill timestamptz; op private.report_promotion_changes; prior private.report_promotion_transfers; target_sub text; target_product text; action_kind text:='apply';
 begin
  if private.lock_account_write(p_account) then return null; end if;
  select * into p from private.report_promotions where account_id=p_account and environment=p_environment for update;
@@ -140,7 +170,7 @@ begin
  -- An active subscription event may precede its first invoice. Never replace
  -- the launch discount until a paid invoice for this exact subscription exists.
  if not exists(select 1 from public.billing_orders o where o.user_id=p_account and o.provider='polar'
-  and o.environment=p_environment and o.provider_subscription_id=p.subscription_id and o.paid and o.status='paid' and o.currency='eur') then return null; end if;
+  and o.environment=p_environment and o.provider_subscription_id=p.original_subscription_id and o.paid and o.status='paid' and o.currency='eur') then return null; end if;
  select * into c from private.report_promotion_catalog where environment=p_environment and product_id=p.product_id;
  stats:=private.report_promotion_progress(p_account,p_environment,p_now);
  earned:=case when (stats->>'accepted')::integer>=5 then 6 when (stats->>'accepted')::integer>=2 then 3 else 0 end;
@@ -162,18 +192,25 @@ begin
   and (desired is null or round(c.normal_cents*0.20)>c.normal_cents-c.launch_cents) then desired:=p.creator_discount; end if;
  update private.report_promotions set tier=p.tier,reward_from=p.reward_from,reward_until=p.reward_until,forfeited=p.forfeited
   where account_id=p_account and environment=p_environment;
+ target_sub:=p.subscription_id; target_product:=p.product_id;
+ select * into prior from private.report_promotion_transfers where account_id=p_account and environment=p_environment and cleared_at is null order by id limit 1;
+ if found then
+   if prior.cleanup_after>p_now then return null; end if;
+   target_sub:=prior.subscription_id; target_product:=prior.product_id; action_kind:='cleanup'; desired:=null;
+   select * into c from private.report_promotion_catalog where environment=p_environment and product_id=target_product;
+ end if;
  select * into op from private.report_promotion_changes where account_id=p_account and environment=p_environment and applied_at is null and superseded_at is null;
- if found and op.discount_id is distinct from desired then
+ if found and (op.discount_id is distinct from desired or op.subscription_id<>target_sub or op.product_id<>target_product) then
    if op.lease_until>p_now then return null; end if;
    update private.report_promotion_changes set superseded_at=p_now where id=op.id;
    op.id:=null;
  end if;
  if op.id is null then
-   if p.applied_at is not null and p.applied_discount is not distinct from desired and p.remote_discount is not distinct from desired then return null; end if;
-   insert into private.report_promotion_changes(account_id,environment,discount_id,tier) values(p_account,p_environment,desired,p.tier) returning * into op;
+   if action_kind='apply' and p.applied_at is not null and p.applied_discount is not distinct from desired and p.remote_discount is not distinct from desired then return null; end if;
+   insert into private.report_promotion_changes(account_id,environment,discount_id,tier,subscription_id,product_id,kind) values(p_account,p_environment,desired,p.tier,target_sub,target_product,action_kind) returning * into op;
  end if;
- return jsonb_build_object('id',op.id,'subscription_id',p.subscription_id,'product_id',p.product_id,
-  'discount_id',op.discount_id,'tier',op.tier,'normal_cents',c.normal_cents,'managed_discount_ids',jsonb_build_array(c.launch_discount,c.reward3_discount,c.reward6_discount,p.creator_discount));
+ return jsonb_build_object('id',op.id,'subscription_id',op.subscription_id,'product_id',op.product_id,'kind',op.kind,
+  'discount_id',op.discount_id,'tier',op.tier,'normal_cents',c.normal_cents,'managed_discount_ids',(select jsonb_agg(d) from (select unnest(array[x.launch_discount,x.reward3_discount,x.reward6_discount]) d from private.report_promotion_catalog x where x.environment=p_environment union select p.creator_discount where op.kind='apply') discounts));
 end $$;
 
 -- Revalidate immediately before HTTP, and again at ACK, using the same B03 UUID lock.
@@ -197,7 +234,11 @@ begin
  if not found or private.lock_account_write(op.account_id) then return false; end if;
  update private.report_promotion_changes set applied_at=p_now where id=p_id and applied_at is null and superseded_at is null and lease_token=p_token and lease_until>p_now;
  if not found then return false; end if;
- update private.report_promotions set applied_discount=op.discount_id,remote_discount=op.discount_id,applied_at=p_now where account_id=op.account_id and environment=op.environment;
+ if op.kind='cleanup' then
+   update private.report_promotion_transfers set cleared_at=p_now where account_id=op.account_id and environment=op.environment and subscription_id=op.subscription_id and product_id=op.product_id and cleared_at is null;
+ else
+   update private.report_promotions set applied_discount=op.discount_id,remote_discount=op.discount_id,applied_at=p_now where account_id=op.account_id and environment=op.environment and subscription_id=op.subscription_id and product_id=op.product_id;
+ end if;
  return true;
 end $$;
 create function public.report_promotion_accounts(p_environment text,p_after uuid default null) returns setof uuid

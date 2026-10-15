@@ -141,3 +141,10 @@ históricos mueven fechas con SQL privilegiado, conservando triggers/cupos; no
 abren admisión. No hay credenciales ni sandbox real usados. Ventas, webhooks
 alojados, facturas reales y repetición calendaria Polar necesitan verificación
 sandbox autorizada.
+
+Ronda 2 · P2-1: el premio conserva alta/ventana originales y sigue la suscripción
+activa más reciente. Pro↔Plus conserva tramo y cambia el descuento correspondiente.
+Se audita cada cambio; entregas antiguas no recuperan la suscripción anterior.
+Antes de aplicar en otra suscripción se liquida una operación de limpieza de la
+anterior, esperando cualquier lease que estuviera en vuelo. No se lanza conflicto
+comercial ni se manda el webhook a cuarentena por este caso.

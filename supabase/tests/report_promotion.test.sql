@@ -88,6 +88,22 @@ select is((private.report_promotion_progress(pg_temp.account(7),'sandbox','2026-
 select is((private.report_promotion_progress(pg_temp.account(9),'sandbox','2026-12-11')->>'accepted')::int,0,'exact 45 day boundary excluded');
 select ok(private.report_promotion_progress(pg_temp.account(1),'production','2026-11-10') is null,'environments isolated');
 select is(private.native_admin_account(pg_temp.account(1),'https://promotion.clerk.invalid','sandbox')->'report_promotion'->>'tier','6','owner account payload includes earned tier');
+-- P2-1: the award and original 45-day window survive a plan change and a later re-subscription.
+update public.billing_subscriptions set provider_product_id='plus' where provider_subscription_id='sub1';
+select lives_ok($$select public.report_promotion_observe(pg_temp.account(1),'sandbox','sub1','plus','2026-10-26 19:00 Europe/Madrid','2026-11-12',null)$$,'P2-1 plan change does not fail webhook');
+select is((select product_id from private.report_promotions where account_id=pg_temp.account(1)),'plus','P2-1 award follows Plus');
+select is(public.report_promotion_prepare(pg_temp.account(1),'sandbox','2026-11-13')->>'discount_id','plus6','P2-1 existing tier uses Plus reward');
+insert into public.billing_subscriptions(user_id,provider,environment,provider_subscription_id,provider_product_id,status,current_period_end)
+ values(pg_temp.account(1),'polar','sandbox','replacement','pro','active','2026-12-20');
+select lives_ok($$select public.report_promotion_observe(pg_temp.account(1),'sandbox','replacement','pro','2026-11-20','2026-11-20',null)$$,'P2-1 second signup outside launch never quarantines webhook');
+select is((select subscription_id from private.report_promotions where account_id=pg_temp.account(1)),'replacement','P2-1 current subscription selected');
+select is((select tier from private.report_promotions where account_id=pg_temp.account(1)),6,'P2-1 tier conserved');
+select is(public.report_promotion_prepare(pg_temp.account(1),'sandbox','2026-11-21')->>'kind','cleanup','P2-1 cleanup runs before moving the reward');
+select is(public.report_promotion_prepare(pg_temp.account(1),'sandbox','2026-11-21')->>'subscription_id','sub1','P2-1 cleanup targets the previous subscription');
+select is((select subscribed_at from private.report_promotions where account_id=pg_temp.account(1)),'2026-10-26 19:00 Europe/Madrid'::timestamptz,'P2-1 original report window conserved');
+select is((select count(*)::int from private.report_promotion_transfers where account_id=pg_temp.account(1)),2,'P2-1 both changes audited');
+select public.report_promotion_observe(pg_temp.account(1),'sandbox','sub1','plus','2026-10-26 19:00 Europe/Madrid','2026-11-21',null);
+select is((select subscription_id from private.report_promotions where account_id=pg_temp.account(1)),'replacement','P2-1 late old subscription cannot steal reward back');
 -- B03 deletion blocks new effects and hides the private campaign.
 select public.apply_clerk_user_event('promotion-deleted',repeat('a',64),'https://promotion.clerk.invalid','user_'||replace(pg_temp.account(1)::text,'-',''),'user.deleted','2026-11-11',null);
 select is(public.report_promotion_prepare(pg_temp.account(1),'sandbox','2026-11-12'),null::jsonb,'deleted account cannot prepare');

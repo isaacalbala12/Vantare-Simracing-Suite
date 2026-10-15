@@ -17,6 +17,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--baseline", action="store_true", help="RED: omit the new migration, run the new regression only")
+    parser.add_argument("--before-expiry",action="store_true",help="RED F1: reviewed R3 guard without automatic expiry")
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     args.output.mkdir(parents=True, exist_ok=True)
@@ -67,7 +68,7 @@ def main():
         sql(bootstrap)
         migrations = []
         for migration in sorted((root/"supabase/migrations").glob("*.sql")):
-            if args.baseline and "checkout_web_shared_guard" in migration.name:
+            if (args.baseline and "checkout_web_shared_guard" in migration.name) or ((args.baseline or args.before_expiry) and ("checkout_automatic_compensation" in migration.name or "web_purchase_erasure_pull" in migration.name)):
                 continue
             try:
                 sql(migration.read_text())
@@ -78,10 +79,13 @@ def main():
         (args.output/"migrations.txt").write_text("\n".join(migrations)+"\n")
         suites = ["checkout_web_shared_guard_regression.test.sql"] if args.baseline else [
             "checkout_web_shared_guard_regression.test.sql",
+            "checkout_automatic_compensation.test.sql",
+            "web_purchase_erasure_pull.test.sql",
             "billing_checkout_attempts_test.sql","checkout_web_shared_guard.test.sql",
             "native_checkout_internal_account.test.sql","native_checkout_annual.test.sql",
             "clerk_identity_cutover_test.sql","commercial_tombstone.test.sql",
             "billing_order_refund_ledger.test.sql","commercial_admin_deleted.test.sql"]
+        if args.before_expiry: suites=[]
         total = 0
         for name in suites:
             result = sql((root/"supabase/tests"/name).read_text())
@@ -105,7 +109,7 @@ def main():
                 return account,subject,issuer
             def claim(account,attempt,plan="pro_monthly",catalog="fixture"):
                 return f"select outcome from claim_billing_checkout_attempt('{account}','{attempt}','{plan}','sandbox','{catalog}');"
-            def race(first,second,expected,label):
+            def race(first,second,expected,label,allowed_wait=("advisory",)):
                 holder = subprocess.Popen([str(binary),*connection],env=env,stdin=subprocess.PIPE,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
                 contender = None
                 try:
@@ -118,7 +122,7 @@ def main():
                     while True:
                         wait = sql(f"select wait_event from pg_stat_activity where application_name='checkout-contender' and {pid}=any(pg_blocking_pids(pid));")
                         if wait:
-                            assert wait=="advisory",label+": UUID must precede rows"
+                            assert wait in allowed_wait,label+": wrong lock order: "+wait
                             break
                         if contender.poll() is not None or time.monotonic()>deadline:
                             raise AssertionError(label+": contender did not wait for the real UUID lock")
@@ -138,6 +142,48 @@ def main():
                     for process in (holder,contender):
                         if process is not None and process.poll() is None:
                             process.kill();process.wait(timeout=10)
+
+            # F1 regression: a provider-terminal checkout releases its family,
+            # while two concurrent new clicks still admit only one checkout.
+            if args.before_expiry:
+                sql("alter table billing_checkout_attempts add column if not exists resolution text;")
+            account,_,_ = seed()
+            old,new,checkout = str(uuid.uuid4()),str(uuid.uuid4()),str(uuid.uuid4())
+            assert sql(claim(account,old))=="claimed"
+            if not args.before_expiry:
+                sql(f"select billing_begin_checkout_request('{account}','{old}','00000000-0000-0000-0000-000000000003');")
+            assert sql(f"select complete_billing_checkout_attempt('{account}','{old}','{checkout}','https://sandbox.polar.sh/checkout/expired');")=="t"
+            sql(f"update billing_checkout_attempts set expires_at=now()-interval '1 second' where user_id='{account}';")
+            # Fixture records verified terminal Polar evidence. On the old guard
+            # this still returns busy: the regression is behavioral, not a missing RPC.
+            terminal = f"select private.lock_account_write('{account}'); update billing_checkout_attempts set resolution='unpaid_expired',status='uncertain',checkout_url=null where user_id='{account}' and attempt_id='{old}';"
+            race(terminal,claim(account,new),"claimed","F1 terminal expiry / new click")
+            assert sql(f"select count(*) from billing_checkout_attempts where user_id='{account}' and resolution is null;")=="1"
+            race(claim(account,new),claim(account,str(uuid.uuid4())),"busy","F1 second concurrent click remains blocked")
+            if args.before_expiry:
+                (args.output/"checkout-races.txt").write_text("\n".join(checks)+"\n")
+                print("F1 before-compensation control unexpectedly passed",flush=True)
+                return
+            # Both directions of expiry/dispatch use the real UUID barrier.
+            account,_,_ = seed(); attempt=str(uuid.uuid4())
+            assert sql(claim(account,attempt))=="claimed"
+            dispatch=f"select billing_begin_checkout_request('{account}','{attempt}','00000000-0000-0000-0000-000000000003'); update billing_checkout_attempts set expires_at=now()-interval '1 second' where user_id='{account}';"
+            expire=f"select billing_expire_unpublished_checkouts('sandbox',now()+interval '1 day'); select coalesce(resolution,'held') from billing_checkout_attempts where user_id='{account}' and attempt_id='{attempt}';"
+            race(dispatch,expire,"held","F1 dispatched unknown payment is not released")
+            account,_,_ = seed(); attempt=str(uuid.uuid4())
+            assert sql(claim(account,attempt))=="claimed"
+            sql(f"update billing_checkout_attempts set expires_at=now()-interval '1 second' where user_id='{account}';")
+            race("select billing_expire_unpublished_checkouts('sandbox');",
+                 f"select coalesce(billing_begin_checkout_request('{account}','{attempt}','00000000-0000-0000-0000-000000000003')::text,'blocked');",
+                 "blocked","F1 expired undispatched claim cannot POST later")
+            # Deletions for different accounts serialize the event counter through
+            # commit. A plain sequence would permit cursor gaps.
+            aa,sa,ia=seed(); bb,sb,ib=seed(); event=str(uuid.uuid4())
+            delete_a=f"select apply_clerk_user_event('pull-a-{event}',repeat('a',64),'{ia}','{sa}','user.deleted',now(),null);"
+            delete_b=f"select apply_clerk_user_event('pull-b-{event}',repeat('b',64),'{ib}','{sb}','user.deleted',now(),null);"
+            race(delete_a,delete_b,"applied","D1 erasure commit order has no cursor gap",allowed_wait=("transactionid","tuple"))
+            assert sql(f"select (select id from private.web_purchase_erasure_events where account_id='{aa}')<(select id from private.web_purchase_erasure_events where account_id='{bb}');")=="t"
+
             for direction in ["app-first","web-first"]:
                 account,_,_ = seed()
                 first,second = str(uuid.uuid4()),str(uuid.uuid4())
@@ -149,6 +195,7 @@ def main():
                     attempt = str(uuid.uuid4())
                     if operation!="claim":
                         assert sql(claim(account,attempt))=="claimed"
+                        assert sql(f"select billing_begin_checkout_request('{account}','{attempt}','00000000-0000-0000-0000-000000000003');").startswith('{')
                     write = {
                         "claim":claim(account,attempt),
                         "complete":f"select complete_billing_checkout_attempt('{account}','{attempt}','race-checkout-{attempt}','https://sandbox.polar.sh/checkout/race');",

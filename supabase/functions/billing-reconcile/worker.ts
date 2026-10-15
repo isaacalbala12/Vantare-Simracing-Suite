@@ -15,6 +15,7 @@ export const RESOURCES = [
   "subscriptions",
   "refunds",
   "disputes",
+  "checkouts",
 ] as const;
 export type Resource = typeof RESOURCES[number];
 export type Cursor = { resource: Resource; page: number };
@@ -37,7 +38,7 @@ export function reconciliationEvent(
   resource: Resource,
   data: Record<string, unknown>,
 ): PolarWebhookEvent | null {
-  if (resource === "disputes") return null;
+  if (resource === "disputes" || resource === "checkouts") return null;
   if (resource === "orders" && data.paid !== true) return null;
   const type = resource === "orders"
     ? (data.status === "refunded" ? "order.refunded" : "order.paid")
@@ -53,7 +54,17 @@ export async function reconcilePage(args: {
   environment: BillingEnvironment;
   supabase: SupabaseClient;
   processDeps?: Partial<WebhookProcessorDeps>;
+  observeCheckoutOrder?: (order: Record<string, unknown>) => Promise<void>;
+  observeCheckoutSession?: (checkout: Record<string, unknown>) => Promise<void>;
 }): Promise<{ next: Cursor; quarantined: number; observed: number }> {
+  // Persist every paid-order candidate before processing any item: one poison
+  // projection cannot prevent the remaining paid orders entering compensation.
+  if (args.cursor.resource === "orders" && args.observeCheckoutOrder) {
+    for (const item of args.page.items) await args.observeCheckoutOrder(item);
+  }
+  if (args.cursor.resource === "checkouts" && args.observeCheckoutSession) {
+    for (const item of args.page.items) await args.observeCheckoutSession(item);
+  }
   let quarantined = 0;
   for (const item of args.page.items) {
     if (args.cursor.resource === "disputes") {

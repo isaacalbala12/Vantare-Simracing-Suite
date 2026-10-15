@@ -250,7 +250,7 @@ Deno.test("shared checkout refuses old schema, deleted account and family confli
           data: [{
             outcome: scenario === "family" ? "busy" : "claimed",
             checkout_url: null,
-            ...(scenario === "old" ? {} : { guard_version: 1 }),
+            ...(scenario === "old" ? {} : { guard_version: 2 }),
           }],
           error: null,
         },
@@ -276,7 +276,9 @@ Deno.test("shared checkout never releases URL when canonical binding completion 
     calls.push(name);
     return Promise.resolve({
       data: name === "claim_billing_checkout_attempt"
-        ? [{ outcome: "claimed", checkout_url: null, guard_version: 1 }]
+        ? [{ outcome: "claimed", checkout_url: null, guard_version: 2 }]
+        : name === "billing_begin_checkout_request"
+        ? { dispatch_token: ATTEMPT_ID }
         : name === "complete_billing_checkout_attempt"
         ? false
         : true,
@@ -291,6 +293,7 @@ Deno.test("shared checkout never releases URL when canonical binding completion 
   assertEquals((await response.json()).url, undefined);
   assertEquals(calls, [
     "claim_billing_checkout_attempt",
+    "billing_begin_checkout_request",
     "complete_billing_checkout_attempt",
     "mark_billing_checkout_attempt_uncertain",
   ]);

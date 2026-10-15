@@ -25,7 +25,7 @@ function client(results: Array<{ data: unknown; error: unknown }>) {
 
 Deno.test("checkout attempt adapter uses the atomic claim RPC", async () => {
   const fake = client([{
-    data: [{ outcome: "claimed", checkout_url: null, guard_version: 1 }],
+    data: [{ outcome: "claimed", checkout_url: null, guard_version: 2 }],
     error: null,
   }]);
   const result = await createCheckoutAttemptStore(fake as never).claim(attempt);
@@ -39,7 +39,7 @@ Deno.test("checkout attempt adapter never reuses an expired URL", async () => {
     data: [{
       outcome: "expired",
       checkout_url: "https://expired.test",
-      guard_version: 1,
+      guard_version: 2,
     }],
     error: null,
   }]);

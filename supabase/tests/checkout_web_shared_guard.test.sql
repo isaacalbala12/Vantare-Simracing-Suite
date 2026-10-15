@@ -11,12 +11,13 @@ values('https://checkout-fixture.clerk.invalid','user_checkout_live','42000000-0
 ('https://checkout-fixture.clerk.invalid','user_checkout_paid','42000000-0000-4000-8000-000000000002'),
 ('https://checkout-fixture.clerk.invalid','user_checkout_deleted','42000000-0000-4000-8000-000000000003');
 select is((select guard_version from public.claim_billing_checkout_attempt(
-'42000000-0000-4000-8000-000000000001','42000000-0000-4000-8000-000000000011','pro_monthly','sandbox','web-v1')),1,'shared guard has version 1');
+'42000000-0000-4000-8000-000000000001','42000000-0000-4000-8000-000000000011','pro_monthly','sandbox','web-v1')),2,'shared guard has version 2');
 select is((select outcome from public.claim_billing_checkout_attempt(
 '42000000-0000-4000-8000-000000000001','42000000-0000-4000-8000-000000000012','pro_plus_annual','sandbox','app-v1')),'busy','app cannot open a second subscription family checkout');
 select is(public.complete_billing_checkout_attempt(
 '42000000-0000-4000-8000-000000000001','42000000-0000-4000-8000-000000000011',null,'https://sandbox.polar.sh/checkout/x'),false,'missing provider ID cannot complete');
 select is((select count(*)::integer from public.billing_checkout_bindings where user_id='42000000-0000-4000-8000-000000000001'),0,'no binding fabricated for missing ID');
+select public.billing_begin_checkout_request('42000000-0000-4000-8000-000000000001','42000000-0000-4000-8000-000000000011','00000000-0000-0000-0000-000000000003');
 select ok(public.complete_billing_checkout_attempt(
 '42000000-0000-4000-8000-000000000001','42000000-0000-4000-8000-000000000011','checkout-web-test','https://sandbox.polar.sh/checkout/x'),'completion acknowledges durable binding');
 select is((select user_id::text from public.billing_checkout_bindings where provider_checkout_id='checkout-web-test'),'42000000-0000-4000-8000-000000000001','trigger attributes checkout to verified account');

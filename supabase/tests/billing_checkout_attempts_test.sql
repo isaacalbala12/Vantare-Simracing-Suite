@@ -51,6 +51,11 @@ select is(
   'busy',
   'second request cannot claim a creating attempt'
 );
+DO $$ begin
+ if to_regprocedure('public.billing_begin_checkout_request(uuid,uuid,uuid)') is not null then
+  perform public.billing_begin_checkout_request('00000000-0000-4000-8000-000000000010','00000000-0000-4000-8000-000000000020','00000000-0000-0000-0000-000000000003');
+ end if;
+end $$;
 select ok(
   public.complete_billing_checkout_attempt(
     '00000000-0000-4000-8000-000000000010',

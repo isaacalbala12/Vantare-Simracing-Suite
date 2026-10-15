@@ -179,12 +179,21 @@ fn sanitize(state: &mut State) {
     finite(elapsed_s);
     finite(remaining_s);
     finite(track_length_m);
+    let vantare_domain::SessionTiming {
+        started_at_s,
+        finished_at_s,
+        scheduled_end_s,
+        distance_to_start_line_m,
+        next_starts_at_s,
+        start_phase: _,
+        next_kind: _,
+    } = timing;
     for value in [
-        &mut timing.started_at_s,
-        &mut timing.finished_at_s,
-        &mut timing.scheduled_end_s,
-        &mut timing.distance_to_start_line_m,
-        &mut timing.next_starts_at_s,
+        started_at_s,
+        finished_at_s,
+        scheduled_end_s,
+        distance_to_start_line_m,
+        next_starts_at_s,
     ] {
         nonnegative(value);
     }

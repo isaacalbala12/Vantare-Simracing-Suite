@@ -524,7 +524,7 @@ enum StartPhaseDto {
     Countdown,
     Racing,
 }
-fn start_phase(p: &d::StartPhase) -> StartPhaseDto {
+fn start_phase(p: d::StartPhase) -> StartPhaseDto {
     match p {
         d::StartPhase::Grid => StartPhaseDto::Grid,
         d::StartPhase::Formation => StartPhaseDto::Formation,
@@ -581,7 +581,7 @@ fn session(s: &d::Session) -> SessionDto {
         started_at_s: q(&s.timing.started_at_s, copied),
         finished_at_s: q(&s.timing.finished_at_s, copied),
         scheduled_end_s: q(&s.timing.scheduled_end_s, copied),
-        start_phase: q(&s.timing.start_phase, start_phase),
+        start_phase: q(&s.timing.start_phase, |p| start_phase(*p)),
         distance_to_start_line_m: q(&s.timing.distance_to_start_line_m, copied),
         next_kind: q(&s.timing.next_kind, session_kind),
         next_starts_at_s: q(&s.timing.next_starts_at_s, copied),
@@ -866,12 +866,9 @@ fn session_selected(s: &d::Session, delivered: &crate::Demand) -> SessionDto {
             delivered,
             copied,
         ),
-        start_phase: qs(
-            &s.timing.start_phase,
-            Signal::SessionInfo,
-            delivered,
-            start_phase,
-        ),
+        start_phase: qs(&s.timing.start_phase, Signal::SessionInfo, delivered, |p| {
+            start_phase(*p)
+        }),
         distance_to_start_line_m: qs(
             &s.timing.distance_to_start_line_m,
             Signal::SessionInfo,

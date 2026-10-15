@@ -52,6 +52,10 @@ After=docker.service network-online.target
 [Service]
 Type=oneshot
 RemainAfterExit=yes
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
 WorkingDirectory=/opt/plane
 # Contenedores efímeros: cada arranque parte de la imagen (datos en volúmenes). Un apagado brusco
 # dejó staticfiles.json a 0 bytes en la capa del contenedor api y collectstatic fallaba en bucle.

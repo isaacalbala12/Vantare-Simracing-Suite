@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Instala el sondeo «Para Claude» en vantare-svc (root). La URL del aviso se escribe aparte en /etc/vantare/para-claude.url (600).
 set -eu
+install -d -o root -g root -m 700 /var/lib/vantare
 install -m 750 /mnt/c/VantareServer/ops/linux/vantare-plane-para-claude.py /usr/local/sbin/
 cat > /etc/systemd/system/vantare-plane-para-claude.service <<'U'
 [Unit]
@@ -10,6 +11,11 @@ ConditionPathExists=/etc/vantare/para-claude.url
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/python3 -I /usr/local/sbin/vantare-plane-para-claude.py
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/vantare
 U
 cat > /etc/systemd/system/vantare-plane-para-claude.timer <<'U'
 [Unit]

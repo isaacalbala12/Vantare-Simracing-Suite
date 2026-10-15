@@ -337,7 +337,13 @@ fn decided_reports_never_offer_implicit_reopening() {
         Status::Rejected,
         Status::Spam,
         Status::Fixed,
+        Status::Closed,
+        Status::DuplicateLinked,
+        Status::Incomplete,
     ] {
+        for decision in [Status::Validated, Status::Rejected, Status::Spam] {
+            assert!(!current.can_transition_to(decision));
+        }
         assert!(!current.can_transition_to(Status::Submitted));
         assert!(!current.can_transition_to(Status::InReview));
     }

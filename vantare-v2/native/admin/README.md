@@ -68,8 +68,8 @@ filtros sobre página cargada y recuentos globales. Módulos muestra fuente efec
 Informes: incluye Spam y nota obligatoria al aceptar/rechazar/marcar spam; aceptación antes de arreglado y versión obligatoria;
 se siguen leyendo estados históricos. Las decisiones son finales: una contribución
 aceptada, rechazada, spam o arreglada no vuelve a Recibido/En revisión; arreglado
-sigue ocupando el cupo diario/semanal. La UI oculta esas vueltas también en
-informes históricos, que ahora admiten Spam. No se ofrece una acción Reabrir. Capturas firmadas solo del origen/bucket
+sigue ocupando el cupo diario/semanal. La UI oculta también Aceptado/No aceptado/Spam en todos los estados decididos.
+Los informes históricos siguen la misma regla en servidor y conservan el motivo de Spam. No se ofrece una acción Reabrir. Capturas firmadas solo del origen/bucket
 Supabase configurados, sin OAuth/apikey, acotadas a 10 MiB, 4096×4096 y 64 MiB.
 
 Creadores: céntimos y tasas calculados en servidor. Isaac decidió el 15/10/2026: anual = 30 % del pago anual completo, sin prorrateo (100 € → 30 € en el mes 1).

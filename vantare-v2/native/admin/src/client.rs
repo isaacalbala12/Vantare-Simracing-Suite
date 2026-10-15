@@ -78,10 +78,10 @@ impl Status {
         Self::Fixed,
     ];
     pub fn can_transition_to(self, next: Self) -> bool {
-        match next {
-            Self::Submitted | Self::InReview => matches!(self, Self::Submitted | Self::InReview),
-            Self::Fixed => matches!(self, Self::Validated | Self::Fixed),
-            _ => true,
+        if next == Self::Fixed {
+            matches!(self, Self::Validated | Self::Fixed)
+        } else {
+            matches!(self, Self::Draft | Self::Submitted | Self::InReview)
         }
     }
     pub fn label(self) -> &'static str {

@@ -2,6 +2,8 @@ import {
   observePromotionInvoice,
   observeReportPromotion,
 } from "../billing-report-promotion/observe.ts";
+
+import { grossRefund } from "../native-admin/amounts.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import {
   type BillingEnvironment,
@@ -679,18 +681,116 @@ export async function applyPolarWebhookEvent(
   const now = deps.now?.() ?? new Date();
   const nowIso = now.toISOString();
   const environment = mapping.map.environment;
+  // #1622 owns access/refund decisions. The management ledger is a mirror;
+  // it must never short-circuit the common commercial projection.
+  let commercialResult: ProcessResult | null = null;
   if (
-    event.type === "order.paid" || event.type === "order.refunded" ||
-    event.type === "refund.created" || event.type === "refund.updated"
+    ["order.paid", "order.refunded", "refund.created", "refund.updated"]
+      .includes(event.type)
   ) {
-    return applyOrderRefundEvent({
+    commercialResult = await applyOrderRefundEvent({
       event,
       deps,
       productMap: mapping.map,
       environment,
       nowIso,
     });
+    if (commercialResult.status !== "processed") return commercialResult;
   }
+  if (
+    ["refund.created", "refund.updated"].includes(event.type) &&
+    event.data.currency === "eur"
+  ) {
+    const amount = grossRefund(event.data.amount, event.data.tax_amount);
+    const modified = parseIsoTimestamp(
+      event.data.modified_at ?? event.data.updated_at,
+    );
+    if (
+      asString(event.data.id) && asString(event.data.order_id) && amount &&
+      amount <= 100000000 && refundStatus(event.data.status) && modified &&
+      Number.isFinite(Date.parse(modified))
+    ) {
+      const { error } = await deps.supabase.rpc(
+        "native_admin_record_refund",
+        {
+          p_environment: environment,
+          p_refund: {
+            refund_id: event.data.id,
+            payment_id: event.data.order_id,
+            amount_cents: amount,
+            currency: "eur",
+            status: event.data.status,
+            reason: typeof event.data.reason === "string"
+              ? event.data.reason.slice(0, 500)
+              : null,
+            modified_at: modified,
+          },
+        },
+      );
+      if (error) throw databaseWriteError("admin_refund_receipt", error);
+    }
+  }
+  if (
+    ["order.paid", "order.refunded"].includes(event.type) &&
+    asString(event.data.subscription_id)
+  ) {
+    const productId = extractProductId(event.data);
+    const resolved = productId
+      ? resolveCheckoutKeyByProductId(mapping.map, productId)
+      : null;
+    if (resolved?.ok && resolved.config.billing_type === "subscription") {
+      const userId = await (deps.resolveIdentity ?? resolveUserId)(
+        deps.supabase,
+        event.data,
+        environment,
+      );
+      const amount = asNonNegativeInteger(event.data.total_amount);
+      const refunded = grossRefund(
+        event.data.refunded_amount,
+        event.data.refunded_tax_amount,
+      );
+      const paidAt = parseIsoTimestamp(
+        event.data.paid_at ?? event.data.created_at,
+      );
+      const modified = parseIsoTimestamp(
+        event.data.modified_at ?? event.data.updated_at,
+      );
+      if (
+        !userId || !asString(event.data.id) || !amount || amount > 100000000 ||
+        refunded === null || refunded > amount || event.data.paid !== true ||
+        !paidAt || !modified || !Number.isFinite(Date.parse(paidAt)) ||
+        !Number.isFinite(Date.parse(modified)) || event.data.currency !== "eur"
+      ) {
+        return commercialResult ??
+          { status: "ignored", reason: "invalid_admin_receipt" };
+      }
+      await applyEffect(deps, "admin_payment_receipt", async () => {
+        const { error } = await deps.supabase.rpc(
+          "native_admin_record_payment",
+          {
+            p_environment: environment,
+            p_payment: {
+              payment_id: event.data.id,
+              account_id: userId,
+              subscription_id: event.data.subscription_id,
+              product:
+                (resolved.key.startsWith("pro_plus") ? "Pro Plus" : "Pro") +
+                (resolved.key.endsWith("annual") ? " anual" : " mensual"),
+              paid_at: paidAt,
+              modified_at: modified,
+              amount_cents: amount,
+              currency: "eur",
+              refunded_cents: refunded,
+              discount_id: asString(event.data.discount_id),
+              refund_pending: event.data.refund_pending === true,
+            },
+          },
+        );
+        if (error) throw databaseWriteError("admin_payment_receipt", error);
+      });
+    }
+  }
+  if (commercialResult) return commercialResult;
   const userId = await (deps.resolveIdentity ?? resolveUserId)(
     deps.supabase,
     event.data,
@@ -888,8 +988,14 @@ const REPLAY_DATA_KEYS = [
   "paid",
   "discount_amount",
   "net_amount",
+  "total_amount",
+  "discount_id",
+  "created_at",
+  "paid_at",
+  "refund_pending",
   "applied_balance_amount",
   "refunded_amount",
+  "refunded_tax_amount",
   "amount",
   "tax_amount",
   "currency",

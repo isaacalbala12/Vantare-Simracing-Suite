@@ -1,10 +1,14 @@
+mod creators;
+mod layout;
+mod people;
+mod reports;
 use crate::{
-    client::{Action, Module, Status},
+    client::{Action, Module, Plan, Status},
     session::{Command, Reply, Worker},
     state::{Screen, State},
 };
 use gpui::{
-    App, Context, Div, Entity, Image, ImageFormat, ImageSource, IntoElement, ParentElement, Render,
+    Context, Div, Entity, Image, ImageFormat, ImageSource, IntoElement, ParentElement, Render,
     Stateful, Styled, Window, div, img, prelude::*, px, rgb,
 };
 use std::{
@@ -14,6 +18,14 @@ use std::{
 use vantare_hub::orbit::{self, Input};
 use vantare_services::Error;
 
+#[derive(Clone, Copy)]
+enum Dialog {
+    Block(bool),
+    Delete,
+    Creator,
+    Payout,
+    Report(Status),
+}
 #[derive(Clone)]
 enum Event {
     Screen(Screen),
@@ -23,6 +35,11 @@ enum Event {
     NextUsers,
     SelectUser(usize),
     SelectReport(usize),
+    SelectCreator(usize),
+    Back,
+    AccountFilter(&'static str),
+    OpenDialog(Dialog),
+    DemoState(&'static str),
     Propose(Action),
     Confirm,
     Cancel,
@@ -33,6 +50,12 @@ enum Event {
 }
 pub struct Admin {
     state: State,
+    dialog: Option<Dialog>,
+    form_a: Entity<Input>,
+    form_b: Entity<Input>,
+    form_c: Entity<Input>,
+    account_filter: &'static str,
+    demo_state: &'static str,
     search: Entity<Input>,
     worker: Option<Worker>,
     images: Vec<Arc<Image>>,
@@ -45,6 +68,7 @@ pub struct Admin {
     search_due: bool,
     last_query: String,
     search_subscription: Option<gpui::Subscription>,
+    form_subscriptions: Vec<gpui::Subscription>,
     debounce: Option<gpui::Task<()>>,
     displayed_read: Option<Action>,
 }
@@ -52,7 +76,15 @@ impl Admin {
     pub fn new(demo: bool, screen: Screen, cx: &mut Context<Self>) -> Self {
         let mut this = Self {
             state: State::new(demo, screen),
-            search: cx.new(|cx| Input::new(String::new(), "Buscar por correo o nombre", cx)),
+            dialog: None,
+            account_filter: "all",
+            demo_state: "normal",
+            form_a: cx.new(|cx| Input::new(String::new(), "Nombre", cx).with_height(px(44.))),
+            form_b: cx.new(|cx| Input::new(String::new(), "Correo", cx).with_height(px(44.))),
+            form_c: cx.new(|cx| Input::new(String::new(), "Código", cx).with_height(px(44.))),
+            search: cx.new(|cx| {
+                Input::new(String::new(), "Buscar por correo o nombre", cx).with_height(px(46.))
+            }),
             worker: None,
             images: vec![],
             image_error: None,
@@ -64,13 +96,16 @@ impl Admin {
             search_due: false,
             last_query: String::new(),
             search_subscription: None,
+            form_subscriptions: vec![],
             debounce: None,
             displayed_read: None,
         };
         if demo {
+            this.state.user = None;
+            this.state.report = None;
             this.demo_images();
         } else {
-            match vantare_services::app::default_root().and_then(Worker::start) {
+            match crate::session::data_root().and_then(Worker::start) {
                 Ok(worker) => {
                     this.worker = Some(worker);
                     this.send(Command::Restore);
@@ -101,7 +136,23 @@ impl Admin {
                 });
             }));
         }));
+        this.watch_forms(cx);
         this
+    }
+    fn watch_forms(&mut self, cx: &mut Context<Self>) {
+        for input in [&self.form_a, &self.form_b, &self.form_c] {
+            self.form_subscriptions
+                .push(cx.observe(input, |this, _, cx| {
+                    if this.dialog.is_some() {
+                        if this.state.message.starts_with("Revisa")
+                            || this.state.message.starts_with("Escribe")
+                        {
+                            this.state.message.clear();
+                        }
+                        cx.notify();
+                    }
+                }));
+        }
     }
     fn poll_replies(cx: &mut Context<Self>) {
         cx.spawn(async move |entity, cx| {
@@ -182,6 +233,8 @@ impl Admin {
             },
             Screen::Rollout => Action::GetRollout,
             Screen::Reports => self.reports_action(None),
+            Screen::Creators => Action::ListCreators,
+            Screen::Login => return,
         };
         self.read(action);
     }
@@ -202,7 +255,8 @@ impl Admin {
     }
     fn prefetch(&mut self) {
         let action = match self.state.screen {
-            Screen::Users | Screen::Reports => Action::GetRollout,
+            Screen::Users | Screen::Reports | Screen::Creators => Action::GetRollout,
+            Screen::Login => return,
             Screen::Rollout => self.reports_action(None),
         };
         if self.cache.get(&action, Instant::now()).is_none() {
@@ -262,17 +316,6 @@ impl Admin {
                 Ok(None) => {
                     self.cache
                         .put(action.clone(), value.clone(), Instant::now());
-                    if matches!(action, Action::SearchAccounts { .. }) {
-                        for user in &self.state.users {
-                            self.cache.put(
-                                Action::GetAccount {
-                                    account_id: user.account_id.clone(),
-                                },
-                                serde_json::json!({"account":user}),
-                                Instant::now(),
-                            );
-                        }
-                    }
                     if matches!(action, Action::GetReport { .. }) {
                         self.zoomed = None;
                         self.image_error = None;
@@ -369,24 +412,26 @@ impl Admin {
     }
     fn event(&mut self, event: Event, cx: &mut Context<Self>) {
         let was_polling = self.state.busy || self.prefetch_pending;
-        if self.state.busy && !matches!(event, Event::Cancel | Event::CloseImage) {
+        if self.state.busy
+            && !matches!(
+                event,
+                Event::Cancel | Event::CloseImage | Event::DemoState(_)
+            )
+        {
             return;
         }
-        if self.state.confirmation.is_some()
+        if (self.state.confirmation.is_some() || self.dialog.is_some())
             && !matches!(event, Event::Cancel | Event::Confirm | Event::CloseImage)
         {
             return;
         }
         match event {
-            Event::Screen(screen) => {
-                self.zoomed = None;
-                self.state.screen = screen;
-                if self.state.signed_in && !self.state.demo {
-                    self.images.clear();
-                    self.load(cx);
-                    self.prefetch();
-                }
-            }
+            event @ (Event::Back
+            | Event::AccountFilter(_)
+            | Event::DemoState(_)
+            | Event::SelectCreator(_)
+            | Event::OpenDialog(_)
+            | Event::Screen(_)) => self.interface_event(&event, cx),
             Event::Search => {
                 self.search_due = false;
                 self.debounce = None;
@@ -429,44 +474,152 @@ impl Admin {
                     self.state.failed(error);
                 }
             }
-            Event::Confirm => match self.state.confirm() {
-                Ok(action) if self.state.demo => self.state.demo_action(&action),
-                Ok(action) => {
-                    self.cache.clear();
-                    self.send(Command::Call(action));
-                }
-                Err(error) => self.state.failed(error),
-            },
-            Event::Cancel => self.state.confirmation = None,
+            Event::Confirm => self.confirm_change(cx),
+            Event::Cancel => {
+                self.state.confirmation = None;
+                self.dialog = None;
+            }
             Event::Login => {
-                if !self.state.demo {
+                if self.state.demo {
+                    self.state.signed_in = true;
+                    self.state.screen = Screen::Users;
+                } else {
                     self.send(Command::Login);
                 }
             }
             Event::Logout => {
                 self.cache.clear();
-                if !self.state.demo {
+                if self.state.demo {
+                    self.state.signed_in = false;
+                } else {
                     self.state.clear_private();
                     self.images.clear();
                     self.send(Command::Logout);
                 }
             }
-            Event::Reload => {
-                self.cache.clear();
-                if !self.state.demo {
-                    self.images.clear();
-                    self.state.user = None;
-                    self.state.report = None;
-                    self.load(cx);
-                    self.prefetch();
-                }
-            }
+            Event::Reload => self.reload(cx),
             Event::CloseImage => self.zoomed = None,
         }
         if !was_polling && (self.state.busy || self.prefetch_pending) {
             Self::poll_replies(cx);
         }
         cx.notify();
+    }
+    fn reload(&mut self, cx: &Context<Self>) {
+        self.demo_state = "normal";
+        self.cache.clear();
+        if !self.state.demo {
+            self.images.clear();
+            self.state.user = None;
+            self.state.report = None;
+            self.load(cx);
+            self.prefetch();
+        }
+    }
+    fn interface_event(&mut self, event: &Event, cx: &mut Context<Self>) {
+        match *event {
+            Event::Back => {
+                self.state.user = None;
+                self.state.creator = None;
+                self.state.report = None;
+            }
+            Event::AccountFilter(filter) => self.account_filter = filter,
+            Event::DemoState(state) if self.state.demo => {
+                self.demo_state = state;
+                self.state.busy = false;
+            }
+            Event::SelectCreator(index) => {
+                if let Some(creator) = self.state.creators.get(index).cloned() {
+                    if self.state.demo {
+                        self.state.creator_lines = self
+                            .state
+                            .demo_creator_lines
+                            .iter()
+                            .find(|(id, _)| id == &creator.creator_id)
+                            .map(|(_, lines)| lines.clone())
+                            .unwrap_or_default();
+                        self.state.creator = Some(creator);
+                    } else {
+                        self.read(Action::GetCreator {
+                            creator_id: creator.creator_id,
+                        });
+                    }
+                }
+            }
+            Event::OpenDialog(dialog) => self.open_dialog(dialog, cx),
+            Event::Screen(screen) => {
+                self.zoomed = None;
+                self.state.screen = screen;
+                self.state.user = None;
+                self.state.creator = None;
+                self.state.report = None;
+                self.demo_state = "normal";
+                if self.state.signed_in && !self.state.demo {
+                    self.images.clear();
+                    self.load(cx);
+                    self.prefetch();
+                }
+            }
+            _ => {}
+        }
+    }
+    fn open_dialog(&mut self, dialog: Dialog, cx: &mut Context<Self>) {
+        let label = match dialog {
+            Dialog::Creator => "Nombre del creador",
+            Dialog::Delete => "Correo de la cuenta",
+            Dialog::Block(_) => "Motivo del bloqueo",
+            Dialog::Report(Status::Fixed) => "Versión de la corrección",
+            Dialog::Report(_) => "Motivo",
+            Dialog::Payout => "Pago",
+        };
+        self.form_subscriptions.clear();
+        self.form_a = cx.new(|cx| Input::new(String::new(), label, cx).with_height(px(44.)));
+        self.form_b
+            .update(cx, |input, cx| input.set_value(String::new(), cx));
+        self.form_c
+            .update(cx, |input, cx| input.set_value(String::new(), cx));
+        self.watch_forms(cx);
+        self.dialog = Some(dialog);
+    }
+    fn focus_dialog(&self, window: &mut Window, cx: &mut Context<Self>) {
+        if matches!(
+            self.dialog,
+            Some(
+                Dialog::Creator
+                    | Dialog::Delete
+                    | Dialog::Block(true)
+                    | Dialog::Report(Status::Fixed | Status::Rejected)
+            )
+        ) {
+            self.form_a.read(cx).focus_handle().focus(window, cx);
+        }
+    }
+    fn confirm_change(&mut self, cx: &mut Context<Self>) {
+        if let Some(dialog) = self.dialog {
+            match self.dialog_action(dialog, cx) {
+                Ok(action) => {
+                    if let Err(error) = self.state.propose(action) {
+                        self.state.message = format!("Revisa los datos: {error}");
+                        cx.notify();
+                        return;
+                    }
+                    self.dialog = None;
+                }
+                Err(error) => {
+                    self.state.message = error;
+                    cx.notify();
+                    return;
+                }
+            }
+        }
+        match self.state.confirm() {
+            Ok(action) if self.state.demo => self.state.demo_action(&action),
+            Ok(action) => {
+                self.cache.clear();
+                self.send(Command::Call(action));
+            }
+            Err(error) => self.state.failed(error),
+        }
     }
     fn button(
         &self,
@@ -475,64 +628,136 @@ impl Admin {
         event: Event,
         cx: &mut Context<Self>,
     ) -> Stateful<Div> {
+        let icon = if id == "nav" {
+            match &event {
+                Event::Screen(Screen::Users) => Some("people.svg"),
+                Event::Screen(Screen::Creators) => Some("star.svg"),
+                Event::Screen(Screen::Reports) => Some("flag.svg"),
+                Event::Screen(Screen::Rollout) => Some("grid.svg"),
+                _ => None,
+            }
+        } else {
+            None
+        };
         let key_event = event.clone();
-        orbit::button(id, label, cx)
+        let accessible_event = event.clone();
+        let entity = cx.entity().downgrade();
+        orbit::button(id, "", cx)
+            .aria_label(label.to_owned())
+            .when_some(icon, |b, icon| {
+                b.child(gpui::svg().path(icon).size(px(19.)).text_color(rgb(INK3)))
+            })
+            .child(label.to_owned())
+            .text_size(px(13.5))
+            .text_color(rgb(INK1))
+            .font_weight(gpui::FontWeight::SEMIBOLD)
+            .rounded(px(12.))
             .when(self.state.busy, |b| b.opacity(0.45))
-            .on_click(cx.listener(move |this, _, _, cx| this.event(event.clone(), cx)))
-            .on_key_down(cx.listener(move |this, key: &gpui::KeyDownEvent, _, cx| {
-                if matches!(key.keystroke.key.as_str(), "enter" | "space") {
-                    this.event(key_event.clone(), cx);
-                    cx.stop_propagation();
-                }
+            .on_a11y_action(gpui::AccessibleAction::Click, move |_, window, cx| {
+                let _ = entity.update(cx, |this, cx| {
+                    this.event(accessible_event.clone(), cx);
+                    this.focus_dialog(window, cx);
+                });
+                window.refresh();
+            })
+            .on_click(cx.listener(move |this, _, window, cx| {
+                this.event(event.clone(), cx);
+                this.focus_dialog(window, cx);
             }))
-    }
-    fn confirmation_panel(&self, action: &Action, cx: &mut Context<Self>) -> Div {
-        let description = confirmation(action);
-        panel(cx)
-            .gap(px(12.0))
-            .border_color(rgb(orbit::coral(cx)))
-            .child(heading("Confirmar cambio", cx))
-            .child(description)
-            .child(
-                div()
-                    .flex()
-                    .gap(px(10.0))
-                    .child(self.button("confirm", "Confirmar y guardar", Event::Confirm, cx))
-                    .child(self.button("cancel", "Cancelar", Event::Cancel, cx)),
+            .on_key_down(
+                cx.listener(move |this, key: &gpui::KeyDownEvent, window, cx| {
+                    if matches!(key.keystroke.key.as_str(), "enter" | "space") {
+                        this.event(key_event.clone(), cx);
+                        this.focus_dialog(window, cx);
+                        cx.stop_propagation();
+                    }
+                }),
             )
     }
+    fn dialog_action(&self, dialog: Dialog, cx: &Context<Self>) -> Result<Action, String> {
+        let a = self.form_a.read(cx).value.trim().to_owned();
+        let b = self.form_b.read(cx).value.trim().to_owned();
+        let c = self.form_c.read(cx).value.trim().to_uppercase();
+        let user = self.state.user.as_ref();
+        let action = match dialog {
+            Dialog::Block(blocked) => Action::SetBlocked {
+                account_id: user.ok_or("Selecciona una persona")?.account_id.clone(),
+                blocked,
+                reason: (!a.is_empty()).then_some(a),
+            },
+            Dialog::Delete => {
+                let user = user.ok_or("Selecciona una persona")?;
+                if user
+                    .email
+                    .as_deref()
+                    // After a partial deletion Clerk may no longer return the email.
+                    // The server requires the original confirmation hash on retry.
+                    .is_some_and(|email| !email.eq_ignore_ascii_case(&a))
+                {
+                    return Err("Escribe exactamente el correo de esta persona.".into());
+                }
+                Action::DeleteAccount {
+                    account_id: user.account_id.clone(),
+                    confirm_email: a,
+                }
+            }
+            Dialog::Creator => Action::CreateCreator {
+                name: a,
+                email: b,
+                code: c,
+            },
+            Dialog::Payout => {
+                let creator = self.state.creator.as_ref().ok_or("Selecciona un creador")?;
+                Action::RecordCreatorPayout {
+                    creator_id: creator.creator_id.clone(),
+                    amount_cents: creator.payable_cents,
+                }
+            }
+            Dialog::Report(status) => {
+                let report = self.state.report.as_ref().ok_or("Selecciona un informe")?;
+                Action::SetReportStatus {
+                    report_id: report.report_id.clone(),
+                    status,
+                    fixed_in_version: (status == Status::Fixed).then_some(a.clone()),
+                    reason: (status != Status::Fixed && !a.is_empty()).then_some(a),
+                }
+            }
+        };
+        action
+            .validate()
+            .map_err(|_| "Revisa los datos antes de confirmar.".to_owned())?;
+        Ok(action)
+    }
+
     fn record_render(&mut self, started: Instant, window: &Window) {
-        if let Some(worker) = &self.worker {
-            if let Some(request) = self.render_pending.take()
-                && crate::diagnostics::render_enabled()
-            {
-                // Timings go to the services thread; no file I/O during render.
+        if let Some(worker) = &self.worker
+            && crate::diagnostics::render_enabled()
+        {
+            let _ = worker.send.send(Command::Timing(
+                "render_tree",
+                started.elapsed().as_micros(),
+            ));
+            if let Some(request) = self.render_pending.take() {
                 let _ = worker.send.send(Command::Timing(
                     "request_to_render",
                     request.elapsed().as_micros(),
                 ));
             }
-            if crate::diagnostics::render_enabled() {
-                let _ = worker.send.send(Command::Timing(
-                    "render_tree",
+            let send = worker.send.clone();
+            window.on_next_frame(move |_, _| {
+                let _ = send.send(Command::Timing(
+                    "render_to_frame",
                     started.elapsed().as_micros(),
                 ));
-                let send = worker.send.clone();
-                window.on_next_frame(move |_, _| {
-                    let _ = send.send(Command::Timing(
-                        "render_to_frame",
-                        started.elapsed().as_micros(),
-                    ));
-                });
-            }
+            });
         }
     }
     fn frame_timing(&self, label: &'static str, window: &Window) {
         if crate::diagnostics::render_enabled()
             && let Some(worker) = &self.worker
         {
-            let started = Instant::now();
             let send = worker.send.clone();
+            let started = Instant::now();
             window.on_next_frame(move |_, _| {
                 let _ = send.send(Command::Timing(label, started.elapsed().as_micros()));
             });
@@ -541,469 +766,205 @@ impl Admin {
     fn switch(
         &self,
         id: &'static str,
-        label: &str,
         on: bool,
         action: Action,
         cx: &mut Context<Self>,
-    ) -> Div {
-        let key_action = action.clone();
-        div()
-            .flex()
-            .items_center()
-            .justify_between()
-            .py(px(12.0))
-            .border_b_1()
-            .border_color(rgb(orbit::surface_3(cx)))
-            .child(label.to_owned())
-            .child(
-                orbit::toggle(id, label, on, !self.state.busy, cx)
-                    .on_click(cx.listener(move |this, _, _, cx| {
-                        this.event(Event::Propose(action.clone()), cx);
-                    }))
-                    .on_key_down(cx.listener(move |this, key: &gpui::KeyDownEvent, _, cx| {
-                        if matches!(key.keystroke.key.as_str(), "enter" | "space") {
-                            this.event(Event::Propose(key_action.clone()), cx);
-                            cx.stop_propagation();
-                        }
-                    })),
-            )
-    }
-    fn user_row(
-        &self,
-        index: usize,
-        user: &crate::client::User,
-        cx: &mut Context<Self>,
-    ) -> gpui::Stateful<Div> {
-        div()
-            .id(("user", index))
-            .flex()
-            .items_center()
-            .gap(px(12.0))
-            .py(px(12.0))
-            .border_b_1()
-            .border_color(rgb(orbit::surface_3(cx)))
+    ) -> Stateful<Div> {
+        self.button(id, "", Event::Propose(action), cx)
+            .aria_label(format!(
+                "{id}: {}",
+                if on { "Activado" } else { "Desactivado" }
+            ))
+            .px(px(3.))
+            .when(on, gpui::Styled::justify_end)
+            .when(!on, gpui::Styled::justify_start)
             .child(
                 div()
-                    .w(px(220.0))
-                    .flex_shrink_0()
+                    .size(px(18.))
+                    .rounded_full()
+                    .bg(rgb(if on { INK1 } else { INK3 })),
+            )
+            .w(px(44.))
+            .h(px(26.))
+            .rounded(px(20.))
+            .bg(rgb(if on { 0x00d5_2f49 } else { 0x0020_2127 }))
+            .text_color(rgb(INK1))
+    }
+    fn page_head(&self, title: &str, subtitle: &str, cx: &mut Context<Self>) -> Div {
+        div()
+            .flex()
+            .items_end()
+            .justify_between()
+            .mb(px(4.))
+            .child(
+                div()
                     .flex()
                     .flex_col()
-                    .gap(px(4.0))
-                    .child(
-                        self.button(
-                            "user-select",
-                            user.name
-                                .as_deref()
-                                .or(user.email.as_deref())
-                                .unwrap_or("Sin nombre"),
-                            Event::SelectUser(index),
-                            cx,
-                        )
-                        .id(("select-user", index)),
-                    )
-                    .child(muted(
-                        user.email.as_deref().unwrap_or("Sin correo disponible"),
-                        cx,
-                    )),
+                    .gap(px(6.))
+                    .child(heading(title, 30.))
+                    .child(text(subtitle, 14., INK3)),
             )
-            .child(
-                div()
-                    .w(px(70.0))
-                    .flex_shrink_0()
-                    .child(if user.roles.is_empty() {
-                        "sin rol".into()
-                    } else {
-                        user.roles.join(", ")
-                    }),
-            )
-            .child(
-                div()
-                    .w(px(125.0))
-                    .flex_shrink_0()
-                    .child(if user.modules.is_empty() {
-                        "sin módulos".into()
-                    } else {
-                        user.modules
-                            .iter()
-                            .map(|m| m.label())
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    }),
-            )
-            .child(
-                div()
-                    .w(px(65.0))
-                    .flex_shrink_0()
-                    .child(user.reports_count.to_string()),
-            )
-            .child(div().w(px(145.0)).flex_shrink_0().child(
-                user.last_seen_at.as_deref().map_or_else(
-                    || "Sin datos".into(),
-                    |date| date.chars().take(16).collect::<String>().replace('T', " "),
-                ),
-            ))
+            .child(self.button("refresh", "Actualizar", Event::Reload, cx))
     }
-    fn users(&self, cx: &mut Context<Self>) -> Div {
-        let query = self.search.read(cx).value.trim().to_lowercase();
-        let mut visible = 0;
-        let mut rows = div().flex().flex_col().min_w(px(700.0)).gap(px(8.0)).child(
-            div()
-                .flex()
-                .gap(px(12.0))
-                .child(div().w(px(220.0)).child(muted("NOMBRE / CORREO", cx)))
-                .child(div().w(px(70.0)).child(muted("ROL", cx)))
-                .child(div().w(px(125.0)).child(muted("MÓDULOS", cx)))
-                .child(div().w(px(65.0)).child(muted("REPORTES", cx)))
-                .child(div().w(px(145.0)).child(muted("ÚLTIMA VISITA", cx))),
-        );
-        for (index, user) in self.state.users.iter().enumerate() {
-            if !format!(
-                "{} {}",
-                user.email.as_deref().unwrap_or(""),
-                user.name.as_deref().unwrap_or("")
-            )
-            .to_lowercase()
-            .contains(&query)
-            {
-                continue;
+    fn list_state(&self, empty: &str, cx: &mut Context<Self>) -> Option<Div> {
+        let loading = self.state.busy || self.demo_state == "cargando";
+        let error = self.demo_state == "error" || self.state.message.starts_with("Error:");
+        if loading {
+            let mut d = panel().gap(px(14.)).child(muted("Cargando…"));
+            for i in 0usize..6 {
+                d = d.child(
+                    div()
+                        .id(("skeleton", i))
+                        .h(px(44.))
+                        .rounded(px(10.))
+                        .bg(rgb(S2)),
+                );
             }
-            visible += 1;
-            rows = rows.child(self.user_row(index, user, cx));
+            Some(d)
+        } else if error {
+            Some(
+                panel()
+                    .items_center()
+                    .py(px(55.))
+                    .gap(px(12.))
+                    .child(heading("No se pudo conectar con el servidor", 17.))
+                    .child(muted("Revisa tu conexión y vuelve a intentarlo."))
+                    .child(self.button("retry", "Reintentar", Event::Reload, cx)),
+            )
+        } else if self.demo_state == "vacio" {
+            Some(empty_card(empty))
+        } else {
+            None
         }
-        if visible == 0 {
-            rows = rows.child(muted(
-                if query.is_empty() && self.state.busy {
-                    "Cargando la lista de cuentas…"
-                } else if query.is_empty() {
-                    "No hay cuentas registradas en esta instancia."
-                } else {
-                    "Sin cuentas que coincidan con el filtro."
-                },
-                cx,
-            ));
+    }
+
+    fn rollout(&self, cx: &mut Context<Self>) -> Div {
+        let mut body = column().child(self.page_head(
+            "Módulos para todos",
+            "Enciende un módulo para todo el mundo. Para una sola persona, hazlo desde su ficha.",
+            cx,
+        ));
+        if let Some(state) = self.list_state("No se pudieron cargar los módulos", cx) {
+            return body.child(state);
         }
-        let mut list = panel(cx)
-            .flex_1()
-            .min_w_0()
-            .gap(px(12.0))
+        let mut cards = div().flex().flex_wrap().gap(px(16.));
+        for row in &self.state.rollout {
+            cards = cards.child(self.module_card(row, cx));
+        }
+        body = body.child(cards).child(note("Al desactivar un módulo para todos, quienes tienen acceso propio, por su plan o por su rol lo conservan. Cada cambio pide confirmación.",INK3));
+        body
+    }
+
+    fn module_card(&self, row: &crate::client::Rollout, cx: &mut Context<Self>) -> Div {
+        panel()
+            .w(gpui::relative(0.49))
+            .gap(px(12.))
             .child(
                 div()
                     .flex()
-                    .gap(px(10.0))
-                    .child(div().flex_1().child(self.search.clone()))
-                    .child(self.button("search", "Buscar", Event::Search, cx)),
+                    .gap(px(12.))
+                    .items_center()
+                    .child(
+                        div()
+                            .size(px(42.))
+                            .flex_shrink_0()
+                            .rounded(px(12.))
+                            .bg(rgb(S2))
+                            .flex()
+                            .items_center()
+                            .justify_center()
+                            .child(
+                                gpui::svg()
+                                    .path(format!("{}.svg", row.module.key()))
+                                    .size(px(20.))
+                                    .text_color(rgb(if row.enabled_for_all { RED } else { INK2 })),
+                            ),
+                    )
+                    .child(
+                        column()
+                            .gap(px(3.))
+                            .child(heading(row.module.label(), 17.))
+                            .child(muted(module_description(row.module))),
+                    ),
             )
-            .child(muted(
-                "Cuentas Vantare · alta más reciente primero · filtro por correo o nombre",
-                cx,
-            ))
-            .child(div().id("accounts-table").overflow_x_scroll().child(rows));
-        if self.state.users_cursor.is_some() && query.trim().is_empty() {
-            list = list.child(self.button("next-users", "Siguiente página", Event::NextUsers, cx));
-        }
-        div().flex().gap(px(20.0)).child(list).child(
-            div()
-                .w(px(320.0))
-                .flex_shrink_0()
-                .child(self.user_detail(cx)),
-        )
-    }
-    fn user_detail(&self, cx: &mut Context<Self>) -> Div {
-        let mut detail = panel(cx)
-            .flex_1()
-            .gap(px(8.0))
-            .child(heading("Detalle de usuario", cx));
-        if let Some(user) = &self.state.user {
-            detail = detail
-                .child(
-                    user.name
-                        .clone()
-                        .unwrap_or_else(|| "Sin nombre disponible".into()),
-                )
-                .child(muted(
-                    user.email.as_deref().unwrap_or("Sin correo disponible"),
-                    cx,
-                ))
-                .child(muted(&format!("Alta: {}", user.created_at), cx))
-                .child(muted(
-                    &format!(
-                        "Última visita: {}",
-                        user.last_seen_at.as_deref().unwrap_or("sin datos")
-                    ),
-                    cx,
-                ))
-                .child(self.switch(
-                    "tester",
-                    "Tester · permite enviar reportes",
-                    user.roles.iter().any(|r| r == "tester"),
-                    Action::SetTester {
-                        account_id: user.account_id.clone(),
-                        enabled: !user.roles.iter().any(|r| r == "tester"),
-                    },
-                    cx,
-                ))
-                .child(muted("El rol owner no se modifica desde esta app.", cx));
-            if let Some(promotion) = &user.report_promotion {
-                detail = detail.child(muted(&promotion.summary(), cx));
-            }
-            for (index, module) in Module::ALL.into_iter().enumerate() {
-                let label = muted(
-                    &format!(
-                        "{} · acceso {}",
-                        module.label(),
-                        if user.modules.contains(&module) {
-                            "activo"
-                        } else {
-                            "inactivo"
-                        }
-                    ),
-                    cx,
-                );
-                let mut buttons = div().flex().items_center().gap(px(8.0));
-                for (enabled, label) in [(true, "Conceder"), (false, "Revocar")] {
-                    buttons = buttons.child(
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .pt(px(12.))
+                    .border_t_1()
+                    .border_color(gpui::rgba(0xffff_ff0c))
+                    .child(
+                        column()
+                            .gap(px(4.))
+                            .child(tag(
+                                if row.enabled_for_all {
+                                    "Activado para todos"
+                                } else {
+                                    "Solo algunas personas"
+                                },
+                                if row.enabled_for_all { GREEN } else { INK3 },
+                            ))
+                            .when(!row.enabled_for_all, |d| {
+                                d.child(muted(&format!(
+                                    "{} con acceso propio",
+                                    row.individual_count
+                                )))
+                            }),
+                    )
+                    .child(
                         self.button(
-                            "module-grant",
-                            label,
-                            Event::Propose(Action::SetModule {
-                                account_id: user.account_id.clone(),
-                                module,
-                                enabled,
+                            row.module.key(),
+                            if row.enabled_for_all {
+                                "Desactivar para todos"
+                            } else {
+                                "Activar para todos"
+                            },
+                            Event::Propose(Action::SetRollout {
+                                module: row.module,
+                                enabled_for_all: !row.enabled_for_all,
                             }),
                             cx,
                         )
-                        .id(("module-grant", index * 2 + usize::from(enabled))),
-                    );
-                }
-                detail = detail.child(
-                    div()
-                        .flex()
-                        .flex_col()
-                        .gap(px(4.0))
-                        .child(label)
-                        .child(buttons),
-                );
-            }
-            detail = detail.child(muted(
-                "Conceder/revocar cambia solo la concesión individual. El acceso también puede venir del rol, licencia o rollout global.",
-                cx,
-            ));
-        } else {
-            detail = detail.child(muted(
-                "Selecciona un usuario para consultar sus permisos.",
-                cx,
-            ));
-        }
-        detail
-    }
-    fn rollout(&self, cx: &mut Context<Self>) -> Div {
-        let mut card = panel(cx).w_full().gap(px(12.0)).child(heading("Módulos para todos", cx))
-            .child(div().p(px(16.0)).rounded(px(8.0)).bg(rgb(orbit::surface_3(cx))).child("AVISO · afecta a todos los usuarios"))
-            .child(muted("Activar un módulo da acceso global. Desactivarlo conserva las concesiones individuales.", cx));
-        for row in &self.state.rollout {
-            card = card.child(self.switch(
-                row.module.key(),
-                row.module.label(),
-                row.enabled_for_all,
-                Action::SetRollout {
-                    module: row.module,
-                    enabled_for_all: !row.enabled_for_all,
-                },
-                cx,
-            ));
-        }
-        card.child(muted(
-            "Cada cambio requiere confirmación. El servidor registra al actor y el antes/después.",
-            cx,
-        ))
-    }
-    fn reports(&self, cx: &mut Context<Self>) -> Div {
-        let mut filters = div().flex().flex_wrap().gap(px(6.0)).child(self.button(
-            "all-status",
-            "Todos",
-            Event::Filter(None),
-            cx,
-        ));
-        for (index, status) in Status::ALL.into_iter().enumerate() {
-            filters = filters.child(
-                self.button("filter", status.label(), Event::Filter(Some(status)), cx)
-                    .id(("filter", index))
-                    .when(self.state.filter == Some(status), |b| {
-                        b.border_color(rgb(orbit::coral(cx)))
-                    }),
-            );
-        }
-        let mut list = panel(cx).w(px(430.0)).gap(px(12.0)).child(filters);
-        for (index, report) in self.state.visible_reports() {
-            list = list.child(
-                div()
-                    .p(px(12.0))
-                    .rounded(px(8.0))
-                    .bg(rgb(orbit::surface_2(cx)))
-                    .child(
-                        self.button(
-                            "report-select",
-                            &format!("{} · {}", report.module, report.status.label()),
-                            Event::SelectReport(index),
-                            cx,
-                        )
-                        .id(("report-select", index)),
-                    )
-                    .child(muted(&report.author, cx))
-                    .child(muted(
-                        &format!(
-                            "{} · {}",
-                            report.created_at,
-                            if report.has_screenshots {
-                                "con capturas"
-                            } else {
-                                "sin capturas"
-                            }
-                        ),
-                        cx,
-                    )),
-            );
-        }
-        if self.state.visible_reports().next().is_none() {
-            list = list.child(muted("Sin reportes en este estado.", cx));
-        }
-        if self.state.cursor.is_some() {
-            list = list.child(self.button("next", "Página siguiente", Event::Next, cx));
-        }
-        div()
-            .flex()
-            .gap(px(20.0))
-            .child(list)
-            .child(self.report_detail(cx))
-    }
-    fn report_detail(&self, cx: &mut Context<Self>) -> Div {
-        let mut detail = panel(cx)
-            .flex_1()
-            .gap(px(8.0))
-            .child(heading("Detalle del reporte", cx));
-        if let Some(report) = &self.state.report {
-            detail = detail
-                .child(muted(
-                    &format!(
-                        "{} · {} · {}",
-                        report.author, report.module, report.app_version
-                    ),
-                    cx,
-                ))
-                .child(muted(
-                    &format!("{} · {}", report.created_at, report.status.label()),
-                    cx,
-                ))
-                .child(
-                    div()
-                        .p(px(14.0))
-                        .rounded(px(8.0))
-                        .bg(rgb(orbit::surface_2(cx)))
-                        .child(report.text.clone()),
-                );
-            let mut statuses = div().flex().flex_wrap().gap(px(6.0));
-            for (index, status) in Status::ALL.into_iter().enumerate() {
-                statuses = statuses.child(
-                    self.button(
-                        "set-status",
-                        status.label(),
-                        Event::Propose(Action::SetReportStatus {
-                            report_id: report.report_id.clone(),
-                            status,
-                        }),
-                        cx,
-                    )
-                    .id(("set-status", index)),
-                );
-            }
-            detail = detail
-                .child(muted("CAMBIAR ESTADO (requiere confirmación)", cx))
-                .child(statuses)
-                .child(muted(
-                    "CAPTURAS · URL firmada, solo en memoria · pulsa para ampliar",
-                    cx,
-                ));
-            for (index, image) in self.images.iter().enumerate() {
-                detail = detail.child(
-                    div()
-                        .id(("image", index))
-                        .w_full()
-                        .h(px(190.0))
-                        .flex()
-                        .justify_center()
-                        .overflow_hidden()
-                        .role(gpui::Role::Button)
-                        .aria_label("Ampliar captura")
-                        .tab_index(0)
-                        .cursor_pointer()
-                        .child(
-                            img(ImageSource::Image(image.clone()))
-                                .h(px(190.0))
-                                .max_w_full()
-                                .object_fit(gpui::ObjectFit::Contain),
-                        )
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            this.zoomed = Some(index);
-                            cx.notify();
-                        }))
-                        .on_key_down(cx.listener(move |this, key: &gpui::KeyDownEvent, _, cx| {
-                            if matches!(key.keystroke.key.as_str(), "enter" | "space") {
-                                this.zoomed = Some(index);
-                                cx.notify();
-                                cx.stop_propagation();
-                            }
+                        .text_size(px(12.5))
+                        .px(px(12.))
+                        .h(px(32.))
+                        .bg(rgb(if row.enabled_for_all { S2 } else { 0x00f3_eeee }))
+                        .text_color(rgb(if row.enabled_for_all {
+                            INK1
+                        } else {
+                            0x001c_1719
                         })),
-                );
-            }
-            if let Some(error) = self.image_error {
-                detail = detail.child(muted(&format!("Captura no disponible: {error}. Selecciona el reporte otra vez para renovar sus URLs."), cx));
-            } else if self.images.is_empty() {
-                detail = detail.child(muted(
-                    if report.has_screenshots {
-                        "Capturas no disponibles. Vuelve a consultar el reporte."
-                    } else {
-                        "Sin capturas adjuntas."
-                    },
-                    cx,
-                ));
-            }
-        } else {
-            detail = detail.child(muted(
-                "Selecciona un reporte para ver su texto y capturas.",
-                cx,
-            ));
-        }
-        detail
+                    ),
+            )
     }
-    fn navigation(&self, cx: &mut Context<Self>) -> Div {
-        let mut tabs = div().flex().gap(px(10.0));
-        for screen in Screen::ALL {
-            tabs = tabs.child(
-                self.button(screen.label(), screen.label(), Event::Screen(screen), cx)
-                    .when(screen == self.state.screen, |b| {
-                        b.border_color(rgb(orbit::coral(cx)))
-                    }),
-            );
+
+    fn breadcrumb(&self) -> String {
+        if let Some(user) = &self.state.user {
+            return format!("Personas › {}", user.name.as_deref().unwrap_or("Persona"));
         }
-        tabs
+        if let Some(creator) = &self.state.creator {
+            return format!("Creadores › {}", creator.name);
+        }
+        self.state.screen.label().to_owned()
     }
     fn image_viewer(&self, image: Arc<Image>, cx: &mut Context<Self>) -> Div {
         div()
             .absolute()
             .inset_0()
             .size_full()
-            .p(px(24.0))
-            .bg(rgb(orbit::canvas(cx)))
+            .p(px(24.))
+            .bg(rgb(CANVAS))
             .flex()
             .flex_col()
-            .gap(px(16.0))
+            .gap(px(16.))
             .child(
                 div()
                     .flex()
                     .justify_between()
-                    .items_center()
-                    .child(heading("Captura del reporte", cx))
-                    .child(self.button("close-image", "Volver al reporte", Event::CloseImage, cx)),
+                    .child(heading("Captura del informe", 22.))
+                    .child(self.button("close-image", "Volver al informe", Event::CloseImage, cx)),
             )
             .child(
                 div().flex_1().min_h_0().child(
@@ -1013,151 +974,308 @@ impl Admin {
                 ),
             )
     }
+    pub fn demo_scene(&mut self, scene: &str, cx: &mut Context<Self>) -> Result<(), String> {
+        if !self.state.demo {
+            return Err("Las escenas solo están disponibles con --demo".into());
+        }
+        match scene {
+            "normal" => {}
+            "cargando" => self.demo_state = "cargando",
+            "vacio" => self.demo_state = "vacio",
+            "error" => self.demo_state = "error",
+            "ana" | "owner" | "bloquear" | "borrar" | "eva" => {
+                self.state.screen = Screen::Users;
+                let i = if scene == "owner" {
+                    0
+                } else if scene == "eva" {
+                    5
+                } else {
+                    1
+                };
+                self.select_user(i);
+                if scene == "bloquear" {
+                    self.open_dialog(Dialog::Block(true), cx);
+                }
+                if scene == "borrar" {
+                    self.open_dialog(Dialog::Delete, cx);
+                }
+            }
+            "carlos" => self.event(Event::SelectCreator(0), cx),
+            "pablo" => self.event(Event::SelectCreator(2), cx),
+            "nuevo" => self.open_dialog(Dialog::Creator, cx),
+            "informe" => self.select_report(0),
+            "arreglado" => self.select_report(4),
+            "rechazado" => self.select_report(3),
+            _ => return Err("Escena demo desconocida".into()),
+        }
+        Ok(())
+    }
 }
 impl Render for Admin {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let started = Instant::now();
-        let body = if self.state.signed_in {
-            match self.state.screen {
-                Screen::Users => self.users(cx),
-                Screen::Rollout => self.rollout(cx),
-                Screen::Reports => self.reports(cx),
-            }
-        } else {
-            panel(cx).gap(px(14.0)).child(heading("Administración privada · solo owner", cx)).child("Inicia sesión con tu cuenta Vantare. El servidor comprueba el rol owner en cada acción.").child(self.button("login", "Iniciar sesión en el navegador", Event::Login, cx))
-        };
         let mut root = div()
             .relative()
+            .size_full()
+            .flex()
+            .bg(rgb(CANVAS))
+            .text_color(rgb(INK1))
+            .font_family("Inter W400")
+            .text_size(px(14.))
             .on_mouse_move(
                 cx.listener(|this, _, window, _| this.frame_timing("hover_to_frame", window)),
             )
             .on_scroll_wheel(
                 cx.listener(|this, _, window, _| this.frame_timing("scroll_to_frame", window)),
             )
-            .size_full()
-            .flex()
-            .flex_col()
-            .gap(px(18.0))
-            .p(px(28.0))
-            .bg(rgb(orbit::canvas(cx)))
-            .text_color(rgb(orbit::ink(cx)))
-            .font_family("Inter W400")
-            .text_size(px(14.0))
-            .child(
-                div()
-                    .flex()
-                    .justify_between()
-                    .items_center()
-                    .child(heading("Vantare Admin", cx))
-                    .child(muted(
-                        if self.state.demo {
-                            "DEMO · DATOS FALSOS · SIN RED"
-                        } else {
-                            "BETA · ADMINISTRACIÓN OWNER"
-                        },
-                        cx,
-                    )),
-            )
-            .child(
-                div()
-                    .flex()
-                    .justify_between()
-                    .child(self.navigation(cx))
-                    .when(self.state.signed_in && !self.state.demo, |d| {
-                        d.child(
-                            div()
-                                .flex()
-                                .gap(px(10.0))
-                                .child(self.button("reload", "Actualizar", Event::Reload, cx))
-                                .child(self.button("logout", "Cerrar sesión", Event::Logout, cx)),
-                        )
-                    }),
-            )
-            .child(
-                div()
-                    .p(px(10.0))
-                    .rounded(px(8.0))
-                    .bg(rgb(orbit::surface_2(cx)))
-                    .child(if self.state.busy {
-                        format!("{} · operación en curso…", self.state.message)
+            .on_key_down(cx.listener(|this, key: &gpui::KeyDownEvent, window, cx| {
+                if key.keystroke.key == "tab" {
+                    if key.keystroke.modifiers.shift {
+                        window.focus_prev(cx);
                     } else {
-                        self.state.message.clone()
-                    }),
-            )
-            .child(
-                div()
-                    .id("content")
+                        window.focus_next(cx);
+                    }
+                    cx.stop_propagation();
+                }
+                if key.keystroke.key == "escape" {
+                    this.dialog = None;
+                    this.state.confirmation = None;
+                    this.zoomed = None;
+                    cx.notify();
+                }
+            }));
+        if self.state.signed_in {
+            let body = match self.state.screen {
+                Screen::Users => self.users(cx),
+                Screen::Creators => self.creators(cx),
+                Screen::Reports => self.reports(cx),
+                Screen::Rollout => self.rollout(cx),
+                Screen::Login => self.login(cx),
+            };
+            let mut content = column()
+                .id("content")
+                .flex_1()
+                .min_h_0()
+                .overflow_y_scroll()
+                .px(px(32.))
+                .pt(px(28.))
+                .pb(px(40.))
+                .gap(px(16.));
+            if !self.state.demo
+                && !self.state.message.is_empty()
+                && !self.state.busy
+                && !self.state.message.starts_with("Datos")
+            {
+                content = content.child(note(&self.state.message, EMBER));
+            }
+            root = root.child(self.sidebar(cx)).child(
+                column()
                     .flex_1()
-                    .min_h_0()
-                    .overflow_y_scroll()
-                    .child(body),
+                    .min_w_0()
+                    .h_full()
+                    .gap_0()
+                    .child(
+                        div()
+                            .h(px(58.))
+                            .flex_shrink_0()
+                            .px(px(32.))
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .border_b_1()
+                            .border_color(gpui::rgba(0xffff_ff13))
+                            .child(text(&self.breadcrumb(), 13.5, INK3))
+                            .when(self.state.demo, |d| {
+                                d.child(tag("DEMO · DATOS FALSOS", EMBER))
+                            }),
+                    )
+                    .child(content.child(body)),
             );
-        if let Some(action) = &self.state.confirmation {
-            root = root.child(self.confirmation_panel(action, cx));
+        } else {
+            root = root.items_center().justify_center().child(self.login(cx));
         }
-        if let Some(image) = self.zoomed.and_then(|index| self.images.get(index)) {
+        if self.dialog.is_some() || self.state.confirmation.is_some() {
+            root = root.child(self.confirmation_panel(self.state.confirmation.as_ref(), cx));
+        }
+        if let Some(image) = self.zoomed.and_then(|i| self.images.get(i)) {
             root = root.child(self.image_viewer(image.clone(), cx));
         }
         self.record_render(started, window);
         root
     }
 }
-fn panel(cx: &App) -> Div {
-    div()
-        .flex()
-        .flex_col()
-        .p(px(20.0))
-        .rounded(px(14.0))
+const CANVAS: u32 = 0x0008_090b;
+const S1: u32 = 0x0012_1316;
+const S2: u32 = 0x0018_191e;
+const INK1: u32 = 0x00f5_f3f2;
+const INK2: u32 = 0x00b7_b2b2;
+const INK3: u32 = 0x008a_858b;
+const RED: u32 = 0x00f0_4755;
+const GREEN: u32 = 0x0078_d68b;
+const EMBER: u32 = 0x00ff_9b57;
+const CYAN: u32 = 0x005c_cbd5;
+fn column() -> Div {
+    div().flex().flex_col().gap(px(18.))
+}
+fn panel() -> Div {
+    column()
+        .p(px(20.))
+        .rounded(px(18.))
         .border_1()
-        .border_color(rgb(orbit::surface_3(cx)))
-        .bg(rgb(orbit::surface_1(cx)))
+        .border_color(gpui::rgba(0xffff_ff13))
+        .bg(rgb(S1))
 }
-fn heading(text: &str, cx: &App) -> Div {
+fn text(value: &str, size: f32, color: u32) -> Div {
     div()
-        .text_size(px(22.0))
-        .text_color(rgb(orbit::ink(cx)))
+        .text_size(px(size))
+        .line_height(px(size * 1.45))
+        .text_color(rgb(color))
+        .child(value.to_owned())
+}
+fn heading(value: &str, size: f32) -> Div {
+    text(value, size, INK1)
         .font_weight(gpui::FontWeight::BOLD)
-        .child(text.to_owned())
+        .line_height(px(size * 1.1))
 }
-fn muted(text: &str, cx: &App) -> Div {
+fn muted(value: &str) -> Div {
+    text(value, 12.5, INK3)
+}
+fn eyebrow(value: &str) -> Div {
+    text(value, 11., 0x0078_7379).font_weight(gpui::FontWeight::SEMIBOLD)
+}
+fn avatar(name: &str, size: f32) -> Div {
     div()
-        .text_size(px(12.0))
-        .text_color(rgb(orbit::ink_3(cx)))
-        .child(text.to_owned())
+        .w(px(size))
+        .h(px(size))
+        .flex_shrink_0()
+        .rounded(px(size / 2.))
+        .bg(rgb(0x0020_2127))
+        .border_1()
+        .border_color(gpui::rgba(0xffff_ff21))
+        .flex()
+        .items_center()
+        .justify_center()
+        .font_weight(gpui::FontWeight::BOLD)
+        .text_size(px(size * 0.36))
+        .child(
+            name.split_whitespace()
+                .filter_map(|s| s.chars().next())
+                .take(2)
+                .collect::<String>(),
+        )
 }
-fn confirmation(action: &Action) -> String {
-    match action {
-        Action::SetTester {
-            account_id,
-            enabled,
-        } => format!(
-            "{} rol Tester a {account_id}. Esto cambia el permiso de enviar reportes.",
-            if *enabled { "Conceder" } else { "Revocar" }
-        ),
-        Action::SetModule {
-            account_id,
-            module,
-            enabled,
-        } => format!(
-            "{} concesión individual de {} para {account_id}. Revocarla no retira el acceso que venga de un rol, licencia o rollout global.",
-            if *enabled { "Conceder" } else { "Revocar" },
-            module.label()
-        ),
-        Action::SetRollout {
-            module,
-            enabled_for_all,
-        } => format!(
-            "{} {}: AFECTA A TODOS LOS USUARIOS.",
-            if *enabled_for_all {
-                "Activar"
-            } else {
-                "Desactivar"
-            },
-            module.label()
-        ),
-        Action::SetReportStatus { report_id, status } => {
-            format!("Cambiar {report_id} a {}.", status.label())
+fn tag(value: &str, color: u32) -> Div {
+    text(value, 12., color)
+        .flex_none()
+        .w(gpui::auto())
+        .px(px(9.))
+        .py(px(4.))
+        .rounded(px(8.))
+        .bg(rgb(S2))
+        .font_weight(gpui::FontWeight::SEMIBOLD)
+}
+fn note(value: &str, color: u32) -> Div {
+    text(value, 12.5, color)
+        .p(px(12.))
+        .rounded(px(12.))
+        .border_1()
+        .border_color(gpui::rgba(0xffff_ff13))
+        .bg(rgb(0x000d_0e11))
+}
+fn empty_card(value: &str) -> Div {
+    panel()
+        .items_center()
+        .py(px(56.))
+        .gap(px(8.))
+        .child(heading(value, 17.))
+        .child(muted("Prueba otro filtro o vuelve a actualizar."))
+}
+fn kpi(label: &str, value: &str, featured: bool) -> Div {
+    panel()
+        .flex_1()
+        .gap(px(8.))
+        .child(eyebrow(label))
+        .child(
+            text(value, 28., if featured { 0x00ff_8f98 } else { INK1 })
+                .font_weight(gpui::FontWeight::BOLD),
+        )
+        .when(featured, |d| d.border_color(gpui::rgba(0xf047_5550)))
+}
+fn money_amount(cents: i64) -> String {
+    format!(
+        "{}{},{}",
+        if cents < 0 { "−" } else { "" },
+        cents.unsigned_abs() / 100,
+        format_args!("{:02}", cents.unsigned_abs() % 100)
+    )
+}
+fn money(cents: i64) -> String {
+    format!("{} €", money_amount(cents))
+}
+fn date(value: &str) -> String {
+    let Some(prefix) = value.get(..10) else {
+        return value.to_owned();
+    };
+    let parts: Vec<_> = prefix.split('-').collect();
+    if parts.len() == 3
+        && parts[0].len() == 4
+        && let (Ok(month), Ok(day)) = (parts[1].parse::<usize>(), parts[2].parse::<u8>())
+        && (1..=12).contains(&month)
+        && (1..=31).contains(&day)
+    {
+        let months = [
+            "ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic",
+        ];
+        return format!("{day} {}", months[month - 1]);
+    }
+    value.to_owned()
+}
+fn plan_label(user: &crate::client::User) -> String {
+    format!(
+        "{}{}",
+        user.plan.label(),
+        if user.billing.as_deref() == Some("yearly") {
+            " · anual"
+        } else {
+            ""
         }
-        _ => "Acción inválida".into(),
+    )
+}
+fn account_matches(user: &crate::client::User, filter: &str) -> bool {
+    match filter {
+        "paying" => user.plan != Plan::Free,
+        "testers" => user.roles.iter().any(|r| r == "tester"),
+        "blocked" => user.blocked,
+        _ => true,
+    }
+}
+fn status_color(status: Status) -> u32 {
+    match status {
+        Status::InReview => EMBER,
+        Status::Validated => CYAN,
+        Status::Rejected | Status::Spam | Status::Incomplete | Status::DuplicateLinked => RED,
+        Status::Fixed => GREEN,
+        _ => INK3,
+    }
+}
+fn module_description(module: Module) -> &'static str {
+    match module {
+        Module::Strategy => "Prepara tu carrera y tu estrategia.",
+        Module::Engineer => "Tu ingeniero en pista, con voz y avisos.",
+        Module::Analysis => "Revisa tus vueltas y tu telemetría.",
+        Module::Calendar => "Organiza tus carreras y campeonatos.",
+    }
+}
+
+#[cfg(test)]
+mod presentation_tests {
+    use super::*;
+
+    #[test]
+    fn dates_follow_the_approved_short_spanish_format() {
+        assert_eq!(date("2026-09-02T14:00:00Z"), "2 sep");
+        assert_eq!(date("2026-10-01"), "1 oct");
+        assert_eq!(date("Sin datos"), "Sin datos");
+        assert_eq!(date("2026-99-01"), "2026-99-01");
     }
 }

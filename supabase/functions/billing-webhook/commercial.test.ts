@@ -97,13 +97,18 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
 
   return {
     client: {
-      // This fixture has no promotion catalogue. Model its server-only accounting
-      // RPCs explicitly; unexpected RPCs must still fail the commercial tests.
+      // No promotion catalogue or admin refund attribution in this fixture.
+      // Both server-only projections are explicit; unknown RPCs still fail.
       rpc: (name: string) => {
+        if (name === "native_admin_record_refund") {
+          return Promise.resolve({ data: false, error: null });
+        }
         if (
           !["report_promotion_invoice", "report_promotion_invoice_missing"]
             .includes(name)
-        ) throw new Error("unexpected fixture RPC: " + name);
+        ) {
+          throw new Error("unexpected fixture RPC: " + name);
+        }
         return Promise.resolve({ data: null, error: null });
       },
       from: (table: string) => ({

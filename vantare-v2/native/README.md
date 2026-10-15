@@ -177,6 +177,11 @@ retiró: ver `docs/analysis/fase0-medicion-2026-09-29.md`.
 
 ## Desarrollar en Linux y macOS
 
+> **CI de Linux retirada (#1654, ronda 9, opción C).** El producto es Windows; el job `native-linux`
+> se ha eliminado de `quality.yml` (quedaban 27 tests `#[cfg(unix)]` frente a 1806 solo-Windows y ~18 min
+> por PR). El desarrollo local en Linux/macOS sigue soportado por la base Unix (#1437) y este README, pero
+> ya no lo verifica la CI: si se retoma, volver a añadir el job (histórico en el cuaderno de #1654).
+
 La base Unix (#1437) permite compilar y probar en Linux y macOS el workspace
 completo:
 los 13 crates listados arriba, incluido `strategy` en el mismo workspace. IPC usa los mismos DTO,
@@ -278,11 +283,13 @@ una dependencia requiere volver a activar sus símbolos. Release no cambia.
 **Tests.** En nextest `-j` es `--test-threads`, no los jobs de compilación:
 `gates.ps1` compila con los jobs de `CARGO_BUILD_JOBS` (2 si no está definida;
 en nextest como `--build-jobs`) y ejecuta con los hilos de `.config/nextest.toml`
-(4). `NEXTEST_TEST_THREADS` tiene prioridad sobre ese valor (CI lo fija en 2).
-Los tests de triage lanzan `powershell.exe` con un plazo de 8 s que vence con la
-CPU cargada; van de uno en uno (grupo `triage-powershell`) y los más largos
-arrancan primero (`priority`). No subir hilos ni ese grupo sin medir. Para un
-`cargo nextest` a mano, usa `--build-jobs`, no `-j`.
+(4). `NEXTEST_TEST_THREADS` tiene prioridad sobre ese valor (CI también lo fija
+en 4 desde #1654 r3). Siete tests con plazos de reloj duros de 1-3 s (`ipc`,
+`launcher` y `runtime`) piden todos los hilos (`threads-required`): corren solos
+y primero (`priority`), así que sus plazos no dependen de la CPU que quede ni de
+cuántos hilos se usen. Si aparecen intermitentes en CI, volver a 2 hilos y
+anotarlo en el cuaderno de #1654. Para un `cargo nextest` a mano, usa
+`--build-jobs`, no `-j`.
 
 **Sccache.** `compilar.ps1` lo activa solo si está instalado (`VANTARE_SCCACHE=0`
 lo apaga). Cada worktree conserva su target propio; sccache solo comparte las
@@ -298,6 +305,11 @@ targets propios comparten la caché
 ([implementación fijada](https://github.com/mozilla/sccache/blob/v0.18.0/src/compiler/rust.rs)).
 Para editar widgets con el watcher de Workshop conserva incremental.
 
+Medido en el servidor (#1654 r4, `sccache --show-stats`): 523 aciertos / 200
+fallos (72,3 %) y la caché **llena** (5 GiB de 5 GiB, expulsa la entrada más
+antigua). Los no cacheables son por diseño: `crate-type` (binarios y proc macros),
+`incremental` (crates propios y el fork vendorizado) y `multiple input files`.
+
 **Limpieza.** `scripts/limpiar-targets.ps1` borra los targets de Cargo (directorios
 con su `CACHEDIR.TAG`) que no compilan desde hace más de `-Dias` días. Simula por
 defecto; con `-Aplicar` borra. Nunca toca un target con un build en marcha
@@ -312,10 +324,13 @@ pwsh -NoProfile -File native/scripts/limpiar-targets.ps1 -Raiz C:\VantareServer\
 En el servidor (`SapphireOS`) está aplicado:
 
 - Variables de máquina `VANTARE_CARGO_SLOTS=2`, `VANTARE_CARGO_MIN_GB=4`,
-  `CARGO_BUILD_JOBS=4` y `SCCACHE_CACHE_SIZE=5G`. Con dos workers compilando a la
-  vez, 4 jobs por hueco tardan un 26 % menos que 2 sin bajar más la RAM libre
-  mínima. Toda la caché de dev, test y prueba ocupó 1,5 GB; sccache expulsa lo
-  más antiguo al llenarse (`%LOCALAPPDATA%\Mozilla\sccache`).
+  `CARGO_BUILD_JOBS=2` y `SCCACHE_CACHE_SIZE=5G`. La cola admite el primer worker con
+  `VANTARE_CARGO_MIN_GB` libres y exige `jobs × VANTARE_CARGO_JOB_GB +
+  VANTARE_CARGO_RESERVE_GB` (por defecto 2 × 1,5 + 1 = 4 GB) más por cada worker que ya
+  está compilando: con 16 GB y los agentes abiertos, dos workers a la vez mandaban la
+  memoria a swap (pico medido 19 GB comprometidos en #1654 r3), así que el segundo
+  espera a que el primero deje aire. Toda la caché de dev, test y prueba ocupó 1,5 GB;
+  sccache expulsa lo más antiguo al llenarse (`%LOCALAPPDATA%\Mozilla\sccache`).
 - Tarea `\Vantare\LimpiarTargets` (diaria 05:30, SYSTEM): ejecuta el script del
   checkout de integración con `-Raiz C:\VantareServer\targets,C:\VantareServer\wt
   -Dias 7 -Aplicar` y anexa la salida a `C:\VantareServer\logs\limpiar-targets.log`.
@@ -325,7 +340,7 @@ Para replicarlo en otro PC Windows (PowerShell como administrador):
 
 ```powershell
 [Environment]::SetEnvironmentVariable('VANTARE_CARGO_SLOTS', '2', 'Machine')
-[Environment]::SetEnvironmentVariable('CARGO_BUILD_JOBS', '4', 'Machine') # 16 GB y 8 hilos
+[Environment]::SetEnvironmentVariable('CARGO_BUILD_JOBS', '2', 'Machine') # 16 GB; la cola limita por RAM
 [Environment]::SetEnvironmentVariable('SCCACHE_CACHE_SIZE', '5G', 'Machine')
 $script = '<checkout>\vantare-v2\native\scripts\limpiar-targets.ps1'
 $arg = "-NoProfile -NonInteractive -Command `"& '$script' -Raiz <targets>,<worktrees> -Dias 7 -Aplicar`""
@@ -347,6 +362,12 @@ nightly 79a1ace66 sin sccache (`-j 2` de nextest = 2 hilos de test y compilació
 con los 8 hilos). «Después»: esta configuración, caché sccache ya llena por otro
 worktree y `CARGO_BUILD_JOBS=4`.
 
+Tabla de #1465/#1642 (15-oct, **antes de #1651 y #1654**): las filas de la suite,
+`telemetria` y `CARGO_BUILD_JOBS` quedaron desfasadas al retirar los tests de
+triage con PowerShell (#1651) y al pasar la máquina a 2 jobs con la cola por RAM
+(#1654 r3). Pendientes de re-medir con la configuración actual; el cuaderno de
+#1654 guarda el protocolo y los números de CI.
+
 | Medida | Antes | Después |
 | --- | --- | --- |
 | Worktree nuevo → `check --workspace --all-targets` | 272 s | 129 s |
@@ -360,16 +381,25 @@ worktree y `CARGO_BUILD_JOBS=4`.
 | Dos workers a la vez, build de tests en frío (sin caché) | 842 s | 625 s |
 | Disco: check + clippy + nextest | 7,6 GB | 7,6 GB |
 
-Lo que más pesa es la suite: los tests de triage (~350 s lanzando
-`powershell.exe`, de uno en uno) y la paridad del solver (60 s solo, 190 s con
-carga). En `telemetria`, un solo test (`acc_real_corpus_matches_frozen_dtos`)
-marca el tiempo.
+Lo que más pesa, medido en los logs de CI de la r1 (#1654, 2 hilos de test): la
+suite (137 s Windows / 83 s Linux) la dominan `go_physical_tyre_parity` (27 s), los
+seis `strategy::state_tests::isa1544_*` de hub (6–9 s cada uno, y cada uno ejecuta
+el solver completo), `mutated_and_truncated_real_frames_never_panic` (8+8 s),
+`actual_lnk_is_read_without_modification_or_execution` (10 s) y
+`golden_corpora_reach_every_widget_through_the_pipe_without_hiding_current_values`
+(6–8 s). En `telemetria` manda un solo test, `acc_real_corpus_matches_frozen_dtos`
+(208 s Windows / 160 s Linux), que es un replay secuencial con hash acumulado y
+comparación frame a frame: **no se puede paralelizar** sin cambiar la evidencia.
+Los tests de triage ya no lanzan `powershell.exe` (#1651).
 
 Medido y no aplicado: `[profile.test] incremental = false` ahorra 2,2 GB y 20 s
 en frío pero recompilar tests tras editar pasa de 48 s a 78 s; `debug = 0` en los
 crates propios ahorra 0,9 GB y 5 s pero quita fichero/línea de las trazas.
-`cargo build -p vantare-hub` recompila ~25 crates frente a `--workspace` porque
-cambian las features unificadas (`resolver.feature-unification` aún es inestable).
+`cargo build -p vantare-hub` recompilaba ~25 crates frente a `--workspace` porque
+cambiaban las features unificadas (`resolver.feature-unification` aún es inestable);
+desde #1654 r3 hub declara `network` explícito, así que `-p vantare-hub` compila solo
+y ya no recompila services y sus dependientes al alternar (quedan las diferencias de
+`--all-targets` y `test-support`).
 
 ## Build para probar con Isaac (#1465)
 

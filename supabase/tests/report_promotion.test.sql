@@ -349,5 +349,8 @@ select ok(has_function_privilege('service_role','public.billing_reconciliation_i
 select ok(not has_table_privilege('service_role','private.billing_reconciliation_item_failures','insert'),'P3-25 service cannot bypass RPC');
 select ok((select relrowsecurity from pg_class where oid='private.billing_reconciliation_item_failures'::regclass),'P3-25 incident storage uses RLS');
 select is((select proowner::regrole::text from pg_proc where oid='public.billing_reconciliation_item_failed(text,text,text,text,timestamptz)'::regprocedure),'postgres','P3-25 explicit non-superuser runtime owner');
+-- Integrated #1639 detail must keep both the new account fields and the promotion.
+select ok(private.native_admin_account(pg_temp.account(23),'https://promotion.clerk.invalid','sandbox') ?& array['plan','payments','module_access','report_promotion'],'merge: owner account detail preserves miniapp fields and promotion');
+select is(private.native_admin_account(pg_temp.account(23),'https://promotion.clerk.invalid','sandbox')->'report_promotion'->>'last_error','promotion_checkout_owner_mismatch','merge: new owner detail exposes the checkout incident');
 select * from finish();
 rollback;

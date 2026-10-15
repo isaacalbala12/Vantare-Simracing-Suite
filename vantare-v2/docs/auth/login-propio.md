@@ -199,6 +199,23 @@ recuperar contraseña. VANTA-70 «Por revisar»; sin push, PR, merge ni release.
 
 ## Segunda ronda (R2, 15/10/2026) y decisiones de revisión
 
+Código R2 consolidado en `fb5292c5b`, sobre el merge de nightly `45581fe3c`
+(base `64c493e4f`). Windows: fmt/check/Clippy de producto PASS; Nextest de
+services/ipc/runtime/hub **1131/1131 PASS**, ocho omisiones de la configuración
+existente; lifecycle **13/13 PASS**. Once regresiones fallan al reponer
+temporalmente los comportamientos R1 y pasan con R2 restaurada. No se cambian
+expectativas ni se deshabilitan lints. Telemetría **25/25 PASS**, sin omisiones,
+722 s de suite e incluidas las 190.308 fotos del corpus ACC completo.
+
+Hay siete capturas físicas GPUI 1440×900 revisadas en
+`C:\VantareServer\evidence\1631-r2\`: código, caducidad, contraseña filtrada,
+cola llena, petición en vuelo, consentimiento y autorización pendiente. Son
+fixtures de presentación sin red real, con comandos remotos bloqueados;
+no acreditan una autenticación en Clerk. Los logs y hashes están junto a ellas.
+La compilación de capturas PASS; el Clippy extra de `parity-capture` tiene
+21 avisos previos en archivos idénticos a nightly, registrados por separado en
+[#1648](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1648).
+
 Cambios tras la revisión R1 de PR #1635:
 
 - **Código caducado o servicios reiniciados.** Si el login ya no existe en

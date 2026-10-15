@@ -1,12 +1,22 @@
-## #1631 · Login propio (gates locales macOS)
+## #1631 · Login propio
 
 El protocolo services v10 añade AccountEmail y respuestas Email sin tokens.
+R2 mantiene el canje pendiente en memoria y hace un solo intento por AccountPoll,
+con reloj inyectado, intervalo de Clerk/slow_down y ventana de 30 s. Cancel y
+Logout pueden interrumpir los intervalos sin sleeps. La sesión FAPI se cierra
+al canjear, cancelar o cerrar sesión (mejor esfuerzo); al agotar el plazo se
+conserva para permitir «Autorizar» de nuevo. El bloqueo local por 429 vive en
+Account y sobrevive a «Volver». No se añade persistencia ni dependencias.
 Hub/supervisor/servicios deben compilarse juntos. Entrada con código/contraseña,
 alta con verificación de email y recuperación usan FAPI nativa sin cookies.
 La sesión FAPI es temporal; la aprobación explícita de Device Grant obtiene la
 misma sesión OAuth v1 guardada por Account.complete. Supabase/Polar no cambian.
 Google/Discord mantienen authorize alojado + PKCE + callback loopback.
 Requisitos de desarrollo, seguridad y límites: [login propio](../../docs/auth/login-propio.md).
+Windows R2 (15/10): fmt/check/Clippy de producto PASS, Nextest services/ipc/runtime/hub
+1131/1131 PASS (ocho omisiones existentes), lifecycle 13/13 y telemetría 25/25
+PASS; siete capturas revisadas. HTTP local con reloj inyectado, sin Clerk real.
+Evidencia previa macOS (14/10/2026):
 Cargo directo con target propio y dos jobs autorizado en este Mac. Build y
 Clippy --all-targets/-D warnings PASS; Nextest compatible 1072/1072 PASS.
 Los 49 tests GPUI de AppKit requieren otro harness/Windows; cuatro mediciones

@@ -1,10 +1,25 @@
-## #1631 · Formularios de email (verificación local macOS)
+## #1631 · Formularios de email
+
+R2 añade recuperación del formulario tras caducidad/reinicio y cola llena,
+«Volver» durante red y autorización pendiente mediante AccountPoll. El servicio
+conserva el mismo grant, respeta el intervalo de Clerk y cede entre consultas;
+la ventana de reintento es de 30 s. Hub, supervisor y servicios usan **v10**.
+Pasos y límites de cancelación: [login propio](../../docs/auth/login-propio.md).
+El modo `parity-capture`, con `VANTARE_CAPTURE_EMAIL=code|expired|password|queue|waiting|consent|pending`,
+pinta los componentes reales con datos ficticios y bloquea los comandos remotos.
+No demuestra autenticación contra Clerk.
+Windows R2 (15/10): fmt/check/Clippy de producto PASS, Nextest de los cuatro
+crates 1131/1131 PASS (ocho omisiones existentes), lifecycle 13/13 y telemetría
+25/25 PASS; siete capturas GPUI revisadas. El Clippy opcional de capturas
+conserva 21 avisos previos, separados en #1648. Clerk development sigue pendiente.
+
+Evidencia previa macOS (14/10/2026):
 
 El acceso ofrece email con código o contraseña, alta y recuperación en Orbit.
 Los inputs no se guardan; la contraseña se dibuja oculta y no permite copiar.
 Tras verificación hay una aprobación explícita de acceso a identidad/perfil.
 Google/Discord siguen abriendo la página alojada de Clerk en el navegador.
-Protocolo services v9: Hub, supervisor y servicios se actualizan juntos.
+Entonces el protocolo services era v9; ahora Hub, supervisor y servicios se actualizan juntos a v10.
 Build y Clippy de Hub/services/ipc/runtime PASS; Nextest compatible 1072/1072
 PASS. 49 tests GPUI quedan pendientes por AppKit/hilo principal; cuatro mediciones
 se omiten por defecto. QA visual/interacción, Windows y Clerk development real

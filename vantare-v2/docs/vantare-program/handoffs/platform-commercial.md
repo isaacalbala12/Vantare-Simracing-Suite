@@ -1,4 +1,40 @@
-## #1631 / VANTA-70 · Login propio — Por revisar, gates macOS (14/10/2026)
+## #1631 / VANTA-70 · R2 terminada para revisión en Windows (15/10/2026)
+
+Relevo autorizado al worker GPT, worktree `C:\VantareServer\wt\isa-1631`,
+rama `vantareapp/isa-1631-login-propio`, HEAD inicial `45581fe3c` (nightly
+`64c493e4f` ya incorporada por el worker anterior). Se preservan los siete
+archivos R2 recibidos sin commit. Código R2 consolidado en `fb5292c5b`,
+con coautoría GPT. La entrega se publica en esa rama; el HEAD documental final
+se verifica en el PR draft
+[#1635](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1635),
+base `nightly`; Plane VANTA-70 «En curso» verificado al empezar. Issue en
+GitHub Project Vantare, `area:plataforma`; sin milestone comprometido.
+Al cerrar este encargo VANTA-70 pasa a «Por revisar», con resumen y enlace al PR;
+la issue y el PR registran el SHA remoto y la última verificación de estado.
+
+R2 corrige caducidad/reinicio, cola llena, límite local y contraseñas rechazadas;
+completa el canje pendiente con `AccountPoll`, reloj inyectado y máximo 30 s,
+sin bloquear el servicio entre intentos. Conserva la sesión FAPI si se agota
+el plazo y la cierra al canjear/cancelar/logout. No crea hilos ni dependencias.
+Gates secuenciales con cola, target `C:\VantareServer\targets\1631`,
+`CARGO_BUILD_JOBS=2`. Evidencia en `C:\VantareServer\evidence\1631-r2`.
+Fmt/check/Clippy de producto PASS; Nextest Windows **1131/1131 PASS**, ocho
+omitidos de la configuración existente; lifecycle **13/13 PASS**. Once
+regresiones fallan al reproducir comportamientos R1 y pasan con R2 restaurada.
+El build de capturas PASS; Clippy opcional `parity-capture` conserva 21 avisos
+previos en tres archivos idénticos a nightly, registrado aparte en
+[#1648](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/1648).
+No se relajan lints ni se amplía el arreglo a esos archivos.
+Capturas GPUI **7/7** guardadas y revisadas, 1440×900, datos ficticios y
+comandos remotos bloqueados; `capturar.ps1` y hashes junto a los PNG.
+Telemetría **25/25 PASS**, sin omisiones ni corpus recortados: 722 s de suite,
+incluidas las 190.308 fotos ACC (655,896 s en el caso completo).
+Siguiente: revisión del orquestador y prueba real de Isaac con Clerk development,
+según los comandos exactos de [la guía](../../auth/login-propio.md).
+Clerk development queda como prueba manual de Isaac: no se llama a servicios
+reales desde este encargo. Sin nueva integración, promoción ni release.
+
+## #1631 / VANTA-70 · Evidencia previa macOS (14/10/2026)
 
 Encargo del orquestador al worker Codex macOS arm64, sin subagentes, GitHub,
 push ni servicios de producto reales. Proyecto Vantare; issue

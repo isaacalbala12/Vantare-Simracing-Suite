@@ -274,3 +274,21 @@ Deno.test("P2-3 poisoned first customer is durably marked and cannot starve the 
   assertEquals(failures.length, 1);
   assertEquals(calls.includes("PATCH"), true);
 });
+Deno.test("P2-3 elapsed budget returns the last processed cursor without skipping the next customer", async () => {
+  const { deps } = fixture();
+  const rpc = deps.rpc;
+  let now = Date.parse("2026-11-01T12:00:00Z");
+  deps.now = () => new Date(now);
+  deps.rpc = (name, args) =>
+    name.endsWith("accounts")
+      ? Promise.resolve(["first", "second"])
+      : rpc(name, args);
+  const change = deps.client.change;
+  deps.client.change = (id, value) => {
+    now += 46000;
+    return change(id, value);
+  };
+  const result = await runPromotionBatch(deps);
+  assertEquals(result.completed, 1);
+  assertEquals(result.next_cursor, "first");
+});

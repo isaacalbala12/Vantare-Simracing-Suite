@@ -34,12 +34,18 @@ export async function runPromotionBatch(
     p_environment: deps.environment,
     p_after: after,
   }) as string[];
+  const started = deps.now().getTime();
+  let cursor = after;
   let completed = 0;
   const failed: { account_id: string; code: string }[] = [];
   for (const account of accounts) {
-    if (!deps.enabled()) {
-      return { completed, failed, disabled: true, next_cursor: account };
+    if (deps.now().getTime() - started >= 45000) {
+      return { completed, failed, next_cursor: cursor };
     }
+    if (!deps.enabled()) {
+      return { completed, failed, disabled: true, next_cursor: cursor };
+    }
+    cursor = account;
     try {
       const operation = await deps.rpc("report_promotion_prepare", {
         p_account: account,

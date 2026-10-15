@@ -52,8 +52,9 @@ pub enum CatalogAccess {
 impl CatalogAccess {
     pub fn allows_widget(self, id: &str) -> bool {
         match self {
-            Self::Free => matches!(id, "standings" | "pedals"),
-            Self::LaunchV1 => matches!(id, "standings" | "relative" | "delta" | "pedals"),
+            Self::Free | Self::LaunchV1 => {
+                matches!(id, "standings" | "relative" | "delta" | "pedals")
+            }
             Self::Pro => true,
         }
     }
@@ -451,6 +452,9 @@ mod tests {
     fn a_new_widget_is_outside_the_perpetual_catalog_and_missing_scope_fails_closed() {
         assert!(!CatalogAccess::LaunchV1.allows_widget("future-widget"));
         assert!(!CatalogAccess::Free.allows_widget("future-widget"));
+        for id in ["standings", "relative", "delta", "pedals"] {
+            assert!(CatalogAccess::Free.allows_widget(id), "{id} es gratis");
+        }
         assert!(CatalogAccess::Pro.allows_widget("future-widget"));
         let policy = serde_json::to_value(Policy::default()).expect("policy");
         let mut missing = policy.clone();
@@ -459,6 +463,52 @@ mod tests {
         let mut unknown = policy;
         unknown["catalog"] = serde_json::json!("unverified-edition");
         assert!(serde_json::from_value::<Policy>(unknown).is_err());
+    }
+    #[test]
+    fn free_denies_widgets_that_require_pro() {
+        for id in ["radar", "fuel-strategy", "broadcast-tower"] {
+            assert!(!CatalogAccess::Free.allows_widget(id), "{id} no es gratis");
+            assert!(!CatalogAccess::LaunchV1.allows_widget(id), "{id} no es LE");
+            assert!(CatalogAccess::Pro.allows_widget(id), "{id} es Pro");
+        }
+    }
+    #[test]
+    fn pro_to_free_transition_reblocks_widgets_outside_the_free_catalog() {
+        let mut cursor = (0, 0);
+        let pro = feed_observation(
+            Ok(Policy {
+                version: VERSION,
+                epoch: 1,
+                revision: 2,
+                checked_at_ms: 10_000,
+                overlays_advanced: true,
+                catalog: CatalogAccess::Pro,
+                ..Policy::default()
+            }),
+            None,
+            &mut cursor,
+            10_000,
+        )
+        .expect("Pro vigente");
+        assert!(pro.catalog.allows_widget("radar"));
+        let free = feed_observation(
+            Ok(Policy {
+                revision: 3,
+                catalog: CatalogAccess::Free,
+                ..pro.clone()
+            }),
+            Some(pro),
+            &mut cursor,
+            10_500,
+        )
+        .expect("baja a Free");
+        assert_eq!(free.catalog, CatalogAccess::Free);
+        for id in ["standings", "relative", "delta", "pedals"] {
+            assert!(free.catalog.allows_widget(id), "{id} sigue en Free");
+        }
+        for id in ["radar", "fuel-strategy"] {
+            assert!(!free.catalog.allows_widget(id), "{id} se bloquea en Free");
+        }
     }
     #[test]
     fn old_version_clock_rollback_stale_or_expired_policy_denies() {

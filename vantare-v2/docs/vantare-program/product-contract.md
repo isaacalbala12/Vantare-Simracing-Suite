@@ -73,7 +73,7 @@ la primera variante de Engineer. El tono es profesional y cercano.
 
 - Hub y Launcher completos.
 - Calendario básico, cuenta local y ajustes.
-- Standings y Pedals.
+- Standings, Relative, Delta y Pedals.
 - Vantare Original.
 - Vantare Crystal con marca Vantare integrada y no eliminable.
 - Overlay Studio limitado a los widgets gratuitos.
@@ -123,8 +123,8 @@ y verificación real pendientes, según el runbook enlazado.
 - Acceso a tests/encuestas/builds de testers, pero no Nightly.
 - Engineer se considera incluido en la edición inicial.
 
-Crystal pierde la marca con cualquier licencia de pago. Relative, Delta y los
-demás widgets no gratuitos requieren licencia.
+Crystal pierde la marca con cualquier licencia de pago. Los widgets fuera del
+catálogo gratuito requieren licencia.
 
 ## Billing
 

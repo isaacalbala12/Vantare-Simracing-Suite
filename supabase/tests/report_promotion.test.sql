@@ -1,5 +1,7 @@
 begin;
 select no_plan();
+select ok((select not rolsuper and rolbypassrls from pg_roles where rolname=current_user),'P3-5 tests execute as NOSUPERUSER BYPASSRLS');
+select is((select count(*)::int from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname in ('public','private') and p.proname like 'report_promotion_%' and p.prosecdef and p.proowner<>'postgres'::regrole),0,'P3-5 every promotion definer explicitly belongs to postgres');
 select ok(private.report_promotion_eligible('2026-11-02 18:59 Europe/Madrid'),'P1 end 18:59 included');
 select ok(not private.report_promotion_eligible('2026-11-02 19:00 Europe/Madrid'),'P1 end 19:00 excluded');
 select ok(not private.report_promotion_eligible('2026-11-02 19:01 Europe/Madrid'),'P1 end 19:01 excluded');

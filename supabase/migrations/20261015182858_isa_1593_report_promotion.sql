@@ -340,4 +340,20 @@ revoke all on function public.report_promotion_observe(uuid,text,text,text,times
 grant execute on function public.report_promotion_observe(uuid,text,text,text,timestamptz,timestamptz,text),
  public.report_promotion_prepare(uuid,text,timestamptz),public.report_promotion_claim(uuid,uuid,timestamptz),
  public.report_promotion_ack(uuid,uuid,timestamptz,text),public.report_promotion_accounts(text,uuid) to service_role;
+
+-- Explicit runtime principal: NOSUPERUSER BYPASSRLS, matching the hosted postgres role.
+alter function private.report_promotion_months(timestamptz,integer) owner to postgres;
+alter function private.report_promotion_eligible(timestamptz) owner to postgres;
+alter function public.report_promotion_checkout(uuid,text,text,timestamptz) owner to postgres;
+alter function public.report_promotion_observe(uuid,text,text,text,timestamptz,timestamptz,text) owner to postgres;
+alter function private.report_promotion_progress(uuid,text,timestamptz) owner to postgres;
+alter function public.report_promotion_prepare(uuid,text,timestamptz) owner to postgres;
+alter function public.report_promotion_claim(uuid,uuid,timestamptz) owner to postgres;
+alter function public.report_promotion_ack(uuid,uuid,timestamptz,text) owner to postgres;
+alter function public.report_promotion_accounts(text,uuid) owner to postgres;
+alter function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz) owner to postgres;
+alter function public.report_promotion_failed(uuid,text,text,timestamptz) owner to postgres;
+alter function public.report_promotion_cleared(uuid,uuid,timestamptz) owner to postgres;
+alter function private.native_admin_account(uuid,text,text) owner to postgres;
+alter function private.native_admin_account_before_1593(uuid,text,text) owner to postgres;
 commit;

@@ -24,7 +24,7 @@ try:
   time.sleep(.2)
  def sql(text,db='promotion_base',check=True):
   return run('docker','exec','-i',container,'psql','-X','-U','postgres','-d',db,'-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose','-v','dblink_password=local-trust-unused','-At',input=text,check=check)
- run('docker','exec',container,'psql','-U','supabase_admin','-d','postgres','-c','alter role postgres superuser')
+ run('docker','exec',container,'psql','-U','supabase_admin','-d','postgres','-c','alter role postgres nosuperuser bypassrls')
  run('docker','exec',container,'psql','-U','postgres','-d','postgres','-c','create database promotion_base template template0')
  # Standalone model mirrors the repository commercial runner's auth/storage fixtures.
  sql('drop schema if exists storage cascade; drop schema if exists auth cascade; drop schema if exists public cascade; create schema public;')
@@ -32,12 +32,13 @@ try:
  sql(storage.read_text())
  bootstrap=(root/'supabase/tests/run-supabase-hardening-postgres.ps1').read_text().split("Write-Utf8NoBom $bootstrap @'",1)[1].split("'@",1)[0]
  # Image has the standard roles; fixture bootstrap is deliberately idempotent.
+ run('docker','exec','-i',container,'psql','-U','supabase_admin','-d','promotion_base','-v','ON_ERROR_STOP=1',input='create schema if not exists extensions; grant all on schema extensions to postgres; create extension pgtap; create extension pgcrypto with schema extensions; create extension dblink with schema extensions;')
  sql(bootstrap)
  sql("alter default privileges in schema public grant all on tables to service_role; create or replace function auth.uid() returns uuid language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claim.sub',true),''),auth.jwt()->>'sub')::uuid$$;")
  sql("alter database postgres set timezone='UTC'")
  for migration in sorted((root/'supabase/migrations').glob('*.sql')):
   if a.without_promotion and 'isa_1593_' in migration.name: continue
-  result=sql(migration.read_text(),check=False); (out/(migration.name+'.log')).write_text(result.stdout+result.stderr)
+  result=run('docker','exec','-i',container,'psql','-X','-U','supabase_admin','-d','promotion_base','-v','ON_ERROR_STOP=1','-At',input=migration.read_text(),check=False) if migration.name=='20261010001000_visual_roadmap_clickup.sql' else sql(migration.read_text(),check=False); (out/(migration.name+'.log')).write_text(result.stdout+result.stderr)
   if result.returncode: raise RuntimeError(migration.name+': '+result.stderr[-4000:])
  if a.mutation:
   signature, before, after = {

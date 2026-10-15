@@ -177,3 +177,9 @@ Ronda 2 · P3-3: la dependencia de promoción del checkout es inyectable y se
 consulta antes de reservar el intento y antes de Polar. Un error transitorio
 responde 503, permite repetir el mismo `attemptId` y no lo marca incierto. El
 camino con campaña activada tiene prueba del error, reintento y URL reutilizada.
+
+Ronda 2 · P3-5: cada función nueva fija expresamente owner `postgres`. El runner
+ya no eleva ese rol: las migraciones de producto y todos los tests se ejecutan
+como `NOSUPERUSER BYPASSRLS`; el supervisor del contenedor solo instala extensiones
+y la migración histórica de infraestructura que lo exige. pgTAP afirma el rol
+efectivo y el propietario de todas las funciones de promoción.

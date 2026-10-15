@@ -28,6 +28,7 @@ mod quality;
 pub mod racing_flags;
 pub mod radar;
 pub mod relative;
+mod session_timing;
 pub mod standings;
 pub mod track_map;
 pub mod track_weather;
@@ -42,4 +43,5 @@ pub use model::{
     Weather, degrade,
 };
 pub use quality::Quality;
+pub use session_timing::{SessionTiming, StartPhase};
 pub mod text;

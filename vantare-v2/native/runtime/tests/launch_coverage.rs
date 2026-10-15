@@ -220,3 +220,93 @@ fn live_lmu_launch_probe() {
         "LMU no ofrece una sesión usable desde este proceso"
     );
 }
+
+#[test]
+fn real_frames_expose_only_demonstrable_session_timing() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../testdata");
+    for (file, build) in [
+        ("lmu-fixture.bin", "1.3.0.0"),
+        ("lmu-1.4-outlap-fixture.bin", "1.4.0.0"),
+        ("lmu-1.4.1.3-track-fixture.bin", "1.4.1.3"),
+        ("lmu-1.4.2.0-track-fixture.bin", "1.4.2.0"),
+    ] {
+        let bytes = std::fs::read(root.join(file)).expect("captura real");
+        let mut replay = Replay::new(
+            build,
+            [ReplayEvent::Shm {
+                at: Duration::ZERO,
+                frame: bytes.clone(),
+            }],
+        );
+        let o = replay.poll(Duration::ZERO).unwrap().unwrap();
+        let s = Snapshot {
+            state: o.state,
+            ..Snapshot::default()
+        };
+        let s =
+            vantare_ipc::snapshot_from_json(&vantare_ipc::snapshot_to_json(&s).unwrap()).unwrap();
+        let t = &s.state.session.timing;
+        assert_eq!(t.started_at_s, Quality::Unavailable);
+        assert_eq!(t.finished_at_s, Quality::Unavailable);
+        assert_eq!(t.start_phase, Quality::Unavailable);
+        assert_eq!(t.next_kind, Quality::Unavailable);
+        assert_eq!(t.next_starts_at_s, Quality::Unavailable);
+        let player = s.state.player_car().unwrap();
+        if player.in_pits == Quality::Reliable(true) {
+            assert_eq!(t.distance_to_start_line_m, Quality::Unavailable);
+        } else if let Quality::Estimated(distance) = t.distance_to_start_line_m {
+            let index = (0..s.state.cars.len())
+                .find(|i| bytes[2192 + i * 584 + 196] == 1)
+                .unwrap();
+            let offset = 2192 + index * 584 + 104;
+            let raw = f64::from_le_bytes(bytes[offset..offset + 8].try_into().unwrap());
+            let length = *s.state.session.track_length_m.current().unwrap();
+            let expected = if raw <= 0.0 { -raw } else { length - raw };
+            assert!((distance - expected).abs() < 1e-9);
+        } else {
+            panic!("distancia ausente en {file}");
+        }
+    }
+}
+
+#[test]
+fn same_kind_session_change_is_a_new_identity_and_discards_old_rest() {
+    let mut next = FRAME.to_vec();
+    let number = i32::from_le_bytes(next[1696..1700].try_into().unwrap());
+    assert!((1..4).contains(&number));
+    next[1696..1700].copy_from_slice(&(number + 1).to_le_bytes());
+    // El reloj sigue creciendo: el cambio debe detectarse por número, no reset.
+    next[1700..1708].copy_from_slice(&6000.0_f64.to_le_bytes());
+    let mut replay = Replay::new(
+        "1.4.2.0",
+        [
+            ReplayEvent::Shm {
+                at: Duration::ZERO,
+                frame: FRAME.to_vec(),
+            },
+            ReplayEvent::Rest {
+                at: Duration::ZERO,
+                standings: STANDINGS.to_vec(),
+                standings_started: Duration::ZERO,
+                session: SESSION.to_vec(),
+                session_started: Duration::ZERO,
+            },
+            ReplayEvent::Shm {
+                at: Duration::from_millis(10),
+                frame: next,
+            },
+        ],
+    );
+    let first = replay.poll(Duration::ZERO).unwrap().unwrap();
+    replay.poll(Duration::ZERO).unwrap();
+    let next = replay.poll(Duration::from_millis(10)).unwrap().unwrap();
+    assert_ne!(first.state.session.id, next.state.session.id);
+    assert_eq!(first.state.session.kind, next.state.session.kind);
+    assert!(
+        next.state
+            .cars
+            .iter()
+            .all(|c| c.pit_stops == Quality::Unavailable)
+    );
+    assert_eq!(next.state.session.timing.started_at_s, Quality::Unavailable);
+}

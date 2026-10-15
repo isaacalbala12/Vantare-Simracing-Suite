@@ -173,11 +173,21 @@ fn sanitize(state: &mut State) {
         laps_remaining: _,
         laps_total: _,
         track_length_m,
+        timing,
         weather,
     } = session;
     finite(elapsed_s);
     finite(remaining_s);
     finite(track_length_m);
+    for value in [
+        &mut timing.started_at_s,
+        &mut timing.finished_at_s,
+        &mut timing.scheduled_end_s,
+        &mut timing.distance_to_start_line_m,
+        &mut timing.next_starts_at_s,
+    ] {
+        nonnegative(value);
+    }
     sanitize_weather(weather);
     for car in cars {
         let Car {
@@ -423,6 +433,30 @@ mod tests {
                     } else {
                         Quality::Unavailable
                     }
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn session_timing_rejects_nonfinite_and_negative_values_without_clamping() {
+        for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -0.001] {
+            for quality in [
+                Quality::Reliable(value),
+                Quality::Estimated(value),
+                Quality::Stale(value),
+            ] {
+                let mut state = State::default();
+                let timing = &mut state.session.timing;
+                timing.started_at_s = quality;
+                timing.finished_at_s = quality;
+                timing.scheduled_end_s = quality;
+                timing.distance_to_start_line_m = quality;
+                timing.next_starts_at_s = quality;
+                sanitize(&mut state);
+                assert_eq!(
+                    state.session.timing,
+                    vantare_domain::SessionTiming::default()
                 );
             }
         }

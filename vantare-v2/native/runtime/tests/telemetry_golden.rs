@@ -14,6 +14,7 @@ use vantare_runtime::core::Core;
 // hashes without rewriting the frozen oracle. Situation has independent tests.
 fn legacy_fixture(text: &str) -> String {
     text.replace("\"version\":10", "\"version\":9")
+        .replace("\"version\":11", "\"version\":9")
 }
 fn legacy_dto(snapshot: &vantare_domain::Snapshot) -> String {
     // #1638 delivers two previously omitted, existing DTO fields. Frozen
@@ -30,6 +31,22 @@ fn legacy_dto(snapshot: &vantare_domain::Snapshot) -> String {
     let start = dto.find(",\"driving_situation\":").expect("situation v10");
     let end = start + 1 + dto[start + 1..].find(',').expect("metadata siguiente");
     let mut old = dto;
+    // Only v11 additions are excluded from the frozen v9 oracle. Independent
+    // launch_coverage and DTO tests verify their values and quality.
+    for field in [
+        ",\"started_at_s\":",
+        ",\"finished_at_s\":",
+        ",\"scheduled_end_s\":",
+        ",\"start_phase\":",
+        ",\"distance_to_start_line_m\":",
+        ",\"next_kind\":",
+        ",\"next_starts_at_s\":",
+    ] {
+        let start = old.find(field).expect("campo v11");
+        let end = start + 1 + old[start + 1..].find(',').expect("campo siguiente");
+        old.replace_range(start..end, "");
+    }
+
     old.replace_range(start..end, "");
     legacy_fixture(&old)
 }

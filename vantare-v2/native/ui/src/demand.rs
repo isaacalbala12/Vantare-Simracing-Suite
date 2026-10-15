@@ -226,7 +226,8 @@ mod tests {
                 },
                 str::to_owned,
             );
-            let mut snapshot = vantare_ipc::snapshot_from_json(&scene).expect("foto completa");
+            let mut snapshot =
+                vantare_ipc::snapshot_from_fixture_json(&scene).expect("foto completa");
             let name = format!(
                 "vantare-demand-projection-{}-{}-{}-{index}",
                 std::process::id(),

@@ -1542,7 +1542,7 @@ mod tests {
     use vantare_domain::format::Preferences;
 
     fn scene() -> vantare_domain::Snapshot {
-        vantare_ipc::snapshot_from_json(include_str!(
+        vantare_ipc::snapshot_from_fixture_json(include_str!(
             "../../fixtures/telemetry-real/acc.snapshot.json"
         ))
         .expect("foto real ACC")
@@ -1715,7 +1715,7 @@ mod tests {
         let mut flashes = Vec::new();
         for frame in frames {
             let photo =
-                vantare_ipc::snapshot_from_json(&frame["snapshot"].to_string()).expect("foto DTO");
+                vantare_ipc::snapshot_from_fixture_json(&frame["snapshot"].to_string()).expect("foto DTO");
             assert!(state.ingest(project(&photo, Preferences::default())));
             let now = std::time::Instant::now();
             for sample in state.samples() {
@@ -1768,7 +1768,7 @@ mod tests {
             serde_json::from_str(include_str!("../../fixtures/standings-vantare.scene.json"))
                 .expect("escena del catálogo");
         let frame = |index: usize| {
-            vantare_ipc::snapshot_from_json(&scene["frames"][index]["snapshot"].to_string())
+            vantare_ipc::snapshot_from_fixture_json(&scene["frames"][index]["snapshot"].to_string())
                 .expect("foto DTO")
         };
         let prefs = Preferences::default();

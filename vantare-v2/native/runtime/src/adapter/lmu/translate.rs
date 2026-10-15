@@ -62,7 +62,7 @@ pub(super) struct Translator {
     emitted_stale: bool,
     emitted_paused: bool,
     session: u64,
-    signature: Option<(String, Kind)>,
+    signature: Option<(String, Kind, i32)>,
     last_source_time: Option<Duration>,
     /// Instante del último cambio de sesión: el REST consultado antes no vale.
     floor: Duration,
@@ -325,7 +325,7 @@ impl Translator {
         let signature = frame
             .kind
             .filter(|_| !stale && !frame.track.is_empty())
-            .map(|kind| (frame.track.clone(), kind));
+            .map(|kind| (frame.track.clone(), kind, frame.session_number));
         let changed = signature
             .as_ref()
             .is_some_and(|new| self.signature.as_ref().is_some_and(|old| old != new));
@@ -548,6 +548,13 @@ impl Translator {
             laps_remaining: Quality::Unavailable,
             laps_total: quality(frame.maximum_laps, stale),
             track_length_m: quality(frame.track_length_m, stale),
+            timing: vantare_domain::SessionTiming {
+                scheduled_end_s: quality(frame.end_time_s.filter(|v| *v > 0.0), stale),
+                distance_to_start_line_m: estimate(frame.distance_to_start_line_m, stale),
+                // Las capturas actuales no prueban fase ni transiciones reales,
+                // y REST no anuncia la siguiente sesión. No inferirlas.
+                ..vantare_domain::SessionTiming::default()
+            },
             weather: weather(frame.weather, stale),
         }
     }

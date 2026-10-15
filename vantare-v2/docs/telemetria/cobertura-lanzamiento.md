@@ -6,6 +6,32 @@ La optimización #1630 quedaba fuera del encargo inicial; el buzón del orquesta
 la incorpora después como fase 4 (véase abajo). Seguimiento del orquestador
 por `C:/tmp/buzon/1638.md`, sin Plane/Notion, PR ni merge.
 
+## Continuación vigente — 15-oct, servidor
+
+El encargo actual autoriza Plane y PR draft a nightly, sin merge ni A/B.
+Worktree `C:/VantareServer/wt/isa-1638`, target `C:/VantareServer/targets/isa-1638`,
+buzón `C:/tmp/buzon/telemetria-1638.md`. El merge local de nightly se hizo sin
+conflictos. Los estados y gates del relevo de abajo son históricos, no los
+resultados del diff actual.
+
+Nuevo contrato de [Avisos de sesión](session-alerts-contract.md) (DTO v11): fin
+programado válido y metros longitudinales a salida/meta fuera de pits; fase,
+inicio/fin reales y próxima sesión siguen sin productor admitido. Se corrige
+la identidad de dos sesiones consecutivas del mismo tipo para invalidar REST.
+Los campos sin evidencia siguen ausentes; contrato preparado no significa
+señal física entregada. Las regresiones nuevas aún esperan gates por RAM.
+
+Clasificación de los pendientes de la tabla: presentación/selección/centrado,
+frases de radar, opciones y formato pertenecen al porte #1629; geometría de
+pista exige un pack verificado; daño exacto, forecast, ABS/TC/FFB y sanciones
+tipadas carecen de fuente positiva en las capturas. No hay un dato demostrado
+oculto que permita cerrar esas filas solo cambiando el adapter. La fase B debe
+aportar transiciones y evidencia nueva; no se marca toda la cobertura completa.
+
+Fmt e integridad/anti-slop 456/456 PASS. Compilación Rust espera cola (1–2 GB libres, mínimo 5).
+El smoke de los 18 widgets se ha adaptado para `--target-dir` explícito; no se
+ha ejecutado con juego en esta continuación ni se han abierto ventanas.
+
 ## Qué significa la tabla
 
 **OK**: el adapter y el contrato neutral entregan la señal; no certifica pantalla

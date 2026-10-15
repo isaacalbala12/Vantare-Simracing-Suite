@@ -16,6 +16,51 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1638 / VANTA-33 — continuación servidor, 15-oct-2026
+
+Encargo vigente reemplaza las excepciones del relevo: Plane **En curso**,
+PR draft a nightly autorizado, sin promoción ni optimización/A/B en esta fase.
+Worktree `C:/VantareServer/wt/isa-1638`, target
+`C:/VantareServer/targets/isa-1638`, buzón `C:/tmp/buzon/telemetria-1638.md`.
+Partida `f192ce4ed`; merge local de `origin/nightly@28800654c` sin conflictos
+(`320ea57c6`). La rama sigue siendo `vantareapp/isa-1638-telemetria-lanzamiento`.
+Issue OPEN, `area:telemetria-core`, GitHub Project Vantare verificados; no hay
+milestone de versión de lanzamiento asignado.
+
+Contrato DTO **v11** de Avisos: `Session.timing` entrega instantes de inicio y
+fin reales, fin programado, fase, distancia longitudinal a salida/meta y tipo/
+inicio de próxima sesión, cada uno con calidad. Productores demostrables:
+fin programado SHM válido y distancia estimada fuera de boxes. Inicio/fin real,
+fase y próxima sesión quedan **Unavailable**: las capturas no prueban esas
+señales. No se declara cerrada esa parte del objetivo. Guía para el dueño del
+widget: [contrato](../../telemetria/session-alerts-contract.md); no se modifica
+la rama #1653. DTO live rechaza v10; lectores guardados migran v7–v10 sin tocar
+originales. Callers de fixtures UI pasan al lector explícito de datos guardados.
+
+Además: identidad nueva entre dos sesiones del mismo tipo con número nativo
+distinto aunque no retroceda el reloj; el REST anterior no cruza esa barrera.
+Regresiones escritas sobre capturas reales y mutaciones controladas para
+negativos antes de la línea, pits, geometría inválida, cambio entre prácticas,
+transporte completo/selectivo, ausencia estricta, migración y obsolescencia.
+Pendientes de ejecutar mientras falta RAM; no son evidencia PASS todavía.
+
+Fmt **PASS** por la cola (mínimo 0,5 GB solo para el formateador, que no compila).
+Integridad y anti-slop **456/456 PASS** en esta continuación. Los gates Rust
+están bloqueados por la cola: ~1–2 GB libres, mínimo 5 GB. No se reduce el
+umbral ni se cierran procesos ajenos. Los PASS del relevo no validan este diff.
+No se inicia LMU ni se abre/captura Vantare (#1655). La QA física anterior
+«LMU sin sesión usable» sigue pendiente. Comando preparado:
+`python -I native/scripts/verify-lmu-widget-coverage.py --target-dir C:\VantareServer\targets\isa-1638`.
+Primero práctica con jugador en boxes basta para transporte; luego conducir
+formación/salida y las transiciones práctica→qualy→carrera para fuentes nuevas.
+La prueba de proyecciones no graba ni certifica esas transiciones.
+
+Siguiente: liberar RAM, ejecutar fmt/check/Clippy/Nextest/lifecycle/telemetría,
+revisar diff y publicar draft con resultados reales. Después coordinar fase B
+con Isaac. Daño estructural exacto, forecast 15 min, ABS/TC/FFB y sanciones
+con tipo/plazo siguen sin fuente demostrada; presentación de #1629 está fuera
+de esta rama. No se inventan señales para completar la tabla.
+
 ### #1638 / VANTA-33 — lanzamiento y optimización incorporada
 
 14-oct-2026, worktree `C:/tmp/wt-1638`, rama

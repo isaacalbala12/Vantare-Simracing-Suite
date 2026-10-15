@@ -41,18 +41,18 @@ exige un plan de partición en el mismo PR.
 
 ## Contrato de fotos y datos guardados
 
-El pipe Core→Hub/overlays negocia solo DTO v10; rechaza peers v7/v8/v9.
+El pipe Core→Hub/overlays negocia solo DTO v11; rechaza peers v7/v8/v9/v10.
 El host muestra una sola vez «Componentes incompatibles. Reinstala la misma
 versión de Vantare», conserva el aviso durante los reintentos y lo retira al
 recibir una foto compatible. No es una comprobación de versión de producto:
 binarios distintos con el mismo contrato pueden interoperar.
-Servicios usa protocolo v9 (#1610 y #1594, con vista previa de contexto); derechos/control conserva v4, independiente del DTO v10. Hub y services se recompilan juntos; los peers v7/v8 se rechazan.
+Servicios usa protocolo v9 (#1610 y #1594, con vista previa de contexto); derechos/control conserva v4, independiente del DTO v11. Hub y services se recompilan juntos; los peers v7/v8 se rechazan.
 El Hub distingue errores de versión de servicios y conserva su aviso de conexión.
 `snapshot_from_json` es estricto; `snapshot_from_saved_json` conserva escenas
-Studio/Workshop/exportaciones v7/v8/v9/v10 sin reescribir originales.
+Studio/Workshop/exportaciones v7/v8/v9/v10/v11 sin reescribir originales.
 `snapshot_from_fixture_json` es el helper explícito para fixtures históricas.
 No usar esos lectores de compatibilidad en pipes live ni eventos live.
-Fixtures actuales: DTO v10; `.scene.json` contiene fases con fotos/captions,
+Fixtures archivadas: DTO v10; el lector explícito las migra a v11 en memoria; `.scene.json` contiene fases con fotos/captions,
 no un protocolo alternativo. Ver [ui/README.md](ui/README.md).
 
 ## Contrato adaptador ↔ núcleo

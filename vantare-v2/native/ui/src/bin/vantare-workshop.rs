@@ -220,7 +220,35 @@ fn main() -> ExitCode {
             output,
         } => {
             return match load_scene(Some(scene)) {
-                Ok(snapshots) => vantare_ui::capture::run_sequence(widget, &snapshots, output),
+                Ok(mut snapshots) => {
+                    // QA de paridad: VANTARE_CAPTURE_UNTIL=<n> corta la escena en
+                    // la foto n y VANTARE_CAPTURE_SETTINGS=<json> usa los ajustes
+                    // que ofrece el Workshop (por defecto, los del registro).
+                    if let Some(until) = std::env::var("VANTARE_CAPTURE_UNTIL")
+                        .ok()
+                        .and_then(|v| v.parse::<usize>().ok())
+                    {
+                        snapshots.truncate(until.saturating_add(1));
+                    }
+                    let settings = match std::env::var("VANTARE_CAPTURE_SETTINGS") {
+                        Ok(json) => serde_json::from_str::<vantare_ui::Settings>(&json)
+                            .map(|s| s.normalized())
+                            .map_err(|e| e.to_string()),
+                        Err(_) => Ok(vantare_ui::Settings::default_for(widget)),
+                    };
+                    match settings {
+                        Ok(settings) => vantare_ui::capture::run_configured_sequence(
+                            settings,
+                            Preferences::default(),
+                            &snapshots,
+                            output,
+                        ),
+                        Err(error) => {
+                            eprintln!("vantare-workshop: ajustes de captura: {error}");
+                            ExitCode::FAILURE
+                        }
+                    }
+                }
                 Err(error) => {
                     eprintln!("vantare-workshop: {error}");
                     ExitCode::FAILURE

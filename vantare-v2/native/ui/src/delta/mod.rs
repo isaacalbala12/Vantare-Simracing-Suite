@@ -28,6 +28,8 @@ pub struct Settings {
     pub reference: String,
     pub show_bar: bool,
     pub show_sectors: bool,
+    /// Solo se guarda cuando está activo: los layouts anteriores no cambian de bytes.
+    #[serde(skip_serializing_if = "std::ops::Not::not")]
     pub transparent_background: bool,
     /// Marca Vantare: decisión inyectada por el host según la licencia.
     #[serde(skip_serializing_if = "Option::is_none")]

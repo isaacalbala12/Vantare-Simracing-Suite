@@ -323,7 +323,7 @@ pub fn fields(settings: &Settings) -> Vec<Field> {
                     set!(Pedals.transparent_background),
                 ),
             ];
-            if value.design_system == vantare_ui::look::Look::Vantare {
+            if value.supports_brake_peak() {
                 rows.push(boolean(
                     "Pico de frenada",
                     Tab::Content,

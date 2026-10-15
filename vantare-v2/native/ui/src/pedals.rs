@@ -209,6 +209,12 @@ impl Default for Settings {
     }
 }
 impl Settings {
+    /// El pico de frenada solo existe en el diseño Vantare.
+    #[must_use]
+    pub fn supports_brake_peak(&self) -> bool {
+        self.design_system == crate::look::Look::Vantare
+    }
+
     pub(crate) fn workshop_defaults(look: crate::look::Look) -> Self {
         Self {
             brand_visible: (look == crate::look::Look::Vantare).then_some(true),

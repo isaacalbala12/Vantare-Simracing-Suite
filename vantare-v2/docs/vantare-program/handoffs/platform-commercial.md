@@ -22,7 +22,7 @@ historia, preflight, ownership, reintentos, token y salida exclusiva.
 RED: cuatro regresiones webhook contra ec47efa5; SQL R2 sin columna de entorno;
 cuatro regresiones de checkout once contra handler original. GREEN Mac:
 188 pgTAP y 176 Edge PASS tras cambio de modelo. Check workspace y Clippy del
-crate Owner PASS; Nextest Owner en curso. Clippy workspace falló por RAM dos
+crate Owner PASS; Nextest Owner **25/25 PASS**. Clippy workspace falló por RAM dos
 veces, evidencia conservada; alcance incremental de crate tocado, un job,
 sin sccache, VANTARE_CARGO_MIN_GB=0. Sin repetir telemetría/lifecycle: runtime,
 IPC y servicios Rust no cambian en R2; validación completa anterior conservada.
@@ -34,7 +34,11 @@ Plan completo regenerado sin token/--apply en servidor:
 worktree desechable. Isaac debe aportar mapa completo, token en entorno,
 verificar IVA en sandbox y revisar/publicar los nuevos productos draft.
 No consultas ni cambios contra Polar real; web intacta, #1624 debe rebasarse.
-Siguiente: cerrar gate Owner, SHA/push y revisión R2 del PR #1666 a nightly.
+Entrega R2 aislada: push y PR #1666 draft a nightly. Siguiente: orquestador revisa
+R2/CI y coordina #1624/VANTA-42; Isaac verifica IVA en sandbox y decide aplicar
+el catálogo con su mapa completo. Sin merge, deploy, release, capturas (#1655)
+ni operaciones reales. fmt, quality y retirement PASS. Evidencia R2 conservada
+en `C:/tmp/founders-1661-evidence` y Mac `~/orq/founders-1661-evidence`.
 
 ## VANTA-83 / #1661 · Plan Founders (15/10/2026)
 

@@ -1,6 +1,7 @@
 import {
   assertEquals,
   assertRejects,
+  assertStringIncludes,
 } from "https://deno.land/std@0.224.0/assert/mod.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { promotionCheckoutDiscount } from "./observe.ts";
@@ -195,4 +196,41 @@ Deno.test("P2-9 an open Pro checkout blocks Plus with a specific incident and ac
     "promotion_checkout_plan_change_pending",
   );
   assertEquals(incidents, ["promotion_checkout_plan_change_pending"]);
+});
+
+Deno.test("P3-23 pending reservation uses its actual retry_at and injected clock", async () => {
+  for (
+    const [retryAt, text] of [
+      ["2026-10-30T14:46:00Z", "dentro de 135 minutos"],
+      ["2026-10-30T12:31:00Z", "Vuelve a intentarlo ahora"],
+      [null, "Vuelve a intentarlo más tarde"],
+      ["invalid", "Vuelve a intentarlo más tarde"],
+    ] as const
+  ) {
+    const admin = () =>
+      ({
+        rpc: (name: string) =>
+          Promise.resolve(
+            name === "report_promotion_failed"
+              ? { data: null, error: null }
+              : name.endsWith("_pending")
+              ? { data: { attempt_id: "old", retry_at: retryAt }, error: null }
+              : { data: null, error: { code: "55000" } },
+          ),
+      }) as unknown as SupabaseClient;
+    const error = await assertRejects(() =>
+      promotionCheckoutDiscount(
+        admin,
+        "account",
+        "sandbox",
+        "pro",
+        new Date("2026-10-30T12:31:00Z"),
+        true,
+        "new",
+      )
+    );
+    assertStringIncludes((error as Error).message, text);
+    assertStringIncludes((error as Error).message, "primer mes se conserva");
+    assertEquals((error as Error).message.includes("30 minutos"), false);
+  }
 });

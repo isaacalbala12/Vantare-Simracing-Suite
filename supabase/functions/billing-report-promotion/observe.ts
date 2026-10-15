@@ -41,6 +41,19 @@ export class PromotionCheckoutError extends Error {
     this.name = "PromotionCheckoutError";
   }
 }
+// SQL is authoritative for the reservation deadline (the attempt may live longer).
+function pendingRetryMessage(retryAt: unknown, now: Date): string {
+  const retry = typeof retryAt === "string" ? Date.parse(retryAt) : NaN;
+  const minutes = Math.ceil((retry - now.getTime()) / 60_000);
+  const action = !Number.isFinite(minutes)
+    ? "Vuelve a intentarlo más tarde."
+    : minutes <= 0
+    ? "Vuelve a intentarlo ahora."
+    : "Podrás reintentarlo dentro de " + minutes +
+      (minutes === 1 ? " minuto." : " minutos.");
+  return "El intento anterior sigue en curso. " + action +
+    " Tu primer mes se conserva.";
+}
 export async function promotionCheckoutDiscount(
   admin: () => SupabaseClient,
   account: string,
@@ -87,7 +100,7 @@ export async function promotionCheckoutDiscount(
       await incident("promotion_checkout_recovery_required");
       throw new PromotionCheckoutError(
         "promotion_checkout_recovery_pending",
-        "El intento anterior sigue en curso. Cuando caduque el plazo de 30 minutos podrás reintentarlo; conservarás el primer mes.",
+        pendingRetryMessage(pending.data?.retry_at, now),
       );
     }
     const previous = pending.data;

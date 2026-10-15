@@ -25,7 +25,8 @@ El mapa de crates y sus fronteras viven en [README.md](README.md),
 
 - Compilar solo por la cola desde `vantare-v2/`:
   `pwsh -NoProfile -File native/scripts/compilar.ps1 <comando>`.
-- Target aislado por worktree, `-j 2`, Rust fijado y dependencias locked/offline.
+- Target aislado por worktree, `-j 2` (o `CARGO_BUILD_JOBS` de la máquina; en nextest
+  `--build-jobs`), Rust fijado y dependencias locked/offline.
 - Desde native/: cargo fmt --all -- --check; gates.ps1 -Gate clippy
   (-D warnings), test (Nextest) y lifecycle, todos por la cola.
 - Añadir gates.ps1 -Gate telemetria si cambia código/fixtures de runtime, domain, ipc o testdata.

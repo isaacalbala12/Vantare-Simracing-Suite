@@ -5,6 +5,7 @@ use url::Url;
 
 use crate::{Error, Result};
 
+pub const REQUEST_LIMIT: usize = 64 * 1024;
 pub const RESPONSE_LIMIT: u64 = 64 * 1024;
 
 pub struct Http {
@@ -112,7 +113,7 @@ impl Http {
     ) -> Result<Response> {
         Self::validate_url(url)?;
         let bytes = serde_json::to_vec(body).map_err(|_| Error::Protocol)?;
-        if bytes.len() as u64 > RESPONSE_LIMIT {
+        if bytes.len() > REQUEST_LIMIT {
             return Err(Error::TooLarge);
         }
         let mut request = self

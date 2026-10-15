@@ -240,7 +240,8 @@ jobs:
         working-directory: vantare-v2/native
         shell: pwsh
         env:
-          NEXTEST_TEST_THREADS: '1'
+          # Dos hilos de test, como hasta ahora: el antiguo -j 2 de gates.ps1 los fijaba (#1465).
+          NEXTEST_TEST_THREADS: '2'
         run: |
           cargo install cargo-nextest --locked --version 0.9.146
           if ($LASTEXITCODE) { throw "nextest installation failed" }

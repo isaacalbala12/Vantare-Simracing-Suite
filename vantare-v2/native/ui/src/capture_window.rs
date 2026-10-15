@@ -1,6 +1,6 @@
 //! HWND de captura: nace oculto fuera de todos los monitores; nunca activa.
 use crate::overlay::{Hwnd, ffi::Rect};
-use gpui::{Bounds, Window, WindowBounds, WindowKind, WindowOptions, point, px, size};
+use gpui::{App, Bounds, Window, WindowBounds, WindowKind, WindowOptions, point, px, size};
 
 #[cfg(windows)]
 mod win {
@@ -149,7 +149,7 @@ pub fn options(width: i32, height: i32) -> Result<WindowOptions, String> {
 
 /// Se mide ANTES de mostrar. Si GPUI/Windows recoloca el HWND, falla oculto.
 #[cfg(windows)]
-pub fn show(window: &Window, width: i32, height: i32) -> Result<Hwnd, String> {
+pub fn show(window: &mut Window, width: i32, height: i32, cx: &mut App) -> Result<Hwnd, String> {
     use crate::overlay::ffi::{GetWindowLongPtrW, SetWindowLongPtrW, SetWindowPos};
     let hwnd = crate::overlay::hwnd_of(window).ok_or("HWND no disponible")?;
     let monitors = monitors()?;
@@ -189,6 +189,24 @@ pub fn show(window: &Window, width: i32, height: i32) -> Result<Hwnd, String> {
             return Err("la ventana de captura recibió foco".into());
         }
     }
+    // WM_SIZE may arrive reentrantly while GPUI's Window is borrowed by its
+    // owner. Sync the cached viewport explicitly and invalidate the full frame
+    // after the native resize; otherwise PrintWindow can include the old size.
+    window.bounds_changed(cx);
+    let viewport = window.viewport_size() * window.scale_factor();
+    if (viewport.width.0 - width as f32).abs() > 0.5
+        || (viewport.height.0 - height as f32).abs() > 0.5
+    {
+        // SAFETY: hide our HWND before rejecting a stale GPUI viewport.
+        unsafe {
+            win::ShowWindow(hwnd, 0);
+        }
+        return Err("el viewport GPUI no coincide con el cliente de captura".into());
+    }
+    println!(
+        "capture-viewport physical={}x{} expected={width}x{height}",
+        viewport.width.0, viewport.height.0
+    );
     Ok(hwnd)
 }
 
@@ -252,7 +270,7 @@ pub fn options(_: i32, _: i32) -> Result<WindowOptions, String> {
     Err("capturas HWND requieren Windows".into())
 }
 #[cfg(not(windows))]
-pub fn show(_: &Window, _: i32, _: i32) -> Result<Hwnd, String> {
+pub fn show(_: &mut Window, _: i32, _: i32, _: &mut App) -> Result<Hwnd, String> {
     Err("capturas HWND requieren Windows".into())
 }
 #[cfg(not(windows))]

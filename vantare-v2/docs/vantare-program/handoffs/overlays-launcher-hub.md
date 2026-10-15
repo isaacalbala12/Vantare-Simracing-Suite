@@ -113,3 +113,18 @@ Hito #1655 `c3966a116`: reutilización del Hub entre escenas de calendario
 compatibles y subsistema Windows en binarios QA para no crear consola.
 Gates finales y medición completa pendientes. Scripts históricos archivados
 con hashes originales, integridad y calidad 461/461 PASS; sin relajar gates.
+
+2026-10-15 · #1655: reanudación tras reinicio T3, 52 imágenes individuales
+conservadas y verificadas; las dos restantes completadas. Calendario individual
+54/54: 1682,882 s, 54 procesos/HWND, cero foco y cruces visibles con monitores.
+La posición real fue (-3328,0,-2048,800) o (-3488,0,-2048,900), sin depender de
+VANTARE_CAPTURE_OFFSCREEN ni del vigilante. Primer lote: 297,660 s, 1 proceso y
+1 HWND; incremental 4,788 s, cero ventanas y mtimes intactos. Se descarta esa
+salida del lote: al pasar 1280→1440, GPUI retenía el viewport anterior. Arreglo
+preparado: sincronizar bounds_changed e invalidar el frame tras SetWindowPos,
+comprobando tamaño GPUI/cliente. Se conserva primera pasada en evidence/1655/
+calendar-first-pass y first-pass-calendar.json. Pendientes build/gates del
+arreglo y repetición completa del lote. Widgets individuales en marcha, sin
+incidencias. Se añade al hash el preview QA externo de Testing Center y una
+regresión sin mutar el entorno de proceso. Umbral de compilación siguiente 0,
+en serie, según nueva orden del orquestador. Todavía sin push/PR ni integración.

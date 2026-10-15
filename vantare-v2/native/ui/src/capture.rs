@@ -579,9 +579,8 @@ fn run_jobs(jobs: Vec<Job>) -> Result<(), String> {
                     });
                     let [width, height] = job.request.size.unwrap_or([2304, 1440]);
                     window
-                        .update(cx, |_, window, _| {
-                            window.refresh();
-                            crate::capture_window::show(window, width as i32, height as i32)
+                        .update(cx, |_, window, cx| {
+                            crate::capture_window::show(window, width as i32, height as i32, cx)
                         })
                         .map_err(|e| e.to_string())??;
                     capture(cx.clone(), view.clone(), job.request.output).await?;

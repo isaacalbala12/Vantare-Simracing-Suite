@@ -224,7 +224,9 @@ el subsistema Windows para no crear una consola. En PowerShell, canalizar a
 `VANTARE_CAPTURE_OFFSCREEN`: todos los modos de captura crean el HWND oculto,
 fuera de **todos** los monitores y sin activar. El backend conserva esas
 coordenadas desde `CreateWindowExW`; antes de presentar se verifica
-`GetWindowRect`. `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW` evita foco/barra de tareas.
+`GetWindowRect`. Después de cada cambio de tamaño se sincroniza el viewport
+de GPUI y se invalida el frame completo; un tamaño de pintura distinto al
+cliente se rechaza. `WS_EX_NOACTIVATE | WS_EX_TOOLWINDOW` evita foco/barra de tareas.
 Un fallo de posición detiene el lote con la ventana oculta. No se usa el ratón,
 el teclado, el escritorio ni un vigilante que mueva ventanas después de aparecer.
 
@@ -285,7 +287,8 @@ monitores: rechaza teclas, clics y rueda; no lo activa ni lo recoloca.
 
 El recibo `salida.png.capture.json` enlaza el contenido de la PNG con SHA-256 de
 sus entradas: escena/datos, ajustes, tamaño, apariencia, ejecutable, DLL y
-fixtures externos del Hub, más los controles QA heredados. Los archivos grandes
+fixtures externos del Hub, más los controles QA heredados y el contenido de
+`VANTARE_TESTING_CAPTURE_PREVIEW` cuando se proporciona. Los archivos grandes
 se procesan en bloques de 1 MiB y se calcula SHA-256 de sus hashes concatenados.
 Recompilar después de editar código o recursos embebidos. Si entradas y PNG
 coinciden, no se abre ninguna ventana ni se reescribe el archivo; borrar/cambiar

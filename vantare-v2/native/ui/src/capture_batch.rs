@@ -120,17 +120,15 @@ fn tree_hash(path: &Path) -> Result<String, String> {
     ))
 }
 
-pub fn inputs_hash(fixtures: &[PathBuf]) -> Result<String, String> {
-    let executable = std::env::current_exe().map_err(|e| e.to_string())?;
-    let mut hashes = vec![file_hash(&executable)?];
-    for path in fixtures {
-        hashes.push(tree_hash(path)?);
-    }
-    // These controls already exist in the capture renderers. Hash their values
-    // and the policy contents so changing an external input cannot reuse a PNG.
+// Injectable lookup keeps tests isolated from the process environment.
+fn control_inputs(
+    get: impl Fn(&'static str) -> Option<std::ffi::OsString>,
+) -> Result<Vec<String>, String> {
+    let mut hashes = Vec::new();
     for name in [
         "GPUI_DISABLE_DIRECT_COMPOSITION",
         "VANTARE_CAPTURE_POLICY",
+        "VANTARE_TESTING_CAPTURE_PREVIEW",
         "VANTARE_CAPTURE_CALENDAR_VIEW",
         "VANTARE_CAPTURE_CALENDAR",
         "VANTARE_CAPTURE_ROADMAP_VIEW",
@@ -139,8 +137,10 @@ pub fn inputs_hash(fixtures: &[PathBuf]) -> Result<String, String> {
         "VANTARE_CAPTURE_WIDGET",
         "VANTARE_CAPTURE_INSPECTOR",
     ] {
-        if let Some(value) = std::env::var_os(name) {
-            if name == "VANTARE_CAPTURE_POLICY" && value != "ipc" {
+        if let Some(value) = get(name) {
+            if (name == "VANTARE_CAPTURE_POLICY" && value != "ipc")
+                || name == "VANTARE_TESTING_CAPTURE_PREVIEW"
+            {
                 hashes.push(file_hash(Path::new(&value))?);
             }
             if name == "VANTARE_CAPTURE_POLICY" && value == "ipc" {
@@ -149,6 +149,16 @@ pub fn inputs_hash(fixtures: &[PathBuf]) -> Result<String, String> {
             hashes.push(format!("{name}={}", value.to_string_lossy()));
         }
     }
+    Ok(hashes)
+}
+
+pub fn inputs_hash(fixtures: &[PathBuf]) -> Result<String, String> {
+    let executable = std::env::current_exe().map_err(|e| e.to_string())?;
+    let mut hashes = vec![file_hash(&executable)?];
+    for path in fixtures {
+        hashes.push(tree_hash(path)?);
+    }
+    hashes.extend(control_inputs(std::env::var_os)?);
     if let Some(directory) = executable.parent() {
         let mut libraries = fs::read_dir(directory)
             .map_err(|e| e.to_string())?
@@ -231,6 +241,28 @@ impl Cache {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn preview_contents_invalidate_inputs_without_environment_mutation() {
+        let path =
+            std::env::temp_dir().join(format!("capture-preview-test-{}.json", std::process::id()));
+        let lookup = |name| {
+            (name == "VANTARE_TESTING_CAPTURE_PREVIEW").then(|| path.clone().into_os_string())
+        };
+        fs::write(&path, b"preview-a").expect("preview inicial");
+        let first = super::control_inputs(lookup).expect("entradas iniciales");
+        fs::write(&path, b"preview-b").expect("preview cambiado en la misma ruta");
+        let second = super::control_inputs(lookup).expect("entradas nuevas");
+        assert_ne!(first, second);
+        assert_ne!(
+            second,
+            super::control_inputs(|_| None).expect("sin preview")
+        );
+        assert!(
+            super::control_inputs(|name| (name == "VANTARE_CAPTURE_POLICY").then(|| "ipc".into()))
+                .is_err()
+        );
+        fs::remove_file(path).expect("limpiar preview");
+    }
     #[test]
     fn manifest_rejects_duplicates_bad_dimensions_and_unknown_fields() {
         let path =

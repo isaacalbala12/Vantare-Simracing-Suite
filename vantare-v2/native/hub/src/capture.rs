@@ -222,8 +222,8 @@ async fn capture_jobs(
         initial = false;
         let (width, height) = dimensions(&job.options);
         let hwnd = window
-            .update(cx, |_, window, _| {
-                capture_window::show(window, width, height)
+            .update(cx, |_, window, cx| {
+                capture_window::show(window, width, height, cx)
             })
             .map_err(|e| e.to_string())??;
         let output = job.options.capture_output.as_ref().ok_or("falta output")?;

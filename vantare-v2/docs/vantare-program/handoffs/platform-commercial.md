@@ -1,3 +1,34 @@
+## VANTA-42 / PR #1663 · R7 · Atribución de creador en compra web (16/10/2026)
+
+Decisión de Isaac: primer pago solo atribuye la venta/comisión;20% cliente
+desde segundo mes, aplicado por backend1661 después del primer pago.
+La web acepta creatorCode exacto en lanzamiento y fuera; registro canónico
+billing_save_creator_attribution tras claim y antes de begin/POST, ACKtrue
+obligatorio; metadata.creator_code y binding del intento. Mensual usa
+creator_discounts, anual creator_annual_discounts. Código/ID forman huella
+inmutable del intento; no se cambia creador en reintento. Solo once de
+lanzamiento en primer pago si corresponde, ningún descuento inicial de creador
+y allow_discount_codes=false siempre. Sin contrato1661 desplegado cierra
+antes de Polar; no se pierde atribución en un fallback sin código.
+
+Backend financiero/renovación pertenece a1661: no copiado ni mergeado aquí.
+Adaptador contra su protocolo local en elaboración, hashes en r7-contract.json.
+Bare1661 aúnc11364a5 en última lectura; orquestador debe validar commit
+definitivo/desplegar su RPC antes de abrir códigos; sin ella falla sin cobro.
+Al integrar, conservar guard2/begin/marcador y barrera1622 en los helpers
+compartidos. Repetir auditoría ACL del rol erasure tras sus RPC nuevas.
+Condiciones de activar reembolsos R6 intactas; switch sigue apagado.
+
+Textos4idiomas:20%desde segundo mes, primera factura solo atribución.
+Founders incluye Nightly; CTA permanece apagado. Plus confirmado999/9990,
+primer periodo699/6990, desde fuente única. Sin cambios de productos reales.
+Checks web79NodeSQLite, ocho flujos(4planes con/sincódigo)->webhookreal/licencia,
+48capturas Mac con códigoISAAC/dobleclick/CSP/backoff/descargas.
+SQL/Edge/Rust no se repiten: este lote solo cambia docs de esta rama backend;
+código conserva baseeb553c7fe y última verificación R6(662Edge/235pgTAP/13carreras).
+Evidencia ~/evidence/web-compra/r7-*; SHA/estadofinal en buzónweb-compra.
+Solo bares; orquestador publica/actualizaVANTA42/PR1663. SinAPIreal/deploy/release.
+
 ## VANTA-42 / PR #1663 · R6 · Acabado y actualización de base (16/10/2026)
 
 Aprobación de seguridad R5 recibida por el orquestador; informe review-r5.md.

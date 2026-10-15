@@ -97,6 +97,10 @@ function createMockSupabase(tables: Record<string, MockRow[]> = {}) {
 
   return {
     client: {
+      rpc: (name: string) => {
+        assertEquals(name, "native_admin_record_refund");
+        return Promise.resolve({ data: false, error: null });
+      },
       from: (table: string) => ({
         select: (columns?: string) => query(table).select(columns),
         insert: (payload: MockRow) => {

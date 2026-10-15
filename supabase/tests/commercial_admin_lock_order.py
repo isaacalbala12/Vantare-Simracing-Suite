@@ -34,10 +34,18 @@ select * from public.operational_access_set('{actor}','owner','grant','fixture:a
                 deletion = f"select public.apply_clerk_user_event('{label}',repeat('a',64),'{issuer}','{subject}','user.deleted',now(),null);"
                 check('"enabled": true' in sql('begin; ' + grant + ' rollback;'), label + ' valid live RPC')
                 source = sql("select prosrc from pg_proc where oid='public.native_admin_execute(uuid,text,text,jsonb,text)'::regprocedure")
-                prefix = source[:source.index("    if not found then raise exception 'native_admin_not_found'")]
+                # The R3 admin entry delegates set_tester to its private v1 body.
+                # Pause after the actual outer UUID/Owner guards, before that
+                # delegation. This also works with nightly's inline mutations;
+                # no replacement lock or authorization is installed by the test.
+                marker = 'perform private.native_admin_require_owner(p_actor);'
+                prefix = source[:source.index(marker) + len(marker)]
                 args = f"p_actor uuid:='{actor}'; p_issuer text:='{issuer}'; p_action text:='set_tester'; p_params jsonb:='{params}'; p_environment text:='sandbox';"
                 prefix = prefix.replace('declare', 'declare\n' + args, 1)
-                first = 'do $prefix$' + prefix + ' end if; end $prefix$;' if order == 'writer-first' else deletion
+                # A jsonb helper preserves early RETURN branches of the deployed
+                # dispatcher (DO would reject them even for another action).
+                first = ("create function pg_temp.admin_prefix() returns jsonb language plpgsql as $prefix$" +
+                         prefix + " return '{}'::jsonb; end $prefix$; select pg_temp.admin_prefix();") if order == 'writer-first' else deletion
                 second = deletion if order == 'writer-first' else grant
                 holder = other = None
                 try:

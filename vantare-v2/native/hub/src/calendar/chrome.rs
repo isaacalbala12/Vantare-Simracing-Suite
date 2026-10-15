@@ -4,10 +4,80 @@ use super::model::{ClassChip, Series};
 use crate::orbit;
 use gpui::{Div, Hsla, SharedString, Stateful, div, prelude::*, px, rgb};
 
-/// Tema claro u oscuro según la luminosidad del fondo de tarjeta.
+/// Tokens del calendario: los del tema, con los rojos y neutros exactos del
+/// diseño r6 (`calendario-r6.html`) cuando la marca es Vantare/Clásico, cuyo
+/// acento de marca global (#D80000) no es el del diseño.
 /// Copia de los tokens: así el borrow de `cx` no impide pasar `&mut cx` a las vistas.
 pub(super) fn skin(cx: &gpui::App) -> orbit::skin::Skin {
-    orbit::skin(cx).clone()
+    let mut s = orbit::skin(cx).clone();
+    if s.accent != 0xd8_0000 {
+        return s;
+    }
+    let ramp = |from: u32, to: u32| orbit::skin::Ramp { from, to, end: 1.0 };
+    if light(cx) {
+        // Claro de `calendario-r6.html` (`[data-theme=light]`).
+        s.l1 = 0xFF_FFFF;
+        s.l2 = 0xF8_F5F5;
+        s.l3 = 0xEF_EAEB;
+        s.el = 0xE3_DBDD;
+        s.neo = ramp(0xFF_FFFF, 0xFA_F7F7);
+        s.hover = 0x3C_141E_0D;
+        s.active = 0x3C_141E_17;
+        s.line1 = 0x3C_1920_17;
+        s.line2 = 0x3C_1920_24;
+        s.line3 = 0x3C_1920_38;
+        s.text1 = 0x1B_1517;
+        s.text2 = 0x3D_3437;
+        s.text3 = 0x5B_5154;
+        s.cap = 0x6A_5F62;
+        s.accent = 0xC4_2B36;
+        s.accent_fill = 0xC4_2B36;
+        s.accent_bright = 0xAE_1F2B;
+        s.accent_tint = 0xC4_2B36_17;
+        s.hero_ring = 0xC4_2B36_59;
+        s.selection = 0xC4_2B36_59;
+        s.button = ramp(0xC4_2B36, 0xAE_1F2B);
+        s.button_hover = ramp(0xC4_2B36, 0xAE_1F2B);
+        s.button_pressed = 0xAE_1F2B;
+        s.hero = ramp(0xFB_E4E6, 0xFF_FFFF);
+        s.hero_wash.from = 0xC4_2B36_1A;
+        s.ok = 0x15_803D;
+        s.warn = 0xB4_5309;
+        s.err = 0xC4_2B36;
+    } else {
+        // Oscuro de `calendario-r6.html` (`:root`).
+        s.l1 = 0x22_1D1F;
+        s.l2 = 0x2B_2527;
+        s.l3 = 0x35_2E30;
+        s.el = 0x43_3A3D;
+        s.neo = ramp(0x26_2022, 0x1F_1A1C);
+        s.hover = 0xFF_FFFF_0F;
+        s.active = 0xFF_FFFF_1C;
+        s.line1 = 0xFF_FFFF_0F;
+        s.line2 = 0xFF_FFFF_1A;
+        s.line3 = 0xFF_FFFF_29;
+        s.text1 = 0xFA_F7F7;
+        s.text2 = 0xD6_CFD0;
+        s.text3 = 0xB0_A7A9;
+        s.cap = 0xA3_9A9C;
+        s.accent = 0xE1_4A54;
+        s.accent_fill = 0xE1_4A54;
+        s.accent_bright = 0xFF_7A82;
+        s.accent_tint = 0xE1_4A54_24;
+        s.hero_ring = 0xFF_525C_61;
+        s.selection = 0xFF_525C_61;
+        s.button = ramp(0xC5_2F3B, 0xB9_2A35);
+        s.button_hover = ramp(0xC5_2F3B, 0xB9_2A35);
+        s.button_pressed = 0xB9_2A35;
+        s.hero = ramp(0x5C_1720, 0x1E_1517);
+        s.hero_wash.from = 0xFF_525C_42;
+        s.ok = 0x22_C55E;
+        s.warn = 0xF5_9E0B;
+        s.err = 0xF2_5A5A;
+    }
+    s.live = ramp(s.accent, s.accent);
+    s.on_primary = 0xFF_FFFF;
+    s
 }
 
 pub(super) fn light(cx: &gpui::App) -> bool {
@@ -21,17 +91,17 @@ pub(super) fn tint(color: u32, alpha: f32) -> Hsla {
 }
 
 pub(super) fn acc(cx: &gpui::App) -> u32 {
-    orbit::skin(cx).accent
+    skin(cx).accent
 }
 /// Texto de acento legible sobre superficies (rojo claro en oscuro).
 pub(super) fn acct(cx: &gpui::App) -> u32 {
-    orbit::skin(cx).accent_bright
+    skin(cx).accent_bright
 }
 pub(super) fn acc_bg(cx: &gpui::App) -> Hsla {
-    orbit::alpha(orbit::skin(cx).accent_tint)
+    orbit::alpha(skin(cx).accent_tint)
 }
 pub(super) fn acc_line(cx: &gpui::App) -> Hsla {
-    orbit::alpha(orbit::skin(cx).hero_ring)
+    orbit::alpha(skin(cx).hero_ring)
 }
 
 pub(super) fn class_color(name: &str, cx: &gpui::App) -> u32 {
@@ -47,7 +117,7 @@ pub(super) fn class_color(name: &str, cx: &gpui::App) -> u32 {
         ("LMGT3", true) => 0xD9_741A,
         ("LMGTE Am" | "GTE", false) => 0xD6_B83A,
         ("LMGTE Am" | "GTE", true) => 0xB3_9400,
-        _ => orbit::skin(cx).text3,
+        _ => skin(cx).text3,
     }
 }
 
@@ -78,7 +148,7 @@ pub(super) fn star(on: bool, size: f32, cx: &gpui::App) -> gpui::Svg {
     if on {
         icon("star", size, acc(cx))
     } else {
-        icon("star-line", size, orbit::skin(cx).text3)
+        icon("star-line", size, skin(cx).text3)
     }
 }
 
@@ -116,7 +186,7 @@ pub(super) fn class_dot(name: &str, cx: &gpui::App) -> Div {
 }
 
 pub(super) fn class_chip(chip: &ClassChip, cx: &gpui::App) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     div()
         .flex()
         .flex_none()
@@ -139,7 +209,7 @@ pub(super) enum Tone {
 }
 
 pub(super) fn pill(label: impl Into<SharedString>, tone: Tone, cx: &gpui::App) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     let light = light(cx);
     let (color, bg): (u32, Hsla) = match (tone, light) {
         (Tone::Ok, false) => (0x7F_E0A3, tint(0x22_C55E, 0.13)),
@@ -170,7 +240,7 @@ pub(super) fn btn(
     small: bool,
     cx: &gpui::App,
 ) -> Stateful<Div> {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     let hover = skin.l3;
     div()
         .id(id)
@@ -212,7 +282,7 @@ pub(super) fn btn_pri(
     large: bool,
     cx: &gpui::App,
 ) -> Stateful<Div> {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     let hover = skin.button_hover;
     div()
         .id(id)
@@ -255,7 +325,7 @@ pub(super) fn btn_text_pri(
     label: &str,
     cx: &gpui::App,
 ) -> Stateful<Div> {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     let hover = skin.button_hover;
     div()
         .id(id)
@@ -373,7 +443,7 @@ pub(super) fn ib(
     on: bool,
     cx: &gpui::App,
 ) -> Stateful<Div> {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     let hover = skin.hover;
     let size = if small { 28.0 } else { 32.0 };
     div()
@@ -401,7 +471,7 @@ pub(super) fn ib(
 
 /// Control segmentado: `options` son (etiqueta, activo).
 pub(super) fn seg(id: &'static str, options: &[(String, bool)], cx: &gpui::App) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     div()
         .flex()
         .flex_none()
@@ -437,7 +507,7 @@ pub(super) fn seg_button_with(
     lead: Option<Div>,
     cx: &gpui::App,
 ) -> Stateful<Div> {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     let bg = if light(cx) { 0x00ff_ffff } else { skin.l1 };
     div()
         .id(id)
@@ -496,7 +566,7 @@ pub(super) fn pick_chip(
     alerted: bool,
     cx: &gpui::App,
 ) -> Stateful<Div> {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     div()
         .id(id)
         .h(px(30.0))
@@ -541,7 +611,7 @@ pub(super) fn slot_chip(
     suffix: Option<&str>,
     cx: &gpui::App,
 ) -> Stateful<Div> {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     let (past, next, alerted) = state;
     div()
         .id(id)
@@ -585,26 +655,34 @@ pub(super) fn slot_chip(
 /// Héroe de Próximas (`.hero`): degradado a 110° con un lavado carmín arriba a la
 /// izquierda y anillo interior; sin la trama diagonal del héroe de Inicio.
 pub(super) fn hero_plain(cx: &gpui::App) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     div()
         .relative()
         .overflow_hidden()
         .rounded(px(12.0))
         .border_1()
         .border_color(orbit::alpha(skin.hero_ring))
-        .bg(orbit::ramp(skin.hero, 110.0))
+        // `linear-gradient(110deg, hero1, hero2 78%)` del diseño.
+        .bg(orbit::ramp(
+            orbit::skin::Ramp {
+                end: 0.78,
+                ..skin.hero
+            },
+            110.0,
+        ))
         .shadow(vec![orbit::kit_shadow(0x0000_0047, 14.0, 34.0, 0.0, false)])
         .child(
             div()
                 .absolute()
                 .inset_0()
+                // Aproxima el radial `120% 140% at 0% 0%` (transparente al 55 %).
                 .bg(orbit::ramp_alpha(skin.hero_wash, 160.0)),
         )
 }
 
 /// Interruptor de 34×20 del contrato (`.sw`); solo pinta, el clic lo recoge el padre.
 pub(super) fn switch(on: bool, cx: &gpui::App) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     div()
         .w(px(34.0))
         .h(px(20.0))
@@ -629,7 +707,7 @@ pub(super) fn switch(on: bool, cx: &gpui::App) -> Div {
 
 /// Contenedor del segmentado compacto de 22 px (`.bandbox .seg`).
 pub(super) fn seg_mini_group(cx: &gpui::App) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     div()
         .flex()
         .flex_none()
@@ -648,7 +726,7 @@ pub(super) fn seg_mini(
     on: bool,
     cx: &gpui::App,
 ) -> Stateful<Div> {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     let bg = if light(cx) { 0x00ff_ffff } else { skin.l1 };
     div()
         .id(id)
@@ -681,7 +759,7 @@ pub(super) fn seg_mini(
 
 /// Cabecera de grupo con su rótulo secundario.
 pub(super) fn group_row(label: &str, extra: &str, cx: &gpui::App) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     div()
         .h(px(26.0))
         .flex_none()
@@ -700,7 +778,7 @@ pub(super) fn group_row(label: &str, extra: &str, cx: &gpui::App) -> Div {
 
 /// Título de sección Rajdhani en mayúsculas, con dato a la derecha.
 pub(super) fn section_title(label: &str, right: Option<String>, cx: &gpui::App) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     div()
         .flex_none()
         .flex()
@@ -716,7 +794,7 @@ pub(super) fn section_title(label: &str, right: Option<String>, cx: &gpui::App) 
 
 /// Fila «etiqueta ........ valor» del carril y las fichas.
 pub(super) fn kv(label: &str, value: impl Into<SharedString>, cx: &gpui::App) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     div()
         .flex()
         .justify_between()
@@ -734,7 +812,7 @@ pub(super) fn banner(
     action: Option<Stateful<Div>>,
     cx: &gpui::App,
 ) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     let (fill, ring, glyph): (Hsla, Hsla, u32) = match tone {
         Tone::Err => (tint(skin.err, 0.12), orbit::alpha(skin.hero_ring), skin.err),
         _ => (tint(skin.warn, 0.12), tint(skin.warn, 0.25), skin.warn),
@@ -757,7 +835,7 @@ pub(super) fn banner(
 
 /// Tarjeta del contrato (`.card`): degradado neo, 10 px.
 pub(super) fn card(cx: &gpui::App) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     div()
         .min_w_0()
         .min_h_0()
@@ -777,7 +855,7 @@ pub(super) fn rule(cx: &gpui::App) -> Div {
         .w_full()
         .h(px(1.0))
         .flex_none()
-        .bg(orbit::alpha(orbit::skin(cx).line1))
+        .bg(orbit::alpha(skin(cx).line1))
 }
 
 /// Mensaje centrado de estado de página completa.
@@ -789,7 +867,7 @@ pub(super) fn center_message(
     actions: Vec<Stateful<Div>>,
     cx: &gpui::App,
 ) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     div()
         .flex_1()
         .min_h_0()
@@ -822,7 +900,7 @@ pub(super) fn center_message(
 
 /// Etiqueta «RC»: la serie viene del respaldo de `RaceControl`, no de LMU.
 pub(super) fn rc_tag(cx: &gpui::App) -> Div {
-    let skin = orbit::skin(cx);
+    let skin = skin(cx);
     div()
         .flex_none()
         .ml(px(6.0))

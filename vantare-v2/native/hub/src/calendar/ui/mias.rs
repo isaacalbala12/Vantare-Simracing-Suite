@@ -544,8 +544,8 @@ fn entry_row(
         .when(first, |r| {
             r.bg(orbit::ramp_alpha(
                 orbit::skin::Ramp {
-                    from: orbit::skin(cx).accent_tint,
-                    to: orbit::skin(cx).accent_tint & 0xffff_ff00,
+                    from: chrome::skin(cx).accent_tint,
+                    to: chrome::skin(cx).accent_tint & 0xffff_ff00,
                     end: 0.7,
                 },
                 90.0,

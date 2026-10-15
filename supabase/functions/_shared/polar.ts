@@ -617,3 +617,76 @@ export async function createPolarPortalSession(
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+// #1627: this candidate cannot send administrative mutations to production.
+export async function polarAdminRequest(
+  method: "GET" | "POST" | "DELETE",
+  path: string,
+  body: unknown,
+  environment: BillingEnvironment,
+  deps: PolarClientDeps = {},
+): Promise<Record<string, unknown>> {
+  const url = new URL(`https://local.invalid${path}`);
+  const resource = /^\/(discounts|orders|refunds)\/$/.test(url.pathname);
+  const direct = /^\/(subscriptions|organizations)\/[A-Za-z0-9_-]+$/.test(
+    url.pathname,
+  );
+  const query = [...url.searchParams];
+  if (
+    environment !== "sandbox" || url.hash ||
+    (method === "GET"
+      ? !(resource || direct)
+      : method === "POST"
+      ? url.pathname !== "/discounts/"
+      : !/^\/subscriptions\/[A-Za-z0-9_-]+$/.test(url.pathname)) ||
+    (method !== "GET" && query.length > 0) ||
+    query.some(([k, v]) =>
+      k === "organization_id"
+        ? !/^[0-9a-f-]{36}$/.test(v)
+        : k === "limit"
+        ? v !== "100"
+        : k === "page"
+        ? !/^[1-9][0-9]{0,2}$/.test(v)
+        : true
+    )
+  ) {
+    throw new PolarClientError(
+      "admin_sandbox_required",
+      "Sandbox required",
+      503,
+    );
+  }
+  return await polarRequest(
+    `${apiBase(environment, deps)}${path}`,
+    {
+      method,
+      headers: {
+        Authorization: `Bearer ${requireToken(deps)}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+      redirect: "error",
+    },
+    { ...deps, maxRateLimitRetries: 0 },
+    async (response) => {
+      if (!response.ok) {
+        throw new PolarClientError(
+          "polar_admin_failed",
+          "Administrative action failed",
+          502,
+          { polar_status: response.status },
+        );
+      }
+      const result: unknown = await response.json();
+      if (!isRecord(result)) {
+        throw new PolarClientError(
+          "polar_invalid_response",
+          "Invalid response",
+          502,
+        );
+      }
+      return result;
+    },
+  );
+}

@@ -1,0 +1,167 @@
+# Servidor Vantare · 192.168.1.57 «SapphireOS»
+
+Runbook del PC dedicado: runners propios (#1565), Plane CE (#1571) y publicador
+del roadmap (#1535, script en `tools/server/roadmap/`). Windows 11 Pro 22631
+SapphireOS (build recortada), Ryzen 5 1500X, 16 GB. Acceso: `ssh Administrator@192.168.1.57`,
+solo con clave y solo desde 192.168.1.0/24 y Tailscale (ver abajo). Sin secretos en este directorio.
+
+## Piezas
+
+| Pieza | Dónde | Arranque sin sesión |
+|---|---|---|
+| Runner Windows | servicio `actions.runner.*` como `vantare-ci`, `C:\VantareCI\runner` | servicio automático |
+| Runner Linux | distro WSL `vantare-ci` (6 GB, 4 CPU, 4 GB swap; sin automount ni interop), `/opt/vantare-runner` | tarea `\Vantare\WSL-vantare-ci` + systemd |
+| Plane CE v1.4.2 | distro WSL `vantare-svc` (3 GB, 2 CPU, 3 GB swap, red mirrored), `/opt/plane`, `http://192.168.1.57:8088` | tarea `\Vantare\WSL-vantare-svc` + `vantare-plane.service` |
+| Roadmap | `vantare-svc`, usuario `roadmap`, `vantare-roadmap.timer` (cada 6 h, min 17) | systemd |
+| Copias | `vantare-plane-backup.timer` 03:30 → `/var/backups/plane` y `C:\VantareServer\backups\plane` (14 días) | systemd |
+| Copia externa | PC principal: tarea `Vantare-PullServerBackups` 04:00 → `%USERPROFILE%\Backups\VantareServer\plane` (30 días) | al iniciar sesión si se perdió |
+| Aviso «Para Claude» | `vantare-plane-para-claude.timer` (60 s) → `/usr/local/sbin/vantare-plane-para-claude.py`: lee la BD en solo lectura y hace un POST por cada tarea que entra en «Para Claude». URL en `/etc/vantare/para-claude.url` (600, fuera del repo), estado en `/var/lib/vantare/para-claude.json`. Sustituye al webhook de Plane (desactivado). Parar: `systemctl disable --now vantare-plane-para-claude.timer`; probar: `… --dry-run` | systemd |
+| Supervisión Plane | `vantare-plane-health.timer` (5 min) comprueba `/api/instances/` (la web da 200 aunque el backend caiga): 3 fallos → reinicia la stack; latido `C:\VantareServer\heartbeat\plane.txt` | systemd |
+| Supervisión | tarea `\Vantare\Health` (SYSTEM, cada 5 min): distros, latido, runner (prioridad BelowNormal), disco → `C:\VantareServer\logs\health-AAAA-MM.log` | al arrancar |
+| Pantalla | SapphireOS abre sesión de Administrator al arrancar (svchost, no Winlogon); `\Vantare\LockAtLogon` la bloquea al instante | al iniciar sesión |
+
+WSL mirrored no expone Plane al resto de usuarios de Windows (ni 127.0.0.1 ni la IP LAN
+desde el propio host); por eso la comprobación de Plane vive dentro de su distro.
+
+Cada cuenta Windows (`vantare-ci`, `vantare-svc`, sin administrador) tiene su propia
+VM WSL y su `.wslconfig`: un job de CI no ve la BD de Plane ni los secretos del roadmap.
+
+## Orden de montaje (ya aplicado el 2026-10-11)
+
+1. BIOS: SVM Enabled; recomendado «Restore after AC Power Loss = Power On» y ErP Disabled.
+2. `windows/setup-base.ps1`: red Privada, cortafuegos solo LAN (22 y 8088), sshd solo clave,
+   autologon off, Windows Update domingo 05:00 (la política solo admite horas enteras), pagefile 8 GB.
+3. Crear `vantare-ci` y `vantare-svc` (Usuarios estándar). `windows/setup-virtualization.ps1`:
+   SapphireOS deja deshabilitados vdrvroot, Vid, hvservice, HvHost, NdisVirtualBus, W32Time y
+   VaultSvc, y no da «iniciar sesión como proceso por lotes»; reinicia. Valores previos en
+   `C:\VantareServer\logs\services-reenabled.txt`.
+4. WSL 3.0.1 (MSI oficial) e imagen Ubuntu 24.04 de Canonical, ambas con SHA256 fijado.
+5. `windows/Invoke-AsUser.ps1` ejecuta como la cuenta de servicio `linux/setup-ci.sh` y
+   `linux/setup-svc.sh` + `setup-svc-2.sh`; `windows/install-ci-prereqs.ps1` instala
+   PowerShell 7, Git, gh, Python, VS Build Tools C++ y rustup (SHA256/firma).
+6. `windows/setup-layout.ps1`: ACL, plantilla de secretos, Hyper-V firewall 8088 LAN,
+   `C:\VantareCI`, variables ACTIONS_RUNNER_HOOK_*, tarea Health. Copia los hooks de `tools/ci-runners`.
+7. `windows/register-keepalive.ps1` por cuenta.
+
+## Credenciales
+
+Hasta que Isaac fije las suyas, las contraseñas de las cuentas de servicio son aleatorias,
+solo en memoria y en el almacén de Windows de cada tarea. Isaac, en PowerShell **administrador
+local**: `& C:\VantareServer\ops\Set-VantareCredential.ps1 -User vantare-ci` (y `vantare-svc`);
+actualiza tareas y servicio. Después `Invoke-AsUser.ps1` se niega a rotar esa cuenta.
+Secretos de Plane: `/opt/plane/plane.env` (600, generado en el servidor). Roadmap:
+`C:\VantareServer\secrets\roadmap.env` (ACL Administradores + vantare-svc).
+
+## Operación
+
+- Plane: `wsl -d vantare-svc -u root -- systemctl status vantare-plane` (como vantare-svc).
+- Actualizar Plane: copia manual (`systemctl start vantare-plane-backup`), cambiar
+  `APP_RELEASE` y los ficheros oficiales de la nueva release con su SHA256, `systemctl restart vantare-plane`.
+  Rollback: versión anterior + `pg_restore` de la copia si hubo migración. Nunca borrar volúmenes.
+- Restaurar: `tar --zstd -xf plane-*.tar.zst` → `plane.dump` (`pg_restore -c`), `uploads.tar`
+  (volumen `vantare-plane_uploads`), `plane.env`.
+- Pausar runner Windows: `C:\VantareCI\ops\control-windows.ps1 -Operation Pause`.
+- IP por DHCP sin reserva: si cambia, actualizar la IP LAN de `CORS_ALLOWED_ORIGINS`
+  de `plane.env` y el host de la tarea del PC principal.
+
+## Medidas (2026-10-11, nightly ee372540, ambos smokes a la vez, en frío)
+
+- Linux (WSL `vantare-ci`): quality tests, fmt, check 1386 s, clippy 58 s, nextest 534 s,
+  telemetría 1125 s, lifecycle 10 s — **todo PASS**. `target` 8,6 GB + `~/.cargo` 1,3 GB.
+- Windows (`vantare-ci`): fetch, DuckDB, fmt, gates check 332 s, clippy 83 s, lifecycle 15 s,
+  telemetría 1290 s, retirement — PASS; **gate test: 1 fallo** (ver abajo).
+- RAM libre del host durante ambos: mínimo 1,27 GB, media 4,9 GB; CPU al 100 % en compilación.
+  Plane en reposo ≈ 1 GB dentro de su VM de 3 GB.
+
+### Fallo de producto detectado en el runner Windows
+
+`vantare-hub analysis::tests::recorded_database_smoke_reads_real_storage_pages_without_changing_original`
+falla aquí y pasa en `windows-latest` (mismo SHA). En este equipo DuckDB informa del bloqueo
+con el mensaje genérico de Windows («The process cannot access the file because it is being
+used by another process») y `storage/src/inspection.rs::open_error` solo reconoce
+«could not set lock», «conflicting lock» y «File is already open in». El Hub mostraría
+«ilegible» en lugar de «bloqueada» en equipos así. Arreglo propuesto (issue aparte): tratar
+también ERROR_SHARING_VIOLATION / ese texto como `locked`.
+
+## Incidente 2026-10-13: backend 502 tras corte de luz
+
+Apagado inesperado el 12/10 04:19 (evento 6008). La VM WSL murió sin volcar
+`static-assets/collected-static/staticfiles.json` en la capa del contenedor `api` (0 bytes);
+`docker-entrypoint-api.sh` ejecuta `collectstatic` en cada arranque y fallaba en bucle
+(«Couldn't load manifest»), con `/` y `/god-mode/` en 200 pero `/api/*` en 502. Arreglo:
+`vantare-plane.service` usa `up -d --force-recreate` (capas nuevas en cada arranque; datos en
+volúmenes) y la supervisión mira `/api/instances/`. Verificado con reinicio: API 200.
+Sigue pendiente la BIOS «Restore after AC Power Loss».
+
+## Acceso remoto por Tailscale (2026-10-13)
+
+- Tailscale 1.104.1 (MSI oficial de pkgs.tailscale.com, SHA256 `6da8bcdb…b0b4` y firma de Tailscale Inc.),
+  instalado con `TS_UNATTENDEDMODE=always`: servicio `Tailscale` automático, `ForceDaemon=true`; funciona
+  sin sesión iniciada. Isaac aprobó el login de `tailscale up --unattended` con su cuenta. La caducidad de la
+  clave está desactivada. Sin Funnel ni Serve, sin compartir la máquina, sin exit node ni rutas anunciadas.
+- SapphireOS traía deshabilitados `iphlpsvc` y `WinHttpAutoProxySvc`, que el MSI exige: se reactivaron
+  (anotado en `services-reenabled.txt`) y hubo que reiniciar para que el SCM los viera.
+- Máquina `sapphireos` · IP `100.79.77.56` · MagicDNS `sapphireos.tail357eab.ts.net`.
+- Cortafuegos (Windows y Hyper-V): TCP 22 y 8088 solo desde `192.168.1.0/24` y `100.64.0.0/10`.
+  WSL mirrored ya escucha en la interfaz de Tailscale; no hace falta un portproxy.
+- Plane: `WEB_URL` es un único origen (`base_host()` redirige ahí tras el login), así que el canónico pasa a
+  ser **http://sapphireos.tail357eab.ts.net:8088**, que funciona en casa y fuera para cualquier equipo con
+  Tailscale. `CORS_ALLOWED_ORIGINS` (y con él `CSRF_TRUSTED_ORIGINS`) incluye el nombre, `100.79.77.56` y
+  `192.168.1.57`. Por la IP LAN se carga, pero un equipo **sin** Tailscale acabará redirigido al nombre al
+  iniciar sesión. Copia previa: `/opt/plane/plane.env.bak-20261013-1718`.
+- SSH: `ssh Administrator@sapphireos.tail357eab.ts.net` (misma clave de host que por LAN, verificada).
+- Si la IP LAN cambia, Plane sigue funcionando por Tailscale; solo hay que tocar la regla CORS de la IP LAN.
+
+## Revisión de seguridad 1647c · 2026-10-15
+
+Encargo VANTA-47, PR #1583, sin Rust ni cambios en datos, credenciales o red.
+
+- **P3-2, servicios root**: Plane, copia, supervisión y vigilante añaden
+  `NoNewPrivileges=yes`, `ProtectSystem=strict`, `ProtectHome=yes` y `PrivateTmp=yes`.
+  Solo copia puede escribir en `/var/backups/plane` y
+  `/mnt/c/VantareServer/backups/plane`; supervisión en `/var/lib/vantare` y
+  `/mnt/c/VantareServer/heartbeat`; vigilante en `/var/lib/vantare`.
+  Plane compose no necesita rutas de escritura: el daemon Docker hace su trabajo
+  fuera del namespace del cliente. Esto limita el servicio, pero el acceso a
+  Docker sigue siendo privilegiado; no se afirma aislamiento frente al daemon.
+  `linux/harden-services.sh` aplica drop-ins a la instalación existente, sin
+  reinstalar la stack ni leer secretos. Copia previa root:700 y hashes bajo
+  `/var/backups/vantare-hardening/<UTC>`. Tras aplicarlo, `systemctl daemon-reload`,
+  verificar las unidades y reiniciar en una ventana autorizada. Comprobar con
+  `systemctl show <servicio> -p NoNewPrivileges -p ProtectSystem -p ProtectHome -p PrivateTmp -p ReadWritePaths -p Result -p ExecMainStatus`.
+  Para deshacer: parar los cuatro servicios/timers, comprobar `SHA256SUMS` del
+  backup y restaurar cada `security.conf` previo (o retirar solo ese drop-in si
+  hay marcador `.absent`); daemon-reload, arrancar y repetir comprobaciones.
+- **P3-3, instalación CI**: rustup-init **1.28.2**, Linux x86_64, se descarga del
+  archivo oficial con SHA-256 fijado
+  `20a06e644b0d9bd2fbdbfd52d42540bdde820ea7df86e92e533c073da0cdd43c`.
+  Se contrastó el checksum oficial y una descarga independiente con Get-FileHash.
+  Si no coincide, `set -e` aborta antes de ejecutar. No se reinstala rustup si ya
+  existe. Fuente: `https://static.rust-lang.org/rustup/archive/1.28.2/x86_64-unknown-linux-gnu/rustup-init.sha256`.
+  No se ejecutó instalación ni compilación Rust en esta revisión.
+- **P3-1, riesgo de copias**: los archivos de copia incluyen `plane.env` para
+  restaurar Plane; contienen secretos aunque el `.tar.zst` no lo indique.
+  No están cifrados. La cuenta svc tiene acceso a las copias Windows, y el PC
+  principal recibe otra copia: comprometer cualquiera de esos destinos puede
+  exponer esos secretos. No enviar las copias a artefactos, chat o repositorios.
+  El encargo solo documenta; no cambia formato, retención, ACL ni restauración.
+  Cifrar o separar la copia de secretos requiere una decisión posterior de Isaac.
+- **P3-4, HTTP**: sigue habilitado HTTP:8088. Por la interfaz Tailscale el túnel
+  cifra el transporte; acceder directamente por LAN no aporta TLS y permite
+  observar cookies/tokens a quien intercepte ese tráfico. No se configura TLS
+  ni se cierra LAN en este encargo; usar Tailscale mientras Isaac decide el cambio.
+- **P3-5, registro**: comprobación de solo lectura de `/api/instances/` el
+  2026-10-15: `config.enable_signup=True`; la BD confirma `ENABLE_SIGNUP=1`,
+  5 cuentas en total y 5 activas (incluyen bots/servicio; sin listar identidades). **No está acreditado el registro
+  cerrado**. No se creó ninguna cuenta ni se intentó un alta; esa bandera por
+  sí sola tampoco demuestra acceso a un workspace. No se cambió configuración.
+  El orquestador debe resolver el cierre con Isaac antes de asumir esa protección.
+
+Verificado en vivo: las cuatro unidades pasan `systemd-analyze verify`;
+reinicio de Plane y ejecución de copia, supervisión y vigilante completados.
+El backup de drop-ins está en `/var/backups/vantare-hardening/20261015T180427Z`.
+
+Evidencia saneada de esta revisión en `C:\VantareServer\evidence\1647c\`;
+continuidad y estados en VANTA-47/#1565/#1571 y PR #1583. El vigilante tiene
+su detalle de permisos, hashes, tests y despliegue en [PR #1649](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1649),
+VANTA-77/#1647/PR #1649. No hay merge, promoción ni release por el worker.

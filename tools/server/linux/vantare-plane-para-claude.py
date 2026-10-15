@@ -64,6 +64,7 @@ WITH events AS (
 SELECT coalesce(json_agg(row_to_json(e) ORDER BY e.created_at, e.event_id), '[]')
 FROM (
     SELECT e.*, i.id, i.sequence_id AS seq, i.name, p.identifier AS key,
+           (i.deleted_at IS NULL AND i.archived_at IS NULL AND NOT i.is_draft) AS eligible,
            u.email AS author_email, coalesce(u.is_bot, false) AS author_bot,
            coalesce(nullif(u.display_name, ''),
                     nullif(trim(concat_ws(' ', u.first_name, u.last_name)), ''),
@@ -73,7 +74,6 @@ FROM (
     JOIN projects p ON p.id = i.project_id
     LEFT JOIN users u ON u.id = e.actor_id
     WHERE i.project_id = '{PROJECT}' AND p.identifier = 'VANTA'
-      AND i.deleted_at IS NULL AND i.archived_at IS NULL AND NOT i.is_draft
 ) e;
 """
 
@@ -121,6 +121,10 @@ def plain_text(row):
 
 
 def payload(row):
+    # Recordar también IDs de tareas ocultas evita recuperar avisos históricos
+    # al desarchivarlas/restaurarlas. Solo las activas pueden producir payload.
+    if not row.get("eligible", True):
+        return None
     old, new = row.get("old_state"), row.get("new_state")
     comment = ""
     if row["kind"] == "comment":

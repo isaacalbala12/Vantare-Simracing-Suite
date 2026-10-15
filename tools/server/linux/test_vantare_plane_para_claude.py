@@ -55,6 +55,17 @@ class WatcherTests(unittest.TestCase):
     def state(self):
         return json.loads(self.path.read_text(encoding="utf-8"))
 
+    def test_unarchiving_does_not_replay_hidden_task_history(self):
+        self.initialize([row("state:old", eligible=False)])
+        self.run_watcher([row("state:old", eligible=True)])
+        self.sender.assert_not_called()
+        self.run_watcher([row("state:old", eligible=True),
+                          row("state:new", eligible=False)])
+        self.run_watcher([row("state:old", eligible=True),
+                          row("state:new", eligible=True), row("state:fresh")])
+        self.assertEqual(self.sender.call_count, 1)
+        self.assertEqual(self.sender.call_args.args[2], "state:fresh")
+
     def test_each_state_event_has_complete_payload(self):
         cases = [("En curso", "Para Claude", "para_claude"),
                  ("Por testear", "Entregado", "entregado"),

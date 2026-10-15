@@ -21,8 +21,9 @@ caracteres como máximo). Mantiene `User-Agent: vantare-plane-para-claude/1`.
 
 Se leen los IDs de `issue_activities` y `issue_comments` en una sola instantánea.
 Así no se pierden varias transiciones entre sondeos ni transacciones que confirman
-tarde. No se usa un cursor temporal que pueda saltárselas. Se excluyen tareas
-borradas, archivadas y borradores, como en v1. Los IDs observados crecen con el
+tarde. No se usa un cursor temporal que pueda saltárselas. No se envían avisos de tareas
+borradas, archivadas ni borradores. Sus IDs se recuerdan también, para no
+reproducir su historial si se restauran o desarchivan. Los IDs observados crecen con el
 historial de VANTA; no hay borrado ni modificación de datos de Plane.
 
 ## Cómo distingue a Isaac
@@ -91,8 +92,9 @@ copias Linux en `/var/lib/vantare/vigilante-backup-1647/`.
 La prueba autorizada hace **un solo POST**, sin cambiar nada de Plane: evento
 `comentario`, tarea `PRUEBA-vigilante`, comentario `prueba de avisos ampliados`.
 Se obtuvo HTTP 202; un marcador impide repetirla por accidente. La siembra
-registró 382 IDs y el dry-run quedó en 0 pendientes; timer enabled/active.
-Pruebas: 26 del vigilante + 10 de CLI, PASS en Windows y Linux.
+registró 382 IDs. Tras incluir los IDs de tareas ocultas: 397 observados
+(15 ocultos) y 0 pendientes, sin resembra ni otro POST de prueba; timer enabled/active.
+Pruebas: 27 del vigilante + 10 de CLI, PASS en Windows y Linux.
 No hay compilación Rust ni cambios de esquema, dependencias, red o credenciales.
 
 ## Deshacer

@@ -16,7 +16,7 @@ No se modifica el checkout de integración ni se rotan secretos.
 
 Desplegado expresamente por el encargo: 382 IDs sembrados sin avisar de antiguos,
 dry-run 0 pendientes, timer enabled/active y único POST sintético HTTP 202.
-36 tests simulados PASS en Windows y dentro de vantare-svc. Sin Rust, cambios
+37 tests simulados PASS en Windows y dentro de vantare-svc. Sin Rust, cambios
 Plane, merge ni release. Backup Windows `C:/VantareServer/backups/vigilante-plane/1647-20261015-174741/`;
 script y estado previos también en `/var/lib/vantare/vigilante-backup-1647/`.
 [Operación, límites y reversión](../../../../tools/server/vigilante-plane.md).
@@ -25,7 +25,8 @@ conservar la CLI existente y aplicar su firma/test (la base antigua no los tení
 PR borrador [#1649](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1649)
 contra la rama #1583; commit de implementación `ea03795c5`, subido a origin.
 Pasada programada posterior verificada: `Result=success`, `ExecMainStatus=0`,
-382 observados y 0 pendientes. GitGuardian PASS; CI de calidad/native pendiente
+397 observados (15 de tareas ocultas) y 0 pendientes tras proteger la
+restauración de tareas, sin resembra ni otro POST de prueba. GitGuardian PASS; CI de calidad/native pendiente
 al abrir la PR. HEAD final, CI y última comprobación en #1647 y
 `C:/tmp/buzon/1647.md`. Sin integración en nightly/testers/master.
 

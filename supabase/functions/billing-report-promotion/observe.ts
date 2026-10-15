@@ -1,3 +1,4 @@
+import { readPolarCheckoutSession } from "../_shared/polar.ts";
 import type { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 // Product allowlisting and durable ownership are checked again in SQL. The
 // campaign stays inert until its catalogue and explicit feature flag are set.
@@ -42,15 +43,49 @@ export async function promotionCheckoutDiscount(
   now = new Date(),
   enabled = Deno.env.get("REPORT_PROMOTION_ENABLED") === "true",
   attemptId?: string,
-): Promise<string | null> {
+  readCheckout = readPolarCheckoutSession,
+): Promise<string | null | { checkoutUrl: string }> {
   if (!enabled) return null;
-  const { data, error } = await admin().rpc("report_promotion_checkout", {
+  const args = {
     p_account: account,
     p_environment: environment,
     p_product: product,
     p_now: now.toISOString(),
     ...(attemptId ? { p_attempt: attemptId } : {}),
-  });
+  };
+  let { data, error } = await admin().rpc("report_promotion_checkout", args);
+  if (error?.code === "55000" && attemptId) {
+    const pending = await admin().rpc("report_promotion_checkout_pending", {
+      p_account: account,
+      p_environment: environment,
+      p_now: now.toISOString(),
+    });
+    if (
+      pending.error || !pending.data?.checkout_id || !pending.data?.attempt_id
+    ) {
+      throw new Error("promotion_checkout_pending");
+    }
+    const previous = pending.data;
+    const remote = await readCheckout(
+      previous.checkout_id,
+      environment as "sandbox" | "production",
+    );
+    if (
+      remote.accountId !== account || remote.productId !== previous.product_id
+    ) {
+      throw new Error("promotion_checkout_owner_mismatch");
+    }
+    if (remote.status === "open" && remote.productId === product) {
+      return { checkoutUrl: remote.url };
+    }
+    if (!["expired", "failed"].includes(remote.status)) {
+      throw new Error("promotion_checkout_pending");
+    }
+    ({ data, error } = await admin().rpc("report_promotion_checkout", {
+      ...args,
+      p_replaces: previous.attempt_id,
+    }));
+  }
   if (error || !(data === null || typeof data === "string")) {
     throw new Error("report_promotion_checkout_unavailable");
   }

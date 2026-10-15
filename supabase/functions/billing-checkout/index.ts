@@ -132,7 +132,7 @@ export async function handleCheckoutRequest(
       503,
     );
   }
-  let discount: string | null;
+  let discount: Awaited<ReturnType<typeof promotionCheckoutDiscount>>;
   try {
     discount = await (deps.promotionDiscount ?? promotionCheckoutDiscount)(
       getSupabaseAdmin,
@@ -147,6 +147,9 @@ export async function handleCheckoutRequest(
     // No Polar request and no attempt reservation yet: a transient policy lookup
     // must remain retryable with exactly the same attemptId.
     return errorResponse("promotion_unavailable", "Retry checkout", 503);
+  }
+  if (discount && typeof discount === "object") {
+    return jsonResponse({ url: discount.checkoutUrl, reused: true }, 200);
   }
   let claim;
   try {

@@ -385,6 +385,61 @@ export async function createPolarCheckoutSession(
   );
 }
 
+// Authenticated server read recovers a single account-owned launch checkout.
+export async function readPolarCheckoutSession(
+  id: string,
+  environment: BillingEnvironment,
+  deps: PolarClientDeps = {},
+): Promise<
+  {
+    id: string;
+    status: string;
+    productId: string;
+    accountId: string;
+    url: string;
+  }
+> {
+  const token = requireToken(deps);
+  return await polarRequest(
+    apiBase(environment, deps) + "/checkouts/" + encodeURIComponent(id),
+    {
+      method: "GET",
+      headers: { Authorization: "Bearer " + token, Accept: "application/json" },
+    },
+    deps,
+    async (response) => {
+      if (!response.ok) {
+        throw new PolarClientError(
+          "checkout_recovery_unavailable",
+          "Retry checkout",
+          503,
+        );
+      }
+      const value: unknown = await response.json();
+      if (
+        !isRecord(value) || value.id !== id ||
+        typeof value.status !== "string" ||
+        typeof value.product_id !== "string" ||
+        typeof value.external_customer_id !== "string" ||
+        typeof value.url !== "string"
+      ) {
+        throw new PolarClientError(
+          "checkout_recovery_invalid",
+          "Retry checkout",
+          503,
+        );
+      }
+      return {
+        id,
+        status: value.status,
+        productId: value.product_id,
+        accountId: value.external_customer_id,
+        url: validateHostedUrl(value.url, environment, "checkout"),
+      };
+    },
+  );
+}
+
 export async function createPolarCustomerSession(
   params: CreateCustomerSessionParams,
   deps: PolarClientDeps = {},

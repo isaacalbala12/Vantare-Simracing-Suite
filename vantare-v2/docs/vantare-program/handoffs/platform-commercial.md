@@ -1,3 +1,14 @@
+## #1593 / VANTA-39 · Ronda 3 en curso · 15/10/2026
+
+Base de ronda y PR #1659 en origen: d16f28426, misma rama/worktree Mac.
+P1-2 corregido: derecho por cuenta recuperable tras expirar el intento;
+GET remoto reutiliza enlace abierto o permite reemplazar solo expired/failed.
+Datos de recuperación durables tras GC; consumo y CAS bajo barrera B03.
+RED inicial reproducido, SQL105 y Edge19 específicos PASS con lock Docker.
+Faltan P2-4/P2-5/P3, gates completos y entrega final. Decisión nueva de Isaac:
+multi-cuenta aceptado sin control; saldo pendiente caduca a los seis meses
+configurables desde concesión, sin retirar bloques ya confirmados.
+
 ## #1593 / VANTA-39 · Ronda 2 · 15/10/2026
 
 PR draft [#1659](https://github.com/isaacalbala12/Vantare-Simracing-Suite/pull/1659).

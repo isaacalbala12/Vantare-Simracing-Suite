@@ -60,20 +60,26 @@ los demás clientes.
 
 ## Primer mes consumido y checkout
 
-`report_promotion_launch_uses` es durable por cuenta/entorno. Reserva la oferta
-por `attemptId`; el mismo intento puede repetir y otro no obtiene otro mes
-inicial. Una factura pagada consume la marca desde SQL, con independencia del
-flag Edge. El historial previo de suscripciones/órdenes bloquea otra oferta
-aunque el catálogo se configure tarde. El borrado/traslado/refund no elimina
-esta marca financiera. No se promete backfill ni refund de compras normales
-anteriores a la activación.
+El derecho al primer mes pertenece a la cuenta/entorno durante la semana de
+lanzamiento. report_promotion_launch_uses conserva consumo, reserva y referencia
+remota incluso tras la limpieza de billing_checkout_attempts. El intento
+comercial caduca a los 30 minutos; eso no consume ni pierde el derecho.
 
-La consulta de promoción es inyectable y precede a reservar el intento de
-checkout comercial y a llamar a Polar. Un fallo RPC devuelve 503, no crea
-checkout ni marca el intento incierto: permite repetir el mismo `attemptId`. Un
-checkout Polar de resultado incierto conserva tanto su reserva como la
-protección comercial existente. No liberar una reserva a otro intento sin
-comprobar que no hubo efecto remoto.
+Una nueva solicitud espera el intento en vuelo. Tras caducar, GET autenticado
+comprueba el checkout previo y su cuenta/producto: si está abierto, devuelve el
+mismo enlace sin crear otro; si Polar confirma expired/failed, traslada la
+reserva con comparación de la referencia anterior bajo lock de cuenta. Si está
+confirmed/succeeded, no crea otro: espera sus hechos comerciales. Un resultado
+incierto sin ID remoto requiere reconciliación/soporte y devuelve 503, nunca
+continúa en silencio a precio normal. La ausencia de una fila de espejo, por sí
+sola, no demuestra que un checkout remoto abierto no pueda pagarse.
+
+La factura pagada consume la marca durable desde SQL incluso sin flag. El
+historial de suscripciones/órdenes también impide otra oferta, aunque el
+catálogo se configure tarde. El borrado/traslado/refund no elimina la marca.
+La consulta precede a reservar el intento comercial y a llamar a Polar; un
+fallo RPC devuelve 503 sin marcarlo incierto. No se promete backfill ni refund
+de compras normales anteriores a activar la campaña.
 
 ## Creador y catálogo
 

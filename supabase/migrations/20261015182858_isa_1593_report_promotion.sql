@@ -129,12 +129,23 @@ revoke all on function public.report_promotion_failed(uuid,text,text,timestamptz
 grant execute on function public.report_promotion_failed(uuid,text,text,timestamptz) to service_role;
 create table private.report_promotion_launch_uses (
  account_id uuid not null references public.profiles(id), environment text not null check(environment in ('sandbox','production')),
- product_id text not null, attempt_id uuid, subscription_id text, order_id text,
+ product_id text not null, attempt_id uuid, checkout_id text, remote_pending boolean not null default false, subscription_id text, order_id text,
  reserved_at timestamptz not null, consumed_at timestamptz,
  primary key(account_id,environment)
 );
 alter table private.report_promotion_launch_uses enable row level security;
 revoke all on private.report_promotion_launch_uses from public,anon,authenticated,service_role;
+-- Retain remote recovery facts beyond the generic attempt table's 24-hour GC.
+create function private.report_promotion_checkout_started() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+ if private.lock_account_write(new.user_id) then return new; end if;
+ update private.report_promotion_launch_uses set remote_pending=true,checkout_id=coalesce(new.provider_checkout_id,checkout_id)
+ where account_id=new.user_id and environment=new.environment and attempt_id=new.attempt_id and consumed_at is null;
+ return new;
+end $$;
+create trigger report_promotion_checkout_started after insert or update on public.billing_checkout_attempts for each row execute function private.report_promotion_checkout_started();
+revoke all on function private.report_promotion_checkout_started() from public,anon,authenticated,service_role;
 -- Billing facts are consumed even when the feature flag is off: SQL has no flag.
 create function private.report_promotion_mark_launch() returns trigger
 language plpgsql security definer set search_path='' as $$
@@ -167,32 +178,57 @@ language sql immutable set search_path='' as $$select t >= timestamp '2026-10-26
 
 -- First invoice uses the one-month launch discount on the NORMAL monthly product.
 -- Existing permanent launch products and annual subscriptions are not rewritten.
-create function public.report_promotion_checkout(p_account uuid,p_environment text,p_product text,p_now timestamptz default clock_timestamp(),p_attempt uuid default null)
+-- The entitlement belongs to the account. A replacement attempt may reuse it
+-- only after the prior lease expires and its remote checkout cannot be paid.
+create function public.report_promotion_checkout(p_account uuid,p_environment text,p_product text,p_now timestamptz default clock_timestamp(),p_attempt uuid default null,p_replaces uuid default null)
 returns text language plpgsql security definer set search_path='' as $$
-declare discount text; used private.report_promotion_launch_uses;
+declare discount text; used private.report_promotion_launch_uses; prior public.billing_checkout_attempts;
 begin
  if private.lock_account_write(p_account) then raise sqlstate '28000' using message='account_deleted'; end if;
  if not private.report_promotion_eligible(p_now) then return null; end if;
  select launch_discount into discount from private.report_promotion_catalog where environment=p_environment and product_id=p_product;
  if not found then return null; end if;
  select * into used from private.report_promotion_launch_uses where account_id=p_account and environment=p_environment for update;
- if found then
-   if used.consumed_at is null and used.attempt_id=p_attempt and used.product_id=p_product then return discount; end if;
-   return null;
- end if;
+ if used.consumed_at is not null then return null; end if;
  if exists(select 1 from private.report_promotions where account_id=p_account and environment=p_environment)
  or exists(select 1 from public.billing_subscriptions b join private.report_promotion_catalog c on c.environment=b.environment and c.product_id=b.provider_product_id where b.user_id=p_account and b.environment=p_environment and b.provider='polar')
- or exists(select 1 from public.billing_orders b join private.report_promotion_catalog c on c.environment=b.environment and c.product_id=b.provider_product_id where b.user_id=p_account and b.environment=p_environment and b.paid) then
-  insert into private.report_promotion_launch_uses(account_id,environment,product_id,reserved_at,consumed_at) values(p_account,p_environment,p_product,p_now,p_now);
+ or exists(select 1 from public.billing_orders b join private.report_promotion_catalog c on c.environment=b.environment and c.product_id=b.provider_product_id where b.user_id=p_account and b.environment=p_environment and b.provider='polar' and b.paid) then
+  insert into private.report_promotion_launch_uses(account_id,environment,product_id,reserved_at,consumed_at) values(p_account,p_environment,p_product,p_now,p_now)
+   on conflict(account_id,environment) do update set consumed_at=coalesce(private.report_promotion_launch_uses.consumed_at,excluded.consumed_at);
   return null;
  end if;
- if p_attempt is not null then
+ if used.account_id is not null then
+   if used.attempt_id=p_attempt and used.product_id=p_product then return discount; end if;
+   select * into prior from public.billing_checkout_attempts where user_id=p_account and attempt_id=used.attempt_id and environment=p_environment;
+   if p_now<greatest(used.reserved_at+interval '30 minutes',prior.expires_at)
+    or (used.remote_pending and (p_replaces is distinct from used.attempt_id or coalesce(used.checkout_id,prior.provider_checkout_id) is null)) then
+     raise sqlstate '55000' using message='promotion_checkout_pending';
+   end if;
+   -- CAS under the B03 account lock: another replacement invalidates old proof.
+   if p_replaces is not null and p_replaces is distinct from used.attempt_id then
+     raise sqlstate '55000' using message='promotion_checkout_pending';
+   end if;
+   if p_attempt is null then raise sqlstate '55000' using message='promotion_checkout_pending'; end if;
+   update private.report_promotion_launch_uses set attempt_id=p_attempt,product_id=p_product,reserved_at=p_now,checkout_id=null,remote_pending=false where account_id=p_account and environment=p_environment;
+ elsif p_attempt is not null then
    insert into private.report_promotion_launch_uses(account_id,environment,product_id,attempt_id,reserved_at) values(p_account,p_environment,p_product,p_attempt,p_now);
  end if;
  return discount;
 end $$;
-revoke all on function public.report_promotion_checkout(uuid,text,text,timestamptz,uuid) from public,anon,authenticated;
-grant execute on function public.report_promotion_checkout(uuid,text,text,timestamptz,uuid) to service_role;
+-- Server-only recovery metadata; no checkout URL or customer PII is returned.
+create function public.report_promotion_checkout_pending(p_account uuid,p_environment text,p_now timestamptz default clock_timestamp()) returns jsonb
+language plpgsql security definer set search_path='' as $$
+declare result jsonb;
+begin
+ if private.lock_account_write(p_account) then raise sqlstate '28000' using message='account_deleted'; end if;
+ select jsonb_build_object('attempt_id',u.attempt_id,'checkout_id',coalesce(u.checkout_id,a.provider_checkout_id),'product_id',u.product_id) into result
+ from private.report_promotion_launch_uses u left join public.billing_checkout_attempts a on a.user_id=u.account_id and a.attempt_id=u.attempt_id and a.environment=u.environment
+ where u.account_id=p_account and u.environment=p_environment and u.consumed_at is null and private.report_promotion_eligible(p_now)
+ and p_now>=greatest(u.reserved_at+interval '30 minutes',a.expires_at);
+ return result;
+end $$;
+revoke all on function public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid),public.report_promotion_checkout_pending(uuid,text,timestamptz) from public,anon,authenticated;
+grant execute on function public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid),public.report_promotion_checkout_pending(uuid,text,timestamptz) to service_role;
 
 -- Called only after the verified billing webhook/lifecycle persisted this owner.
 create function public.report_promotion_observe(p_account uuid,p_environment text,p_subscription text,p_product text,
@@ -408,11 +444,13 @@ grant execute on function public.report_promotion_observe(uuid,text,text,text,ti
  public.report_promotion_ack(uuid,uuid,timestamptz,text),public.report_promotion_accounts(text,uuid) to service_role;
 
 alter function public.report_promotion_period(uuid,text,text,timestamptz) owner to postgres;
+alter function private.report_promotion_checkout_started() owner to postgres;
+alter function public.report_promotion_checkout_pending(uuid,text,timestamptz) owner to postgres;
 alter function private.report_promotion_mark_launch() owner to postgres;
 -- Explicit runtime principal: NOSUPERUSER BYPASSRLS, matching the hosted postgres role.
 alter function private.report_promotion_months(timestamptz,integer) owner to postgres;
 alter function private.report_promotion_eligible(timestamptz) owner to postgres;
-alter function public.report_promotion_checkout(uuid,text,text,timestamptz,uuid) owner to postgres;
+alter function public.report_promotion_checkout(uuid,text,text,timestamptz,uuid,uuid) owner to postgres;
 alter function public.report_promotion_observe(uuid,text,text,text,timestamptz,timestamptz,text) owner to postgres;
 alter function private.report_promotion_progress(uuid,text,timestamptz) owner to postgres;
 alter function public.report_promotion_prepare(uuid,text,timestamptz) owner to postgres;

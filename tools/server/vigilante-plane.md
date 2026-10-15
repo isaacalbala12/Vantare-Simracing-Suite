@@ -98,7 +98,7 @@ python -B -m unittest discover -s tools/server/linux -p 'test_*.py' -v
 python -B -m unittest discover -s tools/plane -v
 ```
 
-47 tests únicos de vigilante/helper y 10 de CLI: Windows y Linux PASS.
+El corte 1647b tenía 47 tests únicos de vigilante/helper y 10 de CLI PASS.
 Cubren cuatro tipos, agrupado, deduplicado, migración, reintento independiente,
 rutas Isaac/bot, texto y prioridad, errores internos de Plane y rollback simulado.
 
@@ -131,6 +131,36 @@ antes de instalar root:750. Un hash distinto aborta sin copiar a `/usr/local/sbi
 Verificar con `stat -c '%U:%G %a %n'` los scripts instalados y directorios
 `/etc/vantare`, `/var/lib/vantare`, y con `find` sus hijos: dueño root,
 sin escritura de grupo/otros. No mostrar contenidos de secretos.
+
+1647c/P3-10: las piezas reproducibles están ahora en el repo:
+`windows/Invoke-WorkersPlaneAsSvc.ps1`, `windows/Deploy-Vigilante.ps1` y
+`linux/deploy-vigilante.sh`. Ya no se necesita el script privado
+`ops/run/isa-1647b-system.ps1`. Desde PowerShell administrador, en la raíz del
+worktree revisado, copiar sin transformar bytes:
+
+```powershell
+'install-para-claude.sh','vantare-plane-para-claude.py','plane_notify_workers.py','vigilante.sha256','deploy-vigilante.sh' | ForEach-Object {
+  Copy-Item "tools/server/linux/$_" C:\VantareServer\ops\linux\ -Force
+}
+Copy-Item tools/server/windows/Deploy-Vigilante.ps1 C:\VantareServer\ops\linux\ -Force
+Copy-Item tools/server/windows/Invoke-WorkersPlaneAsSvc.ps1 C:\VantareServer\ops\run\ -Force
+$action = New-ScheduledTaskAction -Execute powershell.exe -Argument '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File C:\VantareServer\ops\run\Invoke-WorkersPlaneAsSvc.ps1 -Script C:\VantareServer\ops\linux\Deploy-Vigilante.ps1 -LaunchLog C:\VantareServer\ops\as\vantare-svc\deploy-vigilante.out'
+Register-ScheduledTask -TaskName Deploy-Vigilante -TaskPath '\Vantare\' -Action $action -User SYSTEM -RunLevel Highest -Force
+Start-ScheduledTask -TaskName Deploy-Vigilante -TaskPath '\Vantare\'
+```
+
+Antes de iniciar, comparar SHA-256 de cada copia con el checkout revisado
+(`Get-FileHash`), incluido el lanzador; verificar ACL con `icacls` como arriba.
+La tarea necesita una distro svc ya en marcha; el helper solo reutiliza ese
+proceso de la cuenta, no solicita ni distribuye su contraseña. Crea el hijo
+sin ventana. La tarea finaliza al lanzarlo: esperar `DEPLOY_DONE` en el archivo
+de salida; su LastTaskResult por sí solo no prueba el despliegue.
+El script guarda scripts/unidades/estado, sin secretos, bajo
+`/var/backups/vigilante/1647c-<UTC>` (root:700), con `SHA256SUMS`.
+Exige dry-run con ambas colas a cero antes de reanudar. Si falla instalación o
+dry-run, restaura el backup y el timer; no vacía colas ni envía pruebas.
+Después verificar el resultado de la siguiente pasada y borrar la tarea
+temporal con `Unregister-ScheduledTask -TaskPath '\Vantare\' -TaskName Deploy-Vigilante -Confirm:$false`.
 
 Procedimiento: validar tests y SQL; parar timer/servicio; guardar scripts y estado;
 instalar ambos scripts root:750 y sus copias ops; migrar sin `--seed`; dry-run

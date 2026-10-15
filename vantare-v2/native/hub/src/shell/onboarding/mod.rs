@@ -157,7 +157,7 @@ const fn most_private(privacy: Privacy) -> Privacy {
 /// Nombre corto del plan que el núcleo confirma para la cuenta; `None` mientras
 /// no haya política vigente. Una cuenta conectada sin confirmar no es «Gratis».
 fn confirmed_plan(access: Access) -> Option<&'static str> {
-    (access.verified && !access.blocked).then(|| match access.catalog {
+    (access.verified && !access.blocked).then_some(match access.catalog {
         CatalogAccess::Free => "Gratis",
         CatalogAccess::LaunchV1 => "Lanzamiento",
         CatalogAccess::Pro => "Pro",

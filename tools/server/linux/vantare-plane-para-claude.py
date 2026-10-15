@@ -3,6 +3,7 @@
 
 import argparse
 from contextlib import nullcontext
+from datetime import datetime, timedelta, timezone
 from email.header import Header
 import hashlib
 from html.parser import HTMLParser
@@ -22,13 +23,15 @@ DB = "vantare-plane-plane-db-1"
 USER_AGENT = "vantare-plane-para-claude/1"
 VERSION = 2
 MAX_PLANE_ATTEMPTS = 3
+RETENTION = timedelta(days=30)
+OVERLAP = timedelta(minutes=5)
 BOT_EMAIL = "workers-bot@vantare.local"
 NTFY_TOPIC_FILE = "/mnt/c/VantareServer/secrets/ntfy-topic"
 PLANE_URL = ("http://sapphireos.tail357eab.ts.net:8088/vantare-simracing-suite/"
              f"projects/{PROJECT}/issues/")
 
-# Leer todos los IDs evita perder una transacción que confirma tarde o varias
-# transiciones dentro de un minuto. Una sola sentencia = una sola instantánea.
+# Una instantánea desde la última marca, con solape para logs asíncronos y
+# transacciones tardías. Primera lectura/recuperación: como máximo 30 días.
 SQL = f"""
 WITH events AS (
     SELECT 'state:' || a.id AS event_id, a.created_at, 'state' AS kind,
@@ -37,6 +40,7 @@ WITH events AS (
            '' AS comment_text, '[]'::json AS via_api, true AS ready
     FROM issue_activities a
     WHERE a.project_id = '{PROJECT}' AND a.deleted_at IS NULL
+      AND a.created_at >= :'since'::timestamptz
       AND a.field = 'state' AND a.verb = 'updated'
     UNION ALL
     -- Crear directamente en Para Claude también era una entrada en el sondeo v1.
@@ -54,6 +58,7 @@ WITH events AS (
         ORDER BY h.created_at, h.id LIMIT 1
     ) first_change ON true
     WHERE a.project_id = '{PROJECT}' AND a.deleted_at IS NULL
+      AND a.created_at >= :'since'::timestamptz
       AND coalesce(a.field, '') = '' AND a.verb = 'created'
     UNION ALL
     SELECT 'comment:' || c.id, c.created_at, 'comment', c.issue_id,
@@ -62,12 +67,14 @@ WITH events AS (
                    FROM api_activity_logs l
                    WHERE l.method = 'POST' AND l.response_code BETWEEN 200 AND 299
                      AND l.path LIKE '%/comments/'
+                     AND l.created_at >= :'since'::timestamptz - interval '5 minutes'
                      AND l.path LIKE '%' || c.issue_id::text || '/comments/'),
            c.created_at <= statement_timestamp() - interval '2 minutes'
     FROM issue_comments c
     JOIN issues ci ON ci.id = c.issue_id
     LEFT JOIN states s ON s.id = ci.state_id
     WHERE c.project_id = '{PROJECT}' AND c.deleted_at IS NULL
+      AND c.created_at >= :'since'::timestamptz
     UNION ALL
     -- La actividad es la identidad canónica también para los comentarios del bot.
     SELECT 'workers:' || a.id || CASE WHEN a.field = 'description'
@@ -83,6 +90,7 @@ WITH events AS (
     JOIN users bot ON bot.id = a.actor_id
     LEFT JOIN issue_comments c ON c.id = a.issue_comment_id
     WHERE a.project_id = '{PROJECT}' AND a.deleted_at IS NULL
+      AND a.created_at >= :'since'::timestamptz
       AND bot.email = '{BOT_EMAIL}' AND bot.is_bot
       AND ((a.field IN ('state', 'description') AND a.verb = 'updated')
         OR (a.field = 'comment' AND a.verb = 'created')
@@ -105,11 +113,18 @@ FROM (
 """
 
 
-def current():
+def scan_since(state, now):
+    mark = datetime.fromisoformat(state["last_scan"]) if isinstance(state, dict) and state.get("last_scan") else now - RETENTION
+    return max(now - RETENTION, min(mark, now) - OVERLAP)
+
+
+def current(since=None):
+    since = since or datetime.now(timezone.utc) - RETENTION
     result = subprocess.run(
         ["docker", "exec", "-i", "-e", "PGOPTIONS=-c default_transaction_read_only=on",
          DB, "sh", "-c",
-         'psql -h /var/run/postgresql -w -X -q -At -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"'],
+         'psql -h /var/run/postgresql -w -X -q -At -v ON_ERROR_STOP=1 -v "since=$1" -U "$POSTGRES_USER" -d "$POSTGRES_DB"',
+         "psql", since.isoformat()],
         input=SQL, capture_output=True, text=True, timeout=30, check=True)
     return classify_api_comments(json.loads(result.stdout))
 
@@ -205,15 +220,22 @@ def payload(row):
             "comentario": comment}
 
 
-def seed(records):
+def seed(records, now=None):
+    now = now or datetime.now(timezone.utc)
     return {"version": VERSION,
+            "last_scan": now.isoformat(),
+            "event_times": {r["event_id"]: r.get("created_at") or now.isoformat() for r in records},
             "observed": sorted({r["event_id"] for r in records}), "pending": [],
             "workers_observed": sorted({r["event_id"] for r in records
                                         if r["kind"].startswith("workers_")}),
             "workers_pending": []}
 
 
-def collect(state, records):
+def collect(state, records, now=None):
+    now = now or datetime.now(timezone.utc)
+    # Migrar IDs antiguos sin reproducirlos. Se podan como máximo en 30 días.
+    times = {key: state.get("event_times", {}).get(key, now.isoformat())
+             for key in set(state["observed"]) | set(state.get("workers_observed", []))}
     observed = set(state["observed"])
     pending = list(state["pending"])
     for row in records:
@@ -241,6 +263,16 @@ def collect(state, records):
                 and (row.get("author_email") or "").casefold() == BOT_EMAIL):
             workers_pending.append({"row": row, "plane_done": False, "ntfy_done": False})
     result.update(workers_observed=sorted(workers_observed), workers_pending=workers_pending)
+    times.update({r["event_id"]: r.get("created_at") or times.get(r["event_id"], now.isoformat())
+                  for r in records if r["event_id"] in observed})
+    keep = {key for key, stamp in times.items()
+            if datetime.fromisoformat(stamp) >= now - RETENTION}
+    keep.update(i["event_id"] for i in pending)
+    keep.update(i["row"]["event_id"] for i in workers_pending)
+    result["observed"] = sorted(observed & keep)
+    result["workers_observed"] = sorted(workers_observed & keep)
+    result["event_times"] = {key: stamp for key, stamp in times.items() if key in keep}
+    result["last_scan"] = now.isoformat()
     return result
 
 
@@ -370,19 +402,19 @@ def post(url, body, event_id=None):
 
 
 def run(records, path, dry=False, reset=False, sender=post, url_file=URL_FILE,
-        plane_sender=notify_plane, ntfy_sender=post_ntfy):
+        plane_sender=notify_plane, ntfy_sender=post_ntfy, scan_at=None):
     state = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
     if state is not None and not isinstance(state, list):
         if not isinstance(state, dict) or state.get("version") != VERSION:
             raise ValueError("Formato de estado desconocido")
     # El formato v1 era una lista de tareas en Para Claude: migración sin avisos.
     if reset or state is None or isinstance(state, list):
-        state = seed(records)
+        state = seed(records, scan_at)
         if not dry:
             save(state, path)
         print(f"estado inicial: {len(records)} registros, sin avisos" + (" (dry-run)" if dry else ""))
         return 0
-    state = collect(state, records)
+    state = collect(state, records, scan_at)
     if dry:
         for item in state["pending"]:
             print(json.dumps(item["payload"], ensure_ascii=False))
@@ -424,7 +456,10 @@ def main(argv=None):
             if lock is not None:
                 import fcntl
                 fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            return run(current(), path, dry=args.dry_run, reset=args.seed)
+            state = json.loads(path.read_text(encoding="utf-8")) if path.exists() else None
+            scan_at = datetime.now(timezone.utc)
+            return run(current(scan_since(state, scan_at)), path, dry=args.dry_run,
+                       reset=args.seed, scan_at=scan_at)
     except BlockingIOError:
         print("otra pasada en curso; sin cambios")
         return 0

@@ -55,6 +55,19 @@ Cola guardada atómicamente antes de enviar; acuse guardado después de cada éx
 Un lock serializa pasadas manuales y las del timer. Los IDs de tareas ocultas
 se recuerdan para no reproducir el historial al restaurarlas.
 
+1647c/P3-8: los cuerpos de `api_activity_logs` se decodifican individualmente
+en Python; vacío, no JSON u objeto inválido se omite y registra solo ID/clase.
+No se imprime su contenido ni se abortan las otras actividades.
+1647c/P3-9: `last_scan` guarda el inicio de la consulta confirmada, con solape
+de cinco minutos para comentarios en espera y transacciones tardías. La primera
+lectura y la recuperación tras una parada consultan como máximo 30 días; cada
+fuente SQL y los logs API llevan límite temporal. Se podan IDs y fechas de
+eventos anteriores a 30 días; los IDs legados migran sin reavisar y caducan en
+30 días como máximo. Se conservan siempre las colas sin confirmar y sus IDs.
+Límite explícito: una transacción que confirme más de cinco minutos tarde o una
+parada superior a 30 días puede dejar eventos fuera; revisar manualmente esos
+incidentes. No se promete recuperar indefinidamente todo el historial.
+
 La migración desde v2 siembra **solo los IDs antiguos del bot**, conservando
 observados y pendientes T3. Primera instalación/migración v1 también sin avisos
 históricos. `--seed` descarta todas las colas: no usar en una actualización normal.
@@ -62,7 +75,7 @@ históricos. `--seed` descarta todas las colas: no usar en una actualización no
 
 La notificación de Plane se ejecuta en una transacción con lock de actividad;
 comprueba la campana de cada suscriptor. Los errores que Plane captura y escribe
-se convierten en rollback/reintento sin filtrar ese mensaje. Una campana existente
+se convierten en rollback/reintento sin filtrar ese mensaje. La campana
 se reintenta como máximo tres veces por actividad (contador persistido). Al
 tercer fallo se registra `campana abandonada` con ID y clase del error, se deja
 de intentar ese destino y ntfy sigue independiente. Revisar ese registro para

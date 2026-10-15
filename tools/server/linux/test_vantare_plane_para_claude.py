@@ -2,6 +2,7 @@
 
 from contextlib import redirect_stderr, redirect_stdout
 import copy
+from datetime import datetime, timedelta, timezone
 import importlib.util
 import io
 import json
@@ -275,6 +276,43 @@ class WatcherTests(unittest.TestCase):
 
     def test_api_response_is_never_cast_to_json_in_sql(self):
         self.assertNotIn("response_body::json", w.SQL)
+
+    def test_scan_window_uses_mark_overlap_and_bounded_catchup(self):
+        now = datetime(2026, 10, 15, tzinfo=timezone.utc)
+        self.assertEqual(w.scan_since(None, now), now - w.RETENTION)
+        self.assertEqual(w.scan_since({"last_scan": (now - timedelta(minutes=1)).isoformat()}, now),
+                         now - timedelta(minutes=6))
+        self.assertEqual(w.scan_since({"last_scan": (now - timedelta(days=60)).isoformat()}, now),
+                         now - w.RETENTION)
+        self.assertEqual(w.SQL.count("created_at >= :'since'::timestamptz"), 5)
+
+    def test_pruning_preserves_pending_and_overlap_deduplication(self):
+        now = datetime(2026, 10, 15, tzinfo=timezone.utc)
+        old = (now - timedelta(days=31)).isoformat()
+        recent = (now - timedelta(minutes=3)).isoformat()
+        state = w.seed([row("old", created_at=old), row("pending", created_at=old),
+                        row("recent", created_at=recent)], now)
+        state["pending"] = [{"event_id": "pending", "payload": w.payload(row())}]
+        result = w.collect(state, [row("recent", created_at=recent),
+                                  comment("late", created_at=recent)], now)
+        self.assertNotIn("old", result["observed"])
+        self.assertNotIn("old", result["event_times"])
+        self.assertIn("pending", result["observed"])
+        self.assertIn("recent", result["observed"])
+        self.assertEqual(len(result["pending"]), 2)
+        self.assertEqual(w.collect(result, [comment("late", created_at=recent)], now)["pending"],
+                         result["pending"])
+
+    def test_legacy_ids_migrate_without_replay_then_expire(self):
+        now = datetime(2026, 10, 15, tzinfo=timezone.utc)
+        state = {"version": 2, "observed": ["old"], "pending": [],
+                 "workers_observed": ["workers:old"], "workers_pending": []}
+        migrated = w.collect(state, [row("old")], now)
+        self.assertEqual(migrated["pending"], [])
+        pruned = w.collect(migrated, [], now + timedelta(days=31))
+        self.assertEqual(pruned["observed"], [])
+        self.assertEqual(pruned["workers_observed"], [])
+        self.assertEqual(pruned["event_times"], {})
 
     def test_post_user_agent_idempotency_and_no_redirect(self):
         response = Mock(status=202)

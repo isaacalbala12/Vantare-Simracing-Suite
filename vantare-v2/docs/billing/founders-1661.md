@@ -79,10 +79,11 @@ para compras históricas y reembolsos. El script no exige ni modifica ese produc
 El producto Founders existente se configura mediante el fragmento anterior;
 el script valida 50 EUR y prepara el plan
 **offline**, sin crear un producto real por su cuenta.
-La aplicación del catálogo completo en producción queda bloqueada: los productos
-recurrentes heredados de #1620 todavía no implementan el nuevo primer periodo
-Pro y la no acumulación del código. VANTA-42/#1624 deben reconciliarlo antes de
-activar esa campaña. Las simulaciones de sandbox conservan la historia técnica.
+El catálogo de suscripciones usa ahora descuentos `once` sobre productos
+normales; Pro anual normal es 5999 céntimos. No hay bloqueo de modelo para
+aplicarlo: `production_apply_ready: true` significa preparación técnica, no
+validación contra producción ni autorización de ejecutar el comando aquí.
+[Tabla, operación y comando para Isaac](isa-1620-polar-launch-catalog.md).
 
 ## Pago, reembolso y borrado
 
@@ -177,3 +178,20 @@ Antes de abrir venta, Isaac debe comprobar en sandbox cómo llegan `net_amount`,
 `tax_behavior` nulo: no se asume IVA incluido ni se cambia ese dato automáticamente.
 El catálogo offline admite ese dato nulo para Founders. No se han hecho pruebas
 contra Polar real. El interruptor de sandbox no modifica producción.
+
+## Campaña de suscripciones · cierre de ronda 2
+
+Las fechas de campaña son independientes de la venta sin fecha final de Founders.
+Se centralizan por entorno en `supabase/functions/scripts/polar-launch-prices.json`
+(`launch_windows`). La configuración de cada suscripción añade
+`polar_launch_discount_id`; el script devuelve sus IDs reales después de aplicar.
+`creator_discounts` relaciona código exacto con descuento separado. El endpoint
+existente admite opcionalmente `creatorCode` para suscripciones fuera de campaña;
+los campos de descuento/importe/ID Polar enviados por cliente se rechazan.
+
+El servidor decide oferta y trial antes de reclamar/reutilizar el intento. Si
+falta el descuento durante la campaña devuelve 503 (no cobra el precio normal
+por sorpresa); creador + campaña devuelve 409 `launch_creator_not_combinable`.
+Cambiar oferta altera la huella de catálogo del intento y evita reutilizar
+una sesión de otra oferta. Las fechas de los propios descuentos Polar son la
+segunda barrera. Ventana: 26-oct a 26-nov de 2026, 19:00 Madrid.

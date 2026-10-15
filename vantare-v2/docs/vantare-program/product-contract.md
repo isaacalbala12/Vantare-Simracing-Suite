@@ -91,22 +91,32 @@ la primera variante de Engineer. El tono es profesional y cercano.
 - Todo Pro.
 - Acceso a Nightly/Beta privada, tests, encuestas y previews activas.
 
-Durante el mes de apertura de la **beta pública** (desde el 26-oct-2026
-19:00 Europe/Madrid), el primer periodo Pro cuesta **3,99 EUR mensual o
-39,90 EUR anual**. Después renueva a **5,99 EUR/mes o 59,99 EUR/año**.
-La ventaja del primer periodo no fija el precio de las renovaciones.
-Pro Plus es el extra para Nightly/Beta privada, tests, encuestas y previews;
-no se confunde con Founders ni con un rol operativo.
-El código de creador **no se combina con el precio del primer periodo**.
-Los informes se habilitan **desde el segundo mes**. No se prometen informes
-el primer día por adquirir un plan.
+Durante el mes de apertura de la **beta pública**, del 26-oct-2026 19:00 al
+26-nov-2026 19:00 Europe/Madrid (apertura inclusiva, cierre exclusivo), nuestro
+checkout aplica automáticamente un descuento Polar de duración **`once`** sobre
+el producto normal. No se crean productos recurrentes a precio reducido:
 
-Los borradores técnicos anteriores de #1620 describían productos recurrentes
-con precio de lanzamiento permanente y acumulación de creador. Ese modelo
-queda sustituido por esta decisión de Isaac; no se debe publicar ese catálogo
-heredado sin reconciliar su cobro del primer periodo y las renovaciones.
-La compra web se coordina en VANTA-42; este contrato no acredita activación
-ni cobros reales. La contabilidad de creadores sigue sin pagos automáticos.
+| Plan | Primer periodo | Renovaciones | Descuento fijo una vez |
+|---|---:|---:|---:|
+| Pro mensual | 3,99 EUR | 5,99 EUR/mes | 2,00 EUR |
+| Pro anual | 39,90 EUR | 59,99 EUR/año | 20,09 EUR |
+| Pro Plus mensual | 6,99 EUR | 9,99 EUR/mes | 3,00 EUR |
+| Pro Plus anual | 69,90 EUR | 99,90 EUR/año | 30,00 EUR |
+
+El código de creador **no se combina con el precio del primer periodo**.
+Polar recibe un solo `discount_id`, sin entrada libre de códigos; nuestro servidor
+rechaza `creatorCode` durante la campaña. Fuera de ella solo acepta códigos
+exactos registrados en la configuración y aplica su descuento separado (-20 %,
+repeating dos meses, sobre precio normal). No hay trial cuando se aplica descuento.
+Pro normal mantiene su trial configurado; Pro Plus y Founders no tienen trial.
+Los informes se habilitan **desde el segundo mes**, no el primer día por comprar.
+
+Este modelo sustituye los productos de lanzamiento permanentes de #1620.
+Los IDs históricos se conservan para lectura/reembolso, pero no se seleccionan
+para nuevos checkouts. El script prepara productos normales, cuatro descuentos
+`once` con fechas y, si se pide, el descuento de creador separado. Crear catálogo
+no abre por sí solo ventas ni prueba despliegue; la contabilidad de creadores
+sigue sin pagos automáticos. Compra web coordinada en VANTA-42.
 
 Inventario real comunicado por Isaac el 15-oct-2026: Pro mensual 4,99 EUR,
 Launch Edition 30 EUR (retirada de oferta) y Founders 50 EUR. Aún no existen

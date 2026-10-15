@@ -30,6 +30,7 @@ export interface CheckoutKeyConfig {
   polar_product_id: string;
   // Separate launch price; grants the same plan, never selected by app checkout.
   polar_launch_product_id?: string;
+  polar_launch_discount_id?: string;
   polar_price_ids: string[];
   plan_sku: CheckoutKey;
   billing_type: "one_time" | "subscription";
@@ -47,6 +48,7 @@ export interface PolarProductMap {
   environment: BillingEnvironment;
   catalog_version: string;
   organization_id: string;
+  creator_discounts?: Record<string, string>;
   checkout_keys: Partial<Record<CheckoutKey, CheckoutKeyConfig>>;
   product_id_to_checkout_key: Record<string, CheckoutKey>;
   price_id_to_checkout_key: Record<string, CheckoutKey>;
@@ -97,6 +99,7 @@ const EXPECTED_KEY_META: Record<
     CheckoutKeyConfig,
     | "polar_product_id"
     | "polar_launch_product_id"
+    | "polar_launch_discount_id"
     | "polar_price_ids"
     | "active"
     | "trial"
@@ -261,10 +264,20 @@ function parseConfig(
     );
   }
 
+  if (
+    value.polar_launch_discount_id !== undefined &&
+    (!isUuid(value.polar_launch_discount_id) || key === "founders" ||
+      key === "launch_lifetime")
+  ) {
+    return fail("mapping_invalid_key_meta", "Invalid launch discount");
+  }
   const config: CheckoutKeyConfig = {
     polar_product_id: value.polar_product_id,
     ...(value.polar_launch_product_id
       ? { polar_launch_product_id: value.polar_launch_product_id as string }
+      : {}),
+    ...(value.polar_launch_discount_id
+      ? { polar_launch_discount_id: value.polar_launch_discount_id as string }
       : {}),
     polar_price_ids: priceIds,
     plan_sku: value.plan_sku as CheckoutKey,
@@ -368,6 +381,15 @@ export function loadPolarProductMap(
     );
   }
 
+  if (
+    parsed.creator_discounts !== undefined &&
+    (!isRecord(parsed.creator_discounts) ||
+      Object.entries(parsed.creator_discounts).some(([code, id]) =>
+        !/^[A-Za-z0-9]{3,32}$/.test(code) || !isUuid(id)
+      ))
+  ) {
+    return fail("mapping_invalid_shape", "Invalid creator discounts");
+  }
   const checkoutKeys: Partial<Record<CheckoutKey, CheckoutKeyConfig>> = {};
   for (const [rawKey, rawConfig] of Object.entries(parsed.checkout_keys)) {
     if (!isAllowedCheckoutProductKey(rawKey)) {
@@ -487,6 +509,11 @@ export function loadPolarProductMap(
       environment: parsed.environment,
       catalog_version: parsed.catalog_version,
       organization_id: parsed.organization_id,
+      ...(parsed.creator_discounts
+        ? {
+          creator_discounts: parsed.creator_discounts as Record<string, string>,
+        }
+        : {}),
       checkout_keys: checkoutKeys,
       product_id_to_checkout_key: productInverse,
       price_id_to_checkout_key: priceInverse,

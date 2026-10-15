@@ -6,6 +6,7 @@ import type {
 } from "./mapping.ts";
 
 export type CreateCheckoutParams = {
+  discountId?: string | null;
   productId: string;
   userId: string;
   email: string | null;
@@ -305,6 +306,17 @@ export async function createPolarCheckoutSession(
   params: CreateCheckoutParams,
   deps: PolarClientDeps = {},
 ): Promise<CreateCheckoutResult> {
+  if (
+    params.discountId &&
+    (params.productKey === "founders" || params.trial.enabled ||
+      !/^[0-9a-f-]{36}$/i.test(params.discountId))
+  ) {
+    throw new PolarClientError(
+      "invalid_checkout_offer",
+      "Invalid checkout offer",
+      400,
+    );
+  }
   const token = requireToken(deps);
   const runtimeEnvironment = requirePolarEnvironment(params.environment);
   const baseUrl = apiBase(runtimeEnvironment, deps);
@@ -315,6 +327,8 @@ export async function createPolarCheckoutSession(
     success_url: successUrl,
     return_url: cancelUrl,
     allow_trial: params.trial.enabled,
+    allow_discount_codes: false,
+    ...(params.discountId ? { discount_id: params.discountId } : {}),
     metadata: {
       user_id: params.userId,
       product_key: params.productKey,

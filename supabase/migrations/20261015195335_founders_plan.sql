@@ -45,6 +45,7 @@ create table private.billing_payment_incidents (
  created_at timestamptz not null default now(),
  primary key(environment,resource_id,reason)
 );
+create index billing_payment_incidents_account on private.billing_payment_incidents(environment,account_id,created_at desc);
 alter table private.billing_payment_incidents enable row level security;
 revoke all on private.billing_payment_incidents from public,anon,authenticated,service_role;
 

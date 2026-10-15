@@ -341,3 +341,21 @@ Deno.test("Founders transition stops renewal idempotently without revoke or refu
     )
   );
 });
+
+Deno.test("once checkout sends one server-selected discount, no trial or customer discount entry", async () => {
+  let body: Record<string, unknown> = {};
+  await createPolarCheckoutSession(
+    { ...checkout, discountId: "00000000-0000-4000-8000-000000001680" },
+    checkoutDeps(async (input, init) => {
+      body = await new Request(input, init).json();
+      return Response.json({
+        id: "test",
+        url: "https://sandbox.polar.sh/checkout/once",
+      });
+    }),
+  );
+  assertEquals(body.discount_id, "00000000-0000-4000-8000-000000001680");
+  assertEquals(body.allow_discount_codes, false);
+  assertEquals(body.allow_trial, false);
+  assertEquals(body.trial_interval, undefined);
+});

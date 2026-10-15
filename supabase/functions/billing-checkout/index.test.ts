@@ -330,3 +330,124 @@ Deno.test("Founders uses the existing authenticated idempotent checkout with its
   assertEquals((await second.json()).reused, true);
   assertEquals(calls, 1);
 });
+
+function campaignDeps(at: string, withDiscount = true) {
+  const base = deps();
+  const raw = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON);
+  if (withDiscount) {
+    raw.checkout_keys.pro_monthly.polar_launch_discount_id =
+      "00000000-0000-4000-8000-000000001680";
+  }
+  raw.creator_discounts = { ISAAC: "00000000-0000-4000-8000-000000001681" };
+  return {
+    ...base,
+    now: () => new Date(at),
+    loadMap: () =>
+      loadPolarProductMap(JSON.stringify(raw), { environment: "sandbox" }),
+  };
+}
+Deno.test("once campaign: opening included, closing excluded, normal product and first-period discount", async () => {
+  for (
+    const [at, id] of [
+      ["2026-10-26T17:59:59.999Z", null],
+      ["2026-10-26T18:00:00Z", "00000000-0000-4000-8000-000000001680"],
+      ["2026-11-26T17:59:59.999Z", "00000000-0000-4000-8000-000000001680"],
+      ["2026-11-26T18:00:00Z", null],
+    ] as const
+  ) {
+    let sent: Record<string, unknown> = {};
+    const d = campaignDeps(at);
+    const response = await handleCheckoutRequest(
+      post({ productKey: "pro_monthly", attemptId: ATTEMPT_ID }),
+      {
+        ...d,
+        createCheckout: async (params) => {
+          sent = Object.fromEntries(Object.entries(params));
+          return {
+            url: "https://sandbox.polar.sh/checkout/campaign",
+            checkoutId: "test",
+          };
+        },
+      },
+    );
+    assertEquals(response.status, 200);
+    assertEquals(sent.discountId ?? null, id);
+    assertEquals(
+      sent.productId,
+      JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON).checkout_keys.pro_monthly
+        .polar_product_id,
+    );
+    if (id) assertEquals(sent.trial, { enabled: false });
+  }
+});
+Deno.test("once campaign: missing mapping fails closed and creator cannot combine", async () => {
+  const missing = await handleCheckoutRequest(
+    post({ productKey: "pro_monthly", attemptId: ATTEMPT_ID }),
+    campaignDeps("2026-10-26T18:00:00Z", false),
+  );
+  assertEquals(missing.status, 503);
+  const combined = await handleCheckoutRequest(
+    post({
+      productKey: "pro_monthly",
+      attemptId: ATTEMPT_ID,
+      creatorCode: "ISAAC",
+    }),
+    campaignDeps("2026-10-26T18:00:00Z"),
+  );
+  assertEquals(combined.status, 409);
+  assertEquals((await combined.json()).error, "launch_creator_not_combinable");
+});
+Deno.test("once campaign: outside window only exact configured creator code is accepted", async () => {
+  for (
+    const [code, status] of [["ISAAC", 200], ["isaac", 400], [
+      "OTHER",
+      400,
+    ]] as const
+  ) {
+    let sent: Record<string, unknown> = {};
+    const d = campaignDeps("2026-11-26T18:00:00Z");
+    const response = await handleCheckoutRequest(
+      post({
+        productKey: "pro_monthly",
+        attemptId: ATTEMPT_ID,
+        creatorCode: code,
+      }),
+      {
+        ...d,
+        createCheckout: async (params) => {
+          sent = Object.fromEntries(Object.entries(params));
+          return {
+            url: "https://sandbox.polar.sh/checkout/creator",
+            checkoutId: "test",
+          };
+        },
+      },
+    );
+    assertEquals(response.status, status);
+    if (status === 200) {
+      assertEquals(sent.discountId, "00000000-0000-4000-8000-000000001681");
+      assertEquals(sent.trial, { enabled: false });
+    }
+  }
+});
+Deno.test("once campaign: offer fingerprint prevents reusing a checkout across offer changes", async () => {
+  const versions: string[] = [];
+  for (const date of ["2026-10-26T18:00:00Z", "2026-11-26T18:00:00Z"]) {
+    const d = campaignDeps(date);
+    const response = await handleCheckoutRequest(
+      post({ productKey: "pro_monthly", attemptId: ATTEMPT_ID }),
+      {
+        ...d,
+        attempts: {
+          ...d.attempts,
+          claim: async (input) => {
+            versions.push(input.catalogVersion);
+            return { kind: "claimed" };
+          },
+        },
+      },
+    );
+    assertEquals(response.status, 200);
+  }
+  assertEquals(versions[0] === versions[1], false);
+});

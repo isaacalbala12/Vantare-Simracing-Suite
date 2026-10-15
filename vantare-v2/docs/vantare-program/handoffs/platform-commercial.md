@@ -1,15 +1,40 @@
 ## VANTA-83 / #1661 · ronda 2 de seguridad (15/10/2026)
 
-Review R1 NO APTO: B1/I1 y M1–M4 corregidos en validación. Admisión SQL
-persistente de Founders por cuenta/entorno antes de grants, rechazo de altas
-nuevas Launch, incidencias críticas Owner y compatibilidad de replay/reembolso.
-Venta separada por entorno; precio configurado e IVA coherente; reactivaciones
-Pro vuelven a cancelar renovación con confirmación por revisión remota.
-No hay reembolso automático ni reactivación de Pro al devolver Founders.
-Cuatro regresiones Edge RED contra ec47efa5; SQL R2 RED sin configuración por
-entorno. Resultados finales y SHA se añaden al cerrar. Pro anual corregido a
-5999; Pro Plus intacto. Plan offline producción solicitado, sin token/--apply;
-aplicación real sigue bloqueada por la campaña de primer periodo heredada.
+Review R1 NO APTO: B1/I1 y M1–M4 corregidos. Admisión SQL persistente de
+Founders por cuenta/entorno antes del grant; rechazo de Launch nueva con
+cuarentena e incidencia crítica Owner, sin cortar replay/reembolso histórico.
+Checkout bloqueado ante admisión o pago recibido pendiente con binding.
+Venta separada por entorno, ACL verificadas, precio configurado e IVA coherente;
+reactivar Pro vuelve a cancelar renovación con recibo por revisión remota.
+Una confirmación vieja no completa una reactivación posterior. Reembolsar
+Founders no reactiva Pro (decisión aceptada), ni hay refunds automáticos.
+
+Decisión adicional de Isaac: campaña de beta pública con **descuento `once`**
+sobre productos normales, sin productos recurrentes de lanzamiento nuevos.
+Pro 599→399 / 5999→3990, Plus 999→699 / 9990→6990; renueva siempre al normal.
+Ventana por entorno en JSON, producción 26-oct→26-nov 19:00 Madrid.
+Checkout aplica descuento servidor, sin trial ni entrada libre de códigos;
+rechaza creador + campaña, valida código exacto fuera de ella y cambia la
+huella del intento al cambiar oferta. Los tests del modelo retirado de productos
+separados se sustituyen por tests de precio normal, `once`, fechas, no acumulación,
+historia, preflight, ownership, reintentos, token y salida exclusiva.
+
+RED: cuatro regresiones webhook contra ec47efa5; SQL R2 sin columna de entorno;
+cuatro regresiones de checkout once contra handler original. GREEN Mac:
+188 pgTAP y 176 Edge PASS tras cambio de modelo. Check workspace y Clippy del
+crate Owner PASS; Nextest Owner en curso. Clippy workspace falló por RAM dos
+veces, evidencia conservada; alcance incremental de crate tocado, un job,
+sin sccache, VANTARE_CARGO_MIN_GB=0. Sin repetir telemetría/lifecycle: runtime,
+IPC y servicios Rust no cambian en R2; validación completa anterior conservada.
+
+Plan completo regenerado sin token/--apply en servidor:
+`C:/VantareServer/evidence/polar-auditoria/plan-catalogo.txt`,
+`production_apply_ready: true`. Comando exacto (no ejecutado): fichero vecino
+`aplicar-catalogo.txt`; bundle Mac `~/orq/polar-auditoria/isa-1661` fuera del
+worktree desechable. Isaac debe aportar mapa completo, token en entorno,
+verificar IVA en sandbox y revisar/publicar los nuevos productos draft.
+No consultas ni cambios contra Polar real; web intacta, #1624 debe rebasarse.
+Siguiente: cerrar gate Owner, SHA/push y revisión R2 del PR #1666 a nightly.
 
 ## VANTA-83 / #1661 · Plan Founders (15/10/2026)
 

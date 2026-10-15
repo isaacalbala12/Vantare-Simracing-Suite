@@ -2989,3 +2989,59 @@ Deno.test("R2 configured Founders price accepts tax-inclusive net and preserves 
     "processed",
   );
 });
+
+Deno.test("R2 historical Launch replays and refunds even with inactive read mapping, without new admission", async () => {
+  const raw = JSON.parse(VALID_POLAR_PRODUCT_MAP_JSON);
+  raw.checkout_keys.launch_lifetime.active = false;
+  const deps = {
+    ...processDeps(
+      createMockSupabase(),
+      () =>
+        loadPolarProductMap(JSON.stringify(raw), { environment: "sandbox" }),
+    ),
+    admitLifetimeOrder: async () => {
+      throw Error("historical order must not be admitted again");
+    },
+  };
+  await deps.orderRefundLedger.recordOrder({
+    environment: "sandbox",
+    orderId: "historical-r2",
+    userId: USER_ID,
+    productId: LAUNCH_PRODUCT_ID,
+    checkoutId: null,
+    status: "paid",
+    paid: true,
+    netAmount: 3000,
+    currency: "eur",
+    reportedRefundedAmount: 0,
+    modifiedAt: "2026-07-08T12:00:00Z",
+    snapshotHash: "historical-fixture",
+  });
+  assertEquals(
+    (await processPolarWebhookEvent(
+      { type: "order.paid", data: paidOrderData({ id: "historical-r2" }) },
+      "historical-r2",
+      deps,
+    )).status,
+    "processed",
+  );
+  assertEquals([...deps.orderRefundLedger.grants.values()], [
+    "active",
+    "active",
+  ]);
+  assertEquals(
+    (await processPolarWebhookEvent(
+      {
+        type: "refund.updated",
+        data: succeededRefundData({ order_id: "historical-r2" }),
+      },
+      "historical-r2-refund",
+      deps,
+    )).status,
+    "processed",
+  );
+  assertEquals([...deps.orderRefundLedger.grants.values()], [
+    "revoked",
+    "revoked",
+  ]);
+});

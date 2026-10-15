@@ -1,3 +1,4 @@
+import { selectCheckoutOffer } from "../_shared/launch-offer.ts";
 import { type PurchasePolicy, purchasePolicy } from "../_shared/founders.ts";
 import { type AuthResult, requireUserAuth } from "../_shared/auth.ts";
 import {
@@ -20,6 +21,7 @@ import { isUuid, readJsonObject } from "../_shared/request.ts";
 import { errorResponse, jsonResponse } from "../_shared/responses.ts";
 
 export type CheckoutDeps = {
+  now?: () => Date;
   requireAuth?: (req: Request) => Promise<AuthResult>;
   loadMap?: typeof loadPolarProductMap;
   createCheckout?: (
@@ -32,6 +34,10 @@ export type CheckoutDeps = {
 
 const MAX_BODY_BYTES = 4096;
 const FORBIDDEN_CLIENT_FIELDS = [
+  "discountId",
+  "discount_id",
+  "discountCode",
+  "discount_code",
   "priceId",
   "price_id",
   "productId",
@@ -83,7 +89,7 @@ export async function handleCheckoutRequest(
       );
     }
   }
-  const allowed = new Set(["productKey", "attemptId"]);
+  const allowed = new Set(["productKey", "attemptId", "creatorCode"]);
   if (Object.keys(body).some((key) => !allowed.has(key))) {
     return errorResponse(
       "unexpected_field",
@@ -114,6 +120,32 @@ export async function handleCheckoutRequest(
   const resolved = resolveCheckoutKey(mapping.map, productKey);
   if (!resolved.ok) return errorResponse(resolved.code, resolved.message, 409);
 
+  if (
+    body.creatorCode !== undefined &&
+    (typeof body.creatorCode !== "string" ||
+      !/^[A-Za-z0-9]{3,32}$/.test(body.creatorCode))
+  ) {
+    return errorResponse(
+      "invalid_creator_code",
+      "Creator code is invalid",
+      400,
+    );
+  }
+  const offer = selectCheckoutOffer(
+    mapping.map,
+    resolved.key,
+    resolved.config,
+    deps.now?.() ?? new Date(),
+    body.creatorCode as string | undefined,
+  );
+  if (!offer.ok) {
+    return errorResponse(
+      offer.reason,
+      "Checkout offer is unavailable",
+      offer.status,
+    );
+  }
+
   let policy: PurchasePolicy;
   try {
     policy = await (deps.purchasePolicy ?? purchasePolicy)(
@@ -141,7 +173,7 @@ export async function handleCheckoutRequest(
     attemptId,
     checkoutKey: resolved.key,
     environment: mapping.map.environment,
-    catalogVersion: mapping.map.catalog_version,
+    catalogVersion: `${mapping.map.catalog_version}:${offer.fingerprint}`,
   } as const;
   let attempts: CheckoutAttemptStore;
   try {
@@ -208,7 +240,8 @@ export async function handleCheckoutRequest(
         capabilities: resolved.config.capabilities,
         channels: resolved.config.channels,
         launchScopeVersion: resolved.config.launch_scope_version,
-        trial: resolved.config.trial,
+        trial: offer.trial,
+        discountId: offer.discountId,
       },
       { signal: req.signal },
     );

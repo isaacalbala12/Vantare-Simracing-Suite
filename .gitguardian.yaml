@@ -1,0 +1,13 @@
+# Configuración de GitGuardian (app y CLI leen este fichero en la raíz).
+# Solo silencia los dos ficheros de fixtures de triaje señalados en el issue
+# #1652 (seis alertas heredadas de #1602, valores sintéticos de prueba). No
+# cubre ningún otro fichero: un secreto real en cualquier otro sitio sigue
+# alertando. Si algún día se tocan estos ficheros, revisar esta lista.
+# Formato: https://github.com/GitGuardian/ggshield (doc/schemas y
+# `rust/config/src/user_config.rs`: claves `secret.ignored_paths`).
+version: 2
+
+secret:
+  ignored_paths:
+    - 'tools/triage/test_review_1602.py'
+    - 'vantare-v2/native/services/src/triage/tests.rs'

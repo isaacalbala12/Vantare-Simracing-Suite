@@ -1,3 +1,30 @@
+## VANTA-42 / PR #1663 · R6 · Acabado y actualización de base (16/10/2026)
+
+Aprobación de seguridad R5 recibida por el orquestador; informe review-r5.md.
+Fusionado origin/nightly eb553c7fe905c225d66ef8718eabb72fa84dbb49 en la rama
+vantareapp/isa-1620-checkout-web, sin reescritura ni promoción de canal.
+Único conflicto: handoff; se conservan completas las entradas VANTA-42 y1627.
+Polar compartido conserva guard2/marcador y helper admin sandbox de nightly.
+[Condición formal de activación](../../billing/checkout-review-r5.md):
+refund apagado hasta sandbox net/gross, inventario de pedidos y receptor Owner
+visible con ACK durable, con evidencia y decisión de Isaac por entorno.
+
+Web: descuento sin archivar/sin código/duration_in_months=null, validación
+estricta incluso si faltan campos. Sin versiónSetup, CTA sin href; before
+permanece informativo/Discord. Prueba Chrome con JS desactivado y clic central:
+cero pestañas nuevas. Retirados headers de launch-edition y textos fallback
+de30EUR/snapshot/cierre; Founders usa la fuente común y permanece deshabilitado.
+
+Checks sobre nueva base:77migraciones/235pgTAP/13carreras;662EdgePASS/2ignored
+preexistentes;74NodeSQLite;E2E4suscripciones->webhookreal->licencia;48capturas;
+125assets reproducibles;fmt/calidad456/superficie/diff PASS. Native sin cambios
+propios respecto a nightly: no se repiten gates Rust/telemetría.
+Evidencia ~/evidence/web-compra/r6-*, SHAs/bares en buzón web-compra.
+Sin API real/GitHub push/CI remota/deploy/release ni merge de canal.
+Orquestador publica backend y actualiza PR1663/PlaneVANTA-42; último estado
+comunicado En curso. Descarga sigue sin versión, Founders apagado y venta
+cerrada hasta configuración/QA/autorización de Isaac.
+
 ## VANTA-42 / #1620 · R5 · Compensación restringida y oferta web (16/10/2026)
 
 Rama backend vantareapp/isa-1620-checkout-web, base nightly3f82af8, draft#1663.

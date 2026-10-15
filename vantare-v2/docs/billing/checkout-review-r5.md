@@ -4,6 +4,30 @@ Instrucción vigente del orquestador tras review-r4. Sustituye las condiciones
 financieras R4: **un webhook pendiente o una cuarentena genérica NO son motivo
 de reembolso automático**. Ramas aisladas; sin despliegue ni API real.
 
+## Condición formal de activación · R6
+
+El reembolso automático permanece APAGADO (enabled=false, amount_basis=NULL).
+Isaac solo lo activa después de completar y registrar estos tres requisitos,
+por separado para cada entorno:
+
+1. Sandbox autorizado con pedidos reales: determinar net/gross y verificar
+   neto/IVA/total, refunds parciales/completos, agregado y recuperación tras
+   timeout/ACK perdido. Conservar evidencia de importes y contrato observado;
+   los dobles locales no sustituyen esta comprobación.
+2. Inventario de solo lectura de pedidos, bindings/intentos sellados,
+   disposiciones terminales e inbox. Revisar históricos, enlaces de creador,
+   cuarentenas y pendientes. Sin vínculo propio o sin resolución no aplicable,
+   el destino sigue siendo incidencia Owner, nunca refund automático.
+3. Receptor privado Owner configurado, aviso visible y ACK durable probado.
+   Confirmar que persiste/muestra el aviso antes de responder ACK; probar fallo,
+   reintento y ausencia de pérdida/duplicación. Sin ese ensayo no habilitar.
+
+Registrar fecha/entorno, SHA revisado, resultado de los tres gates y decisión
+de Isaac sin payloads/PII ni secretos. Después fijar la base verificada net/gross
+y habilitar por el canal SQL del operador. No se proporciona activación remota
+ni se ejecuta en esta entrega. Ante divergencia, apagar y conservar jobs/avisos
+para conciliación; no desbloquear seleccionando otro contrato a ciegas.
+
 ## A1: alcance e interruptor
 
 Migración checkout_review_safety: private.billing_compensation_policy por entorno,

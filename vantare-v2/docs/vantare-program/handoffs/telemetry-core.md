@@ -16,6 +16,32 @@ Leídos [#1562](https://github.com/isaacalbala12/Vantare-Simracing-Suite/issues/
 
 ## 3. Estado real y canal
 
+### #1638 / VANTA-33 — fase B preparada y esperando LMU
+
+15-oct-2026: LMU instalado por Isaac en D:/SteamLibrary; no se ha lanzado.
+Core QA y test UI precompilados por cola/MIN_GB=0/jobs2/target propio.
+Dos tests de proyecciones offline PASS y guardas Python **4/4 PASS**.
+El test físico exacto existe en el binario; no se ejecuta todavía con juego.
+Código de preparación `0927d94f3` y ajuste menor del inicio de lock, sin cambio
+Rust. [Procedimiento y límites](../../telemetria/session-alerts-contract.md).
+
+Supervisor oculto Python PID **16280**, `waiting` verificado desde otra llamada.
+Descriptor `C:/tmp/1638-phase-b-active.json`; logs/resumen en
+`C:/VantareServer/logs/1638-phase-b-20261015-204225`. «LISTO FASE B» escrito en
+el buzón. Isaac cargará práctica Hypercar en boxes: proceso único LMU + SHM con
+parrilla/jugador estables en dos sondeos disparan automáticamente Core/pipe QA
+y test precompilado. Exige un test válido, 22 checks y 18 proyecciones; log y
+JSON final más aviso al buzón, sin ventanas, snapshots ni control del juego.
+Sigue pendiente el resultado físico y después la carrera con formación.
+
+Se detectó reaparecida la reserva propia antigua #1638 rest-discard-01-a1-01
+(PID 13928 ausente, 14-oct): verificado el propietario, se archivó reversiblemente
+con nombre `pc-medicion.1638-expired-20261015-204225.json`; ya no bloquea la espera.
+El supervisor respeta reservas vigentes y valida hashes de los binarios.
+Rechazo de duplicado probado (exit 1); principal continúa esperando. Cancelar
+antes de QA mediante `STOP` en el log-dir. Plane permanece **En curso**,
+PR draft #1664 a nightly. Publicar preparado no significa QA física aprobada.
+
 ### #1638 / VANTA-33 — revisión de gates del servidor (R2)
 
 El orquestador probó `25885bf5b`; log original

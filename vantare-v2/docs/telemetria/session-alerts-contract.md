@@ -91,3 +91,49 @@ transición y cuerpos REST/bytes sanitizados con sus relojes. El smoke anterior
 no graba esas transiciones: cuando Isaac indique que está listo, se prepara y
 ejecuta esa adquisición de telemetría, sin capturas de la app. No es necesario
 conducir para el primer smoke; sí para estas comprobaciones positivas.
+
+## Preparación automática en el servidor — 15-oct-2026
+
+LMU instalado en `D:/SteamLibrary/steamapps/common/Le Mans Ultimate`.
+No se inicia desde el worker. Core QA compilado en 19,70 s y test UI en
+3 min 13 s, por la cola con `VANTARE_CARGO_MIN_GB=0`, jobs 2, target
+`C:/VantareServer/targets/isa-1638`. El ejecutable precompilado es
+`debug/deps/vantare_ui-2ea21ed7218a718b.exe`. `--list --exact` confirma un único
+test físico. Pasan las dos pruebas de proyecciones sin juego (escenas default
+y capturas LMU/ACC); son evidencia offline, no una prueba física.
+
+`native/scripts/wait-lmu-widget-coverage.py` está esperando oculto, PID **16280**.
+Descriptor local: `C:/tmp/1638-phase-b-active.json`. Directorio de esta espera:
+`C:/VantareServer/logs/1638-phase-b-20261015-204225`.
+
+- Solo abre `LMU_Data` existente mediante OpenFileMapping/FILE_MAP_READ; nunca
+  crea SHM ni escribe al simulador. Exige un único `Le Mans Ultimate.exe`, dos
+  copias SHM iguales, 1–104 coches y un solo jugador, en dos sondeos a 5 s.
+  La build y la sesión reales siguen sujetas a admisión por el Core productivo.
+- Respeta `pc-medicion.lock`; la reserva propia antigua #1638 del 14-oct
+  (rest-discard-01-a1-01, PID 13928 ausente) se archivó reversiblemente como
+  `C:/tmp/buzon/pc-medicion.1638-expired-20261015-204225.json`. Otras reservas
+  no se modifican.
+- Al estar listo ejecuta `verify-lmu-widget-coverage.py --target-dir ...
+  --test-bin ...`, sin compilar en ese momento. Core y test no abren ventanas;
+  Core usa un pipe/datos aislados y termina por EOF, también ante fallo.
+- `waiter.log` registra cambios de estado, `verification.log` recoge la prueba
+  y `summary.json` se actualiza de forma atómica. Guarda hashes de ambos
+  binarios y rechaza cambios mientras espera. Un filtro con cero tests nunca
+  pasa: exige un test correcto, **22 comprobaciones y los 18 widgets**.
+- Solo se hace un intento tras confirmar la sesión. Éxito/fallo queda en el
+  resumen y en `C:/tmp/buzon/telemetria-1638.md`. No se graban snapshots,
+  nombres ni cuerpos REST. La prueba no acredita formación/salida ni fuentes
+  opcionales ausentes; después se coordina esa carrera con Isaac.
+- Un segundo supervisor con el mismo log-dir se rechaza por lock. Para otra
+  ejecución usar un log-dir nuevo, sin sobrescribir una verificación anterior.
+
+Para cancelar **durante la espera**, crear el archivo
+`C:/VantareServer/logs/1638-phase-b-20261015-204225/STOP`. La verificación ya
+iniciada tiene plazos acotados (test 180 s, supervisor 240 s).
+Las cuatro pruebas Python de guardas/cancelación pasan; además se ha comprobado
+el rechazo real de un supervisor duplicado mientras el principal sigue vivo.
+
+Logs de preparación: `C:/VantareServer/logs/1638-phase-b-{core-build,ui-build,
+default-projections,recorded-projections}.log`. No hay QA física positiva hasta
+que el resumen diga `passed`; estar `waiting` no es una validación LMU.

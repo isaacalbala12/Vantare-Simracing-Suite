@@ -154,7 +154,7 @@ def main():
     directory.mkdir(parents=True, exist_ok=True)
     with (directory / "waiter.lock").open("a+b") as lock:
         lock.seek(0)
-        if not lock.read(1):
+        if (directory / "waiter.lock").stat().st_size == 0:
             lock.write(b"0")
             lock.flush()
         lock.seek(0)

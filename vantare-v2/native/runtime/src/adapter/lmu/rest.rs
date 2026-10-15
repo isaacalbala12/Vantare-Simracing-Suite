@@ -6,6 +6,7 @@
 mod http;
 #[cfg(windows)]
 mod poller;
+mod standings;
 
 use std::collections::HashMap;
 use std::time::Duration;
@@ -119,13 +120,18 @@ fn current(started: Duration, now: Duration) -> bool {
     now.checked_sub(started).is_some_and(|age| age <= TTL)
 }
 
-fn document(body: &[u8]) -> Result<Value, DecodeError> {
+fn bounded(body: &[u8]) -> Result<(), DecodeError> {
     if body.len() > MAX_RESPONSE_BYTES {
         return Err(DecodeError::TooLarge);
     }
     if body.iter().all(u8::is_ascii_whitespace) {
         return Err(DecodeError::Empty);
     }
+    Ok(())
+}
+
+fn document(body: &[u8]) -> Result<Value, DecodeError> {
+    bounded(body)?;
     serde_json::from_slice(body).map_err(|_| DecodeError::Malformed)
 }
 
@@ -146,20 +152,15 @@ fn text(row: &Map<String, Value>, name: &str) -> Result<Option<String>, DecodeEr
 }
 
 fn decode_standings(body: &[u8]) -> Result<Vec<CarNumber>, DecodeError> {
-    let document = document(body)?;
-    if document.is_null() {
-        return Err(DecodeError::Empty);
-    }
-    let rows = document.as_array().ok_or(DecodeError::Malformed)?;
+    bounded(body)?;
+    let rows: Option<Vec<Option<standings::Row>>> =
+        serde_json::from_slice(body).map_err(|_| DecodeError::Malformed)?;
+    let rows = rows.ok_or(DecodeError::Empty)?;
     // Se lee cada fila antes de publicar nada: una fila mala rechaza el cuerpo.
     let empty = Map::new();
     let mut parsed = Vec::with_capacity(rows.len());
-    for value in rows {
-        let row = if value.is_null() {
-            &empty
-        } else {
-            value.as_object().ok_or(DecodeError::Malformed)?
-        };
+    for value in &rows {
+        let row = value.as_ref().map_or(&empty, |row| &row.0);
         let slot = property(row, "slotID")
             .map(|value| {
                 value
@@ -365,6 +366,29 @@ mod tests {
             decode_standings(&vec![b' '; MAX_RESPONSE_BYTES + 1]),
             Err(DecodeError::TooLarge)
         );
+    }
+
+    #[test]
+    fn ignored_rest_data_is_still_validated_and_duplicate_properties_keep_the_last() {
+        let body = br#"[{"slotID":1,"slotID":2,"carNumber":"7","carNumber":"007",
+            "vehicleName":"Car-2","ignored":{"nested":[null,true,2.5,"text",{"a":3}]}}]"#;
+        assert_eq!(
+            decode_standings(body).unwrap(),
+            vec![CarNumber {
+                slot: 2,
+                number: "007".into(),
+                vehicle: "Car-2".into(),
+                ..CarNumber::default()
+            }]
+        );
+        for body in [
+            &br#"[{"slotID":2,"carNumber":"7","ignored":1e400}]"#[..],
+            br#"[{"slotID":2,"carNumber":"7","ignored":{"nested":[1e400]}}]"#,
+            br#"[{"slotID":2,"carNumber":"7","ignored":{"nested":[1,]}}]"#,
+            br#"[{"slotID":2,"carNumber":"7"},false]"#,
+        ] {
+            assert_eq!(decode_standings(body), Err(DecodeError::Malformed));
+        }
     }
 
     #[test]

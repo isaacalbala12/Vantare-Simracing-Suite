@@ -720,7 +720,8 @@ impl CaptureState {
             section,
             palette_query,
             column_open: name != "shell-columna-colapsada" && !name.ends_with("-sin-carril"),
-            sidebar: matches!(
+            sidebar: (name.starts_with("calendario-r6-")
+                || matches!(
                 name,
                 "studio-sidebar"
                     | "studio-error-largo"
@@ -729,7 +730,7 @@ impl CaptureState {
                     | "inicio-sidebar-sin-carril"
                     | "ajustes-apariencia-sidebar"
                     | "ajustes-apariencia-sidebar-sin-carril"
-            )
+            ))
             .then_some(true),
             notifications_open: matches!(
                 name,

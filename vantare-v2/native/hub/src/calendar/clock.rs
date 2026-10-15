@@ -82,11 +82,16 @@ impl Zone {
             minutes => format!("{sign}{}:{minutes:02}", abs / 3600),
         }
     }
-    /// «Tu hora · UTC+2» o «UTC».
+    /// «Madrid · UTC+2», «Tu hora · UTC+2» si no se conoce la ciudad, o «UTC».
     pub fn long(self, at: DateTime<Utc>) -> String {
         match self {
             Self::Utc => "UTC".into(),
-            _ => format!("Tu hora · UTC{}", self.short(at)),
+            Self::Local => format!(
+                "{} · UTC{}",
+                local_city().unwrap_or("Tu hora"),
+                self.short(at)
+            ),
+            Self::Fixed(_) => format!("Tu hora · UTC{}", self.short(at)),
         }
     }
     /// «hoy», «mañana» o «vie 9».

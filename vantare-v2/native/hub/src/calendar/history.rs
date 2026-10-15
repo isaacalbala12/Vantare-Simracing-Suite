@@ -69,6 +69,25 @@ impl History {
         self.weeks.drain(..excess);
     }
 
+    /// Semana anterior sembrada por la escena de captura (solo `parity-capture`).
+    #[cfg(feature = "parity-capture")]
+    pub(super) fn seed_week(&mut self, from: DateTime<Utc>, tracks: &[(&str, &str, &str)]) {
+        self.weeks.push(Week {
+            from: from.timestamp(),
+            until: (from + Duration::days(7)).timestamp(),
+            seen_at: from.timestamp() - 86_400 + DEFAULT_SEEN_SECS,
+            tracks: tracks
+                .iter()
+                .map(|(series_id, name, track)| Track {
+                    series_id: (*series_id).to_owned(),
+                    name: (*name).to_owned(),
+                    track: (*track).to_owned(),
+                })
+                .collect(),
+        });
+        self.weeks.sort_by_key(|week| week.from);
+    }
+
     /// Circuitos de una serie por semana, de la más antigua a la más reciente.
     pub fn rotation(&self, series_id: &str) -> Vec<(DateTime<Utc>, String)> {
         self.weeks
@@ -143,5 +162,39 @@ mod tests {
             history.publication_estimate(next),
             timestamp("2026-10-12T09:30:00Z").expect("fecha")
         );
+    }
+}
+
+/// Una carrera ya corrida esta semana, resumida desde tu telemetría local.
+/// El calendario solo la pinta («Corriste», «Tu historial aquí»); quien la
+/// alimenta es la telemetría, y mientras no haya fuente la lista queda vacía.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Run {
+    pub series_id: String,
+    pub circuit: String,
+    pub at: DateTime<Utc>,
+    pub position: u16,
+    /// Cambio de Safety Rating en décimas (+6 = +0,6 SR).
+    pub safety_tenths: i16,
+    /// Mejor vuelta formateada, por ejemplo `2:01.384`.
+    pub best_lap: Option<String>,
+}
+
+impl Run {
+    /// «P4 · +0,6 SR · 2:01.384».
+    pub fn summary(&self) -> String {
+        let sign = if self.safety_tenths < 0 { '−' } else { '+' };
+        let tenths = self.safety_tenths.unsigned_abs();
+        let mut text = format!(
+            "P{} · {sign}{},{} SR",
+            self.position,
+            tenths / 10,
+            tenths % 10
+        );
+        if let Some(lap) = &self.best_lap {
+            text.push_str(" · ");
+            text.push_str(lap);
+        }
+        text
     }
 }

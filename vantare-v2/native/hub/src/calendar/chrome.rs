@@ -307,6 +307,17 @@ pub(super) fn seg_button(
     on: bool,
     cx: &gpui::App,
 ) -> Stateful<Div> {
+    seg_button_with(id, label, on, None, cx)
+}
+
+/// Como `seg_button`, con un adorno (punto, estrella) antes del rótulo.
+pub(super) fn seg_button_with(
+    id: impl Into<gpui::ElementId>,
+    label: &str,
+    on: bool,
+    lead: Option<Div>,
+    cx: &gpui::App,
+) -> Stateful<Div> {
     let skin = orbit::skin(cx);
     let bg = if light(cx) { 0x00ff_ffff } else { skin.l1 };
     div()
@@ -327,10 +338,218 @@ pub(super) fn seg_button(
                 .border_1()
                 .border_color(orbit::alpha(skin.line2))
         })
+        .children(lead)
         .child(
             t(
                 label.to_owned(),
                 12.5,
+                500,
+                if on { skin.text1 } else { skin.text3 },
+                cx,
+            )
+            .whitespace_nowrap(),
+        )
+}
+
+/// Texto verde de «bien» sobre su fondo tintado.
+pub(super) fn ok_text(cx: &gpui::App) -> u32 {
+    if light(cx) { 0x16_6534 } else { 0x7F_E0A3 }
+}
+
+/// Rayado tenue de lo que no existe o ya pasó (`--stripe` del contrato).
+pub(super) fn stripe(cx: &gpui::App) -> gpui::Background {
+    gpui::pattern_slash(
+        if light(cx) {
+            tint(0x003C_1920, 0.045)
+        } else {
+            tint(0x00ff_ffff, 0.035)
+        },
+        6.0,
+        12.0,
+    )
+}
+
+/// Hora elegible (`.pk`): anillo blanco si es la elegida, carmín si tiene aviso.
+pub(super) fn pick_chip(
+    id: impl Into<gpui::ElementId>,
+    label: String,
+    on: bool,
+    alerted: bool,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    let skin = orbit::skin(cx);
+    div()
+        .id(id)
+        .h(px(30.0))
+        .min_w(px(58.0))
+        .px(px(8.0))
+        .flex()
+        .items_center()
+        .justify_center()
+        .gap(px(4.0))
+        .rounded(px(7.0))
+        .cursor_pointer()
+        .bg(if on {
+            rgb(skin.l3).into()
+        } else if alerted {
+            acc_bg(cx)
+        } else {
+            rgb(skin.l2).into()
+        })
+        .when(on, |chip| chip.border_2().border_color(rgb(skin.text1)))
+        .when(!on, |chip| {
+            chip.border_1().border_color(if alerted {
+                acc_line(cx)
+            } else {
+                orbit::alpha(skin.line2)
+            })
+        })
+        .when(alerted, |chip| chip.child(icon("bell-fill", 10.0, acct(cx))))
+        .child(if on {
+            bold_mono(label, 12.0, skin.text1, cx)
+        } else {
+            mono(label, 12.0, skin.text2, cx)
+        })
+}
+
+/// Tanda de un evento (`.slot`): hora en mono; con aviso va en carmín, la siguiente con anillo.
+pub(super) fn slot_chip(
+    id: impl Into<gpui::ElementId>,
+    label: &str,
+    state: (bool, bool, bool),
+    suffix: Option<&str>,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    let skin = orbit::skin(cx);
+    let (past, next, alerted) = state;
+    div()
+        .id(id)
+        .h(px(28.0))
+        .px(px(8.0))
+        .flex()
+        .flex_none()
+        .items_center()
+        .gap(px(5.0))
+        .rounded(px(7.0))
+        .cursor_pointer()
+        .when(past, |d| d.opacity(0.45))
+        .when(alerted, |d| d.bg(orbit::ramp(skin.button, 180.0)))
+        .when(!alerted, |d| {
+            d.bg(if next { rgb(skin.l1) } else { rgb(skin.l2) })
+                .border_1()
+                .border_color(if next {
+                    rgb(skin.text2).into()
+                } else {
+                    orbit::alpha(skin.line1)
+                })
+        })
+        .when(alerted, |d| d.child(icon("bell-fill", 11.0, 0x00ff_ffff)))
+        .child(bold_mono(
+            label.to_owned(),
+            12.0,
+            if alerted { 0x00ff_ffff } else { skin.text1 },
+            cx,
+        ))
+        .when_some(suffix, |d, text| {
+            d.child(t(
+                text.to_owned(),
+                11.0,
+                600,
+                if alerted { 0x00ff_ffff } else { skin.text2 },
+                cx,
+            ))
+        })
+}
+
+/// Héroe de Próximas (`.hero`): degradado a 110° con un lavado carmín arriba a la
+/// izquierda y anillo interior; sin la trama diagonal del héroe de Inicio.
+pub(super) fn hero_plain(cx: &gpui::App) -> Div {
+    let skin = orbit::skin(cx);
+    div()
+        .relative()
+        .overflow_hidden()
+        .rounded(px(12.0))
+        .border_1()
+        .border_color(orbit::alpha(skin.hero_ring))
+        .bg(orbit::ramp(skin.hero, 110.0))
+        .shadow(vec![orbit::kit_shadow(0x0000_0047, 14.0, 34.0, 0.0, false)])
+        .child(
+            div()
+                .absolute()
+                .inset_0()
+                .bg(orbit::ramp_alpha(skin.hero_wash, 160.0)),
+        )
+}
+
+/// Interruptor de 34×20 del contrato (`.sw`); solo pinta, el clic lo recoge el padre.
+pub(super) fn switch(on: bool, cx: &gpui::App) -> Div {
+    let skin = orbit::skin(cx);
+    div()
+        .w(px(34.0))
+        .h(px(20.0))
+        .flex_none()
+        .rounded_full()
+        .p(px(2.0))
+        .flex()
+        .when(on, gpui::Styled::justify_end)
+        .bg(if on {
+            orbit::ramp(skin.button, 180.0)
+        } else {
+            rgb(skin.el).into()
+        })
+        .child(
+            div()
+                .size(px(16.0))
+                .rounded_full()
+                .bg(rgb(0x00ff_ffff))
+                .shadow(vec![orbit::kit_shadow(0x0000_004d, 0.0, 1.0, 3.0, false)]),
+        )
+}
+
+/// Contenedor del segmentado compacto de 22 px (`.bandbox .seg`).
+pub(super) fn seg_mini_group(cx: &gpui::App) -> Div {
+    let skin = orbit::skin(cx);
+    div()
+        .flex()
+        .flex_none()
+        .items_center()
+        .gap(px(2.0))
+        .p(px(3.0))
+        .rounded(px(9.0))
+        .bg(rgb(skin.l2))
+        .border_1()
+        .border_color(orbit::alpha(skin.line1))
+}
+
+pub(super) fn seg_mini(
+    id: impl Into<gpui::ElementId>,
+    label: &str,
+    on: bool,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    let skin = orbit::skin(cx);
+    let bg = if light(cx) { 0x00ff_ffff } else { skin.l1 };
+    div()
+        .id(id)
+        .role(gpui::Role::Button)
+        .aria_label(label.to_owned())
+        .aria_selected(on)
+        .tab_index(0)
+        .h(px(22.0))
+        .px(px(9.0))
+        .flex()
+        .items_center()
+        .rounded(px(7.0))
+        .cursor_pointer()
+        .when(on, |b| {
+            b.bg(rgb(bg))
+                .border_1()
+                .border_color(orbit::alpha(skin.line2))
+        })
+        .child(
+            t(
+                label.to_owned(),
+                12.0,
                 500,
                 if on { skin.text1 } else { skin.text3 },
                 cx,
@@ -502,6 +721,22 @@ pub(super) fn keycap(label: &str, cx: &gpui::App) -> Div {
         .rounded(px(4.0))
         .bg(tint(0x00ff_ffff, 0.18))
         .child(orbit::mono_text(label.to_owned(), 10.0, 0x00ff_ffff, cx))
+}
+
+/// Dato del contrato (`.fact`): rótulo en mayúsculas y valor en una línea.
+pub(super) fn fact(label: &str, value: impl Into<SharedString>, cx: &gpui::App) -> Div {
+    let skin = skin(cx);
+    div()
+        .flex_1()
+        .min_w_0()
+        .px(px(10.0))
+        .py(px(8.0))
+        .rounded(px(8.0))
+        .bg(rgb(skin.l2))
+        .border_1()
+        .border_color(orbit::alpha(skin.line1))
+        .child(orbit::caps(label, 10.5, skin.cap, cx))
+        .child(t(value, 13.0, 600, skin.text1, cx).mt(px(2.0)).truncate())
 }
 
 /// Caja de dato clave: rótulo pequeño y valor destacado.

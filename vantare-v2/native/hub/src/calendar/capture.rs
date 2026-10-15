@@ -8,6 +8,7 @@
 use super::{
     Calendar, Following, Schedule,
     alerts::{Alerts, Band, Days, Mode},
+    history::Run,
     ui::{Ficha, Modal, Span, View},
 };
 use crate::demo::DemoData;
@@ -55,11 +56,32 @@ pub(super) fn apply(calendar: &mut Calendar, demo: &DemoData) -> Result<(), Stri
         calendar.official = Some(Schedule::parse(
             &serde_json::to_vec(&value).map_err(|e| e.to_string())?,
         )?);
+        // La semana anterior que LMU ya publicó y el Hub guardó: sin el especial,
+        // con el WEC Weekly en Spa.
+        let mut previous = value.clone();
+        previous["validFrom"] = "2026-09-29T00:00:00Z".into();
+        previous["validUntil"] = "2026-10-06T00:00:00Z".into();
+        if let Some(list) = previous["series"].as_array_mut() {
+            list.retain(|series| series["id"] != "weekly-10-hours-of-road-atlanta");
+            for series in list.iter_mut() {
+                if series["id"] == "weekly-wec-weekly" {
+                    series["track"] = "Spa-Francorchamps (WEC)".into();
+                }
+            }
+        }
+        calendar.previous = Some(Schedule::parse(
+            &serde_json::to_vec(&previous).map_err(|e| e.to_string())?,
+        )?);
     }
     calendar.refreshing = state == "loading";
     calendar.refresh_failed = state == "offline";
-    calendar.stamps.checked = at(2026, 10, 8, 8, 2, 0).timestamp();
+    calendar.stamps.checked = at(2026, 10, 8, 6, 2, 0).timestamp();
     calendar.stamps.updated = calendar.stamps.checked;
+    if state == "expired" {
+        // El lunes 12 a las 08:01 se publicó la semana que acaba de terminar.
+        calendar.stamps.updated = at(2026, 10, 12, 6, 1, 0).timestamp();
+        calendar.stamps.checked = (now - chrono::Duration::minutes(3)).timestamp();
+    }
 
     if !matches!(state, "nofav" | "nosched" | "loading") {
         calendar.following = Following {
@@ -86,6 +108,44 @@ pub(super) fn apply(calendar: &mut Calendar, demo: &DemoData) -> Result<(), Stri
             alerts.toggle_slot(id, when)?;
         }
         calendar.alerts = alerts;
+        // Las cuatro carreras del contrato visual («Ya corriste esta semana») y
+        // las de la semana anterior, que solo cuentan en el Mes.
+        calendar.runs = [
+            (at(2026, 10, 7, 19, 15, 0), 4, 6, Some("2:01.384")),
+            (at(2026, 10, 7, 18, 45, 0), 9, -2, None),
+            (at(2026, 10, 7, 18, 0, 0), 6, 9, None),
+            (at(2026, 10, 6, 20, 30, 0), 11, 7, None),
+            (at(2026, 9, 30, 18, 0, 0), 8, 3, None),
+            (at(2026, 9, 30, 19, 0, 0), 5, 4, None),
+            (at(2026, 10, 1, 18, 0, 0), 7, 1, None),
+            (at(2026, 10, 1, 18, 30, 0), 3, 5, None),
+            (at(2026, 10, 1, 19, 0, 0), 9, -1, None),
+            (at(2026, 10, 3, 18, 0, 0), 6, 2, None),
+        ]
+        .into_iter()
+        .map(|(when, position, safety_tenths, lap)| Run {
+            series_id: "beginner-lmgt3-fixed".into(),
+            circuit: "Sebring".into(),
+            at: when,
+            position,
+            safety_tenths,
+            best_lap: lap.map(str::to_owned),
+        })
+        .collect();
+    }
+    if state != "nosched" && state != "loading" {
+        // Las dos semanas anteriores que el contrato visual enseña «desde tu caché».
+        calendar.history.seed_week(
+            at(2026, 9, 22, 0, 0, 0),
+            &[("beginner-lmgt3-fixed", "LMGT3 Fixed", "Imola")],
+        );
+        calendar.history.seed_week(
+            at(2026, 9, 29, 0, 0, 0),
+            &[
+                ("beginner-lmgt3-fixed", "LMGT3 Fixed", "Spa-Francorchamps"),
+                ("weekly-wec-weekly", "WEC Weekly", "Spa-Francorchamps"),
+            ],
+        );
     }
     calendar.prefs.utc = get("utc").is_some();
     calendar.profile = Some("Carrera LMU".into());

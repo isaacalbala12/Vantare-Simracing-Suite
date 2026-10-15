@@ -3,12 +3,23 @@
 use super::{
     Calendar, Health,
     chrome::{self, Tone, banner, btn, ib, kv, pill, seg, t},
-    clock::{self, in_txt},
+    clock::{self},
     rows::Filter,
 };
 use crate::orbit;
 use chrono::{DateTime, Utc};
 use gpui::{Context, Div, IntoElement, Window, div, prelude::*, px};
+
+/// «hace 3 min», «hace 11 h», «hace 2 d».
+fn ago_txt(delta: chrono::Duration) -> String {
+    let minutes = delta.num_minutes().max(0);
+    match minutes {
+        0 => "hace un momento".to_owned(),
+        1..=59 => format!("hace {minutes} min"),
+        60..=1439 => format!("hace {} h", minutes / 60),
+        _ => format!("hace {} d", minutes / 1440),
+    }
+}
 
 mod avisos;
 mod dia;
@@ -71,6 +82,10 @@ pub(crate) struct State {
     pub modal: Option<Modal>,
     pub serie: Option<String>,
     pub class_menu: bool,
+    /// Campo de búsqueda de Próximas abierto desde el icono de la lupa.
+    pub search_open: bool,
+    /// Selector «Cambiar serie» de la página de serie.
+    pub series_menu: bool,
     pub ics: super::ics::Options,
     pub scroll: gpui::ScrollHandle,
     pub scrolled_day: Option<usize>,
@@ -132,6 +147,8 @@ impl Calendar {
         let acted = self.ui.ficha.take().is_some()
             | self.ui.modal.take().is_some()
             | std::mem::take(&mut self.ui.class_menu)
+            | std::mem::take(&mut self.ui.series_menu)
+            | std::mem::take(&mut self.ui.search_open)
             | std::mem::take(&mut self.ui.full);
         if acted {
             cx.notify();
@@ -227,8 +244,14 @@ impl Calendar {
         }
     }
 
+    /// La página de una serie ocupa todo el centro y no lleva carril.
+    pub(crate) fn on_series_page(&self) -> bool {
+        self.ui.view == View::Serie
+    }
+
     pub(crate) fn page_header(&self, adapt: orbit::Adapt, cx: &mut Context<Self>) -> Div {
         let compact = adapt.width < 1400.0;
+        let skin = chrome::skin(cx);
         let has = self.schedule().is_some() || self.last_week.is_some();
         let alerts = self.alerts.count();
         div()
@@ -240,28 +263,31 @@ impl Calendar {
             .when(has, |header| {
                 header
                     .child(
-                        btn(
-                            "calendar-alerts",
-                            if compact { "" } else { "Avisos" },
-                            false,
-                            cx,
-                        )
-                        .child(chrome::icon("v-bell", 16.0, chrome::skin(cx).text1))
-                        .child(pill(alerts.to_string(), Tone::Acc, cx))
-                        .on_click(cx.listener(|this, _, _, cx| this.open_modal(Modal::Avisos, cx))),
+                        btn("calendar-alerts", "", false, cx)
+                            .aria_label("Avisos")
+                            .child(chrome::icon("v-bell", 16.0, skin.text1))
+                            .when(!compact, |b| b.child(t("Avisos", 13.0, 500, skin.text1, cx)))
+                            .child(pill(alerts.to_string(), Tone::Acc, cx))
+                            .on_click(
+                                cx.listener(|this, _, _, cx| this.open_modal(Modal::Avisos, cx)),
+                            ),
                     )
                     .child(
-                        btn(
-                            "calendar-ics",
-                            if compact {
-                                "Calendario"
-                            } else {
-                                "Añadir a mi calendario"
-                            },
-                            false,
-                            cx,
-                        )
-                        .on_click(cx.listener(|this, _, _, cx| this.open_modal(Modal::Ics, cx))),
+                        btn("calendar-ics", "", false, cx)
+                            .aria_label("Añadir a mi calendario")
+                            .child(chrome::icon("v-calendar", 16.0, skin.text1))
+                            .child(t(
+                                if compact {
+                                    "Calendario"
+                                } else {
+                                    "Añadir a mi calendario"
+                                },
+                                13.0,
+                                500,
+                                skin.text1,
+                                cx,
+                            ))
+                            .on_click(cx.listener(|this, _, _, cx| this.open_modal(Modal::Ics, cx))),
                     )
             })
             .child(
@@ -332,6 +358,9 @@ impl Calendar {
     }
 
     pub(crate) fn rail_sections(&self, cx: &mut Context<Self>) -> Vec<orbit::RailSection> {
+        if self.on_series_page() {
+            return Vec::new();
+        }
         let skin = chrome::skin(cx);
         let now = self.now();
         let zone = self.zone();
@@ -366,16 +395,17 @@ impl Calendar {
                     clock::month_name(d[6])
                 )
             });
+            // «hoy 08:02 · hace 11 h»; de otro día, solo «lun 12 · 08:01».
             let when = |ts: i64| {
                 DateTime::from_timestamp(ts, 0).map_or_else(
                     || "nunca".to_owned(),
                     |at| {
-                        format!(
-                            "{} {} · {}",
-                            zone.day_rel(at, now),
-                            zone.hm(at),
-                            in_txt(now - at).replace("en ", "hace ")
-                        )
+                        let rel = zone.day_rel(at, now);
+                        if rel == "hoy" {
+                            format!("hoy {} · {}", zone.hm(at), ago_txt(now - at))
+                        } else {
+                            format!("{rel} · {}", zone.hm(at))
+                        }
                     },
                 )
             };
@@ -390,7 +420,10 @@ impl Calendar {
                 .child(kv(
                     "Semana",
                     if health == Health::Expired {
-                        format!("{title} · sin publicar")
+                        format!(
+                            "{} · sin publicar",
+                            week.as_ref().map_or_else(String::new, clock::week_title)
+                        )
                     } else {
                         title
                     },
@@ -407,17 +440,19 @@ impl Calendar {
                     cx,
                 ))
                 .child(if health == Health::Expired {
-                    kv("Última comprobación", when(self.stamps.checked), cx)
+                    kv(
+                        "Última comprobación",
+                        format!(
+                            "{} · cada 15 min",
+                            DateTime::from_timestamp(self.stamps.checked, 0)
+                                .map_or_else(|| "nunca".to_owned(), |at| ago_txt(now - at))
+                        ),
+                        cx,
+                    )
                 } else {
                     kv(
                         "Próxima semana",
-                        format!(
-                            "{} {} (aprox.)",
-                            zone.day_rel(estimate, now),
-                            zone.hm(estimate)
-                        )
-                        .replace("hoy ", "")
-                        .replace("mañana ", ""),
+                        format!("{} (aprox.)", zone.day_long(estimate)),
                         cx,
                     )
                 });
@@ -802,10 +837,18 @@ pub(super) fn span_seg(cal: &Calendar, cx: &mut Context<Calendar>) -> Div {
     row
 }
 
-/// Selector Todas · Favoritas común a las vistas de calendario.
-pub(super) fn fav_seg(cal: &Calendar, count: Option<usize>, cx: &mut Context<Calendar>) -> Div {
+/// Selector Todas · Favoritas común a las vistas de calendario; con `counts`
+/// (todas, favoritas) enseña los recuentos como en Próximas.
+pub(super) fn fav_seg(
+    cal: &Calendar,
+    counts: Option<(usize, usize)>,
+    cx: &mut Context<Calendar>,
+) -> Div {
     let skin = chrome::skin(cx);
     let only = cal.ui.filter.only_favs;
+    let count = |n: Option<usize>, cx: &gpui::App| {
+        n.map_or_else(div, |n| t(n.to_string(), 12.0, 400, skin.cap, cx))
+    };
     div()
         .flex()
         .flex_none()
@@ -818,18 +861,24 @@ pub(super) fn fav_seg(cal: &Calendar, count: Option<usize>, cx: &mut Context<Cal
         .border_color(orbit::alpha(skin.line1))
         .child(
             chrome::seg_button("calendar-all", "Todas", !only, cx)
-                .child(count.map_or_else(div, |n| t(n.to_string(), 12.0, 400, skin.cap, cx)))
+                .child(count(counts.map(|c| c.0), cx))
                 .on_click(cx.listener(|this, _, _, cx| {
                     this.ui.filter.only_favs = false;
                     cx.notify();
                 })),
         )
         .child(
-            chrome::seg_button("calendar-favs", "Favoritas", only, cx)
-                .child(chrome::star(true, 12.0, cx))
-                .on_click(cx.listener(|this, _, _, cx| {
-                    this.ui.filter.only_favs = true;
-                    cx.notify();
-                })),
+            chrome::seg_button_with(
+                "calendar-favs",
+                "Favoritas",
+                only,
+                Some(div().child(chrome::star(true, 12.0, cx))),
+                cx,
+            )
+            .child(count(counts.map(|c| c.1), cx))
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.ui.filter.only_favs = true;
+                cx.notify();
+            })),
         )
 }

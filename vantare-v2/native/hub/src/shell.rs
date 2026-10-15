@@ -491,7 +491,11 @@ impl Hub {
                 self.testing
                     .update(cx, |testing, cx| testing.page_header(self.shell.adapt, cx)),
             ),
-            Section::Calendar if self.shell.access.beta_lock(self.section).is_none() => {
+            // La página de una serie lleva su propia cabecera, sin la general.
+            Section::Calendar
+                if self.shell.access.beta_lock(self.section).is_none()
+                    && !self.calendar.read(cx).on_series_page() =>
+            {
                 Some(self.calendar.update(cx, |calendar, cx| {
                     calendar.page_header(self.shell.adapt, cx)
                 }))

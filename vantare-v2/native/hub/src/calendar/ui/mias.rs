@@ -191,7 +191,7 @@ pub(super) fn render(cal: &mut Calendar, cx: &mut Context<Calendar>) -> Div {
                 .child(t(
                     format!(
                         "favoritas, franjas y tandas con aviso · {}",
-                        zone.long(now).split(" · ").last().unwrap_or("")
+                        zone.long(now)
                     ),
                     12.0,
                     400,

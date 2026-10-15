@@ -2,7 +2,7 @@
 use super::super::{
     Calendar, Event,
     alerts::{Alerts, Band, Days, LEADS, Mode},
-    chrome::{self, Tone, acc, btn, btn_pri, disp, ib, icon, pill, rule, t},
+    chrome::{self, acc, acct, btn, btn_pri, disp, ib, icon, rule, t},
     ics,
 };
 use crate::orbit;
@@ -34,6 +34,8 @@ pub(super) fn modal(
             .child(
                 chrome::card(cx)
                     .id("calendar-modal-panel")
+                    .rounded(px(14.0))
+                    .bg(rgb(skin.l1))
                     .w(px(width))
                     .max_w(gpui::relative(0.96))
                     .max_h(gpui::relative(0.94))
@@ -44,12 +46,12 @@ pub(super) fn modal(
                             .flex()
                             .items_start()
                             .px(px(22.0))
-                            .pt(px(16.0))
-                            .pb(px(12.0))
+                            .pt(px(18.0))
+                            .pb(px(14.0))
                             .child(
                                 div()
                                     .flex_1()
-                                    .child(disp(title.to_owned(), 24.0, skin.text1, cx))
+                                    .child(disp(title.to_owned(), 26.0, skin.text1, cx))
                                     .child(t(subtitle.to_owned(), 12.5, 400, skin.text3, cx)),
                             )
                             .child(
@@ -85,7 +87,8 @@ pub(super) fn modal(
                             .justify_end()
                             .gap(px(8.0))
                             .px(px(22.0))
-                            .py(px(12.0)),
+                            .py(px(14.0))
+                            .bg(rgb(skin.l2)),
                     ),
             ),
     )
@@ -198,6 +201,221 @@ fn check_card(
                 .flex_1()
                 .child(t(label.to_owned(), 13.0, 700, skin.text1, cx))
                 .child(t(hint.to_owned(), 12.0, 400, skin.text3, cx)),
+        )
+}
+
+fn band_or_default(alerts: &Alerts, series_id: &str) -> Band {
+    alerts.band(series_id).cloned().unwrap_or_else(|| Band {
+        series_id: series_id.to_owned(),
+        from: 20 * 60,
+        to: 23 * 60,
+        days: Days::All,
+        mode: Mode::Each,
+    })
+}
+
+/// Editor de franja del contrato (`.bandbox`): interruptor, horas, días, modo y antelación.
+/// Con la franja apagada enseña los valores por defecto; tocar cualquiera la enciende.
+pub(super) fn band_box(
+    cal: &Calendar,
+    series: &super::super::Series,
+    cx: &mut Context<Calendar>,
+) -> Div {
+    let skin = chrome::skin(cx);
+    let band = cal.alerts.band(&series.id).cloned();
+    let on = band.is_some();
+    let shown = band_or_default(&cal.alerts, &series.id);
+    let per_day = series.every().map_or(0, |every| {
+        (i64::from(shown.to) - i64::from(shown.from) + every - 1) / every.max(1)
+    });
+    let id = series.id.clone();
+    let tin = |tag: &'static str, minutes: u16, is_to: bool, cx: &mut Context<Calendar>| {
+        let id = id.clone();
+        div()
+            .id((tag, 0usize))
+            .h(px(28.0))
+            .px(px(9.0))
+            .flex()
+            .items_center()
+            .rounded(px(7.0))
+            .cursor_pointer()
+            .bg(rgb(skin.l1))
+            .border_1()
+            .border_color(orbit::alpha(skin.line2))
+            .child(chrome::bold_mono(minutes_txt(minutes), 12.5, skin.text1, cx))
+            .on_click(edit(cx, move |a| {
+                let mut band = band_or_default(a, &id);
+                if is_to {
+                    band.to = if band.to >= 1440 {
+                        band.from + 30
+                    } else {
+                        (band.to + 30).min(1440)
+                    };
+                } else {
+                    band.from = if band.from + 60 > band.to {
+                        0
+                    } else {
+                        band.from + 30
+                    };
+                }
+                a.set_band(&id, Some(band))
+            }))
+    };
+    let mut days_seg = chrome::seg_mini_group(cx);
+    for (index, (value, label)) in [
+        (Days::All, "Todos"),
+        (Days::Weekdays, "Lun–vie"),
+        (Days::Weekend, "Finde"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let id = id.clone();
+        days_seg = days_seg.child(
+            chrome::seg_mini(
+                ("calendar-bandbox-days", index),
+                label,
+                shown.days == value,
+                cx,
+            )
+            .on_click(edit(cx, move |a| {
+                let mut band = band_or_default(a, &id);
+                band.days = value;
+                a.set_band(&id, Some(band))
+            })),
+        );
+    }
+    let mut mode_seg = chrome::seg_mini_group(cx);
+    for (index, (value, label)) in [(Mode::Each, "Cada salida"), (Mode::First, "Solo la primera")]
+        .into_iter()
+        .enumerate()
+    {
+        let id = id.clone();
+        mode_seg = mode_seg.child(
+            chrome::seg_mini(
+                ("calendar-bandbox-mode", index),
+                label,
+                shown.mode == value,
+                cx,
+            )
+            .on_click(edit(cx, move |a| {
+                let mut band = band_or_default(a, &id);
+                band.mode = value;
+                a.set_band(&id, Some(band))
+            })),
+        );
+    }
+    let mut lead_seg = chrome::seg_mini_group(cx);
+    for lead in [5u8, 10, 15] {
+        lead_seg = lead_seg.child(
+            chrome::seg_mini(
+                ("calendar-bandbox-lead", usize::from(lead)),
+                &format!("{lead}′"),
+                cal.alerts.lead_min == lead,
+                cx,
+            )
+            .on_click(edit(cx, move |a| {
+                a.lead_min = lead;
+                Ok(())
+            })),
+        );
+    }
+    let title = if on {
+        format!(
+            "Te avisamos de las salidas de {}–{}",
+            minutes_txt(shown.from),
+            minutes_txt(shown.to)
+        )
+    } else {
+        "Avisarme por franja horaria".to_owned()
+    };
+    let hint = if on {
+        format!(
+            "{} · {per_day} salidas por día · se calla si ya estás en pista",
+            shown.days.label()
+        )
+    } else {
+        "Elige de qué hora a qué hora quieres que te avisemos.".to_owned()
+    };
+    let toggle_id = id.clone();
+    let label = |text: &'static str, cx: &gpui::App| t(text, 12.0, 400, skin.text3, cx);
+    div()
+        .flex_none()
+        .flex()
+        .flex_col()
+        .gap(px(9.0))
+        .px(px(12.0))
+        .py(px(10.0))
+        .rounded(px(9.0))
+        .border_1()
+        .border_color(if on {
+            chrome::acc_line(cx)
+        } else {
+            orbit::alpha(skin.line1)
+        })
+        .bg(if on {
+            chrome::acc_bg(cx)
+        } else {
+            rgb(skin.l2).into()
+        })
+        .child(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(12.0))
+                .child(icon(
+                    if on { "bell-fill" } else { "bell" },
+                    16.0,
+                    if on { acct(cx) } else { skin.text3 },
+                ))
+                .child(
+                    div()
+                        .flex_1()
+                        .min_w_0()
+                        .child(t(title, 13.0, 600, skin.text1, cx))
+                        .child(t(hint, 12.5, 400, skin.text3, cx)),
+                )
+                .child(
+                    div()
+                        .id("calendar-bandbox-switch")
+                        .role(gpui::Role::Switch)
+                        .aria_label("Avisar por franja horaria")
+                        .aria_selected(on)
+                        .cursor_pointer()
+                        .child(chrome::switch(on, cx))
+                        .on_click(edit(cx, move |a| {
+                            if a.band(&toggle_id).is_some() {
+                                a.set_band(&toggle_id, None)
+                            } else {
+                                let band = band_or_default(a, &toggle_id);
+                                a.set_band(&toggle_id, Some(band))
+                            }
+                        })),
+                ),
+        )
+        .child(
+            div()
+                .flex()
+                .flex_wrap()
+                .items_center()
+                .gap(px(8.0))
+                .child(label("Entre", cx))
+                .child(tin("calendar-bandbox-from", shown.from, false, cx))
+                .child(label("y", cx))
+                .child(tin("calendar-bandbox-to", shown.to, true, cx))
+                .child(days_seg),
+        )
+        .child(
+            div()
+                .flex()
+                .flex_wrap()
+                .items_center()
+                .gap(px(8.0))
+                .child(label("Avisar", cx))
+                .child(mode_seg)
+                .child(div().flex_1())
+                .child(label("Antes", cx))
+                .child(lead_seg),
         )
 }
 
@@ -671,35 +889,116 @@ fn band_item(band: &Band, name: String, editing: bool, cx: &mut Context<Calendar
 pub(super) fn ics_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> impl IntoElement {
     let skin = chrome::skin(cx);
     let options = cal.ui.ics;
-    let body = div()
-        .flex()
-        .flex_col()
-        .gap(px(10.0))
-        .child(t(
-            "Descarga un archivo para importarlo en Google Calendar, Apple Calendar u Outlook. Es una copia de hoy: no se actualiza sola.",
-            13.0,
-            400,
-            skin.text2,
-            cx,
-        ))
+    let (now, zone) = (cal.now(), cal.zone());
+    let preview: Vec<ics::Entry> = cal
+        .schedule()
+        .and_then(|s| ics::entries(s, cal.favorites(), &cal.alerts, options, now).ok())
+        .unwrap_or_default();
+    let radio = |on: bool| {
+        div()
+            .size(px(16.0))
+            .flex_none()
+            .mt(px(2.0))
+            .rounded_full()
+            .border_2()
+            .border_color(if on {
+                rgb(acc(cx))
+            } else {
+                rgb(skin.text3)
+            })
+            .when(on, |d| {
+                d.flex().items_center().justify_center().child(
+                    div().size(px(6.0)).rounded_full().bg(rgb(acc(cx))),
+                )
+            })
+    };
+    let option = |id: &'static str, label: &str, hint: &str, on: bool, cx: &gpui::App| {
+        div()
+            .id(id)
+            .role(gpui::Role::RadioButton)
+            .aria_label(label.to_owned())
+            .aria_selected(on)
+            .tab_index(0)
+            .flex()
+            .items_start()
+            .gap(px(10.0))
+            .px(px(12.0))
+            .py(px(10.0))
+            .mb(px(8.0))
+            .rounded(px(9.0))
+            .cursor_pointer()
+            .border_1()
+            .border_color(if on {
+                chrome::acc_line(cx)
+            } else {
+                orbit::alpha(skin.line1)
+            })
+            .bg(if on {
+                chrome::acc_bg(cx)
+            } else {
+                gpui::hsla(0.0, 0.0, 0.0, 0.0)
+            })
+            .child(radio(on))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .child(t(label.to_owned(), 13.0, 600, skin.text1, cx))
+                    .child(t(hint.to_owned(), 12.5, 400, skin.text3, cx)),
+            )
+    };
+    let scope = |value: ics::Scope| cal.ui.ics.scope == value;
+    let left = div()
+        .flex_1()
+        .min_w_0()
+        .child(chrome::section_title("Qué añadir", None, cx))
         .child(
-            check_card(
+            option(
                 "calendar-ics-favs",
-                "Solo mis favoritas",
-                "Si lo apagas, entran todas las series con salidas con aviso.",
-                options.only_favs,
+                "Mis favoritas",
+                "Semanales y especiales: cada tanda. Diarias: solo las salidas con aviso (las de cada 15 min llenarían tu calendario).",
+                scope(ics::Scope::Favs),
                 cx,
             )
             .on_click(cx.listener(|this, _, _, cx| {
-                this.ui.ics.only_favs = !this.ui.ics.only_favs;
+                this.ui.ics.scope = ics::Scope::Favs;
                 cx.notify();
             })),
         )
         .child(
+            option(
+                "calendar-ics-events",
+                "Solo eventos semanales y especiales",
+                "Todas las tandas de los eventos de la semana.",
+                scope(ics::Scope::Events),
+                cx,
+            )
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.ui.ics.scope = ics::Scope::Events;
+                cx.notify();
+            })),
+        )
+        .child(
+            option(
+                "calendar-ics-all",
+                "Todas las series",
+                "Eventos con todas sus tandas y las diarias que caen en tus avisos.",
+                scope(ics::Scope::All),
+                cx,
+            )
+            .on_click(cx.listener(|this, _, _, cx| {
+                this.ui.ics.scope = ics::Scope::All;
+                cx.notify();
+            })),
+        )
+        .child(div().mt(px(12.0)).child(
             check_card(
                 "calendar-ics-alarm",
-                "Recordatorio en tu calendario",
-                "Con la misma antelación que tus avisos.",
+                "Incluir recordatorio del calendario",
+                &format!(
+                    "{} min antes, además del aviso de Vantare.",
+                    cal.alerts.lead_min
+                ),
                 options.alarm,
                 cx,
             )
@@ -707,16 +1006,94 @@ pub(super) fn ics_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> impl 
                 this.ui.ics.alarm = !this.ui.ics.alarm;
                 cx.notify();
             })),
+        ));
+    let mut list = div().flex().flex_col();
+    for entry in preview.iter().take(4) {
+        list = list.child(
+            div()
+                .flex()
+                .justify_between()
+                .gap(px(8.0))
+                .py(px(5.0))
+                .border_b_1()
+                .border_color(orbit::alpha(skin.line1))
+                .child(
+                    div()
+                        .flex()
+                        .gap(px(4.0))
+                        .child(t(
+                            format!(
+                                "{} {} ·",
+                                crate::calendar::clock::day_name(zone.date(entry.start)),
+                                chrono::Datelike::day(&zone.date(entry.start))
+                            ),
+                            12.5,
+                            400,
+                            skin.text3,
+                            cx,
+                        ))
+                        .child(chrome::mono(zone.hm(entry.start), 12.5, skin.text2, cx)),
+                )
+                .child(t(entry.summary.clone(), 12.5, 400, skin.text1, cx).truncate()),
+        );
+    }
+    let right = div()
+        .flex_1()
+        .min_w_0()
+        .child(chrome::section_title("Cómo", None, cx))
+        .child(
+            div()
+                .mb(px(8.0))
+                .px(px(12.0))
+                .py(px(10.0))
+                .rounded(px(9.0))
+                .border_1()
+                .border_color(orbit::alpha(skin.line1))
+                .opacity(0.7)
+                .child(t(
+                    "Suscripción · próximamente",
+                    13.0,
+                    600,
+                    skin.text1,
+                    cx,
+                ))
+                .child(t(
+                    "Se actualizaría sola cada semana; necesita servidor y cuenta.",
+                    12.5,
+                    400,
+                    skin.text3,
+                    cx,
+                )),
         )
-        .child(t(
-            "Las series diarias entran solo por las salidas dentro de tus franjas de aviso; los eventos, con todas sus tandas.",
-            12.0,
-            400,
-            skin.text3,
+        .child(option(
+            "calendar-ics-file",
+            "Descargar archivo .ics",
+            "Una sola vez; no se actualiza.",
+            true,
             cx,
         ))
-        .child(pill("Sin suscripción: necesitaría servidor y cuenta", Tone::Neutral, cx).self_start());
+        .child(div().mt(px(12.0)).child(chrome::section_title(
+            &format!(
+                "Vista previa · {} evento{} esta semana",
+                preview.len(),
+                if preview.len() == 1 { "" } else { "s" }
+            ),
+            None,
+            cx,
+        )))
+        .child(list);
+    let body = div().flex().gap(px(22.0)).child(left).child(right);
     let footer = div()
+        .child(
+            t(
+                "El archivo se guarda en tu carpeta Descargas.",
+                12.0,
+                400,
+                skin.cap,
+                cx,
+            )
+            .flex_1(),
+        )
         .child(
             btn("calendar-ics-cancel", "Cancelar", false, cx).on_click(cx.listener(
                 |this, _, _, cx| {
@@ -730,9 +1107,9 @@ pub(super) fn ics_modal(cal: &mut Calendar, cx: &mut Context<Calendar>) -> impl 
         );
     modal(
         cal.ui.viewport,
-        "Exportar a tu calendario",
-        "Un archivo .ics con tus próximas salidas.",
-        560.0,
+        "Añadir a mi calendario",
+        "Tus carreras en Google Calendar, Apple Calendar u Outlook, con la hora de tu zona.",
+        820.0,
         body,
         footer,
         cx,

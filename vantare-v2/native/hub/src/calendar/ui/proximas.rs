@@ -244,8 +244,9 @@ fn hero(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
     let launch_label = cal.launch_label();
     let ficha_id = id.clone();
 
-    orbit::hero_surface(cx)
+    chrome::hero_plain(cx)
         .flex_none()
+        .flex()
         .flex_row()
         .items_center()
         .gap(px(if compact { 20.0 } else { 26.0 }))
@@ -304,7 +305,7 @@ fn hero(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
                         .items_center()
                         .gap(px(10.0))
                         .mt(px(if compact { 6.0 } else { 8.0 }))
-                        .overflow_hidden()
+                        .flex_wrap()
                         .child(
                             t(series.track_short().to_owned(), 13.0, 600, skin.text2, cx)
                                 .whitespace_nowrap(),
@@ -388,7 +389,7 @@ fn hero(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
                 .gap(px(8.0))
                 .min_w(px(if compact { 190.0 } else { 212.0 }))
                 .child(
-                    btn_pri("calendar-hero-launch", &launch_label, false, cx)
+                    btn_pri("calendar-hero-launch", &launch_label, true, cx)
                         .child(chrome::keycap("Ctrl L", cx))
                         .on_click(cx.listener(|this, _, _, cx| this.launch_profile(cx))),
                 )
@@ -437,15 +438,13 @@ fn tier_filter(cal: &Calendar, cx: &mut Context<Calendar>) -> Div {
     for (index, (label, value)) in TIERS.iter().enumerate() {
         let on = cal.ui.filter.tier.as_deref() == *value;
         let value = value.map(str::to_owned);
-        let mut button = chrome::seg_button(("calendar-tier", index), label, on, cx);
-        if let Some(tier) = value.as_deref() {
-            button = button.child(
-                div()
-                    .size(px(8.0))
-                    .rounded(px(2.0))
-                    .bg(rgb(tier_dot_color(tier, cx))),
-            );
-        }
+        let dot = value.as_deref().map(|tier| {
+            div()
+                .size(px(8.0))
+                .rounded(px(2.0))
+                .bg(rgb(tier_dot_color(tier, cx)))
+        });
+        let button = chrome::seg_button_with(("calendar-tier", index), label, on, dot, cx);
         row = row.child(button.on_click(cx.listener(move |this, _, _, cx| {
             this.ui.filter.tier.clone_from(&value);
             cx.notify();
@@ -581,25 +580,44 @@ fn board(cal: &Calendar, compact: bool, cx: &mut Context<Calendar>) -> Div {
                 .flex()
                 .items_center()
                 .gap(px(8.0))
-                .children(cal.ui.search.clone().map(|input| {
-                    div()
-                        .relative()
-                        .w(px(if compact { 130.0 } else { 180.0 }))
-                        .child(input.clone())
-                        .when(input.read(cx).value.is_empty(), |field| {
-                            field.child(
-                                t("Buscar serie", 13.0, 400, skin.text3, cx)
-                                    .absolute()
-                                    .left(px(14.0))
-                                    .top(px(10.0)),
-                            )
-                        })
-                }))
-                .child(super::fav_seg(cal, Some(total), cx).when(true, |s| s))
+                .children(
+                    cal.ui
+                        .search
+                        .clone()
+                        .filter(|input| cal.ui.search_open || !input.read(cx).value.is_empty())
+                        .map(|input| {
+                            div()
+                                .relative()
+                                .w(px(if compact { 130.0 } else { 180.0 }))
+                                .child(input.clone())
+                                .when(input.read(cx).value.is_empty(), |field| {
+                                    field.child(
+                                        t("Buscar serie", 13.0, 400, skin.text3, cx)
+                                            .absolute()
+                                            .left(px(14.0))
+                                            .top(px(10.0)),
+                                    )
+                                })
+                        }),
+                )
+                .child(super::fav_seg(cal, Some((total, favs)), cx))
                 .child(tier_filter(cal, cx))
-                .child(class_filter(cal, cx)),
+                .child(class_filter(cal, cx))
+                .child(
+                    chrome::ib(
+                        "calendar-search",
+                        "search",
+                        "Buscar serie",
+                        false,
+                        cal.ui.search_open,
+                        cx,
+                    )
+                    .on_click(cx.listener(|this, _, _, cx| {
+                        this.ui.search_open = !this.ui.search_open;
+                        cx.notify();
+                    })),
+                ),
         );
-    let _ = favs;
     let (name_min, class_w, next_w, pad, gap) = if compact {
         (170.0, 92.0, 84.0, 12.0, 10.0)
     } else {

@@ -167,6 +167,8 @@ pub struct Calendar {
     prefs: Prefs,
     stamps: Stamps,
     history: History,
+    /// Carreras corridas esta semana (telemetría local); vacío sin fuente.
+    runs: Vec<history::Run>,
     refreshing: bool,
     refresh_failed: bool,
     first_open_requested: bool,
@@ -268,6 +270,7 @@ impl Calendar {
             prefs,
             stamps,
             history,
+            runs: vec![],
             refreshing: false,
             refresh_failed: false,
             first_open_requested: false,
@@ -662,6 +665,11 @@ impl Calendar {
 
     /// La shell dice qué perfil lanzaría el botón del hero.
     pub(crate) fn set_profile(&mut self, name: Option<String>) {
+        // La escena de captura fija «Carrera LMU», el perfil del contrato visual.
+        #[cfg(feature = "parity-capture")]
+        if self.demo_now.is_some() && self.profile.is_some() {
+            return;
+        }
         self.profile = name;
     }
 

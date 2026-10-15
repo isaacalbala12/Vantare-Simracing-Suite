@@ -12,9 +12,9 @@ y allow_discount_codes=false siempre. Sin contrato1661 desplegado cierra
 antes de Polar; no se pierde atribución en un fallback sin código.
 
 Backend financiero/renovación pertenece a1661: no copiado ni mergeado aquí.
-Adaptador contra su protocolo local en elaboración, hashes en r7-contract.json.
-Bare1661 aúnc11364a5 en última lectura; orquestador debe validar commit
-definitivo/desplegar su RPC antes de abrir códigos; sin ella falla sin cobro.
+Adaptador contrastado con contrato confirmado1661@39afa230, hashes y SHA en
+r7-contract.json. Orquestador debe integrar/desplegar su RPC antes de abrir
+códigos; sin ella falla sin cobro. Checkout anual aclara segunda anualidad.
 Al integrar, conservar guard2/begin/marcador y barrera1622 en los helpers
 compartidos. Repetir auditoría ACL del rol erasure tras sus RPC nuevas.
 Condiciones de activar reembolsos R6 intactas; switch sigue apagado.

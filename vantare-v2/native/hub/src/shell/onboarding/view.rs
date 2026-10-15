@@ -172,6 +172,7 @@ impl Hub {
         let capture = state.capture;
         let error = state.error.clone();
         let consent_error = state.consent_error;
+        let usage_on = state.choices.usage;
         let mut copy = div()
             .w(px(600.0 * s))
             .flex_none()
@@ -194,7 +195,12 @@ impl Hub {
             "Elige uno o varios. Te preparamos los widgets.",
             "Entra con tu cuenta. Tu configuración se guarda en este PC.",
             "Elige la cadencia de los widgets para que el juego vaya siempre fluido.",
-            "¿Nos ayudas a mejorar Vantare con datos de uso anónimos? Viene apagado.",
+            // El paso de privacidad refleja el interruptor, también al volver atrás.
+            if usage_on {
+                "¿Nos ayudas a mejorar Vantare con datos de uso anónimos? Está activado."
+            } else {
+                "¿Nos ayudas a mejorar Vantare con datos de uso anónimos? Viene apagado."
+            },
             "Tu overlay está preparado. Ábrelo o ajústalo a tu gusto.",
         ];
         copy = copy.child(heading(titles[step], 76.0 * s, cx)).child(

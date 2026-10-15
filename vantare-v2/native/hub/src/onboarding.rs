@@ -7,11 +7,20 @@ pub const SAY: [&str; 7] = [
     "Soy Vanta. Te ayudo a configurar Vantare en menos de un minuto.",
     "He detectado Le Mans Ultimate en tu PC.",
     "Elige cómo corres y te propongo los widgets.",
-    "Inicia sesión para guardar tu configuración en tu cuenta.",
+    "Inicia sesión para conectar tu cuenta. Tu configuración se guarda en este PC.",
     "Recomiendo Automático: ajusta el rendimiento según tu PC.",
-    "Los datos de uso están desactivados. Puedes activarlos si quieres.",
+    usage_say(false),
     "Configuración completa.",
 ];
+/// Bocadillo del paso de privacidad: sigue al interruptor y nunca dice
+/// «desactivados» con el permiso ya activado.
+pub const fn usage_say(on: bool) -> &'static str {
+    if on {
+        "Datos de uso activados. Son anónimos."
+    } else {
+        "Los datos de uso están desactivados. Puedes activarlos si quieres."
+    }
+}
 pub const STY: [&str; 4] = [
     "Para carreras online: Standings, Relative, Delta y Banderas.",
     "Para ligas añado el widget Duelo.",

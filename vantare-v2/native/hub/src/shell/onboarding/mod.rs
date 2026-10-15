@@ -2,7 +2,7 @@
 mod art;
 mod view;
 use super::Hub;
-use crate::onboarding::{Choices, Equipment, SAY};
+use crate::onboarding::{Choices, Equipment, SAY, usage_say};
 use gpui::{Context, Window, prelude::*};
 use std::time::{Duration, Instant};
 use vantare_services::diagnostics::{Privacy, Usage};
@@ -132,10 +132,9 @@ impl State {
         if self.step == 1 && !self.found[0] && !self.capture {
             self.say("Marca los simuladores que usas en tu PC.");
         }
-        if self.step == 3 && !self.capture {
-            self.say(
-                "Inicia sesión para conectar tu cuenta. Tu configuración se guarda en este PC.",
-            );
+        if self.step == 5 {
+            // Al volver atrás el bocadillo sigue al interruptor, no al valor inicial.
+            self.say(usage_say(self.choices.usage));
         }
     }
 }
@@ -239,11 +238,7 @@ impl Hub {
         }
         if let Some(state) = &mut self.onboarding {
             state.choices.usage = next;
-            state.say(if next {
-                "Datos de uso activados. Son anónimos."
-            } else {
-                "Datos de uso desactivados."
-            });
+            state.say(usage_say(next));
             if next && !state.capture {
                 vantare_ui::analytics::record_once(cx, &Usage::UsageOptIn {});
             }

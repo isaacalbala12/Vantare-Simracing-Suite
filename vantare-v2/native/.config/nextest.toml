@@ -23,10 +23,10 @@ retries = 2
 filter = 'test(win32_reads_actual_process_identity_and_registry_without_writing_them)'
 threads-required = 'num-test-threads'
 
-# Cada test de triage lanza powershell.exe con un plazo de 8 s: más de dos a la
-# vez lo agotan en un servidor cargado (#1465).
+# Cada test de triage lanza powershell.exe con un plazo de 8 s: con dos a la vez
+# y 4 hilos falló una de ocho ejecuciones en el servidor; van de uno en uno (#1465).
 [test-groups]
-triage-powershell = { max-threads = 2 }
+triage-powershell = { max-threads = 1 }
 
 [[profile.default.overrides]]
 filter = 'package(vantare-services) & test(/^triage::tests::/)'

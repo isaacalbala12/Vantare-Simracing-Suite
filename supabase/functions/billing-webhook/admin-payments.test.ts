@@ -111,7 +111,8 @@ Deno.test("subscription refunds update management AND the common commercial rest
   );
   assert(result.status === "processed" && persisted);
   assert(
-    (await ledger.readDecision("sandbox", "order-test"))?.accessState === "revoked",
+    (await ledger.readDecision("sandbox", "order-test"))?.accessState ===
+      "revoked",
     "management mirror must not bypass commercial refund restriction",
   );
 });

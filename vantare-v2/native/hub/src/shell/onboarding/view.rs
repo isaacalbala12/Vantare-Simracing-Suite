@@ -1,4 +1,4 @@
-use super::{Hub, art, confirmed_plan, plan_label, private_exit_available};
+use super::{Hub, art, confirmed_plan, crash_report_notice, plan_label, private_exit_available};
 use crate::{onboarding as model, orbit};
 use gpui::{Context, Div, SharedString, Stateful, Window, div, prelude::*, px, rgb};
 use vantare_ui::performance::Level;
@@ -115,6 +115,57 @@ fn check(on: bool, s: f32, cx: &gpui::App) -> Div {
         .flex()
         .items_center()
         .justify_center()
+}
+/// Marco común de los interruptores del paso de privacidad; el manejador de
+/// cada uno lo pone el paso para que un control oculto nunca navegue solo.
+fn onboarding_switch(
+    id: &'static str,
+    title: &'static str,
+    hint: &'static str,
+    on: bool,
+    s: f32,
+    cx: &gpui::App,
+) -> Stateful<Div> {
+    div()
+        .id(id)
+        .role(gpui::Role::Switch)
+        .aria_label(title)
+        .aria_description(if on { "Activado" } else { "Apagado" })
+        .cursor_pointer()
+        .tab_stop(true)
+        .p(px(20.0 * s))
+        .rounded(px(14.0 * s))
+        .border_1()
+        .border_color(rgb(if on { 0x0022_c55e } else { 0x0029_2325 }))
+        .bg(rgb(0x0012_1011))
+        .flex()
+        .items_center()
+        .gap(px(18.0 * s))
+        .child(
+            div()
+                .flex_1()
+                .child(text(title, 16.0 * s, 700, orbit::ink(cx), cx))
+                .child(text(hint, 13.0 * s, 400, orbit::ink_3(cx), cx)),
+        )
+        .child(
+            div()
+                .relative()
+                .w(px(58.0 * s))
+                .h(px(32.0 * s))
+                .rounded_full()
+                .bg(rgb(if on { 0x0022_c55e } else { 0x0022_1d1f }))
+                .border_1()
+                .border_color(rgb(0x0051_464a))
+                .child(
+                    div()
+                        .absolute()
+                        .left(px(if on { 29.0 * s } else { 3.0 * s }))
+                        .top(px(3.0 * s))
+                        .size(px(24.0 * s))
+                        .rounded_full()
+                        .bg(rgb(if on { 0x00ff_ffff } else { 0x00a3_9a9c })),
+                ),
+        )
 }
 fn simulator_note(found: bool, s: f32, cx: &gpui::App) -> Div {
     div()
@@ -890,67 +941,52 @@ impl Hub {
                 cx,
             ))
     }
-    fn onboarding_usage(&self, s: f32, cx: &mut Context<Self>) -> Stateful<Div> {
-        let on = self.onboarding.as_ref().expect("visible").choices.usage;
+    fn onboarding_usage(&self, s: f32, cx: &mut Context<Self>) -> Div {
+        let state = self.onboarding.as_ref().expect("visible");
+        let usage_on = state.choices.usage;
+        let crashes_on = state.choices.crashes;
+        let crashes = onboarding_switch(
+            "onboarding-crashes",
+            "Enviar informes de fallos",
+            "Ayúdanos a corregir errores.",
+            crashes_on,
+            s,
+            cx,
+        )
+        .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_crashes(cx)))
+        .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+            if event.keystroke.key == "space" {
+                hub.onboarding_toggle_crashes(cx);
+                cx.stop_propagation();
+            }
+        }));
+        let usage = onboarding_switch(
+            "onboarding-usage",
+            "Enviar datos de uso anónimos",
+            "Lo cambias cuando quieras en Ajustes.",
+            usage_on,
+            s,
+            cx,
+        )
+        .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_usage(cx)))
+        .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
+            if event.keystroke.key == "space" {
+                hub.onboarding_toggle_usage(cx);
+                cx.stop_propagation();
+            }
+        }));
         div()
-            .id("onboarding-usage")
-            .role(gpui::Role::Switch)
-            .aria_label("Enviar datos de uso anónimos")
-            .aria_description(if on { "Activado" } else { "Apagado" })
-            .cursor_pointer()
-            .tab_stop(true)
-            .p(px(20.0 * s))
-            .rounded(px(14.0 * s))
-            .border_1()
-            .border_color(rgb(if on { 0x0022_c55e } else { 0x0029_2325 }))
-            .bg(rgb(0x0012_1011))
             .flex()
-            .items_center()
-            .gap(px(18.0 * s))
+            .flex_col()
+            .gap(px(12.0 * s))
+            .child(crashes)
             .child(
-                div()
-                    .flex_1()
-                    .child(text(
-                        "Enviar datos de uso anónimos",
-                        16.0 * s,
-                        700,
-                        orbit::ink(cx),
-                        cx,
-                    ))
-                    .child(text(
-                        "Lo cambias cuando quieras en Ajustes.",
-                        13.0 * s,
-                        400,
-                        orbit::ink_3(cx),
-                        cx,
-                    )),
+                // Decisión 15-oct (#1628): el aviso de fallos no se suprime;
+                // explica qué se envía y cómo apagarlo.
+                text(crash_report_notice(), 12.5 * s, 400, orbit::ink_3(cx), cx)
+                    .line_height(px(18.0 * s)),
             )
-            .child(
-                div()
-                    .relative()
-                    .w(px(58.0 * s))
-                    .h(px(32.0 * s))
-                    .rounded_full()
-                    .bg(rgb(if on { 0x0022_c55e } else { 0x0022_1d1f }))
-                    .border_1()
-                    .border_color(rgb(0x0051_464a))
-                    .child(
-                        div()
-                            .absolute()
-                            .left(px(if on { 29.0 * s } else { 3.0 * s }))
-                            .top(px(3.0 * s))
-                            .size(px(24.0 * s))
-                            .rounded_full()
-                            .bg(rgb(if on { 0x00ff_ffff } else { 0x00a3_9a9c })),
-                    ),
-            )
-            .on_click(cx.listener(|hub, _, _, cx| hub.onboarding_toggle_usage(cx)))
-            .on_key_down(cx.listener(|hub, event: &gpui::KeyDownEvent, _, cx| {
-                if event.keystroke.key == "space" {
-                    hub.onboarding_toggle_usage(cx);
-                    cx.stop_propagation();
-                }
-            }))
+            .child(usage)
     }
     fn onboarding_summary(&self, s: f32, cx: &gpui::App) -> Div {
         let state = self.onboarding.as_ref().expect("visible");

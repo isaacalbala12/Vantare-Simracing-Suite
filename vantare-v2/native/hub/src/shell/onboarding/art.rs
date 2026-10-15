@@ -710,7 +710,9 @@ impl Hub {
     }
     #[allow(clippy::too_many_lines)] // Lista blanca de uso y exclusiones en una tarjeta de privacidad.
     fn onboarding_feed(&self, s: f32, cx: &gpui::App) -> Div {
-        let on = self.onboarding.as_ref().expect("visible").choices.usage;
+        let state = self.onboarding.as_ref().expect("visible");
+        let usage = state.choices.usage;
+        let crashes = state.choices.crashes;
         let mut yes = div()
             .rounded(px(14.0 * s))
             .overflow_hidden()
@@ -734,8 +736,8 @@ impl Hub {
                     .p(px(16.0 * s))
                     .border_b_1()
                     .border_color(rgb(0x0029_2325))
-                    .opacity(if on { 1.0 } else { 0.4 })
-                    .child(div().size(px(9.0 * s)).rounded_full().bg(rgb(if on {
+                    .opacity(if usage { 1.0 } else { 0.4 })
+                    .child(div().size(px(9.0 * s)).rounded_full().bg(rgb(if usage {
                         0x0022_c55e
                     } else {
                         0x007a_7173
@@ -783,10 +785,11 @@ impl Hub {
                 cx,
             ))
             .child(heading(
-                if on {
-                    "SOLO ESTO, Y ANÓNIMO."
-                } else {
-                    "NADA. ESTÁ APAGADO."
+                match (usage, crashes) {
+                    (true, true) => "ESTO Y FALLOS, CON PERMISO.",
+                    (true, false) => "SOLO ESTO, Y ANÓNIMO.",
+                    (false, true) => "SOLO FALLOS, CON PERMISO.",
+                    (false, false) => "NADA. ESTÁ APAGADO.",
                 },
                 46.0 * s,
                 cx,
@@ -800,7 +803,7 @@ impl Hub {
             ))
             .child(yes)
             .child(text(
-                "Fallos: permiso separado en Ajustes. No se mide fluidez.",
+                "Fallos: versión, sistema y código del fallo; se cambia aquí o en Ajustes. No se mide fluidez.",
                 12.0 * s,
                 400,
                 0x00f3_eeee,

@@ -2,7 +2,7 @@
 mod art;
 mod view;
 use super::{Hub, navigation::Access};
-use crate::onboarding::{Choices, Equipment, SAY, usage_say};
+use crate::onboarding::{Choices, Equipment, SAY, crash_say, usage_say};
 use gpui::{Context, Window, prelude::*};
 use std::time::{Duration, Instant};
 use vantare_ipc::control::CatalogAccess;
@@ -154,6 +154,25 @@ const fn most_private(privacy: Privacy) -> Privacy {
         ..privacy
     }
 }
+/// Consentimiento del paso de privacidad: guarda juntas las dos decisiones que
+/// el usuario ve en los interruptores; el resto del estado no se toca.
+const fn consent_privacy(current: Privacy, usage: bool, crashes: bool) -> Privacy {
+    Privacy {
+        usage,
+        usage_decided: true,
+        crashes,
+        crashes_decided: true,
+        ..current
+    }
+}
+/// Aviso de fallos del asistente: qué se envía y cómo apagarlo. Decisión del
+/// 15-oct: se muestra siempre en el paso, no se suprime la decisión.
+fn crash_report_notice() -> String {
+    format!(
+        "Si está encendido, Vantare envía a PostHog (Unión Europea) {}. Puedes apagarlo aquí mismo o más tarde en Ajustes › Privacidad.",
+        crate::shell::settings::privacy::CRASH_REPORT_WHAT
+    )
+}
 /// Nombre corto del plan que el núcleo confirma para la cuenta; `None` mientras
 /// no haya política vigente. Una cuenta conectada sin confirmar no es «Gratis».
 fn confirmed_plan(access: Access) -> Option<&'static str> {
@@ -235,11 +254,12 @@ impl Hub {
         };
         let step = state.step;
         let usage = state.choices.usage;
+        let crashes = state.choices.crashes;
         match motion(Nav::Next, step, state.choices.can_advance(step)) {
             Motion::Blocked => {}
             Motion::Exit(show) => self.onboarding_finish(show, window, cx),
             Motion::Page(next) => {
-                if step == 5 && !self.onboarding_consent(usage, cx) {
+                if step == 5 && !self.onboarding_consent(usage, crashes, cx) {
                     // El error queda visible: el usuario puede reintentar o entrar sin guardar.
                     cx.notify();
                     return;
@@ -272,7 +292,9 @@ impl Hub {
         }
         cx.notify();
     }
-    fn onboarding_consent(&mut self, enabled: bool, cx: &mut Context<Self>) -> bool {
+    /// Guarda las dos decisiones del paso de privacidad tal y como se ven en
+    /// los interruptores: apagar fallos aquí se respeta igual que el uso.
+    fn onboarding_consent(&mut self, usage: bool, crashes: bool, cx: &mut Context<Self>) -> bool {
         if self.onboarding.as_ref().is_some_and(|s| s.capture) {
             return true;
         }
@@ -282,14 +304,7 @@ impl Hub {
             .as_mut()
             .map_err(|e| e.clone())
             .and_then(|store| {
-                let mut next = store.value;
-                next.usage = enabled;
-                next.usage_decided = true;
-                // El onboarding no solicita permiso de fallos; permanece separado y apagado.
-                if !next.crashes_decided {
-                    next.crashes = false;
-                    next.crashes_decided = true;
-                }
+                let next = consent_privacy(store.value, usage, crashes);
                 store.save(next)?;
                 vantare_ui::analytics::consent(cx, store.value);
                 Ok(())
@@ -306,7 +321,8 @@ impl Hub {
             return;
         };
         let next = !state.choices.usage;
-        if !self.onboarding_consent(next, cx) {
+        let crashes = state.choices.crashes;
+        if !self.onboarding_consent(next, crashes, cx) {
             cx.notify();
             return;
         }
@@ -316,6 +332,22 @@ impl Hub {
             if next && !state.capture {
                 vantare_ui::analytics::record_once(cx, &Usage::UsageOptIn {});
             }
+        }
+        cx.notify();
+    }
+    fn onboarding_toggle_crashes(&mut self, cx: &mut Context<Self>) {
+        let Some(state) = &self.onboarding else {
+            return;
+        };
+        let next = !state.choices.crashes;
+        let usage = state.choices.usage;
+        if !self.onboarding_consent(usage, next, cx) {
+            cx.notify();
+            return;
+        }
+        if let Some(state) = &mut self.onboarding {
+            state.choices.crashes = next;
+            state.say(crash_say(next));
         }
         cx.notify();
     }
@@ -334,7 +366,7 @@ impl Hub {
             cx.notify();
             return;
         }
-        if !self.onboarding_consent(choices.usage, cx) {
+        if !self.onboarding_consent(choices.usage, choices.crashes, cx) {
             cx.notify();
             return;
         }
@@ -562,5 +594,85 @@ mod tests {
                 usage_decided: true,
             }
         );
+    }
+    // El paso de privacidad se prueba en sus decisiones puras: el render no
+    // tiene arnés GPUI en el repo, y el paso enseña y guarda estas decisiones.
+    #[test]
+    fn the_privacy_step_offers_crash_reports_on_with_the_notice_visible() {
+        let choices = Choices::default();
+        assert!(
+            choices.crashes,
+            "los informes de fallos llegan encendidos al paso"
+        );
+        assert!(!choices.usage, "el uso sigue siendo una decisión aparte");
+        let notice = crash_report_notice();
+        assert!(
+            notice.contains(crate::shell::settings::privacy::CRASH_REPORT_WHAT),
+            "el aviso reutiliza el texto del primer arranque"
+        );
+        assert!(
+            notice.contains("Puedes apagarlo aquí mismo"),
+            "el aviso dice cómo apagarlo en el mismo paso"
+        );
+        assert!(
+            notice.contains("Ajustes › Privacidad"),
+            "el aviso remite a Ajustes para más tarde"
+        );
+    }
+    #[test]
+    fn consent_saves_the_two_decisions_of_the_privacy_step() {
+        let current = Privacy {
+            generation: 7,
+            ..Privacy::default()
+        };
+        assert_eq!(
+            consent_privacy(current, true, true),
+            Privacy {
+                generation: 7,
+                crashes: true,
+                usage: true,
+                crashes_decided: true,
+                usage_decided: true,
+            }
+        );
+        // Apagar fallos en el asistente se guarda tal cual: no se vuelve a encender.
+        assert_eq!(
+            consent_privacy(current, false, false),
+            Privacy {
+                generation: 7,
+                crashes: false,
+                usage: false,
+                crashes_decided: true,
+                usage_decided: true,
+            }
+        );
+        // Lo guardado refleja los interruptores, aunque hubiera una decisión previa.
+        let legacy = Privacy {
+            generation: 3,
+            crashes: false,
+            usage: true,
+            crashes_decided: true,
+            usage_decided: false,
+        };
+        assert_eq!(
+            consent_privacy(legacy, true, true),
+            Privacy {
+                generation: 3,
+                crashes: true,
+                usage: true,
+                crashes_decided: true,
+                usage_decided: true,
+            }
+        );
+    }
+    #[test]
+    fn the_unsaved_exit_turns_crash_reports_off_even_when_the_step_offered_them_on() {
+        let choices = Choices::default();
+        let chosen = consent_privacy(Privacy::default(), choices.usage, choices.crashes);
+        assert!(chosen.crashes, "el paso llegó con fallos encendidos");
+        let entered = most_private(chosen);
+        assert!(!entered.crashes && entered.crashes_decided);
+        assert!(!entered.usage && entered.usage_decided);
+        assert_eq!(entered.generation, chosen.generation);
     }
 }

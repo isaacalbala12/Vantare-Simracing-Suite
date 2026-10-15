@@ -9,6 +9,10 @@ mod cleanup;
 // El Hub aún muestra la interfaz en español; el idioma de widgets es independiente.
 const PRIVACY_POLICY_URL: &str = "https://vantare.app/privacidad";
 
+/// Qué se envía y qué no en un informe de fallos. Una sola redacción para el
+/// aviso del primer arranque y el paso de privacidad del asistente (#1628).
+pub(in crate::shell) const CRASH_REPORT_WHAT: &str = "la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal.";
+
 fn resolve_root(data: &Path, default_hub: &Path, shared: PathBuf) -> PathBuf {
     if data == default_hub {
         shared
@@ -245,9 +249,11 @@ impl super::Hub {
             "¿Quieres enviar informes de fallos para ayudarnos a corregir errores?"
         };
         let description = if asking_usage {
-            "Solo si marcas la casilla, enviaremos a PostHog (Unión Europea) páginas, funciones, tipos de widgets y tiempo de uso, además de instalación, sesión de cuenta y licencia observadas. Con un identificador aleatorio de instalación; sin nombres, contenido, rutas ni datos de pilotos."
+            "Solo si marcas la casilla, enviaremos a PostHog (Unión Europea) páginas, funciones, tipos de widgets y tiempo de uso, además de instalación, sesión de cuenta y licencia observadas. Con un identificador aleatorio de instalación; sin nombres, contenido, rutas ni datos de pilotos.".to_owned()
         } else {
-            "Solo si aceptas, Vantare enviará a PostHog (Unión Europea) la versión de la app, el sistema operativo, el código del fallo y direcciones numéricas de la pila. Sin mensajes, rutas, nombre de usuario ni identificador personal."
+            format!(
+                "Solo si aceptas, Vantare enviará a PostHog (Unión Europea) {CRASH_REPORT_WHAT}"
+            )
         };
         let body = orbit::card_body().gap(px(16.0))
             .child(orbit::text(question, 16.0, 600, orbit::skin(cx).text1, cx))

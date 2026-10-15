@@ -21,6 +21,14 @@ pub const fn usage_say(on: bool) -> &'static str {
         "Los datos de uso están desactivados. Puedes activarlos si quieres."
     }
 }
+/// Bocadillo del interruptor de informes de fallos: sigue al interruptor.
+pub const fn crash_say(on: bool) -> &'static str {
+    if on {
+        "Informes de fallos activados. Son anónimos."
+    } else {
+        "Informes de fallos desactivados."
+    }
+}
 pub const STY: [&str; 4] = [
     "Para carreras online: Standings, Relative, Delta y Banderas.",
     "Para ligas añado el widget Duelo.",
@@ -111,6 +119,7 @@ pub struct Choices {
     pub level: Level,
     pub automatic: bool,
     pub usage: bool,
+    pub crashes: bool,
 }
 impl Default for Choices {
     fn default() -> Self {
@@ -120,6 +129,9 @@ impl Default for Choices {
             level: Level::Balanced,
             automatic: true,
             usage: false,
+            // Decisión 15-oct (#1628): fallos encendidos con el aviso visible y
+            // la salida apagada sin guardar siempre disponible.
+            crashes: true,
         }
     }
 }
@@ -190,6 +202,7 @@ mod tests {
         let choices = Choices::default();
         assert!((0..7).all(|step| choices.can_advance(step)));
         assert!(!choices.usage);
+        assert!(choices.crashes);
         assert!(choices.automatic);
         assert_eq!(choices.kit(), KITS[0]);
         assert_eq!(choices.widgets_summary(), "4 widgets · 1 Pro");

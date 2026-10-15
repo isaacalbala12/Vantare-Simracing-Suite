@@ -25,6 +25,7 @@ enum Dialog {
     Block(bool),
     Delete,
     Creator,
+    ForgetWaitlist,
     Payout,
     Report(Status),
 }
@@ -587,6 +588,7 @@ impl Admin {
     }
     fn open_dialog(&mut self, dialog: Dialog, cx: &mut Context<Self>) {
         let label = match dialog {
+            Dialog::ForgetWaitlist => "Correo de la lista de espera",
             Dialog::Creator => "Nombre del creador",
             Dialog::Delete => "Correo de la cuenta",
             Dialog::Block(_) => "Motivo del bloqueo",
@@ -607,7 +609,8 @@ impl Admin {
         if matches!(
             self.dialog,
             Some(
-                Dialog::Creator
+                Dialog::ForgetWaitlist
+                    | Dialog::Creator
                     | Dialog::Delete
                     | Dialog::Block(true)
                     | Dialog::Report(Status::Fixed | Status::Rejected)
@@ -726,6 +729,10 @@ impl Admin {
                     confirm_email: a,
                 }
             }
+            Dialog::ForgetWaitlist => Action::MailForgetWaitlist {
+                email: a.to_lowercase(),
+                confirm: true,
+            },
             Dialog::Creator => Action::CreateCreator {
                 name: a,
                 email: b,

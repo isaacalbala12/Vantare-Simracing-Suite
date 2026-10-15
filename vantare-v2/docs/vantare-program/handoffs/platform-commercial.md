@@ -6,7 +6,8 @@ que dispara #1622; reintentos, leases, ACK 204/404 idempotente y limpieza de PII
 tras confirmar. Worker `mail-cleanup` inerte, sin scheduler ni secretos. Sync
 fenced para impedir recreación tras borrado; altas esperan el borrado pendiente.
 Contratos en `supabase/functions/native-admin/MAIL.md`; evidencia en
-`~/evidence/1636-r2/`. P2-2, P2-3 y P3 siguen en implementación. Seguimiento
+`~/evidence/1636-r2/`. P2-2 añade borrado de espera por Owner/enlace con POST confirmado: 35 SQL,
+80 Edge y Clippy/Nextest admin 27/27 pasan. P2-3 y P3 siguen en implementación. Seguimiento
 Plane/GitHub por el orquestador. Sin SaaS real ni despliegue.
 
 ## #1636 · VANTA-72 · Correos de gestión (15/10/2026, candidato local)

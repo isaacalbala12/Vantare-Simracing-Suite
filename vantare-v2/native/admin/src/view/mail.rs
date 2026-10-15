@@ -246,25 +246,7 @@ impl Admin {
         if let Some(c) = &self.state.mail.campaign {
             return root.child(self.mail_detail(c, cx));
         }
-        root = root.child(
-            div()
-                .flex()
-                .gap(px(10.))
-                .child(self.button(
-                    "mail-new",
-                    "Nueva campaña",
-                    Event::Propose(Action::MailNew),
-                    cx,
-                ))
-                .child(self.button(
-                    "mail-sync",
-                    "Sincronizar contactos",
-                    Event::Propose(Action::MailSync {
-                        cursor: self.state.mail.sync_cursor.clone(),
-                    }),
-                    cx,
-                )),
-        );
+        root = root.child(self.mail_toolbar(cx));
         if self.state.mail.sync_cursor.is_some() {
             root = root.child(muted(
                 "Quedan contactos por sincronizar. Pulsa de nuevo para continuar.",
@@ -319,6 +301,50 @@ impl Admin {
             root = root.child(empty_card("Todavía no hay campañas"));
         }
         root
+    }
+    fn mail_toolbar(&self, cx: &mut Context<Self>) -> Div {
+        let mut toolbar = column();
+        toolbar = toolbar.child(
+            div()
+                .flex()
+                .gap(px(10.))
+                .child(self.button(
+                    "mail-new",
+                    "Nueva campaña",
+                    Event::Propose(Action::MailNew),
+                    cx,
+                ))
+                .child(self.button(
+                    "mail-sync",
+                    "Sincronizar contactos",
+                    Event::Propose(Action::MailSync {
+                        cursor: self.state.mail.sync_cursor.clone(),
+                    }),
+                    cx,
+                )),
+        );
+        toolbar = toolbar.child(
+            div()
+                .flex()
+                .gap(px(10.))
+                .child(self.button(
+                    "mail-forget",
+                    "Borrar de lista de espera",
+                    Event::OpenDialog(Dialog::ForgetWaitlist),
+                    cx,
+                ))
+                .child(self.button(
+                    "mail-cleanup",
+                    "Reintentar borrados de Brevo",
+                    Event::Propose(Action::MailCleanup),
+                    cx,
+                )),
+        );
+        toolbar = toolbar.child(muted(&format!(
+            "Borrados pendientes en Brevo: {}",
+            self.state.mail.cleanup_pending
+        )));
+        toolbar
     }
     fn mail_detail(&self, c: &Campaign, cx: &mut Context<Self>) -> Div {
         let editable = c.state == "draft";

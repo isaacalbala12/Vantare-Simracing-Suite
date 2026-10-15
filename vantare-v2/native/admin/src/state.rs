@@ -222,7 +222,11 @@ impl State {
             self.accept_mail(action, response)?;
             self.busy = false;
             self.message = "Datos de correos confirmados".into();
-            return Ok(None);
+            return Ok(if matches!(action, Action::MailForgetWaitlist { .. }) {
+                Some(Action::MailList)
+            } else {
+                None
+            });
         }
         let reload = match action {
             Action::SearchAccounts { query, .. } => {

@@ -15,12 +15,14 @@ impl Admin {
             Some(Dialog::Block(true))=>("Bloquear esta cuenta","No podrá entrar. Se cerrarán sus sesiones y se cancelará su suscripción, sin reembolso automático.".to_owned()),
             Some(Dialog::Block(false))=>("Desbloquear esta cuenta","Podrá volver a entrar. Su suscripción cancelada no se reactivará.".to_owned()),
             Some(Dialog::Delete)=>("Borrar esta cuenta para siempre","Se borrarán sus datos personales y se cancelará su suscripción. Esta acción no se puede deshacer.".to_owned()),
+            Some(Dialog::ForgetWaitlist)=>("Borrar datos de lista de espera","Escribe el correo de quien pidió el borrado. Se borrarán sus datos locales y se retirará el contacto de Brevo mediante la cola. No borra cuentas de Vantare.".to_owned()),
             Some(Dialog::Creator)=>("Añadir creador","Se creará su código en Polar: 20 % de descuento durante dos meses, en los planes de lanzamiento.".to_owned()),
             Some(Dialog::Payout)=>("Apuntar pago al creador",format!("Apunta que has pagado {}. Esta acción no envía dinero.",money(self.state.creator.as_ref().map_or(0,|c|c.payable_cents)))),
             Some(Dialog::Report(Status::Fixed))=>("Arreglado en una versión","Indica la versión donde se ha corregido. El informe debe estar aceptado.".to_owned()),
             Some(Dialog::Report(Status::Rejected))=>("No aceptar este informe","Escribe la nota de revisión para la persona que lo envió.".to_owned()),
             Some(Dialog::Report(_))=>("Cambiar estado del informe","Confirma el nuevo estado.".to_owned()),
             None=>("Confirmar cambio",match action {
+                Some(Action::MailCleanup)=>"Reintentará los borrados pendientes en Brevo. No envía correos ni afecta a contactos fuera de la cola.".into(),
                 Some(Action::MailApprove{..})=>format!("Confirmas el texto guardado en ES, EN, IT y PT-BR para {} personas con consentimiento en este grupo. El servidor vuelve a comprobarlo en cada tanda. Después pulsa Enviar siguiente tanda.",self.state.mail.campaign.as_ref().and_then(|c|self.state.mail.counts.get(&c.target_group)).copied().unwrap_or_default()),
                 Some(Action::MailSendBatch{..})=>"Se enviará la siguiente tanda, hasta tres correos, de la campaña confirmada. Solo a personas que sigan teniendo consentimiento.".into(),
                 Some(Action::MailDraft{..})=>"Claude preparará cuatro borradores a partir del brief. Revisa su contenido antes de guardarlo. No envía correos.".into(),
@@ -210,6 +212,11 @@ impl Admin {
     }
     fn dialog_fields(&self, mut dialog: Div) -> Div {
         match self.dialog {
+            Some(Dialog::ForgetWaitlist) => {
+                dialog = dialog
+                    .child(muted("Correo exacto de la lista de espera"))
+                    .child(self.form_a.clone());
+            }
             Some(Dialog::Creator) => {
                 dialog = dialog
                     .child(muted("Nombre"))

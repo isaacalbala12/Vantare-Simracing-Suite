@@ -744,6 +744,7 @@ export async function handleNativeAdmin(
         [
           "native_admin_owner_conflict",
           "mail_revision_conflict",
+          "mail_contact_has_account",
           "testing_review_conflict",
           "testing_acceptance_limit",
         ].includes(String(error.message))

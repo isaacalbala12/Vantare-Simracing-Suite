@@ -357,7 +357,14 @@ Deno.test("mail signed one-click unsubscribe: GET and RFC8058 POST; tampering/mi
   let changes = 0;
   for (const method of ["GET", "POST"]) {
     const r = await handleUnsubscribe(
-      new Request(`https://project.invalid/?t=${t}`, { method }),
+      new Request(
+        `https://project.invalid/?t=${t}`,
+        method === "GET" ? { method } : {
+          method,
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: "List-Unsubscribe=One-Click",
+        },
+      ),
       {
         env,
         unsubscribe: (email) => {
@@ -369,7 +376,7 @@ Deno.test("mail signed one-click unsubscribe: GET and RFC8058 POST; tampering/mi
     );
     assert(r.status === 200 && !r.headers.get("Location"));
   }
-  assert(Number(changes) === 2);
+  assert(Number(changes) === 1);
   const bad = await handleUnsubscribe(
     new Request("https://project.invalid/?email=yes@example.invalid"),
     {
@@ -458,4 +465,60 @@ Deno.test("mail byte caps preserve legacy malformed rejection and cancel oversiz
     },
   );
   assert(result.status === 200);
+});
+
+Deno.test("waitlist erasure uses only verified token address and GET never mutates", async () => {
+  const token = await unsubscribeToken("wait@example.invalid", secret);
+  let erased = 0;
+  let unsubscribed = 0;
+  const deps = {
+    env,
+    forget: (email: string) => {
+      assert(email === "wait@example.invalid");
+      erased++;
+      return Promise.resolve();
+    },
+    unsubscribe: () => {
+      unsubscribed++;
+      return Promise.resolve();
+    },
+  };
+  const url = `https://project.invalid/?t=${token}`;
+  const page = await handleUnsubscribe(new Request(url), deps);
+  assert(
+    page.status === 200 && (await page.text()).includes('value="forget"') &&
+      erased === 0 && unsubscribed === 0,
+  );
+  const post = () =>
+    new Request(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: "action=forget",
+    });
+  assert(
+    (await handleUnsubscribe(post(), deps)).status === 200 &&
+      Number(erased) === 1 && unsubscribed === 0,
+  );
+  assert(
+    (await handleUnsubscribe(post(), {
+      ...deps,
+      forget: () => Promise.reject(new Error("mail_contact_has_account")),
+    })).status === 409,
+  );
+  let actions = 0;
+  await executeMail("mail_forget_waitlist", {
+    email: "wait@example.invalid",
+    confirm: true,
+  }, (a) => {
+    assert(a === "mail_forget_waitlist");
+    actions++;
+    return Promise.resolve({ erasure_queued: true });
+  }, { env });
+  assert(actions === 1);
+  await rejects(() =>
+    validateMail("mail_forget_waitlist", {
+      email: "wait@example.invalid",
+      confirm: false,
+    })
+  );
 });

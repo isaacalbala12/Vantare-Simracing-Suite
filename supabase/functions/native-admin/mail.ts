@@ -40,6 +40,7 @@ export function mailContent(
 }
 export function validateMail(action: string, p: Obj): void {
   const fields: Record<string, string[]> = {
+    mail_forget_waitlist: ["email", "confirm"],
     mail_cleanup: [],
     mail_list: [],
     mail_new: [],
@@ -67,6 +68,11 @@ export function validateMail(action: string, p: Obj): void {
   if (
     fields[action].includes("revision") &&
     (!Number.isSafeInteger(p.revision) || Number(p.revision) < 1)
+  ) throw invalid();
+  if (
+    action === "mail_forget_waitlist" &&
+    (p.confirm !== true || typeof p.email !== "string" ||
+      p.email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(p.email))
   ) throw invalid();
   if (action === "mail_approve" && p.confirm !== true) throw invalid();
   if (
@@ -122,7 +128,14 @@ export async function executeMail(
   };
   // Also checks Owner inside SQL, including before all provider calls and AI.
   if (
-    ["mail_list", "mail_new", "mail_get", "mail_save", "mail_approve"].includes(
+    [
+      "mail_list",
+      "mail_new",
+      "mail_get",
+      "mail_save",
+      "mail_approve",
+      "mail_forget_waitlist",
+    ].includes(
       action,
     )
   ) return await run(action, p);

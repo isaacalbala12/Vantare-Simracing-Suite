@@ -62,6 +62,7 @@ impl Campaign {
 }
 #[derive(Default)]
 pub struct MailState {
+    pub cleanup_pending: u32,
     pub campaigns: Vec<Campaign>,
     pub campaign: Option<Campaign>,
     pub counts: BTreeMap<String, u32>,
@@ -131,7 +132,10 @@ impl MailState {
 impl crate::client::Action {
     pub(crate) fn mail_valid(&self) -> Option<bool> {
         Some(match self {
-            Self::MailList | Self::MailNew => true,
+            Self::MailList | Self::MailNew | Self::MailCleanup => true,
+            Self::MailForgetWaitlist { email, confirm } => {
+                *confirm && email.len() <= 320 && email == email.trim() && email.contains('@')
+            }
             Self::MailGet { campaign_id } => vantare_services::license::uuid(campaign_id),
             Self::MailSave {
                 campaign_id,
@@ -184,7 +188,8 @@ impl crate::state::State {
         response: &serde_json::Value,
     ) -> Result<()> {
         match action {
-            Action::MailList => {
+            Action::MailForgetWaitlist { .. } => {}
+            Action::MailList | Action::MailCleanup => {
                 let campaigns: Vec<crate::mail::Campaign> = field(response, "campaigns")?;
                 if campaigns.len() > 100 {
                     return Err(Error::TooLarge);
@@ -197,6 +202,13 @@ impl crate::state::State {
                 if quota > 300 {
                     return Err(Error::Protocol);
                 }
+                self.mail.cleanup_pending = response
+                    .get("cleanup")
+                    .and_then(|c| c.get("pending"))
+                    .map(|v| serde_json::from_value(v.clone()))
+                    .transpose()
+                    .map_err(|_| Error::Protocol)?
+                    .unwrap_or_default();
                 self.mail.campaigns = campaigns;
                 self.mail.counts = counts;
                 self.mail.quota = quota;

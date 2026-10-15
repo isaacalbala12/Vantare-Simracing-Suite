@@ -170,3 +170,20 @@ llamar al proveedor. Borrarlo impide nuevas sincronizaciones y difiere su DELETE
 hasta que venza cualquier sincronización ya en curso. Un alta nueva para la misma
 dirección espera al ACK de borrado; así el DELETE pendiente no borra el alta nueva.
 Contrato del proveedor: [DELETE contact](https://developers.brevo.com/reference/delete-contact).
+
+## R2 / P2-2: borrado de lista de espera
+
+Owner: Correos → «Borrar de lista de espera», escribir el correo exacto y
+confirmar. Contrato: `mail_forget_waitlist {email,confirm:true}`. Solo elimina
+contactos con `waitlist=true`, sin cuenta actual ni anterior; rechaza direcciones
+asociadas a cuentas. Repetir una solicitud ya borrada no crea otro trabajo.
+«Reintentar borrados de Brevo» usa la cola y el contador indica lo pendiente.
+
+El enlace firmado de cada correo muestra ahora una página en GET: no cambia
+consentimiento ni datos, para que una previsualización no dé de baja a nadie.
+El POST de formulario `action=unsubscribe` retira el permiso y `action=forget`
+borra los datos de espera y encola la retirada de Brevo. El POST RFC 8058
+`List-Unsubscribe=One-Click` sigue dando de baja sin confirmación adicional.
+No requiere login; el token firmado solo autoriza la dirección del enlace.
+RPC interna `mail_forget_waitlist(p_email)` solo disponible para service_role;
+no se concede al cliente OAuth ni anon. Borrar una cuenta sigue pasando por #1622.

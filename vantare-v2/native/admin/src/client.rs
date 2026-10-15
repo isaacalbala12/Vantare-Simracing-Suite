@@ -317,6 +317,11 @@ impl<'de> Deserialize<'de> for Report {
 #[derive(Clone, Debug, Serialize, PartialEq, Eq)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum Action {
+    MailForgetWaitlist {
+        email: String,
+        confirm: bool,
+    },
+    MailCleanup,
     MailList,
     MailNew,
     MailGet {
@@ -417,6 +422,8 @@ pub enum Action {
 impl Action {
     pub fn label(&self) -> &'static str {
         match self {
+            Self::MailForgetWaitlist { .. } => "mail_forget_waitlist",
+            Self::MailCleanup => "mail_cleanup",
             Self::MailList => "mail_list",
             Self::MailNew => "mail_new",
             Self::MailGet { .. } => "mail_get",
@@ -445,7 +452,9 @@ impl Action {
     pub fn mutation(&self) -> bool {
         matches!(
             self,
-            Self::MailNew
+            Self::MailForgetWaitlist { .. }
+                | Self::MailCleanup
+                | Self::MailNew
                 | Self::MailSave { .. }
                 | Self::MailApprove { .. }
                 | Self::MailSendBatch { .. }

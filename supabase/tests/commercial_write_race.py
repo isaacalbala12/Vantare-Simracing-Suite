@@ -66,6 +66,10 @@ end $$;
             if name.startswith('testing-admitted-'):
                 sql("insert into public.testing_center_memberships(user_id,actor_id,role) values('{a}','{case}','tester')".format(**values))
             sql("insert into public.profiles(id) values('{other}'); insert into public.billing_webhook_inbox(id,provider,environment,provider_event_id,event_type,payload_hash,payload) values('{inbox}','polar','sandbox','seed-{case}','order.paid','{h}','{{\"data\":{{\"customer_id\":\"{case}\"}}}}')".format(**values))
+            if name == 'testing-triage-review':
+                # Keep the author's parent alive; deletion targets the reviewer.
+                # This separately exercises the review's direct identity FK.
+                sql("insert into public.testing_contributions(id,account_id,channel,title,body) values('{new_id}','{other}','master','Fixture','Private body')".format(**values))
             if name.startswith('storage-bucket-child-'):
                 sql("insert into storage.buckets(id,name,owner_id) values('{case}','{case}','{a}')".format(**values))
                 if name == 'storage-bucket-child-part':

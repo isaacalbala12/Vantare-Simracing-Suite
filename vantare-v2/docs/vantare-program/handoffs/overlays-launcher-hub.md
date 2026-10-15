@@ -95,3 +95,21 @@ a ramas no integradas: se validan sin importar sus features. Evidencia externa
 `C:/VantareServer/evidence/1655`, buzón `C:/tmp/buzon/1655.md`.
 Sin push/PR todavía, sin merge, promoción ni release. Siguiente: completar gates,
 probar primero seguridad del HWND, después paridad/medición y entregar PR draft.
+
+Hito #1655 `32d5a35d8`: código y documentación comprometidos. Check workspace
+con captura y Clippy habitual workspace/all-targets -D warnings PASS. Nextest
+Hub/UI habitual 789/789 PASS (8 skips); con captura 798/800 PASS (8 skips), dos
+fallos Track Map preexistentes en código sin tocar, también registrados en
+1629-r3. Los tests nuevos de recibos/hash/manifiesto/múltiples monitores pasan.
+Primer intento de Nextest: faltaba DuckDB en PATH del harness, corregido sin
+cambiar producto/tests. Smoke Hub y widgets: un HWND por lote, nacido oculto
+NOACTIVATE/TOOLWINDOW, cero foco y cero cruces visibles con monitores. Se amplió
+el margen para que el vigilante existente tampoco mueva ventanas ya seguras.
+Paridad completa y medidas antes/lote/incremental pendientes. Se adjunta
+`native/hub/reference/tools/calendar-batch-1634.patch` para conectar el selector
+QA al integrar la rama de #1634; `git apply --check` sobre 97a0d7674 PASS.
+
+Hito #1655 `c3966a116`: reutilización del Hub entre escenas de calendario
+compatibles y subsistema Windows en binarios QA para no crear consola.
+Gates finales y medición completa pendientes. Scripts históricos archivados
+con hashes originales, integridad y calidad 461/461 PASS; sin relajar gates.

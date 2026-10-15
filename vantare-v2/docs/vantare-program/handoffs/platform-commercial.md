@@ -16,8 +16,9 @@ retirada con autorización de Isaac por simplicidad. Sin operaciones reales.
 
 Launch Edition retirada del catálogo de compra y de los botones. Se conserva
 la lectura de mappings, pagos y derechos históricos, migraciones y tests.
-El script prepara Founders en español, sin crear producto real ni ID: lo crea
-Isaac y configura `POLAR_PRODUCT_MAP`. El contrato incorpora primer periodo Pro
+El script prepara Founders en español. El producto real ya existe según Isaac;
+los IDs se centralizan en `supabase/functions/scripts/founders-production-config.json`,
+fragmento para fusionar con `POLAR_PRODUCT_MAP`, sin aplicar cambios reales. El contrato incorpora primer periodo Pro
 3,99/39,90 y renovación 5,99/59,99, extra Pro Plus, creador no combinable,
 informes desde mes 2 y beta pública. El modelo recurrente antiguo de #1620
 requiere reconciliación antes de aplicar catálogo en producción; se impide esa
@@ -47,7 +48,12 @@ Por revisar con resumen. Última consulta CI: promoción, quality ratchet y
 GitGuardian PASS; native-linux y agregado bloqueante en curso. No se afirma
 CI completa ni integración. Sin captura (#1655), deploy, dinero, merge ni release.
 Siguiente: orquestador revisa PR/CI y coordina rebase de #1624 y compra web
-VANTA-42; Isaac configura producto real y valida apertura cuando corresponda.
+VANTA-42; Isaac incorpora el fragmento a la configuración y valida apertura cuando corresponda.
+
+Actualización posterior: inventario real comunicado por Isaac documentado: Pro mensual
+4,99 EUR, Launch Edition histórica 30 EUR y Founders 50 EUR. Pro anual, 5,99/59,99
+y Pro Plus aún no existen en producción. 69 pruebas offline de mapping y catálogo PASS, incluida la regresión del fragmento de
+Founders; sin repetir Rust/SQL porque no cambian código nativo ni schema.
 
 ## #1627 / PR #1639 · VANTA-21 · ronda 5 (15/10/2026)
 

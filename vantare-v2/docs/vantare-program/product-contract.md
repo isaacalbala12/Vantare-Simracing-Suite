@@ -108,6 +108,12 @@ heredado sin reconciliar su cobro del primer periodo y las renovaciones.
 La compra web se coordina en VANTA-42; este contrato no acredita activación
 ni cobros reales. La contabilidad de creadores sigue sin pagos automáticos.
 
+Inventario real comunicado por Isaac el 15-oct-2026: Pro mensual 4,99 EUR,
+Launch Edition 30 EUR (retirada de oferta) y Founders 50 EUR. Aún no existen
+Pro anual, precios 5,99/59,99 ni Pro Plus en producción. Los precios anteriores
+son decisiones de producto pendientes de configurar; no acreditan disponibilidad.
+El ID de Founders se documenta en el [contrato técnico](../billing/founders-1661.md).
+
 ### Founders — precio de fundador: 50 EUR una vez
 
 - Plan propio: todos los módulos y widgets presentes y futuros, para siempre.

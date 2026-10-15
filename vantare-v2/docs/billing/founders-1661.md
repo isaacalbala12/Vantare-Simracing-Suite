@@ -1,6 +1,7 @@
 # Founders — VANTA-83 / #1661
 
-Preparado en rama de issue; sin despliegue, producto Polar, cobros ni apertura de venta.
+Preparado en rama de issue; sin despliegue, cobros ni apertura de venta. El producto Polar ya existe según
+confirmación del orquestador; esta rama no modifica producción.
 Decisión de Isaac del 15-oct-2026 y encargo del orquestador: **plan propio de 50 EUR,
 pago único, todos los módulos y widgets actuales y futuros para siempre**.
 No es Launch Edition, un descuento ni un precio de suscripción.
@@ -26,16 +27,32 @@ su nombre por compatibilidad y devuelve apertura, interruptor, disponibilidad y 
 por Isaac: no renovar la suscripción al acabar el periodo pagado, sin reembolso.
 La alternativa proporcional se ha retirado para simplificar, con autorización de Isaac.
 
-La variable existente **`POLAR_PRODUCT_MAP`** debe contener la entrada opcional
-`checkout_keys.founders` y sus mapas inversos. **No hay ID real en esta entrega**.
-Isaac crea el producto de pago único de 50 EUR con impuestos incluidos, sin trial,
-sin códigos/descuento, y configura su ID en
-`POLAR_PRODUCT_MAP.checkout_keys.founders.polar_product_id` y el precio en
-`polar_price_ids`. La entrada exige `plan_sku: "founders"`, `billing_type: "one_time"`,
+La variable existente **`POLAR_PRODUCT_MAP`** debe incorporar la entrada
+`checkout_keys.founders` y sus mapas inversos. Los valores documentados de
+producción están **en un único archivo**:
+[`supabase/functions/scripts/founders-production-config.json`](../../../supabase/functions/scripts/founders-production-config.json).
+Es un **fragmento para fusionar** con la configuración existente; no sustituye
+el mapa completo ni es un fallback automático de sandbox o producción.
+Conservar `schema_version`, `catalog_version` y todas las entradas/IDs anteriores.
+Verificar que coincidan entorno y organización antes de fusionar. El producto
+«Vantare Founders» y su precio único de **50,00 EUR** ya existen, según Isaac.
+El archivo contiene organización, producto, precio y contratos de derecho,
+sin secretos; no se repiten esos IDs en código, SQL ni textos.
+
+La entrada exige `plan_sku: "founders"`, `billing_type: "one_time"`,
 `lifetime: true`, `active: true`, `capabilities: ["vantare.plan.founders"]`,
 `channels: ["stable"]`, `launch_scope_version: null`, `trial: {"enabled": false}`,
-`entitlement_product_key: "bundle"`. Ausencia de entrada deja la compra deshabilitada.
+`entitlement_product_key: "bundle"`. Ausencia de entrada deja compra deshabilitada.
 No retirar el mapping después del cierre: lo necesitan reembolsos y reconciliación.
+Configurar no equivale a desplegar ni habilitar ventas antes de la beta pública.
+
+**Inventario de producción comunicado por Isaac:** además de Founders, solo
+existen Pro mensual **4,99 EUR** y Launch Edition **30 EUR** (retirada de oferta,
+pero se conservan sus IDs para lectura histórica). **No existen todavía** Pro
+anual, los precios decididos 5,99/59,99 ni Pro Plus. Los IDs de sandbox no sirven
+para rellenar esos huecos de producción. Los precios del contrato son objetivos
+pendientes de configurar, no una descripción del catálogo real. Esta entrega
+no crea, actualiza, archiva ni publica productos en Polar.
 
 ## Suscripciones y cobros duplicados — decisión definitiva de Isaac
 
@@ -59,7 +76,8 @@ la renovación previamente cancelada. Esa reactivación requeriría una decisió
 Launch Edition se retira de los botones de compra, resolución de checkout y
 catálogo comercial. `launch_lifetime`, sus IDs y el lector admin se conservan
 para compras históricas y reembolsos. El script no exige ni modifica ese producto.
-Isaac crea Founders y configura su ID; el script valida 50 EUR y publica el plan
+El producto Founders existente se configura mediante el fragmento anterior;
+el script valida 50 EUR y prepara el plan
 **offline**, sin crear un producto real por su cuenta.
 La aplicación del catálogo completo en producción queda bloqueada: los productos
 recurrentes heredados de #1620 todavía no implementan el nuevo primer periodo

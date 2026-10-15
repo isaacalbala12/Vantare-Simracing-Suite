@@ -76,6 +76,7 @@ create table private.report_promotion_transfers (
  next_subscription_id text not null, next_product_id text not null,
  observed_at timestamptz not null, cleanup_after timestamptz not null,
  cleared_at timestamptz,
+ cleanup_reason text check(cleanup_reason in ('removed','mirror_inactive','remote_inactive')),
  foreign key(account_id,environment) references private.report_promotions,
  unique(account_id,environment,subscription_id,product_id,observed_at)
 );
@@ -350,6 +351,10 @@ begin
  update private.report_promotions set tier=p.tier,reward_granted_at=p.reward_granted_at,reward_from=p.reward_from,reward_until=p.reward_until,forfeited=p.forfeited,forfeited_at=p.forfeited_at,first_refunded=p.first_refunded
   where account_id=p_account and environment=p_environment;
  target_sub:=p.subscription_id; target_product:=p.product_id;
+ -- A non-billable predecessor needs no provider mutation. Keep its audit.
+ update private.report_promotion_transfers t set cleared_at=p_now,cleanup_reason='mirror_inactive'
+ where t.account_id=p_account and t.environment=p_environment and t.cleared_at is null and t.cleanup_after<=p_now
+ and exists(select 1 from public.billing_subscriptions b where b.user_id=p_account and b.provider='polar' and b.environment=p_environment and b.provider_subscription_id=t.subscription_id and b.status in ('canceled','paused'));
  select * into prior from private.report_promotion_transfers where account_id=p_account and environment=p_environment and cleared_at is null order by id limit 1;
  if found then
    if prior.cleanup_after>p_now then return null; end if;
@@ -403,7 +408,7 @@ begin
 end $$;
 revoke all on function public.report_promotion_cleared(uuid,uuid,timestamptz) from public,anon,authenticated;
 grant execute on function public.report_promotion_cleared(uuid,uuid,timestamptz) to service_role;
-create function public.report_promotion_ack(p_id uuid,p_token uuid,p_now timestamptz default clock_timestamp(),p_observed_discount text default null) returns boolean
+create function public.report_promotion_ack(p_id uuid,p_token uuid,p_now timestamptz default clock_timestamp(),p_observed_discount text default null,p_cleanup_reason text default null) returns boolean
 language plpgsql security definer set search_path='' as $$
 declare op private.report_promotion_changes;
 begin
@@ -413,7 +418,7 @@ begin
  if not found then return false; end if;
  update private.report_promotion_failures set resolved_at=p_now where account_id=op.account_id and environment=op.environment and resolved_at is null;
  if op.kind='cleanup' then
-   update private.report_promotion_transfers set cleared_at=p_now where account_id=op.account_id and environment=op.environment and subscription_id=op.subscription_id and product_id=op.product_id and cleared_at is null;
+   update private.report_promotion_transfers set cleared_at=p_now,cleanup_reason=case when p_cleanup_reason='remote_inactive' then p_cleanup_reason else 'removed' end where account_id=op.account_id and environment=op.environment and subscription_id=op.subscription_id and product_id=op.product_id and cleared_at is null;
  else
    update private.report_promotions set applied_discount=op.discount_id,remote_discount=coalesce(p_observed_discount,op.discount_id),applied_at=p_now,repaired_order_id=coalesce(op.repair_order_id,repaired_order_id) where account_id=op.account_id and environment=op.environment and subscription_id=op.subscription_id and product_id=op.product_id;
  end if;
@@ -438,10 +443,10 @@ revoke all on function private.native_admin_account_before_1593(uuid,text,text),
  from public,anon,authenticated,service_role;
 revoke all on function public.report_promotion_observe(uuid,text,text,text,timestamptz,timestamptz,text),
  public.report_promotion_prepare(uuid,text,timestamptz),public.report_promotion_claim(uuid,uuid,timestamptz),
- public.report_promotion_ack(uuid,uuid,timestamptz,text),public.report_promotion_accounts(text,uuid) from public,anon,authenticated;
+ public.report_promotion_ack(uuid,uuid,timestamptz,text,text),public.report_promotion_accounts(text,uuid) from public,anon,authenticated;
 grant execute on function public.report_promotion_observe(uuid,text,text,text,timestamptz,timestamptz,text),
  public.report_promotion_prepare(uuid,text,timestamptz),public.report_promotion_claim(uuid,uuid,timestamptz),
- public.report_promotion_ack(uuid,uuid,timestamptz,text),public.report_promotion_accounts(text,uuid) to service_role;
+ public.report_promotion_ack(uuid,uuid,timestamptz,text,text),public.report_promotion_accounts(text,uuid) to service_role;
 
 alter function public.report_promotion_period(uuid,text,text,timestamptz) owner to postgres;
 alter function private.report_promotion_checkout_started() owner to postgres;
@@ -455,7 +460,7 @@ alter function public.report_promotion_observe(uuid,text,text,text,timestamptz,t
 alter function private.report_promotion_progress(uuid,text,timestamptz) owner to postgres;
 alter function public.report_promotion_prepare(uuid,text,timestamptz) owner to postgres;
 alter function public.report_promotion_claim(uuid,uuid,timestamptz) owner to postgres;
-alter function public.report_promotion_ack(uuid,uuid,timestamptz,text) owner to postgres;
+alter function public.report_promotion_ack(uuid,uuid,timestamptz,text,text) owner to postgres;
 alter function public.report_promotion_accounts(text,uuid) owner to postgres;
 alter function public.report_promotion_invoice(text,text,text,integer,timestamptz,timestamptz,timestamptz,boolean) owner to postgres;
 alter function public.report_promotion_failed(uuid,text,text,timestamptz) owner to postgres;

@@ -54,7 +54,10 @@ roba el premio. Si la vigente está inactiva, puede volver a una anterior activa
 Cada cambio deja registro privado con suscripción/producto anterior y nuevo y
 fecha de la observación. Antes de aplicar el premio en otra suscripción, se
 limpia el anterior mediante operación propia, esperando sus leases en vuelo. No
-se borra un descuento ajeno. El caso comercial no lanza conflicto ni cuarentena
+se borra un descuento ajeno. Si la anterior está canceled/paused, se considera
+ya limpia: no admite PATCH ni puede facturar. Queda motivo durable mirror_inactive
+o remote_inactive (GET vivo), con fecha y traslado; el premio sigue a la vigente.
+El caso comercial no lanza conflicto ni cuarentena
 del webhook. Errores HTTP/de catálogo se marcan para revisión y no bloquean a
 los demás clientes.
 

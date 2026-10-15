@@ -217,6 +217,18 @@ delete from public.billing_checkout_attempts where user_id=pg_temp.account(15);
 select is(public.report_promotion_checkout_pending(pg_temp.account(15),'sandbox','2026-10-31')->>'checkout_id','remote15','P1-2 remote recovery survives generic attempt garbage collection');
 select is(public.report_promotion_checkout(pg_temp.account(15),'sandbox','pro','2026-10-31','00000000-0000-4000-8000-000000000016','00000000-0000-4000-8000-000000000015'),'pro1','P1-2 verified expired remote checkout releases the account entitlement');
 select throws_ok($$select public.report_promotion_checkout(pg_temp.account(15),'sandbox','pro','2026-10-31 00:31','00000000-0000-4000-8000-000000000017','00000000-0000-4000-8000-000000000015')$$,'55000','promotion_checkout_pending','P1-2 stale terminal proof cannot win a second replacement');
+-- R3: terminal cleanup never prevents the current subscription receiving its award.
+select pg_temp.enroll(14);
+select pg_temp.report(14,'2026-10-27 19:00 Europe/Madrid'); select pg_temp.report(14,'2026-10-28 19:00 Europe/Madrid');
+select public.report_promotion_prepare(pg_temp.account(14),'sandbox','2026-11-01');
+insert into public.billing_subscriptions(user_id,provider,environment,provider_subscription_id,provider_product_id,status)
+ values(pg_temp.account(14),'polar','sandbox','replacement14','plus','active');
+select public.report_promotion_observe(pg_temp.account(14),'sandbox','replacement14','plus','2026-11-20','2026-11-20',null);
+update public.billing_subscriptions set status='canceled' where provider_subscription_id='sub14';
+select is(public.report_promotion_prepare(pg_temp.account(14),'sandbox','2026-11-21')->>'discount_id','plus3','P2-4 canceled predecessor is already clean and cannot starve current award');
+select ok((select cleared_at is not null and to_jsonb(t)->>'cleanup_reason'='mirror_inactive' from private.report_promotion_transfers t where account_id=pg_temp.account(14)),'P2-4 skipped cleanup has durable reason');
+-- A missing first invoice is visible and resolves when reconciliation supplies it.
+-- Launch accounting stays durable after payment, including a new attempt.
 select pg_temp.enroll(11);
 select is(public.report_promotion_checkout(pg_temp.account(11),'sandbox','pro','2026-10-31','00000000-0000-4000-8000-000000000013'),null::text,'P1-2 paid account cannot repeat intro with a new attempt');
 select * from finish();

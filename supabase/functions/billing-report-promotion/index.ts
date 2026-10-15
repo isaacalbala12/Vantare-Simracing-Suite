@@ -90,6 +90,7 @@ export async function runPromotionBatch(
         },
       };
       let observedDiscount: string | null = null;
+      let cleanupReason: string | null = null;
       await synchronizeDiscount(client, {
         subscriptionId: operation.subscription_id,
         productId: operation.product_id,
@@ -98,6 +99,10 @@ export async function runPromotionBatch(
         normalCents: operation.normal_cents,
         observed: (discount) => {
           observedDiscount = discount;
+        },
+        cleanup: operation.kind === "cleanup",
+        skippedCleanup: (reason) => {
+          cleanupReason = reason;
         },
         repair: operation.repair,
         phase: operation.phase,
@@ -114,6 +119,7 @@ export async function runPromotionBatch(
       if (
         await deps.rpc("report_promotion_ack", {
           p_observed_discount: observedDiscount,
+          p_cleanup_reason: cleanupReason,
           p_id: operation.id,
           p_token: token,
           p_now: deps.now().toISOString(),

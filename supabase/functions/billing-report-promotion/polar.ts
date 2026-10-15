@@ -70,11 +70,20 @@ export async function synchronizeDiscount(client: DiscountClient, expected: {
   managedDiscountIds?: (string | null)[];
   normalCents: number;
   observed?: (discountId: string | null) => void;
+  cleanup?: boolean;
+  skippedCleanup?: (reason: "remote_inactive") => void;
   repair?: boolean;
   phase?: "pending" | "cleared";
   markCleared?: () => Promise<void>;
 }): Promise<boolean> {
   const current = await client.read(expected.subscriptionId);
+  if (
+    expected.cleanup && expected.discountId === null &&
+    ["canceled", "paused"].includes(current.status)
+  ) {
+    expected.skippedCleanup?.("remote_inactive");
+    return false; // Cannot bill: Polar refuses PATCH; audit as already clean.
+  }
   if (
     current.product_id !== expected.productId ||
     !["active", "uncanceled"].includes(current.status)

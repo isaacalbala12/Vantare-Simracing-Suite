@@ -310,11 +310,21 @@ Deno.test("P1-2 a new desktop attempt reuses the verified launch checkout withou
   let writes = 0;
   const configured = {
     ...deps(memoryStore()),
-    promotionDiscount: () => Promise.resolve({checkoutUrl:"https://sandbox.polar.sh/checkout/old"}),
-    createCheckout: () => {writes++; throw new Error("must reuse old checkout");},
+    promotionDiscount: () =>
+      Promise.resolve({ checkoutUrl: "https://sandbox.polar.sh/checkout/old" }),
+    createCheckout: () => {
+      writes++;
+      throw new Error("must reuse old checkout");
+    },
   };
-  const response = await handleCheckoutRequest(post({productKey:"pro_monthly",attemptId:ATTEMPT_ID}),configured);
-  assertEquals(response.status,200);
-  assertEquals(await response.json(),{url:"https://sandbox.polar.sh/checkout/old",reused:true});
-  assertEquals(writes,0);
+  const response = await handleCheckoutRequest(
+    post({ productKey: "pro_monthly", attemptId: ATTEMPT_ID }),
+    configured,
+  );
+  assertEquals(response.status, 200);
+  assertEquals(await response.json(), {
+    url: "https://sandbox.polar.sh/checkout/old",
+    reused: true,
+  });
+  assertEquals(writes, 0);
 });

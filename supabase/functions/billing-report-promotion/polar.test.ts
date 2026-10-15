@@ -345,3 +345,43 @@ Deno.test("P2-2 lost clear response or failed phase RPC resumes without clearing
     assertEquals(writes, 2);
   }
 });
+
+Deno.test("P2-4 cleanup of canceled or paused predecessor succeeds without a forbidden PATCH", async () => {
+  for (const status of ["canceled", "paused"]) {
+    let writes = 0;
+    const client = new PolarDiscountClient(
+      "sandbox",
+      "fixture",
+      (_url, init) => {
+        if (init?.method === "PATCH") {
+          writes++;
+          return Promise.resolve(new Response(null, { status: 422 }));
+        }
+        return Promise.resolve(
+          Response.json({
+            id: "old",
+            product_id: "product",
+            status,
+            discount_id: "reward3",
+            amount: 599,
+            currency: "eur",
+            recurring_interval: "month",
+            recurring_interval_count: 1,
+          }),
+        );
+      },
+    );
+    assertEquals(
+      await synchronizeDiscount(client, {
+        subscriptionId: "old",
+        productId: "product",
+        normalCents: 599,
+        discountId: null,
+        managedDiscountIds: ["reward3"],
+        ...{ cleanup: true },
+      }),
+      false,
+    );
+    assertEquals(writes, 0);
+  }
+});

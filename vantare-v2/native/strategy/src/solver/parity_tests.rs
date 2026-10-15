@@ -42,8 +42,7 @@ fn parity_cases(data: &str) {
     // repartirlos entre hilos no cambia lo que se comprueba, solo deja de hacerlo en serie
     // (#1654 r5: go_physical_tyre_parity tardaba 27 s en CI y ~60 s en el servidor).
     let threads = std::thread::available_parallelism()
-        .map(|n| n.get().min(4))
-        .unwrap_or(1)
+        .map_or(1, |n| n.get().min(4))
         .max(1);
     let failed: Vec<Value> = if threads == 1 || cases.len() < 2 {
         run_parity_cases(&cases)

@@ -1,3 +1,90 @@
+## VANTA-50 / #1620 / PR #1624 · fechas confirmadas (15/10/2026)
+
+Decisión de Isaac: apertura **lunes 26-oct-2026, 19:00 Europe/Madrid**;
+cierre comercial **jueves 26-nov-2026, 19:00 Europe/Madrid**. Ambos instantes
+son CET (`UTC+01:00`, `18:00Z`). Sustituye la ventana anterior.
+Precios, código de creador, ausencia de trial de lanzamiento y garantía de
+14 días conservados. Gratis: Standings, Relative, Delta y Pedals; Pro añade
+el catálogo completo. El runtime gratuito se entrega en #1632/PR #1633,
+aún fuera de nightly `5d7950f67`; este cambio solo alinea el contrato.
+
+Worker asignado, rama `vantareapp/isa-1620-textos`, inicio `972349b21`.
+Merge commit `a12e9be57` incorpora `origin/nightly@5d7950f67`, conserva #1622
+y la copia v3. Los tests de webhook/checkout compartidos quedan idénticos
+a nightly. Se unifica **Overlay Studio** en la copia comercial de Polar;
+la denominación de UI nativa queda fuera de este encargo de textos.
+
+Web: worktree `C:/VantareServer/wt/web-fechas`, rama
+`vantareapp/web-fechas-lanzamiento`, base `a4ae91d`. Esa base ya tenía
+26-oct/26-nov y relojes correctos; se revisan restos del corte LE antiguo.
+**Solo commits locales, sin push ni PR**: instrucción del orquestador,
+Workers Builds publica cualquier rama en producción. SHA/comando de
+publicación se entregan en `C:/tmp/buzon/fechas.md`; publica el orquestador.
+
+Código validado `e5f721735`; web local `2b79c36fed86e96cfa3bc6759a3e2064bdb30a17`.
+Mac temporal desde bundle local: catálogo **47 PASS**, suite Edge completa con
+tipos **613 PASS / 0 FAIL / 2 ignored** (integraciones externas no configuradas).
+Deno 2.9.6, entorno vacío y `TMPDIR=/tmp`, sin permiso de red. La resolución
+del package.json del monorepo y su lock exigía un SDK ausente de caché:
+solo en el worktree temporal se apartó package.json y se usó `--no-lock`,
+con dependencias ya instaladas. No se cambia package.json/lock del PR.
+Intentos fallidos de configuración y de permiso temporal conservados.
+Calidad/retirada **456 huellas PASS**, fragmento ISA-1620 y diff PASS.
+Web: build y **23/23 tests PASS**, relojes probados justo antes y en ambos
+límites, JSON-LD de cuatro idiomas y tres estados, legales ES/EN alineados.
+Persisten los **60 pendientes legales heredados**; no se abre lista ni acceso.
+Logs y auditoría de fechas: `C:/VantareServer/evidence/fechas/`.
+Las tres coincidencias ISO antiguas restantes son fixtures/migración de
+Testing Center (`2026-10-19 00:00Z`), ajenas a la ventana comercial.
+SHA final del PR y última lectura remota en #1620/#1624 y el buzón.
+Sin Rust propio: gates nativos y telemetría omitidos por alcance documental.
+Sin servicios reales, cambios de precios/IDs/derechos, release o despliegue.
+Siguiente: revisar el nuevo HEAD del PR principal y el commit local de la web.
+
+## #1620 / PR #1621 · textos definitivos v3 (14/10/2026)
+
+Encargo aprobado al worker Codex macOS arm64; base limpia `34e9f4af`, rama
+`vantareapp/isa-1620-precios-polar`, Project Vantare/area:licencias.
+Revisión pendiente del orquestador. Excepción explícita: sin GitHub, Plane,
+Notion, push ni subagentes; el orquestador recoge la rama y actualiza issue/PR,
+estado y CI. No se ha verificado el estado remoto ni se afirma integración.
+
+Aplicadas **A1–A6** de `~/orq/v3/cambios-repo.md`: `productCopy`, tests,
+runbook, fragmento ISA-1620, este handoff y contrato de producto con Founders.
+Nombres y descripciones Markdown copiados literalmente de `textos.json` v3,
+incluido ` · Lanzamiento` y los 14 días para la primera compra de Pro Plus
+(decisión final que completa el ejemplo A1). Garantía de 14 días también en
+Pro, Launch Edition y Founders; no en renovaciones Pro/Pro Plus.
+Launch Edition: Pro de la Stable al cerrar la venta (26-11-2026, 19:00 Madrid),
+más Strategy Planner, Análisis de telemetría e Ingeniero local sin límite
+cuando se lancen, sin fechas; arreglos graves y ninguna otra función nueva.
+Founders añade la lista cerrada aprobada: más widgets, Strategy Planner,
+Análisis de telemetría, Ingeniero local sin límite de uso, estrategia en
+directo y vista de equipo. No se modifican IDs, precios, mapas, capabilities,
+trials, emisión de derechos ni runtime nativo.
+
+No hay textos legales de planes versionados en este repo (B4/garantía legal)
+ni `docs/roadmap/plan.md`; no se recrean. B1–B3 y los legales de la web quedan
+al worker de su repo. Las decisiones de oferta no certifican disponibilidad
+ni amplían por sí mismas el catálogo nativo de #1510: su corte/grants se
+verificarán antes de publicar las funciones, fuera de este encargo de copy.
+
+RED: dos tests fallan por los textos antiguos, sin cambios de implementación.
+GREEN: catálogo **47 PASS/0 FAIL**; suite Deno **590 PASS/0 FAIL/1 ignored**
+(PostgREST no configurado). Tipos, lint (exclusión existente no-import-prefix),
+fmt TS/JSON, superficie deploy, validador del fragmento, quality/retirada
+**456 huellas** y diff PASS. Planes offline sandbox/production comparados
+literalmente con el JSON aprobado: nueve nombres/descripciones coinciden.
+Tests con entorno vacío, caché instalada y sin permiso de red; escrituras
+solo temporales. Rust/UI/telemetría/SQL omitidos: no hay cambios en esas áreas.
+
+Evidencia `~/evidence/1620/textos-definitivos/RESUMEN.md`; HEAD final en
+`~/orq/1620.buzon.md`. Sin servicios reales, secretos, dependencias nuevas,
+push, merge, promoción, release ni deploy. Diff completo revisado.
+Siguiente: el orquestador revisa el commit local y actualiza seguimiento;
+por su vía autorizada aplica/verifica nombres y Markdown reales en sandbox,
+revisando el mismo ID/precio de Launch Edition y la garantía de los planes.
+
 ## #1608 · R11 · Guarda y permisos de triage (15/10/2026)
 
 Base `1ac73ce20`; comparación con nightly `64c493e4f`. Solo cambian el fixture
@@ -731,12 +818,10 @@ Base local `0d03e6c0`, con nightly `953f041c` ya incorporado; rama
 `vantareapp/isa-1620-precios-polar`, Project Vantare/area:licencias.
 Se conserva la omisión autorizada de VANTA-N: trackers/PR/CI al orquestador.
 
-Productos nuevos: Pro/Pro Plus y sufijo ` · Precio de lanzamiento`, con
+Productos nuevos: Pro/Pro Plus y sufijo ` · Lanzamiento`, con
 Markdown del contrato y ciclo visible en el precio. Existentes: PATCH
 idempotente solo name/description, separado de la lógica monetaria previa.
-Launch Edition del mapa: mismo ID/precio/capabilities, nuevo texto que limita
-la licencia a módulos existentes y mejoras, Engineer inicial, Testers sin
-Nightly. Preflight rechaza edición ausente/ambigua/archivada/recurrente.
+Launch Edition del mapa: mismo ID/precio/capabilities; texto según DECISIONES §6m (14-oct). Preflight rechaza edición ausente/ambigua/archivada/recurrente.
 Sin i18n de producto documentado en Polar; ES sin duplicar productos.
 
 RED cuatro tests fallidos por comportamiento → catálogo **42 PASS/0 FAIL**:

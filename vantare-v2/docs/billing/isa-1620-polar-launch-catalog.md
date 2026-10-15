@@ -11,19 +11,29 @@ con precio base**, no descuentos. Un descuento porcentual por creador, código
 con su nombre exacto, limitado a esos productos. Solo preparación en repo:
 sin API Polar, secretos, deploy, activación ni venta probados.
 
+## Fechas confirmadas (15/10/2026)
+
+Apertura: **lunes 26 de octubre de 2026, 19:00 Europe/Madrid**
+(`2026-10-26T19:00:00+01:00`, `18:00Z`). Cierre comercial del lanzamiento:
+**jueves 26 de noviembre de 2026, 19:00 Europe/Madrid**
+(`2026-11-26T19:00:00+01:00`, `18:00Z`). La Launch Edition toma la Stable
+al cerrar la venta. Esta documentación no programa ni activa ventas en Polar.
+
 ## Nombres y descripciones de cliente (14/10/2026)
 
 El script crea las suscripciones con `Vantare Pro` o `Vantare Pro Plus`;
-las de lanzamiento añaden ` · Precio de lanzamiento`. Polar muestra el
+las de lanzamiento añaden ` · Lanzamiento`. Polar muestra el
 intervalo mensual/anual junto al precio. Las claves técnicas permanecen en
 metadata y en el mapa, nunca en el nombre visible. Las descripciones breves
-Markdown proceden de [product-contract.md](../vantare-program/product-contract.md):
-Stable y Discord para Pro; todo Pro más Nightly/Beta privada, tests, encuestas
-y previews para Plus, con los mismos derechos para normales y lanzamiento.
+Markdown son los textos v3 aprobados por Isaac el 14/10/2026, conforme a
+[product-contract.md](../vantare-program/product-contract.md): todos los widgets
+sin marca y cada widget nuevo, Overlay Studio para Le Mans Ultimate y ACC,
+Discord y correo para Pro; todo Pro más nightly y reconocimiento como apoyo en
+Discord para Plus. Ambos incluyen 14 días para pedir el reembolso de la primera
+compra, con los mismos derechos para normales y lanzamiento.
 
 La Launch Edition ya configurada se presenta como `Vantare Launch Edition`:
-módulos existentes al comprar y mejoras de por vida, Engineer inicial,
-Testers sin Nightly y advertencia de que módulos nuevos pueden venderse aparte.
+Todo lo que tenga Pro en la versión estable al cerrar la venta y, además, estas funciones cuando se lancen, sin fechas: Strategy Planner, Análisis de telemetría e Ingeniero local sin límite de uso. Arreglos de errores graves; ninguna otra función nueva.
 No se crea ni se sustituye esa edición, ni se modifica su precio de pago único.
 Su ausencia, duplicidad por metadata, archivo o intervalo recurrente abortan
 el preflight antes de cualquier escritura.

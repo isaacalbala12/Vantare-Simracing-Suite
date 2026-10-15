@@ -72,16 +72,16 @@ function productCopy(key: CheckoutKey, launch = false) {
     return {
       name: "Vantare Launch Edition",
       description:
-        "- Acceso de por vida a los módulos existentes al comprar y sus mejoras, incluido **Engineer** en la edición inicial.\n- Acceso a tests, encuestas y builds de **Testers**, sin Nightly.\n- Los módulos completamente nuevos pueden venderse aparte.",
+        "- **Pago único, sin cuotas**: licencia para siempre que funciona sin conexión.\n- **Todo lo que tenga Pro** en la versión estable al cerrar la venta, sin la marca Vantare.\n- **Incluye estas funciones cuando se lancen, sin fechas:** Strategy Planner, Análisis de telemetría e Ingeniero local sin límite de uso.\n- Arreglos de errores graves; ninguna otra función nueva.\n- Un equipo activo a la vez · **14 días** para pedir el reembolso.",
     };
   }
   const plus = key.startsWith("pro_plus_");
   return {
     name: (plus ? "Vantare Pro Plus" : "Vantare Pro") +
-      (launch ? " · Precio de lanzamiento" : ""),
+      (launch ? " · Lanzamiento" : ""),
     description: plus
-      ? "- Todo **Vantare Pro**: aplicación publicada en Stable y soporte en Discord.\n- Acceso a **Nightly/Beta privada**, tests, encuestas y previews activas."
-      : "- Toda la aplicación publicada en **Stable**.\n- Soporte en **Discord**.",
+      ? "- **Todo lo de Pro**: todos los widgets, sin marca, y cada widget nuevo.\n- **Versiones nightly**: lo nuevo, antes que nadie.\n- **Reconocimiento como apoyo** en Discord.\n- Tu cuota **financia lo que viene** en Vantare.\n- Un equipo activo a la vez · cancelas cuando quieras · **14 días** para pedir el reembolso de la primera compra."
+      : "- **Todos los widgets**, sin la marca Vantare en el overlay.\n- **Cada widget nuevo**, en cuanto sale.\n- Overlay Studio con todos tus widgets, para **Le Mans Ultimate y ACC**.\n- Soporte en **Discord** y por correo.\n- Un equipo activo a la vez · cancelas cuando quieras · **14 días** para pedir el reembolso de la primera compra.",
   };
 }
 

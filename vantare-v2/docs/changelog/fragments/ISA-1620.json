@@ -5,7 +5,7 @@
   "summary": "El catálogo prepara nombres claros y checkout oscuro; los precios de lanzamiento y creador no incluyen prueba gratis. Los siete días son solo para Pro a precio normal.",
   "technicalNotes": [
     "El PATCH cosmético solo envía nombre y descripción, sin precios, metadata, trial o visibilidad; la retirada del trial de lanzamiento usa un PATCH separado. Las claves técnicas permanecen en metadata/mapa.",
-    "Pro y Pro Plus distinguen la oferta por «Precio de lanzamiento» y el ciclo en el precio. Launch Edition conserva su ID, precio único y alcance de módulos existentes; el tema oscuro se fija en la URL exportada.",
+    "Pro y Pro Plus distinguen la oferta por «Lanzamiento» y el ciclo en el precio. Launch Edition conserva su ID y precio único; su texto pasa a: todo lo que tenga Pro en la versión estable al cerrar la venta, más Strategy Planner, Análisis de telemetría e Ingeniero local sin límite de uso cuando se lancen, sin fechas. El tema oscuro se fija en la URL exportada.",
     "Decisión B: POST de lanzamiento sin trial y PATCH separado idempotente que limpia ambos campos existentes. Antes de entregar un enlace de creador se comprueba que ningún producto de lanzamiento ni el enlace tengan trial."
   ],
   "testing": [

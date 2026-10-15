@@ -39,6 +39,27 @@ Deno.test("launch table: issue #1620 and creator extra 20% rounded to cents", ()
   );
 });
 
+// Literal customer copy approved by Isaac on 2026-10-14 (textos.json v3).
+const approvedCopy = {
+  "pro": {
+    "name_normal": "Vantare Pro",
+    "name_launch": "Vantare Pro · Lanzamiento",
+    "description":
+      "- **Todos los widgets**, sin la marca Vantare en el overlay.\n- **Cada widget nuevo**, en cuanto sale.\n- Overlay Studio con todos tus widgets, para **Le Mans Ultimate y ACC**.\n- Soporte en **Discord** y por correo.\n- Un equipo activo a la vez · cancelas cuando quieras · **14 días** para pedir el reembolso de la primera compra.",
+  },
+  "pro_plus": {
+    "name_normal": "Vantare Pro Plus",
+    "name_launch": "Vantare Pro Plus · Lanzamiento",
+    "description":
+      "- **Todo lo de Pro**: todos los widgets, sin marca, y cada widget nuevo.\n- **Versiones nightly**: lo nuevo, antes que nadie.\n- **Reconocimiento como apoyo** en Discord.\n- Tu cuota **financia lo que viene** en Vantare.\n- Un equipo activo a la vez · cancelas cuando quieras · **14 días** para pedir el reembolso de la primera compra.",
+  },
+  "launch_edition": {
+    "name": "Vantare Launch Edition",
+    "description":
+      "- **Pago único, sin cuotas**: licencia para siempre que funciona sin conexión.\n- **Todo lo que tenga Pro** en la versión estable al cerrar la venta, sin la marca Vantare.\n- **Incluye estas funciones cuando se lancen, sin fechas:** Strategy Planner, Análisis de telemetría e Ingeniero local sin límite de uso.\n- Arreglos de errores graves; ninguna otra función nueva.\n- Un equipo activo a la vez · **14 días** para pedir el reembolso.",
+  },
+};
+
 function fake() {
   const organization = {
     id: sandbox.organization_id,
@@ -51,9 +72,8 @@ function fake() {
     id: sandbox.checkout_keys[p.key as "pro_monthly" | "pro_annual"]
       .polar_product_id,
     organization_id: sandbox.organization_id,
-    name: "Vantare Pro",
-    description:
-      "- Toda la aplicación publicada en **Stable**.\n- Soporte en **Discord**.",
+    name: approvedCopy.pro.name_normal,
+    description: approvedCopy.pro.description,
     recurring_interval: p.interval,
     recurring_interval_count: 1,
     is_archived: false,
@@ -74,9 +94,8 @@ function fake() {
   products.push({
     id: sandbox.checkout_keys.launch_lifetime.polar_product_id,
     organization_id: sandbox.organization_id,
-    name: "Vantare Launch Edition",
-    description:
-      "- Acceso de por vida a los módulos existentes al comprar y sus mejoras, incluido **Engineer** en la edición inicial.\n- Acceso a tests, encuestas y builds de **Testers**, sin Nightly.\n- Los módulos completamente nuevos pueden venderse aparte.",
+    name: approvedCopy.launch_edition.name,
+    description: approvedCopy.launch_edition.description,
     recurring_interval: null,
     is_archived: false,
     visibility: "public",
@@ -161,11 +180,9 @@ Deno.test("customer copy: new subscriptions have commercial names and contracted
   const f = fake();
   const result = await syncCatalog(f.http, sandbox, options);
   for (const plan of PRICES.plans) {
-    const plus = plan.key.startsWith("pro_plus_");
-    const name = plus ? "Vantare Pro Plus" : "Vantare Pro";
-    const description = plus
-      ? "- Todo **Vantare Pro**: aplicación publicada en Stable y soporte en Discord.\n- Acceso a **Nightly/Beta privada**, tests, encuestas y previews activas."
-      : "- Toda la aplicación publicada en **Stable**.\n- Soporte en **Discord**.";
+    const copy = plan.key.startsWith("pro_plus_")
+      ? approvedCopy.pro_plus
+      : approvedCopy.pro;
     const config = result.map.checkout_keys[plan.key]!;
     for (const launch of [false, true]) {
       const product = f.products.find((p) =>
@@ -174,9 +191,9 @@ Deno.test("customer copy: new subscriptions have commercial names and contracted
       )!;
       assertEquals(
         product.name,
-        name + (launch ? " · Precio de lanzamiento" : ""),
+        launch ? copy.name_launch : copy.name_normal,
       );
-      assertEquals(product.description, description);
+      assertEquals(product.description, copy.description);
       if (product.metadata?.vantare_catalog_key) {
         assertEquals(
           product.metadata.vantare_catalog_key,
@@ -231,10 +248,8 @@ Deno.test("customer copy: repairs all nine existing products with cosmetic PATCH
   const lifetime = f.products.find((p) =>
     p.id === sandbox.checkout_keys.launch_lifetime.polar_product_id
   )!;
-  assertEquals(lifetime.name, "Vantare Launch Edition");
-  assertEquals(lifetime.description?.includes("pueden venderse aparte"), true);
-  assertEquals(lifetime.description?.includes("sin Nightly"), true);
-  assertEquals(lifetime.description?.includes("Engineer"), true);
+  assertEquals(lifetime.name, approvedCopy.launch_edition.name);
+  assertEquals(lifetime.description, approvedCopy.launch_edition.description);
   assertEquals(
     repaired.map.checkout_keys.launch_lifetime,
     first.map.checkout_keys.launch_lifetime,

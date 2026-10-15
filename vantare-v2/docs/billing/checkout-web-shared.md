@@ -1,5 +1,11 @@
 # VANTA-42 / #1620 · Compra compartida, caducidad y reembolso automático
 
+**R5 vigente:** [seguridad de compensación y ACK D1](checkout-review-r5.md).
+El reembolso está apagado por defecto; exige intento Vantare y resolución
+terminal no aplicable, nunca solo falta de licencia/cuarentena. IVA pendiente
+de sandbox y política net/gross; ACK D1 exige evidencia firmada independiente.
+Los apartados R4 siguientes documentan el mecanismo previo, no autorizan activarlo.
+
 Rama `vantareapp/isa-1620-checkout-web`, base nightly
 `3f82af867321876c9bcca19703831d9da7a3fed5` (#1622/#1633), PR draft #1663.
 Entrega de código y pruebas locales. No acredita despliegue ni apertura.

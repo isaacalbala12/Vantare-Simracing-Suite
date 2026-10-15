@@ -1,3 +1,38 @@
+## VANTA-42 / #1620 · R5 · Compensación restringida y oferta web (16/10/2026)
+
+Rama backend vantareapp/isa-1620-checkout-web, base nightly3f82af8, draft#1663.
+[Contrato R5](../../billing/checkout-review-r5.md) prevalece sobre R4:
+refund automático apagado por defecto; exige vínculo/marcador y resolución
+terminal no aplicable, con consulta del inbox. Pendientes/cuarentenas genéricas/
+enlaces de creador/históricos => incidencia Owner, nunca refund automático.
+IVA net/gross configurable pendiente sandbox; lectura antes de reintentar,
+avisos durables y sin doble refund. Expiración24h del no publicado sellado,
+aislamiento de venenos por ítem. ACK D1 con hash/recuento y HMAC propio;
+JWT1h/rotación30min; auditoría cero RPC PUBLIC extras para rol de erasure.
+Barrera #1622 y cierre #1633 conservados.
+
+Web: Launch Edition fuera de venta, derechos antiguos legibles; Founders50
+para siempre/todo presente y futuro/sin fin, CTA y hueco apagados hasta integrar
+1661 (contratoc846d7c6 requiere Supabase bearer, no Clerk directo).
+Beta pública26oct-26nov: Pro399/3990 primer periodo y599/5999 renovación;
+Plus opcional699/6990 y999/9990. Una fuente en céntimos también legales.
+Checkout normal+polar_launch_discount_id del mapa común1661@c846d7c6,
+nunca IDs de lanzamiento; validación servidor
+de tarifa/importe/duración/producto y no combinación con creador. Informes
+desde segundo mes. Downloads URL fijada por version en launch.json, null
+pendienteIsaac, CTA desactivado hasta elegir versión; nunca releases/latest.
+
+72migraciones/235pgTAP/13carreras,632EdgePASS/2ignored preexistentes;
+73Node/SQLite, E2E cuatro suscripciones/webhook real,48capturas Chrome Mac,
+CSP/backoff/429/precios/descarga PASS. Rust/telemetría omitidos: native intacto.
+Evidencia ~/evidence/web-compra/r5-*. SHA final/ref en buzón web-compra.
+Solo bares locales; sin GitHub/API real/deploy/merge/release.
+Orquestador: revisar y actualizar VANTA-42/PR1663; último estado En curso.
+Isaac: precios/once de catálogo1661 (Polar59,90 debe pasar59,99),
+versiónSetup, privacidad/Clerk/mapa/cron/JWT/claves/receptor Owner y sandboxIVA
+antes de abrir. Webhookrefund/uncanceled y localización activos según comunicación
+del orquestador; no se verificaron contra producción.
+
 ## VANTA-42 / #1620 · R4 · Intentos, compensación y baja D1 (15/10/2026)
 
 Rama/base/PR: `vantareapp/isa-1620-checkout-web`, nightly `3f82af8`, draft #1663.
